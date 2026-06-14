@@ -130,6 +130,7 @@ header h1 em{color:var(--a1);font-style:normal;}
 .port-map b{color:var(--a2);font-weight:700;}
 .port-map.main{border-left-color:var(--a1);}.port-map.main b{color:var(--a1);}
 .pill.s.on{background:var(--a5);border-color:var(--a5);color:#fff;}
+.pill.g.on{background:var(--a2);border-color:var(--a2);color:#fff;}
 .split-note{font-size:10px;color:var(--a5);margin:4px 2px 0;font-weight:600;}
 @media(max-width:680px){.add-form{grid-template-columns:1fr 1fr;}.add-btn{grid-column:1/-1;}}
 </style>
@@ -192,7 +193,7 @@ const YEAR_COLORS = {2022:'#3d8bfd',2023:'#c45cff',2024:'#ffbe2e',2025:'#00e6b8'
 const ST = {view:'overview', tab:'dash', cat:'all', cur:'JPY', q:'',
             company:null, mode:'core', flow:'exp',
             metric:{value:true,weight:false,unit:false}, repr:{level:true,yoy:true,yoy3:false},
-            r0:0, r1:MONTHS.length-1, range:'all', split:false};
+            r0:0, r1:MONTHS.length-1, range:'all', split:false, gran:'M', port:null};
 const charts = {};
 const CCOL=['#3d8bfd','#00e6b8','#ffbe2e','#ff5c5c','#c45cff','#ff8a3d','#42d4f4','#a0d911','#f06292','#8a90a8'];
 
@@ -282,17 +283,35 @@ function renderCompanyCharts(div,co){
         y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>(v*100).toFixed(0)+'%'},grid:{color:'rgba(40,40,74,.45)'}}}}});
 }
 
-// ---------- detail (per-port): Value(¥) / Weight(kg) / Unit(¥/kg) x Level / YoY / 3M YoY ----------
+// ---------- granularity (Monthly / Quarterly / Yearly) ----------
+function periodInfo(g){ periodInfo._c=periodInfo._c||{}; if(periodInfo._c[g]) return periodInfo._c[g];
+  let keys=[],m2p=[],label=[];
+  if(g==='M'){ keys=MONTHS.slice(); m2p=MONTHS.map((_,i)=>i); label=MONTHS.map(mlabel); }
+  else { const seen={};
+    MONTHS.forEach(ym=>{ const y=ym.slice(0,4),mo=+ym.slice(5,7), key=g==='Q'?`${y}-Q${Math.ceil(mo/3)}`:y;
+      if(!(key in seen)){ seen[key]=keys.length; keys.push(key); label.push(g==='Q'?y.slice(2)+'Q'+Math.ceil(mo/3):y); }
+      m2p.push(seen[key]); }); }
+  return periodInfo._c[g]={keys,m2p,label,n:keys.length,lag:g==='M'?12:g==='Q'?4:1};
+}
+function gInfo(){ return periodInfo(ST.gran); }
+function gLabels(){ return gInfo().label; }
+function xMin(){ return gInfo().m2p[ST.r0]; }
+function xMax(){ return gInfo().m2p[ST.r1]; }
+function aggLevel(arr){ if(ST.gran==='M') return arr; const pi=gInfo(),out=new Array(pi.n).fill(0); for(let i=0;i<arr.length;i++){ if(arr[i]!=null) out[pi.m2p[i]]+=arr[i]; } return out; }
+function yoyG(level){ const lag=gInfo().lag; return level.map((v,i)=>(i>=lag&&level[i-lag]>0)?v/level[i-lag]-1:null); }
+function yoy3G(level){ const lag=gInfo().lag,r=level.map((v,i)=>i<2?null:level[i]+level[i-1]+level[i-2]); return r.map((v,i)=>(i>=lag&&r[i-lag]>0)?r[i]/r[i-lag]-1:null); }
+
+// ---------- detail (per-port): Value(¥) / Weight(kg) / Unit(¥/kg) x Level / YoY / 3p YoY ----------
 function dseries(code){ const s=P.detail[ST.mode][code]; return {exp:{v:s.exp.v,w:s.exp.w}, imp:{v:s.imp.v,w:s.imp.w}}; }
 const DCOL={exp:{value:'#3d8bfd',weight:'#ffbe2e',unit:'#c45cff'},imp:{value:'#00e6b8',weight:'#ff8a3d',unit:'#7da0ff'}};
-function unitDisp(v,w){ const k=CUR[ST.cur].mult; return v.map((x,i)=>(x!=null&&w[i]>0)?x*k/w[i]:null); } // currency/kg
-function unitRaw(v,w){ return v.map((x,i)=>(x!=null&&w[i]>0)?x/w[i]:null); }                              // for YoY (ratio)
+function unitDispG(v,w){ const av=aggLevel(v),aw=aggLevel(w),k=CUR[ST.cur].mult; return av.map((x,i)=>aw[i]>0?x*k/aw[i]:null); }
+function unitRatioG(v,w){ const av=aggLevel(v),aw=aggLevel(w); return av.map((x,i)=>aw[i]>0?x/aw[i]:null); }
 function countryDatasets(code){
   const cd=(P.country||{})[ST.mode]; if(!cd||!cd.loc) return [];
   const loc=cd.loc[code]; if(!loc) return [];
   const k=CUR[ST.cur].mult;
-  return cd.order.map((c,i)=>{const col=CCOL[i%CCOL.length];
-    return {type:'line',label:c,data:loc[c].map(x=>x==null?null:x*k),yAxisID:'yV',
+  return cd.order.map((c,i)=>{const col=CCOL[i%CCOL.length], lv=aggLevel(loc[c]);
+    return {type:'line',label:c,data:lv.map(x=>x==null?null:x*k),yAxisID:'yV',
       backgroundColor:col+'cc',borderColor:col,borderWidth:.7,pointRadius:0,fill:true,tension:.2,stack:'c'};});
 }
 function dDatasets(code){
@@ -300,19 +319,19 @@ function dDatasets(code){
   const s=dseries(code), M=ST.metric, R=ST.repr, k=CUR[ST.cur].mult, ds=[];
   const flows=[]; if(ST.flow!=='imp')flows.push(['exp','Export']); if(ST.flow!=='exp')flows.push(['imp','Import']);
   flows.forEach(([fk,fl])=>{
-    const v=s[fk].v, w=s[fk].w, cvv=v.map(x=>x==null?null:x*k), ud=unitDisp(v,w), ur=unitRaw(v,w), dash=fk==='imp'?[4,3]:[];
+    const av=aggLevel(s[fk].v), aw=aggLevel(s[fk].w), cvv=av.map(x=>x==null?null:x*k), ud=unitDispG(s[fk].v,s[fk].w), dash=fk==='imp'?[4,3]:[];
     if(R.level){
       if(M.value){ if(fk==='exp') ds.push({type:'bar',label:fl+' Value',data:cvv,yAxisID:'yV',backgroundColor:DCOL.exp.value+'73',borderColor:DCOL.exp.value,borderWidth:0,order:9,barPercentage:1,categoryPercentage:.92});
                    else ds.push({type:'line',label:fl+' Value',data:cvv,yAxisID:'yV',borderColor:DCOL.imp.value,borderWidth:1.5,pointRadius:0,tension:.25,order:8}); }
-      if(M.weight){ if(fk==='exp') ds.push({type:'bar',label:fl+' kg',data:w,yAxisID:'yW',backgroundColor:DCOL.exp.weight+'73',borderColor:DCOL.exp.weight,borderWidth:0,order:8,barPercentage:1,categoryPercentage:.92});
-                    else ds.push({type:'line',label:fl+' kg',data:w,yAxisID:'yW',borderColor:DCOL.imp.weight,borderWidth:1.5,pointRadius:0,tension:.25,order:7,borderDash:dash}); }
+      if(M.weight){ if(fk==='exp') ds.push({type:'bar',label:fl+' kg',data:aw,yAxisID:'yW',backgroundColor:DCOL.exp.weight+'73',borderColor:DCOL.exp.weight,borderWidth:0,order:8,barPercentage:1,categoryPercentage:.92});
+                    else ds.push({type:'line',label:fl+' kg',data:aw,yAxisID:'yW',borderColor:DCOL.imp.weight,borderWidth:1.5,pointRadius:0,tension:.25,order:7,borderDash:dash}); }
       if(M.unit) ds.push({type:'line',label:fl+' '+CUR[ST.cur].sym+'/kg',data:ud,yAxisID:'yU',borderColor:DCOL[fk].unit,borderWidth:1.6,pointRadius:0,tension:.25,order:6,borderDash:dash});
     }
-    [['yoy',yoyArr,'YoY',[5,4]],['yoy3',yoy3Arr,'3M YoY',[2,3]]].forEach(([rk,fn,lab,d2])=>{
+    [['yoy',yoyG,'YoY',[5,4]],['yoy3',yoy3G,'3p YoY',[2,3]]].forEach(([rk,fn,lab,d2])=>{
       if(!R[rk])return;
-      if(M.value)  ds.push({type:'line',label:`${fl} Value ${lab}`,data:fn(v), yAxisID:'yP',borderColor:DCOL[fk].value, borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:3,spanGaps:true});
-      if(M.weight) ds.push({type:'line',label:`${fl} kg ${lab}`,   data:fn(w), yAxisID:'yP',borderColor:DCOL[fk].weight,borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:2,spanGaps:true});
-      if(M.unit)   ds.push({type:'line',label:`${fl} ${CUR[ST.cur].sym}/kg ${lab}`,data:fn(ur),yAxisID:'yP',borderColor:DCOL[fk].unit,borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:1,spanGaps:true});
+      if(M.value)  ds.push({type:'line',label:`${fl} Value ${lab}`,data:fn(av), yAxisID:'yP',borderColor:DCOL[fk].value, borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:3,spanGaps:true});
+      if(M.weight) ds.push({type:'line',label:`${fl} kg ${lab}`,   data:fn(aw), yAxisID:'yP',borderColor:DCOL[fk].weight,borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:2,spanGaps:true});
+      if(M.unit)   ds.push({type:'line',label:`${fl} ${CUR[ST.cur].sym}/kg ${lab}`,data:fn(unitRatioG(s[fk].v,s[fk].w)),yAxisID:'yP',borderColor:DCOL[fk].unit,borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:1,spanGaps:true});
     });
   });
   return ds;
@@ -321,7 +340,7 @@ function dOpts(){
   if(ST.split){ return {responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
     plugins:{legend:{display:true,labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
       tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtV(c.parsed.y/CUR[ST.cur].mult)}}},
-    scales:{x:{min:ST.r0,max:ST.r1,ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
+    scales:{x:{min:xMin(),max:xMax(),ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
       yV:{stacked:true,position:'left',beginAtZero:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>fmtV(v/CUR[ST.cur].mult)},grid:{color:'rgba(40,40,74,.5)'}}}}; }
   const M=ST.metric,R=ST.repr,sym=CUR[ST.cur].sym;
   const showV=R.level&&M.value, showW=R.level&&M.weight, showU=R.level&&M.unit, showP=(R.yoy||R.yoy3)&&(M.value||M.weight||M.unit);
@@ -332,22 +351,28 @@ function dOpts(){
         if(ax==='yW')return c.dataset.label+': '+fmtKg(y);
         if(ax==='yU')return c.dataset.label+': '+sym+fmtNum(y)+'/kg';
         return c.dataset.label+': '+fmtV(y/CUR[ST.cur].mult);}}}},
-    scales:{x:{min:ST.r0,max:ST.r1,ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
+    scales:{x:{min:xMin(),max:xMax(),ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
       yV:{display:showV,position:'left',beginAtZero:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>fmtV(v/CUR[ST.cur].mult)},grid:{color:'rgba(40,40,74,.5)'}},
       yW:{display:showW,position:'right',beginAtZero:true,ticks:{color:'#9a8a4a',font:{size:8},callback:v=>fmtKg(v)},grid:{display:false}},
       yU:{display:showU,position:'right',ticks:{color:'#a06ab0',font:{size:8},callback:v=>sym+fmtNum(v)},grid:{display:false}},
       yP:{display:showP,position:'right',ticks:{color:'#6a6a9a',font:{size:8},callback:v=>(v*100).toFixed(0)+'%'},grid:{display:false}}}};
 }
+function barOpts(){ return {responsive:true,maintainAspectRatio:false,animation:false,
+  plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtV(c.parsed.y/CUR[ST.cur].mult)}}},
+  scales:{x:{min:xMin(),max:xMax(),ticks:{color:'#4a4a72',maxTicksLimit:7,font:{size:8}},grid:{display:false}},
+    y:{beginAtZero:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>fmtV(v/CUR[ST.cur].mult)},grid:{color:'rgba(40,40,74,.5)'}}}}; }
 function dMetrics(code){
-  const s=dseries(code), ie=lastIdx(s.exp.v), ii=lastIdx(s.imp.v);
-  const ye=yoyArr(s.exp.v), yi=yoyArr(s.imp.v);
-  const ue=unitDisp(s.exp.v,s.exp.w), ui=unitDisp(s.imp.v,s.imp.w); let h='';
-  if(ST.flow!=='imp'){ h+=`<div class="metric"><span class="val">${fmtV(s.exp.v[ie])}</span>${chip(ye[ie])}<div class="lbl">Export · ${mlabel(MONTHS[ie])}</div></div>`;
+  const s=dseries(code), av=aggLevel(s.exp.v), aiv=aggLevel(s.imp.v), lbl=gLabels();
+  const ie=lastIdx(av), ii=lastIdx(aiv), ye=yoyG(av), yi=yoyG(aiv);
+  const ue=unitDispG(s.exp.v,s.exp.w), ui=unitDispG(s.imp.v,s.imp.w); let h='';
+  if(ST.flow!=='imp'){ h+=`<div class="metric"><span class="val">${fmtV(av[ie])}</span>${chip(ye[ie])}<div class="lbl">Export · ${lbl[ie]||''}</div></div>`;
     if(ue[ie]!=null) h+=`<div class="metric"><span class="val">${fmtUnit(ue[ie])}</span><div class="lbl">Export 단가</div></div>`; }
-  if(ST.flow!=='exp'){ h+=`<div class="metric"><span class="val">${fmtV(s.imp.v[ii])}</span>${chip(yi[ii])}<div class="lbl">Import · ${mlabel(MONTHS[ii])}</div></div>`;
+  if(ST.flow!=='exp'){ h+=`<div class="metric"><span class="val">${fmtV(aiv[ii])}</span>${chip(yi[ii])}<div class="lbl">Import · ${lbl[ii]||''}</div></div>`;
     if(ui[ii]!=null) h+=`<div class="metric"><span class="val">${fmtUnit(ui[ii])}</span><div class="lbl">Import 단가</div></div>`; }
   return h;
 }
+function granPills(){ return `<span class="lbl-sm" style="margin-left:8px">기간단위</span>`+
+  [['M','Monthly'],['Q','Quarterly'],['Y','Yearly']].map(([g,l])=>`<span class="pill g ${ST.gran===g?'on':''}" data-g="${g}">${l}</span>`).join(''); }
 function portMapHtml(p,hero){
   if(hero) return `<div class="port-map main">🏭 메인축 <b>Kumamoto 744/745</b> 완제품 · Hyogo <b>302/300/404</b> upstream(probe·기판) · Kyushu <b>604/605</b> 광역보정</div>`;
   const m=(M.portmap||{})[p.code]; if(!m) return '';
@@ -364,7 +389,7 @@ function dCard(p,hero){
   return div;
 }
 function renderDCard(div){ const code=div.dataset.code;
-  charts['d_'+code]=new Chart(div.querySelector('canvas'),{data:{labels:MONTHS,datasets:dDatasets(code)},options:dOpts()}); }
+  charts['d_'+code]=new Chart(div.querySelector('canvas'),{data:{labels:gLabels(),datasets:dDatasets(code)},options:dOpts()}); }
 
 // ---------- category helpers ----------
 function catLabel(id){ const c=M.categories.find(x=>x.id===id); return c?c.label:id; }
@@ -403,11 +428,12 @@ function render(){
   destroyAll();
   document.getElementById('sub').textContent=`Monthly · ${mlabel(MONTHS[0])}–${mlabel(M.updated)} · ${M.source}`;
   document.querySelectorAll('.pill.cur').forEach(p=>p.classList.toggle('on',p.dataset.cur===ST.cur));
-  const isDetail=ST.view==='detail';
+  const isDetail=ST.view==='detail'||ST.view==='country';
   ['rangeRow','brush','hsinfo'].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display=isDetail?'':'none';});
   if(isDetail){ drawBrushSpark(); positionBrush(); }
   const tabs=document.getElementById('tabs');
   if(ST.view==='detail'){ tabs.style.display='none'; return renderDetail(); }
+  if(ST.view==='country'){ tabs.style.display='none'; return renderCountry(); }
   tabs.style.display='flex';
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===ST.tab));
   if(ST.tab==='watch') return renderWatch();
@@ -468,6 +494,60 @@ function renderWatch(){
   mgr.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{removeWatch(b.dataset.rm);renderWatch();});
 }
 
+function stackOpts(){ return {responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+  plugins:{legend:{display:true,labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtV(c.parsed.y/CUR[ST.cur].mult)}}},
+  scales:{x:{min:xMin(),max:xMax(),ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
+    yV:{stacked:true,position:'left',beginAtZero:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>fmtV(v/CUR[ST.cur].mult)},grid:{color:'rgba(40,40,74,.5)'}}}}; }
+function wireDetailControls(){
+  const re=()=>(ST.view==='country'?renderCountry:renderDetail)();
+  document.querySelectorAll('#cnt [data-d]').forEach(e=>e.onclick=()=>{ST[e.dataset.d]=e.dataset.v;re();});
+  document.querySelectorAll('#cnt [data-mt]').forEach(e=>e.onclick=()=>{const k=e.dataset.mt,nm=Object.assign({},ST.metric);nm[k]=!nm[k];if(!nm.value&&!nm.weight&&!nm.unit)nm[k]=true;ST.metric=nm;re();});
+  document.querySelectorAll('#cnt [data-rp]').forEach(e=>e.onclick=()=>{const k=e.dataset.rp,nr=Object.assign({},ST.repr);nr[k]=!nr[k];if(!nr.level&&!nr.yoy&&!nr.yoy3)nr[k]=true;ST.repr=nr;re();});
+  document.querySelectorAll('#cnt [data-sp]').forEach(e=>e.onclick=()=>{ST.split=e.dataset.sp==='1';re();});
+  document.querySelectorAll('#cnt [data-g]').forEach(e=>e.onclick=()=>{ST.gran=e.dataset.g;re();});
+}
+function renderCountry(){
+  destroyAll();
+  const co=P.companies.find(c=>c.id===ST.company), port=ST.port;
+  const pinfo = port==='ALL' ? {name:co.name+' Total', jp:''} : (M.ports.find(p=>p.code===port)||{name:port,jp:''});
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('q').placeholder='국가 검색…';
+  document.getElementById('crumb').innerHTML=
+    `<span class="cl" data-go="ov">일본 수출입</span><span class="sep">›</span>`+
+    `<span class="cl" data-go="cat">${catLabel(co.category)}</span><span class="sep">›</span>`+
+    `<span class="cl" data-go="det">${co.subcategory}·${co.name}</span><span class="sep">›</span>`+
+    `<span>${pinfo.name} ${pinfo.jp||''}</span><span class="sep">›</span><b>수출국별</b>`+
+    `<span style="flex:1"></span><span class="back" data-go="det">← 세관 목록</span>`;
+  document.querySelectorAll('#crumb [data-go]').forEach(e=>e.onclick=()=>{ const g=e.dataset.go;
+    if(g==='det'){ ST.view='detail'; } else { if(g==='cat')ST.cat=co.category; ST.view='overview'; ST.company=null; }
+    ST.port=null; render(); window.scrollTo(0,0); });
+  document.getElementById('cnt').innerHTML=
+    `<div class="row" style="margin:2px 0 4px">
+       <span class="lbl-sm">HS</span>
+       <span class="pill ${ST.mode==='core'?'on':''}" data-d="mode" data-v="core">Core · 9030.90</span>
+       <span class="pill ${ST.mode==='broad'?'on':''}" data-d="mode" data-v="broad">Broad · 4 HS군</span>
+       ${granPills()}
+     </div><div class="split-note">수출국별 막대 — Export only · ${pinfo.name} · top 9개국 + 기타</div>`;
+  wireDetailControls();
+  const main=document.getElementById('main');
+  main.innerHTML='<div class="hero" id="hero"></div><div class="grid" id="grid"></div>';
+  const cd=(P.country[ST.mode]||{}), loc=(cd.loc||{})[port]||{}, order=cd.order||[];
+  const hero=document.createElement('div'); hero.className='card hero';
+  hero.innerHTML=`<div class="card-hd"><div><h3>${pinfo.name} ${pinfo.jp||''} <small>수출국별 누적</small></h3><div class="co-cat">${port==='ALL'?'All 8 ports':'Customs '+port} · Export</div></div></div><div class="ch-wrap"><canvas></canvas></div>`;
+  document.getElementById('hero').appendChild(hero);
+  charts['cy_hero']=new Chart(hero.querySelector('canvas'),{data:{labels:gLabels(),datasets:countryDatasets(port)},options:stackOpts()});
+  const q=ST.q.toLowerCase(), grid=document.getElementById('grid');
+  order.forEach((c,i)=>{ if(q&&!c.toLowerCase().includes(q))return;
+    const col=CCOL[i%CCOL.length], lv=aggLevel(loc[c]||[]), li=lastIdx(lv), cv=lv.map(x=>x==null?null:x*CUR[ST.cur].mult);
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<div class="card-hd"><div><h3><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${col};margin-right:6px;vertical-align:-1px"></span>${c}</h3><div class="co-cat">${pinfo.name} · Export</div></div></div>
+      <div class="metrics"><div class="metric"><span class="val">${fmtV(lv[li]||0)}</span><div class="lbl">${gLabels()[li]||''}</div></div></div>
+      <div class="ch-wrap"><canvas></canvas></div>`;
+    grid.appendChild(card);
+    charts['cy_'+i]=new Chart(card.querySelector('canvas'),{data:{labels:gLabels(),datasets:[{type:'bar',label:c,data:cv,backgroundColor:col+'aa',borderColor:col,borderWidth:0,barPercentage:1,categoryPercentage:.9}]},options:barOpts()});
+  });
+}
+
 function renderDetail(){
   destroyAll();
   const co=P.companies.find(c=>c.id===ST.company);
@@ -501,23 +581,25 @@ function renderDetail(){
        <span class="lbl-sm" style="margin-left:8px">분해</span>
        <span class="pill s ${!ST.split?'on':''}" data-sp="0">합계</span>
        <span class="pill s ${ST.split?'on':''}" data-sp="1">수출국별</span>
-     </div>${ST.split?`<div class="split-note">수출국별 분해 — Export only · top 9개국 + 기타 (stacked) · ${ST.mode.toUpperCase()}</div>`:''}`;
-  document.querySelectorAll('#cnt [data-d]').forEach(e=>e.onclick=()=>{ST[e.dataset.d]=e.dataset.v;renderDetail();});
-  document.querySelectorAll('#cnt [data-mt]').forEach(e=>e.onclick=()=>{const k=e.dataset.mt,nm=Object.assign({},ST.metric);nm[k]=!nm[k];if(!nm.value&&!nm.weight&&!nm.unit)nm[k]=true;ST.metric=nm;renderDetail();});
-  document.querySelectorAll('#cnt [data-rp]').forEach(e=>e.onclick=()=>{const k=e.dataset.rp,nr=Object.assign({},ST.repr);nr[k]=!nr[k];if(!nr.level&&!nr.yoy&&!nr.yoy3)nr[k]=true;ST.repr=nr;renderDetail();});
-  document.querySelectorAll('#cnt [data-sp]').forEach(e=>e.onclick=()=>{ST.split=e.dataset.sp==='1';renderDetail();});
+       ${granPills()}
+     </div>${ST.split?`<div class="split-note">수출국별 분해 — Export only · top 9개국 + 기타 (stacked) · ${ST.mode.toUpperCase()}</div>`:`<div class="split-note" style="color:var(--dim)">세관 카드를 클릭하면 그 세관의 수출국별 막대그래프로 분해됩니다 ▸</div>`}`;
+  wireDetailControls();
   const main=document.getElementById('main');
   main.innerHTML='<div class="hero" id="hero"></div><div class="grid" id="grid"></div>';
   const hero=dCard({code:'ALL',name:co.name+' Total',jp:co.name_jp,region:''},true);
+  hero.style.cursor='pointer'; hero.title='클릭 → 수출국별 분해';
+  hero.onclick=()=>{ST.view='country';ST.port='ALL';render();window.scrollTo(0,0);};
   document.getElementById('hero').appendChild(hero); renderDCard(hero);
   const q=ST.q.toLowerCase();
   const ports=M.ports.filter(p=>!q||p.name.toLowerCase().includes(q)||p.jp.includes(ST.q)||p.code.includes(q)||p.region.toLowerCase().includes(q));
   const grid=document.getElementById('grid');
-  ports.forEach(p=>{const c=dCard(p,false);grid.appendChild(c);renderDCard(c);});
+  ports.forEach(p=>{const c=dCard(p,false);grid.appendChild(c);renderDCard(c);
+    c.style.cursor='pointer'; c.title='클릭 → 수출국별 분해';
+    c.onclick=()=>{ST.view='country';ST.port=p.code;render();window.scrollTo(0,0);};});
 }
 
 // ---------- time-range control (presets + drag brush) ----------
-function applyRange(){ for(const k in charts){ if(k.endsWith('_y'))continue; const c=charts[k]; const sx=c&&c.options&&c.options.scales&&c.options.scales.x; if(sx){ sx.min=ST.r0; sx.max=ST.r1; c.update('none'); } } }
+function applyRange(){ const mn=xMin(), mx=xMax(); for(const k in charts){ if(k.endsWith('_y')||k.endsWith('_m'))continue; const c=charts[k]; const sx=c&&c.options&&c.options.scales&&c.options.scales.x; if(sx){ sx.min=mn; sx.max=mx; c.update('none'); } } }
 function updateRangeUI(){ document.querySelectorAll('.pill.r').forEach(p=>p.classList.toggle('on',p.dataset.range===ST.range)); }
 function positionBrush(){ const N=MONTHS.length-1, w=document.getElementById('brushWin'); if(!w||N<=0)return; w.style.left=(ST.r0/N*100)+'%'; w.style.width=((ST.r1-ST.r0)/N*100)+'%'; }
 function setPreset(p){ const N=MONTHS.length-1; let r0=0;
