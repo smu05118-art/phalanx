@@ -277,7 +277,8 @@ function dDatasets(code){
     if(R.level){
       if(M.value){ if(fk==='exp') ds.push({type:'bar',label:fl+' Value',data:cvv,yAxisID:'yV',backgroundColor:DCOL.exp.value+'73',borderColor:DCOL.exp.value,borderWidth:0,order:9,barPercentage:1,categoryPercentage:.92});
                    else ds.push({type:'line',label:fl+' Value',data:cvv,yAxisID:'yV',borderColor:DCOL.imp.value,borderWidth:1.5,pointRadius:0,tension:.25,order:8}); }
-      if(M.weight) ds.push({type:'line',label:fl+' kg',data:w,yAxisID:'yW',borderColor:DCOL[fk].weight,borderWidth:1.5,pointRadius:0,tension:.25,order:7,borderDash:dash});
+      if(M.weight){ if(fk==='exp') ds.push({type:'bar',label:fl+' kg',data:w,yAxisID:'yW',backgroundColor:DCOL.exp.weight+'73',borderColor:DCOL.exp.weight,borderWidth:0,order:8,barPercentage:1,categoryPercentage:.92});
+                    else ds.push({type:'line',label:fl+' kg',data:w,yAxisID:'yW',borderColor:DCOL.imp.weight,borderWidth:1.5,pointRadius:0,tension:.25,order:7,borderDash:dash}); }
       if(M.unit) ds.push({type:'line',label:fl+' '+CUR[ST.cur].sym+'/kg',data:ud,yAxisID:'yU',borderColor:DCOL[fk].unit,borderWidth:1.6,pointRadius:0,tension:.25,order:6,borderDash:dash});
     }
     [['yoy',yoyArr,'YoY',[5,4]],['yoy3',yoy3Arr,'3M YoY',[2,3]]].forEach(([rk,fn,lab,d2])=>{
