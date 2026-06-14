@@ -152,7 +152,7 @@ const P = {"meta":{"updated":"2026-04","months":["2009-01","2009-02","2009-03","
 const M = P.meta, MONTHS = M.months, CUR = M.currencies;
 const YEAR_COLORS = {2022:'#3d8bfd',2023:'#c45cff',2024:'#ffbe2e',2025:'#00e6b8',2026:'#ff5c5c'};
 const ST = {view:'overview', tab:'dash', cat:'all', cur:'JPY', q:'',
-            company:null, mode:'core', flow:'both', metrics:{value:true,yoy:true,yoy3:false}};
+            company:null, mode:'core', flow:'exp', metrics:{value:true,yoy:true,yoy3:false}};
 const charts = {};
 
 // ---------- watchlist (localStorage) ----------
@@ -402,9 +402,9 @@ function renderDetail(){
        <span class="pill y ${ST.metrics.yoy?'on':''}" data-m="yoy">YoY%</span>
        <span class="pill y ${ST.metrics.yoy3?'on':''}" data-m="yoy3">3M YoY%</span>
        <span class="lbl-sm" style="margin-left:8px">Flow</span>
-       <span class="pill b ${ST.flow==='both'?'on':''}" data-d="flow" data-v="both">Both</span>
        <span class="pill b ${ST.flow==='exp'?'on':''}" data-d="flow" data-v="exp">Export</span>
        <span class="pill b ${ST.flow==='imp'?'on':''}" data-d="flow" data-v="imp">Import</span>
+       <span class="pill b ${ST.flow==='both'?'on':''}" data-d="flow" data-v="both">Both</span>
      </div>`;
   document.querySelectorAll('#cnt [data-d]').forEach(e=>e.onclick=()=>{ST[e.dataset.d]=e.dataset.v;renderDetail();});
   document.querySelectorAll('#cnt [data-m]').forEach(e=>e.onclick=()=>{const k=e.dataset.m,nm=Object.assign({},ST.metrics);nm[k]=!nm[k];if(!nm.value&&!nm.yoy&&!nm.yoy3)nm[k]=true;ST.metrics=nm;renderDetail();});
