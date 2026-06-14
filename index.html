@@ -109,6 +109,13 @@ header h1 em{color:var(--a1);font-style:normal;}
 .watch-item button:hover{color:var(--a3);}
 .watch-empty{font-size:12px;color:var(--dim);padding:6px 2px;}
 .card.stub{border:1px dashed var(--bd);}
+.pill.r.on{background:var(--a2);border-color:var(--a2);color:#fff;}
+.brush{position:relative;height:44px;margin:5px 0 2px;border:1px solid var(--bd);border-radius:8px;background:var(--s1);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;}
+.brush canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.brush-win{position:absolute;top:0;bottom:0;left:0;width:100%;background:rgba(61,139,253,.13);border-left:2px solid var(--a2);border-right:2px solid var(--a2);cursor:grab;box-sizing:border-box;}
+.brush-win:active{cursor:grabbing;}
+.bh{position:absolute;top:0;bottom:0;width:12px;cursor:ew-resize;background:rgba(61,139,253,.3);}
+.bh-l{left:-2px;}.bh-r{right:-2px;}
 @media(max-width:680px){.add-form{grid-template-columns:1fr 1fr;}.add-btn{grid-column:1/-1;}}
 </style>
 </head>
@@ -138,6 +145,20 @@ header h1 em{color:var(--a1);font-style:normal;}
     <input class="search" id="q" placeholder="기업 검색…">
   </div>
   <div class="row cats" id="catRow"></div>
+  <div class="row" id="rangeRow">
+    <span class="lbl-sm">기간</span>
+    <span class="pill r" data-range="3m">3M</span>
+    <span class="pill r" data-range="6m">6M</span>
+    <span class="pill r" data-range="ytd">YTD</span>
+    <span class="pill r" data-range="1y">1Y</span>
+    <span class="pill r" data-range="3y">3Y</span>
+    <span class="pill r" data-range="5y">5Y</span>
+    <span class="pill r" data-range="10y">10Y</span>
+    <span class="pill r on" data-range="all">모두</span>
+  </div>
+  <div class="brush" id="brush"><canvas></canvas>
+    <div class="brush-win" id="brushWin"><div class="bh bh-l"></div><div class="bh bh-r"></div></div>
+  </div>
 </div>
 
 <div class="cnt" id="cnt"></div>
@@ -153,7 +174,8 @@ const M = P.meta, MONTHS = M.months, CUR = M.currencies;
 const YEAR_COLORS = {2022:'#3d8bfd',2023:'#c45cff',2024:'#ffbe2e',2025:'#00e6b8',2026:'#ff5c5c'};
 const ST = {view:'overview', tab:'dash', cat:'all', cur:'JPY', q:'',
             company:null, mode:'core', flow:'exp',
-            metric:{value:true,weight:false,unit:false}, repr:{level:true,yoy:true,yoy3:false}};
+            metric:{value:true,weight:false,unit:false}, repr:{level:true,yoy:true,yoy3:false},
+            r0:0, r1:MONTHS.length-1, range:'all'};
 const charts = {};
 
 // ---------- watchlist (localStorage) ----------
@@ -224,7 +246,7 @@ function renderCompanyCharts(div,co){
       {type:'line',label:'MoM%',data:mo,yAxisID:'y1',borderColor:'#c45cff',borderWidth:1.2,borderDash:[2,3],pointRadius:0,tension:.25,order:2,spanGaps:true},
     ]},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const d=c.dataset; return d.yAxisID==='y1'? d.label+': '+fmtP(c.parsed.y) : d.label+': '+fmtV(c.parsed.y/CUR[ST.cur].mult);}}}},
-      scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
+      scales:{x:{min:ST.r0,max:ST.r1,ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
         y:{position:'left',beginAtZero:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>fmtV(v/CUR[ST.cur].mult)},grid:{color:'rgba(40,40,74,.45)'}},
         y1:{position:'right',ticks:{color:'#4a4a72',font:{size:8},callback:v=>(v*100).toFixed(0)+'%'},grid:{display:false}}}}});
 
@@ -276,7 +298,7 @@ function dOpts(){ const M=ST.metric,R=ST.repr,sym=CUR[ST.cur].sym;
         if(ax==='yW')return c.dataset.label+': '+fmtKg(y);
         if(ax==='yU')return c.dataset.label+': '+sym+fmtNum(y)+'/kg';
         return c.dataset.label+': '+fmtV(y/CUR[ST.cur].mult);}}}},
-    scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
+    scales:{x:{min:ST.r0,max:ST.r1,ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
       yV:{display:showV,position:'left',beginAtZero:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>fmtV(v/CUR[ST.cur].mult)},grid:{color:'rgba(40,40,74,.5)'}},
       yW:{display:showW,position:'right',beginAtZero:true,ticks:{color:'#9a8a4a',font:{size:8},callback:v=>fmtKg(v)},grid:{display:false}},
       yU:{display:showU,position:'right',ticks:{color:'#a06ab0',font:{size:8},callback:v=>sym+fmtNum(v)},grid:{display:false}},
@@ -446,6 +468,36 @@ function renderDetail(){
   ports.forEach(p=>{const c=dCard(p,false);grid.appendChild(c);renderDCard(c);});
 }
 
+// ---------- time-range control (presets + drag brush) ----------
+function applyRange(){ for(const k in charts){ if(k.endsWith('_y'))continue; const c=charts[k]; const sx=c&&c.options&&c.options.scales&&c.options.scales.x; if(sx){ sx.min=ST.r0; sx.max=ST.r1; c.update('none'); } } }
+function updateRangeUI(){ document.querySelectorAll('.pill.r').forEach(p=>p.classList.toggle('on',p.dataset.range===ST.range)); }
+function positionBrush(){ const N=MONTHS.length-1, w=document.getElementById('brushWin'); if(!w||N<=0)return; w.style.left=(ST.r0/N*100)+'%'; w.style.width=((ST.r1-ST.r0)/N*100)+'%'; }
+function setPreset(p){ const N=MONTHS.length-1; let r0=0;
+  if(p==='3m')r0=N-2; else if(p==='6m')r0=N-5; else if(p==='1y')r0=N-11; else if(p==='3y')r0=N-35; else if(p==='5y')r0=N-59; else if(p==='10y')r0=N-119;
+  else if(p==='ytd'){ const ji=MONTHS.indexOf(MONTHS[N].slice(0,4)+'-01'); r0=ji>=0?ji:0; } else r0=0;
+  ST.r0=Math.max(0,r0); ST.r1=N; ST.range=p; updateRangeUI(); positionBrush(); applyRange(); }
+function drawBrushSpark(){ const c=document.querySelector('#brush canvas'); if(!c)return; const r=c.getBoundingClientRect(); if(!r.width)return;
+  c.width=r.width*2; c.height=r.height*2; const ctx=c.getContext('2d'); ctx.setTransform(2,0,0,2,0,0); ctx.clearRect(0,0,r.width,r.height);
+  const s=P.detail.core.ALL.exp.v, n=s.length, mx=Math.max.apply(null,s)||1;
+  ctx.beginPath(); ctx.strokeStyle='rgba(61,139,253,.55)'; ctx.lineWidth=1;
+  for(let i=0;i<n;i++){ const x=i/(n-1)*r.width, y=r.height-(s[i]/mx)*(r.height-5)-3; i?ctx.lineTo(x,y):ctx.moveTo(x,y); } ctx.stroke(); }
+let _drag=null;
+function _idx(x){ const r=document.getElementById('brush').getBoundingClientRect(); let f=(x-r.left)/r.width; f=Math.max(0,Math.min(1,f)); return Math.round(f*(MONTHS.length-1)); }
+function initBrush(){
+  document.querySelectorAll('.pill.r').forEach(p=>p.onclick=()=>setPreset(p.dataset.range));
+  const win=document.getElementById('brushWin');
+  win.addEventListener('pointerdown',e=>{ const m=e.target.classList.contains('bh-l')?'l':e.target.classList.contains('bh-r')?'r':'win';
+    _drag={m,i0:_idx(e.clientX),r0:ST.r0,r1:ST.r1}; try{e.target.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); });
+  window.addEventListener('pointermove',e=>{ if(!_drag)return; const N=MONTHS.length-1, idx=_idx(e.clientX);
+    if(_drag.m==='l') ST.r0=Math.max(0,Math.min(idx,ST.r1-1));
+    else if(_drag.m==='r') ST.r1=Math.min(N,Math.max(idx,ST.r0+1));
+    else { const wlen=_drag.r1-_drag.r0; let nr0=_drag.r0+(idx-_drag.i0); nr0=Math.max(0,Math.min(nr0,N-wlen)); ST.r0=nr0; ST.r1=nr0+wlen; }
+    ST.range='custom'; updateRangeUI(); positionBrush(); applyRange(); });
+  window.addEventListener('pointerup',()=>{_drag=null;});
+  window.addEventListener('resize',()=>{drawBrushSpark();positionBrush();});
+  drawBrushSpark(); positionBrush(); updateRangeUI();
+}
+
 // ---------- events ----------
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ST.tab=t.dataset.tab;ST.view='overview';ST.company=null;ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);});
 document.querySelectorAll('.pill.cur').forEach(p=>p.onclick=()=>{ST.cur=p.dataset.cur;render();});
@@ -461,6 +513,7 @@ document.getElementById('foot').innerHTML=
   <b>JEM</b> (6855 JP) 프록시는 항공 세관(Kansai Air, Fukuoka Air)에 집중. USD/KRW은 근사 환율(¥ 기준). Not investment advice. Source: Japan Customs / e-Stat.`;
 
 render();
+initBrush();
 </script>
 </body>
 </html>
