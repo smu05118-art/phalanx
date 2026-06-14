@@ -385,6 +385,9 @@ function render(){
   destroyAll();
   document.getElementById('sub').textContent=`Monthly · ${mlabel(MONTHS[0])}–${mlabel(M.updated)} · ${M.source}`;
   document.querySelectorAll('.pill.cur').forEach(p=>p.classList.toggle('on',p.dataset.cur===ST.cur));
+  const isDetail=ST.view==='detail';
+  ['rangeRow','brush','hsinfo'].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display=isDetail?'':'none';});
+  if(isDetail){ drawBrushSpark(); positionBrush(); }
   const tabs=document.getElementById('tabs');
   if(ST.view==='detail'){ tabs.style.display='none'; return renderDetail(); }
   tabs.style.display='flex';
