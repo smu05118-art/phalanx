@@ -255,6 +255,12 @@ function coFlowSum(co){ const flow=co.rev_flow||'exp';
   const det=P.detail[co.core_set]||{}, n=MONTHS.length, V=new Array(n).fill(0), W=new Array(n).fill(0);
   co.main_ports.forEach(pc=>{const s=det[pc]; if(!s)return; const v=s[flow].v,w=s[flow].w; for(let i=0;i<n;i++){V[i]+=v[i];W[i]+=w[i];}}); return {v:V,w:W}; }
 function coTopC(co,topn){
+  if(co.country_groups&&co.country_groups.length){ const fc=fCountryLoc(co,'ALL'), loc=fc.loc, n=MONTHS.length; let li=-1;
+    for(let i=n-1;i>=0&&li<0;i--){let s=0;co.countries.forEach(c=>s+=loc[c]?loc[c][i]||0:0);if(s>0)li=i;}
+    if(li<0)return {top:[],idx:-1,grouped:true};
+    const tot=co.countries.reduce((a,c)=>a+(loc[c]?loc[c][li]||0:0),0)||1;
+    const top=co.country_groups.map((g,i)=>({name:g.name,share:g.countries.reduce((a,c)=>a+(loc[c]?loc[c][li]||0:0),0)/tot,col:CCOL[i%CCOL.length]}));
+    return {idx:li, grouped:true, top:top.sort((a,b)=>b.share-a.share)}; }
   if(co.filtered){ const fc=fCountryLoc(co,'ALL'), ord=fc.order, loc=fc.loc, n=MONTHS.length; let li=-1;
     for(let i=n-1;i>=0&&li<0;i--){let s=0;ord.forEach(c=>s+=loc[c][i]||0);if(s>0)li=i;}
     if(li<0)return {top:[],idx:-1};
@@ -275,7 +281,7 @@ function hubMetricsHtml(co){
   return `<div class="hub-metrics">
     <div class="hm"><span class="hmv">${fmtKg(w)}</span>${chip(wy[li])}<span class="hml">중량</span></div>
     <div class="hm"><span class="hmv">${u!=null?fmtUnit(u):'–'}</span>${chip(uy[li])}<span class="hml">단가 ¥/kg</span></div>
-    <div class="hm-c"><span class="hml">${flowLab} TOP</span>${tc.top.map(t=>`<span class="cc"><i style="background:${t.col}"></i>${t.name} ${(t.share*100).toFixed(0)}%</span>`).join('')}</div>
+    <div class="hm-c"><span class="hml">${co.country_groups&&co.country_groups.length?"수요처 추정":flowLab+" TOP"}</span>${tc.top.map(t=>`<span class="cc"><i style="background:${t.col}"></i>${t.name} ${(t.share*100).toFixed(0)}%</span>`).join('')}</div>
   </div>`;
 }
 
@@ -291,7 +297,7 @@ function hubPanel(co){
       <div class="hp-m"><div class="hp-v">${fmtV(val)}</div>${chip(vy)}<div class="hp-l">${flowLab}액 · ${mlabel(MONTHS[li])}</div></div>
       <div class="hp-m"><div class="hp-v">${fmtKg(w)}</div>${chip(wy)}<div class="hp-l">중량</div></div>
       <div class="hp-m"><div class="hp-v">${u!=null?fmtUnit(u):'–'}</div>${chip(uy)}<div class="hp-l">단가 ¥/kg</div></div>
-      <div class="hp-c"><div class="hp-l">${flowLab}국 비중 (최신)</div><div class="sbar">${bar}</div><div class="hp-leg">${leg}</div></div>
+      <div class="hp-c"><div class="hp-l">${co.country_groups&&co.country_groups.length?"수요처(HDD 메이커) 추정 비중":flowLab+"국 비중"} (최신)</div><div class="sbar">${bar}</div><div class="hp-leg">${leg}</div></div>
     </div>
   </div>`;
 }
