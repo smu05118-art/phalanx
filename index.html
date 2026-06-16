@@ -156,6 +156,12 @@ header h1 em{color:var(--a1);font-style:normal;}
 .hp-leg .cc{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;}
 .hp-leg .cc i{width:9px;height:9px;border-radius:2px;display:inline-block;}
 .split-note{font-size:10px;color:var(--a5);margin:4px 2px 0;font-weight:600;}
+.regbar{display:flex;gap:8px;margin:2px 2px 12px;flex-wrap:wrap;}
+.regbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:11px;border:1px solid var(--bd);background:var(--s1);color:var(--dim);font-weight:800;font-size:14px;cursor:pointer;transition:.12s;}
+.regbtn .rf{font-size:17px;}
+.regbtn:hover{border-color:var(--a2);color:var(--tx);}
+.regbtn.on{background:linear-gradient(135deg,var(--s2),var(--s1));border-color:var(--a1);color:var(--tx);box-shadow:0 0 0 1px var(--a1) inset;}
+.regbtn .rwait{font-size:9px;color:var(--a4);font-weight:700;margin-left:2px;}
 @media(max-width:680px){.add-form{grid-template-columns:1fr 1fr;}.add-btn{grid-column:1/-1;}}
 </style>
 </head>
@@ -169,6 +175,8 @@ header h1 em{color:var(--a1);font-style:normal;}
 </div>
 </header>
 
+<div class="regbar" id="regionRow"></div>
+
 <div class="tabs" id="tabs">
   <span class="tab on" data-tab="dash">대시보드</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
@@ -179,9 +187,6 @@ header h1 em{color:var(--a1);font-style:normal;}
 <div class="ctrl">
   <div class="row" id="curRow">
     <span class="lbl-sm">통화</span>
-    <span class="pill cur on" data-cur="JPY">¥ JPY</span>
-    <span class="pill cur" data-cur="USD">$ USD</span>
-    <span class="pill cur" data-cur="KRW">₩ KRW</span>
     <input class="search" id="q" placeholder="기업 검색…">
   </div>
   <div class="row cats" id="catRow"></div>
@@ -212,9 +217,13 @@ header h1 em{color:var(--a1);font-style:normal;}
 <script src="chartjs_bundle.js"></script>
 <script src="data.js"></script>
 <script>
-const M = P.meta, MONTHS = M.months, CUR = M.currencies;
+const M = P.meta, MONTHS = M.months;
+const REGIONS = M.regions || [{id:'JP',label:'일본 수출입',flag:'🇯🇵',sector:'일본 테크',source:M.source,currencies:M.currencies}];
+let CUR = M.currencies;
+function regionObj(){ return REGIONS.find(r=>r.id===ST.region) || REGIONS[0]; }
+function applyRegion(){ const r=regionObj(); CUR=r.currencies; if(!CUR[ST.cur]) ST.cur=Object.keys(CUR)[0]; }
 const YEAR_COLORS = {2022:'#3d8bfd',2023:'#c45cff',2024:'#ffbe2e',2025:'#00e6b8',2026:'#ff5c5c'};
-const ST = {view:'overview', tab:'dash', cat:'all', cur:'JPY', q:'',
+const ST = {view:'overview', region:'JP', tab:'dash', cat:'all', cur:'JPY', q:'',
             company:null, mode:'core', flow:'exp',
             metric:{value:true,weight:false,unit:false}, repr:{level:true,yoy:true,yoy3:false},
             r0:0, r1:MONTHS.length-1, range:'all', split:false, gran:'M', port:null, cmetric:'value'};
@@ -259,7 +268,8 @@ function coTopC(co,topn){
     for(let i=n-1;i>=0&&li<0;i--){let s=0;co.countries.forEach(c=>s+=loc[c]?loc[c][i]||0:0);if(s>0)li=i;}
     if(li<0)return {top:[],idx:-1,grouped:true};
     const tot=co.countries.reduce((a,c)=>a+(loc[c]?loc[c][li]||0:0),0)||1;
-    const top=co.country_groups.map((g,i)=>({name:g.name,share:g.countries.reduce((a,c)=>a+(loc[c]?loc[c][li]||0:0),0)/tot,col:CCOL[i%CCOL.length]}));
+    const gval=g=>g.countries.reduce((a,c)=>{const nm=(c&&c.c)?c.c:c, w=(c&&c.w!=null)?c.w:1; return a+(loc[nm]?(loc[nm][li]||0)*w:0);},0);
+    const top=co.country_groups.map((g,i)=>({name:g.name,share:gval(g)/tot,col:CCOL[i%CCOL.length]}));
     return {idx:li, grouped:true, top:top.sort((a,b)=>b.share-a.share)}; }
   if(co.filtered){ const fc=fCountryLoc(co,'ALL'), ord=fc.order, loc=fc.loc, n=MONTHS.length; let li=-1;
     for(let i=n-1;i>=0&&li<0;i--){let s=0;ord.forEach(c=>s+=loc[c][i]||0);if(s>0)li=i;}
@@ -535,7 +545,7 @@ function companiesIn(cat){
     const reals=P.companies.filter(c=>w.stars.indexOf(c.id)>=0);
     const customs=w.custom.map(c=>Object.assign({_custom:true},c));
     return reals.concat(customs); }
-  return P.companies.filter(c=> cat==='all'||c.category===cat);
+  return P.companies.filter(c=> (c.region||'JP')===ST.region && (cat==='all'||c.category===cat));
 }
 
 // stub card for a user-added company with no customs data yet
@@ -579,9 +589,30 @@ function renderCards(list,g){
 }
 
 // ---------- renderers ----------
+function renderRegions(){
+  const rr=document.getElementById('regionRow'); if(!rr) return;
+  rr.style.display=(ST.view==='overview'&&ST.tab==='dash')?'flex':'none';
+  rr.innerHTML='';
+  REGIONS.forEach(r=>{ const el=document.createElement('span');
+    el.className='regbtn'+(r.id===ST.region?' on':'');
+    el.innerHTML=`<span class="rf">${r.flag||''}</span>${r.label}`+(r.loaded===false?`<span class="rwait">⏳ 데이터 대기</span>`:'');
+    el.onclick=()=>{ if(ST.region===r.id) return; ST.region=r.id; ST.cat='all'; ST.company=null; ST.view='overview'; ST.q='';
+      const qq=document.getElementById('q'); if(qq) qq.value=''; applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); };
+    rr.appendChild(el); });
+}
+function buildCurRow(){ const row=document.getElementById('curRow'); if(!row) return;
+  row.querySelectorAll('.pill.cur').forEach(p=>p.remove());
+  const anchor=row.querySelector('#q');
+  Object.keys(CUR).forEach(k=>{ const el=document.createElement('span');
+    el.className='pill cur'+(k===ST.cur?' on':''); el.dataset.cur=k;
+    el.textContent=`${CUR[k].sym} ${k}`; el.onclick=()=>{ST.cur=k;render();};
+    row.insertBefore(el,anchor); });
+}
 function render(){
   destroyAll();
-  document.getElementById('sub').textContent=`Monthly · ${mlabel(MONTHS[0])}–${mlabel(M.updated)} · ${M.source}`;
+  applyRegion();
+  renderRegions();
+  document.getElementById('sub').textContent=`Monthly · ${mlabel(MONTHS[0])}–${mlabel(M.updated)} · ${regionObj().source||M.source}`;
   document.querySelectorAll('.pill.cur').forEach(p=>p.classList.toggle('on',p.dataset.cur===ST.cur));
   const isDetail=ST.view==='detail'||ST.view==='country';
   ['rangeRow','brush','hsinfo'].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display=isDetail?'':'none';});
@@ -599,7 +630,7 @@ function renderOverview(){
   document.getElementById('catRow').style.display='';
   document.getElementById('q').placeholder='기업 검색…';
   document.getElementById('crumb').innerHTML=
-    `<b>일본 수출입</b><span class="sep">›</span><span>일본 테크</span>`+
+    `<b>${regionObj().label}</b><span class="sep">›</span><span>${regionObj().sector}</span>`+
     (ST.cat!=='all'?`<span class="sep">›</span><b>${catLabel(ST.cat)}</b>`:'');
   const cr=document.getElementById('catRow'); cr.innerHTML='';
   M.categories.forEach(c=>{ const n=companiesIn(c.id).length;
@@ -617,7 +648,7 @@ function renderOverview(){
 function renderWatch(){
   document.getElementById('catRow').style.display='none';
   document.getElementById('q').placeholder='기업 검색…';
-  document.getElementById('crumb').innerHTML=`<b>일본 수출입</b><span class="sep">›</span><span>관심 Company</span>`;
+  document.getElementById('crumb').innerHTML=`<b>${regionObj().label}</b><span class="sep">›</span><span>관심 Company</span>`;
   document.getElementById('cnt').textContent='';
   const cats=M.categories.filter(c=>c.id!=='all'&&c.id!=='watch');
   const main=document.getElementById('main');
@@ -677,7 +708,7 @@ function renderCountry(){
   document.getElementById('catRow').style.display='none';
   document.getElementById('q').placeholder='국가 검색…';
   document.getElementById('crumb').innerHTML=
-    `<span class="cl" data-go="ov">일본 수출입</span><span class="sep">›</span>`+
+    `<span class="cl" data-go="ov">${regionObj().label}</span><span class="sep">›</span>`+
     `<span class="cl" data-go="cat">${catLabel(co.category)}</span><span class="sep">›</span>`+
     `<span class="cl" data-go="det">${co.subcategory}·${co.name}</span><span class="sep">›</span>`+
     `<span>${pinfo.name} ${pinfo.jp||''}</span><span class="sep">›</span><b>${flowKLabel()}</b>`+
@@ -740,8 +771,8 @@ function renderDetail(){
   document.getElementById('catRow').style.display='none';
   document.getElementById('q').placeholder='세관 검색…';
   document.getElementById('crumb').innerHTML=
-    `<span class="cl" data-go="ov">일본 수출입</span><span class="sep">›</span>`+
-    `<span class="cl" data-go="ov">일본 테크</span><span class="sep">›</span>`+
+    `<span class="cl" data-go="ov">${regionObj().label}</span><span class="sep">›</span>`+
+    `<span class="cl" data-go="ov">${regionObj().sector}</span><span class="sep">›</span>`+
     `<span class="cl" data-go="cat">${catLabel(co.category)}</span><span class="sep">›</span>`+
     `<span>${co.subcategory}</span><span class="sep">›</span><b>${co.name}</b>`+
     `<span style="flex:1"></span><span class="back" data-go="ov">← 개요로</span>`;
@@ -816,7 +847,6 @@ function initBrush(){
 
 // ---------- events ----------
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ST.tab=t.dataset.tab;ST.view='overview';ST.company=null;ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);});
-document.querySelectorAll('.pill.cur').forEach(p=>p.onclick=()=>{ST.cur=p.dataset.cur;render();});
 let qt; document.getElementById('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{ST.q=e.target.value;ST.view==='detail'?renderDetail():renderOverview();},180);});
 
 document.getElementById('foot').innerHTML=
@@ -834,7 +864,7 @@ function renderHsInfo(){ const el=document.getElementById('hsinfo'); if(!el||!M.
     M.hsinfo.map(h=>`<tr class="${h.tier}"><td><span class="code">${h.code}</span><div class="full">${h.full}</div></td><td>${h.desc}</td><td class="mp">${h.map}</td></tr>`).join('')+
     `</tbody></table>`; }
 
-render();
+applyRegion(); buildCurRow(); render();
 initBrush();
 renderHsInfo();
 </script>
