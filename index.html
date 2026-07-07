@@ -230,6 +230,15 @@ const ST = {view:'overview', region:'JP', tab:'dash', cat:'all', cur:'JPY', q:''
 const charts = {};
 const CCOL=['#3d8bfd','#00e6b8','#ffbe2e','#ff5c5c','#c45cff','#ff8a3d','#42d4f4','#a0d911','#f06292','#8a90a8'];
 
+// ---------- persisted UI prefs (region / currency / granularity) ----------
+const PKEY='phalanx_prefs_v1';
+function loadPrefs(){ try{ const p=JSON.parse(localStorage.getItem(PKEY))||{};
+  if(p.region && REGIONS.some(r=>r.id===p.region)) ST.region=p.region;
+  if(typeof p.cur==='string') ST.cur=p.cur;               // validated by applyRegion()
+  if(['M','Q','Y'].includes(p.gran)) ST.gran=p.gran;
+}catch(e){} }
+function savePrefs(){ try{ localStorage.setItem(PKEY,JSON.stringify({region:ST.region,cur:ST.cur,gran:ST.gran})); }catch(e){} }
+
 // ---------- watchlist (localStorage) ----------
 const WKEY='phalanx_watch_v1';
 function getWatch(){ try{return JSON.parse(localStorage.getItem(WKEY))||{stars:[],custom:[]};}catch(e){return {stars:[],custom:[]};} }
@@ -250,9 +259,9 @@ function fmtNum(v){ if(v==null)return '–'; const a=Math.abs(v);
   if(a>=1e3)return (v/1e3).toFixed(0)+'k'; return v.toFixed(0); }
 function fmtKg(v){ return v==null?'–':fmtNum(v)+'kg'; }
 function fmtUnit(v){ return v==null?'–':CUR[ST.cur].sym+fmtNum(v)+'/kg'; }
-function yoyArr(a){ return a.map((v,i)=> (i>=12 && a[i-12]>0)? v/a[i-12]-1 : null); }
-function momArr(a){ return a.map((v,i)=> (i>=1 && a[i-1]>0)? v/a[i-1]-1 : null); }
-function yoy3Arr(a){ const r=a.map((v,i)=>i<2?null:a[i]+a[i-1]+a[i-2]); return r.map((v,i)=>(i>=12&&r[i-12]>0)?r[i]/r[i-12]-1:null); }
+function yoyArr(a){ return a.map((v,i)=> (v!=null && i>=12 && a[i-12]>0)? v/a[i-12]-1 : null); }
+function momArr(a){ return a.map((v,i)=> (v!=null && i>=1 && a[i-1]>0)? v/a[i-1]-1 : null); }
+function yoy3Arr(a){ const r=a.map((v,i)=>(i<2||a[i]==null||a[i-1]==null||a[i-2]==null)?null:a[i]+a[i-1]+a[i-2]); return r.map((v,i)=>(v!=null&&i>=12&&r[i-12]>0)?r[i]/r[i-12]-1:null); }
 function lastIdx(a){ for(let i=a.length-1;i>=0;i--) if(a[i]!=null && a[i]!==0) return i; return a.length-1; }
 function mlabel(ym){ return ym.slice(2,4)+'/'+ym.slice(5,7); }
 function chip(v){ if(v==null) return ''; return `<span class="chg ${v>=0?'up':'dn'}">${fmtP(v)}</span>`; }
@@ -290,7 +299,7 @@ function hubMetricsHtml(co){
   const tc=coTopC(co,4), flowLab=co.rev_flow==='imp'?'수입국':'수출국';
   return `<div class="hub-metrics">
     <div class="hm"><span class="hmv">${fmtKg(w)}</span>${chip(wy[li])}<span class="hml">중량</span></div>
-    <div class="hm"><span class="hmv">${u!=null?fmtUnit(u):'–'}</span>${chip(uy[li])}<span class="hml">단가 ¥/kg</span></div>
+    <div class="hm"><span class="hmv">${u!=null?fmtUnit(u):'–'}</span>${chip(uy[li])}<span class="hml">단가 ${CUR[ST.cur].sym}/kg</span></div>
     <div class="hm-c"><span class="hml">${co.country_groups&&co.country_groups.length?"수요처 추정":flowLab+" TOP"}</span>${tc.top.map(t=>`<span class="cc"><i style="background:${t.col}"></i>${t.name} ${(t.share*100).toFixed(0)}%</span>`).join('')}</div>
   </div>`;
 }
@@ -306,7 +315,7 @@ function hubPanel(co){
     <div class="hp-row">
       <div class="hp-m"><div class="hp-v">${fmtV(val)}</div>${chip(vy)}<div class="hp-l">${flowLab}액 · ${mlabel(MONTHS[li])}</div></div>
       <div class="hp-m"><div class="hp-v">${fmtKg(w)}</div>${chip(wy)}<div class="hp-l">중량</div></div>
-      <div class="hp-m"><div class="hp-v">${u!=null?fmtUnit(u):'–'}</div>${chip(uy)}<div class="hp-l">단가 ¥/kg</div></div>
+      <div class="hp-m"><div class="hp-v">${u!=null?fmtUnit(u):'–'}</div>${chip(uy)}<div class="hp-l">단가 ${CUR[ST.cur].sym}/kg</div></div>
       <div class="hp-c"><div class="hp-l">${co.country_groups&&co.country_groups.length?"수요처(HDD 메이커) 추정 비중":flowLab+"국 비중"} (최신)</div><div class="sbar">${bar}</div><div class="hp-leg">${leg}</div></div>
     </div>
   </div>`;
@@ -354,7 +363,7 @@ function renderCompanyCharts(div,co){
       {type:'line',label:'MoM%',data:mo,yAxisID:'y1',borderColor:'#c45cff',borderWidth:1.2,borderDash:[2,3],pointRadius:0,tension:.25,order:2,spanGaps:true},
     ]},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const d=c.dataset; return d.yAxisID==='y1'? d.label+': '+fmtP(c.parsed.y) : d.label+': '+fmtV(c.parsed.y/CUR[ST.cur].mult);}}}},
-      scales:{x:{min:ST.r0,max:ST.r1,ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
+      scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
         y:{position:'left',beginAtZero:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>fmtV(v/CUR[ST.cur].mult)},grid:{color:'rgba(40,40,74,.45)'}},
         y1:{position:'right',ticks:{color:'#4a4a72',font:{size:8},callback:v=>(v*100).toFixed(0)+'%'},grid:{display:false}}}}});
 
@@ -374,21 +383,23 @@ function renderCompanyCharts(div,co){
 
 // ---------- granularity (Monthly / Quarterly / Yearly) ----------
 function periodInfo(g){ periodInfo._c=periodInfo._c||{}; if(periodInfo._c[g]) return periodInfo._c[g];
-  let keys=[],m2p=[],label=[];
-  if(g==='M'){ keys=MONTHS.slice(); m2p=MONTHS.map((_,i)=>i); label=MONTHS.map(mlabel); }
+  let keys=[],m2p=[],label=[],cnt=[];
+  if(g==='M'){ keys=MONTHS.slice(); m2p=MONTHS.map((_,i)=>i); label=MONTHS.map(mlabel); cnt=MONTHS.map(()=>1); }
   else { const seen={};
     MONTHS.forEach(ym=>{ const y=ym.slice(0,4),mo=+ym.slice(5,7), key=g==='Q'?`${y}-Q${Math.ceil(mo/3)}`:y;
-      if(!(key in seen)){ seen[key]=keys.length; keys.push(key); label.push(g==='Q'?y.slice(2)+'Q'+Math.ceil(mo/3):y); }
-      m2p.push(seen[key]); }); }
-  return periodInfo._c[g]={keys,m2p,label,n:keys.length,lag:g==='M'?12:g==='Q'?4:1};
+      if(!(key in seen)){ seen[key]=keys.length; keys.push(key); label.push(g==='Q'?y.slice(2)+'Q'+Math.ceil(mo/3):y); cnt.push(0); }
+      cnt[seen[key]]++; m2p.push(seen[key]); }); }
+  const full=g==='M'?1:g==='Q'?3:12;
+  if(g!=='M'&&cnt.length&&cnt[cnt.length-1]<full) label[label.length-1]+='*';
+  return periodInfo._c[g]={keys,m2p,label,n:keys.length,lag:g==='M'?12:g==='Q'?4:1,cnt,full};
 }
 function gInfo(){ return periodInfo(ST.gran); }
 function gLabels(){ return gInfo().label; }
 function xMin(){ return gInfo().m2p[ST.r0]; }
 function xMax(){ return gInfo().m2p[ST.r1]; }
 function aggLevel(arr){ if(ST.gran==='M') return arr; const pi=gInfo(),out=new Array(pi.n).fill(0); for(let i=0;i<arr.length;i++){ if(arr[i]!=null) out[pi.m2p[i]]+=arr[i]; } return out; }
-function yoyG(level){ const lag=gInfo().lag; return level.map((v,i)=>(i>=lag&&level[i-lag]>0)?v/level[i-lag]-1:null); }
-function yoy3G(level){ const lag=gInfo().lag,r=level.map((v,i)=>i<2?null:level[i]+level[i-1]+level[i-2]); return r.map((v,i)=>(i>=lag&&r[i-lag]>0)?r[i]/r[i-lag]-1:null); }
+function yoyG(level){ const pi=gInfo(),lag=pi.lag; return level.map((v,i)=>(v!=null&&i>=lag&&level[i-lag]>0&&pi.cnt[i]>=pi.full)?v/level[i-lag]-1:null); }
+function yoy3G(level){ const pi=gInfo(),lag=pi.lag,r=level.map((v,i)=>(i<2||level[i]==null||level[i-1]==null||level[i-2]==null)?null:level[i]+level[i-1]+level[i-2]); return r.map((v,i)=>(v!=null&&i>=lag&&r[i-lag]!=null&&r[i-lag]>0&&pi.cnt[i]>=pi.full)?v/r[i-lag]-1:null); }
 
 // ---------- company helpers (per-company port sets; "ALL" = sum of company ports) ----------
 function compObj(){ return P.companies.find(c=>c.id===ST.company)||P.companies[0]; }
@@ -542,7 +553,7 @@ function renderDCard(div){ const code=div.dataset.code;
 function catLabel(id){ const c=M.categories.find(x=>x.id===id); return c?c.label:id; }
 function companiesIn(cat){
   if(cat==='watch'){ const w=getWatch();
-    const reals=P.companies.filter(c=>w.stars.indexOf(c.id)>=0);
+    const reals=P.companies.filter(c=>w.stars.indexOf(c.id)>=0 && (c.region||'JP')===ST.region);
     const customs=w.custom.map(c=>Object.assign({_custom:true},c));
     return reals.concat(customs); }
   return P.companies.filter(c=> (c.region||'JP')===ST.region && (cat==='all'||c.category===cat));
@@ -583,8 +594,8 @@ function renderCards(list,g){
   list.forEach(co=>{
     if(co._custom){ g.appendChild(stubCard(co)); return; }
     const card=companyCard(co); g.appendChild(card); renderCompanyCharts(card,co);
-    const sb=card.querySelector('[data-star]'); if(sb) sb.onclick=(e)=>{e.stopPropagation();toggleStar(co.id);render();};
-    card.onclick=()=>{ST.view='detail';ST.company=co.id;ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);};
+    const sb=card.querySelector('[data-star]'); if(sb) sb.onclick=(e)=>{e.stopPropagation();toggleStar(co.id);sb.classList.toggle('on',isStar(co.id));if(ST.cat==='watch'||ST.tab==='watch')render();};
+    card.onclick=()=>{ST.view='detail';ST.company=co.id;ST.flow=co.rev_flow||'exp';ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);};
   });
 }
 
@@ -611,11 +622,13 @@ function buildCurRow(){ const row=document.getElementById('curRow'); if(!row) re
 function render(){
   destroyAll();
   applyRegion();
+  savePrefs();
   renderRegions();
   document.getElementById('sub').textContent=`Monthly · ${mlabel(MONTHS[0])}–${mlabel(M.updated)} · ${regionObj().source||M.source}`;
   document.querySelectorAll('.pill.cur').forEach(p=>p.classList.toggle('on',p.dataset.cur===ST.cur));
   const isDetail=ST.view==='detail'||ST.view==='country';
-  ['rangeRow','brush','hsinfo'].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display=isDetail?'':'none';});
+  ['rangeRow','brush'].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display=isDetail?'':'none';});
+  const hsEl=document.getElementById('hsinfo'); if(hsEl) hsEl.style.display=(isDetail&&regionObj().id==='JP')?'':'none';
   if(isDetail){ drawBrushSpark(); positionBrush(); }
   const tabs=document.getElementById('tabs');
   if(ST.view==='detail'){ tabs.style.display='none'; return renderDetail(); }
@@ -627,6 +640,7 @@ function render(){
 }
 
 function renderOverview(){
+  destroyAll();
   document.getElementById('catRow').style.display='';
   document.getElementById('q').placeholder='기업 검색…';
   document.getElementById('crumb').innerHTML=
@@ -646,6 +660,7 @@ function renderOverview(){
 }
 
 function renderWatch(){
+  destroyAll();
   document.getElementById('catRow').style.display='none';
   document.getElementById('q').placeholder='기업 검색…';
   document.getElementById('crumb').innerHTML=`<b>${regionObj().label}</b><span class="sep">›</span><span>관심 Company</span>`;
@@ -697,8 +712,8 @@ function wireDetailControls(){
   document.querySelectorAll('#cnt [data-d]').forEach(e=>e.onclick=()=>{ST[e.dataset.d]=e.dataset.v;re();});
   document.querySelectorAll('#cnt [data-mt]').forEach(e=>e.onclick=()=>{const k=e.dataset.mt,nm=Object.assign({},ST.metric);nm[k]=!nm[k];if(!nm.value&&!nm.weight&&!nm.unit)nm[k]=true;ST.metric=nm;re();});
   document.querySelectorAll('#cnt [data-rp]').forEach(e=>e.onclick=()=>{const k=e.dataset.rp,nr=Object.assign({},ST.repr);nr[k]=!nr[k];if(!nr.level&&!nr.yoy&&!nr.yoy3)nr[k]=true;ST.repr=nr;re();});
-  document.querySelectorAll('#cnt [data-sp]').forEach(e=>e.onclick=()=>{ST.split=e.dataset.sp==='1';re();});
-  document.querySelectorAll('#cnt [data-g]').forEach(e=>e.onclick=()=>{ST.gran=e.dataset.g;re();});
+  document.querySelectorAll('#cnt [data-sp]').forEach(e=>e.onclick=()=>{ST.split=e.dataset.sp==='1'; if(ST.split)ST.flow=cflow(); re();});
+  document.querySelectorAll('#cnt [data-g]').forEach(e=>e.onclick=()=>{ST.gran=e.dataset.g;savePrefs();re();});
   document.querySelectorAll('#cnt [data-cm]').forEach(e=>e.onclick=()=>{ST.cmetric=e.dataset.cm;re();});
 }
 function renderCountry(){
@@ -714,9 +729,10 @@ function renderCountry(){
     `<span>${pinfo.name} ${pinfo.jp||''}</span><span class="sep">›</span><b>${flowKLabel()}</b>`+
     `<span style="flex:1"></span><span class="back" data-go="det">← 세관 목록</span>`;
   document.querySelectorAll('#crumb [data-go]').forEach(e=>e.onclick=()=>{ const g=e.dataset.go;
-    if(g==='det'){ ST.view='detail'; } else { if(g==='cat')ST.cat=co.category; ST.view='overview'; ST.company=null; }
+    ST.q=''; const qq=document.getElementById('q'); if(qq) qq.value='';
+    if(g==='det'){ ST.view='detail'; } else { if(g==='cat')ST.cat=co.category; ST.tab='dash'; ST.view='overview'; ST.company=null; }
     ST.port=null; render(); window.scrollTo(0,0); });
-  const cmlabel={value:'값(누적)',share:'비중%(100% 누적) — Korea/HBM 비중 추이',yoy:'국가별 YoY%',unit:'국가별 단가 ¥/kg — 고부가(HBM) mix'};
+  const cmlabel={value:'값(누적)',share:'비중%(100% 누적)',yoy:'국가별 YoY%',unit:'국가별 단가 '+CUR[ST.cur].sym+'/kg'};
   document.getElementById('cnt').innerHTML=
     `<div class="row" style="margin:2px 0 4px">
        <span class="lbl-sm">HS</span>
@@ -726,7 +742,7 @@ function renderCountry(){
        <span class="pill cm ${ST.cmetric==='value'?'on':''}" data-cm="value">값</span>
        <span class="pill cm ${ST.cmetric==='share'?'on':''}" data-cm="share">비중%</span>
        <span class="pill cm ${ST.cmetric==='yoy'?'on':''}" data-cm="yoy">YoY%</span>
-       <span class="pill cm ${ST.cmetric==='unit'?'on':''}" data-cm="unit">단가 ¥/kg</span>
+       <span class="pill cm ${ST.cmetric==='unit'?'on':''}" data-cm="unit">단가 ${CUR[ST.cur].sym}/kg</span>
        ${granPills()}
      </div><div class="split-note">${flowKLabel()} ${cmlabel[ST.cmetric]} · ${cflow()==='imp'?'Import':'Export'} · ${pinfo.name} · top9+기타</div>`;
   wireDetailControls();
@@ -752,7 +768,7 @@ function renderCountry(){
     else { data=lv.map((x,j)=>wv[j]>0?x*k/wv[j]:null); headline=data[li]!=null?CUR[ST.cur].sym+fmtNum(data[li])+'/kg':'–';
       ds={type:'line',label:c,data,borderColor:col,borderWidth:1.5,pointRadius:0,tension:.25,spanGaps:true}; }
     const card=document.createElement('div'); card.className='card';
-    card.innerHTML=`<div class="card-hd"><div><h3><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${col};margin-right:6px;vertical-align:-1px"></span>${c}</h3><div class="co-cat">${pinfo.name} · Export</div></div></div>
+    card.innerHTML=`<div class="card-hd"><div><h3><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${col};margin-right:6px;vertical-align:-1px"></span>${c}</h3><div class="co-cat">${pinfo.name} · ${cflow()==='imp'?'Import':'Export'}</div></div></div>
       <div class="metrics"><div class="metric"><span class="val">${headline}</span><div class="lbl">${gl[li]||''} · ${({value:'값',share:'비중',yoy:'YoY',unit:'단가'})[cm]}</div></div></div>
       <div class="ch-wrap"><canvas></canvas></div>`;
     grid.appendChild(card);
@@ -776,7 +792,7 @@ function renderDetail(){
     `<span class="cl" data-go="cat">${catLabel(co.category)}</span><span class="sep">›</span>`+
     `<span>${co.subcategory}</span><span class="sep">›</span><b>${co.name}</b>`+
     `<span style="flex:1"></span><span class="back" data-go="ov">← 개요로</span>`;
-  document.querySelectorAll('#crumb [data-go]').forEach(e=>e.onclick=()=>{ if(e.dataset.go==='cat'){ST.cat=co.category;} ST.view='overview';ST.company=null;render();window.scrollTo(0,0); });
+  document.querySelectorAll('#crumb [data-go]').forEach(e=>e.onclick=()=>{ if(e.dataset.go==='cat'){ST.cat=co.category;} ST.tab='dash'; ST.view='overview';ST.company=null;render();window.scrollTo(0,0); });
   // detail controls injected into cnt area
   document.getElementById('cnt').innerHTML=
     `<div class="row" style="margin:2px 0 4px">
@@ -790,7 +806,7 @@ function renderDetail(){
        <span class="lbl-sm" style="margin-left:8px">보기</span>
        <span class="pill y ${ST.repr.level?'on':''}" data-rp="level">Level</span>
        <span class="pill y ${ST.repr.yoy?'on':''}" data-rp="yoy">YoY%</span>
-       <span class="pill y ${ST.repr.yoy3?'on':''}" data-rp="yoy3">3M YoY%</span>
+       <span class="pill y ${ST.repr.yoy3?'on':''}" data-rp="yoy3">3${ST.gran} YoY%</span>
        <span class="lbl-sm" style="margin-left:8px">Flow</span>
        <span class="pill b ${ST.flow==='exp'?'on':''}" data-d="flow" data-v="exp">Export</span>
        <span class="pill b ${ST.flow==='imp'?'on':''}" data-d="flow" data-v="imp">Import</span>
@@ -805,14 +821,14 @@ function renderDetail(){
   main.innerHTML=((co.is_hub||co.filtered)?hubPanel(co):'')+'<div class="hero" id="hero"></div><div class="grid" id="grid"></div>';
   const hero=dCard({code:'ALL',name:co.name+' Total',jp:co.name_jp,region:''},true);
   hero.style.cursor='pointer'; hero.title='클릭 → '+flowKLabel()+' 분해';
-  hero.onclick=()=>{ST.view='country';ST.port='ALL';render();window.scrollTo(0,0);};
+  hero.onclick=()=>{ST.view='country';ST.port='ALL';ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);};
   document.getElementById('hero').appendChild(hero); renderDCard(hero);
   const q=ST.q.toLowerCase(), cp=co.ports;
   const ports=M.ports.filter(p=>cp.includes(p.code)).filter(p=>!q||p.name.toLowerCase().includes(q)||p.jp.includes(ST.q)||p.code.includes(q)||p.region.toLowerCase().includes(q));
   const grid=document.getElementById('grid');
   ports.forEach(p=>{const c=dCard(p,false);grid.appendChild(c);renderDCard(c);
     c.style.cursor='pointer'; c.title='클릭 → '+flowKLabel()+' 분해';
-    c.onclick=()=>{ST.view='country';ST.port=p.code;render();window.scrollTo(0,0);};});
+    c.onclick=()=>{ST.view='country';ST.port=p.code;ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);};});
 }
 
 // ---------- time-range control (presets + drag brush) ----------
@@ -824,7 +840,7 @@ function setPreset(p){ const N=MONTHS.length-1; let r0=0;
   else if(p==='ytd'){ const ji=MONTHS.indexOf(MONTHS[N].slice(0,4)+'-01'); r0=ji>=0?ji:0; } else r0=0;
   ST.r0=Math.max(0,r0); ST.r1=N; ST.range=p; updateRangeUI(); positionBrush(); applyRange(); }
 function drawBrushSpark(){ const c=document.querySelector('#brush canvas'); if(!c)return; const r=c.getBoundingClientRect(); if(!r.width)return;
-  c.width=r.width*2; c.height=r.height*2; const ctx=c.getContext('2d'); ctx.setTransform(2,0,0,2,0,0); ctx.clearRect(0,0,r.width,r.height);
+  const dpr=window.devicePixelRatio||1; c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr); const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,r.width,r.height);
   const _co=ST.company?compObj():P.companies[0]; const fl=_co.rev_flow||'exp'; const s=(isF(_co)?fSum(_co,_co.ports,fl):sumDetail(_co.core_set,_co.ports)[fl]).v, n=s.length, mx=Math.max.apply(null,s)||1;
   ctx.beginPath(); ctx.strokeStyle='rgba(61,139,253,.55)'; ctx.lineWidth=1;
   for(let i=0;i<n;i++){ const x=i/(n-1)*r.width, y=r.height-(s[i]/mx)*(r.height-5)-3; i?ctx.lineTo(x,y):ctx.moveTo(x,y); } ctx.stroke(); }
@@ -847,7 +863,7 @@ function initBrush(){
 
 // ---------- events ----------
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ST.tab=t.dataset.tab;ST.view='overview';ST.company=null;ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);});
-let qt; document.getElementById('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{ST.q=e.target.value;ST.view==='detail'?renderDetail():renderOverview();},180);});
+let qt; document.getElementById('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{ST.q=e.target.value; ST.view==='detail'?renderDetail(): ST.view==='country'?renderCountry(): render();},180);});
 
 document.getElementById('foot').innerHTML=
  `<b>Methodology.</b> Customs export proxy for companies, built from Japan e-Stat <code>税関別品別国別表</code>
@@ -864,7 +880,7 @@ function renderHsInfo(){ const el=document.getElementById('hsinfo'); if(!el||!M.
     M.hsinfo.map(h=>`<tr class="${h.tier}"><td><span class="code">${h.code}</span><div class="full">${h.full}</div></td><td>${h.desc}</td><td class="mp">${h.map}</td></tr>`).join('')+
     `</tbody></table>`; }
 
-applyRegion(); buildCurRow(); render();
+loadPrefs(); applyRegion(); buildCurRow(); render();
 initBrush();
 renderHsInfo();
 </script>
