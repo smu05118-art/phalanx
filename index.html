@@ -239,6 +239,41 @@ function loadPrefs(){ try{ const p=JSON.parse(localStorage.getItem(PKEY))||{};
 }catch(e){} }
 function savePrefs(){ try{ localStorage.setItem(PKEY,JSON.stringify({region:ST.region,cur:ST.cur,gran:ST.gran})); }catch(e){} }
 
+// ---------- URL deep-link (shareable state via location.hash + back-button) ----------
+let _lastNav=null;
+function navSig(){ return [ST.region,ST.tab,ST.view,ST.cat,ST.company,ST.port].join('|'); }
+function writeHash(){
+  const p=[], add=(k,v)=>{ if(v!=null&&v!=='') p.push(k+'='+encodeURIComponent(v)); };
+  add('r',ST.region);
+  if(ST.tab!=='dash') add('tab',ST.tab);
+  if(ST.view!=='overview') add('v',ST.view);
+  if(ST.cat!=='all') add('cat',ST.cat);
+  if(ST.company) add('co',ST.company);
+  if(ST.view==='country'&&ST.port) add('port',ST.port);
+  if(ST.cur!=='JPY') add('cur',ST.cur);
+  if(ST.gran!=='M') add('g',ST.gran);
+  const h='#'+p.join('&'), cur='#'+(location.hash||'').replace(/^#/,''), sig=navSig();
+  if(cur===h){ _lastNav=sig; return; }
+  try{ (_lastNav!==null&&sig!==_lastNav) ? history.pushState(null,'',h) : history.replaceState(null,'',h); }
+  catch(e){ try{location.hash=h;}catch(_){} }
+  _lastNav=sig;
+}
+function applyHash(){
+  const raw=(location.hash||'').replace(/^#/,''); if(!raw) return false;
+  const q={}; raw.split('&').forEach(kv=>{ const i=kv.indexOf('='); if(i>0) q[kv.slice(0,i)]=decodeURIComponent(kv.slice(i+1)); });
+  if(q.r && REGIONS.some(r=>r.id===q.r)) ST.region=q.r;
+  applyRegion();
+  if(q.cur && CUR[q.cur]) ST.cur=q.cur;
+  if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
+  ST.tab=(q.tab==='watch')?'watch':'dash';
+  ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
+  if(q.co && P.companies.some(c=>c.id===q.co)){
+    ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
+    if(q.v==='country'){ ST.view='country'; ST.port=q.port||'ALL'; } else ST.view='detail';
+  }
+  return true;
+}
+
 // ---------- watchlist (localStorage) ----------
 const WKEY='phalanx_watch_v1';
 function getWatch(){ try{return JSON.parse(localStorage.getItem(WKEY))||{stars:[],custom:[]};}catch(e){return {stars:[],custom:[]};} }
@@ -623,6 +658,7 @@ function render(){
   destroyAll();
   applyRegion();
   savePrefs();
+  writeHash();
   renderRegions();
   document.getElementById('sub').textContent=`Monthly · ${mlabel(MONTHS[0])}–${mlabel(M.updated)} · ${regionObj().source||M.source}`;
   document.querySelectorAll('.pill.cur').forEach(p=>p.classList.toggle('on',p.dataset.cur===ST.cur));
@@ -657,6 +693,18 @@ function renderOverview(){
   if(!list.length){ main.innerHTML='<div class="empty-msg">'+(ST.cat==='watch'?'아직 관심 기업이 없습니다. 카드의 ★ 를 누르거나 “관심기업 추가” 탭에서 등록하세요.':'이 카테고리는 데이터 준비중입니다. (현재 테스트/OSAT · 프로브카드 · JEM 만 제공)')+'</div>'; return; }
   const g=document.createElement('div'); g.className='ov-grid'; main.appendChild(g);
   renderCards(list,g);
+}
+// search filter for the dash overview: toggle existing cards (keeps charts alive — no recreate)
+function filterOverview(){
+  const grid=document.querySelector('#main .ov-grid');
+  if(!grid) return render();                        // grid not built yet → full render
+  const q=ST.q.toLowerCase(); let vis=0;
+  grid.querySelectorAll('.card').forEach(card=>{
+    const id=card.dataset.co, co=id&&P.companies.find(c=>c.id===id);
+    const show = !q || (co && (co.name.toLowerCase().includes(q)||(co.name_jp||'').includes(ST.q)||(co.subcategory||'').includes(ST.q)));
+    card.style.display=show?'':'none'; if(show) vis++;
+  });
+  document.getElementById('cnt').textContent=`${vis} companies · ${catLabel(ST.cat)}`;
 }
 
 function renderWatch(){
@@ -863,7 +911,7 @@ function initBrush(){
 
 // ---------- events ----------
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ST.tab=t.dataset.tab;ST.view='overview';ST.company=null;ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);});
-let qt; document.getElementById('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{ST.q=e.target.value; ST.view==='detail'?renderDetail(): ST.view==='country'?renderCountry(): render();},180);});
+let qt; document.getElementById('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{ST.q=e.target.value; ST.view==='detail'?renderDetail(): ST.view==='country'?renderCountry(): (ST.tab==='dash'?filterOverview():render());},180);});
 
 document.getElementById('foot').innerHTML=
  `<b>Methodology.</b> Customs export proxy for companies, built from Japan e-Stat <code>税関別品別国別表</code>
@@ -880,9 +928,10 @@ function renderHsInfo(){ const el=document.getElementById('hsinfo'); if(!el||!M.
     M.hsinfo.map(h=>`<tr class="${h.tier}"><td><span class="code">${h.code}</span><div class="full">${h.full}</div></td><td>${h.desc}</td><td class="mp">${h.map}</td></tr>`).join('')+
     `</tbody></table>`; }
 
-loadPrefs(); applyRegion(); buildCurRow(); render();
+loadPrefs(); if(!applyHash()) applyRegion(); buildCurRow(); render();
 initBrush();
 renderHsInfo();
+window.addEventListener('popstate',()=>{ applyHash(); applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); });
 </script>
 </body>
 </html>
