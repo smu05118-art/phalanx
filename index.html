@@ -216,10 +216,31 @@ header h1 em{color:var(--a1);font-style:normal;}
 </div>
 
 <script src="chartjs_bundle.js"></script>
-<script src="data.js"></script>
+<script src="manifest.js"></script>
 <script>
-const M = P.meta, MONTHS = M.months;
-const REGIONS = M.regions || [{id:'JP',label:'일본 수출입',flag:'🇯🇵',sector:'일본 테크',source:M.source,currencies:M.currencies}];
+// ---------- region shards: manifest (PM) always loaded; data_<region>.js lazy ----------
+const M = PM, MONTHS = M.months;
+M.ports=M.ports||[]; M.portmap=M.portmap||{}; M.hsinfo=M.hsinfo||[];
+var P = {meta:M, companies:[], detail:{}, country:{}, country_i:{}, cdata:{}, fin:{}};
+const REGIONS = M.regions;
+const REGHS = {}, _MERGED = {};
+function mergeShard(s){ if(!s||_MERGED[s.id]) return; _MERGED[s.id]=true;
+  P.companies=P.companies.concat(s.companies||[]);
+  ['detail','country','country_i','cdata','fin'].forEach(k=>Object.assign(P[k], s[k]||{}));
+  (s.ports||[]).forEach(p=>{ if(!M.ports.some(x=>x.code===p.code)) M.ports.push(p); });
+  Object.assign(M.portmap, s.portmap||{});
+  if(s.hsinfo&&s.hsinfo.length) REGHS[s.id]=s.hsinfo;
+}
+function loadRegion(id, cb){
+  const r=REGIONS.find(x=>x.id===id)||REGIONS[0];
+  if(_MERGED[r.id]||(window.PSH&&window.PSH[r.id])){ mergeShard(window.PSH&&window.PSH[r.id]); return cb(); }
+  if(!r.file) return cb();
+  const sub=document.getElementById('sub'); if(sub) sub.textContent='loading '+r.label+'…';
+  const sc=document.createElement('script'); sc.src=r.file;
+  sc.onload=()=>{ mergeShard(window.PSH&&window.PSH[r.id]); cb(); };
+  sc.onerror=()=>cb();
+  document.head.appendChild(sc);
+}
 let CUR = M.currencies;
 function regionObj(){ return REGIONS.find(r=>r.id===ST.region) || REGIONS[0]; }
 function applyRegion(){ const r=regionObj(); CUR=r.currencies; if(!CUR[ST.cur]) ST.cur=Object.keys(CUR)[0]; }
@@ -680,8 +701,9 @@ function renderRegions(){
   REGIONS.forEach(r=>{ const el=document.createElement('span');
     el.className='regbtn'+(r.id===ST.region?' on':'');
     el.innerHTML=`<span class="rf">${r.flag||''}</span>${r.label}`+(r.loaded===false?`<span class="rwait">⏳ 데이터 대기</span>`:'');
-    el.onclick=()=>{ if(ST.region===r.id) return; ST.region=r.id; ST.cat='all'; ST.company=null; ST.view='overview'; ST.q='';
-      const qq=document.getElementById('q'); if(qq) qq.value=''; applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); };
+    el.onclick=()=>{ if(ST.region===r.id) return;
+      loadRegion(r.id, ()=>{ ST.region=r.id; ST.cat='all'; ST.company=null; ST.view='overview'; ST.q='';
+        const qq=document.getElementById('q'); if(qq) qq.value=''; applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); }); };
     rr.appendChild(el); });
 }
 function buildCurRow(){ const row=document.getElementById('curRow'); if(!row) return;
@@ -702,7 +724,8 @@ function render(){
   document.querySelectorAll('.pill.cur').forEach(p=>p.classList.toggle('on',p.dataset.cur===ST.cur));
   const isDetail=ST.view==='detail'||ST.view==='country';
   ['rangeRow','brush'].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display=isDetail?'':'none';});
-  const hsEl=document.getElementById('hsinfo'); if(hsEl) hsEl.style.display=(isDetail&&regionObj().id==='JP')?'':'none';
+  const hsEl=document.getElementById('hsinfo'); if(hsEl) hsEl.style.display=(isDetail&&REGHS[ST.region])?'':'none';
+  renderHsInfo();
   if(isDetail){ drawBrushSpark(); positionBrush(); }
   const tabs=document.getElementById('tabs');
   if(ST.view==='detail'){ tabs.style.display='none'; return renderDetail(); }
@@ -931,7 +954,7 @@ function setPreset(p){ const N=MONTHS.length-1; let r0=0;
   ST.r0=Math.max(0,r0); ST.r1=N; ST.range=p; updateRangeUI(); positionBrush(); applyRange(); }
 function drawBrushSpark(){ const c=document.querySelector('#brush canvas'); if(!c)return; const r=c.getBoundingClientRect(); if(!r.width)return;
   const dpr=window.devicePixelRatio||1; c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr); const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,r.width,r.height);
-  const _co=ST.company?compObj():P.companies[0]; const fl=_co.rev_flow||'exp'; const s=(isF(_co)?fSum(_co,_co.ports,fl):sumDetail(_co.core_set,_co.ports)[fl]).v, n=s.length, mx=Math.max.apply(null,s)||1;
+  const _co=ST.company?compObj():(P.companies.find(c=>(c.region||'JP')===ST.region)||P.companies[0]); if(!_co)return; const fl=_co.rev_flow||'exp'; const s=(isF(_co)?fSum(_co,_co.ports,fl):sumDetail(_co.core_set,_co.ports)[fl]).v, n=s.length, mx=Math.max.apply(null,s)||1;
   ctx.beginPath(); ctx.strokeStyle='rgba(61,139,253,.55)'; ctx.lineWidth=1;
   for(let i=0;i<n;i++){ const x=i/(n-1)*r.width, y=r.height-(s[i]/mx)*(r.height-5)-3; i?ctx.lineTo(x,y):ctx.moveTo(x,y); } ctx.stroke(); }
 let _drag=null;
@@ -964,16 +987,16 @@ document.getElementById('foot').innerHTML=
   수출·수입 단가를 같은 가격으로 직접 비교하면 안 됩니다(수입 CIF엔 운임·보험 포함). probe-card는 고부가·커스텀이라 ¥/kg는 제품 mix proxy로 해석.
   <b>JEM</b> (6855 JP) 프록시는 항공 세관(Kansai Air, Fukuoka Air)에 집중. USD/KRW은 근사 환율(¥ 기준). Not investment advice. Source: Japan Customs / e-Stat.`;
 
-function renderHsInfo(){ const el=document.getElementById('hsinfo'); if(!el||!M.hsinfo)return;
-  el.innerHTML=`<div class="hdr">HS CODE · 설명 · JEM 아이템 매핑</div>`+
-    `<table><thead><tr><th>HS CODE</th><th>설명</th><th>JEM 매핑</th></tr></thead><tbody>`+
-    M.hsinfo.map(h=>`<tr class="${h.tier}"><td><span class="code">${h.code}</span><div class="full">${h.full}</div></td><td>${h.desc}</td><td class="mp">${h.map}</td></tr>`).join('')+
+function renderHsInfo(){ const el=document.getElementById('hsinfo'); if(!el)return;
+  const hs=REGHS[ST.region]; if(!hs||!hs.length){ el.innerHTML=''; el.style.display='none'; return; }
+  el.innerHTML=`<div class="hdr">HS CODE · 설명 · 아이템 매핑</div>`+
+    `<table><thead><tr><th>HS CODE</th><th>설명</th><th>매핑</th></tr></thead><tbody>`+
+    hs.map(h=>`<tr class="${h.tier}"><td><span class="code">${h.code}</span><div class="full">${h.full}</div></td><td>${h.desc}</td><td class="mp">${h.map}</td></tr>`).join('')+
     `</tbody></table>`; }
 
-loadPrefs(); if(!applyHash()) applyRegion(); buildCurRow(); render();
-initBrush();
-renderHsInfo();
-window.addEventListener('popstate',()=>{ applyHash(); applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); });
+loadPrefs(); applyHash();                      // resolves region; company re-resolves after shard load
+loadRegion(ST.region, ()=>{ applyHash(); applyRegion(); buildCurRow(); render(); initBrush(); renderHsInfo(); });
+window.addEventListener('popstate',()=>{ applyHash(); loadRegion(ST.region, ()=>{ applyHash(); applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); }); });
 </script>
 </body>
 </html>
