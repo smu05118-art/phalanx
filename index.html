@@ -249,15 +249,16 @@ const ST = {view:'overview', region:'JP', tab:'dash', cat:'all', cur:'JPY', q:''
             company:null, mode:'core', flow:'exp',
             metric:{value:true,weight:false,unit:false}, repr:{level:true,yoy:true,yoy3:false},
             r0:0, r1:MONTHS.length-1, range:'all', split:false, gran:'M', port:null, cmetric:'value',
-            fin:{rev:false,op:false}};
+            fin:{rev:false,op:false,seg:false}};
 
 // ---------- quarterly financials (fiscal_fetch.py -> P.fin) ----------
 function finOf(co){ return (P.fin||{})[(co||compObj()).id]; }
 // map fin quarters onto the current granularity grid (M: at quarter-end month; Q: exact; Y: summed)
 function finSeries(co,k){ const f=finOf(co); if(!f) return null;
+  const rows=(k==='seg')?(f.segq||[]):(f.q||[]).map(r=>[r[0], k==='op'?r[2]:r[1]]);
   const pi=gInfo(), out=new Array(pi.n).fill(null);
-  f.q.forEach(r=>{ const mi=monthIdx[r[0]]; if(mi==null||r[k]==null) return;
-    const idx=pi.m2p[mi]; out[idx]=(out[idx]||0)+r[k]; });
+  rows.forEach(r=>{ const mi=monthIdx[r[0]]; if(mi==null||r[1]==null) return;
+    const idx=pi.m2p[mi]; out[idx]=(out[idx]||0)+r[1]; });
   return out.some(v=>v!=null)?out:null; }
 function pearson(a,b){ const n=a.length; if(n<4) return null;
   const ma=a.reduce((x,y)=>x+y,0)/n, mb=b.reduce((x,y)=>x+y,0)/n;
@@ -269,11 +270,14 @@ function corrInfo(co){ const f=finOf(co); if(!f||co.is_hub) return null;
   const rev=co.revenue, qc={}, qn={};
   MONTHS.forEach((ym,i)=>{ const q=ym.slice(0,4)+'Q'+Math.ceil(+ym.slice(5,7)/3);
     qc[q]=(qc[q]||0)+(rev[i]||0); qn[q]=(qn[q]||0)+1; });
-  const fq={}; f.q.forEach(r=>{ if(r[1]!=null){ const q=r[0].slice(0,4)+'Q'+Math.ceil(+r[0].slice(5,7)/3); fq[q]=r[1]; } });
+  // prefer SEGMENT revenue when available (customs proxy targets a segment, not the whole company)
+  const useSeg=!!(f.segq&&f.segq.length);
+  const rows=useSeg?f.segq:f.q;
+  const fq={}; rows.forEach(r=>{ if(r[1]!=null){ const q=r[0].slice(0,4)+'Q'+Math.ceil(+r[0].slice(5,7)/3); fq[q]=r[1]; } });
   const keys=Object.keys(fq).filter(q=>qn[q]===3&&qc[q]>0).sort().slice(-12);
   if(keys.length<6) return null;
   const r=pearson(keys.map(q=>qc[q]), keys.map(q=>fq[q]));
-  return r==null?null:{r:r, n:keys.length}; }
+  return r==null?null:{r:r, n:keys.length, seg:useSeg}; }
 function corrCol(r){ const a=Math.abs(r); return a>=0.7?'#ff5c5c':a>=0.4?'#ff8a80':'#d4a0a0'; }
 const charts = {};
 const CCOL=['#3d8bfd','#00e6b8','#ffbe2e','#ff5c5c','#c45cff','#ff8a3d','#42d4f4','#a0d911','#f06292','#8a90a8'];
@@ -421,7 +425,7 @@ function companyCard(co){
       <div><div class="big">${fmtV(rev[L])}</div><span class="clab">${mlabel(MONTHS[L])} ${co.rev_flow==='imp'?'<b style="color:var(--a4)">Import</b>':'Export'} proxy</span></div>
       <div>${chip(mo[L])}<span class="clab">MoM</span></div>
       <div>${chip(yo[L])}<span class="clab">YoY</span></div>
-      ${(ci=>ci?`<div><span class="chg" style="color:${corrCol(ci.r)}">${ci.r>=0?'+':''}${ci.r.toFixed(2)}</span><span class="clab" style="color:#c98a8a">Correl ${ci.n}Q</span></div>`:'')(corrInfo(co))}
+      ${(ci=>ci?`<div><span class="chg" style="color:${corrCol(ci.r)}">${ci.r>=0?'+':''}${ci.r.toFixed(2)}</span><span class="clab" style="color:#c98a8a">Correl ${ci.n}Q${ci.seg?'·세그':''}</span></div>`:'')(corrInfo(co))}
     </div>
     ${(co.is_hub||co.filtered)?hubMetricsHtml(co):''}
     ${co.note?`<div class="co-note">${co.note}</div>`:''}
@@ -575,12 +579,14 @@ function dDatasets(code){
     });
   });
   // reported quarterly financials — company-total only (hero card), same yV axis/unit
-  if(code==='ALL'&&(ST.fin.rev||ST.fin.op)){
-    const co=compObj();
-    if(ST.fin.rev){ const fs=finSeries(co,1);
+  if(code==='ALL'&&(ST.fin.rev||ST.fin.op||ST.fin.seg)){
+    const co=compObj(), f=finOf(co);
+    if(ST.fin.rev){ const fs=finSeries(co,'rev');
       if(fs) ds.push({type:'line',label:'매출(실적)',data:fs.map(x=>x==null?null:x*k),yAxisID:'yV',borderColor:'#ff5c5c',borderWidth:2.2,pointRadius:3,pointStyle:'rectRot',pointBackgroundColor:'#ff5c5c',tension:.15,spanGaps:true,order:0}); }
-    if(ST.fin.op){ const fs=finSeries(co,2);
+    if(ST.fin.op){ const fs=finSeries(co,'op');
       if(fs) ds.push({type:'line',label:'영업이익(실적)',data:fs.map(x=>x==null?null:x*k),yAxisID:'yV',borderColor:'#ff9e80',borderWidth:1.8,borderDash:[6,3],pointRadius:2.5,pointBackgroundColor:'#ff9e80',tension:.15,spanGaps:true,order:0}); }
+    if(ST.fin.seg&&f&&f.segq){ const fs=finSeries(co,'seg');
+      if(fs) ds.push({type:'line',label:(f.segname||'세그먼트')+'(실적)',data:fs.map(x=>x==null?null:x*k),yAxisID:'yV',borderColor:'#e91e63',borderWidth:2.2,pointRadius:3,pointStyle:'triangle',pointBackgroundColor:'#e91e63',tension:.15,spanGaps:true,order:0}); }
   }
   return ds;
 }
@@ -591,7 +597,7 @@ function dOpts(){
     scales:{x:{min:xMin(),max:xMax(),ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
       yV:{stacked:true,position:'left',beginAtZero:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>fmtV(v/CUR[ST.cur].mult)},grid:{color:'rgba(40,40,74,.5)'}}}}; }
   const M=ST.metric,R=ST.repr,sym=CUR[ST.cur].sym;
-  const finOn=(ST.fin.rev||ST.fin.op)&&!!finOf(compObj());
+  const finOn=(ST.fin.rev||ST.fin.op||ST.fin.seg)&&!!finOf(compObj());
   const showV=(R.level&&M.value)||finOn, showW=R.level&&M.weight, showU=R.level&&M.unit, showP=(R.yoy||R.yoy3)&&(M.value||M.weight||M.unit);
   return {responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
     plugins:{legend:{display:true,labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
@@ -915,7 +921,8 @@ function renderDetail(){
        <span class="pill y ${ST.metric.unit?'on':''}" data-mt="unit">단가 ${CUR[ST.cur].sym}/kg</span>
        ${finOf(co)?`<span class="lbl-sm" style="margin-left:8px">실적</span>
        <span class="pill f ${ST.fin.rev?'on':''}" data-fn="rev">매출</span>
-       <span class="pill f ${ST.fin.op?'on':''}" data-fn="op">영업이익</span>`:''}
+       <span class="pill f ${ST.fin.op?'on':''}" data-fn="op">영업이익</span>${finOf(co).segq?`
+       <span class="pill f ${ST.fin.seg?'on':''}" data-fn="seg">${finOf(co).segname||'세그먼트'}</span>`:''}`:''}
        <span class="lbl-sm" style="margin-left:8px">보기</span>
        <span class="pill y ${ST.repr.level?'on':''}" data-rp="level">Level</span>
        <span class="pill y ${ST.repr.yoy?'on':''}" data-rp="yoy">YoY%</span>
