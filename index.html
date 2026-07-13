@@ -591,6 +591,7 @@ function companiesIn(cat){
     const reals=P.companies.filter(c=>w.stars.indexOf(c.id)>=0 && (c.region||'JP')===ST.region);
     const customs=w.custom.map(c=>Object.assign({_custom:true},c));
     return reals.concat(customs); }
+  if(cat==='hubs') return P.companies.filter(c=>(c.region||'JP')===ST.region && c.is_hub);
   return P.companies.filter(c=> (c.region||'JP')===ST.region && (cat==='all'||c.category===cat));
 }
 
