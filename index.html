@@ -163,6 +163,9 @@ header h1 em{color:var(--a1);font-style:normal;}
 .regbtn:hover{border-color:var(--a2);color:var(--tx);}
 .regbtn.on{background:linear-gradient(135deg,var(--s2),var(--s1));border-color:var(--a1);color:var(--tx);box-shadow:0 0 0 1px var(--a1) inset;}
 .regbtn .rwait{font-size:9px;color:var(--a4);font-weight:700;margin-left:2px;}
+.reggrp{display:inline-flex;align-items:center;gap:7px;padding:5px 9px 5px 5px;border-radius:14px;border:1px dashed var(--bd);flex-wrap:wrap;}
+.reggrp.cur{border-style:solid;border-color:var(--a2);}
+.reggrp-l{font-size:11px;font-weight:900;color:var(--a4);letter-spacing:.06em;padding:0 4px 0 7px;white-space:nowrap;}
 @media(max-width:680px){.add-form{grid-template-columns:1fr 1fr;}.add-btn{grid-column:1/-1;}}
 </style>
 </head>
@@ -511,7 +514,7 @@ function fCountryLoc(co, code){ const bpc=(P.cdata[co.id]||{}).bpc||{}, n=MONTHS
 // ---------- detail (per-port): Value(¥) / Weight(kg) / Unit(¥/kg) x Level / YoY / 3p YoY ----------
 function dseries(code){ const co=compObj();
   if(isF(co)){ const s=fPortSeries(co,code); return {exp:{v:s.exp.v,w:s.exp.w}, imp:{v:s.imp.v,w:s.imp.w}}; }
-  const det=P.detail[setKey()]||{}; const s = code==='ALL' ? sumDetail(setKey(), compPorts()) : (det[code]||{exp:{v:[],w:[]},imp:{v:[],w:[]}}); return {exp:{v:s.exp.v,w:s.exp.w}, imp:{v:s.imp.v,w:s.imp.w}}; }
+  const det=P.detail[setKey()]||{}; const allPorts=(co&&co.total_ports&&co.total_ports.length)?co.total_ports:compPorts(); const s = code==='ALL' ? sumDetail(setKey(), allPorts) : (det[code]||{exp:{v:[],w:[]},imp:{v:[],w:[]}}); return {exp:{v:s.exp.v,w:s.exp.w}, imp:{v:s.imp.v,w:s.imp.w}}; }
 const DCOL={exp:{value:'#3d8bfd',weight:'#ffbe2e',unit:'#c45cff'},imp:{value:'#00e6b8',weight:'#ff8a3d',unit:'#7da0ff'}};
 function unitDispG(v,w){ const av=aggLevel(v),aw=aggLevel(w),k=CUR[ST.cur].mult; return av.map((x,i)=>aw[i]>0?x*k/aw[i]:null); }
 function unitRatioG(v,w){ const av=aggLevel(v),aw=aggLevel(w); return av.map((x,i)=>aw[i]>0?x/aw[i]:null); }
@@ -704,13 +707,19 @@ function renderRegions(){
   const rr=document.getElementById('regionRow'); if(!rr) return;
   rr.style.display=(ST.view==='overview'&&ST.tab==='dash')?'flex':'none';
   rr.innerHTML='';
-  REGIONS.forEach(r=>{ const el=document.createElement('span');
-    el.className='regbtn'+(r.id===ST.region?' on':'');
-    el.innerHTML=`<span class="rf">${r.flag||''}</span>${r.label}`+(r.loaded===false?`<span class="rwait">⏳ 데이터 대기</span>`:'');
-    el.onclick=()=>{ if(ST.region===r.id) return;
-      loadRegion(r.id, ()=>{ ST.region=r.id; ST.cat='all'; ST.company=null; ST.view='overview'; ST.q='';
-        const qq=document.getElementById('q'); if(qq) qq.value=''; applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); }); };
-    rr.appendChild(el); });
+  [['B2C','B2C 소비자'],['B2B','B2B 산업재']].forEach(([biz,glabel])=>{
+    const grp=REGIONS.filter(r=>biz==='B2C' ? r.biz==='B2C' : r.biz!=='B2C');
+    if(!grp.length) return;
+    const gwrap=document.createElement('span'); gwrap.className='reggrp'+(grp.some(r=>r.id===ST.region)?' cur':'');
+    const gl=document.createElement('span'); gl.className='reggrp-l'; gl.textContent=glabel; gwrap.appendChild(gl);
+    grp.forEach(r=>{ const el=document.createElement('span');
+      el.className='regbtn'+(r.id===ST.region?' on':'');
+      el.innerHTML=`<span class="rf">${r.flag||''}</span>${r.label}`+(r.loaded===false?`<span class="rwait">⏳ 데이터 대기</span>`:'');
+      el.onclick=()=>{ if(ST.region===r.id) return;
+        loadRegion(r.id, ()=>{ ST.region=r.id; ST.cat='all'; ST.company=null; ST.view='overview'; ST.q='';
+          const qq=document.getElementById('q'); if(qq) qq.value=''; applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); }); };
+      gwrap.appendChild(el); });
+    rr.appendChild(gwrap); });
 }
 function buildCurRow(){ const row=document.getElementById('curRow'); if(!row) return;
   row.querySelectorAll('.pill.cur').forEach(p=>p.remove());
@@ -961,7 +970,7 @@ function setPreset(p){ const N=MONTHS.length-1; let r0=0;
   ST.r0=Math.max(0,r0); ST.r1=N; ST.range=p; updateRangeUI(); positionBrush(); applyRange(); }
 function drawBrushSpark(){ const c=document.querySelector('#brush canvas'); if(!c)return; const r=c.getBoundingClientRect(); if(!r.width)return;
   const dpr=window.devicePixelRatio||1; c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr); const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,r.width,r.height);
-  const _co=ST.company?compObj():(P.companies.find(c=>(c.region||'JP')===ST.region)||P.companies[0]); if(!_co)return; const fl=_co.rev_flow||'exp'; const s=(isF(_co)?fSum(_co,_co.ports,fl):sumDetail(_co.core_set,_co.ports)[fl]).v, n=s.length, mx=Math.max.apply(null,s)||1;
+  const _co=ST.company?compObj():(P.companies.find(c=>(c.region||'JP')===ST.region)||P.companies[0]); if(!_co)return; const fl=_co.rev_flow||'exp'; const _bp=(_co.total_ports&&_co.total_ports.length)?_co.total_ports:_co.ports; const s=(isF(_co)?fSum(_co,_co.ports,fl):sumDetail(_co.core_set,_bp)[fl]).v, n=s.length, mx=Math.max.apply(null,s)||1;
   ctx.beginPath(); ctx.strokeStyle='rgba(61,139,253,.55)'; ctx.lineWidth=1;
   for(let i=0;i<n;i++){ const x=i/(n-1)*r.width, y=r.height-(s[i]/mx)*(r.height-5)-3; i?ctx.lineTo(x,y):ctx.moveTo(x,y); } ctx.stroke(); }
 let _drag=null;
