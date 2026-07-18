@@ -164,6 +164,11 @@ header h1 em{color:var(--a1);font-style:normal;}
 .regbtn.on{background:linear-gradient(135deg,var(--s2),var(--s1));border-color:var(--a1);color:var(--tx);box-shadow:0 0 0 1px var(--a1) inset;}
 .regbtn .rwait{font-size:9px;color:var(--a4);font-weight:700;margin-left:2px;}
 .reggrp{display:inline-flex;align-items:center;gap:7px;padding:5px 9px 5px 5px;border-radius:14px;border:1px dashed var(--bd);flex-wrap:wrap;}
+.badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:9px;white-space:nowrap;}
+.badge.b-p{background:rgba(255,190,46,.14);color:#ffbe2e;border:1px solid rgba(255,190,46,.35);}
+.badge.b-f{background:rgba(0,230,184,.12);color:#00e6b8;border:1px solid rgba(0,230,184,.3);}
+.hscode{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.02em;}
+.chg.pv{color:#ffbe2e;}
 .reggrp.cur{border-style:solid;border-color:var(--a2);}
 .reggrp-l{font-size:11px;font-weight:900;color:var(--a4);letter-spacing:.06em;padding:0 4px 0 7px;white-space:nowrap;}
 @media(max-width:680px){.add-form{grid-template-columns:1fr 1fr;}.add-btn{grid-column:1/-1;}}
@@ -414,20 +419,24 @@ function hubPanel(co){
 // ---------- company overview card ----------
 function companyCard(co){
   const rev=co.revenue, yo=yoyArr(rev), mo=momArr(rev), L=lastIdx(rev);
+  const _kre=co.kre&&co.kre.hs?co.kre:null, _pi=_kre?MONTHS.indexOf(_kre.prov):-1;
+  const _hl=_kre&&_pi>=0?(_kre.partial&&_pi>0?_pi-1:_pi):L;
   const div=document.createElement('div');
   div.className='card co'; div.dataset.co=co.id;
   div.innerHTML=`
     <div class="card-hd">
-      <div><h3>${co.name} <small>${co.name_jp} · ${co.ticker}</small></h3>
+      <div><h3>${co.name} <small>${_kre?'<span class="hscode">'+_kre.hs+'</span>':co.name_jp+' · '+co.ticker}</small></h3>
         <div class="co-cat">Category · ${catLabel(co.category)}</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        ${_kre?'<span class="badge '+(_kre.partial?'b-p':'b-f')+'">'+_kre.badge+'</span>':''}
         <button class="star ${isStar(co.id)?'on':''}" data-star="${co.id}" title="관심 추가/해제">★</button>
         <span class="cat-tag">${catLabel(co.category)}</span></div>
     </div>
     <div class="headline">
-      <div><div class="big">${fmtV(rev[L])}</div><span class="clab">${mlabel(MONTHS[L])} ${co.rev_flow==='imp'?'<b style="color:var(--a4)">Import</b>':'Export'} proxy</span></div>
-      <div>${chip(mo[L])}<span class="clab">MoM</span></div>
-      <div>${chip(yo[L])}<span class="clab">YoY</span></div>
+      <div><div class="big">${fmtV(rev[_hl])}</div><span class="clab">${mlabel(MONTHS[_hl])} ${_kre?'<b style="color:#ffbe2e">잠정</b>':(co.rev_flow==='imp'?'<b style="color:var(--a4)">Import</b>':'Export')} proxy</span></div>
+      <div>${chip(mo[_hl])}<span class="clab">MoM</span></div>
+      <div>${chip(yo[_hl])}<span class="clab">YoY</span></div>
+      ${_kre&&_kre.pv!=null?'<div><span class="chg pv">'+(_kre.pv>=0?'+':'')+(_kre.pv*100).toFixed(0)+'%</span><span class="clab">잠정Δ</span></div>':''}
       ${(ci=>ci?`<div><span class="chg" style="color:${corrCol(ci.r)}">${ci.r>=0?'+':''}${ci.r.toFixed(2)}</span><span class="clab" style="color:#c98a8a">Correl ${ci.n}Q${ci.seg?'·세그':''}</span></div>`:'')(corrInfo(co))}
     </div>
     ${(co.is_hub||co.filtered)?hubMetricsHtml(co):''}
@@ -447,9 +456,14 @@ function companyCard(co){
 function renderCompanyCharts(div,co){
   const rev=co.revenue, yo=yoyArr(rev), mo=momArr(rev);
   const revC=rev.map(v=> v==null?null: v*CUR[ST.cur].mult);
+  const _kre=co.kre&&co.kre.hs?co.kre:null, _pi=_kre?MONTHS.indexOf(_kre.prov):-1, _cut=_pi>0?_pi-1:_pi;
+  const _barC=(_kre&&_pi>=0)?revC.map((v,i)=>i>_cut?null:v):revC;
+  const _prov=(_kre&&_pi>0)?revC.map((v,i)=>(i>=_cut&&i<=_pi)?v:null):null;
+  if(_kre&&_kre.partial&&_pi>=0){yo[_pi]=null;mo[_pi]=null;}  // 부분월이 %라인 오염 방지
   const [c1,c2]=div.querySelectorAll('canvas');
   charts[co.id+'_m']=new Chart(c1,{data:{labels:MONTHS,datasets:[
-      {type:'bar',label:'Revenue',data:revC,yAxisID:'y',backgroundColor:co.color+'66',borderColor:co.color,borderWidth:0,order:3,barPercentage:1,categoryPercentage:.92},
+      {type:'bar',label:'Revenue',data:_barC,yAxisID:'y',backgroundColor:co.color+'66',borderColor:co.color,borderWidth:0,order:3,barPercentage:1,categoryPercentage:.92},
+      ...(_prov?[{type:'line',label:'잠정',data:_prov,yAxisID:'y',borderColor:'#ffbe2e',borderWidth:1.5,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#ffbe2e',pointBorderColor:'#ffbe2e',tension:0,order:0,spanGaps:false}]:[]),
       {type:'line',label:'YoY%',data:yo,yAxisID:'y1',borderColor:'#ffbe2e',borderWidth:1.3,borderDash:[5,4],pointRadius:0,tension:.25,order:1,spanGaps:true},
       {type:'line',label:'MoM%',data:mo,yAxisID:'y1',borderColor:'#c45cff',borderWidth:1.2,borderDash:[2,3],pointRadius:0,tension:.25,order:2,spanGaps:true},
     ]},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
@@ -460,6 +474,7 @@ function renderCompanyCharts(div,co){
 
   // YoY by Year
   const yb=yoyArr(rev), labels=['01M','02M','03M','04M','05M','06M','07M','08M','09M','10M','11M','12M'];
+  if(_kre&&_kre.partial&&_pi>=0) yb[_pi]=null;  // 부분월 YoY 오염 방지
   const ds=M.years.map(y=>{
     const arr=[]; for(let m=1;m<=12;m++){ const key=y+'-'+String(m).padStart(2,'0'); const i=monthIdx[key]; arr.push(i==null?null:yb[i]); }
     const col=YEAR_COLORS[y]||'#888';
