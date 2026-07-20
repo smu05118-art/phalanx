@@ -257,7 +257,7 @@ const ST = {view:'overview', region:'JP', tab:'dash', cat:'all', cur:'JPY', q:''
             company:null, mode:'core', flow:'exp',
             metric:{value:true,weight:false,unit:false}, repr:{level:true,yoy:true,yoy3:false},
             r0:0, r1:MONTHS.length-1, range:'all', split:false, gran:'M', port:null, cmetric:'value',
-            fin:{rev:false,op:false,seg:false}};
+            fin:{rev:false,op:false,seg:false}, ovN:30};
 
 // ---------- quarterly financials (fiscal_fetch.py -> P.fin) ----------
 function finOf(co){ return (P.fin||{})[(co||compObj()).id]; }
@@ -674,7 +674,7 @@ function companiesIn(cat){
     const customs=w.custom.map(c=>Object.assign({_custom:true},c));
     return reals.concat(customs); }
   if(cat==='hubs') return P.companies.filter(c=>(c.region||'JP')===ST.region && c.is_hub);
-  return P.companies.filter(c=> (c.region||'JP')===ST.region && (cat==='all'||c.category===cat));
+  return P.companies.filter(c=> (c.region||'JP')===ST.region && (cat==='all'? !c.hid : c.category===cat));
 }
 
 // stub card for a user-added company with no customs data yet
@@ -774,25 +774,41 @@ function renderOverview(){
     `<b>${regionObj().label}</b><span class="sep">›</span><span>${regionObj().sector}</span>`+
     (ST.cat!=='all'?`<span class="sep">›</span><b>${catLabel(ST.cat)}</b>`:'');
   const cr=document.getElementById('catRow'); cr.innerHTML='';
-  M.categories.forEach(c=>{ const n=companiesIn(c.id).length;
+  (regionObj().cats||M.categories).forEach(c=>{ const n=companiesIn(c.id).length;
     const el=document.createElement('span'); el.className='pill'+(c.id===ST.cat?' on':'')+(n===0&&c.id!=='all'?' empty':'');
-    el.textContent=c.label+(n?` ${n}`:''); el.onclick=()=>{ST.cat=c.id;render();}; cr.appendChild(el); });
+    el.textContent=c.label+(n?` ${n}`:''); el.onclick=()=>{ST.cat=c.id;ST.ovN=30;render();}; cr.appendChild(el); });
   const q=ST.q.toLowerCase();
-  let list=companiesIn(ST.cat).filter(c=>!q||c.name.toLowerCase().includes(q)||(c.name_jp||'').includes(ST.q)||(c.subcategory||'').includes(ST.q));
-  document.getElementById('cnt').textContent=`${list.length} companies · ${catLabel(ST.cat)}`;
+  let list=companiesIn(ST.cat).filter(c=>!q||c.name.toLowerCase().includes(q)||(c.name_jp||'').includes(ST.q)||(c.subcategory||'').includes(ST.q)||(c.ticker||'').toLowerCase().includes(q)||(c.note||'').toLowerCase().includes(q));
+  const total=list.length;
+  document.getElementById('cnt').textContent=`${total} companies · ${catLabel(ST.cat)}`;
   const main=document.getElementById('main'); main.innerHTML='';
   if(!list.length){ main.innerHTML='<div class="empty-msg">'+(ST.cat==='watch'?'아직 관심 기업이 없습니다. 카드의 ★ 를 누르거나 “관심기업 추가” 탭에서 등록하세요.':'이 카테고리는 데이터 준비중입니다. (현재 테스트/OSAT · 프로브카드 · JEM 만 제공)')+'</div>'; return; }
+  // large regions (TWX 전수 등): 매출순 정렬 + 상위 N 렌더 (더 보기로 증분)
+  if(total>60){
+    const li=a=>{for(let i=a.length-1;i>=0;i--)if(a[i]>0)return i;return -1;};
+    list=list.slice().sort((a,b)=>{const x=li(a.revenue),y=li(b.revenue);return (y>=0?b.revenue[y]:0)-(x>=0?a.revenue[x]:0);});
+    const lim=ST.ovN||30;
+    if(total>lim) { var _ovRest=total-lim; list=list.slice(0,lim); }
+  }
   const g=document.createElement('div'); g.className='ov-grid'; main.appendChild(g);
   renderCards(list,g);
+  if(typeof _ovRest!=='undefined'&&_ovRest>0){
+    const mb=document.createElement('div');
+    mb.className='empty-msg'; mb.style.cursor='pointer'; mb.style.marginTop='12px';
+    mb.textContent=`▼ 더 보기 (+${Math.min(30,_ovRest)} / 남은 ${_ovRest}곳 — 매출순)`;
+    mb.onclick=()=>{ST.ovN=(ST.ovN||30)+30;renderOverview();};
+    main.appendChild(mb);
+  }
 }
 // search filter for the dash overview: toggle existing cards (keeps charts alive — no recreate)
 function filterOverview(){
+  if(companiesIn(ST.cat).length>60){ ST.ovN=30; return renderOverview(); }  // 대형 리전: 전체 대상 재검색
   const grid=document.querySelector('#main .ov-grid');
   if(!grid) return render();                        // grid not built yet → full render
   const q=ST.q.toLowerCase(); let vis=0;
   grid.querySelectorAll('.card').forEach(card=>{
     const id=card.dataset.co, co=id&&P.companies.find(c=>c.id===id);
-    const show = !q || (co && (co.name.toLowerCase().includes(q)||(co.name_jp||'').includes(ST.q)||(co.subcategory||'').includes(ST.q)));
+    const show = !q || (co && (co.name.toLowerCase().includes(q)||(co.name_jp||'').includes(ST.q)||(co.subcategory||'').includes(ST.q)||(co.ticker||'').toLowerCase().includes(q)||(co.note||'').toLowerCase().includes(q)));
     card.style.display=show?'':'none'; if(show) vis++;
   });
   document.getElementById('cnt').textContent=`${vis} companies · ${catLabel(ST.cat)}`;
