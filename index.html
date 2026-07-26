@@ -188,6 +188,7 @@ header h1 em{color:var(--a1);font-style:normal;}
 
 <div class="tabs" id="tabs">
   <span class="tab on" data-tab="dash">대시보드</span>
+  <span class="tab" data-tab="nowcast">🔮 나우캐스트 랭킹</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
 
@@ -229,12 +230,12 @@ header h1 em{color:var(--a1);font-style:normal;}
 // ---------- region shards: manifest (PM) always loaded; data_<region>.js lazy ----------
 const M = PM, MONTHS = M.months;
 M.ports=M.ports||[]; M.portmap=M.portmap||{}; M.hsinfo=M.hsinfo||[];
-var P = {meta:M, companies:[], detail:{}, country:{}, country_i:{}, cdata:{}, fin:{}};
+var P = {meta:M, companies:[], detail:{}, country:{}, country_i:{}, cdata:{}, fin:{}, nowcast:{}};
 const REGIONS = M.regions;
 const REGHS = {}, _MERGED = {};
 function mergeShard(s){ if(!s||_MERGED[s.id]) return; _MERGED[s.id]=true;
   P.companies=P.companies.concat(s.companies||[]);
-  ['detail','country','country_i','cdata','fin'].forEach(k=>Object.assign(P[k], s[k]||{}));
+  ['detail','country','country_i','cdata','fin','nowcast'].forEach(k=>Object.assign(P[k], s[k]||{}));
   (s.ports||[]).forEach(p=>{ if(!M.ports.some(x=>x.code===p.code)) M.ports.push(p); });
   Object.assign(M.portmap, s.portmap||{});
   if(s.hsinfo&&s.hsinfo.length) REGHS[s.id]=s.hsinfo;
@@ -261,6 +262,15 @@ const ST = {view:'overview', region:'JP', tab:'dash', cat:'all', cur:'JPY', q:''
 
 // ---------- quarterly financials (fiscal_fetch.py -> P.fin) ----------
 function finOf(co){ return (P.fin||{})[(co||compObj()).id]; }
+// 나우캐스트 선행 배지: 세관 선행 → 다음분기 매출 예측
+function nowcastOf(co){ return (P.nowcast||{})[(co||compObj()).id]; }
+function ncGrade(n){ return (n.r2>=0.6&&n.hit>=70)?'hi':((n.r2>=0.35&&n.hit>=55)?'mid':'lo'); }
+function ncCol(g){ return g==='hi'?'#2fae66':(g==='mid'?'#e0a24a':'#c98a8a'); }
+function ncBadge(co){ const n=nowcastOf(co); if(!n||co.is_hub||n.predyoy==null) return '';
+  const g=ncGrade(n), col=ncCol(g), lead=n.L>=1?('+'+n.L+'Q선행'):'동행';
+  const sign=n.predyoy>=0?'+':'', pc=n.predyoy>=0?'#2fae66':'#e06666';
+  const tip=`세관→매출 나우캐스트 · lag${n.L}(corr ${n.corr!=null?n.corr.toFixed(2):'—'}) · R²${n.r2.toFixed(2)} · 방향적중 ${n.hit}%${n.fwd?' · 미보고(검증대기)':''}`;
+  return `<div title="${tip}"><span class="chg" style="color:${pc}">${sign}${n.predyoy}%</span><span class="clab" style="color:${col}">🔮 ${n.tgtq} ${lead}${n.fwd?'*':''}</span></div>`; }
 // map fin quarters onto the current granularity grid (M: at quarter-end month; Q: exact; Y: summed)
 function finSeries(co,k){ const f=finOf(co); if(!f) return null;
   const rows=(k==='seg')?(f.segq||[]):(f.q||[]).map(r=>[r[0], k==='op'?r[2]:r[1]]);
@@ -325,7 +335,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':'dash';
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':'dash');
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
@@ -438,6 +448,7 @@ function companyCard(co){
       <div>${chip(yo[_hl])}<span class="clab">YoY</span></div>
       ${_kre&&_kre.pv!=null?'<div><span class="chg pv">'+(_kre.pv>=0?'+':'')+(_kre.pv*100).toFixed(0)+'%</span><span class="clab">잠정Δ</span></div>':''}
       ${(ci=>ci?`<div><span class="chg" style="color:${corrCol(ci.r)}">${ci.r>=0?'+':''}${ci.r.toFixed(2)}</span><span class="clab" style="color:#c98a8a">Correl ${ci.n}Q${ci.seg?'·세그':''}</span></div>`:'')(corrInfo(co))}
+      ${ncBadge(co)}
     </div>
     ${(co.is_hub||co.filtered)?hubMetricsHtml(co):''}
     ${co.note?`<div class="co-note">${co.note}</div>`:''}
@@ -763,6 +774,7 @@ function render(){
   tabs.style.display='flex';
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===ST.tab));
   if(ST.tab==='watch') return renderWatch();
+  if(ST.tab==='nowcast') return renderNowcastRank();
   renderOverview();
 }
 
@@ -814,6 +826,52 @@ function filterOverview(){
   document.getElementById('cnt').textContent=`${vis} companies · ${catLabel(ST.cat)}`;
 }
 
+function renderNowcastRank(){
+  const main=document.getElementById('main');
+  const arr=(M.nowcast||[]);
+  if(!arr.length){ main.innerHTML='<div class="empty-msg">나우캐스트 데이터 준비중입니다. (재무·세관 데이터 필요)</div>'; return; }
+  const grade=n=>(n.r2>=0.6&&n.hit>=70)?'hi':((n.r2>=0.35&&n.hit>=55)?'mid':'lo');
+  const gcol={hi:'#2fae66',mid:'#e0a24a',lo:'#c98a8a'}, gl={hi:'高',mid:'中',lo:'低'};
+  const rows=arr.map((n,i)=>{
+    const g=grade(n), lead=n.L>=1?('+'+n.L+'Q':'동행');
+    const pc=n.predyoy==null?'#8a90a8':(n.predyoy>=0?'#2fae66':'#e06666');
+    const py=n.predyoy==null?'—':((n.predyoy>=0?'+':'')+n.predyoy+'%');
+    const cy=n.cyoy==null?'—':((n.cyoy>=0?'+':'')+n.cyoy+'%');
+    return `<tr class="ncr" data-id="${n.id}">
+      <td class="rk">${i+1}</td>
+      <td class="nnm"><b>${n.name}</b><span class="sg">${(n.seg||'')} · ${n.hs}</span></td>
+      <td class="mono lead ${n.L>=1?'y':''}">${lead}</td>
+      <td class="mono"><b style="color:${gcol[g]}">${n.score!=null?n.score.toFixed(2):'—'}</b></td>
+      <td class="mono">${n.corr!=null?n.corr.toFixed(2):'—'}</td>
+      <td class="mono">${n.r2.toFixed(2)}</td>
+      <td class="mono">${n.hit}%</td>
+      <td class="mono"><b style="color:${gcol[g]}">${gl[g]}</b></td>
+      <td class="mono call">${n.lastC||''} ${cy} <span style="color:#8a90a8">→</span> ${n.tgtq||''} <b style="color:${pc}">${py}</b>${n.fwd?' <span class="fwdb">미보고</span>':''}</td>
+    </tr>`;
+  }).join('');
+  main.innerHTML=`<style>
+    .ncp{max-width:100%}
+    .ncp .hd h2{font-size:18px;margin:0 0 4px} .ncp .hd p{color:#8a90a8;font-size:12.5px;margin:0 0 14px;max-width:78ch}
+    .nctbl{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:12px}
+    .nctbl table{border-collapse:collapse;width:100%;min-width:720px;font-size:13px}
+    .nctbl th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8a90a8;font-weight:650;padding:11px 12px;border-bottom:1px solid var(--line,#233038)}
+    .nctbl td{padding:9px 12px;border-bottom:1px solid var(--line,#233038);vertical-align:middle}
+    .nctbl tr:last-child td{border-bottom:none}
+    .nctbl tr.ncr{cursor:pointer} .nctbl tr.ncr:hover{background:rgba(127,150,170,.08)}
+    .nctbl .rk{color:#8a90a8;font-family:ui-monospace,monospace;width:34px}
+    .nctbl .nnm b{font-weight:650} .nctbl .nnm .sg{display:block;font-family:ui-monospace,monospace;font-size:10px;color:#8a90a8}
+    .nctbl .mono{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
+    .nctbl .lead{color:#8a90a8} .nctbl .lead.y{color:#2bc0d4;font-weight:700}
+    .nctbl .call{white-space:nowrap}
+    .fwdb{font-size:9.5px;background:rgba(43,192,212,.16);color:#2bc0d4;border-radius:4px;padding:1px 5px;margin-left:2px}
+  </style>
+  <div class="ncp"><div class="hd"><h2>🔮 나우캐스트 랭킹 — 세관 선행 → 매출 예측</h2>
+    <p><b>선행 스코어(상관×방향적중×리드보너스) 높은 순</b> — 강하고 신뢰있는 선행지표가 위로. 최신 세관값을 20분기 회귀에 넣어 <b>아직 발표 안 된 다음 분기 매출 YoY</b>를 예측. <b>미보고</b>는 다가올 실적으로 검증됨. 행 클릭 → 상세. 신뢰=R²×방향적중.</p></div>
+    <div class="nctbl"><table>
+      <thead><tr><th>#</th><th>기업</th><th>선행</th><th>스코어</th><th>corr</th><th>R²</th><th>방향적중</th><th>신뢰</th><th>최신세관 → 예측매출</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+  main.querySelectorAll('tr.ncr').forEach(tr=>tr.onclick=()=>{ ST.region='JP'; loadRegion('JP',()=>{ const co=P.companies.find(c=>c.id===tr.dataset.id); if(co){ ST.tab='dash'; ST.company=co.id; ST.view='detail'; render(); window.scrollTo(0,0);} }); });
+}
 function renderWatch(){
   destroyAll();
   document.getElementById('catRow').style.display='none';
