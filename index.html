@@ -837,7 +837,7 @@ function renderNowcastRank(){
     const pc=n.predyoy==null?'#8a90a8':(n.predyoy>=0?'#2fae66':'#e06666');
     const py=n.predyoy==null?'—':((n.predyoy>=0?'+':'')+n.predyoy+'%');
     const cy=n.cyoy==null?'—':((n.cyoy>=0?'+':'')+n.cyoy+'%');
-    return `<tr class="ncr" data-id="${n.id}">
+    return `<tr class="ncr" data-id="${n.id}" data-reg="${n.reg||'JP'}">
       <td class="rk">${i+1}</td>
       <td class="nnm"><b>${n.name}</b><span class="sg">${(n.seg||'')} · ${n.hs}</span></td>
       <td class="mono lead ${n.L>=1?'y':''}">${lead}</td>
@@ -870,7 +870,7 @@ function renderNowcastRank(){
     <div class="nctbl"><table>
       <thead><tr><th>#</th><th>기업</th><th>선행</th><th>스코어</th><th>corr</th><th>R²</th><th>방향적중</th><th>신뢰</th><th>최신세관 → 예측매출</th></tr></thead>
       <tbody>${rows}</tbody></table></div></div>`;
-  main.querySelectorAll('tr.ncr').forEach(tr=>tr.onclick=()=>{ ST.region='JP'; loadRegion('JP',()=>{ const co=P.companies.find(c=>c.id===tr.dataset.id); if(co){ ST.tab='dash'; ST.company=co.id; ST.view='detail'; render(); window.scrollTo(0,0);} }); });
+  main.querySelectorAll('tr.ncr').forEach(tr=>tr.onclick=()=>{ const rg=tr.dataset.reg||'JP'; ST.region=rg; loadRegion(rg,()=>{ const co=P.companies.find(c=>c.id===tr.dataset.id); if(co){ ST.tab='dash'; ST.company=co.id; ST.view='detail'; render(); window.scrollTo(0,0);} }); });
 }
 function renderWatch(){
   destroyAll();
