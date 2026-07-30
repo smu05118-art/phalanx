@@ -833,7 +833,7 @@ function renderNowcastRank(){
   const grade=n=>(n.r2>=0.6&&n.hit>=70)?'hi':((n.r2>=0.35&&n.hit>=55)?'mid':'lo');
   const gcol={hi:'#2fae66',mid:'#e0a24a',lo:'#c98a8a'}, gl={hi:'高',mid:'中',lo:'低'};
   const rows=arr.map((n,i)=>{
-    const g=grade(n), lead=n.L>=1?('+'+n.L+'Q':'동행');
+    const g=grade(n), lead=n.L>=1?('+'+n.L+'Q'):'동행';
     const pc=n.predyoy==null?'#8a90a8':(n.predyoy>=0?'#2fae66':'#e06666');
     const py=n.predyoy==null?'—':((n.predyoy>=0?'+':'')+n.predyoy+'%');
     const cy=n.cyoy==null?'—':((n.cyoy>=0?'+':'')+n.cyoy+'%');
