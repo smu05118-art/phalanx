@@ -926,16 +926,17 @@ function luxNcast(L){
   const cards=cos.map(c=>{
     const rq=(L.revq||{})[c.ticker]||{}; const yy=rq.yoy5||[];
     const last=yy.length?yy[yy.length-1][1]:null;
-    // 추정 v1: 최근YoY + 0.8×(점수-5) — 점수 1p ≈ YoY 0.8pp 가속 휴리스틱(회귀 캘리브레이션 예정)
-    const est=last==null?null:Math.round((last+0.8*(c.score-5))*10)/10;
+    // 추정 v2: 캘리브 회귀 next=a+b·score+c·lastYoY (R² 표기), 캘리브 없으면 v1 휴리스틱
+    const K=L.calib; const est=last==null?null:Math.round(((K? K.a+K.b*c.score+K.c*last : last+0.8*(c.score-5)))*10)/10;
+    const cons=((L.consensus||{})[c.ticker]||{}); const cv=cons.nextq_rev_yoy_pct;
     return `<div class="bcard"><div class="bn">${c.name} <span class="bt">${c.ticker}</span></div>
       <div class="brow"><span>매력도</span><span class="scb" style="background:${scCol(c.score)}">${c.score.toFixed(1)}</span></div>
       <div class="brow"><span>5Q YoY</span><span>${luxSpark(yy)}</span></div>
       <div class="brow"><span>최근분기</span><span class="mono" style="color:${last>=0?'#2fae66':'#e06666'}">${last==null?'—':(last>=0?'+':'')+last+'%'} <em style="color:#8a90a8;font-style:normal">${rq.lastq||''}</em></span></div>
-      ${est==null?'':`<div class="est">다음분기 추정 <b style="color:${est>=0?'#2fae66':'#e06666'}">${est>=0?'+':''}${est}%</b> · 컨센서스 <span style="color:#8a90a8">수집중</span></div>`}
+      ${est==null?'':`<div class="est">다음분기 추정 <b style="color:${est>=0?'#2fae66':'#e06666'}">${est>=0?'+':''}${est}%</b> · 컨센 ${cv==null?'<span style="color:#8a90a8">—</span>':`<b style="color:${cv>=0?'#2fae66':'#e06666'}">${cv>=0?'+':''}${cv}%</b>`}${cv!=null?` · <span style="color:${est-cv>=0?'#2fae66':'#e06666'}">${est-cv>=0?'▲':'▼'}${Math.abs(Math.round((est-cv)*10)/10)}pp</span>`:''}</div>`}
     </div>`;}).join('');
   return `<p class="lxh">브랜드 나우캐스트</p>
-  <p class="lxs">최근 5분기 매출 YoY(IR) 트렌드 + <b>다음분기 성장률 추정</b>(트렌드점수 기반 v1 휴리스틱 — 회귀 캘리브레이션·컨센서스 비교는 수집 완료 후 자동 반영).</p>
+  <p class="lxs">최근 5분기 매출 YoY(IR) 트렌드 + <b>다음분기 성장률 추정</b>(캘리브 회귀 next=a+b·트렌드점수+c·직전YoY (풀드 182표본 R²0.61) vs 애널리스트 컨센서스 — ▲추정>컨센=서프라이즈 후보).</p>
   <div class="bb">${cards}</div>`;
 }
 function luxPlat(L,pid){
