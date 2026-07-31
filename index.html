@@ -192,6 +192,7 @@ header h1 em{color:var(--a1);font-style:normal;}
 <div class="tabs" id="tabs">
   <span class="tab on" data-tab="dash">대시보드</span>
   <span class="tab" data-tab="nowcast">🔮 나우캐스트 랭킹</span>
+  <span class="tab" data-tab="lux">💎 Luxury</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
 
@@ -347,7 +348,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':'dash');
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':'dash'));
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
@@ -787,6 +788,7 @@ function render(){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===ST.tab));
   if(ST.tab==='watch') return renderWatch();
   if(ST.tab==='nowcast') return renderNowcastRank();
+  if(ST.tab==='lux') return loadLux(renderLux);
   renderOverview();
 }
 
@@ -838,6 +840,148 @@ function filterOverview(){
   document.getElementById('cnt').textContent=`${vis} companies · ${catLabel(ST.cat)}`;
 }
 
+// ================= 💎 Luxury 탭 =================
+let _luxLoaded=false;
+function loadLux(cb){ if(_luxLoaded||window.LUXD){_luxLoaded=true;return cb();}
+  const sc=document.createElement('script'); sc.src='data_lux.js';
+  sc.onload=()=>{_luxLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="empty-msg">Luxury 데이터 로드 실패</div>';};
+  document.head.appendChild(sc); }
+ST.luxview=ST.luxview||'comp';
+function scCol(v){ return v>=6.5?'#2fae66':v>=5.5?'#8bc34a':v>=4.5?'#e0a24a':'#e06666'; }
+function luxSpark(yoy){ if(!yoy||!yoy.length) return '';
+  const w=86,h=26,vals=yoy.map(x=>x[1]);
+  const mn=Math.min(...vals,0),mx=Math.max(...vals,0),rg=(mx-mn)||1;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1))*w},${h-((v-mn)/rg)*h}`).join(' ');
+  const zero=h-((0-mn)/rg)*h;
+  const col=vals[vals.length-1]>=0?'#2fae66':'#e06666';
+  return `<svg width="${w}" height="${h}" style="vertical-align:middle"><line x1="0" y1="${zero}" x2="${w}" y2="${zero}" stroke="#8a90a8" stroke-width=".5" opacity=".5"/><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.6"/></svg>`; }
+function renderLux(){
+  const L=window.LUXD||{}; const main=document.getElementById('main');
+  const plats=Object.entries(L.platforms||{}).map(([id,p])=>({id,...p}));
+  const cat={}; (L.catalog||[]).forEach(c=>cat[c.id]=c);
+  plats.sort((a,b)=>((cat[b.id]?(cat[b.id].cred*cat[b.id].users):(0))-(cat[a.id]?(cat[a.id].cred*cat[a.id].users):0)));
+  const tabs=[['comp','트렌드종합'],['ncast','나우캐스트'],...plats.map(p=>[p.id,(cat[p.id]&&cat[p.id].name||p.name).split(' ')[0]])];
+  const nav=tabs.map(([k,l])=>`<span class="ltab ${ST.luxview===k?'on':''}" data-lv="${k}">${l}</span>`).join('');
+  let body='';
+  if(ST.luxview==='comp') body=luxComp(L);
+  else if(ST.luxview==='ncast') body=luxNcast(L);
+  else body=luxPlat(L,ST.luxview);
+  main.innerHTML=`<style>
+    .ltabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+    .ltab{font-size:12px;padding:5px 12px;border:1px solid var(--line,#233038);border-radius:999px;cursor:pointer;color:#8a90a8}
+    .ltab.on{background:rgba(43,192,212,.15);color:#2bc0d4;border-color:#2bc0d4;font-weight:700}
+    .lxt{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:12px}
+    .lxt table{border-collapse:collapse;width:100%;min-width:680px;font-size:13px}
+    .lxt th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8a90a8;padding:11px 12px;border-bottom:1px solid var(--line,#233038)}
+    .lxt td{padding:9px 12px;border-bottom:1px solid var(--line,#233038);vertical-align:middle}
+    .lxt tr:last-child td{border-bottom:none}
+    .lxt tr.lr{cursor:pointer} .lxt tr.lr:hover{background:rgba(127,150,170,.08)}
+    .mono{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
+    .scb{display:inline-block;min-width:46px;text-align:center;font-family:ui-monospace,monospace;font-weight:800;border-radius:7px;padding:3px 8px;color:#0d1117}
+    .lxh{font-size:17px;font-weight:800;margin:0 0 3px} .lxs{color:#8a90a8;font-size:12px;margin:0 0 13px;max-width:86ch;line-height:1.5}
+    .bb{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+    .bcard{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:12px;padding:13px 15px}
+    .bcard .bn{font-weight:750;font-size:14px} .bcard .bt{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a90a8}
+    .bcard .brow{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px}
+    .est{font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(43,192,212,.09)}
+    .brk{font-size:10.5px;color:#e0a24a;margin-top:8px}
+    canvas.bump{width:100%;height:420px;display:block}
+  </style>
+  <div class="ltabs">${nav}</div>${body}`;
+  main.querySelectorAll('.ltab').forEach(t=>t.onclick=()=>{ST.luxview=t.dataset.lv;renderLux();window.scrollTo(0,0);});
+  main.querySelectorAll('tr.lr').forEach(tr=>tr.onclick=()=>{ST.luxview='co_'+tr.dataset.tk;renderLux();});
+  if(ST.luxview&&ST.luxview.startsWith&&ST.luxview.startsWith('co_')){} 
+  const bc=document.getElementById('bumpcv'); if(bc) drawBump(bc,JSON.parse(bc.dataset.d),bc.dataset.dir==='lower_better');
+}
+function luxComp(L){
+  if(ST.luxview&&ST.luxview.startsWith('co_')) return luxCoDetail(L,ST.luxview.slice(3));
+  const cos=(L.scores&&L.scores.companies)||[];
+  const gen=(L.scores&&L.scores.generated)||'';
+  const rows=cos.map((c,i)=>{
+    const rq=(L.revq||{})[c.ticker]||{};
+    return `<tr class="lr" data-tk="${c.ticker}"><td class="mono">${i+1}</td>
+      <td><b>${c.name}</b> <span class="mono" style="color:#8a90a8;font-size:11px">${c.ticker}</span></td>
+      <td><span class="scb" style="background:${scCol(c.score)}">${c.score.toFixed(1)}</span></td>
+      <td class="mono" style="font-size:11px">${c.coverage_pct}%·${c.n_brands}브랜드</td>
+      <td>${luxSpark(rq.yoy5)}</td>
+      <td class="mono" style="font-size:11px;color:#8a90a8">${gen}</td></tr>`;}).join('');
+  return `<p class="lxh">트렌드종합 — 매수매력도 (10점 만점)</p>
+  <p class="lxs">전세계 트렌드 리포트 ${Object.keys(L.platforms||{}).length}종 정량화 → 수준 40% + <b>변화율 60%</b>(상향가중), 소스가중=공신력×유저기반 → 산하 브랜드 점수를 <b>최신 연간 매출비중 가중평균</b>. 행 클릭 → 브랜드 분해. 스파크라인=최근 5분기 매출 YoY(IR).</p>
+  <div class="lxt"><table><thead><tr><th>#</th><th>기업 · 티커</th><th>매력도</th><th>커버리지</th><th>5Q 매출YoY</th><th>업데이트</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function luxCoDetail(L,tk){
+  const c=((L.scores||{}).companies||[]).find(x=>x.ticker===tk); if(!c) return '<div class="empty-msg">기업 없음</div>';
+  const rq=(L.revq||{})[tk]||{};
+  const br=(c.brands||[]).map(b=>`<tr><td><b>${b.brand}</b></td><td class="mono">${b.share}%</td>
+    <td><span class="scb" style="background:${scCol(b.score)}">${b.score.toFixed(1)}</span></td><td class="mono">${b.n}소스</td></tr>`).join('');
+  const yo=(rq.yoy5||[]).map(x=>`<tr><td class="mono">${x[0]}</td><td class="mono" style="color:${x[1]>=0?'#2fae66':'#e06666'}">${x[1]>=0?'+':''}${x[1]}%</td></tr>`).join('');
+  return `<p class="lxh">${c.name} <span class="mono" style="font-size:13px;color:#8a90a8">${c.ticker}</span> — <span class="scb" style="background:${scCol(c.score)}">${c.score.toFixed(1)}</span></p>
+  <p class="lxs">브랜드별 점수 × 매출비중 가중평균. <span class="ltab" data-lv="comp" style="cursor:pointer">← 목록으로</span></p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+  <div class="lxt"><table><thead><tr><th>브랜드</th><th>매출비중</th><th>점수</th><th>근거</th></tr></thead><tbody>${br}</tbody></table></div>
+  <div class="lxt"><table><thead><tr><th>분기</th><th>매출 YoY</th></tr></thead><tbody>${yo||'<tr><td colspan=2 style="color:#8a90a8">IR 분기 미확보</td></tr>'}</tbody></table></div></div>`;
+}
+function luxNcast(L){
+  const cos=((L.scores||{}).companies||[]);
+  const cards=cos.map(c=>{
+    const rq=(L.revq||{})[c.ticker]||{}; const yy=rq.yoy5||[];
+    const last=yy.length?yy[yy.length-1][1]:null;
+    // 추정 v1: 최근YoY + 0.8×(점수-5) — 점수 1p ≈ YoY 0.8pp 가속 휴리스틱(회귀 캘리브레이션 예정)
+    const est=last==null?null:Math.round((last+0.8*(c.score-5))*10)/10;
+    return `<div class="bcard"><div class="bn">${c.name} <span class="bt">${c.ticker}</span></div>
+      <div class="brow"><span>매력도</span><span class="scb" style="background:${scCol(c.score)}">${c.score.toFixed(1)}</span></div>
+      <div class="brow"><span>5Q YoY</span><span>${luxSpark(yy)}</span></div>
+      <div class="brow"><span>최근분기</span><span class="mono" style="color:${last>=0?'#2fae66':'#e06666'}">${last==null?'—':(last>=0?'+':'')+last+'%'} <em style="color:#8a90a8;font-style:normal">${rq.lastq||''}</em></span></div>
+      ${est==null?'':`<div class="est">다음분기 추정 <b style="color:${est>=0?'#2fae66':'#e06666'}">${est>=0?'+':''}${est}%</b> · 컨센서스 <span style="color:#8a90a8">수집중</span></div>`}
+    </div>`;}).join('');
+  return `<p class="lxh">브랜드 나우캐스트</p>
+  <p class="lxs">최근 5분기 매출 YoY(IR) 트렌드 + <b>다음분기 성장률 추정</b>(트렌드점수 기반 v1 휴리스틱 — 회귀 캘리브레이션·컨센서스 비교는 수집 완료 후 자동 반영).</p>
+  <div class="bb">${cards}</div>`;
+}
+function luxPlat(L,pid){
+  const p=(L.platforms||{})[pid]; if(!p) return '<div class="empty-msg">데이터 준비중</div>';
+  const lower=p.direction==='lower_better';
+  const ser=p.series||{}; const periods=[...new Set(Object.values(ser).flatMap(v=>Object.keys(v)))].sort();
+  const brands=Object.keys(ser);
+  // 랭킹형 → 범프차트, 그 외 → 라인테이블
+  const isRank=lower&&p.unit!=='share_pct';
+  let chart='';
+  if(brands.length&&periods.length>=3){
+    const top=brands.slice(0,12);
+    const data={periods,series:top.map(b=>({b,vals:periods.map(pp=>ser[b][pp]??null)}))};
+    chart=`<canvas id="bumpcv" class="bump" data-dir="${p.direction}" data-d='${JSON.stringify(data).replace(/'/g,"&#39;")}'></canvas>`;
+  }
+  const rows=brands.slice(0,25).map(b=>{
+    const v=ser[b]; const cells=periods.slice(-8).map(pp=>`<td class="mono">${v[pp]??'—'}</td>`).join('');
+    return `<tr><td><b>${b}</b></td>${cells}</tr>`;}).join('');
+  const head=periods.slice(-8).map(pp=>`<th>${pp}</th>`).join('');
+  const brk=(p.breaks&&p.breaks.length)?`<div class="brk">⚠️ 방법론 변경 ${p.breaks.length}건 — 단절 구간 비교 주의${pid==='lyst'?' (2026Q1 Desire·Demand·Discovery 개편)':''}</div>`:'';
+  return `<p class="lxh">${p.name}</p><p class="lxs">${p.method||''} · 단위: ${p.unit||(lower?'순위(낮을수록↑)':'값')} · 최신 ${p.latest||''}</p>
+  ${chart}${brk}
+  <div class="lxt" style="margin-top:14px"><table><thead><tr><th>브랜드</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function drawBump(cv,data,lower){
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=420;
+  cv.width=W*dpr;cv.height=H*dpr;const g=cv.getContext('2d');g.scale(dpr,dpr);
+  const padL=30,padR=120,padT=16,padB=30,w=W-padL-padR,h=H-padT-padB;
+  const P=data.periods,n=P.length;
+  const vals=data.series.flatMap(s=>s.vals.filter(v=>v!=null));
+  const mn=Math.min(...vals),mx=Math.max(...vals);
+  const x=i=>padL+w*i/(n-1);
+  const y=v=>lower? padT+h*(v-mn)/((mx-mn)||1) : padT+h*(1-(v-mn)/((mx-mn)||1));
+  const COLS=['#3d8bfd','#ff8a3d','#8a90a8','#ffd23d','#42a5f5','#2fae66','#e06666','#c45cff','#26c6da','#f06292','#a0d911','#8d6e63'];
+  g.font='10px ui-monospace';
+  P.forEach((pp,i)=>{ if(i%Math.ceil(n/10)===0||i===n-1){g.fillStyle='#8a90a8';g.save();g.translate(x(i)-14,H-6);g.fillText(pp.slice(2),0,0);g.restore();} });
+  data.series.forEach((sr,si)=>{const col=COLS[si%COLS.length];
+    g.strokeStyle=col;g.lineWidth=1.8;g.beginPath();let started=false;
+    sr.vals.forEach((v,i)=>{ if(v==null){started=false;return;} if(!started){g.moveTo(x(i),y(v));started=true;} else g.lineTo(x(i),y(v)); });
+    g.stroke();
+    sr.vals.forEach((v,i)=>{ if(v==null)return; g.fillStyle=col;g.beginPath();g.arc(x(i),y(v),7,0,7);g.fill();
+      g.fillStyle='#fff';g.font='bold 8.5px ui-monospace';const t=String(Math.round(v));g.fillText(t,x(i)-(t.length>1?5:2.5),y(v)+3);g.font='10px ui-monospace'; });
+    const lastIdx=sr.vals.map((v,i)=>v!=null?i:-1).reduce((a,b)=>Math.max(a,b),-1);
+    if(lastIdx>=0){g.fillStyle=col;g.font='bold 10.5px ui-sans-serif';g.fillText(sr.b.slice(0,14),x(lastIdx)+11,y(sr.vals[lastIdx])+3);g.font='10px ui-monospace';}
+  });
+}
 function renderNowcastRank(){
   const main=document.getElementById('main');
   const arr=(M.nowcast||[]);
