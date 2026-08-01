@@ -860,8 +860,10 @@ function renderLux(){
   const plats=Object.entries(L.platforms||{}).map(([id,p])=>({id,...p}));
   const cat={}; (L.catalog||[]).forEach(c=>cat[c.id]=c);
   plats.sort((a,b)=>((cat[b.id]?(cat[b.id].cred*cat[b.id].users):(0))-(cat[a.id]?(cat[a.id].cred*cat[a.id].users):0)));
-  const tabs=[['comp','트렌드종합'],['ncast','나우캐스트'],['bt','백테스트'],...plats.map(p=>[p.id,(cat[p.id]&&cat[p.id].name||p.name).split(' ')[0]])];
-  const nav=tabs.map(([k,l])=>`<span class="ltab ${(ST.luxview===k||(k==='comp'&&ST.luxview.startsWith('co_')))?'on':''}" data-lv="${k}">${l}</span>`).join('');
+  const TAGC={'리셀':'#ff8a3d','시계':'#26c6da','검색':'#5b8def','GenZ설문':'#2fae66','컨설팅':'#c45cff','브랜드가치':'#ffd23d','중고명품':'#e06666','중고':'#e06666','중고의류':'#e06666','미디어':'#f06292','스트릿':'#a0d911','커머스':'#8bc34a','투자지수':'#ffb300','주가지수':'#8a90a8','부유층설문':'#b58cf0','검색·수요':'#5b8def'};
+  const tagChip=id=>{const t=cat[id]&&cat[id].tag; return t?`<i style="font-style:normal;font-size:9px;font-weight:700;margin-left:5px;padding:1px 5px;border-radius:4px;background:${(TAGC[t]||'#8a90a8')}22;color:${TAGC[t]||'#8a90a8'}">${t}</i>`:'';};
+  const tabs=[['comp','트렌드종합',''],['ncast','나우캐스트',''],['bt','백테스트',''],...plats.map(p=>[p.id,(cat[p.id]&&cat[p.id].name||p.name).split(' ')[0],tagChip(p.id)])];
+  const nav=tabs.map(([k,l,tg])=>`<span class="ltab ${(ST.luxview===k||(k==='comp'&&ST.luxview.startsWith('co_')))?'on':''}" data-lv="${k}">${l}${tg||''}</span>`).join('');
   let body='';
   if(ST.luxview==='comp'||(ST.luxview&&ST.luxview.startsWith('co_'))) body=luxComp(L);
   else if(ST.luxview==='ncast') body=luxNcast(L);
@@ -970,6 +972,8 @@ function luxBt(L){
 }
 function luxPlat(L,pid){
   const p=(L.platforms||{})[pid]; if(!p) return '<div class="empty-msg">데이터 준비중</div>';
+  if(!window.LUXH&&!window._luxhL){window._luxhL=1;const sc=document.createElement('script');sc.src='data_lux_hist.js';sc.onload=()=>renderLux();document.head.appendChild(sc);}
+  if(window.LUXH&&window.LUXH[pid]) p.series=window.LUXH[pid];
   const lower=p.direction==='lower_better';
   const ser=p.series||{}; const periods=[...new Set(Object.values(ser).flatMap(v=>Object.keys(v)))].sort();
   const brands=Object.keys(ser);
@@ -986,7 +990,8 @@ function luxPlat(L,pid){
     return `<tr><td><b>${b}</b></td>${cells}</tr>`;}).join('');
   const head=periods.slice(-8).map(pp=>`<th>${pp}</th>`).join('');
   const brk=(p.breaks&&p.breaks.length)?`<div class="brk">⚠️ 방법론 변경 ${p.breaks.length}건 — 단절 구간 비교 주의${pid==='lyst'?' (2026Q1 Desire·Demand·Discovery 개편)':''}</div>`:'';
-  return `<p class="lxh">${p.name}</p><p class="lxs">${p.method||''} · 단위: ${p.unit||(lower?'순위(낮을수록↑)':'값')} · 최신 ${p.latest||''}</p>
+  const meta=(window.LUXD&&LUXD.catalog||[]).find(c=>c.id===pid)||{};
+  return `<p class="lxh">${p.name}</p>${meta.desc?`<p class="lxs" style="color:#c6d0d8"><b style="color:#2bc0d4">[${meta.tag||''}]</b> ${meta.desc}</p>`:''}<p class="lxs">${p.method||''} · 단위: ${p.unit||(lower?'순위(낮을수록↑)':'값')} · 최신 ${p.latest||''}</p>
   ${chart}${brk}
   <div class="lxt" style="margin-top:14px"><table><thead><tr><th>브랜드</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
