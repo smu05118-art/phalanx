@@ -193,6 +193,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab on" data-tab="dash">대시보드</span>
   <span class="tab" data-tab="nowcast">🔮 나우캐스트 랭킹</span>
   <span class="tab" data-tab="lux">💎 Luxury</span>
+  <span class="tab" data-tab="mem">🧠 Memory</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
 
@@ -348,7 +349,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':'dash'));
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':'dash')));
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
@@ -789,6 +790,7 @@ function render(){
   if(ST.tab==='watch') return renderWatch();
   if(ST.tab==='nowcast') return renderNowcastRank();
   if(ST.tab==='lux') return loadLux(renderLux);
+  if(ST.tab==='mem') return loadMem(renderMem);
   renderOverview();
 }
 
@@ -840,6 +842,38 @@ function filterOverview(){
   document.getElementById('cnt').textContent=`${vis} companies · ${catLabel(ST.cat)}`;
 }
 
+// ================= 🧠 Memory 탭 =================
+function loadMem(cb){ if(window.MEMD) return cb();
+  const sc=document.createElement('script'); sc.src='data_mem.js'; sc.onload=cb; document.head.appendChild(sc); }
+function qbar(q,key){ const ks=Object.keys(q).sort(); if(!ks.length) return '';
+  const cells=ks.slice(-9).map(k=>{const v=q[k]&&q[k][key]; if(v==null||isNaN(+v)) return `<td class="mono" style="color:#8a90a8">—</td>`;
+    return `<td class="mono" style="color:${+v>=0?'#2fae66':'#e06666'}">${+v>=0?'+':''}${v}%</td>`;}).join('');
+  return {head:ks.slice(-9).map(k=>`<th>${String(k).replace('20','')}</th>`).join(''),cells};}
+function renderMem(){ const M=window.MEMD||{}; const main=document.getElementById('main');
+  const NM={'005930':'삼성전자','000660':'SK하이닉스','MU':'Micron','SNDK':'SanDisk','285A':'Kioxia','WDC':'Western Digital','STX':'Seagate'};
+  const order=['005930','000660','MU','SNDK','285A','WDC','STX'];
+  const secs=order.map(tk=>{const d=(M.pq||{})[tk]; if(!d) return '';
+    const segs=Object.entries(d.segments||{}).map(([sg,so])=>{
+      const q=so.q||{}; if(!Object.keys(q).length) return '';
+      const sample=Object.values(q)[0]||{};
+      const keys=Object.keys(sample).filter(k=>/pct|ship|asp/i.test(k)).slice(0,2);
+      const rows=keys.map(k=>{const r=qbar(q,k); return r?`<tr><td class="mono" style="font-size:10px">${k.includes('bit')||k.includes('ship')?'Q '+k:'P '+k}</td>${r.cells}</tr>`:'';}).join('');
+      const hd=qbar(q,keys[0]);
+      return `<div style="margin-top:8px"><b style="font-size:12px;color:#2bc0d4">${sg}</b>
+        <div class="lxt" style="margin-top:4px"><table><thead><tr><th></th>${hd.head||''}</tr></thead><tbody>${rows}</tbody></table></div></div>`;}).join('');
+    const g=d.guidance||{};
+    return `<div class="bcard" style="margin-bottom:14px"><div class="bn">${NM[tk]||d.name} <span class="bt">${tk}</span></div>
+      ${segs}
+      ${g.period?`<div class="est">가이던스 <b>${g.period}</b>: ${g.rev_yoy_pct!=null?('매출 '+(g.rev_yoy_pct>=0?'+':'')+g.rev_yoy_pct+'% ')%1===0?'':'':''}${g.rev_yoy_pct!=null?('매출YoY '+(g.rev_yoy_pct>=0?'+':'')+g.rev_yoy_pct+'%'):''} ${(g.bit_qoq||'')} <span style="color:#8a90a8">${(g.note||'').slice(0,90)}</span></div>`:''}
+    </div>`;}).join('');
+  const rel=(M.related||[]).map(r=>`<span class="ltab" style="cursor:pointer" data-go="${r.region}|${r.id}">${r.name}</span>`).join('');
+  main.innerHTML=`<style>.lxt{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:10px}.lxt table{border-collapse:collapse;width:100%;font-size:11.5px}.lxt th,.lxt td{padding:5px 8px;border-bottom:1px solid var(--line,#233038);text-align:left}.lxt tr:last-child td{border-bottom:none}.mono{font-family:ui-monospace,monospace}.bcard{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:12px;padding:13px 15px}.bn{font-weight:750}.bt{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a90a8}.est{font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(43,192,212,.09)}.ltab{display:inline-block;font-size:11px;padding:4px 10px;border:1px solid var(--line,#233038);border-radius:999px;color:#8a90a8;margin:3px}</style>
+  <p style="font-size:17px;font-weight:800;margin:0 0 3px">🧠 Memory — P×Q 분기 대시보드</p>
+  <p style="color:#8a90a8;font-size:12px;margin:0 0 14px">7사 분기별 Q(비트/EB 출하)·P(ASP) QoQ + 다음분기 가이던스 (IR 원문). 하단=팔랑크스 내 메모리 연관 데이터 바로가기.</p>
+  ${secs}
+  <p style="font-size:13px;font-weight:700;margin:16px 0 6px">연관 데이터 (${(M.related||[]).length})</p><div>${rel}</div>`;
+  main.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>{const[rg,id]=e.dataset.go.split('|');ST.region=rg;loadRegion(rg,()=>{ST.tab='dash';ST.company=id;ST.view='detail';render();window.scrollTo(0,0);});});
+}
 // ================= 💎 Luxury 탭 =================
 let _luxLoaded=false;
 function loadLux(cb){ if(_luxLoaded||window.LUXD){_luxLoaded=true;return cb();}
