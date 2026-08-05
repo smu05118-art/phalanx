@@ -940,11 +940,39 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
       ${segs}
       ${g.period?`<div class="est">가이던스 <b>${g.period}</b>: ${g.rev_yoy_pct!=null?('매출YoY '+(g.rev_yoy_pct>=0?'+':'')+g.rev_yoy_pct+'%'):''} ${(g.bit_qoq||'')} <span style="color:#8a90a8">${(g.note||'').slice(0,90)}</span></div>`:''}
     </div>`;}).join('');
+  // DDR5 스팟 (일간)
+  const dd=M.ddr5||{}; const ds=dd.series||{}; const dk=Object.keys(ds).sort();
+  const dvals=dk.map(k=>ds[k]); const dlast=dd.last||{};
+  let ddChart='';
+  if(dvals.length){ const w=520,h=90,mn=Math.min(...dvals),mx=Math.max(...dvals),rg=(mx-mn)||1;
+    const pts=dvals.map((v,i)=>`${(i/Math.max(1,dvals.length-1))*w},${h-((v-mn)/rg)*h}`).join(' ');
+    ddChart=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;max-width:560px;height:${h}px"><polyline points="${pts}" fill="none" stroke="#26c6da" stroke-width="2"/><circle cx="${w}" cy="${h-((dvals[dvals.length-1]-mn)/rg)*h}" r="3" fill="#26c6da"/></svg>`; }
+  const ddBox=`<p style="font-size:13px;font-weight:700;margin:18px 0 4px">DDR5 16Gb Spot <span style="color:#8a90a8;font-weight:500;font-size:11px">DRAMeXchange 일간 · USD/chip</span></p>
+    <div class="bcard"><div class="brow" style="justify-content:flex-start;gap:16px">
+      <span>현재 <b class="mono" style="color:#26c6da;font-size:18px">$${dlast.avg!=null?dlast.avg:(dvals[dvals.length-1]||'—')}</b></span>
+      ${dlast.high!=null?`<span class="mono" style="font-size:11px;color:#8a90a8">H $${dlast.high} / L $${dlast.low}</span>`:''}
+      ${dlast.asof?`<span class="mono" style="font-size:11px;color:#8a90a8">${dlast.asof}</span>`:''}</div>
+      ${ddChart||'<p class="mono" style="color:#8a90a8;font-size:11px">시계열 축적 중(1일)</p>'}</div>`;
+  // 캐파 표 (K wpm)
+  const cap=M.capacity||{}; const capco=cap.companies||{};
+  const capQ=[...new Set(Object.values(capco).flatMap(c=>Object.keys(c.q||{})))].sort();
+  const capHead=capQ.map(q=>`<th>${q.replace('20','')}</th>`).join('');
+  const capRows=Object.entries(capco).map(([nm,c])=>{
+    const cells=capQ.map(q=>{const qd=(c.q||{})[q]; if(!qd) return '<td class="mono" style="color:#8a90a8">—</td>';
+      const dr=qd.dram_kwpm, na=qd.nand_kwpm;
+      const parts=[]; if(dr!=null)parts.push(`<span style="color:#5b8def">${dr}</span>`); if(na!=null)parts.push(`<span style="color:#a78bfa">${na}</span>`);
+      return `<td class="mono" style="font-size:10.5px">${parts.join('/')||'—'}</td>`;}).join('');
+    return `<tr><td style="font-size:11px;white-space:nowrap">${nm}</td>${cells}</tr>`;}).join('');
+  const capBox=`<p style="font-size:13px;font-weight:700;margin:20px 0 4px">웨이퍼인풋 캐파 <span style="color:#8a90a8;font-weight:500;font-size:11px">${(cap.meta||{}).unit||'K wpm'} · <span style="color:#5b8def">DRAM</span>/<span style="color:#a78bfa">NAND</span> · ~2028E</span></p>
+    <div class="lxt"><table><thead><tr><th>기업</th>${capHead}</tr></thead><tbody>${capRows}</tbody></table></div>
+    <p style="color:#8a90a8;font-size:10.5px;margin-top:5px">출처: TrendForce·증권사 추정·IR (셀 hover 시 상세). HDD 3사(WDC·STX·Seagate)는 웨이퍼 캐파 대신 EB 출하능력.</p>`;
   const rel=(M.related||[]).map(r=>`<span class="ltab" style="cursor:pointer" data-go="${r.region}|${r.id}">${r.name}</span>`).join('');
   main.innerHTML=`<style>.lxt{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:10px}.lxt table{border-collapse:collapse;width:100%;font-size:11.5px}.lxt th,.lxt td{padding:5px 8px;border-bottom:1px solid var(--line,#233038);text-align:left}.lxt tr:last-child td{border-bottom:none}.mono{font-family:ui-monospace,monospace}.bcard{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:12px;padding:13px 15px}.bn{font-weight:750}.bt{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a90a8}.est{font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(43,192,212,.09)}.ltab{display:inline-block;font-size:11px;padding:4px 10px;border:1px solid var(--line,#233038);border-radius:999px;color:#8a90a8;margin:3px}</style>
   <p style="font-size:17px;font-weight:800;margin:0 0 3px">🧠 Memory — P×Q 분기 대시보드</p>
   <p style="color:#8a90a8;font-size:12px;margin:0 0 14px">7사 분기별 Q(비트/EB 출하)·P(ASP) QoQ + 다음분기 가이던스 (IR 원문). 하단=팔랑크스 내 메모리 연관 데이터 바로가기.</p>
   ${secs}
+  ${ddBox}
+  ${capBox}
   <p style="font-size:13px;font-weight:700;margin:16px 0 6px">연관 데이터 (${(M.related||[]).length})</p><div>${rel}</div>`;
   main.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>{const[rg,id]=e.dataset.go.split('|');ST.region=rg;loadRegion(rg,()=>{ST.tab='dash';ST.company=id;ST.view='detail';render();window.scrollTo(0,0);});});
 }
