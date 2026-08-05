@@ -194,6 +194,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="nowcast">🔮 나우캐스트 랭킹</span>
   <span class="tab" data-tab="lux">💎 Luxury</span>
   <span class="tab" data-tab="mem">🧠 Memory</span>
+  <span class="tab" data-tab="rack">🖥 Rack</span>
   <span class="tab" data-tab="bio">🧬 Bio Map</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
@@ -350,7 +351,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':'dash'))));
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':'dash')))));
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
@@ -792,6 +793,7 @@ function render(){
   if(ST.tab==='nowcast') return renderNowcastRank();
   if(ST.tab==='lux') return loadLux(renderLux);
   if(ST.tab==='mem') return loadMem(renderMem);
+  if(ST.tab==='rack') return loadRack(renderRack);
   if(ST.tab==='bio') return loadBio(renderBio);
   renderOverview();
 }
@@ -915,6 +917,62 @@ function renderBio(){
     const hit=_bioCy.nodes().filter(n=>(n.data('label')||'').toLowerCase().includes(q));
     _bioCy.elements().addClass('faded').removeClass('hi');hit.removeClass('faded').addClass('hi');
     if(hit.length===1){_bioCy.center(hit);show(hit);}};
+}
+// ================= 🖥 Rack 탭 =================
+function loadRack(cb){ if(window.RACKD) return cb();
+  const sc=document.createElement('script'); sc.src='data_rack.js'; sc.onload=cb;
+  sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="empty-msg">Rack 데이터 로드 실패</div>';};
+  document.head.appendChild(sc); }
+function renderRack(){
+  const R=window.RACKD||{}; const main=document.getElementById('main');
+  const VORD=['DELL','HPE','Quanta','HonHai','Wiwynn','SMCI','Lenovo','Inventec','Gigabyte'];
+  const ship=R.ship||{}; const qs=[...new Set(Object.values(ship).flatMap(v=>Object.keys(v)))].map(q=>q.replace(/(\d{4})Q/,'$1-Q')).sort();
+  const qn=q=>q.replace(/(\d{4})-?Q(\d)/,'$1-Q$2');
+  const getq=(v,q)=>{const o=ship[v]||{};return o[q]||o[q.replace('-Q','Q')]||null;};
+  const fmt=x=>x==null?'—':(x>=100?Math.round(x):x>=10?x.toFixed(0):x.toFixed(1));
+  const rows=(key,label)=>VORD.filter(v=>ship[v]).map(v=>{
+    const cells=qs.slice(-8).map(q=>{const o=getq(v,q);const x=o&&o[key];
+      return `<td class="mono">${o&&o.est&&x!=null?'<span title="추정치(출처기반)" style="opacity:.75">'+fmt(x)+'</span>':fmt(x)}</td>`;}).join('');
+    return `<tr><td><b>${v}</b></td>${cells}</tr>`;}).join('');
+  const head=qs.slice(-8).map(q=>`<th>${qn(q).slice(2)}</th>`).join('');
+  const shipTbl=(key,title,sub)=>`<p class="lxh" style="margin-top:18px">${title}</p><p class="lxs">${sub}</p>
+    <div class="lxt"><table><thead><tr><th>벤더</th>${head}</tr></thead><tbody>${rows(key)}</tbody></table></div>`;
+  // 나우캐스트 vs 가이던스
+  const nc=R.nowcast||{}; const gd=R.guidance||{};
+  const gmap={DELL:'DELL',HPE:'HPE',SMCI:'SMCI'};
+  const ncCards=Object.entries(nc).map(([v,n])=>{
+    const g=gd[gmap[v]]||{}; const pe=n.pred_yoy_pct; const gy=g.yoy_pct;
+    return `<div class="bcard"><div class="bn">${v} <span class="bt">${n.pending_q||''}</span></div>
+      <div class="brow"><span>프록시 정합</span><span class="mono">ρ${(n.corr||0).toFixed(2)} · R²${(n.r2||0).toFixed(2)}</span></div>
+      ${pe!=null?`<div class="brow"><span>프록시 예측 YoY</span><b class="mono" style="color:${pe>=0?'#2fae66':'#e06666'}">${pe>=0?'+':''}${pe}%${n.partial?' <span style="color:#e0a24a;font-size:10px">('+n.months_used+'/3개월)</span>':''}</b></div>`:'<div class="brow"><span>프록시 예측</span><span style="color:#8a90a8">플로우 대기</span></div>'}
+      ${gy!=null?`<div class="brow"><span>회사 가이던스 YoY</span><b class="mono">${gy>=0?'+':''}${gy}%</b></div>`:''}
+      ${pe!=null&&gy!=null?`<div class="est">갭 <b style="color:${pe-gy>=0?'#2fae66':'#e06666'}">${pe-gy>=0?'▲':'▼'}${Math.abs(Math.round((pe-gy)*10)/10)}pp</b> <span style="color:#8a90a8">${(g.period||'').split('(')[0]}</span></div>`:''}
+    </div>`;}).join('');
+  // ODM 프록시 상관
+  const oc=R.odm_corr||{};
+  const odmCards=Object.entries(oc).map(([v,o])=>`<div class="bcard"><div class="bn">${v} <span class="bt">MOPS 월매출</span></div>
+    <div class="brow"><span>vs 美←台 8471</span><b class="mono" style="color:#2bc0d4">ρ${(o.rho||0).toFixed(2)}</b></div>
+    ${o.lead1m?`<div class="brow"><span>세관 1M 선행</span><span class="mono">ρ${o.lead1m.toFixed(2)}</span></div>`:''}</div>`).join('');
+  main.innerHTML=`<style>
+    .lxt{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:10px}
+    .lxt table{border-collapse:collapse;width:100%;min-width:640px;font-size:11.5px}
+    .lxt th,.lxt td{padding:5px 9px;border-bottom:1px solid var(--line,#233038);text-align:left}
+    .lxt tr:last-child td{border-bottom:none}.mono{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
+    .lxh{font-size:15px;font-weight:750;margin:0 0 3px}.lxs{color:#8a90a8;font-size:11.5px;margin:0 0 9px;max-width:90ch;line-height:1.5}
+    .bb{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px}
+    .bcard{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:12px;padding:12px 14px}
+    .bn{font-weight:750;font-size:13.5px}.bt{font-family:ui-monospace,monospace;font-size:10px;color:#8a90a8}
+    .brow{display:flex;justify-content:space-between;margin-top:6px;font-size:12px}
+    .est{font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(43,192,212,.09)}
+  </style>
+  <p style="font-size:17px;font-weight:800;margin:0 0 3px">🖥 Rack — 서버·랙 벤더 대시보드</p>
+  <p class="lxs">출하량(k) 벤더별 분기표 + 프록시(조립국 세관) 나우캐스트 vs 회사 가이던스 + ODM 월매출 상관. 유닛 수치는 IR $앵커+시장총량 기반 <b>추정</b>(반투명), 매 분기 자동갱신.</p>
+  <p class="lxh">프록시 나우캐스트 vs 가이던스</p><div class="bb">${ncCards}</div>
+  <p class="lxh" style="margin-top:18px">대만 ODM — 월매출 × 美수입 프록시</p><div class="bb">${odmCards}</div>
+  ${shipTbl('gen_k','General server (k units)','범용 서버 노드 — DIGITIMES/TrendForce 점유율 × 시장총량 추정')}
+  ${shipTbl('ai_k','AI server (k units, 8-GPU 노드환산)','IR 실측 AI서버 $ ÷ 노드ASP($0.28→0.34M) — Dell·HPE·SMCI는 회사발표 $ 앵커')}
+  ${shipTbl('racks_k','AI full racks (k racks, NVL72급)','GB200/300 랙 — 업계 ~29k(2025)→70-80k(2026E, MS)')}
+  <p class="lxs" style="margin-top:10px">⚠️ 벤더별 유닛 분기치는 공식 미공개(IDC 비공개화) — 회사 $발표·시장앵커 역산 추정. 원출처는 데이터파일 src 필드.</p>`;
 }
 // ================= 🧠 Memory 탭 =================
 function loadMem(cb){ if(window.MEMD) return cb();
