@@ -53,6 +53,14 @@
   #detail a.src:hover{text-decoration:underline}
   .hint{color:var(--dim);font-size:12.5px;line-height:1.6}
   .legend-note{font-size:10.5px;color:var(--dim);line-height:1.5;margin-top:8px}
+  .rjump{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px}
+  .rchip{font-size:11.5px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;cursor:pointer;color:var(--dim);transition:.13s}
+  .rchip:hover{border-color:var(--accent);color:var(--accent);background:rgba(43,192,212,.08)}
+  #mapLegend{position:absolute;top:14px;right:14px;background:rgba(13,19,28,.82);border:1px solid var(--line);border-radius:10px;padding:9px 12px;z-index:5;backdrop-filter:blur(8px)}
+  .mlrow{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);padding:2px 0}
+  .mldot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 6px currentColor}
+  .maplibregl-ctrl-attrib{font-size:9px!important;background:rgba(13,19,28,.7)!important}
+  .maplibregl-ctrl-attrib a{color:var(--dim)!important}
   .maplibregl-popup-content{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;font-family:var(--sans);font-size:12px;padding:8px 11px}
   .maplibregl-popup-tip{border-top-color:var(--panel)!important;border-bottom-color:var(--panel)!important}
   #timebar{position:absolute;left:16px;bottom:16px;right:16px;background:rgba(17,23,33,.9);border:1px solid var(--line);border-radius:10px;padding:9px 14px;display:flex;align-items:center;gap:12px;backdrop-filter:blur(6px)}
@@ -74,6 +82,8 @@
   <div id="mapview">
     <aside class="left">
       <input class="search" id="search" placeholder="이벤트·국가 검색…">
+      <p class="sect">지역 바로가기</p>
+      <div id="regionJump" class="rjump"></div>
       <p class="sect">유형 (필터)</p>
       <div id="typeFilters"></div>
       <p class="sect">심각도</p>
@@ -81,6 +91,13 @@
       <p class="legend-note">마커 크기·색 = 심각도(1 긴장 → 5 대규모 교전). 클릭 시 상세. 하단 슬라이더로 기간 필터.</p>
     </aside>
     <div id="map">
+      <div id="mapLegend">
+        <div class="mlrow"><span class="mldot" style="background:#ff4d5e"></span>심각도 5 · 대규모 교전</div>
+        <div class="mlrow"><span class="mldot" style="background:#ff8a3d"></span>4 · 공습·격전</div>
+        <div class="mlrow"><span class="mldot" style="background:#ffd23d"></span>3 · 교전</div>
+        <div class="mlrow"><span class="mldot" style="background:#59d0a8"></span>2 · 충돌</div>
+        <div class="mlrow"><span class="mldot" style="background:#4ea1ff"></span>1 · 긴장</div>
+      </div>
       <div id="timebar">
         <span class="tl" id="tlMin">—</span>
         <input type="range" id="timeSlider" min="0" max="100" value="0">

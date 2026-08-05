@@ -26,28 +26,47 @@ async function boot(){
   EVENTS.forEach((e,i)=>{e._id=e.id||('ev'+i); e._sev=Math.max(1,Math.min(5,+e.severity||1));});
   DATES = EVENTS.map(e=>Date.parse(e.date)).filter(x=>!isNaN(x)).sort((a,b)=>a-b);
 
+  const CARTO=['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png`);
   MAP = new maplibregl.Map({
-    container:'map', attributionControl:false,
-    style:{version:8, sources:{}, layers:[{id:'bg',type:'background',paint:{'background-color':'#0a0e14'}}]},
-    center:[27,20], zoom:1.9, minZoom:1, maxZoom:9, renderWorldCopies:true
+    container:'map',
+    style:{version:8,
+      sources:{
+        carto:{type:'raster',tiles:CARTO,tileSize:256,attribution:'© OpenStreetMap · © CARTO'},
+      },
+      layers:[
+        {id:'bg',type:'background',paint:{'background-color':'#080b12'}},
+        {id:'carto',type:'raster',source:'carto',paint:{'raster-opacity':0.92,'raster-saturation':-0.25,'raster-contrast':0.05}},
+      ]},
+    center:[27,20], zoom:2.1, minZoom:1.3, maxZoom:12, renderWorldCopies:true, attributionControl:false
   });
   MAP.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
+  MAP.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-left');
 
   MAP.on('load', ()=>{
-    MAP.addSource('world',{type:'geojson',data:world});
-    MAP.addLayer({id:'country-fill',type:'fill',source:'world',paint:{'fill-color':'#141c27','fill-opacity':1}});
-    MAP.addLayer({id:'country-line',type:'line',source:'world',paint:{'line-color':'#243040','line-width':0.6}});
+    // 국가 상호작용용(투명 fill + 은은한 accent 경계 + hover 하이라이트)
+    MAP.addSource('world',{type:'geojson',data:world,promoteId:'name'});
+    MAP.addLayer({id:'country-hover',type:'fill',source:'world',
+      paint:{'fill-color':'#2bc0d4','fill-opacity':['case',['boolean',['feature-state','hover'],false],0.10,0]}});
+    MAP.addLayer({id:'country-line',type:'line',source:'world',paint:{'line-color':'#2b3a4d','line-width':0.4,'line-opacity':0.5}});
+    let hov=null;
+    MAP.on('mousemove','country-hover',e=>{const f=e.features[0];if(hov!==null)MAP.setFeatureState({source:'world',id:hov},{hover:false});hov=f.id;MAP.setFeatureState({source:'world',id:hov},{hover:true});});
+    MAP.on('mouseleave','country-hover',()=>{if(hov!==null)MAP.setFeatureState({source:'world',id:hov},{hover:false});hov=null;});
+
     MAP.addSource('events',{type:'geojson',data:geo()});
+    // 펄스(고심각도) → glow → dot → 코어 하이라이트
+    MAP.addLayer({id:'ev-pulse',type:'circle',source:'events',filter:['>=',['get','sev'],4],paint:{
+      'circle-radius':['*',['get','sev'],3],'circle-color':['get','color'],'circle-opacity':0.4,'circle-blur':0.6}});
     MAP.addLayer({id:'ev-glow',type:'circle',source:'events',paint:{
-      'circle-radius':['+',['*',['get','sev'],3],6],
-      'circle-color':['get','color'],'circle-blur':1,'circle-opacity':0.35}});
+      'circle-radius':['+',['*',['get','sev'],3],5],'circle-color':['get','color'],'circle-blur':1,'circle-opacity':0.28}});
     MAP.addLayer({id:'ev-dot',type:'circle',source:'events',paint:{
-      'circle-radius':['+',['*',['get','sev'],1.6],3.5],
-      'circle-color':['get','color'],'circle-stroke-color':'#0a0e14','circle-stroke-width':1.2,'circle-opacity':0.95}});
+      'circle-radius':['+',['*',['get','sev'],1.7],3],'circle-color':['get','color'],
+      'circle-stroke-color':'#fff','circle-stroke-width':1,'circle-stroke-opacity':0.5,'circle-opacity':0.95}});
+    MAP.addLayer({id:'ev-core',type:'circle',source:'events',paint:{
+      'circle-radius':1.6,'circle-color':'#fff','circle-opacity':0.9}});
     MAP.on('click','ev-dot',e=>{const id=e.features[0].properties.id; select(id,true);});
     MAP.on('mouseenter','ev-dot',()=>MAP.getCanvas().style.cursor='pointer');
     MAP.on('mouseleave','ev-dot',()=>MAP.getCanvas().style.cursor='');
-    buildFilters(); refresh();
+    buildFilters(); buildRegions(); refresh(); pulse();
   });
 
   document.getElementById('search').oninput=e=>{ST.q=e.target.value.toLowerCase().trim();refresh();};
@@ -59,6 +78,24 @@ async function boot(){
   if(DATES.length){document.getElementById('tlMin').textContent=new Date(DATES[0]).toISOString().slice(0,10);}
 }
 
+let _pt=0;
+function pulse(){
+  _pt=(_pt+1)%90; const p=_pt/90;
+  if(MAP&&MAP.getLayer('ev-pulse')){
+    MAP.setPaintProperty('ev-pulse','circle-radius',['*',['get','sev'],3+p*6]);
+    MAP.setPaintProperty('ev-pulse','circle-opacity',0.45*(1-p));
+  }
+  requestAnimationFrame(pulse);
+}
+const REGIONS=[
+  ['전체',[27,20],1.9],['우크라이나',[33,48.5],4.3],['중동·가자',[37,31],4.2],
+  ['수단·사헬',[20,14],3.4],['홍해',[42,15],4.2],['동아시아',[122,26],3.6],['미얀마',[96,21],4.3]
+];
+function buildRegions(){
+  const el=document.getElementById('regionJump'); if(!el)return;
+  el.innerHTML=REGIONS.map((r,i)=>`<span class="rchip" data-i="${i}">${r[0]}</span>`).join('');
+  el.querySelectorAll('.rchip').forEach(c=>c.onclick=()=>{const r=REGIONS[+c.dataset.i];MAP.flyTo({center:r[1],zoom:r[2],speed:0.9});});
+}
 function geo(){
   return {type:'FeatureCollection',features:visible().map(e=>({
     type:'Feature',geometry:{type:'Point',coordinates:[+e.lon,+e.lat]},
