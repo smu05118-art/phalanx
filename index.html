@@ -814,6 +814,7 @@ function renderOverview(){
   const total=list.length;
   document.getElementById('cnt').textContent=`${total} companies · ${catLabel(ST.cat)}`;
   const main=document.getElementById('main'); main.innerHTML='';
+  const _cd=catDrill(); if(_cd){ const w=document.createElement('div'); w.innerHTML=_cd; main.appendChild(w); bindCatDrill(w); }
   if(!list.length){ main.innerHTML='<div class="empty-msg">'+(ST.cat==='watch'?'아직 관심 기업이 없습니다. 카드의 ★ 를 누르거나 “관심기업 추가” 탭에서 등록하세요.':'이 카테고리는 데이터 준비중입니다. (현재 테스트/OSAT · 프로브카드 · JEM 만 제공)')+'</div>'; return; }
   // large regions (TWX 전수 등): 매출순 정렬 + 상위 N 렌더 (더 보기로 증분)
   if(total>60){
@@ -1002,7 +1003,7 @@ function renderRack(){
     return `<div class="bcard"><div class="bn">${v} <span class="bt">${n.pending_q||''}</span></div>
       <div class="brow"><span>프록시 정합</span><span class="mono">ρ${(n.corr||0).toFixed(2)} · R²${(n.r2||0).toFixed(2)}</span></div>
       ${pe!=null?`<div class="brow"><span>프록시 예측 YoY</span><b class="mono" style="color:${pe>=0?'#2fae66':'#e06666'}">${pe>=0?'+':''}${pe}%${n.partial?' <span style="color:#e0a24a;font-size:10px">('+n.months_used+'/3개월)</span>':''}</b></div>`:'<div class="brow"><span>프록시 예측</span><span style="color:#8a90a8">플로우 대기</span></div>'}
-      ${gy!=null?`<div class="brow"><span>회사 가이던스 YoY</span><b class="mono">${gy>=0?'+':''}${gy}%</b></div>`:''}
+      ${gy!=null?`<div class="brow"><span>회사 가이던스 YoY</span><b class="mono">${gy>=0?'+':''}${gy}%${g.yoy_range?`<span style="color:#8a90a8;font-size:10px"> (${g.yoy_range[0]}~${g.yoy_range[1]})</span>`:''}</b></div>`:''}
       ${pe!=null&&gy!=null?`<div class="est">갭 <b style="color:${pe-gy>=0?'#2fae66':'#e06666'}">${pe-gy>=0?'▲':'▼'}${Math.abs(Math.round((pe-gy)*10)/10)}pp</b> <span style="color:#8a90a8">${(g.period||'').split('(')[0]}</span></div>`:''}
     </div>`;}).join('');
   // ODM 프록시 상관
@@ -1270,6 +1271,37 @@ function drawBump(cv,data,lower){
     const lastIdx=sr.vals.map((v,i)=>v!=null?i:-1).reduce((a,b)=>Math.max(a,b),-1);
     if(lastIdx>=0){g.fillStyle=col;g.font='bold 10.5px ui-sans-serif';g.fillText(sr.b.slice(0,14),x(lastIdx)+11,y(sr.vals[lastIdx])+3);g.font='10px ui-monospace';}
   });
+}
+function catDrill(){
+  const cos=(P.companies||[]).filter(c=>!c.is_hub);
+  if(!cos.length) return '';
+  const byCat={};
+  cos.forEach(c=>{const k=c.subcategory||'기타';(byCat[k]=byCat[k]||[]).push(c);});
+  const ents=Object.entries(byCat).sort((a,b)=>b[1].length-a[1].length);
+  if(ents.length<4) return '';
+  ST.catOpen=ST.catOpen||{};
+  const chips=ents.map(([k,v])=>`<span class="catchip ${ST.catOpen[k]?'on':''}" data-cat="${k}">${k}<em>${v.length}</em></span>`).join('');
+  const open=ents.filter(([k])=>ST.catOpen[k]).map(([k,v])=>{
+    const rows=v.slice(0,80).map(c=>`<span class="catco" data-cid="${c.id}">${c.name}<i>${(c.ticker||'').split(' ')[0]}</i></span>`).join('');
+    return `<div class="catbox"><b>${k}</b> <span style="color:#8a90a8;font-size:11px">${v.length}사${v.length>80?' (상위 80 표시)':''}</span><div class="catlist">${rows}</div></div>`;}).join('');
+  return `<div class="catwrap"><div class="cattitle">산업 세부분류 <span style="color:#8a90a8;font-weight:500">— 클릭하면 소속 기업이 펼쳐집니다 (${ents.length}분류)</span></div>
+    <div class="catchips">${chips}</div>${open}</div>
+  <style>.catwrap{margin:0 0 16px}.cattitle{font-size:12px;font-weight:750;margin:0 0 8px}
+  .catchips{display:flex;flex-wrap:wrap;gap:6px}
+  .catchip{font-size:11.5px;padding:4px 11px;border:1px solid var(--line,#233038);border-radius:999px;cursor:pointer;color:#8a90a8;display:inline-flex;align-items:center;gap:6px}
+  .catchip:hover{border-color:#2bc0d4;color:#2bc0d4}
+  .catchip.on{background:rgba(43,192,212,.15);color:#2bc0d4;border-color:#2bc0d4;font-weight:700}
+  .catchip em{font-style:normal;font-family:ui-monospace,monospace;font-size:9.5px;opacity:.75}
+  .catbox{margin-top:10px;padding:11px 13px;border:1px solid var(--line,#233038);border-radius:12px;background:var(--panel,#151d23)}
+  .catlist{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .catco{font-size:11.5px;padding:3px 9px;border:1px solid var(--line,#233038);border-radius:7px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+  .catco:hover{border-color:#2bc0d4;color:#2bc0d4}
+  .catco i{font-style:normal;font-family:ui-monospace,monospace;font-size:9.5px;color:#8a90a8}</style>`;
+}
+function bindCatDrill(root){
+  root.querySelectorAll('.catchip').forEach(el=>el.onclick=()=>{const k=el.dataset.cat;ST.catOpen[k]=!ST.catOpen[k];render();});
+  root.querySelectorAll('.catco').forEach(el=>el.onclick=()=>{const c=(P.companies||[]).find(x=>x.id===el.dataset.cid);
+    if(c){ST.company=c.id;ST.view='detail';render();window.scrollTo(0,0);}});
 }
 function renderNowcastRank(){
   const main=document.getElementById('main');
