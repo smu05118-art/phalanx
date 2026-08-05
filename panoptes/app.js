@@ -112,4 +112,93 @@ function select(id,fly){
     new maplibregl.Popup({closeButton:false,offset:12}).setLngLat([+e.lon,+e.lat]).setHTML(`<b>${esc(e.title)}</b>`).addTo(MAP);}
 }
 
+// ===== 탭 전환 =====
+let _liqLoaded=false, _mapInit=false;
+function switchTab(tab){
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
+  const isMap=tab==='map';
+  document.getElementById('mapview').hidden=!isMap;
+  document.getElementById('liqview').hidden=isMap;
+  document.getElementById('headStat').style.display=isMap?'':'none';
+  if(isMap && MAP){setTimeout(()=>MAP.resize(),50);}
+  if(tab==='liq' && !_liqLoaded){ _liqLoaded=true; loadLiq(); }
+}
+document.querySelectorAll('.ptab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+
+// ===== 💧 유동성 =====
+const LIQC={green:'#59d0a8',yellow:'#ffd23d',orange:'#ff8a3d',red:'#ff4d5e',gray:'#8a93a3'};
+const LIQLABEL={green:'초록',yellow:'노랑',orange:'주황',red:'빨강',gray:'—'};
+async function loadLiq(){
+  const box=document.getElementById('liqview');
+  box.innerHTML='<p class="hint" style="padding:20px">유동성 데이터 로딩…</p>';
+  let d; try{ d=await fetch('data/liquidity.json').then(r=>r.json()); }
+  catch(e){ box.innerHTML='<p class="hint" style="padding:20px">유동성 데이터 준비 중입니다.</p>'; return; }
+  renderLiq(d);
+}
+function liqSpark(series, opts){
+  opts=opts||{}; const keys=Object.keys(series).sort(); const vals=keys.map(k=>series[k]);
+  if(vals.length<2) return '<div class="hint">데이터 부족</div>';
+  const W=opts.w||560,H=opts.h||120,pad=opts.pad||4;
+  const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+  const x=i=>pad+(W-2*pad)*i/(vals.length-1), y=v=>pad+(H-2*pad)*(1-(v-mn)/rg);
+  const pts=vals.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const col=opts.color||'#2bc0d4';
+  let ref='';
+  if(opts.ref!=null && opts.ref>=mn && opts.ref<=mx){const ry=y(opts.ref);ref=`<line x1="${pad}" y1="${ry}" x2="${W-pad}" y2="${ry}" stroke="${opts.refColor||'#8a93a3'}" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`;}
+  const last=vals[vals.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:${H}px">
+    ${ref}<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.8"/>
+    <circle cx="${x(vals.length-1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="3" fill="${col}"/></svg>`;
+}
+function renderLiq(d){
+  const box=document.getElementById('liqview');
+  const L=d.latest||{}, C=d.computed||{}, lights=d.lights||{}, ov=d.overall||'gray';
+  const V=n=>((L[n]||{}).value);
+  const card=(title,val,sub,light)=>`<div class="liqcard" style="border-top:3px solid ${LIQC[light||'gray']}">
+    <div class="lqt">${title} ${light?`<span class="lqdot" style="background:${LIQC[light]}"></span>`:''}</div>
+    <div class="lqv">${val}</div><div class="lqs">${sub||''}</div></div>`;
+  const charts=[
+    ['NETLIQ','Net Liquidity','#2bc0d4',null,'$'+(C.net_liquidity/1000).toFixed(2)+'T'],
+    ['TGA','TGA (재무부 현금)','#ff8a3d',900,V('TGA').toFixed(0)+'B'],
+    ['RRP','RRP (역레포)','#ffd23d',null,V('RRP').toFixed(1)+'B'],
+    ['SOFR','SOFR vs IORB','#ff4d5e',V('IORB'),V('SOFR').toFixed(2)+'%'],
+    ['EFFR','EFFR vs IORB','#4ea1ff',V('IORB'),V('EFFR').toFixed(2)+'%'],
+    ['RESERVES','지급준비금','#59d0a8',null,(V('RESERVES')/1000).toFixed(2)+'T'],
+  ].map(([k,t,c,ref,cur])=>`<div class="liqchart"><div class="lct"><span>${t}</span><b style="color:${c}">${cur}</b>${ref!=null?`<span class="lcref">— IORB/기준 ${typeof ref==='number'?ref.toFixed(k==='TGA'?0:2):ref}</span>`:''}</div>
+    ${liqSpark(d.series[k]||{},{color:c,ref:ref,refColor:'#8a93a3'})}</div>`).join('');
+  box.innerHTML=`<style>
+    .liqhead{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+    .liqhead h2{font-size:20px;font-weight:800}
+    .ovbadge{font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px}
+    .liqsub{color:var(--dim);font-size:12.5px;margin-bottom:20px}
+    .lights{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+    .liqcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;min-width:150px;flex:1}
+    .lqt{font-size:11px;color:var(--dim);font-weight:600;display:flex;align-items:center;gap:6px}
+    .lqdot{width:9px;height:9px;border-radius:50%;display:inline-block}
+    .lqv{font-family:var(--mono);font-size:21px;font-weight:750;margin-top:4px}
+    .lqs{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:2px}
+    .liqgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:26px}
+    .liqchart{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+    .lct{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:650;margin-bottom:8px}
+    .lct b{font-family:var(--mono);font-size:14px}
+    .lcref{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:auto}
+    .comment{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 24px;max-width:900px}
+    .comment pre{font-family:var(--sans);font-size:13.5px;line-height:1.85;white-space:pre-wrap;color:#cdd6de;margin:0}
+    .comment .cmeta{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+  </style>
+  <div class="liqhead"><h2>💧 유동성 대시보드</h2>
+    <span class="ovbadge" style="background:${LIQC[ov]}22;color:${LIQC[ov]}">종합 ${LIQLABEL[ov]}불</span></div>
+  <p class="liqsub">Net Liquidity = 연준 총자산 − TGA − RRP · FRED 실시간 · 매일 자동 갱신 · 업데이트 ${d.updated||'—'}</p>
+  <div class="lights">
+    ${card('레포 (SOFR−IORB)',(C.sofr_iorb>=0?'+':'')+C.sofr_iorb+'%p',C.sofr_iorb>0?'IORB 위 = 스트레스':'IORB 아래 = 안정',lights.repo)}
+    ${card('은행 (EFFR−IORB)',(C.effr_iorb>=0?'+':'')+C.effr_iorb+'%p',C.effr_iorb<0?'IORB 아래 = 정상':'경계',lights.bank)}
+    ${card('TGA 흡수압력',V('TGA').toFixed(0)+'B',lights.tga==='green'?'900 미만':'재축적 압력',lights.tga)}
+    ${card('RRP 완충재',V('RRP').toFixed(1)+'B',V('RRP')<20?'사실상 고갈':'남아있음',lights.rrp)}
+    ${card('Net Liq 방향','$'+(C.net_liquidity/1000).toFixed(2)+'T',(C.net_liquidity_chg_1w>=0?'+':'')+C.net_liquidity_chg_1w+'B / 1주',lights.netliq)}
+  </div>
+  <div class="liqgrid">${charts}</div>
+  <div class="comment"><pre>${(d.commentary||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</pre>
+    <div class="cmeta">자동 생성 해석 — 실시간 FRED 수치 기반. 투자 조언 아님. #TGA #RRP #SOFR #IORB #EFFR #NetLiquidity</div></div>`;
+}
+
 boot();
