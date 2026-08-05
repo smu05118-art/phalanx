@@ -854,7 +854,7 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   const order=['005930','000660','MU','SNDK','285A','WDC','STX'];
   const secs=order.map(tk=>{const d=(M.pq||{})[tk]; if(!d) return '';
     const segs=Object.entries(d.segments||{}).map(([sg,so])=>{
-      const q=so.q||{}; if(!Object.keys(q).length) return '';
+      const q=(so&&so.q)||{}; if(!Object.keys(q).length) return '';
       const sample=Object.values(q)[0]||{};
       const keys=Object.keys(sample).filter(k=>/pct|ship|asp/i.test(k)).slice(0,2);
       const rows=keys.map(k=>{const r=qbar(q,k); return r?`<tr><td class="mono" style="font-size:10px">${k.includes('bit')||k.includes('ship')?'Q '+k:'P '+k}</td>${r.cells}</tr>`:'';}).join('');
@@ -864,7 +864,7 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
     const g=d.guidance||{};
     return `<div class="bcard" style="margin-bottom:14px"><div class="bn">${NM[tk]||d.name} <span class="bt">${tk}</span></div>
       ${segs}
-      ${g.period?`<div class="est">가이던스 <b>${g.period}</b>: ${g.rev_yoy_pct!=null?('매출 '+(g.rev_yoy_pct>=0?'+':'')+g.rev_yoy_pct+'% ')%1===0?'':'':''}${g.rev_yoy_pct!=null?('매출YoY '+(g.rev_yoy_pct>=0?'+':'')+g.rev_yoy_pct+'%'):''} ${(g.bit_qoq||'')} <span style="color:#8a90a8">${(g.note||'').slice(0,90)}</span></div>`:''}
+      ${g.period?`<div class="est">가이던스 <b>${g.period}</b>: ${g.rev_yoy_pct!=null?('매출YoY '+(g.rev_yoy_pct>=0?'+':'')+g.rev_yoy_pct+'%'):''} ${(g.bit_qoq||'')} <span style="color:#8a90a8">${(g.note||'').slice(0,90)}</span></div>`:''}
     </div>`;}).join('');
   const rel=(M.related||[]).map(r=>`<span class="ltab" style="cursor:pointer" data-go="${r.region}|${r.id}">${r.name}</span>`).join('');
   main.innerHTML=`<style>.lxt{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:10px}.lxt table{border-collapse:collapse;width:100%;font-size:11.5px}.lxt th,.lxt td{padding:5px 8px;border-bottom:1px solid var(--line,#233038);text-align:left}.lxt tr:last-child td{border-bottom:none}.mono{font-family:ui-monospace,monospace}.bcard{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:12px;padding:13px 15px}.bn{font-weight:750}.bt{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a90a8}.est{font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(43,192,212,.09)}.ltab{display:inline-block;font-size:11px;padding:4px 10px;border:1px solid var(--line,#233038);border-radius:999px;color:#8a90a8;margin:3px}</style>
