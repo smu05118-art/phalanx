@@ -194,6 +194,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="nowcast">🔮 나우캐스트 랭킹</span>
   <span class="tab" data-tab="lux">💎 Luxury</span>
   <span class="tab" data-tab="mem">🧠 Memory</span>
+  <span class="tab" data-tab="bio">🧬 Bio Map</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
 
@@ -349,7 +350,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':'dash')));
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':'dash'))));
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
@@ -791,6 +792,7 @@ function render(){
   if(ST.tab==='nowcast') return renderNowcastRank();
   if(ST.tab==='lux') return loadLux(renderLux);
   if(ST.tab==='mem') return loadMem(renderMem);
+  if(ST.tab==='bio') return loadBio(renderBio);
   renderOverview();
 }
 
@@ -842,6 +844,78 @@ function filterOverview(){
   document.getElementById('cnt').textContent=`${vis} companies · ${catLabel(ST.cat)}`;
 }
 
+// ================= 🧬 Bio Map 탭 =================
+let _cytoLoaded=false,_bioLoaded=false,_bioCy=null;
+function loadBio(cb){
+  const need=[]; if(!window.BIOD) need.push('data_bio.js'); if(!window.cytoscape) need.push('cytoscape_bundle.js');
+  if(!need.length) return cb();
+  let done=0; need.forEach(src=>{const sc=document.createElement('script');sc.src=src;sc.onload=()=>{if(++done===need.length)cb();};sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="empty-msg">Bio Map 로드 실패</div>';};document.head.appendChild(sc);});
+}
+ST.bioFilter=ST.bioFilter||{};
+function renderBio(){
+  const B=window.BIOD||{}; const main=document.getElementById('main');
+  const NT=B.node_types||{}, ET=B.edge_types||{};
+  const counts={}; (B.nodes||[]).forEach(n=>counts[n.type]=(counts[n.type]||0)+1);
+  const legend=Object.entries(NT).map(([k,t])=>`<div class="biolg ${ST.bioFilter[k]?'off':''}" data-nt="${k}"><span class="biodot" style="background:${t.color}"></span>${t.label} <em>${counts[k]||0}</em></div>`).join('');
+  const elg=Object.entries(ET).map(([k,t])=>`<div class="bioeg"><span class="bioln" style="background:${t.color}"></span>${t.label}</div>`).join('');
+  main.innerHTML=`<style>
+    #biowrap{display:grid;grid-template-columns:220px 1fr 340px;gap:12px;height:calc(100vh - 190px);min-height:520px}
+    @media(max-width:900px){#biowrap{grid-template-columns:1fr;height:auto}#biocy{height:60vh}}
+    .biopanel{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:14px;padding:14px;overflow:auto}
+    #biocy{background:radial-gradient(circle at 50% 40%,rgba(43,192,212,.05),transparent 70%),var(--panel,#12181d);border:1px solid var(--line,#233038);border-radius:14px}
+    .biotitle{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a90a8;font-weight:700;margin:0 0 10px}
+    .biolg{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--ink,#e6edf3);transition:.15s}
+    .biolg:hover{background:rgba(127,150,170,.08)}.biolg.off{opacity:.32}
+    .biolg em{margin-left:auto;font-style:normal;font-family:ui-monospace,monospace;font-size:10.5px;color:#8a90a8}
+    .biodot{width:12px;height:12px;border-radius:50%;flex:0 0 auto}
+    .bioeg{display:flex;align-items:center;gap:8px;font-size:11px;color:#8a90a8;padding:3px 8px}
+    .bioln{width:16px;height:3px;border-radius:2px}
+    #bioinfo h3{font-size:16px;margin:0 0 4px;font-weight:750}
+    #bioinfo .bt{font-family:ui-monospace,monospace;font-size:11px;padding:2px 8px;border-radius:5px;display:inline-block;margin-bottom:10px}
+    #bioinfo p{font-size:13px;line-height:1.6;color:var(--ink,#cdd6de)}
+    #bioinfo .rel{margin-top:12px;font-size:12px}#bioinfo .rel b{color:#2bc0d4}
+    #bioinfo .relitem{display:inline-block;font-size:11px;padding:3px 9px;margin:3px 3px 0 0;border:1px solid var(--line,#233038);border-radius:999px;cursor:pointer;color:#8a90a8}
+    #bioinfo .relitem:hover{border-color:#2bc0d4;color:#2bc0d4}
+    .biohint{color:#8a90a8;font-size:12px;line-height:1.6}
+    .biosearch{width:100%;background:var(--bg,#0d1117);border:1px solid var(--line,#233038);border-radius:8px;padding:8px 10px;color:var(--ink,#e6edf3);font-size:12.5px;margin-bottom:10px}
+  </style>
+  <p style="font-size:17px;font-weight:800;margin:0 0 3px">🧬 Bio Map <span style="color:#8a90a8;font-size:12px;font-weight:500">글로벌 바이오 지도 · ${(B.nodes||[]).length}노드 ${(B.edges||[]).length}엣지 · ${B.phase||''}</span></p>
+  <p style="color:#8a90a8;font-size:12px;margin:0 0 14px">모달리티·타깃·적응증·기업·파이프라인 관계망. 범례 클릭=필터 · 노드 클릭=상세 · 드래그/휠=이동·줌.</p>
+  <div id="biowrap">
+    <div class="biopanel"><input class="biosearch" id="biosrch" placeholder="노드 검색…"><p class="biotitle">노드 유형 (필터)</p>${legend}<p class="biotitle" style="margin-top:16px">관계</p>${elg}</div>
+    <div id="biocy"></div>
+    <div class="biopanel" id="bioinfo"><p class="biohint">노드를 클릭하면 상세 설명과 연결 관계가 표시됩니다.</p></div>
+  </div>`;
+  const nodes=(B.nodes||[]).map(n=>({data:{...n}}));
+  const edges=(B.edges||[]).map((e,i)=>({data:{id:'e'+i,source:e.source,target:e.target,type:e.type,color:(ET[e.type]||{}).color||'#556'}}));
+  _bioCy=cytoscape({container:document.getElementById('biocy'),elements:{nodes,edges},
+    style:[
+      {selector:'node',style:{'background-color':n=>(NT[n.data('type')]||{}).color||'#789','width':n=>(NT[n.data('type')]||{}).size||36,'height':n=>(NT[n.data('type')]||{}).size||36,'label':'data(label)','color':'#e6edf3','font-size':10,'font-weight':600,'text-valign':'bottom','text-margin-y':3,'text-outline-color':'#0d1117','text-outline-width':2,'border-width':0}},
+      {selector:'edge',style:{'line-color':'data(color)','width':1.4,'opacity':.5,'curve-style':'bezier','target-arrow-shape':'triangle','target-arrow-color':'data(color)','arrow-scale':.7}},
+      {selector:'.faded',style:{'opacity':.08}},
+      {selector:'.hi',style:{'opacity':1,'border-width':3,'border-color':'#fff','z-index':99}},
+      {selector:'edge.hi',style:{'opacity':.95,'width':2.4}},
+    ],
+    layout:{name:'cose',animate:true,animationDuration:600,nodeRepulsion:9000,idealEdgeLength:90,padding:30,randomize:false}});
+  const info=document.getElementById('bioinfo');
+  function show(n){
+    const d=n.data(); const t=NT[d.type]||{};
+    const rel=n.connectedEdges().map(e=>{const o=e.source().id()===n.id()?e.target():e.source();return {id:o.id(),label:o.data('label'),etype:e.data('type')};});
+    info.innerHTML=`<h3>${d.label}</h3><span class="bt" style="background:${t.color}22;color:${t.color}">${t.label||d.type}</span>
+      <p>${d.info||'—'}</p>
+      <div class="rel"><b>연결 (${rel.length})</b><br>${rel.map(r=>`<span class="relitem" data-go="${r.id}">${r.label}</span>`).join('')}</div>`;
+    info.querySelectorAll('[data-go]').forEach(el=>el.onclick=()=>{const nn=_bioCy.$('#'+el.dataset.go);if(nn.length){_bioCy.center(nn);highlight(nn);show(nn);}});
+  }
+  function highlight(n){_bioCy.elements().addClass('faded').removeClass('hi');const nh=n.closedNeighborhood();nh.removeClass('faded').addClass('hi');}
+  _bioCy.on('tap','node',e=>{highlight(e.target);show(e.target);});
+  _bioCy.on('tap',e=>{if(e.target===_bioCy){_bioCy.elements().removeClass('faded hi');info.innerHTML='<p class="biohint">노드를 클릭하면 상세 설명과 연결 관계가 표시됩니다.</p>';}});
+  document.querySelectorAll('.biolg').forEach(l=>l.onclick=()=>{const k=l.dataset.nt;ST.bioFilter[k]=!ST.bioFilter[k];l.classList.toggle('off');_bioCy.nodes().forEach(n=>{n.style('display',ST.bioFilter[n.data('type')]?'none':'element');});});
+  const srch=document.getElementById('biosrch');
+  srch.oninput=()=>{const q=srch.value.trim().toLowerCase();if(!q){_bioCy.elements().removeClass('faded hi');return;}
+    const hit=_bioCy.nodes().filter(n=>(n.data('label')||'').toLowerCase().includes(q));
+    _bioCy.elements().addClass('faded').removeClass('hi');hit.removeClass('faded').addClass('hi');
+    if(hit.length===1){_bioCy.center(hit);show(hit);}};
+}
 // ================= 🧠 Memory 탭 =================
 function loadMem(cb){ if(window.MEMD) return cb();
   const sc=document.createElement('script'); sc.src='data_mem.js'; sc.onload=cb; document.head.appendChild(sc); }
