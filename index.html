@@ -195,6 +195,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="lux">💎 Luxury</span>
   <span class="tab" data-tab="mem">🧠 Memory</span>
   <span class="tab" data-tab="rack">🖥 Rack</span>
+  <span class="tab" data-tab="tech">🗺 Tech Map</span>
   <span class="tab" data-tab="bio">🧬 Bio Map</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
@@ -351,7 +352,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':'dash')))));
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':'dash'))))));
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
@@ -794,6 +795,7 @@ function render(){
   if(ST.tab==='lux') return loadLux(renderLux);
   if(ST.tab==='mem') return loadMem(renderMem);
   if(ST.tab==='rack') return loadRack(renderRack);
+  if(ST.tab==='tech') return loadTech(renderTech);
   if(ST.tab==='bio') return loadBio(renderBio);
   renderOverview();
 }
@@ -847,6 +849,76 @@ function filterOverview(){
   document.getElementById('cnt').textContent=`${vis} companies · ${catLabel(ST.cat)}`;
 }
 
+// ================= 🗺 Tech Map 탭 (AI 인프라 밸류체인 × 프록시 모멘텀) =================
+function loadTech(cb){ if(window.TECHD) return cb();
+  const sc=document.createElement('script'); sc.src='data_tech.js'; sc.onload=cb;
+  sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="empty-msg">Tech Map 로드 실패</div>';};
+  document.head.appendChild(sc); }
+ST.techMode=ST.techMode||'accel';
+function momColor(m,mode){
+  if(!m) return {bg:'rgba(127,150,170,.10)',fg:'#8a90a8',b:'transparent'};
+  const v = mode==='accel' ? m.accel : m.yoy;
+  const S = mode==='accel' ? [15,5,-5,-15] : [30,10,-10,-30];
+  if(v>=S[0]) return {bg:'rgba(47,174,102,.30)',fg:'#5fe0a0',b:'#2fae66'};
+  if(v>=S[1]) return {bg:'rgba(47,174,102,.16)',fg:'#8ed9ae',b:'rgba(47,174,102,.5)'};
+  if(v>=S[2]) return {bg:'rgba(127,150,170,.12)',fg:'#a8b3bd',b:'transparent'};
+  if(v>=S[3]) return {bg:'rgba(224,102,102,.16)',fg:'#e79a9a',b:'rgba(224,102,102,.5)'};
+  return {bg:'rgba(224,102,102,.30)',fg:'#ff8f8f',b:'#e06666'};
+}
+function renderTech(){
+  const T=window.TECHD||{}; const main=document.getElementById('main');
+  const TAX=T.taxonomy||{}; const nodes=(T.nodes||[]);
+  const mode=ST.techMode;
+  const byseg={}; nodes.forEach(n=>{const k=n.layer+'|'+n.seg;(byseg[k]=byseg[k]||[]).push(n);});
+  const layers=Object.entries(TAX).sort((a,b)=>a[1].order-b[1].order);
+  const chips=(list)=>list.sort((a,b)=>{const x=(b.mom?(mode==='accel'?b.mom.accel:b.mom.yoy):-999),y=(a.mom?(mode==='accel'?a.mom.accel:a.mom.yoy):-999);return x-y;})
+    .map(n=>{const c=momColor(n.mom,mode);const v=n.mom?(mode==='accel'?n.mom.accel:n.mom.yoy):null;
+      const tip=n.mom?`YoY ${n.mom.yoy>=0?'+':''}${n.mom.yoy}% · 직전 ${n.mom.yoy_prev>=0?'+':''}${n.mom.yoy_prev}% · 가속 ${n.mom.accel>=0?'+':''}${n.mom.accel}pp`:'모멘텀 산출 불가';
+      return `<span class="tchip${n.hub?' hub':''}" data-cid="${n.id}" data-reg="${n.region}" title="${n.name} — ${tip}"
+        style="background:${c.bg};color:${c.fg};border-color:${c.b}">${n.name.length>16?n.name.slice(0,15)+'…':n.name}${v!=null?`<i>${v>=0?'+':''}${Math.round(v)}</i>`:''}</span>`;}).join('');
+  const body=layers.map(([lk,L])=>{
+    const segs=L.segments.map(([sk,sl])=>{const list=byseg[lk+'|'+sk]||[];
+      return `<div class="tseg${list.length?'':' empty'}"><div class="tsegh">${sl}<em>${list.length}</em></div><div class="tchips">${list.length?chips(list):'<span class="tnone">카드 없음</span>'}</div></div>`;}).join('');
+    return `<div class="tlayer"><div class="tlh" style="border-left-color:${L.color}"><b>${L.label}</b></div><div class="tsegs">${segs}</div></div>`;}).join('');
+  const withMom=nodes.filter(n=>n.mom);
+  const acc=withMom.filter(n=>n.mom.accel>=5).length, dec=withMom.filter(n=>n.mom.accel<=-5).length;
+  main.innerHTML=`<style>
+    .tlayer{margin-bottom:14px}
+    .tlh{font-size:12px;font-weight:800;padding:5px 0 5px 10px;border-left:4px solid;margin-bottom:7px;letter-spacing:.02em}
+    .tsegs{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:9px}
+    .tseg{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:11px;padding:9px 11px}
+    .tseg.empty{opacity:.45}
+    .tsegh{font-size:11px;font-weight:700;color:#8a90a8;display:flex;align-items:center;gap:6px;margin-bottom:6px}
+    .tsegh em{margin-left:auto;font-style:normal;font-family:ui-monospace,monospace;font-size:9.5px;opacity:.8}
+    .tchips{display:flex;flex-wrap:wrap;gap:4px}
+    .tchip{font-size:10.5px;padding:3px 7px;border-radius:6px;border:1px solid;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:.12s}
+    .tchip:hover{filter:brightness(1.25);transform:translateY(-1px)}
+    .tchip.hub{font-weight:800;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+    .tchip i{font-style:normal;font-family:ui-monospace,monospace;font-size:9px;opacity:.85}
+    .tnone{font-size:10px;color:#8a90a8;opacity:.6}
+    .tmodes{display:flex;gap:6px;margin:0 0 12px;flex-wrap:wrap;align-items:center}
+    .tmode{font-size:11.5px;padding:5px 12px;border:1px solid var(--line,#233038);border-radius:999px;cursor:pointer;color:#8a90a8}
+    .tmode.on{background:rgba(43,192,212,.15);color:#2bc0d4;border-color:#2bc0d4;font-weight:700}
+    .tleg{display:flex;gap:5px;align-items:center;margin-left:auto;font-size:10px;color:#8a90a8;flex-wrap:wrap}
+    .tlegbox{width:16px;height:11px;border-radius:3px;display:inline-block}
+  </style>
+  <p style="font-size:17px;font-weight:800;margin:0 0 3px">🗺 Tech Map <span style="color:#8a90a8;font-size:12px;font-weight:500">AI 인프라 밸류체인 · ${nodes.length}카드 · 가속 ${acc} / 감속 ${dec}</span></p>
+  <p style="color:#8a90a8;font-size:12px;margin:0 0 12px;max-width:96ch;line-height:1.55">레이어(소유·반도체·프로세서·서버부품·서버·네트워크·냉각전력·전력) × 세그먼트에 우리 <b>프록시 카드</b>를 배치하고, 각 카드의 세관·월매출 실데이터로 계산한 <b>모멘텀 색상</b>을 입혔습니다. <b>가속</b>=최근3M YoY − 직전3M YoY(2차 미분, pp) · <b>YoY</b>=최근3M 전년비. 칩 클릭 → 해당 카드로 이동. 굵은 테두리=Hub 카드.</p>
+  <div class="tmodes">
+    <span class="tmode ${mode==='accel'?'on':''}" data-m="accel">가속도 (Δ YoY)</span>
+    <span class="tmode ${mode==='yoy'?'on':''}" data-m="yoy">성장률 (YoY)</span>
+    <span class="tleg">
+      <i class="tlegbox" style="background:rgba(47,174,102,.30);border:1px solid #2fae66"></i>강가속
+      <i class="tlegbox" style="background:rgba(47,174,102,.16)"></i>가속
+      <i class="tlegbox" style="background:rgba(127,150,170,.12)"></i>중립
+      <i class="tlegbox" style="background:rgba(224,102,102,.16)"></i>감속
+      <i class="tlegbox" style="background:rgba(224,102,102,.30);border:1px solid #e06666"></i>강감속
+    </span>
+  </div>${body}`;
+  main.querySelectorAll('.tmode').forEach(e=>e.onclick=()=>{ST.techMode=e.dataset.m;renderTech();});
+  main.querySelectorAll('.tchip').forEach(e=>e.onclick=()=>{const rg=e.dataset.reg;
+    ST.region=rg;loadRegion(rg,()=>{ST.tab='dash';ST.company=e.dataset.cid;ST.view='detail';render();window.scrollTo(0,0);});});
+}
 // ================= 🧬 Bio Map 탭 (원본 완전복제 + 테마) =================
 let _bioCy=null;
 function loadBio(cb){
@@ -1085,13 +1157,36 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   const capBox=`<p style="font-size:13px;font-weight:700;margin:20px 0 4px">웨이퍼인풋 캐파 <span style="color:#8a90a8;font-weight:500;font-size:11px">${(cap.meta||{}).unit||'K wpm'} · <span style="color:#5b8def">DRAM</span>/<span style="color:#a78bfa">NAND</span> · ~2028E</span></p>
     <div class="lxt"><table><thead><tr><th>기업</th>${capHead}</tr></thead><tbody>${capRows}</tbody></table></div>
     <p style="color:#8a90a8;font-size:10.5px;margin-top:5px">출처: TrendForce·증권사 추정·IR (셀 hover 시 상세). HDD 3사(WDC·STX·Seagate)는 웨이퍼 캐파 대신 EB 출하능력.</p>`;
+  // ── 메모리 스팟 보드 (PS) ──
+  const spot=M.spot||{}; const sit=spot.items||{};
+  const spOrder=['DDR5 16Gb','DDR4 16Gb','DDR4 8Gb','DDR3 4Gb','NAND 512Gb TLC','NAND 256Gb TLC','NAND 128Gb TLC'];
+  const spCards=spOrder.filter(n=>sit[n]).map(n=>{const it=sit[n];const ks=Object.keys(it.series||{}).sort();const vals=ks.map(k=>it.series[k]);
+    let sp='';if(vals.length>=2){const w=120,h=30,mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;const pts=vals.map((v,i)=>`${(i/(vals.length-1))*w},${h-((v-mn)/rg)*h}`).join(' ');const c=it.category==='NAND'?'#a78bfa':'#5b8def';sp=`<svg width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="${c}" stroke-width="1.6"/></svg>`;}
+    const c=it.category==='NAND'?'#a78bfa':'#5b8def';
+    return `<div class="bcard" style="min-width:150px;border-top:2px solid ${c}"><div class="bt">${it.category}</div><div class="bn" style="font-size:13px">${n}</div><div class="mono" style="font-size:19px;font-weight:750;margin-top:2px">$${it.last}</div><div style="margin-top:4px">${sp||'<span class="bt">시계열 축적중</span>'}</div></div>`;}).join('');
+  const spotBox=spCards?`<p style="font-size:13px;font-weight:700;margin:18px 0 4px">가격·공급 (PS) — 메모리 스팟 보드 <span style="color:#8a90a8;font-weight:500;font-size:11px">DRAMeXchange 일간 · USD/chip · ${spot.asof||''}</span></p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${spCards}</div>`:'';
+  // ── 전방 수요 (DI): 빅테크 CAPEX + 클라우드 RPO ──
+  const capex=M.capex||{}; const rpo=M.rpo||{};
+  function diTable(obj,valkey,unit){const cos=Object.keys(obj||{});if(!cos.length)return '';
+    const qs=[...new Set(cos.flatMap(c=>Object.keys((obj[c].quarters)||{})))].sort();
+    const head=qs.slice(-6).map(q=>`<th>${q.replace('20','')}</th>`).join('');
+    const rows=cos.map(c=>{const q=obj[c].quarters||{};const cells=qs.slice(-6).map(qq=>{const d=q[qq];const v=d&&(d[valkey]);return `<td class="mono">${v!=null?'$'+v+'B':'—'}</td>`;}).join('');
+      const g=obj[c].guidance;return `<tr><td><b>${c}</b>${g&&g.amount_b?`<span class="bt"> · 가이던스 $${g.amount_b}B</span>`:''}</td>${cells}</tr>`;}).join('');
+    return `<div class="lxt"><table><thead><tr><th>기업</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;}
+  const capexT=diTable(capex,'capex_b'); const rpoT=diTable(rpo,'rpo_b');
+  const diBox=(capexT||rpoT)?`<p style="font-size:13px;font-weight:700;margin:22px 0 4px">전방 수요 (DI) — AI 인프라 투자</p>
+    ${capexT?`<p style="color:#8a90a8;font-size:11px;margin:6px 0 3px">빅테크 분기 CAPEX ($B)</p>${capexT}`:''}
+    ${rpoT?`<p style="color:#8a90a8;font-size:11px;margin:10px 0 3px">클라우드 RPO 백로그 ($B)</p>${rpoT}`:''}`:'';
   const rel=(M.related||[]).map(r=>`<span class="ltab" style="cursor:pointer" data-go="${r.region}|${r.id}">${r.name}</span>`).join('');
   main.innerHTML=`<style>.lxt{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:10px}.lxt table{border-collapse:collapse;width:100%;font-size:11.5px}.lxt th,.lxt td{padding:5px 8px;border-bottom:1px solid var(--line,#233038);text-align:left}.lxt tr:last-child td{border-bottom:none}.mono{font-family:ui-monospace,monospace}.bcard{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:12px;padding:13px 15px}.bn{font-weight:750}.bt{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a90a8}.est{font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(43,192,212,.09)}.ltab{display:inline-block;font-size:11px;padding:4px 10px;border:1px solid var(--line,#233038);border-radius:999px;color:#8a90a8;margin:3px}</style>
-  <p style="font-size:17px;font-weight:800;margin:0 0 3px">🧠 Memory — P×Q 분기 대시보드</p>
-  <p style="color:#8a90a8;font-size:12px;margin:0 0 14px">7사 분기별 Q(비트/EB 출하)·P(ASP) QoQ + 다음분기 가이던스 (IR 원문). 하단=팔랑크스 내 메모리 연관 데이터 바로가기.</p>
+  <p style="font-size:17px;font-weight:800;margin:0 0 3px">🧠 Memory — 반도체·AI 수요 트래커</p>
+  <p style="color:#8a90a8;font-size:12px;margin:0 0 14px">가격·공급(PS) → P×Q → 캐파 → 전방수요(DI). 7사 분기 Q·P + 가이던스, 스팟 일간, 빅테크 CAPEX·클라우드 RPO.</p>
+  ${spotBox}
   ${secs}
   ${ddBox}
   ${capBox}
+  ${diBox}
   <p style="font-size:13px;font-weight:700;margin:16px 0 6px">연관 데이터 (${(M.related||[]).length})</p><div>${rel}</div>`;
   main.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>{const[rg,id]=e.dataset.go.split('|');ST.region=rg;loadRegion(rg,()=>{ST.tab='dash';ST.company=id;ST.view='detail';render();window.scrollTo(0,0);});});
 }
