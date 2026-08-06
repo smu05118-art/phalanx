@@ -1168,7 +1168,7 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
     <div style="display:flex;gap:10px;flex-wrap:wrap">${spCards}</div>`:'';
   // ── 전방 수요 (DI): 빅테크 CAPEX + 클라우드 RPO ──
   const capex=M.capex||{}; const rpo=M.rpo||{};
-  function diTable(obj,valkey,unit){const cos=Object.keys(obj||{});if(!cos.length)return '';
+  function diTable(obj,valkey,unit){const cos=Object.keys(obj||{}).filter(k=>!k.startsWith("_"));if(!cos.length)return '';
     const qs=[...new Set(cos.flatMap(c=>Object.keys((obj[c].quarters)||{})))].sort();
     const head=qs.slice(-6).map(q=>`<th>${q.replace('20','')}</th>`).join('');
     const rows=cos.map(c=>{const q=obj[c].quarters||{};const cells=qs.slice(-6).map(qq=>{const d=q[qq];const v=d&&(d[valkey]);return `<td class="mono">${v!=null?'$'+v+'B':'—'}</td>`;}).join('');
