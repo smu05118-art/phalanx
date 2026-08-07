@@ -1180,6 +1180,16 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   const diBox=(capexT||rpoT)?`<p style="font-size:13px;font-weight:700;margin:22px 0 4px">전방 수요 (DI) — AI 인프라 투자</p>
     ${capexT?`<p style="color:#8a90a8;font-size:11px;margin:6px 0 3px">빅테크 분기 CAPEX ($B)</p>${capexT}`:''}
     ${rpoT?`<p style="color:#8a90a8;font-size:11px;margin:10px 0 3px">클라우드 RPO 백로그 ($B)</p>${rpoT}`:''}`:'';
+  // HBM 적층체인 피어보드
+  const hbm=(M.hbm||{}).peers||[];
+  const hbmRows=hbm.map(p=>{
+    if(p.status){return `<tr><td><b>${p.name}</b> <span class="bt">${p.ticker}</span></td><td colspan="9" class="bt">${p.note||p.status}</td></tr>`;}
+    const qs=(p.yoy||[]).slice(-6);
+    const cells=qs.map(([d,v])=>`<td class="mono" style="color:${v>=0?'#2fae66':'#e06666'};font-size:10.5px">${v>=0?'+':''}${v}%</td>`).join('');
+    return `<tr><td style="white-space:nowrap"><b>${p.name}</b> <span class="bt">${p.ticker}</span><br><span class="bt">${p.role}</span></td>${cells}<td class="mono" style="font-weight:750;color:${(p.last_yoy||0)>=0?'#2fae66':'#e06666'}">${p.last_yoy!=null?((p.last_yoy>=0?'+':'')+p.last_yoy+'%'):'—'}</td></tr>`;}).join('');
+  const hbmQs=((hbm.find(p=>p.yoy)||{}).yoy||[]).slice(-6).map(([d])=>`<th>${d.replace('20','')}</th>`).join('');
+  const hbmBox=hbm.length?`<p style="font-size:13px;font-weight:700;margin:22px 0 4px">HBM 적층체인 피어보드 <span style="color:#8a90a8;font-weight:500;font-size:11px">박형화(AIM)→TC본딩(한미)→몰딩(TOWA) + TB/DB피어(SUSS)·소재(TOK) · 분기매출 YoY</span></p>
+    <div class="lxt"><table><thead><tr><th>기업</th>${hbmQs}<th>최신</th></tr></thead><tbody>${hbmRows}</tbody></table></div>`:'';
   const rel=(M.related||[]).map(r=>`<span class="ltab" style="cursor:pointer" data-go="${r.region}|${r.id}">${r.name}</span>`).join('');
   main.innerHTML=`<style>.lxt{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:10px}.lxt table{border-collapse:collapse;width:100%;font-size:11.5px}.lxt th,.lxt td{padding:5px 8px;border-bottom:1px solid var(--line,#233038);text-align:left}.lxt tr:last-child td{border-bottom:none}.mono{font-family:ui-monospace,monospace}.bcard{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:12px;padding:13px 15px}.bn{font-weight:750}.bt{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a90a8}.est{font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(43,192,212,.09)}.ltab{display:inline-block;font-size:11px;padding:4px 10px;border:1px solid var(--line,#233038);border-radius:999px;color:#8a90a8;margin:3px}</style>
   <p style="font-size:17px;font-weight:800;margin:0 0 3px">🧠 Memory — 반도체·AI 수요 트래커</p>
@@ -1189,6 +1199,7 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   ${ddBox}
   ${capBox}
   ${diBox}
+  ${hbmBox}
   <p style="font-size:13px;font-weight:700;margin:16px 0 6px">연관 데이터 (${(M.related||[]).length})</p><div>${rel}</div>`;
   main.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>{const[rg,id]=e.dataset.go.split('|');ST.region=rg;loadRegion(rg,()=>{ST.tab='dash';ST.company=id;ST.view='detail';render();window.scrollTo(0,0);});});
 }
