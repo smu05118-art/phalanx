@@ -197,6 +197,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="rack">🖥 Rack</span>
   <span class="tab" data-tab="tech">🗺 Tech Map</span>
   <span class="tab" data-tab="bio">🧬 Bio Map</span>
+  <span class="tab" data-tab="ecal">📅 실적</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
 
@@ -797,6 +798,7 @@ function render(){
   if(ST.tab==='rack') return loadRack(renderRack);
   if(ST.tab==='tech') return loadTech(renderTech);
   if(ST.tab==='bio') return loadBio(renderBio);
+  if(ST.tab==='ecal') return loadEcal(renderEcal);
   renderOverview();
 }
 
