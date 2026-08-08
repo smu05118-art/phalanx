@@ -926,7 +926,7 @@ function renderTech(){
 // ================= 🧬 Bio Map 탭 (원본 완전복제 + 테마) =================
 let _bioCy=null;
 function loadBio(cb){
-  const need=[]; if(!window.BIOD) need.push('data_bio.js'); if(!window.cytoscape) need.push('cytoscape_bundle.js');
+  const need=[]; if(!window.BIOD) need.push('data_bio.js'); if(!window.cytoscape) need.push('cytoscape_bundle.js'); if(!window.BIODETAIL&&!window._bdTried){window._bdTried=1;need.push('data_biodetail.js');}
   if(!need.length) return cb();
   let done=0; need.forEach(src=>{const sc=document.createElement('script');sc.src=src;sc.onload=()=>{if(++done===need.length)cb();};sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="empty-msg">Bio Map 로드 실패</div>';document.head.appendChild(sc);};document.head.appendChild(sc);});
 }
@@ -1018,7 +1018,34 @@ function renderBio(){
       ch+=`<h4>${(ET[et]||{}).label||et} (${items.length})</h4>`;
       items.forEach(it=>{ch+=`<div class="conn-item" data-id="${it.id}"><span class="sw" style="background:${it.color}"></span><span>${it.label}</span><span class="arrow">${it.dir} ${(NT[it.type]||{}).label||''}</span></div>`;});
     });
-    info.innerHTML=`<div class="ntb" style="background:${def.color}22;color:${def.color}">${def.label||d.type}</div><h2>${d.label}</h2><div class="info">${d.info||'(추가 정보 준비 중)'}</div>${ch||'<p style="color:#8a90a8;font-size:12px">연결된 노드가 없습니다.</p>'}`;
+    const BD=(window.BIODETAIL||{})[d.id];
+    let pipeHtml='';
+    if(BD&&BD.pipelines&&BD.pipelines.length){
+      const PH={'전임상':'#8a90a8','P1':'#5b8def','P1/2':'#5b8def','P2':'#ffd23d','P3':'#ff8a3d','허가신청':'#2fae66','시판':'#2fae66'};
+      const rows=BD.pipelines.slice(0,8).map(p=>{
+        const ph=p.phase||'';const c=PH[ph]||'#8a90a8';
+        const comp=(p.competitors||[]).slice(0,3).map(x=>x.drug||x).join('·');
+        const tam=p.tam_usd_m||0;
+        return `<div style="border:1px solid #233038;border-radius:9px;padding:8px 10px;margin:6px 0;font-size:11.5px;line-height:1.5">
+          <b>${p.name||''}</b> <span style="background:${c}22;color:${c};border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">${ph}</span>
+          <span style="color:#8a90a8"> ${p.indication||''}</span><br>
+          <span style="color:#8a90a8">TAM</span> <b style="font-family:ui-monospace,monospace">$${tam>=1000?((tam/1000).toFixed(1)+'B'):(tam+'M')}</b>
+          ${p.patients?` · 환자 <span style="font-family:ui-monospace,monospace">${Number(p.patients).toLocaleString()}</span>`:''}
+          ${comp?`<br><span style="color:#8a90a8">경쟁:</span> ${comp}`:''}
+          ${p.milestone_next?`<br><span style="color:#26c6da">다음: ${p.milestone_next}</span>`:''}
+        </div>`;}).join('');
+      let valHtml='';
+      const V=BD.valuation;
+      if(V&&V.sum_rnpv_m){
+        const up=V.upside_pct;
+        valHtml=`<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:#26c6da">💰 rNPV ${V.partial?`— 파이프라인 가치 $${(V.fair_m/1000).toFixed(1)}B <span style="color:#8a90a8">(시판매출 별도)</span>`:(V.mcap_m&&up!=null?`— 적정 $${(V.fair_m/1000).toFixed(1)}B vs 시총 $${(V.mcap_m/1000).toFixed(1)}B <b style="color:${up>=0?'#2fae66':'#e06666'}">${up>=0?'+':''}${up}%</b>`:`$${(V.fair_m/1000).toFixed(1)}B`)}</summary>
+          <div style="font-size:11px;margin-top:6px">${(V.pipelines||[]).map(v=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span>${v.name} <span style="color:#8a90a8">(${v.phase}·LoA ${(v.loa*100).toFixed(0)}%${v.royalty?'·로열티':''})</span></span><b style="font-family:ui-monospace,monospace">$${v.rnpv_m>=1000?((v.rnpv_m/1000).toFixed(1)+'B'):(v.rnpv_m+'M')}</b></div>`).join('')}
+          <div style="border-top:1px solid #233038;margin-top:4px;padding-top:4px;display:flex;justify-content:space-between"><b>합계+순현금</b><b style="font-family:ui-monospace,monospace">$${(V.fair_m/1000).toFixed(2)}B</b></div>
+          <p style="color:#8a90a8;margin-top:5px;font-size:10.5px">${V.method}<br>${V.caveat}</p></div></details>`;
+      }
+      pipeHtml=`<div style="margin-top:12px"><b style="font-size:12px">🧪 파이프라인 (${BD.pipelines.length})</b>${BD.updated?`<span style="color:#8a90a8;font-size:10px"> · ${BD.updated} 갱신</span>`:''}${rows}${valHtml}</div>`;
+    }
+    info.innerHTML=`<div class="ntb" style="background:${def.color}22;color:${def.color}">${def.label||d.type}</div><h2>${d.label}</h2><div class="info">${d.info||'(추가 정보 준비 중)'}</div>${pipeHtml}${ch||'<p style="color:#8a90a8;font-size:12px">연결된 노드가 없습니다.</p>'}`;
     info.querySelectorAll('.conn-item').forEach(el=>el.onclick=()=>{
       const t=_bioCy.getElementById(el.dataset.id);
       if(t.length){_bioCy.animate({center:{eles:t},zoom:1.4},{duration:400});showDetail(t);}});
