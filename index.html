@@ -1107,7 +1107,18 @@ function renderRack(){
   ${shipTbl('ai_rev_busd','AI server revenue ($B — 회사발표 실측)','Dell·HPE·SMCI IR 공시 AI서버 매출/출하 $ — 유닛 추정의 앵커')}
   <p class="lxh" style="margin-top:18px">밸류체인 — EMS·랙통합 후방 (Jabil)</p>
   <p class="lxs">Dell·HPE 서버 서프라이즈 = <b>같은 수요풀</b>(AI서버+CPU 전통서버+네트워킹+액체냉각)의 제조·랙통합·테스트 물량 → <b>Jabil Intelligent Infrastructure</b>(과달라하라·페낭·베트남). JABIL 카드의 프록시=멕시코 수출 8471(Dell과 공유 풀 — 홀드아웃 +0.92로 AI 램프기 정합). ⚠️ 매출은 고가부품 pass-through 포함 — EPS는 랙통합·액체냉각 등 고부가 비중이 좌우. CPU 전통서버(오케스트레이션·스토리지)도 Jabil 주요 영역 — Dell 전통서버 강세도 동반 신호.</p>
-  <p class="lxs" style="margin-top:10px">⚠️ 벤더별 유닛 분기치는 공식 미공개(IDC 비공개화) — 회사 $발표·시장앵커 역산 추정. 원출처는 데이터파일 src 필드.</p>`;
+  <p class="lxs" style="margin-top:10px">⚠️ 벤더별 유닛 분기치는 공식 미공개(IDC 비공개화) — 회사 $발표·시장앵커 역산 추정. 원출처는 데이터파일 src 필드.</p>
+  ${(function(){var X=R.idx||{};var up=X.unit_price||{},sv=X.srv_share||{};var uk=Object.keys(up).sort(),sk=Object.keys(sv).sort();if(!uk.length&&!sk.length)return '';
+    function spark(o,ks,col,unit){if(!ks.length)return '';var v=ks.map(function(k){return o[k]}),mn=Math.min.apply(0,v),mx=Math.max.apply(0,v),rg=(mx-mn)||1;var w=260,h=46;var p=v.map(function(x,i){return (i/(v.length-1)*w).toFixed(0)+','+(h-(x-mn)/rg*h).toFixed(0)}).join(' ');return '<svg width="'+w+'" height="'+h+'" style="vertical-align:middle"><polyline points="'+p+'" fill="none" stroke="'+col+'" stroke-width="2"/></svg> <b class="mono" style="color:'+col+'">'+v[v.length-1].toFixed(1)+unit+'</b>';}
+    return '<p class="lxh" style="margin-top:20px">질·선행 지표 (RACKIDX)</p><p class="lxs">완성품 출하(위)와 별개로 <b>AI 전환의 질</b>을 읽는 축. 단가↑=AI랙 비중↑, 서버비중=847150/8471.</p>'+
+    '<div style="display:flex;gap:22px;flex-wrap:wrap"><div><div class="lxs">AI-mix 단가 (美수출 8471 $/kg)</div>'+spark(up,uk,'#26c6da',' $/kg')+'</div>'+
+    '<div><div class="lxs">서버비중 (847150 / 8471, %)</div>'+spark(sv,sk,'#ffd23d','%')+'</div></div>';})()}
+  ${(function(){var K=R.kslide;if(!K||!K.m||!K.m.length)return '';var m=K.m,v=m.map(function(x){return x[1]});var last=v[v.length-1],prev12=v.length>12?v[v.length-13]:null;var yoy=prev12?((last/prev12-1)*100):null;var mn=Math.min.apply(0,v),mx=Math.max.apply(0,v),rg=(mx-mn)||1,w=520,h=60;var p=v.map(function(x,i){return (i/(v.length-1)*w).toFixed(0)+','+(h-(x-mn)/rg*h).toFixed(0)}).join(' ');
+    return '<p class="lxh" style="margin-top:22px">물리 랙 물량 — King Slide 레일·CMA <span class="lxs" style="font-weight:400">2059 TW · 월매출 백만NT$</span></p><p class="lxs">'+K.note+'</p>'+
+    '<svg width="'+w+'" height="'+h+'" style="max-width:100%"><polyline points="'+p+'" fill="none" stroke="#00e6b8" stroke-width="2"/></svg> <b class="mono" style="color:#00e6b8;font-size:16px">NT$'+last.toFixed(0)+'M</b>'+(yoy!=null?' <span class="mono" style="color:'+(yoy>=0?'#2fae66':'#e06666')+'">YoY '+(yoy>=0?'+':'')+yoy.toFixed(0)+'%</span>':'');})()}
+  ${(function(){var D=R.demand||{};var ks=Object.keys(D);if(!ks.length)return '';
+    var rows=ks.map(function(c){var d=D[c];return '<tr><td><b>'+c+'</b></td><td class="mono">$'+(d.capex_b||'—')+'B</td><td class="mono" style="color:'+((d.yoy||0)>=0?'#2fae66':'#e06666')+'">'+(d.yoy!=null?(d.yoy>=0?'+':'')+d.yoy+'%':'—')+'</td><td class="mono lxs">'+(d.q||'')+'</td><td class="mono lxs">'+(d.guid?'가이드 $'+d.guid+'B':'')+'</td></tr>';}).join('');
+    return '<p class="lxh" style="margin-top:22px">최종 수요 — 하이퍼스케일러 CAPEX</p><p class="lxs">랙 출하의 원천 수요. 이 CAPEX가 조립국 부품유입→완성품 출하로 흐름(선행).</p><div class="lxt"><table><thead><tr><th>기업</th><th>분기 CAPEX</th><th>YoY</th><th>분기</th><th>가이던스</th></tr></thead><tbody>'+rows+'</tbody></table></div>';})()}`;
 }
 // ================= 🧠 Memory 탭 =================
 function loadMem(cb){ if(window.MEMD) return cb();
