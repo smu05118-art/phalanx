@@ -198,6 +198,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="tech">🗺 Tech Map</span>
   <span class="tab" data-tab="bio">🧬 Bio Map</span>
   <span class="tab" data-tab="ecal">📅 실적</span>
+  <span class="tab" data-tab="tmap">🕸 SupplyMap</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
 
@@ -799,6 +800,7 @@ function render(){
   if(ST.tab==='tech') return loadTech(renderTech);
   if(ST.tab==='bio') return loadBio(renderBio);
   if(ST.tab==='ecal') return loadEcal(renderEcal);
+  if(ST.tab==='tmap') return loadTmap(renderTmap);
   renderOverview();
 }
 
@@ -1105,6 +1107,7 @@ function renderRack(){
   ${shipTbl('ai_k','AI server (k units, 8-GPU 노드환산)','IR 실측 AI서버 $ ÷ 노드ASP($0.28→0.34M) — Dell·HPE·SMCI는 회사발표 $ 앵커')}
   ${shipTbl('racks_k','AI full racks (k racks, NVL72급)','GB200/300 랙 — 업계 ~29k(2025)→70-80k(2026E, MS)')}
   ${shipTbl('ai_rev_busd','AI server revenue ($B — 회사발표 실측)','Dell·HPE·SMCI IR 공시 AI서버 매출/출하 $ — 유닛 추정의 앵커')}
+  <p class="lxs" style="margin-top:6px">신뢰도: DELL <b style="color:#2fae66">hold+0.71</b> · SMCI <b style="color:#2fae66">+0.55</b> · HPE <b style="color:#e0a24a">+0.34(美조립 미포착)</b> · Lenovo <b style="color:#8a90a8">사이클프록시(재무 미연결)</b> — 약한 프록시는 참고용.</p>
   <p class="lxh" style="margin-top:18px">밸류체인 — EMS·랙통합 후방 (Jabil)</p>
   <p class="lxs">Dell·HPE 서버 서프라이즈 = <b>같은 수요풀</b>(AI서버+CPU 전통서버+네트워킹+액체냉각)의 제조·랙통합·테스트 물량 → <b>Jabil Intelligent Infrastructure</b>(과달라하라·페낭·베트남). JABIL 카드의 프록시=멕시코 수출 8471(Dell과 공유 풀 — 홀드아웃 +0.92로 AI 램프기 정합). ⚠️ 매출은 고가부품 pass-through 포함 — EPS는 랙통합·액체냉각 등 고부가 비중이 좌우. CPU 전통서버(오케스트레이션·스토리지)도 Jabil 주요 영역 — Dell 전통서버 강세도 동반 신호.</p>
   <p class="lxs" style="margin-top:10px">⚠️ 벤더별 유닛 분기치는 공식 미공개(IDC 비공개화) — 회사 $발표·시장앵커 역산 추정. 원출처는 데이터파일 src 필드.</p>
