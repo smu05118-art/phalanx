@@ -1233,6 +1233,36 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   const hbmQs=((hbm.find(p=>p.yoy)||{}).yoy||[]).slice(-6).map(([d])=>`<th>${d.replace('20','')}</th>`).join('');
   const hbmBox=hbm.length?`<p style="font-size:13px;font-weight:700;margin:22px 0 4px">HBM 적층체인 피어보드 <span style="color:#8a90a8;font-weight:500;font-size:11px">박형화(AIM)→TC본딩(한미)→몰딩(TOWA) + TB/DB피어(SUSS)·소재(TOK) · 분기매출 YoY</span></p>
     <div class="lxt"><table><thead><tr><th>기업</th>${hbmQs}<th>최신</th></tr></thead><tbody>${hbmRows}</tbody></table></div>`:'';
+  // AI 모델 가격 (api.chat 일간) — 입력/출력 분리, 회사=색
+  const AIP=(M.aip||{}).models||{};
+  const AIC={'OpenAI':'#10a37f','Anthropic':'#d97757','Google':'#4285f4','Alibaba':'#ff6a00','Meta':'#0866ff','DeepSeek':'#5b8def','Mistral':'#ff7000','xAI':'#e6e6e6','Amazon':'#ff9900','Microsoft':'#7fba00'};
+  function aiCol(c){for(const k in AIC){if((c||'').includes(k))return AIC[k];}let h=0;for(const ch of (c||''))h=(h*31+ch.charCodeAt(0))%360;return `hsl(${h},60%,60%)`;}
+  function aiChart(kind){
+    const names=Object.keys(AIP);
+    // 대표모델 선별: 회사별 최신가 상위 + 주요 프론티어
+    const picks=names.map(n=>{const m=AIP[n];const ks=Object.keys(m[kind]||{}).sort();return {n,c:m.company,v:ks.length?m[kind][ks[ks.length-1]]:null,ks};})
+      .filter(x=>x.v!=null&&x.ks.length>=1).sort((a,b)=>b.v-a.v);
+    const byco={}; picks.forEach(p=>{(byco[p.c]=byco[p.c]||[]).push(p);});
+    const sel=[]; Object.values(byco).forEach(l=>sel.push(...l.slice(0,3)));
+    sel.sort((a,b)=>b.v-a.v); const top=sel.slice(0,18);
+    const days=[...new Set(top.flatMap(p=>p.ks))].sort();
+    if(!days.length) return '<p class="bt">축적 중</p>';
+    const W=560,H=210,padL=40,padR=110,padT=8,padB=18;
+    const vmax=Math.max(...top.map(p=>p.v))*1.1;
+    const x=i=>padL+(W-padL-padR)*(days.length===1?0.5:i/(days.length-1));
+    const y=v=>padT+(H-padT-padB)*(1-v/vmax);
+    let svg='';
+    for(let t=0;t<=3;t++){const v=vmax*t/3;svg+=`<line x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}" stroke="var(--line,#233038)" stroke-width=".7"/><text x="${padL-4}" y="${y(v)+3}" text-anchor="end" font-size="8" fill="#8a90a8">$${v.toFixed(v<3?1:0)}</text>`;}
+    top.forEach(p=>{const col=aiCol(p.c);
+      const pts=days.map((d,i)=>{const v=(AIP[p.n][kind]||{})[d];return v!=null?[x(i),y(v)]:null;}).filter(Boolean);
+      if(pts.length>1){svg+=`<polyline points="${pts.map(q=>q.join(',')).join(' ')}" fill="none" stroke="${col}" stroke-width="1.6"/>`;}
+      const last=pts[pts.length-1];
+      if(last){svg+=`<circle cx="${last[0]}" cy="${last[1]}" r="2.6" fill="${col}"/><text x="${last[0]+5}" y="${last[1]+3}" font-size="7.5" fill="${col}">${p.n.slice(0,16)}</text>`;}});
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:620px">${svg}</svg>`;}
+  const aipBox=Object.keys(AIP).length?`<p style="font-size:13px;font-weight:700;margin:22px 0 4px">AI 모델 가격 <span style="color:#8a90a8;font-weight:500;font-size:11px">api.chat 일간 · $/1M 토큰 · 회사=색 (${(M.aip||{}).updated||''})</span></p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+    <div class="bcard"><div class="bt">입력 (Input)</div>${aiChart('in')}</div>
+    <div class="bcard"><div class="bt">출력 (Output)</div>${aiChart('out')}</div></div>`:'';
   const rel=(M.related||[]).map(r=>`<span class="ltab" style="cursor:pointer" data-go="${r.region}|${r.id}">${r.name}</span>`).join('');
   main.innerHTML=`<style>.lxt{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:10px}.lxt table{border-collapse:collapse;width:100%;font-size:11.5px}.lxt th,.lxt td{padding:5px 8px;border-bottom:1px solid var(--line,#233038);text-align:left}.lxt tr:last-child td{border-bottom:none}.mono{font-family:ui-monospace,monospace}.bcard{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:12px;padding:13px 15px}.bn{font-weight:750}.bt{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a90a8}.est{font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(43,192,212,.09)}.ltab{display:inline-block;font-size:11px;padding:4px 10px;border:1px solid var(--line,#233038);border-radius:999px;color:#8a90a8;margin:3px}</style>
   <p style="font-size:17px;font-weight:800;margin:0 0 3px">🧠 Memory — 반도체·AI 수요 트래커</p>
@@ -1243,6 +1273,7 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   ${capBox}
   ${diBox}
   ${hbmBox}
+  ${aipBox}
   <p style="font-size:13px;font-weight:700;margin:16px 0 6px">연관 데이터 (${(M.related||[]).length})</p><div>${rel}</div>`;
   main.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>{const[rg,id]=e.dataset.go.split('|');ST.region=rg;loadRegion(rg,()=>{ST.tab='dash';ST.company=id;ST.view='detail';render();window.scrollTo(0,0);});});
 }
