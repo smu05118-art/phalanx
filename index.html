@@ -1337,6 +1337,7 @@ function renderGame(){
   main.innerHTML=nav+body;
   main.querySelectorAll('[data-gv]').forEach(t=>t.onclick=()=>{ST.gview=t.dataset.gv;renderGame();window.scrollTo(0,0);});
   main.querySelectorAll('[data-gco]').forEach(t=>t.onclick=()=>{ST.gview='co_'+t.dataset.gco;renderGame();window.scrollTo(0,0);});
+  main.querySelectorAll('[data-gpc]').forEach(t=>t.onclick=()=>{ST.gpcw=t.dataset.gpc;renderGame();});
   gMountCharts(G);
 }
 function gvAttract(G){
@@ -1395,7 +1396,10 @@ function gvSteam(G){
   <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>회사</th><th>최근 3개월 리뷰</th><th>YoY</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function gvPcbang(G){
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">gametrics 주간 TOP10 점유율(2007-01~), 회사 단위 합산 — <b>동일 회사=동일 색</b>. 범례 클릭=격리 · Shift클릭=개별 토글. TOP10 밖은 0 처리(무로그인 한계).</div>
+  const hasM=!!((G.series||{}).pcbang_share_m);
+  ST.gpcw=ST.gpcw||(hasM?'m':'w');
+  const tg=hasM?`<span style="margin-left:auto"><span class="ltab ${ST.gpcw==='m'?'on':''}" data-gpc="m">월평균</span><span class="ltab ${ST.gpcw==='w'?'on':''}" data-gpc="w">주간(1,024주)</span></span>`:'';
+  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>gametrics TOP10 점유율(2007-01~), 회사 단위 합산 — <b>동일 회사=동일 색</b>. 범례 클릭=격리 · Shift클릭=개별 토글. TOP10 밖은 0 처리(무로그인 한계).</span>${tg}</div>
   <div class="card"><div class="ch-wrap" style="height:420px"><canvas id="gPcbangAll"></canvas></div></div>`;
 }
 function gvMaple(G){
@@ -1407,7 +1411,7 @@ function gvMobile(G){
   const s=(G.series||{}).mobile_rankpt_d||{x:[],y:{}};
   const n=(s.x||[]).length;
   const cos=(G.companies||[]).filter(c=>s.y[c.co_key]&&s.y[c.co_key].some(v=>v>0));
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">iTunes 매출랭킹(KR·JP·US 게임 top50, 랭크포인트=Σ(51-순위)) — <b>${(s.x||[])[0]||'오늘'}부터 일간 누적 시작</b>(모바일인덱스는 인증벽 — 공식 RSS 대체). 데이터가 쌓이면 추세축이 자동 활성화됩니다.</div>
+  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">iTunes 매출랭킹(KR·JP·US 게임 top50, 랭크포인트=Σ(51-순위)) — <b>${(s.x||[])[0]||'오늘'}부터 일간 누적 시작</b>(모바일인덱스는 인증벽 — 공식 RSS 대체). ⚠️ <b>iOS(App Store)만 — 구글플레이 미포함</b>(무료 접근 정찰 중, 한국 모바일 매출 다수가 안드로이드임을 감안해 읽을 것). 데이터가 쌓이면 추세축(28일)이 자동 활성화됩니다.</div>
   ${n<3?`<div class="panel" style="padding:16px">축적 ${n}일차 — 현재 랭크인 상장사: ${cos.map(c=>`<span style="color:${c.color};font-weight:700">${c.name}</span>`).join(' · ')||'집계 중'}</div>`:`<div class="card"><div class="ch-wrap" style="height:380px"><canvas id="gMobileAll"></canvas></div></div>`}`;
 }
 function gvDmm(G){
@@ -1422,7 +1426,7 @@ function gMountCharts(G){
       v=>src==='pcbang_share_w'?v.toFixed(1)+'%':src==='dmm_rev_m'?v.toFixed(1)+'億':v.toLocaleString());
   });
   const pc=document.getElementById('gPcbangAll');
-  if(pc&&S.pcbang_share_w){ const P=S.pcbang_share_w;
+  if(pc&&(S.pcbang_share_w||S.pcbang_share_m)){ const P=(ST.gpcw==='m'&&S.pcbang_share_m)?S.pcbang_share_m:S.pcbang_share_w;
     const ds=(G.companies||[]).filter(c=>P.y[c.co_key]).map(c=>({type:'line',label:c.name,data:P.y[c.co_key],borderColor:c.color,backgroundColor:c.color+'bb',borderWidth:.6,pointRadius:0,fill:true,tension:.15,stack:'p',spanGaps:false}));
     gChart(pc,P.x,ds,v=>v.toFixed(1)+'%',{scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>v+'%'},grid:{color:'rgba(40,40,74,.5)'}}}}); }
   const mb=document.getElementById('gMobileAll');
