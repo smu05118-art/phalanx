@@ -201,10 +201,21 @@ async function loadLiq(){
   const box=document.getElementById('liqview');
   box.innerHTML='<p class="hint" style="padding:20px">유동성 데이터 로딩…</p>';
   try{ const d2=await fetch('data/liquidity2.json').then(r=>r.ok?r.json():null);
-    if(d2 && window.renderLiq2){ renderLiq2(box, d2); return; } }catch(e){ console.warn('liq2', e); }
+    if(d2 && window.renderLiq2){ renderLiq2(box, d2); liqHistStrip(box, d2); return; } }catch(e){ console.warn('liq2', e); }
   let d; try{ d=await fetch('data/liquidity.json').then(r=>r.json()); }
   catch(e){ box.innerHTML='<p class="hint" style="padding:20px">유동성 데이터 준비 중입니다.</p>'; return; }
   renderLiq(d);
+}
+function liqHistStrip(box, d){
+  const H=d.hist||{}; const days=Object.keys(H).sort(); if(days.length<2) return;
+  const LC={green:'#59d0a8',yellow:'#ffd23d',orange:'#ff8a3d',red:'#ff4d5e'};
+  const keys=['repo','bank','tga','rrp','netliq','hy','curve','vix','dxy4w'];
+  const rows=keys.map(k=>`<div style="display:flex;align-items:center;gap:6px"><span style="font-size:9.5px;color:var(--dim);width:44px;text-align:right">${k}</span>${days.map(dd=>`<span title="${dd} ${((H[dd]||{}).lights||{})[k]||''}" style="width:7px;height:7px;border-radius:2px;background:${LC[((H[dd]||{}).lights||{})[k]]||'#2a3140'}"></span>`).join('')}</div>`).join('');
+  const ov=`<div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span style="font-size:9.5px;font-weight:800;width:44px;text-align:right">종합</span>${days.map(dd=>`<span title="${dd} ${(H[dd]||{}).overall||''}" style="width:7px;height:9px;border-radius:2px;background:${LC[(H[dd]||{}).overall]||'#2a3140'}"></span>`).join('')}</div>`;
+  const el=document.createElement('div');
+  el.className='comment'; el.style.marginTop='14px';
+  el.innerHTML=`<div style="font-size:12px;font-weight:700;margin-bottom:8px">🚦 신호등 히스토리 <span style="color:var(--dim);font-weight:400;font-size:10px">(${days[0]} ~ ${days[days.length-1]} · 일별 축적 중)</span></div><div style="display:flex;flex-direction:column;gap:3px;overflow-x:auto">${rows}${ov}</div>`;
+  box.appendChild(el);
 }
 function liqSpark(series, opts){
   opts=opts||{}; const keys=Object.keys(series).sort(); const vals=keys.map(k=>series[k]);
