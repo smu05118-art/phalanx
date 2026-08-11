@@ -591,8 +591,9 @@ function countryView(code){
   const k=CUR[ST.cur].mult, lvl={}, wlv={}; order.forEach(c=>{lvl[c]=aggLevel(loc[c]||[]); wlv[c]=aggLevel(locw[c]||[]);});
   const n=(lvl[order[0]]||[]).length, cm=ST.cmetric||'value';
   const area=(c,i,d)=>({type:'line',label:c,data:d,yAxisID:'yV',backgroundColor:CCOL[i%CCOL.length]+'cc',borderColor:CCOL[i%CCOL.length],borderWidth:.7,pointRadius:0,fill:true,tension:.2,stack:'c'});
+  const bar=(c,i,d)=>({type:'bar',label:c,data:d,yAxisID:'yV',backgroundColor:CCOL[i%CCOL.length]+'cc',borderColor:CCOL[i%CCOL.length],borderWidth:0,stack:'c',barPercentage:1,categoryPercentage:.92});
   const line=(c,i,d)=>({type:'line',label:c,data:d,yAxisID:'yV',borderColor:CCOL[i%CCOL.length],borderWidth:1.4,pointRadius:0,tension:.25,spanGaps:true});
-  if(cm==='value') return {kind:'value', ds:order.map((c,i)=>area(c,i,lvl[c].map(x=>x==null?null:x*k)))};
+  if(cm==='value') return {kind:'value', ds:order.map((c,i)=>bar(c,i,lvl[c].map(x=>x==null?null:x*k)))};
   if(cm==='share'){ const tot=new Array(n).fill(0); order.forEach(c=>lvl[c].forEach((x,j)=>tot[j]+=(x||0)));
     return {kind:'share', ds:order.map((c,i)=>area(c,i,lvl[c].map((x,j)=>tot[j]>0?x/tot[j]:null)))}; }
   if(cm==='yoy') return {kind:'yoy', ds:order.map((c,i)=>line(c,i,yoyG(lvl[c])))};
@@ -602,9 +603,17 @@ function countryViewOpts(kind){
   const fmtY = kind==='share'?(v=>(v*100).toFixed(0)+'%') : kind==='yoy'?(v=>(v*100).toFixed(0)+'%') : kind==='unit'?(v=>CUR[ST.cur].sym+fmtNum(v)) : (v=>fmtV(v/CUR[ST.cur].mult));
   const tip = kind==='share'?(c=>c.dataset.label+': '+(c.parsed.y*100).toFixed(1)+'%') : kind==='yoy'?(c=>c.dataset.label+': '+fmtP(c.parsed.y)) : kind==='unit'?(c=>c.dataset.label+': '+CUR[ST.cur].sym+fmtNum(c.parsed.y)+'/kg') : (c=>c.dataset.label+': '+fmtV(c.parsed.y/CUR[ST.cur].mult));
   const stacked = (kind==='value'||kind==='share');
+  // 범례 클릭 = 해당 국가만(격리) ↔ 재클릭 = 전체 복원 · Shift/⌘클릭 = 개별 체크 토글
+  const legendClick=(e,item,lg)=>{const ch=lg.chart,i=item.datasetIndex,n=ch.data.datasets.length;
+    const ev=e&&(e.native||e);
+    if(ev&&(ev.shiftKey||ev.metaKey||ev.ctrlKey)){ ch.setDatasetVisibility(i,!ch.isDatasetVisible(i)); }
+    else { const vis=[...Array(n).keys()].filter(j=>ch.isDatasetVisible(j));
+      if(vis.length===1&&vis[0]===i){ for(let j=0;j<n;j++)ch.setDatasetVisibility(j,true); }
+      else { for(let j=0;j<n;j++)ch.setDatasetVisibility(j,j===i); } }
+    ch.update(); };
   return {responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
-    plugins:{legend:{display:true,labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},tooltip:{callbacks:{label:tip}}},
-    scales:{x:{min:xMin(),max:xMax(),ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
+    plugins:{legend:{display:true,onClick:legendClick,labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},tooltip:{callbacks:{label:tip}}},
+    scales:{x:{stacked:kind==='value',min:xMin(),max:xMax(),ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},
       yV:{stacked:stacked, position:'left', beginAtZero:kind!=='yoy', max:kind==='share'?1:undefined, ticks:{color:'#4a4a72',font:{size:8},callback:fmtY},grid:{color:'rgba(40,40,74,.5)'}}}};
 }
 function dDatasets(code){
