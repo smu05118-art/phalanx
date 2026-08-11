@@ -200,7 +200,6 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="ecal">📅 실적</span>
   <span class="tab" data-tab="tmap">🕸 SupplyMap</span>
   <span class="tab" data-tab="ppi">🏭 PPI</span>
-  <span class="tab" data-tab="game">🎮 Game</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
 
@@ -287,11 +286,80 @@ function earnChip(co){ if(co.is_hub) return '';
 function nowcastOf(co){ return (P.nowcast||{})[(co||compObj()).id]; }
 function ncGrade(n){ return (n.r2>=0.6&&n.hit>=70)?'hi':((n.r2>=0.35&&n.hit>=55)?'mid':'lo'); }
 function ncCol(g){ return g==='hi'?'#2fae66':(g==='mid'?'#e0a24a':'#c98a8a'); }
-function ncBadge(co){ const n=nowcastOf(co); if(!n||co.is_hub||n.predyoy==null) return '';
+// ---------- 나우캐스트 부분분기·스테일 보정 ----------
+// 빌더가 최신 세관분기(lastC)를 미공표월=0 포함으로 합산해 완전한 전년분기와 비교 후 레벨회귀에 넣으면
+// cyoy·predyoy가 왜곡됨(2026-08 MJC: 2026Q2를 4·5월만으로 -1.2%/-15.4% 산출 — 아티팩트).
+// 공표된 원계열로 빌더 방법론(core_set×main_ports 수출합 → 20Q 레벨회귀)을 재현·검증한 뒤,
+// 분기가 완전하면 재계산값, 부분분기면 가용월 YoY 페이스로 결측월을 보간한 보정값을 쓴다.
+// 저장 cyoy를 어떤 컷오프로도 재현 못 하는 종목(시계열 상이)은 건드리지 않고 저장값 유지.
+const _NCFIX={};
+function ncLastIdx(reg){ // 지역 샤드 전체에서 마지막 공표월 인덱스 (미공표월은 전 계열 0)
+  if(window._ncForceLastIdx!=null) return window._ncForceLastIdx; // 부분분기 로컬 테스트용 오버라이드
+  const ck='@'+reg; if(_NCFIX[ck]!=null) return _NCFIX[ck];
+  const sh=window.PSH&&window.PSH[reg]; let last=-1;
+  if(sh&&sh.detail) for(const set of Object.values(sh.detail)) for(const pt of Object.values(set)) for(const fl of ['exp','imp']){
+    const v=(pt[fl]&&pt[fl].v)||[];
+    for(let i=v.length-1;i>last;i--) if(v[i]){ last=i; break; }
+  }
+  return _NCFIX[ck]=last;
+}
+function ncQMonths(qs){ const y=+qs.slice(0,4), q=+qs.slice(5);
+  return [1,2,3].map(k=>monthIdx[y+'-'+String(3*(q-1)+k).padStart(2,'0')]).filter(i=>i!=null); }
+function ncFix(n){ // n: M.nowcast 엔트리 → {cyoy,predyoy,avail,partial,corrected,checked}
+  const key=n.id+':'+(window._ncForceLastIdx!=null?window._ncForceLastIdx:'');
+  if(_NCFIX[key]) return _NCFIX[key];
+  const out={cyoy:n.cyoy, predyoy:n.predyoy, avail:3, partial:false, corrected:false, checked:false};
+  const res=o=>(_NCFIX[key]=o);
+  const reg=n.reg||'JP';
+  if(!(window.PSH&&window.PSH[reg])||!n.lastC||!n.tgtq) return res(out);
+  const lastIdx=ncLastIdx(reg); if(lastIdx<0) return res(out);
+  const qm=ncQMonths(n.lastC); if(qm.length!==3) return res(out);
+  out.avail=qm.filter(i=>i<=lastIdx).length; out.partial=out.avail<3;
+  const co=(P.companies||[]).find(c=>c.id===n.id), f=(P.fin||{})[n.id];
+  if(!co||!f||!P.detail[co.core_set]) return res(out);
+  const det=P.detail[co.core_set], ports=(co.main_ports&&co.main_ports.length?co.main_ports:co.ports)||[];
+  const v=MONTHS.map((_,i)=>ports.reduce((s,p)=>s+((det[p]&&det[p].exp&&det[p].exp.v&&det[p].exp.v[i])||0),0));
+  const qsum=(y,q,cut)=>{ let t=0; for(let m=3*q-2;m<=3*q;m++){ const i=monthIdx[y+'-'+String(m).padStart(2,'0')]; if(i==null) return null; if(cut!=null&&i>cut) continue; t+=v[i]; } return t; };
+  // 매출분기 라벨 = ceil(결산월/3), 그 라벨 − L 이 대응 세관분기 (비캘린더 결산 포함)
+  const seg=(f.segname&&n.seg===f.segname&&f.segq&&f.segq.length)?f.segq:(f.q||[]).map(r=>[r[0],r[1]]);
+  const rows=seg.filter(r=>r&&r[1]!=null).sort((a,b)=>a[0]<b[0]?-1:1);
+  const ly=+n.lastC.slice(0,4), lq=+n.lastC.slice(5), ty=+n.tgtq.slice(0,4), tq=+n.tgtq.slice(5);
+  const pairs=[];
+  for(const [d,r] of rows){ let y=+d.slice(0,4), q=Math.ceil(+d.slice(5,7)/3)-n.L; while(q<1){q+=4;y--;}
+    const qq=ncQMonths(y+'Q'+q); if(qq.length!==3||qq[2]>lastIdx) continue;
+    pairs.push([qsum(y,q),r]); }
+  const pp=pairs.slice(-20), N=pp.length;
+  const base=rows.filter(r=>+r[0].slice(0,4)===ty-1&&Math.ceil(+r[0].slice(5,7)/3)===tq).map(r=>r[1])[0];
+  const x0=qsum(ly-1,lq);
+  if(N<8||!base||!x0) return res(out);
+  let sx=0,sy=0,sxx=0,sxy=0; pp.forEach(([x,r])=>{sx+=x;sy+=r;sxx+=x*x;sxy+=x*r;});
+  const den=N*sxx-sx*sx; if(!den) return res(out);
+  const b=(N*sxy-sx*sy)/den, a=(sy-b*sx)/N;
+  const cy=x=>Math.round(1000*(x/x0-1))/10, py=x=>Math.round(1000*((a+b*x)/base-1))/10;
+  // 방법론 검증: 저장 cyoy가 분기 1~3개월 컷오프 중 하나로 재현돼야만 보정 (17/19 종목 0.1pp 일치 확인)
+  let bAvail=null;
+  for(let k=3;k>=1;k--){ const xs=qsum(ly,lq,qm[k-1]); if(xs!=null&&n.cyoy!=null&&Math.abs(cy(xs)-n.cyoy)<=0.15){ bAvail=k; break; } }
+  if(bAvail==null) return res(out);
+  out.checked=true;
+  if(!out.partial){
+    if(bAvail<3){ const x=qsum(ly,lq); out.corrected=true; out.cyoy=cy(x); out.predyoy=py(x); }
+  } else if(out.avail>0){
+    let sA=0,sB=0; qm.forEach(i=>{ if(i<=lastIdx){ sA+=v[i]; sB+=(i>=12?v[i-12]:0); } });
+    if(sB>0){ const pace=sA/sB; let x=sA; qm.forEach(i=>{ if(i>lastIdx) x+=(i>=12?(v[i-12]||0):0)*pace; });
+      out.corrected=true; out.cyoy=Math.round(1000*(pace-1))/10; out.predyoy=py(x);
+    } else { out.cyoy=null; out.predyoy=null; }
+  } else { out.cyoy=null; out.predyoy=null; }
+  return res(out);
+}
+function ncBadge(co){ const n=nowcastOf(co); if(!n||co.is_hub) return '';
+  const me=(M.nowcast||[]).find(x=>x.id===co.id);
+  const fx=me?ncFix(me):{cyoy:null,predyoy:n.predyoy,avail:3,partial:false,corrected:false,checked:false};
+  const pv=fx.predyoy!=null?fx.predyoy:n.predyoy; if(pv==null) return '';
   const g=ncGrade(n), col=ncCol(g), lead=n.L>=1?('+'+n.L+'Q선행'):'동행';
-  const sign=n.predyoy>=0?'+':'', pc=n.predyoy>=0?'#2fae66':'#e06666';
-  const tip=`세관→매출 나우캐스트 · lag${n.L}(corr ${n.corr!=null?n.corr.toFixed(2):'—'}) · R²${n.r2.toFixed(2)} · 방향적중 ${n.hit}%${n.fwd?' · 미보고(검증대기)':''}`;
-  return `<div title="${tip}"><span class="chg" style="color:${pc}">${sign}${n.predyoy}%</span><span class="clab" style="color:${col}">🔮 ${n.tgtq} ${lead}${n.fwd?'*':''}</span></div>`; }
+  const sign=pv>=0?'+':'', pc=fx.partial?'#8a90a8':(pv>=0?'#2fae66':'#e06666');
+  const xtra=fx.partial?` · 세관 ${me&&me.lastC||''} 부분분기(${fx.avail}/3개월)${fx.corrected?' — 가용월 YoY 페이스 보간 보정치':''}`:(fx.corrected?` · 프론트 재계산(빌더 저장값 ${n.predyoy}%)`:'');
+  const tip=`세관→매출 나우캐스트 · lag${n.L}(corr ${n.corr!=null?n.corr.toFixed(2):'—'}) · R²${n.r2.toFixed(2)} · 방향적중 ${n.hit}%${n.fwd?' · 미보고(검증대기)':''}${xtra}`;
+  return `<div title="${tip}"><span class="chg" style="color:${pc}">${fx.partial?'~':''}${sign}${pv}%${fx.partial?' <span style="color:#e0a24a;font-size:10px">('+fx.avail+'/3개월)</span>':''}</span><span class="clab" style="color:${col}">🔮 ${n.tgtq} ${lead}${n.fwd?'*':''}${fx.corrected&&!fx.partial?' ↻':''}</span></div>`; }
 // map fin quarters onto the current granularity grid (M: at quarter-end month; Q: exact; Y: summed)
 function finSeries(co,k){ const f=finOf(co); if(!f) return null;
   const rows=(k==='seg')?(f.segq||[]):(f.q||[]).map(r=>[r[0], k==='op'?r[2]:r[1]]);
@@ -356,7 +424,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':(q.tab==='ppi'?'ppi':(q.tab==='game'?'game':'dash'))))))));
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':'dash'))))));
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
@@ -813,7 +881,6 @@ function render(){
   if(ST.tab==='ecal') return loadEcal(renderEcal);
   if(ST.tab==='tmap') return loadTmap(renderTmap);
   if(ST.tab==='ppi') return loadPpi(renderPpi);
-  if(ST.tab==='game') return loadGame(renderGame);
   renderOverview();
 }
 
@@ -1290,151 +1357,6 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
 }
 // ================= 💎 Luxury 탭 =================
 let _luxLoaded=false;
-// ===== 🎮 Game 탭 — 상장사 게임 나우캐스트 (Steam·PC방·메이플·모바일·DMM) =====
-let _gameLoaded=false; const GCH={};
-function loadGame(cb){ if(_gameLoaded||window.GAMES_DATA){_gameLoaded=true;return cb();}
-  const sc=document.createElement('script'); sc.src='data_games.js';
-  sc.onload=()=>{_gameLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">🎮 게임 데이터 준비 중입니다…</div>';};
-  document.head.appendChild(sc); }
-function gDestroy(){ for(const k in GCH){ try{GCH[k].destroy();}catch(e){} delete GCH[k]; } }
-function gSer(src,k){ const s=((window.GAMES_DATA||{}).series||{})[src]; if(!s||!s.y||!s.y[k]) return null; return {x:s.x, y:s.y[k]}; }
-function gValid(k){ const out={}; const V=(((window.GAMES_DATA||{}).validation||{}).axes)||{};
-  for(const ax in V){ const r=(V[ax].companies||{})[k]; if(r) out[ax]=r; } return out; }
-function gChart(cv,labels,datasets,yfmt,extra){
-  const opts=Object.assign({responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
-    plugins:{legend:{display:datasets.length>1,onClick:(e,item,lg)=>{const ch=lg.chart,i=item.datasetIndex,n=ch.data.datasets.length;
-      const ev=e&&(e.native||e);
-      if(ev&&(ev.shiftKey||ev.metaKey||ev.ctrlKey)){ ch.setDatasetVisibility(i,!ch.isDatasetVisible(i)); }
-      else { const vis=[...Array(n).keys()].filter(j=>ch.isDatasetVisible(j));
-        if(vis.length===1&&vis[0]===i){ for(let j=0;j<n;j++)ch.setDatasetVisibility(j,true); } else { for(let j=0;j<n;j++)ch.setDatasetVisibility(j,j===i); } }
-      ch.update();},labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
-      tooltip:{callbacks:{label:c=>c.dataset.label+': '+(yfmt?yfmt(c.parsed.y):c.parsed.y)}}},
-    scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:9,font:{size:8}},grid:{display:false}},
-      y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>yfmt?yfmt(v):v},grid:{color:'rgba(40,40,74,.5)'}}}},extra||{});
-  GCH[cv.id||Math.random()]=new Chart(cv,{data:{labels,datasets},options:opts});
-}
-const GAXN={steam_mom:'Steam리뷰',pcbang_mom:'PC방',mobile_rank:'모바일',dmm_mom:'DMM',maple_pop:'메이플',ccu_trend:'CCU'};
-function gNcBadge(k){ const v=gValid(k); const on=Object.keys(v).filter(ax=>v[ax].nowcast);
-  return on.length?`<span style="font-size:9.5px;font-weight:800;color:#59d0a8;border:1px solid #59d0a844;border-radius:99px;padding:1px 7px">nowcast:${on.map(a=>GAXN[a]||a).join('·')}</span>`:''; }
-function renderGame(){
-  gDestroy(); const G=window.GAMES_DATA||{}; ST.gview=ST.gview||'attract';
-  document.getElementById('catRow').style.display='none';
-  document.getElementById('cnt').innerHTML='';
-  document.getElementById('crumb').innerHTML='<b>🎮 Game — 상장사 게임 나우캐스트</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">'+((G.sources_meta&&G.sources_meta.steam)?'Steam '+G.sources_meta.steam.latest:'')+' · PC방 2007~ · 일간 자동갱신</span>';
-  const main=document.getElementById('main');
-  const tabs=[['attract','⭐ 매력도'],['co','🏢 상장사'],['steam','Steam'],['pcbang','🖥 PC방'],['maple','🍁 메이플'],['mobile','📱 모바일'],['dmm','🎌 DMM/JP']];
-  const cur=ST.gview.startsWith('co_')?'co':ST.gview;
-  const nav=`<div class="row" style="margin:0 0 12px;flex-wrap:wrap">${tabs.map(([k,l])=>`<span class="ltab ${cur===k?'on':''}" data-gv="${k}">${l}</span>`).join('')}</div>`;
-  let body='';
-  if(ST.gview==='attract') body=gvAttract(G);
-  else if(ST.gview==='co') body=gvCoGrid(G);
-  else if(ST.gview.startsWith('co_')) body=gvCoDetail(G,ST.gview.slice(3));
-  else if(ST.gview==='steam') body=gvSteam(G);
-  else if(ST.gview==='pcbang') body=gvPcbang(G);
-  else if(ST.gview==='maple') body=gvMaple(G);
-  else if(ST.gview==='mobile') body=gvMobile(G);
-  else if(ST.gview==='dmm') body=gvDmm(G);
-  main.innerHTML=nav+body;
-  main.querySelectorAll('[data-gv]').forEach(t=>t.onclick=()=>{ST.gview=t.dataset.gv;renderGame();window.scrollTo(0,0);});
-  main.querySelectorAll('[data-gco]').forEach(t=>t.onclick=()=>{ST.gview='co_'+t.dataset.gco;renderGame();window.scrollTo(0,0);});
-  gMountCharts(G);
-}
-function gvAttract(G){
-  const at=G.attract||[]; const meta=G.attract_meta||{};
-  const rows=at.map(a=>{
-    const axes=Object.entries(a.axes||{}).map(([k,v])=>`<span style="font-size:9.5px;padding:1px 6px;border-radius:5px;background:${v.z>=0?'rgba(89,208,168,.13)':'rgba(255,77,94,.13)'};color:${v.z>=0?'#59d0a8':'#ff6b7d'}" title="raw=${v.raw}">${GAXN[k]||k} ${v.z>=0?'+':''}${(+v.z).toFixed(1)}</span>`).join(' ');
-    const w=Math.min(100,Math.abs(a.score)*45);
-    return `<tr class="lr" data-gco="${a.co_key}" style="cursor:pointer">
-      <td style="font-family:var(--mono)">${a.rank}</td>
-      <td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${a.color};margin-right:7px;vertical-align:-1px"></span><b>${a.name}</b> <span style="color:var(--dim);font-size:10px">${a.ticker}</span> ${gNcBadge(a.co_key)}</td>
-      <td style="font-family:var(--mono);font-weight:800;color:${a.score>=0?'#59d0a8':'#ff6b7d'}">${a.score>=0?'+':''}${a.score.toFixed(2)}
-        <div style="height:4px;width:${w}px;background:${a.score>=0?'#59d0a8':'#ff6b7d'};border-radius:2px;opacity:.6"></div></td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--dim)">${a.n_axes}/4축</td>
-      <td>${axes}</td></tr>`;}).join('');
-  return `<div class="panel" style="padding:14px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">
-    매력도 = 가용 축(Steam리뷰증분·PC방점유율·모바일랭크·DMM매출)의 크로스섹션 z 평균 × √(축수/5) — 커버리지 페널티로 단일축 고득점 과신 방지. 제외축: ${Object.keys(meta.axes_excluded||{}).join(', ')||'—'} · <b>nowcast</b> 뱃지 = 분기매출 대조 검증 통과 축(ρ≥.6·hold≥.4)</div>
-  <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>회사</th><th>종합 z</th><th>커버리지</th><th>축별 분해</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-}
-function gvCoGrid(G){
-  const cos=(G.companies||[]).slice().sort((a,b)=>b.n_sources-a.n_sources);
-  return `<div class="ov-grid">${cos.map(c=>`<div class="card" data-gco="${c.co_key}" style="cursor:pointer;padding:13px 15px">
-    <div style="display:flex;align-items:center;gap:8px"><span style="width:11px;height:11px;border-radius:3px;background:${c.color}"></span><b>${c.name}</b><span style="color:var(--dim);font-size:10px">${c.ticker||''} · ${c.listing||''}</span></div>
-    <div style="margin-top:7px;font-size:10px;color:var(--dim)">${['steam','pcbang','maple','mobile','dmm'].filter(s=>c.has&&c.has[s]).map(s=>({steam:'Steam',pcbang:'🖥PC방',maple:'🍁메이플',mobile:'📱모바일',dmm:'🎌DMM'})[s]).join(' · ')||'유니버스만'}</div>
-    <div style="margin-top:4px">${gNcBadge(c.co_key)}</div></div>`).join('')}</div>`;
-}
-function gvCoDetail(G,k){
-  const c=(G.companies||[]).find(x=>x.co_key===k); if(!c) return '<div class="panel">회사 없음</div>';
-  const V=gValid(k);
-  const chip=ax=>{const r=V[ax]; if(!r) return '';
-    const st=r.nowcast?'<b style="color:#59d0a8">nowcast</b>':(r.status||'trend');
-    return `<span style="font-size:10px;color:var(--dim)">${GAXN[ax]||ax}: ρ=${r.rho==null?'—':r.rho} hold=${r.hold8==null?'—':r.hold8} ${st}</span>`;};
-  const srcs=[['steam_reviews_m','Steam 월 리뷰증분(판매 프록시)','#4ea1ff',null],
-    ['pcbang_share_w','PC방 주간 점유율 % (2007~)','#59d0a8','pcbang'],
-    ['maple_pop_w','메이플 주간 인구(전서버 합)','#ffbe2e',null],
-    ['mobile_rankpt_d','모바일 매출랭크 포인트(KR+JP+US, 51-순위 합)','#b48cff','mobile'],
-    ['dmm_rev_m','DMM/game-i 월 예상매출(億 — 사이트 추정치)','#ff7ab8','dmm']];
-  const cards=srcs.map(([src,label,col],i)=>{ const s=gSer(src,k); if(!s) return '';
-    const vax={steam_reviews_m:'steam',pcbang_share_w:'pcbang',dmm_rev_m:'dmm'}[src];
-    return `<div class="card"><div class="card-hd"><div><h3>${label}</h3><div class="co-cat">${vax&&V[vax]?chip(vax):''}</div></div></div>
-      <div class="ch-wrap"><canvas data-gch="${src}|${k}|${col}"></canvas></div></div>`;}).join('');
-  return `<div class="row" style="margin-bottom:10px"><span class="ltab" data-gv="co">← 상장사 목록</span>
-    <b style="font-size:15px;margin-left:6px"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${c.color};margin-right:6px"></span>${c.name}</b>
-    <span style="color:var(--dim);font-size:11px">${c.ticker||''} · ${c.listing||''}</span>${gNcBadge(k)}</div>
-    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:14px">${cards||'<div class="panel">이 회사에 연결된 시계열이 아직 없습니다.</div>'}</div>`;
-}
-function gvSteam(G){
-  const S=(G.series||{}).steam_reviews_m||{x:[],y:{}};
-  const cos=(G.companies||[]).filter(c=>S.y[c.co_key]);
-  const rank=cos.map(c=>{const a=S.y[c.co_key]; const n=a.length; const l3=a.slice(-3).reduce((s,v)=>s+(v||0),0); const p3=a.slice(-15,-12).reduce((s,v)=>s+(v||0),0);
-    return {c,l3,yoy:p3>0?(l3/p3-1)*100:null};}).sort((a,b)=>b.l3-a.l3);
-  const rows=rank.map((r,i)=>`<tr class="lr" data-gco="${r.c.co_key}" style="cursor:pointer"><td style="font-family:var(--mono)">${i+1}</td>
-    <td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${r.c.color};margin-right:6px"></span>${r.c.name}</td>
-    <td style="font-family:var(--mono)">${r.l3.toLocaleString()}</td>
-    <td style="font-family:var(--mono);color:${r.yoy==null?'var(--dim)':r.yoy>=0?'#59d0a8':'#ff6b7d'}">${r.yoy==null?'—':(r.yoy>=0?'+':'')+r.yoy.toFixed(0)+'%'}</td></tr>`).join('');
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">Steam 월 리뷰증분 = 판매량 프록시(공식 히스토그램 API). 검증: 캡콤 ρ0.72·테이크투 ρ0.76 nowcast — 한국사는 PC방·모바일 축이 본체(리뷰는 스팀 매출만 반영).</div>
-  <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>회사</th><th>최근 3개월 리뷰</th><th>YoY</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-}
-function gvPcbang(G){
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">gametrics 주간 TOP10 점유율(2007-01~), 회사 단위 합산 — <b>동일 회사=동일 색</b>. 범례 클릭=격리 · Shift클릭=개별 토글. TOP10 밖은 0 처리(무로그인 한계).</div>
-  <div class="card"><div class="ch-wrap" style="height:420px"><canvas id="gPcbangAll"></canvas></div></div>`;
-}
-function gvMaple(G){
-  const s=(G.series||{}).maple_pop_w||{x:[],y:{}}; const k=Object.keys(s.y)[0];
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">메이플스토리 주간 접속인구(meaegi, 2023-12~) — 넥슨 국내 본체 프록시. 주화시세는 소스 갱신중단(2026-03)으로 미표시.</div>
-  <div class="card"><div class="ch-wrap" style="height:340px"><canvas data-gch="maple_pop_w|${k||''}|#ffbe2e"></canvas></div></div>`;
-}
-function gvMobile(G){
-  const s=(G.series||{}).mobile_rankpt_d||{x:[],y:{}};
-  const n=(s.x||[]).length;
-  const cos=(G.companies||[]).filter(c=>s.y[c.co_key]&&s.y[c.co_key].some(v=>v>0));
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">iTunes 매출랭킹(KR·JP·US 게임 top50, 랭크포인트=Σ(51-순위)) — <b>${(s.x||[])[0]||'오늘'}부터 일간 누적 시작</b>(모바일인덱스는 인증벽 — 공식 RSS 대체). 데이터가 쌓이면 추세축이 자동 활성화됩니다.</div>
-  ${n<3?`<div class="panel" style="padding:16px">축적 ${n}일차 — 현재 랭크인 상장사: ${cos.map(c=>`<span style="color:${c.color};font-weight:700">${c.name}</span>`).join(' · ')||'집계 중'}</div>`:`<div class="card"><div class="ch-wrap" style="height:380px"><canvas id="gMobileAll"></canvas></div></div>`}`;
-}
-function gvDmm(G){
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:#ffbe2e;border-color:#ffbe2e44">⚠️ game-i 자체 추정치 — DMM 월상은 사이트 스스로 試作(조정중) 선언. 절대값이 아닌 <b>추세·상대비교</b>용입니다.</div>
-  <div class="card"><div class="ch-wrap" style="height:420px"><canvas id="gDmmAll"></canvas></div></div>`;
-}
-function gMountCharts(G){
-  const S=G.series||{};
-  document.querySelectorAll('[data-gch]').forEach(cv=>{
-    const [src,k,col]=cv.dataset.gch.split('|'); const s=gSer(src,k); if(!s) return;
-    gChart(cv,s.x,[{type:'line',label:(gValid(k),src),data:s.y,borderColor:col,backgroundColor:col+'22',borderWidth:1.5,pointRadius:0,fill:true,tension:.2,spanGaps:true}],
-      v=>src==='pcbang_share_w'?v.toFixed(1)+'%':src==='dmm_rev_m'?v.toFixed(1)+'億':v.toLocaleString());
-  });
-  const pc=document.getElementById('gPcbangAll');
-  if(pc&&S.pcbang_share_w){ const P=S.pcbang_share_w;
-    const ds=(G.companies||[]).filter(c=>P.y[c.co_key]).map(c=>({type:'line',label:c.name,data:P.y[c.co_key],borderColor:c.color,backgroundColor:c.color+'bb',borderWidth:.6,pointRadius:0,fill:true,tension:.15,stack:'p',spanGaps:false}));
-    gChart(pc,P.x,ds,v=>v.toFixed(1)+'%',{scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>v+'%'},grid:{color:'rgba(40,40,74,.5)'}}}}); }
-  const mb=document.getElementById('gMobileAll');
-  if(mb&&S.mobile_rankpt_d){ const M=S.mobile_rankpt_d;
-    const ds=(G.companies||[]).filter(c=>M.y[c.co_key]&&M.y[c.co_key].some(v=>v>0)).map(c=>({type:'line',label:c.name,data:M.y[c.co_key],borderColor:c.color,borderWidth:1.5,pointRadius:2,tension:.2}));
-    gChart(mb,M.x,ds,v=>v); }
-  const dm=document.getElementById('gDmmAll');
-  if(dm&&S.dmm_rev_m){ const D=S.dmm_rev_m;
-    const tops=(G.companies||[]).filter(c=>D.y[c.co_key]).map(c=>({c,last:D.y[c.co_key].slice(-2).reduce((s,v)=>s+(v||0),0)})).sort((a,b)=>b.last-a.last).slice(0,10);
-    const ds=tops.map(t=>({type:'line',label:t.c.name,data:D.y[t.c.co_key],borderColor:t.c.color,borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true}));
-    gChart(dm,D.x,ds,v=>v.toFixed(1)+'億'); }
-}
 function loadLux(cb){ if(_luxLoaded||window.LUXD){_luxLoaded=true;return cb();}
   const sc=document.createElement('script'); sc.src='data_lux.js';
   sc.onload=()=>{_luxLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="empty-msg">Luxury 데이터 로드 실패</div>';};
@@ -1647,11 +1569,20 @@ function renderNowcastRank(){
   if(!arr.length){ main.innerHTML='<div class="empty-msg">나우캐스트 데이터 준비중입니다. (재무·세관 데이터 필요)</div>'; return; }
   const grade=n=>(n.r2>=0.6&&n.hit>=70)?'hi':((n.r2>=0.35&&n.hit>=55)?'mid':'lo');
   const gcol={hi:'#2fae66',mid:'#e0a24a',lo:'#c98a8a'}, gl={hi:'高',mid:'中',lo:'低'};
+  const fxs=arr.map(n=>ncFix(n));
+  const staleReg={}; arr.forEach((n,i)=>{ const f=fxs[i]; if(f.checked&&f.corrected&&!f.partial) staleReg[n.reg||'JP']=true; });
   const rows=arr.map((n,i)=>{
-    const g=grade(n), lead=n.L>=1?('+'+n.L+'Q'):'동행';
-    const pc=n.predyoy==null?'#8a90a8':(n.predyoy>=0?'#2fae66':'#e06666');
-    const py=n.predyoy==null?'—':((n.predyoy>=0?'+':'')+n.predyoy+'%');
-    const cy=n.cyoy==null?'—':((n.cyoy>=0?'+':'')+n.cyoy+'%');
+    const g=grade(n), lead=n.L>=1?('+'+n.L+'Q'):'동행', fx=fxs[i];
+    const pv=fx.predyoy, cv=fx.cyoy;
+    const pc=(pv==null||fx.partial)?'#8a90a8':(pv>=0?'#2fae66':'#e06666');
+    const py=pv==null?'—':((fx.partial?'~':'')+(pv>=0?'+':'')+pv+'%');
+    const cy=cv==null?'—':((fx.partial?'~':'')+(cv>=0?'+':'')+cv+'%');
+    const partTip=`세관 ${n.lastC} 부분분기 — ${fx.avail}/3개월만 공표. 미공표월을 0으로 합산한 빌더 predyoy는 아티팩트. ${fx.corrected?'표시값은 가용월 YoY 페이스로 결측월을 보간한 프론트 보정치':'프론트 보정 불가(원계열·재무 미탑재) — 빌더 저장값을 회색으로 표시'}`;
+    const reTip=`프론트 재계산 — 빌더 산출 이후 공표된 세관월 반영 (저장값 ${n.cyoy==null?'—':n.cyoy+'%'} → ${n.predyoy==null?'—':n.predyoy+'%'})`;
+    const staleTip=`빌더 산출 이후 세관 데이터가 추가 공표됨 — 이 종목은 원계열·재무가 프론트에 없어 재계산 불가, 저장 예측이 구버전일 수 있음`;
+    const chips=(fx.partial?` <span class="ncpart" title="${partTip}">${fx.avail}/3개월</span>`:'')
+      +(fx.corrected&&!fx.partial?` <span class="ncre" title="${reTip}">↻재계산</span>`:'')
+      +(!fx.checked&&!fx.partial&&staleReg[n.reg||'JP']?` <span class="ncstale" title="${staleTip}">빌드지연</span>`:'');
     return `<tr class="ncr" data-id="${n.id}" data-reg="${n.reg||'JP'}">
       <td class="rk">${i+1}</td>
       <td class="nnm"><b>${n.name}</b><span class="sg">${(n.seg||'')} · ${n.hs}</span></td>
@@ -1661,7 +1592,7 @@ function renderNowcastRank(){
       <td class="mono">${n.r2.toFixed(2)}</td>
       <td class="mono">${n.hit}%</td>
       <td class="mono"><b style="color:${gcol[g]}">${gl[g]}</b></td>
-      <td class="mono call">${n.lastC||''} ${cy} <span style="color:#8a90a8">→</span> ${n.tgtq||''} <b style="color:${pc}">${py}</b>${n.fwd?' <span class="fwdb">미보고</span>':''}</td>
+      <td class="mono call">${n.lastC||''} ${cy} <span style="color:#8a90a8">→</span> ${n.tgtq||''} <b style="color:${pc}">${py}</b>${n.fwd?' <span class="fwdb">미보고</span>':''}${chips}</td>
       <td class="mono">${n.earn?(n.earn==='TBD'?'<span style="color:#8a90a8">TBD</span>':n.earn.slice(5).replace('-','/')):'—'}</td>
     </tr>`;
   }).join('');
@@ -1680,9 +1611,12 @@ function renderNowcastRank(){
     .nctbl .lead{color:#8a90a8} .nctbl .lead.y{color:#2bc0d4;font-weight:700}
     .nctbl .call{white-space:nowrap}
     .fwdb{font-size:9.5px;background:rgba(43,192,212,.16);color:#2bc0d4;border-radius:4px;padding:1px 5px;margin-left:2px}
+    .ncpart{font-size:9.5px;background:rgba(224,162,74,.16);color:#e0a24a;border-radius:4px;padding:1px 5px;margin-left:2px;cursor:help}
+    .ncre{font-size:9.5px;background:rgba(43,192,212,.16);color:#2bc0d4;border-radius:4px;padding:1px 5px;margin-left:2px;cursor:help}
+    .ncstale{font-size:9.5px;background:rgba(138,144,168,.16);color:#8a90a8;border-radius:4px;padding:1px 5px;margin-left:2px;cursor:help}
   </style>
   <div class="ncp"><div class="hd"><h2>🔮 나우캐스트 랭킹 — 세관 선행 → 매출 예측</h2>
-    <p><b>선행 스코어(상관×방향적중×리드보너스) 높은 순</b> — 강하고 신뢰있는 선행지표가 위로. 최신 세관값을 20분기 회귀에 넣어 <b>아직 발표 안 된 다음 분기 매출 YoY</b>를 예측. <b>미보고</b>는 다가올 실적으로 검증됨. 행 클릭 → 상세. 신뢰=R²×방향적중.</p></div>
+    <p><b>선행 스코어(상관×방향적중×리드보너스) 높은 순</b> — 강하고 신뢰있는 선행지표가 위로. 최신 세관값을 20분기 회귀에 넣어 <b>아직 발표 안 된 다음 분기 매출 YoY</b>를 예측. <b>미보고</b>는 다가올 실적으로 검증됨. 행 클릭 → 상세. 신뢰=R²×방향적중. <span class="ncpart">n/3개월</span>=세관 분기 일부만 공표(예측은 가용월 YoY 페이스 보간, 회색) · <span class="ncre">↻재계산</span>=빌더 이후 공표분 반영 프론트 재계산 · <span class="ncstale">빌드지연</span>=재계산 불가 종목의 구버전 저장값.</p></div>
     <div class="nctbl"><table>
       <thead><tr><th>#</th><th>기업</th><th>선행</th><th>스코어</th><th>corr</th><th>R²</th><th>방향적중</th><th>신뢰</th><th>최신세관 → 예측매출</th><th>실적발표</th></tr></thead>
       <tbody>${rows}</tbody></table></div></div>`;
