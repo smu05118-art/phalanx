@@ -201,6 +201,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="tmap">🕸 SupplyMap</span>
   <span class="tab" data-tab="ppi">🏭 PPI</span>
   <span class="tab" data-tab="game">🎮 Game</span>
+  <span class="tab" data-tab="ops" title="파이프라인 상태">🩺</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
 
@@ -814,7 +815,29 @@ function render(){
   if(ST.tab==='tmap') return loadTmap(renderTmap);
   if(ST.tab==='ppi') return loadPpi(renderPpi);
   if(ST.tab==='game') return loadGame(renderGame);
+  if(ST.tab==='ops') return loadOps(renderOps);
   renderOverview();
+}
+let _opsLoaded=false;
+function loadOps(cb){ if(_opsLoaded||window.OPS){_opsLoaded=true;return cb();}
+  const sc=document.createElement('script'); sc.src='data_ops.js';
+  sc.onload=()=>{_opsLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">🩺 상태 데이터가 아직 없습니다(워치독 첫 실행 대기).</div>';};
+  document.head.appendChild(sc); }
+function renderOps(){
+  const O=window.OPS||{}; const J=O.jobs||{}; const C=O.counts||{};
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('cnt').innerHTML='';
+  document.getElementById('crumb').innerHTML='<b>🩺 파이프라인 상태</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">기준 '+(O.generated||'—')+' · 워치독 09:30/21:30 자동갱신</span>';
+  const SC={OK:'#59d0a8',STALE:'#ffbe2e',FAIL:'#ff4d5e'};
+  const ord={FAIL:0,STALE:1,OK:2};
+  const rows=Object.entries(J).sort((a,b)=>(ord[a[1].status]??3)-(ord[b[1].status]??3)||a[0].localeCompare(b[0])).map(([n,v])=>
+    `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${SC[v.status]||'#8a93a3'};margin-right:7px"></span><b>${n}</b></td>
+     <td style="font-family:var(--mono);font-size:11px;color:${SC[v.status]||'var(--dim)'}">${v.status}</td>
+     <td style="font-family:var(--mono);font-size:11px">${v.last_run||'—'}</td>
+     <td style="font-size:10.5px;color:var(--dim)">${(v.note||'').slice(0,90)}</td></tr>`).join('');
+  document.getElementById('main').innerHTML=
+    `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:12px">정상 <b style="color:#59d0a8">${C.ok||0}</b> · 지연 <b style="color:#ffbe2e">${C.stale||0}</b> · 실패 <b style="color:#ff4d5e">${C.fail||0}</b> — 지연·실패는 텔레그램 경보 발송됨(중복 억제). 주간·월간 잡의 '로그 없음'은 주기 미도래일 수 있음.</div>
+     <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>파이프라인</th><th>상태</th><th>마지막 실행</th><th>비고</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function renderOverview(){
@@ -1352,7 +1375,9 @@ function gvAttract(G){
         <div style="height:4px;width:${w}px;background:${a.score>=0?'#59d0a8':'#ff6b7d'};border-radius:2px;opacity:.6"></div></td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--dim)">${a.n_axes}/4축</td>
       <td>${axes}</td></tr>`;}).join('');
-  return `<div class="panel" style="padding:14px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">
+  const G2=window.GAMES_DATA||{}; const upAll=(G2.upcoming&&G2.upcoming.items)||G2.upcoming||[];
+  const upLine=(upAll&&upAll.length)?`<div class="panel" style="padding:10px 16px;margin-bottom:12px;font-size:11px;border-color:#59d0a844"><b>🗓 상장사 신작</b> ${upAll.slice(0,5).map(u=>`<span style="margin-left:10px">${(u.title||'').slice(0,24)} <span style="color:var(--dim)">(${u.name||''})</span> <span style="color:#59d0a8;font-family:var(--mono);font-size:10px">${u.release_date||u.release_str||''}</span></span>`).join('')}</div>`:'';
+  return `${upLine}<div class="panel" style="padding:14px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">
     매력도 = 가용 축(Steam리뷰증분·PC방점유율·모바일랭크·DMM매출)의 크로스섹션 z 평균 × √(축수/5) — 커버리지 페널티로 단일축 고득점 과신 방지. 제외축: ${Object.keys(meta.axes_excluded||{}).join(', ')||'—'} · <b>nowcast</b> 뱃지 = 분기매출 대조 검증 통과 축(ρ≥.6·hold≥.4)</div>
   <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>회사</th><th>종합 z</th><th>커버리지</th><th>축별 분해</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -1378,9 +1403,12 @@ function gvCoDetail(G,k){
     const vax={steam_reviews_m:'steam',pcbang_share_w:'pcbang',dmm_rev_m:'dmm'}[src];
     return `<div class="card"><div class="card-hd"><div><h3>${label}</h3><div class="co-cat">${vax&&V[vax]?chip(vax):''}</div></div></div>
       <div class="ch-wrap"><canvas data-gch="${src}|${k}|${col}"></canvas></div></div>`;}).join('');
+  const and_=c.android&&c.android.items&&c.android.items.length?`<div class="panel" style="padding:11px 15px;margin-bottom:12px;font-size:11px"><b style="font-size:11.5px">🤖 구글플레이 배지</b> <span style="color:var(--dim);font-size:10px">(${c.android.latest} · 카테고리별 매출순위)</span><br>${c.android.items.map(it=>it.rank?`<span style="margin-right:10px">${it.title.slice(0,16)} <b style="font-family:var(--mono)">#${it.rank}</b> <span style="color:var(--dim);font-size:9.5px">${(it.chart||'').replace('최고 매출 ','')}</span></span>`:'').join('')||'<span style="color:var(--dim)">순위권 밖</span>'}</div>`:'';
+  const up_=c.upcoming&&c.upcoming.length?`<div class="panel" style="padding:11px 15px;margin-bottom:12px;font-size:11px;border-color:#59d0a844"><b>🗓 신작 예정</b> ${c.upcoming.map(u=>`<span style="margin-left:8px">${u.title.slice(0,26)} <span style="color:#59d0a8;font-family:var(--mono);font-size:10px">${u.release_date||u.release_str||''}</span></span>`).join('')}</div>`:'';
   return `<div class="row" style="margin-bottom:10px"><span class="ltab" data-gv="co">← 상장사 목록</span>
     <b style="font-size:15px;margin-left:6px"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${c.color};margin-right:6px"></span>${c.name}</b>
     <span style="color:var(--dim);font-size:11px">${c.ticker||''} · ${c.listing||''}</span>${gNcBadge(k)}</div>
+    ${and_}${up_}
     <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:14px">${cards||'<div class="panel">이 회사에 연결된 시계열이 아직 없습니다.</div>'}</div>`;
 }
 function gvSteam(G){
