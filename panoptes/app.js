@@ -200,6 +200,8 @@ const LIQLABEL={green:'초록',yellow:'노랑',orange:'주황',red:'빨강',gray
 async function loadLiq(){
   const box=document.getElementById('liqview');
   box.innerHTML='<p class="hint" style="padding:20px">유동성 데이터 로딩…</p>';
+  try{ const d2=await fetch('data/liquidity2.json').then(r=>r.ok?r.json():null);
+    if(d2 && window.renderLiq2){ renderLiq2(box, d2); return; } }catch(e){ console.warn('liq2', e); }
   let d; try{ d=await fetch('data/liquidity.json').then(r=>r.json()); }
   catch(e){ box.innerHTML='<p class="hint" style="padding:20px">유동성 데이터 준비 중입니다.</p>'; return; }
   renderLiq(d);
