@@ -166,7 +166,7 @@ async function loadTech2(){
   const box=document.getElementById('techview');
   let d; try{ d=await fetch('data/tech_indicators.json').then(r=>r.json()); }
   catch(e){ box.innerHTML='<p class="hint" style="padding:20px">기술적 지표 수집 중…</p>'; return; }
-  const IN={'^KS11':'KOSPI','^KQ11':'KOSDAQ','^GSPC':'S&P 500'};
+  const IN={'^KS11':'KOSPI','^KQ11':'KOSDAQ','^GSPC':'S&P 500','kospi':'KOSPI','kosdaq':'KOSDAQ','sp500':'S&P 500'};
   const cards=Object.entries(d).filter(([k])=>!k.startsWith('_')).map(([k,v])=>{
     const nm=IN[k]||v.name||k; const disp=v.disparity||{};
     const rows=Object.entries(disp).map(([ma,o])=>{
@@ -175,12 +175,14 @@ async function loadTech2(){
       const w=Math.max(2,Math.min(100,pct||0));
       return `<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:11.5px"><span style="color:var(--dim)">${ma.toUpperCase()} 이격도</span><b style="font-family:var(--mono)">${now!=null?now.toFixed(1):'—'} <span style="color:${col}">(${pct!=null?pct.toFixed(0):'—'}%ile)</span></b></div>
       <div style="height:5px;background:var(--panel2);border-radius:3px;margin-top:3px"><div style="width:${w}%;height:100%;border-radius:3px;background:${col}"></div></div></div>`;}).join('');
-    const mdd=v.mdd; const vd=v.verdict||'';
+    const mddo=v.mdd; const mdd=(mddo&&typeof mddo==='object')?mddo.from_peak_pct:mddo;
+    const VDK={overheat:'과열',depressed:'침체',oversold:'침체',neutral:'중립'};
+    const vd=VDK[String(v.verdict||'').toLowerCase()]||v.verdict||'';
     return `<div style="background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 18px">
       <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:14px">${nm}</b>
       <span style="font-size:11px;font-weight:700;color:${/과열/.test(vd)?'#ff4d5e':/침체/.test(vd)?'#4ea1ff':'var(--dim)'}">${vd}</span></div>
       ${rows}
-      ${mdd!=null?`<div style="font-size:11px;color:var(--dim);margin-top:8px">전고점 대비 <b style="font-family:var(--mono);color:${mdd<-10?'#ff8a3d':'var(--ink)'}">${mdd.toFixed(1)}%</b> (MDD)</div>`:''}
+      ${mdd!=null?`<div style="font-size:11px;color:var(--dim);margin-top:8px">전고점 대비 <b style="font-family:var(--mono);color:${mdd<-10?'#ff8a3d':'var(--ink)'}">${Number(mdd).toFixed(1)}%</b>${(mddo&&mddo.peak_date)?` <span style="opacity:.7">(고점 ${mddo.peak_date})</span>`:''} · 10년 최악 ${mddo&&mddo.worst_10y_pct!=null?mddo.worst_10y_pct.toFixed(0)+'%':'—'}</div>`:''}
     </div>`;}).join('');
   box.innerHTML=`<p style="font-size:18px;font-weight:800;margin:0 0 4px">📐 기술적 — 이격도·MDD</p>
   <p class="hint" style="margin:0 0 16px">이격도 = 종가/이동평균×100 · %ile = 10년 백분위(90+ 과열 · 10- 침체) · 일간 자동갱신 ${d._updated||''}</p>
