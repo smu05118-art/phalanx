@@ -201,6 +201,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="tmap">🕸 SupplyMap</span>
   <span class="tab" data-tab="ppi">🏭 PPI</span>
   <span class="tab" data-tab="game">🎮 Game</span>
+  <span class="tab" data-tab="plat">🌐 Platform</span>
   <span class="tab" data-tab="ops" title="파이프라인 상태">🩺</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
@@ -816,7 +817,51 @@ function render(){
   if(ST.tab==='ppi') return loadPpi(renderPpi);
   if(ST.tab==='game') return loadGame(renderGame);
   if(ST.tab==='ops') return loadOps(renderOps);
+  if(ST.tab==='plat') return loadPlat(renderPlat);
   renderOverview();
+}
+let _platLoaded=false; const PCH={};
+function loadPlat(cb){ if(_platLoaded||window.PLATD){_platLoaded=true;return cb();}
+  const sc=document.createElement('script'); sc.src='data_platform.js';
+  sc.onload=()=>{_platLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">🌐 플랫폼 데이터 준비 중…</div>';};
+  document.head.appendChild(sc); }
+function pDestroy(){ for(const k in PCH){ try{PCH[k].destroy();}catch(e){} delete PCH[k]; } }
+function renderPlat(){
+  pDestroy(); const P=window.PLATD||{};
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('cnt').innerHTML='';
+  document.getElementById('crumb').innerHTML='<b>🌐 Platform — 플랫폼 실측(앱·리테일·월차)</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">와이즈앱(KR 실측) + 일본 월차 재분류</span>';
+  const main=document.getElementById('main');
+  let waHtml='';
+  const WA=P.wiseapp;
+  if(WA&&(WA.app||WA.retail)){
+    const secs=[['app','📱 앱 (사용자 실측)'],['retail','🛍 리테일 (결제 실측)']];
+    waHtml=secs.map(([sk,sl])=>{
+      const S=WA[sk]||{}; const cards=Object.entries(S).map(([tk,v])=>{
+        const mets=v.metrics||{}; const mk=Object.keys(mets);
+        const chs=mk.map((mn,i)=>`<div style="margin-top:8px"><div style="font-size:10.5px;color:var(--dim)">${mn}</div><div class="ch-wrap" style="height:120px"><canvas data-pch="wa|${sk}|${tk}|${mn}"></canvas></div></div>`).join('');
+        return `<div class="card"><div class="card-hd"><div><h3>${v.label||tk} <small style="color:var(--dim)">${tk}</small></h3></div></div>${chs}</div>`;}).join('');
+      return `<p style="font-size:13px;font-weight:750;margin:14px 0 8px">${sl}</p><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px">${cards}</div>`;}).join('');
+    waHtml=`<div class="panel" style="padding:10px 16px;margin-bottom:6px;font-size:11px;color:var(--dim)">wiseapp.co.kr 무료 공개 실측 — 쿠팡이츠→CPNG · 스타벅스→SBUX · 넷플릭스→NFLX 매핑 · 주간 갱신</div>`+waHtml;
+  } else {
+    waHtml='<div class="panel" style="padding:14px 16px;margin-bottom:8px;font-size:12px;color:var(--dim)">📱 와이즈앱(CPNG·SBUX·NFLX) 실측 — 수집 진행 중(도착 시 자동 표시)</div>';
+  }
+  const jp=(P.jp||[]);
+  const jpCards=jp.map(c=>`<div class="card"><div class="card-hd"><div><h3>${c.name} <small style="color:var(--dim)">${c.code}</small></h3><div class="co-cat">${c.kind} · ${c.metric}</div></div></div>
+    <div class="ch-wrap" style="height:130px"><canvas data-pch="jp|${c.code}||"></canvas></div></div>`).join('');
+  main.innerHTML=waHtml+`<p style="font-size:13px;font-weight:750;margin:18px 0 8px">🇯🇵 일본 플랫폼·SaaS 월차 (재분류 ${jp.length}사)</p>
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px">${jpCards}</div>`;
+  document.querySelectorAll('[data-pch]').forEach(cv=>{
+    const [kind,a,b,mn]=cv.dataset.pch.split('|');
+    let ser=null,col='#2bc0d4';
+    if(kind==='jp'){ const c=jp.find(x=>x.code===a); ser=c&&c.m; col='#4dd0e1'; }
+    else { const v=((P.wiseapp||{})[a]||{})[b]; ser=v&&v.metrics&&v.metrics[mn]; col=a==='app'?'#4ea1ff':'#ff7ab8'; }
+    if(!ser) return;
+    const ks=Object.keys(ser).sort(); const vals=ks.map(k=>+ser[k]||null);
+    PCH[cv.dataset.pch]=new Chart(cv,{data:{labels:ks,datasets:[{type:'line',data:vals,borderColor:col,backgroundColor:col+'22',borderWidth:1.5,pointRadius:0,fill:true,tension:.2,spanGaps:true}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>String(c.parsed.y)}}},
+        scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:6,font:{size:8}},grid:{display:false}},y:{ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'}}}}});
+  });
 }
 let _opsLoaded=false;
 function loadOps(cb){ if(_opsLoaded||window.OPS){_opsLoaded=true;return cb();}
