@@ -166,8 +166,10 @@ async function loadTech2(){
   const box=document.getElementById('techview');
   let d; try{ d=await fetch('data/tech_indicators.json').then(r=>r.json()); }
   catch(e){ box.innerHTML='<p class="hint" style="padding:20px">기술적 지표 수집 중…</p>'; return; }
-  const IN={'^KS11':'KOSPI','^KQ11':'KOSDAQ','^GSPC':'S&P 500','kospi':'KOSPI','kosdaq':'KOSDAQ','sp500':'S&P 500'};
-  const cards=Object.entries(d).filter(([k])=>!k.startsWith('_')).map(([k,v])=>{
+  const IN={'^KS11':'KOSPI','^KQ11':'KOSDAQ','^GSPC':'S&P 500','^IXIC':'NASDAQ','kospi':'KOSPI','kosdaq':'KOSDAQ','sp500':'S&P 500','nasdaq':'NASDAQ'};
+  const ORD=['kospi','nasdaq','kosdaq','sp500'];
+  const keys=ORD.filter(k=>d[k]).concat(Object.keys(d).filter(k=>!k.startsWith('_')&&!ORD.includes(k)));
+  const cards=keys.map(k=>[k,d[k]]).map(([k,v])=>{
     const nm=IN[k]||v.name||k; const disp=v.disparity||{};
     const rows=Object.entries(disp).map(([ma,o])=>{
       const now=o.now, pct=o.pct;
@@ -185,8 +187,10 @@ async function loadTech2(){
       ${mdd!=null?`<div style="font-size:11px;color:var(--dim);margin-top:8px">전고점 대비 <b style="font-family:var(--mono);color:${mdd<-10?'#ff8a3d':'var(--ink)'}">${Number(mdd).toFixed(1)}%</b>${(mddo&&mddo.peak_date)?` <span style="opacity:.7">(고점 ${mddo.peak_date})</span>`:''} · 10년 최악 ${mddo&&mddo.worst_10y_pct!=null?mddo.worst_10y_pct.toFixed(0)+'%':'—'}</div>`:''}
     </div>`;}).join('');
   box.innerHTML=`<p style="font-size:18px;font-weight:800;margin:0 0 4px">📐 기술적 — 이격도·MDD</p>
-  <p class="hint" style="margin:0 0 16px">이격도 = 종가/이동평균×100 · %ile = 10년 백분위(90+ 과열 · 10- 침체) · 일간 자동갱신 ${d._updated||''}</p>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;max-width:1000px">${cards}</div>`;
+  <p class="hint" style="margin:0 0 16px">이격도 = 종가/이동평균×100 · %ile = 10년 백분위(90+ 과열 · 10- 침체) · 일간 자동갱신 ${String(d._updated||'').slice(0,10)}</p>
+  <div id="techCharts" style="max-width:1180px;margin:0 0 18px"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;max-width:1180px">${cards}</div>`;
+  if(window.renderTechCharts){ try{ renderTechCharts(document.getElementById('techCharts'), d); }catch(e){ console.warn('techCharts', e); } }
 }
 document.querySelectorAll('.ptab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
 
