@@ -191,6 +191,8 @@ async function loadTech2(){
   <div id="techCharts" style="max-width:1180px;margin:0 0 18px"></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;max-width:1180px">${cards}</div>`;
   if(window.renderTechCharts){ try{ renderTechCharts(document.getElementById('techCharts'), d); }catch(e){ console.warn('techCharts', e); } }
+  try{ const dv=await fetch('data/deriv_kr.json').then(r=>r.ok?r.json():null);
+    if(dv && window.renderDeriv){ const el=document.createElement('div'); el.style.marginTop='20px'; box.appendChild(el); renderDeriv(el, dv); } }catch(e){ console.warn('deriv', e); }
 }
 document.querySelectorAll('.ptab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
 
