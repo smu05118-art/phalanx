@@ -358,7 +358,9 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':(q.tab==='ppi'?'ppi':(q.tab==='game'?'game':'dash'))))))));
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':(q.tab==='ppi'?'ppi':(q.tab==='game'?'game':(q.tab==='plat'?'plat':'dash')))))))));
+  if(q.tab==='game'&&q.gco){ ST.gview='co_'+q.gco; }
+  if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
@@ -849,17 +851,66 @@ function renderPlat(){
   const jp=(P.jp||[]);
   const jpCards=jp.map(c=>`<div class="card"><div class="card-hd"><div><h3>${c.name} <small style="color:var(--dim)">${c.code}</small></h3><div class="co-cat">${c.kind} · ${c.metric}</div></div></div>
     <div class="ch-wrap" style="height:130px"><canvas data-pch="jp|${c.code}||"></canvas></div></div>`).join('');
+  const GI=P.gamei; let giHtml='';
+  if(GI&&GI.platforms&&Object.keys(GI.platforms).length){
+    const giCards=Object.entries(GI.platforms).map(([pk,pv])=>{
+      const hasTot=Object.keys(pv.total||{}).length>0;
+      const tks=Object.entries(pv.titles||{}).filter(([,t])=>t.ticker);
+      const totCard=hasTot?`<div class="card"><div class="card-hd"><div><h3>${pv.label||pk}</h3><div class="co-cat">월 예상매출 합계(표 상위 타이틀 합산 · 億G)</div></div></div><div class="ch-wrap" style="height:150px"><canvas data-pch="gi|${pk}||"></canvas></div></div>`:'';
+      const titleCard=tks.length?`<div class="card"><div class="card-hd"><div><h3>${(pv.label||pk).split(' (')[0]} — 상장사 귀속 상위</h3><div class="co-cat">${tks.slice(0,6).map(([t,v])=>`${t.slice(0,12)}<span style="color:var(--dim)">(${v.ticker})</span>`).join(' · ')}</div></div></div><div class="ch-wrap" style="height:180px"><canvas data-pch="gis|${pk}||"></canvas></div></div>`:'';
+      return totCard+titleCard;}).join('');
+    giHtml=`<p style="font-size:13px;font-weight:750;margin:20px 0 8px">🎮 game-i 플랫폼 월 예상매출 (App Store·Google Play·DMM)</p>
+    <div class="panel" style="padding:10px 16px;margin-bottom:8px;font-size:11px;color:#ffbe2e;border-color:#ffbe2e44">⚠️ game-i.daa.jp ${GI.disclaimer||'사이트 자체 추정치 — 추세·상대비교용'} · 기준 ${String(GI.fetched||'').slice(0,10)} · 절대값 아님</div>
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px">${giCards}</div>`;
+  } else {
+    giHtml='<div class="panel" style="padding:12px 16px;margin-top:20px;font-size:11px;color:var(--dim)">🎮 game-i 플랫폼 월 예상매출 — 수집 대기(도착 시 자동 표시). ⚠️ 사이트 자체 추정치로 추세·상대비교용.</div>';
+  }
   main.innerHTML=waHtml+`<p style="font-size:13px;font-weight:750;margin:18px 0 8px">🇯🇵 일본 플랫폼·SaaS 월차 (재분류 ${jp.length}사)</p>
-    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px">${jpCards}</div>`;
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px">${jpCards}</div>`+giHtml;
+  if(!window._ACCEL){
+    window._ACCEL={
+      plugin:{id:'accelBand',beforeDatasetsDraw(ch){const o=((ch.options||{}).plugins||{}).accelBand; const seg=o&&o.seg; if(!seg) return;
+        const ar=ch.chartArea, x=ch.scales&&ch.scales.x; if(!ar||!x) return; const ctx=ch.ctx; ctx.save();
+        for(let i=1;i<seg.length;i++){ if(!seg[i]) continue;
+          const x0=x.getPixelForValue(i-1), x1=x.getPixelForValue(i); if(!isFinite(x0)||!isFinite(x1)) continue;
+          ctx.fillStyle=seg[i]>0?'rgba(89,208,168,.10)':'rgba(255,77,94,.10)';
+          ctx.fillRect(x0,ar.top,x1-x0,ar.bottom-ar.top); }
+        ctx.restore();}},
+      segs(vals){ if(!vals||vals.length<3) return null;
+        const ma=vals.map((_,i)=>{ if(i<2) return null; const w=[vals[i],vals[i-1],vals[i-2]]; return w.some(v=>v==null||!isFinite(v))?null:(w[0]+w[1]+w[2])/3; });
+        const sl=ma.map((v,i)=>(v==null||i<1||ma[i-1]==null)?null:v-ma[i-1]);
+        return sl.map((v,i)=>{ if(v==null||i<1||sl[i-1]==null) return 0; const d=v-sl[i-1]; const eps=Math.abs(ma[i]||1)*1e-4; return d>eps?1:(d<-eps?-1:0); });},
+      chip(seg){ if(!seg) return ''; let st=0; for(let i=seg.length-1;i>=0;i--){ if(seg[i]){st=seg[i];break;} }
+        const m=st>0?['⤴','가속','#59d0a8']:st<0?['⤵','감속','#ff6b7d']:['—','보합','#8a93a3'];
+        return `<span class="acc-chip" title="3점 이동평균 기울기 변화" style="margin-left:auto;font-size:9.5px;font-weight:800;color:${m[2]};border:1px solid ${m[2]}44;border-radius:99px;padding:1px 7px;white-space:nowrap;align-self:flex-start">${m[0]} ${m[1]}</span>`;}
+    };
+  }
+  const ACC=window._ACCEL; const GIP=(P.gamei&&P.gamei.platforms)||{};
   document.querySelectorAll('[data-pch]').forEach(cv=>{
     const [kind,a,b,mn]=cv.dataset.pch.split('|');
-    let ser=null,col='#2bc0d4';
-    if(kind==='jp'){ const c=jp.find(x=>x.code===a); ser=c&&c.m; col='#4dd0e1'; }
-    else { const v=((P.wiseapp||{})[a]||{})[b]; ser=v&&v.metrics&&v.metrics[mn]; col=a==='app'?'#4ea1ff':'#ff7ab8'; }
+    let ser=null,col='#2bc0d4',mname='';
+    if(kind==='jp'){ const c=jp.find(x=>x.code===a); ser=c&&c.m; col='#4dd0e1'; mname=(c&&c.metric)||''; }
+    else if(kind==='gi'){ ser=(GIP[a]||{}).total; col='#ffd166'; }
+    else if(kind==='gis'){
+      const tt=Object.entries((GIP[a]||{}).titles||{}).filter(([,t])=>t.ticker).slice(0,6);
+      if(!tt.length) return;
+      const ks=[...new Set(tt.flatMap(([,t])=>Object.keys(t.m||{})))].sort();
+      const ds=tt.map(([t,v],i)=>({type:'line',label:`${t.slice(0,12)} ${v.ticker}`,data:ks.map(k=>{const x=(v.m||{})[k];return x==null?null:+x;}),borderColor:CCOL[i%CCOL.length],borderWidth:1.4,pointRadius:0,tension:.2,spanGaps:true}));
+      PCH[cv.dataset.pch]=new Chart(cv,{data:{labels:ks,datasets:ds},
+        options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+          plugins:{legend:{display:true,labels:{color:'#6a6a9a',boxWidth:9,font:{size:8.5}}}},
+          scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:8,font:{size:8}},grid:{display:false}},y:{ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'}}}}});
+      return; }
+    else { const v=((P.wiseapp||{})[a]||{})[b]; ser=v&&v.metrics&&v.metrics[mn]; col=a==='app'?'#4ea1ff':'#ff7ab8'; mname=mn||''; }
     if(!ser) return;
+    if(typeof userMetricColor==='function'){ const uc=userMetricColor(mname); if(uc) col=uc; }
     const ks=Object.keys(ser).sort(); const vals=ks.map(k=>+ser[k]||null);
+    const seg=ACC.segs(vals);
+    if(seg){ const card=cv.closest('.card'); const hd=card&&card.querySelector('.card-hd');
+      if(hd&&!hd.querySelector('.acc-chip')) hd.insertAdjacentHTML('beforeend',ACC.chip(seg)); }
     PCH[cv.dataset.pch]=new Chart(cv,{data:{labels:ks,datasets:[{type:'line',data:vals,borderColor:col,backgroundColor:col+'22',borderWidth:1.5,pointRadius:0,fill:true,tension:.2,spanGaps:true}]},
-      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>String(c.parsed.y)}}},
+      plugins:seg?[ACC.plugin]:[],
+      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{accelBand:seg?{seg}:false,legend:{display:false},tooltip:{callbacks:{label:c=>String(c.parsed.y)}}},
         scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:6,font:{size:8}},grid:{display:false}},y:{ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'}}}}});
   });
 }
@@ -1491,11 +1542,21 @@ function gvDmm(G){
   return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:#ffbe2e;border-color:#ffbe2e44">⚠️ game-i 자체 추정치 — DMM 월상은 사이트 스스로 試作(조정중) 선언. 절대값이 아닌 <b>추세·상대비교</b>용입니다.</div>
   <div class="card"><div class="ch-wrap" style="height:420px"><canvas id="gDmmAll"></canvas></div></div>`;
 }
+function userMetricColor(name){
+  const s=String(name||'').toLowerCase(); if(!s) return null;
+  if(/신규\s*설치|new[\s_-]?install/.test(s)) return '#c39bff';
+  if(/설치|인스톨|install/.test(s)) return '#b48cff';
+  if(/dau|일간\s*활성|daily\s*active/.test(s)) return '#4fd1ff';
+  if(/mau|월간\s*활성|monthly\s*active/.test(s)) return '#7ae0ff';
+  if(/사용자|이용자|active[\s_-]?user|\busers?\b/.test(s)) return '#7ae0ff';
+  return null;
+}
 function gMountCharts(G){
   const S=G.series||{};
   document.querySelectorAll('[data-gch]').forEach(cv=>{
     const [src,k,col]=cv.dataset.gch.split('|'); const s=gSer(src,k); if(!s) return;
-    gChart(cv,s.x,[{type:'line',label:(gValid(k),src),data:s.y,borderColor:col,backgroundColor:col+'22',borderWidth:1.5,pointRadius:0,fill:true,tension:.2,spanGaps:true}],
+    const ucol=userMetricColor(src)||col;
+    gChart(cv,s.x,[{type:'line',label:(gValid(k),src),data:s.y,borderColor:ucol,backgroundColor:ucol+'22',borderWidth:1.5,pointRadius:0,fill:true,tension:.2,spanGaps:true}],
       v=>src==='pcbang_share_w'?v.toFixed(1)+'%':src==='dmm_rev_m'?v.toFixed(1)+'億':v.toLocaleString());
   });
   const pc=document.getElementById('gPcbangAll');
