@@ -902,6 +902,40 @@ function renderKpi(){
         <div style="margin-top:6px">${(FC.swing_factors||[]).slice(0,3).map(s=>`<span style="font-size:10.5px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;margin-right:6px">${s.factor}</span>`).join('')}</div></div>
       <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>세그먼트</th><th>최근 매출(억엔)</th><th>OPM</th><th>다음분기 Base</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
+  // ---- 산업 허브 자동 섹션 (kpi_<industry>.json 추가 시 자동 노출) ----
+  const HUBS=K.hubs||{}, IDX=K.index||{};
+  const hubKeys=Object.keys(HUBS).filter(k=>HUBS[k].data);
+  if(hubKeys.length){
+    html+=`<p style="font-size:14px;font-weight:800;margin:22px 0 8px">🏭 산업 허브 <span style="color:var(--dim);font-size:11px;font-weight:400">${hubKeys.length}개 — IR 원자료 기반, 실적마다 갱신</span></p>`;
+    hubKeys.forEach((ind,hi)=>{
+      const D=HUBS[ind].data||{}, T=HUBS[ind].th||{}, meta=IDX[ind]||{};
+      const cos=D.companies||{};
+      const th=(T.threshold||{}).industry, thPer=(T.threshold||{}).per_co||{};
+      const bl=T.baseline;
+      const blNum=(typeof bl==='number')?bl:(Array.isArray(bl)?(bl.find(b=>typeof b.baseline==='number')||{}).baseline:(bl&&bl.bb)!=null?bl.bb:null);
+      // 회사별 kpi 시계열 수집
+      const rows=[]; const series=[];
+      Object.entries(cos).forEach(([tk,v],i)=>{
+        const kp=v.kpi&&Object.keys(v.kpi).length?v.kpi:null;
+        const per=Object.keys(v).filter(x=>v[x]&&typeof v[x]==='object'&&Object.keys(v[x]).length);
+        rows.push(`<tr><td>${(v.name||tk).slice(0,20)} <span style="color:var(--dim);font-size:10px">${tk}</span></td>
+          <td style="font-size:10.5px;color:var(--dim)">${per.filter(x=>x!=='notes').slice(0,5).map(x=>x+'('+Object.keys(v[x]).length+')').join(' · ')}</td>
+          <td style="font-family:var(--mono);font-size:11px">${kp?(()=>{const ks=Object.keys(kp).sort();const last=ks[ks.length-1];const val=+kp[last];const hot=(thPer[tk]!=null?val>=thPer[tk]:(th!=null&&val>=th));return `<b style="color:${hot?'#ff6b7d':'var(--ink)'}">${val.toFixed(1)}</b> <span style="color:var(--dim);font-size:9.5px">${last}</span>${hot?' 🔥':''}`;})():'—'}</td></tr>`);
+        if(kp) series.push({tk,name:v.name||tk,kp,col:KCOL[i%KCOL.length]});
+      });
+      const cid='kHub'+hi;
+      const qs=[...new Set(series.flatMap(s=>Object.keys(s.kp)))].sort();
+      html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${meta.label||ind}</h3>
+        <div class="co-cat">${(meta.core_kpis||[]).join(' · ')||'핵심 KPI'} ${th!=null?`· <b style="color:#ff4d5e">임계치 ${th}</b>`:''} ${blNum!=null?`· 기준선 ${blNum}`:''}</div></div></div>
+        ${qs.length?`<div class="ch-wrap" style="height:280px"><canvas id="${cid}"></canvas></div>`:'<div style="font-size:11px;color:var(--dim);padding:6px 0">KPI 시계열 없음(커버리지 표 참조)</div>'}
+        <div style="overflow-x:auto;margin-top:8px"><table class="tbl"><thead><tr><th>기업</th><th>보유 지표(분기수)</th><th>핵심 KPI 최신</th></tr></thead><tbody>${rows.join('')}</tbody></table></div></div>`;
+      if(qs.length) setTimeout(()=>{const el=document.getElementById(cid); if(!el)return;
+        const ds=series.map(s=>({type:'line',label:s.name.slice(0,16),data:qs.map(q=>s.kp[q]!=null?+s.kp[q]:null),borderColor:s.col,borderWidth:1.8,pointRadius:1.5,tension:.2,spanGaps:true}));
+        if(blNum!=null) ds.push(kHLine(qs,blNum,'#8a93a3',[4,4],'기준선'));
+        if(th!=null) ds.push(kHLine(qs,th,'#ff4d5e',[7,4],'임계치 '+th));
+        kLine(el,qs,ds,{});},0);
+    });
+  }
   document.getElementById('main').innerHTML=html||'<div class="panel" style="padding:24px">데이터 없음</div>';
 }
 let _platLoaded=false; const PCH={};
