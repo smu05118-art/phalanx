@@ -203,6 +203,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="game">🎮 Game</span>
   <span class="tab" data-tab="plat">🌐 Platform</span>
   <span class="tab" data-tab="kpi">📊 산업KPI</span>
+  <span class="tab" data-tab="comm">🛢 원자재</span>
   <span class="tab" data-tab="ops" title="파이프라인 상태">🩺</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
@@ -359,7 +360,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':(q.tab==='ppi'?'ppi':(q.tab==='game'?'game':(q.tab==='plat'?'plat':'dash')))))))));
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':(q.tab==='ppi'?'ppi':(q.tab==='game'?'game':(q.tab==='plat'?'plat':(q.tab==='comm'?'comm':'dash'))))))))));
   if(q.tab==='game'&&q.gco){ ST.gview='co_'+q.gco; }
   if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
@@ -822,7 +823,27 @@ function render(){
   if(ST.tab==='ops') return loadOps(renderOps);
   if(ST.tab==='plat') return loadPlat(renderPlat);
   if(ST.tab==='kpi') return loadKpi(renderKpi);
+  if(ST.tab==='comm') return loadComm(renderComm2);
   renderOverview();
+}
+let _commLoaded=false, _commJs=false;
+function loadComm(cb){
+  const need=[];
+  if(!window.COMMD) need.push(['data_commodity.js',()=>_commLoaded=true]);
+  if(!window.renderComm) need.push(['commodity_charts.js',()=>_commJs=true]);
+  if(!need.length) return cb();
+  let n=need.length;
+  need.forEach(([src,mark])=>{const sc=document.createElement('script');sc.src=src;
+    sc.onload=()=>{mark();if(--n===0)cb();};
+    sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">🛢 원자재 데이터 준비 중…</div>';};
+    document.head.appendChild(sc);});
+}
+function renderComm2(){
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('cnt').innerHTML='';
+  document.getElementById('crumb').innerHTML='<b>🛢 원자재 — FRED 전수</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">글로벌 원자재 vs 美 소매가 · 월간 자동갱신</span>';
+  const main=document.getElementById('main'); main.innerHTML='';
+  try{ renderComm(main, window.COMMD||{}); }catch(e){ main.innerHTML='<div class="panel" style="padding:24px">렌더 오류: '+e.message+'</div>'; }
 }
 let _kpiLoaded=false; const KCH={};
 function loadKpi(cb){ if(_kpiLoaded||window.KPID){_kpiLoaded=true;return cb();}
