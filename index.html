@@ -202,6 +202,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="ppi">🏭 PPI</span>
   <span class="tab" data-tab="game">🎮 Game</span>
   <span class="tab" data-tab="plat">🌐 Platform</span>
+  <span class="tab" data-tab="kpi">📊 산업KPI</span>
   <span class="tab" data-tab="ops" title="파이프라인 상태">🩺</span>
   <span class="tab" data-tab="watch">관심기업 추가</span>
 </div>
@@ -820,7 +821,88 @@ function render(){
   if(ST.tab==='game') return loadGame(renderGame);
   if(ST.tab==='ops') return loadOps(renderOps);
   if(ST.tab==='plat') return loadPlat(renderPlat);
+  if(ST.tab==='kpi') return loadKpi(renderKpi);
   renderOverview();
+}
+let _kpiLoaded=false; const KCH={};
+function loadKpi(cb){ if(_kpiLoaded||window.KPID){_kpiLoaded=true;return cb();}
+  const sc=document.createElement('script'); sc.src='data_kpi.js';
+  sc.onload=()=>{_kpiLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">📊 산업 KPI 데이터 준비 중…</div>';};
+  document.head.appendChild(sc); }
+function kDestroy(){ for(const k in KCH){ try{KCH[k].destroy();}catch(e){} delete KCH[k]; } }
+const KCOL=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1'];
+function kLine(cv,labels,ds,opts){
+  opts=opts||{};
+  KCH[cv.id||('k'+Object.keys(KCH).length)]=new Chart(cv,{data:{labels,datasets:ds},options:{
+    responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+      tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toFixed(2))}},
+      annotation:undefined},
+    scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:10,font:{size:8}},grid:{display:false}},
+      y:{ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'},
+        suggestedMin:opts.min,suggestedMax:opts.max}}}});
+}
+function kHLine(labels,y,color,dash,label){ return {type:'line',label:label,data:labels.map(()=>y),borderColor:color,borderWidth:1.2,borderDash:dash||[6,4],pointRadius:0,fill:false,tension:0}; }
+function renderKpi(){
+  kDestroy(); const K=window.KPID||{};
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('cnt').innerHTML='';
+  document.getElementById('crumb').innerHTML='<b>📊 산업 KPI — BB ratio · 가동률 · 임계치</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">IR 원자료 · 실적마다 갱신</span>';
+  const M=(K.mlcc||{}).data, TH=(K.mlcc||{}).th||{}, T=(K.tdk||{}).data, FC=(K.tdk||{}).fc;
+  let html='';
+  if(M){
+    const cos=M.companies||{};
+    const thI=((TH.threshold||{}).industry)!=null?TH.threshold.industry:null;
+    const base=((TH.baseline||{}).bb)!=null?TH.baseline.bb:1.0;
+    // BB 차트
+    const bbCos=Object.entries(cos).filter(([,v])=>v.bb&&Object.keys(v.bb).length);
+    const qs=[...new Set(bbCos.flatMap(([,v])=>Object.keys(v.bb).filter(k=>/^\d{4}-Q\d$/.test(k))))].sort();
+    const ds=bbCos.map(([tk,v],i)=>({type:'line',label:(v.name||tk),data:qs.map(q=>v.bb[q]!=null?+v.bb[q]:null),
+      borderColor:KCOL[i%KCOL.length],backgroundColor:KCOL[i%KCOL.length]+'22',borderWidth:1.8,pointRadius:1.5,tension:.2,spanGaps:true}));
+    if(qs.length){ ds.push(kHLine(qs,base,'#8a93a3',[4,4],'기준선 '+base));
+      if(thI!=null) ds.push(kHLine(qs,thI,'#ff4d5e',[7,4],'임계치 '+thI+' (P사이클 점화)')); }
+    const cur=bbCos.map(([tk,v])=>{const ks=Object.keys(v.bb).filter(k=>/^\d{4}-Q\d$/.test(k)).sort(); const last=ks[ks.length-1];
+      return {n:v.name||tk,q:last,val:+v.bb[last]};}).sort((a,b)=>b.val-a.val);
+    const chips=cur.map(c=>`<span style="font-size:11px;padding:3px 9px;border-radius:999px;margin-right:6px;background:${thI!=null&&c.val>=thI?'rgba(255,77,94,.16)':'rgba(127,150,170,.10)'};color:${thI!=null&&c.val>=thI?'#ff6b7d':'var(--ink)'};font-weight:${thI!=null&&c.val>=thI?800:600}">${c.n} ${c.val.toFixed(2)} <span style="color:var(--dim);font-size:9.5px">${c.q}</span>${thI!=null&&c.val>=thI?' 🔥':''}</span>`).join('');
+    // 가동률
+    const utCos=Object.entries(cos).filter(([,v])=>v.util&&Object.keys(v.util).length);
+    const uq=[...new Set(utCos.flatMap(([,v])=>Object.keys(v.util).filter(k=>/^\d{4}-Q\d$/.test(k))))].sort();
+    const uds=utCos.map(([tk,v],i)=>({type:'line',label:(v.name||tk),data:uq.map(q=>v.util[q]!=null?+v.util[q]:null),
+      borderColor:KCOL[i%KCOL.length],borderWidth:1.8,pointRadius:1.5,tension:.2,spanGaps:true}));
+    const umed=(TH.baseline||{}).util_median_per_co||{};
+    // 커버리지
+    const covRows=Object.entries(cos).map(([tk,v])=>`<tr><td>${v.name||tk} <span style="color:var(--dim);font-size:10px">${tk}</span></td>
+      <td style="font-family:var(--mono)">${(v.bb&&Object.keys(v.bb).length)||0}q</td><td style="font-family:var(--mono)">${(v.util&&Object.keys(v.util).length)||0}q</td>
+      <td style="font-size:10.5px;color:var(--dim)">${(v.notes&&v.notes[0]||'').slice(0,60)}</td></tr>`).join('');
+    html+=`<p style="font-size:14px;font-weight:800;margin:0 0 8px">🔵 MLCC — Book-to-Bill · 가동률</p>
+      <div class="panel" style="padding:12px 16px;margin-bottom:10px;font-size:11px;color:var(--dim)">
+        기준선 <b>${base}</b>(호황 분기점) · <b style="color:#ff4d5e">임계치 ${thI!=null?thI:'—'}</b> = 미드커브(μ±0.75σ) 바깥 그리드에서 "도달 후 2분기 내 세그매출 급가속" 백테스트 <b>precision ${(((TH.backtest||{}).industry_common_pooled||{}).grid||[]).filter(g=>g.th===thI).map(g=>Math.round(g.precision*100)+'%')[0]||'—'} · support ${(((TH.backtest||{}).industry_common_pooled||{}).grid||[]).filter(g=>g.th===thI).map(g=>g.support)[0]||'—'}</b> 조건을 만족하는 가장 타이트한 레벨 — 도달 시 P사이클 점화 신호.
+        <div style="margin-top:8px">${chips}</div></div>
+      <div class="card"><div class="card-hd"><div><h3>BB ratio (수주÷매출)</h3><div class="co-cat">기준선 회색 점선 · 임계치 빨간 점선</div></div></div>
+        <div class="ch-wrap" style="height:330px"><canvas id="kBB"></canvas></div></div>
+      <div class="card" style="margin-top:12px"><div class="card-hd"><div><h3>가동률 (%)</h3><div class="co-cat">${Object.entries(umed).map(([t,v])=>t+' 중앙값 '+v).join(' · ')}</div></div></div>
+        <div class="ch-wrap" style="height:300px"><canvas id="kUT"></canvas></div></div>
+      <div class="panel" style="overflow-x:auto;margin-top:12px"><table class="tbl"><thead><tr><th>기업</th><th>BB 분기수</th><th>가동률 분기수</th><th>비고(공시 한계)</th></tr></thead><tbody>${covRows}</tbody></table></div>`;
+    setTimeout(()=>{ const b=document.getElementById('kBB'); if(b&&qs.length) kLine(b,qs,ds,{min:0.6,max:1.9});
+      const u=document.getElementById('kUT'); if(u&&uq.length) kLine(u,uq,uds,{min:40,max:105}); },0);
+  }
+  if(T&&FC){
+    const f=(FC.forecast||{}).total||{}; const bt=FC.backtest||{};
+    const seg=T.segments||{}; const segKeys=Object.keys(seg).filter(k=>k!=='total');
+    const rows=segKeys.map(k=>{const r=seg[k].rev||{}; const ks=Object.keys(r).sort(); const last=ks[ks.length-1];
+      const fs=((FC.forecast||{}).segments||{})[k]||{};
+      return `<tr><td>${k}</td><td style="font-family:var(--mono)">${r[last]!=null?(+r[last]).toFixed(0):'—'}</td>
+        <td style="font-family:var(--mono)">${(seg[k].opm||{})[last]!=null?(+seg[k].opm[last]).toFixed(1)+'%':'—'}</td>
+        <td style="font-family:var(--mono);color:#4ea1ff">${(fs.rev&&fs.rev.base)!=null?fs.rev.base.toFixed(0):'—'}</td></tr>`;}).join('');
+    html+=`<p style="font-size:14px;font-weight:800;margin:22px 0 8px">🟠 TDK (6762.T) — 전세그 완결 + 다음 분기 추정</p>
+      <div class="panel" style="padding:12px 16px;margin-bottom:10px;font-size:11.5px">
+        <b>${FC.target_quarter||''}</b> 추정 — 매출 <b style="font-family:var(--mono)">${(f.rev&&f.rev.base)||'—'}</b>억엔 <span style="color:var(--dim)">(${(f.rev&&f.rev.bear)||'—'}~${(f.rev&&f.rev.bull)||'—'})</span> ·
+        OP <b style="font-family:var(--mono)">${(f.op&&f.op.base)||'—'}</b>억엔 <span style="color:var(--dim)">(${(f.op&&f.op.bear)||'—'}~${(f.op&&f.op.bull)||'—'})</span>
+        <div style="margin-top:6px;color:var(--dim);font-size:10.5px">백테스트 MAE 매출 ${bt.rev_mae||bt.mae_rev||'—'} · OP ${bt.op_mae||bt.mae_op||'—'} → <b style="color:#ffbe2e">OP는 방향지표 등급</b> · TDK는 수주·BB 미공시(전수확인) — BB 커버리지 제외</div>
+        <div style="margin-top:6px">${(FC.swing_factors||[]).slice(0,3).map(s=>`<span style="font-size:10.5px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;margin-right:6px">${s.factor}</span>`).join('')}</div></div>
+      <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>세그먼트</th><th>최근 매출(억엔)</th><th>OPM</th><th>다음분기 Base</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  document.getElementById('main').innerHTML=html||'<div class="panel" style="padding:24px">데이터 없음</div>';
 }
 let _platLoaded=false; const PCH={};
 function loadPlat(cb){ if(_platLoaded||window.PLATD){_platLoaded=true;return cb();}
