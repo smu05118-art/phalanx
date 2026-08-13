@@ -872,7 +872,7 @@ function renderAI2(){
     renderNeocloud(nel, {model:A.neocloud, asp:A.asp}); } }catch(e){ console.warn('neocloud', e); }
   try{ const A2=window.AID||{}; if(window.renderAICapex&&A2.capex){
     const cel=document.createElement('div'); cel.style.marginTop='22px'; main.appendChild(cel);
-    renderAICapex(cel, {capex:A2.capex, tx:A2.tx}); } }catch(e){ console.warn('aicapex', e); }
+    renderAICapex(cel, A2.capex, A2.tx); } }catch(e){ console.warn('aicapex', e); }
 }
 let _commLoaded=false, _commJs=false;
 function loadComm(cb){
