@@ -866,7 +866,7 @@ function renderAI2(){
   document.getElementById('cnt').innerHTML='';
   document.getElementById('crumb').innerHTML='<b>🤖 AI·클라우드 — 하이퍼스케일러·네오클라우드·중화권</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">공시=실선 · 성장률만=점선 · <span style="color:#ff8a3d">역산추정=주황</span> · 분기 갱신</span>';
   const main=document.getElementById('main'); main.innerHTML='';
-  try{ renderAICloud(main, window.AID||{}); }catch(e){ main.innerHTML='<div class="panel" style="padding:24px">렌더 오류: '+e.message+'</div>'; }
+  try{ const A0=window.AID||{}; renderAICloud(main, A0.cloud||{}, A0.derived); }catch(e){ main.innerHTML='<div class="panel" style="padding:24px">렌더 오류: '+e.message+'</div>'; }
   try{ const A=window.AID||{}; if(window.renderNeocloud&&(A.neocloud||A.asp)){
     const nel=document.createElement('div'); nel.style.marginTop='22px'; main.appendChild(nel);
     renderNeocloud(nel, {model:A.neocloud, asp:A.asp}); } }catch(e){ console.warn('neocloud', e); }
