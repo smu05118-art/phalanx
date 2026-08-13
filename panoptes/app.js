@@ -157,10 +157,20 @@ function switchTab(tab){
   document.getElementById('mapview').hidden=!isMap;
   document.getElementById('liqview').hidden=(tab!=='liq');
   document.getElementById('techview').hidden=(tab!=='tech');
+  document.getElementById('shipview').hidden=(tab!=='ship');
   document.getElementById('headStat').style.display=isMap?'':'none';
   if(isMap && MAP){setTimeout(()=>MAP.resize(),50);}
   if(tab==='liq' && !_liqLoaded){ _liqLoaded=true; loadLiq(); }
   if(tab==='tech'){ loadTech2(); }
+  if(tab==='ship'){ loadShip(); }
+}
+async function loadShip(){
+  const box=document.getElementById('shipview');
+  if(box.dataset.loaded) return; 
+  box.innerHTML='<p class="hint" style="padding:20px">해운 데이터 로딩…</p>';
+  try{ const d=await fetch('data/shipping.json').then(r=>r.json());
+    box.innerHTML=''; renderShipping(box, d); box.dataset.loaded='1';
+  }catch(e){ box.innerHTML='<p class="hint" style="padding:20px">해운 데이터 준비 중…</p>'; }
 }
 async function loadTech2(){
   const box=document.getElementById('techview');
