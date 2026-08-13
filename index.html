@@ -853,6 +853,7 @@ function loadAI(cb){
   if(!window.AID) need.push('data_ai.js');
   if(!window.renderAICloud) need.push('ai_charts.js');
   if(!window.renderNeocloud) need.push('neocloud_charts.js');
+  if(!window.renderAICapex) need.push('ai_capex_charts.js');
   if(!need.length) return cb();
   let n=need.length;
   need.forEach(src=>{const sc=document.createElement('script');sc.src=src;
@@ -869,6 +870,9 @@ function renderAI2(){
   try{ const A=window.AID||{}; if(window.renderNeocloud&&(A.neocloud||A.asp)){
     const nel=document.createElement('div'); nel.style.marginTop='22px'; main.appendChild(nel);
     renderNeocloud(nel, {model:A.neocloud, asp:A.asp}); } }catch(e){ console.warn('neocloud', e); }
+  try{ const A2=window.AID||{}; if(window.renderAICapex&&A2.capex){
+    const cel=document.createElement('div'); cel.style.marginTop='22px'; main.appendChild(cel);
+    renderAICapex(cel, {capex:A2.capex, tx:A2.tx}); } }catch(e){ console.warn('aicapex', e); }
 }
 let _commLoaded=false, _commJs=false;
 function loadComm(cb){
