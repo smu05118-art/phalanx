@@ -920,7 +920,17 @@ function renderKpi(){
   const M=(K.mlcc||{}).data, TH=(K.mlcc||{}).th||{}, T=(K.tdk||{}).data, FC=(K.tdk||{}).fc;
   let html='';
   const PC=(K.pcard&&K.pcard.companies)?K.pcard:null;
-  if(PC){
+  // 산업 칩 네비게이션 (메인 대시 카테고리 칩과 동일 문법)
+  const KC=ST.kcat||'all';
+  const _hubD=K.hubs||{}, _idxD=K.index||{};
+  const kChips=[['all','전체']]
+    .concat(PC?[['pcard','🧪 프로브카드 '+Object.keys(PC.companies).length]]:[])
+    .concat(M?[['mlcc','MLCC '+Object.keys(M.companies||{}).length]]:[])
+    .concat((T&&FC)?[['tdk','TDK 완결']]:[])
+    .concat(Object.keys(_hubD).filter(k=>_hubD[k].data).map(k=>[k,(_idxD[k]||{}).label||k,(_idxD[k]||{}).n_companies]));
+  html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px">${kChips.map(c=>{const [id,lb,n]=c;
+    return `<span data-kcat="${id}" style="cursor:pointer;user-select:none;font-size:11px;padding:4px 12px;border-radius:999px;border:1px solid ${KC===id?'#4ea1ff':'var(--line)'};${KC===id?'background:rgba(78,161,255,.15);color:#4ea1ff;font-weight:800':'color:var(--dim)'}">${lb}${n?` <span style="opacity:.65">${n}</span>`:''}</span>`;}).join('')}</div>`;
+  if(PC&&(KC==='all'||KC==='pcard')){
     const PCC=PC.companies; const ORDER=['TSE','TIGER','SAMCNS','MEGA','PMT','M2N','KI','SLD'].filter(k=>PCC[k]).concat(Object.keys(PCC).filter(k=>!['TSE','TIGER','SAMCNS','MEGA','PMT','M2N','KI','SLD'].includes(k)));
     if(!ST.pcco||!PCC[ST.pcco]) ST.pcco=ORDER[0];
     const pOrd=k=>{const m=String(k).match(/^(\d{4})(?:-(Q[1-4]|H[12]|FY))?$/);if(!m)return 0;const o={Q1:1,Q2:2,Q3:3,Q4:4,H1:2.5,H2:4.5,FY:9}[m[2]||'FY']||9;return (+m[1])*10+o;};
@@ -1076,7 +1086,7 @@ function renderKpi(){
             y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}}}}});}
     },0);
   }
-  if(M){
+  if(M&&(KC==='all'||KC==='mlcc')){
     const cos=M.companies||{};
     const thI=((TH.threshold||{}).industry)!=null?TH.threshold.industry:null;
     const base=((TH.baseline||{}).bb)!=null?TH.baseline.bb:1.0;
@@ -1112,7 +1122,7 @@ function renderKpi(){
     setTimeout(()=>{ const b=document.getElementById('kBB'); if(b&&qs.length) kLine(b,qs,ds,{min:0.6,max:1.9});
       const u=document.getElementById('kUT'); if(u&&uq.length) kLine(u,uq,uds,{min:40,max:105}); },0);
   }
-  if(T&&FC){
+  if(T&&FC&&(KC==='all'||KC==='tdk')){
     const f=(FC.forecast||{}).total||{}; const bt=FC.backtest||{};
     const seg=T.segments||{}; const segKeys=Object.keys(seg).filter(k=>k!=='total');
     const rows=segKeys.map(k=>{const r=seg[k].rev||{}; const ks=Object.keys(r).sort(); const last=ks[ks.length-1];
@@ -1130,7 +1140,8 @@ function renderKpi(){
   }
   // ---- 산업 허브 자동 섹션 (kpi_<industry>.json 추가 시 자동 노출) ----
   const HUBS=K.hubs||{}, IDX=K.index||{};
-  const hubKeys=Object.keys(HUBS).filter(k=>HUBS[k].data);
+  let hubKeys=Object.keys(HUBS).filter(k=>HUBS[k].data);
+  if(KC!=='all') hubKeys=hubKeys.filter(k=>k===KC);
   if(hubKeys.length){
     html+=`<p style="font-size:14px;font-weight:800;margin:22px 0 8px">🏭 산업 허브 <span style="color:var(--dim);font-size:11px;font-weight:400">${hubKeys.length}개 — IR 원자료 기반, 실적마다 갱신</span></p>`;
     hubKeys.forEach((ind,hi)=>{
@@ -1163,6 +1174,7 @@ function renderKpi(){
     });
   }
   document.getElementById('main').innerHTML=html||'<div class="panel" style="padding:24px">데이터 없음</div>';
+  setTimeout(()=>{document.querySelectorAll('[data-kcat]').forEach(el=>el.onclick=()=>{ST.kcat=el.getAttribute('data-kcat');renderKpi();window.scrollTo(0,0);});},0);
 }
 let _platLoaded=false; const PCH={};
 function loadPlat(cb){ if(_platLoaded||window.PLATD){_platLoaded=true;return cb();}
