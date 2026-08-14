@@ -942,7 +942,13 @@ function renderKpi(){
     const F=Object.assign({},fq||{},(!fq||C.gran!=='Q')?(C.fin_h||{}):{},(!fq&&C.fin_fy)?Object.fromEntries(Object.entries(C.fin_fy).map(([y,v])=>[y+'-FY',v])):{});
     const fks=Object.keys(F).sort((a,b)=>pOrd(a)-pOrd(b));
     const prods=C.products||{}; const pNames=Object.keys(prods);
-    const pQ=[...new Set(pNames.flatMap(p=>['국내','수출'].flatMap(r=>Object.keys(prods[p][r]||{}))))].sort((a,b)=>pOrd(a)-pOrd(b));
+    const _pk=[...new Set(pNames.flatMap(p=>['국내','수출','소계'].flatMap(r=>Object.keys(prods[p][r]||{}))))]; const _ps=new Set(_pk);
+    const pQ=_pk.filter(k=>{const m=String(k).match(/^(\d{4})(-(Q[1-4]|H[12]))?$/);if(!m)return false;const y=m[1],pp=m[3];
+      if(!pp)return![..._ps].some(x=>x!==k&&x.indexOf(y+'-')===0);
+      if(pp==='H1')return!(_ps.has(y+'-Q1')||_ps.has(y+'-Q2'));
+      if(pp==='H2')return!(_ps.has(y+'-Q3')||_ps.has(y+'-Q4'));
+      return true;}).sort((a,b)=>pOrd(a)-pOrd(b));
+    const pRegs=p=>(prods[p]['국내']||prods[p]['수출'])?['국내','수출']:['소계'];
     const PCOL=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1','#ff9e64','#9ccc65'];
     const mode=ST.pcview||'prod';
     const pLast=pQ[pQ.length-1];
@@ -958,9 +964,9 @@ function renderKpi(){
         <div style="overflow-x:auto;margin-top:8px"><table class="tbl"><thead><tr><th>품목</th><th>${pLast||''} 국내</th><th>수출</th><th>합</th><th>수출비중</th><th>합 YoY</th></tr></thead><tbody>${
           pNames.map(p=>{const d=prods[p];
             const dm=(d['국내']||{})[pLast], ex=(d['수출']||{})[pLast];
-            const tot=(dm||0)+(ex||0);
+            const tot=(dm!=null||ex!=null)?((dm||0)+(ex||0)):((d['소계']||{})[pLast]);
             const py=pLast?pLast.replace(/^\d{4}/,m=>String(+m-1)):null;
-            const ptot=py?((((d['국내']||{})[py])||0)+(((d['수출']||{})[py])||0)):0;
+            const ptot=py?(((((d['국내']||{})[py])||0)+(((d['수출']||{})[py])||0))||(((d['소계']||{})[py])||0)):0;
             const yy=ptot?((tot/ptot-1)*100):null;
             return `<tr><td>${p}</td><td style="font-family:var(--mono)">${dm!=null?dm.toLocaleString():'—'}</td><td style="font-family:var(--mono)">${ex!=null?ex.toLocaleString():'—'}</td><td style="font-family:var(--mono)"><b>${tot?tot.toLocaleString():'—'}</b></td><td style="font-family:var(--mono)">${tot?(Math.round((ex||0)/tot*100)+'%'):'—'}</td><td style="font-family:var(--mono);color:${yy>0?'#59d0a8':(yy<0?'#ff6b7d':'var(--dim)')}">${yy!=null?((yy>0?'+':'')+yy.toFixed(1)+'%'):'—'}</td></tr>`;}).join('')
         }</tbody></table></div></div>`;
@@ -982,10 +988,11 @@ function renderKpi(){
       if(pr&&pQ.length){
         let ds;
         if(mode==='sum'){
-          ds=[['국내','#8a93a3','88'],['수출','#4ea1ff','cc']].map(([r,c,a])=>({type:'bar',label:r,stack:'s',
+          const regs=pNames.some(p=>prods[p]['국내']||prods[p]['수출'])?[['국내','#8a93a3','88'],['수출','#4ea1ff','cc']]:[['소계','#4ea1ff','cc']];
+          ds=regs.map(([r,c,a])=>({type:'bar',label:r,stack:'s',
             data:pQ.map(q=>pNames.reduce((s,p)=>s+((((prods[p][r]||{})[q])||0)),0)||null),backgroundColor:c+a}));
         } else {
-          ds=[]; pNames.forEach((p,i)=>{['국내','수출'].forEach(r=>{
+          ds=[]; pNames.forEach((p,i)=>{pRegs(p).forEach(r=>{
             ds.push({type:'bar',label:p+'·'+r,stack:'s',data:pQ.map(q=>(((prods[p][r]||{})[q])!=null)?prods[p][r][q]:null),
               backgroundColor:PCOL[i%PCOL.length]+(r==='국내'?'55':'cc')});});});
         }
