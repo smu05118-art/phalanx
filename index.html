@@ -994,6 +994,8 @@ function renderKpi(){
       if(bq!=null){const bv=bkA[bq];const bpy=bkA[pyKey(bq)];const bY=(bpy)?(bv/bpy-1)*100:null;
         const f3=(c.fin_q||{})[bq];const covx=(f3&&f3.rev)?bv/f3.rev:null;
         bl.push(`수주잔고 ${fm(bv)} (${bq}${bY!=null?', YoY '+pct(bY):''})${covx!=null?` — 분기매출의 <b>${covx.toFixed(2)}배</b>${covx>=1.2?' · 백로그 두터움':covx<0.5?' · 짧은 사이클(수주→납품 빠름)':''}`:''}`);}
+      const rt2=(c.util||{})['가동률']||{};const rk2=Object.keys(rt2).sort((a,b)=>pOrd(a)-pOrd(b));const rq2=rk2[rk2.length-1];
+      if(rq2!=null)bl.push(`가동률 <b>${rt2[rq2]}</b> (${rq2}, 당해 누적 기준)`);
       return {verdict,vc,bl,last,isQ:!!fq2};};
     const ov=ORDER.map(k=>{const c=PCC[k];
       const fq=(c.fin_q&&Object.keys(c.fin_q).length)?c.fin_q:((c.fin_h&&Object.keys(c.fin_h).length)?c.fin_h:(c.fin_fy||{}));
@@ -1050,6 +1052,21 @@ function renderKpi(){
       html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.label} — 수주잔고</h3><div class="co-cat">${(C.backlog_note||'정기보고서 수주상황 표(기말 시점 잔고)').slice(0,120)} · 선=잔고÷분기매출 배율(우)</div></div></div>
         <div class="ch-wrap" style="height:235px"><canvas id="pcBkl"></canvas></div></div>`;
     }
+    const aspD=C.asp||{}; const aspNames=Object.keys(aspD);
+    if(aspNames.length){
+      html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.label} — 제품별 ASP <small style="color:var(--dim)">지수(품목별 첫 관측=100)</small></h3><div class="co-cat">${String(C.asp_note||'보고서 가격변동추이 — 당해 누적 평균단가').slice(0,135)}</div></div></div>
+        <div class="ch-wrap" style="height:225px"><canvas id="pcAsp"></canvas></div>
+        <div style="overflow-x:auto;margin-top:8px"><table class="tbl"><thead><tr><th>품목</th><th>최신</th><th>원단위 값</th><th>YoY</th></tr></thead><tbody>${
+          aspNames.map(p=>{const s=aspD[p];const ks2=Object.keys(s).sort((a,b)=>pOrd(a)-pOrd(b));const l2=ks2[ks2.length-1];
+            const pv2=s[pyKey(l2)];const yy2=(pv2&&s[l2]!=null)?((s[l2]/pv2-1)*100):null;
+            return `<tr><td>${p}</td><td style="font-family:var(--mono);font-size:10px">${l2}</td><td style="font-family:var(--mono)">${s[l2]!=null?(+s[l2]).toLocaleString():'—'}</td><td style="font-family:var(--mono);color:${yy2>0?'#59d0a8':(yy2<0?'#ff6b7d':'var(--dim)')}">${yy2!=null?((yy2>0?'+':'')+yy2.toFixed(1)+'%'):'—'}</td></tr>`;}).join('')
+        }</tbody></table></div></div>`;
+    }
+    const utD=C.util||{};
+    if(Object.keys(utD).length){
+      html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.label} — 생산실적 · 가동률</h3><div class="co-cat">${String(C.util_note||'보고서 생산실적및가동률 — 당해 누적 기준').slice(0,135)}</div></div></div>
+        <div class="ch-wrap" style="height:225px"><canvas id="pcUtil"></canvas></div></div>`;
+    }
     if(pNames.length){
       html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.label} — 품목 × 국내/수출</h3><div class="co-cat">진한색=수출 · 연한색=국내 · 범례 클릭=토글</div></div>
         <div style="display:flex;gap:6px">${[['prod','품목×수출/내수'],['sum','수출 vs 내수']].map(([v,l])=>`<span data-pcv="${v}" style="cursor:pointer;font-size:10.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);${mode===v?'background:rgba(78,161,255,.15);color:#4ea1ff;font-weight:700':'color:var(--dim)'}">${l}</span>`).join('')}</div></div>
@@ -1077,9 +1094,22 @@ function renderKpi(){
           <div class="ch-wrap" style="height:205px"><canvas id="pcG${gi}"></canvas></div></div>`;}).join('');
       html+=`<p style="font-size:14px;font-weight:800;margin:20px 0 8px">🌍 글로벌 프로브카드 4사 <span style="color:var(--dim);font-size:11px;font-weight:400">IR 원출처 실적 + 검증 프록시 오버레이 · 통화 각자 표기(환산 안 함)</span></p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:12px;margin-bottom:12px">${gCards}</div>`;
-      const FS=(GC.FFI||{}).segments||{};
-      const segNames=Object.keys(FS).filter(s=>s!=='_note'&&FS[s]&&typeof FS[s]==='object');
-      if(segNames.length) html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>FormFactor — 시장별 세그먼트 (USD M)</h3><div class="co-cat">Foundry&Logic vs DRAM(HBM) 믹스 = 글로벌 프로브카드 수요 방향타 · MJC 2Q26 세그: PC ${(((GC.MJC||{}).segments||{})['프로브카드사업_2026Q2']||{}).rev_oku||'—'}억엔 · 메모리 비중 ${(((GC.MJC||{}).mem_share_q||{})['2026-Q2'])||'—'}%</div></div></div><div class="ch-wrap" style="height:255px"><canvas id="pcGSeg"></canvas></div></div>`;
+      const segOf=g=>{const S=g.segments||{};const o={};Object.keys(S).forEach(s=>{const v=S[s];if(s!=='_note'&&v&&typeof v==='object'&&Object.keys(v).some(q=>/^\d{4}-Q\d$/.test(q)))o[s]=v;});return o;};
+      const segCos=gOrder.filter(k=>Object.keys(segOf(GC[k])).length);
+      if(segCos.length) html+=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:12px;margin-bottom:12px">${
+        segCos.map((k,si)=>`<div class="card"><div class="card-hd"><div><h3>${GC[k].label} — 세그먼트 브레이크다운 <small style="color:var(--dim)">${GC[k].ccy}</small></h3><div class="co-cat">${String(GC[k].seg_note||'IR 세그 공시').slice(0,95)}${(k==='MJC'&&GC[k].mem_share_q)?' · 선=메모리 비중%(우)':''}</div></div></div><div class="ch-wrap" style="height:235px"><canvas id="pcGS${si}"></canvas></div></div>`).join('')}</div>`;
+      const TP=GC.TPRO;
+      if(TP&&(TP.ebitda||TP.segments_geo)){
+        const tOrd=x=>{const m=String(x).match(/(Q[1-4]|H[12]|FY)[- ]?(\d{4})|(\d{4})[- ](Q[1-4]|H[12])/);if(!m)return 0;const p=m[1]||m[4],y=+(m[2]||m[3]);return y*10+({Q1:1,Q2:2,Q3:3,Q4:4,H1:2.5,H2:4.5,FY:9}[p]||9);};
+        const GEO=TP.segments_geo||{};const geoNames=Object.keys(GEO).filter(x=>x!=='_note');
+        const geoKeys=[...new Set(geoNames.flatMap(g2=>Object.keys(GEO[g2])))].sort((a,b)=>tOrd(a)-tOrd(b));
+        const EM=(TP.end_market||{}).FY2025||{};
+        html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>Technoprobe — EBITDA·지역·엔드마켓 <small style="color:var(--dim)">단일 보고세그(IFRS8) — PC/인터페이스 상시 미분해</small></h3>
+          <div class="co-cat">${Object.keys(EM).length?('FY25 엔드마켓: '+Object.entries(EM).filter(([a])=>a!=='_note').map(([a,b])=>a+' '+b+'%').join(' · ')):''}</div></div></div>
+          ${TP.ebitda?`<div class="ch-wrap" style="height:215px"><canvas id="pcGTe"></canvas></div>`:''}
+          ${geoNames.length?`<div style="overflow-x:auto;margin-top:8px"><table class="tbl"><thead><tr><th>지역(EUR M)</th>${geoKeys.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${
+            geoNames.map(g2=>`<tr><td>${g2}</td>${geoKeys.map(x=>`<td style="font-family:var(--mono)">${GEO[g2][x]!=null?(+GEO[g2][x]).toLocaleString():'—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:''}</div>`;
+      }
       const CV=G.capa_view||{};
       if((CV.table||[]).length){
         const bcol=b=>/실적/.test(b)?'#59d0a8':/가이드/.test(b)?'#4ea1ff':'var(--dim)';
@@ -1130,6 +1160,29 @@ function renderKpi(){
             scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:14,font:{size:8}},grid:{display:false}},
               y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
               y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v+'x'},grid:{display:false}}}}});}
+      const aspEl=document.getElementById('pcAsp');
+      if(aspEl){const aD=C.asp||{};const nm2=Object.keys(aD);
+        const ax2=[...new Set(nm2.flatMap(p=>Object.keys(aD[p])))].sort((a,b)=>pOrd(a)-pOrd(b));
+        const ds5=nm2.map((p,i)=>{const s=aD[p];const ks3=Object.keys(s).sort((a,b)=>pOrd(a)-pOrd(b));const base=+s[ks3[0]];
+          return {type:'line',label:p.slice(0,18),data:ax2.map(q=>(s[q]!=null&&base)?+((+s[q])/base*100).toFixed(1):null),borderColor:PCOL[i%PCOL.length],borderWidth:1.7,pointRadius:1.8,tension:.15,spanGaps:true};});
+        KCH.pcAsp=new Chart(aspEl,{data:{labels:ax2,datasets:ds5},options:{responsive:true,maintainAspectRatio:false,animation:false,
+          interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:8.5}}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y+' (지수)')}}},
+          scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},
+            y:{ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'}}}}});}
+      const utEl=document.getElementById('pcUtil');
+      if(utEl){const U=C.util||{};const num=v=>{const x=parseFloat(String(v).replace(/[^\d.\-]/g,''));return isNaN(x)?null:x;};
+        const prod2=U['생산실적']||{};const rate2=U['가동률']||{};
+        const ax3=[...new Set([...Object.keys(prod2),...Object.keys(rate2)])].sort((a,b)=>pOrd(a)-pOrd(b));
+        const ds6=[];
+        if(Object.keys(prod2).length)ds6.push({type:'bar',label:'생산실적',data:ax3.map(q=>num(prod2[q])),backgroundColor:'rgba(77,208,225,.55)',yAxisID:'y'});
+        if(Object.keys(rate2).length)ds6.push({type:'line',label:'가동률(우)',data:ax3.map(q=>num(rate2[q])),borderColor:'#ffbe2e',backgroundColor:'#ffbe2e',borderWidth:1.8,pointRadius:2,tension:.15,spanGaps:true,yAxisID:'y2'});
+        if(ds6.length)KCH.pcUtil=new Chart(utEl,{data:{labels:ax3,datasets:ds6},options:{responsive:true,maintainAspectRatio:false,animation:false,
+          interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
+          scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},
+            y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
+            y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v+'%'},grid:{display:false}}}}});}
       const pr=document.getElementById('pcProd');
       if(pr&&pQ.length){
         let ds;
@@ -1162,15 +1215,33 @@ function renderKpi(){
               scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:10,font:{size:7.5}},grid:{display:false}},
                 y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
                 y2:{position:'right',ticks:{color:'#3d8a6e',font:{size:8}},grid:{display:false}}}}});});
-        const se=document.getElementById('pcGSeg');
-        if(se){const FS=(GC.FFI||{}).segments||{};const segNames=Object.keys(FS).filter(s=>s!=='_note'&&FS[s]&&typeof FS[s]==='object');
-          const segQ=[...new Set(segNames.flatMap(s=>Object.keys(FS[s])))].sort();
-          const SC=['#4ea1ff','#ff7ab8','#ffbe2e','#8a93a3'];
-          KCH.pcGSeg=new Chart(se,{data:{labels:segQ,datasets:segNames.map((s,i)=>({type:'bar',label:s,stack:'s',data:segQ.map(q=>FS[s][q]!=null?FS[s][q]:null),backgroundColor:SC[i%SC.length]}))},
+        const SC=['#4ea1ff','#ff7ab8','#ffbe2e','#8a93a3','#59d0a8','#b48cff'];
+        segCos.forEach((k,si)=>{const se=document.getElementById('pcGS'+si); if(!se)return;
+          const FS=segOf(GC[k]); const segNames=Object.keys(FS);
+          const segQ=[...new Set(segNames.flatMap(s=>Object.keys(FS[s]).filter(q=>/^\d{4}-Q\d$/.test(q))))].sort();
+          const ds4=segNames.map((s,i)=>({type:'bar',label:s.slice(0,18),stack:'s',data:segQ.map(q=>FS[s][q]!=null?FS[s][q]:null),backgroundColor:SC[i%SC.length],yAxisID:'y'}));
+          const ms=(k==='MJC')?(GC[k].mem_share_q||{}):{};
+          if(Object.keys(ms).length) ds4.push({type:'line',label:'메모리 비중%(우)',data:segQ.map(q=>ms[q]!=null?+ms[q]:null),borderColor:'#59d0a8',borderWidth:1.7,pointRadius:2,tension:.15,spanGaps:true,yAxisID:'y2'});
+          const sc2={x:{stacked:true,ticks:{color:'#4a4a72',font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}}};
+          if(Object.keys(ms).length) sc2.y2={position:'right',min:0,max:100,ticks:{color:'#3d8a6e',font:{size:8},callback:v=>v+'%'},grid:{display:false}};
+          KCH['pcGS'+si]=new Chart(se,{data:{labels:segQ,datasets:ds4},
             options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
-              plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+              plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:8.5}}},
                 tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
-              scales:{x:{stacked:true,ticks:{color:'#4a4a72',font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'}}}}});}
+              scales:sc2}});});
+        const te=document.getElementById('pcGTe');
+        if(te&&GC.TPRO&&GC.TPRO.ebitda){const EB=GC.TPRO.ebitda;
+          const tOrd=x=>{const m=String(x).match(/(Q[1-4]|H[12]|FY)[- ]?(\d{4})|(\d{4})[- ](Q[1-4]|H[12])/);if(!m)return 0;const p=m[1]||m[4],y=+(m[2]||m[3]);return y*10+({Q1:1,Q2:2,Q3:3,Q4:4,H1:2.5,H2:4.5,FY:9}[p]||9);};
+          const qk=Object.keys(EB).filter(x=>/Q[1-4]/.test(x));
+          const keys=(qk.length>=4?qk:Object.keys(EB)).sort((a,b)=>tOrd(a)-tOrd(b));
+          KCH.pcGTe=new Chart(te,{data:{labels:keys,datasets:[
+            {type:'bar',label:'EBITDA(EUR M)',data:keys.map(x=>(EB[x]&&EB[x].v!=null)?EB[x].v:null),backgroundColor:'rgba(78,161,255,.7)',yAxisID:'y'},
+            {type:'line',label:'마진%(우)',data:keys.map(x=>(EB[x]&&EB[x].margin_pct!=null)?EB[x].margin_pct:null),borderColor:'#ffbe2e',backgroundColor:'#ffbe2e',borderWidth:1.8,pointRadius:2,tension:.15,spanGaps:true,yAxisID:'y2'}]},
+            options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+              plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}}},
+              scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},
+                y:{ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'}},
+                y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v+'%'},grid:{display:false}}}}});}
       }
     },0);
   }
