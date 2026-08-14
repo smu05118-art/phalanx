@@ -1053,6 +1053,47 @@ function renderKpi(){
             return `<tr><td>${p}</td><td style="font-family:var(--mono)">${dm!=null?dm.toLocaleString():'—'}</td><td style="font-family:var(--mono)">${ex!=null?ex.toLocaleString():'—'}</td><td style="font-family:var(--mono)"><b>${tot?tot.toLocaleString():'—'}</b></td><td style="font-family:var(--mono)">${tot?(Math.round((ex||0)/tot*100)+'%'):'—'}</td><td style="font-family:var(--mono);color:${yy>0?'#59d0a8':(yy<0?'#ff6b7d':'var(--dim)')}">${yy!=null?((yy>0?'+':'')+yy.toFixed(1)+'%'):'—'}</td></tr>`;}).join('')
         }</tbody></table></div></div>`;
     }
+    const G=(K.pcard_global&&K.pcard_global.companies)?K.pcard_global:null;
+    if(G){
+      const GC=G.companies; const gOrder=['FFI','TPRO','MJC','JEM'].filter(k=>GC[k]);
+      const gCards=gOrder.map((k,gi)=>{const g=GC[k];
+        const fk=Object.keys(g.fin_q||{}).sort(); const gl=fk[fk.length-1]; const gv=(g.fin_q||{})[gl]||{};
+        const gpy=(g.fin_q||{})[gl?gl.replace(/^\d{4}/,m=>String(+m-1)):''];
+        const gy=(gpy&&gpy.rev&&gv.rev!=null)?((gv.rev/gpy.rev-1)*100):null;
+        const pr=g.proxy||{};
+        return `<div class="card"><div class="card-hd"><div><h3>${g.label} <small style="color:var(--dim)">${g.ticker} · ${g.ccy}</small></h3>
+          <div class="co-cat">${gl||''} 매출 <b>${gv.rev!=null?(+gv.rev).toLocaleString():'—'}</b>${gy!=null?` (YoY ${(gy>0?'+':'')+gy.toFixed(1)}%)`:''} · 프록시 ${pr.name||'—'} ρ${pr.rho!=null?pr.rho:'—'}${(pr.hold!=null||pr.hold8!=null)?' / hold '+(pr.hold!=null?pr.hold:pr.hold8):''}</div></div></div>
+          <div class="ch-wrap" style="height:205px"><canvas id="pcG${gi}"></canvas></div></div>`;}).join('');
+      html+=`<p style="font-size:14px;font-weight:800;margin:20px 0 8px">🌍 글로벌 프로브카드 4사 <span style="color:var(--dim);font-size:11px;font-weight:400">IR 원출처 실적 + 검증 프록시 오버레이 · 통화 각자 표기(환산 안 함)</span></p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:12px;margin-bottom:12px">${gCards}</div>`;
+      const FS=(GC.FFI||{}).segments||{};
+      const segNames=Object.keys(FS).filter(s=>s!=='_note'&&FS[s]&&typeof FS[s]==='object');
+      if(segNames.length) html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>FormFactor — 시장별 세그먼트 (USD M)</h3><div class="co-cat">Foundry&Logic vs DRAM(HBM) 믹스 = 글로벌 프로브카드 수요 방향타 · MJC 2Q26 세그: PC ${(((GC.MJC||{}).segments||{})['프로브카드사업_2026Q2']||{}).rev_oku||'—'}억엔 · 메모리 비중 ${(((GC.MJC||{}).mem_share_q||{})['2026-Q2'])||'—'}%</div></div></div><div class="ch-wrap" style="height:255px"><canvas id="pcGSeg"></canvas></div></div>`;
+      const CV=G.capa_view||{};
+      if((CV.table||[]).length){
+        const bcol=b=>/실적/.test(b)?'#59d0a8':/가이드/.test(b)?'#4ea1ff':'var(--dim)';
+        html+=`<div class="panel" style="overflow-x:auto;margin-bottom:12px"><p style="font-size:12.5px;font-weight:800;margin:0 0 6px">분기별 출하능력 프록시 <span style="color:var(--dim);font-size:10px;font-weight:400">4사 모두 커스텀 제품이라 수량 캐파 미공시 — 풀가동 상태의 매출·가이던스가 캐파 프록시</span></p>
+        <table class="tbl"><thead><tr><th>분기</th>${gOrder.map(k=>`<th>${GC[k].label}</th>`).join('')}</tr></thead><tbody>
+        ${CV.table.map(r=>`<tr><td style="font-family:var(--mono)">${r.q}</td>${gOrder.map(k=>{const c=r[k]||{};
+          return `<td><span style="font-family:var(--mono)">${c.v!=null?(+c.v).toLocaleString():'—'}</span> <span style="font-size:9.5px;color:${bcol(c.basis||'')}">${(c.basis||'').slice(0,16)}</span></td>`;}).join('')}</tr>`).join('')}
+        </tbody></table>
+        <div style="font-size:10px;color:var(--dim);margin-top:6px">${CV.units_note||''}</div></div>`;
+      }
+      const rm=CV.roadmap||{};
+      if(Object.keys(rm).length) html+=`<div class="panel" style="margin-bottom:12px"><p style="font-size:12.5px;font-weight:800;margin:0 0 6px">캐파 로드맵</p>
+        ${gOrder.map(k=>rm[k]?`<div style="font-size:11.5px;margin-bottom:6px;line-height:1.65"><b style="color:#4ea1ff">${GC[k].label}</b> — ${rm[k]}</div>`:'').join('')}</div>`;
+      if((CV.mix_est||[]).length){
+        html+=`<div class="panel" style="overflow-x:auto;margin-bottom:12px"><p style="font-size:12.5px;font-weight:800;margin:0 0 6px">MJC 메모리 내부 믹스 <span style="color:#ffbe2e;font-size:10px">전부 추정(est) — 근거 명기</span></p>
+        <table class="tbl"><thead><tr><th>분기</th><th>메모리 비중</th><th>HBM</th><th>범용 DRAM</th><th>NAND</th><th>근거</th></tr></thead><tbody>
+        ${CV.mix_est.map(r=>`<tr><td style="font-family:var(--mono)">${r.q}</td><td style="font-family:var(--mono)">${r.memory_pct_of_pc!=null?r.memory_pct_of_pc+'%':'—'}</td><td style="font-family:var(--mono)">${r.HBM_pct||'—'}</td><td style="font-family:var(--mono)">${r.commodity_DRAM_pct||'—'}</td><td style="font-family:var(--mono)">${r.NAND_pct||'—'}</td><td style="font-size:10px;color:var(--dim)">${(r.basis||'').slice(0,80)}</td></tr>`).join('')}
+        </tbody></table></div>`;
+      }
+      if((CV.implications||[]).length||CV.tse_note){
+        html+=`<div class="panel" style="border-left:3px solid #ffbe2e;margin-bottom:12px"><p style="font-size:12.5px;font-weight:800;margin:0 0 6px">읽는 법 — 4사 캐파 사이클</p>
+        <ul style="margin:0 0 8px;padding-left:18px;font-size:11.5px;line-height:1.75">${(CV.implications||[]).map(t=>`<li>${t}</li>`).join('')}</ul>
+        ${CV.tse_note?`<div style="font-size:11px;color:var(--dim);border-top:1px solid var(--line);padding-top:7px"><b>TSE 함의.</b> ${CV.tse_note}</div>`:''}</div>`;
+      }
+    }
     setTimeout(()=>{
       document.querySelectorAll('[data-pcco]').forEach(el=>el.onclick=()=>{ST.pcco=el.getAttribute('data-pcco');renderKpi();});
       document.querySelectorAll('[data-pcv]').forEach(el=>el.onclick=()=>{ST.pcview=el.getAttribute('data-pcv');renderKpi();});
@@ -1084,6 +1125,30 @@ function renderKpi(){
             tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
           scales:{x:{stacked:true,ticks:{color:'#4a4a72',maxTicksLimit:14,font:{size:8}},grid:{display:false}},
             y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}}}}});}
+      if(G){
+        const GC=G.companies; const gOrder=['FFI','TPRO','MJC','JEM'].filter(k=>GC[k]);
+        gOrder.forEach((k,gi)=>{const el=document.getElementById('pcG'+gi); if(!el)return; const g=GC[k];
+          const ps=(g.proxy||{}).series||{};
+          const ax=[...new Set([...Object.keys(g.fin_q||{}),...Object.keys(ps)])].sort();
+          const dset=[{type:'bar',label:'매출',data:ax.map(q=>(g.fin_q&&g.fin_q[q]&&g.fin_q[q].rev!=null)?g.fin_q[q].rev:null),backgroundColor:'rgba(78,161,255,.7)',yAxisID:'y'}];
+          if(Object.keys(ps).length) dset.push({type:'line',label:'프록시(우)',data:ax.map(q=>ps[q]!=null?ps[q]:null),borderColor:'#59d0a8',borderWidth:1.6,pointRadius:1.5,tension:.2,spanGaps:true,yAxisID:'y2'});
+          KCH['pcG'+gi]=new Chart(el,{data:{labels:ax,datasets:dset},
+            options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+              plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:9,font:{size:8.5}}},
+                tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
+              scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:10,font:{size:7.5}},grid:{display:false}},
+                y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
+                y2:{position:'right',ticks:{color:'#3d8a6e',font:{size:8}},grid:{display:false}}}}});});
+        const se=document.getElementById('pcGSeg');
+        if(se){const FS=(GC.FFI||{}).segments||{};const segNames=Object.keys(FS).filter(s=>s!=='_note'&&FS[s]&&typeof FS[s]==='object');
+          const segQ=[...new Set(segNames.flatMap(s=>Object.keys(FS[s])))].sort();
+          const SC=['#4ea1ff','#ff7ab8','#ffbe2e','#8a93a3'];
+          KCH.pcGSeg=new Chart(se,{data:{labels:segQ,datasets:segNames.map((s,i)=>({type:'bar',label:s,stack:'s',data:segQ.map(q=>FS[s][q]!=null?FS[s][q]:null),backgroundColor:SC[i%SC.length]}))},
+            options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+              plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+                tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
+              scales:{x:{stacked:true,ticks:{color:'#4a4a72',font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'}}}}});}
+      }
     },0);
   }
   if(M&&(KC==='all'||KC==='mlcc')){
