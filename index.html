@@ -919,6 +919,84 @@ function renderKpi(){
   document.getElementById('crumb').innerHTML='<b>📊 산업 KPI — BB ratio · 가동률 · 임계치</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">IR 원자료 · 실적마다 갱신</span>';
   const M=(K.mlcc||{}).data, TH=(K.mlcc||{}).th||{}, T=(K.tdk||{}).data, FC=(K.tdk||{}).fc;
   let html='';
+  const PC=(K.pcard&&K.pcard.companies)?K.pcard:null;
+  if(PC){
+    const PCC=PC.companies; const ORDER=['TSE','TIGER','SAMCNS','MEGA','PMT','M2N','KI','SLD'].filter(k=>PCC[k]).concat(Object.keys(PCC).filter(k=>!['TSE','TIGER','SAMCNS','MEGA','PMT','M2N','KI','SLD'].includes(k)));
+    if(!ST.pcco||!PCC[ST.pcco]) ST.pcco=ORDER[0];
+    const pOrd=k=>{const m=String(k).match(/^(\d{4})(?:-(Q[1-4]|H[12]|FY))?$/);if(!m)return 0;const o={Q1:1,Q2:2,Q3:3,Q4:4,H1:2.5,H2:4.5,FY:9}[m[2]||'FY']||9;return (+m[1])*10+o;};
+    const ov=ORDER.map(k=>{const c=PCC[k];
+      const fq=(c.fin_q&&Object.keys(c.fin_q).length)?c.fin_q:((c.fin_h&&Object.keys(c.fin_h).length)?c.fin_h:(c.fin_fy||{}));
+      const ks=Object.keys(fq).sort((a,b)=>pOrd(a)-pOrd(b)); const last=ks[ks.length-1]; const v=fq[last]||{};
+      const py=last?last.replace(/^\d{4}/,m=>String(+m-1)):null; const pv=(py&&fq[py])?fq[py]:null;
+      const yoy=(pv&&pv.rev&&v.rev!=null)?((v.rev/pv.rev-1)*100):null;
+      return {k,c,last,v,yoy};});
+    const ovRows=ov.map(o=>`<tr style="cursor:pointer;${o.k===ST.pcco?'background:rgba(78,161,255,.08)':''}" data-pcco="${o.k}">
+      <td><b>${o.c.label}</b> <span style="color:var(--dim);font-size:10px">${o.c.ticker||''}</span></td>
+      <td style="font-family:var(--mono);font-size:10.5px">${o.last||'—'}</td>
+      <td style="font-family:var(--mono)">${o.v.rev!=null?o.v.rev.toLocaleString():'—'}</td>
+      <td style="font-family:var(--mono);color:${o.v.op>0?'#59d0a8':(o.v.op<0?'#ff6b7d':'var(--dim)')}">${o.v.op!=null?o.v.op.toLocaleString():'—'}</td>
+      <td style="font-family:var(--mono)">${(o.v.op!=null&&o.v.rev)?((o.v.op/o.v.rev*100).toFixed(1)+'%'):'—'}</td>
+      <td style="font-family:var(--mono);color:${o.yoy>0?'#59d0a8':(o.yoy<0?'#ff6b7d':'var(--dim)')}">${o.yoy!=null?((o.yoy>0?'+':'')+o.yoy.toFixed(1)+'%'):'—'}</td></tr>`).join('');
+    const C=PCC[ST.pcco];
+    const fq=(C.fin_q&&Object.keys(C.fin_q).length)?C.fin_q:null;
+    const F=Object.assign({},fq||{},(!fq||C.gran!=='Q')?(C.fin_h||{}):{},(!fq&&C.fin_fy)?Object.fromEntries(Object.entries(C.fin_fy).map(([y,v])=>[y+'-FY',v])):{});
+    const fks=Object.keys(F).sort((a,b)=>pOrd(a)-pOrd(b));
+    const prods=C.products||{}; const pNames=Object.keys(prods);
+    const pQ=[...new Set(pNames.flatMap(p=>['국내','수출'].flatMap(r=>Object.keys(prods[p][r]||{}))))].sort((a,b)=>pOrd(a)-pOrd(b));
+    const PCOL=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1','#ff9e64','#9ccc65'];
+    const mode=ST.pcview||'prod';
+    const pLast=pQ[pQ.length-1];
+    html+=`<p style="font-size:14px;font-weight:800;margin:0 0 8px">🧪 프로브카드 KR 생태계 <span style="color:var(--dim);font-size:11px;font-weight:400">${ORDER.length}사 · 정기보고서 매출실적 발라냄 · 단위 백만원 · 분기=당해 누적차분</span></p>
+      <div class="panel" style="overflow-x:auto;margin-bottom:10px"><table class="tbl"><thead><tr><th>기업 (행 클릭=선택)</th><th>최신</th><th>매출</th><th>영업이익</th><th>OPM</th><th>매출 YoY</th></tr></thead><tbody>${ovRows}</tbody></table>
+      <div style="font-size:10px;color:var(--dim);margin-top:6px">KI=코리아인스트루먼트(테스 연결주석) · SLD=솔브레인에스엘디(솔브레인홀딩스 연결주석) — 주석은 반기·연간 매출/순익만 · PMT는 반기공시(분기는 반기 내 분해) · 전사 별도 기준</div></div>
+      <div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.label} — 매출·영업이익 (${fq?'분기':'반기/연간'})</h3><div class="co-cat">${(C.note||'').slice(0,110)}</div></div></div>
+        <div class="ch-wrap" style="height:270px"><canvas id="pcFin"></canvas></div></div>`;
+    if(pNames.length){
+      html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.label} — 품목 × 국내/수출</h3><div class="co-cat">진한색=수출 · 연한색=국내 · 범례 클릭=토글</div></div>
+        <div style="display:flex;gap:6px">${[['prod','품목×수출/내수'],['sum','수출 vs 내수']].map(([v,l])=>`<span data-pcv="${v}" style="cursor:pointer;font-size:10.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);${mode===v?'background:rgba(78,161,255,.15);color:#4ea1ff;font-weight:700':'color:var(--dim)'}">${l}</span>`).join('')}</div></div>
+        <div class="ch-wrap" style="height:320px"><canvas id="pcProd"></canvas></div>
+        <div style="overflow-x:auto;margin-top:8px"><table class="tbl"><thead><tr><th>품목</th><th>${pLast||''} 국내</th><th>수출</th><th>합</th><th>수출비중</th><th>합 YoY</th></tr></thead><tbody>${
+          pNames.map(p=>{const d=prods[p];
+            const dm=(d['국내']||{})[pLast], ex=(d['수출']||{})[pLast];
+            const tot=(dm||0)+(ex||0);
+            const py=pLast?pLast.replace(/^\d{4}/,m=>String(+m-1)):null;
+            const ptot=py?((((d['국내']||{})[py])||0)+(((d['수출']||{})[py])||0)):0;
+            const yy=ptot?((tot/ptot-1)*100):null;
+            return `<tr><td>${p}</td><td style="font-family:var(--mono)">${dm!=null?dm.toLocaleString():'—'}</td><td style="font-family:var(--mono)">${ex!=null?ex.toLocaleString():'—'}</td><td style="font-family:var(--mono)"><b>${tot?tot.toLocaleString():'—'}</b></td><td style="font-family:var(--mono)">${tot?(Math.round((ex||0)/tot*100)+'%'):'—'}</td><td style="font-family:var(--mono);color:${yy>0?'#59d0a8':(yy<0?'#ff6b7d':'var(--dim)')}">${yy!=null?((yy>0?'+':'')+yy.toFixed(1)+'%'):'—'}</td></tr>`;}).join('')
+        }</tbody></table></div></div>`;
+    }
+    setTimeout(()=>{
+      document.querySelectorAll('[data-pcco]').forEach(el=>el.onclick=()=>{ST.pcco=el.getAttribute('data-pcco');renderKpi();});
+      document.querySelectorAll('[data-pcv]').forEach(el=>el.onclick=()=>{ST.pcview=el.getAttribute('data-pcv');renderKpi();});
+      const f=document.getElementById('pcFin');
+      if(f&&fks.length){KCH.pcFin=new Chart(f,{data:{labels:fks,datasets:[
+        {type:'bar',label:'매출',data:fks.map(k=>(F[k]&&F[k].rev!=null)?F[k].rev:null),backgroundColor:'rgba(78,161,255,.72)',yAxisID:'y'},
+        {type:'line',label:'영업이익(우)',data:fks.map(k=>(F[k]&&F[k].op!=null)?F[k].op:null),borderColor:'#ffbe2e',backgroundColor:'#ffbe2e',borderWidth:1.8,pointRadius:2,tension:.15,spanGaps:true,yAxisID:'y2'}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+          plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
+          scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:14,font:{size:8}},grid:{display:false}},
+            y:{position:'left',ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
+            y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v.toLocaleString()},grid:{display:false}}}}});}
+      const pr=document.getElementById('pcProd');
+      if(pr&&pQ.length){
+        let ds;
+        if(mode==='sum'){
+          ds=[['국내','#8a93a3','88'],['수출','#4ea1ff','cc']].map(([r,c,a])=>({type:'bar',label:r,stack:'s',
+            data:pQ.map(q=>pNames.reduce((s,p)=>s+((((prods[p][r]||{})[q])||0)),0)||null),backgroundColor:c+a}));
+        } else {
+          ds=[]; pNames.forEach((p,i)=>{['국내','수출'].forEach(r=>{
+            ds.push({type:'bar',label:p+'·'+r,stack:'s',data:pQ.map(q=>(((prods[p][r]||{})[q])!=null)?prods[p][r][q]:null),
+              backgroundColor:PCOL[i%PCOL.length]+(r==='국내'?'55':'cc')});});});
+        }
+        KCH.pcProd=new Chart(pr,{data:{labels:pQ,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,
+          interaction:{mode:'index',intersect:false},
+          plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:8.5}}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
+          scales:{x:{stacked:true,ticks:{color:'#4a4a72',maxTicksLimit:14,font:{size:8}},grid:{display:false}},
+            y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}}}}});}
+    },0);
+  }
   if(M){
     const cos=M.companies||{};
     const thI=((TH.threshold||{}).industry)!=null?TH.threshold.industry:null;
