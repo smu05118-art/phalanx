@@ -347,26 +347,32 @@
   }
 
   /* ── 차트 정의 ─────────────────────────────────────────────────────── */
-  function tgaTargetOf(d) {
+  function tgaTargetsOf(d) {
     var fund = ((d.sections || {}).funding || {});
-    var t = ((fund.references || {}).treasury_cash_balance_assumption) || d.tga_target;
+    var t = ((fund.references || {}).treasury_cash_balance_assumptions) || d.tga_targets;
     var api = typeof window !== 'undefined' ? window.PanoptesTgaTarget : null;
-    return api ? api.validateTarget(t) : null;
+    return api ? api.validateConfig(t, d.updated) : null;
   }
   function fundingSpecs(d, S) {
     var ref0 = { v: 0, c: '#8a93a3', solid: true, label: '0' };
     var ref5 = { v: 5, c: '#ff8a3d', label: '+5bp' };
     var ref10 = { v: 10, c: '#ff4d5e', label: '+10bp' };
-    var target = tgaTargetOf(d);
+    var targets = tgaTargetsOf(d);
     var tgaRefs = [{ v: 900, c: '#ff8a3d', edge: true, label: '내부 경계 900B' }];
     var tgaSub = '주황 점선 = Panoptes 내부 경계 900B';
-    if (target) {
-      var display = window.PanoptesTgaTarget.displayModel(target);
-      tgaRefs.unshift({ v: Number(target.value), c: '#c6cfda', edge: true, domain: true,
-        label: display.lineLabel });
-      tgaSub = '회색 점선 = ' + display.legendLabel + ' · ' + tgaSub;
+    if (targets && (targets.current || targets.next)) {
+      var displays = window.PanoptesTgaTarget.displayModels(targets);
+      if (targets.next && displays[1]) {
+        tgaRefs.unshift({ v: Number(targets.next.value), c: '#8793a3', edge: true, domain: true,
+          label: displays[1].lineLabel });
+      }
+      if (targets.current && displays[0]) {
+        tgaRefs.unshift({ v: Number(targets.current.value), c: '#c6cfda', edge: true, domain: true,
+          label: displays[0].lineLabel });
+      }
+      tgaSub = '회색 점선 = ' + displays.map(function (item) { return item.legendLabel; }).join(' / ') + ' · ' + tgaSub;
     } else {
-      tgaSub = '미 재무부 목표 데이터 없음 · ' + tgaSub;
+      tgaSub = '미 재무부 공식 분기말 가정 업데이트 대기 · ' + tgaSub;
     }
     return [
       { key: 'NETLIQ', title: 'Net Liquidity (WALCL−TGA−RRP)', color: '#2bc0d4', fmt: F.trillion, dfmt: D.billion },
@@ -732,6 +738,6 @@
   if (typeof window !== 'undefined') window.renderLiq2 = renderLiq2;
   if (typeof module !== 'undefined' && module.exports) module.exports = {
     renderLiq2: renderLiq2,
-    _test: { chartSVG: chartSVG, fundingSpecs: fundingSpecs, tgaTargetOf: tgaTargetOf }
+    _test: { chartSVG: chartSVG, fundingSpecs: fundingSpecs, tgaTargetsOf: tgaTargetsOf }
   };
 })();

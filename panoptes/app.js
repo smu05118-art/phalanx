@@ -209,23 +209,24 @@ document.querySelectorAll('.ptab').forEach(t=>t.onclick=()=>switchTab(t.dataset.
 // ===== 💧 유동성 =====
 const LIQC={green:'#59d0a8',yellow:'#ffd23d',orange:'#ff8a3d',red:'#ff4d5e',gray:'#8a93a3'};
 const LIQLABEL={green:'초록',yellow:'노랑',orange:'주황',red:'빨강',gray:'—'};
-function validTgaTarget(raw){
+function validTgaTarget(raw,asOf){
   return window.PanoptesTgaTarget
-    ? window.PanoptesTgaTarget.validateConfig(raw)
+    ? window.PanoptesTgaTarget.validateConfig(raw,asOf)
     : null;
 }
 async function loadTgaTarget(){
   try{
-    const raw=await fetch('data/tga_target.json',{cache:'no-store'}).then(r=>r.ok?r.json():null);
-    return validTgaTarget(raw);
+    return await fetch('data/tga_target.json',{cache:'no-store'}).then(r=>r.ok?r.json():null);
   }catch(e){ console.warn('tgaTarget',e); return null; }
 }
-function attachTgaTarget(d,target){
-  if(!d || !target) return d;
-  d.tga_target=target; // 구형 fallback 렌더러
+function attachTgaTarget(d,raw){
+  if(!d) return d;
+  const model=validTgaTarget(raw,d.updated);
+  if(!model) return d;
+  d.tga_targets=model; // 구형 fallback 렌더러도 같은 검증 모델 사용
   if(d.sections&&d.sections.funding){
     d.sections.funding.references=d.sections.funding.references||{};
-    d.sections.funding.references.treasury_cash_balance_assumption=target;
+    d.sections.funding.references.treasury_cash_balance_assumptions=model;
   }
   return d;
 }
@@ -272,15 +273,16 @@ function renderLiq(d){
   const box=document.getElementById('liqview');
   const L=d.latest||{}, C=d.computed||{}, lights=d.lights||{}, ov=d.overall||'gray';
   const V=n=>((L[n]||{}).value);
-  const tgaTarget=d.tga_target&&Number.isFinite(Number(d.tga_target.value))?d.tga_target:null;
-  const tgaDisplay=tgaTarget&&window.PanoptesTgaTarget
-    ? window.PanoptesTgaTarget.displayModel(tgaTarget)
-    : null;
+  const tgaModel=d.tga_targets&&d.tga_targets.release?d.tga_targets:null;
+  const tgaDisplays=tgaModel&&window.PanoptesTgaTarget
+    ? window.PanoptesTgaTarget.displayModels(tgaModel)
+    : [];
   const tgaRefs=[{v:900,c:'#ff8a3d'}];
-  if(tgaTarget&&tgaDisplay) tgaRefs.unshift({v:Number(tgaTarget.value),c:'#c6cfda',domain:true});
-  const tgaRefLabel=tgaTarget&&tgaDisplay
-    ? `${tgaDisplay.legendLabel} / 내부 경계 900B`
-    : '내부 경계 900B · 재무부 목표 데이터 없음';
+  if(tgaModel&&tgaModel.next&&tgaDisplays[1]) tgaRefs.unshift({v:Number(tgaModel.next.value),c:'#8793a3',domain:true});
+  if(tgaModel&&tgaModel.current&&tgaDisplays[0]) tgaRefs.unshift({v:Number(tgaModel.current.value),c:'#c6cfda',domain:true});
+  const tgaRefLabel=tgaDisplays.length
+    ? `${tgaDisplays.map(v=>v.legendLabel).join(' / ')} / 주황 점선 = Panoptes 내부 경계 900B`
+    : '미 재무부 공식 분기말 가정 업데이트 대기 / 주황 점선 = Panoptes 내부 경계 900B';
   const card=(title,val,sub,light)=>`<div class="liqcard" style="border-top:3px solid ${LIQC[light||'gray']}">
     <div class="lqt">${title} ${light?`<span class="lqdot" style="background:${LIQC[light]}"></span>`:''}</div>
     <div class="lqv">${val}</div><div class="lqs">${sub||''}</div></div>`;
@@ -306,9 +308,10 @@ function renderLiq(d){
     .lqs{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:2px}
     .liqgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:26px}
     .liqchart{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-    .lct{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:650;margin-bottom:8px}
+    .lct{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:650;margin-bottom:8px;flex-wrap:wrap}
     .lct b{font-family:var(--mono);font-size:14px}
-    .lcref{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:auto}
+    .lcref{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:auto;text-align:right;overflow-wrap:anywhere}
+    @media(max-width:600px){.lcref{flex-basis:100%;margin-left:0;text-align:left}}
     .comment{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 24px;max-width:900px}
     .comment pre{font-family:var(--sans);font-size:13.5px;line-height:1.85;white-space:pre-wrap;color:#cdd6de;margin:0}
     .comment .cmeta{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:14px;border-top:1px solid var(--line);padding-top:10px}

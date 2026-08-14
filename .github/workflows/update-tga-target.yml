@@ -1,0 +1,72 @@
+name: Update official Treasury TGA assumptions
+
+on:
+  workflow_dispatch:
+  schedule:
+    # After U.S. business hours; Treasury normally publishes these estimates
+    # at 3:00 p.m. ET on Quarterly Refunding Mondays.
+    - cron: "17 23 * * 1-5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: official-tga-target-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test the official-source parser
+        run: python3 -m unittest discover -s panoptes/tools/tests -p 'test_*.py' -v
+
+      - name: Refresh normalized Treasury assumptions
+        run: >-
+          python3 panoptes/tools/update_tga_target.py
+          --output panoptes/data/tga_target.json
+
+      - name: Validate dashboard contracts
+        run: |
+          python3 -m unittest discover -s panoptes/tools/tests -p 'test_*.py' -v
+          node --check panoptes/tga_target.js
+          node --check panoptes/liq_charts.js
+          node --check panoptes/app.js
+          node panoptes/tests/tga_target_contract.test.mjs
+          git diff --check
+
+      - name: Detect normalized data change
+        id: normalized
+        shell: bash
+        run: |
+          if git diff --quiet -- panoptes/data/tga_target.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit official normalized data
+        if: steps.normalized.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "phalanx-treasury-bot"
+          git config user.email "phalanx-treasury-bot@users.noreply.github.com"
+          git add -- panoptes/data/tga_target.json
+          git commit -m "data: update official Treasury TGA assumptions"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
