@@ -947,7 +947,8 @@ function renderKpi(){
       PMT:{bio:'프로텍 자회사(48.5%) — 구 마이크로프랜드, 2026 턴어라운드 국면',watch:'프로텍 연결 주요고객 B사 급증과 정합하는 고객 집중 — 가동률 표와 함께 읽기'},
       M2N:{bio:'MEMS 프로브카드 + 파운드리',watch:'파운드리 축은 외주가공 성격 — 프로브카드 축이 본류'},
       KI:{bio:'국내 프로브카드 최대급(테스 관계기업 15%) — 연간 감사보고서만',watch:'연 1회 갱신 — FY26 감사보고서(내년 3~4월) 재판정'},
-      SLD:{bio:'솔브레인홀딩스 자회사 — 연간만, FY25 순익 중단영업 포함',watch:'매출·영업이익은 계속영업 기준으로 해석'}};
+      SLD:{bio:'솔브레인홀딩스 자회사 — 연간만, FY25 순익 중단영업 포함',watch:'매출·영업이익은 계속영업 기준으로 해석'},
+      WILL:{bio:'한솔테크닉스 자회사(2026-06-17 인수, 실질지분 89.2%) — 비메모리(AP·CIS) EDS 프로브카드',watch:'인수가 1,772억(영업권 1,158억) — 한솔테크닉스 3Q26 주석부터 분기 실적 자동 마이닝 개시'}};
     const pcIns=(k,c)=>{
       const fq2=(c.fin_q&&Object.keys(c.fin_q).length)?c.fin_q:null;
       const F2={};if(fq2)Object.assign(F2,fq2);else Object.assign(F2,c.fin_h||{},c.fin_fy||{});
@@ -989,6 +990,10 @@ function renderKpi(){
       if(drv&&drv.dl>0)bl.push(`드라이버는 <b>${drv.p}</b> (${pl2} 합 ${fm(drv.n0)}, YoY ${pct(drv.yoy)})${drag&&drag.dl<0?` — 드래그는 ${drag.p}(${pct(drag.yoy)})`:''}`);
       else if(drag&&drag.dl<0)bl.push(`전 품목 중 <b>${drag.p}</b>가 최대 드래그 (YoY ${pct(drag.yoy)})`);
       if(exShNow!=null&&exShPy!=null&&exShPy>0&&Math.abs(exShNow-exShPy)>=1)bl.push(`수출비중 ${exShPy.toFixed(0)}%→<b>${exShNow.toFixed(0)}%</b> (${exShNow>exShPy?'수출':'내수'} 주도 믹스 이동)`);
+      const bkA=c.backlog||{};const bkK=Object.keys(bkA).sort((a,b)=>pOrd(a)-pOrd(b));const bq=bkK[bkK.length-1];
+      if(bq!=null){const bv=bkA[bq];const bpy=bkA[pyKey(bq)];const bY=(bpy)?(bv/bpy-1)*100:null;
+        const f3=(c.fin_q||{})[bq];const covx=(f3&&f3.rev)?bv/f3.rev:null;
+        bl.push(`수주잔고 ${fm(bv)} (${bq}${bY!=null?', YoY '+pct(bY):''})${covx!=null?` — 분기매출의 <b>${covx.toFixed(2)}배</b>${covx>=1.2?' · 백로그 두터움':covx<0.5?' · 짧은 사이클(수주→납품 빠름)':''}`:''}`);}
       return {verdict,vc,bl,last,isQ:!!fq2};};
     const ov=ORDER.map(k=>{const c=PCC[k];
       const fq=(c.fin_q&&Object.keys(c.fin_q).length)?c.fin_q:((c.fin_h&&Object.keys(c.fin_h).length)?c.fin_h:(c.fin_fy||{}));
@@ -1003,6 +1008,8 @@ function renderKpi(){
       <td style="font-family:var(--mono);color:${o.v.op>0?'#59d0a8':(o.v.op<0?'#ff6b7d':'var(--dim)')}">${o.v.op!=null?o.v.op.toLocaleString():'—'}</td>
       <td style="font-family:var(--mono)">${(o.v.op!=null&&o.v.rev)?((o.v.op/o.v.rev*100).toFixed(1)+'%'):'—'}</td>
       <td style="font-family:var(--mono);color:${o.yoy>0?'#59d0a8':(o.yoy<0?'#ff6b7d':'var(--dim)')}">${o.yoy!=null?((o.yoy>0?'+':'')+o.yoy.toFixed(1)+'%'):'—'}</td>
+      <td>${(()=>{const bk=o.c.backlog||{};const bks=Object.keys(bk).sort((a,b)=>pOrd(a)-pOrd(b));const bl=bks[bks.length-1];
+        return bl?`<span style="font-family:var(--mono)">${(+bk[bl]).toLocaleString()}</span> <span style="color:var(--dim);font-size:9px">${bl}</span>`:'—';})()}</td>
       <td>${oi?`<span style="font-size:10px;font-weight:700;color:${oi.vc}">${oi.verdict}</span>`:'—'}</td></tr>`;}).join('');
     const C=PCC[ST.pcco];
     const fq=(C.fin_q&&Object.keys(C.fin_q).length)?C.fin_q:null;
@@ -1020,7 +1027,7 @@ function renderKpi(){
     const mode=ST.pcview||'prod';
     const pLast=pQ[pQ.length-1];
     html+=`<p style="font-size:14px;font-weight:800;margin:0 0 8px">🧪 프로브카드 KR 생태계 <span style="color:var(--dim);font-size:11px;font-weight:400">${ORDER.length}사 · 정기보고서 매출실적 발라냄 · 단위 백만원 · 분기=당해 누적차분</span></p>
-      <div class="panel" style="overflow-x:auto;margin-bottom:10px"><table class="tbl"><thead><tr><th>기업 (행 클릭=선택)</th><th>최신</th><th>매출</th><th>영업이익</th><th>OPM</th><th>매출 YoY</th><th>판정</th></tr></thead><tbody>${ovRows}</tbody></table>
+      <div class="panel" style="overflow-x:auto;margin-bottom:10px"><table class="tbl"><thead><tr><th>기업 (행 클릭=선택)</th><th>최신</th><th>매출</th><th>영업이익</th><th>OPM</th><th>매출 YoY</th><th>수주잔고</th><th>판정</th></tr></thead><tbody>${ovRows}</tbody></table>
       <div style="font-size:10px;color:var(--dim);margin-top:6px">KI=코리아인스트루먼트(테스 관계기업 15%·감사보고서) · SLD=솔브레인에스엘디(솔브레인홀딩스 주석+감사보고서) — 연간만 · 전사 별도 기준 · 판정은 수치 갱신 시 자동 재계산</div></div>`;
     const INS=pcIns(ST.pcco,C);
     if(INS){
@@ -1039,6 +1046,10 @@ function renderKpi(){
     }
     html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.label} — 매출·영업이익 (${fq?'분기':'반기/연간'})</h3><div class="co-cat">${(C.note||'').slice(0,110)}</div></div></div>
         <div class="ch-wrap" style="height:270px"><canvas id="pcFin"></canvas></div></div>`;
+    if(C.backlog&&Object.keys(C.backlog).length){
+      html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.label} — 수주잔고</h3><div class="co-cat">${(C.backlog_note||'정기보고서 수주상황 표(기말 시점 잔고)').slice(0,120)} · 선=잔고÷분기매출 배율(우)</div></div></div>
+        <div class="ch-wrap" style="height:235px"><canvas id="pcBkl"></canvas></div></div>`;
+    }
     if(pNames.length){
       html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.label} — 품목 × 국내/수출</h3><div class="co-cat">진한색=수출 · 연한색=국내 · 범례 클릭=토글</div></div>
         <div style="display:flex;gap:6px">${[['prod','품목×수출/내수'],['sum','수출 vs 내수']].map(([v,l])=>`<span data-pcv="${v}" style="cursor:pointer;font-size:10.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);${mode===v?'background:rgba(78,161,255,.15);color:#4ea1ff;font-weight:700':'color:var(--dim)'}">${l}</span>`).join('')}</div></div>
@@ -1107,6 +1118,18 @@ function renderKpi(){
           scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:14,font:{size:8}},grid:{display:false}},
             y:{position:'left',ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
             y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v.toLocaleString()},grid:{display:false}}}}});}
+      const bkEl=document.getElementById('pcBkl');
+      if(bkEl){const bk2=C.backlog||{};const bks=Object.keys(bk2).sort((a,b)=>pOrd(a)-pOrd(b));
+        const cov=bks.map(q=>{const f2=(C.fin_q||{})[q];return (f2&&f2.rev)?+(bk2[q]/f2.rev).toFixed(2):null;});
+        KCH.pcBkl=new Chart(bkEl,{data:{labels:bks,datasets:[
+          {type:'bar',label:'수주잔고',data:bks.map(q=>bk2[q]!=null?bk2[q]:null),backgroundColor:'rgba(180,140,255,.62)',yAxisID:'y'},
+          {type:'line',label:'잔고÷분기매출(우)',data:cov,borderColor:'#ffbe2e',backgroundColor:'#ffbe2e',borderWidth:1.7,pointRadius:2,tension:.15,spanGaps:true,yAxisID:'y2'}]},
+          options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+            plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+              tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':(c.dataset.yAxisID==='y2'?c.parsed.y+'배':c.parsed.y.toLocaleString()))}}},
+            scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:14,font:{size:8}},grid:{display:false}},
+              y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
+              y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v+'x'},grid:{display:false}}}}});}
       const pr=document.getElementById('pcProd');
       if(pr&&pQ.length){
         let ds;
