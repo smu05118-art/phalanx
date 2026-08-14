@@ -149,6 +149,10 @@
   function chartSVG(ks, vsList, colors, refs, fmt, band) {
     var n = ks.length, flat = [];
     for (var q = 0; q < vsList.length; q++) flat = flat.concat(vsList[q]);
+    /* domain=true 기준선만 y도메인에 포함한다. TGA 재무부 가정 참고선처럼 항상 보여야 하는 값에만 사용. */
+    for (var rd = 0; rd < refs.length; rd++) {
+      if (refs[rd].domain && refs[rd].v != null && !isNaN(refs[rd].v)) flat.push(Number(refs[rd].v));
+    }
     if (n < 2 || !flat.length) return { svg: '<div class="liq2-empty">표시 구간 데이터 부족</div>', map: null };
     var mn = Math.min.apply(null, flat), mx = Math.max.apply(null, flat);
     var rg = mx - mn;
@@ -343,14 +347,31 @@
   }
 
   /* ── 차트 정의 ─────────────────────────────────────────────────────── */
+  function tgaTargetOf(d) {
+    var fund = ((d.sections || {}).funding || {});
+    var t = ((fund.references || {}).treasury_cash_balance_assumption) || d.tga_target;
+    var api = typeof window !== 'undefined' ? window.PanoptesTgaTarget : null;
+    return api ? api.validateTarget(t) : null;
+  }
   function fundingSpecs(d, S) {
     var ref0 = { v: 0, c: '#8a93a3', solid: true, label: '0' };
     var ref5 = { v: 5, c: '#ff8a3d', label: '+5bp' };
     var ref10 = { v: 10, c: '#ff4d5e', label: '+10bp' };
+    var target = tgaTargetOf(d);
+    var tgaRefs = [{ v: 900, c: '#ff8a3d', edge: true, label: '내부 경계 900B' }];
+    var tgaSub = '주황 점선 = Panoptes 내부 경계 900B';
+    if (target) {
+      var display = window.PanoptesTgaTarget.displayModel(target);
+      tgaRefs.unshift({ v: Number(target.value), c: '#c6cfda', edge: true, domain: true,
+        label: display.lineLabel });
+      tgaSub = '회색 점선 = ' + display.legendLabel + ' · ' + tgaSub;
+    } else {
+      tgaSub = '미 재무부 목표 데이터 없음 · ' + tgaSub;
+    }
     return [
       { key: 'NETLIQ', title: 'Net Liquidity (WALCL−TGA−RRP)', color: '#2bc0d4', fmt: F.trillion, dfmt: D.billion },
       { key: 'TGA', title: 'TGA (재무부 현금)', color: '#ff8a3d', fmt: F.billion0, dfmt: D.billion,
-        refs: [{ v: 900, c: '#ff8a3d', label: '900B' }] },
+        refs: tgaRefs, sub: tgaSub },
       { key: 'RRP', title: 'RRP (역레포 잔고)', color: '#ffd23d', fmt: F.billion1, dfmt: D.billion1 },
       { key: 'RESERVES', title: '지급준비금 (WRESBAL)', color: '#59d0a8', fmt: F.trillion, dfmt: D.billion },
       { key: 'SOFR_IORB_BP', title: 'SOFR − IORB', color: '#ff4d5e', fmt: F.bp, dfmt: D.bp,
@@ -514,7 +535,7 @@
       ['bank', '은행 (EFFR−IORB)', F.bp(C.effr_iorb_bp),
         (C.effr_iorb_bp != null && C.effr_iorb_bp < 0) ? 'IORB 아래 = 정상' : '경계'],
       ['tga', 'TGA 흡수압력', F.billion0(v(FL, 'TGA')),
-        lights.tga === 'green' ? '900B 미만' : '재축적 압력'],
+        lights.tga === 'green' ? '내부 기준 900B 미만' : '내부 경계 초과·재축적 압력'],
       ['rrp', 'RRP 완충재', F.billion1(v(FL, 'RRP')),
         (v(FL, 'RRP') != null && v(FL, 'RRP') < 20) ? '사실상 고갈' : '남아있음'],
       ['netliq', 'Net Liq 방향', F.trillion(C.net_liquidity),
@@ -656,7 +677,7 @@
           (r[0] === state.range) + '">' + r[0] + '</button>';
       }).join('') + '</div></div>' +
       '<p class="liq2-sub">Net Liquidity = 연준 총자산 − TGA − RRP · FRED 실시간 · ' +
-      'y축은 선택 기간 데이터만으로 스케일링 · 업데이트 ' + esc(d.updated || '—') + '</p>' +
+      'y축은 선택 기간 데이터 기준(TGA는 재무부 참고선 포함) · 업데이트 ' + esc(d.updated || '—') + '</p>' +
       '<div class="liq2-lights">' + lightCards(d) + '</div>' +
       '<div class="liq2-sec">① 단기자금 <span>NetLiq · TGA · RRP · 지급준비금 · IORB 대비 스프레드(bp)</span></div>' +
       '<div class="liq2-grid" data-g="funding"></div>' +
@@ -709,5 +730,8 @@
   }
 
   if (typeof window !== 'undefined') window.renderLiq2 = renderLiq2;
-  if (typeof module !== 'undefined' && module.exports) module.exports = { renderLiq2: renderLiq2 };
+  if (typeof module !== 'undefined' && module.exports) module.exports = {
+    renderLiq2: renderLiq2,
+    _test: { chartSVG: chartSVG, fundingSpecs: fundingSpecs, tgaTargetOf: tgaTargetOf }
+  };
 })();
