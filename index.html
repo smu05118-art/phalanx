@@ -798,6 +798,7 @@ function render(){
   applyRegion();
   savePrefs();
   writeHash();
+  setFoot(ST.tab);                                // 탭별 방법론 푸터(게임탭=게임 나우캐스트, 그 외=관세 프록시)
   renderRegions();
   document.getElementById('sub').textContent=`Monthly · ${mlabel(MONTHS[0])}–${mlabel(M.updated)} · ${regionObj().source||M.source}`;
   document.querySelectorAll('.pill.cur').forEach(p=>p.classList.toggle('on',p.dataset.cur===ST.cur));
@@ -1929,7 +1930,11 @@ function loadGame(cb){ if(_gameLoaded||window.GAMES_DATA){_gameLoaded=true;retur
   sc.onload=()=>{_gameLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">🎮 게임 데이터 준비 중입니다…</div>';};
   document.head.appendChild(sc); }
 function gDestroy(){ for(const k in GCH){ try{GCH[k].destroy();}catch(e){} delete GCH[k]; } }
-function gSer(src,k){ const s=((window.GAMES_DATA||{}).series||{})[src]; if(!s||!s.y||!s.y[k]) return null; return {x:s.x, y:s.y[k]}; }
+function gYm(s){ return (s&&(s.y||s.co))||{}; }   // 시계열 값맵: 파이프라인이 y(평탄) 또는 co(희소 [i,v]쌍) 키로 저장
+function gArr(x,v){ if(!v||!v.length) return v||[];   // 값 정규화: 희소 [[i,val],…]쌍 → x정렬 평탄배열, 이미 평탄이면 그대로
+  if(Array.isArray(v[0])){ const out=new Array((x||[]).length).fill(null); for(const p of v){ if(Array.isArray(p)&&p[0]<out.length) out[p[0]]=p[1]; } return out; }
+  return v; }
+function gSer(src,k){ const s=((window.GAMES_DATA||{}).series||{})[src]; if(!s) return null; const ym=gYm(s); if(!ym[k]) return null; return {x:s.x, y:gArr(s.x,ym[k])}; }
 function gValid(k){ const out={}; const V=(((window.GAMES_DATA||{}).validation||{}).axes)||{};
   for(const ax in V){ const r=(V[ax].companies||{})[k]; if(r) out[ax]=r; } return out; }
 function gChart(cv,labels,datasets,yfmt,extra){
@@ -1985,7 +1990,10 @@ function gvAttract(G){
       <td style="font-family:var(--mono);font-size:10px;color:var(--dim)">${a.n_axes}/4축</td>
       <td>${axes}</td></tr>`;}).join('');
   const G2=window.GAMES_DATA||{}; const upAll=(G2.upcoming&&G2.upcoming.items)||G2.upcoming||[];
-  const upLine=(upAll&&upAll.length)?`<div class="panel" style="padding:10px 16px;margin-bottom:12px;font-size:11px;border-color:#59d0a844"><b>🗓 상장사 신작</b> ${upAll.slice(0,5).map(u=>`<span style="margin-left:10px">${(u.title||'').slice(0,24)} <span style="color:var(--dim)">(${u.name||''})</span> <span style="color:#59d0a8;font-family:var(--mono);font-size:10px">${u.release_date||u.release_str||''}</span></span>`).join('')}</div>`:'';
+  const _seen=new Set();                            // 프랜차이즈+회사 단위 중복 접기(MGS Master Collection 다중 SKU 등)
+  const upU=upAll.filter(u=>{ const fr=((u.title||'').split(/[:\-(™–]/)[0]).trim().toLowerCase().replace(/\s+/g,' ').slice(0,22)+'|'+(u.name||''); if(_seen.has(fr))return false; _seen.add(fr); return true; });
+  const _tt=t=>{ t=(t||'').replace(/[™®]/g,'').trim(); return t.length>34?t.slice(0,33)+'…':t; };
+  const upLine=(upU&&upU.length)?`<div class="panel" style="padding:10px 16px;margin-bottom:12px;font-size:11px;border-color:#59d0a844"><b>🗓 상장사 신작</b> ${upU.slice(0,6).map(u=>`<span style="margin-left:10px">${_tt(u.title)} <span style="color:var(--dim)">(${u.name||''})</span> <span style="color:#59d0a8;font-family:var(--mono);font-size:10px">${u.release_date||u.release_str||''}</span></span>`).join('')}</div>`:'';
   return `${upLine}<div class="panel" style="padding:14px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">
     매력도 = 가용 축(Steam리뷰증분·PC방점유율·모바일랭크·DMM매출)의 크로스섹션 z 평균 × √(축수/5) — 커버리지 페널티로 단일축 고득점 과신 방지. 제외축: ${Object.keys(meta.axes_excluded||{}).join(', ')||'—'} · <b>nowcast</b> 뱃지 = 분기매출 대조 검증 통과 축(ρ≥.6·hold≥.4)</div>
   <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>회사</th><th>종합 z</th><th>커버리지</th><th>축별 분해</th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -2021,9 +2029,9 @@ function gvCoDetail(G,k){
     <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:14px">${cards||'<div class="panel">이 회사에 연결된 시계열이 아직 없습니다.</div>'}</div>`;
 }
 function gvSteam(G){
-  const S=(G.series||{}).steam_reviews_m||{x:[],y:{}};
-  const cos=(G.companies||[]).filter(c=>S.y[c.co_key]);
-  const rank=cos.map(c=>{const a=S.y[c.co_key]; const n=a.length; const l3=a.slice(-3).reduce((s,v)=>s+(v||0),0); const p3=a.slice(-15,-12).reduce((s,v)=>s+(v||0),0);
+  const S=(G.series||{}).steam_reviews_m||{x:[],y:{}}; const SY=gYm(S);
+  const cos=(G.companies||[]).filter(c=>SY[c.co_key]);
+  const rank=cos.map(c=>{const a=gArr(S.x,SY[c.co_key]); const n=a.length; const l3=a.slice(-3).reduce((s,v)=>s+(v||0),0); const p3=a.slice(-15,-12).reduce((s,v)=>s+(v||0),0);
     return {c,l3,yoy:p3>0?(l3/p3-1)*100:null};}).sort((a,b)=>b.l3-a.l3);
   const rows=rank.map((r,i)=>`<tr class="lr" data-gco="${r.c.co_key}" style="cursor:pointer"><td style="font-family:var(--mono)">${i+1}</td>
     <td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${r.c.color};margin-right:6px"></span>${r.c.name}</td>
@@ -2040,14 +2048,14 @@ function gvPcbang(G){
   <div class="card"><div class="ch-wrap" style="height:420px"><canvas id="gPcbangAll"></canvas></div></div>`;
 }
 function gvMaple(G){
-  const s=(G.series||{}).maple_pop_w||{x:[],y:{}}; const k=Object.keys(s.y)[0];
+  const s=(G.series||{}).maple_pop_w||{x:[],y:{}}; const k=Object.keys(gYm(s))[0];
   return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">메이플스토리 주간 접속인구(meaegi, 2023-12~) — 넥슨 국내 본체 프록시. 주화시세는 소스 갱신중단(2026-03)으로 미표시.</div>
   <div class="card"><div class="ch-wrap" style="height:340px"><canvas data-gch="maple_pop_w|${k||''}|#ffbe2e"></canvas></div></div>`;
 }
 function gvMobile(G){
-  const s=(G.series||{}).mobile_rankpt_d||{x:[],y:{}};
+  const s=(G.series||{}).mobile_rankpt_d||{x:[],y:{}}; const sy=gYm(s);
   const n=(s.x||[]).length;
-  const cos=(G.companies||[]).filter(c=>s.y[c.co_key]&&s.y[c.co_key].some(v=>v>0));
+  const cos=(G.companies||[]).filter(c=>sy[c.co_key]&&gArr(s.x,sy[c.co_key]).some(v=>v>0));
   return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">iTunes 매출랭킹(KR·JP·US 게임 top50, 랭크포인트=Σ(51-순위)) — <b>${(s.x||[])[0]||'오늘'}부터 일간 누적 시작</b>(모바일인덱스는 인증벽 — 공식 RSS 대체). ⚠️ <b>iOS(App Store)만 — 구글플레이 미포함</b>(무료 접근 정찰 중, 한국 모바일 매출 다수가 안드로이드임을 감안해 읽을 것). 데이터가 쌓이면 추세축(28일)이 자동 활성화됩니다.</div>
   ${n<3?`<div class="panel" style="padding:16px">축적 ${n}일차 — 현재 랭크인 상장사: ${cos.map(c=>`<span style="color:${c.color};font-weight:700">${c.name}</span>`).join(' · ')||'집계 중'}</div>`:`<div class="card"><div class="ch-wrap" style="height:380px"><canvas id="gMobileAll"></canvas></div></div>`}`;
 }
@@ -2073,17 +2081,17 @@ function gMountCharts(G){
       v=>src==='pcbang_share_w'?v.toFixed(1)+'%':src==='dmm_rev_m'?v.toFixed(1)+'億':v.toLocaleString());
   });
   const pc=document.getElementById('gPcbangAll');
-  if(pc&&(S.pcbang_share_w||S.pcbang_share_m)){ const P=(ST.gpcw==='m'&&S.pcbang_share_m)?S.pcbang_share_m:S.pcbang_share_w;
-    const ds=(G.companies||[]).filter(c=>P.y[c.co_key]).map(c=>({type:'line',label:c.name,data:P.y[c.co_key],borderColor:c.color,backgroundColor:c.color+'bb',borderWidth:.6,pointRadius:0,fill:true,tension:.15,stack:'p',spanGaps:false}));
+  if(pc&&(S.pcbang_share_w||S.pcbang_share_m)){ const P=(ST.gpcw==='m'&&S.pcbang_share_m)?S.pcbang_share_m:S.pcbang_share_w; const PY=gYm(P);
+    const ds=(G.companies||[]).filter(c=>PY[c.co_key]).map(c=>({type:'line',label:c.name,data:gArr(P.x,PY[c.co_key]),borderColor:c.color,backgroundColor:c.color+'bb',borderWidth:.6,pointRadius:0,fill:true,tension:.15,stack:'p',spanGaps:false}));
     gChart(pc,P.x,ds,v=>v.toFixed(1)+'%',{scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>v+'%'},grid:{color:'rgba(40,40,74,.5)'}}}}); }
   const mb=document.getElementById('gMobileAll');
-  if(mb&&S.mobile_rankpt_d){ const M=S.mobile_rankpt_d;
-    const ds=(G.companies||[]).filter(c=>M.y[c.co_key]&&M.y[c.co_key].some(v=>v>0)).map(c=>({type:'line',label:c.name,data:M.y[c.co_key],borderColor:c.color,borderWidth:1.5,pointRadius:2,tension:.2}));
+  if(mb&&S.mobile_rankpt_d){ const M=S.mobile_rankpt_d; const MY=gYm(M);
+    const ds=(G.companies||[]).filter(c=>MY[c.co_key]&&gArr(M.x,MY[c.co_key]).some(v=>v>0)).map(c=>({type:'line',label:c.name,data:gArr(M.x,MY[c.co_key]),borderColor:c.color,borderWidth:1.5,pointRadius:2,tension:.2}));
     gChart(mb,M.x,ds,v=>v); }
   const dm=document.getElementById('gDmmAll');
-  if(dm&&S.dmm_rev_m){ const D=S.dmm_rev_m;
-    const tops=(G.companies||[]).filter(c=>D.y[c.co_key]).map(c=>({c,last:D.y[c.co_key].slice(-2).reduce((s,v)=>s+(v||0),0)})).sort((a,b)=>b.last-a.last).slice(0,10);
-    const ds=tops.map(t=>({type:'line',label:t.c.name,data:D.y[t.c.co_key],borderColor:t.c.color,borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true}));
+  if(dm&&S.dmm_rev_m){ const D=S.dmm_rev_m; const DY=gYm(D);
+    const tops=(G.companies||[]).filter(c=>DY[c.co_key]).map(c=>({c,last:gArr(D.x,DY[c.co_key]).slice(-2).reduce((s,v)=>s+(v||0),0)})).sort((a,b)=>b.last-a.last).slice(0,10);
+    const ds=tops.map(t=>({type:'line',label:t.c.name,data:gArr(D.x,DY[t.c.co_key]),borderColor:t.c.color,borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true}));
     gChart(dm,D.x,ds,v=>v.toFixed(1)+'億'); }
 }
 function loadLux(cb){ if(_luxLoaded||window.LUXD){_luxLoaded=true;return cb();}
@@ -2550,7 +2558,7 @@ function initBrush(){
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ST.tab=t.dataset.tab;ST.view='overview';ST.company=null;ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);});
 let qt; document.getElementById('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{ST.q=e.target.value; ST.view==='detail'?renderDetail(): ST.view==='country'?renderCountry(): (ST.tab==='dash'?filterOverview():render());},180);});
 
-document.getElementById('foot').innerHTML=
+const FOOT_CUSTOMS=
  `<b>Methodology.</b> Customs export proxy for companies, built from Japan e-Stat <code>税関別品別国別表</code>
   (Trade Statistics by Customs × Commodity × Country), summed over all partner countries. Overview "Revenue" = total
   CORE-HS export across the company's ports; YoY% / MoM% / YoY-by-Year are derived from it. Click a company for the
@@ -2558,6 +2566,15 @@ document.getElementById('foot').innerHTML=
   중량 = 数量2 (Unit2=KG); <b>단가 = Σ금액×1000 / Σ중량</b> (행별 평균이 아닌 합산 후 나눗셈). 수출은 <b>FOB</b>, 수입은 <b>CIF</b> 기준이라
   수출·수입 단가를 같은 가격으로 직접 비교하면 안 됩니다(수입 CIF엔 운임·보험 포함). probe-card는 고부가·커스텀이라 ¥/kg는 제품 mix proxy로 해석.
   <b>JEM</b> (6855 JP) 프록시는 항공 세관(Kansai Air, Fukuoka Air)에 집중. USD/KRW은 근사 환율(¥ 기준). Not investment advice. Source: Japan Customs / e-Stat.`;
+const FOOT_GAME=
+ `<b>매력도 나우캐스트.</b> 상장 게임사를 4개 대체데이터 축으로 크로스섹션 z-스코어링 — <b>Steam</b> 월 리뷰증분(판매 프록시),
+  <b>gametrics PC방</b> 주간 점유율(2007~), <b>iTunes 모바일</b> 매출랭크(KR·JP·US · iOS only, 구글플레이 미포함),
+  <b>game-i DMM/JP</b> 월 예상매출. 종합 z = 가용축 크로스섹션 z 평균 × √(축수/5)로 커버리지 페널티를 걸어 단일축 고득점 과신을 방지.
+  <b>nowcast</b> 뱃지 = 해당 축을 회사 분기매출과 대조검증해 ρ≥.6·holdout hit≥.4 를 통과한 축(선행성 확인). Steam·DMM 값은 절대매출이 아닌
+  <b>추세·상대비교</b>용입니다(특히 DMM은 game-i 자체 추정치·조정중). CCU·메이플 주화시세 축은 스코어에서 제외. Not investment advice.
+  Source: Steam · gametrics · iTunes RSS · game-i.`;
+function setFoot(tab){ const el=document.getElementById('foot'); if(!el)return; el.innerHTML=(tab==='game')?FOOT_GAME:FOOT_CUSTOMS; }
+setFoot(ST.tab);
 
 function renderHsInfo(){ const el=document.getElementById('hsinfo'); if(!el)return;
   const hs=REGHS[ST.region]; if(!hs||!hs.length){ el.innerHTML=''; el.style.display='none'; return; }
