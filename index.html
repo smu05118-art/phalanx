@@ -1991,7 +1991,8 @@ function gvAttract(G){
       <td>${axes}</td></tr>`;}).join('');
   const G2=window.GAMES_DATA||{}; const upAll=(G2.upcoming&&G2.upcoming.items)||G2.upcoming||[];
   const _seen=new Set();                            // 프랜차이즈+회사 단위 중복 접기(MGS Master Collection 다중 SKU 등)
-  const upU=upAll.filter(u=>{ const fr=((u.title||'').split(/[:\-(™–]/)[0]).trim().toLowerCase().replace(/\s+/g,' ').slice(0,22)+'|'+(u.name||''); if(_seen.has(fr))return false; _seen.add(fr); return true; });
+  const _fk=t=>(t||'').toLowerCase().replace(/[^a-z0-9가-힣ぁ-んァ-ヴ一-龥 ]/g,' ').replace(/\s+/g,' ').trim().split(' ').slice(0,3).join(' '); // 앞 3어절 프랜차이즈 키
+  const upU=upAll.filter(u=>{ const fr=_fk(u.title)+'|'+(u.name||''); if(_seen.has(fr))return false; _seen.add(fr); return true; });
   const _tt=t=>{ t=(t||'').replace(/[™®]/g,'').trim(); return t.length>34?t.slice(0,33)+'…':t; };
   const upLine=(upU&&upU.length)?`<div class="panel" style="padding:10px 16px;margin-bottom:12px;font-size:11px;border-color:#59d0a844"><b>🗓 상장사 신작</b> ${upU.slice(0,6).map(u=>`<span style="margin-left:10px">${_tt(u.title)} <span style="color:var(--dim)">(${u.name||''})</span> <span style="color:#59d0a8;font-family:var(--mono);font-size:10px">${u.release_date||u.release_str||''}</span></span>`).join('')}</div>`:'';
   return `${upLine}<div class="panel" style="padding:14px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">
