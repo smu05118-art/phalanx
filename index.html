@@ -201,6 +201,7 @@ header h1 em{color:var(--a1);font-style:normal;}
   <span class="tab" data-tab="tmap">🕸 SupplyMap</span>
   <span class="tab" data-tab="ppi">🏭 PPI</span>
   <span class="tab" data-tab="game">🎮 Game</span>
+  <span class="tab" data-tab="app">👕 의류</span>
   <span class="tab" data-tab="plat">🌐 Platform</span>
   <span class="tab" data-tab="kpi">📊 산업KPI</span>
   <span class="tab" data-tab="comm">🛢 원자재</span>
@@ -293,11 +294,80 @@ function earnChip(co){ if(co.is_hub) return '';
 function nowcastOf(co){ return (P.nowcast||{})[(co||compObj()).id]; }
 function ncGrade(n){ return (n.r2>=0.6&&n.hit>=70)?'hi':((n.r2>=0.35&&n.hit>=55)?'mid':'lo'); }
 function ncCol(g){ return g==='hi'?'#2fae66':(g==='mid'?'#e0a24a':'#c98a8a'); }
-function ncBadge(co){ const n=nowcastOf(co); if(!n||co.is_hub||n.predyoy==null) return '';
+// ---------- 나우캐스트 부분분기·스테일 보정 ----------
+// 빌더가 최신 세관분기(lastC)를 미공표월=0 포함으로 합산해 완전한 전년분기와 비교 후 레벨회귀에 넣으면
+// cyoy·predyoy가 왜곡됨(2026-08 MJC: 2026Q2를 4·5월만으로 -1.2%/-15.4% 산출 — 아티팩트).
+// 공표된 원계열로 빌더 방법론(core_set×main_ports 수출합 → 20Q 레벨회귀)을 재현·검증한 뒤,
+// 분기가 완전하면 재계산값, 부분분기면 가용월 YoY 페이스로 결측월을 보간한 보정값을 쓴다.
+// 저장 cyoy를 어떤 컷오프로도 재현 못 하는 종목(시계열 상이)은 건드리지 않고 저장값 유지.
+const _NCFIX={};
+function ncLastIdx(reg){ // 지역 샤드 전체에서 마지막 공표월 인덱스 (미공표월은 전 계열 0)
+  if(window._ncForceLastIdx!=null) return window._ncForceLastIdx; // 부분분기 로컬 테스트용 오버라이드
+  const ck='@'+reg; if(_NCFIX[ck]!=null) return _NCFIX[ck];
+  const sh=window.PSH&&window.PSH[reg]; let last=-1;
+  if(sh&&sh.detail) for(const set of Object.values(sh.detail)) for(const pt of Object.values(set)) for(const fl of ['exp','imp']){
+    const v=(pt[fl]&&pt[fl].v)||[];
+    for(let i=v.length-1;i>last;i--) if(v[i]){ last=i; break; }
+  }
+  return _NCFIX[ck]=last;
+}
+function ncQMonths(qs){ const y=+qs.slice(0,4), q=+qs.slice(5);
+  return [1,2,3].map(k=>monthIdx[y+'-'+String(3*(q-1)+k).padStart(2,'0')]).filter(i=>i!=null); }
+function ncFix(n){ // n: M.nowcast 엔트리 → {cyoy,predyoy,avail,partial,corrected,checked}
+  const key=n.id+':'+(window._ncForceLastIdx!=null?window._ncForceLastIdx:'');
+  if(_NCFIX[key]) return _NCFIX[key];
+  const out={cyoy:n.cyoy, predyoy:n.predyoy, avail:3, partial:false, corrected:false, checked:false};
+  const res=o=>(_NCFIX[key]=o);
+  const reg=n.reg||'JP';
+  if(!(window.PSH&&window.PSH[reg])||!n.lastC||!n.tgtq) return res(out);
+  const lastIdx=ncLastIdx(reg); if(lastIdx<0) return res(out);
+  const qm=ncQMonths(n.lastC); if(qm.length!==3) return res(out);
+  out.avail=qm.filter(i=>i<=lastIdx).length; out.partial=out.avail<3;
+  const co=(P.companies||[]).find(c=>c.id===n.id), f=(P.fin||{})[n.id];
+  if(!co||!f||!P.detail[co.core_set]) return res(out);
+  const det=P.detail[co.core_set], ports=(co.main_ports&&co.main_ports.length?co.main_ports:co.ports)||[];
+  const v=MONTHS.map((_,i)=>ports.reduce((s,p)=>s+((det[p]&&det[p].exp&&det[p].exp.v&&det[p].exp.v[i])||0),0));
+  const qsum=(y,q,cut)=>{ let t=0; for(let m=3*q-2;m<=3*q;m++){ const i=monthIdx[y+'-'+String(m).padStart(2,'0')]; if(i==null) return null; if(cut!=null&&i>cut) continue; t+=v[i]; } return t; };
+  // 매출분기 라벨 = ceil(결산월/3), 그 라벨 − L 이 대응 세관분기 (비캘린더 결산 포함)
+  const seg=(f.segname&&n.seg===f.segname&&f.segq&&f.segq.length)?f.segq:(f.q||[]).map(r=>[r[0],r[1]]);
+  const rows=seg.filter(r=>r&&r[1]!=null).sort((a,b)=>a[0]<b[0]?-1:1);
+  const ly=+n.lastC.slice(0,4), lq=+n.lastC.slice(5), ty=+n.tgtq.slice(0,4), tq=+n.tgtq.slice(5);
+  const pairs=[];
+  for(const [d,r] of rows){ let y=+d.slice(0,4), q=Math.ceil(+d.slice(5,7)/3)-n.L; while(q<1){q+=4;y--;}
+    const qq=ncQMonths(y+'Q'+q); if(qq.length!==3||qq[2]>lastIdx) continue;
+    pairs.push([qsum(y,q),r]); }
+  const pp=pairs.slice(-20), N=pp.length;
+  const base=rows.filter(r=>+r[0].slice(0,4)===ty-1&&Math.ceil(+r[0].slice(5,7)/3)===tq).map(r=>r[1])[0];
+  const x0=qsum(ly-1,lq);
+  if(N<8||!base||!x0) return res(out);
+  let sx=0,sy=0,sxx=0,sxy=0; pp.forEach(([x,r])=>{sx+=x;sy+=r;sxx+=x*x;sxy+=x*r;});
+  const den=N*sxx-sx*sx; if(!den) return res(out);
+  const b=(N*sxy-sx*sy)/den, a=(sy-b*sx)/N;
+  const cy=x=>Math.round(1000*(x/x0-1))/10, py=x=>Math.round(1000*((a+b*x)/base-1))/10;
+  // 방법론 검증: 저장 cyoy가 분기 1~3개월 컷오프 중 하나로 재현돼야만 보정 (17/19 종목 0.1pp 일치 확인)
+  let bAvail=null;
+  for(let k=3;k>=1;k--){ const xs=qsum(ly,lq,qm[k-1]); if(xs!=null&&n.cyoy!=null&&Math.abs(cy(xs)-n.cyoy)<=0.15){ bAvail=k; break; } }
+  if(bAvail==null) return res(out);
+  out.checked=true;
+  if(!out.partial){
+    if(bAvail<3){ const x=qsum(ly,lq); out.corrected=true; out.cyoy=cy(x); out.predyoy=py(x); }
+  } else if(out.avail>0){
+    let sA=0,sB=0; qm.forEach(i=>{ if(i<=lastIdx){ sA+=v[i]; sB+=(i>=12?v[i-12]:0); } });
+    if(sB>0){ const pace=sA/sB; let x=sA; qm.forEach(i=>{ if(i>lastIdx) x+=(i>=12?(v[i-12]||0):0)*pace; });
+      out.corrected=true; out.cyoy=Math.round(1000*(pace-1))/10; out.predyoy=py(x);
+    } else { out.cyoy=null; out.predyoy=null; }
+  } else { out.cyoy=null; out.predyoy=null; }
+  return res(out);
+}
+function ncBadge(co){ const n=nowcastOf(co); if(!n||co.is_hub) return '';
+  const me=(M.nowcast||[]).find(x=>x.id===co.id);
+  const fx=me?ncFix(me):{cyoy:null,predyoy:n.predyoy,avail:3,partial:false,corrected:false,checked:false};
+  const pv=fx.predyoy!=null?fx.predyoy:n.predyoy; if(pv==null) return '';
   const g=ncGrade(n), col=ncCol(g), lead=n.L>=1?('+'+n.L+'Q선행'):'동행';
-  const sign=n.predyoy>=0?'+':'', pc=n.predyoy>=0?'#2fae66':'#e06666';
-  const tip=`세관→매출 나우캐스트 · lag${n.L}(corr ${n.corr!=null?n.corr.toFixed(2):'—'}) · R²${n.r2.toFixed(2)} · 방향적중 ${n.hit}%${n.fwd?' · 미보고(검증대기)':''}`;
-  return `<div title="${tip}"><span class="chg" style="color:${pc}">${sign}${n.predyoy}%</span><span class="clab" style="color:${col}">🔮 ${n.tgtq} ${lead}${n.fwd?'*':''}</span></div>`; }
+  const sign=pv>=0?'+':'', pc=fx.partial?'#8a90a8':(pv>=0?'#2fae66':'#e06666');
+  const xtra=fx.partial?` · 세관 ${me&&me.lastC||''} 부분분기(${fx.avail}/3개월)${fx.corrected?' — 가용월 YoY 페이스 보간 보정치':''}`:(fx.corrected?` · 프론트 재계산(빌더 저장값 ${n.predyoy}%)`:'');
+  const tip=`세관→매출 나우캐스트 · lag${n.L}(corr ${n.corr!=null?n.corr.toFixed(2):'—'}) · R²${n.r2.toFixed(2)} · 방향적중 ${n.hit}%${n.fwd?' · 미보고(검증대기)':''}${xtra}`;
+  return `<div title="${tip}"><span class="chg" style="color:${pc}">${fx.partial?'~':''}${sign}${pv}%${fx.partial?' <span style="color:#e0a24a;font-size:10px">('+fx.avail+'/3개월)</span>':''}</span><span class="clab" style="color:${col}">🔮 ${n.tgtq} ${lead}${n.fwd?'*':''}${fx.corrected&&!fx.partial?' ↻':''}</span></div>`; }
 // map fin quarters onto the current granularity grid (M: at quarter-end month; Q: exact; Y: summed)
 function finSeries(co,k){ const f=finOf(co); if(!f) return null;
   const rows=(k==='seg')?(f.segq||[]):(f.q||[]).map(r=>[r[0], k==='op'?r[2]:r[1]]);
@@ -362,7 +432,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':(q.tab==='ppi'?'ppi':(q.tab==='game'?'game':(q.tab==='plat'?'plat':(q.tab==='comm'?'comm':(q.tab==='ai'?'ai':(q.tab==='ins'?'ins':'dash'))))))))))));
+  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':(q.tab==='ppi'?'ppi':(q.tab==='game'?'game':(q.tab==='app'?'app':(q.tab==='plat'?'plat':(q.tab==='comm'?'comm':(q.tab==='ai'?'ai':(q.tab==='ins'?'ins':'dash')))))))))))));
   if(q.tab==='game'&&q.gco){ ST.gview='co_'+q.gco; }
   if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
@@ -823,6 +893,7 @@ function render(){
   if(ST.tab==='tmap') return loadTmap(renderTmap);
   if(ST.tab==='ppi') return loadPpi(renderPpi);
   if(ST.tab==='game') return loadGame(renderGame);
+  if(ST.tab==='app') return loadApparel(renderApparel);
   if(ST.tab==='ops') return loadOps(renderOps);
   if(ST.tab==='plat') return loadPlat(renderPlat);
   if(ST.tab==='kpi') return loadKpi(renderKpi);
@@ -1923,6 +1994,309 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
 }
 // ================= 💎 Luxury 탭 =================
 let _luxLoaded=false;
+// ===== 👕 의류 탭 — 브랜드 × ODM 밸류체인 통합뷰 (TWC·TWX 월매출 / JPC 월차 / LUX 분기 / US BOL) =====
+// 전 샤드에 흩어진 의류·신발 상장사를 한 화면에 모은다. 새 데이터 소스 없이 기존 시계열을 재조합.
+let _appLoaded=false; const ACH={};
+// 대만 ODM·소재 (월매출 = MOPS 공시, 실액). cust = 고객 노출(조사 기반, 회사 공시·리서치)
+const AP_TW=[
+ // 신발 ODM
+ {id:'TWX9910',g:'shoe',cust:'Nike 80%+ · Salomon 7~8%'},
+ {id:'TWX9904',g:'shoe',cust:'Nike 30% · adidas 20% · Asics/NB/Salomon 30%'},
+ {id:'TWX6890',g:'shoe',cust:'adidas 55~60% · HOKA 20~25% · Converse 15~20%'},
+ {id:'TWX6768',g:'shoe',cust:'adidas 58%(F50) · Nike 34% · Brooks 4%'},
+ {id:'TWX9802',g:'shoe',cust:'Salomon · TNF · Merrell · Keen (아웃도어)'},
+ {id:'TWX6965',g:'shoe',cust:'New Balance 30~40% · FILA/Li-Ning 20~30% · lululemon'},
+ {id:'TWX4426',g:'shoe',cust:'Nike 공급망 30~40% · adidas 10~20% (3D 니트 갑피)'},
+ {id:'TWX7811',g:'shoe',cust:'Bauer · Alpinestars (하키·모토)'},
+ {id:'TWX8429',g:'shoe',cust:'자체 G-Apple 병행'},
+ // 부자재
+ {id:'TWX9938',g:'trim',cust:'adidas 23% · Nike 19% · On 6% · NB 4%'},
+ {id:'TWX8404',g:'trim',cust:'Nike 40% · NB 15% · adidas 14% · Puma 5%'},
+ // 의류 ODM
+ {id:'TWX1476',g:'gmt',cust:'Nike 15~16% · lululemon 8~10% · Target·UA 각 5%+'},
+ {id:'TWX1477',g:'gmt',cust:'Gap 30% · Target 15% · Kohl’s 10% · FR(GU) 10%'},
+ {id:'TWX4438',g:'gmt',cust:'adidas 23% · Patagonia 16% · TNF 13% (다운 세계 1~2위)'},
+ {id:'TWX1451',g:'gmt',cust:'Levi’s 25~30% · Kontoor 15% · Gap 10% (데님)'},
+ {id:'TWX4414',g:'gmt',cust:'Walmart 15~25% · Levi’s 10~20% · Gap 10% (데님)'},
+ {id:'TWX8916',g:'gmt',cust:'다운 원료~다운의류 수직계열'},
+ {id:'TWX4432',g:'gmt',cust:'adidas · UA · Champion · Sports Direct'},
+ {id:'TWX4441',g:'gmt',cust:'adidas · Champion · 구미 PB'},
+ {id:'TWX1473',g:'gmt',cust:'Gap · MAST · Ann Taylor'},
+ {id:'TWX5906',g:'gmt',cust:'미국 여성복 ODM(연 4천만장)'},
+ {id:'TWX1467',g:'gmt',cust:'Mr Price 10~20% (수직계열+스마트의류)'},
+ {id:'TWX1417',g:'gmt',cust:'대만 국방부 50%+ (군복·유니폼)'},
+ {id:'TWX4413',g:'gmt',cust:'의류 무역·직물'},
+ // 원단·소재 (상류 사이클)
+ {id:'TWX1434',g:'mat',cust:'기능성 원단+타이어코드'},
+ {id:'TWX1460',g:'mat',cust:'기능성 원단 수직계열'},
+ {id:'TWX1464',g:'mat',cust:'아웃도어·스포츠 기능성 원단'},
+ {id:'TWX1449',g:'mat',cust:'선염 체크원단 세계 최대급'},
+ {id:'TWX1468',g:'mat',cust:'초극세사 일관생산'},
+ {id:'TWX4433',g:'mat',cust:'S.Café 커피원사'},
+ {id:'TWX4439',g:'mat',cust:'환편 니트 원단'},
+ {id:'TWX4442',g:'mat',cust:'기능성 원단 설계'},
+ {id:'TWX1470',g:'mat',cust:'경편·환편 니트원단'},
+ {id:'TWX4440',g:'mat',cust:'탄성 커버링사 대만 1위'},
+ {id:'TWX4401',g:'mat',cust:'나일론66 원사'},
+ {id:'TWX1440',g:'mat',cust:'폴리에스터 단섬유·방적'},
+ {id:'TWX1402',g:'mat',cust:'화섬·PET 일관(원동신세기)'},
+ {id:'TWX1409',g:'mat',cust:'폴리에스터·PET'},
+ {id:'TWX1466',g:'mat',cust:'나일론 가공사 대만 최대'},
+ {id:'TWX1455',g:'mat',cust:'나일론칩 대만 3대'},
+ {id:'TWX1447',g:'mat',cust:'나일론6 원사·칩'},
+ {id:'TWX1444',g:'mat',cust:'폴리에스터 가공사·rPET'},
+ {id:'TWX1445',g:'mat',cust:'가연사~염정 수직계열'},
+ {id:'TWX1465',g:'mat',cust:'가공사·기능성 원단'},
+ {id:'TWX1441',g:'mat',cust:'리사이클 방적사'},
+ {id:'TWX1454',g:'mat',cust:'타페타 경량 직물'},
+ {id:'TWX1414',g:'mat',cust:'혼방사 92%'},
+ {id:'TWX1410',g:'mat',cust:'염색·가공'},
+ {id:'TWX1413',g:'mat',cust:'POY 범용 폴리에스터사'},
+ {id:'TWX1452',g:'mat',cust:'폴리에스터 DTY'},
+ {id:'TWX1457',g:'mat',cust:'DTY·차량용 섬유'},
+ {id:'TWX1459',g:'mat',cust:'가연사·염정'},
+ // 대만 브랜드·리테일
+ {id:'TWX2940',g:'brand',cust:'ATUNAS 아웃도어 브랜드'},
+ {id:'TWX2941',g:'brand',cust:'Life8 남성복 옴니채널'},
+ {id:'TWX8443',g:'brand',cust:'阿瘦 제화 250여 직영점'},
+ {id:'TWX2916',g:'brand',cust:'le coq·Munsingwear·PearlyGates 라이선스'},
+ {id:'TWX2911',g:'brand',cust:'유아동복 체인'},
+ {id:'TWX2924',g:'brand',cust:'유아동복 ODM'},
+ {id:'TWX2929',g:'brand',cust:'중국 아동복 TOPBI'},
+ {id:'TWX5321',g:'brand',cust:'여성복 D2C 온라인'},
+];
+// 일본 월차공시 소매·어패럴 (JPC: revenue = 前年同月=100 지수)
+const AP_JP=['jpx_9983','jpx_8227','jpx_2685','jpx_7606','jpx_7564','jpx_2670','jpx_2726','jpx_7545','jpx_2792','jpx_7453',
+ 'jpx_3548','jpx_2668','jpx_8185','jpx_2686','jpx_8219','jpx_8214','jpx_7494','jpx_7416','jpx_3608','jpx_8016','jpx_3612',
+ 'jpx_8011','jpx_3415','jpx_9876','jpx_2778','jpx_8166','jpx_7603','jpx_5892','jpx_7112','jpx_7615','jpx_7683','jpx_3070',
+ 'jpx_7422','jpx_3566','jpx_9997','jpx_3591'];
+// 글로벌 브랜드 (LUXD.revq 분기 YoY)
+const AP_GL=[['NKE','Nike','스포츠'],['ADS.DE','adidas','스포츠'],['PUM.DE','PUMA','스포츠'],['LULU','lululemon','애슬레저'],
+ ['DECK','Deckers(HOKA·UGG)','신발'],['BIRK','Birkenstock','신발'],['UAA','Under Armour','스포츠'],['VFC','VF(TNF·Vans)','아웃도어'],
+ ['LEVI','Levi’s','데님'],['GOOS','Canada Goose','아우터'],['RL','Ralph Lauren','의류'],['TPR','Tapestry','액세서리'],
+ ['CPRI','Capri','의류'],['MONC.MI','Moncler','아우터'],['BC.MI','Brunello Cucinelli','럭셔리'],['BRBY.L','Burberry','럭셔리'],
+ ['ZGN','Zegna','럭셔리'],['1913.HK','Prada','럭셔리'],['MC.PA','LVMH','럭셔리'],['RMS.PA','Hermès','럭셔리'],['KER.PA','Kering','럭셔리'],
+ ['SFER.MI','Ferragamo','럭셔리'],['ITX.MC','Inditex(ZARA)','SPA'],['HM-B.ST','H&M','SPA'],['9983.T','Fast Retailing','SPA']];
+// 브랜드 → ODM 프록시 매핑 (pct = 해당 ODM 매출 중 그 브랜드 비중)
+const AP_MAP=[
+ {b:'Nike',lux:'NKE',odm:[['TWX9910',80],['TWX8404',40],['TWX4426',35],['TWX6768',34],['TWX9904',30],['TWX9938',19],['TWX6890',18],['TWX1476',15]]},
+ {b:'adidas',lux:'ADS.DE',odm:[['TWX6768',58],['TWX6890',57],['TWX4438',23],['TWX9938',23],['TWX9904',20],['TWX8404',14],['TWX4432',null],['TWX4441',null]]},
+ {b:'lululemon',lux:'LULU',odm:[['TWX1476',9],['TWX6965',null]]},
+ {b:'Deckers (HOKA)',lux:'DECK',odm:[['TWX6890',22]]},
+ {b:'VF (TNF·Vans)',lux:'VFC',odm:[['TWX4438',13],['TWX9802',null]]},
+ {b:'New Balance',lux:null,odm:[['TWX6965',35],['TWX8404',15]]},
+ {b:'Under Armour',lux:'UAA',odm:[['TWX1476',5],['TWX4432',null]]},
+ {b:'Gap',lux:null,odm:[['TWX1477',30],['TWX1451',10],['TWX4414',10],['TWX1473',null]]},
+ {b:'Levi’s',lux:'LEVI',odm:[['TWX1451',27],['TWX4414',15]]},
+ {b:'Fast Retailing (GU)',lux:'9983.T',odm:[['TWX1477',10]]},
+ {b:'Patagonia (비상장)',lux:null,odm:[['TWX4438',16]]},
+ {b:'Amer (Salomon)',lux:null,odm:[['TWX9910',7],['TWX9802',null]]},
+ {b:'On Running',lux:null,odm:[['TWX9938',6]]},
+ {b:'PUMA',lux:'PUM.DE',odm:[['TWX8404',5]]},
+ {b:'ANTA (FILA)',lux:null,odm:[['TWX6965',25]]},
+ {b:'Walmart·Target',lux:null,odm:[['TWX4414',20],['TWX1477',15],['TWX1476',5]]},
+];
+const AP_G={shoe:['신발 ODM','#ff8a4c'],gmt:['의류 ODM','#4ea1ff'],trim:['부자재','#c084fc'],mat:['원단·소재','#59d0a8'],brand:['대만 브랜드·리테일','#ffd166']};
+function loadApparel(cb){ if(_appLoaded) return cb();
+  // 의류는 지역 탭이 아니라 크로스샤드 뷰 — 필요한 샤드를 순차 로드한 뒤 조합한다
+  const seq=[['TWC','대만 소비재'],['TWX','대만 전수'],['JPC','일본 소비재'],['US','미국 선적'],['KR','한국 수출']];
+  const main=document.getElementById('main');
+  const tick=(i,lab)=>{ if(main) main.innerHTML=`<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">👕 의류 데이터 로딩 중… <b style="color:var(--fg,#dfe6ee)">${lab}</b> <span style="font-family:var(--mono)">${i}/${seq.length+1}</span></div>`; };
+  const step=i=>{ if(i>=seq.length){ tick(seq.length+1,'브랜드 실적');
+      return loadLux(()=>{ _appLoaded=true; const sb=document.getElementById('sub'); if(sb&&/loading/i.test(sb.textContent)) sb.textContent=''; cb(); }); }
+    tick(i+1,seq[i][1]); loadRegion(seq[i][0],()=>step(i+1)); };
+  step(0); }
+function aDestroy(){ for(const k in ACH){ try{ACH[k].destroy();}catch(e){} delete ACH[k]; } }
+function aCo(id){ return (P.companies||[]).find(c=>c.id===id); }
+function aNm(c,max){ if(!c) return ''; const loc=(c.name_jp||'').split('·')[0].trim();
+  const en=(c.name||'').replace(/\s*(Co\.|Corp\.|Corporation|Inc\.|Ltd\.|Holdings|Holding|Enterprise[s]?|International|Group|Industrial|Industry|,).*$/,'').trim()||c.name||'';
+  const both=loc&&loc!==en?`${loc} <span style="color:var(--dim);font-weight:400">${en}</span>`:en;
+  return max&&en.length>max?both.replace(en,en.slice(0,max)+'…'):both; }
+// 월매출 시계열(대만) — 실액. JPC는 revenue(前年同月=100) 사용
+function aSer(id){ const c=aCo(id); if(!c) return null;
+  const det=(P.detail||{})[c.core_set]; if(!det) return null;
+  const p=(c.main_ports&&c.main_ports[0])||(c.ports&&c.ports[0]); const s=p&&det[p];
+  const v=s&&s.exp&&s.exp.v; return (v&&v.some(x=>x))?v:null; }
+function aLast(v){ for(let i=v.length-1;i>=0;i--) if(v[i]) return i; return -1; }
+// n개월 합 YoY (%). n=1 당월, 3=3개월
+function aYoY(v,n){ const li=aLast(v); if(li<12+n) return null;
+  let a=0,b=0; for(let k=0;k<n;k++){ a+=v[li-k]||0; b+=v[li-k-12]||0; }
+  return b?Math.round(1000*(a/b-1))/10:null; }
+// JPC의 revenue는 월차 레벨 시계열 — 단위가 회사별로 다르다(前年同月=100 앵커체인 지수 또는 百万円 실액).
+// 어느 쪽이든 YoY(전년 동월 대비)는 동일하게 성립하므로 레벨로 보고 n개월 합 YoY를 낸다. 0은 결측 취급.
+function aJpIdx(id){ const c=aCo(id); const r=c&&c.revenue; if(!r) return null;
+  let li=-1; for(let i=r.length-1;i>=0;i--) if(r[i]) { li=i; break; }
+  return li<0?null:{r,li}; }
+function aJpYoY(id,n){ const o=aJpIdx(id); if(!o) return null; const {r,li}=o;
+  let a=0,b=0,k=0; for(let j=0;j<n;j++){ const i=li-j; if(i-12<0) break;
+    if(r[i]&&r[i-12]){ a+=r[i]; b+=r[i-12]; k++; } }
+  return (k&&b)?Math.round(1000*(a/b-1))/10:null; }
+function aJpLast(id){ const o=aJpIdx(id); return o?(MONTHS[o.li]||''):''; }
+function aJpUnit(id){ const c=aCo(id); return /百万円/.test(c&&c.note||'')?'실액':'지수'; }
+function aSpark(v,w,h,col){ const li=aLast(v); if(li<13) return '';
+  const a=v.slice(Math.max(0,li-23),li+1).filter(x=>x!=null); if(a.length<4) return '';
+  const mn=Math.min(...a),mx=Math.max(...a),rg=(mx-mn)||1;
+  const pts=a.map((x,i)=>`${(i/(a.length-1)*w).toFixed(1)},${(h-(x-mn)/rg*h).toFixed(1)}`).join(' ');
+  return `<svg width="${w}" height="${h}" style="vertical-align:-2px"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4" opacity=".85"/></svg>`; }
+function aPct(x,dec){ return x==null?'—':((x>=0?'+':'')+x.toFixed(dec==null?1:dec)+'%'); }
+function aCol(x){ return x==null?'var(--dim)':(x>=0?'#59d0a8':'#ff6b7d'); }
+function aLuxYoY(k){ const R=((window.LUXD||{}).revq||{})[k]; const a=R&&R.yoy_all;
+  if(!a||!a.length) return null; const last=a[a.length-1]; return {q:last[0],y:last[1]}; }
+function renderApparel(){
+  aDestroy(); ST.aview=ST.aview||'chain';
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('cnt').innerHTML='';
+  const nTw=AP_TW.filter(x=>x.g!=='skip'&&aCo(x.id)).length, nJp=AP_JP.filter(aCo).length;
+  document.getElementById('crumb').innerHTML=`<b>👕 의류 — 브랜드 × ODM 밸류체인</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">대만 월매출 ${nTw}사 · 일본 월차 ${nJp}사 · 글로벌 브랜드 ${AP_GL.length}사</span>`;
+  const tabs=[['chain','🔗 밸류체인'],['odm','📈 ODM 모멘텀'],['mat','🧵 원단·소재'],['jp','🇯🇵 일본 월차'],['gl','🌍 브랜드 실적'],['all','📋 전체 명부']];
+  const nav=`<div class="row" style="margin:0 0 12px;flex-wrap:wrap">${tabs.map(([k,l])=>`<span class="ltab ${ST.aview===k?'on':''}" data-av="${k}">${l}</span>`).join('')}</div>`;
+  let body='';
+  if(ST.aview==='chain') body=avChain();
+  else if(ST.aview==='odm') body=avOdm();
+  else if(ST.aview==='mat') body=avMat();
+  else if(ST.aview==='jp') body=avJp();
+  else if(ST.aview==='gl') body=avGl();
+  else body=avAll();
+  document.getElementById('main').innerHTML=`<style>
+    .ap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+    .ap-card{border:1px solid var(--line,#233038);border-radius:12px;padding:13px 14px;background:rgba(127,150,170,.03)}
+    .ap-card h4{margin:0 0 3px;font-size:14.5px;font-weight:700}
+    .ap-sub{font-size:10.5px;color:var(--dim);margin-bottom:9px}
+    .ap-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid rgba(127,150,170,.13);font-size:12px}
+    .ap-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ap-row .pc{font-family:var(--mono);font-size:10px;color:var(--dim);width:38px;text-align:right}
+    .ap-row .yo{font-family:var(--mono);font-weight:700;width:60px;text-align:right}
+    .ap-tbl{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:12px}
+    .ap-tbl table{border-collapse:collapse;width:100%;min-width:680px;font-size:12.5px}
+    .ap-tbl th{text-align:left;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);font-weight:650;padding:9px 11px;border-bottom:1px solid var(--line,#233038)}
+    .ap-tbl td{padding:7px 11px;border-bottom:1px solid rgba(127,150,170,.1)}
+    .ap-tbl tr:hover td{background:rgba(127,150,170,.06)}
+    .ap-tag{font-size:9.5px;padding:1px 6px;border-radius:5px;margin-left:4px}
+    .ap-note{font-size:11px;color:var(--dim);margin:0 0 12px;max-width:88ch;line-height:1.6}
+  </style>${nav}${body}`;
+  document.getElementById('main').querySelectorAll('[data-av]').forEach(t=>t.onclick=()=>{ST.aview=t.dataset.av;renderApparel();window.scrollTo(0,0);});
+  document.getElementById('main').querySelectorAll('[data-ago]').forEach(t=>t.onclick=()=>{ const c=aCo(t.dataset.ago); if(!c) return;
+    ST.region=c.region||'TWC'; ST.tab='dash'; ST.company=c.id; ST.view='detail'; applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); });
+}
+function apOdmRow(id,pct){ const c=aCo(id); if(!c) return '';
+  const v=aSer(id); const y1=v?aYoY(v,1):null, y3=v?aYoY(v,3):null;
+  const g=(AP_TW.find(x=>x.id===id)||{}).g||'gmt';
+  return `<div class="ap-row"><span style="width:7px;height:7px;border-radius:2px;background:${(AP_G[g]||['','#888'])[1]};flex:none"></span>
+    <span class="nm" data-ago="${id}" style="cursor:pointer" title="${c.name}">${aNm(c,14)} <span style="color:var(--dim);font-size:10px">${(c.ticker||'').replace(' TT','')}</span></span>
+    <span class="pc">${pct?pct+'%':''}</span>
+    <span>${v?aSpark(v,44,14,aCol(y3)):''}</span>
+    <span class="yo" style="color:${aCol(y3)}" title="당월 ${aPct(y1)}">${aPct(y3)}</span></div>`; }
+function avChain(){
+  const cards=AP_MAP.map(m=>{
+    const lx=m.lux?aLuxYoY(m.lux):null;
+    const ys=m.odm.map(([id])=>{ const v=aSer(id); return v?aYoY(v,3):null; }).filter(x=>x!=null);
+    const avg=ys.length?Math.round(10*ys.reduce((a,b)=>a+b,0)/ys.length)/10:null;
+    return `<div class="ap-card"><h4>${m.b} ${lx?`<span class="ap-tag" style="background:rgba(89,208,168,.14);color:#59d0a8">${lx.q} ${aPct(lx.y)}</span>`:''}</h4>
+      <div class="ap-sub">공급 ODM ${m.odm.length}사 · 프록시 3M YoY 평균 <b style="color:${aCol(avg)}">${aPct(avg)}</b>${lx?` · 브랜드 분기 실적 대비`:''}</div>
+      ${m.odm.map(([id,p])=>apOdmRow(id,p)).join('')}</div>`;
+  }).join('');
+  return `<p class="ap-note"><b>브랜드가 발주하면 ODM 월매출에 먼저 찍힌다.</b> 대만 ODM은 매월 10일 MOPS에 전월 매출을 공시하므로, 분기 실적만 내는 글로벌 브랜드보다 <b>1~2개월 앞선다</b>.
+   각 카드는 브랜드별 공급 ODM의 최근 3개월 매출 YoY(전년 동기 대비)이며, %는 해당 ODM 매출에서 그 브랜드가 차지하는 비중(공시·리서치 기준 추정)이다. 초록 뱃지는 브랜드 자체의 최신 분기 매출 YoY. 기업명 클릭 → 상세.</p>
+   <div class="ap-grid">${cards}</div>`;
+}
+function avOdm(){
+  const rows=AP_TW.filter(x=>['shoe','gmt','trim'].includes(x.g)&&aCo(x.id)).map(x=>{
+    const c=aCo(x.id), v=aSer(x.id); if(!v) return null;
+    const li=aLast(v);
+    return {x,c,v,li,y1:aYoY(v,1),y3:aYoY(v,3),y12:aYoY(v,12)};
+  }).filter(Boolean).sort((a,b)=>(b.y3==null?-999:b.y3)-(a.y3==null?-999:a.y3));
+  const tr=rows.map((r,i)=>`<tr><td style="color:var(--dim);font-family:var(--mono)">${i+1}</td>
+    <td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${(AP_G[r.x.g]||['','#888'])[1]};margin-right:6px"></span>
+      <b data-ago="${r.x.id}" style="cursor:pointer">${aNm(r.c)}</b>
+      <span style="color:var(--dim);font-size:10.5px"> ${(r.c.ticker||'').replace(' TT','')}</span></td>
+    <td style="font-size:10.5px;color:var(--dim)">${(AP_G[r.x.g]||[''])[0]}</td>
+    <td style="font-size:10.5px;color:var(--dim);max-width:270px">${r.x.cust||''}</td>
+    <td>${aSpark(r.v,58,16,aCol(r.y3))}</td>
+    <td style="font-family:var(--mono);color:${aCol(r.y1)}">${aPct(r.y1)}</td>
+    <td style="font-family:var(--mono);font-weight:700;color:${aCol(r.y3)}">${aPct(r.y3)}</td>
+    <td style="font-family:var(--mono);color:${aCol(r.y12)}">${aPct(r.y12)}</td>
+    <td style="font-family:var(--mono);font-size:10.5px;color:var(--dim)">${MONTHS[r.li]||''}</td></tr>`).join('');
+  return `<p class="ap-note">대만 상장 신발·의류 ODM과 부자재사의 <b>MOPS 월매출</b> 모멘텀(3개월 합 YoY 순). 스파크라인은 최근 24개월 매출 추이. 당월 단독은 선적 타이밍·설 연휴로 튀므로 <b>3M을 기본 정렬</b>로 쓴다.</p>
+   <div class="ap-tbl"><table><thead><tr><th>#</th><th>기업</th><th>분류</th><th>주요 고객</th><th>24M 추이</th><th>당월</th><th>3M YoY</th><th>12M</th><th>최신</th></tr></thead><tbody>${tr}</tbody></table></div>`;
+}
+function avMat(){
+  const rows=AP_TW.filter(x=>x.g==='mat'&&aCo(x.id)).map(x=>{
+    const c=aCo(x.id), v=aSer(x.id); if(!v) return null;
+    return {x,c,v,y3:aYoY(v,3),y12:aYoY(v,12),li:aLast(v)};
+  }).filter(Boolean).sort((a,b)=>(b.y3==null?-999:b.y3)-(a.y3==null?-999:a.y3));
+  const tr=rows.map((r,i)=>`<tr><td style="color:var(--dim);font-family:var(--mono)">${i+1}</td>
+    <td><b data-ago="${r.x.id}" style="cursor:pointer">${aNm(r.c)}</b> <span style="color:var(--dim);font-size:10.5px">${(r.c.ticker||'').replace(' TT','')}</span></td>
+    <td style="font-size:10.5px;color:var(--dim)">${r.x.cust||''}</td>
+    <td>${aSpark(r.v,58,16,aCol(r.y3))}</td>
+    <td style="font-family:var(--mono);font-weight:700;color:${aCol(r.y3)}">${aPct(r.y3)}</td>
+    <td style="font-family:var(--mono);color:${aCol(r.y12)}">${aPct(r.y12)}</td>
+    <td style="font-family:var(--mono);font-size:10.5px;color:var(--dim)">${MONTHS[r.li]||''}</td></tr>`).join('');
+  const kr=aCo('KRE5402440000'), krv=kr?aSer('KRE5402440000'):null;
+  const krLine=krv?`<p class="ap-note" style="margin-top:12px">🇰🇷 참고 — <b>한국 스판덱스 수출</b>(HSK 5402.44, 효성티앤씨 연계) 3M YoY <b style="color:${aCol(aYoY(krv,3))}">${aPct(aYoY(krv,3))}</b> · 최신 ${MONTHS[aLast(krv)]||''}. 스판덱스는 애슬레저 원단의 핵심 원료로 의류 사이클 <b>최상류</b>다.</p>`:'';
+  return `<p class="ap-note">의류 밸류체인 <b>상류</b>(화섬 원사 → 직물·염색 → 니트 원단). ODM 발주보다 앞서 움직이므로 사이클 전환의 선행 신호로 본다. 다만 범용 화섬은 유가·중국 증설에 좌우돼 브랜드 수요와 괴리될 수 있다.</p>
+   <div class="ap-tbl"><table><thead><tr><th>#</th><th>기업</th><th>제품</th><th>24M 추이</th><th>3M YoY</th><th>12M</th><th>최신</th></tr></thead><tbody>${tr}</tbody></table></div>${krLine}`;
+}
+function avJp(){
+  const rows=AP_JP.map(id=>{ const c=aCo(id); if(!c||!c.revenue) return null;
+    return {id,c,m1:aJpYoY(id,1),m3:aJpYoY(id,3),m12:aJpYoY(id,12),last:aJpLast(id)};
+  }).filter(Boolean).sort((a,b)=>(b.m3==null?-999:b.m3)-(a.m3==null?-999:a.m3));
+  const tr=rows.map((r,i)=>`<tr><td style="color:var(--dim);font-family:var(--mono)">${i+1}</td>
+    <td><b data-ago="${r.id}" style="cursor:pointer">${(r.c.name||'').slice(0,30)}</b> <span style="color:var(--dim);font-size:10.5px">${(r.c.ticker||'').replace(' JP','')}</span></td>
+    <td style="font-size:10.5px;color:var(--dim)">${r.c.subcategory||''}</td>
+    <td style="font-family:var(--mono);color:${aCol(r.m1)}">${aPct(r.m1)}</td>
+    <td style="font-family:var(--mono);font-weight:700;color:${aCol(r.m3)}">${aPct(r.m3)}</td>
+    <td style="font-family:var(--mono);color:${aCol(r.m12)}">${aPct(r.m12)}</td>
+    <td style="font-family:var(--mono);font-size:10.5px;color:var(--dim)">${r.last}</td></tr>`).join('');
+  return `<p class="ap-note">일본 어패럴·신발 소매의 <b>월차 매출 공시</b>를 전년 동월 대비로 환산한 것(3M은 최근 3개월 합 YoY). 원계열은 회사별로 <b>기존점 지수</b>(前年同月=100 앵커체인) 또는 <b>월매출 실액(百万円)</b>이라 단위가 섞여 있으나, YoY는 어느 쪽이든 동일하게 성립한다. 분기 결산 전에 나오는 유일한 실판매 신호이며, 유니클로(패스트리테일링)는 국내 기존점+EC 기준.</p>
+   <div class="ap-tbl"><table><thead><tr><th>#</th><th>기업</th><th>업태</th><th>당월 YoY</th><th>3M YoY</th><th>12M YoY</th><th>최신</th></tr></thead><tbody>${tr}</tbody></table></div>`;
+}
+function avGl(){
+  const rows=AP_GL.map(([k,n,seg])=>{ const y=aLuxYoY(k); const R=((window.LUXD||{}).revq||{})[k];
+    const hist=(R&&R.yoy_all||[]).slice(-6);
+    return {k,n,seg,y,hist};
+  }).sort((a,b)=>((b.y&&b.y.y)==null?-999:b.y.y)-((a.y&&a.y.y)==null?-999:a.y.y));
+  const tr=rows.map((r,i)=>`<tr><td style="color:var(--dim);font-family:var(--mono)">${i+1}</td>
+    <td><b>${r.n}</b> <span style="color:var(--dim);font-size:10.5px">${r.k}</span></td>
+    <td style="font-size:10.5px;color:var(--dim)">${r.seg}</td>
+    <td style="font-family:var(--mono);font-weight:700;color:${aCol(r.y&&r.y.y)}">${r.y?aPct(r.y.y):'—'}</td>
+    <td style="font-family:var(--mono);font-size:10.5px;color:var(--dim)">${r.y?r.y.q:''}</td>
+    <td style="font-size:10.5px;color:var(--dim)">${r.hist.map(h=>`<span style="color:${aCol(h[1])}">${aPct(h[1],0)}</span>`).join(' · ')}</td></tr>`).join('');
+  return `<p class="ap-note">글로벌 의류·신발 브랜드의 <b>분기 매출 YoY</b>(Luxury 탭 데이터 재사용). 이 수치가 나오기 1~2개월 전에 대만 ODM 월매출이 먼저 움직인다 — 밸류체인 탭에서 대조하라.</p>
+   <div class="ap-tbl"><table><thead><tr><th>#</th><th>브랜드</th><th>세그먼트</th><th>최신 분기 YoY</th><th>분기</th><th>최근 6분기 추이</th></tr></thead><tbody>${tr}</tbody></table></div>`;
+}
+function avAll(){
+  const sec=(title,items,fmt)=>items.length?`<p class="lxh" style="margin:16px 0 6px;font-size:13px;font-weight:700">${title} <span style="color:var(--dim);font-weight:400;font-size:11px">${items.length}사</span></p>
+    <div class="ap-tbl"><table><tbody>${items.map(fmt).join('')}</tbody></table></div>`:'';
+  const twRow=x=>{ const c=aCo(x.id); if(!c) return ''; const v=aSer(x.id); const y3=v?aYoY(v,3):null;
+    return `<tr><td style="width:210px"><b data-ago="${x.id}" style="cursor:pointer">${aNm(c)}</b></td>
+      <td style="width:70px;color:var(--dim);font-family:var(--mono);font-size:11px">${(c.ticker||'').replace(' TT','')}</td>
+      <td style="font-size:10.5px;color:var(--dim)">${x.cust||''}</td>
+      <td style="width:70px;text-align:right;font-family:var(--mono);color:${aCol(y3)}">${aPct(y3)}</td></tr>`; };
+  const jpRow=id=>{ const c=aCo(id); if(!c) return ''; const m3=aJpYoY(id,3);
+    return `<tr><td style="width:220px"><b data-ago="${id}" style="cursor:pointer">${c.name}</b></td>
+      <td style="width:70px;color:var(--dim);font-family:var(--mono);font-size:11px">${(c.ticker||'').replace(' JP','')}</td>
+      <td style="font-size:10.5px;color:var(--dim)">${c.subcategory||''}</td>
+      <td style="width:70px;text-align:right;font-family:var(--mono);color:${aCol(m3)}">${aPct(m3)}</td></tr>`; };
+  const glRow=([k,n,seg])=>{ const y=aLuxYoY(k);
+    return `<tr><td style="width:220px"><b>${n}</b></td><td style="width:70px;color:var(--dim);font-family:var(--mono);font-size:11px">${k}</td>
+      <td style="font-size:10.5px;color:var(--dim)">${seg}</td>
+      <td style="width:70px;text-align:right;font-family:var(--mono);color:${aCol(y&&y.y)}">${y?aPct(y.y):'—'}</td></tr>`; };
+  const byG=g=>AP_TW.filter(x=>x.g===g&&aCo(x.id));
+  const others=[['BOLCROX','Crocs+HeyDude — 美 선적 BOL 나우캐스트(YoY ρ+0.92)'],['KRE5402440000','한국 스판덱스 수출(HSK 5402.44) — 애슬레저 원단 최상류·효성티앤씨 연계']]
+    .filter(([id])=>aCo(id)).map(([id,desc])=>{ const v=aSer(id); const y3=v?aYoY(v,3):null;
+      return `<tr><td style="width:220px"><b data-ago="${id}" style="cursor:pointer">${(aCo(id).name||'').slice(0,28)}</b></td>
+        <td style="width:70px"></td><td style="font-size:10.5px;color:var(--dim)">${desc}</td>
+        <td style="width:70px;text-align:right;font-family:var(--mono);color:${aCol(y3)}">${aPct(y3)}</td></tr>`; });
+  return `<p class="ap-note">팔랑크스 전 데이터에서 모은 <b>의류·신발 밸류체인 상장사 전수 명부</b>. 우측 값은 대만·기타는 월매출 3M YoY, 일본은 월차 3M YoY, 글로벌은 최신 분기 YoY. 기업명 클릭 → 원 지역 탭의 상세 카드.</p>
+    ${sec('👟 대만 신발 ODM',byG('shoe'),twRow)}
+    ${sec('👕 대만 의류 ODM',byG('gmt'),twRow)}
+    ${sec('🧷 대만 부자재',byG('trim'),twRow)}
+    ${sec('🧵 대만 원단·소재',byG('mat'),twRow)}
+    ${sec('🏬 대만 브랜드·리테일',byG('brand'),twRow)}
+    ${sec('🇯🇵 일본 어패럴·소매 (월차공시)',AP_JP.filter(id=>aCo(id)&&aCo(id).revenue),jpRow)}
+    ${sec('🌍 글로벌 브랜드 (분기)',AP_GL,glRow)}
+    ${others.length?`<p class="lxh" style="margin:16px 0 6px;font-size:13px;font-weight:700">🔎 기타 프록시 <span style="color:var(--dim);font-weight:400;font-size:11px">${others.length}건</span></p><div class="ap-tbl"><table><tbody>${others.join('')}</tbody></table></div>`:''}`;
+}
 // ===== 🎮 Game 탭 — 상장사 게임 나우캐스트 (Steam·PC방·메이플·모바일·DMM) =====
 let _gameLoaded=false; const GCH={};
 function loadGame(cb){ if(_gameLoaded||window.GAMES_DATA){_gameLoaded=true;return cb();}
@@ -2307,11 +2681,20 @@ function renderNowcastRank(){
   if(!arr.length){ main.innerHTML='<div class="empty-msg">나우캐스트 데이터 준비중입니다. (재무·세관 데이터 필요)</div>'; return; }
   const grade=n=>(n.r2>=0.6&&n.hit>=70)?'hi':((n.r2>=0.35&&n.hit>=55)?'mid':'lo');
   const gcol={hi:'#2fae66',mid:'#e0a24a',lo:'#c98a8a'}, gl={hi:'高',mid:'中',lo:'低'};
+  const fxs=arr.map(n=>ncFix(n));
+  const staleReg={}; arr.forEach((n,i)=>{ const f=fxs[i]; if(f.checked&&f.corrected&&!f.partial) staleReg[n.reg||'JP']=true; });
   const rows=arr.map((n,i)=>{
-    const g=grade(n), lead=n.L>=1?('+'+n.L+'Q'):'동행';
-    const pc=n.predyoy==null?'#8a90a8':(n.predyoy>=0?'#2fae66':'#e06666');
-    const py=n.predyoy==null?'—':((n.predyoy>=0?'+':'')+n.predyoy+'%');
-    const cy=n.cyoy==null?'—':((n.cyoy>=0?'+':'')+n.cyoy+'%');
+    const g=grade(n), lead=n.L>=1?('+'+n.L+'Q'):'동행', fx=fxs[i];
+    const pv=fx.predyoy, cv=fx.cyoy;
+    const pc=(pv==null||fx.partial)?'#8a90a8':(pv>=0?'#2fae66':'#e06666');
+    const py=pv==null?'—':((fx.partial?'~':'')+(pv>=0?'+':'')+pv+'%');
+    const cy=cv==null?'—':((fx.partial?'~':'')+(cv>=0?'+':'')+cv+'%');
+    const partTip=`세관 ${n.lastC} 부분분기 — ${fx.avail}/3개월만 공표. 미공표월을 0으로 합산한 빌더 predyoy는 아티팩트. ${fx.corrected?'표시값은 가용월 YoY 페이스로 결측월을 보간한 프론트 보정치':'프론트 보정 불가(원계열·재무 미탑재) — 빌더 저장값을 회색으로 표시'}`;
+    const reTip=`프론트 재계산 — 빌더 산출 이후 공표된 세관월 반영 (저장값 ${n.cyoy==null?'—':n.cyoy+'%'} → ${n.predyoy==null?'—':n.predyoy+'%'})`;
+    const staleTip=`빌더 산출 이후 세관 데이터가 추가 공표됨 — 이 종목은 원계열·재무가 프론트에 없어 재계산 불가, 저장 예측이 구버전일 수 있음`;
+    const chips=(fx.partial?` <span class="ncpart" title="${partTip}">${fx.avail}/3개월</span>`:'')
+      +(fx.corrected&&!fx.partial?` <span class="ncre" title="${reTip}">↻재계산</span>`:'')
+      +(!fx.checked&&!fx.partial&&staleReg[n.reg||'JP']?` <span class="ncstale" title="${staleTip}">빌드지연</span>`:'');
     return `<tr class="ncr" data-id="${n.id}" data-reg="${n.reg||'JP'}">
       <td class="rk">${i+1}</td>
       <td class="nnm"><b>${n.name}</b><span class="sg">${(n.seg||'')} · ${n.hs}</span></td>
@@ -2321,7 +2704,7 @@ function renderNowcastRank(){
       <td class="mono">${n.r2.toFixed(2)}</td>
       <td class="mono">${n.hit}%</td>
       <td class="mono"><b style="color:${gcol[g]}">${gl[g]}</b></td>
-      <td class="mono call">${n.lastC||''} ${cy} <span style="color:#8a90a8">→</span> ${n.tgtq||''} <b style="color:${pc}">${py}</b>${n.fwd?' <span class="fwdb">미보고</span>':''}</td>
+      <td class="mono call">${n.lastC||''} ${cy} <span style="color:#8a90a8">→</span> ${n.tgtq||''} <b style="color:${pc}">${py}</b>${n.fwd?' <span class="fwdb">미보고</span>':''}${chips}</td>
       <td class="mono">${n.earn?(n.earn==='TBD'?'<span style="color:#8a90a8">TBD</span>':n.earn.slice(5).replace('-','/')):'—'}</td>
     </tr>`;
   }).join('');
@@ -2340,9 +2723,12 @@ function renderNowcastRank(){
     .nctbl .lead{color:#8a90a8} .nctbl .lead.y{color:#2bc0d4;font-weight:700}
     .nctbl .call{white-space:nowrap}
     .fwdb{font-size:9.5px;background:rgba(43,192,212,.16);color:#2bc0d4;border-radius:4px;padding:1px 5px;margin-left:2px}
+    .ncpart{font-size:9.5px;background:rgba(224,162,74,.16);color:#e0a24a;border-radius:4px;padding:1px 5px;margin-left:2px;cursor:help}
+    .ncre{font-size:9.5px;background:rgba(43,192,212,.16);color:#2bc0d4;border-radius:4px;padding:1px 5px;margin-left:2px;cursor:help}
+    .ncstale{font-size:9.5px;background:rgba(138,144,168,.16);color:#8a90a8;border-radius:4px;padding:1px 5px;margin-left:2px;cursor:help}
   </style>
   <div class="ncp"><div class="hd"><h2>🔮 나우캐스트 랭킹 — 세관 선행 → 매출 예측</h2>
-    <p><b>선행 스코어(상관×방향적중×리드보너스) 높은 순</b> — 강하고 신뢰있는 선행지표가 위로. 최신 세관값을 20분기 회귀에 넣어 <b>아직 발표 안 된 다음 분기 매출 YoY</b>를 예측. <b>미보고</b>는 다가올 실적으로 검증됨. 행 클릭 → 상세. 신뢰=R²×방향적중.</p></div>
+    <p><b>선행 스코어(상관×방향적중×리드보너스) 높은 순</b> — 강하고 신뢰있는 선행지표가 위로. 최신 세관값을 20분기 회귀에 넣어 <b>아직 발표 안 된 다음 분기 매출 YoY</b>를 예측. <b>미보고</b>는 다가올 실적으로 검증됨. 행 클릭 → 상세. 신뢰=R²×방향적중. <span class="ncpart">n/3개월</span>=세관 분기 일부만 공표(예측은 가용월 YoY 페이스 보간, 회색) · <span class="ncre">↻재계산</span>=빌더 이후 공표분 반영 프론트 재계산 · <span class="ncstale">빌드지연</span>=재계산 불가 종목의 구버전 저장값.</p></div>
     <div class="nctbl"><table>
       <thead><tr><th>#</th><th>기업</th><th>선행</th><th>스코어</th><th>corr</th><th>R²</th><th>방향적중</th><th>신뢰</th><th>최신세관 → 예측매출</th><th>실적발표</th></tr></thead>
       <tbody>${rows}</tbody></table></div></div>`;
@@ -2574,7 +2960,11 @@ const FOOT_GAME=
   <b>nowcast</b> 뱃지 = 해당 축을 회사 분기매출과 대조검증해 ρ≥.6·holdout hit≥.4 를 통과한 축(선행성 확인). Steam·DMM 값은 절대매출이 아닌
   <b>추세·상대비교</b>용입니다(특히 DMM은 game-i 자체 추정치·조정중). CCU·메이플 주화시세 축은 스코어에서 제외. Not investment advice.
   Source: Steam · gametrics · iTunes RSS · game-i.`;
-function setFoot(tab){ const el=document.getElementById('foot'); if(!el)return; el.innerHTML=(tab==='game')?FOOT_GAME:FOOT_CUSTOMS; }
+const FOOT_APP=
+ `<b>의류 밸류체인.</b> 기존 샤드(대만 TWC·TWX <b>MOPS 월매출</b> / 일본 JPC <b>월차공시</b> / 글로벌 LUX <b>분기실적</b> / 미국 BOL / 한국 수출)를 재조합한 크로스샤드 뷰 — 새 데이터 수집 없음.
+  대만 ODM은 매월 10일 전월 매출을 공시하므로 분기 공시만 하는 글로벌 브랜드보다 <b>1~2개월 선행</b>. 고객 비중 %는 해당 ODM 매출 중 그 브랜드가 차지하는 비중(공시·리서치 기반 추정).
+  YoY는 <b>3개월 합</b> 기준(당월 단독은 선적 타이밍·연휴로 노이즈). 일본 월차는 회사별 원계열이 기존점 지수(前年同月=100) 또는 실액(百万円)으로 섞여 있으나 YoY는 동일하게 성립. Not investment advice.`;
+function setFoot(tab){ const el=document.getElementById('foot'); if(!el)return; el.innerHTML=(tab==='game')?FOOT_GAME:(tab==='app'?FOOT_APP:FOOT_CUSTOMS); }
 setFoot(ST.tab);
 
 function renderHsInfo(){ const el=document.getElementById('hsinfo'); if(!el)return;
