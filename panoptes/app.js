@@ -277,21 +277,22 @@ function renderLiq(d){
   const tgaDisplays=tgaModel&&window.PanoptesTgaTarget
     ? window.PanoptesTgaTarget.displayModels(tgaModel)
     : [];
-  const tgaRefs=[{v:900,c:'#ff8a3d'}];
+  const tgaRefs=[{v:900,c:'#e0a24a'}];   // TGA 데이터선(주황 #ff8a3d)과 구분되는 호박색
   if(tgaModel&&tgaModel.next&&tgaDisplays[1]) tgaRefs.unshift({v:Number(tgaModel.next.value),c:'#8793a3',domain:true});
   if(tgaModel&&tgaModel.current&&tgaDisplays[0]) tgaRefs.unshift({v:Number(tgaModel.current.value),c:'#c6cfda',domain:true});
   const tgaRefLabel=tgaDisplays.length
-    ? `${tgaDisplays.map(v=>v.legendLabel).join(' / ')} / 주황 점선 = Panoptes 내부 경계 900B`
-    : '미 재무부 공식 분기말 가정 업데이트 대기 / 주황 점선 = Panoptes 내부 경계 900B';
+    ? `${tgaDisplays.map(v=>v.legendLabel).join(' / ')} / 호박색 점선 = Panoptes 내부 경계 900B`
+    : '미 재무부 공식 분기말 가정 업데이트 대기 / 호박색 점선 = Panoptes 내부 경계 900B';
   const card=(title,val,sub,light)=>`<div class="liqcard" style="border-top:3px solid ${LIQC[light||'gray']}">
     <div class="lqt">${title} ${light?`<span class="lqdot" style="background:${LIQC[light]}"></span>`:''}</div>
     <div class="lqv">${val}</div><div class="lqs">${sub||''}</div></div>`;
+  const iorb=V('IORB');   // IORB 결측 시 폴백 렌더러 전체가 죽지 않도록 가드
   const charts=[
     ['NETLIQ','Net Liquidity','#2bc0d4',[],'$'+(C.net_liquidity/1000).toFixed(2)+'T',''],
     ['TGA','TGA (재무부 현금)','#ff8a3d',tgaRefs,V('TGA').toFixed(0)+'B',tgaRefLabel],
     ['RRP','RRP (역레포)','#ffd23d',[],V('RRP').toFixed(1)+'B',''],
-    ['SOFR','SOFR vs IORB','#ff4d5e',[{v:V('IORB'),c:'#8a93a3'}],V('SOFR').toFixed(2)+'%',`IORB ${V('IORB').toFixed(2)}`],
-    ['EFFR','EFFR vs IORB','#4ea1ff',[{v:V('IORB'),c:'#8a93a3'}],V('EFFR').toFixed(2)+'%',`IORB ${V('IORB').toFixed(2)}`],
+    ['SOFR','SOFR vs IORB','#ff4d5e',iorb!=null?[{v:iorb,c:'#8a93a3'}]:[],V('SOFR').toFixed(2)+'%',iorb!=null?`IORB ${iorb.toFixed(2)}`:''],
+    ['EFFR','EFFR vs IORB','#4ea1ff',iorb!=null?[{v:iorb,c:'#8a93a3'}]:[],V('EFFR').toFixed(2)+'%',iorb!=null?`IORB ${iorb.toFixed(2)}`:''],
     ['RESERVES','지급준비금','#59d0a8',[],(V('RESERVES')/1000).toFixed(2)+'T',''],
   ].map(([k,t,c,refs,cur,refLabel])=>`<div class="liqchart"><div class="lct"><span>${t}</span><b style="color:${c}">${cur}</b>${refLabel?`<span class="lcref">— ${esc(refLabel)}</span>`:''}</div>
     ${liqSpark(d.series[k]||{},{color:c,refs:refs})}</div>`).join('');

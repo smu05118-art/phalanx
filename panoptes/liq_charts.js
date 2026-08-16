@@ -182,6 +182,7 @@
         esc(fmt(gv)) + '</text>');
     }
     /* 기준선 — 윈도 도메인 밖이면 생략(도메인 강제확장 금지) */
+    var visRefLabs = [];
     for (var r = 0; r < refs.length; r++) {
       var rf = refs[r];
       if (rf.v < lo || rf.v > hi) {
@@ -197,10 +198,18 @@
       s.push('<line x1="' + PL + '" y1="' + ry.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + ry.toFixed(1) +
         '" stroke="' + rf.c + '" stroke-width="1"' +
         (rf.solid ? ' opacity=".75"' : ' stroke-dasharray="4 3" opacity=".7"') + '/>');
-      if (rf.label) {
-        s.push('<text class="liq2-reflab" x="' + (PL + 3) + '" y="' + (ry - 3.5).toFixed(1) +
-          '" fill="' + rf.c + '">' + esc(rf.label) + '</text>');
-      }
+      if (rf.label) visRefLabs.push({ ry: ry, c: rf.c, label: rf.label });
+    }
+    /* 기준선 라벨 — 같은 x(좌측)에 몰리므로 값 라벨과 같은 규칙으로 세로 밀어내기(850/900/950 겹침 방지) */
+    visRefLabs.sort(function (a, b) { return a.ry - b.ry; });
+    var prevRefLab = -1e9;
+    for (var rr = 0; rr < visRefLabs.length; rr++) {
+      var rly = Math.max(PT + 8, visRefLabs[rr].ry - 3.5);
+      if (rly - prevRefLab < 10) rly = Math.max(visRefLabs[rr].ry + 9, prevRefLab + 10);
+      rly = Math.min(H - PB - 2, rly);
+      prevRefLab = rly;
+      s.push('<text class="liq2-reflab" x="' + (PL + 3) + '" y="' + rly.toFixed(1) +
+        '" fill="' + visRefLabs[rr].c + '">' + esc(visRefLabs[rr].label) + '</text>');
     }
     /* x라벨 4개 (YYYY-MM) */
     var xn = Math.min(4, n);
@@ -358,8 +367,8 @@
     var ref5 = { v: 5, c: '#ff8a3d', label: '+5bp' };
     var ref10 = { v: 10, c: '#ff4d5e', label: '+10bp' };
     var targets = tgaTargetsOf(d);
-    var tgaRefs = [{ v: 900, c: '#ff8a3d', edge: true, label: '내부 경계 900B' }];
-    var tgaSub = '주황 점선 = Panoptes 내부 경계 900B';
+    var tgaRefs = [{ v: 900, c: '#e0a24a', edge: true, label: '내부 경계 900B' }];   /* TGA 데이터선(주황)과 구분되는 호박색 */
+    var tgaSub = '호박색 점선 = Panoptes 내부 경계 900B';
     if (targets && (targets.current || targets.next)) {
       var displays = window.PanoptesTgaTarget.displayModels(targets);
       if (targets.next && displays[1]) {
