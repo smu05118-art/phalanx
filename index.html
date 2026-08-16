@@ -992,11 +992,13 @@ function renderKpi(){
   const M=(K.mlcc||{}).data, TH=(K.mlcc||{}).th||{}, T=(K.tdk||{}).data, FC=(K.tdk||{}).fc;
   let html='';
   const PC=(K.pcard&&K.pcard.companies)?K.pcard:null;
+  const KR=(K.krtech&&K.krtech.cats)?K.krtech:null;
   // 산업 칩 네비게이션 (메인 대시 카테고리 칩과 동일 문법)
   const KC=ST.kcat||'all';
   const _hubD=K.hubs||{}, _idxD=K.index||{};
   const kChips=[['all','전체']]
     .concat(PC?[['pcard','🧪 프로브카드 '+Object.keys(PC.companies).length]]:[])
+    .concat(KR?[['krtech','🇰🇷 테크 전수 '+KR.n]]:[])
     .concat(M?[['mlcc','MLCC '+Object.keys(M.companies||{}).length]]:[])
     .concat((T&&FC)?[['tdk','TDK 완결']]:[])
     .concat(Object.keys(_hubD).filter(k=>_hubD[k].data).map(k=>[k,(_idxD[k]||{}).label||k,(_idxD[k]||{}).n_companies]));
@@ -1315,6 +1317,152 @@ function renderKpi(){
                 y:{ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'}},
                 y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v+'%'},grid:{display:false}}}}});}
       }
+    },0);
+  }
+  // ===== 🇰🇷 KR 테크 전수 허브 (아이템별 뷰) — pcard 차트 이디엄 그대로, kr* 접두로 충돌 회피 =====
+  if(KR&&KC==='krtech'){
+    const CATS=KR.cats||{}, COS=KR.companies||{};
+    const krOrd=k=>{const m=String(k).match(/^(\d{4})(?:-(Q[1-4]|H[12]|FY))?$/);if(!m)return 0;const o={Q1:1,Q2:2,Q3:3,Q4:4,H1:2.5,H2:4.5,FY:9}[m[2]||'FY']||9;return (+m[1])*10+o;};
+    const krDedup=keys=>{const st=new Set(keys);return [...st].filter(k=>{const m=String(k).match(/^(\d{4})(?:-(Q[1-4]|H[12]|FY))?$/);if(!m)return false;const y=m[1],pp=m[2];
+      if(!pp)return![...st].some(x=>x!==k&&x.indexOf(y+'-')===0);
+      if(pp==='H1')return!(st.has(y+'-Q1')||st.has(y+'-Q2'));
+      if(pp==='H2')return!(st.has(y+'-Q3')||st.has(y+'-Q4'));
+      if(pp==='FY')return!['Q1','Q2','Q3','Q4','H1','H2'].some(x=>st.has(y+'-'+x));
+      return true;}).sort((a,b)=>krOrd(a)-krOrd(b));};
+    const krPy=k=>String(k).replace(/^\d{4}/,m=>String(+m-1));
+    const KCOLR=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1','#ff9e64','#9ccc65'];
+    const fmK=n=>n==null?'—':Math.round(n).toLocaleString();
+    const pcK=x=>x==null?'—':((x>0?'+':'')+(+x).toFixed(1)+'%');
+    const catIds=Object.keys(CATS);
+    if(!ST.krcat||!CATS[ST.krcat]) ST.krcat=catIds[0];
+    const CAT=CATS[ST.krcat]||{cos:[],label:''};
+    const rows=CAT.cos||[];   // 하베스트에서 매출 내림차순 정렬됨
+    if(!ST.krco||!COS[ST.krco]||!rows.some(r=>r.code===ST.krco)) ST.krco=rows.length?rows[0].code:null;
+    const C=ST.krco?COS[ST.krco]:null;
+    const fqK=(C&&C.fin_q)||{};
+    const fksK=krDedup(Object.keys(fqK));
+    const prodK=(C&&C.products)||{}; const pNm=Object.keys(prodK);
+    const _pkk=[...new Set(pNm.flatMap(p=>['국내','수출','소계'].flatMap(r=>Object.keys(prodK[p][r]||{}))))];
+    const pQK=krDedup(_pkk);
+    const modeK=ST.krview||'prod';
+    const pLastK=pQK[pQK.length-1];
+    html+=`<p style="font-size:14px;font-weight:800;margin:0 0 8px">🇰🇷 KR 테크 전수 허브 <span style="color:var(--dim);font-size:11px;font-weight:400">${KR.n}사 · ${catIds.length}개 카테고리 · 정기보고서 매출실적/수주/ASP/가동률 발라냄 · 단위 백만원 · 분기=당해 누적차분 · asof ${String(KR.asof).slice(0,10)}</span></p>`;
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px">${catIds.map(cid=>{const c=CATS[cid];const on=ST.krcat===cid;
+      return `<span data-krcat="${cid}" style="cursor:pointer;user-select:none;font-size:11px;padding:4px 11px;border-radius:999px;border:1px solid ${on?'#4ea1ff':'var(--line)'};${on?'background:rgba(78,161,255,.15);color:#4ea1ff;font-weight:800':'color:var(--dim)'}">${c.label} <span style="opacity:.6">${(c.cos||[]).length}</span></span>`;}).join('')}</div>`;
+    const trs=rows.map(r=>`<tr data-krco="${r.code}" style="cursor:pointer;${r.code===ST.krco?'background:rgba(78,161,255,.08)':''}">
+      <td><b>${r.name}</b> <span style="color:var(--dim);font-size:10px">${r.code}</span></td>
+      <td style="font-family:var(--mono);font-size:10.5px">${r.last||'—'}</td>
+      <td style="font-family:var(--mono)">${fmK(r.rev)}</td>
+      <td style="font-family:var(--mono);color:${r.op>0?'#59d0a8':(r.op<0?'#ff6b7d':'var(--dim)')}">${fmK(r.op)}</td>
+      <td style="font-family:var(--mono)">${r.opm==null?'—':(+r.opm).toFixed(1)+'%'}</td>
+      <td style="font-family:var(--mono);color:${r.rev_yoy>0?'#59d0a8':(r.rev_yoy<0?'#ff6b7d':'var(--dim)')}">${pcK(r.rev_yoy)}</td>
+      <td>${r.backlog_last!=null?`<span style="font-family:var(--mono)">${fmK(r.backlog_last)}</span>`:'—'}</td>
+      <td style="font-size:10px;color:var(--dim)">${r.lane||''}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:${r.gate_bad?'#ff6b7d':'var(--dim)'}">${r.gate||'—'}</td></tr>`).join('');
+    html+=`<div class="panel" style="overflow-x:auto;margin-bottom:12px"><p style="font-size:12.5px;font-weight:800;margin:0 0 6px">${CAT.label} <span style="color:var(--dim);font-size:11px;font-weight:400">${rows.length}사 · 행 클릭=드릴다운 · 매출 내림차순</span></p>
+      <table class="tbl"><thead><tr><th>기업</th><th>최신</th><th>매출</th><th>영업이익</th><th>OPM</th><th>매출 YoY</th><th>수주잔고</th><th>레인</th><th>게이트</th></tr></thead><tbody>${trs}</tbody></table>
+      <div style="font-size:10px;color:var(--dim);margin-top:6px">게이트=parse_status 5개 항목(fin·products·backlog·asp·util) 중 데이터 확보 수 · 빨강=fail/partial 포함 · 레인=수집 담당 · YoY=동일분기 전년비 · 수치는 정기보고서 원문 그대로(집계 없음)</div></div>`;
+    if(C){
+      html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.name} — 분기 매출 · 영업이익</h3><div class="co-cat">${(C.items||[]).map(it=>(CATS[it.cat]||{}).label||it.cat).filter(Boolean).join(' · ')||'미분류'} · ${C.mkt||''}</div></div></div>
+        <div class="ch-wrap" style="height:270px"><canvas id="krFin"></canvas></div></div>`;
+      if(Object.keys(C.backlog||{}).length){
+        html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.name} — 수주잔고</h3><div class="co-cat">${String(C.backlog_note||'정기보고서 수주상황 표(기말 시점 잔고)').slice(0,120)} · 선=잔고÷분기매출 배율(우)</div></div></div>
+        <div class="ch-wrap" style="height:230px"><canvas id="krBkl"></canvas></div></div>`;
+      }
+      if(pNm.length){
+        html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.name} — 품목 × 국내/수출</h3><div class="co-cat">진한색=수출 · 연한색=국내 · 범례 클릭=토글</div></div>
+          <div style="display:flex;gap:6px">${[['prod','품목×수출/내수'],['sum','수출 vs 내수']].map(([v,l])=>`<span data-krv="${v}" style="cursor:pointer;font-size:10.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);${modeK===v?'background:rgba(78,161,255,.15);color:#4ea1ff;font-weight:700':'color:var(--dim)'}">${l}</span>`).join('')}</div></div>
+          <div class="ch-wrap" style="height:300px"><canvas id="krProd"></canvas></div>
+          <div style="overflow-x:auto;margin-top:8px"><table class="tbl"><thead><tr><th>품목</th><th>${pLastK||''} 국내</th><th>수출</th><th>합</th><th>수출비중</th><th>합 YoY</th></tr></thead><tbody>${
+            pNm.map(p=>{const d=prodK[p];
+              const dm=(d['국내']||{})[pLastK], ex=(d['수출']||{})[pLastK];
+              const tot=(dm!=null||ex!=null)?((dm||0)+(ex||0)):((d['소계']||{})[pLastK]);
+              const pyy=pLastK?krPy(pLastK):null;
+              const ptot=pyy?(((((d['국내']||{})[pyy])||0)+(((d['수출']||{})[pyy])||0))||(((d['소계']||{})[pyy])||0)):0;
+              const yy=ptot?((tot/ptot-1)*100):null;
+              return `<tr><td>${p}</td><td style="font-family:var(--mono)">${dm!=null?dm.toLocaleString():'—'}</td><td style="font-family:var(--mono)">${ex!=null?ex.toLocaleString():'—'}</td><td style="font-family:var(--mono)"><b>${tot?tot.toLocaleString():'—'}</b></td><td style="font-family:var(--mono)">${tot?(Math.round((ex||0)/tot*100)+'%'):'—'}</td><td style="font-family:var(--mono);color:${yy>0?'#59d0a8':(yy<0?'#ff6b7d':'var(--dim)')}">${yy!=null?((yy>0?'+':'')+yy.toFixed(1)+'%'):'—'}</td></tr>`;}).join('')
+          }</tbody></table></div></div>`;
+      }
+      if(Object.keys(C.asp||{}).length){
+        html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.name} — 제품별 ASP <small style="color:var(--dim)">지수(품목별 첫 관측=100)</small></h3><div class="co-cat">${String(C.asp_note||'보고서 가격변동추이 — 원문 기간 라벨·순서 그대로').slice(0,140)}</div></div></div>
+          <div class="ch-wrap" style="height:225px"><canvas id="krAsp"></canvas></div></div>`;
+      }
+      if(Object.keys(C.util||{}).length){
+        html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${C.name} — 생산실적 · 가동률</h3><div class="co-cat">${String(C.util_note||'보고서 생산실적및가동률 — 당해 누적 기준').slice(0,140)}</div></div></div>
+          <div class="ch-wrap" style="height:225px"><canvas id="krUtil"></canvas></div></div>`;
+      }
+      if((C.notes||[]).length){
+        html+=`<div class="panel" style="border-left:3px solid #4ea1ff;margin-bottom:12px"><p style="font-size:12px;font-weight:800;margin:0 0 6px">파싱 노트 <span style="color:var(--dim);font-size:10px;font-weight:400">원문 처리·기준 주석</span></p>
+          <ul style="margin:0;padding-left:18px;font-size:11px;line-height:1.7;color:var(--dim)">${C.notes.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
+      }
+    }
+    setTimeout(()=>{
+      document.querySelectorAll('[data-krcat]').forEach(el=>el.onclick=()=>{ST.krcat=el.getAttribute('data-krcat');ST.krco=null;renderKpi();window.scrollTo(0,0);});
+      document.querySelectorAll('[data-krco]').forEach(el=>el.onclick=()=>{ST.krco=el.getAttribute('data-krco');renderKpi();});
+      document.querySelectorAll('[data-krv]').forEach(el=>el.onclick=()=>{ST.krview=el.getAttribute('data-krv');renderKpi();});
+      if(!C)return;
+      const f=document.getElementById('krFin');
+      if(f&&fksK.length){KCH.krFin=new Chart(f,{data:{labels:fksK,datasets:[
+        {type:'bar',label:'매출',data:fksK.map(k=>(fqK[k]&&fqK[k].rev!=null)?fqK[k].rev:null),backgroundColor:'rgba(78,161,255,.72)',yAxisID:'y'},
+        {type:'line',label:'영업이익(우)',data:fksK.map(k=>(fqK[k]&&fqK[k].op!=null)?fqK[k].op:null),borderColor:'#ffbe2e',backgroundColor:'#ffbe2e',borderWidth:1.8,pointRadius:2,tension:.15,spanGaps:true,yAxisID:'y2'}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+          plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
+          scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:14,font:{size:8}},grid:{display:false}},
+            y:{position:'left',ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
+            y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v.toLocaleString()},grid:{display:false}}}}});}
+      const bkEl=document.getElementById('krBkl');
+      if(bkEl){const bk2=C.backlog||{};const bks=Object.keys(bk2).sort((a,b)=>krOrd(a)-krOrd(b));
+        const cov=bks.map(q=>{const f2=(C.fin_q||{})[q];return (f2&&f2.rev)?+(bk2[q]/f2.rev).toFixed(2):null;});
+        KCH.krBkl=new Chart(bkEl,{data:{labels:bks,datasets:[
+          {type:'bar',label:'수주잔고',data:bks.map(q=>bk2[q]!=null?bk2[q]:null),backgroundColor:'rgba(180,140,255,.62)',yAxisID:'y'},
+          {type:'line',label:'잔고÷분기매출(우)',data:cov,borderColor:'#ffbe2e',backgroundColor:'#ffbe2e',borderWidth:1.7,pointRadius:2,tension:.15,spanGaps:true,yAxisID:'y2'}]},
+          options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+            plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+              tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':(c.dataset.yAxisID==='y2'?c.parsed.y+'배':c.parsed.y.toLocaleString()))}}},
+            scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:14,font:{size:8}},grid:{display:false}},
+              y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
+              y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v+'x'},grid:{display:false}}}}});}
+      const pr=document.getElementById('krProd');
+      if(pr&&pQK.length){
+        let ds;
+        if(modeK==='sum'){
+          const regs=pNm.some(p=>prodK[p]['국내']||prodK[p]['수출'])?[['국내','#8a93a3','88'],['수출','#4ea1ff','cc']]:[['소계','#4ea1ff','cc']];
+          ds=regs.map(([r,c,a])=>({type:'bar',label:r,stack:'s',data:pQK.map(q=>pNm.reduce((s,p)=>s+((((prodK[p][r]||{})[q])||0)),0)||null),backgroundColor:c+a}));
+        } else {
+          ds=[]; pNm.forEach((p,i)=>{(prodK[p]['국내']||prodK[p]['수출']?['국내','수출']:['소계']).forEach(r=>{
+            ds.push({type:'bar',label:(p.length>16?p.slice(0,16)+'…':p)+'·'+r,stack:'s',data:pQK.map(q=>(((prodK[p][r]||{})[q])!=null)?prodK[p][r][q]:null),
+              backgroundColor:KCOLR[i%KCOLR.length]+(r==='국내'?'55':'cc')});});});
+        }
+        KCH.krProd=new Chart(pr,{data:{labels:pQK,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,
+          interaction:{mode:'index',intersect:false},
+          plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:8.5}}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
+          scales:{x:{stacked:true,ticks:{color:'#4a4a72',maxTicksLimit:14,font:{size:8}},grid:{display:false}},
+            y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}}}}});}
+      const aspEl=document.getElementById('krAsp');
+      if(aspEl){const aD=C.asp||{};const nm2=Object.keys(aD);
+        const ax2=[...new Set(nm2.flatMap(p=>Object.keys(aD[p])))];
+        const ds5=nm2.map((p,i)=>{const s=aD[p];const ks3=Object.keys(s);const base=+s[ks3[0]];
+          return {type:'line',label:p.length>18?p.slice(0,18)+'…':p,data:ax2.map(q=>(s[q]!=null&&base)?+((+s[q])/base*100).toFixed(1):null),borderColor:KCOLR[i%KCOLR.length],borderWidth:1.7,pointRadius:1.8,tension:.15,spanGaps:true};});
+        KCH.krAsp=new Chart(aspEl,{data:{labels:ax2,datasets:ds5},options:{responsive:true,maintainAspectRatio:false,animation:false,
+          interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:8.5}}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y+' (지수)')}}},
+          scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},
+            y:{ticks:{color:'#4a4a72',font:{size:8}},grid:{color:'rgba(40,40,74,.5)'}}}}});}
+      const utEl=document.getElementById('krUtil');
+      if(utEl){const U=C.util||{};const num=v=>{const x=parseFloat(String(v).replace(/[^\d.\-]/g,''));return isNaN(x)?null:x;};
+        const prod2=U['생산실적']||{};const rate2=U['가동률']||{};
+        const ax3=[...new Set([...Object.keys(prod2),...Object.keys(rate2)])].sort((a,b)=>krOrd(a)-krOrd(b));
+        const ds6=[];
+        if(Object.keys(prod2).length)ds6.push({type:'bar',label:'생산실적',data:ax3.map(q=>num(prod2[q])),backgroundColor:'rgba(77,208,225,.55)',yAxisID:'y'});
+        if(Object.keys(rate2).length)ds6.push({type:'line',label:'가동률(우)',data:ax3.map(q=>num(rate2[q])),borderColor:'#ffbe2e',backgroundColor:'#ffbe2e',borderWidth:1.8,pointRadius:2,tension:.15,spanGaps:true,yAxisID:'y2'});
+        if(ds6.length)KCH.krUtil=new Chart(utEl,{data:{labels:ax3,datasets:ds6},options:{responsive:true,maintainAspectRatio:false,animation:false,
+          interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
+          scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},
+            y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
+            y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v+'%'},grid:{display:false}}}}});}
     },0);
   }
   if(M&&(KC==='all'||KC==='mlcc')){
