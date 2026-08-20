@@ -993,12 +993,14 @@ function renderKpi(){
   let html='';
   const PC=(K.pcard&&K.pcard.companies)?K.pcard:null;
   const KR=(K.krtech&&K.krtech.cats)?K.krtech:null;
+  const PV=(K.preview&&K.preview.companies&&Object.keys(K.preview.companies).length)?K.preview:null;
   // 산업 칩 네비게이션 (메인 대시 카테고리 칩과 동일 문법)
   const KC=ST.kcat||'all';
   const _hubD=K.hubs||{}, _idxD=K.index||{};
   const kChips=[['all','전체']]
     .concat(PC?[['pcard','🧪 프로브카드 '+Object.keys(PC.companies).length]]:[])
     .concat(KR?[['krtech','🇰🇷 테크 전수 '+KR.n]]:[])
+    .concat(PV?[['preview','📝 프리뷰·리뷰 '+Object.keys(PV.companies).length]]:[])
     .concat(M?[['mlcc','MLCC '+Object.keys(M.companies||{}).length]]:[])
     .concat((T&&FC)?[['tdk','TDK 완결']]:[])
     .concat(Object.keys(_hubD).filter(k=>_hubD[k].data).map(k=>[k,(_idxD[k]||{}).label||k,(_idxD[k]||{}).n_companies]));
@@ -1463,6 +1465,160 @@ function renderKpi(){
           scales:{x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},
             y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}},
             y2:{position:'right',ticks:{color:'#8a7a3a',font:{size:8},callback:v=>v+'%'},grid:{display:false}}}}});}
+    },0);
+  }
+  // ===== 📝 실적 프리뷰·리뷰 루프 (기업×분기 아카이브) — pcard 카드·차트 이디엄, pv* 접두로 충돌 회피 =====
+  if(PV&&KC==='preview'){
+    const PVCOS=PV.companies||{};
+    const pvOrder=((PV.order||[]).filter(t=>PVCOS[t]).length?PV.order.filter(t=>PVCOS[t]):Object.keys(PVCOS));
+    if(!ST.pvco||!PVCOS[ST.pvco]) ST.pvco=pvOrder[0];
+    const PVC=PVCOS[ST.pvco]||null;
+    const PVCOL=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1','#ff9e64','#9ccc65'];
+    const pvE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const pvT=s=>pvE(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+    const pvPlain=s=>String(s==null?'':s).replace(/\*\*/g,'');
+    const pvCol=c=>c==='매수'?'#59d0a8':(c==='매도'?'#ff6b7d':'#8a93a3');
+    const pvPct=(x,d)=>x==null?'—':((+x>0?'+':'')+(+x).toFixed(d==null?1:d)+'%');
+    const pvN=x=>x==null?'—':(+x).toLocaleString();
+    const pvTL=t=>t==='preview'?'프리뷰':'리뷰';
+    const pvCut=(s,n)=>{const t=pvPlain(s);return t.length>n?t.slice(0,n)+'…':t;};
+    html+=`<p style="font-size:14px;font-weight:800;margin:0 0 8px">📝 실적 프리뷰 · 리뷰 루프 <span style="color:var(--dim);font-size:11px;font-weight:400">${pvOrder.length}사 / 레지스트리 ${PV.registry_n||pvOrder.length}사 · 발표 전 예측(프리뷰) → 발표 후 판정(리뷰) 아카이브 · asof ${String(PV.asof||'').slice(0,10)}</span></p>
+      <div class="panel" style="padding:9px 14px;margin-bottom:12px;font-size:11px;color:#ffbe2e;border-color:#ffbe2e44">⚠️ 본 섹션의 모든 예측·판정·목표가는 <b>투자판단 참고용</b>이며 투자 권유나 수익 보장이 아닙니다. 최종 투자판단과 책임은 투자자 본인에게 있습니다.</div>`;
+    html+=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:10px;margin-bottom:14px">${
+      pvOrder.map(tk=>{const c=PVCOS[tk]||{};const h=c.head||{};const on=tk===ST.pvco;const cc=pvCol(h.call);
+        return `<div data-pvco="${tk}" class="panel" style="cursor:pointer;padding:11px 13px;border-left:3px solid ${cc};${on?'background:rgba(78,161,255,.10);box-shadow:0 0 0 1px #4ea1ff55':''}">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+            <b style="font-size:12.5px">${pvE(c.name)}</b><span style="color:var(--dim);font-size:10px;font-family:var(--mono)">${pvE(tk)}</span>
+            <span style="margin-left:auto;font-size:10.5px;font-weight:800;padding:2px 10px;border-radius:999px;background:${cc}22;color:${cc}">${pvE(h.call||'—')}</span></div>
+          <div style="font-size:10px;color:var(--dim);margin-top:5px">${pvE(c.frame_label||c.frame||'')} · <b style="color:var(--ink)">${pvE(h.q||'')} ${pvTL(h.type)}</b> · ${pvE(h.made_on||'')} · 문서 ${(c.archive||[]).length}건</div>
+          <div style="font-size:11px;margin-top:5px;font-family:var(--mono)">업사이드 base <b style="color:${h.upside_base_pct>0?'#59d0a8':'#ff6b7d'}">${pvPct(h.upside_base_pct)}</b> <span style="color:var(--dim)">· bull ${pvPct(h.upside_bull_pct)} · down ${pvPct(h.downside_pct)}</span></div>
+          <div style="font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.55">${pvE(pvCut(h.one_liner,95))}</div></div>`;}).join('')}</div>`;
+    let PVD=null, pvChN=[];
+    if(PVC){
+      const docs=PVC.docs||{}, arc=PVC.archive||[];
+      const sel=String(ST.pvdoc||'').split('|');
+      let dk=(sel[0]===ST.pvco&&docs[sel[1]])?sel[1]:((PVC.head||{}).key);
+      if(!docs[dk]) dk=Object.keys(docs)[0];
+      const D=docs[dk]||{}; PVD=D;
+      const lat=PVC.latest||{};
+      const tabs=[['preview',lat.preview],['review',lat.review]].filter(x=>x[1]).map(function(x){const t=x[0],q=x[1];const k=q+'_'+t;const on=k===dk;
+        return `<span data-pvdoc="${k}" style="cursor:pointer;user-select:none;font-size:11px;padding:4px 13px;border-radius:999px;border:1px solid ${on?'#4ea1ff':'var(--line)'};${on?'background:rgba(78,161,255,.15);color:#4ea1ff;font-weight:800':'color:var(--dim)'}">최신 ${pvTL(t)} <span style="opacity:.7">${q}</span></span>`;}).join('');
+      const arcChips=arc.map(a=>{const k=a.q+'_'+a.type;const on=k===dk;
+        return `<span data-pvdoc="${k}" style="cursor:pointer;user-select:none;font-size:10.5px;padding:3px 10px;border-radius:6px;border:1px solid ${on?'#4ea1ff':'var(--line)'};${on?'color:#4ea1ff;font-weight:800;background:rgba(78,161,255,.10)':'color:var(--dim)'}">${a.q} ${pvTL(a.type)} <b style="color:${pvCol(a.call)}">${pvE(a.call||'')}</b></span>`;}).join('');
+      html+=`<div class="panel" style="margin-bottom:12px;padding:11px 14px">
+        <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b style="font-size:12.5px">${pvE(PVC.name)}</b>
+          <span style="font-size:10px;color:var(--dim);font-family:var(--mono)">${pvE(ST.pvco)}${PVC.fy?' · '+pvE(PVC.fy)+' 결산':''}</span>${tabs}</div>
+        <div style="font-size:10px;color:var(--dim);margin-bottom:5px">아카이브 — 클릭하면 과거 분기 문서로 전환 (분기마다 누적)</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${arcChips}</div></div>`;
+      const V=D.verdict||{}, F=D.forecast||{}, CS=D.consensus||{}, PI=D.priced_in||{}, UP=D.upside||{}, vc=pvCol(V.call);
+      const tile=(lb,val,sub,col)=>`<div style="flex:1 1 150px;min-width:140px;padding:8px 11px;border:1px solid var(--line);border-radius:8px">
+        <div style="font-size:9.5px;color:var(--dim)">${lb}</div><div style="font-size:14px;font-weight:800;font-family:var(--mono);color:${col||'var(--ink)'}">${val}</div>
+        <div style="font-size:9.5px;color:var(--dim);margin-top:2px">${sub||''}</div></div>`;
+      const pb=F.prob||{};
+      html+=`<div class="panel" style="border-left:3px solid ${vc};margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px">
+          <span style="font-size:12px;font-weight:800;padding:3px 13px;border-radius:999px;background:${vc}1f;color:${vc};border:1px solid ${vc}55">판정 · ${pvE(V.call||'—')}</span>
+          <span style="font-size:10.5px;color:var(--dim)">${pvE(D.quarter||'')} ${pvTL(D.type)} · 작성 ${pvE(D.made_on||'')} · frame ${pvE(D.frame||'')}</span></div>
+        <div style="font-size:13px;line-height:1.7;margin-bottom:6px">${pvT(V.one_liner||'')}</div>
+        ${V.bias?`<div style="font-size:11px;color:var(--dim);margin-bottom:9px">▸ ${pvT(V.bias)}</div>`:''}
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${tile('예측 base',pvN(F.base)+' <span style="font-size:9.5px;color:var(--dim)">'+pvE(F.unit||'')+'</span>','bear '+pvN(F.bear)+' / bull '+pvN(F.bull)+(pb.base!=null?' · P(base) '+Math.round(pb.base*100)+'%':''),'#4ea1ff')}
+          ${tile('컨센 갭',CS.gap_pct!=null?pvPct(CS.gap_pct):'—',CS.value!=null?('컨센 '+pvN(CS.value)+(CS.unit?' '+pvE(CS.unit):'')):'컨센 미확보(사유 아래)',CS.gap_pct>0?'#59d0a8':(CS.gap_pct<0?'#ff6b7d':'var(--dim)'))}
+          ${tile('priced-in',PI.pct_est!=null?PI.pct_est+'%':'—','시장 선반영 추정','#ffbe2e')}
+          ${tile('업사이드 base',pvPct(UP.base_pct),'bull '+pvPct(UP.bull_pct)+' · down '+pvPct(UP.downside_pct),UP.base_pct>0?'#59d0a8':'#ff6b7d')}
+        </div>
+        ${F.metric?`<div style="font-size:10.5px;color:var(--dim);margin-top:8px">예측 대상 <b style="color:var(--ink)">${pvE(F.metric)}</b>${F.method?' · '+pvE(pvCut(F.method,230)):''}</div>`:''}
+        ${(CS.note||CS.src)?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>컨센서스.</b> ${pvT(pvCut(CS.src?('['+CS.src+'] '):'' ,90))}${pvT(pvCut(CS.note||'',330))}</div>`:''}
+        ${PI.summary?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>priced-in.</b> ${pvT(pvCut(PI.summary,330))}</div>`:''}
+        ${UP.valuation_basis?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>밸류에이션 근거.</b> ${pvT(pvCut(UP.valuation_basis,330))}</div>`:''}
+        <div style="font-size:10px;color:#ffbe2e;border-top:1px solid var(--line);margin-top:8px;padding-top:6px">투자판단 참고용 — 예측치이며 실현을 보장하지 않습니다.</div></div>`;
+      const ST2=D.strategy||{};
+      if(Object.keys(ST2).length){
+        const lst=(t,arr,col)=>((arr||[]).length?`<div style="flex:1 1 260px;min-width:240px"><div style="font-size:10.5px;font-weight:800;color:${col};margin-bottom:4px">${t}</div>
+          <ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.65">${arr.map(x=>`<li>${pvT(x)}</li>`).join('')}</ul></div>`:'');
+        html+=`<div class="panel" style="margin-bottom:12px"><p style="font-size:12.5px;font-weight:800;margin:0 0 7px">🎯 매매 전략 <span style="color:var(--dim);font-size:10px;font-weight:400">진입존 · 상하방 트리거 · 리스크</span></p>
+          ${ST2.zone?`<div style="font-size:11.5px;line-height:1.7;padding:8px 11px;border:1px solid var(--line);border-radius:8px;margin-bottom:9px"><b style="color:#4ea1ff">진입존.</b> ${pvT(ST2.zone)}</div>`:''}
+          <div style="display:flex;flex-wrap:wrap;gap:14px">${lst('▲ 상방 트리거',ST2.triggers_up,'#59d0a8')}${lst('▼ 하방 트리거',ST2.triggers_down,'#ff6b7d')}</div>
+          ${(ST2.risks||[]).length?`<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div style="font-size:10.5px;font-weight:800;color:#ffbe2e;margin-bottom:4px">⚠ 리스크</div>
+            <ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.65;color:var(--dim)">${ST2.risks.map(x=>`<li>${pvT(x)}</li>`).join('')}</ul></div>`:''}</div>`;
+      }
+      const PX=D.proxies||[];
+      if(PX.length){
+        html+=`<div class="panel" style="overflow-x:auto;margin-bottom:12px"><p style="font-size:12.5px;font-weight:800;margin:0 0 6px">🔗 프록시 검증 <span style="color:var(--dim);font-size:10px;font-weight:400">ρ=상관 · 타율=방향 적중률 · 로컬 실측 기준</span></p>
+          <table class="tbl"><thead><tr><th>프록시</th><th>최근 관측</th><th>방향</th><th>ρ</th><th>타율</th><th>해설</th></tr></thead><tbody>${
+          PX.map(p=>{const up=/up|상승|상방/i.test(String(p.direction||''));const dn=/down|하락|하방/i.test(String(p.direction||''));
+            return `<tr><td style="font-size:11px"><b>${pvE(pvCut(p.name,60))}</b></td>
+              <td style="font-size:10.5px;color:var(--dim)">${pvT(pvCut(p.latest,110))}</td>
+              <td style="font-size:10.5px;color:${up?'#59d0a8':(dn?'#ff6b7d':'var(--dim)')}">${pvE(pvCut(p.direction,26))}</td>
+              <td style="font-family:var(--mono);font-size:10.5px;color:${p.rho>=0.8?'#59d0a8':(p.rho!=null&&p.rho<0.6?'#ffbe2e':'var(--ink)')}">${p.rho!=null?(+p.rho).toFixed(3):'—'}</td>
+              <td style="font-family:var(--mono);font-size:10.5px">${p.hit_rate!=null?(+p.hit_rate).toFixed(1)+'%':'—'}</td>
+              <td style="font-size:10px;color:var(--dim)">${pvT(pvCut(p.detail,200))}</td></tr>`;}).join('')}</tbody></table>
+          <div style="font-size:10px;color:var(--dim);margin-top:6px">ρ≥0.8 초록 · ρ&lt;0.6 노랑(방향지표 등급) — 프록시 신뢰도는 문서마다 재측정된다</div></div>`;
+      }
+      pvChN=Object.keys(D.charts||{});
+      if(pvChN.length){
+        html+=`<p style="font-size:12.5px;font-weight:800;margin:16px 0 8px">📈 문서 차트 <span style="color:var(--dim);font-size:10px;font-weight:400">${pvChN.length}종 · JSON charts 원자료 그대로</span></p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:12px;margin-bottom:12px">${
+          pvChN.map((n,i)=>{const cc=D.charts[n]||{};
+            return `<div class="card"><div class="card-hd"><div><h3>${pvE(n.replace(/_/g,' '))} <small style="color:var(--dim)">${pvE(cc.unit||'')}</small></h3>
+              <div class="co-cat">${pvT(pvCut(cc.note,150))}</div></div></div>
+              <div class="ch-wrap" style="height:250px"><canvas id="pvCh${i}"></canvas></div></div>`;}).join('')}</div>`;
+      }
+      const FR=D.frame_reading||[];
+      if(FR.length){
+        html+=`<div class="panel" style="border-left:3px solid #4ea1ff;margin-bottom:12px"><p style="font-size:12.5px;font-weight:800;margin:0 0 6px">🧭 읽는 법 <span style="color:var(--dim);font-size:10px;font-weight:400">frame=${pvE(D.frame||'')} 문법의 축별 해석</span></p>
+          <ul style="margin:0;padding-left:18px;font-size:11.5px;line-height:1.75">${FR.map(x=>`<li style="margin-bottom:4px">${pvT(x)}</li>`).join('')}</ul></div>`;
+      }
+      const CK=D.company_check||{}, PL=D.prior_link||{};
+      const ckRows=Object.keys(CK).map(k=>`<div style="font-size:10.5px;line-height:1.6;margin-bottom:3px"><b style="color:#4ea1ff">${pvE(k)}</b> — ${pvT(pvCut(CK[k],260))}</div>`).join('');
+      const sw=(PL.swing_factor_tracking||PL.swing_factors_next||[]);
+      if(ckRows||Object.keys(PL).length){
+        html+=`<div class="panel" style="margin-bottom:12px"><p style="font-size:12.5px;font-weight:800;margin:0 0 6px">🏷 기업 확인 · 이전 실적 연결</p>
+          ${ckRows}
+          ${(PL.last_review||PL.last_error_pct!=null||PL.note)?`<div style="border-top:1px solid var(--line);margin-top:7px;padding-top:7px;font-size:10.5px;line-height:1.65">
+            <b style="color:#b48cff">직전 문서</b> — ${pvE(PL.last_review||'없음(첫 산출물)')}${PL.last_error_pct!=null?` · 직전 예측오차 <b style="font-family:var(--mono);color:${Math.abs(PL.last_error_pct)<=3?'#59d0a8':'#ffbe2e'}">${pvPct(PL.last_error_pct)}</b>`:''}
+            ${PL.note?`<div style="color:var(--dim);margin-top:3px">${pvT(pvCut(PL.note,400))}</div>`:''}</div>`:''}
+          ${sw.length?`<div style="margin-top:7px"><div style="font-size:10.5px;font-weight:800;color:var(--dim);margin-bottom:3px">스윙 요인 추적</div>
+            <ul style="margin:0;padding-left:16px;font-size:10.5px;line-height:1.6;color:var(--dim)">${sw.map(x=>`<li>${pvT(pvCut(x,260))}</li>`).join('')}</ul></div>`:''}</div>`;
+      }
+      const HN=D.honesty||[], SRC=D.sources||[];
+      if(HN.length||SRC.length){
+        html+=`<div class="panel" style="border-left:3px solid #ffbe2e;margin-bottom:12px"><p style="font-size:12px;font-weight:800;margin:0 0 6px">📌 정직성 각주 <span style="color:var(--dim);font-size:10px;font-weight:400">이 문서가 모르는 것·추정에 의존하는 것</span></p>
+          <ul style="margin:0 0 7px;padding-left:18px;font-size:10.5px;line-height:1.7;color:var(--dim)">${HN.map(x=>`<li style="margin-bottom:3px">${pvT(x)}</li>`).join('')}</ul>
+          ${SRC.length?`<details style="border-top:1px solid var(--line);padding-top:6px"><summary style="cursor:pointer;font-size:10.5px;color:var(--dim)">출처 ${SRC.length}건</summary>
+            <ul style="margin:6px 0 0;padding-left:18px;font-size:10px;line-height:1.6;color:var(--dim)">${SRC.map(x=>`<li>${pvE(x)}</li>`).join('')}</ul></details>`:''}</div>`;
+      }
+      if(D.md){
+        html+=`<details class="panel" style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:800">📄 리포트 전문 (MD 원문) <span style="color:var(--dim);font-size:10px;font-weight:400">${pvE(dk)} · ${(D.md.length).toLocaleString()}자</span></summary>
+          <pre style="white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:10.5px;line-height:1.65;color:var(--ink);margin:10px 0 0;max-height:640px;overflow:auto">${pvE(D.md)}</pre></details>`;
+      }
+      if(D.disclaimer) html+=`<div class="panel" style="padding:9px 14px;margin-bottom:12px;font-size:10.5px;color:var(--dim)">${pvE(D.disclaimer)}</div>`;
+    }
+    setTimeout(()=>{
+      document.querySelectorAll('[data-pvco]').forEach(el=>el.onclick=()=>{ST.pvco=el.getAttribute('data-pvco');ST.pvdoc=null;renderKpi();window.scrollTo(0,0);});
+      document.querySelectorAll('[data-pvdoc]').forEach(el=>el.onclick=()=>{ST.pvdoc=ST.pvco+'|'+el.getAttribute('data-pvdoc');renderKpi();});
+      if(!PVD) return;
+      pvChN.forEach((n,i)=>{const el=document.getElementById('pvCh'+i); if(!el) return;
+        const cc=(PVD.charts||{})[n]||{}; const labels=cc.labels||[]; const S=cc.series||{}; const names=Object.keys(S);
+        if(!labels.length||!names.length) return;
+        const arr=nm=>(S[nm]||[]).map(v=>(typeof v==='number'&&isFinite(v))?v:null);
+        const mx=nm=>{const a=arr(nm).filter(v=>v!=null).map(Math.abs); return a.length?Math.max.apply(null,a):0;};
+        let right=names.filter(nm=>/%/.test(nm));
+        if(!right.length&&names.length===2){const m0=mx(names[0]),m1=mx(names[1]);
+          if(m0&&m1&&Math.max(m0,m1)/Math.min(m0,m1)>10) right=[(m0<m1)?names[0]:names[1]];}
+        const nLeft=names.length-right.length; const asBar=(nLeft<=3);
+        const ds=names.map((nm,j)=>{const col=PVCOL[j%PVCOL.length]; const isR=right.indexOf(nm)>=0;
+          const lb=nm.length>20?nm.slice(0,20)+'…':nm;
+          if(isR||!asBar) return {type:'line',label:lb+(isR?'(우)':''),data:arr(nm),borderColor:col,backgroundColor:col,borderWidth:1.8,pointRadius:2,tension:.15,spanGaps:true,yAxisID:isR?'y2':'y'};
+          return {type:'bar',label:lb,data:arr(nm),backgroundColor:col+'b3',yAxisID:'y'};});
+        const sc={x:{ticks:{color:'#4a4a72',maxTicksLimit:12,font:{size:8}},grid:{display:false}},
+          y:{ticks:{color:'#4a4a72',font:{size:8},callback:v=>(Math.abs(v)>=1000?v.toLocaleString():v)},grid:{color:'rgba(40,40,74,.5)'}}};
+        if(right.length) sc.y2={position:'right',ticks:{color:'#8a7a3a',font:{size:8}},grid:{display:false}};
+        KCH['pvCh'+i]=new Chart(el,{data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,
+          interaction:{mode:'index',intersect:false},
+          plugins:{legend:{labels:{color:'#6a6a9a',boxWidth:10,font:{size:8.5}}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y.toLocaleString())}}},
+          scales:sc}});});
     },0);
   }
   if(M&&(KC==='all'||KC==='mlcc')){
