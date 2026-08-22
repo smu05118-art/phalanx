@@ -1468,12 +1468,16 @@ function renderKpi(){
     },0);
   }
   // ===== 📝 실적 프리뷰·리뷰 루프 (기업×분기 아카이브) — pcard 카드·차트 이디엄, pv* 접두로 충돌 회피 =====
+  // 전수(~1,600사) 2단 구조: 인덱스(K.preview.companies — preview_harvest.py 압축 스키마)로
+  // 카드 그리드를 즉시 렌더하고, 문서 전문(charts·MD 포함)은 카드 클릭 시
+  // data_preview/<티커>.json 을 lazy fetch 해 Map 에 캐시한다.
   if(PV&&KC==='preview'){
     const PVCOS=PV.companies||{};
-    const pvOrder=((PV.order||[]).filter(t=>PVCOS[t]).length?PV.order.filter(t=>PVCOS[t]):Object.keys(PVCOS));
-    if(!ST.pvco||!PVCOS[ST.pvco]) ST.pvco=pvOrder[0];
-    const PVC=PVCOS[ST.pvco]||null;
+    const PVFID=PV.frame_ids||[], PVFRD=PV.frames||{};
+    const PVCACHE=(window.PVCACHE=window.PVCACHE||new Map());   // 티커 → {st:'load'|'ok'|'err', d, msg}
     const PVCOL=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1','#ff9e64','#9ccc65'];
+    const PVREGS=[['all','전체'],['JP','🇯🇵 일본'],['US','🇺🇸 미국'],['KR','🇰🇷 한국'],['TW','🇹🇼 대만'],['ETC','🌐 기타']];
+    const PVPAGE=120;                                           // 카드 1회 렌더 상한(+더 보기)
     const pvE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const pvT=s=>pvE(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
     const pvPlain=s=>String(s==null?'':s).replace(/\*\*/g,'');
@@ -1482,22 +1486,74 @@ function renderKpi(){
     const pvN=x=>x==null?'—':(+x).toLocaleString();
     const pvTL=t=>t==='preview'?'프리뷰':'리뷰';
     const pvCut=(s,n)=>{const t=pvPlain(s);return t.length>n?t.slice(0,n)+'…':t;};
-    html+=`<p style="font-size:14px;font-weight:800;margin:0 0 8px">📝 실적 프리뷰 · 리뷰 루프 <span style="color:var(--dim);font-size:11px;font-weight:400">${pvOrder.length}사 / 레지스트리 ${PV.registry_n||pvOrder.length}사 · 발표 전 예측(프리뷰) → 발표 후 판정(리뷰) 아카이브 · asof ${String(PV.asof||'').slice(0,10)}</span></p>
+    // 인덱스 압축 엔트리 → 이름 붙은 객체 (schema: n,f,r,t,d,l,h — preview_harvest.py 참조)
+    const pvCo=tk=>{const c=PVCOS[tk]; if(!c) return null; const h=c.h||[], l=c.l||[]; const fr=PVFID[c.f]||'';
+      return {tk:tk,name:c.n||tk,frame:fr,frame_label:String(PVFRD[fr]||fr||'').split(':')[0],
+        region:c.r||'ETC',tier:c.t?'deep':'standard',ndocs:c.d||0,
+        latest:{preview:l[0]||null,review:l[1]||null},
+        q:h[0],type:(h[1]==='r'?'review':'preview'),call:h[2],made_on:h[3],
+        base:h[4],unit:h[5],upside:h[6],priced:h[7],one_liner:h[8]};};
+    const pvFile=tk=>'data_preview/'+encodeURIComponent(String(tk).replace(/:/g,'_'))+'.json';
+    const pvHot=tk=>ST.tab==='kpi'&&ST.view==='overview'&&(ST.kcat||'all')==='preview'&&ST.pvco===tk;
+    const pvLoad=tk=>{let e=PVCACHE.get(tk); if(e) return e;
+      e={st:'load'}; PVCACHE.set(tk,e);
+      fetch(pvFile(tk)).then(r=>{if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})
+        .then(j=>{PVCACHE.set(tk,{st:'ok',d:j}); if(pvHot(tk)) renderKpi();})
+        .catch(err=>{PVCACHE.set(tk,{st:'err',msg:String((err&&err.message)||err)}); if(pvHot(tk)) renderKpi();});
+      return e;};
+    // --- 리전 칩 · 검색 · 카드 그리드 (인덱스만으로 즉시 렌더, fetch 없음) ---
+    const pvReg=ST.pvreg||'all', pvQ=String(ST.pvq||'').trim().toLowerCase();
+    const pvAll=((PV.order||[]).filter(t=>PVCOS[t]).length?PV.order.filter(t=>PVCOS[t]):Object.keys(PVCOS));
+    const pvRc={}; pvAll.forEach(t=>{const r=(PVCOS[t]||{}).r||'ETC'; pvRc[r]=(pvRc[r]||0)+1;});
+    const pvHit=tk=>{const c=PVCOS[tk]||{};
+      if(pvReg!=='all'&&(c.r||'ETC')!==pvReg) return false;
+      if(!pvQ) return true;
+      return (tk+' '+(c.n||'')+' '+(PVFID[c.f]||'')).toLowerCase().indexOf(pvQ)>=0;};
+    const pvList=pvAll.filter(pvHit);
+    const pvMax=ST.pvmax||PVPAGE;
+    html+=`<p style="font-size:14px;font-weight:800;margin:0 0 8px">📝 실적 프리뷰 · 리뷰 루프 <span style="color:var(--dim);font-size:11px;font-weight:400">${pvAll.length}사 / 레지스트리 ${PV.registry_n||pvAll.length}사 · 문서 ${PV.docs_n||0}건 · 발표 전 예측(프리뷰) → 발표 후 판정(리뷰) 아카이브 · asof ${String(PV.asof||'').slice(0,10)}</span></p>
       <div class="panel" style="padding:9px 14px;margin-bottom:12px;font-size:11px;color:#ffbe2e;border-color:#ffbe2e44">⚠️ 본 섹션의 모든 예측·판정·목표가는 <b>투자판단 참고용</b>이며 투자 권유나 수익 보장이 아닙니다. 최종 투자판단과 책임은 투자자 본인에게 있습니다.</div>`;
-    html+=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:10px;margin-bottom:14px">${
-      pvOrder.map(tk=>{const c=PVCOS[tk]||{};const h=c.head||{};const on=tk===ST.pvco;const cc=pvCol(h.call);
-        return `<div data-pvco="${tk}" class="panel" style="cursor:pointer;padding:11px 13px;border-left:3px solid ${cc};${on?'background:rgba(78,161,255,.10);box-shadow:0 0 0 1px #4ea1ff55':''}">
+    html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px">${
+      PVREGS.filter(r=>r[0]==='all'||pvRc[r[0]]).map(r=>{const on=pvReg===r[0];const n=r[0]==='all'?pvAll.length:(pvRc[r[0]]||0);
+        return `<span data-pvreg="${r[0]}" style="cursor:pointer;user-select:none;font-size:11px;padding:4px 12px;border-radius:999px;border:1px solid ${on?'#4ea1ff':'var(--line)'};${on?'background:rgba(78,161,255,.15);color:#4ea1ff;font-weight:800':'color:var(--dim)'}">${r[1]} <span style="opacity:.65">${n}</span></span>`;}).join('')}
+      <input id="pvSearch" type="text" placeholder="티커·기업명·frame 검색" style="flex:0 1 240px;min-width:150px;font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);outline:none">
+      <span style="font-size:10.5px;color:var(--dim)">${pvList.length}사 표시</span></div>`;
+    if(!pvList.length){
+      html+=`<div class="panel" style="padding:12px 14px;margin-bottom:12px;font-size:11.5px;color:var(--dim)">조건에 맞는 기업이 없습니다 — 리전 칩이나 검색어를 바꿔 보세요.</div>`;
+    }
+    html+=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:10px;margin-bottom:10px">${
+      pvList.slice(0,pvMax).map(tk=>{const c=pvCo(tk);const on=tk===ST.pvco;const cc=pvCol(c.call);const dp=c.tier==='deep';
+        return `<div data-pvco="${pvE(tk)}" class="panel" style="cursor:pointer;padding:11px 13px;border-left:3px solid ${cc};${on?'background:rgba(78,161,255,.10);box-shadow:0 0 0 1px #4ea1ff55':''}">
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
             <b style="font-size:12.5px">${pvE(c.name)}</b><span style="color:var(--dim);font-size:10px;font-family:var(--mono)">${pvE(tk)}</span>
-            <span style="margin-left:auto;font-size:10.5px;font-weight:800;padding:2px 10px;border-radius:999px;background:${cc}22;color:${cc}">${pvE(h.call||'—')}</span></div>
-          <div style="font-size:10px;color:var(--dim);margin-top:5px">${pvE(c.frame_label||c.frame||'')} · <b style="color:var(--ink)">${pvE(h.q||'')} ${pvTL(h.type)}</b> · ${pvE(h.made_on||'')} · 문서 ${(c.archive||[]).length}건</div>
-          <div style="font-size:11px;margin-top:5px;font-family:var(--mono)">업사이드 base <b style="color:${h.upside_base_pct>0?'#59d0a8':'#ff6b7d'}">${pvPct(h.upside_base_pct)}</b> <span style="color:var(--dim)">· bull ${pvPct(h.upside_bull_pct)} · down ${pvPct(h.downside_pct)}</span></div>
-          <div style="font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.55">${pvE(pvCut(h.one_liner,95))}</div></div>`;}).join('')}</div>`;
+            <span title="${dp?'deep — 필수 8요소·프록시 실측·차트 2종 이상':'standard — 경량 6요소'}" style="font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;background:${dp?'rgba(180,140,255,.16)':'rgba(127,150,170,.12)'};color:${dp?'#b48cff':'var(--dim)'}">${dp?'DEEP':'STD'}</span>
+            <span style="margin-left:auto;font-size:10.5px;font-weight:800;padding:2px 10px;border-radius:999px;background:${cc}22;color:${cc}">${pvE(c.call||'—')}</span></div>
+          <div style="font-size:10px;color:var(--dim);margin-top:5px">${pvE(c.region)} · ${pvE(c.frame_label||c.frame||'')} · <b style="color:var(--ink)">${pvE(c.q||'')} ${pvTL(c.type)}</b> · ${pvE(c.made_on||'')} · 문서 ${c.ndocs}건</div>
+          <div style="font-size:11px;margin-top:5px;font-family:var(--mono)">업사이드 base <b style="color:${c.upside>0?'#59d0a8':'#ff6b7d'}">${pvPct(c.upside)}</b> <span style="color:var(--dim)">· priced-in ${c.priced!=null?pvE(c.priced)+'%':'—'}${c.base!=null?' · 예측 '+pvN(c.base)+' '+pvE(c.unit||''):''}</span></div>
+          ${c.one_liner?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.55">${pvE(pvCut(c.one_liner,95))}</div>`:''}</div>`;}).join('')}</div>`;
+    if(pvList.length>pvMax){
+      html+=`<div style="text-align:center;margin-bottom:14px"><span data-pvmore="1" style="cursor:pointer;user-select:none;font-size:11px;font-weight:800;padding:5px 16px;border-radius:999px;border:1px solid var(--line);color:#4ea1ff">+ 더 보기 <span style="color:var(--dim);font-weight:400">${pvList.length-pvMax}사 남음</span></span></div>`;
+    }
+    // --- 선택 기업 문서(lazy) ---
     let PVD=null, pvChN=[];
-    if(PVC){
+    const pvSel=(ST.pvco&&PVCOS[ST.pvco])?ST.pvco:null;
+    const pvEnt=pvSel?pvLoad(pvSel):null;
+    if(!pvSel){
+      html+=`<div class="panel" style="padding:12px 14px;margin-bottom:12px;font-size:11.5px;color:var(--dim)">👆 기업 카드를 클릭하면 그 기업의 문서 전문(판정·전략·프록시·차트·MD 원문)을 <b style="color:var(--ink);font-family:var(--mono)">data_preview/&lt;티커&gt;.json</b> 에서 불러옵니다 — 인덱스에는 카드 요약만 담겨 있습니다.</div>`;
+    } else if(pvEnt.st==='err'){
+      const sc=pvCo(pvSel)||{};
+      html+=`<div class="panel" style="border-left:3px solid #ff6b7d;margin-bottom:12px;padding:11px 14px;font-size:11.5px">
+        ⚠️ <b>${pvE(sc.name)}</b> 문서를 불러오지 못했습니다 <span style="color:var(--dim)">(${pvE(pvEnt.msg||'')})</span>
+        <div style="font-size:10.5px;color:var(--dim);margin-top:4px">경로 <span style="font-family:var(--mono)">${pvE(pvFile(pvSel))}</span> — 배포 직후이거나 오프라인이면 잠시 후 다시 시도하세요.</div>
+        <span data-pvretry="${pvE(pvSel)}" style="display:inline-block;margin-top:7px;cursor:pointer;user-select:none;font-size:11px;font-weight:800;padding:4px 13px;border-radius:999px;border:1px solid #4ea1ff;color:#4ea1ff">다시 시도</span></div>`;
+    } else if(pvEnt.st!=='ok'){
+      const sc=pvCo(pvSel)||{};
+      html+=`<div class="panel" style="margin-bottom:12px;padding:11px 14px;font-size:11.5px;color:var(--dim)">⏳ <b style="color:var(--ink)">${pvE(sc.name)}</b> 문서 불러오는 중… <span style="font-family:var(--mono);font-size:10px">${pvE(pvFile(pvSel))}</span></div>`;
+    } else {
+      const PVC=pvEnt.d||{};
       const docs=PVC.docs||{}, arc=PVC.archive||[];
       const sel=String(ST.pvdoc||'').split('|');
-      let dk=(sel[0]===ST.pvco&&docs[sel[1]])?sel[1]:((PVC.head||{}).key);
+      let dk=(sel[0]===ST.pvco&&docs[sel[1]])?sel[1]:(PVC.head_key||((arc[0]||{}).q+'_'+(arc[0]||{}).type));
       if(!docs[dk]) dk=Object.keys(docs)[0];
       const D=docs[dk]||{}; PVD=D;
       const lat=PVC.latest||{};
@@ -1595,8 +1651,15 @@ function renderKpi(){
       if(D.disclaimer) html+=`<div class="panel" style="padding:9px 14px;margin-bottom:12px;font-size:10.5px;color:var(--dim)">${pvE(D.disclaimer)}</div>`;
     }
     setTimeout(()=>{
-      document.querySelectorAll('[data-pvco]').forEach(el=>el.onclick=()=>{ST.pvco=el.getAttribute('data-pvco');ST.pvdoc=null;renderKpi();window.scrollTo(0,0);});
+      document.querySelectorAll('[data-pvreg]').forEach(el=>el.onclick=()=>{ST.pvreg=el.getAttribute('data-pvreg');ST.pvmax=PVPAGE;renderKpi();window.scrollTo(0,0);});
+      document.querySelectorAll('[data-pvmore]').forEach(el=>el.onclick=()=>{ST.pvmax=(ST.pvmax||PVPAGE)+PVPAGE;renderKpi();});
+      document.querySelectorAll('[data-pvco]').forEach(el=>el.onclick=()=>{ST.pvco=el.getAttribute('data-pvco');ST.pvdoc=null;pvLoad(ST.pvco);renderKpi();window.scrollTo(0,0);});
       document.querySelectorAll('[data-pvdoc]').forEach(el=>el.onclick=()=>{ST.pvdoc=ST.pvco+'|'+el.getAttribute('data-pvdoc');renderKpi();});
+      document.querySelectorAll('[data-pvretry]').forEach(el=>el.onclick=()=>{PVCACHE.delete(el.getAttribute('data-pvretry'));renderKpi();});
+      const sb=document.getElementById('pvSearch');
+      if(sb){ sb.value=ST.pvq||'';
+        sb.oninput=()=>{ST.pvq=sb.value;ST.pvmax=PVPAGE;renderKpi();
+          const nb=document.getElementById('pvSearch'); if(nb){nb.focus();const p=nb.value.length;try{nb.setSelectionRange(p,p);}catch(e){}}}; }
       if(!PVD) return;
       pvChN.forEach((n,i)=>{const el=document.getElementById('pvCh'+i); if(!el) return;
         const cc=(PVD.charts||{})[n]||{}; const labels=cc.labels||[]; const S=cc.series||{}; const names=Object.keys(S);
