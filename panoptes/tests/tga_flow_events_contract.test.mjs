@@ -197,8 +197,12 @@ assert.equal(bad(v => { v.net_liquidity_contract.tga_increase_mechanical_effect 
 assert.equal(bad(v => { v.release_watch_policy.quarter_end_assumption_is_cap = true; }), null);
 assert.equal(bad(v => { v.release_watch_policy.reference_overshoot_alone_confirms_release = true; }), null);
 assert.equal(bad(v => { v.release_watch_policy.positive_liquidity_effect_before_confirmation = true; }), null);
+assert.equal(bad(v => { v.release_watch_policy.confirmation_requires_any = ['anything']; }), null);
+assert.equal(bad(v => { v.treasury_context.cash_balance_reference.reference_date = '2026-99-30'; }), null);
+assert.equal(bad(v => { v.treasury_context.cash_balance_reference.value = -1; }), null);
 assert.equal(bad(v => { v.sources[0].source_url = 'https://example.com/form.pdf'; }), null);
 assert.equal(bad(v => { v.sources[0].content_sha256 = 'bad'; }), null);
+assert.equal(bad(v => { v.sources[0].source_published_date = '2099-01-01'; }), null);
 assert.equal(bad(v => { v.events[2].cash_flow_context.net_liquidity_proxy_effect = 'injection'; }), null);
 assert.equal(
   bad(v => { v.events[2].interpretation.positive_effect_allowed_without_observed_offset_or_drawdown = true; }),

@@ -94,12 +94,28 @@
         release.reference_overshoot_alone_confirms_release !== false ||
         release.positive_liquidity_effect_before_confirmation !== false ||
         !Array.isArray(release.confirmation_requires_any) || !release.confirmation_requires_any.length) return null;
+    var confirmationSet = {};
+    release.confirmation_requires_any.forEach(function (condition) {
+      confirmationSet[condition] = true;
+    });
+    if (Object.keys(confirmationSet).length !== 3 ||
+        !confirmationSet.subsequent_observed_tga_drawdown ||
+        !confirmationSet.official_treasury_outflow_or_net_financing_evidence_implying_drawdown ||
+        !confirmationSet.verified_federal_reserve_offset_or_observed_reserve_replenishment) return null;
     var treasury = raw.treasury_context;
+    var cashReference = isObject(treasury) ? treasury.cash_balance_reference : null;
     if (!isObject(treasury) || !isObject(treasury.cash_balance_reference) ||
-        treasury.cash_balance_reference.semantic !== 'treasury_assumption_not_cap') return null;
+        cashReference.semantic !== 'treasury_assumption_not_cap' ||
+        !validDate(cashReference.reference_date) || cashReference.unit !== 'billion_usd' ||
+        !Number.isFinite(Number(cashReference.value)) || Number(cashReference.value) < 0 ||
+        Number(cashReference.value) > 5000) return null;
     if (!Array.isArray(raw.sources) || !Array.isArray(raw.events) || !raw.events.length) return null;
     var normalizedSources = raw.sources.map(function (source) {
       if (!isObject(source)) return null;
+      if (source.source_published_date !== 'UNKNOWN' && !validDate(source.source_published_date)) return null;
+      if (source.source_updated_date !== 'UNKNOWN' && !validDate(source.source_updated_date)) return null;
+      if (validDate(source.source_published_date) && source.source_published_date > raw.collected_at.slice(0, 10)) return null;
+      if (validDate(source.source_updated_date) && source.source_updated_date > raw.collected_at.slice(0, 10)) return null;
       return {
         source_id: source.source_id,
         source_url: source.source_url,
