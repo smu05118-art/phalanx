@@ -386,20 +386,60 @@
       if (isObject(targets.current)) rows.push(targets.current);
       if (isObject(targets.next)) rows.push(targets.next);
     }
-    return rows.filter(function (row) {
-      return isObject(row) && validDate(row.target_date) && Number.isFinite(Number(row.value));
-    }).map(function (row) {
-      return { target_date: row.target_date, value_billion_usd: Number(row.value) };
-    }).sort(function (a, b) { return a.target_date.localeCompare(b.target_date); });
+    var normalized = [];
+    for (var i = 0; i < rows.length; i++) {
+      var value = isObject(rows[i]) ? Number(rows[i].value) : NaN;
+      if (!isObject(rows[i]) || !validDate(rows[i].target_date) ||
+          !Number.isFinite(value) || value <= 0 || value > 5000) return null;
+      normalized.push({ target_date: rows[i].target_date, value_billion_usd: value });
+    }
+    return normalized.sort(function (a, b) { return a.target_date.localeCompare(b.target_date); });
   }
 
-  function observationOn(series, observationDate, asOf, nowDate) {
-    if (!isObject(series) || !validDate(observationDate) ||
-        observationDate > asOf || observationDate > nowDate) return null;
-    var value = Number(series[observationDate]);
-    return Number.isFinite(value)
-      ? { observation_date: observationDate, value_billion_usd: value }
-      : null;
+  function mergedTargetInputs(targets, canonicalReference) {
+    var rows = targetRows(targets), byDate = {}, result = [];
+    if (!rows) return null;
+    for (var i = 0; i < rows.length; i++) {
+      if (byDate[rows[i].target_date] != null &&
+          byDate[rows[i].target_date] !== rows[i].value_billion_usd) return null;
+      byDate[rows[i].target_date] = rows[i].value_billion_usd;
+    }
+    if (isObject(canonicalReference) && validDate(canonicalReference.reference_date) &&
+        Number.isFinite(Number(canonicalReference.value))) {
+      var referenceValue = Number(canonicalReference.value);
+      if (byDate[canonicalReference.reference_date] != null &&
+          byDate[canonicalReference.reference_date] !== referenceValue) return null;
+      byDate[canonicalReference.reference_date] = referenceValue;
+    }
+    Object.keys(byDate).sort().forEach(function (targetDate) {
+      result.push({ target_date: targetDate, value: byDate[targetDate] });
+    });
+    return { assumptions: result };
+  }
+
+  /* Weekly H.4.1 observations can miss a calendar quarter-end.  Use only the
+   * nearest prior observation, within six calendar days (one weekly cadence), and expose the lag.
+   * Never use a post-target observation as if it were the target-date balance.
+   */
+  function targetAnchor(series, targetDate, asOf, nowDate) {
+    if (!isObject(series) || !validDate(targetDate) ||
+        targetDate > asOf || targetDate > nowDate) return null;
+    var keys = Object.keys(series).sort(), chosen = null;
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i], value = Number(series[key]);
+      if (!validDate(key) || key > targetDate || key > asOf || key > nowDate ||
+          !Number.isFinite(value)) continue;
+      var lag = dayDiff(targetDate, key);
+      if (lag >= 0 && lag <= 6) {
+        chosen = {
+          observation_date: key,
+          value_billion_usd: value,
+          target_observation_role: lag === 0 ? 'EXACT_TARGET_DATE' : 'PRIOR_WEEKLY_PROXY',
+          target_observation_lag_days: lag
+        };
+      }
+    }
+    return chosen;
   }
 
   function hasPostTargetDrawdown(series, targetDate, anchorValue, asOf, nowDate) {
@@ -413,59 +453,51 @@
     return false;
   }
 
+  function releaseEvidenceConfirmed(evidence, targetDate, asOf, nowDate) {
+    if (!isObject(evidence) || evidence.target_date !== targetDate ||
+        !validDate(evidence.observation_date) || evidence.observation_date < targetDate ||
+        evidence.observation_date > asOf || evidence.observation_date > nowDate ||
+        !validSha(evidence.source_sha256)) return false;
+    var host = hostOf(evidence.source_url);
+    if (evidence.evidence_type === 'official_treasury_net_withdrawal') {
+      return host === 'home.treasury.gov' || host === 'fiscaldata.treasury.gov' ||
+        host === 'api.fiscaldata.treasury.gov';
+    }
+    if (evidence.evidence_type === 'verified_federal_reserve_offset' ||
+        evidence.evidence_type === 'observed_reserve_replenishment') {
+      return host === 'www.federalreserve.gov' || host === 'federalreserve.gov';
+    }
+    return false;
+  }
+
+  function anchorLabel(anchor) {
+    return anchor.target_observation_lag_days === 0
+      ? '분기말 기준일 관측'
+      : '분기말 직전 ' + yymmdd(anchor.observation_date) + ' 관측(' +
+        anchor.target_observation_lag_days + '일 시차)';
+  }
+
   function targetAssessment(observation, targets, releaseEvidence, series, asOf, nowDate) {
     if (!observation) return {
       status: 'OBSERVATION_MISSING', release_status: 'NOT_EVALUATED',
       note_ko: 'TGA 관측값이 없어 분기말 가정 비교를 보류합니다.'
     };
     var rows = targetRows(targets);
-    if (!rows.length) return {
+    if (!rows || !rows.length) return {
       status: 'ASSUMPTION_MISSING', release_status: 'NOT_EVALUATED',
       note_ko: '유효한 재무부 분기말 현금잔고 가정이 없어 비교를 보류합니다.'
     };
     asOf = validDate(asOf) ? asOf : observation.observation_date;
     nowDate = validDate(nowDate) ? nowDate : asOf;
-    var exact = null, next = null, previous = null;
+    var active = null, next = null;
     for (var i = 0; i < rows.length; i++) {
-      if (rows[i].target_date === observation.observation_date) exact = rows[i];
-      if (!next && rows[i].target_date >= observation.observation_date) next = rows[i];
-      if (rows[i].target_date < observation.observation_date) previous = rows[i];
+      if (rows[i].target_date <= asOf) active = rows[i];
+      else if (!next) next = rows[i];
     }
-    var evidence = isObject(releaseEvidence) ? releaseEvidence : {};
-    var priorAnchor = previous
-      ? observationOn(series, previous.target_date, asOf, nowDate)
-      : null;
-    if (!exact && previous && priorAnchor &&
-        priorAnchor.value_billion_usd > previous.value_billion_usd) {
-      var priorGap = priorAnchor.value_billion_usd - previous.value_billion_usd;
-      var observedPostTargetDrawdown = hasPostTargetDrawdown(
-        series, previous.target_date, priorAnchor.value_billion_usd, asOf, nowDate
-      );
-      var priorRelease = evidence.observed_tga_drawdown === true ||
-        evidence.dts_net_withdrawals_observed === true ||
-        evidence.verified_federal_reserve_offset === true ||
-        evidence.observed_reserve_replenishment === true || observedPostTargetDrawdown;
-      return {
-        status: 'ABOVE_ASSUMPTION_WATCH',
-        release_status: priorRelease ? 'RELEASE_CONFIRMED' : 'RELEASE_EVIDENCE_PENDING',
-        target_date: previous.target_date,
-        target_value_billion_usd: previous.value_billion_usd,
-        target_date_observation_billion_usd: priorAnchor.value_billion_usd,
-        latest_observation_date: observation.observation_date,
-        latest_observation_billion_usd: observation.value_billion_usd,
-        distance_billion_usd: priorGap,
-        note_ko: priorRelease
-          ? '분기말 가정 상회 뒤 실제 TGA 감소·DTS 순인출·Fed 상쇄 중 하나가 확인됐습니다.'
-          : '분기말 가정 상회 WATCH가 유지 중이며 TGA 감소·DTS 순인출·Fed 상쇄 확인이 필요합니다.'
-      };
-    }
-    if (!exact) {
+    if (!active) {
       if (!next) return {
-        status: previous && !priorAnchor ? 'POST_TARGET_ANCHOR_MISSING' : 'NO_ACTIVE_ASSUMPTION',
-        release_status: 'NOT_EVALUATED',
-        note_ko: previous && !priorAnchor
-          ? '분기말 기준일의 TGA 관측값이 없어 상회·방출 판정을 보류합니다.'
-          : '관측일 이후의 유효한 분기말 가정이 없습니다.'
+        status: 'NO_ACTIVE_ASSUMPTION', release_status: 'NOT_EVALUATED',
+        note_ko: '관측일 이후의 유효한 분기말 가정이 없습니다.'
       };
       var distance = observation.value_billion_usd - next.value_billion_usd;
       return {
@@ -475,25 +507,46 @@
         note_ko: '분기말 전 비교는 거리만 표시하며 상회 판정이나 방출 신호를 내지 않습니다.'
       };
     }
-    var gap = observation.value_billion_usd - exact.value_billion_usd;
+    var anchor = targetAnchor(series, active.target_date, asOf, nowDate);
+    if (!anchor) return {
+      status: 'POST_TARGET_ANCHOR_MISSING', release_status: 'NOT_EVALUATED',
+      target_date: active.target_date, target_value_billion_usd: active.value_billion_usd,
+      note_ko: '분기말 기준일 또는 직전 6일 이내의 TGA 관측값이 없어 판정을 보류합니다.'
+    };
+    var gap = anchor.value_billion_usd - active.value_billion_usd;
+    var anchorFields = {
+      target_observation_date: anchor.observation_date,
+      target_observation_role: anchor.target_observation_role,
+      target_observation_lag_days: anchor.target_observation_lag_days,
+      target_date_observation_billion_usd: anchor.value_billion_usd
+    };
     if (gap <= 0) return {
       status: 'AT_OR_BELOW_ASSUMPTION', release_status: 'NO_RELEASE_WATCH',
-      target_date: exact.target_date, target_value_billion_usd: exact.value_billion_usd,
+      target_date: active.target_date, target_value_billion_usd: active.value_billion_usd,
+      target_observation_date: anchorFields.target_observation_date,
+      target_observation_role: anchorFields.target_observation_role,
+      target_observation_lag_days: anchorFields.target_observation_lag_days,
+      target_date_observation_billion_usd: anchorFields.target_date_observation_billion_usd,
       distance_billion_usd: gap,
-      note_ko: '동일 기준일의 분기말 가정과 같거나 낮습니다.'
+      note_ko: anchorLabel(anchor) + '이 분기말 가정과 같거나 낮습니다.'
     };
-    var observedRelease = evidence.observed_tga_drawdown === true ||
-      evidence.dts_net_withdrawals_observed === true ||
-      evidence.verified_federal_reserve_offset === true ||
-      evidence.observed_reserve_replenishment === true;
+    var observedRelease = hasPostTargetDrawdown(
+      series, active.target_date, anchor.value_billion_usd, asOf, nowDate
+    ) || releaseEvidenceConfirmed(releaseEvidence, active.target_date, asOf, nowDate);
     return {
       status: 'ABOVE_ASSUMPTION_WATCH',
       release_status: observedRelease ? 'RELEASE_CONFIRMED' : 'RELEASE_EVIDENCE_PENDING',
-      target_date: exact.target_date, target_value_billion_usd: exact.value_billion_usd,
+      target_date: active.target_date, target_value_billion_usd: active.value_billion_usd,
+      target_observation_date: anchorFields.target_observation_date,
+      target_observation_role: anchorFields.target_observation_role,
+      target_observation_lag_days: anchorFields.target_observation_lag_days,
+      target_date_observation_billion_usd: anchorFields.target_date_observation_billion_usd,
+      latest_observation_date: observation.observation_date,
+      latest_observation_billion_usd: observation.value_billion_usd,
       distance_billion_usd: gap,
       note_ko: observedRelease
-        ? '분기말 가정 상회 뒤 TGA 감소·DTS 순인출·Fed 상쇄 중 하나가 확인됐습니다.'
-        : '분기말 가정 상회는 WATCH일 뿐이며 TGA 감소·DTS 순인출·Fed 상쇄 확인이 필요합니다.'
+        ? anchorLabel(anchor) + ' 상회 뒤 TGA 감소·공식 DTS 순인출·Fed 상쇄 중 하나가 확인됐습니다.'
+        : anchorLabel(anchor) + ' 상회는 WATCH일 뿐이며 TGA 감소·공식 DTS 순인출·Fed 상쇄 확인이 필요합니다.'
     };
   }
 
@@ -526,14 +579,10 @@
     if (!model) return null;
     var eventState = relevantEvent(model, asOf);
     var tga = latestTga(context.tga_series, asOf, nowDate);
-    var targets = context.tga_targets;
-    if (!targets && model.canonical && model.canonical.treasury_context) {
-      var reference = model.canonical.treasury_context.cash_balance_reference;
-      if (isObject(reference) && validDate(reference.reference_date) &&
-          Number.isFinite(Number(reference.value))) {
-        targets = { assumptions: [{ target_date: reference.reference_date, value: Number(reference.value) }] };
-      }
-    }
+    var reference = model.canonical && model.canonical.treasury_context
+      ? model.canonical.treasury_context.cash_balance_reference : null;
+    var targets = mergedTargetInputs(context.tga_targets, reference);
+    if (!targets) return null;
     var assessment = targetAssessment(
       tga.observation, targets, context.release_evidence, context.tga_series, asOf, nowDate
     );

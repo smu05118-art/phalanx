@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -96,6 +97,11 @@ class PublicCollectorTests(unittest.TestCase):
             ["260415", "260615", "260915", "261215", "270115"],
         )
         self.assertEqual(len(context["sources"]), 6)
+        payloads = fixture_payloads()
+        self.assertEqual(
+            context["sources"][0]["content_sha256"],
+            hashlib.sha256(payloads["irs_publication_509_2026_html"]).hexdigest(),
+        )
         updater.validate_contract(context)
 
     def test_september_scope_and_treasury_semantics_are_conditional(self) -> None:

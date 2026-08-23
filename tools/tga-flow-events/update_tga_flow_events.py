@@ -479,7 +479,6 @@ def event_row(
 def source_records(
     pages: Sequence[FetchedSource],
     treasury: Mapping[str, Any],
-    text_by_id: Mapping[str, str],
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for page in pages:
@@ -496,12 +495,9 @@ def source_records(
                 "source_role": spec.source_role,
                 "source_url": spec.url,
                 "media_type": "text/html",
-                # Hash normalized visible source content. Official Drupal pages
-                # contain request-variant markup, so raw HTML hashes would
-                # create commits with no evidence change.
-                "content_sha256": hashlib.sha256(
-                    (text_by_id[page.source_id] + "\n").encode("utf-8")
-                ).hexdigest(),
+                # Same semantics as the canonical Atlas producer: hash the
+                # exact retrieved source bytes, not parsed/normalized text.
+                "content_sha256": hashlib.sha256(page.payload).hexdigest(),
                 "source_published_date": published,
                 "source_published_date_label": (
                     yymmdd(date.fromisoformat(published))
@@ -657,7 +653,7 @@ def build_context(
             "positive_liquidity_effect_before_confirmation": False,
             "display_ko": "재무부 현금가정은 상한이 아닙니다. 상회만으로 방출을 확정하지 않고, 이후 실제 TGA 감소·공식 지출/조달 근거·Fed 상쇄를 확인합니다.",
         },
-        "sources": source_records(pages, treasury, text),
+        "sources": source_records(pages, treasury),
     }
     validate_contract(result)
     return result

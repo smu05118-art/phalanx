@@ -102,14 +102,14 @@ assert.equal(exactWatch.target_assessment.release_status, 'RELEASE_EVIDENCE_PEND
 assert.equal(exactWatch.target_assessment.distance_billion_usd, 25);
 assert.match(exactWatch.target_assessment.note_ko, /WATCH일 뿐/);
 
-const confirmed = api.interpret(config, {
+const unscopedEvidenceRejected = api.interpret(config, {
   as_of_date: '2026-09-30',
   now_date: '2026-09-30',
   tga_series: { '2026-09-30': 975 },
   tga_targets: { assumptions: [{ target_date: '2026-09-30', value: 950 }] },
   release_evidence: { observed_tga_drawdown: true }
 });
-assert.equal(confirmed.target_assessment.release_status, 'RELEASE_CONFIRMED');
+assert.equal(unscopedEvidenceRejected.target_assessment.release_status, 'RELEASE_EVIDENCE_PENDING');
 
 const confirmedBySubsequentObservation = api.interpret(config, {
   as_of_date: '2026-10-07',
@@ -143,9 +143,43 @@ const confirmedByFedOffset = api.interpret(config, {
   now_date: '2026-09-30',
   tga_series: { '2026-09-30': 975 },
   tga_targets: { assumptions: [{ target_date: '2026-09-30', value: 950 }] },
-  release_evidence: { verified_federal_reserve_offset: true }
+  release_evidence: {
+    target_date: '2026-09-30',
+    observation_date: '2026-09-30',
+    evidence_type: 'verified_federal_reserve_offset',
+    source_url: 'https://www.federalreserve.gov/releases/h41/current/',
+    source_sha256: 'a'.repeat(64)
+  }
 });
 assert.equal(confirmedByFedOffset.target_assessment.release_status, 'RELEASE_CONFIRMED');
+
+const futureEvidenceRejected = api.interpret(config, {
+  as_of_date: '2026-09-30',
+  now_date: '2026-09-30',
+  tga_series: { '2026-09-30': 975 },
+  release_evidence: {
+    target_date: '2026-09-30',
+    observation_date: '2099-01-01',
+    evidence_type: 'official_treasury_net_withdrawal',
+    source_url: 'https://fiscaldata.treasury.gov/datasets/daily-treasury-statement/',
+    source_sha256: 'b'.repeat(64)
+  }
+});
+assert.equal(futureEvidenceRejected.target_assessment.release_status, 'RELEASE_EVIDENCE_PENDING');
+
+const wrongQuarterEvidenceRejected = api.interpret(config, {
+  as_of_date: '2026-09-30',
+  now_date: '2026-09-30',
+  tga_series: { '2026-09-30': 975 },
+  release_evidence: {
+    target_date: '2026-12-31',
+    observation_date: '2026-09-30',
+    evidence_type: 'verified_federal_reserve_offset',
+    source_url: 'https://www.federalreserve.gov/releases/h41/current/',
+    source_sha256: 'c'.repeat(64)
+  }
+});
+assert.equal(wrongQuarterEvidenceRejected.target_assessment.release_status, 'RELEASE_EVIDENCE_PENDING');
 
 const pendingAfterTarget = api.interpret(config, {
   as_of_date: '2026-10-07',
@@ -155,6 +189,61 @@ const pendingAfterTarget = api.interpret(config, {
 });
 assert.equal(pendingAfterTarget.target_assessment.status, 'ABOVE_ASSUMPTION_WATCH');
 assert.equal(pendingAfterTarget.target_assessment.release_status, 'RELEASE_EVIDENCE_PENDING');
+
+const retainedCanonicalQuarterWatch = api.interpret(config, {
+  as_of_date: '2026-10-07',
+  now_date: '2026-10-07',
+  tga_series: { '2026-09-30': 975, '2026-10-07': 980 },
+  tga_targets: { assumptions: [{ target_date: '2026-12-31', value: 850 }] }
+});
+assert.equal(retainedCanonicalQuarterWatch.target_assessment.target_date, '2026-09-30');
+assert.equal(retainedCanonicalQuarterWatch.target_assessment.release_status, 'RELEASE_EVIDENCE_PENDING');
+
+const q4PriorWeeklyProxy = api.interpret(config, {
+  as_of_date: '2026-12-31',
+  now_date: '2026-12-31',
+  tga_series: { '2026-12-30': 875 },
+  tga_targets: { assumptions: [{ target_date: '2026-12-31', value: 850 }] }
+});
+assert.equal(q4PriorWeeklyProxy.target_assessment.status, 'ABOVE_ASSUMPTION_WATCH');
+assert.equal(q4PriorWeeklyProxy.target_assessment.release_status, 'RELEASE_EVIDENCE_PENDING');
+assert.equal(q4PriorWeeklyProxy.target_assessment.target_observation_date, '2026-12-30');
+assert.equal(q4PriorWeeklyProxy.target_assessment.target_observation_role, 'PRIOR_WEEKLY_PROXY');
+assert.equal(q4PriorWeeklyProxy.target_assessment.target_observation_lag_days, 1);
+assert.match(q4PriorWeeklyProxy.target_assessment.note_ko, /1일 시차/);
+
+const tuesdayQuarterEndProxy = api.targetAssessment(
+  { observation_date: '2026-03-25', value_billion_usd: 975 },
+  { assumptions: [{ target_date: '2026-03-31', value: 950 }] },
+  null,
+  { '2026-03-25': 975 },
+  '2026-03-31',
+  '2026-03-31'
+);
+assert.equal(tuesdayQuarterEndProxy.status, 'ABOVE_ASSUMPTION_WATCH');
+assert.equal(tuesdayQuarterEndProxy.target_observation_role, 'PRIOR_WEEKLY_PROXY');
+assert.equal(tuesdayQuarterEndProxy.target_observation_lag_days, 6);
+
+const q4ProxyRelease = api.interpret(config, {
+  as_of_date: '2027-01-06',
+  now_date: '2027-01-06',
+  tga_series: { '2026-12-30': 875, '2027-01-06': 830 },
+  tga_targets: { assumptions: [{ target_date: '2026-12-31', value: 850 }] }
+});
+assert.equal(q4ProxyRelease.target_assessment.release_status, 'RELEASE_CONFIRMED');
+
+assert.equal(api.interpret(config, {
+  as_of_date: '2026-08-23',
+  now_date: '2026-08-23',
+  tga_series: { '2026-08-19': 953.61 },
+  tga_targets: { assumptions: [{ target_date: '2026-09-30', value: 951 }] }
+}), null, 'conflicting official assumptions must fail closed');
+assert.equal(api.interpret(config, {
+  as_of_date: '2026-08-23',
+  now_date: '2026-08-23',
+  tga_series: { '2026-08-19': 953.61 },
+  tga_targets: { assumptions: [{ target_date: '2026-12-31', value: -1 }] }
+}), null, 'malformed target inputs must fail closed');
 
 const canonicalReferenceFallback = api.interpret(config, {
   as_of_date: '2026-08-23',
@@ -230,12 +319,18 @@ assert.match(html, /Treasury/);
 assert.doesNotMatch(html, /persona_lenses/);
 const inputs = bridge.contextInputs({
   tga_targets: { assumptions: [] },
-  tga_release_evidence: { dts_net_withdrawals_observed: true },
+  tga_release_evidence: {
+    target_date: '2026-09-30',
+    observation_date: '2026-10-01',
+    evidence_type: 'official_treasury_net_withdrawal',
+    source_url: 'https://fiscaldata.treasury.gov/datasets/daily-treasury-statement/',
+    source_sha256: 'd'.repeat(64)
+  },
   sections: { funding: { series: { TGA: { '2026-08-19': 953.61 } }, references: {} } }
 });
 assert.equal(inputs.tga_series['2026-08-19'], 953.61);
 assert.deepEqual(inputs.tga_targets, { assumptions: [] });
-assert.deepEqual(inputs.release_evidence, { dts_net_withdrawals_observed: true });
+assert.equal(inputs.release_evidence.evidence_type, 'official_treasury_net_withdrawal');
 assert.match(bridge.qualityBlockHtml('2026-08-24', '2026-08-23'), /입력 품질 차단/);
 assert.match(bridge.qualityBlockHtml('<script>', '2026-08-23'), /&lt;script&gt;/);
 
