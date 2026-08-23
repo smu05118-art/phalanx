@@ -126,6 +126,27 @@ assert.equal(confirmedBySubsequentObservation.target_assessment.status, 'ABOVE_A
 assert.equal(confirmedBySubsequentObservation.target_assessment.release_status, 'RELEASE_CONFIRMED');
 assert.equal(confirmedBySubsequentObservation.target_assessment.target_date, '2026-09-30');
 
+const confirmedByIntermediateDrawdown = api.interpret(config, {
+  as_of_date: '2026-10-14',
+  now_date: '2026-10-14',
+  tga_series: {
+    '2026-09-30': 975,
+    '2026-10-07': 930,
+    '2026-10-14': 980
+  },
+  tga_targets: { assumptions: [{ target_date: '2026-09-30', value: 950 }] }
+});
+assert.equal(confirmedByIntermediateDrawdown.target_assessment.release_status, 'RELEASE_CONFIRMED');
+
+const confirmedByFedOffset = api.interpret(config, {
+  as_of_date: '2026-09-30',
+  now_date: '2026-09-30',
+  tga_series: { '2026-09-30': 975 },
+  tga_targets: { assumptions: [{ target_date: '2026-09-30', value: 950 }] },
+  release_evidence: { verified_federal_reserve_offset: true }
+});
+assert.equal(confirmedByFedOffset.target_assessment.release_status, 'RELEASE_CONFIRMED');
+
 const pendingAfterTarget = api.interpret(config, {
   as_of_date: '2026-10-07',
   now_date: '2026-10-07',
@@ -205,10 +226,12 @@ assert.match(html, /Treasury/);
 assert.doesNotMatch(html, /persona_lenses/);
 const inputs = bridge.contextInputs({
   tga_targets: { assumptions: [] },
+  tga_release_evidence: { dts_net_withdrawals_observed: true },
   sections: { funding: { series: { TGA: { '2026-08-19': 953.61 } }, references: {} } }
 });
 assert.equal(inputs.tga_series['2026-08-19'], 953.61);
 assert.deepEqual(inputs.tga_targets, { assumptions: [] });
+assert.deepEqual(inputs.release_evidence, { dts_net_withdrawals_observed: true });
 assert.match(bridge.qualityBlockHtml('2026-08-24', '2026-08-23'), /입력 품질 차단/);
 assert.match(bridge.qualityBlockHtml('<script>', '2026-08-23'), /&lt;script&gt;/);
 

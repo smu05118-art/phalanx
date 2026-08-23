@@ -33,11 +33,13 @@
     return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
   }
   function contextInputs(data) {
-    var funding = (((data || {}).sections || {}).funding || {});
+    var source = data || {};
+    var funding = ((source.sections || {}).funding || {});
     var references = funding.references || {};
     return {
       tga_series: (funding.series || {}).TGA || {},
-      tga_targets: references.treasury_cash_balance_assumptions || data.tga_targets || null
+      tga_targets: references.treasury_cash_balance_assumptions || source.tga_targets || null,
+      release_evidence: references.tga_release_evidence || source.tga_release_evidence || null
     };
   }
   function sourceLinks(config, event) {
@@ -162,7 +164,8 @@
           as_of_date: updated,
           now_date: today,
           tga_series: input.tga_series,
-          tga_targets: input.tga_targets
+          tga_targets: input.tga_targets,
+          release_evidence: input.release_evidence
         });
         insertAfterLights(el, interpreted
           ? renderContextHtml(interpreted, model)

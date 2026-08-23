@@ -386,6 +386,17 @@
       : null;
   }
 
+  function hasPostTargetDrawdown(series, targetDate, anchorValue, asOf, nowDate) {
+    if (!isObject(series) || !validDate(targetDate) || !Number.isFinite(anchorValue)) return false;
+    var keys = Object.keys(series);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i], value = Number(series[key]);
+      if (validDate(key) && key > targetDate && key <= asOf && key <= nowDate &&
+          Number.isFinite(value) && value < anchorValue) return true;
+    }
+    return false;
+  }
+
   function targetAssessment(observation, targets, releaseEvidence, series, asOf, nowDate) {
     if (!observation) return {
       status: 'OBSERVATION_MISSING', release_status: 'NOT_EVALUATED',
@@ -411,10 +422,13 @@
     if (!exact && previous && priorAnchor &&
         priorAnchor.value_billion_usd > previous.value_billion_usd) {
       var priorGap = priorAnchor.value_billion_usd - previous.value_billion_usd;
-      var observedPostTargetDrawdown = observation.observation_date > previous.target_date &&
-        observation.value_billion_usd < priorAnchor.value_billion_usd;
+      var observedPostTargetDrawdown = hasPostTargetDrawdown(
+        series, previous.target_date, priorAnchor.value_billion_usd, asOf, nowDate
+      );
       var priorRelease = evidence.observed_tga_drawdown === true ||
-        evidence.dts_net_withdrawals_observed === true || observedPostTargetDrawdown;
+        evidence.dts_net_withdrawals_observed === true ||
+        evidence.verified_federal_reserve_offset === true ||
+        evidence.observed_reserve_replenishment === true || observedPostTargetDrawdown;
       return {
         status: 'ABOVE_ASSUMPTION_WATCH',
         release_status: priorRelease ? 'RELEASE_CONFIRMED' : 'RELEASE_EVIDENCE_PENDING',
@@ -425,8 +439,8 @@
         latest_observation_billion_usd: observation.value_billion_usd,
         distance_billion_usd: priorGap,
         note_ko: priorRelease
-          ? '분기말 가정 상회 뒤 실제 TGA 감소 또는 DTS 순인출이 확인됐습니다.'
-          : '분기말 가정 상회 WATCH가 유지 중이며 실제 TGA 감소 또는 DTS 순인출 확인이 필요합니다.'
+          ? '분기말 가정 상회 뒤 실제 TGA 감소·DTS 순인출·Fed 상쇄 중 하나가 확인됐습니다.'
+          : '분기말 가정 상회 WATCH가 유지 중이며 TGA 감소·DTS 순인출·Fed 상쇄 확인이 필요합니다.'
       };
     }
     if (!exact) {
@@ -453,15 +467,17 @@
       note_ko: '동일 기준일의 분기말 가정과 같거나 낮습니다.'
     };
     var observedRelease = evidence.observed_tga_drawdown === true ||
-      evidence.dts_net_withdrawals_observed === true;
+      evidence.dts_net_withdrawals_observed === true ||
+      evidence.verified_federal_reserve_offset === true ||
+      evidence.observed_reserve_replenishment === true;
     return {
       status: 'ABOVE_ASSUMPTION_WATCH',
       release_status: observedRelease ? 'RELEASE_CONFIRMED' : 'RELEASE_EVIDENCE_PENDING',
       target_date: exact.target_date, target_value_billion_usd: exact.value_billion_usd,
       distance_billion_usd: gap,
       note_ko: observedRelease
-        ? '분기말 가정 상회 뒤 실제 TGA 감소 또는 DTS 순인출이 확인됐습니다.'
-        : '분기말 가정 상회는 WATCH일 뿐이며 실제 TGA 감소 또는 DTS 순인출 확인이 필요합니다.'
+        ? '분기말 가정 상회 뒤 TGA 감소·DTS 순인출·Fed 상쇄 중 하나가 확인됐습니다.'
+        : '분기말 가정 상회는 WATCH일 뿐이며 TGA 감소·DTS 순인출·Fed 상쇄 확인이 필요합니다.'
     };
   }
 
