@@ -187,6 +187,25 @@ header h1 em{color:var(--a1);font-style:normal;}
 </div>
 </header>
 
+<!-- 한국 수출입 (관세청 HS6) — iframe 오버레이. 리전/탭 로직과 분리된 독립 블록. -->
+<div id="krTradeBar" style="display:flex;justify-content:flex-end;padding:2px 12px 0">
+  <button id="krTradeBtn" style="background:linear-gradient(135deg,#123055,#1b4d8a);color:#dcebff;border:1px solid #2f5c93;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">🇰🇷 한국 수출입 (관세청 HS6)</button>
+</div>
+<div id="krTradeOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0b0e14;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #1e2636">
+    <b style="color:#e6ebf5;font-size:13px">한국 수출입 · 관세청 HS6</b>
+    <span style="color:#8a97ad;font-size:11px">총괄 · 분류 · 급등/급락 · 큐레이션 · 기업 확정치</span>
+    <button id="krTradeClose" style="margin-left:auto;background:#1a2333;color:#e6ebf5;border:1px solid #2a3548;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:12px">✕ 닫기</button>
+  </div>
+  <iframe id="krTradeFrame" data-src="korea_trade.html" src="" style="flex:1;border:0;width:100%"></iframe>
+</div>
+<script>
+(function(){var o=document.getElementById('krTradeOverlay'),b=document.getElementById('krTradeBtn'),
+c=document.getElementById('krTradeClose'),f=document.getElementById('krTradeFrame');
+if(b)b.addEventListener('click',function(){if(f&&!f.src)f.src=f.getAttribute('data-src');o.style.display='flex';});
+if(c)c.addEventListener('click',function(){o.style.display='none';});})();
+</script>
+
 <div class="regbar" id="regionRow"></div>
 
 <div class="tabs" id="tabs">
@@ -3012,21 +3031,38 @@ function drawBump(cv,data,lower){
   });
 }
 function catDrill(){
-  const cos=(P.companies||[]).filter(c=>!c.is_hub);
+  // 통일 분류 norm: 대분류(카테고리) ▸ 세부분류(subcategory) ▸ 기업.
+  // 현재 리전+선택 대분류로 스코프 (과거: 전역 P.companies라 타 리전 태그 혼입 버그).
+  const cos=companiesIn(ST.cat).filter(c=>!c.is_hub&&!c._custom);
   if(!cos.length) return '';
+  const cats=regionObj().cats||M.categories;
+  const clabel=id=>{const c=cats.find(x=>x.id===id);return c?c.label:(id||'기타');};
   const byCat={};
-  cos.forEach(c=>{const k=c.subcategory||'기타';(byCat[k]=byCat[k]||[]).push(c);});
-  const ents=Object.entries(byCat).sort((a,b)=>b[1].length-a[1].length);
-  if(ents.length<4) return '';
-  ST.catOpen=ST.catOpen||{};
-  const chips=ents.map(([k,v])=>`<span class="catchip ${ST.catOpen[k]?'on':''}" data-cat="${k}">${k}<em>${v.length}</em></span>`).join('');
-  const open=ents.filter(([k])=>ST.catOpen[k]).map(([k,v])=>{
-    const rows=v.slice(0,80).map(c=>`<span class="catco" data-cid="${c.id}">${c.name}<i>${(c.ticker||'').split(' ')[0]}</i></span>`).join('');
-    return `<div class="catbox"><b>${k}</b> <span style="color:#8a90a8;font-size:11px">${v.length}사${v.length>80?' (상위 80 표시)':''}</span><div class="catlist">${rows}</div></div>`;}).join('');
-  return `<div class="catwrap"><div class="cattitle">산업 세부분류 <span style="color:#8a90a8;font-weight:500">— 클릭하면 소속 기업이 펼쳐집니다 (${ents.length}분류)</span></div>
-    <div class="catchips">${chips}</div>${open}</div>
+  cos.forEach(c=>{const ck=c.category||'기타',sk=c.subcategory||'기타';
+    const b=byCat[ck]=byCat[ck]||{n:0,subs:{}};b.n++;(b.subs[sk]=b.subs[sk]||[]).push(c);});
+  const catEnts=Object.entries(byCat).sort((a,b)=>b[1].n-a[1].n);
+  const totalSubs=new Set(cos.map(c=>c.subcategory||'기타')).size;
+  if(totalSubs<4) return '';
+  ST.catOpen=ST.catOpen||{}; ST.grpOpen=ST.grpOpen||{};
+  const single=ST.cat!=='all';   // 특정 대분류 선택 시 그 세부분류를 바로 펼침
+  const secs=catEnts.map(([ck,b])=>{
+    const open=single||ST.grpOpen[ck];
+    const subEnts=Object.entries(b.subs).sort((a,b)=>b[1].length-a[1].length);
+    const head=single?'':`<div class="catgrp ${open?'on':''}" data-grp="${ck}"><b>${clabel(ck)}</b><em>${b.n}사 · ${subEnts.length}분류</em><i>${open?'▾':'▸'}</i></div>`;
+    if(!open) return head;
+    const chips=subEnts.map(([k,v])=>`<span class="catchip ${ST.catOpen[k]?'on':''}" data-cat="${k}">${k}<em>${v.length}</em></span>`).join('');
+    const boxes=subEnts.filter(([k])=>ST.catOpen[k]).map(([k,v])=>{
+      const rows=v.slice(0,80).map(c=>`<span class="catco" data-cid="${c.id}">${c.name}<i>${(c.ticker||'').split(' ')[0]}</i></span>`).join('');
+      return `<div class="catbox"><b>${k}</b> <span style="color:#8a90a8;font-size:11px">${v.length}사${v.length>80?' (상위 80 표시)':''}</span><div class="catlist">${rows}</div></div>`;}).join('');
+    return head+`<div class="catchips">${chips}</div>${boxes}`;
+  }).join('');
+  return `<div class="catwrap"><div class="cattitle">산업 분류 <span style="color:#8a90a8;font-weight:500">— 대분류 ▸ 세부분류 ▸ 기업 (${catEnts.length}대분류 · ${totalSubs}세부분류)</span></div>${secs}</div>
   <style>.catwrap{margin:0 0 16px}.cattitle{font-size:12px;font-weight:750;margin:0 0 8px}
-  .catchips{display:flex;flex-wrap:wrap;gap:6px}
+  .catgrp{display:flex;align-items:center;gap:9px;padding:7px 12px;margin-top:7px;border:1px solid var(--line,#233038);border-radius:10px;cursor:pointer;font-size:12px}
+  .catgrp:hover{border-color:#2bc0d4}
+  .catgrp.on{background:rgba(43,192,212,.10);border-color:#2bc0d4}
+  .catgrp b{color:#dfe8f0}.catgrp em{font-style:normal;color:#8a90a8;font-size:10.5px}.catgrp i{font-style:normal;margin-left:auto;color:#8a90a8}
+  .catchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
   .catchip{font-size:11.5px;padding:4px 11px;border:1px solid var(--line,#233038);border-radius:999px;cursor:pointer;color:#8a90a8;display:inline-flex;align-items:center;gap:6px}
   .catchip:hover{border-color:#2bc0d4;color:#2bc0d4}
   .catchip.on{background:rgba(43,192,212,.15);color:#2bc0d4;border-color:#2bc0d4;font-weight:700}
@@ -3038,6 +3074,7 @@ function catDrill(){
   .catco i{font-style:normal;font-family:ui-monospace,monospace;font-size:9.5px;color:#8a90a8}</style>`;
 }
 function bindCatDrill(root){
+  root.querySelectorAll('.catgrp').forEach(el=>el.onclick=()=>{const k=el.dataset.grp;ST.grpOpen=ST.grpOpen||{};ST.grpOpen[k]=!ST.grpOpen[k];render();});
   root.querySelectorAll('.catchip').forEach(el=>el.onclick=()=>{const k=el.dataset.cat;ST.catOpen[k]=!ST.catOpen[k];render();});
   root.querySelectorAll('.catco').forEach(el=>el.onclick=()=>{const c=(P.companies||[]).find(x=>x.id===el.dataset.cid);
     if(c){ST.company=c.id;ST.view='detail';render();window.scrollTo(0,0);}});
