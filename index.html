@@ -3042,9 +3042,9 @@ function catDrill(){
     const b=byCat[ck]=byCat[ck]||{n:0,subs:{}};b.n++;(b.subs[sk]=b.subs[sk]||[]).push(c);});
   const catEnts=Object.entries(byCat).sort((a,b)=>b[1].n-a[1].n);
   const totalSubs=new Set(cos.map(c=>c.subcategory||'기타')).size;
-  if(totalSubs<4) return '';
-  ST.catOpen=ST.catOpen||{}; ST.grpOpen=ST.grpOpen||{};
   const single=ST.cat!=='all';   // 특정 대분류 선택 시 그 세부분류를 바로 펼침
+  if(single? totalSubs<2 : totalSubs<4) return '';
+  ST.catOpen=ST.catOpen||{}; ST.grpOpen=ST.grpOpen||{};
   const secs=catEnts.map(([ck,b])=>{
     const open=single||ST.grpOpen[ck];
     const subEnts=Object.entries(b.subs).sort((a,b)=>b[1].length-a[1].length);
