@@ -804,13 +804,16 @@ function renderDCard(div){ const code=div.dataset.code;
   charts['d_'+code]=new Chart(div.querySelector('canvas'),{data:{labels:gLabels(),datasets:dDatasets(code)},options:dOpts()}); }
 
 // ---------- category helpers ----------
-function catLabel(id){ const c=M.categories.find(x=>x.id===id); return c?c.label:id; }
+function catLabel(id){ if(id&&String(id).slice(0,2)==='g:'){const g=(M.catgroups||[]).find(x=>x.id===String(id).slice(2));return g?g.label:id;} const c=M.categories.find(x=>x.id===id); return c?c.label:id; }
 function companiesIn(cat){
   if(cat==='watch'){ const w=getWatch();
     const reals=P.companies.filter(c=>w.stars.indexOf(c.id)>=0 && (c.region||'JP')===ST.region);
     const customs=w.custom.map(c=>Object.assign({_custom:true},c));
     return reals.concat(customs); }
   if(cat==='hubs') return P.companies.filter(c=>(c.region||'JP')===ST.region && c.is_hub);
+  if(cat&&String(cat).slice(0,2)==='g:'){ const g=String(cat).slice(2);
+    const ids=(regionObj().cats||M.categories).filter(c=>c.grp===g).map(c=>c.id);
+    return P.companies.filter(c=>(c.region||'JP')===ST.region && !c.hid && ids.indexOf(c.category)>=0); }
   return P.companies.filter(c=> (c.region||'JP')===ST.region && (cat==='all'? !c.hid : c.category===cat));
 }
 
@@ -1914,9 +1917,26 @@ function renderOverview(){
     `<b>${regionObj().label}</b><span class="sep">›</span><span>${regionObj().sector}</span>`+
     (ST.cat!=='all'?`<span class="sep">›</span><b>${catLabel(ST.cat)}</b>`:'');
   const cr=document.getElementById('catRow'); cr.innerHTML='';
-  (regionObj().cats||M.categories).forEach(c=>{ const n=companiesIn(c.id).length;
-    const el=document.createElement('span'); el.className='pill'+(c.id===ST.cat?' on':'')+(n===0&&c.id!=='all'?' empty':'');
-    el.textContent=c.label+(n?` ${n}`:''); el.onclick=()=>{ST.cat=c.id;ST.ovN=30;render();}; cr.appendChild(el); });
+  const _cats=regionObj().cats||M.categories;
+  const _grps=(M.catgroups||[]).filter(g=>_cats.some(c=>c.grp===g.id));
+  const _mk=(label,on,empty,fn)=>{const el=document.createElement('span');el.className='pill'+(on?' on':'')+(empty?' empty':'');el.textContent=label;el.onclick=fn;cr.appendChild(el);return el;};
+  if(!_grps.length){ /* 자체 cats 리전(TWX/JPC 등): 기존 평면 pill */
+    _cats.forEach(c=>{ const n=companiesIn(c.id).length;
+      _mk(c.label+(n?` ${n}`:''),c.id===ST.cat,n===0&&c.id!=='all',()=>{ST.cat=c.id;ST.ovN=30;render();}); });
+  } else { /* 전역 분류 리전: 대그룹 ▸ 세부 2단 pill */
+    const _isG=String(ST.cat||'').slice(0,2)==='g:';
+    const _curGrp=_isG?String(ST.cat).slice(2):((_cats.find(c=>c.id===ST.cat)||{}).grp||null);
+    const nAll=companiesIn('all').length;
+    _mk('All'+(nAll?` ${nAll}`:''),ST.cat==='all',false,()=>{ST.cat='all';ST.ovN=30;render();});
+    _grps.forEach(g=>{ const n=companiesIn('g:'+g.id).length;
+      _mk(g.label+(n?` ${n}`:''),_isG&&_curGrp===g.id,n===0,()=>{ST.cat='g:'+g.id;ST.ovN=30;render();}); });
+    _cats.filter(c=>!c.grp&&c.id!=='all').forEach(c=>{ const n=companiesIn(c.id).length;
+      if(n===0&&c.id!=='watch')return;
+      _mk(c.label+(n?` ${n}`:''),c.id===ST.cat,n===0,()=>{ST.cat=c.id;ST.ovN=30;render();}); });
+    if(_curGrp){ const br=document.createElement('span'); br.style.flexBasis='100%'; br.style.height='0'; cr.appendChild(br);
+      _cats.filter(c=>c.grp===_curGrp).forEach(c=>{ const n=companiesIn(c.id).length; if(!n)return;
+        _mk('· '+c.label+` ${n}`,c.id===ST.cat,false,()=>{ST.cat=c.id;ST.ovN=30;render();}); }); }
+  }
   const q=ST.q.toLowerCase();
   let list=companiesIn(ST.cat).filter(c=>!q||c.name.toLowerCase().includes(q)||(c.name_jp||'').includes(ST.q)||(c.subcategory||'').includes(ST.q)||(c.ticker||'').toLowerCase().includes(q)||(c.note||'').toLowerCase().includes(q));
   const total=list.length;
@@ -3041,8 +3061,8 @@ function catDrill(){
     const b=byCat[ck]=byCat[ck]||{n:0,subs:{}};b.n++;(b.subs[sk]=b.subs[sk]||[]).push(c);});
   const catEnts=Object.entries(byCat).sort((a,b)=>b[1].n-a[1].n);
   const totalSubs=new Set(cos.map(c=>c.subcategory||'기타')).size;
-  const single=ST.cat!=='all';   // 특정 대분류 선택 시 그 세부분류를 바로 펼침
-  if(single? totalSubs<2 : totalSubs<4) return '';
+  const single=ST.cat!=='all'&&String(ST.cat).slice(0,2)!=='g:';   // 특정 대분류 선택 시 그 세부분류를 바로 펼침 (그룹 선택은 대분류 헤더 유지)
+  if(ST.cat==='all'? totalSubs<4 : totalSubs<2) return '';
   ST.catOpen=ST.catOpen||{}; ST.grpOpen=ST.grpOpen||{};
   const secs=catEnts.map(([ck,b])=>{
     const open=single||ST.grpOpen[ck];
