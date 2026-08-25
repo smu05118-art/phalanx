@@ -214,6 +214,7 @@ if(c)c.addEventListener('click',function(){o.style.display='none';});})();
   <span class="tab" data-tab="lux">💎 Luxury</span>
   <span class="tab" data-tab="mem">🧠 Memory</span>
   <span class="tab" data-tab="rack">🖥 Rack</span>
+  <span class="tab" data-tab="dc">⚡ DC</span>
   <span class="tab" data-tab="tech">🗺 Tech Map</span>
   <span class="tab" data-tab="bio">🧬 Bio Map</span>
   <span class="tab" data-tab="ecal">📅 실적</span>
@@ -438,6 +439,13 @@ function writeHash(){
   if(ST.view==='country'&&ST.port) add('port',ST.port);
   if(ST.cur!=='JPY') add('cur',ST.cur);
   if(ST.gran!=='M') add('g',ST.gran);
+  if(ST.tab==='dc'){                                   // ⚡ DC 탭 서브상태(뷰·국가필터·프로젝트·에너지원·트리노드)
+    if(ST.dcv&&ST.dcv!=='map') add('dcv',ST.dcv);
+    if(ST.dcv==='map'&&ST.dcCountry) add('dcco',ST.dcCountry);
+    if(ST.dcv==='map'&&ST.dcProj) add('dcp',ST.dcProj);
+    if(ST.dcv==='energy'&&ST.dcSrc) add('dcs',ST.dcSrc);
+    if(ST.dcv==='tam'&&ST.dcNode) add('dcn',ST.dcNode);
+  }
   const h='#'+p.join('&'), cur='#'+(location.hash||'').replace(/^#/,''), sig=navSig();
   if(cur===h){ _lastNav=sig; return; }
   try{ (_lastNav!==null&&sig!==_lastNav) ? history.pushState(null,'',h) : history.replaceState(null,'',h); }
@@ -454,6 +462,12 @@ function applyHash(){
   ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':(q.tab==='ppi'?'ppi':(q.tab==='game'?'game':(q.tab==='app'?'app':(q.tab==='plat'?'plat':(q.tab==='comm'?'comm':(q.tab==='ai'?'ai':(q.tab==='ins'?'ins':'dash')))))))))))));
   if(q.tab==='game'&&q.gco){ ST.gview='co_'+q.gco; }
   if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
+  if(q.tab==='dc'){                                    // ⚡ DC 탭 — 탭 + 뷰·필터·선택 복원
+    ST.tab='dc';
+    ST.dcv=(['map','energy','tam'].indexOf(q.dcv)>=0)?q.dcv:'map';
+    ST.dcCountry=q.dcco||null; ST.dcProj=q.dcp||null;
+    ST.dcSrc=q.dcs||null; ST.dcNode=q.dcn||null;
+  }
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
@@ -909,6 +923,7 @@ function render(){
   if(ST.tab==='lux') return loadLux(renderLux);
   if(ST.tab==='mem') return loadMem(renderMem);
   if(ST.tab==='rack') return loadRack(renderRack);
+  if(ST.tab==='dc') return loadDC(renderDC);
   if(ST.tab==='tech') return loadTech(renderTech);
   if(ST.tab==='bio') return loadBio(renderBio);
   if(ST.tab==='ecal') return loadEcal(renderEcal);
