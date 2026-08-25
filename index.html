@@ -3380,6 +3380,520 @@ function initBrush(){
   drawBrushSpark(); positionBrush(); updateRangeUI();
 }
 
+// ================= ⚡ DC 공급망 메가허브 탭 =================
+// data_dc.js(window.DCD — 맵 지오메트리·프로젝트 인덱스·에너지원·부품트리·TAM)
+// + data_dc_proj.js(window.DCPROJ — 프로젝트 상세, 카드 클릭 시 lazy)
+// 3뷰: 🗺 프로젝트 맵·테이블 / 🔌 에너지원 미래 시계열 / 🌲 탑다운 TAM 트리
+ST.dcv=ST.dcv||'map'; ST.dcSort=ST.dcSort||'cur'; if(ST.dcDesc==null) ST.dcDesc=true;
+ST.dcOpen=ST.dcOpen||{};
+function loadDC(cb){ if(window.DCD) return cb();
+  document.getElementById('main').innerHTML='<div class="load-msg">⚡ DC 공급망 허브 로딩…</div>';
+  const sc=document.createElement('script'); sc.src='data_dc.js'; sc.onload=cb;
+  sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">⚡ DC 공급망 허브 데이터 준비 중…</div>';};
+  document.head.appendChild(sc); }
+function loadDCProj(cb){ if(window.DCPROJ) return cb();
+  const sc=document.createElement('script'); sc.src='data_dc_proj.js';
+  sc.onload=cb; sc.onerror=()=>{window.DCPROJ={};cb();};
+  document.head.appendChild(sc); }
+function dcDestroy(){ Object.keys(charts).forEach(k=>{ if(k.indexOf('dc_')===0){ try{charts[k].destroy();}catch(e){} delete charts[k]; } }); }
+
+const DCSRC={gas_turbine:['가스터빈','#ff8a3d'],engine_4s:['4행정엔진','#ffbe2e'],engine_2s:['2행정엔진','#c9a227'],
+  solar_ess:['태양광+ESS','#a0d911'],wind:['풍력','#42d4f4'],nuclear_smr:['SMR·원전','#c45cff'],
+  fuel_cell:['연료전지','#00e6b8'],grid_ppa:['그리드 PPA','#3d8bfd'],diesel_backup:['디젤백업','#8a90a8'],bess:['BESS','#f06292']};
+const dcSL=t=>(DCSRC[t]||[t])[0], dcSC=t=>(DCSRC[t]||[t,'#8a90a8'])[1];
+const DCCOL=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1','#ff9e64','#9ccc65','#e06666','#8a90a8'];
+const dcEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function dcHost(u){ try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return String(u).slice(0,44);} }
+const dcA=(u,t)=>!u?'':'<a href="'+dcEsc(u)+'" target="_blank" rel="noopener" class="dca">'+dcEsc(t||dcHost(u))+'</a>';
+function dcMd(s){ return dcEsc(s).replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener" class="dca">$1</a>'); }
+const dcMW=v=>(v==null)?'—':(Math.abs(v)>=1000?(v/1000).toFixed(Math.abs(v)>=10000?1:2)+' GW':Math.round(v).toLocaleString()+' MW');
+const dcNum=(v,d)=>(v==null||isNaN(+v))?'—':(+v).toLocaleString(undefined,{maximumFractionDigits:(d==null?0:d)});
+const dcB=v=>(v==null||isNaN(+v))?'—':'$'+(+v).toFixed(Math.abs(v)>=100?0:(Math.abs(v)>=10?1:2))+'B';
+function dcHatch(col){ const c=document.createElement('canvas'); c.width=c.height=8;
+  const x=c.getContext('2d'); x.clearRect(0,0,8,8); x.strokeStyle=col; x.lineWidth=2.4; x.globalAlpha=.85;
+  x.beginPath(); x.moveTo(-2,10); x.lineTo(10,-2); x.moveTo(-2,2); x.lineTo(2,-2); x.moveTo(6,10); x.lineTo(10,6); x.stroke();
+  return x.createPattern(c,'repeat'); }
+function dcStatus(p){ const cur=+(p.cur||0), plan=+(p.plan||0);
+  if(cur<=0) return {k:0,l:'계획·건설',c:'#8a90a8'};
+  if(plan>cur+1) return {k:1,l:'가동+증설',c:'#ffbe2e'};
+  return {k:2,l:'가동',c:'#59d0a8'}; }
+// phalanx_link 라우트 → 대시보드 딥링크 이동
+function dcGo(r){ if(!r) return;
+  if(r.t==='co'&&r.c){ const rg=r.r||'JP'; ST.region=rg;
+    loadRegion(rg,()=>{ST.tab='dash';ST.company=r.c;ST.view='detail';ST.cat='all';render();window.scrollTo(0,0);}); return; }
+  ST.tab=r.t; if(r.t==='kpi'&&r.k) ST.kcat=r.k;
+  ST.view='overview'; ST.company=null; render(); window.scrollTo(0,0); }
+function dcLinkChips(links,routes){ if(!links||!links.length) return '';
+  return links.map((L,i)=>{ const r=(routes||{})[L];
+    const file=String(L).split('/').slice(-1)[0];
+    return r ? '<span class="dcpl on" data-dcpl="'+dcEsc(L)+'" title="'+dcEsc(L)+'">🔗 '+dcEsc(r.l||file)+'</span>'
+             : '<span class="dcpl" title="'+dcEsc(L)+' — 대시 라우트 미지정">📄 '+dcEsc(file)+'</span>'; }).join(''); }
+function dcBindPl(root,routes){ root.querySelectorAll('.dcpl.on').forEach(e=>e.onclick=()=>dcGo((routes||{})[e.dataset.dcpl])); }
+
+const DCSTYLE=`<style>
+.dcnav{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 13px}
+.dcv{font-size:12px;font-weight:700;padding:6px 14px;border:1px solid var(--bd);border-radius:999px;cursor:pointer;color:var(--dim);background:var(--s1);user-select:none}
+.dcv:hover{border-color:#4ea1ff}
+.dcv.on{background:rgba(78,161,255,.16);border-color:#4ea1ff;color:#4ea1ff}
+.dch{font-size:16px;font-weight:800;margin:0 0 3px}
+.dcs{color:var(--dim);font-size:11.5px;margin:0 0 10px;max-width:104ch;line-height:1.6}
+.dcpan{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:13px 15px;margin-bottom:13px}
+.dckpi{display:flex;gap:20px;flex-wrap:wrap;margin:0 0 12px}
+.dckpi div{min-width:96px}
+.dckpi b{display:block;font-size:19px;font-weight:800;font-family:ui-monospace,monospace}
+.dckpi span{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+.dcmapwrap{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:8px;margin-bottom:12px;overflow-x:auto}
+.dcmap{display:block;width:100%;min-width:560px;height:auto}
+.dcbub{cursor:pointer;fill:rgba(255,138,61,.34);stroke:#ff8a3d;stroke-width:1.1;transition:.12s}
+.dcbub:hover{fill:rgba(255,138,61,.62)}
+.dcbub.on{fill:rgba(0,230,184,.62);stroke:#00e6b8;stroke-width:1.8}
+.dcbl{font-size:8.5px;fill:#c8d2e8;font-family:ui-monospace,monospace;pointer-events:none;text-anchor:middle}
+.dct{overflow-x:auto;border:1px solid var(--bd);border-radius:11px}
+.dct table{border-collapse:collapse;width:100%;font-size:11.5px}
+.dct th,.dct td{padding:6px 9px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+.dct th{background:var(--s2);color:var(--dim);font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;position:sticky;top:0}
+.dct th.s{cursor:pointer;user-select:none}
+.dct th.s:hover{color:#4ea1ff}
+.dct tr:last-child td{border-bottom:none}
+.dct tr.cl{cursor:pointer}
+.dct tr.cl:hover td{background:rgba(78,161,255,.09)}
+.dct tr.on td{background:rgba(0,230,184,.10)}
+.mn{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dcbadge{display:inline-block;font-size:9px;font-weight:800;padding:1.5px 6px;border-radius:5px;margin:1px 3px 1px 0;white-space:nowrap}
+.dca{color:#4ea1ff;text-decoration:none}
+.dca:hover{text-decoration:underline}
+.dcpl{display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--bd);color:var(--dim);margin:2px 4px 2px 0;white-space:nowrap}
+.dcpl.on{cursor:pointer;border-color:#c45cff;color:#c45cff;background:rgba(196,92,255,.11)}
+.dcpl.on:hover{background:rgba(196,92,255,.22)}
+.dcchips{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 10px}
+.dcchip{font-size:11px;font-weight:700;padding:4px 11px;border-radius:999px;border:1px solid var(--bd);cursor:pointer;color:var(--dim);user-select:none;white-space:nowrap}
+.dcchip:hover{filter:brightness(1.3)}
+.dcchip i{font-style:normal;font-family:ui-monospace,monospace;font-size:9.5px;opacity:.8;margin-left:5px}
+.dcph{display:grid;grid-template-columns:76px 1fr;gap:7px 10px;align-items:center}
+.dcphd{font-family:ui-monospace,monospace;font-size:10px;color:var(--dim);text-align:right}
+.dcphb{height:15px;border-radius:4px;position:relative;min-width:2px}
+.dcphl{font-size:10.5px;line-height:1.5;color:var(--tx)}
+.dcwarn{font-size:11px;line-height:1.65;padding:8px 11px;border-radius:8px;background:rgba(255,190,46,.08);border-left:3px solid var(--a4);margin:8px 0}
+.dcnote{font-size:10.5px;color:var(--dim);line-height:1.6;margin-top:6px}
+.dcgrid{display:grid;grid-template-columns:1fr;gap:13px}
+@media(min-width:1040px){.dcgrid.two{grid-template-columns:310px 1fr}}
+.dctree{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:8px;max-height:640px;overflow:auto}
+.dcnd{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:4px 7px;border-radius:7px;cursor:pointer;color:var(--tx)}
+.dcnd:hover{background:rgba(78,161,255,.10)}
+.dcnd.on{background:rgba(0,230,184,.14);color:#00e6b8;font-weight:800}
+.dcnd.l1{padding-left:7px;font-weight:800}
+.dcnd.l2{padding-left:20px}
+.dcnd.l3{padding-left:36px;font-size:11px}
+.dcnd em{margin-left:auto;font-style:normal;font-size:9px;font-family:ui-monospace,monospace;opacity:.75;white-space:nowrap}
+.dcq{font-size:10.5px;line-height:1.6;color:var(--dim);font-family:ui-monospace,monospace;background:var(--s2);border-radius:6px;padding:6px 9px;margin-top:5px;word-break:break-word}
+.dcch{height:300px;position:relative}
+.dcch canvas{display:block;width:100%!important;height:100%!important}
+</style>`;
+
+function renderDC(){
+  dcDestroy();
+  const D=window.DCD||{}, main=document.getElementById('main');
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('cnt').innerHTML='';
+  const TM=(D.tam&&D.tam._meta)||{};
+  document.getElementById('crumb').innerHTML='<b>⚡ DC 공급망 메가허브 — 프로젝트 · 에너지원 · 탑다운 TAM</b>'+
+    '<span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">'+dcEsc(TM.date||'')+
+    ' · Epoch AI 추적 프런티어 AI DC 유니버스 · 창작 금지(수치 전건 출처)</span>';
+  if(!D.projects){ main.innerHTML='<div class="empty-msg">⚡ DC 공급망 허브 데이터 준비 중…</div>'; return; }
+  const views=[['map','🗺 프로젝트 맵·테이블'],['energy','🔌 에너지원 미래 시계열'],['tam','🌲 탑다운 TAM 트리']];
+  main.innerHTML=DCSTYLE+'<div class="dcnav">'+views.map(v=>
+    '<span class="dcv'+(ST.dcv===v[0]?' on':'')+'" data-dcv="'+v[0]+'">'+v[1]+'</span>').join('')+'</div><div id="dcBody"></div>';
+  main.querySelectorAll('.dcv').forEach(e=>e.onclick=()=>{ST.dcv=e.dataset.dcv;renderDC();window.scrollTo(0,0);});
+  const body=document.getElementById('dcBody');
+  if(ST.dcv==='energy') dcViewEnergy(body,D);
+  else if(ST.dcv==='tam') dcViewTam(body,D);
+  else dcViewMap(body,D);
+  writeHash();
+}
+
+// ---------- 뷰 1: 프로젝트 맵 + 정렬 테이블 + 프로젝트 카드 ----------
+function dcViewMap(el,D){
+  const PR=D.projects||[], geo=D.geo||{}, alias=geo.alias||{}, cent=geo.cent||{};
+  const byC={}; PR.forEach(p=>{const c=p.c||'미상'; const o=(byC[c]=byC[c]||{cur:0,plan:0,n:0}); o.cur+=(+p.cur||0); o.plan+=(+p.plan||0); o.n++;});
+  const tCur=PR.reduce((a,p)=>a+(+p.cur||0),0), tPlan=PR.reduce((a,p)=>a+(+p.plan||0),0);
+  const tCx=PR.reduce((a,p)=>a+(+p.cx||0),0);
+  const maxV=Math.max(1,...Object.keys(byC).map(c=>byC[c].plan||byC[c].cur));
+  const bubs=Object.keys(byC).map(c=>{ const xy=cent[alias[c]||c]; if(!xy) return null;
+    const v=byC[c].plan||byC[c].cur;
+    return {c:c,x:xy[0],y:xy[1],r:Math.max(4.5,Math.min(38,Math.sqrt(v/maxV)*38)),v:v,o:byC[c]};
+  }).filter(Boolean).sort((a,b)=>b.r-a.r);
+  const noXY=Object.keys(byC).filter(c=>!cent[alias[c]||c]);
+  const sel=ST.dcCountry;
+
+  let h='<p class="dch">🗺 DC 프로젝트 마스터 <span style="color:var(--dim);font-size:11.5px;font-weight:500">'+PR.length+'건 · '+Object.keys(byC).length+'개국</span></p>'+
+    '<p class="dcs">Epoch AI 추적 프런티어 AI 데이터센터 상위 '+PR.length+'건(현장 위성·인허가·유틸리티·IR 문서 보강). 버블 = 국가별 <b>계획 MW 합</b>(계획 미상이면 현재 MW) — 클릭하면 국가 필터. 표의 행을 클릭하면 그 프로젝트의 <b>단계 타임라인 · 에너지원 구성 · 건설/냉각 공급사 · 출처</b> 카드가 열립니다.</p>'+
+    '<div class="dckpi">'+
+      '<div><span>프로젝트</span><b>'+PR.length+'</b></div>'+
+      '<div><span>현재 전력</span><b style="color:#59d0a8">'+dcMW(tCur)+'</b></div>'+
+      '<div><span>계획 전력</span><b style="color:#ff8a3d">'+dcMW(tPlan)+'</b></div>'+
+      '<div><span>CAPEX 합</span><b style="color:#4ea1ff">'+dcB(tCx)+'</b></div>'+
+      '<div><span>국가</span><b>'+Object.keys(byC).length+'</b></div>'+
+    '</div>';
+
+  const MW_=geo.w||1000, MH_=geo.h||394;
+  h+='<div class="dcmapwrap"><svg class="dcmap" viewBox="0 0 '+MW_+' '+MH_+'" preserveAspectRatio="xMidYMid meet">'+
+     '<rect x="0" y="0" width="'+MW_+'" height="'+MH_+'" fill="#080b16"/>'+
+     (geo.land?'<path d="'+geo.land+'" fill="#18213a" stroke="#2c3a5e" stroke-width="0.5"/>':'')+
+     bubs.map(b=>'<circle class="dcbub'+(sel===b.c?' on':'')+'" data-dcco="'+dcEsc(b.c)+'" cx="'+b.x+'" cy="'+b.y+'" r="'+b.r.toFixed(1)+'"><title>'+dcEsc(b.c)+' — '+b.o.n+'건 · 현재 '+dcMW(b.o.cur)+' · 계획 '+dcMW(b.o.plan)+'</title></circle>').join('')+
+     bubs.filter(b=>b.r>=11).map(b=>'<text class="dcbl" x="'+b.x+'" y="'+(b.y+b.r+9).toFixed(1)+'">'+dcEsc(b.c)+'</text>').join('')+
+     '</svg></div>';
+
+  if(noXY.length) h+='<div class="dcnote">지도 좌표 미해결 국가(표에는 포함): '+noXY.map(dcEsc).join(' · ')+'</div>';
+  const chSel='border-color:#00e6b8;color:#00e6b8;background:rgba(0,230,184,.12)';
+  h+='<div class="dcchips" style="margin-top:10px">'+
+     '<span class="dcchip" data-dcco="" style="'+(sel?'':chSel)+'">전체 '+PR.length+'</span>'+
+     Object.keys(byC).sort((a,b)=>(byC[b].plan||byC[b].cur)-(byC[a].plan||byC[a].cur)).map(c=>
+       '<span class="dcchip" data-dcco="'+dcEsc(c)+'" style="'+(sel===c?chSel:'')+'">'+dcEsc(c)+'<i>'+byC[c].n+'</i></span>').join('')+
+     '</div>';
+
+  h+='<div id="dcCard"></div>';
+
+  const rows=PR.filter(p=>!sel||p.c===sel);
+  const K=ST.dcSort, dsc=ST.dcDesc;
+  const kv=p=>K==='n'?String(p.n||'').toLowerCase():K==='op'?String(p.op||'').toLowerCase():
+    K==='c'?String(p.c||'').toLowerCase():K==='st'?dcStatus(p).k:K==='plan'?(+p.plan||0):(+p.cur||0);
+  rows.sort((a,b)=>{const x=kv(a),y=kv(b); if(x===y) return String(a.n).localeCompare(String(b.n));
+    return (typeof x==='string')?(dsc?String(y).localeCompare(String(x)):String(x).localeCompare(String(y))):(dsc?y-x:x-y);});
+  const th=(k,l)=>'<th class="s" data-dcs="'+k+'">'+l+(K===k?(dsc?' ▾':' ▴'):'')+'</th>';
+  h+='<div class="dct" style="margin-top:12px"><table><thead><tr>'+
+     th('n','프로젝트')+th('op','운영사')+th('c','국가')+th('cur','현재 MW')+th('plan','계획 MW')+th('st','상태')+
+     '<th>에너지원</th><th>근거</th></tr></thead><tbody>'+
+     rows.map(p=>{const s=dcStatus(p);
+       return '<tr class="cl'+(ST.dcProj===p.id?' on':'')+'" data-dcp="'+dcEsc(p.id)+'">'+
+         '<td><b>'+dcEsc(p.n)+'</b>'+(p.us&&p.us.length?'<div style="font-size:9.5px;color:var(--dim)">'+dcEsc(p.us.join(' · '))+'</div>':'')+'</td>'+
+         '<td>'+dcEsc(p.op||'—')+'</td><td>'+dcEsc(p.c||'—')+(p.rg?' <span style="color:var(--dim);font-size:9.5px">'+dcEsc(p.rg)+'</span>':'')+'</td>'+
+         '<td class="mn">'+dcNum(p.cur)+'</td><td class="mn">'+dcNum(p.plan)+'</td>'+
+         '<td><span class="dcbadge" style="background:'+s.c+'22;color:'+s.c+'">'+s.l+'</span>'+(p.ld?'<div style="font-size:9px;color:var(--dim)" class="mn">'+dcEsc(p.ld)+'</div>':'')+'</td>'+
+         '<td>'+(p.et||[]).map(t=>'<span class="dcbadge" style="background:'+dcSC(t)+'26;color:'+dcSC(t)+'">'+dcEsc(dcSL(t))+'</span>').join('')+'</td>'+
+         '<td class="mn" style="font-size:9.5px;color:var(--dim)">단계'+p.np+' · 출처'+p.ns+(p.nc?' · 건설'+p.nc:'')+(p.nl?' · 냉각'+p.nl:'')+'</td></tr>';}).join('')+
+     '</tbody></table></div>';
+  h+='<div class="dcnote">현재/계획 MW 는 epoch 원본 집계(전체 현재 12,712 MW / 계획 45,611 MW)와 동일합니다. 상태는 현재·계획 MW 대비로 파생한 라벨이며 원문 서술은 카드에서 확인하세요.</div>';
+  el.innerHTML=h;
+  el.querySelectorAll('[data-dcco]').forEach(e=>e.onclick=()=>{
+    const c=e.dataset.dcco; ST.dcCountry=(!c||ST.dcCountry===c)?null:c; ST.dcProj=null; renderDC(); });
+  el.querySelectorAll('th.s').forEach(e=>e.onclick=()=>{
+    const k=e.dataset.dcs; if(ST.dcSort===k) ST.dcDesc=!ST.dcDesc; else {ST.dcSort=k; ST.dcDesc=(k==='cur'||k==='plan'||k==='st');}
+    renderDC(); });
+  el.querySelectorAll('tr.cl').forEach(e=>e.onclick=()=>{
+    const id=e.dataset.dcp; ST.dcProj=(ST.dcProj===id)?null:id;
+    if(!ST.dcProj){ renderDC(); return; }
+    loadDCProj(()=>{ renderDC(); const c=document.getElementById('dcCard'); if(c&&c.scrollIntoView) c.scrollIntoView({block:'start'}); }); });
+  if(ST.dcProj) dcProjCard(document.getElementById('dcCard'), D, ST.dcProj);
+}
+
+function dcProjCard(el,D,pid){
+  if(!el) return;
+  const idx=(D.projects||[]).find(p=>p.id===pid); if(!idx){ el.innerHTML=''; return; }
+  const det=(window.DCPROJ||{})[pid];
+  if(!det){ el.innerHTML='<div class="dcpan">프로젝트 상세 로딩…</div>'; return; }
+  const pw=det.power||{}, phases=(pw.phases||[]).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  const maxMw=Math.max(1,...phases.map(x=>+x.mw||0));
+  const srcs=((det.energy||{}).sources)||[], cool=det.cooling||{}, con=det.construction||[];
+  let h='<div class="dcpan" style="border-color:#00e6b8">'+
+    '<div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">'+
+      '<div><div style="font-size:15px;font-weight:800">'+dcEsc(idx.n)+'</div>'+
+        '<div style="font-size:11px;color:var(--dim);margin-top:2px">'+dcEsc(idx.op||'—')+' · '+dcEsc(idx.c||'—')+(idx.rg?' '+dcEsc(idx.rg):'')+
+        (idx.us&&idx.us.length?' · 이용사 '+dcEsc(idx.us.join(', ')):'')+(idx.ch&&idx.ch.length?' · 칩 '+dcEsc(idx.ch.join(', ')):'')+'</div></div>'+
+      '<span style="flex:1"></span>'+
+      '<button class="back" data-dcclose="1">✕ 닫기</button></div>'+
+    '<div class="dckpi" style="margin:12px 0 4px">'+
+      '<div><span>현재</span><b style="color:#59d0a8">'+dcMW(pw.current_mw)+'</b></div>'+
+      '<div><span>계획</span><b style="color:#ff8a3d">'+dcMW(pw.planned_mw)+'</b></div>'+
+      (pw.planned_mw_doc!=null?'<div><span>문서 계획</span><b class="mn" style="color:#4ea1ff">'+dcMW(pw.planned_mw_doc)+'</b></div>':'')+
+      '<div><span>CAPEX</span><b>'+dcB(idx.cx)+'</b></div></div>'+
+    (pw.planned_mw_src?'<div class="dcnote">문서 계획 출처: '+dcA(pw.planned_mw_src)+'</div>':'');
+
+  if(phases.length){
+    h+='<div class="sub-ttl" style="margin:14px 0 8px">📶 단계 타임라인 <span style="font-weight:400;color:var(--dim);font-size:10px">'+phases.length+'단계 · 파랑=epoch 위성 관측 · 초록=공식문서(인허가·IR·보도)</span></div><div class="dcph">';
+    phases.forEach(x=>{ const mw=+x.mw||0, doc=(x._from==='opus1_doc');
+      const col=doc?'#00e6b8':'#4ea1ff';
+      h+='<div class="dcphd">'+dcEsc(x.date||'')+'</div><div>'+
+        (mw>0?'<div class="dcphb" style="width:'+Math.max(2,mw/maxMw*100).toFixed(1)+'%;background:'+col+'33;border-left:3px solid '+col+'"><span class="mn" style="font-size:9.5px;color:'+col+';position:absolute;left:6px;top:1px">'+dcNum(mw)+' MW</span></div>':'')+
+        '<div class="dcphl">'+(doc?'<span class="dcbadge" style="background:#00e6b822;color:#00e6b8">'+dcEsc(x.status||'')+'</span> ':'')+
+        dcMd(doc?(x.detail||''):(x.status||''))+(x.src?' '+dcA(x.src):'')+'</div></div>';});
+    h+='</div>';
+  }
+
+  if(srcs.length){
+    h+='<div class="sub-ttl" style="margin:16px 0 7px">🔌 에너지원 구성 <span style="font-weight:400;color:var(--dim);font-size:10px">'+srcs.length+'행</span></div>'+
+      '<div class="dct"><table><thead><tr><th>원</th><th>MW</th><th>기수</th><th>공급사</th><th>유틸리티</th><th>상태·COD</th><th>내용</th><th>출처</th></tr></thead><tbody>'+
+      srcs.map(s=>'<tr'+(s._excluded_from_totals?' style="opacity:.62"':'')+'>'+
+        '<td><span class="dcbadge" style="background:'+dcSC(s.type)+'26;color:'+dcSC(s.type)+'">'+dcEsc(dcSL(s.type))+'</span></td>'+
+        '<td class="mn">'+dcNum(s.mw)+(s.mw_basis==='est'?'<div style="font-size:9px;color:var(--a4)">est</div>':'')+'</td>'+
+        '<td class="mn">'+(s.unit_count?dcEsc(s.unit_count)+(s.unit_mw?'×'+dcNum(s.unit_mw,1):''):'—')+'</td>'+
+        '<td>'+dcEsc(s.supplier||'—')+'</td><td>'+dcEsc(s.utility||'—')+'</td>'+
+        '<td class="mn" style="font-size:10px">'+dcEsc(s.status||'—')+(s.cod?'<div style="color:var(--dim)">'+dcEsc(s.cod)+'</div>':'')+'</td>'+
+        '<td style="max-width:420px;font-size:10.5px;line-height:1.55">'+dcMd(s.detail||'')+
+          (s._excluded_from_totals?'<div class="dcwarn" style="margin:5px 0 0">⚠ 총계 제외 — '+dcEsc(s._excl_reason||'')+'</div>':'')+'</td>'+
+        '<td>'+dcA(s.src)+'</td></tr>').join('')+'</tbody></table></div>';
+  }
+  const conRows=con.map(c=>(typeof c==='string')?{company:c,role:'',src:''}:c);
+  const coolRows=(cool.chillers||[]).map(x=>Object.assign({kind:'칠러'},x)).concat((cool.towers||[]).map(x=>Object.assign({kind:'쿨링타워'},x)));
+  if(conRows.length||coolRows.length){
+    h+='<div class="sub-ttl" style="margin:16px 0 7px">🏗 건설 · 냉각 공급사</div><div class="dcgrid">';
+    if(conRows.length) h+='<div class="dct"><table><thead><tr><th>건설사</th><th>역할</th><th>출처</th></tr></thead><tbody>'+
+      conRows.map(c=>'<tr><td><b>'+dcEsc(c.company||'')+'</b></td><td style="font-size:10.5px">'+dcEsc(c.role||'—')+'</td><td>'+dcA(c.src)+'</td></tr>').join('')+'</tbody></table></div>';
+    if(coolRows.length) h+='<div class="dct"><table><thead><tr><th>구분</th><th>시점</th><th>관측 내용</th><th>카탈로그 매칭</th></tr></thead><tbody>'+
+      coolRows.map(c=>'<tr><td><span class="dcbadge" style="background:#42d4f426;color:#42d4f4">'+c.kind+'</span></td><td class="mn" style="font-size:10px">'+dcEsc(c.date||'')+'</td>'+
+        '<td style="max-width:520px;font-size:10.5px;line-height:1.55">'+dcMd(c.detail||'')+'</td>'+
+        '<td style="font-size:10px;color:var(--dim)">'+((c.catalog_matches||[]).length?dcEsc((c.catalog_matches||[]).join(' · ')):'—')+'</td></tr>').join('')+'</tbody></table></div>';
+    h+='</div>';
+  }
+  if(det.status) h+='<div class="sub-ttl" style="margin:16px 0 6px">📝 원문 판정(epoch)</div><div style="font-size:11px;line-height:1.7;color:var(--dim)">'+dcMd(det.status)+'</div>';
+  const rs=(det.energy||{}).research;
+  if(rs&&rs.notes) h+='<div class="dcwarn" style="margin-top:12px"><b>보강 리서치 메모</b> ('+dcEsc(rs.researched||'')+') — '+dcMd(rs.notes)+'</div>';
+  const ss=det.sources||[];
+  if(ss.length) h+='<div class="sub-ttl" style="margin:16px 0 6px">🔗 출처 <span style="font-weight:400;color:var(--dim);font-size:10px">'+ss.length+'건</span></div>'+
+    '<div style="font-size:10.5px;line-height:1.9;word-break:break-all">'+ss.map(u=>dcA(u)).join(' · ')+'</div>';
+  h+='</div>';
+  el.innerHTML=h;
+  const cb=el.querySelector('[data-dcclose]'); if(cb) cb.onclick=()=>{ST.dcProj=null;renderDC();};
+}
+
+// ---------- 뷰 2: 에너지원 미래 시계열 + 공급사별 분해 ----------
+function dcViewEnergy(el,D){
+  const E=D.energy||{}, BS=E.by_source||{}, BE=E.by_source_est||{}, BT=E.by_source_total||{};
+  const types=Object.keys(BT).filter(t=>Object.keys(BT[t]||{}).some(y=>+BT[t][y]>0));
+  const years=Object.keys(BT[types[0]]||BS[Object.keys(BS)[0]]||{}).sort();
+  const last=years[years.length-1];
+  const tot=y=>types.reduce((a,t)=>a+(+((BT[t]||{})[y])||0),0);
+  const M=E.meta||{}, RU=M['집계규칙']||{};
+  let h='<p class="dch">🔌 에너지원별 미래 용량 '+dcEsc(years[0])+'~'+dcEsc(last)+' <span style="color:var(--dim);font-size:11.5px;font-weight:500">'+types.length+'원 · '+dcMW(tot(last))+' ('+dcEsc(last)+' 누적)</span></p>'+
+    '<p class="dcs">각 연도 값은 <b>그 해 기준 누적 설치·계약 용량(MW)</b>이며 연간 신규가 아닙니다. <b>진한 막대=확정</b>(문서화 MW + 가동/건설중), <b>빗금 막대=파이프라인·est</b>(계약·인허가·계획 단계 또는 MW 추정). 원 칩을 클릭하면 그 원의 <b>공급사별 분해</b>(IR 수주 공시 1차 · 프로젝트 문서 2차)가 열립니다.</p>'+
+    '<div class="dcpan" style="padding:10px 12px"><div class="dcch" style="height:330px"><canvas id="dcEnergyCh"></canvas></div></div>'+
+    '<div class="dcchips">'+types.map(t=>{const c=dcSC(t), on=ST.dcSrc===t;
+      return '<span class="dcchip" data-dcsrc="'+t+'" style="border-color:'+(on?c:'var(--bd)')+';color:'+(on?'#04121b':c)+';background:'+(on?c:'transparent')+';font-weight:'+(on?800:700)+'">'+dcEsc(dcSL(t))+'<i>'+dcMW((BT[t]||{})[last])+'</i></span>';}).join('')+'</div>'+
+    '<div class="dcnote">'+dcEsc(RU['연도배분']||'')+'<br>'+dcEsc(RU['documented_vs_est']||'')+'</div>'+
+    '<div id="dcSupWrap"></div>';
+  el.innerHTML=h;
+  el.querySelectorAll('[data-dcsrc]').forEach(e=>e.onclick=()=>{
+    ST.dcSrc=(ST.dcSrc===e.dataset.dcsrc)?null:e.dataset.dcsrc; renderDC(); });
+  const cv=document.getElementById('dcEnergyCh');
+  if(cv&&window.Chart){
+    const ds=[];
+    types.forEach(t=>{ const c=dcSC(t);
+      ds.push({label:dcSL(t)+' 확정',data:years.map(y=>+((BS[t]||{})[y])||0),backgroundColor:c,borderWidth:0,stack:'mw'});
+      ds.push({label:dcSL(t)+' est',data:years.map(y=>+((BE[t]||{})[y])||0),backgroundColor:dcHatch(c),borderColor:c,borderWidth:{top:1,right:0,bottom:0,left:0},stack:'mw'});});
+    charts['dc_energy']=new Chart(cv,{type:'bar',data:{labels:years,datasets:ds},options:{
+      responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{itemSort:(a,b)=>b.parsed.y-a.parsed.y,
+        filter:c=>c.parsed.y>0,
+        callbacks:{label:c=>c.dataset.label+': '+Math.round(c.parsed.y).toLocaleString()+' MW',
+          footer:it=>'합계 '+Math.round(it.reduce((a,x)=>a+x.parsed.y,0)).toLocaleString()+' MW'}}},
+      scales:{x:{stacked:true,ticks:{color:'#6a6a9a',font:{size:10}},grid:{display:false}},
+        y:{stacked:true,ticks:{color:'#4a4a72',font:{size:9},callback:v=>(v>=1000?(v/1000)+'GW':v)},grid:{color:'rgba(40,40,74,.5)'}}}}});
+  }
+  if(ST.dcSrc) dcSupplier(document.getElementById('dcSupWrap'),D,ST.dcSrc,years);
+}
+
+function dcSupplier(el,D,type,years){
+  if(!el) return;
+  const E=D.energy||{}, SUP=(E.by_supplier||{})[type]||{};
+  const names=Object.keys(SUP).sort((a,b)=>{const f=x=>Math.max(...years.map(y=>+((SUP[x]||{})[y])||0),...years.map(y=>+(((SUP[x]||{}).joint_mw||{})[y])||0)); return f(b)-f(a);});
+  const drop=(E.dropped||[]).filter(d=>d.type===type);
+  const yr=years.slice(-7);
+  let h='<div class="dcpan" style="border-color:'+dcSC(type)+'"><div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">'+
+    '<span style="font-size:14px;font-weight:800;color:'+dcSC(type)+'">'+dcEsc(dcSL(type))+' — 공급사별 분해</span>'+
+    '<span style="font-size:10.5px;color:var(--dim)">'+names.length+'사</span><span style="flex:1"></span>'+
+    '<button class="back" data-dcsrcclose="1">✕ 닫기</button></div>';
+  if(!names.length) h+='<div class="dcnote" style="margin-top:10px">이 원의 공급사 귀속 행이 없습니다.</div>';
+  else{
+    h+='<div class="dcnote" style="margin:9px 0 7px"><b>① 프로젝트 귀속 용량(MW, 누적)</b> — 단독 귀속. 한 행에 복수 공급사가 명기된 건은 임의 배분하지 않고 <b>공동표기(joint)</b> 로 분리했습니다(합산 금지).</div>'+
+      '<div class="dct"><table><thead><tr><th>공급사</th><th>근거</th>'+yr.map(y=>'<th>'+y+'</th>').join('')+'<th>공동표기 '+yr[yr.length-1]+'</th><th>사이트</th><th>출처</th></tr></thead><tbody>'+
+      names.map(n=>{const v=SUP[n]||{}, j=v.joint_mw||{};
+        return '<tr><td><b>'+dcEsc(n)+'</b></td><td style="font-size:10px;color:var(--dim)">'+dcEsc(v['근거']||'—')+'</td>'+
+          yr.map(y=>'<td class="mn">'+((+v[y])?dcNum(v[y]):'—')+'</td>').join('')+
+          '<td class="mn" style="color:var(--a4)">'+((+j[yr[yr.length-1]])?dcNum(j[yr[yr.length-1]]):'—')+'</td>'+
+          '<td style="font-size:10px;color:var(--dim);max-width:260px">'+((v.sites||[]).map(s=>dcEsc(s.site)+' '+dcNum(s.mw)+'MW'+(s.basis==='est'?'(est)':'')).join(' · ')||'—')+'</td>'+
+          '<td style="font-size:10px">'+((v.srcs||[]).slice(0,3).map(u=>dcA(u)).join(' · ')||'—')+'</td></tr>'+
+          (v.joint_note?'<tr><td colspan="'+(yr.length+5)+'" style="font-size:10px;color:var(--a4);border-top:0;padding-top:0">⚑ '+dcEsc(v.joint_note)+'</td></tr>':'');}).join('')+
+      '</tbody></table></div>';
+    // ② IR 수주 정량 (플로우) + 비공시 명기
+    const irRows=[];
+    names.forEach(n=>{ const ir=(SUP[n]||{}).ir||{}; const an=ir.annual||{};
+      Object.keys(an).sort().forEach(y=>{ const a=an[y]||{}; irRows.push({co:n,y:y,a:a}); }); });
+    if(irRows.length){
+      h+='<div class="dcnote" style="margin:14px 0 7px"><b>② IR 수주 정량(플로우)</b> — 공급사 IR·수주 공시 1차. <b>DC 귀속을 공시하지 않은 연도는 「비공시」로 명기</b>하고 값을 만들지 않았습니다.</div>'+
+        '<div class="dct"><table><thead><tr><th>공급사</th><th>연도</th><th>DC 수주 MW</th><th>전체 수주 GW</th><th>DC 명시</th><th>근거</th><th>비고</th><th>출처</th></tr></thead><tbody>'+
+        irRows.map(r=>{const a=r.a, nd=(a.dc_orders_mw==null);
+          const stock=/스톡|잔고|backlog/i.test(String(a.note||''))||/잔고|backlog/i.test(String(a.est_method||''));
+          return '<tr'+(nd?' style="opacity:.7"':'')+'><td><b>'+dcEsc(r.co)+'</b></td><td class="mn">'+dcEsc(r.y)+'</td>'+
+            '<td class="mn">'+(nd?'<span style="color:var(--a4);font-weight:800">비공시</span>':'<b style="color:'+dcSC(type)+'">'+dcNum(a.dc_orders_mw)+' MW</b>'+
+              (a.mw_basis==='est'?'<div style="font-size:9px;color:var(--a4)">est</div>':'')+(stock?'<div><span class="dcbadge" style="background:#ff5c5c22;color:#ff5c5c">스톡(잔고)</span></div>':''))+'</td>'+
+            '<td class="mn">'+(a.total_orders_gw!=null?dcNum(a.total_orders_gw,1)+' GW':'—')+'</td>'+
+            '<td class="mn">'+(a.dc_specific?'<span style="color:#59d0a8">✔</span>':'<span style="color:var(--dim)">—</span>')+'</td>'+
+            '<td style="font-size:10px">'+dcEsc(a.basis||'—')+'</td>'+
+            '<td style="max-width:520px;font-size:10px;line-height:1.55;color:var(--dim)">'+dcEsc(a.note||'')+(a.est_method?'<div style="color:var(--a4);margin-top:3px">산식: '+dcEsc(a.est_method)+'</div>':'')+'</td>'+
+            '<td>'+dcA(a.src)+'</td></tr>';}).join('')+'</tbody></table></div>'+
+        '<div class="dcwarn">⚠ <b>플로우(연간 수주) vs 스톡(수주잔고)은 성격이 달라 합산하면 안 됩니다.</b> 「스톡(잔고)」 뱃지가 붙은 행은 잔고 기준 환산치이며, 다른 연도의 플로우와 더하지 마세요.</div>';
+    }
+    // ③ 수주잔고(스톡)
+    const bkRows=[];
+    names.forEach(n=>((SUP[n]||{}).ir||{}).backlog&&((SUP[n].ir.backlog)||[]).forEach(b=>bkRows.push({co:n,b:b})));
+    if(bkRows.length){
+      h+='<div class="dcnote" style="margin:14px 0 7px"><b>③ 수주잔고(스톡) — 별도 표기</b> · 위 플로우 표와 <b>합산 금지</b></div>'+
+        '<div class="dct"><table><thead><tr><th>공급사</th><th>기준시점</th><th>잔고 GW</th><th>DC 명시</th><th>내용</th><th>출처</th></tr></thead><tbody>'+
+        bkRows.map(r=>'<tr><td><b>'+dcEsc(r.co)+'</b></td><td class="mn">'+dcEsc(r.b.as_of||'')+'</td>'+
+          '<td class="mn"><b>'+dcNum(r.b.gw,1)+' GW</b></td>'+
+          '<td class="mn">'+(r.b.dc_specific?'<span style="color:#59d0a8">✔</span>':'<span style="color:var(--dim)">TOTAL</span>')+'</td>'+
+          '<td style="max-width:560px;font-size:10.5px;line-height:1.55">'+dcEsc(r.b.detail||'')+'</td><td>'+dcA(r.b.src)+'</td></tr>').join('')+'</tbody></table></div>';
+    }
+    // ④ 개별 수주 딜
+    const dlRows=[];
+    names.forEach(n=>(((SUP[n]||{}).ir||{}).deals||[]).forEach(d=>dlRows.push({co:n,d:d})));
+    if(dlRows.length){
+      h+='<div class="dcnote" style="margin:14px 0 7px"><b>④ 개별 수주 건</b></div>'+
+        '<div class="dct"><table><thead><tr><th>공급사</th><th>고객</th><th>사이트</th><th>MW</th><th>기수·기종</th><th>COD</th><th>근거</th><th>비고</th><th>출처</th></tr></thead><tbody>'+
+        dlRows.map(r=>'<tr><td><b>'+dcEsc(r.co)+'</b></td><td>'+dcEsc(r.d.customer||'—')+'</td><td style="font-size:10.5px">'+dcEsc(r.d.site||'—')+'</td>'+
+          '<td class="mn">'+dcNum(r.d.mw)+'</td><td style="font-size:10px">'+(r.d.units?dcEsc(r.d.units)+'기 ':'')+dcEsc(r.d.model||'')+'</td>'+
+          '<td class="mn" style="font-size:10px">'+dcEsc(r.d.cod||'—')+'</td><td style="font-size:10px">'+dcEsc(r.d.basis||'—')+'</td>'+
+          '<td style="max-width:400px;font-size:10px;color:var(--dim);line-height:1.55">'+dcEsc(r.d.note||'')+'</td><td>'+dcA(r.d.src)+'</td></tr>').join('')+'</tbody></table></div>';
+    }
+  }
+  if(drop.length){
+    h+='<div class="dcnote" style="margin:14px 0 7px"><b>⑤ 미계상 행 — 문서는 있으나 MW 미공개</b> ('+drop.length+'건, 총계에 포함하지 않음)</div>'+
+      '<div class="dct"><table><thead><tr><th>사이트</th><th>사유</th><th>출처</th></tr></thead><tbody>'+
+      drop.map(d=>'<tr><td>'+dcEsc(d.site||'')+'</td><td style="color:var(--a4);font-size:10.5px">'+dcEsc(d.reason||'')+'</td><td>'+dcA(d.src)+'</td></tr>').join('')+'</tbody></table></div>';
+  }
+  h+='</div>';
+  el.innerHTML=h;
+  const cb=el.querySelector('[data-dcsrcclose]'); if(cb) cb.onclick=()=>{ST.dcSrc=null;renderDC();};
+}
+
+// ---------- 뷰 3: 탑다운 TAM 트리 ----------
+function dcViewTam(el,D){
+  const T=D.tam||{}, tree=D.tree||[], parts=T.parts||{}, noTam=T._no_tam||{}, M=T._meta||{}, TOT=T.totals||{};
+  const routes=D.routes||{};
+  const YR=(M.years||['2023','2024','2025','2026','2027','2028','2029','2030']);
+  const kids={}; tree.forEach(n=>{ const p=n.parent||'_root'; (kids[p]=kids[p]||[]).push(n); });
+  const roots=kids['_root']||[];
+  if(!ST.dcNode||!tree.some(n=>n.part_id===ST.dcNode)) ST.dcNode=(roots[0]||{}).part_id||null;
+  const badge=id=>parts[id]&&parts[id].tam&&YR.some(y=>parts[id].tam[y]!=null)?'<em style="color:#00e6b8">TAM</em>':
+    (noTam[id]?'<em style="color:#ff5c5c">미산정</em>':'');
+  let tv='';
+  roots.forEach(r=>{ const open=ST.dcOpen[r.part_id]!==false;
+    tv+='<div class="dcnd l1'+(ST.dcNode===r.part_id?' on':'')+'" data-dcn="'+r.part_id+'"><span data-dctog="'+r.part_id+'" style="cursor:pointer;opacity:.7">'+(open?'▾':'▸')+'</span> '+dcEsc(r.label)+badge(r.part_id)+'</div>';
+    if(!open) return;
+    (kids[r.part_id]||[]).forEach(c=>{
+      tv+='<div class="dcnd l2'+(ST.dcNode===c.part_id?' on':'')+'" data-dcn="'+c.part_id+'">'+dcEsc(c.label)+badge(c.part_id)+'</div>';
+      (kids[c.part_id]||[]).forEach(g=>{
+        tv+='<div class="dcnd l3'+(ST.dcNode===g.part_id?' on':'')+'" data-dcn="'+g.part_id+'">'+dcEsc(g.label)+badge(g.part_id)+'</div>';});});});
+
+  const anchor=(M.driver_series||{}).capex_busd||{};
+  const ours=TOT.dc_capex_scope_busd||{};
+  const anchorRows=YR.map(y=>{ const a=anchor[y], o=ours[y];
+    if(a==null||o==null) return '<tr><td class="mn">'+y+'</td><td class="mn">'+dcB(o)+'</td><td class="mn">'+dcB(a)+'</td><td class="mn">—</td><td><span class="dcbadge" style="background:#8a90a822;color:#8a90a8">절단</span></td></tr>';
+    const dev=(o/a-1)*100, ok=Math.abs(dev)<=20;
+    return '<tr><td class="mn">'+y+'</td><td class="mn">'+dcB(o)+'</td><td class="mn">'+dcB(a)+'</td>'+
+      '<td class="mn" style="color:'+(ok?'#59d0a8':'#ff5c5c')+'">'+(dev>=0?'+':'')+dev.toFixed(1)+'%</td>'+
+      '<td><span class="dcbadge" style="background:'+(ok?'#59d0a822;color:#59d0a8':'#ff5c5c22;color:#ff5c5c')+'">'+(ok?'PASS':'FAIL')+'</span></td></tr>';}).join('');
+
+  let h='<p class="dch">🌲 탑다운 전수 부품 TAM <span style="color:var(--dim);font-size:11.5px;font-weight:500">'+tree.length+'노드 P1~P6 · TAM 산정 '+(M.nodes_with_tam||0)+'노드 · '+dcEsc(M.unit||'$B')+'</span></p>'+
+    '<p class="dcs">'+dcEsc((M.universe||{})['정의']||'')+' <b>글로벌 전체 DC TAM 이 아닙니다.</b> 트리 노드를 클릭하면 TAM 시계열(회사별 스택)·계수·점유율 근거·<span style="color:#c45cff">phalanx_link 딥링크</span>가 열립니다. 미산정 노드는 그 사유를 그대로 표시합니다.</p>'+
+    '<div class="dcgrid two"><div class="dctree">'+tv+'</div><div id="dcNodePane"></div></div>'+
+    '<div class="dcpan" style="margin-top:14px"><div class="sub-ttl" style="margin-bottom:8px">🎯 총량 앵커 대조 <span style="font-weight:400;color:var(--dim);font-size:10px">부품 TAM 합(대표총계) vs 앵커 B(epoch AI DC CAPEX 플로우, 동일 유니버스) · 게이트 ±20%</span></div>'+
+      '<div class="dct"><table><thead><tr><th>연도</th><th>부품합(대표총계)</th><th>앵커 B</th><th>편차</th><th>판정</th></tr></thead><tbody>'+anchorRows+'</tbody></table></div>'+
+      '<div class="dcnote">'+dcEsc(TOT._note||'')+'</div></div>'+
+    '<div class="dcpan"><div class="sub-ttl" style="margin-bottom:8px">⚠️ 정직 표기 — 이 TAM 을 읽을 때의 유보(_caveats)</div>'+
+      '<ul style="margin:0;padding-left:18px;font-size:11.5px;line-height:1.85;color:var(--dim)">'+
+      (M.caveats||[]).map(c=>'<li>'+dcEsc(c)+'</li>').join('')+
+      ((M.rack_reference||{})['주의']?'<li><b style="color:var(--tx)">IT BOM 세대 가정.</b> '+dcEsc(M.rack_reference['주의'])+'</li>':'')+
+      ((M.universe||{})['글로벌 환산']?'<li><b style="color:var(--tx)">글로벌 환산.</b> '+dcEsc(M.universe['글로벌 환산'])+'</li>':'')+
+      '</ul></div>';
+  el.innerHTML=h;
+  el.querySelectorAll('[data-dctog]').forEach(e=>e.onclick=(ev)=>{ev.stopPropagation();
+    const k=e.dataset.dctog; ST.dcOpen[k]=(ST.dcOpen[k]===false); renderDC();});
+  el.querySelectorAll('[data-dcn]').forEach(e=>e.onclick=()=>{ST.dcNode=e.dataset.dcn;renderDC();});
+  dcTamNode(document.getElementById('dcNodePane'),D,ST.dcNode,YR,kids,routes);
+}
+
+function dcTamNode(el,D,pid,YR,kids,routes){
+  if(!el) return;
+  const T=D.tam||{}, parts=T.parts||{}, noTam=T._no_tam||{}, TOT=T.totals||{}, tree=D.tree||[];
+  const node=tree.find(n=>n.part_id===pid); if(!node){ el.innerHTML=''; return; }
+  const path=[]; let cur=node;
+  while(cur){ path.unshift(cur.label); cur=tree.find(n=>n.part_id===cur.parent); }
+  const P=parts[pid]||{}, hasTam=P.tam&&YR.some(y=>P.tam[y]!=null);
+  let h='<div class="dcpan"><div style="font-size:10px;color:var(--dim);font-family:ui-monospace,monospace">'+dcEsc(path.join(' › '))+'</div>'+
+    '<div style="font-size:15px;font-weight:800;margin:3px 0 2px">'+dcEsc(node.label)+' <span style="font-size:10px;color:var(--dim);font-family:ui-monospace,monospace">'+dcEsc(pid)+'</span></div>';
+  const pl=dcLinkChips(node.phalanx_link||P.phalanx_link||[],routes);
+  if(pl) h+='<div style="margin:6px 0 2px">'+pl+'</div>';
+
+  if(noTam[pid]) h+='<div class="dcwarn" style="margin-top:11px"><b>TAM 미산정</b> — '+dcEsc(noTam[pid])+'</div>';
+
+  if(hasTam){
+    h+='<div class="dcch" style="height:240px;margin-top:12px"><canvas id="dcTamCh"></canvas></div>'+
+      '<div class="dct" style="margin-top:10px"><table><thead><tr><th>구분</th>'+YR.map(y=>'<th>'+y+'</th>').join('')+'</tr></thead><tbody>'+
+      '<tr><td><b>노드 TAM</b>'+(P.sum_group?'<div style="font-size:9px;color:var(--dim)">'+dcEsc(P.sum_group)+'</div>':'')+'</td>'+
+      YR.map(y=>'<td class="mn"><b>'+(P.tam[y]==null?'<span style="color:var(--dim)">미산정</span>':dcB(P.tam[y]))+'</b></td>').join('')+'</tr>'+
+      Object.keys(P.by_company||{}).map((c,i)=>{const v=P.by_company[c];
+        return '<tr><td>'+dcEsc(c)+(v.ticker?' <span style="color:var(--dim);font-size:9.5px">'+dcEsc(v.ticker)+'</span>':'')+
+          '<div style="font-size:9px;color:'+DCCOL[i%DCCOL.length]+'">점유율 '+dcNum(v.share_pct,1)+'% ('+dcEsc(v.share_year||'')+')</div></td>'+
+          YR.map(y=>'<td class="mn">'+(v[y]==null?'—':dcB(v[y]))+'</td>').join('')+'</tr>';}).join('')+
+      '</tbody></table></div>';
+    if(Object.keys(P.by_company||{}).length){
+      h+='<div class="dcnote"><b>점유율 근거</b></div><div class="dct" style="margin-top:5px"><table><thead><tr><th>회사</th><th>점유율</th><th>기준연도</th><th>시장 정의(분모)</th><th>근거</th><th>인용</th><th>출처</th></tr></thead><tbody>'+
+        Object.keys(P.by_company).map(c=>{const v=P.by_company[c];
+          return '<tr><td><b>'+dcEsc(c)+'</b></td><td class="mn">'+dcNum(v.share_pct,1)+'%</td><td class="mn">'+dcEsc(v.share_year||'—')+'</td>'+
+            '<td style="font-size:10.5px">'+dcEsc(v.share_definition||'—')+'</td><td style="font-size:10px">'+dcEsc(v.basis||'—')+'</td>'+
+            '<td style="max-width:340px;font-size:10px;color:var(--dim)">'+dcEsc(v.quote||'')+'</td><td>'+dcA(v.src)+'</td></tr>';}).join('')+
+        '</tbody></table></div>';
+      if(P.company_share_coverage_pct!=null) h+='<div class="dcnote">커버리지 '+dcNum(P.company_share_coverage_pct,1)+'% — '+dcEsc(P.company_share_note||'')+'</div>';
+      if(P.company_share_warning) h+='<div class="dcwarn">⚠ '+dcEsc(P.company_share_warning)+'</div>';
+    }
+    const U=P.unit_econ||{};
+    h+='<div class="dcnote" style="margin-top:11px"><b>산식</b> · '+dcEsc(P.method||'')+'</div>';
+    if(U.metric) h+='<div class="dcnote" style="margin-top:7px"><b>계수</b> '+dcEsc(U.metric)+' = '+
+      (U.value!=null?dcNum(U.value):'연도별')+(U.est?' <span style="color:var(--a4)">est</span>':'')+' · 근거 '+dcEsc(U.basis||'—')+' '+dcA(U.src)+
+      '<div style="margin-top:3px">'+dcEsc(U.scope||'')+'</div>'+(U.quote?'<div class="dcq">“'+dcEsc(U.quote)+'”</div>':'')+
+      (U.rationale?'<div style="margin-top:4px">채택 사유: '+dcEsc(U.rationale)+'</div>':'')+'</div>';
+    const ALT=P.unit_econ_alternatives||[];
+    if(ALT.length) h+='<div class="dcnote" style="margin-top:8px"><b>대안 계수 '+ALT.length+'건</b> (채택하지 않음 — 스코프 차이)</div>'+
+      '<div class="dct" style="margin-top:5px"><table><thead><tr><th>값</th><th>연도</th><th>스코프</th><th>근거</th><th>출처</th></tr></thead><tbody>'+
+      ALT.map(a=>'<tr><td class="mn">'+dcNum(a.value)+' '+dcEsc(a.metric||'')+'</td><td class="mn">'+dcEsc(a.year||'—')+'</td>'+
+        '<td style="max-width:460px;font-size:10.5px;line-height:1.55">'+dcEsc(a.scope||'')+'</td><td style="font-size:10px">'+dcEsc(a.basis||'—')+'</td><td>'+dcA(a.src)+'</td></tr>').join('')+'</tbody></table></div>';
+    if(P.note) h+='<div class="dcwarn">'+dcEsc(P.note)+'</div>';
+  } else if(!noTam[pid]) {
+    const gt=(TOT.by_tree_group_busd||{})[pid];
+    const ch=(kids[pid]||[]);
+    h+='<div class="dcnote" style="margin-top:11px">이 노드는 <b>그룹(중간) 노드</b>입니다 — 자체 TAM 은 산정하지 않고 하위 노드에서 집계합니다.</div>';
+    if(gt) h+='<div class="dct" style="margin-top:9px"><table><thead><tr><th>그룹 합계</th>'+YR.map(y=>'<th>'+y+'</th>').join('')+'</tr></thead><tbody><tr><td><b>'+dcEsc(node.label)+'</b></td>'+
+      YR.map(y=>'<td class="mn">'+(gt[y]==null?'<span style="color:var(--dim)">미산정</span>':dcB(gt[y]))+'</td>').join('')+'</tr></tbody></table></div>';
+    if(ch.length) h+='<div class="dcnote" style="margin-top:9px"><b>하위 '+ch.length+'노드</b> — '+ch.map(c=>'<span class="dcbadge" style="background:var(--s2);color:var(--tx);cursor:pointer" data-dcn2="'+c.part_id+'">'+dcEsc(c.label)+'</span>').join('')+'</div>';
+  }
+  const PLY=node.players||[];
+  if(PLY.length) h+='<div class="dcnote" style="margin-top:11px"><b>플레이어 '+PLY.length+'사</b></div><div class="dct" style="margin-top:5px"><table><thead><tr><th>회사</th><th>티커</th><th>지역</th><th>점유율(추정)</th><th>근거</th></tr></thead><tbody>'+
+    PLY.map(p=>'<tr><td><b>'+dcEsc(p.company)+'</b></td><td class="mn">'+dcEsc(p.ticker||'—')+'</td><td>'+dcEsc(p.region||'—')+'</td>'+
+      '<td class="mn">'+(p.share_est!=null?dcNum(p.share_est,1)+'%':'—')+'</td><td style="font-size:10px;color:var(--dim);max-width:380px">'+dcEsc(p.basis||'')+'</td></tr>').join('')+'</tbody></table></div>';
+  const UE=node.unit_econ||{};
+  if(UE&&Object.keys(UE).length) h+='<div class="dcnote" style="margin-top:9px"><b>트리 unit_econ</b> '+dcEsc(JSON.stringify(UE))+'</div>';
+  h+='</div>';
+  el.innerHTML=h;
+  el.querySelectorAll('[data-dcn2]').forEach(e=>e.onclick=()=>{ST.dcNode=e.dataset.dcn2;renderDC();});
+  dcBindPl(el,routes);
+  const cv=document.getElementById('dcTamCh');
+  if(cv&&window.Chart&&hasTam){
+    const cos=Object.keys(P.by_company||{});
+    const ds=cos.map((c,i)=>({label:c,data:YR.map(y=>P.by_company[c][y]),backgroundColor:DCCOL[i%DCCOL.length],borderWidth:0,stack:'t'}));
+    ds.push({label:cos.length?'기타·미배분':'노드 TAM',
+      data:YR.map(y=>{ const t=P.tam[y]; if(t==null) return null;
+        const s=cos.reduce((a,c)=>a+(+P.by_company[c][y]||0),0); return Math.max(0,+(t-s).toFixed(3)); }),
+      backgroundColor:'rgba(138,144,168,.42)',borderWidth:0,stack:'t'});
+    charts['dc_tam']=new Chart(cv,{type:'bar',data:{labels:YR,datasets:ds},options:{
+      responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:true,labels:{color:'#6a6a9a',boxWidth:10,font:{size:9}}},
+        tooltip:{filter:c=>c.parsed.y>0,callbacks:{label:c=>c.dataset.label+': $'+(c.parsed.y||0).toFixed(2)+'B'}}},
+      scales:{x:{stacked:true,ticks:{color:'#6a6a9a',font:{size:10}},grid:{display:false}},
+        y:{stacked:true,ticks:{color:'#4a4a72',font:{size:9},callback:v=>'$'+v+'B'},grid:{color:'rgba(40,40,74,.5)'}}}}});
+  }
+}
+
 // ---------- events ----------
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ST.tab=t.dataset.tab;ST.view='overview';ST.company=null;ST.q='';document.getElementById('q').value='';render();window.scrollTo(0,0);});
 let qt; document.getElementById('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{ST.q=e.target.value; ST.view==='detail'?renderDetail(): ST.view==='country'?renderCountry(): (ST.tab==='dash'?filterOverview():render());},180);});
