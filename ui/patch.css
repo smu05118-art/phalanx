@@ -1,0 +1,199 @@
+/* ============================================================
+   Phalanx UI Patch v1 — 2026-08-26 UX 감사 반영 (프론트 패치 레이어)
+   로드 순서: index.html 인라인 <style> 뒤에 로드되어 동일 특이도에서 승리.
+   페어 파일: ui/patch.js · 문서: ui/README.md
+   ============================================================ */
+
+/* ---------- 0. 토큰 (P0-03/04 · P1-07/16) ---------- */
+:root{
+  --dim:#9a9ec4;                 /* P0-04: #6a6a9a(3.8:1) → 7.4:1 AA 통과 */
+  --line:var(--bd);              /* P0-03: catDrill 폴백 차단 */
+  --panel:var(--s2);
+  --chip-r:8px; --chip-pad:6px 12px; --chip-fs:12px;
+  --fs-2xs:10px; --fs-xs:11px; --fs-sm:12px; --fs-md:13px; --fs-lg:15px; --fs-xl:19px;
+  --font-ui:'IBM Plex Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --mono:var(--font-mono);           /* KPI·인사이트 인라인 style이 참조하는 미정의 토큰 봉합 (76곳) */
+}
+
+/* ---------- 1. 폰트 (요청: 아티팩트와 동일 — IBM Plex) ---------- */
+body{font-family:var(--font-ui);}
+.pill,.tab,.regbtn,.back,.search,.add-btn,button{font-family:var(--font-ui);}
+.sub,.cnt,pre,code,.mn{font-family:var(--font-mono);}
+.lbl-sm,.split-note{font-family:var(--font-ui);}   /* 상세뷰 #cnt 내부 라벨이 모노를 상속하지 않게 */
+
+/* ---------- 2. 타이포 스케일 (P1-16: 8~9px 폐지, 한글 uppercase 제거) ---------- */
+header h1{font-size:var(--fs-xl);}
+.sub{font-size:var(--fs-xs);}
+.cnt{font-size:var(--fs-xs);}
+.lbl-sm{font-size:var(--fs-2xs);text-transform:none;letter-spacing:0;}
+.clab,.metric .lbl,.hml,.hp-l{font-size:var(--fs-2xs);}
+.hsinfo th{font-size:var(--fs-2xs);}
+
+/* ---------- 3. 구역화 (P1-18) ---------- */
+header{border-bottom:1px solid var(--bd);margin-bottom:10px;padding-bottom:10px;}
+#krTradeBar{display:none !important;} /* P1-13: 리전 메뉴 한국 컬럼으로 흡수 */
+
+/* ---------- 4. 칩 통일 (P1-07) + 선택색 민트 단일화 (P1-06) ---------- */
+.pill,.back,.catchip,.catco{border-radius:var(--chip-r);font-size:var(--chip-fs);font-weight:600;}
+.pill{padding:var(--chip-pad);}
+.tab{border-radius:var(--chip-r);font-weight:600;}
+.pill.on,.pill.cur.on,.pill.y.on,.pill.s.on,.pill.cm.on{
+  background:var(--a1);border-color:var(--a1);color:#04121b;}
+.pill.b.on,.pill.r.on,.pill.g.on{background:#1e5fd6;border-color:#1e5fd6;color:#fff;} /* P0-04: 5.7:1 */
+.pill .pn{font-style:normal;font-family:var(--font-mono);font-size:9.5px;opacity:.78;margin-left:3px;}
+
+/* ---------- 5. 탭바 (P0-01: 세로 붕괴 수리 · P1-02: 4그룹) ---------- */
+.tabs{display:flex;gap:6px;margin:2px 2px 10px;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
+  scrollbar-width:none;padding-bottom:4px;align-items:center;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start;}
+@media(min-width:1280px){.tabs{flex-wrap:wrap;overflow:visible;}}
+.tabgrp-l{flex:0 0 auto;font-size:10px;font-weight:700;color:var(--dim);
+  margin:0 2px 0 10px;letter-spacing:.04em;white-space:nowrap;user-select:none;}
+.tabgrp-l:first-child{margin-left:2px;}
+
+/* ---------- 6. 리전 드롭다운 (P1-01) ---------- */
+.regbar{position:relative;display:flex;gap:10px;align-items:center;margin:2px 2px 12px;flex-wrap:wrap;}
+.regsel{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:11px;
+  border:1px solid var(--a1);background:linear-gradient(135deg,var(--s2),var(--s1));
+  color:var(--tx);font-weight:700;font-size:14px;cursor:pointer;font-family:var(--font-ui);}
+.regsel .rf{font-size:15px;}
+.regsel i{font-style:normal;color:var(--dim);font-size:11px;margin-left:2px;}
+.regsel:hover{box-shadow:0 0 0 1px var(--a1) inset;}
+.regsel .rn{font-family:var(--font-mono);font-size:10.5px;color:var(--dim);font-weight:500;}
+.regmenu{position:absolute;top:calc(100% + 8px);left:0;z-index:60;
+  display:flex;gap:20px;flex-wrap:wrap;padding:16px 18px;max-width:min(880px,calc(100vw - 28px));
+  background:var(--s1);border:1px solid var(--bd);border-radius:14px;
+  box-shadow:0 14px 40px rgba(0,0,0,.5);}
+.regmenu[hidden]{display:none;}
+.regcol{display:flex;flex-direction:column;gap:3px;min-width:168px;}
+.regcol>b{font-size:11.5px;color:var(--dim);font-weight:700;margin-bottom:5px;letter-spacing:.03em;}
+.regitem{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:8px;
+  font-size:12.5px;color:var(--tx);cursor:pointer;white-space:nowrap;}
+.regitem:hover{background:var(--s2);}
+.regitem.on{background:rgba(0,230,184,.13);color:var(--a1);font-weight:700;}
+.regitem .bz{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--a2);}
+.regitem .bz.c{background:var(--a4);}
+.regitem.ext{color:var(--a2);}
+.regitem small{color:var(--dim);font-size:10px;font-weight:400;}
+.regbtn.busy,.regitem.busy{opacity:.55;pointer-events:none;}
+.phx-fresh{margin-left:auto;padding:3px 10px;border-radius:9px;font-size:11px;font-weight:700;
+  background:rgba(0,230,184,.12);color:var(--a1);white-space:nowrap;font-family:var(--font-mono);}
+.phx-fresh.stale{background:rgba(255,190,46,.13);color:var(--a4);}
+
+/* ---------- 7. 검색·통화 행 (P0-09/11) ---------- */
+#curRow{align-items:center;}
+#curRow .search{order:-1;margin-right:auto;}
+.search{padding:7px 11px 7px 30px;font-size:13px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239a9ec4' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:9px center;}
+#curRow .pill.cur{border-radius:0;margin-left:-1px;}
+#curRow .pill.cur.on{position:relative;z-index:1;}
+#curRow .pill.cur.seg-first{border-radius:var(--chip-r) 0 0 var(--chip-r);margin-left:0;}
+#curRow .pill.cur.seg-last{border-radius:0 var(--chip-r) var(--chip-r) 0;}
+
+/* ---------- 8. 카테고리 행 페이드 (P0-13) ---------- */
+.cats-wrap{position:relative;margin-bottom:7px;}   /* 래핑으로 #catRow가 :last-child가 되며 잃는 7px 복원 */
+.cats-wrap::before,.cats-wrap::after{content:'';position:absolute;top:0;bottom:0;width:34px;
+  pointer-events:none;opacity:0;transition:opacity .2s;z-index:1;}
+.cats-wrap::before{left:0;background:linear-gradient(90deg,var(--bg),transparent);}
+.cats-wrap::after{right:0;background:linear-gradient(270deg,var(--bg),transparent);}
+.cats-wrap.more-l::before{opacity:1;}
+.cats-wrap.more-r::after{opacity:1;}
+
+/* ---------- 9. 산업분류 (P1-04: 요약 1행 + 다열 · P0-03: 토큰 정합) ---------- */
+.catwrap{margin:0 0 16px;}
+.cattitle{font-size:12px;font-weight:700;margin:0 0 8px;color:var(--tx);}
+.cattitle span{color:var(--dim);font-weight:500;}
+.catsecs{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:6px;align-items:start;}
+.catgrp{display:flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid var(--line);
+  border-radius:10px;cursor:pointer;font-size:12px;background:transparent;}
+.catgrp:hover{border-color:var(--a1);}
+.catgrp.on{background:rgba(0,230,184,.10);border-color:var(--a1);}
+.catgrp b{color:var(--tx);}
+.catgrp em{font-style:normal;color:var(--dim);font-size:10.5px;}
+.catgrp i{font-style:normal;margin-left:auto;color:var(--dim);}
+.catgrp.sum{grid-column:1/-1;}
+.catchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;grid-column:1/-1;}
+.catchip{font-size:11.5px;padding:4px 11px;border:1px solid var(--line);cursor:pointer;
+  color:var(--dim);display:inline-flex;align-items:center;gap:6px;background:transparent;}
+.catchip:hover{border-color:var(--a1);color:var(--a1);}
+.catchip.on{background:rgba(0,230,184,.14);color:var(--a1);border-color:var(--a1);font-weight:700;}
+.catchip em{font-style:normal;font-family:var(--font-mono);font-size:9.5px;opacity:.75;}
+.catbox{margin-top:10px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;
+  background:var(--panel);grid-column:1/-1;}
+.catbox b{color:var(--tx);}
+.catlist{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.catco{font-size:11.5px;padding:3px 9px;border:1px solid var(--line);cursor:pointer;
+  display:inline-flex;gap:5px;align-items:center;color:var(--tx);background:transparent;}
+.catco:hover{border-color:var(--a1);color:var(--a1);}
+.catco i{font-style:normal;font-family:var(--font-mono);font-size:9.5px;color:var(--dim);}
+
+/* ---------- 10. 히어로 스트립 + 소개 카드 (P2-01/02) ---------- */
+.phx-hero{background:var(--s1);border:1px solid var(--bd);border-radius:12px;
+  padding:12px 14px;margin:0 0 14px;display:flex;flex-direction:column;gap:8px;}
+.phx-hero .hrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.phx-hero .hlab{font-size:10.5px;font-weight:700;color:var(--dim);min-width:76px;letter-spacing:.02em;}
+.phx-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;
+  border:1px solid var(--bd);background:var(--s2);font-size:11.5px;cursor:pointer;color:var(--tx);white-space:nowrap;}
+.phx-chip:hover{border-color:var(--a1);}
+.phx-chip .up{color:#2fae66;font-family:var(--font-mono);font-size:10.5px;}
+.phx-chip .dn{color:#e06666;font-family:var(--font-mono);font-size:10.5px;}
+.phx-chip .dd{color:var(--a4);font-family:var(--font-mono);font-size:10.5px;}
+.phx-intro{background:linear-gradient(135deg,rgba(0,230,184,.07),rgba(61,139,253,.06));
+  border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:0 0 12px;
+  font-size:12.5px;color:var(--dim);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.phx-intro b{color:var(--tx);}
+.phx-intro .x{margin-left:auto;cursor:pointer;padding:4px 12px;border:1px solid var(--bd);
+  border-radius:8px;color:var(--tx);font-weight:600;white-space:nowrap;}
+.phx-intro .x:hover{border-color:var(--a1);}
+
+/* ---------- 11. 키보드 포커스 (P1-14) ---------- */
+.pill:focus-visible,.tab:focus-visible,.regbtn:focus-visible,.regsel:focus-visible,
+.regitem:focus-visible,.catgrp:focus-visible,.catchip:focus-visible,.catco:focus-visible,
+.phx-chip:focus-visible{outline:2px solid var(--a2);outline-offset:1px;}
+
+/* ---------- 12. 모바일 설계 (P1-15 · 감사 실측 반영) ---------- */
+@media(max-width:680px){
+  .app{padding:10px 10px 70px;}
+  header{padding-bottom:8px;margin-bottom:8px;}
+  header h1{font-size:16px;}
+  .sub{font-size:10.5px;}
+  /* 리전: 드롭다운 버튼 전폭 + 신선도 칩 우측 */
+  .regsel{flex:1;justify-content:flex-start;padding:9px 13px;font-size:13px;}
+  .regmenu{position:fixed;left:10px;right:10px;top:auto;max-width:none;gap:14px;
+    max-height:70vh;overflow-y:auto;}
+  .regcol{min-width:calc(50% - 14px);}
+  .phx-fresh{font-size:10px;padding:3px 8px;}
+  /* sticky ctrl 압축 */
+  .ctrl{padding:4px 0 6px;}
+  #rangeRow{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
+  #rangeRow::-webkit-scrollbar{display:none;}
+  #rangeRow .pill{flex:0 0 auto;}
+  .brush{height:32px;}
+  /* 검색: iOS 강제줌 방지 + 전폭 */
+  .search{font-size:16px;padding:8px 12px 8px 32px;max-width:none;flex:1 1 100%;}
+  #curRow .lbl-sm{margin-left:0;}
+  #curRow .search{margin-right:0;}
+  .phx-hero .hlab{min-width:100%;}
+  .catsecs{grid-template-columns:1fr 1fr;}
+}
+/* 터치 타겟 (P1-15: 데스크톱 밀도 유지, 터치 기기만 확대) */
+@media(pointer:coarse){
+  .row{gap:7px;}
+  .pill{padding:10px 14px;font-size:12px;}
+  .tab{padding:11px 16px;font-size:13px;}
+  .star{font-size:20px;padding:6px 8px;}
+  .regsel{min-height:42px;}
+  .regitem{padding:9px 11px;font-size:13px;}
+  .catgrp{padding:11px 13px;}
+  .catchip{padding:8px 13px;font-size:12px;}
+  .catco{padding:7px 10px;font-size:12px;}
+}
+/* ---------- 13. 초광폭 (P1: 1600px+ 4열) ---------- */
+@media(min-width:1600px){
+  .ov-grid{grid-template-columns:repeat(4,1fr);}
+  .grid{grid-template-columns:repeat(4,1fr);}
+}

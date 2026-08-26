@@ -1,0 +1,39 @@
+name: ui-patch-inject
+
+# 크론이 index.html을 재생성하며 ui/ 패치 훅을 지우면 자동으로 재주입한다.
+# 멱등: 훅이 이미 있으면 diff가 없어 커밋하지 않음 → 자기 커밋으로 재트리거돼도 무한루프 없음.
+# 빌더 템플릿에 훅을 직접 반영하면 이 워크플로는 삭제해도 된다 (ui/README.md 참고).
+
+on:
+  push:
+    branches: [main]
+    paths: [index.html]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ui-patch-inject
+  cancel-in-progress: false
+
+jobs:
+  inject:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: 훅 주입 (멱등)
+        run: python3 tools/inject_ui_patch.py index.html
+      - name: 변경 시에만 커밋
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "변경 없음 — 종료"
+            exit 0
+          fi
+          git config user.name "ui-patch-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -- index.html
+          git commit -m "ops: ui 패치 훅 재주입 (자동)"
+          git pull --rebase origin main
+          git push

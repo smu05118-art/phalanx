@@ -104,6 +104,8 @@ if git diff --cached --quiet; then
   echo "[git] no change — nothing to push"
 else
   git commit -q -m "auto-update $(date '+%Y-%m-%d %H:%M %Z') (mode=$MODE)"
+  # Action 봇 커밋(ui-patch·tga)과 공존: push 전 rebase 필수 (AGENTS.md 규약)
+  if ! git pull --rebase -q origin main; then echo "[git] rebase FAILED — 수동 확인 필요"; git rebase --abort 2>/dev/null; exit 1; fi
   if git push -q origin main; then echo "[git] pushed → Pages will rebuild in ~1-2 min"; else echo "[git] push FAILED"; exit 1; fi
 fi
 echo "[$(date '+%Y-%m-%d %H:%M:%S %Z')] DONE"

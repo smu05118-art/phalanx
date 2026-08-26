@@ -22,7 +22,16 @@
 ## ✅ 자유롭게 작업 가능
 
 - **새 디렉토리/새 파일**: `tools/`, `data/<신규소스명>/`, `codex_tasks/`, `.github/workflows/`, `panoptes/tools/`, `panoptes/tests/`
+- **`ui/` 프론트 패치 레이어** (`ui/patch.css`, `ui/patch.js`): UI 수정은 index.html이 아니라 여기서 한다 — 크론이 덮어써도 안전. 상세는 `ui/README.md`
 - 기존에 Codex가 만든 자립 모듈(`panoptes/tools/update_tga_target.py` 등)의 개선
+
+## UI 수정 규약 (2026-08-26 도입)
+
+index.html 직접 수정 금지는 유지된다. 대신 UI 변경은 **`ui/patch.css`·`ui/patch.js`**(로드 후 오버라이드)로 작성하라.
+index.html의 로더 훅(`ui-patch:v1` 마커)은 `.github/workflows/ui-patch-inject.yml`이 크론 push마다 자동 재주입한다
+(`tools/inject_ui_patch.py`, 멱등·fail-closed). Action이 만드는 `ops: ui 패치 훅 재주입 (자동)` 커밋은 정상 동작이다.
+빌더 템플릿에 훅이 직접 반영되면 이 Action은 삭제 가능. 패치가 오버라이드하는 전역 함수 시그니처를
+빌더에서 바꿀 때는 `ui/patch.js`의 해당 모듈을 함께 갱신할 것.
 
 ## 데이터 수집기(fetcher) 작성 규약 — PR#3(TGA)이 모범 사례
 

@@ -69,4 +69,5 @@ jobs:
           git config user.email "phalanx-treasury-bot@users.noreply.github.com"
           git add -- panoptes/data/tga_target.json
           git commit -m "data: update official Treasury TGA assumptions"
+          git pull --rebase origin main
           git push origin "HEAD:${GITHUB_REF_NAME}"
