@@ -176,6 +176,11 @@ header h1 em{color:var(--a1);font-style:normal;}
 .reggrp-l{font-size:11px;font-weight:900;color:var(--a4);letter-spacing:.06em;padding:0 4px 0 7px;white-space:nowrap;}
 @media(max-width:680px){.add-form{grid-template-columns:1fr 1fr;}.add-btn{grid-column:1/-1;}}
 </style>
+<!-- ui-patch:v1 head (자동 주입 — tools/inject_ui_patch.py, ui/README.md 참고) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="ui/patch.css">
 </head>
 <body>
 <div class="app">
@@ -3931,5 +3936,7 @@ loadPrefs(); applyHash();                      // resolves region; company re-re
 loadRegion(ST.region, ()=>{ applyHash(); applyRegion(); buildCurRow(); render(); initBrush(); renderHsInfo(); });
 window.addEventListener('popstate',()=>{ applyHash(); loadRegion(ST.region, ()=>{ applyHash(); applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); }); });
 </script>
+<!-- ui-patch:v1 body -->
+<script src="ui/patch.js"></script>
 </body>
 </html>
