@@ -15,8 +15,9 @@
 | `panoptes/data/*.json` (tga_target.json 제외) | 로컬 수집 크론 |
 
 이 파일들의 변경이 필요하면: **PR 본문에 "로컬 빌더 반영 필요" 섹션으로 diff 제안만 남겨라.**
-운영자가 로컬 원본에 반영한다. 예외: `panoptes/data/tga_target.json`은 GitHub Action
-(`update-tga-target.yml`)이 관리하는 레포 단일소스 — 로컬에 사본을 만들지 마라.
+운영자가 로컬 원본에 반영한다. 예외: `panoptes/data/tga_target.json`과
+`panoptes/data/llm_rankings.json`은 각각 GitHub Action(`update-tga-target.yml`,
+`update-llm-rankings.yml`)이 관리하는 레포 단일소스 — 로컬에 사본을 만들지 마라.
 
 ## ✅ 자유롭게 작업 가능
 

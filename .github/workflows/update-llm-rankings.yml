@@ -1,0 +1,92 @@
+name: Update LLM rankings (OpenRouter)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 23:55 UTC = 08:55 KST — 아침 9시 전에 갱신 완료
+    - cron: "55 23 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: llm-rankings-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run fetcher unit tests
+        run: python3 -m unittest discover -s panoptes/tools/tests -p 'test_update_llm_rankings*.py' -v
+
+      - name: Fetch OpenRouter rankings
+        run: >-
+          python3 panoptes/tools/update_llm_rankings.py
+          --output panoptes/data/llm_rankings.json
+
+      - name: Validate output
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          d = json.load(open("panoptes/data/llm_rankings.json"))
+          assert d.get("as_of"), "as_of missing"
+          assert len(d["leaderboard"]["week"]) >= 20, "weekly leaderboard too small"
+          assert d["top_chart"]["dates"], "top_chart empty"
+          assert d["models"], "model catalog empty"
+          print("valid:", d["as_of"], len(d["leaderboard"]["week"]), "rows")
+          EOF
+          node --check panoptes/llm_charts.js
+          node --check panoptes/app.js
+
+      - name: Detect data change
+        id: diffcheck
+        shell: bash
+        run: |
+          # updated(수집 시각)만 바뀐 경우는 무변경으로 취급 — diff 노이즈 커밋 방지
+          if git diff --quiet -- panoptes/data/llm_rankings.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          elif python3 - <<'EOF'
+          import json, subprocess, sys
+          new = json.load(open("panoptes/data/llm_rankings.json"))
+          old_raw = subprocess.run(
+              ["git", "show", "HEAD:panoptes/data/llm_rankings.json"],
+              capture_output=True, text=True)
+          if old_raw.returncode != 0:
+              sys.exit(1)  # 신규 파일 → 변경으로 취급
+          old = json.loads(old_raw.stdout)
+          old.pop("updated", None); new.pop("updated", None)
+          sys.exit(0 if old == new else 1)
+          EOF
+          then
+            git checkout -- panoptes/data/llm_rankings.json
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit updated rankings
+        if: steps.diffcheck.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "panoptes-llm-bot"
+          git config user.email "panoptes-llm-bot@users.noreply.github.com"
+          git add -- panoptes/data/llm_rankings.json
+          git commit -m "data: LLM rankings daily $(date -u +%Y-%m-%d)"
+          # 규약: 푸시 전 rebase — 로컬 크론 커밋과 경합 대비, 실패 시 재시도
+          # (set -e 환경이므로 개별 실패는 || true로 삼키고 push 성공 시에만 종료)
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep 5
+          done
+          exit 1
