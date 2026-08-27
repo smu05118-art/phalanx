@@ -176,7 +176,7 @@ header h1 em{color:var(--a1);font-style:normal;}
 .reggrp-l{font-size:11px;font-weight:900;color:var(--a4);letter-spacing:.06em;padding:0 4px 0 7px;white-space:nowrap;}
 @media(max-width:680px){.add-form{grid-template-columns:1fr 1fr;}.add-btn{grid-column:1/-1;}}
 </style>
-<!-- ui-patch:v1 head (자동 주입 — tools/inject_ui_patch.py, ui/README.md 참고) -->
+<!-- ui-patch:v1 head (빌더 템플릿 내장 — ui/README.md, Action 재주입은 no-op) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -2725,6 +2725,290 @@ function avAll(){
 }
 // ===== 🎮 Game 탭 — 상장사 게임 나우캐스트 (Steam·PC방·메이플·모바일·DMM) =====
 let _gameLoaded=false; const GCH={};
+/* ==== ecal 탭 (2026-08-28 구현 — 호출부만 있고 미구현이던 탭, ui/patch.js가 자동 재노출) ==== */
+var _ecalLoaded=false;
+function loadEcal(cb){ if(_ecalLoaded||window.ECAL){_ecalLoaded=true;return cb();}
+  const sc=document.createElement('script'); sc.src='data_ecal.js';
+  sc.onload=()=>{_ecalLoaded=true;cb();};
+  sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">📅 실적 캘린더 데이터 준비 중입니다… (com.phalanx.ecal 첫 수집 대기)</div>';};
+  document.head.appendChild(sc); }
+function _ecalEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _ecalYmd(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function _ecalDow(s){ const p=s.split('-'); const d=new Date(+p[0],+p[1]-1,+p[2]); return ['일','월','화','수','목','금','토'][d.getDay()]; }
+function _ecalNum(s){ if(s==null) return null; const t=String(s).replace(/[^0-9.\-]/g,''); if(!t||t==='-'||t==='.') return null; const v=parseFloat(t); return isNaN(v)?null:v; }
+function _ecalMcap(s){ const v=_ecalNum(s); if(v==null) return '<span style="color:var(--dim)">—</span>';
+  if(v>=1e12) return '$'+(v/1e12).toFixed(2)+'T';
+  if(v>=1e9)  return '$'+(v/1e9).toFixed(1)+'B';
+  if(v>=1e6)  return '$'+(v/1e6).toFixed(0)+'M';
+  return '$'+Math.round(v).toLocaleString(); }
+function _ecalChip(t){
+  if(t==='장전') return '<span class="ec-chip" style="color:#ffbe2e;border-color:rgba(255,190,46,.45)">☀ 장전</span>';
+  if(t==='장마감') return '<span class="ec-chip" style="color:#c45cff;border-color:rgba(196,92,255,.45)">🌙 장마감</span>';
+  return '<span class="ec-chip" style="color:var(--dim)">시간 미정</span>'; }
+function _ecalSurp(s){ const v=_ecalNum(s); if(v==null) return '<span style="color:var(--dim)">—</span>';
+  const c=v>=0?'#59d0a8':'#ff6b7d'; const a=Math.abs(v)>=100?Math.abs(v).toFixed(0):Math.abs(v).toFixed(1);
+  return '<span style="color:'+c+';font-weight:700">'+(v>=0?'+':'-')+a+'%</span>'; }
+function _ecalEps(e){
+  if(!e.eps_est&&!e.eps_prev) return '<span style="color:var(--dim)">—</span>';
+  let h=e.eps_est?'<b>'+_ecalEsc(e.eps_est)+'</b>':'<span style="color:var(--dim)">—</span>';
+  if(e.eps_prev) h+=' <span style="color:var(--dim);font-size:10px">(전년 '+_ecalEsc(e.eps_prev)+')</span>';
+  return h; }
+function _ecalFilter(){
+  const all=(window.ECAL||{}).entries||[];
+  const today=_ecalYmd(new Date());
+  let end='';
+  if(ST.ecw==='1w'){ const d=new Date(); d.setDate(d.getDate()+7); end=_ecalYmd(d); }
+  const q=(ST.ecq||'').toLowerCase().trim();
+  return all.filter(e=>{
+    if(ST.ecw==='1w'&&(e.date<today||e.date>end)) return false;
+    if(ST.ecm!=='all'&&e.market!==ST.ecm) return false;
+    if(ST.ecp&&!e.phx) return false;
+    if(q&&String(e.ticker||'').toLowerCase().indexOf(q)<0&&String(e.name||'').toLowerCase().indexOf(q)<0) return false;
+    return true; });
+}
+function _ecalRow(e){
+  const jp=e.market==='JP';
+  const tk=jp?'background:rgba(255,92,92,.13);color:#ff8f8f':'background:rgba(61,139,253,.15);color:#7db4ff';
+  return '<tr>'
+    +'<td style="white-space:nowrap">'+_ecalChip(e.time)+'</td>'
+    +'<td><span class="ec-tk" style="'+tk+'">'+_ecalEsc(e.ticker)+'</span> <span style="font-size:9px;color:var(--dim)">'+(jp?'JP':'US')+'</span></td>'
+    +'<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_ecalEsc(e.name)
+      +(e.phx?'<span class="ec-phx" title="Phalanx 커버 기업'+(e.card?' · '+_ecalEsc(e.card):'')+'">PHX</span>':'')+'</td>'
+    +'<td style="font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);white-space:nowrap">'+_ecalEsc(e.fq||'—')+'</td>'
+    +'<td style="font-family:ui-monospace,monospace;font-size:11.5px;white-space:nowrap">'+_ecalEps(e)+'</td>'
+    +'<td style="font-family:ui-monospace,monospace;font-size:11.5px">'+_ecalSurp(e.surprise_last)+'</td>'
+    +'<td style="font-family:ui-monospace,monospace;font-size:11.5px">'+_ecalMcap(e.mcap)+'</td>'
+    +'</tr>';
+}
+function _ecalList(list){
+  const all=(window.ECAL||{}).entries||[];
+  if(!all.length) return '<div class="empty-msg">📅 실적 캘린더 데이터가 아직 없습니다. (com.phalanx.ecal 일일 수집 대기)</div>';
+  if(!list.length) return '<div class="empty-msg">조건에 맞는 실적 발표가 없습니다 — 기간·시장·검색 필터를 풀어보세요.</div>';
+  const today=_ecalYmd(new Date());
+  const by={}, ord=[];
+  list.forEach(e=>{ const d=e.date||'미정'; if(!by[d]){by[d]=[];ord.push(d);} by[d].push(e); });
+  ord.sort();
+  let h='<div style="font-size:10px;color:var(--dim);margin:0 2px 8px">'+list.length+'건 표시 / 전체 '+all.length+'건</div>';
+  ord.forEach(d=>{
+    const rows=by[d].slice().sort((a,b)=>((b.phx?1:0)-(a.phx?1:0))||((_ecalNum(b.mcap)||0)-(_ecalNum(a.mcap)||0))||String(a.ticker).localeCompare(String(b.ticker)));
+    const isToday=d===today, past=d<today;
+    h+='<div class="ec-day'+(isToday?' today':'')+(past?' past':'')+'">'
+      +'<div class="ec-dh">'+d+' ('+_ecalDow(d)+')'
+      +(isToday?' <span class="ec-today">오늘</span>':'')
+      +'<span style="color:var(--dim);font-weight:400;font-size:10px;margin-left:8px">'+rows.length+'건</span></div>'
+      +'<div class="ec-tw"><table><thead><tr><th>시간</th><th>티커</th><th>기업</th><th>분기</th><th>EPS 예상(전년)</th><th>직전 서프라이즈</th><th>시총</th></tr></thead><tbody>'
+      +rows.map(_ecalRow).join('')+'</tbody></table></div></div>';
+  });
+  h+='<div style="margin-top:10px;font-size:10px;color:var(--dim);line-height:1.6">출처: Nasdaq 캘린더(US·EPS 컨센서스 포함) · kabuyoho(JP) · 자체 IR 일정 병합 — JP 종목은 컨센서스·시총 미제공. <span style="color:var(--a1);font-weight:700">PHX</span> = Phalanx 커버 기업. 매일 06:40 자동갱신.</div>';
+  return h;
+}
+function renderEcal(){
+  const E=window.ECAL||{}; const C=E.counts||{};
+  ST.ecw=ST.ecw||'1w'; ST.ecm=ST.ecm||'all'; if(ST.ecq==null) ST.ecq=''; ST.ecp=!!ST.ecp;
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('cnt').innerHTML='';
+  document.getElementById('crumb').innerHTML='<b>📅 실적 캘린더</b><span style="flex:1"></span>'
+    +'<span style="font-size:10px;color:var(--dim)">기준 '+(E.generated||'—')+' · US '+(C.us||0)+' · JP '+(C.jp||0)+' · PHX 커버 '+(C.phx_covered||0)+'사</span>';
+  const pill=(grp,k,lab,on)=>'<span class="pill'+(on?' on':'')+'" data-'+grp+'="'+k+'">'+lab+'</span>';
+  const main=document.getElementById('main');
+  main.innerHTML='<style>'
+    +'.ec-chip{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 7px;border:1px solid var(--bd);border-radius:99px;white-space:nowrap}'
+    +'.ec-day{margin-bottom:16px}'
+    +'.ec-day.past{opacity:.6}'
+    +'.ec-dh{font-size:12.5px;font-weight:800;margin:0 0 6px 2px;color:var(--tx)}'
+    +'.ec-day.today .ec-dh{color:var(--a1)}'
+    +'.ec-today{font-size:9px;font-weight:800;background:var(--a1);color:#04121b;border-radius:99px;padding:1px 7px;vertical-align:1px}'
+    +'.ec-tw{overflow-x:auto;border:1px solid var(--bd);border-radius:12px;background:var(--s1)}'
+    +'.ec-tw table{border-collapse:collapse;width:100%;min-width:680px;font-size:12px}'
+    +'.ec-tw th{text-align:left;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--bd);background:var(--s2)}'
+    +'.ec-tw td{padding:6px 10px;border-bottom:1px solid rgba(106,106,154,.14);vertical-align:middle}'
+    +'.ec-tw tr:last-child td{border-bottom:none}'
+    +'.ec-tw tbody tr:hover td{background:rgba(106,106,154,.07)}'
+    +'.ec-tk{display:inline-block;font-family:ui-monospace,monospace;font-weight:800;font-size:11px;padding:1px 7px;border-radius:6px}'
+    +'.ec-phx{font-size:9px;font-weight:800;color:var(--a1);border:1px solid rgba(0,230,184,.4);border-radius:99px;padding:1px 6px;margin-left:6px;vertical-align:1px}'
+    +'</style>'
+    +'<div class="row" style="margin:0 2px 12px">'
+    +pill('ecw','1w','📆 1주',ST.ecw==='1w')+pill('ecw','all','🗓 전체',ST.ecw==='all')
+    +'<span style="width:6px"></span>'
+    +pill('ecm','all','전체',ST.ecm==='all')+pill('ecm','US','🇺🇸 US',ST.ecm==='US')+pill('ecm','JP','🇯🇵 JP',ST.ecm==='JP')
+    +'<span style="width:6px"></span>'
+    +'<span class="pill'+(ST.ecp?' on':'')+'" data-ecp="1">✦ PHX 커버만</span>'
+    +'<input id="ecq" class="search" placeholder="티커·회사명 검색" value="'+_ecalEsc(ST.ecq)+'">'
+    +'</div><div id="ecList"></div>';
+  const fill=()=>{ const el=document.getElementById('ecList'); if(el) el.innerHTML=_ecalList(_ecalFilter()); };
+  fill();
+  main.querySelectorAll('[data-ecw]').forEach(p=>p.onclick=()=>{ST.ecw=p.dataset.ecw;renderEcal();});
+  main.querySelectorAll('[data-ecm]').forEach(p=>p.onclick=()=>{ST.ecm=p.dataset.ecm;renderEcal();});
+  const pp=main.querySelector('[data-ecp]'); if(pp) pp.onclick=()=>{ST.ecp=!ST.ecp;renderEcal();};
+  const qi=document.getElementById('ecq'); if(qi) qi.oninput=()=>{ST.ecq=qi.value;fill();};
+}
+
+/* ==== tmap 탭 (2026-08-28 구현 — 호출부만 있고 미구현이던 탭, ui/patch.js가 자동 재노출) ==== */
+// ===== 🕸 SupplyMap 탭 — 테크 공급망 웹 (173노드·302관계, Studio 리서치 빌드) =====
+let _tmapLoaded=false;
+const _tmGroups=[
+  ['design','🧠 설계·IP',['designer','eda','ip']],
+  ['fab','🏭 팹·메모리',['foundry','idm','memory']],
+  ['pkg','📦 패키징·기판',['osat','substrate','pcb']],
+  ['mat','🧪 소재',['material']],
+  ['equip','🔧 장비',['equipment']],
+  ['sys','🖥 시스템·부품',['component','odm','ems','optics','network','storage']],
+  ['pow','⚡ 전력·냉각',['power','cooling']],
+  ['dem','🌐 수요·투자',['cloud','ai-lab','enduser','infra','invest']]];
+const _tmTypeL={designer:'팹리스 설계',idm:'IDM',eda:'EDA',ip:'IP',foundry:'파운드리',memory:'메모리',osat:'OSAT',substrate:'기판',pcb:'PCB',material:'소재',equipment:'장비',component:'부품·칩',odm:'서버 ODM',ems:'EMS',optics:'광모듈',network:'네트워크',storage:'스토리지',power:'전력',cooling:'냉각',cloud:'클라우드','ai-lab':'AI 랩',enduser:'수요처',infra:'인프라',invest:'투자'};
+const _tmRelL={supply:'공급',odm:'ODM 생산',partner:'협력',foundry:'파운드리 위탁',ip:'IP 라이선스',osat:'후공정 위탁',own:'지분'};
+const _tmRelC={supply:'#4ea1ff',odm:'#59d0a8',partner:'#b48cff',foundry:'#ffbe2e',ip:'#ff7ab8',osat:'#00e6b8',own:'#ff5c5c'};
+const _tmConfC={C:'#59d0a8',R:'#ffbe2e',E:'#6a6a9a'};
+const _tmConfL={C:'확인',R:'보도',E:'추정'};
+const _tmFlag={US:'🇺🇸',KR:'🇰🇷',JP:'🇯🇵',TW:'🇹🇼',CN:'🇨🇳',DE:'🇩🇪',NL:'🇳🇱',FR:'🇫🇷',IE:'🇮🇪',CA:'🇨🇦',UK:'🇬🇧',AT:'🇦🇹',SG:'🇸🇬',TH:'🇹🇭'};
+function _tmEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function loadTmap(cb){ if(_tmapLoaded||window.TMAP){_tmapLoaded=true;return cb();}
+  const sc=document.createElement('script'); sc.src='data_tmap.js';
+  sc.onload=()=>{_tmapLoaded=true;cb();};
+  sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px;color:var(--dim)">🕸 공급망 데이터가 아직 없습니다 (data_tmap.js 로드 실패 — techmap 파이프라인 대기).</div>';};
+  document.head.appendChild(sc); }
+function renderTmap(){
+  const T=window.TMAP||{}; const N=T.nodes||[]; const E=T.edges||[];
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('cnt').innerHTML='';
+  document.getElementById('crumb').innerHTML='<b>🕸 SupplyMap — 테크 공급망 웹</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">노드 '+N.length+' · 관계 '+E.length+' · Studio 리서치 빌드</span>';
+  const main=document.getElementById('main');
+  if(!N.length){ main.innerHTML='<div class="panel" style="padding:24px;color:var(--dim)">🕸 공급망 데이터가 비어 있습니다.</div>'; return; }
+  ST.tmGrp=ST.tmGrp||'all'; if(ST.tmQ==null)ST.tmQ='';
+  const byId={}; N.forEach(n=>{byId[n.id]=n;});
+  const deg={}; E.forEach(e=>{deg[e.source]=(deg[e.source]||0)+1; deg[e.target]=(deg[e.target]||0)+1;});
+  const sel=(ST.tmSel&&byId[ST.tmSel])?ST.tmSel:null;
+  const nb={}; if(sel) E.forEach(e=>{ if(e.source===sel)nb[e.target]=1; if(e.target===sel)nb[e.source]=1; });
+  const t2g={}; _tmGroups.forEach(g=>g[2].forEach(t=>{t2g[t]=g[0];}));
+  const grpCnt={}; N.forEach(n=>{const g=t2g[n.type]||'etc'; grpCnt[g]=(grpCnt[g]||0)+1;});
+  const groups=_tmGroups.slice(); if(grpCnt.etc) groups.push(['etc','🔎 기타',[]]);
+  const q=(ST.tmQ||'').toLowerCase();
+  const hit=n=>!q||(n.name||'').toLowerCase().includes(q)||(n.kr||'').includes(ST.tmQ)||(n.id||'').includes(q)||(n.note||'').toLowerCase().includes(q);
+  // --- 상단: 그룹 pill + 검색 + 범례 ---
+  let pills='<span class="pill'+(ST.tmGrp==='all'?' on':'')+'" data-tmg="all">All '+N.length+'</span>';
+  groups.forEach(g=>{ pills+='<span class="pill'+(ST.tmGrp===g[0]?' on':'')+'" data-tmg="'+g[0]+'">'+g[1]+' '+(grpCnt[g[0]]||0)+'</span>'; });
+  const nav='<div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:6px;align-items:center">'+pills
+    +'<span style="flex:1"></span><input id="tmq" class="search" placeholder="노드 검색… (이름·국문·노트)" value="'+_tmEsc(ST.tmQ)+'" style="max-width:220px"></div>';
+  let lg='<div class="panel" style="padding:10px 15px;margin-bottom:12px;font-size:10.5px;color:var(--dim)">반도체·AI 인프라 공급망 관계도(수작업 리서치). 노드 카드 클릭 → 상류/하류 관계 하이라이트, 관계 목록의 상대 노드 클릭 → 그 노드로 점프. 관계선: ';
+  Object.keys(_tmRelL).forEach(k=>{ lg+='<span style="color:'+_tmRelC[k]+';margin-right:8px">● '+_tmRelL[k]+'</span>'; });
+  lg+=' · 신뢰도 <b style="color:#59d0a8">C</b>=확인 <b style="color:#ffbe2e">R</b>=보도 <b>E</b>=추정</div>';
+  // --- 선택 노드 상세 패널 ---
+  const cf=c=>c?'<span style="font-family:ui-monospace,monospace;font-size:9px;font-weight:800;color:'+(_tmConfC[c]||'var(--dim)')+'" title="'+(_tmConfL[c]||c)+'">'+c+'</span>':'';
+  let det='';
+  if(sel){ const n=byId[sel];
+    const row=(e,other)=>{ const o=byId[other];
+      return '<tr class="tmr" data-tmn="'+other+'" style="cursor:pointer"><td style="padding:3px 8px 3px 0;white-space:nowrap"><span style="font-size:9.5px;font-weight:700;color:'+(_tmRelC[e.type]||'var(--dim)')+'">'+(_tmRelL[e.type]||_tmEsc(e.type||''))+'</span></td>'
+        +'<td style="padding:3px 8px;white-space:nowrap"><b style="font-size:11px">'+_tmEsc(o?o.name:other)+'</b>'+(o&&o.kr?' <span style="color:var(--dim);font-size:9.5px">'+_tmEsc(o.kr)+'</span>':'')+'</td>'
+        +'<td style="padding:3px 8px;font-size:10px;color:var(--dim)">'+_tmEsc(e.item||'')+'</td><td style="padding:3px 0">'+cf(e.conf)+'</td></tr>'; };
+    const inn=E.filter(e=>e.target===sel).map(e=>row(e,e.source)).join('');
+    const out=E.filter(e=>e.source===sel).map(e=>row(e,e.target)).join('');
+    const col=(t,r)=>'<div style="flex:1;min-width:290px"><div style="font-size:11px;font-weight:700;margin-bottom:4px">'+t+'</div>'
+      +(r?'<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%">'+r+'</table></div>':'<div style="font-size:10.5px;color:var(--dim)">등록된 관계 없음</div>')+'</div>';
+    det='<div class="panel" style="padding:13px 16px;margin-bottom:12px;border-color:var(--a1)">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+      +'<b style="font-size:14px">'+_tmEsc(n.name)+'</b>'+(n.kr?'<span style="color:var(--dim);font-size:11px">'+_tmEsc(n.kr)+'</span>':'')
+      +'<span style="font-size:11px">'+(_tmFlag[n.ctry]||_tmEsc(n.ctry||''))+'</span>'
+      +'<span style="font-size:9.5px;font-weight:700;color:var(--a2);border:1px solid var(--bd);border-radius:99px;padding:1px 8px">'+(_tmTypeL[n.type]||_tmEsc(n.type))+'</span>'
+      +'<span style="font-family:ui-monospace,monospace;font-size:10px;color:var(--dim)">연결 '+(deg[sel]||0)+'</span>'
+      +'<span style="flex:1"></span><span class="pill" data-tmx="1" style="padding:3px 10px">✕ 닫기</span></div>'
+      +(n.note?'<div style="font-size:11px;color:var(--dim);margin-bottom:9px">'+_tmEsc(n.note)+'</div>':'')
+      +'<div style="display:flex;gap:16px;flex-wrap:wrap">'+col('⬅ 상류 '+E.filter(e=>e.target===sel).length+' — 이 회사에 공급·제공',inn)+col('➡ 하류 '+E.filter(e=>e.source===sel).length+' — 이 회사가 공급·제공',out)+'</div></div>'; }
+  // --- 그룹 컬럼(섹션) + 노드 카드 ---
+  const card=n=>{ const isSel=n.id===sel, isNb=!!nb[n.id];
+    return '<div class="card tmn" data-tmn="'+n.id+'" style="cursor:pointer;padding:9px 12px;width:216px'
+      +(isSel?';border-color:var(--a1);box-shadow:0 0 0 1px var(--a1) inset':(isNb?';border-color:var(--a2)':''))
+      +(sel&&!isSel&&!isNb?';opacity:.4':'')+'">'
+      +'<div style="display:flex;align-items:center;gap:6px"><b style="font-size:11.5px">'+_tmEsc(n.name)+'</b><span style="font-size:10.5px">'+(_tmFlag[n.ctry]||_tmEsc(n.ctry||''))+'</span><span style="flex:1"></span><span style="font-family:ui-monospace,monospace;font-size:9px;color:var(--dim)" title="연결 수">'+(deg[n.id]||0)+'</span></div>'
+      +(n.kr?'<div style="font-size:9.5px;color:var(--dim)">'+_tmEsc(n.kr)+'</div>':'')
+      +'<div style="margin-top:2px;font-size:9px;color:var(--a2)">'+(_tmTypeL[n.type]||_tmEsc(n.type))+'</div>'
+      +(n.note?'<div style="margin-top:3px;font-size:9.5px;color:var(--dim);line-height:1.4">'+_tmEsc(n.note)+'</div>':'')+'</div>'; };
+  let body=''; let shown=0;
+  groups.forEach(g=>{ if(ST.tmGrp!=='all'&&ST.tmGrp!==g[0]) return;
+    const list=N.filter(n=>(t2g[n.type]||'etc')===g[0]&&hit(n)).sort((a,b)=>(deg[b.id]||0)-(deg[a.id]||0)||String(a.name).localeCompare(String(b.name)));
+    if(!list.length) return; shown+=list.length;
+    body+='<div style="margin:16px 0 8px;font-size:13px;font-weight:700">'+g[1]+' <span style="color:var(--dim);font-weight:400;font-size:11px">'+list.length+'</span></div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:8px">'+list.map(card).join('')+'</div>'; });
+  if(!shown) body='<div class="panel" style="padding:18px;color:var(--dim)">검색 결과가 없습니다.</div>';
+  main.innerHTML='<style>.tmn:hover{border-color:var(--a1)} .tmr:hover{background:rgba(127,150,170,.08)}</style>'+nav+lg+det+body;
+  // --- 바인딩 ---
+  main.querySelectorAll('[data-tmg]').forEach(p=>p.onclick=()=>{ST.tmGrp=p.dataset.tmg;renderTmap();window.scrollTo(0,0);});
+  main.querySelectorAll('[data-tmn]').forEach(el=>el.onclick=()=>{const id=el.dataset.tmn;ST.tmSel=(ST.tmSel===id?null:id);renderTmap();window.scrollTo(0,0);});
+  main.querySelectorAll('[data-tmx]').forEach(el=>el.onclick=ev=>{ev.stopPropagation();ST.tmSel=null;renderTmap();});
+  const qi=document.getElementById('tmq');
+  if(qi){ qi.oninput=()=>{ST.tmQ=qi.value;ST.tmFoc=1;renderTmap();};
+    if(ST.tmFoc){ ST.tmFoc=0; qi.focus(); try{qi.setSelectionRange(qi.value.length,qi.value.length);}catch(e){} } }
+}
+
+/* ==== ppi 탭 (2026-08-28 구현 — 호출부만 있고 미구현이던 탭, ui/patch.js가 자동 재노출) ==== */
+let _ppiLoaded=false;
+function loadPpi(cb){ if(_ppiLoaded||window.PPID){_ppiLoaded=true;return cb();}
+  const sc=document.createElement('script'); sc.src='data_ppi.js';
+  sc.onload=function(){_ppiLoaded=true;cb();};
+  sc.onerror=function(){document.getElementById('main').innerHTML='<div class="panel hint" style="padding:24px;color:var(--dim)">🏭 PPI 데이터가 아직 없습니다(월 2회 자동갱신 대기).</div>';};
+  document.head.appendChild(sc); }
+function _ppiEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _ppiPct(v,lab){ if(v==null||!isFinite(v)) return '<span style="color:var(--dim)">—</span>';
+  var c=v>0.05?'#59d0a8':(v<-0.05?'#ff6b7d':'var(--dim)');
+  return '<span style="font-family:var(--mono);font-weight:700;font-size:11px;color:'+c+'">'+(v>0?'+':'')+v.toFixed(1)+'%</span><div style="font-size:8px;color:var(--dim)">'+lab+'</div>'; }
+function _ppiChips(arr,bg,fg,cap){ arr=arr||[]; if(!arr.length) return '';
+  var shown=arr.slice(0,cap), more=arr.length-shown.length;
+  var h=shown.map(function(k){ return '<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:5px;background:'+bg+';color:'+fg+';font-family:var(--mono);margin:1px 0">'+_ppiEsc(k)+'</span>'; }).join(' ');
+  if(more>0) h+=' <span style="font-size:9px;color:var(--dim);cursor:default" title="'+_ppiEsc(arr.join(', '))+'">+'+more+'</span>';
+  return h; }
+function _ppiSpark(m,color){ var ks=Object.keys(m||{}).sort().slice(-36); if(ks.length<2) return '<span style="color:var(--dim)">—</span>';
+  var vs=ks.map(function(k){return m[k];});
+  var mn=Math.min.apply(null,vs), mx=Math.max.apply(null,vs), rg=(mx-mn)||1;
+  var W=110,H=26,Pd=2;
+  var pts=vs.map(function(v,i){ return (Pd+i*(W-2*Pd)/(vs.length-1)).toFixed(1)+','+(H-Pd-(v-mn)*(H-2*Pd)/rg).toFixed(1); }).join(' ');
+  return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="display:block"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/></svg>'; }
+function renderPpi(){
+  var P=window.PPID||{}; var cat=P.catalog||[]; var SER=P.series||{};
+  document.getElementById('catRow').style.display='none';
+  document.getElementById('cnt').innerHTML='';
+  var nf=cat.filter(function(c){return c.src==='fred';}).length, nb=cat.length-nf;
+  document.getElementById('crumb').innerHTML='<b>🏭 PPI — 생산자물가 레이어</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">FRED '+nf+' · BOJ CGPI '+nb+' · 기준 '+_ppiEsc(P.generated||'—')+' · 월 2회 자동갱신</span>';
+  var main=document.getElementById('main');
+  if(!cat.length){ main.innerHTML='<div class="panel hint" style="padding:24px;color:var(--dim)">🏭 PPI 카탈로그가 비어 있습니다. 파이프라인 첫 실행을 기다려 주세요.</div>'; return; }
+  ST.ppiInd=ST.ppiInd||'all';
+  var inds=[]; cat.forEach(function(c){ if(inds.indexOf(c.industry)<0) inds.push(c.industry); });
+  if(ST.ppiInd!=='all'&&inds.indexOf(ST.ppiInd)<0) ST.ppiInd='all';
+  var pills='<span class="pill'+(ST.ppiInd==='all'?' on':'')+'" data-ppind="all">전체 '+cat.length+'</span>'+
+    inds.map(function(ind){ var n=cat.filter(function(c){return c.industry===ind;}).length;
+      return '<span class="pill'+(ST.ppiInd===ind?' on':'')+'" data-ppind="'+_ppiEsc(ind)+'">'+_ppiEsc(ind)+' '+n+'</span>'; }).join('');
+  var intro='<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim);line-height:1.6">'+
+    '美 BLS PPI(FRED)·日 BOJ CGPI 55개 시리즈를 산업별로 묶고 대시보드 카드에 양방향 매핑 — '+
+    '<b style="color:#59d0a8">판가수혜</b>(생산자물가↑ = 판가·마진 순풍) vs <b style="color:#ff6b7d">비용부담</b>(수요측 원가↑). '+
+    '변화율 색: <b style="color:#59d0a8">+상승</b> · <b style="color:#ff6b7d">−하락</b> · 스파크라인 최근 36개월 지수 · 시리즈에 마우스를 올리면 코드·매핑 근거.</div>';
+  var html='';
+  inds.forEach(function(ind){ if(ST.ppiInd!=='all'&&ST.ppiInd!==ind) return;
+    var grp=cat.filter(function(c){return c.industry===ind;});
+    var rows=grp.map(function(c){
+      var S=SER[c.id]||{}; var m=S.m||{}; var ks=Object.keys(m).sort();
+      var lk=ks.length?ks[ks.length-1]:null; var lv=lk!=null?m[lk]:null;
+      var pv=ks.length>1?m[ks[ks.length-2]]:null;
+      var mom=(lv!=null&&pv)?(lv/pv-1)*100:null;
+      var yoy=(S.yoy&&lk&&S.yoy[lk]!=null)?S.yoy[lk]:null;
+      var strk=(yoy!=null&&yoy>0.05)?'#59d0a8':((yoy!=null&&yoy<-0.05)?'#ff6b7d':'#6a6a9a');
+      var badge='<span style="font-size:8.5px;font-weight:800;padding:1px 6px;border-radius:99px;border:1px solid '+(c.src==='fred'?'#3d8bfd55':'#ffbe2e55')+';color:'+(c.src==='fred'?'#3d8bfd':'#ffbe2e')+';vertical-align:1px">'+(c.src==='fred'?'FRED':'BOJ')+'</span>';
+      var tip=_ppiEsc((c.code||'')+(c.note?' — '+c.note:'')+(c.verified?' · 검증 '+c.verified:''));
+      return '<tr>'+
+        '<td style="min-width:180px" title="'+tip+'"><b style="font-size:11.5px">'+_ppiEsc(c.name_ko)+'</b> '+badge+'</td>'+
+        '<td style="font-family:var(--mono);font-size:11px;white-space:nowrap">'+(lv!=null?lv.toFixed(1):'—')+'<div style="font-size:8.5px;color:var(--dim)">'+_ppiEsc(lk||'')+'</div></td>'+
+        '<td style="white-space:nowrap">'+_ppiPct(mom,'MoM')+'</td>'+
+        '<td style="white-space:nowrap">'+_ppiPct(yoy,'YoY')+'</td>'+
+        '<td>'+_ppiSpark(m,strk)+'</td>'+
+        '<td style="max-width:280px">'+_ppiChips(c.beneficiaries,'rgba(89,208,168,.13)','#59d0a8',5)+
+          ((c.cost_burden&&c.cost_burden.length)?'<div style="margin-top:3px">'+_ppiChips(c.cost_burden,'rgba(255,77,94,.13)','#ff6b7d',4)+'</div>':'')+'</td>'+
+        '</tr>';
+    }).join('');
+    html+='<p style="margin:16px 2px 6px;font-size:13px;font-weight:700">'+_ppiEsc(ind)+' <span style="color:var(--dim);font-weight:400;font-size:11px">'+grp.length+'개 시리즈</span></p>'+
+      '<div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>시리즈</th><th>최신</th><th>전월</th><th>전년</th><th>추이 36M</th><th>매핑 <span style="color:#59d0a8">수혜</span> / <span style="color:#ff6b7d">부담</span></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  });
+  if(!html) html='<div class="panel hint" style="padding:24px;color:var(--dim)">해당 산업의 시리즈가 없습니다.</div>';
+  main.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px">'+pills+'</div>'+intro+html;
+  main.querySelectorAll('[data-ppind]').forEach(function(el){ el.onclick=function(){ ST.ppiInd=el.dataset.ppind; renderPpi(); }; });
+}
+
 function loadGame(cb){ if(_gameLoaded||window.GAMES_DATA){_gameLoaded=true;return cb();}
   const sc=document.createElement('script'); sc.src='data_games.js';
   sc.onload=()=>{_gameLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">🎮 게임 데이터 준비 중입니다…</div>';};
