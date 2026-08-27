@@ -158,11 +158,21 @@ function switchTab(tab){
   document.getElementById('liqview').hidden=(tab!=='liq');
   document.getElementById('techview').hidden=(tab!=='tech');
   document.getElementById('shipview').hidden=(tab!=='ship');
+  document.getElementById('llmview').hidden=(tab!=='llm');
   document.getElementById('headStat').style.display=isMap?'':'none';
   if(isMap && MAP){setTimeout(()=>MAP.resize(),50);}
   if(tab==='liq' && !_liqLoaded){ _liqLoaded=true; loadLiq(); }
   if(tab==='tech'){ loadTech2(); }
   if(tab==='ship'){ loadShip(); }
+  if(tab==='llm'){ loadLLM(); }
+}
+async function loadLLM(){
+  const box=document.getElementById('llmview');
+  if(box.dataset.loaded) return;
+  box.innerHTML='<p class="hint" style="padding:20px">LLM 랭킹 데이터 로딩…</p>';
+  try{ const d=await fetch('data/llm_rankings.json').then(r=>r.json());
+    box.innerHTML=''; renderLLM(box, d); box.dataset.loaded='1';
+  }catch(e){ console.warn('llm', e); box.innerHTML='<p class="hint" style="padding:20px">LLM 랭킹 데이터 준비 중…</p>'; }
 }
 async function loadShip(){
   const box=document.getElementById('shipview');
