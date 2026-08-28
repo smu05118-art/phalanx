@@ -193,9 +193,24 @@ header h1 em{color:var(--a1);font-style:normal;}
 </header>
 
 <!-- 한국 수출입 (관세청 HS6) — iframe 오버레이. 리전/탭 로직과 분리된 독립 블록. -->
-<div id="krTradeBar" style="display:flex;justify-content:flex-end;padding:2px 12px 0">
+<div id="krTradeBar" style="display:flex;justify-content:flex-end;gap:8px;padding:2px 12px 0">
+  <button id="cmpPrevBtn" style="background:linear-gradient(135deg,#1d3b1f,#2f6b3a);color:#dff5e4;border:1px solid #3c7a49;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">🎯 컴포짓 프리뷰 (실적 판정)</button>
   <button id="krTradeBtn" style="background:linear-gradient(135deg,#123055,#1b4d8a);color:#dcebff;border:1px solid #2f5c93;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">🇰🇷 한국 수출입 (관세청 HS6)</button>
 </div>
+<div id="cmpPrevOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0b0e14;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #1e2636">
+    <b style="color:#e6ebf5;font-size:13px">컴포짓 프리뷰 · 무역 프록시 실적 판정</b>
+    <span style="color:#8a97ad;font-size:11px">멀티루트 가중 컴포짓 → 회귀 → 잔차보정 → 판정 (DELL·JBL·LITE·CRDO·JEM)</span>
+    <button id="cmpPrevClose" style="margin-left:auto;background:#1a2333;color:#e6ebf5;border:1px solid #2a3548;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:12px">✕ 닫기</button>
+  </div>
+  <iframe id="cmpPrevFrame" data-src="composite_preview.html" src="" style="flex:1;border:0;width:100%"></iframe>
+</div>
+<script>
+(function(){var o=document.getElementById('cmpPrevOverlay'),b=document.getElementById('cmpPrevBtn'),
+c=document.getElementById('cmpPrevClose'),f=document.getElementById('cmpPrevFrame');
+if(b)b.addEventListener('click',function(){if(f&&!f.src)f.src=f.getAttribute('data-src');o.style.display='flex';});
+if(c)c.addEventListener('click',function(){o.style.display='none';});})();
+</script>
 <div id="krTradeOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0b0e14;flex-direction:column">
   <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #1e2636">
     <b style="color:#e6ebf5;font-size:13px">한국 수출입 · 관세청 HS6</b>
