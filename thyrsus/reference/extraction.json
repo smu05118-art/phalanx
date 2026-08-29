@@ -1,0 +1,890 @@
+{
+  "_meta": {
+    "source": "https://clocktower.teeroz.net/ko",
+    "fetchedAt": "2026-08-29T12:44:40.046Z",
+    "method": "Playwright(Chromium) 렌더링 후 DOM 추출; 능력 설명 산문은 저작권상 미수록(구조·명칭·순서·수치만)",
+    "framework": "Next.js (App Router, Turbopack) — 홈은 SSR+클라이언트 하이드레이션, 스크립트/위키 상세는 클라이언트 렌더링"
+  },
+  "informationArchitecture": {
+    "globalHeader": {
+      "left": [
+        "로고(시계 아이콘) + 사이트명 \"시계탑\""
+      ],
+      "right": [
+        "공지사항",
+        "언어 선택 / Select language",
+        "로그인"
+      ],
+      "behavior": "sticky top, 반투명 배경 + backdrop-blur"
+    },
+    "sidebarDesktop": [
+      {
+        "label": "공식 스크립트",
+        "href": "/ko"
+      },
+      {
+        "label": "내 게임",
+        "href": "/ko/games"
+      },
+      {
+        "label": "내 스크립트",
+        "href": "/ko/my-scripts"
+      },
+      {
+        "label": "백과사전",
+        "href": "/ko/wiki"
+      }
+    ],
+    "bottomNavMobile": [
+      {
+        "label": "공식 스크립트",
+        "href": "/ko"
+      },
+      {
+        "label": "내 게임",
+        "href": "/ko/games"
+      },
+      {
+        "label": "내 스크립트",
+        "href": "/ko/my-scripts"
+      },
+      {
+        "label": "백과사전",
+        "href": "/ko/wiki"
+      }
+    ],
+    "homeSections": [
+      {
+        "title": "공식 스크립트",
+        "cardCount": 3,
+        "cards": [
+          {
+            "ko": "점철되는 혼란",
+            "sub": "Trouble Brewing",
+            "href": "/ko/scripts/trouble-brewing"
+          },
+          {
+            "ko": "피로 물든 달",
+            "sub": "Bad Moon Rising",
+            "href": "/ko/scripts/bad-moon-rising"
+          },
+          {
+            "ko": "화단에 꽃피운 이단",
+            "sub": "Sects & Violets",
+            "href": "/ko/scripts/sects-and-violets"
+          }
+        ]
+      },
+      {
+        "title": "이달의 커스텀 스크립트",
+        "cardCount": 1,
+        "cards": [
+          {
+            "ko": "도자기 가게",
+            "sub": "China Shop by Autumn",
+            "href": "/ko/scripts/69c6db8d4da1461d5bcce6a2"
+          }
+        ]
+      },
+      {
+        "title": "추천 스크립트",
+        "cardCount": 4,
+        "cards": [
+          {
+            "ko": "하나 들어오면 하나 나간다",
+            "sub": "One in one out by Baron von Klutz",
+            "href": "/ko/scripts/69c6db8d4da1461d5bcce6a3"
+          },
+          {
+            "ko": "그림 합창단",
+            "sub": "A Grimm Chorus by Zets",
+            "href": "/ko/scripts/69c6db8d4da1461d5bcce6a4"
+          },
+          {
+            "ko": "숨바꼭질",
+            "sub": "Hide and Seek by Narninian and Zaba",
+            "href": "/ko/scripts/69c6db8d4da1461d5bcce6a5"
+          },
+          {
+            "ko": "월식",
+            "sub": "Lunar Eclipse by Ekin",
+            "href": "/ko/scripts/69c6db8d4da1461d5bcce6a6"
+          }
+        ]
+      },
+      {
+        "title": "틴시빌 스크립트",
+        "cardCount": 3,
+        "cards": [
+          {
+            "ko": "큰 기쁨",
+            "sub": "No Greater Joy by Steven Medway",
+            "href": "/ko/scripts/69c6db8d4da1461d5bcce69f"
+          },
+          {
+            "ko": "강 건너",
+            "sub": "Over the River by Andrew Nathenson",
+            "href": "/ko/scripts/69c6db8d4da1461d5bcce6a0"
+          },
+          {
+            "ko": "레세 앙 페르",
+            "sub": "Laissez Un Faire by Steven Medway",
+            "href": "/ko/scripts/69c6db8d4da1461d5bcce6a1"
+          }
+        ]
+      }
+    ],
+    "routes": {
+      "home": "/ko",
+      "officialScript": "/ko/scripts/{slug}  (trouble-brewing 등)",
+      "customScript": "/ko/scripts/{24-hex id}",
+      "wikiIndex": "/ko/wiki",
+      "wikiCharacter": "/ko/wiki/{english-character-id}",
+      "games": "/ko/games",
+      "myScripts": "/ko/my-scripts",
+      "announcements": "/ko/announcements",
+      "login": "/ko/login"
+    },
+    "interactions": [
+      "언어 선택 드롭다운(한글-정식판 등)",
+      "스크립트 페이지: 캐릭터/첫 번째 밤/이후 밤 3-탭",
+      "정렬 드롭다운: 가나다순 / 밤 순서순",
+      "캐릭터 카드의 (i) 버튼 → 캐릭터 정보 모달",
+      "공유 아이콘, 저장(북마크) 아이콘 버튼",
+      "위키: 검색 입력 + 팀 필터 칩(전체/주민/외지인/하수인/악마/여행자/전설)",
+      "토스트 알림(bottom-center, 보라 패널 스타일)"
+    ]
+  },
+  "scriptDetailPage": {
+    "headerBlock": [
+      "뒤로가기 화살표",
+      "제목(h1, 한국어)",
+      "부제 \"by 제작자\"",
+      "정렬 드롭다운",
+      "공유 버튼"
+    ],
+    "actionButtons": [
+      "게임 시작(액센트 금색, 전체폭)",
+      "저장 아이콘 버튼",
+      "인쇄 / PDF",
+      "JSON 다운로드"
+    ],
+    "tabs": [
+      "캐릭터",
+      "첫 번째 밤",
+      "이후 밤"
+    ],
+    "characterListLayout": {
+      "grouping": "팀별 섹션: 팀 배지(pill) + 개수 → 카드 목록",
+      "desktop": "2열 그리드(lg), 모바일 1열",
+      "cardAnatomy": [
+        "원형 캐릭터 아이콘(bg-token-bg 원, 36px webp)",
+        "한국어 이름(h4, 굵게)",
+        "영어 이름(작게, muted)",
+        "자동화 지원 시 톱니(cog) 아이콘",
+        "능력 요약문",
+        "(i) 정보 버튼"
+      ],
+      "teamBadgeColors": {
+        "주민": "bg-blue-500/20 text-blue-400 border-blue-500/30",
+        "외지인": "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+        "하수인": "bg-orange-500/20 text-orange-400 border-orange-500/30",
+        "악마": "bg-red-500/20 text-red-400 border-red-500/30"
+      }
+    },
+    "nightOrderLayout": "탭 전환 시 순서대로 카드 나열: 위상 아이콘(황혼/새벽/하수인 정보/악마 정보) + 캐릭터 아이콘 + 이름 + 해당 밤 지시문"
+  },
+  "scripts": {
+    "troubleBrewing": {
+      "titleKo": "점철되는 혼란",
+      "titleEn": "Trouble Brewing",
+      "author": "The Pandemonium Institute",
+      "teams": [
+        {
+          "team": "주민",
+          "count": 13,
+          "characters": [
+            {
+              "ko": "군인",
+              "en": "Soldier",
+              "icon": "/icons/characters/soldier_g.webp"
+            },
+            {
+              "ko": "까마귀지기",
+              "en": "Ravenkeeper",
+              "icon": "/icons/characters/ravenkeeper_g.webp"
+            },
+            {
+              "ko": "사서",
+              "en": "Librarian",
+              "icon": "/icons/characters/librarian_g.webp"
+            },
+            {
+              "ko": "성결자",
+              "en": "Virgin",
+              "icon": "/icons/characters/virgin_g.webp"
+            },
+            {
+              "ko": "세탁부",
+              "en": "Washerwoman",
+              "icon": "/icons/characters/washerwoman_g.webp"
+            },
+            {
+              "ko": "수도사",
+              "en": "Monk",
+              "icon": "/icons/characters/monk_g.webp"
+            },
+            {
+              "ko": "수사관",
+              "en": "Investigator",
+              "icon": "/icons/characters/investigator_g.webp"
+            },
+            {
+              "ko": "시장",
+              "en": "Mayor",
+              "icon": "/icons/characters/mayor_g.webp"
+            },
+            {
+              "ko": "요리사",
+              "en": "Chef",
+              "icon": "/icons/characters/chef_g.webp"
+            },
+            {
+              "ko": "장의사",
+              "en": "Undertaker",
+              "icon": "/icons/characters/undertaker_g.webp"
+            },
+            {
+              "ko": "점쟁이",
+              "en": "Fortune Teller",
+              "icon": "/icons/characters/fortuneteller_g.webp"
+            },
+            {
+              "ko": "처단자",
+              "en": "Slayer",
+              "icon": "/icons/characters/slayer_g.webp"
+            },
+            {
+              "ko": "초공감자",
+              "en": "Empath",
+              "icon": "/icons/characters/empath_g.webp"
+            }
+          ]
+        },
+        {
+          "team": "외지인",
+          "count": 4,
+          "characters": [
+            {
+              "ko": "성자",
+              "en": "Saint",
+              "icon": "/icons/characters/saint_g.webp"
+            },
+            {
+              "ko": "은둔자",
+              "en": "Recluse",
+              "icon": "/icons/characters/recluse_g.webp"
+            },
+            {
+              "ko": "주정뱅이",
+              "en": "Drunk",
+              "icon": "/icons/characters/drunk_g.webp"
+            },
+            {
+              "ko": "집사",
+              "en": "Butler",
+              "icon": "/icons/characters/butler_g.webp"
+            }
+          ]
+        },
+        {
+          "team": "하수인",
+          "count": 4,
+          "characters": [
+            {
+              "ko": "남작",
+              "en": "Baron",
+              "icon": "/icons/characters/baron_e.webp"
+            },
+            {
+              "ko": "독살범",
+              "en": "Poisoner",
+              "icon": "/icons/characters/poisoner_e.webp"
+            },
+            {
+              "ko": "첩자",
+              "en": "Spy",
+              "icon": "/icons/characters/spy_e.webp"
+            },
+            {
+              "ko": "탕녀",
+              "en": "Scarlet Woman",
+              "icon": "/icons/characters/scarletwoman_e.webp"
+            }
+          ]
+        },
+        {
+          "team": "악마",
+          "count": 1,
+          "characters": [
+            {
+              "ko": "임프",
+              "en": "Imp",
+              "icon": "/icons/characters/imp_e.webp"
+            }
+          ]
+        }
+      ],
+      "firstNight": [
+        {
+          "name": "황혼",
+          "icon": "/icons/phases/dusk.webp"
+        },
+        {
+          "name": "하수인 정보",
+          "icon": "/icons/phases/minioninfo.webp"
+        },
+        {
+          "name": "악마 정보",
+          "icon": "/icons/phases/demoninfo.webp"
+        },
+        {
+          "name": "독살범",
+          "icon": "/icons/characters/poisoner_e.webp"
+        },
+        {
+          "name": "세탁부",
+          "icon": "/icons/characters/washerwoman_g.webp"
+        },
+        {
+          "name": "사서",
+          "icon": "/icons/characters/librarian_g.webp"
+        },
+        {
+          "name": "수사관",
+          "icon": "/icons/characters/investigator_g.webp"
+        },
+        {
+          "name": "요리사",
+          "icon": "/icons/characters/chef_g.webp"
+        },
+        {
+          "name": "초공감자",
+          "icon": "/icons/characters/empath_g.webp"
+        },
+        {
+          "name": "점쟁이",
+          "icon": "/icons/characters/fortuneteller_g.webp"
+        },
+        {
+          "name": "집사",
+          "icon": "/icons/characters/butler_g.webp"
+        },
+        {
+          "name": "첩자",
+          "icon": "/icons/characters/spy_e.webp"
+        },
+        {
+          "name": "새벽",
+          "icon": "/icons/phases/dawn.webp"
+        }
+      ],
+      "otherNights": [
+        {
+          "name": "황혼",
+          "icon": "/icons/phases/dusk.webp"
+        },
+        {
+          "name": "독살범",
+          "icon": "/icons/characters/poisoner_e.webp"
+        },
+        {
+          "name": "수도사",
+          "icon": "/icons/characters/monk_g.webp"
+        },
+        {
+          "name": "탕녀",
+          "icon": "/icons/characters/scarletwoman_e.webp"
+        },
+        {
+          "name": "임프",
+          "icon": "/icons/characters/imp_e.webp"
+        },
+        {
+          "name": "까마귀지기",
+          "icon": "/icons/characters/ravenkeeper_g.webp"
+        },
+        {
+          "name": "초공감자",
+          "icon": "/icons/characters/empath_g.webp"
+        },
+        {
+          "name": "점쟁이",
+          "icon": "/icons/characters/fortuneteller_g.webp"
+        },
+        {
+          "name": "장의사",
+          "icon": "/icons/characters/undertaker_g.webp"
+        },
+        {
+          "name": "집사",
+          "icon": "/icons/characters/butler_g.webp"
+        },
+        {
+          "name": "첩자",
+          "icon": "/icons/characters/spy_e.webp"
+        },
+        {
+          "name": "새벽",
+          "icon": "/icons/phases/dawn.webp"
+        }
+      ],
+      "sortOptions": [
+        "가나다순",
+        "밤 순서순"
+      ]
+    },
+    "badMoonRising": {
+      "titleKo": "피로 물든 달",
+      "titleEn": "Bad Moon Rising",
+      "teams": [
+        {
+          "team": "주민",
+          "count": 13,
+          "characters": [
+            {
+              "ko": "객실 청소부",
+              "en": "Chambermaid",
+              "icon": "/icons/characters/chambermaid_g.webp"
+            },
+            {
+              "ko": "교수",
+              "en": "Professor",
+              "icon": "/icons/characters/professor_g.webp"
+            },
+            {
+              "ko": "구마사제",
+              "en": "Exorcist",
+              "icon": "/icons/characters/exorcist_g.webp"
+            },
+            {
+              "ko": "궁정대신",
+              "en": "Courtier",
+              "icon": "/icons/characters/courtier_g.webp"
+            },
+            {
+              "ko": "도박사",
+              "en": "Gambler",
+              "icon": "/icons/characters/gambler_g.webp"
+            },
+            {
+              "ko": "선원",
+              "en": "Sailor",
+              "icon": "/icons/characters/sailor_g.webp"
+            },
+            {
+              "ko": "어릿광대",
+              "en": "Fool",
+              "icon": "/icons/characters/fool_g.webp"
+            },
+            {
+              "ko": "여관 주인",
+              "en": "Innkeeper",
+              "icon": "/icons/characters/innkeeper_g.webp"
+            },
+            {
+              "ko": "음유시인",
+              "en": "Minstrel",
+              "icon": "/icons/characters/minstrel_g.webp"
+            },
+            {
+              "ko": "찻집 여인",
+              "en": "Tea Lady",
+              "icon": "/icons/characters/tealady_g.webp"
+            },
+            {
+              "ko": "평화주의자",
+              "en": "Pacifist",
+              "icon": "/icons/characters/pacifist_g.webp"
+            },
+            {
+              "ko": "할머니",
+              "en": "Grandmother",
+              "icon": "/icons/characters/grandmother_g.webp"
+            },
+            {
+              "ko": "험담꾼",
+              "en": "Gossip",
+              "icon": "/icons/characters/gossip_g.webp"
+            }
+          ]
+        },
+        {
+          "team": "외지인",
+          "count": 4,
+          "characters": [
+            {
+              "ko": "건달",
+              "en": "Goon",
+              "icon": "/icons/characters/goon_g.webp"
+            },
+            {
+              "ko": "달의 자손",
+              "en": "Moonchild",
+              "icon": "/icons/characters/moonchild_g.webp"
+            },
+            {
+              "ko": "땜장이",
+              "en": "Tinker",
+              "icon": "/icons/characters/tinker_g.webp"
+            },
+            {
+              "ko": "미치광이",
+              "en": "Lunatic",
+              "icon": "/icons/characters/lunatic_g.webp"
+            }
+          ]
+        },
+        {
+          "team": "하수인",
+          "count": 4,
+          "characters": [
+            {
+              "ko": "대부",
+              "en": "Godfather",
+              "icon": "/icons/characters/godfather_e.webp"
+            },
+            {
+              "ko": "악마의 변호사",
+              "en": "Devil's Advocate",
+              "icon": "/icons/characters/devilsadvocate_e.webp"
+            },
+            {
+              "ko": "암살자",
+              "en": "Assassin",
+              "icon": "/icons/characters/assassin_e.webp"
+            },
+            {
+              "ko": "주모자",
+              "en": "Mastermind",
+              "icon": "/icons/characters/mastermind_e.webp"
+            }
+          ]
+        },
+        {
+          "team": "악마",
+          "count": 4,
+          "characters": [
+            {
+              "ko": "샤발로스",
+              "en": "Shabaloth",
+              "icon": "/icons/characters/shabaloth_e.webp"
+            },
+            {
+              "ko": "좀버얼",
+              "en": "Zombuul",
+              "icon": "/icons/characters/zombuul_e.webp"
+            },
+            {
+              "ko": "포",
+              "en": "Po",
+              "icon": "/icons/characters/po_e.webp"
+            },
+            {
+              "ko": "푸카",
+              "en": "Pukka",
+              "icon": "/icons/characters/pukka_e.webp"
+            }
+          ]
+        }
+      ]
+    },
+    "sectsAndViolets": {
+      "titleKo": "화단에 꽃피운 이단",
+      "titleEn": "Sects & Violets",
+      "teams": [
+        {
+          "team": "주민",
+          "count": 13,
+          "characters": [
+            {
+              "ko": "곡예사",
+              "en": "Juggler",
+              "icon": "/icons/characters/juggler_g.webp"
+            },
+            {
+              "ko": "꽃팔이 소녀",
+              "en": "Flowergirl",
+              "icon": "/icons/characters/flowergirl_g.webp"
+            },
+            {
+              "ko": "꿈꾸는 자",
+              "en": "Dreamer",
+              "icon": "/icons/characters/dreamer_g.webp"
+            },
+            {
+              "ko": "백치천재",
+              "en": "Savant",
+              "icon": "/icons/characters/savant_g.webp"
+            },
+            {
+              "ko": "뱀 조련사",
+              "en": "Snake Charmer",
+              "icon": "/icons/characters/snakecharmer_g.webp"
+            },
+            {
+              "ko": "수학자",
+              "en": "Mathematician",
+              "icon": "/icons/characters/mathematician_g.webp"
+            },
+            {
+              "ko": "시계공",
+              "en": "Clockmaker",
+              "icon": "/icons/characters/clockmaker_g.webp"
+            },
+            {
+              "ko": "예언자",
+              "en": "Oracle",
+              "icon": "/icons/characters/oracle_g.webp"
+            },
+            {
+              "ko": "재봉사",
+              "en": "Seamstress",
+              "icon": "/icons/characters/seamstress_g.webp"
+            },
+            {
+              "ko": "철학자",
+              "en": "Philosopher",
+              "icon": "/icons/characters/philosopher_g.webp"
+            },
+            {
+              "ko": "포고꾼",
+              "en": "Town Crier",
+              "icon": "/icons/characters/towncrier_g.webp"
+            },
+            {
+              "ko": "현자",
+              "en": "Sage",
+              "icon": "/icons/characters/sage_g.webp"
+            },
+            {
+              "ko": "화가",
+              "en": "Artist",
+              "icon": "/icons/characters/artist_g.webp"
+            }
+          ]
+        },
+        {
+          "team": "외지인",
+          "count": 4,
+          "characters": [
+            {
+              "ko": "변종",
+              "en": "Mutant",
+              "icon": "/icons/characters/mutant_g.webp"
+            },
+            {
+              "ko": "사랑꾼",
+              "en": "Sweetheart",
+              "icon": "/icons/characters/sweetheart_g.webp"
+            },
+            {
+              "ko": "얼뜨기",
+              "en": "Klutz",
+              "icon": "/icons/characters/klutz_g.webp"
+            },
+            {
+              "ko": "이발사",
+              "en": "Barber",
+              "icon": "/icons/characters/barber_g.webp"
+            }
+          ]
+        },
+        {
+          "team": "하수인",
+          "count": 4,
+          "characters": [
+            {
+              "ko": "마귀할멈",
+              "en": "Pit-Hag",
+              "icon": "/icons/characters/pithag_e.webp"
+            },
+            {
+              "ko": "마녀",
+              "en": "Witch",
+              "icon": "/icons/characters/witch_e.webp"
+            },
+            {
+              "ko": "사악한 쌍둥이",
+              "en": "Evil Twin",
+              "icon": "/icons/characters/eviltwin_e.webp"
+            },
+            {
+              "ko": "세레노버스",
+              "en": "Cerenovus",
+              "icon": "/icons/characters/cerenovus_e.webp"
+            }
+          ]
+        },
+        {
+          "team": "악마",
+          "count": 4,
+          "characters": [
+            {
+              "ko": "노 다시",
+              "en": "No Dashii",
+              "icon": "/icons/characters/nodashii_e.webp"
+            },
+            {
+              "ko": "보르톡스",
+              "en": "Vortox",
+              "icon": "/icons/characters/vortox_e.webp"
+            },
+            {
+              "ko": "비고르모르티스",
+              "en": "Vigormortis",
+              "icon": "/icons/characters/vigormortis_e.webp"
+            },
+            {
+              "ko": "팡 구",
+              "en": "Fang Gu",
+              "icon": "/icons/characters/fanggu_e.webp"
+            }
+          ]
+        }
+      ]
+    },
+    "customScriptSample": {
+      "titleKo": "도자기 가게",
+      "titleEn": "China Shop",
+      "author": "Autumn",
+      "url": "/ko/scripts/69c6db8d4da1461d5bcce6a2",
+      "teams": [
+        {
+          "team": "주민",
+          "count": 13
+        },
+        {
+          "team": "외지인",
+          "count": 4
+        },
+        {
+          "team": "하수인",
+          "count": 5
+        },
+        {
+          "team": "악마",
+          "count": 3
+        }
+      ],
+      "note": "커스텀 스크립트도 공식과 동일한 상세 페이지 구조(탭/버튼/그룹핑) 사용"
+    }
+  },
+  "wiki": {
+    "index": {
+      "searchPlaceholder": "캐릭터 이름으로 검색...",
+      "filterChips": [
+        "전체",
+        "주민",
+        "외지인",
+        "하수인",
+        "악마",
+        "여행자",
+        "전설"
+      ],
+      "characterLinkCount": 181,
+      "sampleCards": [
+        {
+          "href": "/ko/wiki/chambermaid",
+          "text": "객실 청소부",
+          "hasImg": true
+        },
+        {
+          "href": "/ko/wiki/juggler",
+          "text": "곡예사",
+          "hasImg": true
+        },
+        {
+          "href": "/ko/wiki/princess",
+          "text": "공주",
+          "hasImg": true
+        }
+      ]
+    },
+    "characterPageSections": [
+      "세탁부",
+      "등장 스크립트",
+      "요약",
+      "진행 방법",
+      "예시 (3)"
+    ],
+    "characterPageNote": "H1=한국어 이름(+영문 병기, 아티스트 표기), H2 섹션: 등장 스크립트 / 요약 / 진행 방법 / 예시(개수) — i18n 키에는 설명·징크스 규칙 섹션도 존재"
+  },
+  "designTokens": {
+    "theme": "다크 단일 테마(라이트 모드 없음), meta theme-color #1a0a2e",
+    "cssCustomProperties": {
+      "--font-geist-sans": "\"Geist\",\"Geist Fallback\"",
+      "--font-geist-mono": "\"Geist Mono\",\"Geist Mono Fallback\"",
+      "--bg-primary": "#1a0a2e",
+      "--bg-secondary": "#200e2f",
+      "--bg-surface": "#2d1b4e",
+      "--bg-surface-hover": "#3a2460",
+      "--text-primary": "#e9e0cc",
+      "--text-secondary": "#b8a88a",
+      "--text-muted": "#7a6b55",
+      "--accent": "#c4a24d",
+      "--accent-hover": "#d4b45d",
+      "--danger": "#8b2252",
+      "--danger-hover": "#a52a63",
+      "--success": "#2d7a4f",
+      "--border": "#3d2a5c",
+      "--border-light": "#4d3a6c",
+      "--good": "#4a90d9",
+      "--evil": "#d94a4a",
+      "--day-bg": "#2a1a3e",
+      "--night-bg": "#0d0520",
+      "--token-bg": "#d4c9a8",
+      "--token-border": "#b8a880",
+      "--reminder-bg": "#0d7377",
+      "--reminder-border": "#14b8a6"
+    },
+    "fonts": {
+      "body": "\"Noto Sans KR\", Arial, Helvetica, sans-serif",
+      "nextFontVariables": [
+        "Geist",
+        "Geist Mono"
+      ],
+      "note": "실제 본문은 Noto Sans KR 우선 적용"
+    },
+    "shape": {
+      "cardRadius": "12px (rounded-xl)",
+      "badgeRadius": "pill(rounded-full)",
+      "cardPadding": "12–16px",
+      "cardGap": "8–12px (space-y-2/3, gap-3)"
+    },
+    "teamAccentText": {
+      "주민": "tailwind blue-400",
+      "외지인": "cyan-400",
+      "하수인": "orange-400",
+      "악마": "red-400",
+      "(위키 칩) 여행자/전설": "별도 칩 존재"
+    },
+    "toast": {
+      "background": "#2d1b4e",
+      "color": "#e9e0cc",
+      "border": "1px solid #3d2a5c",
+      "position": "bottom-center"
+    }
+  },
+  "assets": {
+    "characterIcons": "/icons/characters/{englishId}_{g|e}.webp (g=선, e=악), 36px 원형",
+    "phaseIcons": "/icons/phases/{dusk,dawn,minioninfo,demoninfo}.webp",
+    "favicon": "/icon.svg, /favicon.ico"
+  },
+  "apiEndpointsObserved": [
+    "GET /api/scripts/featured?category={monthly_custom|recommended|teensyville}",
+    "GET /api/scripts/{id}",
+    "GET /api/announcements/latest",
+    "GET /api/auth/session"
+  ]
+}
