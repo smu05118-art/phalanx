@@ -2,8 +2,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
 :root{
-  --bg:#12141b; --panel:#1a1e28; --raised:#232838; --sunken:#0d0f15; --line:#2e3446;
-  --text:#e8e3d3; --muted:#98a0b4; --accent:#d4a24e; --accent-soft:rgba(212,162,78,.14);
+  --bg:#131022; --panel:#1a152e; --raised:#241c42; --sunken:#0d0a19; --line:#332a55;
+  --text:#e9e5f4; --muted:#958db0; --accent:#d9b36a; --accent-soft:rgba(217,179,106,.13);
+  --primary:#7b5cd6; --primary-soft:rgba(123,92,214,.18);
   --good:#6d9fd4; --good-soft:rgba(109,159,212,.15);
   --evil:#d0655d; --evil-soft:rgba(208,101,93,.15);
   --warn:#dfae4a; --warn-soft:rgba(223,174,74,.13);
@@ -14,8 +15,9 @@
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
-    --bg:#f2eee3; --panel:#faf7ee; --raised:#ffffff; --sunken:#e9e4d4; --line:#ddd5c2;
-    --text:#262a35; --muted:#6b7183; --accent:#9a6f2f; --accent-soft:rgba(154,111,47,.12);
+    --bg:#f3f1f8; --panel:#fbfafe; --raised:#ffffff; --sunken:#e9e5f2; --line:#ddd6ea;
+    --text:#28223a; --muted:#6f6885; --accent:#8a6a25; --accent-soft:rgba(138,106,37,.12);
+    --primary:#6547c0; --primary-soft:rgba(101,71,192,.12);
     --good:#2f66a3; --good-soft:rgba(47,102,163,.10);
     --evil:#b23f37; --evil-soft:rgba(178,63,55,.10);
     --warn:#a4771c; --warn-soft:rgba(164,119,28,.12);
@@ -26,8 +28,9 @@
   }
 }
 :root[data-theme="light"]{
-  --bg:#f2eee3; --panel:#faf7ee; --raised:#ffffff; --sunken:#e9e4d4; --line:#ddd5c2;
-  --text:#262a35; --muted:#6b7183; --accent:#9a6f2f; --accent-soft:rgba(154,111,47,.12);
+  --bg:#f3f1f8; --panel:#fbfafe; --raised:#ffffff; --sunken:#e9e5f2; --line:#ddd6ea;
+  --text:#28223a; --muted:#6f6885; --accent:#8a6a25; --accent-soft:rgba(138,106,37,.12);
+  --primary:#6547c0; --primary-soft:rgba(101,71,192,.12);
   --good:#2f66a3; --good-soft:rgba(47,102,163,.10);
   --evil:#b23f37; --evil-soft:rgba(178,63,55,.10);
   --warn:#a4771c; --warn-soft:rgba(164,119,28,.12);
@@ -42,7 +45,7 @@ h1,h2,h3,h4,.serif{font-family:'Gowun Batang','Noto Serif KR',serif}
 button{font-family:inherit;font-size:14px;cursor:pointer;border:1px solid var(--line);background:var(--raised);color:var(--text);border-radius:8px;padding:7px 14px;transition:border-color .15s, background .15s}
 button:hover{border-color:var(--accent)}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-button.primary{background:var(--accent);border-color:var(--accent);color:#14161d;font-weight:700}
+button.primary{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}
 button.primary:hover{filter:brightness(1.08)}
 button.danger{border-color:var(--danger);color:var(--danger)}
 button.ghost{background:transparent}
@@ -65,12 +68,36 @@ textarea{width:100%;resize:vertical}
 #quickstats{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap;align-items:center}
 .qstat{background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:3px 10px;font-size:12.5px;color:var(--muted)}
 .qstat b{color:var(--text);font-size:14px}
-#tabs{max-width:1180px;margin:0 auto;padding:0 16px;display:flex;gap:2px;overflow-x:auto}
-#tabs button{border:none;background:transparent;color:var(--muted);border-radius:8px 8px 0 0;padding:9px 14px;font-size:14px;white-space:nowrap;border-bottom:2px solid transparent}
-#tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
-#tabs button .badge{display:inline-block;min-width:17px;text-align:center;background:var(--evil);color:#fff;border-radius:999px;font-size:10.5px;padding:0 5px;margin-left:5px;vertical-align:1px}
-
-main{max-width:1180px;margin:0 auto;padding:18px 16px 90px}
+#layout{display:grid;grid-template-columns:216px minmax(0,1fr);gap:0;max-width:1320px;margin:0 auto;align-items:start}
+#sidenav{position:sticky;top:64px;padding:14px 10px;display:flex;flex-direction:column;gap:3px}
+#sidenav button{display:flex;align-items:center;gap:10px;border:none;background:transparent;color:var(--muted);border-radius:9px;padding:10px 14px;font-size:14px;text-align:left;width:100%}
+#sidenav button:hover{background:var(--primary-soft);color:var(--text)}
+#sidenav button.active{background:var(--primary-soft);color:var(--text);font-weight:700;box-shadow:inset 3px 0 0 var(--primary)}
+#sidenav .icn{width:20px;text-align:center;opacity:.9}
+#subtabs{display:flex;gap:4px;overflow-x:auto;margin:0 0 14px;border-bottom:1px solid var(--line);padding-bottom:0}
+#subtabs[hidden]{display:none!important}
+#subtabs button{border:none;background:transparent;color:var(--muted);border-radius:8px 8px 0 0;padding:8px 14px;font-size:14px;white-space:nowrap;border-bottom:2px solid transparent}
+#subtabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+main{padding:18px 18px 90px;min-width:0}
+@media (max-width:880px){
+  #layout{grid-template-columns:1fr}
+  #sidenav{position:static;flex-direction:row;overflow-x:auto;padding:6px 10px;border-bottom:1px solid var(--line)}
+  #sidenav button{width:auto;white-space:nowrap;padding:7px 12px}
+  #sidenav button.active{box-shadow:inset 0 -3px 0 var(--primary)}
+}
+/* 스크립트 카드 (teeroz 홈 스타일) */
+.scriptgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.scard{display:flex;gap:14px;align-items:center;background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;transition:border-color .15s,background .15s}
+.scard:hover{border-color:var(--primary);background:var(--primary-soft)}
+.scard.disabled{cursor:default;opacity:.55}
+.scard.disabled:hover{border-color:var(--line);background:var(--raised)}
+.scard .sicon{flex:0 0 44px;width:44px;height:44px;border-radius:10px;background:var(--sunken);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:21px;color:var(--accent)}
+.scard .sko{font-weight:700;font-size:15.5px}
+.scard .sen{color:var(--muted);font-size:12px;font-style:italic}
+.scard .smeta{color:var(--muted);font-size:11.5px;margin-top:3px}
+.secthead{display:flex;align-items:center;gap:8px;margin:20px 0 10px;font-size:15px;font-weight:700;color:var(--text)}
+.secthead:first-child{margin-top:0}
+.secthead .shicon{color:var(--accent)}
 section.tabpane{display:none}
 section.tabpane.active{display:block}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
@@ -205,7 +232,7 @@ details.morebox .inner{border-left:2px solid var(--line);padding-left:10px;margi
 .callorder .co{background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:1px 8px}
 .callorder .co.dead{opacity:.5;text-decoration:line-through}
 @media print{
-  #topbar,#tabs,button,.footer-note{display:none!important}
+  #topbar,#sidenav,#subtabs,button,.footer-note{display:none!important}
   body{background:#fff;color:#000}
   .card{border:none;box-shadow:none}
 }
@@ -223,14 +250,17 @@ mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding
 
 <div id="topbar">
   <div class="inner">
-    <div id="brand"><h1>티르소스</h1><span class="sub">Thyrsus · Storyteller Console</span></div>
+    <div id="brand"><h1>🕰 티르소스</h1><span class="sub">Thyrsus · Storyteller Console</span></div>
     <div id="phasechip"><span class="plabel" id="phaselabel">준비</span><button class="small primary" id="advbtn">게임 시작</button></div>
     <div id="quickstats"></div>
     <button class="small ghost" id="themebtn" title="테마 전환">◐</button>
   </div>
-  <nav id="tabs"></nav>
 </div>
+<div id="layout">
+<nav id="sidenav"></nav>
 <main>
+  <div id="subtabs" hidden></div>
+  <section class="tabpane" id="pane-scripts"></section>
   <section class="tabpane" id="pane-setup"></section>
   <section class="tabpane" id="pane-sheet"></section>
   <section class="tabpane" id="pane-grim"></section>
@@ -244,6 +274,7 @@ mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding
     본 도구의 능력 요약·진행 가이드는 공식 규칙을 바탕으로 자체 작성되었습니다. 정본은 항상 공식 룰북과 공식 위키(wiki.bloodontheclocktower.com)를 따릅니다.
   </div>
 </main>
+</div>
 
 <script>
 /* ══════════════════ 데이터: Trouble Brewing 22 캐릭터 ══════════════════
@@ -557,11 +588,62 @@ function advancePhase(){
 }
 
 /* ══════════════════ 탭 ══════════════════ */
-const TABS=[['setup','설정'],['sheet','시트'],['grim','그리모어'],['night','밤 진행'],['day','낮 · 투표'],['guide','상호작용 · 재량'],['check','체크리스트'],['custom','커스텀']];
-let activeTab='setup';
+/* teeroz형 IA: 사이드바 4그룹 + 내 게임 서브탭 */
+const NAVS=[
+  ['scripts','공식 스크립트','📜'],
+  ['game','내 게임','🎲'],
+  ['custom','내 스크립트','📝'],
+  ['wiki','백과사전','📖'],
+];
+const GAME_TABS=[['setup','설정'],['grim','그리모어'],['night','밤 진행'],['day','낮 · 투표'],['check','체크리스트']];
+const NAV_OF={scripts:'scripts', sheet:'scripts', setup:'game', grim:'game', night:'game', day:'game', check:'game', custom:'custom', guide:'wiki'};
+let activeTab='scripts';
 function switchTab(t){ activeTab=t; renderAll(); }
+function switchNav(nv){
+  if(nv==='scripts') switchTab('scripts');
+  else if(nv==='game') switchTab(S.phase.kind==='night'?'night':S.phase.kind==='day'?'day':'setup');
+  else if(nv==='custom') switchTab('custom');
+  else switchTab('guide');
+}
 function renderTabs(){
-  $('#tabs').innerHTML = TABS.map(([id,ko])=>`<button class="${activeTab===id?'active':''}" onclick="switchTab('${id}')">${ko}</button>`).join('');
+  const nav=NAV_OF[activeTab]||'scripts';
+  $('#sidenav').innerHTML = NAVS.map(([id,ko,icn])=>`<button class="${nav===id?'active':''}" onclick="switchNav('${id}')"><span class="icn">${icn}</span>${ko}</button>`).join('');
+  const st=$('#subtabs');
+  if(nav==='game'){
+    st.hidden=false;
+    st.innerHTML = GAME_TABS.map(([id,ko])=>`<button class="${activeTab===id?'active':''}" onclick="switchTab('${id}')">${ko}</button>`).join('');
+  } else st.hidden=true;
+}
+/* 공식 스크립트 목록 (teeroz 홈 구조) */
+const SCRIPTS_META=[
+  {id:'tb', ko:'점철되는 혼란', en:'Trouble Brewing', ready:true, desc:'기본 스크립트 · 22캐릭터 · 사회자 콘솔 완전 지원'},
+  {id:'bmr', ko:'피로 물든 달', en:'Bad Moon Rising', ready:false, desc:'준비 중 — teeroz 참조 접근이 열리면 명칭 대조 후 구현'},
+  {id:'sv', ko:'화단에 꽃피운 이단', en:'Sects & Violets', ready:false, desc:'준비 중 — teeroz 참조 접근이 열리면 명칭 대조 후 구현'},
+];
+function renderScripts(){
+  const el=$('#pane-scripts');
+  el.innerHTML=`
+  <div class="card">
+    <div class="secthead"><span class="shicon">👑</span> 공식 스크립트</div>
+    <div class="scriptgrid">
+      ${SCRIPTS_META.map(s=>`<div class="scard ${s.ready?'':'disabled'}" onclick="${s.ready?"switchTab('sheet')":''}">
+        <div class="sicon">📜</div>
+        <div><div class="sko">${s.ko}</div><div class="sen">${s.en}</div><div class="smeta">${s.desc}</div></div>
+      </div>`).join('')}
+    </div>
+    <div class="secthead"><span class="shicon">⭐</span> 내 커스텀 스크립트</div>
+    ${S.customs.length?`<div class="scriptgrid">
+      <div class="scard" onclick="switchTab('custom')">
+        <div class="sicon">📝</div>
+        <div><div class="sko">티르소스 커스텀 시트</div><div class="sen">custom · ${S.customs.length} characters</div><div class="smeta">${S.customs.map(c=>c.ko).join(' · ')}</div></div>
+      </div></div>`
+    :`<p class="hint">아직 없습니다 — <b>내 스크립트</b>에서 커스텀 캐릭터를 만들면 여기에 나타납니다.</p>`}
+    <div class="secthead"><span class="shicon">🎲</span> 바로가기</div>
+    <div class="row">
+      <button class="primary" onclick="switchNav('game')">내 게임으로 (${phaseName()})</button>
+      <button onclick="switchTab('guide')">백과사전 · 재량 가이드</button>
+    </div>
+  </div>`;
 }
 function renderTopbar(){
   const pl=$('#phaselabel'); const ph=S.phase;
@@ -692,7 +774,8 @@ function renderSheet(){
       return `<div class="oitem" style="${dim?'opacity:.4':''}"><span class="onum num">${i+1}</span>${glyph(id)} ${esc(c.ko)}</div>`;
     }).join('')}</div>`;
   el.innerHTML=`<div class="card">
-    <div class="sheethead"><h2>Trouble Brewing · 소란의 조짐</h2><span class="hint">티르소스 시트 — 흐리게 표시된 캐릭터는 이번 게임에 없음</span></div>
+    <div class="sheethead"><h2>점철되는 혼란 <span style="font-size:14px;color:var(--muted);font-style:italic">Trouble Brewing</span></h2>
+      <span class="row"><button class="small ghost" onclick="switchTab('scripts')">← 스크립트 목록</button><span class="hint">흐리게 표시된 캐릭터는 이번 게임에 없음</span></span></div>
     <div class="sheetcols">
       <div>
         ${['townsfolk','outsider','minion','demon'].map(t=>`
@@ -1307,7 +1390,7 @@ function renderGuide(){
   const selId = guideSel || '';
   const c = selId? charOf(selId) : null;
   el.innerHTML=`
-  <div class="card"><h2>캐릭터 상호작용 조회</h2>
+  <div class="card"><h2>백과사전 · 캐릭터 상호작용</h2>
     <div class="row">
       <select onchange="guideSel=this.value;renderAll()"><option value="">— 캐릭터 선택 —</option>
         ${allChars().map(x=>`<option value="${x.id}" ${selId===x.id?'selected':''}>${esc(x.ko)} (${TYPE_KO[x.type]})</option>`).join('')}
@@ -1456,7 +1539,7 @@ function renderAll(){
   renderTabs(); renderTopbar();
   document.querySelectorAll('.tabpane').forEach(s=>s.classList.remove('active'));
   $('#pane-'+activeTab).classList.add('active');
-  ({setup:renderSetup, sheet:renderSheet, grim:renderGrim, night:renderNight, day:renderDay, guide:renderGuide, check:renderCheck, custom:renderCustom})[activeTab]();
+  ({scripts:renderScripts, setup:renderSetup, sheet:renderSheet, grim:renderGrim, night:renderNight, day:renderDay, guide:renderGuide, check:renderCheck, custom:renderCustom})[activeTab]();
 }
 $('#advbtn').onclick=advancePhase;
 $('#themebtn').onclick=()=>{
@@ -1466,6 +1549,6 @@ $('#themebtn').onclick=()=>{
   S.theme=next||'auto'; save();
 };
 if(S.theme && S.theme!=='auto') document.documentElement.setAttribute('data-theme',S.theme);
-if(S.phase.kind==='night') activeTab='night'; else if(S.phase.kind==='day') activeTab='day';
+if(S.phase.kind==='night') activeTab='night'; else if(S.phase.kind==='day') activeTab='day'; else activeTab='scripts';
 renderAll();
 </script>
