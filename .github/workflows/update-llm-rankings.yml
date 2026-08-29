@@ -3,7 +3,9 @@ name: Update LLM rankings (OpenRouter)
 on:
   workflow_dispatch:
   schedule:
-    # 23:55 UTC = 08:55 KST — 아침 9시 전에 갱신 완료
+    # GitHub 크론은 수 시간 지연될 수 있어 이른 예약 + 보조 예약 2중화
+    # 20:30 UTC = 05:30 KST (본), 23:55 UTC = 08:55 KST (보조·무변경이면 커밋 스킵)
+    - cron: "30 20 * * *"
     - cron: "55 23 * * *"
 
 permissions:

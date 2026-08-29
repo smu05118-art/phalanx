@@ -23,15 +23,17 @@ Top Apps·지연/처리량)을 파놉테스 탭으로 노출. 데이터는 CC BY
 
 ## ⚠️ 파놉테스 본체 탭으로 넣으려면 — 맥스튜디오(로컬 원본)에서 아래 반영
 
-app.js·index.html은 로컬 `~/phalanx/panoptes/` 원본이 소스라서(AGENTS.md) 레포에 직접 커밋하지 않았다.
-맥스튜디오에서 한 번만 반영하면 다음 크론 push부터 탭이 영구히 뜬다:
+app.js·index.html은 로컬 원본이 소스라서(AGENTS.md) 레포에 직접 커밋하지 않았다.
+**주의: AGENTS.md의 `~/phalanx/panoptes/` 경로는 맥스튜디오에 실존하지 않음(2026-08-29 확인).**
+실제 레포 클론은 `/Users/kioxia/Downloads/jem_site` (phalanx_update.sh의 `SITE`). 파놉테스
+원본 소스 디렉토리는 launchd 크론 스크립트가 참조하는 경로를 grep으로 찾아 함께 패치할 것:
 
 ```bash
-# 1) 레포 최신 llm_charts.js를 로컬 원본으로
-cd ~/phalanx && git -C <repo클론> pull 2>/dev/null || true
-cp <repo클론>/panoptes/llm_charts.js ~/phalanx/panoptes/llm_charts.js
-# 2) 아래 diff 2건을 ~/phalanx/panoptes/app.js·index.html에 적용 (내용은 다음 섹션)
+grep -rhoE "/Users/kioxia[^\"' ]*panoptes" /Users/kioxia/Downloads/*.sh /Users/kioxia/Downloads/*.py ~/Library/LaunchAgents/com.phalanx.*.plist 2>/dev/null | sort -u
 ```
+
+찾은 원본 디렉토리(+ `jem_site/panoptes`)에 아래 diff 2건 적용 + `llm_charts.js`·`llm.html` 복사 후,
+`jem_site`에서 `git add panoptes/ && git commit && git pull --rebase && git push`.
 
 ### app.js diff — switchTab에 llm 분기 + loadLLM 추가
 
