@@ -709,13 +709,13 @@ function countryLoc(code){
     if(w)cd.order.forEach(c=>{const a=w[c]||[];for(let i=0;i<n;i++)lw[c][i]+=(a[i]||0);}); });
   return {order:cd.order, loc:lv, locw:lw};
 }
-// country value (¥) stacked-area datasets — used by the in-detail 수출국별 overlay
+// country value (¥) stacked-BAR datasets — used by the in-detail 수출국별 overlay (2026-08 영역→막대 전환)
 function countryDatasets(code){
   const {order,loc}=countryLoc(code); if(!order) return [];
   const k=CUR[ST.cur].mult;
   return order.map((c,i)=>{const col=CCOL[i%CCOL.length], lv=aggLevel(loc[c]||[]);
-    return {type:'line',label:c,data:lv.map(x=>x==null?null:x*k),yAxisID:'yV',
-      backgroundColor:col+'cc',borderColor:col,borderWidth:.7,pointRadius:0,fill:true,tension:.2,stack:'c'};});
+    return {type:'bar',label:c,data:lv.map(x=>x==null?null:x*k),yAxisID:'yV',
+      backgroundColor:col+'cc',borderColor:col,borderWidth:0,stack:'c',barPercentage:1,categoryPercentage:.92};});
 }
 // Level-3 country view: 값(value) / 비중(share%) / YoY / 단가(¥/kg)
 function countryView(code){
@@ -2286,7 +2286,10 @@ function renderRack(){
   </style>
   <p style="font-size:17px;font-weight:800;margin:0 0 3px">🖥 Rack — 서버·랙 벤더 대시보드</p>
   <p class="lxs">출하량(k) 벤더별 분기표 + 프록시(조립국 세관) 나우캐스트 vs 회사 가이던스 + ODM 월매출 상관. 유닛 수치는 IR $앵커+시장총량 기반 <b>추정</b>(반투명), 매 분기 자동갱신.</p>
-  <p class="lxh">프록시 나우캐스트 vs 가이던스</p><div class="bb">${ncCards}</div>
+  <p class="lxh">🎯 컴포짓 프리뷰 판정 — 랙 밸류체인 전수 <button onclick="var b=document.getElementById('cmpPrevBtn');if(b)b.click();" style="margin-left:8px;background:#1d3b1f;color:#dff5e4;border:1px solid #3c7a49;border-radius:999px;padding:3px 12px;font-size:11px;cursor:pointer">상세 열기</button></p>
+  <p class="lxs">멀티루트 무역 컴포짓 → 회귀·잔차보정 판정(나쁜양파式). 발표일 순 · 상세 차트는 버튼으로.</p>
+  <div id="rackCmpBoard" class="lxs">컴포짓 데이터 로딩…</div>
+  <p class="lxh" style="margin-top:18px">프록시 나우캐스트 vs 가이던스</p><div class="bb">${ncCards}</div>
   <p class="lxh" style="margin-top:18px">대만 ODM — 월매출 × 美수입 프록시</p><div class="bb">${odmCards}</div>
   ${shipTbl('gen_k','General server (k units)','범용 서버 노드 — DIGITIMES/TrendForce 점유율 × 시장총량 추정')}
   ${shipTbl('ai_k','AI server (k units, 8-GPU 노드환산)','IR 실측 AI서버 $ ÷ 노드ASP($0.28→0.34M) — Dell·HPE·SMCI는 회사발표 $ 앵커')}
@@ -2307,6 +2310,23 @@ function renderRack(){
   ${(function(){var D=R.demand||{};var ks=Object.keys(D);if(!ks.length)return '';
     var rows=ks.map(function(c){var d=D[c];return '<tr><td><b>'+c+'</b></td><td class="mono">$'+(d.capex_b||'—')+'B</td><td class="mono" style="color:'+((d.yoy||0)>=0?'#2fae66':'#e06666')+'">'+(d.yoy!=null?(d.yoy>=0?'+':'')+d.yoy+'%':'—')+'</td><td class="mono lxs">'+(d.q||'')+'</td><td class="mono lxs">'+(d.guid?'가이드 $'+d.guid+'B':'')+'</td></tr>';}).join('');
     return '<p class="lxh" style="margin-top:22px">최종 수요 — 하이퍼스케일러 CAPEX</p><p class="lxs">랙 출하의 원천 수요. 이 CAPEX가 조립국 부품유입→완성품 출하로 흐름(선행).</p><div class="lxt"><table><thead><tr><th>기업</th><th>분기 CAPEX</th><th>YoY</th><th>분기</th><th>가이던스</th></tr></thead><tbody>'+rows+'</tbody></table></div>';})()}`;
+  renderRackCmp();
+}
+// 랙탭 컴포짓 판정 보드 — data_cmp.js(window.CMPD, composite_page_build.py 방출)
+function renderRackCmp(){
+  const RACK_IDS=['DELL','HPE','SMCI','CLS','JBL','QUANTA','HONHAI','WIWYNN','INVENTEC','GIGABYTE'];
+  const fill=()=>{const el=document.getElementById('rackCmpBoard'); if(!el) return;
+    const C=window.CMPD||{}; const rows=RACK_IDS.filter(k=>C[k]).map(k=>{const c=C[k];
+      return `<tr><td class="mono lxs">${c.report_d||'—'}</td><td><b>${k}</b></td><td class="lxs">${c.fq||''}</td>
+        <td><span style="background:${c.vcolor};color:#0b0e14;border-radius:5px;padding:1px 8px;font-weight:700;font-size:11px">${c.verdict}</span></td>
+        <td class="mono"><b>${c.est||'—'}</b></td><td class="mono lxs">${c.range||''}</td>
+        <td class="mono lxs">${c.cons||'—'}</td><td class="mono">ρ${c.rho??'—'}</td><td class="lxs">${c.state||''}</td></tr>`;}).join('');
+    el.innerHTML=rows?`<div class="lxt"><table><thead><tr><th>발표</th><th>기업</th><th>분기</th><th>판정</th><th>추정</th><th>범위</th><th>컨센</th><th>ρ</th><th>상태</th></tr></thead><tbody>${rows}</tbody></table></div>`
+      :'컴포짓 데이터 없음 — 파이프라인 갱신 대기';};
+  if(window.CMPD) return fill();
+  const sc=document.createElement('script'); sc.src='data_cmp.js'; sc.onload=fill;
+  sc.onerror=()=>{const el=document.getElementById('rackCmpBoard'); if(el) el.textContent='컴포짓 데이터 로드 실패';};
+  document.head.appendChild(sc);
 }
 // ================= 🧠 Memory 탭 =================
 function loadMem(cb){ if(window.MEMD) return cb();
