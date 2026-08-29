@@ -1,0 +1,1354 @@
+<title>티르소스</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#12141b; --panel:#1a1e28; --raised:#232838; --sunken:#0d0f15; --line:#2e3446;
+  --text:#e8e3d3; --muted:#98a0b4; --accent:#d4a24e; --accent-soft:rgba(212,162,78,.14);
+  --good:#6d9fd4; --good-soft:rgba(109,159,212,.15);
+  --evil:#d0655d; --evil-soft:rgba(208,101,93,.15);
+  --warn:#dfae4a; --warn-soft:rgba(223,174,74,.13);
+  --ok:#7fb069; --ok-soft:rgba(127,176,105,.14);
+  --danger:#c0473f;
+  --shadow:0 6px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f2eee3; --panel:#faf7ee; --raised:#ffffff; --sunken:#e9e4d4; --line:#ddd5c2;
+    --text:#262a35; --muted:#6b7183; --accent:#9a6f2f; --accent-soft:rgba(154,111,47,.12);
+    --good:#2f66a3; --good-soft:rgba(47,102,163,.10);
+    --evil:#b23f37; --evil-soft:rgba(178,63,55,.10);
+    --warn:#a4771c; --warn-soft:rgba(164,119,28,.12);
+    --ok:#4a7c47; --ok-soft:rgba(74,124,71,.12);
+    --danger:#a83a32;
+    --shadow:0 4px 16px rgba(60,50,30,.12);
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f2eee3; --panel:#faf7ee; --raised:#ffffff; --sunken:#e9e4d4; --line:#ddd5c2;
+  --text:#262a35; --muted:#6b7183; --accent:#9a6f2f; --accent-soft:rgba(154,111,47,.12);
+  --good:#2f66a3; --good-soft:rgba(47,102,163,.10);
+  --evil:#b23f37; --evil-soft:rgba(178,63,55,.10);
+  --warn:#a4771c; --warn-soft:rgba(164,119,28,.12);
+  --ok:#4a7c47; --ok-soft:rgba(74,124,71,.12);
+  --danger:#a83a32;
+  --shadow:0 4px 16px rgba(60,50,30,.12);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Noto Sans KR',-apple-system,'Apple SD Gothic Neo',sans-serif;font-size:15px;line-height:1.6}
+h1,h2,h3,h4,.serif{font-family:'Gowun Batang','Noto Serif KR',serif}
+button{font-family:inherit;font-size:14px;cursor:pointer;border:1px solid var(--line);background:var(--raised);color:var(--text);border-radius:8px;padding:7px 14px;transition:border-color .15s, background .15s}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#14161d;font-weight:700}
+button.primary:hover{filter:brightness(1.08)}
+button.danger{border-color:var(--danger);color:var(--danger)}
+button.ghost{background:transparent}
+button.small{padding:3px 9px;font-size:12.5px;border-radius:6px}
+button:disabled{opacity:.4;cursor:not-allowed}
+input,select,textarea{background:var(--sunken);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:14px}
+textarea{width:100%;resize:vertical}
+.num{font-variant-numeric:tabular-nums}
+
+/* ── top bar ── */
+#topbar{position:sticky;top:0;z-index:50;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+#topbar .inner{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#brand{display:flex;align-items:baseline;gap:9px}
+#brand h1{margin:0;font-size:21px;letter-spacing:.06em;color:var(--accent)}
+#brand .sub{font-size:11px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+#phasechip{display:flex;align-items:center;gap:8px;background:var(--sunken);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 14px}
+#phasechip .plabel{font-weight:700;font-size:14px}
+#phasechip .plabel.night{color:var(--good)}
+#phasechip .plabel.day{color:var(--warn)}
+#quickstats{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap;align-items:center}
+.qstat{background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:3px 10px;font-size:12.5px;color:var(--muted)}
+.qstat b{color:var(--text);font-size:14px}
+#tabs{max-width:1180px;margin:0 auto;padding:0 16px;display:flex;gap:2px;overflow-x:auto}
+#tabs button{border:none;background:transparent;color:var(--muted);border-radius:8px 8px 0 0;padding:9px 14px;font-size:14px;white-space:nowrap;border-bottom:2px solid transparent}
+#tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+#tabs button .badge{display:inline-block;min-width:17px;text-align:center;background:var(--evil);color:#fff;border-radius:999px;font-size:10.5px;padding:0 5px;margin-left:5px;vertical-align:1px}
+
+main{max-width:1180px;margin:0 auto;padding:18px 16px 90px}
+section.tabpane{display:none}
+section.tabpane.active{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:18px;color:var(--accent)}
+.card h3{margin:14px 0 8px;font-size:15.5px}
+.card p.hint{color:var(--muted);font-size:13px;margin:4px 0 10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:500;border:1px solid var(--line)}
+.pill.townsfolk{color:var(--good);border-color:var(--good);background:var(--good-soft)}
+.pill.outsider{color:var(--good);border-color:var(--line);background:var(--good-soft);opacity:.85}
+.pill.minion{color:var(--evil);border-color:var(--evil);background:var(--evil-soft)}
+.pill.demon{color:#fff;border-color:var(--evil);background:var(--evil)}
+.pill.warn{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+.pill.ok{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+.pill.neutral{color:var(--muted)}
+
+.token{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:1px 8px;font-size:11.5px;font-weight:700;letter-spacing:.02em}
+.token.poison{background:var(--evil-soft);color:var(--evil);border:1px solid var(--evil)}
+.token.drunkT{background:var(--warn-soft);color:var(--warn);border:1px dashed var(--warn)}
+.token.protect{background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok)}
+.token.herring{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent)}
+.token.master{background:var(--good-soft);color:var(--good);border:1px solid var(--good)}
+.token.custom{background:var(--sunken);color:var(--muted);border:1px solid var(--line)}
+.token .x{cursor:pointer;opacity:.7;font-weight:400}
+.token .x:hover{opacity:1}
+
+/* player cards */
+.pcard{background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:10px 12px;position:relative;transition:border-color .15s,transform .15s}
+.pcard:hover{border-color:var(--accent)}
+.pcard.dead{opacity:.62;background:var(--panel)}
+.pcard.dead .pname{text-decoration:line-through}
+.pcard .pname{font-weight:700;font-size:15px}
+.pcard .prole{font-family:'Gowun Batang',serif;font-size:14px}
+.pcard .tokens{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;min-height:10px}
+.pcard .pbtns{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.seat{position:absolute;top:8px;right:10px;font-size:11px;color:var(--muted)}
+
+/* night stepper */
+.step{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;background:var(--panel);margin-bottom:8px;overflow:hidden}
+.step.wake{border-left-color:var(--accent)}
+.step.done{opacity:.55;border-left-color:var(--ok)}
+.step.skip{opacity:.45}
+.step > .stephead{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;flex-wrap:wrap}
+.step > .stephead:hover{background:var(--accent-soft)}
+.step .stepnum{font-size:12px;color:var(--muted);min-width:22px;text-align:right}
+.step .stepname{font-family:'Gowun Batang',serif;font-weight:700;font-size:16px}
+.step .stepwho{color:var(--muted);font-size:13px}
+.step .stepbody{display:none;padding:2px 16px 14px 46px;border-top:1px dashed var(--line)}
+.step.open .stepbody{display:block}
+.guide{font-size:14px}
+.guide ol,.guide ul{margin:6px 0;padding-left:20px}
+.guide li{margin:3px 0}
+.alertbox{border:1px solid var(--warn);background:var(--warn-soft);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13.5px}
+.alertbox.red{border-color:var(--evil);background:var(--evil-soft)}
+.alertbox.blue{border-color:var(--good);background:var(--good-soft)}
+.alertbox b{font-weight:700}
+
+/* vote */
+.votemath{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0}
+.vmbox{flex:1 1 130px;background:var(--sunken);border:1px solid var(--line);border-radius:10px;padding:10px 14px;text-align:center}
+.vmbox .vlab{font-size:11.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.vmbox .vval{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.vmbox.pass .vval{color:var(--ok)} .vmbox.fail .vval{color:var(--evil)}
+.voterow{display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px dashed var(--line);flex-wrap:wrap}
+.voterow:last-child{border-bottom:none}
+.voterow .vname{min-width:110px;font-weight:500}
+.voterow.deadrow .vname{color:var(--muted);text-decoration:line-through}
+.vbtn{border-radius:6px;padding:3px 12px;font-size:13px}
+.vbtn.sel-yes{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:700}
+.vbtn.sel-no{background:var(--evil);border-color:var(--evil);color:#fff;font-weight:700}
+.vbtn.sel-abs{background:var(--muted);border-color:var(--muted);color:var(--bg);font-weight:700}
+.nomcard{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--raised)}
+.nomcard.leader{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.nomcard .nomtitle{font-weight:700;font-size:15px}
+
+/* character library */
+.chargrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.charcard{background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.charcard .cname{font-family:'Gowun Batang',serif;font-weight:700;font-size:16px}
+.charcard .cen{color:var(--muted);font-size:12px;margin-left:6px}
+.charcard .cab{font-size:13.5px;margin-top:6px}
+details.morebox{margin-top:8px;font-size:13px}
+details.morebox summary{cursor:pointer;color:var(--accent);font-size:12.5px}
+details.morebox .inner{border-left:2px solid var(--line);padding-left:10px;margin-top:6px}
+
+.checkitem{display:flex;gap:9px;align-items:flex-start;padding:7px 4px;border-bottom:1px dashed var(--line);font-size:14px}
+.checkitem:last-child{border-bottom:none}
+.checkitem input[type=checkbox]{margin-top:4px;accent-color:var(--accent)}
+.checkitem .src{color:var(--muted);font-size:12px}
+
+#log{max-height:340px;overflow-y:auto;background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px}
+#log .lentry{padding:2px 0;border-bottom:1px dotted var(--line)}
+#log .lphase{color:var(--accent);font-weight:700}
+
+.fieldrow{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;margin-bottom:8px}
+.fieldrow label{font-size:13px;color:var(--muted);text-align:right}
+
+.footer-note{color:var(--muted);font-size:12px;text-align:center;margin-top:30px;line-height:1.7}
+.divider{border:none;border-top:1px solid var(--line);margin:14px 0}
+.kbd{background:var(--sunken);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:12px}
+mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 3px}
+@media (max-width:640px){
+  .fieldrow{grid-template-columns:1fr}
+  .fieldrow label{text-align:left}
+  .step .stepbody{padding-left:16px}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div id="topbar">
+  <div class="inner">
+    <div id="brand"><h1>티르소스</h1><span class="sub">Thyrsus · Storyteller Console</span></div>
+    <div id="phasechip"><span class="plabel" id="phaselabel">준비</span><button class="small primary" id="advbtn">게임 시작</button></div>
+    <div id="quickstats"></div>
+    <button class="small ghost" id="themebtn" title="테마 전환">◐</button>
+  </div>
+  <nav id="tabs"></nav>
+</div>
+<main>
+  <section class="tabpane" id="pane-setup"></section>
+  <section class="tabpane" id="pane-grim"></section>
+  <section class="tabpane" id="pane-night"></section>
+  <section class="tabpane" id="pane-day"></section>
+  <section class="tabpane" id="pane-guide"></section>
+  <section class="tabpane" id="pane-check"></section>
+  <section class="tabpane" id="pane-custom"></section>
+  <div class="footer-note">
+    티르소스는 비공식 팬 제작 사회자 보조 도구입니다. Blood on the Clocktower는 The Pandemonium Institute의 저작물이며,<br>
+    본 도구의 능력 요약·진행 가이드는 공식 규칙을 바탕으로 자체 작성되었습니다. 정본은 항상 공식 룰북과 공식 위키(wiki.bloodontheclocktower.com)를 따릅니다.
+  </div>
+</main>
+
+<script>
+/* ══════════════════ 데이터: Trouble Brewing 22 캐릭터 ══════════════════
+   능력 요약/가이드는 공식 규칙(공식 룰북·공식 위키 참조)을 바탕으로 자체 작성한 문구입니다. */
+const TYPE_KO = {townsfolk:'마을 주민', outsider:'외부인', minion:'하수인', demon:'악마'};
+const COMP = {5:[3,0,1,1],6:[3,1,1,1],7:[5,0,1,1],8:[5,1,1,1],9:[5,2,1,1],10:[7,0,2,1],11:[7,1,2,1],12:[7,2,2,1],13:[9,0,3,1],14:[9,1,3,1],15:[9,2,3,1]};
+
+const CHARACTERS = [
+/* ───────── 마을 주민 13 ───────── */
+{id:'washerwoman', ko:'세탁부', en:'Washerwoman', type:'townsfolk',
+ ability:'첫날 밤, 특정 마을 주민 캐릭터 하나와 후보 2명을 알게 된다. 둘 중 한 명이 그 캐릭터다.',
+ first:true, other:false,
+ guideFirst:['세탁부를 깨운다.','마을 주민 캐릭터 토큰 하나를 보여준다.','플레이어 2명을 가리킨다 — 한 명은 실제 그 캐릭터, 다른 한 명은 아무나.','세탁부를 재운다.'],
+ warn:['첩자(Spy)가 있으면: 첩자를 "마을 주민"으로 등록시켜 정보에 포함시킬 수 있다(재량).','중독/술취함이면: 완전히 거짓인 캐릭터·후보 조합을 보여줘도 된다.'],
+ remind:['첫날 밤 이후에는 다시 깨우지 않는다.']},
+
+{id:'librarian', ko:'사서', en:'Librarian', type:'townsfolk',
+ ability:'첫날 밤, 특정 외부인 캐릭터 하나와 후보 2명을 알게 된다. 외부인이 없다면 0을 알게 된다.',
+ first:true, other:false,
+ guideFirst:['사서를 깨운다.','외부인이 있으면: 외부인 캐릭터 토큰 하나 + 플레이어 2명(한 명은 실제 그 외부인).','외부인이 없으면: 손으로 0 표시.','사서를 재운다.'],
+ warn:['술꾼(Drunk)이 있으면: 사서에게는 "술꾼"으로 보여줄 수 있다 — 본인은 마을 주민인 줄 알지만 사서 정보에는 술꾼으로 잡힐 수 있다(강력한 정보이므로 재량껏).','첩자가 "외부인"으로 등록되도록 보여줄 수도 있다(재량).','중독/술취함이면 거짓 정보 가능(가짜 외부인, 가짜 0 포함).'],
+ remind:[]},
+
+{id:'investigator', ko:'수사관', en:'Investigator', type:'townsfolk',
+ ability:'첫날 밤, 특정 하수인 캐릭터 하나와 후보 2명을 알게 된다. 둘 중 한 명이 그 하수인이다.',
+ first:true, other:false,
+ guideFirst:['수사관을 깨운다.','하수인 캐릭터 토큰 하나를 보여준다.','플레이어 2명을 가리킨다 — 한 명은 실제 그 하수인, 다른 한 명은 아무나.','수사관을 재운다.'],
+ warn:['은둔자(Recluse)가 있으면: 은둔자를 하수인으로 등록시켜 후보에 넣을 수 있다(재량 — 거짓이 아닌 "등록"이다).','첩자는 선한 쪽으로 등록될 수 있어 정보에서 빠질 수도 있다(재량).','중독/술취함이면 거짓 정보 가능.'],
+ remind:[]},
+
+{id:'chef', ko:'요리사', en:'Chef', type:'townsfolk',
+ ability:'첫날 밤, 서로 인접해 앉은 악한 플레이어 쌍의 수를 알게 된다.',
+ first:true, other:false,
+ guideFirst:['요리사를 깨운다.','인접한 악-악 쌍의 수를 손가락으로 알려준다. (악 3명이 연달아 앉았으면 2쌍)','요리사를 재운다.'],
+ warn:['첩자를 선한 쪽으로 등록해 쌍에서 빼거나, 은둔자를 악으로 등록해 쌍에 넣을 수 있다(재량 — 단, 이 게임에서의 등록 방침을 일관되게 기억할 것).','중독/술취함이면 아무 숫자나 가능.'],
+ remind:[]},
+
+{id:'empath', ko:'공감자', en:'Empath', type:'townsfolk',
+ ability:'매일 밤, 살아있는 양옆 이웃 중 악한 플레이어의 수를 알게 된다.',
+ first:true, other:true,
+ guideFirst:['공감자를 깨운다.','살아있는 양옆 이웃(죽은 자는 건너뛰고 그다음 생존자) 중 악의 수를 0·1·2로 알려준다.','공감자를 재운다.'],
+ guideOther:['공감자를 깨운다.','이웃이 죽어 있으면 그 너머의 생존자가 이웃이 된다 — 매번 다시 계산할 것.','악의 수를 0·1·2로 알려준다.','공감자를 재운다.'],
+ warn:['첩자/은둔자 등록 재량이 매일 밤 적용된다. 밤마다 다르게 등록해도 되지만, 흔들 거면 이유를 갖고 흔들 것.','중독/술취함이면 거짓 숫자 가능.'],
+ remind:['이웃이 바뀌었는지(사망) 매일 밤 확인.']},
+
+{id:'fortuneteller', ko:'점쟁이', en:'Fortune Teller', type:'townsfolk',
+ ability:'매일 밤 2명을 지목해 그중 악마가 있는지 알게 된다. 선한 플레이어 1명이 붉은 청어로, 악마처럼 감지된다.',
+ first:true, other:true,
+ setupNote:'첫날 밤 전에 붉은 청어(선한 플레이어 1명, 게임 내내 유지)를 정해 둘 것. 점쟁이 본인도 가능.',
+ guideFirst:['점쟁이를 깨운다.','2명을 지목하게 한다.','악마 또는 붉은 청어가 포함되면 "예", 아니면 "아니오".','점쟁이를 재운다.'],
+ guideOther:['점쟁이를 깨운다.','2명을 지목하게 한다(죽은 사람 지목도 허용).','악마·붉은 청어 포함 → 예 / 아니면 아니오.','점쟁이를 재운다.'],
+ warn:['은둔자는 악마로 등록되어 "예"가 나올 수 있다(재량).','첩자는 선한 쪽으로 등록되어 "아니오"가 나올 수 있다(재량).','중독/술취함이면 아무 답이나 가능.'],
+ remind:['붉은 청어는 영구적이다 — 그리모어의 🎗붉은 청어 토큰 확인.']},
+
+{id:'undertaker', ko:'장의사', en:'Undertaker', type:'townsfolk',
+ ability:'매일 밤(첫날 제외), 그날 낮에 처형으로 죽은 플레이어의 캐릭터를 알게 된다.',
+ first:false, other:true,
+ guideOther:['오늘 낮에 처형이 있었을 때만 깨운다.','처형된 플레이어의 캐릭터 토큰을 보여준다.','장의사를 재운다.'],
+ warn:['성처녀 능력으로 인한 처형도 "처형"이다 — 그 지명자의 캐릭터를 보여준다.','처형된 첩자는 마을 주민/외부인으로 등록되어 보일 수 있고, 은둔자는 하수인/악마로 보일 수 있다(재량).','술꾼이 처형되면 "술꾼" 토큰을 보여준다(위장 캐릭터가 아니라).','중독/술취함이면 아무 캐릭터나 보여줄 수 있다.','악마 처형 등 밤 아닌 사망(슬레이어 등)은 해당 없음 — 오직 처형만.'],
+ remind:['처형이 없던 날 밤에는 깨우지 않는다.']},
+
+{id:'monk', ko:'수도사', en:'Monk', type:'townsfolk',
+ ability:'매일 밤(첫날 제외), 자신이 아닌 1명을 지목한다. 그 플레이어는 오늘 밤 악마로부터 안전하다.',
+ first:false, other:true,
+ guideOther:['수도사를 깨운다.','자신을 제외한 1명을 지목하게 한다.','🛡보호 토큰을 그 플레이어에게 놓는다.','수도사를 재운다.'],
+ warn:['보호는 "악마의 공격"만 막는다 — 처형·슬레이어·성처녀는 못 막는다.','임프가 보호 대상을 지목하면: 아무 일도 일어나지 않는다(사망 없음). 임프에게 실패를 알리지 않는다.','수도사가 중독/술취함이면 보호가 작동하지 않는다 — 대상이 죽을 수 있다!'],
+ remind:['보호는 그 밤에만 유효 — 새벽에 자동 해제된다.']},
+
+{id:'ravenkeeper', ko:'까마귀지기', en:'Ravenkeeper', type:'townsfolk',
+ ability:'밤에 죽으면 깨어나 1명을 지목하고, 그 플레이어의 캐릭터를 알게 된다.',
+ first:false, other:true, conditional:'오늘 밤 사망한 경우에만',
+ guideOther:['까마귀지기가 오늘 밤 죽었을 때만(임프 공격 직후) 깨운다.','1명을 지목하게 한다.','그 플레이어의 캐릭터 토큰을 보여준다.','재운다. (죽었음은 새벽에 공표)'],
+ warn:['첩자를 지목하면 선한 캐릭터로 보여줄 수 있고, 은둔자는 악한 캐릭터로 보여줄 수 있다(재량).','중독/술취함 상태로 죽었으면 거짓 캐릭터를 보여줄 수 있다.','임프가 일부러 까마귀지기를 죽여 정보를 흘리게 만들 수도 있음을 기억.'],
+ remind:['밤 사망시에만. 처형으로 죽으면 발동하지 않는다.']},
+
+{id:'virgin', ko:'성처녀', en:'Virgin', type:'townsfolk',
+ ability:'최초로 지명당했을 때, 지명자가 마을 주민이면 그 지명자가 즉시 처형된다. (1회)',
+ first:false, other:false, dayAbility:true,
+ dayGuide:['성처녀가 처음 지명당하는 순간 발동을 판정한다.','지명자가 (등록상) 마을 주민이면: 지명자는 즉시 처형되어 죽는다. 그날의 처형은 이것으로 끝 — 추가 처형 불가.','지명자가 외부인·하수인·악마면: 아무 일도 없고 지명 절차는 그대로 진행.','발동 여부와 무관하게, 최초 지명이 지나가면 능력은 소진된다.'],
+ warn:['술꾼은 외부인이므로 발동하지 않는다 — 본인이 주민이라 믿어도.','첩자가 지명하면 "마을 주민으로 등록"되어 발동시킬 수도 있다(재량!).','성처녀가 중독/술취함이면 발동하지 않는다. 단, 능력 소진은 그대로 진행.','발동 처형은 장의사가 확인하는 "처형"이며, 성인(Saint) 규칙과는 무관(지명자가 처형되는 것).'],
+ remind:['미발동 상태인지 지명 때마다 확인 — 투표 패널이 자동 경고한다.']},
+
+{id:'slayer', ko:'슬레이어', en:'Slayer', type:'townsfolk',
+ ability:'게임 중 단 한 번, 낮에 공개적으로 1명을 지목한다. 그 플레이어가 악마라면 즉시 죽는다.',
+ first:false, other:false, dayAbility:true,
+ dayGuide:['슬레이어가 공개적으로 능력을 선언하고 지목하면 즉시 판정한다.','지목 대상이 (등록상) 악마면: 그 자리에서 사망. 처형이 아니므로 장의사·성인과 무관.','아니면: "아무 일도 일어나지 않습니다"라고 공표.','성공이든 실패든 능력은 소진된다.'],
+ warn:['은둔자가 지목되면 악마로 등록되어 죽을 수 있다(재량 — 극적인 순간을 만들 수 있다).','슬레이어가 중독/술취함이면 진짜 악마를 지목해도 불발.','슬레이어가 아닌 플레이어가 슬레이어인 척 지목하면: 똑같이 침착하게 "아무 일도 없습니다" — 리액션으로 정보를 흘리지 말 것.','임프 사망 시: 생존 5인 이상이면 주홍 여인 계승 체크!'],
+ remind:['능력 사용 여부를 그리모어에 기록(사용 시 자동 소진 표시).']},
+
+{id:'soldier', ko:'군인', en:'Soldier', type:'townsfolk',
+ ability:'악마에게 죽지 않는다.',
+ first:false, other:false, passive:true,
+ warn:['임프가 군인을 지목하면 아무 일도 일어나지 않는다. 임프에게 실패를 알리지 않는다.','군인이 중독/술취함이면 그날 밤엔 죽을 수 있다!','처형·성처녀 등 악마 외의 사망은 그대로 적용된다.'],
+ remind:[]},
+
+{id:'mayor', ko:'시장', en:'Mayor', type:'townsfolk',
+ ability:'생존자가 3명일 때 그날 처형이 없으면 선한 팀이 승리한다. 밤에 죽게 되면, 사회자 재량으로 다른 플레이어가 대신 죽을 수 있다.',
+ first:false, other:false, passive:true,
+ warn:['임프가 시장을 지목하면 3가지 선택지: ① 시장이 죽는다 ② 다른 플레이어가 대신 죽는다(사회자 선택) ③ 아무도 안 죽는다? — 공식적으로는 "다른 플레이어가 죽을 수 있다"이므로 ①·② 중 재량. 게임 균형을 보고 결정.','시장이 중독/술취함이면: 총알받이 능력도, 3인 승리 조건도 작동하지 않는다.','3인 생존 + 처형 없이 낮 종료 → 즉시 선한 팀 승리. 낮 패널이 자동 경고한다.'],
+ remind:['생존자 3명이 되면 항상 시장 승리 조건을 염두에 둘 것.']},
+
+/* ───────── 외부인 4 ───────── */
+{id:'butler', ko:'집사', en:'Butler', type:'outsider',
+ ability:'매일 밤 주인 1명을 지목한다. 다음 날 주인이 투표할 때만 자신도 투표할 수 있다.',
+ first:true, other:true, voteRelated:true,
+ guideFirst:['집사를 깨운다.','자신이 아닌 1명을 주인으로 지목하게 한다.','🤵주인 토큰을 그 플레이어에게 놓는다.','집사를 재운다.'],
+ guideOther:['집사를 깨운다.','주인을 새로 지목하게 한다(매일 밤 갱신, 자신 제외).','🤵주인 토큰을 옮긴다.','집사를 재운다.'],
+ warn:['투표 규칙: 주인이 찬성(거수)한 경우에만 집사도 찬성할 수 있다. 주인이 손을 내리면 집사도 낼 수 없다.','집사가 지명하는 것 자체는 가능하다 — 투표만 제한된다.','집사가 중독/술취함이면 자유 투표 가능하나, 본인은 모른다(사회자만 아는 사실 — 굳이 알리지 않는다).','죽은 집사는 능력이 사라져 자유롭게(토큰으로) 투표할 수 있다.'],
+ remind:['투표 패널이 주인 거수 여부를 자동 체크한다.']},
+
+{id:'drunk', ko:'술꾼', en:'Drunk', type:'outsider',
+ ability:'자신이 마을 주민이라고 믿지만, 실제로는 술꾼이다. 능력은 작동하지 않는다.',
+ first:false, other:false, passive:true, setupChar:true,
+ setupNote:'게임 시작 전, 어떤 마을 주민으로 위장시킬지 정한다. 그 주민의 토큰을 보여주며 시작하되 그리모어에는 술꾼+위장 토큰을 함께 둔다.',
+ warn:['위장 캐릭터의 밤 순서에 똑같이 깨우고, 항상 그럴듯한 거짓 정보를 준다.','사서 정보에 "술꾼"으로 잡힐 수 있다(외부인이므로).','성처녀를 지명해도 발동시키지 못한다(외부인).','장의사에게는 "술꾼" 토큰을 보여준다.','술꾼의 거짓 정보는 게임 내내 일관성 있게 관리하라 — 매 밤 무엇을 말했는지 메모 필수.'],
+ remind:['밤 순서에 위장 캐릭터 자리로 자동 삽입된다.']},
+
+{id:'recluse', ko:'은둔자', en:'Recluse', type:'outsider',
+ ability:'악한 플레이어로, 하수인이나 악마로 등록될 수 있다. 실제로는 선하다.',
+ first:false, other:false, passive:true,
+ warn:['"등록될 수 있다" = 사회자 재량. 매번 다르게 판정해도 된다.','적용처: 수사관·요리사·공감자·점쟁이·장의사·까마귀지기 정보, 슬레이어 지목(죽을 수 있다!), 임프로 등록되어 처형 시 게임이 끝난 척? — 아니다: 은둔자 처형으로 게임은 끝나지 않지만, "악마가 죽었다"고 등록·공표하는 것은 불가(게임 종료는 실제 악마 사망만).','재량 원칙: 은둔자를 악으로 등록하는 것은 선한 팀을 혼란시키는 도구다. 과용하면 은둔자만 억울해진다 — 게임당 1~2회의 결정적 순간에.'],
+ remind:['정보 캐릭터 판정 때마다 은둔자 등록 여부를 의식적으로 결정할 것.']},
+
+{id:'saint', ko:'성인', en:'Saint', type:'outsider',
+ ability:'처형으로 죽으면 선한 팀이 패배한다.',
+ first:false, other:false, passive:true, voteRelated:true,
+ warn:['오직 "처형"만 해당 — 임프에게 밤에 죽는 것, 슬레이어 오발 등은 무관.','성인이 중독/술취함 상태에서 처형되면: 패배하지 않는다! (능력 오작동) — 독살자의 강력한 플레이.','투표 패널이 성인 지명 시 자동 경고한다.'],
+ remind:['성인 지명·처형 직전에 반드시 중독 여부 확인.']},
+
+/* ───────── 하수인 4 ───────── */
+{id:'poisoner', ko:'독살자', en:'Poisoner', type:'minion',
+ ability:'매일 밤 1명을 지목한다. 그 플레이어는 오늘 밤과 내일 낮 동안 중독된다.',
+ first:true, other:true,
+ guideFirst:['독살자를 깨운다.','1명을 지목하게 한다(자신·악마 포함 가능).','☠중독 토큰을 놓는다 — 오늘 밤 + 내일 낮 유지, 내일 황혼(밤 시작)에 자동 해제.','독살자를 재운다.'],
+ guideOther:['독살자를 깨운다.','새 대상을 지목하게 한다.','이전 중독 토큰은 황혼에 이미 해제됨 — 새 토큰을 놓는다.','독살자를 재운다.'],
+ warn:['독살자가 밤 순서 맨 앞(정보 캐릭터들보다 먼저)인 이유: 오늘 밤의 정보 캐릭터를 중독시켜 거짓 정보를 줄 수 있게 하기 위해서다.','중독 = 능력 오작동: 정보형은 거짓 정보 가능, 발동형(수도사 보호·군인 면역·성처녀·성인·주홍 여인 계승 등)은 불발.','독살자 자신이 중독/술취함이면 그날 밤 독이 퍼지지 않는다.','중독은 누적 기록이 중요 — 그리모어가 자동 관리한다.'],
+ remind:['매 밤 대상 갱신. 이전 대상 해제 확인.']},
+
+{id:'spy', ko:'첩자', en:'Spy', type:'minion',
+ ability:'매일 밤 그리모어를 볼 수 있다. 선한 플레이어, 마을 주민, 외부인으로 등록될 수 있다.',
+ first:true, other:true,
+ guideFirst:['밤 순서 마지막에 첩자를 깨운다.','그리모어(이 화면의 그리모어 탭 상태)를 충분히 보여준다.','첩자를 재운다.'],
+ guideOther:['밤 순서 마지막에 첩자를 깨워 그리모어를 보여준다.','첩자를 재운다.'],
+ warn:['이 도구를 그대로 보여줘도 되고, 요약해서 보여줘도 된다 — 단, 충분한 시간을 줄 것.','등록 재량: 세탁부·사서·수사관·요리사·공감자·점쟁이·장의사·까마귀지기 정보, 성처녀 발동(첩자가 지명 시 "주민 등록"으로 발동시킬 수 있음!)에 모두 적용.','일관성 원칙: 한 게임에서 첩자를 "선"으로 등록하기로 했다면 근거 없이 오락가락하지 말 것. 균형이 필요할 때 의도적으로만.'],
+ remind:['첩자가 살아있는 동안 매일 밤 마지막 순서.']},
+
+{id:'scarletwoman', ko:'주홍 여인', en:'Scarlet Woman', type:'minion',
+ ability:'생존자가 5명 이상일 때 악마가 죽으면, 자신이 그 악마가 된다.',
+ first:false, other:true, conditional:'악마 계승 시에만',
+ guideOther:['(악마 계승이 일어난 날 밤에만) 주홍 여인을 깨운다.','임프 토큰을 보여주며 "당신이 이제 임프"임을 알린다.','이후 임프 순서에 따라 살해를 진행하게 한다.'],
+ warn:['발동 조건: 악마 사망 시점의 생존자(악마 포함 계산 전) 5인 이상. 4인 이하면 발동하지 않고 선한 팀 승리.','처형·슬레이어 어느 쪽이든 악마가 죽으면 즉시 계승 — 게임은 끝나지 않는다. 태연하게 밤으로 진행하라.','임프가 자살(자기 지목)한 경우: 사회자가 하수인 중 하나를 임프로 만든다 — 주홍 여인이 있으면 그녀가 관례적 우선이지만 재량이다.','주홍 여인이 중독/술취함 상태면 계승이 불발된다 — 악마 사망 = 게임 종료! 처형 전 반드시 확인.'],
+ remind:['악마가 지명·처형 위기일 때마다 생존자 수와 주홍 여인 중독 여부 확인(투표 패널 자동 경고).']},
+
+{id:'baron', ko:'남작', en:'Baron', type:'minion',
+ ability:'구성 변경: 외부인이 2명 늘어난다. (마을 주민 −2)',
+ first:false, other:false, passive:true, setupChar:true,
+ setupNote:'남작이 뽑히면 마을 주민 −2, 외부인 +2로 구성을 바꾼 뒤 역할을 배분한다. 밤에는 깨지 않는다.',
+ warn:['수사관 정보에 잡힐 수 있는 것 외에는 밤 활동이 전혀 없다.','외부인이 많다는 사실 자체가 단서가 된다 — 사서·구성 논쟁을 지켜보는 재미를 살릴 것.'],
+ remind:[]},
+
+/* ───────── 악마 1 ───────── */
+{id:'imp', ko:'임프', en:'Imp', type:'demon',
+ ability:'매일 밤(첫날 제외) 1명을 지목해 죽인다. 자신을 지목해 죽으면, 하수인 하나가 임프가 된다.',
+ first:false, other:true,
+ guideOther:['임프를 깨운다.','1명을 지목하게 한다(자신 포함 가능).','판정 순서: ① 대상이 수도사 보호 중? → 사망 없음 ② 대상이 군인? → 사망 없음 ③ 대상이 시장? → 재량으로 다른 사람 사망 가능 ④ 그 외 → 사망.','자신을 지목했다면: 임프 사망 → 사회자가 선택한 생존 하수인이 임프가 된다(★ 별 넘기기). 그 하수인을 깨워 임프 토큰을 보여준다.','임프를 재운다. 사망자가 있으면 이어서 까마귀지기 체크.'],
+ warn:['임프가 중독/술취함이면 그날 밤 살해 불발 — 아무도 죽지 않는다.','첫날 밤엔 깨우지 않는다(7인 이상이면 악마 정보만).','별 넘기기 시 주홍 여인이 있으면 그녀에게 넘기는 것이 관례(그녀의 능력과 시너지)지만 재량이다.','사망자가 까마귀지기면 즉시 까마귀지기 순서로.'],
+ remind:['살해 대상 지목 시 보호/군인/시장/중독을 이 도구의 살해 판정 버튼으로 처리하면 자동 체크된다.']},
+];
+
+/* ══════════════════ 밤 순서 (공식 Trouble Brewing 시트 기준) ══════════════════ */
+const INFO_STEPS = {
+  minioninfo:{ko:'하수인 정보', when:'first', minPlayers:7,
+    guide:['하수인 전원을 깨운다(서로 눈 뜨게).','서로가 누구인지 확인시킨다.','악마가 누구인지 손짓으로 알려준다.','재운다.']},
+  demoninfo:{ko:'악마 정보', when:'first', minPlayers:7,
+    guide:['악마를 깨운다.','하수인들이 누구인지 알려준다.','사용되지 않은 선한 캐릭터 3개를 블러프로 보여준다 — 술꾼의 위장 캐릭터·붉은 청어와 겹치지 않게 고르면 안전하다.','재운다.']},
+};
+const FIRST_NIGHT_ORDER = ['minioninfo','demoninfo','poisoner','washerwoman','librarian','investigator','chef','empath','fortuneteller','butler','spy'];
+const OTHER_NIGHT_ORDER = ['poisoner','monk','scarletwoman','imp','ravenkeeper','undertaker','empath','fortuneteller','butler','spy'];
+
+/* ══════════════════ 상태 토큰 정의 ══════════════════ */
+const STATUS_DEFS = {
+  poison:  {ko:'중독', icon:'☠', cls:'poison',  desc:'능력 오작동: 정보는 거짓 가능, 발동형은 불발. 오늘 밤+내일 낮, 내일 황혼에 자동 해제.'},
+  drunkS:  {ko:'술취함', icon:'🍺', cls:'drunkT', desc:'술꾼 상태(영구). 능력이 작동하지 않는다.'},
+  protect: {ko:'보호', icon:'🛡', cls:'protect', desc:'수도사의 보호. 오늘 밤 악마의 공격 무효. 새벽에 자동 해제.'},
+  herring: {ko:'붉은 청어', icon:'🎗', cls:'herring', desc:'점쟁이에게 악마처럼 감지된다(영구).'},
+  master:  {ko:'주인', icon:'🤵', cls:'master',  desc:'집사의 주인. 이 사람이 거수해야 집사도 거수 가능. 다음 밤에 갱신.'},
+  virginUsed:{ko:'성처녀 소진', icon:'✔', cls:'custom', desc:'성처녀의 최초 지명이 지나감(능력 소진).'},
+  slayerUsed:{ko:'슬레이어 소진', icon:'✔', cls:'custom', desc:'슬레이어 공개 지목 사용됨.'},
+  drunkMask:{ko:'위장', icon:'🎭', cls:'drunkT', desc:'술꾼의 위장 캐릭터.'},
+};
+</script>
+
+<script>
+/* ══════════════════ 상태 ══════════════════ */
+const LS_KEY = 'thyrsus.tb.v1';
+const blank = () => ({
+  phase:{kind:'setup', n:0},
+  players:[], log:[], nightDone:{}, checks:{}, noms:[],
+  redHerringId:null, drunkMaskChar:null, executedToday:null, executedPrevDay:null,
+  customs:[], nomSeq:1, theme:'auto'
+});
+let S = blank();
+try{ const raw = localStorage.getItem(LS_KEY); if(raw) S = Object.assign(blank(), JSON.parse(raw)); }catch(e){}
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){} }
+
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2,9);
+
+function allChars(){ return CHARACTERS.concat(S.customs||[]); }
+function charOf(id){ return allChars().find(c=>c.id===id); }
+function playersByChar(cid){ return S.players.filter(p=>p.charId===cid); }
+function alivePlayers(){ return S.players.filter(p=>p.alive); }
+function playerOf(pid){ return S.players.find(p=>p.id===pid); }
+function isEvil(p){ const c=charOf(p.charId); return c && (c.type==='minion'||c.type==='demon'); }
+function hasStatus(p,key){ return (p.statuses||[]).some(s=>s.key===key); }
+function isMalfunctioning(p){ return hasStatus(p,'poison') || hasStatus(p,'drunkS') || (p.charId==='drunk'); }
+function majority(n){ return Math.floor(n/2)+1; }
+function phaseName(){ const ph=S.phase; if(ph.kind==='setup') return '준비'; return (ph.kind==='night'?'밤 ':'낮 ')+ph.n; }
+function log(msg){ S.log.push({t:phaseName(), msg}); save(); }
+
+/* 상태 토큰 부여/해제. expiresAt: {kind,n} = 해당 페이즈 '시작 시' 자동 해제 */
+function addStatus(p, key, source, expiresAt){
+  p.statuses = p.statuses||[];
+  p.statuses.push({key, source:source||'', expiresAt:expiresAt||null});
+  log(`${p.name}: ${STATUS_DEFS[key].icon}${STATUS_DEFS[key].ko} 부여` + (source?` (${source})`:''));
+}
+function removeStatus(p, idx){ const s=p.statuses.splice(idx,1)[0]; log(`${p.name}: ${STATUS_DEFS[s.key].ko} 해제`); }
+function expireStatuses(){
+  const ph=S.phase;
+  S.players.forEach(p=>{
+    (p.statuses||[]).slice().forEach(s=>{
+      if(s.expiresAt && s.expiresAt.kind===ph.kind && s.expiresAt.n===ph.n){
+        p.statuses.splice(p.statuses.indexOf(s),1);
+        S.log.push({t:phaseName(), msg:`${p.name}: ${STATUS_DEFS[s.key].icon}${STATUS_DEFS[s.key].ko} 자동 해제`});
+      }
+    });
+  });
+}
+
+function killPlayer(p, cause){
+  p.alive=false; log(`💀 ${p.name}(${charName(p)}) 사망 — ${cause}`);
+  checkEndConditions(cause);
+}
+function charName(p){ const c=charOf(p.charId); return c? c.ko : '?'; }
+
+function checkEndConditions(cause){
+  const demonAlive = S.players.some(p=>p.alive && charOf(p.charId)?.type==='demon');
+  if(!demonAlive){
+    const sw = S.players.find(p=>p.alive && p.charId==='scarletwoman');
+    const aliveN = alivePlayers().length;
+    if(sw && aliveN>=5 && !isMalfunctioning(sw)){
+      toast(`⚠ 악마 사망 — 생존 ${aliveN}명(5+). 주홍 여인이 임프를 계승합니다. 게임은 계속! 다음 밤에 그녀를 깨워 임프 토큰을 보여주세요.`, 'warn');
+      log('주홍 여인 계승 조건 충족 — 다음 밤 임프로 전환');
+    } else if(sw && aliveN>=5 && isMalfunctioning(sw)){
+      toast('⚠ 주홍 여인이 중독/오작동 상태 — 계승 불발. 악마 사망 = 선한 팀 승리!', 'warn');
+    } else {
+      toast('🏆 악마가 죽었습니다 — 선한 팀 승리! (주홍 여인 계승 조건 없음)', 'ok');
+    }
+  }
+}
+
+let toastTimer=null;
+function toast(msg, kind){
+  let el = $('#toast');
+  if(!el){ el=document.createElement('div'); el.id='toast'; document.body.appendChild(el);
+    el.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99;max-width:560px;padding:12px 18px;border-radius:10px;font-size:14px;box-shadow:var(--shadow);border:1px solid var(--line);background:var(--raised);color:var(--text)'; }
+  el.style.borderColor = kind==='ok'?'var(--ok)': kind==='warn'?'var(--warn)':'var(--line)';
+  el.textContent=msg; el.hidden=false;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{el.hidden=true;}, 7000);
+}
+
+/* ══════════════════ 페이즈 진행 ══════════════════ */
+function advancePhase(){
+  const ph=S.phase;
+  if(ph.kind==='setup'){
+    if(S.players.length<5){ toast('플레이어가 5명 이상 필요합니다.','warn'); return; }
+    const unassigned=S.players.filter(p=>!p.charId);
+    if(unassigned.length){ toast(`캐릭터 미배정: ${unassigned.map(p=>p.name).join(', ')}`,'warn'); return; }
+    const ft=S.players.find(p=>p.charId==='fortuneteller');
+    if(ft && !S.redHerringId){ toast('점쟁이가 있습니다 — 붉은 청어를 먼저 지정하세요(설정 탭).','warn'); return; }
+    const dr=S.players.find(p=>p.charId==='drunk');
+    if(dr && !S.drunkMaskChar){ toast('술꾼이 있습니다 — 위장할 마을 주민을 먼저 지정하세요(설정 탭).','warn'); return; }
+    S.phase={kind:'night', n:1};
+    log('── 게임 시작: 첫날 밤 ──');
+    switchTab('night');
+  } else if(ph.kind==='night'){
+    S.phase={kind:'day', n:ph.n};
+    expireStatuses();
+    log(`── 낮 ${ph.n} 시작 ──`);
+    switchTab('day');
+  } else {
+    // 낮 종료 → 시장 3인 승리 조건 최종 확인
+    const mayor=S.players.find(p=>p.alive && p.charId==='mayor');
+    if(mayor && alivePlayers().length===3 && !S.executedToday && !isMalfunctioning(mayor)){
+      if(!confirm('⚠ 생존자 3명 + 오늘 처형 없음 + 시장 생존(정상 작동) = 선한 팀 승리 조건입니다!\n그래도 밤으로 진행할까요? (취소를 누르면 낮에 머뭅니다)')) return;
+    }
+    S.executedPrevDay = S.executedToday; S.executedToday=null;  // 장의사가 이 밤에 참조
+    S.phase={kind:'night', n:ph.n+1};
+    expireStatuses();  // 독(어제 밤 부여) 해제 타이밍 = 다음 밤 시작
+    S.nightDone[S.phase.n]={};
+    log(`── 밤 ${S.phase.n} 시작 ──`);
+    switchTab('night');
+  }
+  save(); renderAll();
+}
+
+/* ══════════════════ 탭 ══════════════════ */
+const TABS=[['setup','설정'],['grim','그리모어'],['night','밤 진행'],['day','낮 · 투표'],['guide','상호작용 · 재량'],['check','체크리스트'],['custom','커스텀']];
+let activeTab='setup';
+function switchTab(t){ activeTab=t; renderAll(); }
+function renderTabs(){
+  $('#tabs').innerHTML = TABS.map(([id,ko])=>`<button class="${activeTab===id?'active':''}" onclick="switchTab('${id}')">${ko}</button>`).join('');
+}
+function renderTopbar(){
+  const pl=$('#phaselabel'); const ph=S.phase;
+  pl.textContent=(ph.kind==='night'?'🌙 ':ph.kind==='day'?'☀ ':'')+phaseName();
+  pl.className='plabel '+(ph.kind==='night'?'night':ph.kind==='day'?'day':'');
+  $('#advbtn').textContent = ph.kind==='setup'?'게임 시작': ph.kind==='night'?`낮 ${ph.n}으로 →`:`밤 ${ph.n+1}로 →`;
+  const alive=alivePlayers().length, total=S.players.length;
+  const deadTok=S.players.filter(p=>!p.alive&&p.deadVote!==false).length;
+  $('#quickstats').innerHTML = total? `
+    <span class="qstat">생존 <b class="num">${alive}</b>/<b class="num">${total}</b></span>
+    <span class="qstat">거수 과반 <b class="num">${majority(alive)}</b></span>
+    <span class="qstat">사망 투표 토큰 <b class="num">${deadTok}</b></span>
+    <span class="qstat">☠ <b class="num">${S.players.filter(p=>hasStatus(p,'poison')).length}</b></span>`:'';
+}
+
+/* ══════════════════ 설정 탭 ══════════════════ */
+function compFor(n, baronInPlay){
+  const c=COMP[Math.min(15,Math.max(5,n))].slice();
+  if(baronInPlay){ c[0]-=2; c[1]+=2; }
+  return c;
+}
+function renderSetup(){
+  const el=$('#pane-setup');
+  const n=S.players.length;
+  const baron=S.players.some(p=>p.charId==='baron');
+  const comp=n>=5?compFor(n,baron):null;
+  const counts={townsfolk:0,outsider:0,minion:0,demon:0};
+  S.players.forEach(p=>{const c=charOf(p.charId); if(c) counts[c.type]++;});
+  const compOK = comp && counts.townsfolk===comp[0]&&counts.outsider===comp[1]&&counts.minion===comp[2]&&counts.demon===comp[3];
+  const ft=S.players.find(p=>p.charId==='fortuneteller');
+  const dr=S.players.find(p=>p.charId==='drunk');
+  const opts=(sel)=>allChars().map(c=>`<option value="${c.id}" ${sel===c.id?'selected':''}>${c.ko} (${TYPE_KO[c.type]})</option>`).join('');
+  el.innerHTML=`
+  <div class="card">
+    <h2>플레이어 &amp; 좌석</h2>
+    <p class="hint">위→아래 순서가 <b>시계 방향 좌석 순서</b>입니다. 요리사·공감자 판정에 그대로 쓰이니 실제 착석 순서대로 입력하세요.</p>
+    <div class="row" style="margin-bottom:10px">
+      <input id="newpname" placeholder="플레이어 이름" style="width:180px" onkeydown="if(event.key==='Enter')addPlayer()">
+      <button class="primary" onclick="addPlayer()">추가</button>
+      <button onclick="randomAssign()" ${n<5?'disabled':''}>무작위 배정</button>
+      <button class="danger ghost" onclick="if(confirm('전체 게임 상태를 초기화할까요?')){S=blank();save();renderAll();}">전체 초기화</button>
+    </div>
+    ${comp?`<p class="hint">권장 구성 (${n}인${baron?' · 남작 적용':''}): <span class="pill townsfolk">주민 ${comp[0]}</span> <span class="pill outsider">외부인 ${comp[1]}</span> <span class="pill minion">하수인 ${comp[2]}</span> <span class="pill demon">악마 ${comp[3]}</span>
+      &nbsp;현재: ${counts.townsfolk}/${counts.outsider}/${counts.minion}/${counts.demon}
+      ${compOK?'<span class="pill ok">구성 일치</span>':'<span class="pill warn">구성 불일치</span>'}</p>`:'<p class="hint">5~15명을 추가하세요.</p>'}
+    <div>
+      ${S.players.map((p,i)=>`
+      <div class="voterow">
+        <span style="color:var(--muted);width:24px" class="num">${i+1}</span>
+        <span class="vname">${esc(p.name)}</span>
+        <select onchange="setChar('${p.id}',this.value)"><option value="">— 캐릭터 —</option>${opts(p.charId)}</select>
+        <button class="small ghost" onclick="movePlayer('${p.id}',-1)">↑</button>
+        <button class="small ghost" onclick="movePlayer('${p.id}',1)">↓</button>
+        <button class="small danger ghost" onclick="removePlayer('${p.id}')">삭제</button>
+      </div>`).join('')}
+    </div>
+  </div>
+  ${(ft||dr)?`<div class="card"><h2>시작 전 사회자 결정</h2>
+    ${ft?`<div class="fieldrow"><label>🎗 붉은 청어</label><div><select onchange="setHerring(this.value)"><option value="">— 선한 플레이어 선택 —</option>
+      ${S.players.filter(p=>{const c=charOf(p.charId);return c&&(c.type==='townsfolk'||c.type==='outsider');}).map(p=>`<option value="${p.id}" ${S.redHerringId===p.id?'selected':''}>${esc(p.name)} (${charName(p)})</option>`).join('')}
+    </select> <span class="hint">점쟁이에게 악마처럼 감지될 선한 플레이어 1명 — 게임 내내 유지</span></div></div>`:''}
+    ${dr?`<div class="fieldrow"><label>🎭 술꾼 위장</label><div><select onchange="setDrunkMask(this.value)"><option value="">— 위장할 마을 주민 —</option>
+      ${CHARACTERS.filter(c=>c.type==='townsfolk' && !S.players.some(p=>p.charId===c.id)).map(c=>`<option value="${c.id}" ${S.drunkMaskChar===c.id?'selected':''}>${c.ko}</option>`).join('')}
+    </select> <span class="hint">술꾼 본인이 믿게 될 마을 주민 — 사용 중이지 않은 캐릭터에서 선택. 밤 순서에 자동 반영됩니다</span></div></div>`:''}
+  </div>`:''}
+  <div class="card">
+    <h2>캐릭터 일람 <span class="hint" style="display:inline">(Trouble Brewing 22종${S.customs.length?` + 커스텀 ${S.customs.length}종`:''})</span></h2>
+    ${['townsfolk','outsider','minion','demon'].map(t=>`
+      <h3><span class="pill ${t}">${TYPE_KO[t]}</span></h3>
+      <div class="chargrid">${allChars().filter(c=>c.type===t).map(charCard).join('')}</div>`).join('')}
+  </div>`;
+}
+function charCard(c){
+  return `<div class="charcard"><span class="cname">${esc(c.ko)}</span><span class="cen">${esc(c.en||'')}</span>
+  <div class="cab">${esc(c.ability)}</div>
+  ${(c.warn&&c.warn.length)?`<details class="morebox"><summary>사회자 노트 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div></details>`:''}
+  </div>`;
+}
+function addPlayer(){ const v=$('#newpname').value.trim(); if(!v) return; if(S.players.length>=15){toast('최대 15명','warn');return;}
+  S.players.push({id:uid(), name:v, charId:'', alive:true, deadVote:true, statuses:[], notes:''}); $('#newpname').value=''; save(); renderAll(); }
+function removePlayer(pid){ S.players=S.players.filter(p=>p.id!==pid); save(); renderAll(); }
+function movePlayer(pid,d){ const i=S.players.findIndex(p=>p.id===pid); const j=i+d; if(j<0||j>=S.players.length)return;
+  [S.players[i],S.players[j]]=[S.players[j],S.players[i]]; save(); renderAll(); }
+function setChar(pid,cid){ const p=playerOf(pid); p.charId=cid;
+  p.statuses=(p.statuses||[]).filter(s=>s.key!=='drunkS');
+  if(cid==='drunk') addStatus(p,'drunkS','술꾼',null);
+  save(); renderAll(); }
+function setHerring(pid){ S.redHerringId=pid;
+  S.players.forEach(p=>p.statuses=(p.statuses||[]).filter(s=>s.key!=='herring'));
+  const p=playerOf(pid); if(p) addStatus(p,'herring','점쟁이 셋업',null);
+  save(); renderAll(); }
+function setDrunkMask(cid){ S.drunkMaskChar=cid; save(); renderAll(); log(`술꾼 위장 캐릭터: ${charOf(cid)?.ko||'-'}`); }
+function randomAssign(){
+  const n=S.players.length; if(n<5) return;
+  let baron = Math.random() < 0.35; // 남작 포함 여부를 먼저 굴린다
+  const comp=compFor(n,baron);
+  const pick=(arr,k,exclude)=>{ const pool=arr.filter(c=>!exclude.includes(c.id)); const out=[];
+    while(out.length<k && pool.length){ out.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0].id); } return out; };
+  const tf=CHARACTERS.filter(c=>c.type==='townsfolk'), os=CHARACTERS.filter(c=>c.type==='outsider'),
+        mi=CHARACTERS.filter(c=>c.type==='minion'), de=CHARACTERS.filter(c=>c.type==='demon');
+  const minions = baron? ['baron'].concat(pick(mi,comp[2]-1,['baron'])) : pick(mi,comp[2],[]);
+  if(!baron && minions.includes('baron')){ baron=true; }
+  let roles=[].concat(pick(tf,comp[0],[]), pick(os,comp[1],[]), minions, pick(de,comp[3],[]));
+  // 남작이 랜덤으로 뽑힌 경우 구성 재조정
+  if(roles.includes('baron')){ const c2=compFor(n,true);
+    roles=[].concat(pick(tf,c2[0],[]), pick(os,c2[1],[]), roles.filter(id=>charOf(id).type==='minion'), pick(de,c2[3],[]));
+  }
+  roles.sort(()=>Math.random()-.5);
+  S.players.forEach((p,i)=>{ p.charId=roles[i]||''; p.statuses=[]; if(p.charId==='drunk') addStatus(p,'drunkS','술꾼',null); });
+  S.redHerringId=null; S.drunkMaskChar=null;
+  log('무작위 배정 완료'); save(); renderAll();
+}
+
+/* ══════════════════ 그리모어 탭 ══════════════════ */
+function renderGrim(){
+  const el=$('#pane-grim');
+  el.innerHTML=`
+  <div class="card"><h2>그리모어</h2>
+  <p class="hint">토큰 클릭 ×로 해제. ☠중독은 다음 밤 시작 시, 🛡보호·🤵주인은 만료 페이즈에 <b>자동 해제</b>됩니다. 모든 변동은 하단 기록에 남습니다.</p>
+  <div class="grid2">
+  ${S.players.map((p,i)=>{
+    const c=charOf(p.charId);
+    return `<div class="pcard ${p.alive?'':'dead'}">
+      <span class="seat">#${i+1}</span>
+      <div class="pname">${esc(p.name)} ${p.alive?'':(p.deadVote!==false?'<span class="pill neutral">투표 토큰 보유</span>':'<span class="pill neutral">토큰 소진</span>')}</div>
+      <div class="prole">${c?`<span class="pill ${c.type}">${TYPE_KO[c.type]}</span> ${esc(c.ko)}${p.charId==='drunk'&&S.drunkMaskChar?` <span class="token drunkT">🎭 ${esc(charOf(S.drunkMaskChar)?.ko||'')} 행세</span>`:''}`:'<span class="pill neutral">미배정</span>'}</div>
+      <div class="tokens">${(p.statuses||[]).map((s,si)=>{const d=STATUS_DEFS[s.key];return `<span class="token ${d.cls}" title="${esc(d.desc)}${s.source?' — '+esc(s.source):''}">${d.icon} ${d.ko}<span class="x" onclick="removeStatus(playerOf('${p.id}'),${si});save();renderAll()">×</span></span>`;}).join('')}</div>
+      <div class="pbtns">
+        ${p.alive?`
+        <button class="small" onclick="addStatusUI('${p.id}','poison')">☠중독</button>
+        <button class="small" onclick="addStatusUI('${p.id}','protect')">🛡보호</button>
+        <button class="small" onclick="addStatusUI('${p.id}','master')">🤵주인</button>
+        <button class="small danger" onclick="if(confirm('${esc(p.name)} 사망 처리?')){killPlayer(playerOf('${p.id}'),'사회자 수동 처리');save();renderAll();}">사망</button>
+        `:`
+        <button class="small" onclick="playerOf('${p.id}').alive=true;log('${esc(p.name)} 소생(수동)');save();renderAll()">소생</button>
+        ${p.deadVote!==false?`<button class="small" onclick="playerOf('${p.id}').deadVote=false;log('${esc(p.name)} 투표 토큰 수동 소진');save();renderAll()">토큰 소진</button>`
+                            :`<button class="small" onclick="playerOf('${p.id}').deadVote=true;log('${esc(p.name)} 투표 토큰 복원');save();renderAll()">토큰 복원</button>`}
+        `}
+      </div>
+      <textarea rows="1" placeholder="메모 (밤마다 준 정보 등)" style="margin-top:8px;font-size:12.5px" onchange="playerOf('${p.id}').notes=this.value;save()">${esc(p.notes||'')}</textarea>
+    </div>`;}).join('')}
+  </div></div>
+  <div class="card"><h2>게임 기록</h2><div id="log">${S.log.map(l=>`<div class="lentry"><span class="lphase">[${esc(l.t)}]</span> ${esc(l.msg)}</div>`).join('')||'<span class="hint">아직 기록이 없습니다.</span>'}</div>
+  <div class="row" style="margin-top:8px"><button class="small" onclick="exportGame()">게임 JSON 내보내기</button></div></div>`;
+  const lg=$('#log'); if(lg) lg.scrollTop=lg.scrollHeight;
+}
+function addStatusUI(pid,key){
+  const p=playerOf(pid); const ph=S.phase;
+  let exp=null, src='사회자 수동';
+  if(key==='poison'){ exp={kind:'night', n:(ph.kind==='night'?ph.n:ph.n)+1}; }
+  if(key==='protect'){ exp={kind:'day', n:ph.n}; }
+  if(key==='master'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='master')); exp={kind:'night', n:ph.n+1}; }
+  addStatus(p,key,src,exp); save(); renderAll();
+}
+function exportGame(){
+  const blob=JSON.stringify(S,null,1);
+  navigator.clipboard?.writeText(blob).then(()=>toast('게임 상태 JSON을 클립보드에 복사했습니다.','ok'),()=>prompt('복사하세요:',blob));
+}
+</script>
+
+<script>
+/* ══════════════════ 밤 진행 탭 ══════════════════ */
+function nightSteps(){
+  const first = S.phase.n===1;
+  const baseOrder = first? FIRST_NIGHT_ORDER : OTHER_NIGHT_ORDER;
+  let order = baseOrder.slice();
+  // 커스텀 캐릭터 삽입
+  (S.customs||[]).forEach(c=>{
+    const wakes = first? c.first : c.other;
+    if(!wakes) return;
+    const after = first? c.firstAfter : c.otherAfter;
+    if(!after){ order.unshift(c.id); return; }
+    const idx = order.indexOf(after);
+    if(idx>=0) order.splice(idx+1,0,c.id); else order.push(c.id);
+  });
+  // 술꾼 위장: 위장 캐릭터가 시트에 없으므로, 그 캐릭터의 원래 순서 위치에 삽입
+  const drunkP = S.players.find(p=>p.charId==='drunk');
+  const maskC = S.drunkMaskChar? charOf(S.drunkMaskChar): null;
+  const steps=[];
+  order.forEach(id=>{
+    if(INFO_STEPS[id]){
+      if(S.players.length>=INFO_STEPS[id].minPlayers) steps.push({id, info:true});
+      return;
+    }
+    const c=charOf(id); if(!c) return;
+    const wakes = first? c.first : c.other;
+    if(!wakes) return;
+    const holders = playersByChar(id);
+    const maskHere = drunkP && maskC && maskC.id===id; // 위장 캐릭터가 실제로도 플레이 중일 수 있음
+    if(!holders.length && !maskHere) return;
+    steps.push({id, holders, mask: maskHere? drunkP : null});
+  });
+  // 위장 캐릭터가 인플레이가 아닌 경우: 순서표에 없으므로 원 위치에 직접 삽입
+  if(drunkP && maskC && !steps.some(s=>s.id===maskC.id)){
+    const wakes = first? maskC.first : maskC.other;
+    if(wakes){
+      const baseIdx = (first?FIRST_NIGHT_ORDER:OTHER_NIGHT_ORDER).indexOf(maskC.id);
+      let insertAt = steps.length;
+      if(baseIdx>=0){
+        for(let i=0;i<steps.length;i++){
+          const bi=(first?FIRST_NIGHT_ORDER:OTHER_NIGHT_ORDER).indexOf(steps[i].id);
+          if(bi>baseIdx){ insertAt=i; break; }
+        }
+      }
+      steps.splice(insertAt,0,{id:maskC.id, holders:[], mask:drunkP, maskOnly:true});
+    }
+  }
+  return steps;
+}
+function stepSkipReason(st){
+  const first=S.phase.n===1;
+  if(st.info) return null;
+  const c=charOf(st.id);
+  const holders=(st.holders||[]).concat(st.mask?[st.mask]:[]);
+  const anyAlive = holders.some(p=>p.alive);
+  if(st.id==='ravenkeeper'){
+    const rk=holders[0];
+    if(rk && rk.alive) return '아직 생존 — 오늘 밤 죽는 경우에만 이 시점에 깨움';
+    return null; // 죽었으면 표시(그 밤에 죽었는지는 사회자 판단)
+  }
+  if(!anyAlive) return '사망 — 깨우지 않음';
+  if(st.id==='undertaker' && !S.executedPrevDay && !first) return '어제 낮 처형 없음 — 깨우지 않음';
+  if(st.id==='scarletwoman') return null;
+  return null;
+}
+function autoInfoHint(st){
+  /* 사회자 친화: 요리사·공감자 정답 후보 자동 계산 */
+  const seats=S.players;
+  const evilAt = p => isEvil(p); // 등록 재량 반영 전 '실제' 값
+  if(st.id==='chef'){
+    let pairs=0;
+    for(let i=0;i<seats.length;i++){ if(evilAt(seats[i]) && evilAt(seats[(i+1)%seats.length])) pairs++; }
+    return `실제 인접 악 쌍: <b class="num">${pairs}</b> <span class="hint">(첩자·은둔자 등록 재량 반영 전 기준)</span>`;
+  }
+  if(st.id==='empath'){
+    return (st.holders||[]).filter(p=>p.alive).map(p=>{
+      const i=seats.indexOf(p); const n=seats.length;
+      let L=null,R=null;
+      for(let d=1;d<n;d++){ const q=seats[((i-d)%n+n)%n]; if(q.alive&&q!==p){L=q;break;} }
+      for(let d=1;d<n;d++){ const q=seats[(i+d)%n]; if(q.alive&&q!==p){R=q;break;} }
+      const cnt=(L&&evilAt(L)?1:0)+(R&&evilAt(R)?1:0);
+      return `${esc(p.name)}의 생존 이웃: ${L?esc(L.name):'-'} · ${R?esc(R.name):'-'} → 실제 악 수 <b class="num">${cnt}</b> <span class="hint">(등록 재량 반영 전)</span>`;
+    }).join('<br>');
+  }
+  if(st.id==='undertaker' && S.executedPrevDay){
+    return `어제 처형: <b>${esc(S.executedPrevDay)}</b>`;
+  }
+  if(st.id==='fortuneteller' && S.redHerringId){
+    const rh=playerOf(S.redHerringId);
+    return rh? `🎗 붉은 청어: <b>${esc(rh.name)}</b> — 지목되면 "예"`:'';
+  }
+  return '';
+}
+function renderNight(){
+  const el=$('#pane-night');
+  if(S.phase.kind!=='night'){
+    el.innerHTML=`<div class="card"><h2>밤 진행</h2><p class="hint">지금은 ${phaseName()} 단계입니다. 상단의 진행 버튼으로 밤으로 이동하면 이 시트 구성에 맞는 밤 순서가 생성됩니다.</p>
+    ${previewNightOrders()}</div>`;
+    return;
+  }
+  const steps=nightSteps();
+  const doneMap=S.nightDone[S.phase.n]||(S.nightDone[S.phase.n]={});
+  const poisoned=S.players.filter(p=>hasStatus(p,'poison'));
+  el.innerHTML=`
+  <div class="card">
+    <h2>밤 ${S.phase.n} ${S.phase.n===1?'(첫날 밤)':''}</h2>
+    ${poisoned.length?`<div class="alertbox red">☠ 현재 중독: <b>${poisoned.map(p=>`${esc(p.name)}(${charName(p)})`).join(', ')}</b> — 이들의 능력은 오작동합니다(정보=거짓 가능, 발동=불발).</div>`:''}
+    <p class="hint">순서대로 진행하며 완료 체크. 이름을 누르면 진행 가이드가 열립니다. 회색 항목은 오늘 밤 깨우지 않는 캐릭터입니다.</p>
+    ${steps.map((st,i)=>renderStep(st,i,doneMap)).join('')}
+    <div class="alertbox blue" style="margin-top:12px">🌅 <b>새벽</b> — 모두 깨우고, 오늘 밤의 사망자를 공표하세요(사인은 밝히지 않음). 상단 버튼으로 낮으로 진행하면 보호 토큰이 자동 해제됩니다.</div>
+  </div>`;
+}
+function previewNightOrders(){
+  const fmt=(ord,first)=>ord.map(id=>{
+    if(INFO_STEPS[id]) return `<li>${INFO_STEPS[id].ko} <span class="hint">(7인 이상)</span></li>`;
+    const c=charOf(id); return c?`<li>${esc(c.ko)}</li>`:'';
+  }).join('');
+  return `<div class="grid2" style="margin-top:10px">
+    <div><h3>첫날 밤 순서 (공식)</h3><ol class="guide">${fmt(FIRST_NIGHT_ORDER,true)}</ol></div>
+    <div><h3>그 외 밤 순서 (공식)</h3><ol class="guide">${fmt(OTHER_NIGHT_ORDER,false)}</ol></div>
+  </div>`;
+}
+function renderStep(st,i,doneMap){
+  const first=S.phase.n===1;
+  const done=!!doneMap[st.id];
+  const skip=stepSkipReason(st);
+  let name, who='', body='';
+  if(st.info){
+    const inf=INFO_STEPS[st.id];
+    name=inf.ko;
+    const targets = st.id==='minioninfo' ? S.players.filter(p=>charOf(p.charId)?.type==='minion')
+                                         : S.players.filter(p=>charOf(p.charId)?.type==='demon');
+    who=targets.map(p=>esc(p.name)).join(', ');
+    body=`<ol class="guide">${inf.guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ol>`;
+    if(st.id==='demoninfo'){
+      const inPlay=new Set(S.players.map(p=>p.charId));
+      const safeBluffs=CHARACTERS.filter(c=>(c.type==='townsfolk'||c.type==='outsider') && !inPlay.has(c.id) && c.id!==S.drunkMaskChar).map(c=>c.ko);
+      body+=`<div class="alertbox">블러프 후보(미사용 선 캐릭터, 술꾼 위장 제외): ${esc(safeBluffs.join(', ')||'없음')}</div>`;
+    }
+  } else {
+    const c=charOf(st.id);
+    name=c.ko;
+    const holders=(st.holders||[]);
+    who = holders.map(p=>{
+      let tags='';
+      if(!p.alive) tags+=' 💀';
+      if(hasStatus(p,'poison')) tags+=' ☠';
+      if(p.charId==='drunk'||hasStatus(p,'drunkS')) tags+=' 🍺';
+      return esc(p.name)+tags;
+    }).join(', ');
+    if(st.mask) who += (who?' · ':'')+`🎭 ${esc(st.mask.name)} (술꾼 — ${esc(c.ko)} 행세)`;
+    const guide = first? (c.guideFirst||c.guideOther) : (c.guideOther||c.guideFirst);
+    if(guide) body+=`<ol class="guide">${guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ol>`;
+    const hint=autoInfoHint(st);
+    if(hint) body+=`<div class="alertbox blue">${hint}</div>`;
+    const badHolders=holders.filter(p=>p.alive&&isMalfunctioning(p));
+    if(badHolders.length) body+=`<div class="alertbox red">☠ <b>${badHolders.map(p=>esc(p.name)).join(', ')}</b>: 능력 오작동 상태 — 정보형이면 <b>거짓 정보</b>를 주고, 발동형이면 <b>효과 없음</b>으로 처리하되 본인에게는 평소처럼 응대하세요.</div>`;
+    if(st.mask) body+=`<div class="alertbox">🎭 술꾼입니다 — ${esc(c.ko)}처럼 깨우되 <b>항상 그럴듯한 거짓 정보</b>를 주세요. 어떤 정보를 줬는지 그리모어 메모에 기록!</div>`;
+    if(c.warn&&c.warn.length) body+=`<details class="morebox"><summary>상호작용 주의 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div></details>`;
+    body+=stepWidget(st,c);
+    if(c.conditional) who+=` <span class="pill warn">${esc(c.conditional)}</span>`;
+  }
+  const cls = done?'done': skip?'skip':'wake';
+  return `<div class="step ${cls} ${openStep===st.id?'open':''}" id="step-${st.id}">
+    <div class="stephead" onclick="toggleStep('${st.id}')">
+      <input type="checkbox" ${done?'checked':''} onclick="event.stopPropagation();toggleDone('${st.id}')" style="accent-color:var(--accent)">
+      <span class="stepnum num">${i+1}</span>
+      <span class="stepname">${esc(name)}</span>
+      <span class="stepwho">${who||''}</span>
+      ${skip?`<span class="pill neutral" style="margin-left:auto">${esc(skip)}</span>`:''}
+    </div>
+    <div class="stepbody">${body}</div>
+  </div>`;
+}
+let openStep=null;
+function toggleStep(id){ openStep = openStep===id? null : id; renderAll(); }
+function toggleDone(id){ const m=S.nightDone[S.phase.n]||(S.nightDone[S.phase.n]={}); m[id]=!m[id]; save(); renderAll(); }
+
+function selPlayers(fnName, filter, label){
+  const cand=S.players.filter(filter||(()=>true));
+  return `<div class="row" style="margin-top:8px">
+    <select id="sel-${fnName}"><option value="">— ${label} —</option>${cand.map(p=>`<option value="${p.id}">${esc(p.name)} (${charName(p)}${p.alive?'':' 💀'})</option>`).join('')}</select>
+    <button class="small primary" onclick="${fnName}(document.getElementById('sel-${fnName}').value)">적용</button>
+  </div>`;
+}
+function stepWidget(st,c){
+  if(st.id==='poisoner') return `<h3>☠ 중독 대상 기록</h3>`+selPlayers('doPoison', p=>p.alive, '독살자가 지목한 대상');
+  if(st.id==='monk') return `<h3>🛡 보호 대상 기록</h3>`+selPlayers('doProtect', p=>p.alive&&p.charId!=='monk', '수도사가 지목한 대상');
+  if(st.id==='butler') return `<h3>🤵 주인 기록</h3>`+selPlayers('doMaster', p=>p.alive&&p.charId!=='butler', '집사가 지목한 주인');
+  if(st.id==='imp') return `<h3>🗡 살해 판정</h3><p class="hint">임프가 지목한 대상을 선택하면 보호·군인·시장·중독을 자동 판정합니다.</p>`+selPlayers('doImpKill', p=>true, '임프가 지목한 대상');
+  if(st.id==='ravenkeeper') return `<h3>🔮 캐릭터 확인</h3><p class="hint">까마귀지기가 오늘 밤 죽어 지목한 대상 — 실제 캐릭터를 확인하세요(등록 재량 적용 가능).</p>`+selPlayers('doRavenPeek', p=>true, '까마귀지기가 지목한 대상');
+  return '';
+}
+function doPoison(pid){ if(!pid)return; const p=playerOf(pid); const poisoner=S.players.find(q=>q.charId==='poisoner');
+  if(poisoner && isMalfunctioning(poisoner)){ toast('독살자 본인이 오작동 상태 — 독이 퍼지지 않습니다. 기록만 남깁니다.','warn'); log(`독살자 오작동: ${p.name} 중독 불발`); save(); renderAll(); return; }
+  addStatus(p,'poison','독살자',{kind:'night', n:S.phase.n+1}); save(); renderAll(); toast(`${p.name} 중독 — 내일 황혼(밤 ${S.phase.n+1} 시작)에 자동 해제`,'ok'); }
+function doProtect(pid){ if(!pid)return; const p=playerOf(pid); const monk=S.players.find(q=>q.charId==='monk');
+  if(monk && isMalfunctioning(monk)){ toast('수도사가 오작동 상태 — 보호가 실제로는 작동하지 않습니다! 토큰은 기록용으로만 두거나 생략하세요.','warn'); log(`수도사 오작동: ${p.name} 보호 무효`); }
+  addStatus(p,'protect','수도사',{kind:'day', n:S.phase.n}); save(); renderAll(); }
+function doMaster(pid){ if(!pid)return; S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='master'));
+  const p=playerOf(pid); addStatus(p,'master','집사',{kind:'night', n:S.phase.n+1}); save(); renderAll(); }
+function doImpKill(pid){
+  if(!pid)return; const t=playerOf(pid);
+  const imp=S.players.find(q=>q.alive && charOf(q.charId)?.type==='demon');
+  if(imp && isMalfunctioning(imp)){ toast('임프가 중독/오작동 — 오늘 밤 살해 불발. 아무도 죽지 않습니다.','warn'); log(`임프 오작동: ${t.name} 살해 불발`); save(); renderAll(); return; }
+  if(t===imp){ // 자살 → 별 넘기기
+    killPlayer(t,'임프 자살(★ 별 넘기기)');
+    const minions=S.players.filter(q=>q.alive && charOf(q.charId)?.type==='minion');
+    if(minions.length){
+      const sw=minions.find(m=>m.charId==='scarletwoman');
+      const pick=prompt(`임프가 될 하수인 이름을 입력하세요 (생존 하수인: ${minions.map(m=>m.name+'('+charName(m)+')').join(', ')})${sw?'\n관례: 주홍 여인 우선':''}`, (sw||minions[0]).name);
+      const np=minions.find(m=>m.name===pick)||sw||minions[0];
+      np.charId='imp'; log(`★ ${np.name}이(가) 새 임프가 됨 — 깨워서 임프 토큰을 보여주세요`);
+      toast(`${np.name}이(가) 새 임프입니다. 지금 깨워 임프 토큰을 보여주세요.`,'warn');
+    }
+    save(); renderAll(); return;
+  }
+  if(!t.alive){ toast('이미 죽은 대상입니다 — 아무 일도 일어나지 않습니다.','warn'); return; }
+  const mf=isMalfunctioning(t);
+  if(hasStatus(t,'protect') && !mf){ toast(`${t.name}은(는) 수도사의 보호 중 — 사망 없음. 임프에게 알리지 마세요.`,'ok'); log(`임프 공격 → ${t.name} 보호로 무효`); save(); renderAll(); return; }
+  if(t.charId==='soldier' && !mf){ toast(`${t.name}은(는) 군인 — 사망 없음. 임프에게 알리지 마세요.`,'ok'); log(`임프 공격 → 군인 ${t.name} 무효`); save(); renderAll(); return; }
+  if(t.charId==='mayor' && !mf){
+    if(confirm(`${t.name}은(는) 시장입니다. [확인] = 다른 플레이어가 대신 사망(재량), [취소] = 시장이 그대로 사망`)){
+      const alt=prompt('대신 죽을 플레이어 이름:'); const ap=S.players.find(q=>q.name===alt&&q.alive);
+      if(ap){ resolveNightDeath(ap, '임프(시장 대체 사망)'); save(); renderAll(); return; }
+      toast('대상을 찾지 못해 시장 사망으로 처리합니다.','warn');
+    }
+  }
+  resolveNightDeath(t, '임프의 공격');
+  save(); renderAll();
+}
+function resolveNightDeath(t, cause){
+  killPlayer(t, cause);
+  if(t.charId==='ravenkeeper' && !isMalfunctioning(t)){
+    toast('🔮 까마귀지기가 밤에 죽었습니다 — 지금 깨워서 1명을 지목받고 캐릭터를 보여주세요(까마귀지기 단계).','warn');
+  }
+  if(t.charId==='ravenkeeper' && isMalfunctioning(t)){
+    toast('까마귀지기가 죽었지만 중독/오작동 — 깨우되 거짓 캐릭터를 보여주세요.','warn');
+  }
+}
+function doRavenPeek(pid){ if(!pid)return; const t=playerOf(pid);
+  const c=charOf(t.charId); toast(`${t.name}의 실제 캐릭터: ${c?c.ko:'?'} — 첩자/은둔자면 등록 재량, 까마귀지기가 오작동이면 거짓 제시 가능.`,'ok');
+  log(`까마귀지기 확인: ${t.name} (${c?c.ko:'?'})`); }
+</script>
+
+<script>
+/* ══════════════════ 낮 · 투표 탭 ══════════════════ */
+function voteNotices(nom){
+  const out=[];
+  const butler=S.players.find(p=>p.alive&&p.charId==='butler');
+  if(butler){
+    const master=S.players.find(p=>hasStatus(p,'master'));
+    out.push(`🤵 <b>집사(${esc(butler.name)})</b>: 주인${master?` <b>${esc(master.name)}</b>`:'(미지정!)'}이 거수/찬성한 경우에만 집사도 투표할 수 있습니다.${isMalfunctioning(butler)?' <mark>단, 집사가 현재 오작동 상태 — 자유 투표 허용(본인에겐 알리지 않음)</mark>':''}`);
+  }
+  const virgin=S.players.find(p=>p.alive&&p.charId==='virgin'&&!hasStatus(p,'virginUsed'));
+  if(virgin) out.push(`⚜ <b>성처녀(${esc(virgin.name)})</b> 미발동 — 최초 지명 시 지명자가 마을 주민이면 즉시 처형!${isMalfunctioning(virgin)?' <mark>현재 오작동 — 발동하지 않지만 능력은 소진됨</mark>':''}`);
+  const saint=S.players.find(p=>p.alive&&p.charId==='saint');
+  if(saint) out.push(`✝ <b>성인(${esc(saint.name)})</b> 생존 중 — 처형되면 선한 팀 패배.${isMalfunctioning(saint)?' <mark>현재 오작동 — 처형돼도 패배하지 않음</mark>':''}`);
+  const sw=S.players.find(p=>p.alive&&p.charId==='scarletwoman');
+  if(sw && alivePlayers().length>=5) out.push(`🔴 <b>주홍 여인</b> 생존 + 생존자 ${alivePlayers().length}명(5+) — 지금 악마가 처형돼도 게임은 끝나지 않습니다(계승).${isMalfunctioning(sw)?' <mark>단, 현재 오작동 — 계승 불발!</mark>':''}`);
+  const mayor=S.players.find(p=>p.alive&&p.charId==='mayor');
+  if(mayor && alivePlayers().length===3) out.push(`🏛 <b>시장</b> 생존 + 생존자 3명 — 오늘 처형 없이 낮이 끝나면 선한 팀 승리!${isMalfunctioning(mayor)?' <mark>현재 오작동 — 승리 조건 무효</mark>':''}`);
+  const slayer=S.players.find(p=>p.alive&&p.charId==='slayer'&&!hasStatus(p,'slayerUsed'));
+  if(slayer) out.push(`🏹 <b>슬레이어(${esc(slayer.name)})</b> 미사용 — 낮 중 공개 지목 가능. 사용 시 아래 버튼으로 판정하세요.`);
+  const deadHold=S.players.filter(p=>!p.alive&&p.deadVote!==false);
+  if(deadHold.length) out.push(`👻 사망 투표 토큰 보유: ${deadHold.map(p=>esc(p.name)).join(', ')} — 찬반 투표 참여 시 자동 소진·기록됩니다.`);
+  // 커스텀 캐릭터의 투표 관련 노티스
+  (S.customs||[]).filter(c=>c.voteRelated).forEach(c=>{
+    playersByChar(c.id).filter(p=>p.alive).forEach(p=>out.push(`🔔 <b>${esc(c.ko)}(${esc(p.name)})</b>: ${esc(c.voteNote||c.ability)}`));
+  });
+  if(nom){
+    const nee=playerOf(nom.nominee);
+    if(nee){
+      if(nee.charId==='saint') out.push(`🚨 지명 대상이 <b>성인</b>입니다 — 처형 확정 전 중독 여부를 반드시 확인!`);
+      if(nee.charId==='recluse') out.push(`👤 지명 대상이 <b>은둔자</b> — 처형돼도 게임은 끝나지 않습니다(악마 아님).`);
+      if(charOf(nee.charId)?.type==='demon') out.push(`😈 지명 대상이 <b>악마</b> — 처형 시 주홍 여인 계승·생존자 수(5+) 확인.`);
+    }
+  }
+  return out;
+}
+function renderDay(){
+  const el=$('#pane-day');
+  if(S.phase.kind!=='day'){
+    el.innerHTML=`<div class="card"><h2>낮 · 투표</h2><p class="hint">지금은 ${phaseName()} 단계입니다. 낮이 되면 지명·투표 시스템이 열립니다.</p>
+    <div class="card" style="background:var(--sunken)"><h3>티르소스 투표 규칙 (하우스 룰)</h3><ol class="guide">
+      <li>지명 후 <b>1차 거수 투표</b>: 생존자 대상. 거수 인원이 <b>생존자 과반</b>(⌊n/2⌋+1) 이상이면 2차로.</li>
+      <li><b>2차 찬반 투표</b>: 생존자 전원 + (사망자 중 투표 토큰 보유자, 참여 시 토큰 소진·자동 기록).</li>
+      <li>매 단계 <b>분자/분모/과반 기준</b>을 화면에 표시.</li>
+      <li>재지명은 언제나 가능. 하루의 모든 지명 중 <b>찬성 과반을 넘긴 지명 가운데 찬성률(과반율)이 가장 높은 사람</b>이 처형.</li>
+      <li>최고 찬성률 동률이면 처형 없음(공식 규칙 준용).</li>
+    </ol></div></div>`;
+    return;
+  }
+  const notices=voteNotices(null);
+  const todays=S.noms.filter(n=>n.day===S.phase.n);
+  const closed=todays.filter(n=>n.closed);
+  const openNom=todays.find(n=>!n.closed);
+  const passed=closed.filter(n=>n.result==='pass');
+  let best=null, tie=false;
+  passed.forEach(n=>{ if(!best||n.ratio>best.ratio){best=n;tie=false;} else if(n.ratio===best.ratio) tie=true; });
+  const slayer=S.players.find(p=>p.alive&&p.charId==='slayer'&&!hasStatus(p,'slayerUsed'));
+  el.innerHTML=`
+  <div class="card"><h2>낮 ${S.phase.n}</h2>
+    ${S.executedToday?`<div class="alertbox red">오늘 처형 완료: <b>${esc(S.executedToday)}</b> — 하루 1처형 원칙. 추가 처형은 불가(성처녀 발동 포함).</div>`:''}
+    ${notices.length?`<div class="alertbox">${notices.map(x=>`<div>· ${x}</div>`).join('')}</div>`:''}
+    ${slayer?`<div class="row" style="margin:6px 0"><button class="small" onclick="doSlayer()">🏹 슬레이어 공개 지목 판정</button></div>`:''}
+  </div>
+  ${openNom? renderNomOpen(openNom) : `
+  <div class="card"><h2>지명</h2>
+    ${S.executedToday?'<p class="hint">오늘 처형이 이미 있었습니다 — 추가 지명·투표는 기록용으로만 진행하세요.</p>':''}
+    <div class="row">
+      <select id="nomtor"><option value="">지명자</option>${alivePlayers().map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+      <span>→</span>
+      <select id="nomnee"><option value="">피지명자</option>${alivePlayers().map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+      <button class="primary" onclick="newNomination()">지명 개시</button>
+    </div>
+    <p class="hint">재지명 제한 없음 — 같은 사람을 다시 지명해도 됩니다(티르소스 하우스 룰).</p>
+  </div>`}
+  ${closed.length?`<div class="card"><h2>오늘의 지명 결과</h2>
+    ${closed.map(n=>{
+      const isBest=best&&n===best&&!tie&&n.result==='pass';
+      return `<div class="nomcard ${isBest?'leader':''}">
+        <div class="nomtitle">${esc(playerOf(n.nominator)?.name||'?')} → ${esc(playerOf(n.nominee)?.name||'?')}
+          ${n.result==='pass'?`<span class="pill ok">찬성 ${n.yes}/${n.den} · ${(n.ratio*100).toFixed(1)}%</span>`:
+            n.result==='handsFail'?'<span class="pill warn">거수 미달</span>':'<span class="pill warn">찬성 과반 미달</span>'}
+          ${isBest?'<span class="pill demon">처형 후보 1위</span>':''}
+        </div>
+        ${n.deadVoters&&n.deadVoters.length?`<div class="hint">👻 사망자 투표: ${n.deadVoters.map(esc).join(', ')} (토큰 소진 기록됨)</div>`:''}
+        ${isBest&&!S.executedToday?`<button class="small danger" style="margin-top:6px" onclick="executeNominee('${n.id}')">⚔ ${esc(playerOf(n.nominee)?.name||'')} 처형 확정</button>`:''}
+      </div>`;}).join('')}
+    ${tie?'<div class="alertbox warn">⚖ 최고 찬성률 동률 — 처형 없음(공식 규칙 준용). 재지명으로 갱신 가능합니다.</div>':''}
+  </div>`:''}`;
+}
+function newNomination(){
+  const tor=$('#nomtor').value, nee=$('#nomnee').value;
+  if(!tor||!nee){ toast('지명자와 피지명자를 선택하세요.','warn'); return; }
+  if(tor===nee){ toast('자기 자신을 지명했습니다 — 공식 규칙상 허용됩니다. 그대로 진행합니다.','warn'); }
+  const nom={id:uid(), day:S.phase.n, nominator:tor, nominee:nee, hands:[], stage:1, votes:{}, closed:false, deadVoters:[]};
+  S.noms.push(nom);
+  log(`지명: ${playerOf(tor).name} → ${playerOf(nee).name}`);
+  // 성처녀 체크
+  const neeP=playerOf(nee), torP=playerOf(tor);
+  if(neeP.charId==='virgin' && !hasStatus(neeP,'virginUsed')){
+    addStatus(neeP,'virginUsed','최초 지명 발생',null);
+    const torC=charOf(torP.charId);
+    const torIsTF = torC && torC.type==='townsfolk' && torP.charId!=='drunk';
+    if(isMalfunctioning(neeP)){
+      toast('⚜ 성처녀 최초 지명 — 그러나 성처녀가 오작동 상태: 발동하지 않습니다. 능력은 소진됩니다.','warn');
+    } else if(torIsTF){
+      if(confirm(`⚜ 성처녀 발동! 지명자 ${torP.name}(${torC.ko})는 마을 주민입니다.\n즉시 처형 처리할까요? (오늘의 처형으로 기록되며, 이 지명은 종료됩니다)`)){
+        killPlayer(torP,'성처녀 발동 — 즉시 처형');
+        S.executedToday=`${torP.name} (${charName(torP)}) — 성처녀 발동`;
+        nom.closed=true; nom.result='virginTriggered';
+        toast('처형 완료. 오늘은 추가 처형이 불가합니다. 장의사는 오늘 밤 지명자의 캐릭터를 봅니다.','warn');
+      }
+    } else if(torP.charId==='spy'){
+      toast('⚜ 성처녀 최초 지명 — 지명자가 첩자입니다. "마을 주민으로 등록"시켜 발동시킬지 재량으로 결정하세요. 발동시키려면 그리모어에서 수동 처형 처리.','warn');
+    } else {
+      toast(`성처녀 최초 지명 — 지명자 ${torP.name}는 마을 주민이 아니므로 발동하지 않습니다. 능력은 소진되었습니다.`,'warn');
+    }
+  }
+  save(); renderAll();
+}
+function renderNomOpen(nom){
+  const alive=alivePlayers();
+  const den1=alive.length, need1=majority(den1), num1=nom.hands.length;
+  const torN=esc(playerOf(nom.nominator)?.name||'?'), neeN=esc(playerOf(nom.nominee)?.name||'?');
+  const notices=voteNotices(nom).filter(x=>x.includes('집사')||x.includes('성인')||x.includes('악마')||x.includes('은둔자'));
+  if(nom.stage===1){
+    return `<div class="card"><h2>진행 중 지명: ${torN} → ${neeN}</h2>
+      ${notices.length?`<div class="alertbox">${notices.map(x=>`<div>· ${x}</div>`).join('')}</div>`:''}
+      <h3>1단계 · 거수 투표 (생존자)</h3>
+      <div class="votemath">
+        <div class="vmbox"><div class="vlab">거수(분자)</div><div class="vval">${num1}</div></div>
+        <div class="vmbox"><div class="vlab">생존자(분모)</div><div class="vval">${den1}</div></div>
+        <div class="vmbox ${num1>=need1?'pass':'fail'}"><div class="vlab">과반 기준</div><div class="vval">${need1}</div></div>
+      </div>
+      <div>${alive.map(p=>{
+        const on=nom.hands.includes(p.id);
+        const butlerFlag = p.charId==='butler' && !isMalfunctioning(p);
+        const master=S.players.find(q=>hasStatus(q,'master'));
+        const masterUp = master && nom.hands.includes(master.id);
+        return `<div class="voterow"><span class="vname">${esc(p.name)}</span>
+          <button class="vbtn ${on?'sel-yes':''}" onclick="toggleHand('${nom.id}','${p.id}')">${on?'✋ 거수':'거수'}</button>
+          ${butlerFlag?`<span class="hint">🤵 집사 — 주인(${master?esc(master.name):'미지정'})이 거수해야 유효${on&&!masterUp?' <mark>⚠ 지금 주인 미거수!</mark>':''}</span>`:''}
+        </div>`;}).join('')}</div>
+      <div class="row" style="margin-top:10px">
+        <button class="primary" onclick="closeHands('${nom.id}')">${num1>=need1?'✅ 과반 달성 — 찬반 투표로':'거수 마감 (미달 → 부결)'}</button>
+        <button class="ghost danger" onclick="cancelNom('${nom.id}')">지명 취소</button>
+      </div></div>`;
+  }
+  // 2단계 찬반
+  const dead=S.players.filter(p=>!p.alive&&p.deadVote!==false);
+  const eligible=alive.concat(dead);
+  const den2=eligible.length, need2=majority(den2);
+  const yes=eligible.filter(p=>nom.votes[p.id]==='yes').length;
+  const no=eligible.filter(p=>nom.votes[p.id]==='no').length;
+  const ratio=den2?yes/den2:0;
+  const master=S.players.find(q=>hasStatus(q,'master'));
+  return `<div class="card"><h2>진행 중 지명: ${torN} → ${neeN}</h2>
+    ${notices.length?`<div class="alertbox">${notices.map(x=>`<div>· ${x}</div>`).join('')}</div>`:''}
+    <h3>2단계 · 찬반 투표 (생존자 전원 + 투표 토큰 보유 사망자)</h3>
+    <div class="votemath">
+      <div class="vmbox"><div class="vlab">찬성(분자)</div><div class="vval" style="color:var(--ok)">${yes}</div></div>
+      <div class="vmbox"><div class="vlab">반대</div><div class="vval" style="color:var(--evil)">${no}</div></div>
+      <div class="vmbox"><div class="vlab">투표권(분모)</div><div class="vval">${den2}</div></div>
+      <div class="vmbox ${yes>=need2?'pass':'fail'}"><div class="vlab">과반 기준</div><div class="vval">${need2}</div></div>
+      <div class="vmbox ${yes>=need2?'pass':'fail'}"><div class="vlab">찬성률</div><div class="vval">${(ratio*100).toFixed(1)}%</div></div>
+    </div>
+    <div>${eligible.map(p=>{
+      const v=nom.votes[p.id];
+      const isDead=!p.alive;
+      const butlerFlag = p.alive && p.charId==='butler' && !isMalfunctioning(p);
+      const masterYes = master && nom.votes[master.id]==='yes';
+      return `<div class="voterow ${isDead?'deadrow':''}">
+        <span class="vname">${esc(p.name)}${isDead?' 👻':''}</span>
+        <button class="vbtn ${v==='yes'?'sel-yes':''}" onclick="castVote('${nom.id}','${p.id}','yes')">찬성</button>
+        <button class="vbtn ${v==='no'?'sel-no':''}" onclick="castVote('${nom.id}','${p.id}','no')">반대</button>
+        <button class="vbtn ${v==='abs'?'sel-abs':''}" onclick="castVote('${nom.id}','${p.id}','abs')">기권</button>
+        ${isDead?'<span class="hint">토큰 1회 — 찬성/반대 시 소진</span>':''}
+        ${butlerFlag?`<span class="hint">🤵 주인(${master?esc(master.name):'미지정'})이 찬성해야 유효${v==='yes'&&!masterYes?' <mark>⚠ 주인 미찬성!</mark>':''}</span>`:''}
+      </div>`;}).join('')}</div>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" onclick="closeBallot('${nom.id}')">찬반 마감</button>
+      <button class="ghost danger" onclick="cancelNom('${nom.id}')">지명 취소</button>
+    </div></div>`;
+}
+function findNom(id){ return S.noms.find(n=>n.id===id); }
+function toggleHand(nid,pid){ const n=findNom(nid); const i=n.hands.indexOf(pid);
+  if(i>=0)n.hands.splice(i,1); else n.hands.push(pid); save(); renderAll(); }
+function closeHands(nid){ const n=findNom(nid); const den=alivePlayers().length, need=majority(den);
+  if(n.hands.length>=need){ n.stage=2; log(`거수 ${n.hands.length}/${den} (기준 ${need}) — 통과, 찬반 투표로`); }
+  else { n.closed=true; n.result='handsFail'; log(`거수 ${n.hands.length}/${den} (기준 ${need}) — 미달, 부결`); }
+  save(); renderAll(); }
+function castVote(nid,pid,v){
+  const n=findNom(nid); const p=playerOf(pid);
+  const prev=n.votes[pid];
+  if(!p.alive){
+    if(prev===v){ delete n.votes[pid]; if(v!=='abs'){ p.deadVote=true; n.deadVoters=n.deadVoters.filter(x=>x!==p.name); log(`${p.name} 사망 투표 취소 — 토큰 복원`);} save(); renderAll(); return; }
+    if((v==='yes'||v==='no') && !(prev==='yes'||prev==='no')){
+      if(p.deadVote===false){ toast(`${p.name}은(는) 이미 투표 토큰을 소진했습니다.`,'warn'); return; }
+      p.deadVote=false; n.deadVoters.push(p.name); log(`👻 ${p.name} 사망 투표 참여(${v==='yes'?'찬성':'반대'}) — 토큰 자동 소진`);
+    }
+    if((prev==='yes'||prev==='no') && v==='abs'){ p.deadVote=true; n.deadVoters=n.deadVoters.filter(x=>x!==p.name); log(`${p.name} 기권으로 변경 — 토큰 복원`); }
+    n.votes[pid]=v; save(); renderAll(); return;
+  }
+  n.votes[pid] = prev===v? undefined : v;
+  if(n.votes[pid]===undefined) delete n.votes[pid];
+  save(); renderAll();
+}
+function closeBallot(nid){
+  const n=findNom(nid);
+  const alive=alivePlayers(); const dead=S.players.filter(p=>!p.alive&&(n.deadVoters.includes(p.name)||p.deadVote!==false));
+  const eligible=alive.concat(S.players.filter(p=>!p.alive&&p.deadVote!==false), S.players.filter(p=>!p.alive&&n.deadVoters.includes(p.name)));
+  const uniq=[...new Set(eligible)];
+  const den=uniq.length, need=majority(den);
+  const yes=uniq.filter(p=>n.votes[p.id]==='yes').length;
+  n.yes=yes; n.den=den; n.need=need; n.ratio=den?yes/den:0;
+  n.closed=true; n.result = yes>=need? 'pass':'yesFail';
+  log(`찬반 마감: ${playerOf(n.nominee).name} — 찬성 ${yes}/${den} (기준 ${need}, ${(n.ratio*100).toFixed(1)}%) → ${n.result==='pass'?'과반 통과':'부결'}`);
+  save(); renderAll();
+}
+function cancelNom(nid){ S.noms=S.noms.filter(n=>n.id!==nid); log('지명 취소'); save(); renderAll(); }
+function executeNominee(nid){
+  const n=findNom(nid); const p=playerOf(n.nominee);
+  const saintCheck = p.charId==='saint' && !isMalfunctioning(p);
+  if(saintCheck && !confirm(`🚨 ${p.name}은(는) 성인이며 오작동 상태가 아닙니다!\n처형을 확정하면 선한 팀이 패배합니다. 진행할까요?`)) return;
+  killPlayer(p, `처형 (찬성 ${n.yes}/${n.den}, ${(n.ratio*100).toFixed(1)}%)`);
+  S.executedToday=`${p.name} (${charName(p)})`;
+  if(saintCheck){ toast('✝ 성인이 처형되었습니다 — 악한 팀 승리!','warn'); log('성인 처형 — 악 승리'); }
+  toast(`${p.name} 처형. 오늘 밤 장의사에게 보여줄 캐릭터: ${charName(p)} (첩자/은둔자/술꾼이면 등록 재량)`,'ok');
+  save(); renderAll();
+}
+function doSlayer(){
+  const sl=S.players.find(p=>p.alive&&p.charId==='slayer'&&!hasStatus(p,'slayerUsed'));
+  if(!sl) return;
+  const name=prompt('슬레이어가 지목한 플레이어 이름:'); const t=S.players.find(p=>p.name===name);
+  if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
+  addStatus(sl,'slayerUsed','공개 지목',null);
+  if(isMalfunctioning(sl)){ toast('슬레이어가 오작동 상태 — "아무 일도 일어나지 않습니다"라고 공표. 능력 소진.','warn'); log(`슬레이어 오발(오작동): ${t.name}`); save(); renderAll(); return; }
+  const c=charOf(t.charId);
+  if(c?.type==='demon' && t.alive){ killPlayer(t,'슬레이어의 일격'); toast(`😈 ${t.name}(악마) 즉사! 주홍 여인·생존자 수를 확인하세요.`,'warn'); }
+  else if(t.charId==='recluse' && t.alive){
+    if(confirm(`${t.name}은(는) 은둔자 — 악마로 등록시켜 죽일까요? (재량)`)){ killPlayer(t,'슬레이어의 일격(은둔자 악마 등록)'); toast('은둔자가 쓰러졌습니다 — 게임은 끝나지 않습니다. 태연하게!','warn'); }
+    else { toast('"아무 일도 일어나지 않습니다" 공표.','ok'); log(`슬레이어 → 은둔자 ${t.name}: 미등록 처리`); }
+  }
+  else { toast('"아무 일도 일어나지 않습니다"라고 공표하세요.','ok'); log(`슬레이어 오발: ${t.name}`); }
+  save(); renderAll();
+}
+</script>
+
+<script>
+/* ══════════════════ 상호작용 · 재량 가이드 탭 ══════════════════ */
+const DISCRETION_PRINCIPLES = [
+  ['균형','약한 팀에 유리한 쪽으로. 선이 무너지고 있으면 정확한 정보·유리한 등록을, 악이 몰리면 혼선을.'],
+  ['재미','극적인 순간을 만들 수 있는 선택이 규칙상 동등하다면 그쪽을 고른다. 단, 특정 플레이어를 반복해 희생시키지 않는다.'],
+  ['일관성','등록 재량(첩자·은둔자)은 흔들 수 있지만, 이유 없이 오락가락하면 사회자 신뢰가 깨진다. 바꿀 땐 의도를 갖고.'],
+  ['오작동 우선 확인','어떤 판정이든 먼저 묻는다: 이 능력의 주인이 지금 중독/술취함인가? 그렇다면 정보=거짓 가능, 발동=불발.'],
+  ['정보 은닉','불발·무효(보호, 군인, 오발)는 티 내지 않는다. 밤엔 동일한 템포, 낮엔 동일한 표정.'],
+  ['거짓말 금지','사회자는 플레이어를 오도할 수 있지만 규칙 바깥의 거짓 판정은 안 된다. 재량은 규칙이 "될 수 있다"라고 한 곳에서만.'],
+];
+const EFFECT_GUIDES = {
+  info: {ko:'정보 제공형', steps:['능력 주인이 오작동인가? → 거짓 정보 가능(그럴듯하게, 한 번 준 거짓과 모순되지 않게)','첩자/은둔자가 판정에 걸리는가? → 등록 재량 결정','정답을 줄 경우: 이 정보가 게임을 즉시 끝내버리지 않는지(밸런스) 확인','무엇을 줬는지 그리모어 메모에 기록']},
+  kill: {ko:'살해·제거형', steps:['시전자 오작동? → 불발(티 내지 않기)','대상 보호(수도사)·면역(군인)? → 불발','대상이 시장? → 대체 사망 재량','대상이 까마귀지기? → 즉시 발동 처리','사망 확정 시: 악마 사망이면 주홍 여인·생존자 수 체크, 게임 종료 판정']},
+  status: {ko:'상태 부여형', steps:['시전자 오작동? → 부여 불발','지속 기간을 명확히: 이 밤만? 다음 낮까지? 영구? → 그리모어 토큰의 자동 해제 시점 지정','겹치는 상태(중독+보호 등)의 우선순위를 지금 정해두고 메모']},
+  rule: {ko:'규칙 변경·특수형(마법사류)', steps:['이 요청이 게임의 승리 조건을 직접 바꾸는가? → 원칙적으로 보류하거나 대가를 크게','효과가 공개인가 비밀인가 결정 — 비밀이면 어떤 단서를 언제 흘릴지 계획','대가/리스크를 설계: 강한 소원일수록 눈에 보이는 흔적을 남긴다','한 번 허용한 해석은 게임 내내 유지된다는 걸 전제로 답하기','판정을 즉답하기 어려우면 "밤에 알려주겠다"로 미루는 것도 정당한 기술']},
+};
+function renderGuide(){
+  const el=$('#pane-guide');
+  const selId = guideSel || '';
+  const c = selId? charOf(selId) : null;
+  el.innerHTML=`
+  <div class="card"><h2>캐릭터 상호작용 조회</h2>
+    <div class="row">
+      <select onchange="guideSel=this.value;renderAll()"><option value="">— 캐릭터 선택 —</option>
+        ${allChars().map(x=>`<option value="${x.id}" ${selId===x.id?'selected':''}>${esc(x.ko)} (${TYPE_KO[x.type]})</option>`).join('')}
+      </select>
+    </div>
+    ${c?`<h3><span class="pill ${c.type}">${TYPE_KO[c.type]}</span> ${esc(c.ko)} <span class="hint" style="display:inline">${esc(c.en||'')}</span></h3>
+      <p>${esc(c.ability)}</p>
+      ${c.setupNote?`<div class="alertbox">셋업: ${esc(c.setupNote)}</div>`:''}
+      ${(c.warn&&c.warn.length)?`<ul class="guide">${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`:'<p class="hint">특기할 상호작용 없음.</p>'}
+      ${(c.remind&&c.remind.length)?`<div class="alertbox blue">기억할 것: ${c.remind.map(esc).join(' · ')}</div>`:''}`:''}
+  </div>
+  <div class="card"><h2>재량 응대 도우미</h2>
+    <p class="hint">마법사류 재량 능력이 발동했을 때, 상황을 입력하면 판정 체크리스트를 만들어 줍니다.</p>
+    <div class="fieldrow"><label>발동 캐릭터</label><select id="dg-char">${allChars().map(x=>`<option value="${x.id}">${esc(x.ko)}</option>`).join('')}<option value="_other">기타/커스텀</option></select></div>
+    <div class="fieldrow"><label>효과 유형</label><select id="dg-type">${Object.entries(EFFECT_GUIDES).map(([k,v])=>`<option value="${k}">${v.ko}</option>`).join('')}</select></div>
+    <div class="fieldrow"><label>상황 설명</label><input id="dg-desc" placeholder="예: 마법사가 '죽은 동료를 되살려 달라'고 소원을 빌었다" style="width:100%"></div>
+    <div class="row"><button class="primary" onclick="genDiscretion()">응대 가이드 생성</button></div>
+    <div id="dg-out"></div>
+    <hr class="divider">
+    <h3>재량 판정 6원칙</h3>
+    ${DISCRETION_PRINCIPLES.map(([t,d])=>`<div class="checkitem"><b style="min-width:88px">${t}</b><span>${d}</span></div>`).join('')}
+  </div>`;
+}
+let guideSel='';
+function genDiscretion(){
+  const cid=$('#dg-char').value, type=$('#dg-type').value, desc=$('#dg-desc').value.trim();
+  const c=cid==='_other'?null:charOf(cid);
+  const g=EFFECT_GUIDES[type];
+  const holder=c?playersByChar(c.id).find(p=>p.alive):null;
+  const mf=holder?isMalfunctioning(holder):false;
+  let html=`<div class="alertbox blue" style="margin-top:12px"><b>${c?esc(c.ko):'커스텀 능력'} · ${g.ko}</b>${desc?` — ${esc(desc)}`:''}
+  <ol class="guide" style="margin-top:6px">${g.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>`;
+  if(holder&&mf) html+=`<div class="alertbox red">☠ 현재 ${esc(holder.name)}(${esc(c.ko)})은(는) 오작동 상태입니다 — 이 발동은 <b>불발/거짓</b>으로 처리하되, 본인에게는 평소처럼 응대하세요.</div>`;
+  if(c&&c.warn&&c.warn.length) html+=`<div style="margin-top:6px" class="hint">관련 상호작용: ${c.warn.map(esc).join(' / ')}</div>`;
+  html+=`<div class="hint" style="margin-top:6px">💡 판단이 서지 않으면: "흥미로운 시도네요 — 오늘 밤 결과를 알려드리죠"라고 답하고 시간을 버세요. 즉답 의무는 없습니다.</div></div>`;
+  $('#dg-out').innerHTML=html;
+  log(`재량 발동 기록: ${c?c.ko:'커스텀'} · ${g.ko}${desc?' · '+desc:''}`);
+  save();
+}
+
+/* ══════════════════ 체크리스트 탭 (시트별 잊지 말 것) ══════════════════ */
+function buildChecklist(){
+  const items=[]; const add=(group,src,txt)=>items.push({group,src,txt,key:group+'|'+src+'|'+txt});
+  const inPlay=id=>S.players.some(p=>p.charId===id);
+  // 셋업
+  if(inPlay('baron')) add('셋업','남작','구성 변경 적용 확인: 마을 주민 −2 / 외부인 +2');
+  if(inPlay('drunk')) add('셋업','술꾼',`위장 캐릭터 지정(현재: ${S.drunkMaskChar?charOf(S.drunkMaskChar).ko:'⚠ 미지정'}) — 본인에게는 그 주민 토큰을 보여줄 것`);
+  if(inPlay('fortuneteller')) add('셋업','점쟁이',`붉은 청어 지정(현재: ${S.redHerringId?playerOf(S.redHerringId)?.name:'⚠ 미지정'}) — 게임 내내 유지`);
+  add('셋업','공통','7인 이상이면 첫날 밤 하수인 정보 → 악마 정보(블러프 3개) 순서 진행');
+  // 매일 밤
+  if(inPlay('poisoner')) add('매일 밤','독살자','새 중독 대상 기록 — 이전 독은 황혼에 자동 해제되었는지 확인');
+  if(inPlay('monk')) add('매일 밤','수도사','보호 대상 갱신 — 보호는 그 밤만, 새벽 자동 해제');
+  if(inPlay('butler')) add('매일 밤','집사','주인 갱신 — 다음 날 투표 제한에 직결');
+  if(inPlay('empath')) add('매일 밤','공감자','이웃 사망 시 "살아있는 이웃" 재계산');
+  if(inPlay('undertaker')) add('매일 밤','장의사','어제 처형이 있었을 때만 깨움 — 성처녀 발동 처형 포함');
+  if(inPlay('spy')) add('매일 밤','첩자','밤 순서 맨 끝에 그리모어 공개 — 충분한 시간');
+  if(inPlay('drunk')) add('매일 밤','술꾼','위장 캐릭터 순서에 깨워 일관된 거짓 정보 — 지난 밤에 준 정보 메모 확인');
+  // 낮·투표
+  if(inPlay('virgin')) add('낮·투표','성처녀','최초 지명 시 발동 판정 — 지명자가 주민인지, 성처녀가 중독인지');
+  if(inPlay('saint')) add('낮·투표','성인','처형 확정 전 중독 여부 확인 — 정상이면 선 패배');
+  if(inPlay('butler')) add('낮·투표','집사','주인이 거수/찬성했는지 매 투표 확인');
+  if(inPlay('slayer')) add('낮·투표','슬레이어','공개 지목 시 즉시 판정 — 오작동/은둔자 등록 재량, 성공·실패 무관 소진');
+  if(inPlay('mayor')) add('낮·투표','시장','생존 3명이 되면: 처형 없이 낮 종료 = 선 승리(오작동 확인)');
+  if(inPlay('scarletwoman')) add('낮·투표','주홍 여인','악마 사망 시 생존자 5+ 확인 → 계승, 게임 계속. 그녀가 중독이면 계승 불발!');
+  if(inPlay('recluse')) add('낮·투표','은둔자','정보·슬레이어·처형 판정마다 악 등록 여부를 의식적으로 결정');
+  if(inPlay('imp')) add('낮·투표','임프','임프 처형·사망 시: 주홍 여인 → 없으면 게임 종료 선언');
+  if(inPlay('soldier')) add('참고','군인','임프 공격 무효 — 단 중독 밤엔 죽는다');
+  if(inPlay('ravenkeeper')) add('참고','까마귀지기','밤 사망 시 즉시 발동 — 잊기 쉬움! 임프 살해 판정 직후 확인');
+  // 커스텀
+  (S.customs||[]).forEach(c=>{
+    if(S.players.some(p=>p.charId===c.id)){
+      (c.reminders||[]).forEach(r=>add('커스텀',c.ko,r));
+      if(!(c.reminders||[]).length) add('커스텀',c.ko,'커스텀 캐릭터 — 상호작용 검증 필요(제작자에게 시트 검토 요청)');
+    }
+  });
+  return items;
+}
+function renderCheck(){
+  const el=$('#pane-check');
+  const items=buildChecklist();
+  const groups=[...new Set(items.map(i=>i.group))];
+  el.innerHTML=`<div class="card"><h2>이 시트의 사회자 체크리스트</h2>
+  <p class="hint">현재 배정된 캐릭터 기준으로 자동 생성됩니다. 배정이 바뀌면 목록도 바뀝니다.</p>
+  ${items.length?groups.map(g=>`<h3>${g}</h3>${items.filter(i=>i.group===g).map(i=>`
+    <div class="checkitem"><input type="checkbox" ${S.checks[i.key]?'checked':''} onchange="S.checks['${i.key.replace(/'/g,"\\'")}']=this.checked;save()">
+    <span><span class="src">[${esc(i.src)}]</span> ${esc(i.txt)}</span></div>`).join('')}`).join('')
+   :'<p class="hint">캐릭터를 배정하면 시트 맞춤 체크리스트가 생성됩니다.</p>'}
+  </div>`;
+}
+
+/* ══════════════════ 커스텀 탭 ══════════════════ */
+function renderCustom(){
+  const el=$('#pane-custom');
+  const mk=(ord)=>['__front'].concat(ord).map(id=>{
+    if(id==='__front') return `<option value="">밤 순서 맨 앞</option>`;
+    const ko=INFO_STEPS[id]?INFO_STEPS[id].ko:(charOf(id)?.ko||id);
+    return `<option value="${id}">${ko} 다음</option>`;}).join('');
+  const stepOpts=()=>mk(FIRST_NIGHT_ORDER), stepOpts2=()=>mk(OTHER_NIGHT_ORDER);
+  el.innerHTML=`
+  <div class="card"><h2>커스텀 캐릭터</h2>
+  <p class="hint">새 캐릭터를 추가하면 캐릭터 목록·밤 순서·체크리스트·투표 노티스에 자동 통합됩니다.<br>
+  ⚠ 커스텀 시트를 새로 짰다면, 시트 전체를 제작자(Claude)에게 보여주고 상호작용·순서 재검증을 받으세요 — 아래 "시트 내보내기"로 JSON을 복사해 전달하면 됩니다.</p>
+  <div class="fieldrow"><label>이름(한글)</label><input id="cc-ko" placeholder="예: 마법사"></div>
+  <div class="fieldrow"><label>이름(영문)</label><input id="cc-en" placeholder="Wizard"></div>
+  <div class="fieldrow"><label>유형</label><select id="cc-type">${Object.entries(TYPE_KO).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
+  <div class="fieldrow"><label>능력 설명</label><textarea id="cc-ab" rows="2" placeholder="능력을 사회자 관점에서 정확하게"></textarea></div>
+  <div class="fieldrow"><label>첫날 밤</label><div><input type="checkbox" id="cc-first"> 깨움 — 위치: <select id="cc-firstafter">${stepOpts()}</select></div></div>
+  <div class="fieldrow"><label>그 외 밤</label><div><input type="checkbox" id="cc-other"> 깨움 — 위치: <select id="cc-otherafter">${stepOpts2()}</select></div></div>
+  <div class="fieldrow"><label>투표 관련</label><div><input type="checkbox" id="cc-vote"> <input id="cc-votenote" placeholder="투표 패널에 띄울 노티스" style="width:70%"></div></div>
+  <div class="fieldrow"><label>잊지 말 것</label><textarea id="cc-rem" rows="2" placeholder="체크리스트에 넣을 항목 — 줄바꿈으로 구분"></textarea></div>
+  <div class="fieldrow"><label>사회자 노트</label><textarea id="cc-warn" rows="2" placeholder="상호작용 주의사항 — 줄바꿈으로 구분"></textarea></div>
+  <div class="row"><button class="primary" onclick="addCustom()">추가</button>
+  <button onclick="exportScript()">시트 내보내기(JSON)</button>
+  <button onclick="importScript()">시트 가져오기</button></div>
+  ${S.customs.length?`<h3>등록된 커스텀 (${S.customs.length})</h3><div class="chargrid">${S.customs.map(c=>`
+    <div class="charcard">${charCard(c).replace('<div class="charcard">','').replace(/<\/div>$/,'')}
+    <button class="small danger ghost" style="margin-top:6px" onclick="delCustom('${c.id}')">삭제</button></div>`).join('')}</div>`:''}
+  </div>`;
+}
+function addCustom(){
+  const ko=$('#cc-ko').value.trim(); if(!ko){toast('이름을 입력하세요.','warn');return;}
+  const c={ id:'cx_'+uid(), ko, en:$('#cc-en').value.trim(), type:$('#cc-type').value,
+    ability:$('#cc-ab').value.trim()||'(능력 미기재)',
+    first:$('#cc-first').checked, other:$('#cc-other').checked,
+    firstAfter:$('#cc-firstafter').value||null, otherAfter:$('#cc-otherafter').value||null,
+    voteRelated:$('#cc-vote').checked, voteNote:$('#cc-votenote').value.trim(),
+    reminders:$('#cc-rem').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    warn:$('#cc-warn').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    custom:true };
+  S.customs.push(c); log(`커스텀 캐릭터 추가: ${ko}`); save(); renderAll();
+  toast(`${ko} 추가됨. 시트가 새로 완성되면 JSON을 내보내 검증을 요청하세요.`,'ok');
+}
+function delCustom(id){ S.customs=S.customs.filter(c=>c.id!==id); S.players.forEach(p=>{if(p.charId===id)p.charId='';}); save(); renderAll(); }
+function exportScript(){
+  const data=JSON.stringify({name:'티르소스 커스텀 시트', base:'trouble-brewing', customs:S.customs}, null, 1);
+  navigator.clipboard?.writeText(data).then(()=>toast('시트 JSON 복사됨 — Claude에게 붙여넣어 검증을 요청하세요.','ok'),()=>prompt('복사하세요:',data));
+}
+function importScript(){
+  const raw=prompt('시트 JSON을 붙여넣으세요:'); if(!raw)return;
+  try{ const d=JSON.parse(raw); if(Array.isArray(d.customs)){ S.customs=d.customs; save(); renderAll(); toast('가져오기 완료','ok'); } else toast('customs 배열이 없습니다.','warn'); }
+  catch(e){ toast('JSON 파싱 실패','warn'); }
+}
+
+/* ══════════════════ 초기화 ══════════════════ */
+function renderAll(){
+  renderTabs(); renderTopbar();
+  document.querySelectorAll('.tabpane').forEach(s=>s.classList.remove('active'));
+  $('#pane-'+activeTab).classList.add('active');
+  ({setup:renderSetup, grim:renderGrim, night:renderNight, day:renderDay, guide:renderGuide, check:renderCheck, custom:renderCustom})[activeTab]();
+}
+$('#advbtn').onclick=advancePhase;
+$('#themebtn').onclick=()=>{
+  const cur=document.documentElement.getAttribute('data-theme');
+  const next=cur==='dark'?'light':cur==='light'?null:'dark';
+  if(next) document.documentElement.setAttribute('data-theme',next); else document.documentElement.removeAttribute('data-theme');
+  S.theme=next||'auto'; save();
+};
+if(S.theme && S.theme!=='auto') document.documentElement.setAttribute('data-theme',S.theme);
+if(S.phase.kind==='night') activeTab='night'; else if(S.phase.kind==='day') activeTab='day';
+renderAll();
+</script>
