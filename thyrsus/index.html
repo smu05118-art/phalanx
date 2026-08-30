@@ -171,6 +171,22 @@ main{padding:18px 18px 90px;min-width:0}
 @keyframes wizpulse{0%,100%{opacity:.5}50%{opacity:1}}
 @media (prefers-reduced-motion: reduce){.wiz-showhint{animation:none}}
 .wiz-warnbar{background:var(--evil-soft);border:1px solid var(--evil);border-radius:10px;padding:8px 14px;font-size:14px;max-width:560px;margin-bottom:16px}
+/* ── 게임 설정 스테퍼 ── */
+.setsteps{display:flex;align-items:flex-start;margin:6px 0 22px}
+.setstep{display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto;cursor:pointer}
+.setstep .dot{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;background:var(--raised);border:2px solid var(--line);color:var(--muted)}
+.setstep.done .dot{background:#2d7a4f;border-color:#2d7a4f;color:#fff}
+.setstep.cur .dot{background:var(--accent);border-color:var(--accent);color:#1a1030}
+.setstep .slab{font-size:12px;color:var(--muted)}
+.setstep.cur .slab{color:var(--text);font-weight:700}
+.setline{flex:1;height:2px;background:var(--line);margin-top:22px;min-width:24px}
+.ready-hero{text-align:center;padding:28px 10px 8px}
+.ready-hero .rh-icon{font-size:76px;line-height:1}
+.ready-hero h3{font-size:22px;margin:14px 0 4px}
+.ready-hero p{color:var(--muted);margin:0 0 22px}
+.bigactions{display:flex;flex-direction:column;gap:10px;max-width:560px;margin:0 auto}
+.bigactions button{min-height:52px;font-size:16px;border-radius:12px}
+.bigactions .gold{background:var(--accent);border-color:var(--accent);color:#1a1030;font-weight:700}
 .wiz-players{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
 .wiz-shownplayer{display:flex;flex-direction:column;align-items:center;gap:6px}
 .wiz-shownplayer .pp{width:110px;height:110px;border-radius:50%;border:4px solid var(--good);background:var(--raised);display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:700}
@@ -1013,8 +1029,31 @@ function compFor(n, baronInPlay){
   if(baronInPlay){ c[0]-=2; c[1]+=2; }
   return c;
 }
+function setupIssues(){
+  const n=S.players.length;
+  const issues=[];
+  if(n<5) issues.push('플레이어가 5명 이상 필요합니다.');
+  const un=S.players.filter(p=>!p.charId);
+  if(un.length) issues.push('캐릭터 미배정: '+un.map(p=>p.name).join(', '));
+  const baron=S.players.some(p=>p.charId==='baron');
+  const comp=n>=5?compFor(n,baron):null;
+  const counts={townsfolk:0,outsider:0,minion:0,demon:0};
+  S.players.forEach(p=>{const c=charOf(p.charId); if(!c) return; if(c.type==='traveler'||c.type==='fabled') return; counts[c.type]++;});
+  if(comp && !(counts.townsfolk===comp[0]&&counts.outsider===comp[1]&&counts.minion===comp[2]&&counts.demon===comp[3]))
+    issues.push(`구성 불일치 — 권장 ${comp[0]}/${comp[1]}/${comp[2]}/${comp[3]}, 현재 ${counts.townsfolk}/${counts.outsider}/${counts.minion}/${counts.demon}`);
+  if(S.players.some(p=>p.charId==='fortuneteller') && !S.redHerringId) issues.push('점쟁이의 붉은 청어를 지정하세요.');
+  if(S.players.some(p=>p.charId==='drunk') && !S.drunkMaskChar) issues.push('주정뱅이의 위장 캐릭터를 지정하세요.');
+  return issues;
+}
+function setupStepDone(k){
+  if(k===1) return S.players.length>=5;
+  if(k===2) return S.players.length>=5 && setupIssues().length===0;
+  return false;
+}
+function gotoSetupStep(k){ S.setupStep=k; save(); renderAll(); }
 function renderSetup(){
   const el=$('#pane-setup');
+  const step=S.setupStep||1;
   const n=S.players.length;
   const baron=S.players.some(p=>p.charId==='baron');
   const comp=n>=5?compFor(n,baron):null;
@@ -1026,46 +1065,87 @@ function renderSetup(){
   const ft=S.players.find(p=>p.charId==='fortuneteller');
   const dr=S.players.find(p=>p.charId==='drunk');
   const opts=(sel)=>editionChars().map(c=>`<option value="${c.id}" ${sel===c.id?'selected':''}>${c.ko} (${TYPE_KO[c.type]})</option>`).join('');
-  el.innerHTML=`
-  <div class="card">
-    <h2>플레이어 &amp; 좌석</h2>
-    <p class="hint">위→아래 순서가 <b>시계 방향 좌석 순서</b>입니다. 요리사·초공감자 판정에 그대로 쓰이니 실제 착석 순서대로 입력하세요.</p>
+  const stepper=`<div class="setsteps">${[[1,'참가자'],[2,'캐릭터 배정'],[3,'시작']].map(([k,ko],i)=>
+    `${i?'<div class="setline"></div>':''}
+     <div class="setstep ${setupStepDone(k)?'done':''} ${step===k?'cur':''}" onclick="gotoSetupStep(${k})">
+       <div class="dot">${setupStepDone(k)&&step!==k?'✓':k}</div><div class="slab">${ko}</div></div>`).join('')}</div>`;
+  let body='';
+  if(step===1){
+    body=`<p class="hint">위→아래 순서가 <b>시계 방향 좌석 순서</b>입니다. 요리사·초공감자 판정에 그대로 쓰이니 실제 착석 순서대로 입력하세요.</p>
     <div class="row" style="margin-bottom:10px">
       <input id="newpname" placeholder="플레이어 이름" style="width:180px" onkeydown="if(event.key==='Enter')addPlayer()">
       <button class="primary" onclick="addPlayer()">추가</button>
-      <button onclick="randomAssign()" ${n<5?'disabled':''}>무작위 배정</button>
       <button class="danger ghost" onclick="if(confirm('전체 게임 상태를 초기화할까요?')){S=blank();save();renderAll();}">전체 초기화</button>
+    </div>
+    <div>${S.players.map((p,i)=>`
+      <div class="voterow">
+        <span style="color:var(--muted);width:24px" class="num">${i+1}</span>
+        <span class="vname">${esc(p.name)}</span>
+        <button class="small ghost" onclick="movePlayer('${p.id}',-1)">↑</button>
+        <button class="small ghost" onclick="movePlayer('${p.id}',1)">↓</button>
+        <button class="small danger ghost" onclick="removePlayer('${p.id}')">삭제</button>
+      </div>`).join('')||'<p class="hint">아직 참가자가 없습니다.</p>'}</div>
+    <div class="bigactions" style="margin-top:16px"><button class="gold" onclick="gotoSetupStep(2)" ${n<5?'disabled':''}>다음: 캐릭터 배정 ›</button></div>`;
+  }
+  else if(step===2){
+    body=`
+    <div class="row" style="margin-bottom:10px">
+      <button class="primary" onclick="randomAssign()" ${n<5?'disabled':''}>🎲 무작위 배정</button>
+      <span class="hint">또는 아래에서 직접 선택</span>
     </div>
     ${comp?`<p class="hint">권장 구성 (${n}인${baron?' · 남작 적용':''}): <span class="pill townsfolk">주민 ${comp[0]}</span> <span class="pill outsider">외지인 ${comp[1]}</span> <span class="pill minion">하수인 ${comp[2]}</span> <span class="pill demon">악마 ${comp[3]}</span>
       &nbsp;현재: ${counts.townsfolk}/${counts.outsider}/${counts.minion}/${counts.demon}
       ${compOK?'<span class="pill ok">구성 일치</span>':'<span class="pill warn">구성 불일치</span>'}
-      ${travelerN?`<span class="pill neutral">+ 여행자 ${travelerN}</span> <span class="hint" style="display:inline">(여행자·전설은 구성 카운트에 미포함)</span>`:''}</p>`:'<p class="hint">5~15명을 추가하세요.</p>'}
-    <div>
-      ${S.players.map((p,i)=>`
+      ${travelerN?`<span class="pill neutral">+ 여행자 ${travelerN}</span> <span class="hint" style="display:inline">(여행자·전설은 구성 카운트에 미포함)</span>`:''}</p>`:''}
+    <div>${S.players.map((p,i)=>`
       <div class="voterow">
         <span style="color:var(--muted);width:24px" class="num">${i+1}</span>
         <span class="vname">${esc(p.name)}</span>
         <select onchange="setChar('${p.id}',this.value)"><option value="">— 캐릭터 —</option>${opts(p.charId)}</select>
-        <button class="small ghost" onclick="movePlayer('${p.id}',-1)">↑</button>
-        <button class="small ghost" onclick="movePlayer('${p.id}',1)">↓</button>
-        <button class="small danger ghost" onclick="removePlayer('${p.id}')">삭제</button>
-      </div>`).join('')}
-    </div>
-  </div>
-  ${(ft||dr)?`<div class="card"><h2>시작 전 사회자 결정</h2>
-    ${ft?`<div class="fieldrow"><label>🎗 붉은 청어</label><div><select onchange="setHerring(this.value)"><option value="">— 선한 플레이어 선택 —</option>
-      ${S.players.filter(p=>{const c=charOf(p.charId);return c&&(c.type==='townsfolk'||c.type==='outsider');}).map(p=>`<option value="${p.id}" ${S.redHerringId===p.id?'selected':''}>${esc(p.name)} (${charName(p)})</option>`).join('')}
-    </select> <span class="hint">점쟁이에게 악마처럼 감지될 선한 플레이어 1명 — 게임 내내 유지</span></div></div>`:''}
-    ${dr?`<div class="fieldrow"><label>🎭 주정뱅이 위장</label><div><select onchange="setDrunkMask(this.value)"><option value="">— 위장할 마을 주민 —</option>
-      ${CHARACTERS.filter(c=>c.type==='townsfolk' && !S.players.some(p=>p.charId===c.id)).map(c=>`<option value="${c.id}" ${S.drunkMaskChar===c.id?'selected':''}>${c.ko}</option>`).join('')}
-    </select> <span class="hint">주정뱅이 본인이 믿게 될 마을 주민 — 사용 중이지 않은 캐릭터에서 선택. 밤 순서에 자동 반영됩니다</span></div></div>`:''}
-  </div>`:''}
-  <div class="card">
-    <h2>캐릭터 일람 <span class="hint" style="display:inline">(${editionOf().ko}${S.customs.length?` + 커스텀 ${S.customs.length}종`:''})</span></h2>
+      </div>`).join('')}</div>
+    ${(ft||dr)?`<hr class="divider"><h3>시작 전 사회자 결정</h3>
+      ${ft?`<div class="fieldrow"><label>🎗 붉은 청어</label><div><select onchange="setHerring(this.value)"><option value="">— 선한 플레이어 선택 —</option>
+        ${S.players.filter(p=>{const c=charOf(p.charId);return c&&(c.type==='townsfolk'||c.type==='outsider');}).map(p=>`<option value="${p.id}" ${S.redHerringId===p.id?'selected':''}>${esc(p.name)} (${charName(p)})</option>`).join('')}
+      </select> <span class="hint">점쟁이에게 악마처럼 감지될 선한 플레이어 1명 — 게임 내내 유지</span></div></div>`:''}
+      ${dr?`<div class="fieldrow"><label>🎭 주정뱅이 위장</label><div><select onchange="setDrunkMask(this.value)"><option value="">— 위장할 마을 주민 —</option>
+        ${CHARACTERS.filter(c=>c.type==='townsfolk' && (c.edition||'tb')===S.edition && !S.players.some(p=>p.charId===c.id)).map(c=>`<option value="${c.id}" ${S.drunkMaskChar===c.id?'selected':''}>${c.ko}</option>`).join('')}
+      </select> <span class="hint">주정뱅이 본인이 믿게 될 주민 — 미사용 캐릭터에서 선택. 밤 순서에 자동 반영</span></div></div>`:''}`:''}
+    <div class="bigactions" style="margin-top:16px"><button class="gold" onclick="gotoSetupStep(3)">다음: 시작 ›</button></div>
+    <details class="morebox" style="margin-top:14px"><summary>캐릭터 일람 (${editionOf().ko}${S.customs.length?` + 커스텀 ${S.customs.length}종`:''})</summary><div class="inner">
     ${['townsfolk','outsider','minion','demon','traveler','fabled'].filter(t=>editionChars().some(c=>c.type===t)).map(t=>`
       <h3><span class="pill ${t}">${TYPE_KO[t]}</span></h3>
-      <div class="chargrid">${editionChars().filter(c=>c.type===t).map(charCard).join('')}</div>`).join('')}
-  </div>`;
+      <div class="chargrid">${editionChars().filter(c=>c.type===t).map(charCard).join('')}</div>`).join('')}</div></details>`;
+  }
+  else {
+    const issues=setupIssues();
+    body = issues.length? `
+      <div class="alertbox">아직 준비가 끝나지 않았습니다:<ul class="guide">${issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+      <div class="bigactions"><button onclick="gotoSetupStep(issues[0].includes('플레이어')?1:2)">‹ 돌아가서 마저 준비하기</button></div>`
+    : `<div class="ready-hero">
+        <div class="rh-icon">🏰</div>
+        <h3>게임 준비 완료!</h3>
+        <p>첫 번째 밤을 시작하세요</p>
+      </div>
+      <div class="bigactions">
+        <button onclick="startRevealWiz()">👥 캐릭터 확인하기</button>
+        <button class="gold" onclick="advancePhase()">첫 번째 밤 시작 ›</button>
+      </div>
+      <p class="hint" style="text-align:center;margin-top:14px">캐릭터 확인하기: 기기를 좌석 순서대로 돌리며 각자 자기 캐릭터를 비공개로 확인합니다.<br>주정뱅이에게는 위장 캐릭터가 표시됩니다.</p>`;
+  }
+  el.innerHTML=`<div class="card">
+    <h2>게임 설정</h2><p class="hint" style="margin-top:-6px">${editionOf().ko}</p>
+    ${stepper}${body}</div>`;
+}
+function startRevealWiz(){
+  const scenes=[];
+  S.players.forEach(p=>{
+    let cid=p.charId;
+    if(cid==='drunk' && S.drunkMaskChar) cid=S.drunkMaskChar;
+    scenes.push({t:'note', text:`📱 기기를 ${p.name}에게 건네세요. 다른 사람이 화면을 보지 않게 주의!`});
+    scenes.push({t:'show-token', char:cid, caption:`${p.name} — 당신의 캐릭터입니다. 확인했으면 탭하고 다음 사람에게 넘기세요.`});
+  });
+  scenes.push({t:'note', text:'전원 확인 완료. 기기를 사회자에게 돌려주세요.'});
+  startCustomWiz('👥 캐릭터 확인', scenes);
 }
 function charCard(c){
   return `<div class="charcard"><span class="cname">${esc(c.ko)}</span><span class="cen">${esc(c.en||'')}</span>
@@ -2630,7 +2710,12 @@ function startWiz(stepId){
   wiz={stepId, idx:0, vars:{}, holder, scenes};
   renderWiz();
 }
+function startCustomWiz(title, scenes){
+  wiz={stepId:'__custom', custom:true, title, idx:0, vars:{}, holder:null, scenes};
+  renderWiz();
+}
 function wizTitle(){
+  if(wiz.custom) return wiz.title||'';
   const c=charOf(wiz.stepId);
   if(c) return `${glyph(c.id)} ${c.ko}` + (wiz.holder? ` — ${wiz.holder.name}`:'');
   return INFO_STEPS[wiz.stepId]? '👥 '+INFO_STEPS[wiz.stepId].ko : wiz.stepId;
@@ -2755,8 +2840,9 @@ function wizNext(){ if(wiz.idx<wiz.scenes.length-1){ wiz.idx++; renderWiz(); } e
 function wizPrev(){ if(wiz.idx>0){ wiz.idx--; renderWiz(); } }
 function closeWiz(done){
   $('#wizard').hidden=true; $('#wizbody').onclick=null;
-  if(done && wiz){ const m=S.nightDone[S.phase.n]||(S.nightDone[S.phase.n]={}); m[wiz.stepId]=true;
+  if(done && wiz && !wiz.custom){ const m=S.nightDone[S.phase.n]||(S.nightDone[S.phase.n]={}); m[wiz.stepId]=true;
     log(`${wizTitle()} 단계 완료(위저드)`); save(); }
+  if(done && wiz && wiz.custom){ log(`${wizTitle()} 완료`); save(); }
   wiz=null; renderAll();
 }
 
