@@ -3034,3 +3034,373 @@ function cloudTryRestore(){
 })();
 cloudTryRestore();
 </script>
+
+<script>
+/* ── BMR(피로 물든 달) 밤 위저드 씬 19종 (문구 자체 작성) ── */
+Object.assign(NIGHT_FLOW,{
+sailor:{first:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'선원이 함께 마실 상대',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'선원 본인과 지목 대상 중 누가 취할지 사회자가 정하세요. 취하는 쪽에 🍺토큰(다음 황혼까지)을 그리모어에 놓습니다. 멀쩡한 선원은 어떤 방법으로도 죽지 않습니다(처형 포함).'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'오늘 밤 함께 마실 상대',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'선원 또는 대상 중 취할 쪽을 정해 🍺토큰을 갱신하세요. 선원이 취해 있는 동안에는 죽을 수 있으니 상태 관리에 주의.'},
+  {t:'sleep'}]},
+courtier:{first:[
+  {t:'wake'},
+  {t:'note',text:'궁정대신에게 발동 여부를 손짓으로 확인하세요(게임 중 단 1회). 발동하지 않으면 여기서 재우고 완료하세요.'},
+  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(플레이어 아님)',storeAs:'tok'},
+  {t:'note',text:'그 캐릭터의 보유자에게 🍺토큰 — 3일 밤 + 3일 낮 동안 취합니다. 만료일을 그리모어 메모로 관리하고, 게임에 없는 캐릭터였다면 아무 일도 없이 능력만 소진됩니다. 밤 패널에서 ✔소진을 기록하세요.'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'note',text:'아직 능력을 쓰지 않았다면 발동 여부만 확인하세요. 발동 시 다음 화면에서 캐릭터를 고르고, 미발동이면 바로 재웁니다. 이미 소진했다면 깨울 필요가 없습니다.'},
+  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(발동 시에만)',storeAs:'tok'},
+  {t:'note',text:'발동했다면: 보유자에게 🍺(3일 밤+3일 낮) 토큰과 만료 메모, 밤 패널에서 ✔소진 기록. 없는 캐릭터면 소진만 됩니다.'},
+  {t:'sleep'}]},
+innkeeper:{other:[
+  {t:'wake'},
+  {t:'pick-player',n:2,who:'player',label:'여관 주인이 재울 손님 2명',filter:'alive',storeAs:'pair'},
+  {t:'note',text:'두 명 모두 오늘 밤 죽지 않습니다 — 🛡보호 토큰 2개. 그중 1명을 사회자가 골라 🍺취함(다음 황혼까지) 토큰을 추가하세요. 암살자의 살해만은 이 보호를 관통합니다. 여관 주인이 중독이면 보호·취함 모두 무효.'},
+  {t:'sleep'}]},
+gambler:{other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'도박사가 지목한 플레이어',filter:'alive',storeAs:'tgt'},
+  {t:'pick-character',pool:'any',label:'도박사가 추측한 캐릭터',storeAs:'guess'},
+  {t:'note',text:'추측이 맞으면 아무 일도 없습니다 — 아래 판정을 건너뛰고 다음으로. 틀렸다면 다음 화면에서 도박사 본인을 선택해 사망 판정을 실행하세요(도박사가 중독이면 자동 불발).'},
+  {t:'pick-player',n:1,who:'st',label:'오답일 때만: 도박사 본인을 탭(정답이면 선택 없이 다음)',filter:'alive',storeAs:'self'},
+  {t:'effect',fn:'doStepKill',from:'self'},
+  {t:'sleep'}]},
+devilsadvocate:{first:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'악마의 변호사가 변호할 생존자',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'대상에게 ⚖처형 면역 토큰 — 내일 처형돼도 죽지 않습니다(처형 자체는 진행·소모됨). 변호사가 중독이면 무효.'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'오늘 밤의 변호 대상(전날과 달라야 함)',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'전날 대상과 같으면 다른 사람을 다시 지목받으세요. ⚖토큰을 새 대상으로 옮깁니다.'},
+  {t:'sleep'}]},
+lunatic:{first:[
+  {t:'note',text:'미치광이는 자신이 악마라고 믿습니다 — 진짜 악마를 대하듯 완벽하게 연기하세요. 먼저 임의의 플레이어들을 "하수인"인 것처럼 손짓으로 알려줍니다.'},
+  {t:'wake'},
+  {t:'pick-character',pool:'good-notinplay',n:3,label:'가짜 블러프로 줄 미사용 선 캐릭터 3개',storeAs:'bluffs'},
+  {t:'show-tokens',from:'bluffs',caption:'게임에 없는 캐릭터 3개 — 블러프로 쓰세요'},
+  {t:'note',text:'이후 진짜 악마 차례(악마 정보 단계)에 미치광이가 누구인지 악마에게 손짓으로 알려주는 것을 잊지 마세요. 이 가짜 정보의 일관성을 게임 내내 유지해야 합니다.'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'미치광이의 살해 지목(효과 없음)',filter:'any',storeAs:'tgt'},
+  {t:'note',text:'이 지목으로는 아무도 죽지 않습니다 — 실제 사망은 진짜 악마의 판정으로만 처리하세요. 재량으로 진짜 악마를 깨울 때 미치광이의 지목을 손짓으로 전달해, 그대로 죽여주면 완벽한 기만이 됩니다.'},
+  {t:'sleep'}]},
+exorcist:{other:[
+  {t:'wake'},
+  {t:'note',text:'전날 지목한 사람과 반드시 다른 대상이어야 합니다 — 판정 함수가 같은 대상을 자동으로 막아줍니다.'},
+  {t:'pick-player',n:1,who:'player',label:'구마사제가 지목한 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doExorcist',from:'tgt'},
+  {t:'note',text:'대상이 악마였다면(판정 알림 참조): 악마를 깨워 구마사제가 누구인지 가리켜 보여주고, 이번 밤 악마의 살해 단계를 통째로 건너뛰세요. 구마사제가 중독이면 효과가 없어 악마는 평소대로 활동합니다.'},
+  {t:'sleep'}]},
+zombuul:{other:[
+  {t:'note',text:'오늘 아무도 죽지 않았을 때만 좀버얼을 깨웁니다. "죽은 척" 상태의 좀버얼도 계속 깨워야 합니다. 사망자가 있었던 날 밤이면 여기서 닫으세요.'},
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'좀버얼이 공격할 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doStepKill',from:'tgt'},
+  {t:'sleep',text:'재우세요. 좀버얼이 처음 죽는 순간에는 죽은 척 처리(실제 생존)임을 기억하세요.'}]},
+pukka:{first:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'푸카가 물어둘 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doPoison',from:'tgt'},
+  {t:'note',text:'중독 토큰을 확인하세요 — 이 사람은 다음 날 밤에 죽으면서 독이 풀립니다. 오늘 밤에는 죽지 않습니다.'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'note',text:'어제 푸카가 중독시킨 대상이 지금 죽습니다 — 그리모어(밤 패널 살해 위젯)에서 사망 처리하고 독 토큰을 해제하세요. 그다음 새 대상을 지목받습니다.'},
+  {t:'pick-player',n:1,who:'player',label:'오늘 밤 새로 물어둘 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doPoison',from:'tgt'},
+  {t:'sleep'}]},
+shabaloth:{other:[
+  {t:'wake'},
+  {t:'note',text:'재량: 전날 밤 샤발로스가 죽인 사람 1명을 되살릴 수 있습니다(토해내기) — 소생시키려면 그리모어에서 처리하세요. 이어서 2명을 차례로 지목받습니다.'},
+  {t:'pick-player',n:1,who:'player',label:'첫 번째 희생자',filter:'alive',storeAs:'tgt1'},
+  {t:'effect',fn:'doStepKill',from:'tgt1'},
+  {t:'pick-player',n:1,who:'player',label:'두 번째 희생자',filter:'alive',storeAs:'tgt2'},
+  {t:'effect',fn:'doStepKill',from:'tgt2'},
+  {t:'sleep',text:'재우세요. 오늘의 희생자를 기록해 두면 내일 소생 재량 판정에 씁니다.'}]},
+po:{other:[
+  {t:'wake'},
+  {t:'note',text:'충전 상태를 확인하세요(밤 패널 포 위젯의 ⚡ 표시). 전날 밤 아무도 지목하지 않았다면 이번 밤 3명을 죽입니다. 미충전이면 0명 또는 1명 — 0명 선택 시 아래 지목 없이 완료하고 밤 패널에서 "충전" 버튼을 누르세요.'},
+  {t:'pick-player',n:1,who:'player',label:'포가 지목한 대상(지목 안 하면 선택 없이 다음)',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'충전 상태로 3명을 지목받았다면: 아래 판정 실행 후 "이전"으로 돌아가 대상을 바꿔 같은 판정을 2회 더 반복하세요. 각 대상마다 보호를 따로 판정합니다.'},
+  {t:'effect',fn:'doStepKill',from:'tgt'},
+  {t:'sleep'}]},
+assassin:{other:[
+  {t:'note',text:'게임 중 단 1회 발동. 이미 소진했다면 깨울 필요 없습니다. 깨워서 발동 여부를 손짓으로 확인하고, 미발동이면 그냥 재우세요.'},
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'암살자가 노린 대상(발동 시에만)',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doStepKill',from:'tgt'},
+  {t:'note',text:'암살자의 살해는 모든 보호·면역(여관 주인·찻집 여인·어릿광대·멀쩡한 선원 등)을 관통합니다 — 다른 이유로 살아남았다면 수동으로 사망 처리하세요. 발동했다면 밤 패널에서 ✔소진을 기록합니다.'},
+  {t:'sleep'}]},
+godfather:{first:[
+  {t:'wake'},
+  {t:'pick-character',pool:'inplay-outsider',n:4,label:'게임에 있는 외지인 전부 선택',storeAs:'outs'},
+  {t:'show-tokens',from:'outs',caption:'이 외지인들이 게임에 있습니다'},
+  {t:'note',text:'외지인이 낮에 죽은 날 밤에만 대부가 다시 깨어납니다 — 낮 사망 여부를 매일 체크하세요.'},
+  {t:'sleep'}],
+ other:[
+  {t:'note',text:'오늘 낮에 외지인이 죽었을 때만 진행하세요(처형 등 낮 사망만 해당 — 밤 사망은 발동 없음). 아니면 여기서 닫으세요.'},
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'대부가 지목한 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doStepKill',from:'tgt'},
+  {t:'sleep'}]},
+gossip:{other:[
+  {t:'note',text:'오늘 낮 험담꾼의 공개 험담이 참이었을 때만 진행합니다 — 험담꾼은 깨우지 않습니다. 죽을 사람은 사회자가 선택합니다(균형 고려). 험담꾼이 중독이면 참이어도 사망 없음.'},
+  {t:'pick-player',n:1,who:'st',label:'오늘 밤 죽을 사람(사회자 선택)',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doStepKill',from:'tgt'}]},
+professor:{other:[
+  {t:'note',text:'게임 중 단 1회 발동. 발동 의사가 있을 때만 깨우고, 이미 소진했다면 깨우지 않습니다.'},
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'교수가 지목한 죽은 플레이어',filter:'dead',storeAs:'tgt'},
+  {t:'note',text:'대상이 주민이면 그리모어에서 소생 처리하고 새벽에 공표하세요. 주민이 아니면 아무 일도 없습니다. 교수가 중독이면 주민이어도 소생 실패. 어느 쪽이든 밤 패널에서 ✔소진을 기록합니다.'},
+  {t:'sleep'}]},
+tinker:{other:[
+  {t:'note',text:'땜장이는 깨우지 않습니다. 재량 판정: 이 밤에 땜장이를 죽일 수 있습니다 — 죽이기로 했다면 그리모어에서 사망 처리하세요. 낮에도 죽일 수 있으니 균형과 서사를 고려해 결정합니다.'}]},
+moonchild:{other:[
+  {t:'note',text:'달의 자손이 오늘 죽으면서 1명을 지목했을 때만 진행합니다(본인은 이미 죽었으므로 깨우지 않음). 중독 상태로 죽었다면 발동 없음.'},
+  {t:'pick-player',n:1,who:'st',label:'달의 자손이 지목한 대상',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'대상이 선하면 아래 판정을 실행해 사망 처리하고, 악하면 실행하지 않고 다음으로 넘어가세요.'},
+  {t:'effect',fn:'doStepKill',from:'tgt'}]},
+grandmother:{first:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'st',label:'손주로 지정할 선한 플레이어',filter:'alive',storeAs:'gc'},
+  {t:'pick-character',pool:'any',label:'손주의 실제 캐릭터',storeAs:'tok'},
+  {t:'show-players',from:'gc',caption:'이 사람이 당신의 손주입니다'},
+  {t:'show-token',from:'tok',caption:'손주의 캐릭터'},
+  {t:'note',text:'🧒손주 토큰을 그리모어에 유지하세요 — 악마가 손주를 죽이면 할머니도 함께 죽습니다(처형·기타 사망은 무관, 할머니가 중독이면 연동 없음).'},
+  {t:'sleep'}],
+ other:[
+  {t:'note',text:'할머니는 깨우지 않습니다. 오늘 밤 악마가 손주를 죽였다면 할머니도 함께 사망 처리하세요(그리모어). 할머니가 중독 상태면 연동 사망은 일어나지 않습니다.'}]},
+chambermaid:{first:[
+  {t:'wake'},
+  {t:'pick-player',n:2,who:'player',label:'객실 청소부가 살펴볼 생존자 2명(자신 제외)',filter:'alive-not-self',storeAs:'pair'},
+  {t:'show-number',caption:'오늘 밤 능력으로 깨어난 수'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'pick-player',n:2,who:'player',label:'오늘 밤 살펴볼 생존자 2명(자신 제외)',filter:'alive-not-self',storeAs:'pair'},
+  {t:'show-number',caption:'오늘 밤 능력으로 깨어난 수'},
+  {t:'sleep'}]},
+});
+</script>
+
+<script>
+/* ══════════════════ SV(화단에 꽃피운 이단) 밤 위저드 씬 + 징크스 DB ══════════════════
+   별도 블록 — 기존 코드는 수정하지 않고 Object.assign / 함수 래핑으로만 확장. 문구 전부 자체 작성. */
+
+/* SV용 제안 계산기 (WIZ_SUGGEST 확장) */
+Object.assign(WIZ_SUGGEST,{
+  oracleDeadEvil(){ const n=S.players.filter(p=>!p.alive&&isEvil(p)).length;
+    return {v:n, note:'사망자 중 악 진영 수(실제 집계 — 보르톡스/중독이면 반드시 다른 수)'}; },
+  seamstressSame(){ const pair=(wiz.vars.pair||[]).map(playerOf).filter(Boolean);
+    if(pair.length<2) return {v:'?', note:'두 명이 아직 선택되지 않음'};
+    const same=isEvil(pair[0])===isEvil(pair[1]);
+    return {v:same?'예':'아니오', note:'실제 진영 비교(보르톡스/중독이면 반드시 거짓으로)'}; },
+});
+
+/* SV 21종 씬 */
+Object.assign(NIGHT_FLOW,{
+philosopher:{first:[
+  {t:'wake',text:'발동할지 물어보세요 — 1회성이므로 미발동이면 그대로 재웁니다.'},
+  {t:'note',text:'발동하지 않으면 "완료"로 닫고 재우세요. 발동하면 다음 화면에서 철학자가 고른 캐릭터를 선택합니다.'},
+  {t:'pick-character',pool:'any',label:'철학자가 선택한 캐릭터(선한 캐릭터만 유효)',storeAs:'gain'},
+  {t:'note',text:'철학자는 지금부터 그 능력을 가집니다. ① 같은 캐릭터가 게임에 있으면 그 원 보유자에게 🍺영구 취함 토큰 ② 이후 밤에는 획득 캐릭터의 순서 위치에서 철학자를 깨우세요(밤 순서 수동 관리) ③ 획득 내용을 그리모어 메모에 기록.'},
+  {t:'sleep'}],
+ other:[
+  {t:'note',text:'아직 미발동이라면 깨워 발동 의사만 확인하세요(발동 시 첫날 밤과 동일하게 캐릭터 선택). 이미 발동했다면 이 단계가 아니라 획득한 캐릭터의 밤 순서에서 그 능력으로 진행합니다.'},
+  {t:'wake',text:'발동 의사 확인용 — 미발동 유지 시 바로 재우세요.'},
+  {t:'pick-character',pool:'any',label:'(발동하는 경우만) 선택한 캐릭터',storeAs:'gain'},
+  {t:'note',text:'발동했다면: 원 보유자 🍺영구 취함 + 이후 밤 순서 수동 관리 + 그리모어 메모.'},
+  {t:'sleep'}]},
+snakecharmer:{first:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'뱀 조련사가 지목한 생존자',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'지목 대상이 악마가 아니면 아무 일도 없습니다 — 그대로 재우세요. 악마라면 스왑(강제, 재량 아님): ① 그리모어에서 두 사람의 캐릭터·진영을 맞바꿉니다 ② 각각 조용히 깨워 새 캐릭터 토큰을 보여줍니다 ③ 새 뱀 조련사(전 악마)에게 ☠영구 중독 토큰 ④ 이후 밤 순서를 새 배치 기준으로 재확인. 단, 뱀 조련사가 중독/취함 상태로 지목했다면 스왑은 불발입니다.'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'뱀 조련사가 지목한 생존자',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'악마 지목 시 스왑(강제): ① 그리모어에서 캐릭터·진영 교체 ② 각각 깨워 새 토큰 안내 ③ 새 뱀 조련사(전 악마) ☠영구 중독 ④ 밤 순서 재확인. 오작동 상태의 지목이면 불발.'},
+  {t:'sleep'}]},
+eviltwin:{first:[
+  {t:'note',text:'사악한 쌍둥이와 선한 쌍둥이(반대 진영 1명, 셋업 때 지정)를 동시에 깨우세요.'},
+  {t:'pick-player',n:1,who:'st',label:'선한 쌍둥이로 지정한 플레이어',filter:'alive',storeAs:'twin'},
+  {t:'show-players',from:'twin',caption:'서로가 쌍둥이임을 확인시키고, 각자의 캐릭터 토큰도 서로에게 보여주세요'},
+  {t:'note',text:'그리모어에 쌍둥이 쌍을 표시하세요. 낮 판정 리마인드: 선한 쌍둥이 처형=즉시 악 승리 / 둘 다 살아있는 동안엔 선이 승리할 수 없음(사악한 쌍둥이 중독 시 제약 해제).'},
+  {t:'sleep',text:'둘 다 재우세요.'}]},
+witch:{first:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'마녀가 저주할 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doCurse',from:'tgt'},
+  {t:'note',text:'내일 저주받은 자가 "지명"하는 순간 즉시 사망합니다(지명 자체는 유효). 마녀가 중독 상태면 저주는 불발로 처리하세요.'},
+  {t:'sleep'}],
+ other:[
+  {t:'note',text:'⚠ 생존자가 3명이면 마녀의 능력은 사라진 상태입니다 — 이 경우 깨우지 말고 닫으세요. 생존 4명 이상일 때만 진행합니다.'},
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'오늘 밤의 새 저주 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doCurse',from:'tgt'},
+  {t:'sleep'}]},
+cerenovus:{first:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'광기에 빠뜨릴 대상',filter:'alive',storeAs:'tgt'},
+  {t:'pick-character',pool:'townsfolk',label:'광기로 강요할 선한 캐릭터',storeAs:'madchar'},
+  {t:'effect',fn:'doMad',from:'tgt'},
+  {t:'note',text:'대상을 깨워 "내일 하루, 자신이 그 캐릭터라고 미친 듯이 주장해야 한다"고 알려주세요. 광기 캐릭터가 무엇인지 반드시 그리모어 메모에 적어 두세요 — 위반 시 재량 처형 가능(경고성 관용도 가능).'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'오늘 밤의 새 광기 대상',filter:'alive',storeAs:'tgt'},
+  {t:'pick-character',pool:'townsfolk',label:'광기로 강요할 선한 캐릭터',storeAs:'madchar'},
+  {t:'effect',fn:'doMad',from:'tgt'},
+  {t:'note',text:'대상을 깨워 광기 내용을 알려주고, 광기 캐릭터를 그리모어 메모에 갱신하세요.'},
+  {t:'sleep'}]},
+clockmaker:{first:[
+  {t:'wake'},
+  {t:'show-number',caption:'악마↔최근접 하수인 좌석 거리'},
+  {t:'note',text:'거리는 짧은 쪽 방향의 좌석 칸 수입니다. 시계공이 중독이거나 보르톡스 게임이면 반드시 틀린 수를 보여주세요.'},
+  {t:'sleep'}]},
+dreamer:{first:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'꿈꾸는 자가 지목한 대상(자신 제외)',filter:'alive-not-self',storeAs:'tgt'},
+  {t:'pick-character',pool:'any',label:'보여줄 [선한 캐릭터] 토큰 — 대상이 선이면 이쪽이 진짜 후보',storeAs:'goodTok'},
+  {t:'pick-character',pool:'any',label:'보여줄 [악한 캐릭터] 토큰 — 대상이 악이면 이쪽이 진짜 후보',storeAs:'evilTok'},
+  {t:'show-token',from:'goodTok',caption:'이 캐릭터이거나—'},
+  {t:'show-token',from:'evilTok',caption:'—이 캐릭터입니다 (둘 중 하나가 진짜)'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'꿈꾸는 자가 지목한 대상(자신 제외)',filter:'alive-not-self',storeAs:'tgt'},
+  {t:'pick-character',pool:'any',label:'보여줄 [선한 캐릭터] 토큰',storeAs:'goodTok'},
+  {t:'pick-character',pool:'any',label:'보여줄 [악한 캐릭터] 토큰',storeAs:'evilTok'},
+  {t:'show-token',from:'goodTok',caption:'이 캐릭터이거나—'},
+  {t:'show-token',from:'evilTok',caption:'—이 캐릭터입니다 (둘 중 하나가 진짜)'},
+  {t:'sleep'}]},
+seamstress:{first:[
+  {t:'wake',text:'1회성 발동 여부를 물어보세요 — 미발동이면 그대로 재웁니다.'},
+  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외)',filter:'any',storeAs:'pair'},
+  {t:'show-answer',options:['예','아니오'],suggest:'seamstressSame',caption:'두 명이 같은 진영인가'},
+  {t:'note',text:'발동 소진을 그리모어에 표시하세요.'},
+  {t:'sleep'}],
+ other:[
+  {t:'note',text:'이미 발동했다면 깨우지 않습니다. 미발동이면 깨워 발동 의사를 확인하세요.'},
+  {t:'wake'},
+  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외)',filter:'any',storeAs:'pair'},
+  {t:'show-answer',options:['예','아니오'],suggest:'seamstressSame',caption:'두 명이 같은 진영인가'},
+  {t:'note',text:'발동 소진을 그리모어에 표시하세요.'},
+  {t:'sleep'}]},
+mathematician:{first:[
+  {t:'wake'},
+  {t:'show-number',caption:'오늘 오작동한 능력 수'},
+  {t:'note',text:'집계 기준(중독·취함 등으로 능력이 규칙대로 작동하지 않은 플레이어 수)을 게임 내내 일관되게 유지하세요. 수학자 본인이 오작동이면 거짓 수.'},
+  {t:'sleep'}],
+ other:[
+  {t:'wake'},
+  {t:'show-number',caption:'오늘 오작동한 능력 수'},
+  {t:'sleep'}]},
+pithag:{other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'마귀할멈이 지목한 대상',filter:'alive',storeAs:'tgt'},
+  {t:'pick-character',pool:'any',label:'마귀할멈이 지정한 캐릭터',storeAs:'newchar'},
+  {t:'note',text:'지정 캐릭터가 이미 게임에 있으면 아무 일도 없습니다(불발). 게임에 없는 캐릭터라면: ① 대상을 깨워 새 캐릭터 토큰을 보여주고 ② 그리모어에서 캐릭터를 교체 ③ 밤 순서를 재계산하세요. 새 악마를 만들었다면 오늘 밤 누가 죽는지는 전적으로 사회자 재량입니다(기존 악마를 죽게 할 수도 있음).'},
+  {t:'sleep'}]},
+fanggu:{other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'팡 구가 공격할 대상',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'⚠ 대상이 외지인이고 아직 점프를 안 썼다면(게임당 1회): 아래 판정을 실행하지 말고 수동 처리 — ① 대상은 죽지 않고 악한 팡 구로 전향(그리모어 교체) ② 기존 팡 구는 사망 처리 ③ 점프 사용을 표시. 선한 팀에는 그냥 밤 사망 1명처럼 보입니다. 그 외의 경우는 아래 판정 실행.'},
+  {t:'effect',fn:'doStepKill',from:'tgt'},
+  {t:'sleep'}]},
+nodashii:{other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'노 다시가 공격할 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doStepKill',from:'tgt'},
+  {t:'note',text:'살해와 별개로 노 다시 양옆의 최근접 주민 이웃 2명은 상시 중독입니다(외지인은 건너뜀) — 좌석·사망 변동 시 재계산해 ☠ 표시를 갱신하세요.'},
+  {t:'sleep'}]},
+vortox:{other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'보르톡스가 공격할 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doStepKill',from:'tgt'},
+  {t:'note',text:'자기 점검: 이 게임에서 주민이 받는 정보는 전부 "반드시 거짓"이어야 합니다(중독의 "거짓 가능"과 다름). 그리고 낮에 처형이 없으면 즉시 악 승리 — 매일 낮 종료 때 확인하세요.'},
+  {t:'sleep'}]},
+vigormortis:{other:[
+  {t:'wake'},
+  {t:'pick-player',n:1,who:'player',label:'비고르모르티스가 공격할 대상',filter:'alive',storeAs:'tgt'},
+  {t:'effect',fn:'doStepKill',from:'tgt'},
+  {t:'note',text:'죽인 대상이 하수인이라면: ① 그 하수인의 능력은 죽어서도 계속 작동 — 밤에도 계속 깨우세요(마녀 등) ② 그 하수인의 최근접 주민 이웃 1명에게 ☠영구 중독 토큰. 유지 하수인·중독 이웃을 그리모어에 표시하세요.'},
+  {t:'sleep'}]},
+barber:{other:[
+  {t:'note',text:'이발사가 오늘 죽었을 때만 진행합니다. 악마를 깨워 두 캐릭터를 맞바꿀지 물어보세요(스왑 안 하면 그대로 닫기).'},
+  {t:'pick-player',n:2,who:'player',label:'악마가 맞바꿀 두 명',filter:'any',storeAs:'pair'},
+  {t:'note',text:'두 플레이어의 캐릭터를 서로 교체하고 각각 조용히 깨워 새 캐릭터 토큰을 보여주세요. 악마 자신의 캐릭터는 바꿀 수 없습니다. 스왑 후 그리모어 전면 갱신 + 밤 순서 재계산.'},
+  {t:'sleep',text:'관련자 전원을 재우세요.'}]},
+sweetheart:{other:[
+  {t:'note',text:'사랑꾼이 죽었을 때 1회 발동합니다(플레이어는 깨우지 않음). 이후 계속 취하게 만들 1명을 사회자가 고릅니다.'},
+  {t:'pick-player',n:1,who:'st',label:'계속 취하게 할 대상(사회자 선택)',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'선택한 대상에게 🍺영구 취함 토큰을 그리모어에 표시하세요. 선택은 비공개 — 정보 캐릭터를 고르면 교란이 강력합니다.'}]},
+sage:{other:[
+  {t:'note',text:'현자가 오늘 밤 "악마에게" 죽었을 때만 깨웁니다(처형·기타 사망은 발동 없음).'},
+  {t:'wake'},
+  {t:'pick-player',n:2,who:'st',label:'가리킬 두 명(하나는 악마, 하나는 아무나)',filter:'any',storeAs:'pair'},
+  {t:'show-players',from:'pair',caption:'이 둘 중 하나가 악마입니다'},
+  {t:'note',text:'현자가 중독 상태로 죽었다면 악마가 없는 거짓 쌍도 가능합니다.'},
+  {t:'sleep'}]},
+flowergirl:{other:[
+  {t:'wake'},
+  {t:'show-answer',options:['예','아니오'],caption:'오늘 낮 악마가 투표했는가'},
+  {t:'note',text:'낮 투표 기록에서 악마의 거수 여부를 확인해 답하세요. 중독/보르톡스면 반드시 거짓으로.'},
+  {t:'sleep'}]},
+towncrier:{other:[
+  {t:'wake'},
+  {t:'show-answer',options:['예','아니오'],caption:'오늘 낮 하수인이 지명했는가'},
+  {t:'sleep'}]},
+oracle:{other:[
+  {t:'wake'},
+  {t:'show-number',suggest:'oracleDeadEvil',caption:'죽은 플레이어 중 악한 수'},
+  {t:'sleep'}]},
+juggler:{other:[
+  {t:'note',text:'두 번째 밤에만, 그리고 곡예사가 첫 낮에 공개 추측(최대 5명)을 했을 때만 진행합니다. 기록해 둔 추측 내용을 먼저 확인하세요.'},
+  {t:'wake'},
+  {t:'show-number',caption:'첫 낮 추측 중 맞힌 수'},
+  {t:'sleep'}]},
+});
+
+/* ══ 징크스 데이터베이스 ══
+   구현된 72캐릭터+여행자 15종 사이에 성립하는 공식 징크스만 수록.
+   3대 기본 스크립트 내부 조합의 공식 징크스는 원래 극소수 — 확실한 것만 담고,
+   불확실한 것은 넣지 않는다(confidence:'check'는 위키 재확인 필요 표시). */
+const JINXES=[
+ {a:'fanggu',b:'scarletwoman',
+  rule:'팡 구가 외지인 점프로 죽는 경우(대상이 새 팡 구가 되는 경우), 탕녀는 팡 구를 계승하지 않는다.',
+  confidence:'high'},
+ {a:'chambermaid',b:'mathematician',
+  rule:'객실 청소부가 수학자를 선택하면, 실제 밤 순서상 수학자가 나중에 깨더라도 "오늘 밤 깨어나는지" 여부를 정확히 반영해 답한다.',
+  confidence:'high'},
+ {a:'lunatic',b:'mathematician',
+  rule:'광인이 실제 악마의 공격 대상과 다른 대상을 선택하면, 수학자는 그 사실(오작동 1건)을 집계에 반영해 알게 된다.',
+  confidence:'high'},
+];
+function activeJinxes(){
+  const ids=new Set(S.players.map(p=>p.charId).filter(Boolean));
+  return JINXES.filter(j=>ids.has(j.a)&&ids.has(j.b));
+}
+/* buildChecklist 래핑(원본 미수정) — 성립 징크스를 체크리스트에 편입 */
+const _origBuild=buildChecklist;
+buildChecklist=function(){
+  const items=_origBuild();
+  activeJinxes().forEach(j=>{
+    const a=charOf(j.a), b=charOf(j.b);
+    const txt=`${a?a.ko:j.a} ↔ ${b?b.ko:j.b}: ${j.rule}`+(j.confidence==='check'?' (⚠ 공식 위키 확인 필요)':'');
+    items.push({group:'징크스', src:'징크스', txt, key:'징크스|'+j.a+'|'+j.b});
+  });
+  return items;
+};
+</script>
