@@ -1,4 +1,5 @@
 <title>티르소스</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
 :root{
@@ -42,7 +43,7 @@
   color-scheme:light;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'Noto Sans KR',-apple-system,'Apple SD Gothic Neo',sans-serif;font-size:15px;line-height:1.6}
+body{margin:0;-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans KR',-apple-system,'Apple SD Gothic Neo',sans-serif;font-size:15px;line-height:1.6}
 h1,h2,h3,h4,.serif{font-family:'Gowun Batang','Noto Serif KR',serif}
 button{font-family:inherit;font-size:14px;cursor:pointer;border:1px solid var(--line);background:var(--raised);color:var(--text);border-radius:8px;padding:7px 14px;transition:border-color .15s, background .15s}
 button:hover{border-color:var(--accent)}
@@ -83,9 +84,51 @@ textarea{width:100%;resize:vertical}
 main{padding:18px 18px 90px;min-width:0}
 @media (max-width:880px){
   #layout{grid-template-columns:1fr}
-  #sidenav{position:static;flex-direction:row;overflow-x:auto;padding:6px 10px;border-bottom:1px solid var(--line)}
-  #sidenav button{width:auto;white-space:nowrap;padding:7px 12px}
-  #sidenav button.active{box-shadow:inset 0 -3px 0 var(--primary)}
+  /* teeroz식 하단 고정 탭바 */
+  #sidenav{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:70;flex-direction:row;justify-content:space-around;gap:0;
+    padding:6px 4px calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(0,0,0,.35)}
+  #sidenav button{flex-direction:column;gap:2px;width:auto;flex:1;padding:6px 2px;font-size:11px;white-space:nowrap;border-radius:10px;align-items:center}
+  #sidenav button .icn{width:auto;font-size:20px;line-height:1.2}
+  #sidenav button.active{box-shadow:none;background:var(--primary-soft)}
+  main{padding:12px 12px calc(96px + env(safe-area-inset-bottom,0px))}
+  /* 상단바 슬림 */
+  #topbar .inner{padding:8px 12px;gap:8px}
+  #brand h1{font-size:18px}
+  #brand .sub{display:none}
+  #themebtn{margin-left:auto}
+  #quickstats{order:9;margin-left:0;width:100%;overflow-x:auto;flex-wrap:nowrap;gap:6px;scrollbar-width:none}
+  #quickstats::-webkit-scrollbar{display:none}
+  .qstat{white-space:nowrap;flex:0 0 auto}
+  /* 터치 타깃·카드 */
+  button{min-height:40px}
+  button.small{min-height:34px}
+  .card{padding:13px 14px;border-radius:12px}
+  .grid2{grid-template-columns:1fr}
+  .chargrid{grid-template-columns:1fr}
+  .scriptgrid{grid-template-columns:1fr}
+  /* 투표: 큰 버튼·줄맞춤 */
+  .voterow{padding:8px 4px;gap:6px}
+  .voterow .vname{min-width:84px;font-size:14px}
+  .vbtn{padding:7px 14px;font-size:14px}
+  .votemath{gap:8px}
+  .vmbox{flex:1 1 96px;padding:8px 8px}
+  .vmbox .vval{font-size:21px}
+  /* 밤 진행 */
+  .step .stephead{padding:12px 12px}
+  .step .stepname{font-size:15.5px}
+  .step .stepbody{padding:2px 12px 12px 12px}
+  /* 원탁 축소 */
+  .cseat{width:70px;margin-left:-35px;margin-top:-35px}
+  .cseat .ctoken{width:42px;height:42px;font-size:19px}
+  .cseat .cname{font-size:11px}
+  .cseat .crole{font-size:9.5px}
+  /* 시트 */
+  .sheethead h2{font-size:20px}
+  .sheettabs button{padding:10px 6px;font-size:13.5px}
+  .sheetrow{gap:10px}
+  .ctoken{flex-basis:40px;width:40px;height:40px;font-size:19px}
+  .callorder{font-size:12px}
+  .fieldrow{grid-template-columns:1fr}
 }
 /* 스크립트 카드 (teeroz 홈 스타일) */
 .scriptgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
@@ -248,9 +291,7 @@ details.morebox .inner{border-left:2px solid var(--line);padding-left:10px;margi
 .kbd{background:var(--sunken);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:12px}
 mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 3px}
 @media (max-width:640px){
-  .fieldrow{grid-template-columns:1fr}
   .fieldrow label{text-align:left}
-  .step .stepbody{padding-left:16px}
 }
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
