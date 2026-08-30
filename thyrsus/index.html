@@ -1299,7 +1299,7 @@ function renderGrim(){
   ${grimView==='cards'?`<div class="grid2">${S.players.map((p,i)=>playerCardHTML(p,i)).join('')}</div>`:''}
   </div>
   <div class="card"><h2>게임 기록</h2><div id="log">${S.log.map(l=>`<div class="lentry"><span class="lphase">[${esc(l.t)}]</span> ${esc(l.msg)}</div>`).join('')||'<span class="hint">아직 기록이 없습니다.</span>'}</div>
-  <div class="row" style="margin-top:8px"><button class="small" onclick="exportGame()">게임 JSON 내보내기</button></div></div>`;
+  <div class="row" style="margin-top:8px"><button class="small" onclick="exportGame()">게임 JSON 내보내기</button><button class="small" onclick="showReplay()">📜 전말 요약</button></div></div>`;
   const lg=$('#log'); if(lg) lg.scrollTop=lg.scrollHeight;
 }
 function playerCardHTML(p,i){
@@ -1314,6 +1314,7 @@ function playerCardHTML(p,i){
         <button class="small" onclick="addStatusUI('${p.id}','poison')">☠중독</button>
         <button class="small" onclick="addStatusUI('${p.id}','protect')">🛡보호</button>
         <button class="small" onclick="addStatusUI('${p.id}','master')">🤵주인</button>
+        <button class="small" onclick="openCharChange('${p.id}')">🔁 변경</button>
         <button class="small danger" onclick="if(confirm('${esc(p.name)} 사망 처리?')){killPlayer(playerOf('${p.id}'),'사회자 수동 처리');save();renderAll();}">사망</button>
         `:`
         <button class="small" onclick="playerOf('${p.id}').alive=true;log('${esc(p.name)} 소생(수동)');save();renderAll()">소생</button>
@@ -3403,4 +3404,238 @@ buildChecklist=function(){
   });
   return items;
 };
+</script>
+
+<script>
+/* ══════════════════ 기능팩: 캐릭터 변경 · 밤 타이머 · 리플레이 요약 · 여행자 추방 ══════════════════
+   문구 자체 작성 원칙. 기존 함수는 수정하지 않고 이 블록에서 래핑/추가만 수행합니다. */
+
+/* ── 공용 미니 오버레이 (#wizard DOM 재사용, 위저드 엔진과 별개 상태) ── */
+function ovOpen(title, bodyHTML, footHTML){
+  if(typeof wiz!=='undefined' && wiz){ toast('밤 위저드 진행 중에는 열 수 없습니다 — 위저드를 먼저 닫으세요.','warn'); return false; }
+  const w=$('#wizard'); w.hidden=false;
+  $('#wizhead').innerHTML=`<span class="wtitle">${title}</span>`;
+  $('#wizbody').onclick=null;
+  $('#wizbody').innerHTML=bodyHTML;
+  $('#wizfoot').innerHTML=footHTML;
+  return true;
+}
+function ovClose(){
+  $('#wizard').hidden=true; $('#wizbody').onclick=null;
+  $('#wizbody').innerHTML=''; $('#wizfoot').innerHTML='';
+  cc=null; ex=null; renderAll();
+}
+const ovWrap = inner => `<div style="margin:auto;max-width:680px;width:100%;text-align:left">${inner}</div>`;
+
+/* ══════════ 1) 캐릭터 변경 다이얼로그 ══════════ */
+let cc=null;
+const CC_REASONS=[
+ ['pithag','🧌 마귀할멈 변경','밤에 지목된 플레이어의 캐릭터가 다른 캐릭터로 바뀜'],
+ ['philosopher','📜 철학자','선한 캐릭터 능력 획득 — 원본 보유자가 인플레이면 그 사람은 술취함(수동 부여 권장)'],
+ ['barber','✂️ 이발사 스왑','이발사 사망 시 악마 선택으로 두 플레이어가 캐릭터를 서로 교환'],
+ ['snakecharmer','🪈 뱀 조련사 스왑','악마 적중 시 캐릭터·진영을 서로 교환 — 새 뱀 조련사는 영구 중독'],
+ ['starpass','⭐ 별 넘기기','임프가 자신을 죽여 하수인이 임프를 계승'],
+ ['other','✎ 기타','사회자 수동 조정'],
+];
+const ccSwap = k => k==='barber'||k==='snakecharmer';
+function ccReasonKo(k){ const r=CC_REASONS.find(x=>x[0]===k); return r? r[1].replace(/^[^ ]+ /,'') : (k||'기타'); }
+function openCharChange(pid){
+  cc={pid, step:1, newChar:null, reason:null, second:null, poisonNew:true};
+  ccRender();
+}
+function ccRender(){
+  if(!cc) return;
+  const p=playerOf(cc.pid); if(!p){ ovClose(); return; }
+  const title=`🔁 캐릭터 변경 — ${esc(p.name)} <span class="hint">(현재: ${esc(charName(p))})</span>`;
+  let body='', foot='';
+  const btnClose=`<button onclick="ovClose()">닫기</button>`;
+  if(cc.step===1){
+    const chars=editionChars().filter(c=>c.type!=='fabled');
+    body=`<div class="wiz-caption">새 캐릭터를 선택하세요<br><span class="hint">스왑 사유(이발사/뱀 조련사)는 상대와 서로 교환하므로 이 선택은 무시됩니다 — 건너뛰어도 됩니다.</span></div>
+    <div class="wiz-grid">${chars.map(c=>`<div class="wiz-pickbtn ${cc.newChar===c.id?'sel':''}" onclick="cc.newChar=cc.newChar==='${c.id}'?null:'${c.id}';ccRender()"><span class="pt">${glyph(c.id)}</span>${esc(c.ko)}<span class="hint">${TYPE_KO[c.type]||''}</span></div>`).join('')}</div>`;
+    foot=`${btnClose}<button class="primary" onclick="cc.step=2;ccRender()">다음 (사유 선택)</button>`;
+  } else if(cc.step===2){
+    body=`<div class="wiz-caption">변경 사유를 선택하세요</div>
+    <div class="wiz-grid">${CC_REASONS.map(([k,ko,desc])=>`<div class="wiz-pickbtn ${cc.reason===k?'sel':''}" style="max-width:210px" onclick="cc.reason='${k}';ccRender()"><span class="pt">${ko.split(' ')[0]}</span>${esc(ko.replace(/^[^ ]+ /,''))}<span class="hint" style="font-size:11.5px;line-height:1.4">${esc(desc)}</span></div>`).join('')}</div>`;
+    foot=`${btnClose}<button onclick="cc.step=1;ccRender()">이전</button><button class="primary" ${cc.reason?'':'disabled'} onclick="cc.step=ccSwap(cc.reason)?3:4;ccRender()">다음</button>`;
+  } else if(cc.step===3){
+    const others=S.players.filter(q=>q.id!==cc.pid);
+    body=`<div class="wiz-caption">캐릭터를 서로 교환할 두 번째 플레이어를 선택하세요</div>
+    <div class="wiz-grid">${others.map(q=>`<div class="wiz-pickbtn ${cc.second===q.id?'sel':''} ${q.alive?'':'dim'}" onclick="cc.second='${q.id}';ccRender()"><span class="pt">${q.alive?glyph(q.charId)||'👤':'💀'}</span>${esc(q.name)}<span class="hint">${esc(charName(q))}</span></div>`).join('')}</div>`;
+    foot=`${btnClose}<button onclick="cc.step=2;ccRender()">이전</button><button class="primary" ${cc.second?'':'disabled'} onclick="cc.step=4;ccRender()">다음</button>`;
+  } else {
+    const swap=ccSwap(cc.reason);
+    const q=swap? playerOf(cc.second): null;
+    const nc=charOf(cc.newChar);
+    let summary;
+    if(swap) summary=`<b>${esc(p.name)}</b> (${esc(charName(p))}) ↔ <b>${esc(q?.name||'?')}</b> (${esc(q?charName(q):'?')}) — 캐릭터 서로 교환`;
+    else if(nc) summary=`<b>${esc(p.name)}</b>: ${esc(charName(p))} → <b>${glyph(nc.id)} ${esc(nc.ko)}</b>`;
+    else summary='⚠ 새 캐릭터가 선택되지 않았습니다 — 1단계로 돌아가 선택하세요.';
+    body=`<div class="wiz-note" style="max-width:640px;text-align:left">
+      <div class="alertbox blue">사유: <b>${esc(ccReasonKo(cc.reason))}</b><br>${summary}</div>
+      ${cc.reason==='snakecharmer'&&swap?`<div class="alertbox"><label style="cursor:pointer"><input type="checkbox" ${cc.poisonNew?'checked':''} onchange="cc.poisonNew=this.checked"> 새로 뱀 조련사가 된 플레이어에게 ☠ 영구 중독 자동 부여</label><br><span class="hint">진영(선/악)도 함께 교환됩니다 — 그리모어 메모로 관리하세요.</span></div>`:''}
+      ${cc.reason==='starpass'?`<div class="alertbox">별 넘기기: 기존 임프의 사망 처리는 그리모어에서 별도로 진행하세요(자신 지목 시 임프 사망 → 하수인 계승).</div>`:''}
+      ${cc.reason==='philosopher'?`<div class="alertbox">원본 캐릭터 보유자가 인플레이라면 그 플레이어에게 술취함 상태를 수동 부여하세요.</div>`:''}
+      <p class="hint">세부 룰은 공식 위키를 확인하세요. 적용 시 게임 기록에 남습니다.</p>
+    </div>`;
+    foot=`${btnClose}<button onclick="cc.step=${swap?3:2};ccRender()">이전</button>
+      ${(swap? cc.second : cc.newChar)?`<button onclick="ccApply(true)">상태 토큰 정리 후 적용</button><button class="primary" onclick="ccApply(false)">상태 유지하고 적용</button>`:''}`;
+  }
+  ovOpen(title, body, foot);
+}
+function ccApply(clearStatuses){
+  if(!cc) return;
+  const p=playerOf(cc.pid); if(!p) return;
+  const reasonKo=ccReasonKo(cc.reason);
+  const clearOf=t=>{ if((t.statuses||[]).length){ t.statuses=[]; log(`${t.name}: 캐릭터 변경에 따른 상태 토큰 일괄 정리`); } };
+  if(ccSwap(cc.reason)){
+    const q=playerOf(cc.second); if(!q) return;
+    const aKo=charName(p), bKo=charName(q);
+    const a=p.charId; p.charId=q.charId; q.charId=a;
+    if(clearStatuses){ clearOf(p); clearOf(q); }
+    log(`🔁 캐릭터 교환 (${reasonKo}): ${p.name} ↔ ${q.name} — ${aKo} ↔ ${bKo}`);
+    if(cc.reason==='snakecharmer'){
+      const ns=[p,q].find(x=>x.charId==='snakecharmer');
+      if(ns && cc.poisonNew) addStatus(ns,'poison','뱀 조련사 스왑 — 영구 중독(수동 해제 전까지 유지)',null);
+      toast('뱀 조련사 스왑 적용 — 진영도 함께 교환됩니다. 세부는 공식 위키 확인.','warn');
+    } else {
+      toast('캐릭터 교환을 적용했습니다.','ok');
+    }
+  } else {
+    const nc=charOf(cc.newChar); if(!nc) return;
+    const oldKo=charName(p);
+    if(clearStatuses) clearOf(p);
+    p.charId=cc.newChar;
+    log(`🔁 캐릭터 변경 (${reasonKo}): ${p.name} — ${oldKo} → ${nc.ko}`);
+    toast(`${p.name}의 캐릭터를 ${nc.ko}(으)로 변경했습니다.`,'ok');
+  }
+  save(); ovClose();
+}
+
+/* ══════════ 2) 밤 타이머 · 페이스 가이드 (renderNight 래핑) ══════════ */
+let _ntInt=null;
+function _ntTick(){
+  if(S.phase.kind!=='night'){ const b=document.getElementById('nighttimerbar'); if(b) b.remove(); return; }
+  const sp=document.getElementById('nighttimer');
+  if(!sp || !S.stepTimer) return;
+  const s=Math.max(0, Math.floor((Date.now()-S.stepTimer.start)/1000));
+  sp.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+}
+const _origRenderNight=renderNight;
+renderNight=function(){
+  _origRenderNight();
+  if(S.phase.kind!=='night') return;   /* 밤이 아니면 타이머 바 미표시 */
+  if(!S.stepTimer || S.stepTimer.n!==S.phase.n){ S.stepTimer={start:Date.now(), n:S.phase.n}; save(); }
+  $('#pane-night').insertAdjacentHTML('afterbegin',
+    `<div id="nighttimerbar" class="card" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px">
+      <span>⏱ 밤 ${S.phase.n} 경과</span>
+      <span id="nighttimer" class="num" style="font-size:20px;font-weight:700">00:00</span>
+      <span class="hint">한 단계 30~60초 권장 — 침묵 구간도 동일 템포 유지</span>
+    </div>`);
+  _ntTick();
+  if(!_ntInt) _ntInt=setInterval(_ntTick,1000);   /* 인터벌은 1개만 — span만 갱신, renderAll 재호출 없음 */
+};
+
+/* ══════════ 3) 리플레이(전말) 요약 ══════════ */
+function _rpIcon(m){
+  if(m.startsWith('──')) return '🕰';
+  if(m.includes('처형')) return '⚔️';
+  if(m.includes('사망')||m.includes('💀')||m.includes('죽은 척')||m.includes('추방')) return '💀';
+  if(m.includes('지명')||m.includes('거수')||m.includes('찬성')||m.includes('부결')||m.includes('투표')) return '🗳️';
+  if(m.includes('부여')||m.includes('해제')||m.includes('중독')) return '🎴';
+  return '·';
+}
+function _rpGroups(){
+  const groups=[];
+  (S.log||[]).forEach(l=>{
+    const last=groups[groups.length-1];
+    if(last && last.t===l.t) last.items.push(l.msg);
+    else groups.push({t:l.t, items:[l.msg]});
+  });
+  return groups;
+}
+function _rpHead(t){ return t==='준비'? '🛠 준비' : t.startsWith('밤')? '🌙 '+t : '☀️ '+t; }
+function showReplay(){
+  const groups=_rpGroups();
+  const body=ovWrap(`
+    <div class="alertbox red">⚠ 공개용(스포일러 포함) — 게임이 끝난 뒤에만 플레이어에게 보여주세요.</div>
+    ${groups.length? groups.map(g=>`
+      <h3 style="margin:14px 0 6px">${esc(_rpHead(g.t))}</h3>
+      ${g.items.map(m=>`<div style="padding:3px 0;border-bottom:1px dotted var(--line);font-size:13.5px">${_rpIcon(m)} ${esc(m)}</div>`).join('')}
+    `).join('') : '<p class="hint">아직 기록이 없습니다.</p>'}
+    <p class="hint" style="margin-top:12px">아이콘: ⚔️처형 · 💀사망/추방 · 🗳️지명/투표 · 🎴상태 부여/해제 · 🕰페이즈 전환</p>`);
+  ovOpen('📜 전말 요약', body,
+    `<button onclick="ovClose()">닫기</button><button class="primary" onclick="copyReplay()">📋 텍스트 복사</button>`);
+}
+function copyReplay(){
+  const txt='[전말 요약 — 스포일러 포함]\n'+_rpGroups().map(g=>`\n== ${g.t} ==\n`+g.items.map(m=>' - '+m).join('\n')).join('\n');
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>toast('전말 요약 텍스트를 클립보드에 복사했습니다.','ok'),()=>prompt('복사하세요:',txt));
+  else prompt('복사하세요:',txt);
+}
+
+/* ══════════ 4) 여행자 추방(exile) 투표 (renderDay 래핑 주입) ══════════ */
+let ex=null;
+const _origRenderDay=renderDay;
+renderDay=function(){
+  _origRenderDay();
+  if(S.phase.kind!=='day') return;
+  const trav=S.players.filter(p=>p.alive && charOf(p.charId)?.type==='traveler');
+  if(!trav.length) return;   /* 여행자 인플레이(생존) 시에만 노출 */
+  const d=document.createElement('div'); d.className='card'; d.id='exilecard';
+  d.innerHTML=`<h2>여행자 추방</h2>
+    <p class="hint">추방(exile)은 처형과 별개 절차 — <b>하루 처형 횟수와 무관</b>하며 언제든 발의할 수 있습니다.
+    기준: <b>전체 플레이어(사망자 포함, 투표 토큰 불요) 과반</b> — 일반 처형(생존자 기준)과 분모가 다릅니다. 세부는 공식 위키 확인.</p>
+    <div class="row"><button onclick="startExile()">🚷 여행자 추방 투표</button></div>`;
+  $('#pane-day').appendChild(d);
+};
+function startExile(){
+  ex={step:1, tid:null, yes:[]};
+  exRender();
+}
+function exRender(){
+  if(!ex) return;
+  const btnClose=`<button onclick="ovClose()">닫기</button>`;
+  if(ex.step===1){
+    const trav=S.players.filter(p=>p.alive && charOf(p.charId)?.type==='traveler');
+    ovOpen('🚷 여행자 추방 투표',
+      `<div class="wiz-caption">추방 투표에 부칠 여행자를 선택하세요</div>
+      <div class="wiz-grid">${trav.map(p=>`<div class="wiz-pickbtn ${ex.tid===p.id?'sel':''}" onclick="ex.tid='${p.id}';exRender()"><span class="pt">${glyph(p.charId)}</span>${esc(p.name)}<span class="hint">${esc(charName(p))}</span></div>`).join('')}</div>`,
+      `${btnClose}<button class="primary" ${ex.tid?'':'disabled'} onclick="ex.step=2;exRender()">투표 개시</button>`);
+    return;
+  }
+  const t=playerOf(ex.tid);
+  const den=S.players.length, need=majority(den), yes=ex.yes.length;
+  ovOpen(`🚷 추방 투표 — ${esc(t?.name||'?')} (${esc(t?charName(t):'?')})`,
+    ovWrap(`
+      <div class="alertbox blue">추방 기준: <b>전체 플레이어 ${den}명(사망자 포함, 투표 토큰 불요)</b>의 과반 = <b>${need}표</b> 이상.<br>
+      일반 처형(생존자 ${alivePlayers().length}명 기준)과 <b>분모가 다릅니다</b>. 추방은 하루 처형 횟수와 무관합니다. 세부는 공식 위키 확인.</div>
+      <div class="votemath">
+        <div class="vmbox"><div class="vlab">찬성(분자)</div><div class="vval" style="color:var(--ok)">${yes}</div></div>
+        <div class="vmbox"><div class="vlab">전체 플레이어(분모)</div><div class="vval">${den}</div></div>
+        <div class="vmbox ${yes>=need?'pass':'fail'}"><div class="vlab">과반 기준</div><div class="vval">${need}</div></div>
+      </div>
+      <div class="wiz-grid" style="max-width:none;margin-top:10px">${S.players.map(p=>`
+        <div class="wiz-pickbtn ${ex.yes.includes(p.id)?'sel':''} ${p.alive?'':'dim'}" onclick="exToggle('${p.id}')">
+          <span class="pt">${p.alive?glyph(p.charId)||'👤':'💀'}</span>${esc(p.name)}${p.alive?'':'<span class="hint">👻 사망 — 토큰 없이 투표 가능</span>'}
+        </div>`).join('')}</div>`),
+    `${btnClose}<button onclick="ex.step=1;exRender()">이전</button><button class="primary" onclick="exClose()">${yes>=need?'✅ 과반 달성 — 추방 확정':'투표 마감 (미달 → 부결)'}</button>`);
+}
+function exToggle(pid){
+  const i=ex.yes.indexOf(pid);
+  if(i>=0) ex.yes.splice(i,1); else ex.yes.push(pid);
+  exRender();
+}
+function exClose(){
+  const t=playerOf(ex.tid); if(!t){ ovClose(); return; }
+  const den=S.players.length, need=majority(den), yes=ex.yes.length;
+  if(yes>=need){
+    log(`🚷 여행자 추방 투표: ${t.name}(${charName(t)}) — 찬성 ${yes}/${den} (기준 ${need}) 가결`);
+    killPlayer(t, '여행자 추방(exile) 가결 — 처형 횟수와 무관');
+    toast(`🚷 ${t.name} 추방 — 오늘의 처형 횟수에는 영향을 주지 않습니다.`,'warn');
+  } else {
+    log(`🚷 여행자 추방 투표: ${t.name}(${charName(t)}) — 찬성 ${yes}/${den} (기준 ${need}) 부결`);
+    toast('추방 부결 — 과반 미달.','warn');
+  }
+  save(); ovClose();
+}
 </script>
