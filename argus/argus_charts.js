@@ -21,7 +21,7 @@
     '.ag-nav{position:sticky;top:46px;z-index:12;display:flex;gap:6px;flex-wrap:wrap;background:rgba(10,14,20,.9);backdrop-filter:blur(8px);padding:8px 2px;border-bottom:1px solid var(--line,#1f2937);margin:0 -2px}',
     '.ag-nav a{font-size:11.5px;font-weight:650;color:' + DIM + ';text-decoration:none;padding:4px 11px;border:1px solid var(--line,#1f2937);border-radius:999px;transition:.12s;white-space:nowrap}',
     '.ag-nav a:hover{color:' + ACC + ';border-color:rgba(43,192,212,.5)}',
-    '.ag-nav a:focus-visible,.ag-chip:focus-visible,.ag-chain summary:focus-visible{outline:3px solid ' + ACC + ';outline-offset:2px}',
+    '.ag-nav a:focus-visible,.ag-chip:focus-visible,summary:focus-visible,.ag-plot:focus-visible{outline:3px solid ' + ACC + ';outline-offset:3px}',
     /* KPI */
     '.ag-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}',
     '@media(max-width:980px){.ag-kpis{grid-template-columns:repeat(3,1fr)}}',
@@ -100,10 +100,18 @@
     '.ag-more{text-align:center;margin-top:12px}',
     /* 플롯 공통 */
     '.ag-plot{position:relative}',
+    '.ag-plot[tabindex]{border-radius:8px}',
     '.ag-plot svg{display:block;width:100%;height:auto;overflow:visible}',
     '.ag-tip{position:absolute;pointer-events:none;opacity:0;background:rgba(8,11,17,.94);border:1px solid var(--line,#1f2937);border-radius:8px;padding:6px 9px;font-family:' + MONO + ';font-size:10.5px;line-height:1.7;color:#e6edf3;white-space:nowrap;z-index:4;transition:opacity .1s;transform:translate(-50%,0)}',
     '.ag-plot.on .ag-tip{opacity:1}',
     '.ag-chart-summary{font-size:10px;color:' + DIM + ';line-height:1.5;margin-top:4px}',
+    '.ag-data{margin-top:6px;border-top:1px solid rgba(31,41,55,.6);padding-top:5px}',
+    '.ag-data summary{cursor:pointer;color:' + DIM + ';font-size:10px;border-radius:4px;width:max-content;max-width:100%}',
+    '.ag-data .ag-scroll{max-height:320px;margin-top:6px}',
+    '.ag-data .ag-tbl{min-width:520px;font-size:10px}',
+    '.ag-data .ag-tbl caption{text-align:left;color:' + DIM + ';padding:4px 0;font-size:10px}',
+    '.ag-progress{width:92px;height:8px;accent-color:' + ACC + ';vertical-align:middle}',
+    '.ag-load{font-size:11px;color:' + DIM + ';padding:14px 0}',
     '.ag-meta{font-size:10px;color:' + DIM + ';line-height:1.55;white-space:normal;min-width:210px}',
     '.ag-status{display:inline-block;border:1px solid var(--line,#1f2937);border-radius:999px;padding:1px 6px;font-size:9px;font-weight:750}',
     '.ag-status.low{color:' + WARN + ';border-color:rgba(246,200,95,.45)}',
@@ -152,7 +160,7 @@
   }
   function fmtPct(v, dp) {
     if (!fin(v)) return '<span style="color:' + DIM + '">—</span>';
-    var c = v >= 0 ? UP : DOWN, s = v >= 0 ? '+' : '−';
+    var c = v >= 0 ? UP : DOWN, s = v >= 0 ? '↑ +' : '↓ −';
     return '<span style="color:' + c + ';font-weight:700">' + s + Math.abs(v).toFixed(dp == null ? 1 : dp) + '%</span>';
   }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -173,7 +181,7 @@
       col = v >= 0 ? UP : DOWN;
     }
     return '<div class="ag-mom" style="background:' + bg + '"><div class="h">' + lab + '</div><div class="v" style="color:' + col + '">' +
-      (fin(v) ? (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) : '—') + '</div></div>';
+      (fin(v) ? (v >= 0 ? '↑ +' : '↓ −') + Math.abs(v).toFixed(1) : '—') + '</div></div>';
   }
   function huntBadges(hunt) {
     var M = { bottom_turn: ['bt', '🎯 바닥반등'], peak_warn: ['pw', '⚠ 고점경계'], accel: ['ac', '⤴ 가속'] };
@@ -187,7 +195,7 @@
   function spark(v, w, h, color) {
     w = w || 90; h = h || 24;
     var xs = [], f = v.filter(fin);
-    if (f.length < 2) return '<svg role="img" aria-label="추세 데이터 부족" width="' + w + '" height="' + h + '"><title>추세 데이터 부족</title></svg>';
+    if (f.length < 2) return '<svg role="img" aria-label="추세 데이터 부족" width="' + w + '" height="' + h + '"><title>추세 데이터 부족</title><desc>비교 가능한 관측이 2개 미만입니다.</desc></svg>';
     var mn = Math.min.apply(null, f), mx = Math.max.apply(null, f), r = (mx - mn) || 1;
     var d = '', started = false;
     for (var i = 0; i < v.length; i++) {
@@ -265,14 +273,16 @@
       xl += '<text x="' + x(idx).toFixed(1) + '" y="' + (H - 5) + '" font-size="9.5" fill="' + DIM + '" text-anchor="' + anchor + '" font-family="ui-monospace,Menlo,monospace">' + esc(String(ds[idx]).slice(2, 7)) + '</text>';
     }
     var paths = '', marks = '';
-    view.forEach(function (r) {
+    view.forEach(function (r, rowIndex) {
       var d = '', started = false, li = -1;
       for (var i = 0; i < n; i++) {
         if (!fin(r.v[i])) { started = false; continue; }
         d += (started ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r.v[i]).toFixed(1) + ' ';
         started = true; li = i;
       }
-      paths += '<path d="' + d + '" fill="none" stroke="' + r.col + '" stroke-width="1.6" stroke-linejoin="round"/>';
+      var dash = ['', '7 3', '2 3', '9 3 2 3'][rowIndex % 4];
+      paths += '<path d="' + d + '" fill="none" stroke="' + r.col + '" stroke-width="1.6"' +
+        (dash ? ' stroke-dasharray="' + dash + '"' : '') + ' stroke-linejoin="round"/>';
       if (li >= 0 && r.hunt && r.hunt.length) {
         var hc = r.hunt.indexOf('bottom_turn') >= 0 ? UP : (r.hunt.indexOf('peak_warn') >= 0 ? DOWN : WARN);
         marks += '<circle cx="' + x(li).toFixed(1) + '" cy="' + y(r.v[li]).toFixed(1) + '" r="5.5" fill="none" stroke="' + hc + '" stroke-width="2"/>' +
@@ -285,10 +295,24 @@
       return r.name + ' —';
     }).join(', ');
     var summary = '기간 ' + ds[0] + '부터 ' + ds[ds.length - 1] + ', 최신 ' + latest + ', 전체 최저 ' + fmt(Math.min.apply(null, all)) + ', 전체 최고 ' + fmt(Math.max.apply(null, all));
-    PENDING[id] = { ds: ds, rows: view, W: W, PL: PL, PR: PR, unit: o.idx ? 'idx' : (o.unit || '') };
-    return '<div class="ag-plot" data-ch="' + id + '"><svg role="img" aria-labelledby="' + id + '-title ' + id + '-desc" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><title id="' + id + '-title">' + esc(o.title || view.map(function (r) { return r.name; }).join(', ')) + '</title><desc id="' + id + '-desc">' + esc(summary) + '</desc>' + g + paths + marks +
+    PENDING[id] = { ds: ds, rows: view, W: W, PL: PL, PR: PR,
+      unit: o.idx ? 'idx' : (o.unit || ''), summary: summary, index: n - 1 };
+    return '<div class="ag-plot" data-ch="' + id + '" tabindex="0" aria-describedby="' + id + '-summary" aria-label="차트. 좌우 화살표로 날짜별 값을 탐색합니다."><svg role="img" focusable="false" aria-labelledby="' + id + '-title ' + id + '-desc" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><title id="' + id + '-title">' + esc(o.title || view.map(function (r) { return r.name; }).join(', ')) + '</title><desc id="' + id + '-desc">' + esc(summary) + '</desc>' + g + paths + marks +
       '<line class="ag-guide" x1="0" y1="' + PT + '" x2="0" y2="' + (H - PB) + '" stroke="#e6edf3" stroke-opacity="0" stroke-width="1"/>' + xl +
-      '</svg><div class="ag-tip"></div><div class="ag-chart-summary">' + esc(summary) + '</div></div>';
+      '</svg><div class="ag-tip" role="status" aria-live="polite"></div><div class="ag-chart-summary" id="' + id + '-summary">' + esc(summary) + '</div>' +
+      '<details class="ag-data"><summary>접근 가능한 표 대체 데이터</summary><div data-table></div></details></div>';
+  }
+  function chartTable(st) {
+    var head = '<th scope="col" class="l">날짜</th>' + st.rows.map(function (r) {
+      return '<th scope="col">' + esc(r.name) + '</th>';
+    }).join('');
+    var rows = st.ds.map(function (date, i) {
+      return '<tr><th scope="row" class="l">' + esc(date) + '</th>' + st.rows.map(function (r) {
+        return '<td>' + fmt(r.v[i]) + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    return '<div class="ag-scroll"><table class="ag-tbl"><caption>' + esc(st.summary) + '</caption><thead><tr>' +
+      head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   function bindHover(root) {
     root.querySelectorAll('.ag-plot[data-ch]').forEach(function (plot) {
@@ -298,13 +322,14 @@
       CH.set(plot, st);
       delete PENDING[plot.dataset.ch];
       var svg = plot.querySelector('svg'), tip = plot.querySelector('.ag-tip'), guide = plot.querySelector('.ag-guide');
-      plot.addEventListener('mousemove', function (ev) {
+      function showAt(i) {
         var r = svg.getBoundingClientRect();
-        var fx = (ev.clientX - r.left) / r.width * st.W;
-        var frac = Math.min(1, Math.max(0, (fx - st.PL) / (st.W - st.PL - st.PR)));
-        var i = Math.round(frac * (st.ds.length - 1));
+        i = Math.min(st.ds.length - 1, Math.max(0, i));
+        st.index = i;
+        var frac = st.ds.length === 1 ? 0 : i / (st.ds.length - 1);
+        var fx = st.PL + frac * (st.W - st.PL - st.PR);
         var lines = st.rows.map(function (rw) {
-          return '<span style="color:' + rw.col + '">●</span> ' + esc(rw.name) + ' <b>' + fmt(rw.v[i]) + '</b>';
+          return '<span aria-hidden="true" style="color:' + rw.col + '">◆</span> ' + esc(rw.name) + ' <b>' + fmt(rw.v[i]) + '</b>';
         });
         tip.innerHTML = '<b>' + esc(st.ds[i]) + '</b>' + (st.unit && st.unit !== 'idx' ? ' · ' + esc(st.unit) : (st.unit === 'idx' ? ' · 지수(=100)' : '')) + '<br>' + lines.join('<br>');
         var px = (st.PL + frac * (st.W - st.PL - st.PR)) / st.W * r.width;
@@ -313,8 +338,33 @@
         guide.setAttribute('x1', fx.toFixed(1)); guide.setAttribute('x2', fx.toFixed(1));
         guide.setAttribute('stroke-opacity', '0.35');
         plot.classList.add('on');
+      }
+      plot.addEventListener('mousemove', function (ev) {
+        var r = svg.getBoundingClientRect();
+        var fx = (ev.clientX - r.left) / r.width * st.W;
+        var frac = Math.min(1, Math.max(0, (fx - st.PL) / (st.W - st.PL - st.PR)));
+        showAt(Math.round(frac * (st.ds.length - 1)));
       });
       plot.addEventListener('mouseleave', function () { plot.classList.remove('on'); guide.setAttribute('stroke-opacity', '0'); });
+      plot.addEventListener('focus', function () { showAt(st.index); });
+      plot.addEventListener('blur', function () { plot.classList.remove('on'); guide.setAttribute('stroke-opacity', '0'); });
+      plot.addEventListener('keydown', function (ev) {
+        var next = st.index;
+        if (ev.key === 'ArrowLeft') next -= 1;
+        else if (ev.key === 'ArrowRight') next += 1;
+        else if (ev.key === 'Home') next = 0;
+        else if (ev.key === 'End') next = st.ds.length - 1;
+        else if (ev.key === 'Escape') { plot.blur(); return; }
+        else return;
+        ev.preventDefault(); showAt(next);
+      });
+      var details = plot.querySelector('.ag-data');
+      details.addEventListener('toggle', function () {
+        var holder = details.querySelector('[data-table]');
+        if (details.open && !holder.dataset.ready) {
+          holder.innerHTML = chartTable(st); holder.dataset.ready = '1';
+        }
+      });
     });
   }
 
@@ -332,6 +382,70 @@
     data.spread = data.spread || { cats: [], series: [] };
     data.solar = data.solar || { series: [] };
     data.oil = data.oil || { series: [] };
+
+    var doc = el.ownerDocument, win = doc.defaultView || window;
+    var chunkCache = {}, chunkWait = {}, fallbackWait = [], fallbackLoading = false;
+    function directChunk(kind, key, source) {
+      source = source || data;
+      if (kind === 'spread') {
+        var sp = (source.spread && source.spread.series || []).filter(function (r) { return r.cat === key && Array.isArray(r.v); });
+        return sp.length ? { kind: kind, key: key, axis: (source.axes || {}).wk || [], series: sp } : null;
+      }
+      var rows = (source[kind] && source[kind].series || []).filter(function (r) { return Array.isArray(r.v); });
+      var axisKey = kind === 'solar' ? 'sol' : 'oil';
+      return rows.length ? { kind: kind, key: key, axis: (source.axes || {})[axisKey] || [], series: rows } : null;
+    }
+    function finishChunk(ref, chunk, error, source) {
+      if (chunk) chunkCache[ref] = chunk;
+      var waiting = chunkWait[ref] || [];
+      delete chunkWait[ref];
+      waiting.forEach(function (cb) { cb(chunk, error, source); });
+    }
+    function loadScript(url, done) {
+      var script = doc.createElement('script');
+      script.src = url; script.async = true; script.dataset.argusChunk = url;
+      script.onload = function () { done(null); };
+      script.onerror = function () { script.remove(); done(new Error('load failed: ' + url)); };
+      (doc.head || doc.documentElement).appendChild(script);
+    }
+    function loadFallback(done) {
+      if (win.ARGUS_FULL) { done(null, win.ARGUS_FULL); return; }
+      fallbackWait.push(done);
+      if (fallbackLoading) return;
+      fallbackLoading = true;
+      var url = (data.chunks || {}).fallback || 'data/argus_data_full.js';
+      loadScript(url, function (error) {
+        fallbackLoading = false;
+        var full = win.ARGUS_FULL;
+        var waiting = fallbackWait.slice(); fallbackWait = [];
+        waiting.forEach(function (cb) { cb(error || (!full ? new Error('fallback payload missing') : null), full); });
+      });
+    }
+    function loadChunk(kind, key, done) {
+      var ref = kind + ':' + key;
+      var direct = directChunk(kind, key);
+      if (direct) { done(direct, null, 'inline'); return; }
+      if (chunkCache[ref]) { done(chunkCache[ref], null, 'cache'); return; }
+      if (win.ARGUS_CHUNKS && win.ARGUS_CHUNKS[ref]) {
+        chunkCache[ref] = win.ARGUS_CHUNKS[ref]; done(chunkCache[ref], null, 'chunk'); return;
+      }
+      if (chunkWait[ref]) { chunkWait[ref].push(done); return; }
+      chunkWait[ref] = [done];
+      var manifest = data.chunks || {};
+      var url = kind === 'spread' ? (manifest.spread || {})[key] : manifest[kind];
+      if (!url) {
+        finishChunk(ref, null, new Error('chunk manifest missing: ' + ref), null); return;
+      }
+      loadScript(url, function (error) {
+        var loaded = win.ARGUS_CHUNKS && win.ARGUS_CHUNKS[ref];
+        if (!error && loaded) { finishChunk(ref, loaded, null, 'chunk'); return; }
+        loadFallback(function (fallbackError, full) {
+          var fallbackChunk = full ? directChunk(kind, key, full) : null;
+          finishChunk(ref, fallbackChunk, fallbackChunk ? null : (fallbackError || error),
+            fallbackChunk ? 'fallback' : null);
+        });
+      });
+    }
 
     var defCat = (function () {
       var withHunt = data.spread.series.filter(function (r) { return r.hunt && r.hunt.length; });
@@ -448,19 +562,25 @@
         '</tr></thead><tbody>' + rows.map(function (r) {
           var state = esc(r.state || 'active');
           var metaLines = [], metaA = [], metaB = [];
-          if (r.last_date) metaA.push('last ' + esc(r.last_date));
-          if (r.freq) metaA.push('freq ' + esc(r.freq));
-          if (r.freshness) metaA.push('freshness ' + esc(r.freshness));
-          if (r.n_obs != null) metaB.push('n_obs ' + esc(r.n_obs));
-          if (r.pos_window) metaB.push('pos ' + esc(r.pos_window));
-          if (r.mom_method) metaB.push('mom ' + esc(r.mom_method));
+          metaA.push('last ' + esc(r.last_date || '미상'));
+          metaA.push('freq ' + esc(r.freq || '미상'));
+          metaA.push('freshness ' + esc(r.freshness || '미상'));
+          metaB.push('n_obs ' + esc(r.n_obs == null ? '미상' : r.n_obs));
+          metaB.push('pos ' + esc(r.pos_window || '미상'));
+          metaB.push('mom ' + esc(r.mom_method || '미상'));
           if (metaA.length) metaLines.push(metaA.join(' · '));
           if (metaB.length) metaLines.push(metaB.join(' · '));
-          if (r.source) metaLines.push('source ' + esc(r.source));
+          metaLines.push('source ' + esc(r.source || '미상') + (r.basis_id ? ' · basis ' + esc(r.basis_id) : ''));
           var stateMeta = [];
           if (r.on_date) stateMeta.push('on ' + esc(r.on_date));
           if (r.confirmed_on) stateMeta.push('confirmed ' + esc(r.confirmed_on));
-          if (r.rule_version) stateMeta.push('rule ' + esc(r.rule_version));
+          stateMeta.push('rule ' + esc(r.rule_version || '미상'));
+          if (state === 'candidate') {
+            var held = Math.min(Number(r.bars_required || 2), Number(r.bars_held || 0));
+            var required = Number(r.bars_required || 2);
+            stateMeta.push('<progress class="ag-progress" max="' + required + '" value="' + held + '" aria-label="확인 진행도 ' + held + '/' + required + ' bar"></progress> ' + held + '/' + required + ' bar');
+            stateMeta.push('다음 ' + esc(r.freq || '') + ' 관측에서도 반전 조건 유지 시 확정');
+          }
           if (r.low_confidence) stateMeta.push('⚠ 표본 부족');
           return '<tr><td class="nm l">' + esc(r.name) + '<span class="c">' + esc(r.cat || '') + '</span></td>' +
             '<td class="l" style="font-family:inherit"><span class="ag-status' + (r.low_confidence ? ' low' : '') + '">' + state + '</span>' +
@@ -493,32 +613,52 @@
     }
 
     /* ── ③ 스프레드 차트 ── */
-    function rSpread() {
-      var rows = data.spread.series.filter(function (r) { return r.cat === ST.cat; });
-      if (!rows.length) { body('spread').innerHTML = '<div class="ag-empty">카테고리 데이터 없음</div>'; return; }
-      rows = rows.slice().sort(function (a, b) {
+    var spreadPanels = {};
+    function renderSpreadPanel(panel, chunk) {
+      var rows = (chunk.series || []).slice().sort(function (a, b) {
         var ha = a.hunt && a.hunt.length ? 1 : 0, hb = b.hunt && b.hunt.length ? 1 : 0;
         return hb - ha;
       });
+      if (!rows.length) { panel.innerHTML = '<div class="ag-empty">카테고리 데이터 없음</div>'; return; }
       var shown = rows.slice(0, ST.spLimit);
-      body('spread').innerHTML = '<div class="ag-grid">' + shown.map(function (r, i) {
+      panel.innerHTML = '<div class="ag-grid">' + shown.map(function (r, i) {
         var col = r.hunt && r.hunt.indexOf('bottom_turn') >= 0 ? UP : (r.hunt && r.hunt.indexOf('peak_warn') >= 0 ? DOWN : PAL[i % PAL.length]);
         return '<div class="ag-ccard"><div class="h"><span class="t">' + esc(r.name) + '</span><span class="u">' + esc(r.unit || '') + '</span>' +
           (fin(r.pos) ? '<span class="ag-badge" style="color:' + posColor(r.pos) + ';border:1px solid ' + posColor(r.pos) + '">pos ' + r.pos.toFixed(0) + '</span>' : '') +
           huntBadges(r.hunt) +
           '<span class="lv">' + fmt(r.last) + ' <span style="font-weight:500;color:' + DIM + '">' + (fin(r.m4) ? '' : '') + '</span></span></div>' +
-          chart(data.axes.wk, [{ name: r.name, v: r.v, col: col, hunt: r.hunt }], { h: 150, unit: r.unit }) + '</div>';
+          chart(chunk.axis, [{ name: r.name, v: r.v, col: col, hunt: r.hunt }], { h: 150, unit: r.unit, title: r.name }) + '</div>';
       }).join('') + '</div>' +
-        (rows.length > ST.spLimit ? '<div class="ag-more"><button class="ag-chip" data-act="spmore">▼ ' + (rows.length - ST.spLimit) + '개 더 보기</button></div>' :
-          (ST.spLimit > 24 ? '<div class="ag-more"><button class="ag-chip" data-act="spless">▲ 접기</button></div>' : ''));
-      bindHover(body('spread'));
-      var mb = body('spread').querySelector('[data-act]');
-      if (mb) mb.onclick = function () { ST.spLimit = mb.dataset.act === 'spmore' ? 999 : 24; rSpread(); };
+        (rows.length > ST.spLimit ? '<div class="ag-more"><button type="button" class="ag-chip" data-act="spmore">▼ ' + (rows.length - ST.spLimit) + '개 더 보기</button></div>' :
+          (ST.spLimit > 24 ? '<div class="ag-more"><button type="button" class="ag-chip" data-act="spless">▲ 접기</button></div>' : ''));
+      bindHover(panel);
+      var mb = panel.querySelector('[data-act]');
+      if (mb) mb.onclick = function () {
+        ST.spLimit = mb.dataset.act === 'spmore' ? 999 : 24; renderSpreadPanel(panel, chunk);
+      };
+    }
+    function rSpread() {
+      var host = body('spread');
+      Object.keys(spreadPanels).forEach(function (cat) {
+        spreadPanels[cat].hidden = cat !== ST.cat;
+      });
+      if (spreadPanels[ST.cat]) return;
+      var panel = doc.createElement('div');
+      panel.dataset.categoryPanel = ST.cat || '';
+      panel.innerHTML = '<div class="ag-load" role="status">선택 카테고리 시계열 로딩…</div>';
+      host.appendChild(panel); spreadPanels[ST.cat] = panel;
+      loadChunk('spread', ST.cat, function (chunk, error, source) {
+        panel.dataset.payloadSource = source || 'error';
+        if (error || !chunk) {
+          panel.innerHTML = '<div class="ag-empty" role="alert">시계열 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+        }
+        renderSpreadPanel(panel, chunk);
+      });
     }
 
     /* ── ④ 태양광 ── */
-    function rSolar() {
-      var ss = data.solar.series || [];
+    function renderSolar(chunk) {
+      var ss = chunk.series || [];
       if (!ss.length) { body('solar').innerHTML = '<div class="ag-empty">태양광 데이터 없음</div>'; return; }
       var ORDER = [['poly', '폴리실리콘'], ['wafer', '웨이퍼'], ['cell', '셀'], ['module', '모듈']];
       var mains = ORDER.map(function (o) {
@@ -543,27 +683,38 @@
       body('solar').innerHTML = flow +
         '<div class="ag-grid2" style="margin-top:12px">' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">단계별 가격 지수 (5년, 시작=100)</div>' +
-        chart(data.axes.sol, mainRows, { h: 200, idx: true }) +
+        chart(chunk.axis, mainRows, { h: 200, idx: true, title: '태양광 단계별 가격 지수' }) +
         '<div class="ag-lgd">' + mainRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div>' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">모듈 가격 (USD/W)</div>' +
-        chart(data.axes.sol, modRows, { h: 200, unit: 'USD/W' }) +
+        chart(chunk.axis, modRows, { h: 200, unit: 'USD/W', title: '태양광 모듈 가격' }) +
         '<div class="ag-lgd">' + modRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div></div>';
       bindHover(body('solar'));
     }
+    function rSolar() {
+      body('solar').innerHTML = '<div class="ag-load" role="status">태양광 시계열 로딩…</div>';
+      loadChunk('solar', 'solar', function (chunk, error, source) {
+        body('solar').dataset.payloadSource = source || 'error';
+        if (error || !chunk) {
+          body('solar').innerHTML = '<div class="ag-empty" role="alert">태양광 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+        }
+        renderSolar(chunk);
+      });
+    }
 
     /* ── ⑤ 유가 데크 ── */
-    function oilFrom() {
-      var ax = data.axes.oil, n = ax.length;
+    function oilFrom(axis) {
+      var n = axis.length;
       if (ST.oilRange === 'all') return 0;
       var yrs = ST.oilRange === '10y' ? 10 : ST.oilRange === '5y' ? 5 : 1;
       return Math.max(0, n - yrs * 52 - 1);
     }
-    function rOil() {
-      var ss = data.oil.series || [];
+    var oilChunk = null;
+    function renderOil(chunk) {
+      var ss = chunk.series || [];
       if (!ss.length) { body('oil').innerHTML = '<div class="ag-empty">유가 데이터 없음</div>'; return; }
       var crude = ss.filter(function (r) { return r.grp === 'crude'; });
       var crack = ss.filter(function (r) { return r.grp === 'crack'; });
-      var from = oilFrom();
+      var from = oilFrom(chunk.axis);
       var kpi = '<div class="ag-oilkpis">' + crude.concat(crack.slice(0, 2)).map(function (r) {
         return '<div class="ag-oilk"><div class="l">' + esc(r.name) + '</div><div class="v">' + fmt(r.last) +
           ' <span style="font-size:10px;color:' + DIM + '">' + esc(r.unit || '') + '</span></div><div class="w">WoW ' + fmtPct(r.wow) +
@@ -574,12 +725,23 @@
       body('oil').innerHTML = kpi +
         '<div class="ag-grid2">' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">원유 ($/bbl)</div>' +
-        chart(data.axes.oil, crudeRows, { h: 210, unit: '$/bbl', from: from }) +
+        chart(chunk.axis, crudeRows, { h: 210, unit: '$/bbl', from: from, title: '원유 가격' }) +
         '<div class="ag-lgd">' + crudeRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div>' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">정제 스프레드 — 제품-두바이 ($/bbl)</div>' +
-        chart(data.axes.oil, crackRows, { h: 210, unit: '$/bbl', from: from }) +
+        chart(chunk.axis, crackRows, { h: 210, unit: '$/bbl', from: from, title: '정제 스프레드' }) +
         '<div class="ag-lgd">' + crackRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div></div>';
       bindHover(body('oil'));
+    }
+    function rOil() {
+      if (oilChunk) { renderOil(oilChunk); return; }
+      body('oil').innerHTML = '<div class="ag-load" role="status">유가 시계열 로딩…</div>';
+      loadChunk('oil', 'oil', function (chunk, error, source) {
+        body('oil').dataset.payloadSource = source || 'error';
+        if (error || !chunk) {
+          body('oil').innerHTML = '<div class="ag-empty" role="alert">유가 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+        }
+        oilChunk = chunk; renderOil(chunk);
+      });
     }
 
     /* 칩 이벤트 (위임) */
@@ -598,6 +760,19 @@
       else if (key === 'oilRange') rOil();
     });
 
-    rHunt(); rHealth(); rBoard(); rSpread(); rSolar(); rOil();
+    function lazySection(id, render) {
+      if (!win.IntersectionObserver) { render(); return; }
+      body(id).innerHTML = '<div class="ag-load" role="status">화면에 가까워지면 시계열을 불러옵니다.</div>';
+      var target = W.querySelector('#ag-' + id);
+      var observer = new win.IntersectionObserver(function (entries) {
+        if (entries.some(function (entry) { return entry.isIntersecting; })) {
+          observer.disconnect(); render();
+        }
+      }, { rootMargin: '240px' });
+      observer.observe(target);
+    }
+
+    rHunt(); rHealth(); rBoard(); rSpread();
+    lazySection('solar', rSolar); lazySection('oil', rOil);
   };
 })();

@@ -13,6 +13,8 @@
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{background:var(--bg);color:var(--ink);font-family:var(--sans)}
+  .skip{position:absolute;left:12px;top:-48px;z-index:100;background:var(--accent);color:#071017;padding:8px 12px;border-radius:6px;font-weight:800}
+  .skip:focus{top:8px}
   header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
     padding:10px 18px;background:rgba(17,23,33,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
   header h1{font-size:16px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;white-space:nowrap}
@@ -28,23 +30,31 @@
 </style>
 </head>
 <body>
+<a class="skip" href="#argusRoot">본문으로 건너뛰기</a>
 <header>
   <h1>👁 ARGUS <span style="font-weight:600;color:var(--dim);font-size:13px">— 시클리컬 사이클 관제</span></h1>
   <span class="sub">기준일 <b id="hdAsof">—</b></span>
   <span id="mockBadge">MOCK DATA</span>
   <span class="disc">참고용 · 투자조언 아님</span>
 </header>
-<main id="argusRoot"><div class="boot">데이터 로딩…</div></main>
+<main id="argusRoot" tabindex="-1" aria-busy="true"><div class="boot" role="status">요약 데이터 로딩…</div></main>
+<noscript><div class="boot">ARGUS 차트와 표를 보려면 JavaScript를 활성화해야 합니다.</div></noscript>
 <script src="data/argus_data.js"></script>
 <script src="argus_charts.js"></script>
 <script>
 (function(){
   var D = window.ARGUS;
   var root = document.getElementById('argusRoot');
-  if (!D || !D.axes) { root.innerHTML = '<div class="boot">argus_data.js 없음 — argus_build.py 를 먼저 실행하세요.</div>'; return; }
+  if (!D || !D.axes) { root.setAttribute('aria-busy', 'false'); root.innerHTML = '<div class="boot" role="alert">argus_data.js 없음 — argus_build.py 를 먼저 실행하세요.</div>'; return; }
   document.getElementById('hdAsof').textContent = D.asof || '—';
   if (D.mock) document.getElementById('mockBadge').style.display = 'inline-block';
-  window.renderARGUS(root, D);
+  try {
+    window.renderARGUS(root, D);
+    root.setAttribute('aria-busy', 'false');
+  } catch (error) {
+    root.setAttribute('aria-busy', 'false');
+    root.innerHTML = '<div class="boot" role="alert">대시보드 렌더 실패: ' + String(error && error.message || error) + '</div>';
+  }
 })();
 </script>
 </body>
