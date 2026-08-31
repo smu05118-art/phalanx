@@ -571,6 +571,13 @@
           if (metaA.length) metaLines.push(metaA.join(' · '));
           if (metaB.length) metaLines.push(metaB.join(' · '));
           metaLines.push('source ' + esc(r.source || '미상') + (r.basis_id ? ' · basis ' + esc(r.basis_id) : ''));
+          if (r.fut && r.fut.state && r.fut.state !== 'no_data') {
+            var fu = r.fut.state === 'diverge';
+            metaLines.push('<span style="color:' + (fu ? DOWN : UP) + ';font-weight:700">'
+              + (fu ? '↓ 선물 괴리' : (r.fut.state === 'confirm_strong' ? '↑↑ 선물 2주 연속 확인' : '↑ 선물 확인'))
+              + '</span> ' + (r.fut.chg != null ? (r.fut.chg > 0 ? '+' : '') + r.fut.chg + '%' : '')
+              + ' <span class="ag-meta">(' + esc(r.fut.proxy) + ' 1주 선행 · 참고정보, 시그널 조건 아님)</span>');
+          }
           var stateMeta = [];
           if (r.on_date) stateMeta.push('on ' + esc(r.on_date));
           if (r.confirmed_on) stateMeta.push('confirmed ' + esc(r.confirmed_on));
