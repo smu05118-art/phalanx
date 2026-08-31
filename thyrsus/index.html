@@ -1107,7 +1107,10 @@ function renderSetup(){
       <button class="small danger ghost" onclick="if(confirm('전체 게임 상태를 초기화할까요?')){S=blank();save();renderAll();}">전체 초기화</button>
     </div>
     <div>${S.players.map((p,i)=>`
-      <div class="seatrow">
+      <div class="seatrow" draggable="true" data-pid="${p.id}"
+           ondragstart="seatDragStart(event,'${p.id}')" ondragover="seatDragOver(event)"
+           ondrop="seatDrop(event,'${p.id}')" ondragend="seatDragEnd(event)">
+        <span class="draghandle" title="드래그로 좌석 이동">⠿</span>
         <span class="snum">${String(i+1).padStart(2,'0')}</span>
         <input value="${esc(p.name)}" placeholder="${i+1}번 좌석 이름" oninput="renamePlayer('${p.id}',this.value)">
         <button class="small ghost" onclick="movePlayer('${p.id}',-1)" title="위로">↑</button>
@@ -1809,11 +1812,17 @@ function renderDay(){
   ${openNom? renderNomOpen(openNom) : `
   <div class="card"><h2>지명</h2>
     ${S.executedToday?'<p class="hint">오늘 처형이 이미 있었습니다 — 추가 지명·투표는 기록용으로만 진행하세요.</p>':''}
-    <div class="row">
-      <select id="nomtor"><option value="">지명자</option>${alivePlayers().map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
-      <span>→</span>
-      <select id="nomnee"><option value="">피지명자</option>${alivePlayers().map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
-      <button class="primary" onclick="newNomination()">지명 개시</button>
+    <div class="pickblock">
+      <div class="picklab">지명자 <span class="hint">${nomPick.tor?esc(playerOf(nomPick.tor)?.name||''):'선택'}</span></div>
+      <div class="pickgrid">${alivePlayers().map(p=>`<button class="pcell ${nomPick.tor===p.id?'sel':''}" onclick="setNomPick('tor','${p.id}')">
+        <span class="pcnum num">${S.players.indexOf(p)+1}</span><span class="pcname">${esc(p.name)}</span></button>`).join('')}</div>
+      <div class="picklab" style="margin-top:12px">피지명자 <span class="hint">${nomPick.nee?esc(playerOf(nomPick.nee)?.name||''):'선택'}</span></div>
+      <div class="pickgrid">${alivePlayers().map(p=>`<button class="pcell ${nomPick.nee===p.id?'sel nee':''}" onclick="setNomPick('nee','${p.id}')">
+        <span class="pcnum num">${S.players.indexOf(p)+1}</span><span class="pcname">${esc(p.name)}</span></button>`).join('')}</div>
+      <div class="bigactions" style="margin-top:14px">
+        <button class="gold" onclick="newNomination()" ${(!nomPick.tor||!nomPick.nee)?'disabled':''}>
+          ${nomPick.tor&&nomPick.nee?`${esc(playerOf(nomPick.tor)?.name||'')} → ${esc(playerOf(nomPick.nee)?.name||'')} 지명 개시`:'지명 개시'}</button>
+      </div>
     </div>
     <p class="hint">재지명 제한 없음 — 같은 사람을 다시 지명해도 됩니다(티르소스 하우스 룰).</p>
   </div>`}
@@ -1833,11 +1842,13 @@ function renderDay(){
   </div>`:''}`;
 }
 function newNomination(){
-  const tor=$('#nomtor').value, nee=$('#nomnee').value;
+  const tor=(typeof nomPick!=='undefined'&&nomPick.tor)||($('#nomtor')&&$('#nomtor').value)||'';
+  const nee=(typeof nomPick!=='undefined'&&nomPick.nee)||($('#nomnee')&&$('#nomnee').value)||'';
   if(!tor||!nee){ toast('지명자와 피지명자를 선택하세요.','warn'); return; }
   if(tor===nee){ toast('자기 자신을 지명했습니다 — 공식 규칙상 허용됩니다. 그대로 진행합니다.','warn'); }
   const nom={id:uid(), day:S.phase.n, nominator:tor, nominee:nee, hands:[], stage:1, votes:{}, closed:false, deadVoters:[]};
   S.noms.push(nom);
+  if(typeof nomPick!=='undefined'){ nomPick.tor=null; nomPick.nee=null; }
   log(`지명: ${playerOf(tor).name} → ${playerOf(nee).name}`);
   const torP0=playerOf(tor);
   if(hasStatus(torP0,'curse')){
@@ -4132,5 +4143,145 @@ function showCharInfo(cid){
   const _rw=renderWiz, _cw=closeWiz;
   renderWiz=function(){ _rw(); document.body.classList.add('wizopen'); };
   closeWiz=function(d){ _cw(d); if(document.getElementById('wizard').hidden) document.body.classList.remove('wizopen'); };
+})();
+</script>
+
+<style>
+/* ══ 7~10 보강: 탭 그리드 · 드래그 좌석 · 확인 명단 ══ */
+.pickblock{margin:6px 0}
+.picklab{font-size:13px;color:var(--muted);margin-bottom:6px}
+.pickgrid{display:flex;flex-wrap:wrap;gap:8px}
+.pcell{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:82px;padding:9px 10px;border-radius:12px;
+  background:var(--raised);border:2px solid var(--line);min-height:auto}
+.pcell .pcnum{font-size:11px;color:var(--muted)}
+.pcell .pcname{font-size:14px;font-weight:700}
+.pcell.sel{border-color:var(--accent);background:var(--accent-soft)}
+.pcell.sel.nee{border-color:var(--evil);background:var(--evil-soft)}
+.draghandle{cursor:grab;color:var(--muted);font-size:16px;user-select:none;padding:0 2px}
+.seatrow.dragging{opacity:.45}
+.seatrow.dropzone{box-shadow:inset 0 2px 0 var(--accent)}
+.rosterlist{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:680px}
+.rostercell{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px;padding:12px 10px;border-radius:14px;
+  background:var(--raised);border:2px solid var(--line);cursor:pointer}
+.rostercell .rnum{font-size:11.5px;color:var(--muted)}
+.rostercell .rname{font-size:15px;font-weight:700}
+.rostercell.done{border-color:var(--ok);background:var(--ok-soft)}
+.rostercell.done::after{content:'✓ 확인함';font-size:11px;color:var(--ok)}
+.wizextra{display:flex;gap:6px;margin-top:12px;justify-content:center}
+</style>
+
+<script>
+/* ══ 8) 지명 탭 그리드 상태 ══ */
+let nomPick={tor:null, nee:null};
+function setNomPick(k,pid){ nomPick[k] = nomPick[k]===pid? null : pid; renderAll(); }
+
+/* ══ 10) 좌석 드래그 재정렬 ══ */
+let dragPid=null;
+function seatDragStart(e,pid){ dragPid=pid; e.currentTarget.classList.add('dragging');
+  try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',pid); }catch(_){} }
+function seatDragOver(e){ e.preventDefault();
+  document.querySelectorAll('.seatrow.dropzone').forEach(el=>el.classList.remove('dropzone'));
+  e.currentTarget.classList.add('dropzone'); }
+function seatDragEnd(){ dragPid=null;
+  document.querySelectorAll('.seatrow.dragging,.seatrow.dropzone').forEach(el=>el.classList.remove('dragging','dropzone')); }
+function seatDrop(e,targetPid){
+  e.preventDefault();
+  const from=S.players.findIndex(p=>p.id===dragPid), to=S.players.findIndex(p=>p.id===targetPid);
+  seatDragEnd();
+  if(from<0||to<0||from===to) return;
+  const [m]=S.players.splice(from,1); S.players.splice(to,0,m);
+  log(`좌석 재배치: ${m.name} → ${to+1}번`); save(); renderAll();
+}
+
+/* ══ 9) 캐릭터 확인 — 명단 자율 탭 ══ */
+let revealDone={};
+function startRevealWiz(){
+  revealDone={};
+  startCustomWiz('👥 캐릭터 확인', [{t:'roster'}]);
+}
+function revealShow(pid){
+  const p=playerOf(pid); if(!p) return;
+  let cid=p.charId; if(cid==='drunk' && S.drunkMaskChar) cid=S.drunkMaskChar;
+  wiz.scenes=[{t:'reveal-char', char:cid, who:`${S.players.indexOf(p)+1}번 · ${p.name}`, _back:pid}];
+  wiz.idx=0; renderWiz();
+}
+function revealBack(pid){
+  if(pid) revealDone[pid]=true;
+  wiz.scenes=[{t:'roster'}]; wiz.idx=0; renderWiz();
+}
+(function(){
+  const _rw=renderWiz;
+  renderWiz=function(){
+    const sc=wiz&&wiz.scenes[wiz.idx];
+    if(sc && sc.t==='roster'){
+      const total=S.players.length, done=Object.keys(revealDone).length;
+      $('#wizhead').innerHTML=`<span class="wtitle">👥 캐릭터 확인</span><span class="wstep num">${done}/${total}</span>`;
+      $('#wizbody').innerHTML=`<div style="text-align:center">
+        <div class="wiz-caption">확인할 사람을 누르세요. 순서는 자유이고, 확인한 사람은 ✓ 표시됩니다.<br>
+          <b>기기를 건네기 전</b>에 다른 사람이 화면을 보지 않는지 확인하세요.</div>
+        <div class="rosterlist">${S.players.map((p,i)=>`
+          <div class="rostercell ${revealDone[p.id]?'done':''}" onclick="revealShow('${p.id}')">
+            <span class="rnum num">${i+1}</span><span class="rname">${esc(p.name)}</span></div>`).join('')}</div>
+        ${done===total?'<div class="alertbox blue" style="margin-top:18px;display:inline-block">전원 확인 완료 — 기기를 사회자에게 돌려받으세요.</div>':''}
+      </div>`;
+      $('#wizbody').onclick=null;
+      $('#wizfoot').innerHTML=`<button onclick="closeWiz(false)">닫기</button>
+        <button class="primary" onclick="closeWiz(true)">✓ 확인 종료</button>`;
+      document.body.classList.add('wizopen');
+      return;
+    }
+    if(sc && sc.t==='reveal-char' && sc._back){
+      _rw();
+      $('#wizbody').onclick=()=>revealBack(sc._back);
+      $('#wizfoot').innerHTML=`<button class="primary" onclick="revealBack('${sc._back}')">↩ 명단으로 (확인 완료)</button>`;
+      return;
+    }
+    _rw();
+  };
+})();
+
+/* ══ 7) 정보 슬롯 무작위 · 비우기 ══ */
+function wizRandomFill(){
+  const sc=wiz.scenes[wiz.idx]; if(!sc) return;
+  const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
+  if(sc.t==='pick-character'){
+    const pool=wizCharPool(sc.pool); if(!pool.length) return;
+    const n=sc.n||1, out=[]; const bag=pool.slice();
+    while(out.length<n && bag.length) out.push(bag.splice(Math.floor(Math.random()*bag.length),1)[0].id);
+    wiz.vars[sc.storeAs]=out;
+  } else if(sc.t==='pick-player'){
+    let cand=wizPlayers(sc.filter||'alive');
+    // 정보 캐릭터의 '진짜 대상'이 이미 정해졌으면 그 사람을 반드시 포함
+    const truth=wiz.vars.tok&&wiz.vars.tok[0];
+    const must=truth? S.players.find(p=>p.charId===truth && cand.includes(p)) : null;
+    const out=[]; if(must) out.push(must.id);
+    const bag=cand.filter(p=>!out.includes(p.id));
+    while(out.length<sc.n && bag.length) out.push(bag.splice(Math.floor(Math.random()*bag.length),1)[0].id);
+    // 표시 순서를 섞어 진짜 대상 위치를 감춘다
+    for(let i=out.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [out[i],out[j]]=[out[j],out[i]]; }
+    wiz.vars[sc.storeAs]=out;
+  } else return;
+  renderWiz();
+}
+function wizClearPick(){
+  const sc=wiz.scenes[wiz.idx]; if(!sc||!sc.storeAs) return;
+  delete wiz.vars[sc.storeAs]; renderWiz();
+}
+(function(){
+  const _rw=renderWiz;
+  renderWiz=function(){
+    _rw();
+    const sc=wiz&&wiz.scenes[wiz.idx];
+    if(sc && (sc.t==='pick-character'||sc.t==='pick-player') && !document.querySelector('.wizextra')){
+      const body=$('#wizbody');
+      if(body){
+        const d=document.createElement('div');
+        d.className='wizextra';
+        d.innerHTML=`<button class="small" onclick="wizRandomFill()">🎲 무작위</button>
+                     <button class="small ghost" onclick="wizClearPick()">비우기</button>`;
+        body.appendChild(d);
+      }
+    }
+  };
 })();
 </script>
