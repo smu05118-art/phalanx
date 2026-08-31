@@ -2760,7 +2760,7 @@ function renderWiz(){
   const el=$('#wizard'); el.hidden=false;
   const sc=wiz.scenes[wiz.idx];
   $('#wizhead').innerHTML=`<span class="wtitle">${wizTitle()}</span><span class="wstep num">${wiz.idx+1}/${wiz.scenes.length}</span>`;
-  const showTap = ['show-token','show-tokens','show-players','shown-number','shown-answer'].includes(sc.t) || sc._shown;
+  const showTap = ['show-token','show-tokens','show-players','reveal-char','shown-number','shown-answer'].includes(sc.t) || sc._shown;
   let html='';
   if(sc.t==='wake') html=`${wizWarnBar()}<div class="wiz-bigtoken">🌙</div><div class="wiz-note"><b>${esc(wiz.holder?wiz.holder.name:'대상')}</b>을(를) 조용히 깨우세요.${sc.text?'<br>'+esc(sc.text):''}</div>`;
   else if(sc.t==='note') html=`${wizWarnBar()}<div class="wiz-note">${esc(sc.text)}</div>`;
@@ -2775,6 +2775,15 @@ function renderWiz(){
     const n=sc.n||1;
     html=`${wizWarnBar()}<div class="wiz-caption">${esc(sc.label)} (${sel.length}/${n})</div>
     <div class="wiz-grid">${wizCharPool(sc.pool).map(c=>`<div class="wiz-pickbtn ${sel.includes(c.id)?'sel':''}" onclick="wizTogglePick('${sc.storeAs}',${n},'${c.id}')"><span class="pt">${glyph(c.id)}</span>${esc(c.ko)}</div>`).join('')}</div>`;
+  }
+  else if(sc.t==='reveal-char'){
+    const c=charOf(sc.char);
+    html=`<div class="reveal-wrap">
+      ${sc.who?`<div class="reveal-who">${esc(sc.who)}</div>`:''}
+      <h2>당신의 캐릭터</h2>
+      <div class="reveal-token"><span class="rname">${c?esc(c.ko):'?'}</span><span class="ricon">${c?glyph(c.id):'?'}</span></div>
+      <div class="reveal-ability">${c?esc(c.ability):''}</div>
+      <div class="wiz-showhint">확인했으면 화면을 탭하세요</div></div>`;
   }
   else if(sc.t==='show-token'){
     const cid=sc.char|| (wiz.vars[sc.from]||[])[0];
@@ -3637,5 +3646,191 @@ function exClose(){
     toast('추방 부결 — 과반 미달.','warn');
   }
   save(); ovClose();
+}
+</script>
+
+<style>
+/* ══ teeroz형 타운스퀘어 · 상태 뱃지 · 플레이어 모달 ══ */
+#tsq{position:relative;width:min(94vw,660px);aspect-ratio:1;margin:6px auto 30px}
+.tseat{position:absolute;width:104px;margin-left:-52px;margin-top:-52px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
+.ttoken{position:relative;width:92px;height:92px;border-radius:50%;background:#d4c9a8;border:3px solid #b8a880;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  box-shadow:0 3px 12px rgba(0,0,0,.35);transition:transform .15s, box-shadow .15s}
+.tseat:hover .ttoken{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.45)}
+.tseat.evil .ttoken{border-color:#9c3b34}
+.tseat.focus .ttoken{box-shadow:0 0 0 3px var(--accent),0 6px 18px rgba(0,0,0,.5)}
+.tseat.dead .ttoken{filter:grayscale(.85);opacity:.5}
+.ttoken .tkname{font-size:11.5px;font-weight:700;color:#3a3226;line-height:1;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ttoken .tkicon{font-size:30px;line-height:1}
+.tseat.dead .ttoken .tkicon::after{content:'💀';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:38px}
+.tseat .tkseat{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tseat .tkplayer{font-size:12.5px;font-weight:700;color:var(--text);max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbadges{position:absolute;top:-6px;right:-8px;display:flex;gap:2px}
+.tbadge{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;
+  background:var(--panel);border:1.5px solid var(--line);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.tbadge.poison{border-color:var(--evil);background:#3a1620}
+.tbadge.protect{border-color:var(--ok);background:#12301f}
+.tbadge.drunkT{border-color:var(--warn);background:#3a2c12}
+.tbadge.master,.tbadge.herring,.tbadge.custom{border-color:var(--accent);background:#332711}
+/* 플레이어 모달 */
+#pmodal{position:fixed;inset:0;z-index:95;background:rgba(8,4,16,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+#pmodal[hidden]{display:none!important}
+#pmodal .pmcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+#pmodal .pmhead{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+#pmodal .pmhead h3{margin:0;font-size:21px}
+#pmodal .pmseat{background:var(--evil-soft);border:1px solid var(--evil);color:var(--evil);border-radius:7px;padding:1px 9px;font-size:14px;font-weight:700}
+#pmodal .pmclose{margin-left:auto;background:none;border:none;color:var(--muted);font-size:22px;min-height:auto;padding:0 4px}
+#pmodal .pmbody{padding:16px 18px}
+#pmodal .pmtop{display:flex;gap:14px;align-items:flex-start}
+#pmodal .pmability{font-size:14.5px;line-height:1.7}
+#pmodal .pmsec{font-size:12px;color:var(--muted);margin:16px 0 7px;letter-spacing:.05em}
+.stchip{border-radius:999px;padding:7px 16px;font-size:13.5px;border:1px solid var(--line);background:var(--raised);color:var(--muted)}
+.stchip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:700}
+#pmodal .pmacts{display:flex;gap:10px;margin-top:18px}
+#pmodal .pmacts button{flex:1;min-height:48px;border-radius:12px;font-size:15px}
+#pmodal .pmacts .kill{background:#7d2340;border-color:#9c3b52;color:#fff}
+@media (max-width:880px){
+  #tsq{width:96vw;margin-bottom:20px}
+  .tseat{width:84px;margin-left:-42px;margin-top:-42px}
+  .ttoken{width:74px;height:74px}
+  .ttoken .tkicon{font-size:25px}
+  .ttoken .tkname{font-size:10px;max-width:66px}
+  #pmodal .pmacts{flex-direction:column}
+}
+/* 캐릭터 확인 화면 */
+.reveal-wrap{text-align:center}
+.reveal-wrap h2{font-size:26px;margin:0 0 26px}
+.reveal-token{width:190px;height:190px;border-radius:50%;background:#d4c9a8;border:3px solid #b8a880;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;margin:0 auto 24px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+.reveal-token .rname{font-size:16px;font-weight:700;color:#3a3226}
+.reveal-token .ricon{font-size:64px;line-height:1}
+.reveal-ability{font-size:16.5px;line-height:1.8;color:var(--text);max-width:620px;margin:0 auto}
+.reveal-who{font-size:14px;color:var(--muted);margin-bottom:10px}
+</style>
+<div id="pmodal" hidden></div>
+
+<script>
+/* ══ 타운스퀘어(원형) · 상태 뱃지 · 플레이어 모달 ══ */
+function seatEvil(p){ const c=charOf(p.charId); return c&&(c.type==='minion'||c.type==='demon'); }
+function badgeHTML(p){
+  const st=(p.statuses||[]).filter(s=>STATUS_DEFS[s.key]);
+  if(!st.length) return '';
+  return `<div class="tbadges">${st.slice(0,4).map(s=>{const d=STATUS_DEFS[s.key];
+    return `<span class="tbadge ${d.cls}" title="${esc(d.ko)} — ${esc(d.desc)}">${d.icon}</span>`;}).join('')}</div>`;
+}
+function renderTownSquare(opts){
+  const n=S.players.length;
+  if(!n) return '<p class="hint" style="text-align:center">플레이어를 추가하면 원탁이 나타납니다.</p>';
+  const R = n<=6? 36 : n<=9? 40 : 43;
+  const seats=S.players.map((p,i)=>{
+    const ang=(i/n)*2*Math.PI - Math.PI/2;
+    const x=50+R*Math.cos(ang), y=50+R*Math.sin(ang);
+    const c=charOf(p.charId);
+    const show = c? (p.charId==='drunk'&&S.drunkMaskChar&&opts&&opts.maskDrunk? charOf(S.drunkMaskChar): c) : null;
+    return `<div class="tseat ${seatEvil(p)?'evil':''} ${p.alive?'':'dead'} ${focusPid===p.id?'focus':''}"
+        style="left:${x}%;top:${y}%" onclick="openPlayerModal('${p.id}')">
+      <div class="ttoken">
+        <span class="tkname">${show?esc(show.ko):'미배정'}</span>
+        <span class="tkicon">${show?glyph(show.id):'👤'}</span>
+        ${badgeHTML(p)}
+      </div>
+      <div class="tkplayer">${esc(p.name)}</div>
+      <div class="tkseat num">${i+1}</div>
+    </div>`;
+  }).join('');
+  return `<div id="tsq">${seats}</div>`;
+}
+function openPlayerModal(pid){
+  focusPid=pid;
+  const p=playerOf(pid); if(!p) return;
+  const c=charOf(p.charId);
+  const i=S.players.indexOf(p);
+  const evil=seatEvil(p);
+  const toggles=[['poison','중독'],['drunkS','취함'],['protect','보호'],['master','주인'],['curse','저주'],['mad','광기']]
+    .filter(([k])=>STATUS_DEFS[k]);
+  const el=$('#pmodal'); el.hidden=false;
+  el.innerHTML=`<div class="pmcard" onclick="event.stopPropagation()">
+    <div class="pmhead">
+      <h3>${c?esc(c.ko):'미배정'}</h3><span class="pmseat num">${i+1}</span>
+      <button class="pmclose" onclick="closePlayerModal()">✕</button>
+    </div>
+    <div class="pmbody">
+      <div class="pmtop">
+        <div style="flex:0 0 auto;text-align:center">
+          <div class="ttoken" style="cursor:default">
+            <span class="tkname">${c?esc(c.ko):'—'}</span><span class="tkicon">${c?glyph(c.id):'👤'}</span>
+          </div>
+          <div class="tkseat num" style="margin-top:5px">${esc(p.name)} · ${i+1}</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="row" style="gap:6px;margin-bottom:8px">
+            ${c?`<span class="pill ${c.type}">${TYPE_KO[c.type]}</span>`:''}
+            <span class="pill ${evil?'demon':'townsfolk'}">${evil?'악':'선'}</span>
+            ${p.alive?'':'<span class="pill neutral">사망</span>'}
+            ${(p.statuses||[]).map(s=>STATUS_DEFS[s.key]?`<span class="pill warn">${STATUS_DEFS[s.key].icon} ${STATUS_DEFS[s.key].ko}</span>`:'').join('')}
+          </div>
+          <div class="pmability">${c?esc(c.ability):'캐릭터가 배정되지 않았습니다.'}</div>
+          ${p.charId==='drunk'&&S.drunkMaskChar?`<div class="alertbox" style="margin-top:10px">🎭 본인은 <b>${esc(charOf(S.drunkMaskChar).ko)}</b>라고 믿고 있습니다.</div>`:''}
+        </div>
+      </div>
+      <div class="pmsec">상태</div>
+      <div class="row" style="gap:8px">
+        ${toggles.map(([k,ko])=>`<button class="stchip ${hasStatus(p,k)?'on':''}" onclick="togglePStatus('${p.id}','${k}')">${STATUS_DEFS[k].icon} ${ko}</button>`).join('')}
+      </div>
+      <div class="pmsec">메모</div>
+      <textarea rows="2" placeholder="이 플레이어에게 준 정보 등" onchange="playerOf('${p.id}').notes=this.value;save()">${esc(p.notes||'')}</textarea>
+      <div class="pmacts">
+        <button onclick="closePlayerModal();openCharChange('${p.id}')">🔁 캐릭터 변경</button>
+        ${p.alive
+          ? `<button class="kill" onclick="if(confirm('${esc(p.name)} 사망 처리?')){killPlayer(playerOf('${p.id}'),'사회자 수동 처리');save();closePlayerModal();}">💀 사망</button>`
+          : `<button onclick="playerOf('${p.id}').alive=true;log('${esc(p.name)} 소생(수동)');save();closePlayerModal();">↩ 소생</button>`}
+      </div>
+      ${p.alive?'':`<div class="row" style="margin-top:10px">${p.deadVote!==false
+        ? `<button class="small" onclick="playerOf('${p.id}').deadVote=false;log('${esc(p.name)} 투표 토큰 소진');save();openPlayerModal('${p.id}')">👻 투표 토큰 소진</button>`
+        : `<button class="small" onclick="playerOf('${p.id}').deadVote=true;log('${esc(p.name)} 투표 토큰 복원');save();openPlayerModal('${p.id}')">👻 토큰 복원</button>`}</div>`}
+    </div></div>`;
+  el.onclick=()=>closePlayerModal();
+}
+function closePlayerModal(){ const el=$('#pmodal'); el.hidden=true; el.innerHTML=''; focusPid=null; renderAll(); }
+function togglePStatus(pid,key){
+  const p=playerOf(pid); const ph=S.phase;
+  const idx=(p.statuses||[]).findIndex(s=>s.key===key);
+  if(idx>=0){ removeStatus(p,idx); }
+  else{
+    let exp=null;
+    if(key==='poison') exp={kind:'night', n:(ph.kind==='night'?ph.n:ph.n)+1};
+    if(key==='protect') exp={kind:'day', n:ph.n};
+    if(key==='master'||key==='curse'||key==='mad'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!==key)); exp={kind:'night', n:ph.n+1}; }
+    addStatus(p,key,'사회자 수동',exp);
+  }
+  save(); openPlayerModal(pid);
+}
+/* 그리모어 원탁을 teeroz형으로 교체 + 밤/낮 화면 상단에도 표시 */
+renderCircle=function(){ return renderTownSquare(); };
+(function(){
+  const _n=renderNight, _d=renderDay;
+  function inject(paneId){
+    if(S.phase.kind==='setup'||!S.players.length) return;
+    const pane=document.getElementById(paneId); if(!pane||pane.querySelector('#tsq')) return;
+    const box=document.createElement('div');
+    box.className='card';
+    box.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:4px">
+        <h2 style="margin:0">타운스퀘어</h2>
+        <span class="hint">토큰을 누르면 상태·능력·판정</span></div>${renderTownSquare()}`;
+    pane.insertBefore(box, pane.firstChild);
+  }
+  renderNight=function(){ _n(); inject('pane-night'); };
+  renderDay=function(){ _d(); inject('pane-day'); };
+})();
+/* 캐릭터 확인: 1인 1화면(이름·토큰·능력) */
+function startRevealWiz(){
+  const scenes=[];
+  S.players.forEach((p,i)=>{
+    let cid=p.charId;
+    if(cid==='drunk' && S.drunkMaskChar) cid=S.drunkMaskChar;
+    scenes.push({t:'note', text:`📱 ${i+1}번 좌석 — ${p.name}에게 기기를 건네세요. 다른 사람이 화면을 보지 않게 주의!`});
+    scenes.push({t:'reveal-char', char:cid, who:p.name});
+  });
+  scenes.push({t:'note', text:'전원 확인 완료. 기기를 사회자에게 돌려주세요.'});
+  startCustomWiz('👥 캐릭터 확인', scenes);
 }
 </script>
