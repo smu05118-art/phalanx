@@ -2982,74 +2982,153 @@ function renderTmap(){
     if(ST.tmFoc){ ST.tmFoc=0; qi.focus(); try{qi.setSelectionRange(qi.value.length,qi.value.length);}catch(e){} } }
 }
 
-/* ==== ppi 탭 (2026-08-28 구현 — 호출부만 있고 미구현이던 탭, ui/patch.js가 자동 재노출) ==== */
-let _ppiLoaded=false;
+/* ==== ppi 탭 — 상세 차트·기간/국가/정렬·yoy_only 계약 대응 ==== */
+let _ppiLoaded=false, _ppiChart=null, _ppiGroups=[];
 function loadPpi(cb){ if(_ppiLoaded||window.PPID){_ppiLoaded=true;return cb();}
   const sc=document.createElement('script'); sc.src='data_ppi.js';
   sc.onload=function(){_ppiLoaded=true;cb();};
   sc.onerror=function(){document.getElementById('main').innerHTML='<div class="panel hint" style="padding:24px;color:var(--dim)">🏭 PPI 데이터가 아직 없습니다(월 2회 자동갱신 대기).</div>';};
   document.head.appendChild(sc); }
+function _ppiDestroy(){ if(_ppiChart){ try{_ppiChart.destroy();}catch(e){} _ppiChart=null; } }
 function _ppiEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function _ppiPct(v,lab){ if(v==null||!isFinite(v)) return '<span style="color:var(--dim)">—</span>';
+function _ppiNum(v){ var n=(v==null?NaN:Number(v)); return isFinite(n)?n:null; }
+function _ppiPct(v,lab){ v=_ppiNum(v); if(v==null) return '<span style="color:var(--dim)">—</span>';
   var c=v>0.05?'#59d0a8':(v<-0.05?'#ff6b7d':'var(--dim)');
-  return '<span style="font-family:var(--mono);font-weight:700;font-size:11px;color:'+c+'">'+(v>0?'+':'')+v.toFixed(1)+'%</span><div style="font-size:8px;color:var(--dim)">'+lab+'</div>'; }
-function _ppiChips(arr,bg,fg,cap){ arr=arr||[]; if(!arr.length) return '';
+  return '<span style="font-family:var(--mono);font-weight:700;font-size:11px;color:'+c+'">'+(v>0?'+':'')+v.toFixed(1)+'%</span><div style="font-size:8px;color:var(--dim)">'+_ppiEsc(lab)+'</div>'; }
+function _ppiChips(arr,bg,fg,cap){ arr=Array.isArray(arr)?arr:[]; if(!arr.length) return '';
   var shown=arr.slice(0,cap), more=arr.length-shown.length;
   var h=shown.map(function(k){ return '<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:5px;background:'+bg+';color:'+fg+';font-family:var(--mono);margin:1px 0">'+_ppiEsc(k)+'</span>'; }).join(' ');
   if(more>0) h+=' <span style="font-size:9px;color:var(--dim);cursor:default" title="'+_ppiEsc(arr.join(', '))+'">+'+more+'</span>';
   return h; }
-function _ppiSpark(m,color){ var ks=Object.keys(m||{}).sort().slice(-36); if(ks.length<2) return '<span style="color:var(--dim)">—</span>';
-  var vs=ks.map(function(k){return m[k];});
-  var mn=Math.min.apply(null,vs), mx=Math.max.apply(null,vs), rg=(mx-mn)||1;
-  var W=110,H=26,Pd=2;
-  var pts=vs.map(function(v,i){ return (Pd+i*(W-2*Pd)/(vs.length-1)).toFixed(1)+','+(H-Pd-(v-mn)*(H-2*Pd)/rg).toFixed(1); }).join(' ');
-  return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="display:block"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/></svg>'; }
+function _ppiCountry(c){ var x=String((c&&c.country)||'').toUpperCase();
+  if(x==='USA') x='US'; if(x==='JPN') x='JP'; if(x==='CHN') x='CN';
+  if(!x){ var s=String((c&&c.src)||'').toLowerCase(); x=s==='fred'?'US':(s==='boj'?'JP':''); }
+  return x||'OTHER'; }
+function _ppiCountryInfo(x){ return ({US:['🇺🇸','美'],JP:['🇯🇵','日'],CN:['🇨🇳','中'],OTHER:['🌐','기타']})[x]||['🌐',x]; }
+function _ppiColor(c,id){ var ps={US:['#4ea1ff','#78b7ff','#2f7fdd','#8dc9ff','#3d8bfd'],JP:['#ffbe2e','#ffd166','#e69f00','#ffe08a','#d99000'],CN:['#ff6b7d','#ff8a98','#e84c61','#ff9eaa','#d83950'],OTHER:['#b48cff','#c9a7ff','#9367df','#d6bdff','#7f52cc']};
+  var h=0, s=String(id||''); for(var i=0;i<s.length;i++) h=((h*31)+s.charCodeAt(i))>>>0;
+  var a=ps[_ppiCountry(c)]||ps.OTHER; return a[h%a.length]; }
+function _ppiShiftYm(ym,n){ var m=String(ym||'').match(/^(\d{4})-(\d{2})$/); if(!m) return '';
+  var z=(Number(m[1])*12+Number(m[2])-1)+n; return Math.floor(z/12)+'-'+String((z%12+12)%12+1).padStart(2,'0'); }
+function _ppiCleanMap(src){ var out={}; Object.keys(src||{}).forEach(function(k){ var v=_ppiNum(src[k]); if(v!=null) out[k]=v; }); return out; }
+function _ppiValues(S,mode){ S=S||{};
+  if(mode==='level') return _ppiCleanMap(S.m);
+  if(mode==='yoy'){
+    var y=_ppiCleanMap(S.yoy); if(Object.keys(y).length) return y;
+    var m=_ppiCleanMap(S.m), out={}; Object.keys(m).forEach(function(k){ var p=m[_ppiShiftYm(k,-12)]; if(p!=null&&p!==0) out[k]=(m[k]/p-1)*100; }); return out;
+  }
+  var own=_ppiCleanMap(S.mom); if(Object.keys(own).length) return own;
+  var lv=_ppiCleanMap(S.m), mo={}; Object.keys(lv).forEach(function(k){ var p=lv[_ppiShiftYm(k,-1)]; if(p!=null&&p!==0) mo[k]=(lv[k]/p-1)*100; }); return mo;
+}
+function _ppiKind(S){ return String((S&&S.kind)||'level').toLowerCase()==='yoy_only'?'yoy_only':'level'; }
+function _ppiModeOk(S,mode){ if(mode==='level'&&_ppiKind(S)==='yoy_only') return false; return Object.keys(_ppiValues(S,mode)).length>0; }
+function _ppiLatest(m){ var ks=Object.keys(m||{}).sort(); if(!ks.length) return {key:null,value:null}; var k=ks[ks.length-1]; return {key:k,value:_ppiNum(m[k])}; }
+function _ppiRangeN(r){ return ({'1Y':12,'3Y':36,'5Y':60,'10Y':120})[r]||null; }
+function _ppiRangeKeys(m,r,anchor){ var ks=Object.keys(m||{}).sort(); var n=_ppiRangeN(r); if(!n||!ks.length) return ks;
+  var end=anchor||ks[ks.length-1], cut=_ppiShiftYm(end,-n+1); return ks.filter(function(k){return k>=cut&&k<=end;}); }
+function _ppiFmt(v,mode,unit){ v=_ppiNum(v); if(v==null) return '—';
+  if(mode!=='level') return (v>0?'+':'')+v.toFixed(1)+'%';
+  var d=Math.abs(v)>=100?1:2; return v.toFixed(d)+(unit?' '+unit:''); }
+function _ppiModeLabel(mode){ return mode==='level'?'지수 레벨':(mode==='yoy'?'전년동월비':'전월비'); }
+function _ppiSpark(m,color,range){ var ks=_ppiRangeKeys(m,range||ST.ppiRange||'5Y');
+  var pts0=ks.map(function(k){return [k,_ppiNum(m[k])];}).filter(function(x){return x[1]!=null;});
+  if(pts0.length<2) return '<span style="color:var(--dim)">—</span>';
+  var vs=pts0.map(function(x){return x[1];}), mn=Math.min.apply(null,vs), mx=Math.max.apply(null,vs), rg=(mx-mn)||1;
+  var W=126,H=30,Pd=2, pts=vs.map(function(v,i){ return (Pd+i*(W-2*Pd)/(vs.length-1)).toFixed(1)+','+(H-Pd-(v-mn)*(H-2*Pd)/rg).toFixed(1); }).join(' ');
+  return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="선택 기간 추이" style="display:block"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" opacity=".95"/></svg>'; }
+function _ppiSummaryCell(label,value,sub){ return '<div class="ppi-stat"><span>'+_ppiEsc(label)+'</span><b>'+_ppiEsc(value)+'</b>'+(sub?'<small>'+_ppiEsc(sub)+'</small>':'')+'</div>'; }
+function _ppiDetail(c,cat,SER){ var S=SER[c.id]||{}, kind=_ppiKind(S), modes=[['level','지수 레벨'],['yoy','YoY%'],['mom','MoM%']];
+  if(kind==='yoy_only'&&ST.ppiMode==='level') ST.ppiMode='yoy';
+  if(!_ppiModeOk(S,ST.ppiMode)) ST.ppiMode=_ppiModeOk(S,'yoy')?'yoy':(_ppiModeOk(S,'mom')?'mom':'level');
+  ST.ppiCompare=(ST.ppiCompare||[]).filter(function(id){ var x=cat.find(function(z){return z.id===id;}); return x&&x.id!==c.id&&x.industry===c.industry&&_ppiModeOk(SER[id]||{},ST.ppiMode); }).slice(0,4);
+  var mode=ST.ppiMode, vm=_ppiValues(S,mode), lk=_ppiLatest(vm), keys=_ppiRangeKeys(vm,ST.ppiRange,lk.key), vals=keys.map(function(k){return vm[k];}).filter(function(v){return _ppiNum(v)!=null;});
+  var hi=vals.length?Math.max.apply(null,vals):null, lo=vals.length?Math.min.apply(null,vals):null;
+  var yy=_ppiLatest(_ppiValues(S,'yoy')), mm=_ppiLatest(_ppiValues(S,'mom')), ci=_ppiCountryInfo(_ppiCountry(c));
+  var stats=_ppiSummaryCell('최신 '+_ppiModeLabel(mode),_ppiFmt(lk.value,mode,mode==='level'?(c.unit||''):''),lk.key||'')+
+    _ppiSummaryCell('YoY',_ppiFmt(yy.value,'yoy'),yy.key||'')+_ppiSummaryCell('전월비',_ppiFmt(mm.value,'mom'),mm.key||'')+
+    _ppiSummaryCell('기간 최고',_ppiFmt(hi,mode,mode==='level'?(c.unit||''):''),ST.ppiRange)+_ppiSummaryCell('기간 최저',_ppiFmt(lo,mode,mode==='level'?(c.unit||''):''),ST.ppiRange);
+  var rb=['1Y','3Y','5Y','10Y','전체'].map(function(r){return '<button class="ppi-btn'+(ST.ppiRange===r?' on':'')+'" data-ppirange="'+r+'">'+r+'</button>';}).join('');
+  var mb=modes.map(function(x){ var ok=_ppiModeOk(S,x[0]), why=(kind==='yoy_only'&&x[0]==='level')?'이 시리즈는 YoY만 제공':(!ok?'해당 데이터 없음':'');
+    return '<button class="ppi-btn'+(ST.ppiMode===x[0]?' on':'')+(ok?'':' off')+'" '+(ok?'data-ppimode="'+x[0]+'"':'disabled')+' title="'+_ppiEsc(why)+'">'+x[1]+'</button>'; }).join('');
+  var cand=cat.filter(function(x){return x.id!==c.id&&x.industry===c.industry;}).sort(function(a,b){return String(a.name_ko||a.name||a.id).localeCompare(String(b.name_ko||b.name||b.id),'ko');});
+  var cmp=cand.map(function(x){ var checked=ST.ppiCompare.indexOf(x.id)>=0, ok=_ppiModeOk(SER[x.id]||{},mode), cap=ST.ppiCompare.length>=4&&!checked, xi=_ppiCountryInfo(_ppiCountry(x)), col=_ppiColor(x,x.id);
+    return '<label class="ppi-check'+(ok?'':' off')+'" title="'+(ok?'':_ppiEsc(_ppiModeLabel(mode)+' 데이터 없음'))+'"><input type="checkbox" data-ppicmp="'+_ppiEsc(x.id)+'" '+(checked?'checked ':'')+((!ok||cap)?'disabled':'')+'><i style="background:'+col+'"></i>'+xi[0]+' '+_ppiEsc(x.name_ko||x.name||x.id)+'</label>'; }).join('');
+  var notice=kind==='yoy_only'?'<div class="ppi-note">ℹ 이 시리즈는 지수 레벨이 없어 YoY 기준으로 표시됩니다.'+(_ppiModeOk(S,'mom')?' 제공된 MoM도 선택할 수 있습니다.':'')+'</div>':'';
+  return '<section class="panel ppi-detail" id="ppiDetail"><div class="ppi-detail-head"><div><div class="ppi-eyebrow">'+ci[0]+' '+ci[1]+' · '+_ppiEsc(c.industry||'미분류')+' · '+_ppiEsc(c.src||'source')+'</div><h2>'+_ppiEsc(c.name_ko||c.name||c.id)+'</h2><div class="ppi-code">'+_ppiEsc(c.code||c.id)+' · '+_ppiEsc(c.unit||(_ppiKind(S)==='yoy_only'?'%':'지수'))+'</div></div><button class="ppi-close" data-ppiclose="1" aria-label="상세 닫기">✕</button></div>'+notice+
+    '<div class="ppi-controls"><div><span>기간</span>'+rb+'</div><div><span>표시</span>'+mb+'</div></div><div class="ppi-stats">'+stats+'</div>'+
+    '<div class="ppi-chart"><canvas id="ppiDetailChart"></canvas></div><div class="ppi-compare-head"><b>같은 산업 비교</b><span>국가별 색상 · 다른 시리즈 최대 4개</span></div><div class="ppi-compare">'+(cmp||'<span style="color:var(--dim);font-size:10px">비교 가능한 같은 산업 시리즈가 없습니다.</span>')+'</div>'+
+    (c.note?'<div class="ppi-note" style="margin-top:10px">'+_ppiEsc(c.note)+'</div>':'')+'</section>';
+}
+function _ppiRows(grp,SER){ return grp.map(function(c){ var S=SER[c.id]||{}, kind=_ppiKind(S), cmode=(kind==='yoy_only'?'yoy':(ST.ppiMode||'level'));
+  if(!_ppiModeOk(S,cmode)) cmode=_ppiModeOk(S,'yoy')?'yoy':'level';
+  var lm=_ppiLatest(_ppiValues(S,kind==='yoy_only'?'yoy':'level')), yy=_ppiLatest(_ppiValues(S,'yoy')), mm=_ppiLatest(_ppiValues(S,'mom'));
+  var sm=_ppiValues(S,cmode), strk=(yy.value!=null&&yy.value>0.05)?'#59d0a8':((yy.value!=null&&yy.value<-0.05)?'#ff6b7d':'#6a6a9a');
+  var country=_ppiCountry(c), ci=_ppiCountryInfo(country), col=_ppiColor(c,c.id), src=String(c.src||country).toUpperCase();
+  var tip=_ppiEsc((c.code||'')+(c.note?' — '+c.note:'')+(c.verified?' · 검증 '+c.verified:''));
+  var latest=kind==='yoy_only'?_ppiFmt(lm.value,'yoy'):_ppiFmt(lm.value,'level','');
+  return '<tr class="ppi-row'+(ST.ppiSel===c.id?' sel':'')+'" data-ppisel="'+_ppiEsc(c.id)+'" tabindex="0">'+
+    '<td style="min-width:220px" title="'+tip+'"><i class="ppi-dot" style="background:'+col+'"></i><b>'+_ppiEsc(c.name_ko||c.name||c.id)+'</b> <span class="ppi-src">'+ci[0]+' '+_ppiEsc(src)+'</span>'+(kind==='yoy_only'?'<span class="ppi-yonly">YoY only</span>':'')+'</td>'+
+    '<td class="ppi-mono">'+latest+'<div>'+_ppiEsc(lm.key||'')+'</div></td><td>'+_ppiPct(mm.value,'MoM')+'</td><td>'+_ppiPct(yy.value,'YoY')+'</td><td>'+_ppiSpark(sm,strk,ST.ppiRange)+'</td>'+
+    '<td style="max-width:300px">'+_ppiChips(c.beneficiaries,'rgba(89,208,168,.13)','#59d0a8',5)+((c.cost_burden&&c.cost_burden.length)?'<div style="margin-top:3px">'+_ppiChips(c.cost_burden,'rgba(255,77,94,.13)','#ff6b7d',4)+'</div>':'')+'</td></tr>';
+}).join(''); }
+function _ppiTable(grp,SER){ return '<div class="panel ppi-table"><table class="tbl"><thead><tr><th>시리즈</th><th>최신</th><th>전월</th><th>전년</th><th>추이 '+_ppiEsc(ST.ppiRange)+'</th><th>매핑 <span style="color:#59d0a8">수혜</span> / <span style="color:#ff6b7d">부담</span></th></tr></thead><tbody>'+_ppiRows(grp,SER)+'</tbody></table></div>'; }
+function _ppiBindRows(root){ root.querySelectorAll('[data-ppisel]').forEach(function(el){ var open=function(){
+    var id=el.dataset.ppisel, P=window.PPID||{}, c=(P.catalog||[]).find(function(x){return x.id===id;}); if(!c) return;
+    ST.ppiSel=id; ST.ppiCompare=(ST.ppiCompare||[]).filter(function(x){ var z=(P.catalog||[]).find(function(a){return a.id===x;}); return z&&z.industry===c.industry&&x!==id; });
+    renderPpi(); var d=document.getElementById('ppiDetail'); if(d) d.scrollIntoView({behavior:'smooth',block:'start'});
+  }; el.onclick=open; el.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}}; }); }
+function _ppiMountGroup(el){ var i=Number(el.dataset.ppigroup), body=el.querySelector('[data-ppibody]'); if(!body||body.dataset.loaded==='1'||!_ppiGroups[i]) return;
+  body.innerHTML=_ppiTable(_ppiGroups[i].items,(window.PPID||{}).series||{}); body.dataset.loaded='1'; _ppiBindRows(body); }
+function _ppiChartKeys(items,range){ var all={}, end=''; items.forEach(function(x){Object.keys(x.values).forEach(function(k){all[k]=1;if(k>end)end=k;});});
+  var ks=Object.keys(all).sort(), n=_ppiRangeN(range); if(!n||!end) return ks; var cut=_ppiShiftYm(end,-n+1); return ks.filter(function(k){return k>=cut&&k<=end;}); }
+function _ppiMountChart(primary,cat,SER){ var cv=document.getElementById('ppiDetailChart'); if(!cv||!window.Chart) return;
+  var ids=[primary.id].concat(ST.ppiCompare||[]), mode=ST.ppiMode, items=[];
+  ids.forEach(function(id){ var c=cat.find(function(x){return x.id===id;}), S=SER[id]||{}; if(!c||!_ppiModeOk(S,mode)) return; items.push({c:c,values:_ppiValues(S,mode)}); });
+  var labels=_ppiChartKeys(items,ST.ppiRange), datasets=items.map(function(x,i){ var ci=_ppiCountryInfo(_ppiCountry(x.c)), color=_ppiColor(x.c,x.c.id);
+    return {type:'line',label:ci[0]+' '+(x.c.name_ko||x.c.name||x.c.id),data:labels.map(function(k){return x.values[k]==null?null:x.values[k];}),borderColor:color,backgroundColor:color+'22',borderWidth:i===0?2.4:1.7,pointRadius:0,pointHoverRadius:3,spanGaps:false,tension:.18,ppiUnit:x.c.unit||''}; });
+  _ppiChart=new Chart(cv,{type:'line',data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,normalized:true,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,labels:{color:'#8a90a8',boxWidth:12,boxHeight:2,font:{size:10},usePointStyle:false}},tooltip:{callbacks:{title:function(xs){return xs.length?xs[0].label.slice(0,4)+'년 '+Number(xs[0].label.slice(5,7))+'월':'';},label:function(x){return x.dataset.label+': '+_ppiFmt(x.parsed.y,mode,mode==='level'?x.dataset.ppiUnit:'');}}}},
+    scales:{x:{title:{display:true,text:'월',color:'#6a6a9a',font:{size:9}},ticks:{color:'#6a6a9a',maxTicksLimit:12,font:{size:9},callback:function(v){var s=this.getLabelForValue(v);return s?s.slice(0,4)+'.'+s.slice(5,7):'';}},grid:{display:false}},
+      y:{title:{display:true,text:_ppiModeLabel(mode)+(mode==='level'?'':' (%)'),color:'#6a6a9a',font:{size:9}},ticks:{color:'#6a6a9a',font:{size:9},callback:function(v){return mode==='level'?Number(v).toLocaleString('ko-KR'):v+'%';}},grid:{color:'rgba(40,40,74,.55)'}}}}});
+}
 function renderPpi(){
-  var P=window.PPID||{}; var cat=P.catalog||[]; var SER=P.series||{};
-  document.getElementById('catRow').style.display='none';
-  document.getElementById('cnt').innerHTML='';
-  var nf=cat.filter(function(c){return c.src==='fred';}).length, nb=cat.length-nf;
-  document.getElementById('crumb').innerHTML='<b>🏭 PPI — 생산자물가 레이어</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">FRED '+nf+' · BOJ CGPI '+nb+' · 기준 '+_ppiEsc(P.generated||'—')+' · 월 2회 자동갱신</span>';
-  var main=document.getElementById('main');
-  if(!cat.length){ main.innerHTML='<div class="panel hint" style="padding:24px;color:var(--dim)">🏭 PPI 카탈로그가 비어 있습니다. 파이프라인 첫 실행을 기다려 주세요.</div>'; return; }
-  ST.ppiInd=ST.ppiInd||'all';
-  var inds=[]; cat.forEach(function(c){ if(inds.indexOf(c.industry)<0) inds.push(c.industry); });
-  if(ST.ppiInd!=='all'&&inds.indexOf(ST.ppiInd)<0) ST.ppiInd='all';
-  var pills='<span class="pill'+(ST.ppiInd==='all'?' on':'')+'" data-ppind="all">전체 '+cat.length+'</span>'+
-    inds.map(function(ind){ var n=cat.filter(function(c){return c.industry===ind;}).length;
-      return '<span class="pill'+(ST.ppiInd===ind?' on':'')+'" data-ppind="'+_ppiEsc(ind)+'">'+_ppiEsc(ind)+' '+n+'</span>'; }).join('');
-  var intro='<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim);line-height:1.6">'+
-    '美 BLS PPI(FRED)·日 BOJ CGPI 55개 시리즈를 산업별로 묶고 대시보드 카드에 양방향 매핑 — '+
-    '<b style="color:#59d0a8">판가수혜</b>(생산자물가↑ = 판가·마진 순풍) vs <b style="color:#ff6b7d">비용부담</b>(수요측 원가↑). '+
-    '변화율 색: <b style="color:#59d0a8">+상승</b> · <b style="color:#ff6b7d">−하락</b> · 스파크라인 최근 36개월 지수 · 시리즈에 마우스를 올리면 코드·매핑 근거.</div>';
-  var html='';
-  inds.forEach(function(ind){ if(ST.ppiInd!=='all'&&ST.ppiInd!==ind) return;
-    var grp=cat.filter(function(c){return c.industry===ind;});
-    var rows=grp.map(function(c){
-      var S=SER[c.id]||{}; var m=S.m||{}; var ks=Object.keys(m).sort();
-      var lk=ks.length?ks[ks.length-1]:null; var lv=lk!=null?m[lk]:null;
-      var pv=ks.length>1?m[ks[ks.length-2]]:null;
-      var mom=(lv!=null&&pv)?(lv/pv-1)*100:null;
-      var yoy=(S.yoy&&lk&&S.yoy[lk]!=null)?S.yoy[lk]:null;
-      var strk=(yoy!=null&&yoy>0.05)?'#59d0a8':((yoy!=null&&yoy<-0.05)?'#ff6b7d':'#6a6a9a');
-      var badge='<span style="font-size:8.5px;font-weight:800;padding:1px 6px;border-radius:99px;border:1px solid '+(c.src==='fred'?'#3d8bfd55':'#ffbe2e55')+';color:'+(c.src==='fred'?'#3d8bfd':'#ffbe2e')+';vertical-align:1px">'+(c.src==='fred'?'FRED':'BOJ')+'</span>';
-      var tip=_ppiEsc((c.code||'')+(c.note?' — '+c.note:'')+(c.verified?' · 검증 '+c.verified:''));
-      return '<tr>'+
-        '<td style="min-width:180px" title="'+tip+'"><b style="font-size:11.5px">'+_ppiEsc(c.name_ko)+'</b> '+badge+'</td>'+
-        '<td style="font-family:var(--mono);font-size:11px;white-space:nowrap">'+(lv!=null?lv.toFixed(1):'—')+'<div style="font-size:8.5px;color:var(--dim)">'+_ppiEsc(lk||'')+'</div></td>'+
-        '<td style="white-space:nowrap">'+_ppiPct(mom,'MoM')+'</td>'+
-        '<td style="white-space:nowrap">'+_ppiPct(yoy,'YoY')+'</td>'+
-        '<td>'+_ppiSpark(m,strk)+'</td>'+
-        '<td style="max-width:280px">'+_ppiChips(c.beneficiaries,'rgba(89,208,168,.13)','#59d0a8',5)+
-          ((c.cost_burden&&c.cost_burden.length)?'<div style="margin-top:3px">'+_ppiChips(c.cost_burden,'rgba(255,77,94,.13)','#ff6b7d',4)+'</div>':'')+'</td>'+
-        '</tr>';
-    }).join('');
-    html+='<p style="margin:16px 2px 6px;font-size:13px;font-weight:700">'+_ppiEsc(ind)+' <span style="color:var(--dim);font-weight:400;font-size:11px">'+grp.length+'개 시리즈</span></p>'+
-      '<div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>시리즈</th><th>최신</th><th>전월</th><th>전년</th><th>추이 36M</th><th>매핑 <span style="color:#59d0a8">수혜</span> / <span style="color:#ff6b7d">부담</span></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
-  });
-  if(!html) html='<div class="panel hint" style="padding:24px;color:var(--dim)">해당 산업의 시리즈가 없습니다.</div>';
-  main.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px">'+pills+'</div>'+intro+html;
-  main.querySelectorAll('[data-ppind]').forEach(function(el){ el.onclick=function(){ ST.ppiInd=el.dataset.ppind; renderPpi(); }; });
+  _ppiDestroy(); var P=window.PPID||{}, cat=Array.isArray(P.catalog)?P.catalog:[], SER=P.series||{};
+  document.getElementById('catRow').style.display='none'; document.getElementById('cnt').innerHTML='';
+  var cc={US:0,JP:0,CN:0,OTHER:0}; cat.forEach(function(c){var k=_ppiCountry(c);cc[k]=(cc[k]||0)+1;});
+  document.getElementById('crumb').innerHTML='<b>🏭 PPI — 생산자물가 상세</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">美 '+cc.US+' · 日 '+cc.JP+' · 中 '+cc.CN+' · 총 '+cat.length+' · 기준 '+_ppiEsc(P.generated||'—')+'</span>';
+  var main=document.getElementById('main'); if(!cat.length){ main.innerHTML='<div class="panel hint" style="padding:24px;color:var(--dim)">🏭 PPI 카탈로그가 비어 있습니다. 파이프라인 첫 실행을 기다려 주세요.</div>'; return; }
+  ST.ppiInd=ST.ppiInd||'all'; ST.ppiCountry=ST.ppiCountry||'all'; ST.ppiSort=ST.ppiSort||'yoy_desc'; ST.ppiRange=ST.ppiRange||'5Y'; ST.ppiMode=ST.ppiMode||'level'; ST.ppiCompare=ST.ppiCompare||[]; ST.ppiOpen=ST.ppiOpen||{};
+  var inds=[]; cat.forEach(function(c){var x=c.industry||'미분류';if(inds.indexOf(x)<0)inds.push(x);}); if(ST.ppiInd!=='all'&&inds.indexOf(ST.ppiInd)<0)ST.ppiInd='all';
+  if(['all','US','JP','CN'].indexOf(ST.ppiCountry)<0) ST.ppiCountry='all'; if(['yoy_desc','yoy_asc','name'].indexOf(ST.ppiSort)<0) ST.ppiSort='yoy_desc'; if(['1Y','3Y','5Y','10Y','전체'].indexOf(ST.ppiRange)<0) ST.ppiRange='5Y';
+  var primary=ST.ppiSel?cat.find(function(c){return c.id===ST.ppiSel;}):null; if(ST.ppiSel&&!primary){ST.ppiSel=null;ST.ppiCompare=[];}
+  var byCountry=cat.filter(function(c){return ST.ppiCountry==='all'||_ppiCountry(c)===ST.ppiCountry;});
+  var filtered=byCountry.filter(function(c){return ST.ppiInd==='all'||(c.industry||'미분류')===ST.ppiInd;});
+  var yv=function(c){return _ppiLatest(_ppiValues(SER[c.id]||{},'yoy')).value;};
+  filtered.sort(function(a,b){ if(ST.ppiSort==='name') return String(a.name_ko||a.name||a.id).localeCompare(String(b.name_ko||b.name||b.id),'ko'); var av=yv(a),bv=yv(b); av=av==null?(ST.ppiSort==='yoy_desc'?-Infinity:Infinity):av; bv=bv==null?(ST.ppiSort==='yoy_desc'?-Infinity:Infinity):bv; return ST.ppiSort==='yoy_desc'?bv-av:av-bv; });
+  var cp=[['all','전체'],['US','🇺🇸 美'],['JP','🇯🇵 日'],['CN','🇨🇳 中']].map(function(x){var n=x[0]==='all'?cat.length:(cc[x[0]]||0);return '<button class="ppi-btn'+(ST.ppiCountry===x[0]?' on':'')+(n?'':' off')+'" data-ppicountry="'+x[0]+'" '+(n?'':'disabled')+'>'+x[1]+' '+n+'</button>';}).join('');
+  var ip='<button class="ppi-btn'+(ST.ppiInd==='all'?' on':'')+'" data-ppind="all">전체 '+byCountry.length+'</button>'+inds.map(function(ind){var n=byCountry.filter(function(c){return (c.industry||'미분류')===ind;}).length;return '<button class="ppi-btn'+(ST.ppiInd===ind?' on':'')+(n?'':' off')+'" data-ppind="'+_ppiEsc(ind)+'" '+(n?'':'disabled')+'>'+_ppiEsc(ind)+' '+n+'</button>';}).join('');
+  var sp=[['yoy_desc','YoY 높은순'],['yoy_asc','YoY 낮은순'],['name','이름순']].map(function(x){return '<button class="ppi-btn'+(ST.ppiSort===x[0]?' on':'')+'" data-ppisort="'+x[0]+'">'+x[1]+'</button>';}).join('');
+  var rp=['1Y','3Y','5Y','10Y','전체'].map(function(r){return '<button class="ppi-btn'+(ST.ppiRange===r?' on':'')+'" data-ppirange="'+r+'">'+r+'</button>';}).join('');
+  var controls='<div class="panel ppi-filter"><div><span>국가</span>'+cp+'</div><div><span>산업</span><div class="ppi-scroll">'+ip+'</div></div><div><span>정렬</span>'+sp+'<span class="ppi-spacer"></span><span>기간</span>'+rp+'</div></div>';
+  var intro='<div class="ppi-intro">행을 클릭하면 보유한 전체 이력을 상세 차트로 볼 수 있습니다. <b>판가수혜</b>는 생산자물가 상승 수혜, <em>비용부담</em>은 수요측 원가 부담 매핑입니다. 스파크라인도 선택 기간과 표시 모드에 연동됩니다.</div>';
+  var detail=primary?_ppiDetail(primary,cat,SER):'';
+  var gm={}; filtered.forEach(function(c){var ind=c.industry||'미분류';(gm[ind]||(gm[ind]=[])).push(c);}); _ppiGroups=[]; inds.forEach(function(ind){if(gm[ind]&&gm[ind].length)_ppiGroups.push({industry:ind,items:gm[ind]});});
+  if(primary&&ST.ppiInd==='all') ST.ppiOpen[primary.industry||'미분류']=1; if(_ppiGroups.length&&!Object.keys(ST.ppiOpen).some(function(k){return ST.ppiOpen[k];})) ST.ppiOpen[_ppiGroups[0].industry]=1;
+  var sections=_ppiGroups.map(function(g,i){var open=ST.ppiInd!=='all'||!!ST.ppiOpen[g.industry], gc={};g.items.forEach(function(c){var x=_ppiCountry(c);gc[x]=(gc[x]||0)+1;});
+    var meta=['US','JP','CN'].filter(function(x){return gc[x];}).map(function(x){return _ppiCountryInfo(x)[0]+' '+gc[x];}).join(' · ');
+    return '<details class="ppi-group" data-ppigroup="'+i+'" '+(open?'open':'')+'><summary><b>'+_ppiEsc(g.industry)+'</b><span>'+g.items.length+'개 시리즈'+(meta?' · '+meta:'')+'</span><i>펼쳐보기</i></summary><div data-ppibody="1" data-loaded="'+(open?'1':'0')+'">'+(open?_ppiTable(g.items,SER):'')+'</div></details>'; }).join('');
+  if(!sections) sections='<div class="panel hint" style="padding:24px;color:var(--dim)">선택한 필터에 해당하는 시리즈가 없습니다.</div>';
+  var css='<style>.ppi-filter{padding:10px 12px;margin-bottom:10px}.ppi-filter>div,.ppi-controls>div{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:3px 0}.ppi-filter>div>span,.ppi-controls>div>span{width:34px;font-size:9px;font-weight:800;color:var(--dim)}.ppi-scroll{display:flex;gap:5px;overflow-x:auto;scrollbar-width:thin;flex:1;padding-bottom:2px}.ppi-btn{appearance:none;border:1px solid var(--bd);background:var(--s1);color:var(--dim);border-radius:7px;padding:5px 9px;font-family:inherit;font-size:10px;font-weight:600;white-space:nowrap;cursor:pointer}.ppi-btn:hover{border-color:var(--a2)}.ppi-btn.on{color:#061018;background:var(--a1);border-color:var(--a1)}.ppi-btn.off{opacity:.35;cursor:not-allowed}.ppi-spacer{flex:1}.ppi-intro{padding:7px 3px 11px;color:var(--dim);font-size:10.5px}.ppi-intro b{color:#59d0a8}.ppi-intro em{color:#ff6b7d;font-style:normal}.ppi-detail{padding:15px 17px;margin-bottom:13px;border-color:rgba(0,230,184,.55)}.ppi-detail-head{display:flex;justify-content:space-between;gap:12px}.ppi-detail h2{font-size:16px;margin:2px 0}.ppi-eyebrow,.ppi-code{font-size:9.5px;color:var(--dim);font-family:var(--mono)}.ppi-close{border:1px solid var(--bd);background:var(--s2);color:var(--dim);border-radius:7px;width:30px;height:30px;cursor:pointer}.ppi-controls{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:11px 0 8px}.ppi-stats{display:grid;grid-template-columns:repeat(5,minmax(105px,1fr));gap:6px;margin:8px 0}.ppi-stat{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:7px 9px;min-width:0}.ppi-stat span,.ppi-stat small{display:block;font-size:8.5px;color:var(--dim)}.ppi-stat b{display:block;font:750 12px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px 0}.ppi-chart{height:340px;position:relative;margin-top:9px}.ppi-chart canvas{width:100%!important;height:100%!important}.ppi-compare-head{display:flex;gap:8px;align-items:baseline;margin:12px 0 5px;font-size:10px}.ppi-compare-head span{color:var(--dim);font-size:9px}.ppi-compare{display:flex;gap:5px 11px;flex-wrap:wrap;max-height:96px;overflow-y:auto}.ppi-check{display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--dim);cursor:pointer}.ppi-check.off{opacity:.35;cursor:not-allowed}.ppi-check i,.ppi-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 auto}.ppi-note{font-size:9.5px;color:var(--dim);background:rgba(61,139,253,.08);border-radius:6px;padding:5px 8px}.ppi-group{margin:8px 0}.ppi-group>summary{display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;background:var(--s1);border:1px solid var(--bd);border-radius:9px;list-style:none}.ppi-group>summary::-webkit-details-marker{display:none}.ppi-group>summary b{font-size:12px}.ppi-group>summary span{font-size:9.5px;color:var(--dim)}.ppi-group>summary i{margin-left:auto;font-size:9px;color:var(--a2);font-style:normal}.ppi-group[open]>summary{border-radius:9px 9px 0 0;border-color:var(--a2)}.ppi-group[open]>summary i:before{content:"접기 · "}.ppi-table{overflow-x:auto;border-radius:0 0 9px 9px}.ppi-table table{min-width:890px}.ppi-row{cursor:pointer;outline:none}.ppi-row:hover,.ppi-row:focus{background:rgba(61,139,253,.08)}.ppi-row.sel{background:rgba(0,230,184,.07)}.ppi-src,.ppi-yonly{font-size:8px;border:1px solid var(--bd);border-radius:99px;padding:1px 5px;color:var(--dim);white-space:nowrap}.ppi-yonly{color:#ffbe2e;border-color:rgba(255,190,46,.35)}.ppi-mono{font-family:var(--mono);font-size:11px;white-space:nowrap}.ppi-mono div{font-size:8.5px;color:var(--dim)}@media(max-width:700px){.ppi-stats{grid-template-columns:repeat(2,1fr)}.ppi-chart{height:280px}.ppi-filter>div>span,.ppi-controls>div>span{width:100%}}</style>';
+  main.innerHTML=css+controls+intro+detail+sections;
+  main.querySelectorAll('[data-ppind]').forEach(function(el){el.onclick=function(){ST.ppiInd=el.dataset.ppind;renderPpi();};});
+  main.querySelectorAll('[data-ppicountry]').forEach(function(el){el.onclick=function(){ST.ppiCountry=el.dataset.ppicountry;renderPpi();};});
+  main.querySelectorAll('[data-ppisort]').forEach(function(el){el.onclick=function(){ST.ppiSort=el.dataset.ppisort;renderPpi();};});
+  main.querySelectorAll('[data-ppirange]').forEach(function(el){el.onclick=function(){ST.ppiRange=el.dataset.ppirange;renderPpi();};});
+  main.querySelectorAll('[data-ppimode]').forEach(function(el){el.onclick=function(){ST.ppiMode=el.dataset.ppimode;renderPpi();};});
+  main.querySelectorAll('[data-ppiclose]').forEach(function(el){el.onclick=function(){ST.ppiSel=null;ST.ppiCompare=[];renderPpi();};});
+  main.querySelectorAll('[data-ppicmp]').forEach(function(el){el.onchange=function(){var id=el.dataset.ppicmp,a=ST.ppiCompare||[],i=a.indexOf(id);if(el.checked&&i<0&&a.length<4)a.push(id);else if(!el.checked&&i>=0)a.splice(i,1);ST.ppiCompare=a.slice(0,4);renderPpi();};});
+  main.querySelectorAll('[data-ppigroup]').forEach(function(el){el.ontoggle=function(){var g=_ppiGroups[Number(el.dataset.ppigroup)];if(!g)return;ST.ppiOpen[g.industry]=el.open?1:0;if(el.open)_ppiMountGroup(el);};if(el.open)_ppiBindRows(el);});
+  _ppiBindRows(main); if(primary)_ppiMountChart(primary,cat,SER);
 }
 
 function loadGame(cb){ if(_gameLoaded||window.GAMES_DATA){_gameLoaded=true;return cb();}
