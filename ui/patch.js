@@ -38,8 +38,10 @@ var REG_COLS=[ ['🇹🇼 대만',['TW','TWX','TWI','TWC','TWT']], ['🗾 일본
 function subYM(ym){ return ym?String(ym).slice(0,4)+'.'+String(ym).slice(5,7):''; }
 function koLabel(s){ return s==='All'?'전체':s; }
 var _lpCache={};
-function lastPubYM(){                                   /* P1-08: 리전별 실제 마지막 공표월 (프론트 폴백) */
+function lastPubYM(){                                   /* P1-08: 리전별 실제 마지막 공표월 */
   var reg=ST.region; if(_lpCache[reg]) return _lpCache[reg];
+  var lb=regionObj().last_pub;                          /* 빌더 주입값 우선 (있으면) */
+  if(lb) return _lpCache[reg]=lb;
   var last=-1;
   safe('lp:detail',function(){ if(window.PSH&&window.PSH[reg]&&typeof ncLastIdx==='function')
     last=Math.max(last,ncLastIdx(reg)); });               /* PSH 선행 가드 — _NCFIX 캐시 오염 방지 */
@@ -127,7 +129,7 @@ safe('regions',function(){
     var rr=document.getElementById('regionRow'); if(!rr) return;
     rr.style.display=(ST.view==='overview')?'flex':'none';
     var cur=regionObj();
-    var n=(P.companies||[]).filter(function(c){return (c.region||'JP')===ST.region&&!c.hid;}).length;
+    var n=(P.companies||[]).filter(function(c){return (c.region||'JP')===ST.region&&!c.hid;}).length||cur.n||0;
     rr.innerHTML='<button class="regsel" id="regSel" title="데이터셋 전환 — '+esc(stripTags(cur.source||''))+'">'
       +'<span class="rf">'+(cur.flag||'')+'</span>'+esc(cur.label)
       +(n?'<span class="rn">'+n+'사</span>':'')+'<i>▾</i></button>'
@@ -140,6 +142,7 @@ safe('regions',function(){
         return '<span class="regitem'+(r.id===ST.region?' on':'')+'" data-r="'+r.id+'" '
           +'title="'+esc(stripTags(r.source||''))+'">'
           +'<span class="bz'+(r.biz==='B2C'?' c':'')+'"></span>'+esc(REG_NAME[r.id]||r.label)
+          +(r.n?' <small>'+r.n+'사</small>':'')
           +(r.loaded===false?' <small>⏳ 대기</small>':'')+'</span>';
       }).join('');
       if(col[0].indexOf('한국')>=0)
@@ -464,15 +467,21 @@ safe('renderwrap',function(){
     safe('sub',function(){
       var r=regionObj(), el=document.getElementById('sub'); if(!el) return;
       var lp=lastPubYM();
-      el.textContent='월간 · '+(lp?subYM(MONTHS[0])+' – '+subYM(lp):'데이터 로딩 중')+' · '+(SRC_SHORT[r.id]||stripTags(r.source||M.source||''));
+      el.textContent='월간 · '+(lp?subYM(MONTHS[0])+' – '+subYM(lp):'데이터 로딩 중')+' · '+(r.source_short||SRC_SHORT[r.id]||stripTags(r.source||M.source||''));
       el.title=stripTags(r.source||'');
       var f=document.getElementById('phxFresh');
       if(f){ f.style.display=(lp&&ST.tab==='dash'&&ST.view==='overview')?'':'none';  /* 크로스샤드 탭에선 오독 방지 위해 숨김 */
         if(lp){ var now=new Date();
           var lag=(now.getFullYear()*12+now.getMonth()+1)-(parseInt(lp.slice(0,4),10)*12+parseInt(lp.slice(5,7),10));
-          f.textContent='데이터 최신 '+subYM(lp)+' · 매일 갱신';
-          f.classList.toggle('stale',lag>3);
-          f.title='이 리전의 마지막 공표월 기준 · 사이트는 매일 자동 재빌드'; } }
+          var bt='매일 갱신';                              /* M.built(빌더 주입)로 실제 갱신 시점 표시 */
+          safe('built',function(){ if(M.built){
+            var bd=new Date(String(M.built).slice(0,10)+'T00:00:00');
+            var days=Math.floor((new Date(now.getFullYear(),now.getMonth(),now.getDate())-bd)/86400000);
+            bt=days<=0?'오늘 갱신':days+'일 전 갱신';
+            if(days>=2) f.classList.add('stale'); } });
+          f.textContent='데이터 최신 '+subYM(lp)+' · '+bt;
+          f.classList.toggle('stale',lag>3||f.classList.contains('stale'));
+          f.title='이 리전의 마지막 공표월 기준'+(M.built?' · 마지막 빌드 '+M.built:''); } }
     });
     safe('logo',function(){ var lg=document.querySelector('header .logo');
       if(lg) lg.textContent=regionObj().flag||'Φ'; });
