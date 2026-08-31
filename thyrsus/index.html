@@ -4533,3 +4533,401 @@ function quickToggleDeath(pid){
   };
 })();
 </script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   스크립트 라이브러리 · 테마/파워랭킹 분류 (추가 레이어)
+   ───────────────────────────────────────────────────────────────────────────
+   기존 SCRIPTS_META / renderScripts 는 건드리지 않는다. renderScripts 를
+   래핑(_origRenderScripts)해서 '공식 스크립트' 홈 하단에 섹션을 DOM 주입한다.
+
+   [데이터 출처 — 사실 데이터만 수집]
+   · teeroz 시계탑  GET /api/scripts/{slug}                (공식 3종 캐릭터 구성)
+                    GET /api/scripts/featured?category=…    (커스텀·추천·틴시빌 8종,
+                                                             Storyteller/Player 난이도 포함)
+   · botcscripts.com GET /api/scripts/{pk}                  (널리 알려진 커뮤니티 12종)
+   · 캐릭터 한국어 명칭·팀은 teeroz 클라이언트 번들의 캐릭터 테이블에서 수집.
+   수집 항목은 스크립트 이름·제작자·구성 캐릭터 목록·난이도 수치뿐이며,
+   참조 사이트의 설명 산문은 복제하지 않았다. note 문장은 전부 자체 작성이다.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 우리가 구현하지 않은 캐릭터의 표시용 메타(한/영 명칭·팀). 진행 자동화 대상 아님. */
+const SCRIPT_LIB_EXTRA_CHARS={
+ acrobat:{ko:'줄타기꾼',en:'Acrobat',type:'townsfolk'},
+ alchemist:{ko:'연금술사',en:'Alchemist',type:'townsfolk'},
+ alhadikhia:{ko:'알하디키아',en:'Al-Hadikhia',type:'demon'},
+ amnesiac:{ko:'기억상실자',en:'Amnesiac',type:'townsfolk'},
+ apprentice:{ko:'견습생',en:'Apprentice',type:'traveller'},
+ balloonist:{ko:'열기구 조종사',en:'Balloonist',type:'townsfolk'},
+ barista:{ko:'바리스타',en:'Barista',type:'traveller'},
+ beggar:{ko:'거지',en:'Beggar',type:'traveller'},
+ bishop:{ko:'주교',en:'Bishop',type:'traveller'},
+ bonecollector:{ko:'뼈 수집가',en:'Bone Collector',type:'traveller'},
+ boomdandy:{ko:'붐댄디',en:'Boomdandy',type:'minion'},
+ bountyhunter:{ko:'현상금 사냥꾼',en:'Bounty Hunter',type:'townsfolk'},
+ bureaucrat:{ko:'관료',en:'Bureaucrat',type:'traveller'},
+ butcher:{ko:'도살자',en:'Butcher',type:'traveller'},
+ cannibal:{ko:'식인종',en:'Cannibal',type:'townsfolk'},
+ cultleader:{ko:'교주',en:'Cult Leader',type:'townsfolk'},
+ damsel:{ko:'아가씨',en:'Damsel',type:'outsider'},
+ djinn:{ko:'지니',en:'Djinn',type:'fabled'},
+ doomsayer:{ko:'파멸선지자',en:'Doomsayer',type:'fabled'},
+ farmer:{ko:'농부',en:'Farmer',type:'townsfolk'},
+ fearmonger:{ko:'공포 조장가',en:'Fearmonger',type:'minion'},
+ fisherman:{ko:'어부',en:'Fisherman',type:'townsfolk'},
+ general:{ko:'장군',en:'General',type:'townsfolk'},
+ goblin:{ko:'고블린',en:'Goblin',type:'minion'},
+ golem:{ko:'골렘',en:'Golem',type:'outsider'},
+ harlot:{ko:'창녀',en:'Harlot',type:'traveller'},
+ harpy:{ko:'하피',en:'Harpy',type:'minion'},
+ heretic:{ko:'이교도',en:'Heretic',type:'outsider'},
+ highpriestess:{ko:'대여사제',en:'High Priestess',type:'townsfolk'},
+ huntsman:{ko:'사냥꾼',en:'Huntsman',type:'townsfolk'},
+ judge:{ko:'판사',en:'Judge',type:'traveller'},
+ kazali:{ko:'카잘리',en:'Kazali',type:'demon'},
+ knight:{ko:'기사',en:'Knight',type:'townsfolk'},
+ legion:{ko:'군단',en:'Legion',type:'demon'},
+ leviathan:{ko:'레비아탄',en:'Leviathan',type:'demon'},
+ lilmonsta:{ko:'릴 몬스타',en:'Lil\' Monsta',type:'demon'},
+ lordoftyphon:{ko:'태풍의 군주',en:'Lord of Typhon',type:'demon'},
+ lycanthrope:{ko:'늑대인간',en:'Lycanthrope',type:'townsfolk'},
+ magician:{ko:'마술사',en:'Magician',type:'townsfolk'},
+ marionette:{ko:'꼭두각시',en:'Marionette',type:'minion'},
+ matron:{ko:'사감',en:'Matron',type:'traveller'},
+ mezepheles:{ko:'메제펠레스',en:'Mezepheles',type:'minion'},
+ nightwatchman:{ko:'야간 경비대',en:'Nightwatchman',type:'townsfolk'},
+ noble:{ko:'귀족',en:'Noble',type:'townsfolk'},
+ ogre:{ko:'오거',en:'Ogre',type:'outsider'},
+ ojo:{ko:'오호',en:'Ojo',type:'demon'},
+ pixie:{ko:'픽시',en:'Pixie',type:'townsfolk'},
+ plaguedoctor:{ko:'역병 의사',en:'Plague Doctor',type:'outsider'},
+ politician:{ko:'정치인',en:'Politician',type:'outsider'},
+ poppygrower:{ko:'양귀비 재배자',en:'Poppy Grower',type:'townsfolk'},
+ preacher:{ko:'설교자',en:'Preacher',type:'townsfolk'},
+ psychopath:{ko:'사이코패스',en:'Psychopath',type:'minion'},
+ puzzlemaster:{ko:'퍼즐마스터',en:'Puzzlemaster',type:'outsider'},
+ scapegoat:{ko:'희생양',en:'Scapegoat',type:'traveller'},
+ sentinel:{ko:'파수꾼',en:'Sentinel',type:'fabled'},
+ snitch:{ko:'고자질쟁이',en:'Snitch',type:'outsider'},
+ spiritofivory:{ko:'상아의 영혼',en:'Spirit of Ivory',type:'fabled'},
+ steward:{ko:'청지기',en:'Steward',type:'townsfolk'},
+ stormcatcher:{ko:'폭풍 사냥꾼',en:'Storm Catcher',type:'fabled'},
+ summoner:{ko:'소환사',en:'Summoner',type:'minion'},
+ thief:{ko:'도둑',en:'Thief',type:'traveller'},
+ villageidiot:{ko:'마을 바보',en:'Village Idiot',type:'townsfolk'},
+ voudon:{ko:'부두',en:'Voudon',type:'traveller'},
+ widow:{ko:'과부',en:'Widow',type:'minion'},
+ yaggababble:{ko:'야가바블',en:'Yaggababble',type:'demon'}
+};
+
+const SCRIPT_LIB=[
+ {id:'tb', ko:'점철되는 혼란', en:'Trouble Brewing', author:'The Pandemonium Institute',
+  stDifficulty:1, playerDifficulty:1, difficultySource:'estimate',
+  source:'teeroz', verified:true, theme:'입문', tags:['입문 추천','대인원','신규 사회자 안전'],
+  note:'정보 캐릭터 위주에 능력 상호작용이 얕아, 첫 진행과 첫 플레이 모두에 표준으로 쓰이는 기준선.',
+  characters:['washerwoman','librarian','investigator','chef','empath','fortuneteller','undertaker','monk','ravenkeeper','virgin','slayer','soldier','mayor','butler','drunk','recluse','saint','poisoner','spy','scarletwoman','baron','imp']},
+ {id:'bmr', ko:'피로 물든 달', en:'Bad Moon Rising', author:'The Pandemonium Institute',
+  stDifficulty:2.5, playerDifficulty:2.5, difficultySource:'estimate',
+  source:'teeroz', verified:true, theme:'전투·처형', tags:['사망 다발','악마 강세','중급'],
+  note:'밤 사망과 보호·부활이 매 밤 얽혀, 처형보다 밤의 생존 관리가 게임을 좌우한다.',
+  characters:['grandmother','sailor','chambermaid','exorcist','innkeeper','gambler','gossip','courtier','professor','minstrel','tealady','pacifist','fool','goon','lunatic','tinker','moonchild','godfather','devilsadvocate','assassin','mastermind','zombuul','pukka','shabaloth','po']},
+ {id:'sv', ko:'화단에 꽃피운 이단', en:'Sects & Violets', author:'The Pandemonium Institute',
+  stDifficulty:3, playerDifficulty:3, difficultySource:'estimate',
+  source:'teeroz', verified:true, theme:'광기·기만', tags:['정보 과다','거짓 정보','중급'],
+  note:'대부분의 정보가 왜곡 가능해, 사회자의 거짓 정보 운용 일관성이 그대로 난도가 된다.',
+  characters:['clockmaker','dreamer','snakecharmer','mathematician','flowergirl','towncrier','oracle','savant','seamstress','philosopher','artist','juggler','sage','mutant','sweetheart','barber','klutz','eviltwin','witch','cerenovus','pithag','fanggu','vigormortis','nodashii','vortox']},
+ {id:'china-shop', ko:'도자기 가게', en:'China Shop', author:'Autumn',
+  stDifficulty:4, playerDifficulty:4, difficultySource:'teeroz',
+  source:'teeroz', verified:true, theme:'전투·처형', tags:['사망 다발','처형 중심','대인원'],
+  note:'사망을 막고 되돌리는 선한 능력과 대량 사망 악마가 정면으로 부딪히는 구성.',
+  characters:['knight','grandmother','general','towncrier','gambler','acrobat','savant','fisherman','amnesiac','tealady','mayor','fool','pacifist','drunk','tinker','plaguedoctor','moonchild','godfather','devilsadvocate','witch','assassin','widow','yaggababble','vigormortis','lordoftyphon']},
+ {id:'one-in-one-out', ko:'하나 들어오면 하나 나간다', en:'One in one out', author:'Baron von Klutz',
+  stDifficulty:4, playerDifficulty:3, difficultySource:'teeroz',
+  source:'teeroz', verified:true, theme:'혼돈', tags:['악마 강세','캐릭터 교체','신규 사회자 주의'],
+  note:'악마 후보가 여럿이고 캐릭터가 게임 중 갈아치워져, 판이 통째로 뒤집히는 전개가 잦다.',
+  characters:['steward','knight','highpriestess','villageidiot','snakecharmer','fortuneteller','oracle','monk','amnesiac','fisherman','seamstress','farmer','cannibal','ogre','goon','recluse','drunk','poisoner','harpy','spy','mezepheles','kazali','imp','ojo','fanggu','spiritofivory']},
+ {id:'grimm-chorus', ko:'그림 합창단', en:'A Grimm Chorus', author:'Zets',
+  stDifficulty:3.5, playerDifficulty:3.5, difficultySource:'teeroz',
+  source:'teeroz', verified:true, theme:'혼돈', tags:['대인원','여행자 포함','악마 강세'],
+  note:'30종 대형 구성에 여행자까지 얹혀, 사회자가 관리할 동시 상태 수가 많다.',
+  characters:['general','villageidiot','towncrier','innkeeper','gambler','exorcist','amnesiac','nightwatchman','slayer','fisherman','soldier','minstrel','cannibal','damsel','drunk','golem','politician','godfather','summoner','assassin','scarletwoman','yaggababble','pukka','ojo','po','thief','harlot','judge','beggar','scapegoat']},
+ {id:'hide-and-seek', ko:'숨바꼭질', en:'Hide and Seek', author:'Narninian and Zaba',
+  stDifficulty:3, playerDifficulty:3, difficultySource:'teeroz',
+  source:'teeroz', verified:true, theme:'정보전', tags:['정보 과다','중급'],
+  note:'누가 무엇인지 좁혀가는 탐지형 선한 진영과, 그것을 흐리는 하수인이 축을 이룬다.',
+  characters:['noble','librarian','pixie','preacher','towncrier','oracle','undertaker','dreamer','seamstress','artist','huntsman','ravenkeeper','virgin','damsel','drunk','mutant','goon','godfather','mezepheles','poisoner','cerenovus','pukka','vigormortis','imp','ojo']},
+ {id:'lunar-eclipse', ko:'월식', en:'Lunar Eclipse', author:'Ekin',
+  stDifficulty:4, playerDifficulty:3.5, difficultySource:'teeroz',
+  source:'teeroz', verified:true, theme:'혼돈', tags:['대인원','여행자 포함','악마 강세'],
+  note:'31종 최대급 구성. 악마 4종과 다수의 예외 규칙이 동시에 살아 있다.',
+  characters:['grandmother','pixie','sailor','chambermaid','mathematician','innkeeper','lycanthrope','savant','artist','tealady','magician','mayor','cannibal','goon','barber','lunatic','puzzlemaster','godfather','devilsadvocate','spy','assassin','marionette','nodashii','zombuul','vigormortis','barista','harlot','apprentice','beggar','voudon','spiritofivory']},
+ {id:'no-greater-joy', ko:'큰 기쁨', en:'No Greater Joy', author:'Steven Medway',
+  stDifficulty:1.5, playerDifficulty:1.5, difficultySource:'teeroz',
+  source:'teeroz', verified:true, theme:'입문', tags:['소인원','입문 추천','신규 사회자 안전'],
+  note:'틴시빌 11종 최소 구성에 정보 캐릭터만 남겨, 규칙 학습용으로 가장 가볍다.',
+  characters:['clockmaker','investigator','empath','chambermaid','artist','sage','drunk','klutz','scarletwoman','baron','imp']},
+ {id:'over-the-river', ko:'강 건너', en:'Over the River', author:'Andrew Nathenson',
+  stDifficulty:2, playerDifficulty:3, difficultySource:'teeroz',
+  source:'teeroz', verified:true, theme:'정보전', tags:['소인원','중급'],
+  note:'틴시빌이지만 정보 밀도가 높아, 소인원에서도 추리 부담이 상당하다.',
+  characters:['grandmother','clockmaker','innkeeper','snakecharmer','professor','slayer','lunatic','recluse','godfather','spy','imp']},
+ {id:'laissez-un-faire', ko:'레세 앙 페르', en:'Laissez Un Faire', author:'Steven Medway',
+  stDifficulty:4, playerDifficulty:4.5, difficultySource:'teeroz',
+  source:'teeroz', verified:true, theme:'실험적', tags:['소인원','신규 사회자 주의','재량 과다'],
+  note:'소인원인데도 사회자 재량이 게임 전체를 좌우하는, 틴시빌 중 최상급 난도.',
+  characters:['balloonist','savant','amnesiac','fisherman','artist','cannibal','mutant','lunatic','widow','goblin','leviathan']},
+ {id:'catfishing', ko:'캣피싱', en:'Catfishing', author:'Emily',
+  stDifficulty:3.5, playerDifficulty:3.5, difficultySource:'estimate',
+  source:'community', verified:true, theme:'광기·기만', tags:['여행자 포함','거짓 정보','대인원'],
+  note:'선한 정보가 통째로 뒤집힐 수 있는 구성으로, 사칭과 오정보 운용이 핵심.',
+  characters:['investigator','chef','grandmother','balloonist','dreamer','fortuneteller','snakecharmer','gambler','savant','philosopher','ravenkeeper','amnesiac','cannibal','drunk','recluse','sweetheart','mutant','lunatic','godfather','cerenovus','pithag','widow','imp','vigormortis','fanggu','apprentice','barista','beggar','bonecollector','harlot']},
+ {id:'race-to-the-bottom', ko:'바닥까지 경주', en:'Race to the Bottom', author:'Evin Donohoe',
+  stDifficulty:3, playerDifficulty:3, difficultySource:'estimate',
+  source:'community', verified:true, theme:'실험적', tags:['소인원','우화 포함','실험적 규칙'],
+  note:'틴시빌에 우화(Fabled)를 얹어 승리 조건 자체를 비틀어 놓은 실험 구성.',
+  characters:['clockmaker','empath','dreamer','slayer','courtier','mayor','lunatic','klutz','scarletwoman','spy','vortox','doomsayer','sentinel']},
+ {id:'no-roles-barred', ko:'역할 무제한', en:'No Roles Barred', author:'Andrew Pichot',
+  stDifficulty:4, playerDifficulty:4, difficultySource:'estimate',
+  source:'community', verified:true, theme:'실험적', tags:['실험 캐릭터 다수','악마 강세','신규 사회자 주의'],
+  note:'실험판 캐릭터 비중이 매우 높아, 상호작용 판례를 그때그때 판단해야 한다.',
+  characters:['alchemist','noble','pixie','bountyhunter','balloonist','empath','snakecharmer','gossip','amnesiac','artist','philosopher','huntsman','poppygrower','goon','mutant','damsel','drunk','godfather','poisoner','fearmonger','goblin','boomdandy','lilmonsta','legion','vortox']},
+ {id:'visitors', ko:'방문객들', en:'Visitors', author:'Zets',
+  stDifficulty:3, playerDifficulty:3, difficultySource:'estimate',
+  source:'community', verified:true, theme:'정보전', tags:['정보 과다','중급'],
+  note:'외부에서 들어오는 정보를 교차 검증하는 구조가 게임 축을 이룬다.',
+  characters:['librarian','investigator','chef','empath','fortuneteller','cultleader','monk','nightwatchman','ravenkeeper','slayer','magician','mayor','cannibal','drunk','recluse','snitch','saint','poisoner','spy','baron','scarletwoman','imp']},
+ {id:'boozling', ko:'부즐링', en:'Boozling', author:'Lau',
+  stDifficulty:4, playerDifficulty:3.5, difficultySource:'estimate',
+  source:'community', verified:true, theme:'광기·기만', tags:['취함·중독 과다','거짓 정보','신규 사회자 주의'],
+  note:'취함·중독이 상시로 깔려, 모든 정보의 신뢰도를 사회자가 계속 저울질해야 한다.',
+  characters:['noble','pixie','highpriestess','balloonist','fortuneteller','oracle','savant','philosopher','huntsman','fisherman','slayer','sage','cannibal','drunk','mutant','damsel','klutz','golem','baron','cerenovus','scarletwoman','marionette','nodashii','fanggu','imp']},
+ {id:'on-thin-ice', ko:'살얼음판', en:'On Thin Ice', author:'Jonhoo',
+  stDifficulty:2, playerDifficulty:2, difficultySource:'estimate',
+  source:'community', verified:true, theme:'입문', tags:['소인원','입문 추천','우화 포함'],
+  note:'틴시빌 12종의 얇은 구성으로, 소규모 인원의 첫 게임에 적합하다.',
+  characters:['artist','philosopher','professor','seamstress','slayer','virgin','klutz','moonchild','eviltwin','mastermind','pukka','sentinel']},
+ {id:'vigormortis-high-school', ko:'비고모르티스 고등학교', en:'Vigormortis High School', author:'작자 미상',
+  stDifficulty:2, playerDifficulty:2.5, difficultySource:'estimate',
+  source:'community', verified:true, theme:'입문', tags:['소인원','입문 추천','우화 포함'],
+  note:'단일 악마 틴시빌. 사망 후에도 능력이 이어지는 축 하나만 이해하면 굴러간다.',
+  characters:['chef','empath','chambermaid','monk','ravenkeeper','mayor','saint','goon','poisoner','devilsadvocate','vigormortis','sentinel']},
+ {id:'trouble-with-violets', ko:'제비꽃의 혼란', en:'Trouble with Violets', author:'Ben Burns',
+  stDifficulty:2.5, playerDifficulty:3, difficultySource:'estimate',
+  source:'community', verified:true, theme:'광기·기만', tags:['전 캐릭터 구현','거짓 정보','중급'],
+  note:'점철되는 혼란과 이단의 교배 구성. 티르소스가 전 캐릭터를 구현해 완전 진행이 가능하다.',
+  characters:['washerwoman','librarian','investigator','chef','empath','fortuneteller','undertaker','monk','ravenkeeper','virgin','slayer','soldier','mayor','butler','drunk','recluse','saint','eviltwin','witch','cerenovus','pithag','fanggu','vigormortis','nodashii','vortox']},
+ {id:'uncertain-death', ko:'불확실한 죽음', en:'Uncertain Death', author:'Matt',
+  stDifficulty:3, playerDifficulty:3, difficultySource:'estimate',
+  source:'community', verified:true, theme:'전투·처형', tags:['사망 다발','처형 중심','중급'],
+  note:'누가 실제로 죽었는지가 계속 흔들려, 사망 판정 관리가 게임의 중심이 된다.',
+  characters:['clockmaker','grandmother','librarian','empath','fortuneteller','exorcist','flowergirl','oracle','undertaker','artist','slayer','seamstress','monk','lunatic','mutant','sweetheart','recluse','godfather','assassin','scarletwoman','marionette','nodashii','pukka']},
+ {id:'deadly-penance-day', ko:'치명적인 참회의 날', en:'Deadly Penance Day', author:'Ben Burns',
+  stDifficulty:3.5, playerDifficulty:3.5, difficultySource:'estimate',
+  source:'community', verified:true, theme:'전투·처형', tags:['처형 중심','사망 다발','고전 커스텀'],
+  note:'커스텀 스크립트 1호. 처형과 참회를 축으로 낮 페이즈에 무게가 실린다.',
+  characters:['investigator','chef','bountyhunter','sailor','preacher','cultleader','towncrier','gambler','exorcist','philosopher','soldier','fool','mayor','saint','barber','drunk','politician','witch','spy','assassin','baron','lilmonsta']},
+ {id:'reptiles', ko:'파충류!', en:'Reptiles!', author:'Aero',
+  stDifficulty:3.5, playerDifficulty:3.5, difficultySource:'estimate',
+  source:'community', verified:true, theme:'혼돈', tags:['우화 포함','대인원','실험 캐릭터 다수'],
+  note:'우화와 실험 캐릭터가 섞여, 표준 판례 밖 상황이 자주 생긴다.',
+  characters:['chef','washerwoman','librarian','sailor','general','chambermaid','snakecharmer','flowergirl','undertaker','innkeeper','philosopher','fool','tealady','virgin','saint','sweetheart','heretic','drunk','barber','poisoner','devilsadvocate','spy','psychopath','baron','alhadikhia','stormcatcher','djinn']},
+ {id:'extension-cord', ko:'멀티탭', en:'Extension Cord', author:'Viva La Sam',
+  stDifficulty:4.5, playerDifficulty:4.5, difficultySource:'estimate',
+  source:'community', verified:true, theme:'실험적', tags:['실험 캐릭터 다수','여행자 포함','우화 포함','신규 사회자 주의'],
+  note:'30종에 여행자·우화까지 총동원한 최상급 구성. 사실상 상급 사회자 전용.',
+  characters:['investigator','pixie','empath','dreamer','mathematician','oracle','monk','artist','fisherman','huntsman','soldier','ravenkeeper','cannibal','puzzlemaster','recluse','mutant','damsel','barber','poisoner','spy','scarletwoman','boomdandy','marionette','nodashii','bishop','bonecollector','bureaucrat','butcher','matron','sentinel']},
+];
+
+/* ── 파워티어 산정 (주관적 평가) ──────────────────────────────────────────────
+   powerTier 는 "스크립트가 좋다/강하다"가 아니라 **운영 부하 등급**이다.
+
+     상호작용 복잡도 i (0~4) =
+        악마 3종 이상 +1.5 / 2종 +0.75
+      + 캐릭터 28종 이상 +1 / 25종 이상 +0.5
+      + 미구현(실험판) 캐릭터 비중 40% 이상 +1 / 20% 이상 +0.5
+      + 여행자·우화 포함 +0.5
+     종합점수 = 사회자 난도(0~5) + 플레이어 난도(0~5) + i      → 0~14
+
+     S: 11 이상 · A: 8.5~10.9 · B: 5.5~8.4 · C: 5.4 이하
+
+   난이도 수치는 teeroz 공표값(difficultySource:'teeroz')을 그대로 쓰고,
+   공표값이 없는 스크립트는 티르소스 자체 추정치('estimate')를 넣었다.
+   테마·태그·티어는 모두 티르소스의 주관적 편집 판단이며 공식 등급이 아니다. */
+const SCRIPT_LIB_TIER_DOC='powerTier = 사회자 난도 + 플레이어 난도 + 상호작용 복잡도(악마 수·캐릭터 수·실험판 비중·여행자/우화 유무)의 종합 운영 부하 등급입니다. S 11↑ / A 8.5↑ / B 5.5↑ / C 5.4↓. 티르소스의 주관적 평가이며 공식 등급이 아닙니다.';
+const SCRIPT_LIB_THEMES=['입문','정보전','혼돈','광기·기만','전투·처형','실험적'];
+
+function libCharMeta(id){
+  const c=(typeof CHARACTERS!=='undefined') && CHARACTERS.find(x=>x.id===id);
+  if(c) return {ko:c.ko, en:c.en, type:c.type, have:true};
+  const m=SCRIPT_LIB_EXTRA_CHARS[id];
+  return m? {ko:m.ko, en:m.en, type:m.type, have:false}
+          : {ko:id, en:id, type:'unknown', have:false};
+}
+function libEnrich(s){
+  const metas=s.characters.map(libCharMeta);
+  s.missing=s.characters.filter((id,i)=>!metas[i].have);
+  s.playable=s.missing.length===0;
+  const demons=metas.filter(m=>m.type==='demon').length;
+  const extra=metas.filter(m=>m.type==='traveller'||m.type==='fabled').length;
+  const ratio=s.missing.length/s.characters.length;
+  let i=0;
+  i += demons>=3?1.5 : demons===2?0.75 : 0;
+  i += s.characters.length>=28?1 : s.characters.length>=25?0.5 : 0;
+  i += ratio>=0.4?1 : ratio>=0.2?0.5 : 0;
+  i += extra?0.5:0;
+  s.interaction=i;
+  s.powerScore=Math.round((s.stDifficulty+s.playerDifficulty+i)*100)/100;
+  s.powerTier = s.powerScore>=11?'S' : s.powerScore>=8.5?'A' : s.powerScore>=5.5?'B' : 'C';
+  return s;
+}
+SCRIPT_LIB.forEach(libEnrich);
+
+/* WEEKLY-UPDATE-BLOCK-START
+   ↓ 주간 자동 갱신 루틴은 이 마커 사이 구간만 통째로 치환한다.
+     items 는 SCRIPT_LIB 의 id 문자열 배열이며, 존재하지 않는 id 는 렌더 시 무시된다. */
+const POPULAR = {
+  updated: '2026-08-31',
+  items: ['tb','trouble-with-violets','no-greater-joy','catfishing','china-shop','on-thin-ice']
+};
+/* WEEKLY-UPDATE-BLOCK-END */
+
+/* ── 필터 상태 ── */
+let libTheme='전체', libTier='전체', libOpen=null;
+function libSetTheme(t){ libTheme=t; libRender(); }
+function libSetTier(t){ libTier=t; libRender(); }
+/* libOpen 은 '섹션:id' 키 — 같은 스크립트가 인기·라이브러리 양쪽에 있어도 한 곳만 펼쳐진다. */
+function libToggle(key){ libOpen = libOpen===key ? null : key; libRender(); }
+
+const LIB_TEAM_ORDER=[['townsfolk','마을 주민'],['outsider','외지인'],['minion','하수인'],['demon','악마'],['traveller','여행자'],['fabled','우화'],['unknown','미분류']];
+function libEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function libNum(n){ return Number.isInteger(n)? String(n) : String(n); }
+
+function libCard(s, sec){
+  const key=(sec||'lib')+':'+s.id;
+  const open = libOpen===key;
+  return `<div class="libcard${open?' open':''}" data-sid="${s.id}" data-key="${key}" onclick="libToggle('${key}')" role="button" tabindex="0"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();libToggle('${key}')}">
+    <div class="libcard-h">
+      <span class="tierbadge t${s.powerTier}" title="${libEsc(SCRIPT_LIB_TIER_DOC)}">${s.powerTier}</span>
+      <div class="libcard-t">
+        <div class="sko">${libEsc(s.ko)}</div>
+        <div class="sen">${libEsc(s.en)} <span class="libby">by ${libEsc(s.author)}</span></div>
+      </div>
+    </div>
+    <div class="libstats">
+      <span class="libstat" title="사회자 난도">🎩 ST <b class="num">${libNum(s.stDifficulty)}</b></span>
+      <span class="libstat" title="플레이어 난도">🙋 Player <b class="num">${libNum(s.playerDifficulty)}</b></span>
+      <span class="libstat" title="구성 캐릭터 수">🃏 <b class="num">${s.characters.length}</b>종</span>
+      <span class="libstat ${s.playable?'ok':'warn'}" title="${s.playable?'밤 순서·판정 자동화 가능':'미구현 캐릭터 '+s.missing.length+'종 — 목록 표시 전용'}">${s.playable?'▶ 진행 가능':'👁 표시 전용'}</span>
+    </div>
+    <div class="libtags"><span class="libtheme">${libEsc(s.theme)}</span>${s.tags.map(t=>`<span class="libtag">${libEsc(t)}</span>`).join('')}</div>
+    ${open? libDetail(s) : ''}
+  </div>`;
+}
+
+function libDetail(s){
+  const groups=LIB_TEAM_ORDER.map(([k,label])=>{
+    const list=s.characters.map(libCharMeta).filter(m=>m.type===k);
+    if(!list.length) return '';
+    return `<div class="libgrp"><div class="libgrp-h"><span class="pill ${k}">${label}</span> <b class="num">${list.length}</b></div>
+      <div class="libchars">${list.map(m=>`<span class="libchar${m.have?'':' ghosted'}" title="${m.have?'':'티르소스 미구현 — 표시 전용'}">${libEsc(m.ko)}<i>${libEsc(m.en)}</i></span>`).join('')}</div></div>`;
+  }).join('');
+  const src = s.source==='teeroz' ? 'teeroz 시계탑' : 'botcscripts 커뮤니티 DB';
+  const dsrc = s.difficultySource==='teeroz' ? 'teeroz 공표값' : '티르소스 추정';
+  return `<div class="libdetail" onclick="event.stopPropagation()">
+    <p class="libnote">${libEsc(s.note)}</p>
+    <div class="libmetaline">출처 ${src} · 난이도 ${dsrc} · 종합 <b class="num">${s.powerScore}</b>점 (ST ${libNum(s.stDifficulty)} + Player ${libNum(s.playerDifficulty)} + 상호작용 ${s.interaction}) → <b>${s.powerTier}</b>티어${s.verified?'':' · <b>미검증</b>'}</div>
+    ${s.playable? '' : `<p class="libwarn">⚠ 티르소스 미구현 캐릭터 <b class="num">${s.missing.length}</b>종이 포함되어 밤 순서·판정 자동화를 지원하지 않습니다. 아래 목록은 <b>표시 전용</b>입니다.</p>`}
+    ${groups}
+  </div>`;
+}
+
+function libRender(){
+  const host=document.querySelector('#scriptlib');
+  if(!host) return;
+  const pop = POPULAR.items.map(id=>SCRIPT_LIB.find(s=>s.id===id)).filter(Boolean);
+  const list = SCRIPT_LIB.filter(s=>(libTheme==='전체'||s.theme===libTheme) && (libTier==='전체'||s.powerTier===libTier))
+                         .slice().sort((a,b)=>b.powerScore-a.powerScore);
+  const chip=(cur,val,fn,extra)=>`<button class="libchip${cur===val?' on':''}${extra||''}" onclick="${fn}('${val}')">${libEsc(val)}</button>`;
+  const counts={};SCRIPT_LIB.forEach(s=>counts[s.powerTier]=(counts[s.powerTier]||0)+1);
+  host.innerHTML=`
+    <div class="secthead"><span class="shicon">🔥</span> 인기 스크립트
+      <span class="libupd">마지막 갱신: ${libEsc(POPULAR.updated)}</span></div>
+    <div class="scriptgrid libgrid">${pop.map(x=>libCard(x,'pop')).join('')}</div>
+
+    <div class="secthead"><span class="shicon">📚</span> 스크립트 라이브러리
+      <span class="libupd">${SCRIPT_LIB.length}종 · teeroz ${SCRIPT_LIB.filter(s=>s.source==='teeroz').length} / 커뮤니티 ${SCRIPT_LIB.filter(s=>s.source==='community').length}</span></div>
+    <div class="libfilters">
+      <div class="libfrow"><span class="libflabel">테마</span>
+        ${chip(libTheme,'전체','libSetTheme')}${SCRIPT_LIB_THEMES.map(t=>chip(libTheme,t,'libSetTheme')).join('')}</div>
+      <div class="libfrow"><span class="libflabel" title="${libEsc(SCRIPT_LIB_TIER_DOC)}">파워티어 <i>ⓘ</i></span>
+        ${chip(libTier,'전체','libSetTier')}${['S','A','B','C'].map(t=>chip(libTier,t,'libSetTier',' tier t'+t)).join('')}</div>
+      <p class="hint libtierdoc">${libEsc(SCRIPT_LIB_TIER_DOC)} 현재 분포 — S ${counts.S||0} · A ${counts.A||0} · B ${counts.B||0} · C ${counts.C||0}.</p>
+    </div>
+    ${list.length? `<div class="scriptgrid libgrid">${list.map(x=>libCard(x,'lib')).join('')}</div>`
+                 : '<p class="hint">조건에 맞는 스크립트가 없습니다.</p>'}`;
+}
+
+/* renderScripts 래핑 — 원본은 그대로 두고 뒤에 섹션만 덧붙인다. */
+(function(){
+  if(typeof renderScripts!=='function') return;
+  const _origRenderScripts=renderScripts;
+  window._origRenderScripts=_origRenderScripts;
+  window.renderScripts=function(){
+    _origRenderScripts.apply(this, arguments);
+    const pane=document.querySelector('#pane-scripts');
+    if(!pane) return;
+    let host=pane.querySelector('#scriptlib');
+    if(!host){
+      host=document.createElement('div');
+      host.id='scriptlib';
+      const card=pane.querySelector('.card');
+      (card||pane).appendChild(host);
+    }
+    libRender();
+  };
+  if(typeof activeTab!=='undefined' && activeTab==='scripts' && document.querySelector('#pane-scripts')) window.renderScripts();
+})();
+</script>
+
+<style>
+#scriptlib{margin-top:22px;padding-top:6px;border-top:1px solid var(--line)}
+#scriptlib .libupd{margin-left:auto;font-size:11.5px;font-weight:400;color:var(--muted)}
+#scriptlib .libfilters{margin:0 0 12px}
+#scriptlib .libfrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:7px}
+#scriptlib .libflabel{font-size:12px;color:var(--muted);min-width:64px}
+#scriptlib .libflabel i{font-style:normal;cursor:help}
+#scriptlib .libchip{padding:3px 11px;font-size:12.5px;border-radius:999px;background:var(--sunken)}
+#scriptlib .libchip.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}
+#scriptlib .libchip.tier{font-weight:700;font-variant-numeric:tabular-nums}
+#scriptlib .libtierdoc{font-size:11.5px;line-height:1.5;margin:2px 0 0}
+#scriptlib .libgrid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr));align-items:start}
+#scriptlib .libcard{display:block;background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:border-color .15s,background .15s}
+#scriptlib .libcard:hover{border-color:var(--primary);background:var(--primary-soft)}
+#scriptlib .libcard.open{border-color:var(--accent);grid-column:1/-1}
+#scriptlib .libcard-h{display:flex;gap:11px;align-items:flex-start}
+#scriptlib .libcard-t{min-width:0}
+#scriptlib .libby{opacity:.85}
+#scriptlib .tierbadge{flex:0 0 32px;width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;border:1px solid var(--line);cursor:help}
+#scriptlib .tierbadge.tS{background:var(--evil);border-color:var(--evil);color:#fff}
+#scriptlib .tierbadge.tA{background:var(--minionc-soft);border-color:var(--minionc);color:var(--minionc)}
+#scriptlib .tierbadge.tB{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+#scriptlib .tierbadge.tC{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+#scriptlib .libchip.tS.on{background:var(--evil);border-color:var(--evil)}
+#scriptlib .libstats{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0 7px}
+#scriptlib .libstat{font-size:11.5px;color:var(--muted);background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+#scriptlib .libstat.ok{color:var(--ok);border-color:var(--ok)}
+#scriptlib .libstat.warn{color:var(--warn);border-color:var(--warn)}
+#scriptlib .libtags{display:flex;flex-wrap:wrap;gap:5px}
+#scriptlib .libtheme{font-size:11px;padding:1px 8px;border-radius:999px;background:var(--primary-soft);border:1px solid var(--primary);color:var(--primary);font-weight:700}
+#scriptlib .libtag{font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+#scriptlib .libdetail{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);cursor:default}
+#scriptlib .libnote{margin:0 0 6px;font-size:13px}
+#scriptlib .libmetaline{font-size:11.5px;color:var(--muted);margin-bottom:8px}
+#scriptlib .libwarn{font-size:12px;color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;padding:6px 9px;margin:0 0 10px}
+#scriptlib .libgrp{margin-bottom:9px}
+#scriptlib .libgrp-h{font-size:12px;color:var(--muted);margin-bottom:4px}
+#scriptlib .libchars{display:flex;flex-wrap:wrap;gap:5px}
+#scriptlib .libchar{font-size:12px;background:var(--sunken);border:1px solid var(--line);border-radius:7px;padding:2px 8px}
+#scriptlib .libchar i{font-style:italic;font-size:10.5px;color:var(--muted);margin-left:5px}
+#scriptlib .libchar.ghosted{opacity:.45;border-style:dashed}
+</style>
