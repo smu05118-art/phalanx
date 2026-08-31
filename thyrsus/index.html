@@ -4285,3 +4285,251 @@ function wizClearPick(){
   };
 })();
 </script>
+
+<style>
+/* ══ 1~3 보강: 사망 표시 모드 · 소진 표시 · 승리 확인 ══ */
+.deathmode{background:var(--evil-soft);border-color:var(--evil);color:var(--evil);font-weight:700}
+.tseat.dmode .ttoken{cursor:crosshair}
+.tseat.dmode:hover .ttoken{box-shadow:0 0 0 3px var(--evil)}
+.voterow.spent{opacity:.5}
+.voterow.spent .vbtn{pointer-events:none;opacity:.4}
+.spentlab{font-size:12px;color:var(--muted)}
+#winask{position:fixed;inset:0;z-index:99;background:rgba(6,3,14,.8);display:flex;align-items:center;justify-content:center;padding:18px}
+#winask[hidden]{display:none!important}
+#winask .wcard{background:var(--panel);border:2px solid var(--accent);border-radius:16px;max-width:540px;width:100%;padding:26px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.65)}
+#winask .wicon{font-size:56px;line-height:1}
+#winask h3{font-size:23px;margin:12px 0 4px}
+#winask .wteam{display:inline-block;border-radius:999px;padding:4px 18px;font-size:15px;font-weight:700;margin:6px 0 10px}
+#winask .wteam.good{background:var(--good-soft);color:var(--good);border:1px solid var(--good)}
+#winask .wteam.evil{background:var(--evil-soft);color:var(--evil);border:1px solid var(--evil)}
+#winask .wreason{color:var(--muted);font-size:14.5px;line-height:1.7;margin-bottom:6px}
+#winask .wrule{font-size:12.5px;color:var(--muted);background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:12px 0 18px;text-align:left}
+</style>
+<div id="winask" hidden></div>
+
+<script>
+/* ══════════════ ③ 승리 조건 엔진 (캐릭터별 전수) ══════════════
+   반환: {team:'good'|'evil', reason, rule} 또는 null(계속)
+   판정 순서: 즉시 종료 조건 → 악마 생존 여부 → 계승/연장 차단 사유 */
+function aliveEvilTwinPair(){
+  const et=S.players.find(p=>p.alive && p.charId==='eviltwin');
+  if(!et || isMalfunctioning(et)) return null;
+  return et;
+}
+function winBlockers(){
+  // 악마가 죽어도 선 승리를 막는 요소들
+  const out=[];
+  const et=aliveEvilTwinPair();
+  if(et) out.push({who:'사악한 쌍둥이', why:'선한 쌍둥이와 사악한 쌍둥이가 모두 살아 있는 동안 선한 팀은 승리할 수 없습니다.'});
+  const mm=S.players.find(p=>p.alive && p.charId==='mastermind');
+  if(mm && !isMalfunctioning(mm)) out.push({who:'주모자', why:'악마가 처형돼도 게임이 하루 더 이어집니다. 다음 낮 처형 결과로 승패가 갈립니다.'});
+  const sw=S.players.find(p=>p.alive && p.charId==='scarletwoman');
+  if(sw && !isMalfunctioning(sw)) out.push({who:'탕녀', why:'생존 5명 이상에서 악마가 죽으면 탕녀가 계승합니다.'});
+  return out;
+}
+/* 사건 기반 즉시 종료 판정 */
+function evalWinEvent(kind, ctx){
+  ctx=ctx||{};
+  const p=ctx.player;
+  if(kind==='execute'){
+    if(p && p.charId==='saint' && !isMalfunctioning(p))
+      return {team:'evil', reason:`성자(${p.name})가 처형되었습니다.`, rule:'성자: 처형으로 죽으면 선한 팀이 패배합니다. (중독·취함 상태였다면 발동하지 않습니다)'};
+    if(p && p.charId==='eviltwin')
+      return null; // 사악한 쌍둥이 본인 처형은 종료 아님
+    const et=S.players.find(x=>x.charId==='eviltwin' && x.alive);
+    if(et && p && ctx.isGoodTwin)
+      return {team:'evil', reason:`선한 쌍둥이(${p.name})가 처형되었습니다.`, rule:'사악한 쌍둥이: 선한 쌍둥이가 처형되면 악한 팀이 승리합니다.'};
+  }
+  if(kind==='klutz'){
+    if(ctx.targetEvil)
+      return {team:'evil', reason:`얼뜨기(${ctx.klutzName})가 악한 플레이어를 지목했습니다.`, rule:'얼뜨기: 사망 후 공개 지목한 대상이 악하면 선한 팀이 패배합니다. (중독·취함 상태로 죽었다면 발동하지 않습니다)'};
+    return null;
+  }
+  if(kind==='dayEnd'){
+    const vx=S.players.find(x=>x.alive && charOf(x.charId)?.type==='demon' && x.charId==='vortox');
+    if(vx && !ctx.executed)
+      return {team:'evil', reason:'보르톡스가 살아 있는데 오늘 처형이 없었습니다.', rule:'보르톡스: 처형이 없는 낮이 끝나면 악한 팀이 승리합니다.'};
+    const mayor=S.players.find(x=>x.alive && x.charId==='mayor');
+    if(mayor && !isMalfunctioning(mayor) && alivePlayers().length===3 && !ctx.executed)
+      return {team:'good', reason:'생존자 3명 상태에서 처형 없이 낮이 끝났습니다.', rule:'시장: 생존자가 3명일 때 처형이 일어나지 않으면 선한 팀이 승리합니다.'};
+  }
+  if(kind==='death'){
+    const demonAlive=S.players.some(x=>(x.alive||(x.charId==='zombuul'&&hasStatus(x,'fakedead'))) && charOf(x.charId)?.type==='demon');
+    if(demonAlive){
+      if(alivePlayers().length<=2)
+        return {team:'evil', reason:'생존자가 2명 이하이고 악마가 살아 있습니다.', rule:'생존자가 2명이 되면 악마가 반드시 이깁니다(처형으로 악마를 잡을 수 없음).'};
+      return null;
+    }
+    const blockers=winBlockers();
+    const aliveN=(ctx.aliveBefore!==undefined? ctx.aliveBefore : alivePlayers().length+1);
+    const sw=S.players.find(x=>x.alive && x.charId==='scarletwoman');
+    if(sw && aliveN>=5 && !isMalfunctioning(sw)) return null;      // 계승 → 계속
+    const mm=S.players.find(x=>x.alive && x.charId==='mastermind');
+    if(mm && !isMalfunctioning(mm) && ctx.byExecution) return null; // 연장전 → 계속
+    const et=aliveEvilTwinPair();
+    if(et) return null;                                            // 쌍둥이 생존 → 선 승리 불가
+    return {team:'good', reason:'마지막 악마가 죽었습니다.', rule:'악마가 모두 죽고 계승·연장 조건이 없으면 선한 팀이 승리합니다.'};
+  }
+  return null;
+}
+/* ── 승리 확인 다이얼로그 ── */
+let pendingWin=null;
+function askWin(res){
+  if(!res || S.gameOver) return;
+  pendingWin=res;
+  const el=$('#winask'); el.hidden=false;
+  const blockers=winBlockers();
+  el.innerHTML=`<div class="wcard">
+    <div class="wicon">${res.team==='good'?'🕊️':'😈'}</div>
+    <div class="wteam ${res.team}">${res.team==='good'?'선한 팀의 승리입니다':'악한 팀의 승리입니다'}</div>
+    <h3>게임을 끝내겠습니까?</h3>
+    <div class="wreason">${esc(res.reason)}</div>
+    <div class="wrule">📖 ${esc(res.rule)}</div>
+    ${blockers.length?`<div class="alertbox" style="text-align:left">확인할 것: ${blockers.map(b=>`<b>${esc(b.who)}</b>`).join(' · ')} — ${esc(blockers[0].why)}</div>`:''}
+    <div class="bigactions">
+      <button class="gold" onclick="confirmWin(true)">✓ 게임 종료</button>
+      <button onclick="confirmWin(false)">아니오 — 계속 진행</button>
+    </div></div>`;
+}
+function confirmWin(yes){
+  const el=$('#winask'); el.hidden=true;
+  const res=pendingWin; pendingWin=null;
+  if(!res) return;
+  if(yes){ S.gameOver=true; save(); showGameOver(res.team, res.reason+' — '+res.rule); }
+  else {
+    log(`승리 조건 안내(${res.team==='good'?'선':'악'}) — 사회자가 계속 진행을 선택: ${res.reason}`);
+    save();
+    if(typeof res.resume==='function'){ const go=res.resume; setTimeout(go,0); }   // 막아둔 페이즈 전환을 이어서 실행
+    else renderAll();
+  }
+}
+/* 기존 판정과 연결 — checkEndConditions를 사건 기반 엔진으로 대체 */
+(function(){
+  const _orig=checkEndConditions;
+  checkEndConditions=function(cause, aliveBefore){
+    if(S.gameOver) return;
+    const byExecution=/처형|성결자/.test(cause||'');
+    const res=evalWinEvent('death', {aliveBefore, byExecution});
+    if(res){ askWin(res); return; }
+    // 계승·연장 등 '계속' 사유는 기존 안내를 그대로 유지
+    _orig(cause, aliveBefore);
+  };
+})();
+/* 처형 시 성자·선한 쌍둥이 판정 */
+(function(){
+  const _exec=executeNominee;
+  executeNominee=function(nid){
+    const n=findNom(nid); const p=n?playerOf(n.nominee):null;
+    const et=S.players.find(x=>x.alive&&x.charId==='eviltwin');
+    let isGoodTwin=false;
+    if(et && p && p!==et && !isEvil(p) && !isMalfunctioning(et)){
+      isGoodTwin = confirm(`👥 사악한 쌍둥이가 게임에 있습니다.\n${p.name}이(가) 선한 쌍둥이입니까?\n[확인] 예 → 처형 시 악한 팀 승리 / [취소] 아니오`);
+    }
+    _exec(nid);
+    if(!p || p.alive) return;
+    const res=evalWinEvent('execute', {player:p, isGoodTwin});
+    if(res) askWin(res);
+  };
+})();
+/* 낮 종료(밤 진행) 시 보르톡스·시장 판정 */
+(function(){
+  const _adv=advancePhase;
+  advancePhase=function(){
+    if(S.phase.kind==='day' && !S.gameOver){
+      const res=evalWinEvent('dayEnd', {executed:!!S.executedToday});
+      if(res){ res.resume=_adv; askWin(res); if(pendingWin) return; }   // 확인 전에는 밤으로 넘어가지 않음
+    }
+    _adv();
+  };
+})();
+/* 얼뜨기 지목 판정 버튼(낮 패널) */
+function klutzCall(){
+  const kl=S.players.find(p=>p.charId==='klutz' && !p.alive);
+  if(!kl){ toast('사망한 얼뜨기가 없습니다.','warn'); return; }
+  const name=prompt('얼뜨기가 공개 지목한 플레이어 이름:');
+  const t=S.players.find(p=>p.name===name);
+  if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
+  if(isMalfunctioning(kl)){ toast('얼뜨기가 중독/오작동 상태로 죽었습니다 — 발동하지 않습니다.','warn'); log(`얼뜨기 지목(${t.name}) — 오작동으로 무효`); return; }
+  log(`🤡 얼뜨기 공개 지목: ${t.name}`);
+  const res=evalWinEvent('klutz', {targetEvil:isEvil(t), klutzName:kl.name});
+  if(res) askWin(res); else toast(`${t.name}은(는) 선한 플레이어입니다 — 아무 일도 일어나지 않습니다.`,'ok');
+}
+(function(){
+  const _rd=renderDay;
+  renderDay=function(){
+    _rd();
+    if(S.phase.kind!=='day') return;
+    const kl=S.players.find(p=>p.charId==='klutz' && !p.alive);
+    if(!kl) return;
+    const pane=document.getElementById('pane-day');
+    if(!pane || pane.querySelector('.klutzbtn')) return;
+    const card=pane.querySelector('.card');
+    if(!card) return;
+    const b=document.createElement('button');
+    b.className='small klutzbtn'; b.textContent='🤡 얼뜨기 공개 지목 판정';
+    b.style.marginTop='6px'; b.onclick=klutzCall;
+    card.appendChild(b);
+  };
+})();
+
+/* ══════════════ ① 사회자 임의 사망 표시 모드 ══════════════ */
+let deathMode=false;
+function toggleDeathMode(){ deathMode=!deathMode; renderAll();
+  toast(deathMode?'💀 사망 표시 모드 — 토큰을 누르면 즉시 생사가 전환됩니다(확인 없음).':'사망 표시 모드 해제','warn'); }
+function quickToggleDeath(pid){
+  const p=playerOf(pid); if(!p) return;
+  if(p.alive){ killPlayer(p,'사회자 수동 표시'); }
+  else { p.alive=true; log(`${p.name} 소생(수동 표시)`); }
+  save(); renderAll();
+}
+(function(){
+  const _rts=renderTownSquare;
+  renderTownSquare=function(opts){
+    let html=_rts(opts);
+    if(deathMode){
+      html=html.replace(/onclick="openPlayerModal\('([^']+)'\)"/g, (m,pid)=>`onclick="quickToggleDeath('${pid}')"`)
+               .replace(/class="tseat /g,'class="tseat dmode ');
+    }
+    return html;
+  };
+  function injectToggle(paneId){
+    const pane=document.getElementById(paneId); if(!pane) return;
+    const head=pane.querySelector('#tsq')?.previousElementSibling;
+    if(!head || head.querySelector('.dmbtn')) return;
+    const b=document.createElement('button');
+    b.className='small dmbtn'+(deathMode?' deathmode':'');
+    b.textContent=deathMode?'💀 사망 표시 모드 ON':'💀 사망 표시';
+    b.onclick=toggleDeathMode;
+    head.appendChild(b);
+  }
+  const _n=renderNight, _d=renderDay, _g=renderGrim;
+  renderNight=function(){ _n(); injectToggle('pane-night'); };
+  renderDay=function(){ _d(); injectToggle('pane-day'); };
+  renderGrim=function(){ _g();
+    const pane=document.getElementById('pane-grim');
+    const row=pane&&pane.querySelector('.row');
+    if(row && !row.querySelector('.dmbtn')){
+      const b=document.createElement('button');
+      b.className='small dmbtn'+(deathMode?' deathmode':'');
+      b.textContent=deathMode?'💀 사망 표시 모드 ON':'💀 사망 표시';
+      b.onclick=toggleDeathMode; row.appendChild(b);
+    }
+  };
+})();
+
+/* ══════════════ ② 사망 투표 토큰 소진 시 자동 차단·표시 ══════════════ */
+(function(){
+  const _rno=renderNomOpen;
+  renderNomOpen=function(nom){
+    let html=_rno(nom);
+    if(nom.stage!==2) return html;
+    const spent=S.players.filter(p=>!p.alive && p.deadVote===false && nom.votes[p.id]===undefined);
+    if(!spent.length) return html;
+    const extra=spent.map(p=>`<div class="voterow deadrow spent">
+      <span class="vname">${esc(p.name)} 👻</span>
+      <button class="vbtn" disabled>찬성</button><button class="vbtn" disabled>반대</button><button class="vbtn" disabled>기권</button>
+      <span class="spentlab">투표 토큰 소진 — 이번 게임에서 더는 투표할 수 없습니다</span></div>`).join('');
+    return html.replace(/(<div class="row" style="margin-top:10px">\s*<button class="primary" onclick="closeBallot)/, extra+'$1');
+  };
+})();
+</script>
