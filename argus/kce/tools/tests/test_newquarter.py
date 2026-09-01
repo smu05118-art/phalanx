@@ -99,6 +99,34 @@ class TestNewQuarterPath(unittest.TestCase):
             # III-8 전용 레코드(has[0]=0)는 백필 대상이 아니다
             self.assertEqual(s["has"][0], 1, sid)
 
+    def test_stale_quarter_does_not_touch_scalars(self):
+        """과거 분기 재적재가 최신 스칼라(cl/sd/ed)를 과거 값으로 되돌리면 안 된다."""
+        s = {"id": "T-1", "nm": "x", "sd": "2025-01-01", "ed": "2027-12-31",
+             "cl": "최신발주처", "s": {"amt": [None] * 23}, "ev": []}
+        rep = _rep()
+        rec = {"sd": "2020-01-01", "ed": "2026-01-01", "cl": "옛발주처", "amt": 100}
+        KB._detect_ev(s, rec, None, "2023Q1", rep, stale=True)
+        self.assertEqual(s["cl"], "최신발주처")
+        self.assertEqual(s["sd"], "2025-01-01")
+        self.assertEqual(s["ev"], [])            # 허위 이벤트도 남기지 않는다
+        # stale이 아니면 정상 갱신된다
+        KB._detect_ev(s, rec, None, "2023Q1", rep, stale=False)
+        self.assertEqual(s["cl"], "옛발주처")
+
+    def test_later_obs_ignores_forecast(self):
+        """미래 예측(fcst) 칸은 '이후 관측'이 아니다 — 최신 분기 갱신을 막으면 안 된다."""
+        s = {"s": {"amt": [1] * 23}, "sFilled": [None] * 19 + ["fcst"] * 4}
+        self.assertFalse(KB._has_later_obs(s, 18, 19))   # 실측 축 기준
+        s2 = {"s": {"amt": [1] * 23}, "sFilled": [None] * 23}
+        self.assertTrue(KB._has_later_obs(s2, 16, 19))   # 뒤에 실측이 있으면 True
+
+    def test_entity_name_normalization(self):
+        """III-8 표의 `지에스건설㈜`와 집계 라벨 `GS건설`은 같은 법인이다."""
+        self.assertEqual(KB._ent_key("지에스건설㈜"), KB._ent_key("GS건설"))
+        self.assertEqual(KB._ent_key("(주)대우건설"), KB._ent_key("대우건설"))
+        self.assertEqual(KB._ent_key("DL이앤씨㈜"), KB._ent_key("DL이앤씨"))
+        self.assertNotEqual(KB._ent_key("현대건설"), KB._ent_key("현대엔지니어링"))
+
     def test_underscore_keys_not_remapped(self):
         """p8Full의 `_dropQ` 등은 분기 인덱스 목록이지 시계열이 아니다."""
         D = copy.deepcopy(extract_data(os.path.join(KCE, "sct", "index.html")))

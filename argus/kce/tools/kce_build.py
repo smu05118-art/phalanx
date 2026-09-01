@@ -143,6 +143,24 @@ def _site_index(D):
     return idx
 
 
+# 법인명 대조용 정규화 — III-8 표는 `지에스건설㈜`, 집계 라벨은 `GS건설`처럼
+# 법인격 표기와 한글 음차가 갈린다.
+_ENT_DROP = re.compile(
+    r"(㈜|\(주\)|주식회사|유한회사|Co\.?,?\s*Ltd\.?|Pty\.?|Ltd\.?|Inc\.?"
+    r"|SoleProprietorship|Corporation|Corp\.?)", re.I)
+_ENT_KO2EN = (("지에스", "GS"), ("디엘", "DL"), ("에이치디씨", "HDC"),
+              ("에스케이", "SK"), ("엘지", "LG"), ("현대이엔지", "현대엔지니어링"))
+
+
+def _ent_key(s):
+    """법인명 비교 키. `지에스건설㈜` → `GS건설`."""
+    x = _norm_nm(s)
+    x = _ENT_DROP.sub("", x)
+    for ko, en in _ENT_KO2EN:
+        x = x.replace(ko, en)
+    return x.upper()
+
+
 def _tag_ent(lead, ents):
     """표 앞 문맥에서 법인을 판정한다. 현대건설의 '1) 현대건설', GS의 '2) 자이에스앤디'처럼
     lead에 법인명이 박혀 있으면 그 법인, 없으면 None(대표 법인으로 귀속)."""
@@ -205,7 +223,8 @@ def _apply_ii4(D, parsed, k, q, rep):
                 s = cands[0]
                 matched.add(id(s))
                 prev = _last_meas(s, k)
-                _detect_ev(s, rec, prev, q, rep)
+                _detect_ev(s, rec, prev, q, rep,
+                           stale=_has_later_obs(s, k, len(D["fq"])))
             else:
                 s = _new_site(D, rec, n, q)
                 created.append(s["id"])
@@ -225,6 +244,9 @@ def _apply_ii4(D, parsed, k, q, rep):
             entq = tag_ent or s["ent"]
             if live and entq not in live:
                 entq = live[0]
+            # 직전 분기의 표시법인은 **_entq를 세우기 전에** 읽어야 한다 —
+            # _disp_ent가 _entq를 최우선으로 보므로, 먼저 세우면 항상 "변경 없음"이 된다.
+            prev_disp = _disp_ent(D, s, k - 1) if k else s["ent"]
             s["_entq"] = entq
             # 지역도 그 분기 원문이 명시하면 그것을 쓴다. 사이트의 reg는 공사명 기준으로
             # 굳은 표시용 값이라, 시공지는 해외지만 발주처가 한국 법인인 원전 수출 같은
@@ -234,7 +256,6 @@ def _apply_ii4(D, parsed, k, q, rep):
                 s["_regq"] = rq
             # 표시법인이 바뀌면 이력으로 남긴다 — 다음 분기에 이 사업장이 표에서 빠져도
             # _disp_ent가 승계할 근거가 된다(승계 이력이 없으면 원래 라벨로 되돌아간다).
-            prev_disp = _disp_ent(D, s, k - 1) if k else s["ent"]
             if entq != prev_disp and not any(
                     e.get("fq") == q and e.get("f") == "표시법인"
                     for e in s.setdefault("ev", [])):
@@ -243,7 +264,8 @@ def _apply_ii4(D, parsed, k, q, rep):
                 rep["events"] += 1
             nm_raw = (rec.get("nm") or "").strip()
             names = s.setdefault("names", [])
-            if nm_raw and (not names or names[-1][1] != nm_raw):
+            if (nm_raw and not _has_later_obs(s, k, len(D["fq"]))
+                    and (not names or names[-1][1] != nm_raw)):
                 names.append([q, nm_raw])
     rep["created"] = created
     rep["_matched"] = matched          # 백필 대상 판정에 쓴다(_backfill_p8)
@@ -296,6 +318,39 @@ def _backfill_p8(D, k, rep):
     # 백필된 사업장은 '사라짐'이 아니다
     rep["disappeared"] = [x for x in rep["disappeared"] if x not in set(done)]
 
+    # II-4 표에 없어 `_entq`가 없는 사업장(이번에 백필했든, 이미 p8로 차 있든)은
+    # **III-8 표의 '회사명' 열**이 유일한 귀속 근거다 — GS건설 싱가포르 지하철
+    # (GSE-2-0027)처럼 라벨이 `GS이니마`로 굳었지만 실제로는 지에스건설㈜인 건이 바로잡힌다.
+    sf_key = "sFilled"
+    for s in D["sites"]:
+        p8ent = _ent_key(s.pop("_p8ent", "") or "")
+        if not p8ent or s.get("_entq"):
+            continue
+        if (s.get(sf_key) or [None] * n)[k] != "p8":
+            continue
+        for e in D["summary"]["ents"]:
+            ek = _ent_key(e)
+            if ek and (ek == p8ent or ek in p8ent):
+                s["_entq"] = e
+                break
+
+
+def _has_later_obs(s, k, n_meas):
+    """k 이후 **실측 분기**에 관측이 있는가(미래 예측 칸은 관측이 아니다).
+
+    `nm`·`cl`·`sd`·`ed`는 시계열이 아니라 **최신 관측값**을 담는 스칼라다. 과거 분기를
+    재적재할 때 이 필드를 그 분기 원문으로 덮으면 최신 값이 과거로 되돌아가고,
+    최신값과 과거 원문을 비교하느라 허위 변경 이벤트까지 쌓인다.
+
+    n_meas는 `len(fq)`(실측 축)여야 한다 — `len(fqF)`를 넘기면 미래 4분기의 `fcst`가
+    '이후 관측'으로 잡혀 **최신 분기 재적재에서도 스칼라가 갱신되지 않는다.**
+    """
+    sf = s.get("sFilled") or [None] * len(s["s"]["amt"])
+    for i in range(k + 1, min(n_meas, len(s["s"]["amt"]))):
+        if s["s"]["amt"][i] is not None and sf[i] != "fcst":
+            return True
+    return False
+
 
 def _last_meas(s, k):
     sf = s.get("sFilled") or [None] * len(s["s"]["amt"])
@@ -305,7 +360,7 @@ def _last_meas(s, k):
     return None
 
 
-def _detect_ev(s, rec, prev_k, q, rep):
+def _detect_ev(s, rec, prev_k, q, rep, stale=False):
     ev = s.setdefault("ev", [])
     new_sd = norm_date(rec.get("sd"))
     new_ed = norm_date(rec.get("ed"), end=True)
@@ -332,10 +387,12 @@ def _detect_ev(s, rec, prev_k, q, rep):
             continue                       # 원문이 법인격을 줄여 적은 것(…유한회사 → …) — 상세한 기존값 유지
         if str(old) != str(new):
             d = (new - old) if isinstance(old, (int, float)) and isinstance(new, (int, float)) else ""
-            if not any(e["fq"] == q and e["f"] == f for e in ev):
+            if not stale and not any(e["fq"] == q and e["f"] == f for e in ev):
                 ev.append({"fq": q, "f": f, "o": str(old) if f != "기본도급액" else old,
                            "n": str(new) if f != "기본도급액" else new, "d": d})
                 rep["events"] += 1
+            if stale:
+                continue          # 과거 분기 재적재 — 최신 스칼라를 덮지 않는다
             if f == "공사착공일":
                 s["sd"] = new
             elif f == "완공예정일":
@@ -455,6 +512,8 @@ def _apply_p8(D, parsed, k, rep):
                 cands = sorted(cands, key=rank_p8)
             s = cands[0]
             used.add((id(s), basis))
+            if rec.get("p8_ent"):
+                s["_p8ent"] = rec["p8_ent"]     # 백필 귀속 판정용(임시)
             tup = (rec.get("amt"), rec.get("pr"), rec.get("ub"),
                    rec.get("ubimp"), rec.get("rc"), rec.get("allw"))
             if basis == "연결" and sep_vals.get(id(s)) == tup:
@@ -777,6 +836,7 @@ def update_quarter(co, q, raw_dir, apply=False, forecast=False):
     for s in D["sites"]:
         s.pop("_entq", None)      # 임시 귀속 필드는 저장하지 않는다
         s.pop("_regq", None)
+        s.pop("_p8ent", None)
     D.pop("_missing_total", None)
     _validate(D)
     D["codeGen"] = datetime.date.today().isoformat()
