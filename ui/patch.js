@@ -371,8 +371,14 @@ safe('overview',function(){
     var movers=[];
     pool.forEach(function(c){ var a=c.revenue, i=-1;             /* 3개월 합 YoY — 단월 저기저 노이즈 완화 */
       for(var k=a.length-1;k>=0;k--){ if(a[k]){ i=k; break; } }
-      if(i>=14){ var cur=(a[i]||0)+(a[i-1]||0)+(a[i-2]||0), prv=(a[i-12]||0)+(a[i-13]||0)+(a[i-14]||0);
-        if(prv>0&&cur>0){ var y=cur/prv-1; if(isFinite(y)) movers.push([c,y]); } } });
+      if(i<14) return;
+      var cur=(a[i]||0)+(a[i-1]||0)+(a[i-2]||0), prv=(a[i-12]||0)+(a[i-13]||0)+(a[i-14]||0);
+      if(!(prv>0&&cur>0)) return;
+      var mx=0;                                                  /* 자기 이력 최대 3M — 기저효과 배제용 */
+      for(var j=2;j<=i;j++){ var s3=(a[j]||0)+(a[j-1]||0)+(a[j-2]||0); if(s3>mx) mx=s3; }
+      if(prv<mx*0.05) return;      /* 전년 동기가 자기 최대의 5% 미만 = 사실상 0에서 출발 → 제외 */
+      var y=cur/prv-1; if(isFinite(y)&&y>-1&&y<20) movers.push([c,y]);
+    });
     if(movers.length>=4){
       movers.sort(function(a,b){ return b[1]-a[1]; });
       var up=movers.slice(0,4).filter(function(m){return m[1]>0;});
@@ -496,6 +502,223 @@ safe('renderwrap',function(){
         setTimeout(function(){ window.scrollTo(0,y); },0); } });
     updCatFade(); a11y(document);
   };
+});
+
+/* ============================================================
+   모듈 9. 기업 카드 후처리 (2라운드 감사 R2-1/3/4/7)
+   -------------------------------------------------------------
+   companyCard가 만든 DOM을 후처리한다(템플릿 복제 금지 — 빌더가 카드를 바꿔도 따라감).
+   ============================================================ */
+safe('card-post',function(){
+  var _cc=window.companyCard; if(typeof _cc!=='function') return;
+  window.companyCard=function(co){
+    var d=_cc(co);
+    /* R2-1: 좌측 'Category · X'가 우측 .cat-tag와 완전히 같은 문자열 → 중복 제거.
+       h3의 <small>이 이미 name_jp·ticker(또는 HS)를 보여주므로 여기선 그 아래 단계인
+       세부분류만 남긴다. kre 기업은 <small>이 HS로 대체돼 티커가 사라지므로 보완한다. */
+    safe('card:hd',function(){
+      var cc=d.querySelector('.co-cat'); if(!cc) return;
+      var sub=[];
+      if(co.subcategory) sub.push(esc(co.subcategory));
+      if(co.kre&&co.kre.hs&&co.ticker) sub.push(esc(co.ticker));
+      if(sub.length) cc.innerHTML=sub.join(' · ');
+      else cc.style.display='none';
+    });
+    /* R2-3: 상관계수는 증감이 아니다 — 하락 빨강(#ff5c5c)에서 분리 */
+    safe('card:corr',function(){
+      d.querySelectorAll('.headline .chg').forEach(function(el){
+        var lab=(el.parentNode&&el.parentNode.textContent)||'';
+        if(!/Correl/i.test(lab)) return;
+        el.style.color=''; el.classList.add('phx-corr');
+        if(Math.abs(parseFloat(el.textContent)||0)>=0.7) el.classList.add('s3');
+      });
+    });
+    /* R2-4: note 2줄 클램프 + 더보기 (최장 746자가 차트를 화면 밖으로 밀어냄) */
+    safe('card:note',function(){
+      var n=d.querySelector('.co-note'); if(!n) return;
+      if(stripTags(n.innerHTML).length<=90) return;
+      n.innerHTML='<div class="nt">'+n.innerHTML+'</div>'
+        +'<span class="nx" role="button" tabindex="0">＋ 프록시 정의 더보기</span>';
+      var x=n.querySelector('.nx');
+      var tog=function(e){ e.stopPropagation();      /* 카드 클릭(상세 이동)과 분리 */
+        var o=n.classList.toggle('open');
+        x.textContent=o?'− 접기':'＋ 프록시 정의 더보기'; };
+      x.onclick=tog;
+      x.onkeydown=function(e){ if(e.key==='Enter'||e.key===' ') tog(e); };
+    });
+    return d;
+  };
+});
+
+/* ============================================================
+   모듈 10. 카드 그리드 — 뷰포트 지연 렌더 + 키보드 접근 (R2-27/7)
+   카드 30장 × Chart 2개를 동기 생성하던 것을, 화면에 들어올 때만 그린다.
+   .ch-main/.ch-yr 높이가 CSS 고정이라 레이아웃 시프트는 0.
+   ============================================================ */
+safe('card-grid',function(){
+  var _rc=window.renderCards; if(typeof _rc!=='function') return;
+  var _rcc=window.renderCompanyCharts;
+  var EAGER=6;                                   /* 첫 화면 몫은 항상 즉시 렌더 */
+  var ioFired=false;
+  function draw(el){ var co=el.__phxCo; if(!co) return;
+    el.__phxCo=null; if(io) io.unobserve(el);
+    safe('card-grid:draw',function(){ _rcc(el,co); }); }
+  var io=(window.IntersectionObserver&&typeof _rcc==='function')
+    ? new IntersectionObserver(function(es){
+        ioFired=true;
+        es.forEach(function(en){ if(en.isIntersecting) draw(en.target); });
+      },{rootMargin:'600px 0px'})
+    : null;
+  /* 안전망: IO가 동작하지 않는 환경(뷰포트 높이 0, 프리렌더 등)에서 카드가
+     영영 빈 채로 남는 것을 막는다. 일정 시간 내 IO 콜백이 한 번도 없으면 전부 렌더. */
+  function safetyNet(){ setTimeout(function(){ safe('card-grid:net',function(){
+    if(ioFired&&window.innerHeight>0) return;
+    document.querySelectorAll('#main .card.co').forEach(draw);
+  }); },2500); }
+
+  window.renderCards=function(list,g){
+    var idx=0;
+    list.forEach(function(co){
+      if(co._custom){ g.appendChild(stubCard(co)); return; }
+      var card=companyCard(co); g.appendChild(card);
+      var eager=(idx++<EAGER)||!io;
+      if(eager) safe('card-grid:sync',function(){ _rcc(card,co); });
+      else { card.__phxCo=co; io.observe(card); }         /* 나머지는 지연 렌더 */
+      var sb=card.querySelector('[data-star]');
+      if(sb){ sb.setAttribute('aria-label','관심 등록/해제');
+        sb.onclick=function(e){ e.stopPropagation(); toggleStar(co.id);
+          sb.classList.toggle('on',isStar(co.id));
+          if(ST.cat==='watch'||ST.tab==='watch') render(); };
+        sb.onkeydown=function(e){ e.stopPropagation(); }; }
+      card.onclick=function(){ ST._ovScroll=window.scrollY;
+        ST.view='detail'; ST.company=co.id; ST.flow=co.rev_flow||'exp'; ST.q='';
+        var q=document.getElementById('q'); if(q) q.value='';
+        render(); window.scrollTo(0,0); };
+      /* R2-7: 카드가 role/tabindex 없는 div라 키보드로 상세 진입 불가였음 */
+      card.setAttribute('role','link'); card.tabIndex=0;
+      card.setAttribute('aria-label',(co.name||co.id)+' 상세 보기');
+      card.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); card.click(); } };
+    });
+    if(io) safetyNet();
+  };
+  if(io){                                                /* 뷰 전환 시 대기 카드 관찰 해제 */
+    var _da=window.destroyAll;
+    window.destroyAll=function(){
+      safe('card-grid:reset',function(){
+        document.querySelectorAll('#main .card.co').forEach(function(el){
+          if(el.__phxCo){ io.unobserve(el); el.__phxCo=null; } });
+      });
+      return _da();
+    };
+  }
+});
+
+/* ============================================================
+   모듈 11. 상세뷰·국가뷰 후처리 (R2-10/12/13)
+   ※ 모듈 8(지연 로드)보다 먼저 설치해야 한다 — 모듈 8이 이 래퍼를 감싸서
+      지연 로드 완료 후에 후처리가 돌게 된다.
+   ============================================================ */
+safe('detail-post',function(){
+  function cube(){ try{ var sk=setKey();
+    return !!((P.country||{})[sk]||(P.country_i||{})[sk]); }catch(e){ return false; } }
+
+  /* R2-13: 매출형 리전(대만 MOPS·일본 월차 등)은 국가 큐브가 빈 껍데기라
+     포트 카드를 누르면 국가뷰가 반쪽만 그려진 채 멈춘다(라이브 재현 확인).
+     → 깨진 화면 대신 이유를 설명하고 상세뷰로 되돌린다. */
+  var _rcv=window.renderCountry;
+  if(typeof _rcv==='function') window.renderCountry=function(){
+    if(cube()) return _rcv();
+    var main=document.getElementById('main'); if(!main) return _rcv();
+    main.innerHTML='<div class="phx-nocube"><b>이 데이터셋은 국가별 분해를 제공하지 않습니다.</b><br>'
+      +esc(regionObj().label)+'은(는) 기업이 공시하는 월매출 총액이라 '
+      +'세관 신고 기반의 국가별·품목별 내역이 없습니다.<br>'
+      +'<span class="pill" data-back="1" role="button" tabindex="0">← 기업 상세로 돌아가기</span></div>';
+    var b=main.querySelector('[data-back]');
+    if(b) b.onclick=function(){ ST.view='detail'; ST.port=null; render(); };
+    safe('nocube:crumb',function(){
+      var c=document.getElementById('crumb');
+      if(c) c.innerHTML='<b>'+esc(regionObj().label)+'</b><span class="sep">›</span>'
+        +'<span>'+esc((compObj()||{}).name||'')+'</span><span class="sep">›</span><b>국가별 분해 없음</b>';
+    });
+  };
+
+  var _rd=window.renderDetail;
+  if(typeof _rd==='function') window.renderDetail=function(){
+    var v=_rd();
+    /* R2-12: 분해=국가별이면 지표·보기·Flow·실적 pill 11~12개가 조용히 무력화된다 */
+    safe('detail:dead',function(){
+      if(!ST.split) return;
+      var cnt=document.getElementById('cnt'); if(!cnt) return;
+      cnt.querySelectorAll('[data-mt],[data-rp],[data-fn],[data-d]').forEach(function(e){
+        e.classList.add('phx-dead');
+        e.title='국가별 분해 모드에서는 적용되지 않습니다 — 누르면 합계 보기로 돌아갑니다';
+        e.addEventListener('click',function(){ ST.split=false; },true);
+      });
+      var n=cnt.querySelector('.split-note');
+      if(n&&!/적용되지/.test(n.textContent)) n.insertAdjacentHTML('beforeend',
+        ' · <span style="color:var(--dim);font-weight:500">이 모드에서는 지표·보기·Flow·실적 설정이 적용되지 않습니다</span>');
+    });
+    /* R2-13(2): 국가 큐브가 없는 데이터셋(공시 월매출)에서 분해를 켜면 빈 차트가 된다.
+       이 래퍼는 모듈 8의 지연 로드가 끝난 뒤에 실행되므로 이 시점의 cube()는 확정적이다. */
+    safe('detail:nosplit',function(){
+      if(!ST.split||cube()) return;
+      var cnt=document.getElementById('cnt'); if(cnt)
+        cnt.querySelectorAll('[data-sp="1"]').forEach(function(e){
+          e.classList.add('phx-dead');
+          e.title='이 데이터셋(공시 월매출)은 국가별 분해를 제공하지 않습니다'; });
+      var hero=document.getElementById('hero');
+      if(hero&&!hero.querySelector('.phx-nocube'))
+        hero.innerHTML='<div class="phx-nocube"><b>이 데이터셋은 국가별 분해를 제공하지 않습니다.</b><br>'
+          +esc(regionObj().label)+'은(는) 공시 월매출 총액이라 국가별 내역이 없습니다.<br>'
+          +'<span class="pill" data-sp0="1" role="button" tabindex="0">← 합계 보기로</span></div>';
+      var b=hero&&hero.querySelector('[data-sp0]');
+      if(b) b.onclick=function(){ ST.split=false; renderDetail(); };
+    });
+    return v;
+  };
+
+  /* R2-10: 상세뷰 진입 첫 화면을 리전 전체 HS표 30행(약 1000px)이 점령 → 기본 접힘 */
+  var _rh=window.renderHsInfo;
+  if(typeof _rh==='function') window.renderHsInfo=function(){
+    _rh();
+    safe('hsfold',function(){
+      var el=document.getElementById('hsinfo'); if(!el||!el.innerHTML) return;
+      var hs=(typeof REGHS!=='undefined'&&REGHS[ST.region])||[]; if(!hs.length) return;
+      var co=null; try{ co=ST.company?compObj():null; }catch(e){}
+      var lab=''; if(co&&co.hs_label) lab=String((co.hs_label.core||'')+' '+(co.hs_label.broad||''));
+      var mine=hs.filter(function(h){ return h.code&&lab.indexOf(h.code)>=0; });
+      if(!ST._hsOpen){
+        el.innerHTML='<div class="hdr phx-hsum" role="button" tabindex="0">HS 코드 매핑 '+hs.length+'건'
+          +(mine.length?' · <b>이 기업 '+mine.length+'건</b>':'')+'<i>▸ 펼치기</i></div>';
+        el.querySelector('.phx-hsum').onclick=function(){ ST._hsOpen=1; renderHsInfo(); };
+      } else {
+        var hd=el.querySelector('.hdr');
+        if(hd){ hd.classList.add('phx-hsum'); hd.setAttribute('role','button'); hd.tabIndex=0;
+          hd.innerHTML='HS 코드 매핑 '+hs.length+'건<i>▾ 접기</i>';
+          hd.onclick=function(){ ST._hsOpen=0; renderHsInfo(); }; }
+        var tb=el.querySelector('tbody');
+        if(tb) el.querySelectorAll('tbody tr').forEach(function(tr,i){
+          if(mine.indexOf(hs[i])>=0){ tr.classList.add('phx-hshit'); tb.prepend(tr); } });
+      }
+    });
+  };
+});
+
+/* ============================================================
+   모듈 12. 기간 프리셋 칩 — 선택 항목 가시화 (R2-23)
+   기본 'all'이 8개 중 마지막이라 모바일에서 화면 밖에 있었다.
+   ============================================================ */
+safe('range-center',function(){
+  function center(){ safe('range-center:go',function(){
+    var rr=document.getElementById('rangeRow'); if(!rr) return;
+    if(rr.scrollWidth<=rr.clientWidth+8) return;
+    var on=rr.querySelector('.pill.r.on'); if(!on) return;
+    rr.scrollLeft=Math.max(0,on.offsetLeft-(rr.clientWidth-on.offsetWidth)/2);
+  }); }
+  ['updateRangeUI','positionBrush'].forEach(function(n){
+    var f=window[n]; if(typeof f!=='function') return;
+    window[n]=function(){ var r=f.apply(null,arguments); center(); return r; };
+  });
 });
 
 /* ============================================================

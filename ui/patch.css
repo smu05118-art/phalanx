@@ -173,9 +173,11 @@ header{border-bottom:1px solid var(--bd);margin-bottom:10px;padding-bottom:10px;
   #rangeRow::-webkit-scrollbar{display:none;}
   #rangeRow .pill{flex:0 0 auto;}
   .brush{height:32px;}
-  /* 검색: iOS 강제줌 방지 + 전폭 */
-  .search{font-size:16px;padding:8px 12px 8px 32px;max-width:none;flex:1 1 100%;}
-  #curRow .lbl-sm{margin-left:0;}
+  /* 검색: iOS 강제줌 방지(16px 유지) + 통화와 한 줄 — sticky 높이 회수 (R2-22) */
+  #curRow{flex-wrap:nowrap;gap:6px;}
+  #curRow .lbl-sm{display:none;}          /* '통화' 라벨 — ¥/$/₩ 기호로 자명 */
+  .search{font-size:16px;padding:8px 12px 8px 32px;max-width:none;flex:1 1 auto;min-width:0;}
+  #curRow .pill.cur{flex:0 0 auto;}
   #curRow .search{margin-right:0;}
   .phx-hero .hlab{min-width:100%;}
   .catsecs{grid-template-columns:1fr 1fr;}
@@ -196,4 +198,68 @@ header{border-bottom:1px solid var(--bd);margin-bottom:10px;padding-bottom:10px;
 @media(min-width:1600px){
   .ov-grid{grid-template-columns:repeat(4,1fr);}
   .grid{grid-template-columns:repeat(4,1fr);}
+}
+
+/* ============================================================
+   14. 2라운드 감사(2026-09-01) — 기업 카드·상세뷰·모바일
+   ============================================================ */
+
+/* --- 카드 헤더: 좌측을 기업 식별정보로 (R2-1) --- */
+.card .co-cat{color:var(--dim);font-weight:500;font-family:var(--font-mono);font-size:10.5px;}
+.card-hd h3{font-size:15.5px;}
+
+/* --- 헤드라인: YoY를 MoM보다 먼저·크게 (R2-2) ---
+   DOM 순서는 [값][MoM][YoY][Correl?][🔮?] 고정이므로 order로 시각 순서만 교체 */
+.card .headline>div:nth-child(2){order:3;}
+.card .headline>div:nth-child(3){order:2;}
+.card .headline>div:nth-child(2) .chg{font-size:12px;opacity:.82;}
+.card .headline>div:nth-child(3) .chg{font-size:15px;}
+.card .clab{text-transform:none;letter-spacing:0;}
+
+/* --- 증감색 통일 + 이중부호 (R2-3) --- */
+.card .up{color:#2fae66;}
+.card .dn{color:#e06666;}
+.card .headline .chg.up::before{content:'▲';font-size:.72em;margin-right:2px;vertical-align:1px;}
+.card .headline .chg.dn::before{content:'▼';font-size:.72em;margin-right:2px;vertical-align:1px;}
+.card .chg.phx-corr{color:#7da0ff;}          /* 상관계수는 증감이 아니다 — 빨강 금지 */
+.card .chg.phx-corr.s3{color:#2bc0d4;}
+
+/* --- note: 2줄 클램프 + 중립색 (R2-4) --- */
+.card .co-note{color:var(--dim);background:var(--s2);border-color:var(--bd);
+  font-size:11px;line-height:1.55;}
+.card .co-note b{color:var(--tx);font-weight:700;}
+.card .co-note .nt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.card .co-note.open .nt{-webkit-line-clamp:unset;overflow:visible;}
+.card .co-note .nx{display:inline-block;margin-top:4px;color:var(--a1);cursor:pointer;
+  font-weight:700;font-size:10.5px;}
+
+/* --- 카드 어포던스·포커스·★ 대비 (R2-7) --- */
+.card.co .card-hd h3::after{content:' ›';color:var(--a1);font-weight:400;opacity:.65;}
+.card.co:focus-visible{outline:2px solid var(--a2);outline-offset:2px;border-color:var(--a1);}
+.card .star{color:#5a5f80;}                  /* 1.37:1 → 3.11:1 */
+.card .star:hover,.card .star.on{color:var(--a4);}
+@media(pointer:coarse){.card.co .card-hd h3::after{opacity:1;}}
+
+/* --- 상세뷰: HS 매핑표 접기 (R2-10) --- */
+.phx-hsum{cursor:pointer;display:flex;align-items:center;gap:8px;}
+.phx-hsum i{font-style:normal;margin-left:auto;color:var(--dim);font-size:11px;}
+.phx-hsum:hover{color:var(--a1);}
+.hsinfo tr.phx-hshit{background:rgba(0,230,184,.10);}
+.hsinfo tr.phx-hshit .code{color:var(--a1);}
+
+/* --- 상세뷰: 분해 모드에서 무력화된 컨트롤 (R2-12) --- */
+.pill.phx-dead{opacity:.34;}
+.pill.phx-dead.on{background:transparent;border-color:var(--bd);color:var(--dim);}
+
+/* --- 매출형 리전: 분해 불가 안내 (R2-13) --- */
+.phx-nocube{padding:22px 18px;border:1px dashed var(--bd);border-radius:12px;
+  color:var(--dim);font-size:13px;line-height:1.7;text-align:center;}
+.phx-nocube b{color:var(--tx);}
+.phx-nocube .pill{margin-top:12px;display:inline-block;}
+
+/* --- 가로모드·저높이: sticky 해제로 화면 회수 (R2-22/24) --- */
+@media(orientation:landscape) and (max-height:520px){
+  .ctrl{position:static;border-bottom:1px solid var(--bd);}
+  .app{padding:8px 10px 60px;}
+  .ch-main{height:180px;} .ch-yr{height:150px;}
 }
