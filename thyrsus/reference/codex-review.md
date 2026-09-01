@@ -204,3 +204,182 @@
    - 재현: 마귀할멈이 셋째 밤에 플레이어를 곡예사로 만듭니다. 그 플레이어의 첫 낮 이후 밤에도 위저드는 둘째 밤 전용이라고 안내합니다.
    - 기대 동작: 곡예사는 게임의 첫날이 아니라 자신이 곡예사로서 맞는 첫날에 추측하고 그날 밤 결과를 받습니다. [공식 곡예사 능력](https://release.botc.app/resources/data/roles.json)
    - 제안 패치: `jugglerFirstDay`와 추측 기록을 플레이어별로 저장하고, 캐릭터 획득 다음 낮을 첫날로 설정하십시오. 고정된 `S.phase.n===2` 조건은 제거해야 합니다.
+---
+
+# 2차 Codex 교차 검증 — 맥미니 로컬 세션
+
+## 실행 정보
+- 실행 일시: 2026-09-01 (맥미니, MACMINI-CODEX.md 방법 A)
+- 도구: OpenAI Codex CLI **v0.152.0** · 샌드박스 `read-only`(index.html 수정 불가 보장)
+- 입력: `codex-review-packet.md` 전문 (1차와 동일 조건, 기수정 16건 재보고 금지)
+- 검토 대상 커밋: `757a81a` — index.html 내용은 1차와 동일(`b5ea4d3` 시점) 
+- 토큰: 125,345 · 공식 근거: TPI roles.json / nightsheet.json + 공식 위키
+- 1차(맥스튜디오)와 **독립 실행** — 1차 결과를 입력으로 주지 않았음
+
+## 요약 (맥미니 Claude 정리)
+
+**결함 13건** (Critical 4 · High 4 · Medium 5). 1차 15건과 교차하면 **독립 재현된 4건**이 특히 신뢰도가 높다.
+
+| # | 심각도 | 결함 | 위치(라인) | 1차 대조 |
+|---|--------|------|-----------|----------|
+| 1 | Critical | 탕녀 계승이 상태에 미반영 — `charId` 미변경으로 이후 악마 없이 게임 진행 | 910, 4365 | **신규**. 1차 #1과 같은 `return null` 지점의 반대편 증상 |
+| 2 | Critical | 중독·취한 좀버얼도 첫 사망을 무조건 무효화 (`fakedead` 선부여) | 873 | **신규** |
+| 3 | Critical | `doStepKill()`이 군인 면역·여관주인 보호·선원을 무시 | 1718 | 1차 #5와 **독립 재현** |
+| 4 | Critical | 커스텀 캐릭터 `id`가 `onclick`에 무검증 삽입 → 저장형 XSS | 2183, 2206 | 1차 #3과 **독립 재현** |
+| 5 | High | 어릿광대 첫 생존을 확인창 취소로 무산 가능 (강제 능력인데 재량 처리) | 881 | 신규 |
+| 6 | High | BMR·SV 첫날 밤 순서 불일치 (BMR: 하수인→미치광이→악마 / SV: 철학자→하수인→악마) | 803, 806 | 1차 #8과 **독립 재현·동일 결론** |
+| 7 | High | 낮에 부여한 보호가 정작 쓸 밤 시작에 만료 (`{kind:'night',n+1}` 오류) | 1368, 3854 | 1차 #6 인접(다른 벡터) |
+| 8 | High | 좀버얼 첫 사망에서 `checkEndConditions()` 자체를 건너뜀 | 874 | 신규 |
+| 9 | Medium | 사망자 투표 토큰이 선택 변경·기권 시 복원됨 | 1963 | 1차 #10 인접(취소 vs 변경) |
+| 10 | Medium | 동일인 재지명 최고율 2회를 "동률 처형 없음"으로 오처리 | 1803 | 신규 |
+| 11 | Medium | 화가 안내가 정상 작동 중에도 무응답을 허용 | 727 | 신규 |
+| 12 | Medium | 구버전 저장본 마이그레이션이 최상위 `Object.assign`뿐 — `deadVoters` 누락 시 예외 | 832, 1967, 3080 | 신규 |
+| 13 | Medium | `cloudBuildDoc()`가 `#winask`·`#gameover` 오버레이를 비우지 않음 | 3037, 3040 | 1차 미보고 |
+
+### 1·2차 종합 Critical 집합 (배포 전 필수 수정)
+- **A.** 승리 차단(주모자·사악한 쌍둥이)이 `null` 반환 → `_orig()`가 "선한 팀 승리" 오선언 (1차 #1)
+- **B.** 푸카가 `doPoison()` 재사용 → 중독 수명·지연 사망·오작동 판정 붕괴 (1차 #2)
+- **C.** 탕녀 계승 미반영 → 악마 없는 게임 진행 (2차 #1)
+- **D.** 오작동 좀버얼도 첫 사망 무효화 (2차 #2)
+- **E.** `doStepKill()`이 군인·보호·선원 무시 (1차 #5 = 2차 #3, 독립 재현)
+- **F.** 커스텀 캐릭터 `id` 저장형 XSS (1차 #3 = 2차 #4, 독립 재현)
+
+### 주의사항
+- Codex는 실행 검증 없이 정적 코드 경로 분석만 수행. 수정 후 브라우저 회귀 필수.
+- 2차는 TB의 밤 순서 배열과 BMR/SV의 "그 외 밤" 배열에서는 추가 불일치를 찾지 못했다고 명시.
+
+---
+
+## Codex 원문 출력 (verbatim, 2차)
+
+읽기 전용으로 검토했으며 파일은 수정하지 않았습니다. 공식 역할 데이터와 공식 밤 순서 JSON을 기준으로 대조했습니다. 자동 테스트 스위트는 저장소에 없어 정적 코드 경로 분석으로 재현 조건을 확인했습니다.
+
+## 치명적
+
+### 1. 탕녀 계승이 상태에 반영되지 않아 이후 게임이 악마 없이 진행됨
+
+위치: [thyrsus/index.html:910](thyrsus/index.html:910), [thyrsus/index.html:4365](thyrsus/index.html:4365)
+
+1. 결함 요약: 계승 조건을 감지해 안내만 할 뿐 탕녀의 `charId`를 죽은 악마로 변경하지 않는다. 이후 `demonAlive`는 계속 false이고 밤 순서에도 악마가 나타나지 않는다.
+2. 재현 조건: 생존자 5명 이상에서 정상 작동 중인 탕녀가 있고 임프를 처형하거나 처단자로 죽인다.
+3. 기대 동작: 탕녀가 즉시 임프로 바뀌고 이후 악마로 등록·행동해야 한다. 공식 규칙도 탕녀 토큰을 임프 토큰으로 교체하라고 명시한다. [Scarlet Woman 공식 위키](https://www.wiki.bloodontheclocktower.com/Scarlet_Woman)
+4. 제안 패치: 계승을 별도 `promoteScarletWoman(deadDemonId)` 사건으로 구현해 `sw.charId=deadDemonId`와 관련 밤 순서·상태를 원자적으로 갱신한다. 단, 팡 구 점프 징크스는 이 경로를 호출하지 않아야 한다.
+
+### 2. 중독·취한 좀버얼도 첫 사망을 무조건 무효화함
+
+위치: [thyrsus/index.html:873](thyrsus/index.html:873)
+
+1. 결함 요약: `killPlayer()`가 오작동 여부를 확인하기 전에 무조건 `fakedead`를 부여한다.
+2. 재현 조건: 중독 또는 취한 좀버얼이 처음 죽는다.
+3. 기대 동작: 오작동 상태에서는 첫 사망 생존 능력이 없으므로 실제로 죽고 선한 팀 승리를 판정해야 한다. [Zombuul 공식 위키](https://wiki.bloodontheclocktower.com/Zombuul)
+4. 제안 패치: 첫 분기를 `p.charId==='zombuul' && !hasStatus(...,'fakedead') && !isMalfunctioning(p)`로 제한한다.
+
+### 3. BMR/SV 악마 살해 자동화가 주요 생존·보호 능력을 무시함
+
+위치: [thyrsus/index.html:1718](thyrsus/index.html:1718)
+
+1. 결함 요약: `doStepKill()`은 찻집 여인만 자동 검사하고 곧바로 `killPlayer()`를 호출한다. 따라서 군인, 여관 주인 보호, 정상 선원 등이 샤발로스·포·팡 구 등에게 잘못 죽는다. 반대로 암살자만 찻집 여인을 관통하도록 특별 처리돼 있어 UI가 일부 자동화된 것처럼 보인다.
+2. 재현 조건: 커스텀 시트의 군인을 BMR/SV 악마가 지목하거나, 여관 주인이 보호한 대상을 BMR 악마가 지목한다.
+3. 기대 동작: 모든 악마 살해는 군인 면역과 해당 밤 보호를 적용해야 한다. 정상 선원은 사망 원인을 불문하고 죽지 않는다. 암살자만 이러한 방어를 관통한다. [Assassin 공식 위키](https://wiki.bloodontheclocktower.com/Assassin)
+4. 제안 패치: `resolveDeathAttempt(target,{source,sourceType,bypassProtection})` 하나로 보호 우선순위를 통합하고 `doImpKill`과 `doStepKill`이 모두 사용하게 한다.
+
+### 4. 가져온 커스텀 캐릭터 ID를 통한 저장형 XSS
+
+위치: [thyrsus/index.html:2183](thyrsus/index.html:2183), [thyrsus/index.html:2206](thyrsus/index.html:2206)
+
+1. 결함 요약: `importScript()`가 `customs`를 스키마 검증 없이 저장하고, `c.id`를 `onclick="delCustom('${c.id}')"`에 직접 삽입한다.
+2. 재현 조건: `id`가 `x');alert(document.domain);//` 같은 커스텀 JSON을 가져온 뒤 커스텀 탭을 렌더링한다.
+3. 기대 동작: 가져온 데이터는 HTML·JS 문맥을 탈출할 수 없어야 한다.
+4. 제안 패치: 인라인 이벤트를 제거하고 `data-id`+`addEventListener`를 사용한다. 가져오기 시 ID를 안전한 내부 ID로 재발급하거나 `/^[A-Za-z0-9_-]+$/`로 제한하고 필드 타입·길이도 검증한다.
+
+## 높음
+
+### 5. 어릿광대의 첫 생존을 임의로 취소할 수 있음
+
+위치: [thyrsus/index.html:881](thyrsus/index.html:881)
+
+1. 결함 요약: 확인창에서 취소하면 정상 작동 중인 미사용 어릿광대가 그대로 죽는다.
+2. 재현 조건: 정상 어릿광대의 첫 사망에서 확인창의 취소를 선택한다.
+3. 기대 동작: “처음 죽게 될 때 죽지 않는다”는 강제 능력이다. 사회자 재량이 아니다. 암살자 또는 오작동처럼 능력을 우회하는 원인만 예외다. [Fool 공식 위키](https://wiki.bloodontheclocktower.com/Fool)
+4. 제안 패치: 정상적인 첫 사망에서는 확인 없이 자동으로 `spent`를 부여하고 사망을 막는다. 확인창은 진단 안내만 제공하거나 제거한다.
+
+### 6. 공식 밤 순서와 다른 첫날 밤 배열
+
+위치: [thyrsus/index.html:803](thyrsus/index.html:803), [thyrsus/index.html:806](thyrsus/index.html:806)
+
+1. 결함 요약:
+   - BMR은 `minioninfo → demoninfo → lunatic`이지만 공식 순서는 `minioninfo → lunatic → demoninfo`.
+   - SV는 `minioninfo → demoninfo → philosopher`이지만 공식 순서는 `philosopher → minioninfo → demoninfo`.
+2. 재현 조건: BMR 또는 SV 첫날 밤 위저드를 실행한다.
+3. 기대 동작: 공식 전체 밤 순서에서 해당 에디션 역할만 필터링한 순서와 같아야 한다. [공식 nightsheet.json](https://release.botc.app/resources/data/nightsheet.json)
+4. 제안 패치:
+   - BMR 시작부를 `['minioninfo','lunatic','demoninfo', ...]`
+   - SV 시작부를 `['philosopher','minioninfo','demoninfo', ...]`
+   로 변경한다.
+
+### 7. 낮에 수동 부여한 보호가 사용할 밤 시작과 동시에 만료됨
+
+위치: [thyrsus/index.html:1368](thyrsus/index.html:1368), [thyrsus/index.html:3854](thyrsus/index.html:3854)
+
+1. 결함 요약: 낮에 보호를 추가하면 만료를 `{kind:'night', n:ph.n+1}`로 설정한다. `advancePhase()`가 바로 그 밤 시작에 `expireStatuses()`를 호출하므로 보호가 한 번도 작동하지 않는다.
+2. 재현 조건: 낮 1에 보호 토큰을 수동 추가하고 밤 2로 진행한다.
+3. 기대 동작: 밤 2 동안 유지되고 낮 2 시작에 해제돼야 한다.
+4. 제안 패치: 낮에 다음 밤용으로 부여할 때 `{kind:'day', n:ph.n+1}`을 사용한다. 두 중복 구현을 공통 만료 계산 함수로 합친다.
+
+### 8. 좀버얼 첫 사망에서 승리·생존 2인 판정 자체를 건너뜀
+
+위치: [thyrsus/index.html:874](thyrsus/index.html:874)
+
+1. 결함 요약: 죽은 척 처리 후 즉시 `return`하여 `checkEndConditions()`를 부르지 않는다.
+2. 재현 조건: 겉보기 생존자가 좀버얼 포함 3명일 때 좀버얼이 처음 “죽는다”. 타운스퀘어상 생존자는 2명만 남는다.
+3. 기대 동작: 좀버얼 특례에 따라 게임은 계속되지만, 일반 “악마 생존+생존 2인” 자동 승리와 명확히 구분해 판정해야 한다. 현재는 우연히 판정 전체를 생략해 작동한다.
+4. 제안 패치: `evalWinEvent`에 `zombuulFakeDeath` 사건을 명시하고, 일반 2인 승리 규칙의 예외로 처리한다. 숨은 생존 여부를 `alive`와 별도 필드로 모델링하는 편이 안전하다.
+
+## 중간
+
+### 9. 사망자의 투표 선택 취소·기권 시 이미 쓴 토큰이 복원됨
+
+위치: [thyrsus/index.html:1963](thyrsus/index.html:1963)
+
+1. 결함 요약: 사망자가 찬성/반대를 누른 뒤 같은 선택을 취소하거나 기권으로 바꾸면 `deadVote=true`로 복원된다.
+2. 재현 조건: 사망자가 2차 투표에서 찬성을 누른 뒤 다시 찬성 또는 기권을 누른다.
+3. 기대 동작: 요청된 하우스룰의 “사망 토큰 1회 소진”이라면 유효 투표를 행사한 순간 영구 소진돼야 한다. UI 수정은 가능하되 토큰은 복원하지 않아야 한다.
+4. 제안 패치: `deadVote`와 현재 선택을 분리한다. 최초 yes/no에 `deadVote=false`를 고정하고 이후 선택 변경은 `votes[pid]`만 변경한다.
+
+### 10. 동일 피지명자의 동일 최고율 결과도 “동률 처형 없음”으로 처리됨
+
+위치: [thyrsus/index.html:1803](thyrsus/index.html:1803)
+
+1. 결함 요약: 동률을 지명 레코드 단위로 계산한다. 같은 사람을 재지명해 같은 최고 찬성률을 두 번 받으면 서로 다른 처형 후보가 아닌데도 `tie=true`가 된다.
+2. 재현 조건: A를 두 번 지명하고 두 투표 모두 같은 최고 찬성률로 통과시킨다.
+3. 기대 동작: “찬성률 최고자”가 한 명이면 A가 처형 후보여야 한다. 서로 다른 피지명자가 최고율일 때만 동률이다.
+4. 제안 패치: 최고율 레코드들의 `nominee`를 `Set`으로 모아 서로 다른 ID가 2개 이상일 때만 동률로 처리한다.
+
+### 11. 화가 안내가 정상 작동 중에도 사회자의 무응답을 허용함
+
+위치: [thyrsus/index.html:727](thyrsus/index.html:727)
+
+1. 결함 요약: `warn`에 “예/아니오/고개젓기(무응답)”라고 적혀 있다.
+2. 재현 조건: 정상 작동 중인 화가가 유효한 예/아니오 질문을 한다.
+3. 기대 동작: 사회자는 진실한 예 또는 아니오를 제공해야 한다. 질문이 유효한 예/아니오 질문이 아니면 재질문을 요청해야지 무응답을 규칙상 제3의 답으로 사용하면 안 된다. 공식 능력 원문은 “you learn a truthful answer”다. [공식 roles.json](https://release.botc.app/resources/data/roles.json)
+4. 제안 패치: “유효한 질문이면 반드시 진실한 예/아니오. 형식이 부적절하면 다시 질문하도록 안내”로 교체한다.
+
+### 12. 구버전 활성 지명 저장본은 투표 시 예외가 날 수 있음
+
+위치: [thyrsus/index.html:832](thyrsus/index.html:832), [thyrsus/index.html:1967](thyrsus/index.html:1967), [thyrsus/index.html:3080](thyrsus/index.html:3080)
+
+1. 결함 요약: 마이그레이션이 최상위 `Object.assign`뿐이다. 구버전 진행 중 지명에 `deadVoters`가 없으면 사망자 투표 시 `n.deadVoters.includes(...)`에서 예외가 발생한다. 클라우드 복원도 동일하다.
+2. 재현 조건: `noms` 내 활성 지명에 `deadVoters`가 없는 구 저장본을 로드한 뒤 사망자가 찬성/반대한다.
+3. 기대 동작: 신규 필드가 누락된 저장본도 기본값을 보충해 정상 동작해야 한다.
+4. 제안 패치: `migrateState(raw)`에서 플레이어와 지명 각각을 정규화한다. 최소한 `statuses`, `notes`, `deadVote`, `hands`, `votes`, `deadVoters`, `closed`, `stage`를 타입 검사 후 기본값으로 채운다.
+
+### 13. 클라우드 문서가 승리 확인·게임 종료 오버레이를 비우지 않음
+
+위치: [thyrsus/index.html:3037](thyrsus/index.html:3037), [thyrsus/index.html:3040](thyrsus/index.html:3040)
+
+1. 결함 요약: `cloudBuildDoc()`는 탭·wizard·pmodal만 정리한다. `#winask`와 `#gameover`의 동적 `innerHTML` 및 표시 상태는 복제본에 남는다.
+2. 재현 조건: 승리 확인창 또는 게임 종료 화면이 열린 상태에서 클라우드 저장한다.
+3. 기대 동작: 발행 문서는 정적 셸과 `cloudstate`만 포함하고 모든 일시적 오버레이는 숨김·비움 상태여야 한다.
+4. 제안 패치: 동적 루트 allowlist 대신 `#wizard,#pmodal,#winask,#gameover`를 모두 `hidden=true; innerHTML=''`로 정규화하고, 저장 결과 문서에 열린 오버레이가 없는지 계약 테스트를 추가한다.
+
+참고로 플레이어 이름과 메모의 일반 렌더링은 대부분 `esc()`를 통과했습니다. 가장 직접적인 XSS 경로는 검증되지 않은 커스텀 `id`와 저장·복원된 내부 ID가 인라인 이벤트 속성에 들어가는 부분입니다. 또한 공식 밤 순서 기준으로 TB의 배열과 BMR/SV의 그 외 밤 배열에서는 추가 순서 불일치를 발견하지 못했습니다.
