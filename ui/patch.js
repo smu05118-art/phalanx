@@ -498,6 +498,73 @@ safe('renderwrap',function(){
   };
 });
 
+/* ============================================================
+   모듈 8. 국가 큐브 지연 로드 + topc 사용 (첫 로드 페이로드 감축)
+   -------------------------------------------------------------
+   실측: data_jp.js gzip 4.12MB 중 country+country_i가 78%(11.6MB raw)인데
+   실사용처는 카드의 상위 수출국 칩(coTopC)과 국가 드릴다운(countrySrc) 둘뿐이다.
+   빌더 계약(맥스튜디오 작업):
+     · company.topc = {idx, grouped?, top:[{name,share}]}  ← coTopC 결과 사전계산
+     · manifest region.cfile = "data_jp_country.js"        ← {country,country_i}를 PSHC[reg]로
+   이 모듈은 3가지 상태 모두에서 동작한다:
+     (a) 빌더 미적용(현재) — 전부 폴백, 동작 변화 없음
+     (b) 1단계(추가만)     — topc 사용, 국가 큐브는 메인 샤드에 아직 있어 지연로드 불필요
+     (c) 2단계(country 제거) — 국가뷰 진입 시에만 cfile 지연 로드
+   ============================================================ */
+safe('country-lazy',function(){
+  var _cLoaded={}, _cQueue={};
+  function mergeCountry(reg){                       /* PSHC → P 로 병합하면 기존 코드가 그대로 동작 */
+    var c=window.PSHC&&window.PSHC[reg]; if(!c) return false;
+    if(c.country)   P.country  =Object.assign(P.country  ||{}, c.country);
+    if(c.country_i) P.country_i=Object.assign(P.country_i||{}, c.country_i);
+    _cLoaded[reg]=true; return true;
+  }
+  function haveCountry(){                           /* 현재 선택 세트의 국가 큐브가 메모리에 있나 */
+    var sk=null; try{ sk=setKey(); }catch(e){ return true; }   /* 판단 불가 → 통과(폴백) */
+    if(!sk) return true;
+    return !!((P.country||{})[sk]||(P.country_i||{})[sk]);
+  }
+  function loadCountry(cb){
+    var reg=ST.region, r=regionObj();
+    if(_cLoaded[reg]||mergeCountry(reg)) return cb();
+    if(!r.cfile) return cb();                       /* 빌더 미적용 — 메인 샤드에 이미 있음 */
+    if(_cQueue[reg]){ _cQueue[reg].push(cb); return; }
+    _cQueue[reg]=[cb];
+    var m=document.getElementById('main');
+    if(m) m.innerHTML='<div class="load-msg">⏳ 국가별 데이터 불러오는 중…</div>';
+    var sc=document.createElement('script'); sc.src=r.cfile;
+    sc.onload=sc.onerror=function(){ mergeCountry(reg);
+      var q=_cQueue[reg]||[]; _cQueue[reg]=null; q.forEach(function(f){ safe('country-cb',f); }); };
+    document.head.appendChild(sc);
+  }
+
+  /* 카드·상세 패널의 상위 수출국: 빌더 사전계산값이 있으면 국가 큐브 없이 렌더 */
+  var _ctc=window.coTopC;
+  if(typeof _ctc==='function') window.coTopC=function(co,topn){
+    if(co&&co.topc&&co.topc.top&&co.topc.top.length){
+      return { idx:co.topc.idx, grouped:!!co.topc.grouped,
+        top:co.topc.top.slice(0,topn).map(function(t,i){
+          return {name:t.name, share:t.share, col:CCOL[i%CCOL.length]}; }) };
+    }
+    return _ctc(co,topn);
+  };
+
+  /* 국가 큐브가 필요한 두 화면을 지연 로드로 감싼다:
+       · 국가뷰(renderCountry) — 항상 필요
+       · 상세뷰(renderDetail) — '수출국별' 분해 토글(ST.split) 켰을 때만 (dDatasets 760행)
+     분해 토글 핸들러(3640행 re())는 이 전역들을 호출 시점에 참조하므로 함께 커버된다. */
+  function wrapNeedsCountry(name, needs){
+    var orig=window[name]; if(typeof orig!=='function') return;
+    window[name]=function(){
+      if(needs()&&!haveCountry()&&regionObj().cfile&&!_cLoaded[ST.region])
+        return loadCountry(function(){ orig(); });
+      return orig();
+    };
+  }
+  wrapNeedsCountry('renderCountry', function(){ return true; });
+  wrapNeedsCountry('renderDetail',  function(){ return !!ST.split; });
+});
+
 /* ---------- 초기 문구 정리 (P0-07) + 헤더 (P1-17) ---------- */
 safe('inittext',function(){
   var lm=document.querySelector('#main .load-msg'); if(lm&&/Loading/i.test(lm.textContent)) lm.textContent='대시보드 준비 중…';
