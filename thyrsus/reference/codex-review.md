@@ -415,3 +415,344 @@
 - 어릿광대 첫 생존이 확인창 취소로 무산 가능(강제 능력)
 - 좀버얼 첫 사망에서 `checkEndConditions()` 자체를 건너뜀
 - 구버전 저장본 마이그레이션이 최상위 `Object.assign` 뿐(`deadVoters` 누락 시 예외)
+
+---
+
+# 3차 Codex 정밀 검증 — 맥스튜디오 (밤 진행 · 캐릭터 구현 전수)
+
+## 실행 정보
+- 실행 일시: 2026-09-01 (맥스튜디오, `codex exec --sandbox read-only -c model_reasoning_effort=xhigh`)
+- 도구: OpenAI Codex CLI v0.150.1 · 모델 `gpt-5.6-sol` · reasoning effort **xhigh**
+- 검토 대상 커밋: `34b385b` (PR #6 머지 = **1·2차 Critical 6건 수정 반영본**)
+- 초점: 1·2차의 엔진 수준 결함이 아니라 **밤 순서 인덱스 단위 대조 · 캐릭터 72종 전수 · 위저드 씬 전수 · 상태 수명주기**
+- 기수정 22건 + 백로그 16건을 재보고 금지로 명시 — 아래는 전부 신규
+
+## 요약
+
+**신규 결함 23건** (Critical 3 · High 9 · Medium 8 · Low 3).
+
+### 밤 순서 대조 결론
+- **TB 첫날·이후 배열 모두 공식과 완전 일치** (누락·여분·역전 0)
+- **BMR 이후 밤 19단계, SV 이후 밤 19단계도 완전 일치**
+- 불일치는 **BMR·SV 첫날 밤의 3자 배치뿐** — 이미 백로그인 건과 동일. 다만 `renderSheet()`가 첫날 배열을 무시하고 `minioninfo`·`demoninfo`를 강제 선두 배치하므로 **배열만 고쳐도 시트는 계속 틀린다**
+- 캐릭터 72종의 `first`/`other` 플래그는 공식 `roles.json` 과 **전부 일치**
+
+### Critical 3건 — ⚠ 2건은 이번 세션(A~F) 수정분의 결함
+| # | 결함 | 비고 |
+|---|------|------|
+| 1 | 푸카 희생자의 독을 **사망 전에** 제거 + 그 사망 경로에 보호 판정 없음 | **A~F의 B 수정분 결함.** 공식은 "죽고 나서 건강해진다" — 독이 살아 있어야 어릿광대 1회 생존이 막히고 까마귀지기·현자가 거짓 정보를 받는다 |
+| 2 | 처형과 사망을 혼동 — 선원·악마의 변호사·평화주의자 미확인, 찻집 여인 보호가 처형 자체를 취소해 `executedToday` 미기록(보르톡스 오판정), 장의사가 "처형됐지만 안 죽은" 대상을 봄 | 기존 결함 |
+| 3 | `deathBlockReason()`이 **대상이 오작동이면 외부 보호까지 무효화** | **A~F의 E 수정분 결함.** 공식: 취하거나 중독된 대상에게 사용된 *다른 플레이어의* 능력은 정상 작동. 수도사는 악마로부터만, 여관 주인은 모든 밤 사망으로부터 보호 |
+
+### High 9건
+사망 트리거 역할이 밤 실행 큐에서 누락·반복 · 구마사제 판정이 악마 단계와 미연결 · 달의 자손 오작동 판정 시점·주체 · 팡 구 점프가 "죽였는가"가 아니라 "외지인 지목"으로 발동 · 꿈꾸는 자 WIZ 대상·토큰 계약 위반 · 세레노버스가 사망자·외지인 광기 선택 불가 · 이발사 안내가 악마 자신의 스왑 금지 · 백치천재의 보르톡스 지침이 정반대 · 임시 취함을 영구 상태로만 표현
+
+### Medium 8 / Low 3
+오작동 정보 "반드시 거짓" 전역 오안내 · 다수 `pick-player`가 공식상 가능한 사망자 숨김 · 샤발로스·포 중복 선택 · 수학자 범위 과대 집계 · 도박사 경고에 없는 등록 재량 · 캐릭터 변경 시 타 능력 상태 일괄 삭제 · 밤 순서 미리보기가 에디션 무시하고 TB 표시 · 철학자·재봉사·사랑꾼 선택 검증 불완전 / 음유시인 여행자 예외 누락 · 중독된 암살자 소진을 재량으로 안내 · 시트의 이후 밤 행이 첫날 가이드 표시
+
+---
+
+## Codex 원문 출력 (verbatim, 3차)
+
+읽기 전용으로 전수 검증했다. 파일은 수정하지 않았다.
+
+결론부터 말하면 신규 결함은 **Critical 3건, High 9건, Medium 8건, Low 3건**이다. 이미 완료·백로그로 명시된 항목은 제외했다. 기준 데이터는 TPI 공식 [`nightsheet.json`](https://release.botc.app/resources/data/nightsheet.json), [`roles.json`](https://release.botc.app/resources/data/roles.json), [공식 위키](https://wiki.bloodontheclocktower.com/)다.
+
+## A. 밤 순서 전수 대조
+
+황혼·새벽은 배열 밖에서 렌더러가 삽입하므로 역할 인덱스에서는 제외했다.
+
+### Trouble Brewing
+
+| 밤 | 공식 순서 | 현재 배열 | 판정 |
+|---|---|---|---|
+| 첫날 | 1 `minioninfo` → 2 `demoninfo` → 3 `poisoner` → 4 `washerwoman` → 5 `librarian` → 6 `investigator` → 7 `chef` → 8 `empath` → 9 `fortuneteller` → 10 `butler` → 11 `spy` | 동일 | 누락·여분·역전 없음 |
+| 이후 | 1 `poisoner` → 2 `monk` → 3 `scarletwoman` → 4 `imp` → 5 `ravenkeeper` → 6 `empath` → 7 `fortuneteller` → 8 `undertaker` → 9 `butler` → 10 `spy` | 동일 | 누락·여분·역전 없음 |
+
+현재 배열: [thyrsus/index.html:554](thyrsus/index.html:554)
+
+### Bad Moon Rising
+
+| 밤 | 공식 순서 | 현재 배열 | 판정 |
+|---|---|---|---|
+| 첫날 | 1 `minioninfo` → 2 `lunatic` → 3 `demoninfo` → 4 `sailor` → 5 `courtier` → 6 `godfather` → 7 `devilsadvocate` → 8 `pukka` → 9 `grandmother` → 10 `chambermaid` | 1 `minioninfo` → 2 `demoninfo` → 3 `lunatic` → 나머지 동일 | `lunatic`/`demoninfo` 역전. 이미 백로그인 3자 배치 건 |
+| 이후 | 1 `sailor` → 2 `courtier` → 3 `innkeeper` → 4 `gambler` → 5 `devilsadvocate` → 6 `lunatic` → 7 `exorcist` → 8 `zombuul` → 9 `pukka` → 10 `shabaloth` → 11 `po` → 12 `assassin` → 13 `godfather` → 14 `gossip` → 15 `professor` → 16 `tinker` → 17 `moonchild` → 18 `grandmother` → 19 `chambermaid` | 동일 | 누락·여분·역전 없음 |
+
+현재 배열: [thyrsus/index.html:802](thyrsus/index.html:802)
+
+### Sects & Violets
+
+| 밤 | 공식 순서 | 현재 배열 | 판정 |
+|---|---|---|---|
+| 첫날 | 1 `philosopher` → 2 `minioninfo` → 3 `demoninfo` → 4 `snakecharmer` → 5 `eviltwin` → 6 `witch` → 7 `cerenovus` → 8 `clockmaker` → 9 `dreamer` → 10 `seamstress` → 11 `mathematician` | 1 `minioninfo` → 2 `demoninfo` → 3 `philosopher` → 나머지 동일 | `philosopher`가 두 정보 단계 뒤로 이동. 이미 백로그인 3자 배치 건 |
+| 이후 | 1 `philosopher` → 2 `snakecharmer` → 3 `witch` → 4 `cerenovus` → 5 `pithag` → 6 `fanggu` → 7 `nodashii` → 8 `vortox` → 9 `vigormortis` → 10 `barber` → 11 `sweetheart` → 12 `sage` → 13 `dreamer` → 14 `flowergirl` → 15 `towncrier` → 16 `oracle` → 17 `seamstress` → 18 `juggler` → 19 `mathematician` | 동일 | 누락·여분·역전 없음 |
+
+현재 배열: [thyrsus/index.html:805](thyrsus/index.html:805)
+
+`renderSheet()`가 첫날 배열을 무시하고 `minioninfo`·`demoninfo`를 강제로 선두 배치한다([thyrsus/index.html:1292](thyrsus/index.html:1292)). 따라서 배열만 고쳐도 BMR/SV 시트는 계속 틀린다. 이 부분은 명시된 기존 백로그와 동일하므로 신규 finding으로 세지 않았다.
+
+`nightSteps()`는 기본 배열을 재정렬하지 않으며, 커스텀 역할과 TB 주정뱅이 위장 단계만 위치 삽입한다([thyrsus/index.html:1412](thyrsus/index.html:1412)).
+
+### `first` / `other` 플래그
+
+공식 `roles.json`의 `firstNightReminder`/`otherNightReminder` 존재 여부와 **72종 전부 일치**했다.
+
+| 에디션 | 첫날만 | 둘 다 | 이후만 | 밤 플래그 없음 |
+|---|---|---|---|---|
+| TB | 세탁부, 사서, 수사관, 요리사 | 초공감자, 점쟁이, 집사, 독살범, 첩자 | 장의사, 수도사, 까마귀지기(조건부), 탕녀(조건부), 임프 | 성결자, 처단자, 군인, 시장, 주정뱅이, 은둔자, 성자, 남작 |
+| BMR | 없음 | 할머니, 선원, 객실 청소부, 궁정대신, 미치광이, 대부, 악마의 변호사, 푸카 | 구마사제, 여관 주인, 도박사, 험담꾼, 교수, 땜장이, 달의 자손, 암살자, 좀버얼, 샤발로스, 포 | 음유시인, 찻집 여인, 평화주의자, 어릿광대, 건달, 주모자 |
+| SV | 시계공, 사악한 쌍둥이 | 꿈꾸는 자, 뱀 조련사, 수학자, 재봉사, 철학자, 마녀, 세레노버스 | 꽃팔이 소녀, 포고꾼, 예언자, 곡예사, 현자, 사랑꾼, 이발사, 마귀할멈, 팡 구, 노 다시, 보르톡스, 비고르모르티스 | 백치천재, 화가, 변종, 얼뜨기 |
+
+조건부 플래그의 존재 자체도 맞다. 문제는 아래 High finding처럼 실행 큐가 그 조건을 제대로 추적하지 않는다는 점이다.
+
+---
+
+## Critical
+
+### 1. 푸카 희생자의 독을 사망 전에 제거한다
+
+[thyrsus/index.html:1702](thyrsus/index.html:1702), [thyrsus/index.html:1715](thyrsus/index.html:1715)
+
+1. **결함:** 이전 희생자의 푸카 독을 먼저 제거한 뒤 `resolveNightDeath()`를 호출한다. 또한 이 경로는 여관 주인·찻집 여인 같은 밤 사망 보호를 전혀 확인하지 않는다.
+2. **재현:** 푸카가 어릿광대를 중독시킨 뒤 다음 밤 새 대상을 문다. 현재는 어릿광대의 독이 먼저 풀려 1회 생존이 작동할 수 있다. 푸카가 현자·까마귀지기를 죽인 경우에도 건강한 상태로 사망 능력이 처리된다. 여관 주인 보호 대상도 직접 사망한다.
+3. **기대:** 푸카 희생자는 **사망 순간까지 중독**되어 있어 어릿광대 능력이 작동하지 않고, 현자 등은 거짓 정보를 받을 수 있다. 보호되어 죽지 않은 경우에도 이후 건강해진다. [Pukka 공식 위키](https://wiki.bloodontheclocktower.com/Pukka)
+4. **제안 패치:** 새 대상을 먼저 중독시키고, 이전 대상에게 공용 밤 사망 보호 판정을 적용한 뒤, 독을 유지한 상태로 사망·사망 능력을 전부 해결하고 마지막에 푸카 독만 제거한다. `pukkaVictimId`와 독 토큰을 별도 pending-effect 구조로 관리한다.
+
+### 2. 처형과 사망을 혼동해 BMR 핵심 능력을 무시한다
+
+[thyrsus/index.html:1937](thyrsus/index.html:1937), [thyrsus/index.html:2053](thyrsus/index.html:2053)
+
+1. **결함:** 일반 처형과 성결자 처형 모두 `killPlayer()`를 바로 호출한다. 정상 선원, 악마의 변호사 보호, 평화주의자 재량을 확인하지 않는다. 찻집 여인 보호는 반대로 “처형 자체”를 취소하고 `executedToday`도 기록하지 않는다. 어릿광대처럼 처형됐지만 살지 않은 대상은 장의사에게 잘못 안내된다.
+2. **재현:** 정상 선원을 처형하면 죽는다. 악마의 변호사가 보호한 대상을 처형해도 죽는다. 찻집 여인 이웃 처형에서 취소를 선택하면 보르톡스 기준으로 “오늘 처형 없음”이 된다. 어릿광대가 처형을 버텨도 장의사에게 해당 토큰을 보여주라고 안내한다.
+3. **기대:** 처형은 사망과 별개다. 보호되어 살아도 그날 처형은 소모되고 보르톡스 조건을 만족한다. 장의사는 **처형으로 실제 죽은** 캐릭터만 본다. [States](https://wiki.bloodontheclocktower.com/States), [Undertaker](https://wiki.bloodontheclocktower.com/Undertaker), [Pacifist](https://wiki.bloodontheclocktower.com/Pacifist), [Sailor](https://wiki.bloodontheclocktower.com/Sailor)
+4. **제안 패치:** `resolveExecution()`을 만들고 `executionOccurred`, `diedByExecutionPid`를 분리한다. 선원·악마의 변호사·찻집 여인·평화주의자·어릿광대 판정을 한 곳에서 처리하며, 성결자 경로도 동일 함수를 사용한다. 장의사는 `diedByExecutionPid`만 참조해야 한다.
+
+### 3. 대상의 중독·취함이 외부 보호까지 무효화한다
+
+[thyrsus/index.html:873](thyrsus/index.html:873), [thyrsus/index.html:1775](thyrsus/index.html:1775)
+
+1. **결함:** `deathBlockReason()`이 대상이 오작동 상태면 즉시 `null`을 반환한다. 따라서 수도사·여관 주인이 준 외부 보호도 함께 사라진다. 반대로 `doStepKill()`은 살해 출처를 구분하지 않아 군인·수도사 보호가 험담꾼·대부·달의 자손 같은 비악마 사망도 막을 수 있다.
+2. **재현:** 여관 주인이 두 명을 보호하고 그중 한 명을 취하게 한 뒤 악마가 그 취한 플레이어를 공격하면 현재 사망한다. 교차 스크립트에서는 수도사 보호 대상이 중독돼도 같은 문제가 난다.
+3. **기대:** 취하거나 중독된 **대상에게 사용된 다른 플레이어의 능력은 정상 작동**한다. 수도사는 악마로부터만, 여관 주인은 모든 밤 사망으로부터 보호한다. [States](https://wiki.bloodontheclocktower.com/States), [Monk](https://wiki.bloodontheclocktower.com/Monk), [Innkeeper](https://wiki.bloodontheclocktower.com/Innkeeper)
+4. **제안 패치:** 외부 보호와 대상 자신의 면역을 분리한다. `deathBlockReason(target, {sourceType, atNight, ignoresProtection})` 형태로 살해 출처를 전달하고, 대상 오작동은 군인·선원 같은 자기 능력에만 적용한다.
+
+---
+
+## High
+
+### 4. 사망 트리거 역할이 전체 밤 실행에서 누락되거나 반복된다
+
+[thyrsus/index.html:1460](thyrsus/index.html:1460), [thyrsus/index.html:2838](thyrsus/index.html:2838), [thyrsus/index.html:4011](thyrsus/index.html:4011)
+
+1. **결함:** 사망한 까마귀지기는 “오늘 밤 사망” 여부와 무관하게 이후 매일 실행 가능하다. 반면 사망한 현자·이발사·사랑꾼·달의 자손은 일반 사망 필터로 전체 밤 큐에서 빠진다. `startWiz()`도 살아있는 holder만 찾는다.
+2. **재현:** 2일 밤 까마귀지기가 죽고 발동한 뒤 3일 밤 전체 진행을 시작하면 다시 큐에 들어간다. 같은 밤 악마에게 죽은 현자는 큐에서 제외된다.
+3. **기대:** 까마귀지기와 현자는 사망 즉시/해당 밤 한 번만, 이발사·사랑꾼은 오늘 죽었을 때 한 번만 처리되어야 한다. [Abilities](https://wiki.bloodontheclocktower.com/Abilities), [Ravenkeeper](https://wiki.bloodontheclocktower.com/Ravenkeeper), [Barber](https://wiki.bloodontheclocktower.com/Barber)
+4. **제안 패치:** 사망 이벤트에 `phase`, `night`, `cause`, `resolvedTriggers`를 기록한다. `stepSkipReason()`은 현재 생존 여부가 아니라 미해결 이벤트를 검사하고, 위저드 holder도 해당 이벤트의 사망자를 사용한다.
+
+### 5. 구마사제 판정이 실제 악마 단계에 연결되지 않는다
+
+[thyrsus/index.html:1664](thyrsus/index.html:1664), [thyrsus/index.html:3245](thyrsus/index.html:3245)
+
+1. **결함:** `doExorcist()`는 토스트만 띄우고 악마 단계 차단 상태를 기록하지 않는다. 전체 밤 큐는 이후 악마 위저드를 정상 실행한다. 푸카를 구마한 경우 “새 중독은 없음, 이전 독 피해는 사망”이어야 하지만 현재 두 효과가 `doPukkaPick()` 하나에 결합돼 있다.
+2. **재현:** 구마사제가 실제 악마를 골라 판정한 뒤 전체 진행을 계속하면 해당 악마 WIZ가 열린다. 푸카 WIZ를 닫으면 이전 희생자도 죽지 않고, 실행하면 새 희생자까지 중독된다.
+3. **기대:** 선택된 악마는 깨어나 자신의 능력을 사용하지 않는다. 단, 푸카의 이전 공격으로 인한 사망은 계속 해결된다. [Exorcist](https://wiki.bloodontheclocktower.com/Exorcist), [Pukka](https://wiki.bloodontheclocktower.com/Pukka)
+4. **제안 패치:** `demonBlockedNight`를 저장해 큐에서 악마의 선택·공격 장면만 건너뛴다. 푸카는 `resolvePendingPukkaDeath()`와 `chooseNewPukkaVictim()`을 분리한다.
+
+### 6. 달의 자손 오작동 판정 시점과 선택 주체가 틀리다
+
+[thyrsus/index.html:644](thyrsus/index.html:644), [thyrsus/index.html:3316](thyrsus/index.html:3316)
+
+1. **결함:** “중독 상태로 죽었으면 발동 없음”이라고 하지만 실제 판정 시점은 대상이 죽는 **그날 밤**이다. WIZ도 사회자가 선택하는 장면(`who:'st'`)으로 표시한다.
+2. **재현:** 달의 자손이 중독 상태로 낮에 죽어 대상을 지목한 뒤 밤에 건강해지면 현재 불발 안내지만 공식상 대상은 죽는다. 반대 상황도 역전된다.
+3. **기대:** 달의 자손이 사망 사실을 알게 된 직후 직접 생존자 한 명을 공개 선택한다. 대상의 선악은 선택 시점, 달의 자손의 건강은 밤 사망 해결 시점 기준이다. [Moonchild](https://wiki.bloodontheclocktower.com/Moonchild)
+4. **제안 패치:** `moonchildChoice={pid,targetPid,alignmentAtChoice}`를 저장하고 밤에 source의 현재 오작동 상태를 검사한다. WIZ 선택 주체는 `player`로 바꾼다.
+
+### 7. 팡 구 점프가 “죽였는가”가 아니라 “외지인을 지목했는가”로 발동한다
+
+[thyrsus/index.html:778](thyrsus/index.html:778), [thyrsus/index.html:3463](thyrsus/index.html:3463)
+
+1. **결함:** 외지인 지목 즉시 일반 사망 판정을 건너뛰고 점프하라고 안내한다.
+2. **재현:** 여관 주인 등으로 보호된 외지인을 팡 구가 공격하면 현재 새 팡 구가 생기고 기존 팡 구가 죽는다.
+3. **기대:** 첫 외지인을 **팡 구가 죽였을 때만** 점프한다. 외지인이 죽지 않았다면 점프도 없다. [Fang Gu](https://wiki.bloodontheclocktower.com/Fang_Gu)
+4. **제안 패치:** 먼저 Demon 사망 판정을 수행해 실제 `alive→dead` 전이가 가능한지 확인하고, 성공했을 때 그 사망을 점프로 치환한다.
+
+### 8. 꿈꾸는 자 WIZ가 대상·토큰 계약을 모두 위반할 수 있다
+
+[thyrsus/index.html:692](thyrsus/index.html:692), [thyrsus/index.html:3419](thyrsus/index.html:3419)
+
+1. **결함:** 죽은 플레이어를 선택할 수 없고 여행자를 선택할 수 있다. 선·악 토큰 풀이 둘 다 `any`라서 같은 진영 둘을 고르거나 실제 캐릭터가 없는 쌍을 보여줄 수 있다. 능력 요약도 여행자 제외를 누락했다.
+2. **재현:** 죽은 플레이어는 버튼에 나타나지 않는다. `goodTok`에서 악마, `evilTok`에서 주민을 선택할 수 있다.
+3. **기대:** 자신과 여행자를 제외한 살아있거나 죽은 플레이어를 고르고, 선한 캐릭터 하나와 악한 캐릭터 하나를 보여주며 둘 중 하나는 대상의 실제 캐릭터여야 한다. [Dreamer](https://wiki.bloodontheclocktower.com/Dreamer)
+4. **제안 패치:** `any-not-self-not-traveller`, `good-characters`, `evil-characters` 필터를 추가하고 건강한 경우 실제 토큰 하나를 자동 고정한다. 보르톡스/오작동 때만 올바른 거짓 계약을 별도로 계산한다.
+
+### 9. 세레노버스가 죽은 대상과 외지인 광기를 선택할 수 없다
+
+[thyrsus/index.html:3400](thyrsus/index.html:3400)
+
+1. **결함:** 대상 필터가 `alive`, 캐릭터 풀이 `townsfolk`뿐이다.
+2. **재현:** 죽은 플레이어를 광기 대상으로 고를 수 없고 변종·사랑꾼·이발사·얼뜨기 광기를 줄 수 없다.
+3. **기대:** 아무 플레이어와 아무 선한 캐릭터, 즉 주민 또는 외지인을 선택할 수 있다. 죽은 대상도 광기 위반으로 처형될 수 있다. [Cerenovus](https://wiki.bloodontheclocktower.com/Cerenovus)
+4. **제안 패치:** 대상은 `any`, 캐릭터 풀은 `good-characters`로 변경한다.
+
+### 10. 이발사 안내가 악마 자신의 스왑을 금지한다
+
+[thyrsus/index.html:749](thyrsus/index.html:749), [thyrsus/index.html:3487](thyrsus/index.html:3487)
+
+1. **결함:** “악마 자신은 스왑 불가”라고 명시한다.
+2. **재현:** 보르톡스가 자신과 마녀의 캐릭터를 교환하려 할 때 도구가 불법이라고 안내한다.
+3. **기대:** 선택하는 악마는 자신을 고를 수 있다. 금지되는 것은 **다른 악마 플레이어**다. [Barber](https://wiki.bloodontheclocktower.com/Barber)
+4. **제안 패치:** 문구를 “악마 자신은 가능, 다른 악마는 불가”로 수정하고, 둘 이상의 악마가 있을 때만 다른 악마를 선택 목록에서 제외한다.
+
+### 11. 백치천재의 보르톡스 지침이 정반대다
+
+[thyrsus/index.html:715](thyrsus/index.html:715)
+
+1. **결함:** 보르톡스 게임에서도 “참/거짓 구조 유지”라고 안내한다.
+2. **재현:** 보르톡스가 살아 있는 날 백치천재에게 참 1개·거짓 1개를 제공한다.
+3. **기대:** 보르톡스 아래 주민 정보는 전부 거짓이므로 백치천재의 두 문장 모두 거짓이어야 한다. [Vortox](https://wiki.bloodontheclocktower.com/Vortox), [Savant](https://wiki.bloodontheclocktower.com/Savant)
+4. **제안 패치:** 보르톡스 분기를 별도로 두어 “두 정보 모두 거짓”을 강제한다. 중독·취함만 두 참/두 거짓/통상 구조 모두 허용한다.
+
+### 12. 임시 취함을 전부 영구 상태로만 표현한다
+
+[thyrsus/index.html:560](thyrsus/index.html:560), [thyrsus/index.html:3191](thyrsus/index.html:3191), [thyrsus/index.html:3933](thyrsus/index.html:3933)
+
+1. **결함:** `drunkS`는 항상 `expiresAt:null`인 영구 취함이다. 선원·여관 주인·건달·음유시인·궁정대신의 임시 취함에 동일 버튼을 사용하면 자동 해제되지 않는다.
+2. **재현:** 여관 주인 WIZ 안내에 따라 대상에게 취함 버튼을 누르고 다음 황혼으로 진행해도 상태가 남는다.
+3. **기대:** 선원·여관 주인·건달·음유시인은 다음 황혼, 궁정대신은 3일 밤+3일 낮 뒤 만료된다. 주정뱅이·사랑꾼·뱀 조련사 독은 영구다. [Innkeeper](https://wiki.bloodontheclocktower.com/Innkeeper), [`roles.json`](https://release.botc.app/resources/data/roles.json)
+4. **제안 패치:** `drunkS`에 `source`별 만료 정책을 지원한다. 궁정대신은 선택한 밤 `n+3`, 다음 황혼까지 역할은 `night n+1`, 영구 취함은 `null`로 저장한다.
+
+---
+
+## Medium
+
+### 13. 오작동 정보가 “반드시 거짓”이라고 전역 안내된다
+
+[thyrsus/index.html:488](thyrsus/index.html:488), [thyrsus/index.html:1570](thyrsus/index.html:1570), [thyrsus/index.html:2858](thyrsus/index.html:2858), [thyrsus/index.html:3350](thyrsus/index.html:3350), [thyrsus/index.html:3503](thyrsus/index.html:3503)
+
+1. **결함:** 주정뱅이와 중독·취함 정보 역할에게 반드시 거짓을 주라고 한다. 꽃팔이 소녀, 예언자, 재봉사 제안도 중독과 보르톡스를 같은 규칙으로 묶는다.
+2. **재현:** 중독된 꽃팔이 소녀의 실제 답이 “예”인 상황에서 “예”를 줄 수 없다고 안내한다.
+3. **기대:** 중독·취함은 정보가 임의이므로 참도 거짓도 가능하다. 반드시 거짓인 것은 살아있는 보르톡스가 영향을 주는 주민 정보뿐이다. [States](https://wiki.bloodontheclocktower.com/States), [Poisoner](https://wiki.bloodontheclocktower.com/Poisoner), [Vortox](https://wiki.bloodontheclocktower.com/Vortox)
+4. **제안 패치:** 배너를 “참 또는 거짓 가능”으로 바꾸고, 보르톡스 전용 `mustBeFalse` 표시를 분리한다. 세탁부·사서·수사관의 풀도 오작동·등록 시 실제 인플레이 풀로 제한하지 않는다.
+
+### 14. 다수 `pick-player`가 공식상 가능한 사망자를 숨긴다
+
+[thyrsus/index.html:3007](thyrsus/index.html:3007), [thyrsus/index.html:3061](thyrsus/index.html:3061), [thyrsus/index.html:3210](thyrsus/index.html:3210), [thyrsus/index.html:3245](thyrsus/index.html:3245), [thyrsus/index.html:3252](thyrsus/index.html:3252), [thyrsus/index.html:3388](thyrsus/index.html:3388), [thyrsus/index.html:3457](thyrsus/index.html:3457)
+
+1. **결함:** 독살범, 집사, 수도사, 여관 주인, 도박사, 구마사제, 좀버얼, 푸카, 샤발로스, 포, 암살자, 대부, 마녀, 마귀할멈, 사랑꾼 및 대부분 악마 WIZ가 `alive`/`alive-not-self`를 사용한다.
+2. **재현:** 도박사가 죽은 플레이어를 추측하거나 구마사제가 죽은 척한 좀버얼을 선택하려 해도 목록에 없다. 집사는 죽은 주인을 고를 수 없다.
+3. **기대:** 능력에 “alive”가 명시되지 않은 `choose a player`는 사망자도 가능하다. 선원·객실 청소부·뱀 조련사·악마의 변호사·달의 자손만 명시된 생존 제한을 유지해야 한다. [Abilities](https://wiki.bloodontheclocktower.com/Abilities), [Gambler](https://wiki.bloodontheclocktower.com/Gambler), [Exorcist](https://wiki.bloodontheclocktower.com/Exorcist), [Butler](https://wiki.bloodontheclocktower.com/Butler)
+4. **제안 패치:** 해당 장면을 `any`로 바꾸고 자기 제외가 필요한 집사·수도사는 `any-not-self`를 추가한다.
+
+### 15. 샤발로스·포가 같은 플레이어를 중복 선택할 수 있다
+
+[thyrsus/index.html:3270](thyrsus/index.html:3270), [thyrsus/index.html:3278](thyrsus/index.html:3278)
+
+1. **결함:** 샤발로스는 두 개의 독립 `storeAs`를 써 같은 대상을 두 번 선택할 수 있다. 포는 3명 선택 장면 없이 “이전으로 돌아가 세 번 반복”하게 한다.
+2. **재현:** 샤발로스 첫 공격이 보호로 막힌 뒤 같은 플레이어를 두 번째 희생자로 다시 선택할 수 있다. 충전 포도 같은 대상 반복을 막지 않는다.
+3. **기대:** “2 players”, “3 players”는 서로 다른 플레이어를 한 번에 선택한다. [`roles.json`](https://release.botc.app/resources/data/roles.json)
+4. **제안 패치:** 샤발로스는 `n:2` 단일 장면, 충전 포는 `n:3` 단일 장면으로 만들고 각 대상에 순차 판정을 실행한다.
+
+### 16. 수학자 능력 범위가 과대 집계된다
+
+[thyrsus/index.html:700](thyrsus/index.html:700), [thyrsus/index.html:3448](thyrsus/index.html:3448)
+
+1. **결함:** “오늘 밤+낮 오작동한 플레이어”라고만 해 `since dawn`, `다른 캐릭터 능력 때문에` 조건을 누락한다. 수학자 자신의 오작동 및 중독됐지만 우연히 정상 결과를 받은 역할도 셀 수 있는 문구다.
+2. **재현:** 중독된 초공감자가 우연히 정확한 숫자를 받은 경우 현재 안내대로면 카운트할 수 있다.
+3. **기대:** 새벽 이후 다른 캐릭터 능력 때문에 비정상 작동한 능력만 센다. 수학자 자신과 정상 결과는 제외한다. [Mathematician](https://wiki.bloodontheclocktower.com/Mathematician)
+4. **제안 패치:** 능력·가이드 문구를 공식 조건으로 교체하고 `abnormalSinceDawn` 이벤트를 역할별 1회 기록한다.
+
+### 17. 도박사 경고에 존재하지 않는 등록 재량과 불가능한 중독 사망이 적혀 있다
+
+[thyrsus/index.html:597](thyrsus/index.html:597)
+
+1. **결함:** 미치광이·건달의 “등록 재량”이 정답 판정에 영향을 준다고 하며, 중독된 도박사가 정답이어도 죽을 수 있다고 한다.
+2. **재현:** 미치광이를 악마로 추측하거나 건달을 다른 역할로 추측해 정답 처리할 수 있다고 오해할 수 있다.
+3. **기대:** 도박사는 실제 캐릭터를 추측한다. 미치광이는 미치광이, 건달은 건달이다. 중독된 도박사는 능력이 없으므로 자신의 추측 때문에 죽지 않는다. [Gambler](https://wiki.bloodontheclocktower.com/Gambler), [States](https://wiki.bloodontheclocktower.com/States)
+4. **제안 패치:** 등록 관련 경고를 제거하고 “중독이면 정오답과 무관하게 도박사 능력으로 죽지 않지만 사용 절차는 평소처럼 진행”으로 바꾼다.
+
+### 18. 캐릭터 변경 시 다른 능력이 준 상태까지 일괄 삭제할 수 있다
+
+[thyrsus/index.html:3628](thyrsus/index.html:3628), [thyrsus/index.html:3632](thyrsus/index.html:3632)
+
+1. **결함:** “상태 토큰 정리 후 적용”이 대상의 모든 상태를 삭제한다.
+2. **재현:** 중독된 플레이어를 마귀할멈이 다른 캐릭터로 바꿀 때 정리 버튼을 누르면 중독이 사라진다.
+3. **기대:** 플레이어의 중독·취함 같은 상태는 캐릭터와 독립적이므로 캐릭터가 바뀌어도 유지된다. 다만 옛 캐릭터 능력이 만든 지속 효과는 별도로 끝날 수 있다. [States](https://wiki.bloodontheclocktower.com/States), [Abilities](https://wiki.bloodontheclocktower.com/Abilities)
+4. **제안 패치:** 일괄 삭제 버튼을 제거하고, `sourceAbilityId`가 옛 캐릭터인 지속 효과만 선택적으로 해제한다.
+
+### 19. 밤 순서 미리보기가 선택 에디션과 무관하게 TB를 표시한다
+
+[thyrsus/index.html:1526](thyrsus/index.html:1526)
+
+1. **결함:** `previewNightOrders()`가 항상 `FIRST_NIGHT_ORDER`/`OTHER_NIGHT_ORDER`, 즉 TB 상수를 사용한다.
+2. **재현:** BMR 또는 SV를 선택한 뒤 낮/준비 화면에서 밤 순서 미리보기를 열면 독살범·세탁부 등 TB 순서가 나온다.
+3. **기대:** 선택한 에디션의 공식 순서를 보여줘야 한다. [`nightsheet.json`](https://release.botc.app/resources/data/nightsheet.json)
+4. **제안 패치:** `editionOf().first`와 `.other`를 사용한다.
+
+### 20. 철학자·재봉사·사랑꾼 WIZ의 선택 검증이 불완전하다
+
+[thyrsus/index.html:3360](thyrsus/index.html:3360), [thyrsus/index.html:3435](thyrsus/index.html:3435), [thyrsus/index.html:3492](thyrsus/index.html:3492)
+
+1. **결함:** 철학자는 악한 캐릭터도 고를 수 있다. 재봉사는 자신을 두 대상 중 하나로 선택할 수 있다. 사랑꾼은 죽은 플레이어를 취하게 할 수 없게 제한된다.
+2. **재현:** 철학자 WIZ에서 보르톡스를 선택하거나 재봉사 본인을 선택할 수 있다.
+3. **기대:** 철학자는 선한 캐릭터만, 재봉사는 자신 외 두 플레이어, 사랑꾼은 아무 플레이어를 선택한다. [`roles.json`](https://release.botc.app/resources/data/roles.json), [Sweetheart](https://wiki.bloodontheclocktower.com/Sweetheart)
+4. **제안 패치:** `good-characters`, `any-not-self`, `any` 풀을 각각 사용한다.
+
+---
+
+## Low
+
+### 21. 음유시인 능력에서 여행자 예외가 빠졌다
+
+[thyrsus/index.html:614](thyrsus/index.html:614)
+
+1. **결함:** 하수인이 처형돼 죽으면 “다른 모든 플레이어”가 취한다고 적었다.
+2. **재현:** 여행자가 있는 게임에서 여행자까지 취한 것으로 처리할 수 있다.
+3. **기대:** 음유시인 자신과 여행자를 제외한 모든 플레이어가 다음 황혼까지 취한다. [Minstrel](https://wiki.bloodontheclocktower.com/Minstrel)
+4. **제안 패치:** 능력·경고에 “여행자 제외”를 명시한다.
+
+### 22. 중독된 암살자의 1회 능력 소진을 재량이라고 안내한다
+
+[thyrsus/index.html:660](thyrsus/index.html:660)
+
+1. **결함:** “소진은 재량”과 “공식: 소진됨”이 한 문장에 공존한다.
+2. **재현:** 중독 암살자가 발동을 시도한 뒤 사회자가 미소진으로 남길 수 있다.
+3. **기대:** 중독·취함 상태에서 1회성 능력을 시도하면 효과는 없지만 능력은 반드시 소진된다. [States](https://wiki.bloodontheclocktower.com/States)
+4. **제안 패치:** “살해는 불발하지만 능력은 반드시 소진”으로 단정하고 WIZ 완료 시 `spent`를 기록한다.
+
+### 23. 시트의 이후 밤 행이 첫날 가이드를 표시한다
+
+[thyrsus/index.html:1262](thyrsus/index.html:1262)
+
+1. **결함:** `nightRow()`가 첫날/이후 밤 구분을 받지 않고, `first:true`인 역할은 이후 밤 시트에서도 `guideFirst`를 선택한다.
+2. **재현:** 독살범·집사·초공감자 등 양쪽 밤 역할의 이후 밤 탭을 열면 첫날 진행 문구 첫 줄이 표시된다.
+3. **기대:** 이후 밤 탭에서는 `guideOther`가 우선되어야 한다.
+4. **제안 패치:** `nightRow(ed,id,{firstNight})`처럼 명시적 인자를 전달해 가이드를 선택한다.
+
+---
+
+## 상태 수명주기 전수 결과
+
+| 상태 | 현재 `expiresAt` | 판정 |
+|---|---|---|
+| 독살범 중독 | 다음 `night n+1` 시작 | 정확 |
+| 푸카 중독 | `null`, 다음 지목 때 수동 해제 | 사망 전 제거 문제로 Critical 1 |
+| 수도사/여관 주인 보호 | 다음 `day n` 시작 | 밤 부여 기준 기간은 정확. 대상 오작동 처리만 Critical 3 |
+| 집사 주인 | 다음 `night n+1` | 정확 |
+| 마녀 저주 | 다음 `night n+1` | 정확 |
+| 세레노버스 광기 | 다음 `night n+1` | 정확 |
+| 소진 | 영구 | 정확 |
+| 좀버얼 죽은 척 | 두 번째 사망 전까지 | 정확 |
+| 주정뱅이·사랑꾼 등 영구 취함 | 영구 | 정확 |
+| 선원·여관 주인·건달·음유시인·궁정대신 임시 취함 | 영구로만 입력 가능 | High 12 |
+
+정상 UI 경로에서는 독 중복 방지와 단일 주인·저주·광기 갱신이 작동해 추가 이중 부여는 재현되지 않았다. `wiz.vars`는 매 시작 시 새 객체로 만들고 씬 임시값도 제거하므로 이전 WIZ 선택값 잔존이나 전역 선택값 오염도 재현되지 않았다.
+
+## 72종 완전성 확인
+
+`CHARACTERS`는 정확히 TB 22 + BMR 25 + SV 25 = 72종이다.
+
+- 아이콘 ID, 한글명, 영문명 매핑: 72종 모두 불일치 없음.
+- 셋업 보정값: 남작 `+2 Outsider`, 대부 `±1`, 팡 구 `+1`, 비고르모르티스 `-1` 모두 정확.
+- 소환사·정치인은 72종 `CHARACTERS` 구성원이 아니므로 이번 72종 배열의 `setupNote` 검증 대상에는 없었다.
+- 캐릭터 데이터 자체에서 결함이 확인된 항목은 주정뱅이, 장의사, 도박사, 음유시인, 암살자, 달의 자손, 수학자, 꿈꾸는 자, 백치천재, 팡 구, 이발사다.
+- 나머지 61종의 `ability`·`guideFirst`·`guideOther`·`warn`·`remind`에서는 위 WIZ/공용 엔진 결함과 별개인 의미상 오류를 추가로 찾지 못했다.
