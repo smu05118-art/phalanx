@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>대우건설 예측 성적표</title><style>
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;
+--tx3:#5d6675;--a:#60a5fa;--pos:#f87171;--neg:#38bdf8;--ok:#34d399}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;padding:22px 26px 60px}
+h1{font-size:17px;font-weight:600;margin-bottom:4px}
+h2{font-size:14px;font-weight:600;margin:26px 0 8px;padding-top:14px;border-top:1px solid var(--ln)}
+.sub{color:var(--tx2);font-size:11.5px;margin-bottom:6px}
+.nav{margin:10px 0 4px;display:flex;gap:8px;flex-wrap:wrap}
+.nav a{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;padding:5px 11px;
+ font-size:11.5px;color:var(--a);text-decoration:none}
+.nav a:hover{border-color:var(--a)}
+.note{background:var(--pn);border:1px solid var(--ln);border-left:3px solid var(--a);
+ border-radius:0 6px 6px 0;padding:10px 13px;font-size:11.5px;color:var(--tx2);margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:12px;margin-top:6px}
+th,td{padding:5px 9px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap}
+th{color:var(--tx2);font-weight:500;font-size:11px;text-align:right;
+ position:sticky;top:0;background:var(--bg)}
+th:first-child,td:first-child{text-align:left}
+td.nm{max-width:290px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tbody tr:hover{background:var(--pn)}
+.num{font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.dim{color:var(--tx3)}
+.wrap{max-height:560px;overflow:auto;border:1px solid var(--ln);border-radius:8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:8px}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:10px 12px}
+.card .k{font-size:11px;color:var(--tx2)}
+.card .v{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+</style></head><body>
+<h1>대우건설 — 예측 성적표</h1>
+<div class="sub">기준 분기로 돌아가 <b>그때 공시된 것만으로</b> 향후 4개 분기를 예측하고 실측과 대조한 결과입니다. 곡선도 그 시점까지의 관측으로 다시 적합합니다.</div>
+<div class="nav"><a href="../dwe/index.html">← 사업장</a><a href="../dwe/matrix.html">매트릭스</a><a href="../dwe/trace.html">원문 배치</a><a href="../index.html">회사 선택</a></div>
+<div class="cards"><div class="card"><div class="k">사례 (사업장×기준시점)</div><div class="v">433</div></div><div class="card"><div class="k">진행률 절대오차 중앙값</div><div class="v">2.81%p</div></div><div class="card"><div class="k">다음 분기(T+1) 오차</div><div class="v">1.48%p</div></div><div class="card"><div class="k">매출 합계 괴리</div><div class="v">-8.0%</div></div></div>
+<div class="note">괴리는 <b>예측 ÷ 실측 − 1</b>입니다. <span class="pos">양수=과대계상</span> · <span class="neg">음수=과소</span>. 금액은 기준시점 도급액으로 환산한 매출인식액입니다.</div>
+<h2>① 지평별 — 멀리 볼수록 오차가 커진다</h2>
+<table><thead><tr><th>지평</th><th>표본</th><th>절대오차 중앙값</th><th>편향</th><th>분기매출 괴리</th></tr></thead><tbody>
+<tr><td>T+1</td><td class="num">430</td><td class="num">1.48%p</td><td class="neg"><span class="num">-0.88%p</span></td><td class="neg"><span class="num">-13.1%</span></td></tr>
+<tr><td>T+2</td><td class="num">369</td><td class="num">2.83%p</td><td class="neg"><span class="num">-1.94%p</span></td><td class="neg"><span class="num">-12.9%</span></td></tr>
+<tr><td>T+3</td><td class="num">315</td><td class="num">3.99%p</td><td class="neg"><span class="num">-2.39%p</span></td><td class="neg"><span class="num">-8.2%</span></td></tr>
+<tr><td>T+4</td><td class="num">271</td><td class="num">5.56%p</td><td class="neg"><span class="num">-1.51%p</span></td><td class="pos"><span class="num">+0.1%</span></td></tr>
+</tbody></table>
+<h2>② 기준시점별 — 부호가 일정하면 계통 편향</h2>
+<table><thead><tr><th>기준시점</th><th>사업장</th><th>예측</th><th>실측</th><th>괴리</th></tr></thead><tbody>
+<tr><td>2023Q4</td><td class="num">71</td><td class="num">4.51조</td><td class="num">4.89조</td><td class="neg"><span class="num">-7.7%</span></td></tr>
+<tr><td>2024Q1</td><td class="num">68</td><td class="num">4.66조</td><td class="num">4.80조</td><td class="neg"><span class="num">-3.0%</span></td></tr>
+<tr><td>2024Q2</td><td class="num">64</td><td class="num">4.23조</td><td class="num">4.35조</td><td class="neg"><span class="num">-2.8%</span></td></tr>
+<tr><td>2024Q3</td><td class="num">62</td><td class="num">3.42조</td><td class="num">3.91조</td><td class="neg"><span class="num">-12.5%</span></td></tr>
+<tr><td>2024Q4</td><td class="num">58</td><td class="num">2.85조</td><td class="num">3.48조</td><td class="neg"><span class="num">-18.3%</span></td></tr>
+<tr><td>2025Q1</td><td class="num">58</td><td class="num">2.98조</td><td class="num">3.22조</td><td class="neg"><span class="num">-7.3%</span></td></tr>
+<tr><td>2025Q2</td><td class="num">52</td><td class="num">2.69조</td><td class="num">2.89조</td><td class="neg"><span class="num">-6.9%</span></td></tr>
+<tr style="border-top:2px solid var(--ln)"><td><b>전체</b></td><td class="num">433</td><td class="num">25.35조</td><td class="num">27.55조</td><td class="neg"><span class="num">-8.0%</span></td></tr>
+</tbody></table>
+<h2>③ 진행률 구간별</h2>
+<table><thead><tr><th>구분</th><th>사례</th><th>예측</th><th>실측</th><th>괴리</th></tr></thead><tbody>
+<tr><td>② 20~50%</td><td class="num">175</td><td class="num">10.39조</td><td class="num">11.74조</td><td class="neg"><span class="num">-11.4%</span></td></tr>
+<tr><td>① 20% 미만</td><td class="num">150</td><td class="num">6.95조</td><td class="num">7.96조</td><td class="neg"><span class="num">-12.7%</span></td></tr>
+<tr><td>③ 50~80%</td><td class="num">98</td><td class="num">7.49조</td><td class="num">7.41조</td><td class="pos"><span class="num">+1.1%</span></td></tr>
+<tr><td>④ 80% 이상</td><td class="num">10</td><td class="num">0.51조</td><td class="num">0.44조</td><td class="pos"><span class="num">+14.9%</span></td></tr>
+</tbody></table>
+<h2>④ 지역 × 공종별</h2>
+<table><thead><tr><th>구분</th><th>사례</th><th>예측</th><th>실측</th><th>괴리</th></tr></thead><tbody>
+<tr><td>국내 · 건축주택</td><td class="num">268</td><td class="num">16.89조</td><td class="num">18.62조</td><td class="neg"><span class="num">-9.3%</span></td></tr>
+<tr><td>해외 · 토목</td><td class="num">37</td><td class="num">5.10조</td><td class="num">5.39조</td><td class="neg"><span class="num">-5.3%</span></td></tr>
+<tr><td>국내 · 토목</td><td class="num">86</td><td class="num">1.90조</td><td class="num">1.49조</td><td class="pos"><span class="num">+27.4%</span></td></tr>
+<tr><td>국내 · 플랜트</td><td class="num">18</td><td class="num">0.75조</td><td class="num">0.97조</td><td class="neg"><span class="num">-22.7%</span></td></tr>
+<tr><td>해외 · 건축주택</td><td class="num">8</td><td class="num">0.43조</td><td class="num">0.69조</td><td class="neg"><span class="num">-38.1%</span></td></tr>
+<tr><td>국내 · 미분류</td><td class="num">6</td><td class="num">0.16조</td><td class="num">0.19조</td><td class="neg"><span class="num">-16.9%</span></td></tr>
+<tr><td>해외 · 플랜트</td><td class="num">10</td><td class="num">0.11조</td><td class="num">0.19조</td><td class="neg"><span class="num">-42.9%</span></td></tr>
+</tbody></table>
+<h2>⑤ 사업장별 — 2025Q2 기준, 부족액이 큰 순</h2>
+<div class="sub">「방식」의 <b>추세</b>는 도급액 증액이 반복돼 곡선 대신 현재 속도를 잇는 사업장입니다.</div>
+<div class="wrap"><table><thead><tr><th>코드</th><th>사업장</th><th>구분</th><th>방식</th><th>지평</th><th>기준 진행률</th><th>예측</th><th>실측</th><th>진행률 오차</th><th>매출 괴리</th></tr></thead><tbody>
+<tr><td class="dim">DWE-2-0193</td><td class="nm">공주복합화력 주기기 PJ</td><td class="dim">국내·플랜트</td><td class="dim">곡선</td><td class="num">T+3</td><td class="num">20.4%</td><td class="num">42.8%</td><td class="num">75.2%</td><td class="neg"><span class="num">-32.4%p</span></td><td class="neg"><span class="num">-59.2%</span></td></tr>
+<tr><td class="dim">DWE-2-0209</td><td class="nm">용인푸르지오원클러스터1단지사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">18.2%</td><td class="num">49.0%</td><td class="num">62.4%</td><td class="neg"><span class="num">-13.4%p</span></td><td class="neg"><span class="num">-30.3%</span></td></tr>
+<tr><td class="dim">DWE-2-0199</td><td class="nm">산성역헤리스톤사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">11.0%</td><td class="num">25.4%</td><td class="num">34.7%</td><td class="neg"><span class="num">-9.2%p</span></td><td class="neg"><span class="num">-38.9%</span></td></tr>
+<tr><td class="dim">DWE-2-0178</td><td class="nm">탕정푸르지오리버파크신축사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+3</td><td class="num">59.5%</td><td class="num">70.1%</td><td class="num">83.9%</td><td class="neg"><span class="num">-13.8%p</span></td><td class="neg"><span class="num">-56.6%</span></td></tr>
+<tr><td class="dim">DWE-2-0061</td><td class="nm">감일푸르지오마크베르사업(인도)</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+1</td><td class="num">61.3%</td><td class="num">66.1%</td><td class="num">85.6%</td><td class="neg"><span class="num">-19.5%p</span></td><td class="neg"><span class="num">-80.3%</span></td></tr>
+<tr><td class="dim">DWE-2-0078</td><td class="nm">싱가포르도시철도CR108</td><td class="dim">해외·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">34.3%</td><td class="num">47.4%</td><td class="num">53.4%</td><td class="neg"><span class="num">-6.0%p</span></td><td class="neg"><span class="num">-31.6%</span></td></tr>
+<tr><td class="dim">DWE-2-0203</td><td class="nm">금정역푸르지오그랑블사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">8.4%</td><td class="num">26.9%</td><td class="num">39.8%</td><td class="neg"><span class="num">-13.0%p</span></td><td class="neg"><span class="num">-41.2%</span></td></tr>
+<tr><td class="dim">DWE-2-0194</td><td class="nm">푸르지오라디우스파크사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">26.8%</td><td class="num">60.3%</td><td class="num">68.0%</td><td class="neg"><span class="num">-7.7%p</span></td><td class="neg"><span class="num">-18.6%</span></td></tr>
+<tr><td class="dim">DWE-2-0221</td><td class="nm">인하대역푸르지오에듀포레사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">10.2%</td><td class="num">30.9%</td><td class="num">38.8%</td><td class="neg"><span class="num">-7.9%p</span></td><td class="neg"><span class="num">-27.5%</span></td></tr>
+<tr><td class="dim">DWE-2-0217</td><td class="nm">양주역푸르지오센터파크사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">12.4%</td><td class="num">35.1%</td><td class="num">41.1%</td><td class="neg"><span class="num">-6.0%p</span></td><td class="neg"><span class="num">-21.0%</span></td></tr>
+<tr><td class="dim">DWE-2-0198</td><td class="nm">원주푸르지오더센트럴사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">15.7%</td><td class="num">38.3%</td><td class="num">49.8%</td><td class="neg"><span class="num">-11.5%p</span></td><td class="neg"><span class="num">-33.8%</span></td></tr>
+<tr><td class="dim">DWE-2-0189</td><td class="nm">평택푸르지오센터파인공동주택사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+3</td><td class="num">30.1%</td><td class="num">58.7%</td><td class="num">70.1%</td><td class="neg"><span class="num">-11.4%p</span></td><td class="neg"><span class="num">-28.4%</span></td></tr>
+<tr><td class="dim">DWE-2-0183</td><td class="nm">풍무역세권부지조성현장</td><td class="dim">국내·토목</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">14.0%</td><td class="num">19.8%</td><td class="num">38.0%</td><td class="neg"><span class="num">-18.2%p</span></td><td class="neg"><span class="num">-75.8%</span></td></tr>
+<tr><td class="dim">DWE-2-0210</td><td class="nm">창원푸르지오파크베뉴사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">21.1%</td><td class="num">52.8%</td><td class="num">58.4%</td><td class="neg"><span class="num">-5.6%p</span></td><td class="neg"><span class="num">-15.1%</span></td></tr>
+<tr><td class="dim">DWE-2-0069</td><td class="nm">모잠비크 LNG AREA 1</td><td class="dim">해외·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">4.0%</td><td class="num">5.0%</td><td class="num">6.1%</td><td class="neg"><span class="num">-1.1%p</span></td><td class="neg"><span class="num">-52.8%</span></td></tr>
+<tr><td class="dim">DWE-2-0170</td><td class="nm">그랑르피에드사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">16.0%</td><td class="num">31.9%</td><td class="num">33.8%</td><td class="neg"><span class="num">-1.9%p</span></td><td class="neg"><span class="num">-10.8%</span></td></tr>
+<tr><td class="dim">DWE-2-0226</td><td class="nm">검단신도시푸르지오더파크</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">7.4%</td><td class="num">27.3%</td><td class="num">29.8%</td><td class="neg"><span class="num">-2.5%p</span></td><td class="neg"><span class="num">-11.1%</span></td></tr>
+<tr><td class="dim">DWE-2-0029</td><td class="nm">세종안성고속도로6공구현장</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+2</td><td class="num">65.8%</td><td class="num">70.3%</td><td class="num">73.0%</td><td class="neg"><span class="num">-2.7%p</span></td><td class="neg"><span class="num">-37.4%</span></td></tr>
+<tr><td class="dim">DWE-2-0177</td><td class="nm">관저푸르지오센트럴파크사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+2</td><td class="num">40.8%</td><td class="num">60.0%</td><td class="num">62.9%</td><td class="neg"><span class="num">-2.8%p</span></td><td class="neg"><span class="num">-12.7%</span></td></tr>
+<tr><td class="dim">DWE-2-0154</td><td class="nm">당진기지항만현장</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">39.5%</td><td class="num">72.3%</td><td class="num">74.4%</td><td class="neg"><span class="num">-2.2%p</span></td><td class="neg"><span class="num">-6.2%</span></td></tr>
+<tr><td class="dim">DWE-2-0195</td><td class="nm">김해삼계푸르지오센트럴파크사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">34.4%</td><td class="num">66.4%</td><td class="num">68.5%</td><td class="neg"><span class="num">-2.2%p</span></td><td class="neg"><span class="num">-6.4%</span></td></tr>
+<tr><td class="dim">DWE-2-0184</td><td class="nm">푸르지오스타셀라49사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">29.4%</td><td class="num">54.5%</td><td class="num">55.8%</td><td class="neg"><span class="num">-1.3%p</span></td><td class="neg"><span class="num">-5.0%</span></td></tr>
+<tr><td class="dim">DWE-2-0097</td><td class="nm">이라크 신항만1단계</td><td class="dim">해외·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">86.5%</td><td class="num">93.9%</td><td class="num">94.0%</td><td class="neg"><span class="num">-0.1%p</span></td><td class="neg"><span class="num">-1.3%</span></td></tr>
+<tr><td class="dim">DWE-2-0212</td><td class="nm">도안푸르지오디아델2단지사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">13.3%</td><td class="num">41.7%</td><td class="num">42.3%</td><td class="neg"><span class="num">-0.6%p</span></td><td class="neg"><span class="num">-2.1%</span></td></tr>
+<tr><td class="dim">DWE-2-0176</td><td class="nm">의정부푸르지오클라시엘사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">28.5%</td><td class="num">51.9%</td><td class="num">52.4%</td><td class="neg"><span class="num">-0.5%p</span></td><td class="neg"><span class="num">-2.1%</span></td></tr>
+<tr><td class="dim">DWE-2-0006</td><td class="nm">상주영천고속도로 관리운영계약</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">16.8%</td><td class="num">18.5%</td><td class="num">19.6%</td><td class="neg"><span class="num">-1.2%p</span></td><td class="neg"><span class="num">-40.2%</span></td></tr>
+<tr><td class="dim">DWE-2-0215</td><td class="nm">용인은화삼지구기반시설현장</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+3</td><td class="num">20.3%</td><td class="num">39.9%</td><td class="num">41.0%</td><td class="neg"><span class="num">-1.1%p</span></td><td class="neg"><span class="num">-5.2%</span></td></tr>
+<tr><td class="dim">DWE-2-0188</td><td class="nm">송내역푸르지오센트비엔사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+3</td><td class="num">47.3%</td><td class="num">77.9%</td><td class="num">78.2%</td><td class="neg"><span class="num">-0.4%p</span></td><td class="neg"><span class="num">-1.2%</span></td></tr>
+<tr><td class="dim">DWE-2-0214</td><td class="nm">동부간선도로지하화시공사업단</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">3.3%</td><td class="num">8.4%</td><td class="num">8.6%</td><td class="neg"><span class="num">-0.2%p</span></td><td class="neg"><span class="num">-4.2%</span></td></tr>
+<tr><td class="dim">DWE-2-0206</td><td class="nm">G-TOWN개발사업신축공사사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">11.7%</td><td class="num">39.9%</td><td class="num">40.3%</td><td class="neg"><span class="num">-0.4%p</span></td><td class="neg"><span class="num">-1.3%</span></td></tr>
+<tr><td class="dim">DWE-2-0191</td><td class="nm">운서역푸르지오더스카이2차사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+2</td><td class="num">41.2%</td><td class="num">64.8%</td><td class="num">65.1%</td><td class="neg"><span class="num">-0.3%p</span></td><td class="neg"><span class="num">-1.1%</span></td></tr>
+<tr><td class="dim">DWE-2-0141</td><td class="nm">양양생활형숙박시설사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+2</td><td class="num">47.0%</td><td class="num">58.9%</td><td class="num">58.8%</td><td class="pos"><span class="num">+0.1%p</span></td><td class="pos"><span class="num">+0.9%</span></td></tr>
+<tr><td class="dim">DWE-2-0180</td><td class="nm">마포푸르지오어반피스사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+2</td><td class="num">32.6%</td><td class="num">45.2%</td><td class="num">44.3%</td><td class="pos"><span class="num">+0.9%p</span></td><td class="pos"><span class="num">+7.3%</span></td></tr>
+<tr><td class="dim">DWE-2-0211</td><td class="nm">도안푸르지오디아델1단지사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">12.9%</td><td class="num">41.5%</td><td class="num">40.9%</td><td class="pos"><span class="num">+0.6%p</span></td><td class="pos"><span class="num">+2.0%</span></td></tr>
+<tr><td class="dim">DWE-2-0160</td><td class="nm">베트남 THT B3CC1 호텔&amp;오피스</td><td class="dim">해외·건축주택</td><td class="dim">곡선</td><td class="num">T+1</td><td class="num">57.7%</td><td class="num">69.9%</td><td class="num">69.2%</td><td class="pos"><span class="num">+0.7%p</span></td><td class="pos"><span class="num">+6.3%</span></td></tr>
+<tr><td class="dim">DWE-2-0030</td><td class="nm">평택부여익산(서부내륙) 고속도로</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">80.2%</td><td class="num">80.2%</td><td class="num">79.3%</td><td class="pos"><span class="num">+1.0%p</span></td><td class="dim">–</td></tr>
+<tr><td class="dim">DWE-2-0079</td><td class="nm">압해화원도로2공구현장</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+2</td><td class="num">35.6%</td><td class="num">45.7%</td><td class="num">40.9%</td><td class="pos"><span class="num">+4.8%p</span></td><td class="pos"><span class="num">+90.1%</span></td></tr>
+<tr><td class="dim">DWE-2-0173</td><td class="nm">평택오송철도4공구현장</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">19.2%</td><td class="num">40.9%</td><td class="num">34.7%</td><td class="pos"><span class="num">+6.1%p</span></td><td class="pos"><span class="num">+39.6%</span></td></tr>
+<tr><td class="dim">DWE-2-0115</td><td class="nm">서울도시철도 9호선 4단계 연장사업 1공구 건설공사</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">25.4%</td><td class="num">42.7%</td><td class="num">34.7%</td><td class="pos"><span class="num">+8.0%p</span></td><td class="pos"><span class="num">+86.4%</span></td></tr>
+<tr><td class="dim">DWE-2-0172</td><td class="nm">신영지웰푸르지오테크노폴리스센트럴사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">52.7%</td><td class="num">86.5%</td><td class="num">84.9%</td><td class="pos"><span class="num">+1.7%p</span></td><td class="pos"><span class="num">+5.2%</span></td></tr>
+<tr><td class="dim">DWE-2-0002</td><td class="nm">신분당선(용산-강남)</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">51.0%</td><td class="num">58.0%</td><td class="num">51.0%</td><td class="pos"><span class="num">+7.0%p</span></td><td class="dim">–</td></tr>
+<tr><td class="dim">DWE-2-0156</td><td class="nm">시화MTV푸르지오디오션사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+1</td><td class="num">63.5%</td><td class="num">73.7%</td><td class="num">71.3%</td><td class="pos"><span class="num">+2.4%p</span></td><td class="pos"><span class="num">+31.1%</span></td></tr>
+<tr><td class="dim">DWE-2-0182</td><td class="nm">동부간선도로지하화(영동대로)현장</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">9.3%</td><td class="num">24.0%</td><td class="num">18.0%</td><td class="pos"><span class="num">+6.0%p</span></td><td class="pos"><span class="num">+69.0%</span></td></tr>
+<tr><td class="dim">DWE-2-0032</td><td class="nm">수원대유평지구기반시설현장</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">60.8%</td><td class="num">72.9%</td><td class="num">65.5%</td><td class="pos"><span class="num">+7.5%p</span></td><td class="pos"><span class="num">+160.6%</span></td></tr>
+<tr><td class="dim">DWE-2-0168</td><td class="nm">강남데이터센터사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+1</td><td class="num">67.8%</td><td class="num">82.1%</td><td class="num">77.4%</td><td class="pos"><span class="num">+4.6%p</span></td><td class="pos"><span class="num">+47.9%</span></td></tr>
+<tr><td class="dim">DWE-2-0171</td><td class="nm">평택오송철도1공구현장</td><td class="dim">국내·토목</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">18.9%</td><td class="num">43.3%</td><td class="num">33.7%</td><td class="pos"><span class="num">+9.7%p</span></td><td class="pos"><span class="num">+65.6%</span></td></tr>
+<tr><td class="dim">DWE-2-0136</td><td class="nm">수출용 신형 연구용원자로 건설공사 PJ (현장)</td><td class="dim">국내·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">39.8%</td><td class="num">70.2%</td><td class="num">59.0%</td><td class="pos"><span class="num">+11.2%p</span></td><td class="pos"><span class="num">+58.0%</span></td></tr>
+<tr><td class="dim">DWE-2-0050</td><td class="nm">싱가포르도시철도J109</td><td class="dim">해외·토목</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">60.6%</td><td class="num">72.8%</td><td class="num">64.9%</td><td class="pos"><span class="num">+7.9%p</span></td><td class="pos"><span class="num">+181.8%</span></td></tr>
+<tr><td class="dim">DWE-2-0158</td><td class="nm">오산대미시설현장</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">33.2%</td><td class="num">64.5%</td><td class="num">51.8%</td><td class="pos"><span class="num">+12.8%p</span></td><td class="pos"><span class="num">+68.8%</span></td></tr>
+<tr><td class="dim">DWE-2-0031</td><td class="nm">송도아트포레2차사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+1</td><td class="num">8.9%</td><td class="num">63.5%</td><td class="num">8.9%</td><td class="pos"><span class="num">+54.6%p</span></td><td class="dim">–</td></tr>
+<tr><td class="dim">DWE-2-0140</td><td class="nm">부천열병합 주기기 PJ (현장)</td><td class="dim">국내·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">43.3%</td><td class="num">71.3%</td><td class="num">57.8%</td><td class="pos"><span class="num">+13.5%p</span></td><td class="pos"><span class="num">+92.9%</span></td></tr>
+<tr><td class="dim">DWE-2-0157</td><td class="nm">진주혁신도시푸르지오퍼스트시티사업</td><td class="dim">국내·건축주택</td><td class="dim">곡선</td><td class="num">T+1</td><td class="num">1.1%</td><td class="num">36.6%</td><td class="num">1.1%</td><td class="pos"><span class="num">+35.5%p</span></td><td class="dim">–</td></tr>
+</tbody></table></div>
+</body></html>

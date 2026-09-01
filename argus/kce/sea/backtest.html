@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>삼성E&amp;A 예측 성적표</title><style>
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;
+--tx3:#5d6675;--a:#60a5fa;--pos:#f87171;--neg:#38bdf8;--ok:#34d399}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;padding:22px 26px 60px}
+h1{font-size:17px;font-weight:600;margin-bottom:4px}
+h2{font-size:14px;font-weight:600;margin:26px 0 8px;padding-top:14px;border-top:1px solid var(--ln)}
+.sub{color:var(--tx2);font-size:11.5px;margin-bottom:6px}
+.nav{margin:10px 0 4px;display:flex;gap:8px;flex-wrap:wrap}
+.nav a{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;padding:5px 11px;
+ font-size:11.5px;color:var(--a);text-decoration:none}
+.nav a:hover{border-color:var(--a)}
+.note{background:var(--pn);border:1px solid var(--ln);border-left:3px solid var(--a);
+ border-radius:0 6px 6px 0;padding:10px 13px;font-size:11.5px;color:var(--tx2);margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:12px;margin-top:6px}
+th,td{padding:5px 9px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap}
+th{color:var(--tx2);font-weight:500;font-size:11px;text-align:right;
+ position:sticky;top:0;background:var(--bg)}
+th:first-child,td:first-child{text-align:left}
+td.nm{max-width:290px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tbody tr:hover{background:var(--pn)}
+.num{font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.dim{color:var(--tx3)}
+.wrap{max-height:560px;overflow:auto;border:1px solid var(--ln);border-radius:8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:8px}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:10px 12px}
+.card .k{font-size:11px;color:var(--tx2)}
+.card .v{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+</style></head><body>
+<h1>삼성E&amp;A — 예측 성적표</h1>
+<div class="sub">기준 분기로 돌아가 <b>그때 공시된 것만으로</b> 향후 4개 분기를 예측하고 실측과 대조한 결과입니다. 곡선도 그 시점까지의 관측으로 다시 적합합니다.</div>
+<div class="nav"><a href="../sea/index.html">← 사업장</a><a href="../sea/matrix.html">매트릭스</a><a href="../sea/trace.html">원문 배치</a><a href="../index.html">회사 선택</a></div>
+<div class="cards"><div class="card"><div class="k">사례 (사업장×기준시점)</div><div class="v">235</div></div><div class="card"><div class="k">진행률 절대오차 중앙값</div><div class="v">2.20%p</div></div><div class="card"><div class="k">다음 분기(T+1) 오차</div><div class="v">1.61%p</div></div><div class="card"><div class="k">매출 합계 괴리</div><div class="v">-10.1%</div></div></div>
+<div class="note">괴리는 <b>예측 ÷ 실측 − 1</b>입니다. <span class="pos">양수=과대계상</span> · <span class="neg">음수=과소</span>. 금액은 기준시점 도급액으로 환산한 매출인식액입니다.</div>
+<h2>① 지평별 — 멀리 볼수록 오차가 커진다</h2>
+<table><thead><tr><th>지평</th><th>표본</th><th>절대오차 중앙값</th><th>편향</th><th>분기매출 괴리</th></tr></thead><tbody>
+<tr><td>T+1</td><td class="num">235</td><td class="num">1.61%p</td><td class="pos"><span class="num">+0.23%p</span></td><td class="neg"><span class="num">-1.4%</span></td></tr>
+<tr><td>T+2</td><td class="num">233</td><td class="num">2.65%p</td><td class="pos"><span class="num">+0.77%p</span></td><td class="neg"><span class="num">-10.5%</span></td></tr>
+<tr><td>T+3</td><td class="num">230</td><td class="num">3.05%p</td><td class="pos"><span class="num">+1.22%p</span></td><td class="neg"><span class="num">-19.1%</span></td></tr>
+<tr><td>T+4</td><td class="num">225</td><td class="num">2.72%p</td><td class="pos"><span class="num">+2.09%p</span></td><td class="neg"><span class="num">-10.6%</span></td></tr>
+</tbody></table>
+<h2>② 기준시점별 — 부호가 일정하면 계통 편향</h2>
+<table><thead><tr><th>기준시점</th><th>사업장</th><th>예측</th><th>실측</th><th>괴리</th></tr></thead><tbody>
+<tr><td>2023Q4</td><td class="num">34</td><td class="num">4.29조</td><td class="num">5.09조</td><td class="neg"><span class="num">-15.9%</span></td></tr>
+<tr><td>2024Q1</td><td class="num">34</td><td class="num">4.86조</td><td class="num">5.37조</td><td class="neg"><span class="num">-9.6%</span></td></tr>
+<tr><td>2024Q2</td><td class="num">36</td><td class="num">4.26조</td><td class="num">6.78조</td><td class="neg"><span class="num">-37.1%</span></td></tr>
+<tr><td>2024Q3</td><td class="num">36</td><td class="num">3.79조</td><td class="num">5.86조</td><td class="neg"><span class="num">-35.2%</span></td></tr>
+<tr><td>2024Q4</td><td class="num">31</td><td class="num">5.71조</td><td class="num">6.35조</td><td class="neg"><span class="num">-10.2%</span></td></tr>
+<tr><td>2025Q1</td><td class="num">33</td><td class="num">6.47조</td><td class="num">6.01조</td><td class="pos"><span class="num">+7.7%</span></td></tr>
+<tr><td>2025Q2</td><td class="num">31</td><td class="num">6.78조</td><td class="num">4.77조</td><td class="pos"><span class="num">+42.1%</span></td></tr>
+<tr style="border-top:2px solid var(--ln)"><td><b>전체</b></td><td class="num">235</td><td class="num">36.16조</td><td class="num">40.24조</td><td class="neg"><span class="num">-10.1%</span></td></tr>
+</tbody></table>
+<h2>③ 진행률 구간별</h2>
+<table><thead><tr><th>구분</th><th>사례</th><th>예측</th><th>실측</th><th>괴리</th></tr></thead><tbody>
+<tr><td>① 20% 미만</td><td class="num">13</td><td class="num">8.24조</td><td class="num">18.09조</td><td class="neg"><span class="num">-54.4%</span></td></tr>
+<tr><td>② 20~50%</td><td class="num">26</td><td class="num">8.69조</td><td class="num">8.73조</td><td class="neg"><span class="num">-0.5%</span></td></tr>
+<tr><td>④ 80% 이상</td><td class="num">146</td><td class="num">8.28조</td><td class="num">6.84조</td><td class="pos"><span class="num">+21.0%</span></td></tr>
+<tr><td>③ 50~80%</td><td class="num">50</td><td class="num">10.95조</td><td class="num">6.58조</td><td class="pos"><span class="num">+66.5%</span></td></tr>
+</tbody></table>
+<h2>④ 지역 × 공종별</h2>
+<table><thead><tr><th>구분</th><th>사례</th><th>예측</th><th>실측</th><th>괴리</th></tr></thead><tbody>
+<tr><td>해외 · 플랜트</td><td class="num">137</td><td class="num">29.57조</td><td class="num">35.41조</td><td class="neg"><span class="num">-16.5%</span></td></tr>
+<tr><td>국내 · 플랜트</td><td class="num">98</td><td class="num">6.59조</td><td class="num">4.83조</td><td class="pos"><span class="num">+36.4%</span></td></tr>
+</tbody></table>
+<h2>⑤ 사업장별 — 2025Q2 기준, 부족액이 큰 순</h2>
+<div class="sub">「방식」의 <b>추세</b>는 도급액 증액이 반복돼 곡선 대신 현재 속도를 잇는 사업장입니다.</div>
+<div class="wrap"><table><thead><tr><th>코드</th><th>사업장</th><th>구분</th><th>방식</th><th>지평</th><th>기준 진행률</th><th>예측</th><th>실측</th><th>진행률 오차</th><th>매출 괴리</th></tr></thead><tbody>
+<tr><td class="dim">SEA-2-0069</td><td class="nm">CC-7</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">52.2%</td><td class="num">76.8%</td><td class="num">88.1%</td><td class="neg"><span class="num">-11.2%p</span></td><td class="neg"><span class="num">-31.3%</span></td></tr>
+<tr><td class="dim">SEA-2-0085</td><td class="nm">사우디 Fadhili 가스</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">16.2%</td><td class="num">46.8%</td><td class="num">48.2%</td><td class="neg"><span class="num">-1.4%p</span></td><td class="neg"><span class="num">-4.3%</span></td></tr>
+<tr><td class="dim">SEA-2-0071</td><td class="nm">송도 SBL P5</td><td class="dim">국내·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">92.3%</td><td class="num">97.4%</td><td class="num">99.6%</td><td class="neg"><span class="num">-2.2%p</span></td><td class="neg"><span class="num">-29.6%</span></td></tr>
+<tr><td class="dim">SEA-2-0054</td><td class="nm">평택 전자 P3-PJT</td><td class="dim">국내·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">97.9%</td><td class="num">99.6%</td><td class="num">100.0%</td><td class="neg"><span class="num">-0.3%p</span></td><td class="neg"><span class="num">-16.0%</span></td></tr>
+<tr><td class="dim">SEA-2-0057</td><td class="nm">미국 전자 T-PJT</td><td class="dim">해외·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">90.8%</td><td class="num">94.1%</td><td class="num">94.9%</td><td class="neg"><span class="num">-0.8%p</span></td><td class="neg"><span class="num">-20.2%</span></td></tr>
+<tr><td class="dim">SEA-2-0050</td><td class="nm">탕정 SDC Retrofit Project</td><td class="dim">국내·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">95.0%</td><td class="num">95.0%</td><td class="num">98.5%</td><td class="neg"><span class="num">-3.4%p</span></td><td class="neg"><span class="num">-100.0%</span></td></tr>
+<tr><td class="dim">SEA-2-0072</td><td class="nm">평택 전자 P-PJT Retrofit Ph2</td><td class="dim">국내·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">83.9%</td><td class="num">86.5%</td><td class="num">90.3%</td><td class="neg"><span class="num">-3.8%p</span></td><td class="neg"><span class="num">-58.8%</span></td></tr>
+<tr><td class="dim">SEA-2-0047</td><td class="nm">천안 전자 L6라인 건설PJT공사</td><td class="dim">국내·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">98.7%</td><td class="num">98.7%</td><td class="num">100.0%</td><td class="neg"><span class="num">-1.3%p</span></td><td class="neg"><span class="num">-100.0%</span></td></tr>
+<tr><td class="dim">SEA-2-0049</td><td class="nm">탕정 SDC QD-Display 크린룸 전환공사(환경)</td><td class="dim">국내·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">91.3%</td><td class="num">92.7%</td><td class="num">94.0%</td><td class="neg"><span class="num">-1.3%p</span></td><td class="neg"><span class="num">-49.0%</span></td></tr>
+<tr><td class="dim">SEA-2-0053</td><td class="nm">기흥/화성 전자 대기시설 개선공사</td><td class="dim">국내·플랜트</td><td class="dim">추세</td><td class="num">T+2</td><td class="num">98.7%</td><td class="num">99.7%</td><td class="num">100.0%</td><td class="neg"><span class="num">-0.3%p</span></td><td class="neg"><span class="num">-26.6%</span></td></tr>
+<tr><td class="dim">SEA-2-0063</td><td class="nm">SAUDI APOC PDH/UTOS Project</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">96.8%</td><td class="num">99.8%</td><td class="num">99.9%</td><td class="neg"><span class="num">-0.0%p</span></td><td class="neg"><span class="num">-1.3%</span></td></tr>
+<tr><td class="dim">SEA-2-0059</td><td class="nm">평택 전자 P-PJT 정수장 2단계 증설</td><td class="dim">국내·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">95.6%</td><td class="num">99.7%</td><td class="num">100.0%</td><td class="neg"><span class="num">-0.3%p</span></td><td class="neg"><span class="num">-5.9%</span></td></tr>
+<tr><td class="dim">SEA-2-0077</td><td class="nm">캐나다 Volta 전지박 공장 프로젝트</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">94.9%</td><td class="num">99.8%</td><td class="num">98.8%</td><td class="pos"><span class="num">+1.0%p</span></td><td class="pos"><span class="num">+24.5%</span></td></tr>
+<tr><td class="dim">SEA-2-0082</td><td class="nm">울산 STM 소재4동 신축공사</td><td class="dim">국내·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">81.4%</td><td class="num">99.4%</td><td class="num">96.1%</td><td class="pos"><span class="num">+3.3%p</span></td><td class="pos"><span class="num">+22.3%</span></td></tr>
+<tr><td class="dim">SEA-2-0046</td><td class="nm">말련 Sarawak Methanol</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">96.3%</td><td class="num">99.8%</td><td class="num">98.9%</td><td class="pos"><span class="num">+0.8%p</span></td><td class="pos"><span class="num">+31.9%</span></td></tr>
+<tr><td class="dim">SEA-2-0035</td><td class="nm">UAE ADNOC Refining WHRP</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">97.4%</td><td class="num">99.7%</td><td class="num">97.7%</td><td class="pos"><span class="num">+2.1%p</span></td><td class="pos"><span class="num">+852.0%</span></td></tr>
+<tr><td class="dim">SEA-2-0073</td><td class="nm">베트남 전기 SEMV FCBGA 증설공사</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">94.9%</td><td class="num">99.3%</td><td class="num">95.0%</td><td class="pos"><span class="num">+4.3%p</span></td><td class="pos"><span class="num">+3778.2%</span></td></tr>
+<tr><td class="dim">SEA-2-0033</td><td class="nm">UAE ADNOC Refining CFP</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">98.8%</td><td class="num">99.9%</td><td class="num">99.4%</td><td class="pos"><span class="num">+0.5%p</span></td><td class="pos"><span class="num">+80.2%</span></td></tr>
+<tr><td class="dim">SEA-2-0037</td><td class="nm">Oman Duqm Refinery Project Pkg.2</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">98.6%</td><td class="num">99.6%</td><td class="num">98.2%</td><td class="pos"><span class="num">+1.3%p</span></td><td class="dim">–</td></tr>
+<tr><td class="dim">SEA-2-0017</td><td class="nm">천안소각 민자사업 운영</td><td class="dim">국내·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">56.5%</td><td class="num">64.8%</td><td class="num">56.6%</td><td class="pos"><span class="num">+8.1%p</span></td><td class="pos"><span class="num">+4979.9%</span></td></tr>
+<tr><td class="dim">SEA-2-0079</td><td class="nm">송도 싸토리우스</td><td class="dim">국내·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">39.9%</td><td class="num">76.0%</td><td class="num">72.4%</td><td class="pos"><span class="num">+3.6%p</span></td><td class="pos"><span class="num">+11.2%</span></td></tr>
+<tr><td class="dim">SEA-2-0084</td><td class="nm">천안 전자 C-PJT 건설공사</td><td class="dim">국내·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">72.9%</td><td class="num">86.3%</td><td class="num">76.9%</td><td class="pos"><span class="num">+9.5%p</span></td><td class="pos"><span class="num">+235.6%</span></td></tr>
+<tr><td class="dim">SEA-2-0076</td><td class="nm">말련 Shell Rosmari &amp; Marjoram OGP (EPC)</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">73.6%</td><td class="num">96.4%</td><td class="num">93.4%</td><td class="pos"><span class="num">+3.0%p</span></td><td class="pos"><span class="num">+15.4%</span></td></tr>
+<tr><td class="dim">SEA-2-0074</td><td class="nm">기흥 전자 NRD-K PJT</td><td class="dim">국내·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">83.5%</td><td class="num">98.9%</td><td class="num">94.6%</td><td class="pos"><span class="num">+4.4%p</span></td><td class="pos"><span class="num">+39.6%</span></td></tr>
+<tr><td class="dim">SEA-2-0068</td><td class="nm">헝가리 W-SCOPE 분리막 공장 프로젝트</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">82.8%</td><td class="num">96.3%</td><td class="num">84.8%</td><td class="pos"><span class="num">+11.5%p</span></td><td class="pos"><span class="num">+554.2%</span></td></tr>
+<tr><td class="dim">SEA-2-0067</td><td class="nm">Saudi Aramco Jafurah GPF Project</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">85.9%</td><td class="num">99.4%</td><td class="num">91.6%</td><td class="pos"><span class="num">+7.8%p</span></td><td class="pos"><span class="num">+136.8%</span></td></tr>
+<tr><td class="dim">SEA-2-0078</td><td class="nm">평택 전자 P5-PJT</td><td class="dim">국내·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">92.9%</td><td class="num">97.1%</td><td class="num">24.2%</td><td class="pos"><span class="num">+73.0%p</span></td><td class="dim">–</td></tr>
+<tr><td class="dim">SEA-2-0080</td><td class="nm">Ras Laffan Petrochemicals Project</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">56.0%</td><td class="num">92.8%</td><td class="num">79.1%</td><td class="pos"><span class="num">+13.8%p</span></td><td class="pos"><span class="num">+59.7%</span></td></tr>
+<tr><td class="dim">SEA-2-0083</td><td class="nm">헝가리 SDI E-Project</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">40.5%</td><td class="num">86.6%</td><td class="num">50.4%</td><td class="pos"><span class="num">+36.2%p</span></td><td class="pos"><span class="num">+366.5%</span></td></tr>
+<tr><td class="dim">SEA-2-0043</td><td class="nm">헝가리 Volta 전지박 공장 신축공사</td><td class="dim">해외·플랜트</td><td class="dim">곡선</td><td class="num">T+4</td><td class="num">51.1%</td><td class="num">93.4%</td><td class="num">51.7%</td><td class="pos"><span class="num">+41.7%p</span></td><td class="pos"><span class="num">+6953.7%</span></td></tr>
+<tr><td class="dim">SEA-2-0064</td><td class="nm">평택 전자 P4-PJT</td><td class="dim">국내·플랜트</td><td class="dim">추세</td><td class="num">T+4</td><td class="num">70.8%</td><td class="num">87.1%</td><td class="num">71.4%</td><td class="pos"><span class="num">+15.7%p</span></td><td class="pos"><span class="num">+2616.1%</span></td></tr>
+</tbody></table></div>
+</body></html>
