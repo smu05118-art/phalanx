@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ko" data-color-mode="argus">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>ARGUS 전상품 맵</title>
+<style>
+  :root{
+    --bg:#0b0e14;--panel:#111721;--panel-2:#0d131c;--line:#273142;--ink:#e6edf3;--dim:#8a93a3;
+    --accent:#2bc0d4;--gain:#159f68;--gain-rgb:21,159,104;--loss:#e04f5f;--loss-rgb:224,79,95;
+    --flat:#64748b;--warning:#f6c85f;--header:#242b36;
+    --sans:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  }
+  html[data-color-mode="china"]{
+    --gain:#e04f5f;--gain-rgb:224,79,95;--loss:#159f68;--loss-rgb:21,159,104;
+  }
+  *{box-sizing:border-box}
+  html{background:var(--bg);color:var(--ink);font-family:var(--sans);scroll-behavior:smooth}
+  body{margin:0;min-width:280px;background:
+    radial-gradient(circle at 12% -10%,rgba(43,192,212,.08),transparent 28rem),var(--bg)}
+  button,input,select{font:inherit}
+  button,a{touch-action:manipulation}
+  [hidden]{display:none!important}
+  .topbar{position:sticky;top:0;z-index:20;border-bottom:1px solid var(--line);
+    background:rgba(11,14,20,.94);backdrop-filter:blur(12px);padding:12px clamp(12px,2.5vw,32px)}
+  .topline{display:flex;align-items:center;gap:14px;max-width:1600px;margin:auto;min-height:34px}
+  .brand{color:var(--ink);text-decoration:none;font-size:15px;font-weight:850;letter-spacing:-.02em;white-space:nowrap}
+  .brand span{color:var(--accent)}
+  .scope{font-size:12px;color:var(--dim);white-space:nowrap}
+  .scope b{color:var(--ink);font-family:var(--mono);font-weight:700}
+  .color-control{margin-left:auto;display:flex;align-items:center;gap:9px;white-space:nowrap}
+  .switch{position:relative;width:38px;height:22px;display:inline-block}
+  .switch input{opacity:0;width:0;height:0}
+  .switch i{position:absolute;inset:0;border:1px solid #526174;border-radius:999px;background:#1a2230;cursor:pointer}
+  .switch i:after{content:"";position:absolute;width:14px;height:14px;left:3px;top:3px;border-radius:50%;
+    background:#dbe4ee;transition:transform .16s ease}
+  .switch input:checked+i:after{transform:translateX(16px);background:#ff7582}
+  .switch input:focus-visible+i{outline:2px solid var(--accent);outline-offset:2px}
+  .switch-label{font-size:12px;font-weight:750;color:var(--ink)}
+  .color-warning{max-width:1600px;margin:8px auto 0;padding:7px 10px;border-radius:7px;
+    color:#cbd5e1;background:#141b25;border:1px solid #303b4b;font-size:11.5px;line-height:1.45}
+  .color-warning b{color:var(--warning)}
+  .controls{max-width:1600px;margin:16px auto 10px;padding:0 clamp(12px,2.5vw,32px);display:grid;
+    grid-template-columns:minmax(220px,2fr) minmax(160px,1fr) auto;gap:9px;align-items:center}
+  .control{height:39px;border:1px solid var(--line);border-radius:8px;color:var(--ink);background:var(--panel);
+    outline:none;padding:0 11px;min-width:0}
+  .control:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(43,192,212,.12)}
+  .search-wrap{position:relative}
+  .search-wrap input{width:100%;padding-left:34px}
+  .search-wrap:before{content:"⌕";position:absolute;left:12px;top:7px;color:var(--dim);font-size:20px;z-index:1}
+  .stats{font:11.5px var(--mono);color:var(--dim);white-space:nowrap;text-align:right}
+  .legend{max-width:1600px;margin:0 auto 14px;padding:0 clamp(12px,2.5vw,32px);display:flex;gap:12px;
+    flex-wrap:wrap;align-items:center;color:var(--dim);font-size:11px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .swatch{width:9px;height:9px;border-radius:2px;background:var(--flat)}
+  .swatch.up{background:var(--gain)}.swatch.down{background:var(--loss)}
+  .legend .method{margin-left:auto}
+  main{max-width:1600px;margin:auto;padding:0 clamp(12px,2.5vw,32px) 60px}
+  .boot,.failure{margin:40px 0;padding:22px;border:1px solid var(--line);border-radius:10px;background:var(--panel);
+    color:var(--dim);text-align:center;font-size:13px}
+  .failure{border-color:rgba(224,79,95,.6);color:#ffadb5}
+  .sector{margin:0 0 15px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel-2);
+    content-visibility:auto;contain-intrinsic-size:310px}
+  .sector-head{display:flex;align-items:center;gap:10px;min-height:34px;padding:7px 11px;background:var(--header);
+    border-bottom:1px solid #303a49;color:#d5dbe4}
+  .sector-head h2{font-size:12px;letter-spacing:.02em;margin:0;font-weight:800}
+  .sector-count{margin-left:auto;font:10.5px var(--mono);color:#9aa7b7}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(134px,1fr));grid-auto-flow:dense;
+    grid-auto-rows:minmax(84px,auto);gap:5px;padding:5px}
+  .tile{position:relative;display:flex;flex-direction:column;align-items:stretch;min-width:0;min-height:84px;padding:9px;
+    border:1px solid rgba(255,255,255,.055);border-radius:6px;color:var(--ink);text-align:left;cursor:pointer;
+    overflow:hidden;isolation:isolate;transition:border-color .12s ease,filter .12s ease,transform .12s ease}
+  .tile:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(135deg,rgba(255,255,255,.035),transparent 65%)}
+  .tile.up{background:rgba(var(--gain-rgb),calc(.18 + var(--heat) * .30))}
+  .tile.down{background:rgba(var(--loss-rgb),calc(.18 + var(--heat) * .30))}
+  .tile.flat,.tile.na{background:#1a2230}
+  .tile:hover{filter:brightness(1.12);border-color:rgba(255,255,255,.22);transform:translateY(-1px)}
+  .tile:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .tile.span-2{grid-column:span 2;min-height:91px}.tile.span-3{grid-column:span 3;min-height:98px}
+  .tile-top{display:flex;gap:6px;align-items:flex-start}
+  .tile-name{font-size:12px;line-height:1.25;font-weight:760;overflow-wrap:anywhere;display:-webkit-box;
+    -webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  .freq{margin-left:auto;flex:none;font:9px var(--mono);line-height:17px;min-width:18px;text-align:center;border-radius:4px;
+    background:rgba(4,8,14,.38);color:#d3dce7;border:1px solid rgba(255,255,255,.1)}
+  .tile-value{margin-top:auto;padding-top:5px;font:700 15px/1.15 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tile-bottom{display:flex;align-items:end;gap:7px;margin-top:3px;min-width:0}
+  .change{font:800 11.5px var(--mono)}
+  .up .change{color:#b9f5d6}.down .change{color:#ffd0d4}.flat .change,.na .change{color:#bbc5d2}
+  .unit{margin-left:auto;max-width:62%;font:9px var(--mono);color:rgba(231,238,246,.7);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .alt{position:absolute;right:7px;bottom:7px;padding:1px 5px;border-radius:999px;background:rgba(4,8,14,.55);
+    color:#cbd5e1;font:8.5px var(--mono)}
+  .empty-state{padding:56px 12px;text-align:center;color:var(--dim);font-size:13px}
+  footer{padding:0 16px 28px;text-align:center;color:#697586;font-size:10.5px;line-height:1.6}
+  footer a{color:#8198ae}
+  dialog{width:min(940px,calc(100vw - 24px));max-height:min(88vh,850px);padding:0;border:1px solid #354154;
+    border-radius:12px;background:#0f151f;color:var(--ink);box-shadow:0 24px 80px rgba(0,0,0,.62)}
+  dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(3px)}
+  dialog[open]{display:flex;flex-direction:column}
+  .detail-head{display:flex;align-items:flex-start;gap:12px;padding:15px 16px 12px;border-bottom:1px solid var(--line)}
+  .detail-title{min-width:0}.detail-title h2{margin:0 0 4px;font-size:17px;line-height:1.25}
+  .detail-title p{margin:0;color:var(--dim);font:10.5px/1.5 var(--mono);overflow-wrap:anywhere}
+  .close{margin-left:auto;flex:none;width:32px;height:32px;border:1px solid var(--line);border-radius:7px;
+    background:#18202c;color:var(--ink);font-size:20px;cursor:pointer}
+  .detail-body{padding:14px 16px 18px;overflow:auto;min-height:260px}
+  .detail-loading{padding:80px 0;text-align:center;color:var(--dim)}
+  .series-tabs{display:flex;gap:6px;overflow:auto;padding-bottom:8px;scrollbar-width:thin}
+  .series-tab{flex:0 0 auto;max-width:260px;border:1px solid var(--line);border-radius:7px;background:#151d28;color:#c5cfdb;
+    padding:7px 9px;text-align:left;cursor:pointer}
+  .series-tab.active{border-color:var(--accent);background:#172732;color:#f0f8fb}
+  .series-tab b{display:block;font-size:11px;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .series-tab span{display:block;margin-top:3px;font:9.5px var(--mono);color:var(--dim)}
+  .detail-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:4px 0 9px}
+  .detail-kpi{padding:9px;border-radius:7px;background:#151c27;border:1px solid #232e3e;min-width:0}
+  .detail-kpi label{display:block;color:var(--dim);font-size:9.5px;margin-bottom:4px}
+  .detail-kpi b{display:block;font:700 12px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chart-box{height:330px;position:relative;border:1px solid var(--line);border-radius:8px;background:#0b1018;padding:8px}
+  .chart-box canvas,.chart-box svg{display:block;width:100%;height:100%}
+  .chart-note{min-height:18px;margin-top:6px;color:var(--dim);font-size:10.5px}
+  .source-box{margin-top:9px;padding:9px 10px;border-radius:7px;background:#121923;border:1px solid #232e3e;
+    color:#9ca9b9;font-size:10.5px;line-height:1.55;overflow-wrap:anywhere}
+  .source-box a{color:#6ad7e6}
+  @media(max-width:760px){
+    .topline{flex-wrap:wrap;gap:6px 10px}.scope{order:3;width:100%}.color-control{margin-left:auto}
+    .controls{grid-template-columns:1fr 1fr}.search-wrap{grid-column:1/-1}.stats{text-align:left}
+    .legend .method{width:100%;margin-left:0}.tiles{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(88px,auto)}
+    .tile.span-3{grid-column:span 2}.detail-kpis{grid-template-columns:1fr 1fr}.chart-box{height:270px}
+  }
+  @media(max-width:340px){.tiles{grid-template-columns:1fr}.tile.span-2,.tile.span-3{grid-column:span 1}}
+  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topline">
+    <a class="brand" href="index.html" aria-label="ARGUS 메인으로">👁 <span>ARGUS</span> 전상품 맵</a>
+    <span class="scope">가격·지수 <b id="sourceCount">—</b>개 원천</span>
+    <div class="color-control">
+      <label class="switch" aria-label="중국식 색상 사용">
+        <input id="chinaMode" type="checkbox"><i aria-hidden="true"></i>
+      </label>
+      <label class="switch-label" for="chinaMode">중국식 색상</label>
+    </div>
+  </div>
+  <div id="colorWarning" class="color-warning" role="status">
+    <b>색상 주의</b> · 현재 ARGUS 규약: 초록=상승, 빨강=하락. 중국 시세 사이트와 반대입니다.
+  </div>
+</header>
+
+<section class="controls" aria-label="전상품 맵 필터">
+  <div class="search-wrap"><input id="search" class="control" type="search" autocomplete="off"
+    placeholder="품목명·시리즈 ID·카테고리 검색" aria-label="품목 검색"></div>
+  <select id="chainFilter" class="control" aria-label="체인 필터"><option value="">전체 체인</option></select>
+  <div id="stats" class="stats" aria-live="polite">데이터 로딩…</div>
+</section>
+<div class="legend" aria-label="색상 및 표기 설명">
+  <span><i class="swatch up"></i>상승</span><span><i class="swatch down"></i>하락</span><span><i class="swatch"></i>보합·산출불가</span>
+  <span class="method">D/W/M/순 = 일/주/월/순보 · 변화율은 해당 빈도의 직전 관측 대비</span>
+</div>
+
+<main>
+  <div id="boot" class="boot">경량 맵 데이터를 읽는 중…</div>
+  <div id="failure" class="failure" hidden></div>
+  <div id="groups"></div>
+  <div id="emptyState" class="empty-state" hidden>조건에 맞는 시리즈가 없습니다.</div>
+</main>
+
+<footer>
+  타일 크기: 대표 원시가격 여부와 |직전 관측 변화율| 기반 휴리스틱 · 레이아웃 참조:
+  <a href="https://www.quheqihuo.com/quote/zhuli.html" target="_blank" rel="noopener noreferrer">曲合期货 主力行情</a><br>
+  참고용 · 투자조언 아님 · 타일 클릭 시 해당 상세 이력만 지연 로드
+</footer>
+
+<dialog id="detailDialog" aria-labelledby="detailName">
+  <div class="detail-head">
+    <div class="detail-title"><h2 id="detailName">상세</h2><p id="detailMeta"></p></div>
+    <button id="detailClose" class="close" type="button" aria-label="상세 닫기">×</button>
+  </div>
+  <div id="detailBody" class="detail-body"><div class="detail-loading">상세 데이터를 읽는 중…</div></div>
+</dialog>
+
+<script src="data_map.js"></script>
+<script>
+(function(){
+  'use strict';
+  var DATA=window.ARGUS_MAP;
+  var root=document.getElementById('groups');
+  var boot=document.getElementById('boot');
+  var failure=document.getElementById('failure');
+  var emptyState=document.getElementById('emptyState');
+  var stats=document.getElementById('stats');
+  var search=document.getElementById('search');
+  var chainFilter=document.getElementById('chainFilter');
+  var chinaMode=document.getElementById('chinaMode');
+  var colorWarning=document.getElementById('colorWarning');
+  var dialog=document.getElementById('detailDialog');
+  var detailBody=document.getElementById('detailBody');
+  var detailName=document.getElementById('detailName');
+  var detailMeta=document.getElementById('detailMeta');
+  var itemById=new Map();
+  var tileById=new Map();
+  var groupById=new Map();
+  var scriptLoads=new Map();
+  var chartInstance=null;
+  var filterFrame=0;
+  var openToken=0;
+  var MAX_CHART_POINTS=800;
+
+  function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });}
+  function norm(value){return String(value==null?'':value).toLocaleLowerCase('ko').replace(/\s+/g,' ').trim();}
+  function fmtValue(value){
+    if(value==null||!Number.isFinite(Number(value)))return '—';
+    var n=Number(value),a=Math.abs(n),digits=a>=1000?0:a>=100?1:a>=1?2:4;
+    return new Intl.NumberFormat('ko-KR',{maximumFractionDigits:digits}).format(n);
+  }
+  function fmtChange(value){
+    if(value==null||!Number.isFinite(Number(value)))return '—';
+    var n=Number(value);return (n>0?'+':'')+n.toFixed(2)+'%';
+  }
+  function direction(value){
+    if(value==null||!Number.isFinite(Number(value)))return 'na';
+    if(value>0.00005)return 'up';if(value<-.00005)return 'down';return 'flat';
+  }
+  function heat(value){return value==null?0:Math.min(Math.abs(Number(value))/10,1).toFixed(3);}
+  function loadScript(src){
+    if(scriptLoads.has(src))return scriptLoads.get(src);
+    var promise=new Promise(function(resolve,reject){
+      var node=document.createElement('script');node.src=src;node.async=true;
+      node.onload=function(){resolve(src);};
+      node.onerror=function(){reject(new Error('스크립트 로드 실패: '+src));};
+      document.head.appendChild(node);
+    });
+    scriptLoads.set(src,promise);return promise;
+  }
+  function tileHtml(item){
+    var dir=direction(item.change),span=Math.max(1,Math.min(3,Number(item.span)||1));
+    var alt=item.alt_count?'<span class="alt">+'+item.alt_count+' 소스</span>':'';
+    return '<button type="button" class="tile '+dir+' span-'+span+'" data-id="'+esc(item.id)+'" '+
+      'style="--heat:'+heat(item.change)+'" aria-label="'+esc(item.name)+' 상세 열기">'+
+      '<span class="tile-top"><span class="tile-name">'+esc(item.name)+'</span><span class="freq">'+esc(item.freq_label)+'</span></span>'+
+      '<span class="tile-value">'+fmtValue(item.last)+'</span><span class="tile-bottom"><span class="change">'+
+      fmtChange(item.change)+'</span><span class="unit">'+esc(item.unit)+'</span></span>'+alt+'</button>';
+  }
+  function fail(message){boot.hidden=true;failure.hidden=false;failure.textContent=message;stats.textContent='로드 실패';}
+  if(!DATA||!Array.isArray(DATA.items)||!Array.isArray(DATA.groups)){
+    fail('data_map.js가 없거나 계약이 맞지 않습니다. map_build.py를 실행해 샤드를 다시 만드세요.');return;
+  }
+
+  document.getElementById('sourceCount').textContent=DATA.counts.input.toLocaleString('ko-KR');
+  (DATA.chains||[]).forEach(function(chain){
+    var option=document.createElement('option');option.value=chain.id;option.textContent=chain.label;chainFilter.appendChild(option);
+  });
+  DATA.items.forEach(function(item){
+    item._search=norm([item.name,item.sid,item.category,item.chain,item.source].concat(item.aliases||[]).join(' '));
+    itemById.set(item.id,item);
+  });
+  var itemsByGroup=new Map();
+  DATA.items.forEach(function(item){if(!itemsByGroup.has(item.group))itemsByGroup.set(item.group,[]);itemsByGroup.get(item.group).push(item);});
+  var html=[];
+  DATA.groups.forEach(function(group){
+    var members=itemsByGroup.get(group.id)||[];if(!members.length)return;
+    html.push('<section class="sector" data-group="'+esc(group.id)+'"><header class="sector-head"><h2>'+esc(group.label)+
+      '</h2><span class="sector-count" data-count>'+members.length+' / '+members.length+'</span></header><div class="tiles">');
+    members.forEach(function(item){html.push(tileHtml(item));});html.push('</div></section>');
+  });
+  root.innerHTML=html.join('');boot.hidden=true;
+  root.querySelectorAll('.tile').forEach(function(node){tileById.set(node.dataset.id,node);});
+  root.querySelectorAll('.sector').forEach(function(node){groupById.set(node.dataset.group,node);});
+
+  function applyFilters(){
+    filterFrame=0;var query=norm(search.value),chain=chainFilter.value,visible=0;
+    var visibleByGroup=new Map();
+    DATA.items.forEach(function(item){
+      var show=(!query||item._search.indexOf(query)!==-1)&&(!chain||item.chain===chain);
+      var tile=tileById.get(item.id);if(tile)tile.hidden=!show;
+      if(show){visible++;visibleByGroup.set(item.group,(visibleByGroup.get(item.group)||0)+1);}
+    });
+    DATA.groups.forEach(function(group){
+      var section=groupById.get(group.id);if(!section)return;var count=visibleByGroup.get(group.id)||0;
+      section.hidden=count===0;var label=section.querySelector('[data-count]');if(label)label.textContent=count+' / '+group.count;
+    });
+    stats.textContent=visible.toLocaleString('ko-KR')+' 타일 · '+DATA.counts.alternatives.toLocaleString('ko-KR')+' 대체 출처';
+    emptyState.hidden=visible!==0;
+  }
+  function queueFilter(){if(filterFrame)cancelAnimationFrame(filterFrame);filterFrame=requestAnimationFrame(applyFilters);}
+  search.addEventListener('input',queueFilter);chainFilter.addEventListener('change',queueFilter);applyFilters();
+
+  chinaMode.addEventListener('change',function(){
+    var china=chinaMode.checked;document.documentElement.dataset.colorMode=china?'china':'argus';
+    colorWarning.innerHTML=china
+      ?'<b>색상 주의</b> · 중국식 색상 적용: 빨강=상승, 초록=하락. ARGUS 기본 규약에서 색상 의미가 반전되었습니다.'
+      :'<b>색상 주의</b> · 현재 ARGUS 규약: 초록=상승, 빨강=하락. 중국 시세 사이트와 반대입니다.';
+  });
+
+  function showDialog(){
+    if(typeof dialog.showModal==='function'&&!dialog.open)dialog.showModal();else dialog.setAttribute('open','');
+  }
+  function setHash(id,replace){
+    var next='#series='+encodeURIComponent(id);if(location.hash===next)return;
+    if(replace)history.replaceState(null,'',next);else history.pushState(null,'',next);
+  }
+  function clearHash(){if(location.hash.indexOf('#series=')===0)history.pushState(null,'',location.pathname+location.search);}
+  function hashId(){var raw=location.hash.replace(/^#/,'');return new URLSearchParams(raw).get('series');}
+  function closeDetail(fromHash){
+    openToken++;if(chartInstance){chartInstance.destroy();chartInstance=null;}
+    if(dialog.open)dialog.close();if(!fromHash)clearHash();
+  }
+  document.getElementById('detailClose').addEventListener('click',function(){closeDetail(false);});
+  dialog.addEventListener('click',function(event){if(event.target===dialog)closeDetail(false);});
+  dialog.addEventListener('cancel',function(event){event.preventDefault();closeDetail(false);});
+
+  function tabHtml(series,index){
+    var dir=direction(series.change);
+    return '<button type="button" class="series-tab'+(index===0?' active':'')+'" data-series="'+esc(series.id)+'">'+
+      '<b>'+esc(series.name)+'</b><span>'+esc(series.source)+' · '+esc(series.freq_label)+' · '+fmtChange(series.change)+'</span></button>';
+  }
+  function detailShell(detail){
+    return '<div class="series-tabs" aria-label="대표 및 대체 출처">'+detail.series.map(tabHtml).join('')+'</div>'+
+      '<div id="detailKpis" class="detail-kpis"></div><div class="chart-box" id="chartBox"><canvas id="detailChart"></canvas></div>'+
+      '<div id="chartNote" class="chart-note" role="status">차트 준비 중…</div><div id="sourceBox" class="source-box"></div>';
+  }
+  function sourceHtml(series){
+    var source=esc(series.src||series.source);if(series.src_url){source='<a href="'+esc(series.src_url)+'" target="_blank" rel="noopener noreferrer">'+source+'</a>';}
+    return '<b>출처</b> · '+source+'<br><b>시리즈</b> · '+esc(series.id)+' · '+series.dates.length.toLocaleString('ko-KR')+'개 관측';
+  }
+  function updateSeriesMeta(series){
+    var changeClass=direction(series.change);
+    document.getElementById('detailKpis').innerHTML=
+      '<div class="detail-kpi"><label>최신값</label><b>'+fmtValue(series.last)+' '+esc(series.unit)+'</b></div>'+
+      '<div class="detail-kpi"><label>직전 관측 대비</label><b class="'+changeClass+'">'+fmtChange(series.change)+'</b></div>'+
+      '<div class="detail-kpi"><label>최신 관측일</label><b>'+esc(series.date||'—')+'</b></div>'+
+      '<div class="detail-kpi"><label>빈도 / 범주</label><b>'+esc(series.freq_label)+' / '+esc(series.category)+'</b></div>';
+    document.getElementById('sourceBox').innerHTML=sourceHtml(series);
+  }
+  function sampled(series){
+    var start=Math.max(0,series.dates.length-MAX_CHART_POINTS);
+    return {dates:series.dates.slice(start),values:series.values.slice(start)};
+  }
+  function svgFallback(series,message){
+    var box=document.getElementById('chartBox'),data=sampled(series),values=data.values.filter(function(v){return Number.isFinite(Number(v));});
+    if(!values.length){box.innerHTML='<div class="detail-loading">표시할 유효 관측이 없습니다.</div>';document.getElementById('chartNote').textContent=message;return;}
+    var w=900,h=300,p=28,min=Math.min.apply(null,values),max=Math.max.apply(null,values),range=max-min||1;
+    var points=data.values.map(function(value,index){var x=p+(w-p*2)*(index/Math.max(1,data.values.length-1));var y=h-p-(h-p*2)*((value-min)/range);return x.toFixed(1)+','+y.toFixed(1);}).join(' ');
+    box.innerHTML='<svg viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(series.name)+' 가격 이력">'+
+      '<line x1="'+p+'" y1="'+p+'" x2="'+p+'" y2="'+(h-p)+'" stroke="#344154"/>'+
+      '<line x1="'+p+'" y1="'+(h-p)+'" x2="'+(w-p)+'" y2="'+(h-p)+'" stroke="#344154"/>'+
+      '<polyline fill="none" stroke="#2bc0d4" stroke-width="2" vector-effect="non-scaling-stroke" points="'+points+'"/>'+
+      '<text x="'+(p+3)+'" y="'+(p+12)+'" fill="#8a93a3" font-size="11">'+esc(fmtValue(max))+'</text>'+
+      '<text x="'+(p+3)+'" y="'+(h-p-5)+'" fill="#8a93a3" font-size="11">'+esc(fmtValue(min))+'</text></svg>';
+    document.getElementById('chartNote').textContent=message;
+  }
+  function chartWithBundle(series){
+    var data=sampled(series),canvas=document.getElementById('detailChart');
+    if(chartInstance){chartInstance.destroy();chartInstance=null;}
+    chartInstance=new window.Chart(canvas,{type:'line',data:{labels:data.dates,datasets:[{
+      label:series.name,data:data.values,borderColor:'#2bc0d4',backgroundColor:'rgba(43,192,212,.09)',fill:true,
+      borderWidth:1.7,pointRadius:0,pointHoverRadius:3,tension:.08,spanGaps:true
+    }]},options:{animation:false,responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return fmtValue(ctx.parsed.y)+' '+series.unit;}}}},
+      scales:{x:{grid:{color:'rgba(100,116,139,.12)'},ticks:{color:'#7f8b9b',maxTicksLimit:8,maxRotation:0}},
+      y:{grid:{color:'rgba(100,116,139,.14)'},ticks:{color:'#7f8b9b',callback:function(v){return fmtValue(v);}}}}}});
+    document.getElementById('chartNote').textContent='로컬 chartjs_bundle.js 재사용 · 최근 '+data.dates.length.toLocaleString('ko-KR')+'개 관측 표시';
+  }
+  function renderChart(series){
+    var box=document.getElementById('chartBox');box.innerHTML='<canvas id="detailChart"></canvas>';
+    if(!series.dates.length){svgFallback(series,'유효 관측 없음');return;}
+    if(window.Chart){chartWithBundle(series);return;}
+    loadScript(DATA.chart_bundle||'../chartjs_bundle.js').then(function(){
+      if(window.Chart)chartWithBundle(series);else svgFallback(series,'chartjs_bundle.js에 Chart 전역이 없어 내장 SVG로 표시');
+    }).catch(function(error){svgFallback(series,error.message+' · 내장 SVG 폴백으로 표시');});
+  }
+  function selectSeries(detail,id){
+    var series=detail.series.find(function(row){return row.id===id;})||detail.series[0];
+    detailBody.querySelectorAll('.series-tab').forEach(function(tab){tab.classList.toggle('active',tab.dataset.series===series.id);});
+    updateSeriesMeta(series);renderChart(series);
+  }
+  async function openDetail(id,fromHash){
+    var item=itemById.get(id);if(!item)return;
+    var token=++openToken;detailName.textContent=item.name;detailMeta.textContent=item.sid+' · '+item.source+' · '+item.date;
+    detailBody.innerHTML='<div class="detail-loading">상세 이력을 읽는 중…</div>';showDialog();if(!fromHash)setHash(id,false);
+    try{
+      if(!window.ARGUS_MAP_DETAILS||!window.ARGUS_MAP_DETAILS[id])await loadScript(item.detail);
+      if(token!==openToken)return;
+      var detail=window.ARGUS_MAP_DETAILS&&window.ARGUS_MAP_DETAILS[id];if(!detail)throw new Error('상세 샤드에 시리즈가 없음: '+id);
+      detailBody.innerHTML=detailShell(detail);
+      detailBody.querySelector('.series-tabs').addEventListener('click',function(event){
+        var tab=event.target.closest('.series-tab');if(tab)selectSeries(detail,tab.dataset.series);
+      });
+      selectSeries(detail,detail.primary);
+    }catch(error){if(token!==openToken)return;detailBody.innerHTML='<div class="failure">'+esc(error.message)+'<br>map_build.py로 상세 샤드를 다시 생성하세요.</div>';}
+  }
+  root.addEventListener('click',function(event){var tile=event.target.closest('.tile');if(tile)openDetail(tile.dataset.id,false);});
+  window.addEventListener('hashchange',function(){var id=hashId();if(id&&itemById.has(id))openDetail(id,true);else if(dialog.open)closeDetail(true);});
+  var initialId=hashId();if(initialId&&itemById.has(initialId))requestAnimationFrame(function(){openDetail(initialId,true);});
+})();
+</script>
+</body>
+</html>
