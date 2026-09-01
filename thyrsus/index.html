@@ -826,7 +826,8 @@ const blank = () => ({
   phase:{kind:'setup', n:0},
   players:[], log:[], nightDone:{}, checks:{}, noms:[],
   edition:'tb', redHerringId:null, drunkMaskChar:null, executedToday:null, executedPrevDay:null,
-  customs:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null
+  customs:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null,
+  pukkaVictimId:null, mastermindDay:null, executedTodayPid:null
 });
 let S = blank();
 try{ const raw = localStorage.getItem(LS_KEY); if(raw) S = Object.assign(blank(), JSON.parse(raw)); }catch(e){}
@@ -867,11 +868,41 @@ function expireStatuses(){
   });
 }
 
+/* 밤 살해를 막는 사유(보호·면역). 암살자만 이 판정을 관통한다.
+   doImpKill(TB)과 doStepKill(BMR/SV)이 갈라져 있어 BMR/SV 악마가 군인·보호를 뚫던 결함 수정. */
+function deathBlockReason(t){
+  if(isMalfunctioning(t)) return null;              // 오작동이면 본인 능력 보호는 작동하지 않음
+  if(hasStatus(t,'protect')) return '보호 중(수도사·여관 주인 등)';
+  if(t.charId==='soldier') return '군인 — 악마에게 죽지 않음';
+  if(t.charId==='sailor') return '선원 — 죽지 않음';
+  return null;
+}
+/* 탕녀 계승을 '안내'가 아니라 '상태 전환'으로 처리한다.
+   charId를 바꾸지 않으면 이후 demonAlive가 계속 false여서 악마 없는 게임이 진행된다. */
+function promoteScarletWoman(dead, aliveBefore){
+  if(charOf(dead.charId)?.type!=='demon') return false;
+  // 다른 악마가 이미 살아있으면(팡 구 점프 등) 계승 대상이 아니다
+  if(S.players.some(q=>q.alive && q!==dead && charOf(q.charId)?.type==='demon')) return false;
+  const sw=S.players.find(q=>q.alive && q!==dead && q.charId==='scarletwoman');
+  if(!sw) return false;
+  const aliveN=(aliveBefore!==undefined? aliveBefore : alivePlayers().length);
+  if(aliveN<5) return false;
+  if(isMalfunctioning(sw)){
+    toast('⚠ 탕녀가 중독/오작동 상태 — 계승 불발. 악마 사망이 그대로 성립합니다.','warn');
+    log('탕녀 오작동 — 계승 불발');
+    return false;
+  }
+  const demonId=dead.charId, ko=charOf(demonId)?.ko||'악마';
+  sw.charId=demonId;
+  log(`★ ${sw.name}(탕녀) → ${ko} 계승 (생존 ${aliveN}명)`);
+  toast(`★ 탕녀 계승: ${sw.name}이(가) 이제 ${ko}입니다. 캐릭터가 전환되었습니다 — 다음 밤에 깨워 토큰을 보여주세요.`,'warn');
+  return true;
+}
 function killPlayer(p, cause, opts){
   opts=opts||{};
   const aliveBefore = alivePlayers().length;   // 죽는 본인 포함(탕녀 계승 판정 기준)
   // 좀버얼 첫 사망 = 죽은 척: 겉으로만 사망 처리, 실제로는 생존(밤에 계속 깨움)
-  if(p.charId==='zombuul' && !hasStatus(p,'fakedead')){
+  if(p.charId==='zombuul' && !hasStatus(p,'fakedead') && !isMalfunctioning(p)){
     addStatus(p,'fakedead','좀버얼 첫 사망',null);
     p.alive=false;
     log(`🪦 ${p.name}(좀버얼) 죽은 척 — ${cause} (실제로는 생존, 두 번째 사망이 진짜)`);
@@ -892,6 +923,7 @@ function killPlayer(p, cause, opts){
     if(zi>=0){ p.statuses.splice(zi,1); log(`🪦 ${p.name}(좀버얼) 두 번째 사망 — 죽은 척 해제, 실제 사망`); }
   }
   p.alive=false; log(`💀 ${p.name}(${charName(p)}) 사망 — ${cause}`);
+  if(!opts.skipSuccession) promoteScarletWoman(p, aliveBefore);
   if(!opts.skipEnd) checkEndConditions(cause, aliveBefore);
 }
 function charName(p){ const c=charOf(p.charId); return c? c.ko : '?'; }
@@ -955,7 +987,7 @@ function advancePhase(){
     if(mayor && alivePlayers().length===3 && !S.executedToday && !isMalfunctioning(mayor)){
       if(!confirm('⚠ 생존자 3명 + 오늘 처형 없음 + 시장 생존(정상 작동) = 선한 팀 승리 조건입니다!\n그래도 밤으로 진행할까요? (취소를 누르면 낮에 머뭅니다)')) return;
     }
-    S.executedPrevDay = S.executedToday; S.executedToday=null;  // 장의사가 이 밤에 참조
+    S.executedPrevDay = S.executedToday; S.executedToday=null; S.executedTodayPid=null;  // 장의사가 이 밤에 참조
     S.phase={kind:'night', n:ph.n+1};
     expireStatuses();  // 독(어제 밤 부여) 해제 타이밍 = 다음 밤 시작
     S.nightDone[S.phase.n]={};
@@ -1664,6 +1696,31 @@ function doPoison(pid){ if(!pid)return; const p=playerOf(pid); const poisoner=S.
   if(hasStatus(p,'poison')){ toast(`${p.name}은(는) 이미 중독 상태입니다 — 중복 부여하지 않습니다.`,'warn'); return; }
   if(poisoner && isMalfunctioning(poisoner)){ toast('독살범 본인이 오작동 상태 — 독이 퍼지지 않습니다. 기록만 남깁니다.','warn'); log(`독살범 오작동: ${p.name} 중독 불발`); save(); renderAll(); return; }
   addStatus(p,'poison','독살범',{kind:'night', n:S.phase.n+1}); save(); renderAll(); toast(`${p.name} 중독 — 내일 황혼(밤 ${S.phase.n+1} 시작)에 자동 해제`,'ok'); }
+/* 푸카는 독살범과 수명주기가 다르다 — doPoison 재사용이 결함이었다.
+   공식: 밤마다 1명을 물면 즉시 중독, '이전에 문 사람'이 그때 죽으면서 건강해진다.
+   푸카가 오작동이면 새 중독도 지연 사망도 없다. 페이즈 기반 expiresAt 을 쓰면 안 된다. */
+function doPukkaPick(pid){
+  if(!pid)return; const t=playerOf(pid);
+  const pk=S.players.find(q=>(q.alive||(q.charId==='zombuul'&&hasStatus(q,'fakedead'))) && q.charId==='pukka');
+  const prev=S.pukkaVictimId? playerOf(S.pukkaVictimId): null;
+  if(pk && isMalfunctioning(pk)){
+    toast('푸카가 중독/취함 상태 — 새로 무는 것도, 이전 희생자의 사망도 일어나지 않습니다. 기록만 남깁니다.','warn');
+    log(`푸카 오작동: ${t.name} 중독 불발 — 이전 희생자 사망 보류`);
+    save(); renderAll(); return;
+  }
+  if(hasStatus(t,'poison')) toast(`${t.name}은(는) 이미 중독 상태 — 토큰을 중복 부여하지 않습니다.`,'warn');
+  else addStatus(t,'poison','푸카',null);          // 만료 없음 — 다음 지목 때 해제된다
+  if(prev && prev!==t && prev.alive){
+    const i=(prev.statuses||[]).findIndex(s=>s.key==='poison' && s.source==='푸카');
+    if(i>=0) prev.statuses.splice(i,1);
+    log(`🐍 푸카의 독 발현 — ${prev.name} 사망, 독 해제`);
+    resolveNightDeath(prev, '푸카의 독');
+  } else if(prev && prev===t){
+    toast('이전에 문 대상을 다시 물었습니다 — 규칙상 처리(사망 여부)를 직접 판단하세요.','warn');
+  }
+  S.pukkaVictimId=t.id;
+  save(); renderAll();
+}
 function doProtect(pid){ if(!pid)return; const p=playerOf(pid); const monk=S.players.find(q=>q.charId==='monk');
   if(monk && isMalfunctioning(monk)){
     toast('수도사가 오작동 상태 — 보호가 작동하지 않습니다! 토큰을 놓지 않고 기록만 남깁니다. 임프가 이 대상을 지목하면 그대로 사망 처리하세요.','warn');
@@ -1685,13 +1742,13 @@ function doImpKill(pid){
       np.charId='imp'; log(`★ ${np.name}이(가) 새 임프가 됨 — 깨워서 임프 토큰을 보여주세요`);
       toast(`${np.name}이(가) 새 임프입니다. 지금 깨워 임프 토큰을 보여주세요.`,'warn');
     }
-    killPlayer(t,'임프 자살(★ 별 넘기기)');
+    killPlayer(t,'임프 자살(★ 별 넘기기)',{skipSuccession:true});
     save(); renderAll(); return;
   }
   if(!t.alive){ toast('이미 죽은 대상입니다 — 아무 일도 일어나지 않습니다.','warn'); return; }
   const mf=isMalfunctioning(t);
-  if(hasStatus(t,'protect') && !mf){ toast(`${t.name}은(는) 수도사의 보호 중 — 사망 없음. 임프에게 알리지 마세요.`,'ok'); log(`임프 공격 → ${t.name} 보호로 무효`); save(); renderAll(); return; }
-  if(t.charId==='soldier' && !mf){ toast(`${t.name}은(는) 군인 — 사망 없음. 임프에게 알리지 마세요.`,'ok'); log(`임프 공격 → 군인 ${t.name} 무효`); save(); renderAll(); return; }
+  const blk=deathBlockReason(t);
+  if(blk){ toast(`${t.name}: ${blk} — 사망 없음. 임프에게 알리지 마세요.`,'ok'); log(`임프 공격 → ${t.name} 무효(${blk})`); save(); renderAll(); return; }
   if(t.charId==='mayor' && !mf){
     if(confirm(`${t.name}은(는) 시장입니다. [확인] = 다른 플레이어가 대신 사망(재량), [취소] = 시장이 그대로 사망`)){
       const alt=prompt('대신 죽을 플레이어 이름:'); const ap=S.players.find(q=>q.name===alt&&q.alive);
@@ -1726,6 +1783,14 @@ function doStepKill(pid, killerId){ if(!pid)return; const t=playerOf(pid);
     if(tl){
       toast(`🍵 ${t.name}은(는) 찻집 여인(${tl.name})의 살아있는 선한 이웃 — 사망하지 않습니다(불발). 악마에게 티 내지 마세요.`,'ok');
       log(`🍵 찻집 여인 보호: ${t.name} 살해 불발 (${actor?charName(actor):'악마'}의 공격)`);
+      save(); renderAll(); return;
+    }
+  }
+  if(kid!=='assassin'){
+    const blk=deathBlockReason(t);
+    if(blk){
+      toast(`${t.name}: ${blk} — 사망하지 않습니다(불발). 악마에게 티 내지 마세요.`,'ok');
+      log(`${blk}: ${t.name} 살해 불발 (${actor?charName(actor):'악마'}의 공격)`);
       save(); renderAll(); return;
     }
   }
@@ -1996,7 +2061,7 @@ function executeNominee(nid){
   const saintCheck = p.charId==='saint' && !isMalfunctioning(p);
   if(saintCheck && !confirm(`🚨 ${p.name}은(는) 성자이며 오작동 상태가 아닙니다!\n처형을 확정하면 선한 팀이 패배합니다. 진행할까요?`)) return;
   killPlayer(p, `처형 (찬성 ${n.yes}/${n.den}, ${(n.ratio*100).toFixed(1)}%)`);
-  S.executedToday=`${p.name} (${charName(p)})`;
+  S.executedToday=`${p.name} (${charName(p)})`; S.executedTodayPid=p.id;
   if(saintCheck){ toast('✝ 성자가 처형되었습니다 — 악한 팀 승리!','warn'); log('성자 처형 — 악 승리'); }
   toast(`${p.name} 처형. 오늘 밤 장의사에게 보여줄 캐릭터: ${charName(p)} (첩자/은둔자/주정뱅이면 등록 재량)`,'ok');
   save(); renderAll();
@@ -2182,7 +2247,7 @@ function renderCustom(){
   <button onclick="importScript()">시트 가져오기</button></div>
   ${S.customs.length?`<h3>등록된 커스텀 (${S.customs.length})</h3><div class="chargrid">${S.customs.map(c=>`
     <div class="charcard">${charCard(c).replace('<div class="charcard">','').replace(/<\/div>$/,'')}
-    <button class="small danger ghost" style="margin-top:6px" onclick="delCustom('${c.id}')">삭제</button></div>`).join('')}</div>`:''}
+    <button class="small danger ghost" style="margin-top:6px" data-delcustom="${esc(c.id)}">삭제</button></div>`).join('')}</div>`:''}
   </div>`;
 }
 function addCustom(){
@@ -2203,11 +2268,32 @@ function exportScript(){
   const data=JSON.stringify({name:'티르소스 커스텀 시트', base:'trouble-brewing', customs:S.customs}, null, 1);
   navigator.clipboard?.writeText(data).then(()=>toast('시트 JSON 복사됨 — Claude에게 붙여넣어 검증을 요청하세요.','ok'),()=>prompt('복사하세요:',data));
 }
+/* 가져온 시트는 신뢰할 수 없다 — 스키마·타입·길이를 검증하고 id 를 안전한 형태로 재발급한다. */
 function importScript(){
   const raw=prompt('시트 JSON을 붙여넣으세요:'); if(!raw)return;
-  try{ const d=JSON.parse(raw); if(Array.isArray(d.customs)){ S.customs=d.customs; save(); renderAll(); toast('가져오기 완료','ok'); } else toast('customs 배열이 없습니다.','warn'); }
-  catch(e){ toast('JSON 파싱 실패','warn'); }
+  let d; try{ d=JSON.parse(raw); }catch(e){ toast('JSON 파싱 실패','warn'); return; }
+  if(!d || !Array.isArray(d.customs)){ toast('customs 배열이 없습니다.','warn'); return; }
+  const str=v=>typeof v==='string'? v.slice(0,400):'';
+  const arr=v=>Array.isArray(v)? v.filter(x=>typeof x==='string').map(x=>x.slice(0,400)).slice(0,20):[];
+  const TYPES=['townsfolk','outsider','minion','demon','traveler','fabled'];
+  const seen=new Set();
+  S.customs=d.customs.slice(0,60).filter(c=>c&&typeof c==='object').map(c=>{
+    let id=(typeof c.id==='string' && /^[A-Za-z0-9_-]{1,64}$/.test(c.id))? c.id : 'cx_'+uid();
+    if(seen.has(id)) id='cx_'+uid();
+    seen.add(id);
+    return { id, ko:str(c.ko)||'(이름 없음)', en:str(c.en), type:TYPES.includes(c.type)?c.type:'townsfolk',
+      ability:str(c.ability)||'(능력 미기재)', first:!!c.first, other:!!c.other,
+      firstAfter:typeof c.firstAfter==='string'?c.firstAfter:null,
+      otherAfter:typeof c.otherAfter==='string'?c.otherAfter:null,
+      voteRelated:!!c.voteRelated, voteNote:str(c.voteNote),
+      reminders:arr(c.reminders), warn:arr(c.warn), custom:true };
+  });
+  save(); renderAll(); toast(`가져오기 완료 — ${S.customs.length}종 (id·필드 검증 적용)`,'ok');
 }
+document.addEventListener('click', e=>{
+  const b=e.target.closest && e.target.closest('[data-delcustom]');
+  if(b) delCustom(b.getAttribute('data-delcustom'));
+});
 
 /* ══════════════════ 초기화 ══════════════════ */
 function renderAll(){
@@ -3172,14 +3258,14 @@ zombuul:{other:[
 pukka:{first:[
   {t:'wake'},
   {t:'pick-player',n:1,who:'player',label:'푸카가 물어둘 대상',filter:'alive',storeAs:'tgt'},
-  {t:'effect',fn:'doPoison',from:'tgt'},
-  {t:'note',text:'중독 토큰을 확인하세요 — 이 사람은 다음 날 밤에 죽으면서 독이 풀립니다. 오늘 밤에는 죽지 않습니다.'},
+  {t:'effect',fn:'doPukkaPick',from:'tgt'},
+  {t:'note',text:'중독 토큰을 확인하세요 — 이 사람은 다음 날 밤(푸카가 새 대상을 물 때) 죽으면서 독이 풀립니다. 오늘 밤에는 죽지 않습니다.'},
   {t:'sleep'}],
  other:[
   {t:'wake'},
-  {t:'note',text:'어제 푸카가 중독시킨 대상이 지금 죽습니다 — 그리모어(밤 패널 살해 위젯)에서 사망 처리하고 독 토큰을 해제하세요. 그다음 새 대상을 지목받습니다.'},
   {t:'pick-player',n:1,who:'player',label:'오늘 밤 새로 물어둘 대상',filter:'alive',storeAs:'tgt'},
-  {t:'effect',fn:'doPoison',from:'tgt'},
+  {t:'effect',fn:'doPukkaPick',from:'tgt'},
+  {t:'note',text:'판정 실행 시 새 대상이 중독되고, 이전에 물린 대상이 자동으로 사망·독 해제됩니다. 푸카가 오작동이면 둘 다 일어나지 않습니다.'},
   {t:'sleep'}]},
 shabaloth:{other:[
   {t:'wake'},
@@ -4346,6 +4432,12 @@ function evalWinEvent(kind, ctx){
     return null;
   }
   if(kind==='dayEnd'){
+    if(S.mastermindDay && S.phase.n===S.mastermindDay){
+      const ex=S.executedTodayPid? playerOf(S.executedTodayPid):null;
+      if(ex && isEvil(ex))
+        return {team:'good', reason:`주모자 연장전(낮 ${S.phase.n})에 악한 플레이어 ${ex.name}이(가) 처형되었습니다.`, rule:'주모자: 연장된 하루에 악한 플레이어가 처형되면 선한 팀이 승리합니다.'};
+      return {team:'evil', reason: ex? `주모자 연장전(낮 ${S.phase.n})에 선한 플레이어 ${ex.name}이(가) 처형되었습니다.` : `주모자 연장전(낮 ${S.phase.n})에 처형이 없었습니다.`, rule:'주모자: 연장된 하루에 악한 플레이어가 처형되지 않으면 악한 팀이 승리합니다.'};
+    }
     const vx=S.players.find(x=>x.alive && charOf(x.charId)?.type==='demon' && x.charId==='vortox');
     if(vx && !ctx.executed)
       return {team:'evil', reason:'보르톡스가 살아 있는데 오늘 처형이 없었습니다.', rule:'보르톡스: 처형이 없는 낮이 끝나면 악한 팀이 승리합니다.'};
@@ -4363,19 +4455,35 @@ function evalWinEvent(kind, ctx){
     const blockers=winBlockers();
     const aliveN=(ctx.aliveBefore!==undefined? ctx.aliveBefore : alivePlayers().length+1);
     const sw=S.players.find(x=>x.alive && x.charId==='scarletwoman');
-    if(sw && aliveN>=5 && !isMalfunctioning(sw)) return null;      // 계승 → 계속
+    if(sw && aliveN>=5 && !isMalfunctioning(sw))
+      return {kind:'continue', why:'scarletwoman', msg:`탕녀 계승 조건(악마 사망 시 생존 ${aliveN}명) — 게임은 계속됩니다.`};
     const mm=S.players.find(x=>x.alive && x.charId==='mastermind');
-    if(mm && !isMalfunctioning(mm) && ctx.byExecution) return null; // 연장전 → 계속
+    if(mm && !isMalfunctioning(mm) && ctx.byExecution)
+      return {kind:'continue', why:'mastermind', msg:'주모자 — 악마가 처형됐지만 게임이 하루 더 이어집니다.'};
     const et=aliveEvilTwinPair();
-    if(et) return null;                                            // 쌍둥이 생존 → 선 승리 불가
+    if(et)
+      return {kind:'continue', why:'eviltwin', msg:'사악한 쌍둥이와 선한 쌍둥이가 모두 살아 있어 선한 팀은 아직 승리할 수 없습니다.'};
     return {team:'good', reason:'마지막 악마가 죽었습니다.', rule:'악마가 모두 죽고 계승·연장 조건이 없으면 선한 팀이 승리합니다.'};
   }
   return null;
 }
+/* ── 승리값 판별 · '계속' 사유 안내 ── */
+function isWinRes(r){ return !!(r && r.team); }
+/* '계속'을 기존 checkEndConditions 로 떨어뜨리면 주모자·사악한 쌍둥이 상황에서
+   '악마가 죽었습니다 — 선한 팀 승리'가 잘못 선언된다. 여기서 끊고 안내만 한다. */
+function announceContinue(res){
+  if(res.why==='mastermind' && !S.mastermindDay){
+    S.mastermindDay=S.phase.n+1;
+    log(`🧠 주모자 연장전 — 낮 ${S.mastermindDay}의 처형 결과로 승패가 갈립니다`);
+  }
+  log(`게임 계속(${res.why}): ${res.msg}`);
+  toast(`▶ ${res.msg}`,'warn');
+  save(); renderAll();
+}
 /* ── 승리 확인 다이얼로그 ── */
 let pendingWin=null;
 function askWin(res){
-  if(!res || S.gameOver) return;
+  if(!isWinRes(res) || S.gameOver) return;
   pendingWin=res;
   const el=$('#winask'); el.hidden=false;
   const blockers=winBlockers();
@@ -4410,8 +4518,8 @@ function confirmWin(yes){
     if(S.gameOver) return;
     const byExecution=/처형|성결자/.test(cause||'');
     const res=evalWinEvent('death', {aliveBefore, byExecution});
-    if(res){ askWin(res); return; }
-    // 계승·연장 등 '계속' 사유는 기존 안내를 그대로 유지
+    if(isWinRes(res)){ askWin(res); return; }
+    if(res && res.kind==='continue'){ announceContinue(res); return; }
     _orig(cause, aliveBefore);
   };
 })();
@@ -4428,7 +4536,7 @@ function confirmWin(yes){
     _exec(nid);
     if(!p || p.alive) return;
     const res=evalWinEvent('execute', {player:p, isGoodTwin});
-    if(res) askWin(res);
+    if(isWinRes(res)) askWin(res);
   };
 })();
 /* 낮 종료(밤 진행) 시 보르톡스·시장 판정 */
@@ -4437,7 +4545,10 @@ function confirmWin(yes){
   advancePhase=function(){
     if(S.phase.kind==='day' && !S.gameOver){
       const res=evalWinEvent('dayEnd', {executed:!!S.executedToday});
-      if(res){ res.resume=_adv; askWin(res); if(pendingWin) return; }   // 확인 전에는 밤으로 넘어가지 않음
+      if(isWinRes(res)){
+        if(S.mastermindDay && S.phase.n===S.mastermindDay) S.mastermindDay=null;  // 연장전 소진
+        res.resume=_adv; askWin(res); if(pendingWin) return;            // 확인 전에는 밤으로 넘어가지 않음
+      }
     }
     _adv();
   };
@@ -4452,7 +4563,7 @@ function klutzCall(){
   if(isMalfunctioning(kl)){ toast('얼뜨기가 중독/오작동 상태로 죽었습니다 — 발동하지 않습니다.','warn'); log(`얼뜨기 지목(${t.name}) — 오작동으로 무효`); return; }
   log(`🤡 얼뜨기 공개 지목: ${t.name}`);
   const res=evalWinEvent('klutz', {targetEvil:isEvil(t), klutzName:kl.name});
-  if(res) askWin(res); else toast(`${t.name}은(는) 선한 플레이어입니다 — 아무 일도 일어나지 않습니다.`,'ok');
+  if(isWinRes(res)) askWin(res); else toast(`${t.name}은(는) 선한 플레이어입니다 — 아무 일도 일어나지 않습니다.`,'ok');
 }
 (function(){
   const _rd=renderDay;

@@ -383,3 +383,35 @@
 4. 제안 패치: 동적 루트 allowlist 대신 `#wizard,#pmodal,#winask,#gameover`를 모두 `hidden=true; innerHTML=''`로 정규화하고, 저장 결과 문서에 열린 오버레이가 없는지 계약 테스트를 추가한다.
 
 참고로 플레이어 이름과 메모의 일반 렌더링은 대부분 `esc()`를 통과했습니다. 가장 직접적인 XSS 경로는 검증되지 않은 커스텀 `id`와 저장·복원된 내부 ID가 인라인 이벤트 속성에 들어가는 부분입니다. 또한 공식 밤 순서 기준으로 TB의 배열과 BMR/SV의 그 외 밤 배열에서는 추가 순서 불일치를 발견하지 못했습니다.
+
+---
+
+# 수정 현황 (2026-09-01, 맥미니)
+
+## 배포 전 수정 완료 — 종합 Critical 6건 (A~F)
+
+| 코드 | 결함 | 수정 내용 |
+|------|------|-----------|
+| A | 승리 차단이 `null` → `_orig()`가 "선한 팀 승리" 오선언 | `evalWinEvent`가 `{kind:'continue', why}` 를 반환하도록 변경. `isWinRes()`/`announceContinue()` 신설, 호출부 4곳 모두 분기. 주모자 연장전은 `S.mastermindDay` 로 영속화하고 **연장된 낮의 처형 결과(악 처형=선 승리 / 무처형·선 처형=악 승리)를 dayEnd 에서 실제 판정** |
+| B | 푸카가 `doPoison()` 재사용 | `doPukkaPick()` 신설. 페이즈 만료 없는 독 부여 → 이전 희생자 사망·해독 순서, `S.pukkaVictimId` 영속화, 오작동 시 신규 중독·지연 사망 모두 보류. 위저드 first/other 를 신규 함수로 교체 |
+| C | 탕녀 계승이 안내뿐이라 악마 없는 게임 진행 | `promoteScarletWoman()` 신설 — `killPlayer()` 안에서 `charId` 를 실제 전환. 다른 악마 생존 시(팡 구 점프) 미발동, 별 넘기기 경로는 `skipSuccession` 으로 중복 계승 차단, 오작동 탕녀는 계승 불발 안내 |
+| D | 오작동 좀버얼도 첫 사망 무효화 | `killPlayer()` 의 좀버얼 분기에 `!isMalfunctioning(p)` 추가 |
+| E | `doStepKill()` 이 군인·보호·선원 무시 | `deathBlockReason()` 공용 판정 신설 — `doImpKill`·`doStepKill` 양쪽이 동일 규칙 사용. 암살자만 관통 |
+| F | 커스텀 캐릭터 `id` 저장형 XSS | 인라인 `onclick` 제거 → `data-delcustom` + 위임 리스너. `importScript()` 에 스키마·타입·길이 검증과 안전 id 재발급(`/^[A-Za-z0-9_-]{1,64}$/`) 추가 |
+
+부수 변경: `blank()` 에 `pukkaVictimId`·`mastermindDay`·`executedTodayPid` 추가(구 저장본은 `Object.assign` 으로 기본값 보충), `executeNominee` 가 처형자 pid 기록.
+
+## 검증
+- `node --check`: HTML 내 스크립트 블록 19개 전부 통과
+- 브라우저 시나리오 회귀 **28건 전부 통과** — A~F 타깃 테스트 21건 + 기존 기능 회귀 7건
+  (전 탭 렌더, 3개 에디션 밤 순서, 지명→거수→찬반 투표, 별 넘기기 악마 유일성, 상태 직렬화 왕복, 차단 요소 없을 때의 정상 선 승리 경로)
+
+## 미수정 — 후속 과제
+1·2차 종합 High 이하 **22건**은 이번 배포에 포함하지 않았다. 우선순위 상위:
+- 진영을 `charId` 에서 유도(이발사 교환·건달·팡 구 진영 오염) — `alignment` 필드 도입 필요
+- 상태에 `sourcePid` 없음 → 출처 사망 시 중독·취함 잔존
+- BMR·SV 첫날 밤 순서(1·2차 독립 동일 결론): BMR `하수인→미치광이→악마`, SV `철학자→하수인→악마`
+- 낮에 부여한 보호가 쓸 밤 시작에 만료
+- 어릿광대 첫 생존이 확인창 취소로 무산 가능(강제 능력)
+- 좀버얼 첫 사망에서 `checkEndConditions()` 자체를 건너뜀
+- 구버전 저장본 마이그레이션이 최상위 `Object.assign` 뿐(`deadVoters` 누락 시 예외)
