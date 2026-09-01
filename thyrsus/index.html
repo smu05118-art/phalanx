@@ -827,7 +827,7 @@ const blank = () => ({
   players:[], log:[], nightDone:{}, checks:{}, noms:[],
   edition:'tb', redHerringId:null, drunkMaskChar:null, executedToday:null, executedPrevDay:null,
   customs:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null,
-  pukkaVictimId:null, mastermindDay:null, executedTodayPid:null
+  pukkaVictimId:null, mastermindDay:null, executedTodayPid:null, executedDiedToday:null
 });
 let S = blank();
 try{ const raw = localStorage.getItem(LS_KEY); if(raw) S = Object.assign(blank(), JSON.parse(raw)); }catch(e){}
@@ -870,11 +870,22 @@ function expireStatuses(){
 
 /* 밤 살해를 막는 사유(보호·면역). 암살자만 이 판정을 관통한다.
    doImpKill(TB)과 doStepKill(BMR/SV)이 갈라져 있어 BMR/SV 악마가 군인·보호를 뚫던 결함 수정. */
-function deathBlockReason(t){
-  if(isMalfunctioning(t)) return null;              // 오작동이면 본인 능력 보호는 작동하지 않음
-  if(hasStatus(t,'protect')) return '보호 중(수도사·여관 주인 등)';
-  if(t.charId==='soldier') return '군인 — 악마에게 죽지 않음';
-  if(t.charId==='sailor') return '선원 — 죽지 않음';
+function deathBlockReason(t, opts){
+  opts=opts||{}; const src=opts.sourceType||'demon';   // 'demon' | 'night' | 'execution'
+  if(opts.bypass) return null;                         // 암살자는 모든 보호를 관통
+  // 찻집 여인: 살아있는 선한 이웃은 어떤 원인으로도 죽지 않는다(처형 포함)
+  const tl=teaLadyBlock(t);
+  if(tl) return `찻집 여인(${tl.name})의 살아있는 선한 이웃`;
+  // 외부 보호는 '다른 플레이어의 능력'이므로 대상이 취하거나 중독돼도 정상 작동한다.
+  // 수도사는 악마의 살해로부터만, 여관 주인 등은 모든 밤 사망으로부터 보호한다.
+  const pr=(t.statuses||[]).find(s=>s.key==='protect');
+  if(pr && src!=='execution' && (pr.source!=='수도사' || src==='demon'))
+    return `보호 중(${pr.source||'보호 토큰'})`;
+  // 대상 '자신의' 능력에 의한 면역만 오작동의 영향을 받는다
+  if(!isMalfunctioning(t)){
+    if(t.charId==='soldier' && src==='demon') return '군인 — 악마에게 죽지 않음';
+    if(t.charId==='sailor') return '선원 — 죽지 않음';
+  }
   return null;
 }
 /* 탕녀 계승을 '안내'가 아니라 '상태 전환'으로 처리한다.
@@ -987,7 +998,8 @@ function advancePhase(){
     if(mayor && alivePlayers().length===3 && !S.executedToday && !isMalfunctioning(mayor)){
       if(!confirm('⚠ 생존자 3명 + 오늘 처형 없음 + 시장 생존(정상 작동) = 선한 팀 승리 조건입니다!\n그래도 밤으로 진행할까요? (취소를 누르면 낮에 머뭅니다)')) return;
     }
-    S.executedPrevDay = S.executedToday; S.executedToday=null; S.executedTodayPid=null;  // 장의사가 이 밤에 참조
+    S.executedPrevDay = S.executedDiedToday;  // 장의사는 '처형으로 실제 죽은' 캐릭터만 본다
+    S.executedToday=null; S.executedTodayPid=null; S.executedDiedToday=null;
     S.phase={kind:'night', n:ph.n+1};
     expireStatuses();  // 독(어제 밤 부여) 해제 타이밍 = 다음 밤 시작
     S.nightDone[S.phase.n]={};
@@ -1711,10 +1723,18 @@ function doPukkaPick(pid){
   if(hasStatus(t,'poison')) toast(`${t.name}은(는) 이미 중독 상태 — 토큰을 중복 부여하지 않습니다.`,'warn');
   else addStatus(t,'poison','푸카',null);          // 만료 없음 — 다음 지목 때 해제된다
   if(prev && prev!==t && prev.alive){
+    // 공식: '죽고 나서 건강해진다'. 사망 판정이 끝날 때까지 독을 유지해야
+    // 어릿광대 1회 생존이 막히고 까마귀지기·현자가 거짓 정보를 받는다.
+    const blk=deathBlockReason(prev,{sourceType:'demon'});
+    if(blk){
+      toast(`${prev.name}: ${blk} — 푸카의 독으로 죽지 않았습니다. 독은 이제 풀립니다.`,'ok');
+      log(`푸카의 독 → ${prev.name} 사망 불발(${blk})`);
+    } else {
+      log(`🐍 푸카의 독 발현 — ${prev.name} 사망`);
+      resolveNightDeath(prev, '푸카의 독');
+    }
     const i=(prev.statuses||[]).findIndex(s=>s.key==='poison' && s.source==='푸카');
-    if(i>=0) prev.statuses.splice(i,1);
-    log(`🐍 푸카의 독 발현 — ${prev.name} 사망, 독 해제`);
-    resolveNightDeath(prev, '푸카의 독');
+    if(i>=0) prev.statuses.splice(i,1);              // 사망 판정 이후에 해독
   } else if(prev && prev===t){
     toast('이전에 문 대상을 다시 물었습니다 — 규칙상 처리(사망 여부)를 직접 판단하세요.','warn');
   }
@@ -1747,7 +1767,7 @@ function doImpKill(pid){
   }
   if(!t.alive){ toast('이미 죽은 대상입니다 — 아무 일도 일어나지 않습니다.','warn'); return; }
   const mf=isMalfunctioning(t);
-  const blk=deathBlockReason(t);
+  const blk=deathBlockReason(t,{sourceType:'demon'});
   if(blk){ toast(`${t.name}: ${blk} — 사망 없음. 임프에게 알리지 마세요.`,'ok'); log(`임프 공격 → ${t.name} 무효(${blk})`); save(); renderAll(); return; }
   if(t.charId==='mayor' && !mf){
     if(confirm(`${t.name}은(는) 시장입니다. [확인] = 다른 플레이어가 대신 사망(재량), [취소] = 시장이 그대로 사망`)){
@@ -1777,17 +1797,10 @@ function doStepKill(pid, killerId){ if(!pid)return; const t=playerOf(pid);
   const actor=S.players.find(q=>(q.alive || (q.charId==='zombuul'&&hasStatus(q,'fakedead'))) && q.charId===kid);
   if(actor && isMalfunctioning(actor)){ toast(`${charName(actor)}이(가) 오작동 상태 — 이 살해는 불발입니다.`,'warn'); log(`${charName(actor)} 오작동: ${t.name} 살해 불발`); save(); renderAll(); return; }
   if(!t.alive){ toast('이미 죽은 대상입니다.','warn'); return; }
-  // 찻집 여인 이웃 보호 자동 판정 (암살자는 모든 보호 관통)
-  if(kid!=='assassin'){
-    const tl=teaLadyBlock(t);
-    if(tl){
-      toast(`🍵 ${t.name}은(는) 찻집 여인(${tl.name})의 살아있는 선한 이웃 — 사망하지 않습니다(불발). 악마에게 티 내지 마세요.`,'ok');
-      log(`🍵 찻집 여인 보호: ${t.name} 살해 불발 (${actor?charName(actor):'악마'}의 공격)`);
-      save(); renderAll(); return;
-    }
-  }
-  if(kid!=='assassin'){
-    const blk=deathBlockReason(t);
+  // 보호·면역 통합 판정. 군인은 '악마의' 살해에만 면역이므로 살해 출처를 구분한다.
+  {
+    const src = charOf(kid)?.type==='demon' ? 'demon' : 'night';
+    const blk=deathBlockReason(t,{sourceType:src, bypass:kid==='assassin'});
     if(blk){
       toast(`${t.name}: ${blk} — 사망하지 않습니다(불발). 악마에게 티 내지 마세요.`,'ok');
       log(`${blk}: ${t.name} 살해 불발 (${actor?charName(actor):'악마'}의 공격)`);
@@ -1934,10 +1947,10 @@ function newNomination(){
       toast('⚜ 성결자 최초 지명 — 그러나 성결자가 오작동 상태: 발동하지 않습니다. 능력은 소진됩니다.','warn');
     } else if(torIsTF){
       if(confirm(`⚜ 성결자 발동! 지명자 ${torP.name}(${torC.ko})는 마을 주민입니다.\n즉시 처형 처리할까요? (오늘의 처형으로 기록되며, 이 지명은 종료됩니다)`)){
-        killPlayer(torP,'성결자 발동 — 즉시 처형');
+        resolveExecution(torP,'성결자 발동 — 즉시 처형');
         S.executedToday=`${torP.name} (${charName(torP)}) — 성결자 발동`;
         nom.closed=true; nom.result='virginTriggered';
-        toast('처형 완료. 오늘은 추가 처형이 불가합니다. 장의사는 오늘 밤 지명자의 캐릭터를 봅니다.','warn');
+        toast('오늘은 추가 처형이 불가합니다. 장의사는 처형으로 실제 죽은 경우에만 그 캐릭터를 봅니다.','warn');
       }
     } else if(torP.charId==='spy'){
       toast('⚜ 성결자 최초 지명 — 지명자가 첩자입니다. "마을 주민으로 등록"시켜 발동시킬지 재량으로 결정하세요. 발동시키려면 그리모어에서 수동 처형 처리.','warn');
@@ -2050,21 +2063,30 @@ function closeBallot(nid){
   save(); renderAll();
 }
 function cancelNom(nid){ S.noms=S.noms.filter(n=>n.id!==nid); log('지명 취소'); save(); renderAll(); }
+/* 처형은 사망과 별개다. 보호로 살아남아도 '오늘 처형은 있었다'가 성립하고(보르톡스·시장 판정),
+   장의사는 '처형으로 실제 죽은' 캐릭터만 본다. 일반 처형·성결자 발동이 이 함수를 공유한다. */
+function resolveExecution(p, cause){
+  const before=p.alive;
+  S.executedToday=`${p.name} (${charName(p)})`; S.executedTodayPid=p.id; S.executedDiedToday=null;
+  const blk=deathBlockReason(p,{sourceType:'execution'});
+  if(blk){
+    log(`⚔ ${p.name} 처형 — ${blk}로 사망하지 않음 (오늘의 처형은 소모)`);
+    toast(`⚔ ${p.name} 처형 — ${blk}이므로 죽지 않았습니다. 오늘의 처형은 사용되었고(추가 처형 불가), 장의사에게는 아무 캐릭터도 보여주지 마세요.`,'warn');
+    save(); renderAll(); return false;
+  }
+  killPlayer(p, cause);
+  const died = before && !p.alive;                  // 어릿광대 1회 생존 등으로 버틴 경우 제외
+  S.executedDiedToday = died? `${p.name} (${charName(p)})` : null;
+  if(!died) toast(`⚔ ${p.name} 처형 — 그러나 죽지 않았습니다. 오늘의 처형은 사용되었고, 장의사에게는 아무 캐릭터도 보여주지 마세요.`,'warn');
+  else toast(`${p.name} 처형. 오늘 밤 장의사에게 보여줄 캐릭터: ${charName(p)} (첩자/은둔자/주정뱅이면 등록 재량)`,'ok');
+  save(); renderAll(); return died;
+}
 function executeNominee(nid){
   const n=findNom(nid); const p=playerOf(n.nominee);
-  const tl=teaLadyBlock(p);
-  if(tl && !confirm(`🍵 ${p.name}은(는) 찻집 여인(${tl.name})의 살아있는 선한 이웃 — 처형으로도 죽지 않습니다!\n그래도 사망 처리할까요? [취소] = 처형 중단(사망 없음)`)){
-    log(`🍵 찻집 여인 보호 — ${p.name} 처형 확정 취소`);
-    toast(`🍵 처형 중단 — ${p.name}은(는) 찻집 여인의 보호를 받습니다.`,'warn');
-    return;
-  }
   const saintCheck = p.charId==='saint' && !isMalfunctioning(p);
   if(saintCheck && !confirm(`🚨 ${p.name}은(는) 성자이며 오작동 상태가 아닙니다!\n처형을 확정하면 선한 팀이 패배합니다. 진행할까요?`)) return;
-  killPlayer(p, `처형 (찬성 ${n.yes}/${n.den}, ${(n.ratio*100).toFixed(1)}%)`);
-  S.executedToday=`${p.name} (${charName(p)})`; S.executedTodayPid=p.id;
+  resolveExecution(p, `처형 (찬성 ${n.yes}/${n.den}, ${(n.ratio*100).toFixed(1)}%)`);
   if(saintCheck){ toast('✝ 성자가 처형되었습니다 — 악한 팀 승리!','warn'); log('성자 처형 — 악 승리'); }
-  toast(`${p.name} 처형. 오늘 밤 장의사에게 보여줄 캐릭터: ${charName(p)} (첩자/은둔자/주정뱅이면 등록 재량)`,'ok');
-  save(); renderAll();
 }
 function doSlayer(){
   const sl=S.players.find(p=>p.alive&&p.charId==='slayer'&&!hasStatus(p,'slayerUsed'));
