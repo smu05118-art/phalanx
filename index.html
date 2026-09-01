@@ -465,6 +465,11 @@ function writeHash(){
     if(ST.dcv==='map'&&ST.dcProj) add('dcp',ST.dcProj);
     if(ST.dcv==='energy'&&ST.dcSrc) add('dcs',ST.dcSrc);
     if(ST.dcv==='tam'&&ST.dcNode) add('dcn',ST.dcNode);
+    if(ST.dcv==='grid'){                               // 🔋 기간칩·용량기준·표시단위(기본값은 URL 미기재)
+      if(ST.dcgR&&ST.dcgR!=='60') add('dcgr',ST.dcgR);
+      if(ST.dcgB&&ST.dcgB!=='s') add('dcgb',ST.dcgB);
+      if(ST.dcgM&&ST.dcgM!=='gw') add('dcgm',ST.dcgM);
+    }
   }
   const h='#'+p.join('&'), cur='#'+(location.hash||'').replace(/^#/,''), sig=navSig();
   if(cur===h){ _lastNav=sig; return; }
@@ -484,9 +489,12 @@ function applyHash(){
   if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
   if(q.tab==='dc'){                                    // ⚡ DC 탭 — 탭 + 뷰·필터·선택 복원
     ST.tab='dc';
-    ST.dcv=(['map','energy','tam'].indexOf(q.dcv)>=0)?q.dcv:'map';
+    ST.dcv=(['map','energy','tam','grid'].indexOf(q.dcv)>=0)?q.dcv:'map';
     ST.dcCountry=q.dcco||null; ST.dcProj=q.dcp||null;
     ST.dcSrc=q.dcs||null; ST.dcNode=q.dcn||null;
+    if(['12','36','60','all'].indexOf(q.dcgr)>=0) ST.dcgR=q.dcgr;
+    if(['s','n'].indexOf(q.dcgb)>=0) ST.dcgB=q.dcgb;
+    if(['gw','mw'].indexOf(q.dcgm)>=0) ST.dcgM=q.dcgm;
   }
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
   if(q.co && P.companies.some(c=>c.id===q.co)){
@@ -2974,74 +2982,153 @@ function renderTmap(){
     if(ST.tmFoc){ ST.tmFoc=0; qi.focus(); try{qi.setSelectionRange(qi.value.length,qi.value.length);}catch(e){} } }
 }
 
-/* ==== ppi 탭 (2026-08-28 구현 — 호출부만 있고 미구현이던 탭, ui/patch.js가 자동 재노출) ==== */
-let _ppiLoaded=false;
+/* ==== ppi 탭 — 상세 차트·기간/국가/정렬·yoy_only 계약 대응 ==== */
+let _ppiLoaded=false, _ppiChart=null, _ppiGroups=[];
 function loadPpi(cb){ if(_ppiLoaded||window.PPID){_ppiLoaded=true;return cb();}
   const sc=document.createElement('script'); sc.src='data_ppi.js';
   sc.onload=function(){_ppiLoaded=true;cb();};
   sc.onerror=function(){document.getElementById('main').innerHTML='<div class="panel hint" style="padding:24px;color:var(--dim)">🏭 PPI 데이터가 아직 없습니다(월 2회 자동갱신 대기).</div>';};
   document.head.appendChild(sc); }
+function _ppiDestroy(){ if(_ppiChart){ try{_ppiChart.destroy();}catch(e){} _ppiChart=null; } }
 function _ppiEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function _ppiPct(v,lab){ if(v==null||!isFinite(v)) return '<span style="color:var(--dim)">—</span>';
+function _ppiNum(v){ var n=(v==null?NaN:Number(v)); return isFinite(n)?n:null; }
+function _ppiPct(v,lab){ v=_ppiNum(v); if(v==null) return '<span style="color:var(--dim)">—</span>';
   var c=v>0.05?'#59d0a8':(v<-0.05?'#ff6b7d':'var(--dim)');
-  return '<span style="font-family:var(--mono);font-weight:700;font-size:11px;color:'+c+'">'+(v>0?'+':'')+v.toFixed(1)+'%</span><div style="font-size:8px;color:var(--dim)">'+lab+'</div>'; }
-function _ppiChips(arr,bg,fg,cap){ arr=arr||[]; if(!arr.length) return '';
+  return '<span style="font-family:var(--mono);font-weight:700;font-size:11px;color:'+c+'">'+(v>0?'+':'')+v.toFixed(1)+'%</span><div style="font-size:8px;color:var(--dim)">'+_ppiEsc(lab)+'</div>'; }
+function _ppiChips(arr,bg,fg,cap){ arr=Array.isArray(arr)?arr:[]; if(!arr.length) return '';
   var shown=arr.slice(0,cap), more=arr.length-shown.length;
   var h=shown.map(function(k){ return '<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:5px;background:'+bg+';color:'+fg+';font-family:var(--mono);margin:1px 0">'+_ppiEsc(k)+'</span>'; }).join(' ');
   if(more>0) h+=' <span style="font-size:9px;color:var(--dim);cursor:default" title="'+_ppiEsc(arr.join(', '))+'">+'+more+'</span>';
   return h; }
-function _ppiSpark(m,color){ var ks=Object.keys(m||{}).sort().slice(-36); if(ks.length<2) return '<span style="color:var(--dim)">—</span>';
-  var vs=ks.map(function(k){return m[k];});
-  var mn=Math.min.apply(null,vs), mx=Math.max.apply(null,vs), rg=(mx-mn)||1;
-  var W=110,H=26,Pd=2;
-  var pts=vs.map(function(v,i){ return (Pd+i*(W-2*Pd)/(vs.length-1)).toFixed(1)+','+(H-Pd-(v-mn)*(H-2*Pd)/rg).toFixed(1); }).join(' ');
-  return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="display:block"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/></svg>'; }
+function _ppiCountry(c){ var x=String((c&&c.country)||'').toUpperCase();
+  if(x==='USA') x='US'; if(x==='JPN') x='JP'; if(x==='CHN') x='CN';
+  if(!x){ var s=String((c&&c.src)||'').toLowerCase(); x=s==='fred'?'US':(s==='boj'?'JP':''); }
+  return x||'OTHER'; }
+function _ppiCountryInfo(x){ return ({US:['🇺🇸','美'],JP:['🇯🇵','日'],CN:['🇨🇳','中'],OTHER:['🌐','기타']})[x]||['🌐',x]; }
+function _ppiColor(c,id){ var ps={US:['#4ea1ff','#78b7ff','#2f7fdd','#8dc9ff','#3d8bfd'],JP:['#ffbe2e','#ffd166','#e69f00','#ffe08a','#d99000'],CN:['#ff6b7d','#ff8a98','#e84c61','#ff9eaa','#d83950'],OTHER:['#b48cff','#c9a7ff','#9367df','#d6bdff','#7f52cc']};
+  var h=0, s=String(id||''); for(var i=0;i<s.length;i++) h=((h*31)+s.charCodeAt(i))>>>0;
+  var a=ps[_ppiCountry(c)]||ps.OTHER; return a[h%a.length]; }
+function _ppiShiftYm(ym,n){ var m=String(ym||'').match(/^(\d{4})-(\d{2})$/); if(!m) return '';
+  var z=(Number(m[1])*12+Number(m[2])-1)+n; return Math.floor(z/12)+'-'+String((z%12+12)%12+1).padStart(2,'0'); }
+function _ppiCleanMap(src){ var out={}; Object.keys(src||{}).forEach(function(k){ var v=_ppiNum(src[k]); if(v!=null) out[k]=v; }); return out; }
+function _ppiValues(S,mode){ S=S||{};
+  if(mode==='level') return _ppiCleanMap(S.m);
+  if(mode==='yoy'){
+    var y=_ppiCleanMap(S.yoy); if(Object.keys(y).length) return y;
+    var m=_ppiCleanMap(S.m), out={}; Object.keys(m).forEach(function(k){ var p=m[_ppiShiftYm(k,-12)]; if(p!=null&&p!==0) out[k]=(m[k]/p-1)*100; }); return out;
+  }
+  var own=_ppiCleanMap(S.mom); if(Object.keys(own).length) return own;
+  var lv=_ppiCleanMap(S.m), mo={}; Object.keys(lv).forEach(function(k){ var p=lv[_ppiShiftYm(k,-1)]; if(p!=null&&p!==0) mo[k]=(lv[k]/p-1)*100; }); return mo;
+}
+function _ppiKind(S){ return String((S&&S.kind)||'level').toLowerCase()==='yoy_only'?'yoy_only':'level'; }
+function _ppiModeOk(S,mode){ if(mode==='level'&&_ppiKind(S)==='yoy_only') return false; return Object.keys(_ppiValues(S,mode)).length>0; }
+function _ppiLatest(m){ var ks=Object.keys(m||{}).sort(); if(!ks.length) return {key:null,value:null}; var k=ks[ks.length-1]; return {key:k,value:_ppiNum(m[k])}; }
+function _ppiRangeN(r){ return ({'1Y':12,'3Y':36,'5Y':60,'10Y':120})[r]||null; }
+function _ppiRangeKeys(m,r,anchor){ var ks=Object.keys(m||{}).sort(); var n=_ppiRangeN(r); if(!n||!ks.length) return ks;
+  var end=anchor||ks[ks.length-1], cut=_ppiShiftYm(end,-n+1); return ks.filter(function(k){return k>=cut&&k<=end;}); }
+function _ppiFmt(v,mode,unit){ v=_ppiNum(v); if(v==null) return '—';
+  if(mode!=='level') return (v>0?'+':'')+v.toFixed(1)+'%';
+  var d=Math.abs(v)>=100?1:2; return v.toFixed(d)+(unit?' '+unit:''); }
+function _ppiModeLabel(mode){ return mode==='level'?'지수 레벨':(mode==='yoy'?'전년동월비':'전월비'); }
+function _ppiSpark(m,color,range){ var ks=_ppiRangeKeys(m,range||ST.ppiRange||'5Y');
+  var pts0=ks.map(function(k){return [k,_ppiNum(m[k])];}).filter(function(x){return x[1]!=null;});
+  if(pts0.length<2) return '<span style="color:var(--dim)">—</span>';
+  var vs=pts0.map(function(x){return x[1];}), mn=Math.min.apply(null,vs), mx=Math.max.apply(null,vs), rg=(mx-mn)||1;
+  var W=126,H=30,Pd=2, pts=vs.map(function(v,i){ return (Pd+i*(W-2*Pd)/(vs.length-1)).toFixed(1)+','+(H-Pd-(v-mn)*(H-2*Pd)/rg).toFixed(1); }).join(' ');
+  return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="선택 기간 추이" style="display:block"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" opacity=".95"/></svg>'; }
+function _ppiSummaryCell(label,value,sub){ return '<div class="ppi-stat"><span>'+_ppiEsc(label)+'</span><b>'+_ppiEsc(value)+'</b>'+(sub?'<small>'+_ppiEsc(sub)+'</small>':'')+'</div>'; }
+function _ppiDetail(c,cat,SER){ var S=SER[c.id]||{}, kind=_ppiKind(S), modes=[['level','지수 레벨'],['yoy','YoY%'],['mom','MoM%']];
+  if(kind==='yoy_only'&&ST.ppiMode==='level') ST.ppiMode='yoy';
+  if(!_ppiModeOk(S,ST.ppiMode)) ST.ppiMode=_ppiModeOk(S,'yoy')?'yoy':(_ppiModeOk(S,'mom')?'mom':'level');
+  ST.ppiCompare=(ST.ppiCompare||[]).filter(function(id){ var x=cat.find(function(z){return z.id===id;}); return x&&x.id!==c.id&&x.industry===c.industry&&_ppiModeOk(SER[id]||{},ST.ppiMode); }).slice(0,4);
+  var mode=ST.ppiMode, vm=_ppiValues(S,mode), lk=_ppiLatest(vm), keys=_ppiRangeKeys(vm,ST.ppiRange,lk.key), vals=keys.map(function(k){return vm[k];}).filter(function(v){return _ppiNum(v)!=null;});
+  var hi=vals.length?Math.max.apply(null,vals):null, lo=vals.length?Math.min.apply(null,vals):null;
+  var yy=_ppiLatest(_ppiValues(S,'yoy')), mm=_ppiLatest(_ppiValues(S,'mom')), ci=_ppiCountryInfo(_ppiCountry(c));
+  var stats=_ppiSummaryCell('최신 '+_ppiModeLabel(mode),_ppiFmt(lk.value,mode,mode==='level'?(c.unit||''):''),lk.key||'')+
+    _ppiSummaryCell('YoY',_ppiFmt(yy.value,'yoy'),yy.key||'')+_ppiSummaryCell('전월비',_ppiFmt(mm.value,'mom'),mm.key||'')+
+    _ppiSummaryCell('기간 최고',_ppiFmt(hi,mode,mode==='level'?(c.unit||''):''),ST.ppiRange)+_ppiSummaryCell('기간 최저',_ppiFmt(lo,mode,mode==='level'?(c.unit||''):''),ST.ppiRange);
+  var rb=['1Y','3Y','5Y','10Y','전체'].map(function(r){return '<button class="ppi-btn'+(ST.ppiRange===r?' on':'')+'" data-ppirange="'+r+'">'+r+'</button>';}).join('');
+  var mb=modes.map(function(x){ var ok=_ppiModeOk(S,x[0]), why=(kind==='yoy_only'&&x[0]==='level')?'이 시리즈는 YoY만 제공':(!ok?'해당 데이터 없음':'');
+    return '<button class="ppi-btn'+(ST.ppiMode===x[0]?' on':'')+(ok?'':' off')+'" '+(ok?'data-ppimode="'+x[0]+'"':'disabled')+' title="'+_ppiEsc(why)+'">'+x[1]+'</button>'; }).join('');
+  var cand=cat.filter(function(x){return x.id!==c.id&&x.industry===c.industry;}).sort(function(a,b){return String(a.name_ko||a.name||a.id).localeCompare(String(b.name_ko||b.name||b.id),'ko');});
+  var cmp=cand.map(function(x){ var checked=ST.ppiCompare.indexOf(x.id)>=0, ok=_ppiModeOk(SER[x.id]||{},mode), cap=ST.ppiCompare.length>=4&&!checked, xi=_ppiCountryInfo(_ppiCountry(x)), col=_ppiColor(x,x.id);
+    return '<label class="ppi-check'+(ok?'':' off')+'" title="'+(ok?'':_ppiEsc(_ppiModeLabel(mode)+' 데이터 없음'))+'"><input type="checkbox" data-ppicmp="'+_ppiEsc(x.id)+'" '+(checked?'checked ':'')+((!ok||cap)?'disabled':'')+'><i style="background:'+col+'"></i>'+xi[0]+' '+_ppiEsc(x.name_ko||x.name||x.id)+'</label>'; }).join('');
+  var notice=kind==='yoy_only'?'<div class="ppi-note">ℹ 이 시리즈는 지수 레벨이 없어 YoY 기준으로 표시됩니다.'+(_ppiModeOk(S,'mom')?' 제공된 MoM도 선택할 수 있습니다.':'')+'</div>':'';
+  return '<section class="panel ppi-detail" id="ppiDetail"><div class="ppi-detail-head"><div><div class="ppi-eyebrow">'+ci[0]+' '+ci[1]+' · '+_ppiEsc(c.industry||'미분류')+' · '+_ppiEsc(c.src||'source')+'</div><h2>'+_ppiEsc(c.name_ko||c.name||c.id)+'</h2><div class="ppi-code">'+_ppiEsc(c.code||c.id)+' · '+_ppiEsc(c.unit||(_ppiKind(S)==='yoy_only'?'%':'지수'))+'</div></div><button class="ppi-close" data-ppiclose="1" aria-label="상세 닫기">✕</button></div>'+notice+
+    '<div class="ppi-controls"><div><span>기간</span>'+rb+'</div><div><span>표시</span>'+mb+'</div></div><div class="ppi-stats">'+stats+'</div>'+
+    '<div class="ppi-chart"><canvas id="ppiDetailChart"></canvas></div><div class="ppi-compare-head"><b>같은 산업 비교</b><span>국가별 색상 · 다른 시리즈 최대 4개</span></div><div class="ppi-compare">'+(cmp||'<span style="color:var(--dim);font-size:10px">비교 가능한 같은 산업 시리즈가 없습니다.</span>')+'</div>'+
+    (c.note?'<div class="ppi-note" style="margin-top:10px">'+_ppiEsc(c.note)+'</div>':'')+'</section>';
+}
+function _ppiRows(grp,SER){ return grp.map(function(c){ var S=SER[c.id]||{}, kind=_ppiKind(S), cmode=(kind==='yoy_only'?'yoy':(ST.ppiMode||'level'));
+  if(!_ppiModeOk(S,cmode)) cmode=_ppiModeOk(S,'yoy')?'yoy':'level';
+  var lm=_ppiLatest(_ppiValues(S,kind==='yoy_only'?'yoy':'level')), yy=_ppiLatest(_ppiValues(S,'yoy')), mm=_ppiLatest(_ppiValues(S,'mom'));
+  var sm=_ppiValues(S,cmode), strk=(yy.value!=null&&yy.value>0.05)?'#59d0a8':((yy.value!=null&&yy.value<-0.05)?'#ff6b7d':'#6a6a9a');
+  var country=_ppiCountry(c), ci=_ppiCountryInfo(country), col=_ppiColor(c,c.id), src=String(c.src||country).toUpperCase();
+  var tip=_ppiEsc((c.code||'')+(c.note?' — '+c.note:'')+(c.verified?' · 검증 '+c.verified:''));
+  var latest=kind==='yoy_only'?_ppiFmt(lm.value,'yoy'):_ppiFmt(lm.value,'level','');
+  return '<tr class="ppi-row'+(ST.ppiSel===c.id?' sel':'')+'" data-ppisel="'+_ppiEsc(c.id)+'" tabindex="0">'+
+    '<td style="min-width:220px" title="'+tip+'"><i class="ppi-dot" style="background:'+col+'"></i><b>'+_ppiEsc(c.name_ko||c.name||c.id)+'</b> <span class="ppi-src">'+ci[0]+' '+_ppiEsc(src)+'</span>'+(kind==='yoy_only'?'<span class="ppi-yonly">YoY only</span>':'')+'</td>'+
+    '<td class="ppi-mono">'+latest+'<div>'+_ppiEsc(lm.key||'')+'</div></td><td>'+_ppiPct(mm.value,'MoM')+'</td><td>'+_ppiPct(yy.value,'YoY')+'</td><td>'+_ppiSpark(sm,strk,ST.ppiRange)+'</td>'+
+    '<td style="max-width:300px">'+_ppiChips(c.beneficiaries,'rgba(89,208,168,.13)','#59d0a8',5)+((c.cost_burden&&c.cost_burden.length)?'<div style="margin-top:3px">'+_ppiChips(c.cost_burden,'rgba(255,77,94,.13)','#ff6b7d',4)+'</div>':'')+'</td></tr>';
+}).join(''); }
+function _ppiTable(grp,SER){ return '<div class="panel ppi-table"><table class="tbl"><thead><tr><th>시리즈</th><th>최신</th><th>전월</th><th>전년</th><th>추이 '+_ppiEsc(ST.ppiRange)+'</th><th>매핑 <span style="color:#59d0a8">수혜</span> / <span style="color:#ff6b7d">부담</span></th></tr></thead><tbody>'+_ppiRows(grp,SER)+'</tbody></table></div>'; }
+function _ppiBindRows(root){ root.querySelectorAll('[data-ppisel]').forEach(function(el){ var open=function(){
+    var id=el.dataset.ppisel, P=window.PPID||{}, c=(P.catalog||[]).find(function(x){return x.id===id;}); if(!c) return;
+    ST.ppiSel=id; ST.ppiCompare=(ST.ppiCompare||[]).filter(function(x){ var z=(P.catalog||[]).find(function(a){return a.id===x;}); return z&&z.industry===c.industry&&x!==id; });
+    renderPpi(); var d=document.getElementById('ppiDetail'); if(d) d.scrollIntoView({behavior:'smooth',block:'start'});
+  }; el.onclick=open; el.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}}; }); }
+function _ppiMountGroup(el){ var i=Number(el.dataset.ppigroup), body=el.querySelector('[data-ppibody]'); if(!body||body.dataset.loaded==='1'||!_ppiGroups[i]) return;
+  body.innerHTML=_ppiTable(_ppiGroups[i].items,(window.PPID||{}).series||{}); body.dataset.loaded='1'; _ppiBindRows(body); }
+function _ppiChartKeys(items,range){ var all={}, end=''; items.forEach(function(x){Object.keys(x.values).forEach(function(k){all[k]=1;if(k>end)end=k;});});
+  var ks=Object.keys(all).sort(), n=_ppiRangeN(range); if(!n||!end) return ks; var cut=_ppiShiftYm(end,-n+1); return ks.filter(function(k){return k>=cut&&k<=end;}); }
+function _ppiMountChart(primary,cat,SER){ var cv=document.getElementById('ppiDetailChart'); if(!cv||!window.Chart) return;
+  var ids=[primary.id].concat(ST.ppiCompare||[]), mode=ST.ppiMode, items=[];
+  ids.forEach(function(id){ var c=cat.find(function(x){return x.id===id;}), S=SER[id]||{}; if(!c||!_ppiModeOk(S,mode)) return; items.push({c:c,values:_ppiValues(S,mode)}); });
+  var labels=_ppiChartKeys(items,ST.ppiRange), datasets=items.map(function(x,i){ var ci=_ppiCountryInfo(_ppiCountry(x.c)), color=_ppiColor(x.c,x.c.id);
+    return {type:'line',label:ci[0]+' '+(x.c.name_ko||x.c.name||x.c.id),data:labels.map(function(k){return x.values[k]==null?null:x.values[k];}),borderColor:color,backgroundColor:color+'22',borderWidth:i===0?2.4:1.7,pointRadius:0,pointHoverRadius:3,spanGaps:false,tension:.18,ppiUnit:x.c.unit||''}; });
+  _ppiChart=new Chart(cv,{type:'line',data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,normalized:true,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,labels:{color:'#8a90a8',boxWidth:12,boxHeight:2,font:{size:10},usePointStyle:false}},tooltip:{callbacks:{title:function(xs){return xs.length?xs[0].label.slice(0,4)+'년 '+Number(xs[0].label.slice(5,7))+'월':'';},label:function(x){return x.dataset.label+': '+_ppiFmt(x.parsed.y,mode,mode==='level'?x.dataset.ppiUnit:'');}}}},
+    scales:{x:{title:{display:true,text:'월',color:'#6a6a9a',font:{size:9}},ticks:{color:'#6a6a9a',maxTicksLimit:12,font:{size:9},callback:function(v){var s=this.getLabelForValue(v);return s?s.slice(0,4)+'.'+s.slice(5,7):'';}},grid:{display:false}},
+      y:{title:{display:true,text:_ppiModeLabel(mode)+(mode==='level'?'':' (%)'),color:'#6a6a9a',font:{size:9}},ticks:{color:'#6a6a9a',font:{size:9},callback:function(v){return mode==='level'?Number(v).toLocaleString('ko-KR'):v+'%';}},grid:{color:'rgba(40,40,74,.55)'}}}}});
+}
 function renderPpi(){
-  var P=window.PPID||{}; var cat=P.catalog||[]; var SER=P.series||{};
-  document.getElementById('catRow').style.display='none';
-  document.getElementById('cnt').innerHTML='';
-  var nf=cat.filter(function(c){return c.src==='fred';}).length, nb=cat.length-nf;
-  document.getElementById('crumb').innerHTML='<b>🏭 PPI — 생산자물가 레이어</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">FRED '+nf+' · BOJ CGPI '+nb+' · 기준 '+_ppiEsc(P.generated||'—')+' · 월 2회 자동갱신</span>';
-  var main=document.getElementById('main');
-  if(!cat.length){ main.innerHTML='<div class="panel hint" style="padding:24px;color:var(--dim)">🏭 PPI 카탈로그가 비어 있습니다. 파이프라인 첫 실행을 기다려 주세요.</div>'; return; }
-  ST.ppiInd=ST.ppiInd||'all';
-  var inds=[]; cat.forEach(function(c){ if(inds.indexOf(c.industry)<0) inds.push(c.industry); });
-  if(ST.ppiInd!=='all'&&inds.indexOf(ST.ppiInd)<0) ST.ppiInd='all';
-  var pills='<span class="pill'+(ST.ppiInd==='all'?' on':'')+'" data-ppind="all">전체 '+cat.length+'</span>'+
-    inds.map(function(ind){ var n=cat.filter(function(c){return c.industry===ind;}).length;
-      return '<span class="pill'+(ST.ppiInd===ind?' on':'')+'" data-ppind="'+_ppiEsc(ind)+'">'+_ppiEsc(ind)+' '+n+'</span>'; }).join('');
-  var intro='<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim);line-height:1.6">'+
-    '美 BLS PPI(FRED)·日 BOJ CGPI 55개 시리즈를 산업별로 묶고 대시보드 카드에 양방향 매핑 — '+
-    '<b style="color:#59d0a8">판가수혜</b>(생산자물가↑ = 판가·마진 순풍) vs <b style="color:#ff6b7d">비용부담</b>(수요측 원가↑). '+
-    '변화율 색: <b style="color:#59d0a8">+상승</b> · <b style="color:#ff6b7d">−하락</b> · 스파크라인 최근 36개월 지수 · 시리즈에 마우스를 올리면 코드·매핑 근거.</div>';
-  var html='';
-  inds.forEach(function(ind){ if(ST.ppiInd!=='all'&&ST.ppiInd!==ind) return;
-    var grp=cat.filter(function(c){return c.industry===ind;});
-    var rows=grp.map(function(c){
-      var S=SER[c.id]||{}; var m=S.m||{}; var ks=Object.keys(m).sort();
-      var lk=ks.length?ks[ks.length-1]:null; var lv=lk!=null?m[lk]:null;
-      var pv=ks.length>1?m[ks[ks.length-2]]:null;
-      var mom=(lv!=null&&pv)?(lv/pv-1)*100:null;
-      var yoy=(S.yoy&&lk&&S.yoy[lk]!=null)?S.yoy[lk]:null;
-      var strk=(yoy!=null&&yoy>0.05)?'#59d0a8':((yoy!=null&&yoy<-0.05)?'#ff6b7d':'#6a6a9a');
-      var badge='<span style="font-size:8.5px;font-weight:800;padding:1px 6px;border-radius:99px;border:1px solid '+(c.src==='fred'?'#3d8bfd55':'#ffbe2e55')+';color:'+(c.src==='fred'?'#3d8bfd':'#ffbe2e')+';vertical-align:1px">'+(c.src==='fred'?'FRED':'BOJ')+'</span>';
-      var tip=_ppiEsc((c.code||'')+(c.note?' — '+c.note:'')+(c.verified?' · 검증 '+c.verified:''));
-      return '<tr>'+
-        '<td style="min-width:180px" title="'+tip+'"><b style="font-size:11.5px">'+_ppiEsc(c.name_ko)+'</b> '+badge+'</td>'+
-        '<td style="font-family:var(--mono);font-size:11px;white-space:nowrap">'+(lv!=null?lv.toFixed(1):'—')+'<div style="font-size:8.5px;color:var(--dim)">'+_ppiEsc(lk||'')+'</div></td>'+
-        '<td style="white-space:nowrap">'+_ppiPct(mom,'MoM')+'</td>'+
-        '<td style="white-space:nowrap">'+_ppiPct(yoy,'YoY')+'</td>'+
-        '<td>'+_ppiSpark(m,strk)+'</td>'+
-        '<td style="max-width:280px">'+_ppiChips(c.beneficiaries,'rgba(89,208,168,.13)','#59d0a8',5)+
-          ((c.cost_burden&&c.cost_burden.length)?'<div style="margin-top:3px">'+_ppiChips(c.cost_burden,'rgba(255,77,94,.13)','#ff6b7d',4)+'</div>':'')+'</td>'+
-        '</tr>';
-    }).join('');
-    html+='<p style="margin:16px 2px 6px;font-size:13px;font-weight:700">'+_ppiEsc(ind)+' <span style="color:var(--dim);font-weight:400;font-size:11px">'+grp.length+'개 시리즈</span></p>'+
-      '<div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>시리즈</th><th>최신</th><th>전월</th><th>전년</th><th>추이 36M</th><th>매핑 <span style="color:#59d0a8">수혜</span> / <span style="color:#ff6b7d">부담</span></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
-  });
-  if(!html) html='<div class="panel hint" style="padding:24px;color:var(--dim)">해당 산업의 시리즈가 없습니다.</div>';
-  main.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px">'+pills+'</div>'+intro+html;
-  main.querySelectorAll('[data-ppind]').forEach(function(el){ el.onclick=function(){ ST.ppiInd=el.dataset.ppind; renderPpi(); }; });
+  _ppiDestroy(); var P=window.PPID||{}, cat=Array.isArray(P.catalog)?P.catalog:[], SER=P.series||{};
+  document.getElementById('catRow').style.display='none'; document.getElementById('cnt').innerHTML='';
+  var cc={US:0,JP:0,CN:0,OTHER:0}; cat.forEach(function(c){var k=_ppiCountry(c);cc[k]=(cc[k]||0)+1;});
+  document.getElementById('crumb').innerHTML='<b>🏭 PPI — 생산자물가 상세</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">美 '+cc.US+' · 日 '+cc.JP+' · 中 '+cc.CN+' · 총 '+cat.length+' · 기준 '+_ppiEsc(P.generated||'—')+'</span>';
+  var main=document.getElementById('main'); if(!cat.length){ main.innerHTML='<div class="panel hint" style="padding:24px;color:var(--dim)">🏭 PPI 카탈로그가 비어 있습니다. 파이프라인 첫 실행을 기다려 주세요.</div>'; return; }
+  ST.ppiInd=ST.ppiInd||'all'; ST.ppiCountry=ST.ppiCountry||'all'; ST.ppiSort=ST.ppiSort||'yoy_desc'; ST.ppiRange=ST.ppiRange||'5Y'; ST.ppiMode=ST.ppiMode||'level'; ST.ppiCompare=ST.ppiCompare||[]; ST.ppiOpen=ST.ppiOpen||{};
+  var inds=[]; cat.forEach(function(c){var x=c.industry||'미분류';if(inds.indexOf(x)<0)inds.push(x);}); if(ST.ppiInd!=='all'&&inds.indexOf(ST.ppiInd)<0)ST.ppiInd='all';
+  if(['all','US','JP','CN'].indexOf(ST.ppiCountry)<0) ST.ppiCountry='all'; if(['yoy_desc','yoy_asc','name'].indexOf(ST.ppiSort)<0) ST.ppiSort='yoy_desc'; if(['1Y','3Y','5Y','10Y','전체'].indexOf(ST.ppiRange)<0) ST.ppiRange='5Y';
+  var primary=ST.ppiSel?cat.find(function(c){return c.id===ST.ppiSel;}):null; if(ST.ppiSel&&!primary){ST.ppiSel=null;ST.ppiCompare=[];}
+  var byCountry=cat.filter(function(c){return ST.ppiCountry==='all'||_ppiCountry(c)===ST.ppiCountry;});
+  var filtered=byCountry.filter(function(c){return ST.ppiInd==='all'||(c.industry||'미분류')===ST.ppiInd;});
+  var yv=function(c){return _ppiLatest(_ppiValues(SER[c.id]||{},'yoy')).value;};
+  filtered.sort(function(a,b){ if(ST.ppiSort==='name') return String(a.name_ko||a.name||a.id).localeCompare(String(b.name_ko||b.name||b.id),'ko'); var av=yv(a),bv=yv(b); av=av==null?(ST.ppiSort==='yoy_desc'?-Infinity:Infinity):av; bv=bv==null?(ST.ppiSort==='yoy_desc'?-Infinity:Infinity):bv; return ST.ppiSort==='yoy_desc'?bv-av:av-bv; });
+  var cp=[['all','전체'],['US','🇺🇸 美'],['JP','🇯🇵 日'],['CN','🇨🇳 中']].map(function(x){var n=x[0]==='all'?cat.length:(cc[x[0]]||0);return '<button class="ppi-btn'+(ST.ppiCountry===x[0]?' on':'')+(n?'':' off')+'" data-ppicountry="'+x[0]+'" '+(n?'':'disabled')+'>'+x[1]+' '+n+'</button>';}).join('');
+  var ip='<button class="ppi-btn'+(ST.ppiInd==='all'?' on':'')+'" data-ppind="all">전체 '+byCountry.length+'</button>'+inds.map(function(ind){var n=byCountry.filter(function(c){return (c.industry||'미분류')===ind;}).length;return '<button class="ppi-btn'+(ST.ppiInd===ind?' on':'')+(n?'':' off')+'" data-ppind="'+_ppiEsc(ind)+'" '+(n?'':'disabled')+'>'+_ppiEsc(ind)+' '+n+'</button>';}).join('');
+  var sp=[['yoy_desc','YoY 높은순'],['yoy_asc','YoY 낮은순'],['name','이름순']].map(function(x){return '<button class="ppi-btn'+(ST.ppiSort===x[0]?' on':'')+'" data-ppisort="'+x[0]+'">'+x[1]+'</button>';}).join('');
+  var rp=['1Y','3Y','5Y','10Y','전체'].map(function(r){return '<button class="ppi-btn'+(ST.ppiRange===r?' on':'')+'" data-ppirange="'+r+'">'+r+'</button>';}).join('');
+  var controls='<div class="panel ppi-filter"><div><span>국가</span>'+cp+'</div><div><span>산업</span><div class="ppi-scroll">'+ip+'</div></div><div><span>정렬</span>'+sp+'<span class="ppi-spacer"></span><span>기간</span>'+rp+'</div></div>';
+  var intro='<div class="ppi-intro">행을 클릭하면 보유한 전체 이력을 상세 차트로 볼 수 있습니다. <b>판가수혜</b>는 생산자물가 상승 수혜, <em>비용부담</em>은 수요측 원가 부담 매핑입니다. 스파크라인도 선택 기간과 표시 모드에 연동됩니다.</div>';
+  var detail=primary?_ppiDetail(primary,cat,SER):'';
+  var gm={}; filtered.forEach(function(c){var ind=c.industry||'미분류';(gm[ind]||(gm[ind]=[])).push(c);}); _ppiGroups=[]; inds.forEach(function(ind){if(gm[ind]&&gm[ind].length)_ppiGroups.push({industry:ind,items:gm[ind]});});
+  if(primary&&ST.ppiInd==='all') ST.ppiOpen[primary.industry||'미분류']=1; if(_ppiGroups.length&&!Object.keys(ST.ppiOpen).some(function(k){return ST.ppiOpen[k];})) ST.ppiOpen[_ppiGroups[0].industry]=1;
+  var sections=_ppiGroups.map(function(g,i){var open=ST.ppiInd!=='all'||!!ST.ppiOpen[g.industry], gc={};g.items.forEach(function(c){var x=_ppiCountry(c);gc[x]=(gc[x]||0)+1;});
+    var meta=['US','JP','CN'].filter(function(x){return gc[x];}).map(function(x){return _ppiCountryInfo(x)[0]+' '+gc[x];}).join(' · ');
+    return '<details class="ppi-group" data-ppigroup="'+i+'" '+(open?'open':'')+'><summary><b>'+_ppiEsc(g.industry)+'</b><span>'+g.items.length+'개 시리즈'+(meta?' · '+meta:'')+'</span><i>펼쳐보기</i></summary><div data-ppibody="1" data-loaded="'+(open?'1':'0')+'">'+(open?_ppiTable(g.items,SER):'')+'</div></details>'; }).join('');
+  if(!sections) sections='<div class="panel hint" style="padding:24px;color:var(--dim)">선택한 필터에 해당하는 시리즈가 없습니다.</div>';
+  var css='<style>.ppi-filter{padding:10px 12px;margin-bottom:10px}.ppi-filter>div,.ppi-controls>div{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:3px 0}.ppi-filter>div>span,.ppi-controls>div>span{width:34px;font-size:9px;font-weight:800;color:var(--dim)}.ppi-scroll{display:flex;gap:5px;overflow-x:auto;scrollbar-width:thin;flex:1;padding-bottom:2px}.ppi-btn{appearance:none;border:1px solid var(--bd);background:var(--s1);color:var(--dim);border-radius:7px;padding:5px 9px;font-family:inherit;font-size:10px;font-weight:600;white-space:nowrap;cursor:pointer}.ppi-btn:hover{border-color:var(--a2)}.ppi-btn.on{color:#061018;background:var(--a1);border-color:var(--a1)}.ppi-btn.off{opacity:.35;cursor:not-allowed}.ppi-spacer{flex:1}.ppi-intro{padding:7px 3px 11px;color:var(--dim);font-size:10.5px}.ppi-intro b{color:#59d0a8}.ppi-intro em{color:#ff6b7d;font-style:normal}.ppi-detail{padding:15px 17px;margin-bottom:13px;border-color:rgba(0,230,184,.55)}.ppi-detail-head{display:flex;justify-content:space-between;gap:12px}.ppi-detail h2{font-size:16px;margin:2px 0}.ppi-eyebrow,.ppi-code{font-size:9.5px;color:var(--dim);font-family:var(--mono)}.ppi-close{border:1px solid var(--bd);background:var(--s2);color:var(--dim);border-radius:7px;width:30px;height:30px;cursor:pointer}.ppi-controls{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:11px 0 8px}.ppi-stats{display:grid;grid-template-columns:repeat(5,minmax(105px,1fr));gap:6px;margin:8px 0}.ppi-stat{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:7px 9px;min-width:0}.ppi-stat span,.ppi-stat small{display:block;font-size:8.5px;color:var(--dim)}.ppi-stat b{display:block;font:750 12px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px 0}.ppi-chart{height:340px;position:relative;margin-top:9px}.ppi-chart canvas{width:100%!important;height:100%!important}.ppi-compare-head{display:flex;gap:8px;align-items:baseline;margin:12px 0 5px;font-size:10px}.ppi-compare-head span{color:var(--dim);font-size:9px}.ppi-compare{display:flex;gap:5px 11px;flex-wrap:wrap;max-height:96px;overflow-y:auto}.ppi-check{display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--dim);cursor:pointer}.ppi-check.off{opacity:.35;cursor:not-allowed}.ppi-check i,.ppi-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 auto}.ppi-note{font-size:9.5px;color:var(--dim);background:rgba(61,139,253,.08);border-radius:6px;padding:5px 8px}.ppi-group{margin:8px 0}.ppi-group>summary{display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;background:var(--s1);border:1px solid var(--bd);border-radius:9px;list-style:none}.ppi-group>summary::-webkit-details-marker{display:none}.ppi-group>summary b{font-size:12px}.ppi-group>summary span{font-size:9.5px;color:var(--dim)}.ppi-group>summary i{margin-left:auto;font-size:9px;color:var(--a2);font-style:normal}.ppi-group[open]>summary{border-radius:9px 9px 0 0;border-color:var(--a2)}.ppi-group[open]>summary i:before{content:"접기 · "}.ppi-table{overflow-x:auto;border-radius:0 0 9px 9px}.ppi-table table{min-width:890px}.ppi-row{cursor:pointer;outline:none}.ppi-row:hover,.ppi-row:focus{background:rgba(61,139,253,.08)}.ppi-row.sel{background:rgba(0,230,184,.07)}.ppi-src,.ppi-yonly{font-size:8px;border:1px solid var(--bd);border-radius:99px;padding:1px 5px;color:var(--dim);white-space:nowrap}.ppi-yonly{color:#ffbe2e;border-color:rgba(255,190,46,.35)}.ppi-mono{font-family:var(--mono);font-size:11px;white-space:nowrap}.ppi-mono div{font-size:8.5px;color:var(--dim)}@media(max-width:700px){.ppi-stats{grid-template-columns:repeat(2,1fr)}.ppi-chart{height:280px}.ppi-filter>div>span,.ppi-controls>div>span{width:100%}}</style>';
+  main.innerHTML=css+controls+intro+detail+sections;
+  main.querySelectorAll('[data-ppind]').forEach(function(el){el.onclick=function(){ST.ppiInd=el.dataset.ppind;renderPpi();};});
+  main.querySelectorAll('[data-ppicountry]').forEach(function(el){el.onclick=function(){ST.ppiCountry=el.dataset.ppicountry;renderPpi();};});
+  main.querySelectorAll('[data-ppisort]').forEach(function(el){el.onclick=function(){ST.ppiSort=el.dataset.ppisort;renderPpi();};});
+  main.querySelectorAll('[data-ppirange]').forEach(function(el){el.onclick=function(){ST.ppiRange=el.dataset.ppirange;renderPpi();};});
+  main.querySelectorAll('[data-ppimode]').forEach(function(el){el.onclick=function(){ST.ppiMode=el.dataset.ppimode;renderPpi();};});
+  main.querySelectorAll('[data-ppiclose]').forEach(function(el){el.onclick=function(){ST.ppiSel=null;ST.ppiCompare=[];renderPpi();};});
+  main.querySelectorAll('[data-ppicmp]').forEach(function(el){el.onchange=function(){var id=el.dataset.ppicmp,a=ST.ppiCompare||[],i=a.indexOf(id);if(el.checked&&i<0&&a.length<4)a.push(id);else if(!el.checked&&i>=0)a.splice(i,1);ST.ppiCompare=a.slice(0,4);renderPpi();};});
+  main.querySelectorAll('[data-ppigroup]').forEach(function(el){el.ontoggle=function(){var g=_ppiGroups[Number(el.dataset.ppigroup)];if(!g)return;ST.ppiOpen[g.industry]=el.open?1:0;if(el.open)_ppiMountGroup(el);};if(el.open)_ppiBindRows(el);});
+  _ppiBindRows(main); if(primary)_ppiMountChart(primary,cat,SER);
 }
 
 function loadGame(cb){ if(_gameLoaded||window.GAMES_DATA){_gameLoaded=true;return cb();}
@@ -3707,13 +3794,20 @@ function initBrush(){
 // ================= ⚡ DC 공급망 메가허브 탭 =================
 // data_dc.js(window.DCD — 맵 지오메트리·프로젝트 인덱스·에너지원·부품트리·TAM)
 // + data_dc_proj.js(window.DCPROJ — 프로젝트 상세, 카드 클릭 시 lazy)
-// 3뷰: 🗺 프로젝트 맵·테이블 / 🔌 에너지원 미래 시계열 / 🌲 탑다운 TAM 트리
+// 4뷰: 🗺 프로젝트 맵·테이블 / 🔌 에너지원 미래 시계열 / 🌲 탑다운 TAM 트리 / 🔋 EIA-860M 발전설비 순증
 ST.dcv=ST.dcv||'map'; ST.dcSort=ST.dcSort||'cur'; if(ST.dcDesc==null) ST.dcDesc=true;
 ST.dcOpen=ST.dcOpen||{};
+// 🔋 grid 뷰 서브상태 — dcgR 기간칩(12·36·60·all) / dcgB 용량기준(s=Net Summer·n=Nameplate) / dcgM 표시단위(gw·mw)
+ST.dcgR=ST.dcgR||'60'; ST.dcgB=ST.dcgB||'s'; ST.dcgM=ST.dcgM||'gw';
 function loadDC(cb){ if(window.DCD) return cb();
   document.getElementById('main').innerHTML='<div class="load-msg">⚡ DC 공급망 허브 로딩…</div>';
   const sc=document.createElement('script'); sc.src='data_dc.js'; sc.onload=cb;
   sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">⚡ DC 공급망 허브 데이터 준비 중…</div>';};
+  document.head.appendChild(sc); }
+// data_dc_grid.js(window.DCGRID) — 🔋 뷰 진입 시에만 lazy. 실패해도 {}로 낙착시켜 재시도 루프를 막는다.
+function loadDCGrid(cb){ if(window.DCGRID) return cb();
+  const sc=document.createElement('script'); sc.src='data_dc_grid.js';
+  sc.onload=cb; sc.onerror=()=>{window.DCGRID={_err:1};cb();};
   document.head.appendChild(sc); }
 function loadDCProj(cb){ if(window.DCPROJ) return cb();
   const sc=document.createElement('script'); sc.src='data_dc_proj.js';
@@ -3753,6 +3847,39 @@ function dcLinkChips(links,routes){ if(!links||!links.length) return '';
     return r ? '<span class="dcpl on" data-dcpl="'+dcEsc(L)+'" title="'+dcEsc(L)+'">🔗 '+dcEsc(r.l||file)+'</span>'
              : '<span class="dcpl" title="'+dcEsc(L)+' — 대시 라우트 미지정">📄 '+dcEsc(file)+'</span>'; }).join(''); }
 function dcBindPl(root,routes){ root.querySelectorAll('.dcpl.on').forEach(e=>e.onclick=()=>dcGo((routes||{})[e.dataset.dcpl])); }
+
+// ---- 🔋 EIA-860M 뷰 팔레트 — EIA/GS Exhibit 원본 범례 색을 다크 배경용으로만 보정 ----
+// Coal 검정 · NG-CCGT 회색 · NG-Simple 연파랑 · Nuclear 초록 · Hydro 진파랑
+// Wind 연두 · Solar 노랑 · Batteries 주황 · Other 진회색
+const GTC={'Coal':'#16161c','NG-CCGT':'#a8adbd','NG-Simple':'#8fd4f0','Nuclear':'#2fae5f','Hydro':'#1f5fd0',
+  'Wind':'#9ede4a','Solar':'#ffd21e','Batteries':'#ff8a3d','Other':'#5b6273'};
+const GTBD={'Coal':'#9aa0b4'};   // 검정은 다크 배경에서 안 보이므로 테두리로만 식별
+const GTL={'Coal':'석탄','NG-CCGT':'가스 CCGT','NG-Simple':'가스 단순사이클','Nuclear':'원자력','Hydro':'수력',
+  'Wind':'풍력','Solar':'태양광','Batteries':'배터리','Other':'기타'};
+const GSC={'Permitting':'#ffbe2e','Early planning':'#8a90a8','Approved':'#c45cff',
+  'Under construction':'#59d0a8','Construction complete':'#00e6b8','Other status':'#e06666'};
+const GSL={'Permitting':'인허가 대기 (L)','Early planning':'초기계획·인허가 미개시 (P)','Approved':'승인완료·미착공 (T)',
+  'Under construction':'건설중 (U·V)','Construction complete':'건설완료·상업운전 전 (TS)','Other status':'기타 상태'};
+const GPSL={under_construction_gt_50pct:'건설중 >50%',under_construction_le_50pct:'건설중 ≤50%',
+  construction_complete:'건설완료 (TS)',approved_not_construction:'승인·미착공 (T)',
+  planned_no_approvals:'계획·인허가 미개시 (P)',permitting:'인허가 대기 (L)',
+  canceled_or_postponed:'취소·연기',operating:'가동',unknown:'미상'};
+const GPSC={under_construction_gt_50pct:'#59d0a8',under_construction_le_50pct:'#00b894',
+  construction_complete:'#00e6b8',approved_not_construction:'#c45cff',
+  planned_no_approvals:'#8a90a8',permitting:'#ffbe2e',canceled_or_postponed:'#ff5c5c',
+  operating:'#9ede4a',unknown:'#5b6273'};
+const gTL=t=>GTL[t]||t, gTC=t=>GTC[t]||'#5b6273', gSL=g=>GSL[g]||g, gSC=g=>GSC[g]||'#5b6273';
+const gPL=s=>GPSL[s]||s, gPC=s=>GPSC[s]||'#5b6273';
+// 표시 단위 — 샤드는 전부 MW. GW 기본, MW 토글. 값 변환은 나눗셈뿐.
+const gDiv=()=>(ST.dcgM==='mw'?1:1000), gUL=()=>(ST.dcgM==='mw'?'MW':'GW');
+const gV=v=>(+v||0)/gDiv();
+const gDec=()=>(ST.dcgM==='mw'?0:2);
+const gFmt=(v,sgn)=>{const x=gV(v); return ((sgn&&x>0)?'+':'')+x.toLocaleString(undefined,{maximumFractionDigits:gDec()})+' '+gUL();};
+const gBasisL=()=>(ST.dcgB==='n'?'Nameplate':'Net Summer');
+const gMW=v=>(v==null||isNaN(+v))?'—':(+v).toLocaleString(undefined,{maximumFractionDigits:1})+' MW';
+function gChip(k,cur,val,lbl){ return '<span class="dcchip'+(cur===val?' on':'')+'" data-gk="'+k+'" data-gv="'+val+'">'+lbl+'</span>'; }
+function gLegend(keys,colf,labf,bordf){ return '<div class="dcgleg">'+keys.map(k=>
+  '<span><i style="background:'+colf(k)+(bordf&&bordf(k)?';box-shadow:inset 0 0 0 1px '+bordf(k):'')+'"></i>'+dcEsc(labf(k))+'</span>').join('')+'</div>'; }
 
 const DCSTYLE=`<style>
 .dcnav{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 13px}
@@ -3812,6 +3939,25 @@ const DCSTYLE=`<style>
 .dcq{font-size:10.5px;line-height:1.6;color:var(--dim);font-family:ui-monospace,monospace;background:var(--s2);border-radius:6px;padding:6px 9px;margin-top:5px;word-break:break-word}
 .dcch{height:300px;position:relative}
 .dcch canvas{display:block;width:100%!important;height:100%!important}
+.dcchip.on{background:rgba(78,161,255,.16);border-color:#4ea1ff;color:#4ea1ff;font-weight:800}
+.dcgbar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:0 0 11px}
+.dcgbar>div{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.dcgbar em{font-style:normal;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-right:2px}
+.dcgcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(252px,1fr));gap:11px;margin:0 0 13px}
+.dcgcard{background:var(--s1);border:1px solid var(--bd);border-top-width:3px;border-radius:12px;padding:12px 14px}
+.dcgcard h4{margin:0 0 6px;font-size:11.5px;font-weight:800;letter-spacing:.2px}
+.dcgcard .v{display:block;font-family:ui-monospace,monospace;font-size:23px;font-weight:800;line-height:1.15}
+.dcgcard .u{font-size:11px;font-weight:700;color:var(--dim);margin-left:4px}
+.dcgcard .sub{font-size:10.5px;color:var(--dim);line-height:1.65;margin-top:6px}
+.dcgcard .sub b{color:var(--tx)}
+.dcgleg{display:flex;gap:3px 12px;flex-wrap:wrap;margin:7px 0 1px;font-size:10.5px;color:var(--dim)}
+.dcgleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.dcg2{display:grid;grid-template-columns:1fr;gap:13px}
+@media(min-width:1040px){.dcg2{grid-template-columns:1fr 1fr}}
+.dcgfoot{font-size:10.5px;color:var(--dim);line-height:1.75;border-top:1px solid var(--bd);margin-top:16px;padding-top:11px}
+.dcgfoot b{color:var(--tx)}
+.dcgnext{display:inline-block;font-family:ui-monospace,monospace;font-weight:800;color:#00e6b8;
+  background:rgba(0,230,184,.10);border:1px solid rgba(0,230,184,.35);border-radius:6px;padding:1px 7px}
 </style>`;
 
 function renderDC(){
@@ -3824,13 +3970,17 @@ function renderDC(){
     '<span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">'+dcEsc(TM.date||'')+
     ' · Epoch AI 추적 프런티어 AI DC 유니버스 · 창작 금지(수치 전건 출처)</span>';
   if(!D.projects){ main.innerHTML='<div class="empty-msg">⚡ DC 공급망 허브 데이터 준비 중…</div>'; return; }
-  const views=[['map','🗺 프로젝트 맵·테이블'],['energy','🔌 에너지원 미래 시계열'],['tam','🌲 탑다운 TAM 트리']];
+  const views=[['map','🗺 프로젝트 맵·테이블'],['energy','🔌 에너지원 미래 시계열'],['tam','🌲 탑다운 TAM 트리'],
+    ['grid','🔋 발전설비 순증(EIA-860M)']];
   main.innerHTML=DCSTYLE+'<div class="dcnav">'+views.map(v=>
     '<span class="dcv'+(ST.dcv===v[0]?' on':'')+'" data-dcv="'+v[0]+'">'+v[1]+'</span>').join('')+'</div><div id="dcBody"></div>';
   main.querySelectorAll('.dcv').forEach(e=>e.onclick=()=>{ST.dcv=e.dataset.dcv;renderDC();window.scrollTo(0,0);});
   const body=document.getElementById('dcBody');
   if(ST.dcv==='energy') dcViewEnergy(body,D);
   else if(ST.dcv==='tam') dcViewTam(body,D);
+  else if(ST.dcv==='grid'){                            // 별도 lazy 샤드(data_dc_grid.js)
+    if(window.DCGRID) dcViewGrid(body,window.DCGRID);
+    else{ body.innerHTML='<div class="load-msg">🔋 EIA-860M 발전설비 순증 로딩…</div>'; loadDCGrid(()=>renderDC()); } }
   else dcViewMap(body,D);
   writeHash();
 }
@@ -4216,6 +4366,382 @@ function dcTamNode(el,D,pid,YR,kids,routes){
       scales:{x:{stacked:true,ticks:{color:'#6a6a9a',font:{size:10}},grid:{display:false}},
         y:{stacked:true,ticks:{color:'#4a4a72',font:{size:9},callback:v=>'$'+v+'B'},grid:{color:'rgba(40,40,74,.5)'}}}}});
   }
+}
+
+// ---------- 뷰 4: 🔋 EIA-860M 발전설비 순증 (window.DCGRID — data_dc_grid.js lazy) ----------
+// ① 월별 순증 스택(증설 +, 은퇴 −, 0선) ② 계획 파이프라인(상태그룹·기술·가스 COD연도)
+// ③ 정책 지연 카드 3 ④ 우리 dc_energy 원장 교차검증 ⑤ 출처·최신월·다음 공표일·크론
+// 창작 금지 — 숫자는 전부 샤드 원본. 화면상의 파생은 (a) MW→GW 나눗셈 (b) 창(window) 합산뿐.
+function dcViewGrid(el,G){
+  if(!G||!G.act||!(G.act.m||[]).length){
+    el.innerHTML='<div class="empty-msg">🔋 EIA-860M 발전설비 순증 데이터 준비 중… '+
+      '<span style="font-size:11px;color:var(--dim)">(data_dc_grid.js 미생성 — jem_data/dc/eia/dc_grid_capacity.json 수확 후 재빌드)</span></div>';
+    return; }
+  const M=G.meta||{}, ORD=G.order||[], AM=G.act.m, N=AM.length;
+  const bs=(ST.dcgB==='n')?'n':'s', aK='a'+bs, rK='r'+bs, pK=bs;
+  const SPAN={'12':12,'36':36,'60':60,'all':N};
+  const k=Math.max(1,Math.min(N,SPAN[ST.dcgR]||60)), i0=N-k, lab=AM.slice(i0);
+  const TOT=G.act.tot||{};
+  let sAdd=0,sRet=0;
+  for(let j=i0;j<N;j++){ sAdd+=(+((TOT[aK]||[])[j])||0); sRet+=(+((TOT[rK]||[])[j])||0); }
+  const tSum={};
+  ORD.forEach(t=>{ const o=G.act.t[t]||{}; let a=0,r=0;
+    for(let j=i0;j<N;j++){ a+=(+((o[aK]||[])[j])||0); r+=(+((o[rK]||[])[j])||0); }
+    tSum[t]={a:a,r:r,n:a+r}; });
+  const winL=(ST.dcgR==='all')?('전체 '+N+'개월'):('최근 '+k+'개월');
+
+  let h='<p class="dch">🔋 미국 발전설비 월별 순증 — EIA-860M '+
+    '<span style="color:var(--dim);font-size:11.5px;font-weight:500">'+dcEsc(AM[0])+'~'+dcEsc(AM[N-1])+' · '+
+    N+'개월 · '+ORD.length+'기술 분류 · 최신 관측월 '+dcEsc(M.snap||'')+'</span></p>'+
+    '<p class="dcs"><b>0선 위 = 신규 가동(Operating 시트의 가동 개시월 합), 0선 아래 = 은퇴(Retired 시트의 은퇴월 합)</b>. '+
+    '순증 = 증설 + (음수)은퇴. 기술 색은 EIA 원본 범례를 따릅니다(석탄 검정 · 가스 CCGT 회색 · 가스 단순사이클 연파랑 · '+
+    '원자력 초록 · 수력 진파랑 · 풍력 연두 · 태양광 노랑 · 배터리 주황 · 기타 진회색). '+
+    '<b>역사 구간은 프록시</b> — 과거 증설은 <i>최신 인벤토리에 아직 남아있는</i> 설비의 가동월에서 복원하므로, '+
+    '이미 은퇴한 설비의 당시 증설분은 재구성되지 않습니다(하단 방법·한계 참조).</p>';
+
+  h+='<div class="dcgbar">'+
+    '<div><em>기간</em>'+[['12','최근 12M'],['36','36M'],['60','60M'],['all','전체 '+N+'M']]
+      .map(v=>gChip('dcgR',ST.dcgR,v[0],v[1])).join('')+'</div>'+
+    '<div><em>용량기준</em>'+[['s','Net Summer'],['n','Nameplate']]
+      .map(v=>gChip('dcgB',ST.dcgB,v[0],v[1])).join('')+'</div>'+
+    '<div><em>단위</em>'+[['gw','GW'],['mw','MW']]
+      .map(v=>gChip('dcgM',ST.dcgM,v[0],v[1])).join('')+'</div></div>';
+
+  h+='<div class="dckpi">'+
+    '<div><b style="color:#59d0a8">'+gFmt(sAdd,1)+'</b><span>'+dcEsc(winL)+' 증설</span></div>'+
+    '<div><b style="color:#ff5c5c">'+gFmt(sRet)+'</b><span>'+dcEsc(winL)+' 은퇴</span></div>'+
+    '<div><b>'+gFmt(sAdd+sRet,1)+'</b><span>'+dcEsc(winL)+' 순증</span></div>'+
+    '<div><b style="color:#ffd21e">'+gFmt(tSum['Solar']?tSum['Solar'].n:0,1)+'</b><span>같은 기간 태양광 순증</span></div>'+
+    '<div><b style="color:#ff8a3d">'+gFmt(tSum['Batteries']?tSum['Batteries'].n:0,1)+'</b><span>배터리 순증</span></div>'+
+    '<div><b style="color:#a8adbd">'+gFmt(((tSum['NG-CCGT']||{}).n||0)+((tSum['NG-Simple']||{}).n||0),1)+'</b><span>가스(CCGT+단순) 순증</span></div>'+
+    '<div><b style="color:#c8cbd6">'+gFmt(tSum['Coal']?tSum['Coal'].n:0,1)+'</b><span>석탄 순증</span></div>'+
+    '</div>';
+
+  h+='<div class="dcpan" style="padding:10px 12px"><div class="dcch" style="height:360px"><canvas id="dcGridNetCh"></canvas></div>'+
+    gLegend(ORD,gTC,t=>gTL(t)+' ('+gFmt(tSum[t]?tSum[t].n:0,1)+')',t=>GTBD[t])+
+    '<div class="dcnote">기준 <b>'+gBasisL()+' Capacity</b> · 단위 '+gUL()+' · 툴팁 = 월 · 기술 · 값, 하단 「순증」은 그 달 전 기술 합.</div></div>';
+
+  // ---------- ② 계획 파이프라인 ----------
+  const PL=G.pl||{}, PM=PL.m||[];
+  let pEnd=PM.length-1;
+  while(pEnd>0 && !(+(((PL.cap||{})[pK]||[])[pEnd])||0)) pEnd--;
+  const pLab=PM.slice(0,pEnd+1), pgs=(PL.g||[]);
+  const ANN=PL.ann||[];
+  const annPre=y=>{ const r=ANN.find(a=>a.y===y)||{}; const sg=r.sg||{};
+    return ['Permitting','Early planning','Approved'].reduce((a,g)=>a+(+((sg[g]||[])[bs==='n'?1:0])||0),0); };
+  h+='<p class="dch" style="margin-top:22px">🏗 계획 파이프라인 — Planned 시트 '+dcEsc(M.ph0||'')+'~'+dcEsc(M.ph1||'')+
+    ' <span style="color:var(--dim);font-size:11.5px;font-weight:500">'+(PM.length||0)+'개월 · '+ANN.length+'개 연도</span></p>'+
+    '<p class="dcs">EIA가 <b>계획 가동월(Planned Operation Month/Year)</b>로 신고받은 발전기를 상태 코드별로 쌓은 것입니다. '+
+    '<b>「인허가 대기(L)·초기계획(P)·승인 미착공(T)」은 아직 삽을 뜨지 않은 블록</b>이고, 「건설중(U·V)·건설완료(TS)」만이 물리적으로 진행 중입니다. '+
+    '계획은 실적이 아니며 COD는 이동합니다 — 아래 ③의 관측된 지연을 함께 보세요.</p>'+
+    '<div class="dcg2">'+
+    '<div class="dcpan" style="padding:10px 12px"><div style="font-size:12px;font-weight:800;margin:0 0 6px">상태그룹별</div>'+
+      '<div class="dcch" style="height:270px"><canvas id="dcGridPlSgCh"></canvas></div>'+
+      gLegend(pgs,gSC,gSL)+'</div>'+
+    '<div class="dcpan" style="padding:10px 12px"><div style="font-size:12px;font-weight:800;margin:0 0 6px">기술별</div>'+
+      '<div class="dcch" style="height:270px"><canvas id="dcGridPlTCh"></canvas></div>'+
+      gLegend(ORD,gTC,gTL,t=>GTBD[t])+'</div></div>';
+
+  // 연도 × 상태그룹 표
+  h+='<div class="dct" style="margin-top:12px"><table><thead><tr><th>계획 가동연도</th><th>합계</th>'+
+    pgs.map(g=>'<th>'+dcEsc(gSL(g))+'</th>').join('')+'<th>미착공 비중</th></tr></thead><tbody>'+
+    ANN.map(a=>{ const ci=(bs==='n')?1:0, tot=+((a.c||[])[ci])||0, pre=annPre(a.y);
+      return '<tr><td><b>'+dcEsc(a.y)+'</b></td><td class="mn"><b>'+gFmt(tot)+'</b></td>'+
+        pgs.map(g=>'<td class="mn">'+((+((a.sg||{})[g]||[])[ci])?gFmt((a.sg[g]||[])[ci]):'—')+'</td>').join('')+
+        '<td class="mn" style="color:'+(tot&&pre/tot>0.5?'var(--a4)':'var(--dim)')+'">'+
+        (tot?dcNum(pre/tot*100,1)+'%':'—')+'</td></tr>'; }).join('')+
+    '</tbody></table></div>'+
+    '<div class="dcnote">「미착공 비중」 = (인허가 대기 L + 초기계획 P + 승인 미착공 T) ÷ 그 해 계획 합계. 두 공표치의 나눗셈입니다.</div>';
+
+  // 가스 파이프라인 — COD 연도 × 상태 (dc_grid_shifts 최신 스냅샷, Nameplate 기준)
+  const SH=G.shift||{}, GP=SH.pipe||{}, byY=GP.by_cod_year||{};
+  const gy=Object.keys(byY).sort();
+  const gord=['construction_complete','under_construction_gt_50pct','under_construction_le_50pct',
+              'approved_not_construction','permitting','planned_no_approvals'];
+  const seenS=[]; gy.forEach(y=>Object.keys(((byY[y]||{}).by_status)||{}).forEach(s=>{ if(seenS.indexOf(s)<0) seenS.push(s); }));
+  const gsts=gord.filter(s=>seenS.indexOf(s)>=0).concat(seenS.filter(s=>gord.indexOf(s)<0));
+  if(gy.length){
+    const preS=['permitting','planned_no_approvals','approved_not_construction'];
+    h+='<p class="dch" style="margin-top:20px">🔥 가스 파이프라인 — COD 연도 × 진행 상태 '+
+      '<span style="color:var(--dim);font-size:11.5px;font-weight:500">'+dcNum(GP.units)+'기 · '+gMW(GP.nameplate_mw)+' (Nameplate)</span></p>'+
+      '<p class="dcs">「가스는 승인대기가 많아 기여가 2028~30으로 밀린다」는 서사를 <b>우리 샤드로 직접 확인</b>하는 패널입니다. '+
+      '막대 색이 회색·노랑(계획·인허가)일수록 그 해 물량은 아직 착공 전입니다. '+
+      '<b>이 패널만 Nameplate 기준</b>(dc_grid_shifts의 capacity_basis) — 위 차트의 용량기준 토글과 무관합니다.</p>'+
+      '<div class="dcpan" style="padding:10px 12px"><div class="dcch" style="height:250px"><canvas id="dcGridGasCh"></canvas></div>'+
+      gLegend(gsts,gPC,gPL)+'</div>'+
+      '<div class="dct" style="margin-top:10px"><table><thead><tr><th>COD 연도</th><th>기수</th><th>Nameplate MW</th>'+
+      gsts.map(s=>'<th>'+dcEsc(gPL(s))+'</th>').join('')+'<th>미착공 비중</th></tr></thead><tbody>'+
+      gy.map(y=>{ const r=byY[y]||{}, st=r.by_status||{}, tot=+r.nameplate_mw||0;
+        const pre=preS.reduce((a,s)=>a+(+((st[s]||{}).nameplate_mw)||0),0);
+        return '<tr><td><b>'+dcEsc(y)+'</b></td><td class="mn">'+dcNum(r.units)+'</td><td class="mn"><b>'+gMW(r.nameplate_mw)+'</b></td>'+
+          gsts.map(s=>'<td class="mn">'+((st[s]&&+st[s].nameplate_mw)?dcNum(st[s].nameplate_mw,1)+'<div style="font-size:9px;color:var(--dim)">'+dcNum(st[s].units)+'기</div>':'—')+'</td>').join('')+
+          '<td class="mn" style="color:'+(tot&&pre/tot>0.5?'var(--a4)':'var(--dim)')+'">'+(tot?dcNum(pre/tot*100,1)+'%':'—')+'</td></tr>'; }).join('')+
+      '</tbody></table></div>';
+  }
+
+  // 취소·연기 소패널
+  const CN=G.canc||{}, ci=(bs==='n')?1:0;
+  h+='<p class="dch" style="margin-top:20px">🗑 취소·연기(Canceled or Postponed) '+
+    '<span style="color:var(--dim);font-size:11.5px;font-weight:500">'+dcNum(CN.rows)+'행 · '+gFmt((CN.tot||[])[ci],0)+'</span></p>'+
+    '<p class="dcs">EIA가 별도 시트로 관리하는 <b>취소·연기 인벤토리 누적</b>입니다. 위 파이프라인에는 포함되지 않으며, 계획 물량의 실현률을 가늠할 때 분모 감각으로만 쓰세요(시점 정보 없음 — 누적 스톡).</p>'+
+    '<div class="dct"><table><thead><tr><th>기술</th>'+ORD.map(t=>'<th>'+dcEsc(gTL(t))+'</th>').join('')+'</tr></thead><tbody>'+
+    '<tr><td><b>'+dcEsc(gBasisL())+'</b></td>'+ORD.map(t=>'<td class="mn" style="color:'+gTC(t)+
+      (GTBD[t]?';text-shadow:0 0 1px '+GTBD[t]:'')+'">'+(((CN.t||{})[t]||[])[ci]?gFmt((CN.t[t]||[])[ci],0):'—')+'</td>').join('')+
+    '</tr></tbody></table></div>';
+
+  // ---------- ③ 정책 지연 카드 ----------
+  const CO=(SH.coal||{}).sum||{}, CD=(SH.cod||{}).sum||{}, TR=SH.trans||{}, TRS=TR.sum||{}, L2U=TR.l2u||{};
+  const SM=SH.meta||{}, CL=SH.claims||{};
+  const bydir=TRS.by_direction||{};
+  h+='<p class="dch" style="margin-top:22px">🕰 정책·일정 이동 — 스냅샷 '+dcEsc(SM.snapshot_range||'')+
+    ' <span style="color:var(--dim);font-size:11.5px;font-weight:500">월간 인벤토리 '+dcNum(SM.snapshot_count)+'개 · 인접쌍 '+dcNum(SM.comparison_count)+'회 비교 · 키 = '+dcEsc(SM.unit_key||'')+'</span></p>'+
+    '<p class="dcs">EIA-860M 스냅샷을 발전기 단위로 이어붙여 <b>「무엇이 언제로 밀렸는가」</b>를 센 것입니다. '+
+    '한 발전기가 여러 인접쌍에서 바뀌면 이벤트도 여러 번 잡히므로 <b>이벤트 수 ≠ 발전기 수</b>이며 MW도 중복 계상됩니다(고유 기준을 함께 표기). '+
+    '<b>인벤토리는 일정 변경을 보여줄 뿐 그 원인(정책·설비·계통연계)을 식별하지 못합니다.</b></p>'+
+    '<div class="dcgcards">'+
+    '<div class="dcgcard" style="border-top-color:#c8cbd6"><h4 style="color:#c8cbd6">⛏ 석탄 은퇴 연기</h4>'+
+      '<b class="v">'+dcNum(CO.event_count)+'<span class="u">건</span></b>'+
+      '<div class="sub">고유 발전기 <b>'+dcNum(CO.unique_generator_count)+'기</b> · 중앙 연기 <b>'+dcNum(CO.median_months,1)+'개월</b>'+
+      ' (범위 '+dcNum(CO.min_months)+'~'+dcNum(CO.max_months)+'개월)<br>'+
+      '이벤트 합 '+gMW(CO.event_nameplate_mw_sum)+' / 고유 기준 <b>'+gMW(CO.unique_generator_nameplate_mw)+'</b><br>'+
+      '은퇴 예정일이 <b>아예 삭제된</b> 건 '+dcNum(CO.date_removed_event_count)+'건 (연기 상한 미상)</div></div>'+
+    '<div class="dcgcard" style="border-top-color:#a8adbd"><h4 style="color:#a8adbd">🔥 가스 COD 지연</h4>'+
+      '<b class="v">'+dcNum(CD.delay_event_count)+'<span class="u">건</span></b>'+
+      '<div class="sub">가속 '+dcNum(CD.acceleration_event_count)+'건 대비 <b>'+
+      (CD.acceleration_event_count?dcNum(CD.delay_event_count/CD.acceleration_event_count,1)+'배':'—')+'</b> (총 이동 '+dcNum(CD.event_count)+'건 · 고유 '+dcNum(CD.unique_generator_count)+'기)<br>'+
+      '중앙 지연 <b>'+dcNum(CD.median_delay_months,1)+'개월</b> · 중앙 가속 '+dcNum(CD.median_acceleration_months,1)+'개월<br>'+
+      '지연 이벤트 MW '+gMW(CD.delay_event_nameplate_mw_sum)+' ↔ 가속 '+gMW(CD.acceleration_event_nameplate_mw_sum)+'</div></div>'+
+    '<div class="dcgcard" style="border-top-color:#59d0a8"><h4 style="color:#59d0a8">🚧 상태 전이 L → U·V</h4>'+
+      '<b class="v">'+dcNum(L2U.n)+'<span class="u">회</span></b>'+
+      '<div class="sub">인허가 대기(L)에서 <b>실제 착공(U·V)</b>으로 넘어간 가스 발전기 전이 횟수'+
+      (L2U.parts?'<br>'+Object.keys(L2U.parts).map(kk=>'· '+dcEsc(gPL(kk.split(' -> ')[1]))+' '+dcNum(L2U.parts[kk])+'회').join('<br>'):'')+'<br>'+
+      '전체 상태전이 '+dcNum(TRS.event_count)+'건 — 전방 '+dcNum(bydir.forward)+' · 후방 '+dcNum(bydir.backward)+' · 취소 '+dcNum(bydir.canceled)+'</div></div>'+
+    '</div>';
+  if(CL.coal_retirement_delay_claim||CL.gas_timing_lag_claim){
+    h+='<div class="dcwarn">⚠ <b>인과 한계</b> — '+
+      dcEsc((CL.coal_retirement_delay_claim||{}).causality_limit||'')+' '+
+      dcEsc((CL.gas_timing_lag_claim||{}).causality_limit||'')+'<br>'+
+      dcEsc(SM.preliminary_data_warning||'')+'</div>';
+  }
+  // 지연 이벤트 상위 표
+  const cTop=(SH.coal||{}).top||[], dTop=(SH.cod||{}).top||[];
+  if(cTop.length) h+='<div class="dcnote" style="margin:13px 0 6px"><b>석탄 은퇴 연기 상위 '+cTop.length+'건</b> (Nameplate MW 내림차순)</div>'+
+    '<div class="dct"><table><thead><tr><th>발전소</th><th>주</th><th>호기</th><th>기술</th><th>Nameplate MW</th><th>기존 은퇴</th><th>변경 은퇴</th><th>연기</th><th>관측 스냅샷</th></tr></thead><tbody>'+
+    cTop.map(e=>'<tr><td><b>'+dcEsc(e.plant_name)+'</b></td><td class="mn">'+dcEsc(e.state)+'</td><td class="mn">'+dcEsc(e.generator_id)+'</td>'+
+      '<td style="font-size:10px;color:var(--dim)">'+dcEsc(e.technology)+'</td><td class="mn">'+dcNum(e.nameplate_mw,1)+'</td>'+
+      '<td class="mn">'+dcEsc(e.old_planned_retirement||'—')+'</td><td class="mn">'+dcEsc(e.new_planned_retirement||'—')+'</td>'+
+      '<td class="mn" style="color:var(--a4);font-weight:800">+'+dcNum(e.delay_months)+'M</td>'+
+      '<td class="mn" style="font-size:10px;color:var(--dim)">'+dcEsc(e.from_snapshot)+'→'+dcEsc(e.to_snapshot)+'</td></tr>').join('')+
+    '</tbody></table></div>';
+  if(dTop.length) h+='<div class="dcnote" style="margin:13px 0 6px"><b>가스 COD 이동 상위 '+dTop.length+'건</b> (Nameplate MW 내림차순 · 지연/가속 혼재)</div>'+
+    '<div class="dct"><table><thead><tr><th>발전소</th><th>주</th><th>호기</th><th>기술</th><th>Nameplate MW</th><th>기존 COD</th><th>변경 COD</th><th>이동</th><th>관측 스냅샷</th></tr></thead><tbody>'+
+    dTop.map(e=>{const dl=(e.direction==='delay');
+      return '<tr><td><b>'+dcEsc(e.plant_name)+'</b></td><td class="mn">'+dcEsc(e.state)+'</td><td class="mn">'+dcEsc(e.generator_id)+'</td>'+
+      '<td style="font-size:10px;color:var(--dim)">'+dcEsc(e.technology)+'</td><td class="mn">'+dcNum(e.nameplate_mw,1)+'</td>'+
+      '<td class="mn">'+dcEsc(e.old_planned_operation||'—')+'</td><td class="mn">'+dcEsc(e.new_planned_operation||'—')+'</td>'+
+      '<td class="mn" style="font-weight:800;color:'+(dl?'var(--a3)':'#59d0a8')+'">'+(dl?'+':'−')+dcNum(e.change_months)+'M '+(dl?'지연':'가속')+'</td>'+
+      '<td class="mn" style="font-size:10px;color:var(--dim)">'+dcEsc(e.from_snapshot)+'→'+dcEsc(e.to_snapshot)+'</td></tr>';}).join('')+
+    '</tbody></table></div>';
+
+  h+=dcGridVal(G);
+  // ---------- ⑤ 출처·공표일정·크론 ----------
+  const Q=G.quality||{}, ME=G.method||{};
+  h+='<div class="dcgfoot">'+
+    '<b>출처</b> '+dcA(M.page,'EIA-860M Preliminary Monthly Electric Generator Inventory')+
+    (M.dl?' · '+dcA(M.dl,'현재 스냅샷 워크북'):'')+
+    ' · 발행 '+dcEsc(M.pub||'')+'<br>'+
+    '<b>스냅샷</b> 관측월 <b>'+dcEsc(M.snap||'')+'</b> · 공식 공표 '+dcEsc(M.rel||'')+
+    ' · '+dcNum(M.bytes?M.bytes/1048576:null,1)+'MB · sha256 <code style="font-size:9.5px">'+dcEsc(String(M.sha||'').slice(0,16))+'…</code><br>'+
+    '<b>다음 공표</b> <span class="dcgnext">'+dcEsc(M.next||'')+'</span>'+
+    (M.nextobs?' (관측월 '+dcEsc(M.nextobs)+')':'')+
+    (M.relpage?' · '+dcA(M.relpage,'EIA 공표예정 페이지'):'')+
+    (M.rellag?'<br><span style="color:var(--dim)">'+dcEsc(M.rellag)+'</span>':'')+
+    (M.relpat?'<br>'+dcEsc(M.relpat):'')+'<br>'+
+    '<b>자동갱신</b> launchd <code style="font-size:9.5px">'+dcEsc(M.cron||'')+'</code> — '+dcEsc(M.cronsch||'')+
+    (M.relwin?'<br><span style="color:var(--dim)">'+dcEsc(M.relwin)+'</span>':'')+'<br>'+
+    '<b>범위</b> '+dcEsc(M.geo||'')+' · '+dcEsc(M.thr||'')+'<br>'+
+    '<b>방법</b> 증설 = '+dcEsc(ME.actual_additions||'')+' 은퇴 = '+dcEsc(ME.actual_retirements||'')+
+    ' 계획 = '+dcEsc(ME.planned||'')+'<br>'+
+    '<b>한계</b> '+dcEsc(ME.historical_proxy_limit||'')+' · '+dcEsc(ME.missing_capacity||'')+
+    ' · '+dcEsc(ME.technology_classification||'')+
+    ((ME.dual_fuel_adjustment&&ME.dual_fuel_adjustment.reason)?' · 이중연료 미보정: '+dcEsc(ME.dual_fuel_adjustment.reason):'')+'<br>'+
+    '<b>품질</b> 파싱 시트 '+dcEsc((Q.parsed_required_sheets||[]).join(' · '))+' — 행수 '+
+    Object.keys(Q.sheet_rows||{}).map(s=>dcEsc(s)+' '+dcNum((Q.sheet_rows||{})[s])).join(' · ')+
+    ' · 날짜 결측/불량 '+Object.keys(Q.invalid_or_missing_dates||{}).map(s=>dcEsc(s)+' '+dcNum((Q.invalid_or_missing_dates||{})[s])).join(' · ')+
+    ((Q.puerto_rico_sheets_present_but_excluded||[]).length?' · 제외 시트 '+dcEsc((Q.puerto_rico_sheets_present_but_excluded||[]).join(', ')):'')+'<br>'+
+    '<span style="color:var(--dim)">샤드 생성 '+dcEsc(M.gen||'')+' · '+dcEsc(M.ds||'')+' schema '+dcEsc(M.sv||'')+' · Not investment advice.</span>'+
+    '</div>';
+
+  el.innerHTML=h;
+  el.querySelectorAll('[data-gk]').forEach(e=>e.onclick=()=>{ ST[e.dataset.gk]=e.dataset.gv; renderDC(); });
+  if(!window.Chart) return;
+
+  // ---- 차트 1: 월별 순증 스택(증설 위 / 은퇴 아래 / 0선 강조) ----
+  const zeroGrid={color:c=>c.tick.value===0?'rgba(232,232,244,.55)':'rgba(40,40,74,.5)',
+                  lineWidth:c=>c.tick.value===0?1.6:1};
+  const cvN=document.getElementById('dcGridNetCh');
+  if(cvN){
+    const ds=[];
+    ORD.forEach(t=>{ const o=G.act.t[t]||{}, c=gTC(t), bd=GTBD[t];
+      const bw=bd?{top:0.8,right:0.8,bottom:0.8,left:0.8}:0;
+      ds.push({label:gTL(t)+' 증설',data:(o[aK]||[]).slice(i0).map(gV),backgroundColor:c,borderColor:bd||c,borderWidth:bw,stack:'net'});
+      ds.push({label:gTL(t)+' 은퇴',data:(o[rK]||[]).slice(i0).map(gV),backgroundColor:c,borderColor:bd||c,borderWidth:bw,stack:'net'}); });
+    charts['dc_grid_net']=new Chart(cvN,{type:'bar',data:{labels:lab,datasets:ds},options:{
+      responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},
+        tooltip:{itemSort:(a,b)=>Math.abs(b.parsed.y)-Math.abs(a.parsed.y),filter:c=>Math.abs(c.parsed.y)>0,
+          callbacks:{title:it=>it.length?(it[0].label+'  ·  '+gBasisL()):'',
+            label:c=>c.dataset.label+': '+(c.parsed.y>0?'+':'')+c.parsed.y.toLocaleString(undefined,{maximumFractionDigits:gDec()})+' '+gUL(),
+            footer:it=>{const s=it.reduce((a,x)=>a+x.parsed.y,0);
+              return '순증 '+(s>0?'+':'')+s.toLocaleString(undefined,{maximumFractionDigits:gDec()})+' '+gUL();}}}},
+      scales:{x:{stacked:true,ticks:{color:'#6a6a9a',font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:14},grid:{display:false}},
+        y:{stacked:true,ticks:{color:'#4a4a72',font:{size:9}},grid:zeroGrid}}}});
+  }
+  // ---- 차트 2·3: 계획 파이프라인(상태그룹 / 기술) ----
+  const plOpt=ttl=>({responsive:true,maintainAspectRatio:false,animation:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},
+      tooltip:{itemSort:(a,b)=>b.parsed.y-a.parsed.y,filter:c=>c.parsed.y>0,
+        callbacks:{title:it=>it.length?(it[0].label+'  ·  계획 '+ttl+'  ·  '+gBasisL()):'',
+          label:c=>c.dataset.label+': '+c.parsed.y.toLocaleString(undefined,{maximumFractionDigits:gDec()})+' '+gUL(),
+          footer:it=>'합계 '+it.reduce((a,x)=>a+x.parsed.y,0).toLocaleString(undefined,{maximumFractionDigits:gDec()})+' '+gUL()}}},
+    scales:{x:{stacked:true,ticks:{color:'#6a6a9a',font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:12},grid:{display:false}},
+      y:{stacked:true,ticks:{color:'#4a4a72',font:{size:9}},grid:{color:'rgba(40,40,74,.5)'}}}});
+  const cvS=document.getElementById('dcGridPlSgCh');
+  if(cvS) charts['dc_grid_plsg']=new Chart(cvS,{type:'bar',
+    data:{labels:pLab,datasets:pgs.map(g=>({label:gSL(g),
+      data:(((PL.sg||{})[g]||{})[pK]||[]).slice(0,pEnd+1).map(gV),backgroundColor:gSC(g),borderWidth:0,stack:'p'}))},
+    options:plOpt('상태그룹')});
+  const cvT=document.getElementById('dcGridPlTCh');
+  if(cvT) charts['dc_grid_plt']=new Chart(cvT,{type:'bar',
+    data:{labels:pLab,datasets:ORD.map(t=>({label:gTL(t),
+      data:(((PL.t||{})[t]||{})[pK]||[]).slice(0,pEnd+1).map(gV),backgroundColor:gTC(t),
+      borderColor:GTBD[t]||gTC(t),borderWidth:GTBD[t]?{top:0.8,right:0.8,bottom:0.8,left:0.8}:0,stack:'p'}))},
+    options:plOpt('기술')});
+  // ---- 차트 4: 가스 COD 연도 × 상태 (Nameplate MW 고정) ----
+  const cvG=document.getElementById('dcGridGasCh');
+  if(cvG&&gy.length) charts['dc_grid_gas']=new Chart(cvG,{type:'bar',
+    data:{labels:gy,datasets:gsts.map(s=>({label:gPL(s),
+      data:gy.map(y=>+(((((byY[y]||{}).by_status)||{})[s]||{}).nameplate_mw)||0),
+      backgroundColor:gPC(s),borderWidth:0,stack:'g'}))},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},
+        tooltip:{itemSort:(a,b)=>b.parsed.y-a.parsed.y,filter:c=>c.parsed.y>0,
+          callbacks:{title:it=>it.length?('COD '+it[0].label+'  ·  Nameplate'):'',
+            label:c=>c.dataset.label+': '+Math.round(c.parsed.y).toLocaleString()+' MW',
+            footer:it=>'합계 '+Math.round(it.reduce((a,x)=>a+x.parsed.y,0)).toLocaleString()+' MW'}}},
+      scales:{x:{stacked:true,ticks:{color:'#6a6a9a',font:{size:10}},grid:{display:false}},
+        y:{stacked:true,ticks:{color:'#4a4a72',font:{size:9},callback:v=>(v>=1000?(v/1000)+'GW':v)},grid:{color:'rgba(40,40,74,.5)'}}}}});
+}
+
+// ---------- 뷰 4-④: 우리 dc_energy 원장 ↔ EIA 교차검증 ----------
+function dcGridVal(G){
+  const V=G.val||{}; if(!V||!V.ratios) return '';
+  const R=V.ratios||{}, GS=V.gas||{}, YR=GS.years||{}, SM=V.small||{}, INV=V.inv||{}, VM=V.meta||{};
+  const SEA=R.solar_ess_proxy||{}, BE=R.bess||{};
+  const ys=Object.keys(YR).sort();
+  let h='<p class="dch" style="margin-top:22px">🔎 교차검증 — 우리 <code>dc_energy</code> 원장 ↔ EIA-860M '+
+    '<span style="color:var(--dim);font-size:11.5px;font-weight:500">기준 스냅샷 '+dcEsc(VM.as_of_eia_snapshot||'')+
+    ' · DC 사용가능 행 '+dcNum(INV.usable_rows)+' · 불일치 '+(V.issues||[]).length+'건</span></p>'+
+    '<p class="dcs">우리가 프로젝트 문서에서 쌓아온 DC 전원 원장을 <b>전국 공표치라는 상한</b>에 대보는 패널입니다. '+
+    '귀속률이 100%를 넘으면 그 자체로 원장이 틀린 것이고, 100% 아래라는 사실만으로 원장이 옳다고 증명되지는 않습니다. '+
+    '비율 기간은 '+dcEsc(VM.ratio_period||'')+' · 규칙 '+dcEsc(VM.ratio_rule||'')+'</p>';
+
+  h+='<div class="dct"><table><thead><tr><th>대조 항목</th><th>DC 귀속 MW</th><th>EIA 전국 순증 MW</th><th>귀속률</th><th>불가능성 검정</th><th>DC 행</th></tr></thead><tbody>'+
+    '<tr><td><b style="color:#ffd21e">태양광(solar_ess proxy)</b></td><td class="mn">'+dcNum(SEA.dc_attributed_mw,1)+'</td>'+
+      '<td class="mn">'+dcNum(SEA.eia_national_net_additions_mw,1)+'</td>'+
+      '<td class="mn"><b style="color:#ffd21e">'+dcNum(SEA.ratio_pct,2)+'%</b></td>'+
+      '<td class="mn">'+(SEA.over_100pct?'<span style="color:var(--a3);font-weight:800">100% 초과 — 원장 오류</span>':'<span style="color:#59d0a8">통과 (100% 미만)</span>')+'</td>'+
+      '<td class="mn">'+dcNum((SEA.included_dc_rows||[]).length)+'행</td></tr>'+
+    '<tr><td><b style="color:#ff8a3d">BESS</b></td><td class="mn">'+dcNum(BE.dc_attributed_mw,1)+'</td>'+
+      '<td class="mn">'+dcNum(BE.eia_national_net_additions_mw,1)+'</td>'+
+      '<td class="mn"><b style="color:#ff8a3d">'+dcNum(BE.ratio_pct,2)+'%</b></td>'+
+      '<td class="mn">'+(BE.over_100pct?'<span style="color:var(--a3);font-weight:800">100% 초과 — 원장 오류</span>':'<span style="color:#59d0a8">통과 (100% 미만)</span>')+'</td>'+
+      '<td class="mn">'+dcNum((BE.included_dc_rows||[]).length)+'행</td></tr>'+
+    '</tbody></table></div>'+
+    '<div class="dcnote">'+(V.notes||[]).map(n=>'· '+dcEsc(n)).join('<br>')+'</div>';
+
+  if(ys.length){
+    h+='<div class="dcnote" style="margin:15px 0 6px"><b>가스 — 우리 원장 vs EIA 전국 계획(연도별)</b></div>'+
+      '<div class="dct"><table><thead><tr><th>연도</th><th>DC 귀속 MW</th><th>EIA 전국 계획 MW</th><th>DC 비중</th>'+
+      '<th>DC 미착공 비중</th><th>EIA 미착공 비중</th><th>EIA 실적(순증 Nameplate)</th></tr></thead><tbody>'+
+      ys.map(y=>{ const r=YR[y]||{}, d=r.dc||{}, ep=r.eia_planned||{}, ea=r.eia_actual||null;
+        const hot=(+d.notop_pct||0)>=100;
+        return '<tr><td><b>'+dcEsc(y)+'</b></td>'+
+          '<td class="mn"><b>'+dcNum(d.total_mw,1)+'</b><div style="font-size:9px;color:var(--dim)">'+dcNum((d.rows||[]).length)+'행</div></td>'+
+          '<td class="mn">'+dcNum(ep.nameplate_mw,1)+'<div style="font-size:9px;color:var(--dim)">'+dcNum(ep.units)+'기</div></td>'+
+          '<td class="mn"><b style="color:'+(r.share_pct>=20?'var(--a4)':'var(--tx)')+'">'+dcNum(r.share_pct,1)+'%</b></td>'+
+          '<td class="mn" style="color:'+(hot?'var(--a3)':'var(--dim)')+';font-weight:'+(hot?800:400)+'">'+dcNum(d.notop_pct,1)+'%'+
+            '<div style="font-size:9px;color:var(--dim)">'+dcNum(d.notop_mw,1)+' MW</div></td>'+
+          '<td class="mn" style="color:'+((+r.eia_precon_pct||0)>50?'var(--a4)':'var(--dim)')+'">'+dcNum(r.eia_precon_pct,1)+'%'+
+            '<div style="font-size:9px;color:var(--dim)">'+dcNum(r.eia_precon_mw,1)+' MW</div></td>'+
+          '<td class="mn">'+(ea?dcNum(ea.net_additions_nameplate_mw,1)+'<div style="font-size:9px;color:var(--dim)">'+dcNum(ea.units)+'기 실현</div>':'<span style="color:var(--dim)">미래 — 실적 없음</span>')+'</td></tr>'; }).join('')+
+      '</tbody></table></div>'+
+      '<div class="dcnote">DC 비중 = '+dcEsc((YR[ys[0]]||{}).share_formula||'')+' · EIA 미착공 비중 = '+dcEsc((YR[ys[0]]||{}).precon_formula||'')+'</div>';
+
+    const y27=YR['2027']||{}, d27=y27.dc||{};
+    if((+d27.notop_pct||0)>=100){
+      h+='<div class="dcwarn">⚠ <b>우리 원장 2027 가스는 운영·건설중 0 MW</b> — 전량('+dcNum(d27.total_mw,1)+
+        ' MW)이 permitting·계약 단계입니다. 같은 해 EIA 전국 계획의 <b>'+dcNum(y27.share_pct,1)+'%</b>에 해당하는 물량을 '+
+        '실현 확률 조정 없이 잡고 있는 셈이고, EIA 스냅샷에서는 가스 COD 지연이 '+dcNum((GS.cod_sum||{}).delay_event_count)+
+        '건(중앙 '+dcNum((GS.cod_sum||{}).median_delay_months,1)+'개월) 관측됩니다. '+
+        '<b>확률가중·이연이 필요합니다.</b><br><span style="font-size:10.5px;color:var(--dim)">판정 규칙: '+dcEsc(GS.rule||'')+'</span></div>';
+    }
+    // DC 원장 가스 행(원문)
+    const rowsAll=[]; ys.forEach(y=>((YR[y].dc||{}).rows||[]).forEach(r=>rowsAll.push({y:y,r:r})));
+    if(rowsAll.length) h+='<div class="dcnote" style="margin:12px 0 6px"><b>대조에 쓰인 DC 원장 가스 행 '+rowsAll.length+'건</b> (원문 그대로)</div>'+
+      '<div class="dct"><table><thead><tr><th>연도</th><th>프로젝트</th><th>유형</th><th>MW</th><th>근거</th><th>상태</th><th>COD</th><th>공급사</th><th>출처</th></tr></thead><tbody>'+
+      rowsAll.map(x=>'<tr><td class="mn">'+dcEsc(x.y)+'</td><td><b>'+dcEsc(x.r.project_name)+'</b></td>'+
+        '<td>'+dcEsc(dcSL(x.r.type))+'</td><td class="mn">'+dcNum(x.r.mw,1)+'</td>'+
+        '<td style="font-size:10px;color:var(--dim)">'+dcEsc(x.r.mw_basis||'—')+'</td>'+
+        '<td class="mn" style="font-size:10px;color:'+((x.r.status_group==='operating'||x.r.status_group==='under_construction')?'#59d0a8':'var(--a4)')+'">'+dcEsc(x.r.status||'—')+'</td>'+
+        '<td class="mn">'+dcEsc(x.r.cod||'—')+'</td><td style="font-size:10px;max-width:260px">'+dcEsc(x.r.supplier||'—')+'</td>'+
+        '<td>'+dcA(x.r.source)+'</td></tr>').join('')+'</tbody></table></div>';
+  }
+
+  // SMR · 연료전지 대조
+  const SE=SM.eia||{}, AGG=SM.agg||{}, dcr=SM.dc_rows||[];
+  if(Object.keys(SE).length){
+    const cell=(o,f)=>o?dcNum(o[f],1):'—';
+    h+='<div class="dcnote" style="margin:16px 0 6px"><b>소규모 전원 대조 — SMR · 연료전지</b> (우리 원장의 큰 미래 MW가 EIA 계획 인벤토리에 실제로 잡혀 있는가)</div>'+
+      '<div class="dct"><table><thead><tr><th>전원</th><th>DC 원장 최종연도 누적 MW</th><th>EIA 가동중</th><th>EIA 계획</th><th>판정</th></tr></thead><tbody>'+
+      [['nuclear_smr','nuclear','SMR·원자력'],['fuel_cell','fuel_cell','연료전지']].map(p=>{
+        const agg=AGG[p[0]]||{}, ky=Object.keys(agg).sort(), last=ky.length?ky[ky.length-1]:null;
+        const e=SE[p[1]]||{}, op=e.operating||{}, pl=e.planned||{};
+        const zero=!(+pl.nameplate_mw);
+        return '<tr><td><b>'+dcEsc(p[2])+'</b></td>'+
+          '<td class="mn"><b>'+(last?dcNum(agg[last],1):'—')+'</b>'+(last?'<div style="font-size:9px;color:var(--dim)">'+dcEsc(last)+' 누적</div>':'')+'</td>'+
+          '<td class="mn">'+cell(op,'nameplate_mw')+'<div style="font-size:9px;color:var(--dim)">'+dcNum(op.units)+'기</div></td>'+
+          '<td class="mn">'+cell(pl,'nameplate_mw')+'<div style="font-size:9px;color:var(--dim)">'+dcNum(pl.units)+'기</div></td>'+
+          '<td style="font-size:10.5px;color:'+(zero?'var(--a3)':'var(--a4)')+'">'+
+            (zero?'EIA 계획 인벤토리 <b>0건</b> — 우리 MW는 아직 확정 파이프라인이 아님(옵션 표기 필요)':'EIA 계획에 존재 — 다만 대부분 미착공 단계')+'</td></tr>'; }).join('')+
+      '</tbody></table></div>';
+    if(dcr.length) h+='<div class="dct" style="margin-top:8px"><table><thead><tr><th>DC 원장 행</th><th>유형</th><th>MW</th><th>상태</th><th>COD</th><th>공급사</th><th>출처</th></tr></thead><tbody>'+
+      dcr.map(r=>'<tr><td><b>'+dcEsc(r.project_name)+'</b></td><td>'+dcEsc(dcSL(r.type))+'</td><td class="mn">'+dcNum(r.mw,1)+'</td>'+
+        '<td class="mn" style="font-size:10px;color:var(--a4)">'+dcEsc(r.status||'—')+'</td><td class="mn">'+dcEsc(r.cod||'—')+'</td>'+
+        '<td style="font-size:10px">'+dcEsc(r.supplier||'—')+'</td><td>'+dcA(r.source)+'</td></tr>').join('')+'</tbody></table></div>';
+  }
+
+  const IS=V.issues||[];
+  if(IS.length) h+='<div class="dcnote" style="margin:16px 0 6px"><b>불일치 '+IS.length+'건 — 원인과 수정 제안</b></div>'+
+    '<div class="dct"><table><thead><tr><th>ID</th><th>등급</th><th>발견</th><th>원인</th><th>제안</th></tr></thead><tbody>'+
+    IS.map(i=>'<tr><td class="mn" style="font-size:10px">'+dcEsc(i.id)+'</td>'+
+      '<td><span class="dcbadge" style="background:rgba(255,190,46,.14);color:var(--a4)">'+dcEsc(i.severity)+'</span></td>'+
+      '<td style="max-width:360px;font-size:10.5px;line-height:1.6">'+dcEsc(i.finding)+'</td>'+
+      '<td style="max-width:300px;font-size:10.5px;line-height:1.6;color:var(--dim)">'+dcEsc(i.cause)+'</td>'+
+      '<td style="max-width:340px;font-size:10.5px;line-height:1.6;color:#59d0a8">'+dcEsc(i.proposal)+'</td></tr>').join('')+
+    '</tbody></table></div>';
+
+  // DC 원장 인벤토리(분모 감각)
+  const BT=INV.by_type||{};
+  if(Object.keys(BT).length) h+='<div class="dcnote" style="margin:14px 0 6px"><b>대조에 쓰인 DC 원장 구성</b> — 사용가능 '+dcNum(INV.usable_rows)+'행</div>'+
+    '<div class="dct"><table><thead><tr><th>유형</th>'+Object.keys(BT).map(t=>'<th>'+dcEsc(dcSL(t))+'</th>').join('')+'</tr></thead><tbody>'+
+    '<tr><td><b>행</b></td>'+Object.keys(BT).map(t=>'<td class="mn">'+dcNum(BT[t].rows)+'</td>').join('')+'</tr>'+
+    '<tr><td><b>MW</b></td>'+Object.keys(BT).map(t=>'<td class="mn" style="color:'+dcSC(t)+'">'+dcNum(BT[t].mw,1)+'</td>').join('')+'</tr>'+
+    '</tbody></table></div>';
+  return h;
 }
 
 // ---------- events ----------

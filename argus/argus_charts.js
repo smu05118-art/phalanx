@@ -21,6 +21,7 @@
     '.ag-nav{position:sticky;top:46px;z-index:12;display:flex;gap:6px;flex-wrap:wrap;background:rgba(10,14,20,.9);backdrop-filter:blur(8px);padding:8px 2px;border-bottom:1px solid var(--line,#1f2937);margin:0 -2px}',
     '.ag-nav a{font-size:11.5px;font-weight:650;color:' + DIM + ';text-decoration:none;padding:4px 11px;border:1px solid var(--line,#1f2937);border-radius:999px;transition:.12s;white-space:nowrap}',
     '.ag-nav a:hover{color:' + ACC + ';border-color:rgba(43,192,212,.5)}',
+    '.ag-nav a:focus-visible,.ag-chip:focus-visible,summary:focus-visible,.ag-plot:focus-visible{outline:3px solid ' + ACC + ';outline-offset:3px}',
     /* KPI */
     '.ag-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}',
     '@media(max-width:980px){.ag-kpis{grid-template-columns:repeat(3,1fr)}}',
@@ -56,6 +57,21 @@
     '.ag-stocks{display:flex;gap:4px;flex-wrap:wrap;margin-top:9px}',
     '.ag-stk{font-size:10px;color:' + DIM + ';border:1px solid var(--line,#1f2937);border-radius:999px;padding:2px 8px;cursor:default}',
     '.ag-stk b{color:var(--ink,#e6edf3);font-weight:650}',
+    '.ag-members{margin-top:9px;border-top:1px solid rgba(31,41,55,.65);padding-top:7px}',
+    '.ag-members summary{cursor:pointer;color:' + DIM + ';font-size:10.5px;border-radius:4px}',
+    '.ag-member{display:grid;grid-template-columns:minmax(100px,1fr) auto;gap:3px 8px;padding:6px 0;border-bottom:1px solid rgba(31,41,55,.4);font-size:10px;color:' + DIM + '}',
+    '.ag-member b{color:var(--ink,#e6edf3);font-weight:650}',
+    /* 데이터 건강 */
+    '.ag-health{display:grid;grid-template-columns:repeat(4,minmax(110px,1fr));gap:10px}',
+    '@media(max-width:700px){.ag-health{grid-template-columns:repeat(2,1fr)}}',
+    '.ag-health .metric{background:var(--panel2,#0d131c);border:1px solid var(--line,#1f2937);border-radius:10px;padding:10px 12px}',
+    '.ag-health .metric b{display:block;font-family:' + MONO + ';font-size:19px;margin-top:2px}',
+    '.ag-health .metric span{font-size:10px;color:' + DIM + '}',
+    '.ag-health-lists{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}',
+    '@media(max-width:800px){.ag-health-lists{grid-template-columns:1fr}}',
+    '.ag-health details{border:1px solid var(--line,#1f2937);border-radius:10px;padding:8px 10px}',
+    '.ag-health details summary{cursor:pointer;font-size:11px;font-weight:700}',
+    '.ag-quality-list{margin:7px 0 0 17px;color:' + DIM + ';font-size:10.5px;line-height:1.7}',
     /* 테이블 */
     '.ag-scroll{overflow-x:auto}',
     '.ag-tbl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px}',
@@ -84,9 +100,21 @@
     '.ag-more{text-align:center;margin-top:12px}',
     /* 플롯 공통 */
     '.ag-plot{position:relative}',
+    '.ag-plot[tabindex]{border-radius:8px}',
     '.ag-plot svg{display:block;width:100%;height:auto;overflow:visible}',
     '.ag-tip{position:absolute;pointer-events:none;opacity:0;background:rgba(8,11,17,.94);border:1px solid var(--line,#1f2937);border-radius:8px;padding:6px 9px;font-family:' + MONO + ';font-size:10.5px;line-height:1.7;color:#e6edf3;white-space:nowrap;z-index:4;transition:opacity .1s;transform:translate(-50%,0)}',
     '.ag-plot.on .ag-tip{opacity:1}',
+    '.ag-chart-summary{font-size:10px;color:' + DIM + ';line-height:1.5;margin-top:4px}',
+    '.ag-data{margin-top:6px;border-top:1px solid rgba(31,41,55,.6);padding-top:5px}',
+    '.ag-data summary{cursor:pointer;color:' + DIM + ';font-size:10px;border-radius:4px;width:max-content;max-width:100%}',
+    '.ag-data .ag-scroll{max-height:320px;margin-top:6px}',
+    '.ag-data .ag-tbl{min-width:520px;font-size:10px}',
+    '.ag-data .ag-tbl caption{text-align:left;color:' + DIM + ';padding:4px 0;font-size:10px}',
+    '.ag-progress{width:92px;height:8px;accent-color:' + ACC + ';vertical-align:middle}',
+    '.ag-load{font-size:11px;color:' + DIM + ';padding:14px 0}',
+    '.ag-meta{font-size:10px;color:' + DIM + ';line-height:1.55;white-space:normal;min-width:210px}',
+    '.ag-status{display:inline-block;border:1px solid var(--line,#1f2937);border-radius:999px;padding:1px 6px;font-size:9px;font-weight:750}',
+    '.ag-status.low{color:' + WARN + ';border-color:rgba(246,200,95,.45)}',
     '.ag-lgd{display:flex;gap:5px 12px;flex-wrap:wrap;margin-top:8px}',
     '.ag-lgd span{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:' + DIM + '}',
     '.ag-lgd i{width:9px;height:9px;border-radius:3px;flex:0 0 auto}',
@@ -132,7 +160,7 @@
   }
   function fmtPct(v, dp) {
     if (!fin(v)) return '<span style="color:' + DIM + '">—</span>';
-    var c = v >= 0 ? UP : DOWN, s = v >= 0 ? '+' : '−';
+    var c = v >= 0 ? UP : DOWN, s = v >= 0 ? '↑ +' : '↓ −';
     return '<span style="color:' + c + ';font-weight:700">' + s + Math.abs(v).toFixed(dp == null ? 1 : dp) + '%</span>';
   }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -153,7 +181,7 @@
       col = v >= 0 ? UP : DOWN;
     }
     return '<div class="ag-mom" style="background:' + bg + '"><div class="h">' + lab + '</div><div class="v" style="color:' + col + '">' +
-      (fin(v) ? (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) : '—') + '</div></div>';
+      (fin(v) ? (v >= 0 ? '↑ +' : '↓ −') + Math.abs(v).toFixed(1) : '—') + '</div></div>';
   }
   function huntBadges(hunt) {
     var M = { bottom_turn: ['bt', '🎯 바닥반등'], peak_warn: ['pw', '⚠ 고점경계'], accel: ['ac', '⤴ 가속'] };
@@ -167,7 +195,7 @@
   function spark(v, w, h, color) {
     w = w || 90; h = h || 24;
     var xs = [], f = v.filter(fin);
-    if (f.length < 2) return '<svg width="' + w + '" height="' + h + '"></svg>';
+    if (f.length < 2) return '<svg role="img" aria-label="추세 데이터 부족" width="' + w + '" height="' + h + '"><title>추세 데이터 부족</title><desc>비교 가능한 관측이 2개 미만입니다.</desc></svg>';
     var mn = Math.min.apply(null, f), mx = Math.max.apply(null, f), r = (mx - mn) || 1;
     var d = '', started = false;
     for (var i = 0; i < v.length; i++) {
@@ -177,7 +205,8 @@
       d += (started ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
       started = true;
     }
-    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><path d="' + d + '" fill="none" stroke="' + (color || ACC) + '" stroke-width="1.5"/></svg>';
+    var summary = '최근 ' + f.length + '개 관측, 최신 ' + fmt(f[f.length - 1]) + ', 최저 ' + fmt(mn) + ', 최고 ' + fmt(mx);
+    return '<svg role="img" aria-label="' + esc(summary) + '" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><title>' + esc(summary) + '</title><desc>색 외에도 최신, 최저, 최고 수치를 제목으로 제공합니다.</desc><path d="' + d + '" fill="none" stroke="' + (color || ACC) + '" stroke-width="1.5"/></svg>';
   }
   function gauge(pos) {
     var W = 92, H = 58, cx = 46, cy = 50, r = 38;
@@ -187,7 +216,8 @@
     var arc = fin(pos) && pos > 0.5
       ? '<path d="M' + a[0].toFixed(1) + ' ' + a[1].toFixed(1) + ' A' + r + ' ' + r + ' 0 ' + (f > 0.5 ? 1 : 0) + ' 1 ' + b[0].toFixed(1) + ' ' + b[1].toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="7" stroke-linecap="round"/>' : '';
     var e = pt(1);
-    return '<svg class="ag-gauge" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' +
+    var summary = fin(pos) ? '사이클 위치 ' + Math.round(pos) + ' 퍼센타일' : '사이클 위치 데이터 없음';
+    return '<svg class="ag-gauge" role="img" aria-label="' + esc(summary) + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><title>' + esc(summary) + '</title><desc>0은 역사적 저점, 100은 역사적 고점입니다.</desc>' +
       '<path d="M' + a[0] + ' ' + a[1] + ' A' + r + ' ' + r + ' 0 0 1 ' + e[0] + ' ' + e[1] + '" fill="none" stroke="rgba(31,41,55,.8)" stroke-width="7" stroke-linecap="round"/>' + arc +
       '<text x="' + cx + '" y="' + (cy - 4) + '" text-anchor="middle" font-size="17" font-weight="800" fill="' + col + '" font-family="ui-monospace,Menlo,monospace">' + (fin(pos) ? Math.round(pos) : '—') + '</text>' +
       '<text x="' + cx + '" y="' + (cy + 7) + '" text-anchor="middle" font-size="7.5" fill="' + DIM + '">POS</text></svg>';
@@ -198,7 +228,8 @@
   }
 
   /* ───────── 라인차트 (호버 툴팁 + 사냥 마커) ───────── */
-  var CH = {};
+  var CH = new WeakMap();
+  var PENDING = {};
   var chSeq = 0;
   function chart(dates, rows, o) {
     // rows: [{name, v, col, hunt}], o: {h, unit, from, idx(100지수화), ymin0}
@@ -242,14 +273,16 @@
       xl += '<text x="' + x(idx).toFixed(1) + '" y="' + (H - 5) + '" font-size="9.5" fill="' + DIM + '" text-anchor="' + anchor + '" font-family="ui-monospace,Menlo,monospace">' + esc(String(ds[idx]).slice(2, 7)) + '</text>';
     }
     var paths = '', marks = '';
-    view.forEach(function (r) {
+    view.forEach(function (r, rowIndex) {
       var d = '', started = false, li = -1;
       for (var i = 0; i < n; i++) {
         if (!fin(r.v[i])) { started = false; continue; }
         d += (started ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r.v[i]).toFixed(1) + ' ';
         started = true; li = i;
       }
-      paths += '<path d="' + d + '" fill="none" stroke="' + r.col + '" stroke-width="1.6" stroke-linejoin="round"/>';
+      var dash = ['', '7 3', '2 3', '9 3 2 3'][rowIndex % 4];
+      paths += '<path d="' + d + '" fill="none" stroke="' + r.col + '" stroke-width="1.6"' +
+        (dash ? ' stroke-dasharray="' + dash + '"' : '') + ' stroke-linejoin="round"/>';
       if (li >= 0 && r.hunt && r.hunt.length) {
         var hc = r.hunt.indexOf('bottom_turn') >= 0 ? UP : (r.hunt.indexOf('peak_warn') >= 0 ? DOWN : WARN);
         marks += '<circle cx="' + x(li).toFixed(1) + '" cy="' + y(r.v[li]).toFixed(1) + '" r="5.5" fill="none" stroke="' + hc + '" stroke-width="2"/>' +
@@ -257,24 +290,46 @@
       }
     });
     var id = 'ag' + (++chSeq);
-    CH[id] = { ds: ds, rows: view, W: W, PL: PL, PR: PR, unit: o.idx ? 'idx' : (o.unit || '') };
-    return '<div class="ag-plot" data-ch="' + id + '"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + g + paths + marks +
+    var latest = view.map(function (r) {
+      for (var j = r.v.length - 1; j >= 0; j--) if (fin(r.v[j])) return r.name + ' ' + fmt(r.v[j]);
+      return r.name + ' —';
+    }).join(', ');
+    var summary = '기간 ' + ds[0] + '부터 ' + ds[ds.length - 1] + ', 최신 ' + latest + ', 전체 최저 ' + fmt(Math.min.apply(null, all)) + ', 전체 최고 ' + fmt(Math.max.apply(null, all));
+    PENDING[id] = { ds: ds, rows: view, W: W, PL: PL, PR: PR,
+      unit: o.idx ? 'idx' : (o.unit || ''), summary: summary, index: n - 1 };
+    return '<div class="ag-plot" data-ch="' + id + '" tabindex="0" aria-describedby="' + id + '-summary" aria-label="차트. 좌우 화살표로 날짜별 값을 탐색합니다."><svg role="img" focusable="false" aria-labelledby="' + id + '-title ' + id + '-desc" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><title id="' + id + '-title">' + esc(o.title || view.map(function (r) { return r.name; }).join(', ')) + '</title><desc id="' + id + '-desc">' + esc(summary) + '</desc>' + g + paths + marks +
       '<line class="ag-guide" x1="0" y1="' + PT + '" x2="0" y2="' + (H - PB) + '" stroke="#e6edf3" stroke-opacity="0" stroke-width="1"/>' + xl +
-      '</svg><div class="ag-tip"></div></div>';
+      '</svg><div class="ag-tip" role="status" aria-live="polite"></div><div class="ag-chart-summary" id="' + id + '-summary">' + esc(summary) + '</div>' +
+      '<details class="ag-data"><summary>접근 가능한 표 대체 데이터</summary><div data-table></div></details></div>';
+  }
+  function chartTable(st) {
+    var head = '<th scope="col" class="l">날짜</th>' + st.rows.map(function (r) {
+      return '<th scope="col">' + esc(r.name) + '</th>';
+    }).join('');
+    var rows = st.ds.map(function (date, i) {
+      return '<tr><th scope="row" class="l">' + esc(date) + '</th>' + st.rows.map(function (r) {
+        return '<td>' + fmt(r.v[i]) + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    return '<div class="ag-scroll"><table class="ag-tbl"><caption>' + esc(st.summary) + '</caption><thead><tr>' +
+      head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   function bindHover(root) {
     root.querySelectorAll('.ag-plot[data-ch]').forEach(function (plot) {
       if (plot.dataset.bound) return;
       plot.dataset.bound = '1';
-      var st = CH[plot.dataset.ch]; if (!st) return;
+      var st = PENDING[plot.dataset.ch] || CH.get(plot); if (!st) return;
+      CH.set(plot, st);
+      delete PENDING[plot.dataset.ch];
       var svg = plot.querySelector('svg'), tip = plot.querySelector('.ag-tip'), guide = plot.querySelector('.ag-guide');
-      plot.addEventListener('mousemove', function (ev) {
+      function showAt(i) {
         var r = svg.getBoundingClientRect();
-        var fx = (ev.clientX - r.left) / r.width * st.W;
-        var frac = Math.min(1, Math.max(0, (fx - st.PL) / (st.W - st.PL - st.PR)));
-        var i = Math.round(frac * (st.ds.length - 1));
+        i = Math.min(st.ds.length - 1, Math.max(0, i));
+        st.index = i;
+        var frac = st.ds.length === 1 ? 0 : i / (st.ds.length - 1);
+        var fx = st.PL + frac * (st.W - st.PL - st.PR);
         var lines = st.rows.map(function (rw) {
-          return '<span style="color:' + rw.col + '">●</span> ' + esc(rw.name) + ' <b>' + fmt(rw.v[i]) + '</b>';
+          return '<span aria-hidden="true" style="color:' + rw.col + '">◆</span> ' + esc(rw.name) + ' <b>' + fmt(rw.v[i]) + '</b>';
         });
         tip.innerHTML = '<b>' + esc(st.ds[i]) + '</b>' + (st.unit && st.unit !== 'idx' ? ' · ' + esc(st.unit) : (st.unit === 'idx' ? ' · 지수(=100)' : '')) + '<br>' + lines.join('<br>');
         var px = (st.PL + frac * (st.W - st.PL - st.PR)) / st.W * r.width;
@@ -283,22 +338,114 @@
         guide.setAttribute('x1', fx.toFixed(1)); guide.setAttribute('x2', fx.toFixed(1));
         guide.setAttribute('stroke-opacity', '0.35');
         plot.classList.add('on');
+      }
+      plot.addEventListener('mousemove', function (ev) {
+        var r = svg.getBoundingClientRect();
+        var fx = (ev.clientX - r.left) / r.width * st.W;
+        var frac = Math.min(1, Math.max(0, (fx - st.PL) / (st.W - st.PL - st.PR)));
+        showAt(Math.round(frac * (st.ds.length - 1)));
       });
       plot.addEventListener('mouseleave', function () { plot.classList.remove('on'); guide.setAttribute('stroke-opacity', '0'); });
+      plot.addEventListener('focus', function () { showAt(st.index); });
+      plot.addEventListener('blur', function () { plot.classList.remove('on'); guide.setAttribute('stroke-opacity', '0'); });
+      plot.addEventListener('keydown', function (ev) {
+        var next = st.index;
+        if (ev.key === 'ArrowLeft') next -= 1;
+        else if (ev.key === 'ArrowRight') next += 1;
+        else if (ev.key === 'Home') next = 0;
+        else if (ev.key === 'End') next = st.ds.length - 1;
+        else if (ev.key === 'Escape') { plot.blur(); return; }
+        else return;
+        ev.preventDefault(); showAt(next);
+      });
+      var details = plot.querySelector('.ag-data');
+      details.addEventListener('toggle', function () {
+        var holder = details.querySelector('[data-table]');
+        if (details.open && !holder.dataset.ready) {
+          holder.innerHTML = chartTable(st); holder.dataset.ready = '1';
+        }
+      });
     });
   }
 
   /* ───────── 메인 ───────── */
   window.renderARGUS = function (el, data) {
     ensureCss(el.ownerDocument);
+    PENDING = {}; // 이전 렌더에서 DOM에 연결되지 못한 임시 차트 상태 제거
     data = data || {};
     data.kpi = data.kpi || {};
     data.axes = data.axes || { wk: [], sol: [], oil: [] };
     data.chains = data.chains || [];
     data.signals = data.signals || { bt: [], pw: [] };
+    data.health = data.health || { total: data.kpi.n_series || 0, active: data.kpi.n_series || 0,
+      stale: 0, low_confidence: 0, stale_series: [], low_confidence_series: [] };
     data.spread = data.spread || { cats: [], series: [] };
     data.solar = data.solar || { series: [] };
     data.oil = data.oil || { series: [] };
+
+    var doc = el.ownerDocument, win = doc.defaultView || window;
+    var chunkCache = {}, chunkWait = {}, fallbackWait = [], fallbackLoading = false;
+    function directChunk(kind, key, source) {
+      source = source || data;
+      if (kind === 'spread') {
+        var sp = (source.spread && source.spread.series || []).filter(function (r) { return r.cat === key && Array.isArray(r.v); });
+        return sp.length ? { kind: kind, key: key, axis: (source.axes || {}).wk || [], series: sp } : null;
+      }
+      var rows = (source[kind] && source[kind].series || []).filter(function (r) { return Array.isArray(r.v); });
+      var axisKey = kind === 'solar' ? 'sol' : 'oil';
+      return rows.length ? { kind: kind, key: key, axis: (source.axes || {})[axisKey] || [], series: rows } : null;
+    }
+    function finishChunk(ref, chunk, error, source) {
+      if (chunk) chunkCache[ref] = chunk;
+      var waiting = chunkWait[ref] || [];
+      delete chunkWait[ref];
+      waiting.forEach(function (cb) { cb(chunk, error, source); });
+    }
+    function loadScript(url, done) {
+      var script = doc.createElement('script');
+      script.src = url; script.async = true; script.dataset.argusChunk = url;
+      script.onload = function () { done(null); };
+      script.onerror = function () { script.remove(); done(new Error('load failed: ' + url)); };
+      (doc.head || doc.documentElement).appendChild(script);
+    }
+    function loadFallback(done) {
+      if (win.ARGUS_FULL) { done(null, win.ARGUS_FULL); return; }
+      fallbackWait.push(done);
+      if (fallbackLoading) return;
+      fallbackLoading = true;
+      var url = (data.chunks || {}).fallback || 'data/argus_data_full.js';
+      loadScript(url, function (error) {
+        fallbackLoading = false;
+        var full = win.ARGUS_FULL;
+        var waiting = fallbackWait.slice(); fallbackWait = [];
+        waiting.forEach(function (cb) { cb(error || (!full ? new Error('fallback payload missing') : null), full); });
+      });
+    }
+    function loadChunk(kind, key, done) {
+      var ref = kind + ':' + key;
+      var direct = directChunk(kind, key);
+      if (direct) { done(direct, null, 'inline'); return; }
+      if (chunkCache[ref]) { done(chunkCache[ref], null, 'cache'); return; }
+      if (win.ARGUS_CHUNKS && win.ARGUS_CHUNKS[ref]) {
+        chunkCache[ref] = win.ARGUS_CHUNKS[ref]; done(chunkCache[ref], null, 'chunk'); return;
+      }
+      if (chunkWait[ref]) { chunkWait[ref].push(done); return; }
+      chunkWait[ref] = [done];
+      var manifest = data.chunks || {};
+      var url = kind === 'spread' ? (manifest.spread || {})[key] : manifest[kind];
+      if (!url) {
+        finishChunk(ref, null, new Error('chunk manifest missing: ' + ref), null); return;
+      }
+      loadScript(url, function (error) {
+        var loaded = win.ARGUS_CHUNKS && win.ARGUS_CHUNKS[ref];
+        if (!error && loaded) { finishChunk(ref, loaded, null, 'chunk'); return; }
+        loadFallback(function (fallbackError, full) {
+          var fallbackChunk = full ? directChunk(kind, key, full) : null;
+          finishChunk(ref, fallbackChunk, fallbackChunk ? null : (fallbackError || error),
+            fallbackChunk ? 'fallback' : null);
+        });
+      });
+    }
 
     var defCat = (function () {
       var withHunt = data.spread.series.filter(function (r) { return r.hunt && r.hunt.length; });
@@ -308,8 +455,9 @@
     var ST = { cat: defCat, spLimit: 24, oilRange: '5y' };
 
     el.innerHTML = '<div class="ag-wrap">' + hero() + nav() + kpis() +
+      sec('hunt', '🎯 신규·확인 시그널', '상태·확인일과 데이터 신뢰도를 함께 확인') +
+      sec('health', '🩺 데이터 건강상태', 'stale 및 표본 부족 시리즈는 별도 확인') +
       sec('board', '🏔 체인 스코어보드', '게이지 = 사이클 위치 percentile(전 이력) · 셀 = 모멘텀 중앙값 %') +
-      sec('hunt', '🎯 사냥 시그널', 'bottom_turn: pos≤20 & 4주·1주 반등 / peak_warn: pos≥85 & 4주 하락') +
       sec('spread', '📉 스프레드 차트', '주간 5년 · 마커 = 현재 사냥 시그널', chips()) +
       sec('solar', '☀️ 태양광 밸류체인', '폴리 → 웨이퍼 → 셀 → 모듈 · PVInsights 주간') +
       sec('oil', '🛢 유가 데크', 'petronet 일간 → 주간 다운샘플 · 스프레드 = 제품-두바이', oilChips()) +
@@ -329,7 +477,7 @@
         ' · 참고용, 투자조언 아님</div></div>';
     }
     function nav() {
-      var items = [['board', '🏔 스코어보드'], ['hunt', '🎯 시그널'], ['spread', '📉 스프레드'], ['solar', '☀️ 태양광'], ['oil', '🛢 유가']];
+      var items = [['hunt', '🎯 시그널'], ['health', '🩺 건강상태'], ['board', '🏔 스코어보드'], ['spread', '📉 스프레드'], ['solar', '☀️ 태양광'], ['oil', '🛢 유가']];
       return '<div class="ag-nav">' + items.map(function (it) { return '<a href="#ag-' + it[0] + '">' + it[1] + '</a>'; }).join('') + '</div>';
     }
     function kpis() {
@@ -349,18 +497,38 @@
     function chips() {
       return '<div class="ag-chips" data-ck="cat">' + data.spread.cats.map(function (c) {
         var n = data.spread.series.filter(function (r) { return r.cat === c && r.hunt && r.hunt.length; }).length;
-        return '<button class="ag-chip' + (c === ST.cat ? ' on' : '') + '" data-cv="' + esc(c) + '">' + esc(c) + (n ? ' <b style="color:' + UP + '">●' + n + '</b>' : '') + '</button>';
+        return '<button type="button" aria-pressed="' + (c === ST.cat ? 'true' : 'false') + '" class="ag-chip' + (c === ST.cat ? ' on' : '') + '" data-cv="' + esc(c) + '">' + esc(c) + (n ? ' <b style="color:' + UP + '">●' + n + '</b>' : '') + '</button>';
       }).join('') + '</div>';
     }
     function oilChips() {
       return '<div class="ag-chips" data-ck="oilRange">' + [['all', '전체'], ['10y', '10년'], ['5y', '5년'], ['1y', '1년']].map(function (p) {
-        return '<button class="ag-chip' + (p[0] === ST.oilRange ? ' on' : '') + '" data-cv="' + p[0] + '">' + p[1] + '</button>';
+        return '<button type="button" aria-pressed="' + (p[0] === ST.oilRange ? 'true' : 'false') + '" class="ag-chip' + (p[0] === ST.oilRange ? ' on' : '') + '" data-cv="' + p[0] + '">' + p[1] + '</button>';
       }).join('') + '</div>';
     }
     function footer() {
       return '<div class="ag-foot">ARGUS — 주간 시황 원장(xlsm) 기반 시클리컬 사이클 계량 · pos = 전 이력 percentile(0=역사적 바닥, 100=역사적 고점) · ' +
         'mom = 1/4/13/26주 변화율 · 종목 매핑은 사업 익스포저 큐레이션(참고용 라벨) · <b>투자조언 아님</b> · 기준일 ' + esc(data.asof || '—') +
         (data.mock ? ' · <span style="color:' + WARN + '">본 화면은 MOCK 데이터 렌더 검증본</span>' : '') + '</div>';
+    }
+
+    /* ── 데이터 건강상태 ── */
+    function qualityList(rows, empty) {
+      if (!rows || !rows.length) return '<div class="ag-empty">' + empty + '</div>';
+      return '<ul class="ag-quality-list">' + rows.map(function (r) {
+        return '<li><b>' + esc(r.name || r.sid) + '</b> · ' + esc(r.last_date || '날짜 없음') +
+          ' · ' + esc(r.freq || '빈도 미상') + ' · n=' + esc(r.n_obs == null ? '—' : r.n_obs) +
+          (r.source ? ' · ' + esc(r.source) : '') + '</li>';
+      }).join('') + '</ul>';
+    }
+    function rHealth() {
+      var h = data.health || {};
+      body('health').innerHTML = '<div class="ag-card ag-health"><div class="metric"><span>총 시리즈</span><b>' + (h.total || 0) + '</b></div>' +
+        '<div class="metric"><span>활성(신호 적격)</span><b style="color:' + UP + '">' + (h.active || 0) + '</b></div>' +
+        '<div class="metric"><span>stale</span><b style="color:' + DOWN + '">' + (h.stale || 0) + '</b></div>' +
+        '<div class="metric"><span>저신뢰(표본 부족)</span><b style="color:' + WARN + '">' + (h.low_confidence || 0) + '</b></div>' +
+        '<div class="ag-health-lists" style="grid-column:1/-1"><details><summary>stale 목록 ' + (h.stale || 0) + '개</summary>' +
+        qualityList(h.stale_series, 'stale 시리즈 없음') + '</details><details><summary>저신뢰 목록 ' + (h.low_confidence || 0) + '개</summary>' +
+        qualityList(h.low_confidence_series, '표본 부족 시리즈 없음') + '</details></div></div>';
     }
 
     /* ── ① 스코어보드 ── */
@@ -372,11 +540,17 @@
           (h.pw ? '<span class="ag-hb pw">⚠ 고점 ' + h.pw + '</span>' : '') +
           (h.ac ? '<span class="ag-hb ac">⤴ 가속 ' + h.ac + '</span>' : '');
         var m = c.mom || {};
+        var members = (c.members || []).map(function (r) {
+          return '<div class="ag-member"><b>' + esc(r.name || r.sid) + '</b><span>' + esc(r.freq || '—') + ' · n=' + esc(r.n_obs == null ? '—' : r.n_obs) + '</span>' +
+            '<span>' + esc(r.last_date || '날짜 없음') + ' · ' + esc(r.freshness || '미상') + (r.low_confidence ? ' · 표본부족' : '') + '</span>' +
+            '<span>' + esc(r.basis_id || r.source || 'source 미상') + '</span></div>';
+        }).join('');
         return '<div class="ag-chain"><div class="top">' + gauge(c.pos) +
           '<div><div class="lb">' + esc(c.label) + '</div><div class="nn">' + (c.n || 0) + ' series</div></div></div>' +
           '<div class="ag-momrow">' + momCell('1W', m.w1) + momCell('4W', m.w4) + momCell('13W', m.w13) + momCell('26W', m.w26) + '</div>' +
           '<div class="ag-hbadges">' + badges + '</div>' +
-          '<div class="ag-stocks">' + stockChips(c.stocks) + '</div></div>';
+          '<div class="ag-stocks">' + stockChips(c.stocks) + '</div>' +
+          '<details class="ag-members"><summary>구성 시리즈 ' + (c.members || []).length + '개 펼치기</summary>' + members + '</details></div>';
       }).join('') + '</div>';
     }
 
@@ -384,51 +558,114 @@
     function sigTable(rows, kind) {
       if (!rows.length) return '<div class="ag-empty">현재 ' + (kind === 'bt' ? 'bottom_turn' : 'peak_warn') + ' 시그널 없음</div>';
       return '<div class="ag-scroll"><table class="ag-tbl"><thead><tr>' +
-        '<th class="l">시리즈</th><th>pos</th><th>pos5y</th><th>1W%</th><th>4W%</th><th>z26</th><th>현재값</th><th>26주</th><th class="l">연관 종목</th>' +
+        '<th class="l">시리즈</th><th class="l">상태</th><th>pos</th><th>pos5y</th><th>1W%</th><th>4W%</th><th>z26</th><th>현재값</th><th>26주</th><th class="l">데이터 근거</th><th class="l">연관 종목</th>' +
         '</tr></thead><tbody>' + rows.map(function (r) {
+          var state = esc(r.state || 'active');
+          var metaLines = [], metaA = [], metaB = [];
+          metaA.push('last ' + esc(r.last_date || '미상'));
+          metaA.push('freq ' + esc(r.freq || '미상'));
+          metaA.push('freshness ' + esc(r.freshness || '미상'));
+          metaB.push('n_obs ' + esc(r.n_obs == null ? '미상' : r.n_obs));
+          metaB.push('pos ' + esc(r.pos_window || '미상'));
+          metaB.push('mom ' + esc(r.mom_method || '미상'));
+          if (metaA.length) metaLines.push(metaA.join(' · '));
+          if (metaB.length) metaLines.push(metaB.join(' · '));
+          metaLines.push('source ' + esc(r.source || '미상') + (r.basis_id ? ' · basis ' + esc(r.basis_id) : ''));
+          if (r.fut && r.fut.state && r.fut.state !== 'no_data') {
+            var fu = r.fut.state === 'diverge';
+            metaLines.push('<span style="color:' + (fu ? DOWN : UP) + ';font-weight:700">'
+              + (fu ? '↓ 선물 괴리' : (r.fut.state === 'confirm_strong' ? '↑↑ 선물 2주 연속 확인' : '↑ 선물 확인'))
+              + '</span> ' + (r.fut.chg != null ? (r.fut.chg > 0 ? '+' : '') + r.fut.chg + '%' : '')
+              + ' <span class="ag-meta">(' + esc(r.fut.proxy) + ' 1주 선행 · 참고정보, 시그널 조건 아님)</span>');
+          }
+          var stateMeta = [];
+          if (r.on_date) stateMeta.push('on ' + esc(r.on_date));
+          if (r.confirmed_on) stateMeta.push('confirmed ' + esc(r.confirmed_on));
+          stateMeta.push('rule ' + esc(r.rule_version || '미상'));
+          if (state === 'candidate') {
+            var held = Math.min(Number(r.bars_required || 2), Number(r.bars_held || 0));
+            var required = Number(r.bars_required || 2);
+            stateMeta.push('<progress class="ag-progress" max="' + required + '" value="' + held + '" aria-label="확인 진행도 ' + held + '/' + required + ' bar"></progress> ' + held + '/' + required + ' bar');
+            stateMeta.push('다음 ' + esc(r.freq || '') + ' 관측에서도 반전 조건 유지 시 확정');
+          }
+          if (r.low_confidence) stateMeta.push('⚠ 표본 부족');
           return '<tr><td class="nm l">' + esc(r.name) + '<span class="c">' + esc(r.cat || '') + '</span></td>' +
+            '<td class="l" style="font-family:inherit"><span class="ag-status' + (r.low_confidence ? ' low' : '') + '">' + state + '</span>' +
+            (stateMeta.length ? '<div class="ag-meta">' + stateMeta.join('<br>') + '</div>' : '') + '</td>' +
             '<td>' + posBarCell(r.pos) + '</td>' +
             '<td style="color:' + DIM + '">' + (fin(r.pos5y) ? r.pos5y.toFixed(0) : '—') + '</td>' +
             '<td>' + fmtPct(r.m1) + '</td><td>' + fmtPct(r.m4) + '</td>' +
             '<td style="color:' + DIM + '">' + (fin(r.z26) ? r.z26.toFixed(1) : '—') + '</td>' +
             '<td><b>' + fmt(r.last) + '</b> <span style="color:' + DIM + ';font-size:10px">' + esc(r.unit || '') + '</span></td>' +
             '<td>' + spark(r.spark || [], 90, 24, kind === 'bt' ? UP : DOWN) + '</td>' +
+            '<td class="l ag-meta">' + metaLines.join('<br>') + '</td>' +
             '<td class="l" style="font-family:inherit">' + stockChips(r.stocks) + '</td></tr>';
         }).join('') + '</tbody></table></div>';
     }
     function rHunt() {
+      var btc = data.signals.btc || [], pwc = data.signals.pwc || [];
+      var cand = '';
+      if (btc.length || pwc.length) {
+        cand = '<div class="ag-card" style="margin-top:12px">' +
+          '<div style="font-size:12.5px;font-weight:800;margin-bottom:4px">👀 관찰 중 (candidate — 확인 대기)</div>' +
+          '<div class="ag-meta" style="margin-bottom:8px">사이클 위치·추세 조건은 충족했으나 확인(2개 관측 연속 반전)이 남은 후보. 확인되면 위 확정 시그널로 승격된다.</div>' +
+          (btc.length ? '<div style="font-size:12px;font-weight:700;margin:6px 0 4px;color:' + UP + '">🎯 바닥 후보 ' + btc.length + '건</div>' + sigTable(btc, 'btc') : '') +
+          (pwc.length ? '<div style="font-size:12px;font-weight:700;margin:10px 0 4px;color:' + DOWN + '">⚠ 고점 후보 ' + pwc.length + '건</div>' + sigTable(pwc, 'pwc') : '') +
+          '</div>';
+      }
       body('hunt').innerHTML =
-        '<div class="ag-card" style="margin-bottom:12px"><div style="font-size:12.5px;font-weight:800;margin-bottom:8px;color:' + UP + '">🎯 bottom_turn — 역사적 바닥권에서 반등 시작</div>' + sigTable(data.signals.bt || [], 'bt') + '</div>' +
-        '<div class="ag-card"><div style="font-size:12.5px;font-weight:800;margin-bottom:8px;color:' + DOWN + '">⚠ peak_warn — 역사적 고점권에서 하락 전환</div>' + sigTable(data.signals.pw || [], 'pw') + '</div>';
+        '<div class="ag-card" style="margin-bottom:12px"><div style="font-size:12.5px;font-weight:800;margin-bottom:8px;color:' + UP + '">🎯 bottom_turn — 역사적 바닥권에서 반등 시작(확정)</div>' + sigTable(data.signals.bt || [], 'bt') + '</div>' +
+        '<div class="ag-card"><div style="font-size:12.5px;font-weight:800;margin-bottom:8px;color:' + DOWN + '">⚠ peak_warn — 역사적 고점권에서 하락 전환(확정)</div>' + sigTable(data.signals.pw || [], 'pw') + '</div>' +
+        cand;
     }
 
     /* ── ③ 스프레드 차트 ── */
-    function rSpread() {
-      var rows = data.spread.series.filter(function (r) { return r.cat === ST.cat; });
-      if (!rows.length) { body('spread').innerHTML = '<div class="ag-empty">카테고리 데이터 없음</div>'; return; }
-      rows = rows.slice().sort(function (a, b) {
+    var spreadPanels = {};
+    function renderSpreadPanel(panel, chunk) {
+      var rows = (chunk.series || []).slice().sort(function (a, b) {
         var ha = a.hunt && a.hunt.length ? 1 : 0, hb = b.hunt && b.hunt.length ? 1 : 0;
         return hb - ha;
       });
+      if (!rows.length) { panel.innerHTML = '<div class="ag-empty">카테고리 데이터 없음</div>'; return; }
       var shown = rows.slice(0, ST.spLimit);
-      body('spread').innerHTML = '<div class="ag-grid">' + shown.map(function (r, i) {
+      panel.innerHTML = '<div class="ag-grid">' + shown.map(function (r, i) {
         var col = r.hunt && r.hunt.indexOf('bottom_turn') >= 0 ? UP : (r.hunt && r.hunt.indexOf('peak_warn') >= 0 ? DOWN : PAL[i % PAL.length]);
         return '<div class="ag-ccard"><div class="h"><span class="t">' + esc(r.name) + '</span><span class="u">' + esc(r.unit || '') + '</span>' +
           (fin(r.pos) ? '<span class="ag-badge" style="color:' + posColor(r.pos) + ';border:1px solid ' + posColor(r.pos) + '">pos ' + r.pos.toFixed(0) + '</span>' : '') +
           huntBadges(r.hunt) +
           '<span class="lv">' + fmt(r.last) + ' <span style="font-weight:500;color:' + DIM + '">' + (fin(r.m4) ? '' : '') + '</span></span></div>' +
-          chart(data.axes.wk, [{ name: r.name, v: r.v, col: col, hunt: r.hunt }], { h: 150, unit: r.unit }) + '</div>';
+          chart(chunk.axis, [{ name: r.name, v: r.v, col: col, hunt: r.hunt }], { h: 150, unit: r.unit, title: r.name }) + '</div>';
       }).join('') + '</div>' +
-        (rows.length > ST.spLimit ? '<div class="ag-more"><button class="ag-chip" data-act="spmore">▼ ' + (rows.length - ST.spLimit) + '개 더 보기</button></div>' :
-          (ST.spLimit > 24 ? '<div class="ag-more"><button class="ag-chip" data-act="spless">▲ 접기</button></div>' : ''));
-      bindHover(body('spread'));
-      var mb = body('spread').querySelector('[data-act]');
-      if (mb) mb.onclick = function () { ST.spLimit = mb.dataset.act === 'spmore' ? 999 : 24; rSpread(); };
+        (rows.length > ST.spLimit ? '<div class="ag-more"><button type="button" class="ag-chip" data-act="spmore">▼ ' + (rows.length - ST.spLimit) + '개 더 보기</button></div>' :
+          (ST.spLimit > 24 ? '<div class="ag-more"><button type="button" class="ag-chip" data-act="spless">▲ 접기</button></div>' : ''));
+      bindHover(panel);
+      var mb = panel.querySelector('[data-act]');
+      if (mb) mb.onclick = function () {
+        ST.spLimit = mb.dataset.act === 'spmore' ? 999 : 24; renderSpreadPanel(panel, chunk);
+      };
+    }
+    function rSpread() {
+      var host = body('spread');
+      Object.keys(spreadPanels).forEach(function (cat) {
+        spreadPanels[cat].hidden = cat !== ST.cat;
+      });
+      if (spreadPanels[ST.cat]) return;
+      var panel = doc.createElement('div');
+      panel.dataset.categoryPanel = ST.cat || '';
+      panel.innerHTML = '<div class="ag-load" role="status">선택 카테고리 시계열 로딩…</div>';
+      host.appendChild(panel); spreadPanels[ST.cat] = panel;
+      loadChunk('spread', ST.cat, function (chunk, error, source) {
+        panel.dataset.payloadSource = source || 'error';
+        if (error || !chunk) {
+          panel.innerHTML = '<div class="ag-empty" role="alert">시계열 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+        }
+        renderSpreadPanel(panel, chunk);
+      });
     }
 
     /* ── ④ 태양광 ── */
-    function rSolar() {
-      var ss = data.solar.series || [];
+    function renderSolar(chunk) {
+      var ss = chunk.series || [];
       if (!ss.length) { body('solar').innerHTML = '<div class="ag-empty">태양광 데이터 없음</div>'; return; }
       var ORDER = [['poly', '폴리실리콘'], ['wafer', '웨이퍼'], ['cell', '셀'], ['module', '모듈']];
       var mains = ORDER.map(function (o) {
@@ -453,27 +690,38 @@
       body('solar').innerHTML = flow +
         '<div class="ag-grid2" style="margin-top:12px">' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">단계별 가격 지수 (5년, 시작=100)</div>' +
-        chart(data.axes.sol, mainRows, { h: 200, idx: true }) +
+        chart(chunk.axis, mainRows, { h: 200, idx: true, title: '태양광 단계별 가격 지수' }) +
         '<div class="ag-lgd">' + mainRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div>' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">모듈 가격 (USD/W)</div>' +
-        chart(data.axes.sol, modRows, { h: 200, unit: 'USD/W' }) +
+        chart(chunk.axis, modRows, { h: 200, unit: 'USD/W', title: '태양광 모듈 가격' }) +
         '<div class="ag-lgd">' + modRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div></div>';
       bindHover(body('solar'));
     }
+    function rSolar() {
+      body('solar').innerHTML = '<div class="ag-load" role="status">태양광 시계열 로딩…</div>';
+      loadChunk('solar', 'solar', function (chunk, error, source) {
+        body('solar').dataset.payloadSource = source || 'error';
+        if (error || !chunk) {
+          body('solar').innerHTML = '<div class="ag-empty" role="alert">태양광 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+        }
+        renderSolar(chunk);
+      });
+    }
 
     /* ── ⑤ 유가 데크 ── */
-    function oilFrom() {
-      var ax = data.axes.oil, n = ax.length;
+    function oilFrom(axis) {
+      var n = axis.length;
       if (ST.oilRange === 'all') return 0;
       var yrs = ST.oilRange === '10y' ? 10 : ST.oilRange === '5y' ? 5 : 1;
       return Math.max(0, n - yrs * 52 - 1);
     }
-    function rOil() {
-      var ss = data.oil.series || [];
+    var oilChunk = null;
+    function renderOil(chunk) {
+      var ss = chunk.series || [];
       if (!ss.length) { body('oil').innerHTML = '<div class="ag-empty">유가 데이터 없음</div>'; return; }
       var crude = ss.filter(function (r) { return r.grp === 'crude'; });
       var crack = ss.filter(function (r) { return r.grp === 'crack'; });
-      var from = oilFrom();
+      var from = oilFrom(chunk.axis);
       var kpi = '<div class="ag-oilkpis">' + crude.concat(crack.slice(0, 2)).map(function (r) {
         return '<div class="ag-oilk"><div class="l">' + esc(r.name) + '</div><div class="v">' + fmt(r.last) +
           ' <span style="font-size:10px;color:' + DIM + '">' + esc(r.unit || '') + '</span></div><div class="w">WoW ' + fmtPct(r.wow) +
@@ -484,12 +732,23 @@
       body('oil').innerHTML = kpi +
         '<div class="ag-grid2">' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">원유 ($/bbl)</div>' +
-        chart(data.axes.oil, crudeRows, { h: 210, unit: '$/bbl', from: from }) +
+        chart(chunk.axis, crudeRows, { h: 210, unit: '$/bbl', from: from, title: '원유 가격' }) +
         '<div class="ag-lgd">' + crudeRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div>' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">정제 스프레드 — 제품-두바이 ($/bbl)</div>' +
-        chart(data.axes.oil, crackRows, { h: 210, unit: '$/bbl', from: from }) +
+        chart(chunk.axis, crackRows, { h: 210, unit: '$/bbl', from: from, title: '정제 스프레드' }) +
         '<div class="ag-lgd">' + crackRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div></div>';
       bindHover(body('oil'));
+    }
+    function rOil() {
+      if (oilChunk) { renderOil(oilChunk); return; }
+      body('oil').innerHTML = '<div class="ag-load" role="status">유가 시계열 로딩…</div>';
+      loadChunk('oil', 'oil', function (chunk, error, source) {
+        body('oil').dataset.payloadSource = source || 'error';
+        if (error || !chunk) {
+          body('oil').innerHTML = '<div class="ag-empty" role="alert">유가 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+        }
+        oilChunk = chunk; renderOil(chunk);
+      });
     }
 
     /* 칩 이벤트 (위임) */
@@ -499,11 +758,28 @@
       var key = row.dataset.ck, val = b.dataset.cv;
       if (val == null || ST[key] === val) return;
       ST[key] = val;
-      row.querySelectorAll('.ag-chip').forEach(function (c) { c.classList.toggle('on', c === b); });
+      row.querySelectorAll('.ag-chip').forEach(function (c) {
+        var selected = c === b;
+        c.classList.toggle('on', selected);
+        c.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
       if (key === 'cat') { ST.spLimit = 24; rSpread(); }
       else if (key === 'oilRange') rOil();
     });
 
-    rBoard(); rHunt(); rSpread(); rSolar(); rOil();
+    function lazySection(id, render) {
+      if (!win.IntersectionObserver) { render(); return; }
+      body(id).innerHTML = '<div class="ag-load" role="status">화면에 가까워지면 시계열을 불러옵니다.</div>';
+      var target = W.querySelector('#ag-' + id);
+      var observer = new win.IntersectionObserver(function (entries) {
+        if (entries.some(function (entry) { return entry.isIntersecting; })) {
+          observer.disconnect(); render();
+        }
+      }, { rootMargin: '240px' });
+      observer.observe(target);
+    }
+
+    rHunt(); rHealth(); rBoard(); rSpread();
+    lazySection('solar', rSolar); lazySection('oil', rOil);
   };
 })();

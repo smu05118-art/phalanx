@@ -1,0 +1,1 @@
+var PSHC=window.PSHC||(window.PSHC={});PSHC["JPI"]={"country":{},"country_i":{}};

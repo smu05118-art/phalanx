@@ -50,11 +50,11 @@ push를 감지해 `tools/inject_ui_patch.py`로 재주입한다(멱등 — 훅�
 - 전체 끄기: `ui-patch-inject.yml` 삭제 + patch.css/patch.js를 빈 파일로 (다음 크론이 훅 없는 index.html을 밀면 원상복구).
 - 일부 끄기: patch.js에서 해당 `safe('모듈명', ...)` 블록 삭제.
 
-## 빌더가 해주면 더 좋아지는 것 (감사 P0-06 · P1-03 · P1-08)
+## manifest 필드 현황 (감사 P0-06 · P1-03 · P1-08)
 
-manifest.js 생성부에 리전별 필드 주입 — 프론트는 이미 이 필드를 우선 사용하도록 되어 있거나 폴백으로 계산 중:
+2026-08-28 빌더가 `source_short`·`n`·전역 `built` 주입 완료(커밋 c2b901b) — patch.js는 이 값을 우선 사용한다
+(하드코딩 SRC_SHORT/REG_NAME은 폴백으로 유지). 훅도 같은 커밋으로 빌더 템플릿에 내장되어
+재주입 Action은 안전망으로만 동작(no-op).
 
-- `source_short`: 공개용 한 줄 출처문 (현재 patch.js의 SRC_SHORT 하드코딩을 대체)
-- `n`: 리전 기업 수 (현재는 로드된 샤드만 계산 가능)
-- `last_pub`: 실제 마지막 공표월 (현재는 프론트가 revenue/detail 스캔으로 폴백 계산)
-- 전역 `built`: 빌드 시각 (신선도 배지의 "매일 갱신"을 실측값으로)
+- `last_pub`(리전별 실제 마지막 공표월)만 미주입 — 프론트가 revenue/detail 스캔으로 정확히 계산 중이라
+  실익이 작음. 빌더에서 주입하면 patch.js가 자동으로 그 값을 우선 사용한다(lastPubYM 참고).
