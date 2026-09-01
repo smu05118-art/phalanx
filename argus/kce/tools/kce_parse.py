@@ -220,6 +220,35 @@ def _basis_of(lead):
     return "연결" if i_con > i_sep else "별도"
 
 
+# 원문이 명시하는 국내/해외 신호. 회사마다 형태가 다르다:
+#   GS건설  — 표가 [국내공사]/[해외공사]로 분할된다(lead에 표지)
+#   삼성물산 — 발주처 열에 `(카타르)`·`(한국)` 국가 접두가 붙는다
+#   HDC현산 — 신호 없음(관급/민간 분할). 원본도 해외를 분리하지 않는다
+_CORP_PAREN = {"주", "유", "재", "사", "합", "자", "㈜",
+               "주식회사", "유한회사", "재단법인", "사단법인"}
+_SEC_OVS = re.compile(r"\[\s*해외\s*(공사|부문|사업)?\s*\]")
+_SEC_DOM = re.compile(r"\[\s*국내\s*(공사|부문|사업)?\s*\]")
+_CL_COUNTRY = re.compile(r"^\s*[\(（]\s*([^)）]{1,14})\s*[\)）]")
+
+
+def region_of(lead, cl):
+    """그 분기 원문이 명시하는 국내/해외. 신호가 없으면 None(정적 reg로 폴백).
+
+    lead는 꼬리 200자만 본다 — DL이앤씨 상세표의 '가. 지배회사 및 해외종속회사'처럼
+    대괄호 없는 '해외'가 본문에 흔해서, 넓게 보면 전량 해외로 오판한다.
+    """
+    tail = (lead or "")[-200:]
+    io, idm = _SEC_OVS.search(tail), _SEC_DOM.search(tail)
+    if io or idm:
+        return "해외" if (io and (not idm or io.end() > idm.end())) else "국내"
+    m = _CL_COUNTRY.match(cl or "")
+    if m:
+        c = m.group(1).strip()
+        if c not in _CORP_PAREN:      # (주)·(유) 등 법인격 괄호는 국가가 아니다
+            return "국내" if c == "한국" else "해외"
+    return None
+
+
 def _near_miss(t, need):
     """핵심 필드의 절반 이상이 매칭됐는데 완성되지 않은 표 = 파서가 놓쳤을 가능성이 큰 표."""
     got = {f for f in t["fields"] if f}

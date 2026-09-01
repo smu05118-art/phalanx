@@ -27,12 +27,32 @@ import sys
 
 import kce_render
 from kce_lib import CORP, atomic_write, extract_data, inject_data, norm_col, q_next
-from kce_parse import parse_ii4, parse_p8
+from kce_parse import parse_ii4, parse_p8, region_of
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KCE = os.path.dirname(HERE)
 with open(os.path.join(HERE, "assets", "curve_D.json"), encoding="utf-8") as _f:
     CURVE = json.load(_f)
+
+# III-8 표는 공사명 끝에 공종을 덧붙이는 회사가 있다(`GTPP (화공플랜트)`).
+# 그 접미만 떼어 II-4 이름과 잇되, 별개 계약을 구분하는 접미는 남겨야 한다
+# (삼성E&A `CC-7`과 `CC-7 (Eng'g&PRM Service)`는 서로 다른 계약이다).
+_PAREN_TAIL = re.compile(r"\(([^)]*)\)$")
+_SEG_WORDS = ("플랜트", "화공", "토목", "건축", "주택", "인프라", "전력",
+              "발전", "신사업", "기타")
+
+
+def strip_seg_suffix(key):
+    """정규화된 이름 끝의 괄호 접미가 **공종 표기일 때만** 떼어낸다."""
+    m = _PAREN_TAIL.search(key)
+    if not m:
+        return key
+    tail = m.group(1)
+    if not tail or not all("가" <= c <= "힣" for c in tail):
+        return key                      # 영문·기호가 섞이면 계약 구분으로 본다
+    if not any(w in tail for w in _SEG_WORDS):
+        return key
+    return key[:m.start()]
 
 _AGG_NM = re.compile(r"(합계|^기타|^계$|^소계$|외\d*개현장)")
 
@@ -206,11 +226,27 @@ def _apply_ii4(D, parsed, k, q, rep):
             if live and entq not in live:
                 entq = live[0]
             s["_entq"] = entq
+            # 지역도 그 분기 원문이 명시하면 그것을 쓴다. 사이트의 reg는 공사명 기준으로
+            # 굳은 표시용 값이라, 시공지는 해외지만 발주처가 한국 법인인 원전 수출 같은
+            # 건에서 원본 집계와 갈린다(삼성물산 3건 148,706).
+            rq = region_of(t.get("lead"), rec.get("cl"))
+            if rq:
+                s["_regq"] = rq
+            # 표시법인이 바뀌면 이력으로 남긴다 — 다음 분기에 이 사업장이 표에서 빠져도
+            # _disp_ent가 승계할 근거가 된다(승계 이력이 없으면 원래 라벨로 되돌아간다).
+            prev_disp = _disp_ent(D, s, k - 1) if k else s["ent"]
+            if entq != prev_disp and not any(
+                    e.get("fq") == q and e.get("f") == "표시법인"
+                    for e in s.setdefault("ev", [])):
+                s["ev"].append({"fq": q, "f": "표시법인",
+                                "o": prev_disp, "n": entq, "d": ""})
+                rep["events"] += 1
             nm_raw = (rec.get("nm") or "").strip()
             names = s.setdefault("names", [])
             if nm_raw and (not names or names[-1][1] != nm_raw):
                 names.append([q, nm_raw])
     rep["created"] = created
+    rep["_matched"] = matched          # 백필 대상 판정에 쓴다(_backfill_p8)
     # 직전 분기 실측인데 이번 분기 미등장 → 공백(보고 누락) 경고
     for s in D["sites"]:
         if id(s) in matched or k == 0:
@@ -218,6 +254,47 @@ def _apply_ii4(D, parsed, k, q, rep):
         sf = s.get("sFilled") or [None] * n
         if s["s"]["bal"][k - 1] is not None and sf[k - 1] is None:
             rep["disappeared"].append(s["id"])
+
+
+def _backfill_p8(D, k, rep):
+    """II-4 표에 없는 사업장의 II-4 값을 III-8에서 역채움한다(`sFilled='p8'`).
+
+    회사는 매출 5% 미만 현장을 II-4 상세표에서 빼면서도 III-8에는 계속 싣는다.
+    원 빌더는 그 구간을 III-8 수주총액·진행률로 채운다 — 임베드 데이터에서 규칙을 역산했다:
+        amt = p8[basis].tot,  pr = p8[basis].pr,  cmp = round(tot × pr / 100),  bal = tot − cmp
+    (별도 우선, 없으면 연결). 이 패스가 없으면 새 분기에 그 사업장들이 통째로 비고,
+    "이번 분기 활성" 신호가 사라져 III-8 동명 매칭까지 흔들린다.
+    """
+    matched = rep.get("_matched") or set()
+    n = len(D["fqF"])
+    done = []
+    for s in D["sites"]:
+        if id(s) in matched or s["s"]["amt"][k] is not None:
+            continue
+        # II-4 이력이 있는 사업장만 채운다. III-8 전용 레코드(`-3-`, has[0]=0)는
+        # 애초에 II-4 계열이 없으므로 원 빌더도 채우지 않는다(7사 전수 확인).
+        if not (s.get("has") or [0])[0]:
+            continue
+        p8 = s.get("p8") or {}
+        b = None
+        for basis in ("별도", "연결"):
+            cand = p8.get(basis)
+            if cand and cand["tot"][k] is not None and cand["pr"][k] is not None:
+                b = cand
+                break
+        if b is None:
+            continue
+        tot, pr = b["tot"][k], b["pr"][k]
+        cmp_ = round(tot * pr / 100)
+        s["s"]["amt"][k] = tot
+        s["s"]["cmp"][k] = cmp_
+        s["s"]["bal"][k] = tot - cmp_
+        s["s"]["pr"][k] = pr
+        s.setdefault("sFilled", [None] * n)[k] = "p8"
+        done.append(s["id"])
+    rep["backfilled"] = done
+    # 백필된 사업장은 '사라짐'이 아니다
+    rep["disappeared"] = [x for x in rep["disappeared"] if x not in set(done)]
 
 
 def _last_meas(s, k):
@@ -332,8 +409,19 @@ def _apply_p8(D, parsed, k, rep):
         for rec in tab["rows"]:
             if rec.get("amt") is None or _is_agg(rec):
                 continue
+            # 후보 수집: 정확 키 + 공종 접미를 뗀 키.
+            # III-8 표는 공사명에 공종을 덧붙이는 회사가 있다(`GTPP (화공플랜트)`).
+            # 그 이름으로 만들어진 III-8 전용 레코드(-3-)와 II-4 실사업장(-2-)이 공존하는데,
+            # 정확 키만 보면 전용 레코드로 고정돼 실사업장의 계열에 구멍이 난다.
             key = _norm_nm(rec.get("nm"))
-            cands = [s for s in idx.get(key, []) if (id(s), basis) not in used]
+            keys = [key, strip_seg_suffix(key)]
+            cands, seen_ids = [], set()
+            for kk in keys:
+                for s in idx.get(kk, []):
+                    if (id(s), basis) in used or id(s) in seen_ids:
+                        continue
+                    seen_ids.add(id(s))
+                    cands.append(s)
             if not cands:
                 rep["p8_unmatched"].append(rec.get("nm"))
                 continue
@@ -348,7 +436,24 @@ def _apply_p8(D, parsed, k, rep):
                     p = _last_meas(s, k)
                     prev = s["s"]["amt"][p] if p is not None else None
                 return abs(prev - rec["amt"]) if prev is not None else float("inf")
-            s = sorted(cands, key=cont)[0]
+
+            # 랭킹: ① III-8 표의 '회사명' 열과 법인 일치 ② 이번 분기 II-4 실측 보유
+            #       ③ 과거 수주총액 연속성
+            # ①은 같은 공사가 법인별로 갈릴 때의 정확한 판별자다 — 현대건설 우즈베키스탄
+            # 현장은 별도 표가 '현대건설', 연결 표가 '현대엔지니어링'으로 서로 다른 사업장에
+            # 붙는다. ②는 III-8 전용 레코드보다 살아 있는 실사업장을 우선한다(DL이앤씨).
+            p8ent = _norm_nm(rec.get("p8_ent"))
+
+            def rank_p8(s):
+                ent_hit = 0 if (p8ent and _norm_nm(s.get("ent")) == p8ent) else 1
+                # II-4 이력이 있는 실사업장을 III-8 전용 레코드보다 우선한다.
+                # '이번 분기 실측'이 아니라 '이력 보유'로 보는 이유: III-8에서 역채움된
+                # 사업장은 sFilled='p8'이라 실측 판정에서 빠진다(DL이앤씨 Maaden 사례).
+                has_ii4 = 0 if (s.get("has") or [0])[0] else 1
+                return (ent_hit, has_ii4, cont(s))
+            if len(cands) > 1:
+                cands = sorted(cands, key=rank_p8)
+            s = cands[0]
             used.add((id(s), basis))
             tup = (rec.get("amt"), rec.get("pr"), rec.get("ub"),
                    rec.get("ubimp"), rec.get("rc"), rec.get("allw"))
@@ -365,8 +470,13 @@ def _apply_p8(D, parsed, k, rep):
             b["tot"][k] = rec.get("amt")
             b["pr"][k] = float(pr) if pr is not None else None   # 원본은 항상 float
 
-            b["ub"][k], b["ubimp"][k] = rec.get("ub"), rec.get("ubimp")
-            b["rc"][k], b["allw"][k] = rec.get("rc"), rec.get("allw")
+            # 손상차손누계·대손충당금은 **양수로 정규화**해 저장한다. 원문 표기가 회사·분기별로
+            # `(528)` 괄호음수와 `528` 양수를 오가는데, 임베드 DATA는 7사 전체에서 음수가
+            # 한 건도 없다(차트가 |ubimp|+|allw|로 그리는 것과 별개로 저장 규약이 양수다).
+            b["ub"][k] = rec.get("ub")
+            b["rc"][k] = rec.get("rc")
+            b["ubimp"][k] = abs(rec["ubimp"]) if rec.get("ubimp") is not None else None
+            b["allw"][k] = abs(rec["allw"]) if rec.get("allw") is not None else None
             b["dl"][k] = norm_date(rec.get("p8_dl"), end=True) or None
             s["has"][1] = 1
             rep["p8_cells"] += 1
@@ -383,6 +493,40 @@ def _worse_src(a, b):
     ia = _SRC_PRI.index(a) if a in _SRC_PRI else len(_SRC_PRI)
     ib = _SRC_PRI.index(b) if b in _SRC_PRI else len(_SRC_PRI)
     return a if ia <= ib else b
+
+
+def _disp_ent(D, s, k):
+    """그 분기의 '표시법인'(원문 표 법인).
+
+    이번 분기 표에 있으면 `_entq`, 없으면 `ev`의 표시법인 이력에서 직전 값을 승계하고,
+    그것도 없으면 정규화 라벨을 쓴다. **승계가 핵심이다** — GS건설은 2025Q1 표 개편으로
+    법인 헤더가 사라져 II-4에 실린 사업장이 전부 GS건설로 귀속되는데, 그때 옮겨졌지만
+    이번 분기 표에서 빠진 사업장을 원래 라벨로 되돌리면 매출이 엉뚱한 법인으로 간다.
+    """
+    if s.get("_entq"):
+        return s["_entq"]
+    pos = {q: i for i, q in enumerate(D["fqF"])}
+    cur = None
+    evs = sorted((e for e in (s.get("ev") or []) if e.get("f") == "표시법인"),
+                 key=lambda e: pos.get(e["fq"], 0))
+    for e in evs:
+        if pos.get(e["fq"], 10 ** 9) > k:
+            if cur is None:
+                cur = e.get("o")          # 첫 이벤트 이전 구간
+            break
+        cur = e.get("n")
+    return cur or s["ent"]
+
+
+def _ovs_never_split(D, ent, k):
+    """그 법인이 다른 전 분기에서 ovs=0이면 회사가 해외를 분리 공시하지 않는 것이다.
+    원문에 해외 표지가 아예 없는 HDC현산이 이 경우 — 새 분기도 전액 국내로 둔다."""
+    SUM = D["summary"]
+    if ent not in SUM.get("ovs", {}):
+        return False
+    ks = [i for i in range(len(D["fqF"]))
+          if i != k and SUM["rows"][ent][i] is not None]
+    return bool(ks) and all((SUM["ovs"][ent][i] or 0) == 0 for i in ks)
 
 
 def _recompute(D, k):
@@ -430,14 +574,19 @@ def _recompute(D, k):
                 D.setdefault("_missing_total", []).append(ent)
             continue
         SUM["rows"][ent][k] = sum(s["s"]["bal"][k] for s in meas) if meas else None
+        never = _ovs_never_split(D, ent, k)
         for key, reg in (("dom", "국내"), ("ovs", "해외")):
-            sub = [s for s in meas if s.get("reg") == reg]
+            sub = [s for s in meas
+                   if ("국내" if never else (s.get("_regq") or s.get("reg"))) == reg]
             if ent in SUM.get(key, {}):
-                SUM[key][ent][k] = sum(s["s"]["bal"][k] for s in sub) if sub else None
-    # revSummary(매출인식액)는 정규화 라벨(ent) 기준 — A/B 비교에서 원본 재현이 더 좋다.
-    # (계약잔액 summary만 원문 표 법인으로 귀속한다 — 위 _belongs)
+                # 그 법인에 실측이 있으면 한쪽 지역이 비어도 0으로 채운다(원본 규약).
+                SUM[key][ent][k] = (sum(s["s"]["bal"][k] for s in sub) if sub
+                                    else (0 if meas else None))
+    # revSummary도 계약잔액 summary와 같이 **원문 표 법인**으로 귀속하되, 이번 분기
+    # 표에 없는 사업장은 직전 표시법인을 승계한다(_disp_ent). 7사 전 분기 대조로 확인.
     for ent in REV["ents"]:
-        mine = [s for s in D["sites"] if s["ent"] == ent and not s.get("agg")]
+        mine = [s for s in D["sites"]
+                if _disp_ent(D, s, k) == ent and not s.get("agg")]
         vals = [s["rev"]["diff"][k] for s in mine
                 if s.get("rev") and s["rev"]["diff"][k] is not None]
         REV["rows"][ent][k] = sum(vals) if vals else None
@@ -604,6 +753,7 @@ def update_quarter(co, q, raw_dir, apply=False, forecast=False):
         rep["headers"]["p8"] = [{"cols": t["cols"], "n": t["n"],
                                  "basis": t["basis"]} for t in pp["tables"]]
         _apply_p8(D, pp, k, rep)
+        _backfill_p8(D, k, rep)
 
     # 붕괴 감시: 직전 분기 실측 사업장 중 이번에 사라진 비율이 임계치를 넘으면 중단한다.
     # 준공으로 빠지는 건 소수이고, 대량 소실은 표를 놓쳤다는 신호다(GS건설 99/90 사례).
@@ -626,6 +776,7 @@ def update_quarter(co, q, raw_dir, apply=False, forecast=False):
         _forecast(D, rep)
     for s in D["sites"]:
         s.pop("_entq", None)      # 임시 귀속 필드는 저장하지 않는다
+        s.pop("_regq", None)
     D.pop("_missing_total", None)
     _validate(D)
     D["codeGen"] = datetime.date.today().isoformat()
@@ -661,6 +812,7 @@ def main():
                     help="미래 4분기 S-curve 예측 재생성(실험적 — 원 빌더보다 과잉 생성한다)")
     a = ap.parse_args()
     rep = update_quarter(a.co, a.quarter, a.raw, a.apply, a.forecast)
+    rep.pop("_matched", None)
     rep["agg_rows"] = len(rep["agg_rows"])
     print(json.dumps(rep, ensure_ascii=False, indent=1))
     if rep.get("applied"):

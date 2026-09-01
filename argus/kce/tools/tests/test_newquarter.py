@@ -82,6 +82,23 @@ class TestNewQuarterPath(unittest.TestCase):
         self.assertTrue(all((s.get("sFilled") or [None] * len(D["fqF"]))[k] is None
                             for s in meas))
 
+    def test_p8_backfill(self):
+        """II-4 표에서 빠진 사업장은 III-8 수주총액·진행률로 채운다(sFilled='p8')."""
+        D, k, rep = self._load_into_new_quarter("sct", "sct_상세표_건설수주.html",
+                                                "sct_기타재무_진행률수주.html")
+        KB._backfill_p8(D, k, rep)
+        self.assertTrue(rep["backfilled"], "백필이 한 건도 일어나지 않았다")
+        for sid in rep["backfilled"]:
+            s = next(x for x in D["sites"] if x["id"] == sid)
+            b = (s.get("p8") or {}).get("별도") or (s.get("p8") or {}).get("연결")
+            self.assertEqual(s["s"]["amt"][k], b["tot"][k], sid)
+            self.assertEqual(s["s"]["pr"][k], b["pr"][k], sid)
+            self.assertEqual(s["s"]["cmp"][k], round(b["tot"][k] * b["pr"][k] / 100), sid)
+            self.assertEqual(s["s"]["bal"][k], b["tot"][k] - s["s"]["cmp"][k], sid)
+            self.assertEqual(s["sFilled"][k], "p8", sid)
+            # III-8 전용 레코드(has[0]=0)는 백필 대상이 아니다
+            self.assertEqual(s["has"][0], 1, sid)
+
     def test_underscore_keys_not_remapped(self):
         """p8Full의 `_dropQ` 등은 분기 인덱스 목록이지 시계열이 아니다."""
         D = copy.deepcopy(extract_data(os.path.join(KCE, "sct", "index.html")))
