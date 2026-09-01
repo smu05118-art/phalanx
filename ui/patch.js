@@ -51,6 +51,13 @@ function lastPubYM(){                                   /* P1-08: 리전별 실�
   return _lpCache[reg]=MONTHS[last];
 }
 
+/* ---------- 모듈 0. 캔버스 DPR 상한 (R2-32) ----------
+   216포인트 밀집 막대차트는 막대 폭이 1~2px라 DPR 2의 이점이 거의 없는데
+   인스턴스 60개분 래스터 비용을 그대로 낸다. 1.5로 캡하면 백킹 픽셀 44% 감소.
+   축 라벨이 8~9px이므로 1.5 미만으로 내리면 눈금이 뭉개진다. */
+/* 전역 Chart.defaults에 걸면 근거 없는 타 탭 대형 차트까지 흐려진다 →
+   모듈 11e 플러그인이 카드·상세 캔버스에만 적용한다. */
+
 /* ---------- 최근 본 기업 (P2-01) ---------- */
 var RKEY='phx_recent_v1';
 function getRecent(){ try{ return JSON.parse(localStorage.getItem(RKEY))||[]; }catch(e){ return []; } }
@@ -117,6 +124,7 @@ safe('tabs',function(){
     h+='<span class="tab'+(ST.tab===id?' on':'')+'" data-tab="'+id+'">'+esc(known[id])+'</span>'; });
   tb.innerHTML=h;
   tb.querySelectorAll('.tab').forEach(function(t){ t.onclick=function(){
+    if(window.__phxCancelSearch) window.__phxCancelSearch();
     ST.tab=t.dataset.tab; ST.view='overview'; ST.company=null; ST.q=''; ST._ovScroll=0;
     var q=document.getElementById('q'); if(q) q.value=''; render(); window.scrollTo(0,0); }; });
 });
@@ -524,6 +532,13 @@ safe('card-post',function(){
       if(sub.length) cc.innerHTML=sub.join(' · ');
       else cc.style.display='none';
     });
+    /* R2-5 보강: 접기를 '차트 생성 시점'이 아니라 '카드 생성 시점'에 적용한다.
+       지연 렌더 대기 카드가 빈 190px 상자를 띄웠다가 그려질 때 줄어드는 누적 시프트 방지. */
+    safe('card:yrhide',function(){
+      var b=d.querySelector('.ch-yr'), t=d.querySelector('.sub-ttl');
+      if(b) b.style.display='none';
+      if(t) t.style.visibility='hidden';
+    });
     /* R2-3: 상관계수는 증감이 아니다 — 하락 빨강(#ff5c5c)에서 분리 */
     safe('card:corr',function(){
       d.querySelectorAll('.headline .chg').forEach(function(el){
@@ -551,19 +566,105 @@ safe('card-post',function(){
 });
 
 /* ============================================================
+   모듈 9b. 카드 차트 — 연도별 차트 접기 + 색 충돌 해소 (R2-5/6)
+   -------------------------------------------------------------
+   'YoY by Year'(190px)는 메인 차트의 YoY 점선과 같은 배열을 달별로 접은 것이라
+   개요 단계에서 상시 노출할 값이 낮은데 카드 높이의 1/3과 Chart 인스턴스 1개를 쓴다.
+   → 기본 접힘, 제목을 누를 때 생성한다(인스턴스도 그때 만들어짐).
+   또 잠정 라인과 YoY 라인이 둘 다 #ffbe2e라 구분이 안 되고, 기업색이 #ffbe2e·#c45cff인
+   카드는 매출 바와 파생 라인이 같은 색이 된다 → 파생 라인을 무채색으로 옮긴다.
+   ※ 모듈 10(card-grid)보다 먼저 설치해야 한다.
+   ============================================================ */
+safe('card-charts',function(){
+  var _rcc=window.renderCompanyCharts; if(typeof _rcc!=='function') return;
+  /* 캔버스를 떼면 원본이 new Chart(undefined)를 호출해 Chart.js가 콘솔 에러를 찍는다.
+     그 한 번의 호출 동안만 생성자를 감싸 빈 대상이면 조용히 더미를 돌려준다. */
+  function withNullChartGuard(fn){
+    var R=window.Chart;
+    if(typeof R!=='function') return fn();
+    var G=function(el,cfg){
+      if(!el) return {destroy:function(){},update:function(){},resize:function(){},
+                      data:{datasets:[]},options:{}};
+      return new R(el,cfg);
+    };
+    try{ Object.setPrototypeOf(G,R); }catch(_){}   /* Chart.defaults 등 정적 참조 승계 */
+    G.prototype=R.prototype;
+    window.Chart=G;
+    try{ return fn(); } finally { window.Chart=R; }
+  }
+  window.renderCompanyCharts=function(div,co){
+    var cs=div.querySelectorAll('canvas');
+    var box=div.querySelector('.ch-yr'), ttl=div.querySelector('.sub-ttl');
+    var c2=(cs.length>1&&box&&ttl)?cs[1]:null;
+    if(c2) c2.remove();                    /* 2번째 캔버스를 떼면 원본은 메인 차트만 만든다 */
+    try{ withNullChartGuard(function(){ _rcc(div,co); }); }catch(e){}
+
+    safe('card:col',function(){            /* R2-6: 파생 라인 색을 기업색과 분리 */
+      var ch=charts&&charts[co.id+'_m']; if(!ch||!ch.data) return;
+      var hasProv=false;
+      ch.data.datasets.forEach(function(s){
+        if(s.label==='YoY%'){ s.borderColor='#e8e8f4'; s.borderWidth=1.6; }
+        else if(s.label==='MoM%'){ s.borderColor='#9a9ec4'; s.borderWidth=1.1; }
+        else if(s.label==='잠정'){ hasProv=true; s.borderColor='#ff8a3d';
+          s.pointBackgroundColor='#ff8a3d'; s.pointBorderColor='#ff8a3d'; }
+      });
+      ch.update('none');
+      var lg=div.querySelector('.legend');
+      if(lg) lg.innerHTML=
+        '<span><i class="bar" style="background:'+esc(co.color||'#3d8bfd')+'99"></i>월 프록시 매출</span>'
+       +(hasProv?'<span><i style="border-color:#ff8a3d;border-top-style:dashed"></i>잠정(미확정월)</span>':'')
+       +'<span><i style="border-color:#e8e8f4;border-top-style:dashed"></i>YoY</span>'
+       +'<span><i style="border-color:#9a9ec4;border-top-style:dashed"></i>MoM</span>';
+    });
+
+    if(!c2) return;
+    box.appendChild(c2); box.style.display='none';       /* R2-5: 기본 접힘 */
+    var open=false, built=false;
+    var setTtl=function(){ ttl.innerHTML=(open?'▾':'▸')+' 연도별 YoY 겹쳐보기 <em>(계절성)</em>'; };
+    ttl.className='sub-ttl phx-fold'; ttl.setAttribute('role','button'); ttl.tabIndex=0;
+    ttl.style.visibility=''; setTtl();      /* 토글이 준비된 시점에 제목을 되살린다 */
+    var tog=function(e){ if(e) e.stopPropagation();
+      open=!open; box.style.display=open?'':'none'; setTtl();
+      if(!open||built) return;
+      built=true;
+      safe('card:yr',function(){          /* 펼칠 때 비로소 연도별 인스턴스를 만든다.
+           원본은 두 캔버스를 함께 그리므로, 메인 인스턴스를 먼저 해제해
+           캔버스를 비워야 재호출이 깨지지 않는다(Chart.js: canvas already in use). */
+        var mk=co.id+'_m';
+        if(charts&&charts[mk]){ try{ charts[mk].destroy(); }catch(_){} delete charts[mk]; }
+        _rcc(div,co);
+        safe('card:yr:col',function(){    /* 재생성된 메인 차트에 색 규칙 재적용 */
+          var ch=charts&&charts[mk]; if(!ch||!ch.data) return;
+          ch.data.datasets.forEach(function(s){
+            if(s.label==='YoY%'){ s.borderColor='#e8e8f4'; s.borderWidth=1.6; }
+            else if(s.label==='MoM%'){ s.borderColor='#9a9ec4'; s.borderWidth=1.1; }
+            else if(s.label==='잠정'){ s.borderColor='#ff8a3d';
+              s.pointBackgroundColor='#ff8a3d'; s.pointBorderColor='#ff8a3d'; }
+          });
+          ch.update('none');
+        });
+      });
+    };
+    ttl.onclick=tog;
+    ttl.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tog(e); } };
+  };
+});
+
+/* ============================================================
    모듈 10. 카드 그리드 — 뷰포트 지연 렌더 + 키보드 접근 (R2-27/7)
    카드 30장 × Chart 2개를 동기 생성하던 것을, 화면에 들어올 때만 그린다.
    .ch-main/.ch-yr 높이가 CSS 고정이라 레이아웃 시프트는 0.
    ============================================================ */
 safe('card-grid',function(){
   var _rc=window.renderCards; if(typeof _rc!=='function') return;
-  var _rcc=window.renderCompanyCharts;
+  var _rcc=function(el,co){ return window.renderCompanyCharts(el,co); };  /* 호출 시점 해석 —
+     뒤에서 renderCompanyCharts를 감싸는 모듈(연도별 차트 접기 등)이 반드시 반영되도록 */
   var EAGER=6;                                   /* 첫 화면 몫은 항상 즉시 렌더 */
   var ioFired=false;
   function draw(el){ var co=el.__phxCo; if(!co) return;
     el.__phxCo=null; if(io) io.unobserve(el);
     safe('card-grid:draw',function(){ _rcc(el,co); }); }
-  var io=(window.IntersectionObserver&&typeof _rcc==='function')
+  var io=(window.IntersectionObserver&&typeof window.renderCompanyCharts==='function')
     ? new IntersectionObserver(function(es){
         ioFired=true;
         es.forEach(function(en){ if(en.isIntersecting) draw(en.target); });
@@ -590,7 +691,8 @@ safe('card-grid',function(){
           sb.classList.toggle('on',isStar(co.id));
           if(ST.cat==='watch'||ST.tab==='watch') render(); };
         sb.onkeydown=function(e){ e.stopPropagation(); }; }
-      card.onclick=function(){ ST._ovScroll=window.scrollY;
+      card.onclick=function(){ if(window.__phxCancelSearch) window.__phxCancelSearch();
+        ST._ovScroll=window.scrollY;
         ST.view='detail'; ST.company=co.id; ST.flow=co.rev_flow||'exp'; ST.q='';
         var q=document.getElementById('q'); if(q) q.value='';
         render(); window.scrollTo(0,0); };
@@ -705,6 +807,236 @@ safe('detail-post',function(){
 });
 
 /* ============================================================
+   모듈 11b. 상세뷰 보강 (R2-14/11/17/16)
+   ※ 모듈 8(지연 로드)보다 앞 — 로드 완료 후에 후처리가 돌아야 한다.
+   ============================================================ */
+safe('detail-more',function(){
+  var _rd=window.renderDetail; if(typeof _rd!=='function') return;
+  window.renderDetail=function(){
+    var v=_rd();
+    var co=null; try{ co=compObj(); }catch(e){}
+    if(!co) return v;
+
+    /* R2-14: 카드가 갖고 있던 요약(실적 D-day·나우캐스트·상관계수·주석)이
+       상세뷰에서 전부 사라져 깊이 들어갈수록 정보가 줄던 문제 */
+    safe('det:sum',function(){
+      var h=document.getElementById('hero');
+      if(!h||h.querySelector('.phx-detsum')) return;
+      var bits='';
+      safe('s1',function(){ if(typeof earnChip==='function') bits+=earnChip(co); });
+      safe('s2',function(){ if(typeof ncBadge==='function'){ var b=ncBadge(co); if(b) bits+=b; } });
+      safe('s3',function(){ if(typeof corrInfo!=='function') return;
+        var ci=corrInfo(co); if(!ci||ci.r==null) return;
+        bits+='<span class="phx-pb"><b>'+(ci.r>=0?'+':'')+(+ci.r).toFixed(2)+'</b>'
+          +'<em>세관↔매출 상관'+(ci.n?' '+ci.n+'Q':'')+'</em></span>'; });
+      var note=co.note?'<div class="co-note phx-detnote-body">'+co.note+'</div>':'';
+      if(!bits&&!note) return;
+      h.insertAdjacentHTML('afterbegin','<div class="phx-detsum">'
+        +(bits?'<div class="phx-detbits">'+bits+'</div>':'')+note+'</div>');
+      safe('det:sum:clamp',function(){       /* 카드와 같은 2줄 클램프 규칙 */
+        var n=h.querySelector('.phx-detnote-body'); if(!n) return;
+        if(stripTags(n.innerHTML).length<=140) return;
+        n.innerHTML='<div class="nt">'+n.innerHTML+'</div>'
+          +'<span class="nx" role="button" tabindex="0">＋ 프록시 정의 더보기</span>';
+        var x=n.querySelector('.nx');
+        x.onclick=function(e){ e.stopPropagation(); var o=n.classList.toggle('open');
+          x.textContent=o?'− 접기':'＋ 프록시 정의 더보기'; };
+      });
+    });
+
+    /* R2-11: 라디오(단일 선택)와 토글(다중)이 마크업·색이 같아 구분 불가.
+       + core_set===broad_set인 기업(JP 79%·KR/TW 100%)은 HS pill이 완전한 no-op */
+    safe('det:aff',function(){
+      var cnt=document.getElementById('cnt'); if(!cnt) return;
+      cnt.querySelectorAll('[data-mt],[data-rp],[data-fn]').forEach(function(e){
+        e.classList.add('phx-multi'); if(!e.title) e.title='여러 개를 함께 켤 수 있습니다'; });
+      cnt.querySelectorAll('[data-d],[data-sp],[data-g]').forEach(function(e){
+        e.classList.add('phx-radio'); if(!e.title) e.title='하나만 선택됩니다'; });
+      if(co.core_set&&co.broad_set&&co.core_set===co.broad_set)
+        cnt.querySelectorAll('[data-d="mode"]').forEach(function(e){   /* HS pill의 실제 속성 */
+          e.classList.add('phx-dead');
+          e.title='이 기업은 core와 broad의 HS 집합이 같아 결과가 바뀌지 않습니다'; });
+    });
+
+    /* R2-17: 발표 실적(분기 합계)이 월별 프록시와 같은 축에 얹히는데 설명이 없어
+       프록시가 실적을 크게 밑도는 것처럼 오독된다 */
+    safe('det:fin',function(){
+      if(typeof finOf!=='function'||!finOf(co)) return;
+      var on=ST.fin&&(ST.fin.rev||ST.fin.op||ST.fin.seg); if(!on) return;
+      if(ST.gran!=='M') return;
+      var h=document.getElementById('hero'); if(!h||h.querySelector('.phx-finnote')) return;
+      h.insertAdjacentHTML('afterbegin','<div class="phx-finnote">⚠️ <b>발표 실적은 분기 합계</b>라 '
+        +'월별 프록시 막대와 같은 축에서 약 3배 높게 찍힙니다. 같은 기준으로 보려면 '
+        +'<span class="pill" data-gq="1" role="button" tabindex="0">기간단위를 분기로</span> 바꾸세요.</div>');
+      var b=h.querySelector('[data-gq]');
+      if(b) b.onclick=function(){ ST.gran='Q'; safe('fin:prefs',function(){ if(typeof savePrefs==='function') savePrefs(); }); render(); };
+    });
+
+    /* R2-16: 세관 카드가 등록 순서대로 나열되고 비중 표시가 없어
+       매출의 대부분을 차지하는 세관이 아래쪽에 묻힌다 → 12개월 비중순 정렬 + 배지 */
+    safe('det:rank',function(){
+      if(ST.split) return;
+      var g=document.getElementById('grid'); if(!g||!g.children.length) return;
+      if(typeof dseries!=='function'||typeof cflow!=='function') return;
+      var fl=cflow();
+      var arr=[].slice.call(g.children).map(function(c){
+        var t=0; safe('rank:s',function(){ var s=dseries(c.dataset.code), a=(s[fl]||{}).v||[];
+          for(var i=Math.max(0,a.length-12);i<a.length;i++) t+=(a[i]||0); });
+        return [t,c]; });
+      var sum=arr.reduce(function(a,x){ return a+x[0]; },0); if(sum<=0) return;
+      /* order는 grid item에도 적용되므로 display를 바꾸지 않는다(바꾸면 반응형 열이 깨짐) */
+      arr.sort(function(a,b){ return b[0]-a[0]; }).forEach(function(p,i){
+        p[1].style.order=i;
+        var m=p[1].querySelector('.metrics');
+        if(m&&!m.querySelector('.phx-share'))
+          m.insertAdjacentHTML('beforeend','<div class="metric phx-share"><span class="val">'
+            +(p[0]/sum*100).toFixed(1)+'%</span><div class="lbl">최근 12개월 비중</div></div>');
+      });
+    });
+    return v;
+  };
+});
+
+/* ============================================================
+   모듈 11c. 국가뷰 어휘·안내 정정 (R2-19) + 범례 터치 토글 (R2-25)
+   ============================================================ */
+safe('country-copy',function(){
+  var _rc=window.renderCountry;
+  if(typeof _rc==='function') window.renderCountry=function(){
+    var v=_rc();
+    safe('cc',function(){
+      var CM={value:'값(누적)',share:'비중%',yoy:'국가별 YoY%',unit:'국가별 단가'};
+      document.querySelectorAll('#main .card-hd small').forEach(function(s){
+        var t=s.textContent||''; Object.keys(CM).forEach(function(k){
+          if(t.indexOf('· '+k)>=0) s.textContent=t.replace('· '+k,'· '+CM[k]); }); });
+      /* 'top 9개국 + 기타'는 실제 큐브(order 7개)와 불일치 — 실제 개수로 정정 */
+      safe('cc:n',function(){
+        var n=0; try{ var cd=countrySrc(); n=(cd&&cd.order&&cd.order.length)||0; }catch(e){}
+        if(!n) return;
+        document.querySelectorAll('#main .split-note, #main .sub-ttl').forEach(function(e){
+          e.innerHTML=e.innerHTML.replace(/top\s*9개국\s*\+\s*기타/g,'상위 '+(n-1)+'개국 + 기타')
+                                 .replace(/top9\+기타/g,'상위 '+(n-1)+'개국+기타'); });
+      });
+    });
+    return v;
+  };
+  /* 터치 기기에서는 범례 개별 토글이 Shift/⌘를 요구해 사실상 불가능하다 */
+  safe('legend-touch',function(){
+    if(!window.matchMedia||!matchMedia('(pointer:coarse)').matches) return;
+    var _cvo=window.countryViewOpts; if(typeof _cvo!=='function') return;
+    window.countryViewOpts=function(kind){
+      var o=_cvo(kind), lg=o&&o.plugins&&o.plugins.legend; if(!lg) return o;
+      lg.onClick=function(e,item,legend){                 /* 탭 = 개별 토글 */
+        var ci=legend.chart, i=item.datasetIndex;
+        ci.setDatasetVisibility(i,!ci.isDatasetVisible(i)); ci.update();
+      };
+      if(lg.labels) lg.labels.boxWidth=14, lg.labels.padding=12;
+      return o;
+    };
+  });
+});
+
+/* ============================================================
+   모듈 11d. 기간 브러시 — 조작 단서·읽기값·터치 타깃 (R2-15/21)
+   ============================================================ */
+safe('brush-ux',function(){
+  var br=document.getElementById('brush'); if(!br) return;
+  if(!br.querySelector('.phx-bhint'))
+    br.insertAdjacentHTML('beforeend','<span class="phx-bhint">드래그하거나 눌러서 기간 선택</span>');
+  var lab=document.getElementById('phxBLab');
+  if(!lab){ lab=document.createElement('div'); lab.className='phx-blab'; lab.id='phxBLab';
+    br.parentNode.insertBefore(lab,br.nextSibling); }
+  function ym(i){ var s=MONTHS[i]||''; return s.replace('-','.'); }
+  function upd(){ safe('blab',function(){
+    var l=document.getElementById('phxBLab'), b=document.getElementById('brush'); if(!l) return;
+    /* 브러시는 상세·국가뷰에서만 표시된다 — 라벨도 같이 숨겨야 개요에 유령 문구가 남지 않는다 */
+    var vis=b&&b.style.display!=='none';
+    l.style.display=vis?'':'none';
+    if(!vis) return;
+    l.textContent='표시 구간 '+ym(ST.r0)+' – '+ym(ST.r1)
+      +(ST.range==='custom'?' (직접 선택)':'');
+  }); }
+  ['positionBrush','updateRangeUI','render'].forEach(function(n){   /* render도 — 뷰 전환 시 라벨 표시/숨김 동기화 */
+    var f=window[n]; if(typeof f!=='function') return;
+    window[n]=function(){ var r=f.apply(null,arguments); upd(); return r; };
+  });
+  /* 트랙(빈 곳)을 눌러도 구간이 이동하도록 — 3M 프리셋에서 창이 4px라 잡을 수 없었다 */
+  safe('brush-tap',function(){
+    if(typeof _idx!=='function') return;
+    br.addEventListener('pointerdown',function(e){
+      if(e.target&&e.target.closest&&e.target.closest('.brush-win')) return;  /* 창·핸들은 원래 핸들러 */
+      var N=MONTHS.length-1, len=ST.r1-ST.r0, c=_idx(e.clientX);
+      var r0=Math.max(0,Math.min(c-Math.round(len/2),N-len));
+      ST.r0=r0; ST.r1=r0+len; ST.range='custom';
+      safe('bt:apply',function(){ if(typeof applyRange==='function') applyRange();
+        if(typeof positionBrush==='function') positionBrush();
+        if(typeof updateRangeUI==='function') updateRangeUI(); });
+    });
+  });
+  upd();
+});
+
+/* ============================================================
+   모듈 11e. 모바일 차트 압축 (R2-20)
+   375px에서 오른쪽 축 3개가 폭의 43%, 범례 6행이 높이의 41%를 먹어
+   실제 플롯이 167×141px(포트 카드는 175×65px)까지 줄어든다.
+   Chart.js 전역 플러그인으로 카드·상세·국가뷰 캔버스만 한정해 손본다.
+   ============================================================ */
+safe('chart-mobile',function(){
+  if(typeof Chart==='undefined'||!Chart.register) return;
+  function scoped(ch){                    /* .ch-wrap은 KPI·게임·플랫폼 탭도 쓰는 범용 클래스라
+       카드(.ch-main/.ch-yr)와 상세·국가뷰(#hero/#grid) 안쪽으로만 한정한다 */
+    var cv=ch&&ch.canvas; if(!cv||!cv.closest) return null;
+    return cv.closest('.ch-main,.ch-yr')||cv.closest('#hero,#grid');
+  }
+  function apply(ch){
+    var host=scoped(ch); if(!host) return;
+    var o=(ch.config&&ch.config.options)||ch.options; if(!o) return;
+    if((window.devicePixelRatio||1)>1.5) o.devicePixelRatio=1.5;   /* 밀집 차트 래스터 절감 */
+    if(window.innerWidth>680) return;
+      o.plugins=o.plugins||{};
+      var lg=o.plugins.legend=o.plugins.legend||{};
+      lg.labels=lg.labels||{};
+      lg.labels.boxWidth=8; lg.labels.padding=6;
+      lg.labels.font=Object.assign({},lg.labels.font,{size:9});
+      var sc=o.scales||{};
+      ['yW','yU','yP'].forEach(function(k){                 /* 오른쪽 보조축은 눈금만 숨김 */
+        if(sc[k]&&sc[k].position==='right'){ sc[k].ticks=Object.assign({},sc[k].ticks,{display:false});
+          sc[k].title=Object.assign({},sc[k].title,{display:false}); } });
+      if(sc.x&&sc.x.ticks){ sc.x.ticks.font=Object.assign({},sc.x.ticks.font,{size:10});
+        sc.x.ticks.maxTicksLimit=Math.min(sc.x.ticks.maxTicksLimit||6,6);
+        sc.x.ticks.maxRotation=0; sc.x.ticks.autoSkip=true; }
+      if(sc.yV&&sc.yV.ticks){ sc.yV.ticks.font=Object.assign({},sc.yV.ticks.font,{size:10});
+        sc.yV.ticks.maxTicksLimit=5; }
+  }
+  Chart.register({id:'phxMob',
+    beforeInit:function(ch){ safe('phxMob',function(){ apply(ch); }); }});
+});
+
+/* ============================================================
+   모듈 11f. 대형 리전 검색 코얼레싱 (R2-28)
+   60사 초과 카테고리는 키 입력마다 카드 30장·차트 60개를 파괴·재생성한다.
+   ============================================================ */
+safe('search-coalesce',function(){
+  var _fo=window.filterOverview; if(typeof _fo!=='function') return;
+  var t=null;
+  window.__phxCancelSearch=function(){ if(t){ clearTimeout(t); t=null; } };
+  window.filterOverview=function(){
+    var big=false; safe('sc:size',function(){ big=companiesIn(ST.cat).length>60; });
+    if(!big) return _fo();                    /* 소형: DOM 숨김뿐 — 즉시 반응 유지 */
+    clearTimeout(t);
+    /* 발화 시점에 스케줄 당시 컨텍스트가 그대로인지 검증한다. 검증이 없으면
+       타이머가 탭·상세뷰 전환 뒤에 터져 그 화면을 대시보드 개요로 덮어쓴다. */
+    var k={tab:ST.tab, view:ST.view, region:ST.region, cat:ST.cat, q:ST.q};
+    t=setTimeout(function(){ t=null; safe('sc:run',function(){
+      if(ST.tab!==k.tab||ST.view!=='overview'||k.view!=='overview'
+         ||ST.region!==k.region||ST.cat!==k.cat||ST.q!==k.q) return;
+      _fo();
+    }); },120);                               /* 입력 자체가 이미 180ms 디바운스 — 합계 300ms */
+  };
+});
+
+/* ============================================================
    모듈 12. 기간 프리셋 칩 — 선택 항목 가시화 (R2-23)
    기본 'all'이 8개 중 마지막이라 모바일에서 화면 밖에 있었다.
    ============================================================ */
@@ -756,10 +1088,35 @@ safe('country-lazy',function(){
     var m=document.getElementById('main');
     if(m) m.innerHTML='<div class="load-msg">⏳ 국가별 데이터 불러오는 중…</div>';
     var sc=document.createElement('script'); sc.src=r.cfile;
-    sc.onload=sc.onerror=function(){ mergeCountry(reg);
+    sc.onload=sc.onerror=function(){ mergeCountry(reg); markOwned(reg); evictOthers(reg);
       var q=_cQueue[reg]||[]; _cQueue[reg]=null; q.forEach(function(f){ safe('country-cb',f); }); };
     document.head.appendChild(sc);
   }
+
+  /* R2-29: 리전 전환 시 이전 리전의 국가 큐브를 축출한다(해제 경로가 아예 없었다).
+     단 메인 샤드에 country가 남아 있는 동안(빌더 2단계 전)은 축출해도 재수신 비용만
+     커지므로, cfile로 다시 받을 수 있는 리전만 대상으로 한다. */
+  var _own={}, _owner={};                 /* _owner[key]=reg — 리전 간 core_set 이름이 겹친다 */
+  function markOwned(reg){
+    var c=(window.PSHC&&window.PSHC[reg])||{};
+    var ck=Object.keys(c.country||{}), ik=Object.keys(c.country_i||{});
+    ck.forEach(function(k){ _owner['c:'+k]=reg; });
+    ik.forEach(function(k){ _owner['i:'+k]=reg; });
+    _own[reg]={c:ck, i:ik};
+  }
+  function evictOthers(cur){ safe('evict',function(){
+    Object.keys(_own).forEach(function(reg){
+      if(reg===cur) return;
+      var sh=window.PSH&&window.PSH[reg];
+      if(sh&&sh.country&&Object.keys(sh.country).length) return;   /* 메인 샤드에 있음 — 축출 무의미 */
+      (_own[reg].c||[]).forEach(function(k){                     /* 현재 리전이 다시 소유한 키는 건드리지 않는다 */
+        if(_owner['c:'+k]===reg&&P.country) delete P.country[k]; });
+      (_own[reg].i||[]).forEach(function(k){
+        if(_owner['i:'+k]===reg&&P.country_i) delete P.country_i[k]; });
+      if(window.PSHC) delete window.PSHC[reg];
+      delete _own[reg]; _cLoaded[reg]=false;                       /* 재진입 시 다시 받도록 */
+    });
+  }); }
 
   /* 카드·상세 패널의 상위 수출국: 빌더 사전계산값이 있으면 국가 큐브 없이 렌더 */
   var _ctc=window.coTopC;
@@ -786,6 +1143,60 @@ safe('country-lazy',function(){
   }
   wrapNeedsCountry('renderCountry', function(){ return true; });
   wrapNeedsCountry('renderDetail',  function(){ return !!ST.split; });
+});
+
+/* ============================================================
+   모듈 14. 상세뷰 상태 초기화 + 복귀 동선 (R2-18)
+   ※ 모듈 8보다 **뒤**에 설치해야 한다 — ST.split 초기화가 국가 큐브
+      지연 로드 판정(needs()=ST.split)보다 먼저 걸려야 하기 때문.
+   ============================================================ */
+safe('det-state',function(){
+  document.addEventListener('click',function(){          /* 상세 진입 직전 위치 기억 */
+    if(ST.view!=='detail'&&ST.view!=='country') ST._from={tab:ST.tab,cat:ST.cat};
+  },true);
+  var _rd=window.renderDetail; if(typeof _rd!=='function') return;
+  window.renderDetail=function(){
+    safe('ds:reset',function(){
+      if(ST._detCo===ST.company) return;
+      ST._detCo=ST.company;
+      var co=(P.companies||[]).find(function(c){ return c.id===ST.company; });
+      if(!co) return;
+      ST.split=false;                                    /* A사에서 켠 분해가 B사로 새지 않게 */
+      ST.flow=co.rev_flow||'exp';                        /* 랭킹·딥링크 진입은 Flow를 안 맞춰 빈 차트가 됐다 */
+      ST.mode='core';
+    });
+    var v=_rd();
+    safe('ds:back',function(){                           /* '← 개요로'가 진입 경로를 무시하고 항상 대시보드로 튕김 */
+      var f=ST._from; if(!f||f.tab==='dash') return;
+      var c=document.getElementById('crumb'); if(!c) return;
+      var b=c.querySelector('.back[data-go="ov"]'); if(!b) return;   /* crumb에 [data-go=ov]가 3개
+         (리전 라벨·섹터·← 개요로) — 첫 번째를 잡으면 리전 이름을 덮어쓴다 */
+      var lab=(document.querySelector('#tabs .tab[data-tab="'+f.tab+'"]')||{}).textContent||'이전 화면';
+      b.textContent='← '+lab.trim()+'(으)로';
+      b.onclick=function(){ ST.tab=f.tab; ST.cat=f.cat||'all'; ST.view='overview';
+        ST.company=null; render(); window.scrollTo(0,0); };
+    });
+    return v;
+  };
+});
+
+/* ---------- KR 부분월: 확정월을 '잠정'이라 표기하던 문제 (R2-8) ---------- */
+safe('kre-label',function(){
+  var _cc=window.companyCard; if(typeof _cc!=='function') return;
+  window.companyCard=function(co){
+    var d=_cc(co);
+    safe('kre',function(){
+      var k=co&&co.kre; if(!k||!k.hs||!k.partial) return;   /* partial일 때만 헤드라인이 확정월을 가리킨다 */
+      var pi=MONTHS.indexOf(k.prov); if(pi<=0) return;
+      d.querySelectorAll('.headline b').forEach(function(b){
+        if((b.textContent||'').trim()!=='잠정') return;
+        b.textContent='확정';
+        b.style.color='var(--dim)';
+        b.title='헤드라인 값은 잠정월('+subYM(k.prov)+') 직전의 확정월 수치입니다';
+      });
+    });
+    return d;
+  };
 });
 
 /* ---------- 초기 문구 정리 (P0-07) + 헤더 (P1-17) ---------- */
