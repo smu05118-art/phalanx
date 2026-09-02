@@ -216,10 +216,10 @@
       var yy = y(ticks[t]);
       var zero = Math.abs(ticks[t]) < 1e-9;
       s.push('<line x1="' + PL + '" y1="' + yy.toFixed(1) + '" x2="' + (PL + PW) +
-        '" y2="' + yy.toFixed(1) + '" stroke="' + (zero ? 'rgba(230,233,239,.42)' : 'var(--line,#2a2f3a)') +
+        '" y2="' + yy.toFixed(1) + '" style="stroke:' + (zero ? 'var(--ch-zero,rgba(230,233,239,.42))' : 'var(--line,#2a2f3a)') +
         '" stroke-width="' + (zero ? 1.2 : 1) + '" opacity="' + (zero ? 1 : .5) + '"/>');
       s.push('<text x="' + (PL - 7) + '" y="' + (yy + 3.4).toFixed(1) +
-        '" text-anchor="end" font-family="' + MONO + '" font-size="9.5" fill="' + CLR.dim +
+        '" text-anchor="end" font-family="' + MONO + '" font-size="9.5" style="fill:var(--dim,#8a93a3)' +
         '">' + esc(mnum(fmtScaled(ticks[t], sc))) + '</text>');
     }
 
@@ -259,14 +259,14 @@
       if (showLab && bw >= 7) {
         var ly = v >= 0 ? top - 4.5 : top + h + 9.5;
         s.push('<text x="' + cx.toFixed(1) + '" y="' + ly.toFixed(1) +
-          '" text-anchor="middle" font-family="' + MONO + '" font-size="9" font-weight="700" fill="' +
+          '" text-anchor="middle" font-family="' + MONO + '" font-size="9" font-weight="700" style="fill:' +
           (isFcf && v < 0 ? CLR.neg : (opts.flags && opts.flags[i] ? CLR.hi : 'var(--fg,#e6e9ef)')) +
           '">' + esc(mnum(fmtScaled(v, sc))) + '</text>');
       }
       // x축 라벨
       if (i % every === 0 || i === n - 1) {
         s.push('<text x="' + cx.toFixed(1) + '" y="' + (H - 8) +
-          '" text-anchor="middle" font-family="' + MONO + '" font-size="9" fill="' + CLR.dim +
+          '" text-anchor="middle" font-family="' + MONO + '" font-size="9" style="fill:var(--dim,#8a93a3)' +
           '">' + esc(qLabel(d.k)) + '</text>');
       }
     }
@@ -298,14 +298,14 @@
     for (var t = 0; t < ticks.length; t++) {
       var yy = Y(ticks[t]);
       s.push('<line x1="' + PL + '" y1="' + yy.toFixed(1) + '" x2="' + (PL + PW) + '" y2="' + yy.toFixed(1) +
-        '" stroke="var(--line,#2a2f3a)" stroke-width="1" opacity=".5"/>');
+        '" style="stroke:var(--line,#2a2f3a)" stroke-width="1" opacity=".5"/>');
       s.push('<text x="' + (PL - 6) + '" y="' + (yy + 3.4).toFixed(1) + '" text-anchor="end" font-family="' +
-        MONO + '" font-size="9.5" fill="' + CLR.dim + '">' + ticks[t].toFixed(0) + '%</text>');
+        MONO + '" font-size="9.5" style="fill:var(--dim,#8a93a3)">' + ticks[t].toFixed(0) + '%</text>');
     }
     var step = Math.max(1, Math.ceil(n / 12));
     for (i = 0; i < n; i += step) {
       s.push('<text x="' + X(keys[i]).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-family="' +
-        MONO + '" font-size="9" fill="' + CLR.dim + '">' + esc(qLabel(keys[i])) + '</text>');
+        MONO + '" font-size="9" style="fill:var(--dim,#8a93a3)">' + esc(qLabel(keys[i])) + '</text>');
     }
 
     for (i = 0; i < lines.length; i++) {
@@ -320,7 +320,7 @@
       var last = L.pts[L.pts.length - 1];
       if (last && (last.k in idx)) {
         s.push('<circle cx="' + X(last.k).toFixed(1) + '" cy="' + Y(last.v).toFixed(1) +
-          '" r="2.8" fill="' + L.color + '" stroke="var(--panel,#12161d)" stroke-width="1.2"><title>' +
+          '" r="2.8" fill="' + L.color + '" style="stroke:var(--panel,#12161d)" stroke-width="1.2"><title>' +
           esc(L.name + ' ' + last.k + ' · ' + last.v.toFixed(1) + '%') + '</title></circle>');
       }
     }

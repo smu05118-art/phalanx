@@ -10,17 +10,24 @@
 
   var CSS_ID = 'nc-css';
 
+  /* 테마 토큰: 렌더 시점에 CSS 변수를 읽는다(다크=폴백). 토글 후 render() 재호출로 반영. */
+  function cssVar(name, fb) {
+    try {
+      var v = getComputedStyle(document.documentElement).getPropertyValue(name);
+      return (v && v.trim()) || fb;
+    } catch (e) { return fb; }
+  }
   var C = {
-    up: '#ff5b5b',
-    down: '#4c8dff',
-    flat: '#8b98a9',
-    cons: '#4c8dff',   // 컨센 암시 ASP
-    recalc: '#ffb020', // 재계산 ASP
-    gapPos: '#3fd07a', // 리비전룸 +
-    gapNeg: '#ff5b5b', // 리비전룸 -
-    tierLow: '#4c8dff',
-    tierMid: '#ffb020',
-    tierHigh: '#ff5b5b',
+    get up() { return cssVar('--nc-red', '#ff5b5b'); },
+    get down() { return cssVar('--nc-blue', '#4c8dff'); },
+    get flat() { return cssVar('--nc-flat', '#8b98a9'); },
+    get cons() { return cssVar('--nc-blue', '#4c8dff'); },   // 컨센 암시 ASP
+    get recalc() { return cssVar('--nc-gold', '#ffb020'); }, // 재계산 ASP
+    get gapPos() { return cssVar('--nc-good', '#3fd07a'); }, // 리비전룸 +
+    get gapNeg() { return cssVar('--nc-red', '#ff5b5b'); },  // 리비전룸 -
+    get tierLow() { return cssVar('--nc-blue', '#4c8dff'); },
+    get tierMid() { return cssVar('--nc-gold', '#ffb020'); },
+    get tierHigh() { return cssVar('--nc-red', '#ff5b5b'); },
     guide: 'rgba(255,176,32,.13)'
   };
 
@@ -44,32 +51,32 @@
     '.nc-tbl{width:100%;border-collapse:collapse;font-size:11.5px;white-space:nowrap}',
     '.nc-tbl th{position:sticky;top:0;background:var(--panel,#12161c);text-align:right;color:var(--dim,#8b98a9);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--line,#232a34);z-index:1}',
     '.nc-tbl th.l,.nc-tbl td.l{text-align:left}',
-    '.nc-tbl th.g{color:#ffb020}',
+    '.nc-tbl th.g{color:var(--nc-gold,#ffb020)}',
     '.nc-tbl td{padding:4px 8px;border-bottom:1px solid var(--line,#232a34);text-align:right;font-family:var(--mono,ui-monospace,Menlo,monospace)}',
     '.nc-tbl td.l{font-family:inherit}',
     '.nc-tbl td.g{background:rgba(255,176,32,.10)}',
-    '.nc-tbl tr:hover td{background:rgba(255,255,255,.03)}',
-    '.nc-tbl tr.sect td{background:rgba(255,255,255,.045);font-weight:650;color:var(--fg,#e6ebf2);font-family:inherit}',
+    '.nc-tbl tr:hover td{background:var(--nc-wash,rgba(255,255,255,.03))}',
+    '.nc-tbl tr.sect td{background:var(--nc-wash2,rgba(255,255,255,.045));font-weight:650;color:var(--fg,#e6ebf2);font-family:inherit}',
     '.nc-tbl td.dim{color:var(--dim,#8b98a9)}',
     '.nc-badge{display:inline-block;font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:5px;font-family:var(--mono,ui-monospace,Menlo,monospace);vertical-align:middle}',
-    '.nc-b-ok{background:rgba(63,208,122,.16);color:#3fd07a}',
-    '.nc-b-no{background:rgba(255,91,91,.16);color:#ff5b5b}',
-    '.nc-b-g{background:rgba(255,176,32,.16);color:#ffb020}',
-    '.nc-b-n{background:rgba(139,152,169,.16);color:#8b98a9}',
+    '.nc-b-ok{background:rgba(63,208,122,.16);color:var(--nc-good,#3fd07a)}',
+    '.nc-b-no{background:rgba(255,91,91,.16);color:var(--nc-red,#ff5b5b)}',
+    '.nc-b-g{background:rgba(255,176,32,.16);color:var(--nc-gold,#ffb020)}',
+    '.nc-b-n{background:rgba(139,152,169,.16);color:var(--dim,#8b98a9)}',
     '.nc-anch{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}',
-    '.nc-acard{border:1px solid var(--line,#232a34);border-radius:8px;padding:9px 11px;background:rgba(255,255,255,.02)}',
+    '.nc-acard{border:1px solid var(--line,#232a34);border-radius:8px;padding:9px 11px;background:var(--nc-wash,rgba(255,255,255,.02))}',
     '.nc-acard .t{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:4px}',
-    '.nc-acard .v{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:12px;color:#ffb020;margin-bottom:4px}',
+    '.nc-acard .v{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:12px;color:var(--nc-gold,#ffb020);margin-bottom:4px}',
     '.nc-acard .q{color:var(--dim,#8b98a9);font-size:11px;line-height:1.55;border-left:2px solid var(--line,#232a34);padding-left:7px;margin:5px 0;white-space:pre-wrap}',
     '.nc-acard .s{font-size:10px;color:var(--dim,#8b98a9);font-family:var(--mono,ui-monospace,Menlo,monospace);overflow:hidden;text-overflow:ellipsis}',
-    '.nc-acard a{color:#4c8dff;text-decoration:none}',
+    '.nc-acard a{color:var(--nc-blue,#4c8dff);text-decoration:none}',
     '.nc-acard a:hover{text-decoration:underline}',
     '.nc-cv{position:relative;width:100%}',
     '.nc-lad{display:flex;flex-direction:column;gap:7px;margin:6px 0 2px}',
     '.nc-lrow{display:flex;align-items:center;gap:9px}',
     '.nc-lname{width:210px;min-width:150px;font-size:11.5px;line-height:1.35}',
     '.nc-lname .sm{display:block;color:var(--dim,#8b98a9);font-size:10px;font-family:var(--mono,ui-monospace,Menlo,monospace)}',
-    '.nc-ltrack{position:relative;flex:1;height:20px;background:rgba(255,255,255,.03);border-radius:4px}',
+    '.nc-ltrack{position:relative;flex:1;height:20px;background:var(--nc-wash,rgba(255,255,255,.03));border-radius:4px}',
     '.nc-lfill{position:absolute;top:0;bottom:0;border-radius:4px;opacity:.85}',
     '.nc-lval{position:absolute;top:50%;transform:translateY(-50%);font-size:10.5px;font-family:var(--mono,ui-monospace,Menlo,monospace);white-space:nowrap;color:var(--fg,#e6ebf2)}',
     '.nc-lax{display:flex;justify-content:space-between;color:var(--dim,#8b98a9);font-size:10px;font-family:var(--mono,ui-monospace,Menlo,monospace);margin-left:219px}',
@@ -86,11 +93,15 @@
     '.nc-flex{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}',
     '.nc-empty{color:var(--dim,#8b98a9);padding:18px;text-align:center}',
     '.nc-src{font-size:10px;color:var(--dim,#8b98a9);font-family:var(--mono,ui-monospace,Menlo,monospace);margin-top:6px;word-break:break-all}',
-    '.nc-src a{color:#4c8dff;text-decoration:none}',
+    '.nc-src a{color:var(--nc-blue,#4c8dff);text-decoration:none}',
     '.nc-kpi{display:flex;gap:16px;flex-wrap:wrap;margin:2px 0 10px}',
     '.nc-kpi div{min-width:104px}',
     '.nc-kpi .k{color:var(--dim,#8b98a9);font-size:10.5px}',
-    '.nc-kpi .v{font-size:16px;font-weight:700;font-family:var(--mono,ui-monospace,Menlo,monospace);line-height:1.3}'
+    '.nc-kpi .v{font-size:16px;font-weight:700;font-family:var(--mono,ui-monospace,Menlo,monospace);line-height:1.3}',
+    /* 라이트 테마 토큰(다크는 var() 폴백) — 텍스트 용도 상태색은 어두운 변형으로 AA 확보 */
+    ':root[data-theme="light"]{--nc-gold:#8a6300;--nc-blue:#2266d0;--nc-good:#17714a;--nc-red:#c03830;',
+    '--nc-flat:#565b80;--nc-grid:rgba(27,29,51,.12);--nc-svgval:#1b1d33;',
+    '--nc-wash:rgba(27,29,51,.05);--nc-wash2:rgba(27,29,51,.07)}'
   ].join('\n');
 
   function injectCSS(doc) {
@@ -187,8 +198,8 @@
     var y = function (v) { return padT + ih - (v / max) * ih; };
     [0, .25, .5, .75, 1].forEach(function (f) {
       var yy = padT + ih - f * ih;
-      root.appendChild(svg('line', { x1: padL, x2: W - padR, y1: yy, y2: yy, stroke: 'rgba(255,255,255,.07)', 'stroke-width': 1 }));
-      var t = svg('text', { x: padL - 6, y: yy + 3.5, fill: '#8b98a9', 'font-size': 9.5, 'text-anchor': 'end' });
+      root.appendChild(svg('line', { x1: padL, x2: W - padR, y1: yy, y2: yy, stroke: cssVar('--nc-grid', 'rgba(255,255,255,.07)'), 'stroke-width': 1 }));
+      var t = svg('text', { x: padL - 6, y: yy + 3.5, fill: C.flat, 'font-size': 9.5, 'text-anchor': 'end' });
       t.textContent = fmt(max * f, 1);
       root.appendChild(t);
     });
@@ -201,11 +212,11 @@
         if (!isNum(v)) return;
         var bx = x0 + si * bw, by = y(v), bh = Math.max(1, padT + ih - by);
         root.appendChild(svg('rect', { x: bx + 1, y: by, width: bw - 2, height: bh, fill: s.color, rx: 2, opacity: .9 }));
-        var t = svg('text', { x: bx + bw / 2, y: by - 4, fill: '#c9d2de', 'font-size': 9.5, 'text-anchor': 'middle' });
+        var t = svg('text', { x: bx + bw / 2, y: by - 4, fill: cssVar('--nc-svgval', '#c9d2de'), 'font-size': 9.5, 'text-anchor': 'middle' });
         t.textContent = (fmtV || fmt)(v, 1);
         root.appendChild(t);
       });
-      var xt = svg('text', { x: cx, y: H - padB + 15, fill: '#8b98a9', 'font-size': 10.5, 'text-anchor': 'middle' });
+      var xt = svg('text', { x: cx, y: H - padB + 15, fill: C.flat, 'font-size': 10.5, 'text-anchor': 'middle' });
       xt.textContent = lb;
       root.appendChild(xt);
     });
