@@ -158,12 +158,14 @@ function switchTab(tab){
   document.getElementById('liqview').hidden=(tab!=='liq');
   document.getElementById('techview').hidden=(tab!=='tech');
   document.getElementById('shipview').hidden=(tab!=='ship');
+  document.getElementById('humanview').hidden=(tab!=='human');
   document.getElementById('llmview').hidden=(tab!=='llm');
   document.getElementById('headStat').style.display=isMap?'':'none';
   if(isMap && MAP){setTimeout(()=>MAP.resize(),50);}
   if(tab==='liq' && !_liqLoaded){ _liqLoaded=true; loadLiq(); }
   if(tab==='tech'){ loadTech2(); }
   if(tab==='ship'){ loadShip(); }
+  if(tab==='human'){ loadHuman(); }
   if(tab==='llm'){ loadLLM(); }
 }
 async function loadLLM(){
@@ -341,5 +343,89 @@ function renderLiq(d){
   <div class="comment"><pre>${(d.commentary||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</pre>
     <div class="cmeta">자동 생성 해석 — 실시간 FRED 수치 기반. 투자 조언 아님. #TGA #RRP #SOFR #IORB #EFFR #NetLiquidity</div></div>`;
 }
+
+// ===== 👥 인간지표 (human signals — 한국인/외인·기관이 실제로 사고판 것) =====
+const HSD={buy:{l:'순매수',c:'#59d0a8'},sell:{l:'순매도',c:'#ff4d5e'},hold:{l:'보관잔액',c:'#4ea1ff'}};
+const HAX=[['total_pct','① 전체대비'],['stock_pct','② 종목대비'],['mcap_pct','③ 시총대비']];
+const HST={scope:'overseas',inv:'foreign',side:'buy',sort:'value'};
+function hUsd(v){if(v==null)return '—';const a=Math.abs(v);const t=a>=1e9?(a/1e9).toFixed(2)+'B':a>=1e6?(a/1e6).toFixed(1)+'M':(a/1e3).toFixed(0)+'K';return (v<0?'-$':'$')+t;}
+function hKrw(mn){if(mn==null)return '—';const a=Math.abs(mn);const t=a>=1e6?(a/1e6).toFixed(2)+'조':a>=100?(a/100).toFixed(0)+'억':a+'백만';return (mn<0?'-':'')+t;}
+function hPct(p){return p==null?'—':(p>=10?p.toFixed(1):p>=1?p.toFixed(2):p.toFixed(3))+'%';}
+function hYmd(s){return s&&/^\d{8}$/.test(s)?s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6):(s||'—');}
+function hRows(d,st){
+  const src=st.scope==='overseas'?(d.overseas||{}):((d.domestic||{})[st.inv]||{});
+  const rows=(src[st.side]||[]).slice();
+  if(st.sort!=='value')rows.sort((a,b)=>(((b.axes||{})[st.sort])||-1)-(((a.axes||{})[st.sort])||-1));
+  return rows;
+}
+function humanHTML(d,st){
+  const ovs=st.scope==='overseas', src=ovs?(d.overseas||{}):(d.domestic||{});
+  const rows=hRows(d,st), sc=HSD[st.side].c;
+  const maxA={};HAX.forEach(([k])=>maxA[k]=Math.max.apply(null,rows.map(r=>((r.axes||{})[k])||0).concat(0)));
+  const chip=(k,v,l,on)=>`<span class="hchip${on?' on':''}" data-hk="${k}" data-hv="${v}">${l}</span>`;
+  const sides=ovs?['buy','sell','hold']:['buy','sell'];
+  const tr=rows.map(r=>{
+    const val=ovs?(st.side==='hold'?r.hold_usd:st.side==='sell'?-(r.sell_usd||0):r.net_buy_usd):r.value_mn;
+    const sub=ovs?`${esc(r.nation||'')}${st.side==='sell'?' · 순 '+hUsd(r.net_buy_usd):''}`
+                 :`${esc(r.market||'')} ${esc(r.code||'')}`;
+    const cells=HAX.map(([k])=>{const p=(r.axes||{})[k];const w=p&&maxA[k]?Math.max(2,100*p/maxA[k]):0;
+      return `<td class="hx"><span class="hxv">${hPct(p)}</span><div class="hxb"><div style="width:${w}%;background:${sc}"></div></div></td>`;}).join('');
+    return `<tr><td class="hr">${r.rank||''}</td><td class="hn">${esc(r.name)}<span class="hs">${sub}</span></td>
+      <td class="hv" style="color:${val<0?'#ff4d5e':val>0?'#59d0a8':'var(--dim)'}">${ovs?hUsd(val):hKrw(val)}</td>${cells}</tr>`;
+  }).join('')||`<tr><td colspan="6"><p class="hint" style="padding:14px">데이터 없음 — 다음 배치에서 재시도</p></td></tr>`;
+  const meta=ovs
+    ?`SEIBRO 예탁결제 ${hYmd(src.date)}${st.side==='hold'?` · 보관 ${hYmd(src.hold_date)}`:''} · USD · ${esc(src.basis||'')}`
+    :`네이버 투자자별 ${esc(src.date||'—')} · 단위 백만원 · ${esc(src.note||'')}`;
+  const AXD=d.axes||{};
+  return `<style>
+    .hchips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .hchips .hl{font-size:10.5px;color:var(--dim);font-weight:700;margin-right:2px}
+    .hchip{font-size:11.5px;padding:4px 11px;border:1px solid var(--line);border-radius:999px;cursor:pointer;color:var(--dim);transition:.13s}
+    .hchip:hover{border-color:var(--accent);color:var(--accent)}
+    .hchip.on{background:rgba(43,192,212,.14);border-color:var(--accent);color:var(--accent);font-weight:700}
+    .hwrap{max-width:1180px;background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden;margin-top:14px}
+    .htable{width:100%;border-collapse:collapse;font-size:12.5px}
+    .htable th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--panel2)}
+    .htable td{padding:7px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+    .htable tr:last-child td{border-bottom:none}
+    .htable tr:hover td{background:rgba(127,150,170,.05)}
+    .hr{font-family:var(--mono);font-size:11px;color:var(--dim);width:34px}
+    .hn{font-weight:650;line-height:1.25}
+    .hn .hs{display:block;font-family:var(--mono);font-size:10px;font-weight:400;color:var(--dim);margin-top:1px}
+    .hv{font-family:var(--mono);font-weight:700;white-space:nowrap;text-align:right}
+    .hx{width:118px}.hxv{font-family:var(--mono);font-size:10.5px;color:var(--ink)}
+    .hxb{height:4px;background:var(--panel2);border-radius:2px;margin-top:3px}.hxb div{height:100%;border-radius:2px}
+    .hmeta{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:10px}
+  </style>
+  <p style="font-size:18px;font-weight:800;margin:0 0 4px">👥 인간지표 — 사람들이 실제로 산/판 종목</p>
+  <p class="hint" style="margin:0 0 14px">해외=한국인 해외주식 결제·보관 TOP(SEIBRO) · 국내=외국인/기관 순매매 상위(네이버, 개인은 무인증 소스 부재) · 3축 = ①전체 거래대금 대비 ②종목 거래대금 대비 ③시총 대비</p>
+  <div class="hchips" style="margin-bottom:8px">${chip('scope','overseas','🌎 해외 (한국인)',ovs)}${chip('scope','domestic','🇰🇷 국내 (외인·기관)',!ovs)}
+    <span style="width:10px"></span>${sides.map(s=>chip('side',s,HSD[s].l,st.side===s)).join('')}
+    ${ovs?'':`<span style="width:10px"></span>${[['foreign','외국인'],['institution','기관']].map(([v,l])=>chip('inv',v,l,st.inv===v)).join('')}`}</div>
+  <div class="hchips"><span class="hl">정렬</span>${[['value','금액순']].concat(HAX.map(([k,l])=>[k,l+'순'])).map(([v,l])=>chip('sort',v,l,st.sort===v)).join('')}</div>
+  <div class="hwrap"><table class="htable">
+    <tr><th>#</th><th>종목</th><th style="text-align:right">${ovs&&st.side==='hold'?'보관금액':'순매매금액'}</th>${HAX.map(([k,l])=>`<th title="${esc(AXD[k]||'')}">${l}</th>`).join('')}</tr>
+    ${tr}</table></div>
+  <div class="hmeta">${meta} · 갱신 ${esc(String(d.updated||'—'))}${ovs?'':` · 시장 전체 거래대금 ${hKrw((src.market_trade_total_mn||0))}`}</div>`;
+}
+function renderHuman(box,d){
+  box.innerHTML=humanHTML(d,HST);
+  box.querySelectorAll('.hchip').forEach(el=>el.onclick=()=>{
+    const k=el.dataset.hk,v=el.dataset.hv;
+    HST[k]=v;
+    if(k==='scope'&&v==='domestic'&&HST.side==='hold')HST.side='buy';
+    if(k==='scope'&&v==='overseas'&&HST.sort==='mcap_pct')HST.sort='value'; // 해외는 ③시총 없음
+    renderHuman(box,d);
+  });
+}
+async function loadHuman(){
+  const box=document.getElementById('humanview');
+  if(box.dataset.loaded) return;
+  box.innerHTML='<p class="hint" style="padding:20px">인간지표 데이터 로딩…</p>';
+  try{ const d=await fetch('data/human.json').then(r=>r.json());
+    renderHuman(box,d); box.dataset.loaded='1';
+  }catch(e){ console.warn('human', e); box.innerHTML='<p class="hint" style="padding:20px">인간지표 데이터 준비 중…</p>'; }
+}
+// ===== /인간지표 =====
 
 boot();
