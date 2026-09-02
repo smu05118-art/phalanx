@@ -3500,14 +3500,14 @@ sailor:{first:[
 courtier:{first:[
   {t:'wake'},
   {t:'note',text:'궁정대신에게 발동 여부를 손짓으로 확인하세요(게임 중 단 1회). 발동하지 않으면 하단 "다음" 버튼으로 지목·판정 화면을 건너뛰고 재우세요.'},
-  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(플레이어 아님)',storeAs:'tok'},
+  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(플레이어 아님)',storeAs:'tok',optional:true},
   {t:'effect',fn:'doCourtierDrunk',from:'tok'},
   {t:'note',text:'보유자에게 🍺토큰(3밤+3낮, 만료 밤 시작 시 자동 해제)과 ✔소진이 자동 기록됩니다. 게임에 없는 캐릭터였다면 아무 일 없이 능력만 소진됩니다.'},
   {t:'sleep'}],
  other:[
   {t:'wake'},
   {t:'note',text:'아직 능력을 쓰지 않았다면 발동 여부만 확인하세요. 발동 시 다음 화면에서 캐릭터를 고르고 판정을 실행하며, 미발동이면 "다음"으로 건너뛰어 재웁니다. 이미 소진했다면 깨울 필요가 없습니다.'},
-  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(발동 시에만)',storeAs:'tok'},
+  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(발동 시에만)',storeAs:'tok',optional:true},
   {t:'effect',fn:'doCourtierDrunk',from:'tok'},
   {t:'note',text:'발동했다면 보유자에게 🍺(3밤+3낮)과 ✔소진이 자동 기록됩니다. 없는 캐릭터면 소진만 됩니다.'},
   {t:'sleep'}]},
@@ -3593,7 +3593,7 @@ po:{other:[
 assassin:{other:[
   {t:'note',text:'게임 중 단 1회 발동. 이미 소진했다면 깨울 필요 없습니다. 깨워서 발동 여부를 손짓으로 확인하고, 미발동이면 그냥 재우세요.'},
   {t:'wake'},
-  {t:'pick-player',n:1,who:'player',label:'암살자가 노린 대상(발동 시에만)',filter:'any',storeAs:'tgt'},
+  {t:'pick-player',n:1,who:'player',label:'암살자가 노린 대상(발동 시에만)',filter:'any',storeAs:'tgt',optional:true},
   {t:'effect',fn:'doStepKill',from:'tgt'},
   {t:'note',text:'암살자의 살해는 모든 보호·면역(여관 주인·찻집 여인·어릿광대·멀쩡한 선원 등)을 관통합니다 — 다른 이유로 살아남았다면 수동으로 사망 처리하세요. 발동했다면 밤 패널에서 ✔소진을 기록합니다.'},
   {t:'sleep'}]},
@@ -3668,13 +3668,13 @@ Object.assign(NIGHT_FLOW,{
 philosopher:{first:[
   {t:'wake',text:'발동할지 물어보세요 — 1회성이므로 미발동이면 그대로 재웁니다.'},
   {t:'note',text:'발동하지 않으면 "완료"로 닫고 재우세요. 발동하면 다음 화면에서 철학자가 고른 캐릭터를 선택합니다.'},
-  {t:'pick-character',pool:'good-characters',label:'철학자가 선택한 선한 캐릭터',storeAs:'gain'},
+  {t:'pick-character',pool:'good-characters',label:'철학자가 선택한 선한 캐릭터',storeAs:'gain',optional:true},
   {t:'note',text:'철학자는 지금부터 그 능력을 가집니다. ① 같은 캐릭터가 게임에 있으면 그 원 보유자에게 🍺영구 취함 토큰 ② 이후 밤에는 획득 캐릭터의 순서 위치에서 철학자를 깨우세요(밤 순서 수동 관리) ③ 획득 내용을 그리모어 메모에 기록.'},
   {t:'sleep'}],
  other:[
   {t:'note',text:'아직 미발동이라면 깨워 발동 의사만 확인하세요(발동 시 첫날 밤과 동일하게 캐릭터 선택). 이미 발동했다면 이 단계가 아니라 획득한 캐릭터의 밤 순서에서 그 능력으로 진행합니다.'},
   {t:'wake',text:'발동 의사 확인용 — 미발동 유지 시 바로 재우세요.'},
-  {t:'pick-character',pool:'good-characters',label:'(발동하는 경우만) 선택한 선한 캐릭터',storeAs:'gain'},
+  {t:'pick-character',pool:'good-characters',label:'(발동하는 경우만) 선택한 선한 캐릭터',storeAs:'gain',optional:true},
   {t:'note',text:'발동했다면: 원 보유자 🍺영구 취함 + 이후 밤 순서 수동 관리 + 그리모어 메모.'},
   {t:'sleep'}]},
 snakecharmer:{first:[
@@ -3744,14 +3744,14 @@ dreamer:{first:[
   {t:'sleep'}]},
 seamstress:{first:[
   {t:'wake',text:'1회성 발동 여부를 물어보세요 — 미발동이면 그대로 재웁니다.'},
-  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외, 사망자 가능)',filter:'any-not-self',storeAs:'pair'},
+  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외, 사망자 가능)',filter:'any-not-self',storeAs:'pair',optional:true},
   {t:'show-answer',options:['예','아니오'],suggest:'seamstressSame',caption:'두 명이 같은 진영인가'},
   {t:'note',text:'발동 소진을 그리모어에 표시하세요.'},
   {t:'sleep'}],
  other:[
   {t:'note',text:'이미 발동했다면 깨우지 않습니다. 미발동이면 깨워 발동 의사를 확인하세요.'},
   {t:'wake'},
-  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외, 사망자 가능)',filter:'any-not-self',storeAs:'pair'},
+  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외, 사망자 가능)',filter:'any-not-self',storeAs:'pair',optional:true},
   {t:'show-answer',options:['예','아니오'],suggest:'seamstressSame',caption:'두 명이 같은 진영인가'},
   {t:'note',text:'발동 소진을 그리모어에 표시하세요.'},
   {t:'sleep'}]},
@@ -4309,6 +4309,13 @@ function startRevealWiz(){
 .handoff-btn .hname{font-size:16px;font-weight:700}
 .handoff-btn.me{border-color:var(--accent);opacity:.75}
 .handoff-btn.sel{border-color:var(--ok);background:var(--ok-soft);box-shadow:0 0 0 2px var(--ok)}
+.handoff-btn.dead{opacity:.5}
+.handoff-btn{min-height:64px}
+/* 위저드 푸터 버튼: 한국어가 글자 단위로 줄바꿈되던 문제 — 통째로 유지하고 가로 스크롤 */
+#wizfoot{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
+#wizfoot button{white-space:nowrap;word-break:keep-all;flex:0 0 auto;min-height:44px}
+#wizfoot button.hofoot{flex:1 1 auto;min-width:0}
+.hoBtn{white-space:nowrap}
 #gameover{position:fixed;inset:0;z-index:98;background:rgba(6,3,14,.85);display:flex;align-items:center;justify-content:center;padding:20px}
 #gameover[hidden]{display:none!important}
 #gameover .gocard{background:var(--panel);border:2px solid var(--accent);border-radius:18px;max-width:560px;width:100%;padding:34px 26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.7)}
@@ -4420,34 +4427,68 @@ function startHandoff(storeAs,n,filter,label){
     const ib=(S.players.indexOf(b)-start+S.players.length)%S.players.length;
     return ia-ib;
   });
-  handoff={storeAs,n,ordered,holder};
+  handoff={storeAs,n,ordered,holder,label};
   renderHandoff();
 }
 function renderHandoff(){
   const sel=(wiz.vars[handoff.storeAs]||[]);
-  $('#wizhead').innerHTML=`<span class="wtitle">📱 플레이어에게 전달됨</span><span class="wstep">${sel.length}/${handoff.n}</span>`;
+  const sc=wiz.scenes[wiz.idx];
+  const optional=!!(sc&&sc.optional);
+  const done=sel.length>=handoff.n;
+  $('#wizhead').innerHTML=`<span class="wtitle">${esc(handoff.holder?handoff.holder.name:'플레이어')}님, 직접 선택하세요</span>`+
+    `<span class="wstep num">${sel.length}/${handoff.n}</span>`;
   $('#wizbody').innerHTML=`
-    <div class="wiz-caption">아래에서 당신의 대상을 직접 선택하세요 (${sel.length}/${handoff.n})</div>
+    <div class="wiz-caption">${esc(handoff.label||'대상을 선택하세요')}</div>
     <div class="handoff-list">${handoff.ordered.map(p=>{
       const me=p===handoff.holder;
-      return `<div class="handoff-btn ${me?'me':''} ${sel.includes(p.id)?'sel':''}" onclick="handoffPick('${p.id}')">
+      return `<div class="handoff-btn ${me?'me':''} ${sel.includes(p.id)?'sel':''} ${p.alive?'':'dead'}" data-hopick="${esc(p.id)}">
         <span class="hnum num">${S.players.indexOf(p)+1}</span>
-        <span class="hname">${esc(p.name)}${me?' (나)':''}</span></div>`;}).join('')}</div>`;
+        <span class="hname">${esc(p.name)}${me?' (나)':''}${p.alive?'':' 💀'}</span></div>`;}).join('')}</div>
+    ${optional?'<div class="wiz-note hint" style="margin-top:14px">이 능력은 사용하지 않아도 됩니다.</div>':''}`;
   $('#wizbody').onclick=null;
-  $('#wizfoot').innerHTML=`<button class="primary" onclick="endHandoff()">↩ 이야기꾼에게 넘겨주기</button>`;
+  $('#wizfoot').innerHTML=
+    `<button class="hofoot ghost" onclick="useSTInput()">🧑‍⚖️ 사회자가 대신 입력</button>`+
+    (optional?`<button class="hofoot" onclick="handoffSkip()">이번 턴에 선택 안 함</button>`:'')+
+    `<button class="hofoot primary" ${done?'':'disabled'} onclick="endHandoff()">↩ 이야기꾼에게 전달</button>`;
 }
+function handoffSkip(){
+  const key=handoff.storeAs;
+  wiz.vars[key]=[]; wiz.skipped=wiz.skipped||{}; wiz.skipped[key]=true;
+  log(`${wizTitle()}: 이번 턴 능력 미사용(선택 안 함)`);
+  handoff=null; save(); wizNext();
+}
+document.addEventListener('click', e=>{
+  const b=e.target.closest && e.target.closest('[data-hopick]');
+  if(b && handoff) handoffPick(b.getAttribute('data-hopick'));
+});
 function handoffPick(pid){
   const arr=wiz.vars[handoff.storeAs]=wiz.vars[handoff.storeAs]||[];
   const i=arr.indexOf(pid);
   if(i>=0) arr.splice(i,1); else { if(arr.length>=handoff.n) arr.shift(); arr.push(pid); }
   renderHandoff();
 }
-function endHandoff(){ handoff=null; renderWiz(); }
-/* pick-player 씬에 기기 전달 버튼 + dawn 씬 렌더 지원 */
+/* 플레이어가 이야기꾼에게 돌려주면 그 씬은 끝난 것 — 다음 씬으로 넘어간다.
+   renderWiz() 를 그대로 부르면 같은 씬이라 다시 기기 전달 화면으로 되돌아간다. */
+function endHandoff(){ handoff=null; wizNext(); }
+/* teeroz 방식: who:'player' 지목은 '사회자가 대신 입력'이 아니라
+   기기를 플레이어에게 넘겨 본인이 직접 고르는 것이 기본 흐름이다.
+   사회자 대리 입력은 예외(stHandoffOverride)로만 허용한다. */
+let stHandoffOverride=null;   // 이 씬만 사회자가 대신 입력 (씬 인덱스)
+function handoffScene(sc){ return sc && sc.t==='pick-player' && sc.who==='player'; }
+function useSTInput(){ stHandoffOverride=wiz? wiz.idx : null; handoff=null; renderWiz(); }
+function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
 (function(){
   const _rw=renderWiz;
   renderWiz=function(){
     if(handoff){ renderHandoff(); return; }
+    // 플레이어 대면 지목 씬이면 자동으로 기기 전달 모드로 들어간다
+    if(wiz && !wiz.custom){
+      const sc0=wiz.scenes[wiz.idx];
+      if(handoffScene(sc0) && stHandoffOverride!==wiz.idx){
+        startHandoff(sc0.storeAs, sc0.n, sc0.filter, sc0.label);
+        return;
+      }
+    }
     const sc=wiz&&wiz.scenes[wiz.idx];
     if(sc && sc.t==='dawn'){
       $('#wizhead').innerHTML=`<span class="wtitle">🌅 새벽</span><span class="wstep">밤 ${S.phase.n}</span>`;
@@ -4465,8 +4506,8 @@ function endHandoff(){ handoff=null; renderWiz(); }
       const foot=$('#wizfoot');
       if(foot && !foot.querySelector('.hoBtn')){
         const b=document.createElement('button');
-        b.className='hoBtn'; b.textContent='📱 기기 전달';
-        b.onclick=()=>startHandoff(sc.storeAs, sc.n, sc.filter, sc.label);
+        b.className='hoBtn'; b.textContent='📱 플레이어에게';
+        b.onclick=()=>backToPlayer();
         foot.insertBefore(b, foot.firstChild);
       }
     }
@@ -4678,6 +4719,8 @@ function wizClearPick(){
   renderWiz=function(){
     _rw();
     const sc=wiz&&wiz.scenes[wiz.idx];
+    // 플레이어에게 기기를 넘긴 화면에는 사회자용 보조 버튼을 노출하지 않는다
+    if(handoff) return;
     if(sc && (sc.t==='pick-character'||sc.t==='pick-player') && !document.querySelector('.wizextra')){
       const body=$('#wizbody');
       if(body){
