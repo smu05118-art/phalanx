@@ -124,6 +124,11 @@ header h1 em{color:var(--a1);font-style:normal;}
 .star{cursor:pointer;font-size:17px;line-height:1;background:none;border:0;color:var(--bd);padding:0 2px;transition:.15s;}
 .star:hover{color:var(--a4);}
 .star.on{color:var(--a4);}
+.csvbtn{font-size:9px;font-weight:800;font-family:inherit;letter-spacing:.02em;padding:3px 7px;border-radius:5px;border:1px solid var(--bd);background:var(--s2);color:var(--dim);cursor:pointer;white-space:nowrap;flex-shrink:0;line-height:1.35;transition:.15s;}
+.csvbtn:hover{border-color:var(--a1);color:var(--a1);}
+.csvbtn.ok{border-color:var(--a1);background:var(--a1);color:#04121b;}
+.card-tools{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.sub-hd{display:flex;justify-content:space-between;align-items:center;gap:8px;}
 .panel{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px;}
 .panel h2{font-size:14px;font-weight:800;margin-bottom:12px;}
 .add-form{display:grid;grid-template-columns:minmax(120px,1.2fr) minmax(100px,1fr) minmax(120px,1fr) minmax(120px,1.4fr) auto;gap:6px;width:100%;align-items:center;}
@@ -441,6 +446,7 @@ function ncLastIdx(reg){ // 지역 샤드 전체에서 마지막 공표월 인�
   if(window._ncForceLastIdx!=null) return window._ncForceLastIdx; // 부분분기 로컬 테스트용 오버라이드
   const ck='@'+reg; if(_NCFIX[ck]!=null) return _NCFIX[ck];
   const sh=window.PSH&&window.PSH[reg]; let last=-1;
+  if(sh&&!sh.detail){ const rg=REGIONS.find(x=>x.id===reg); if(rg&&rg.dlast!=null) return _NCFIX[ck]=rg.dlast; } // detail 분리: dfile 미로드 시 빌더 주입 인덱스
   if(sh&&sh.detail) for(const set of Object.values(sh.detail)) for(const pt of Object.values(set)) for(const fl of ['exp','imp']){
     const v=(pt[fl]&&pt[fl].v)||[];
     for(let i=v.length-1;i>last;i--) if(v[i]){ last=i; break; }
@@ -460,9 +466,13 @@ function ncFix(n){ // n: M.nowcast 엔트리 → {cyoy,predyoy,avail,partial,cor
   const qm=ncQMonths(n.lastC); if(qm.length!==3) return res(out);
   out.avail=qm.filter(i=>i<=lastIdx).length; out.partial=out.avail<3;
   const co=(P.companies||[]).find(c=>c.id===n.id), f=(P.fin||{})[n.id];
-  if(!co||!f||!P.detail[co.core_set]) return res(out);
-  const det=P.detail[co.core_set], ports=(co.main_ports&&co.main_ports.length?co.main_ports:co.ports)||[];
-  const v=MONTHS.map((_,i)=>ports.reduce((s,p)=>s+((det[p]&&det[p].exp&&det[p].exp.v&&det[p].exp.v[i])||0),0));
+  if(!co||!f) return res(out);
+  let v; const detc=P.detail[co.core_set];
+  if(detc){ const ports=(co.main_ports&&co.main_ports.length?co.main_ports:co.ports)||[];
+    v=MONTHS.map((_,i)=>ports.reduce((s,p)=>s+((detc[p]&&detc[p].exp&&detc[p].exp.v&&detc[p].exp.v[i])||0),0)); }
+  else if(co.ncv&&co.ncv.length) v=co.ncv;                            // 빌더 주입 — 세관계열≠revenue 종목
+  else if(co.revenue&&co.revenue.some(x=>x)) v=co.revenue.map(x=>x||0); // 세관계열==revenue 빌드타임 검증 종목
+  else return res(out);
   const qsum=(y,q,cut)=>{ let t=0; for(let m=3*q-2;m<=3*q;m++){ const i=monthIdx[y+'-'+String(m).padStart(2,'0')]; if(i==null) return null; if(cut!=null&&i>cut) continue; t+=v[i]; } return t; };
   // 매출분기 라벨 = ceil(결산월/3), 그 라벨 − L 이 대응 세관분기 (비캘린더 결산 포함)
   const seg=(f.segname&&n.seg===f.segname&&f.segq&&f.segq.length)?f.segq:(f.q||[]).map(r=>[r[0],r[1]]);
@@ -636,6 +646,41 @@ function mlabel(ym){ return ym.slice(2,4)+'/'+ym.slice(5,7); }
 function chip(v){ if(v==null) return ''; return `<span class="chg ${v>=0?'up':'dn'}">${fmtP(v)}</span>`; }
 const monthIdx = {}; MONTHS.forEach((m,i)=>monthIdx[m]=i);
 
+// ---------- CSV export (카드 시계열 → Blob 다운로드, 외부 라이브러리 없음) ----------
+function csvCell(v){ if(v==null) return ''; const s=String(v);
+  return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+function csvNum(v,pct){ if(v==null||typeof v!=='number'||!isFinite(v)) return '';
+  return String(pct? +(v*100).toFixed(3) : +v.toFixed(4)); }
+// Chart.js 인스턴스 → CSV 텍스트. 표시 중인 구간(x.min/max)·통화·기간단위를 그대로 직렬화.
+function chartCsv(ch,pct){
+  const labels=(ch.data.labels||[]).map(String), ds=(ch.data.datasets||[]).filter(d=>d&&d.data&&d.data.length);
+  const isP=d=>pct==='*'||(!!pct&&pct.split(' ').indexOf(d.yAxisID||'')>=0);
+  const sx=(ch.options&&ch.options.scales&&ch.options.scales.x)||{};
+  const i0=sx.min!=null?Math.max(0,sx.min):0, i1=sx.max!=null?Math.min(labels.length-1,sx.max):labels.length-1;
+  const head=['period'].concat(ds.map(d=>d.label+(isP(d)&&!/%/.test(d.label)?' (%)':'')));
+  const rows=[head.map(csvCell).join(',')];
+  for(let i=i0;i<=i1;i++){ const cells=ds.map(d=>{const v=d.data[i]; return csvNum(v&&typeof v==='object'?v.y:v,isP(d));});
+    if(cells.some(x=>x!=='')) rows.push([csvCell(labels[i])].concat(cells).join(',')); }
+  return rows.join('\r\n'); }
+function csvDownload(name,text){                      // BOM: Excel이 UTF-8 한글/일본어를 깨지 않게
+  const url=URL.createObjectURL(new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8;'}));
+  const a=document.createElement('a'); a.href=url; a.download=name; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ a.remove(); URL.revokeObjectURL(url); },0); }
+function csvName(base){ const s=String(base).replace(/[^\w가-힣ぁ-ヿ一-龯]+/g,'_').replace(/^_+|_+$/g,'').slice(0,48);
+  return `phalanx_${ST.region}_${s||'chart'}_${ST.gran}_${ST.cur}_${M.updated}.csv`; }
+function csvBtn(key,name,pct){ const nm=String(name).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  return `<button class="csvbtn" data-csv="${key}" data-cname="${nm}" data-pct="${pct||''}" title="이 카드의 시계열을 CSV로 저장 — 현재 통화·기간단위·표시구간 기준">⬇CSV</button>`; }
+// capture 단계에서 가로채 카드 자체 onclick(상세 진입)이 먼저 발화하는 것을 막는다
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('.csvbtn'); if(!b) return;
+  e.preventDefault(); e.stopPropagation();
+  const flash=(t,ok)=>{ b.textContent=t; b.classList.toggle('ok',!!ok); setTimeout(()=>{b.textContent='⬇CSV';b.classList.remove('ok');},1400); };
+  const ch=charts[b.dataset.csv]; if(!ch) return flash('없음');
+  try{ csvDownload(csvName(b.dataset.cname), chartCsv(ch,b.dataset.pct)); flash('저장됨 ✓',1); }
+  catch(err){ flash('실패'); }
+},true);
+
 // ---------- hub extra metrics (weight / unit price / top countries) ----------
 function coFlowSum(co){ const flow=co.rev_flow||'exp';
   if(co.filtered) return fSum(co, co.main_ports, flow);
@@ -663,12 +708,14 @@ function coTopC(co,topn){
   const tot=Object.values(agg).reduce((a,b)=>a+b,0)||1;
   return {idx:li, top:ord.map((c,i)=>({name:c,share:agg[c]/tot,col:CCOL[i%CCOL.length]})).sort((a,b)=>b.share-a.share).slice(0,topn)}; }
 function hubMetricsHtml(co){
-  const fs=coFlowSum(co), li=lastIdx(fs.v), w=fs.w[li], u=(w>0?fs.v[li]*CUR[ST.cur].mult/w:null);
-  const wy=yoyArr(fs.w), ur=fs.v.map((x,i)=>fs.w[i]>0?x/fs.w[i]:null), uy=yoyArr(ur);
+  let w,u,wyv,uyv; const hm=co.hubm;
+  if(hm){ w=hm.w; u=(hm.w>0?hm.v*CUR[ST.cur].mult/hm.w:null); wyv=hm.wy; uyv=hm.uy; } // 빌드타임 사전계산 — detail 분리 후에도 카드 유지
+  else{ const fs=coFlowSum(co), li=lastIdx(fs.v); w=fs.w[li]; u=(w>0?fs.v[li]*CUR[ST.cur].mult/w:null);
+    const wy=yoyArr(fs.w), ur=fs.v.map((x,i)=>fs.w[i]>0?x/fs.w[i]:null), uy=yoyArr(ur); wyv=wy[li]; uyv=uy[li]; }
   const tc=coTopC(co,4), flowLab=co.rev_flow==='imp'?'수입국':'수출국';
   return `<div class="hub-metrics">
-    <div class="hm"><span class="hmv">${fmtKg(w)}</span>${chip(wy[li])}<span class="hml">중량</span></div>
-    <div class="hm"><span class="hmv">${u!=null?fmtUnit(u):'–'}</span>${chip(uy[li])}<span class="hml">단가 ${CUR[ST.cur].sym}/kg</span></div>
+    <div class="hm"><span class="hmv">${fmtKg(w)}</span>${chip(wyv)}<span class="hml">중량</span></div>
+    <div class="hm"><span class="hmv">${u!=null?fmtUnit(u):'–'}</span>${chip(uyv)}<span class="hml">단가 ${CUR[ST.cur].sym}/kg</span></div>
     <div class="hm-c"><span class="hml">${co.country_groups&&co.country_groups.length?"수요처 추정":flowLab+" TOP"}</span>${tc.top.map(t=>`<span class="cc"><i style="background:${t.col}"></i>${t.name} ${(t.share*100).toFixed(0)}%</span>`).join('')}</div>
   </div>`;
 }
@@ -703,6 +750,7 @@ function companyCard(co){
         <div class="co-cat">Category · ${catLabel(co.category)}</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
         ${_kre?'<span class="badge '+(_kre.partial?'b-p':'b-f')+'">'+_kre.badge+'</span>':''}
+        ${csvBtn(co.id+'_m', co.name, 'y1')}
         <button class="star ${isStar(co.id)?'on':''}" data-star="${co.id}" title="관심 추가/해제">★</button>
         <span class="cat-tag">${catLabel(co.category)}</span></div>
     </div>
@@ -723,7 +771,7 @@ function companyCard(co){
     </div>
     <div class="ch-main"><canvas></canvas></div>
     <div class="divid"></div>
-    <div class="sub-ttl">YoY by Year</div>
+    <div class="sub-hd"><span class="sub-ttl">YoY by Year</span>${csvBtn(co.id+'_y', co.name+'_YoY', '*')}</div>
     <div class="ch-yr"><canvas></canvas></div>`;
   return div;
 }
@@ -942,7 +990,8 @@ function dCard(p,hero){
   const div=document.createElement('div'); div.className='card'+(hero?' hero':''); div.dataset.code=p.code;
   const tag=p.region?`<span class="cat-tag ${p.region}">${p.region}</span>`:'';
   div.innerHTML=`<div class="card-hd"><div><h3>${p.name}${p.jp?` <small>${p.jp}</small>`:''}</h3>
-    <div class="co-cat">${hero?compObj().name+' · '+compObj().ports.length+'개 세관':'Customs '+p.code}</div></div>${tag}</div>
+    <div class="co-cat">${hero?compObj().name+' · '+compObj().ports.length+'개 세관':'Customs '+p.code}</div></div>
+    <div class="card-tools">${csvBtn('d_'+p.code, hero?compObj().name+'_total':p.name+'_'+p.code, 'yP')}${tag}</div></div>
     ${portMapHtml(p,hero)}
     <div class="metrics">${dMetrics(p.code)}</div><div class="ch-wrap"><canvas></canvas></div>`;
   return div;
@@ -3823,8 +3872,9 @@ function renderCountry(){
   main.innerHTML=((co.is_hub||co.filtered)?hubPanel(co):'')+'<div class="hero" id="hero"></div><div class="grid" id="grid"></div>';
   const {order,loc,locw}=countryLoc(port);
   const view=countryView(port);
+  const cpct=(ST.cmetric==='share'||ST.cmetric==='yoy')?'*':'';   // 비중%/YoY 뷰는 비율값 → CSV에서 % 환산
   const hero=document.createElement('div'); hero.className='card hero';
-  hero.innerHTML=`<div class="card-hd"><div><h3>${pinfo.name} ${pinfo.jp||''} <small>${flowKLabel()} · ${ST.cmetric}</small></h3><div class="co-cat">${port==='ALL'?co.name+' total':'Customs '+port} · ${cflow()==='imp'?'Import':'Export'}</div></div></div><div class="ch-wrap"><canvas></canvas></div>`;
+  hero.innerHTML=`<div class="card-hd"><div><h3>${pinfo.name} ${pinfo.jp||''} <small>${flowKLabel()} · ${ST.cmetric}</small></h3><div class="co-cat">${port==='ALL'?co.name+' total':'Customs '+port} · ${cflow()==='imp'?'Import':'Export'}</div></div><div class="card-tools">${csvBtn('cy_hero', pinfo.name+'_'+ST.cmetric, cpct)}</div></div><div class="ch-wrap"><canvas></canvas></div>`;
   document.getElementById('hero').appendChild(hero);
   charts['cy_hero']=new Chart(hero.querySelector('canvas'),{data:{labels:gLabels(),datasets:view.ds},options:countryViewOpts(view.kind)});
   const lvA={},wvA={}; order.forEach(c=>{lvA[c]=aggLevel(loc[c]||[]); wvA[c]=aggLevel(locw[c]||[]);});
@@ -3841,7 +3891,7 @@ function renderCountry(){
     else { data=lv.map((x,j)=>wv[j]>0?x*k/wv[j]:null); headline=data[li]!=null?CUR[ST.cur].sym+fmtNum(data[li])+'/kg':'–';
       ds={type:'line',label:c,data,borderColor:col,borderWidth:1.5,pointRadius:0,tension:.25,spanGaps:true}; }
     const card=document.createElement('div'); card.className='card';
-    card.innerHTML=`<div class="card-hd"><div><h3><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${col};margin-right:6px;vertical-align:-1px"></span>${c}</h3><div class="co-cat">${pinfo.name} · ${cflow()==='imp'?'Import':'Export'}</div></div></div>
+    card.innerHTML=`<div class="card-hd"><div><h3><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${col};margin-right:6px;vertical-align:-1px"></span>${c}</h3><div class="co-cat">${pinfo.name} · ${cflow()==='imp'?'Import':'Export'}</div></div><div class="card-tools">${csvBtn('cy_'+i, c+'_'+pinfo.name+'_'+ST.cmetric, cpct)}</div></div>
       <div class="metrics"><div class="metric"><span class="val">${headline}</span><div class="lbl">${gl[li]||''} · ${({value:'값',share:'비중',yoy:'YoY',unit:'단가'})[cm]}</div></div></div>
       <div class="ch-wrap"><canvas></canvas></div>`;
     grid.appendChild(card);
