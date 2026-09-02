@@ -831,7 +831,7 @@ const blank = () => ({
   edition:'tb', redHerringId:null, drunkMaskChar:null, executedToday:null, executedPrevDay:null,
   customs:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null, daPrev:null,
   pukkaVictimId:null, mastermindDay:null, executedTodayPid:null, executedDiedToday:null,
-  fangGuJumped:false, demonBlockedNight:null, demonBlockedPid:null, schema:2
+  fangGuJumped:false, demonBlockedNight:null, demonBlockedPid:null, dayTimer:null, schema:2
 });
 let S = blank();
 /* 구버전 저장본 정규화. 최상위 Object.assign 만으로는 플레이어·지명의 신규 필드가 비어
@@ -1276,6 +1276,8 @@ function renderSetup(){
     body=`
     <div class="row" style="margin-bottom:10px">
       <button class="primary" onclick="randomAssign()" ${n<5?'disabled':''}>🎲 무작위 배정</button>
+      <button onclick="shuffleSeats()" ${n<2?'disabled':''}>🔀 자리 섞기</button>
+      <button class="ghost" onclick="clearAssign()">배정 전체 비우기</button>
       <span class="hint">또는 아래에서 직접 선택</span>
     </div>
     ${comps?`<p class="hint">권장 구성 (${n}인${modLabel?` · ${modLabel} 적용`:''}): ${comps.map(comp=>`<span class="pill townsfolk">주민 ${comp[0]}</span> <span class="pill outsider">외지인 ${comp[1]}</span> <span class="pill minion">하수인 ${comp[2]}</span> <span class="pill demon">악마 ${comp[3]}</span>`).join(' <span class="hint" style="display:inline">또는</span> ')}
@@ -1348,6 +1350,29 @@ function setChar(pid,cid){ const p=playerOf(pid); p.charId=cid;
   p.statuses=(p.statuses||[]).filter(s=>!(s.key==='drunkS' && s.source==='주정뱅이'));
   if(cid==='drunk' && !hasStatus(p,'drunkS')) addStatus(p,'drunkS','주정뱅이',null);
   save(); renderAll(); }
+/* 좌석 순서를 무작위로 섞는다 — 캐릭터 배정은 그대로 두고 앉은 자리만 바꾼다.
+   이웃 판정(요리사·초공감자·찻집 여인 등)이 좌석 순서에 의존하므로 배정 전에 쓰는 게 안전하다. */
+function shuffleSeats(){
+  if(S.players.length<2) return;
+  if(S.phase.kind!=='setup' && !confirm('게임이 이미 진행 중입니다. 좌석을 섞으면 이웃 기반 판정(요리사·초공감자·찻집 여인 등)이 모두 바뀝니다. 계속할까요?')) return;
+  for(let i=S.players.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [S.players[i],S.players[j]]=[S.players[j],S.players[i]];
+  }
+  log('🔀 자리 섞기 — 좌석 순서 무작위 재배치');
+  toast('좌석을 섞었습니다. 이웃 기반 판정이 바뀌었으니 그리모어를 확인하세요.','ok');
+  save(); renderAll();
+}
+/* 캐릭터 배정만 전부 지운다 — 플레이어·좌석은 유지 */
+function clearAssign(){
+  if(!S.players.some(p=>p.charId)){ toast('배정된 캐릭터가 없습니다.','warn'); return; }
+  if(!confirm('모든 플레이어의 캐릭터 배정을 지웁니다. 플레이어와 좌석은 유지됩니다. 계속할까요?')) return;
+  S.players.forEach(p=>{ p.charId=''; p.alignment=null;
+    p.statuses=(p.statuses||[]).filter(x=>x.key!=='drunkS'&&x.key!=='herring'); });
+  S.drunkMaskChar=null; S.redHerringId=null;
+  log('배정 전체 비우기');
+  save(); renderAll();
+}
 function setHerring(pid){ S.redHerringId=pid;
   S.players.forEach(p=>p.statuses=(p.statuses||[]).filter(s=>s.key!=='herring'));
   const p=playerOf(pid); if(p) addStatus(p,'herring','점쟁이 셋업',null);
@@ -3994,6 +4019,64 @@ renderNight=function(){
   if(!_ntInt) _ntInt=setInterval(_ntTick,1000);   /* 인터벌은 1개만 — span만 갱신, renderAll 재호출 없음 */
 };
 
+/* ══════════ 2-b) 낮 타이머 (renderDay 래핑) — teeroz 의 낮 제한시간 대응 ══════════ */
+let _dtInt=null;
+function _dtTick(){
+  if(S.phase.kind!=='day'){ const b=document.getElementById('daytimerbar'); if(b) b.remove(); return; }
+  const sp=document.getElementById('daytimer');
+  if(!sp || !S.dayTimer) return;
+  const s=Math.max(0, Math.floor((Date.now()-S.dayTimer.start)/1000));
+  sp.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  const lim=(S.dayTimer.limit|0);
+  if(lim>0){
+    const left=lim*60-s;
+    const w=document.getElementById('daytimerleft');
+    if(w){
+      w.textContent = left>0
+        ? `남은 시간 ${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`
+        : '시간 종료 — 지명을 마감하세요';
+      w.className = left>0? 'hint' : 'pill warn';
+    }
+  }
+}
+function setDayLimit(){
+  const v=prompt('낮 제한시간(분). 0 이면 제한 없음.', String((S.dayTimer&&S.dayTimer.limit)||0));
+  if(v===null) return;
+  const m=Math.max(0, parseInt(v,10)||0);
+  S.dayTimer=S.dayTimer||{start:Date.now(), n:S.phase.n};
+  S.dayTimer.limit=m; save(); _dtTick();
+  toast(m? `낮 제한시간 ${m}분 설정` : '낮 제한시간 해제','ok');
+}
+function resetDayTimer(){ S.dayTimer={start:Date.now(), n:S.phase.n, limit:(S.dayTimer&&S.dayTimer.limit)||0}; save(); _dtTick(); }
+(function(){
+  const _origRenderDay=renderDay;
+  renderDay=function(){
+    _origRenderDay();
+    if(S.phase.kind!=='day'){ const b=document.getElementById('daytimerbar'); if(b) b.remove(); return; }
+    if(!S.dayTimer || S.dayTimer.n!==S.phase.n) S.dayTimer={start:Date.now(), n:S.phase.n, limit:(S.dayTimer&&S.dayTimer.limit)||0};
+    $('#pane-day').insertAdjacentHTML('afterbegin',
+      `<div id="daytimerbar" class="card" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px">
+        <span>☀ 낮 ${S.phase.n} 경과</span>
+        <span id="daytimer" class="num" style="font-size:20px;font-weight:700">00:00</span>
+        <span id="daytimerleft" class="hint">${S.dayTimer.limit? '' : '제한 없음'}</span>
+        <button class="small" onclick="setDayLimit()">제한시간</button>
+        <button class="small ghost" onclick="resetDayTimer()">리셋</button>
+        <button class="small danger ghost" style="margin-left:auto" onclick="endGameManually()">🏁 게임 종료</button>
+      </div>`);
+    _dtTick();
+    if(!_dtInt) _dtInt=setInterval(_dtTick,1000);
+  };
+})();
+
+/* 페이즈가 낮이 아니게 되면 낮 타이머 바를 즉시 제거한다(탭을 안 열어도) */
+(function(){
+  const _adv=advancePhase;
+  advancePhase=function(){
+    _adv();
+    if(S.phase.kind!=='day'){ const b=document.getElementById('daytimerbar'); if(b) b.remove(); }
+  };
+})();
+
 /* ══════════ 3) 리플레이(전말) 요약 ══════════ */
 function _rpIcon(m){
   if(m.startsWith('──')) return '🕰';
@@ -4386,6 +4469,17 @@ function showDawn(){
   wiz.idx=0; renderWiz();
 }
 /* ══ B4: 종료 결과 화면 ══ */
+/* 사회자가 임의로 게임을 끝낸다 — 판정이 자동으로 안 걸리는 상황(합의 종료·중단) 대응 */
+function endGameManually(){
+  if(S.gameOver){ toast('이미 종료된 게임입니다.','warn'); return; }
+  const t=prompt('게임을 종료합니다. 승리 팀을 입력하세요 — 1: 선한 팀 · 2: 악한 팀 · 3: 무승부/중단','1');
+  if(t===null) return;
+  const map={'1':['good','선한 팀 승리(사회자 선언)'],'2':['evil','악한 팀 승리(사회자 선언)'],'3':['good','무승부·중단(사회자 선언)']};
+  const pick=map[String(t).trim()]; if(!pick){ toast('1·2·3 중 하나를 입력하세요.','warn'); return; }
+  const why=prompt('사유(선택)','')||pick[1];
+  S.gameOver=true; save();
+  showGameOver(pick[0], why);
+}
 function showGameOver(team, reason){
   const el=$('#gameover'); el.hidden=false;
   el.innerHTML=`<div class="gocard">
