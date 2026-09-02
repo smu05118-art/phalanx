@@ -68,6 +68,84 @@
   #timebar input{flex:1;accent-color:var(--accent)}
   #timebar .tl{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap}
   @media(max-width:1000px){#app{grid-template-columns:1fr;grid-template-rows:52px 44vh 1fr}aside.right{display:none}aside{border-right:none;border-bottom:1px solid var(--line)}}
+
+  /* ══ ProView 확장 (proview.js) ══ */
+  #tickerbar{height:30px;flex:0 0 30px;background:var(--panel2);border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap}
+  #tickerbar .tkwrap{display:inline-block;animation:tkroll 75s linear infinite;will-change:transform}
+  #tickerbar:hover .tkwrap{animation-play-state:paused}
+  @keyframes tkroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+  #tickerbar .tk{display:inline-block;padding:0 10px;font-family:var(--mono);font-size:11px;line-height:30px;cursor:pointer;color:var(--dim)}
+  #tickerbar .tk b{color:var(--ink);font-weight:650}
+  #tickerbar .tk:hover{color:var(--accent)}
+  #tickerbar .tksep{color:#2a3140;font-size:10px}
+  .ttsbtn{background:rgba(43,192,212,.12);border:1px solid rgba(43,192,212,.35);color:var(--accent);font-size:11px;font-weight:650;padding:3px 10px;border-radius:999px;cursor:pointer;font-family:var(--sans)}
+  .ttsbtn:hover{background:rgba(43,192,212,.22)}
+  #ttsPill{position:fixed;right:18px;bottom:18px;z-index:99;background:var(--panel);border:1px solid var(--accent);color:var(--accent);font-size:12px;padding:8px 14px;border-radius:999px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+  .rswitch{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+  .rsw{font-size:12px;font-weight:650;padding:5px 12px;border-radius:999px;border:1px solid var(--line);cursor:pointer;color:var(--dim);transition:.13s}
+  .rsw.on{background:rgba(43,192,212,.14);color:var(--accent);border-color:rgba(43,192,212,.4)}
+  .sigts{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--dim)}
+  .nfday{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.08em;margin:12px 0 6px;border-bottom:1px solid var(--line);padding-bottom:3px}
+  .nfcard{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:6px;transition:.13s}
+  .nfcard.fresh{border-left:3px solid var(--accent)}
+  .nfcard:hover{border-color:var(--accent)}
+  .nft{font-size:12px;line-height:1.4;font-weight:600}
+  .nft a{color:var(--ink);text-decoration:none}
+  .nft a:hover{color:var(--accent)}
+  .nfbrk{display:inline-block;background:#ff4d5e;color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;margin-right:5px;vertical-align:1px}
+  .nfm{display:flex;gap:8px;font-family:var(--mono);font-size:9.5px;color:var(--dim);margin-top:4px;align-items:center}
+  .nftopic{color:var(--accent)}
+  .nfgeo{cursor:pointer;margin-left:auto}
+  .nfgeo:hover{transform:scale(1.2)}
+  .sightop{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+  .sightop h2{font-size:20px;font-weight:800}
+  .wchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+  .wchip{font-size:11.5px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;cursor:pointer;color:var(--dim);opacity:.5;transition:.13s}
+  .wchip.on{opacity:1;color:var(--accent);border-color:rgba(43,192,212,.4);background:rgba(43,192,212,.08)}
+  .siggrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;max-width:1280px}
+  .sigw{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 18px;min-width:0}
+  .sigw.wide{grid-column:1/-1}
+  .sigh{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .sigh b{font-size:13.5px}
+  .sigedit{margin-left:auto;font-size:11px;color:var(--dim);cursor:pointer}
+  .sigedit:hover{color:var(--accent)}
+  .sigfoot{font-size:10px;color:var(--dim);margin-top:12px;border-top:1px solid var(--line);padding-top:8px;line-height:1.5}
+  .sbp{font-size:13px;line-height:1.7;color:#cdd6de;margin:0 0 8px}
+  .wrow{display:flex;align-items:center;gap:10px;padding:6px 4px;border-bottom:1px solid rgba(31,41,55,.5);font-size:12.5px}
+  .wrow:last-child{border-bottom:none}
+  .wrow .wnm{flex:1;font-weight:600;min-width:70px}
+  .wrow .wpx{font-family:var(--mono);font-size:12px;min-width:70px;text-align:right}
+  .wrow .wch{font-family:var(--mono);font-size:11.5px;min-width:56px;text-align:right}
+  .wrow.woff{opacity:.3}
+  .wrow.editing{cursor:pointer;outline:1px dashed rgba(43,192,212,.4);outline-offset:-1px;border-radius:6px}
+  .cvrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(31,41,55,.5);font-size:12.5px}
+  .cvrow:last-child{border-bottom:none}
+  .cvt{flex:0 0 84px;font-weight:600}
+  .cvbars{flex:1;display:flex;align-items:flex-end;gap:2px;height:22px}
+  .cvbars i{flex:1;background:rgba(43,192,212,.55);border-radius:1.5px;min-height:2px}
+  .cvn{font-family:var(--mono);font-size:10.5px;color:var(--dim);min-width:58px;text-align:right}
+  .cvtr{font-size:10.5px;font-weight:700;min-width:44px;text-align:right}
+  .kwcloud{display:flex;flex-wrap:wrap;gap:7px;align-items:baseline}
+  .kwchip{border:1px solid var(--line);border-radius:999px;padding:3px 11px;color:var(--ink);line-height:1.5}
+  .kwchip i{font-style:normal;font-family:var(--mono);font-size:9.5px;color:var(--dim);margin-left:5px}
+  .mkgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .mkh{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:7px}
+  .mkrow{display:flex;align-items:baseline;gap:8px;font-size:12.5px;padding:4px 0;border-bottom:1px solid rgba(31,41,55,.45)}
+  .mkrow span{flex:1;color:#cdd6de}
+  .mkrow b{font-family:var(--mono);font-size:12px}
+  .mkrow i{font-style:normal;font-family:var(--mono);font-size:11px;min-width:52px;text-align:right}
+  .pdrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(31,41,55,.45);font-size:12.5px;text-decoration:none;color:var(--ink)}
+  .pdrow:hover .pdq{color:var(--accent)}
+  .pdq{flex:1;line-height:1.35;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pdbar{flex:0 0 90px;height:6px;background:var(--panel2);border-radius:3px;overflow:hidden}
+  .pdbar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+  .pdrow b{font-family:var(--mono);font-size:12px;min-width:44px;text-align:right}
+  .pdchg{font-style:normal;font-family:var(--mono);font-size:10px;min-width:34px;text-align:right}
+  .rdtop{display:flex;gap:14px;justify-content:center;font-size:11.5px;color:var(--dim);margin:6px 0 10px}
+  .rdtop b{font-family:var(--mono);color:var(--ink)}
+  .rddrv{font-size:11.5px;line-height:1.5;color:#cdd6de;padding:5px 8px;border:1px solid var(--line);border-radius:8px;margin-top:5px;cursor:pointer}
+  .rddrv:hover{border-color:var(--accent);color:var(--accent)}
+  @media(max-width:700px){#tickerbar .tkwrap{animation-duration:40s}.siggrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -76,6 +154,7 @@
     <h1>🛰 Panoptes</h1>
     <nav class="tabs">
       <span class="ptab on" data-tab="map">🗺 분쟁지도</span>
+      <span class="ptab" data-tab="sig">📡 시그널</span>
       <span class="ptab" data-tab="liq">💧 유동성</span>
       <span class="ptab" data-tab="tech">📐 기술적</span>
       <span class="ptab" data-tab="ship">🚢 해운</span>
@@ -84,6 +163,7 @@
     </nav>
     <div class="stat" id="headStat"><b id="stEvents">0</b> events · <b id="stActive">0</b> shown · <span id="stUpdated">—</span></div>
   </header>
+  <div id="tickerbar" hidden></div>
   <div id="mapview">
     <aside class="left">
       <input class="search" id="search" placeholder="이벤트·국가 검색…">
@@ -93,6 +173,8 @@
       <div id="typeFilters"></div>
       <p class="sect">심각도</p>
       <div id="sevFilters"></div>
+      <p class="sect">뉴스 레이어</p>
+      <div class="frow" id="newsLayerToggle"><span class="dot" style="background:#2bc0d4;border-radius:50%"></span>지오태그 뉴스 24h<span class="n" id="newsLayerN">0</span></div>
       <p class="legend-note">마커 크기·색 = 심각도(1 긴장 → 5 대규모 교전). 클릭 시 상세. 하단 슬라이더로 기간 필터.</p>
     </aside>
     <div id="map">
@@ -110,18 +192,28 @@
       </div>
     </div>
     <aside class="right">
-      <p class="sect">이벤트 상세</p>
-      <div id="detail"><p class="hint">지도의 마커 또는 왼쪽 목록에서 이벤트를 선택하세요.</p></div>
-      <p class="sect" style="margin-top:22px">최근 이벤트</p>
-      <div class="evlist" id="evlist"></div>
+      <div class="rswitch">
+        <span class="rsw on" data-r="ev">이벤트</span><span class="rsw" data-r="news">뉴스플로우</span>
+        <button id="ttsNews" class="ttsbtn" title="상위 헤드라인 음성 브리핑">🔊</button>
+        <span class="sigts" id="nfUpdated"></span>
+      </div>
+      <div id="rpaneEv">
+        <p class="sect">이벤트 상세</p>
+        <div id="detail"><p class="hint">지도의 마커 또는 왼쪽 목록에서 이벤트를 선택하세요.</p></div>
+        <p class="sect" style="margin-top:22px">최근 이벤트</p>
+        <div class="evlist" id="evlist"></div>
+      </div>
+      <div id="rpaneNews" hidden></div>
     </aside>
   </div>
+  <div id="sigview" hidden style="flex:1;overflow-y:auto;padding:24px clamp(16px,4vw,48px)"></div>
   <div id="liqview" hidden></div>
   <div id="techview" hidden style="flex:1;overflow-y:auto;padding:24px clamp(16px,4vw,48px)"></div>
   <div id="shipview" hidden style="flex:1;overflow-y:auto;padding:24px clamp(16px,4vw,48px)"></div>
   <div id="humanview" hidden style="flex:1;overflow-y:auto;padding:24px clamp(16px,4vw,48px)"></div>
   <div id="llmview" hidden style="flex:1;overflow-y:auto;padding:24px clamp(16px,4vw,48px)"></div>
 </div>
+<script src="proview.js"></script>
 <script src="tech_charts.js"></script>
 <script src="deriv_charts.js"></script>
 <script src="shipping_charts.js"></script>
