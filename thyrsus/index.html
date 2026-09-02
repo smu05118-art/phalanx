@@ -800,10 +800,10 @@ CHARACTERS.push(...BMR_CHARS, ...SV_CHARS);
 const EDITIONS={
  tb:{ko:'점철되는 혼란', en:'Trouble Brewing', first:FIRST_NIGHT_ORDER, other:OTHER_NIGHT_ORDER},
  bmr:{ko:'피로 물든 달', en:'Bad Moon Rising',
-   first:['minioninfo','demoninfo','lunatic','sailor','courtier','godfather','devilsadvocate','pukka','grandmother','chambermaid'],
+   first:['minioninfo','lunatic','demoninfo','sailor','courtier','godfather','devilsadvocate','pukka','grandmother','chambermaid'],
    other:['sailor','courtier','innkeeper','gambler','devilsadvocate','lunatic','exorcist','zombuul','pukka','shabaloth','po','assassin','godfather','gossip','professor','tinker','moonchild','grandmother','chambermaid']},
  sv:{ko:'화단에 꽃피운 이단', en:'Sects & Violets',
-   first:['minioninfo','demoninfo','philosopher','snakecharmer','eviltwin','witch','cerenovus','clockmaker','dreamer','seamstress','mathematician'],
+   first:['philosopher','minioninfo','demoninfo','snakecharmer','eviltwin','witch','cerenovus','clockmaker','dreamer','seamstress','mathematician'],
    other:['philosopher','snakecharmer','witch','cerenovus','pithag','fanggu','nodashii','vortox','vigormortis','barber','sweetheart','sage','dreamer','flowergirl','towncrier','oracle','seamstress','juggler','mathematician']},
 };
 function editionOf(){ return EDITIONS[S.edition||'tb']; }
@@ -827,10 +827,42 @@ const blank = () => ({
   players:[], log:[], nightDone:{}, checks:{}, noms:[],
   edition:'tb', redHerringId:null, drunkMaskChar:null, executedToday:null, executedPrevDay:null,
   customs:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null,
-  pukkaVictimId:null, mastermindDay:null, executedTodayPid:null, executedDiedToday:null
+  pukkaVictimId:null, mastermindDay:null, executedTodayPid:null, executedDiedToday:null,
+  fangGuJumped:false, demonBlockedNight:null, demonBlockedPid:null, schema:2
 });
 let S = blank();
-try{ const raw = localStorage.getItem(LS_KEY); if(raw) S = Object.assign(blank(), JSON.parse(raw)); }catch(e){}
+/* 구버전 저장본 정규화. 최상위 Object.assign 만으로는 플레이어·지명의 신규 필드가 비어
+   `n.deadVoters.includes(...)` 같은 지점에서 예외가 난다. uid() 는 아직 TDZ 라 지역 생성기를 쓴다. */
+function migrateState(raw){
+  const mkid=()=>Math.random().toString(36).slice(2,9);
+  const st=Object.assign(blank(), (raw&&typeof raw==='object')? raw : {});
+  if(!st.phase || typeof st.phase!=='object') st.phase={kind:'setup', n:0};
+  if(typeof st.phase.n!=='number') st.phase.n=0;
+  st.players=(Array.isArray(st.players)? st.players:[]).filter(p=>p&&typeof p==='object').map(p=>{
+    const q=Object.assign({id:mkid(), name:'?', charId:'', alive:true, deadVote:true,
+      statuses:[], notes:'', alignment:null, diedAt:null}, p);
+    if(!Array.isArray(q.statuses)) q.statuses=[];
+    q.statuses=q.statuses.filter(x=>x&&typeof x==='object'&&typeof x.key==='string');
+    if(typeof q.notes!=='string') q.notes='';
+    if(q.alignment!=='good'&&q.alignment!=='evil') q.alignment=null;
+    if(!q.diedAt||typeof q.diedAt!=='object') q.diedAt=null;
+    q.alive=!!q.alive; q.deadVote=q.deadVote!==false;
+    return q;
+  });
+  st.noms=(Array.isArray(st.noms)? st.noms:[]).filter(n=>n&&typeof n==='object').map(n=>{
+    const m=Object.assign({id:mkid(), day:0, nominator:null, nominee:null, hands:[],
+      stage:1, votes:{}, closed:false, deadVoters:[]}, n);
+    if(!Array.isArray(m.hands)) m.hands=[];
+    if(!Array.isArray(m.deadVoters)) m.deadVoters=[];
+    if(!m.votes||typeof m.votes!=='object') m.votes={};
+    return m;
+  });
+  ['log','customs'].forEach(k=>{ if(!Array.isArray(st[k])) st[k]=[]; });
+  ['nightDone','checks'].forEach(k=>{ if(!st[k]||typeof st[k]!=='object') st[k]={}; });
+  st.schema=2;
+  return st;
+}
+try{ const raw = localStorage.getItem(LS_KEY); if(raw) S = migrateState(JSON.parse(raw)); }catch(e){}
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){} }
 
 const $ = sel => document.querySelector(sel);
@@ -842,7 +874,35 @@ function charOf(id){ return allChars().find(c=>c.id===id); }
 function playersByChar(cid){ return S.players.filter(p=>p.charId===cid); }
 function alivePlayers(){ return S.players.filter(p=>p.alive); }
 function playerOf(pid){ return S.players.find(p=>p.id===pid); }
-function isEvil(p){ const c=charOf(p.charId); return c && (c.type==='minion'||c.type==='demon'); }
+/* 진영은 캐릭터에서 '유도'하면 이발사 교환·건달·팡 구에서 오염된다.
+   p.alignment 가 명시돼 있으면 그것이 우선, 없으면 캐릭터 타입에서 유도한다. */
+function isEvil(p){
+  if(p && (p.alignment==='evil'||p.alignment==='good')) return p.alignment==='evil';
+  const c=charOf(p.charId); return !!(c && (c.type==='minion'||c.type==='demon'));
+}
+function pinAlignment(p){ if(p && !p.alignment) p.alignment = isEvil(p)?'evil':'good'; }
+/* 이발사: 캐릭터만 교환하고 진영은 각자 보존한다 */
+function doSwapChars(pids){
+  const a=playerOf((pids||[])[0]), b=playerOf((pids||[])[1]);
+  if(!a||!b||a===b){ toast('서로 다른 두 명을 선택하세요.','warn'); return; }
+  pinAlignment(a); pinAlignment(b);                  // 교환 전 진영을 고정
+  const t=a.charId; a.charId=b.charId; b.charId=t;
+  log(`✂ 이발사 교환: ${a.name} ↔ ${b.name} (캐릭터만 교환, 진영은 각자 유지)`);
+  toast(`✂ ${a.name}=${charName(a)} / ${b.name}=${charName(b)} — 각각 깨워 새 캐릭터를 보여주세요. 진영은 바뀌지 않습니다.`,'warn');
+  save(); renderAll();
+}
+/* 뱀 조련사: 캐릭터와 진영을 함께 교환하고, 새 뱀 조련사(전 악마)는 영구 중독 */
+function doSnakeSwap(pids){
+  const a=playerOf((pids||[])[0]), b=playerOf((pids||[])[1]);
+  if(!a||!b||a===b){ toast('서로 다른 두 명을 선택하세요.','warn'); return; }
+  pinAlignment(a); pinAlignment(b);
+  let t=a.charId; a.charId=b.charId; b.charId=t;
+  t=a.alignment; a.alignment=b.alignment; b.alignment=t;
+  const newSC = a.charId==='snakecharmer'? a : (b.charId==='snakecharmer'? b : null);
+  if(newSC && !hasStatus(newSC,'poison')) addStatus(newSC,'poison','뱀 조련사 스왑(영구)',null);
+  log(`🐍 뱀 조련사 스왑: ${a.name} ↔ ${b.name} (캐릭터·진영 모두 교환)`);
+  save(); renderAll();
+}
 function hasStatus(p,key){ return (p.statuses||[]).some(s=>s.key===key); }
 function isMalfunctioning(p){ return hasStatus(p,'poison') || hasStatus(p,'drunkS') || (p.charId==='drunk'); }
 function majority(n){ return Math.floor(n/2)+1; }
@@ -916,24 +976,27 @@ function killPlayer(p, cause, opts){
   if(p.charId==='zombuul' && !hasStatus(p,'fakedead') && !isMalfunctioning(p)){
     addStatus(p,'fakedead','좀버얼 첫 사망',null);
     p.alive=false;
+    p.diedAt={kind:S.phase.kind, n:S.phase.n, cause:cause||''};
     log(`🪦 ${p.name}(좀버얼) 죽은 척 — ${cause} (실제로는 생존, 두 번째 사망이 진짜)`);
     toast(`🪦 좀버얼의 첫 사망 — 겉으로는 죽은 것으로 공표하되 실제로는 생존 중입니다. 계속 밤에 깨우세요. 두 번째 사망이 진짜입니다.`,'warn');
+    if(!opts.skipEnd) checkEndConditions(cause, aliveBefore);
     return;
   }
   // 어릿광대 1회 생존: 첫 사망 시 정상 작동이면 재량 발동
+  // 어릿광대의 1회 생존은 '강제' 능력이다 — 사회자 재량이 아니므로 확인창 없이 자동 발동.
+  // 암살자와 오작동만 예외.
   if(p.charId==='fool' && p.alive && !hasStatus(p,'spent') && !isMalfunctioning(p) && !/암살자/.test(cause)){
-    if(confirm(`🃏 ${p.name}은(는) 어릿광대입니다 — 1회 생존 발동? (${cause})\n[확인] = 죽지 않음 + 능력 소진 / [취소] = 그대로 사망`)){
-      addStatus(p,'spent','어릿광대 1회 생존 발동',null);
-      log(`🃏 ${p.name}(어릿광대) 첫 사망 무효 — ${cause} (능력 소진)`);
-      toast(`🃏 ${p.name} 생존 — 어릿광대 1회 능력 소진. 사망하지 않습니다.`,'ok');
-      return;
-    }
+    addStatus(p,'spent','어릿광대 1회 생존 발동',null);
+    log(`🃏 ${p.name}(어릿광대) 첫 사망 무효 — ${cause} (능력 소진, 강제 발동)`);
+    toast(`🃏 ${p.name} 생존 — 어릿광대의 1회 생존이 발동했습니다(강제). 사망하지 않습니다.`,'ok');
+    return;
   }
   if(p.charId==='zombuul'){
     const zi=(p.statuses||[]).findIndex(s=>s.key==='fakedead');
     if(zi>=0){ p.statuses.splice(zi,1); log(`🪦 ${p.name}(좀버얼) 두 번째 사망 — 죽은 척 해제, 실제 사망`); }
   }
-  p.alive=false; log(`💀 ${p.name}(${charName(p)}) 사망 — ${cause}`);
+  p.alive=false; p.diedAt={kind:S.phase.kind, n:S.phase.n, cause:cause||''};
+  log(`💀 ${p.name}(${charName(p)}) 사망 — ${cause}`);
   if(!opts.skipSuccession) promoteScarletWoman(p, aliveBefore);
   if(!opts.skipEnd) checkEndConditions(cause, aliveBefore);
 }
@@ -998,6 +1061,7 @@ function advancePhase(){
     if(mayor && alivePlayers().length===3 && !S.executedToday && !isMalfunctioning(mayor)){
       if(!confirm('⚠ 생존자 3명 + 오늘 처형 없음 + 시장 생존(정상 작동) = 선한 팀 승리 조건입니다!\n그래도 밤으로 진행할까요? (취소를 누르면 낮에 머뭅니다)')) return;
     }
+    if(sheetEd!==S.edition) sheetEd=S.edition;   // 시트가 다른 스크립트를 보고 있으면 되돌린다
     S.executedPrevDay = S.executedDiedToday;  // 장의사는 '처형으로 실제 죽은' 캐릭터만 본다
     S.executedToday=null; S.executedTodayPid=null; S.executedDiedToday=null;
     S.phase={kind:'night', n:ph.n+1};
@@ -1042,7 +1106,7 @@ const SCRIPTS_META=[
   {id:'bmr', ko:'피로 물든 달', en:'Bad Moon Rising', ready:true, desc:'25캐릭터 · 밤 순서·가이드·노티스 지원'},
   {id:'sv', ko:'화단에 꽃피운 이단', en:'Sects & Violets', ready:true, desc:'25캐릭터 · 밤 순서·가이드·노티스 지원'},
 ];
-let sheetEd='tb', sheetTab='chars';
+let sheetEd=(S.edition||'tb'), sheetTab='chars';   // 진행 중인 게임의 에디션을 기본값으로
 function openSheet(ed){ sheetEd=ed; sheetTab='chars'; switchTab('sheet'); }
 function renderScripts(){
   const el=$('#pane-scripts');
@@ -1230,13 +1294,14 @@ function charCard(c){
   </div>`;
 }
 function addPlayer(){ const v=$('#newpname').value.trim(); if(!v) return; if(S.players.length>=15){toast('최대 15명','warn');return;}
-  S.players.push({id:uid(), name:v, charId:'', alive:true, deadVote:true, statuses:[], notes:''}); $('#newpname').value=''; save(); renderAll(); }
+  S.players.push({id:uid(), name:v, charId:'', alive:true, deadVote:true, statuses:[], notes:'', alignment:null, diedAt:null}); $('#newpname').value=''; save(); renderAll(); }
 function removePlayer(pid){ S.players=S.players.filter(p=>p.id!==pid); save(); renderAll(); }
 function movePlayer(pid,d){ const i=S.players.findIndex(p=>p.id===pid); const j=i+d; if(j<0||j>=S.players.length)return;
   [S.players[i],S.players[j]]=[S.players[j],S.players[i]]; save(); renderAll(); }
 function setChar(pid,cid){ const p=playerOf(pid); p.charId=cid;
-  p.statuses=(p.statuses||[]).filter(s=>s.key!=='drunkS');
-  if(cid==='drunk') addStatus(p,'drunkS','주정뱅이',null);
+  // 주정뱅이 캐릭터 자체가 준 취함만 제거한다 — 사랑꾼·여관 주인·건달·궁정대신이 준 취함은 보존
+  p.statuses=(p.statuses||[]).filter(s=>!(s.key==='drunkS' && s.source==='주정뱅이'));
+  if(cid==='drunk' && !hasStatus(p,'drunkS')) addStatus(p,'drunkS','주정뱅이',null);
   save(); renderAll(); }
 function setHerring(pid){ S.redHerringId=pid;
   S.players.forEach(p=>p.statuses=(p.statuses||[]).filter(s=>s.key!=='herring'));
@@ -1301,7 +1366,7 @@ function renderSheet(){
   };
   const nightList=(order)=>['dusk'].concat(order.filter(id=>!INFO_STEPS[id]||S.players.length===0||S.players.length>=INFO_STEPS[id].minPlayers)).concat(['dawn'])
     .map((id,i)=>nightRow(ed,id,i)).join('');
-  const firstFull=['minioninfo','demoninfo'].concat(ed.first.filter(x=>!INFO_STEPS[x]));
+  const firstFull=ed.first.slice();   // 에디션 배열 순서를 그대로 따른다(정보 단계 강제 선두 배치 금지)
   el.innerHTML=`<div class="card">
     <div class="sheethead">
       <div><button class="small ghost" onclick="switchTab('scripts')" style="margin-right:8px">←</button>
@@ -1409,7 +1474,7 @@ function addStatusUI(pid,key){
   const p=playerOf(pid); const ph=S.phase;
   let exp=null, src='사회자 수동';
   if(key==='poison'){ exp={kind:'night', n:(ph.kind==='night'?ph.n:ph.n)+1}; }
-  if(key==='protect'){ exp = ph.kind==='night'? {kind:'day', n:ph.n} : {kind:'night', n:ph.n+1}; }
+  if(key==='protect'){ exp = ph.kind==='night'? {kind:'day', n:ph.n} : {kind:'day', n:ph.n+1}; }  // 낮 부여분은 다음 낮 시작에 해제(그 사이 밤 동안 유효)
   if(key==='master'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='master')); exp={kind:'night', n:ph.n+1}; }
   addStatus(p,key,src,exp); save(); renderAll();
 }
@@ -1469,16 +1534,28 @@ function nightSteps(){
   }
   return steps;
 }
+/* 사망을 계기로 발동하는 역할들. 'night'=그 밤에 죽어야, 'today'=오늘(직전 낮 또는 이 밤) 죽어야 발동 */
+const DEATH_TRIGGER_STEPS={ravenkeeper:'night', sage:'night', barber:'today', sweetheart:'today', moonchild:'today'};
 function stepSkipReason(st){
   const first=S.phase.n===1;
   if(st.info) return null;
   const c=charOf(st.id);
   const holders=(st.holders||[]).concat(st.mask?[st.mask]:[]);
   const anyAlive = holders.some(p=>p.alive);
-  if(st.id==='ravenkeeper'){
-    const rk=holders[0];
-    if(rk && rk.alive) return '아직 생존 — 오늘 밤 죽는 경우에만 이 시점에 깨움';
-    return null; // 죽었으면 표시(그 밤에 죽었는지는 사회자 판단)
+  // 구마사제가 이번 밤 봉인한 악마는 단계 자체를 건너뛴다
+  if(S.demonBlockedNight===S.phase.n && c?.type==='demon'
+     && holders.some(p=>p.id===S.demonBlockedPid)) return '📿 구마사제가 봉인 — 이번 밤 능력 사용 없음';
+  const trig=DEATH_TRIGGER_STEPS[st.id];
+  if(trig){
+    const h=holders[0];
+    if(!h) return '해당 캐릭터 없음';
+    if(h.alive) return '아직 생존 — 죽는 경우에만 이 시점에 깨움';
+    const d=h.diedAt;
+    const thisNight = d && d.kind==='night' && d.n===S.phase.n;
+    const prevDay    = d && d.kind==='day'   && d.n===S.phase.n-1;
+    if(trig==='night' && !thisNight) return '오늘 밤 사망이 아님 — 깨우지 않음';
+    if(trig==='today' && !(thisNight||prevDay)) return '오늘 죽지 않음 — 깨우지 않음';
+    return null;
   }
   if(!anyAlive){
     if(st.id==='zombuul' && holders.some(p=>hasStatus(p,'fakedead'))) return null; // 죽은 척 — 계속 깨움
@@ -1683,7 +1760,11 @@ function doExorcist(pid){
   const ex=S.players.find(q=>q.alive&&q.charId==='exorcist');
   if(charOf(t.charId)?.type==='demon'){
     if(ex && isMalfunctioning(ex)) toast('대상이 악마지만 구마사제가 오작동 상태 — 효과 없음. 악마는 평소대로 활동합니다.','warn');
-    else toast('😈 악마를 지목했습니다 — 악마를 깨워 구마사제를 보여주고, 이번 밤 악마 살해 단계를 건너뛰세요.','warn');
+    else {
+      S.demonBlockedNight=S.phase.n; S.demonBlockedPid=t.id;   // 밤 큐에서 이 악마의 단계를 실제로 건너뛴다
+      log(`📿 구마 성공 — 밤 ${S.phase.n} 동안 ${t.name}(${charName(t)})의 능력 단계를 건너뜁니다`);
+      toast('😈 악마를 지목했습니다 — 악마를 깨워 구마사제를 보여주세요. 이번 밤 이 악마의 단계는 밤 순서에서 자동으로 건너뜁니다(푸카의 이전 공격에 의한 사망은 그대로 해결).','warn');
+    }
   } else {
     toast(`${t.name} 기록됨 — 악마가 아니므로 아무 일도 일어나지 않습니다.`,'ok');
   }
@@ -1792,11 +1873,35 @@ function doCurse(pid){ if(!pid)return; S.players.forEach(q=>q.statuses=(q.status
   const p=playerOf(pid); addStatus(p,'curse','마녀',{kind:'night', n:S.phase.n+1}); save(); renderAll(); }
 function doMad(pid){ if(!pid)return; S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='mad'));
   const p=playerOf(pid); addStatus(p,'mad','세레노버스',{kind:'night', n:S.phase.n+1}); save(); renderAll(); }
+/* 팡 구: 점프는 '외지인을 지목했을 때'가 아니라 '외지인을 실제로 죽였을 때'만 일어난다.
+   보호로 죽지 않았다면 점프도 없다. */
+function doFangGuAttack(pid){
+  if(!pid)return; const t=playerOf(pid);
+  const fg=S.players.find(q=>q.alive && q.charId==='fanggu');
+  if(fg && isMalfunctioning(fg)){ toast('팡 구가 중독/오작동 — 오늘 밤 살해 불발.','warn'); log(`팡 구 오작동: ${t.name} 살해 불발`); save(); renderAll(); return; }
+  const blk=deathBlockReason(t,{sourceType:'demon'});
+  if(blk){
+    toast(`${t.name}: ${blk} — 죽지 않았습니다. 죽이지 못했으므로 점프도 일어나지 않습니다.`,'ok');
+    log(`팡 구 공격 → ${t.name} 무효(${blk}) — 점프 없음`);
+    save(); renderAll(); return;
+  }
+  const isOut = charOf(t.charId)?.type==='outsider';
+  if(isOut && !S.fangGuJumped){
+    S.fangGuJumped=true;
+    t.charId='fanggu'; t.alignment='evil';
+    log(`🦊 팡 구 점프 — ${t.name}이(가) 새 팡 구로 전향(악)`);
+    toast(`🦊 점프 발동: ${t.name}이(가) 새 팡 구입니다(악 전향). 기존 팡 구는 지금 죽습니다. 아침 공표는 "밤 사망 1명"뿐입니다.`,'warn');
+    if(fg) killPlayer(fg,'팡 구 점프 — 기존 팡 구 사망',{skipSuccession:true});
+    save(); renderAll(); return;
+  }
+  resolveNightDeath(t,'팡 구의 공격');
+  save(); renderAll();
+}
 function doStepKill(pid, killerId){ if(!pid)return; const t=playerOf(pid);
   const kid = killerId || window.__stepKiller;
   const actor=S.players.find(q=>(q.alive || (q.charId==='zombuul'&&hasStatus(q,'fakedead'))) && q.charId===kid);
   if(actor && isMalfunctioning(actor)){ toast(`${charName(actor)}이(가) 오작동 상태 — 이 살해는 불발입니다.`,'warn'); log(`${charName(actor)} 오작동: ${t.name} 살해 불발`); save(); renderAll(); return; }
-  if(!t.alive){ toast('이미 죽은 대상입니다.','warn'); return; }
+  if(!t.alive){ toast('이미 죽은 대상입니다 — 같은 사람을 두 번 지목할 수 없습니다. 다른 대상을 고르세요.','warn'); return; }
   // 보호·면역 통합 판정. 군인은 '악마의' 살해에만 면역이므로 살해 출처를 구분한다.
   {
     const src = charOf(kid)?.type==='demon' ? 'demon' : 'night';
@@ -2780,7 +2885,7 @@ examples:[
  '사랑꾼이 처형된 뒤 예언자를 몰래 취하게 했다. 예언자의 수가 그날부터 미묘하게 어긋나기 시작했고, 마을은 한참 뒤에야 사랑꾼의 사망 시점과 정보 오류의 상관을 눈치챘다.']},
 barber:{howto:[
  '이발사가 죽은 밤 악마를 깨워 스왑 여부와 대상 2명을 받는다 — 스왑 시 두 사람을 각각 깨워 새 캐릭터를 안내.',
- '악마 자신의 캐릭터는 바꿀 수 없다. 스왑 후 그리모어·밤 순서 전면 갱신.'],
+ '선택하는 악마 자신은 교환 대상이 될 수 있다 — 금지되는 것은 다른 악마 플레이어다. 스왑 후 그리모어·밤 순서 전면 갱신.'],
 examples:[
  '이발사가 처형된 밤, 악마는 예언자와 곡예사의 캐릭터를 맞바꿨다. 다음 밤부터 서로의 능력으로 깨어나게 되자 두 사람의 과거 정보 공개가 모순처럼 보였고, 마을은 둘 다 의심했다.']},
 klutz:{howto:[
@@ -2888,6 +2993,7 @@ function wizPlayers(filter){
   if(filter==='alive') list=list.filter(p=>p.alive);
   if(filter==='alive-not-self') list=list.filter(p=>p.alive&&p!==me);
   if(filter==='dead') list=list.filter(p=>!p.alive);
+  if(filter==='not-self-not-traveler') list=list.filter(p=>p!==me && charOf(p.charId)?.type!=='traveler');
   return list;
 }
 function wizCharPool(pool){
@@ -2898,6 +3004,8 @@ function wizCharPool(pool){
   if(pool==='inplay-outsider') return all.filter(c=>c.type==='outsider'&&inPlay.has(c.id));
   if(pool==='inplay-minion') return all.filter(c=>c.type==='minion'&&inPlay.has(c.id));
   if(pool==='townsfolk') return all.filter(c=>c.type==='townsfolk');
+  if(pool==='good-characters') return all.filter(c=>c.type==='townsfolk'||c.type==='outsider');
+  if(pool==='evil-characters') return all.filter(c=>c.type==='minion'||c.type==='demon');
   if(pool==='good-notinplay') return all.filter(c=>(c.type==='townsfolk'||c.type==='outsider')&&!inPlay.has(c.id)&&c.id!==S.drunkMaskChar);
   return all;
 }
@@ -3000,6 +3108,7 @@ function wizEffect(){ const sc=wiz.scenes[wiz.idx]; const tgt=(wiz.vars[sc.from]
   if(!tgt){ toast('대상이 선택되지 않았습니다 — 이전 단계에서 선택하세요.','warn'); return; }
   try{
     if(sc.fn==='doStepKill') doStepKill(tgt, charOf(wiz.stepId)?.id);
+    else if(sc.fn==='doSwapChars'||sc.fn==='doSnakeSwap') window[sc.fn](wiz.vars[sc.from]||[]);
     else window[sc.fn](tgt);
   }catch(e){ toast('판정 함수 오류: '+sc.fn,'warn'); }
   wizNext();
@@ -3149,7 +3258,9 @@ function cloudBuildDoc(){
   CLOUD_DYNAMIC_IDS.forEach(id=>{ const el=body.querySelector('#'+id); if(el) el.innerHTML=''; });
   const wz=body.querySelector('#wizard'); if(wz) wz.hidden=true;
   const t=body.querySelector('#toast'); if(t) t.remove();
-  const pm=body.querySelector('#pmodal'); if(pm){ pm.hidden=true; pm.innerHTML=''; }
+  ['pmodal','winask','gameover','wizard'].forEach(id=>{
+    const el=body.querySelector('#'+id); if(el){ el.hidden=true; el.innerHTML=''; }
+  });
   const old=body.querySelector('#cloudstate'); if(old) old.remove();
   const pl=body.querySelector('#phaselabel'); if(pl) pl.textContent='준비';
   const st=document.createElement('script');
@@ -3185,7 +3296,7 @@ function cloudTryRestore(){
     const msg=localEmpty
       ? `☁ 클라우드 저장본(${when}, ${cloud.players.length}명 · ${cloud.phase.kind==='setup'?'준비':(cloud.phase.kind==='night'?'밤 ':'낮 ')+cloud.phase.n})을 불러올까요?`
       : `☁ 클라우드 저장본(${when})이 이 기기의 게임과 다릅니다.\n[확인] 클라우드 저장본으로 교체 / [취소] 이 기기 상태 유지`;
-    if(confirm(msg)){ S=Object.assign(blank(), cloud); save(); log('☁ 클라우드 저장본 복원'); renderAll(); }
+    if(confirm(msg)){ S=migrateState(cloud); save(); log('☁ 클라우드 저장본 복원'); renderAll(); }
   }catch(e){}
 }
 (function(){
@@ -3294,9 +3405,9 @@ shabaloth:{other:[
   {t:'note',text:'재량: 전날 밤 샤발로스가 죽인 사람 1명을 되살릴 수 있습니다(토해내기) — 소생시키려면 그리모어에서 처리하세요. 이어서 2명을 차례로 지목받습니다.'},
   {t:'pick-player',n:1,who:'player',label:'첫 번째 희생자',filter:'alive',storeAs:'tgt1'},
   {t:'effect',fn:'doStepKill',from:'tgt1'},
-  {t:'pick-player',n:1,who:'player',label:'두 번째 희생자',filter:'alive',storeAs:'tgt2'},
+  {t:'pick-player',n:1,who:'player',label:'두 번째 희생자(첫 번째와 다른 사람)',filter:'alive',storeAs:'tgt2'},
   {t:'effect',fn:'doStepKill',from:'tgt2'},
-  {t:'sleep',text:'재우세요. 오늘의 희생자를 기록해 두면 내일 소생 재량 판정에 씁니다.'}]},
+  {t:'sleep',text:'재우세요. 같은 사람을 두 번 지목할 수는 없습니다. 오늘의 희생자를 기록해 두면 내일 소생 재량 판정에 씁니다.'}]},
 po:{other:[
   {t:'wake'},
   {t:'note',text:'충전 상태를 확인하세요(밤 패널 포 위젯의 ⚡ 표시). 전날 밤 아무도 지목하지 않았다면 이번 밤 3명을 죽입니다. 미충전이면 0명 또는 1명 — 0명 선택 시 아래 지목 없이 완료하고 밤 패널에서 "충전" 버튼을 누르세요.'},
@@ -3336,9 +3447,9 @@ professor:{other:[
 tinker:{other:[
   {t:'note',text:'땜장이는 깨우지 않습니다. 재량 판정: 이 밤에 땜장이를 죽일 수 있습니다 — 죽이기로 했다면 그리모어에서 사망 처리하세요. 낮에도 죽일 수 있으니 균형과 서사를 고려해 결정합니다.'}]},
 moonchild:{other:[
-  {t:'note',text:'달의 자손이 오늘 죽으면서 1명을 지목했을 때만 진행합니다(본인은 이미 죽었으므로 깨우지 않음). 중독 상태로 죽었다면 발동 없음.'},
-  {t:'pick-player',n:1,who:'st',label:'달의 자손이 지목한 대상',filter:'alive',storeAs:'tgt'},
-  {t:'note',text:'대상이 선하면 아래 판정을 실행해 사망 처리하고, 악하면 실행하지 않고 다음으로 넘어가세요.'},
+  {t:'note',text:'달의 자손이 사망을 알게 된 직후 본인이 공개로 1명을 지목합니다(사회자가 대신 고르지 않음). 대상의 선악은 지목 시점 기준, 달의 자손의 중독·취함 여부는 지금(밤 사망 해결 시점) 기준입니다.'},
+  {t:'pick-player',n:1,who:'player',label:'달의 자손이 공개 지목한 대상',filter:'alive',storeAs:'tgt'},
+  {t:'note',text:'대상이 선하면 아래 판정을 실행해 사망 처리하고, 악하면 실행하지 않고 넘어가세요. 달의 자손이 지금 오작동이면 실행하지 마세요.'},
   {t:'effect',fn:'doStepKill',from:'tgt'}]},
 grandmother:{first:[
   {t:'wake'},
@@ -3393,12 +3504,14 @@ philosopher:{first:[
   {t:'sleep'}]},
 snakecharmer:{first:[
   {t:'wake'},
-  {t:'pick-player',n:1,who:'player',label:'뱀 조련사가 지목한 생존자',filter:'alive',storeAs:'tgt'},
+  {t:'pick-player',n:2,who:'player',label:'스왑 성립 시 두 명(뱀 조련사 + 지목당한 악마) — 스왑 없으면 그대로 닫기',filter:'alive',storeAs:'pair'},
+  {t:'effect',fn:'doSnakeSwap',from:'pair'},
   {t:'note',text:'지목 대상이 악마가 아니면 아무 일도 없습니다 — 그대로 재우세요. 악마라면 스왑(강제, 재량 아님): ① 그리모어에서 두 사람의 캐릭터·진영을 맞바꿉니다 ② 각각 조용히 깨워 새 캐릭터 토큰을 보여줍니다 ③ 새 뱀 조련사(전 악마)에게 ☠영구 중독 토큰 ④ 이후 밤 순서를 새 배치 기준으로 재확인. 단, 뱀 조련사가 중독/취함 상태로 지목했다면 스왑은 불발입니다.'},
   {t:'sleep'}],
  other:[
   {t:'wake'},
-  {t:'pick-player',n:1,who:'player',label:'뱀 조련사가 지목한 생존자',filter:'alive',storeAs:'tgt'},
+  {t:'pick-player',n:2,who:'player',label:'스왑 성립 시 두 명(뱀 조련사 + 지목당한 악마) — 스왑 없으면 그대로 닫기',filter:'alive',storeAs:'pair'},
+  {t:'effect',fn:'doSnakeSwap',from:'pair'},
   {t:'note',text:'악마 지목 시 스왑(강제): ① 그리모어에서 캐릭터·진영 교체 ② 각각 깨워 새 토큰 안내 ③ 새 뱀 조련사(전 악마) ☠영구 중독 ④ 밤 순서 재확인. 오작동 상태의 지목이면 불발.'},
   {t:'sleep'}]},
 eviltwin:{first:[
@@ -3421,8 +3534,8 @@ witch:{first:[
   {t:'sleep'}]},
 cerenovus:{first:[
   {t:'wake'},
-  {t:'pick-player',n:1,who:'player',label:'광기에 빠뜨릴 대상',filter:'alive',storeAs:'tgt'},
-  {t:'pick-character',pool:'townsfolk',label:'광기로 강요할 선한 캐릭터',storeAs:'madchar'},
+  {t:'pick-player',n:1,who:'player',label:'광기에 빠뜨릴 대상(사망자 포함)',filter:'any',storeAs:'tgt'},
+  {t:'pick-character',pool:'good-characters',label:'광기로 강요할 선한 캐릭터(주민 또는 외지인)',storeAs:'madchar'},
   {t:'effect',fn:'doMad',from:'tgt'},
   {t:'note',text:'대상을 깨워 "내일 하루, 자신이 그 캐릭터라고 미친 듯이 주장해야 한다"고 알려주세요. 광기 캐릭터가 무엇인지 반드시 그리모어 메모에 적어 두세요 — 위반 시 재량 처형 가능(경고성 관용도 가능).'},
   {t:'sleep'}],
@@ -3440,17 +3553,17 @@ clockmaker:{first:[
   {t:'sleep'}]},
 dreamer:{first:[
   {t:'wake'},
-  {t:'pick-player',n:1,who:'player',label:'꿈꾸는 자가 지목한 대상(자신 제외)',filter:'alive-not-self',storeAs:'tgt'},
-  {t:'pick-character',pool:'any',label:'보여줄 [선한 캐릭터] 토큰 — 대상이 선이면 이쪽이 진짜 후보',storeAs:'goodTok'},
-  {t:'pick-character',pool:'any',label:'보여줄 [악한 캐릭터] 토큰 — 대상이 악이면 이쪽이 진짜 후보',storeAs:'evilTok'},
+  {t:'pick-player',n:1,who:'player',label:'꿈꾸는 자가 지목한 대상(자신·여행자 제외, 사망자 가능)',filter:'not-self-not-traveler',storeAs:'tgt'},
+  {t:'pick-character',pool:'good-characters',label:'보여줄 [선한 캐릭터] 토큰 — 대상이 선이면 이쪽이 진짜 후보',storeAs:'goodTok'},
+  {t:'pick-character',pool:'evil-characters',label:'보여줄 [악한 캐릭터] 토큰 — 대상이 악이면 이쪽이 진짜 후보',storeAs:'evilTok'},
   {t:'show-token',from:'goodTok',caption:'이 캐릭터이거나—'},
   {t:'show-token',from:'evilTok',caption:'—이 캐릭터입니다 (둘 중 하나가 진짜)'},
   {t:'sleep'}],
  other:[
   {t:'wake'},
-  {t:'pick-player',n:1,who:'player',label:'꿈꾸는 자가 지목한 대상(자신 제외)',filter:'alive-not-self',storeAs:'tgt'},
-  {t:'pick-character',pool:'any',label:'보여줄 [선한 캐릭터] 토큰',storeAs:'goodTok'},
-  {t:'pick-character',pool:'any',label:'보여줄 [악한 캐릭터] 토큰',storeAs:'evilTok'},
+  {t:'pick-player',n:1,who:'player',label:'꿈꾸는 자가 지목한 대상(자신·여행자 제외, 사망자 가능)',filter:'not-self-not-traveler',storeAs:'tgt'},
+  {t:'pick-character',pool:'good-characters',label:'보여줄 [선한 캐릭터] 토큰',storeAs:'goodTok'},
+  {t:'pick-character',pool:'evil-characters',label:'보여줄 [악한 캐릭터] 토큰',storeAs:'evilTok'},
   {t:'show-token',from:'goodTok',caption:'이 캐릭터이거나—'},
   {t:'show-token',from:'evilTok',caption:'—이 캐릭터입니다 (둘 중 하나가 진짜)'},
   {t:'sleep'}]},
@@ -3485,8 +3598,7 @@ pithag:{other:[
 fanggu:{other:[
   {t:'wake'},
   {t:'pick-player',n:1,who:'player',label:'팡 구가 공격할 대상',filter:'alive',storeAs:'tgt'},
-  {t:'note',text:'⚠ 대상이 외지인이고 아직 점프를 안 썼다면(게임당 1회): 아래 판정을 실행하지 말고 수동 처리 — ① 대상은 죽지 않고 악한 팡 구로 전향(그리모어 교체) ② 기존 팡 구는 사망 처리 ③ 점프 사용을 표시. 선한 팀에는 그냥 밤 사망 1명처럼 보입니다. 그 외의 경우는 아래 판정 실행.'},
-  {t:'effect',fn:'doStepKill',from:'tgt'},
+  {t:'effect',fn:'doFangGuAttack',from:'tgt'},
   {t:'sleep'}]},
 nodashii:{other:[
   {t:'wake'},
@@ -3508,8 +3620,9 @@ vigormortis:{other:[
   {t:'sleep'}]},
 barber:{other:[
   {t:'note',text:'이발사가 오늘 죽었을 때만 진행합니다. 악마를 깨워 두 캐릭터를 맞바꿀지 물어보세요(스왑 안 하면 그대로 닫기).'},
-  {t:'pick-player',n:2,who:'player',label:'악마가 맞바꿀 두 명',filter:'any',storeAs:'pair'},
-  {t:'note',text:'두 플레이어의 캐릭터를 서로 교체하고 각각 조용히 깨워 새 캐릭터 토큰을 보여주세요. 악마 자신의 캐릭터는 바꿀 수 없습니다. 스왑 후 그리모어 전면 갱신 + 밤 순서 재계산.'},
+  {t:'pick-player',n:2,who:'player',label:'악마가 맞바꿀 두 명(악마 자신 가능·다른 악마 불가)',filter:'any',storeAs:'pair'},
+  {t:'effect',fn:'doSwapChars',from:'pair'},
+  {t:'note',text:'아래 판정을 실행하면 두 캐릭터가 교환되고 진영은 각자 유지됩니다. 각각 조용히 깨워 새 캐릭터 토큰을 보여주세요. 선택하는 악마 자신은 교환 대상이 될 수 있고, 다른 악마 플레이어만 제외됩니다. 스왑 후 그리모어 전면 갱신 + 밤 순서 재계산.'},
   {t:'sleep',text:'관련자 전원을 재우세요.'}]},
 sweetheart:{other:[
   {t:'note',text:'사랑꾼이 죽었을 때 1회 발동합니다(플레이어는 깨우지 않음). 이후 계속 취하게 만들 1명을 사회자가 고릅니다.'},
@@ -3959,7 +4072,7 @@ function togglePStatus(pid,key){
   else{
     let exp=null;
     if(key==='poison') exp={kind:'night', n:(ph.kind==='night'?ph.n:ph.n)+1};
-    if(key==='protect') exp = ph.kind==='night'? {kind:'day', n:ph.n} : {kind:'night', n:ph.n+1};
+    if(key==='protect') exp = ph.kind==='night'? {kind:'day', n:ph.n} : {kind:'day', n:ph.n+1};
     if(key==='master'||key==='curse'||key==='mad'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!==key)); exp={kind:'night', n:ph.n+1}; }
     addStatus(p,key,'사회자 수동',exp);
   }
@@ -4470,8 +4583,13 @@ function evalWinEvent(kind, ctx){
   if(kind==='death'){
     const demonAlive=S.players.some(x=>(x.alive||(x.charId==='zombuul'&&hasStatus(x,'fakedead'))) && charOf(x.charId)?.type==='demon');
     if(demonAlive){
-      if(alivePlayers().length<=2)
-        return {team:'evil', reason:'생존자가 2명 이하이고 악마가 살아 있습니다.', rule:'생존자가 2명이 되면 악마가 반드시 이깁니다(처형으로 악마를 잡을 수 없음).'};
+      // 좀버얼이 '죽은 척' 중이면 겉보기 생존 2인이어도 자동 악 승리를 적용하지 않는다
+      const demonReallyAlive=S.players.some(x=>x.alive && charOf(x.charId)?.type==='demon');
+      if(alivePlayers().length<=2){
+        if(demonReallyAlive)
+          return {team:'evil', reason:'생존자가 2명 이하이고 악마가 살아 있습니다.', rule:'생존자가 2명이 되면 악마가 반드시 이깁니다(처형으로 악마를 잡을 수 없음).'};
+        return {kind:'continue', why:'zombuul', msg:'좀버얼이 죽은 척하는 중 — 생존 2인 자동 악 승리를 적용하지 않습니다. 좀버얼의 두 번째 사망이 진짜입니다.'};
+      }
       return null;
     }
     const blockers=winBlockers();
