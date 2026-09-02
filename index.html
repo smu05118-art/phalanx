@@ -181,6 +181,9 @@ header h1 em{color:var(--a1);font-style:normal;}
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="ui/patch.css">
+<link rel="preload" as="script" href="chartjs_bundle.js">
+<link rel="preload" as="script" href="manifest.js">
+<script>(function(){try{var m=(location.hash.match(/[#&]r=([A-Z]+)/)||[])[1],p='';try{var j=JSON.parse(localStorage.getItem('phalanx_prefs_v1')||'{}');p=(j&&typeof j.region==='string')?j.region:''}catch(e){}var r=m||p||'JP';if(!/^[A-Z]{2,4}$/.test(r))r='JP';var l=document.createElement('link');l.rel='preload';l.as='script';l.href='data_'+r.toLowerCase()+'.js';document.head.appendChild(l);}catch(e){}})();</script>
 </head>
 <body>
 <div class="app">
@@ -1037,6 +1040,10 @@ function loadKpi(cb){ if(_kpiLoaded||window.KPID){_kpiLoaded=true;return cb();}
   document.head.appendChild(sc); }
 function kDestroy(){ for(const k in KCH){ try{KCH[k].destroy();}catch(e){} delete KCH[k]; } }
 const KCOL=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1'];
+// core_kpis 3형태(문자열배열 21·객체배열 13·객체 2건) 표시 흡수 — 2026-09-02. 소비처는 허브 카드 부제 한 곳.
+function kpiChips(ck){ if(Array.isArray(ck)){ const t=ck.map(x=>typeof x==='string'?x:((x&&(x.label||x.key))||'')).filter(Boolean).join(' · '); return t||'핵심 KPI'; }
+  if(ck&&typeof ck==='object'){ const t=[ck.primary,ck.secondary].filter(Boolean).map(x=>(x.label||x.id||'')).filter(Boolean).join(' · '); return t||'핵심 KPI'; }
+  return '핵심 KPI'; }
 function kLine(cv,labels,ds,opts){
   opts=opts||{};
   KCH[cv.id||('k'+Object.keys(KCH).length)]=new Chart(cv,{data:{labels,datasets:ds},options:{
@@ -1344,6 +1351,8 @@ function renderKpi(){
             y:{stacked:true,ticks:{color:'#4a4a72',font:{size:8},callback:v=>v.toLocaleString()},grid:{color:'rgba(40,40,74,.5)'}}}}});}
       if(G){
         const GC=G.companies; const gOrder=['FFI','TPRO','MJC','JEM'].filter(k=>GC[k]);
+        // 1239행 선언은 블록(→1278행 종료) 스코프라 여기(setTimeout)선 안 보임 — GC·gOrder 재선언 관용을 따라 복제. 세그 차트 복구 2026-09-02
+        const segOf=g=>{const S=g.segments||{};const o={};Object.keys(S).forEach(s=>{const v=S[s];if(s!=='_note'&&v&&typeof v==='object'&&Object.keys(v).some(q=>/^\d{4}-Q\d$/.test(q)))o[s]=v;});return o;}; const segCos=gOrder.filter(k=>Object.keys(segOf(GC[k])).length);
         gOrder.forEach((k,gi)=>{const el=document.getElementById('pcG'+gi); if(!el)return; const g=GC[k];
           const ps=(g.proxy||{}).series||{};
           const ax=[...new Set([...Object.keys(g.fin_q||{}),...Object.keys(ps)])].sort();
@@ -1826,7 +1835,7 @@ function renderKpi(){
       const cid='kHub'+hi;
       const qs=[...new Set(series.flatMap(s=>Object.keys(s.kp)))].sort();
       html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div><h3>${meta.label||ind}</h3>
-        <div class="co-cat">${(meta.core_kpis||[]).join(' · ')||'핵심 KPI'} ${th!=null?`· <b style="color:#ff4d5e">임계치 ${th}</b>`:''} ${blNum!=null?`· 기준선 ${blNum}`:''}</div></div></div>
+        <div class="co-cat">${kpiChips(meta.core_kpis)} ${th!=null?`· <b style="color:#ff4d5e">임계치 ${th}</b>`:''} ${blNum!=null?`· 기준선 ${blNum}`:''}</div></div></div>
         ${qs.length?`<div class="ch-wrap" style="height:280px"><canvas id="${cid}"></canvas></div>`:'<div style="font-size:11px;color:var(--dim);padding:6px 0">KPI 시계열 없음(커버리지 표 참조)</div>'}
         <div style="overflow-x:auto;margin-top:8px"><table class="tbl"><thead><tr><th>기업</th><th>보유 지표(분기수)</th><th>핵심 KPI 최신</th></tr></thead><tbody>${rows.join('')}</tbody></table></div></div>`;
       if(qs.length) setTimeout(()=>{const el=document.getElementById(cid); if(!el)return;
