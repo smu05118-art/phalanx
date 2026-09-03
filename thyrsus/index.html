@@ -5790,7 +5790,13 @@ function renderWiz(){
   const el=$('#wizard'); el.hidden=false;
   const sc=wiz.scenes[wiz.idx];
   $('#wizhead').innerHTML=`<span class="wtitle">${esc(wizTitle())}</span><span class="wstep num">${wiz.idx+1}/${wiz.scenes.length}</span>`;
-  const showTap = ['show-token','show-tokens','show-players','reveal-char','shown-number','shown-answer'].includes(sc.t) || sc._shown;
+  /* 어두운 방에서 작은 [다음] 버튼을 겨누기 어렵다 — 입력이 필요한 씬만 빼고 본문 아무 데나
+     탭하면 넘어가게 한다. 제외: 선택이 끝나지 않은 pick-*(오탭으로 건너뛰면 판정이 비어버림),
+     effect(판정 실행은 명시적 확인이 필요), 답을 아직 고르지 않은 show-answer. */
+  const NEEDS_INPUT = (sc.t==='pick-player' || sc.t==='pick-character')
+      ? ((wiz.vars[sc.storeAs]||[]).length < (sc.n||1))     // 필요 인원을 다 고르면 탭으로 진행
+      : (sc.t==='effect' || (sc.t==='show-answer' && !sc._shown));
+  const showTap = !NEEDS_INPUT;
   let html='';
   if(sc.t==='wake') html=`${wizWarnBar()}<div class="wiz-bigtoken">🌙</div><div class="wiz-note"><b>${esc(wiz.holder?wiz.holder.name:'대상')}</b>을(를) 조용히 깨우세요.${sc.text?'<br>'+esc(sc.text):''}</div>`;
   else if(sc.t==='note') html=`${wizWarnBar()}<div class="wiz-note">${esc(sc.text)}</div>`;
@@ -5882,6 +5888,7 @@ function renderWiz(){
     _wb._thyFxT=setTimeout(function(){ try{ _wb.classList.remove('thyfx-scene'); }catch(e){} },400);
   }
   _wb.onclick = showTap? ()=>wizNext() : null;
+  _wb.classList.toggle('tappable', !!showTap);
   const last=wiz.idx===wiz.scenes.length-1;
   $('#wizfoot').innerHTML=`
     <button onclick="closeWiz(false)">닫기</button>
@@ -7227,9 +7234,10 @@ function openPlayerModal(pid){
     <div class="pmbody">
       <div class="pmtop">
         <div style="flex:0 0 auto;text-align:center">
-          <div class="ttoken" style="cursor:default">
+          <div class="ttoken${c?' charinfo':''}" ${c?`style="cursor:pointer" title="${esc(c.ko)} 설명 보기" data-charinfo="${esc(c.id)}"`:'style="cursor:default"'}>
             <span class="tkname">${c?esc(c.ko):'—'}</span><span class="tkicon">${c?glyph(c.id):sysIcon('seat')}</span>
           </div>
+          ${c?'<div class="hint" style="font-size:11px;margin-top:3px">토큰을 누르면 설명</div>':''}
           <div class="tkseat num" style="margin-top:5px">${esc(p.name)} · ${i+1}</div>
         </div>
         <div style="flex:1;min-width:0">
@@ -7338,6 +7346,12 @@ function startRevealWiz(){
 #wizfoot button{white-space:nowrap;word-break:keep-all;flex:0 0 auto;min-height:44px}
 #wizfoot button.hofoot{flex:1 1 auto;min-width:0}
 .hoBtn{white-space:nowrap}
+/* 탭으로 넘어갈 수 있는 씬에는 커서와 미세한 반응을 준다 — 어두운 방에서 버튼을 겨눌 필요가 없다 */
+#wizbody.tappable{cursor:pointer}
+#wizbody.tappable:active{opacity:.92}
+.ttoken.charinfo{transition:transform .08s, box-shadow .08s}
+.ttoken.charinfo:hover{transform:translateY(-1px);box-shadow:0 0 0 2px var(--accent)}
+.ttoken.charinfo:active{transform:none}
 #gameover{position:fixed;inset:0;z-index:98;background:rgba(6,3,14,.85);display:flex;align-items:center;justify-content:center;padding:20px}
 #gameover[hidden]{display:none!important}
 #gameover .gocard{background:var(--panel);border:2px solid var(--accent);border-radius:18px;max-width:560px;width:100%;padding:34px 26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.7)}
@@ -7906,6 +7920,15 @@ function abilityOneLine(c){
   return s;
 }
 function revealSeatLabel(p){ return p? `${S.players.indexOf(p)+1}번 · ${p.name}` : '?'; }
+/* 플레이어 모달의 캐릭터 토큰을 누르면 백과사전 상세를 띄운다.
+   모달이 innerHTML 로 매번 새로 그려지므로 인라인 핸들러 대신 document 위임을 쓴다. */
+document.addEventListener('click', e=>{
+  const t=e.target.closest && e.target.closest('[data-charinfo]');
+  if(!t) return;
+  e.stopPropagation();
+  const cid=t.getAttribute('data-charinfo');
+  if(cid && typeof showCharInfo==='function') showCharInfo(cid);
+});
 function startRevealWiz(){
   revealMap();
   startCustomWiz('👥 캐릭터 확인', [{t:'roster'}]);
@@ -7991,6 +8014,7 @@ function revealReset(){ S.revealDone={}; save(); if(wiz) revealGoto({t:'roster'}
       const ab=$('#wizbody').querySelector('.reveal-ability');
       if(ab) ab.textContent=abilityOneLine(charOf(sc.char));
       $('#wizbody').onclick=()=>revealBack(sc._back, true);
+      $('#wizbody').classList.add('tappable');   /* 아무 데나 탭해도 명단으로 — 버튼을 겨눌 필요 없음 */
       $('#wizfoot').innerHTML=`<button class="primary" data-revealdone="1">✓ 확인했습니다 — 명단으로</button>`;
       const b=$('#wizfoot').querySelector('[data-revealdone]');
       if(b) b.onclick=()=>revealBack(sc._back, true);
@@ -9137,7 +9161,12 @@ function libRender(){
 .tkicon .cicon,.ricon .cicon{display:block;width:1em;height:1em;background:none;border:0;padding:0;vertical-align:baseline}
 /* 원형 토큰 컨테이너 자체를 베이지로 (타입별 테두리 색은 유지) */
 .ctoken:has(svg),.cseat .ctoken:has(svg),.ctoken.demon:has(svg),
-.wiz-bigtoken:has(svg),.wiz-shownplayer .pp:has(svg){background:#d4c9a8}
+.wiz-bigtoken:has(svg),.wiz-shownplayer .pp:has(svg),
+.ctoken:has(.cicon-img),.cseat .ctoken:has(.cicon-img),.ctoken.demon:has(.cicon-img),
+.wiz-bigtoken:has(.cicon-img),.wiz-shownplayer .pp:has(.cicon-img){background:#d4c9a8}
+/* 공식 webp 는 이미 완성된 아트다 — 비율만 지키고 잉크색 규칙은 적용되지 않는다 */
+.cicon-img{object-fit:contain}
+.ttoken .tkicon:has(.cicon-img){font-size:44px}
 .ctoken .cicon,.wiz-bigtoken .cicon,.wiz-shownplayer .pp .cicon,.pcell .cicon{
   display:block;width:1em;height:1em;background:none;border:0;padding:0;vertical-align:baseline}
 /* 목록·버튼 안(비베이지 배경)에서는 베이지 디스크를 유지해 대비 확보 */
@@ -9444,7 +9473,31 @@ const ICONS = {
 
 /* 기존 이모지 glyph()는 그대로 보존하고, SVG가 있으면 SVG를 우선 반환하도록 래핑 */
 const _emojiGlyph = glyph;
-glyph = id => ICONS[id] ? ICONS[id] : (GLYPHS[id] ? _emojiGlyph(id) : sysIcon('unknown'));
+/* ══ 공식 캐릭터 아이콘 ══
+   TPI 공식 아트(script.bloodontheclocktower.com 배포본)를 thyrsus/icons/<id>.webp 로 동봉한다.
+   181종 전부 있고, 팀에 따라 선(_g)·악(_e) 변형 중 맞는 쪽을 받아 두었다.
+   파일이 없거나(단일 HTML만 떼어 열었을 때) 로드가 실패하면 onerror 로 기존 인라인 SVG·
+   이모지 폴백으로 떨어진다 — 그래서 아이콘 없이도 앱이 그대로 동작한다.
+   img 에 .cicon 을 같이 달아, 컨테이너별 크기 규칙(1em·베이지 디스크)을 SVG와 똑같이 상속시킨다. */
+const OFFICIAL_ICON_BASE='icons/';
+function officialIconHTML(id){
+  const c=charOf(id); if(!c) return null;
+  const fb=(ICONS[id] ? ICONS[id] : (GLYPHS[id] ? _emojiGlyph(id) : sysIcon('unknown')));
+  /* 폴백 마크업은 data 속성에 base64 로 싣는다 — onerror 안에 직접 보간하면 따옴표가 깨진다. */
+  let enc=''; try{ enc=btoa(unescape(encodeURIComponent(fb))); }catch(e){}
+  const cls='cicon cicon-img'+((c.type==='minion'||c.type==='demon')?' evil':'');
+  return `<img class="${cls}" src="${OFFICIAL_ICON_BASE}${encodeURIComponent(id)}.webp" alt=""`
+    + ` loading="lazy" decoding="async" data-fb="${enc}" onerror="thyIconFallback(this)">`;
+}
+function thyIconFallback(img){
+  try{
+    const enc=img.getAttribute('data-fb')||'';
+    const html=enc? decodeURIComponent(escape(atob(enc))) : '';
+    if(html && img.parentNode){ img.outerHTML=html; return; }
+  }catch(e){}
+  img.style.display='none';
+}
+glyph = id => officialIconHTML(id) || (ICONS[id] ? ICONS[id] : (GLYPHS[id] ? _emojiGlyph(id) : sysIcon('unknown')));
 
 /* glyph() 결과가 HTML이 아니라 텍스트로 쓰이는 유일한 지점(위저드 제목 → esc()/log())은
    SVG가 아닌 이모지를 계속 쓰도록 wizTitle()도 래핑해 둡니다. */
