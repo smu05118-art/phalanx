@@ -13,7 +13,7 @@
   --minionc:#fb923c; --minionc-soft:rgba(251,146,60,.14);
   --warn:#dfae4a; --warn-soft:rgba(223,174,74,.13);
   --ok:#7fb069; --ok-soft:rgba(127,176,105,.14);
-  --danger:#c0473f;
+  --danger:#c0473f; --on-accent:#1a1030;
   --shadow:0 6px 24px rgba(0,0,0,.35);
   color-scheme:dark;
 }
@@ -26,7 +26,7 @@
     --evil:#b23f37; --evil-soft:rgba(178,63,55,.10);
     --warn:#a4771c; --warn-soft:rgba(164,119,28,.12);
     --ok:#4a7c47; --ok-soft:rgba(74,124,71,.12);
-    --danger:#a83a32;
+    --danger:#a83a32; --on-accent:#fff;
     --shadow:0 4px 16px rgba(60,50,30,.12);
     color-scheme:light;
   }
@@ -39,12 +39,12 @@
   --evil:#b23f37; --evil-soft:rgba(178,63,55,.10);
   --warn:#a4771c; --warn-soft:rgba(164,119,28,.12);
   --ok:#4a7c47; --ok-soft:rgba(74,124,71,.12);
-  --danger:#a83a32;
+  --danger:#a83a32; --on-accent:#fff;
   --shadow:0 4px 16px rgba(60,50,30,.12);
   color-scheme:light;
 }
 *{box-sizing:border-box}
-body{margin:0;-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans KR',-apple-system,'Apple SD Gothic Neo',sans-serif;font-size:15px;line-height:1.6}
+body{margin:0;-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans KR',-apple-system,'Apple SD Gothic Neo',sans-serif;font-size:15px;line-height:1.6;word-break:keep-all;overflow-wrap:anywhere}
 h1,h2,h3,h4,.serif{font-family:'Gowun Batang','Noto Serif KR',serif}
 button{font-family:inherit;font-size:14px;cursor:pointer;border:1px solid var(--line);background:var(--raised);color:var(--text);border-radius:8px;padding:7px 14px;transition:border-color .15s, background .15s}
 button:hover{border-color:var(--accent)}
@@ -57,7 +57,7 @@ button.small{padding:3px 9px;font-size:12.5px;border-radius:6px}
 button:disabled{opacity:.4;cursor:not-allowed}
 input,select,textarea{background:var(--sunken);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:14px}
 textarea{width:100%;resize:vertical}
-.num{font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums;word-break:normal;overflow-wrap:normal}
 
 /* ── top bar ── */
 #topbar{position:sticky;top:0;z-index:50;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
@@ -82,7 +82,7 @@ textarea{width:100%;resize:vertical}
 #subtabs[hidden]{display:none!important}
 #subtabs button{border:none;background:transparent;color:var(--muted);border-radius:8px 8px 0 0;padding:8px 14px;font-size:14px;white-space:nowrap;border-bottom:2px solid transparent}
 #subtabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
-main{padding:18px 18px 90px;min-width:0}
+main{padding:18px 18px 90px;min-width:0;overflow-x:clip}
 @media (max-width:880px){
   #layout{grid-template-columns:1fr}
   /* teeroz식 하단 고정 탭바 */
@@ -100,9 +100,9 @@ main{padding:18px 18px 90px;min-width:0}
   #quickstats{order:9;margin-left:0;width:100%;overflow-x:auto;flex-wrap:nowrap;gap:6px;scrollbar-width:none}
   #quickstats::-webkit-scrollbar{display:none}
   .qstat{white-space:nowrap;flex:0 0 auto}
-  /* 터치 타깃·카드 */
-  button{min-height:40px}
-  button.small{min-height:34px}
+  /* 터치 타깃·카드 — 최소 44pt 확보 */
+  button{min-height:44px}
+  button.small{min-height:44px;min-width:44px}
   .card{padding:13px 14px;border-radius:12px}
   .grid2{grid-template-columns:1fr}
   .chargrid{grid-template-columns:1fr}
@@ -110,11 +110,12 @@ main{padding:18px 18px 90px;min-width:0}
   /* 투표: 큰 버튼·줄맞춤 */
   .voterow{padding:8px 4px;gap:6px}
   .voterow .vname{min-width:84px;font-size:14px}
-  .vbtn{padding:7px 14px;font-size:14px}
+  .vbtn{padding:7px 14px;font-size:14px;min-height:44px;min-width:44px}
   .votemath{gap:8px}
   .vmbox{flex:1 1 96px;padding:8px 8px}
   .vmbox .vval{font-size:21px}
-  /* 밤 진행 */
+  /* 밤 진행 — 인라인 min-width:200px 가 좁은 화면에서 뷰포트를 넘지 않게 */
+  .step .stepbody button.primary,.step .stepbody .row>input{min-width:0!important}
   .step .stephead{padding:12px 12px}
   .step .stepname{font-size:15.5px}
   .step .stepbody{padding:2px 12px 12px 12px}
@@ -153,7 +154,7 @@ main{padding:18px 18px 90px;min-width:0}
 #wizhead{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
 #wizhead .wtitle{font-family:'Gowun Batang',serif;font-weight:700;font-size:17px}
 #wizhead .wstep{color:var(--muted);font-size:12.5px;margin-left:auto}
-#wizbody{flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
+#wizbody{flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;padding:20px;text-align:center}
 #wizfoot{display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--panel)}
 #wizfoot button{flex:1;min-height:46px;font-size:15px}
 .wiz-note{max-width:560px;font-size:16px;line-height:1.8}
@@ -164,7 +165,7 @@ main{padding:18px 18px 90px;min-width:0}
 .wiz-bignum{font-size:130px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;color:var(--accent)}
 .wiz-biganswer{font-size:72px;font-weight:700;font-family:'Gowun Batang',serif}
 .wiz-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:640px}
-.wiz-pickbtn{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--raised);border:2px solid var(--line);border-radius:14px;padding:12px 14px;min-width:96px;cursor:pointer;font-size:14px}
+.wiz-pickbtn{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--raised);border:2px solid var(--line);border-radius:14px;padding:12px 14px;min-width:min(96px,100%);min-height:44px;cursor:pointer;font-size:14px}
 .wiz-pickbtn .pt{font-size:34px}
 .wiz-pickbtn.sel{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent)}
 .wiz-pickbtn.dim{opacity:.45}
@@ -177,7 +178,7 @@ main{padding:18px 18px 90px;min-width:0}
 .setstep{display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto;cursor:pointer}
 .setstep .dot{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;background:var(--raised);border:2px solid var(--line);color:var(--muted)}
 .setstep.done .dot{background:#2d7a4f;border-color:#2d7a4f;color:#fff}
-.setstep.cur .dot{background:var(--accent);border-color:var(--accent);color:#1a1030}
+.setstep.cur .dot{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .setstep .slab{font-size:12px;color:var(--muted)}
 .setstep.cur .slab{color:var(--text);font-weight:700}
 .setline{flex:1;height:2px;background:var(--line);margin-top:22px;min-width:24px}
@@ -189,7 +190,7 @@ body.wizopen main{padding-bottom:20px}
 .ready-hero p{color:var(--muted);margin:0 0 22px}
 .bigactions{display:flex;flex-direction:column;gap:10px;max-width:560px;margin:0 auto}
 .bigactions button{min-height:52px;font-size:16px;border-radius:12px}
-.bigactions .gold{background:var(--accent);border-color:var(--accent);color:#1a1030;font-weight:700}
+.bigactions .gold{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
 .wiz-players{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
 .wiz-shownplayer{display:flex;flex-direction:column;align-items:center;gap:6px}
 .wiz-shownplayer .pp{width:110px;height:110px;border-radius:50%;border:4px solid var(--good);background:var(--raised);display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:700}
@@ -202,7 +203,7 @@ section.tabpane.active{display:block}
 .card p.hint{color:var(--muted);font-size:13px;margin:4px 0 10px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(250px,100%),1fr));gap:10px}
 
 .pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:500;border:1px solid var(--line)}
 .pill.townsfolk{color:var(--good);border-color:var(--good);background:var(--good-soft)}
@@ -314,7 +315,7 @@ details.morebox .inner{border-left:2px solid var(--line);padding-left:10px;margi
 .sheetcols{display:grid;grid-template-columns:1fr 300px;gap:20px}
 @media(max-width:820px){.sheetcols{grid-template-columns:1fr}}
 /* town square circle */
-#circlewrap{position:relative;width:min(92vw,640px);aspect-ratio:1;margin:10px auto 46px}
+#circlewrap{position:relative;width:min(92vw,100%,640px);aspect-ratio:1;margin:10px auto 46px}
 .cseat{position:absolute;width:86px;margin-left:-43px;margin-top:-43px;text-align:center;cursor:pointer}
 .cseat .ctoken{margin:0 auto;width:52px;height:52px;font-size:24px;transition:transform .15s,box-shadow .15s;background:var(--raised)}
 .cseat:hover .ctoken{transform:scale(1.1)}
@@ -325,7 +326,7 @@ details.morebox .inner{border-left:2px solid var(--line);padding-left:10px;margi
 .cseat .cstat{font-size:11px;letter-spacing:1px;min-height:14px}
 .viewtoggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .viewtoggle button{border:none;border-radius:0;padding:5px 14px}
-.viewtoggle button.on{background:var(--accent);color:#14161d;font-weight:700}
+.viewtoggle button.on{background:var(--accent);color:var(--on-accent);font-weight:700}
 .callorder{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:8px 0;font-size:13px}
 .callorder .co{background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:1px 8px}
 .callorder .co.dead{opacity:.5;text-decoration:line-through}
@@ -341,6 +342,41 @@ mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding
 @media (max-width:640px){
   .fieldrow label{text-align:left}
 }
+/* ── 통계 탭 ── */
+.statgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.statcard{position:relative;display:flex;flex-direction:column;gap:6px;align-items:flex-start;background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:12px}
+.statcard.mvp{border-color:var(--accent);background:var(--accent-soft);box-shadow:var(--shadow)}
+.statcard.deadrow{opacity:.6}
+.statcard .mvptag{position:absolute;top:-9px;right:10px;font-size:11px;font-weight:700;color:var(--accent);background:var(--panel);border:1px solid var(--accent);border-radius:999px;padding:0 8px}
+.statcard .scname{font-weight:700;font-size:15px}
+.statcard .scrole{font-size:12px;color:var(--muted)}
+.rbadge{display:inline-flex;align-items:baseline;gap:6px;border-radius:8px;padding:2px 9px;font-size:12px;border:1px solid var(--line)}
+.rbadge b{font-size:15px}
+.rbadge.rt-s{color:#fff;background:var(--primary);border-color:var(--primary)}
+.rbadge.rt-a{color:var(--good);background:var(--good-soft);border-color:var(--good)}
+.rbadge.rt-b{color:var(--ok);background:var(--ok-soft);border-color:var(--ok)}
+.rbadge.rt-c{color:var(--warn);background:var(--warn-soft);border-color:var(--warn)}
+.rbadge.rt-d,.rbadge.rt-x{color:var(--muted);background:var(--sunken)}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.stattbl{width:100%;border-collapse:collapse;font-size:13.5px;white-space:nowrap}
+.stattbl th{color:var(--muted);font-weight:500;text-align:left;font-size:12px}
+.stattbl th,.stattbl td{padding:6px 10px;border-bottom:1px solid var(--line)}
+.stattbl tr:last-child td{border-bottom:none}
+.chartwrap{background:var(--sunken);border:1px solid var(--line);border-radius:12px;padding:10px}
+.chartwrap svg{display:block;width:100%;height:auto}
+.cgrid{stroke:var(--line);stroke-width:1}
+.ctxt{fill:var(--muted);font-size:11px}
+.clegend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px;font-size:12px;color:var(--muted)}
+.clg{display:inline-flex;align-items:center;gap:5px}
+.clg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.histrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--raised);cursor:pointer;margin-top:8px}
+.histrow:hover{border-color:var(--accent)}
+.histrow.open{border-radius:10px 10px 0 0}
+.histrow .histmain{flex:1;min-width:0;display:flex;flex-direction:column}
+.histrow .chev{color:var(--muted)}
+.histboard{border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;padding:4px 8px 8px;background:var(--panel)}
+.pill.goodw{color:var(--good);border-color:var(--good);background:var(--good-soft)}
+.pill.evilw{color:var(--evil);border-color:var(--evil);background:var(--evil-soft)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -363,6 +399,7 @@ mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding
   <section class="tabpane" id="pane-night"></section>
   <section class="tabpane" id="pane-day"></section>
   <section class="tabpane" id="pane-guide"></section>
+  <section class="tabpane" id="pane-stats"></section>
   <section class="tabpane" id="pane-check"></section>
   <section class="tabpane" id="pane-custom"></section>
   <div id="wizard" hidden>
@@ -1065,7 +1102,7 @@ const blank = () => ({
   customs:[], roster:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null, daPrev:null,
   pukkaVictimId:null, mastermindDay:null, executedTodayPid:null, executedDiedToday:null,
   fangGuJumped:false, demonBlockedNight:null, demonBlockedPid:null, dayTimer:null,
-  events:[], evSeq:0, schema:2
+  events:[], evSeq:0, history:[], schema:2
 });
 let S = blank();
 /* 구버전 저장본 정규화. 최상위 Object.assign 만으로는 플레이어·지명의 신규 필드가 비어
@@ -1113,6 +1150,9 @@ function migrateState(raw){
   /* 사라진 등록부 항목을 가리키는 rosterId 는 끊는다(통계 오귀속 방지) */
   const ridSet=new Set(st.roster.map(r=>r.id));
   st.players.forEach(p=>{ if(p.rosterId && !ridSet.has(p.rosterId)) p.rosterId=null; });
+  /* 전적 — confirmWin(true) 훅이 push 한다. 손상 항목은 버린다 */
+  if(!Array.isArray(st.history)) st.history=[];
+  st.history=st.history.filter(h=>h&&typeof h==='object'&&Array.isArray(h.players));
   ['nightDone','checks'].forEach(k=>{ if(!st[k]||typeof st[k]!=='object') st[k]={}; });
   st.schema=2;
   return st;
@@ -1364,15 +1404,17 @@ const NAVS=[
   ['game','내 게임','🎲'],
   ['custom','내 스크립트','📝'],
   ['wiki','백과사전','📖'],
+  ['stats','통계','📊'],
 ];
 const GAME_TABS=[['setup','설정'],['grim','그리모어'],['night','밤 진행'],['day','낮 · 투표'],['check','체크리스트']];
-const NAV_OF={scripts:'scripts', sheet:'scripts', setup:'game', grim:'game', night:'game', day:'game', check:'game', custom:'custom', guide:'wiki'};
+const NAV_OF={scripts:'scripts', sheet:'scripts', setup:'game', grim:'game', night:'game', day:'game', check:'game', custom:'custom', guide:'wiki', stats:'stats'};
 let activeTab='scripts';
 function switchTab(t){ activeTab=t; renderAll(); }
 function switchNav(nv){
   if(nv==='scripts') switchTab('scripts');
   else if(nv==='game') switchTab(S.phase.kind==='night'?'night':S.phase.kind==='day'?'day':'setup');
   else if(nv==='custom') switchTab('custom');
+  else if(nv==='stats') switchTab('stats');
   else switchTab('guide');
 }
 function renderTabs(){
@@ -2964,7 +3006,7 @@ function renderAll(){
   renderTabs(); renderTopbar();
   document.querySelectorAll('.tabpane').forEach(s=>s.classList.remove('active'));
   $('#pane-'+activeTab).classList.add('active');
-  ({scripts:renderScripts, setup:renderSetup, sheet:renderSheet, grim:renderGrim, night:renderNight, day:renderDay, guide:renderGuide, check:renderCheck, custom:renderCustom})[activeTab]();
+  ({scripts:renderScripts, setup:renderSetup, sheet:renderSheet, grim:renderGrim, night:renderNight, day:renderDay, guide:renderGuide, check:renderCheck, custom:renderCustom, stats:()=>renderStats()})[activeTab]();
 }
 /* ⚠ 여기서 advancePhase 를 '값'으로 붙잡으면, 이 줄 아래에서 래핑된 버전
    (낮 타이머 정리 · nightSnapshot 갱신 · 보르톡스/시장 낮종료 판정)이 상단
@@ -2979,6 +3021,260 @@ $('#themebtn').onclick=()=>{
 if(S.theme && S.theme!=='auto') document.documentElement.setAttribute('data-theme',S.theme);
 if(S.phase.kind==='night') activeTab='night'; else if(S.phase.kind==='day') activeTab='day'; else activeTab='scripts';
 renderAll();
+</script>
+
+<script>
+/* ══════════════════ 통계 탭: 평점 · 전광판(MMR) · 판 기록 ══════════════════
+   점수 계산은 별도 점수 엔진(scorePlayer · matchMVP · scoreTimeline)에 위임하고
+   여기서는 표시만 담당한다 — 엔진이 아직 없으면 안내만 띄운다(typeof 방어).
+   판 기록은 S.history(종료 시 다른 모듈이 기록)를 읽기만 하므로 신규 영속 필드 없음. */
+
+const STATS_MIN_GAMES = 3;              // 이 판수 미만은 '배치 중'
+const statsOpenHist = new Set();        // 펼쳐진 판 기록 인덱스(세션 한정, 비영속)
+
+function statsEngineReady(){
+  return typeof scorePlayer==='function' && typeof matchMVP==='function';
+}
+/* 평점을 0~10 사이 유한수로 정규화 — 아니면 null */
+function statsNum(v){
+  const n=Number(v);
+  return Number.isFinite(n)? Math.max(0, Math.min(10, n)) : null;
+}
+/* op.gg 풍 점수대 배지: 9+ 보라 · 8+ 파랑 · 6+ 초록 · 4+ 호박 · 그 외 회색 */
+function statsTier(score){
+  const n=statsNum(score);
+  if(n===null) return {cls:'rt-x', ko:'—'};
+  if(n>=9) return {cls:'rt-s', ko:'탁월'};
+  if(n>=8) return {cls:'rt-a', ko:'우수'};
+  if(n>=6) return {cls:'rt-b', ko:'준수'};
+  if(n>=4) return {cls:'rt-c', ko:'분전'};
+  return {cls:'rt-d', ko:'고전'};
+}
+function statsBadge(score){
+  const t=statsTier(score), n=statsNum(score);
+  return `<span class="rbadge ${t.cls}"><b class="num">${n===null?'—':n.toFixed(1)}</b><span>${t.ko}</span></span>`;
+}
+/* 엔진 호출부 — 시그니처 편차(플레이어 객체/pid)를 흡수한다 */
+function statsScoreOf(p){
+  if(typeof scorePlayer!=='function' || !p) return null;
+  let v=null;
+  try{ v=statsNum(scorePlayer(p)); }catch(e){}
+  if(v===null){ try{ v=statsNum(scorePlayer(p.id)); }catch(e){} }
+  return v;
+}
+/* matchMVP() 반환값이 플레이어 객체·id·이름 어느 쪽이어도 pid 로 정규화 */
+function statsMvpPid(){
+  if(typeof matchMVP!=='function') return null;
+  let m=null; try{ m=matchMVP(); }catch(e){ return null; }
+  if(!m) return null;
+  if(typeof m==='object') return m.id||null;
+  if(typeof m==='string'){
+    if(playerOf(m)) return m;
+    const byName=S.players.find(p=>p.name===m);
+    return byName? byName.id : null;
+  }
+  return null;
+}
+/* scoreTimeline() 결과를 {labels, series:[{name, points:[숫자|null]}]} 로 정규화 */
+function statsTimelineSeries(){
+  if(typeof scoreTimeline!=='function') return null;
+  let raw=null; try{ raw=scoreTimeline(); }catch(e){ return null; }
+  if(!raw) return null;
+  let labels=null, list=raw;
+  if(!Array.isArray(raw) && typeof raw==='object'){
+    if(Array.isArray(raw.series)){ list=raw.series; labels=Array.isArray(raw.labels)? raw.labels : null; }
+    else list=Object.entries(raw).map(([k,v])=>({key:k, points:v}));
+  }
+  if(!Array.isArray(list)) return null;
+  const series=list.map(sr=>{
+    if(!sr||typeof sr!=='object') return null;
+    const pts=[sr.points, sr.values, sr.scores, sr.data].find(a=>Array.isArray(a)&&a.length);
+    if(!pts) return null;
+    const key=sr.pid||sr.id||sr.key||null;
+    const via=key? playerOf(key) : null;
+    const nm=sr.name || (via&&via.name) || key || '?';
+    return {name:String(nm), points:pts.map(statsNum)};
+  }).filter(Boolean).filter(sr=>sr.points.some(n=>n!==null));
+  return series.length? {labels, series} : null;
+}
+/* 인라인 SVG 라인차트 — viewBox 640×240, y축 0~10 고정, 외부 라이브러리 없음 */
+function statsChartSVG(tl){
+  const W=640, H=240, L=34, R=12, T=14, B=30;
+  const iw=W-L-R, ih=H-T-B;
+  const len=Math.max(...tl.series.map(s=>s.points.length));
+  if(len<1) return '';
+  const x=i=> L + (len<2? iw/2 : iw*i/(len-1));
+  const y=v=> T + ih*(1-Math.max(0,Math.min(10,v))/10);
+  const cols=['var(--accent)','var(--good)','var(--evil)','var(--ok)','var(--primary)','var(--outsider)','var(--minionc)','var(--warn)'];
+  const grid=[0,2,4,6,8,10].map(v=>
+    `<line x1="${L}" y1="${y(v).toFixed(1)}" x2="${W-R}" y2="${y(v).toFixed(1)}" class="cgrid"/>`+
+    `<text x="${L-6}" y="${(y(v)+4).toFixed(1)}" class="ctxt" text-anchor="end">${v}</text>`).join('');
+  const step=Math.max(1, Math.ceil(len/12));   // 라벨이 겹치지 않게 솎아낸다
+  const names=tl.labels||Array.from({length:len},(_,i)=>i+1);
+  const lbls=Array.from({length:len},(_,i)=> i%step? '' :
+    `<text x="${x(i).toFixed(1)}" y="${H-10}" class="ctxt" text-anchor="middle">${esc(String(names[i]??i+1))}</text>`).join('');
+  const lines=tl.series.map((sr,si)=>{
+    const c=cols[si%cols.length];
+    const pts=sr.points.map((v,i)=> v===null? null : [x(i),y(v)]).filter(Boolean);
+    const poly=pts.map(([px,py])=>`${px.toFixed(1)},${py.toFixed(1)}`).join(' ');
+    const dots=pts.map(([px,py])=>`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2.5" fill="${c}"/>`).join('');
+    return `<polyline points="${poly}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+  }).join('');
+  const legend=tl.series.map((sr,si)=>`<span class="clg"><i style="background:${cols[si%cols.length]}"></i>${esc(sr.name)}</span>`).join('');
+  return `<div class="chartwrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="페이즈별 평점 추이">${grid}${lines}${lbls}</svg><div class="clegend">${legend}</div></div>`;
+}
+
+/* ── S.history 집계 ── */
+function statsHistEntries(){
+  const hist=Array.isArray(S.history)? S.history : [];
+  return hist.filter(h=>h&&typeof h==='object').map(h=>{
+    const players=(Array.isArray(h.players)? h.players : Array.isArray(h.roster)? h.roster : [])
+      .filter(p=>p&&typeof p==='object');
+    const winner=(h.winner==='good'||h.winner==='evil')? h.winner
+      : (h.win==='good'||h.win==='evil')? h.win : null;
+    return {players, winner, mvpKey:h.mvpId||h.mvpName||h.mvp||null,
+      at:h.endedAt||h.at||h.date||null, edition:h.edition||null, label:h.label||h.title||null};
+  });
+}
+function statsIsMvp(entry,p){
+  if(p.mvp===true) return true;
+  const k=entry.mvpKey;
+  if(!k) return false;
+  if(typeof k==='object') return k===p || (!!k.id&&k.id===p.id) || (!!k.name&&k.name===p.name);
+  return k===p.id || k===p.name;
+}
+function statsPlayerScore(p){ return statsNum(p.score??p.rating??p.rate); }
+/* 전광판: 이름 기준 집계. 판수 가점 없음 — 판별 평점의 단순 평균으로만 순위 */
+function statsLeaderboard(){
+  const by={};
+  /* 등록부가 사람의 단일 출처다 — 소속·현재 이름은 rosterId 로 되찾는다.
+     이름만으로 묶으면 동명이인이 합쳐지고, 등록부에서 이름을 고치면 과거 판과 끊긴다. */
+  const ros={}; (S.roster||[]).forEach(r=>{ if(r&&r.id) ros[r.id]=r; });
+  statsHistEntries().forEach(h=>{
+    h.players.forEach(p=>{
+      const reg = p.rosterId? ros[p.rosterId] : null;
+      const name=String((reg&&reg.name) || p.name || '').trim(); if(!name) return;
+      const sc=statsPlayerScore(p); if(sc===null) return;
+      const key = p.rosterId? 'r:'+p.rosterId : 'n:'+name;
+      const r=by[key] || (by[key]={name, org:'', games:0, sum:0, mvp:0, goodG:0, goodW:0, evilG:0, evilW:0});
+      r.name=name;
+      r.games++; r.sum+=sc;
+      if(statsIsMvp(h,p)) r.mvp++;
+      if(p.alignment==='good'){ r.goodG++; if(h.winner==='good') r.goodW++; }
+      else if(p.alignment==='evil'){ r.evilG++; if(h.winner==='evil') r.evilW++; }
+      const org=(reg&&reg.affil) || p.affil || p.org || p.team || p.affiliation || '';
+      if(org) r.org=String(org);
+    });
+  });
+  const rows=Object.values(by).map(r=>Object.assign(r,{avg:r.sum/r.games}));
+  rows.sort((a,b)=> b.avg-a.avg || b.games-a.games || a.name.localeCompare(b.name,'ko'));
+  return {ranked:rows.filter(r=>r.games>=STATS_MIN_GAMES), placement:rows.filter(r=>r.games<STATS_MIN_GAMES)};
+}
+function statsWR(w,g){ return g? `${Math.round(w/g*100)}% <span class="hint">(${w}/${g})</span>` : '—'; }
+function statsWhen(at){
+  if(!at) return '';
+  const d=new Date(at);
+  if(isNaN(d)) return esc(String(at));
+  const z=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}.${z(d.getMonth()+1)}.${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+
+/* ── 렌더 ── */
+function statsCurrentHTML(){
+  let body='';
+  if(!statsEngineReady()){
+    body=`<div class="alertbox">⚙ 점수 엔진이 아직 로드되지 않았습니다 — 평점·MVP 계산 모듈이 추가되면 이곳에 이번 판 분석이 표시됩니다.</div>`;
+  } else if(!S.players.length){
+    body=`<p class="hint">진행 중인 판이 없습니다 — <b>설정</b> 탭에서 플레이어를 등록하면 평점이 계산됩니다.</p>`;
+  } else {
+    const mvpPid=statsMvpPid();
+    const cards=S.players.map(p=>{
+      const c=charOf(p.charId), mvp=p.id===mvpPid;
+      return `<div class="statcard ${mvp?'mvp':''} ${p.alive?'':'deadrow'}">
+        ${mvp?'<div class="mvptag">👑 MVP</div>':''}
+        <div class="scname">${esc(p.name)}</div>
+        <div class="scrole">${c?`<span class="pill ${c.type}">${TYPE_KO[c.type]||''}</span> ${esc(c.ko)}`:'<span class="pill neutral">미배정</span>'}</div>
+        ${statsBadge(statsScoreOf(p))}
+      </div>`;
+    }).join('');
+    const tl=statsTimelineSeries();
+    body=`<div class="statgrid">${cards}</div>
+    ${tl? `<h3 style="margin:16px 0 6px">페이즈별 추이</h3>${statsChartSVG(tl)}`
+        : `<p class="hint">페이즈별 추이 데이터가 아직 없습니다.</p>`}`;
+  }
+  return `<div class="card"><h2>① 이번 판</h2>${body}</div>`;
+}
+function statsBoardHTML(){
+  const lb=statsLeaderboard();
+  if(!lb.ranked.length && !lb.placement.length)
+    return `<div class="card"><h2>② 전광판</h2><p class="hint">아직 집계된 판이 없습니다 — 판이 끝나면 자동으로 쌓입니다.</p></div>`;
+  const head=`<tr><th>순위</th><th>이름</th><th>소속</th><th>평균 평점</th><th>판수</th><th>MVP</th><th>선 / 악 승률</th></tr>`;
+  const row=(r,rank)=>`<tr>
+    <td class="num">${rank}</td>
+    <td><b>${esc(r.name)}</b></td>
+    <td>${r.org? esc(r.org) : '<span class="hint">—</span>'}</td>
+    <td>${statsBadge(r.avg)}</td>
+    <td class="num">${r.games}</td>
+    <td class="num">${r.mvp?`👑 ${r.mvp}`:'0'}</td>
+    <td class="num">${statsWR(r.goodW,r.goodG)} / ${statsWR(r.evilW,r.evilG)}</td>
+  </tr>`;
+  return `<div class="card"><h2>② 전광판</h2>
+  <p class="hint">판별 평점의 단순 평균으로만 순위를 매깁니다 — 판수가 많다고 가점이 붙지 않습니다.</p>
+  ${lb.ranked.length? `<div class="tblwrap"><table class="stattbl">${head}${lb.ranked.map((r,i)=>row(r,String(i+1))).join('')}</table></div>`
+    : `<p class="hint">정규 순위 대상(${STATS_MIN_GAMES}판 이상)이 아직 없습니다.</p>`}
+  ${lb.placement.length? `<h3 style="margin:14px 0 6px">배치 중 <span class="hint" style="font-size:12px">(${STATS_MIN_GAMES}판 미만)</span></h3>
+  <div class="tblwrap"><table class="stattbl">${head}${lb.placement.map(r=>row(r,'—')).join('')}</table></div>`:''}
+  </div>`;
+}
+function statsHistBoard(h){
+  const rows=h.players.slice()
+    .sort((a,b)=>(statsPlayerScore(b)??-1)-(statsPlayerScore(a)??-1))
+    .map(p=>{
+      const c=charOf(p.charId);
+      const al=p.alignment==='evil'? '<span class="pill evilw">악</span>'
+        : p.alignment==='good'? '<span class="pill goodw">선</span>' : '<span class="pill neutral">—</span>';
+      return `<tr><td>${statsIsMvp(h,p)?'👑 ':''}${esc(p.name??'?')}</td>
+      <td>${c? esc(c.ko) : esc(p.charKo||p.charId||'—')}</td><td>${al}</td><td>${statsBadge(statsPlayerScore(p))}</td></tr>`;
+    }).join('');
+  return `<div class="histboard"><div class="tblwrap"><table class="stattbl">
+  <tr><th>플레이어</th><th>캐릭터</th><th>진영</th><th>평점</th></tr>${rows}</table></div></div>`;
+}
+function statsHistoryHTML(){
+  const entries=statsHistEntries();
+  if(!entries.length)
+    return `<div class="card"><h2>③ 판 기록</h2><p class="hint">아직 저장된 판이 없습니다.</p></div>`;
+  const items=entries.map((h,i)=>({h,i})).reverse().map(({h,i})=>{
+    const open=statsOpenHist.has(i);
+    const sm=(typeof SCRIPTS_META!=='undefined')? SCRIPTS_META.find(s=>s.id===h.edition) : null;
+    const title=h.label? esc(String(h.label)) : `${sm? esc(sm.ko) : '커스텀'} · ${h.players.length}인`;
+    const wpill=h.winner==='good'? '<span class="pill goodw">선 승리</span>'
+      : h.winner==='evil'? '<span class="pill evilw">악 승리</span>' : '<span class="pill neutral">결과 미기록</span>';
+    return `<div class="histrow ${open?'open':''}" data-histtoggle="${i}" role="button" tabindex="0" aria-expanded="${open}">
+      <span class="num hint">#${i+1}</span>
+      <div class="histmain"><b>${title}</b><span class="hint">${statsWhen(h.at)}</span></div>
+      ${wpill}<span class="chev">${open?'▾':'▸'}</span>
+    </div>${open? statsHistBoard(h) : ''}`;
+  }).join('');
+  return `<div class="card"><h2>③ 판 기록</h2>${items}</div>`;
+}
+function renderStats(){
+  const el=$('#pane-stats'); if(!el) return;
+  el.innerHTML=`${statsCurrentHTML()}${statsBoardHTML()}${statsHistoryHTML()}`;
+}
+/* 판 기록 펼침/접힘 — 사용자 문자열을 onclick 에 보간하지 않도록 data-* 위임 */
+document.addEventListener('click', e=>{
+  const t=e.target.closest && e.target.closest('[data-histtoggle]');
+  if(!t) return;
+  const i=Number(t.getAttribute('data-histtoggle'));
+  if(!Number.isInteger(i)) return;
+  if(statsOpenHist.has(i)) statsOpenHist.delete(i); else statsOpenHist.add(i);
+  renderStats();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter' && e.key!==' ') return;
+  const t=e.target.closest && e.target.closest('[data-histtoggle]');
+  if(t){ e.preventDefault(); t.click(); }
+});
 </script>
 
 <script>
@@ -4540,7 +4836,7 @@ function exClose(){
 
 <style>
 /* ══ teeroz형 타운스퀘어 · 상태 뱃지 · 플레이어 모달 ══ */
-#tsq{position:relative;width:min(94vw,660px);aspect-ratio:1;margin:6px auto 30px}
+#tsq{position:relative;width:min(94vw,100%,660px);aspect-ratio:1;margin:6px auto 30px}
 .tseat{position:absolute;width:104px;margin-left:-52px;margin-top:-52px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
 .ttoken{position:relative;width:92px;height:92px;border-radius:50%;background:#d4c9a8;border:3px solid #b8a880;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
@@ -4579,7 +4875,7 @@ function exClose(){
 #pmodal .pmacts button{flex:1;min-height:48px;border-radius:12px;font-size:15px}
 #pmodal .pmacts .kill{background:#7d2340;border-color:#9c3b52;color:#fff}
 @media (max-width:880px){
-  #tsq{width:96vw;margin-bottom:20px}
+  #tsq{width:min(96vw,100%);margin-bottom:20px}
   .tseat{width:84px;margin-left:-42px;margin-top:-42px}
   .ttoken{width:74px;height:74px}
   .ttoken .tkicon{font-size:25px}
@@ -4737,7 +5033,7 @@ function startRevealWiz(){
 <style>
 /* ══ 패리티 보강: 밤 연속 진행 · 새벽 · 종료 · 기기 전달 · 정보 모달 ══ */
 .runbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.runbar .runbtn{background:var(--accent);border-color:var(--accent);color:#1a1030;font-weight:700;min-height:46px;padding:0 22px;border-radius:12px;font-size:15px}
+.runbar .runbtn{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700;min-height:46px;padding:0 22px;border-radius:12px;font-size:15px}
 .dawnlist{display:flex;flex-direction:column;gap:8px;max-width:520px;margin:14px auto 0}
 .dawnrow{display:flex;align-items:center;gap:10px;background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .dawnrow .dseat{color:var(--muted);font-size:13px;min-width:22px;text-align:right}
@@ -4769,6 +5065,11 @@ function startRevealWiz(){
 .seatrow .snum{color:var(--muted);font-size:12.5px;width:26px;text-align:right;font-variant-numeric:tabular-nums}
 .seatrow input{flex:1;min-width:120px}
 .infobtn{border:1px solid var(--line);background:var(--sunken);color:var(--muted);border-radius:50%;width:24px;height:24px;min-height:24px;padding:0;font-size:12px;line-height:1}
+/* 시각 크기는 유지하고 터치 판정 영역만 44pt 로 확장 */
+.infobtn,#pmodal .pmclose{position:relative}
+.infobtn::after,#pmodal .pmclose::after{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+/* 토스트: 안전영역 위로 띄우고 좁은 화면에서 뷰포트를 넘지 않게(JS 인라인 스타일보다 우선) */
+#toast{bottom:calc(20px + env(safe-area-inset-bottom,0px))!important;max-width:min(560px,calc(100vw - 24px))!important}
 </style>
 <div id="gameover" hidden></div>
 
@@ -5847,7 +6148,7 @@ function libRender(){
 #scriptlib .libchip.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}
 #scriptlib .libchip.tier{font-weight:700;font-variant-numeric:tabular-nums}
 #scriptlib .libtierdoc{font-size:11.5px;line-height:1.5;margin:2px 0 0}
-#scriptlib .libgrid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr));align-items:start}
+#scriptlib .libgrid{grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));align-items:start}
 #scriptlib .libcard{display:block;background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:border-color .15s,background .15s}
 #scriptlib .libcard:hover{border-color:var(--primary);background:var(--primary-soft)}
 #scriptlib .libcard.open{border-color:var(--accent);grid-column:1/-1}
@@ -6035,3 +6336,427 @@ wizTitle = function(){
 
 renderAll(); // 아이콘 교체 반영
 </script>
+
+<script>
+/* ══════════════════ SABER 원장 적재 + OP스코어 ══════════════════
+   데이터 계약·계수·기준선은 위쪽 SABER 상수 블록이 정의한다. 이 블록은
+   ① 판정 함수 래핑으로 S.events 병행 적재(emit) ② 지표 합성 점수(compute)만 맡는다.
+   S.log 와 기존 판정 로직은 손대지 않는다 — 원본 호출 뒤에 관측만 남긴다. */
+
+/* 원장 적재. 레코드 계약 {i,k,n,t,a,b,d} 는 SABER.EV 참조.
+   원본들이 이미 save() 를 부르지만 래퍼는 원본 '이후'에 적재하므로 한 번 더 영속화한다. */
+function emitEv(t, a, b, d){
+  if(!Array.isArray(S.events)) S.events=[];
+  const ph=S.phase||{kind:'setup', n:0};
+  S.evSeq=(S.evSeq|0)+1;
+  S.events.push({i:S.evSeq, k:ph.kind, n:ph.n, t, a:(a==null? null:a), b:(b==null? null:b), d:d||{}});
+  if(S.events.length>SABER.MAX_EVENTS) S.events.splice(0, S.events.length-SABER.MAX_EVENTS);
+  save();
+}
+
+/* ── 시점 복원 도우미 ──
+   낮 d 표결 시점의 생존: 밤 n 사망은 낮 n 이전이고, 낮 사망자는 그날 표결에
+   이미 참여했을 수 있으므로 산 것으로 센다(사망 투표 여부는 deadVote 축이 따로 감쇠). */
+function aliveAtDay(p, d){
+  if(!p || !p.diedAt) return true;
+  return p.diedAt.n>d || (p.diedAt.n===d && p.diedAt.kind==='day');
+}
+function aliveNAtDay(d){ return S.players.filter(p=>aliveAtDay(p,d)).length; }
+/* 낮 d 생존자의 유형별 구성 — SABER.baseExec/baseKill 의 반사실 기준선 입력 */
+function aliveCntAtDay(d){
+  const cnt={townsfolk:0, outsider:0, minion:0, demon:0, traveler:0, fabled:0};
+  S.players.forEach(p=>{
+    if(!aliveAtDay(p,d)) return;
+    const ty=charOf(p.charId)?.type;
+    if(cnt[ty]!=null) cnt[ty]++;
+  });
+  return cnt;
+}
+
+/* 원장에서 지명별 부가 정보를 복원한다(cutoff: 그 순번 이하 이벤트만).
+   nomI/closedI 는 추이 계산의 포함 기준, switched 는 SWING(표 전환) 관측,
+   died 는 '그 지명이 실제 처형 사망으로 끝났나'(EV.exec 연결)다. */
+function saberNomStats(cutoff){
+  const st={}; let lastDay=0, endTeam=null;
+  const g=id=>st[id]||(st[id]={switched:{}, nomI:0, closedI:0, died:false});
+  for(const e of (S.events||[])){
+    if(cutoff!=null && e.i>cutoff) break;
+    if(e.k==='day' && e.n>lastDay) lastDay=e.n;
+    const nid=e.d && e.d.nomId;
+    if(e.t==='nom' && nid) g(nid).nomI=e.i;
+    else if(e.t==='vote' && nid){
+      const s=g(nid), pv=e.d.prev, v=e.d.v;
+      if(pv && v && pv!==v && (pv==='yes'||pv==='no') && (v==='yes'||v==='no')) s.switched[e.a]=true;
+    }
+    else if(e.t==='tally' && nid){ const s=g(nid); if(e.d.stage===2 || !e.d.pass) s.closedI=e.i; }
+    else if(e.t==='exec' && nid){ const s=g(nid); s.closedI=e.i; if(e.d.died) s.died=true; }
+    else if(e.t==='end' && e.d) endTeam=e.d.team||null;
+  }
+  if(cutoff==null && S.phase && S.phase.kind!=='setup' && S.phase.n>lastDay) lastDay=S.phase.n;
+  return {st, lastDay:Math.max(1,lastDay), endTeam};
+}
+
+/* ══ OP스코어 — SABER 지표를 0~10 한 줄 점수로 합성하는 가중치 ══
+   기준선 5.0(반사실: 아무 기여 없는 평균 참가자)에서 각 항을 가감한다.
+   처형·표 관련 항의 부호는 '자기 팀 이익'으로 곱으므로 선악 모두 같은 잣대다:
+   선은 악 처형 유도·정확한 표로, 악은 생존·기만(선 처형 유도)·정치질로 득점한다. */
+const OPSCORE={
+  BASE:5, CLAMP:[0,10],
+  W:{xEXE:0.55, LEAD:1.5, BAND:1.2, SWING:0.6, FREE:0.8, CROSS:1.2,
+     SURV:1.0, HEAT:0.5, POLI:0.9, WIN:0.5, DEMON:0.5},
+  CAP:{xEXE:8, SWING:2, HEAT:3, POLI:3},
+};
+function opClamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+/* pid 의 지표별 상세(cutoff 이하 이벤트만 반영) — scorePlayer/scoreTimeline 공용 코어 */
+function opBreakdown(pid, cutoff){
+  const out={pid, terms:{}, score:OPSCORE.BASE};
+  const me=playerOf(pid);
+  if(!me) return out;
+  const meEvil=isEvil(me);
+  const p0=S.players.length||1;
+  const {st, lastDay, endTeam}=saberNomStats(cutoff);
+  const W=OPSCORE.W, CAP=OPSCORE.CAP;
+  const inCut=n=>{ const s=st[n.id]; return cutoff==null? true : !!(s && (s.nomI||s.closedI)); };
+  const nomsAll=(S.noms||[]).filter(inCut);
+  const nomsClosed=nomsAll.filter(n=>n.closed && (cutoff==null || (st[n.id]&&st[n.id].closedI)));
+  const closed2=nomsClosed.filter(n=>n.result==='pass'||n.result==='yesFail');
+  // 대상(악?)이 처형되는 것이 내 팀에 이득인가: +1 / -1
+  const gain=tEvil=>(tEvil!==meEvil? 1 : -1);
+  // 그 지명이 실제 처형 사망으로 끝났나 — EV.exec 우선, 구버전 원장은 diedAt 으로 보강
+  const diedOf=n=>{
+    const s=st[n.id];
+    if(s && s.died) return true;
+    const nee=playerOf(n.nominee);
+    return !!(n.result==='pass' && nee && nee.diedAt && nee.diedAt.kind==='day' && nee.diedAt.n===n.day);
+  };
+
+  // ① xEXE 처형 기여 — 내가 찬성해 성사된 처형의 '기준선 대비 초과 가치' [METRICS.xEXE]
+  let xexe=0;
+  for(const n of closed2){
+    if(n.votes[pid]!=='yes' || n.result!=='pass' || !diedOf(n)) continue;
+    const nee=playerOf(n.nominee); if(!nee) continue;
+    const ty=charOf(nee.charId)?.type;
+    const raw=(SABER.EXEC_VAL[ty]||0) - SABER.baseExec(aliveCntAtDay(n.day));
+    xexe += raw * SABER.w({alive:aliveNAtDay(n.day), p0, yes:n.yes, need:n.need, deadVote:!aliveAtDay(me,n.day)});
+  }
+  xexe=opClamp(xexe, -CAP.xEXE, CAP.xEXE);
+  out.terms.xEXE=W.xEXE * (meEvil? -xexe : xexe);   // 악은 부호를 뒤집어 읽는다 [xEXE note]
+
+  // ② NOM_LEAD 지명 주도 = 0.5×(내 지명 비중) + 0.5×(그날 첫 지명인 날 비중) [METRICS.NOM_LEAD]
+  const myNoms=nomsAll.filter(n=>n.nominator===pid).length;
+  const firstByDay={};
+  for(const n of nomsAll){ if(firstByDay[n.day]==null) firstByDay[n.day]=n.nominator; } // push 순서 = 지명 순서
+  let daysAlive=0, firstDays=0;
+  for(let d=1; d<=lastDay; d++){
+    if(!aliveAtDay(me,d)) continue;
+    daysAlive++;
+    if(firstByDay[d]===pid) firstDays++;
+  }
+  const lead=(nomsAll.length? 0.5*myNoms/nomsAll.length : 0) + (daysAlive? 0.5*firstDays/daysAlive : 0);
+  out.terms.LEAD=W.LEAD*lead;
+
+  // ③ CONF·FREE — 동조율과 무임승차 지수(FREE = CONF×(1−NOM_LEAD)) [METRICS.CONF/FREE]
+  let ballots=0, conform=0;
+  for(const n of closed2){
+    const v=n.votes[pid];
+    if(v!=='yes' && v!=='no') continue;
+    ballots++;
+    if((v==='yes')===(n.result==='pass')) conform++;
+  }
+  const confR=ballots? conform/ballots : 0;
+  out.terms.FREE=(ballots>=3)? -W.FREE * confR * (1-Math.min(1,lead)) : 0;
+
+  // ④ SWING 표 전환 — 갈아탄 최종 표가 결과와 일치할 때, 아슬아슬할수록(piv) 크게 [METRICS.SWING]
+  let swing=0;
+  for(const n of closed2){
+    const s=st[n.id];
+    if(!s || !s.switched[pid]) continue;
+    const vf=n.votes[pid];
+    if(vf!=='yes' && vf!=='no') continue;
+    if((vf==='yes')!==(n.result==='pass')) continue;
+    const nee=playerOf(n.nominee); if(!nee) continue;
+    const sign=gain(isEvil(nee)) * (vf==='yes'? 1 : -1);
+    swing += sign * (n.result==='pass'? (SABER.piv(n.yes,n.need)-1) : 0.5);
+  }
+  out.terms.SWING=W.SWING*opClamp(swing, -CAP.SWING, CAP.SWING);
+
+  // ⑤ BAND 표 결집력 = P(통과|내가 거수) − P(통과) [METRICS.BAND — 상관 지표]
+  const withMe=nomsClosed.filter(n=>(n.hands||[]).includes(pid));
+  const pAll=nomsClosed.length? nomsClosed.filter(n=>n.result==='pass').length/nomsClosed.length : 0;
+  const pMe=withMe.length? withMe.filter(n=>n.result==='pass').length/withMe.length : pAll;
+  out.terms.BAND=W.BAND*(pMe-pAll);
+
+  // ⑥ CROSS 정보 정확도(선 전용) — 찬성표의 상대 진영 적중률에서 무작위 기준선을 뺀다
+  //    [METRICS.CROSS − BASE_DESC.vote. 악의 표 방향성은 ⑧ xPOLI 가 담당]
+  if(!meEvil){
+    let yesN=0, crossN=0;
+    for(const n of closed2){
+      if(n.votes[pid]!=='yes') continue;
+      yesN++;
+      const nee=playerOf(n.nominee);
+      if(nee && isEvil(nee)) crossN++;
+    }
+    const evil0=S.players.filter(p=>isEvil(p)).length;
+    out.terms.CROSS=yesN? W.CROSS*((crossN/yesN) - SABER.baseVote(evil0,p0)) : 0;
+  }
+
+  if(meEvil){
+    // ⑦ SURV 생존 지수 — 기대 생존(expDays/2 = 지수 0.5) 대비 초과 [METRICS.SURV]
+    const surv=(me.diedAt? me.diedAt.n : lastDay)/SABER.expDays(p0);
+    out.terms.SURV=W.SURV*opClamp(surv-0.5, -1, 1.5);
+    // ⑧ HEAT_SURV 지명열 생존 — 의심(찬성률×압축 계수)을 사고도 처형을 피함 [METRICS.HEAT_SURV]
+    let heat=0;
+    for(const n of closed2){
+      if(n.nominee!==pid || diedOf(n)) continue;
+      heat += (n.den? (n.yes||0)/n.den : 0) * SABER.lev(aliveNAtDay(n.day), p0);
+    }
+    out.terms.HEAT=W.HEAT*opClamp(heat, 0, CAP.HEAT);
+    // ⑨ xPOLI 정치질 — 상대 진영(선)에게 표를 몰아준 정도, 자기 팀에 찬성하면 감점 [METRICS.xPOLI]
+    let poli=0;
+    for(const n of closed2){
+      if(n.votes[pid]!=='yes') continue;
+      const nee=playerOf(n.nominee); if(!nee) continue;
+      const wgt=SABER.w({alive:aliveNAtDay(n.day), p0, yes:n.yes, need:n.need});
+      poli += (isEvil(nee)? -1 : 1) * (n.den? (n.yes||0)/n.den : 0) * wgt * 0.3;
+    }
+    out.terms.POLI=W.POLI*opClamp(poli, -CAP.POLI, CAP.POLI);
+  }
+
+  // ⑩ 종료 보너스 — EV.end 가 있어야만 반영(진행 중에는 0)
+  if(endTeam){
+    if((endTeam==='evil')===meEvil) out.terms.WIN=W.WIN;
+    if(endTeam==='evil' && meEvil && me.alive && charOf(me.charId)?.type==='demon') out.terms.DEMON=W.DEMON;
+  }
+
+  /* 합성: tanh 소프트 클립 — 하드 클램프와 달리 큰 판에서도 순서(동점 붕괴)를 보존한다 */
+  let sum=0;
+  for(const k in out.terms) sum+=out.terms[k];
+  out.score=Math.round(opClamp(OPSCORE.BASE + 5*Math.tanh(sum/5), OPSCORE.CLAMP[0], OPSCORE.CLAMP[1])*10)/10;
+  return out;
+}
+
+/* OP스코어 0~10 — 잘한 사람이 높다. 절대값보다 같은 판 안의 순서로 읽는다 */
+function scorePlayer(pid){ return opBreakdown(pid, null).score; }
+
+/* 이 판의 MVP pid — 최고 OP스코어, 동점이면 승리 팀 소속이 우선 */
+function matchMVP(){
+  const {endTeam}=saberNomStats(null);
+  let best=null, bs=-1, bestWin=false;
+  for(const p of S.players){
+    const sc=scorePlayer(p.id);
+    const onWin=!!endTeam && ((isEvil(p)?'evil':'good')===endTeam);
+    if(sc>bs || (sc===bs && onWin && !bestWin)){ bs=sc; best=p.id; bestWin=onWin; }
+  }
+  return best;
+}
+
+/* 페이즈별 누적 추이 [{n, kind, score}] — 각 페이즈의 마지막 이벤트 시점 스냅샷 */
+function scoreTimeline(pid){
+  const out=[]; let cur=null;
+  for(const e of (S.events||[])){
+    if(!cur || cur.kind!==e.k || cur.n!==e.n){ cur={n:e.n, kind:e.k, lastI:e.i}; out.push(cur); }
+    else cur.lastI=e.i;
+  }
+  return out.map(ph=>({n:ph.n, kind:ph.kind, score:opBreakdown(pid, ph.lastI).score}));
+}
+
+/* ── 최소 침습 훅 — 판정 함수를 래핑해 원장에 병행 기록 ── */
+(function(){
+  // 원본과 같은 차단 판정을 '호출 전' 상태에서 미리 계산해 attack.d.blocked 에 싣는다
+  const preBlock=(t, src, bypass)=>{
+    try{ return deathBlockReason(t, {sourceType:src, bypass:!!bypass}); }catch(e){ return null; }
+  };
+
+  // death — 좀버얼 죽은 척 포함, alive 가 실제로 꺾인 호출만 적재 [EV.death]
+  const _kp=killPlayer;
+  killPlayer=function(p, cause, opts){
+    const was=p && p.alive;
+    _kp(p, cause, opts);
+    if(p && was && !p.alive)
+      emitEv('death', null, p.id, {cause:cause||'', char:p.charId, byExec:/처형|성결자/.test(cause||'')});
+  };
+
+  // attack + star — 임프. 별 넘기기는 호출 전후의 imp 보유자 차이로 감지 [EV.attack/EV.star]
+  const _imp=doImpKill;
+  doImpKill=function(pid){
+    const t=playerOf(pid);
+    const dem=S.players.find(q=>q.alive && charOf(q.charId)?.type==='demon');
+    const mal=dem? isMalfunctioning(dem) : false;
+    const blocked=t? (mal? '오작동' : preBlock(t,'demon',false)) : null;
+    const impsBefore=S.players.filter(q=>q.charId==='imp').map(q=>q.id);
+    _imp(pid);
+    if(t) emitEv('attack', dem? dem.id : null, pid, {killer:dem? dem.charId : 'imp', blocked});
+    const np=S.players.find(q=>q.charId==='imp' && !impsBefore.includes(q.id));
+    if(np) emitEv('star', dem? dem.id : null, np.id, {to:np.id});
+  };
+
+  // attack + swap — 팡 구. 점프(외지인 전향)는 charId 변화로 감지 [EV.attack/EV.swap]
+  const _fg=doFangGuAttack;
+  doFangGuAttack=function(pid){
+    const t=playerOf(pid);
+    const fg=S.players.find(q=>q.alive && q.charId==='fanggu');
+    const mal=fg? isMalfunctioning(fg) : false;
+    const blocked=t? (mal? '오작동' : preBlock(t,'demon',false)) : null;
+    const oldChar=t? t.charId : null;
+    _fg(pid);
+    if(!t) return;
+    emitEv('attack', fg? fg.id : null, pid, {killer:'fanggu', blocked});
+    if(t.charId!==oldChar) emitEv('swap', fg? fg.id : null, pid, {from:oldChar, to:t.charId, why:'팡 구 점프'});
+  };
+
+  // poison + attack — 푸카. 새 표적은 중독, 이전 희생자는 지연 공격으로 남긴다 [EV.poison/EV.attack]
+  const _pk=doPukkaPick;
+  doPukkaPick=function(pid){
+    const t=playerOf(pid);
+    const pk=S.players.find(q=>(q.alive || (q.charId==='zombuul'&&hasStatus(q,'fakedead'))) && q.charId==='pukka');
+    const mal=pk? isMalfunctioning(pk) : false;
+    const prev=S.pukkaVictimId? playerOf(S.pukkaVictimId) : null;
+    const prevBlk=(prev && prev.alive && !mal)? preBlock(prev,'demon',false) : null;
+    _pk(pid);
+    if(t) emitEv('poison', pk? pk.id : null, pid, {src:'푸카', key:'poison', mal});
+    if(t && prev && prev!==t && !mal) emitEv('attack', pk? pk.id : null, prev.id, {killer:'pukka', blocked:prevBlk});
+  };
+
+  // attack — BMR/SV 단계 살해. 군인 면역 판별을 위해 살해 출처를 원본과 같게 구분 [EV.attack]
+  const _sk=doStepKill;
+  doStepKill=function(pid, killerId){
+    const t=playerOf(pid);
+    const kid=killerId || window.__stepKiller || null;
+    const actor=S.players.find(q=>(q.alive || (q.charId==='zombuul'&&hasStatus(q,'fakedead'))) && q.charId===kid);
+    const mal=actor? isMalfunctioning(actor) : false;
+    const src=charOf(kid)?.type==='demon'? 'demon' : 'night';
+    const blocked=(t && t.alive)? (mal? '오작동' : preBlock(t, src, kid==='assassin')) : null;
+    _sk(pid, killerId);
+    if(t) emitEv('attack', actor? actor.id : null, pid, {killer:kid, blocked});
+  };
+
+  // protect / poison — 부여 시도를 오작동 여부와 함께 남긴다 [EV.protect/EV.poison]
+  const _pr=doProtect;
+  doProtect=function(pid){
+    const t=playerOf(pid);
+    const monk=S.players.find(q=>q.charId==='monk');
+    _pr(pid);
+    if(t) emitEv('protect', monk? monk.id : null, pid, {src:'수도사', mal:monk? isMalfunctioning(monk) : false});
+  };
+  const _po=doPoison;
+  doPoison=function(pid){
+    const t=playerOf(pid);
+    const psn=S.players.find(q=>q.charId==='poisoner');
+    _po(pid);
+    if(t) emitEv('poison', psn? psn.id : null, pid, {src:'독살범', key:'poison', mal:psn? isMalfunctioning(psn) : false});
+  };
+
+  // pick — 구마사제·악마의 변호사의 밤 지목 [EV.pick]
+  const _ex=doExorcist;
+  doExorcist=function(pid){
+    _ex(pid);
+    if(pid && playerOf(pid))
+      emitEv('pick', S.players.find(q=>q.alive&&q.charId==='exorcist')?.id||null, pid, {step:'exorcist', targets:[pid]});
+  };
+  const _da=doDevilsAdvocate;
+  doDevilsAdvocate=function(pid){
+    _da(pid);
+    if(pid && playerOf(pid))
+      emitEv('pick', S.players.find(q=>q.alive&&q.charId==='devilsadvocate')?.id||null, pid, {step:'devilsadvocate', targets:[pid]});
+  };
+
+  // swap — 이발사·뱀 조련사. 원본 검증을 통과해 charId 가 실제로 바뀐 경우만 [EV.swap]
+  const swapWrap=(name, why)=>{
+    const o=window[name];
+    window[name]=function(pids){
+      const a=playerOf((pids||[])[0]), b=playerOf((pids||[])[1]);
+      const ac=a? a.charId : null, bc=b? b.charId : null;
+      o(pids);
+      if(a && b && a!==b && a.charId!==ac){
+        emitEv('swap', a.id, a.id, {from:ac, to:a.charId, why});
+        emitEv('swap', b.id, b.id, {from:bc, to:b.charId, why});
+      }
+    };
+  };
+  swapWrap('doSwapChars','이발사 교환');
+  swapWrap('doSnakeSwap','뱀 조련사 스왑');
+
+  // nom/hand/vote/tally — 지명·투표 계열. ord = 그날 몇 번째 지명 [EV.nom~EV.tally]
+  const _nn=newNomination;
+  newNomination=function(){
+    const len=S.noms.length;
+    _nn();
+    if(S.noms.length>len){
+      const n=S.noms[S.noms.length-1];
+      emitEv('nom', n.nominator, n.nominee, {nomId:n.id, ord:S.noms.filter(x=>x.day===n.day).length});
+    }
+  };
+  const _th=toggleHand;
+  toggleHand=function(nid, pid){
+    _th(nid, pid);
+    const n=findNom(nid);
+    if(n) emitEv('hand', pid, n.nominee, {nomId:nid, on:n.hands.includes(pid)});
+  };
+  const _cv=castVote;
+  castVote=function(nid, pid, v){
+    const n0=findNom(nid);
+    const prev=n0? n0.votes[pid] : undefined;
+    _cv(nid, pid, v);
+    const n=findNom(nid);
+    if(n && n.votes[pid]!==prev)
+      emitEv('vote', pid, n.nominee, {nomId:nid, v:(n.votes[pid]==null? null : n.votes[pid]), prev:(prev==null? null : prev)});
+  };
+  const _ch=closeHands;
+  closeHands=function(nid){
+    _ch(nid);
+    const n=findNom(nid);
+    if(n){
+      const den=alivePlayers().length;
+      emitEv('tally', null, n.nominee, {nomId:nid, stage:1, num:n.hands.length, den, need:majority(den), pass:n.stage===2});
+    }
+  };
+  const _cb=closeBallot;
+  closeBallot=function(nid){
+    _cb(nid);
+    const n=findNom(nid);
+    if(n && n.closed)
+      emitEv('tally', null, n.nominee, {nomId:nid, stage:2, num:n.yes, den:n.den, need:n.need, pass:n.result==='pass'});
+  };
+
+  // exec — 처형 확정. 차단 사유는 호출 전 상태로 판정, nomId 는 통과된 최근 지명과 연결 [EV.exec]
+  const _re=resolveExecution;
+  resolveExecution=function(p, cause){
+    const blocked=p? preBlock(p,'execution',false) : null;
+    const died=_re(p, cause);
+    if(p){
+      const nom=S.noms.slice().reverse().find(n=>n.nominee===p.id && n.result==='pass')||null;
+      emitEv('exec', null, p.id, {died:!!died, blocked:blocked||null, nomId:nom? nom.id : null});
+    }
+    return died;
+  };
+
+  // phase — 검증 실패로 전환이 안 된 호출은 기록하지 않는다 [EV.phase]
+  const _ap=advancePhase;
+  advancePhase=function(){
+    const k=S.phase.kind, n=S.phase.n;
+    _ap();
+    if(S.phase.kind!==k || S.phase.n!==n) emitEv('phase', 'ST', null, {to:S.phase.kind, n:S.phase.n});
+  };
+
+  // end + 전적 적립 — 원장에 end 를 먼저 적재해야 승리 보너스가 점수에 반영된다 [EV.end]
+  const _cw=confirmWin;
+  confirmWin=function(yes){
+    const res=pendingWin;                       // 원본이 소거하기 전에 확보
+    _cw(yes);
+    if(!yes || !res || !res.team) return;
+    emitEv('end', 'ST', null, {team:res.team, reason:res.reason||''});
+    if(!Array.isArray(S.history)) S.history=[];
+    const mvp=matchMVP();
+    S.history.push({
+      ts:Date.now(), edition:S.edition, winner:res.team,
+      players:S.players.map(p=>({
+        rosterId:p.rosterId||null, pid:p.id, name:p.name, charId:p.charId,
+        alignment:isEvil(p)? 'evil' : 'good', score:scorePlayer(p.id), mvp:p.id===mvp,
+      })),
+    });
+    save();
+  };
+})();
+</script>
+
