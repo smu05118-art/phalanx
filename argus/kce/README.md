@@ -30,13 +30,17 @@ tools/                      DART 자체 갱신 파이프라인
 - **[UPDATE.md](UPDATE.md)** — 우리가 직접 데이터를 갱신하는 방법. DART 수집 경로,
   머리행 정규화 규칙, 빌더 단계별 로직, 운영 절차, 필드별 커버리지.
 
-## 갱신
+## 갱신 — 자동
+
+GitHub Action `.github/workflows/update-kce.yml`이 매일 10:00 KST에 돌며
+**새 정기보고서가 뜨면 자동으로 감지해 반영**한다(없으면 no-op). 평시에는 손댈 일이 없다.
+
+직접 돌릴 때:
 
 ```bash
 cd tools
-python3 kce_fetch.py --co sct --quarter 2026Q3 --out /tmp/kce_raw
-python3 kce_build.py --co sct --quarter 2026Q3 --raw /tmp/kce_raw          # dry-run
-python3 kce_build.py --co sct --quarter 2026Q3 --raw /tmp/kce_raw --apply
+python3 kce_watch.py            # 감지만 — 무엇이 갱신될지 확인
+python3 kce_watch.py --apply    # 7사 자동 갱신
 python3 -m unittest discover -s tests
 ```
 

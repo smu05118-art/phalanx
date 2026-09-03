@@ -1,0 +1,125 @@
+name: Update ARGUS 한국건설(kce) from DART
+
+on:
+  workflow_dispatch:
+    inputs:
+      quarter:
+        description: "분기 강제 지정(예: 2026Q3). 비우면 각 회사의 다음 분기를 자동 판정"
+        required: false
+        type: string
+  schedule:
+    # 정기보고서 접수 시기에 맞춰 매일 1회(10:00 KST = 01:00 UTC).
+    # 분기·반기보고서는 분기말 +45일, 사업보고서는 +90일 안팎에 접수된다.
+    # 매일 돌려도 회사당 검색 1회뿐이고, 새 분기가 없으면 즉시 no-op으로 끝난다.
+    - cron: "0 1 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-kce-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test parser and builder contracts (before)
+        run: python3 -m unittest discover -s argus/kce/tools/tests -p 'test_*.py' -v
+
+      - name: Detect and apply new quarterly reports
+        id: watch
+        continue-on-error: true
+        shell: bash
+        working-directory: argus/kce/tools
+        env:
+          # 셸 인젝션 방지: 입력은 env로만 받고 형식을 검증한 뒤 인자로 넘긴다.
+          QUARTER_INPUT: ${{ github.event.inputs.quarter }}
+        run: |
+          set -o pipefail
+          ARGS=(--apply)
+          if [ -n "${QUARTER_INPUT:-}" ]; then
+            if ! printf '%s' "$QUARTER_INPUT" | grep -Eq '^[0-9]{4}Q[1-4]$'; then
+              echo "::error::quarter 형식이 잘못됐다: $QUARTER_INPUT (예: 2026Q3)"
+              exit 2
+            fi
+            ARGS+=(--quarter "$QUARTER_INPUT")
+          fi
+          python3 kce_watch.py "${ARGS[@]}" | tee "$RUNNER_TEMP/kce_watch.json"
+
+      - name: Summarize watch result
+        id: sum
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          p = os.environ["RUNNER_TEMP"] + "/kce_watch.json"
+          try:
+              r = json.load(open(p))
+          except Exception:
+              print("updated=0"); print("failed=1"); print("summary=(리포트 없음)"); raise SystemExit
+          up = [u for u in r["updated"] if not u.get("dry_run")]
+          print("updated=%d" % len(up))
+          print("failed=%d" % len(r["failed"]))
+          print("summary=%s" % (", ".join("%s %s" % (u["co"], u["quarter"]) for u in up) or "(없음)"))
+          PY
+
+      - name: Validate contracts after update
+        if: steps.sum.outputs.updated != '0'
+        shell: bash
+        run: |
+          python3 -m unittest discover -s argus/kce/tools/tests -p 'test_*.py' -v
+          git diff --check
+
+      - name: Detect data change
+        id: changed
+        shell: bash
+        run: |
+          if git diff --quiet -- argus/kce; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit updated quarter
+        if: steps.changed.outputs.changed == 'true'
+        shell: bash
+        env:
+          SUMMARY: ${{ steps.sum.outputs.summary }}
+        run: |
+          git config user.name "phalanx-kce-bot"
+          git config user.email "phalanx-kce-bot@users.noreply.github.com"
+          git add -- argus/kce
+          git commit -m "kce: DART 정기보고서 반영 — ${SUMMARY}"
+          git pull --rebase origin main
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Report
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### 한국건설 갱신 결과"
+            echo '```json'
+            cat "$RUNNER_TEMP/kce_watch.json" 2>/dev/null || echo "(리포트 없음)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 일부 회사가 실패해도 성공한 회사는 위에서 이미 커밋된다.
+      # 실패가 하나라도 있으면 여기서 job을 실패로 표시해 알림이 가게 한다.
+      - name: Fail if any company errored
+        if: always() && steps.sum.outputs.failed != '0'
+        run: |
+          echo "::error::일부 회사 갱신 실패 — Step Summary의 failed 항목을 확인하라"
+          exit 1

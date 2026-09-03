@@ -291,18 +291,36 @@ trace는 SITES 배열이 완전히 같다. 즉 렌더 규칙이 원 빌더와 �
 - trace는 그룹 순서가 아니라 **사업장 코드 숫자 순** 정렬. r3는 `p8Full.품목 · 발주처`,
   r11은 `xipFull.계약명 · 계약상대방` 결합 문자열
 
-## 4. 운영 절차
+## 4. 운영 — 자동 갱신
+
+**평시에는 손댈 일이 없다.** GitHub Action `.github/workflows/update-kce.yml`이 매일
+10:00 KST에 돌면서 새 정기보고서를 감지해 반영한다.
+
+```
+kce_watch.py  →  회사별 fq[-1]의 다음 분기 보고서가 DART에 떴는지 검색
+              →  떴으면 kce_fetch → kce_build --apply → matrix/trace/headers 재생성
+              →  안 떴으면 즉시 no-op 종료(회사당 검색 1회뿐이라 매일 돌려도 가볍다)
+```
+
+Action 흐름: **테스트(before) → 감지·적용 → 테스트(after) + `git diff --check` →
+변경 있을 때만 `git add -- argus/kce` 커밋 → `git pull --rebase` 후 push.**
+회사 단위로 독립 처리하므로 한 회사가 실패해도 나머지는 반영되고, 실패가 있으면
+job이 빨갛게 끝나 알림이 간다. 결과는 Step Summary에 JSON으로 남는다.
+
+수동 실행은 Actions 탭의 **Run workflow**(`quarter` 입력으로 분기 강제 — 정정보고서
+재적재용. `2026Q3` 형식만 받고 그 외는 거부한다).
+
+직접 돌릴 때:
 
 ```bash
-# 분기당 1회 (보고서 접수 후: 5/20, 8/20, 11/20, 이듬해 4/5 경)
 cd argus/kce/tools
-for CO in sct hec sea dwe gse dle ipark; do
-  python3 kce_fetch.py --co $CO --quarter 2026Q3 --out /tmp/kce_raw
-  python3 kce_build.py --co $CO --quarter 2026Q3 --raw /tmp/kce_raw          # dry-run 리포트 확인
-  python3 kce_build.py --co $CO --quarter 2026Q3 --raw /tmp/kce_raw --apply  # 반영
-done
+python3 kce_watch.py                      # 감지만 — 무엇이 갱신될지 확인
+python3 kce_watch.py --apply              # 7사 자동 갱신
+python3 kce_watch.py --co gse --quarter 2025Q4 --apply   # 특정 회사·분기
 python3 -m unittest discover -s tests
 ```
+
+개별 단계를 직접 다루려면 `kce_fetch.py` → `kce_build.py`를 §1·§3대로 쓰면 된다.
 
 dry-run 리포트에서 반드시 확인할 것:
 - `created` — 신규 사업장. 회사가 표를 재편했을 때 기존 사업장이 신규로 잘못 잡힐 수 있다.

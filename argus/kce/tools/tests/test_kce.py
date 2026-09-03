@@ -20,7 +20,12 @@ sys.path.insert(0, TOOLS)
 from kce_lib import norm_col, num_of, q_of, q_next, extract_data  # noqa: E402
 from kce_parse import parse_ii4, parse_p8, parse_tables  # noqa: E402
 
-K = 18  # fq[18] == 2026Q2 (fixture 보고서의 대상 분기)
+# fixture 보고서의 대상 분기. 새 분기가 추가돼도 인덱스를 다시 찾도록 상수로 박지 않는다.
+FQ_TARGET = "2026Q2"
+
+
+def _k(D):
+    return D["fq"].index(FQ_TARGET)
 
 
 def _fx(name):
@@ -67,6 +72,7 @@ class TestII4Reconcile(unittest.TestCase):
     """II-4 파싱값 ↔ 임베드 DATA 2026Q2 실측값 대조."""
 
     def _measured(self, D):
+        K = _k(D)
         out = []
         for s in D["sites"]:
             sf = s.get("sFilled") or [None] * len(D["fqF"])
@@ -74,7 +80,7 @@ class TestII4Reconcile(unittest.TestCase):
                 out.append(s)
         return out
 
-    def _triples(self, sites):
+    def _triples(self, sites, K):
         d = {}
         for s in sites:
             k = (s["s"]["amt"][K], s["s"]["cmp"][K], s["s"]["bal"][K])
@@ -83,12 +89,12 @@ class TestII4Reconcile(unittest.TestCase):
 
     def _reconcile(self, co, fixture, min_match):
         D = _data(co)
-        self.assertEqual(D["fq"][K], "2026Q2")
+        K = _k(D)
         r = parse_ii4(_fx(fixture))
         self.assertEqual(r["unknown_headers"], [], "미지 헤더 발생")
         rows = [x for t in r["tables"] for x in t["rows"]]
         meas = self._measured(D)
-        dset = self._triples(meas)
+        dset = self._triples(meas, K)
         hit, misses = 0, []
         for x in rows:
             key = (x["amt"], x["cmp"], x["bal"])
@@ -109,6 +115,7 @@ class TestII4Reconcile(unittest.TestCase):
 
     def test_sct(self):
         rows, meas, D = self._reconcile("sct", "sct_상세표_건설수주.html", 79)
+        K = _k(D)
         self.assertEqual(len(meas), 79)
         # 집계 재현: Σ실측 bal == summary.total(=summary.rows 합)
         self.assertEqual(sum(s["s"]["bal"][K] for s in meas),
@@ -116,6 +123,7 @@ class TestII4Reconcile(unittest.TestCase):
 
     def test_hec(self):
         rows, meas, D = self._reconcile("hec", "hec_수주상황.html", 109)
+        K = _k(D)
         self.assertEqual(len(meas), 109)
         # hec는 src='공시총계' — summary.total은 사이트 합보다 크다(LOGIC.md §3.5)
         self.assertGreater(D["summary"]["total"][K],
@@ -127,6 +135,7 @@ class TestP8Reconcile(unittest.TestCase):
     표의 연결/별도 순서는 회사·분기마다 뒤집히므로 값 대조로 배정을 검증한다."""
 
     def _dvals(self, D, basis):
+        K = _k(D)
         d = {}
         for s in D["sites"]:
             b = (s.get("p8") or {}).get(basis)
@@ -176,9 +185,10 @@ class TestDataContract(unittest.TestCase):
     def test_axes_and_totals(self):
         for co in self.COS:
             D = _data(co)
-            self.assertEqual(len(D["fq"]), 19, co)
-            self.assertEqual(len(D["fqF"]), 23, co)
-            self.assertEqual(D["fqF"][:19], D["fq"], co)
+            # 길이를 박지 않고 **관계**를 검증한다 — 새 분기가 들어오면 20/24가 된다.
+            self.assertGreaterEqual(len(D["fq"]), 19, co)
+            self.assertEqual(len(D["fqF"]), len(D["fq"]) + 4, co)
+            self.assertEqual(D["fqF"][:len(D["fq"])], D["fq"], co)
             n = len(D["fqF"])
             for s in D["sites"]:
                 for key in ("amt", "cmp", "bal", "pr"):
