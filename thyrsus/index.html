@@ -538,7 +538,7 @@ const CHARACTERS = [
  remind:['밤 순서에 위장 캐릭터 자리로 자동 삽입된다.']},
 
 {id:'recluse', ko:'은둔자', en:'Recluse', type:'outsider',
- ability:'악한 플레이어로, 하수인이나 악마로 등록될 수 있다. 실제로는 선하다.',
+ ability:'죽어 있어도 악한 플레이어로, 하수인이나 악마로 등록될 수 있다. 실제로는 선하다.',
  first:false, other:false, passive:true,
  warn:['"등록될 수 있다" = 사회자 재량. 매번 다르게 판정해도 된다.','적용처: 수사관·요리사·초공감자·점쟁이·장의사·까마귀지기 정보, 처단자 지목(죽을 수 있다!), 임프로 등록되어 처형 시 게임이 끝난 척? — 아니다: 은둔자 처형으로 게임은 끝나지 않지만, "악마가 죽었다"고 등록·공표하는 것은 불가(게임 종료는 실제 악마 사망만).','재량 원칙: 은둔자를 악으로 등록하는 것은 선한 팀을 혼란시키는 도구다. 과용하면 은둔자만 억울해진다 — 게임당 1~2회의 결정적 순간에.'],
  remind:['정보 캐릭터 판정 때마다 은둔자 등록 여부를 의식적으로 결정할 것.']},
@@ -559,7 +559,7 @@ const CHARACTERS = [
  remind:['매 밤 대상 갱신. 이전 대상 해제 확인.']},
 
 {id:'spy', ko:'첩자', en:'Spy', type:'minion',
- ability:'매일 밤 그리모어를 볼 수 있다. 선한 플레이어, 마을 주민, 외지인으로 등록될 수 있다.',
+ ability:'매일 밤 그리모어를 볼 수 있다. 죽어 있어도 선한 플레이어, 마을 주민, 외지인으로 등록될 수 있다.',
  first:true, other:true,
  guideFirst:['밤 순서 마지막에 첩자를 깨운다.','그리모어(이 화면의 그리모어 탭 상태)를 충분히 보여준다.','첩자를 재운다.'],
  guideOther:['밤 순서 마지막에 첩자를 깨워 그리모어를 보여준다.','첩자를 재운다.'],
@@ -567,7 +567,7 @@ const CHARACTERS = [
  remind:['첩자가 살아있는 동안 매일 밤 마지막 순서.']},
 
 {id:'scarletwoman', ko:'탕녀', en:'Scarlet Woman', type:'minion',
- ability:'생존자가 5명 이상일 때 악마가 죽으면, 자신이 그 악마가 된다.',
+ ability:'생존자가 5명 이상일 때 악마가 죽으면, 자신이 그 악마가 된다. (여행자는 이 인원수에 세지 않는다.)',
  first:false, other:true, conditional:'악마 계승 시에만',
  guideOther:['(악마 계승이 일어난 날 밤에만) 탕녀를 깨운다.','임프 토큰을 보여주며 "당신이 이제 임프"임을 알린다.','이후 임프 순서에 따라 살해를 진행하게 한다.'],
  warn:['발동 조건: 악마 사망 시점의 생존자(악마 포함 계산 전) 5인 이상. 4인 이하면 발동하지 않고 선한 팀 승리.','처형·처단자 어느 쪽이든 악마가 죽으면 즉시 계승 — 게임은 끝나지 않는다. 태연하게 밤으로 진행하라.','임프가 자살(자기 지목)한 경우: 사회자가 하수인 중 하나를 임프로 만든다 — 탕녀가 있으면 그녀가 관례적 우선이지만 재량이다.','탕녀가 중독/술취함 상태면 계승이 불발된다 — 악마 사망 = 게임 종료! 처형 전 반드시 확인.'],
@@ -610,7 +610,7 @@ const CHARACTERS = [
 {id:'snitch',ko:'밀고자',en:'Snitch',type:'outsider',edition:'exp',first:true,other:false, ability:'각 하수인은 첫날 밤 블러프(게임에 없는 캐릭터) 3개를 받는다.', guideFirst:['하수인 정보 시점에 각 하수인을 차례로 깨운다 — 밀고자 본인은 깨우지 않는다.','하수인마다 게임에 없는 캐릭터 3개를 보여준다 — 하수인끼리 같아도, 악마 블러프와 겹쳐도 된다(재량).'], guideOther:[], warn:['밀고자가 중독/술취함이면: 블러프를 주지 않거나, 게임에 있는 캐릭터를 섞은 거짓 블러프를 줘도 된다.','악마 블러프와의 조합을 미리 설계하면 악 팀의 거짓말이 매끄러워진다 — 균형 재량.'], remind:['첫날 밤 이후 발동 없음.']},
 {id:'zealot',ko:'광신자',en:'Zealot',type:'outsider',edition:'exp',first:false,other:false,passive:true,voteRelated:true, ability:'생존자가 5명 이상이면 모든 지명에 반드시 찬성표를 던져야 한다.', guideFirst:[],guideOther:[], warn:['의무는 광신자 본인의 것 — 투표를 잊으면 조용히 상기시켜라.','생존자 4명 이하가 되면 의무가 사라져 자유 투표.','광신자가 중독/술취함이면 의무 없음.','죽으면 능력이 사라진다 — 유령표를 강제로 쓰게 하지 마라.'], remind:['생존자 수 5명 경계 체크.'], dayNotice:'✋ 광신자: 생존 5인 이상이면 매 지명에 손을 들어야 한다 — 투표마다 확인.'},
 {id:'hatter',ko:'모자 장수',en:'Hatter',type:'outsider',edition:'exp',first:false,other:true,conditional:'사망한 날 밤', ability:'낮이나 밤에 죽으면, 그날 밤 하수인·악마 플레이어들이 각자 새 하수인·악마 캐릭터로 바뀌기를 선택할 수 있다.', guideFirst:[], guideOther:['모자 장수가 오늘 죽었다면 그 밤 하수인들과 악마를 깨운다.','악마는 새 악마 캐릭터를, 각 하수인은 새 하수인 캐릭터를 고를 수 있다(유지도 가능).','토큰을 교체하고 그리모어를 갱신한다 — 이후 능력은 새 캐릭터 기준.'], warn:['유형은 유지 — 하수인은 하수인으로만, 악마는 악마로만.','이미 게임에 있는 캐릭터나 서로 간 중복 선택은 불허(재량 조정).','새 캐릭터의 [대괄호] 셋업 효과는 적용하지 않는다.','모자 장수가 중독/술취함 상태로 죽으면 발동 없음.'], remind:['1회성 — 죽은 그 밤에만 진행.']},
-{id:'hermit',ko:'은자',en:'Hermit',type:'outsider',edition:'exp',first:true,other:true,setupChar:true, ability:'대본의 모든 외지인 능력을 동시에 가진다. 구성 변경: 외지인 0 또는 −1.', setupNote:'셋업 시 외지인 수를 그대로 두거나 1 줄인다(주민 수로 보정).', guideFirst:['대본의 각 외지인 능력을 그 캐릭터의 밤 순서 위치에서 은자에게 적용한다 — 깨어나는 능력이 있으면 그때마다 깨운다.'], guideOther:['동일 — 해당하는 외지인 능력들의 밤 순서에 맞춰 진행.'], warn:['능력 간 충돌·중복은 사회자 재량으로 정합적으로 정리 — 게임 전에 처리 방침을 정해둬라.','은자가 중독/술취함이면 모든 외지인 능력이 무효.','정보·상태량이 많은 캐릭터다 — 그리모어 메모를 아끼지 마라.'], remind:['적용 중인 외지인 능력 목록을 메모해두면 실수를 막는다.']},
+{id:'hermit',ko:'은자',en:'Hermit',type:'outsider',edition:'exp',first:false,other:false,setupChar:true, ability:'대본의 모든 외지인 능력을 동시에 가진다. 구성 변경: 외지인 0 또는 −1.', setupNote:'셋업 시 외지인 수를 그대로 두거나 1 줄인다(주민 수로 보정).', guideFirst:['대본의 각 외지인 능력을 그 캐릭터의 밤 순서 위치에서 은자에게 적용한다 — 깨어나는 능력이 있으면 그때마다 깨운다.'], guideOther:['동일 — 해당하는 외지인 능력들의 밤 순서에 맞춰 진행.'], warn:['능력 간 충돌·중복은 사회자 재량으로 정합적으로 정리 — 게임 전에 처리 방침을 정해둬라.','은자가 중독/술취함이면 모든 외지인 능력이 무효.','정보·상태량이 많은 캐릭터다 — 그리모어 메모를 아끼지 마라.'], remind:['적용 중인 외지인 능력 목록을 메모해두면 실수를 막는다.']},
 {id:'plaguedoctor',ko:'역병 의사',en:'Plague Doctor',type:'outsider',edition:'exp',first:false,other:true,passive:true,conditional:'사망 시', ability:'죽으면 사회자가 하수인 능력 하나를 얻는다.', guideFirst:[],guideOther:[], warn:['보통 게임에 없는 하수인의 능력을 골라, 사회자가 그 하수인인 것처럼 밤 순서에 맞춰 운용한다.','[대괄호] 셋업 효과는 적용하지 않는 것이 원칙.','역병 의사가 중독/술취함 상태로 죽으면 능력을 얻지 않는다.','여러 캐릭터와 공식 징크스가 있다 — 대본에 함께 있으면 위키 확인.'], remind:['사망 시 어떤 하수인 능력을 얻을지 미리 구상해두면 진행이 매끄럽다.']},
 {id:'ogre',ko:'오거',en:'Ogre',type:'outsider',edition:'exp',first:true,other:false, ability:'첫날 밤 자신이 아닌 1명을 지목해 그 플레이어의 진영이 된다(어느 쪽인지 모른다). 중독/술취함이어도 작동한다.', guideFirst:['오거를 깨운다.','자신을 제외한 1명을 지목하게 한다.','그 플레이어의 진영에 맞춰 오거의 진영을 몰래 바꾼다 — 오거에게는 아무것도 알려주지 않는다.','오거를 재운다.'], guideOther:[], warn:['능력문에 명시된 대로 중독/술취함이어도 진영 변경은 일어난다.','첩자·은둔자를 지목하면 등록 재량 적용 가능 — 첩자를 선으로 등록해 오거를 선하게 둘 수도 있다.','오거의 진영은 정보 판정·승패 계산에 실제로 반영된다.'], remind:['오거의 현재 진영을 그리모어에 표시.']},
 {id:'heretic',ko:'이단자',en:'Heretic',type:'outsider',edition:'exp',first:false,other:false,passive:true, ability:'승자는 패자가 되고 패자는 승자가 된다 — 이단자가 죽어 있어도 적용된다.', guideFirst:[],guideOther:[], warn:['게임 종료 판정 직후 승패를 뒤집는다 — 악마 처형으로 끝나면 악이 승리.','이단자가 그 시점에 중독/술취함이면 뒤집지 않는다.','공식 징크스가 매우 많은 캐릭터 — 대본 제작 단계에서 조합을 걸러라.'], remind:['승패 선언 전에 이단자 상태(생사 무관, 중독 여부)를 확인.']},
@@ -750,8 +750,8 @@ const INFO_STEPS = {
   demoninfo:{ko:'악마 정보', when:'first', minPlayers:7,
     guide:['악마를 깨운다.','하수인들이 누구인지 알려준다.','사용되지 않은 선한 캐릭터 3개를 블러프로 보여준다 — 주정뱅이의 위장 캐릭터·붉은 청어와 겹치지 않게 고르면 안전하다.','재운다.']},
 };
-const FIRST_NIGHT_ORDER = ['minioninfo','demoninfo','poisoner','washerwoman','librarian','investigator','chef','empath','fortuneteller','butler','spy'];
-const OTHER_NIGHT_ORDER = ['poisoner','monk','scarletwoman','imp','ravenkeeper','empath','fortuneteller','undertaker','butler','spy'];
+const FIRST_NIGHT_ORDER = ['bureaucrat','thief','minioninfo','demoninfo','poisoner','washerwoman','librarian','investigator','chef','empath','fortuneteller','butler','spy'];
+const OTHER_NIGHT_ORDER = ['bureaucrat','thief','poisoner','monk','scarletwoman','imp','ravenkeeper','empath','fortuneteller','undertaker','butler','spy'];
 
 /* ══════════════════ 상태 토큰 정의 ══════════════════ */
 const STATUS_DEFS = {
@@ -830,7 +830,7 @@ const BMR_CHARS=[
  dayNotice:'🃏 어릿광대: 첫 사망 1회 무효 — 소진 여부 확인.'},
 /* 외지인 */
 {id:'goon',ko:'건달',en:'Goon',type:'outsider',edition:'bmr',first:false,other:false,passive:true,
- ability:'매일 밤 건달을 처음 지목한 플레이어는 취해 능력이 무효가 되고, 건달은 그 플레이어의 진영이 된다.',
+ ability:'매일 밤 건달을 처음 지목한 플레이어는 다음 황혼까지 취해 능력이 무효가 되고, 건달은 그 플레이어의 진영이 된다.',
  warn:['밤마다 최초 1회만 발동.','건달의 진영이 바뀌면 초공감자류 판정에도 반영.','지목자에게 🍺 토큰(그 밤+다음 낮).'],remind:['건달 현재 진영 메모']},
 {id:'lunatic',ko:'미치광이',en:'Lunatic',type:'outsider',edition:'bmr',first:true,other:true,
  ability:'자신이 악마라고 믿는다. 가짜 하수인 정보·블러프를 받고 밤마다 살해 지목도 하지만 효과가 없다. 진짜 악마는 미치광이가 누군지 안다.',
@@ -843,7 +843,7 @@ const BMR_CHARS=[
  warn:['낮에도 죽일 수 있다.','악마 팀의 사망 은폐 수단이 되어주는 캐릭터 — 균형·서사 고려.'],remind:[],
  dayNotice:'⚙ 땜장이: 낮에도 재량으로 사망 처리 가능.'},
 {id:'moonchild',ko:'달의 자손',en:'Moonchild',type:'outsider',edition:'bmr',first:false,other:true,conditional:'사망 인지 시',
- ability:'자신이 죽었음을 알게 되면 1명을 지목한다. 그 플레이어가 선하면 그날 밤 죽는다.',
+ ability:'자신이 죽었음을 알게 되면 살아 있는 1명을 공개적으로 지목한다. 그 플레이어가 선하면 그날 밤 죽는다.',
  guideOther:['달의 자손이 오늘 죽었다면 지목을 받고, 선한 대상이면 그 밤 사망 처리.'],
  warn:['처형으로 죽으면 낮에 즉시 지목 — 밤에 그 대상 사망.','악한 대상 지목이면 아무 일 없음.','중독 상태로 죽었으면 발동 없음.'],remind:[]},
 /* 하수인 */
@@ -891,7 +891,7 @@ const SV_CHARS=[
  guideFirst:['악마↔최근접 하수인 거리 계산해 손가락으로 알려준다.'],
  warn:['거리는 짧은 쪽 방향 좌석 수.','중독/보르톡스면 거짓 수.'],remind:[]},
 {id:'dreamer',ko:'꿈꾸는 자',en:'Dreamer',type:'townsfolk',edition:'sv',first:true,other:true,
- ability:'매일 밤 1명을 지목한다(자신 제외). 선한 캐릭터 1개와 악한 캐릭터 1개를 듣게 되며, 그중 하나가 대상의 실제 캐릭터다.',
+ ability:'매일 밤 1명을 지목한다(자신·여행자 제외). 선한 캐릭터 1개와 악한 캐릭터 1개를 듣게 되며, 그중 하나가 대상의 실제 캐릭터다.',
  guideFirst:['1명 지목받아 [선 캐릭터, 악 캐릭터] 한 쌍 제시 — 하나는 진짜.'],guideOther:['동일 진행.'],
  warn:['제시 쌍의 선택이 사회자 재량의 핵심 — 미리 후보 준비.','중독/보르톡스면 둘 다 가짜 가능.'],remind:[]},
 {id:'snakecharmer',ko:'뱀 조련사',en:'Snake Charmer',type:'townsfolk',edition:'sv',first:true,other:true,
@@ -1001,11 +1001,11 @@ CHARACTERS.push(...BMR_CHARS, ...SV_CHARS);
 const EDITIONS={
  tb:{ko:'점철되는 혼란', en:'Trouble Brewing', first:FIRST_NIGHT_ORDER, other:OTHER_NIGHT_ORDER},
  bmr:{ko:'피로 물든 달', en:'Bad Moon Rising',
-   first:['minioninfo','lunatic','demoninfo','sailor','courtier','godfather','devilsadvocate','pukka','grandmother','chambermaid'],
+   first:['apprentice','minioninfo','lunatic','demoninfo','sailor','courtier','godfather','devilsadvocate','pukka','grandmother','chambermaid'],
    other:['sailor','courtier','innkeeper','gambler','devilsadvocate','lunatic','exorcist','zombuul','pukka','shabaloth','po','assassin','godfather','gossip','professor','tinker','moonchild','grandmother','chambermaid']},
  sv:{ko:'화단에 꽃피운 이단', en:'Sects & Violets',
-   first:['philosopher','minioninfo','demoninfo','snakecharmer','eviltwin','witch','cerenovus','clockmaker','dreamer','seamstress','mathematician'],
-   other:['philosopher','snakecharmer','witch','cerenovus','pithag','fanggu','nodashii','vortox','vigormortis','barber','sweetheart','sage','dreamer','flowergirl','towncrier','oracle','seamstress','juggler','mathematician']},
+   first:['barista','philosopher','minioninfo','demoninfo','snakecharmer','eviltwin','witch','cerenovus','clockmaker','dreamer','seamstress','mathematician'],
+   other:['barista','harlot','bonecollector','philosopher','snakecharmer','witch','cerenovus','pithag','fanggu','nodashii','vortox','vigormortis','barber','sweetheart','sage','dreamer','flowergirl','towncrier','oracle','seamstress','juggler','mathematician']},
 };
 function editionOf(){ return EDITIONS[S.edition||'tb']; }
 function editionChars(ed){ return allChars().filter(c=>(c.edition||'tb')===(ed||S.edition||'tb') || c.type==='fabled' || c.custom); }
@@ -2195,6 +2195,24 @@ function nightSteps(){
   const ed = editionOf();
   const baseOrder = first? ed.first : ed.other;
   let order = baseOrder.slice();
+  /* 전설(Fabled) 밤 삽입 — 전설은 스크립트 소속이 아니라 사회자가 균형용으로 얹는다.
+     그래서 EDITIONS 배열에 넣으면 모든 시트의 참조 밤 순서에 상시 노출돼 잡음이 된다.
+     대신 '실제로 판에 들어온 전설'만 공식 위치에 끼워 넣는다.
+     공식 nightsheet 기준 위치: angel·buddhist 는 하수인 정보 앞, toymaker 는 첫밤 최선두 /
+     이후 밤은 toymaker → duchess 순으로 선두. (근거: nightsheet.json) */
+  const FABLED_SLOT = first
+    ? {toymaker:{before:'minioninfo'}, angel:{before:'minioninfo'}, buddhist:{before:'minioninfo'}}
+    : {toymaker:{head:true}, duchess:{head:true}};
+  Object.keys(FABLED_SLOT).forEach(fid=>{
+    if(order.includes(fid)) return;
+    if(!S.players.some(p=>p.charId===fid)) return;      // 판에 없으면 넣지 않는다
+    const c=charOf(fid); if(!c) return;
+    if(!(first? c.first : c.other)) return;
+    const slot=FABLED_SLOT[fid];
+    if(slot.head){ order.unshift(fid); return; }
+    const idx=order.indexOf(slot.before);
+    if(idx>=0) order.splice(idx,0,fid); else order.unshift(fid);
+  });
   // 커스텀 캐릭터 삽입
   (S.customs||[]).forEach(c=>{
     const wakes = first? c.first : c.other;
@@ -2236,10 +2254,16 @@ function nightSteps(){
       steps.splice(insertAt,0,{id:maskC.id, holders:[], mask:drunkP, maskOnly:true});
     }
   }
-  return steps;
+  /* 같은 id 가 두 번 들어오면(가져온 시트가 기본 캐릭터 id 를 재사용) nightDone 체크와
+     DOM id(step-<id>)가 충돌해 두 단계가 한 몸으로 움직인다 — 첫 항목만 남긴다 */
+  const seenStep=new Set();
+  return steps.filter(st=>{ if(seenStep.has(st.id)) return false; seenStep.add(st.id); return true; });
 }
-/* 사망을 계기로 발동하는 역할들. 'night'=그 밤에 죽어야, 'today'=오늘(직전 낮 또는 이 밤) 죽어야 발동 */
-const DEATH_TRIGGER_STEPS={ravenkeeper:'night', sage:'night', barber:'today', sweetheart:'today', moonchild:'today'};
+/* 사망을 계기로 발동하는 역할들.
+   'night'    = 그 밤에 죽어야 발동(까마귀지기·현자)
+   'today'    = 오늘(직전 낮 또는 이 밤) 죽어야 발동(이발사·사랑꾼)
+   'nextnight'= 죽음을 안 낮에 공개 지목하고 그 '다음' 밤에 판정(문차일드) */
+const DEATH_TRIGGER_STEPS={ravenkeeper:'night', sage:'night', barber:'today', sweetheart:'today', moonchild:'nextnight'};
 function stepSkipReason(st){
   const first=S.phase.n===1;
   if(st.info) return null;
@@ -2259,6 +2283,8 @@ function stepSkipReason(st){
     const prevDay    = d && d.kind==='day'   && d.n===S.phase.n-1;
     if(trig==='night' && !thisNight) return '오늘 밤 사망이 아님 — 깨우지 않음';
     if(trig==='today' && !(thisNight||prevDay)) return '오늘 죽지 않음 — 깨우지 않음';
+    /* 밤 n 사망이든 낮 n 사망이든 공개 지목은 낮 n, 판정은 밤 n+1 → d.n === S.phase.n-1 */
+    if(trig==='nextnight' && !(d && d.n===S.phase.n-1)) return '지목한 낮의 다음 밤이 아님 — 깨우지 않음';
     return null;
   }
   if(!anyAlive){
@@ -3846,8 +3872,9 @@ const FABLED_CHARS=[
 {id:'duchess',ko:'공작부인',en:'Duchess',type:'fabled',edition:'fabled',first:false,other:true,
  ability:'게임 시작 전 공개 배치. 매일 낮 최대 3명이 공작부인을 방문할 수 있다. 그날 밤 각 방문자는 방문자 중 악한 플레이어 수를 알게 되지만, 그중 1명은 거짓 정보를 받는다.',
  warn:['방문자 명단을 낮에 확정해 두고 밤에 수동으로 깨워 정보 제공.','누구에게 거짓을 줬는지 기록.','세부 룰은 공식 위키 확인.'],remind:[]},
-{id:'sentinel',ko:'파수꾼',en:'Sentinel',type:'fabled',edition:'fabled',first:false,other:false,
+{id:'sentinel',ko:'파수꾼',en:'Sentinel',type:'fabled',edition:'fabled',first:false,other:false,setupChar:true,
  ability:'게임 시작 전 공개 배치. 셋업 시 외지인이 1명 더 많거나 1명 더 적게 배치될 수 있다.',
+ setupNote:'셋업 시 외지인이 1명 더 많거나 1명 더 적게 배치될 수 있다(주민 수로 보정) — 어느 쪽으로 갈지는 사회자가 정한다.',
  warn:['구성 카운트가 권장 구성과 ±1 어긋날 수 있음 — 앱의 "구성 불일치" 표시는 무시해도 됨.'],remind:[]},
 {id:'spiritofivory',ko:'상아의 정령',en:'Spirit of Ivory',type:'fabled',edition:'fabled',first:false,other:false,
  ability:'게임 시작 전 공개 배치. 악한 플레이어는 시작 인원에서 1명을 초과해 늘어날 수 없다.',
@@ -3899,21 +3926,21 @@ const EXP_CHARS=[
  guideOther:['대여사제를 깨운다.','플레이어 1명을 가리킨다.','대여사제를 재운다.'],
  warn:['누구를 가리킬지는 전적으로 사회자 재량 — 정답을 주는 능력이 아니라 판을 움직이는 능력이다.','같은 사람을 연속으로 가리켜도 되고, 매일 바꿔도 된다.','중독/술취함이면 의미 없는 사람을 가리켜도 된다.'],
  remind:['매일 밤 깨운다.','누구를 가리켰는지 기록해 두면 의도가 흔들리지 않는다.']},
-{id:'balloonist',ko:'열기구 조종사',en:'Balloonist',type:'townsfolk',edition:'exp',first:true,other:true,
+{id:'balloonist',ko:'열기구 조종사',en:'Balloonist',type:'townsfolk',edition:'exp',first:true,other:true,setupChar:true,
  setupNote:'외지인 수가 그대로이거나 1명 늘어난다(+0 또는 +1).',
  ability:'매일 밤, 플레이어 1명을 알게 된다. 그 플레이어의 캐릭터 유형은 전날 밤에 알려준 플레이어와 다르다. [외지인 +0 또는 +1]',
  guideFirst:['열기구 조종사를 깨운다.','아무 플레이어나 1명을 가리킨다.','가리킨 플레이어의 캐릭터 유형을 기록한다.','재운다.'],
  guideOther:['전날 밤에 보여준 플레이어와 캐릭터 유형이 다른 플레이어 1명을 가리킨다.','새 유형을 기록한다.','재운다.'],
  warn:['기준은 진영이 아니라 유형(마을 주민·외지인·하수인·악마, 여행자 포함)이다.','더 이상 다른 유형을 보여줄 수 없으면 그날부터 능력이 소진된 것으로 처리한다.','첩자·은둔자 등록 재량이 유형 판정에 그대로 적용된다 — 첩자를 "마을 주민"으로 보여줘도 된다.','중독/술취함이면 유형이 다르다는 규칙을 어겨도 된다.'],
  remind:['직전 밤에 보여준 플레이어와 그 유형을 반드시 기록할 것 — 이 캐릭터의 최대 실수 지점.']},
-{id:'villageidiot',ko:'마을 바보',en:'Village Idiot',type:'townsfolk',edition:'exp',first:true,other:true,
+{id:'villageidiot',ko:'마을 바보',en:'Village Idiot',type:'townsfolk',edition:'exp',first:true,other:true,setupChar:true,
  setupNote:'마을 바보를 최대 2명까지 추가로 넣을 수 있다. 2명 이상이면 그중 정확히 1명이 술에 취해 있으며, 누가 취했는지는 아무도 모른다.',
  ability:'매일 밤, 플레이어 1명을 지목해 그 진영을 알게 된다. [마을 바보 +0~+2. 추가된 마을 바보 중 1명은 술에 취해 있다]',
  guideFirst:['마을 바보가 여럿이면 그중 1명에게 술취함 표식을 붙인다.','마을 바보를 한 명씩 따로 깨워 1명을 지목받는다.','엄지 위(선)/아래(악)로 답한다.','재운다.'],
  guideOther:['마을 바보를 한 명씩 따로 깨워 지목받고 진영을 알려준다.'],
  warn:['술취한 마을 바보는 본인도 자신이 취했는지 모른다 — 정보를 자유롭게 왜곡할 것.','마을 바보끼리 서로의 정체를 알려주지 않는다.','첩자·은둔자 등록 재량이 진영 판정에 적용된다.','여러 명일 때 깨우는 순서는 자리 순서 등으로 고정해 두면 혼선이 줄어든다.'],
  remind:['어느 마을 바보가 술취함인지 그리모어에 고정 기록 — 게임 내내 바뀌지 않는다.']},
-{id:'huntsman',ko:'사냥꾼',en:'Huntsman',type:'townsfolk',edition:'exp',first:true,other:true,
+{id:'huntsman',ko:'사냥꾼',en:'Huntsman',type:'townsfolk',edition:'exp',first:true,other:true,setupChar:true,
  setupNote:'아가씨(Damsel)가 반드시 함께 들어간다.',
  ability:'게임당 1회, 밤에 살아 있는 플레이어 1명을 지목할 수 있다. 그 대상이 아가씨였다면, 아가씨는 이 게임에 없던 마을 주민 캐릭터로 바뀐다. [아가씨 추가]',
  guideFirst:['사냥꾼을 깨워 지목 여부를 묻는다.','지목했으면 사용 표식을 붙인다(대상이 아가씨가 아니어도 소진).','대상이 아가씨였다면: 사냥꾼을 재우고 아가씨를 깨워 "당신은" 토큰과 새 캐릭터 토큰을 보여준다.','재운다.'],
@@ -3941,7 +3968,7 @@ const EXP_CHARS=[
  guideFirst:[],guideOther:[],
  warn:['악마를 지명하면 아무 일도 일어나지 않지만 지명 기회는 그대로 소진된다.','사망은 지명 즉시 발생하며 처형과 무관하다 — 그날의 투표는 계속 진행한다.','골렘이 중독/술취함이면 대상이 죽지 않는다. 티 내지 말 것.','한 번 지명한 뒤에는 이후 어떤 날에도 지명할 수 없다.'],
  remind:['지명 사용 여부를 기록 — 두 번째 지명 시도를 반드시 막아야 한다.']},
-{id:'marionette',ko:'꼭두각시',en:'Marionette',type:'minion',edition:'exp',first:true,other:false,
+{id:'marionette',ko:'꼭두각시',en:'Marionette',type:'minion',edition:'exp',first:true,other:false,setupChar:true,
  setupNote:'꼭두각시는 악마의 이웃 자리에 앉아야 한다. 선한 캐릭터 토큰을 받고 자신이 선하다고 믿는다.',
  ability:'자신은 선한 캐릭터라고 믿지만 실제로는 하수인이다. 악마는 꼭두각시가 누구인지 안다. [악마의 이웃]',
  guideFirst:['꼭두각시는 깨우지 않는다 — 하수인 정보·악마 정보 단계에서 제외한다.','악마를 깨워 "이 플레이어는" 토큰과 꼭두각시 토큰을 보여주고 꼭두각시를 가리킨다.','악마를 재운다.'],
@@ -3971,14 +3998,14 @@ const EXP_CHARS=[
  guideOther:['레비아탄 표식을 오늘 날짜로 옮긴다.','원한다면 레비아탄이 있음을 다시 공지해도 된다.'],
  warn:['레비아탄은 밤에 아무도 죽이지 않는다 — 밤 사망이 없다는 사실 자체가 큰 단서다.','판정 기준은 "처형된 사람이 선했는가" 이며, 처형으로 실제 죽었는지와 무관하다.','5일차 낮이 끝나는 순간 악 승리 — 날짜 카운터를 놓치면 게임이 망가진다.','매일 하루가 짧게 흘러가므로 낮 시간 관리를 미리 정해둘 것.'],
  remind:['현재 몇 일차인지, 선한 플레이어가 몇 명 처형됐는지 상시 기록.']},
-{id:'legion',ko:'군단',en:'Legion',type:'demon',edition:'exp',first:false,other:true,
+{id:'legion',ko:'군단',en:'Legion',type:'demon',edition:'exp',first:false,other:true,setupChar:true,
  setupNote:'플레이어 과반이 군단으로 시작한다. 나머지는 원래 캐릭터를 유지하며, 군단 중 일부는 원래 선했던 플레이어다.',
  ability:'매일 밤(첫날 제외) 플레이어 1명이 죽을 수 있다. 악한 플레이어만 투표한 처형은 실패한다. 군단은 하수인으로도 등록된다. [대부분의 플레이어가 군단이다]',
  guideFirst:[],
  guideOther:['플레이어 1명이 죽을 수 있다 — 죽일지, 누구를 죽일지는 사회자가 정한다.','아무도 죽이지 않아도 된다.','사망 표식을 놓는다.'],
  warn:['군단은 대상을 지목하지 않는다 — 사망자 선택은 전적으로 사회자 몫이며, 밸런스 조절 수단이다.','처형 투표에 선한 플레이어가 한 명도 손을 들지 않았다면 그 처형은 무효가 된다.','악마가 여럿이므로 "악마 1명 사망 = 게임 종료"가 아니다 — 군단이 모두 죽어야 선이 승리한다.','군단은 하수인으로도 등록되므로 남작·수사관 등 하수인 판정에 걸릴 수 있다.'],
  remind:['살아 있는 군단 수를 매 낮 확인.','처형 투표에서 누가 손을 들었는지 진영과 함께 기록.']},
-{id:'kazali',ko:'카잘리',en:'Kazali',type:'demon',edition:'exp',first:true,other:true,
+{id:'kazali',ko:'카잘리',en:'Kazali',type:'demon',edition:'exp',first:true,other:true,setupChar:true,
  setupNote:'하수인을 미리 배분하지 않는다. 첫날 밤에 카잘리가 어떤 플레이어를 어떤 하수인으로 만들지 직접 고르며, 외지인 수가 늘거나 줄 수 있다.',
  ability:'매일 밤(첫날 제외) 플레이어 1명을 지목해 죽인다. [카잘리가 어떤 플레이어를 어떤 하수인으로 만들지 직접 고른다. 외지인 수 변동]',
  guideFirst:['카잘리를 깨워, 어떤 플레이어를 어떤 하수인으로 만들지 고르게 한다.','고른 플레이어를 한 명씩 깨워 "당신은" 토큰과 하수인 토큰을 보여주고 엄지 아래를 준다.','그리모어를 갱신하고 카잘리를 재운다.'],
@@ -5170,14 +5197,14 @@ JINXES.push(
  {a:'kazali',b:'soldier',rule:'카잘리는 군인 플레이어를 자신의 악한 하수인 중 하나로 지정할 수 있다.',confidence:'high'},
  {a:'legion',b:'engineer',rule:'기술자가 군단을 만들면 모든 악한 플레이어가 군단이 된다. 군단이 이미 인플레이면 기술자는 능력을 갖지 못하며 그 사실을 알게 된다.',confidence:'high'},
  {a:'legion',b:'hatter',rule:'모자 장수가 군단을 만들면 모든 악한 플레이어가 군단이 된다. 군단이 이미 인플레이면 모자 장수는 능력을 갖지 못한다.',confidence:'high'},
- {a:'legion',b:'magician',rule:'마술사는 군단과 함께 깨어나며 악으로 등록될 수 있다. 군단은 마술사가 인플레이라는 사실만 알고 누구인지는 알지 못한다.',confidence:'high'},
+ {a:'legion',b:'magician',rule:'마술사가 인플레이면, 악마 정보 단계에서 군단은 여러 그룹으로 나뉘어 따로 깨어난다. 각 그룹은 어떤 플레이어들이 선한지 알게 되지만 마술사가 누구인지는 알지 못한다.',confidence:'high'},
  {a:'legion',b:'minstrel',rule:'군단이 오늘 처형으로 죽었더라도 군단은 능력을 유지하지만, 음유시인은 자신이 군단이라는 사실을 알게 될 수 있다.',confidence:'high'},
  {a:'legion',b:'politician',rule:'정치인은 군단에게 악으로 등록될 수 있다.',confidence:'high'},
  {a:'legion',b:'preacher',rule:'설교자가 군단을 지목해도 군단은 능력을 유지하지만, 설교자는 자신이 군단이라는 사실을 알게 될 수 있다.',confidence:'high'},
  {a:'legion',b:'summoner',rule:'소환사가 군단을 소환하면 모든 악한 플레이어가 군단이 된다.',confidence:'high'},
  {a:'leviathan',b:'banshee',rule:'첫날 밤을 제외한 매 밤, 레비아탄은 지난 밤들과 다른 살아있는 선한 플레이어 1명을 지목한다. 지목된 밴시는 죽으면서 능력을 얻는다.',confidence:'high'},
  {a:'leviathan',b:'exorcist',rule:'레비아탄이 구마사제가 지목했던 플레이어를 지명해 처형시키면 선이 승리한다.',confidence:'high'},
- {a:'leviathan',b:'farmer',rule:'첫날 밤을 제외한 매 밤, 레비아탄은 지난 밤들과 다른 생존자 1명을 지목한다. 지목된 농부는 죽지 않고 능력만 발동한다.',confidence:'high'},
+ {a:'leviathan',b:'farmer',rule:'첫날 밤을 제외한 매 밤, 레비아탄은 지난 밤들과 다른 살아있는 선한 플레이어 1명을 지목한다. 지목된 농부는 죽지 않고 능력만 발동한다.',confidence:'high'},
  {a:'leviathan',b:'grandmother',rule:'레비아탄이 인플레이일 때 손주가 처형으로 죽으면 악이 승리한다.',confidence:'high'},
  {a:'leviathan',b:'hatter',rule:'레비아탄은 5일차 이후에는 새로 인플레이가 될 수 없다.',confidence:'high'},
  {a:'leviathan',b:'innkeeper',rule:'레비아탄이 어젯밤 여관 주인이 보호한 플레이어를 지명해 처형시키면 선이 승리한다.',confidence:'high'},
@@ -5209,6 +5236,7 @@ JINXES.push(
  {a:'marionette',b:'poppygrower',rule:'양귀비 재배자가 죽을 때 악마는 꼭두각시가 누구인지 알게 되지만, 꼭두각시는 아무것도 알지 못한다.',confidence:'high'},
  {a:'marionette',b:'snitch',rule:'꼭두각시는 인플레이가 아닌 캐릭터 3개를 받지 못한다. 대신 악마가 3개를 추가로 더 받는다.',confidence:'high'},
  {a:'marionette',b:'wraith',rule:'망령은 꼭두각시와 함께 깨어나지 않는다.',confidence:'high'},
+ {a:'mastermind',b:'vigormortis',rule:'능력을 가진 주모자는 비고르모르티스가 죽어도 그 능력을 잃지 않는다.',confidence:'high'},
  {a:'mastermind',b:'zombuul',rule:'좀버얼이 주모자를 죽인 적이 있다면, 좀버얼이 죽어도 주모자는 능력을 유지한다.',confidence:'high'},
  {a:'mathematician',b:'drunk',rule:'수학자는 주정뱅이가 거짓 정보를 받았거나 능력이 정상 작동하지 않은 건으로 집계할 수 있다.',confidence:'high'},
  {a:'ogre',b:'pithag',rule:'마귀할멈이 악한 플레이어를 오거로 바꾸면, 그 플레이어는 자기 능력으로 선으로 돌아설 수 없다.',confidence:'high'},
@@ -5236,7 +5264,7 @@ JINXES.push(
  {a:'princess',b:'cannibal',rule:'식인종이 오늘 공주를 지명·처형해 죽였다면, 그날 밤 악마는 아무도 죽이지 않는다.',confidence:'high'},
  {a:'recluse',b:'sage',rule:'은둔자는 현자에게 자신을 죽인 악마로 등록될 수 있다.',confidence:'high'},
  {a:'riot',b:'atheist',rule:'폭동의 연쇄 지명 중 사회자가 지명되면 투표를 진행한다. 사회자가 처형될 만큼 표를 받으면 게임이 끝나고, 아니면 사회자가 새 지명을 시작한다.',confidence:'high'},
- {a:'riot',b:'banshee',rule:'첫날 밤을 제외한 매 밤, 폭동은 지난 밤들과 다른 생존자 1명을 지목한다. 지목된 밴시는 죽으면서 능력을 얻는다.',confidence:'high'},
+ {a:'riot',b:'banshee',rule:'첫날 밤을 제외한 매 밤, 폭동은 지난 밤들과 다른 살아있는 선한 플레이어 1명을 지목한다. 지목된 밴시는 죽으면서 능력을 얻는다.',confidence:'high'},
  {a:'riot',b:'exorcist',rule:'폭동이 전날 밤 구마사제가 지목했던 플레이어를 지명해 처형시키면 선이 승리한다.',confidence:'high'},
  {a:'riot',b:'farmer',rule:'첫날 밤을 제외한 매 밤, 폭동은 지난 밤들과 다른 살아있는 선한 플레이어 1명을 지목한다. 지목된 농부는 죽지 않고 능력만 발동한다.',confidence:'high'},
  {a:'riot',b:'grandmother',rule:'폭동이 인플레이일 때 손주가 처형으로 죽으면 악이 승리한다.',confidence:'high'},
@@ -5269,7 +5297,7 @@ JINXES.push(
  {a:'vizier',b:'magician',rule:'재상이 인플레이면 마술사는 능력을 갖지 못하지만, 재상의 능력에는 면역이다.',confidence:'high'},
  {a:'vizier',b:'politician',rule:'정치인은 재상에게 악으로 등록될 수 있다.',confidence:'high'},
  {a:'vizier',b:'preacher',rule:'재상이 능력을 잃으면 그 사실을 알게 되지만, 낮에 죽지는 않는다.',confidence:'high'},
- {a:'vortox',b:'banshee',rule:'보르톡스가 밴시를 죽여도 플레이어들은 정확한 정보를 듣는다. 원래 상호작용을 명시한 확인용 조항이다.',confidence:'high'},
+ {a:'vortox',b:'banshee',rule:'보르톡스가 밴시를 죽이면, 밴시가 죽었다는 사실은 모든 플레이어에게 그대로 공지된다 — 보르톡스의 거짓 정보 효과가 이 공지에는 적용되지 않는다.',confidence:'high'},
  {a:'widow',b:'damsel',rule:'과부가 인플레이거나 인플레이였던 적이 있으면 아가씨는 중독 상태다.',confidence:'high'},
  {a:'widow',b:'magician',rule:'과부가 그리모어를 볼 때, 악마와 마술사의 캐릭터 토큰은 치워 둔다.',confidence:'high'},
  {a:'widow',b:'poppygrower',rule:'양귀비 재배자가 능력을 유지하는 동안 과부는 그리모어를 볼 수 없다.',confidence:'high'},
@@ -5995,11 +6023,21 @@ function endGameManual(){
 (function(){
   const _t=toast;
   toast=function(msg,kind){
-    _t(msg,kind);
+    const r=_t(msg,kind);
     if(typeof msg==='string'){
-      if(msg.includes('선한 팀 승리')) showGameOver('good', msg.replace(/^[^\s]*\s*/,''));
-      else if(msg.includes('악한 팀 승리')) showGameOver('evil', msg.replace(/^[^\s]*\s*/,''));
+      const team = msg.includes('선한 팀 승리') ? 'good'
+                 : msg.includes('악한 팀 승리') ? 'evil' : null;
+      /* 이 문자열 게이트는 승리 엔진(askWin→confirmWin)이 못 잡는 경로용 보조 장치다.
+         같은 턴에 엔진이 확인 다이얼로그를 띄우면(성자 처형이 그 경로다) 그쪽이
+         정본이므로, 한 틱 뒤에 pendingWin·S.gameOver 를 보고 물러난다 — 사회자가
+         확인하기도 전에 종료 화면이 다이얼로그 밑에 겹쳐 뜨고, '아니오'를 눌러도
+         그 화면만 남아 상태(S.gameOver·EV.end·전적)와 어긋나던 것을 막는다. */
+      if(team) setTimeout(function(){
+        if(pendingWin || S.gameOver) return;
+        showGameOver(team, msg.replace(/^[^\s]*\s*/,''));
+      }, 0);
     }
+    return r;
   };
 })();
 /* ══ B3: 밤 대상 선택 — 기기 전달(플레이어 대면) 모드 ══ */
@@ -6513,12 +6551,18 @@ function confirmWin(yes){
 /* 낮 종료(밤 진행) 시 보르톡스·시장 판정 */
 (function(){
   const _adv=advancePhase;
+  let _dayEndResuming=false;   /* 승리 거부 후 재개 중에는 같은 판정을 다시 걸지 않는다 */
   advancePhase=function(){
-    if(S.phase.kind==='day' && !S.gameOver){
+    if(!_dayEndResuming && S.phase.kind==='day' && !S.gameOver){
       const res=evalWinEvent('dayEnd', {executed:!!S.executedToday});
       if(isWinRes(res)){
         if(S.mastermindDay && S.phase.n===S.mastermindDay) S.mastermindDay=null;  // 연장전 소진
-        res.resume=_adv; askWin(res); if(pendingWin) return;            // 확인 전에는 밤으로 넘어가지 않음
+        /* 재개는 안쪽 체인(_adv)을 값으로 부르지 않는다 — 그러면 이 래퍼보다 바깥에
+           얹힌 래퍼(EV.phase 원장 적재·리마인더 토스트)가 통째로 우회된다. 조기
+           캡처 사고와 같은 뿌리다. 대신 전역 이름으로 전체 체인을 다시 부르고,
+           이 낮종료 판정만 플래그로 건너뛴다(다시 물으면 무한 반복이므로). */
+        res.resume=function(){ _dayEndResuming=true; try{ advancePhase(); } finally{ _dayEndResuming=false; } };
+        askWin(res); if(pendingWin) return;            // 확인 전에는 밤으로 넘어가지 않음
       }
     }
     _adv();
@@ -8349,6 +8393,164 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
 })();
 </script>
 
+<script>
+/* ══════════════ 래퍼 체인 자가 점검(관측 전용 · thyAudit) ══════════════
+   이 블록은 전역 함수를 하나도 재대입하지 않고, 렌더·판정도 부르지 않는다.
+   콘솔에만 쓴다 — 동작을 바꾸는 코드가 여기 들어가면 안 된다.
+   실행을 DOMContentLoaded 로 미루는 이유: 이 블록보다 뒤에 오는 script 블록
+   (다른 레인이 파일 끝에 덧붙이는 래퍼)까지 세고 훑어야 하기 때문이다. */
+(function(){
+  const AUDIT = window.thyAudit = window.thyAudit || {};
+
+  /* 재대입(래핑) 대상 전역 함수 목록 — 2026-09-03 실측 */
+  AUDIT.targets=['advancePhase','renderDay','renderNight','renderWiz','renderGrim','renderSheet',
+    'renderSetup','renderScripts','renderTownSquare','renderNomOpen','renderCircle','closeWiz',
+    'toast','addStatus','removeStatus','expireStatuses','checkEndConditions','executeNominee',
+    'killPlayer','doImpKill','doFangGuAttack','doPukkaPick','doStepKill','doProtect','doPoison',
+    'doExorcist','doDevilsAdvocate','doSwapChars','doSnakeSwap','doMad','newNomination',
+    'toggleHand','castVote','closeHands','closeBallot','resolveExecution','confirmWin',
+    'switchTab','openSheet','startFromSheet','setNomPick','buildChecklist','glyph','wizTitle'];
+
+  /* ① 조기 캡처 탐지 — DOM 핸들러가 래핑 대상을 '값'으로 붙잡고 있으면 경고한다.
+     상단 진행 버튼이 함수 값을 붙잡아 뒤에 얹힌 래퍼를 통째로 우회했던(낮 종료 승리
+     판정이 죽어 있던) 사고의 재발 방지. 값으로 붙잡힌 핸들러는 fn.name 이 대상 이름
+     그대로다. 화살표로 감싼 정상 핸들러는 이름이 비어 있고, onclick="fn()" 속성
+     핸들러는 이름이 onclick 이라 걸리지 않는다 — 현재 파일 기준 검출 0건.
+     한계: addEventListener 리스너는 열거 API 가 없어 못 본다. 의심되면 콘솔에서
+     thyAudit.earlyCapture() 를 다시 부르면 그 시점의 DOM 을 다시 훑는다. */
+  const HPROPS=['onclick','onchange','oninput','onkeydown','onsubmit','onpointerdown','ontouchstart'];
+  AUDIT.earlyCapture=function(){
+    const bad=[];
+    document.querySelectorAll('*').forEach(el=>{
+      HPROPS.forEach(k=>{
+        let h; try{ h=el[k]; }catch(e){ return; }
+        if(typeof h==='function' && h.name && AUDIT.targets.indexOf(h.name)>=0)
+          bad.push({el:el, prop:k, fn:h.name, stale:h!==window[h.name]});
+      });
+    });
+    bad.forEach(b=>console.warn('[thyAudit] 조기 캡처: <'+b.el.tagName.toLowerCase()
+      +(b.el.id?' #'+b.el.id:'')+'>.'+b.prop+' 이(가) '+b.fn+' 를 값으로 붙잡고 있음'
+      +(b.stale?' — 이후에 얹힌 래퍼가 통째로 우회되는 낡은 버전!':'')
+      +' → ()=>'+b.fn+'() 로 감싸 호출 시점에 이름을 다시 해석하게 바꾸세요'));
+    return bad;
+  };
+
+  /* ② 이중 래핑 탐지 — 두 층으로 본다.
+     (a) 경고(warn): 같은 이름에 대한 재대입 두 곳의 '함수 본문'이 글자까지 같은 경우.
+         같은 래퍼 블록이 병합 실수로 두 번 들어간 진짜 사고이고, 판정 계열
+         (advancePhase·confirmWin·emitEv 류)에서는 곧 '판마다 전적 2건'이 된다.
+         본문은 여는 중괄호부터 짝이 맞는 닫는 중괄호까지를 취한다 — 뒤따르는
+         문맥이 섞이면 같은 블록의 복제도 서로 달라 보여 탐지를 놓친다.
+         2026-09-03 현재 파일 검출 0건(오경보 없음), 블록을 일부러 복제한
+         대조 시험에서는 정상 검출됨을 확인하고 넣었다.
+     (b) 알림(info): 재대입 횟수가 아래 기준선과 다른 경우. 여러 레인이 동시에
+         래퍼를 얹는 중이라 '기준선과 다름'이 곧 사고가 아니다 — 경고로 올리면
+         정상 추가마다 오경보가 난다. 래퍼를 정식으로 더하거나 뺐다면 여기
+         숫자를 갱신하라. 이 표가 곧 살아있는 래핑 현황 문서다.
+     한계: 소스 텍스트 기반이라 window[이름] 형태의 동적 재대입은 세지 못한다
+     (파일 끝 상태보드 블록의 renderDay·renderNight·renderGrim, SABER 의
+     doSwapChars·doSnakeSwap). 기준선 숫자는 그 점을 이미 반영한 값이다. */
+  const THY_WRAP_BASE={advancePhase:6, renderDay:8, renderNight:6, renderWiz:4,
+    renderGrim:2, renderSheet:2, renderScripts:2, renderNomOpen:2, closeWiz:2,
+    castVote:2, closeBallot:2, buildChecklist:2, glyph:2,
+    renderSetup:1, renderTownSquare:1, renderCircle:1, toast:1,
+    addStatus:1, removeStatus:1, expireStatuses:1, checkEndConditions:1, executeNominee:1,
+    killPlayer:1, doImpKill:1, doFangGuAttack:1, doPukkaPick:1, doStepKill:1,
+    doProtect:1, doPoison:1, doExorcist:1, doDevilsAdvocate:1, doMad:1,
+    doSwapChars:0, doSnakeSwap:0,
+    newNomination:1, toggleHand:1, closeHands:1, resolveExecution:1, confirmWin:1,
+    switchTab:1, openSheet:1, startFromSheet:1, setNomPick:1, wizTitle:1};
+  /* 재대입 지점부터 함수 본문 끝까지를 서명으로 뽑는다(공백 정규화).
+     중괄호 세기는 문자열·주석 속 괄호를 구분하지 않지만, 어긋나도 같은 사고를
+     양쪽에 똑같이 일으키므로 '복제 탐지'라는 목적에는 영향이 없다. */
+  function thyWrapSig(src, from){
+    const open=src.indexOf('{', from);
+    if(open<0) return src.slice(from, from+160).replace(/\s+/g,' ').trim();
+    const cap=Math.min(src.length, open+6000);
+    let d=0, end=-1;
+    for(let i=open;i<cap;i++){
+      const c=src[i];
+      if(c==='{') d++;
+      else if(c==='}'){ d--; if(d===0){ end=i+1; break; } }
+    }
+    if(end<0) end=cap;
+    return src.slice(from, end).replace(/\s+/g,' ').trim();
+  }
+  AUDIT.doubleWrap=function(){
+    let src='';
+    /* 스크립트 텍스트를 못 읽는 환경(헤드리스 하네스·엄격 CSP)에서는 계수가 전부 0으로
+       나와 '변동' 오경보가 쏟아진다. 읽을 수 없으면 계수 검사 자체를 건너뛴다. */
+    let scripts=[];
+    try{ scripts=Array.prototype.slice.call(document.scripts||[]); }catch(e){ scripts=[]; }
+    for(const s of scripts){ if(!s.src) src+=(s.text||'')+'\n'; }
+    if(!src.trim()) return [];
+    const counts={}, dupes=[];
+    AUDIT.targets.forEach(name=>{
+      const re=new RegExp('(?:^|[^\\w.$])(?:window\\.)?'+name+'\\s*=\\s*(?:function\\b|\\(?[\\w$,\\s]*\\)?\\s*=>)','g');
+      const seen=Object.create(null);
+      let m, cnt=0;
+      while((m=re.exec(src))){
+        cnt++;
+        const sig=thyWrapSig(src, m.index);
+        seen[sig]=(seen[sig]||0)+1;
+        if(seen[sig]===2) dupes.push({name:name, sig:sig});
+      }
+      counts[name]=cnt;
+      const base=THY_WRAP_BASE[name];
+      if(typeof base==='number' && cnt!==base)
+        console.info('[thyAudit] 래핑 계수 변동: '+name+' '+base+' → '+cnt+'회'
+          +' (기준선 2026-09-03). 정식 추가·제거라면 THY_WRAP_BASE 를 갱신하세요.');
+    });
+    dupes.forEach(d=>console.warn('[thyAudit] 이중 래핑 의심: '+d.name
+      +' 에 본문이 글자까지 같은 재대입이 2회 이상 — 같은 블록이 두 번 들어갔는지 확인하세요.\n  '
+      +d.sig.slice(0,140)+'…'));
+    AUDIT.lastCounts=counts;
+    return {counts:counts, dupes:dupes};
+  };
+
+  /* ══ 래핑 순서 실측(2026-09-03, 파일 8,803줄 기준) ══
+     대입 순서가 곧 체인이다: 나중에 대입된 래퍼가 바깥(먼저 진입)이고 원본이 맨
+     안쪽이다. 아래는 '호출 시 실제 실행 순서'. 줄번호는 실측 시점 값이라 편집이
+     쌓이면 어긋난다 — 숫자가 안 맞으면 옆의 역할 설명으로 찾아라.
+     ▸ advancePhase: 리마인더 사전기록(8263) → EV.phase 사전 k·n 기록(7938)
+        → 낮종료 보르톡스·시장 판정, 차단 가능(6516) → 이전 kind 기록(5937)
+        → [원본 1553] → 종료 재판정(5539) → 낮 타이머바 제거(5561)
+        → 밤 스냅샷(5937 사후) → EV.phase 적재(7938 사후) → 리마인더 토스트(8263 사후)
+        ⚠ 6516 은 원본(S.executedToday 리셋)보다 반드시 바깥 — 안쪽이면 '처형 없음' 오판.
+        ⚠ 6516 의 재개(resume)가 안쪽 체인을 값으로 부르면 7938·8263 이 통째로
+          우회된다(EV.phase 누락). 조기 캡처와 같은 뿌리다.
+     ▸ renderDay: [원본 2755] → 낮 타이머바(5500) → 여행자 추방 카드(5607)
+        → 타운스퀘어(5851) → 얼뜨기 버튼(6541) → 낮 안내 dayguide(6678)
+        → 사망표시 토글(6722) → 표계산 카드(6888) → 리마인더 배너(8259)
+        → 상태보드(파일 끝, window[이름] 동적 대입이라 정적 계수에 안 잡힘)
+        ⚠ 6722 는 5851 이 넣은 #tsq 에 의존 — 순서 뒤집히면 버튼이 조용히 사라진다.
+     ▸ renderNight: [원본 2306] → 밤 타이머바(5455) → 타운스퀘어(5850)
+        → 연속진행 runbar(6105) → 사망표시 토글(6721) → 표계산(6887)
+        → 리마인더 배너(8258) → 상태보드(파일 끝, 동적)
+        ⚠ 6721 은 5850 의 #tsq 에 의존.
+     ▸ renderWiz(진입 순서): pick 보조버튼(6322) → roster 씬·차단 가능(6264)
+        → wizopen 클래스(6177) → handoff·dawn·차단 가능(6068) → [원본 4475]
+        ⚠ 6264 의 roster 분기는 6177 을 우회하므로 6280 에서 wizopen 을 손수 붙인다.
+        ⚠ 6322 의 handoff 가드는 6068 보다 바깥일 때만 옳다.
+     ▸ closeWiz: [원본 4570] → 밤 연속진행 큐(5924) → wizopen 해제(6178)
+     ▸ confirmWin: pendingWin 선확보 → [원본 6473] → EV.end·전적 적립(7946)
+        ⚠ pendingWin 을 만지는 래퍼가 7946 보다 바깥에 하나라도 더 얹히면 깨진다.
+     단일 래퍼 현황은 위 THY_WRAP_BASE 표, 전체 지도는 arch 보고서를 보라. ══ */
+  /* ── 실행: 이 블록 뒤에 오는 스크립트까지 파싱된 뒤에 한 번 돈다 ── */
+  /* 스크립트 텍스트를 읽을 수 없는 환경(헤드리스 하네스·엄격 CSP)에서는 계수가 전부 0으로
+   나와 '변동' 오경보가 쏟아진다. 읽을 수 없으면 계수 검사 자체를 건너뛴다. */
+function thyAuditCanCount(){
+  try{ const n=(document.scripts&&document.scripts.length)||0; return n>0; }catch(e){ return false; }
+}
+function thyAuditRun(){
+    try{ AUDIT.doubleWrap(); }catch(e){ console.warn('[thyAudit] 계수 실패', e); }
+    try{ AUDIT.earlyCapture(); }catch(e){ console.warn('[thyAudit] 점검 실패', e); }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', thyAuditRun, {once:true});
+  else setTimeout(thyAuditRun, 0);
+})();
+</script>
+
 <style>
 /* ══ 시트별 사회자 유의사항 · 커스텀 시트 자동 검증 ══ */
 #stnotes{margin-top:20px;padding-top:4px;border-top:1px solid var(--line)}
@@ -8798,6 +9000,403 @@ try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
 
   window.thyStatusBoard = {html:statusBoardHTML, expiry:sbExpiry, ord:sbOrd, malReasons:sbMalReasons,
     inject:injectInto, isOpen:()=>sbOpen, setOpen:v=>{ sbOpen=!!v; }};
+})();
+</script>
+
+<style>
+/* ══ 시트지별 파생 그래프 ══ */
+#sgraph{margin-top:16px}
+.sgwrap{margin-top:12px}
+#sgraph .sgwrap{margin-top:0}
+.sgsec{border:1px solid var(--line);border-radius:12px;background:var(--raised)}
+.sgsec>summary{cursor:pointer;padding:11px 13px;font-size:13.5px;font-weight:700;list-style:none;
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;min-height:44px;align-content:center}
+.sgsec>summary::-webkit-details-marker{display:none}
+.sgsec>summary::before{content:'▸';color:var(--muted);margin-right:2px}
+.sgsec[open]>summary::before{content:'▾'}
+.sgsec>summary .sghead{font-weight:400;font-size:11.5px;color:var(--muted)}
+.sgsec>.sgbody{padding:0 13px 12px}
+.sgsub{border-top:1px solid var(--line)}
+.sgsub>summary{cursor:pointer;padding:9px 2px;font-size:12.5px;font-weight:700;list-style:none;
+  display:flex;align-items:center;gap:6px;min-height:40px}
+.sgsub>summary::-webkit-details-marker{display:none}
+.sgsub>summary::before{content:'▸';color:var(--muted)}
+.sgsub[open]>summary::before{content:'▾'}
+.sgsub>.sgbody{padding:0 0 10px}
+.sgn{color:var(--muted);font-variant-numeric:tabular-nums}
+.sghint{margin:0 0 7px;font-size:11.5px;line-height:1.55;color:var(--muted)}
+.sgnone{margin:0 0 6px;font-size:12px;color:var(--muted)}
+.sgrow{display:flex;flex-wrap:wrap;gap:4px 10px;padding:6px 0;border-top:1px dashed var(--line);
+  font-size:12.5px;line-height:1.6}
+.sgrow:first-of-type{border-top:0}
+.sgpair{display:flex;flex-wrap:wrap;align-items:center;gap:4px;flex:0 0 auto;max-width:100%}
+.sgpair i{font-style:normal;color:var(--muted)}
+.sgtxt{flex:1 1 240px;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+.sgto{display:block;margin-top:4px}
+.sgc{display:inline-block;margin:1px 3px 1px 0;padding:1px 7px;font-size:11.5px;border-radius:999px;
+  border:1px solid var(--line);background:var(--sunken)}
+.sgc.townsfolk{color:var(--good);border-color:var(--good)}
+.sgc.outsider{color:var(--outsider);border-color:var(--outsider)}
+.sgc.minion{color:var(--minionc);border-color:var(--minionc)}
+.sgc.demon{color:var(--evil);border-color:var(--evil)}
+.sgkind{padding:1px 7px;font-size:10.5px;font-weight:700;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
+.sgk-fg{color:var(--evil);border-color:var(--evil);background:var(--evil-soft)}
+.sgk-fl,.sgk-mis,.sgk-x{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+.sgk-dro{color:var(--minionc);border-color:var(--minionc);background:var(--minionc-soft)}
+.sgk-mask{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.sgk-num{color:var(--ok);border-color:var(--ok);background:var(--ok-soft);font-variant-numeric:tabular-nums}
+.sgsum{margin:2px 0 8px;padding:6px 9px;font-size:12.5px;font-weight:700;border-radius:8px;
+  background:var(--sunken);border:1px solid var(--line)}
+.sgnight{margin-bottom:8px}
+.sgnight h6{margin:6px 0 2px;font-size:12px;color:var(--muted)}
+.sgrev{margin-top:6px;padding:6px 9px;font-size:11.5px;line-height:1.55;border-radius:8px;
+  background:var(--warn-soft);border:1px solid var(--warn)}
+.sghot{margin:0 0 6px;padding-left:20px;font-size:12.5px}
+.sghot li{padding:4px 0}
+.sgscore{display:inline-block;margin:0 6px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+@media (max-width:880px){ .sgrow{gap:4px 6px} .sgtxt{flex-basis:100%} .sgsec>.sgbody{padding:0 10px 12px} }
+</style>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   시트지별 파생 그래프 (script-graph)
+   ──────────────────────────────────────────────────────────────────────────
+   SCRIPT_LIB 23종과 공식 3판 시트에 대해, **그 시트에 실제로 있는 캐릭터들
+   사이의 관계만** 남긴 부분 그래프를 만든다. 원본 함수는 수정하지 않고
+   libDetail / renderSheet 를 래핑해 접이식 <details> 섹션만 덧붙인다.
+
+   [표의 출처 — 공식 데이터에서 기계적으로 도출]
+   · 밤 순서   nightsheet.json (firstNight 80 · otherNight 99 — dusk/dawn 포함)
+   · 셋업      roles181.json setup:true 25종. 수치는 능력 문구 끝 대괄호
+               ("[+2 Outsiders]" 등)를 그대로 옮겼고, 대괄호가 없거나 수치화할
+               수 없는 항목은 x:1(특수)로 둔다.
+   · 정보 역할 ability 가 /you (start knowing|learn|know)|you are told/ 에 걸리는 38종
+   · 등록 왜곡 ability 에 "register" 가 있는 7종
+   · 전역 거짓 ability 에 "Townsfolk abilities yield false info" (vortox)
+   · 국소 거짓 ability 에 "false info" (duchess · puzzlemaster)
+   · 정체 오인 ability 에 "you think you are" / "you do not know you are" (3종)
+   · 취함·중독원 ability 에 drunk/poison 이 있는 23종에서, 남의 취함·중독을 조건으로
+               읽기만 하는 4종(acrobat·ogre·boffin·drunk)을 공식 문구 확인 후 제외한 19종
+   · 영향 범위 s 는 공식 문구 기준 — "Townsfolk" 명시는 tf, 자기만 취하는 능력은 self.
+     villageidiot·snakecharmer 두 건만 문구 그대로는 과대 판정이라 수동 교정했다.
+   징크스 문구는 앱 내장 JINXES(한국어)를 그대로 쓴다.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+if(typeof document==='undefined') return;
+
+const E=(typeof esc==='function')? esc
+      : (s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
+
+/* ── 공식 밤 순서 ── */
+const SG_NF='dusk angel buddhist toymaker stormcatcher wraith lordoftyphon kazali apprentice barista bureaucrat thief boffin philosopher alchemist poppygrower yaggababble magician tor minioninfo snitch lunatic summoner demoninfo king sailor marionette engineer preacher lilmonsta lleech xaan poisoner widow courtier wizard snakecharmer godfather organgrinder devilsadvocate eviltwin witch cerenovus fearmonger harpy mezepheles pukka pixie huntsman damsel amnesiac washerwoman librarian investigator chef empath fortuneteller butler grandmother clockmaker dreamer seamstress steward knight noble balloonist shugenja villageidiot bountyhunter nightwatchman cultleader spy ogre highpriestess general chambermaid mathematician dawn leviathan vizier'.split(' ');
+const SG_NO='dusk duchess toymaker wraith cacklejack barista bureaucrat thief harlot bonecollector philosopher poppygrower sailor engineer preacher xaan poisoner courtier innkeeper wizard gambler acrobat snakecharmer monk organgrinder devilsadvocate witch cerenovus pithag fearmonger harpy mezepheles scarletwoman summoner lunatic exorcist lycanthrope princess legion imp zombuul pukka shabaloth po fanggu nodashii vortox lordoftyphon vigormortis ojo alhadikhia lleech lilmonsta yaggababble kazali assassin godfather gossip hatter barber sweetheart plaguedoctor sage banshee professor choirboy huntsman damsel amnesiac farmer tinker moonchild grandmother tor ravenkeeper empath fortuneteller undertaker dreamer flowergirl towncrier oracle seamstress juggler balloonist villageidiot king bountyhunter nightwatchman cultleader butler spy highpriestess general chambermaid mathematician riot dawn leviathan'.split(' ');
+const SG_PF={}, SG_PO={};
+SG_NF.forEach((id,i)=>{ SG_PF[id]=i; });
+SG_NO.forEach((id,i)=>{ SG_PO[id]=i; });
+
+const SG_INFO=new Set('amnesiac balloonist beggar bountyhunter chambermaid chef choirboy clockmaker dreamer empath flowergirl fortuneteller general godfather grandmother harlot investigator juggler king klutz knight librarian mathematician mezepheles moonchild noble oracle pixie ravenkeeper sage seamstress shugenja steward towncrier undertaker villageidiot washerwoman yaggababble'.split(' '));
+
+/* 왜곡원 표 — k 종류 · s 영향 범위(all 정보 역할 전체 / tf 주민 정보 역할 / self 자기 자신 / demon 시트의 악마) */
+const SG_SRC={
+ vortox:{k:'전역 거짓',c:'fg',s:'tf',n:'주민 능력이 내놓는 정보는 반드시 거짓이어야 한다 — 중독의 "거짓일 수도 있다"와 다르다. 참값을 먼저 계산한 뒤 그것을 피해 거짓을 고른다.'},
+ duchess:{k:'국소 거짓',c:'fl',s:'self',n:'방문자 중 정확히 1명만 거짓 수치를 받는다. 누구에게 거짓을 줬는지 적어 둘 것.'},
+ puzzlemaster:{k:'국소 거짓 · 취함원',c:'fl',s:'all',n:'시트에 취한 플레이어가 1명 상시로 있고, 퍼즐 마스터의 추측이 틀리면 본인이 거짓 정보를 받는다.'},
+ spy:{k:'등록 왜곡',c:'mis',s:'all',n:'선으로도, 주민·외지인으로도 등록될 수 있다(죽어도 마찬가지). 매 판정마다 어떻게 등록했는지 그리모어에 남긴다.'},
+ recluse:{k:'등록 왜곡',c:'mis',s:'all',n:'악으로도, 하수인·악마로도 등록될 수 있다(죽어도 마찬가지). 판정마다 다르게 정해도 되지만 결과가 서로 어긋나면 실수로 읽힌다.'},
+ fortuneteller:{k:'등록 왜곡',c:'mis',s:'self',n:'점쟁이에게만 악마로 등록되는 붉은 청어가 하나 있다 — 다른 정보 역할에는 영향이 없다. 첫날 밤 전에 정하고 끝까지 바꾸지 않는다.'},
+ lycanthrope:{k:'등록 왜곡',c:'mis',s:'all',n:'선한 플레이어 1명이 악으로 등록된다 — 진영 판별 정보 전체에 걸린다.'},
+ zombuul:{k:'등록 왜곡',c:'mis',s:'self',n:'첫 사망 때 죽은 것으로 등록되지만 실제로는 살아 있다 — 생존자 수와 사망 판정에 영향을 준다.'},
+ legion:{k:'등록 왜곡',c:'mis',s:'all',n:'하수인으로도 등록된다 — 하수인을 판별하는 정보가 전부 흔들린다.'},
+ revolutionary:{k:'등록 왜곡',c:'mis',s:'all',n:'이웃 2명이 같은 진영으로 공표되며, 게임 중 1회 그중 하나가 거짓으로 등록된다.'},
+ drunk:{k:'정체 오인',c:'mask',s:'tf',n:'자기가 주민이라고 믿는다 — 이 시트의 주민 정보 역할 중 하나로 위장시키면 그 자리에서 나오는 정보는 전부 거짓이 된다.'},
+ marionette:{k:'정체 오인',c:'mask',s:'all',n:'자기가 선한 캐릭터라고 믿는다 — 위장한 정보 역할 자리에서 거짓을 계속 받는다. 좌석은 악마의 이웃이어야 한다.'},
+ lunatic:{k:'정체 오인',c:'mask',s:'demon',n:'자기가 악마라고 믿는다 — 진짜 악마와 광인 두 사람 몫의 밤 정보를 따로 준비하고, 광인의 지목은 진짜 악마에게 알려준다.'},
+ poisoner:{k:'취함·중독원',c:'dro',s:'all',n:'매일 밤 1명을 중독시키고 그 효과가 다음 날 낮까지 간다 — 중독된 정보 역할은 거짓을 받을 수 있다.'},
+ nodashii:{k:'취함·중독원',c:'dro',s:'tf',n:'좌석상 양옆 주민 2명이 중독된다 — 자리·생사가 바뀔 때마다 다시 계산한다.'},
+ vigormortis:{k:'취함·중독원',c:'dro',s:'tf',n:'죽인 하수인이 능력을 유지하면서 이웃 주민 1명을 중독시킨다 — 사망 표시와 능력 정지 여부를 따로 적는다.'},
+ xaan:{k:'취함·중독원',c:'dro',s:'tf',n:'X번째 밤에 주민 전원이 황혼까지 중독된다 — 그 밤의 주민 정보는 통째로 흔들린다.'},
+ cannibal:{k:'취함·중독원',c:'dro',s:'self',n:'악한 처형자의 능력을 얻으면 선한 플레이어가 처형될 때까지 중독된다 — 얻은 능력이 정보라면 그 정보는 믿을 수 없다.'},
+ organgrinder:{k:'취함·중독원',c:'dro',s:'self',n:'매일 밤 자신이 취할지 스스로 고른다.'},
+ villageidiot:{k:'취함·중독원',c:'dro',s:'self',n:'마을 바보가 2명 이상이면 그중 정확히 1명이 취해 있고 누가 취했는지는 아무도 모른다 — 다른 정보 역할에는 영향이 없다.'},
+ snakecharmer:{k:'취함·중독원',c:'dro',s:'self',n:'지목한 악마와 캐릭터·진영을 통째로 맞바꾸고 그 악마가 중독된다 — 교환이 일어나면 그리모어를 그 자리에서 고친다.'},
+ philosopher:{k:'취함·중독원',c:'dro',s:'all',n:'가져온 능력의 원 보유자가 취한다 — 그 캐릭터가 정보 역할이면 이후 정보가 전부 거짓이 된다.'},
+ courtier:{k:'취함·중독원',c:'dro',s:'all',n:'캐릭터 하나를 3일 밤낮 취하게 만든다(플레이어가 아니라 캐릭터 지목). 만료일을 적어 둔다.'},
+ innkeeper:{k:'취함·중독원',c:'dro',s:'all',n:'보호한 2명 중 1명이 황혼까지 취한다.'},
+ sailor:{k:'취함·중독원',c:'dro',s:'all',n:'선원 자신이나 지목 대상 중 한쪽이 황혼까지 취한다(사회자 선택).'},
+ goon:{k:'취함·중독원',c:'dro',s:'all',n:'건달을 능력으로 지목한 첫 플레이어가 황혼까지 취한다 — 지목형 정보 역할이 걸린다.'},
+ minstrel:{k:'취함·중독원',c:'dro',s:'all',n:'하수인이 처형되면 음유시인과 여행자를 뺀 전원이 다음 황혼까지 취한다 — 밤 진행 전체가 오작동 모드가 된다.'},
+ sweetheart:{k:'취함·중독원',c:'dro',s:'all',n:'사랑꾼이 죽으면 그때부터 1명이 영구히 취한다.'},
+ widow:{k:'취함·중독원',c:'dro',s:'all',n:'첫 밤에 그리모어를 보고 1명을 중독시킨다.'},
+ pukka:{k:'취함·중독원',c:'dro',s:'all',n:'중독시킨 다음 밤에 그 사람이 죽는다 — 중독과 사망이 한 밤씩 어긋난다.'},
+ lleech:{k:'취함·중독원',c:'dro',s:'all',n:'시작할 때 1명을 중독시키고, 그 사람이 죽어야만 리치도 죽는다.'}
+};
+
+/* 셋업 보정 — o/m 은 [최소,최대] 증감(외지인/하수인), x:1 은 수치화 불가.
+   n 은 CHARACTERS 에 setupNote 가 없을 때만 쓰는 폴백 문구. */
+const SG_SETUP={
+ baron:{o:[2,2]}, godfather:{o:[-1,1]}, fanggu:{o:[1,1]}, vigormortis:{o:[-1,-1]},
+ balloonist:{o:[0,1]}, hermit:{o:[-1,0]},
+ sentinel:{o:[-1,1],n:'외지인이 1 늘거나 1 줄 수 있다(공식 setup 플래그).'},
+ lilmonsta:{m:[1,1]}, lordoftyphon:{m:[1,1],x:1},
+ xaan:{x:1}, kazali:{x:1}, marionette:{x:1}, legion:{x:1}, huntsman:{x:1}, choirboy:{x:1},
+ bountyhunter:{x:1}, villageidiot:{x:1}, atheist:{x:1}, summoner:{x:1}, drunk:{x:1},
+ deusexfiasco:{x:1}, bootlegger:{x:1}, gardener:{x:1}, pope:{x:1}, tor:{x:1}
+};
+
+/* ── 표시 헬퍼 ── */
+function sgChar(id){ try{ return (typeof charOf==='function')? charOf(id) : null; }catch(e){ return null; } }
+function sgKo(id){
+  const c=sgChar(id); if(c&&c.ko) return c.ko;
+  if(typeof libCharMeta==='function'){ try{ const m=libCharMeta(id); if(m&&m.ko) return m.ko; }catch(e){} }
+  return id;
+}
+function sgType(id){ const c=sgChar(id); return c? (c.type||'') : ''; }
+function sgTag(id){
+  const t=sgType(id), ko=(typeof TYPE_KO!=='undefined'&&TYPE_KO[t])||'';
+  return '<span class="sgc'+(t?' '+t:'')+'"'+(ko?' title="'+E(ko)+'"':'')+'>'+E(sgKo(id))+'</span>';
+}
+function sgTags(a){ return a.length? a.map(sgTag).join('') : '<span class="sgnone">—</span>'; }
+function sgSign(n){ return (n>0?'+':'')+n; }
+function sgRange(r){ return r[0]===r[1]? sgSign(r[0]) : sgSign(r[0])+'~'+sgSign(r[1]); }
+
+/* ── 그래프 산출 — 순수 함수. 진행 상태(S)를 읽지 않는다. ── */
+function sgCompute(ids){
+  const uniq=[], seen=Object.create(null);
+  (ids||[]).forEach(id=>{ if(typeof id==='string'&&id&&!seen[id]){ seen[id]=1; uniq.push(id); } });
+  const has=new Set(uniq);
+  const deg=Object.create(null);
+  const bump=(id,kind)=>{ const d=deg[id]||(deg[id]={jinx:0,dist:0,night:0,setup:0}); d[kind]++; };
+
+  /* 1. 활성 징크스 — 이 시트 안에서 성립하는 쌍만 */
+  const jinx=(typeof JINXES!=='undefined'&&Array.isArray(JINXES))
+    ? JINXES.filter(j=>j&&has.has(j.a)&&has.has(j.b)) : [];
+  jinx.forEach(j=>{ bump(j.a,'jinx'); bump(j.b,'jinx'); });
+
+  /* 2. 정보 왜곡원 → 영향받는 정보 역할 */
+  const infoAll=uniq.filter(id=>SG_INFO.has(id));
+  const infoTf=infoAll.filter(id=>sgType(id)==='townsfolk');
+  const demons=uniq.filter(id=>sgType(id)==='demon');
+  const tgt=Object.create(null);
+  const dist=uniq.filter(id=>SG_SRC[id]).map(id=>{
+    const s=SG_SRC[id];
+    const targets=(s.s==='tf'? infoTf : s.s==='self'? [id] : s.s==='demon'? demons : infoAll)
+                  .filter(t=>t!==id||s.s==='self');
+    tgt[id]=targets;
+    bump(id,'dist'); targets.forEach(t=>{ if(t!==id) bump(t,'dist'); });
+    return {id, kind:s.c, label:s.k, note:s.n, scope:s.s, targets};
+  });
+
+  /* 3. 셋업 보정 — 악마는 한 판에 한 종만 들어가므로 합산 대신 최소·최대만 반영 */
+  const setupAll=uniq.filter(id=>SG_SETUP[id]);
+  const acc={o:[0,0],m:[0,0]}, special=[], setupDemons=[];
+  setupAll.forEach(id=>{
+    const s=SG_SETUP[id];
+    if(sgType(id)==='demon') setupDemons.push(id);
+    else ['o','m'].forEach(k=>{ if(s[k]){ acc[k][0]+=s[k][0]; acc[k][1]+=s[k][1]; } });
+    if(s.x) special.push(id);
+    bump(id,'setup'); bump(id,'setup');
+  });
+  /* 악마는 한 판에 정확히 한 종만 들어간다 — 합산하지 않고 후보들의 최소·최대만 잡는다.
+     보정 없는 악마가 하나라도 있으면 0 도 후보에 들어간다. */
+  const plainDemon=demons.some(id=>!SG_SETUP[id]);
+  const dem={o:[0,0],m:[0,0]};
+  ['o','m'].forEach(k=>{
+    const cand=setupDemons.map(id=>SG_SETUP[id][k]||[0,0]);
+    if(!cand.length){ return; }
+    if(plainDemon||setupDemons.length<demons.length) cand.push([0,0]);
+    dem[k]=[Math.min.apply(null,cand.map(r=>r[0])), Math.max.apply(null,cand.map(r=>r[1]))];
+  });
+  const total={o:[acc.o[0]+dem.o[0],acc.o[1]+dem.o[1]], m:[acc.m[0]+dem.m[0],acc.m[1]+dem.m[1]]};
+
+  /* 4. 밤 순서 의존 사슬 — 왜곡원과 정보 역할의 선후 */
+  /* self·demon 범위 왜곡원은 남의 정보에 걸리지 않으므로 사슬에서 제외한다. */
+  const srcIds=uniq.filter(id=>SG_SRC[id]&&(SG_SRC[id].s==='all'||SG_SRC[id].s==='tf'));
+  function chain(pos,label){
+    const before=[], after=[];
+    srcIds.forEach(s=>{
+      const ps=pos[s]; if(ps===undefined) return;
+      const b=[], a=[];
+      (tgt[s]||[]).forEach(t=>{
+        if(t===s) return;
+        const pt=pos[t]; if(pt===undefined) return;
+        (ps<pt? b : a).push(t);
+      });
+      if(b.length){ before.push({src:s,targets:b}); bump(s,'night'); b.forEach(t=>bump(t,'night')); }
+      if(a.length) after.push({src:s,targets:a});
+    });
+    return {label,before,after};
+  }
+  const nights=[chain(SG_PF,'첫 번째 밤'), chain(SG_PO,'이후 밤')];
+  const nightPairs=nights.reduce((n,x)=>n
+    +x.before.reduce((m,e)=>m+e.targets.length,0)
+    +x.after.reduce((m,e)=>m+e.targets.length,0), 0);
+
+  /* 5. 사회자 주의 지점 — 걸린 관계 수 상위 */
+  const hot=Object.keys(deg).map(id=>{
+    const d=deg[id];
+    return {id, d, score:d.jinx+d.dist+d.night+d.setup};
+  }).sort((x,y)=> y.score-x.score || x.id.localeCompare(y.id)).slice(0,6);
+
+  const known=id=>SG_INFO.has(id)||SG_SRC[id]||SG_SETUP[id]||SG_PF[id]!==undefined||SG_PO[id]!==undefined;
+  const unknown=uniq.filter(id=>!known(id));
+  return {n:uniq.length, jinx, dist, infoAll, infoTf, setupAll, special, total, nights, nightPairs, hot, unknown};
+}
+
+/* ── 시트 단위 캐시 ────────────────────────────────────────────────────────
+   키 = 캐릭터 id 목록 그 자체(정렬·조인). 목록이 바뀌면 자동으로 다른 키가 되므로
+   무효화 조건은 "시트 캐릭터 구성 변경" 하나뿐이고, 매 렌더마다 전수 순회하지 않는다.
+   JINXES / CHARACTERS 를 런타임에 갈아끼운 경우에만 thyScriptGraph.clearCache() 를
+   직접 부른다(커스텀 캐릭터는 공식 관계표에 없어 그래프에 기여하지 않는다). */
+const sgCache=new Map();
+const SG_CACHE_MAX=64;
+function sgGraph(ids){
+  const key=(ids||[]).slice().sort().join(',');
+  if(sgCache.has(key)) return sgCache.get(key);
+  const g=sgCompute(ids);
+  if(sgCache.size>=SG_CACHE_MAX) sgCache.delete(sgCache.keys().next().value);
+  sgCache.set(key,g);
+  return g;
+}
+
+/* ── 펼침 상태: 메모리 전용(영속 필드 아님). toggle 은 버블링하지 않으므로 캡처로 받는다. ── */
+const sgOpen=new Set();
+document.addEventListener('toggle', function(ev){
+  const t=ev&&ev.target;
+  if(!t||t.tagName!=='DETAILS') return;
+  const k=t.getAttribute('data-sgkey'); if(!k) return;
+  if(t.open) sgOpen.add(k); else sgOpen.delete(k);
+}, true);
+
+/* ── HTML ── */
+const SG_KC={fg:'sgk-fg',fl:'sgk-fl',dro:'sgk-dro',mis:'sgk-mis',mask:'sgk-mask'};
+function sgGraphHTML(key,ids){
+  let g;
+  try{ g=sgGraph(ids); }catch(err){ console.warn('[script-graph] compute', err); return ''; }
+  if(!g||!g.n) return '';
+  const K='sg:'+key;
+
+  const jinxHTML=g.jinx.length
+    ? g.jinx.map(j=>'<div class="sgrow"><span class="sgpair">'+sgTag(j.a)+'<i>↔</i>'+sgTag(j.b)+'</span>'
+        +'<span class="sgtxt">'+E(j.rule)+(j.confidence==='check'?' <b>(공식 위키 확인 필요)</b>':'')+'</span></div>').join('')
+    : '<p class="sgnone">이 시트 안에서 동시에 성립하는 징크스가 없다.</p>';
+
+  const distHTML=g.dist.length
+    ? g.dist.map(d=>'<div class="sgrow"><span class="sgpair">'+sgTag(d.id)
+        +'<span class="sgkind '+SG_KC[d.kind]+'">'+E(d.label)+'</span></span>'
+        +'<span class="sgtxt">'+E(d.note)
+        +'<span class="sgto">영향 → '+(d.scope==='self'? '<span class="sgnone">자기 자신에 한정</span>' : sgTags(d.targets))
+        +'</span></span></div>').join('')
+    : '<p class="sgnone">보르톡스·주정뱅이·광인·첩자·은둔자를 비롯한 왜곡원이 이 시트에 없다 — 취함·중독이 걸리지 않는 한 정보는 참이다.</p>';
+
+  const setupRows=g.setupAll.map(id=>{
+    const s=SG_SETUP[id], c=sgChar(id), num=[];
+    if(s.o) num.push('외지인 '+sgRange(s.o));
+    if(s.m) num.push('하수인 '+sgRange(s.m));
+    const note=(c&&c.setupNote)||s.n||'공식 setup 플래그 — 수치 보정은 능력 문구를 직접 확인할 것.';
+    return '<div class="sgrow"><span class="sgpair">'+sgTag(id)
+      +(num.length?'<span class="sgkind sgk-num">'+E(num.join(' · '))+'</span>':'<span class="sgkind sgk-x">특수</span>')
+      +'</span><span class="sgtxt">'+E(note)+'</span></div>';
+  }).join('');
+  const sums=[];
+  if(g.total.o[0]||g.total.o[1]) sums.push('외지인 '+sgRange(g.total.o));
+  if(g.total.m[0]||g.total.m[1]) sums.push('하수인 '+sgRange(g.total.m));
+  const setupHTML=g.setupAll.length
+    ? '<div class="sgsum">합계(동시 발생 가능 폭) — '+(sums.length? E(sums.join(' · ')) : '수치 보정 없음')
+        +(g.special.length? ' <b>+ 수치화 불가 '+g.special.length+'종</b>' : '')+'</div>'
+      +setupRows
+      +'<p class="sghint">악마는 한 판에 한 종만 들어가므로 악마 보정은 합산하지 않고 최소·최대만 반영했다. 외지인이 늘면 주민이 그만큼 줄어 총원은 인원표대로다.</p>'
+    : '<p class="sgnone">셋업에서 구성을 바꾸는 캐릭터가 없다 — 인원표를 그대로 쓰면 된다.</p>';
+
+  const nightBody=g.nights.map(nt=>{
+    if(!nt.before.length&&!nt.after.length) return '';
+    const b=nt.before.map(e=>'<div class="sgrow"><span class="sgpair">'+sgTag(e.src)+'<i>→</i></span>'
+      +'<span class="sgtxt">'+sgTags(e.targets)+'</span></div>').join('');
+    const a=nt.after.length
+      ? '<div class="sgrev"><b>역전 주의</b> — 아래 정보 역할은 이 왜곡원보다 <b>먼저</b> 깨어난다. 그 밤의 정보는 왜곡이 걸리기 전 상태다.'
+        +nt.after.map(e=>'<div class="sgrow"><span class="sgpair">'+sgTags(e.targets)+'<i>→</i></span>'
+          +'<span class="sgtxt">'+sgTag(e.src)+'</span></div>').join('')+'</div>'
+      : '';
+    return '<div class="sgnight"><h6>'+E(nt.label)+'</h6>'+(b||'<p class="sgnone">먼저 와야 하는 쌍 없음.</p>')+a+'</div>';
+  }).join('');
+  const nightHTML=nightBody||'<p class="sgnone">밤 순서가 걸리는 왜곡원↔정보 역할 쌍이 없다.</p>';
+
+  const hotHTML=g.hot.length
+    ? '<ol class="sghot">'+g.hot.map(h=>{
+        const p=[];
+        if(h.d.jinx) p.push('징크스 '+h.d.jinx);
+        if(h.d.dist) p.push('왜곡 '+h.d.dist);
+        if(h.d.night) p.push('밤 순서 '+h.d.night);
+        if(h.d.setup) p.push('셋업');
+        return '<li>'+sgTag(h.id)+'<span class="sgscore">'+h.score+'</span><span class="sgtxt">'+E(p.join(' · '))+'</span></li>';
+      }).join('')+'</ol>'
+      +'<p class="sghint">걸린 관계 수를 센 것일 뿐 난이도 순위가 아니다. 배정 전에 이 캐릭터들의 판정 기준을 먼저 정해 두면 판 중간에 멈출 일이 줄어든다.</p>'
+    : '<p class="sgnone">계산된 관계가 없다.</p>';
+
+  const nightN=g.nightPairs||0;
+  const head='징크스 '+g.jinx.length+' · 왜곡원 '+g.dist.length+' · 셋업 '+g.setupAll.length+' · 정보 역할 '+g.infoAll.length;
+  const sub=(k,title,count,inner,hint)=>{
+    const k2=K+':'+k;
+    return '<details class="sgsub" data-sgkey="'+E(k2)+'"'+(sgOpen.has(k2)?' open':'')+'>'
+      +'<summary>'+E(title)+' <b class="sgn">'+count+'</b></summary>'
+      +'<div class="sgbody">'+(hint?'<p class="sghint">'+E(hint)+'</p>':'')+inner+'</div></details>';
+  };
+
+  return '<div class="sgwrap" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">'
+    +'<details class="sgsec" data-sgkey="'+E(K)+'"'+(sgOpen.has(K)?' open':'')+'>'
+    +'<summary>🕸 시트 파생 그래프 <span class="sghead">'+E(head)+'</span></summary>'
+    +'<div class="sgbody">'
+    +sub('jinx','활성 징크스',g.jinx.length,jinxHTML,'이 시트 안에서 두 캐릭터가 함께 나올 수 있어 실제로 성립하는 예외 규칙이다.')
+    +sub('dist','정보 왜곡원',g.dist.length,distHTML,'왜곡원이 있으면 그 시트의 정보는 액면 그대로 다룰 수 없다.')
+    +sub('setup','셋업 보정',g.setupAll.length,setupHTML,'토큰을 나눠주기 전에 인원 구성을 고쳐야 하는 캐릭터들이다.')
+    +sub('night','밤 순서 의존',nightN,nightHTML,'공식 밤 순서표 기준. 왼쪽이 먼저 깨어나므로 그 결과가 오른쪽 정보에 반영된다.')
+    +sub('hot','사회자 주의 지점',g.hot.length,hotHTML,'위 네 축에 걸린 관계 수를 합산한 상위 캐릭터다.')
+    +(g.unknown.length? '<p class="sghint">공식 관계표에 없는 캐릭터 '+g.unknown.length+'종(커스텀·미수록)은 그래프에서 제외했다.</p>' : '')
+    +'<p class="sghint">밤 순서·셋업 플래그·정보 역할 분류는 공식 데이터에서 기계적으로 도출했고 징크스 문구는 앱 내장 한국어판이다. 정본은 공식 룰북·위키를 따른다.</p>'
+    +'</div></details></div>';
+}
+
+/* ── 1. 스크립트 라이브러리 카드(SCRIPT_LIB 23종) ── */
+if(typeof libDetail==='function'){
+  const _libDetail=libDetail;
+  window.libDetail=function(s){
+    const r=_libDetail.apply(this, arguments);
+    try{
+      if(s&&typeof s.id==='string'&&Array.isArray(s.characters)) return r+sgGraphHTML(s.id, s.characters);
+    }catch(err){ console.warn('[script-graph] libDetail', err); }
+    return r;
+  };
+}
+
+/* ── 2. 시트 상세 화면(공식 3판 renderSheet) ── */
+function sgSheetIds(){
+  if(typeof sheetCharList==='function' && typeof sheetEd!=='undefined'){
+    try{ return sheetCharList(sheetEd).map(c=>c&&c.id).filter(Boolean); }catch(err){}
+  }
+  return [];
+}
+if(typeof renderSheet==='function'){
+  const _renderSheet=renderSheet;
+  window.renderSheet=function(){
+    const r=_renderSheet.apply(this, arguments);
+    try{
+      const pane=document.querySelector('#pane-sheet');
+      if(pane){
+        let host=pane.querySelector('#sgraph');
+        if(!host){ host=document.createElement('div'); host.id='sgraph'; pane.appendChild(host); }
+        const onChars=(typeof sheetTab==='undefined')||sheetTab==='chars';
+        host.innerHTML = onChars
+          ? sgGraphHTML('sheet:'+((typeof sheetEd!=='undefined'&&sheetEd)||'tb'), sgSheetIds())
+          : '';
+      }
+    }catch(err){ console.warn('[script-graph] renderSheet', err); }
+    return r;
+  };
+}
+
+window.thyScriptGraph={compute:sgCompute, graph:sgGraph, html:sgGraphHTML,
+  clearCache:()=>sgCache.clear(), cacheSize:()=>sgCache.size,
+  tables:{info:SG_INFO, src:SG_SRC, setup:SG_SETUP, firstNight:SG_NF, otherNight:SG_NO}};
 })();
 </script>
 
