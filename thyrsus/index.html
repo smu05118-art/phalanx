@@ -7423,7 +7423,7 @@ function startRevealWiz(){
   #pane-grim .ttoken{width:112px;height:112px}
   #pane-grim .ttoken .tkname{font-size:13.5px;max-width:100px}
   #pane-grim .ttoken .tkicon{font-size:37px}
-  #pane-grim .ttoken .tkicon:has(svg){font-size:54px}
+  #pane-grim .ttoken .tkicon:has(svg,.cicon-img){font-size:54px}
   #pane-grim .tseat .tkplayer{font-size:14.5px;max-width:126px}
   #pane-grim .tseat .tkseat{font-size:13px}
   #pane-grim .tseat.dead .ttoken .tkicon::after{font-size:46px}
@@ -9130,7 +9130,7 @@ function libRender(){
   transition:transform .15s,box-shadow .15s}
 .wcell:hover .ctoken{transform:scale(1.08);box-shadow:0 3px 10px rgba(0,0,0,.28)}
 .wcell:focus-visible .ctoken{box-shadow:0 0 0 3px var(--accent)}
-.wcell .ctoken:has(svg){font-size:32px}
+.wcell .ctoken:has(svg,.cicon-img){font-size:32px}
 .wcell .wcname{font-family:'Gowun Batang',serif;font-size:12.5px;font-weight:700;line-height:1.25;
   text-align:center;word-break:keep-all;overflow-wrap:anywhere}
 /* 여행자·전설은 기존 팔레트에 색이 없었다 — 토큰/필 양쪽에 채워 넣는다 */
@@ -9142,7 +9142,7 @@ function libRender(){
   .wikigrid{grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:12px 4px}
   .wcell{padding:4px 0;gap:5px}
   .wcell .ctoken{width:50px;height:50px}
-  .wcell .ctoken:has(svg){font-size:28px}
+  .wcell .ctoken:has(svg,.cicon-img){font-size:28px}
   .wcell .wcname{font-size:11.5px}
 }
 </style>
@@ -9160,29 +9160,30 @@ function libRender(){
 /* 이미 베이지인 토큰 안에서는 디스크를 벗고 꽉 차게 */
 .tkicon .cicon,.ricon .cicon{display:block;width:1em;height:1em;background:none;border:0;padding:0;vertical-align:baseline}
 /* 원형 토큰 컨테이너 자체를 베이지로 (타입별 테두리 색은 유지) */
-.ctoken:has(svg),.cseat .ctoken:has(svg),.ctoken.demon:has(svg),
-.wiz-bigtoken:has(svg),.wiz-shownplayer .pp:has(svg),
-.ctoken:has(.cicon-img),.cseat .ctoken:has(.cicon-img),.ctoken.demon:has(.cicon-img),
-.wiz-bigtoken:has(.cicon-img),.wiz-shownplayer .pp:has(.cicon-img){background:#d4c9a8}
-/* 공식 webp 는 이미 완성된 아트다 — 비율만 지키고 잉크색 규칙은 적용되지 않는다 */
-.cicon-img{object-fit:contain}
-.ttoken .tkicon:has(.cicon-img){font-size:44px}
+.ctoken:has(svg,.cicon-img),.cseat .ctoken:has(svg,.cicon-img),.ctoken.demon:has(svg,.cicon-img),
+.wiz-bigtoken:has(svg,.cicon-img),.wiz-shownplayer .pp:has(svg,.cicon-img){background:#d4c9a8}
 .ctoken .cicon,.wiz-bigtoken .cicon,.wiz-shownplayer .pp .cicon,.pcell .cicon{
   display:block;width:1em;height:1em;background:none;border:0;padding:0;vertical-align:baseline}
 /* 목록·버튼 안(비베이지 배경)에서는 베이지 디스크를 유지해 대비 확보 */
 .wiz-pickbtn .pt .cicon{vertical-align:middle;padding:.12em}
 button .cicon{vertical-align:-.28em}
+/* 공식 webp 는 이미 완성된 아트다 — 잉크색 규칙 대신 비율·크기만 잡는다.
+   손그림 SVG(1em)보다 시각 밀도가 높아 토큰 지름의 60~65%가 되도록 1.35em 으로 키운다. */
+.cicon.cicon-img{object-fit:contain;width:1.35em;height:1.35em}
+/* 위 1em 재정의들은 (0,3,0) 이라 위 규칙을 이긴다 — 같은 급으로 한 번 더 못 박는다 */
+.ctoken .cicon-img,.wiz-bigtoken .cicon-img,.wiz-shownplayer .pp .cicon-img,.pcell .cicon-img,
+.tkicon .cicon-img,.ricon .cicon-img{width:1.35em;height:1.35em}
 .tseat.dead .ttoken .tkicon .cicon{opacity:.45}
 /* 라인아트는 이모지보다 시각 무게가 가벼우므로 토큰 안에서 조금 키운다 */
-.ttoken .tkicon:has(svg){font-size:44px}
-.reveal-token .ricon:has(svg){font-size:86px}
-.ctoken:has(svg){font-size:26px}
-.cseat .ctoken:has(svg){font-size:29px}
+.ttoken .tkicon:has(svg,.cicon-img){font-size:44px}
+.reveal-token .ricon:has(svg,.cicon-img){font-size:86px}
+.ctoken:has(svg,.cicon-img){font-size:26px}
+.cseat .ctoken:has(svg,.cicon-img){font-size:29px}
 @media (max-width:880px){
-  .ttoken .tkicon:has(svg){font-size:36px}
-  .reveal-token .ricon:has(svg){font-size:68px}
-  .ctoken:has(svg){font-size:23px}
-  .cseat .ctoken:has(svg){font-size:25px}
+  .ttoken .tkicon:has(svg,.cicon-img){font-size:36px}
+  .reveal-token .ricon:has(svg,.cicon-img){font-size:68px}
+  .ctoken:has(svg,.cicon-img){font-size:23px}
+  .cseat .ctoken:has(svg,.cicon-img){font-size:25px}
 }
 /* ══════════ 모바일 심화: 오버플로 · 터치 타깃 · 한글 줄바꿈 · safe-area ══════════ */
 /* 한국어는 어절 단위 유지(keep-all), 그래도 안 들어가면 아무 데서나 끊어 컨테이너를 넘지 않게(anywhere) */
@@ -9259,7 +9260,7 @@ button .cicon{vertical-align:-.28em}
   .tseat{width:74px;margin-left:-37px;margin-top:-37px}
   .ttoken{width:64px;height:64px}
   .ttoken .tkicon{font-size:22px}
-  .ttoken .tkicon:has(svg){font-size:30px}
+  .ttoken .tkicon:has(svg,.cicon-img){font-size:30px}
   .ttoken .tkname{font-size:9.5px;max-width:56px}
   .tseat .tkplayer{max-width:74px;font-size:11px}
   .ttoken .tkdead{font-size:28px}
@@ -9267,7 +9268,7 @@ button .cicon{vertical-align:-.28em}
   #circlewrap{width:min(100% - 26px,640px)}
   .cseat{width:62px;margin-left:-31px;margin-top:-31px}
   .cseat .ctoken{width:38px;height:38px;font-size:17px}
-  .cseat .ctoken:has(svg){font-size:21px}
+  .cseat .ctoken:has(svg,.cicon-img){font-size:21px}
   #sidenav button{font-size:10.5px}
   .cseat .cname{font-size:10.5px}
   .cseat .crole{font-size:9px}
