@@ -823,15 +823,249 @@ let glyph = id => GLYPHS[id]||'✦';
 </script>
 
 <script>
+/* ══════════════════ SABER · 시계탑 세이버메트릭스 스키마 ══════════════════
+   야구 세이버메트릭스와 같은 문제의식 — 승패가 아니라 '개별 행동의 기여도'를 잰다.
+   이 블록에는 데이터 계약과 계수만 둔다. 이벤트 적재(emit)와 집계(compute)는 별도.
+
+   [왜 S.events 가 필요한가]
+   S.log 는 {t:'밤 2', msg:'💀 홍길동(임프) 사망 — 임프의 공격'} 같은 사람용 문자열이다.
+   실제로 showReplay() 의 _rpIcon() 은 msg 에 '처형'/'사망' 부분문자열이 있는지로만
+   분류한다 — 이름에 그 글자가 들어가면 오분류되고, 행위자·대상·수치는 되찾을 수 없다.
+   → S.log 는 서술용으로 그대로 두고, S.events 를 병행 적재해 계량은 여기서만 한다.
+
+   [관측 등급 — 추측으로 지표를 만들지 않는다]
+   'auto' 기존 상태(S.players / S.noms / p.diedAt / p.statuses / S.executed*)만으로 산출
+   'semi' 사회자가 1탭 해야 완성 — 발화 기반(역할 선언·정보 공개)은 전부 여기
+   'none' 이 앱이 원리상 관측 불가 → EXCLUDED 에 사유와 함께 명시하고 지표에서 뺀다
+
+   [기여도의 정의]
+   모든 지표는 누적이 아니라 '기대값 대비 초과분'이다(x- 접두).
+     x지표 = Σ (실제 가치 − 같은 국면에서 무작위/평균 행위자의 기대 가치) × 상황 가중
+   ══════════════════════════════════════════════════════════════════════════ */
+const SABER = {
+  ver: 1,
+  MAX_EVENTS: 4000,          // localStorage 보호 — 초과분은 앞에서부터 버린다
+
+  /* ── ① 이벤트 원장 S.events[] 레코드 계약 ──
+     {i, k, n, t, a, b, d}
+       i : 단조 증가 순번. 같은 페이즈 안의 선후는 오직 이 값으로만 판단한다.
+       k : 'setup'|'night'|'day'   n : 페이즈 번호(S.phase.n)
+       t : 아래 EV 의 키           a : 행위자 pid | 'ST'(사회자) | null
+       b : 대상 pid | null         d : 타입별 부가 필드
+     pid 만 저장한다 — 이름·캐릭터는 집계 시 playerOf()/charOf() 로 되찾는다.
+     (이발사 교환·뱀 조련사 스왑·팡 구 점프로 charId 가 바뀌므로 스냅샷은 어긋난다.
+      캐릭터 스냅샷이 필요한 지표는 EV.swap 이벤트로 시점 복원한다.) */
+  EV: {
+    phase:   {ko:'페이즈 전환', obs:'auto', at:'advancePhase()',                        d:'{to,n}'},
+    death:   {ko:'사망 확정',   obs:'auto', at:'killPlayer()',                          d:'{cause, char:charId, byExec:bool}'},
+    attack:  {ko:'밤 공격 시도', obs:'auto', at:'doImpKill/doStepKill/doFangGuAttack/doPukkaPick', d:'{killer:charId, blocked:사유|null}'},
+    protect: {ko:'보호 부여',   obs:'auto', at:'doProtect() · 여관 주인 · addStatusUI',  d:'{src, mal:bool}'},
+    poison:  {ko:'오작동 부여', obs:'auto', at:'doPoison/doPukkaPick/취함 계열',          d:'{src, key:"poison"|"drunkS", mal:bool}'},
+    info:    {ko:'정보 제시',   obs:'auto', at:'wizShowVal() · recordInfo()',            d:'{step, shown, truth, mal:bool, vortox:bool}'},
+    pick:    {ko:'밤 지목',     obs:'auto', at:'wizEffect() / closeWiz()',               d:'{step, targets:[pid|charId]}'},
+    nom:     {ko:'지명 개시',   obs:'auto', at:'newNomination()',                        d:'{nomId, ord:그날 몇 번째}'},
+    hand:    {ko:'거수 토글',   obs:'auto', at:'toggleHand()',                           d:'{nomId, on:bool}'},
+    vote:    {ko:'찬반 기록',   obs:'auto', at:'castVote()',                             d:'{nomId, v, prev}'},
+    tally:   {ko:'집계 마감',   obs:'auto', at:'closeHands() / closeBallot()',           d:'{nomId, stage, num, den, need, pass:bool}'},
+    exec:    {ko:'처형 확정',   obs:'auto', at:'resolveExecution()',                     d:'{died:bool, blocked:사유|null, nomId}'},
+    star:    {ko:'별 넘기기',   obs:'auto', at:'doImpKill() 자살 분기',                   d:'{to:pid}'},
+    swap:    {ko:'캐릭터 변경', obs:'auto', at:'doSwapChars/doSnakeSwap/팡 구 점프/openCharChange', d:'{from:charId, to:charId, why}'},
+    claim:   {ko:'역할 선언',   obs:'semi', at:'(신규) 낮 탭 1탭 — 누가 무슨 역할이라 말했나', d:'{role:charId}'},
+    share:   {ko:'정보 공개',   obs:'semi', at:'(신규) 낮 탭 1탭 — 어느 info 이벤트를 공개했나', d:'{ref:info이벤트 i}'},
+    end:     {ko:'게임 종료',   obs:'auto', at:'confirmWin(true)',                       d:'{team, reason}'}
+  },
+
+  /* ── ② 상황 계수 ── */
+  K: {LEV_EXP:0.7, LEV_MAX:2.6, TIM_SLOPE:0.12, TIM_MIN:0.7, TIM_MAX:1.8, MAL:0.25, DEADVOTE:0.8},
+
+  /* 기대 게임 길이(낮 수). 악은 생존 2인에서 이기고 하루 1처형이 원칙이므로
+     선한 팀의 '처형 예산'이 곧 게임 길이다: p0 → 2 까지 대략 p0-3 낮. */
+  expDays(p0){ return Math.max(1, (p0|0) - 3); },
+
+  /* 생존자 압축 계수 — 남은 처형 예산 (alive-2) 이 줄수록 같은 1표가 무겁다.
+     시작 시 1.0, 종반 상한 2.6 (p0=10 → alive 8:1.22 · 6:1.62 · 5:1.94 · 4↓:2.6). */
+  lev(alive, p0){
+    const a = Math.max(3, alive|0);
+    const P = Math.max(a, p0|0);
+    const r = Math.pow((P-2)/(a-2), this.K.LEV_EXP);
+    return Math.min(this.K.LEV_MAX, Math.max(1, r));
+  },
+
+  /* 결정성 계수 — 찬성이 과반 기준을 아슬아슬하게 넘겼을수록 개별 표가 결정적이다.
+     yes==need(딱 과반) → 2.0 · 여유 1표 → 1.5 · 여유 3표 → 1.25 · 부결 → 1.0. */
+  piv(yes, need){
+    const y = yes|0, nd = need|0;
+    if(y < nd) return 1;
+    return 1 + 1/(1 + (y - nd));
+  },
+
+  /* 정보 조기 공개 프리미엄 — 남은 낮이 많을수록 그 정보가 쓰일 기회가 많다. */
+  tim(day, p0){
+    const v = 1 + this.K.TIM_SLOPE * (this.expDays(p0) - (day|0));
+    return Math.min(this.K.TIM_MAX, Math.max(this.K.TIM_MIN, v));
+  },
+
+  /* 오작동(중독·취함·주정뱅이) 중의 행동은 본인 탓이 아니다 — 0 이 아니라 감쇠. */
+  mal(isMal){ return isMal ? this.K.MAL : 1; },
+
+  /* 합성 가중치. ctx = {alive, p0, yes, need, day, mal, deadVote} — 없는 축은 1.0 */
+  w(ctx){
+    ctx = ctx || {};
+    let v = 1;
+    if(ctx.alive != null) v *= this.lev(ctx.alive, ctx.p0 || ctx.alive);
+    if(ctx.yes != null && ctx.need != null) v *= this.piv(ctx.yes, ctx.need);
+    if(ctx.day != null) v *= this.tim(ctx.day, ctx.p0 || 0);
+    v *= this.mal(!!ctx.mal);
+    if(ctx.deadVote) v *= this.K.DEADVOTE;
+    return v;
+  },
+
+  /* ── ③ 행동 가치표 (단위: '한 몸' = 생존자 1명) ──
+     EXEC_VAL 은 선한 팀 관점의 처형 가치, KILL_VAL 은 악마 관점의 밤 살해 가치. */
+  EXEC_VAL: {townsfolk:-1.0, outsider:-0.35, minion:1.0, demon:3.0, traveler:0, fabled:0},
+  KILL_VAL: {townsfolk:1.0, outsider:0.25, minion:-1.2, demon:-3.0, traveler:0, fabled:0},
+  KILL_INFO_BONUS: 0.3,   // 대상이 밤 정보 역할(c.first||c.other 인 주민)이면 가산
+
+  /* ── ④ 반사실 기준선 ──
+     '같은 국면에서 아무 생각 없이 행동하는 대체 수준 플레이어'의 기대값. */
+  BASE_DESC: {
+    exec: '무작위 생존자 1명 처형 = Σ_type (cnt[type]/alive) × EXEC_VAL[type]',
+    kill: '무작위 생존자 1명 살해 = Σ_type (cnt[type]/alive) × KILL_VAL[type]',
+    prot: '무작위 보호가 실제 공격과 겹칠 확률 = 1 / (생존 선한 대상 수)',
+    info: '무작위 응답의 정답률 = 1 / (선택지 수)  — 예/아니오 2, 0~2 카운트 3',
+    vote: '무작위 찬성표가 악을 맞힐 확률 = 생존 악 수 / 생존자 수',
+    surv: '평균 생존 = expDays(p0) / 2 낮'
+  },
+  /* cnt = {townsfolk,outsider,minion,demon,traveler,fabled} — 생존자 유형별 인원 */
+  ev(tbl, cnt){
+    cnt = cnt || {};
+    let n = 0, s = 0;
+    for(const k in tbl){ const c = cnt[k]|0; n += c; s += c * tbl[k]; }
+    return n ? s/n : 0;
+  },
+  baseExec(cnt){ return this.ev(this.EXEC_VAL, cnt); },
+  baseKill(cnt){ return this.ev(this.KILL_VAL, cnt); },
+  baseProt(aliveGood){ const g = aliveGood|0; return g > 0 ? 1/g : 0; },
+  baseInfo(options){ const k = options|0; return k > 0 ? 1/k : 0; },
+  baseVote(aliveEvil, alive){ const n = alive|0; return n > 0 ? (aliveEvil|0)/n : 0; },
+  baseSurv(p0){ return this.expDays(p0) / 2; },
+
+  /* ── ⑤ 지표 정의표 ──
+     id · ko · axis · obs · src(관측원) · f(수식) · r(범위) · note */
+  METRICS: [
+    /* ▸ 사회자 축 — wizShowVal 은 플레이어가 아니라 사회자의 행동이다 */
+    {id:'ST_FID', ko:'정보 충실도', axis:'st', obs:'auto', src:'EV.info',
+     f:'Σ 1{shown==truth} / n(정상 대상)', r:[0,1],
+     note:'WIZ_SUGGEST 가 계산해 둔 참값과 사회자가 실제로 보여준 값의 일치율. 오작동·보르톡스 대상은 분모에서 제외 — 그 국면은 거짓이 정답이다.'},
+    {id:'ST_LIE', ko:'오작동 왜곡률', axis:'st', obs:'auto', src:'EV.info(d.mal)',
+     f:'Σ 1{shown!=truth} / n(오작동 대상)', r:[0,1],
+     note:'중독·취함 대상에게 실제로 거짓을 준 비율. 낮으면 독이 낭비된 게임이다.'},
+    {id:'ST_BAL', ko:'국면 균형', axis:'st', obs:'auto', src:'EV.exec+EV.death',
+     f:'|Σ xEXE(전체) + Σ xKILL(전체)|', r:[0,'∞'],
+     note:'0 에 가까울수록 양 팀 실수가 상쇄된 팽팽한 게임. 사회자 재량의 편향 점검용.'},
+    {id:'ST_PACE', ko:'밤 진행 속도', axis:'st', obs:'auto', src:'S.nightDone + EV.phase',
+     f:'완료 단계 수 / 밤 경과 분', r:[0,'∞'], note:'기존 밤 타이머와 nightDone 만으로 산출된다.'},
+
+    /* ▸ 선한 정보 역할 */
+    {id:'GI_TRUE', ko:'수령 정보 진위', axis:'info', obs:'auto', src:'EV.info',
+     f:'Σ 1{shown==truth} / 수령 건수', r:[0,1],
+     note:'문맥 지표다. 플레이어 실력이 아니라 사회자·중독 상태의 결과이므로 기여도 합산에서 제외하고 해석용으로만 쓴다.'},
+    {id:'GI_LAG', ko:'공개 지연', axis:'info', obs:'semi', src:'EV.info → EV.share',
+     f:'평균(share.day − info.n)', r:[0,'∞'],
+     note:'share 이벤트(사회자 1탭)가 없으면 산출 불가. 없으면 이 지표는 비운다 — 추정하지 않는다.'},
+    {id:'xGI_IMPACT', ko:'정보 처형 기여', axis:'info', obs:'semi', src:'EV.share + EV.exec',
+     f:'Σ (execVal(처형자) − baseExec) × w{alive,p0,yes,need,day}  [공개 후 2낮 이내 & 공개가 지목한 대상]', r:['-∞','∞'],
+     note:'선행 조건은 share 이벤트 하나뿐 — 그 뒤 인과 연결과 가치 계산은 전부 auto.'},
+
+    /* ▸ 보호 역할 */
+    {id:'xPROT', ko:'초과 방어', axis:'prot', obs:'auto', src:'EV.protect + EV.attack(d.blocked)',
+     f:'Σ 1{그 밤 내 대상이 실제 공격받고 차단됨} − Σ_밤 baseProt(생존 선 수)', r:['-∞','∞'],
+     note:'deathBlockReason() 이 이미 차단 사유를 계산하므로 attack 이벤트에 blocked 만 실으면 완전 자동.'},
+    {id:'PROT_WASTE', ko:'헛방률', axis:'prot', obs:'auto', src:'EV.protect + EV.attack',
+     f:'그 밤 대상이 공격받지 않은 보호 수 / 전체 보호 수', r:[0,1],
+     note:'보호는 낭비돼도 죄가 아니다 — xPROT 과 함께 읽어 운/판단을 분리한다.'},
+
+    /* ▸ 정치질(social) — 전원 공통 */
+    {id:'NOM_LEAD', ko:'지명 주도', axis:'social', obs:'auto', src:'S.noms.nominator + EV.nom(d.ord)',
+     f:'0.5×(내 지명 수/전체 지명 수) + 0.5×(내가 그날 첫 지명인 날 수/생존 낮 수)', r:[0,1],
+     note:'S.noms 는 push 순서가 보존되므로 "그날 몇 번째 지명"이 관측된다.'},
+    {id:'xEXE', ko:'처형 기여', axis:'social', obs:'auto', src:'S.noms + EV.exec',
+     f:'Σ_내가 찬성해 성사된 처형 (EXEC_VAL[type(대상)] − baseExec(생존 구성)) × w{alive,p0,yes,need,deadVote}', r:['-∞','∞'],
+     note:'선한 플레이어에겐 그대로, 악한 플레이어에겐 부호를 뒤집어 읽는다. 핵심 지표.'},
+    {id:'CONF', ko:'동조율', axis:'social', obs:'auto', src:'S.noms.votes + nom.result',
+     f:'내 표가 최종 결과(pass/fail)와 일치한 지명 수 / 내가 투표한 지명 수', r:[0,1]},
+    {id:'SWING', ko:'표 전환', axis:'social', obs:'auto', src:'EV.vote(d.prev≠d.v) + 같은 날 재지명',
+     f:'(한 지명 안에서 prev≠v 인 전환 수) + (같은 날 같은 피지명자에 대해 찬↔반이 뒤집힌 수)', r:[0,'∞'],
+     note:'castVote() 가 n.votes[pid] 를 덮어쓰므로 전환은 EV.vote 없이는 사라진다 — 이벤트 필수.'},
+    {id:'FREE', ko:'무임승차 지수', axis:'social', obs:'auto', src:'CONF + NOM_LEAD',
+     f:'CONF × (1 − NOM_LEAD)', r:[0,1],
+     note:'항상 다수에 붙으면서 스스로는 지명하지 않는 정도. 높다고 악은 아니다 — 태도 지표.'},
+    {id:'BAND', ko:'표 결집력', axis:'social', obs:'auto', src:'S.noms.hands + nom.result',
+     f:'P(통과 | 내가 거수) − P(통과)', r:[-1,1],
+     note:'상관이지 인과가 아니다. n.hands 배열 순서는 사회자의 탭 순서라 "누가 먼저 손을 들었나"는 관측 불가 — EXCLUDED 참조.'},
+    {id:'CROSS', ko:'교차 투표율', axis:'social', obs:'auto', src:'S.noms.votes + isEvil()',
+     f:'내 찬성표 중 피지명자가 상대 진영인 비율', r:[0,1],
+     note:'앱은 진짜 진영(p.alignment / charOf().type)을 알고 있으므로 완전 자동.'},
+
+    /* ▸ 악한 팀 */
+    {id:'SURV', ko:'생존 지수', axis:'evil', obs:'auto', src:'p.diedAt + S.phase',
+     f:'(diedAt ? diedAt.n : 현재 낮) / expDays(p0)', r:[0,'∞']},
+    {id:'HEAT_SURV', ko:'지명열 생존', axis:'evil', obs:'auto', src:'S.noms(nominee=나) + p.alive',
+     f:'Σ_나를 향한 지명 (nom.ratio × lev(그때 생존자,p0)) × (생존 시 1 / 처형 시 0)', r:[0,'∞'],
+     note:'"의심을 얼마나 사고도 살아남았나" = 기만 성공의 관측 가능한 대리지표. 발화를 듣지 않고도 잰다.'},
+    {id:'xPOLI', ko:'정치질', axis:'evil', obs:'auto', src:'S.noms + isEvil()',
+     f:'Σ_내 찬성표 1{피지명자 선} × nom.ratio × w{alive,p0,yes,need} − Σ_내 찬성표 1{피지명자 악} × …', r:['-∞','∞'],
+     note:'자기 팀이 아닌 사람에게 표를 몰아준 정도. 악한 플레이어의 핵심 지표.'},
+    {id:'BLUFF_HOLD', ko:'블러프 유지', axis:'evil', obs:'semi', src:'EV.claim + p.diedAt',
+     f:'(마지막 claim 이후 생존 낮 수) / (첫 claim 이후 생존 낮 수), claim 이 하나면 1', r:[0,1],
+     note:'선언 자체가 발화이므로 claim 이벤트(사회자 1탭) 없이는 관측 불가. 없으면 비운다.'},
+
+    /* ▸ 외지인 */
+    {id:'OUT_SAINT', ko:'성자 미끼', axis:'outsider', obs:'auto', src:'S.noms(nominee=성자) + EV.exec',
+     f:'max(nom.ratio | 나를 향한 지명) − 1{처형됨} × 3.0', r:['-∞',1],
+     note:'성자 처형은 즉시 패배이므로 EXEC_VAL 이 아니라 게임 종결 가치 3.0 을 뺀다.'},
+    {id:'OUT_BUTLER', ko:'집사 비용', axis:'outsider', obs:'auto', src:'nom.butlerVoided',
+     f:'무효 처리된 찬성 수 × piv(yes,need)', r:[0,'∞'],
+     note:'closeBallot() 이 이미 n.butlerVoided 에 기록한다 — 추가 이벤트 없이도 관측된다.'},
+    {id:'OUT_SPILL', ko:'오정보 전파', axis:'outsider', obs:'semi', src:'EV.info(d.mal) + EV.share',
+     f:'Σ 1{shown≠truth 인 정보를 공개함} × tim(공개 낮, p0)', r:[0,'∞'],
+     note:'주정뱅이·중독자가 받은 거짓을 실제로 퍼뜨렸는지는 share 이벤트가 있어야 안다.'},
+    {id:'OUT_KLUTZ', ko:'얼뜨기 판정', axis:'outsider', obs:'auto', src:"evalWinEvent('klutz')",
+     f:'지목 대상이 악이면 −3.0, 선이면 0', r:[-3,0]},
+
+    /* ▸ 악마 */
+    {id:'xKILL', ko:'살해 효율', axis:'demon', obs:'auto', src:'EV.attack + EV.death',
+     f:'Σ_성공한 살해 (KILL_VAL[type] + 정보역할가산 − baseKill(생존 구성)) × lev(생존자,p0)', r:['-∞','∞']},
+    {id:'KILL_LAND', ko:'명중률', axis:'demon', obs:'auto', src:'EV.attack(d.blocked)',
+     f:'blocked==null 인 공격 수 / 전체 공격 수', r:[0,1],
+     note:'보호·군인·선원·찻집 여인 차단은 deathBlockReason() 이 이미 판정한다.'},
+    {id:'STAR_GAIN', ko:'별 넘기기 이득', axis:'demon', obs:'auto', src:'EV.star + EV.end',
+     f:'(넘긴 뒤 악 팀 생존 낮 수) − baseSurv(p0)', r:['-∞','∞'],
+     note:'doImpKill() 자살 분기에서 새 악마 pid 를 star 이벤트로 남기면 전 구간 자동.'},
+    {id:'DEMON_HEAT', ko:'악마 지명열 생존', axis:'demon', obs:'auto', src:'HEAT_SURV 와 동일 산식', f:'HEAT_SURV', r:[0,'∞']}
+  ],
+
+  /* ── ⑥ 관측 불가 — 대체 추정 금지 목록 ── */
+  EXCLUDED: [
+    {ko:'발화 내용·설득력·거짓말의 품질', why:'앱이 음성·텍스트를 전혀 수집하지 않는다.'},
+    {ko:'거수의 실제 선후(누가 먼저 손을 들었나)', why:'n.hands 배열 순서는 사회자가 탭한 순서다 — BotC 에서 손은 동시에 올라간다.'},
+    {ko:'찬반 투표 안의 호명 순서 반응', why:'nom.votes 는 pid 키 객체라 순서를 보존하지 않는다. EV.vote 로 "사회자가 기록한 순서"까지만 복원되며 그 이상은 관측 불가.'},
+    {ko:'첩자·은둔자 등록 재량이 정보에 준 왜곡', why:'재량 판정을 남기는 지점이 코드에 없다(사회자 머릿속).'},
+    {ko:'사적 대화·귓속말·눈치', why:'관측 지점 없음.'},
+    {ko:'관료·도둑의 표 배수 보정', why:'앱 집계는 1인 1표 고정이고 보정은 수동 안내뿐이다 — 표 가중이 어긋나므로 여행자 참여 게임은 xEXE 를 참고치로만 쓴다.'}
+  ]
+};
+
 /* ══════════════════ 상태 ══════════════════ */
 const LS_KEY = 'thyrsus.tb.v1';
 const blank = () => ({
   phase:{kind:'setup', n:0},
   players:[], log:[], nightDone:{}, checks:{}, noms:[],
   edition:'tb', redHerringId:null, drunkMaskChar:null, executedToday:null, executedPrevDay:null,
-  customs:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null, daPrev:null,
+  customs:[], roster:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null, daPrev:null,
   pukkaVictimId:null, mastermindDay:null, executedTodayPid:null, executedDiedToday:null,
-  fangGuJumped:false, demonBlockedNight:null, demonBlockedPid:null, schema:2
+  fangGuJumped:false, demonBlockedNight:null, demonBlockedPid:null, dayTimer:null,
+  events:[], evSeq:0, schema:2
 });
 let S = blank();
 /* 구버전 저장본 정규화. 최상위 Object.assign 만으로는 플레이어·지명의 신규 필드가 비어
@@ -843,7 +1077,7 @@ function migrateState(raw){
   if(typeof st.phase.n!=='number') st.phase.n=0;
   st.players=(Array.isArray(st.players)? st.players:[]).filter(p=>p&&typeof p==='object').map(p=>{
     const q=Object.assign({id:mkid(), name:'?', charId:'', alive:true, deadVote:true,
-      statuses:[], notes:'', alignment:null, diedAt:null}, p);
+      statuses:[], notes:'', alignment:null, diedAt:null, rosterId:null}, p);
     if(!Array.isArray(q.statuses)) q.statuses=[];
     q.statuses=q.statuses.filter(x=>x&&typeof x==='object'&&typeof x.key==='string');
     if(typeof q.notes!=='string') q.notes='';
@@ -860,7 +1094,25 @@ function migrateState(raw){
     if(!m.votes||typeof m.votes!=='object') m.votes={};
     return m;
   });
-  ['log','customs'].forEach(k=>{ if(!Array.isArray(st[k])) st[k]=[]; });
+  ['log','customs','events'].forEach(k=>{ if(!Array.isArray(st[k])) st[k]=[]; });
+  /* SABER 원장 정규화 — 레코드 계약(SABER.EV)에 맞지 않는 항목은 버린다.
+     원장이 커지면 localStorage 를 삼키므로 상한 초과분은 오래된 쪽부터 잘라낸다. */
+  st.events=st.events.filter(e=>e&&typeof e==='object'&&typeof e.t==='string'&&SABER.EV[e.t])
+    .map(e=>Object.assign({i:0, k:'setup', n:0, a:null, b:null, d:{}}, e));
+  if(st.events.length>SABER.MAX_EVENTS) st.events=st.events.slice(-SABER.MAX_EVENTS);
+  st.evSeq=Math.max(st.evSeq|0, st.events.reduce((m,e)=>Math.max(m,e.i|0),0));
+  /* 플레이어 등록부: 이름만 필수, 소속·나이는 선택. 이름 없는 항목은 버린다 */
+  st.roster=(Array.isArray(st.roster)? st.roster:[]).filter(r=>r&&typeof r==='object').map(r=>{
+    const e=Object.assign({id:mkid(), name:'', affil:'', age:null, createdAt:0}, r);
+    e.name=String(e.name==null?'':e.name).trim().slice(0,40);
+    e.affil=String(e.affil==null?'':e.affil).trim().slice(0,40);
+    const a=parseInt(e.age,10); e.age=Number.isFinite(a)? a : null;
+    if(typeof e.createdAt!=='number') e.createdAt=0;
+    return e;
+  }).filter(r=>r.name);
+  /* 사라진 등록부 항목을 가리키는 rosterId 는 끊는다(통계 오귀속 방지) */
+  const ridSet=new Set(st.roster.map(r=>r.id));
+  st.players.forEach(p=>{ if(p.rosterId && !ridSet.has(p.rosterId)) p.rosterId=null; });
   ['nightDone','checks'].forEach(k=>{ if(!st[k]||typeof st[k]!=='object') st[k]={}; });
   st.schema=2;
   return st;
@@ -1199,7 +1451,7 @@ function compVariants(n, mods){
 }
 function ensureSeats(target){
   target=Math.max(1,Math.min(15,target));
-  while(S.players.length<target) S.players.push({id:uid(), name:'', charId:'', alive:true, deadVote:true, statuses:[], notes:''});
+  while(S.players.length<target) S.players.push({id:uid(), rosterId:null, name:'', charId:'', alive:true, deadVote:true, statuses:[], notes:''});
   while(S.players.length>target) S.players.pop();
   save(); renderAll();
 }
@@ -1251,6 +1503,7 @@ function renderSetup(){
   if(step===1){
     if(!S.players.length) ensureSeats(7);
     body=`<p class="hint">위→아래 순서가 <b>시계 방향 좌석 순서</b>입니다. 요리사·초공감자 판정에 그대로 쓰이니 실제 착석 순서대로 입력하세요.</p>
+    ${renderRosterPicker()}
     <div class="row" style="margin-bottom:12px">
       <span class="hint">인원</span>
       <button class="small" onclick="ensureSeats(${n-1})" ${n<=5?'disabled':''}>−</button>
@@ -1265,6 +1518,7 @@ function renderSetup(){
            ondrop="seatDrop(event,'${p.id}')" ondragend="seatDragEnd(event)">
         <span class="draghandle" title="드래그로 좌석 이동">⠿</span>
         <span class="snum">${String(i+1).padStart(2,'0')}</span>
+        ${p.rosterId?`<span class="rosbadge" title="등록부에서 가져온 참가자">👤</span>`:''}
         <input value="${esc(p.name)}" placeholder="${i+1}번 좌석 이름" oninput="renamePlayer('${p.id}',this.value)">
         <button class="small ghost" onclick="movePlayer('${p.id}',-1)" title="위로">↑</button>
         <button class="small ghost" onclick="movePlayer('${p.id}',1)" title="아래로">↓</button>
@@ -1276,6 +1530,8 @@ function renderSetup(){
     body=`
     <div class="row" style="margin-bottom:10px">
       <button class="primary" onclick="randomAssign()" ${n<5?'disabled':''}>🎲 무작위 배정</button>
+      <button onclick="shuffleSeats()" ${n<2?'disabled':''}>🔀 자리 섞기</button>
+      <button class="ghost" onclick="clearAssign()">배정 전체 비우기</button>
       <span class="hint">또는 아래에서 직접 선택</span>
     </div>
     ${comps?`<p class="hint">권장 구성 (${n}인${modLabel?` · ${modLabel} 적용`:''}): ${comps.map(comp=>`<span class="pill townsfolk">주민 ${comp[0]}</span> <span class="pill outsider">외지인 ${comp[1]}</span> <span class="pill minion">하수인 ${comp[2]}</span> <span class="pill demon">악마 ${comp[3]}</span>`).join(' <span class="hint" style="display:inline">또는</span> ')}
@@ -1338,8 +1594,108 @@ function charCard(c){
   ${(c.warn&&c.warn.length)?`<details class="morebox"><summary>사회자 노트 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div></details>`:''}
   </div>`;
 }
-function addPlayer(){ const v=$('#newpname').value.trim(); if(!v) return; if(S.players.length>=15){toast('최대 15명','warn');return;}
-  S.players.push({id:uid(), name:v, charId:'', alive:true, deadVote:true, statuses:[], notes:'', alignment:null, diedAt:null}); $('#newpname').value=''; save(); renderAll(); }
+/* 직접 입력 폴백 — 등록부가 비어 있을 때 쓰는 즉석 추가. 인자 없이 부르면 #newpname 을 읽는다 */
+function addPlayer(name){
+  const el=$('#newpname');
+  const v=String(name!=null? name : (el? el.value:'')).trim();
+  if(!v) return;
+  if(S.players.length>=15){toast('최대 15명','warn');return;}
+  S.players.push({id:uid(), rosterId:null, name:v, charId:'', alive:true, deadVote:true, statuses:[], notes:'', alignment:null, diedAt:null});
+  if(el) el.value='';
+  save(); renderAll();
+}
+
+/* ══════════════════ 플레이어 등록부(로스터) ══════════════════
+   게임마다 이름을 다시 타이핑하지 않도록 사람 단위 명부를 유지한다.
+   게임 내 플레이어 객체에 rosterId 를 달아 통계가 사람 단위로 누적된다. */
+function rosterList(){ if(!Array.isArray(S.roster)) S.roster=[]; return S.roster; }
+function rosterOf(rid){ return rosterList().find(r=>r.id===rid); }
+function rosterSeatOf(rid){ return S.players.find(p=>p.rosterId===rid); }
+function rosterAdd(){
+  const nameEl=$('#rosName'), afEl=$('#rosAffil'), ageEl=$('#rosAge');
+  const name=String(nameEl? nameEl.value:'').trim();
+  if(!name){ toast('이름은 필수입니다.','warn'); return; }
+  const a=parseInt(ageEl? ageEl.value:'',10);
+  rosterList().push({id:uid(), name:name.slice(0,40), affil:String(afEl? afEl.value:'').trim().slice(0,40),
+    age:Number.isFinite(a)? a : null, createdAt:Date.now()});
+  if(nameEl) nameEl.value=''; if(afEl) afEl.value=''; if(ageEl) ageEl.value='';
+  save(); renderAll();
+}
+/* 인라인 편집 — 렌더를 다시 돌리면 포커스가 날아가므로 save() 만 한다 */
+function rosterEdit(rid, field, v){
+  const r=rosterOf(rid); if(!r) return;
+  if(field==='name'){
+    const t=String(v).trim(); if(!t) return;          // 이름은 비울 수 없다
+    r.name=t.slice(0,40);
+    S.players.filter(p=>p.rosterId===rid).forEach(p=>p.name=r.name);
+  }
+  else if(field==='affil') r.affil=String(v).trim().slice(0,40);
+  else if(field==='age'){ const n=parseInt(v,10); r.age=Number.isFinite(n)? n : null; }
+  else return;
+  save();
+}
+function rosterDel(rid){
+  S.roster=rosterList().filter(r=>r.id!==rid);
+  S.players.forEach(p=>{ if(p.rosterId===rid) p.rosterId=null; });   // 진행 중 게임은 유지, 연결만 끊는다
+  save(); renderAll();
+}
+/* 등록부 칩 토글 — 참가자 목록에 넣거나 뺀다. 빈 좌석이 있으면 새로 밀지 않고 그 좌석을 채운다 */
+function rosterToggle(rid){
+  const r=rosterOf(rid); if(!r) return;
+  const seat=rosterSeatOf(rid);
+  if(seat){ S.players=S.players.filter(p=>p.id!==seat.id); save(); renderAll(); return; }
+  const empty=S.players.find(p=>!String(p.name||'').trim() && !p.charId && !p.rosterId);
+  if(empty){ empty.name=r.name; empty.rosterId=rid; save(); renderAll(); return; }
+  if(S.players.length>=15){ toast('최대 15명','warn'); return; }
+  S.players.push({id:uid(), rosterId:rid, name:r.name, charId:'', alive:true, deadVote:true,
+    statuses:[], notes:'', alignment:null, diedAt:null});
+  save(); renderAll();
+}
+/* 이름·소속은 사용자 입력이므로 전부 esc(). 인라인 onclick 보간 금지 — data-* + 위임 리스너 */
+function renderRosterPicker(){
+  const list=rosterList();
+  const chips = list.length
+    ? `<div class="roschips">${list.map(r=>{
+        const meta=[r.affil||'', (r.age!=null&&r.age!=='')? r.age+'세':''].filter(Boolean).join(' · ');
+        return `<button type="button" class="roschip ${rosterSeatOf(r.id)?'on':''}" data-roschip="${esc(r.id)}">
+          <span class="rcname">${esc(r.name)}</span>
+          <span class="rcmeta">${esc(meta||'—')}</span>
+        </button>`;
+      }).join('')}</div>`
+    : `<p class="hint">등록된 플레이어가 없습니다 — 아래에서 등록하거나, 좌석에 이름을 직접 입력하세요.</p>`;
+  return `<div class="rosbox">
+    <div class="secthead"><span class="shicon">👤</span> 등록부에서 참가자 선택</div>
+    ${chips}
+    <details class="morebox" style="margin-top:10px"><summary>플레이어 등록부 관리 (${list.length}명)</summary><div class="inner">
+      <div class="rosform">
+        <input id="rosName" placeholder="이름 (필수)" maxlength="40" onkeydown="if(event.key==='Enter')rosterAdd()">
+        <input id="rosAffil" placeholder="소속 (선택)" maxlength="40" onkeydown="if(event.key==='Enter')rosterAdd()">
+        <input id="rosAge" type="number" min="0" max="120" placeholder="나이" onkeydown="if(event.key==='Enter')rosterAdd()">
+        <button class="small primary" data-rosadd="1">등록</button>
+      </div>
+      ${list.length? `<div>${list.map(r=>`
+        <div class="rosrow">
+          <input value="${esc(r.name)}" data-rosedit="${esc(r.id)}" data-rosfield="name" placeholder="이름" maxlength="40">
+          <input value="${esc(r.affil||'')}" data-rosedit="${esc(r.id)}" data-rosfield="affil" placeholder="소속" maxlength="40">
+          <input value="${r.age==null?'':esc(r.age)}" data-rosedit="${esc(r.id)}" data-rosfield="age" type="number" min="0" max="120" placeholder="나이">
+          <button class="small danger ghost" data-rosdel="${esc(r.id)}" title="등록 삭제">✕</button>
+        </div>`).join('')}</div>`
+      : `<p class="hint">이름만 넣어도 됩니다. 소속·나이는 나중에 채울 수 있습니다.</p>`}
+    </div></details>
+  </div>`;
+}
+document.addEventListener('click', e=>{
+  const t=e.target.closest && e.target.closest('[data-roschip],[data-rosdel],[data-rosadd]');
+  if(!t) return;
+  if(t.hasAttribute('data-rosadd')) rosterAdd();
+  else if(t.hasAttribute('data-rosdel')) rosterDel(t.getAttribute('data-rosdel'));
+  else rosterToggle(t.getAttribute('data-roschip'));
+});
+document.addEventListener('input', e=>{
+  const t=e.target.closest && e.target.closest('[data-rosedit]');
+  if(!t) return;
+  rosterEdit(t.getAttribute('data-rosedit'), t.getAttribute('data-rosfield'), t.value);
+});
 function removePlayer(pid){ S.players=S.players.filter(p=>p.id!==pid); save(); renderAll(); }
 function movePlayer(pid,d){ const i=S.players.findIndex(p=>p.id===pid); const j=i+d; if(j<0||j>=S.players.length)return;
   [S.players[i],S.players[j]]=[S.players[j],S.players[i]]; save(); renderAll(); }
@@ -1348,6 +1704,29 @@ function setChar(pid,cid){ const p=playerOf(pid); p.charId=cid;
   p.statuses=(p.statuses||[]).filter(s=>!(s.key==='drunkS' && s.source==='주정뱅이'));
   if(cid==='drunk' && !hasStatus(p,'drunkS')) addStatus(p,'drunkS','주정뱅이',null);
   save(); renderAll(); }
+/* 좌석 순서를 무작위로 섞는다 — 캐릭터 배정은 그대로 두고 앉은 자리만 바꾼다.
+   이웃 판정(요리사·초공감자·찻집 여인 등)이 좌석 순서에 의존하므로 배정 전에 쓰는 게 안전하다. */
+function shuffleSeats(){
+  if(S.players.length<2) return;
+  if(S.phase.kind!=='setup' && !confirm('게임이 이미 진행 중입니다. 좌석을 섞으면 이웃 기반 판정(요리사·초공감자·찻집 여인 등)이 모두 바뀝니다. 계속할까요?')) return;
+  for(let i=S.players.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [S.players[i],S.players[j]]=[S.players[j],S.players[i]];
+  }
+  log('🔀 자리 섞기 — 좌석 순서 무작위 재배치');
+  toast('좌석을 섞었습니다. 이웃 기반 판정이 바뀌었으니 그리모어를 확인하세요.','ok');
+  save(); renderAll();
+}
+/* 캐릭터 배정만 전부 지운다 — 플레이어·좌석은 유지 */
+function clearAssign(){
+  if(!S.players.some(p=>p.charId)){ toast('배정된 캐릭터가 없습니다.','warn'); return; }
+  if(!confirm('모든 플레이어의 캐릭터 배정을 지웁니다. 플레이어와 좌석은 유지됩니다. 계속할까요?')) return;
+  S.players.forEach(p=>{ p.charId=''; p.alignment=null;
+    p.statuses=(p.statuses||[]).filter(x=>x.key!=='drunkS'&&x.key!=='herring'); });
+  S.drunkMaskChar=null; S.redHerringId=null;
+  log('배정 전체 비우기');
+  save(); renderAll();
+}
 function setHerring(pid){ S.redHerringId=pid;
   S.players.forEach(p=>p.statuses=(p.statuses||[]).filter(s=>s.key!=='herring'));
   const p=playerOf(pid); if(p) addStatus(p,'herring','점쟁이 셋업',null);
@@ -3500,14 +3879,14 @@ sailor:{first:[
 courtier:{first:[
   {t:'wake'},
   {t:'note',text:'궁정대신에게 발동 여부를 손짓으로 확인하세요(게임 중 단 1회). 발동하지 않으면 하단 "다음" 버튼으로 지목·판정 화면을 건너뛰고 재우세요.'},
-  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(플레이어 아님)',storeAs:'tok'},
+  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(플레이어 아님)',storeAs:'tok',optional:true},
   {t:'effect',fn:'doCourtierDrunk',from:'tok'},
   {t:'note',text:'보유자에게 🍺토큰(3밤+3낮, 만료 밤 시작 시 자동 해제)과 ✔소진이 자동 기록됩니다. 게임에 없는 캐릭터였다면 아무 일 없이 능력만 소진됩니다.'},
   {t:'sleep'}],
  other:[
   {t:'wake'},
   {t:'note',text:'아직 능력을 쓰지 않았다면 발동 여부만 확인하세요. 발동 시 다음 화면에서 캐릭터를 고르고 판정을 실행하며, 미발동이면 "다음"으로 건너뛰어 재웁니다. 이미 소진했다면 깨울 필요가 없습니다.'},
-  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(발동 시에만)',storeAs:'tok'},
+  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(발동 시에만)',storeAs:'tok',optional:true},
   {t:'effect',fn:'doCourtierDrunk',from:'tok'},
   {t:'note',text:'발동했다면 보유자에게 🍺(3밤+3낮)과 ✔소진이 자동 기록됩니다. 없는 캐릭터면 소진만 됩니다.'},
   {t:'sleep'}]},
@@ -3593,7 +3972,7 @@ po:{other:[
 assassin:{other:[
   {t:'note',text:'게임 중 단 1회 발동. 이미 소진했다면 깨울 필요 없습니다. 깨워서 발동 여부를 손짓으로 확인하고, 미발동이면 그냥 재우세요.'},
   {t:'wake'},
-  {t:'pick-player',n:1,who:'player',label:'암살자가 노린 대상(발동 시에만)',filter:'any',storeAs:'tgt'},
+  {t:'pick-player',n:1,who:'player',label:'암살자가 노린 대상(발동 시에만)',filter:'any',storeAs:'tgt',optional:true},
   {t:'effect',fn:'doStepKill',from:'tgt'},
   {t:'note',text:'암살자의 살해는 모든 보호·면역(여관 주인·찻집 여인·어릿광대·멀쩡한 선원 등)을 관통합니다 — 다른 이유로 살아남았다면 수동으로 사망 처리하세요. 발동했다면 밤 패널에서 ✔소진을 기록합니다.'},
   {t:'sleep'}]},
@@ -3668,13 +4047,13 @@ Object.assign(NIGHT_FLOW,{
 philosopher:{first:[
   {t:'wake',text:'발동할지 물어보세요 — 1회성이므로 미발동이면 그대로 재웁니다.'},
   {t:'note',text:'발동하지 않으면 "완료"로 닫고 재우세요. 발동하면 다음 화면에서 철학자가 고른 캐릭터를 선택합니다.'},
-  {t:'pick-character',pool:'good-characters',label:'철학자가 선택한 선한 캐릭터',storeAs:'gain'},
+  {t:'pick-character',pool:'good-characters',label:'철학자가 선택한 선한 캐릭터',storeAs:'gain',optional:true},
   {t:'note',text:'철학자는 지금부터 그 능력을 가집니다. ① 같은 캐릭터가 게임에 있으면 그 원 보유자에게 🍺영구 취함 토큰 ② 이후 밤에는 획득 캐릭터의 순서 위치에서 철학자를 깨우세요(밤 순서 수동 관리) ③ 획득 내용을 그리모어 메모에 기록.'},
   {t:'sleep'}],
  other:[
   {t:'note',text:'아직 미발동이라면 깨워 발동 의사만 확인하세요(발동 시 첫날 밤과 동일하게 캐릭터 선택). 이미 발동했다면 이 단계가 아니라 획득한 캐릭터의 밤 순서에서 그 능력으로 진행합니다.'},
   {t:'wake',text:'발동 의사 확인용 — 미발동 유지 시 바로 재우세요.'},
-  {t:'pick-character',pool:'good-characters',label:'(발동하는 경우만) 선택한 선한 캐릭터',storeAs:'gain'},
+  {t:'pick-character',pool:'good-characters',label:'(발동하는 경우만) 선택한 선한 캐릭터',storeAs:'gain',optional:true},
   {t:'note',text:'발동했다면: 원 보유자 🍺영구 취함 + 이후 밤 순서 수동 관리 + 그리모어 메모.'},
   {t:'sleep'}]},
 snakecharmer:{first:[
@@ -3744,14 +4123,14 @@ dreamer:{first:[
   {t:'sleep'}]},
 seamstress:{first:[
   {t:'wake',text:'1회성 발동 여부를 물어보세요 — 미발동이면 그대로 재웁니다.'},
-  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외, 사망자 가능)',filter:'any-not-self',storeAs:'pair'},
+  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외, 사망자 가능)',filter:'any-not-self',storeAs:'pair',optional:true},
   {t:'show-answer',options:['예','아니오'],suggest:'seamstressSame',caption:'두 명이 같은 진영인가'},
   {t:'note',text:'발동 소진을 그리모어에 표시하세요.'},
   {t:'sleep'}],
  other:[
   {t:'note',text:'이미 발동했다면 깨우지 않습니다. 미발동이면 깨워 발동 의사를 확인하세요.'},
   {t:'wake'},
-  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외, 사망자 가능)',filter:'any-not-self',storeAs:'pair'},
+  {t:'pick-player',n:2,who:'player',label:'(발동 시) 재봉사가 고른 두 명(자신 제외, 사망자 가능)',filter:'any-not-self',storeAs:'pair',optional:true},
   {t:'show-answer',options:['예','아니오'],suggest:'seamstressSame',caption:'두 명이 같은 진영인가'},
   {t:'note',text:'발동 소진을 그리모어에 표시하세요.'},
   {t:'sleep'}]},
@@ -3993,6 +4372,64 @@ renderNight=function(){
   _ntTick();
   if(!_ntInt) _ntInt=setInterval(_ntTick,1000);   /* 인터벌은 1개만 — span만 갱신, renderAll 재호출 없음 */
 };
+
+/* ══════════ 2-b) 낮 타이머 (renderDay 래핑) — teeroz 의 낮 제한시간 대응 ══════════ */
+let _dtInt=null;
+function _dtTick(){
+  if(S.phase.kind!=='day'){ const b=document.getElementById('daytimerbar'); if(b) b.remove(); return; }
+  const sp=document.getElementById('daytimer');
+  if(!sp || !S.dayTimer) return;
+  const s=Math.max(0, Math.floor((Date.now()-S.dayTimer.start)/1000));
+  sp.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  const lim=(S.dayTimer.limit|0);
+  if(lim>0){
+    const left=lim*60-s;
+    const w=document.getElementById('daytimerleft');
+    if(w){
+      w.textContent = left>0
+        ? `남은 시간 ${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`
+        : '시간 종료 — 지명을 마감하세요';
+      w.className = left>0? 'hint' : 'pill warn';
+    }
+  }
+}
+function setDayLimit(){
+  const v=prompt('낮 제한시간(분). 0 이면 제한 없음.', String((S.dayTimer&&S.dayTimer.limit)||0));
+  if(v===null) return;
+  const m=Math.max(0, parseInt(v,10)||0);
+  S.dayTimer=S.dayTimer||{start:Date.now(), n:S.phase.n};
+  S.dayTimer.limit=m; save(); _dtTick();
+  toast(m? `낮 제한시간 ${m}분 설정` : '낮 제한시간 해제','ok');
+}
+function resetDayTimer(){ S.dayTimer={start:Date.now(), n:S.phase.n, limit:(S.dayTimer&&S.dayTimer.limit)||0}; save(); _dtTick(); }
+(function(){
+  const _origRenderDay=renderDay;
+  renderDay=function(){
+    _origRenderDay();
+    if(S.phase.kind!=='day'){ const b=document.getElementById('daytimerbar'); if(b) b.remove(); return; }
+    if(!S.dayTimer || S.dayTimer.n!==S.phase.n) S.dayTimer={start:Date.now(), n:S.phase.n, limit:(S.dayTimer&&S.dayTimer.limit)||0};
+    $('#pane-day').insertAdjacentHTML('afterbegin',
+      `<div id="daytimerbar" class="card" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px">
+        <span>☀ 낮 ${S.phase.n} 경과</span>
+        <span id="daytimer" class="num" style="font-size:20px;font-weight:700">00:00</span>
+        <span id="daytimerleft" class="hint">${S.dayTimer.limit? '' : '제한 없음'}</span>
+        <button class="small" onclick="setDayLimit()">제한시간</button>
+        <button class="small ghost" onclick="resetDayTimer()">리셋</button>
+        <button class="small danger ghost" style="margin-left:auto" onclick="endGameManually()">🏁 게임 종료</button>
+      </div>`);
+    _dtTick();
+    if(!_dtInt) _dtInt=setInterval(_dtTick,1000);
+  };
+})();
+
+/* 페이즈가 낮이 아니게 되면 낮 타이머 바를 즉시 제거한다(탭을 안 열어도) */
+(function(){
+  const _adv=advancePhase;
+  advancePhase=function(){
+    _adv();
+    if(S.phase.kind!=='day'){ const b=document.getElementById('daytimerbar'); if(b) b.remove(); }
+  };
+})();
 
 /* ══════════ 3) 리플레이(전말) 요약 ══════════ */
 function _rpIcon(m){
@@ -4309,6 +4746,13 @@ function startRevealWiz(){
 .handoff-btn .hname{font-size:16px;font-weight:700}
 .handoff-btn.me{border-color:var(--accent);opacity:.75}
 .handoff-btn.sel{border-color:var(--ok);background:var(--ok-soft);box-shadow:0 0 0 2px var(--ok)}
+.handoff-btn.dead{opacity:.5}
+.handoff-btn{min-height:64px}
+/* 위저드 푸터 버튼: 한국어가 글자 단위로 줄바꿈되던 문제 — 통째로 유지하고 가로 스크롤 */
+#wizfoot{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
+#wizfoot button{white-space:nowrap;word-break:keep-all;flex:0 0 auto;min-height:44px}
+#wizfoot button.hofoot{flex:1 1 auto;min-width:0}
+.hoBtn{white-space:nowrap}
 #gameover{position:fixed;inset:0;z-index:98;background:rgba(6,3,14,.85);display:flex;align-items:center;justify-content:center;padding:20px}
 #gameover[hidden]{display:none!important}
 #gameover .gocard{background:var(--panel);border:2px solid var(--accent);border-radius:18px;max-width:560px;width:100%;padding:34px 26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.7)}
@@ -4379,6 +4823,17 @@ function showDawn(){
   wiz.idx=0; renderWiz();
 }
 /* ══ B4: 종료 결과 화면 ══ */
+/* 사회자가 임의로 게임을 끝낸다 — 판정이 자동으로 안 걸리는 상황(합의 종료·중단) 대응 */
+function endGameManually(){
+  if(S.gameOver){ toast('이미 종료된 게임입니다.','warn'); return; }
+  const t=prompt('게임을 종료합니다. 승리 팀을 입력하세요 — 1: 선한 팀 · 2: 악한 팀 · 3: 무승부/중단','1');
+  if(t===null) return;
+  const map={'1':['good','선한 팀 승리(사회자 선언)'],'2':['evil','악한 팀 승리(사회자 선언)'],'3':['good','무승부·중단(사회자 선언)']};
+  const pick=map[String(t).trim()]; if(!pick){ toast('1·2·3 중 하나를 입력하세요.','warn'); return; }
+  const why=prompt('사유(선택)','')||pick[1];
+  S.gameOver=true; save();
+  showGameOver(pick[0], why);
+}
 function showGameOver(team, reason){
   const el=$('#gameover'); el.hidden=false;
   el.innerHTML=`<div class="gocard">
@@ -4420,34 +4875,68 @@ function startHandoff(storeAs,n,filter,label){
     const ib=(S.players.indexOf(b)-start+S.players.length)%S.players.length;
     return ia-ib;
   });
-  handoff={storeAs,n,ordered,holder};
+  handoff={storeAs,n,ordered,holder,label};
   renderHandoff();
 }
 function renderHandoff(){
   const sel=(wiz.vars[handoff.storeAs]||[]);
-  $('#wizhead').innerHTML=`<span class="wtitle">📱 플레이어에게 전달됨</span><span class="wstep">${sel.length}/${handoff.n}</span>`;
+  const sc=wiz.scenes[wiz.idx];
+  const optional=!!(sc&&sc.optional);
+  const done=sel.length>=handoff.n;
+  $('#wizhead').innerHTML=`<span class="wtitle">${esc(handoff.holder?handoff.holder.name:'플레이어')}님, 직접 선택하세요</span>`+
+    `<span class="wstep num">${sel.length}/${handoff.n}</span>`;
   $('#wizbody').innerHTML=`
-    <div class="wiz-caption">아래에서 당신의 대상을 직접 선택하세요 (${sel.length}/${handoff.n})</div>
+    <div class="wiz-caption">${esc(handoff.label||'대상을 선택하세요')}</div>
     <div class="handoff-list">${handoff.ordered.map(p=>{
       const me=p===handoff.holder;
-      return `<div class="handoff-btn ${me?'me':''} ${sel.includes(p.id)?'sel':''}" onclick="handoffPick('${p.id}')">
+      return `<div class="handoff-btn ${me?'me':''} ${sel.includes(p.id)?'sel':''} ${p.alive?'':'dead'}" data-hopick="${esc(p.id)}">
         <span class="hnum num">${S.players.indexOf(p)+1}</span>
-        <span class="hname">${esc(p.name)}${me?' (나)':''}</span></div>`;}).join('')}</div>`;
+        <span class="hname">${esc(p.name)}${me?' (나)':''}${p.alive?'':' 💀'}</span></div>`;}).join('')}</div>
+    ${optional?'<div class="wiz-note hint" style="margin-top:14px">이 능력은 사용하지 않아도 됩니다.</div>':''}`;
   $('#wizbody').onclick=null;
-  $('#wizfoot').innerHTML=`<button class="primary" onclick="endHandoff()">↩ 이야기꾼에게 넘겨주기</button>`;
+  $('#wizfoot').innerHTML=
+    `<button class="hofoot ghost" onclick="useSTInput()">🧑‍⚖️ 사회자가 대신 입력</button>`+
+    (optional?`<button class="hofoot" onclick="handoffSkip()">이번 턴에 선택 안 함</button>`:'')+
+    `<button class="hofoot primary" ${done?'':'disabled'} onclick="endHandoff()">↩ 이야기꾼에게 전달</button>`;
 }
+function handoffSkip(){
+  const key=handoff.storeAs;
+  wiz.vars[key]=[]; wiz.skipped=wiz.skipped||{}; wiz.skipped[key]=true;
+  log(`${wizTitle()}: 이번 턴 능력 미사용(선택 안 함)`);
+  handoff=null; save(); wizNext();
+}
+document.addEventListener('click', e=>{
+  const b=e.target.closest && e.target.closest('[data-hopick]');
+  if(b && handoff) handoffPick(b.getAttribute('data-hopick'));
+});
 function handoffPick(pid){
   const arr=wiz.vars[handoff.storeAs]=wiz.vars[handoff.storeAs]||[];
   const i=arr.indexOf(pid);
   if(i>=0) arr.splice(i,1); else { if(arr.length>=handoff.n) arr.shift(); arr.push(pid); }
   renderHandoff();
 }
-function endHandoff(){ handoff=null; renderWiz(); }
-/* pick-player 씬에 기기 전달 버튼 + dawn 씬 렌더 지원 */
+/* 플레이어가 이야기꾼에게 돌려주면 그 씬은 끝난 것 — 다음 씬으로 넘어간다.
+   renderWiz() 를 그대로 부르면 같은 씬이라 다시 기기 전달 화면으로 되돌아간다. */
+function endHandoff(){ handoff=null; wizNext(); }
+/* teeroz 방식: who:'player' 지목은 '사회자가 대신 입력'이 아니라
+   기기를 플레이어에게 넘겨 본인이 직접 고르는 것이 기본 흐름이다.
+   사회자 대리 입력은 예외(stHandoffOverride)로만 허용한다. */
+let stHandoffOverride=null;   // 이 씬만 사회자가 대신 입력 (씬 인덱스)
+function handoffScene(sc){ return sc && sc.t==='pick-player' && sc.who==='player'; }
+function useSTInput(){ stHandoffOverride=wiz? wiz.idx : null; handoff=null; renderWiz(); }
+function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
 (function(){
   const _rw=renderWiz;
   renderWiz=function(){
     if(handoff){ renderHandoff(); return; }
+    // 플레이어 대면 지목 씬이면 자동으로 기기 전달 모드로 들어간다
+    if(wiz && !wiz.custom){
+      const sc0=wiz.scenes[wiz.idx];
+      if(handoffScene(sc0) && stHandoffOverride!==wiz.idx){
+        startHandoff(sc0.storeAs, sc0.n, sc0.filter, sc0.label);
+        return;
+      }
+    }
     const sc=wiz&&wiz.scenes[wiz.idx];
     if(sc && sc.t==='dawn'){
       $('#wizhead').innerHTML=`<span class="wtitle">🌅 새벽</span><span class="wstep">밤 ${S.phase.n}</span>`;
@@ -4465,8 +4954,8 @@ function endHandoff(){ handoff=null; renderWiz(); }
       const foot=$('#wizfoot');
       if(foot && !foot.querySelector('.hoBtn')){
         const b=document.createElement('button');
-        b.className='hoBtn'; b.textContent='📱 기기 전달';
-        b.onclick=()=>startHandoff(sc.storeAs, sc.n, sc.filter, sc.label);
+        b.className='hoBtn'; b.textContent='📱 플레이어에게';
+        b.onclick=()=>backToPlayer();
         foot.insertBefore(b, foot.firstChild);
       }
     }
@@ -4574,6 +5063,23 @@ function showCharInfo(cid){
 .rostercell.done{border-color:var(--ok);background:var(--ok-soft)}
 .rostercell.done::after{content:'✓ 확인함';font-size:11px;color:var(--ok)}
 .wizextra{display:flex;gap:6px;margin-top:12px;justify-content:center}
+/* ── 플레이어 등록부 ── */
+.rosbox{margin:10px 0 14px}
+.roschips{display:flex;flex-wrap:wrap;gap:8px}
+.roschip{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 12px;border-radius:12px;
+  background:var(--raised);border:2px solid var(--line);cursor:pointer;min-height:auto;text-align:left}
+.roschip .rcname{font-size:14px;font-weight:700}
+.roschip .rcmeta{font-size:11.5px;color:var(--muted)}
+.roschip.on{border-color:var(--accent);background:var(--accent-soft)}
+.roschip.on .rcname::before{content:'✓ '}
+.rosform{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.rosform input{min-width:110px;flex:1}
+.rosform input[type=number]{max-width:88px;flex:0 0 auto}
+.rosrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.rosrow:last-child{border-bottom:none}
+.rosrow input{min-width:100px;flex:1}
+.rosrow input[type=number]{max-width:80px;flex:0 0 auto}
+.rosbadge{font-size:12px;color:var(--muted)}
 </style>
 
 <script>
@@ -4678,6 +5184,8 @@ function wizClearPick(){
   renderWiz=function(){
     _rw();
     const sc=wiz&&wiz.scenes[wiz.idx];
+    // 플레이어에게 기기를 넘긴 화면에는 사회자용 보조 버튼을 노출하지 않는다
+    if(handoff) return;
     if(sc && (sc.t==='pick-character'||sc.t==='pick-player') && !document.querySelector('.wizextra')){
       const body=$('#wizbody');
       if(body){
