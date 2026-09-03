@@ -404,6 +404,28 @@ function loadRegion(id, cb){
   sc.onerror=()=>cb();
   document.head.appendChild(sc);
 }
+// ---------- detail 큐브 지연 로드 (분리 2단계, 2026-09-03) ----------
+// 웹 샤드에서 분리된 P.detail(data_<r>_detail.js/PSHD)을 상세·국가·의류 진입 시에만 로드.
+// 오프라인·1단계 샤드는 detail 내장이라 needDetail=false → fetch 자체가 없다.
+// ui/patch.js 가 자체 로더를 실어도 haveDetail 선검사로 무해 공존한다.
+const _DTRIED={};
+function mergeDetailShard(reg){ const d=window.PSHD&&window.PSHD[reg]; if(!d||!d.detail) return;
+  Object.assign(P.detail, d.detail);
+  const sh=window.PSH&&window.PSH[reg]; if(sh&&!sh.detail) sh.detail=d.detail;   // ncLastIdx 가 샤드 detail 을 직독
+  for(const k in _NCFIX) delete _NCFIX[k];                                       // detail 부재 시 열화값 캐시 무효화
+}
+function needDetail(reg){ const r=REGIONS.find(x=>x.id===reg);
+  if(!r||!r.dfile||_DTRIED[reg]) return false;
+  if(window.PSHD&&window.PSHD[reg]) return false;
+  const sh=window.PSH&&window.PSH[reg];
+  return !!sh && !sh.detail; }
+function loadDetail(reg, cb){ reg=reg||ST.region;
+  if(!needDetail(reg)){ mergeDetailShard(reg); return cb(); }
+  const r=REGIONS.find(x=>x.id===reg);
+  const sc=document.createElement('script'); sc.src=r.dfile;
+  sc.onload=()=>{ _DTRIED[reg]=1; mergeDetailShard(reg); cb(); };
+  sc.onerror=()=>{ _DTRIED[reg]=1; cb(); };        // 실패 시 열화 렌더 1회 — 재진입 루프 방지
+  document.head.appendChild(sc); }
 let CUR = M.currencies;
 function regionObj(){ return REGIONS.find(r=>r.id===ST.region) || REGIONS[0]; }
 function applyRegion(){ const r=regionObj(); CUR=r.currencies; if(!CUR[ST.cur]) ST.cur=Object.keys(CUR)[0]; }
@@ -1171,6 +1193,9 @@ function render(){
   document.getElementById('sub').textContent=`Monthly · ${mlabel(MONTHS[0])}–${mlabel(M.updated)} · ${regionObj().source||M.source}`;
   document.querySelectorAll('.pill.cur').forEach(p=>p.classList.toggle('on',p.dataset.cur===ST.cur));
   const isDetail=ST.view==='detail'||ST.view==='country';
+  if(isDetail && needDetail(ST.region)){ const m=document.getElementById('main');
+    if(m) m.innerHTML='<div class="load-msg">세관 상세 불러오는 중…</div>';
+    return loadDetail(ST.region, ()=>render()); }
   ['rangeRow','brush'].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display=isDetail?'':'none';});
   const hsEl=document.getElementById('hsinfo'); if(hsEl) hsEl.style.display=(isDetail&&REGHS[ST.region])?'':'none';
   renderHsInfo();
@@ -2993,7 +3018,7 @@ function loadApparel(cb){ if(_appLoaded) return cb();
   const tick=(i,lab)=>{ if(main) main.innerHTML=`<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">👕 의류 데이터 로딩 중… <b style="color:var(--fg,#dfe6ee)">${lab}</b> <span style="font-family:var(--mono)">${i}/${seq.length+1}</span></div>`; };
   const step=i=>{ if(i>=seq.length){ tick(seq.length+1,'브랜드 실적');
       return loadLux(()=>{ _appLoaded=true; const sb=document.getElementById('sub'); if(sb&&/loading/i.test(sb.textContent)) sb.textContent=''; cb(); }); }
-    tick(i+1,seq[i][1]); loadRegion(seq[i][0],()=>step(i+1)); };
+    tick(i+1,seq[i][1]); loadRegion(seq[i][0],()=>loadDetail(seq[i][0],()=>step(i+1))); };
   step(0); }
 function aDestroy(){ for(const k in ACH){ try{ACH[k].destroy();}catch(e){} delete ACH[k]; } }
 function aCo(id){ return (P.companies||[]).find(c=>c.id===id); }
