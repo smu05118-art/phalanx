@@ -2966,7 +2966,10 @@ function renderAll(){
   $('#pane-'+activeTab).classList.add('active');
   ({scripts:renderScripts, setup:renderSetup, sheet:renderSheet, grim:renderGrim, night:renderNight, day:renderDay, guide:renderGuide, check:renderCheck, custom:renderCustom})[activeTab]();
 }
-$('#advbtn').onclick=advancePhase;
+/* ⚠ 여기서 advancePhase 를 '값'으로 붙잡으면, 이 줄 아래에서 래핑된 버전
+   (낮 타이머 정리 · nightSnapshot 갱신 · 보르톡스/시장 낮종료 판정)이 상단
+   진행 버튼에서 통째로 우회된다. 반드시 호출 시점에 이름을 다시 해석해야 한다. */
+$('#advbtn').onclick=()=>advancePhase();
 $('#themebtn').onclick=()=>{
   const cur=document.documentElement.getAttribute('data-theme');
   const next=cur==='dark'?'light':cur==='light'?null:'dark';
@@ -3851,7 +3854,7 @@ function cloudTryRestore(){
     if(row && !row.querySelector('.cloudbtn')){
       const b=document.createElement('button');
       b.className='small cloudbtn'; b.textContent= cloudReady? '☁ 클라우드 저장' : '☁ 저장(미지원 환경)';
-      b.disabled=!cloudReady; b.onclick=cloudSave;
+      b.disabled=!cloudReady; b.onclick=()=>cloudSave();
       row.appendChild(b);
     }
   };
@@ -5411,7 +5414,7 @@ function klutzCall(){
     if(!card) return;
     const b=document.createElement('button');
     b.className='small klutzbtn'; b.textContent='🤡 얼뜨기 공개 지목 판정';
-    b.style.marginTop='6px'; b.onclick=klutzCall;
+    b.style.marginTop='6px'; b.onclick=()=>klutzCall();
     card.appendChild(b);
   };
 })();
@@ -5443,7 +5446,7 @@ function quickToggleDeath(pid){
     const b=document.createElement('button');
     b.className='small dmbtn'+(deathMode?' deathmode':'');
     b.textContent=deathMode?'💀 사망 표시 모드 ON':'💀 사망 표시';
-    b.onclick=toggleDeathMode;
+    b.onclick=()=>toggleDeathMode();
     head.appendChild(b);
   }
   const _n=renderNight, _d=renderDay, _g=renderGrim;
@@ -5456,7 +5459,7 @@ function quickToggleDeath(pid){
       const b=document.createElement('button');
       b.className='small dmbtn'+(deathMode?' deathmode':'');
       b.textContent=deathMode?'💀 사망 표시 모드 ON':'💀 사망 표시';
-      b.onclick=toggleDeathMode; row.appendChild(b);
+      b.onclick=()=>toggleDeathMode(); row.appendChild(b);
     }
   };
 })();
