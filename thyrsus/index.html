@@ -1267,6 +1267,8 @@ const blank = () => ({
   bureaucratTarget:null, thiefTarget:null,
   /* history = 판 전적 원장(종료 시 1건씩 적재), recentScripts = 홈 큐레이션용 '최근 연 스크립트'.
      두 레인이 같은 이름을 쓰면 한쪽 정규화기가 다른 쪽 레코드를 통째로 지운다 — 필드를 갈라 둔다. */
+  /* 사망 판정 근거 사슬(death-pipeline). 최근 20건만 보관 — "왜 안 죽었나"를 사회자가 되짚는 용도. */
+  deathTraces:[], traceSeq:0,
   events:[], evSeq:0, history:[], recentScripts:[], schema:2
 });
 let S = blank();
@@ -1343,6 +1345,10 @@ function migrateState(raw){
   /* dayDone = 낮 국면 가이드 진행표. 구버전 저장본엔 없고, 손상된 낮 항목은 통째로 버린다. */
   if(!st.dayDone || typeof st.dayDone!=='object' || Array.isArray(st.dayDone)) st.dayDone={};
   Object.keys(st.dayDone).forEach(k=>{ const v=st.dayDone[k]; if(!v || typeof v!=='object' || Array.isArray(v)) delete st.dayDone[k]; });
+  /* 사망 판정 근거 사슬 — 형태가 깨진 항목은 통째로 버리고 보관 상한을 다시 적용한다 */
+  if(!Array.isArray(st.deathTraces)) st.deathTraces=[];
+  st.deathTraces=st.deathTraces.filter(r=>r&&typeof r==='object'&&Array.isArray(r.trace)).slice(-20);
+  if(typeof st.traceSeq!=='number' || !Number.isFinite(st.traceSeq)) st.traceSeq=0;
   st.schema=2;
   return st;
 }
@@ -1418,9 +1424,157 @@ function expireStatuses(){
   });
 }
 
-/* 밤 살해를 막는 사유(보호·면역). 암살자만 이 판정을 관통한다.
-   doImpKill(TB)과 doStepKill(BMR/SV)이 갈라져 있어 BMR/SV 악마가 군인·보호를 뚫던 결함 수정. */
-function deathBlockReason(t, opts){
+/* ══════════════ 사망 판정 파이프라인 (death-pipeline) ══════════════
+   사망을 막거나 바꾸는 규칙을 하드코딩된 if 사슬 대신 '선언적 수정자 + 명시적 우선순위'로 옮긴다.
+   설계·우선순위 근거·무행동(differential) 증명: reference/death-pipeline.md
+
+   stage  'block'      = 살해 시도 직전(기존 deathBlockReason 이 서 있던 자리)
+          'substitute' = 차단되지 않은 뒤, 대상 대신 다른 사람이 죽는가(시장)
+          'kill'       = killPlayer 진입 후(좀버얼 죽은 척 · 어릿광대 1회 생존)
+   effect 'pierce'(이후 전부 무시) · 'block'(죽지 않음) · 'substitute'(대신 죽음) · 'transform'(죽는 대신 다른 일)
+
+   precedence 는 임의값이 아니다.
+     0        암살자 관통만이 '규칙적으로' 유의미하다 — 나머지를 전부 뚫는다.
+     10~50    서로 결과가 같다(전부 사망 차단). 사회자에게 보여줄 사유 문자열의 순서이며 기존 코드 순서를 그대로 보존한다.
+     55~70    기존 실행 시점 순서(공격 단계 → killPlayer)를 숫자로 옮긴 것이다.
+   implemented:false 인 항목은 근거만 남기고 절대 발동하지 않는다(무행동 전환 계약). */
+const DEATH_SRC_KO = {demon:'악마의 살해', night:'밤 살해', execution:'처형'};
+const DEATH_MODIFIERS = [
+  {id:'assassin-pierce', ko:'암살자 관통', precedence:0, stage:'block', effect:'pierce',
+   official:'Assassin: "Once per game, at night*, choose a player: they die, even if for some reason they could not." (official/roles181.json:1375) — "어떤 이유로든 죽을 수 없었더라도"가 찻집 여인·보호·군인·선원을 모두 뚫는 근거다.',
+   when:(t,c)=> !!c.bypass,
+   reason:()=> null},
+
+  {id:'tealady', ko:'찻집 여인', precedence:10, stage:'block', effect:'block',
+   official:'Tea Lady: "If both your alive neighbors are good, they can\'t die." (official/roles181.json:828) — 원인·시점 제한이 없어 처형도 막는다.',
+   when:(t,c)=> !!(c._tl = teaLadyBlock(t)),
+   reason:(t,c)=> `찻집 여인(${c._tl.name})의 살아있는 선한 이웃`},
+
+  {id:'protect-token', ko:'보호 토큰(수도사·여관 주인·수동)', precedence:20, stage:'block', effect:'block',
+   official:'Monk: "they are safe from the Demon tonight." (roles181.json:424) · Innkeeper: "they can\'t die tonight, but 1 is drunk until dusk." (roles181.json:409). 둘 다 \'타인의\' 능력이므로 대상이 중독·취해도 유효하다. 수도사는 악마의 살해만, 여관 주인·수동 토큰은 모든 밤 사망을 막는다. 처형은 어느 쪽도 막지 않는다 — Leviathan/Riot 징크스가 "보호받는 플레이어를 지명·처형하면 선 승리"라고 따로 규정한 것이 그 반증이다(official/jinxes.json).',
+   when:(t,c)=>{ const pr=(t.statuses||[]).find(s=>s.key==='protect'); c._pr=pr;
+                 return !!pr && c.sourceType!=='execution' && (pr.source!=='수도사' || c.sourceType==='demon'); },
+   reason:(t,c)=> `보호 중(${c._pr.source||'보호 토큰'})`},
+
+  {id:'devils-advocate', ko:'악마의 변호사', precedence:30, stage:'block', effect:'block',
+   official:'Devil\'s Advocate: "Each night, choose a living player (different to last night): if executed tomorrow, they don\'t die." (roles181.json:1264) — 처형에만 유효하고, 타인의 능력이므로 대상의 중독과 무관하다.',
+   when:(t,c)=> c.sourceType==='execution' && hasStatus(t,'execProtect'),
+   reason:()=> '악마의 변호사의 변호 — 처형돼도 죽지 않음'},
+
+  {id:'psychopath-roshambo', ko:'사이코패스 가위바위보', precedence:33, stage:'block', effect:'block',
+   implemented:false, uncertain:true,
+   official:'Psychopath: "If executed, you only die if you lose roshambo." (roles181.json:1365) — 결과가 앱 밖(가위바위보)에서 정해져 자동 판정 대상이 아니다. 현재도 판정하지 않는다.',
+   when:()=> false, reason:()=> '사이코패스 — 가위바위보 결과로 사회자가 수동 판정'},
+
+  {id:'pacifist', ko:'평화주의자', precedence:35, stage:'block', effect:'block',
+   implemented:false, uncertain:true,
+   official:'Pacifist: "Executed good players might not die." (roles181.json:900) — "might"(재량)이라 자동 판정 대상이 아니다. 현재도 판정하지 않는다.',
+   when:()=> false, reason:()=> '평화주의자 — 사회자 재량, 자동 판정 없음'},
+
+  {id:'soldier', ko:'군인', precedence:40, stage:'block', effect:'block',
+   official:'Soldier: "You are safe from the Demon." (roles181.json:700) — 대상 \'자신의\' 능력이므로 중독·취함이면 무효다. 여기가 수도사(타인 능력)와 갈리는 비대칭의 자리다.',
+   when:(t,c)=> t.charId==='soldier' && c.sourceType==='demon' && !isMalfunctioning(t),
+   reason:()=> '군인 — 악마에게 죽지 않음'},
+
+  {id:'lleech-host', ko:'리치 — 숙주 생존', precedence:45, stage:'block', effect:'block',
+   implemented:false, uncertain:true,
+   official:'Lleech: "You die if & only if they are dead."(숙주) (roles181.json:1860) — 현재 코드에 판정이 전혀 없다(기존 미구현 결함). 무행동 전환 계약에 따라 이번 라운드에서는 켜지 않는다.',
+   when:()=> false, reason:()=> '리치 숙주 생존 — 현재 미구현(사회자 수동)'},
+
+  {id:'sailor', ko:'선원', precedence:50, stage:'block', effect:'block',
+   official:'Sailor: "Each night, choose an alive player: either you or they are drunk until dusk. You can\'t die." (roles181.json:187) — 자신의 능력이므로 스스로 취하면 무효다. 원인 제한이 없어 처형도 막는다.',
+   when:(t,c)=> t.charId==='sailor' && !isMalfunctioning(t),
+   reason:()=> '선원 — 죽지 않음'},
+
+  {id:'mayor-substitute', ko:'시장 대체 사망', precedence:55, stage:'substitute', effect:'substitute',
+   uncertain:true,
+   official:'Mayor: "If you die at night, another player might die instead." (roles181.json:841) — 밤 한정·사회자 재량. 대체 대상이 다시 보호 판정을 받는지는 공식 문구에 없어 현재 동작(재판정 없음)을 보존한다.',
+   when:(t,c)=> t.charId==='mayor' && c.sourceType==='demon' && !isMalfunctioning(t),
+   reason:(t)=> `시장(${t.name}) — 밤 사망 시 다른 플레이어가 대신 죽을 수 있음(사회자 재량)`},
+
+  {id:'zombuul-fakedead', ko:'좀버얼 죽은 척', precedence:60, stage:'kill', effect:'transform',
+   official:'Zombuul: "The 1st time you die, you live but register as dead." (roles181.json:1766) — 보호가 아니라 \'등록\'이므로 block 단계가 아닌 사망 확정 단계에 있다.',
+   when:(t,c)=> t.charId==='zombuul' && !hasStatus(t,'fakedead') && !isMalfunctioning(t),
+   reason:(t)=> `${t.name}(좀버얼) 첫 사망 — 겉으로만 사망, 실제로는 생존`},
+
+  {id:'fool', ko:'어릿광대 1회 생존', precedence:70, stage:'kill', effect:'block',
+   official:'Fool: "The 1st time you die, you don\'t." (roles181.json:851) — 앞선 block 수정자가 이미 사망을 막았다면 killPlayer 에 도달하지 않으므로 능력이 소모되지 않는다. 암살자 예외는 assassin-pierce 와 같은 근거(사인 문자열로 판별하는 것은 기존 구현 그대로 보존).',
+   when:(t,c)=> t.charId==='fool' && t.alive && !hasStatus(t,'spent') && !isMalfunctioning(t) && !/암살자/.test(c.cause||''),
+   reason:(t)=> `${t.name}(어릿광대) 첫 사망 무효 — 능력 소진(강제 발동)`}
+].sort((a,b)=> a.precedence-b.precedence);
+
+/* 수정자 사슬을 돌려 '판정 + 검토된 전 항목의 근거 사슬'을 만든다. 게임 상태를 바꾸지 않는 순수 함수다.
+   stages 를 주지 않으면 'block' 단계만 본다 — 기존 deathBlockReason 과 정확히 같은 범위다. */
+function runDeathModifiers(t, ctx, stages){
+  const st = stages || ['block'];
+  const c = Object.assign({sourceType:'demon', sourceCharId:null, cause:'', bypass:false,
+                           phase:(S.phase&&S.phase.kind)||null, alive:!!(t&&t.alive)}, ctx||{});
+  const out = {died:true, blockedBy:null, reason:null, substitute:null, effect:null, pierced:false, trace:[], ctx:c};
+  const note = (m, applied, why)=> out.trace.push({id:m.id, ko:m.ko, precedence:m.precedence, applied, why:String(why||'').slice(0,140)});
+  if(!t) return out;
+  let decided=false;
+  for(const m of DEATH_MODIFIERS){
+    if(decided){ note(m,false,'앞선 판정으로 결정됨 — 평가하지 않음'); continue; }
+    if(st.indexOf(m.stage)<0){ note(m,false,`이 경로에서 평가하지 않는 단계(${m.stage})`); continue; }
+    if(m.implemented===false){ note(m,false,'미구현 — 사회자 수동 판정'); continue; }
+    let hit=false; try{ hit=!!m.when(t,c); }catch(e){ hit=false; }
+    if(!hit){ note(m,false,'조건 불성립'); continue; }
+    if(m.effect==='pierce'){ out.pierced=true; note(m,true,'이후 모든 보호·면역을 무시한다'); decided=true; continue; }
+    let why=''; try{ why=m.reason(t,c)||''; }catch(e){ why=m.ko; }
+    note(m,true,why);
+    out.blockedBy=m.id; out.effect=m.effect; decided=true;
+    if(m.effect==='block'){ out.died=false; out.reason=why; }
+    else if(m.effect==='substitute'){ out.substitute=true; }
+  }
+  return out;
+}
+/* 수정자 하나의 성립 여부만 묻는 창구 — killPlayer·doImpKill 의 분기 조건을 표에서 읽어오게 한다 */
+function deathModApplies(id, t, ctx){
+  const m=DEATH_MODIFIERS.find(x=>x.id===id);
+  if(!m || m.implemented===false || !t) return false;
+  const c=Object.assign({sourceType:'demon', sourceCharId:null, cause:'', bypass:false}, ctx||{});
+  try{ return !!m.when(t,c); }catch(e){ return false; }
+}
+/* 실제 판정 진입점 — 결과를 근거 사슬과 함께 남긴다. 남긴 것은 그대로 사회자 화면(renderDeathTraces)에 뜬다. */
+function resolveDeath(t, ctx, stages){
+  const r=runDeathModifiers(t, ctx, stages);
+  recordDeathTrace(t, r, 'block');
+  return r;
+}
+function recordDeathTrace(t, r, stage){
+  if(!Array.isArray(S.deathTraces)) S.deathTraces=[];
+  S.traceSeq=(S.traceSeq|0)+1;
+  S.deathTraces.push({seq:S.traceSeq, at:phaseName(), stage,
+    pid:t?t.id:null, name:t?t.name:'?', charId:t?t.charId:null,
+    sourceType:r.ctx.sourceType, cause:String(r.ctx.cause||'').slice(0,80), bypass:!!r.ctx.bypass,
+    died:r.died, blockedBy:r.blockedBy, effect:r.effect, reason:r.reason, trace:r.trace});
+  while(S.deathTraces.length>20) S.deathTraces.shift();   // localStorage 보호 — 원장(SABER.MAX_EVENTS)과 같은 이유
+}
+/* "왜 안 죽었나"를 토스트 한 줄이 아니라 화면에서 되짚는다.
+   <details> 라서 JS 핸들러가 하나도 없다 — el.onclick 조기 캡처 사고와 구조적으로 무관하다. */
+function renderDeathTraces(limit){
+  const rows=(S.deathTraces||[]).slice(-(limit||8)).reverse();
+  if(!rows.length) return '';
+  const head=r=>{
+    const src = r.stage==='kill' ? '사망 확정 단계' : (DEATH_SRC_KO[r.sourceType]||r.sourceType||'');
+    const verdict = r.effect==='substitute' ? '대체 사망(사회자 재량)'
+                  : r.blockedBy ? (r.effect==='transform' ? '겉으로만 사망' : '사망 안 함')
+                  : (r.died ? '사망 진행' : '사망 안 함');
+    return `${esc(r.at)} · ${esc(r.name||'?')} · ${esc(src)}${r.bypass?' · 관통':''} → <b>${esc(verdict)}</b>${r.reason?` (${esc(r.reason)})`:''}`;
+  };
+  return `<details class="card" style="margin-top:10px"><summary>🧾 사망 판정 근거 사슬 — 최근 ${rows.length}건 (왜 죽었나 / 왜 안 죽었나)</summary>
+  ${rows.map(r=>`<details style="margin:6px 0;padding:6px 8px;border:1px solid var(--line);border-radius:8px">
+    <summary>${head(r)}</summary>
+    <ol style="margin:6px 0 0 18px;font-size:12.5px;line-height:1.7">${(r.trace||[]).map(x=>
+      `<li style="opacity:${x.applied?'1':'.55'}">${x.applied?'✔':'·'} <b>${esc(x.ko)}</b> <span class="hint">${esc(x.id)} · 우선순위 ${esc(x.precedence)}</span> — ${esc(x.why)}</li>`).join('')}</ol>
+    ${r.cause?`<div class="hint" style="margin-top:6px">사인 문자열: ${esc(r.cause)}</div>`:''}
+  </details>`).join('')}
+  </details>`;
+}
+/* ── 전환 전 원본. 파이프라인의 무행동을 증명하는 기준선으로 남긴다 ──
+   thyrsus_sim/pipeline_diff.js 가 이 함수와 새 deathBlockReason 의 반환값을 대량으로 비교한다.
+   제품 실행 경로에서는 호출하지 않는다 — 지우면 무행동 증명이 이 파일에서 재현 불가능해진다. */
+function deathBlockReasonLegacy(t, opts){
   opts=opts||{}; const src=opts.sourceType||'demon';   // 'demon' | 'night' | 'execution'
   if(opts.bypass) return null;                         // 암살자는 모든 보호를 관통
   // 찻집 여인: 살아있는 선한 이웃은 어떤 원인으로도 죽지 않는다(처형 포함)
@@ -1440,6 +1594,12 @@ function deathBlockReason(t, opts){
     if(t.charId==='sailor') return '선원 — 죽지 않음';
   }
   return null;
+}
+/* 기존 호출부와 SABER 원장 훅(preBlock)의 계약을 그대로 유지하는 얇은 어댑터.
+   반환값은 '차단 사유 문자열' 또는 null — 파이프라인 도입 전과 동일하다. 기록은 남기지 않는다(훅이 예측 호출로 두 번 부른다). */
+function deathBlockReason(t, opts){
+  opts=opts||{};
+  return runDeathModifiers(t, {sourceType:opts.sourceType||'demon', bypass:!!opts.bypass}, ['block']).reason;
 }
 /* 탕녀 계승을 '안내'가 아니라 '상태 전환'으로 처리한다.
    charId를 바꾸지 않으면 이후 demonAlive가 계속 false여서 악마 없는 게임이 진행된다. */
@@ -1483,9 +1643,12 @@ function clearEffectsFromChar(charId, why){
 function reconcileDeath(p){ clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`); }
 function killPlayer(p, cause, opts){
   opts=opts||{};
+  /* 사망 확정 단계의 근거 사슬 — 좀버얼 죽은 척·어릿광대 1회 생존이 여기서 갈린다.
+     상태를 바꾸기 전에 기록해야 아래 두 분기와 같은 입력을 본다(게임 상태는 건드리지 않는다). */
+  recordDeathTrace(p, runDeathModifiers(p, {cause:cause||'', sourceType:opts.sourceType||null}, ['kill']), 'kill');
   const aliveBefore = alivePlayers().length;   // 죽는 본인 포함(탕녀 계승 판정 기준)
   // 좀버얼 첫 사망 = 죽은 척: 겉으로만 사망 처리, 실제로는 생존(밤에 계속 깨움)
-  if(p.charId==='zombuul' && !hasStatus(p,'fakedead') && !isMalfunctioning(p)){
+  if(deathModApplies('zombuul-fakedead', p, {cause:cause||''})){
     addStatus(p,'fakedead','좀버얼 첫 사망',null);
     p.alive=false;
     p.diedAt={kind:S.phase.kind, n:S.phase.n, cause:cause||''};
@@ -1497,7 +1660,7 @@ function killPlayer(p, cause, opts){
   // 어릿광대 1회 생존: 첫 사망 시 정상 작동이면 재량 발동
   // 어릿광대의 1회 생존은 '강제' 능력이다 — 사회자 재량이 아니므로 확인창 없이 자동 발동.
   // 암살자와 오작동만 예외.
-  if(p.charId==='fool' && p.alive && !hasStatus(p,'spent') && !isMalfunctioning(p) && !/암살자/.test(cause)){
+  if(deathModApplies('fool', p, {cause:cause||''})){
     addStatus(p,'spent','어릿광대 1회 생존 발동',null);
     log(`🃏 ${p.name}(어릿광대) 첫 사망 무효 — ${cause} (능력 소진, 강제 발동)`);
     toast(`🃏 ${p.name} 생존 — 어릿광대의 1회 생존이 발동했습니다(강제). 사망하지 않습니다.`,'ok');
@@ -2135,6 +2298,7 @@ function renderGrim(){
   ${grimView==='circle'?renderCircle()+(focus?'<div class="grid2" style="max-width:420px;margin:0 auto">'+playerCardHTML(focus,S.players.indexOf(focus))+'</div>':'<p class="hint" style="text-align:center">토큰을 누르면 상세 카드가 열립니다.</p>'):''}
   ${grimView==='cards'?`<div class="grid2">${S.players.map((p,i)=>playerCardHTML(p,i)).join('')}</div>`:''}
   </div>
+  ${renderDeathTraces(6)}
   <div class="card"><h2>게임 기록</h2><div id="log">${S.log.map(l=>`<div class="lentry"><span class="lphase">[${esc(l.t)}]</span> ${esc(l.msg)}</div>`).join('')||'<span class="hint">아직 기록이 없습니다.</span>'}</div>
   <div class="row" style="margin-top:8px"><button class="small" onclick="exportGame()">게임 JSON 내보내기</button><button class="small" onclick="showReplay()">📜 전말 요약</button></div></div>`;
   const lg=$('#log'); if(lg) lg.scrollTop=lg.scrollHeight;
@@ -2346,6 +2510,7 @@ function renderNight(){
     <p class="hint">순서대로 진행하며 완료 체크. 이름을 누르면 진행 가이드가 열립니다. 회색 항목은 오늘 밤 깨우지 않는 캐릭터입니다.</p>
     ${steps.map((st,i)=>renderStep(st,i,doneMap)).join('')}
     <div class="alertbox blue" style="margin-top:12px">🌅 <b>새벽</b> — 모두 깨우고, 오늘 밤의 사망자를 공표하세요(사인은 밝히지 않음). 상단 버튼으로 낮으로 진행하면 보호 토큰이 자동 해제됩니다.</div>
+    ${renderDeathTraces(8)}
   </div>`;
 }
 function previewNightOrders(){
@@ -2565,7 +2730,7 @@ function doPukkaPick(pid){
   if(prev && prev!==t && prev.alive){
     // 공식: '죽고 나서 건강해진다'. 사망 판정이 끝날 때까지 독을 유지해야
     // 어릿광대 1회 생존이 막히고 까마귀지기·현자가 거짓 정보를 받을 수 있다(중독 = 임의 정보).
-    const blk=deathBlockReason(prev,{sourceType:'demon'});
+    const blk=resolveDeath(prev,{sourceType:'demon', sourceCharId:'pukka', cause:'푸카의 독'}).reason;
     if(blk){
       toast(`${prev.name}: ${blk} — 푸카의 독으로 죽지 않았습니다. 독은 이제 풀립니다.`,'ok');
       log(`푸카의 독 → ${prev.name} 사망 불발(${blk})`);
@@ -2655,10 +2820,10 @@ function doImpKill(pid){
     save(); renderAll(); return;
   }
   if(!t.alive){ toast('이미 죽은 대상입니다 — 아무 일도 일어나지 않습니다.','warn'); return; }
-  const mf=isMalfunctioning(t);
-  const blk=deathBlockReason(t,{sourceType:'demon'});
+  const dr=resolveDeath(t,{sourceType:'demon', sourceCharId:'imp', cause:'임프의 공격'},['block','substitute']);
+  const blk=dr.reason;
   if(blk){ toast(`${t.name}: ${blk} — 사망 없음. 임프에게 알리지 마세요.`,'ok'); log(`임프 공격 → ${t.name} 무효(${blk})`); save(); renderAll(); return; }
-  if(t.charId==='mayor' && !mf){
+  if(dr.blockedBy==='mayor-substitute'){
     if(confirm(`${t.name}은(는) 시장입니다. [확인] = 다른 플레이어가 대신 사망(재량), [취소] = 시장이 그대로 사망`)){
       const alt=prompt('대신 죽을 플레이어 이름:'); const ap=S.players.find(q=>q.name===alt&&q.alive);
       if(ap){ resolveNightDeath(ap, '임프(시장 대체 사망)'); save(); renderAll(); return; }
@@ -2687,7 +2852,7 @@ function doFangGuAttack(pid){
   if(!pid)return; const t=playerOf(pid);
   const fg=S.players.find(q=>q.alive && q.charId==='fanggu');
   if(fg && isMalfunctioning(fg)){ toast('팡 구가 중독/오작동 — 오늘 밤 살해 불발.','warn'); log(`팡 구 오작동: ${t.name} 살해 불발`); save(); renderAll(); return; }
-  const blk=deathBlockReason(t,{sourceType:'demon'});
+  const blk=resolveDeath(t,{sourceType:'demon', sourceCharId:'fanggu', cause:'팡 구의 공격'}).reason;
   if(blk){
     toast(`${t.name}: ${blk} — 죽지 않았습니다. 죽이지 못했으므로 점프도 일어나지 않습니다.`,'ok');
     log(`팡 구 공격 → ${t.name} 무효(${blk}) — 점프 없음`);
@@ -2713,7 +2878,7 @@ function doStepKill(pid, killerId){ if(!pid)return; const t=playerOf(pid);
   // 보호·면역 통합 판정. 군인은 '악마의' 살해에만 면역이므로 살해 출처를 구분한다.
   {
     const src = charOf(kid)?.type==='demon' ? 'demon' : 'night';
-    const blk=deathBlockReason(t,{sourceType:src, bypass:kid==='assassin'});
+    const blk=resolveDeath(t,{sourceType:src, sourceCharId:kid||null, bypass:kid==='assassin', cause:(actor?charName(actor):'악마')+'의 공격'}).reason;
     if(blk){
       toast(`${t.name}: ${blk} — 사망하지 않습니다(불발). 악마에게 티 내지 마세요.`,'ok');
       log(`${blk}: ${t.name} 살해 불발 (${actor?charName(actor):'악마'}의 공격)`);
@@ -3044,7 +3209,7 @@ function cancelNom(nid){
 function resolveExecution(p, cause){
   const before=p.alive;
   S.executedToday=`${p.name} (${charName(p)})`; S.executedTodayPid=p.id; S.executedDiedToday=null;
-  const blk=deathBlockReason(p,{sourceType:'execution'});
+  const blk=resolveDeath(p,{sourceType:'execution', cause:cause||''}).reason;
   if(blk){
     log(`⚔ ${p.name} 처형 — ${blk}로 사망하지 않음 (오늘의 처형은 소모)`);
     toast(`⚔ ${p.name} 처형 — ${blk}이므로 죽지 않았습니다. 오늘의 처형은 사용되었고(추가 처형 불가), 장의사에게는 아무 캐릭터도 보여주지 마세요.`,'warn');
