@@ -24,6 +24,7 @@ async function boot(){
   ]);
   EVENTS = (Array.isArray(events)?events:(events.events||[])).filter(e=>e.lat!=null&&e.lon!=null);
   EVENTS.forEach((e,i)=>{e._id=e.id||('ev'+i); e._sev=Math.max(1,Math.min(5,+e.severity||1));});
+  window.EVENTS=EVENTS; // ProView 모듈(proview.js)에서 브리핑·레이더·TTS에 사용
   DATES = EVENTS.map(e=>Date.parse(e.date)).filter(x=>!isNaN(x)).sort((a,b)=>a-b);
 
   const CARTO=['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png`);
@@ -41,6 +42,7 @@ async function boot(){
   });
   MAP.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
   MAP.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-left');
+  window.MAP=MAP; // ProView 뉴스 레이어 훅용
 
   MAP.on('load', ()=>{
     // 국가 상호작용용(투명 fill + 은은한 accent 경계 + hover 하이라이트)
@@ -144,7 +146,8 @@ function select(id,fly){
     <div class="meta"><b>${esc(e.country||'')}</b>${e.region?' · '+esc(e.region):''}<br>${esc(e.date||'')}${da!=null?` (${da==0?'오늘':da+'일 전'})`:''}<br>좌표 ${(+e.lat).toFixed(2)}, ${(+e.lon).toFixed(2)}</div>
     ${e.summary?`<p class="sum">${esc(e.summary)}</p>`:''}
     ${(e.actors&&e.actors.length)?`<div class="actors">${e.actors.map(a=>`<span>${esc(a)}</span>`).join('')}</div>`:''}
-    ${e.source_url?`<a class="src" href="${esc(e.source_url)}" target="_blank" rel="noopener">출처: ${esc(e.source_name||'link')} ↗</a>`:''}`;
+    ${e.source_url?`<a class="src" href="${esc(e.source_url)}" target="_blank" rel="noopener">출처: ${esc(e.source_name||'link')} ↗</a>`:''}
+    ${window.PV?`<div style="margin-top:10px"><button class="ttsbtn" onclick="PV.speakEvent('${e._id}')">🔊 듣기</button></div>`:''}`;
   if(fly&&MAP){MAP.flyTo({center:[+e.lon,+e.lat],zoom:Math.max(MAP.getZoom(),4),speed:0.8});
     new maplibregl.Popup({closeButton:false,offset:12}).setLngLat([+e.lon,+e.lat]).setHTML(`<b>${esc(e.title)}</b>`).addTo(MAP);}
 }
@@ -155,6 +158,7 @@ function switchTab(tab){
   document.querySelectorAll('.ptab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
   const isMap=tab==='map';
   document.getElementById('mapview').hidden=!isMap;
+  document.getElementById('sigview').hidden=(tab!=='sig');
   document.getElementById('liqview').hidden=(tab!=='liq');
   document.getElementById('techview').hidden=(tab!=='tech');
   document.getElementById('shipview').hidden=(tab!=='ship');
@@ -162,6 +166,7 @@ function switchTab(tab){
   document.getElementById('llmview').hidden=(tab!=='llm');
   document.getElementById('headStat').style.display=isMap?'':'none';
   if(isMap && MAP){setTimeout(()=>MAP.resize(),50);}
+  if(tab==='sig' && window.PV){ PV.loadSignals(); }
   if(tab==='liq' && !_liqLoaded){ _liqLoaded=true; loadLiq(); }
   if(tab==='tech'){ loadTech2(); }
   if(tab==='ship'){ loadShip(); }

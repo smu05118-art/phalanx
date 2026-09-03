@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>건설사 수주 데이터</title>
+<style>
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;--tx3:#5d6675;--a:#60a5fa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;
+ min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:56px 20px}
+h1{font-size:20px;font-weight:600;letter-spacing:-.3px}
+.sub{color:var(--tx2);font-size:12px;margin-top:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;
+ margin-top:32px;width:100%;max-width:940px}
+.card{display:block;background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:16px 18px;
+ text-decoration:none;color:inherit;transition:border-color .12s,background .12s}
+a.card:hover{border-color:var(--a);background:var(--pn2)}
+.card.off{opacity:.5}
+.hd{display:flex;align-items:baseline;gap:8px}
+.hd b{font-size:15px;font-weight:600}
+.code{font-size:10.5px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.card p{color:var(--tx2);font-size:11.5px;margin-top:6px;min-height:34px}
+.stat{display:flex;gap:18px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ln)}
+.stat div{display:flex;flex-direction:column}
+.stat b{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat .dash{color:var(--tx3);margin:0 2px}
+.stat span{font-size:10px;color:var(--tx3);margin-top:1px}
+.src{margin-top:8px;font-size:10.5px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.go{margin-top:12px;font-size:11.5px;color:var(--a)}
+.card.off .go{color:var(--tx3)}
+/* 회사에 딸리지 않는 공통 자료(곡선 등)로 가는 칸. 카드 격자와 구분되게 가로로 눕힌다. */
+.tools{width:100%;max-width:940px;margin-top:14px;display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+.tool{display:block;background:var(--pn);border:1px solid var(--ln);border-radius:10px;
+ padding:14px 18px;text-decoration:none;color:inherit;transition:border-color .12s,background .12s}
+.tool:hover{border-color:var(--a);background:var(--pn2)}
+.tool b{font-size:13.5px;font-weight:600;color:var(--a)}
+.tool span{display:block;color:var(--tx2);font-size:11.5px;margin-top:4px}
+footer{margin-top:36px;color:var(--tx3);font-size:10.5px;text-align:center;line-height:1.8}
+footer a{color:var(--tx2)}
+</style></head><body>
+<h1>건설사 수주 데이터</h1>
+<div class="sub">DART 정기보고서의 수주상황(II-4) · 진행률 적용 수주계약(III-8) · 단일판매공급계약(XI-1)을 사업장 단위로 연결한 시계열</div>
+<div class="grid"><a class="card" href="sct/index.html"><div class="hd"><b>삼성물산</b><span class="code">028260</span></div><p>건설계약 수주현황(II-4 5번)·진행률적용 수주계약(III-8)·단일판매공급계약(XI-1) 교차 검증</p><div class="stat"><div><b>194</b><span>사업장</span></div><div><b>19</b><span>분기</span></div><div><b>2021Q4<span class="dash">–</span>2026Q2</b><span>수록 범위</span></div></div><div class="src">II-4 186 · III-8 38 · XI-1 22</div><div class="go">현장별 데이터 →</div></a>
+<a class="card" href="hec/index.html"><div class="hd"><b>현대건설</b><span class="code">000720</span></div><p>수주 잔액·진행률·대금수령을 II-4/III-8/XI-1 세 공시로 교차 검증</p><div class="stat"><div><b>471</b><span>사업장</span></div><div><b>19</b><span>분기</span></div><div><b>2021Q4<span class="dash">–</span>2026Q2</b><span>수록 범위</span></div></div><div class="src">II-4 458 · III-8 88 · XI-1 59</div><div class="go">현장별 데이터 →</div></a>
+<a class="card" href="sea/index.html"><div class="hd"><b>삼성E&amp;A</b><span class="code">028050</span></div><p>수주상황 상세(II-4) · 진행률적용 수주계약(III-8) · 단일판매공급계약(XI-1) 교차 검증</p><div class="stat"><div><b>108</b><span>사업장</span></div><div><b>19</b><span>분기</span></div><div><b>2021Q4<span class="dash">–</span>2026Q2</b><span>수록 범위</span></div></div><div class="src">II-4 98 · III-8 64 · XI-1 21</div><div class="go">현장별 데이터 →</div></a>
+<a class="card" href="dwe/index.html"><div class="hd"><b>대우건설</b><span class="code">047040</span></div><p>수주 잔액·진행률·대금수령을 II-4/III-8/XI-1 세 공시로 교차 검증</p><div class="stat"><div><b>354</b><span>사업장</span></div><div><b>19</b><span>분기</span></div><div><b>2021Q4<span class="dash">–</span>2026Q2</b><span>수록 범위</span></div></div><div class="src">II-4 338 · III-8 58 · XI-1 77</div><div class="go">현장별 데이터 →</div></a>
+<a class="card" href="gse/index.html"><div class="hd"><b>GS건설</b><span class="code">006360</span></div><p>수주 잔액·진행률·대금수령을 II-4/III-8/XI-1 세 공시로 교차 검증</p><div class="stat"><div><b>419</b><span>사업장</span></div><div><b>19</b><span>분기</span></div><div><b>2021Q4<span class="dash">–</span>2026Q2</b><span>수록 범위</span></div></div><div class="src">II-4 397 · III-8 48 · XI-1 71</div><div class="go">현장별 데이터 →</div></a>
+<a class="card" href="dle/index.html"><div class="hd"><b>DL이앤씨</b><span class="code">375500</span></div><p>수주 잔액·진행률·대금수령을 II-4/III-8/XI-1 세 공시로 교차 검증</p><div class="stat"><div><b>400</b><span>사업장</span></div><div><b>19</b><span>분기</span></div><div><b>2021Q4<span class="dash">–</span>2026Q2</b><span>수록 범위</span></div></div><div class="src">II-4 357 · III-8 85 · XI-1 57</div><div class="go">현장별 데이터 →</div></a>
+<a class="card" href="ipark/index.html"><div class="hd"><b>IPARK현대산업개발</b><span class="code">294870</span></div><p>수주 잔액·진행률·대금수령을 II-4/III-8/XI-1 세 공시로 교차 검증</p><div class="stat"><div><b>289</b><span>사업장</span></div><div><b>19</b><span>분기</span></div><div><b>2021Q4<span class="dash">–</span>2026Q2</b><span>수록 범위</span></div></div><div class="src">II-4 218 · III-8 107 · XI-1 66</div><div class="go">현장별 데이터 →</div></a></div>
+<div class="tools">
+ <a class="tool" href="curve.html">
+  <b>공정 진행 곡선</b>
+  <span>7개사 실측을 합쳐 지역 × 공종으로 적합한 S-curve. 예측과 「기준 공정률」 점선이 쓰는 곡선입니다.</span>
+ </a>
+ <a class="tool" href="headers.html">
+  <b>파서 머리행 지도</b>
+  <span>DART 원문에서 파서가 실제로 붙잡은 표의 머리행을 분기마다 대조합니다. 열 이름이 바뀐 지점이 강조됩니다.</span>
+ </a>
+</div>
+<footer>회사를 고르면 그 회사의 사업장 목록·차트로 들어갑니다.<br>
+수치는 공시 원문 기반이며, 원문에 없는 구간은 각 화면에서 보전·예측으로 구분 표시합니다.</footer>
+</body></html>
