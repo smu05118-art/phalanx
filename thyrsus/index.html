@@ -1756,11 +1756,19 @@ function promoteScarletWoman(dead, aliveBefore){
    대상: 독살범 독 · 수도사 보호 · 여관 주인 보호/취함 · 궁정대신 취함 · 마녀 저주 · 세레노버스 광기 · 푸카 독.
    유지: 주정뱅이(캐릭터 자체) · 사랑꾼(사망 '후' 발동하는 능력) · 뱀 조련사 스왑 독(영구) · 집사 주인. */
 const EFFECT_SOURCE_KO = {poisoner:'독살범', monk:'수도사', innkeeper:'여관 주인', courtier:'궁정대신', witch:'마녀', cerenovus:'세레노버스', pukka:'푸카'};
+/* 출처 문자열 대조 — 자동 부여는 '궁정대신'이지만 상태 대시보드의 수동 부여는
+   만료 안내가 괄호로 붙은 '궁정대신(3밤+3낮)'으로 저장된다. 화면 표시 문자열을 건드리지
+   않고 '이름(…)' 접미 형태까지 같은 출처로 본다 — 수동 부여분도 출처 사망·캐릭터 변경 때
+   함께 해제된다. 접두 일치가 아니라 '이름(' 형태로 한정해 다른 출처와 섞이지 않게 한다. */
+function statusFromSource(s, src){
+  const v=String((s&&s.source)||'');
+  return v===src || v.indexOf(src+'(')===0;
+}
 function clearEffectsFromChar(charId, why){
   const src=EFFECT_SOURCE_KO[charId]; if(!src) return;
   S.players.forEach(q=>{
     (q.statuses||[]).slice().forEach(s=>{
-      if(s.source===src){
+      if(statusFromSource(s,src)){
         q.statuses.splice(q.statuses.indexOf(s),1);
         log(`${q.name}: ${STATUS_DEFS[s.key].icon}${STATUS_DEFS[s.key].ko} 해제 — ${why}`);
       }
@@ -4863,6 +4871,8 @@ function flowFor(stepId){
   return first? (f.first||null) : (f.other||null);
 }
 function startWiz(stepId){
+  /* 앞 위저드에 남은 사회자 대리 입력 예외를 버린다(정의는 뒤 블록 — typeof 가드 필요). */
+  if(typeof clearSTHandoff==='function') clearSTHandoff();
   const srcScenes=flowFor(stepId); if(!srcScenes) return;
   const scenes=srcScenes.map(s=>{const o=Object.assign({},s); delete o._val; delete o._shown; return o;});
   const c=charOf(stepId);
@@ -4872,6 +4882,7 @@ function startWiz(stepId){
   renderWiz();
 }
 function startCustomWiz(title, scenes){
+  if(typeof clearSTHandoff==='function') clearSTHandoff();
   wiz={stepId:'__custom', custom:true, title, idx:0, vars:{}, holder:null,
        scenes:scenes.map(s=>{const o=Object.assign({},s); delete o._val; delete o._shown; return o;})};
   renderWiz();
@@ -5057,7 +5068,7 @@ function closeWiz(done){
   if(done && wiz && !wiz.custom){ const m=S.nightDone[S.phase.n]||(S.nightDone[S.phase.n]={}); m[wiz.stepId]=true;
     log(`${wizTitle()} 단계 완료(위저드)`); save(); }
   if(done && wiz && wiz.custom){ log(`${wizTitle()} 완료`); save(); }
-  wiz=null; renderAll();
+  wiz=null; if(typeof clearSTHandoff==='function') clearSTHandoff(); renderAll();
 }
 
 /* ── TB 22종 + 정보 단계 씬 (문구 자체 작성) ── */
@@ -5752,9 +5763,9 @@ JINXES.push(
  {a:'leviathan',b:'soldier',rule:'레비아탄이 군인을 지명해 처형시키면 선이 승리한다.',confidence:'high'},
  {a:'lilmonsta',b:'hatter',rule:'모자 장수가 죽고 악마가 릴 몬스타를 고르면, 그 플레이어는 하수인 캐릭터도 함께 골라야 한다.',confidence:'high'},
  {a:'lilmonsta',b:'magician',rule:'마술사가 살아 있는 동안에는 누가 릴 몬스타를 맡을지 사회자가 정한다.',confidence:'high'},
- {a:'lilmonsta',b:'poppygrower',rule:'양귀비 재배자가 인플레이면, 하수인을 한 명씩 차례로 깨워 릴 몬스타를 맡겠다는 하수인이 나올 때까지 진행한다.',confidence:'high'},
+ {a:'lilmonsta',b:'poppygrower',rule:'릴 몬스타와 양귀비 재배자가 둘 다 살아 있으면, 하수인을 한 명씩 차례로 깨워 릴 몬스타 토큰을 맡겠다는 하수인이 나올 때까지 진행한다.',confidence:'high'},
  {a:'lilmonsta',b:'psychopath',rule:'사이코패스가 릴 몬스타를 맡고 있으면, 처형될 때 죽는다.',confidence:'high'},
- {a:'lilmonsta',b:'scarletwoman',rule:'릴 몬스타를 맡고 있던 플레이어가 생존 5명 이상일 때 죽으면, 그 뒤로는 탕녀가 릴 몬스타를 맡는다.',confidence:'high'},
+ {a:'lilmonsta',b:'scarletwoman',rule:'릴 몬스타가 생존 5명 이상일 때 죽으면, 남은 게임 동안 탕녀가 릴 몬스타를 맡는다.',confidence:'high'},
  {a:'lilmonsta',b:'vizier',rule:'재상이 릴 몬스타를 맡고 있으면, 처형될 때 죽는다.',confidence:'high'},
  {a:'lleech',b:'heretic',rule:'두 캐릭터 중 하나만 인플레이가 될 수 있다.',confidence:'high'},
  {a:'lleech',b:'mastermind',rule:'주모자가 살아 있고 리치의 숙주가 처형으로 죽으면, 리치는 살아남되 능력을 잃는다.',confidence:'high'},
@@ -6647,9 +6658,17 @@ function endHandoff(){ handoff=null; wizNext(); }
 /* teeroz 방식: who:'player' 지목은 '사회자가 대신 입력'이 아니라
    기기를 플레이어에게 넘겨 본인이 직접 고르는 것이 기본 흐름이다.
    사회자 대리 입력은 예외(stHandoffOverride)로만 허용한다. */
-let stHandoffOverride=null;   // 이 씬만 사회자가 대신 입력 (씬 인덱스)
+let stHandoffOverride=null;   // 사회자 대리 입력 예외 — '위저드식별자#씬인덱스' 키 1개
 function handoffScene(sc){ return sc && sc.t==='pick-player' && sc.who==='player'; }
-function useSTInput(){ stHandoffOverride=wiz? wiz.idx : null; handoff=null; renderWiz(); }
+/* 씬 인덱스만 저장하면 다른 캐릭터의 위저드라도 인덱스가 같으면 예외가 그대로 이어진다
+   (독살범 1번 씬에서 "사회자가 대신 입력" → 다음 위저드의 1번 씬도 기기 전달이 생략됨).
+   위저드 식별자(stepId · 커스텀은 __custom)와 씬 인덱스를 함께 묶어 현재 씬에만 걸리게 한다.
+   clearSTHandoff() 는 startWiz()/startCustomWiz()/closeWiz() 가 부른다 — 그 셋은 다른
+   script 블록이라 let 바인딩에 닿지 않는다. 함수 선언(전역 객체 속성)으로 노출해야 한다. */
+function wizHandoffKey(){ return wiz? (wiz.custom? '__custom' : String(wiz.stepId))+'#'+wiz.idx : null; }
+function stHandoffOverrideOn(){ const k=wizHandoffKey(); return !!k && stHandoffOverride===k; }
+function clearSTHandoff(){ stHandoffOverride=null; }
+function useSTInput(){ stHandoffOverride=wizHandoffKey(); handoff=null; renderWiz(); }
 function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
 (function(){
   const _rw=renderWiz;
@@ -6658,7 +6677,7 @@ function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
     // 플레이어 대면 지목 씬이면 자동으로 기기 전달 모드로 들어간다
     if(wiz && !wiz.custom){
       const sc0=wiz.scenes[wiz.idx];
-      if(handoffScene(sc0) && stHandoffOverride!==wiz.idx){
+      if(handoffScene(sc0) && !stHandoffOverrideOn()){
         startHandoff(sc0.storeAs, sc0.n, sc0.filter, sc0.label);
         return;
       }
@@ -9121,9 +9140,19 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
      한계: 소스 텍스트 기반이라 window[이름] 형태의 동적 재대입은 세지 못한다
      (파일 끝 상태보드 블록의 renderDay·renderNight·renderGrim, SABER 의
      doSwapChars·doSnakeSwap). 기준선 숫자는 그 점을 이미 반영한 값이다. */
+  /* ── 기준선 갱신 방법 ── 이 숫자가 낡으면 로드할 때마다 헛알림이 뜬다. 래퍼를 정식으로
+     더하거나 뺀 변경에서 반드시 같이 고친다.
+     ① 브라우저: 파일을 열고 콘솔에서 `thyAudit.doubleWrap(); thyAudit.lastCounts`
+        → 나온 숫자를 그대로 아래 표에 옮긴다(표에 없는 이름은 애초에 검사하지 않는다).
+     ② 브라우저 없이(레인 작업 중 확인용): index.html 에서 src 속성이 없는 script 요소의
+        본문만 이어 붙인 문자열 src 를 만들고, AUDIT.targets 의 이름 name 마다
+          new RegExp('(?:^|[^\\w.$])(?:window\\.)?'+name+'\\s*=\\s*(?:function\\b|\\(?[\\w$,\\s]*\\)?\\s*=>)','g')
+        의 매치 수를 센다 — 아래 doubleWrap() 과 글자 그대로 같은 추출·정규식이어야 한다.
+     ③ 2026-09-03 재실측 반영분: renderSheet 2→3(파일 끝 스크립트 그래프 패널 래퍼),
+        buildChecklist 2→3(파일 끝 지니 강제 규칙 래퍼). 나머지 42개는 표와 일치했다. */
   const THY_WRAP_BASE={advancePhase:6, renderDay:8, renderNight:6, renderWiz:4,
-    renderGrim:2, renderSheet:2, renderScripts:2, renderNomOpen:2, closeWiz:2,
-    castVote:2, closeBallot:2, buildChecklist:2, glyph:2,
+    renderGrim:2, renderSheet:3, renderScripts:2, renderNomOpen:2, closeWiz:2,
+    castVote:2, closeBallot:2, buildChecklist:3, glyph:2,
     renderSetup:1, renderTownSquare:1, renderCircle:1, toast:1,
     addStatus:1, removeStatus:1, expireStatuses:1, checkEndConditions:1, executeNominee:1,
     killPlayer:1, doImpKill:1, doFangGuAttack:1, doPukkaPick:1, doStepKill:1,
@@ -9204,6 +9233,12 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
         ⚠ 6264 의 roster 분기는 6177 을 우회하므로 6280 에서 wizopen 을 손수 붙인다.
         ⚠ 6322 의 handoff 가드는 6068 보다 바깥일 때만 옳다.
      ▸ closeWiz: [원본 4570] → 밤 연속진행 큐(5924) → wizopen 해제(6178)
+     ▸ renderSheet: [원본 2339] → 시트 캐릭터 카드 보강(5876) → 카드 (i) 버튼 주입(6744)
+        → 파일 끝 스크립트 그래프·시트 하단 패널(10161, window.renderSheet 로 대입)
+     ▸ buildChecklist: [원본 3700] → 성립 징크스 편입(5850) → 커스텀 정적문구 교체(9606)
+        → 지니 강제 규칙(10764, window.buildChecklist 로 대입)
+        ⚠ 파일 끝 두 래퍼는 typeof 가드로 시작한다 — 앞 블록이 로드에 실패하면 조용히 빠지고
+          계수도 그대로라 알림이 뜨지 않는다. 로드 오류를 먼저 보라.
      ▸ confirmWin: pendingWin 선확보 → [원본 6473] → EV.end·전적 적립(7946)
         ⚠ pendingWin 을 만지는 래퍼가 7946 보다 바깥에 하나라도 더 얹히면 깨진다.
      단일 래퍼 현황은 위 THY_WRAP_BASE 표, 전체 지도는 arch 보고서를 보라. ══ */
