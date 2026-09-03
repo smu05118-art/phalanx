@@ -418,6 +418,12 @@ mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding
 /* ══════════════════ 데이터: Trouble Brewing 22 캐릭터 ══════════════════
    능력 요약/가이드는 공식 규칙(공식 룰북·공식 위키 참조)을 바탕으로 자체 작성한 문구입니다. */
 const TYPE_KO = {townsfolk:'주민', outsider:'외지인', minion:'하수인', demon:'악마', traveler:'여행자', fabled:'전설'};
+/* 백과사전 표시 전용 스크립트 라벨. EDITIONS 에 넣으면 게임 셋업의 스크립트 선택지까지
+   늘어나 3개 공식 스크립트의 밤 순서가 오염되므로 여기서만 이름을 붙인다. */
+const SCRIPT_KO = {tb:['점철되는 혼란','Trouble Brewing'], bmr:['피로 물든 달','Bad Moon Rising'],
+  sv:['화단에 꽃피운 이단','Sects & Violets'], fabled:['전설','Fabled'],
+  exp:['실험 캐릭터','Experimental'], loric:['로릭','Loric']};
+function scriptLabel(ed){ const k=SCRIPT_KO[ed||'tb']; return k? k : null; }
 const COMP = {5:[3,0,1,1],6:[3,1,1,1],7:[5,0,1,1],8:[5,1,1,1],9:[5,2,1,1],10:[7,0,2,1],11:[7,1,2,1],12:[7,2,2,1],13:[9,0,3,1],14:[9,1,3,1],15:[9,2,3,1]};
 
 const CHARACTERS = [
@@ -2826,7 +2832,7 @@ function renderGuide(){
     </div>
     ${c?`<hr class="divider"><h3><div class="ctoken ${c.type}" style="display:inline-flex;vertical-align:middle;margin-right:8px">${glyph(c.id)}</div><span class="pill ${c.type}">${TYPE_KO[c.type]}</span> ${esc(c.ko)} <span class="hint" style="display:inline">${esc(c.en||'')}</span></h3>
       ${wikiH('등장 스크립트')}
-      <p>${esc(EDITIONS[c.edition||'tb']?.ko||'커스텀')}${EDITIONS[c.edition||'tb']?.en?` <span class="hint" style="display:inline">(${esc(EDITIONS[c.edition||'tb'].en)})</span>`:''} · ${TYPE_KO[c.type]}</p>
+      <p>${esc((scriptLabel(c.edition)||[])[0] || EDITIONS[c.edition||'tb']?.ko || '커스텀')}${(scriptLabel(c.edition)||[])[1]?` <span class="hint" style="display:inline">(${esc(scriptLabel(c.edition)[1])})</span>`:''} · ${TYPE_KO[c.type]}</p>
       ${wikiH('요약')}
       <p>${esc(c.ability)}</p>
       ${c.setupNote?`<div class="alertbox">셋업: ${esc(c.setupNote)}</div>`:''}
@@ -4719,6 +4725,46 @@ function resetDayTimer(){ S.dayTimer={start:Date.now(), n:S.phase.n, limit:(S.da
     _dtTick();
     if(!_dtInt) _dtInt=setInterval(_dtTick,1000);
   };
+})();
+
+/* 종료 조건 재판정 — 사망 이벤트에만 걸려 있으면 '차단이 풀리는 순간'을 놓친다.
+   예: 악마가 죽었지만 사악한 쌍둥이가 살아 있어 계속 → 나중에 그 쌍둥이가 중독되면
+   (공식상 오작동한 쌍둥이는 선 승리를 막지 못한다) 차단이 사라지는데, 그때는 아무도
+   죽지 않으므로 checkEndConditions 가 호출되지 않아 악마 없는 게임이 무한히 이어졌다.
+   페이즈 전환마다 한 번씩 값싸게 다시 본다. */
+function recheckEndConditions(){
+  if(S.gameOver || pendingWin) return;
+  if(S.phase.kind==='setup') return;
+  const demonAlive=S.players.some(p=>(p.alive||(p.charId==='zombuul'&&hasStatus(p,'fakedead')))
+                                     && charOf(p.charId)?.type==='demon');
+  if(demonAlive) return;
+  if(winBlockers().length) return;          // 탕녀·주모자·쌍둥이가 아직 막고 있으면 계속
+  askWin({team:'good', reason:'악마가 모두 죽었고 승리를 막던 조건도 사라졌습니다.',
+          rule:'악마가 모두 죽고 계승·연장·쌍둥이 차단이 없으면 선한 팀이 승리합니다. (차단 요소가 중독·사망 등으로 해제된 시점에 판정)'});
+}
+/* 재판정 지점은 '차단 요소가 실제로 바뀌는 곳'으로만 좁힌다.
+   renderAll 전체에 걸면 사회자가 캐릭터를 교체하는 중(악마가 일시적으로 없는 순간)에도
+   승리가 선언될 수 있다 — 마귀할멈·이발사 교체가 그 경로다.
+   차단 요소를 바꾸는 것은 사망(이미 처리됨) · 중독/취함 부여·해제 · 페이즈 전환뿐이다. */
+(function(){
+  const _adv=advancePhase;
+  advancePhase=function(){ _adv(); recheckEndConditions(); };
+
+  const _add=addStatus;
+  addStatus=function(p,key,src,exp){
+    const r=_add(p,key,src,exp);
+    if(key==='poison'||key==='drunkS') recheckEndConditions();
+    return r;
+  };
+  const _rem=removeStatus;
+  removeStatus=function(p,idx){
+    const k=(p.statuses||[])[idx] && p.statuses[idx].key;
+    const r=_rem(p,idx);
+    if(k==='poison'||k==='drunkS') recheckEndConditions();
+    return r;
+  };
+  const _exp=expireStatuses;
+  expireStatuses=function(){ _exp(); recheckEndConditions(); };
 })();
 
 /* 페이즈가 낮이 아니게 되면 낮 타이머 바를 즉시 제거한다(탭을 안 열어도) */
