@@ -87,11 +87,11 @@ main{padding:18px 18px 90px;min-width:0;overflow-x:clip}
   #layout{grid-template-columns:1fr}
   /* teeroz식 하단 고정 탭바 */
   #sidenav{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:70;flex-direction:row;justify-content:space-around;gap:0;
-    padding:6px 4px calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(0,0,0,.35)}
+    padding:6px calc(4px + env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) calc(4px + env(safe-area-inset-left,0px));background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(0,0,0,.35)}
   #sidenav button{flex-direction:column;gap:2px;width:auto;flex:1;padding:6px 2px;font-size:11px;white-space:nowrap;border-radius:10px;align-items:center}
   #sidenav button .icn{width:auto;font-size:20px;line-height:1.2}
   #sidenav button.active{box-shadow:none;background:var(--primary-soft)}
-  main{padding:12px 12px calc(96px + env(safe-area-inset-bottom,0px))}
+  main{padding:12px calc(12px + env(safe-area-inset-right,0px)) calc(96px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px))}
   /* 상단바 슬림 */
   #topbar .inner{padding:8px 12px;gap:8px}
   #brand h1{font-size:18px}
@@ -104,9 +104,9 @@ main{padding:18px 18px 90px;min-width:0;overflow-x:clip}
   button{min-height:44px}
   button.small{min-height:44px;min-width:44px}
   .card{padding:13px 14px;border-radius:12px}
-  .grid2{grid-template-columns:1fr}
-  .chargrid{grid-template-columns:1fr}
-  .scriptgrid{grid-template-columns:1fr}
+  .grid2{grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}
+  .chargrid{grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr))}
+  .scriptgrid{grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr))}
   /* 투표: 큰 버튼·줄맞춤 */
   .voterow{padding:8px 4px;gap:6px}
   .voterow .vname{min-width:84px;font-size:14px}
@@ -385,6 +385,7 @@ mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding
     <div id="brand"><h1>🕰 티르소스</h1><span class="sub">Thyrsus · Storyteller Console</span></div>
     <div id="phasechip"><span class="plabel" id="phaselabel">준비</span><button class="small primary" id="advbtn">게임 시작</button></div>
     <div id="quickstats"></div>
+    <button class="small ghost" id="sharebtn" title="현재 화면 링크 공유" aria-label="현재 화면 링크 공유">🔗</button>
     <button class="small ghost" id="themebtn" title="테마 전환">◐</button>
   </div>
 </div>
@@ -888,6 +889,7 @@ let glyph = id => GLYPHS[id]||'✦';
 const SABER = {
   ver: 1,
   MAX_EVENTS: 4000,          // localStorage 보호 — 초과분은 앞에서부터 버린다
+  MAX_HISTORY: 60,           // 전적 원장 S.history 상한(판 수). 적재·정규화가 이 값 하나를 공유한다
 
   /* ── ① 이벤트 원장 S.events[] 레코드 계약 ──
      {i, k, n, t, a, b, d}
@@ -1108,7 +1110,9 @@ const blank = () => ({
   customs:[], roster:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null, daPrev:null,
   pukkaVictimId:null, mastermindDay:null, executedTodayPid:null, executedDiedToday:null,
   fangGuJumped:false, demonBlockedNight:null, demonBlockedPid:null, dayTimer:null,
-  events:[], evSeq:0, history:[], schema:2
+  /* history = 판 전적 원장(종료 시 1건씩 적재), recentScripts = 홈 큐레이션용 '최근 연 스크립트'.
+     두 레인이 같은 이름을 쓰면 한쪽 정규화기가 다른 쪽 레코드를 통째로 지운다 — 필드를 갈라 둔다. */
+  events:[], evSeq:0, history:[], recentScripts:[], schema:2
 });
 let S = blank();
 /* 구버전 저장본 정규화. 최상위 Object.assign 만으로는 플레이어·지명의 신규 필드가 비어
@@ -1156,9 +1160,20 @@ function migrateState(raw){
   /* 사라진 등록부 항목을 가리키는 rosterId 는 끊는다(통계 오귀속 방지) */
   const ridSet=new Set(st.roster.map(r=>r.id));
   st.players.forEach(p=>{ if(p.rosterId && !ridSet.has(p.rosterId)) p.rosterId=null; });
-  /* 전적 — confirmWin(true) 훅이 push 한다. 손상 항목은 버린다 */
+  /* 전적 원장 — confirmWin(true) 훅이 push 한다. 손상 항목은 버리고 상한만큼만 남긴다.
+     이 블록은 st.history 만 만진다(아래 recentScripts 정규화기와 서로 침범하지 않는다). */
   if(!Array.isArray(st.history)) st.history=[];
   st.history=st.history.filter(h=>h&&typeof h==='object'&&Array.isArray(h.players));
+  if(st.history.length>SABER.MAX_HISTORY) st.history=st.history.slice(-SABER.MAX_HISTORY);
+  /* 최근 연 스크립트(홈 큐레이션) — 전적과 다른 필드다. id 없는 항목 제거·중복 제거·상한 8.
+     이 블록은 st.recentScripts 만 만진다. 구버전 저장본에는 이 필드가 없으므로 배열 보정부터 한다. */
+  st.recentScripts=(Array.isArray(st.recentScripts)? st.recentScripts:[])
+    .filter(h=>h&&typeof h==='object'&&typeof h.id==='string'&&h.id.trim())
+    .map(h=>({ id:String(h.id).trim().slice(0,40),
+               kind:(h.kind==='play'? 'play':'sheet'),
+               at:(typeof h.at==='number'&&isFinite(h.at))? h.at : 0 }))
+    .filter((h,i,a)=>a.findIndex(x=>x.id===h.id)===i)
+    .slice(0,8);
   ['nightDone','checks'].forEach(k=>{ if(!st[k]||typeof st[k]!=='object') st[k]={}; });
   st.schema=2;
   return st;
@@ -1503,7 +1518,33 @@ function ensureSeats(target){
   while(S.players.length>target) S.players.pop();
   save(); renderAll();
 }
-function renamePlayer(pid,v){ const p=playerOf(pid); if(!p) return; p.name=v; save(); }
+function renamePlayer(pid,v){
+  const p=playerOf(pid); if(!p) return;
+  p.name=v;
+  /* 등록부에서 가져온 좌석의 이름을 직접 고쳤다면 그 자리에 앉은 사람이 바뀐 것이다.
+     링크를 남겨두면 사람 단위 통계가 엉뚱한 등록부 항목에 쌓이므로 여기서 끊는다.
+     (renderAll() 은 부르지 않는다 — 입력 중 포커스 유실 방지. 👤 배지는 다음 렌더에서 사라진다) */
+  if(p.rosterId){ const r=rosterOf(p.rosterId); if(!r || r.name!==String(v).trim()) p.rosterId=null; }
+  save();
+}
+/* ── 전체 초기화 ──
+   게임 상태만 지우고 '한 판의 상태가 아닌' 사용자 자산은 남긴다.
+     roster        참가자 명부(사람 단위 통계가 여기에 붙는다)
+     history       판 전적 원장(초기화로 날리면 MMR 누적이 성립하지 않는다)
+     customs       내가 만든 캐릭터
+     theme         표시 설정
+     recentScripts 최근 연 스크립트(홈 큐레이션 — 게임 상태와 무관)
+   blank() 은 이들을 전부 비우므로 여기서 되돌려 넣는다. 보존 목록을 상수로 둬야
+   새 필드가 생겼을 때 초기화 정책을 한 곳에서만 고칠 수 있다. */
+const RESET_KEEP_KEYS=['roster','history','customs','theme','recentScripts'];
+function resetAllKeepAssets(){
+  if(!confirm('전체 게임 상태를 초기화할까요?\n(참가자 등록부 · 판 전적 · 내 캐릭터 · 테마는 유지됩니다)')) return;
+  const keep={};
+  RESET_KEEP_KEYS.forEach(k=>{ if(S[k]!==undefined) keep[k]=S[k]; });
+  S=blank();
+  RESET_KEEP_KEYS.forEach(k=>{ if(keep[k]!==undefined) S[k]=keep[k]; });
+  save(); renderAll();
+}
 function setupIssues(){
   const n=S.players.length;
   const issues=[];
@@ -1558,7 +1599,7 @@ function renderSetup(){
       <b class="num" style="font-size:19px;min-width:28px;text-align:center">${n}</b>
       <button class="small" onclick="ensureSeats(${n+1})" ${n>=15?'disabled':''}>+</button>
       <button class="small" onclick="ensureSeats(${n+1})" ${n>=15?'disabled':''}>참가자 추가</button>
-      <button class="small danger ghost" onclick="if(confirm('전체 게임 상태를 초기화할까요?')){S=blank();save();renderAll();}">전체 초기화</button>
+      <button class="small danger ghost" onclick="resetAllKeepAssets()">전체 초기화</button>
     </div>
     <div>${S.players.map((p,i)=>`
       <div class="seatrow" draggable="true" data-pid="${p.id}"
@@ -1661,10 +1702,16 @@ function rosterOf(rid){ return rosterList().find(r=>r.id===rid); }
 function rosterSeatOf(rid){ return S.players.find(p=>p.rosterId===rid); }
 function rosterAdd(){
   const nameEl=$('#rosName'), afEl=$('#rosAffil'), ageEl=$('#rosAge');
-  const name=String(nameEl? nameEl.value:'').trim();
+  const name=String(nameEl? nameEl.value:'').trim().slice(0,40);
   if(!name){ toast('이름은 필수입니다.','warn'); return; }
+  const affil=String(afEl? afEl.value:'').trim().slice(0,40);
+  /* 같은 사람을 두 번 등록하면 rosterId 가 갈라져 사람 단위 통계가 두 갈래로 쪼개진다.
+     이름+소속이 같으면 막고, 진짜 동명이인은 소속으로 구분하게 안내한다. */
+  if(rosterList().some(r=>r.name===name && String(r.affil||'')===affil)){
+    toast('이미 등록된 참가자입니다 — 동명이인이면 소속을 다르게 적어 구분하세요.','warn'); return;
+  }
   const a=parseInt(ageEl? ageEl.value:'',10);
-  rosterList().push({id:uid(), name:name.slice(0,40), affil:String(afEl? afEl.value:'').trim().slice(0,40),
+  rosterList().push({id:uid(), name:name, affil:affil,
     age:Number.isFinite(a)? a : null, createdAt:Date.now()});
   if(nameEl) nameEl.value=''; if(afEl) afEl.value=''; if(ageEl) ageEl.value='';
   save(); renderAll();
@@ -1691,7 +1738,12 @@ function rosterDel(rid){
 function rosterToggle(rid){
   const r=rosterOf(rid); if(!r) return;
   const seat=rosterSeatOf(rid);
-  if(seat){ S.players=S.players.filter(p=>p.id!==seat.id); save(); renderAll(); return; }
+  if(seat){
+    /* 진행 중 게임에서는 칩 오탭 한 번에 살아있는 좌석이 통째로 사라진다 — 캐릭터가 배정됐으면 확인받는다 */
+    if(S.phase.kind!=='setup' && seat.charId &&
+       !confirm(r.name+' 좌석을 게임에서 빼시겠습니까? 캐릭터·상태·기록이 함께 사라집니다.')) return;
+    S.players=S.players.filter(p=>p.id!==seat.id); save(); renderAll(); return;
+  }
   const empty=S.players.find(p=>!String(p.name||'').trim() && !p.charId && !p.rosterId);
   if(empty){ empty.name=r.name; empty.rosterId=rid; save(); renderAll(); return; }
   if(S.players.length>=15){ toast('최대 15명','warn'); return; }
@@ -2127,7 +2179,9 @@ function renderStep(st,i,doneMap){
     if(typeof NIGHT_FLOW!=='undefined' && flowFor(st.id)) body=`<div class="row" style="margin:4px 0 10px"><button class="primary" style="min-width:200px" onclick="event.stopPropagation();startWiz('${st.id}')">▶ 인터랙티브 진행</button></div>`+body;
     if(st.id==='demoninfo'){
       const inPlay=new Set(S.players.map(p=>p.charId));
-      const safeBluffs=CHARACTERS.filter(c=>(c.type==='townsfolk'||c.type==='outsider') && !inPlay.has(c.id) && c.id!==S.drunkMaskChar).map(c=>c.ko);
+      /* edition:'exp' 는 백과사전 열람 전용이라 어떤 스크립트에도 없다 — 블러프 후보에서 뺀다
+         (이 필터는 에디션을 가리지 않으므로, 빼지 않으면 실험적 캐릭터가 그대로 추천된다) */
+      const safeBluffs=CHARACTERS.filter(c=>(c.edition||'tb')!=='exp' && (c.type==='townsfolk'||c.type==='outsider') && !inPlay.has(c.id) && c.id!==S.drunkMaskChar).map(c=>c.ko);
       body+=`<div class="alertbox">블러프 후보(미사용 선 캐릭터, 주정뱅이 위장 제외): ${esc(safeBluffs.join(', ')||'없음')}</div>`;
     }
   } else {
@@ -3009,10 +3063,21 @@ document.addEventListener('click', e=>{
 
 /* ══════════════════ 초기화 ══════════════════ */
 function renderAll(){
+  /* 분기 객체는 매 호출마다 새로 만든다 — 값으로 미리 붙잡으면 나중에 얹히는 래퍼를 우회한다.
+     stats 만 화살표인 이유: renderStats 는 아래 스크립트 블록에서 정의되므로 이름을 즉시
+     평가하면 첫 renderAll() 에서 ReferenceError 가 난다. */
+  const draw={scripts:renderScripts, setup:renderSetup, sheet:renderSheet, grim:renderGrim, night:renderNight, day:renderDay, guide:renderGuide, check:renderCheck, custom:renderCustom, stats:()=>renderStats()}[activeTab];
+  /* 모르는 탭(잘못된 해시·구버전 저장본)이 들어오면 $('#pane-'+activeTab) 가 null 이라
+     여기서 앱 전체가 죽는다. 기본 탭으로 되돌리고 한 번만 다시 그린다(무한 재귀 방지). */
+  if(typeof draw!=='function' || !$('#pane-'+activeTab)){
+    if(activeTab==='scripts') return;
+    activeTab='scripts';
+    return renderAll();
+  }
   renderTabs(); renderTopbar();
   document.querySelectorAll('.tabpane').forEach(s=>s.classList.remove('active'));
   $('#pane-'+activeTab).classList.add('active');
-  ({scripts:renderScripts, setup:renderSetup, sheet:renderSheet, grim:renderGrim, night:renderNight, day:renderDay, guide:renderGuide, check:renderCheck, custom:renderCustom, stats:()=>renderStats()})[activeTab]();
+  draw();
 }
 /* ⚠ 여기서 advancePhase 를 '값'으로 붙잡으면, 이 줄 아래에서 래핑된 버전
    (낮 타이머 정리 · nightSnapshot 갱신 · 보르톡스/시장 낮종료 판정)이 상단
@@ -3139,7 +3204,7 @@ function statsHistEntries(){
     const winner=(h.winner==='good'||h.winner==='evil')? h.winner
       : (h.win==='good'||h.win==='evil')? h.win : null;
     return {players, winner, mvpKey:h.mvpId||h.mvpName||h.mvp||null,
-      at:h.endedAt||h.at||h.date||null, edition:h.edition||null, label:h.label||h.title||null};
+      at:h.ts||h.endedAt||h.at||h.date||null, edition:h.edition||null, label:h.label||h.title||null};
   });
 }
 function statsIsMvp(entry,p){
@@ -3403,6 +3468,135 @@ Object.assign(GLYPHS,{scapegoat:'🐐',gunslinger:'🔫',beggar:'🥣',bureaucra
  barista:'☕',harlot:'💋',butcher:'🔪',bonecollector:'🦴',deviant:'🤸',
  doomsayer:'📢',angel:'👼',buddhist:'🧘',hellslibrarian:'🤫',revolutionary:'🚩',
  fiddler:'🪕',toymaker:'🧸',fibbin:'🤥',duchess:'👑',sentinel:'🗼',spiritofivory:'🐘',djinn:'🧞'});
+
+/* ───────── 실험적 캐릭터(Experimental) — 백과사전 열람 전용 ─────────
+   edition:'exp' 는 EDITIONS(밤 순서)에 등록하지 않는다. editionChars() 가
+   현재 에디션과 일치하지 않는 항목을 걸러내므로 설정·그리모어·밤 진행에는
+   나타나지 않고, allChars() 를 쓰는 백과사전(guide)에서만 열람된다. */
+const EXP_CHARS=[
+{id:'steward',ko:'청지기',en:'Steward',type:'townsfolk',edition:'exp',first:true,other:false,
+ ability:'첫날 밤, 선한 플레이어 1명을 알게 된다.',
+ guideFirst:['청지기를 깨운다.','선한 플레이어 1명을 가리킨다.','청지기를 재운다.'],guideOther:[],
+ warn:['중독/술취함이면 악한 플레이어를 가리켜도 된다.','은둔자를 "악"으로 등록시켜 후보에서 빼거나, 첩자를 "선"으로 등록시켜 가리킬 수 있다(등록 재량).','가장 안전한 정보 중 하나 — 어떤 선한 플레이어를 지목할지가 곧 밸런스 조절이다.'],
+ remind:['첫날 밤 이후에는 다시 깨우지 않는다.']},
+{id:'knight',ko:'기사',en:'Knight',type:'townsfolk',edition:'exp',first:true,other:false,
+ ability:'첫날 밤, 악마가 아닌 플레이어 2명을 알게 된다.',
+ guideFirst:['기사를 깨운다.','악마가 아닌 플레이어 2명을 가리킨다.','기사를 재운다.'],guideOther:[],
+ warn:['둘 다 하수인이어도 규칙상 정상이다 — 조건은 "악마가 아닐 것" 하나뿐.','중독/술취함이면 악마를 포함해 가리켜도 된다.','악마 후보를 2명 줄여주는 강한 정보이므로, 누구를 빼줄지 신중히 고를 것.'],
+ remind:['첫날 밤 이후에는 다시 깨우지 않는다.']},
+{id:'noble',ko:'귀족',en:'Noble',type:'townsfolk',edition:'exp',first:true,other:false,
+ ability:'첫날 밤, 플레이어 3명을 알게 된다. 그중 정확히 1명만 악하다.',
+ guideFirst:['귀족을 깨운다.','플레이어 3명을 가리킨다 — 그중 정확히 1명만 악이어야 한다.','귀족을 재운다.'],guideOther:[],
+ warn:['"정확히 1명" 이 조건이다 — 0명이나 2명 이상이면 거짓 정보이며, 중독/술취함일 때만 허용된다.','은둔자를 악으로, 첩자를 선으로 등록시켜 조합을 만들 수 있다(등록 재량).','악 3명 중 1명을 좁혀주므로 게임 초반 판을 크게 흔든다 — 조합 선택이 곧 난이도.'],
+ remind:['첫날 밤 이후에는 다시 깨우지 않는다.']},
+{id:'shugenja',ko:'슈겐자',en:'Shugenja',type:'townsfolk',edition:'exp',first:true,other:false,
+ ability:'첫날 밤, 가장 가까운 악한 플레이어가 시계 방향인지 반시계 방향인지 알게 된다. 양쪽 거리가 같으면 어느 쪽을 알려줄지 사회자가 정한다.',
+ guideFirst:['슈겐자를 깨운다.','시계 방향 또는 반시계 방향을 손으로 표시한다.','슈겐자를 재운다.'],guideOther:[],
+ warn:['거리는 자리 순서로 세며, 사망자도 자리 수에 포함한다.','양쪽 거리가 같으면 어느 쪽이든 정당하다 — 재량으로 고른다.','중독/술취함이면 반대 방향을 알려줘도 된다.','첩자·은둔자 등록 재량이 "가장 가까운 악"의 판정에 그대로 적용된다.'],
+ remind:['첫날 밤 이후에는 다시 깨우지 않는다.','알려준 방향을 기록해 두면 나중에 자리 이동 논쟁을 막을 수 있다.']},
+{id:'pixie',ko:'픽시',en:'Pixie',type:'townsfolk',edition:'exp',first:true,other:false,
+ ability:'첫날 밤, 실제로 게임에 있는 마을 주민 캐릭터 하나를 알게 된다. 자신이 그 캐릭터라고 광기를 부렸다면, 그 캐릭터가 죽을 때 그 능력을 얻는다.',
+ guideFirst:['픽시를 깨운다.','실제로 게임에 있는 마을 주민 캐릭터 토큰 하나를 보여준다(광기 대상).','픽시를 재운다.'],guideOther:[],
+ warn:['능력을 얻으려면 낮에 그 캐릭터라고 충분히 주장해야 한다 — 광기 이행 여부는 사회자 판정.','광기를 게을리하면 처벌할 수 있다(중독·거짓 정보 등). 처벌 수위는 미리 정해둘 것.','능력 획득 시점은 그 캐릭터가 죽는 순간이며, 그때부터 밤에 깨우는 순서가 생긴다.','중독/술취함이면 게임에 없는 캐릭터를 보여줘도 된다.'],
+ remind:['광기 대상 캐릭터와 광기 이행 여부, 능력 획득 시점을 그리모어에 기록.']},
+{id:'highpriestess',ko:'대여사제',en:'High Priestess',type:'townsfolk',edition:'exp',first:true,other:true,
+ ability:'매일 밤, 사회자가 보기에 가장 이야기를 나눠야 할 플레이어 1명을 알게 된다.',
+ guideFirst:['대여사제를 깨운다.','플레이어 1명을 가리킨다.','대여사제를 재운다.'],
+ guideOther:['대여사제를 깨운다.','플레이어 1명을 가리킨다.','대여사제를 재운다.'],
+ warn:['누구를 가리킬지는 전적으로 사회자 재량 — 정답을 주는 능력이 아니라 판을 움직이는 능력이다.','같은 사람을 연속으로 가리켜도 되고, 매일 바꿔도 된다.','중독/술취함이면 의미 없는 사람을 가리켜도 된다.'],
+ remind:['매일 밤 깨운다.','누구를 가리켰는지 기록해 두면 의도가 흔들리지 않는다.']},
+{id:'balloonist',ko:'열기구 조종사',en:'Balloonist',type:'townsfolk',edition:'exp',first:true,other:true,
+ setupNote:'외지인 수가 그대로이거나 1명 늘어난다(+0 또는 +1).',
+ ability:'매일 밤, 플레이어 1명을 알게 된다. 그 플레이어의 캐릭터 유형은 전날 밤에 알려준 플레이어와 다르다. [외지인 +0 또는 +1]',
+ guideFirst:['열기구 조종사를 깨운다.','아무 플레이어나 1명을 가리킨다.','가리킨 플레이어의 캐릭터 유형을 기록한다.','재운다.'],
+ guideOther:['전날 밤에 보여준 플레이어와 캐릭터 유형이 다른 플레이어 1명을 가리킨다.','새 유형을 기록한다.','재운다.'],
+ warn:['기준은 진영이 아니라 유형(마을 주민·외지인·하수인·악마, 여행자 포함)이다.','더 이상 다른 유형을 보여줄 수 없으면 그날부터 능력이 소진된 것으로 처리한다.','첩자·은둔자 등록 재량이 유형 판정에 그대로 적용된다 — 첩자를 "마을 주민"으로 보여줘도 된다.','중독/술취함이면 유형이 다르다는 규칙을 어겨도 된다.'],
+ remind:['직전 밤에 보여준 플레이어와 그 유형을 반드시 기록할 것 — 이 캐릭터의 최대 실수 지점.']},
+{id:'villageidiot',ko:'마을 바보',en:'Village Idiot',type:'townsfolk',edition:'exp',first:true,other:true,
+ setupNote:'마을 바보를 최대 2명까지 추가로 넣을 수 있다. 2명 이상이면 그중 정확히 1명이 술에 취해 있으며, 누가 취했는지는 아무도 모른다.',
+ ability:'매일 밤, 플레이어 1명을 지목해 그 진영을 알게 된다. [마을 바보 +0~+2. 추가된 마을 바보 중 1명은 술에 취해 있다]',
+ guideFirst:['마을 바보가 여럿이면 그중 1명에게 술취함 표식을 붙인다.','마을 바보를 한 명씩 따로 깨워 1명을 지목받는다.','엄지 위(선)/아래(악)로 답한다.','재운다.'],
+ guideOther:['마을 바보를 한 명씩 따로 깨워 지목받고 진영을 알려준다.'],
+ warn:['술취한 마을 바보는 본인도 자신이 취했는지 모른다 — 정보를 자유롭게 왜곡할 것.','마을 바보끼리 서로의 정체를 알려주지 않는다.','첩자·은둔자 등록 재량이 진영 판정에 적용된다.','여러 명일 때 깨우는 순서는 자리 순서 등으로 고정해 두면 혼선이 줄어든다.'],
+ remind:['어느 마을 바보가 술취함인지 그리모어에 고정 기록 — 게임 내내 바뀌지 않는다.']},
+{id:'huntsman',ko:'사냥꾼',en:'Huntsman',type:'townsfolk',edition:'exp',first:true,other:true,
+ setupNote:'아가씨(Damsel)가 반드시 함께 들어간다.',
+ ability:'게임당 1회, 밤에 살아 있는 플레이어 1명을 지목할 수 있다. 그 대상이 아가씨였다면, 아가씨는 이 게임에 없던 마을 주민 캐릭터로 바뀐다. [아가씨 추가]',
+ guideFirst:['사냥꾼을 깨워 지목 여부를 묻는다.','지목했으면 사용 표식을 붙인다(대상이 아가씨가 아니어도 소진).','대상이 아가씨였다면: 사냥꾼을 재우고 아가씨를 깨워 "당신은" 토큰과 새 캐릭터 토큰을 보여준다.','재운다.'],
+ guideOther:['사냥꾼을 깨워 지목 여부를 묻는다.','지목했으면 사용 표식을 붙인다.','대상이 아가씨였다면: 아가씨를 깨워 "당신은" 토큰과 새 캐릭터 토큰을 보여준다.','재운다.'],
+ warn:['게임당 1회 — 지목하는 순간 소진되며, 빗나가도 되돌릴 수 없다.','새로 주는 캐릭터는 이 게임에 등장하지 않은 마을 주민이어야 한다(사회자 선택).','사냥꾼이 중독/술취함이면 지목은 소진되지만 아무 일도 일어나지 않는다 — 티 내지 말 것.','바뀐 아가씨는 그 순간부터 새 캐릭터의 능력을 가지며, 밤 순서에 새로 편입된다.'],
+ remind:['사용 여부와 아가씨의 새 캐릭터를 그리모어에 즉시 반영.']},
+{id:'fisherman',ko:'어부',en:'Fisherman',type:'townsfolk',edition:'exp',first:false,other:false,
+ ability:'게임당 1회, 낮에 사회자를 찾아가 자기 진영의 승리에 도움이 될 조언을 들을 수 있다.',
+ guideFirst:[],guideOther:[],
+ warn:['조언의 강도는 전적으로 사회자 재량 — 게임을 끝내버리지 않되 분명히 쓸모 있는 한 줄이 기준.','중독/술취함이면 도움이 되지 않거나 해로운 조언을 준다.','한 번 쓰면 소진되므로, 요청 시점에 "지금 쓰는 것이 맞는지" 되묻지 말 것.'],
+ remind:['밤에는 깨우지 않는다. 낮에 요청이 오면 다른 사람이 듣지 않는 곳에서 응한다.','사용 여부를 기록.']},
+{id:'damsel',ko:'아가씨',en:'Damsel',type:'outsider',edition:'exp',first:true,other:true,
+ ability:'모든 하수인은 아가씨가 게임에 있다는 것을 안다. 하수인이 낮에 공개적으로 아가씨를 지목해 맞히면(게임당 1회) 선한 진영이 패배한다.',
+ guideFirst:['하수인 정보 단계에서 하수인들에게 아가씨 토큰을 보여준다(아직 보여주지 않았다면 지금 보여준다).','사냥꾼이 아가씨를 지목했다면 아가씨를 깨워 "당신은" 토큰과 새 캐릭터 토큰을 보여준다.'],
+ guideOther:['사냥꾼이 아가씨를 지목했다면 아가씨를 깨워 "당신은" 토큰과 새 캐릭터 토큰을 보여준다.'],
+ warn:['추측 권한은 하수인에게만 있고 악 진영 전체를 통틀어 1회뿐 — 틀리면 기회는 사라진다.','추측은 낮에 공개적으로 이루어져야 한다. 밤이나 사적 대화의 추측은 무효.','아가씨 본인은 자신이 아가씨임을 안다 — 광기 대상이 아니다.','사냥꾼과 짝으로 쓰이는 캐릭터이므로 사냥꾼 유무에 따라 위험도가 크게 달라진다.'],
+ remind:['하수인의 추측 사용 여부와 그 대상을 기록.']},
+{id:'politician',ko:'정치인',en:'Politician',type:'outsider',edition:'exp',first:false,other:false,
+ ability:'자기 진영이 패배한 데 가장 큰 책임이 있는 플레이어가 자신이었다면, 죽어 있더라도 진영을 바꿔 승리한다.',
+ guideFirst:[],guideOther:[],
+ warn:['"가장 큰 책임"의 판정은 전적으로 사회자 재량이며, 게임이 끝나는 시점에 내린다.','정치인 혼자만 승리하는 결과도 정상이다 — 진영이 바뀌는 것이지 결과가 뒤집히는 것이 아니다.','전환 전까지는 선한 외지인으로 등록된다.','중독/술취함이었다면 전환이 일어나지 않는다.'],
+ remind:['게임 종료 판정 때 정치인 여부를 반드시 확인할 것 — 잊기 쉬운 마지막 절차.']},
+{id:'golem',ko:'골렘',en:'Golem',type:'outsider',edition:'exp',first:false,other:false,
+ ability:'게임당 1회만 지명할 수 있다. 지명했을 때 그 대상이 악마가 아니면 대상은 죽는다.',
+ guideFirst:[],guideOther:[],
+ warn:['악마를 지명하면 아무 일도 일어나지 않지만 지명 기회는 그대로 소진된다.','사망은 지명 즉시 발생하며 처형과 무관하다 — 그날의 투표는 계속 진행한다.','골렘이 중독/술취함이면 대상이 죽지 않는다. 티 내지 말 것.','한 번 지명한 뒤에는 이후 어떤 날에도 지명할 수 없다.'],
+ remind:['지명 사용 여부를 기록 — 두 번째 지명 시도를 반드시 막아야 한다.']},
+{id:'marionette',ko:'꼭두각시',en:'Marionette',type:'minion',edition:'exp',first:true,other:false,
+ setupNote:'꼭두각시는 악마의 이웃 자리에 앉아야 한다. 선한 캐릭터 토큰을 받고 자신이 선하다고 믿는다.',
+ ability:'자신은 선한 캐릭터라고 믿지만 실제로는 하수인이다. 악마는 꼭두각시가 누구인지 안다. [악마의 이웃]',
+ guideFirst:['꼭두각시는 깨우지 않는다 — 하수인 정보·악마 정보 단계에서 제외한다.','악마를 깨워 "이 플레이어는" 토큰과 꼭두각시 토큰을 보여주고 꼭두각시를 가리킨다.','악마를 재운다.'],
+ guideOther:[],
+ warn:['꼭두각시는 자신이 받은 선한 캐릭터의 능력을 실제로 쓰지 못한다 — 그 캐릭터의 모든 정보는 사회자가 지어낸다.','악마에게 주는 "게임에 없는 캐릭터 3종" 정보에 꼭두각시가 믿는 캐릭터를 넣지 않는다.','꼭두각시는 악이므로 처형·승리 판정에서 악으로 센다.','꼭두각시가 믿는 캐릭터가 밤에 깨는 캐릭터라면, 실제로 깨워서 가짜 정보를 줘야 한다.'],
+ remind:['꼭두각시가 믿고 있는 가짜 캐릭터를 기록하고, 그 능력에 맞는 거짓 정보를 일관되게 유지할 것.']},
+{id:'widow',ko:'과부',en:'Widow',type:'minion',edition:'exp',first:true,other:false,
+ ability:'자신의 첫 밤에 그리모어를 보고 플레이어 1명을 지목해 중독시킨다. 선한 플레이어 1명은 과부가 게임에 있다는 것을 알게 된다.',
+ guideFirst:['과부를 깨워 그리모어를 필요한 만큼 보여준다.','플레이어 1명을 지목받아 중독 표식을 붙인다.','과부를 재운다.','사회자가 고른 선한 플레이어 1명을 깨워 과부 토큰을 보여주고 재운다.'],
+ guideOther:[],
+ warn:['중독은 과부가 살아 있는 동안 계속 유지되며 대상은 바뀌지 않는다.','"과부가 있다"를 알려줄 선한 플레이어는 사회자가 고른다 — 중독된 본인을 골라도 된다.','과부가 중독/술취함이면 중독이 걸리지 않지만 그리모어는 그대로 보여준다.','그리모어를 보여주기 전에 사회자 메모·표식 위치를 정리해 둘 것 — 정보 유출 사고가 가장 잦은 지점.'],
+ remind:['중독 대상과 "과부를 아는 선한 플레이어"를 기록.']},
+{id:'fearmonger',ko:'공포 조장가',en:'Fearmonger',type:'minion',edition:'exp',first:true,other:true,
+ ability:'매일 밤, 플레이어 1명을 지목한다. 자신이 그 대상을 지명했고 그 대상이 처형되면, 그 대상의 진영이 패배한다. 대상이 바뀌면 모든 플레이어가 그 사실을 알게 된다.',
+ guideFirst:['공포 조장가를 깨워 1명을 지목받고 공포 표식을 놓는다.','재운 뒤, 공포 조장가가 대상을 골랐음을 전체에 공지한다.'],
+ guideOther:['공포 조장가를 깨워 1명을 지목받고 공포 표식을 옮긴다.','전날과 대상이 달라졌으면 대상이 바뀌었음을 전체에 공지한다 — 누구인지는 말하지 않는다.'],
+ warn:['조건은 두 가지가 모두 충족될 때뿐이다 — 공포 조장가 본인이 지명했고, 그 대상이 그날 처형될 것.','공포 조장가가 중독/술취함이면 조건이 충족돼도 패배는 일어나지 않는다.','공지는 "바뀌었다" 만 알리고 대상은 절대 밝히지 않는다.','대상을 그대로 두면 공지하지 않는다 — 침묵 자체가 정보가 된다.'],
+ remind:['현재 공포 대상과 마지막으로 바뀐 날을 기록.']},
+{id:'goblin',ko:'고블린',en:'Goblin',type:'minion',edition:'exp',first:false,other:false,
+ ability:'지명당했을 때 자신이 고블린이라고 공개적으로 선언하고 그날 처형되면, 악한 진영이 승리한다.',
+ guideFirst:[],guideOther:[],
+ warn:['선언은 지명당한 그 순간(변론 중)이어야 하고, 처형도 같은 날이어야 한다 — 둘 중 하나라도 어긋나면 무효.','고블린이 중독/술취함이면 선언 후 처형돼도 승리하지 않는다.','선언 시점을 즉시 기록할 것 — 나중에 "언제 말했나"로 분쟁이 가장 많이 나는 캐릭터.','한 번 선언했다면 이후 날에 처형돼도 그 선언은 유효하지 않다.'],
+ remind:['선언 여부와 선언한 날짜를 기록.']},
+{id:'leviathan',ko:'레비아탄',en:'Leviathan',type:'demon',edition:'exp',first:true,other:true,
+ ability:'선한 플레이어가 2명 이상 처형되면 악이 승리한다. 모든 플레이어가 레비아탄이 게임에 있다는 것을 안다. 5일차 낮이 끝나면 악이 승리한다.',
+ guideFirst:['레비아탄이 게임에 있음을 전체에 공지한다.','1일차 표식을 놓는다.'],
+ guideOther:['레비아탄 표식을 오늘 날짜로 옮긴다.','원한다면 레비아탄이 있음을 다시 공지해도 된다.'],
+ warn:['레비아탄은 밤에 아무도 죽이지 않는다 — 밤 사망이 없다는 사실 자체가 큰 단서다.','판정 기준은 "처형된 사람이 선했는가" 이며, 처형으로 실제 죽었는지와 무관하다.','5일차 낮이 끝나는 순간 악 승리 — 날짜 카운터를 놓치면 게임이 망가진다.','매일 하루가 짧게 흘러가므로 낮 시간 관리를 미리 정해둘 것.'],
+ remind:['현재 몇 일차인지, 선한 플레이어가 몇 명 처형됐는지 상시 기록.']},
+{id:'legion',ko:'군단',en:'Legion',type:'demon',edition:'exp',first:false,other:true,
+ setupNote:'플레이어 과반이 군단으로 시작한다. 나머지는 원래 캐릭터를 유지하며, 군단 중 일부는 원래 선했던 플레이어다.',
+ ability:'매일 밤(첫날 제외) 플레이어 1명이 죽을 수 있다. 악한 플레이어만 투표한 처형은 실패한다. 군단은 하수인으로도 등록된다. [대부분의 플레이어가 군단이다]',
+ guideFirst:[],
+ guideOther:['플레이어 1명이 죽을 수 있다 — 죽일지, 누구를 죽일지는 사회자가 정한다.','아무도 죽이지 않아도 된다.','사망 표식을 놓는다.'],
+ warn:['군단은 대상을 지목하지 않는다 — 사망자 선택은 전적으로 사회자 몫이며, 밸런스 조절 수단이다.','처형 투표에 선한 플레이어가 한 명도 손을 들지 않았다면 그 처형은 무효가 된다.','악마가 여럿이므로 "악마 1명 사망 = 게임 종료"가 아니다 — 군단이 모두 죽어야 선이 승리한다.','군단은 하수인으로도 등록되므로 남작·수사관 등 하수인 판정에 걸릴 수 있다.'],
+ remind:['살아 있는 군단 수를 매 낮 확인.','처형 투표에서 누가 손을 들었는지 진영과 함께 기록.']},
+{id:'kazali',ko:'카잘리',en:'Kazali',type:'demon',edition:'exp',first:true,other:true,
+ setupNote:'하수인을 미리 배분하지 않는다. 첫날 밤에 카잘리가 어떤 플레이어를 어떤 하수인으로 만들지 직접 고르며, 외지인 수가 늘거나 줄 수 있다.',
+ ability:'매일 밤(첫날 제외) 플레이어 1명을 지목해 죽인다. [카잘리가 어떤 플레이어를 어떤 하수인으로 만들지 직접 고른다. 외지인 수 변동]',
+ guideFirst:['카잘리를 깨워, 어떤 플레이어를 어떤 하수인으로 만들지 고르게 한다.','고른 플레이어를 한 명씩 깨워 "당신은" 토큰과 하수인 토큰을 보여주고 엄지 아래를 준다.','그리모어를 갱신하고 카잘리를 재운다.'],
+ guideOther:['카잘리를 깨워 1명을 지목받는다.','보호·면역·대체 사망을 확인하고 살해 판정을 내린다.'],
+ warn:['첫날 밤에는 죽이지 않는다 — 하수인 배정만 한다.','선했던 플레이어가 하수인이 되면 그 순간부터 악이다. 선 인원과 승리 조건을 다시 계산할 것.','여행자와 이미 악인 플레이어는 하수인 전환 후보가 아니다.','하수인 수는 인원수 규칙을 따르며, 하수인이 된 사람의 원래 캐릭터에 따라 외지인 수가 달라질 수 있다.','전환된 플레이어가 원래 외지인이었다면 그 능력은 사라진다.'],
+ remind:['하수인 전환 결과를 그리모어에 즉시 반영하고, 전환 전 원래 캐릭터도 함께 남겨둘 것.']},
+];
+CHARACTERS.push(...EXP_CHARS);
+Object.assign(GLYPHS,{steward:'🧾',knight:'⚔️',noble:'🎀',shugenja:'⛩️',pixie:'🧚',
+ highpriestess:'🔱',balloonist:'🎈',villageidiot:'🤪',huntsman:'🪤',fisherman:'🎣',
+ damsel:'👗',politician:'🗳️',golem:'🗿',marionette:'🪆',widow:'🕷️',
+ fearmonger:'😱',goblin:'👺',leviathan:'🐋',legion:'🐜',kazali:'🕳️'});
 renderAll(); // 초기 렌더 이후 편입된 데이터 반영
 </script>
 
@@ -5346,7 +5540,7 @@ function showCharInfo(cid){
         <div style="flex:1;min-width:0">
           <div class="row" style="gap:6px;margin-bottom:8px">
             <span class="pill ${c.type}">${TYPE_KO[c.type]}</span>
-            <span class="pill neutral">${esc(EDITIONS[c.edition||'tb']?.ko||'커스텀')}</span>
+            <span class="pill neutral">${esc((typeof scriptLabel==='function'&&(scriptLabel(c.edition)||[])[0]) || EDITIONS[c.edition||'tb']?.ko || '커스텀')}</span>
             ${c.setup||c.setupChar?'<span class="pill warn">셋업 변경</span>':''}
           </div>
           <div class="pmability">${esc(c.ability)}</div>
@@ -6051,14 +6245,16 @@ const SCRIPT_LIB_THEMES=['입문','정보전','혼돈','광기·기만','전투�
 
 function libCharMeta(id){
   const c=(typeof CHARACTERS!=='undefined') && CHARACTERS.find(x=>x.id===id);
-  if(c) return {ko:c.ko, en:c.en, type:c.type, have:true};
+  /* edition:'exp' 는 백과사전 수록 전용 — 이름·유형은 정식으로 보여주되
+     밤 순서가 없으므로 자동화 가능(playable) 판정에서는 미구현으로 센다. */
+  if(c) return {ko:c.ko, en:c.en, type:c.type, have:true, encyc:c.edition==='exp'};
   const m=SCRIPT_LIB_EXTRA_CHARS[id];
   return m? {ko:m.ko, en:m.en, type:m.type, have:false}
           : {ko:id, en:id, type:'unknown', have:false};
 }
 function libEnrich(s){
   const metas=s.characters.map(libCharMeta);
-  s.missing=s.characters.filter((id,i)=>!metas[i].have);
+  s.missing=s.characters.filter((id,i)=>!metas[i].have || metas[i].encyc);
   s.playable=s.missing.length===0;
   const demons=metas.filter(m=>m.type==='demon').length;
   const extra=metas.filter(m=>m.type==='traveller'||m.type==='fabled').length;
@@ -6253,6 +6449,82 @@ button .cicon{vertical-align:-.28em}
   .ctoken:has(svg){font-size:23px}
   .cseat .ctoken:has(svg){font-size:25px}
 }
+/* ══════════ 모바일 심화: 오버플로 · 터치 타깃 · 한글 줄바꿈 · safe-area ══════════ */
+/* 한국어는 어절 단위 유지(keep-all), 그래도 안 들어가면 아무 데서나 끊어 컨테이너를 넘지 않게(anywhere) */
+.card,.step,.alertbox,.guide li,.hint,.pill,.token,button,.scard,.handoff-btn,
+.pcell,.rostercell,.roschip,.wiz-note,.wiz-caption,.wiz-pickbtn,.vmbox,.dawnrow,
+.qstat,.stchip,.setstep .slab,.sheetrow .sab,#pmodal .pmability,
+#daytimerbar,#nighttimerbar{word-break:keep-all;overflow-wrap:anywhere}
+/* 전체화면 오버레이도 safe-area 존중 */
+#pmodal{padding:16px calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+#gameover{padding:20px calc(20px + env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) calc(20px + env(safe-area-inset-left,0px))}
+#wizhead{padding-top:calc(12px + env(safe-area-inset-top,0px))}
+#wizfoot{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(16px + env(safe-area-inset-right,0px))}
+
+@media (max-width:880px){
+  /* 페이지 자체는 절대 가로로 밀리지 않게 (clip 은 sticky/fixed 를 깨지 않음) */
+  body{overflow-x:clip}
+  /* ── 타운스퀘어 가로 오버플로 ── */
+  /* 좌석은 원 밖으로 (좌석폭/2 − 원 여백)만큼 튀어나온다 → 원 지름을 그만큼 줄여 흡수 */
+  #tsq{width:min(100% - 40px,660px)}
+  #circlewrap{width:min(100% - 36px,640px)}
+  /* ── 하단 탭바: 한국어 라벨 nowrap 때문에 467px 로 넘치던 것 ── */
+  #sidenav{overflow-x:hidden}
+  #sidenav button{min-width:0;white-space:normal;word-break:keep-all;line-height:1.2;text-align:center;justify-content:center}
+  /* ── 터치 타깃 44px ── */
+  #subtabs button,.sheettabs button,.viewtoggle button,.vbtn,.stchip{min-height:44px}
+  .vbtn{min-width:56px;padding:8px 14px}
+  .pcell{min-height:56px}
+  .rostercell{min-height:60px}
+  .roschip{min-height:48px}
+  /* 작은 (i) 버튼: 시각 크기는 유지하고 탭 영역만 44px 로 확장 */
+  .infobtn{position:relative;width:28px;height:28px;min-height:28px;font-size:13px}
+  .infobtn::after{content:'';position:absolute;top:50%;left:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+  .stephead input[type=checkbox]{width:22px;height:22px;flex:0 0 auto}
+  .draghandle{padding:10px 6px;font-size:20px}
+  /* ── 그리드: 좁아져도 무너지지 않게 auto-fill ── */
+  .wiz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,96px),1fr));gap:8px;width:100%;max-width:100%}
+  .wiz-pickbtn{min-width:0;width:100%;padding:10px 6px;font-size:13px;min-height:66px}
+  .wiz-pickbtn .pt{font-size:28px}
+  .pickgrid,.handoff-list,.rosterlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,96px),1fr));gap:8px;max-width:100%}
+  .roschips{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,132px),1fr))}
+  .pcell,.rostercell,.handoff-btn,.roschip{min-width:0;width:100%}
+  .wiz-players{gap:10px}
+  /* ── 설정 스테퍼: 라벨 때문에 넘치던 것 ── */
+  .setsteps{overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .setsteps::-webkit-scrollbar{display:none}
+  .setstep .slab{font-size:10.5px;max-width:66px;text-align:center;line-height:1.3}
+  .setline{min-width:12px}
+  /* ── 타이머 바: 좁은 화면에서 줄바꿈 ── */
+  #daytimerbar,#nighttimerbar{gap:8px 10px;padding:10px 12px}
+  #daytimerbar .hint,#nighttimerbar .hint{flex:1 0 100%;margin:0;font-size:12px}
+  #daytimerbar button{margin-left:0!important;flex:1 1 auto;min-width:0}
+  /* ── 그 외 고정폭 잔재 ── */
+  .runbar .runbtn{padding:0 16px;flex:1 1 auto;min-width:0}
+  .dawnlist{max-width:100%}
+  .step .stepbody{padding-left:12px;padding-right:12px}
+  .rosform input,.rosrow input,.seatrow input{min-width:0}
+}
+@media (max-width:520px){
+  /* 아주 좁은 화면: 토큰을 더 줄여 원탁을 컨테이너 안에 완전히 가둔다 */
+  #tsq{width:min(100% - 30px,660px)}
+  .tseat{width:74px;margin-left:-37px;margin-top:-37px}
+  .ttoken{width:64px;height:64px}
+  .ttoken .tkicon{font-size:22px}
+  .ttoken .tkicon:has(svg){font-size:30px}
+  .ttoken .tkname{font-size:9.5px;max-width:56px}
+  .tseat .tkplayer{max-width:74px;font-size:11px}
+  .tseat.dead .ttoken .tkicon::after{font-size:28px}
+  .tbadge{width:20px;height:20px;font-size:10px}
+  #circlewrap{width:min(100% - 26px,640px)}
+  .cseat{width:62px;margin-left:-31px;margin-top:-31px}
+  .cseat .ctoken{width:38px;height:38px;font-size:17px}
+  .cseat .ctoken:has(svg){font-size:21px}
+  #sidenav button{font-size:10.5px}
+  .cseat .cname{font-size:10.5px}
+  .cseat .crole{font-size:9px}
+}
+
 </style>
 
 <script>
@@ -6801,8 +7073,172 @@ function scoreTimeline(pid){
         alignment:isEvil(p)? 'evil' : 'good', score:scorePlayer(p.id), mvp:p.id===mvp,
       })),
     });
+    /* 정규화기와 같은 상한 하나(SABER.MAX_HISTORY)를 쓴다 — 적재 쪽만 무한히 쌓이면
+       다음 로드의 migrateState 가 조용히 잘라내 저장본 왕복마다 길이가 요동친다 */
+    if(S.history.length>SABER.MAX_HISTORY) S.history.splice(0, S.history.length-SABER.MAX_HISTORY);
     save();
   };
+})();
+</script>
+
+<script>
+/* ══════════════ 해시 라우팅 · 공유 · 홈 큐레이션 (nav-share) ══════════════
+   단일 파일 오프라인 앱(file:// 포함)이라 History API 대신 location.hash 를 쓴다.
+   경로는 탭 id 1:1(#scripts · #night · #stats …)이고 시트만 2단(#sheet/tb).
+   원본 함수는 고치지 않고 전역 이름만 래핑한다. 래핑 대상을 '값'으로 미리
+   붙잡지 않으므로($('#advbtn').onclick=advancePhase 사고와 같은 조기 캡처 금지)
+   나중에 얹히는 다른 래퍼도 함께 발화한다. */
+
+/* 탭 화이트리스트는 하드코딩하지 않는다 — 실제 DOM 의 .tabpane id 에서 유도한다.
+   목록이 pane 과 어긋나면 renderAll 의 $('#pane-'+activeTab) 가 null 이 되어
+   화면 전체가 죽는다(#tab=foo 한 방에 흰 화면). 유도하면 어긋날 수가 없다. */
+const THY_TAB_IDS=Array.from(document.querySelectorAll('main section.tabpane[id^="pane-"]'))
+  .map(el=>el.id.slice(5)).filter(Boolean);
+const THY_HOME_TAB='scripts';
+const THY_TAB_KO={scripts:'공식 스크립트', setup:'설정', sheet:'스크립트 시트', grim:'그리모어',
+  night:'밤 진행', day:'낮 · 투표', guide:'백과사전', stats:'통계', check:'체크리스트', custom:'내 스크립트'};
+function thyKnownTab(t){ return THY_TAB_IDS.indexOf(t)>=0 && !!document.querySelector('#pane-'+t); }
+function thyRouteOf(){ return activeTab==='sheet' ? 'sheet/'+sheetEd : activeTab; }
+function thyRouteUrl(){ return location.href.split('#')[0] + '#' + thyRouteOf(); }
+function thyRouteWrite(){ const h='#'+thyRouteOf(); if(location.hash!==h){ try{ location.hash=h; }catch(e){} } }
+/* 모르는 해시는 화면을 바꾸지 않고 false 를 돌려준다 — 호출자가 기본 탭으로 되돌린다 */
+function thyRouteApply(h){
+  const raw=String(h==null? '':h).replace(/^#/,'').trim();
+  if(!raw) return false;
+  const parts=raw.split('/'), tab=parts[0];
+  if(!thyKnownTab(tab)) return false;
+  if(tab==='sheet'){
+    const ed=parts[1];
+    if(ed && typeof EDITIONS==='object' && EDITIONS[ed]) sheetEd=ed;
+    sheetTab='chars';
+  }
+  switchTab(tab);
+  return true;
+}
+/* 미지의 해시·깨진 activeTab 에서 되돌아올 자리 */
+function thyRouteFallback(){
+  if(!thyKnownTab(activeTab) && thyKnownTab(THY_HOME_TAB)) switchTab(THY_HOME_TAB);
+  else thyRouteWrite();
+}
+/* switchTab 래핑 — 모든 전환(자동 전환 포함)이 해시에 남는다 */
+(function(){
+  const _origSwitchTab=window.switchTab;
+  if(typeof _origSwitchTab!=='function') return;
+  window.switchTab=function(){ const r=_origSwitchTab.apply(this, arguments); thyRouteWrite(); return r; };
+})();
+/* 뒤로가기·직접 입력 복원. 우리가 쓴 해시와 같으면 무시해 루프를 막는다. */
+window.addEventListener('hashchange', ()=>{
+  if(location.hash.replace(/^#/,'')===thyRouteOf()) return;
+  if(!thyRouteApply(location.hash)) thyRouteFallback();
+});
+
+/* 현재 화면 공유 — navigator.share 우선, 없거나 거부되면 클립보드 복사 폴백 */
+function thyShareCurrent(){
+  const url=thyRouteUrl();
+  const title='🕰 티르소스 — '+(THY_TAB_KO[activeTab]||'사회자 콘솔');
+  const copy=()=>{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(()=>toast('현재 화면 링크를 복사했습니다 — '+url,'ok'), ()=>prompt('복사하세요:',url));
+    } else prompt('복사하세요:',url);
+  };
+  if(navigator.share){
+    try{
+      const p=navigator.share({title, text:title, url});
+      if(p && p.catch) p.catch(err=>{ if(!err || err.name!=='AbortError') copy(); });
+      return;
+    }catch(e){}
+  }
+  copy();
+}
+
+/* ── 홈 큐레이션 ──
+   ※ 여기서 쓰는 건 S.recentScripts(최근 연 스크립트)다. 판 전적 원장 S.history 와는
+      다른 필드다 — 한때 둘 다 history 였고, 그대로 두면 이 정규화기('id 없는 항목
+      제거·중복 제거')가 전적 레코드를 통째로 지운다(localStorage 라 복구 불가). */
+const THY_RECENT_MAX=8;
+function thyRecordScript(id, kind){
+  if(!id) return;
+  if(!Array.isArray(S.recentScripts)) S.recentScripts=[];
+  const h=S.recentScripts, sid=String(id).slice(0,40);
+  let k=(kind==='play')? 'play':'sheet';
+  const i=h.findIndex(x=>x&&x.id===sid);
+  if(i>=0){ if(h[i].kind==='play') k='play'; h.splice(i,1); }   // 한 번 플레이한 스크립트는 계속 '플레이함'
+  h.unshift({id:sid, kind:k, at:Date.now()});
+  if(h.length>THY_RECENT_MAX) h.length=THY_RECENT_MAX;
+  save();
+}
+(function(){
+  const _openSheet=window.openSheet, _startFromSheet=window.startFromSheet;
+  if(typeof _openSheet==='function') window.openSheet=function(ed){ const r=_openSheet.apply(this,arguments); thyRecordScript(ed,'sheet'); return r; };
+  if(typeof _startFromSheet==='function') window.startFromSheet=function(ed){
+    const r=_startFromSheet.apply(this,arguments);
+    if(activeTab==='setup') thyRecordScript(ed,'play');   // confirm 취소 시엔 탭이 안 바뀌므로 기록하지 않는다
+    return r;
+  };
+})();
+function thyHomeCurationHTML(){
+  const recent=(Array.isArray(S.recentScripts)? S.recentScripts:[]).slice(0,6);
+  const cards=recent.map(h=>{
+    const meta=SCRIPTS_META.find(s=>s.id===h.id);
+    const ko=meta? meta.ko : h.id, en=meta? meta.en : '';
+    let when='';
+    if(typeof h.at==='number' && h.at){ try{ when=new Date(h.at).toLocaleDateString('ko-KR'); }catch(e){} }
+    return `<div class="scard" data-home-script="${esc(h.id)}" role="button" tabindex="0">
+      <div class="sicon">${h.kind==='play'?'🎲':'📜'}</div>
+      <div><div class="sko">${esc(ko)}</div><div class="sen">${esc(en)}</div>
+      <div class="smeta">${h.kind==='play'?'플레이함':'시트 열람'}${when?' · '+esc(when):''}</div></div></div>`;
+  }).join('');
+  const cs=Array.isArray(S.customs)? S.customs.filter(c=>c&&typeof c==='object') : [];
+  const custom = cs.length
+    ? `<div class="scriptgrid"><div class="scard" data-home-nav="custom" role="button" tabindex="0">
+        <div class="sicon">📝</div>
+        <div><div class="sko">티르소스 커스텀 시트</div><div class="sen">custom · ${cs.length} characters</div>
+        <div class="smeta">${esc(cs.slice(0,6).map(c=>c.ko||'?').join(' · '))}${cs.length>6?' …':''}</div></div></div></div>`
+    : `<p class="hint">아직 커스텀 캐릭터가 없습니다 — <b>내 스크립트</b>에서 만들면 여기에 모입니다.</p>`;
+  return `<div class="secthead"><span class="shicon">🕘</span> 최근 플레이한 스크립트</div>
+    ${cards? `<div class="scriptgrid">${cards}</div>`
+           : '<p class="hint">아직 기록이 없습니다 — 스크립트를 열거나 게임을 시작하면 여기에 쌓입니다.</p>'}
+    <div class="secthead"><span class="shicon">⭐</span> 내 커스텀 시트</div>
+    ${custom}`;
+}
+(function(){
+  if(typeof window.renderScripts!=='function') return;
+  const _prev=window.renderScripts;   // 스크립트 라이브러리 래퍼 위에 한 겹 더 얹는다
+  window.renderScripts=function(){
+    _prev.apply(this, arguments);
+    const pane=document.querySelector('#pane-scripts'); if(!pane) return;
+    const card=pane.querySelector('.card')||pane;
+    let host=pane.querySelector('#homecuration');
+    if(!host){ host=document.createElement('div'); host.id='homecuration'; card.insertBefore(host, card.firstChild); }
+    host.innerHTML=thyHomeCurationHTML();
+  };
+})();
+/* 인라인 onclick 에 사용자 데이터를 넣지 않기 위한 위임 리스너 */
+document.addEventListener('click', e=>{
+  const t=e.target.closest && e.target.closest('[data-home-script],[data-home-nav]');
+  if(!t) return;
+  const sid=t.getAttribute('data-home-script');
+  if(sid){
+    if(SCRIPTS_META.some(s=>s.id===sid)) openSheet(sid);
+    else toast('그 스크립트 정보를 찾지 못했습니다.','warn');
+    return;
+  }
+  if(t.getAttribute('data-home-nav')==='custom') switchTab('custom');
+});
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter' && e.key!==' ') return;
+  const t=e.target && e.target.closest && e.target.closest('[data-home-script],[data-home-nav]');
+  if(!t) return;
+  e.preventDefault(); t.click();
+});
+
+window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyRouteWrite,
+  fallback:thyRouteFallback, known:thyKnownTab, tabs:THY_TAB_IDS, share:thyShareCurrent, record:thyRecordScript};
+(function(){
+  const sb=document.querySelector('#sharebtn');
+  if(sb) sb.onclick=()=>thyShareCurrent();   // 값 캡처 금지 — 호출 시점에 이름을 다시 해석한다
+  /* 초기 로드: 해시가 유효하면 그 화면으로, 아니면 기본 탭으로 되돌리고 큐레이션 포함 재렌더 */
+  if(!(location.hash && thyRouteApply(location.hash))){ thyRouteFallback(); renderAll(); }
 })();
 </script>
 
