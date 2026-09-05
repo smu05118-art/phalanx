@@ -708,14 +708,14 @@ const CHARACTERS = [
  remind:['살해 대상 지목 시 보호/군인/시장/중독을 이 도구의 살해 판정 버튼으로 처리하면 자동 체크된다.']},
 {id:'acrobat',ko:'곡예사',en:'Acrobat',type:'townsfolk',edition:'exp',first:false,other:true,ability:'매일 밤(첫날 제외) 1명을 선택한다. 그 사람이 오늘 밤 취함·중독 상태이거나 그렇게 되면 곡예사가 죽는다.',guideFirst:[],guideOther:['곡예사를 깨운다.','플레이어 1명을 지목하게 한다.','곡예사를 재운다.','그 대상이 오늘 밤 취함·중독 상태이면(이후에 그렇게 되는 경우 포함) 곡예사 사망 처리.'],warn:['곡예사 본인이 취함·중독이면 능력이 오작동 — 조건이 맞아도 죽지 않을 수 있다.','판정은 그 밤 전체 기준 — 선택 이후 대상이 중독돼도 죽는다.'],remind:['밤 순서 후반에 판정해 그 밤의 취함·중독 변동을 반영하라.']},
 {id:'alchemist',ko:'연금술사',en:'Alchemist',type:'townsfolk',edition:'exp',first:true,other:false,ability:'하수인 능력 하나를 가지고 시작한다. 그 능력을 사용할 때 사회자가 다른 선택을 하도록 유도할 수 있다.',guideFirst:['연금술사를 깨운다.','그가 가진 하수인 캐릭터 토큰을 보여준다.','그 능력이 첫날 밤 능력이면 이어서 진행한다.','연금술사를 재운다.'],guideOther:[],warn:['어떤 하수인 능력을 줄지는 사회자가 게임에 없는 하수인 중에서 고른다.','연금술사는 선한 주민 — 악 팀은 그를 모르고 그도 악 팀을 모른다.','중독·취함이면 그 하수인 능력도 오작동한다.'],remind:['얻은 능력이 밤 능력이면 해당 하수인의 밤 순서에 깨워 진행하라.','능력 사용 내역을 별도로 기록하라.']},
-{id:'alsaahir',ko:'알사히르',en:'Alsaahir',type:'townsfolk',edition:'exp',first:false,other:false,ability:'매일 낮, 공개적으로 어느 플레이어들이 하수인이고 누가 악마인지 추측해 전부 맞히면 선한 팀이 승리한다.',guideFirst:[],guideOther:[],warn:['추측은 공개 선언이어야 하며 하수인 전원과 악마를 모두 정확히 맞혀야 한다.','알사히르가 취함·중독이면 정답이어도 승리가 발동하지 않는다.'],remind:['하루 1회 기준으로 운영하고, 오늘 선언이 있었는지 기록하라.']},
+{id:'alsaahir',ko:'알사히르',en:'Alsaahir',type:'townsfolk',edition:'exp',first:false,other:false,dayAbility:true,ability:'매일 낮, 공개적으로 어느 플레이어들이 하수인이고 누가 악마인지 추측해 전부 맞히면 선한 팀이 승리한다.',guideFirst:[],guideOther:[],warn:['추측은 공개 선언이어야 하며 하수인 전원과 악마를 모두 정확히 맞혀야 한다.','알사히르가 취함·중독이면 정답이어도 승리가 발동하지 않는다.'],remind:['하루 1회 기준으로 운영하고, 오늘 선언이 있었는지 기록하라.']},
 {id:'amnesiac',ko:'기억상실자',en:'Amnesiac',type:'townsfolk',edition:'exp',first:true,other:true,ability:'자신의 능력이 무엇인지 모른다. 매일 낮 사회자에게 비공개로 능력을 추측하면 얼마나 정확한지 듣는다.',guideFirst:['사회자가 설계한 능력이 첫날 밤에 작동하면 깨워서 진행한다.'],guideOther:['설계한 능력이 밤 능력이면 해당 순서에 깨워 진행한다.'],warn:['능력은 사회자가 미리 자유 설계 — 지나치게 강하거나 약하지 않게.','추측 정확도 답변은 차갑다·미지근하다·뜨겁다 같은 단계 표현이 운영하기 쉽다.'],remind:['설계한 능력 전문을 반드시 적어 두라.','중독·취함이면 능력이 오작동하고 추측 답변도 부정확해질 수 있다.']},
 {id:'atheist',ko:'무신론자',en:'Atheist',type:'townsfolk',edition:'exp',first:false,other:false,setupChar:true,ability:'사회자는 게임 규칙을 깰 수 있다. 무신론자가 처형되면 죽어 있어도 선한 팀이 승리한다. 구성 변경: 악한 캐릭터 없음.',setupNote:'셋업 시 악한 캐릭터가 전혀 없다 — 전원 선. 사회자가 악의 존재를 연기한다.',guideFirst:[],guideOther:[],warn:['악마가 없으므로 가짜 밤 사망·거짓 정보로 평범한 게임처럼 연출한다.','규칙 파괴는 무신론자가 게임에 있을 때만 허용된다.','사회자 측이 이기는 길은 선이 무신론자를 처형하지 못한 채 통상 패배 조건에 이르게 하는 것.'],remind:['무신론자 처형 즉시 선 승리로 게임 종료 — 놓치지 마라.']},
 {id:'banshee',ko:'밴시',en:'Banshee',type:'townsfolk',edition:'exp',first:false,other:true,conditional:'악마에게 사망 시',ability:'악마가 밴시를 죽이면 전원이 그 사실을 알게 된다. 그 후 밴시는 매일 지명을 2회 할 수 있고, 지명마다 2표를 행사할 수 있다.',guideFirst:[],guideOther:[],warn:['공표하는 것은 밴시가 죽었다는 사실뿐 — 어느 플레이어인지는 밝히지 않는다.','악마의 킬로 죽었을 때만 발동 — 처형이나 다른 원인의 사망은 해당 없음.','죽을 때 중독·취함 상태였다면 발동하지 않는다(공표도 없다).'],remind:['발동 후 죽은 밴시는 사망자 투표 제한 없이 매일 지명 2회·지명당 2표 — 낮 진행 시 잊지 마라.','아침 사망 공표 때 밴시 발동 문구를 함께 선언하라.']},
 {id:'bountyhunter',ko:'현상금 사냥꾼',en:'Bounty Hunter',type:'townsfolk',edition:'exp',first:true,other:true,setupChar:true,ability:'첫날 밤 악한 플레이어 1명을 알게 된다. 그가 죽으면 그날 밤 새 악한 플레이어를 알게 된다. 구성 변경: 주민 1명이 악 성향이다.',setupNote:'셋업 시 주민 1명이 악 성향으로 시작한다(캐릭터·능력은 그대로, 성향만 악).',guideFirst:['악 성향이 된 주민을 깨워 악임을 알린다.','현상금 사냥꾼을 깨운다.','악한 플레이어 1명을 가리킨다.','현상금 사냥꾼을 재운다.'],guideOther:['추적 중인 악 플레이어가 죽었다면: 현상금 사냥꾼을 깨워 다른 악한 플레이어 1명을 가리킨다.'],warn:['악이 된 주민은 악마·하수인 정보를 받지 않는다 — 자신이 악이라는 사실만 안다.','첩자 등록 재량에 따라 가리킬 대상이 달라질 수 있다.','중독·취함이면 선한 플레이어를 가리켜도 된다.'],remind:['현재 추적 중인 대상을 표시해 두고, 그가 죽는 밤에 갱신하라.']},
 {id:'cannibal',ko:'식인종',en:'Cannibal',type:'townsfolk',edition:'exp',first:false,other:false,conditional:'처형 사망 시',ability:'가장 최근에 처형으로 죽은 사람의 능력을 가진다. 그가 악이었다면 다음에 선한 사람이 처형으로 죽을 때까지 식인종은 중독된다.',guideFirst:[],guideOther:[],warn:['얻은 능력은 본인에게 알려주지 않는다 — 능력이 작동하는 듯한 연출로 스스로 추리하게 하라.','악인을 먹어 중독된 동안에도 능력을 가진 척 거짓 정보를 줄 수 있다.','새 처형 사망이 나오면 이전 능력은 사라지고 교체된다.','1회용 능력은 식인종이 새로 얻을 때마다 다시 1회 쓸 수 있다.'],remind:['현재 보유 능력과 중독 여부를 기록하라.','얻은 능력이 밤 능력이면 그 캐릭터의 밤 순서에 식인종을 깨워라.']},
 {id:'choirboy',ko:'성가대 소년',en:'Choirboy',type:'townsfolk',edition:'exp',first:false,other:true,setupChar:true,conditional:'왕 사망 시',ability:'악마가 왕을 죽이면, 성가대 소년은 어느 플레이어가 악마인지 알게 된다. 구성 변경: 왕 포함.',setupNote:'셋업 시 왕(King)이 반드시 게임에 포함된다.',guideFirst:[],guideOther:['악마가 왕을 죽인 밤: 성가대 소년을 깨운다.','악마 플레이어를 가리킨다.','성가대 소년을 재운다.'],warn:['왕이 처형 등 다른 원인으로 죽으면 발동하지 않는다.','성가대 소년이 중독·취함이면 엉뚱한 플레이어를 가리켜도 된다.'],remind:['왕의 사망 원인을 확인하라 — 악마 킬일 때만 발동.']},
-{id:'cultleader',ko:'교주',en:'Cult Leader',type:'townsfolk',edition:'exp',first:true,other:true,ability:'매일 밤, 살아 있는 이웃 중 한 명과 같은 성향이 된다. 선한 플레이어 전원이 교단 가입을 선언하면 교주의 팀이 승리한다.',guideFirst:['교주를 깨운다.','성향이 바뀌었다면 새 성향을 신호로 알려준다.','교주를 재운다.'],guideOther:['교주를 깨운다.','성향이 바뀌었다면 새 성향을 신호로 알려준다.','교주를 재운다.'],warn:['양옆 이웃 중 어느 쪽 성향을 따르게 할지는 사회자 선택 — 매일 바뀔 수 있다.','악이 된 교주는 악 팀 정보를 받지 않고, 악 팀도 교주를 모른다.','가입은 각자 자유 선언이고 언제든 철회할 수 있다 — 전원 가입 순간 교주 팀 승리.'],remind:['교주의 현재 성향을 매일 밤 갱신해 기록하라.','승리 판정 전에 전원 가입 선언이 유효한지 확인하라.']},
+{id:'cultleader',ko:'교주',en:'Cult Leader',type:'townsfolk',edition:'exp',first:true,other:true,dayAbility:true,ability:'매일 밤, 살아 있는 이웃 중 한 명과 같은 성향이 된다. 선한 플레이어 전원이 교단 가입을 선언하면 교주의 팀이 승리한다.',guideFirst:['교주를 깨운다.','성향이 바뀌었다면 새 성향을 신호로 알려준다.','교주를 재운다.'],guideOther:['교주를 깨운다.','성향이 바뀌었다면 새 성향을 신호로 알려준다.','교주를 재운다.'],warn:['양옆 이웃 중 어느 쪽 성향을 따르게 할지는 사회자 선택 — 매일 바뀔 수 있다.','악이 된 교주는 악 팀 정보를 받지 않고, 악 팀도 교주를 모른다.','가입은 각자 자유 선언이고 언제든 철회할 수 있다 — 전원 가입 순간 교주 팀 승리.'],remind:['교주의 현재 성향을 매일 밤 갱신해 기록하라.','승리 판정 전에 전원 가입 선언이 유효한지 확인하라.']},
 {id:'engineer',ko:'기술자',en:'Engineer',type:'townsfolk',edition:'exp',first:true,other:true,ability:'게임당 1회, 밤에 어떤 하수인들이 게임에 있을지 또는 어떤 악마가 있을지 정한다.',guideFirst:['기술자를 깨운다.','능력을 쓰면: 하수인 구성 전체 또는 악마 캐릭터 하나를 지정하게 한다.','지정대로 교체하고, 바뀐 악 플레이어들을 깨워 새 캐릭터를 알린다.','기술자를 재운다.'],guideOther:['아직 능력을 안 썼다면 깨워서 사용 여부를 묻고, 쓰면 첫날 밤과 같이 처리한다.'],warn:['하수인 쪽과 악마 쪽 중 한쪽만 지정할 수 있다.','중독·취함이면 지정이 반영되지 않는다(구성 유지).','새 악마·하수인의 셋업형 능력은 이미 지난 셋업을 소급하지 않는다 — 재량 처리.'],remind:['사용 여부(게임당 1회)를 표시하라.','교체된 캐릭터의 밤 순서 변화를 반영하라.']},
 {id:'farmer',ko:'농부',en:'Farmer',type:'townsfolk',edition:'exp',first:false,other:true,conditional:'밤 사망 시',ability:'농부가 밤에 죽으면, 살아 있는 선한 플레이어 1명이 농부가 된다.',guideFirst:[],guideOther:['농부가 밤에 죽었다면: 살아 있는 선한 플레이어 1명을 골라 깨운다.','농부 토큰을 보여줘 새 농부가 되었음을 알린다.','재운다.'],warn:['처형 등 낮 사망에는 발동하지 않는다 — 밤 사망만.','새 농부의 원래 캐릭터 능력은 사라지고 농부로 완전히 교체된다.','새 농부도 밤에 죽으면 다시 연쇄된다.'],remind:['누가 현재 농부인지 토큰을 옮겨 기록하라.']},
 {id:'general',ko:'장군',en:'General',type:'townsfolk',edition:'exp',first:true,other:true,ability:'매일 밤, 사회자가 판단하기에 지금 어느 편이 이기고 있는지(선·악·백중) 알게 된다.',guideFirst:['장군을 깨운다.','엄지 위(선 우세)·아래(악 우세)·옆(백중) 신호를 보여준다.','장군을 재운다.'],guideOther:['장군을 깨운다.','현재 판세 신호를 보여준다.','장군을 재운다.'],warn:['사회자의 솔직한 판단이어야 한다 — 정보라기보다 판세 신호다.','중독·취함이면 반대 신호를 줘도 된다.'],remind:['신호 체계(위·아래·옆)를 첫날 밤 전에 정해 두라.']},
@@ -1413,8 +1413,17 @@ const blank = () => ({
   customs:[], roster:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null, daPrev:null,
   pukkaVictimId:null, mastermindDay:null, executedTodayPid:null, executedDiedToday:null,
   fangGuJumped:false, demonBlockedNight:null, demonBlockedPid:null, dayTimer:null,
-  /* 건달 — 그 밤의 '최초 지목'이 이미 지나간 밤 번호. null 이면 아직 아무도 건달을 지목하지 않았다. */
-  goonNight:null,
+  /* 승리 판정용 영속 필드 — migrateState() 에도 같은 이름이 있다(한쪽만 고치면 스키마가 갈라진다).
+     goodExecCount   = 이 판에서 '선한 플레이어가 처형된' 누적 횟수. 레비아탄 판정의 유일한
+                       입력이며 기준은 '처형됐는가'이지 '죽었는가'가 아니다(공식 레비아탄).
+     damselGuessUsed = 하수인의 아가씨 추측 1회 소진 여부(악 진영 전체를 통틀어 1회).
+     politicianAsked = 종료 화면에서 정치인 전환을 이미 물었는가(판당 1회). */
+  goodExecCount:0, damselGuessUsed:false, politicianAsked:false,
+  /* 건달 — 그 밤의 '최초 지목'이 이미 지나간 밤 번호. null 이면 아직 아무도 건달을 지목하지 않았다.
+     goonStep = 그 잠금을 소모한 위저드 씬 키('<stepId>#<씬번호>').
+     goonUndo = 되돌릴 정보 {chooserPid, goonPid, prevAlignment, addedDrunk}.
+     같은 씬을 다시 만나는 건 사회자의 '정정'이므로 앞선 발동을 취소하고 다시 판정해야 한다. */
+  goonNight:null, goonStep:null, goonUndo:null,
   /* 캐릭터 확인 릴레이 — {좌석id: 그 좌석에게 보여준 캐릭터id}. 확인을 마친 좌석의 기록.
      true 가 아니라 캐릭터 id 를 적는 이유는 revealOk() 주석에 있다(배정이 바뀌면 자동 무효). */
   revealDone:{},
@@ -1462,6 +1471,12 @@ const blank = () => ({
      좁히는 유일한 열쇠이고(editionChars 래퍼), 공식 시트로 게임을 시작하면 null 로 돌아간다.
      둘 다 migrateState() 에도 같은 이름으로 있다 — 한쪽만 고치면 스키마가 갈라진다. */
   myScripts:[], myScriptActive:null,
+  /* 기기 전달 중 확정된 선택의 복구 스냅샷 — {step, idx, key, ids, night}.
+     wiz 는 S 에 들어가지 않는 지역 변수라, 기기를 여러 사람에게 돌리는 도중 폰이 잠기거나
+     브라우저가 탭을 회수하면 그 밤의 지목이 아무 흔적도 없이 사라졌다.
+     handoffPick 이 매 탭마다 갱신하고, 같은 밤 같은 단계를 다시 열면 startWiz 가 되살린다.
+     migrateState() 에도 같은 필드가 있다 — 한쪽만 고치면 스키마가 갈라진다. */
+  handoffDraft:null,
   events:[], evSeq:0, history:[], recentScripts:[], schema:2
 });
 let S = blank();
@@ -1604,6 +1619,22 @@ function migrateState(raw){
     .filter((x,i,a)=>a.indexOf(x)===i).slice(0,24);
   /* 건달 잠금 — 밤 번호(숫자)만 유효하다. 손상된 값은 '아직 발동 안 함'으로 되돌린다. */
   st.goonNight=(typeof st.goonNight==='number' && isFinite(st.goonNight))? st.goonNight : null;
+  /* 승리 판정용 영속 필드 — blank() 과 같은 이름·같은 의미로 정규화한다.
+     goodExecCount 가 음수·NaN·문자열이면 레비아탄 판정이 영원히 성립하지 않거나 즉시
+     터지므로 0 으로 되돌린다(구버전 저장본에는 아예 없다). */
+  st.goodExecCount=(typeof st.goodExecCount==='number' && isFinite(st.goodExecCount) && st.goodExecCount>0)
+    ? Math.floor(st.goodExecCount) : 0;
+  st.damselGuessUsed=!!st.damselGuessUsed;
+  st.politicianAsked=!!st.politicianAsked;
+  /* 잠금을 소모한 씬 키와 되돌릴 정보 — 구버전 저장본에는 없다. 형태가 깨졌으면 '없음'으로 돌린다
+     (되돌릴 정보가 없으면 재진행 때 잠금만 풀리고 앞선 효과는 사회자가 손으로 정리한다). */
+  st.goonStep=(typeof st.goonStep==='string' && st.goonStep)? st.goonStep : null;
+  st.goonUndo=(st.goonUndo && typeof st.goonUndo==='object' && !Array.isArray(st.goonUndo)
+    && typeof st.goonUndo.chooserPid==='string' && typeof st.goonUndo.goonPid==='string')
+    ? {chooserPid:st.goonUndo.chooserPid, goonPid:st.goonUndo.goonPid,
+       prevAlignment:(st.goonUndo.prevAlignment==='good'||st.goonUndo.prevAlignment==='evil')? st.goonUndo.prevAlignment : null,
+       addedDrunk:!!st.goonUndo.addedDrunk}
+    : null;
   /* 캐릭터 확인 릴레이 — 형태가 깨졌으면 통째로 비운다. 사라진 좌석의 키와 문자열이 아닌
      값은 버린다(좌석을 지웠다 새로 만들면 uid 가 달라져, 유령 키가 '전원 확인'을 가짜로 채운다). */
   if(!st.revealDone || typeof st.revealDone!=='object' || Array.isArray(st.revealDone)) st.revealDone={};
@@ -1636,6 +1667,22 @@ function migrateState(raw){
   /* 지니 플래그 — 구버전 저장본에는 없다. 형태가 깨졌으면 통째로 초기화한다(불린 두 개뿐) */
   if(!st.djinn || typeof st.djinn!=='object' || Array.isArray(st.djinn)) st.djinn={accepted:false, declined:false};
   st.djinn={accepted:!!st.djinn.accepted, declined:!!st.djinn.declined};
+  /* 기기 전달 복구 스냅샷 — 구버전 저장본에는 없다. 형태가 깨졌거나 사라진 좌석을 가리키면
+     통째로 버린다(유령 pid 가 복구로 되살아나 그대로 판정 대상이 되는 사고 방지).
+     blank() 에도 같은 필드가 있다 — 한쪽만 고치면 스키마가 갈라진다. */
+  {
+    const _hd=st.handoffDraft;
+    const _hids=new Set(st.players.map(p=>p.id));
+    st.handoffDraft=(_hd && typeof _hd==='object' && !Array.isArray(_hd)
+        && typeof _hd.key==='string' && /^[A-Za-z0-9_]{1,32}$/.test(_hd.key)
+        && Array.isArray(_hd.ids) && _hd.ids.length && _hd.ids.every(id=>_hids.has(id)))
+      ? {step:String(_hd.step||''),
+         idx:(typeof _hd.idx==='number' && isFinite(_hd.idx) && _hd.idx>=0)? _hd.idx : 0,
+         key:_hd.key,
+         ids:_hd.ids.slice(0,20),
+         night:(typeof _hd.night==='number' && isFinite(_hd.night))? _hd.night : -1}
+      : null;
+  }
   /* 종료 후 동료 평가 투표 — 구버전 저장본에는 없다. 표 객체는 '현재 좌석에 있는 pid' 만
      남긴다: 사라진 플레이어에게 표가 붙어 있으면 결과 화면에 이름 없는 칸이 생기고
      OP스코어의 PEER 항 분자가 유령을 가리킨다. 손상된 값은 '미개시'로 되돌린다. */
@@ -1722,6 +1769,16 @@ function activeFabledIds(){
   return out;
 }
 function alivePlayers(){ return S.players.filter(p=>p.alive); }
+/* 게임 종료 인원 계산의 단일 정의 — '겉보기 생존'이 아니라 '실제 생존'을 센다.
+   공식 Zombuul: "The 1st time you die, you live but register as dead." 죽은 척 중인
+   좀버얼은 살아 있는 플레이어다. 겉보기 명단(alivePlayers)에는 넣지 않되 종료 인원에는
+   포함해야 한다 — 빼고 세면 실제 생존 2인(좀버얼+선 1명)에서 악 승리가 영원히 성립하지
+   않고, 시장 3인 판정은 실제 4명을 3명으로 읽어 선 승리를 오선언한다.
+   종료 인원을 보는 곳은 전부 이 함수만 쓴다(조건을 두 벌 적어 어긋나던 이력). */
+function realAliveCount(){
+  return alivePlayers().length +
+    S.players.filter(p=>!p.alive && p.charId==='zombuul' && hasStatus(p,'fakedead')).length;
+}
 function playerOf(pid){ return S.players.find(p=>p.id===pid); }
 /* 진영은 캐릭터에서 '유도'하면 이발사 교환·건달·팡 구에서 오염된다.
    p.alignment 가 명시돼 있으면 그것이 우선, 없으면 캐릭터 타입에서 유도한다. */
@@ -1768,7 +1825,12 @@ function doSnakeSwap(pids){
 }
 function hasStatus(p,key){ return (p.statuses||[]).some(s=>s.key===key); }
 function isMalfunctioning(p){ return hasStatus(p,'poison') || hasStatus(p,'drunkS') || (p.charId==='drunk'); }
-function majority(n){ return Math.floor(n/2)+1; }
+/* 공식 문턱은 '과반(majority)'이 아니라 '살아 있는 플레이어 수의 절반 이상, 올림'이다
+   (Trouble Brewing 룰북 Voting / wiki.bloodontheclocktower.com/Execution:
+    "at least half the number of alive players"). 6명 생존이면 4표가 아니라 3표다.
+   Math.floor(n/2)+1 은 짝수 인원마다 1표를 더 요구해 성립해야 할 처형과 여행자 추방을
+   부결시킨다(홀수는 우연히 값이 같아 짝수에서만 어긋났다). */
+function majority(n){ return Math.max(1, Math.ceil(n/2)); }
 function phaseName(){ const ph=S.phase; if(ph.kind==='setup') return '준비'; return (ph.kind==='night'?'밤 ':'낮 ')+ph.n; }
 function log(msg){ S.log.push({t:phaseName(), msg}); save(); }
 
@@ -1833,6 +1895,11 @@ const DEATH_MODIFIERS = [
    official:'Devil\'s Advocate: "Each night, choose a living player (different to last night): if executed tomorrow, they don\'t die." (roles181.json:1264) — 처형에만 유효하고, 타인의 능력이므로 대상의 중독과 무관하다.',
    when:(t,c)=> c.sourceType==='execution' && hasStatus(t,'execProtect'),
    reason:()=> '악마의 변호사의 변호 — 처형돼도 죽지 않음'},
+
+  {id:'vizier-dayimmune', ko:'재상 낮 사망 면역', precedence:32, stage:'block', effect:'block',
+   implemented:false, uncertain:true,
+   official:'Vizier: "All players know who you are. You can not die during the day. If good voted, you may choose to execute immediately." (wiki.bloodontheclocktower.com/Vizier) — 원인 제한이 없으므로 처형·처단자를 포함한 낮 사망 전부가 대상이고, 대상 자신의 능력이므로 중독·취함이면 무효다(파일 안 vizier.warn 의 판단과 같다). 자동 판정을 켜면 처형 흐름 전체(executedToday·성자·탕녀 계승·재상 즉시 처형)를 함께 다시 짜야 하므로 무행동 전환 계약에 따라 이번에는 표에만 올린다 — 표에 없으면 renderDeathTraces 의 근거 사슬에서 재상만 존재하지 않는 규칙처럼 보인다.',
+   when:()=> false, reason:()=> '재상 — 낮에는 죽지 않음(사회자 수동 판정)'},
 
   {id:'psychopath-roshambo', ko:'사이코패스 가위바위보', precedence:33, stage:'block', effect:'block',
    implemented:false, uncertain:true,
@@ -2167,8 +2234,11 @@ function charName(p){ const c=charOf(p.charId); return c? c.ko : '?'; }
 function checkEndConditions(cause, aliveBefore){
   const demonAlive = S.players.some(p=>(p.alive || (p.charId==='zombuul'&&hasStatus(p,'fakedead'))) && charOf(p.charId)?.type==='demon');
   if(demonAlive){
-    // M-7: 생존 2인 이하 + 악마 생존 = 악한 팀 승리
-    if(alivePlayers().length<=2){
+    /* M-7: 생존 2인 이하 + 악마 생존 = 악한 팀 승리.
+       인원은 realAliveCount() — 죽은 척 중인 좀버얼이 있으면 겉보기 2명이어도 실제로는
+       3명이다. 겉보기로 세면 여기서 '악한 팀 승리' 토스트가 뜨고, 그 문자열이 toast 래퍼의
+       승리 게이트를 통과해 S.gameOver 도 세우지 않은 채 종료 화면을 띄운다. */
+    if(realAliveCount()<=2){
       toast('🏴 생존자가 2명 이하이고 악마가 살아 있습니다 — 악한 팀 승리!','warn');
       log('악한 팀 승리(생존 2인 이하 + 악마 생존)');
     }
@@ -2219,6 +2289,10 @@ function advancePhase(){
           +'\n\n그래도 첫 번째 밤을 시작할까요?')) return;
     }
     S.phase={kind:'night', n:1};
+    /* 다른 두 전환 분기(밤→낮·낮→밤)와 동일하게 여기서도 한 번 쓸어낸다. 이 분기만 빠져 있어
+       {night,1} 만료를 가진 토큰은 만나야 할 페이즈를 영영 만나지 못하고 판이 끝날 때까지
+       남았다 — 중독이 남으면 isMalfunctioning 이 계속 참이라 그 캐릭터가 내내 불발한다. */
+    expireStatuses();
     /* 새 판이 시작되면 지난 판의 동료 평가는 끊는다. 전체 초기화 없이 이름만 바꿔
        다시 시작하면 좌석 pid 가 그대로라 지난 표가 이번 판 OP스코어의 PEER 항으로
        새어 들어간다(레코드는 이미 pgid 로 확정돼 있으므로 전적은 영향 없음). */
@@ -2234,12 +2308,21 @@ function advancePhase(){
     if(typeof sweepMoonchildChoice==='function') sweepMoonchildChoice();
     switchTab('day');
   } else {
-    // 낮 종료 → 시장 3인 승리 조건 최종 확인
-    const mayor=S.players.find(p=>p.alive && p.charId==='mayor');
-    if(mayor && alivePlayers().length===3 && !S.executedToday && !isMalfunctioning(mayor)){
-      if(!confirm('⚠ 생존자 3명 + 오늘 처형 없음 + 시장 생존(정상 작동) = 선한 팀 승리 조건입니다!\n그래도 밤으로 진행할까요? (취소를 누르면 낮에 머뭅니다)')) return;
-    }
+    /* 시장 3인 승리 판정은 evalWinEvent('dayEnd') 한 곳에만 둔다.
+       예전에는 여기에도 같은 조건의 confirm 이 있어서, 승리 다이얼로그에서 '계속 진행'을
+       고른 사회자가 재개 직후(_dayEndResuming) 같은 질문을 한 번 더 받고 취소하면 낮에
+       그대로 갇혔다. 조건이 두 벌이면 한쪽만 고칠 때(좀버얼 인원 보정 등) 서로 어긋난다. */
     if(sheetEd!==S.edition) sheetEd=S.edition;   // 시트가 다른 스크립트를 보고 있으면 되돌린다
+    /* 열린 채로 낮이 끝난 지명을 여기서 정리한다 — 그대로 두면 다음 낮의 renderDay 가
+       day 필터(n.day===S.phase.n)로 걸러 화면에서 사라지고, 사망 투표 토큰을 되돌리는
+       유일한 경로(cancelNom)를 부를 UI 가 영영 없어진다(토큰 영구 소실).
+       집계되지 않은 표는 토큰을 쓰지 않는다 — cancelNom 과 같은 규칙으로 복원한다.
+       result 'abandoned' 는 SABER 집계(pass/yesFail 필터)에서 자동으로 빠진다. */
+    S.noms.filter(n=>n.day===ph.n && !n.closed).forEach(n=>{
+      const back=(n.deadVoters||[]).map(id=>{ const q=playerOf(id); if(q) q.deadVote=true; return q? q.name : id; });
+      n.closed=true; n.result='abandoned'; n.deadVoters=[];
+      log(`지명 미결 종료(낮 ${ph.n}) — 사망 투표 토큰 복원: ${back.join(', ')||'없음'}`);
+    });
     S.executedPrevDay = S.executedDiedToday;  // 장의사는 '처형으로 실제 죽은' 캐릭터만 본다
     S.executedToday=null; S.executedTodayPid=null; S.executedDiedToday=null;
     S.phase={kind:'night', n:ph.n+1};
@@ -2438,7 +2521,12 @@ function setupIssues(){
   const un=S.players.filter(p=>!p.charId);
   if(un.length) issues.push('캐릭터 미배정: '+un.map(p=>p.name).join(', '));
   const mods=setupMods(S.players.map(p=>p.charId));
-  const comps=n>=5?compVariants(n,mods):null;
+  /* COMP 인원표는 '여행자·전설을 뺀 정규 인원' 기준이다(공식: 여행자는 인원표 밖의 추가 인원).
+     좌석 총수로 표를 찾으면 바로 아래 집계가 여행자·전설을 빼는 것과 어긋나, 그런 좌석이 하나만
+     있어도 합이 영원히 맞지 않아 '구성 불일치'와 setupStepDone(2) 미완료가 고정된다.
+     미배정 좌석(charOf 가 undefined)은 정규 인원으로 센다 — 배정 전에 표가 흔들리면 안 된다. */
+  const nReg=S.players.filter(p=>{const c=charOf(p.charId); return !c || (c.type!=='traveler'&&c.type!=='fabled');}).length;
+  const comps=nReg>=5?compVariants(nReg,mods):null;
   const counts={townsfolk:0,outsider:0,minion:0,demon:0};
   S.players.forEach(p=>{const c=charOf(p.charId); if(!c) return; if(c.type==='traveler'||c.type==='fabled') return; counts[c.type]++;});
   if(comps && !comps.some(comp=>counts.townsfolk===comp[0]&&counts.outsider===comp[1]&&counts.minion===comp[2]&&counts.demon===comp[3]))
@@ -2458,8 +2546,11 @@ function renderSetup(){
   const step=S.setupStep||1;
   const n=S.players.length;
   const mods=setupMods(S.players.map(p=>p.charId));
-  const comps=n>=5?compVariants(n,mods):null;
-  const modLabel=SETUP_MOD_IDS.filter(id=>S.players.some(p=>p.charId===id)).map(id=>charOf(id).ko).join('·');
+  /* setupIssues() 와 같은 기준이어야 한다 — 여기만 좌석 총수로 표를 찾으면 compOK 가 언제나 false 다 */
+  const nReg=S.players.filter(p=>{const c=charOf(p.charId); return !c || (c.type!=='traveler'&&c.type!=='fabled');}).length;
+  const comps=nReg>=5?compVariants(nReg,mods):null;
+  /* charOf() 는 미지의 id 에 undefined 를 돌려준다 — 유령 charId 하나로 셋업 탭이 통째로 죽던 자리 */
+  const modLabel=SETUP_MOD_IDS.filter(id=>S.players.some(p=>p.charId===id)).map(id=>charOf(id)?.ko||id).join('·');
   const counts={townsfolk:0,outsider:0,minion:0,demon:0};
   let travelerN=0;
   S.players.forEach(p=>{const c=charOf(p.charId); if(!c) return;
@@ -2468,7 +2559,11 @@ function renderSetup(){
   const ft=S.players.find(p=>p.charId==='fortuneteller');
   const dr=S.players.find(p=>p.charId==='drunk');
   /* 커스텀 이름은 사용자 입력이다 — 이스케이프하지 않으면 옵션 라벨이 저장형 XSS 통로가 된다 */
-  const opts=(sel)=>editionChars().map(c=>`<option value="${esc(c.id)}" ${sel===c.id?'selected':''}>${esc(c.ko)} (${TYPE_KO[c.type]||c.type})</option>`).join('');
+  /* 전설은 좌석을 차지하지 않는다 — S.fabled 토글이 유일한 배치 창구다(blank() 주석 · isFabledActive).
+     좌석에 넣으면 alivePlayers()·거수 과반·evalWinEvent 의 생존자 수에 그대로 섞여 악 승리가
+     한 명분 늦어지고, setupIssues 는 전설을 counts 에서 빼므로 구성 검사만 따로 어긋난다.
+     구버전 저장본이 이미 좌석에 쥐고 있는 값만 예외로 남긴다(선택이 조용히 사라지지 않게). */
+  const opts=(sel)=>editionChars().filter(c=>c.type!=='fabled' || c.id===sel).map(c=>`<option value="${esc(c.id)}" ${sel===c.id?'selected':''}>${esc(c.ko)} (${TYPE_KO[c.type]||c.type})</option>`).join('');
   const stepper=`<div class="setsteps">${[[1,'참가자'],[2,'캐릭터 배정'],[3,'시작']].map(([k,ko],i)=>
     `${i?'<div class="setline"></div>':''}
      <div class="setstep ${setupStepDone(k)?'done':''} ${step===k?'cur':''}" onclick="gotoSetupStep(${k})">
@@ -2497,7 +2592,7 @@ function renderSetup(){
       <button class="ghost" onclick="clearAssign()">배정 전체 비우기</button>
       <span class="hint">또는 아래에서 직접 선택</span>
     </div>
-    ${comps?`<p class="hint">권장 구성 (${n}인${modLabel?` · ${modLabel} 적용`:''}): ${comps.map(comp=>`<span class="pill townsfolk">주민 ${comp[0]}</span> <span class="pill outsider">외지인 ${comp[1]}</span> <span class="pill minion">하수인 ${comp[2]}</span> <span class="pill demon">악마 ${comp[3]}</span>`).join(' <span class="hint" style="display:inline">또는</span> ')}
+    ${comps?`<p class="hint">권장 구성 (${nReg}인${nReg!==n?` · 여행자·전설 ${n-nReg} 제외`:''}${modLabel?` · ${modLabel} 적용`:''}): ${comps.map(comp=>`<span class="pill townsfolk">주민 ${comp[0]}</span> <span class="pill outsider">외지인 ${comp[1]}</span> <span class="pill minion">하수인 ${comp[2]}</span> <span class="pill demon">악마 ${comp[3]}</span>`).join(' <span class="hint" style="display:inline">또는</span> ')}
       &nbsp;현재: ${counts.townsfolk}/${counts.outsider}/${counts.minion}/${counts.demon}
       ${compOK?'<span class="pill ok">구성 일치</span>':'<span class="pill warn">구성 불일치</span>'}
       ${travelerN?`<span class="pill neutral">+ 여행자 ${travelerN}</span> <span class="hint" style="display:inline">(여행자·전설은 구성 카운트에 미포함)</span>`:''}</p>`:''}
@@ -2835,11 +2930,15 @@ function setHerring(pid){ S.redHerringId=pid;
 function setDrunkMask(cid){ S.drunkMaskChar=cid; save(); renderAll(); log(`주정뱅이 위장 캐릭터: ${charOf(cid)?.ko||'-'}`); }
 function randomAssign(){
   const n=S.players.length; if(n<5) return;
-  let baron = S.edition==='tb' && Math.random() < 0.35; // 남작 포함 여부를 먼저 굴린다
+  /* 후보 풀 = 이 판이 쓰는 캐릭터 전부(빌더로 연결한 내 스크립트가 있으면 그 목록).
+     커스텀을 빼면 커스텀·실험만으로 짠 시트에서는 배정할 것이 아무것도 없다.
+     여행자·전설만 제외한다 — 둘 다 COMP 인원표 밖이고, 전설은 좌석 자체를 쓰지 않는다. */
+  const pool=editionChars().filter(c=>c.type!=='traveler' && c.type!=='fabled');
+  /* 남작은 시트에 실제로 있을 때만 굴린다 — 없는데 뽑으면 그 좌석이 유령 charId 가 된다 */
+  let baron = pool.some(c=>c.id==='baron') && Math.random() < 0.35; // 남작 포함 여부를 먼저 굴린다
   const comp=compFor(n, baron?2:0);
   const pick=(arr,k,exclude)=>{ const pool=arr.filter(c=>!exclude.includes(c.id)); const out=[];
     while(out.length<k && pool.length){ out.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0].id); } return out; };
-  const pool=editionChars().filter(c=>!c.custom);
   const tf=pool.filter(c=>c.type==='townsfolk'), os=pool.filter(c=>c.type==='outsider'),
         mi=pool.filter(c=>c.type==='minion'), de=pool.filter(c=>c.type==='demon');
   const minions = baron? ['baron'].concat(pick(mi,comp[2]-1,['baron'])) : pick(mi,comp[2],[]);
@@ -2848,13 +2947,26 @@ function randomAssign(){
   // 셋업 보정 캐릭터(남작·대부·팡 구·비고르모르티스)가 뽑힌 경우 구성 재조정
   const mods=setupMods(roles);
   const delta=mods.delta + (mods.godfather? (Math.random()<0.5?1:-1) : 0); // 대부는 ±1 중 무작위 선택
-  if(delta!==0 || mods.godfather){ const c2=compFor(n,delta);
-    roles=[].concat(pick(tf,c2[0],[]), pick(os,c2[1],[]), roles.filter(id=>charOf(id).type==='minion'), roles.filter(id=>charOf(id).type==='demon'));
+  let usedComp=comp;
+  if(delta!==0 || mods.godfather){ const c2=compFor(n,delta); usedComp=c2;
+    roles=[].concat(pick(tf,c2[0],[]), pick(os,c2[1],[]), roles.filter(id=>charOf(id)?.type==='minion'), roles.filter(id=>charOf(id)?.type==='demon'));
   }
+  /* pick() 은 풀이 모자라면 조용히 적게 돌려주고 남는 좌석은 빈 문자열로 남는다. 악마를 한 명도
+     못 채운 채 진행하면 evalWinEvent('death') 의 demonAlive 가 false 라 첫 사망에서 '마지막
+     악마가 죽었습니다'가 잘못 선언된다 — 어느 유형이 몇 명 모자랐는지 반드시 알린다. */
+  const short=[];
+  [['townsfolk',0],['outsider',1],['minion',2],['demon',3]].forEach(row=>{
+    const got=roles.filter(id=>charOf(id)?.type===row[0]).length;
+    if(got<usedComp[row[1]]) short.push(`${TYPE_KO[row[0]]||row[0]} ${usedComp[row[1]]-got}명`);
+  });
   roles.sort(()=>Math.random()-.5);
   S.players.forEach((p,i)=>{ p.charId=roles[i]||''; p.statuses=[]; if(p.charId==='drunk') addStatus(p,'drunkS','주정뱅이',null); });
   S.redHerringId=null; S.drunkMaskChar=null;
-  log('무작위 배정 완료'); save(); renderAll();
+  if(short.length){
+    log(`무작위 배정 — 시트에 캐릭터가 모자라 ${short.join(' · ')} 미배정`);
+    toast(`시트 캐릭터 부족 — ${short.join(' · ')}을 채우지 못했습니다. 남은 좌석을 직접 배정하세요.`,'warn');
+  } else log('무작위 배정 완료');
+  save(); renderAll();
 }
 
 /* ══════════════════ 시트 탭 (teeroz형 스크립트 페이지) ══════════════════ */
@@ -2872,8 +2984,9 @@ function nightRow(edMeta,id,i,isFirstNight=true){
   // 이후 밤 시트에서는 guideOther 우선, 첫날 밤 시트에서는 기존 규칙 유지
   const g = !isFirstNight ? (c.guideOther||c.guideFirst||[])
     : ((edMeta && c.guideOther && !c.first)? c.guideOther : (c.guideFirst||c.guideOther||[]));
+  /* data-cid = 이 행의 캐릭터 고유 키. (i) 버튼 주입기가 이름 역조회 대신 이걸 읽는다 */
   return `<div class="sheetrow" style="${S.players.length&&!inPlay?'opacity:.45':''}">
-    <div class="ctoken ${c.type}">${glyph(c.id)}</div>
+    <div class="ctoken ${c.type}" data-cid="${esc(c.id)}">${glyph(c.id)}</div>
     <div><span class="sname">${esc(c.ko)}</span><span class="sen">${esc(c.en||'')}</span>${c.conditional?` <span class="pill warn">${esc(c.conditional)}</span>`:''}
     <div class="sab hint">${esc((g[0]||'').replace(/\.$/,''))}</div></div></div>`;
 }
@@ -2881,13 +2994,16 @@ function renderSheet(){
   const el=$('#pane-sheet');
   const meta=SCRIPTS_META.find(s=>s.id===sheetEd)||SCRIPTS_META[0];
   const ed=EDITIONS[sheetEd];
-  const counts={townsfolk:0,outsider:0,minion:0,demon:0};
+  /* sheetCharList 는 그 에디션의 여행자도 함께 돌려준다 — 키가 없는 counts['traveler']++ 는
+     undefined++ 라 NaN 이 되고, 아래 렌더가 4유형만 돌아 여행자가 시트에서 통째로 사라졌다.
+     집계 키를 캐릭터 유형에서 유도한다. */
+  const counts={townsfolk:0,outsider:0,minion:0,demon:0,traveler:0,fabled:0};
   const chars=sheetCharList(sheetEd);
-  chars.forEach(c=>counts[c.type]++);
+  chars.forEach(c=>{ counts[c.type]=(counts[c.type]||0)+1; });
   const charRow=c=>{
     const inPlay=S.players.some(p=>p.charId===c.id);
     return `<div class="sheetrow" style="${S.players.length&&!inPlay?'opacity:.45':''}">
-      <div class="ctoken ${c.type}">${glyph(c.id)}</div>
+      <div class="ctoken ${c.type}" data-cid="${esc(c.id)}">${glyph(c.id)}</div>
       <div style="min-width:0"><span class="sname">${esc(c.ko)}</span><span class="sen">${esc(c.en||'')}</span>${c.setup||c.setupChar?' <span class="pill warn">셋업</span>':''}${inPlay?' <span class="pill ok">인플레이</span>':''}
       <div class="sab">${esc(c.ability)}</div>
       ${(c.warn&&c.warn.length)?`<details class="morebox"><summary>사회자 노트 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div></details>`:''}
@@ -2914,7 +3030,7 @@ function renderSheet(){
       ${[['chars','캐릭터'],['n1','첫 번째 밤'],['n2','이후 밤']].map(([id,ko])=>`<button class="${sheetTab===id?'active':''}" onclick="sheetTab='${id}';renderAll()" style="flex:1">${ko}</button>`).join('')}
     </div>
     ${sheetTab==='chars'?`
-      ${['townsfolk','outsider','minion','demon'].map(t=>`
+      ${['townsfolk','outsider','minion','demon','traveler','fabled'].filter(t=>counts[t]>0).map(t=>`
         <div class="secthead"><span class="pill ${t}">${TYPE_KO[t]}</span> <span class="num">${counts[t]}</span></div>
         <div class="grid2">${chars.filter(c=>c.type===t).map(charRow).join('')}</div>`).join('')}
       <p class="hint" style="margin-top:12px">* 능력 문구는 공식 규칙 기반 자체 요약입니다. 정본은 공식 룰북·위키를 따릅니다.</p>`:''}
@@ -3012,14 +3128,25 @@ function playerCardHTML(p,i){
 }
 function confirmKill(pid){ const p=playerOf(pid); if(!p) return;
   if(confirm(`${p.name} 사망 처리?`)){ killPlayer(p,'사회자 수동 처리'); save(); renderAll(); } }
-function revivePlayer(pid){ const p=playerOf(pid); if(!p) return; p.alive=true; log(`${p.name} 소생(수동)`); save(); renderAll(); }
+/* 소생은 사회자의 '되돌리기'다 — 공식에 일반 부활 능력은 없고 이 버튼은 오판 정정용이다.
+   사망에 딸려 소비된 상태(사망 투표 토큰·사망 시각)를 함께 되돌리지 않으면, 다시 죽었을 때
+   handEligible 이 p.deadVote===false 로 걸러 정당한 1회 사망 투표를 잃고, 남아 있는 diedAt 이
+   살아 있는 좌석에 사망 시각을 붙여 통계·리플레이(SURV·장의사 판정)를 오염시킨다. */
+function revivePlayer(pid){ const p=playerOf(pid); if(!p) return;
+  p.alive=true; p.deadVote=true; p.diedAt=null;
+  log(`${p.name} 소생(수동) — 사망 투표 토큰·사망 기록 복원`); save(); renderAll(); }
 function setDeadVote(pid,v){ const p=playerOf(pid); if(!p) return; p.deadVote=v; log(`${p.name} 투표 토큰 ${v?'복원':'수동 소진'}`); save(); renderAll(); }
 function addStatusUI(pid,key){
   const p=playerOf(pid); const ph=S.phase;
   let exp=null, src='사회자 수동';
-  if(key==='poison'){ exp={kind:'night', n:(ph.kind==='night'?ph.n:ph.n)+1}; }
+  /* 준비(setup)는 ph.n===0 이라 밤 만료를 ph.n+1 로 잡으면 {night,1} — 밤 1이 시작하는 바로
+     그 순간 풀려 정작 첫 밤에는 효력이 없다. 준비에 놓은 토큰은 '밤 1에 부여한 것'과 같은
+     범위(밤 1 + 낮 1)를 살아야 하므로 만료를 밤 2로 민다.
+     낮 만료(protect)는 setup 에서도 {day,1} 이라 이미 밤 1을 덮으므로 그대로 둔다. */
+  const nightExp = (ph.kind==='setup')? 2 : ph.n+1;
+  if(key==='poison'){ exp={kind:'night', n:nightExp}; }
   if(key==='protect'){ exp = ph.kind==='night'? {kind:'day', n:ph.n} : {kind:'day', n:ph.n+1}; }  // 낮 부여분은 다음 낮 시작에 해제(그 사이 밤 동안 유효)
-  if(key==='master'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='master')); exp={kind:'night', n:ph.n+1}; }
+  if(key==='master'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='master')); exp={kind:'night', n:nightExp}; }
   if(key==='drunkS'){                                   // 취함은 출처별 만료가 다르다 — 정책 선택
     const c=prompt('취함 출처 선택 — 1: 선원/여관 주인/건달/음유시인(다음 황혼까지) · 2: 궁정대신(3밤+3낮) · 3: 영구(주정뱅이·사랑꾼·뱀 조련사)','1');
     if(c===null) return;
@@ -3039,8 +3166,11 @@ function exportGame(){
 /* ══════════════════ 밤 진행 탭 ══════════════════ */
 function nightSteps(){
   const first = S.phase.n===1;
-  const ed = editionOf();
-  const baseOrder = first? ed.first : ed.other;
+  /* S.edition 이 EDITIONS 에 없는 값이면(구버전·손상 저장본·가져온 게임 JSON) ed.first 에서
+     TypeError 가 나 밤 탭 전체가 죽는다 — 순서표를 못 찾는 것은 폴백으로 넘길 일이지
+     앱이 멈출 일이 아니다. */
+  const ed = editionOf() || EDITIONS.tb;
+  const baseOrder = (first? ed.first : ed.other) || [];
   let order = baseOrder.slice();
   /* 전설(Fabled) 밤 삽입 — 전설은 스크립트 소속이 아니라 사회자가 균형용으로 얹는다.
      그래서 EDITIONS 배열에 넣으면 모든 시트의 참조 밤 순서에 상시 노출돼 잡음이 된다.
@@ -3089,6 +3219,30 @@ function nightSteps(){
     const idx = order.indexOf(after);
     if(idx>=0) order.splice(idx+1,0,c.id); else order.push(c.id);
   });
+  /* 순서표 밖의 인플레이 캐릭터 편입 — EDITIONS 3종 순서표만 원천으로 삼으면, 좌석에 앉아 있어도
+     순서표에 없는 id 는 밤 화면에 행조차 생기지 않는다. stepSkipReason 의 '깨우지 않음' 회색
+     처리조차 타지 않으므로 사회자는 그 캐릭터가 빠진 사실 자체를 알 수 없다.
+     그래서 공식 밤 순서(SG_NF/SG_NO — window.thyScriptGraph.tables 로 이미 노출돼 있다)의
+     상대 위치로 끼워 넣는다. 그 표에도 없으면 자리를 지어내지 않고 맨 뒤에 두되
+     '순서 미정'으로 표시한다(renderStep).
+     ※ 전설은 위 FABLED_SLOT 이 공식 위치로 이미 다루므로 여기서는 제외한다. */
+  const sgT=(typeof window!=='undefined' && window.thyScriptGraph && window.thyScriptGraph.tables) || null;
+  const sgOrder=sgT? (first? sgT.firstNight : sgT.otherNight) : null;
+  const noOrder=Object.create(null);
+  [...new Set(S.players.map(p=>p&&p.charId).filter(Boolean))].forEach(id=>{
+    if(order.indexOf(id)>=0 || INFO_STEPS[id]) return;
+    const c=charOf(id); if(!c || c.type==='fabled') return;
+    if(!(first? c.first : c.other)) return;
+    const pos=sgOrder? sgOrder.indexOf(id) : -1;
+    if(pos<0){ noOrder[id]=1; order.push(id); return; }
+    /* 공식 순서상 이 캐릭터보다 뒤인 첫 항목 앞에 넣는다 — 순서표에 없는 항목(-1)은 기준이 못 된다 */
+    let at=order.length;
+    for(let i=0;i<order.length;i++){
+      const q=sgOrder.indexOf(order[i]);
+      if(q>=0 && q>pos){ at=i; break; }
+    }
+    order.splice(at,0,id);
+  });
   // 주정뱅이 위장: 위장 캐릭터가 시트에 없으므로, 그 캐릭터의 원래 순서 위치에 삽입
   const drunkP = S.edition==='tb'? S.players.find(p=>p.charId==='drunk') : null;
   const maskC = S.drunkMaskChar? charOf(S.drunkMaskChar): null;
@@ -3108,7 +3262,7 @@ function nightSteps(){
        (좌석에 배정한 구버전 저장본은 holders 가 채워진 채로 같은 단계에 들어온다.) */
     const fabHere = c.type==='fabled' && isFabledActive(id);
     if(!holders.length && !maskHere && !fabHere) return;
-    steps.push({id, holders, mask: maskHere? drunkP : null});
+    steps.push({id, holders, mask: maskHere? drunkP : null, noOrder: !!noOrder[id]});
   });
   // 위장 캐릭터가 인플레이가 아닌 경우: 순서표에 없으므로 원 위치에 직접 삽입
   if(drunkP && maskC && !steps.some(s=>s.id===maskC.id)){
@@ -3248,9 +3402,11 @@ function renderStep(st,i,doneMap){
     if(typeof NIGHT_FLOW!=='undefined' && flowFor(st.id)) body=`<div class="row" style="margin:4px 0 10px"><button class="primary" style="min-width:200px" onclick="event.stopPropagation();startWiz('${st.id}')">▶ 인터랙티브 진행</button></div>`+body;
     if(st.id==='demoninfo'){
       const inPlay=new Set(S.players.map(p=>p.charId));
-      /* edition:'exp' 는 백과사전 열람 전용이라 어떤 스크립트에도 없다 — 블러프 후보에서 뺀다
-         (이 필터는 에디션을 가리지 않으므로, 빼지 않으면 실험적 캐릭터가 그대로 추천된다) */
-      const safeBluffs=CHARACTERS.filter(c=>(c.edition||'tb')!=='exp' && (c.type==='townsfolk'||c.type==='outsider') && !inPlay.has(c.id) && c.id!==S.drunkMaskChar).map(c=>c.ko);
+      /* 블러프는 '이 시트에 있으면서 판에 없는 선한 캐릭터'다(공식 Demon Info). CHARACTERS 전체를
+         훑으면 에디션을 가리지 않아 TB 판에서 곡예사(SV 저글러)를 블러프로 추천하는 등 시트 밖
+         캐릭터가 섞인다. editionChars() 로 지금 이 판의 캐릭터 풀만 본다 — 빌더로 실험 캐릭터를
+         담은 시트라면 그 실험 캐릭터도 정당한 블러프이므로 edition:'exp' 예외는 더는 필요 없다. */
+      const safeBluffs=editionChars().filter(c=>(c.type==='townsfolk'||c.type==='outsider') && !inPlay.has(c.id) && c.id!==S.drunkMaskChar).map(c=>c.ko);
       body+=`<div class="alertbox">블러프 후보(미사용 선 캐릭터, 주정뱅이 위장 제외): ${esc(safeBluffs.join(', ')||'없음')}</div>`;
     }
   } else {
@@ -3280,6 +3436,8 @@ function renderStep(st,i,doneMap){
       <input id="rec-${st.id}" placeholder="오늘 밤 제공한 정보 메모 (예: 2번·5번 중 요리사)" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')recordInfo('${st.id}','${recTargets[0].id}')">
       <button class="small" onclick="recordInfo('${st.id}','${recTargets[0].id}')">📝 기록</button></div>`;
     if(c.conditional) who+=` <span class="pill warn">${esc(c.conditional)}</span>`;
+    /* 공식 밤 순서표 어디에도 없어 위치를 정하지 못한 캐릭터 — 지어내지 않고 사회자에게 알린다 */
+    if(st.noOrder) who+=` <span class="pill warn">순서 미정</span>`;
   }
   const cls = done?'done': skip?'skip':'wake';
   return `<div class="step ${cls} ${openStep===st.id?'open':''}" id="step-${st.id}">
@@ -3461,10 +3619,19 @@ function doPukkaPick(pid){
       log(`🐍 푸카의 독 발현 — ${prev.name} 사망`);
       resolveNightDeath(prev, '푸카의 독');
     }
-    const i=(prev.statuses||[]).findIndex(s=>s.key==='poison' && s.source==='푸카');
-    if(i>=0) prev.statuses.splice(i,1);              // 사망 판정 이후에 해독
   } else if(prev && prev===t){
     toast('이전에 문 대상을 다시 물었습니다 — 규칙상 처리(사망 여부)를 직접 판단하세요.','warn');
+  }
+  /* 공식 Pukka: "they die & the previously poisoned player becomes healthy" — 이전 희생자의
+     독은 생사와 무관하게 풀린다. 회수를 위 사망 분기(prev.alive) 안에만 두면, 이미 죽어 있던
+     희생자(전날 처형 등)의 '푸카' 토큰이 시체에 영구히 남는다. expiresAt 이 null 이라
+     expireStatuses() 도 걷지 못해 유일한 회수 경로가 여기다. 시체의 중독은 얼뜨기·달의 자손처럼
+     '죽은 뒤' 판정하는 규칙을 계속 무효화한다.
+     분기 '밖'이자 사망 판정 '뒤'라는 위치는 그대로다 — 그래야 어릿광대 1회 생존과
+     까마귀지기·현자의 거짓 정보(중독 = 임의 정보)가 판정 시점에 보존된다. */
+  if(prev && prev!==t){
+    const i=(prev.statuses||[]).findIndex(s=>s.key==='poison' && s.source==='푸카');
+    if(i>=0){ prev.statuses.splice(i,1); log(`푸카의 독 해제 — ${prev.name}`); }
   }
   S.pukkaVictimId=t.id;
   save(); renderAll();
@@ -3803,11 +3970,11 @@ function renderDay(){
   if(S.phase.kind!=='day'){
     el.innerHTML=`<div class="card"><h2>낮 · 투표</h2><p class="hint">지금은 ${phaseName()} 단계입니다. 낮이 되면 지명·투표 시스템이 열립니다.</p>
     <div class="card" style="background:var(--sunken)"><h3>티르소스 투표 규칙 (하우스 룰)</h3><ol class="guide">
-      <li>지명 후 <b>1차 거수 투표</b>: 생존자 + <b>투표 토큰 보유 사망자</b>가 거수 가능. 거수 인원이 <b>생존자 과반</b>(⌊n/2⌋+1) 이상이면 2차로. (사망자 거수도 분자에 포함되며, 거수만으로는 토큰이 소진되지 않습니다.)</li>
+      <li>지명 후 <b>1차 거수 투표</b>: 생존자 + <b>투표 토큰 보유 사망자</b>가 거수 가능. 거수 인원이 <b>생존자의 절반 이상(올림)</b>(⌈n/2⌉ — 공식 기준) 이상이면 2차로. (사망자 거수도 분자에 포함되며, 거수만으로는 토큰이 소진되지 않습니다.)</li>
       <li><b>2차 찬반 투표</b>: <b>생존자 전원 + 1차에 거수한 사망자</b>. 거수하지 않은 토큰 보유 사망자는 분모에서 제외됩니다. 사망자가 찬성/반대를 던지면 그때 토큰이 소진·자동 기록되고, 기권은 토큰을 쓰지 않습니다.</li>
       <li>매 단계 <b>분자/분모/과반 기준</b>을 화면에 표시.</li>
-      <li>재지명은 언제나 가능. 하루의 모든 지명 중 <b>찬성 과반을 넘긴 지명 가운데 찬성률(과반율)이 가장 높은 사람</b>이 처형.</li>
-      <li>최고 찬성률 동률이면 처형 없음(공식 규칙 준용).</li>
+      <li>재지명은 언제나 가능(티르소스 하우스 룰). 하루의 모든 지명 중 <b>찬성 과반을 넘긴 지명 가운데 찬성표가 가장 많은 사람</b>이 처형 — 공식 기준은 최다 득표이며, 분모가 지명마다 달라지므로 찬성률로 비교하지 않습니다.</li>
+      <li>최다 득표가 동률이면 처형 없음(공식 규칙 준용).</li>
     </ol></div></div>`;
     return;
   }
@@ -3817,9 +3984,12 @@ function renderDay(){
   const openNom=todays.find(n=>!n.closed);
   const passed=closed.filter(n=>n.result==='pass');
   let best=null, tie=false;
-  passed.forEach(n=>{ if(!best||n.ratio>best.ratio) best=n; });
-  // 동일인이 재지명으로 같은 최고율을 2회 받아도 동률이 아니다 — 공식 기준은 '다른 어떤 피지명자보다 많은 표'
-  if(best){ const topNees=new Set(passed.filter(n=>n.ratio===best.ratio).map(n=>n.nominee)); tie=topNees.size>1; }
+  /* 공식 기준은 '가장 많은 표(most votes)'이지 찬성률이 아니다. 분모(den)는 사망자 거수 여부와
+     낮 중 사망으로 지명마다 달라지므로 비율로 비교하면 표를 더 적게 받은 사람이 처형대에 오른다.
+     동률 판정도 같은 축(raw 표)으로 해야 한다 — 축이 갈리면 tie 가 조용히 뒤집힌다. */
+  passed.forEach(n=>{ if(!best||n.yes>best.yes) best=n; });
+  // 동일인이 재지명으로 같은 최다 득표를 2회 받아도 동률이 아니다 — 공식 기준은 '다른 어떤 피지명자보다 많은 표'
+  if(best){ const topNees=new Set(passed.filter(n=>n.yes===best.yes).map(n=>n.nominee)); tie=topNees.size>1; }
   const slayer=S.players.find(p=>p.alive&&p.charId==='slayer'&&!hasStatus(p,'slayerUsed'));
   el.innerHTML=`
   <div class="card"><h2>낮 ${S.phase.n}</h2>
@@ -3838,7 +4008,8 @@ function renderDay(){
       <div class="pickgrid">${alivePlayers().map(p=>`<button class="pcell ${nomPick.nee===p.id?'sel nee':''}" onclick="setNomPick('nee','${p.id}')">
         <span class="pcnum num">${S.players.indexOf(p)+1}</span><span class="pcname">${esc(p.name)}</span></button>`).join('')}</div>
       <div class="bigactions" style="margin-top:14px">
-        <button class="gold" onclick="newNomination()" ${(!nomPick.tor||!nomPick.nee)?'disabled':''}>
+        <!-- nomPick 은 페이즈·사망을 넘어 유지된다 — 고른 뒤 죽은 좌석이면 버튼을 잠근다(공식: 죽은 플레이어는 지명·피지명 불가). playerOf(null)?.alive 는 undefined 라 미선택 조건도 그대로 걸린다 -->
+        <button class="gold" onclick="newNomination()" ${(!playerOf(nomPick.tor)?.alive||!playerOf(nomPick.nee)?.alive)?'disabled':''}>
           ${nomPick.tor&&nomPick.nee?`${esc(playerOf(nomPick.tor)?.name||'')} → ${esc(playerOf(nomPick.nee)?.name||'')} 지명 개시`:'지명 개시'}</button>
       </div>
     </div>
@@ -3863,7 +4034,30 @@ function newNomination(){
   const tor=(typeof nomPick!=='undefined'&&nomPick.tor)||($('#nomtor')&&$('#nomtor').value)||'';
   const nee=(typeof nomPick!=='undefined'&&nomPick.nee)||($('#nomnee')&&$('#nomnee').value)||'';
   if(!tor||!nee){ toast('지명자와 피지명자를 선택하세요.','warn'); return; }
+  /* 공식: 죽은 플레이어는 지명할 수도, 지명당할 수도 없다(사망자에게 남는 건 1회 투표 토큰뿐).
+     nomPick 은 모듈 전역이라 페이즈 전환·사망을 넘어 그대로 남는다 — 고른 뒤 죽은 좌석이
+     선택 상태로 남아 있을 수 있으므로 진입점에서 잘라내고 낡은 선택을 버린다.
+     이름은 toast(textContent)로만 내보낸다 — 인라인 onclick 보간 금지 계약 그대로. */
+  const _tp=playerOf(tor), _np=playerOf(nee);
+  if(!_tp||!_np){ toast('지명자/피지명자 좌석을 찾을 수 없습니다.','warn');
+    if(typeof nomPick!=='undefined'){ nomPick.tor=null; nomPick.nee=null; } renderAll(); return; }
+  if(!_tp.alive){ toast(`${_tp.name}은(는) 사망했습니다 — 죽은 플레이어는 지명할 수 없습니다.`,'warn');
+    if(typeof nomPick!=='undefined') nomPick.tor=null; renderAll(); return; }
+  if(!_np.alive){ toast(`${_np.name}은(는) 이미 사망했습니다 — 죽은 플레이어는 지명당할 수 없습니다.`,'warn');
+    if(typeof nomPick!=='undefined') nomPick.nee=null; renderAll(); return; }
   if(tor===nee){ toast('자기 자신을 지명했습니다 — 공식 규칙상 허용됩니다. 그대로 진행합니다.','warn'); }
+  /* 공식은 "한 플레이어는 하루 1회만 지명할 수 있고, 하루 1회만 지명당할 수 있다"이지만
+     이 앱은 '재지명 제한 없음'을 하우스 룰로 화면(지명 카드·규칙 카드)에 명시해 두었다 —
+     막지 않는다(막으면 화면 약속과 동작이 어긋난다). 대신 공식과 갈라지는 순간을 사회자가
+     모르고 지나가지 않도록 경고와 로그를 남긴다. 처형 후보 비교는 최다 득표 기준으로
+     고쳤으므로 재지명이 있어도 계산 자체는 어긋나지 않는다. */
+  const _today=S.noms.filter(n=>n.day===S.phase.n);
+  const _dupT=_today.some(n=>n.nominator===tor), _dupN=_today.some(n=>n.nominee===nee);
+  if(_dupT||_dupN){
+    const _w=[_dupT?'지명자가 오늘 이미 지명했습니다':'', _dupN?'피지명자가 오늘 이미 지명당했습니다':''].filter(Boolean).join(' / ');
+    toast(`⚠ ${_w} — 공식 규칙은 하루 1회지만, 티르소스 하우스 룰(재지명 제한 없음)로 진행합니다.`,'warn');
+    log(`재지명(하우스 룰): ${_w}`);
+  }
   const nom={id:uid(), day:S.phase.n, nominator:tor, nominee:nee, hands:[], stage:1, votes:{}, closed:false, deadVoters:[]};
   S.noms.push(nom);
   if(typeof nomPick!=='undefined'){ nomPick.tor=null; nomPick.nee=null; }
@@ -3974,7 +4168,11 @@ function renderNomOpen(nom){
   /* 2단계 찬반 — 분모는 ballotEligible() 하나만 쓴다(closeBallot 과 같은 집합·같은 순서).
      생존자 ∪ 1차 거수자(사망자 포함). 거수 안 한 토큰 보유 사망자는 여기서 빠진다. */
   const eligible=ballotEligible(nom);
-  const den2=eligible.length, need2=majority(den2);
+  /* 문턱(need2)의 기준 인원은 생존자다 — closeBallot 과 같은 계약(사망자 표는 분자에만 들어간다).
+     분모(den2)는 화면 표시·찬성률 계산에만 쓴다. 화면과 확정이 같은 식을 써야
+     '화면에선 통과인데 마감하면 부결' 같은 어긋남이 생기지 않는다. */
+  const aliveN2=alivePlayers().length;
+  const den2=eligible.length, need2=majority(aliveN2);
   const yes=eligible.filter(p=>nom.votes[p.id]==='yes').length;
   const no=eligible.filter(p=>nom.votes[p.id]==='no').length;
   const ratio=den2?yes/den2:0;
@@ -3990,7 +4188,7 @@ function renderNomOpen(nom){
       <div class="vmbox"><div class="vlab">찬성(분자)</div><div class="vval" style="color:var(--ok)">${yes}</div></div>
       <div class="vmbox"><div class="vlab">반대</div><div class="vval" style="color:var(--evil)">${no}</div></div>
       <div class="vmbox"><div class="vlab">투표권(분모)</div><div class="vval">${den2}</div></div>
-      <div class="vmbox ${yes>=need2?'pass':'fail'}"><div class="vlab">과반 기준</div><div class="vval">${need2}</div></div>
+      <div class="vmbox ${yes>=need2?'pass':'fail'}"><div class="vlab">과반 기준(생존 ${aliveN2})</div><div class="vval">${need2}</div></div>
       <div class="vmbox ${yes>=need2?'pass':'fail'}"><div class="vlab">찬성률</div><div class="vval">${(ratio*100).toFixed(1)}%</div></div>
     </div>
     <div>${eligible.map(p=>{
@@ -4040,7 +4238,12 @@ function closeBallot(nid){
   /* 분모는 화면(renderNomOpen)과 반드시 같아야 한다 — 같은 헬퍼 하나만 쓴다.
      생존자 ∪ 1차 거수자(사망자 포함). 거수 안 한 토큰 보유 사망자는 제외. */
   const uniq=ballotEligible(n);
-  const den=uniq.length, need=majority(den);
+  /* 표시용 분모(den)와 통과 문턱(need)의 기준 인원은 다르다 — 공식은 "A nomination requires
+     votes from at least half the living players"로 문턱의 기준이 '살아 있는 플레이어'다.
+     사망자 표는 분자에만 들어가고 기준 인원에는 들어가지 않는다. den 을 그대로 문턱에 쓰면
+     사망자가 1차에 손만 들고 2차에서 기권해(토큰도 쓰지 않고) 문턱을 올려 처형을 막을 수 있다.
+     1단계 closeHands 는 이미 alivePlayers() 기준이라 그쪽 계약과도 이걸로 맞는다. */
+  const den=uniq.length, need=majority(alivePlayers().length);
   let yes=uniq.filter(p=>n.votes[p.id]==='yes').length;
   // 집사 무효표: 주인이 '찬성'하지 않았으면 집사의 찬성을 집계에서 뺀다
   // (공식: "주인이 투표할 때만 집사도 투표 가능" — 오작동 집사는 자유 투표라 제외)
@@ -4077,8 +4280,12 @@ function cancelNom(nid){
     log(`👻 지명 취소 — 사망 투표 토큰 복원: ${n.deadVoters.map(id=>playerOf(id)?.name||id).join(', ')}`);
   }
   S.noms=S.noms.filter(x=>x.id!==nid); log('지명 취소'); save(); renderAll(); }
-/* 처형은 사망과 별개다. 보호로 살아남아도 '오늘 처형은 있었다'가 성립하고(보르톡스·시장 판정),
-   장의사는 '처형으로 실제 죽은' 캐릭터만 본다. 일반 처형·성결자 발동이 이 함수를 공유한다. */
+/* 처형은 사망과 별개다. 보호로 살아남아도 '오늘 처형은 있었다'가 성립한다 — 시장(공식 "no
+   execution occurs")·하루 1처형 원칙·주모자 연장전이 그 값(S.executedToday)을 본다.
+   반면 보르톡스는 공식 문구가 "if no-one died by execution"이라 '처형으로 실제 죽었나'
+   (S.executedDiedToday)를 봐야 한다. 장의사도 같은 값이다. 두 축을 섞으면 보호로 무산된
+   처형에서 판정이 통째로 뒤집히므로 여기서 반드시 갈라 둔다.
+   일반 처형·성결자 발동이 이 함수를 공유한다. */
 function resolveExecution(p, cause){
   const before=p.alive;
   S.executedToday=`${p.name} (${charName(p)})`; S.executedTodayPid=p.id; S.executedDiedToday=null;
@@ -4426,7 +4633,9 @@ function buildChecklist(){
   const inPlay=id=>S.players.some(p=>p.charId===id);
   // 셋업
   if(inPlay('baron')) add('셋업','남작','구성 변경 적용 확인: 마을 주민 −2 / 외지인 +2');
-  if(inPlay('drunk')) add('셋업','주정뱅이',`위장 캐릭터 지정(현재: ${S.drunkMaskChar?charOf(S.drunkMaskChar).ko:'⚠ 미지정'}) — 본인에게는 그 주민 토큰을 보여줄 것`);
+  /* 시트를 갈아끼우면 S.drunkMaskChar 가 현재 후보 밖 id 로 남는다(importScript 는 좌석의 유령
+     charId 만 끊고 이 필드는 손대지 않는다) — 널 역참조로 체크리스트 탭이 통째로 빈 화면이 되던 자리 */
+  if(inPlay('drunk')) add('셋업','주정뱅이',`위장 캐릭터 지정(현재: ${(S.drunkMaskChar&&charOf(S.drunkMaskChar)?.ko)||'⚠ 미지정'}) — 본인에게는 그 주민 토큰을 보여줄 것`);
   if(inPlay('fortuneteller')) add('셋업','점쟁이',`붉은 청어 지정(현재: ${S.redHerringId?playerOf(S.redHerringId)?.name:'⚠ 미지정'}) — 게임 내내 유지`);
   add('셋업','공통','7인 이상이면 첫날 밤 하수인 정보 → 악마 정보(블러프 3개) 순서 진행');
   // 매일 밤
@@ -4451,7 +4660,11 @@ function buildChecklist(){
   /* 에디션 공통: 인플레이 캐릭터의 remind·setupNote 자동 편입.
      TB 본편 22종은 위 하드코딩 사슬이 이미 덮으므로 제외하지만, TB 여행자 5종(희생양·총잡이·
      거지·관료·도둑)은 그 사슬에 아예 없어서 remind 가 어디에도 뜨지 않았다 — 여행자는 통과시킨다. */
-  editionChars().filter(c=>!c.custom && ((c.edition||'tb')!=='tb' || c.type==='traveler')).forEach(c=>{
+  /* 원천은 allChars() 여야 한다 — editionChars() 는 S.edition 으로 걸러서 edition:'exp'·'loric'
+     캐릭터는 좌석에 앉아 있어도 이 루프에 아예 들어오지 못했다. 같은 캐릭터의 dayNotice 를
+     voteNotices() 는 allChars() 로 낮 패널에 띄우므로, 두 화면이 한 판을 두고 다른 말을 했다.
+     인플레이 판정은 바로 아래 좌석·S.fabled 검사가 하므로 에디션 필터는 붙이면 안 된다. */
+  allChars().filter(c=>!c.custom && ((c.edition||'tb')!=='tb' || c.type==='traveler')).forEach(c=>{
     /* 전설은 좌석을 차지하지 않는다 — 활성 목록(S.fabled)이 인플레이 판정의 출처다
        (좌석 배정도 isFabledActive 안에서 하위호환으로 함께 본다). */
     if(!(c.type==='fabled'? isFabledActive(c.id) : S.players.some(p=>p.charId===c.id))) return;
@@ -4538,7 +4751,18 @@ function exportScript(){
 function importScript(){
   const raw=prompt('시트 JSON을 붙여넣으세요:'); if(!raw)return;
   let d; try{ d=JSON.parse(raw); }catch(e){ toast('JSON 파싱 실패','warn'); return; }
-  if(!d || !Array.isArray(d.customs)){ toast('customs 배열이 없습니다.','warn'); return; }
+  /* {name, author, characters:[id…]} 는 downloadScriptJSON·botcscripts·공식 스크립트 툴의 배포
+     형식이다. 여기서 거절하면 방금 자기가 내보낸 JSON 조차 되돌릴 수 없고, 억지로 customs 로
+     감싸면 RESERVED(=CHARACTERS 전 id, 실험 74종 포함)에 걸려 id 가 cx_ 로 재발급돼 앱이 이미
+     가진 능력문·가이드·밤 순서가 하나도 붙지 않는다. 그 형식을 정확히 처리하는 빌더
+     가져오기(doImport)가 이미 있으므로 — 기존 id 는 재발급하지 않고 내 스크립트로 등록하고
+     미지의 id 만 따로 알린다 — 사용자에게 다시 붙여넣게 하지 않고 파싱 결과를 그대로 넘긴다. */
+  if(d && !Array.isArray(d.customs) && Array.isArray(d.characters)
+     && typeof window!=='undefined' && window.thyBuilder && typeof window.thyBuilder.importJSON==='function'){
+    window.thyBuilder.importJSON(d);
+    return;
+  }
+  if(!d || !Array.isArray(d.customs)){ toast('customs 배열도 characters 배열도 없습니다.','warn'); return; }
   /* 진행 중 교체는 밤 순서·체크리스트·배정을 그 자리에서 바꿔버린다 — 되돌릴 수 없으므로 확인받는다 */
   if(S.phase.kind!=='setup' && !confirm(`게임 진행 중입니다(${phaseName()}).\n시트를 교체하면 밤 순서·체크리스트가 즉시 새 시트 기준으로 바뀌고,\n새 시트에 없는 캐릭터를 쥔 좌석은 배정이 해제됩니다.\n계속할까요?`)) return;
   const str=v=>typeof v==='string'? v.slice(0,400):'';
@@ -5319,7 +5543,7 @@ const EXP_CHARS=[
  guideFirst:[],guideOther:[],
  warn:['조언의 강도는 전적으로 사회자 재량 — 게임을 끝내버리지 않되 분명히 쓸모 있는 한 줄이 기준.','중독/술취함이면 도움이 되지 않거나 해로운 조언을 준다.','한 번 쓰면 소진되므로, 요청 시점에 "지금 쓰는 것이 맞는지" 되묻지 말 것.'],
  remind:['밤에는 깨우지 않는다. 낮에 요청이 오면 다른 사람이 듣지 않는 곳에서 응한다.','사용 여부를 기록.']},
-{id:'damsel',ko:'아가씨',en:'Damsel',type:'outsider',edition:'exp',first:true,other:true,
+{id:'damsel',ko:'아가씨',en:'Damsel',type:'outsider',edition:'exp',first:true,other:true,dayAbility:true,
  ability:'모든 하수인은 아가씨가 게임에 있다는 것을 안다. 하수인이 낮에 공개적으로 아가씨를 지목해 맞히면(게임당 1회) 선한 진영이 패배한다.',
  guideFirst:['하수인 정보 단계에서 하수인들에게 아가씨 토큰을 보여준다(아직 보여주지 않았다면 지금 보여준다).','사냥꾼이 아가씨를 지목했다면 아가씨를 깨워 "당신은" 토큰과 새 캐릭터 토큰을 보여준다.'],
  guideOther:['사냥꾼이 아가씨를 지목했다면 아가씨를 깨워 "당신은" 토큰과 새 캐릭터 토큰을 보여준다.'],
@@ -5914,18 +6138,40 @@ function flowFor(stepId){
   return first? (f.first||null) : (f.other||null);
 }
 function startWiz(stepId){
-  /* 앞 위저드에 남은 사회자 대리 입력 예외를 버린다(정의는 뒤 블록 — typeof 가드 필요). */
+  /* 앞 위저드에 남은 사회자 대리 입력 예외와 기기 전달 상태를 버린다
+     (정의는 뒤 블록 — typeof 가드 필요). handoff 가 남아 있으면 새 위저드의 첫 렌더가
+     이전 단계의 전달 화면을 그린다. 복구 스냅샷(S.handoffDraft)은 여기서 지우지 않는다 —
+     바로 아래에서 되살려야 한다. */
   if(typeof clearSTHandoff==='function') clearSTHandoff();
+  if(typeof clearHandoff==='function') clearHandoff();
   const srcScenes=flowFor(stepId); if(!srcScenes) return;
   const scenes=srcScenes.map(s=>{const o=Object.assign({},s); delete o._val; delete o._shown; return o;});
   const c=charOf(stepId);
-  const holders=c? playersByChar(stepId).filter(p=>p.alive) : [];
-  const holder=holders[0]||null;
+  /* 까마귀지기·현자·이발사·사랑꾼은 '죽어야' 깨는 단계다(DEATH_TRIGGER_STEPS) — 생존자만
+     걸러 holder 를 비우면 오작동 경고바(wizWarnBar)·기기 전달 대상(startHandoff)·건달
+     판정(goonPickCheck)이 통째로 빠진다. 생존 보유자를 먼저 쓰고, 없으면 사망한 보유자를 쓴다.
+     주정뱅이 위장 단계는 시트에 그 캐릭터의 보유자가 없으므로 nightSteps() 의 mask 와 같은
+     기준(tb + S.drunkMaskChar)으로 주정뱅이 본인을 holder 로 잡는다. */
+  const all=c? playersByChar(stepId) : [];
+  const masked=(S.edition==='tb' && S.drunkMaskChar===stepId)? S.players.find(p=>p.charId==='drunk') : null;
+  const holder=all.find(p=>p.alive) || all[0] || masked || null;
   wiz={stepId, idx:0, vars:{}, holder, scenes};
+  /* 기기 전달 도중 탭이 날아가 저장돼 있던 선택을 되살린다 — 같은 밤·같은 단계일 때만.
+     조용히 넣으면 사회자가 남의 지목을 본인 것으로 오해하므로 반드시 알린다. */
+  try{
+    const d=S.handoffDraft;
+    if(d && d.step===String(stepId) && d.night===((S.phase&&S.phase.n)||0) && d.ids.length){
+      wiz.vars[d.key]=d.ids.slice();
+      if(d.idx>=0 && d.idx<wiz.scenes.length) wiz.idx=d.idx;
+      toast('중단된 기기 전달 선택을 복구했습니다 — 맞는지 확인하세요.','warn');
+    }
+  }catch(e){ console.warn('[thyrsus] 기기 전달 복구 실패', e); }
   renderWiz();
 }
 function startCustomWiz(title, scenes){
   if(typeof clearSTHandoff==='function') clearSTHandoff();
+  /* 커스텀 위저드도 같은 불변식 — 앞 단계의 기기 전달 화면이 남아 겹치지 않게 한다. */
+  if(typeof clearHandoff==='function') clearHandoff();
   wiz={stepId:'__custom', custom:true, title, idx:0, vars:{}, holder:null,
        scenes:scenes.map(s=>{const o=Object.assign({},s); delete o._val; delete o._shown; return o;})};
   renderWiz();
@@ -6112,31 +6358,79 @@ function wizEffect(){ const sc=wiz.scenes[wiz.idx]; const tgt=(wiz.vars[sc.from]
    You become their alignment." (official/roles181.json)
    트리거는 밤 위저드의 pick-player 중 who:'player' 인 씬 — '플레이어가 자기 능력으로 고른 대상'이다.
    who:'st'(사회자 재량 선택)와 pick-character 는 플레이어의 지목이 아니므로 발동시키지 않는다.
-   밤당 최초 1회 — S.goonNight 에 발동한 밤 번호를 적어 잠근다(불발이어도 그 밤의 '최초'는 소모된다). */
+   밤당 최초 1회 — S.goonNight 에 발동한 밤 번호를 적어 잠근다(불발이어도 그 밤의 '최초'는 소모된다).
+   단 '어느 씬이 그 잠금을 소모했는지'(S.goonStep)와 되돌릴 정보(S.goonUndo)를 함께 남긴다 —
+   잠금만 소모한 채 단계를 닫으면(closeWiz(false) 는 되돌리지 않는다) 잘못 입력한 지목의
+   취함·진영 변경이 그 밤 내내 굳고, 재진행한 올바른 지목은 무시돼 버린다. */
+function goonRollback(){
+  /* 같은 씬을 다시 만났을 때만 부른다 — 앞선 발동을 없던 일로 되돌리고 잠금을 푼다. */
+  const u=S.goonUndo;
+  S.goonNight=null; S.goonStep=null; S.goonUndo=null;
+  if(!u) return;
+  const g=playerOf(u.goonPid), ch=playerOf(u.chooserPid);
+  if(g) g.alignment=(u.prevAlignment==='good'||u.prevAlignment==='evil')? u.prevAlignment : null;
+  if(ch && u.addedDrunk){
+    /* 이번 발동이 새로 붙인 토큰만 걷는다 — 다른 출처(선원·궁정대신)의 취함까지 지우면 안 된다. */
+    const i=(ch.statuses||[]).findIndex(s=>s.key==='drunkS' && s.source==='건달');
+    if(i>=0) ch.statuses.splice(i,1);
+  }
+  log('🥊 건달 판정 되돌림 — 같은 단계를 처음부터 다시 진행합니다.');
+}
 function goonPickCheck(sc){
   if(!sc || sc.t!=='pick-player' || sc.who!=='player') return;
   if(!S.phase || S.phase.kind!=='night') return;
-  if(S.goonNight===S.phase.n) return;                       // 이 밤의 최초 지목은 이미 지나갔다
+  /* 씬 단위 키. 같은 씬을 다시 만나면(중단 후 재진행·뒤로 갔다 다시 앞으로) 사회자의 '정정'이므로
+     앞선 발동을 되돌리고 다시 판정한다. 다른 단계·같은 단계의 다른 씬이면 공식대로
+     그 밤의 최초 지목을 존중해 아무 것도 하지 않는다. */
+  const key = wiz? (String(wiz.stepId)+'#'+wiz.idx) : '';
+  if(S.goonNight===S.phase.n){
+    if(!key || S.goonStep!==key) return;                    // 이 밤의 최초 지목은 이미 지나갔다
+    goonRollback();
+  }
   const chooser = wiz && wiz.holder; if(!chooser) return;
   const picked = ((wiz.vars||{})[sc.storeAs]||[]).map(playerOf).filter(Boolean);
   const goon = picked.find(p=>p.charId==='goon' && p!==chooser);
   if(!goon) return;
-  S.goonNight=S.phase.n;
+  S.goonNight=S.phase.n; S.goonStep=key; S.goonUndo=null;
   if(!goon.alive || isMalfunctioning(goon)){
     log(`🥊 건달 불발: ${chooser.name}이(가) ${goon.name}을(를) 지목했지만 건달이 ${goon.alive?'오작동':'사망'} 상태 — 취함·진영 변경 없음`);
     save(); renderAll(); return;
   }
   const before = isEvil(goon)? '악':'선';
-  if(!hasStatus(chooser,'drunkS')) addStatus(chooser,'drunkS','건달',drunkExpiry('dusk'));
+  /* 되돌릴 정보를 효과보다 먼저 남긴다. addedDrunk 는 '이번에 새로 붙였는가' — 이미 다른 출처로
+     취해 있던 경우까지 걷어내면 재진행이 남의 상태를 지운다. */
+  const addedDrunk = !hasStatus(chooser,'drunkS');
+  S.goonUndo={chooserPid:chooser.id, goonPid:goon.id,
+              prevAlignment:(goon.alignment==='good'||goon.alignment==='evil')? goon.alignment : null,
+              addedDrunk};
+  if(addedDrunk) addStatus(chooser,'drunkS','건달',drunkExpiry('dusk'));
   goon.alignment = isEvil(chooser)? 'evil':'good';
   const after = isEvil(goon)? '악':'선';
   log(`🥊 건달: 오늘 밤 ${chooser.name}이(가) 처음으로 건달을 지목 — ${chooser.name} 🍺취함(다음 황혼까지), 건달 진영 ${before} → ${after}`);
   save(); renderAll();
   toast(`🥊 건달 발동 — ${chooser.name} 취함(다음 황혼까지) · 건달은 ${after} 진영이 되었습니다.`,'warn');
 }
+/* '이번 턴 선택 안 함'(wiz.skipped[key])으로 비워 둔 슬롯을 소비하는 씬인가.
+   wiz.skipped 는 지금까지 쓰기만 하고 읽는 곳이 없는 죽은 플래그였다 — 그래서 미발동을
+   명시해도 암살자의 effect 씬이 그대로 떠 '대상이 선택되지 않았습니다'라며 사회자에게
+   대상을 강요했고, 재봉사의 show-answer 가 떠 쓰지도 않은 1회성 능력의 답을 줄 수 있었다.
+   show-answer·show-number 는 from 이 없으므로 직전 pick-player 씬의 storeAs 를 근거로 본다. */
+function wizSceneSkipped(sc, prev){
+  if(!sc || !wiz || !wiz.skipped) return false;
+  const src = sc.from ||
+    (((sc.t==='show-answer'||sc.t==='show-number') && prev && prev.t==='pick-player')? prev.storeAs : null);
+  return !!(src && wiz.skipped[src]);
+}
 function wizNext(){
   try{ goonPickCheck(wiz && wiz.scenes[wiz.idx]); }catch(e){ console.warn('[thyrsus] 건달 판정 실패', e); }
-  if(wiz.idx<wiz.scenes.length-1){ wiz.idx++; renderWiz(); } else closeWiz(true);
+  if(wiz.idx<wiz.scenes.length-1){
+    wiz.idx++;
+    while(wiz.idx<wiz.scenes.length && wizSceneSkipped(wiz.scenes[wiz.idx], wiz.scenes[wiz.idx-1])) wiz.idx++;
+    /* 건너뛰다 끝을 넘어가면 그 단계는 그대로 완료다 — idx 를 마지막 씬으로 되돌려
+       closeWiz 의 wizTitle()/nightDone 기록이 정상 범위를 보게 한다. */
+    if(wiz.idx>=wiz.scenes.length){ wiz.idx=wiz.scenes.length-1; closeWiz(true); return; }
+    renderWiz();
+  } else closeWiz(true);
 }
 function wizPrev(){ if(wiz.idx>0){ wiz.idx--; renderWiz(); } }
 function closeWiz(done){
@@ -6144,7 +6438,14 @@ function closeWiz(done){
   if(done && wiz && !wiz.custom){ const m=S.nightDone[S.phase.n]||(S.nightDone[S.phase.n]={}); m[wiz.stepId]=true;
     log(`${wizTitle()} 단계 완료(위저드)`); save(); }
   if(done && wiz && wiz.custom){ log(`${wizTitle()} 완료`); save(); }
-  wiz=null; if(typeof clearSTHandoff==='function') clearSTHandoff(); renderAll();
+  /* 위저드가 어느 경로로 닫히든 기기 전달 전역과 복구 스냅샷을 함께 비운다 — 남아 있으면
+     다음 renderWiz 가 이전 단계의 전달 화면을 그리거나, wiz 가 null 인 채 renderHandoff 의
+     wiz.vars 접근에서 죽는다. 정의가 뒤 script 블록이라 clearSTHandoff 와 같은 typeof 가드. */
+  wiz=null;
+  if(typeof clearSTHandoff==='function') clearSTHandoff();
+  if(typeof clearHandoff==='function') clearHandoff();
+  if(typeof clearHandoffDraft==='function') clearHandoffDraft();
+  renderAll();
 }
 
 /* ── TB 22종 + 정보 단계 씬 (문구 자체 작성) ── */
@@ -6765,9 +7066,16 @@ juggler:{other:[
 });
 
 /* ══ 징크스 데이터베이스 ══
-   구현된 72캐릭터+여행자 15종 사이에 성립하는 공식 징크스만 수록.
-   3대 기본 스크립트 내부 조합의 공식 징크스는 원래 극소수 — 확실한 것만 담고,
-   불확실한 것은 넣지 않는다(confidence:'check'는 위키 재확인 필요 표시). */
+   로스터 181종 사이에 성립하는 징크스 146쌍 — 아래 const 3건 + JINXES.push 143건.
+   confidence 는 '규칙이 옳은가'가 아니라 '공식 원문과 대조가 끝났는가'만 뜻한다.
+     'high'  = official/jinxes.json 원문 대조 완료.
+     'check' = 대조 미완 — 체크리스트·시트·셋업·검증 카드가 '⚠ 공식 위키 확인 필요' 배지를 단다.
+   ※ 현재 'check' 17쌍 = reference/backbone-design.md §7.2(b) 가 공식 파일에서 찾지 못한 15쌍
+     + 문구를 고쳐 재확인이 필요한 2쌍(magician|wraith · leviathan|ravenkeeper).
+     그 15쌍은 지우지 않는다 — jinxes.json 의 소유 역할이 27종뿐이라 공식 파일이 부분집합일
+     가능성이 남아 있다(§7.2(b) 처리 방침). 판정이 끝난 뒤에 'high' 로 올리거나 지운다.
+   새 쌍을 넣을 때는 아래 DJ_CLASS 에도 같은 키를 반드시 함께 넣는다 —
+   thyDjinn.audit() 이 미분류를 missing 으로 잡는다. */
 const JINXES=[
  {a:'fanggu',b:'scarletwoman',
   rule:'살아있는 악마가 둘이 되고 그중 하나가 탕녀 계승분이면, 탕녀는 악마를 계승하지 않는다.',
@@ -6791,10 +7099,13 @@ JINXES.push(
  {a:'alchemist',b:'widow',rule:'연금술사는 과부 능력을 받지 못하고 대신 진짜 과부가 인플레이가 된다. 매일 처형 단계 뒤, 살아있는 연금술사는 과부로 의심되는 생존자 1명을 공개 지목할 수 있고 적중하면 악마는 그날 밤 과부를 지목해야 한다.',confidence:'high'},
  {a:'alchemist',b:'wraith',rule:'연금술사는 망령 능력을 받지 못하고 대신 진짜 망령이 인플레이가 된다. 매일 처형 단계 뒤, 살아있는 연금술사는 망령으로 의심되는 생존자 1명을 공개 지목할 수 있고 적중하면 악마는 그날 밤 망령을 지목해야 한다.',confidence:'high'},
  {a:'alsaahir',b:'vizier',rule:'재상이 인플레이라는 사실을 사회자가 공개 선언하지 않는다.',confidence:'high'},
- {a:'barber',b:'cultleader',rule:'이발사 교환으로 캐릭터를 받은 악한 교주는 자기 능력으로 선으로 돌아설 수 없다.',confidence:'high'},
- {a:'barber',b:'damsel',rule:'악마가 아가씨를 교환 대상으로 고르면, 아가씨가 누구와 캐릭터를 바꿀지는 사회자가 정한다.',confidence:'high'},
- {a:'barber',b:'goon',rule:'이발사 교환으로 캐릭터를 받은 악한 건달은 자기 능력으로 선으로 돌아설 수 없다.',confidence:'high'},
- {a:'barber',b:'politician',rule:'이발사 교환으로 캐릭터를 받은 악한 정치인은 자기 능력으로 선으로 돌아설 수 없다.',confidence:'high'},
+ /* §7.2(b) 미대조 4쌍 — official/jinxes.json 에 barber 가 소유자로도 상대로도 없다.
+    '선으로 돌아설 수 없다' 계열의 공식 소유자는 boffin·pithag 이고, 코드의 barber 3건은
+    pithag 4건에서 ogre 만 빠진 모양이라 손으로 확장한 흔적에 가깝다 — 그래도 삭제하지 않는다. */
+ {a:'barber',b:'cultleader',rule:'이발사 교환으로 캐릭터를 받은 악한 교주는 자기 능력으로 선으로 돌아설 수 없다.',confidence:'check'},
+ {a:'barber',b:'damsel',rule:'악마가 아가씨를 교환 대상으로 고르면, 아가씨가 누구와 캐릭터를 바꿀지는 사회자가 정한다.',confidence:'check'},
+ {a:'barber',b:'goon',rule:'이발사 교환으로 캐릭터를 받은 악한 건달은 자기 능력으로 선으로 돌아설 수 없다.',confidence:'check'},
+ {a:'barber',b:'politician',rule:'이발사 교환으로 캐릭터를 받은 악한 정치인은 자기 능력으로 선으로 돌아설 수 없다.',confidence:'check'},
  {a:'baron',b:'heretic',rule:'두 캐릭터 중 하나만 인플레이가 될 수 있다.',confidence:'high'},
  {a:'boffin',b:'cultleader',rule:'악마가 교주 능력을 받아도 그 능력으로 선으로 돌아설 수 없다.',confidence:'high'},
  {a:'boffin',b:'drunk',rule:'악마는 주정뱅이 능력을 받을 수 없다.',confidence:'high'},
@@ -6805,16 +7116,16 @@ JINXES.push(
  {a:'boffin',b:'villageidiot',rule:'여분 토큰이 있을 때에 한해, 괴짜 과학자는 악마에게 마을 바보 능력을 줄 수 있다.',confidence:'high'},
  {a:'cannibal',b:'butler',rule:'식인종이 집사 능력을 얻으면, 자신이 무엇을 얻었는지 알게 된다.',confidence:'high'},
  {a:'cannibal',b:'juggler',rule:'곡예사가 첫 낮에 추측을 마친 뒤 처형으로 죽으면, 그날 밤 살아있는 식인종이 적중 수를 대신 듣는다.',confidence:'high'},
- {a:'cannibal',b:'poppygrower',rule:'식인종이 양귀비 재배자를 먹은 뒤 죽거나 그 능력을 잃으면, 그 밤에 악마와 하수인들이 서로를 알게 된다.',confidence:'high'},
+ {a:'cannibal',b:'poppygrower',rule:'식인종이 양귀비 재배자를 먹은 뒤 죽거나 그 능력을 잃으면, 그 밤에 악마와 하수인들이 서로를 알게 된다.',confidence:'check'},  /* §7.2(b) 미대조 */
  {a:'cerenovus',b:'goblin',rule:'세레노버스는 대상에게 자신이 고블린이라고 믿는 광증을 걸 수 있다.',confidence:'high'},
  {a:'godfather',b:'heretic',rule:'두 캐릭터 중 하나만 인플레이가 될 수 있다.',confidence:'high'},
  {a:'heretic',b:'widow',rule:'두 캐릭터 중 하나만 인플레이가 될 수 있다.',confidence:'high'},
  {a:'kazali',b:'bountyhunter',rule:'카잘리가 현상금 사냥꾼을 하수인으로 만들면, 그 게임에서 악한 마을 주민은 생기지 않는다.',confidence:'high'},
- {a:'kazali',b:'choirboy',rule:'성가대 소년이 인플레이면 카잘리는 왕을 하수인으로 만들 수 없다.',confidence:'high'},
- {a:'kazali',b:'goon',rule:'카잘리는 건달 플레이어를 자신의 악한 하수인 중 하나로 지정할 수 있다.',confidence:'high'},
- {a:'kazali',b:'huntsman',rule:'카잘리가 아가씨를 하수인으로 만들었고 사냥꾼이 인플레이면, 선한 플레이어 1명이 새 아가씨가 된다.',confidence:'high'},
+ {a:'kazali',b:'choirboy',rule:'성가대 소년이 인플레이면 카잘리는 왕을 하수인으로 만들 수 없다.',confidence:'check'},  /* §7.2(b) 미대조 */
+ {a:'kazali',b:'goon',rule:'카잘리는 건달 플레이어를 자신의 악한 하수인 중 하나로 지정할 수 있다.',confidence:'check'},  /* §7.2(b) 미대조 */
+ {a:'kazali',b:'huntsman',rule:'카잘리가 아가씨를 하수인으로 만들었고 사냥꾼이 인플레이면, 선한 플레이어 1명이 새 아가씨가 된다.',confidence:'check'},  /* §7.2(b) 미대조 */
  {a:'kazali',b:'marionette',rule:'꼭두각시가 셋업 단계에서 인플레이라면, 악마가 정해진 뒤에 배치되며 악마의 옆자리에 앉는다.',confidence:'high'},
- {a:'kazali',b:'soldier',rule:'카잘리는 군인 플레이어를 자신의 악한 하수인 중 하나로 지정할 수 있다.',confidence:'high'},
+ {a:'kazali',b:'soldier',rule:'카잘리는 군인 플레이어를 자신의 악한 하수인 중 하나로 지정할 수 있다.',confidence:'check'},  /* §7.2(b) 미대조 */
  {a:'legion',b:'engineer',rule:'기술자가 군단을 만들면 모든 악한 플레이어가 군단이 된다. 군단이 이미 인플레이면 기술자는 능력을 갖지 못하며 그 사실을 알게 된다.',confidence:'high'},
  {a:'legion',b:'hatter',rule:'모자 장수가 군단을 만들면 모든 악한 플레이어가 군단이 된다. 군단이 이미 인플레이면 모자 장수는 능력을 갖지 못한다.',confidence:'high'},
  {a:'legion',b:'magician',rule:'마술사가 인플레이면, 악마 정보 단계에서 군단은 여러 그룹으로 나뉘어 따로 깨어난다. 각 그룹은 어떤 플레이어들이 선한지 알게 되지만 마술사가 누구인지는 알지 못한다.',confidence:'high'},
@@ -6832,7 +7143,11 @@ JINXES.push(
  {a:'leviathan',b:'mayor',rule:'5일차에 레비아탄과 시장이 모두 살아 있고 처형이 일어나지 않으면 선이 승리한다.',confidence:'high'},
  {a:'leviathan',b:'monk',rule:'레비아탄이 어젯밤 수도사가 보호한 플레이어를 지명해 처형시키면 선이 승리한다.',confidence:'high'},
  {a:'leviathan',b:'pithag',rule:'레비아탄은 5일차 이후에는 새로 인플레이가 될 수 없다.',confidence:'high'},
- {a:'leviathan',b:'ravenkeeper',rule:'첫날 밤을 제외한 매 밤, 레비아탄은 지난 밤들과 다른 살아있는 선한 플레이어 1명을 지목한다. 지목된 까마귀지기는 죽지 않고 능력만 발동한다.',confidence:'high'},
+ /* reference/backbone-design.md §7.2(c) 가 official/jinxes.json 원문과 대조해 지목한 5건 중
+    마지막 미수정분이다. 이 항목만 공식이 그냥 'an alive player' 라 '선한' 제한이 없다.
+    '선한'을 남겨 두면 사회자가 실제로는 허용되는 지목 범위를 스스로 좁힌다.
+    다만 같은 계열의 riot 판은 공식도 good 이라 공식 자체가 비일관일 수 있어 confidence 는 'check'. */
+ {a:'leviathan',b:'ravenkeeper',rule:'첫날 밤을 제외한 매 밤, 레비아탄은 지난 밤들과 다른 살아있는 플레이어 1명을 지목한다. 지목된 까마귀지기는 죽지 않고 능력만 발동한다.',confidence:'check'},
  {a:'leviathan',b:'sage',rule:'첫날 밤을 제외한 매 밤, 레비아탄은 지난 밤들과 다른 살아있는 선한 플레이어 1명을 지목한다. 지목된 현자는 죽지 않고 능력만 발동한다.',confidence:'high'},
  {a:'leviathan',b:'soldier',rule:'레비아탄이 군인을 지명해 처형시키면 선이 승리한다.',confidence:'high'},
  {a:'lilmonsta',b:'hatter',rule:'모자 장수가 죽고 악마가 릴 몬스타를 고르면, 그 플레이어는 하수인 캐릭터도 함께 골라야 한다.',confidence:'high'},
@@ -6845,19 +7160,25 @@ JINXES.push(
  {a:'lleech',b:'mastermind',rule:'주모자가 살아 있고 리치의 숙주가 처형으로 죽으면, 리치는 살아남되 능력을 잃는다.',confidence:'high'},
  {a:'lleech',b:'slayer',rule:'처단자가 리치의 숙주를 지목해 발동하면 숙주가 죽는다.',confidence:'high'},
  {a:'lordoftyphon',b:'summoner',rule:'소환사가 티폰의 군주를 만들면, 티폰의 군주는 하수인과 이웃해야 하며 반대쪽 이웃은 악한 하수인이 된다.',confidence:'high'},
- {a:'magician',b:'wraith',rule:'매일 처형 단계 뒤, 살아있는 마술사는 망령으로 의심되는 생존자 1명을 공개 지목할 수 있고 적중하면 악마는 그날 밤 망령을 지목해야 한다.',confidence:'high'},
+ /* 이 앱 안에서 망령은 첩자·과부와 같은 '그리모어 열람 하수인' 계열로 다뤄진다
+    (alchemist↔spy·widow·wraith 세 줄, plaguedoctor↔spy·wraith 두 줄이 이름만 바꾼 같은 문장이다).
+    그런데 이 줄만 alchemist↔wraith 의 둘째 문장을 '연금술사'→'마술사'로 바꾼 복붙이라,
+    마술사에게 있지도 않은 '매일 처형 단계 뒤 공개 지목' 절차를 사회자에게 시켰다 —
+    spy↔magician · widow↔magician 과 같은 계열 문구로 되돌린다.
+    공식 원문 재대조는 아직이므로 confidence 는 'check'(UI 가 재확인 배지를 단다). */
+ {a:'magician',b:'wraith',rule:'망령이 그리모어를 볼 때, 악마와 마술사의 캐릭터 토큰은 치워 둔다.',confidence:'check'},
  {a:'marionette',b:'alchemist',rule:'연금술사가 꼭두각시 능력을 받으면 그 능력은 작동하지 않으며, 꼭두각시는 인플레이로 취급한다.',confidence:'high'},
  {a:'marionette',b:'balloonist',rule:'꼭두각시가 자신을 열기구 조종사로 알고 있다면, 셋업에서 외지인이 1명 늘었을 수도 있다.',confidence:'high'},
- {a:'marionette',b:'damsel',rule:'꼭두각시는 아가씨가 인플레이라는 사실을 듣지 못한다.',confidence:'high'},
+ {a:'marionette',b:'damsel',rule:'꼭두각시는 아가씨가 인플레이라는 사실을 듣지 못한다.',confidence:'check'},  /* §7.2(b) 미대조 */
  {a:'marionette',b:'huntsman',rule:'꼭두각시가 자신을 사냥꾼으로 알고 있다면, 셋업에서 아가씨가 추가된 것이다.',confidence:'high'},
  {a:'marionette',b:'lilmonsta',rule:'꼭두각시가 셋업 단계에서 인플레이라면, 악마가 정해진 뒤에 배치되며 악마의 옆자리에 앉는다.',confidence:'high'},
  {a:'marionette',b:'magician',rule:'마술사가 살아 있는 동안에는 악마가 꼭두각시가 누구인지 알지 못한다.',confidence:'high'},
  {a:'marionette',b:'mathematician',rule:'수학자는 꼭두각시가 거짓 정보를 받았거나 능력이 정상 작동하지 않은 건으로 집계할 수 있다.',confidence:'high'},
- {a:'marionette',b:'poppygrower',rule:'양귀비 재배자가 죽을 때 악마는 꼭두각시가 누구인지 알게 되지만, 꼭두각시는 아무것도 알지 못한다.',confidence:'high'},
- {a:'marionette',b:'snitch',rule:'꼭두각시는 인플레이가 아닌 캐릭터 3개를 받지 못한다. 대신 악마가 3개를 추가로 더 받는다.',confidence:'high'},
- {a:'marionette',b:'wraith',rule:'망령은 꼭두각시와 함께 깨어나지 않는다.',confidence:'high'},
+ {a:'marionette',b:'poppygrower',rule:'양귀비 재배자가 죽을 때 악마는 꼭두각시가 누구인지 알게 되지만, 꼭두각시는 아무것도 알지 못한다.',confidence:'check'},  /* §7.2(b) 미대조 */
+ {a:'marionette',b:'snitch',rule:'꼭두각시는 인플레이가 아닌 캐릭터 3개를 받지 못한다. 대신 악마가 3개를 추가로 더 받는다.',confidence:'check'},  /* §7.2(b) 미대조 */
+ {a:'marionette',b:'wraith',rule:'망령은 꼭두각시와 함께 깨어나지 않는다.',confidence:'check'},  /* §7.2(b) 미대조 */
  {a:'mastermind',b:'vigormortis',rule:'능력을 가진 주모자는 비고르모르티스가 죽어도 그 능력을 잃지 않는다.',confidence:'high'},
- {a:'mastermind',b:'zombuul',rule:'좀버얼이 주모자를 죽인 적이 있다면, 좀버얼이 죽어도 주모자는 능력을 유지한다.',confidence:'high'},
+ {a:'mastermind',b:'zombuul',rule:'좀버얼이 주모자를 죽인 적이 있다면, 좀버얼이 죽어도 주모자는 능력을 유지한다.',confidence:'check'},  /* §7.2(b) 미대조 */
  {a:'mathematician',b:'drunk',rule:'수학자는 주정뱅이가 거짓 정보를 받았거나 능력이 정상 작동하지 않은 건으로 집계할 수 있다.',confidence:'high'},
  {a:'ogre',b:'pithag',rule:'마귀할멈이 악한 플레이어를 오거로 바꾸면, 그 플레이어는 자기 능력으로 선으로 돌아설 수 없다.',confidence:'high'},
  {a:'ogre',b:'recluse',rule:'은둔자가 오거에게 악으로 등록되면, 오거는 자신이 악하다고 듣는다.',confidence:'high'},
@@ -6924,12 +7245,22 @@ JINXES.push(
  {a:'yaggababble',b:'exorcist',rule:'구마사제가 야가배블을 지목하면 그날 밤 야가배블은 아무도 죽이지 않는다.',confidence:'high'},
  {a:'zealot',b:'cannibal',rule:'식인종이 광신자 능력을 얻으면, 자신이 무엇을 얻었는지 알게 된다.',confidence:'high'},
  {a:'zealot',b:'legion',rule:'광신자는 군단에게 악으로 등록될 수 있다.',confidence:'high'},
- {a:'zealot',b:'riot',rule:'광신자는 지명당하면 죽어 있더라도 즉시 지명을 해야 한다.',confidence:'high'},
+ {a:'zealot',b:'riot',rule:'광신자는 지명당하면 죽어 있더라도 즉시 지명을 해야 한다.',confidence:'check'},  /* §7.2(b) 미대조 */
  {a:'zealot',b:'vizier',rule:'광신자는 재상에게 악으로 등록될 수 있다.',confidence:'high'},
 );
+/* 쌍 키 정규화 — 이 표는 계속 늘어나는데 [a,b] 순서를 뒤집은 줄이 하나만 들어와도
+   ① 체크리스트·카드에 같은 규칙이 두 줄로 뜨고 ② DJ_CLASS 조회가 빗나가 분류가 조용히
+   'unknown(사회자 재량)'으로 떨어진다. 정규화는 여기 한 곳에서만 만든다. */
+function jinxKey(a,b){ return a<b ? a+'|'+b : b+'|'+a; }
+/* 정규화 키 기준 중복 제거 — 먼저 나온 줄을 남긴다. 체크리스트 key 는 지금 그대로 두는 게 중요하다:
+   key 형식을 바꾸면 진행 중인 판에 저장된 S.checks 의 체크 표시가 통째로 끊긴다. */
+function jinxDedupe(list){
+  const seen=new Set();
+  return (list||[]).filter(j=>{ const k=jinxKey(j.a,j.b); if(seen.has(k)) return false; seen.add(k); return true; });
+}
 function activeJinxes(){
   const ids=new Set(S.players.map(p=>p.charId).filter(Boolean));
-  return JINXES.filter(j=>ids.has(j.a)&&ids.has(j.b));
+  return jinxDedupe(JINXES.filter(j=>ids.has(j.a)&&ids.has(j.b)));
 }
 /* buildChecklist 래핑(원본 미수정) — 성립 징크스를 체크리스트에 편입 */
 const _origBuild=buildChecklist;
@@ -6947,7 +7278,8 @@ buildChecklist=function(){
    기존 render 함수는 수정하지 않고 결과 DOM에 카드만 덧붙인다(원래 반환값 보존). */
 function sheetJinxes(edId){
   const ids=new Set(sheetCharList(edId).map(c=>c.id));
-  return JINXES.filter(j=>ids.has(j.a)&&ids.has(j.b));
+  /* 시트 카드도 같은 정규화를 거친다 — 순서만 다른 중복이 카드에 두 줄로 뜨는 것을 막는다 */
+  return jinxDedupe(JINXES.filter(j=>ids.has(j.a)&&ids.has(j.b)));
 }
 function jinxCardHTML(title, list, note){
   return `<div class="card"><h2>${title} <span class="num">${list.length}</span></h2>
@@ -7446,7 +7778,7 @@ function openPlayerModal(pid){
             ${(p.statuses||[]).map(s=>STATUS_DEFS[s.key]?`<span class="pill warn">${STATUS_DEFS[s.key].icon} ${STATUS_DEFS[s.key].ko}</span>`:'').join('')}
           </div>
           <div class="pmability">${c?esc(c.ability):'캐릭터가 배정되지 않았습니다.'}</div>
-          ${p.charId==='drunk'&&S.drunkMaskChar?`<div class="alertbox" style="margin-top:10px">🎭 본인은 <b>${esc(charOf(S.drunkMaskChar).ko)}</b>라고 믿고 있습니다.</div>`:''}
+          ${p.charId==='drunk'&&charOf(S.drunkMaskChar)?`<div class="alertbox" style="margin-top:10px">🎭 본인은 <b>${esc(charOf(S.drunkMaskChar).ko)}</b>라고 믿고 있습니다.</div>`:''}
         </div>
       </div>
       <div class="pmsec">상태</div>
@@ -7476,9 +7808,12 @@ function togglePStatus(pid,key){
   if(idx>=0){ removeStatus(p,idx); }
   else{
     let exp=null;
-    if(key==='poison') exp={kind:'night', n:(ph.kind==='night'?ph.n:ph.n)+1};
+    /* addStatusUI 와 같은 이유 — 준비(setup)의 ph.n===0 을 그대로 쓰면 만료가 {night,1} 이라
+       밤 1 시작 순간 풀린다. 준비에 놓은 토큰도 밤 1 + 낮 1 을 살도록 밤 2로 민다. */
+    const nightExp = (ph.kind==='setup')? 2 : ph.n+1;
+    if(key==='poison') exp={kind:'night', n:nightExp};
     if(key==='protect') exp = ph.kind==='night'? {kind:'day', n:ph.n} : {kind:'day', n:ph.n+1};
-    if(key==='master'||key==='curse'||key==='mad'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!==key)); exp={kind:'night', n:ph.n+1}; }
+    if(key==='master'||key==='curse'||key==='mad'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!==key)); exp={kind:'night', n:nightExp}; }
     let src='사회자 수동';
     if(key==='drunkS'){                                 // 취함은 출처별 만료가 다르다 — 정책 선택
       const c=prompt('취함 출처 선택 — 1: 선원/여관 주인/건달/음유시인(다음 황혼까지) · 2: 궁정대신(3밤+3낮) · 3: 영구(주정뱅이·사랑꾼·뱀 조련사)','1');
@@ -7675,6 +8010,22 @@ function grimConcede(losing){
   S.gameOver=true; save();
   showGameOver(winner, res.reason+' — '+res.rule);
 }
+/* 바이올린 연주자(우화) — 공식: "Once per game, the Demon secretly chooses an opposing
+   player: all players choose which of these 2 players win." 발동하면 앱의 통상 승리 판정과
+   무관하게 그 자리에서 게임이 끝난다. 결과를 승리 엔진에 태워야 사유와 함께 전적에 남는다.
+   grimConcede 와 같은 방식으로 승리 엔진 유무를 확인한 뒤 넘긴다(엔진은 뒤쪽 블록이다). */
+function fiddlerCall(){
+  if(S.gameOver){ toast('이미 종료된 게임입니다.','warn'); return; }
+  const evilWon=confirm('🎻 바이올린 연주자 — 전원 투표 결과를 입력합니다.\n[확인] 악마 쪽이 이겼다 → 악한 팀 승리\n[취소] 지목된 상대 플레이어 쪽이 이겼다 → 선한 팀 승리');
+  const team=evilWon? 'evil':'good';
+  const res={team, reason:'바이올린 연주자 — 전원 투표로 승자를 결정했습니다.',
+    rule:'바이올린 연주자(우화): 악마가 상대 진영 1명을 비밀리에 지목하면 전원이 둘 중 누가 이길지 투표하고, 그 결과로 게임이 즉시 끝납니다.'};
+  log(`🎻 바이올린 연주자 — 전원 투표로 ${team==='good'?'선한':'악한'} 팀 승리`);
+  if(typeof askWin==='function' && typeof isWinRes==='function'){ askWin(res); return; }
+  if(!confirm(`${team==='good'?'선한':'악한'} 팀 승리로 게임을 종료합니다.`)) return;
+  S.gameOver=true; save();
+  showGameOver(team, res.reason+' — '+res.rule);
+}
 function openEndMenu(){
   const el=$('#pmodal'); if(!el) return;
   el.hidden=false;
@@ -7690,6 +8041,8 @@ function openEndMenu(){
           <span><b>선한 팀 기권</b><small>선한 팀이 포기합니다 — 악한 팀 승리로 기록됩니다.</small></span></button>
         <button type="button" class="endopt evil" data-endact="concede-evil"><span class="eico">😈</span>
           <span><b>악한 팀 기권</b><small>악한 팀이 포기합니다 — 선한 팀 승리로 기록됩니다.</small></span></button>
+        ${(typeof isFabledActive==='function' && isFabledActive('fiddler'))? `<button type="button" class="endopt" data-endact="fiddler"><span class="eico">🎻</span>
+          <span><b>바이올린 연주자 — 전원 투표</b><small>악마의 비밀 지목으로 게임이 그 자리에서 끝납니다. 투표 결과를 승자로 기록합니다.</small></span></button>` : ''}
       </div>
       <p class="hint" style="margin:14px 0 0">종료해도 그리모어와 게임 기록은 그대로 남습니다.</p>
     </div></div>`;
@@ -7703,6 +8056,7 @@ function openEndMenu(){
     if(act==='manual') endGameManually();
     else if(act==='concede-good') grimConcede('good');
     else if(act==='concede-evil') grimConcede('evil');
+    else if(act==='fiddler') fiddlerCall();
   });
   el.onclick=()=>closePlayerModal();
 }
@@ -7741,11 +8095,37 @@ function startNightRun(){
        건너뛰었다. 매 홉마다 현재 상태로 다시 계산한다. */
     try{
       const nowIds=runnableNightSteps().map(s=>s.id);
-      nowIds.forEach(id=>{ if(q.ids.indexOf(id)<0) q.ids.push(id); });
-      while(q.i<q.ids.length && nowIds.indexOf(q.ids[q.i])<0) q.i++;
+      const done=S.nightDone[S.phase.n]||(S.nightDone[S.phase.n]={});
+      /* 새로 유효해진 단계는 '맨 뒤'가 아니라 nowIds(= nightSteps() 의 공식 밤 순서) 기준
+         자리에 끼운다. 뒤에 붙이면 악마가 죽인 이발사가 몽상가·재봉사 뒤로 밀려, 교환으로
+         바뀐 캐릭터가 뒤 단계의 정보에 반영되지 못한다.
+         또 q.i '앞쪽'에만 남은 id 는 한 번 건너뛴 뒤 다시 유효해진 경우이므로(교수가 되살린
+         험담꾼) 미실행으로 보고 다시 예약한다 — 완료 표시가 있는 것만 최종적으로 건너뛴다. */
+      nowIds.forEach(id=>{
+        if(done[id]) return;
+        if(q.ids.indexOf(id, q.i)>=0) return;
+        const oi=nowIds.indexOf(id);
+        let at=q.ids.length;
+        for(let k=q.i;k<q.ids.length;k++){ if(nowIds.indexOf(q.ids[k])>oi){ at=k; break; } }
+        q.ids.splice(at,0,id);
+      });
+      while(q.i<q.ids.length && (nowIds.indexOf(q.ids[q.i])<0 || done[q.ids[q.i]])) q.i++;
     }catch(e){}
     if(q.i<q.ids.length){ setTimeout(()=>startWiz(q.ids[q.i]),0); }
-    else { wizQueue=null; setTimeout(showDawn,0); }
+    else {
+      wizQueue=null;
+      /* 연속 진행은 NIGHT_FLOW 대본이 있는 단계만 돈다(runnableNightSteps 의 flowFor 필터).
+         여행자·커스텀 캐릭터·전설 단계는 애초에 큐에 들어오지 않으므로, 아무 표시 없이
+         새벽으로 넘기면 사회자가 그 능력을 통째로 빠뜨린 채 밤을 끝낸다. 이름으로 알려 준다. */
+      try{
+        const _d=S.nightDone[S.phase.n]||{};
+        const _left=nightSteps().filter(st=>!stepSkipReason(st) && !flowFor(st.id) && !_d[st.id]);
+        if(_left.length) toast('자동 진행이 다루지 않는 단계가 남았습니다: '
+          + _left.map(st=>(charOf(st.id)&&charOf(st.id).ko) || (INFO_STEPS[st.id]&&INFO_STEPS[st.id].ko) || st.id).join(', ')
+          + ' — 밤 리스트에서 직접 처리한 뒤 새벽으로 가세요.','warn');
+      }catch(e){}
+      setTimeout(showDawn,0);
+    }
   };
 })();
 /* 밤 시작 시 생존 스냅샷 → 새벽에 사망자 집계 */
@@ -7801,6 +8181,29 @@ function showGameOver(team, reason){
       <button class="gold" onclick="document.getElementById('gameover').hidden=true;showReplay()">전말 요약 열기</button>
       <button onclick="document.getElementById('gameover').hidden=true">닫기</button>
     </div></div>`;
+  /* 정치인 — 공식: "If you were the player most responsible for your team losing,
+     you change alignment & win, even if dead." 팀 결과는 그대로 두고 본인만 진영을 바꿔
+     개인 승리한다(승패를 뒤집는 이단자와 다르다). '가장 큰 책임'은 전적으로 사회자 재량이라
+     물어볼 수밖에 없고, 종료 화면이 앱이 약속한 '잊기 쉬운 마지막 절차'를 환기할 자리다.
+     S.politicianAsked 로 판당 1회만 묻는다 — showGameOver 는 toast 승리 게이트를 통해
+     한 판에 두 번 불릴 수 있다. 중독·취함이면 전환하지 않는다. */
+  try{
+    const pol=S.players.find(x=>x.charId==='politician');
+    if(pol && !S.politicianAsked){
+      S.politicianAsked=true;
+      if(isMalfunctioning(pol)) log(`🎩 정치인(${pol.name}) — 중독·취함 상태라 진영 전환 없음`);
+      else{
+        const polLost=(isEvil(pol)? 'evil':'good')!==team;   // 내 진영이 졌는가
+        if(!polLost) log(`🎩 정치인(${pol.name}) — 자기 진영이 이겼으므로 전환 없음`);
+        else if(confirm(`🎩 정치인(${pol.name})이 있습니다.\n자기 진영이 패배한 데 가장 큰 책임이 있는 플레이어가 ${pol.name}였습니까?\n[확인] 예 → 진영을 바꿔 혼자 승리(팀 결과는 그대로) / [취소] 아니오`)){
+          pol.alignment=isEvil(pol)? 'good':'evil';
+          log(`🎩 정치인 전환 — ${pol.name}이(가) 진영을 바꿔 개인 승리(팀 결과는 그대로 유지)`);
+          toast(`🎩 정치인 ${pol.name} — 진영을 바꿔 혼자 이겼습니다. 팀 결과는 바뀌지 않습니다.`,'warn');
+        }
+        else log(`🎩 정치인(${pol.name}) — 사회자가 '가장 큰 책임 아님'으로 판정, 전환 없음`);
+      }
+    }
+  }catch(err){ console.warn('[win] politician', err); }
   log(`🏁 게임 종료 — ${team==='good'?'선한 팀':'악한 팀'} 승리: ${reason||''}`);
   save();
 }
@@ -7847,11 +8250,18 @@ function renderHandoff(){
   const sel=(wiz.vars[handoff.storeAs]||[]);
   const sc=wiz.scenes[wiz.idx];
   const optional=!!(sc&&sc.optional);
-  const done=sel.length>=handoff.n;
+  /* 후보가 n명보다 적으면 sel.length>=handoff.n 이 영영 참이 안 돼 '이야기꾼에게 전달'이
+     사유 없이 잠긴다 — 교수(filter:'dead')인데 사망자가 아직 0명, 객실 청소부(n:2)인데
+     자신 제외 생존자가 1명인 경우가 그렇다. 유일한 탈출구가 '사회자가 대신 입력'이라는
+     정보 누출 경로뿐이었다. 고를 수 있는 최대치(cap, 0명 포함)로 열고 사유를 화면에 적는다. */
+  const cap=Math.min(handoff.n, handoff.ordered.length);
+  const short=handoff.ordered.length<handoff.n;
+  const done=sel.length>=cap;
   $('#wizhead').innerHTML=`<span class="wtitle">${esc(handoff.holder?handoff.holder.name:'플레이어')}님, 직접 선택하세요</span>`+
     `<span class="wstep num">${sel.length}/${handoff.n}</span>`;
   $('#wizbody').innerHTML=`
     <div class="wiz-caption">${esc(handoff.label||'대상을 선택하세요')}</div>
+    ${short?`<div class="wiz-warnbar">⚠ 고를 수 있는 사람이 ${handoff.ordered.length}명뿐입니다 — ${handoff.n}명을 채울 수 없으니 고를 수 있는 만큼만 고르고 돌려주세요.</div>`:''}
     <div class="handoff-list">${handoff.ordered.map(p=>{
       const me=p===handoff.holder;
       return `<div class="handoff-btn ${me?'me':''} ${sel.includes(p.id)?'sel':''} ${p.alive?'':'dead'}" data-hopick="${esc(p.id)}">
@@ -7859,16 +8269,25 @@ function renderHandoff(){
         <span class="hname">${esc(p.name)}${me?' (나)':''}${p.alive?'':' 💀'}</span></div>`;}).join('')}</div>
     ${optional?'<div class="wiz-note hint" style="margin-top:14px">이 능력은 사용하지 않아도 됩니다.</div>':''}`;
   $('#wizbody').onclick=null;
+  /* 기기 전달 화면에는 중단 수단이 없어, 판단을 바꾼 사회자가 '사회자가 대신 입력'이라는
+     원칙의 예외 경로(stHandoffOverride)를 눌러 빠져나오는 우회가 강제됐다. 중단을 맨 앞에 둔다. */
   $('#wizfoot').innerHTML=
+    `<button class="hofoot ghost" onclick="handoffAbort()">✋ 단계 중단</button>`+
     `<button class="hofoot ghost" onclick="useSTInput()">🧑‍⚖️ 사회자가 대신 입력</button>`+
     (optional?`<button class="hofoot" onclick="handoffSkip()">이번 턴에 선택 안 함</button>`:'')+
     `<button class="hofoot primary" ${done?'':'disabled'} onclick="endHandoff()">↩ 이야기꾼에게 전달</button>`;
 }
-function handoffSkip(){
-  const key=handoff.storeAs;
+function handoffSkip(key){
+  /* 기기 전달과 사회자 대리 입력이 '같은 상태 모양'을 남기도록 키를 인자로도 받는다 —
+     대리 입력 화면에는 handoff 가 없어 handoff.storeAs 접근이 곧바로 TypeError 였고,
+     그래서 사회자가 대신 미발동을 접수해도 wiz.skipped·로그가 전혀 남지 않았다.
+     기존 인라인 onclick="handoffSkip()" 은 인자 없이 그대로 동작한다. */
+  if(!wiz) return;
+  const proxy=!handoff;
+  key=key||(handoff&&handoff.storeAs); if(!key) return;
   wiz.vars[key]=[]; wiz.skipped=wiz.skipped||{}; wiz.skipped[key]=true;
-  log(`${wizTitle()}: 이번 턴 능력 미사용(선택 안 함)`);
-  handoff=null; save(); wizNext();
+  log(`${wizTitle()}: 이번 턴 능력 미사용(선택 안 함)${proxy?' — 사회자 대리 접수':''}`);
+  handoff=null; clearHandoffDraft(); save(); wizNext();
 }
 document.addEventListener('click', e=>{
   const b=e.target.closest && e.target.closest('[data-hopick]');
@@ -7878,13 +8297,27 @@ function handoffPick(pid){
   const arr=wiz.vars[handoff.storeAs]=wiz.vars[handoff.storeAs]||[];
   const i=arr.indexOf(pid);
   if(i>=0) arr.splice(i,1); else { if(arr.length>=handoff.n) arr.shift(); arr.push(pid); }
+  /* wiz 는 S 에 들어가지 않는 지역 변수다 — 여기서 남기지 않으면 기기를 돌리는 도중 폰이
+     잠기거나 브라우저가 탭을 회수할 때 그 밤의 지목이 통째로, 화면에 흔적도 없이 사라진다.
+     복구는 startWiz 가 같은 밤·같은 단계일 때만 하고, 반드시 사회자에게 알린다. */
+  try{
+    S.handoffDraft={step:String(wiz.stepId), idx:wiz.idx, key:handoff.storeAs,
+                    ids:arr.slice(), night:(S.phase&&S.phase.n)||0};
+    save();
+  }catch(e){ console.warn('[thyrsus] 기기 전달 스냅샷 저장 실패', e); }
   renderHandoff();
 }
 /* 플레이어가 이야기꾼에게 돌려주면 그 씬은 끝난 것 — 다음 씬으로 넘어간다.
    renderWiz() 를 그대로 부르면 같은 씬이라 다시 기기 전달 화면으로 되돌아간다. */
 function endHandoff(){
   if(!handoff || !wiz) return;
-  handoff=null;
+  /* 후보 부족(cap<n)으로 아무도 고르지 못한 채 돌려준 경우도 '선택 안 함'으로 남긴다 —
+     그래야 뒤의 판정·정보 씬이 wiz.skipped 로 건너뛰어져 빈 대상을 강요하지 않는다.
+     반대로 이전 버튼으로 돌아와 다시 고른 경우엔 그 표시를 지워야 뒤 씬이 되살아난다. */
+  wiz.skipped=wiz.skipped||{};
+  if((wiz.vars[handoff.storeAs]||[]).length) delete wiz.skipped[handoff.storeAs];
+  else wiz.skipped[handoff.storeAs]=true;
+  handoff=null; clearHandoffDraft();
   /* 여기서 곧바로 다음 씬을 그리면 사회자 전용 화면(wizWarnBar 오작동 경고 · WIZ_SUGGEST
      정답 제안 · 판정 실행 버튼)이 아직 플레이어 손에 있는 기기에 그대로 뜬다.
      반환 확인 한 장을 끼워 사회자가 기기를 돌려받은 뒤에만 다음 씬이 열리게 한다. */
@@ -7908,7 +8341,42 @@ function handoffScene(sc){ return sc && sc.t==='pick-player' && sc.who==='player
 function wizHandoffKey(){ return wiz? (wiz.custom? '__custom' : String(wiz.stepId))+'#'+wiz.idx : null; }
 function stHandoffOverrideOn(){ const k=wizHandoffKey(); return !!k && stHandoffOverride===k; }
 function clearSTHandoff(){ stHandoffOverride=null; }
-function useSTInput(){ stHandoffOverride=wizHandoffKey(); handoff=null; renderWiz(); }
+/* 위저드 생명주기 함수(startWiz·startCustomWiz·closeWiz)는 다른 script 블록이라 let handoff
+   바인딩을 직접 건드릴 수 없다 — clearSTHandoff 와 같은 방식으로 함수 선언(전역 객체 속성)
+   으로 노출한다. handoff 가 남은 채 위저드가 닫히면 다음 renderWiz 가 이전 단계의 전달
+   화면을 그리거나, wiz 가 null 인 채 renderHandoff 의 wiz.vars 접근에서 죽는다. */
+function clearHandoff(){ handoff=null; }
+function clearHandoffDraft(){ if(S.handoffDraft){ S.handoffDraft=null; save(); } }
+/* 기기 전달 중단 — 곧바로 closeWiz 하면 그리모어 본화면이 아직 플레이어 손에 있는 기기에
+   그대로 열린다. endHandoff 와 같은 반환 확인 한 장을 끼운 뒤에만 닫히게 한다. */
+function handoffAbort(){
+  if(!handoff || !wiz) return;
+  handoff=null; clearHandoffDraft();
+  log(`${wizTitle()}: 기기 전달 중단(이 단계 선택 미저장)`);
+  $('#wizhead').innerHTML=`<span class="wtitle">📱 기기를 이야기꾼에게 돌려주세요</span>`;
+  $('#wizbody').innerHTML=`<div style="text-align:center"><div class="wiz-bigtoken">✋</div>
+    <div class="wiz-bigname">단계를 중단합니다</div>
+    <div class="wiz-caption" style="margin-top:6px">이 단계의 선택은 저장되지 않았습니다.</div></div>`;
+  $('#wizbody').onclick=null;
+  $('#wizfoot').innerHTML=`<button class="hofoot primary" onclick="closeWiz(false)">🧑\u200d⚖️ 이야기꾼이 받았습니다 — 닫기</button>`;
+}
+function useSTInput(){
+  /* 이 버튼은 '플레이어가 들고 있는' 기기 전달 화면에 있다 — 곧바로 renderWiz() 하면
+     wizWarnBar(오작동 경고 · 보르톡스 "주민 정보는 반드시 거짓")와 WIZ_SUGGEST 정답 제안,
+     사회자 보조 버튼(무작위·비우기)이 플레이어 손에서 그대로 열린다.
+     endHandoff 와 똑같이 반환 확인 한 장을 끼워 기기를 돌려받은 뒤에만 다음 화면이 열리게 한다.
+     전환 사실도 로그에 남긴다 — 남기지 않으면 리플레이·감사 로그에서 '본인이 고른 지목'과
+     '사회자가 대신 넣은 지목'이 구분되지 않는다(handoffSkip 은 이미 남기고 있다). */
+  if(!wiz) return;
+  stHandoffOverride=wizHandoffKey(); handoff=null;
+  log(`${wizTitle()}: 사회자 대리 입력으로 전환(기기 전달 생략)`);
+  $('#wizhead').innerHTML=`<span class="wtitle">📱 기기를 이야기꾼에게 돌려주세요</span>`;
+  $('#wizbody').innerHTML=`<div style="text-align:center"><div class="wiz-bigtoken">🧑\u200d⚖️</div>
+    <div class="wiz-bigname">사회자 대리 입력</div>
+    <div class="wiz-caption" style="margin-top:6px">다음 화면부터는 사회자 전용 정보가 표시됩니다.</div></div>`;
+  $('#wizbody').onclick=null;
+  $('#wizfoot').innerHTML=`<button class="hofoot primary" onclick="renderWiz()">🧑\u200d⚖️ 이야기꾼이 받았습니다 — 계속</button>`;
+}
 function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
 (function(){
   const _rw=renderWiz;
@@ -7942,6 +8410,22 @@ function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
         b.className='hoBtn'; b.textContent='📱 플레이어에게';
         b.onclick=()=>backToPlayer();
         foot.insertBefore(b, foot.firstChild);
+      }
+      /* 대리 입력 화면은 원본 공용 푸터를 쓴다 — 기기 전달 경로에 있는 'n명 충족' 강제와
+         '선택 안 함' 기록이 빠져, 같은 씬인데 다른 상태를 남겼다(점쟁이 pair 를 1명만 고르고
+         '다음'을 눌러도 통과 → 다음 씬의 ftAnswer 가 미달 상태로 답을 제안).
+         후보가 n명보다 적을 수 있으므로 기준은 renderHandoff 와 같은 cap 이다.
+         핸들러는 인라인 onclick 보간 대신 프로퍼티로 붙인다(저장형 XSS 이력). */
+      if(foot){
+        const prim=foot.querySelector('button.primary');
+        const cap=Math.min(sc.n||1, wizPlayers(sc.filter||'alive').length);
+        if(prim && (wiz.vars[sc.storeAs]||[]).length<cap) prim.disabled=true;
+        if(sc.optional && !foot.querySelector('.hoSkipBtn')){
+          const sk=document.createElement('button');
+          sk.className='hoSkipBtn'; sk.textContent='이번 턴에 선택 안 함';
+          sk.onclick=()=>handoffSkip(sc.storeAs);
+          foot.insertBefore(sk, prim||null);
+        }
       }
     }
   };
@@ -8007,8 +8491,14 @@ function showCharInfo(cid){
     document.querySelectorAll('#pane-sheet .sheetrow').forEach(row=>{
       if(row.querySelector('.infobtn')) return;
       const nameEl=row.querySelector('.sname'); if(!nameEl) return;
+      /* 한국어 이름은 표시용이지 고유 키가 아니다 — acrobat(실험)과 juggler(SV)가 둘 다 '곡예사'라
+         이름 역조회는 CHARACTERS 배열에서 먼저 나오는 acrobat 을 돌려준다. SV 시트의 곡예사 (i)를
+         누르면 실험 캐릭터 규칙이 뜨던 자리다. 행이 실은 data-cid 를 우선하고, 없으면 종전대로
+         이름으로 찾는다(황혼·새벽·정보 단계처럼 캐릭터가 아닌 행은 그대로 걸러진다). */
       const ko=nameEl.textContent.trim();
-      const c=allChars().find(x=>x.ko===ko); if(!c) return;
+      const cidEl=row.querySelector('[data-cid]');
+      const c=(cidEl && charOf(cidEl.getAttribute('data-cid'))) || allChars().find(x=>x.ko===ko);
+      if(!c) return;
       const b=document.createElement('button');
       b.className='infobtn'; b.textContent='i'; b.title='캐릭터 정보';
       b.style.cssText='margin-left:8px;vertical-align:middle';
@@ -8418,13 +8908,46 @@ function evalWinEvent(kind, ctx){
   ctx=ctx||{};
   const p=ctx.player;
   if(kind==='execute'){
-    if(p && p.charId==='saint' && !isMalfunctioning(p))
+    /* 공식 성자: "If you die by execution, your team loses." — 처형 성립만으로는 부족하고
+       사망이 필요하다(찻집 여인·악마의 변호사·선원으로 살아남으면 발동하지 않는다).
+       위 executeNominee 래퍼가 이제 처형 성립만 확인하고 넘기므로, 사망 요구는 여기서 건다. */
+    if(p && p.charId==='saint' && !isMalfunctioning(p) && !p.alive)
       return {team:'evil', reason:`성자(${p.name})가 처형되었습니다.`, rule:'성자: 처형으로 죽으면 선한 팀이 패배합니다. (중독·취함 상태였다면 발동하지 않습니다)'};
     if(p && p.charId==='eviltwin')
       return null; // 사악한 쌍둥이 본인 처형은 종료 아님
     const et=S.players.find(x=>x.charId==='eviltwin' && x.alive);
     if(et && p && ctx.isGoodTwin)
       return {team:'evil', reason:`선한 쌍둥이(${p.name})가 처형되었습니다.`, rule:'사악한 쌍둥이: 선한 쌍둥이가 처형되면 악한 팀이 승리합니다.'};
+  }
+  /* kind:'execute' 는 '처형으로 죽었는가'가 조건인 판정(성자·선한 쌍둥이)이라 호출부가
+     p.alive 로 게이트한다. 아래 kind:'executeAct' 는 '처형이라는 행위 자체'가 조건인
+     캐릭터들이다 — 보호·어릿광대로 살아남아도, 성결자 발동으로 즉시 처형돼도 성립한다.
+     그래서 처형의 단일 통로인 resolveExecution 래퍼가 이쪽을 부른다(두 계약을 섞지 않는다). */
+  if(kind==='executeAct'){
+    /* 무신론자 — 공식: "The Storyteller can break the game rules, and if executed,
+       good wins, even if you are dead." 사망 여부와 무관하게 처형 그 자체로 선 승리다.
+       무신론자 판에는 악한 캐릭터가 없어 중독 예외를 따로 두지 않는다. */
+    if(p && p.charId==='atheist')
+      return {team:'good', reason:`무신론자(${p.name})가 처형되었습니다.`, rule:'무신론자: 처형되면 죽어 있어도 선한 팀이 승리합니다.'};
+    /* 고블린 — 공식: "If you publicly claim to be the Goblin when nominated & are executed
+       that day, your team wins." 지명당한 순간의 공개 선언은 앱이 관측할 수 없으므로
+       선한 쌍둥이와 같은 계약으로 사회자에게 확인받는다. 중독·취함이면 선언해도 불발. */
+    if(p && p.charId==='goblin' && !isMalfunctioning(p) &&
+       confirm(`👺 ${p.name}은(는) 고블린입니다.\n오늘 지명당한 그 순간 공개적으로 고블린임을 선언했습니까?\n[확인] 예 → 악한 팀 승리 / [취소] 아니오`))
+      return {team:'evil', reason:`고블린(${p.name})이 선언 후 처형되었습니다.`, rule:'고블린: 지명당했을 때 공개적으로 고블린임을 선언하고 그날 처형되면 악한 팀이 승리합니다.'};
+    /* 공포 조장가 — 공식: "Each night, choose a player: if you nominate & execute them,
+       their team loses." 공포 표식과 지명자 연동이 앱에 없으므로 두 조건을 한 번에 확인받는다.
+       지는 쪽은 '처형된 대상의 진영'이다 — 선한 대상이면 악이, 악한 대상이면 선이 이긴다. */
+    const fm=S.players.find(x=>x.alive && x.charId==='fearmonger' && !isMalfunctioning(x));
+    if(fm && p &&
+       confirm(`😱 공포 조장가(${fm.name})가 있습니다.\n처형된 ${p.name}이(가) 현재 공포 표식 대상이고, 공포 조장가 본인이 지명했습니까?\n[확인] 예 → ${isEvil(p)?'선한':'악한'} 팀 승리 / [취소] 아니오`))
+      return {team: isEvil(p)?'good':'evil', reason:`공포 조장가의 대상 ${p.name}이(가) 공포 조장가의 지명으로 처형되었습니다.`, rule:'공포 조장가: 자신이 지명한 공포 대상이 처형되면 그 대상의 진영이 패배합니다.'};
+    /* 레비아탄 — 공식: "If more than 1 good player is executed, evil wins."
+       기준은 '처형된 사람이 선했는가'이고 실제 사망 여부와 무관하다(앱의 warn 도 동일).
+       누적 수는 처형의 단일 통로(resolveExecution 래퍼)에서 세어 S.goodExecCount 에 남긴다. */
+    if((S.goodExecCount||0)>=2 && S.players.some(x=>x.alive && x.charId==='leviathan'))
+      return {team:'evil', reason:`레비아탄이 있는 판에서 선한 플레이어가 ${S.goodExecCount}명 처형되었습니다.`, rule:'레비아탄: 선한 플레이어가 2명 이상 처형되면 악한 팀이 승리합니다.'};
+    return null;
   }
   if(kind==='klutz'){
     if(ctx.targetEvil)
@@ -8436,13 +8959,41 @@ function evalWinEvent(kind, ctx){
       const ex=S.executedTodayPid? playerOf(S.executedTodayPid):null;
       if(ex && isEvil(ex))
         return {team:'good', reason:`주모자 연장전(낮 ${S.phase.n})에 악한 플레이어 ${ex.name}이(가) 처형되었습니다.`, rule:'주모자: 연장된 하루에 악한 플레이어가 처형되면 선한 팀이 승리합니다.'};
-      return {team:'evil', reason: ex? `주모자 연장전(낮 ${S.phase.n})에 선한 플레이어 ${ex.name}이(가) 처형되었습니다.` : `주모자 연장전(낮 ${S.phase.n})에 처형이 없었습니다.`, rule:'주모자: 연장된 하루에 악한 플레이어가 처형되지 않으면 악한 팀이 승리합니다.'};
+      /* 공식(TPI roles.json mastermind): "If a player is then executed, their team loses."
+         — 처형이 '있었을 때'만 그 처형된 사람의 진영이 진다. 연장된 하루에 처형이 아예
+         없으면 악은 기회를 날린 것이고, 악마는 이미 처형으로 죽어 있으므로 선이 이긴다.
+         앱의 주모자 능력 텍스트도 같은 규칙을 적고 있어 코드만 어긋나 있었다. */
+      if(ex)
+        return {team:'evil', reason:`주모자 연장전(낮 ${S.phase.n})에 선한 플레이어 ${ex.name}이(가) 처형되었습니다.`, rule:'주모자: 연장된 하루에 처형된 플레이어의 진영이 패배합니다.'};
+      return {team:'good', reason:`주모자 연장전(낮 ${S.phase.n})에 처형이 없었습니다.`, rule:'주모자: 연장된 하루에 처형이 일어나지 않으면 이미 죽은 악마 때문에 선한 팀이 승리합니다.'};
+    }
+    /* 레비아탄의 '5일차 낮 종료' — 이 악마는 밤에 아무도 죽이지 않아 death 이벤트가 거의
+       뜨지 않는다. 낮 종료가 확실히 지나는 유일한 지점이라 여기서 잡는다.
+       공식(roles.json leviathan): "After day 5, evil wins."
+       공식 징크스 레비아탄×시장(앱의 징크스표와 동일): '5일차에 레비아탄과 시장이 모두 살아
+       있고 처형이 일어나지 않으면 선이 승리한다' — 인원 조건이 없으므로 아래의 시장 3인
+       분기와는 별개다. 그래서 시장 예외를 레비아탄 분기 '안'에서 먼저 처리한다:
+       뒤의 시장 분기에 맡기면 생존 3명이 아닐 때 아무도 반환하지 않아 게임이 5일을 넘긴다. */
+    const lv=S.players.find(x=>x.alive && x.charId==='leviathan');
+    if(lv && S.phase.n>=5){
+      const mayorL=S.players.find(x=>x.alive && x.charId==='mayor' && !isMalfunctioning(x));
+      if(mayorL && !ctx.executed)
+        return {team:'good', reason:`낮 ${S.phase.n}에 처형이 없었고 시장(${mayorL.name})이 살아 있습니다.`, rule:'징크스(레비아탄×시장): 5일차에 레비아탄과 시장이 모두 살아 있고 처형이 일어나지 않으면 선한 팀이 승리합니다.'};
+      return {team:'evil', reason:`레비아탄이 살아 있는 채로 낮 ${S.phase.n}이(가) 끝났습니다.`, rule:'레비아탄: 5일차 낮이 끝나면 악한 팀이 승리합니다.'};
     }
     const vx=S.players.find(x=>x.alive && charOf(x.charId)?.type==='demon' && x.charId==='vortox');
-    if(vx && !ctx.executed)
-      return {team:'evil', reason:'보르톡스가 살아 있는데 오늘 처형이 없었습니다.', rule:'보르톡스: 처형이 없는 낮이 끝나면 악한 팀이 승리합니다.'};
+    /* 공식 Vortox: "Each day, if no-one died by execution, evil wins." — 게이트는 '처형이
+       있었나'가 아니라 '처형으로 죽었나'다. 악마의 변호사·찻집 여인·선원·폭풍잡이로 처형이
+       무산되면 아무도 처형으로 죽지 않았으므로 악 승리다. 앱은 이미 그 구분을
+       S.executedDiedToday 로 들고 있다(resolveExecution 이 실제 사망일 때만 채운다).
+       바로 아래 시장은 공식 문구가 "no execution occurs"라 ctx.executed 를 그대로 써야 한다 —
+       두 분기의 게이트가 서로 다르므로 하나로 합치지 마라. */
+    const execDied = (ctx.executedDied!==undefined)? !!ctx.executedDied : !!S.executedDiedToday;
+    if(vx && !execDied)
+      return {team:'evil', reason:'보르톡스가 살아 있는데 오늘 처형으로 죽은 사람이 없습니다.', rule:'보르톡스: 처형으로 아무도 죽지 않은 채 낮이 끝나면 악한 팀이 승리합니다 — 처형이 보호(악마의 변호사·찻집 여인 등)로 무산된 경우도 포함합니다.'};
     const mayor=S.players.find(x=>x.alive && x.charId==='mayor');
-    if(mayor && !isMalfunctioning(mayor) && alivePlayers().length===3 && !ctx.executed)
+    /* 인원 판정은 realAliveCount() 하나만 쓴다 — 죽은 척 중인 좀버얼은 실제로 살아 있다 */
+    if(mayor && !isMalfunctioning(mayor) && realAliveCount()===3 && !ctx.executed)
       return {team:'good', reason:'생존자 3명 상태에서 처형 없이 낮이 끝났습니다.', rule:'시장: 생존자가 3명일 때 처형이 일어나지 않으면 선한 팀이 승리합니다.'};
   }
   if(kind==='death'){
@@ -8452,13 +9003,13 @@ function evalWinEvent(kind, ctx){
        아니라 '아직 악마가 없다'다 — 자동 선 승리를 걸면 안 된다. */
     if(!S.players.some(x=>charOf(x.charId)?.type==='demon')) return null;
     if(demonAlive){
-      // 좀버얼이 '죽은 척' 중이면 겉보기 생존 2인이어도 자동 악 승리를 적용하지 않는다
-      const demonReallyAlive=S.players.some(x=>x.alive && charOf(x.charId)?.type==='demon');
-      if(alivePlayers().length<=2){
-        if(demonReallyAlive)
-          return {team:'evil', reason:'생존자가 2명 이하이고 악마가 살아 있습니다.', rule:'생존자가 2명이 되면 악마가 반드시 이깁니다(처형으로 악마를 잡을 수 없음).'};
-        return {kind:'continue', why:'zombuul', msg:'좀버얼이 죽은 척하는 중 — 생존 2인 자동 악 승리를 적용하지 않습니다. 좀버얼의 두 번째 사망이 진짜입니다.'};
-      }
+      /* 죽은 척 중인 좀버얼은 '겉보기 사망 · 실제 생존'이다(공식 Zombuul). 예전에는 그를
+         생존자에서 빼고 세는 바람에, 실제로 좀버얼+선 1명만 남아도 겉보기 1명이라 악 승리가
+         나오지 않고 '죽은 척하는 중'만 반복되어 게임이 끝나지 않았다.
+         이 분기는 이미 demonAlive(좀버얼 죽은 척 포함) 안이므로 악마는 살아 있다 —
+         따로 demonReallyAlive 를 다시 셀 필요가 없다(정의가 두 벌이어서 어긋났던 자리다). */
+      if(realAliveCount()<=2)
+        return {team:'evil', reason:'실제 생존자가 2명 이하이고 악마가 살아 있습니다.', rule:'생존자가 2명이 되면 악마가 반드시 이깁니다(처형으로 악마를 잡을 수 없음). 죽은 척 중인 좀버얼도 실제 생존자로 셉니다.'};
       return null;
     }
     const aliveN=regularAliveFrom(ctx.aliveBefore!==undefined? ctx.aliveBefore : alivePlayers().length+1);
@@ -8493,6 +9044,22 @@ function announceContinue(res){
 let pendingWin=null;
 function askWin(res){
   if(!isWinRes(res) || S.gameOver) return;
+  /* 이단자 — 공식: "Whoever wins, loses & whoever loses, wins, even if you are dead."
+     생사와 무관하고, 그 시점에 중독·취함이면 뒤집지 않는다(앱의 warn 과 동일).
+     반전은 '승리값이 만들어진 직후' 이 한 곳에서만 한다. confirmWin 안에서 team 만
+     바꿔서는 안 된다: 바깥 SABER 래퍼가 confirmWin 호출 '전에' 잡아둔 같은 res 객체의
+     team 으로 EV.end 와 전적(S.history)을 적는다. res 자체를 뒤집어야 확인 다이얼로그·
+     종료 화면·로그·전적이 모두 같은 결과를 본다. res.heretic 이 두 번 뒤집기를 막는다. */
+  if(!res.heretic){
+    const her=S.players.find(x=>x.charId==='heretic' && !isMalfunctioning(x));
+    if(her){
+      const was=res.team;
+      res.heretic=true;
+      res.team=(was==='good'? 'evil':'good');
+      res.reason=`${res.reason} / 이단자(${her.name})가 승패를 뒤집었습니다.`;
+      log(`🔀 이단자 반전 — ${was==='good'?'선':'악'}한 팀 → ${res.team==='good'?'선':'악'}한 팀`);
+    }
+  }
   pendingWin=res;
   const el=$('#winask'); el.hidden=false;
   const blockers=winBlockers();
@@ -8542,10 +9109,44 @@ function confirmWin(yes){
     if(et && p && p!==et && !isEvil(p) && !isMalfunctioning(et)){
       isGoodTwin = confirm(`👥 사악한 쌍둥이가 게임에 있습니다.\n${p.name}이(가) 선한 쌍둥이입니까?\n[확인] 예 → 처형 시 악한 팀 승리 / [취소] 아니오`);
     }
+    const executedToday=S.executedTodayPid;
     _exec(nid);
-    if(!p || p.alive) return;
-    const res=evalWinEvent('execute', {player:p, isGoodTwin});
+    if(!p) return;
+    /* 사악한 쌍둥이는 '선한 쌍둥이가 처형되면' 악 승리다 — 사망이 조건이 아니다.
+       p.alive 로 막으면 보호(악마의 변호사·찻집 여인)로 살아남은 선한 쌍둥이의
+       악 승리가 조용히 사라진다. 성자만 실제 사망을 요구하므로 그 판정은 안쪽에 남긴다. */
+    const wasExecuted = S.executedTodayPid===p.id && S.executedTodayPid!==executedToday;
+    if(p.alive && !wasExecuted) return;
+    /* 처형 통로(resolveExecution 래퍼)가 이미 판정을 띄웠다면 그 결과를 유지한다 —
+       나중 판정이 pendingWin 을 덮어쓰면 사회자가 방금 읽은 사유와 다른 창이 뜬다.
+       (두 판정이 동시에 성립하는 조합에서 팀은 항상 같고 사유만 다르다) */
+    if(pendingWin) return;
+    const res=evalWinEvent('execute', {player:p, isGoodTwin, died:!p.alive});
     if(isWinRes(res)) askWin(res);
+  };
+})();
+/* 처형 '행위' 자체가 조건인 캐릭터(무신론자·고블린·공포 조장가·레비아탄) 판정.
+   executeNominee 가 아니라 resolveExecution 을 감싸는 이유: 성결자 발동 처형은
+   executeNominee 를 거치지 않고 resolveExecution 을 직접 부른다(공식적으로도 '처형'이며,
+   앱도 그래서 오늘의 처형으로 기록한다). 두 경로가 공유하는 유일한 통로가 여기다 —
+   한 곳에만 붙이면 통상 처형과 성결자 발동이 같은 계약을 받는다.
+   반환값(실제로 죽었는가)은 executeNominee 가 성자 안내에 쓰므로 그대로 흘려보낸다. */
+(function(){
+  const _rx=resolveExecution;
+  resolveExecution=function(p, cause){
+    const died=_rx.apply(this, arguments);
+    try{
+      /* 레비아탄 누적 카운터 — '처형된 사람이 선했는가'만 본다(사망 여부 무관).
+         처형의 단일 통로인 여기서만 올려야 두 번 세지 않는다. 등록 재량(은둔자 등)은
+         사회자가 p.alignment 를 고정해 두면 그대로 반영된다(isEvil 이 그것을 먼저 본다). */
+      if(p && !isEvil(p)) S.goodExecCount=(S.goodExecCount|0)+1;
+      if(!S.gameOver && !pendingWin){
+        const r=evalWinEvent('executeAct', {player:p});
+        if(isWinRes(r)) askWin(r);
+      }
+      save();
+    }catch(err){ console.warn('[win] executeAct', err); }
+    return died;
   };
 })();
 /* 낮 종료(밤 진행) 시 보르톡스·시장 판정 */
@@ -8554,7 +9155,8 @@ function confirmWin(yes){
   let _dayEndResuming=false;   /* 승리 거부 후 재개 중에는 같은 판정을 다시 걸지 않는다 */
   advancePhase=function(){
     if(!_dayEndResuming && S.phase.kind==='day' && !S.gameOver){
-      const res=evalWinEvent('dayEnd', {executed:!!S.executedToday});
+      /* 보르톡스는 '처형으로 사망', 시장은 '처형 성립'을 본다 — 게이트가 다르므로 두 축을 다 넘긴다. */
+      const res=evalWinEvent('dayEnd', {executed:!!S.executedToday, executedDied:!!S.executedDiedToday});
       if(isWinRes(res)){
         if(S.mastermindDay && S.phase.n===S.mastermindDay) S.mastermindDay=null;  // 연장전 소진
         /* 재개는 안쪽 체인(_adv)을 값으로 부르지 않는다 — 그러면 이 래퍼보다 바깥에
@@ -8568,6 +9170,58 @@ function confirmWin(yes){
     _adv();
   };
 })();
+/* 아가씨 — 공식: "All Minions know a Damsel is in play. If a Minion publicly guesses you
+   (once), your team loses." 추측은 낮의 공개 행위라 앱이 관측할 수 없다. 얼뜨기(klutzCall)와
+   같은 계약으로 사회자가 대상을 입력하고, 결과를 승리 엔진에 태워 사유까지 전적에 남긴다.
+   기회는 악 진영 전체를 통틀어 1회 — S.damselGuessUsed 로 소진을 기록한다. */
+function damselCall(){
+  const dm=S.players.find(p=>p.charId==='damsel');
+  if(!dm){ toast('아가씨가 이 판에 없습니다.','warn'); return; }
+  if(S.damselGuessUsed){ toast('하수인의 아가씨 추측은 게임당 1회입니다 — 이미 사용했습니다.','warn'); return; }
+  /* 죽은 플레이어는 능력을 잃는다 — 죽은 아가씨는 맞혀도 발동하지 않는다 */
+  if(!dm.alive){ toast('아가씨가 이미 죽었습니다 — 죽은 플레이어는 능력을 잃으므로 추측이 성립하지 않습니다.','warn'); return; }
+  const name=prompt('하수인이 낮에 공개적으로 지목한 플레이어 이름:');
+  if(name===null) return;
+  const t=S.players.find(p=>p.name===name);
+  if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
+  S.damselGuessUsed=true;
+  log(`👗 하수인의 아가씨 추측: ${t.name}`);
+  if(t.charId!=='damsel'){ toast(`${t.name}은(는) 아가씨가 아닙니다 — 추측 실패. 기회는 소진되었습니다.`,'ok'); save(); renderAll(); return; }
+  if(isMalfunctioning(dm)){ toast('아가씨가 중독·취함 상태 — 맞혔지만 발동하지 않습니다(기회는 소진).','warn'); log('아가씨 추측 적중 — 오작동으로 무효'); save(); renderAll(); return; }
+  save(); renderAll();
+  askWin({team:'evil', reason:`하수인이 아가씨(${dm.name})를 공개적으로 정확히 지목했습니다.`, rule:'아가씨: 하수인이 낮에 공개적으로 아가씨를 맞히면(게임당 1회) 선한 팀이 패배합니다.'});
+}
+/* 알사히르 — 공식: "Each day, if you publicly guess which players are Minion(s) and which
+   are Demon(s), good wins." 공개 추측이라 사회자 확인으로 받는다. 정답은 사회자 화면에만
+   띄워 대조를 돕는다(사회자가 이미 아는 정보다). 중독·취함이면 정답이어도 불발. */
+function alsaahirCall(){
+  const al=S.players.find(p=>p.alive && p.charId==='alsaahir');
+  if(!al){ toast('살아 있는 알사히르가 없습니다.','warn'); return; }
+  const fmt=a=>a.length? a.map(p=>p.name).join(', ') : '(없음)';
+  const mins=S.players.filter(p=>charOf(p.charId)?.type==='minion');
+  const dems=S.players.filter(p=>charOf(p.charId)?.type==='demon');
+  if(!confirm(`🔎 알사히르(${al.name})의 공개 추측 판정\n\n정답 — 하수인: ${fmt(mins)} / 악마: ${fmt(dems)}\n\n추측이 하수인 전원과 악마를 모두 정확히 맞혔습니까?\n[확인] 예 → 선한 팀 승리 / [취소] 아니오`)){
+    log('🔎 알사히르 공개 추측 — 오답(승리 미성립)');
+    toast('추측이 정확하지 않습니다 — 아무 일도 일어나지 않습니다.','ok');
+    return;
+  }
+  if(isMalfunctioning(al)){ toast('알사히르가 중독·취함 상태 — 정답이어도 승리가 발동하지 않습니다.','warn'); log('알사히르 추측 적중 — 오작동으로 무효'); return; }
+  log('🔎 알사히르 공개 추측 적중 — 선한 팀 승리');
+  askWin({team:'good', reason:`알사히르(${al.name})가 하수인과 악마를 모두 정확히 맞혔습니다.`, rule:'알사히르: 낮에 공개적으로 하수인 전원과 악마를 모두 맞히면 선한 팀이 승리합니다.'});
+}
+/* 교주 — 공식: "Each night, you become the alignment of an alive neighbor. If all good
+   players choose to join your cult, your team wins." 가입 선언은 공개 행위라 확인으로 받는다.
+   승리 진영은 '판정 시점의 교주 진영'이다 — 매일 밤 바뀌고, isEvil() 이 p.alignment 를
+   먼저 보므로 사회자가 그리모어에서 바꿔 둔 성향이 그대로 반영된다. */
+function cultLeaderCall(){
+  const cl=S.players.find(p=>p.alive && p.charId==='cultleader');
+  if(!cl){ toast('살아 있는 교주가 없습니다.','warn'); return; }
+  if(isMalfunctioning(cl)){ toast('교주가 중독·취함 상태 — 전원 가입해도 승리가 발동하지 않습니다.','warn'); return; }
+  const team=isEvil(cl)? 'evil':'good';
+  if(!confirm(`🕯 교주(${cl.name})의 현재 성향: ${team==='evil'?'악':'선'}\n\n살아 있는 선한 플레이어 전원이 교단 가입을 선언했습니까?\n[확인] 예 → ${team==='evil'?'악한':'선한'} 팀 승리 / [취소] 아니오`)) return;
+  log(`🕯 교주 전원 가입 선언 — ${team==='evil'?'악':'선'}한 팀 승리`);
+  askWin({team, reason:`선한 플레이어 전원이 교주(${cl.name})의 교단 가입을 선언했습니다.`, rule:'교주: 선한 플레이어 전원이 교단 가입을 선언하면 판정 시점의 교주 진영이 승리합니다.'});
+}
 /* 얼뜨기 지목 판정 버튼(낮 패널) */
 function klutzCall(){
   const kl=S.players.find(p=>p.charId==='klutz' && !p.alive);
@@ -8635,6 +9289,9 @@ const DAY_ACTS={
   slayer:()=>doSlayer(),
   klutz:()=>klutzCall(),
   artist:()=>doSpend('artist'),
+  damsel:()=>damselCall(),
+  alsaahir:()=>alsaahirCall(),
+  cultleader:()=>cultLeaderCall(),
   dusk:()=>advancePhase(),
 };
 function daySteps(){
@@ -8666,7 +9323,9 @@ function daySteps(){
       <li>2차는 생존자 전원 + 사망 투표 토큰 보유자.</li>
       <li>하루의 지명 중 <b>찬성률 최고</b>가 처형, 동률이면 처형 없음.</li></ol>
       <div class="row" style="margin-top:8px"><button class="small" data-dayact="tonom">↓ 지명·투표 카드로</button></div>`});
-  const abilBtns={slayer:'🏹 처단자 판정', klutz:'🤡 얼뜨기 지목 판정', artist:'🎨 화가 질문 소진'};
+  const abilBtns={slayer:'🏹 처단자 판정', klutz:'🤡 얼뜨기 지목 판정', artist:'🎨 화가 질문 소진',
+                  damsel:'👗 하수인의 아가씨 추측 판정', alsaahir:'🔎 알사히르 공개 추측 판정',
+                  cultleader:'🕯 교주 전원 가입 판정'};
   steps.push({id:'abil', icn:'✨', name:'낮 능력 타이밍',
     who: abil.length? `${abil.length}종` : '',
     skip: abil.length? null : '이 시트에 낮 능력 없음',
@@ -8737,8 +9396,10 @@ function toggleDeathMode(){ deathMode=!deathMode; renderAll();
   toast(deathMode?'💀 사망 표시 모드 — 토큰을 누르면 즉시 생사가 전환됩니다(확인 없음).':'사망 표시 모드 해제','warn'); }
 function quickToggleDeath(pid){
   const p=playerOf(pid); if(!p) return;
-  if(p.alive){ killPlayer(p,'사회자 수동 표시'); }
-  else { p.alive=true; log(`${p.name} 소생(수동 표시)`); }
+  /* 소생 경로가 둘로 갈라지면 한쪽만 토큰·사망 기록을 복원해 상태가 어긋난다 —
+     소생 처리는 revivePlayer() 한 곳만 쓴다(그 안에서 save·renderAll 까지 한다). */
+  if(!p.alive){ revivePlayer(pid); return; }
+  killPlayer(p,'사회자 수동 표시');
   save(); renderAll();
 }
 (function(){
@@ -8976,7 +9637,10 @@ function quickToggleDeath(pid){
         ? ballotEligible(nom)
         : alivePlayers().concat(S.players.filter(p=>!p.alive && (p.deadVote!==false || (nom&&nom.votes&&nom.votes[p.id]!==undefined))));
       rawYes=elig.filter(p=>nom&&nom.votes&&nom.votes[p.id]==='yes').length;
-      need=majority(elig.length);
+      /* 문턱은 생존자 기준이다 — closeBallot·renderNomOpen 과 같은 계약.
+         elig 는 분자(rawYes)를 세는 집합일 뿐이라 문턱의 기준 인원이 아니다.
+         여기가 어긋나면 가중 내역 카드만 다른 과반 기준을 보여준다. */
+      need=majority(alivePlayers().length);
     } finally { restored.forEach(p=>{ p.deadVote=false; }); }
     if(!nom || nom.stage!==2) return html;
     const a=adjOf(nom);
@@ -9205,11 +9869,27 @@ const SCRIPT_LIB=[
 const SCRIPT_LIB_TIER_DOC='powerTier = 사회자 난도 + 플레이어 난도 + 상호작용 복잡도(악마 수·캐릭터 수·실험판 비중·여행자/우화 유무)의 종합 운영 부하 등급입니다. S 11↑ / A 8.5↑ / B 5.5↑ / C 5.4↓. 티르소스의 주관적 평가이며 공식 등급이 아닙니다.';
 const SCRIPT_LIB_THEMES=['입문','정보전','혼돈','광기·기만','전투·처형','실험적'];
 
+/* 밤 순서 자동화가 실제로 되는 집합 = EDITIONS 3종 순서표 ∪ nightSteps 의 FABLED_SLOT 6종.
+   에디션 이름으로 판정하면 edition:'loric' 13종과 FABLED_SLOT 밖 전설 20종이 '자동화 가능'으로
+   집계된다 — 실제로는 순서표에 자리가 없다. 깨우지 않는 캐릭터는 순서가 필요 없으므로 제외한다.
+   판정은 한쪽으로만 넓힌다(exp 는 종전대로 무조건 미구현) — 기존 '진행 가능' 배지가 근거 없이
+   반대로 뒤집히는 일은 만들지 않는다. */
+const LIB_AUTO_NIGHT=(function(){
+  const s=new Set();
+  if(typeof EDITIONS!=='undefined') Object.keys(EDITIONS).forEach(function(k){
+    const e=EDITIONS[k]||{};
+    (Array.isArray(e.first)? e.first:[]).forEach(function(x){ s.add(x); });
+    (Array.isArray(e.other)? e.other:[]).forEach(function(x){ s.add(x); });
+  });
+  ['angel','buddhist','toymaker','stormcatcher','tor','duchess'].forEach(function(x){ s.add(x); });
+  return s;
+})();
 function libCharMeta(id){
   const c=(typeof CHARACTERS!=='undefined') && CHARACTERS.find(x=>x.id===id);
   /* edition:'exp' 는 백과사전 수록 전용 — 이름·유형은 정식으로 보여주되
      밤 순서가 없으므로 자동화 가능(playable) 판정에서는 미구현으로 센다. */
-  if(c) return {ko:c.ko, en:c.en, type:c.type, have:true, encyc:c.edition==='exp'};
+  if(c) return {ko:c.ko, en:c.en, type:c.type, have:true,
+                encyc: c.edition==='exp' || !!((c.first||c.other) && !LIB_AUTO_NIGHT.has(c.id))};
   const m=SCRIPT_LIB_EXTRA_CHARS[id];
   return m? {ko:m.ko, en:m.en, type:m.type, have:false}
           : {ko:id, en:id, type:'unknown', have:false};
@@ -10759,7 +11439,11 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
   const ord=o=>(o&&o.kind==='night')? o.n*2 : (o? o.n*2+1 : 0);
   const phasesLeft=exp=> exp? ord(exp)-ord(S.phase) : null;
   const phaseLabel=o=>(o.kind==='night'?'밤 ':'낮 ')+o.n;
-  const madPool=()=>editionChars(S.edition).filter(c=>!c.custom&&(c.type==='townsfolk'||c.type==='outsider'));
+  /* 인자를 주면 editionChars 래퍼(빌더)가 우회돼, 내 스크립트로 좁힌 판에서도 광기 후보가
+     에디션 전체로 벌어진다 — 시트에 없는 캐릭터를 광기로 지정하게 된다.
+     인자 없는 호출이 '지금 이 판이 쓰는 캐릭터'를 묻는 자리다(래퍼 ① 주석).
+     연결이 없으면 editionChars() 와 editionChars(S.edition) 의 결과는 완전히 같다. */
+  const madPool=()=>editionChars().filter(c=>!c.custom&&(c.type==='townsfolk'||c.type==='outsider'));
   /* 받침 유무에 따른 "이라고/라고" — 캐릭터명은 코드 상수이므로 조사만 고르면 된다 */
   const irago=w=>{ const t=String(w||''); const c=t.charCodeAt(t.length-1);
     return (c>=0xAC00&&c<=0xD7A3&&((c-0xAC00)%28))? '이라고':'라고'; };
@@ -11274,9 +11958,20 @@ function thyAuditCustomScript(){
   if(typeof S==='undefined'||!S) return out;
   const customs=Array.isArray(S.customs)? S.customs.filter(c=>c&&typeof c==='object') : [];
   const ed=S.edition||'tb';
-  const edName=(typeof EDITIONS!=='undefined'&&EDITIONS[ed])? EDITIONS[ed].ko : ed;
-  const base=(typeof CHARACTERS!=='undefined')
-    ? CHARACTERS.filter(c=>(c.edition||'tb')===ed && c.type!=='traveler' && c.type!=='fabled') : [];
+  /* 검증 대상 시트는 '지금 이 판이 실제로 쓸 캐릭터 집합'이어야 한다. 에디션 전체를 무조건 시트로
+     삼으면 실험·커스텀만으로 짠 시트에도 그 에디션의 악마·하수인이 끼어들어 nD 가 최소 1 이 되고,
+     '악마가 한 종도 없다' 같은 치명 경고가 영영 뜨지 않는다(TB 면 imp 가 언제나 들어갔다).
+     editionChars() 가 그 질문의 단일 창구다 — 빌더로 연결한 내 스크립트가 있으면 그 목록으로
+     좁혀 준다(래퍼 ①). 연결이 없으면 결과는 종전과 완전히 같다(에디션 캐릭터 − 여행자·전설). */
+  const _asc=(typeof window!=='undefined' && window.thyBuilder && typeof window.thyBuilder.active==='function')
+    ? (function(){ try{ return window.thyBuilder.active(); }catch(e){ return null; } })() : null;
+  const edName=_asc? (_asc.name||'내 스크립트')
+    : ((typeof EDITIONS!=='undefined'&&EDITIONS[ed])? EDITIONS[ed].ko : ed);
+  const _pool=(typeof editionChars==='function')? editionChars() : [];
+  const base=_pool.length
+    ? _pool.filter(c=>c && !c.custom && c.type!=='traveler' && c.type!=='fabled')
+    : ((typeof CHARACTERS!=='undefined')
+       ? CHARACTERS.filter(c=>(c.edition||'tb')===ed && c.type!=='traveler' && c.type!=='fabled') : []);
   const sheet=base.concat(customs);
   const cnt=t=>sheet.filter(c=>c.type===t).length;
   const nm=c=>c.ko||c.id;
@@ -12395,7 +13090,9 @@ const DJ_CLASS={
  'lleech|mastermind':'M death day',
  'lleech|slayer':'M death day',
  'lordoftyphon|summoner':'M setup setup',
- 'magician|wraith':'M ability day',
+ /* 규칙문 정정에 맞춰 재분류 — spy|magician · widow|magician 과 같은
+    '그리모어 열람 시 정보 차단' 계열이므로 ability day 가 아니라 info night 다 */
+ 'magician|wraith':'M info night',
  'marionette|alchemist':'M ability any',
  'marionette|balloonist':'M setup setup',
  'marionette|damsel':'M info night',
@@ -12487,7 +13184,10 @@ const DJ_KIND_KO={
 const DJ_WHERE_KO={setup:'셋업', night:'밤', day:'낮', any:'상시'};
 
 function djClass(j){
-  const raw=j? DJ_CLASS[j.a+'|'+j.b] : null;
+  /* 표 키는 등록 당시의 a|b 순서로 굳어 있다 — JINXES 쪽 a/b 가 뒤집혀 들어와도 분류가
+     조용히 unknown(사회자 재량 · 미분류)으로 떨어지지 않도록 역순 키도 함께 본다.
+     146쌍의 무순서 키가 모두 유일해 역순 조회가 다른 쌍을 잘못 집을 여지는 없다. */
+  const raw=j? (DJ_CLASS[j.a+'|'+j.b] || DJ_CLASS[j.b+'|'+j.a]) : null;
   if(!raw) return {mode:'M', kind:'unknown', where:'any', auto:false,
                    kindKo:DJ_KIND_KO.unknown, whereKo:'상시'};
   const p=raw.split(' ');
@@ -12506,7 +13206,10 @@ function djIdSet(list){
 }
 function djActive(ids){
   const s=(ids instanceof Set)? ids : djIdSet(ids);
-  return JINXES.filter(j=>s.has(j.a)&&s.has(j.b));
+  const list=JINXES.filter(j=>s.has(j.a)&&s.has(j.b));
+  /* 순서만 다른 중복이 지니 카드의 '자동 판정 N · 사회자 재량 M' 집계를 부풀리는 것을 막는다.
+     jinxDedupe 는 앞 블록의 전역이라 로드 순서가 바뀌면 없을 수 있어 존재를 확인하고 쓴다. */
+  return (typeof jinxDedupe==='function')? jinxDedupe(list) : list;
 }
 function djSplit(list){
   const auto=[], manual=[];
@@ -12898,8 +13601,11 @@ window.thyDjinn={
   violations:djExclusiveViolations, statusFindings:djStatusFindings, winTriggers:djWinTriggers,
   scan(ids){ const list=djActive(ids); const sp=djSplit(list);
              return {n:list.length, required:list.length>0, auto:sp.auto, manual:sp.manual, list}; },
-  audit(){ const miss=JINXES.filter(j=>!DJ_CLASS[j.a+'|'+j.b]).map(j=>j.a+'|'+j.b);
-           const extra=Object.keys(DJ_CLASS).filter(k=>!JINXES.some(j=>j.a+'|'+j.b===k));
+  /* 조회(djClass)와 같은 규칙으로 센다 — 한쪽만 역순을 허용하면 djClass 는 분류를 찾는데
+     audit 만 missing/extra 로 잡는 거짓 경보가 난다(시뮬레이터가 이 값으로 회귀를 판정한다). */
+  audit(){ const hasCls=j=>!!(DJ_CLASS[j.a+'|'+j.b]||DJ_CLASS[j.b+'|'+j.a]);
+           const miss=JINXES.filter(j=>!hasCls(j)).map(j=>j.a+'|'+j.b);
+           const extra=Object.keys(DJ_CLASS).filter(k=>!JINXES.some(j=>j.a+'|'+j.b===k||j.b+'|'+j.a===k));
            return {jinxes:JINXES.length, classified:Object.keys(DJ_CLASS).length, missing:miss, extra}; }
 };
 })();
@@ -13491,9 +14197,15 @@ function doExport(){
   else prompt('복사하세요:', data);
 }
 /* 가져오기 — 신뢰할 수 없는 입력이다. importScript 와 같은 규칙으로 타입·길이·id 를 검증한다. */
-function doImport(){
-  const raw=prompt('스크립트 JSON을 붙여넣으세요:'); if(!raw) return;
-  let d; try{ d=JSON.parse(raw); }catch(e){ toast('JSON 파싱 실패','warn'); return; }
+function doImport(pre){
+  /* pre 를 주면 이미 파싱된 객체를 그대로 받는다 — 커스텀 탭의 importScript() 가
+     {characters:[id…]} 형식을 만났을 때 사용자에게 다시 붙여넣게 하지 않고 여기로 넘긴다.
+     위임 리스너는 언제나 인자 없이 부르므로(doImport()) 기존 동작은 그대로다. */
+  let d=pre;
+  if(d===undefined){
+    const raw=prompt('스크립트 JSON을 붙여넣으세요:'); if(!raw) return;
+    try{ d=JSON.parse(raw); }catch(e){ toast('JSON 파싱 실패','warn'); return; }
+  }
   if(!d || typeof d!=='object' || Array.isArray(d)){ toast('스크립트 객체가 아닙니다.','warn'); return; }
   const IDRE=/^[A-Za-z0-9_-]{1,64}$/;
   const str=v=>typeof v==='string'? v.slice(0,400):'';
