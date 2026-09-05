@@ -57,6 +57,26 @@ button.small{padding:3px 9px;font-size:12.5px;border-radius:6px}
 button:disabled{opacity:.4;cursor:not-allowed}
 input,select,textarea{background:var(--sunken);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:14px}
 textarea{width:100%;resize:vertical}
+/* ══ 모바일 UI/UX ══
+   ① iOS Safari 는 font-size 16px 미만 입력에 포커스하면 화면을 강제로 확대하고
+      되돌리지 않는다 — 밤 진행 중 이게 터지면 사회자가 레이아웃을 잃는다.
+      좁은 화면에서만 16px 로 올린다(데스크톱 밀도는 유지). */
+@media (max-width:880px){
+  input,select,textarea{font-size:16px}
+  /* ② 탭 하이라이트 사각형 제거 + 길게 눌러 텍스트 선택되는 것 방지(오조작 유발) */
+  button,.wiz-pickbtn,.handoff-btn,.rostercell,.tseat,.pcell,.chip,[data-roschip]{
+    -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none;
+    touch-action:manipulation;   /* 더블탭 확대 지연 300ms 제거 */
+  }
+  /* ③ 위저드가 열리면 뒤 화면이 같이 스크롤되던 문제 */
+  body.wizopen{overflow:hidden;position:fixed;width:100%}
+  /* ④ 가로 모드에서 위저드 본문이 잘리지 않게 */
+  #wizbody{max-height:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+/* ⑤ 동적 뷰포트 — iOS 주소창이 접히고 펴질 때 100vh 가 튀는 문제 */
+@supports (height:100dvh){
+  #wizard{height:100dvh}
+}
 .num{font-variant-numeric:tabular-nums;word-break:normal;overflow-wrap:normal}
 
 /* ── top bar ── */
@@ -1436,6 +1456,12 @@ const blank = () => ({
   /* 프로필 집계 캐시 — S.history 에서 유도한 사람 단위 파생 데이터(원본 아님).
      판 종료 훅이 판당 1회 다시 만들고, 서명(sig)이 어긋날 때만 렌더가 재빌드한다. */
   profiles:{v:0, sig:'', by:{}},
+  /* 내 스크립트(빌더) — 181종에서 골라 담은 나만의 시트. "내 스크립트" 탭의 편집기가
+     이 배열 하나만 읽고 쓴다. [{id, name, chars:[charId], note, updatedAt}]
+     myScriptActive = 진행 중인 판이 쓰는 스크립트 id. 설정 탭의 캐릭터 풀을 이 목록으로
+     좁히는 유일한 열쇠이고(editionChars 래퍼), 공식 시트로 게임을 시작하면 null 로 돌아간다.
+     둘 다 migrateState() 에도 같은 이름으로 있다 — 한쪽만 고치면 스키마가 갈라진다. */
+  myScripts:[], myScriptActive:null,
   events:[], evSeq:0, history:[], recentScripts:[], schema:2
 });
 let S = blank();
@@ -1489,6 +1515,26 @@ function migrateState(raw){
   /* 사라진 커스텀을 가리키는 배정은 끊는다 — 유령 charId 는 밤 순서에서 조용히 사라진다 */
   const _cids=new Set(st.customs.map(c=>c.id));
   st.players.forEach(p=>{ if(p.charId && p.charId.slice(0,3)==='cx_' && !_cids.has(p.charId)) p.charId=''; });
+  /* 내 스크립트(빌더) — blank() 과 같은 스키마로 정규화한다. 손상 항목은 버리고 나머지는 수리한다.
+     chars 의 '존재 검증'은 일부러 하지 않는다: 커스텀 시트를 갈아끼우는 사이 잠시 없어 보이는
+     id 가 생기는데 그때마다 지우면 시트를 되돌려도 선택이 돌아오지 않는다. 렌더·집계·인쇄가
+     charsOf() 에서 걸러 보여주고, 몇 종이 유실 상태인지 편집기에 표시한다. */
+  st.myScripts=(Array.isArray(st.myScripts)? st.myScripts:[])
+    .filter(s=>s&&typeof s==='object'&&!Array.isArray(s)).slice(0,60).map(s=>({
+      id:(typeof s.id==='string' && /^[A-Za-z0-9_-]{1,64}$/.test(s.id))? s.id : ('ms_'+mkid()),
+      name:String(s.name==null?'':s.name).trim().slice(0,60)||'이름 없는 스크립트',
+      chars:(Array.isArray(s.chars)? s.chars:[])
+        .filter(x=>typeof x==='string' && /^[A-Za-z0-9_-]{1,64}$/.test(x))
+        .filter((x,i,a)=>a.indexOf(x)===i).slice(0,200),
+      note:(typeof s.note==='string')? s.note.slice(0,400) : '',   /* 문자열이 아니면 손상으로 보고 버린다(등록부 규칙과 동일) */
+      updatedAt:(typeof s.updatedAt==='number' && isFinite(s.updatedAt))? s.updatedAt : 0
+    }));
+  /* id 중복 제거 — 같은 id 가 둘이면 편집기는 앞의 것만 집는데 저장은 뒤의 것에 들어가
+     "고쳤는데 안 바뀐다"가 된다(등록부 중복 제거와 같은 이유). */
+  const seenMs=new Set();
+  st.myScripts=st.myScripts.filter(s=>{ if(seenMs.has(s.id)) return false; seenMs.add(s.id); return true; });
+  /* 사라진 스크립트를 가리키는 활성 지정은 끊는다 — 유령 id 는 캐릭터 풀을 통째로 비운다 */
+  if(typeof st.myScriptActive!=='string' || !st.myScripts.some(s=>s.id===st.myScriptActive)) st.myScriptActive=null;
   /* SABER 원장 정규화 — 레코드 계약(SABER.EV)에 맞지 않는 항목은 버린다.
      원장이 커지면 localStorage 를 삼키므로 상한 초과분은 오래된 쪽부터 잘라낸다. */
   st.events=st.events.filter(e=>e&&typeof e==='object'&&typeof e.t==='string'&&SABER.EV[e.t])
@@ -13080,6 +13126,579 @@ window.thyDjinn={
     top:topOf, record, state:P,
     ballotHTML:()=>ballotHTML(P()), resultHTML:()=>resultHTML(P())
   };
+})();
+</script>
+
+<style>
+/* ══ 스크립트 편집기(빌더) — 모바일 우선. 터치 타깃 44pt 이상, 표는 가로 스크롤 ══ */
+#bld-root{margin-bottom:14px}
+.bld-scripts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.bld-sbtn{min-height:44px;max-width:100%;padding:8px 14px;border-radius:10px;
+  border:1px solid var(--line);background:var(--raised);color:inherit;font:inherit;font-size:14px;
+  cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bld-sbtn.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.bld-sbtn.live::before{content:'▶ ';color:var(--accent)}
+.bld-tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.bld-tools button{min-height:44px}
+.bld-pills{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+/* .pill 은 본편 4유형만 색을 갖는다 — 편집기는 여행자·전설까지 세므로 여기서 채운다 */
+.pill.traveler{color:var(--muted);border-color:var(--muted)}
+.pill.fabled{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.bld-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0}
+.bld-tbl{border-collapse:collapse;font-size:12.5px;min-width:520px;width:100%}
+.bld-tbl th,.bld-tbl td{border:1px solid var(--line);padding:5px 6px;text-align:center;white-space:nowrap}
+.bld-tbl th:first-child{text-align:left;background:var(--sunken);font-weight:600}
+.bld-tbl th:first-child .hint{font-size:11px;margin-left:4px}
+.bld-tbl td.lack{color:var(--evil);font-weight:700}
+.bld-tbl tr.okrow td{font-size:15px;font-weight:700}
+.bld-tbl tr.okrow td.yes{color:var(--ok)}
+.bld-tbl tr.okrow td.mod{color:var(--warn)}
+.bld-tbl tr.okrow td.no{color:var(--evil)}
+.bld-filters{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 8px}
+.bld-f{min-height:38px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+  background:var(--raised);color:inherit;font:inherit;font-size:13px;cursor:pointer}
+.bld-f.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+#bld-q{width:100%;box-sizing:border-box;min-height:44px;margin-bottom:4px}
+.bld-sec{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 6px}
+.bld-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,142px),1fr));gap:6px}
+.bld-chip{display:flex;align-items:center;gap:6px;min-height:44px;padding:6px 8px;border-radius:10px;
+  border:1px solid var(--line);background:var(--raised);color:inherit;font:inherit;font-size:13px;
+  text-align:left;cursor:pointer;overflow:hidden}
+.bld-chip .cg{flex:0 0 auto;width:24px;height:24px;display:inline-flex;align-items:center;
+  justify-content:center;font-size:17px;line-height:1}
+/* button .cicon 의 baseline 보정이 칩 안에서는 아이콘을 아래로 흘린다 — 가운데로 되돌린다 */
+.bld-chip .cg .cicon{vertical-align:middle}
+.bld-chip .cn{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bld-chip .ck{flex:0 0 auto;color:var(--accent);font-weight:700}
+.bld-chip.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+@media (max-width:420px){
+  .bld-chips{grid-template-columns:repeat(auto-fill,minmax(min(100%,118px),1fr))}
+  .bld-chip{font-size:12.5px;padding:6px}
+  .bld-tbl{min-width:460px}
+}
+</style>
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   스크립트 편집기(빌더) — "내 스크립트" 탭 상단
+   ─────────────────────────────────────────────────────────────────────────
+   181종에서 골라 내 시트를 구성한다. 기존 renderCustom(커스텀 캐릭터 폼)은 손대지 않고
+   그 앞에 섹션을 끼워 넣는다 — 원본 렌더를 끝까지 돌린 뒤, 즉 #pane-custom 의 첫 .card 에
+   붙는 기존 부가 블록들이 제자리를 잡은 다음에 우리 카드를 pane 맨 앞에 삽입한다.
+   순서를 뒤집으면 wrapRender 가 pane.querySelector('.card') 로 찾는 '첫 카드'가 빌더 카드가
+   되어 시트 자동 검증·지니 블록이 빌더 안으로 딸려 들어간다.
+
+   영속 필드 — blank() / migrateState() 양쪽에 있다.
+     S.myScripts      [{id, name, chars:[charId], note, updatedAt}]
+     S.myScriptActive 진행 중인 판이 쓰는 스크립트 id. 캐릭터 풀을 이 목록으로 좁힌다.
+
+   사용자 문자열과 캐릭터 id 는 인라인 onclick 에 절대 보간하지 않는다(저장형 XSS 이력).
+   전부 data-bld / data-cid / data-sid / data-ed / data-t 속성 + document 위임 리스너로 흐른다.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+
+const TORDER=['townsfolk','outsider','minion','demon','traveler','fabled'];
+/* 에디션 필터 라벨. 'custom' 은 내가 만든 커스텀 캐릭터를 모으는 가상 에디션이다. */
+const ED_LABEL={tb:'TB', bmr:'BMR', sv:'SV', exp:'실험', loric:'Loric', fabled:'전설', custom:'내 커스텀'};
+const ED_FULL={tb:'점철되는 혼란', bmr:'피로 물든 달', sv:'화단에 꽃피운 이단',
+               exp:'실험 캐릭터', loric:'로릭', fabled:'전설', custom:'내가 만든 커스텀'};
+const NS=[5,6,7,8,9,10,11,12,13,14,15];
+
+/* 화면 상태 — 저장하지 않는다(탭을 떠나 초기화돼도 무해한 것만 둔다) */
+let selId=null, q='', edF=(S.edition||'tb'), onlySel=false;
+
+const pool=()=>allChars();
+const edOf=c=>c.custom? 'custom' : (c.edition||'tb');
+function scripts(){ if(!Array.isArray(S.myScripts)) S.myScripts=[]; return S.myScripts; }
+/* 지금 편집 중인 스크립트. selId 가 가리키던 것이 사라졌으면 첫 항목으로 되돌린다. */
+function cur(){
+  const ls=scripts(); if(!ls.length) return null;
+  let s=ls.filter(x=>x.id===selId)[0];
+  if(!s){ s=ls[0]; selId=s.id; }
+  return s;
+}
+/* 담긴 id 를 실제 캐릭터로 푼다. 앱에 없는 id(가져온 시트의 미지 캐릭터)는 조용히 빠지되
+   sc.chars 에서 지우지는 않는다 — 커스텀 시트를 되돌리면 선택도 함께 돌아와야 한다. */
+function charsOf(sc){
+  if(!sc) return [];
+  const m=Object.create(null);
+  pool().forEach(c=>{ m[c.id]=c; });
+  return sc.chars.map(id=>m[id]).filter(Boolean);
+}
+function counts(cs){
+  const o={townsfolk:0, outsider:0, minion:0, demon:0, traveler:0, fabled:0};
+  cs.forEach(c=>{ if(o[c.type]!==undefined) o[c.type]++; });
+  return o;
+}
+function touch(sc){ sc.updatedAt=Date.now(); save(); }
+
+/* ── 인원 구성 대조 ──────────────────────────────────────────────────────
+   셋업 변경 캐릭터가 만들 수 있는 외지인 증감의 '실제 조합'을 낸다.
+   [최소,최대] 구간으로 잡으면 남작만 있는 시트에서 +1 까지 통과하는데, 남작은 +2 이거나
+   0 이지 +1 이 되는 경우가 없다. 그래서 부분집합 합을 그대로 센다.
+   보정 근거는 setupMods() 와 같다 — 남작 +2 · 팡 구 +1 · 비고르모르티스 −1 · 대부 ±1. */
+function deltas(cs){
+  let set=[0];
+  const mix=vs=>{
+    const out=[];
+    set.forEach(x=>{ out.push(x); vs.forEach(d=>out.push(x+d)); });
+    set=out.filter((v,i)=>out.indexOf(v)===i);
+  };
+  const has=id=>cs.some(c=>c.id===id);
+  if(has('baron')) mix([2]);
+  if(has('fanggu')) mix([1]);
+  if(has('vigormortis')) mix([-1]);
+  if(has('godfather')) mix([1,-1]);
+  return set.sort((a,b)=>a-b);
+}
+/* n 인 게임을 이 시트로 채울 수 있는가.
+   base=보정 없이 가능 · ok&&!base=셋업 변경이 뽑혀야 가능 · lack=모자란 유형 */
+function fitOf(n, cs){
+  const c=counts(cs), ds=deltas(cs);
+  const lackFor=req=>{
+    const l=[];
+    if(c.townsfolk<req[0]) l.push('주민 '+(req[0]-c.townsfolk));
+    if(c.outsider <req[1]) l.push('외지인 '+(req[1]-c.outsider));
+    if(c.minion   <req[2]) l.push('하수인 '+(req[2]-c.minion));
+    if(c.demon    <req[3]) l.push('악마 '+(req[3]-c.demon));
+    return l;
+  };
+  const base=compFor(n,0), lack0=lackFor(base);
+  if(!lack0.length) return {n:n, ok:true, base:true, delta:0, need:base, lack:[]};
+  let best=null;
+  ds.forEach(d=>{
+    if(d===0 || best) return;
+    const req=compFor(n,d);
+    if(!lackFor(req).length) best={n:n, ok:true, base:false, delta:d, need:req, lack:[]};
+  });
+  return best || {n:n, ok:false, base:false, delta:0, need:base, lack:lack0};
+}
+
+/* ── 구성 경고 ────────────────────────────────────────────────────────── */
+function warns(sc){
+  const cs=charsOf(sc), c=counts(cs), out=[];
+  if(!cs.length){ out.push({sev:'error', txt:'담긴 캐릭터가 없습니다 — 아래에서 골라 담으세요.'}); return out; }
+  if(!c.demon)  out.push({sev:'error', txt:'악마가 없습니다 — 어떤 인원 구성도 성립하지 않습니다.'});
+  if(!c.minion) out.push({sev:'error', txt:'하수인이 없습니다 — 5인 구성부터 최소 1명이 필요합니다.'});
+  if(c.townsfolk<3) out.push({sev:'error', txt:`주민이 ${c.townsfolk}종뿐입니다 — 5인 구성에도 3종이 필요합니다.`});
+  const fits=NS.map(n=>fitOf(n,cs)).filter(f=>f.ok);
+  if(!fits.length) out.push({sev:'error', txt:'5~15인 어느 인원 구성도 채우지 못합니다 — 유형별 종수를 늘리세요.'});
+  else if(fits.length<4) out.push({sev:'warn', txt:`${fits.map(f=>f.n).join('·')}인 구성에서만 쓸 수 있습니다 — 인원이 바뀌면 배분이 막힙니다.`});
+  if(!c.outsider) out.push({sev:'warn', txt:'외지인이 없습니다 — 6·9·11·12·14·15인 구성은 외지인을 요구합니다.'});
+  /* 같은 캐릭터를 두 좌석에 줄 수 없으므로 하수인 2명 구성에는 하수인이 2종 이상 있어야 한다 */
+  if(c.minion===1 && fits.some(f=>f.need[2]>1))
+    out.push({sev:'warn', txt:'하수인이 1종뿐입니다 — 하수인 2명 이상 구성(10인 이상)은 같은 캐릭터를 두 번 줄 수 없어 막힙니다.'});
+  if(c.demon===1) out.push({sev:'info', txt:'악마가 1종뿐입니다 — 매 판 같은 악마가 나옵니다.'});
+  const mods=cs.filter(x=>SETUP_MOD_IDS.indexOf(x.id)>=0);
+  if(mods.length){
+    const ds=deltas(cs).filter(d=>d!==0).map(d=>(d>0?'+':'')+d).join(' / ');
+    out.push({sev:'info', txt:`셋업 변경 캐릭터: ${mods.map(m=>m.ko).join('·')} — 뽑히면 외지인 수가 ${ds} 만큼 바뀝니다(아래 표의 ◍ 가 그 경우입니다).`});
+  }
+  if(c.traveler) out.push({sev:'info', txt:`여행자 ${c.traveler}종 — 인원 구성표 밖입니다(정원과 별개로 앉힙니다).`});
+  if(c.fabled)   out.push({sev:'info', txt:`전설 ${c.fabled}종 — 좌석을 차지하지 않는 규칙 토큰입니다.`});
+  return out;
+}
+
+/* 밤 순서표의 기준이 될 공식 스크립트. 담긴 캐릭터가 가장 많은 쪽을 고른다. */
+function baseEd(sc){
+  const cs=charsOf(sc), keys=Object.keys(EDITIONS), tally={};
+  keys.forEach(k=>{ tally[k]=0; });
+  cs.forEach(c=>{ const e=edOf(c); if(tally[e]!==undefined) tally[e]++; });
+  let best=keys[0];
+  keys.forEach(k=>{ if(tally[k]>tally[best]) best=k; });
+  return tally[best]>0? best : (EDITIONS[S.edition]? S.edition : 'tb');
+}
+/* 진행 중인 판에 연결된 스크립트. 비어 있으면 연결로 치지 않는다 — 캐릭터 풀이 통째로 사라진다. */
+function activeScript(){
+  const id=S.myScriptActive; if(!id) return null;
+  const sc=scripts().filter(x=>x.id===id)[0];
+  return (sc && Array.isArray(sc.chars) && sc.chars.length)? sc : null;
+}
+
+/* ══ 렌더 ══════════════════════════════════════════════════════════════ */
+function edKeys(){
+  const seen=[];
+  pool().forEach(c=>{ const e=edOf(c); if(seen.indexOf(e)<0) seen.push(e); });
+  return ['tb','bmr','sv','exp','loric','fabled','custom'].filter(k=>seen.indexOf(k)>=0);
+}
+function visible(sc){
+  const sel=sc? sc.chars : [];
+  const kw=q.trim().toLowerCase();
+  return pool().filter(c=>{
+    if(edF!=='all' && edOf(c)!==edF) return false;
+    if(onlySel && sel.indexOf(c.id)<0) return false;
+    if(kw){
+      const hay=`${c.ko||''} ${c.en||''} ${c.id||''}`.toLowerCase();
+      if(hay.indexOf(kw)<0) return false;
+    }
+    return true;
+  });
+}
+function gridHTML(sc){
+  const list=visible(sc), sel=sc? sc.chars : [];
+  if(!list.length) return `<p class="hint">조건에 맞는 캐릭터가 없습니다 — 필터나 검색어를 바꿔보세요.</p>`;
+  return TORDER.filter(t=>list.some(c=>c.type===t)).map(t=>{
+    const g=list.filter(c=>c.type===t), on=g.filter(c=>sel.indexOf(c.id)>=0).length;
+    return `<div class="bld-sec"><span class="pill ${t}">${TYPE_KO[t]}</span>
+      <span class="hint">선택 <b class="num">${on}</b> / ${g.length}</span>
+      <button type="button" class="bld-f" data-bld="grpall" data-t="${t}">${on===g.length?'보이는 것 전부 빼기':'보이는 것 전부 담기'}</button></div>
+    <div class="bld-chips">${g.map(c=>{
+      const on2=sel.indexOf(c.id)>=0;
+      return `<button type="button" class="bld-chip${on2?' on':''}" data-bld="char" data-cid="${esc(c.id)}" aria-pressed="${on2?'true':'false'}" title="${esc(c.ko)}${c.en?' · '+esc(c.en):''}"><span class="cg">${glyph(c.id)}</span><span class="cn">${esc(c.ko)}</span><span class="ck">${on2?'✓':''}</span></button>`;
+    }).join('')}</div>`;
+  }).join('');
+}
+/* 표준 인원 구성표와의 대조. 유형 행은 보정 없는 기준값(compFor(n,0))을 싣고,
+   '가능' 행이 셋업 변경까지 반영한 최종 판정이다. 좁은 화면에서는 가로 스크롤한다. */
+function tableHTML(cs){
+  const c=counts(cs), have=[c.townsfolk, c.outsider, c.minion, c.demon];
+  const fits=NS.map(n=>fitOf(n,cs));
+  const LBL=['주민','외지인','하수인','악마'];
+  const head=`<tr><th>인원</th>${NS.map(n=>`<th>${n===15?'15+':n}</th>`).join('')}</tr>`;
+  const body=LBL.map((lb,i)=>`<tr><th>${lb} <span class="hint">보유 ${have[i]}</span></th>${
+    NS.map(n=>{ const need=compFor(n,0)[i];
+      return `<td class="${have[i]<need?'lack':''}">${need}</td>`; }).join('')}</tr>`).join('');
+  const okrow=`<tr class="okrow"><th>가능</th>${fits.map(f=>{
+    const tip=f.ok? (f.base?'그대로 가능':`셋업 변경(외지인 ${(f.delta>0?'+':'')+f.delta})이 뽑혀야 가능`)
+                  : `부족: ${f.lack.join(', ')}`;
+    return `<td class="${f.ok?(f.base?'yes':'mod'):'no'}" title="${esc(tip)}">${f.ok?(f.base?'✓':'◍'):'✗'}</td>`;
+  }).join('')}</tr>`;
+  const okN=fits.filter(f=>f.ok).map(f=>f.n);
+  return `<div class="bld-scroll"><table class="bld-tbl">${head}${body}${okrow}</table></div>
+  <p class="hint">✓ 그대로 가능 · ◍ 셋업 변경 캐릭터가 뽑혀야 가능 · ✗ 유형이 모자람. ${
+    okN.length? `<b>${okN.join('·')}인</b> 게임에 쓸 수 있습니다.` : '<b>지금은 어떤 인원에도 쓸 수 없습니다.</b>'}</p>`;
+}
+function bldHTML(){
+  const ls=scripts(), sc=cur();
+  const tools=`<div class="bld-tools">
+    <button class="primary" data-bld="new">＋ 새로 만들기</button>${sc? `
+    <button data-bld="rename">✎ 이름 변경</button>
+    <button data-bld="dup">⧉ 복제</button>
+    <button class="danger ghost" data-bld="del">🗑 삭제</button>` : ''}
+    <button data-bld="imp">⬆ JSON 가져오기</button></div>`;
+  if(!sc){
+    return `<div class="card"><h2>📜 스크립트 편집기</h2>
+    <p class="hint">앱에 실린 캐릭터 <b class="num">${pool().length}</b>종에서 골라 내 시트를 만듭니다.
+    만든 시트로 바로 게임을 시작하거나, 공식 배포 시트와 같은 형식으로 인쇄·JSON 내보내기 할 수 있습니다.</p>
+    ${tools}</div>`;
+  }
+  const cs=charsOf(sc), cnt=counts(cs), ws=warns(sc), act=activeScript();
+  const missing=sc.chars.length-cs.length;
+  const sevCls={error:'alertbox red', warn:'alertbox', info:'alertbox blue'};
+  const sevIcn={error:'⛔', warn:'⚠', info:'ℹ'};
+  return `<div class="card"><h2>📜 스크립트 편집기</h2>
+  <p class="hint">캐릭터를 탭하면 담기고, 다시 탭하면 빠집니다. 변경은 즉시 저장됩니다.</p>
+  ${act? `<div class="alertbox blue">▶ 진행 중인 판이 <b>${esc(act.name)}</b> 를 쓰고 있습니다 — 설정 탭의 캐릭터 목록이 이 시트로 좁혀져 있습니다.
+    <button class="small ghost" data-bld="unlink" style="margin-left:6px">연결 해제</button></div>` : ''}
+  <div class="bld-scripts">${ls.map(s=>`
+    <button type="button" class="bld-sbtn${s.id===sc.id?' on':''}${S.myScriptActive===s.id?' live':''}" data-bld="pick" data-sid="${esc(s.id)}">${esc(s.name)} <span class="hint">${Array.isArray(s.chars)?s.chars.length:0}</span></button>`).join('')}</div>
+  ${tools}
+  <div class="fieldrow"><label>메모</label><textarea id="bld-note" rows="2" placeholder="이 스크립트의 컨셉·주의사항(이 기기에만 저장됩니다)">${esc(sc.note||'')}</textarea></div>
+  <div class="secthead"><span class="shicon">🧮</span> 선택 현황 <span class="num">${cs.length}</span></div>
+  <div class="bld-pills">${TORDER.map(t=>`<span class="pill ${t}">${TYPE_KO[t]} <b class="num">${cnt[t]}</b></span>`).join('')}</div>
+  ${missing>0? `<p class="hint">⚠ 이 앱에 없는 캐릭터 ${missing}종이 목록에 남아 있습니다(가져온 시트) — 집계·인쇄·게임에서는 빠집니다.</p>` : ''}
+  ${tableHTML(cs)}
+  ${ws.map(w=>`<div class="${sevCls[w.sev]}">${sevIcn[w.sev]} ${esc(w.txt)}</div>`).join('')}
+  <div class="bld-tools">
+    <button class="primary" data-bld="start">▶ 이 스크립트로 게임 시작</button>
+    <button data-bld="print">🖨 인쇄 / PDF</button>
+    <button data-bld="exp">⬇ JSON 내보내기</button>
+    ${cs.length? `<button class="ghost" data-bld="clearsel">전부 빼기</button>` : ''}</div>
+  <div class="secthead"><span class="shicon">🎭</span> 캐릭터 고르기</div>
+  <div class="bld-filters">
+    <button type="button" class="bld-f${edF==='all'?' on':''}" data-bld="ed" data-ed="all">전체</button>
+    ${edKeys().map(k=>`<button type="button" class="bld-f${edF===k?' on':''}" data-bld="ed" data-ed="${k}" title="${esc(ED_FULL[k]||k)}">${esc(ED_LABEL[k]||k)}</button>`).join('')}
+    <button type="button" class="bld-f${onlySel?' on':''}" data-bld="onlysel">선택됨만</button></div>
+  <input id="bld-q" type="search" placeholder="이름 검색 (한글·영문)" value="${esc(q)}">
+  ${gridHTML(sc)}
+  </div>`;
+}
+/* 검색창에 글자를 칠 때마다 통째로 다시 그린다 — 포커스와 캐럿은 손수 돌려놓는다 */
+function paint(){
+  const root=document.getElementById('bld-root'); if(!root) return;
+  const ae=document.activeElement, wasQ=!!(ae && ae.id==='bld-q');
+  const pos=wasQ? (ae.selectionStart||0) : 0;
+  root.innerHTML=bldHTML();
+  if(wasQ){
+    const el=document.getElementById('bld-q');
+    if(el){ el.focus(); try{ el.setSelectionRange(pos,pos); }catch(e){} }
+  }
+}
+
+/* ══ 동작 ══════════════════════════════════════════════════════════════ */
+function toggle(cid){
+  const sc=cur(); if(!sc || !cid) return;
+  const i=sc.chars.indexOf(cid);
+  if(i>=0) sc.chars.splice(i,1);
+  else{
+    if(sc.chars.length>=200){ toast('한 스크립트에 200종까지 담을 수 있습니다.','warn'); return; }
+    sc.chars.push(cid);
+  }
+  touch(sc); paint();
+}
+/* 지금 화면에 보이는(필터·검색이 걸린) 그 유형만 한 번에 담거나 뺀다 */
+function groupAll(t){
+  const sc=cur(); if(!sc) return;
+  const g=visible(sc).filter(c=>c.type===t);
+  if(!g.length) return;
+  if(g.every(c=>sc.chars.indexOf(c.id)>=0)) sc.chars=sc.chars.filter(id=>!g.some(c=>c.id===id));
+  else g.forEach(c=>{ if(sc.chars.indexOf(c.id)<0 && sc.chars.length<200) sc.chars.push(c.id); });
+  touch(sc); paint();
+}
+function doNew(){
+  const v=prompt('새 스크립트 이름:', '내 스크립트 '+(scripts().length+1));
+  if(v===null) return;
+  const sc={id:'ms_'+uid(), name:String(v).trim().slice(0,60)||'이름 없는 스크립트',
+            chars:[], note:'', updatedAt:Date.now()};
+  scripts().push(sc); selId=sc.id; save(); paint();
+  toast(`${sc.name} 를 만들었습니다 — 아래에서 캐릭터를 골라 담으세요.`,'ok');
+}
+function doRename(){
+  const sc=cur(); if(!sc) return;
+  const v=prompt('스크립트 이름:', sc.name);
+  if(v===null) return;
+  sc.name=String(v).trim().slice(0,60)||sc.name; touch(sc); paint();
+}
+function doDup(){
+  const sc=cur(); if(!sc) return;
+  const c={id:'ms_'+uid(), name:(sc.name+' 사본').slice(0,60), chars:sc.chars.slice(),
+           note:sc.note||'', updatedAt:Date.now()};
+  scripts().push(c); selId=c.id; save(); paint(); toast('복제했습니다.','ok');
+}
+function doDel(){
+  const sc=cur(); if(!sc) return;
+  if(!confirm(`"${sc.name}" 스크립트를 삭제합니다. 되돌릴 수 없습니다. 계속할까요?`)) return;
+  S.myScripts=scripts().filter(x=>x.id!==sc.id);
+  if(S.myScriptActive===sc.id) S.myScriptActive=null;
+  selId=null; save(); paint(); toast('삭제했습니다.','ok');
+}
+function doClear(){
+  const sc=cur(); if(!sc || !sc.chars.length) return;
+  if(!confirm(`"${sc.name}" 에서 캐릭터 ${sc.chars.length}종을 모두 뺍니다. 계속할까요?`)) return;
+  sc.chars=[]; touch(sc); paint();
+}
+/* 내보내기 — downloadScriptJSON 의 {name, author, characters} 에 exportScript 의 {customs} 를
+   얹는다. 담긴 커스텀 정의를 같이 실어야 다른 기기에서 그 id 를 되찾을 수 있다. */
+function doExport(){
+  const sc=cur(); if(!sc) return;
+  const cs=charsOf(sc);
+  const data=JSON.stringify({name:sc.name, author:'Thyrsus', base:baseEd(sc), note:sc.note||'',
+    characters:sc.chars.slice(), customs:cs.filter(c=>c.custom)}, null, 1);
+  if(navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(data).then(
+      ()=>toast('스크립트 JSON을 클립보드에 복사했습니다.','ok'),
+      ()=>prompt('복사하세요:', data));
+  else prompt('복사하세요:', data);
+}
+/* 가져오기 — 신뢰할 수 없는 입력이다. importScript 와 같은 규칙으로 타입·길이·id 를 검증한다. */
+function doImport(){
+  const raw=prompt('스크립트 JSON을 붙여넣으세요:'); if(!raw) return;
+  let d; try{ d=JSON.parse(raw); }catch(e){ toast('JSON 파싱 실패','warn'); return; }
+  if(!d || typeof d!=='object' || Array.isArray(d)){ toast('스크립트 객체가 아닙니다.','warn'); return; }
+  const IDRE=/^[A-Za-z0-9_-]{1,64}$/;
+  const str=v=>typeof v==='string'? v.slice(0,400):'';
+  const sarr=v=>Array.isArray(v)? v.filter(x=>typeof x==='string').map(x=>x.slice(0,400)).slice(0,20):[];
+  const CT=['townsfolk','outsider','minion','demon','traveler','fabled'];
+  const have=Object.create(null);
+  allChars().forEach(c=>{ have[c.id]=1; });
+  /* 실려 온 커스텀 정의는 '아직 없는 id' 만 등록한다 — 같은 id 가 이미 있으면 내 정의를 지킨다 */
+  let added=0;
+  (Array.isArray(d.customs)? d.customs : []).slice(0,60).forEach(c=>{
+    if(!c || typeof c!=='object' || Array.isArray(c)) return;
+    if(typeof c.id!=='string' || !IDRE.test(c.id) || have[c.id]) return;
+    S.customs.push({id:c.id, ko:str(c.ko)||'(이름 없음)', en:str(c.en),
+      type:CT.indexOf(c.type)>=0? c.type : 'townsfolk',
+      ability:str(c.ability)||'(능력 미기재)', first:!!c.first, other:!!c.other,
+      firstAfter:typeof c.firstAfter==='string'? c.firstAfter : null,
+      otherAfter:typeof c.otherAfter==='string'? c.otherAfter : null,
+      voteRelated:!!c.voteRelated, voteNote:str(c.voteNote),
+      reminders:sarr(c.reminders), warn:sarr(c.warn), custom:true});
+    have[c.id]=1; added++;
+  });
+  /* characters 는 id 문자열 배열이거나 공식 배포 형식의 객체 배열({id:'imp'} 형태)이다 */
+  const ids=[], miss=[];
+  (Array.isArray(d.characters)? d.characters : []).slice(0,300).forEach(x=>{
+    const id=(typeof x==='string')? x
+           : (x && typeof x==='object' && typeof x.id==='string')? x.id : null;
+    if(!id || !IDRE.test(id) || ids.indexOf(id)>=0 || miss.indexOf(id)>=0) return;
+    if(have[id]) ids.push(id); else miss.push(id);
+  });
+  if(!ids.length && !added){ toast('가져올 캐릭터가 없습니다 — characters 배열을 확인하세요.','warn'); return; }
+  const sc={id:'ms_'+uid(),
+    name:String(d.name==null?'':d.name).trim().slice(0,60)||'가져온 스크립트',
+    chars:ids.slice(0,200), note:String(d.note==null?'':d.note).slice(0,400),
+    updatedAt:Date.now()};
+  scripts().push(sc); selId=sc.id;
+  save(); renderAll();   /* 커스텀이 늘었을 수 있어 아래 커스텀 캐릭터 목록까지 다시 그린다 */
+  toast(`가져오기 완료 — ${ids.length}종${added? ` · 커스텀 ${added}종 등록`:''}`,'ok');
+  if(miss.length) setTimeout(()=>toast(`⚠ 이 앱에 없는 캐릭터 ${miss.length}종은 건너뛰었습니다 — ${miss.slice(0,5).join(', ')}${miss.length>5?' 외':''}`,'warn'), 900);
+}
+/* 인쇄 — printScriptSheet 는 제목(SCRIPT_KO)과 목록(sheetCharList)을 '에디션 키'로 조회한다.
+   둘 다 키 조회이므로 임시 키를 하나 꽂으면 원본을 고치지 않고 커스텀 시트를 인쇄할 수 있다.
+   두 조회 모두 printScriptSheet 안에서 동기적으로 끝나므로 호출 직후에 키를 걷어낸다. */
+const PRINT=Object.create(null);
+const _sheetCharList=window.sheetCharList;
+if(typeof _sheetCharList==='function') window.sheetCharList=function(ed){
+  if(ed && PRINT[ed]) return PRINT[ed].slice();
+  return _sheetCharList.apply(this, arguments);
+};
+function doPrint(){
+  const sc=cur(); if(!sc) return;
+  const cs=charsOf(sc);
+  if(!cs.length){ toast('담긴 캐릭터가 없습니다.','warn'); return; }
+  if(typeof printScriptSheet!=='function'){ toast('인쇄 기능을 찾을 수 없습니다.','warn'); return; }
+  const key='__bld_'+sc.id;
+  PRINT[key]=TORDER.reduce((a,t)=>a.concat(cs.filter(c=>c.type===t)), []);
+  const hasKo=(typeof SCRIPT_KO!=='undefined');
+  if(hasKo) SCRIPT_KO[key]=[sc.name, ''];
+  try{ printScriptSheet(key, true); }          /* true = 여행자·전설까지 함께 싣는다 */
+  finally{ delete PRINT[key]; if(hasKo) delete SCRIPT_KO[key]; }
+}
+/* 게임 시작 — 기존 startFromSheet 흐름(진행 중 확인 · 배정 초기화 · 설정 탭 이동)을 그대로 쓰고,
+   그 위에 "이 판은 이 스크립트를 쓴다"는 연결만 얹는다. */
+function doStart(){
+  const sc=cur(); if(!sc) return;
+  const cs=charsOf(sc);
+  if(!cs.length){ toast('담긴 캐릭터가 없습니다.','warn'); return; }
+  const errs=warns(sc).filter(w=>w.sev==='error');
+  if(errs.length && !confirm(`구성 오류 ${errs.length}건이 있습니다:\n\n${
+    errs.map(w=>'· '+w.txt).join('\n')}\n\n그래도 이 스크립트로 시작할까요?`)) return;
+  const base=baseEd(sc);
+  /* 밤 순서표는 공식 3스크립트에만 있다. 그 밖의 캐릭터(실험·로릭·다른 에디션)는 기준
+     순서표에 자리가 없어 밤 진행에서 맨 뒤에 붙는다 — 시작 전에 무엇이 그런지 알린다. */
+  const outs=cs.filter(c=>!c.custom && c.type!=='fabled' && c.type!=='traveler'
+                          && edOf(c)!==base && (c.first||c.other));
+  if(outs.length && !confirm(`기준 밤 순서: ${EDITIONS[base].ko}\n\n`
+    + `담긴 캐릭터 중 ${outs.length}종은 그 순서표에 없어 밤 진행에서 맨 뒤에 붙습니다:\n`
+    + outs.slice(0,8).map(c=>'· '+c.ko).join('\n')
+    + (outs.length>8? `\n… 외 ${outs.length-8}종` : '')
+    + '\n\n계속할까요?')) return;
+  if(typeof startFromSheet!=='function'){ toast('게임 시작 흐름을 찾을 수 없습니다.','warn'); return; }
+  startFromSheet(base);
+  if(S.edition!==base) return;                 /* startFromSheet 안에서 취소당했다 */
+  S.myScriptActive=sc.id;
+  log(`📜 내 스크립트로 시작: ${sc.name} (기준 ${EDITIONS[base].ko} · ${cs.length}종)`);
+  save(); renderAll();
+  toast(`${sc.name} — 설정 탭의 캐릭터 목록이 이 스크립트로 좁혀졌습니다.`,'ok');
+}
+function unlink(){
+  if(!S.myScriptActive) return;
+  S.myScriptActive=null; save(); renderAll();
+  toast('연결을 해제했습니다 — 캐릭터 목록이 다시 스크립트 전체로 돌아갑니다.','ok');
+}
+
+/* ══ 기존 흐름에 얹기 ═══════════════════════════════════════════════════ */
+/* ① 캐릭터 풀. 인자 없는 editionChars() 는 "지금 이 판이 쓰는 캐릭터"를 묻는 자리다
+   (설정 탭 배정 목록·캐릭터 일람·무작위 배정·지니 판정). 연결된 스크립트가 있으면 그 목록으로
+   좁힌다. 인자를 준 호출(다른 시트를 조회하는 자리)은 건드리지 않는다. */
+const _editionChars=window.editionChars;
+if(typeof _editionChars==='function') window.editionChars=function(ed){
+  if(ed===undefined){
+    const sc=activeScript();
+    if(sc){
+      const ids=Object.create(null);
+      sc.chars.forEach(id=>{ ids[id]=1; });
+      return allChars().filter(c=>ids[c.id] || c.type==='fabled' || c.custom);
+    }
+  }
+  return _editionChars.apply(this, arguments);
+};
+/* ② 밤 순서. 기준 스크립트의 순서표에 없는 캐릭터는 nightSteps() 가 조용히 건너뛴다 —
+   실제로 좌석에 배정된 것만 맨 뒤에 이어 붙여, 사회자가 깨우는 것을 통째로 놓치지 않게 한다.
+   자리를 지어내지는 않는다: 공식 순서상 어디인지 알 수 없으므로 끝에 둔다. */
+const _nightSteps=window.nightSteps;
+if(typeof _nightSteps==='function') window.nightSteps=function(){
+  const steps=_nightSteps.apply(this, arguments)||[];
+  try{
+    const sc=activeScript(); if(!sc) return steps;
+    const first=S.phase.n===1, seen=Object.create(null);
+    steps.forEach(s=>{ seen[s.id]=1; });
+    charsOf(sc).forEach(c=>{
+      if(seen[c.id] || c.type==='fabled') return;
+      if(!(first? c.first : c.other)) return;
+      const holders=playersByChar(c.id);
+      if(!holders.length) return;
+      seen[c.id]=1;
+      steps.push({id:c.id, holders:holders, mask:null});
+    });
+  }catch(e){ console.warn('[builder] 밤 순서 보강 실패', e); }
+  return steps;
+};
+/* ③ 공식 시트에서 게임을 시작하면 커스텀 스크립트 연결은 끊는다 — 안 끊으면 공식 시트를
+   골랐는데 캐릭터 풀이 옛 커스텀 목록에 묶여 있다. doStart() 는 이 호출 뒤에 다시 건다. */
+const _startFromSheet=window.startFromSheet;
+if(typeof _startFromSheet==='function') window.startFromSheet=function(ed){
+  const r=_startFromSheet.apply(this, arguments);
+  try{ if(S.myScriptActive && S.edition===ed){ S.myScriptActive=null; save(); } }catch(e){}
+  return r;
+};
+/* ④ 내 스크립트 탭 맨 앞에 빌더 카드를 끼운다. 원본과 기존 부가 블록이 전부 끝난 뒤에 삽입한다. */
+const _renderCustom=window.renderCustom;
+if(typeof _renderCustom==='function') window.renderCustom=function(){
+  const r=_renderCustom.apply(this, arguments);
+  try{
+    const pane=document.getElementById('pane-custom');
+    if(pane){
+      const root=document.createElement('div');
+      root.id='bld-root';
+      pane.insertBefore(root, pane.firstChild);
+      paint();
+    }
+  }catch(e){ console.warn('[builder] 렌더 실패', e); }
+  return r;
+};
+
+/* ══ 위임 리스너 — 사용자 데이터는 data-* 로만 흐른다 ═══════════════════ */
+document.addEventListener('click', e=>{
+  const t=(e.target && e.target.closest)? e.target.closest('[data-bld]') : null;
+  if(!t) return;
+  const a=t.getAttribute('data-bld');
+  if(a==='char')          toggle(t.getAttribute('data-cid'));
+  else if(a==='grpall')   groupAll(t.getAttribute('data-t'));
+  else if(a==='pick'){ selId=t.getAttribute('data-sid'); paint(); }
+  else if(a==='ed'){ edF=t.getAttribute('data-ed'); paint(); }
+  else if(a==='onlysel'){ onlySel=!onlySel; paint(); }
+  else if(a==='new')      doNew();
+  else if(a==='rename')   doRename();
+  else if(a==='dup')      doDup();
+  else if(a==='del')      doDel();
+  else if(a==='clearsel') doClear();
+  else if(a==='start')    doStart();
+  else if(a==='print')    doPrint();
+  else if(a==='exp')      doExport();
+  else if(a==='imp')      doImport();
+  else if(a==='unlink')   unlink();
+});
+document.addEventListener('input', e=>{
+  const t=e.target;
+  if(t && t.id==='bld-q'){ q=t.value; paint(); }
+});
+document.addEventListener('change', e=>{
+  const t=e.target;
+  if(t && t.id==='bld-note'){
+    const sc=cur();
+    if(sc){ sc.note=String(t.value).slice(0,400); touch(sc); }
+  }
+});
+
+/* 시뮬레이터·콘솔 창구 */
+window.thyBuilder={
+  list:scripts, current:cur, charsOf:charsOf, counts:counts, deltas:deltas,
+  fitOf:fitOf, warns:warns, baseEd:baseEd, active:activeScript, visible:visible,
+  toggle:toggle, groupAll:groupAll, create:doNew, rename:doRename, dup:doDup,
+  remove:doDel, clear:doClear, start:doStart, print:doPrint,
+  exportJSON:doExport, importJSON:doImport, unlink:unlink,
+  render:paint, html:bldHTML,
+  select:function(id){ selId=id; paint(); },
+  search:function(v){ q=String(v==null?'':v); paint(); },
+  filter:function(v){ edF=String(v==null?'all':v); paint(); }
+};
+
+/* 이 블록은 파일 끝이라 최초 renderAll() 이 이미 지나간 뒤에 래퍼가 걸린다 —
+   해시로 곧장 '내 스크립트' 탭을 열고 들어온 경우를 위해 한 번만 다시 그린다. */
+try{
+  if(typeof activeTab!=='undefined' && activeTab==='custom' && typeof renderAll==='function') renderAll();
+}catch(e){ console.warn('[builder] 초기 렌더 실패', e); }
 })();
 </script>
 
