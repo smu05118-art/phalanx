@@ -847,3 +847,47 @@ SVG 용으로 이미 브레이크포인트별 튜닝이 끝나 있던 `:has(svg)
 - 돌연변이 37종 — 검출 35 · 미검출 0 · masked 2 · 앵커부실 0
 - 브라우저 실측 — `img.cicon-img` 188개 로드, 깨진 이미지 0, 잔존 SVG 0,
   모바일(375px) 가로 오버플로 없음
+
+---
+
+## 종료 마지막 단계 · 설정 보존 초기화 · 임의종료 통계 제외 · 전설 아이콘 (2026-09-06)
+
+### 요구
+> 종료버튼 마지막단계로 정말 종료하겠습니까 → 확인/취소. 확인을 누르면 하던 게임 초기화 이후에
+> (사회자 임의종료만 통계에 반영하지 않기) 게임 설정에서 1참가자 단계로 돌아가는데 전에 플레이했던
+> 설정은 남아있게. 추가로 전설들도 공식 아이콘.
+
+### 설계
+| 축 | 결정 | 이유 |
+|---|---|---|
+| 종료 종류 | `S.endKind` = `win`·`concede`·`fiddler`·`manual` (blank+migrateState) | 마감이 "전적을 남길지"를 이 값 하나로 가른다. 경로마다 `showGameOver` 직전에 찍고, `confirmWin(false)`(계속 진행)는 되돌린다 |
+| 마지막 단계 | 사후투표 결과 화면 [🏁 게임 종료] → 확인 뷰 "정말 종료하겠습니까?" [확인/취소] | 취소는 아무것도 지우지 않고 결과 화면으로 복귀. [닫기]는 그리모어를 더 볼 수 있게 남겨 두고, 종료 메뉴의 [종료 확정]으로 언제든 확인 뷰로 재진입 |
+| 마감 엔진 | `finalizeEndedGame()` = 설정 스냅샷 → `resetGameState(manual?'void':'keep')` → 복원 → `setupStep=1` → `switchTab('setup')` | 초기화의 단일 경로(`resetGameState`)를 그대로 타서 정책이 갈라지지 않는다. 임의종료만 `void`(gid 로 이 판 레코드 제거) |
+| 보존 설정 | edition · myScriptActive · fabled · 참가자 명단(이름·좌석 순서·등록부 링크) | 캐릭터 배정·상태·생사·기록·원장은 새 판이므로 비운다. 좌석 id 는 재발급 — 지워진 원장이 가리키던 id 를 남기지 않는다 |
+| 종료 메뉴 | `S.gameOver` 면 [동료 평가 이어서](진행 중일 때)·[종료 확정]만 | 끝난 판에 종료 옵션을 다시 보여 주면 "이미 종료된 게임입니다"만 반복된다 |
+| 부수 수정 | `RESET_KEEP_KEYS` 에 `myScripts` 추가 | 전체 초기화·판 무효가 **내 스크립트(빌더)** 를 통째로 지우고 있었다. 사용자 자산이므로 customs 와 같은 급으로 보존 |
+| 전설 아이콘 | 설정 탭 전설 패널 각 행에 `.ctoken.fabled` + `glyph()` | 24종 전부 `icons/` 에 이미 있었고(공식 아이콘 라운드에서 우화·여행자 패턴으로 확보), 빠진 자리는 이 패널뿐이었다. 밤 순서표·백과사전은 이미 `glyph()` 경유 |
+
+### 회귀 테스트 `thyrsus_sim/endflow_check.js` (10케이스)
+A 정상 승리→투표→취소/확인→전적 보존 · B 임의종료→전적 제거(남의 판 유지) · C 기권(계속 진행 복원 포함)→전적 보존 ·
+D 종료 메뉴 상태별 구성 · E 미완 판 마감 거부 · F 전체 초기화가 myScripts 보존 · G 삭제된 등록부/스크립트 링크 정리 ·
+H endKind 저장본 왕복 · I 전설 glyph 공식 아이콘 · J 결과 닫기→종료 메뉴 재진입 마감 ·
+K 토스트 문자열 게이트(레거시 판정)로 뜬 종료도 마감 가능 · L 손상 gameId 재발급
+
+### 자체 점검에서 추가로 잡은 것
+- `migrateState` 가 `gameId` 를 재발급한다는 `blank()` 주석과 달리 **실제 코드가 없었다** → 손상 저장본은
+  `buildMatchRecord` 가 `gid:null` 을 적어 판 무효·임의종료 제외가 그 판을 못 찾는다. 재발급 추가.
+- 토스트 문자열 게이트(레거시 승리 판정 4곳: 2247·2259·2261·4363행)와 `endGameManual` 은 `S.gameOver` 를
+  세우지 않고 `showGameOver` 를 불렀다 → 종료 화면·동료 평가는 뜨는데 마감이 "아직 끝나지 않은 게임"으로 거부.
+  합류점 `showGameOver` 에서 `gameOver=true`·`endKind||='win'` 을 확정.
+
+### Codex 교차검증(로컬 codex-cli 0.152, 읽기 전용) — 치명 1 · 중대 3 · 경미 1 → 전부 조치
+| 등급 | 지적 | 조치 |
+|---|---|---|
+| Critical | 토스트 문자열 게이트가 `S.gameOver`·`endKind` 없이 종료 화면만 연다 → 마감 거부 | 자체 점검과 동일 지적. `showGameOver` 합류점에서 확정 (endflow2) |
+| Major | 외부 기권 훅이 종료하지 않고 돌아오면 `concede` 가 잔존 → 다음 정상 승리가 기권으로 오표기 | 종료 종류를 승리값 `res.endKind` 에 싣고 `confirmWin(true)` 가 확정. 전역 선기록 제거. 폴백(엔진 없음)만 직접 기록 (endflow3) |
+| Major | `migrateState` 가 `gameId` 를 재발급하지 않아 `gid:null` → void 가 못 찾음 | 자체 점검과 동일. 재발급 추가 (endflow2) |
+| Major | 사후투표 `finish()` 가 레코드 점수·MVP·최고/찐빠를 바꾸는데 프로필 캐시 서명(판 수·ts)이 같아 재빌드되지 않음 — **diff 이전부터 있던 버그** | `finish()` 끝에서 `profileRebuild()` (endflow3). 테스트 N 이 캐시 마지막 매치의 mvp·score 를 레코드와 대조 |
+| Minor | `applyGameSettings` 의 전설 복원이 중복·24개 상한을 정리하지 않아 `migrateState` 와 규칙이 다름 | `[...new Set(valid)].slice(0,24)` (endflow3) |
+
+Codex 가 제안한 추가 테스트 4종(toast-only · hook-noop · null-gid · profile-after-peer)을 K·M·L·N 으로 전부 넣었다 → **14케이스 통과**.
