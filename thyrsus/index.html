@@ -1458,6 +1458,10 @@ const blank = () => ({
        voters 단계별 '넘기기'를 누른 사람 수 = 득표율의 분모 */
   postgame:{id:null, stage:0, team:null, reason:'', turn:0, sel:[],
             mvpVotes:{}, bustVotes:{}, mvpTop:[], bustTop:[], voters:{mvp:0, bust:0}},
+  /* 이 판이 '어떻게' 끝났는가 — 'win'(승리 판정) · 'concede'(기권) · 'fiddler'(전설 투표) ·
+     'manual'(사회자 임의 종료). 마감(finalizeEndedGame)이 이 값 하나로 전적 보존/무효를 가른다:
+     임의 종료만 통계에서 뺀다. 종료 경로마다 showGameOver 직전에 적고, migrateState 에도 있다. */
+  endKind:null,
   /* 판 식별자 — 이 판이 적립한 전적 레코드(history[].gid)를 되찾는 유일한 열쇠.
      blank() 이 매번 새로 발급하므로 초기화·무효 처리 직후의 새 판과 확실히 구분된다.
      uid() 는 이 시점에 아직 TDZ 라 migrateState 와 같은 지역 생성 방식을 쓴다. */
@@ -1709,6 +1713,10 @@ function migrateState(raw){
     mvpTop:pgList(pgr.mvpTop, pgIds),      bustTop:pgList(pgr.bustTop, pgIds),
     voters:{mvp:Math.max(0,(pgr.voters&&pgr.voters.mvp)|0), bust:Math.max(0,(pgr.voters&&pgr.voters.bust)|0)}
   };
+  st.endKind=['win','concede','fiddler','manual'].includes(st.endKind)? st.endKind : null;
+  /* 판 식별자 — 문자열이 아니면(구버전·손상) 재발급한다. gid 가 비면 buildMatchRecord 가 null 을 적어
+     판 무효(void)가 이 판의 레코드를 못 찾고, 마감의 '임의종료만 통계 제외'가 조용히 빗나간다. */
+  if(typeof st.gameId!=='string' || !st.gameId) st.gameId=mkid();
   /* 전적 레코드에 실린 투표 결과도 같은 규칙으로 정리한다. 기준 pid 집합은 '그 판의
      players' 다 — 현재 좌석으로 거르면 지난 판 기록이 통째로 비워진다. */
   st.history.forEach(h=>{
@@ -2269,6 +2277,24 @@ function toast(msg, kind){
 }
 
 /* ══════════════════ 페이즈 진행 ══════════════════ */
+/* 좌석에 배정된 캐릭터 중 앱이 자동으로 굴리지 못하는 것.
+   [기준 1] 밤 순서 자동화가 없는 공식 캐릭터 — libCharMeta().encyc (실험판 71종: 백과사전 수록 전용).
+            스크립트 라이브러리의 '진행 가능' 배지와 같은 판정이라 두 화면이 다른 말을 하지 않는다.
+   [기준 2] 사망 판정 사슬에 자리만 있고 판정은 사회자 수동인 규칙(DEATH_MODIFIERS implemented:false):
+            재상 낮 면역 · 사이코패스 가위바위보 · 평화주의자 · 리치 숙주. 밤 순서는 있어도 판정이 비어 있다.
+   커스텀 캐릭터는 제외한다 — 순서·능력을 사회자가 직접 정의한 것이라 '미구현'이 아니다. */
+const PARTIAL_IMPL_CHARS={vizier:'낮 사망 면역 판정 수동', psychopath:'가위바위보 판정 수동', pacifist:'처형 생존 판정 수동', lleech:'숙주 생존 판정 수동'};
+function unimplementedInPlay(){
+  const out=[];
+  S.players.forEach(p=>{
+    const c=charOf(p.charId); if(!c || c.custom) return;
+    let why=null;
+    try{ if(typeof libCharMeta==='function' && libCharMeta(c.id).encyc) why='밤 순서 자동화 없음'; }catch(e){}
+    if(!why && PARTIAL_IMPL_CHARS[c.id]) why=PARTIAL_IMPL_CHARS[c.id];
+    if(why) out.push({p, c, why});
+  });
+  return out;
+}
 function advancePhase(){
   const ph=S.phase;
   if(ph.kind==='setup'){
@@ -2279,6 +2305,16 @@ function advancePhase(){
     if(ft && !S.redHerringId){ toast('점쟁이가 있습니다 — 붉은 청어를 먼저 지정하세요(설정 탭).','warn'); return; }
     const dr=S.players.find(p=>p.charId==='drunk');
     if(dr && !S.drunkMaskChar){ toast('주정뱅이가 있습니다 — 위장할 마을 주민을 먼저 지정하세요(설정 탭).','warn'); return; }
+    /* 미구현 캐릭터 경고 — 진행은 사회자 재량으로 허용하되, 시작 전에 몇 명인지·누구인지 알린다.
+       설정 탭의 [첫 번째 밤 시작]과 헤더 진행 버튼이 모두 여기를 지나므로 한 곳이면 충분하다.
+       확인 릴레이 경고보다 앞에 둔다 — 기기를 돌리기 전에 알아야 하는 셋업 수준의 문제다. */
+    {
+      const un=unimplementedInPlay();
+      if(un.length && !confirm('미구현된 캐릭터 '+un.length+'명이 있습니다:\n'
+          +un.map(x=>(S.players.indexOf(x.p)+1)+'번 '+x.p.name+' — '+x.c.ko+' ('+x.why+')').join('\n')
+          +'\n\n해당 캐릭터는 사회자가 수동으로 진행해야 합니다. 그래도 진행하시겠습니까?')) return;
+      if(un.length) log('⚠ 미구현 캐릭터 '+un.length+'명 포함 시작: '+un.map(x=>x.c.ko).join(', '));
+    }
     /* 캐릭터 확인 릴레이 미완 경고 — 붉은 청어·주정뱅이 위장까지 정해진 뒤라야
        revealCharId() 가 최종 캐릭터를 가리킨다. 진행 자체는 사회자 재량으로 허용한다.
        (릴레이 블록은 이 함수보다 뒤 script 라 로드 실패 시 조용히 건너뛴다) */
@@ -2466,12 +2502,13 @@ function renamePlayer(pid,v){
      roster        참가자 명부(사람 단위 통계가 여기에 붙는다)
      history       판 전적 원장(초기화로 날리면 MMR 누적이 성립하지 않는다)
      customs       내가 만든 캐릭터
+     myScripts     내 스크립트(빌더) — customs 와 같은 급의 사용자 자산
      theme         표시 설정
      recentScripts 최근 연 스크립트(홈 큐레이션 — 게임 상태와 무관)
      profiles      프로필 집계 캐시(전적의 파생물 — 원장을 남기면서 캐시만 버리면 첫 렌더가 통째로 다시 만든다)
    blank() 은 이들을 전부 비우므로 여기서 되돌려 넣는다. 보존 목록을 상수로 둬야
    새 필드가 생겼을 때 초기화 정책을 한 곳에서만 고칠 수 있다. */
-const RESET_KEEP_KEYS=['roster','history','customs','theme','recentScripts','profiles'];
+const RESET_KEEP_KEYS=['roster','history','customs','myScripts','theme','recentScripts','profiles'];
 /* 초기화 엔진 — 이 앱의 '판을 지우는' 유일한 경로다(진실의 원천 하나).
    [소거] 보존 목록 밖의 전부. 판 단위 원장(S.events·S.deathTraces·S.log·evSeq·traceSeq)도
           blank() 이 비우므로 '이번 판 구간'을 따로 잘라낼 필요가 없다 — 새 판은 오직 이
@@ -2494,8 +2531,69 @@ function resetGameState(mode){
   ['gameover','winask'].forEach(id=>{ const o=document.getElementById(id); if(o) o.hidden=true; });
   save(); renderAll();
 }
+/* ── 판 마감(finalize) ──
+   종료 흐름의 진짜 마지막 단계다: 승패 확정 → 동료 평가 → [정말 종료하겠습니까?] → 여기.
+   [무엇을 지우나] resetGameState 가 지우는 전부(그리모어·기록·원장). 전적은 endKind 로 가른다 —
+     'manual'(사회자 임의 종료)만 'void' 로 이 판의 레코드를 걷어내고, 나머지는 'keep'.
+   [무엇을 남기나] '전에 플레이했던 설정' = 스크립트(edition·myScriptActive)·전설(fabled)·
+     참가자 명단(좌석 순서·등록부 링크). 캐릭터 배정·상태·생사는 새 판이므로 비운다.
+     좌석 id 는 새로 발급한다 — 지워진 원장·revealDone 이 옛 id 를 가리키던 흔적을 남기지 않는다.
+   [어디로 가나] 설정 탭 ① 참가자 단계(S.setupStep=1). */
+function snapshotGameSettings(){
+  const isFab=p=>{ const c=charOf(p.charId); return !!c && c.type==='fabled'; };
+  return {
+    edition:S.edition, myScriptActive:S.myScriptActive,
+    /* 구버전 방식으로 좌석에 앉힌 전설은 활성 목록으로 옮겨 보존한다 — 그 좌석은 참가자가 아니다 */
+    fabled:(Array.isArray(S.fabled)? S.fabled : []).concat(S.players.filter(isFab).map(p=>p.charId)),
+    /* 지니 수락/거절은 시트에 대한 결정이다 — 같은 시트로 다시 하면 그대로 이어진다 */
+    djinn:(S.djinn && typeof S.djinn==='object')? {accepted:!!S.djinn.accepted, declined:!!S.djinn.declined} : null,
+    /* 낮 제한시간(분)은 사회자가 판마다 다시 고르지 않는 운영 설정이다 — 타이머 자체(start·n)는 새 판 것 */
+    dayLimit:(S.dayTimer && typeof S.dayTimer==='object')? (S.dayTimer.limit|0) : 0,
+    players:S.players.filter(p=>!isFab(p)).map(p=>({rosterId:p.rosterId||null, name:String(p.name||'')})),
+  };
+}
+function applyGameSettings(cfg){
+  if(!cfg || typeof cfg!=='object') return;
+  if(typeof cfg.edition==='string' && EDITIONS[cfg.edition]) S.edition=cfg.edition;
+  /* 내 스크립트 연결은 그 스크립트가 아직 있을 때만 — migrateState 와 같은 규칙 */
+  if(typeof cfg.myScriptActive==='string' && Array.isArray(S.myScripts) && S.myScripts.some(x=>x&&x.id===cfg.myScriptActive))
+    S.myScriptActive=cfg.myScriptActive;
+  /* migrateState 와 같은 규칙 — 실재하는 전설만, 중복 없이, 24개 상한 */
+  S.fabled=[...new Set((Array.isArray(cfg.fabled)? cfg.fabled : []).filter(id=>{ const c=charOf(id); return !!c && c.type==='fabled'; }))].slice(0,24);
+  if(cfg.djinn && typeof cfg.djinn==='object') S.djinn={accepted:!!cfg.djinn.accepted, declined:!!cfg.djinn.declined};
+  if((cfg.dayLimit|0)>0) S.dayTimer={start:Date.now(), n:0, limit:cfg.dayLimit|0};
+  S.players=(Array.isArray(cfg.players)? cfg.players : []).map(x=>{
+    const rid=(x && typeof x.rosterId==='string' && typeof rosterOf==='function' && rosterOf(x.rosterId))? x.rosterId : null;
+    return {id:uid(), rosterId:rid, name:String((x&&x.name)||''), charId:'', alive:true, deadVote:true,
+            statuses:[], notes:'', alignment:null, diedAt:null};
+  });
+}
+function finalizeEndedGame(){
+  if(!S.gameOver){ toast('아직 끝나지 않은 게임입니다 — 종료 메뉴에서 먼저 마감하세요.','warn'); return false; }
+  const manual=(S.endKind==='manual');
+  const cfg=snapshotGameSettings();
+  try{ statsOpenHist.clear(); }catch(e){}
+  /* 밤 위저드·기기 전달·지명 선택 같은 세션 상태는 S 밖에 산다 — 지우지 않으면 새 판 위에
+     옛 좌석 id 를 쥔 오버레이가 남는다. closeWiz 가 전달 전역·복구 스냅샷까지 함께 비운다. */
+  try{ if(wiz && typeof closeWiz==='function') closeWiz(false); }catch(e){}
+  try{ wizQueue=null; }catch(e){}
+  try{ nomPick={tor:null, nee:null}; dragPid=null; }catch(e){}
+  try{ document.body.classList.remove('wizopen'); const wz=document.getElementById('wizard'); if(wz) wz.hidden=true; }catch(e){}
+  try{ resetGameState(manual? 'void' : 'keep'); }
+  finally{
+    /* 초기화 도중 렌더가 죽어도 설정 복원은 반드시 지난다 — 빈 판이 저장된 채 끝나지 않게 */
+    applyGameSettings(cfg);
+    S.setupStep=1;
+    save();
+  }
+  ['gameover','winask','pgvote','pmodal'].forEach(id=>{ const o=document.getElementById(id); if(o) o.hidden=true; });
+  try{ switchTab('setup'); }catch(e){ renderAll(); }
+  toast(manual? '사회자 임의 종료 — 이 판은 전적·통계에 남기지 않았습니다. 이전 설정으로 새 판을 준비합니다.'
+              : '판을 마감했습니다 — 전적에 적립됐고, 이전 설정으로 새 판을 준비합니다.','ok');
+  return true;
+}
 function resetAllKeepAssets(){
-  if(!confirm('전체 게임 상태를 초기화할까요?\n(참가자 등록부 · 판 전적 · 내 캐릭터 · 테마는 유지됩니다)')) return;
+  if(!confirm('전체 게임 상태를 초기화할까요?\n(참가자 등록부 · 판 전적 · 내 캐릭터 · 내 스크립트 · 테마는 유지됩니다)')) return;
   resetGameState('keep');
 }
 /* ── 판 무효 ──
@@ -2506,7 +2604,7 @@ function voidCurrentGame(){
   const banked=(Array.isArray(S.history)? S.history : []).some(h=>h && h.gid && h.gid===S.gameId);
   if(!confirm('이 판을 무효 처리할까요?\n\n· 진행 중인 판의 그리모어 · 게임 기록 · 원장이 모두 사라집니다'
     +(banked? '\n· 이미 적립된 이 판의 전적도 삭제됩니다 (전광판 · 판 기록에서 사라집니다)' : '')
-    +'\n· 참가자 등록부 · 다른 판의 전적 · 내 캐릭터 · 테마는 유지됩니다'
+    +'\n· 참가자 등록부 · 다른 판의 전적 · 내 캐릭터 · 내 스크립트 · 테마는 유지됩니다'
     +'\n\n되돌릴 수 없습니다.')) return;
   try{ statsOpenHist.clear(); }catch(e){}   // 인덱스 기반 펼침 상태 — 레코드가 빠지면 어긋난다
   resetGameState('void');
@@ -8004,10 +8102,11 @@ function grimConcede(losing){
   const koW = winner==='good' ? '선한 팀' : '악한 팀';
   const res={ team:winner,
     reason:`${koL}이 기권했습니다 — ${koW} 승리.`,
-    rule:`기권은 공식 승리 조건이 아니라 사회자 재량 종료입니다. 전적에는 ${koW} 승리로 기록됩니다.` };
+    rule:`기권은 공식 승리 조건이 아니라 사회자 재량 종료입니다. 전적에는 ${koW} 승리로 기록됩니다.`,
+    endKind:'concede' };                      // confirmWin(true) 가 S.endKind 로 확정한다
   if(typeof askWin==='function' && typeof isWinRes==='function' && isWinRes(res)){ askWin(res); return; }
   if(!confirm(`${koL} 기권 — ${koW} 승리로 게임을 종료합니다.`)) return;
-  S.gameOver=true; save();
+  S.endKind='concede'; S.gameOver=true; save();
   showGameOver(winner, res.reason+' — '+res.rule);
 }
 /* 바이올린 연주자(우화) — 공식: "Once per game, the Demon secretly chooses an opposing
@@ -8019,22 +8118,33 @@ function fiddlerCall(){
   const evilWon=confirm('🎻 바이올린 연주자 — 전원 투표 결과를 입력합니다.\n[확인] 악마 쪽이 이겼다 → 악한 팀 승리\n[취소] 지목된 상대 플레이어 쪽이 이겼다 → 선한 팀 승리');
   const team=evilWon? 'evil':'good';
   const res={team, reason:'바이올린 연주자 — 전원 투표로 승자를 결정했습니다.',
-    rule:'바이올린 연주자(우화): 악마가 상대 진영 1명을 비밀리에 지목하면 전원이 둘 중 누가 이길지 투표하고, 그 결과로 게임이 즉시 끝납니다.'};
+    rule:'바이올린 연주자(우화): 악마가 상대 진영 1명을 비밀리에 지목하면 전원이 둘 중 누가 이길지 투표하고, 그 결과로 게임이 즉시 끝납니다.',
+    endKind:'fiddler'};
   log(`🎻 바이올린 연주자 — 전원 투표로 ${team==='good'?'선한':'악한'} 팀 승리`);
   if(typeof askWin==='function' && typeof isWinRes==='function'){ askWin(res); return; }
   if(!confirm(`${team==='good'?'선한':'악한'} 팀 승리로 게임을 종료합니다.`)) return;
-  S.gameOver=true; save();
+  S.endKind='fiddler'; S.gameOver=true; save();
   showGameOver(team, res.reason+' — '+res.rule);
 }
 function openEndMenu(){
   const el=$('#pmodal'); if(!el) return;
   el.hidden=false;
+  /* 이미 승패가 확정된 판: 종료 옵션을 다시 보여 주면 '이미 종료된 게임입니다'만 반복된다.
+     남은 일은 둘뿐이다 — 도중에 닫은 동료 평가를 이어서 하거나, 마감(정말 종료?)으로 가거나. */
+  const pgSt=(S.postgame && (S.postgame.stage|0))||0;
+  const endedOpts=`
+        ${(pgSt===1||pgSt===2)? `<button type="button" class="endopt" data-endact="pg-resume"><span class="eico">🗳</span>
+          <span><b>동료 평가 이어서 진행</b><small>${pgSt===1?'1단계 찐빠 플레이':'2단계 최고의 플레이'} 집계가 진행 중입니다.</small></span></button>`
+        : pgSt===3? `<button type="button" class="endopt" data-endact="pg-resume"><span class="eico">🗳</span>
+          <span><b>동료 평가 결과 다시 보기</b><small>최고 · 찐빠 집계 결과 화면을 다시 엽니다.</small></span></button>` : ''}
+        <button type="button" class="endopt" data-endact="finalize"><span class="eico">🏁</span>
+          <span><b>종료 확정 — 초기화 후 참가자 단계로</b><small>${S.endKind==='manual'?'사회자 임의 종료 판은 전적에 남지 않습니다.':(pgSt===1||pgSt===2)?'진행 중인 동료 평가는 저장되지 않습니다. 전적·스크립트·전설·참가자 명단은 유지됩니다.':'전적은 그대로 남고, 스크립트·전설·참가자 명단은 유지됩니다.'}</small></span></button>`;
   /* 사용자 데이터를 보간하지 않는다 — 동작은 data-endact + 위임 리스너로만 건다 */
   el.innerHTML=`<div class="pmcard" id="endmenucard">
     <div class="pmhead"><h3>🏁 게임 종료</h3>
       <button type="button" class="pmclose" data-endact="close">✕</button></div>
     <div class="pmbody">
-      <div class="endopts">
+      <div class="endopts">${S.gameOver? endedOpts : `
         <button type="button" class="endopt" data-endact="manual"><span class="eico">🧑‍⚖️</span>
           <span><b>사회자 임의 종료</b><small>승리 팀을 직접 지정하거나 무승부·중단으로 마감합니다.</small></span></button>
         <button type="button" class="endopt good" data-endact="concede-good"><span class="eico">🕊️</span>
@@ -8042,9 +8152,9 @@ function openEndMenu(){
         <button type="button" class="endopt evil" data-endact="concede-evil"><span class="eico">😈</span>
           <span><b>악한 팀 기권</b><small>악한 팀이 포기합니다 — 선한 팀 승리로 기록됩니다.</small></span></button>
         ${(typeof isFabledActive==='function' && isFabledActive('fiddler'))? `<button type="button" class="endopt" data-endact="fiddler"><span class="eico">🎻</span>
-          <span><b>바이올린 연주자 — 전원 투표</b><small>악마의 비밀 지목으로 게임이 그 자리에서 끝납니다. 투표 결과를 승자로 기록합니다.</small></span></button>` : ''}
+          <span><b>바이올린 연주자 — 전원 투표</b><small>악마의 비밀 지목으로 게임이 그 자리에서 끝납니다. 투표 결과를 승자로 기록합니다.</small></span></button>` : ''}`}
       </div>
-      <p class="hint" style="margin:14px 0 0">종료해도 그리모어와 게임 기록은 그대로 남습니다.</p>
+      <p class="hint" style="margin:14px 0 0">${S.gameOver? '이미 승패가 확정된 판입니다. 마감하면 새 판 준비로 넘어갑니다.' : '승패 확정 → 동료 평가 → 마지막에 [정말 종료?]를 한 번 더 묻습니다. 그 전까지 그리모어와 기록은 그대로 남습니다.'}</p>
     </div></div>`;
   const card=el.querySelector('#endmenucard');
   if(card && card.addEventListener) card.addEventListener('click', e=>{
@@ -8057,6 +8167,8 @@ function openEndMenu(){
     else if(act==='concede-good') grimConcede('good');
     else if(act==='concede-evil') grimConcede('evil');
     else if(act==='fiddler') fiddlerCall();
+    else if(act==='pg-resume'){ try{ window.thyPostgame.render(); }catch(e){} }
+    else if(act==='finalize'){ try{ window.thyPostgame.askEnd('menu'); }catch(e){ toast('종료 확인 창을 열지 못했습니다.','warn'); } }
   });
   el.onclick=()=>closePlayerModal();
 }
@@ -8166,10 +8278,15 @@ function endGameManually(){
   const map={'1':['good','선한 팀 승리(사회자 선언)'],'2':['evil','악한 팀 승리(사회자 선언)'],'3':['good','무승부·중단(사회자 선언)']};
   const pick=map[String(t).trim()]; if(!pick){ toast('1·2·3 중 하나를 입력하세요.','warn'); return; }
   const why=prompt('사유(선택)','')||pick[1];
+  S.endKind='manual';                         // 마감 때 전적에서 뺀다
   S.gameOver=true; save();
   showGameOver(pick[0], why);
 }
 function showGameOver(team, reason){
+  /* 합류점 계약: S.gameOver 는 호출자가 세운다(승리 엔진·기권·임의 종료·레거시 게이트→askWin).
+     여기서 강제로 세우면 '화면을 연 것'이 '되돌릴 수 없는 종료'가 된다 — 오판정을 잠그는 셈이다.
+     endKind 만 기본값을 채운다: 끝난 판인데 종류가 비어 있으면 승리 판정으로 본다. */
+  if(S.gameOver && !S.endKind) S.endKind='win';
   const el=$('#gameover'); el.hidden=false;
   el.innerHTML=`<div class="gocard">
     <div class="goicon">${team==='good'?'🕊️':'😈'}</div>
@@ -8209,6 +8326,7 @@ function showGameOver(team, reason){
 }
 function endGameManual(){
   const t=confirm('게임을 종료합니다.\n[확인] 선한 팀 승리 / [취소] 악한 팀 승리로 기록');
+  S.endKind='manual'; S.gameOver=true; save();
   showGameOver(t?'good':'evil','사회자가 수동으로 종료했습니다.');
 }
 /* 종료 판정 토스트에 결과 화면 연동 */
@@ -8226,6 +8344,13 @@ function endGameManual(){
          그 화면만 남아 상태(S.gameOver·EV.end·전적)와 어긋나던 것을 막는다. */
       if(team) setTimeout(function(){
         if(pendingWin || S.gameOver) return;
+        /* 레거시 판정은 사회자 확인을 거친다 — 종료 화면을 바로 열면 무신론자 판(악마 좌석 없음)
+           첫 사망 같은 오판정이 '끝난 판'으로 굳는다. askWin→confirmWin 이 gameOver·endKind·전적을
+           한 곳에서 확정하고, [아니오]면 아무것도 남기지 않는다. */
+        if(typeof askWin==='function'){
+          askWin({team, reason:msg.replace(/^[^\s]*\s*/,''), rule:'레거시 판정 문구 — 사회자가 확인한 뒤 종료합니다.'});
+          return;
+        }
         showGameOver(team, msg.replace(/^[^\s]*\s*/,''));
       }, 0);
     }
@@ -9079,8 +9204,12 @@ function confirmWin(yes){
   const el=$('#winask'); el.hidden=true;
   const res=pendingWin; pendingWin=null;
   if(!res) return;
-  if(yes){ S.gameOver=true; save(); showGameOver(res.team, res.reason+' — '+res.rule); }
+  if(yes && S.gameOver){ toast('이미 끝난 판입니다 — 낡은 승리 확인 창을 닫습니다.','warn'); return; }
+  /* 종료 종류는 승리값이 가진다(res.endKind) — 전역에 남아 있던 값은 믿지 않는다(취소된 기권의 잔존).
+     임의 종료는 이 함수를 지나지 않고 자기 경로에서 'manual' 을 찍는다. */
+  if(yes){ S.endKind=(res.endKind==='concede'||res.endKind==='fiddler')? res.endKind : 'win'; S.gameOver=true; save(); showGameOver(res.team, res.reason+' — '+res.rule); }
   else {
+    S.endKind=null;                            // 열어 둔 승리 창을 '계속 진행'으로 닫은 경우
     log(`승리 조건 안내(${res.team==='good'?'선':'악'}) — 사회자가 계속 진행을 선택: ${res.reason}`);
     save();
     if(typeof res.resume==='function'){ const go=res.resume; setTimeout(go,0); }   // 막아둔 페이즈 전환을 이어서 실행
@@ -10926,8 +11055,9 @@ function buildMatchRecord(winner, pgid){
   const _cw=confirmWin;
   confirmWin=function(yes){
     const res=pendingWin;                       // 원본이 소거하기 전에 확보
+    const wasOver=!!S.gameOver;                 // 이미 끝난 판의 낡은 확인 창 — 전적 중복 적립 금지
     _cw(yes);
-    if(!yes || !res || !res.team) return;
+    if(!yes || !res || !res.team || wasOver) return;
     emitEv('end', 'ST', null, {team:res.team, reason:res.reason||''});
     if(!Array.isArray(S.history)) S.history=[];
     /* 레코드 산식은 buildMatchRecord 하나뿐이다. pgid 는 이 시점에 이미 정해져 있다 —
@@ -12941,8 +13071,12 @@ window.thyScriptGraph={compute:sgCompute, graph:sgGraph, html:sgGraphHTML,
       btn.textContent=active? '배치됨 · 해제' : '배치';
       btn.dataset.fabled=c.id;
       btn.dataset.fabledOn=active? '0' : '1';
-      row.appendChild(btn);
-      const txt=document.createElement('span');
+      btn.style.marginLeft='auto'; btn.style.flex='0 0 auto';
+      /* 공식 아이콘 — glyph() 는 신뢰 마크업(id 는 encodeURIComponent, 폴백은 base64)이라 innerHTML 가능.
+         행 순서는 아이콘 → 이름·설명 → [배치] — 백과사전·시트 행과 같은 읽기 순서다. */
+      const tok=document.createElement('div'); tok.className='ctoken fabled'; tok.innerHTML=glyph(c.id);
+      row.appendChild(tok);
+      const txt=document.createElement('span'); txt.style.flex='1'; txt.style.minWidth='0';
       const nm=document.createElement('b'); nm.textContent=c.ko+(c.en? ' ('+c.en+')' : '');
       txt.appendChild(nm);
       if(c.ability){ const ab=document.createElement('div'); ab.className='hint'; ab.textContent=c.ability; txt.appendChild(ab); }
@@ -12956,6 +13090,7 @@ window.thyScriptGraph={compute:sgCompute, graph:sgGraph, html:sgGraphHTML,
         sn.textContent='셋업: '+c.setupNote; txt.appendChild(sn);
       }
       row.appendChild(txt);
+      row.appendChild(btn);
       box.appendChild(row);
     });
     /* 위임 리스너 — 버튼마다 핸들러를 붙이지 않고 카드 하나에서 받는다.
@@ -13652,6 +13787,8 @@ window.thyDjinn={
     if(!Array.isArray(p.bustTop))p.bustTop=[];
     return p;
   }
+  let askEnd=false;                               // 결과 화면 위의 [정말 종료?] 확인 뷰(세션 한정)
+  let askEndFrom='result';                        // 'result'(결과 화면에서) · 'menu'(종료 메뉴에서) — 취소가 돌아갈 곳
   const isBust=()=>(P().stage|0)===1;             // 1단계=찐빠 · 2단계=최고
   const tally =()=>isBust()? P().bustVotes : P().mvpVotes;
   const vkey  =()=>isBust()? 'bust' : 'mvp';
@@ -13726,6 +13863,9 @@ window.thyDjinn={
     if(found) return found;
     if(typeof buildMatchRecord!=='function') return null;
     const h=buildMatchRecord(p.team||'good', p.id);
+    /* 사회자 임의 종료는 전적에 적립하지 않는다 — 마감 버튼 한 곳에서 걷어내는 방식이면 전체 초기화·
+       시트 교체 같은 다른 경로로 빠져나갈 때 레코드가 통계에 남는다. 투표 결과는 화면에만 남긴다. */
+    if(S.endKind==='manual'){ p.transient=h; return h; }
     S.history.push(h);
     if(S.history.length>SABER.MAX_HISTORY) S.history.splice(0, S.history.length-SABER.MAX_HISTORY);
     return h;
@@ -13747,6 +13887,9 @@ window.thyDjinn={
       h.players.forEach(r=>{ if(r && typeof r==='object' && playerOf(r.pid)){ r.score=scorePlayer(r.pid); r.mvp=(r.pid===mvp); } });
     }
     log(`🗳 동료 평가 결과 — 🏆 최고: ${names(p.mvpTop)} · 😵 찐빠: ${names(p.bustTop)}`);
+    /* 프로필 캐시(S.profiles)는 confirmWin 훅에서 투표 '전'에 굳었다. 서명(판 수·ts)이 같아
+       다음 렌더도 재빌드하지 않으므로, 레코드를 고친 여기서 직접 다시 만든다. */
+    try{ if(typeof profileRebuild==='function') profileRebuild(); }catch(err){ console.warn('[postgame] profile', err); }
     save(); render();
     try{ renderAll(); }catch(e){}
   }
@@ -13791,16 +13934,57 @@ window.thyDjinn={
         ${card('bust','😵 찐빠 플레이',   p.bustTop, p.bustVotes, p.voters.bust)}
       </div>
       <div class="pgcap">이 결과는 판 전적에 저장되고, OP스코어의 <b>동료 평가</b> 항목으로 반영됩니다.</div>
-      <div class="bigactions"><button class="gold" data-pg="close">닫기</button></div></div>`;
+      <div class="bigactions">
+        <button class="gold" data-pg="askend">🏁 게임 종료</button>
+        <button class="ghost" data-pg="close">닫기 — 그리모어 더 보기</button>
+      </div></div>`;
+  }
+  /* 마지막 단계. 여기서 [확인]을 눌러야 판이 실제로 지워진다 — 결과 화면의 [닫기]는 아무것도
+     지우지 않으므로, 전말을 더 보고 싶으면 닫았다가 종료 메뉴의 [종료 확정]으로 돌아올 수 있다. */
+  function confirmHTML(p){
+    const manual=(S.endKind==='manual');
+    const st=p.stage|0, midVote=(st===1||st===2);
+    return `<div class="pgcard">
+      <span class="pgstep">마지막 단계</span>
+      <h2>🏁 정말 종료하겠습니까?</h2>
+      <div class="pgcap" style="text-align:left">
+        <b>확인</b>을 누르면 이 판의 그리모어 · 게임 기록 · 원장이 지워지고 <b>설정 → ① 참가자</b> 단계로 돌아갑니다.<br>
+        ${manual? '사회자 임의 종료 판이라 <b>전적 · 통계에는 남지 않습니다</b>.'
+                : midVote? '이 판의 승패는 전적에 남지만, <b>아직 집계가 끝나지 않은 동료 평가는 저장되지 않습니다</b>.'
+                : '이 판의 승패와 동료 평가 결과는 <b>전적에 그대로 남습니다</b>.'}<br>
+        스크립트 · 전설 · 참가자 명단(좌석 순서)은 그대로 유지되고, 캐릭터 배정만 비웁니다.
+      </div>
+      <div class="bigactions">
+        <button class="gold" data-pg="finalize">✓ 확인 — 종료하고 새 판 준비</button>
+        <button data-pg="cancelend">취소</button>
+      </div></div>`;
   }
   function render(){
     const el=box(); if(!el) return;
     const p=P(); const st=p.stage|0;
+    /* 확인 뷰는 단계와 무관하다 — 투표를 돌리지 않은 옛 판(stage 0)도 종료 메뉴에서 마감할 수 있어야 한다 */
+    if(askEnd && S.gameOver){ el.hidden=false; el.innerHTML=confirmHTML(p); return; }
     if(st<1 || st>3){ el.hidden=true; el.innerHTML=''; return; }
     el.hidden=false;
     el.innerHTML = (st===3)? resultHTML(p) : ballotHTML(p);
   }
-  function close(){ const el=box(); if(el) el.hidden=true; }
+  function close(){ askEnd=false; const el=box(); if(el) el.hidden=true; }
+  function openAskEnd(from){
+    if(!S.gameOver){ toast('아직 끝나지 않은 게임입니다.','warn'); return false; }
+    askEndFrom=(from==='menu')? 'menu' : 'result';
+    askEnd=true; render(); return true;
+  }
+  /* 취소는 '열기 전'으로 돌아간다 — 종료 메뉴에서 열었으면 결과 오버레이가 아니라 원래 화면이다 */
+  function cancelEnd(){
+    askEnd=false;
+    if(askEndFrom==='menu'){ close(); return; }
+    const p=P(); if((p.stage|0)>=1) render(); else close();
+  }
+  function finalize(){
+    askEnd=false;
+    if(typeof finalizeEndedGame!=='function'){ toast('마감 엔진을 찾을 수 없습니다.','warn'); return false; }
+    return finalizeEndedGame();
+  }
 
   /* 사용자 데이터는 data-* 로만 흐른다 — 인라인 onclick 보간 금지(저장형 XSS 이력) */
   document.addEventListener('click', e=>{
@@ -13812,6 +13996,9 @@ window.thyDjinn={
     else if(act==='skip')  next(true);
     else if(act==='end')   endStage();
     else if(act==='close') close();
+    else if(act==='askend')    openAskEnd();
+    else if(act==='cancelend') cancelEnd();
+    else if(act==='finalize')  finalize();
   });
 
   /* 두 종료 경로의 유일한 합류점. 원본을 값으로 붙잡되 재대입은 전역 이름에 한다 —
@@ -13829,6 +14016,7 @@ window.thyDjinn={
   /* 시뮬레이터 창구 */
   window.thyPostgame={
     start, pick, next, endStage, finish, close, render, open:render,
+    askEnd:openAskEnd, cancelEnd, finalize, isAskingEnd:()=>askEnd,
     top:topOf, record, state:P,
     ballotHTML:()=>ballotHTML(P()), resultHTML:()=>resultHTML(P())
   };
