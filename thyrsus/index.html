@@ -1807,7 +1807,15 @@ function thyDialogEl(){
   });
   el.addEventListener('keydown', e=>{
     if(e.key==='Escape'){ e.preventDefault(); thyDialogAnswer('cancel'); }
-    else if(e.key==='Enter' && !(e.target && e.target.tagName==='TEXTAREA')){ e.preventDefault(); thyDialogAnswer('ok'); }
+    else if(e.key==='Enter' && !(e.target && e.target.tagName==='TEXTAREA')){
+      const cur=THY_DLG.cur && THY_DLG.cur.o;
+      if(cur && cur.kind==='choice'){
+        const f=(e.target && e.target.closest)? e.target.closest('[data-td^="c:"]') : null;
+        if(f){ e.preventDefault(); thyDialogAnswer(f.getAttribute('data-td')); }
+        return;                                            // 선택지 밖의 Enter 는 아무것도 하지 않는다
+      }
+      e.preventDefault(); thyDialogAnswer('ok');
+    }
   });
   return el;
 }
@@ -1859,6 +1867,16 @@ function thyDialogAnswer(act){
    처형 경로(원본·resolveExecution 래퍼·evalWinEvent)가 읽는다. 사전 질문 없이 들어온 경로는
    동기 훅이 있을 때만 그 자리에서 묻고, UI 면 '아니오'로 본다(뒤늦게 뜨는 창은 오판을 부른다). */
 let THY_EXEC_ANS=null;
+/* 종료 뒤 진영이 바뀐 플레이어(정치인)의 전적 스냅샷 보정 — 인앱 확인은 비동기라 confirmWin 래퍼가
+   레코드를 먼저 적립한다. 이미 적립된 이 판의 레코드에서 그 좌석의 alignment 만 고치고 프로필을 다시 만든다. */
+function thyPatchBankedAlignment(p){
+  if(!p || !Array.isArray(S.history)) return;
+  const h=S.history.find(x=>x && x.gid && x.gid===S.gameId);
+  if(!h || !Array.isArray(h.players)) return;
+  const r=h.players.find(x=>x && x.pid===p.id);
+  if(r){ r.alignment=isEvil(p)? 'evil' : 'good'; }
+  try{ if(typeof profileRebuild==='function') profileRebuild(); }catch(e){}
+}
 function thyExecAnswer(key, p, message, o){
   const A=THY_EXEC_ANS;
   if(A && p && A.pid===p.id && A.answers && Object.prototype.hasOwnProperty.call(A.answers, key)) return !!A.answers[key];
@@ -8572,6 +8590,7 @@ function showGameOver(team, reason){
         if(!polLost) log(`🎩 정치인(${pol.name}) — 자기 진영이 이겼으므로 전환 없음`);
         else thyConfirm(`🎩 정치인(${pol.name})이 있습니다.\n자기 진영이 패배한 데 가장 큰 책임이 있는 플레이어가 ${pol.name}였습니까?\n[확인] 예 → 진영을 바꿔 혼자 승리(팀 결과는 그대로) / [취소] 아니오`, ok=>{ if(ok){
           pol.alignment=isEvil(pol)? 'good':'evil';
+          thyPatchBankedAlignment(pol);            // 이미 적립된 전적 스냅샷의 진영도 함께 고친다
           log(`🎩 정치인 전환 — ${pol.name}이(가) 진영을 바꿔 개인 승리(팀 결과는 그대로 유지)`);
           toast(`🎩 정치인 ${pol.name} — 진영을 바꿔 혼자 이겼습니다. 팀 결과는 바뀌지 않습니다.`,'warn');
         } else log(`🎩 정치인(${pol.name}) — 사회자가 '가장 큰 책임 아님'으로 판정, 전환 없음`); save(); }, {title:'🎩 정치인', ok:'예 → 진영 전환', cancel:'아니오'});
