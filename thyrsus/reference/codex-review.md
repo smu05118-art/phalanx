@@ -891,3 +891,33 @@ K 토스트 문자열 게이트(레거시 판정)로 뜬 종료도 마감 가능
 | Minor | `applyGameSettings` 의 전설 복원이 중복·24개 상한을 정리하지 않아 `migrateState` 와 규칙이 다름 | `[...new Set(valid)].slice(0,24)` (endflow3) |
 
 Codex 가 제안한 추가 테스트 4종(toast-only · hook-noop · null-gid · profile-after-peer)을 K·M·L·N 으로 전부 넣었다 → **14케이스 통과**.
+
+### 돌연변이 스위트 변동 분석 (34종: 기준선 34→29 검출)
+패치 전/후 파일을 같은 도구로 따로 돌려 항목별 비교 → 상태가 바뀐 것은 `starpass_skip_succession@masked`·
+`jinx_active_dedupe_removed@masked` 2종뿐이고, 둘 다 **설계상 등가**(잡히지 않아야 정상)인데 패치 전엔
+`checklist_dupkey_customname` 이라는 난수 의존 신호로만 "검출"돼 있었다. 미검출은 양쪽 모두 **0**.
+원인: 퍼저는 자체 RNG 를 시드하지만 앱 내부 `Math.random`(uid·gameId·무작위 배정)은 샌드박스에서
+Node 것을 그대로 써 실행마다 결과가 흔들렸다 → `harness.js` 에 시드 PRNG(`THY_SIM_SEED`, 기본 7) 도입.
+
+### 워크플로 5관점 리뷰(21건) 반영 — endflow4 · endflow5
+| 지적 | 판단 | 조치 |
+|---|---|---|
+| `showGameOver` 가 `gameOver` 를 강제해 레거시 토스트 오판정(무신론자 판 첫 사망 등)이 되돌릴 수 없는 종료가 된다 (major ×3) | **타당 — 제 endflow2 보강이 만든 회귀** | 강제 제거. 토스트 게이트는 `askWin` 을 경유해 사회자가 [아니오]로 무를 수 있다. 합류점은 `endKind` 기본값만 채운다 |
+| 임의종료 레코드가 [종료 확정] 경로에서만 제거 — 전체 초기화·시트 교체로 빠져나가면 통계에 잔존 (major ×2, minor ×1) | **타당** | 임의종료 판은 애초에 `S.history` 에 적립하지 않는다(`record()` 가 화면용 임시 레코드만 돌려줌). 마감의 `void` 는 이중 안전장치로 남김 |
+| 밤 위저드 위에서 마감하면 `#wizard`·`wiz`·`body.wizopen` 잔존 (major) | 타당 | `finalizeEndedGame` 이 `closeWiz(false)`·`wizQueue`·`nomPick`·`dragPid`·`wizopen` 을 정리 |
+| 종료 메뉴→[종료 확정]→[취소]가 결과 오버레이로 떨어진다 (minor) | 타당 | 진입 출처(`askEndFrom`)를 기억해 메뉴에서 열었으면 취소=닫기 |
+| 집계 중(stage 1·2)에도 [종료 확정]이 열리며 안내가 거짓 (minor) | 타당 | 메뉴·확인 뷰 문구를 "진행 중인 동료 평가는 저장되지 않습니다"로 분기 |
+| [종료 확정] catch 폴백이 확인 없이 즉시 마감 (minor) | 타당 | 폴백 제거 → 오류 토스트 |
+| `resetGameState` 뒤 복원이라 빈 판이 먼저 저장·렌더, 예외 시 복원 누락 (minor) | 타당 | 복원을 `finally` 로 |
+| 지니 수락 상태·좌석 전설(구버전) 스냅샷 누락 (minor ×3) | 타당 | `djinn` 보존, 좌석 전설은 활성 목록으로 이관하고 그 좌석은 참가자에서 제외 |
+| 낡은 `pendingWin` 확정 시 endKind 덮어쓰기·전적 중복 (minor) | 타당 | `confirmWin` 과 SABER 래퍼 모두 `gameOver` 였으면 무시 |
+| 전설 아이콘 토큰이 [배치]와 이름 사이 (minor) | 타당 | 아이콘 → 이름·설명 → [배치](우측) |
+| 임의종료도 2단계 투표를 끝까지 돌려야 마감 (minor) | 부분 수용 | 투표 흐름은 사용자가 정한 대로 유지. 종료 메뉴 [종료 확정]으로 집계 중에도 마감 가능(문구로 안내) |
+| 마감 없이 새 판 시작 시 `gameOver`·`endKind` 잔존 (minor) | 기존 동작 | `advancePhase` 셋업 분기는 원래 `gameOver` 를 보지 않는다 — 별도 라운드 |
+
+### 게임 시작 시 미구현 캐릭터 경고 (추가 요구)
+`unimplementedInPlay()` = 좌석 배정 캐릭터 중 (1) 밤 순서 자동화가 없는 공식 캐릭터(`libCharMeta().encyc`, 실험판 71종 —
+스크립트 라이브러리 '진행 가능' 배지와 같은 판정) ∪ (2) 사망 판정 사슬에 `implemented:false` 로 남은 규칙의 캐릭터
+(재상·사이코패스·평화주의자·리치). 커스텀은 제외. `advancePhase` 셋업 분기에서 확인 릴레이 경고보다 **앞에**
+"미구현된 캐릭터 N명이 있습니다: … 그래도 진행하시겠습니까?" 를 묻고, 진행하면 게임 기록에 남긴다.
+회귀 테스트 T(취소=시작 안 함 · 확인=시작+기록 · 미구현 없으면 안 뜸). 총 **19케이스 통과**.
