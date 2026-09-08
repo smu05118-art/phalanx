@@ -2310,9 +2310,14 @@ function advancePhase(){
        확인 릴레이 경고보다 앞에 둔다 — 기기를 돌리기 전에 알아야 하는 셋업 수준의 문제다. */
     {
       const un=unimplementedInPlay();
-      if(un.length && !confirm('미구현된 캐릭터 '+un.length+'명이 있습니다:\n'
+      if(un.length){
+        let ok=true;
+        try{ ok=confirm('미구현된 캐릭터 '+un.length+'명이 있습니다:\n'
           +un.map(x=>(S.players.indexOf(x.p)+1)+'번 '+x.p.name+' — '+x.c.ko+' ('+x.why+')').join('\n')
-          +'\n\n해당 캐릭터는 사회자가 수동으로 진행해야 합니다. 그래도 진행하시겠습니까?')) return;
+          +'\n\n해당 캐릭터는 사회자가 수동으로 진행해야 합니다. 그래도 진행하시겠습니까?'); }
+        catch(e){ ok=true; toast('미구현 캐릭터 '+un.length+'명 포함 — '+un.map(x=>x.c.ko).join(', ')+' (사회자 수동 진행)','warn'); }
+        if(!ok) return;
+      }
       if(un.length) log('⚠ 미구현 캐릭터 '+un.length+'명 포함 시작: '+un.map(x=>x.c.ko).join(', '));
     }
     /* 캐릭터 확인 릴레이 미완 경고 — 붉은 청어·주정뱅이 위장까지 정해진 뒤라야
@@ -4064,6 +4069,8 @@ function voteNotices(nom){
   return out;
 }
 function renderDay(){
+  /* nomPick 은 뒤쪽 블록의 let 이다 — 낮 페이즈 저장본은 부팅 첫 renderAll 이 그 블록보다 먼저 돌아 TDZ 로 죽었다 */
+  const _np=(typeof nomPick!=='undefined' && nomPick) || {tor:null, nee:null};
   const el=$('#pane-day');
   if(S.phase.kind!=='day'){
     el.innerHTML=`<div class="card"><h2>낮 · 투표</h2><p class="hint">지금은 ${phaseName()} 단계입니다. 낮이 되면 지명·투표 시스템이 열립니다.</p>
@@ -4099,16 +4106,16 @@ function renderDay(){
   <div class="card"><h2>지명</h2>
     ${S.executedToday?'<p class="hint">오늘 처형이 이미 있었습니다 — 추가 지명·투표는 기록용으로만 진행하세요.</p>':''}
     <div class="pickblock">
-      <div class="picklab">지명자 <span class="hint">${nomPick.tor?esc(playerOf(nomPick.tor)?.name||''):'선택'}</span></div>
-      <div class="pickgrid">${alivePlayers().map(p=>`<button class="pcell ${nomPick.tor===p.id?'sel':''}" onclick="setNomPick('tor','${p.id}')">
+      <div class="picklab">지명자 <span class="hint">${_np.tor?esc(playerOf(_np.tor)?.name||''):'선택'}</span></div>
+      <div class="pickgrid">${alivePlayers().map(p=>`<button class="pcell ${_np.tor===p.id?'sel':''}" onclick="setNomPick('tor','${p.id}')">
         <span class="pcnum num">${S.players.indexOf(p)+1}</span><span class="pcname">${esc(p.name)}</span></button>`).join('')}</div>
-      <div class="picklab" style="margin-top:12px">피지명자 <span class="hint">${nomPick.nee?esc(playerOf(nomPick.nee)?.name||''):'선택'}</span></div>
-      <div class="pickgrid">${alivePlayers().map(p=>`<button class="pcell ${nomPick.nee===p.id?'sel nee':''}" onclick="setNomPick('nee','${p.id}')">
+      <div class="picklab" style="margin-top:12px">피지명자 <span class="hint">${_np.nee?esc(playerOf(_np.nee)?.name||''):'선택'}</span></div>
+      <div class="pickgrid">${alivePlayers().map(p=>`<button class="pcell ${_np.nee===p.id?'sel nee':''}" onclick="setNomPick('nee','${p.id}')">
         <span class="pcnum num">${S.players.indexOf(p)+1}</span><span class="pcname">${esc(p.name)}</span></button>`).join('')}</div>
       <div class="bigactions" style="margin-top:14px">
         <!-- nomPick 은 페이즈·사망을 넘어 유지된다 — 고른 뒤 죽은 좌석이면 버튼을 잠근다(공식: 죽은 플레이어는 지명·피지명 불가). playerOf(null)?.alive 는 undefined 라 미선택 조건도 그대로 걸린다 -->
-        <button class="gold" onclick="newNomination()" ${(!playerOf(nomPick.tor)?.alive||!playerOf(nomPick.nee)?.alive)?'disabled':''}>
-          ${nomPick.tor&&nomPick.nee?`${esc(playerOf(nomPick.tor)?.name||'')} → ${esc(playerOf(nomPick.nee)?.name||'')} 지명 개시`:'지명 개시'}</button>
+        <button class="gold" onclick="newNomination()" ${(!playerOf(_np.tor)?.alive||!playerOf(_np.nee)?.alive)?'disabled':''}>
+          ${_np.tor&&_np.nee?`${esc(playerOf(_np.tor)?.name||'')} → ${esc(playerOf(_np.nee)?.name||'')} 지명 개시`:'지명 개시'}</button>
       </div>
     </div>
     <p class="hint">재지명 제한 없음 — 같은 사람을 다시 지명해도 됩니다(티르소스 하우스 룰).</p>
@@ -8271,16 +8278,52 @@ function showDawn(){
 }
 /* ══ B4: 종료 결과 화면 ══ */
 /* 사회자가 임의로 게임을 끝낸다 — 판정이 자동으로 안 걸리는 상황(합의 종료·중단) 대응 */
+/* 사회자 임의 종료 — 네이티브 prompt() 를 쓰지 않는다. 홈화면 앱·일부 모바일 브라우저·'추가 대화상자
+   차단'이 켜진 크롬에서는 prompt() 가 즉시 null 을 돌려주거나 아예 지원되지 않아, [종료]를 눌러도
+   아무 일이 없었다. 종료 메뉴와 같은 #pmodal 카드로 승리 팀을 고르고 사유는 입력란에 적는다.
+   사용자 데이터는 보간하지 않는다 — data-endman 위임 리스너 + input 값 읽기만. */
 function endGameManually(){
   if(S.gameOver){ toast('이미 종료된 게임입니다.','warn'); return; }
-  const t=prompt('게임을 종료합니다. 승리 팀을 입력하세요 — 1: 선한 팀 · 2: 악한 팀 · 3: 무승부/중단','1');
-  if(t===null) return;
-  const map={'1':['good','선한 팀 승리(사회자 선언)'],'2':['evil','악한 팀 승리(사회자 선언)'],'3':['good','무승부·중단(사회자 선언)']};
-  const pick=map[String(t).trim()]; if(!pick){ toast('1·2·3 중 하나를 입력하세요.','warn'); return; }
-  const why=prompt('사유(선택)','')||pick[1];
-  S.endKind='manual';                         // 마감 때 전적에서 뺀다
+  const el=$('#pmodal'); if(!el){ endGameManualCommit('good',''); return; }
+  el.hidden=false;
+  el.innerHTML=`<div class="pmcard" id="endmanualcard">
+    <div class="pmhead"><h3>🧑‍⚖️ 사회자 임의 종료</h3>
+      <button type="button" class="pmclose" data-endman="close">✕</button></div>
+    <div class="pmbody">
+      <p class="hint" style="margin:0 0 12px">승리 팀을 고르세요. 임의 종료 판은 전적 · 통계에 남지 않습니다.</p>
+      <div class="endopts">
+        <button type="button" class="endopt good" data-endman="good"><span class="eico">🕊️</span>
+          <span><b>선한 팀 승리</b><small>사회자 선언으로 마감합니다.</small></span></button>
+        <button type="button" class="endopt evil" data-endman="evil"><span class="eico">😈</span>
+          <span><b>악한 팀 승리</b><small>사회자 선언으로 마감합니다.</small></span></button>
+        <button type="button" class="endopt" data-endman="draw"><span class="eico">⏸️</span>
+          <span><b>무승부 · 중단</b><small>승패 없이 마감합니다.</small></span></button>
+      </div>
+      <label class="hint" style="display:block;margin-top:14px">사유(선택)
+        <input id="endmanwhy" type="text" maxlength="120" placeholder="예: 시간 부족으로 중단" style="display:block;width:100%;box-sizing:border-box;margin-top:6px;min-height:44px"></label>
+    </div></div>`;
+  const card=el.querySelector('#endmanualcard');
+  if(card && card.addEventListener) card.addEventListener('click', e=>{
+    e.stopPropagation();
+    const b=(e.target && e.target.closest) ? e.target.closest('[data-endman]') : null;
+    if(!b) return;
+    const act=b.getAttribute('data-endman');
+    if(act==='close'){ closePlayerModal(); return; }
+    const whyEl=el.querySelector('#endmanwhy');
+    const why=String((whyEl && whyEl.value) || '').trim().slice(0,120);
+    closePlayerModal();
+    endGameManualCommit(act, why);
+  });
+  el.onclick=()=>closePlayerModal();
+}
+function endGameManualCommit(act, why){
+  if(S.gameOver){ toast('이미 종료된 게임입니다.','warn'); return false; }
+  const map={good:['good','선한 팀 승리(사회자 선언)'], evil:['evil','악한 팀 승리(사회자 선언)'], draw:['good','무승부·중단(사회자 선언)']};
+  const pick=map[act]; if(!pick) return false;
+  S.endKind='manual';                         // 전적에 적립하지 않는다(record() 가 본다)
   S.gameOver=true; save();
-  showGameOver(pick[0], why);
+  showGameOver(pick[0], String(why||'').trim() || pick[1]);
+  return true;
 }
 function showGameOver(team, reason){
   /* 합류점 계약: S.gameOver 는 호출자가 세운다(승리 엔진·기권·임의 종료·레거시 게이트→askWin).
