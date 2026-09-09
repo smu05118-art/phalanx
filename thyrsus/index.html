@@ -2327,30 +2327,106 @@ function modApplies(table, id, t, ctx){
   try{ return !!m.when(t,c); }catch(e){ return false; }
 }
 function deathModApplies(id, t, ctx){ return modApplies(DEATH_MODIFIERS, id, t, ctx); }
-/* ── 정보 판정 표(골격) — 이번 라운드는 '빈 표'다 ────────────────────────────
-   목적: 거짓 정보를 만들 수 있는 사유(중독·취함·주정뱅이·첩자/은둔자 등록·문지기 등)를
-   지금처럼 각 do*() 안의 if 사슬에 흩어 두는 대신, 사망 표와 같은 형태의 선언 항목으로 모은다.
-   항목 형태는 사망 표와 동일하다: {id, ko, precedence, stage, effect, official, when, reason}.
-   단계(stage)는 'gather'(정보를 만들기 직전) · 'deliver'(사회자에게 문구를 내보내기 직전)를 쓸 예정이다.
-   지금은 항목이 하나도 없어 runModifiers 가 즉시 기본 결과를 돌려주고, 제품 경로에 호출부도 없다 —
-   이 블록은 다음 라운드의 자리만 잡는다(현재 동작에 영향 없음). 규칙 이관은 다음 라운드에서 한다. */
+/* ══════════ 정보 판정 표 ══════════
+   [무엇이 문제였나] 정보 규칙은 코드가 아니라 **산문**으로 흩어져 있었다. 판정 코드는
+   isMalfunctioning 하나뿐이고 나머지는 전부 사회자에게 읽히는 문자열이다 — 위저드 경고바,
+   밤 시트의 오작동 알림, 정보 힌트의 '(등록 재량 반영 전)', 캐릭터 warn[] 의 첩자·은둔자 안내,
+   그리고 WIZ_SUGGEST 계산기 12개가 각자 note 에 적어 둔 "보르톡스면 반드시 거짓 / 중독이면 임의".
+   같은 규칙이 열 군데에 다른 문장으로 적혀 있으면 한 곳만 고쳤을 때 나머지가 조용히 어긋난다.
+
+   [사망 표와 다른 점 둘]
+   ① 누적한다. 중독(임의) 위에 보르톡스(반드시 거짓)가 얹혀야 하는데, 첫 성립에서 끊으면
+      먼저 걸린 중독 때문에 보르톡스가 영영 평가되지 않는다. terminal 로 사슬을 열어 둔다.
+   ② **순서가 아니라 강도로 이긴다.** VOTE 의 무게는 곱해 쌓이지만 정보의 등급은 '더 센 쪽'이
+      이겨야 한다. apply 가 INFO_RANK 비교로만 등급을 올리므로, 표에 항목을 어느 자리에 끼워도
+      답이 바뀌지 않는다(precedence 는 경고 문구의 나열 순서일 뿐이다).
+
+   [등록(register)과 제약(constrain)을 가른다 — 이 구분이 핵심이다]
+   붉은 청어는 **거짓이 아니다**. 점쟁이는 정상 작동 중이고 그 "예"는 참이다 — 단지 그 대상이
+   악마로 '등록'될 뿐이다. 등급을 올리면 멀쩡한 점쟁이가 중독된 것처럼 보인다.
+   첩자·은둔자도 같은 축이라 register 로 두되, '무엇으로 등록할지'는 사회자 재량이므로
+   implemented:false 로 근거만 남긴다(자동 판정 금지).
+
+   [ctx.sourceCharId ≠ t.charId — 바꿔 읽으면 판정이 조용히 뒤집힌다]
+   주정뱅이는 사회자 눈에 '초공감자 단계'(sourceCharId=위장 캐릭터)지만 좌석의 실제 캐릭터는
+   외지인 drunk 다. 보르톡스의 "Townsfolk abilities yield false info" 는 **t.charId** 를 봐야
+   공식과 맞는다 — 주정뱅이에게는 안 걸리고 취함으로 '임의'에 머문다. */
+const INFO_RANK={'true':0, arbitrary:1, 'false':2};
 const INFO_SPEC = {
   kind:'info',
   defaultStages:['gather'],
-  ctx:(t)=>({sourceCharId:null, infoKind:null, cause:'',
+  /* infoKind  : 어떤 정보인가(자유 문자열 — 'count'·'pair'·'character' 등, 지금은 기록용)
+     sourceCharId: 이 정보를 만드는 '단계'의 캐릭터(주정뱅이 위장이면 위장 캐릭터)
+     registration: 등록 축의 사회자 결정을 실어 보내는 자리(재량은 앱이 정하지 않는다) */
+  ctx:(t)=>({sourceCharId:null, infoKind:null, cause:'', registration:null,
              phase:(S.phase&&S.phase.kind)||null, alive:!!(t&&t.alive)}),
-  probeCtx:()=>({sourceCharId:null, infoKind:null, cause:''}),
-  result:()=>({truthful:true, alteredBy:null, reason:null, effect:null, pierced:false}),
+  probeCtx:()=>({sourceCharId:null, infoKind:null, cause:'', registration:null}),
+  result:()=>({mode:'true', rank:0, truthful:true, arbitrary:false, mustLie:false,
+               alteredBy:null, reason:null, reasons:[], registers:[], discretion:[],
+               effect:null, pierced:false}),
   apply:(out,m,c,why)=>{
-    out.alteredBy=m.id; out.effect=m.effect;
-    /* 'false'(거짓 정보) · 'arbitrary'(사회자 재량) 모두 "사실대로가 아니다"로 접는다.
-       세부 효과가 늘어나면 여기서 갈라라 — runModifiers 는 건드리지 않는다. */
-    if(m.effect!=='pierce'){ out.truthful=false; out.reason=why; }
-  }
+    if(m.effect==='register'){ out.registers.push({id:m.id, ko:m.ko, why}); return; }
+    if(m.effect==='discretion'){ out.discretion.push({id:m.id, ko:m.ko, why}); return; }
+    if(m.effect!=='constrain') return;
+    out.reasons.push({id:m.id, ko:m.ko, why});
+    const rk=INFO_RANK[m.mode];
+    if(typeof rk==='number' && rk>out.rank){
+      out.rank=rk; out.mode=m.mode; out.alteredBy=m.id; out.reason=why; out.effect=m.effect;
+      out.truthful=(m.mode==='true'); out.arbitrary=(m.mode==='arbitrary'); out.mustLie=(m.mode==='false');
+    }
+  },
+  /* 제약·등록·재량은 전부 누적된다 — 사슬을 끊는 효과가 지금은 없다(pierce 만 runModifiers 가 끊는다). */
+  terminal:()=> false
 };
-const INFO_MODIFIERS = [];   // 다음 라운드에 채운다
+const INFO_MODIFIERS = [
+  {id:'malfunction', ko:'오작동 — 중독·취함·주정뱅이', precedence:30, stage:'gather',
+   effect:'constrain', mode:'arbitrary',
+   official:'Poisoner: "they are poisoned tonight and tomorrow day." · Drunk: "You think you are a Townsfolk character, but you are not." · Courtier: "they are drunk for 3 nights & 3 days." — 오작동하는 능력의 정보는 **사회자 재량**이다: 참일 수도 거짓일 수도 있다("might"). 자동으로 거짓을 만들면 안 된다.',
+   when:(t)=> !!t && isMalfunctioning(t),
+   reason:(t)=> hasStatus(t,'poison')? `${t.name} 중독 — 정보는 사회자 재량(참·거짓 모두 가능)`
+              : (t.charId==='drunk'? `${t.name}은(는) 주정뱅이 — 정보는 사회자 재량`
+                                   : `${t.name} 취함 — 정보는 사회자 재량`)},
+
+  {id:'vortox-townsfolk-false', ko:'보르톡스 — 마을 주민 정보는 반드시 거짓', precedence:60, stage:'gather',
+   effect:'constrain', mode:'false',
+   official:'Vortox: "Townsfolk abilities yield false info." (roles181.json) — 재량이 아니라 **강제**다. 대상은 좌석의 실제 캐릭터가 마을 주민인 경우다(주정뱅이는 외지인이라 걸리지 않는다 — 그쪽은 취함으로 이미 임의다).',
+   when:(t)=>{
+     if(!t) return false;
+     const vx=S.players.find(q=>q.alive && q.charId==='vortox' && !isMalfunctioning(q));
+     if(!vx) return false;
+     const c=charOf(t.charId);
+     return !!c && c.type==='townsfolk';
+   },
+   reason:(t)=> `보르톡스 생존 — ${t.name}(마을 주민)의 정보는 반드시 거짓이어야 한다`},
+
+  {id:'red-herring', ko:'붉은 청어 — 점쟁이에게 악마로 등록', precedence:20, stage:'gather',
+   effect:'register',
+   official:'Fortune Teller: "There is a good player that registers as a Demon to you." (roles181.json) — 이것은 거짓 정보가 아니다. 점쟁이는 정상 작동 중이고 그 "예"는 **참**이다. 등급을 올리면 멀쩡한 점쟁이가 중독된 것처럼 보인다.',
+   when:(t,c)=> c.sourceCharId==='fortuneteller' && !!S.redHerringId,
+   reason:()=>{ const h=playerOf(S.redHerringId); return `붉은 청어(${h?h.name:'지정됨'})는 점쟁이에게 악마로 등록된다 — 거짓 정보가 아니다`; }},
+
+  {id:'spy-registers', ko:'첩자 — 선·주민/외지인으로 등록 가능', precedence:22, stage:'gather',
+   effect:'register', implemented:false, uncertain:true,
+   official:'Spy: "You might register as good & as a Townsfolk or Outsider, even if dead." (roles181.json) — "might" 는 매 판정마다의 **사회자 재량**이다. 무엇으로 등록할지는 앱이 정할 수 없다. 근거만 남기고 발동하지 않는다.',
+   when:()=> false, reason:()=> '첩자 — 등록은 사회자 재량'},
+
+  {id:'recluse-registers', ko:'은둔자 — 악·하수인/악마로 등록 가능', precedence:24, stage:'gather',
+   effect:'register', implemented:false, uncertain:true,
+   official:'Recluse: "You might register as evil & as a Minion or Demon, even if dead." (roles181.json) — 첩자와 같은 축이고 같은 이유로 자동 판정하지 않는다.',
+   when:()=> false, reason:()=> '은둔자 — 등록은 사회자 재량'},
+
+  {id:'drunk-mask', ko:'주정뱅이 위장 — 그 단계의 캐릭터로 보인다', precedence:32, stage:'gather',
+   effect:'discretion',
+   official:'Drunk: "You do not know you are the Drunk. You think you are a Townsfolk character, but you are not." — 주정뱅이는 위장한 캐릭터의 단계에서 깨어나고 그 정보를 받는다. 판정 자체는 오작동(malfunction)이 담당하고, 이 항목은 "지금 이 단계의 대상이 주정뱅이다"를 사회자에게 알리는 자리다.',
+   when:(t,c)=> !!t && t.charId==='drunk' && !!c.sourceCharId && c.sourceCharId!=='drunk',
+   reason:(t,c)=>{ const m=charOf(c.sourceCharId); return `${t.name}은(는) 주정뱅이 — ${m?m.ko:'이 단계'}인 줄 알고 있다. 그 캐릭터처럼 대하되 정보는 재량이다`; }},
+];
 INFO_MODIFIERS.spec = INFO_SPEC;
 function runInfoModifiers(t, ctx, stages){ return runModifiers(INFO_MODIFIERS, t, ctx, stages); }
+/* 표를 읽는 단일 창구 — 화면 넷(위저드 경고바·밤 시트 알림·정보 힌트·체크리스트)이 이 객체
+   하나만 읽으면 서로 어긋날 수 없다. 이번 라운드는 창구만 열고 제품 경로는 바꾸지 않는다
+   (무행동). 옮겨 타는 것은 화면마다 문구가 달라 별도 라운드에서 한다. */
+function infoVerdict(t, ctx, stages){ return runInfoModifiers(t, ctx, stages); }
 
 /* ══════════ 투표 판정 표 ══════════
    [무엇을 담나] '기본값을 바꾸는 규칙'만 담는다. 분모·문턱 같은 기본 산술은 표 밖의 순수

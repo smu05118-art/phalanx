@@ -1144,3 +1144,44 @@ closeBallot 종단 **550판**(S.log 전사 포함) 불일치 0 · renderNomOpen 
 
 **켜진 항목이 '미구현'이라 말하지 않는지**를 테스트로 못 박았다(`officialTextHonest`) — 사회자 근거 사슬
 화면에 그대로 뜨는 문자열이라 거짓이 남으면 안 된다. rules_check **31케이스**.
+
+## INFO_MODIFIERS 실제 규칙 편입 (2026-09-10, 무행동)
+
+**전수 조사 결과: 정보 규칙은 코드가 아니라 산문으로 흩어져 있었다.** 판정 코드는 `isMalfunctioning`
+하나뿐이고 나머지는 전부 사회자에게 읽히는 문자열이다 — 위저드 경고바 2곳, 밤 시트의 오작동 알림,
+정보 힌트의 "(등록 재량 반영 전)", 캐릭터 `warn[]` 의 첩자·은둔자 안내, 그리고 `WIZ_SUGGEST` 계산기
+12개가 각자 note 에 적어 둔 "보르톡스면 반드시 거짓 / 중독이면 임의". 같은 규칙이 열 군데에 다른
+문장으로 적혀 있으면 한 곳만 고쳤을 때 나머지가 조용히 어긋난다.
+
+### 사망 표와 다른 점 둘
+① **누적한다.** 중독(임의) 위에 보르톡스(반드시 거짓)가 얹혀야 하는데, 첫 성립에서 끊으면 먼저 걸린
+   중독 때문에 보르톡스가 영영 평가되지 않는다. `terminal:()=>false` 로 사슬을 연다.
+② **순서가 아니라 강도로 이긴다.** VOTE 의 무게는 곱해 쌓이지만 정보의 등급은 '더 센 쪽'이 이겨야
+   한다. `apply` 가 `INFO_RANK` 비교로만 등급을 올리므로 항목을 어느 자리에 끼워도 답이 안 바뀐다
+   (`precedence` 는 경고 문구의 나열 순서일 뿐이다). 표 뒤에 약한 항목을 끼우는 테스트로 고정했다.
+
+### 등록(register)과 제약(constrain)을 가른 것이 핵심이다
+**붉은 청어는 거짓이 아니다.** 점쟁이는 정상 작동 중이고 그 "예"는 참이다 — 단지 그 대상이 악마로
+'등록'될 뿐이다. 등급을 올리면 멀쩡한 점쟁이가 중독된 것처럼 보인다. 첩자·은둔자도 같은 축이라
+`register` 로 두되 "무엇으로 등록할지"는 재량이므로 `implemented:false` 로 근거만 남긴다.
+
+### `ctx.sourceCharId` ≠ `t.charId`
+주정뱅이는 사회자 눈에 '초공감자 단계'(`sourceCharId`=위장 캐릭터)지만 좌석의 실제 캐릭터는 외지인이다.
+보르톡스의 "Townsfolk abilities yield false info" 는 **`t.charId`** 를 봐야 공식과 맞는다 — 주정뱅이에게는
+안 걸리고 취함으로 '임의'에 머문다. 바꿔 읽으면 판정이 조용히 뒤집힌다.
+
+| 항목 | 효과 | 공식 |
+|---|---|---|
+| `malfunction` | constrain / arbitrary | 중독·취함·주정뱅이 — "might" 라 **재량**이다. 자동으로 거짓을 만들면 안 된다 |
+| `vortox-townsfolk-false` | constrain / false | "Townsfolk abilities yield false info" — 재량이 아니라 **강제** |
+| `red-herring` | register | "There is a good player that registers as a Demon to you" — 거짓이 아니다 |
+| `spy-registers`·`recluse-registers` | register (implemented:false) | "might register as…" — 무엇으로 등록할지는 사회자 재량 |
+| `drunk-mask` | discretion | 위장 캐릭터를 사회자에게 알린다(판정은 malfunction 이 한다) |
+
+**무행동**: 제품 경로 호출부 0개. 조회 창구 `infoVerdict(t, ctx, stages)` 만 열었다 — 화면 넷
+(위저드 경고바·밤 시트 알림·정보 힌트·체크리스트)이 이 객체 하나만 읽으면 서로 어긋날 수 없다.
+옮겨 타는 것은 화면마다 문구가 달라 별도 라운드에서 한다.
+퍼저 400판 커버리지 동일 · 상태 불변·`save()` 0회 · 사망/투표 판정 불변.
+
+**돌연변이 4종 추가**(40종 미검출 0): 누적 계약 · 강도 우선 · 등록/제약 분리 · 보르톡스가 보는 대상.
+표만 있고 이를 겨눈 돌연변이가 없으면 조용히 썩는다.
