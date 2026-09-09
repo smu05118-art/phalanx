@@ -117,7 +117,7 @@ header h1 em{color:var(--a1);font-style:normal;}
 .foot{margin-top:22px;padding-top:12px;border-top:1px solid var(--bd);font-size:10px;color:var(--dim);line-height:1.7;}
 .foot code{background:var(--s2);padding:1px 5px;border-radius:4px;color:var(--a1);}
 .load-msg{text-align:center;padding:60px 20px;color:var(--dim);font-size:14px;}
-.tabs{display:flex;flex-direction:column;gap:6px;margin:2px 2px 10px;}
+.tabs{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;margin:2px 2px 10px;}
 .tab{padding:7px 15px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--bd);background:var(--s1);color:var(--dim);}
 .tab:hover{border-color:var(--a2);}
 .tab.on{background:var(--a1);border-color:var(--a1);color:var(--onacc);}
@@ -844,6 +844,7 @@ function companyCard(co){
   const rev=co.revenue, yo=yoyArr(rev), mo=momArr(rev), L=lastIdx(rev);
   const _kre=co.kre&&co.kre.hs?co.kre:null, _pi=_kre?MONTHS.indexOf(_kre.prov):-1;
   const _hl=_kre&&_pi>=0?(_kre.partial&&_pi>0?_pi-1:_pi):L;
+  const _flowLabel=/^TW/.test(co.region||'')?'MOPS 월매출':(co.rev_flow==='imp'?'Import':'Export')+' proxy';
   const div=document.createElement('div');
   div.className='card co'; div.dataset.co=co.id;
   div.innerHTML=`
@@ -858,7 +859,7 @@ function companyCard(co){
         <span class="cat-tag">${catLabel(co.category)}</span></div>
     </div>
     <div class="headline">
-      <div><div class="big">${fmtV(rev[_hl])}</div><span class="clab">${mlabel(MONTHS[_hl])} ${_kre?'<b style="color:#ffbe2e">잠정</b>':(co.rev_flow==='imp'?'<b style="color:var(--a4)">Import</b>':'Export')} proxy</span></div>
+      <div><div class="big">${fmtV(rev[_hl])}</div><span class="clab">${mlabel(MONTHS[_hl])} ${_kre?'<b style="color:#ffbe2e">잠정</b>':_flowLabel}</span></div>
       <div>${chip(mo[_hl])}<span class="clab">MoM</span></div>
       <div>${chip(yo[_hl])}<span class="clab">YoY</span></div>
       ${_kre&&_kre.pv!=null?'<div><span class="chg pv">'+(_kre.pv>=0?'+':'')+(_kre.pv*100).toFixed(0)+'%</span><span class="clab">잠정Δ</span></div>':''}
@@ -1862,7 +1863,7 @@ function renderKpi(){
             <span title="${dp?'deep — 필수 8요소·프록시 실측·차트 2종 이상':'standard — 경량 6요소'}" style="font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;background:${dp?'rgba(180,140,255,.16)':'rgba(127,150,170,.12)'};color:${dp?'#b48cff':'var(--dim)'}">${dp?'DEEP':'STD'}</span>
             <span style="margin-left:auto;font-size:10.5px;font-weight:800;padding:2px 10px;border-radius:999px;background:${cc}22;color:${cc}">${pvE(c.call||'—')}</span></div>
           <div style="font-size:10px;color:var(--dim);margin-top:5px">${pvE(c.region)} · ${pvE(c.frame_label||c.frame||'')} · <b style="color:var(--ink)">${pvE(c.q||'')} ${pvTL(c.type)}</b> · ${pvE(c.made_on||'')} · 문서 ${c.ndocs}건</div>
-          <div style="font-size:11px;margin-top:5px;font-family:var(--mono)">업사이드 base <b style="color:${c.upside>0?'#59d0a8':'#ff6b7d'}">${pvPct(c.upside)}</b> <span style="color:var(--dim)">· priced-in ${c.priced!=null?pvE(c.priced)+'%':'—'}${c.base!=null?' · 예측 '+pvN(c.base)+' '+pvE(c.unit||''):''}</span></div>
+          <div style="font-size:11px;margin-top:5px;font-family:var(--mono)">문서 기준값 <b style="color:${c.upside>0?'#59d0a8':'#ff6b7d'}">${pvPct(c.upside)}</b> <span style="color:var(--dim)">· 가격 비교값 ${c.priced!=null?pvE(c.priced)+'%':'—'}${c.base!=null?' · 예측 '+pvN(c.base)+' '+pvE(c.unit||''):''}</span></div>
           ${c.one_liner?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.55">${pvE(pvCut(c.one_liner,95))}</div>`:''}</div>`;}).join('')}</div>`;
     if(pvList.length>pvMax){
       html+=`<div style="text-align:center;margin-bottom:14px"><span data-pvmore="1" style="cursor:pointer;user-select:none;font-size:11px;font-weight:800;padding:5px 16px;border-radius:999px;border:1px solid var(--line);color:#4ea1ff">+ 더 보기 <span style="color:var(--dim);font-weight:400">${pvList.length-pvMax}사 남음</span></span></div>`;
@@ -1913,12 +1914,12 @@ function renderKpi(){
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${tile('예측 base',pvN(F.base)+' <span style="font-size:9.5px;color:var(--dim)">'+pvE(F.unit||'')+'</span>','bear '+pvN(F.bear)+' / bull '+pvN(F.bull)+(pb.base!=null?' · P(base) '+Math.round(pb.base*100)+'%':''),'#4ea1ff')}
           ${tile('컨센 갭',CS.gap_pct!=null?pvPct(CS.gap_pct):'—',CS.value!=null?('컨센 '+pvN(CS.value)+(CS.unit?' '+pvE(CS.unit):'')):'컨센 미확보(사유 아래)',CS.gap_pct>0?'#59d0a8':(CS.gap_pct<0?'#ff6b7d':'var(--dim)'))}
-          ${tile('priced-in',PI.pct_est!=null?PI.pct_est+'%':'—','시장 선반영 추정','#ffbe2e')}
-          ${tile('업사이드 base',pvPct(UP.base_pct),'bull '+pvPct(UP.bull_pct)+' · down '+pvPct(UP.downside_pct),UP.base_pct>0?'#59d0a8':'#ff6b7d')}
+          ${tile('가격 비교값',PI.pct_est!=null?PI.pct_est+'%':'—','문서 원문 정의 참조','#ffbe2e')}
+          ${tile('base 변화율(문서 기준)',pvPct(UP.base_pct),'bull '+pvPct(UP.bull_pct)+' · down '+pvPct(UP.downside_pct),UP.base_pct>0?'#59d0a8':'#ff6b7d')}
         </div>
         ${F.metric?`<div style="font-size:10.5px;color:var(--dim);margin-top:8px">예측 대상 <b style="color:var(--ink)">${pvE(F.metric)}</b>${F.method?' · '+pvE(pvCut(F.method,230)):''}</div>`:''}
         ${(CS.note||CS.src)?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>컨센서스.</b> ${pvT(pvCut(CS.src?('['+CS.src+'] '):'' ,90))}${pvT(pvCut(CS.note||'',330))}</div>`:''}
-        ${PI.summary?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>priced-in.</b> ${pvT(pvCut(PI.summary,330))}</div>`:''}
+        ${PI.summary?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>가격 비교값 근거.</b> ${pvT(pvCut(PI.summary,330))}</div>`:''}
         ${UP.valuation_basis?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>밸류에이션 근거.</b> ${pvT(pvCut(UP.valuation_basis,330))}</div>`:''}
         <div style="font-size:10px;color:#ffbe2e;border-top:1px solid var(--line);margin-top:8px;padding-top:6px">투자판단 참고용 — 예측치이며 실현을 보장하지 않습니다.</div></div>`;
       const ST2=D.strategy||{};
