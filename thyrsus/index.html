@@ -1911,6 +1911,21 @@ function thyExecAnswer(key, p, message, o){
 }
 
 const uid = () => Math.random().toString(36).slice(2,9);
+/* 동적 래핑 원장 — `window[변수]=` 로 얹는 래퍼는 정적 정규식이 셀 수 없다. 설치하는 순간
+   여기에 적어 두면 로드 뒤 thyAudit.dynamicWrap() 이 '선언한 체인이 실제로 걸렸는가'를 대조한다.
+   [왜 함수에 표식을 붙이지 않는가] 표식 방식도 만들어 봤지만, 그 위에 정적 래퍼가 한 겹
+   더 얹히면 표식이 통째로 사라진다(정적 래퍼는 이 헬퍼를 거치지 않는다) — 실제로 renderSheet·
+   renderCustom 이 그 경우였다. 원장은 설치 사실 자체를 남기므로 나중에 무엇이 얹히든 남는다.
+   표식(__thyWrap)은 조기 캡처 판별용으로 함께 남긴다.
+   래핑 헬퍼들(swapWrap·wrapRender·statusboard·djWrap 등)보다 반드시 먼저 정의돼야 한다. */
+const THY_WRAP_LOG=[];
+function thyStampWrap(fn, orig, tag, name){
+  try{
+    fn.__thyWrap=((orig && orig.__thyWrap) || []).concat(tag);
+    THY_WRAP_LOG.push({name:name||null, tag:tag});
+  }catch(e){}
+  return fn;
+}
 
 function allChars(){ return CHARACTERS.concat(S.customs||[]); }
 function charOf(id){ return allChars().find(c=>c.id===id); }
@@ -11459,7 +11474,7 @@ function buildMatchRecord(winner, pgid){
   // swap — 이발사·뱀 조련사. 원본 검증을 통과해 charId 가 실제로 바뀐 경우만 [EV.swap]
   const swapWrap=(name, why)=>{
     const o=window[name];
-    window[name]=function(pids){
+    window[name]=thyStampWrap(function(pids){
       const a=playerOf((pids||[])[0]), b=playerOf((pids||[])[1]);
       const ac=a? a.charId : null, bc=b? b.charId : null;
       o(pids);
@@ -11467,7 +11482,7 @@ function buildMatchRecord(winner, pgid){
         emitEv('swap', a.id, a.id, {from:ac, to:a.charId, why});
         emitEv('swap', b.id, b.id, {from:bc, to:b.charId, why});
       }
-    };
+    }, o, 'swap', name);
   };
   swapWrap('doSwapChars','이발사 교환');
   swapWrap('doSnakeSwap','뱀 조련사 스왑');
@@ -12354,9 +12369,27 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
     killPlayer:1, doImpKill:1, doFangGuAttack:1, doPukkaPick:1, doStepKill:1,
     doProtect:1, doPoison:1, doExorcist:1, doDevilsAdvocate:1, doMad:1,
     doSwapChars:0, doSnakeSwap:0,
-    newNomination:1, toggleHand:1, closeHands:1, resolveExecution:1, confirmWin:2,
-    switchTab:1, openSheet:1, startFromSheet:1, setNomPick:1, wizTitle:1,
-    showGameOver:1};
+    newNomination:1, toggleHand:1, closeHands:1, resolveExecution:2, confirmWin:2,
+    switchTab:1, openSheet:1, startFromSheet:2, setNomPick:1, wizTitle:1,
+    showGameOver:1,
+    /* 2026-09-09 실측 반영(node thyrsus_sim/wrap_baseline.js). 앞의 두 값은 낡아 있었다 —
+       resolveExecution 1→2(승리 판정 래퍼), startFromSheet 1→2(내 스크립트 연결 해제 래퍼).
+       낡은 기준선은 로드마다 거짓 알림을 냈고, 거짓 알림이 상시로 뜨는 감사는 곧 무시된다.
+       아래 셋은 래핑돼 있는데 애초에 검사 목록에 없었다 — 재대입이 조용히 사라져도 몰랐다. */
+    libDetail:2, renderCustom:1, setupIssues:1};
+
+/* ── 동적 래핑 선언 ──
+   정적 정규식은 `window[변수]=` 형태를 셀 수 없다. 그런 래핑이 14곳 있고, 지금까지는
+   주석 한 줄로만 인정하고 검사 대상 밖에 뒀다 — 조용히 빠져도 아무도 모른다.
+   여기서 '어느 이름에 어떤 래퍼가 어떤 순서로 얹히는가'를 데이터로 선언하고,
+   각 헬퍼가 자기가 얹은 래퍼에 표식(fn.__thyWrap)을 남기게 해서 로드 시 대조한다.
+   배열 순서 = 설치 순서 = 안쪽부터. 마지막 원소가 가장 바깥(먼저 진입)이다. */
+const THY_WRAP_DYNAMIC={
+  doSwapChars:['swap'], doSnakeSwap:['swap'],
+  renderSheet:['stnotes','djinn'], renderCustom:['ccaudit','djinn'],
+  addCustom:['customnotice'], importScript:['customnotice'],
+  renderNight:['statusboard','djinn'], renderDay:['statusboard','djinn'],
+  renderGrim:['statusboard'], renderSetup:['djinn']};
   /* 재대입 지점부터 함수 본문 끝까지를 서명으로 뽑는다(공백 정규화).
      중괄호 세기는 문자열·주석 속 괄호를 구분하지 않지만, 어긋나도 같은 사고를
      양쪽에 똑같이 일으키므로 '복제 탐지'라는 목적에는 영향이 없다. */
@@ -12402,7 +12435,29 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
       +' 에 본문이 글자까지 같은 재대입이 2회 이상 — 같은 블록이 두 번 들어갔는지 확인하세요.\n  '
       +d.sig.slice(0,140)+'…'));
     AUDIT.lastCounts=counts;
-    return {counts:counts, dupes:dupes};
+    const dyn=AUDIT.dynamicWrap();
+    return {counts:counts, dupes:dupes, dynamic:dyn};
+  };
+  /* 동적 래핑 대조 — 선언(THY_WRAP_DYNAMIC)과 실제 표식(fn.__thyWrap)을 맞춰 본다.
+     소스 텍스트가 아니라 '지금 전역 이름에 무엇이 걸려 있는가'를 보므로 헤드리스에서도 성립한다.
+     누락(선언에는 있는데 안 걸림)은 그 기능이 조용히 죽은 것이고, 순서 뒤바뀜은 렌더 앵커
+     의존이 깨졌다는 뜻이다 — 둘 다 예외도 로그도 없이 조용히 틀리는 사고 유형이다. */
+  /* 선언표를 밖에서도 읽게 연다 — 콘솔에서 `thyAudit.dynamicSpec` 으로 현황을 보고,
+     회귀 테스트가 선언과 실제를 대조한다(감사 자신이 유일한 독자면 낡아도 아무도 모른다). */
+  AUDIT.dynamicSpec=THY_WRAP_DYNAMIC;
+  AUDIT.dynamicWrap=function(){
+    const bad=[];
+    Object.keys(THY_WRAP_DYNAMIC).forEach(name=>{
+      const want=THY_WRAP_DYNAMIC[name];
+      const fn=(typeof window!=='undefined')? window[name] : undefined;
+      if(typeof fn!=='function'){ bad.push({name, kind:'missing-fn'}); return; }
+      const got=THY_WRAP_LOG.filter(e=>e.name===name).map(e=>e.tag);
+      if(got.join('>')!==want.join('>')) bad.push({name, kind:'chain', want:want.join('>'), got:got.join('>')||'(없음)'});
+    });
+    bad.forEach(b=> console.warn('[thyAudit] 동적 래핑 불일치: '+b.name+' — 선언 ['+(b.want||'')+'] · 실제 ['+(b.got||'')+']'
+      +' / 그 블록이 통째로 빠졌거나 설치 순서가 바뀌었습니다.'));
+    AUDIT.lastDynamic=bad;
+    return bad;
   };
 
   /* ══ 래핑 순서 실측(2026-09-03 작성 · 2026-09-04 파일 10,830줄에서 계수만 재확인) ══
@@ -12832,7 +12887,7 @@ window.thyCcAuditHTML=ccAuditHTML;
 function wrapRender(name, hostId, htmlFn, paneId){
   if(typeof window[name]!=='function') return;
   const _prev=window[name];
-  window[name]=function(){
+  window[name]=thyStampWrap(function(){
     const r=_prev.apply(this, arguments);
     try{
       const pane=document.querySelector(paneId);
@@ -12844,7 +12899,7 @@ function wrapRender(name, hostId, htmlFn, paneId){
       }
     }catch(e){ console.warn('[thyrsus] '+name+' 부가 렌더 실패', e); }
     return r;
-  };
+  }, _prev, hostId, name);
 }
 wrapRender('renderSheet','stnotes',()=>stNotesHTML((typeof sheetEd!=='undefined'&&sheetEd)||'tb'),'#pane-sheet');
 wrapRender('renderCustom','ccaudit',()=>ccAuditHTML(),'#pane-custom');
@@ -12870,7 +12925,7 @@ if(typeof window.buildChecklist==='function'){
 ['addCustom','importScript'].forEach(function(fn){
   if(typeof window[fn]!=='function') return;
   const _prev=window[fn];
-  window[fn]=function(){
+  window[fn]=thyStampWrap(function(){
     const r=_prev.apply(this, arguments);
     try{
       const ws=thyAuditCustomScript();
@@ -12880,7 +12935,7 @@ if(typeof window.buildChecklist==='function'){
       }
     }catch(e){ console.warn('[thyrsus] 검증 요약 실패', e); }
     return r;
-  };
+  }, _prev, 'customnotice', fn);
 });
 
 /* 이 블록이 늦게 얹히므로 현재 화면을 한 번 다시 그린다. */
@@ -13013,11 +13068,11 @@ try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
   Object.keys(PANES).forEach(fn=>{
     const orig = window[fn];
     if(typeof orig!=='function') return;
-    window[fn] = function(){
+    window[fn] = thyStampWrap(function(){
       const ret = orig.apply(this, arguments);
       try{ injectInto(PANES[fn]); }catch(err){ console.warn('[statusboard]', err); }
       return ret;
-    };
+    }, orig, 'statusboard', fn);
   });
 
   /* 설치 시점에 이미 그려진 활성 탭에는 즉시 한 번 끼워 넣는다(첫 렌더는 이 블록보다 먼저 끝난다) */
@@ -14135,11 +14190,11 @@ function djAppend(paneSel, html){
 function djWrap(name, fn){
   if(typeof window==='undefined' || typeof window[name]!=='function') return;
   const prev=window[name];
-  window[name]=function(){
+  window[name]=thyStampWrap(function(){
     const r=prev.apply(this, arguments);
     try{ fn.call(this, r, arguments); }catch(e){ console.warn('[djinn] '+name, e); }
     return r;                                   /* resolveExecution 등 반환값 계약 보존 */
-  };
+  }, prev, 'djinn', name);
 }
 djWrap('renderSetup', function(){ djAppend('#pane-setup', djSetupCardHTML()); });
 djWrap('renderDay',   function(){ djAppend('#pane-day',   djDayCardHTML()); });
