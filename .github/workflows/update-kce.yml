@@ -16,6 +16,11 @@ on:
 permissions:
   contents: write
 
+env:
+  # 러너에서 .pyc를 만들지 않는다 — 만들어지면 `git status --porcelain`이 그것까지
+  # 변경으로 보고 매 실행마다 __pycache__를 커밋한다(#7·#8에서 실제로 발생).
+  PYTHONDONTWRITEBYTECODE: "1"
+
 concurrency:
   group: update-kce-${{ github.ref }}
   cancel-in-progress: false
@@ -118,6 +123,7 @@ jobs:
           git config user.name "phalanx-kce-bot"
           git config user.email "phalanx-kce-bot@users.noreply.github.com"
           git add -- argus/kce argus/index.html
+          git reset -q -- ':(glob)**/__pycache__/**' 2>/dev/null || true
           if [ "${UPDATED}" = "0" ]; then
             # 보고서 갱신 없음 — 진입 링크 복구나 corp_code 캐시 생성 등 부수 변경
             git commit -m "kce: 자동 갱신 부수 변경 (진입 링크 재주입 / corp_code 캐시)"
