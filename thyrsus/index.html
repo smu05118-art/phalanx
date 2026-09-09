@@ -2081,19 +2081,27 @@ const DEATH_MODIFIERS = [
    reason:()=> '악마의 변호사의 변호 — 처형돼도 죽지 않음'},
 
   {id:'vizier-dayimmune', ko:'재상 낮 사망 면역', precedence:32, stage:'block', effect:'block',
-   implemented:false, uncertain:true,
    official:'Vizier: "All players know who you are. You can not die during the day. If good voted, you may choose to execute immediately." (wiki.bloodontheclocktower.com/Vizier) — 원인 제한이 없으므로 처형·처단자를 포함한 낮 사망 전부가 대상이고, 대상 자신의 능력이므로 중독·취함이면 무효다(파일 안 vizier.warn 의 판단과 같다). 자동 판정을 켜면 처형 흐름 전체(executedToday·성자·탕녀 계승·재상 즉시 처형)를 함께 다시 짜야 하므로 무행동 전환 계약에 따라 이번에는 표에만 올린다 — 표에 없으면 renderDeathTraces 의 근거 사슬에서 재상만 존재하지 않는 규칙처럼 보인다.',
-   when:()=> false, reason:()=> '재상 — 낮에는 죽지 않음(사회자 수동 판정)'},
+   /* 원인을 가리지 않는 절대 규칙이다 — 낮이면 처형·처단자·마녀·추방 무엇이든 죽지 않는다.
+      재상 본인의 능력이므로 중독·취함이면 무효다. 밤 사망은 이 조항 밖이다. */
+   when:(t,c)=> t.charId==='vizier' && S.phase.kind==='day' && !isMalfunctioning(t),
+   reason:()=> '재상 — 낮에는 죽지 않음'},
 
   {id:'psychopath-roshambo', ko:'사이코패스 가위바위보', precedence:33, stage:'block', effect:'block',
-   implemented:false, uncertain:true,
    official:'Psychopath: "If executed, you only die if you lose roshambo." (roles181.json:1365) — 결과가 앱 밖(가위바위보)에서 정해져 자동 판정 대상이 아니다. 현재도 판정하지 않는다.',
-   when:()=> false, reason:()=> '사이코패스 — 가위바위보 결과로 사회자가 수동 판정'},
+   when:(t,c)=> c.sourceType==='execution' && t.charId==='psychopath' && !isMalfunctioning(t)
+                && thyExecAnswer('psycho', t, `🎲 ${t.name}은(는) 사이코패스입니다.\n가위바위보에서 이겼습니까?\n\n[예] 처형돼도 죽지 않습니다 / [아니오] 평소대로 사망`, {ok:'예 — 이김(죽지 않음)', cancel:'아니오 — 짐'}),
+   reason:()=> '사이코패스 — 가위바위보에서 이겨 처형돼도 죽지 않음'},
 
   {id:'pacifist', ko:'평화주의자', precedence:35, stage:'block', effect:'block',
-   implemented:false, uncertain:true,
-   official:'Pacifist: "Executed good players might not die." (roles181.json:900) — "might"(재량)이라 자동 판정 대상이 아니다. 현재도 판정하지 않는다.',
-   when:()=> false, reason:()=> '평화주의자 — 사회자 재량, 자동 판정 없음'},
+   official:'Pacifist: "Executed good players might not die." (roles181.json:900) — "might" 는 사회자 재량이다. 자동으로 살리지 않고 처형 확정 전에 묻는다(executeNominee 사전 질문 묶음). 대상은 처형되는 선한 플레이어이며, 평화주의자 본인이 아니라 평화주의자가 판에 살아 있는지를 본다.',
+   when:(t,c)=>{
+     if(c.sourceType!=='execution' || isEvil(t)) return false;
+     const pf=S.players.find(x=>x.alive && x.charId==='pacifist' && !isMalfunctioning(x));
+     if(!pf) return false;
+     return thyExecAnswer('pacifist', t, `🕊 평화주의자(${pf.name})가 있습니다.\n처형되는 ${t.name}은(는) 선한 플레이어입니다.\n이번 처형에서 살려 주시겠습니까? (재량)`, {ok:'예 — 죽지 않음', cancel:'아니오 — 사망'});
+   },
+   reason:()=> '평화주의자 — 사회자 재량으로 처형된 선한 플레이어가 죽지 않음'},
 
   {id:'soldier', ko:'군인', precedence:40, stage:'block', effect:'block',
    official:'Soldier: "You are safe from the Demon." (roles181.json:700) — 대상 \'자신의\' 능력이므로 중독·취함이면 무효다. 여기가 수도사(타인 능력)와 갈리는 비대칭의 자리다.',
@@ -2107,6 +2115,11 @@ const DEATH_MODIFIERS = [
       리치 자신이 오작동이어도 이 조항은 남는다: "if & only if" 는 리치의 능력이 아니라 존재 규칙이다. */
    when:(t,c)=> t.charId==='lleech' && lleechHostAlive(),
    reason:()=>{ const h=lleechHostOf(); return `리치 — 숙주(${h?h.name:'?'})가 살아 있어 죽지 않음`; }},
+
+  {id:'deviant-exile', ko:'일탈자 — 추방 면역', precedence:48, stage:'block', effect:'block',
+   implemented:false, uncertain:true,
+   official:'Deviant: "If you were funny today, you cannot die by exile." (roles181.json) — 추방 사망을 막는 유일한 능력이자, 추방이 \'막을 수 있는 사망\'임을 공식이 인정하는 근거다. "재미있었는가"는 전적으로 사회자 판단이라 자동 판정하지 않는다 — 추방 확정 직전에 사회자에게 묻고(exClose), 그 답이 이 자리를 대신한다.',
+   when:()=> false, reason:()=> '일탈자 — 오늘 재미있었으면 추방으로 죽지 않음(사회자 판단)'},
 
   {id:'sailor', ko:'선원', precedence:50, stage:'block', effect:'block',
    official:'Sailor: "Each night, choose an alive player: either you or they are drunk until dusk. You can\'t die." (roles181.json:187) — 자신의 능력이므로 스스로 취하면 무효다. 원인 제한이 없어 처형도 막는다.',
@@ -2472,7 +2485,7 @@ function toast(msg, kind){
    [기준 2] 사망 판정 사슬에 자리만 있고 판정은 사회자 수동인 규칙(DEATH_MODIFIERS implemented:false):
             재상 낮 면역 · 사이코패스 가위바위보 · 평화주의자 · 리치 숙주. 밤 순서는 있어도 판정이 비어 있다.
    커스텀 캐릭터는 제외한다 — 순서·능력을 사회자가 직접 정의한 것이라 '미구현'이 아니다. */
-const PARTIAL_IMPL_CHARS={vizier:'낮 사망 면역 판정 수동', psychopath:'가위바위보 판정 수동', pacifist:'처형 생존 판정 수동'};
+const PARTIAL_IMPL_CHARS={};
 /* 한 판에만 유효한 일회성 값들. 새 판을 시작할 때 반드시 되돌려야 하는 것만 담는다.
    [왜 목록인가] blank() 는 '전부' 비우지만 여기는 '판만' 비운다 — 등록부·전적·커스텀은 그대로 두고
    판 단위 값만 되돌려야 하므로 두 곳의 기준이 갈라진다. 새 필드가 판 단위면 여기에도 넣어야 한다.
@@ -8105,8 +8118,23 @@ function exClose(){
   const den=S.players.length, need=majority(den), yes=ex.yes.length;
   if(yes>=need){
     log(`🚷 여행자 추방 투표: ${t.name}(${charName(t)}) — 찬성 ${yes}/${den} (기준 ${need}) 가결`);
-    killPlayer(t, '여행자 추방(exile) 가결 — 처형 횟수와 무관');
-    toast(`🚷 ${t.name} 추방 — 오늘의 처형 횟수에는 영향을 주지 않습니다.`,'warn');
+    /* 추방은 처형이 아니지만 사망이다 — 일탈자의 "cannot die by exile" 이 그 근거다.
+       그래서 block 단계를 거친다: 찻집 여인·폭풍잡이 보호 같은 절대 면역이 여기서 걸린다.
+       악마의 변호사(처형 전용)·수도사·군인(악마 전용)은 when() 이 알아서 물러난다. */
+    const fin=(skip)=>{
+      if(skip){
+        log(`🚷 일탈자 ${t.name} — 오늘 재미있었으므로 추방으로 죽지 않음(사회자 판단)`);
+        toast(`🚷 ${t.name}은(는) 일탈자입니다 — 추방됐지만 죽지 않습니다. 게임에는 남습니다.`,'ok');
+      } else {
+        resolveDayAbilityDeath(t, 'exile', '여행자 추방(exile) 가결 — 처형 횟수와 무관');
+        toast(`🚷 ${t.name} 추방 — 오늘의 처형 횟수에는 영향을 주지 않습니다.`,'warn');
+      }
+      save();
+    };
+    if(t.charId==='deviant'){
+      thyConfirm(`🎭 ${t.name}은(는) 일탈자입니다.\n오늘 재미있었습니까?\n\n[예] 추방되지만 죽지 않습니다 / [아니오] 평소대로 사망 판정`,
+        ok=>fin(!!ok), {title:'🎭 일탈자', ok:'예 — 죽지 않음', cancel:'아니오'});
+    } else fin(false);
   } else {
     log(`🚷 여행자 추방 투표: ${t.name}(${charName(t)}) — 찬성 ${yes}/${den} (기준 ${need}) 부결`);
     toast('추방 부결 — 과반 미달.','warn');
@@ -9657,6 +9685,12 @@ function confirmWin(yes){
         qs.push({key:'saint', message:`🚨 ${p.name}은(는) 성자이며 오작동 상태가 아닙니다!\n처형을 확정하면 선한 팀이 패배합니다. 진행할까요?`, ok:'처형 확정', cancel:'취소', danger:true});
       if(p.charId==='goblin' && !isMalfunctioning(p))
         qs.push({key:'goblin', message:`👺 ${p.name}은(는) 고블린입니다.\n오늘 지명당한 그 순간 공개적으로 고블린임을 선언했습니까?`, ok:'예 → 악한 팀 승리', cancel:'아니오'});
+      if(p.charId==='psychopath' && !isMalfunctioning(p))
+        qs.push({key:'psycho', message:`🎲 ${p.name}은(는) 사이코패스입니다.\n가위바위보에서 이겼습니까?\n\n[예] 처형돼도 죽지 않습니다 / [아니오] 평소대로 사망`, ok:'예 — 이김(죽지 않음)', cancel:'아니오 — 짐'});
+      {
+        const pf=S.players.find(x=>x.alive && x.charId==='pacifist' && !isMalfunctioning(x));
+        if(pf && !isEvil(p)) qs.push({key:'pacifist', message:`🕊 평화주의자(${pf.name})가 있습니다.\n처형되는 ${p.name}은(는) 선한 플레이어입니다.\n이번 처형에서 살려 주시겠습니까? (재량)`, ok:'예 — 죽지 않음', cancel:'아니오 — 사망'});
+      }
       const fm=S.players.find(x=>x.alive && x.charId==='fearmonger' && !isMalfunctioning(x));
       if(fm) qs.push({key:'fear', message:`😱 공포 조장가(${fm.name})가 있습니다.\n처형되는 ${p.name}이(가) 현재 공포 표식 대상이고, 공포 조장가 본인이 지명했습니까?`, ok:'예 → 대상 진영 패배', cancel:'아니오'});
       if(qs.length){
@@ -13957,7 +13991,9 @@ if(typeof DEATH_MODIFIERS!=='undefined' && Array.isArray(DEATH_MODIFIERS)
     stage:'block', effect:'block', implemented:false, uncertain:true,
     official:'Djinn 규칙: 징크스가 걸린 조합은 지니가 그 예외를 강제한다(official/jinxes.json). '
       +'사망 관련 징크스(kind:death) 9쌍은 모두 앱이 관측하지 않는 입력에 걸려 있다 — '
-      +'릴 몬스타/리치 숙주의 보유자, 소환사로 악마가 둘이 된 밤의 "사회자 재량" 등. '
+      +'릴 몬스타의 보유자, 소환사로 악마가 둘이 된 밤의 "사회자 재량" 등. '
+      +'(리치의 숙주만은 2026-09-09 에 lleechHost 토큰으로 관측 가능해졌다 — lleech-host 항목이 그 판정을 맡는다. '
+      +'다만 lleech|slayer 징크스는 "처단자가 숙주를 지목하면 숙주가 죽는다"라 대상이 리치가 아니라 숙주이므로 여기 남는다.) '
       +'따라서 자동 판정 대상이 아니며 현재 동작을 보존한다(사회자 수동).',
     when:()=> false,
     reason:()=> '지니 징크스의 사망 예외 — 사회자 수동 판정'

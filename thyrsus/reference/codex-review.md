@@ -982,3 +982,46 @@ Node 것을 그대로 써 실행마다 결과가 흔들렸다 → `harness.js` �
 회귀 테스트 4종 추가(W 달의 자손 취소 · X ack 취소 정리 · Y attack 중복 제거 범위 · Z 근거 사슬) → **24케이스 통과**.
 브라우저 키보드 실측 6가지: danger 기본 포커스=취소·Enter=취소 · 일반 Enter=확인 · 취소 포커스 Enter=취소 ·
 선택지 Enter=그 선택 · 선택지 밖 Enter=무시 · 입력란 Enter=확인.
+
+---
+
+## 백로그 정리 (2026-09-09) — ① 새 판 상태 · ④ 잔여 규칙 결함
+
+### ① 마감 없이 새 판을 시작하면 '끝난 판' 상태가 남던 문제
+종료 화면을 닫고 설정으로 돌아가 곧장 [첫 번째 밤 시작]을 누르면 `S.gameOver`·`endKind` 가 그대로 남아
+새 판이 '이미 끝난 판'이 됐다 — 종료 메뉴가 [종료 확정]만 보여주고 승리 판정이 전부 즉시 물러난다.
+게다가 `gameId` 가 같아 지난 판과 이번 판의 전적이 같은 gid 를 갖고, **판 무효 한 번에 둘 다 지워졌다.**
+- `clearEndedGameState()` — 판 단위 일회성 값(`NEWGAME_RESET_KEYS`)을 되돌리고, 직전 판이 끝나 있었으면 `gameId` 재발급
+- 시작 전에 "지난 판이 마감되지 않았습니다"를 한 번 알린다(전적은 건드리지 않음)
+- **`gameOver` 를 `blank()`·`migrateState` 의 선언 필드로 승격** — 선언이 없어 판 단위 초기화 목록이 이 필드를 놓치고 있었다
+
+### ④ 사망 판정을 우회하던 경로 3종
+`killPlayer` 는 `kill` 단계(어릿광대 1회 생존·좀버얼 죽은 척)만 돌린다. `block` 단계(찻집 여인·선원·폭풍잡이·
+보호 토큰·악마의 변호사·군인)는 `resolveDeath(..., ['block'])` 를 호출부가 직접 거쳐야 하는데, 세 경로가 빠져 있었다.
+
+| 경로 | 공식 | sourceType | 걸리는 것 / 걸리지 않는 것 |
+|---|---|---|---|
+| 처단자 | "Once per game, during the day, publicly choose a player: if they are the Demon, they die." | `slayer` | 찻집 여인·선원·폭풍잡이 ○ / 수도사·군인(악마 전용)·악마의 변호사(처형 전용)·시장 대체(밤 전용) ✕ |
+| 마녀의 저주 | "Each night, choose a player: if they nominate tomorrow, they die." | `witch` | 위와 같음 |
+| 여행자 추방 | 일탈자 "If you were funny today, you cannot die by exile." 가 **추방이 막을 수 있는 사망임을 공식이 인정하는 근거** | `exile` | 찻집 여인·폭풍잡이 ○ / 악마의 변호사(처형 전용) ✕ |
+
+`resolveDayAbilityDeath(t, sourceType, cause)` 단일 창구로 정리했다. **표는 손대지 않았다** — 각 항목의
+`when()` 이 이미 sourceType 을 보고 있어 새 사인에서 알아서 물러난다.
+
+### ④ 미구현 항목 정리 — 표가 정직해졌다
+| 항목 | 공식 | 조치 |
+|---|---|---|
+| 리치 숙주 | "You die if & only if they are dead." | `lleechHost` 토큰 도입. 숙주가 살아 있으면 리치는 **어떤 원인으로도** 죽지 않는다. 숙주가 죽으면 **알리기만** 한다 — 주모자 징크스가 예외를 만들어(숙주가 처형으로 죽으면 리치는 살아남되 능력 상실) 앱이 임의로 죽이면 되돌릴 수 없다 |
+| 여관 주인 | "Each night*, choose 2 players: they can't die tonight, but 1 is drunk until dusk." | 보호 토큰 **자동 부여**. 지금까지 "🛡토큰을 놓으세요" 안내문뿐이었고, 잊히면 그날 밤 악마의 살해가 그대로 통과했다. 보호는 강제 능력이다 |
+| 재상 | "You cannot die during the day." | **자동 판정**. 원인을 가리지 않는 절대 규칙이라 낮의 처형·처단자·마녀·추방 전부가 대상. 중독·취함이면 무효, 밤 사망은 대상 밖 |
+| 사이코패스 | "If executed, you only die if you lose roshambo." | 결과가 앱 밖에서 정해진다 → **처형 전 재량 질문**(`executeNominee` 사전 질문 묶음)으로 받아 판정이 그 답을 읽는다 |
+| 평화주의자 | "Executed good players might not die." | "might" 는 재량 → 처형되는 **선한** 플레이어에게만 묻는다 |
+| 일탈자 | "If you were funny today, you cannot die by exile." | "재미있었는가"는 순수 사회자 판단 → 추방 확정 직전에 묻는다. 표 항목은 `implemented:false` 로 근거만 남긴다 |
+
+표에 남은 `implemented:false` 는 **일탈자·지니 징크스 둘뿐**이고 둘 다 의도적이다.
+`PARTIAL_IMPL_CHARS` 는 비었다 — 게임 시작 경고의 "판정 수동" 부류가 사라졌다.
+
+### 회귀 테스트 `thyrsus_sim/rules_check.js` (15케이스)
+처단자 기본·찻집 여인·선원·군인/수도사 비적용 · 여관 주인 보호(오작동 포함) · 마녀 저주 · 어릿광대 회귀 ·
+리치 숙주 5사인 · 숙주 사망 알림(주모자 징크스 포함) · 추방 판정 · 일탈자 재량 양방향 · 재상(낮/밤/중독) ·
+사이코패스·평화주의자 재량 · 표 정직성 · 처형/밤 살해 무회귀
