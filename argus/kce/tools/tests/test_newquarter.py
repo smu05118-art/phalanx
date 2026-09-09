@@ -58,11 +58,17 @@ class TestNewQuarterPath(unittest.TestCase):
                 self.assertEqual(len(s["s"][key]), 24, (s["id"], key))
 
     def test_disclosed_total_guard_survives_new_quarter(self):
-        """현대건설은 src='공시총계' — 새 분기에도 사이트 합으로 덮어쓰면 안 된다."""
+        """현대건설은 src가 '공시…'(공시 총계) — 새 분기에도 사이트 합으로 덮으면 안 된다.
+
+        라벨 표기는 상류 vintage가 7사→17사로 확장되며 '공시총계' → '공시(수주상황 표
+        합계)'로 바뀌었다. 지켜야 할 계약은 표기가 아니라 "공시 총계 법인은 사이트 합으로
+        덮이지 않는다"이므로 접두로 판정한다. 완전일치로 두면 표기가 또 바뀔 때
+        테스트가 먼저 깨지는 게 아니라 **데이터가 조용히 반토막 난다.**
+        """
         D, k, _ = self._load_into_new_quarter("hec", "hec_수주상황.html",
                                               "hec_기타재무_진행률수주.html")
         for ent in ("현대건설", "현대엔지니어링", "현대스틸산업"):
-            self.assertEqual(KB._src_at(D, ent, k), "공시총계", ent)
+            self.assertTrue(KB._src_at(D, ent, k).startswith("공시"), ent)
             # 가드가 살아 있으면 새 칸은 비어 있다(원문 합계행 반영은 v1 미구현).
             # 가드가 죽으면 사이트 합이 들어가 헤드라인이 반토막 난다.
             self.assertIsNone(D["summary"]["rows"][ent][k], ent)

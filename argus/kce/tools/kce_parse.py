@@ -79,30 +79,38 @@ class _TableParser(HTMLParser):
 
 
 def _expand_grid(grid):
-    """rowspan/colspan을 전개해 직사각 행렬 [[(text,is_th)]]로 변환."""
+    """rowspan/colspan을 전개해 직사각 행렬 [[(text,is_th,colspan)]]로 변환.
+
+    전개하면서 **원 셀의 colspan을 셀마다 남긴다.** 전개가 끝나면
+    `<TD colspan='5'>합 계</TD>`(라벨 구역 전체를 한 칸으로 묶은 줄)와 다섯 열에
+    실제로 같은 글자가 들어간 줄이 구분되지 않는데, 합계 줄 판별에 그 차이가 필요하다
+    (_merged_label 참조). 값 자체는 예전과 똑같이 복제한다 — 복제를 멈추면
+    합계 줄의 발주처가 빈칸이 되어 _records의 기존 배제 규칙에 걸려
+    원문 총계가 통째로 사라진다.
+    """
     out = []
-    pending = {}  # col -> (text, is_th, 남은 행수)
+    pending = {}  # col -> (text, is_th, colspan, 남은 행수)
     for row in grid:
         cur, col = [], 0
         for txt, rs, cs, th in row:
             while col in pending:
-                t2, th2, left = pending[col]
-                cur.append((t2, th2))
+                t2, th2, cs2, left = pending[col]
+                cur.append((t2, th2, cs2))
                 if left > 1:
-                    pending[col] = (t2, th2, left - 1)
+                    pending[col] = (t2, th2, cs2, left - 1)
                 else:
                     del pending[col]
                 col += 1
             for _ in range(cs):
-                cur.append((txt, th))
+                cur.append((txt, th, cs))
                 if rs > 1:
-                    pending[col] = (txt, th, rs - 1)
+                    pending[col] = (txt, th, cs, rs - 1)
                 col += 1
         while col in pending:
-            t2, th2, left = pending[col]
-            cur.append((t2, th2))
+            t2, th2, cs2, left = pending[col]
+            cur.append((t2, th2, cs2))
             if left > 1:
-                pending[col] = (t2, th2, left - 1)
+                pending[col] = (t2, th2, cs2, left - 1)
             else:
                 del pending[col]
             col += 1
@@ -116,7 +124,7 @@ _HDR_VOCAB = set(COL_ALIAS) | {"비고", "구분", "합계", "신고일자", "�
 
 def _looks_header(row):
     """행이 머리행처럼 보이는가: 셀 전부 비수치이고 절반 이상이 헤더 어휘."""
-    cells = [c for c, _ in row]
+    cells = [c[0] for c in row]
     if not cells or any(num_of(c) is not None for c in cells):
         return False
     hits = sum(1 for c in cells if norm_col(c) in _HDR_VOCAB)
@@ -124,11 +132,12 @@ def _looks_header(row):
 
 
 def _split_header(mat):
-    """행렬 → (평탄화 헤더 목록, 데이터 행들).
-    헤더 = 선두의 th-포함 행 묶음(없으면 어휘 기반 감지). 다층이면 부모 프리픽스로 결합."""
+    """행렬 → (평탄화 헤더 목록, 데이터 행들, 데이터 행별 colspan).
+    헤더 = 선두의 th-포함 행 묶음(없으면 어휘 기반 감지). 다층이면 부모 프리픽스로 결합.
+    colspan은 데이터 행에서만 쓰므로 헤더 행 몫은 잘라내고 같은 길이로 돌려준다."""
     nh = 0
     for r in mat:
-        if any(th for _, th in r):
+        if any(c[1] for c in r):
             nh += 1
         else:
             break
@@ -136,8 +145,10 @@ def _split_header(mat):
         # DART 표 상당수가 th 없이 td 머리행 — 어휘로 감지(연속 최대 2행)
         while nh < min(2, len(mat)) and _looks_header(mat[nh]):
             nh += 1
+    txt = [[c[0] for c in r] for r in mat[nh:]]
+    spans = [[c[2] for c in r] for r in mat[nh:]]
     if nh == 0:
-        return [], [[c for c, _ in r] for r in mat]
+        return [], txt, spans
     width = max(len(r) for r in mat[:nh])
     cols = []
     for j in range(width):
@@ -147,7 +158,7 @@ def _split_header(mat):
             if t and (not parts or parts[-1] != t):
                 parts.append(t)
         cols.append(" ".join(parts))
-    return cols, [[c for c, _ in r] for r in mat[nh:]]
+    return cols, txt, spans
 
 
 def parse_tables(html):
@@ -157,11 +168,12 @@ def parse_tables(html):
     out = []
     for t in p.tables:
         mat = _expand_grid(t["grid"])
-        cols, rows = _split_header(mat)
+        cols, rows, spans = _split_header(mat)
         ncols = [norm_col(c) for c in cols]
         fields = [COL_ALIAS.get(c) for c in ncols]
         out.append({"lead": t["lead"], "cols": cols, "ncols": ncols,
-                    "fields": fields, "rows": rows, "inherited": False})
+                    "fields": fields, "rows": rows, "spans": spans,
+                    "inherited": False})
     # 머리행 계승: 헤더 없는 표가 직전 헤더 표와 열수가 같으면 연속 표로 간주
     # ('(2) 별도 기준'처럼 머리행을 반복하지 않는 DART 관행 흡수)
     last = None
@@ -273,6 +285,23 @@ _PREF = {
 }
 
 
+# 그 줄 전체가 합계임을 알리는 라벨(정확히 이 글자일 때만).
+_SUM_LABEL = ("합계", "합 계", "총계", "소계", "계")
+
+
+def _merged_label(spans, ri, ni):
+    """행 ri의 이름 칸이 **앞쪽 여러 열을 하나로 병합한 라벨 칸**인가.
+
+    `<TD colspan='5'>합 계</TD>`는 품목·일자·납기·계약명·발주처를 통째로 덮는
+    '그 줄의 라벨'이지 열별 값이 아니다. rowspan으로 흘러든 칸은 colspan이 1이라
+    걸리지 않으므로, 이 판정은 가로로 진짜 병합된 칸만 잡는다.
+    """
+    if ni is None or ri >= len(spans):
+        return False
+    row = spans[ri]
+    return bool(row) and row[0] >= 2 and ni < row[0]
+
+
 def _distinct_ratio(rows, i):
     """i번 열의 고유값 비율. 공사명 열은 1에 가깝고, '국내민간' 같은 분류 열은 낮다."""
     vals = [r[i].strip() for r in rows if i < len(r) and r[i].strip()]
@@ -314,8 +343,10 @@ def _records(t, need):
     money = ("amt", "cmp", "bal", "ub", "ubimp", "rc", "allw", "xi_amt",
              "xi_supCur", "xi_supCum", "xi_recvCur", "xi_recvCum")
     scale = unit_scale(t.get("lead"), t.get("cols"))   # 표 단위를 백만원으로 정규화
+    spans = t.get("spans") or []
     recs = []
-    for r in t["rows"]:
+    block = None      # 진행 중인 병합 라벨 합계 블록의 라벨(빈 이어짐 줄이 물려받는다)
+    for ri, r in enumerate(t["rows"]):
         rec = {}
         for f, i in idx.items():
             v = r[i] if i < len(r) else ""
@@ -335,7 +366,25 @@ def _records(t, need):
                 rec[f] = v.strip()
         # 합계·소계·빈 행 제외
         name = (rec.get("nm") or "")
-        if name in ("합계", "합 계", "총계", "소계", "계", "") and rec.get("cl", "") == "":
+        merged = _merged_label(spans, ri, idx.get("nm"))
+        cont = False
+        if merged and name in _SUM_LABEL:
+            block = name                      # 여기서부터 합계 블록
+        elif (merged and not name and block
+              and any(rec.get(f) is not None for f in ("amt", "cmp", "bal"))):
+            # 라벨 칸이 **빈 채로** 합계 줄 바로 아래 이어지고 금액만 있는 줄 —
+            # 같은 합계 블록의 둘째 줄이다. 대명에너지 2026Q1이 그렇다: 위 '합 계'
+            # 줄은 전 분기 총액(545,096,433천원)이 남은 낡은 줄이고, 진짜 총계
+            # (409,379,048 / 193,176,718 / 216,202,330천원)는 라벨 없는 이 줄에 있다.
+            # 이름이 없다고 버리면 원문 총계가 통째로 사라져 대조 분모가 낡은 줄의
+            # 155,355천원이 되고 recon이 139,066%로 튄다. 이름을 물려줘 호출측의
+            # 합계 판별(kce_series.is_total_row)이 두 줄 다 보게 한다.
+            rec["nm"] = name = block
+            cont = True
+        else:
+            block = None
+        if not cont and (name in _SUM_LABEL or not name) \
+                and rec.get("cl", "") == "":
             continue
         recs.append(rec)
     return recs

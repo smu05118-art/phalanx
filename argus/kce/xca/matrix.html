@@ -1,0 +1,1133 @@
+<!doctype html>
+
+
+<html lang="ko"><head><meta charset="utf-8">
+
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+
+<title>자이씨앤에이 현장별 분기매출</title>
+
+
+<style>
+
+
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;--tx3:#5d6675;
+
+
+--a:#60a5fa;--sep:#22c55e;--pr:#f59e0b;--fc:#f472b6;--mn:#22d3ee;--fe:#c084fc;--cmp:#3b82f6;--xi:#8b5cf6;}
+
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+
+body{background:var(--bg);color:var(--tx);font:12.5px/1.5 -apple-system,"Segoe UI","Malgun Gothic",sans-serif}
+
+
+header{padding:12px 18px;border-bottom:1px solid var(--ln);display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+
+
+ position:sticky;top:0;background:var(--pn);z-index:5}
+
+
+header h1{font-size:14px;font-weight:600;letter-spacing:-.2px;white-space:nowrap}
+
+
+header h1 span{display:block;font-size:12px;color:var(--tx2);font-weight:400;margin-top:2px}
+
+
+a.nav{color:var(--a);text-decoration:none;font-size:12px;background:var(--pn2);border:1px solid var(--ln);
+
+
+ border-radius:6px;padding:5px 11px;white-space:nowrap}
+
+
+input[type=search]{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;height:26px;padding:0 9px;box-sizing:border-box;
+
+
+ color:var(--tx);font-size:12px;outline:none;min-width:220px}
+
+
+input[type=search]:focus{border-color:var(--a)}
+
+
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+
+
+.chip{background:var(--pn2);border:1px solid var(--ln);border-radius:20px;padding:2px 9px;font-size:12px;
+
+
+ color:var(--tx2);cursor:pointer;user-select:none}
+
+
+.chip.on{background:var(--a);border-color:var(--a);color:#0b1020;font-weight:600}
+
+
+.cnt{font-size:12px;color:var(--tx2);white-space:nowrap}
+
+
+.legend{padding:6px 18px;border-bottom:1px solid var(--ln);font-size:12px;color:var(--tx3);
+
+
+ display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--pn)}
+
+
+.legend b{color:var(--tx2);font-weight:600}
+
+
+.sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px;vertical-align:-1px}
+
+
+.tblwrap{overflow:auto;height:calc(100vh - 84px)}
+
+
+/* 84px은 상단 높이를 못 박은 값이라 창 폭에 따라 어긋난다 — 아래 fitTable이 실측으로
+
+
+   다시 맞춘다(사용자 지적 2026-09-01: 바깥 창에 스크롤이 생긴다). */
+
+
+/* table-layout:fixed인데 표 폭이 auto면 브라우저가 "shrink-to-fit"으로 지정 열 폭을 무시하고
+
+
+   압축한다(실측: 340px 지정이 215.7px로 줄었다). width:max-content를 줘야 지정 폭이 지켜진다.
+
+
+   주의: 여기에 min-width:100%를 같이 주면 안 된다 — 표가 화면보다 좁을 때(넓은 모니터) 남는
+
+
+   폭을 열에 나눠 넣어 지정 폭이 다시 무너진다. UHD(3840)에서 라벨열이 768px이어야 하는데
+
+
+   1310px로 부풀었다(사용자 지적). 표는 내용만큼만 차지하고 남는 곳은 비워 둔다. */
+
+
+table{border-collapse:separate;border-spacing:0;font-size:12px;table-layout:fixed;
+
+
+ width:max-content}
+
+
+th,td{padding:3px 5px;border-bottom:1px solid var(--ln);text-align:center;white-space:nowrap;
+
+
+ overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;width:64px}
+
+
+/* 1단(사업장 목록) 폭은 index.html 좌측 패널과 동일하게 맞춘다(사용자 요청) —
+
+
+   index는 grid-template-columns:20% 40% 40% 이므로 20vw다. 창이 좁을 때를 대비해 하한을 둔다. */
+
+
+col.lblcol,th.lblc,td.lbl{width:max(208px,16vw)}
+
+
+/* index는 목록 컨테이너(6px)와 항목(8px) 여백이 겹쳐 한쪽 14px이다. 같은 여백을 줘야
+
+
+   같은 폭에서 프로젝트명이 잘리는 지점도 같아진다. */
+
+
+td.lbl{padding-left:14px;padding-right:14px}
+
+
+/* 라벨 셀 = index.html 좌측 목록 항목과 동일 구성(별표·코드·이름·플래그) */
+
+
+td.lbl .it{display:grid;grid-template-columns:auto auto auto 1fr auto;gap:5px;align-items:center;line-height:1.35}
+
+
+td.lbl .cid{font-size:12px;color:var(--tx3);font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.2px}
+
+
+td.lbl .t{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+
+td.lbl .t b{color:var(--tx2);font-weight:400}
+
+
+
+
+/* 관계사(특수관계자) 발주 사업장 — index·matrix·trace 공용 (scripts/site_style.py) */
+
+/* 관계사는 이름 배지(.rpb)만으로 구분한다 — 행 하이라이트는 뺐다(사용자 지시 2026-09-01).
+
+   삼성물산 83개·삼성E&A 57개가 통째로 칠해져 있어, 정작 보여야 할 **묶음(list_pin)
+
+   하이라이트**가 그 위에 묻혔다. 하이라이트는 묶음 하나만 쓴다. */
+
+/* .it은 4열 그리드(별·코드·이름·플래그)다. 배지는 다섯 번째 자식이라 열을 늘려 주지 않으면
+
+   다음 줄로 밀려 목록 전체가 두 줄이 된다. 배지 열은 auto — 관계사 이름 폭만큼만 쓴다.
+
+   matrix는 이 규칙을 `td.lbl .it`(특이도 0,2,1)로 두고 있어 `.it.rps`(0,2,0)가 진다.
+
+   그래서 두 선택자를 함께 적는다 — 한쪽만 두면 matrix에서만 두 줄로 밀린다(사용자 지적). */
+
+/* 배지가 붙은 만큼 열을 늘린다 — b1·b2·b3은 **배지 개수**다(관계사·다수현장·해외법인).
+   종전에는 경우마다 규칙을 적었는데 배지가 셋이 되면 조합이 여덟이라 세지 못한다.
+   matrix는 `td.lbl .it`로 특이도를 높여 두고 있어 두 선택자를 함께 적는다. */
+.it.b1,td.lbl .it.b1{grid-template-columns:auto auto auto auto 1fr auto}
+.it.b2,td.lbl .it.b2{grid-template-columns:auto auto auto auto auto 1fr auto}
+.it.b3,td.lbl .it.b3{grid-template-columns:auto auto auto auto auto auto 1fr auto}
+/* 3단 상세 제목(h2)에도 같은 배지를 단다 — 목록·matrix·trace와 눈이 같은 곳을 보게 한다
+   (사용자 지시 2026-09-09). h2는 그리드가 아니라 글줄이라 배지 뒤 여백만 준다. */
+h2 .rpb,h2 .lmb,h2 .ebb{margin-right:6px;vertical-align:middle}
+
+
+/* list_pin으로 묶어 둔 사업장 묶음 — index·matrix·trace 공용. 나열 순서만으로는 「왜 여기
+
+   모여 있는지」가 안 보여서 한 덩어리로 칠한다. 선택(.on)과 색 계열을 달리해 겹쳐 보이지
+
+   않게 하고, 선택된 행에서도 왼쪽 레일은 남겨 묶음 소속이 유지되게 한다. 위아래 끝만 모서리를
+
+   둥글려 블록으로 읽힌다. index의 :root가 이 변수를 정의하고, matrix·trace는 아래 fallback을
+
+   쓴다(각 페이지의 배경 계열이 같아 같은 값이다). */
+
+.it.pin{box-shadow:inset 2px 0 0 var(--pinl,#2a7d72);border-radius:0}
+
+.it.pin:not(.on){background:var(--pinb,#1a2029)}
+
+.it.pin:not(.on):hover{background:var(--pinh,#212a34)}
+
+.it.pin.pt{border-top-left-radius:5px;border-top-right-radius:5px}
+
+.it.pin.pb{border-bottom-left-radius:5px;border-bottom-right-radius:5px}
+
+tr.pin td.cn{box-shadow:inset 2px 0 0 var(--pinl,#2a7d72);background:var(--pinb,#1a2029)}
+
+/* line-height는 테두리 2px을 포함해 다른 행과 같은 높이가 되게 잡는다 — matrix는 행 높이가
+
+   촘촘해 배지가 1px만 높아도 행마다 높이가 들쭉날쭉해진다(브라우저 실측 16px vs 15px). */
+
+.rpb{padding:0 4px;border-radius:3px;font-size:12px;line-height:13px;color:#7dd3fc;
+
+ background:rgba(125,211,252,.12);border:1px solid rgba(125,211,252,.35);white-space:nowrap}
+
+/* 다수현장(.lmb) — 여러 현장이 한 행으로 묶여 공시된 사업장. 단일 현장이 아니라 계약이
+
+   드나드는 묶음이라 추정도 분기 매출인식액도 만들지 않는다. 관계사 배지(하늘색)와
+
+   구분되게 붉은 계열로 둔다(사용자 지시 2026-09-09). */
+
+.lmb{padding:0 4px;border-radius:3px;font-size:12px;line-height:13px;color:#fca5a5;
+
+ background:rgba(252,165,165,.12);border:1px solid rgba(252,165,165,.38);white-space:nowrap}
+
+/* 해외법인(.ebb) — 원문이 그 사업장을 실은 법인. 관계사(하늘)·다수현장(붉은)과 구분되게
+   노란 계열로 둔다(사용자 지시 2026-09-09). */
+.ebb{padding:0 4px;border-radius:3px;font-size:12px;line-height:13px;color:#fcd34d;
+ background:rgba(252,211,77,.12);border:1px solid rgba(252,211,77,.38);white-space:nowrap}
+/* 즐겨찾기 별표 — 세 페이지 공통 */
+
+/* 별표 옆 **플래그** — 별표와 같은 방식으로 세 페이지가 공유한다(localStorage encFlags).
+
+   별표는 「다시 볼 것」, 플래그는 그와 별개로 표시해 두고 싶은 것이라 색을 달리한다. */
+
+.flag{font-size:12px;color:#3a4150;cursor:pointer;user-select:none;line-height:1;padding:1px 2px}
+
+.flag:hover,.flag.on{color:#f87171}
+
+.star{font-size:12px;color:#3a4150;cursor:pointer;user-select:none;line-height:1;padding:1px 2px}
+
+.star:hover{color:#f5c518}
+
+.star.on{color:#f5c518}
+
+
+
+/* ── 세 페이지 공통 타이포 위계 (사용자 지시 2026-08-31) ────────────────────────
+
+   페이지마다 제목 14/15px · 본문 12.5/13px · 버튼 9.5/11.5px · 목록 명칭 11/11.5/12px로
+
+   제각각이던 것을 한 벌로 묶는다. 여기 값만 고치면 세 페이지가 같이 바뀐다.
+
+     제목 15px · 부제 12px · 본문 12px · 버튼 12px
+
+     목록 코드 10px · 목록 명칭 12px · 목록 한 줄 20px
+
+   페이지별 규칙이 특이도로 이기지 않게 선택자를 함께 적는다 — matrix의 `td.lbl .t`(0,2,1)를
+
+   `td.lbl .it .t`(0,3,1)로 넘고, trace의 `td.cn .nm`은 같은 특이도라 뒤에 오는 이것이 이긴다. */
+
+body{font-size:12px;line-height:1.5}
+
+h1,.side h1,header h1{font-size:15px;font-weight:600;letter-spacing:-.2px}
+
+h1 span,.side h1 span,header h1 span{font-size:12px;font-weight:400;margin-top:3px}
+
+/* 버튼·검색창 높이 26px 통일(사용자 지시 2026-09-03) — 12px 글자를 담는 최소 높이다.
+
+   줄높이 24 + 테두리 위아래 1px씩. 인라인 style의 display:block을 건드리지 않으려고
+
+   flex 정렬 대신 line-height로 세로 가운데를 맞춘다. */
+
+a.nav{font-size:12px;height:26px;line-height:24px;padding:0 11px;border-radius:6px;box-sizing:border-box}
+
+
+
+/* 목록 한 줄 20px — 세 페이지 동일(사용자 지정 2026-08-31).
+
+   .it은 그리드라 height로 고정하고, 표(matrix·trace)는 세로 여백을 0으로 두고 칸 높이를 준다. */
+
+.it{height:20px;line-height:1;align-items:center}
+
+/* 분기매출의 목록은 표 칸 안에 있고 칸에 아래 테두리 1px이 붙는다 — 안쪽은 18px로 두어야
+
+   테두리까지 합쳐 19px이 된다(칸의 height는 최소값이라 안쪽이 더 크면 그쪽이 이긴다). */
+
+td.lbl .it{height:19px;line-height:1;align-items:center}
+
+tbody td,tbody th{padding-top:0;padding-bottom:0;height:20px}
+
+/* 분기매출은 칸마다 아래 테두리 1px이 붙어 그만큼 더 높아진다(border-collapse:separate라
+
+   box-sizing이 먹지 않는다). 테두리를 포함해 19px이 되게 칸을 1px 낮춘다 — 브라우저 실측. */
+
+tbody td.lbl,tbody td.lbl~td{height:19px}
+
+/* 그룹 머리 행은 아래 테두리가 없어 1px 낮게 잡혔다 — 사업장 행과 같은 20px로 맞춘다. */
+
+tbody tr.grp td{height:20px}
+
+.it .cid,td.lbl .it .cid,td.cn .cd{font-size:12px}
+
+.it .t,td.lbl .it .t,td.cn .nm{font-size:12px}
+
+
+
+/* 페이지 여백 — 세 페이지의 제목이 **같은 자리**에서 시작하게 한다(좌 18px · 상 14px).
+
+   이전에는 (14,13)·(18,12)·(22,18)로 제각각이었다. 원본위치 지도은 여백이 body에 있어
+
+   `body.pg`로 받는다 — 다른 두 페이지의 body에 여백이 붙지 않게 클래스로 막았다. */
+
+.side h1{padding:14px 18px 8px}
+
+header{padding:14px 18px}
+
+body.pg{padding:14px 18px 28px}
+
+/* 제목 아래 네비 줄까지 같은 자리에 오게 — 원본위치 지도은 제목이 margin으로,
+
+   현장별 데이터는 h1 padding-bottom으로 간격을 만든다. 4px 차이를 여기서 메운다. */
+
+body.pg h1{margin:0 0 8px}
+
+
+
+
+.flags{font-family:ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:2.5px;white-space:nowrap}
+
+
+.f1{color:var(--cmp)}.f2{color:var(--sep)}.f3{color:var(--pr)}.fx{color:#3a4150}
+
+
+thead th{position:sticky;top:0;background:var(--pn2);color:var(--tx2);font-weight:500;z-index:3}
+
+
+thead th.lblc{left:0;z-index:4}
+
+
+td.lbl,tr.grp td.lbl{position:sticky;left:0;background:var(--pn);text-align:left;color:var(--tx2);z-index:2}
+
+
+tr.grp td.lbl{background:var(--pn2);color:var(--tx);font-weight:600;font-size:12px;cursor:pointer;user-select:none}
+
+
+tr.grp .gc{color:var(--tx3);font-weight:400}
+
+
+/* 그룹 접기 — index.html 좌측 목록과 같은 조작(사용자 요청) */
+
+
+tr.grp .gt{display:inline-block;width:11px;color:var(--tx3);font-weight:400}
+
+
+tr.grp.col td.lbl{color:var(--tx2)}
+
+
+.gall{flex:none;background:var(--pn2);border:1px solid var(--ln);border-radius:5px;
+
+
+ padding:2px 8px;font-size:12px;color:var(--tx2);cursor:pointer;white-space:nowrap;user-select:none}
+
+
+.gall:hover{color:var(--a);border-color:var(--a)}
+
+
+tr.grp td.gs{background:var(--pn2);border-bottom:1px solid var(--ln);color:var(--tx);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* 맨 위 총합계 줄 — 그룹 소계와 같은 모양이되 접히지 않으므로 커서를 두지 않고, 아래 테두리를 굵혀 그룹들과 갈라 놓는다. */
+
+tr.grp.tot td.lbl{cursor:default}
+
+tr.grp.tot td{border-bottom:2px solid var(--ln)}
+
+
+tr.grp td.gs.z{color:var(--tx3);font-weight:400}
+
+
+tr:hover td{background:#1a2030}
+
+
+tr:hover td.lbl{background:#1a2030}
+
+
+/* 키보드(↑↓)로 고른 행 — index.html의 .it.on과 같은 강조(사용자 요청) */
+
+
+tr.sel td{background:#1d2b45}
+
+
+tr.sel td.lbl{background:#1d2b45;box-shadow:inset 2px 0 0 var(--a)}
+
+
+tr.sel td.lbl .cid{color:var(--tx2)}
+
+
+tr.grp:hover td{background:var(--pn2)}
+
+
+td.na{color:#454c59}
+
+
+th.yb,td.yb{border-left:1px dashed #586074}
+
+
+th.hf{color:var(--fc);font-weight:600}
+
+
+td.fl{outline:1px dashed var(--sep);outline-offset:-2px;border-radius:2px}
+
+
+td.fli{outline:1px dashed var(--pr);outline-offset:-2px;border-radius:2px}
+
+
+td.flx{outline:1px dashed var(--xi);outline-offset:-2px;border-radius:2px}
+
+
+td.ffc{outline:1px dashed var(--fc);outline-offset:-2px;border-radius:2px}
+
+
+td.fm{outline:1px solid var(--mn);outline-offset:-2px;border-radius:2px}
+
+
+td.fe{outline:1px dashed var(--fe);outline-offset:-2px;border-radius:2px;background:rgba(192,132,252,.10)}
+
+
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#2f3542;border-radius:4px}
+
+
+</style></head><body>
+
+
+<header>
+
+
+ <h1>자이씨앤에이 현장별 분기매출<span>73개 사업장 × 21개 분기(FQF) · 완성공사액 증분 · 십억원</span></h1>
+
+
+ <a class="nav" href="../index.html">← 회사 선택</a>
+
+
+ <a class="nav" href="../xca/index.html">← 현장별 데이터</a>
+
+
+ <a class="nav" href="../xca/trace.html">→ 원본위치 지도</a>
+
+
+ <input type="search" id="q" placeholder="회사 · 프로젝트명 · 발주처 검색">
+
+
+ <div class="chips" id="fe"></div>
+
+
+ <div class="chips" id="ff"></div>
+
+
+ <div class="chips" id="fb"></div>
+
+
+ <div class="cnt" id="cnt"></div>
+
+
+ <span class="gall" id="gall"></span>
+
+
+</header>
+
+
+<div class="legend">
+
+
+ <b>보전/예측 표시</b>
+
+
+ <span><i class="sw" style="outline:1px dashed var(--sep);background:transparent"></i>III-8 교차참조</span>
+
+
+ <span><i class="sw" style="outline:1px dashed var(--xi);background:transparent"></i>XI-1 교차참조</span>
+
+
+ <span><i class="sw" style="outline:1px dashed var(--pr);background:transparent"></i>선형보간</span>
+
+
+ <span><i class="sw" style="outline:1px dashed var(--fc);background:transparent"></i>S-curve 예측/역산</span>
+
+
+ <span><i class="sw" style="outline:1px solid var(--mn);background:transparent"></i>수동 확정 정정</span>
+
+
+ <span><i class="sw" style="outline:1px dashed var(--fe);background:rgba(192,132,252,.2)"></i>추정 배분</span>
+
+
+ <span style="color:var(--fc)">* = 향후 예측 분기</span>
+
+
+ <span>테두리 없는 값 = 원문 실측</span>
+
+
+</div>
+
+
+<div class="tblwrap">
+
+
+<table>
+
+
+<colgroup><col class="lblcol"><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col></colgroup>
+
+
+<thead><tr><th class="lblc"></th><th class="">2021Q4</th><th class="yb">2022Q1</th><th class="">2022Q2</th><th class="">2022Q3</th><th class="">2022Q4</th><th class="yb">2023Q1</th><th class="">2023Q2</th><th class="">2023Q3</th><th class="">2023Q4</th><th class="yb">2024Q1</th><th class="">2024Q2</th><th class="">2024Q3</th><th class="">2024Q4</th><th class="yb">2025Q1</th><th class="">2025Q2</th><th class="">2025Q3</th><th class="">2025Q4</th><th class="yb hf">2026Q1*</th><th class=" hf">2026Q2*</th><th class=" hf">2026Q3*</th><th class=" hf">2026Q4*</th></tr></thead>
+
+
+<tbody id="tb">
+
+
+<tr class="grp tot"><td class="lbl"><span class="gt"> </span>총합계 <span class="gc">(73)</span></td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td></tr>
+<tr class="grp" data-gid="0"><td class="lbl"><span class="gt">▾</span>자이씨앤에이 · 국내 <span class="gc">(1)</span></td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td></tr>
+<tr data-gid="0" data-ent="자이씨앤에이" data-q="자이씨앤에이 자이씨앤에이(주) 건축/플랜트 (법인 뭉치)  xca-2-0001" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-2-0001" data-has="100"><td class="lbl"><div class="it b1"><span class="star" data-id="XCA-2-0001" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-2-0001" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-2-0001</span><span class="lmb" title="다수현장 — 여러 현장이 한 행으로 묶여 공시된 사업장입니다. 단일 현장이 아니라 계약이 드나들므로 보전·예측 등 어떤 추정도 하지 않고, 분기 매출인식액도 만들지 않습니다. 계약잔액은 공시값이라 그대로 합산됩니다.">다수현장</span><span class="t" title="자이씨앤에이 · 자이씨앤에이(주) 건축/플랜트 (법인 뭉치)">자이씨앤에이(주) 건축/플랜트 (법인 뭉치)</span><span class="flags"><span class="f1">O</span><span class="fx">X</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr class="grp" data-gid="1"><td class="lbl"><span class="gt">▾</span>자이씨앤에이 · 해외 <span class="gc">(3)</span></td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td></tr>
+<tr data-gid="1" data-ent="자이씨앤에이" data-q="자이씨앤에이 zeit c&amp;a nanjing (법인 뭉치)  xca-2-0002" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-2-0002" data-has="100"><td class="lbl"><div class="it b1"><span class="star" data-id="XCA-2-0002" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-2-0002" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-2-0002</span><span class="lmb" title="다수현장 — 여러 현장이 한 행으로 묶여 공시된 사업장입니다. 단일 현장이 아니라 계약이 드나들므로 보전·예측 등 어떤 추정도 하지 않고, 분기 매출인식액도 만들지 않습니다. 계약잔액은 공시값이라 그대로 합산됩니다.">다수현장</span><span class="t" title="자이씨앤에이 · ZEIT C&amp;A NANJING (법인 뭉치)">ZEIT C&amp;A NANJING (법인 뭉치)</span><span class="flags"><span class="f1">O</span><span class="fx">X</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="1" data-ent="자이씨앤에이" data-q="자이씨앤에이 zeit c&amp;a poland (법인 뭉치)  xca-2-0004" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-2-0004" data-has="100"><td class="lbl"><div class="it b1"><span class="star" data-id="XCA-2-0004" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-2-0004" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-2-0004</span><span class="lmb" title="다수현장 — 여러 현장이 한 행으로 묶여 공시된 사업장입니다. 단일 현장이 아니라 계약이 드나들므로 보전·예측 등 어떤 추정도 하지 않고, 분기 매출인식액도 만들지 않습니다. 계약잔액은 공시값이라 그대로 합산됩니다.">다수현장</span><span class="t" title="자이씨앤에이 · ZEIT C&amp;A POLAND (법인 뭉치)">ZEIT C&amp;A POLAND (법인 뭉치)</span><span class="flags"><span class="f1">O</span><span class="fx">X</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="1" data-ent="자이씨앤에이" data-q="자이씨앤에이 zeit c&amp;a vietnam (법인 뭉치)  xca-2-0005" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-2-0005" data-has="100"><td class="lbl"><div class="it b1"><span class="star" data-id="XCA-2-0005" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-2-0005" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-2-0005</span><span class="lmb" title="다수현장 — 여러 현장이 한 행으로 묶여 공시된 사업장입니다. 단일 현장이 아니라 계약이 드나들므로 보전·예측 등 어떤 추정도 하지 않고, 분기 매출인식액도 만들지 않습니다. 계약잔액은 공시값이라 그대로 합산됩니다.">다수현장</span><span class="t" title="자이씨앤에이 · ZEIT C&amp;A VIETNAM (법인 뭉치)">ZEIT C&amp;A VIETNAM (법인 뭉치)</span><span class="flags"><span class="f1">O</span><span class="fx">X</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr class="grp" data-gid="2"><td class="lbl"><span class="gt">▾</span>자이씨앤에이 · 미표기 <span class="gc">(69)</span></td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs yb">–</td><td class="gs">–</td><td class="gs">–</td><td class="gs">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 중국 남경 capa-up 공사  xca-3-0068" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0068" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0068" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0068" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0068</span><span class="t" title="자이씨앤에이 · 중국 남경 Capa-up 공사">중국 남경 Capa-up 공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p10a cr&amp;ut 공사  xca-3-0053" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0053" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0053" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0053" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0053</span><span class="t" title="자이씨앤에이 · P10A CR&amp;UT 공사">P10A CR&amp;UT 공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p10 대기환경설비공사  xca-3-0017" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0017" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0017" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0017" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0017</span><span class="t" title="자이씨앤에이 · P10 대기환경설비공사">P10 대기환경설비공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p9 대기환경설비공사  xca-3-0018" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0018" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0018" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0018" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0018</span><span class="t" title="자이씨앤에이 · P9 대기환경설비공사">P9 대기환경설비공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p10 건설공사  xca-3-0016" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0016" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0016" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0016" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0016</span><span class="t" title="자이씨앤에이 · P10 건설공사">P10 건설공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p10 345kv 변전소 공사  xca-3-0015" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0015" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0015" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0015" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0015</span><span class="t" title="자이씨앤에이 · P10 345kV 변전소 공사">P10 345kV 변전소 공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 2블록 부속동 증축공사  xca-3-0014" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0014" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0014" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0014" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0014</span><span class="t" title="자이씨앤에이 · 2블록 부속동 증축공사">2블록 부속동 증축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 창원1공장 선진화 프로젝트  xca-3-0055" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0055" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0055" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0055" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0055</span><span class="t" title="자이씨앤에이 · 창원1공장 선진화 프로젝트">창원1공장 선진화 프로젝트</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p9 toe cr&amp;ut공사  xca-3-0026" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0026" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0026" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0026" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0026</span><span class="t" title="자이씨앤에이 · P9 ToE CR&amp;UT공사">P9 ToE CR&amp;UT공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 오송공장 4단계  xca-3-0065" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0065" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0065" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0065" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0065</span><span class="t" title="자이씨앤에이 · 오송공장 4단계">오송공장 4단계</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 v-pjt cr&amp;ut공사  xca-3-0039" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0039" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0039" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0039" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0039</span><span class="t" title="자이씨앤에이 · V-PJT CR&amp;UT공사">V-PJT CR&amp;UT공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 메가센터 7,8단계 증설공사  xca-3-0019" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0019" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0019" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0019" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0019</span><span class="t" title="자이씨앤에이 · 메가센터 7,8단계 증설공사">메가센터 7,8단계 증설공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 폴란드 자동차전지공장 복지동 신축공사  xca-3-0059" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0059" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0059" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0059" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0059</span><span class="t" title="자이씨앤에이 · 폴란드 자동차전지공장 복지동 신축공사">폴란드 자동차전지공장 복지동 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 소형전지9,10동 신축공사  xca-3-0054" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0054" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0054" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0054" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0054</span><span class="t" title="자이씨앤에이 · 소형전지9,10동 신축공사">소형전지9,10동 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 중국 남경 원통형전지 전극라인 증설공사  xca-3-0036" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0036" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0036" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0036" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0036</span><span class="t" title="자이씨앤에이 · 중국 남경 원통형전지 전극라인 증설공사">중국 남경 원통형전지 전극라인 증설공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 capa-up공사  xca-3-0035" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0035" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0035" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0035" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0035</span><span class="t" title="자이씨앤에이 · Capa-up공사">Capa-up공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 베트남 냉장고 생산동 건설공사  xca-3-0041" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0041" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0041" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0041" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0041</span><span class="t" title="자이씨앤에이 · 베트남 냉장고 생산동 건설공사">베트남 냉장고 생산동 건설공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p5-project  xca-3-0064" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0064" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0064" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0064" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0064</span><span class="t" title="자이씨앤에이 · P5-Project">P5-Project</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 nbl 11만톤 증설  xca-3-0021" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0021" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0021" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0021" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0021</span><span class="t" title="자이씨앤에이 · NBL 11만톤 증설">NBL 11만톤 증설</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 양극재 4공장 신축공사  xca-3-0067" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0067" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0067" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0067" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0067</span><span class="t" title="자이씨앤에이 · 양극재 4공장 신축공사">양극재 4공장 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 단열재 3공장 신축공사  xca-3-0062" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0062" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0062" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0062" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0062</span><span class="t" title="자이씨앤에이 · 단열재 3공장 신축공사">단열재 3공장 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 통합시험동 증축공사  xca-3-0056" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0056" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0056" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0056" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0056</span><span class="t" title="자이씨앤에이 · 통합시험동 증축공사">통합시험동 증축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 베트남 하이퐁공장 cr 증설공사  xca-3-0042" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0042" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0042" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0042" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0042</span><span class="t" title="자이씨앤에이 · 베트남 하이퐁공장 CR 증설공사">베트남 하이퐁공장 CR 증설공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 중국 남경 소형전지7동 부속동 및 8동 신축공사  xca-3-0034" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0034" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0034" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0034" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0034</span><span class="t" title="자이씨앤에이 · 중국 남경 소형전지7동 부속동 및 8동 신축공사">중국 남경 소형전지7동 부속동 및 8동 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 폴란드 자동차전지공장 활성화4동 신축공사  xca-3-0060" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0060" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0060" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0060" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0060</span><span class="t" title="자이씨앤에이 · 폴란드 자동차전지공장 활성화4동 신축공사">폴란드 자동차전지공장 활성화4동 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 v-pjt h3 신축공사  xca-3-0040" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0040" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0040" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0040" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0040</span><span class="t" title="자이씨앤에이 · V-PJT H3 신축공사">V-PJT H3 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 2공장 시험연구동 신축공사  xca-3-0049" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0049" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0049" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0049" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0049</span><span class="t" title="자이씨앤에이 · 2공장 시험연구동 신축공사">2공장 시험연구동 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 next idc 154kv  xca-3-0058" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0058" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0058" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0058" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0058</span><span class="t" title="자이씨앤에이 · Next IDC 154kV">Next IDC 154kV</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 next idc 신축공사  xca-3-0057" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0057" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0057" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0057" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0057</span><span class="t" title="자이씨앤에이 · Next IDC 신축공사">Next IDC 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p10b cr&amp;ut공사  xca-3-0031" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0031" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0031" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0031" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0031</span><span class="t" title="자이씨앤에이 · P10B CR&amp;UT공사">P10B CR&amp;UT공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 pbat project  xca-3-0027" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0027" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0027" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0027" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0027</span><span class="t" title="자이씨앤에이 · PBAT Project">PBAT Project</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p4 project  xca-3-0063" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0063" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0063" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0063" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0063</span><span class="t" title="자이씨앤에이 · P4 Project">P4 Project</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 cnt3 pjt  xca-3-0009" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0009" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0009" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0009" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0009</span><span class="t" title="자이씨앤에이 · CNT3 PJT">CNT3 PJT</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 저층 공용부 리모델링공사  xca-3-0050" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0050" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0050" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0050" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0050</span><span class="t" title="자이씨앤에이 · 저층 공용부 리모델링공사">저층 공용부 리모델링공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 cr증설 공사  xca-3-0066" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0066" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0066" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0066" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0066</span><span class="t" title="자이씨앤에이 · CR증설 공사">CR증설 공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 c3-ipa 증설 project  xca-3-0007" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0007" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0007" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0007" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0007</span><span class="t" title="자이씨앤에이 · C3-IPA 증설 Project">C3-IPA 증설 Project</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 리더십센터 renewal 공사  xca-3-0047" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0047" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0047" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0047" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0047</span><span class="t" title="자이씨앤에이 · 리더십센터 Renewal 공사">리더십센터 Renewal 공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 양극재 증설 건축공사  xca-3-0045" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0045" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0045" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0045" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0045</span><span class="t" title="자이씨앤에이 · 양극재 증설 건축공사">양극재 증설 건축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 환경안전성 시험센터  xca-3-0061" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0061" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0061" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0061" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0061</span><span class="t" title="자이씨앤에이 · 환경안전성 시험센터">환경안전성 시험센터</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 he생산지 이전 리모델링공사  xca-3-0011" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0011" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0011" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0011" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0011</span><span class="t" title="자이씨앤에이 · HE생산지 이전 리모델링공사">HE생산지 이전 리모델링공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 c4 cr증설공사  xca-3-0008" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0008" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0008" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0008" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0008</span><span class="t" title="자이씨앤에이 · C4 CR증설공사">C4 CR증설공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 ncc t/a 및 steam network 최적화 pjt  xca-3-0022" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0022" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0022" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0022" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0022</span><span class="t" title="자이씨앤에이 · NCC T/A 및 Steam Network 최적화 PJT">NCC T/A 및 Steam Network 최적화 PJT</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 선진화건설 2단계공사  xca-3-0043" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0043" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0043" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0043" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0043</span><span class="t" title="자이씨앤에이 · 선진화건설 2단계공사">선진화건설 2단계공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 capa-up공사(2022년)  xca-3-0069" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0069" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0069" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0069" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0069</span><span class="t" title="자이씨앤에이 · Capa-up공사(2022년)">Capa-up공사(2022년)</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p10 cr7층 cr&amp;ut공사  xca-3-0024" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0024" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0024" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0024" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0024</span><span class="t" title="자이씨앤에이 · P10 CR7층 CR&amp;UT공사">P10 CR7층 CR&amp;UT공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 1공장 증설공사  xca-3-0048" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0048" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0048" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0048" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0048</span><span class="t" title="자이씨앤에이 · 1공장 증설공사">1공장 증설공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 h3 cr&amp;ut공사  xca-3-0038" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0038" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0038" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0038" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0038</span><span class="t" title="자이씨앤에이 · H3 CR&amp;UT공사">H3 CR&amp;UT공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 sm공장 철거공사  xca-3-0029" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0029" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0029" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0029" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0029</span><span class="t" title="자이씨앤에이 · SM공장 철거공사">SM공장 철거공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 양극재 증설 엔지니어링 공사  xca-3-0046" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0046" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0046" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0046" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0046</span><span class="t" title="자이씨앤에이 · 양극재 증설 엔지니어링 공사">양극재 증설 엔지니어링 공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 3산단 2구역 전력 수급공사  xca-3-0005" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0005" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0005" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0005" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0005</span><span class="t" title="자이씨앤에이 · 3산단 2구역 전력 수급공사">3산단 2구역 전력 수급공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 cnt4 pjt  xca-3-0010" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0010" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0010" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0010" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0010</span><span class="t" title="자이씨앤에이 · CNT4 PJT">CNT4 PJT</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 2차전지 재활용공장 신축공사  xca-3-0004" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0004" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0004" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0004" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0004</span><span class="t" title="자이씨앤에이 · 2차전지 재활용공장 신축공사">2차전지 재활용공장 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 교육연구시설 신축공사  xca-3-0032" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0032" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0032" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0032" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0032</span><span class="t" title="자이씨앤에이 · 교육연구시설 신축공사">교육연구시설 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 v3 신축공사  xca-3-0030" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0030" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0030" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0030" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0030</span><span class="t" title="자이씨앤에이 · V3 신축공사">V3 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 전지생산2동 신축공사  xca-3-0052" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0052" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0052" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0052" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0052</span><span class="t" title="자이씨앤에이 · 전지생산2동 신축공사">전지생산2동 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 전지바인더 project  xca-3-0051" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0051" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0051" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0051" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0051</span><span class="t" title="자이씨앤에이 · 전지바인더 project">전지바인더 project</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 양극재 pjt  xca-3-0044" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0044" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0044" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0044" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0044</span><span class="t" title="자이씨앤에이 · 양극재 PJT">양극재 PJT</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 a pjt  xca-3-0006" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0006" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0006" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0006" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0006</span><span class="t" title="자이씨앤에이 · A PJT">A PJT</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 m센터 신축공사  xca-3-0020" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0020" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0020" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0020" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0020</span><span class="t" title="자이씨앤에이 · M센터 신축공사">M센터 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 기숙사 신축공사  xca-3-0033" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0033" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0033" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0033" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0033</span><span class="t" title="자이씨앤에이 · 기숙사 신축공사">기숙사 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 h-project(2025)  xca-3-0012" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0012" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0012" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0012" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0012</span><span class="t" title="자이씨앤에이 · H-Project(2025)">H-Project(2025)</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 oc4동 전고체전지 파일럿 공사  xca-3-0023" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0023" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0023" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0023" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0023</span><span class="t" title="자이씨앤에이 · OC4동 전고체전지 파일럿 공사">OC4동 전고체전지 파일럿 공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 r&amp;d 캠퍼스 증축공사  xca-3-0028" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0028" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0028" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0028" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0028</span><span class="t" title="자이씨앤에이 · R&amp;D 캠퍼스 증축공사">R&amp;D 캠퍼스 증축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 1239 신축공사  xca-3-0001" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0001" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0001" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0001" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0001</span><span class="t" title="자이씨앤에이 · 1239 신축공사">1239 신축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 2센터 2단계 전산실 구축공사  xca-3-0003" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0003" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0003" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0003" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0003</span><span class="t" title="자이씨앤에이 · 2센터 2단계 전산실 구축공사">2센터 2단계 전산실 구축공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 동물의약 생산동 화재복구공사  xca-3-0037" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0037" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0037" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0037" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0037</span><span class="t" title="자이씨앤에이 · 동물의약 생산동 화재복구공사">동물의약 생산동 화재복구공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 1공장 신뢰성 6동 건설공사  xca-3-0002" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0002" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0002" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0002" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0002</span><span class="t" title="자이씨앤에이 · 1공장 신뢰성 6동 건설공사">1공장 신뢰성 6동 건설공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 p10 확장투자 cr&amp;ut공사  xca-3-0025" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0025" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0025" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0025" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0025</span><span class="t" title="자이씨앤에이 · P10 확장투자 CR&amp;UT공사">P10 확장투자 CR&amp;UT공사</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+<tr data-gid="2" data-ent="자이씨앤에이" data-q="자이씨앤에이 lbo gr.3 project  xca-3-0013" data-v=",,,,,,,,,,,,,,,,,,,," data-id="XCA-3-0013" data-has="010"><td class="lbl"><div class="it"><span class="star" data-id="XCA-3-0013" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span><span class="flag" data-id="XCA-3-0013" title="플래그 (별표와 별개로 표시)">⚐</span><span class="cid" title="사업장 코드">XCA-3-0013</span><span class="t" title="자이씨앤에이 · LBO Gr.3 Project">LBO Gr.3 Project</span><span class="flags"><span class="fx">X</span><span class="f2">O</span><span class="fx">X</span></span></div></td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na yb">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+
+
+</tbody>
+
+
+</table>
+
+
+</div>
+
+
+<script>
+
+
+const ENTS=["자이씨앤에이"];
+
+
+let selEnt=new Set(), selSrc=new Set(), bmOnly=false, flOnly=false;
+
+
+// ---- 즐겨찾기 — index.html과 **같은 localStorage 키**를 써서 두 화면이 연동된다(사용자 요청).
+
+
+// 다른 탭에서 바꾼 것도 storage 이벤트로 즉시 반영한다.
+
+
+let BM=new Set();
+
+
+try{BM=new Set(JSON.parse(localStorage.getItem('encBookmarks')||'[]'));}catch(e){BM=new Set();}
+
+
+const saveBM=()=>{try{localStorage.setItem('encBookmarks',JSON.stringify([...BM]));}catch(e){}};
+
+
+function paintStars(){document.querySelectorAll('#tb .star').forEach(el=>{
+
+
+ const on=BM.has(el.getAttribute('data-id'));
+
+
+ el.classList.toggle('on',on); el.textContent=on?'★':'☆';});}
+
+
+// 플래그 — 별표와 같은 구조, 다른 키(encFlags). index·trace와 함께 본다.
+
+
+let FL=new Set();
+
+
+try{FL=new Set(JSON.parse(localStorage.getItem('encFlags')||'[]'));}catch(e){FL=new Set();}
+
+
+const saveFL=()=>{try{localStorage.setItem('encFlags',JSON.stringify([...FL]));}catch(e){}};
+
+
+function paintFlags(){document.querySelectorAll('#tb .flag').forEach(el=>{
+
+
+ const on=FL.has(el.getAttribute('data-id'));
+
+
+ el.classList.toggle('on',on); el.textContent=on?'⚑':'⚐';});}
+
+
+function bindFlags(){document.querySelectorAll('#tb .flag').forEach(el=>{
+
+
+ el.addEventListener('click',ev=>{ev.stopPropagation();
+
+
+  const id=el.getAttribute('data-id');
+
+
+  FL.has(id)?FL.delete(id):FL.add(id);
+
+
+  saveFL(); paintFlags(); if(flOnly) filterRows();});});}
+
+
+window.addEventListener('storage',e=>{
+
+
+ if(e.key==='encBookmarks'){
+
+
+  try{BM=new Set(JSON.parse(e.newValue||'[]'));}catch(_){BM=new Set();}
+
+
+  paintStars(); filterRows();
+
+
+ } else if(e.key==='encFlags'){
+
+
+  try{FL=new Set(JSON.parse(e.newValue||'[]'));}catch(_){FL=new Set();}
+
+
+  paintFlags(); if(flOnly) filterRows();
+
+
+ }});
+
+
+function chips(){
+
+
+ const el=document.getElementById('fe');el.innerHTML='';
+
+
+ ENTS.forEach(v=>{const c=document.createElement('div');c.className='chip'+(selEnt.has(v)?' on':'');
+
+
+  c.textContent=v;c.onclick=()=>{selEnt.has(v)?selEnt.delete(v):selEnt.add(v);chips();filterRows();};el.appendChild(c);});
+
+
+ const f=document.getElementById('ff');f.innerHTML='';
+
+
+ ['II-4 보유','III-8 보유','XI-1 보유'].forEach((t,i)=>{
+
+
+  const c=document.createElement('div');c.className='chip'+(selSrc.has(i)?' on':'');
+
+
+  c.textContent=t;c.onclick=()=>{selSrc.has(i)?selSrc.delete(i):selSrc.add(i);chips();filterRows();};f.appendChild(c);});
+
+
+ const b=document.getElementById('fb');b.innerHTML='';
+
+
+ const c=document.createElement('div');c.className='chip'+(bmOnly?' on':'');
+
+
+ c.textContent='★ 즐겨찾기만';
+
+
+ c.onclick=()=>{bmOnly=!bmOnly;chips();filterRows();};b.appendChild(c);
+
+
+ // 변수명은 이 함수 안에서 이미 쓰인 것들(f=#ff, c=칩)과 겹치면 안 된다 — 겹치면
+
+
+ // SyntaxError로 스크립트 전체가 죽어 필터·별표·표 높이까지 통째로 멈춘다.
+
+
+ const fc=document.createElement('div');fc.className='chip'+(flOnly?' on':'');
+
+
+ fc.textContent='⚑ 플래그만';
+
+
+ fc.onclick=()=>{flOnly=!flOnly;chips();filterRows();};b.appendChild(fc);
+
+
+}
+
+
+chips();
+
+
+document.querySelectorAll('#tb .star').forEach(el=>{el.addEventListener('click',ev=>{
+
+
+ ev.stopPropagation();
+
+
+ const id=el.getAttribute('data-id');
+
+
+ BM.has(id)?BM.delete(id):BM.add(id);
+
+
+ saveBM(); paintStars(); if(bmOnly) filterRows();});});
+
+
+paintStars();
+
+
+// 표 영역을 창 아래 끝까지 맞춘다. CSS의 `calc(100vh - 84px)`은 상단 높이를 못 박은
+
+
+// 값이라 창 폭에 따라 설명문이 줄바꿈되면 어긋나 **바깥 창에 스크롤이 생긴다**
+
+
+// (사용자 지적 2026-09-01). 표가 실제로 시작하는 지점을 재서 남은 높이를 준다.
+
+
+const fitTable=()=>{const w=document.querySelector('.tblwrap'); if(!w) return;
+
+
+  w.style.height=Math.max(240,innerHeight-w.getBoundingClientRect().top-14)+'px';
+
+
+  const over=document.documentElement.scrollHeight-innerHeight;
+
+
+  if(over>0) w.style.height=Math.max(240,parseFloat(w.style.height)-over)+'px';};
+
+
+paintFlags(); bindFlags();
+
+
+addEventListener('resize',fitTable); requestAnimationFrame(fitTable);
+
+
+const rowEls=[...document.querySelectorAll('#tb tr[data-q]')];
+
+
+const totEl=document.querySelector('#tb tr.grp.tot');
+
+const grpEls=[...document.querySelectorAll('#tb tr.grp:not(.tot)')];
+
+
+// ---- 그룹 접기/펼치기(사용자 요청) — index.html 좌측 목록과 같은 조작.
+
+
+// 접힘 대상은 gid이며, '전체 열기/닫기'는 지금 필터에 실제로 보이는 그룹만 건드린다
+
+
+// (검색으로 걸러진 그룹까지 접어두면 검색어를 지웠을 때 엉뚱하게 접혀 보인다).
+
+
+const COLLAPSED=new Set();
+
+
+grpEls.forEach(g=>{g.querySelector('.lbl').addEventListener('click',()=>{
+
+
+ const id=g.getAttribute('data-gid');
+
+
+ COLLAPSED.has(id)?COLLAPSED.delete(id):COLLAPSED.add(id);
+
+
+ filterRows();});});
+
+
+function filterRows(){
+
+
+ const q=document.getElementById('q').value.trim().toLowerCase();
+
+
+ const visGid=new Set();
+
+
+ let shown=0;
+
+
+ // 그룹 합계 누적기 — 필터를 통과한 행만 더한다. NQ는 FQF 분기 수.
+
+
+ const GS=Object.create(null), NQ=21;
+
+ const TS=new Array(NQ).fill(null);   // 총합계 — 보이는 행만 더한다
+
+
+ rowEls.forEach(r=>{
+
+
+  const ent=r.getAttribute('data-ent'), has=r.getAttribute('data-has')||'';
+
+
+  let ok=true;
+
+
+  if(selEnt.size&&!selEnt.has(ent)) ok=false;
+
+
+  if(ok) for(const i of selSrc) if(has[i]!=='1'){ok=false;break;}
+
+
+  if(ok&&bmOnly&&!BM.has(r.getAttribute('data-id'))) ok=false;
+
+
+  if(ok&&flOnly&&!FL.has(r.getAttribute('data-id'))) ok=false;
+
+
+  if(ok&&q&&!r.getAttribute('data-q').includes(q)) ok=false;
+
+
+  if(ok){shown++;visGid.add(r.getAttribute('data-gid'));
+
+
+   // 그룹 합계는 '지금 보이는 행'만으로 다시 낸다. 접힘은 무관하다 — 접어 둔 그룹도
+
+
+   // 합계는 그대로 보여야 한다(오히려 접었을 때가 합계를 보는 상황이다).
+
+
+   const gid=r.getAttribute('data-gid');
+
+
+   let a=GS[gid]; if(!a){a=GS[gid]=new Array(NQ).fill(null);}
+
+
+   const vs=(r.getAttribute('data-v')||'').split(',');
+
+
+   for(let k=0;k<NQ;k++){const t=vs[k]; if(t!=='' && t!==undefined){a[k]=(a[k]||0)+parseFloat(t); TS[k]=(TS[k]||0)+parseFloat(t);}}
+
+
+  }
+
+
+  // 접힌 그룹의 항목은 필터를 통과해도 감춘다
+
+
+  r.style.display=(ok&&!COLLAPSED.has(r.getAttribute('data-gid')))?'':'none';
+
+
+ });
+
+
+ if(totEl){const cs=totEl.querySelectorAll('td.gs');
+
+  for(let k=0;k<cs.length;k++){const v=TS[k];
+
+   cs[k].textContent=(v===null)?'–':(v/1000).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1});
+
+   cs[k].classList.toggle('z',v===null);}
+
+  totEl.querySelector('.gc').textContent='('+shown+')';}
+
+ grpEls.forEach(g=>{const id=g.getAttribute('data-gid'), vis=visGid.has(id);
+
+
+  g.style.display=vis?'':'none';
+
+
+  const col=COLLAPSED.has(id);
+
+
+  g.classList.toggle('col',col);
+
+
+  g.querySelector('.gt').textContent=col?'▸':'▾';
+
+
+  g.querySelector('.lbl').title=col?'클릭하면 펼칩니다':'클릭하면 접습니다';
+
+
+  // 합계 셀 갱신 — 값이 하나도 없으면 서버 렌더와 같이 '–'로 두고 흐리게 표시한다.
+
+
+  const a=GS[id]||[], cs=g.querySelectorAll('td.gs');
+
+
+  for(let k=0;k<cs.length;k++){const v=a[k];
+
+
+   cs[k].textContent=(v===null||v===undefined)?'–':(v/1000).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1});
+
+
+   cs[k].classList.toggle('z',v===null||v===undefined);}
+
+
+ });
+
+
+ const gks=[...visGid], allCol=gks.length>0&&gks.every(k=>COLLAPSED.has(k));
+
+
+ const gb=document.getElementById('gall');
+
+
+ gb.textContent=gks.length?(allCol?`▾ 전체 열기 (${gks.length})`:`▸ 전체 닫기 (${gks.length})`):'';
+
+
+ gb.title=allCol?'모든 그룹을 펼칩니다':'모든 그룹을 접습니다';
+
+
+ gb.onclick=()=>{ if(allCol) gks.forEach(k=>COLLAPSED.delete(k)); else gks.forEach(k=>COLLAPSED.add(k)); filterRows(); };
+
+
+ document.getElementById('cnt').textContent=`${shown} / ${rowEls.length}개 사업장${BM.size?` · ★${BM.size}`:''} · ↑↓ 이동`;
+
+
+}
+
+
+document.getElementById('q').addEventListener('input',filterRows);
+
+
+filterRows();
+
+
+
+
+
+// ---- 말줄임 툴팁: 칸 폭이 좁아 잘린 내용은 마우스오버로도 확인할 수가 없다.
+
+
+// 실제로 잘린 요소에만 title을 붙인다(index.html의 truncTitles와 같은 처리).
+
+
+// 폭에 따라 달라지므로 필터·접기·창 크기 변경 때마다 다시 훑는다.
+
+
+function truncTitles(){
+
+
+ document.querySelectorAll('td,th,.t').forEach(el=>{
+
+
+  const mine=el.dataset.tt==='1';
+
+
+  if(el.hasAttribute('title')&&!mine) return;
+
+
+  if(el.scrollWidth>el.clientWidth+1){
+
+
+   el.title=el.textContent.replace(/\s+/g,' ').trim(); el.dataset.tt='1';
+
+
+  }else if(mine){ el.removeAttribute('title'); delete el.dataset.tt; }
+
+
+ });
+
+
+}
+
+
+let _ttTimer=null;
+
+
+function ttSoon(){clearTimeout(_ttTimer);_ttTimer=setTimeout(truncTitles,60);}
+
+
+// 렌더 환경에 이 API들이 없을 수 있다(Node vm 스모크 테스트). 없으면 툴팁만 안 붙고 넘어간다.
+
+
+try{
+
+
+ if(typeof MutationObserver!=='undefined')
+
+
+  new MutationObserver(ttSoon).observe(document.body,{childList:true,subtree:true,attributeFilter:['style','class']});
+
+
+ if(typeof addEventListener==='function') addEventListener('resize',ttSoon);
+
+
+ ttSoon();
+
+
+}catch(e){}
+
+
+
+
+
+// ---- 키보드 탐색(사용자 요청) — index.html 좌측 목록과 같은 조작.
+
+
+// 이 표에는 원래 '선택' 개념이 없어 .sel 강조를 함께 넣었다. 대상은 지금 화면에 실제로
+
+
+// 보이는 행(검색·법인·출처·즐겨찾기 필터 + 접힌 그룹 제외)이고, 끝에서는 순환하지 않는다.
+
+
+let selId=null;
+
+
+function visRows(){return rowEls.filter(r=>r.style.display!=='none');}
+
+
+function markSel(){rowEls.forEach(r=>r.classList.toggle('sel',r.getAttribute('data-id')===selId));}
+
+
+rowEls.forEach(r=>r.addEventListener('click',e=>{
+
+
+ if(e.target.closest('.star')||e.target.closest('.flag')) return;  // 별표·플래그 클릭은 선택이 아니다
+
+
+ selId=r.getAttribute('data-id'); markSel();}));
+
+
+function moveSel(delta){
+
+
+ const L=visRows(); if(!L.length) return;
+
+
+ let i=L.findIndex(r=>r.getAttribute('data-id')===selId);
+
+
+ if(i<0) i = delta>0 ? -1 : L.length;    // 선택이 필터 밖이면 방향에 맞춰 양 끝에서 시작
+
+
+ const ni=Math.min(L.length-1,Math.max(0,i+delta));
+
+
+ if(ni===i) return;
+
+
+ selId=L[ni].getAttribute('data-id'); markSel();
+
+
+ // sticky 헤더(thead)에 가리지 않도록 세로만 'nearest'로 맞춘다
+
+
+ L[ni].scrollIntoView({block:'nearest',inline:'nearest'});
+
+
+}
+
+
+document.addEventListener('keydown',e=>{
+
+
+ if(e.key!=='ArrowDown'&&e.key!=='ArrowUp') return;
+
+
+ if(e.altKey||e.ctrlKey||e.metaKey) return;
+
+
+ const t=e.target, tag=((t&&t.tagName)||'').toLowerCase();
+
+
+ // 검색창에서는 ↑↓가 캐럿 이동뿐이라 목록 탐색으로 쓴다(검색어 입력 → 화살표로 고르기).
+
+
+ if(tag==='textarea'||(tag==='input'&&t.type!=='search')) return;
+
+
+ e.preventDefault();
+
+
+ moveSel(e.key==='ArrowDown'?1:-1);
+
+
+});
+
+
+</script>
+
+
+</body></html>

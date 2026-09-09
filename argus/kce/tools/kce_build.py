@@ -626,12 +626,26 @@ def _recompute(D, k):
         #   ''(빈 문자열) → 그 분기 집계 대상 아님. rows는 None으로 남아야 한다
         if src == "":
             continue
-        if src in ("공시총계", "공시총계(단일)"):
+        # 상류(encprojects)가 7사→17사로 확장되며 이 어휘를 한 번 개편했다:
+        # '공시총계'·'공시총계(단일)' → '공시(수주상황 표 합계)'·'공시(공시상황 요약표)'.
+        # 완전일치로만 보면 전 법인이 아래 기본 분기로 떨어져 **원문 총계가 사이트 합으로
+        # 덮인다** — 현대건설은 개별 사업장 밑에 '기타' 버킷(국내 39.4조 + 해외 1.1조)을
+        # 두고 공시하므로 헤드라인 수주잔고가 104.9조 → 35.2조(−53.5%)가 된다.
+        # 접두로 판정해 옛/새 어휘를 함께 받는다.
+        if src.startswith("공시"):
             # 이 법인은 원문 합계행에서 읽어야 한다(v1 미구현). 새 분기라면 값이 비어
             # 있으므로, 조용히 사이트 합으로 채우는 대신 리포트에 남긴다.
             if SUM["rows"][ent][k] is None:
                 D.setdefault("_missing_total", []).append(ent)
             continue
+        if src != "명시+기타(계산)":
+            # fail-closed(AGENTS.md 규약). 모르는 라벨을 조용히 '사이트 합'으로 흘리면
+            # 상류 vintage가 또 바뀔 때 헤드라인이 소리 없이 반토막 난다. 위 사고가
+            # 테스트를 돌리기 전까지 아무 신호도 내지 않은 이유가 이 fail-open이었다.
+            raise RuntimeError(
+                "%s %s: 알 수 없는 summary.src=%r — LOGIC.md §2.3 어휘"
+                "('명시+기타(계산)' / '공시…' / '')가 아니다"
+                % (D["fq"][k], ent, src))
         SUM["rows"][ent][k] = sum(s["s"]["bal"][k] for s in meas) if meas else None
         never = _ovs_never_split(D, ent, k)
         for key, reg in (("dom", "국내"), ("ovs", "해외")):

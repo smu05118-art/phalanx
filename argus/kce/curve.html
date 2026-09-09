@@ -4,17 +4,17 @@
 --tx3:#5d6675;--a:#60a5fa}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;
- padding:24px 26px 60px;max-width:1080px;margin:0 auto}
+ padding:24px 26px 60px;max-width:1720px;margin:0 auto}
 h1{font-size:18px;font-weight:600}
 h2{font-size:14px;font-weight:600;margin:28px 0 8px;padding-top:14px;border-top:1px solid var(--ln)}
-.sub{color:var(--tx2);font-size:11.5px;margin-top:5px}
+.sub{color:var(--tx2);font-size:12px;margin-top:5px}
 .nav{margin:12px 0;display:flex;gap:8px;flex-wrap:wrap}
-.nav a{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;padding:5px 11px;
- font-size:11.5px;color:var(--a);text-decoration:none}
+.nav a{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;height:26px;line-height:24px;padding:0 11px;box-sizing:border-box;
+ display:inline-block;font-size:12px;color:var(--a);text-decoration:none}
 .nav a:hover{border-color:var(--a)}
 .note{background:var(--pn);border:1px solid var(--ln);border-left:3px solid var(--a);
- border-radius:0 6px 6px 0;padding:10px 13px;font-size:11.5px;color:var(--tx2);margin:10px 0}
-.lg{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--tx2);margin-bottom:6px}
+ border-radius:0 6px 6px 0;padding:10px 13px;font-size:12px;color:var(--tx2);margin:10px 0}
+.lg{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--tx2);margin-bottom:6px}
 .lg span{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
 .lg span.off{opacity:.35}
 .lg i{width:16px;height:0;border-top-width:2.5px;border-top-style:solid;display:inline-block}
@@ -23,7 +23,7 @@ h2{font-size:14px;font-weight:600;margin:28px 0 8px;padding-top:14px;border-top:
    좁은 화면에서는 자동으로 위아래로 접힌다. */
 .duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
 .duo .wrap{height:330px}
-.cap{font-size:11.5px;color:var(--tx2);margin-bottom:4px}
+.cap{font-size:12px;color:var(--tx2);margin-bottom:4px}
 .cap b{color:var(--tx)}
 .ctl{display:flex;align-items:center;gap:10px;margin:14px 0 4px}
 .ctl label{font-size:12px;color:var(--tx2)}
@@ -32,13 +32,13 @@ select{background:var(--pn2);color:var(--tx);border:1px solid var(--ln);border-r
 /* 전치 표 — 분위수를 행, 경과율 구간을 열로 둔다. 세로로 26행이던 것이 6행이 되어
    스크롤 없이 한눈에 들어온다(사용자 요청). 26열을 1080px 안에 넣으려고 셀에서 % 기호를
    빼고 행 머리에 단위를 뒀다. 그래도 넘치는 화면에서는 가로로만 스크롤한다. */
-table{border-collapse:collapse;font-size:11px;margin-top:8px}
+table{border-collapse:collapse;font-size:12px;margin-top:8px}
 th,td{padding:4px 5px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap;
  font-variant-numeric:tabular-nums}
-th{color:var(--tx2);font-weight:500;font-size:10.5px}
+th{color:var(--tx2);font-weight:500;font-size:12px}
 thead th{border-bottom:1px solid var(--ln)}
 th.rh{text-align:left;position:sticky;left:0;background:var(--bg);color:var(--tx2);
- padding-right:9px;font-size:11px}
+ padding-right:9px;font-size:12px}
 tbody tr:hover{background:var(--pn)}
 tbody tr:hover th.rh{background:var(--pn)}
 td.thin{color:#f59e0b}

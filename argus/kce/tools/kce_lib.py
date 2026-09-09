@@ -10,20 +10,41 @@ import os
 import re
 import tempfile
 
-COMPANIES = ["sct", "hec", "sea", "dwe", "gse", "dle", "ipark"]
+COMPANIES = ["sct", "hec", "hen", "sea", "dwe", "gse", "xsd", "xca", "dle",
+             "dlc", "ipark", "khe", "kre", "hdi", "klg", "hse", "dbe"]
 
-# 회사명·종목코드. corp_code(DART 고유번호 8자리)는 하드코딩하지 않는다 —
-# OpenAPI 사용 시 corpCode.xml(키 필요)에서 stock 코드로 조회해 캐시하라(UPDATE.md §2).
-# 무키 웹 경로(detailSearch.ax)는 회사명 검색이라 corp_code가 필요 없다.
+# 원본(encprojects) 복제분 17사. 회사명·종목코드만 두고 corp_code(DART 고유번호)는
+# 하드코딩하지 않는다 — OpenAPI 사용 시 corpCode.xml에서 조회해 캐시한다(UPDATE.md §2).
+# 무키 웹 경로(detailSearch.ax)는 **종목코드가 정확일치 키**로 동작하므로 그걸 우선 쓰고,
+# 비상장·상장폐지 법인은 회사명으로 검색한다.
+#   · hen 현대엔지니어링 · xca 자이씨앤에이 — 비상장 DART 제출법인(종목코드 없음)
+#   · dlc DL건설 — 2024년 상장폐지. 종목코드 001880은 DART 검색에서 더 이상 걸리지
+#     않아(실측 확인) 이름으로 찾는다.
 CORP = {
-    "sct":   {"name": "삼성물산",        "stock": "028260"},
-    "hec":   {"name": "현대건설",        "stock": "000720"},
-    "sea":   {"name": "삼성E&A",         "stock": "028050"},
-    "dwe":   {"name": "대우건설",        "stock": "047040"},
-    "gse":   {"name": "GS건설",          "stock": "006360"},
-    "dle":   {"name": "DL이앤씨",        "stock": "375500"},
-    "ipark": {"name": "HDC현대산업개발", "stock": "294870"},
+    "sct":   {"name": "삼성물산",         "stock": "028260"},
+    "hec":   {"name": "현대건설",         "stock": "000720"},
+    "hen":   {"name": "현대엔지니어링",    "stock": None},
+    "sea":   {"name": "삼성E&A",          "stock": "028050"},
+    "dwe":   {"name": "대우건설",         "stock": "047040"},
+    "gse":   {"name": "GS건설",           "stock": "006360"},
+    "xsd":   {"name": "자이에스앤디",      "stock": "317400"},
+    "xca":   {"name": "자이씨앤에이",      "stock": None},
+    "dle":   {"name": "DL이앤씨",         "stock": "375500"},
+    "dlc":   {"name": "DL건설",           "stock": None},
+    "ipark": {"name": "HDC현대산업개발",   "stock": "294870"},
+    "khe":   {"name": "금호건설",         "stock": "002990"},
+    "kre":   {"name": "계룡건설산업",      "stock": "013580"},
+    "hdi":   {"name": "HL D&I",           "stock": "014790"},
+    "klg":   {"name": "코오롱글로벌",      "stock": "003070"},
+    "hse":   {"name": "HS화성",           "stock": "002460"},
+    "dbe":   {"name": "동부건설",         "stock": "005960"},
 }
+
+
+def search_key(co):
+    """DART 공시검색에 넣을 키. 종목코드가 있으면 그쪽이 정확일치라 안전하다."""
+    v = CORP[co]
+    return v["stock"] or v["name"]
 
 
 # ── 분기 유틸 ────────────────────────────────────────────────
@@ -46,6 +67,28 @@ def q_range(q0, q1):
         if q == q1:
             return out
         q = q_next(q)
+
+
+def latest_quarter(today=None):
+    """오늘 기준으로 **정기보고서가 이미 접수됐을 만한** 가장 최근 분기.
+
+    분기·반기보고서는 분기말 +45일, 사업보고서(Q4)는 +90일 안팎에 접수된다.
+    여유를 둬 Q1~Q3는 +50일, Q4는 +95일이 지난 분기까지만 최신으로 본다 —
+    아직 아무도 내지 않은 분기를 요구하면 전 종목이 '보고서 없음'으로 실패한다.
+    """
+    import datetime
+    d = today or datetime.date.today()
+    y, qn = d.year, (d.month - 1) // 3 + 1
+    for _ in range(9):                       # 직전 분기로 최대 2년 되짚는다
+        qn -= 1
+        if qn == 0:
+            y, qn = y - 1, 4
+        m = qn * 3
+        end = (datetime.date(y + (m == 12), m % 12 + 1, 1)
+               - datetime.timedelta(days=1))
+        if (d - end).days >= (95 if qn == 4 else 50):
+            return "%dQ%d" % (y, qn)
+    raise RuntimeError("최신 분기를 정하지 못했다")
 
 
 def report_kind(q):

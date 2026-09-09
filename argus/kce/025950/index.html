@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>동신건설 현장별 데이터</title>
+<style>
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;
+ --tx3:#5d6675;--a:#60a5fa;--up:#4ade80;--dn:#f87171;--wn:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;padding:0 0 60px}
+a{color:var(--a)}
+header{position:sticky;top:0;z-index:9;background:rgba(15,17,22,.94);backdrop-filter:blur(8px);
+ border-bottom:1px solid var(--ln);padding:12px clamp(12px,3vw,28px)}
+.hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;max-width:1280px;margin:0 auto}
+.hd h1{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.hd .code{font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.hd .tag{font-size:10.5px;color:var(--tx2);border:1px solid var(--ln);border-radius:999px;padding:1px 8px}
+.hd .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.hd .sp a{font-size:11px;text-decoration:none;border:1px solid var(--ln);border-radius:6px;padding:3px 9px}
+.hd .sp a:hover{border-color:var(--a)}
+main{max-width:1280px;margin:0 auto;padding:18px clamp(12px,3vw,28px)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px}
+.kpi div{background:var(--pn);border:1px solid var(--ln);border-radius:9px;padding:12px 14px}
+.kpi b{display:block;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.kpi span{display:block;font-size:10.5px;color:var(--tx3);margin-top:3px}
+.kpi i{font-style:normal;font-size:11px;font-variant-numeric:tabular-nums}
+.up{color:var(--up)}.dn{color:var(--dn)}
+section{margin-top:22px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:14px 16px}
+section h2{font-size:12.5px;font-weight:600;color:var(--tx2);margin-bottom:10px;
+ display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+section h2 em{font-style:normal;font-size:10.5px;color:var(--tx3);font-weight:400}
+.wrap{overflow-x:auto}
+/* th{position:sticky;top:0}은 **세로로 스크롤되는 조상**이 있어야 성립한다. .wrap에
+   높이 제약이 없으면 clientHeight==scrollHeight라 스크롤포트가 아니고, 머리행은 그냥
+   페이지와 함께 흘러가 버렸다(태영건설 220현장 페이지에서 측정: 3138==3138).
+   높이 제약은 화면이 넓을 때만 건다 — 좁은 화면에서 상자 안 세로 스크롤을 만들면
+   페이지 스크롤과 이중이 되어 손가락이 무엇을 미는지 알 수 없게 된다. */
+@media (min-width:768px){.wrap{max-height:70vh;overflow-y:auto}}
+.chart{position:relative;height:260px}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap}
+/* border-collapse:collapse에서는 셀 테두리가 sticky 머리행을 따라오지 않는다 —
+   밑줄은 box-shadow로 그려야 스크롤 중에도 남는다. z-index는 본문 셀 위로 띄우기 위함. */
+th{color:var(--tx3);font-weight:500;font-size:10.5px;text-align:right;cursor:pointer;
+ position:sticky;top:0;z-index:1;background:var(--pn);
+ box-shadow:inset 0 -1px 0 var(--ln);user-select:none}
+th:hover{color:var(--a)}
+th.l,td.l{text-align:left}
+td.l{max-width:340px;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:var(--pn2)}
+.mut{color:var(--tx3)}
+.bar{display:inline-block;height:5px;border-radius:3px;background:var(--a);vertical-align:middle}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ctl input,.ctl select{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;
+ color:var(--tx);font:12px inherit;padding:4px 8px}
+.ctl input{min-width:190px}
+footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
+ color:var(--tx3);font-size:10.5px;line-height:1.8}
+.note{color:var(--wn);font-size:11px;background:rgba(251,191,36,.08);
+ border:1px solid rgba(251,191,36,.25);border-radius:7px;padding:8px 11px;margin-top:14px}
+</style></head><body>
+<header><div class="hd">
+ <h1>동신건설 현장별 데이터</h1>
+ <span class="code">025950</span>
+ <span class="tag">코스닥</span>
+ <span class="tag">토목 건설업</span>
+ <span class="sp">
+  <a href="../coverage.html">커버리지</a>
+  <a href="../index.html">회사 선택</a>
+  <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260814001010" rel="noopener noreferrer" target="_blank">DART 원문 ↗</a>
+ </span>
+</div></header>
+<main>
+
+<div class="kpi">
+ <div><b>1,280<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>수주잔고 · 2026Q2</span><i class="dn">−75억</i></div>
+ <div><b>2,644<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>도급액 합계</span></div>
+ <div><b>17</b><span>잔고 있는 현장</span></div>
+ <div><b>42</b><span>수록 현장(누적)</span></div>
+ <div><b>8</b><span>수록 분기 · 2024Q3–2026Q2</span></div>
+ <div><b>1,280<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>공시 총계</span><i class="mut">수록분이 100%</i></div>
+</div>
+
+<section>
+ <h2>수주잔고 추이 <em>공종별 누적 · 억원</em></h2>
+ <div class="chart"><canvas id="cBal"></canvas></div>
+</section>
+
+<section>
+ <h2>현장 목록 <em>머리행을 누르면 정렬</em></h2>
+ <div class="ctl">
+  <input id="q" type="search" placeholder="현장·발주처 검색" aria-label="현장 검색">
+  <select id="fSeg" aria-label="공종"><option value="">공종 전체</option></select>
+  <select id="fReg" aria-label="지역"><option value="">지역 전체</option></select>
+  <label style="font-size:11.5px;color:var(--tx2);display:flex;align-items:center;gap:5px">
+   <input type="checkbox" id="onlyLive" checked style="min-width:0"> 잔고 있는 현장만</label>
+ </div>
+ <div class="wrap"><table id="tb">
+  <thead><tr>
+   <th class="l" data-k="nm">현장명</th><th class="l" data-k="cl">발주처</th>
+   <th class="l" data-k="seg">공종</th><th class="l" data-k="reg">지역</th>
+   <th data-k="sd">착공</th><th data-k="ed">완공예정</th>
+   <th data-k="amt">도급액</th><th data-k="cmp">완성공사액</th>
+   <th data-k="bal">계약잔액</th><th data-k="pr">진행률</th>
+  </tr></thead><tbody></tbody>
+ </table></div>
+</section>
+
+<section>
+ <h2>분기 매트릭스 <em>현장 × 분기 계약잔액(억) · 상위 60개</em></h2>
+ <div class="wrap"><table id="mx"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<div class="note">이 회사는 DART 정기보고서의 <b>수주상황 표를 분기마다 다시 읽어</b> 만든
+실측 시계열입니다. 원본 7사 페이지와 달리 <b>예측(S-curve)·백테스트·실적 대비가 없습니다</b> —
+그 자산은 복제 시드에서 온 것이라 신규 편입사에는 존재하지 않습니다.
+현장은 이름으로 분기 간 연결하므로, 원문이 표기를 크게 바꾸면 다른 현장으로 잡힐 수 있습니다.
+「공시 총계」가 있으면 원문이 직접 적은 수주잔고 합계입니다. <b>묶음</b> 표시가 붙은 행은
+원문이 개별 기재를 생략하고 '기타현장'처럼 한 줄로 합쳐 적은 <b>나머지</b>이며,
+합계를 맞추기 위해 집계에는 포함하되 현장 수에서는 빼고 셉니다.</div>
+</main>
+<footer>출처 DART 정기보고서 II. 사업의 내용 — 수주상황. 단위 억원(원문 백만원 환산).
+2026Q2 정기보고서 기준. 참고용 · 투자조언 아님.</footer>
+<script src="../vendor/chart.umd.min.js"></script>
+<script>const DATA={"recon":[100.0,100.0,100.0,100.0,100.0,100.0,100.0,100.0],"reconOver":[],"aggFix":[],"co":"동신건설","stock":"025950","slug":"025950","market":"코스닥","industry":"토목 건설업","fq":["2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1","2026Q2"],"codeGen":"2026Q2","grain":"project","src":{"2024Q3":"20241114000504","2024Q4":"20250319001068","2025Q1":"20250515000804","2025Q2":"20250814001241","2025Q3":"20251114001140","2025Q4":"20260319000378","2026Q1":"20260515000793","2026Q2":"20260814001010"},"sites":[{"id":"025950-0001","nm":"안동시관내국도대체우회도로(용상-교리1)건설공사","cl":"부산지방국토관리청","reg":"국내","seg":"토목","agg":false,"sd":"2017-12","ed":"2025-02","s":{"amt":[9337.24,null,null,null,null,null,null,null],"cmp":[7707.599,null,null,null,null,null,null,null],"bal":[1629.641,null,null,null,null,null,null,null],"pr":[82.5,null,null,null,null,null,null,null]}},{"id":"025950-0002","nm":"이천-문경철도건설제9공구노반신설기타공사","cl":"한국철도시설공단","reg":"국내","seg":"토목","agg":false,"sd":"2018-05","ed":"2024-12","s":{"amt":[11759.574,null,null,null,null,null,null,null],"cmp":[11635.681,null,null,null,null,null,null,null],"bal":[123.893,null,null,null,null,null,null,null],"pr":[98.9,null,null,null,null,null,null,null]}},{"id":"025950-0003","nm":"평택~부여~익산(서부내륙)고속도로민자사업1단계","cl":"서부내륙고속도로(주)","reg":"국내","seg":"토목","agg":false,"sd":"2019-12","ed":"2024-12","s":{"amt":[78725.836,78725.836,78725.836,78725.836,80248.016,80248.016,80248.016,80248.016],"cmp":[73137.343,78423.112,78549.231,78549.231,79242.172,79406.349,79546.856,79751.735],"bal":[5588.493,302.724,176.605,176.605,1005.844,841.667,701.16,496.281],"pr":[92.9,99.6,99.8,99.8,98.7,99.0,99.1,99.4]}},{"id":"025950-0004","nm":"평택~부여~익산(서부내륙)고속도로민자사업2단계","cl":"서부내륙고속도로(주)","reg":"국내","seg":"토목","agg":false,"sd":"2019-12","ed":"2034-12","s":{"amt":[23949.552,23949.552,23949.552,23949.552,23949.552,23949.552,23949.552,23949.552],"cmp":[null,null,null,null,null,null,null,null],"bal":[23949.552,23949.552,23949.552,23949.552,23949.552,23949.552,23949.552,23949.552],"pr":[null,null,null,null,null,null,null,null]}},{"id":"025950-0005","nm":"울진군진복농어촌마을하수도설치","cl":"한국환경공단","reg":"국내","seg":"환경","agg":false,"sd":"2021-09","ed":"2024-02","s":{"amt":[5765.402,5765.402,null,null,null,null,null,null],"cmp":[5765.402,5765.402,null,null,null,null,null,null],"bal":[null,null,null,null,null,null,null,null],"pr":[100.0,100.0,null,null,null,null,null,null]}},{"id":"025950-0006","nm":"임청각 및 주변정비사업","cl":"경북 안동시","reg":"국내","seg":"기타","agg":false,"sd":"2021-12","ed":"2025-05","s":{"amt":[3042.586,3101.061,null,null,null,null,null,null],"cmp":[2921.305,3101.061,null,null,null,null,null,null],"bal":[121.281,null,null,null,null,null,null,null],"pr":[96.0,100.0,null,null,null,null,null,null]}},{"id":"025950-0007","nm":"고서,대덕,창평(1단계)하수관로정비","cl":"전남 담양군","reg":"국내","seg":"기타","agg":false,"sd":"2022-05","ed":"2025-12","s":{"amt":[4964.102,5121.073,5121.073,5121.073,5382.586,5133.109,null,null],"cmp":[2144.326,2621.583,3628.026,4784.503,5318.599,5133.109,null,null],"bal":[2819.776,2499.49,1493.047,336.57,63.987,null,null,null],"pr":[43.2,51.2,70.8,93.4,98.8,100.0,null,null]}},{"id":"025950-0008","nm":"비동자연재해위험개선지구정비공사","cl":"경북 봉화군","reg":"국내","seg":"기타","agg":false,"sd":"2022-06","ed":"2025-04","s":{"amt":[5557.861,5406.216,null,null,null,null,null,null],"cmp":[4250.016,5406.216,null,null,null,null,null,null],"bal":[1307.845,null,null,null,null,null,null,null],"pr":[76.5,100.0,null,null,null,null,null,null]}},{"id":"025950-0009","nm":"강진전라병영성 복원정비","cl":"전남 강진군","reg":"국내","seg":"기타","agg":false,"sd":"2022-06","ed":"2024-04","s":{"amt":[924.579,924.579,null,null,null,null,null,null],"cmp":[924.579,924.579,null,null,null,null,null,null],"bal":[null,null,null,null,null,null,null,null],"pr":[100.0,100.0,null,null,null,null,null,null]}},{"id":"025950-0010","nm":"독산농어촌마을하수도정비","cl":"경북 성주군","reg":"국내","seg":"기타","agg":false,"sd":"2022-09","ed":"2025-01","s":{"amt":[2161.032,2004.117,null,null,null,null,null,null],"cmp":[2161.032,2004.117,null,null,null,null,null,null],"bal":[null,null,null,null,null,null,null,null],"pr":[100.0,100.0,null,null,null,null,null,null]}},{"id":"025950-0011","nm":"옥천군생활문화체육센터건축공사","cl":"옥천군평생학습원","reg":"국내","seg":"건축","agg":false,"sd":"2022-12","ed":"2025-04","s":{"amt":[1869.489,1869.489,2213.453,2117.078,2117.078,2117.078,null,null],"cmp":[1179.978,1380.913,1793.193,2117.078,2117.078,2117.078,null,null],"bal":[689.511,488.576,420.26,null,null,null,null,null],"pr":[63.1,73.9,81.0,100.0,100.0,100.0,null,null]}},{"id":"025950-0012","nm":"순창인계-쌍치(1공구)도로시설개량공사","cl":"익산지방국토관리청","reg":"국내","seg":"토목","agg":false,"sd":"2022-12","ed":"2028-11","s":{"amt":[18632.628,20315.486,20315.486,20315.486,20315.486,20558.624,20558.624,20558.624],"cmp":[3429.132,4663,4764.775,5427.04,5687.701,6259.082,7094.971,7380.536],"bal":[15203.496,15652.486,15550.711,14888.446,14627.785,14299.542,13463.653,13178.088],"pr":[18.4,23.0,23.5,26.7,28.0,30.4,34.5,35.9]}},{"id":"025950-0013","nm":"(주)코마테크놀로지 구미하이테크밸리공장 신축공사","cl":"(주)코마테크놀로지","reg":"국내","seg":"기타","agg":false,"sd":"2023-01","ed":"2024-01","s":{"amt":[15225.47,15225.47,null,null,null,null,null,null],"cmp":[15225.47,15225.47,null,null,null,null,null,null],"bal":[null,null,null,null,null,null,null,null],"pr":[100.0,100.0,null,null,null,null,null,null]}},{"id":"025950-0014","nm":"도담~영천 복선전철 의성역 신설 및기존선 신호설비철거","cl":"국가철도공단","reg":"국내","seg":"토목","agg":false,"sd":"2023-06","ed":"2026-05","s":{"amt":[1588.17,1689.594,1689.594,1689.594,1689.594,1723.551,1723.551,1547.576],"cmp":[598.237,634.595,858.809,1171.81,1255.03,1370.885,1413.653,1547.576],"bal":[989.933,1054.999,830.785,517.784,434.564,352.666,309.898,null],"pr":[37.7,37.6,50.8,69.4,74.3,79.5,82.0,100.0]}},{"id":"025950-0015","nm":"경주읍성 성벽복원 정비공사","cl":"경북 경주시","reg":"국내","seg":"기타","agg":false,"sd":"2023-11","ed":"2026-11","s":{"amt":[4395.738,4981.091,4981.091,4981.091,4981.091,4981.091,4981.091,4981.091],"cmp":[663.489,1124.809,1498.47,1924.845,2172.385,2455.171,2748.794,3317.627],"bal":[3732.249,3856.282,3482.621,3056.246,2808.706,2525.92,2232.297,1663.464],"pr":[15.1,22.6,30.1,38.6,43.6,49.3,55.2,66.6]}},{"id":"025950-0016","nm":"주덕하수관로 정비사업","cl":"충주시환경수자원본부","reg":"국내","seg":"환경","agg":false,"sd":"2023-12","ed":"2026-10","s":{"amt":[8127.361,8127.361,8127.361,8825.18,8825.18,8316.476,8316.476,9247.922],"cmp":[826.242,1762.868,2177.947,3423.556,4683.194,5666.74,6029.801,7137.544],"bal":[7301.119,6364.493,5949.414,5401.624,4141.986,2649.736,2286.675,2110.378],"pr":[10.2,21.7,26.8,38.8,53.1,68.1,72.5,77.2]}},{"id":"025950-0017","nm":"주식회사캐스진주공장신축","cl":"(주)캐스","reg":"국내","seg":"기타","agg":false,"sd":"2024-01","ed":"2024-11","s":{"amt":[13100,13100,null,null,null,null,null,null],"cmp":[11073.249,13100,null,null,null,null,null,null],"bal":[2026.751,null,null,null,null,null,null,null],"pr":[84.5,100.0,null,null,null,null,null,null]}},{"id":"025950-0018","nm":"금호초등학교그린스마트스쿨조성소방공사","cl":"경북영천교육지원청","reg":"국내","seg":"기타","agg":false,"sd":"2024-02","ed":"2025-06","s":{"amt":[320.456,320.456,320.456,null,null,null,null,null],"cmp":[2.28,20.953,44.239,null,null,null,null,null],"bal":[318.176,299.503,276.217,null,null,null,null,null],"pr":[0.7,6.5,13.8,null,null,null,null,null]}},{"id":"025950-0019","nm":"운람사수선사(종무소)해체보수","cl":"운람사","reg":"국내","seg":"기타","agg":false,"sd":"2024-03","ed":"2024-09","s":{"amt":[408.443,388.612,null,null,null,null,null,null],"cmp":[163.546,388.612,null,null,null,null,null,null],"bal":[244.897,null,null,null,null,null,null,null],"pr":[40.0,100.0,null,null,null,null,null,null]}},{"id":"025950-0020","nm":"상주옥동서원경덕사(사당)및내삼문단청","cl":"경북 상주시","reg":"국내","seg":"기타","agg":false,"sd":"2024-04","ed":"2024-10","s":{"amt":[295.396,295.396,null,null,null,null,null,null],"cmp":[295.396,295.396,null,null,null,null,null,null],"bal":[null,null,null,null,null,null,null,null],"pr":[100.0,100.0,null,null,null,null,null,null]}},{"id":"025950-0021","nm":"읍남4-3자연재해위험개선지구정비","cl":"경북 울진군","reg":"국내","seg":"기타","agg":false,"sd":"2024-04","ed":"2028-06","s":{"amt":[6358,6358,6358,6358,6358,6358,6358,6358],"cmp":[312.003,322.096,327.745,359.622,400.12,747.586,1064.999,2485.398],"bal":[6045.997,6035.904,6030.255,5998.378,5957.88,5610.414,5293.001,3872.602],"pr":[4.9,5.1,5.2,5.7,6.3,11.8,16.8,39.1]}},{"id":"025950-0022","nm":"하주초그린스마트스쿨조성소방공사","cl":"경북경산교육지원청","reg":"국내","seg":"기타","agg":false,"sd":"2024-05","ed":"2025-10","s":{"amt":[424.571,null,null,null,null,null,null,null],"cmp":[3.16,null,null,null,null,null,null,null],"bal":[421.411,null,null,null,null,null,null,null],"pr":[0.7,null,null,null,null,null,null,null]}},{"id":"025950-0023","nm":"도남동녹지공간조성산업","cl":"경북 영천시","reg":"국내","seg":"기타","agg":false,"sd":"2024-05","ed":"2026-11","s":{"amt":[709.537,709.537,709.537,709.537,709.537,709.537,709.537,775.455],"cmp":[77.171,165.184,192.023,217.478,236.782,238.093,260.196,399.137],"bal":[632.366,544.353,517.514,492.059,472.755,471.444,449.341,376.318],"pr":[10.9,23.3,27.1,30.7,33.4,33.6,36.7,51.5]}},{"id":"025950-0024","nm":"하빈지역오수관로설치공사","cl":"대구시 달성군","reg":"국내","seg":"기타","agg":false,"sd":"2024-07","ed":"2029-06","s":{"amt":[10430.434,10430.434,10430.434,10430.434,10430.434,10430.434,10430.434,10376.181],"cmp":[164.613,681.003,1055.903,1425.372,1865.728,2205.03,2529.368,3000.012],"bal":[10265.821,9749.431,9374.531,9005.062,8564.706,8225.404,7901.066,7376.169],"pr":[1.6,6.5,10.1,13.7,17.9,21.1,24.2,28.9]}},{"id":"025950-0025","nm":"동부간선도로지하화민간투자사업","cl":"동서울지하도로(주)","reg":"국내","seg":"토목","agg":false,"sd":"2024-08","ed":"2029-09","s":{"amt":[55240.582,59240.582,59240.582,59240.582,59240.582,60393.171,60393.171,60393.171],"cmp":[673.785,2642.965,3018.353,3416.525,4171.912,5290.609,5932.128,6275.423],"bal":[54566.797,56597.617,56222.229,55824.057,55068.67,55102.562,54461.043,54117.748],"pr":[1.2,4.5,5.1,5.8,7.0,8.8,9.8,10.4]}},{"id":"025950-0026","nm":"동부간선도로지하화민간투자사업공사 도급계약서상 기성대가 추가지급을 위한 계약","cl":"동서울지하도로(주)","reg":"국내","seg":"토목","agg":false,"sd":"2024-08","ed":"2029-09","s":{"amt":[3500,null,null,null,null,null,null,null],"cmp":[null,null,null,null,null,null,null,null],"bal":[3500,null,null,null,null,null,null,null],"pr":[null,null,null,null,null,null,null,null]}},{"id":"025950-0027","nm":"방전(병옥)농어촌마을하수도설치","cl":"경북 영양군","reg":"국내","seg":"기타","agg":false,"sd":"2024-09","ed":"2027-02","s":{"amt":[3500,3500,3500,3488.323,3488.323,3660.9,3660.9,3660.9],"cmp":[6.264,154.055,154.055,622.925,1132.785,1559.301,1821.956,2264.298],"bal":[3493.736,3345.945,3345.945,2865.398,2355.538,2101.599,1838.944,1396.602],"pr":[0.2,4.4,4.4,17.9,32.5,42.6,49.8,61.9]}},{"id":"025950-0028","nm":"아산외암마을역사문화전시관건립","cl":"충남 아산시","reg":"국내","seg":"기타","agg":false,"sd":"2024-09","ed":"2026-01","s":{"amt":[778.373,843.009,834.009,820.416,820.416,847.114,null,null],"cmp":[null,61.439,188.984,464.636,644.838,847.114,null,null],"bal":[778.373,781.57,645.025,355.78,175.578,null,null,null],"pr":[null,7.3,22.7,56.6,78.6,100.0,null,null]}},{"id":"025950-0029","nm":"기 타","cl":"기 타","reg":"국내","seg":"기타","agg":true,"sd":null,"ed":null,"s":{"amt":[10629.925,11574.738,10241.738,11091.853,12154.707,13110.628,25809.355,16964.698],"cmp":[9094.324,10468.271,9702.112,10724.037,11531.408,11677.703,24521.826,16160.996],"bal":[1535.601,1106.467,539.626,367.816,623.299,1432.925,1287.529,803.702],"pr":[85.6,90.4,94.7,96.7,94.9,89.1,95.0,95.3]}},{"id":"025950-0030","nm":"안동시관내국도대체우회도로건설","cl":"부산지방국토관리청","reg":"국내","seg":"토목","agg":false,"sd":"2017-12","ed":"2025-10","s":{"amt":[null,9337.24,9337.24,9378.67,9485.78,9502.344,null,null],"cmp":[null,8121.337,8377.692,8851.949,9409.415,9502.344,null,null],"bal":[null,1215.903,959.548,526.721,76.365,null,null,null],"pr":[null,87.0,89.7,94.4,99.2,100.0,null,null]}},{"id":"025950-0031","nm":"이천-문경철도건설제9공구노반신설","cl":"한국철도시설공단","reg":"국내","seg":"토목","agg":false,"sd":"2018-05","ed":"2025-09","s":{"amt":[null,12348.174,12348.174,12348.174,12348.174,12662.887,null,null],"cmp":[null,12135.956,12195.813,12346.897,12348.174,12662.887,null,null],"bal":[null,212.218,152.361,1.277,null,null,null,null],"pr":[null,98.3,98.8,100.0,100.0,100.0,null,null]}},{"id":"025950-0032","nm":"하주초등학교그린스마트스쿨조성소방공사","cl":"경북 경산시교육지원청","reg":"국내","seg":"기타","agg":false,"sd":"2024-05","ed":"2025-12","s":{"amt":[null,424.571,424.571,424.571,424.571,396.567,null,null],"cmp":[null,3.376,92.498,233.912,332.739,396.567,null,null],"bal":[null,421.195,332.073,190.659,91.832,null,null,null],"pr":[null,0.8,21.8,55.1,78.4,100.0,null,null]}},{"id":"025950-0033","nm":"국립수목원난대온실신규조성","cl":"산림청국립수목원","reg":"국내","seg":"기타","agg":false,"sd":"2024-11","ed":"2026-08","s":{"amt":[null,2352.545,2352.542,2392.573,2392.573,2392.573,2440.731,2416.557],"cmp":[null,null,19.712,131.709,220.764,503.208,531.125,993.826],"bal":[null,2352.545,2332.83,2260.864,2171.809,1889.365,1909.606,1422.731],"pr":[null,null,0.8,5.5,9.2,21.0,21.8,41.1]}},{"id":"025950-0034","nm":"건대소규모하수처리시설및하수관로설치","cl":"경주시맑은물사업본부","reg":"국내","seg":"환경","agg":false,"sd":"2024-12","ed":"2028-05","s":{"amt":[null,5771.078,5771.078,5771.078,5771.078,5771.078,5771.078,5771.078],"cmp":[null,null,100.975,299.987,640.835,1047.507,1284.234,1866.89],"bal":[null,5771.078,5670.103,5471.091,5130.243,4723.571,4486.844,3904.188],"pr":[null,null,1.7,5.2,11.1,18.2,22.3,32.3]}},{"id":"025950-0035","nm":"주식회사캐스진주공장추가공사","cl":"주식회사 캐스","reg":"국내","seg":"기타","agg":false,"sd":"2024-12","ed":"2025-03","s":{"amt":[null,null,398.7,398.7,398.7,398.7,null,null],"cmp":[null,null,398.7,398.7,398.7,398.7,null,null],"bal":[null,null,null,null,null,null,null,null],"pr":[null,null,100.0,100.0,100.0,100.0,null,null]}},{"id":"025950-0036","nm":"포항영덕선포항,영덕휴게소조경공사","cl":"한국도로공사","reg":"국내","seg":"토목","agg":false,"sd":"2025-01","ed":"2025-12","s":{"amt":[null,null,1951.068,1951.068,1951.068,2748.545,null,null],"cmp":[null,null,12.185,12.185,1786.678,2748.545,null,null],"bal":[null,null,1938.883,1938.883,164.39,null,null,null],"pr":[null,null,0.6,0.6,91.6,100.0,null,null]}},{"id":"025950-0037","nm":"안동임천서원이건및복원사업","cl":"경북 안동시","reg":"국내","seg":"기타","agg":false,"sd":"2025-04","ed":"2027-04","s":{"amt":[null,null,null,2979.182,2979.182,2979.182,2979.182,3164.59],"cmp":[null,null,null,217.845,274.225,492.786,630.103,1318.924],"bal":[null,null,null,2761.337,2704.957,2486.396,2349.079,1845.666],"pr":[null,null,null,7.3,9.2,16.5,21.2,41.7]}},{"id":"025950-0038","nm":"APEC회의장주변북천하천정비","cl":"경북 경주시","reg":"국내","seg":"기타","agg":false,"sd":"2025-04","ed":"2025-12","s":{"amt":[null,null,null,797.175,792.175,819.23,null,null],"cmp":[null,null,null,124.959,329.301,819.23,null,null],"bal":[null,null,null,672.216,462.874,null,null,null],"pr":[null,null,null,15.7,41.6,100.0,null,null]}},{"id":"025950-0039","nm":"25년양양낙산사재난방지시설구축소방","cl":"강원도 양양군","reg":"국내","seg":"기타","agg":false,"sd":"2025-06","ed":"2026-04","s":{"amt":[null,null,null,325.192,325.192,397.146,397.146,387.709],"cmp":[null,null,null,2.807,273.201,360.865,379.876,387.709],"bal":[null,null,null,322.385,51.991,36.281,17.27,null],"pr":[null,null,null,0.9,84.0,90.9,95.7,100.0]}},{"id":"025950-0040","nm":"임하댐주변사면산불피해긴급복구공사","cl":"한국수자원공사안동권지사","reg":"국내","seg":"토목","agg":false,"sd":"2025-07","ed":"2027-03","s":{"amt":[null,null,null,null,442.727,548.455,548.455,548.455],"cmp":[null,null,null,null,300.588,384.925,384.925,454.526],"bal":[null,null,null,null,142.139,163.53,163.53,93.929],"pr":[null,null,null,null,67.9,70.2,70.2,82.9]}},{"id":"025950-0041","nm":"사벌묵상농어촌마을하수도정비공사","cl":"경북 상주시","reg":"국내","seg":"기타","agg":false,"sd":"2025-10","ed":"2028-02","s":{"amt":[null,null,null,null,null,2253.609,2253.609,2253.609],"cmp":[null,null,null,null,null,24.239,179.678,332.495],"bal":[null,null,null,null,null,2229.37,2073.931,1921.114],"pr":[null,null,null,null,null,1.1,8.0,14.8]}},{"id":"025950-0042","nm":"매곡처리분구노후하수관로교체공사","cl":"천안시 맑은물사업본부","reg":"국내","seg":"기타","agg":false,"sd":"2025-10","ed":"2027-12","s":{"amt":[null,null,null,null,null,7526.024,7526.024,7526.024],"cmp":[null,null,null,null,null,78.506,289.12,722.309],"bal":[null,null,null,null,null,7447.518,7236.904,6803.715],"pr":[null,null,null,null,null,1.0,3.8,9.6]}},{"id":"025950-0043","nm":"의성군생활자원회수센터건립","cl":"경북 의성군","reg":"국내","seg":"기타","agg":false,"sd":"2026-01","ed":"2027-04","s":{"amt":[null,null,null,null,null,null,3248.425,3248.425],"cmp":[null,null,null,null,null,null,113.075,536.19],"bal":[null,null,null,null,null,null,3135.35,2712.235],"pr":[null,null,null,null,null,null,3.5,16.5]}}],"summary":{"amt":[301722,314201,269342,274630,278022,290934,272303,264378],"cmp":[154436,171598,129151,137250,146774,154394,136757,136333],"bal":[147287,142602,140190,137381,131247,136539,135547,128044]},"declared":[147286.715,142602.331,140190.135,137380.81,131247.45,136539.462,135546.673,128044.482],"dom":[147287,142602,140190,137381,131247,136539,135547,128044],"ovs":[null,null,null,null,null,null,null,null],"segList":["건축","기타","토목","환경"],"seg":{"건축":[690,489,420,null,null,null,null,null],"기타":[33744,30993,28370,28685,26506,34457,35724,30194],"토목":[105552,98985,99781,97823,95469,94710,93049,91836],"환경":[7301,12136,11620,10873,9272,7373,6774,6015]}};</script>
+<script>
+(function(){
+ var fq=DATA.fq, K=fq.length-1, S=DATA.sites;
+ // 라벨은 입도에서 끌어온다 — 부문 공시 회사에 '현장'이라 쓰면 없는 정밀도를 주장한다
+ var UNIT=(DATA.grain==='project')?'현장':'부문';
+ var eok=function(v){return v==null?null:Math.round(v/100)};
+ var fmt=function(v){return v==null?'—':v.toLocaleString('ko-KR')};
+
+ // ── 차트: 공종별 누적 잔고 ────────────────────────────────
+ // 차트는 **격리해서** 그린다. Chart.js가 못 뜨면(오프라인 스냅샷·벤더 파일 유실)
+ // 예외가 같은 스코프의 표 렌더까지 죽여 페이지가 통째로 빈 화면이 된다.
+ try{
+  if(typeof Chart!=='function') throw new Error('Chart.js 로드 실패');
+  var PAL=['#60a5fa','#4ade80','#fbbf24','#f87171','#a78bfa','#22d3ee','#fb923c'];
+  var ds=DATA.segList.map(function(g,i){return{
+    label:g, data:DATA.seg[g].map(eok), backgroundColor:PAL[i%PAL.length],
+    borderWidth:0, stack:'s'};});
+  new Chart(document.getElementById('cBal'),{type:'bar',data:{labels:fq,datasets:ds},
+   options:{responsive:true,maintainAspectRatio:false,animation:false,
+    interaction:{mode:'index',intersect:false},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#5d6675',font:{size:10}}},
+      y:{stacked:true,grid:{color:'#2a2f3a'},ticks:{color:'#5d6675',font:{size:10},
+        callback:function(v){return v.toLocaleString('ko-KR')}}}},
+    plugins:{legend:{labels:{color:'#98a1b0',boxWidth:10,font:{size:10.5}}},
+     tooltip:{callbacks:{label:function(c){return c.dataset.label+' '+
+       (c.parsed.y==null?'—':c.parsed.y.toLocaleString('ko-KR'))+'억'}}}}}});
+ }catch(err){
+  var box=document.getElementById('cBal');
+  if(box&&box.parentNode){box.parentNode.innerHTML=
+    '<div style="color:#5d6675;font-size:11.5px;padding:22px;text-align:center">'+
+    '차트를 그리지 못했습니다 ('+String(err&&err.message||err)+'). 아래 표는 정상입니다.</div>';}
+ }
+
+ // ── 현장 표 ──────────────────────────────────────────────
+ try{
+ var tb=document.querySelector('#tb tbody'), q=document.getElementById('q'),
+     fSeg=document.getElementById('fSeg'), fReg=document.getElementById('fReg'),
+     onlyLive=document.getElementById('onlyLive');
+ [['seg',fSeg,DATA.segList],['reg',fReg,['국내','해외']]].forEach(function(x){
+   x[2].forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;x[1].appendChild(o)})});
+ var sortK='bal', sortD=-1, maxAmt=1;
+ S.forEach(function(s){var a=s.s.amt[K]; if(a&&a>maxAmt)maxAmt=a});
+
+ function rows(){
+  var t=(q.value||'').trim().toLowerCase();
+  return S.filter(function(s){
+   if(onlyLive.checked && !s.s.bal[K]) return false;
+   if(fSeg.value && s.seg!==fSeg.value) return false;
+   if(fReg.value && s.reg!==fReg.value) return false;
+   if(t && (s.nm+' '+s.cl).toLowerCase().indexOf(t)<0) return false;
+   return true;
+  }).sort(function(a,b){
+   var x=key(a),y=key(b);
+   if(x==null&&y==null)return 0; if(x==null)return 1; if(y==null)return -1;
+   return x<y?-sortD:x>y?sortD:0;
+  });
+ }
+ function key(s){
+  if(sortK==='nm'||sortK==='cl'||sortK==='seg'||sortK==='reg')return s[sortK]||'';
+  if(sortK==='sd'||sortK==='ed')return s[sortK]||null;
+  return s.s[sortK]?s.s[sortK][K]:null;
+ }
+ function draw(){
+  var r=rows(), h=[];
+  r.forEach(function(s){
+   var a=s.s.amt[K],c=s.s.cmp[K],b=s.s.bal[K],p=s.s.pr[K];
+   h.push('<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+
+    (s.agg?' <span class="mut" style="font-size:10px;border:1px solid var(--ln);border-radius:4px;padding:0 4px">묶음</span>':'')+'</td>'+
+    '<td class="l mut">'+esc(s.cl||'—')+'</td><td class="l mut">'+esc(s.seg)+'</td>'+
+    '<td class="l mut">'+esc(s.reg)+'</td>'+
+    '<td class="mut">'+(s.sd||'—')+'</td><td class="mut">'+(s.ed||'—')+'</td>'+
+    '<td>'+fmt(eok(a))+'</td><td>'+fmt(eok(c))+'</td><td>'+fmt(eok(b))+'</td>'+
+    '<td>'+(p==null?'—':p.toFixed(0)+'%<span class="bar" style="width:'+
+      Math.max(2,Math.min(38,p*.38))+'px;margin-left:5px"></span>')+'</td></tr>');
+  });
+  tb.innerHTML=h.join('')||'<tr><td colspan="10" class="mut" style="text-align:center;padding:18px">조건에 맞는 '+UNIT+'이 없습니다</td></tr>';
+ }
+ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+ document.querySelectorAll('#tb th').forEach(function(th){
+  th.addEventListener('click',function(){
+   var k=th.dataset.k; sortD=(k===sortK)?-sortD:-1; sortK=k; draw();});
+ });
+ [q,fSeg,fReg,onlyLive].forEach(function(el){el.addEventListener('input',draw)});
+ draw();
+ }catch(err){document.querySelector('#tb tbody').innerHTML=
+   '<tr><td colspan="10" style="color:#f87171;padding:16px">현장 표 렌더 실패: '+
+   String(err&&err.message||err)+'</td></tr>';}
+
+ // ── 분기 매트릭스 ────────────────────────────────────────
+ try{
+ var top=S.slice().sort(function(a,b){return (b.s.bal[K]||0)-(a.s.bal[K]||0)}).slice(0,60);
+ document.querySelector('#mx thead').innerHTML='<tr><th class="l">'+UNIT+'</th>'+
+   fq.map(function(f){return '<th>'+f+'</th>'}).join('')+'</tr>';
+ var mb=top.map(function(s){
+  return '<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+'</td>'+
+   s.s.bal.map(function(v){return '<td'+(v==null?' class="mut"':'')+'>'+fmt(eok(v))+'</td>'}).join('')+'</tr>';
+ }).join('');
+ // 행이 0이면 머리행만 남는다 — 빈 표는 '데이터가 없다'인지 '렌더가 깨졌다'인지
+ // 구별되지 않는다. 현장 표와 같이 사유를 적어 준다.
+ document.querySelector('#mx tbody').innerHTML=mb||
+   '<tr><td colspan="'+(fq.length+1)+'" class="mut" style="text-align:center;padding:18px">'+
+   '표시할 '+UNIT+'이 없습니다</td></tr>';
+ }catch(err){document.querySelector('#mx tbody').innerHTML=
+   '<tr><td style="color:#f87171;padding:16px">매트릭스 렌더 실패: '+
+   String(err&&err.message||err)+'</td></tr>';}
+})();
+</script>
+</body></html>

@@ -5,10 +5,19 @@
 index.html의 `const DATA`만 갱신하면 matrix/trace는 옛 데이터로 남는다(UPDATE.md §7).
 이 모듈이 그 둘을 DATA로부터 다시 만들어 스테일을 없앤다.
 
-정합성 근거: 재생성 결과가 현재 저장된 원본과 **바이트 단위로 동일**함을 7사 전부에서 확인했다
+정합성 근거: 재생성 결과가 현재 저장된 원본과 **바이트 단위로 동일**함을 17사 전부에서 확인했다
 (tools/tests/test_render.py). 즉 렌더 규칙이 원 빌더와 동치다.
 
-backtest.html(워크포워드 재실행 필요)·curve.html(곡선 재적합)·headers.html(파서 로그)은 미구현.
+상류(encprojects)가 7사 → 17사로 늘면서 페이지 스키마도 함께 바뀌었다. 저장된 페이지가 정본이고
+이 모듈이 따라간다 — 반대가 아니다. 이번에 따라잡은 것:
+  · matrix tbody 선두에 `<tr class="grp tot">` 총합계 행이 생겼고, 앞뒤 여백이 3줄로 늘었다
+  · 라벨 셀에 플래그(⚑) 토글과 배지 3종(관계사·다수현장·해외법인)이 붙고,
+    배지 개수가 `it b<N>` 클래스로, 묶음(list_pin)이 `pin/pt/pb`로 나온다.
+    법인 접두(`<b>법인</b> · `)는 배지와 자리가 겹쳐 전 행에서 빠졌다(title에는 남는다)
+  · xi1 셀이 실측과 구분되는 자기 표식(`flx`)을 얻었다 — UPDATE.md §8이 예고한 그 변경이다
+  · trace SITES가 6칸 → 10칸. III-8이 별도/연결 두 벌로 갈라지고 pin·lump·eb가 붙었다
+
+backtest.html(워크포워드 재실행 필요)·curve.html(곡선 재적합)은 미구현.
 """
 import html as _html
 import re
@@ -17,21 +26,38 @@ from kce_lib import atomic_write, extract_data
 
 # ── 공통 ────────────────────────────────────────────────────
 
-# matrix 범례는 5종뿐이다 — 'xi1'(XI-1 교차참조 확정값)은 원문 확정값이라 실측과 같이
-# 테두리 없이 그린다(index.html 상세표에서만 민트 점선 .flx로 구분). 원본 대조로 확인.
+# 셀 표식은 클래스 6종(fl · flx · fli · ffc · fm · fe)이고, matrix 범례도 그 여섯을 싣는다.
+# 아래 표는 그중 rev.src에서 오는 다섯이다(fcst·bcst는 문구만 다르고 같은 ffc를 쓴다).
+# 'xi1'은 예전엔 테두리 없이 실측처럼 그렸지만, 상류가 matrix에도 민트 점선
+# `.flx`를 들여오면서 자기 표식을 얻었다(UPDATE.md §8이 "재복제 시 함께 갱신"이라 예고한 건).
+# 'bcst' 문구도 '착공일' → '시작일'로 바뀌었다 — XI-1발 사업장은 착공일이 아니라 계약시작일이
+# 기준이라 한쪽 출처만 가리키는 말을 뺀 것이다.
 FILL_CLS = {
     "p8":     ("fl",  "III-8 교차참조 추정값"),
     "interp": ("fli", "선형보간 추정값"),
     "fcst":   ("ffc", "S-curve 예측값(미래 또는 장기 미보고 구간)"),
-    "bcst":   ("ffc", "착공일 기준 S-curve 역산 추정값(첫 공시 이전 구간)"),
+    "bcst":   ("ffc", "시작일 기준 S-curve 역산 추정값(첫 공시 이전 구간)"),
+    "xi1":    ("flx", "XI-1 교차참조 확정값(판매공급 누적 기반)"),
 }
 MANUAL_CLS = ("fm", "수동 정정값(원문 오류로 판단되어 사용자 확인 후 교정)")
 MANUAL_E_CLS = ("fe", "추정 배분값(원문에 정답이 없어 인접 실측 보간으로 추정)")
 
+# 배지 3종의 title. 같은 문구를 index·matrix·trace가 공유하므로 여기 한 곳에만 적는다
+# (원본에서는 site_style.py가 세 페이지에 같은 것을 주입한다).
+LUMP_TITLE = ("다수현장 — 여러 현장이 한 행으로 묶여 공시된 사업장입니다. 단일 현장이 아니라 "
+              "계약이 드나들므로 보전·예측 등 어떤 추정도 하지 않고, 분기 매출인식액도 "
+              "만들지 않습니다. 계약잔액은 공시값이라 그대로 합산됩니다.")
+EB_TITLE = ("해외법인 — 원문이 이 사업장을 「%s」 표에 실었습니다. "
+            "좌측 목록과 집계는 모회사 기준으로 묶습니다.")
+RP_TITLE = "관계사 발주 — %s"
+
 
 def esc(s):
-    """원 빌더와 동일한 이스케이프. 실제 산출물에 쓰인 엔티티는 &amp;와 &#39; 둘뿐이며
-    큰따옴표를 포함한 데이터는 7사 전체에 존재하지 않는다(전수 확인)."""
+    """원 빌더와 동일한 이스케이프.
+
+    17사 산출물에 실제로 나타나는 엔티티는 &amp;·&#39;·&quot; 셋이다. 큰따옴표는
+    자이에스앤디 XSD-11-0001(계약명이 따옴표로 시작한다)에서 나오는데, 이 값이
+    title 속성 안에 들어가므로 &quot;를 빼면 속성이 그 자리에서 끊긴다."""
     return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             .replace('"', "&quot;").replace("'", "&#39;"))
 
@@ -57,23 +83,45 @@ def flags_html(has):
     return '<span class="flags">%s</span>' % "".join(out)
 
 
-def label_cell(s):
-    """사업장 라벨 셀(matrix·trace 공통 구조)."""
-    rp = s.get("rp")
-    div = '<div class="it rps">' if rp else '<div class="it">'
-    parts = [div,
+def _badges(s):
+    """배지 마크업 목록 — 순서는 관계사 · 다수현장 · 해외법인으로 고정(원본 라벨과 동일)."""
+    out = []
+    if s.get("rp"):
+        out.append('<span class="rpb" title="%s">%s</span>'
+                   % (esc(RP_TITLE % s["rp"]), esc(s["rp"])))
+    if s.get("lump"):
+        out.append('<span class="lmb" title="%s">다수현장</span>' % esc(LUMP_TITLE))
+    if s.get("eb"):
+        out.append('<span class="ebb" title="%s">%s</span>'
+                   % (esc(EB_TITLE % s["eb"]), esc(s["eb"])))
+    return out
+
+
+def label_cell(s, pin_prev=None, pin_next=None):
+    """사업장 라벨 셀.
+
+    클래스는 `it [b<배지수>] [pin [pt] [pb]]`. `b<N>`은 CSS가 배지 개수만큼 이름 폭을
+    줄이는 데 쓰고, `pin`은 묶음(list_pin) 구간을 한 덩어리로 칠하는 데 쓴다 —
+    묶음의 위/아래 모서리(pt·pb)는 **화면에 그려지는 이웃 행**과 비교해 정한다.
+    그래서 앞뒤 사업장의 pin 값을 인자로 받는다(그룹 머리행은 이웃으로 세지 않는다).
+    """
+    badges = _badges(s)
+    cls = "it" + (" b%d" % len(badges) if badges else "")
+    pin = s.get("pin") or None
+    if pin:
+        cls += " pin" + (" pt" if pin != pin_prev else "") \
+                      + (" pb" if pin != pin_next else "")
+    parts = ['<div class="%s">' % cls,
              '<span class="star" data-id="%s" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span>'
              % esc(s["id"]),
+             '<span class="flag" data-id="%s" title="플래그 (별표와 별개로 표시)">⚐</span>'
+             % esc(s["id"]),
              '<span class="cid" title="사업장 코드">%s</span>' % esc(s["id"])]
-    if rp:
-        parts.append('<span class="rpb" title="관계사 발주 — %s">%s</span>'
-                     % (esc(rp), esc(rp)))
-    # 관계사 배지가 붙는 행은 법인 접두를 생략한다(배지가 폭을 먹어 공사명이 잘림).
-    # title에는 항상 법인을 유지 — LOGIC.md §6-7.
-    body = (esc(s["nm"]) if rp
-            else "<b>%s</b> · %s" % (esc(s["ent"]), esc(s["nm"])))
+    parts += badges
+    # 법인 접두(`<b>법인</b> · `)는 이제 어느 행에도 붙지 않는다 — 배지와 같은 자리라
+    # 법인이 관계사 배지로 읽혔다(상류 2026-09-07 변경). 전체 문구는 title에 그대로 남는다.
     parts.append('<span class="t" title="%s · %s">%s</span>'
-                 % (esc(s["ent"]), esc(s["nm"]), body))
+                 % (esc(s["ent"]), esc(s["nm"]), esc(s["nm"])))
     parts.append(flags_html(s["has"]))
     parts.append("</div>")
     return "".join(parts)
@@ -130,44 +178,67 @@ def _fill_of(s, k):
     return FILL_CLS.get(src, ("", ""))
 
 
+def _sum_cells(mem, nk, ybs):
+    """합계 행의 값 셀 — 소속 사업장 rev.diff 합(값이 한 칸도 없으면 –)."""
+    tds = []
+    for k in range(nk):
+        vals = [s["rev"]["diff"][k] for s in mem
+                if s.get("rev") and s["rev"]["diff"][k] is not None]
+        cls = "gs yb" if ybs[k] else "gs"
+        tds.append('<td class="%s">%s</td>' % (cls, bn(sum(vals)) if vals else "–"))
+    return "".join(tds)
+
+
+# tbody 앞뒤 여백은 3줄이다. 원본 페이지는 마크업 줄 사이가 전부 `\n\n\n`이라
+# tbody 안쪽 경계도 같은 폭을 따른다(행과 행 사이만 `\n` 하나).
+_PAD = ["", "", ""]
+
+
 def render_matrix_body(D):
-    """<tbody id="tb"> 내부 문자열(선두 개행 포함, 말미 개행 포함)."""
+    """<tbody id="tb"> 내부 문자열(앞뒤 여백 3줄 포함)."""
     fqF = D["fqF"]
+    nk = len(fqF)
     ybs = year_break(fqF)
     order, gid = _groups(D)
     members = {}
     for s in D["sites"]:
         members.setdefault(gid[(s["ent"], s["reg"], s.get("seg2"))], []).append(s)
 
-    lines = [""]
+    lines = list(_PAD)
+    # 총합계 행 — 회사 전체 한 줄. 그룹 행과 달리 data-gid가 없어서 접기 대상이 아니고,
+    # 펼침 화살표 자리는 빈 칸으로 남긴다(누를 것이 없다).
+    lines.append('<tr class="grp tot"><td class="lbl"><span class="gt"> </span>총합계 '
+                 '<span class="gc">(%d)</span></td>%s</tr>'
+                 % (len(D["sites"]), _sum_cells(D["sites"], nk, ybs)))
+
+    # 묶음 모서리는 그룹을 가로질러 이어진 **행 순서**로 판정한다 — 화면에 그려지는 순서와
+    # 같아야 덩어리가 끊기지 않는다.
+    flat = [s for g in range(len(order)) for s in members.get(g, [])]
+    pins = [s.get("pin") or None for s in flat]
+    i = 0
     for g, key in enumerate(order):
         mem = members.get(g, [])
-        # 그룹 합계 = 소속 사업장 rev.diff 합(값이 하나도 없으면 –)
-        tds = []
-        for k in range(len(fqF)):
-            vals = [s["rev"]["diff"][k] for s in mem
-                    if s.get("rev") and s["rev"]["diff"][k] is not None]
-            cls = "gs yb" if ybs[k] else "gs"
-            tds.append('<td class="%s">%s</td>'
-                       % (cls, bn(sum(vals)) if vals else "–"))
         lines.append('<tr class="grp" data-gid="%d"><td class="lbl">%s</td>%s</tr>'
-                     % (g, _grp_label(key, len(mem)), "".join(tds)))
+                     % (g, _grp_label(key, len(mem)), _sum_cells(mem, nk, ybs)))
         for s in mem:
             rev = s.get("rev") or {}
-            diff = rev.get("diff") or [None] * len(fqF)
+            diff = rev.get("diff") or [None] * nk
             # data-v는 %g 포맷(유효숫자 6) — 원 빌더와 동일. 1003131 → '1.00313e+06'
             dv = ",".join("" if v is None else "%g" % v for v in diff)
             q = " ".join([s["ent"], s["nm"], s.get("cl") or "", s["id"]]).lower()
             tds = []
-            for k in range(len(fqF)):
+            for k in range(nk):
                 fc, ttl = _fill_of(s, k)
                 tds.append(_cell(bn(diff[k]), ybs[k], fc, ttl))
+            lbl = label_cell(s, pins[i - 1] if i > 0 else None,
+                             pins[i + 1] if i + 1 < len(pins) else None)
             lines.append(
                 '<tr data-gid="%d" data-ent="%s" data-q="%s" data-v="%s" '
                 'data-id="%s" data-has="%s"><td class="lbl">%s</td>%s</tr>'
                 % (g, esc(s["ent"]), esc(q), dv, esc(s["id"]),
-                   "".join(str(x) for x in s["has"]), label_cell(s), "".join(tds)))
-    lines.append("")
+                   "".join(str(x) for x in s["has"]), lbl, "".join(tds)))
+            i += 1
+    lines += _PAD
     return "\n".join(lines)
 
 
@@ -181,47 +252,82 @@ def _id_key(s):
     except (IndexError, ValueError):
         return (p[0], 0, 0)
 
+
+def _strip(arr, n):
+    """분기 축 배열을 실측 구간(n = len(fq))에 맞춘다.
+
+    DATA의 시계열은 예측 4분기를 포함한 fqF 길이(보통 23)인데 trace의 띠는 실측 분기만
+    그린다. 짧으면 None으로 채우고, 빈 문자열은 null로 눕힌다 — 화면은 둘을 같게 취급하고
+    (`if(!v)`), '없음'은 null로 적는 것이 정직하다.
+    """
+    a = arr or []
+    return [(a[k] if k < len(a) and a[k] else None) for k in range(n)]
+
+
+def _join_pair(a_arr, b_arr, n):
+    """`A · B` 결합 띠 — B가 없으면 A만, A가 없으면 null."""
+    out = []
+    for k in range(n):
+        a = a_arr[k] if k < len(a_arr) else None
+        b = b_arr[k] if k < len(b_arr) else None
+        out.append(("%s · %s" % (a, b)) if a and b else (a or None))
+    return out
+
+
 def render_trace_sites(D):
     """trace.html의 `SITES` 배열을 재생성.
 
-    SITES[i] = [id, 표시명, r2(II-4), r3(III-8), r11(XI-1), rp]
-    각 칸은 **그 분기 원문에 실제로 적힌 표기 문자열**이다(없으면 null):
-      r2  = evFull.공사명[k]                       — II-4 원문 공사명(실측 분기만 값이 있음)
-      r3  = p8Full.품목[k] + ' · ' + 발주처[k]      — III-8 원문(발주처 병기)
+    SITES[i] = [id, 표시명, r2, r3s, r3c, r11, rp, pin, lump, eb] — 10칸.
+    페이지 쪽 구조분해(`SITES.forEach(([id,name,r2,r3s,r3c,r11,rp,pin,lump,eb])`)와
+    같은 순서다. 띠 4개는 **그 분기 원문에 실제로 적힌 표기 문자열**이다(없으면 null):
+      r2  = evFull.공사명[k]                        — II-4 원문 공사명
+      r3s = p8Full._sepNm[k]                        — III-8 별도 기준 원문(품목 · 발주처)
+      r3c = p8Full._conNm[k]                        — III-8 연결 기준 원문(품목 · 발주처)
       r11 = xipFull.계약명[k] + ' · ' + 계약상대방[k] — XI-1 원문(계약상대방 병기)
+
+    III-8을 별도/연결 두 벌로 나눈 것이 이번 스키마의 핵심이다. 두 기준의 표기가 갈리는
+    분기가 실제로 있어(삼성물산 UAE 원전의 발주처 공백 유무) 한 벌로 합치면 그 사실이 사라진다.
+    이미 결합된 문자열이라 여기서 다시 품목·발주처를 붙이지 않는다.
+
+    꼬리 4칸은 배지·묶음 정보로, index/matrix 라벨과 같은 값을 쓴다.
     """
     n = len(D["fq"])
     out = []
     # trace는 그룹 순서가 아니라 **사업장 코드 순**으로 정렬한다(출처별 공백 구간을
     # 위아래로 훑어 비교하는 화면이라 코드 순이 자연스럽다).
     for s in sorted(D["sites"], key=_id_key):
+        has = s.get("has") or [0, 0, 0]
+        # 출처 보유 플래그로 잠근다. II-4 이력이 없는 사업장(III-8 전용 레코드, has[0]=0)에도
+        # evFull에 값이 남아 있을 수 있는데, 그건 원문이 아니라 III-8에서 역채움한 흔적이다
+        # (대우건설 DWE-3-0009의 2022Q2·Q3 — sFilled가 'interp'다). '원문이 어디 있었나'를
+        # 그리는 지도에 그걸 칠하면 없는 원문을 있다고 말하게 된다. kce_build도 II-4 채움
+        # 대상을 같은 플래그로 가른다.
         ef = s.get("evFull") or {}
-        r2 = list((ef.get("공사명") or [None] * n))[:n]
+        r2 = _strip(ef.get("공사명"), n) if has[0] else [None] * n
 
         pf = s.get("p8Full") or {}
-        item, cl = pf.get("품목") or [], pf.get("발주처") or []
-        r3 = []
-        for k in range(n):
-            a = item[k] if k < len(item) else None
-            b = cl[k] if k < len(cl) else None
-            r3.append(("%s · %s" % (a, b)) if a and b else (a or None))
+        r3s = _strip(pf.get("_sepNm"), n) if has[1] else [None] * n
+        r3c = _strip(pf.get("_conNm"), n) if has[1] else [None] * n
 
         xf = s.get("xipFull") or {}
-        nmv, cpv = xf.get("계약명") or [], xf.get("계약상대방") or []
-        r11 = []
-        for k in range(n):
-            a = nmv[k] if k < len(nmv) else None
-            b = cpv[k] if k < len(cpv) else None
-            r11.append(("%s · %s" % (a, b)) if a and b else (a or None))
+        r11 = (_join_pair(xf.get("계약명") or [], xf.get("계약상대방") or [], n)
+               if has[2] else [None] * n)
 
-        out.append([s["id"], s["nm"], r2, r3, r11, s.get("rp") or ""])
+        out.append([s["id"], s["nm"], r2, r3s, r3c, r11,
+                    s.get("rp") or "", s.get("pin") or "",
+                    1 if s.get("lump") else 0, s.get("eb") or ""])
     return out
 
 
 def render_trace_consts(D):
-    """`const FQ=[...],SITES=[...];` 한 줄."""
+    """`const FQ=[...],SITES=[...]` — 종결 세미콜론은 붙이지 않는다.
+
+    이 선언 뒤에는 같은 문장으로 `,WT={…},RAWN={…};`이 이어진다. 그 둘은 DATA에서
+    재생성하지 않고 페이지에 있던 것을 그대로 둬야 하므로, 여기서 만드는 것은
+    `,WT=` 바로 앞까지다(_TRACE의 매치 경계와 짝을 이룬다).
+    """
     import json
-    return "const FQ=%s,SITES=%s;" % (
+    return "const FQ=%s,SITES=%s" % (
         json.dumps(D["fq"], ensure_ascii=False, separators=(",", ":")),
         json.dumps(render_trace_sites(D), ensure_ascii=False, separators=(",", ":")))
 
@@ -229,7 +335,13 @@ def render_trace_consts(D):
 # ── 파일 갱신 ────────────────────────────────────────────────
 
 _TB = re.compile(r'(<tbody id="tb">)(.*?)(</tbody>)', re.S)
-_TRACE = re.compile(r'const FQ=(\[.*?\]),SITES=(\[.*?\]);', re.S)
+
+# 종결자를 세미콜론으로 잡으면 안 된다. SITES 뒤에는 같은 문장으로 `,WT={…},RAWN={…};`이
+# 이어지고, 그 다음 JS 첫 줄이 `const wOf=(src,k)=>{const m=WT[src];` 라서 `\]);`에 처음
+# 걸리는 곳이 거기다 — 매치가 WT·RAWN 바인딩과 JS 앞머리까지 통째로 삼킨다(17사 실측 4.7~13.5KB).
+# 갈아끼우면 그만큼이 조용히 사라져 페이지가 죽는다. 경계를 WT 시작 지점에 못 박고,
+# 소비하지 않도록 전방탐색으로 둔다(m.end()가 `,WT=`의 쉼표 앞에 선다).
+_TRACE = re.compile(r'const FQ=(\[.*?\]),SITES=(\[.*?\])(?=,WT=)', re.S)
 
 
 def render_matrix_html(path, D):
@@ -256,6 +368,8 @@ def matrix_matches(path, D):
     with open(path, encoding="utf-8") as f:
         h = f.read()
     m = _TB.search(h)
+    if not m:
+        raise ValueError("matrix tbody 를 찾지 못함: %s" % path)
     return m.group(2) == render_matrix_body(D)
 
 
@@ -267,7 +381,12 @@ def render_trace_html(path, D):
     if not m:
         raise ValueError("trace const FQ/SITES 를 찾지 못함: %s" % path)
     out = h[:m.start()] + render_trace_consts(D) + h[m.end():]
-    return re.sub(r"(\d+)개 사업장", "%d개 사업장" % len(D["sites"]), out, count=1)
+    # 부제의 분기 수도 함께 갱신한다 — 사업장 수만 고치면 새 분기가 붙은 뒤 띠는 20칸인데
+    # 제목은 "19개 분기"라고 말하는, 이 모듈이 없애려는 바로 그 스테일이 남는다.
+    # matrix와 달리 trace는 실측 분기만 그리므로 fqF가 아니라 fq 길이다.
+    return re.sub(r"(\d+)개 사업장 × (\d+)개 분기",
+                  "%d개 사업장 × %d개 분기" % (len(D["sites"]), len(D["fq"])),
+                  out, count=1)
 
 
 def update_trace(path, D):
@@ -345,6 +464,8 @@ def trace_matches(path, D):
     with open(path, encoding="utf-8") as f:
         h = f.read()
     m = _TRACE.search(h)
+    if not m:
+        raise ValueError("trace const FQ/SITES 를 찾지 못함: %s" % path)
     return (json.loads(m.group(1)) == D["fq"]
             and json.loads(m.group(2)) == render_trace_sites(D))
 

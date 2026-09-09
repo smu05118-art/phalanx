@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>상지건설 현장별 데이터</title>
+<style>
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;
+ --tx3:#5d6675;--a:#60a5fa;--up:#4ade80;--dn:#f87171;--wn:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;padding:0 0 60px}
+a{color:var(--a)}
+header{position:sticky;top:0;z-index:9;background:rgba(15,17,22,.94);backdrop-filter:blur(8px);
+ border-bottom:1px solid var(--ln);padding:12px clamp(12px,3vw,28px)}
+.hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;max-width:1280px;margin:0 auto}
+.hd h1{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.hd .code{font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.hd .tag{font-size:10.5px;color:var(--tx2);border:1px solid var(--ln);border-radius:999px;padding:1px 8px}
+.hd .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.hd .sp a{font-size:11px;text-decoration:none;border:1px solid var(--ln);border-radius:6px;padding:3px 9px}
+.hd .sp a:hover{border-color:var(--a)}
+main{max-width:1280px;margin:0 auto;padding:18px clamp(12px,3vw,28px)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px}
+.kpi div{background:var(--pn);border:1px solid var(--ln);border-radius:9px;padding:12px 14px}
+.kpi b{display:block;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.kpi span{display:block;font-size:10.5px;color:var(--tx3);margin-top:3px}
+.kpi i{font-style:normal;font-size:11px;font-variant-numeric:tabular-nums}
+.up{color:var(--up)}.dn{color:var(--dn)}
+section{margin-top:22px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:14px 16px}
+section h2{font-size:12.5px;font-weight:600;color:var(--tx2);margin-bottom:10px;
+ display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+section h2 em{font-style:normal;font-size:10.5px;color:var(--tx3);font-weight:400}
+.wrap{overflow-x:auto}
+/* th{position:sticky;top:0}은 **세로로 스크롤되는 조상**이 있어야 성립한다. .wrap에
+   높이 제약이 없으면 clientHeight==scrollHeight라 스크롤포트가 아니고, 머리행은 그냥
+   페이지와 함께 흘러가 버렸다(태영건설 220현장 페이지에서 측정: 3138==3138).
+   높이 제약은 화면이 넓을 때만 건다 — 좁은 화면에서 상자 안 세로 스크롤을 만들면
+   페이지 스크롤과 이중이 되어 손가락이 무엇을 미는지 알 수 없게 된다. */
+@media (min-width:768px){.wrap{max-height:70vh;overflow-y:auto}}
+.chart{position:relative;height:260px}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap}
+/* border-collapse:collapse에서는 셀 테두리가 sticky 머리행을 따라오지 않는다 —
+   밑줄은 box-shadow로 그려야 스크롤 중에도 남는다. z-index는 본문 셀 위로 띄우기 위함. */
+th{color:var(--tx3);font-weight:500;font-size:10.5px;text-align:right;cursor:pointer;
+ position:sticky;top:0;z-index:1;background:var(--pn);
+ box-shadow:inset 0 -1px 0 var(--ln);user-select:none}
+th:hover{color:var(--a)}
+th.l,td.l{text-align:left}
+td.l{max-width:340px;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:var(--pn2)}
+.mut{color:var(--tx3)}
+.bar{display:inline-block;height:5px;border-radius:3px;background:var(--a);vertical-align:middle}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ctl input,.ctl select{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;
+ color:var(--tx);font:12px inherit;padding:4px 8px}
+.ctl input{min-width:190px}
+footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
+ color:var(--tx3);font-size:10.5px;line-height:1.8}
+.note{color:var(--wn);font-size:11px;background:rgba(251,191,36,.08);
+ border:1px solid rgba(251,191,36,.25);border-radius:7px;padding:8px 11px;margin-top:14px}
+</style></head><body>
+<header><div class="hd">
+ <h1>상지건설 현장별 데이터</h1>
+ <span class="code">042940</span>
+ <span class="tag">코스닥</span>
+ <span class="tag">건물 건설업</span>
+ <span class="sp">
+  <a href="../coverage.html">커버리지</a>
+  <a href="../index.html">회사 선택</a>
+  <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260818000293" rel="noopener noreferrer" target="_blank">DART 원문 ↗</a>
+ </span>
+</div></header>
+<main>
+
+<div class="kpi">
+ <div><b>1,618<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>수주잔고 · 2026Q2</span><i class="up">+26억</i></div>
+ <div><b>3,796<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>도급액 합계</span></div>
+ <div><b>9</b><span>잔고 있는 현장</span></div>
+ <div><b>16</b><span>수록 현장(누적)</span></div>
+ <div><b>8</b><span>수록 분기 · 2024Q3–2026Q2</span></div>
+ <div><b>1,618<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>공시 총계</span><i class="mut">수록분이 100%</i></div>
+</div>
+
+<section>
+ <h2>수주잔고 추이 <em>공종별 누적 · 억원</em></h2>
+ <div class="chart"><canvas id="cBal"></canvas></div>
+</section>
+
+<section>
+ <h2>현장 목록 <em>머리행을 누르면 정렬</em></h2>
+ <div class="ctl">
+  <input id="q" type="search" placeholder="현장·발주처 검색" aria-label="현장 검색">
+  <select id="fSeg" aria-label="공종"><option value="">공종 전체</option></select>
+  <select id="fReg" aria-label="지역"><option value="">지역 전체</option></select>
+  <label style="font-size:11.5px;color:var(--tx2);display:flex;align-items:center;gap:5px">
+   <input type="checkbox" id="onlyLive" checked style="min-width:0"> 잔고 있는 현장만</label>
+ </div>
+ <div class="wrap"><table id="tb">
+  <thead><tr>
+   <th class="l" data-k="nm">현장명</th><th class="l" data-k="cl">발주처</th>
+   <th class="l" data-k="seg">공종</th><th class="l" data-k="reg">지역</th>
+   <th data-k="sd">착공</th><th data-k="ed">완공예정</th>
+   <th data-k="amt">도급액</th><th data-k="cmp">완성공사액</th>
+   <th data-k="bal">계약잔액</th><th data-k="pr">진행률</th>
+  </tr></thead><tbody></tbody>
+ </table></div>
+</section>
+
+<section>
+ <h2>분기 매트릭스 <em>현장 × 분기 계약잔액(억) · 상위 60개</em></h2>
+ <div class="wrap"><table id="mx"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<div class="note">이 회사는 DART 정기보고서의 <b>수주상황 표를 분기마다 다시 읽어</b> 만든
+실측 시계열입니다. 원본 7사 페이지와 달리 <b>예측(S-curve)·백테스트·실적 대비가 없습니다</b> —
+그 자산은 복제 시드에서 온 것이라 신규 편입사에는 존재하지 않습니다.
+현장은 이름으로 분기 간 연결하므로, 원문이 표기를 크게 바꾸면 다른 현장으로 잡힐 수 있습니다.
+「공시 총계」가 있으면 원문이 직접 적은 수주잔고 합계입니다. <b>묶음</b> 표시가 붙은 행은
+원문이 개별 기재를 생략하고 '기타현장'처럼 한 줄로 합쳐 적은 <b>나머지</b>이며,
+합계를 맞추기 위해 집계에는 포함하되 현장 수에서는 빼고 셉니다.</div>
+</main>
+<footer>출처 DART 정기보고서 II. 사업의 내용 — 수주상황. 단위 억원(원문 백만원 환산).
+2026Q2 정기보고서 기준. 참고용 · 투자조언 아님.</footer>
+<script src="../vendor/chart.umd.min.js"></script>
+<script>const DATA={"recon":[100.0,100.0,100.0,100.0,100.0,100.0,100.0,100.0],"reconOver":[],"aggFix":[],"co":"상지건설","stock":"042940","slug":"042940","market":"코스닥","industry":"건물 건설업","fq":["2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1","2026Q2"],"codeGen":"2026Q2","grain":"project","src":{"2024Q3":"20241114002761","2024Q4":"20250321001587","2025Q1":"20250515002094","2025Q2":"20250814002969","2025Q3":"20251114002938","2025Q4":"20260319001104","2026Q1":"20260513000857","2026Q2":"20260818000293"},"sites":[{"id":"042940-0001","nm":"22-육-00부대 전기공사(1194)","cl":"국군재정관리단","reg":"국내","seg":"기타","agg":false,"sd":"2022-09","ed":"2024-12","s":{"amt":[2849,2884,null,2671,2671,2777,null,null],"cmp":[2150,2250,null,2671,2777,2777,null,null],"bal":[699,634,null,null,null,null,null,null],"pr":[75.5,78.0,null,100.0,104.0,100.0,null,null]}},{"id":"042940-0002","nm":"논현동 카일룸M 신축 분양사업","cl":"분양공사(*)","reg":"국내","seg":"기타","agg":false,"sd":"2021-04","ed":"2023-12","s":{"amt":[180210,180210,180210,180210,180210,180210,180210,180210],"cmp":[162633,160908,160908,160537,156833,160537,160537,160537],"bal":[17577,19302,19302,19673,23377,19673,19673,19673],"pr":[90.2,89.3,89.3,89.1,87.0,89.1,89.1,89.1]}},{"id":"042940-0003","nm":"역삼동 653-3 주거복합 신축공사","cl":"㈜대풍산업","reg":"국내","seg":"기타","agg":false,"sd":"2021-12","ed":"2024-07","s":{"amt":[25368,25369,null,25369,25369,26332,26332,26332],"cmp":[25211,25369,null,25369,25369,26332,26332,26332],"bal":[157,null,null,null,null,null,null,null],"pr":[99.4,100.0,null,100.0,100.0,100.0,100.0,100.0]}},{"id":"042940-0004","nm":"해운대 중동 카일룸 신축공사","cl":"퀀텀디브이㈜","reg":"국내","seg":"기타","agg":false,"sd":"2022-04","ed":"2024-04","s":{"amt":[17172,null,null,null,null,null,null,null],"cmp":[17172,null,null,null,null,null,null,null],"bal":[null,null,null,null,null,null,null,null],"pr":[100.0,null,null,null,null,null,null,null]}},{"id":"042940-0005","nm":"강남구 논현동 98, 98-1번지 신축공사","cl":"㈜카일룸도산","reg":"국내","seg":"기타","agg":false,"sd":"2022-05","ed":"2025-06","s":{"amt":[25950,25950,null,null,null,null,null,null],"cmp":[731,2293,null,null,null,null,null,null],"bal":[25219,23657,null,null,null,null,null,null],"pr":[2.8,8.8,null,null,null,null,null,null]}},{"id":"042940-0006","nm":"서울시 강남구 청담동 '리카르디 아스턴 청담' 신축공사","cl":"리카르디청담㈜(*2)","reg":"국내","seg":"기타","agg":false,"sd":"2023-12","ed":"2027-06","s":{"amt":[28730,null,null,null,null,null,null,null],"cmp":[null,null,null,null,null,null,null,null],"bal":[28730,null,null,null,null,null,null,null],"pr":[null,null,null,null,null,null,null,null]}},{"id":"042940-0007","nm":"서울시 용산구 한남동 라스코 더 맨션 연립주택 신축공사(건축, 전기, 통신, 소방)","cl":"유에스케이얼라이언스㈜","reg":"국내","seg":"건축","agg":false,"sd":"2023-12","ed":"2025-09","s":{"amt":[17600,17600,null,null,null,null,null,null],"cmp":[1817,3036,null,null,null,null,null,null],"bal":[15783,14564,null,null,null,null,null,null],"pr":[10.3,17.2,null,null,null,null,null,null]}},{"id":"042940-0008","nm":"마곡 16단지 공공주택 소방시설공사","cl":"서울주택도시공사","reg":"국내","seg":"건축","agg":false,"sd":"2025-03","ed":"2027-11","s":{"amt":[null,null,3646,3646,3646,3646,3646,3646],"cmp":[null,null,null,1,4,5,26,100],"bal":[null,null,3646,3645,3642,3641,3620,3546],"pr":[null,null,null,0.0,0.1,0.1,0.7,2.7]}},{"id":"042940-0009","nm":"상지카일룸 에스칼라 신축공사","cl":"㈜카일룸도산, 두산미래산업㈜","reg":"국내","seg":"기타","agg":false,"sd":"2025-12","ed":"2029-04","s":{"amt":[null,null,70185,70185,70185,70185,70185,70185],"cmp":[null,null,3309,3546,3787,3270,6078,7334],"bal":[null,null,66876,66639,66398,66915,64107,62851],"pr":[null,null,4.7,5.1,5.4,4.7,8.7,10.4]}},{"id":"042940-0010","nm":"용산 한남동 라스코 더 맨션 연립주택 신축공사(건축, 전기, 통신, 소방)","cl":"유에스케이얼라이언스㈜","reg":"국내","seg":"건축","agg":false,"sd":"2023-12","ed":"2025-11","s":{"amt":[null,null,17600,17600,17600,19583,19583,19583],"cmp":[null,null,4659,6994,14172,17748,19583,19583],"bal":[null,null,12941,10606,3428,1835,null,null],"pr":[null,null,26.5,39.7,80.5,90.6,100.0,100.0]}},{"id":"042940-0011","nm":"성남시 수정구 사송동 505 근린생활시설 신축공사","cl":"㈜어코스틱스스페이스","reg":"국내","seg":"기타","agg":false,"sd":"2025-05","ed":"2026-03","s":{"amt":[null,null,1340,1340,2270,2270,2270,2500],"cmp":[null,null,null,288,869,1596,2270,2464],"bal":[null,null,1340,1052,1401,674,null,36],"pr":[null,null,null,21.5,38.3,70.3,100.0,98.6]}},{"id":"042940-0012","nm":"신정동 66-2 공동주택 신축공사","cl":"하이클래스디벨롭㈜","reg":"국내","seg":"건축","agg":false,"sd":"2025-05","ed":"2028-06","s":{"amt":[null,null,null,4280,4280,51000,51000,51000],"cmp":[null,null,null,null,null,null,null,null],"bal":[null,null,null,4280,4280,51000,51000,51000],"pr":[null,null,null,null,null,null,null,null]}},{"id":"042940-0013","nm":"임실 정주활력센터 건립 건축공사","cl":"전북특별자치도 임실군","reg":"국내","seg":"건축","agg":false,"sd":"2025-12","ed":"2027-12","s":{"amt":[null,null,null,null,null,8960,8960,8960],"cmp":[null,null,null,null,null,20,89,169],"bal":[null,null,null,null,null,8940,8871,8791],"pr":[null,null,null,null,null,0.2,1.0,1.9]}},{"id":"042940-0014","nm":"25-A-00부대 소방공사(1652)","cl":"국군중앙계약관","reg":"국내","seg":"기타","agg":false,"sd":"2025-12","ed":"2028-05","s":{"amt":[null,null,null,null,null,null,1145,1145],"cmp":[null,null,null,null,null,null,1,2],"bal":[null,null,null,null,null,null,1144,1143],"pr":[null,null,null,null,null,null,0.1,0.2]}},{"id":"042940-0015","nm":"신촌동 씨아이테크그룹사옥 신축공사","cl":"㈜씨아이테크","reg":"국내","seg":"기타","agg":false,"sd":"2026-03","ed":"2027-10","s":{"amt":[null,null,null,null,null,null,11000,14735],"cmp":[null,null,null,null,null,null,277,1223],"bal":[null,null,null,null,null,null,10723,13512],"pr":[null,null,null,null,null,null,2.5,8.3]}},{"id":"042940-0016","nm":"신내4훼손지 복구사업 조경공사","cl":"서울주택도시개발공사","reg":"국내","seg":"건축","agg":false,"sd":"2026-05","ed":"2030-04","s":{"amt":[null,null,null,null,null,null,null,1257],"cmp":[null,null,null,null,null,null,null,35],"bal":[null,null,null,null,null,null,null,1222],"pr":[null,null,null,null,null,null,null,2.8]}}],"summary":{"amt":[297879,252013,272981,305301,306231,364963,374331,379553],"cmp":[209714,193856,168876,199406,203811,212285,215193,217779],"bal":[88165,58157,104105,105895,102526,152678,159138,161774]},"declared":[88165,58157,104105,105895,102526,152678,159138,161774],"dom":[88165,58157,104105,105895,102526,152678,159138,161774],"ovs":[null,null,null,null,null,null,null,null],"segList":["건축","기타"],"seg":{"건축":[15783,14564,16587,18531,11350,65416,63491,64559],"기타":[72382,43593,87518,87364,91176,87262,95647,97215]}};</script>
+<script>
+(function(){
+ var fq=DATA.fq, K=fq.length-1, S=DATA.sites;
+ // 라벨은 입도에서 끌어온다 — 부문 공시 회사에 '현장'이라 쓰면 없는 정밀도를 주장한다
+ var UNIT=(DATA.grain==='project')?'현장':'부문';
+ var eok=function(v){return v==null?null:Math.round(v/100)};
+ var fmt=function(v){return v==null?'—':v.toLocaleString('ko-KR')};
+
+ // ── 차트: 공종별 누적 잔고 ────────────────────────────────
+ // 차트는 **격리해서** 그린다. Chart.js가 못 뜨면(오프라인 스냅샷·벤더 파일 유실)
+ // 예외가 같은 스코프의 표 렌더까지 죽여 페이지가 통째로 빈 화면이 된다.
+ try{
+  if(typeof Chart!=='function') throw new Error('Chart.js 로드 실패');
+  var PAL=['#60a5fa','#4ade80','#fbbf24','#f87171','#a78bfa','#22d3ee','#fb923c'];
+  var ds=DATA.segList.map(function(g,i){return{
+    label:g, data:DATA.seg[g].map(eok), backgroundColor:PAL[i%PAL.length],
+    borderWidth:0, stack:'s'};});
+  new Chart(document.getElementById('cBal'),{type:'bar',data:{labels:fq,datasets:ds},
+   options:{responsive:true,maintainAspectRatio:false,animation:false,
+    interaction:{mode:'index',intersect:false},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#5d6675',font:{size:10}}},
+      y:{stacked:true,grid:{color:'#2a2f3a'},ticks:{color:'#5d6675',font:{size:10},
+        callback:function(v){return v.toLocaleString('ko-KR')}}}},
+    plugins:{legend:{labels:{color:'#98a1b0',boxWidth:10,font:{size:10.5}}},
+     tooltip:{callbacks:{label:function(c){return c.dataset.label+' '+
+       (c.parsed.y==null?'—':c.parsed.y.toLocaleString('ko-KR'))+'억'}}}}}});
+ }catch(err){
+  var box=document.getElementById('cBal');
+  if(box&&box.parentNode){box.parentNode.innerHTML=
+    '<div style="color:#5d6675;font-size:11.5px;padding:22px;text-align:center">'+
+    '차트를 그리지 못했습니다 ('+String(err&&err.message||err)+'). 아래 표는 정상입니다.</div>';}
+ }
+
+ // ── 현장 표 ──────────────────────────────────────────────
+ try{
+ var tb=document.querySelector('#tb tbody'), q=document.getElementById('q'),
+     fSeg=document.getElementById('fSeg'), fReg=document.getElementById('fReg'),
+     onlyLive=document.getElementById('onlyLive');
+ [['seg',fSeg,DATA.segList],['reg',fReg,['국내','해외']]].forEach(function(x){
+   x[2].forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;x[1].appendChild(o)})});
+ var sortK='bal', sortD=-1, maxAmt=1;
+ S.forEach(function(s){var a=s.s.amt[K]; if(a&&a>maxAmt)maxAmt=a});
+
+ function rows(){
+  var t=(q.value||'').trim().toLowerCase();
+  return S.filter(function(s){
+   if(onlyLive.checked && !s.s.bal[K]) return false;
+   if(fSeg.value && s.seg!==fSeg.value) return false;
+   if(fReg.value && s.reg!==fReg.value) return false;
+   if(t && (s.nm+' '+s.cl).toLowerCase().indexOf(t)<0) return false;
+   return true;
+  }).sort(function(a,b){
+   var x=key(a),y=key(b);
+   if(x==null&&y==null)return 0; if(x==null)return 1; if(y==null)return -1;
+   return x<y?-sortD:x>y?sortD:0;
+  });
+ }
+ function key(s){
+  if(sortK==='nm'||sortK==='cl'||sortK==='seg'||sortK==='reg')return s[sortK]||'';
+  if(sortK==='sd'||sortK==='ed')return s[sortK]||null;
+  return s.s[sortK]?s.s[sortK][K]:null;
+ }
+ function draw(){
+  var r=rows(), h=[];
+  r.forEach(function(s){
+   var a=s.s.amt[K],c=s.s.cmp[K],b=s.s.bal[K],p=s.s.pr[K];
+   h.push('<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+
+    (s.agg?' <span class="mut" style="font-size:10px;border:1px solid var(--ln);border-radius:4px;padding:0 4px">묶음</span>':'')+'</td>'+
+    '<td class="l mut">'+esc(s.cl||'—')+'</td><td class="l mut">'+esc(s.seg)+'</td>'+
+    '<td class="l mut">'+esc(s.reg)+'</td>'+
+    '<td class="mut">'+(s.sd||'—')+'</td><td class="mut">'+(s.ed||'—')+'</td>'+
+    '<td>'+fmt(eok(a))+'</td><td>'+fmt(eok(c))+'</td><td>'+fmt(eok(b))+'</td>'+
+    '<td>'+(p==null?'—':p.toFixed(0)+'%<span class="bar" style="width:'+
+      Math.max(2,Math.min(38,p*.38))+'px;margin-left:5px"></span>')+'</td></tr>');
+  });
+  tb.innerHTML=h.join('')||'<tr><td colspan="10" class="mut" style="text-align:center;padding:18px">조건에 맞는 '+UNIT+'이 없습니다</td></tr>';
+ }
+ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+ document.querySelectorAll('#tb th').forEach(function(th){
+  th.addEventListener('click',function(){
+   var k=th.dataset.k; sortD=(k===sortK)?-sortD:-1; sortK=k; draw();});
+ });
+ [q,fSeg,fReg,onlyLive].forEach(function(el){el.addEventListener('input',draw)});
+ draw();
+ }catch(err){document.querySelector('#tb tbody').innerHTML=
+   '<tr><td colspan="10" style="color:#f87171;padding:16px">현장 표 렌더 실패: '+
+   String(err&&err.message||err)+'</td></tr>';}
+
+ // ── 분기 매트릭스 ────────────────────────────────────────
+ try{
+ var top=S.slice().sort(function(a,b){return (b.s.bal[K]||0)-(a.s.bal[K]||0)}).slice(0,60);
+ document.querySelector('#mx thead').innerHTML='<tr><th class="l">'+UNIT+'</th>'+
+   fq.map(function(f){return '<th>'+f+'</th>'}).join('')+'</tr>';
+ var mb=top.map(function(s){
+  return '<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+'</td>'+
+   s.s.bal.map(function(v){return '<td'+(v==null?' class="mut"':'')+'>'+fmt(eok(v))+'</td>'}).join('')+'</tr>';
+ }).join('');
+ // 행이 0이면 머리행만 남는다 — 빈 표는 '데이터가 없다'인지 '렌더가 깨졌다'인지
+ // 구별되지 않는다. 현장 표와 같이 사유를 적어 준다.
+ document.querySelector('#mx tbody').innerHTML=mb||
+   '<tr><td colspan="'+(fq.length+1)+'" class="mut" style="text-align:center;padding:18px">'+
+   '표시할 '+UNIT+'이 없습니다</td></tr>';
+ }catch(err){document.querySelector('#mx tbody').innerHTML=
+   '<tr><td style="color:#f87171;padding:16px">매트릭스 렌더 실패: '+
+   String(err&&err.message||err)+'</td></tr>';}
+})();
+</script>
+</body></html>

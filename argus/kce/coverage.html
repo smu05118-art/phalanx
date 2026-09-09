@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>커버리지 — 국내 상장 건설사</title>
+<style>
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;
+ --tx3:#5d6675;--a:#60a5fa;--up:#4ade80;--dn:#f87171;--wn:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;padding:0 0 60px}
+a{color:var(--a)}
+header{position:sticky;top:0;z-index:9;background:rgba(15,17,22,.94);backdrop-filter:blur(8px);
+ border-bottom:1px solid var(--ln);padding:12px clamp(12px,3vw,28px)}
+.hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;max-width:1280px;margin:0 auto}
+.hd h1{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.hd .code{font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.hd .tag{font-size:10.5px;color:var(--tx2);border:1px solid var(--ln);border-radius:999px;padding:1px 8px}
+.hd .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.hd .sp a{font-size:11px;text-decoration:none;border:1px solid var(--ln);border-radius:6px;padding:3px 9px}
+.hd .sp a:hover{border-color:var(--a)}
+main{max-width:1280px;margin:0 auto;padding:18px clamp(12px,3vw,28px)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px}
+.kpi div{background:var(--pn);border:1px solid var(--ln);border-radius:9px;padding:12px 14px}
+.kpi b{display:block;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.kpi span{display:block;font-size:10.5px;color:var(--tx3);margin-top:3px}
+.kpi i{font-style:normal;font-size:11px;font-variant-numeric:tabular-nums}
+.up{color:var(--up)}.dn{color:var(--dn)}
+section{margin-top:22px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:14px 16px}
+section h2{font-size:12.5px;font-weight:600;color:var(--tx2);margin-bottom:10px;
+ display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+section h2 em{font-style:normal;font-size:10.5px;color:var(--tx3);font-weight:400}
+.wrap{overflow-x:auto}
+/* th{position:sticky;top:0}은 **세로로 스크롤되는 조상**이 있어야 성립한다. .wrap에
+   높이 제약이 없으면 clientHeight==scrollHeight라 스크롤포트가 아니고, 머리행은 그냥
+   페이지와 함께 흘러가 버렸다(태영건설 220현장 페이지에서 측정: 3138==3138).
+   높이 제약은 화면이 넓을 때만 건다 — 좁은 화면에서 상자 안 세로 스크롤을 만들면
+   페이지 스크롤과 이중이 되어 손가락이 무엇을 미는지 알 수 없게 된다. */
+@media (min-width:768px){.wrap{max-height:70vh;overflow-y:auto}}
+.chart{position:relative;height:260px}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap}
+/* border-collapse:collapse에서는 셀 테두리가 sticky 머리행을 따라오지 않는다 —
+   밑줄은 box-shadow로 그려야 스크롤 중에도 남는다. z-index는 본문 셀 위로 띄우기 위함. */
+th{color:var(--tx3);font-weight:500;font-size:10.5px;text-align:right;cursor:pointer;
+ position:sticky;top:0;z-index:1;background:var(--pn);
+ box-shadow:inset 0 -1px 0 var(--ln);user-select:none}
+th:hover{color:var(--a)}
+th.l,td.l{text-align:left}
+td.l{max-width:340px;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:var(--pn2)}
+.mut{color:var(--tx3)}
+.bar{display:inline-block;height:5px;border-radius:3px;background:var(--a);vertical-align:middle}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ctl input,.ctl select{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;
+ color:var(--tx);font:12px inherit;padding:4px 8px}
+.ctl input{min-width:190px}
+footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
+ color:var(--tx3);font-size:10.5px;line-height:1.8}
+.note{color:var(--wn);font-size:11px;background:rgba(251,191,36,.08);
+ border:1px solid rgba(251,191,36,.25);border-radius:7px;padding:8px 11px;margin-top:14px}
+
+.tx3{color:var(--tx3)}.wn{color:var(--wn)}
+</style></head><body>
+<header><div class="hd">
+ <h1>커버리지 지도</h1>
+ <span class="tag">국내 상장 건설사 53종목</span>
+ <span class="sp"><a href="index.html">회사 선택</a>
+  <a href="../index.html">ARGUS</a></span>
+</div></header>
+<main>
+<div class="kpi">
+ <div><b class="up">37</b><span>현장 단위 수록</span></div>
+ <div><b class="wn">6</b><span>사업부문 단위만 공시</span></div>
+ <div><b class="tx3">10</b><span>수주 표 없음 · 미수록</span></div>
+ <div><b>53</b><span>모집단 전체</span></div>
+</div>
+<section>
+ <h2>모집단 규칙 <em>재현 가능한 기준만 쓴다</em></h2>
+ <p style="font-size:12px;color:var(--tx2);line-height:1.8">
+  KRX KIND 상장법인목록에서 <b>표준산업분류 건설업</b>(건물 건설업 · 토목 건설업 · 실내건축 및 건축마무리 공사업 · 기반조성 및 시설물 축조관련 전문공사업)에 속한 전 종목을
+  모집단으로 삼고, 업종 밖이지만 건설 실질이 큰 <b>삼성E&amp;A · 삼성물산 · 자이에스앤디</b>를 지정 추가합니다.
+  이름으로 임의 배제하지 않습니다 — 배제는 <b>원문을 열어 수주 표가 없음을 확인한 경우</b>에만 합니다.
+ </p>
+</section>
+<section>
+ <h2>종목별 수록 상태 <em>2026Q2 정기보고서 기준 실측</em></h2>
+ <div class="wrap"><table>
+  <thead><tr><th class="l">회사</th><th>종목코드</th><th class="l">시장</th>
+   <th class="l">업종</th><th class="l">등급</th><th class="l">근거</th>
+   <th>현장·부문</th><th>분기</th></tr></thead>
+  <tbody><tr><td class="l"><a href="dle/index.html">DL이앤씨</a></td><td class="mut">375500</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>151</td><td>—</td></tr>
+<tr><td class="l"><a href="gse/index.html">GS건설</a></td><td class="mut">006360</td><td class="l mut">유가</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>94</td><td>—</td></tr>
+<tr><td class="l"><a href="097230/index.html">HJ중공업</a></td><td class="mut">097230</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>107</td><td>8</td></tr>
+<tr><td class="l"><a href="hdi/index.html">HL D&amp;I</a></td><td class="mut">014790</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>36</td><td>—</td></tr>
+<tr><td class="l"><a href="hse/index.html">HS화성</a></td><td class="mut">002460</td><td class="l mut">유가</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>57</td><td>—</td></tr>
+<tr><td class="l"><a href="ipark/index.html">IPARK현대산업개발</a></td><td class="mut">294870</td><td class="l mut">유가</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>74</td><td>—</td></tr>
+<tr><td class="l"><a href="112190/index.html">KC산업</a></td><td class="mut">112190</td><td class="l mut">코넥스</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>33</td><td>2</td></tr>
+<tr><td class="l"><a href="044180/index.html">KD</a></td><td class="mut">044180</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>11</td><td>8</td></tr>
+<tr><td class="l"><a href="016250/index.html">SGC E&amp;C</a></td><td class="mut">016250</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>81</td><td>8</td></tr>
+<tr><td class="l"><a href="475150/index.html">SK이터닉스</a></td><td class="mut">475150</td><td class="l mut">유가</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>8</td><td>8</td></tr>
+<tr><td class="l"><a href="kre/index.html">계룡건설산업</a></td><td class="mut">013580</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>177</td><td>—</td></tr>
+<tr><td class="l"><a href="khe/index.html">금호건설</a></td><td class="mut">002990</td><td class="l mut">유가</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>147</td><td>—</td></tr>
+<tr><td class="l"><a href="013700/index.html">까뮤이앤씨</a></td><td class="mut">013700</td><td class="l mut">유가</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>36</td><td>8</td></tr>
+<tr><td class="l"><a href="001260/index.html">남광토건</a></td><td class="mut">001260</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>50</td><td>8</td></tr>
+<tr><td class="l"><a href="091590/index.html">남화토건</a></td><td class="mut">091590</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>26</td><td>8</td></tr>
+<tr><td class="l"><a href="389260/index.html">대명에너지</a></td><td class="mut">389260</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>61</td><td>8</td></tr>
+<tr><td class="l"><a href="dwe/index.html">대우건설</a></td><td class="mut">047040</td><td class="l mut">유가</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>133</td><td>—</td></tr>
+<tr><td class="l"><a href="dbe/index.html">동부건설</a></td><td class="mut">005960</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>167</td><td>—</td></tr>
+<tr><td class="l"><a href="025950/index.html">동신건설</a></td><td class="mut">025950</td><td class="l mut">코스닥</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>42</td><td>8</td></tr>
+<tr><td class="l"><a href="028100/index.html">동아지질</a></td><td class="mut">028100</td><td class="l mut">유가</td><td class="l mut">기반조성 및 시설물 축조관련 전문공사업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>40</td><td>8</td></tr>
+<tr><td class="l"><a href="013120/index.html">동원개발</a></td><td class="mut">013120</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>61</td><td>8</td></tr>
+<tr><td class="l"><a href="206400/index.html">베노티앤알</a></td><td class="mut">206400</td><td class="l mut">코스닥</td><td class="l mut">실내건축 및 건축마무리 공사업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>34</td><td>8</td></tr>
+<tr><td class="l"><a href="001470/index.html">삼부토건</a></td><td class="mut">001470</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>47</td><td>8</td></tr>
+<tr><td class="l"><a href="sea/index.html">삼성E&amp;A</a></td><td class="mut">028050</td><td class="l mut">유가</td><td class="l mut">건축기술, 엔지니어링 및 관련 기술 서비</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>53</td><td>—</td></tr>
+<tr><td class="l"><a href="sct/index.html">삼성물산</a></td><td class="mut">028260</td><td class="l mut">유가</td><td class="l mut">기타 전문 도매업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>84</td><td>—</td></tr>
+<tr><td class="l"><a href="002290/index.html">삼일기업공사</a></td><td class="mut">002290</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>33</td><td>8</td></tr>
+<tr><td class="l"><a href="010960/index.html">삼호개발</a></td><td class="mut">010960</td><td class="l mut">유가</td><td class="l mut">기반조성 및 시설물 축조관련 전문공사업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>58</td><td>8</td></tr>
+<tr><td class="l"><a href="042940/index.html">상지건설</a></td><td class="mut">042940</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>16</td><td>8</td></tr>
+<tr><td class="l"><a href="035890/index.html">서희건설</a></td><td class="mut">035890</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>48</td><td>8</td></tr>
+<tr><td class="l"><a href="046940/index.html">우원개발</a></td><td class="mut">046940</td><td class="l mut">코스닥</td><td class="l mut">기반조성 및 시설물 축조관련 전문공사업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>30</td><td>8</td></tr>
+<tr><td class="l"><a href="001840/index.html">이화공영</a></td><td class="mut">001840</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>47</td><td>8</td></tr>
+<tr><td class="l"><a href="013360/index.html">일성건설</a></td><td class="mut">013360</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>60</td><td>8</td></tr>
+<tr><td class="l"><a href="002780/index.html">진흥기업</a></td><td class="mut">002780</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>66</td><td>8</td></tr>
+<tr><td class="l"><a href="klg/index.html">코오롱글로벌</a></td><td class="mut">003070</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>21</td><td>—</td></tr>
+<tr><td class="l"><a href="009410/index.html">태영건설</a></td><td class="mut">009410</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>189</td><td>8</td></tr>
+<tr><td class="l"><a href="004960/index.html">한신공영</a></td><td class="mut">004960</td><td class="l mut">유가</td><td class="l mut">건물 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>31</td><td>8</td></tr>
+<tr><td class="l"><a href="hec/index.html">현대건설</a></td><td class="mut">000720</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="up">수록</b></td><td class="l mut">현장 단위 시계열</td><td>126</td><td>—</td></tr>
+<tr><td class="l"><a href="056730/index.html">CNT85</a></td><td class="mut">056730</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="wn">부분</b></td><td class="l mut">사업부문 단위만 공시</td><td>3</td><td>8</td></tr>
+<tr><td class="l"><a href="002410/index.html">범양건영</a></td><td class="mut">002410</td><td class="l mut">유가</td><td class="l mut">건물 건설업</td><td class="l"><b class="wn">부분</b></td><td class="l mut">사업부문 단위만 공시</td><td>25</td><td>8</td></tr>
+<tr><td class="l"><a href="011370/index.html">서한</a></td><td class="mut">011370</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="wn">부분</b></td><td class="l mut">사업부문 단위만 공시</td><td>3</td><td>8</td></tr>
+<tr><td class="l"><a href="054940/index.html">엑사이엔씨</a></td><td class="mut">054940</td><td class="l mut">코스닥</td><td class="l mut">실내건축 및 건축마무리 공사업</td><td class="l"><b class="wn">부분</b></td><td class="l mut">사업부문 단위만 공시</td><td>3</td><td>8</td></tr>
+<tr><td class="l"><a href="076080/index.html">웰크론한텍</a></td><td class="mut">076080</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="wn">부분</b></td><td class="l mut">사업부문 단위만 공시</td><td>1</td><td>8</td></tr>
+<tr><td class="l"><a href="xsd/index.html">자이에스앤디</a></td><td class="mut">317400</td><td class="l mut">유가</td><td class="l mut">부동산 임대 및 공급업</td><td class="l"><b class="wn">부분</b></td><td class="l mut">사업부문 단위만 공시</td><td>21</td><td>—</td></tr>
+<tr><td class="l">KCC건설</td><td class="mut">021320</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 2개 중 인식 0)</td><td>—</td><td>—</td></tr>
+<tr><td class="l">국보디자인</td><td class="mut">066620</td><td class="l mut">코스닥</td><td class="l mut">실내건축 및 건축마무리 공사업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 4개 중 인식 0)</td><td>—</td><td>—</td></tr>
+<tr><td class="l">대원</td><td class="mut">007680</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 10개 중 인식 0)</td><td>—</td><td>—</td></tr>
+<tr><td class="l">신원종합개발</td><td class="mut">017000</td><td class="l mut">코스닥</td><td class="l mut">건물 건설업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 6개 중 인식 0)</td><td>—</td><td>—</td></tr>
+<tr><td class="l">엄지하우스</td><td class="mut">224810</td><td class="l mut">코넥스</td><td class="l mut">실내건축 및 건축마무리 공사업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 2개 중 인식 0)</td><td>—</td><td>—</td></tr>
+<tr><td class="l">에쓰씨엔지니어링</td><td class="mut">023960</td><td class="l mut">유가</td><td class="l mut">토목 건설업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 6개 중 인식 0)</td><td>—</td><td>—</td></tr>
+<tr><td class="l">엔에스컴퍼니</td><td class="mut">224760</td><td class="l mut">코넥스</td><td class="l mut">토목 건설업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 8개 중 인식 0)</td><td>—</td><td>—</td></tr>
+<tr><td class="l">지에이이노더스</td><td class="mut">076340</td><td class="l mut">코넥스</td><td class="l mut">기반조성 및 시설물 축조관련 전문공사업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 6개 중 인식 0)</td><td>—</td><td>—</td></tr>
+<tr><td class="l">특수건설</td><td class="mut">026150</td><td class="l mut">코스닥</td><td class="l mut">토목 건설업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 2개 중 인식 0)</td><td>—</td><td>—</td></tr>
+<tr><td class="l">플래스크</td><td class="mut">041590</td><td class="l mut">코스닥</td><td class="l mut">실내건축 및 건축마무리 공사업</td><td class="l"><b class="tx3">미수록</b></td><td class="l mut">수주 절은 있으나 사업장 행 0 (표 5개 중 인식 0)</td><td>—</td><td>—</td></tr></tbody></table></div>
+</section>
+<div class="note"><b>등급이 뜻하는 것</b> — <b>수록</b>: 착공일·완공예정일이 붙은 개별 현장 행이
+파싱된다. <b>부분</b>: 수주표는 있으나 '건축부문/토목부문'처럼 사업부문 합계만 공시해
+현장 단위로 쪼갤 수 없다. <b>미수록</b>: 정기보고서에 인식 가능한 수주 표가 없다.
+등급은 추정이 아니라 매 분기 원문을 열어 다시 매깁니다.</div>
+</main>
+<footer>출처 KRX KIND 상장법인목록 · DART 정기보고서. 생성 2026Q2 기준. 참고용 · 투자조언 아님.</footer>
+</body></html>

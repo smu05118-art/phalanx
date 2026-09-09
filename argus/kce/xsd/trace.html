@@ -1,0 +1,693 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>자이에스앤디 원본위치 지도</title>
+
+<style>
+
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;--tx3:#5d6675;
+
+--a:#60a5fa;--pr:#f59e0b;--mn:#22d3ee;--empty:#252a34;
+
+/* 출처 대표색은 **현장별 데이터 화면과 같은 것**을 쓴다(사용자 지시 2026-09-01) —
+
+   II-4 파랑 · III-8 녹색 · XI-1 보라. III-8 연결은 같은 녹색을 한 톤 낮춘다. */
+
+--c2:#60a5fa;--c3:#10b981;--c3b:#0c8a62;--c11:#8b5cf6}
+
+*{box-sizing:border-box}
+
+body{background:var(--bg);color:var(--tx);font:13px/1.5 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;margin:0;padding:18px 22px 28px}
+
+h1{font-size:15px;margin:0 0 4px;font-weight:600}
+
+h1 span{display:block;font-size:12px;color:var(--tx2);font-weight:400;margin-top:3px}
+
+.nav{display:inline-block;background:var(--pn2);border:1px solid var(--ln);border-radius:6px;height:26px;line-height:24px;padding:0 11px;box-sizing:border-box;font-size:12px;color:var(--a);text-decoration:none;margin:0 6px 10px 0}
+
+.nav.b{color:var(--tx2)}
+
+/* 설명 폭은 아래 표(.card)와 같게 — 표 중간에 걸치지 않도록 */
+
+/* 문장마다 줄을 바꾼다(사용자 지시 2026-09-01) — 폭은 그대로 다 쓰되 이어 붙이지 않는다. */
+
+.desc{font-size:12px;color:var(--tx2);line-height:1.6;margin:8px 0 12px}
+
+.desc p{margin:0 0 2px}
+
+.desc b{color:var(--tx)}
+
+.desc code{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--tx)}
+
+/* 표를 화면 아래 끝까지 쓴다(사용자 지시 2026-09-01) — 78vh로 묶어 두어 UHD에서 아래가
+
+   남았다. 위쪽(제목·버튼·설명·통계)의 높이는 창 폭에 따라 줄바꿈이 달라져 CSS로 못 박을 수
+
+   없으므로, 표가 실제로 시작하는 지점을 재서 남은 높이를 전부 준다(아래 fitTable).
+
+   body를 flex 컬럼으로 만드는 방법은 상단 버튼 줄이 세로로 무너져 쓰지 않았다. */
+
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:9px;overflow:hidden}
+
+.scroller{overflow:auto;max-height:78vh}
+
+table{border-collapse:separate;border-spacing:0}
+
+thead th{background:#12151b;color:var(--tx);font-weight:600;text-align:left;white-space:nowrap;
+
+  position:sticky;top:0;z-index:3;padding:7px 12px;font-size:12px;border-bottom:1px solid var(--ln)}
+
+thead th.hn{left:0;z-index:4;width:max(208px,16vw)}
+
+/* 출처를 가로로 나란히 둔다 — 같은 출처가 세로 한 줄에 모여 공백 구간을 훑어볼 수 있다.
+
+   머리에 출처 이름과 분기 눈금을 함께 얹고, 묶음 사이는 세로선으로 가른다. */
+
+thead th.hg{text-align:left;padding:6px 10px 5px}
+
+thead th.hg b{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;margin-right:5px}
+
+thead th.hg:nth-child(2) b{color:var(--c2)}
+
+thead th.hg:nth-child(3) b{color:var(--c3)}
+
+thead th.hg:nth-child(4) b{color:var(--c3b)}
+
+thead th.hg:nth-child(5) b{color:var(--c11)}
+
+thead th.hg+th.hg{border-left:1px solid var(--ln)}
+
+/* 분기명·숫자를 가로로 읽는다(사용자 지시 2026-09-01). 칸 폭은 「21Q4」와 세 자리 숫자가
+
+   들어가게 넓혔다 — 세로쓰기는 눈으로 세기 어렵다. */
+
+/* 칸 폭은 **카운트 세 자리**에 맞춰 좁힌다. 분기명은 그 폭에 안 들어가므로 세로로 세운다
+
+   (사용자 지시 2026-09-01). 숫자는 눈으로 세야 하므로 가로 그대로다. */
+
+:root{--cw:22px}
+
+.ql{display:flex;gap:2px;height:36px;align-items:flex-end;margin-top:4px}
+
+.ql span{width:var(--cw);font-size:12px;color:var(--tx2);font-family:ui-monospace,Menlo,Consolas,monospace;
+
+  writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;text-align:right}
+
+tbody td{padding:2px 10px;vertical-align:middle;line-height:1}
+
+tbody tr.o td{background:#1a1e26}
+
+tbody tr.e td{background:var(--pn)}
+
+tbody tr:hover td{background:#232833}
+
+td.sg+td.sg{border-left:1px solid var(--ln)}
+
+td.cn{position:sticky;left:0;z-index:2;white-space:nowrap;
+
+  width:max(208px,16vw);max-width:max(208px,16vw);overflow:hidden;
+
+  text-overflow:ellipsis;border-right:1px solid var(--ln)}
+
+td.cn .cd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--tx3);margin-right:7px}
+
+td.cn .nm{font-size:12px;color:var(--tx)}
+
+
+
+/* 관계사(특수관계자) 발주 사업장 — index·matrix·trace 공용 (scripts/site_style.py) */
+
+/* 관계사는 이름 배지(.rpb)만으로 구분한다 — 행 하이라이트는 뺐다(사용자 지시 2026-09-01).
+
+   삼성물산 83개·삼성E&A 57개가 통째로 칠해져 있어, 정작 보여야 할 **묶음(list_pin)
+
+   하이라이트**가 그 위에 묻혔다. 하이라이트는 묶음 하나만 쓴다. */
+
+/* .it은 4열 그리드(별·코드·이름·플래그)다. 배지는 다섯 번째 자식이라 열을 늘려 주지 않으면
+
+   다음 줄로 밀려 목록 전체가 두 줄이 된다. 배지 열은 auto — 관계사 이름 폭만큼만 쓴다.
+
+   matrix는 이 규칙을 `td.lbl .it`(특이도 0,2,1)로 두고 있어 `.it.rps`(0,2,0)가 진다.
+
+   그래서 두 선택자를 함께 적는다 — 한쪽만 두면 matrix에서만 두 줄로 밀린다(사용자 지적). */
+
+/* 배지가 붙은 만큼 열을 늘린다 — b1·b2·b3은 **배지 개수**다(관계사·다수현장·해외법인).
+   종전에는 경우마다 규칙을 적었는데 배지가 셋이 되면 조합이 여덟이라 세지 못한다.
+   matrix는 `td.lbl .it`로 특이도를 높여 두고 있어 두 선택자를 함께 적는다. */
+.it.b1,td.lbl .it.b1{grid-template-columns:auto auto auto auto 1fr auto}
+.it.b2,td.lbl .it.b2{grid-template-columns:auto auto auto auto auto 1fr auto}
+.it.b3,td.lbl .it.b3{grid-template-columns:auto auto auto auto auto auto 1fr auto}
+/* 3단 상세 제목(h2)에도 같은 배지를 단다 — 목록·matrix·trace와 눈이 같은 곳을 보게 한다
+   (사용자 지시 2026-09-09). h2는 그리드가 아니라 글줄이라 배지 뒤 여백만 준다. */
+h2 .rpb,h2 .lmb,h2 .ebb{margin-right:6px;vertical-align:middle}
+
+
+/* list_pin으로 묶어 둔 사업장 묶음 — index·matrix·trace 공용. 나열 순서만으로는 「왜 여기
+
+   모여 있는지」가 안 보여서 한 덩어리로 칠한다. 선택(.on)과 색 계열을 달리해 겹쳐 보이지
+
+   않게 하고, 선택된 행에서도 왼쪽 레일은 남겨 묶음 소속이 유지되게 한다. 위아래 끝만 모서리를
+
+   둥글려 블록으로 읽힌다. index의 :root가 이 변수를 정의하고, matrix·trace는 아래 fallback을
+
+   쓴다(각 페이지의 배경 계열이 같아 같은 값이다). */
+
+.it.pin{box-shadow:inset 2px 0 0 var(--pinl,#2a7d72);border-radius:0}
+
+.it.pin:not(.on){background:var(--pinb,#1a2029)}
+
+.it.pin:not(.on):hover{background:var(--pinh,#212a34)}
+
+.it.pin.pt{border-top-left-radius:5px;border-top-right-radius:5px}
+
+.it.pin.pb{border-bottom-left-radius:5px;border-bottom-right-radius:5px}
+
+tr.pin td.cn{box-shadow:inset 2px 0 0 var(--pinl,#2a7d72);background:var(--pinb,#1a2029)}
+
+/* line-height는 테두리 2px을 포함해 다른 행과 같은 높이가 되게 잡는다 — matrix는 행 높이가
+
+   촘촘해 배지가 1px만 높아도 행마다 높이가 들쭉날쭉해진다(브라우저 실측 16px vs 15px). */
+
+.rpb{padding:0 4px;border-radius:3px;font-size:12px;line-height:13px;color:#7dd3fc;
+
+ background:rgba(125,211,252,.12);border:1px solid rgba(125,211,252,.35);white-space:nowrap}
+
+/* 다수현장(.lmb) — 여러 현장이 한 행으로 묶여 공시된 사업장. 단일 현장이 아니라 계약이
+
+   드나드는 묶음이라 추정도 분기 매출인식액도 만들지 않는다. 관계사 배지(하늘색)와
+
+   구분되게 붉은 계열로 둔다(사용자 지시 2026-09-09). */
+
+.lmb{padding:0 4px;border-radius:3px;font-size:12px;line-height:13px;color:#fca5a5;
+
+ background:rgba(252,165,165,.12);border:1px solid rgba(252,165,165,.38);white-space:nowrap}
+
+/* 해외법인(.ebb) — 원문이 그 사업장을 실은 법인. 관계사(하늘)·다수현장(붉은)과 구분되게
+   노란 계열로 둔다(사용자 지시 2026-09-09). */
+.ebb{padding:0 4px;border-radius:3px;font-size:12px;line-height:13px;color:#fcd34d;
+ background:rgba(252,211,77,.12);border:1px solid rgba(252,211,77,.38);white-space:nowrap}
+/* 즐겨찾기 별표 — 세 페이지 공통 */
+
+/* 별표 옆 **플래그** — 별표와 같은 방식으로 세 페이지가 공유한다(localStorage encFlags).
+
+   별표는 「다시 볼 것」, 플래그는 그와 별개로 표시해 두고 싶은 것이라 색을 달리한다. */
+
+.flag{font-size:12px;color:#3a4150;cursor:pointer;user-select:none;line-height:1;padding:1px 2px}
+
+.flag:hover,.flag.on{color:#f87171}
+
+.star{font-size:12px;color:#3a4150;cursor:pointer;user-select:none;line-height:1;padding:1px 2px}
+
+.star:hover{color:#f5c518}
+
+.star.on{color:#f5c518}
+
+
+
+/* ── 세 페이지 공통 타이포 위계 (사용자 지시 2026-08-31) ────────────────────────
+
+   페이지마다 제목 14/15px · 본문 12.5/13px · 버튼 9.5/11.5px · 목록 명칭 11/11.5/12px로
+
+   제각각이던 것을 한 벌로 묶는다. 여기 값만 고치면 세 페이지가 같이 바뀐다.
+
+     제목 15px · 부제 12px · 본문 12px · 버튼 12px
+
+     목록 코드 10px · 목록 명칭 12px · 목록 한 줄 20px
+
+   페이지별 규칙이 특이도로 이기지 않게 선택자를 함께 적는다 — matrix의 `td.lbl .t`(0,2,1)를
+
+   `td.lbl .it .t`(0,3,1)로 넘고, trace의 `td.cn .nm`은 같은 특이도라 뒤에 오는 이것이 이긴다. */
+
+body{font-size:12px;line-height:1.5}
+
+h1,.side h1,header h1{font-size:15px;font-weight:600;letter-spacing:-.2px}
+
+h1 span,.side h1 span,header h1 span{font-size:12px;font-weight:400;margin-top:3px}
+
+/* 버튼·검색창 높이 26px 통일(사용자 지시 2026-09-03) — 12px 글자를 담는 최소 높이다.
+
+   줄높이 24 + 테두리 위아래 1px씩. 인라인 style의 display:block을 건드리지 않으려고
+
+   flex 정렬 대신 line-height로 세로 가운데를 맞춘다. */
+
+a.nav{font-size:12px;height:26px;line-height:24px;padding:0 11px;border-radius:6px;box-sizing:border-box}
+
+
+
+/* 목록 한 줄 20px — 세 페이지 동일(사용자 지정 2026-08-31).
+
+   .it은 그리드라 height로 고정하고, 표(matrix·trace)는 세로 여백을 0으로 두고 칸 높이를 준다. */
+
+.it{height:20px;line-height:1;align-items:center}
+
+/* 분기매출의 목록은 표 칸 안에 있고 칸에 아래 테두리 1px이 붙는다 — 안쪽은 18px로 두어야
+
+   테두리까지 합쳐 19px이 된다(칸의 height는 최소값이라 안쪽이 더 크면 그쪽이 이긴다). */
+
+td.lbl .it{height:19px;line-height:1;align-items:center}
+
+tbody td,tbody th{padding-top:0;padding-bottom:0;height:20px}
+
+/* 분기매출은 칸마다 아래 테두리 1px이 붙어 그만큼 더 높아진다(border-collapse:separate라
+
+   box-sizing이 먹지 않는다). 테두리를 포함해 19px이 되게 칸을 1px 낮춘다 — 브라우저 실측. */
+
+tbody td.lbl,tbody td.lbl~td{height:19px}
+
+/* 그룹 머리 행은 아래 테두리가 없어 1px 낮게 잡혔다 — 사업장 행과 같은 20px로 맞춘다. */
+
+tbody tr.grp td{height:20px}
+
+.it .cid,td.lbl .it .cid,td.cn .cd{font-size:12px}
+
+.it .t,td.lbl .it .t,td.cn .nm{font-size:12px}
+
+
+
+/* 페이지 여백 — 세 페이지의 제목이 **같은 자리**에서 시작하게 한다(좌 18px · 상 14px).
+
+   이전에는 (14,13)·(18,12)·(22,18)로 제각각이었다. 원본위치 지도은 여백이 body에 있어
+
+   `body.pg`로 받는다 — 다른 두 페이지의 body에 여백이 붙지 않게 클래스로 막았다. */
+
+.side h1{padding:14px 18px 8px}
+
+header{padding:14px 18px}
+
+body.pg{padding:14px 18px 28px}
+
+/* 제목 아래 네비 줄까지 같은 자리에 오게 — 원본위치 지도은 제목이 margin으로,
+
+   현장별 데이터는 h1 padding-bottom으로 간격을 만든다. 4px 차이를 여기서 메운다. */
+
+body.pg h1{margin:0 0 8px}
+
+
+
+/* 분기명 아래 두 줄 — 위가 **원문 행 수**, 아래가 **화면 칸 수**. 둘이 다르면 그 분기에서
+
+   무언가 사라진 것이므로 두 숫자에 걸쳐 표시한다(사용자 지시 2026-09-01). */
+
+.qn{display:flex;gap:2px;margin-top:2px}
+
+.qn span{width:var(--cw);font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace;
+
+ text-align:center;white-space:nowrap;line-height:14px;border-radius:2px;letter-spacing:-.4px}
+
+.qr span{color:var(--tx3)}
+
+.qn span.x{background:rgba(239,68,68,.22);color:#fca5a5;font-weight:700}
+
+/* 참조 제외(manual_fix delete) — 오류가 아니므로 붉은색이 아니라 회색으로 눌러 표시한다. */
+
+.qn span.ex{background:rgba(148,163,184,.16);color:var(--tx3)}
+
+.qr span.x{border-bottom:0;border-radius:2px 2px 0 0}
+
+.qn:not(.qr) span.x{border-radius:0 0 2px 2px}
+
+th.hg:nth-child(2) .qn span{color:var(--c2)}
+
+th.hg:nth-child(3) .qn span{color:var(--c3)}
+
+th.hg:nth-child(4) .qn span{color:var(--c3b)}
+
+th.hg:nth-child(5) .qn span{color:var(--c11)}
+
+.strip{display:flex;gap:2px;height:13px}
+
+/* 칸 높이는 **안에 숫자를 넣을 수 있게** 13px다(10pt 하한). 겹친 행 수를 그 자리에 적는다. */
+
+.sq{width:var(--cw);height:13px;background:var(--empty);flex:none;
+
+ font-size:12px;line-height:13px;text-align:center;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+td.s2 .sq.on{background:var(--c2)}td.s3s .sq.on{background:var(--c3)}
+
+td.s11 .sq.on{background:var(--c11)}
+
+/* 연결은 같은 주황 계열에서 한 톤 낮춰 별도와 눈으로 갈린다. */
+
+td.s3c .sq.on{background:var(--c3b)}
+
+/* 몫이 1이 아닌 칸은 **칠하는 모양을 바꾸지 않고 그 몫을 숫자로 적는다**(사용자 지시
+
+   2026-09-01). 나뉜 칸이면 0.50·0.33·0.25처럼, 겹친 칸이면 2처럼.
+
+   반대로 한 칸이 원문 여러 행을 대신하면 오른쪽에 세로 눈금을 세운다. III-8을 별도·연결
+
+   두 줄로 가른 뒤로 이런 칸은 7개사 통틀어 15개뿐이라(XI-1 승인 합산 등) 표시가 묻히지
+
+   않는다. 예전에 III-8을 한 줄로 두었을 때는 회사마다 400칸 넘게 걸려 쓸 수 없었다. */
+
+.sq.num{color:#0f1116;font-weight:700;letter-spacing:-.5px}
+
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#2f3542;border-radius:4px}
+
+</style></head><body class="pg">
+
+<h1>자이에스앤디 원본위치 지도<span>163개 사업장 × 19개 분기 · 정기보고서 원문 실측이 어느 사업장으로 분류됐는지 대조</span></h1>
+
+<a class="nav b" href="../index.html">← 회사 선택</a>
+
+<a class="nav" href="../xsd/index.html">← 현장별 데이터</a>
+
+<a class="nav" href="../xsd/matrix.html">→ 현장별 분기매출</a>
+
+
+
+<div class="desc">
+
+<p>사업장마다 <b>한 줄</b>에 네 출처를 나란히 놓고, 각 출처가 분기를 칸으로 갖습니다 —
+
+<b>칸에 색이 있으면 그 분기 원문이 이 사업장으로 배치됐다</b>는 뜻이고, 마우스를 올리면
+
+그 분기 원문에 적힌 표기가 뜹니다.</p>
+
+<p>같은 출처가 세로로 한 줄에 모여 있어 <b>출처별 공백 구간을 위아래로 훑어 비교</b>할 수 있습니다.</p>
+
+<p><code>2</code>=II-4 수주상황 · <code>3</code>=III-8 진행률 수주계약(<b>별도·연결을 따로</b> 둡니다 —
+
+원문이 두 표로 공시하므로 한 줄로 합치면 두 행이 한 칸에 들어갑니다) ·
+
+<code>11</code>=XI-1 「나. 진행 현황」으로, 사업장 코드 가운데 숫자와 같은 체계입니다.</p>
+
+<p>코드는 그 사업장이 <i>처음 등장한</i> 출처를 뜻할 뿐이라 <code>-2-</code> 코드의 3·11행이
+
+채워지는 것이 정상입니다 — 오히려 출처 간 연동이 걸렸다는 표시입니다.</p>
+
+<p><b>II-4는 원문 실측만 칠합니다</b> — S커브 예측·선형보간으로 채운 분기는 원문이 아니라 뺐습니다.</p>
+
+<p>분기명 아래 두 줄은 위가 <b>원문 행 수</b>, 아래가 <b>화면 칸 수</b>입니다 — 사업보고서를 열어
+
+그 분기 표의 행을 세어 맞대 보면 누락을 바로 알 수 있고, 두 숫자가 다르면 붉게 칠해집니다.</p>
+
+<p>칸 하나가 원문 한 행이 아닌 경우에는 <b>칸 안에 그 몫을 적습니다</b> — 원문 한 행을 두 사업장이
+
+나눠 가졌으면 <code>1/2</code>, 한 칸이 원문 두 행을 대신하면 <code>2</code>입니다.</p>
+
+</div>
+
+
+
+<div class="card"><div class="scroller"><table>
+
+<thead><tr><th class="hn">사업장 코드 · 명칭</th>
+
+<th class="hg"><b>2</b> II-4 수주상황<div class="ql" id="q2"></div><div class="qn qr" id="rn2"></div><div class="qn" id="n2"></div></th>
+
+<th class="hg"><b>3</b> III-8 별도<div class="ql" id="q3s"></div><div class="qn qr" id="rn3s"></div><div class="qn" id="n3s"></div></th>
+
+<th class="hg"><b>3</b> III-8 연결<div class="ql" id="q3c"></div><div class="qn qr" id="rn3c"></div><div class="qn" id="n3c"></div></th>
+
+<th class="hg"><b>11</b> XI-1 나<div class="ql" id="q11"></div><div class="qn qr" id="rn11"></div><div class="qn" id="n11"></div></th></tr></thead>
+
+<tbody id="rows"></tbody></table></div></div>
+
+
+
+<script>
+
+const FQ=["2021Q4","2022Q1","2022Q2","2022Q3","2022Q4","2023Q1","2023Q2","2023Q3","2023Q4","2024Q1","2024Q2","2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1","2026Q2"],SITES=[["XSD-2-0001","범어자이엘라",["범어자이엘라","범어자이엘라","범어자이엘라","범어자이엘라","범어자이엘라",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜",null,null,null,null,null,null,null,null,null,null],["범어자이엘라 · 솔라시티(주)","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜","범어자이엘라 · 솔라시티㈜",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0002","만촌자이르네",["만촌자이르네","만촌자이르네","만촌자이르네","만촌자이르네","만촌자이르네",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설",null,null,null,null,null,null,null,null,null],["만촌자이르네 · (주)경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설","만촌자이르네 · ㈜경주건설",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0003","영등포자이르네",["영등포자이르네","영등포자이르네","영등포자이르네","영등포자이르네","영등포자이르네",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜",null,null,null,null,null,null,null,null,null,null],["영등포자이르네 · 청명종합건설(주)","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜","영등포자이르네 · 청명종합건설㈜",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0004","서초자이르네",["서초자이르네","서초자이르네","서초자이르네","서초자이르네",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"서초자이르네 · 낙원청광연립 가로주택정비조합","서초자이르네 · 낙원청광연립 가로주택정비조합","서초자이르네 · 낙원청광연립 가로주택정비조합","서초자이르네 · 낙원청광연립 가로주택정비조합",null,null,null,null,null,null,null,null,null,null,null,null,null,null],["서초자이르네 · 낙원청광연립 가로주택정비조합","서초자이르네 · 낙원청광연립 가로주택정비조합","서초자이르네 · 낙원청광연립 가로주택정비조합","서초자이르네 · 낙원청광연립 가로주택정비조합","서초자이르네 · 낙원청광연립 가로주택정비조합",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0005","안양리버자이르네",["안양리버자이르네","안양리버자이르네","안양리버자이르네","안양리버자이르네","안양리버자이르네",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"안양리버자이르네 · 자체사업","안양리버 자이르네 · 자체사업","안양리버 자이르네 · 자체사업","안양리버 자이르네 · 자체사업","안양리버자이르네 · 자체사업","안양리버자이르네 · 자체사업","안양리버자이르네 · 자체사업","안양리버자이르네 · 자체사업",null,null,null,null,null,null,null,null,null,null],["안양리버자이르네 · 자체사업","안양리버자이르네 · 자체사업","안양리버 자이르네 · 자체사업","안양리버 자이르네 · 자체사업","안양리버 자이르네 · 자체사업","안양리버자이르네 · 자체사업","안양리버자이르네 · 자체사업","안양리버자이르네 · 자체사업","안양리버자이르네 · 자체사업",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0006","개포자이르네",["개포자이르네","개포자이르네","개포자이르네","개포자이르네","개포자이르네",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합",null,null,null,null,null,null,null,null,null,null],["개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합","개포자이르네 · 개포시영 중심상가 재건축 조합",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0007","속초자이엘라",["속초자이엘라","속초자이엘라","속초자이엘라","속초자이엘라","속초자이엘라","속초자이엘라","속초자이엘라","속초자이엘라",null,null,null,null,null,null,null,null,null,null,null],[null,"속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디",null,null],["속초자이엘라 · (주)태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디","속초자이엘라 · ㈜태인디앤디",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0008","양평자이비즈타워",["양평자이비즈타워","양평자이비즈타워","양평자이비즈타워","양평자이비즈타워","양평자이비즈타워",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업",null,null,null,null,null,null,null],["양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업","양평자이비즈타워 · 자체사업",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0009","가산동오피스텔",["가산동오피스텔","가산동오피스텔","가산동오피스텔","가산동오피스텔","가산동오피스텔","가산동오피스텔","가산동오피스텔","가산동오피스텔",null,null,null,null,null,null,null,null,null,null,null],[null,"가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜",null,null,null,null,null,null,null,null,null],["가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜","가산동오피스텔 · 케이와이프라퍼티즈㈜",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0010","경주자이르네",["경주자이르네","경주자이르네","경주자이르네","경주자이르네","경주자이르네","경주자이르네","경주자이르네","경주자이르네","경주자이르네","경주자이르네",null,null,null,null,null,null,null,null,null],[null,"경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨",null,null,null,null,null,null],["경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨","경주자이르네 · ㈜경주디앤씨",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0011","대전스카이자이르네",["대전인동주상복합","대전인동주상복합","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네","대전스카이자이르네",null,null,null,null],[null,"대전인동주상복합 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜",null,null],[null,"대전인동주상복합 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜","대전스카이자이르네 · 워너 프로퍼티㈜",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"대전 인동 주상복합 개발사업 · 워너프로퍼티 주식회사","대전 인동 주상복합 개발사업","대전 인동 주상복합 개발사업 · 워너프로퍼티 주식회사",null,null,null,null],"","",0,""],["XSD-2-0012","천안자이타워(성성동 지산)",[null,"천안자이타워(성성동 지산)","천안자이타워(성성동 지산)","천안자이타워(성성동 지산)","천안자이타워(성성동 지산)","천안자이타워(성성동 지산)","천안자이타워(성성동 지산)","천안자이타워(성성동 지산)","천안자이타워(성성동 지산)","천안자이타워(성성동 지산)","천안자이타워(성성동 지산)","천안자이타워(성성동 지산)",null,null,null,null,null,null,null],[null,null,"천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원",null,null],[null,null,"천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원","천안자이타워 · ㈜아원",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0013","신설동역자이르네",["신설동 도생","신설동역자이르네","신설동역자이르네","신설동역자이르네","신설동역자이르네","신설동역자이르네","신설동역자이르네","신설동역자이르네","신설동역자이르네","신설동역자이르네","신설동역자이르네","신설동역자이르네",null,null,null,null,null,null,null],[null,null,"신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜",null,null],[null,null,"신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜","신설동역자이르네 · STS개발㈜",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0014","송도자이르네디오션",[null,null,"송도자이르네디오션","송도자이르네디오션","송도자이르네디오션","송도자이르네디오션","송도자이르네디오션","송도자이르네디오션","송도자이르네디오션","송도자이르네디오션","송도자이르네디오션","송도자이르네디오션","송도자이르네디오션",null,null,null,null,null,null],[null,null,"송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피",null,null],[null,null,"송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피","송도자이르네디오션 · ㈜성안디엠피",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"부산 암남동 공동주택 신축사업 공사도급계약 체결 · 주식회사 성안디엠피","부산 암남동 공동주택 신축사업 공사도급계약 체결","부산 암남동 공동주택 신축사업 공사도급계약 체결 · 주식회사 성안디엠피",null,null,null,null],"","",0,""],["XSD-2-0015","수성자이르네",[null,null,"수성자이르네","수성자이르네","수성자이르네","수성자이르네","수성자이르네","수성자이르네","수성자이르네","수성자이르네","수성자이르네","수성자이르네",null,null,null,null,null,null,null],[null,null,"수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합",null,null,null],[null,null,"수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합","수성자이르네 · 수성동1가 가로주택정비사업조합",null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0016","속초자이엘라더비치",[null,null,"속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치","속초자이엘라더비치",null,null,null],[null,null,null,"속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜",null,null],[null,null,null,"속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜","속초자이엘라더비치 · 한국투자부동산신탁㈜",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0017","과천3-3BL 오피스텔",["과천3-3BL 오피스텔","과천3-3BL 오피스텔","과천3-3BL 오피스텔","과천3-3BL 오피스텔","과천3-3BL 오피스텔",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0018","강릉 송정동 공동주택",[null,"강릉 송정동 공동주택","강릉 송정동 공동주택","강릉 송정동 공동주택","강릉 송정동 공동주택",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"강릉 송정동 공동주택 신축사업 · 주식회사 휴고파트너스","강릉 송정동 공동주택 신축사업","강릉 송정동 공동주택 신축사업 · 주식회사 휴고파트너스","강릉 송정동 공동주택 신축사업 · 주식회사 휴고파트너스","강릉 송정동 공동주택 신축사업 · 주식회사 휴고파트너스","강릉 송정동 공동주택 신축사업 · 주식회사 휴고파트너스","강릉 송정동 공동주택 신축사업 · 주식회사 휴고파트너스"],"","",0,""],["XSD-2-0019","범어자이르네",["대구범어동 주상복합","대구범어동 주상복합","대구범어동 주상복합","대구범어동 주상복합","대구범어동 주상복합",null,null,null,null,null,null,null,"범어자이르네","범어자이르네","범어자이르네","범어자이르네","범어자이르네","범어자이르네","범어자이르네"],[null,null,null,null,null,null,null,null,null,null,null,null,"범어자이르네 · 수강㈜","범어자이르네 · 수강㈜","범어자이르네 · 수강㈜","범어자이르네 · 수강㈜","범어자이르네 · 수강㈜","범어자이르네 · 수강(주)","범어자이르네 · 수강(주)"],[null,null,null,null,null,null,null,null,null,null,null,null,"범어자이르네 · 수강㈜","범어자이르네 · 수강㈜","범어자이르네 · 수강㈜","범어자이르네 · 수강㈜","범어자이르네 · 수강㈜","범어자이르네 · 수강(주)","범어자이르네 · 수강(주)"],[null,null,null,null,null,null,null,null,null,null,null,null,"대구광역시 수성구 범어동 174-1 번지 일원 주거복합 신축사업 · 수강주식회사","대구광역시 수성구 범어동 174-1 번지 일원 주거복합 신축사업","대구광역시 수성구 범어동 174-1 번지 일원 주거복합 신축사업 · 수강주식회사","대구광역시 수성구 범어동 174-1 번지 일원 주거복합 신축사업 · 수강주식회사","대구광역시 수성구 범어동 174-1 번지 일원 주거복합 신축사업 · 수강주식회사","대구광역시 수성구 범어동 174-1 번지 일원 주거복합 신축사업 · 수강주식회사","대구광역시 수성구 범어동 174-1 번지 일원 주거복합 신축사업 · 수강주식회사"],"","",0,""],["XSD-2-0020","강릉자이르네디오션",[null,null,null,null,null,null,null,null,"강릉자이르네디오션","강릉자이르네디오션","강릉자이르네디오션","강릉자이르네디오션","강릉자이르네디오션","강릉자이르네디오션","강릉자이르네디오션","강릉자이르네디오션","강릉자이르네디오션","강릉자이르네디오션","강릉자이르네디오션"],[null,null,null,null,null,null,null,"강릉자이르네 · ㈜휴고파트너스","강릉자이르네 · ㈜휴고파트너스","강릉자이르네 · ㈜휴고파트너스","강릉자이르네 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · 휴고파트너스","강릉자이르네 디오션 · 휴고파트너스"],[null,null,null,null,null,null,null,null,null,"강릉자이르네 · ㈜휴고파트너스","강릉자이르네 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · ㈜휴고파트너스","강릉자이르네 디오션 · 휴고파트너스","강릉자이르네 디오션 · 휴고파트너스"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0021","SKN_보문동",["SKN_보문동","SKN_보문동","SKN_보문동","SKN_보문동","SKN_보문동",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0022","SKN_중화동",["SKN_중화동","SKN_중화동","SKN_중화동","SKN_중화동","SKN_중화동",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0023","SKN_미아동",[null,"SKN_미아동","SKN_미아동","SKN_미아동","SKN_미아동",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0024","SKN_거여동",["SKN_거여동","SKN_거여동","SKN_거여동","SKN_거여동","SKN_거여동",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0025","대구침산동 재건축",["대구침산동 재건축","대구침산동 재건축","대구침산동 재건축","대구침산동 재건축","대구침산동 재건축",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합",null],[null,null,null,null,null,null,null,null,null,null,null,null,"침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트정비사업 · 침산삼주아파트 소규모재건축사업조합",null],[null,null,null,null,null,null,null,null,null,null,null,null,"침산삼주아파트 소규모재건축사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트 소규모재건축사업","침산삼주아파트 소규모재건축사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트 소규모재건축사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트 소규모재건축사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트 소규모재건축사업 · 침산삼주아파트 소규모재건축사업조합","침산삼주아파트 소규모재건축사업 · 침산삼주아파트 소규모재건축사업조합"],"","",0,""],["XSD-2-0027","을지로3-9지구 업무시설",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"을지로3-9지구 업무시설","을지로3-9지구 업무시설","을지로3-9지구 업무시설","을지로3-9지구 업무시설","을지로3-9지구 업무시설"],[null,null,null,null,null,null,null,null,null,null,null,null,"을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9업무시설 · 주식회사 을지로나인피에프브이","을지로3-9업무시설 · 주식회사 을지로나인피에프브이"],[null,null,null,null,null,null,null,null,null,null,null,null,"을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9지구 업무시설 · 을지로나인피에프브이","을지로3-9업무시설 · 주식회사 을지로나인피에프브이","을지로3-9업무시설 · 주식회사 을지로나인피에프브`이"],[null,null,null,null,null,null,null,null,null,null,null,null,"을지로 3-9지구 업무시설 신축사업 · 주식회사 을지로나인피에프브이","을지로 3-9지구 업무시설 신축사업","을지로 3-9지구 업무시설 신축사업 · 주식회사 을지로나인피에프브이","을지로 3-9지구 업무시설 신축사업 · 주식회사 을지로나인피에프브이","을지로 3-9지구 업무시설 신축사업 · 주식회사 을지로나인피에프브이","을지로 3-9지구 업무시설 신축사업 · 주식회사 을지로나인피에프브이","을지로 3-9지구 업무시설 신축사업 · 주식회사 을지로나인피에프브이"],"","",0,""],["XSD-2-0028","을지로오피스(3-1,2)",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"을지로오피스(3-1,2)","을지로오피스(3-1,2)","을지로오피스(3-1,2)","을지로오피스(3-1,2)"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"을지로3-1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3-1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3-1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3-1,2업무시설 · 아이비투자을지로(주)","을지로3-1,2업무시설 · 아이비투자을지로(주)"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"을지로3-1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3-1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3-1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3-1,2업무시설 · 아이비투자을지로(주)","을지로3-1,2업무시설 · 아이비투자을지로(주)"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"을지로3가 제1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3가 제1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3가 제1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3가 제1,2지구 업무시설 · 아이비투자을지로 주식회사","을지로3가 제1,2지구 업무시설 · 아이비투자을지로 주식회사"],"","",0,""],["XSD-2-0029","공덕역자이르네",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"공덕역 주상복합 개발사업","공덕역자이르네"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"공덕역주상복합 · 주식회사 에스시티공덕피에프브이","공덕역주상복합 · 주식회사 에스시티공덕피에프브이"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"공덕역주상복합 · 주식회사 에스시티공덕피에프브이","공덕역주상복합 · 주식회사 에스시티공덕피에프브이"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"공덕역 주상복합 개발사업 · 주식회사 에스시티공덕피에프브이","공덕역 주상복합 개발사업 · 주식회사 에스시티공덕피에프브이","공덕역 주상복합 개발사업 · 주식회사 에스시티공덕피에프브이"],"","",0,""],["XSD-2-0030","상주자이르네",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"상주자이르네","상주자이르네"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"상주자이르네 · 고은건설","상주자이르네 · 고은건설","상주자이르네 · 고은건설","상주자이르네 · 고은건설"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"상주자이르네 · 고은건설","상주자이르네 · 고은건설","상주자이르네 · 고은건설","상주자이르네 · 고은건설"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"경상북도 상주시 함창읍 공동주택 개발사업 · 주식회사 고은건설","경상북도 상주시 함창읍 공동주택 개발사업 · 주식회사 고은건설","경상북도 상주시 함창읍 공동주택 개발사업 · 주식회사 고은건설","경상북도 상주시 함창읍 공동주택 개발사업 · 주식회사 고은건설","경상북도 상주시 함창읍 공동주택 개발사업 · 주식회사 고은건설"],"","",0,""],["XSD-2-0031","충정로역주상복합",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"충정로역주상복합","충정로역주상복합"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"충정로역주상복합 · 이노디앤씨","충정로역주상복합 · 이노디앤씨","충정로역주상복합 · 이노디엔씨","충정로역주상복합 · 이노디엔씨"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"충정로역주상복합 · 이노디앤씨","충정로역주상복합 · 이노디앤씨","충정로역주상복합 · 이노디엔씨","충정로역주상복합 · 이노디엔씨"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"마포로5구역 10,11지구 도시정비형 재개발사업 · 주식회사 이노디앤씨","마포로5구역 10,11지구 도시정비형 재개발사업 · 주식회사 이노디앤씨","마포로5구역 10,11지구 도시정비형 재개발사업 · 주식회사 이노디앤씨","마포로5구역 10,11지구 도시정비형 재개발사업 · 주식회사 이노디앤씨"],"","",0,""],["XSD-2-0032","검암역자이르네",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"검암역자이르네"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"검암역자이르네 · 신영부동산신탁 주식회사"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"검암역자이르네 · 신영부동산신탁 주식회사"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"검암역세권지구 B2블럭 공동주택 신축공사 · (주)창해건설","검암역세권지구 B2블럭 공동주택 신축공사 · (주)창해건설"],"","",0,""],["XSD-2-0033","대구 대명동 주상복합",["대구 대명동 주상복합","대구 대명동 주상복합","대구 대명동 주상복합","대구 대명동 주상복합","대구 대명동 주상복합",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0034","동천역자이르네",["수지동천 도생","수지동천 도생","수지동천 도생","동천역자이르네","수지동천 도생",null,null,null,"동천역자이르네","동천역자이르네","동천역자이르네","동천역자이르네","동천역자이르네","동천역자이르네",null,null,null,null,null],[null,null,null,"동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차",null,null],[null,null,null,"동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차","동천역자이르네 · 동천지베스코피에프브이2차",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"용인시 수지구 동천동 181-1번지 주거복합시설 신축사업 · 동천지베스코피에프브이2차","용인시 수지구 동천동 181-1번지 주거복합시설 신축사업","용인시 수지구 동천동 181-1번지 주거복합시설 신축사업 · 동천지베스코피에프브이2차",null,null,null,null],"","",0,""],["XSD-2-0035","서초동 자체사업(apt)",["서초동 자체사업(apt)","서초동 자체사업(apt)","서초동 자체사업(apt)","서초동 자체사업(apt)","서초동 자체사업(apt)",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0036","과천자이엘라 에디션",[null,null,"과천4BL 오피스텔","과천자이엘라디에디션","과천자이엘라디에디션",null,null,null,"과천자이엘라 에디션","과천자이엘라 에디션","과천자이엘라 에디션","과천자이엘라 에디션","과천자이엘라 에디션","과천자이엘라 에디션","과천자이엘라 에디션","과천자이엘라 에디션",null,null,null],[null,null,null,null,null,null,"과천자이엘라에디션 · ㈜과천포럼","과천자이엘라에디션 · ㈜과천포럼","과천자이엘라에디션 · ㈜과천포럼","과천자이엘라에디션 · ㈜과천포럼","과천자이엘라에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라에디션 · 주식회사 과천포럼","과천자이엘라에디션 · 주식회사 과천포럼"],[null,null,null,null,null,null,"과천자이엘라에디션 · ㈜과천포럼",null,null,"과천자이엘라에디션 · ㈜과천포럼","과천자이엘라에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라 에디션 · ㈜과천포럼","과천자이엘라에디션 · 주식회사 과천포럼","과천자이엘라에디션 · 주식회사 과천포럼"],[null,null,null,null,null,null,null,null,null,null,null,null,"과천 상업4블럭 오피스텔 신축 · 주식회사 과천포럼","과천 상업4블럭 오피스텔 신축","과천 상업4블럭 오피스텔 신축 · 주식회사 과천포럼","과천 상업4블럭 오피스텔 신축 · 주식회사 과천포럼",null,null,null],"","",0,""],["XSD-2-0037","인덕원역 주상복합",[null,null,null,"인덕원역 주상복합","인덕원역 주상복합",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0038","도농역복합개발",["도농역복합개발","도농역복합개발","도농역복합개발","도농역복합개발","도농역복합개발",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0040","건대입구자이엘라",["건대입구자이엘라","건대입구자이엘라","건대입구자이엘라",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스",null,null,null,null,null,null,null,null,null,null],["건대입구자이엘라 · (주)신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스","건대입구자이엘라 · ㈜신나시스",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0041","대구수성구가로주택",["대구수성구가로주택","대구수성구가로주택",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0042","암남동 공동주택",["암남동 공동주택","암남동 공동주택",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-2-0045","전기·정보통신공사 등",["전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등","전기·정보통신공사 등"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0046","옵션 등",["옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등","옵션 등"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0047","자이씨앤에이(주)",[null,"(주)에스앤아이건설","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)","자이씨앤에이(주)"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0048","ZEIT C&A NANJING Co., Ltd.",[null,"S&I Nanjing Company Limited","S&I Nanjing Company Limited","S&I Nanjing Company Limited","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.","ZEIT C&A NANJING Co., Ltd.",null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0049","ZEIT C&A POLAND SP. Z O. O.",[null,"S&I POLAND sp.zo.o.","ZEIT C&A POLAND SP.Z O. O.","ZEIT C&A POLAND SP.Z O. O.","ZEIT C&A POLAND SP.Z O. O.","ZEIT C&A POLAND SP.Z O. O.","ZEIT C&A POLAND SP.Z O. O.","ZEIT C&A POLAND SP.Z O. O.","ZEIT C&A POLAND SP. Z O. O.","ZEIT C&A POLAND SP. Z O. O.","ZEIT C&A POLAND SP. Z O. O.",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0050","ZEIT C&A VIETNAM COMPANY LIMITED",[null,"S&I Vietnam construction Co., Ltd.","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED","ZEIT C&A VIETNAM COMPANY LIMITED"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0055","ZEIT C&A AMERICA, INC.",[null,null,null,null,null,null,null,"ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC.","ZEIT C&A AMERICA, INC."],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0056","광주원주고속도로_BTO 등",[null,null,null,null,null,null,null,null,null,null,null,"광주원주고속도로_BTO 등","광주원주고속도로_BTO 등","광주원주고속도로_BTO 등","광주원주고속도로_BTO 등","광주원주고속도로_BTO 등","광주원주고속도로_BTO 등","광주원주고속도로_BTO 등","광주원주고속도로_BTO 등"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0057","육군화천 양구 관사_BTL 등",[null,null,null,null,null,null,null,null,null,null,null,"육군화천 양구 관사_BTL 등","육군화천 양구 관사_BTL 등","육군화천 양구 관사_BTL 등","육군화천 양구 관사_BTL 등","육군화천 양구 관사_BTL 등","육군화천 양구 관사_BTL 등","육군화천 양구 관사_BTL 등","육군화천 양구 관사_BTL 등"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0058","기타 FM/시니어 사업장",[null,null,null,null,null,null,null,null,null,null,null,"기타 PM/FM 사업장","기타 PM/FM 사업장","기타 PM/FM 사업장","기타 PM/FM 사업장","기타 PM/FM 사업장","기타 FM/시니어 사업장","기타 PM/FM 사업장","기타 FM/시니어 사업장"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-2-0060","ZEIT C&A INDIA PRIVATE LIMITED.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"ZEIT C&A INDIA PRIVATE LIMITED.","ZEIT C&A INDIA PRIVATE LIMITED.","ZEIT C&A INDIA PRIVATE LIMITED."],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",1,""],["XSD-3-0001","1239 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"1239 신축공사 · LG유플러스","1239 신축공사 · (주)LG유플러스","1239 신축공사 · (주)LG유플러스","1239 신축공사 · (주)엘지유플러스","1239 신축공사 · (주)엘지유플러스"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0002","1공장 증설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"오창 1공장 증설공사 · LG에너지솔루션","1공장 증설공사 · LG에너지솔루션",null,null,null,null,null,null,null,null,"1공장 증설공사 · LG에너지솔루션","1공장 증설공사 · LG에너지솔루션","1공장 증설공사 · (주)엘지에너지솔루션","1공장 증설공사 · (주)엘지에너지솔루션",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0003","2블록 부속동 증축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"2블록 부속동 증축공사 · 엘지디스플레이(주)","2블록 부속동 증축공사 · 엘지디스플레이(주)","파주 2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · 엘지디스플레이㈜","2블록 부속동 증축공사 · LG디스플레이(주)","2블록 부속동 증축공사 · LG디스플레이(주)",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0004","A PJT",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,"A PJT · W.G. Yates & sons Construction Company","A PJT · W.G. Yates & sons Construction Company","A PJT · W.G. Yates & sons Construction Company","A PJT · W.G. Yates & sons Construction Company","A PJT · W.G. Yates & sons Construction Company","A PJT · W.G. Yates & sons Construction Company","A PJT · W.G. Yates & sons Construction Company","A PJT · W.G. Yates & sons Construction Company","A PJT · W.G. Yates & sons Construction Company"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0006","C3-IPA 증설 Project",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"C3-IPA 증설 Project · (주)엘지화학","여수 C3-IPA 증설 Project · (주)LG화학","C3-IPA 증설 Project · (주)LG화학",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0007","C4 CR증설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"C4 CR증설공사 · 엘지이노텍(주)","구미 C4 CR증설공사 · 엘지이노텍(주)","C4 CR증설공사 · 엘지이노텍(주)","C4 CR증설공사 · 엘지이노텍(주)","C4 CR증설공사 · 엘지이노텍(주)","C4 CR증설공사 · 엘지이노텍(주)","C4 CR증설공사 · 엘지이노텍(주)","C4 CR증설공사 · 엘지이노텍(주)","C4 CR증설공사 · 엘지이노텍(주)","C4 CR증설공사 · 엘지이노텍(주)","C4 CR증설공사 · 엘지이노텍(주)",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0008","Capa-up공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"남경 Capa-up 공사 · 엘지디스플레이(주)","Capa-up공사 · 엘지디스플레이(주)","구미 Capa-up공사 · 엘지디스플레이㈜","Capa-up공사 · 엘지디스플레이㈜",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0010","CNT3 PJT",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"CNT3 PJT · (주)엘지화학","여수 CNT3 PJT · (주)LG화학","CNT3 PJT · (주)LG화학",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0011","CNT4 PJT",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,"CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학",null,"CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학","CNT4 PJT · (주)LG화학",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0012","CR증설 공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"CR증설 공사 · 엘지이노텍(주)","파주 CR증설 공사 · 엘지이노텍(주)","CR증설 공사 · 엘지이노텍(주)",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0013","H3 CR&UT공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"베트남 H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","베트남 H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","H3 CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd."],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0014","H-Project(2025)",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"H-Project(2025) · LG Display Vietnam Haiphong Co. Ltd.","H-Project(2025) · LG Display Vietnam Haiphong Co. Ltd."],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0015","LBO Gr.3 Project",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"LBO Gr.3 Project · HD현대오일뱅크","LBO Gr.3 Project · HD현대오일뱅크","LBO Gr.3 Project · HD현대오일뱅크"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0016","M센터 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,"M센터 신축공사 · (주)씨젠","M센터 신축공사 · (주)씨젠","M센터 신축공사 · (주)씨젠","M센터 신축공사 · (주)씨젠","M센터 신축공사 · (주)씨젠","M센터 신축공사 · (주)씨젠"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0018","NBL 11만톤 증설",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"NBL 11만톤 증설 · (주)엘지화학","여수 NBL 11만톤 증설 · (주)LG화학","NBL 11만톤 증설 · (주)LG화학",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0019","NCC T/A 최적화 PJT",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"여수 NCC T/A 및 Steam Network 최적화 PJT · (주)LG화학","NCC T/A 최적화 PJT · (주)LG화학",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0020","Next IDC 154kV",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"평촌 Next IDC 154kV 지중선로공사 · (주)엘지유플러스","Next IDC 154kV · (주)엘지유플러스",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0021","Next IDC 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"평촌 Next IDC 신축공사 · (주)엘지유플러스","평촌 Next IDC 신축공사 · (주)엘지유플러스","Next IDC 신축공사 · (주)엘지유플러스","Next IDC 신축공사 · (주)엘지유플러스","Next IDC 신축공사 · (주)엘지유플러스","Next IDC 신축공사 · (주)엘지유플러스","Next IDC 신축공사 · (주)엘지유플러스","Next IDC 신축공사 · (주)엘지유플러스","Next IDC 신축공사 · (주)엘지유플러스","Next IDC 신축공사 · (주)엘지유플러스","Next IDC 신축공사 · (주)엘지유플러스",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0022","전고체전지 파일럿 공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"OC4동 전고체전지 파일럿 공사 · LG에너지솔루션","전고체전지 파일럿 공사 · LG에너지솔루션"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0023","P10 345kV 변전소 공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"P10 345kV 변전소 공사 · 엘지디스플레이(주)","P10 345kV 변전소 공사 · 엘지디스플레이(주)","파주 P10 345kV 변전소 공사 · 엘지디스플레이㈜","P10 345kV 변전소 공사 · 엘지디스플레이㈜",null,null,null,null,"P10 345kV 변전소 공사 · 엘지디스플레이㈜","P10 345kV 변전소 공사 · 엘지디스플레이㈜","P10 345kV 변전소 공사 · 엘지디스플레이㈜","P10 345kV 변전소 공사 · 엘지디스플레이㈜",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0024","CR&UT공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"광저우 P10A CR&UT 공사 · 엘지디스플레이(주)","P10B CR&UT공사 · 엘지디스플레이(주)","파주 P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · 엘지디스플레이㈜","P10B CR&UT공사 · LG디스플레이(주)","P10B CR&UT공사 · LG디스플레이(주)","P10B CR&UT공사 · LG디스플레이","CR&UT공사 · LG디스플레이"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0025","CR7층 CR&UT공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,"P10 CR7층 CR&UT공사 · 엘지디스플레이㈜",null,"P10 CR7층 CR&UT공사 · 엘지디스플레이㈜","P10 CR7층 CR&UT공사 · 엘지디스플레이㈜","P10 CR7층 CR&UT공사 · 엘지디스플레이㈜","P10 CR7층 CR&UT공사 · 엘지디스플레이㈜","P10 CR7층 CR&UT공사 · 엘지디스플레이㈜","P10 CR7층 CR&UT공사 · 엘지디스플레이㈜","P10 CR7층 CR&UT공사 · 엘지디스플레이㈜","P10 CR7층 CR&UT공사 · 엘지디스플레이㈜","P10 CR7층 CR&UT공사 · 엘지디스플레이㈜","P10 CR7층 CR&UT공사 · LG디스플레이(주)","P10 CR7층 CR&UT공사 · LG디스플레이(주)","P10 CR7층 CR&UT공사 · LG디스플레이","CR7층 CR&UT공사 · LG디스플레이"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0026","P10 건설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"P10 건설공사 · 엘지디스플레이(주)","P10 건설공사 · 엘지디스플레이(주)","파주 P10 건설공사 · 엘지디스플레이㈜","P10 건설공사 · 엘지디스플레이㈜",null,null,null,null,null,null,null,null,null,null,"P10 건설공사 · LG디스플레이(주)","P10 건설공사 · LG디스플레이(주)",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0027","P10 대기환경설비공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"P10 대기환경설비공사 · 엘지디스플레이(주)","P10 대기환경설비공사 · 엘지디스플레이(주)",null,"P10 대기환경설비공사 · 엘지디스플레이㈜",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0028","확장투자 CR&UT공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"P10 확장투자 CR&UT공사 · LG디스플레이(주)","P10 확장투자 CR&UT공사 · LG디스플레이(주)","P10 확장투자 CR&UT공사 · 엘지디스플레이㈜","확장투자 CR&UT공사 · 엘지디스플레이㈜"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0030","P4 Project",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"P4-Project · (주)엘지화학","P4 Project · (주)엘지화학","대산 P4 Project · (주)LG화학","P4 Project · (주)LG화학","P4 Project · (주)LG화학","P4 Project · (주)LG화학","P4 Project · (주)LG화학","P4 Project · (주)LG화학","P4 Project · (주)LG화학","P4 Project · (주)LG화학","P4 Project · (주)LG화학","P4 Project · (주)LG화학",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0031","P9 ToE CR&UT공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"P9 ToE CR&UT공사 · 엘지디스플레이(주)","파주 P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · 엘지디스플레이㈜","P9 ToE CR&UT공사 · LG디스플레이(주)","P9 ToE CR&UT공사 · LG디스플레이(주)",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0032","P9 대기환경설비공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"P9 대기환경설비공사 · 엘지디스플레이(주)","P9 대기환경설비공사 · 엘지디스플레이(주)","파주 P9 대기환경설비공사 · 엘지디스플레이㈜","P9 대기환경설비공사 · 엘지디스플레이㈜",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0034","PBAT Project",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"PBAT Project · (주)엘지화학","대산 PBAT Project · (주)LG화학","PBAT Project · (주)LG화학",null,null,"PBAT Project · (주)LG화학","PBAT Project · (주)LG화학","PBAT Project · (주)LG화학","PBAT Project · (주)LG화학","PBAT Project · (주)LG화학","PBAT Project · (주)LG화학",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0035","V3 CR증설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"V3 CR증설공사 · LG Display Vietnam Haiphong Co. Ltd.","V3 CR증설공사 · LG Display Vietnam Haiphong Co. Ltd."],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0036","V3 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"V3 신축공사 · LG Innotek Vietnam Haiphong Co., Ltd","V3 신축공사 · LG Innotek Vietnam Haiphong Co., Ltd","V3 신축공사 · LG Innotek Vietnam Haiphong Co., Ltd","V3 신축공사 · LG Innotek Vietnam Haiphong Co., Ltd","V3 신축공사 · LG Innotek Vietnam Haiphong Co., Ltd","V3 신축공사 · LG Innotek Vietnam Haiphong Co., Ltd","V3 신축공사 · LG Innotek Vietnam Haiphong Co., Ltd","V3 신축공사 · LG Innotek Vietnam Haiphong Co., Ltd",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0038","(주)엘지에너지솔루션",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"건설형매출 · (주)엘지에너지솔루션",null,"건설형매출 · LG에너지솔루션",null,"건설형매출 · LG에너지솔루션","건설형매출 · LG에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · LG에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션"],[null,null,null,"건설형매출 · LG에너지솔루션",null,null,null,"건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션","건설형매출 · (주)엘지에너지솔루션"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0039","(주)엘지화학",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"건설형매출 · (주)엘지화학","건설형매출 · (주)엘지화학","건설형매출 · (주)LG화학",null,"건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)엘지화학"],[null,null,"건설형매출 · (주)엘지화학","건설형매출 · (주)LG화학",null,"건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학","건설형매출 · (주)LG화학",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0040","엘지에너지솔루션 (남경)유한공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"건설형매출 · 엘지에너지솔루션 (남경)유한공사",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0041","엘지디스플레이(주)",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · 엘지디스플레이(주)","건설형매출 · 엘지디스플레이㈜",null,"건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · 엘지디스플레이㈜","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · 엘지디스플레이(주)"],[null,null,"건설형매출 · 엘지디스플레이(주)","건설형매출 · 엘지디스플레이㈜",null,"건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · LG디스플레이(주)","건설형매출 · 엘지디스플레이(주)"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0042","엘지전자(주)",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · (주)엘지전자","건설형매출 · LG전자(주)",null,"건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · (주)LG전자","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · 엘지전자(주)"],[null,null,"건설형매출 · (주)엘지전자","건설형매출 · LG전자(주)",null,null,null,null,null,null,null,null,"건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · LG전자(주)","건설형매출 · 엘지전자(주)"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0043","(주)엘지유플러스",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · (주)엘지유플러스","건설형매출 · (주)엘지유플러스",null,"건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)엘지유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)엘지유플러스"],[null,null,"건설형매출 · (주)엘지유플러스","건설형매출 · (주)엘지유플러스",null,"건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)LG유플러스","건설형매출 · (주)엘지유플러스"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0044","(주)엘엑스하우시스",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · (주)엘엑스하우시스",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · (주)엘엑스하우시스",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0045","엘지이노텍(주)",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · 엘지이노텍(주)","건설형매출 · 엘지이노텍(주)",null,"건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · 엘지이노텍(주)",null,null,null,null,null,null],[null,null,"건설형매출 · 엘지이노텍(주)","건설형매출 · 엘지이노텍(주)",null,"건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)","건설형매출 · LG이노텍(주)",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0046","LGBCM",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"건설형매출 · LGBCM",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"건설형매출 · LGBCM",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0047","LG Display Nanjing Co., Ltd.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · LG Display Nanjing Co., Ltd.","건설형매출 · LG Display Nanjing Co., Ltd.",null,"건설형매출 · LG Display Nanjing Co., Ltd.","건설형매출 · LG Display Nanjing Co., Ltd.","건설형매출 · LG Display Nanjing Co., Ltd.","건설형매출 · LG Display Nanjing Co., Ltd.",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0048","LG Display Guangzhou Co., Ltd.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · LG Display Guangzhou Co., Ltd.","건설형매출 · LG Display Guangzhou Co., Ltd.",null,"건설형매출 · LG Display Guangzhou Co., Ltd.","건설형매출 · LG Display Guangzhou Co., Ltd.","건설형매출 · LG Display Guangzhou Co., Ltd.","건설형매출 · LG Display Guangzhou Co., Ltd.","건설형매출 · LG Display Guangzhou Co., Ltd.","건설형매출 · LG Display Guangzhou Co., Ltd.","건설형매출 · LG Display Guangzhou Co., Ltd.","건설형매출 · LG Display Guangzhou Co., Ltd.",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0049","LG Chem (Nanjing) Information & Electronics Materials Co.,Ltd.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · LG Chem (Nanjing) Information & Electronics Materials Co.,Ltd.",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0050","LG Display Vietnam Haiphong Co., Ltd.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · LG Display Vietnam Haiphong Co. Ltd.","건설형매출 · LG Display Vietnam Haiphong Co. Ltd.",null,"건설형매출 · LG Display Vietnam Haiphong Co. Ltd.","건설형매출 · LG Display Vietnam Haiphong Co. Ltd.","건설형매출 · LG Display Vietnam Haiphong Co. Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd.","건설형매출 · LG Display Vietnam Haiphong Co. Ltd.","건설형매출 · LG Display Vietnam Haiphong Co., Ltd."],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0051","LG Electronics Vietnam Haiphong Co Ltd.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · LG Electronics Vietnam Haiphong Co Ltd.","건설형매출 · LG Electronics Vietnam Haiphong Co Ltd.",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0052","엘지이노텍 베트남 하이퐁 법인",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"건설형매출 · 엘지이노텍 베트남 하이퐁 법인",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0053","LG Energy Solution Wroclaw Energy sp. z o.o.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · LG Energy Solution Wroclaw Energy sp. z o.o.","건설형매출 · LG Energy Solution Wroclaw Energy sp. z o.o.",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0054","(주)엘지비씨엠",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,"건설형매출 · (주)엘지비씨엠",null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,"건설형매출 · (주)엘지비씨엠","건설형매출 · (주)엘지비씨엠",null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0055","LG Energy Solution Wroclaw sp. z o. o.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"건설형매출 · LG Energy Solution Wroclaw sp. z o. o.","건설형매출 · LG Energy Solution Wroclaw sp. z o. o.","건설형매출 · LG Energy Solution Wroclaw sp. z o. o.","건설형매출 · LG Energy Solution Wroclaw sp. z o. o.","건설형매출 · LG Energy Solution Wroclaw sp. z o. o.",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0056","W.G. Yates & sons Construction Company",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,"건설형매출 · W.G. Yates & Sons Construction Company","건설형매출 · W.G. Yates & Sons Construction Company","건설형매출 · W.G. Yates & sons Construction Company","건설형매출 · W.G. Yates & sons Construction Company","건설형매출 · W.G. Yates & sons Construction Company","건설형매출 · W.G. Yates & sons Construction Company","건설형매출 · W.G. Yates & sons Construction Company","건설형매출 · W.G. Yates & sons Construction Company","건설형매출 · W.G. Yates & sons Construction Company"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0057","(주)디앤오",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · (주)디앤오","건설형매출 · (주)디앤오","건설형매출 · (주)디앤오","건설형매출 · (주)디앤오","건설형매출 · (주)디앤오","건설형매출 · (주)디앤오","건설형매출 · (주)디앤오"],[null,null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · (주)디앤오","건설형매출 · (주)디앤오","건설형매출 · (주)디앤오","건설형매출 · (주)디앤오","건설형매출 · (주)디앤오","건설형매출 · (주)디앤오"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0058","(주)씨젠",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · (주)씨젠","건설형매출 · (주)씨젠","건설형매출 · (주)씨젠","건설형매출 · (주)씨젠","건설형매출 · (주)씨젠","건설형매출 · (주)씨젠"],[null,null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · (주)씨젠","건설형매출 · (주)씨젠","건설형매출 · (주)씨젠","건설형매출 · (주)씨젠","건설형매출 · (주)씨젠","건설형매출 · (주)씨젠"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0059","LG Chem America Advanced Materials, Inc.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · LG Chem America Advanced materials,","건설형매출 · LG Chem America Advanced materials,","건설형매출 · LG Chem America Advanced materials,","건설형매출 · LG Chem America Advanced materials,","건설형매출 · LG Chem America Advanced Materials, Inc."],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0060","에이치디현대오일뱅크주식회사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · 에이치디현대오일뱅크주식회사","건설형매출 · 에이치디현대오일뱅크주식회사","건설형매출 · 에이치디현대오일뱅크주식회사"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · 에이치디현대오일뱅크주식회사","건설형매출 · 에이치디현대오일뱅크주식회사","건설형매출 · 에이치디현대오일뱅크주식회사"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0061","네이버(주)",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · 네이버(주)","건설형매출 · 네이버(주)"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · 네이버(주)","건설형매출 · 네이버(주)"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0063","광주원주고속도로",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,"광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로 주식회사","광주원주고속도로 · 제이영동고속도로 주식회사"],[null,null,null,null,null,"광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로㈜","광주원주고속도로 · 제이영동고속도로 주식회사","광주원주고속도로 · 제이영동고속도로 주식회사"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0064","교육연구시설 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,"교육연구시설 신축공사 · (주)디앤오","교육연구시설 신축공사 · (주)디앤오","교육연구시설 신축공사 · (주)디앤오","교육연구시설 신축공사 · (주)디앤오","교육연구시설 신축공사 · (주)디앤오","교육연구시설 신축공사 · (주)디앤오"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0067","양극재 증설 건축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"구미 양극재 증설 건축공사 · LGBCM","양극재 증설 건축공사 · LGBCM","양극재 증설 건축공사 · LGBCM","양극재 증설 건축공사 · LGBCM","양극재 증설 건축공사 · LGBCM","양극재 증설 건축공사 · LGBCM","양극재 증설 건축공사 · LGBCM","양극재 증설 건축공사 · LGBCM","양극재 증설 건축공사 · LGBCM","양극재 증설 건축공사 · LGBCM",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0068","구의자이르네",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],["구의자이르네 · 구의시장(주)",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0069","남경 7동 부속동 및 8동 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"남경 7동 부속동 및 8동 신축공사 · (주)엘지에너지솔루션",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0071","남경 전지공장 증설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"남경 전지공장 증설공사 · (주)엘지화학",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0072","단열재 3공장 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"청주 3공장 신축공사 · 주식회사 엘엑스하우시스","단열재 3공장 신축공사 · (주)엘엑스하우시스","하우시스 청주 단열재 3공장 신축공사 · (주)엘지하우시스","단열재 3공장 신축공사 · (주)엘지하우시스",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0074","대구감삼동공동주택",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"대구감삼동공동주택 · 한국기얼감삼동공동주택피에프브이㈜",null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"대구감삼동공동주택 · 한국기얼감삼동공동주택피에프브이㈜",null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"대구 감삼동 공동주택 개발사업 · 한국리얼감삼동공동주택피에프브이 주식회사","대구 감삼동 공동주택 개발사업 · 한국리얼감삼동공동주택피에프브이 주식회사","대구 감삼동 공동주택 개발사업 · 한국리얼감삼동공동주택피에프브이 주식회사"],"","",0,""],["XSD-3-0077","데이터센터 2차 구축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"데이터센터 2차 구축공사 · 네이버㈜","데이터센터 2차 구축공사 · 네이버㈜"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0078","데이터센터 3차 구축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"데이터센터 3차 구축공사 · 네이버㈜","데이터센터 3차 구축공사 · 네이버㈜"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0079","리더십센터 Renewal 공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"오산 리더십센터 Renewal 공사 · (주)엘지화학","오산 리더십센터 Renewal 공사 · (주)LG화학","리더십센터 Renewal 공사 · (주)LG화학",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0080","망원동6구역",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"망원동6구역 · 코리아신탁㈜",null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"망원동6구역 · 코리아신탁㈜",null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0081","메가센터 7,8단계 증설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"메가센터 7,8단계 증설공사 · (주)엘지유플러스","평촌 메가센터 7,8단계 증설공사 · (주)엘지유플러스","평촌 메가센터 7,8단계 증설공사 · (주)엘지유플러스","메가센터 7,8단계 증설공사 · (주)엘지유플러스",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0082","V-PJT CR&UT공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"베트남 V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","베트남 V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","베트남 V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT CR&UT공사 · LG Display Vietnam Haiphong Co. Ltd.",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0083","V-PJT H3 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"베트남 V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","베트남 V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","베트남 V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.","V-PJT H3 신축공사 · LG Display Vietnam Haiphong Co. Ltd.",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0084","베트남 냉장고 생산동 건설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"베트남 냉장고 생산동 건설공사 · LG Electronics Vietnam Haiphong Co Ltd.","베트남 냉장고 생산동 건설공사 · LG Electronics Vietnam Haiphong Co Ltd.","베트남 냉장고 생산동 건설공사 · LG Electronics Vietnam Haiphong Co Ltd.",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0085","베트남 하이퐁공장 CR 증설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"베트남 하이퐁공장 CR 증설공사 · LG Innotek Vietnam Haiphong Co., Ltd","베트남 하이퐁공장 CR 증설공사 · 엘지이노텍 베트남 하이퐁 법인","베트남 하이퐁공장 CR 증설공사 · 엘지이노텍 베트남 하이퐁 법인",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0087","별내자이엘라",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],["별내자이엘라 · (주)천강개발",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0088","서울문산고속도로",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,"서울문산고속도로 · 서울문산고속도록㈜","서울문산고속도로 · 서울문산고속도록㈜","서울문산고속도로 · 서울문산고속도록㈜","서울문산고속도로 · 서울문산고속도록㈜","서울문산고속도로 · 서울문산고속도로주식회사","서울문산고속도로 · 서울문산고속도로주식회사"],[null,null,null,null,null,null,null,null,null,null,null,null,null,"서울문산고속도로 · 서울문산고속도록㈜","서울문산고속도로 · 서울문산고속도록㈜","서울문산고속도로 · 서울문산고속도록㈜","서울문산고속도로 · 서울문산고속도록㈜","서울문산고속도로 · 서울문산고속도로주식회사","서울문산고속도로 · 서울문산고속도로주식회사"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0089","Smart Park1 선진화건설 2단계공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"선진화건설 2단계공사 · LG에너지솔루션","선진화건설 2단계공사 · LG에너지솔루션","Smart Park1 선진화건설 2단계공사 · LG에너지솔루션","Smart Park1 선진화건설 2단계공사 · LG에너지솔루션","Smart Park1 선진화건설 2단계공사 · LG전자(주)","Smart Park1 선진화건설 2단계공사 · LG전자(주)",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0090","기숙사 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"스마트파크1 기숙사 신축공사 · LG전자(주)","기숙사 신축공사 · (주)LG전자","기숙사 신축공사 · (주)LG전자"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0091","신뢰성 6동 건설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"신뢰성 6동 건설공사 · LG에너지솔루션","신뢰성 6동 건설공사 · LG에너지솔루션"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0092","신촌역세권주상복합",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합 · 테라윈마포제이차피에프브이(주)",null],[null,null,null,null,null,null,null,null,null,null,null,null,"신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합신축사업 · 테라윈마포제이차피에프브이㈜","신촌역세권주상복합 · 테라윈마포제이차피에프브이(주)",null],[null,null,null,null,null,null,null,null,null,null,null,null,"신촌지역 마포4-10지구 도시정비형 재개발사업 · 테라윈마포제이차피에프브이 주식회사","신촌지역 마포4-10지구 도시정비형 재개발사업","신촌지역 마포4-10지구 도시정비형 재개발사업 · 테라윈마포제이차피에프브이 주식회사","신촌지역 마포4-10지구 도시정비형 재개발사업 · 테라윈마포제이차피에프브이 주식회사","신촌지역 마포4-10지구 도시정비형 재개발사업 · 테라윈마포제이차피에프브이 주식회사","신촌지역 마포4-10지구 도시정비형 재개발사업 · 테라윈마포제이차피에프브이 주식회사","신촌지역 마포4-10지구 도시정비형 재개발사업 · 테라윈마포제이차피에프브이 주식회사"],"","",0,""],["XSD-3-0094","양극재 4공장 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"청주 4공장 신축공사 · (주)엘지화학","양극재 4공장 신축공사 · (주)엘지화학","청주 양극재 4공장 신축공사 · (주)LG화학","양극재 4공장 신축공사 · (주)LG화학",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0096","양극재 증설 엔지니어링 공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,"양극재 증설 엔지니어링 공사 · LGBCM",null,"양극재 증설 엔지니어링 공사 · LGBCM","양극재 증설 엔지니어링 공사 · LGBCM","양극재 증설 엔지니어링 공사 · LGBCM","양극재 증설 엔지니어링 공사 · LGBCM","양극재 증설 엔지니어링 공사 · LGBCM","양극재 증설 엔지니어링 공사 · LGBCM","양극재 증설 엔지니어링 공사 · LGBCM","양극재 증설 엔지니어링 공사 · LGBCM","양극재 증설 엔지니어링 공사 · LGBCM","양극재 증설 엔지니어링 공사 · (주)엘지에이치와이비씨엠","양극재 증설 엔지니어링 공사 · (주)엘지에이치와이비씨엠",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0097","에너지플랜트2 전지생산2동 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"에너지플랜트2 전지생산2동 신축공사 · LG에너지솔루션","에너지플랜트2 전지생산2동 신축공사 · LG에너지솔루션","에너지플랜트2 전지생산2동 신축공사 · LG에너지솔루션","에너지플랜트2 전지생산2동 신축공사 · LG에너지솔루션","에너지플랜트2 전지생산2동 신축공사 · LG에너지솔루션","에너지플랜트2 전지생산2동 신축공사 · LG에너지솔루션","에너지플랜트2 전지생산2동 신축공사 · LG에너지솔루션","에너지플랜트2 전지생산2동 신축공사 · LG에너지솔루션","에너지플랜트2 전지생산2동 신축공사 · (주)엘지에너지솔루션","에너지플랜트2 전지생산2동 신축공사 · (주)엘지에너지솔루션",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0102","여수 증설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"여수 증설공사 · (주)엘지화학",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0105","오송공장 4단계",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"청주 오송공장 4단계 · (주)엘지화학","청주 오송공장 4단계 · (주)엘지화학","청주 오송공장 4단계 · (주)LG화학","오송공장 4단계 · (주)LG화학",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0107","오창 2공장 시험연구동",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"오창 2공장 시험연구동 신축공사 · (주)엘지전자","오창 2공장 시험연구동 신축공사 · LG에너지솔루션","오창 2공장 시험연구동 · LG에너지솔루션",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0110","용인김량장동가로주택정비사업",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"용인김량장동가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인김량장동가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인김량장동가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인김량장동가로주택정비사업 · 김량장동 가로주택정비사업조합",null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"용인김량장동가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인김량장동가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인김량장동가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인김량장동가로주택정비사업 · 김량장동 가로주택정비사업조합",null],[null,null,null,null,null,null,null,null,null,null,null,null,null,"용인시 처인구 김량장동 가로주택정비사업","용인시 처인구 김량장동 가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인시 처인구 김량장동 가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인시 처인구 김량장동 가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인시 처인구 김량장동 가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합","용인시 처인구 김량장동 가로주택정비사업 · 김량장동 342-5번지 일원 가로주택정비사업조합"],"","",0,""],["XSD-3-0112","광저우 P10A CR&UT 공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"중국 광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","중국 광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","중국 광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.","광저우 P10A CR&UT 공사 · LG Display Guangzhou Co., Ltd.",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0113","남경 Capa-up 공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"중국 남경 Capa-up 공사 · LG Display Nanjing Co., Ltd.","중국 남경 Capa-up 공사 · LG Display Nanjing Co., Ltd.","중국 남경 Capa-up 공사 · LG Display Nanjing Co., Ltd.","남경 Capa-up 공사 · LG Display Nanjing Co., Ltd.","남경 Capa-up 공사 · LG Display Nanjing Co., Ltd.","남경 Capa-up 공사 · LG Display Nanjing Co., Ltd.","남경 Capa-up 공사 · LG Display Nanjing Co., Ltd.",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0114","중국 남경 소형전지7동 부속동 및 8동 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"중국 남경 소형전지7동 부속동 및 8동 신축공사 · LG Chem (Nanjing) Information & Electronics Materials Co.,Ltd.","중국 남경 소형전지7동 부속동 및 8동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","중국 남경 소형전지7동 부속동 및 8동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0116","남경 소형전지9,10동 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"중국 남경 소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","중국 남경 소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","남경 소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.","남경 소형전지9,10동 신축공사 · LG Energy Solution (Nanjing) Co., Ltd.",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0117","중국 남경 원통형전지 전극라인 증설공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"중국 남경 원통형전지 전극라인 증설공사 · LG Chem (Nanjing) Information & Electronics Materials Co.,Ltd.","중국 남경 원통형전지 전극라인 증설공사 · LG Energy Solution (Nanjing) Co., Ltd.","중국 남경 원통형전지 전극라인 증설공사 · LG Energy Solution (Nanjing) Co., Ltd.",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0120","창원1공장 선진화 프로젝트",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"창원1공장 선진화 프로젝트 · (주)엘지전자","창원1공장 선진화 프로젝트 · LG전자(주)","창원1공장 선진화 프로젝트 · LG전자(주)",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0121","통합시험동 증축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"창원 2공장 통합시험동 증축공사 · (주)엘지전자","창원 2공장 리빙어플라이언스 통합시험동 증축공사 · LG전자(주)","통합시험동 증축공사 · LG전자(주)",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0131","테네시 양극재 PJT",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"테네시 양극재 PJT · (주)LG화학","테네시 양극재 PJT · (주)LG화학","테네시 양극재 PJT · (주)LG화학","테네시 양극재 PJT · LG Chem America Advanced materials,","테네시 양극재 PJT · LG Chem America Advanced materials,"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0133","트윈타워 저층 공용부 리모델링공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,"트윈타워 저층 공용부 리모델링공사 · (주)LG","트윈타워 저층 공용부 리모델링공사 · (주)LG","트윈타워 저층 공용부 리모델링공사 · (주)LG","트윈타워 저층 공용부 리모델링공사 · (주)LG",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0141","2센터 2단계 전산실 구축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,"평촌2센터 2단계 공사 · LG유플러스","2센터 2단계 전산실 구축공사 · (주)LG유플러스","2센터 2단계 전산실 구축공사 · (주)LG유플러스","2센터 2단계 전산실 구축공사 · (주)엘지유플러스","2센터 2단계 전산실 구축공사 · (주)엘지유플러스"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0145","폴란드 자동차전지공장 복지동 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"폴란드 자동차전지공장 복지동 신축공사 · LG Energy Solution Wroclaw Energy sp. z o.o.","폴란드 자동차전지공장 복지동 신축공사 · LG Energy Solution Wroclaw Energy sp. z o.o.","폴란드 자동차전지공장 복지동 신축공사 · LG Energy Solution Wroclaw Energy sp. z o.o.",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0146","폴란드 자동차전지공장 활성화4동 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"폴란드 자동차전지공장 활성화4동 신축공사 · LG Energy Solution Wroclaw Energy sp. z o.o.","폴란드 자동차전지공장 활성화4동 신축공사 · LG Energy Solution Wroclaw Energy sp. z o.o.","폴란드 자동차전지공장 활성화4동 신축공사 · LG Energy Solution Wroclaw Energy sp. z o.o.",null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0147","환경안전성 시험센터",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"폴란드 환경안전성 시험센터 · LG Energy Solution Wroclaw Energy sp. z o.o.","폴란드 환경안전성 시험센터 · LG Energy Solution Wroclaw Energy sp. z o.o.","폴란드 환경안전성 시험센터 · LG Energy Solution Wroclaw Energy sp. z o.o.",null,null,null,"환경안전성 시험센터 · LG Energy Solution Wroclaw Energy sp. z o.o.","환경안전성 시험센터 · LG Energy Solution Wroclaw Energy sp. z o.o.","환경안전성 시험센터 · LG Energy Solution Wroclaw Energy sp. z o.o.","환경안전성 시험센터 · LG Energy Solution Wroclaw Energy sp. z o.o.","환경안전성 시험센터 · LG Energy Solution Wroclaw Energy sp. z o.o.",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0150","LG Innotek Vietnam Haiphong Co., Ltd.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,"건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd",null,null,null,null,null,null,"건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd","건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd","건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd","건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd","건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd","건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd","건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd","건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd","건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd","건설형매출 · LG Innotek Vietnam Haiphong Co., Ltd."],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0151","(주)엘지하우시스",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"건설형매출 · (주)엘지하우시스",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"건설형매출 · (주)엘지하우시스",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0152","LG Energy Solution (Nanjing) Co., Ltd.",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,"건설형매출 · LG Energy Solution (Nanjing) Co., Ltd.",null,"건설형매출 · LG Energy Solution (Nanjing) Co., Ltd.","건설형매출 · LG Energy Solution (Nanjing) Co., Ltd.","건설형매출 · LG Energy Solution (Nanjing) Co., Ltd.","건설형매출 · LG Energy Solution (Nanjing) Co., Ltd.","건설형매출 · LG Energy Solution (Nanjing) Co., Ltd.","건설형매출 · LG Energy Solution (Nanjing) Co., Ltd.","건설형매출 · LG Energy Solution (Nanjing) Co., Ltd.","건설형매출 · LG Energy Solution (Nanjing) Co., Ltd.",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0153","(주)엘지에이치와이비씨엠",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)LG에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠",null,null],[null,null,null,null,null,null,null,"건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠","건설형매출 · (주)엘지에이치와이비씨엠",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0154","(주)LG",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG","건설형매출 · (주)LG",null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-3-0155","에너지머티리얼즈(주)",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"건설형매출 · 에너지머티리얼즈(주)",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"","",0,""],["XSD-11-0001","\"서수원~오산~평택 고속도로 민간투자사업\" 통합관리운영 위수탁 계약",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"\"서수원~오산~평택 고속도로 민간투자사업\" 통합관리운영 위수탁 계약 · 경기고속도로 주식회사","\"서수원~오산~평택 고속도로 민간투자사업\" 통합관리운영 위수탁 계약","\"서수원~오산~평택 고속도로 민간투자사업\" 통합관리운영 위수탁 계약 · 경기고속도로 주식회사","\"서수원~오산~평택 고속도로 민간투자사업\" 통합관리운영 위수탁 계약 · 경기고속도로 주식회사","\"서수원~오산~평택 고속도로 민간투자사업\" 통합관리운영 위수탁 계약 · 경기고속도로 주식회사","\"서수원~오산~평택 고속도로 민간투자사업\" 통합관리운영 위수탁 계약 · 경기고속도로 주식회사","\"서수원~오산~평택 고속도로 민간투자사업\" 통합관리운영 위수탁 계약 · 경기고속도로 주식회사"],"","",0,""],["XSD-11-0002","CS관리위탁운영계약",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"CS관리위탁운영계약 · 지에스건설(주)"],"","",0,""],["XSD-11-0007","마포3-3지구 주상복합",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"마포3-3지구 주상복합 · 신촌이이텐피에프브이 주식회사"],"","",0,""],["XSD-11-0008","마포구 망원동 456번지 일대 가로주택정비사업(A-7)",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"마포구 망원동 456번지 일대 가로주택정비사업(A-7) · 코리아신탁(주)","마포구 망원동 456번지 일대 가로주택정비사업(A-7) · 코리아신탁(주)"],"","",0,""],["XSD-11-0010","범어동 주상복합 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"범어동 주상복합 신축공사 · (주)동화건설, (주)에이치씨동화주택"],"","",0,""],["XSD-11-0012","부산 해운대구 중동 주상복합",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"부산 해운대구 중동 주상복합 · (주)청강디앤씨"],"","",0,""],["XSD-11-0013","수안동 반도보라맨션 소규모재건축정비사업",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"수안동 반도보라맨션 소규모재건축정비사업 · 수안동 반도보라맨션 소규모재건축정비사업조합","수안동 반도보라맨션 소규모재건축정비사업 · 수안동 반도보라맨션 소규모재건축정비사업조합"],"","",0,""],["XSD-11-0015","영종하늘도시 A18블록 공동주택 신축공사",[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"영종하늘도시 A18블록 공동주택 신축공사 · 주식회사 창해건설"],"","",0,""]],WT={"11":{"XSD-11-0001|2024Q4":3.0,"XSD-11-0008|2026Q1":2.0,"XSD-11-0008|2026Q2":2.0,"XSD-2-0011|2024Q4":3.0,"XSD-2-0014|2024Q4":3.0,"XSD-2-0018|2024Q4":3.0,"XSD-2-0019|2024Q4":3.0,"XSD-2-0025|2024Q4":3.0,"XSD-2-0027|2024Q4":3.0,"XSD-2-0034|2024Q4":3.0,"XSD-2-0036|2024Q4":3.0,"XSD-3-0092|2024Q4":3.0},"3c":{"XSD-3-0038|2022Q3":2.6667,"XSD-3-0038|2023Q3":1.8,"XSD-3-0038|2023Q4":1.7273,"XSD-3-0038|2024Q1":1.8182,"XSD-3-0038|2024Q2":1.75,"XSD-3-0038|2024Q3":1.75,"XSD-3-0038|2024Q4":1.6154,"XSD-3-0038|2025Q1":1.5,"XSD-3-0038|2025Q2":1.5385,"XSD-3-0038|2025Q3":1.6923,"XSD-3-0038|2025Q4":1.7857,"XSD-3-0038|2026Q1":1.5,"XSD-3-0038|2026Q2":1.5,"XSD-3-0039|2022Q2":2.6923,"XSD-3-0039|2022Q3":2.6667,"XSD-3-0039|2023Q1":1.5556,"XSD-3-0039|2023Q2":1.5556,"XSD-3-0039|2023Q3":1.8,"XSD-3-0039|2023Q4":1.7273,"XSD-3-0039|2024Q1":1.8182,"XSD-3-0039|2024Q2":1.75,"XSD-3-0039|2024Q3":1.75,"XSD-3-0039|2024Q4":1.6154,"XSD-3-0039|2025Q1":1.5,"XSD-3-0039|2025Q2":1.5385,"XSD-3-0039|2025Q3":1.6923,"XSD-3-0039|2025Q4":1.7857,"XSD-3-0041|2022Q2":2.6923,"XSD-3-0041|2022Q3":2.6667,"XSD-3-0041|2023Q1":1.5556,"XSD-3-0041|2023Q2":1.5556,"XSD-3-0041|2023Q3":1.8,"XSD-3-0041|2023Q4":1.7273,"XSD-3-0041|2024Q1":1.8182,"XSD-3-0041|2024Q2":1.75,"XSD-3-0041|2024Q3":1.75,"XSD-3-0041|2024Q4":1.6154,"XSD-3-0041|2025Q1":1.5,"XSD-3-0041|2025Q2":1.5385,"XSD-3-0041|2025Q3":1.6923,"XSD-3-0041|2025Q4":1.7857,"XSD-3-0041|2026Q1":1.5,"XSD-3-0041|2026Q2":1.5,"XSD-3-0042|2022Q2":2.6923,"XSD-3-0042|2022Q3":2.6667,"XSD-3-0042|2024Q4":1.6154,"XSD-3-0042|2025Q1":1.5,"XSD-3-0042|2025Q2":1.5385,"XSD-3-0042|2025Q3":1.6923,"XSD-3-0042|2025Q4":1.7857,"XSD-3-0042|2026Q1":1.5,"XSD-3-0042|2026Q2":1.5,"XSD-3-0043|2022Q2":2.6923,"XSD-3-0043|2022Q3":2.6667,"XSD-3-0043|2023Q1":1.5556,"XSD-3-0043|2023Q2":1.5556,"XSD-3-0043|2023Q3":1.8,"XSD-3-0043|2023Q4":1.7273,"XSD-3-0043|2024Q1":1.8182,"XSD-3-0043|2024Q2":1.75,"XSD-3-0043|2024Q3":1.75,"XSD-3-0043|2024Q4":1.6154,"XSD-3-0043|2025Q1":1.5,"XSD-3-0043|2025Q2":1.5385,"XSD-3-0043|2025Q3":1.6923,"XSD-3-0043|2025Q4":1.7857,"XSD-3-0043|2026Q1":1.5,"XSD-3-0043|2026Q2":1.5,"XSD-3-0044|2022Q2":2.6923,"XSD-3-0045|2022Q2":2.6923,"XSD-3-0045|2022Q3":2.6667,"XSD-3-0045|2023Q1":1.5556,"XSD-3-0045|2023Q2":1.5556,"XSD-3-0045|2023Q3":1.8,"XSD-3-0045|2023Q4":1.7273,"XSD-3-0045|2024Q1":1.8182,"XSD-3-0045|2024Q2":1.75,"XSD-3-0045|2024Q3":1.75,"XSD-3-0045|2024Q4":1.6154,"XSD-3-0046|2022Q3":2.6667,"XSD-3-0047|2022Q2":2.6923,"XSD-3-0047|2022Q3":2.6667,"XSD-3-0047|2023Q1":1.5556,"XSD-3-0047|2023Q2":1.5556,"XSD-3-0047|2023Q3":1.8,"XSD-3-0047|2023Q4":1.7273,"XSD-3-0048|2022Q2":2.6923,"XSD-3-0048|2022Q3":2.6667,"XSD-3-0048|2023Q1":1.5556,"XSD-3-0048|2023Q2":1.5556,"XSD-3-0048|2023Q3":1.8,"XSD-3-0048|2023Q4":1.7273,"XSD-3-0048|2024Q1":1.8182,"XSD-3-0048|2024Q2":1.75,"XSD-3-0048|2024Q3":1.75,"XSD-3-0048|2024Q4":1.6154,"XSD-3-0049|2022Q2":2.6923,"XSD-3-0050|2022Q2":2.6923,"XSD-3-0050|2022Q3":2.6667,"XSD-3-0050|2023Q1":1.5556,"XSD-3-0050|2023Q2":1.5556,"XSD-3-0050|2023Q3":1.8,"XSD-3-0050|2023Q4":1.7273,"XSD-3-0050|2024Q1":1.8182,"XSD-3-0050|2024Q2":1.75,"XSD-3-0050|2024Q3":1.75,"XSD-3-0050|2024Q4":1.6154,"XSD-3-0050|2025Q1":1.5,"XSD-3-0050|2025Q2":1.5385,"XSD-3-0050|2025Q3":1.6923,"XSD-3-0050|2025Q4":1.7857,"XSD-3-0050|2026Q1":1.5,"XSD-3-0050|2026Q2":1.5,"XSD-3-0051|2022Q2":2.6923,"XSD-3-0051|2022Q3":2.6667,"XSD-3-0052|2022Q3":2.6667,"XSD-3-0053|2022Q2":2.6923,"XSD-3-0053|2022Q3":2.6667,"XSD-3-0054|2023Q1":1.5556,"XSD-3-0054|2023Q2":1.5556,"XSD-3-0055|2023Q4":1.7273,"XSD-3-0055|2024Q1":1.8182,"XSD-3-0055|2024Q2":1.75,"XSD-3-0055|2024Q3":1.75,"XSD-3-0055|2024Q4":1.6154,"XSD-3-0056|2024Q2":1.75,"XSD-3-0056|2024Q3":1.75,"XSD-3-0056|2024Q4":1.6154,"XSD-3-0056|2025Q1":1.5,"XSD-3-0056|2025Q2":1.5385,"XSD-3-0056|2025Q3":1.6923,"XSD-3-0056|2025Q4":1.7857,"XSD-3-0056|2026Q1":1.5,"XSD-3-0056|2026Q2":1.5,"XSD-3-0057|2025Q1":1.5,"XSD-3-0057|2025Q2":1.5385,"XSD-3-0057|2025Q3":1.6923,"XSD-3-0057|2025Q4":1.7857,"XSD-3-0057|2026Q1":1.5,"XSD-3-0057|2026Q2":1.5,"XSD-3-0058|2025Q1":1.5,"XSD-3-0058|2025Q2":1.5385,"XSD-3-0058|2025Q3":1.6923,"XSD-3-0058|2025Q4":1.7857,"XSD-3-0058|2026Q1":1.5,"XSD-3-0058|2026Q2":1.5,"XSD-3-0059|2025Q2":1.5385,"XSD-3-0059|2025Q3":1.6923,"XSD-3-0059|2025Q4":1.7857,"XSD-3-0059|2026Q1":1.5,"XSD-3-0059|2026Q2":1.5,"XSD-3-0060|2025Q4":1.7857,"XSD-3-0060|2026Q1":1.5,"XSD-3-0060|2026Q2":1.5,"XSD-3-0061|2026Q1":1.5,"XSD-3-0061|2026Q2":1.5,"XSD-3-0150|2022Q2":2.6923,"XSD-3-0150|2024Q1":1.8182,"XSD-3-0150|2024Q2":1.75,"XSD-3-0150|2024Q3":1.75,"XSD-3-0150|2024Q4":1.6154,"XSD-3-0150|2025Q1":1.5,"XSD-3-0150|2025Q2":1.5385,"XSD-3-0150|2025Q3":1.6923,"XSD-3-0150|2025Q4":1.7857,"XSD-3-0150|2026Q1":1.5,"XSD-3-0150|2026Q2":1.5,"XSD-3-0151|2022Q3":2.6667,"XSD-3-0152|2022Q3":2.6667,"XSD-3-0152|2023Q1":1.5556,"XSD-3-0152|2023Q2":1.5556,"XSD-3-0152|2023Q3":1.8,"XSD-3-0152|2023Q4":1.7273,"XSD-3-0152|2024Q1":1.8182,"XSD-3-0152|2024Q2":1.75,"XSD-3-0152|2024Q3":1.75,"XSD-3-0152|2024Q4":1.6154,"XSD-3-0153|2023Q3":1.8,"XSD-3-0153|2023Q4":1.7273,"XSD-3-0153|2024Q1":1.8182,"XSD-3-0153|2024Q2":1.75,"XSD-3-0153|2024Q3":1.75,"XSD-3-0153|2024Q4":1.6154,"XSD-3-0153|2025Q1":1.5,"XSD-3-0153|2025Q2":1.5385,"XSD-3-0153|2025Q3":1.6923,"XSD-3-0153|2025Q4":1.7857,"XSD-3-0154|2025Q1":1.5,"XSD-3-0154|2025Q2":1.5385,"XSD-3-0154|2025Q3":1.6923,"XSD-3-0154|2025Q4":1.7857},"3s":{"XSD-3-0038|2022Q3":3.625,"XSD-3-0038|2023Q1":2.1429,"XSD-3-0038|2023Q2":2.2857,"XSD-3-0038|2023Q3":2.5,"XSD-3-0038|2023Q4":2.5,"XSD-3-0038|2024Q1":2.0,"XSD-3-0038|2024Q2":2.0,"XSD-3-0038|2024Q3":2.0,"XSD-3-0038|2024Q4":1.8,"XSD-3-0038|2025Q1":1.7778,"XSD-3-0038|2025Q2":2.2222,"XSD-3-0038|2025Q3":2.4444,"XSD-3-0038|2025Q4":2.4,"XSD-3-0038|2026Q1":1.6667,"XSD-3-0038|2026Q2":1.6667,"XSD-3-0039|2022Q2":4.1667,"XSD-3-0039|2022Q3":3.625,"XSD-3-0039|2023Q1":2.1429,"XSD-3-0039|2023Q2":2.2857,"XSD-3-0039|2023Q3":2.5,"XSD-3-0039|2023Q4":2.5,"XSD-3-0039|2024Q1":2.0,"XSD-3-0039|2024Q2":2.0,"XSD-3-0039|2024Q3":2.0,"XSD-3-0039|2024Q4":1.8,"XSD-3-0039|2025Q1":1.7778,"XSD-3-0039|2025Q2":2.2222,"XSD-3-0039|2025Q3":2.4444,"XSD-3-0039|2025Q4":2.4,"XSD-3-0039|2026Q1":1.6667,"XSD-3-0039|2026Q2":1.6667,"XSD-3-0041|2022Q2":4.1667,"XSD-3-0041|2022Q3":3.625,"XSD-3-0041|2023Q1":2.1429,"XSD-3-0041|2023Q2":2.2857,"XSD-3-0041|2023Q3":2.5,"XSD-3-0041|2023Q4":2.5,"XSD-3-0041|2024Q1":2.0,"XSD-3-0041|2024Q2":2.0,"XSD-3-0041|2024Q3":2.0,"XSD-3-0041|2024Q4":1.8,"XSD-3-0041|2025Q1":1.7778,"XSD-3-0041|2025Q2":2.2222,"XSD-3-0041|2025Q3":2.4444,"XSD-3-0041|2025Q4":2.4,"XSD-3-0041|2026Q1":1.6667,"XSD-3-0041|2026Q2":1.6667,"XSD-3-0042|2022Q2":4.1667,"XSD-3-0042|2022Q3":3.625,"XSD-3-0042|2023Q1":2.1429,"XSD-3-0042|2023Q2":2.2857,"XSD-3-0042|2023Q3":2.5,"XSD-3-0042|2023Q4":2.5,"XSD-3-0042|2024Q1":2.0,"XSD-3-0042|2024Q2":2.0,"XSD-3-0042|2024Q3":2.0,"XSD-3-0042|2024Q4":1.8,"XSD-3-0042|2025Q1":1.7778,"XSD-3-0042|2025Q2":2.2222,"XSD-3-0042|2025Q3":2.4444,"XSD-3-0042|2025Q4":2.4,"XSD-3-0042|2026Q1":1.6667,"XSD-3-0042|2026Q2":1.6667,"XSD-3-0043|2022Q2":4.1667,"XSD-3-0043|2022Q3":3.625,"XSD-3-0043|2023Q1":2.1429,"XSD-3-0043|2023Q2":2.2857,"XSD-3-0043|2023Q3":2.5,"XSD-3-0043|2023Q4":2.5,"XSD-3-0043|2024Q1":2.0,"XSD-3-0043|2024Q2":2.0,"XSD-3-0043|2024Q3":2.0,"XSD-3-0043|2024Q4":1.8,"XSD-3-0043|2025Q1":1.7778,"XSD-3-0043|2025Q2":2.2222,"XSD-3-0043|2025Q3":2.4444,"XSD-3-0043|2025Q4":2.4,"XSD-3-0043|2026Q1":1.6667,"XSD-3-0043|2026Q2":1.6667,"XSD-3-0044|2022Q2":4.1667,"XSD-3-0045|2022Q2":4.1667,"XSD-3-0045|2022Q3":3.625,"XSD-3-0045|2023Q1":2.1429,"XSD-3-0045|2023Q2":2.2857,"XSD-3-0045|2023Q3":2.5,"XSD-3-0045|2023Q4":2.5,"XSD-3-0045|2024Q1":2.0,"XSD-3-0045|2024Q2":2.0,"XSD-3-0045|2024Q3":2.0,"XSD-3-0045|2024Q4":1.8,"XSD-3-0046|2022Q3":3.625,"XSD-3-0054|2023Q1":2.1429,"XSD-3-0057|2024Q4":1.8,"XSD-3-0057|2025Q1":1.7778,"XSD-3-0057|2025Q2":2.2222,"XSD-3-0057|2025Q3":2.4444,"XSD-3-0057|2025Q4":2.4,"XSD-3-0057|2026Q1":1.6667,"XSD-3-0057|2026Q2":1.6667,"XSD-3-0058|2025Q1":1.7778,"XSD-3-0058|2025Q2":2.2222,"XSD-3-0058|2025Q3":2.4444,"XSD-3-0058|2025Q4":2.4,"XSD-3-0058|2026Q1":1.6667,"XSD-3-0058|2026Q2":1.6667,"XSD-3-0060|2025Q4":2.4,"XSD-3-0060|2026Q1":1.6667,"XSD-3-0060|2026Q2":1.6667,"XSD-3-0061|2026Q1":1.6667,"XSD-3-0061|2026Q2":1.6667,"XSD-3-0151|2022Q3":3.625,"XSD-3-0153|2023Q2":2.2857,"XSD-3-0153|2023Q3":2.5,"XSD-3-0153|2023Q4":2.5,"XSD-3-0153|2024Q1":2.0,"XSD-3-0153|2024Q2":2.0,"XSD-3-0153|2024Q3":2.0,"XSD-3-0153|2024Q4":1.8,"XSD-3-0153|2025Q1":1.7778,"XSD-3-0153|2025Q2":2.2222,"XSD-3-0153|2025Q3":2.4444,"XSD-3-0153|2025Q4":2.4,"XSD-3-0154|2023Q3":2.5,"XSD-3-0154|2023Q4":2.5,"XSD-3-0154|2024Q1":2.0,"XSD-3-0154|2024Q2":2.0,"XSD-3-0154|2024Q3":2.0,"XSD-3-0154|2024Q4":1.8,"XSD-3-0154|2025Q1":1.7778,"XSD-3-0154|2025Q2":2.2222,"XSD-3-0154|2025Q3":2.4444,"XSD-3-0154|2025Q4":2.4,"XSD-3-0155|2024Q4":1.8}},RAWN={"_del2":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"2":[27,34,36,36,35,15,15,16,17,17,16,18,16,15,15,15,14,17,17],"3s":[0,14,41,47,18,33,35,40,40,31,29,29,34,32,38,42,43,30,26],"3c":[13,28,86,98,62,46,49,54,56,55,57,56,58,51,58,64,68,51,47],"11":[0,0,0,0,0,0,0,0,0,0,0,0,30,11,13,11,12,16,21],"_dup3":{},"_mv3":{}};
+
+// II-4에서 사용자가 참조 대상에서 뺀 행 수(manual_fix delete). 그만큼은 화면 칸이 없는 것이
+
+// 정상이라 어긋남으로 세지 않고, 원문 숫자를 회색으로 눌러 「일부를 뺐다」고 알린다.
+
+const DEL2=RAWN._del2||FQ.map(()=>0);
+
+// 원문에 같은 표가 두 벌 실려 한 벌만 쓴 분기(p8_dropped) — 원문 카운트에는 두 벌이 다
+
+// 들어 있어 화면과 어긋난다. 그 사실을 툴팁에 적어 「왜 어긋나는지」가 보이게 한다.
+
+const DUP3=RAWN._dup3||{};
+
+const MV3=RAWN._mv3||{};
+
+const esc=s=>(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// 분기 눈금은 출처마다 하나씩 — 세 묶음이 같은 분기 축을 쓰므로 위아래 대조가 된다
+
+for(const id of ['q2','q3s','q3c','q11'])
+
+  document.getElementById(id).innerHTML=FQ.map(q=>`<span>${q.slice(2)}</span>`).join('');
+
+
+
+// 관계사 배지 — scripts/site_style.py가 세 페이지에 같은 것을 주입한다.
+
+function rpBadge(rp){return rp?`<span class="rpb" title="관계사 발주 — ${esc(rp)}">${esc(rp)}</span>`:'';}
+
+// 다수현장 배지 — 여러 현장이 한 행으로 묶여 공시된 사업장. 말은 여기서만 정한다.
+
+// 해외법인 배지 — 원문이 그 사업장을 실은 법인(DL USA·RUS·FZCO…).
+function entBadge(e){return e?`<span class="ebb" title="해외법인 — 원문이 이 사업장을 「${esc(e)}」 표에 실었습니다. 좌측 목록과 집계는 모회사 기준으로 묶습니다.">${esc(e)}</span>`:'';}
+function lumpBadge(on){return on?`<span class="lmb" title="다수현장 — 여러 현장이 한 행으로 묶여 공시된 사업장입니다. 단일 현장이 아니라 계약이 드나들므로 보전·예측 등 어떤 추정도 하지 않고, 분기 매출인식액도 만들지 않습니다. 계약잔액은 공시값이라 그대로 합산됩니다.">다수현장</span>`:'';}
+
+
+
+// 즐겨찾기 — index·matrix·trace가 같은 localStorage 키를 쓴다(scripts/site_style.py).
+
+let BM=new Set();
+
+try{BM=new Set(JSON.parse(localStorage.getItem('encBookmarks')||'[]'));}catch(e){BM=new Set();}
+
+const saveBM=()=>{try{localStorage.setItem('encBookmarks',JSON.stringify([...BM]));}catch(e){}};
+
+function paintStars(root){(root||document).querySelectorAll('.star[data-id]').forEach(el=>{
+
+ const on=BM.has(el.getAttribute('data-id'));
+
+ el.classList.toggle('on',on); el.textContent=on?'★':'☆';});}
+
+function bindStars(root,after){(root||document).querySelectorAll('.star[data-id]').forEach(el=>{
+
+ el.addEventListener('click',ev=>{ev.stopPropagation();
+
+  const id=el.getAttribute('data-id');
+
+  BM.has(id)?BM.delete(id):BM.add(id);
+
+  saveBM(); paintStars(root); if(after) after();});});}
+
+window.addEventListener('storage',e=>{if(e.key!=='encBookmarks')return;
+
+ try{BM=new Set(JSON.parse(e.newValue||'[]'));}catch(_){BM=new Set();}
+
+ paintStars(); if(window.onBMSync) window.onBMSync();});
+
+
+
+// 플래그 — 별표와 같은 구조, 다른 키(encFlags). 세 페이지가 함께 본다.
+
+let FL=new Set();
+
+try{FL=new Set(JSON.parse(localStorage.getItem('encFlags')||'[]'));}catch(e){FL=new Set();}
+
+const saveFL=()=>{try{localStorage.setItem('encFlags',JSON.stringify([...FL]));}catch(e){}};
+
+function paintFlags(root){(root||document).querySelectorAll('.flag[data-id]').forEach(el=>{
+
+ const on=FL.has(el.getAttribute('data-id'));
+
+ el.classList.toggle('on',on); el.textContent=on?'⚑':'⚐';});}
+
+function bindFlags(root,after){(root||document).querySelectorAll('.flag[data-id]').forEach(el=>{
+
+ el.addEventListener('click',ev=>{ev.stopPropagation();
+
+  const id=el.getAttribute('data-id');
+
+  FL.has(id)?FL.delete(id):FL.add(id);
+
+  saveFL(); paintFlags(root); if(after) after();});});}
+
+window.addEventListener('storage',e=>{if(e.key!=='encFlags')return;
+
+ try{FL=new Set(JSON.parse(e.newValue||'[]'));}catch(_){FL=new Set();}
+
+ paintFlags(); if(window.onFLSync) window.onFLSync();});
+
+
+
+const frag=document.createDocumentFragment();
+
+let c2=0,c3=0,c11=0;
+
+// 분기별 개수 — 원문 행 수와 바로 맞대 보라고 눈금 아래에 세운다(사용자 요청 2026-09-01).
+
+const QN={'2':FQ.map(()=>0),'3s':FQ.map(()=>0),'3c':FQ.map(()=>0),'11':FQ.map(()=>0)};
+
+SITES.forEach(([id,name,r2,r3s,r3c,r11,rp,pin,lump,eb],i)=>{
+
+  const tr=document.createElement('tr');
+
+  // 묶음(list_pin)은 index·matrix와 같은 규칙으로 한 덩어리로 칠한다.
+
+  const _pv=i>0?SITES[i-1][7]:null, _nx=i+1<SITES.length?SITES[i+1][7]:null;
+
+  tr.className=(i%2?'o':'e')+(rp?' rps':'')
+
+   +(pin?' pin'+(pin!==_pv?' pt':'')+(pin!==_nx?' pb':''):'');
+
+  // 칸마다 「원문 몇 행에 해당하는가」(w)를 곱해 센다. 기본 1, 반칸 0.5, 겹칸 2 …
+
+  // 몫은 **분수로** 적는다 — 「1/2」가 「0.5」보다 「둘로 나뉘었다」를 바로 읽게 한다
+
+  // (사용자 지시 2026-09-01). 분모는 12까지 찾고, 못 맞추면 소수 첫째 자리로 떨어진다.
+
+  const fmtW=v=>{
+
+    if(Math.abs(v-Math.round(v))<1e-9) return String(Math.round(v));
+
+      // 가중치는 파이썬에서 소수 넷째 자리로 반올림돼 오므로(1/3→0.3333) 1e-6으로는
+
+      // 3분모부터 못 맞춘다. 오차는 5e-5 이하이고 분모 24까지의 서로 다른 기약분수는
+
+      // 최소 1/(23·24)≈0.0018 떨어져 있어 5e-4면 엉뚱한 분수에 붙지 않는다
+
+      // (사용자 지시 2026-09-09). 삼성물산 5/24·13/24·17/24, 자이에스앤디 20/13 같은
+
+      // 값이 여기서 살아난다.
+
+    for(let q=2;q<=24;q++){const p=Math.round(v*q);
+
+      if(Math.abs(v-p/q)<5e-4) return p+'/'+q;}
+
+    return v.toFixed(2).replace(/\.?0+$/,'');};
+
+  const wOf=(src,k)=>{const m=WT[src]; if(!m) return 1;
+
+    const v=m[id+'|'+FQ[k]]; return v===undefined?1:v;};
+
+  const cell=(src,arr)=>{
+
+    const strip=arr.map((v,k)=>{
+
+      if(!v) return `<div class="sq" title="${esc(FQ[k])} · 없음"></div>`;
+
+      const w=wOf(src,k);
+
+      if(src==='2')c2+=w; else if(src==='11')c11+=w; else c3+=w;
+
+      QN[src][k]=(QN[src][k]||0)+w;
+
+      // 몫이 1이 아니면 칸 안에 그 몫을 적는다 — 칠하는 모양은 그대로 둔다.
+
+      const odd=Math.abs(w-1)>1e-9;
+
+      const txt=odd?fmtW(w):'';
+
+      const note=w<1?` · 원문 한 행을 여러 사업장이 나눠 가진 칸 (이 칸 몫 ${fmtW(w)}행)`
+
+                   :(w>1?` · 이 칸이 원문 ${txt}행을 대신함`:'');
+
+      return `<div class="sq on${odd?' num':''}" title="${esc(FQ[k])} · ${esc(v)}${note}">${txt}</div>`;
+
+    }).join('');
+
+    return `<td class="sg s${src}"><div class="strip">${strip}</div></td>`;};
+
+  tr.innerHTML=`<td class="cn">`
+
+    +`<span class="star" data-id="${esc(id)}" title="즐겨찾기 (다시 확인할 프로젝트 표시)">☆</span>`
+
+    +`<span class="flag" data-id="${esc(id)}" title="플래그 (별표와 별개로 표시)">⚐</span>`
+
+    +`<span class="cd">${esc(id)}</span>`+rpBadge(rp)+lumpBadge(lump)+entBadge(eb)
+
+    +`<span class="nm" title="${esc(name)}">${esc(name)}</span></td>`
+
+    +cell('2',r2)+cell('3s',r3s)+cell('3c',r3c)+cell('11',r11);
+
+  frag.appendChild(tr);
+
+});
+
+document.getElementById('rows').appendChild(frag);
+
+// 표 영역을 창 아래 끝까지 늘린다. 창 크기가 바뀌면 다시 잰다.
+
+const fitTable=()=>{const sc=document.querySelector('.scroller');
+
+  sc.style.maxHeight=Math.max(240,innerHeight-sc.getBoundingClientRect().top-14)+'px';
+
+  // 설정한 뒤에도 문서가 창보다 크면 **바깥 창에 스크롤이 생긴다** — 넘친 만큼 되돌린다.
+
+  // 카드 테두리·본문 아래 여백처럼 계산에 안 잡히는 것들이 있어 실측으로 맞춘다.
+
+  const over=document.documentElement.scrollHeight-innerHeight;
+
+  if(over>0) sc.style.maxHeight=Math.max(240,parseFloat(sc.style.maxHeight)-over)+'px';};
+
+addEventListener('resize',fitTable); requestAnimationFrame(fitTable);
+
+// 분기 합계도 소수 대신 「정수 + 분수」로 적는다 — 144.3이 아니라 「144 1/3」이라야
+
+// 원문 한 행이 셋으로 쪼개졌다는 것이 바로 읽힌다(사용자 지시 2026-09-09).
+
+const fmtD=v=>(v<0?'-':'')+fmtN(Math.abs(v));
+
+const fmtN=v=>{if(!v) return '';
+
+  if(Math.abs(v-Math.round(v))<1e-9) return String(Math.round(v));
+
+  const n=Math.floor(v), f=v-n;
+
+  for(let q=2;q<=24;q++){const p=Math.round(f*q);
+
+    if(p>0&&p<q&&Math.abs(f-p/q)<5e-4) return (n?n+' ':'')+p+'/'+q;}
+
+  return v.toFixed(2).replace(/\.?0+$/,'');};
+
+// 위 줄 = 원문 행 수(RAWN), 아래 줄 = 화면 칸 수(QN). 다르면 두 숫자에 걸쳐 칠한다.
+
+for(const src of ['2','3s','3c','11']){
+
+  const raw=RAWN[src]||FQ.map(()=>0), got=QN[src];
+
+  const del=src==='2'?DEL2:FQ.map(()=>0);
+
+  // 표시 기준 이동분은 기대 개수를 같이 옮긴다 — 원문 행은 사라지지 않았다.
+
+  const mv=FQ.map(q=>MV3[src+'|'+q]||0);
+
+  const bad=FQ.map((q,k)=>Math.abs((raw[k]||0)+(mv[k]||0)-(del[k]||0)-got[k])>1e-9);
+
+  const cell=(v,k,isRaw)=>{
+
+    // 판정용 기대치 — **표시는 원문 그대로** 하고, 어긋남 여부만 이 값으로 본다.
+
+    // 원문 행 수는 원문에 실제로 있는 행의 수라 조정하면 안 된다(사용자 지적 2026-09-02).
+
+    const exp=(raw[k]||0)+(mv[k]||0)-(del[k]||0);
+
+    const dp=DUP3[src+'|'+FQ[k]]||0;
+
+    const t=`${FQ[k]} · 원문 ${raw[k]||0}행`+((del[k]||0)?` (그중 ${del[k]}행은 참조 제외)`:'')
+
+      +(dp?` (원문이 같은 표를 두 벌 실어 ${dp}행은 중복 — 한 벌만 씁니다)`:'')
+
+      +((mv[k]||0)?` (${Math.abs(mv[k])}행은 표시 기준을 ${mv[k]<0?'반대쪽으로 옮겼습니다':'반대쪽에서 받았습니다'} — 원문 행은 그대로입니다)`:'')
+
+      +` / 화면 ${fmtN(got[k])||0}칸`
+
+      +(bad[k]?`  ★ ${fmtD(got[k]-((raw[k]||0)+(mv[k]||0)-(del[k]||0)))}칸 어긋남`:'');
+
+    const cls=bad[k]?'x':(((del[k]||0)||(mv[k]||0))?'ex':'');
+
+    return `<span class="${cls}" title="${esc(t)}">${isRaw?(raw[k]||''):fmtN(v)}</span>`;};
+
+  document.getElementById('rn'+src).innerHTML=raw.map((v,k)=>cell(v,k,true)).join('');
+
+  document.getElementById('n'+src).innerHTML=got.map((v,k)=>cell(v,k,false)).join('');
+
+}
+
+paintStars(); bindStars(); paintFlags(); bindFlags();
+
+
+
+</script></body></html>
+

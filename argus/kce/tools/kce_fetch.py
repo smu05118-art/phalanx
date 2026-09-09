@@ -16,8 +16,11 @@ import json
 import os
 import re
 import sys
+import threading
+import time
 import urllib.parse
 import urllib.request
+from concurrent import futures
 
 from kce_lib import CORP, report_kind, atomic_write
 
@@ -37,25 +40,63 @@ SECTION_PATTERNS = [
 # DART는 연속 요청에 약하다 — GitHub Actions에서 7사를 잇달아 조회하다 전 회사가
 # `urlopen error timed out`으로 실패한 적이 있다(2026-09-06 실행). 재시도와 요청 간
 # 최소 간격으로 흡수한다.
-RETRIES = 3
-BACKOFF = (2, 5, 10)          # 초
-MIN_GAP = 0.7                 # 연속 요청 사이 최소 간격(초)
+RETRIES = 5
+BACKOFF = (2, 5, 10, 20, 30)  # 초
+MIN_GAP = 0.7                 # 요청 사이 최소 간격(초) — **전역** 총 요청률 상한
 _last_call = [0.0]
+_pace_lock = threading.Lock()
+
+# 병렬 레인 수. 수집 시간의 대부분은 DART 응답 대기라 레인을 늘리면 그 대기가 겹쳐
+# 빨라진다. 총 요청률은 위 MIN_GAP 토큰버킷이 전역으로 묶으므로 레인을 늘려도
+# DART가 받는 부하는 그대로다 — 스로틀을 피하면서 벽시계 시간만 줄인다.
+LANES = int(os.environ.get("KCE_LANES") or 6)
 
 
 def _pace():
-    import time
-    gap = time.monotonic() - _last_call[0]
-    if gap < MIN_GAP:
-        time.sleep(MIN_GAP - gap)
-    _last_call[0] = time.monotonic()
+    """전역 요청 간격 유지. 여러 레인이 동시에 들어와도 총 요청률은 1/MIN_GAP를 넘지 않는다."""
+    while True:
+        with _pace_lock:
+            now = time.monotonic()
+            wait = MIN_GAP - (now - _last_call[0])
+            if wait <= 0:
+                _last_call[0] = now
+                return
+        time.sleep(wait)
+
+
+def parallel(items, fn, lanes=None, on_done=None):
+    """items를 레인 나눠 처리하고 **입력 순서 그대로** 결과를 돌려준다.
+
+    한 항목이 실패해도 전체를 세우지 않는다 — 예외를 그 자리에 담아 호출측이 판단한다.
+    """
+    lanes = lanes or LANES
+    out = [None] * len(items)
+    if lanes <= 1:
+        for i, it in enumerate(items):
+            try:
+                out[i] = fn(it)
+            except Exception as e:
+                out[i] = e
+            if on_done:
+                on_done(i, it, out[i])
+        return out
+    with futures.ThreadPoolExecutor(max_workers=lanes) as ex:
+        fut = {ex.submit(fn, it): i for i, it in enumerate(items)}
+        for f in futures.as_completed(fut):
+            i = fut[f]
+            try:
+                out[i] = f.result()
+            except Exception as e:
+                out[i] = e
+            if on_done:
+                on_done(i, items[i], out[i])
+    return out
 
 
 def _get(url, data=None, timeout=45):
     u = urllib.parse.urlparse(url)
     if u.scheme != "https" or u.hostname not in ALLOW_HOSTS:
         raise ValueError("allowlist 밖 URL: %s" % url)
-    import time
     last = None
     for i in range(RETRIES):
         _pace()
@@ -73,7 +114,8 @@ def _get(url, data=None, timeout=45):
             if i < RETRIES - 1:
                 sys.stderr.write("[retry %d/%d] %s — %s\n"
                                  % (i + 1, RETRIES - 1, type(e).__name__, url[:90]))
-                time.sleep(BACKOFF[i])
+                # RETRIES와 BACKOFF 길이가 어긋나도 죽지 않는다
+                time.sleep(BACKOFF[min(i, len(BACKOFF) - 1)] if BACKOFF else 1)
     raise last
 
 

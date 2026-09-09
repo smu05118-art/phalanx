@@ -80,17 +80,22 @@ class TestUniverseParse(unittest.TestCase):
 class TestUniverseSelect(unittest.TestCase):
 
     def _full(self, extra=()):
-        """SEED·LEGACY 필수 종목을 모두 포함한 최소 모집단."""
-        rows = [dict(zip(("name", "market", "stock", "industry"),
-                         (n, "유가", s, i)))
-                for n, s, i in [("삼성물산", "028260", "기타 전문 도매업"),
-                                ("삼성E&A", "028050", "건축기술, 엔지니어링 및 관련 기술 서비스업")]]
-        for co, slug in (("현대건설", "000720"), ("대우건설", "047040"),
-                         ("GS건설", "006360"), ("DL이앤씨", "375500"),
-                         ("HDC현대산업개발", "294870")):
-            rows.append({"name": co, "market": "유가", "stock": slug,
-                         "industry": "건물 건설업"})
-        rows += list(extra)
+        """SEED·LEGACY 필수 종목을 모두 포함한 최소 모집단.
+
+        필수 집합을 **코드에서 파생**시킨다. 7사 시절의 종목코드를 문자열로 박아 두면
+        정밀 경로(CORP)가 늘 때마다 이 픽스처가 낡아 실패한다 — 실제로 CORP가 7→17로
+        늘면서 깨졌다. 검증하려는 계약은 "필수 종목이 빠지면 막는다"이지
+        "그 필수 종목이 정확히 이 일곱이다"가 아니다.
+        """
+        rows = []
+        for stock in sorted(set(U.SEED_EXTRA) | set(U.LEGACY_SLUG)):
+            # 지정(SEED) 종목은 업종 필터에 걸리지 않는 쪽으로 둬야 '지정' 경로가
+            # 실제로 시험된다. 나머지는 업종으로 들어오게 한다.
+            ind = ("기타 전문 도매업" if stock in U.SEED_EXTRA
+                   else "건물 건설업")
+            rows.append({"name": "회사%s" % stock, "market": "유가",
+                         "stock": stock, "industry": ind})
+        rows += [dict(r) for r in extra]
         for r in rows:
             r.setdefault("product", "")
             r.setdefault("listed", "")
@@ -110,9 +115,11 @@ class TestUniverseSelect(unittest.TestCase):
         by = {r["stock"]: r for r in recs}
         self.assertEqual(by["009410"]["source"], "업종")
         self.assertEqual(by["028260"]["source"], "지정")   # 업종 밖이지만 지정 포함
-        # 원본 7사는 기존 슬러그를 유지하고, 신규는 종목코드를 슬러그로 쓴다
+        # 정밀 경로(CORP) 종목은 그 슬러그를 유지하고, 신규는 종목코드를 슬러그로 쓴다
         self.assertEqual(by["000720"]["slug"], "hec")
         self.assertEqual(by["009410"]["slug"], "009410")
+        # 비상장 자회사(stock=None)는 상장법인 모집단의 원소가 아니다
+        self.assertNotIn(None, {r["stock"] for r in recs})
 
     def test_missing_seed_is_fail_closed(self):
         rows = [r for r in self._full() if r["stock"] != "028260"]

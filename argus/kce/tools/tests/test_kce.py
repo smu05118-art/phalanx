@@ -117,9 +117,17 @@ class TestII4Reconcile(unittest.TestCase):
         rows, meas, D = self._reconcile("sct", "sct_상세표_건설수주.html", 79)
         K = _k(D)
         self.assertEqual(len(meas), 79)
-        # 집계 재현: Σ실측 bal == summary.total(=summary.rows 합)
-        self.assertEqual(sum(s["s"]["bal"][K] for s in meas),
-                         D["summary"]["total"][K])
+        # 상류 vintage가 7사→17사로 확장되며 삼성물산도 summary를 **원문 총계**로
+        # 바꿨다(Σ실측 25,179,310 → 공시 34,245,477). 차액은 상세표에 개별 기재되지
+        # 않은 소규모 현장 몫이라 정상이다 — 두 값이 같아야 한다는 옛 계약은 더 이상
+        # 성립하지 않는다. 대신 방향(공시 총계 ≥ Σ실측)과 산출 라벨을 검증한다.
+        self.assertTrue(D["summary"]["src"]["삼성물산"][K].startswith("공시"))
+        self.assertGreaterEqual(D["summary"]["total"][K],
+                                sum(s["s"]["bal"][K] for s in meas))
+        # summary.total은 언제나 법인별 rows의 합이어야 한다(집계 불변식).
+        self.assertEqual(D["summary"]["total"][K],
+                         sum(D["summary"]["rows"][e][K] or 0
+                             for e in D["summary"]["ents"]))
 
     def test_hec(self):
         rows, meas, D = self._reconcile("hec", "hec_수주상황.html", 109)

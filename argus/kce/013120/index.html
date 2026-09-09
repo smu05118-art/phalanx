@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>동원개발 현장별 데이터</title>
+<style>
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;
+ --tx3:#5d6675;--a:#60a5fa;--up:#4ade80;--dn:#f87171;--wn:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;padding:0 0 60px}
+a{color:var(--a)}
+header{position:sticky;top:0;z-index:9;background:rgba(15,17,22,.94);backdrop-filter:blur(8px);
+ border-bottom:1px solid var(--ln);padding:12px clamp(12px,3vw,28px)}
+.hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;max-width:1280px;margin:0 auto}
+.hd h1{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.hd .code{font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.hd .tag{font-size:10.5px;color:var(--tx2);border:1px solid var(--ln);border-radius:999px;padding:1px 8px}
+.hd .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.hd .sp a{font-size:11px;text-decoration:none;border:1px solid var(--ln);border-radius:6px;padding:3px 9px}
+.hd .sp a:hover{border-color:var(--a)}
+main{max-width:1280px;margin:0 auto;padding:18px clamp(12px,3vw,28px)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px}
+.kpi div{background:var(--pn);border:1px solid var(--ln);border-radius:9px;padding:12px 14px}
+.kpi b{display:block;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.kpi span{display:block;font-size:10.5px;color:var(--tx3);margin-top:3px}
+.kpi i{font-style:normal;font-size:11px;font-variant-numeric:tabular-nums}
+.up{color:var(--up)}.dn{color:var(--dn)}
+section{margin-top:22px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:14px 16px}
+section h2{font-size:12.5px;font-weight:600;color:var(--tx2);margin-bottom:10px;
+ display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+section h2 em{font-style:normal;font-size:10.5px;color:var(--tx3);font-weight:400}
+.wrap{overflow-x:auto}
+/* th{position:sticky;top:0}은 **세로로 스크롤되는 조상**이 있어야 성립한다. .wrap에
+   높이 제약이 없으면 clientHeight==scrollHeight라 스크롤포트가 아니고, 머리행은 그냥
+   페이지와 함께 흘러가 버렸다(태영건설 220현장 페이지에서 측정: 3138==3138).
+   높이 제약은 화면이 넓을 때만 건다 — 좁은 화면에서 상자 안 세로 스크롤을 만들면
+   페이지 스크롤과 이중이 되어 손가락이 무엇을 미는지 알 수 없게 된다. */
+@media (min-width:768px){.wrap{max-height:70vh;overflow-y:auto}}
+.chart{position:relative;height:260px}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap}
+/* border-collapse:collapse에서는 셀 테두리가 sticky 머리행을 따라오지 않는다 —
+   밑줄은 box-shadow로 그려야 스크롤 중에도 남는다. z-index는 본문 셀 위로 띄우기 위함. */
+th{color:var(--tx3);font-weight:500;font-size:10.5px;text-align:right;cursor:pointer;
+ position:sticky;top:0;z-index:1;background:var(--pn);
+ box-shadow:inset 0 -1px 0 var(--ln);user-select:none}
+th:hover{color:var(--a)}
+th.l,td.l{text-align:left}
+td.l{max-width:340px;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:var(--pn2)}
+.mut{color:var(--tx3)}
+.bar{display:inline-block;height:5px;border-radius:3px;background:var(--a);vertical-align:middle}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ctl input,.ctl select{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;
+ color:var(--tx);font:12px inherit;padding:4px 8px}
+.ctl input{min-width:190px}
+footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
+ color:var(--tx3);font-size:10.5px;line-height:1.8}
+.note{color:var(--wn);font-size:11px;background:rgba(251,191,36,.08);
+ border:1px solid rgba(251,191,36,.25);border-radius:7px;padding:8px 11px;margin-top:14px}
+</style></head><body>
+<header><div class="hd">
+ <h1>동원개발 현장별 데이터</h1>
+ <span class="code">013120</span>
+ <span class="tag">코스닥</span>
+ <span class="tag">건물 건설업</span>
+ <span class="sp">
+  <a href="../coverage.html">커버리지</a>
+  <a href="../index.html">회사 선택</a>
+  <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260814001366" rel="noopener noreferrer" target="_blank">DART 원문 ↗</a>
+ </span>
+</div></header>
+<main>
+
+<div class="kpi">
+ <div><b>22,747<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>수주잔고 · 2026Q2</span><i class="up">+1,926억</i></div>
+ <div><b>26,348<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>도급액 합계</span></div>
+ <div><b>43</b><span>잔고 있는 현장</span></div>
+ <div><b>61</b><span>수록 현장(누적)</span></div>
+ <div><b>8</b><span>수록 분기 · 2024Q3–2026Q2</span></div>
+ 
+</div>
+
+<section>
+ <h2>수주잔고 추이 <em>공종별 누적 · 억원</em></h2>
+ <div class="chart"><canvas id="cBal"></canvas></div>
+</section>
+
+<section>
+ <h2>현장 목록 <em>머리행을 누르면 정렬</em></h2>
+ <div class="ctl">
+  <input id="q" type="search" placeholder="현장·발주처 검색" aria-label="현장 검색">
+  <select id="fSeg" aria-label="공종"><option value="">공종 전체</option></select>
+  <select id="fReg" aria-label="지역"><option value="">지역 전체</option></select>
+  <label style="font-size:11.5px;color:var(--tx2);display:flex;align-items:center;gap:5px">
+   <input type="checkbox" id="onlyLive" checked style="min-width:0"> 잔고 있는 현장만</label>
+ </div>
+ <div class="wrap"><table id="tb">
+  <thead><tr>
+   <th class="l" data-k="nm">현장명</th><th class="l" data-k="cl">발주처</th>
+   <th class="l" data-k="seg">공종</th><th class="l" data-k="reg">지역</th>
+   <th data-k="sd">착공</th><th data-k="ed">완공예정</th>
+   <th data-k="amt">도급액</th><th data-k="cmp">완성공사액</th>
+   <th data-k="bal">계약잔액</th><th data-k="pr">진행률</th>
+  </tr></thead><tbody></tbody>
+ </table></div>
+</section>
+
+<section>
+ <h2>분기 매트릭스 <em>현장 × 분기 계약잔액(억) · 상위 60개</em></h2>
+ <div class="wrap"><table id="mx"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<div class="note">이 회사는 DART 정기보고서의 <b>수주상황 표를 분기마다 다시 읽어</b> 만든
+실측 시계열입니다. 원본 7사 페이지와 달리 <b>예측(S-curve)·백테스트·실적 대비가 없습니다</b> —
+그 자산은 복제 시드에서 온 것이라 신규 편입사에는 존재하지 않습니다.
+현장은 이름으로 분기 간 연결하므로, 원문이 표기를 크게 바꾸면 다른 현장으로 잡힐 수 있습니다.
+「공시 총계」가 있으면 원문이 직접 적은 수주잔고 합계입니다. <b>묶음</b> 표시가 붙은 행은
+원문이 개별 기재를 생략하고 '기타현장'처럼 한 줄로 합쳐 적은 <b>나머지</b>이며,
+합계를 맞추기 위해 집계에는 포함하되 현장 수에서는 빼고 셉니다.</div>
+</main>
+<footer>출처 DART 정기보고서 II. 사업의 내용 — 수주상황. 단위 억원(원문 백만원 환산).
+2026Q2 정기보고서 기준. 참고용 · 투자조언 아님.</footer>
+<script src="../vendor/chart.umd.min.js"></script>
+<script>const DATA={"recon":[null,null,null,null,null,null,null,null],"reconOver":[],"aggFix":[],"co":"동원개발","stock":"013120","slug":"013120","market":"코스닥","industry":"건물 건설업","fq":["2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1","2026Q2"],"codeGen":"2026Q2","grain":"project","src":{"2024Q3":"20241114001626","2024Q4":"20250320000310","2025Q1":"20250515001021","2025Q2":"20250814002880","2025Q3":"20251114001722","2025Q4":"20260319000997","2026Q1":"20260515001220","2026Q2":"20260814001366"},"sites":[{"id":"013120-0001","nm":"통영법송일반산업단지조성사업","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2011-11","ed":"2026-12","s":{"amt":[37269.109,37269.109,37269.109,37269.109,37269.109,37269.109,37269.109,37269.109],"cmp":[30426.501,29409.054,29476.138,29528.315,29576.765,29617.761,29669.938,29714.661],"bal":[6842.608,7860.055,7792.971,7740.794,7692.344,7651.348,7599.171,7554.448],"pr":[81.6,78.9,79.1,79.2,79.4,79.5,79.6,79.7]}},{"id":"013120-0002","nm":"동남권방사선 일반산단 조경공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2014-04","ed":"2024-07","s":{"amt":[9144.373,9144.373,9144.373,10901.926,null,null,null,null],"cmp":[7698.647,8041.561,8088.198,8885.07,null,null,null,null],"bal":[1445.725,1102.811,1056.175,2016.856,null,null,null,null],"pr":[84.2,87.9,88.5,81.5,null,null,null,null]}},{"id":"013120-0003","nm":"고서IC-광주댐간지방도4차로 확포장공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2017-09","ed":"2026-06","s":{"amt":[6364.98,7260.33,7260.33,7260.33,7260.33,7388.52,7388.52,7598.694],"cmp":[5229.468,5671.77,5729.126,6136.431,6269.295,6556.573,6685.872,7107.058],"bal":[1135.512,1588.56,1531.204,1123.899,991.035,831.947,702.648,491.636],"pr":[82.2,78.1,78.9,84.5,86.4,88.7,90.5,93.5]}},{"id":"013120-0004","nm":"부산에코델타시티3단계2공구 조성공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2019-11","ed":"2026-04","s":{"amt":[10395.787,10463.564,10463.564,10463.564,10463.564,10463.564,10463.564,10463.564],"cmp":[7714.713,8240.057,8447.235,8768.467,8949.486,9210.029,9584.625,10123.498],"bal":[2681.073,2223.507,2016.329,1695.097,1514.078,1253.535,878.939,340.066],"pr":[74.2,78.8,80.7,83.8,85.5,88.0,91.6,96.7]}},{"id":"013120-0005","nm":"삼호주공아파트 주택재건축정비사업외 정비기반시설공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2020-06","ed":"2024-04","s":{"amt":[6454.545,6754.545,6754.545,6754.545,6754.545,6754.545,6754.546,6754.545],"cmp":[3898.545,4645.776,5663.011,6203.375,6256.735,6465.451,6491.794,6505.303],"bal":[2556,2108.769,1091.534,551.171,497.81,289.094,262.752,249.243],"pr":[60.4,68.8,83.8,91.8,92.6,95.7,96.1,96.3]}},{"id":"013120-0006","nm":"대명동이천동 지역주택조합 공동주택 및 부대복리시설 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2020-12","ed":"2026-12","s":{"amt":[54252.817,54252.817,54252.817,54252.817,54252.817,54252.817,54252.817,54252.817],"cmp":[3933.329,3960.456,3987.582,3998.433,4014.708,4025.559,4036.41,4052.685],"bal":[50319.488,50292.361,50265.235,50254.384,50238.109,50227.258,50216.407,50200.131],"pr":[7.2,7.3,7.3,7.4,7.4,7.4,7.4,7.5]}},{"id":"013120-0007","nm":"에코델타시티18BL 민간참여 공공분양주택건설사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2020-10","ed":"2025-09","s":{"amt":[31308.083,31265.876,33415.556,null,null,null,null,null],"cmp":[19492.412,23602.61,30675.48,null,null,null,null,null],"bal":[11815.67,7663.266,2740.076,null,null,null,null,null],"pr":[62.3,75.5,91.8,null,null,null,null,null]}},{"id":"013120-0008","nm":"울산 무거 비스타동원 신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2021-03","ed":"2027-05","s":{"amt":[80010.178,80010.178,80010.178,80010.178,80010.178,80010.178,80010.178,80010.178],"cmp":[4768.607,6320.804,7120.906,7192.915,7208.917,7216.918,7328.932,8257.05],"bal":[75241.572,73689.374,72889.272,72817.263,72801.261,72793.26,72681.246,71753.128],"pr":[6.0,7.9,8.9,9.0,9.0,9.0,9.2,10.3]}},{"id":"013120-0009","nm":"울산 무거 비스타동원신축 토목공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2021-03","ed":"2027-05","s":{"amt":[13211.691,13211.691,13211.691,13211.691,13211.691,13211.691,13211.691,13211.691],"cmp":[6822.517,6772.313,6913.678,6920.284,6928.211,6918.963,6936.138,7398.547],"bal":[6389.174,6439.378,6298.013,6291.407,6283.48,6292.728,6275.553,5813.144],"pr":[51.6,51.3,52.3,52.4,52.4,52.4,52.5,56.0]}},{"id":"013120-0010","nm":"해운대구 중동 생활숙박시설 신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2021-06","ed":"2026-09","s":{"amt":[110988.909,110988.909,110988.909,110988.909,110988.909,113055.791,113055.792,113055.791],"cmp":[33696.233,38224.58,43507.652,52142.589,64695.435,75476.046,85029.261,98742.928],"bal":[77292.676,72764.329,67481.257,58846.32,46293.474,37579.745,28026.531,14312.863],"pr":[30.4,34.4,39.2,47.0,58.3,66.8,75.2,87.3]}},{"id":"013120-0011","nm":"일광지구4BL 민간참여 공공주택건설사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2021-09","ed":"2025-12","s":{"amt":[81062.036,81062.036,81062.036,81062.036,81062.036,null,null,null],"cmp":[22259.635,33130.054,42549.463,52049.933,64533.487,null,null,null],"bal":[58802.401,47931.982,38512.573,29012.103,16528.549,null,null,null],"pr":[27.5,40.9,52.5,64.2,79.6,null,null,null]}},{"id":"013120-0012","nm":"창원무동 27BL 동원로얄듀크 신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2021-09","ed":"2029-02","s":{"amt":[85871.224,85871.224,85871.224,85871.224,85871.225,85871.224,85871.224,85871.224],"cmp":[1202.197,1202.197,1210.784,1227.959,1236.546,1236.546,1236.546,1245.133],"bal":[84669.027,84669.027,84660.44,84643.266,84634.679,84634.678,84634.679,84626.092],"pr":[1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.5]}},{"id":"013120-0013","nm":"부암2차 동원로얄듀크 신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2022-02","ed":"2025-05","s":{"amt":[88394.571,93206.472,93206.472,93206.472,null,null,null,null],"cmp":[51772.701,63939.64,74061.862,87269.219,null,null,null,null],"bal":[36621.871,29266.832,19144.61,5937.252,null,null,null,null],"pr":[58.6,68.6,79.5,93.6,null,null,null,null]}},{"id":"013120-0014","nm":"부암2차 동원로얄듀크 신축공사중 토목공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2022-02","ed":"2025-05","s":{"amt":[18238.252,18238.252,18238.252,18238.252,null,null,null,null],"cmp":[15154.163,15482.452,16735.42,18150.708,null,null,null,null],"bal":[3084.088,2755.8,1502.832,87.544,null,null,null,null],"pr":[83.1,84.9,91.8,99.5,null,null,null,null]}},{"id":"013120-0015","nm":"사상주례동공동주택 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-05","ed":"2025-04","s":{"amt":[32027.829,32027.829,32692.3,null,null,null,null,null],"cmp":[23181.743,28200.503,32692.3,null,null,null,null,null],"bal":[8846.086,3827.326,0,null,null,null,null,null],"pr":[72.4,88.0,100.0,null,null,null,null,null]}},{"id":"013120-0016","nm":"광주 중앙공원 민간공원조성 특례사업 공동주택 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-04","ed":"2026-03","s":{"amt":[215188.85,215188.85,203753.696,206851.986,209390.978,217987.788,null,null],"cmp":[81750.244,103505.837,126315.855,150395.487,170128.305,199089.372,null,null],"bal":[133438.606,111683.013,77437.841,56456.498,39262.673,18898.416,null,null],"pr":[38.0,48.1,62.0,72.7,81.2,91.3,null,null]}},{"id":"013120-0017","nm":"광주 중앙공원 민간공원조성 특례사업 공원조성공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2022-04","ed":"2025-12","s":{"amt":[53181.818,53181.818,53181.818,53181.818,53181.818,50649.818,null,null],"cmp":[19964.455,24835.909,28654.364,35716.909,43226.182,49727.991,null,null],"bal":[33217.364,28345.909,24527.454,17464.909,9955.636,921.827,null,null],"pr":[37.5,46.7,53.9,67.2,81.3,98.2,null,null]}},{"id":"013120-0018","nm":"양산시 덕계동 공동주택 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-05","ed":"2025-08","s":{"amt":[68171.225,68171.225,68737.529,68876.224,null,null,null,null],"cmp":[35435.403,43200.105,50808.497,63252.098,null,null,null,null],"bal":[32735.822,24971.12,17929.032,5624.126,null,null,null,null],"pr":[52.0,63.4,73.9,91.8,null,null,null,null]}},{"id":"013120-0019","nm":"양정산호아파트 소규모재건축사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2023-10","ed":"2026-11","s":{"amt":[129663.36,129663.36,129663.36,129663.36,null,null,null,null],"cmp":[null,0,0,0,null,null,null,null],"bal":[129663.36,129663.36,129663.36,129663.36,null,null,null,null],"pr":[null,0.0,0.0,0.0,null,null,null,null]}},{"id":"013120-0020","nm":"대연맨션 소규모재건축정비사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-09","ed":"2026-07","s":{"amt":[49991.088,58134.352,58134.352,58134.352,58134.353,58134.352,58134.352,58134.352],"cmp":[1924.657,3697.345,4871.659,7220.287,9534.034,13056.976,15312.588,18928.545],"bal":[48066.432,54437.008,53262.693,50914.066,48600.319,45077.377,42821.764,39205.807],"pr":[3.9,6.4,8.4,12.4,16.4,22.5,26.3,32.6]}},{"id":"013120-0021","nm":"사상공원민간공원조성 특례사업 도시계획시설 도로개설공사및대체구거공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2023-04","ed":"2026-12","s":{"amt":[3149.273,3149.273,3149.273,3149.273,3149.273,3149.273,3149.273,3149.273],"cmp":[1013.121,947.616,1071.698,1435.753,1568.968,1605.184,1613.372,1828.783],"bal":[2136.152,2201.657,2077.575,1713.519,1580.305,1544.088,1535.9,1320.49],"pr":[32.2,30.1,34.0,45.6,49.8,51.0,51.2,58.1]}},{"id":"013120-0022","nm":"부산진구 노유자시설(노인복지시설)신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-04","ed":"2025-08","s":{"amt":[1359.5,1359.5,1359.5,1359.5,null,null,null,null],"cmp":[730.459,763.903,813.117,1080.395,null,null,null,null],"bal":[629.041,595.597,546.383,279.105,null,null,null,null],"pr":[53.7,56.2,59.8,79.5,null,null,null,null]}},{"id":"013120-0023","nm":"사상~해운대 고속도로 민간투자사업 건설공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2023-05","ed":"2030-12","s":{"amt":[62655,79672.44,79672.44,79672.44,79672.44,79672.44,79672.44,79672.44],"cmp":[null,0,0,0,0,0,0,0],"bal":[62655,79672.44,79672.44,79672.44,79672.44,79672.44,79672.44,79672.44],"pr":[null,0.0,0.0,0.0,0.0,0.0,0.0,0.0]}},{"id":"013120-0024","nm":"금천지구 자연재해위험개선지구 정비사업","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-06","ed":"2027-10","s":{"amt":[5282.082,5282.082,4095.818,4095.818,4095.818,4309.662,4309.662,4382.465],"cmp":[103.001,163.745,183.493,284.659,337.086,598.612,915.803,1008.405],"bal":[5179.081,5118.337,3912.325,3811.159,3758.732,3711.05,3393.859,3374.06],"pr":[2.0,3.1,4.5,6.9,8.2,13.9,21.2,23.0]}},{"id":"013120-0025","nm":"광주 중앙공원 민간공원조성 특례사업 환승주차장및소공원조성공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-06","ed":null,"s":{"amt":[5718.6,5718.6,5718.6,5718.6,5718.6,6007.744,null,null],"cmp":[223.597,833.772,2011.803,3066.885,4312.968,5641.872,null,null],"bal":[5495.003,4884.828,3706.797,2651.715,1405.632,365.872,null,null],"pr":[3.9,14.6,35.2,53.6,75.4,93.9,null,null]}},{"id":"013120-0026","nm":"무거삼호지구 도시개발사업 부지조성공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-05","ed":"2028-07","s":{"amt":[25136.364,25136.364,25136.364,25136.364,25136.364,25136.364,25136.364,25136.364],"cmp":[null,0,0,0,0,0,1523.264,3928.814],"bal":[25136.364,25136.364,25136.364,25136.364,25136.364,25136.364,23613.1,21207.55],"pr":[null,0.0,0.0,0.0,0.0,0.0,6.1,15.6]}},{"id":"013120-0027","nm":"무거삼호지구 도시개발사업 지구외 도시계획시설 공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-05","ed":"2028-07","s":{"amt":[1724.545,1724.545,1724.545,1724.545,1724.545,1724.545,1724.545,1724.545],"cmp":[null,0,0,0,0,0,123.477,423.548],"bal":[1724.545,1724.545,1724.545,1724.545,1724.545,1724.545,1601.068,1300.997],"pr":[null,0.0,0.0,0.0,0.0,0.0,7.2,24.6]}},{"id":"013120-0028","nm":"개금2 주택재개발 정비사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2023-04","ed":"2027-09","s":{"amt":[170289.117,170289.117,170289.117,170289.117,170289.117,170289.117,170289.117,170289.117],"cmp":[null,0,0,0,0,0,0,0],"bal":[170289.117,170289.117,170289.117,170289.117,170289.117,170289.117,170289.117,170289.117],"pr":[null,0.0,0.0,0.0,0.0,0.0,0.0,0.0]}},{"id":"013120-0029","nm":"광안지역주택조합 공동주택 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2023-07","ed":null,"s":{"amt":[129712.241,129530.268,129530.268,129530.268,129530.268,129530.268,129530.268,129530.268],"cmp":[4384.274,11398.664,20323.299,30530.284,41074.048,53185.128,67407.552,76021.314],"bal":[125327.967,118131.604,109206.969,98999.984,88456.22,76345.14,62122.717,53508.954],"pr":[3.4,8.8,15.7,23.6,31.7,41.1,52.0,58.7]}},{"id":"013120-0030","nm":"문경시 하수도정비 중점관리지역 도시침수 예방사업","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-12","ed":"2026-12","s":{"amt":[4328.182,4548.109,4548.109,4548.109,4611.764,4721.864,4721.864,4705.555],"cmp":[244.975,706.776,643.103,909.167,1033.496,1381.145,1472.749,1890.221],"bal":[4083.207,3841.333,3905.006,3638.942,3578.268,3340.719,3249.114,2815.333],"pr":[5.7,15.5,14.1,20.0,22.4,29.2,31.2,40.2]}},{"id":"013120-0031","nm":"광주 중앙공원 민간공원조성 특례사업 진입도로 조성공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2024-01","ed":"2026-03","s":{"amt":[7782.136,7782.136,7782.136,7782.136,7782.137,8351.773,null,null],"cmp":[926.852,2172.772,2905.85,4272.393,5743.995,6531.087,null,null],"bal":[6855.284,5609.364,4876.286,3509.744,2038.142,1820.687,null,null],"pr":[11.9,27.9,37.3,54.9,73.8,78.2,null,null]}},{"id":"013120-0032","nm":"냉정역 비스타동원(2차)공동주택 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2024-02","ed":null,"s":{"amt":[37472.263,37472.263,37472.263,37472.263,37472.263,37472.263,37472.263,37472.263],"cmp":[null,0,0,0,0,0,0,0],"bal":[37472.263,37472.263,37472.263,37472.263,37472.263,37472.263,37472.263,37472.263],"pr":[null,0.0,0.0,0.0,0.0,0.0,0.0,0.0]}},{"id":"013120-0033","nm":"사상공원민간공원조성특례사업공동주택신축","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2024-02","ed":null,"s":{"amt":[249210.278,249210.278,249210.278,249210.278,249210.278,249210.278,249210.278,249210.278],"cmp":[null,3264.655,6653.914,9469.991,13108.461,18441.561,24796.423,30403.654],"bal":[249210.278,245945.623,242556.364,239740.287,236101.817,230768.717,224413.855,218806.624],"pr":[null,1.3,2.7,3.8,5.3,7.4,10.0,12.2]}},{"id":"013120-0034","nm":"인천검단 택지개발사업 중앙호수공원 조경공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-03","ed":"2028-06","s":{"amt":[8490.33,8490.33,8626.096,8626.096,8832.577,8832.577,8832.577,9061.42],"cmp":[null,118.865,63.833,1274.937,1684.372,2123.352,2230.226,2804.51],"bal":[8490.33,8371.466,8562.263,7351.159,7148.205,6709.226,6602.351,6256.911],"pr":[null,1.4,0.7,14.8,19.1,24.0,25.3,31.0]}},{"id":"013120-0035","nm":"광안지역주택조합 공동주택 도시계획도로공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":null,"ed":null,"s":{"amt":[2120,2120,2120,2120,2120,2120,2120,2120],"cmp":[146.704,354.676,419.336,533.18,533.18,558.832,635.788,635.788],"bal":[1973.296,1765.324,1700.664,1586.82,1586.82,1561.168,1484.212,1484.212],"pr":[6.9,16.7,19.8,25.1,25.1,26.4,30.0,30.0]}},{"id":"013120-0036","nm":"에코델타시티15BL 민간참여 공공임대주택 건설사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2024-05","ed":"2029-03","s":{"amt":[57283.5,57283.5,57283.5,57283.5,57283.5,57283.5,57283.5,57283.5],"cmp":[null,0,0,0,0,0,0,0],"bal":[57283.5,57283.5,57283.5,57283.5,57283.5,57283.5,57283.5,57283.5],"pr":[null,0.0,0.0,0.0,0.0,0.0,0.0,0.0]}},{"id":"013120-0037","nm":"(가칭)남양1중신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-08","ed":"2026-01","s":{"amt":[3942.153,3942.153,3942.153,3941.797,3941.798,3941.797,null,null],"cmp":[null,0,687.512,1874.719,2933.092,3817.237,null,null],"bal":[3942.153,3942.153,3254.641,2067.079,1008.706,124.561,null,null],"pr":[null,0.0,17.4,47.6,74.4,96.8,null,null]}},{"id":"013120-0038","nm":"부산에코델타시티 3단계 간선설치공사(2공구 관로)","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-09","ed":"2026-08","s":{"amt":[175.643,175.643,175.643,175.643,175.643,175.643,175.643,175.643],"cmp":[null,0,5.006,5.006,5.006,0,79.83,101.135],"bal":[175.643,175.643,170.637,170.637,170.637,175.643,95.813,74.508],"pr":[null,0.0,2.9,2.9,2.9,0.0,45.5,57.6]}},{"id":"013120-0039","nm":"평택브레인시티 비스타동원 신축 건축,기계,토목,조경공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2024-09","ed":"2028-03","s":{"amt":[398728.4,386623,386623,386623,416504.437,416171.5,416171.5,416171.5],"cmp":[null,0,0,0,5243.761,9571.945,17437.586,40451.87],"bal":[398728.4,386623,386623,386623,411260.676,406599.556,398733.914,375719.63],"pr":[null,0.0,0.0,0.0,1.3,2.3,4.2,9.7]}},{"id":"013120-0040","nm":"평택브레인시티 비스타동원 신축 전기공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-09","ed":"2028-03","s":{"amt":[19861.2,19251.8,19251.8,19251.8,22896,22896,22896,22896],"cmp":[null,0,0,0,0,0,0,190.037],"bal":[19861.2,19251.8,19251.8,19251.8,22896,22896,22896,22705.963],"pr":[null,0.0,0.0,0.0,0.0,0.0,0.0,0.8]}},{"id":"013120-0041","nm":"평택브레인시티 비스타동원 신축 통신공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-09","ed":"2028-03","s":{"amt":[6797.4,6588.9,6588.9,6588.9,7949.2,7949.2,7949.2,7949.2],"cmp":[null,0,0,0,0,0,9.539,10.334],"bal":[6797.4,6588.9,6588.9,6588.9,7949.2,7949.2,7939.661,7938.866],"pr":[null,0.0,0.0,0.0,0.0,0.0,0.1,0.1]}},{"id":"013120-0042","nm":"엄궁대교 건설공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-12","ed":"2029-11","s":{"amt":[null,23455.214,23455.214,21147.062,21147.062,26895.777,26895.777,26895.777],"cmp":[null,0,0,1918.039,2190.836,2326.485,2460.964,2939.708],"bal":[null,23455.214,23455.214,19229.023,18956.226,24569.293,24434.814,23956.069],"pr":[null,0.0,0.0,9.1,10.4,8.7,9.2,10.9]}},{"id":"013120-0043","nm":"광주 중앙공원 민간공원조성 특례사업 공동주택 신축공사 확장","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-04","ed":"2026-03","s":{"amt":[null,null,6847.691,4992.348,3471.928,1671.153,null,null],"cmp":[null,null,0,0,0,0,null,null],"bal":[null,null,6847.691,4992.348,3471.928,1671.153,null,null],"pr":[null,null,0.0,0.0,0.0,0.0,null,null]}},{"id":"013120-0044","nm":"광주 중앙공원 민간공원조성 특례사업 공동주택 신축공사 (옵션)","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-04","ed":"2026-03","s":{"amt":[null,null,4587.464,3344.517,null,null,null,null],"cmp":[null,null,0,0,null,null,null,null],"bal":[null,null,4587.464,3344.517,null,null,null,null],"pr":[null,null,0.0,0.0,null,null,null,null]}},{"id":"013120-0045","nm":"양산시 덕계동 공동주택 신축공사 (옵션)","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-05","ed":"2025-08","s":{"amt":[null,null,202.087,63.392,null,null,null,null],"cmp":[null,null,0,0,null,null,null,null],"bal":[null,null,202.087,63.392,null,null,null,null],"pr":[null,null,0.0,0.0,null,null,null,null]}},{"id":"013120-0046","nm":"울산중구 우정6지구(4차)주상복합신축중 건축,기계,토목,전기,통신공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2025-03","ed":"2030-01","s":{"amt":[null,null,214791.7,214791.7,214791.7,214791.7,214791.7,214791.7],"cmp":[null,null,0,0,0,0,0,0],"bal":[null,null,214791.7,214791.7,214791.7,214791.7,214791.7,214791.7],"pr":[null,null,0.0,0.0,0.0,0.0,0.0,0.0]}},{"id":"013120-0047","nm":"LHQ+광주권 건설매입임대주택 유지보수공삼(토목,조경)","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2025-03","ed":"2026-11","s":{"amt":[null,null,3849.02,3849.02,3849.02,3849.02,3849.02,3849.02],"cmp":[null,null,0,1.54,197.07,326.397,489.98,620.847],"bal":[null,null,3849.02,3847.48,3651.95,3522.623,3359.039,3228.173],"pr":[null,null,0.0,0.0,5.1,8.5,12.7,16.1]}},{"id":"013120-0048","nm":"울산중구 우정8지구(6차)주상복합신축중 건축,기계,토목,전기,통신공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2025-03","ed":"2030-09","s":{"amt":[null,null,186674.9,186674.9,186674.9,186674.9,186674.9,186674.9],"cmp":[null,null,0,0,0,0,0,0],"bal":[null,null,186674.9,186674.9,186674.9,186674.9,186674.9,186674.9],"pr":[null,null,0.0,0.0,0.0,0.0,0.0,0.0]}},{"id":"013120-0049","nm":"부산강동 공공주택지구 조경공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2025-06","ed":"2028-06","s":{"amt":[null,null,null,1500.48,1500.48,1500.48,1500.48,1500.48],"cmp":[null,null,null,0,0,0,0,0],"bal":[null,null,null,1500.48,1500.48,1500.48,1500.48,1500.48],"pr":[null,null,null,0.0,0.0,0.0,0.0,0.0]}},{"id":"013120-0050","nm":"광주중앙공원공원조성사업 공동주택 옵션공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-04","ed":"2026-03","s":{"amt":[null,null,null,null,2325.944,1207.901,null,null],"cmp":[null,null,null,null,0,0,null,null],"bal":[null,null,null,null,2325.944,1207.901,null,null],"pr":[null,null,null,null,0.0,0.0,null,null]}},{"id":"013120-0051","nm":"부산공동어시장 현대화사업","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-11","ed":"2029-11","s":{"amt":[null,null,null,null,null,27220,27220,27220],"cmp":[null,null,null,null,null,0,0,0],"bal":[null,null,null,null,null,27220,27220,27220],"pr":[null,null,null,null,null,0.0,0.0,0.0]}},{"id":"013120-0052","nm":"화정2지구 도시개발사업 부지조성공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-10","ed":"2028-11","s":{"amt":[null,null,null,null,null,10389.391,10389.391,10389.391],"cmp":[null,null,null,null,null,0,0,0],"bal":[null,null,null,null,null,10389.391,10389.391,10389.391],"pr":[null,null,null,null,null,0.0,0.0,0.0]}},{"id":"013120-0053","nm":"화정2지구 도시개발사업지구외 도시계획시설(도로:대로2-71호선)공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2025-10","ed":"2028-11","s":{"amt":[null,null,null,null,null,1852.432,1852.432,1852.432],"cmp":[null,null,null,null,null,0,0,0],"bal":[null,null,null,null,null,1852.432,1852.432,1852.432],"pr":[null,null,null,null,null,0.0,0.0,0.0]}},{"id":"013120-0054","nm":"화명2구역 재건축정비사업 공동주택 신축","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2025-12","ed":null,"s":{"amt":[null,null,null,null,null,133190,133190,133190],"cmp":[null,null,null,null,null,0,0,0],"bal":[null,null,null,null,null,133190,133190,133190],"pr":[null,null,null,null,null,0.0,0.0,0.0]}},{"id":"013120-0055","nm":"김해도시계획시설(골프장 27홀)건축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2025-12","ed":"2026-12","s":{"amt":[null,null,null,null,null,13592.727,13260.364,13260.364],"cmp":[null,null,null,null,null,0,578.152,4736.602],"bal":[null,null,null,null,null,13592.727,12682.212,8523.762],"pr":[null,null,null,null,null,0.0,4.4,35.7]}},{"id":"013120-0056","nm":"김해도시계획시설(골프장 27홀)소방공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-12","ed":"2026-12","s":{"amt":[null,null,null,null,null,null,415.455,415.455],"cmp":[null,null,null,null,null,null,0.374,0.374],"bal":[null,null,null,null,null,null,415.081,415.081],"pr":[null,null,null,null,null,null,0.1,0.1]}},{"id":"013120-0057","nm":"고양창릉 S-4BL 아파트 건설공사 6공구","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2026-03","ed":"2029-11","s":{"amt":[null,null,null,null,null,null,69063.008,69063.008],"cmp":[null,null,null,null,null,null,0,0],"bal":[null,null,null,null,null,null,69063.008,69063.008],"pr":[null,null,null,null,null,null,0.0,0.0]}},{"id":"013120-0058","nm":"서부산 행정복합타운 건립공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2026-06","ed":"2030-03","s":{"amt":[null,null,null,null,null,null,null,72367.5],"cmp":[null,null,null,null,null,null,null,0],"bal":[null,null,null,null,null,null,null,72367.5],"pr":[null,null,null,null,null,null,null,0.0]}},{"id":"013120-0059","nm":"에코델타시티3BL 민간참여 공공분양주택 건설사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2026-06","ed":"2031-07","s":{"amt":[null,null,null,null,null,null,null,64440],"cmp":[null,null,null,null,null,null,null,0],"bal":[null,null,null,null,null,null,null,64440],"pr":[null,null,null,null,null,null,null,0.0]}},{"id":"013120-0060","nm":"에코델타시티1BL 민간참여 공공분양주택 건설사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2026-06","ed":"2031-10","s":{"amt":[null,null,null,null,null,null,null,94699.75],"cmp":[null,null,null,null,null,null,null,0],"bal":[null,null,null,null,null,null,null,94699.75],"pr":[null,null,null,null,null,null,null,0.0]}},{"id":"013120-0061","nm":"안산신길2 A-1,3BL 아파트 건설공사 3공구","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2026-06","ed":"2029-10","s":{"amt":[null,null,null,null,null,null,null,26589.657],"cmp":[null,null,null,null,null,null,null,0],"bal":[null,null,null,null,null,null,null,26589.657],"pr":[null,null,null,null,null,null,null,0.0]}}],"summary":{"amt":[2382409,2424172,2832020,2766862,2479709,2596831,2376159,2634751],"cmp":[384099,472808,563291,601715,502524,514707,294087,360071],"bal":[1998310,1951364,2268729,2165146,1977184,2082124,2082072,2274680]},"declared":[null,null,null,null,null,null,null,null],"dom":[1998310,1951364,2268729,2165146,1977184,2082124,2082072,2274680],"ovs":[null,null,null,null,null,null,null,null],"segList":["건축","기타","토목"],"seg":{"건축":[1516529,1450089,1792987,1729685,1569995,1650963,1666362,1806921],"기타":[399526,403008,379783,343062,316624,339146,325671,378609],"토목":[82255,98267,95958,92399,90565,92014,90039,89150]}};</script>
+<script>
+(function(){
+ var fq=DATA.fq, K=fq.length-1, S=DATA.sites;
+ // 라벨은 입도에서 끌어온다 — 부문 공시 회사에 '현장'이라 쓰면 없는 정밀도를 주장한다
+ var UNIT=(DATA.grain==='project')?'현장':'부문';
+ var eok=function(v){return v==null?null:Math.round(v/100)};
+ var fmt=function(v){return v==null?'—':v.toLocaleString('ko-KR')};
+
+ // ── 차트: 공종별 누적 잔고 ────────────────────────────────
+ // 차트는 **격리해서** 그린다. Chart.js가 못 뜨면(오프라인 스냅샷·벤더 파일 유실)
+ // 예외가 같은 스코프의 표 렌더까지 죽여 페이지가 통째로 빈 화면이 된다.
+ try{
+  if(typeof Chart!=='function') throw new Error('Chart.js 로드 실패');
+  var PAL=['#60a5fa','#4ade80','#fbbf24','#f87171','#a78bfa','#22d3ee','#fb923c'];
+  var ds=DATA.segList.map(function(g,i){return{
+    label:g, data:DATA.seg[g].map(eok), backgroundColor:PAL[i%PAL.length],
+    borderWidth:0, stack:'s'};});
+  new Chart(document.getElementById('cBal'),{type:'bar',data:{labels:fq,datasets:ds},
+   options:{responsive:true,maintainAspectRatio:false,animation:false,
+    interaction:{mode:'index',intersect:false},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#5d6675',font:{size:10}}},
+      y:{stacked:true,grid:{color:'#2a2f3a'},ticks:{color:'#5d6675',font:{size:10},
+        callback:function(v){return v.toLocaleString('ko-KR')}}}},
+    plugins:{legend:{labels:{color:'#98a1b0',boxWidth:10,font:{size:10.5}}},
+     tooltip:{callbacks:{label:function(c){return c.dataset.label+' '+
+       (c.parsed.y==null?'—':c.parsed.y.toLocaleString('ko-KR'))+'억'}}}}}});
+ }catch(err){
+  var box=document.getElementById('cBal');
+  if(box&&box.parentNode){box.parentNode.innerHTML=
+    '<div style="color:#5d6675;font-size:11.5px;padding:22px;text-align:center">'+
+    '차트를 그리지 못했습니다 ('+String(err&&err.message||err)+'). 아래 표는 정상입니다.</div>';}
+ }
+
+ // ── 현장 표 ──────────────────────────────────────────────
+ try{
+ var tb=document.querySelector('#tb tbody'), q=document.getElementById('q'),
+     fSeg=document.getElementById('fSeg'), fReg=document.getElementById('fReg'),
+     onlyLive=document.getElementById('onlyLive');
+ [['seg',fSeg,DATA.segList],['reg',fReg,['국내','해외']]].forEach(function(x){
+   x[2].forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;x[1].appendChild(o)})});
+ var sortK='bal', sortD=-1, maxAmt=1;
+ S.forEach(function(s){var a=s.s.amt[K]; if(a&&a>maxAmt)maxAmt=a});
+
+ function rows(){
+  var t=(q.value||'').trim().toLowerCase();
+  return S.filter(function(s){
+   if(onlyLive.checked && !s.s.bal[K]) return false;
+   if(fSeg.value && s.seg!==fSeg.value) return false;
+   if(fReg.value && s.reg!==fReg.value) return false;
+   if(t && (s.nm+' '+s.cl).toLowerCase().indexOf(t)<0) return false;
+   return true;
+  }).sort(function(a,b){
+   var x=key(a),y=key(b);
+   if(x==null&&y==null)return 0; if(x==null)return 1; if(y==null)return -1;
+   return x<y?-sortD:x>y?sortD:0;
+  });
+ }
+ function key(s){
+  if(sortK==='nm'||sortK==='cl'||sortK==='seg'||sortK==='reg')return s[sortK]||'';
+  if(sortK==='sd'||sortK==='ed')return s[sortK]||null;
+  return s.s[sortK]?s.s[sortK][K]:null;
+ }
+ function draw(){
+  var r=rows(), h=[];
+  r.forEach(function(s){
+   var a=s.s.amt[K],c=s.s.cmp[K],b=s.s.bal[K],p=s.s.pr[K];
+   h.push('<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+
+    (s.agg?' <span class="mut" style="font-size:10px;border:1px solid var(--ln);border-radius:4px;padding:0 4px">묶음</span>':'')+'</td>'+
+    '<td class="l mut">'+esc(s.cl||'—')+'</td><td class="l mut">'+esc(s.seg)+'</td>'+
+    '<td class="l mut">'+esc(s.reg)+'</td>'+
+    '<td class="mut">'+(s.sd||'—')+'</td><td class="mut">'+(s.ed||'—')+'</td>'+
+    '<td>'+fmt(eok(a))+'</td><td>'+fmt(eok(c))+'</td><td>'+fmt(eok(b))+'</td>'+
+    '<td>'+(p==null?'—':p.toFixed(0)+'%<span class="bar" style="width:'+
+      Math.max(2,Math.min(38,p*.38))+'px;margin-left:5px"></span>')+'</td></tr>');
+  });
+  tb.innerHTML=h.join('')||'<tr><td colspan="10" class="mut" style="text-align:center;padding:18px">조건에 맞는 '+UNIT+'이 없습니다</td></tr>';
+ }
+ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+ document.querySelectorAll('#tb th').forEach(function(th){
+  th.addEventListener('click',function(){
+   var k=th.dataset.k; sortD=(k===sortK)?-sortD:-1; sortK=k; draw();});
+ });
+ [q,fSeg,fReg,onlyLive].forEach(function(el){el.addEventListener('input',draw)});
+ draw();
+ }catch(err){document.querySelector('#tb tbody').innerHTML=
+   '<tr><td colspan="10" style="color:#f87171;padding:16px">현장 표 렌더 실패: '+
+   String(err&&err.message||err)+'</td></tr>';}
+
+ // ── 분기 매트릭스 ────────────────────────────────────────
+ try{
+ var top=S.slice().sort(function(a,b){return (b.s.bal[K]||0)-(a.s.bal[K]||0)}).slice(0,60);
+ document.querySelector('#mx thead').innerHTML='<tr><th class="l">'+UNIT+'</th>'+
+   fq.map(function(f){return '<th>'+f+'</th>'}).join('')+'</tr>';
+ var mb=top.map(function(s){
+  return '<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+'</td>'+
+   s.s.bal.map(function(v){return '<td'+(v==null?' class="mut"':'')+'>'+fmt(eok(v))+'</td>'}).join('')+'</tr>';
+ }).join('');
+ // 행이 0이면 머리행만 남는다 — 빈 표는 '데이터가 없다'인지 '렌더가 깨졌다'인지
+ // 구별되지 않는다. 현장 표와 같이 사유를 적어 준다.
+ document.querySelector('#mx tbody').innerHTML=mb||
+   '<tr><td colspan="'+(fq.length+1)+'" class="mut" style="text-align:center;padding:18px">'+
+   '표시할 '+UNIT+'이 없습니다</td></tr>';
+ }catch(err){document.querySelector('#mx tbody').innerHTML=
+   '<tr><td style="color:#f87171;padding:16px">매트릭스 렌더 실패: '+
+   String(err&&err.message||err)+'</td></tr>';}
+})();
+</script>
+</body></html>

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SGC E&amp;C 현장별 데이터</title>
+<style>
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;
+ --tx3:#5d6675;--a:#60a5fa;--up:#4ade80;--dn:#f87171;--wn:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;padding:0 0 60px}
+a{color:var(--a)}
+header{position:sticky;top:0;z-index:9;background:rgba(15,17,22,.94);backdrop-filter:blur(8px);
+ border-bottom:1px solid var(--ln);padding:12px clamp(12px,3vw,28px)}
+.hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;max-width:1280px;margin:0 auto}
+.hd h1{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.hd .code{font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.hd .tag{font-size:10.5px;color:var(--tx2);border:1px solid var(--ln);border-radius:999px;padding:1px 8px}
+.hd .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.hd .sp a{font-size:11px;text-decoration:none;border:1px solid var(--ln);border-radius:6px;padding:3px 9px}
+.hd .sp a:hover{border-color:var(--a)}
+main{max-width:1280px;margin:0 auto;padding:18px clamp(12px,3vw,28px)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px}
+.kpi div{background:var(--pn);border:1px solid var(--ln);border-radius:9px;padding:12px 14px}
+.kpi b{display:block;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.kpi span{display:block;font-size:10.5px;color:var(--tx3);margin-top:3px}
+.kpi i{font-style:normal;font-size:11px;font-variant-numeric:tabular-nums}
+.up{color:var(--up)}.dn{color:var(--dn)}
+section{margin-top:22px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:14px 16px}
+section h2{font-size:12.5px;font-weight:600;color:var(--tx2);margin-bottom:10px;
+ display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+section h2 em{font-style:normal;font-size:10.5px;color:var(--tx3);font-weight:400}
+.wrap{overflow-x:auto}
+/* th{position:sticky;top:0}은 **세로로 스크롤되는 조상**이 있어야 성립한다. .wrap에
+   높이 제약이 없으면 clientHeight==scrollHeight라 스크롤포트가 아니고, 머리행은 그냥
+   페이지와 함께 흘러가 버렸다(태영건설 220현장 페이지에서 측정: 3138==3138).
+   높이 제약은 화면이 넓을 때만 건다 — 좁은 화면에서 상자 안 세로 스크롤을 만들면
+   페이지 스크롤과 이중이 되어 손가락이 무엇을 미는지 알 수 없게 된다. */
+@media (min-width:768px){.wrap{max-height:70vh;overflow-y:auto}}
+.chart{position:relative;height:260px}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap}
+/* border-collapse:collapse에서는 셀 테두리가 sticky 머리행을 따라오지 않는다 —
+   밑줄은 box-shadow로 그려야 스크롤 중에도 남는다. z-index는 본문 셀 위로 띄우기 위함. */
+th{color:var(--tx3);font-weight:500;font-size:10.5px;text-align:right;cursor:pointer;
+ position:sticky;top:0;z-index:1;background:var(--pn);
+ box-shadow:inset 0 -1px 0 var(--ln);user-select:none}
+th:hover{color:var(--a)}
+th.l,td.l{text-align:left}
+td.l{max-width:340px;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:var(--pn2)}
+.mut{color:var(--tx3)}
+.bar{display:inline-block;height:5px;border-radius:3px;background:var(--a);vertical-align:middle}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ctl input,.ctl select{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;
+ color:var(--tx);font:12px inherit;padding:4px 8px}
+.ctl input{min-width:190px}
+footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
+ color:var(--tx3);font-size:10.5px;line-height:1.8}
+.note{color:var(--wn);font-size:11px;background:rgba(251,191,36,.08);
+ border:1px solid rgba(251,191,36,.25);border-radius:7px;padding:8px 11px;margin-top:14px}
+</style></head><body>
+<header><div class="hd">
+ <h1>SGC E&amp;C 현장별 데이터</h1>
+ <span class="code">016250</span>
+ <span class="tag">코스닥</span>
+ <span class="tag">건물 건설업</span>
+ <span class="sp">
+  <a href="../coverage.html">커버리지</a>
+  <a href="../index.html">회사 선택</a>
+  <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260814000203" rel="noopener noreferrer" target="_blank">DART 원문 ↗</a>
+ </span>
+</div></header>
+<main>
+
+<div class="kpi">
+ <div><b>21,938<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>수주잔고 · 2026Q2</span><i class="dn">−2,472억</i></div>
+ <div><b>42,043<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>도급액 합계</span></div>
+ <div><b>48</b><span>잔고 있는 현장</span></div>
+ <div><b>81</b><span>수록 현장(누적)</span></div>
+ <div><b>8</b><span>수록 분기 · 2024Q3–2026Q2</span></div>
+ 
+</div>
+
+<section>
+ <h2>수주잔고 추이 <em>공종별 누적 · 억원</em></h2>
+ <div class="chart"><canvas id="cBal"></canvas></div>
+</section>
+
+<section>
+ <h2>현장 목록 <em>머리행을 누르면 정렬</em></h2>
+ <div class="ctl">
+  <input id="q" type="search" placeholder="현장·발주처 검색" aria-label="현장 검색">
+  <select id="fSeg" aria-label="공종"><option value="">공종 전체</option></select>
+  <select id="fReg" aria-label="지역"><option value="">지역 전체</option></select>
+  <label style="font-size:11.5px;color:var(--tx2);display:flex;align-items:center;gap:5px">
+   <input type="checkbox" id="onlyLive" checked style="min-width:0"> 잔고 있는 현장만</label>
+ </div>
+ <div class="wrap"><table id="tb">
+  <thead><tr>
+   <th class="l" data-k="nm">현장명</th><th class="l" data-k="cl">발주처</th>
+   <th class="l" data-k="seg">공종</th><th class="l" data-k="reg">지역</th>
+   <th data-k="sd">착공</th><th data-k="ed">완공예정</th>
+   <th data-k="amt">도급액</th><th data-k="cmp">완성공사액</th>
+   <th data-k="bal">계약잔액</th><th data-k="pr">진행률</th>
+  </tr></thead><tbody></tbody>
+ </table></div>
+</section>
+
+<section>
+ <h2>분기 매트릭스 <em>현장 × 분기 계약잔액(억) · 상위 60개</em></h2>
+ <div class="wrap"><table id="mx"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<div class="note">이 회사는 DART 정기보고서의 <b>수주상황 표를 분기마다 다시 읽어</b> 만든
+실측 시계열입니다. 원본 7사 페이지와 달리 <b>예측(S-curve)·백테스트·실적 대비가 없습니다</b> —
+그 자산은 복제 시드에서 온 것이라 신규 편입사에는 존재하지 않습니다.
+현장은 이름으로 분기 간 연결하므로, 원문이 표기를 크게 바꾸면 다른 현장으로 잡힐 수 있습니다.
+「공시 총계」가 있으면 원문이 직접 적은 수주잔고 합계입니다. <b>묶음</b> 표시가 붙은 행은
+원문이 개별 기재를 생략하고 '기타현장'처럼 한 줄로 합쳐 적은 <b>나머지</b>이며,
+합계를 맞추기 위해 집계에는 포함하되 현장 수에서는 빼고 셉니다.</div>
+</main>
+<footer>출처 DART 정기보고서 II. 사업의 내용 — 수주상황. 단위 억원(원문 백만원 환산).
+2026Q2 정기보고서 기준. 참고용 · 투자조언 아님.</footer>
+<script src="../vendor/chart.umd.min.js"></script>
+<script>const DATA={"recon":[null,null,null,null,null,null,null,null],"reconOver":[],"aggFix":[],"co":"SGC E&C","stock":"016250","slug":"016250","market":"코스닥","industry":"건물 건설업","fq":["2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1","2026Q2"],"codeGen":"2026Q2","grain":"project","src":{"2024Q3":"20241113000723","2024Q4":"20250318000687","2025Q1":"20250514001151","2025Q2":"20250904000348","2025Q3":"20251114000471","2025Q4":"20260311004333","2026Q1":"20260514001091","2026Q2":"20260814000203"},"sites":[{"id":"016250-0001","nm":"청주 스마트에너지센터 건설공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2020-12","ed":"2023-08","s":{"amt":[66814,66814,67314,67314,null,null,null,null],"cmp":[66528,66528,67075,67077,null,null,null,null],"bal":[286,286,239,237,null,null,null,null],"pr":[99.6,99.6,99.6,99.6,null,null,null,null]}},{"id":"016250-0002","nm":"광양바이오매스 발전소 EPC 건설공사 기자재 구매","cl":"","reg":"국내","seg":"플랜트","agg":false,"sd":"2022-02","ed":"2026-10","s":{"amt":[50557,50557,51956,52657,52657,52657,52657,53367],"cmp":[36434,38443,40988,43775,46022,46901,47830,49710],"bal":[14123,12114,10968,8882,6635,5756,4827,3657],"pr":[72.1,76.0,78.9,83.1,87.4,89.1,90.8,93.1]}},{"id":"016250-0003","nm":"도쿠야마 K-IPA Project","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2022-01","ed":"2024-02","s":{"amt":[98966,null,null,null,null,null,null,null],"cmp":[97789,null,null,null,null,null,null,null],"bal":[1177,null,null,null,null,null,null,null],"pr":[98.8,null,null,null,null,null,null,null]}},{"id":"016250-0004","nm":"롯데케미칼 여수 HEC Project","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2022-06","ed":"2025-07","s":{"amt":[121806,121806,121806,121806,121806,121806,null,null],"cmp":[116495,117568,118765,118773,120692,120692,null,null],"bal":[5311,4238,3041,3033,1114,1114,null,null],"pr":[95.6,96.5,97.5,97.5,99.1,99.1,null,null]}},{"id":"016250-0005","nm":"Nexlene 2nd Value-up 공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2022-09","ed":"2024-12","s":{"amt":[154902,null,null,null,null,null,null,null],"cmp":[152984,null,null,null,null,null,null,null],"bal":[1918,null,null,null,null,null,null,null],"pr":[98.8,null,null,null,null,null,null,null]}},{"id":"016250-0006","nm":"인니 LINE Project","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2022-08","ed":"2025-01","s":{"amt":[53530,53530,53530,null,null,null,null,null],"cmp":[49189,50582,51671,null,null,null,null,null],"bal":[4341,2948,1859,null,null,null,null,null],"pr":[91.9,94.5,96.5,null,null,null,null,null]}},{"id":"016250-0007","nm":"울산 친환경 보일러 발전 개선사업","cl":"","reg":"국내","seg":"플랜트","agg":false,"sd":"2023-05","ed":"2025-09","s":{"amt":[276500,276500,276500,276500,null,null,null,null],"cmp":[145957,211713,248984,268671,null,null,null,null],"bal":[130543,64787,27516,7829,null,null,null,null],"pr":[52.8,76.6,90.0,97.2,null,null,null,null]}},{"id":"016250-0008","nm":"아산 E-Ray 자가발전설비 Project 기본설계 용역","cl":"","reg":"국내","seg":"플랜트","agg":false,"sd":"2024-05","ed":"2024-09","s":{"amt":[230,null,null,null,null,null,null,null],"cmp":[199,null,null,null,null,null,null,null],"bal":[31,null,null,null,null,null,null,null],"pr":[86.5,null,null,null,null,null,null,null]}},{"id":"016250-0009","nm":"UHC Project - 기술지원","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-06","ed":"2024-10","s":{"amt":[1351,null,null,null,null,null,null,null],"cmp":[382,null,null,null,null,null,null,null],"bal":[969,null,null,null,null,null,null,null],"pr":[28.3,null,null,null,null,null,null,null]}},{"id":"016250-0010","nm":"UHC Project - 구매","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-07","ed":"2024-07","s":{"amt":[2615,null,null,null,null,null,null,null],"cmp":[2020,null,null,null,null,null,null,null],"bal":[595,null,null,null,null,null,null,null],"pr":[77.2,null,null,null,null,null,null,null]}},{"id":"016250-0011","nm":"이천 스마트에너지센터 건설공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2020-08","ed":"2023-05","s":{"amt":[82150,82150,null,null,null,null,null,null],"cmp":[77357,77400,null,null,null,null,null,null],"bal":[4793,4750,null,null,null,null,null,null],"pr":[94.2,94.2,null,null,null,null,null,null]}},{"id":"016250-0012","nm":"OCIKUMHO ME1 Project","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-12","ed":"2025-10","s":{"amt":[188445,189939,196309,205963,196354,204204,206024,206757],"cmp":[26542,63700,99486,103733,168452,189908,200282,204132],"bal":[161903,126239,96823,102230,27902,14297,5742,2625],"pr":[14.1,33.5,50.7,50.4,85.8,93.0,97.2,98.7]}},{"id":"016250-0013","nm":"OCIM MP7 Project","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-12","ed":"2025-09","s":{"amt":[146639,148077,155800,145888,155852,164736,166795,166911],"cmp":[17778,36609,76511,67821,134635,153777,162507,165689],"bal":[128861,111468,79289,78067,21217,10959,4289,1222],"pr":[12.1,24.7,49.1,46.5,86.4,93.3,97.4,99.3]}},{"id":"016250-0014","nm":"SEPC Ethylene Cracker Expansion Project","cl":"","reg":"국내","seg":"플랜트","agg":false,"sd":"2024-01","ed":"2026-03","s":{"amt":[688470,651149,739881,721764,721683,743887,756880,763165],"cmp":[66621,129485,226821,197819,449297,582812,656029,697882],"bal":[621849,521664,513060,523945,272387,161074,100851,65283],"pr":[9.7,19.9,30.7,27.4,62.3,78.3,86.7,91.4]}},{"id":"016250-0015","nm":"APOC IPA Project","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-02","ed":"2026-10","s":{"amt":[256536,266203,278189,269276,269976,276678,280354,282971],"cmp":[4724,9976,19842,41745,54954,104923,140206,175643],"bal":[251812,256227,258347,227531,215022,171755,140148,107328],"pr":[1.8,3.7,7.1,15.5,20.4,37.9,50.0,62.1]}},{"id":"016250-0016","nm":"SIPCHEM PDH/PP DBN","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-07","ed":"2026-10","s":{"amt":[220252,227009,251162,248162,249443,255096,259085,261369],"cmp":[937,4660,12192,28272,46039,65606,84515,120580],"bal":[219314,222349,238970,219889,203404,189491,174570,140790],"pr":[0.4,2.1,4.9,11.4,18.5,25.7,32.6,46.1]}},{"id":"016250-0017","nm":"SIPCHEM EVA DBN","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-07","ed":"2027-10","s":{"amt":[245516,251382,271728,262317,263805,269667,274080,276738],"cmp":[3014,25649,34005,46600,48135,66274,85437,99482],"bal":[242502,225733,237723,215716,215670,203393,188643,177256],"pr":[1.2,10.2,12.5,17.8,18.2,24.6,31.2,35.9]}},{"id":"016250-0018","nm":"용인 남사면 북리 저온물류센터 개발사업","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2021-04","ed":"2023-06","s":{"amt":[43166,43166,43166,43166,43166,43166,43166,43166],"cmp":[30939,31094,31686,31686,31715,31873,31873,31873],"bal":[12227,12072,11480,11480,11451,11293,11293,11293],"pr":[71.7,72.0,73.4,73.4,73.5,73.8,73.8,73.8]}},{"id":"016250-0019","nm":"오스템글로벌 송도사옥 2단계 신축공사 중 토목공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2023-11","ed":"2025-03","s":{"amt":[6300,6540,6540,6540,null,null,null,null],"cmp":[5216,5695,5686,5686,null,null,null,null],"bal":[1084,845,854,854,null,null,null,null],"pr":[82.8,87.1,86.9,86.9,null,null,null,null]}},{"id":"016250-0020","nm":"SFA 아산사업장 복합조립장 증축공사(1차)","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-01","ed":"2024-07","s":{"amt":[4000,3700,3700,3700,null,null,null,null],"cmp":[3203,3493,3493,3493,null,null,null,null],"bal":[797,207,207,207,null,null,null,null],"pr":[80.1,94.4,94.4,94.4,null,null,null,null]}},{"id":"016250-0021","nm":"청주 RO멤브레인 3호기 증설 공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-03","ed":"2025-11","s":{"amt":[47100,47100,49218,49218,49218,null,null,null],"cmp":[6544,14535,24043,40660,43811,null,null,null],"bal":[40556,32565,25175,8558,5407,null,null,null],"pr":[13.9,30.9,48.9,82.6,89.0,null,null,null]}},{"id":"016250-0022","nm":"오스템글로벌 송도사옥 2단계 신축공사 중 건축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2024-04","ed":"2025-06","s":{"amt":[59500,59500,59500,59500,59500,null,null,null],"cmp":[13297,29843,43244,51107,52330,null,null,null],"bal":[46203,29657,16256,8393,7170,null,null,null],"pr":[22.3,50.2,72.7,85.9,87.9,null,null,null]}},{"id":"016250-0023","nm":"세종 인쇄공장 신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-06","ed":"2025-04","s":{"amt":[92345,96619,97013,97013,null,null,null,null],"cmp":[63458,82230,88328,88328,null,null,null,null],"bal":[28887,14389,8685,8685,null,null,null,null],"pr":[68.7,85.1,91.0,91.0,null,null,null,null]}},{"id":"016250-0024","nm":"포천에코그린 대지조성공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2018-08","ed":"2025-08","s":{"amt":[35690,35690,38004,38004,null,null,null,null],"cmp":[34535,35044,37379,37572,null,null,null,null],"bal":[1155,646,625,432,null,null,null,null],"pr":[96.8,98.2,98.4,98.9,null,null,null,null]}},{"id":"016250-0025","nm":"동서녹색평화도로(양구 고방산지구) 개설공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2018-08","ed":"2024-07","s":{"amt":[10806,10891,10891,10891,null,null,null,null],"cmp":[10085,10717,10717,10717,null,null,null,null],"bal":[721,174,174,174,null,null,null,null],"pr":[93.3,98.4,98.4,98.4,null,null,null,null]}},{"id":"016250-0026","nm":"태화 자연재해위험개선지구 정비사업","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2020-12","ed":"2026-03","s":{"amt":[3870,4881,4881,4881,4881,4881,null,null],"cmp":[2576,2935,3341,3486,3805,3962,null,null],"bal":[1294,1946,1540,1395,1076,919,null,null],"pr":[66.6,60.1,68.4,71.4,78.0,81.2,null,null]}},{"id":"016250-0027","nm":"행정중심복합도시 자동크린넷 5차","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2021-08","ed":"2026-08","s":{"amt":[4452,4452,4452,4452,4452,4452,4856,4856],"cmp":[2435,2758,2943,3181,3494,3243,3302,3553],"bal":[2017,1694,1509,1271,958,1209,1554,1303],"pr":[54.7,61.9,66.1,71.5,78.5,72.8,68.0,73.2]}},{"id":"016250-0028","nm":"장평 소규모 공공하수처리시설 설치공사","cl":"","reg":"국내","seg":"환경","agg":false,"sd":"2021-11","ed":"2024-11","s":{"amt":[2774,2774,null,null,null,null,null,null],"cmp":[2503,2703,null,null,null,null,null,null],"bal":[271,71,null,null,null,null,null,null],"pr":[90.2,97.4,null,null,null,null,null,null]}},{"id":"016250-0029","nm":"부천원종 B2BL 아파트 건설공사 1공구","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-05","ed":"2026-03","s":{"amt":[52451,54116,54116,56359,56359,56239,56239,null],"cmp":[32047,39487,44578,48021,47656,52630,53114,null],"bal":[20404,14629,9538,8338,8703,3609,3125,null],"pr":[61.1,73.0,82.4,85.2,84.6,93.6,94.4,null]}},{"id":"016250-0030","nm":"과천지식정보타운 공공주택지구 공원등 전기공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2021-12","ed":"2026-12","s":{"amt":[852,906,906,906,957,957,957,957],"cmp":[222,239,252,262,272,293,374,581],"bal":[630,667,654,644,685,664,583,376],"pr":[26.1,26.4,27.8,28.9,28.4,30.6,39.1,60.7]}},{"id":"016250-0031","nm":"수원화성오산축협 가축분뇨공공처리시설 설치사업","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2022-03","ed":"2025-04","s":{"amt":[4388,4388,4388,4388,4388,null,null,null],"cmp":[3684,4183,4211,4212,4307,null,null,null],"bal":[704,205,177,176,81,null,null,null],"pr":[84.0,95.3,96.0,96.0,98.2,null,null,null]}},{"id":"016250-0032","nm":"인천 청라국제도시 더리브 오피스텔","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-03","ed":"2025-09","s":{"amt":[143301,143301,143301,null,null,null,null,null],"cmp":[90430,114796,131576,null,null,null,null,null],"bal":[52871,28505,11725,null,null,null,null,null],"pr":[63.1,80.1,91.8,null,null,null,null,null]}},{"id":"016250-0033","nm":"강릉시 지변동 공동주택 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-03","ed":"2024-11","s":{"amt":[60261,62762,null,null,null,null,null,null],"cmp":[55036,62635,null,null,null,null,null,null],"bal":[5225,127,null,null,null,null,null,null],"pr":[91.3,99.8,null,null,null,null,null,null]}},{"id":"016250-0034","nm":"오남~수동간 도로확장포장 소방공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2022-06","ed":"2025-03","s":{"amt":[1644,1644,1644,1644,null,null,null,null],"cmp":[1603,1603,1603,1603,null,null,null,null],"bal":[41,41,41,41,null,null,null,null],"pr":[97.5,97.5,97.5,97.5,null,null,null,null]}},{"id":"016250-0035","nm":"한울본부 복합문화센터 신축 소방공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-07","ed":"2026-10","s":{"amt":[414,414,414,414,414,423,423,454],"cmp":[2,62,98,217,217,218,219,219],"bal":[412,352,316,197,197,205,204,235],"pr":[0.5,15.0,23.7,52.4,52.4,51.5,51.8,48.2]}},{"id":"016250-0036","nm":"위례 154KV 성남 지장송전선로","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2022-10","ed":"2026-03","s":{"amt":[10811,11588,11588,11588,11588,11588,12170,null],"cmp":[8288,9156,10226,10753,10822,11012,11052,null],"bal":[2523,2432,1362,835,766,576,1118,null],"pr":[76.7,79.0,88.2,92.8,93.4,95.0,90.8,null]}},{"id":"016250-0037","nm":"수원오목천동 주거복합시설 신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2022-11","ed":"2025-10","s":{"amt":[73841,73841,73841,73841,73841,null,null,null],"cmp":[32180,48226,54676,62954,70251,null,null,null],"bal":[41661,25615,19165,10887,3590,null,null,null],"pr":[43.6,65.3,74.0,85.3,95.1,null,null,null]}},{"id":"016250-0038","nm":"브레인시티 산단 진입도로(4-2구간) 개설공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2022-10","ed":"2026-12","s":{"amt":[4134,4134,4134,4134,4134,4134,4134,4134],"cmp":[446,670,840,1120,1335,1469,1578,1984],"bal":[3688,3464,3294,3014,2799,2665,2556,2150],"pr":[10.8,16.2,20.3,27.1,32.3,35.5,38.2,48.0]}},{"id":"016250-0039","nm":"해남 해리 2BL 아파트 건설공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2022-12","ed":"2026-03","s":{"amt":[19807,20068,20068,20836,21290,22257,22257,null],"cmp":[8654,11941,14192,17022,18985,19062,20540,null],"bal":[11153,8127,5876,3814,2305,3195,1717,null],"pr":[43.7,59.5,70.7,81.7,89.2,85.6,92.3,null]}},{"id":"016250-0040","nm":"22년 노후 공공임대주택 그린리모델링 공사 8-2권역(부산2)","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2023-01","ed":"2025-03","s":{"amt":[4504,4504,4504,4504,null,null,null,null],"cmp":[2741,2840,3235,3235,null,null,null,null],"bal":[1763,1664,1269,1269,null,null,null,null],"pr":[60.9,63.1,71.8,71.8,null,null,null,null]}},{"id":"016250-0041","nm":"고성 더리브 스위트엠 신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-02","ed":"2025-05","s":{"amt":[96789,97001,97001,null,null,null,null,null],"cmp":[66057,80777,94462,null,null,null,null,null],"bal":[30732,16224,2539,null,null,null,null,null],"pr":[68.2,83.3,97.4,null,null,null,null,null]}},{"id":"016250-0042","nm":"김해 강서지역 전력구공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-05","ed":"2028-05","s":{"amt":[32107,32107,32107,32107,32107,33645,33645,33645],"cmp":[3853,4501,5685,6219,6784,7261,7585,7705],"bal":[28254,27606,26422,25888,25323,26384,26060,25940],"pr":[12.0,14.0,17.7,19.4,21.1,21.6,22.5,22.9]}},{"id":"016250-0043","nm":"상방 면단위 공공하수처리시설","cl":"","reg":"국내","seg":"환경","agg":false,"sd":"2023-07","ed":"2026-12","s":{"amt":[4354,4354,4354,4354,4329,4329,4329,4329],"cmp":[561,1033,1217,1378,1654,2295,2525,2797],"bal":[3793,3321,3137,2976,2675,2034,1804,1532],"pr":[12.9,23.7,28.0,31.6,38.2,53.0,58.3,64.6]}},{"id":"016250-0044","nm":"계신 소규모 공공하수처리시설","cl":"","reg":"국내","seg":"환경","agg":false,"sd":"2023-06","ed":"2026-06","s":{"amt":[2221,2221,2221,2221,2221,2221,2345,2345],"cmp":[689,737,776,908,1114,1236,1497,1589],"bal":[1532,1484,1445,1313,1107,985,848,756],"pr":[31.0,33.2,34.9,40.9,50.2,55.7,63.8,67.8]}},{"id":"016250-0045","nm":"까치울정수장 고도정수처리시설 설치공사","cl":"","reg":"국내","seg":"환경","agg":false,"sd":"2024-05","ed":"2027-02","s":{"amt":[12732,12732,12950,12950,12950,12950,12950,12950],"cmp":[735,1097,1320,2094,2455,2983,3474,4427],"bal":[11997,11635,11630,10856,10495,9967,9476,8523],"pr":[5.8,8.6,10.2,16.2,19.0,23.0,26.8,34.2]}},{"id":"016250-0046","nm":"남포 마을하수도 정비사업 토목건축기계공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2023-08","ed":"2026-12","s":{"amt":[3174,3174,3174,3174,3174,3174,3104,3104],"cmp":[734,1055,1323,1536,1864,2087,2319,2355],"bal":[2440,2119,1851,1638,1310,1087,785,749],"pr":[23.1,33.2,41.7,48.4,58.7,65.8,74.7,75.9]}},{"id":"016250-0047","nm":"군포대야미 A-2BL 아파트건설공사 1공구","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2023-12","ed":"2029-01","s":{"amt":[148756,148756,148756,148756,148756,148756,154390,154348],"cmp":[280,283,283,932,2777,5220,10175,18639],"bal":[148476,148473,148473,147824,145979,143536,144215,135709],"pr":[0.2,0.2,0.2,0.6,1.9,3.5,6.6,12.1]}},{"id":"016250-0048","nm":"개정분구 하수관거 정비공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2023-12","ed":"2027-09","s":{"amt":[7181,7181,7444,7444,7444,7460,7460,7460],"cmp":[215,401,485,727,1333,1798,2025,3169],"bal":[6966,6780,6959,6717,6111,5662,5435,4291],"pr":[3.0,5.6,6.5,9.8,17.9,24.1,27.1,42.5]}},{"id":"016250-0049","nm":"광주 진월동 지역주택조합 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2024-09","ed":"2027-06","s":{"amt":[108694,108694,109750,109750,109750,109750,109750,109750],"cmp":[1565,5167,8569,12048,16923,23316,29873,35658],"bal":[107129,103527,101181,97702,92827,86434,79877,74092],"pr":[1.4,4.8,7.8,11.0,15.4,21.2,27.2,32.5]}},{"id":"016250-0050","nm":"인천발 KTX 전력설비 신설공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-02","ed":"2027-02","s":{"amt":[3353,3353,3353,3353,3353,3353,3448,3448],"cmp":[76,210,298,423,592,956,1309,1663],"bal":[3277,3143,3055,2930,2761,2397,2139,1785],"pr":[2.3,6.3,8.9,12.6,17.7,28.5,38.0,48.2]}},{"id":"016250-0051","nm":"칠산분기 전력구공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-03","ed":"2027-07","s":{"amt":[33556,33556,33556,33556,33556,33556,33556,33556],"cmp":[1306,2234,2965,3886,4829,6210,7375,8702],"bal":[32250,31322,30591,29670,28727,27346,26181,24854],"pr":[3.9,6.7,8.8,11.6,14.4,18.5,22.0,25.9]}},{"id":"016250-0052","nm":"경화구역 재개발정비사업","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-03","ed":"2028-02","s":{"amt":[143343,143343,143343,143343,143343,143343,143343,143343],"cmp":[295,295,295,295,295,295,295,295],"bal":[143048,143048,143048,143048,143048,143048,143048,143048],"pr":[0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2]}},{"id":"016250-0053","nm":"위례 송전선로 토사운반 용역","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-04","ed":"2025-03","s":{"amt":[249,249,249,249,null,null,null,null],"cmp":[162,240,240,240,null,null,null,null],"bal":[87,9,9,9,null,null,null,null],"pr":[65.1,96.4,96.4,96.4,null,null,null,null]}},{"id":"016250-0054","nm":"신촌2구역 주택재건축정비사업 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2024-06","ed":"2027-11","s":{"amt":[67299,67299,67299,67299,69299,69299,69299,69299],"cmp":[237,1431,1901,2026,3824,7352,13061,19430],"bal":[67062,65868,65398,65273,65475,61947,56238,49869],"pr":[0.4,2.1,2.8,3.0,5.5,10.6,18.8,28.0]}},{"id":"016250-0055","nm":"진두항 건설공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-07","ed":"2027-07","s":{"amt":[3676,3676,3676,3676,3676,3676,3625,3625],"cmp":[4,102,123,275,686,1305,1437,1585],"bal":[3672,3574,3553,3401,2990,2371,2188,2040],"pr":[0.1,2.8,3.3,7.5,18.7,35.5,39.6,43.7]}},{"id":"016250-0056","nm":"울산 회수보일러 2호기(RB2) BFBC 전환 컨설팅(기본설계) 용역","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-11","ed":"2025-07","s":{"amt":[null,1250,1250,1250,1250,1250,null,null],"cmp":[null,103,478,960,1168,1168,null,null],"bal":[null,1147,772,290,82,82,null,null],"pr":[null,8.2,38.2,76.8,93.4,93.4,null,null]}},{"id":"016250-0057","nm":"죽전역 코아루 더리브 주상복합 외부석재 보수공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-10","ed":"2025-01","s":{"amt":[null,1500,null,null,null,null,null,null],"cmp":[null,462,null,null,null,null,null,null],"bal":[null,1038,null,null,null,null,null,null],"pr":[null,30.8,null,null,null,null,null,null]}},{"id":"016250-0058","nm":"345KV 신강서S/S 토건공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-11","ed":"2027-10","s":{"amt":[null,10564,10564,10564,10564,10564,10564,10564],"cmp":[null,14,361,660,1147,1405,2319,2927],"bal":[null,10550,10203,9904,9417,9159,8245,7637],"pr":[null,0.1,3.4,6.2,10.9,13.3,22.0,27.7]}},{"id":"016250-0059","nm":"동해안변환소#1 AC배후계통연결 전력구공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2024-11","ed":"2026-07","s":{"amt":[null,32073,32073,32073,32073,32073,32073,34970],"cmp":[null,180,1334,5930,11463,19755,24614,28217],"bal":[null,31893,30739,26143,20610,12318,7459,6753],"pr":[null,0.6,4.2,18.5,35.7,61.6,76.7,80.7]}},{"id":"016250-0060","nm":"울산다운2 A-10BL 아파트 건설공사 8공구","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2024-12","ed":"2027-12","s":{"amt":[null,49982,49982,49982,49982,49982,49982,49982],"cmp":[null,71,71,94,149,1828,3864,7923],"bal":[null,49911,49911,49888,49833,48154,46118,42059],"pr":[null,0.1,0.1,0.2,0.3,3.7,7.7,15.9]}},{"id":"016250-0061","nm":"강남역 일대 대심도 빗물배수터널 건설공사","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2025-12","ed":"2030-02","s":{"amt":[null,2068,2068,2068,2068,77634,77634,77634],"cmp":[null,1840,1843,1843,1892,4702,5592,6994],"bal":[null,228,225,225,176,72933,72042,70640],"pr":[null,89.0,89.1,89.1,91.5,6.1,7.2,9.0]}},{"id":"016250-0062","nm":"셀트리온 Crater Project (1공장 완제시설 공사 프로젝트)","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-01","ed":"2026-12","s":{"amt":[null,null,118300,118300,118300,118300,118300,118300],"cmp":[null,null,2956,12115,26152,51703,83140,102475],"bal":[null,null,115344,106185,92148,66597,35160,15825],"pr":[null,null,2.5,10.2,22.1,43.7,70.3,86.6]}},{"id":"016250-0063","nm":"SCK+72K CR Expansion Project","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-06","ed":"2026-07","s":{"amt":[null,null,null,59437,70553,75316,76961,80891],"cmp":[null,null,null,273,17187,57982,71233,76152],"bal":[null,null,null,59164,53366,17334,5728,4739],"pr":[null,null,null,0.5,24.4,77.0,92.6,94.1]}},{"id":"016250-0064","nm":"세종인쇄공장 인허가보완 개선공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-06","ed":"2026-03","s":{"amt":[null,null,null,172,253,253,253,null],"cmp":[null,null,null,null,239,239,243,null],"bal":[null,null,null,172,14,14,10,null],"pr":[null,null,null,null,94.5,94.5,96.0,null]}},{"id":"016250-0065","nm":"OTSM OT1","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-08","ed":"2027-03","s":{"amt":[null,null,null,null,209480,220887,223531,224597],"cmp":[null,null,null,null,7327,17031,35550,85447],"bal":[null,null,null,null,202153,203856,187981,139150],"pr":[null,null,null,null,3.5,7.7,15.9,38.0]}},{"id":"016250-0066","nm":"테크센터 군용기 도장행거 건립공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-08","ed":"2026-11","s":{"amt":[null,null,null,null,29450,29450,29780,30060],"cmp":[null,null,null,null,1162,3551,7306,12231],"bal":[null,null,null,null,28288,25899,22474,17829],"pr":[null,null,null,null,3.9,12.1,24.5,40.7]}},{"id":"016250-0067","nm":"광주 용두동 지역주택조합 신축공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2026-01","ed":"2029-08","s":{"amt":[null,null,null,null,null,1880,188000,188000],"cmp":[null,null,null,null,null,829,3184,7021],"bal":[null,null,null,null,null,1051,184816,180979],"pr":[null,null,null,null,null,44.1,1.7,3.7]}},{"id":"016250-0068","nm":"경상북도교육청 유아교육진흥원 신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-10","ed":"2027-09","s":{"amt":[null,null,null,null,null,4997,4997,4997],"cmp":[null,null,null,null,null,67,233,515],"bal":[null,null,null,null,null,4929,4764,4482],"pr":[null,null,null,null,null,1.3,4.7,10.3]}},{"id":"016250-0069","nm":"인천가정2 B-2BL 아파트 소방시설공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2025-12","ed":"2027-12","s":{"amt":[null,null,null,null,null,1749,1749,1749],"cmp":[null,null,null,null,null,0,0,0],"bal":[null,null,null,null,null,1748,1748,1748],"pr":[null,null,null,null,null,0.0,0.0,0.0]}},{"id":"016250-0070","nm":"화성 동화2지구 지역주택조합 공동주택","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2026-01","ed":"2029-02","s":{"amt":[null,null,null,null,null,90040,90040,90040],"cmp":[null,null,null,null,null,252,4220,9761],"bal":[null,null,null,null,null,89788,85820,80279],"pr":[null,null,null,null,null,0.3,4.7,10.8]}},{"id":"016250-0071","nm":"용산국제업무지구 도시개발사업 단지조성공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-12","ed":"2029-09","s":{"amt":[null,null,null,null,null,51962,51962,51962],"cmp":[null,null,null,null,null,44,66,74],"bal":[null,null,null,null,null,51918,51896,51888],"pr":[null,null,null,null,null,0.1,0.1,0.1]}},{"id":"016250-0072","nm":"시흥거모 A-7BL 아파트건설공사","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2025-12","ed":"2029-02","s":{"amt":[null,null,null,null,null,80310,80310,80310],"cmp":[null,null,null,null,null,69,69,166],"bal":[null,null,null,null,null,80241,80241,80144],"pr":[null,null,null,null,null,0.1,0.1,0.2]}},{"id":"016250-0073","nm":"연향들 도시개발사업 부지 조성공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2025-12","ed":"2029-06","s":{"amt":[null,null,null,null,null,15149,15149,15373],"cmp":[null,null,null,null,null,15,22,33],"bal":[null,null,null,null,null,15134,15127,15340],"pr":[null,null,null,null,null,0.1,0.1,0.2]}},{"id":"016250-0074","nm":"창원파티마병원 증축 및 리모델링공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2026-01","ed":"2028-02","s":{"amt":[null,null,null,null,null,null,24102,24102],"cmp":[null,null,null,null,null,null,1061,3695],"bal":[null,null,null,null,null,null,23041,20407],"pr":[null,null,null,null,null,null,4.4,15.3]}},{"id":"016250-0075","nm":"동해안변환소(#2) AC배후계통연결전력구공사(신한울3&4호기용)","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2026-04","ed":"2028-10","s":{"amt":[null,null,null,null,null,null,28194,28194],"cmp":[null,null,null,null,null,null,null,171],"bal":[null,null,null,null,null,null,28194,28023],"pr":[null,null,null,null,null,null,null,0.6]}},{"id":"016250-0076","nm":"P6 프로젝트 OI 센터 신축공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2026-03","ed":"2027-07","s":{"amt":[null,null,null,null,null,null,38260,38260],"cmp":[null,null,null,null,null,null,null,1340],"bal":[null,null,null,null,null,null,38260,36920],"pr":[null,null,null,null,null,null,null,3.5]}},{"id":"016250-0077","nm":"마석우3지구 도시계획시설(기반시설) 개설공사","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2026-03","ed":"2030-07","s":{"amt":[null,null,null,null,null,null,19300,19300],"cmp":[null,null,null,null,null,null,null,1009],"bal":[null,null,null,null,null,null,19300,18291],"pr":[null,null,null,null,null,null,null,5.2]}},{"id":"016250-0078","nm":"마석우리 공동주택 신축사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2026-03","ed":"2030-07","s":{"amt":[null,null,null,null,null,null,234230,234230],"cmp":[null,null,null,null,null,null,1,2626],"bal":[null,null,null,null,null,null,234229,231604],"pr":[null,null,null,null,null,null,0.0,1.1]}},{"id":"016250-0079","nm":"마석우리2 공동주택 신축사업","cl":"","reg":"국내","seg":"건축","agg":false,"sd":"2026-03","ed":"2030-07","s":{"amt":[null,null,null,null,null,null,148761,148761],"cmp":[null,null,null,null,null,null,0,2374],"bal":[null,null,null,null,null,null,148761,146387],"pr":[null,null,null,null,null,null,0.0,1.6]}},{"id":"016250-0080","nm":"양평군 양근천 오수관로 정비사업","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2026-04","ed":"2028-06","s":{"amt":[null,null,null,null,null,null,null,5902],"cmp":[null,null,null,null,null,null,null,57],"bal":[null,null,null,null,null,null,null,5845],"pr":[null,null,null,null,null,null,null,1.0]}},{"id":"016250-0081","nm":"울산도시철도 1호선 건설공사(우선시공분)","cl":"","reg":"국내","seg":"토목","agg":false,"sd":"2026-04","ed":"2027-04","s":{"amt":[null,null,null,null,null,null,null,81],"cmp":[null,null,null,null,null,null,null,null],"bal":[null,null,null,null,null,null,null,81],"pr":[null,null,null,null,null,null,null,null]}}],"summary":{"amt":[4009174,3847228,3983914,3713704,3463695,3674136,4265453,4204306],"cmp":[1351843,1451431,1639672,1464463,1470242,1677609,1824525,2010550],"bal":[2657330,2395797,2344242,2249239,1993454,1996527,2440928,2193756]},"declared":[null,null,null,null,null,null,null,null],"dom":[2657330,2395797,2344242,2249239,1993454,1996527,2440928,2193756],"ovs":[null,null,null,null,null,null,null,null],"segList":["건축","기타","토목","플랜트","환경"],"seg":{"건축":[463356,453274,412132,384783,374287,521454,1068273,1023995],"기타":[1404301,1322695,1359766,1304347,1322893,1219659,1180251,1017139],"토목":[5534,4752,4588,4308,2975,75598,74598,72871],"플랜트":[766546,598565,551544,540656,279022,166830,105678,68940],"환경":[17593,16511,16212,15145,14277,12986,12128,10811]}};</script>
+<script>
+(function(){
+ var fq=DATA.fq, K=fq.length-1, S=DATA.sites;
+ // 라벨은 입도에서 끌어온다 — 부문 공시 회사에 '현장'이라 쓰면 없는 정밀도를 주장한다
+ var UNIT=(DATA.grain==='project')?'현장':'부문';
+ var eok=function(v){return v==null?null:Math.round(v/100)};
+ var fmt=function(v){return v==null?'—':v.toLocaleString('ko-KR')};
+
+ // ── 차트: 공종별 누적 잔고 ────────────────────────────────
+ // 차트는 **격리해서** 그린다. Chart.js가 못 뜨면(오프라인 스냅샷·벤더 파일 유실)
+ // 예외가 같은 스코프의 표 렌더까지 죽여 페이지가 통째로 빈 화면이 된다.
+ try{
+  if(typeof Chart!=='function') throw new Error('Chart.js 로드 실패');
+  var PAL=['#60a5fa','#4ade80','#fbbf24','#f87171','#a78bfa','#22d3ee','#fb923c'];
+  var ds=DATA.segList.map(function(g,i){return{
+    label:g, data:DATA.seg[g].map(eok), backgroundColor:PAL[i%PAL.length],
+    borderWidth:0, stack:'s'};});
+  new Chart(document.getElementById('cBal'),{type:'bar',data:{labels:fq,datasets:ds},
+   options:{responsive:true,maintainAspectRatio:false,animation:false,
+    interaction:{mode:'index',intersect:false},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#5d6675',font:{size:10}}},
+      y:{stacked:true,grid:{color:'#2a2f3a'},ticks:{color:'#5d6675',font:{size:10},
+        callback:function(v){return v.toLocaleString('ko-KR')}}}},
+    plugins:{legend:{labels:{color:'#98a1b0',boxWidth:10,font:{size:10.5}}},
+     tooltip:{callbacks:{label:function(c){return c.dataset.label+' '+
+       (c.parsed.y==null?'—':c.parsed.y.toLocaleString('ko-KR'))+'억'}}}}}});
+ }catch(err){
+  var box=document.getElementById('cBal');
+  if(box&&box.parentNode){box.parentNode.innerHTML=
+    '<div style="color:#5d6675;font-size:11.5px;padding:22px;text-align:center">'+
+    '차트를 그리지 못했습니다 ('+String(err&&err.message||err)+'). 아래 표는 정상입니다.</div>';}
+ }
+
+ // ── 현장 표 ──────────────────────────────────────────────
+ try{
+ var tb=document.querySelector('#tb tbody'), q=document.getElementById('q'),
+     fSeg=document.getElementById('fSeg'), fReg=document.getElementById('fReg'),
+     onlyLive=document.getElementById('onlyLive');
+ [['seg',fSeg,DATA.segList],['reg',fReg,['국내','해외']]].forEach(function(x){
+   x[2].forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;x[1].appendChild(o)})});
+ var sortK='bal', sortD=-1, maxAmt=1;
+ S.forEach(function(s){var a=s.s.amt[K]; if(a&&a>maxAmt)maxAmt=a});
+
+ function rows(){
+  var t=(q.value||'').trim().toLowerCase();
+  return S.filter(function(s){
+   if(onlyLive.checked && !s.s.bal[K]) return false;
+   if(fSeg.value && s.seg!==fSeg.value) return false;
+   if(fReg.value && s.reg!==fReg.value) return false;
+   if(t && (s.nm+' '+s.cl).toLowerCase().indexOf(t)<0) return false;
+   return true;
+  }).sort(function(a,b){
+   var x=key(a),y=key(b);
+   if(x==null&&y==null)return 0; if(x==null)return 1; if(y==null)return -1;
+   return x<y?-sortD:x>y?sortD:0;
+  });
+ }
+ function key(s){
+  if(sortK==='nm'||sortK==='cl'||sortK==='seg'||sortK==='reg')return s[sortK]||'';
+  if(sortK==='sd'||sortK==='ed')return s[sortK]||null;
+  return s.s[sortK]?s.s[sortK][K]:null;
+ }
+ function draw(){
+  var r=rows(), h=[];
+  r.forEach(function(s){
+   var a=s.s.amt[K],c=s.s.cmp[K],b=s.s.bal[K],p=s.s.pr[K];
+   h.push('<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+
+    (s.agg?' <span class="mut" style="font-size:10px;border:1px solid var(--ln);border-radius:4px;padding:0 4px">묶음</span>':'')+'</td>'+
+    '<td class="l mut">'+esc(s.cl||'—')+'</td><td class="l mut">'+esc(s.seg)+'</td>'+
+    '<td class="l mut">'+esc(s.reg)+'</td>'+
+    '<td class="mut">'+(s.sd||'—')+'</td><td class="mut">'+(s.ed||'—')+'</td>'+
+    '<td>'+fmt(eok(a))+'</td><td>'+fmt(eok(c))+'</td><td>'+fmt(eok(b))+'</td>'+
+    '<td>'+(p==null?'—':p.toFixed(0)+'%<span class="bar" style="width:'+
+      Math.max(2,Math.min(38,p*.38))+'px;margin-left:5px"></span>')+'</td></tr>');
+  });
+  tb.innerHTML=h.join('')||'<tr><td colspan="10" class="mut" style="text-align:center;padding:18px">조건에 맞는 '+UNIT+'이 없습니다</td></tr>';
+ }
+ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+ document.querySelectorAll('#tb th').forEach(function(th){
+  th.addEventListener('click',function(){
+   var k=th.dataset.k; sortD=(k===sortK)?-sortD:-1; sortK=k; draw();});
+ });
+ [q,fSeg,fReg,onlyLive].forEach(function(el){el.addEventListener('input',draw)});
+ draw();
+ }catch(err){document.querySelector('#tb tbody').innerHTML=
+   '<tr><td colspan="10" style="color:#f87171;padding:16px">현장 표 렌더 실패: '+
+   String(err&&err.message||err)+'</td></tr>';}
+
+ // ── 분기 매트릭스 ────────────────────────────────────────
+ try{
+ var top=S.slice().sort(function(a,b){return (b.s.bal[K]||0)-(a.s.bal[K]||0)}).slice(0,60);
+ document.querySelector('#mx thead').innerHTML='<tr><th class="l">'+UNIT+'</th>'+
+   fq.map(function(f){return '<th>'+f+'</th>'}).join('')+'</tr>';
+ var mb=top.map(function(s){
+  return '<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+'</td>'+
+   s.s.bal.map(function(v){return '<td'+(v==null?' class="mut"':'')+'>'+fmt(eok(v))+'</td>'}).join('')+'</tr>';
+ }).join('');
+ // 행이 0이면 머리행만 남는다 — 빈 표는 '데이터가 없다'인지 '렌더가 깨졌다'인지
+ // 구별되지 않는다. 현장 표와 같이 사유를 적어 준다.
+ document.querySelector('#mx tbody').innerHTML=mb||
+   '<tr><td colspan="'+(fq.length+1)+'" class="mut" style="text-align:center;padding:18px">'+
+   '표시할 '+UNIT+'이 없습니다</td></tr>';
+ }catch(err){document.querySelector('#mx tbody').innerHTML=
+   '<tr><td style="color:#f87171;padding:16px">매트릭스 렌더 실패: '+
+   String(err&&err.message||err)+'</td></tr>';}
+})();
+</script>
+</body></html>

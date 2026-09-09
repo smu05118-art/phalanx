@@ -28,7 +28,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -91,6 +91,26 @@ jobs:
           python3 -m unittest discover -s argus/kce/tools/tests -p 'test_*.py' -v
           git diff --check
 
+      # ── 확장 커버리지(국내 상장 건설사 전체) ───────────────────────────
+      # 원본 7사와 파이프라인이 다르다: 모집단 확정 → 수록 가능 여부 관측 →
+      # 신규사 분기 수집 → 페이지 생성. 새 분기가 없으면 수집 단계가 통째로
+      # 건너뛰어지므로(캐시된 칸은 다시 받지 않는다) 평시 비용은 프로브뿐이다.
+      - name: Refresh coverage universe and pages
+        id: coverage
+        continue-on-error: true
+        shell: bash
+        working-directory: argus/kce/tools
+        env:
+          # 병렬 레인. 총 요청률은 kce_fetch의 전역 게이트가 묶으므로 레인을 늘려도
+          # DART가 받는 부하는 같다 — 응답 대기만 겹쳐 벽시계 시간이 준다.
+          KCE_LANES: "8"
+        run: |
+          set -o pipefail
+          python3 kce_universe.py --write
+          python3 kce_probe.py                     # 분기·산출물 경로 자동
+          python3 kce_series.py --collect --new-only --sweeps 3
+          python3 kce_page.py --all
+
       # argus/index.html은 로컬 argus_build.py가 매일 재생성하는 산출물이라 직접 넣은
       # 진입 링크가 크론 커밋에 덮인다(2026-09-04 실제 발생). ui-patch-inject와 같은
       # 발상으로 매일 재주입해 복구한다. 근본 해결은 빌더 템플릿 반영.
@@ -147,7 +167,12 @@ jobs:
       # 일부 회사가 실패해도 성공한 회사는 위에서 이미 커밋된다.
       # 실패가 하나라도 있으면 여기서 job을 실패로 표시해 알림이 가게 한다.
       - name: Fail if any company errored
-        if: always() && steps.sum.outputs.failed != '0'
+        if: always() && (steps.sum.outputs.failed != '0' || steps.coverage.outcome == 'failure')
         run: |
-          echo "::error::일부 회사 갱신 실패 — Step Summary의 failed 항목을 확인하라"
+          if [ "${{ steps.coverage.outcome }}" = "failure" ]; then
+            echo "::error::커버리지 갱신 단계 실패 — universe/probe/series/page 로그 확인"
+          fi
+          if [ "${{ steps.sum.outputs.failed }}" != "0" ]; then
+            echo "::error::일부 회사 갱신 실패 — Step Summary의 failed 항목을 확인하라"
+          fi
           exit 1

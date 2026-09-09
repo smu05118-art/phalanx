@@ -24,8 +24,8 @@ import sys
 import time
 import traceback
 
-from kce_lib import atomic_write, report_kind
-from kce_fetch import (fetch_section, find_sections, pick_report,
+from kce_lib import atomic_write, latest_quarter, report_kind
+from kce_fetch import (fetch_section, find_sections, parallel, pick_report,
                        search_reports, toc)
 from kce_parse import parse_ii4, parse_p8, parse_tables
 from kce_universe import load as load_universe
@@ -160,11 +160,14 @@ def probe_one(rec, quarter, keep_dir=None):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--quarter", required=True)
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--quarter", help="기본: 오늘 기준 접수 완료된 최신 분기")
+    ap.add_argument("--out", help="기본: assets/probe_<분기>.json")
     ap.add_argument("--only", help="종목코드 쉼표 구분 — 일부만 관측")
     ap.add_argument("--keep-html", help="받은 절 HTML 보관 디렉터리")
+    ap.add_argument("--lanes", type=int, help="병렬 레인 수(기본 KCE_LANES 또는 6)")
     a = ap.parse_args()
+    a.quarter = a.quarter or latest_quarter()
+    a.out = a.out or os.path.join("assets", "probe_%s.json" % a.quarter)
 
     recs = load_universe()
     if not recs:
@@ -173,20 +176,38 @@ def main():
         want = {s.strip() for s in a.only.split(",")}
         recs = [r for r in recs if r["stock"] in want]
 
-    rows, t0 = [], time.time()
-    for i, r in enumerate(recs, 1):
-        res = probe_one(r, a.quarter, a.keep_html)
-        rows.append(res)
-        sys.stderr.write("[%2d/%d] %-6s %-18s %-5s %s\n"
-                         % (i, len(recs), r["stock"], r["name"][:18],
-                            res["tier"], res["note"][:60]))
+    t0 = time.time()
+    n_done = [0]
+
+    def report(i, rec, res):
+        n_done[0] += 1
+        t = res["tier"] if isinstance(res, dict) else "error"
+        note = (res.get("note") if isinstance(res, dict) else str(res))[:58]
+        sys.stderr.write("[%2d/%d] %-6s %-18s %-8s %s\n"
+                         % (n_done[0], len(recs), rec["stock"], rec["name"][:18], t, note))
         sys.stderr.flush()
+
+    if a.lanes:
+        import kce_fetch
+        kce_fetch.LANES = max(1, a.lanes)
+    rows = parallel(recs, lambda r: probe_one(r, a.quarter, a.keep_html),
+                    on_done=report)
+    # parallel은 예외를 그 자리에 담는다 — 등급 표에 빈 칸을 남기지 않는다
+    rows = [r if isinstance(r, dict) else
+            {"slug": rec["slug"], "stock": rec["stock"], "name": rec["name"],
+             "market": rec["market"], "industry": rec["industry"], "tier": "error",
+             "note": "%s: %s" % (type(r).__name__, r), "rcpNo": None, "title": None,
+             "sections": [], "grain": None, "bal_sum": None, "cadence": "quarterly",
+             "quarter": a.quarter, "ii4_rows": 0, "ii4_tables": 0,
+             "unknown_headers": [], "p8_rows": 0}
+            for rec, r in zip(recs, rows)]
 
     by = {}
     for r in rows:
         by[r["tier"]] = by.get(r["tier"], 0) + 1
-    payload = {"quarter": a.quarter, "n": len(rows), "tally": by,
-               "elapsed_s": round(time.time() - t0, 1), "rows": rows}
+    # **실행마다 달라지는 값을 산출물에 넣지 않는다.** 넣으면 내용이 같아도 매일
+    # diff가 생겨 무의미한 커밋이 쌓인다(과거 __pycache__ 사건과 같은 유형).
+    payload = {"quarter": a.quarter, "n": len(rows), "tally": by, "rows": rows}
     out = a.out if os.path.isabs(a.out) else os.path.join(HERE, a.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     atomic_write(out, json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
