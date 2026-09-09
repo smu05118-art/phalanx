@@ -21,6 +21,7 @@ import urllib.request
 
 from kce_lib import CORP, report_kind, atomic_write
 
+HERE = os.path.dirname(os.path.abspath(__file__))
 ALLOW_HOSTS = ("dart.fss.or.kr", "opendart.fss.or.kr")
 MAX_BYTES = 30 * 1024 * 1024
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh) kce_fetch/1.0"}
@@ -139,17 +140,82 @@ def find_sections(nodes, patterns=SECTION_PATTERNS):
 
 # ── OpenAPI (DART_API_KEY 필요) ─────────────────────────────
 
+def api_key():
+    """OpenDART 인증키(없으면 None). 있으면 목록 조회를 API로 한다."""
+    k = (os.environ.get("DART_API_KEY") or "").strip()
+    return k or None
+
+
+_CORP_CACHE = os.path.join(HERE, "assets", "corp_codes.json")
+
+
+def corp_codes(key=None):
+    """종목코드 → DART 고유번호(corp_code) 매핑. 7사분만 캐시한다.
+
+    corpCode.xml은 전 상장사를 담은 수 MB ZIP이라 매번 받지 않는다. 한 번 받아
+    `assets/corp_codes.json`에 저장하면 이후 실행은 네트워크 없이 끝난다.
+    키가 없으면 캐시만 읽고, 캐시도 없으면 빈 dict를 돌려준다(호출측이 웹으로 폴백).
+    """
+    if os.path.exists(_CORP_CACHE):
+        with open(_CORP_CACHE, encoding="utf-8") as f:
+            return json.load(f)
+    key = key or api_key()
+    if not key:
+        return {}
+    import io
+    import xml.etree.ElementTree as ET
+    import zipfile
+    blob = _get("https://opendart.fss.or.kr/api/corpCode.xml?"
+                + urllib.parse.urlencode({"crtfc_key": key}))
+    if blob[:2] != b"PK":
+        # 인증 실패 등은 ZIP이 아니라 XML 에러로 온다(status 010=미등록 키 등).
+        msg = blob.decode("utf-8", "replace")
+        m = re.search(r"<status>(\d+)</status>.*?<message>([^<]*)</message>", msg, re.S)
+        raise RuntimeError("corpCode.xml: %s" % (
+            "%s %s" % (m.group(1), m.group(2).strip()) if m else msg[:120]))
+    with zipfile.ZipFile(io.BytesIO(blob)) as z:
+        xml = z.read(z.namelist()[0])
+    want = {v["stock"]: co for co, v in CORP.items()}
+    out = {}
+    for el in ET.fromstring(xml).iter("list"):
+        stock = (el.findtext("stock_code") or "").strip()
+        if stock in want:
+            out[stock] = (el.findtext("corp_code") or "").strip()
+    if len(out) != len(want):
+        missing = sorted(set(want) - set(out))
+        raise RuntimeError("corpCode.xml에서 못 찾은 종목: %s" % missing)
+    os.makedirs(os.path.dirname(_CORP_CACHE), exist_ok=True)
+    atomic_write(_CORP_CACHE, json.dumps(out, ensure_ascii=False,
+                                         indent=1, sort_keys=True) + "\n")
+    return out
+
+
 def api_list(corp_code, bgn, end, detail_ty, key=None):
-    key = key or os.environ.get("DART_API_KEY")
+    """정기보고서 목록(rcept_no 등). 검색 HTML 파싱보다 안정적이다."""
+    key = key or api_key()
     if not key:
         raise RuntimeError("DART_API_KEY 필요 (opendart.fss.or.kr 무료 발급)")
     q = urllib.parse.urlencode({
         "crtfc_key": key, "corp_code": corp_code, "bgn_de": bgn, "end_de": end,
         "pblntf_detail_ty": detail_ty, "page_count": 100})
     j = json.loads(_get("https://opendart.fss.or.kr/api/list.json?" + q))
+    if j.get("status") == "013":               # 조회 결과 없음 — 오류가 아니다
+        return []
     if j.get("status") != "000":
         raise RuntimeError("list.json 오류: %s %s" % (j.get("status"), j.get("message")))
     return j.get("list", [])
+
+
+def api_reports(co, bgn, end, detail_ty, key=None):
+    """api_list 결과를 search_reports와 같은 [(rcpNo, 제목)] 형태로 변환."""
+    codes = corp_codes(key)
+    cc = codes.get(CORP[co]["stock"])
+    if not cc:
+        raise RuntimeError("corp_code 미확보: %s" % co)
+    out = []
+    for it in api_list(cc, bgn, end, detail_ty, key):
+        out.append((it.get("rcept_no", ""), (it.get("report_nm") or "").strip()))
+    return out
 
 
 # ── CLI ──────────────────────────────────────────────────────

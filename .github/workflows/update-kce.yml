@@ -46,6 +46,10 @@ jobs:
         env:
           # 셸 인젝션 방지: 입력은 env로만 받고 형식을 검증한 뒤 인자로 넘긴다.
           QUARTER_INPUT: ${{ github.event.inputs.quarter }}
+          # OpenDART 인증키. 있으면 보고서 목록 조회를 list.json으로 한다(검색 HTML
+          # 정규식보다 안정적). 없거나 실패하면 무키 웹 검색으로 폴백한다 — 어느 쪽이든
+          # 수주 표 본문은 viewer.do 절 단위로 받는다(수주 표 전용 API가 없다).
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
         run: |
           set -o pipefail
           ARGS=(--apply)

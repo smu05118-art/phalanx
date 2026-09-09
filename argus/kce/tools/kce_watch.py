@@ -24,7 +24,8 @@ import tempfile
 import traceback
 
 from kce_lib import CORP, extract_data, q_next, report_kind
-from kce_fetch import fetch_quarter, pick_report, search_reports
+from kce_fetch import (api_key, api_reports, fetch_quarter, pick_report,
+                       search_reports)
 import kce_build
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -46,32 +47,50 @@ def _window(quarter):
     return start, "%d%02d28" % (ey, (endm - 1) % 12 + 1)
 
 
-def is_published(co, quarter):
-    """그 분기 정기보고서가 DART에 올라왔는가. (있음?, rcpNo, 제목)"""
+def list_reports(co, quarter):
+    """그 분기 정기보고서 목록. **키가 있으면 OpenAPI, 없으면 웹 검색.**
+
+    OpenDART `list.json`은 JSON이라 검색 HTML 정규식보다 안정적이다(마크업 변경에
+    영향받지 않는다). 다만 수주 표 자체를 주는 API는 없어 본문은 어느 쪽이든
+    `viewer.do`로 절 단위 수집한다 — UPDATE.md §1.3.
+    API가 실패하면 조용히 넘어가지 않고 이유를 남긴 뒤 웹으로 폴백한다.
+    """
     start, end = _window(quarter)
-    reports = search_reports(CORP[co]["name"], start, end, report_kind(quarter))
+    ty = report_kind(quarter)
+    if api_key():
+        try:
+            return api_reports(co, start, end, ty), "api"
+        except Exception as e:
+            sys.stderr.write("[warn] %s %s OpenAPI 실패 → 웹 폴백: %s\n" % (co, quarter, e))
+    return search_reports(CORP[co]["name"], start, end, ty), "web"
+
+
+def is_published(co, quarter):
+    """그 분기 정기보고서가 DART에 올라왔는가. (있음?, rcpNo, 제목, 조회경로)"""
+    reports, via = list_reports(co, quarter)
     ranked = pick_report(reports, quarter)
     if not ranked:
-        return False, None, None
+        return False, None, None, via
     rcp, title = ranked[0]
-    return True, rcp, title
+    return True, rcp, title, via
 
 
 def run(companies, apply=False, quarter=None, raw_dir=None):
-    out = {"checked": [], "updated": [], "skipped": [], "failed": []}
+    out = {"api_key": bool(api_key()), "checked": [], "updated": [],
+           "skipped": [], "failed": []}
     tmp = raw_dir or tempfile.mkdtemp(prefix="kce_raw_")
     made_tmp = raw_dir is None
     try:
         for co in companies:
             q = quarter or next_quarter(co)
             try:
-                found, rcp, title = is_published(co, q)
+                found, rcp, title, via = is_published(co, q)
             except Exception as e:
                 out["failed"].append({"co": co, "quarter": q,
                                       "stage": "search", "error": str(e)})
                 continue
             out["checked"].append({"co": co, "quarter": q, "published": found,
-                                   "rcpNo": rcp, "title": title})
+                                   "rcpNo": rcp, "title": title, "via": via})
             if not found:
                 out["skipped"].append({"co": co, "quarter": q,
                                        "reason": "보고서 미공시"})

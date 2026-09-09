@@ -2,7 +2,8 @@
 
 > 원 사이트는 외부(encprojects) 빌더가 만든 산출물이다. 이 문서는 **그 빌더 없이 우리가 DART에서 직접**
 > 데이터를 갱신하기 위한 설계·구현 사양이다. 데이터 계약과 페이지 로직은 [LOGIC.md](LOGIC.md) 참조.
-> 구현: `tools/kce_lib.py` `tools/kce_parse.py` `tools/kce_fetch.py` `tools/kce_build.py`, 테스트 `tools/tests/`.
+> 구현: `tools/kce_lib.py` `tools/kce_parse.py` `tools/kce_fetch.py` `tools/kce_build.py`
+> `tools/kce_render.py` `tools/kce_watch.py`(자동 감지), 테스트 `tools/tests/`.
 
 ## 0. 요약 — 무엇을, 어디서, 어떻게
 
@@ -42,9 +43,10 @@ kce_build.py  →  index.html의 const DATA 갱신      (매칭·반영·재집�
 값을 1/100로 기입하던 시점에 삼성E&A가 가장 깨끗한 리포트를 냈다. 그래서 테스트는 전필드 대조와
 새 분기 적재 경로(§8)를 함께 본다.
 
-## 1. 수집 (`kce_fetch.py`) — DART 무키 3단 경로
+## 1. 수집 (`kce_fetch.py`) — DART 3단 경로
 
-OpenDART API 키 없이 공개 웹 엔드포인트만으로 절 단위 정밀 추출이 된다(전 경로 실호출 검증).
+본문은 **키 없이도** 공개 웹 엔드포인트만으로 절 단위 정밀 추출이 된다(전 경로 실호출 검증).
+목록 조회는 키가 있으면 OpenAPI를 쓴다 — §1.3.
 
 ### 1.1 3단 경로
 
@@ -73,17 +75,30 @@ OpenDART API 키 없이 공개 웹 엔드포인트만으로 절 단위 정밀 �
 5. 접수 시점: 분기말 +45일(사업보고서 +90일) 안팎. `fetch_quarter`가 분기말 월 1일 ~ +3개월(4Q는 +4개월) 말일로 검색한다.
    **정정보고서**가 나중에 나오면 같은 분기를 다시 돌려 덮어쓴다(재적재는 멱등 — §4.8).
 
-### 1.3 OpenAPI 대안 (키 확보 시)
+### 1.3 OpenAPI 하이브리드 (구현됨)
 
-| 엔드포인트 | 용도 |
-|---|---|
-| `/api/corpCode.xml` | `corp_code`(8자리) ↔ `stock_code` 매핑. ZIP 응답 |
-| `/api/list.json` | 접수번호 목록 — 검색 HTML 파싱보다 안정적(JSON) |
-| `/api/document.xml` | 보고서 원문 전체 ZIP — 다만 절 단위가 아니라 전체라 무겁다 |
+**핵심: 수주상황(II-4)·진행률적용 수주계약(III-8) 표를 주는 전용 API는 없다.**
+OpenDART가 주는 건 재무제표 계정이거나 `document.xml`(보고서 원문 **전체** ZIP)이라,
+어느 쪽이든 같은 표를 직접 파싱해야 한다. 그래서 본문은 API 유무와 무관하게
+`viewer.do`로 **필요한 절만**(25KB 수준) 받는다.
 
-**수주 표를 직접 주는 API는 없다.** 키가 있어도 본문은 결국 파싱해야 하므로,
-목록 발견만 `list.json`으로 대체하고 본문은 `viewer.do` 절 단위를 유지하는 조합을 권장한다.
-`kce_fetch.api_list()`가 `DART_API_KEY` 환경변수를 읽어 이 경로를 제공한다.
+반면 **목록 조회는 API가 낫다** — 검색 결과 HTML을 정규식으로 긁는 방식은 마크업 변경에
+취약하다(실제로 정정보고서 제목이 빈 문자열로 잡히는 버그가 있었다). 그래서 이 단계만
+하이브리드로 둔다:
+
+| 단계 | `DART_API_KEY` 있음 | 없음 |
+|---|---|---|
+| 보고서 목록 감지 | `/api/list.json` (JSON) | `dsab007/detailSearch.ax` (HTML 정규식) |
+| `corp_code` 매핑 | `/api/corpCode.xml` → `assets/corp_codes.json`에 캐시 | 불필요(회사명 검색) |
+| 절 본문 수집 | `viewer.do` (동일) | `viewer.do` (동일) |
+
+`kce_watch.list_reports()`가 이 분기를 담당한다. **API가 실패하면 조용히 넘어가지 않고**
+stderr에 이유를 남긴 뒤 웹으로 폴백하며, 리포트의 `via` 필드에 실제 사용 경로(`api`/`web`)가
+찍힌다. 키는 [opendart.fss.or.kr](https://opendart.fss.or.kr)에서 무료 발급(일 20,000건)하고
+레포 Secret `DART_API_KEY`에 넣으면 Action이 자동으로 쓴다.
+
+`corpCode.xml`은 전 상장사를 담은 수 MB ZIP이라 매번 받지 않는다 — 첫 실행에서 7사분만
+뽑아 `tools/assets/corp_codes.json`에 캐시하고 커밋하므로, 이후에는 네트워크 없이 끝난다.
 
 ## 2. 파싱 (`kce_parse.py`) — 머리행 전쟁
 

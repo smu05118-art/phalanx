@@ -58,5 +58,49 @@ class TestRunShape(unittest.TestCase):
         self.assertEqual({f["co"] for f in res["failed"]}, {"sct", "hec"})
 
 
+class TestApiFallback(unittest.TestCase):
+    """키가 있어도 OpenAPI가 실패하면 웹 검색으로 폴백해야 한다(조용히는 아니게)."""
+
+    def test_falls_back_to_web_on_api_error(self):
+        import kce_fetch as KF
+        calls = {"api": 0, "web": 0}
+
+        def api_boom(*a, **k):
+            calls["api"] += 1
+            raise RuntimeError("010 등록되지 않은 인증키입니다.")
+
+        def web_ok(*a, **k):
+            calls["web"] += 1
+            return [("20260814002969", "반기보고서 (2026.06)")]
+
+        o_key, o_api, o_web = KW.api_key, KW.api_reports, KW.search_reports
+        KW.api_key = lambda: "DUMMY"
+        KW.api_reports, KW.search_reports = api_boom, web_ok
+        try:
+            reports, via = KW.list_reports("sct", "2026Q2")
+        finally:
+            KW.api_key, KW.api_reports, KW.search_reports = o_key, o_api, o_web
+        self.assertEqual(via, "web")
+        self.assertEqual(calls, {"api": 1, "web": 1})
+        self.assertEqual(reports[0][0], "20260814002969")
+
+    def test_uses_api_when_key_works(self):
+        def api_ok(*a, **k):
+            return [("20260814002969", "반기보고서 (2026.06)")]
+
+        def web_should_not_run(*a, **k):
+            raise AssertionError("API가 성공했는데 웹 검색이 호출됐다")
+
+        o_key, o_api, o_web = KW.api_key, KW.api_reports, KW.search_reports
+        KW.api_key = lambda: "DUMMY"
+        KW.api_reports, KW.search_reports = api_ok, web_should_not_run
+        try:
+            reports, via = KW.list_reports("sct", "2026Q2")
+        finally:
+            KW.api_key, KW.api_reports, KW.search_reports = o_key, o_api, o_web
+        self.assertEqual(via, "api")
+        self.assertEqual(reports[0][0], "20260814002969")
+
+
 if __name__ == "__main__":
     unittest.main()
