@@ -86,11 +86,18 @@ jobs:
           python3 -m unittest discover -s argus/kce/tools/tests -p 'test_*.py' -v
           git diff --check
 
+      # argus/index.html은 로컬 argus_build.py가 매일 재생성하는 산출물이라 직접 넣은
+      # 진입 링크가 크론 커밋에 덮인다(2026-09-04 실제 발생). ui-patch-inject와 같은
+      # 발상으로 매일 재주입해 복구한다. 근본 해결은 빌더 템플릿 반영.
+      - name: Re-inject 한국건설 entry link
+        shell: bash
+        run: python3 argus/kce/tools/inject_kce_link.py --apply
+
       - name: Detect data change
         id: changed
         shell: bash
         run: |
-          if git diff --quiet -- argus/kce; then
+          if git diff --quiet -- argus/kce argus/index.html; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -101,11 +108,17 @@ jobs:
         shell: bash
         env:
           SUMMARY: ${{ steps.sum.outputs.summary }}
+          UPDATED: ${{ steps.sum.outputs.updated }}
         run: |
           git config user.name "phalanx-kce-bot"
           git config user.email "phalanx-kce-bot@users.noreply.github.com"
-          git add -- argus/kce
-          git commit -m "kce: DART 정기보고서 반영 — ${SUMMARY}"
+          git add -- argus/kce argus/index.html
+          if [ "${UPDATED}" = "0" ]; then
+            # 보고서 갱신은 없고 진입 링크만 복구된 경우
+            git commit -m "kce: 한국건설 진입 링크 재주입 (argus/index.html 크론 덮어쓰기 복구)"
+          else
+            git commit -m "kce: DART 정기보고서 반영 — ${SUMMARY}"
+          fi
           git pull --rebase origin main
           git push origin "HEAD:${GITHUB_REF_NAME}"
 

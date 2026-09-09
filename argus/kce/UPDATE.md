@@ -371,6 +371,28 @@ dry-run 리포트에서 반드시 확인할 것:
 단위가 한 표 안에서 `계약금액총액(원)` + `판매ㆍ공급금액(백만원)`으로 섞인다. `COL_ALIAS`에 xi_* 별칭을
 넣어 두었으나 실표 대조는 아직이다. `mt`(매칭 상태)는 II-4 사업장과의 연결 판정 결과라 사람 확인이 필요하다.
 
+## 6-A. 진입 링크 유실과 자동 복구
+
+`argus/index.html`은 로컬 `argus_build.py`가 **매일 재생성하는 산출물**이다. 여기에 직접 넣은
+한국건설 진입 링크는 크론 커밋에 덮여 사라진다 — 2026-09-04 `argus daily` 커밋에서 실제로
+발생했고, 레포 `AGENTS.md`가 경고하는 바로 그 사고 유형이다.
+
+`argus/index.html`에는 `ui/patch.js` 훅이 없어 UI 패치 레이어를 쓸 수 없다. 그래서
+`ui-patch-inject.yml`과 같은 발상으로 **Action이 매일 재주입**한다:
+
+```bash
+python3 argus/kce/tools/inject_kce_link.py          # 검사만(있으면 0, 없으면 1)
+python3 argus/kce/tools/inject_kce_link.py --apply  # 재주입(멱등)
+```
+
+주입 위치는 `<span id="mockBadge">` 뒤, 없으면 우측 고지문 앞이다. 두 앵커를 다 못 찾으면
+조용히 넘어가지 않고 예외를 던진다(빌더가 헤더 구조를 바꾼 신호). 테스트
+`TestLinkInjection.test_live_file_has_link`가 실제 파일에 링크가 살아 있는지 감시하므로,
+다시 지워지면 CI가 빨갛게 알려준다.
+
+**근본 해결은 로컬 `argus_build.py` 템플릿에 링크를 넣는 것**이고, 그러면 이 스크립트는
+자동으로 no-op이 된다.
+
 ## 7. 파생 페이지 스테일 문제
 
 `--apply` 후 `index.html`의 DATA만 갱신되고 나머지 5종은 **옛 데이터로 남는다**:

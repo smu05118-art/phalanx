@@ -102,5 +102,47 @@ class TestApiFallback(unittest.TestCase):
         self.assertEqual(reports[0][0], "20260814002969")
 
 
+class TestLinkInjection(unittest.TestCase):
+    """argus/index.html의 진입 링크는 크론이 덮어쓰므로 재주입이 멱등해야 한다."""
+
+    def setUp(self):
+        import inject_kce_link
+        self.I = inject_kce_link
+
+    def test_injects_after_mock_badge(self):
+        html = ('<header>\n  <span id="mockBadge">MOCK DATA</span>\n'
+                '  <span class="disc">참고용</span>\n</header>')
+        out, changed = self.I.inject(html)
+        self.assertTrue(changed)
+        self.assertIn('href="kce/index.html"', out)
+        self.assertLess(out.index("mockBadge"), out.index("kce/index.html"))
+        self.assertLess(out.index("kce/index.html"), out.index('class="disc"'))
+
+    def test_idempotent(self):
+        html = '<header><span id="mockBadge">MOCK DATA</span></header>'
+        once, _ = self.I.inject(html)
+        twice, changed = self.I.inject(once)
+        self.assertFalse(changed)
+        self.assertEqual(once, twice)
+        self.assertEqual(twice.count("kce/index.html"), 1)
+
+    def test_falls_back_to_disc_anchor(self):
+        html = '<header><span class="disc">참고용</span></header>'
+        out, changed = self.I.inject(html)
+        self.assertTrue(changed)
+        self.assertLess(out.index("kce/index.html"), out.index('class="disc"'))
+
+    def test_raises_when_no_anchor(self):
+        with self.assertRaises(RuntimeError):
+            self.I.inject("<header><h1>ARGUS</h1></header>")
+
+    def test_live_file_has_link(self):
+        """실제 argus/index.html에 링크가 살아 있어야 한다(크론이 지웠으면 실패)."""
+        with open(self.I.TARGET, encoding="utf-8") as f:
+            self.assertTrue(self.I.has_link(f.read()),
+                            "argus/index.html에 한국건설 링크가 없다 — "
+                            "python3 inject_kce_link.py --apply 로 복구하라")
+
+
 if __name__ == "__main__":
     unittest.main()
