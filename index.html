@@ -2452,6 +2452,8 @@ function renderTech(){
       ext=(x.capex?`<span class="tbx" title="하이퍼스케일러 ${x.capex.n}사 합산 CAPEX (${x.capex.q})">CAPEX $${x.capex.sum_b}B ${sg(x.capex.yoy)}%</span>`:'')
         +(x.rpo?`<span class="tbx" title="클라우드 ${x.rpo.n}사 합산 RPO·수주잔고 (${x.rpo.q})">RPO $${x.rpo.sum_b}B ${sg(x.rpo.yoy)}%</span>`:'')
         +(x.mw?`<span class="tbx" title="DCD 추적 프로젝트 ${x.mw.projects}건 — 가동→계획 IT전력">DC ${x.mw.current}→${x.mw.planned}MW</span>`:'');}
+    if(lk==='chip'&&b.ext&&b.ext.seaj){const x=b.ext.seaj;
+      ext+=`<span class="tbx" title="${x.note||'SEAJ 공식 판매액'} · ${x.source||''}">SEAJ ${x.month} ${x.value}${x.unit?' '+x.unit:''}${x.yoy!=null?' · YoY '+sg(x.yoy)+'%':''}</span>`;}
     return `<div class="tlh6" style="border-left-color:${L.color}"><b>${L.label}</b>
       <span class="tband" title="앵커 중앙값: ${atip}">
         <span class="tbv" style="background:${cy.bg};color:${cy.fg};border-color:${cy.b}">앵커 ${b.yoy==null?'—':sg(b.yoy)+'%'}</span>
