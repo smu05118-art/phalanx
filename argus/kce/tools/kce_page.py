@@ -167,6 +167,14 @@ def company_html(D):
     # 조용히 고치면 화면이 원문인 척하게 된다.
     # 검증 수단의 유무도 말한다. 원문에 합계행이 없으면 "우리가 다 읽었는가"를 자동으로
     # 확인할 길이 없다 — 그걸 숨기면 대조 100%인 회사와 같은 얼굴로 보인다.
+    # 코넥스 법인은 분기·반기보고서 의무가 없어 사업보고서만 낸다. 관측 분기가 연속이
+    # 아니면 '분기마다 다시 읽은 시계열'이라는 말이 거짓이 된다 — 그 사실을 적는다.
+    from kce_lib import q_next as _qn
+    gaps = [q for q, nq in zip(fq, fq[1:]) if _qn(q) != nq]
+    if gaps:
+        grainnote += ('<div class="note">관측 분기가 연속이지 않습니다(%s 다음 분기 없음). '
+                      '코넥스 등 <b>분기·반기보고서 의무가 없는 법인</b>은 사업보고서(연 1회)만 '
+                      '수록되며, 증감은 직전 <b>관측</b> 대비입니다.</div>' % E(" · ".join(gaps)))
     recon = D.get("recon") or []
     if recon and all(v is None for v in recon):
         grainnote += ('<div class="note">이 회사의 수주표에는 <b>합계행이 없어</b> 수록 현장 합을 '
@@ -590,6 +598,14 @@ def picker_html(recs, probe, built, old_html):
     body = body.replace('<div class="sub">',
                         '<div class="sub">국내 상장 건설사 %d종목 중 현장 단위로 수록 가능한 %d사 · '
                         % (len(recs), tally.get("site", 0)), 1)
+    # 원형의 머리말·꼬리말은 원본 7사 시절 문장이라 III-8·XI-1 교차검증과 보전·예측을
+    # 전 회사의 것처럼 말한다. 신규 lite 회사에는 그 자산이 없다 — 범위를 명시한다.
+    body = body.replace('을 사업장 단위로 연결한 시계열</div>',
+                        '을 사업장 단위로 연결한 시계열 — 정밀 수록사 기준. 신규 편입사는 '
+                        'II-4 실측만 싣는다</div>', 1)
+    body = body.replace('원문에 없는 구간은 각 화면에서 보전·예측으로 구분 표시합니다.',
+                        '정밀 수록사는 원문에 없는 구간을 보전·예측으로 구분 표시하고, '
+                        '신규 편입사는 원문 실측만 싣습니다.', 1)
     # 구획 제목 스타일(없으면 추가)
     if ".sec{" not in body:
         body = body.replace("footer{", ".sec{width:100%;max-width:940px;margin:30px 0 -14px;"
