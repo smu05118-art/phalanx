@@ -2120,6 +2120,29 @@ const DEATH_SRC_KO = {demon:'악마의 살해', night:'밤 살해', execution:'�
 /* 낮에 공개적으로 벌어지는 능력 사망 — '오늘 밤' 을 조건으로 하는 보호(수도사·여관 주인·수동 토큰)의
    대상이 아니다. 처형과 함께 '밤이 아닌 사망'을 이룬다. */
 const DEATH_DAY_ABILITY_SRC = ['slayer','witch','exile'];
+/* '이 사망은 처형인가' 의 단일 출처.
+   [무엇이 문제였나] 두 자리(승리 엔진의 주모자 연장전 분기 · SABER 원장의 byExec)가 사인 문자열을
+   /처형|성결자/ 로 훑고 있었다. 그런데 추방의 사인 문구는 '여행자 추방(exile) 가결 — 처형 횟수와
+   무관' 이라 그 안의 '처형' 두 글자에 걸려 **추방이 처형으로 분류됐다.**
+   공식은 정반대다: "Exiles are not executions. Powers that are affected by executions aren't
+   triggered by exiles."(공식 룰 Travellers 절)
+   [왜 문자열을 아주 버리지 않나] 사인을 안 넘기는 옛 호출부(sourceType 이 null)가 아직 있다.
+   구조화된 사인이 있으면 그것이 정본이고, 없을 때만 종전 문자열 추론으로 떨어진다 — 하위호환. */
+/* 지금 판정 중인 사망의 사인 — checkEndConditions(cause, aliveBefore) 는 사인을 받지 않는 옛
+   계약이라(호출부가 여럿) 인자를 늘리는 대신 호출을 감싸는 창구에서 잠깐 세운다.
+   killPlayer 는 조기 반환이 여럿이므로 함수 전체를 감싸지 않고 호출 지점만 감싼다 —
+   그래야 어릿광대·좀버얼 분기로 빠져도 값이 새지 않는다. */
+let THY_LAST_DEATH_SRC=null;
+function checkEndWithSrc(cause, aliveBefore, src){
+  const prev=THY_LAST_DEATH_SRC;
+  THY_LAST_DEATH_SRC=src||null;
+  try{ checkEndConditions(cause, aliveBefore); }
+  finally{ THY_LAST_DEATH_SRC=prev; }
+}
+function isExecutionCause(cause, sourceType){
+  if(sourceType) return sourceType==='execution';
+  return /처형|성결자/.test(cause||'');
+}
 const DEATH_MODIFIERS = [
   {id:'assassin-pierce', ko:'암살자 관통', precedence:0, stage:['block','kill'], effect:'pierce',
    official:'Assassin: "Once per game, at night*, choose a player: they die, even if for some reason they could not." (official/roles181.json:1375) — "어떤 이유로든 죽을 수 없었더라도"가 찻집 여인·보호·군인·선원을 모두 뚫는 근거다. block 단계뿐 아니라 kill 단계에도 서 있어야 한다: 좀버얼의 "The 1st time you die, you live but register as dead."(roles181.json:1766)와 어릿광대의 "The 1st time you die, you don\'t."(roles181.json:851)도 결과가 "실제로는 죽지 않음"이므로 같은 문구가 뚫는 대상이다. 관통 여부는 사인 문자열이 아니라 컨텍스트(ctx.bypass)로 전달된다.',
@@ -2156,7 +2179,7 @@ const DEATH_MODIFIERS = [
    reason:()=> '악마의 변호사의 변호 — 처형돼도 죽지 않음'},
 
   {id:'vizier-dayimmune', ko:'재상 낮 사망 면역', precedence:32, stage:'block', effect:'block',
-   official:'Vizier: "All players know who you are. You can not die during the day. If good voted, you may choose to execute immediately." (wiki.bloodontheclocktower.com/Vizier) — 원인 제한이 없으므로 처형·처단자를 포함한 낮 사망 전부가 대상이고, 대상 자신의 능력이므로 중독·취함이면 무효다(파일 안 vizier.warn 의 판단과 같다). 자동 판정을 켜면 처형 흐름 전체(executedToday·성자·탕녀 계승·재상 즉시 처형)를 함께 다시 짜야 하므로 무행동 전환 계약에 따라 이번에는 표에만 올린다 — 표에 없으면 renderDeathTraces 의 근거 사슬에서 재상만 존재하지 않는 규칙처럼 보인다.',
+   official:'Vizier: "All players know you are the Vizier. You cannot die during the day. If good voted, you may choose to execute immediately." (roles181.json:1567) — 원인 제한이 없다: 낮에 일어나는 처형·처단자·마녀의 저주·추방이 전부 대상이다. 재상 본인의 능력이므로 중독·취함이면 무효다. 궁정대신·설교자로 능력을 잃은 재상은 공식 징크스상 여전히 낮에 죽지 않는데, 그 예외는 이 표가 자동 판정하지 않는다 — 사회자가 수동으로 판정한다.',
    /* 원인을 가리지 않는 절대 규칙이다 — 낮이면 처형·처단자·마녀·추방 무엇이든 죽지 않는다.
       재상 본인의 능력이므로 중독·취함이면 무효다. 밤 사망은 이 조항 밖이다. */
    when:(t,c)=> t.charId==='vizier' && S.phase.kind==='day' && !isMalfunctioning(t),
@@ -2183,8 +2206,8 @@ const DEATH_MODIFIERS = [
    when:(t,c)=> t.charId==='soldier' && c.sourceType==='demon' && !isMalfunctioning(t),
    reason:()=> '군인 — 악마에게 죽지 않음'},
 
-  {id:'lleech-host', ko:'리치 — 숙주 생존', precedence:45, stage:'block', effect:'block',
-   official:'Lleech: "You die if & only if they are dead."(숙주) (roles181.json:1860) — 현재 코드에 판정이 전혀 없다(기존 미구현 결함). 무행동 전환 계약에 따라 이번 라운드에서는 켜지 않는다.',
+  {id:'lleech-host', ko:'리치 — 숙주가 살아 있으면 죽지 않음', precedence:45, stage:'block', effect:'block',
+   official:'Lleech: "Each night*, choose a player: they die. You start by choosing a player: they are poisoned. You die if & only if they are dead." (roles181.json:1860) — 보호받는 쪽은 **리치**다: 숙주가 살아 있는 한 리치는 처형·처단자·밤 공격 어느 것으로도 죽지 않는다. 숙주 자신은 평소대로 죽는다. 숙주는 lleechHost 토큰으로 표시하며, 숙주가 죽으면 리치도 죽는다 — 다만 주모자 징크스가 예외를 만들어(숙주가 처형으로 죽으면 리치는 살아남되 능력 상실) 자동으로 죽이지 않고 알리기만 한다. 2026-09-09 부터 판정이 켜져 있다.',
    /* 숙주 토큰(lleechHost)이 살아 있는 좌석에 있으면 리치는 어떤 원인으로도 죽지 않는다.
       토큰이 없으면(사회자가 아직 안 놓았거나 그런 판이 아니면) 조용히 물러난다 — 옛 동작 그대로.
       리치 자신이 오작동이어도 이 조항은 남는다: "if & only if" 는 리치의 능력이 아니라 존재 규칙이다. */
@@ -2192,9 +2215,12 @@ const DEATH_MODIFIERS = [
    reason:()=>{ const h=lleechHostOf(); return `리치 — 숙주(${h?h.name:'?'})가 살아 있어 죽지 않음`; }},
 
   {id:'deviant-exile', ko:'일탈자 — 추방 면역', precedence:48, stage:'block', effect:'block',
-   implemented:false, uncertain:true,
    official:'Deviant: "If you were funny today, you cannot die by exile." (roles181.json) — 추방 사망을 막는 유일한 능력이자, 추방이 \'막을 수 있는 사망\'임을 공식이 인정하는 근거다. "재미있었는가"는 전적으로 사회자 판단이라 자동 판정하지 않는다 — 추방 확정 직전에 사회자에게 묻고(exClose), 그 답이 이 자리를 대신한다.',
-   when:()=> false, reason:()=> '일탈자 — 오늘 재미있었으면 추방으로 죽지 않음(사회자 판단)'},
+   /* 재량 답은 판정 '전에' 모아 ctx.deviantFunny 로 넘긴다 — when() 은 읽기만 한다(계약 2).
+      표 안에 있어야 근거 사슬(deathTraces)에 한 줄이 남고, 찻집 여인·폭풍잡이 같은 절대 면역이
+      더 앞선 precedence 로 먼저 걸리면 일탈자에게 묻지도 않는다(묻는 순서 = 판정 순서). */
+   when:(t,c)=> c.sourceType==='exile' && t.charId==='deviant' && c.deviantFunny===true,
+   reason:(t)=> `일탈자(${t.name}) — 오늘 재미있었으므로 추방으로 죽지 않음(사회자 판단)`},
 
   {id:'sailor', ko:'선원', precedence:50, stage:'block', effect:'block',
    official:'Sailor: "Each night, choose an alive player: either you or they are drunk until dusk. You can\'t die." (roles181.json:187) — 자신의 능력이므로 스스로 취하면 무효다. 원인 제한이 없어 처형도 막는다.',
@@ -2573,7 +2599,7 @@ function killPlayer(p, cause, opts){
     p.diedAt={kind:S.phase.kind, n:S.phase.n, cause:cause||''};
     log(`🪦 ${p.name}(좀버얼) 죽은 척 — ${cause} (실제로는 생존, 두 번째 사망이 진짜)`);
     toast(`🪦 좀버얼의 첫 사망 — 겉으로는 죽은 것으로 공표하되 실제로는 생존 중입니다. 계속 밤에 깨우세요. 두 번째 사망이 진짜입니다.`,'warn');
-    if(!opts.skipEnd) checkEndConditions(cause, aliveBefore);
+    if(!opts.skipEnd) checkEndWithSrc(cause, aliveBefore, dctx.sourceType);
     return;
   }
   // 어릿광대 1회 생존: 첫 사망 시 정상 작동이면 재량 발동
@@ -2596,7 +2622,7 @@ function killPlayer(p, cause, opts){
      판정은 저장된 스냅샷으로 밤 단계에서만 한다(지목 시점과 판정 시점의 분리). */
   if(p.charId==='moonchild' && typeof onMoonchildDeath==='function') onMoonchildDeath(p);
   if(!opts.skipSuccession) promoteScarletWoman(p, aliveBefore);
-  if(!opts.skipEnd) checkEndConditions(cause, aliveBefore);
+  if(!opts.skipEnd) checkEndWithSrc(cause, aliveBefore, dctx.sourceType);
 }
 function charName(p){ const c=charOf(p.charId); return c? c.ko : '?'; }
 
@@ -4357,8 +4383,8 @@ function offerMayorSubstitute(t, dr, cause, opts, retry){
    [무엇은 걸리지 않나] 수도사·군인은 sourceType==='demon' 전용, 악마의 변호사는 'execution'
    전용, 시장 대체는 밤 전용이라 각 항목의 when() 이 알아서 물러난다 — 표를 고칠 필요가 없다.
    반환 true = 실제로 죽음까지 처리했다. false = 보호로 막혀 아무도 죽지 않았다. */
-function resolveDayAbilityDeath(t, sourceType, cause){
-  const dr=resolveDeath(t, {sourceType, cause:cause||''}, ['block']);
+function resolveDayAbilityDeath(t, sourceType, cause, extra){
+  const dr=resolveDeath(t, Object.assign({sourceType, cause:cause||''}, extra||{}), ['block']);
   if(dr.reason){
     log(`${t.name}: ${cause} 불발 — ${dr.reason}`);
     toast(`${t.name}: ${dr.reason} — 죽지 않습니다.`,'ok');
@@ -8329,17 +8355,17 @@ function exClose(){
     /* 추방은 처형이 아니지만 사망이다 — 일탈자의 "cannot die by exile" 이 그 근거다.
        그래서 block 단계를 거친다: 찻집 여인·폭풍잡이 보호 같은 절대 면역이 여기서 걸린다.
        악마의 변호사(처형 전용)·수도사·군인(악마 전용)은 when() 이 알아서 물러난다. */
-    const fin=(skip)=>{
-      if(skip){
-        log(`🚷 일탈자 ${t.name} — 오늘 재미있었으므로 추방으로 죽지 않음(사회자 판단)`);
-        toast(`🚷 ${t.name}은(는) 일탈자입니다 — 추방됐지만 죽지 않습니다. 게임에는 남습니다.`,'ok');
-      } else {
-        resolveDayAbilityDeath(t, 'exile', '여행자 추방(exile) 가결 — 처형 횟수와 무관');
-        toast(`🚷 ${t.name} 추방 — 오늘의 처형 횟수에는 영향을 주지 않습니다.`,'warn');
-      }
+    const fin=(funny)=>{
+      /* 재량 답을 ctx 로 실어 표가 판정하게 한다 — 표 밖에서 미리 걸러 내면 근거 사슬이 빈다. */
+      const died=resolveDayAbilityDeath(t, 'exile', '여행자 추방(exile) 가결 — 처형 횟수와 무관', {deviantFunny:!!funny});
+      if(died) toast(`🚷 ${t.name} 추방 — 오늘의 처형 횟수에는 영향을 주지 않습니다.`,'warn');
       save();
     };
-    if(t.charId==='deviant'){
+    /* 절대 면역(찻집 여인·폭풍잡이 등)이 먼저 걸리면 일탈자에게 묻지 않는다 — 어차피 안 죽는데
+       "오늘 재미있었습니까?"를 묻는 것은 사회자에게 없는 선택지를 준다. 표를 먼저 미리 밟아 본다
+       (probe 는 상태를 바꾸지 않는다: runDeathModifiers 는 순수 함수다). */
+    const pre=runDeathModifiers(t, {sourceType:'exile', cause:'추방 사전 판정', deviantFunny:false}, ['block']);
+    if(t.charId==='deviant' && !pre.reason){
       thyConfirm(`🎭 ${t.name}은(는) 일탈자입니다.\n오늘 재미있었습니까?\n\n[예] 추방되지만 죽지 않습니다 / [아니오] 평소대로 사망 판정`,
         ok=>fin(!!ok), {title:'🎭 일탈자', ok:'예 — 죽지 않음', cancel:'아니오'});
     } else fin(false);
@@ -9866,7 +9892,8 @@ function confirmWin(yes){
   const _orig=checkEndConditions;
   checkEndConditions=function(cause, aliveBefore){
     if(S.gameOver) return;
-    const byExecution=/처형|성결자/.test(cause||'');
+    /* killPlayer 가 이 판정의 사인을 남겨 둔다 — 문자열이 아니라 그 값을 본다(추방 오분류 방지). */
+    const byExecution=isExecutionCause(cause, THY_LAST_DEATH_SRC);
     const res=evalWinEvent('death', {aliveBefore, byExecution});
     if(isWinRes(res)){ askWin(res); return; }
     if(res && res.kind==='continue'){ announceContinue(res); return; }
@@ -11545,7 +11572,8 @@ function buildMatchRecord(winner, pgid){
     const was=p && p.alive;
     _kp(p, cause, opts);
     if(p && was && !p.alive)
-      emitEv('death', null, p.id, {cause:cause||'', char:p.charId, byExec:/처형|성결자/.test(cause||'')});
+      emitEv('death', null, p.id, {cause:cause||'', char:p.charId,
+        byExec:isExecutionCause(cause, (opts&&opts.sourceType)||null)});
   };
 
   // attack + star — 임프. 별 넘기기는 호출 전후의 imp 보유자 차이로 감지 [EV.attack/EV.star]
