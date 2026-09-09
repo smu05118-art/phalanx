@@ -2339,7 +2339,32 @@ const VOTE_MODIFIERS = [
    reason:(t)=> `도둑이 지목 — ${t.name}의 표는 부호가 뒤집힌다`},
 ];
 VOTE_MODIFIERS.spec = VOTE_SPEC;
-function runVoteModifiers(t, ctx, stages){ return runModifiers(VOTE_MODIFIERS, t, ctx, stages); }
+/* 축을 섞어 부르면 조용히 틀린다 — `decided` 는 축을 모르기 때문이다.
+   count 단계에서 집사 무효가 성립하면 사슬이 끊겨 **여행자 가중이 통째로 1로 주저앉는다.**
+   지금은 두 창구가 늘 단일 축을 명시해 도달 불가지만, `resolveDeath` 처럼 기본 단계를 쓰는
+   모양이 이 파이프라인의 관용 형태라 누군가 `runVoteModifiers(t, ctx)` 를 부르는 순간 터진다.
+   축별로 따로 돌려 합친다 — 단일 축 호출의 결과는 1비트도 안 바뀐다. */
+const VOTE_AXES=[['count'],['weight']];
+function voteAxisSplit(stages){
+  const st=stages || VOTE_SPEC.defaultStages || [];
+  const hit=VOTE_AXES.filter(ax=>ax.some(x=>st.indexOf(x)>=0));
+  return hit.length>1? hit : null;
+}
+function runVoteModifiers(t, ctx, stages){
+  const split=voteAxisSplit(stages);
+  if(!split) return runModifiers(VOTE_MODIFIERS, t, ctx, stages);
+  const parts=split.map(ax=>runModifiers(VOTE_MODIFIERS, t, ctx, ax));
+  const out=Object.assign({}, parts[0]);
+  parts.slice(1).forEach(r=>{
+    if(r.counted===false) out.counted=false;
+    if(r.allowed===false) out.allowed=false;
+    if(r.weight!==1) out.weight=r.weight;
+    out.changedIds=(out.changedIds||[]).concat(r.changedIds||[]);
+    out.trace=(out.trace||[]).concat(r.trace||[]);
+    if(r.changedBy){ out.changedBy=r.changedBy; out.reason=r.reason; out.effect=r.effect; }
+  });
+  return out;
+}
 /* 표를 읽는 두 창구 — 호출부는 이 둘만 쓴다.
    voteWeightOf : 그 좌석의 표가 몇 표인가(여행자 가중). travel 스냅샷은 호출부가 넘긴다.
    voteVoided   : 그 좌석의 찬성이 집계에서 빠지는가(집사). */
@@ -4741,7 +4766,10 @@ function renderNomOpen(nom){
      '화면에선 통과인데 마감하면 부결' 같은 어긋남이 생기지 않는다. */
   const den2=voteDenominator(nom,'ballot'), need2=voteThreshold('ballot');
   const aliveN2=alivePlayers().length;              // 화면 문구 '과반 기준(생존 N)' 표시용
-  const yes=eligible.filter(p=>nom.votes[p.id]==='yes').length;
+  /* 집사 무효를 화면에서도 뺀다 — 빼지 않으면 문턱 근처에서 '화면은 통과, 마감은 부결'이 된다.
+     판정은 closeBallot 과 같은 술어(voteVoided)를 쓴다. 화면이 다른 술어로 세면 단일 출처가 깨진다. */
+  const voidedP=eligible.find(p=>voteVoided(p, nom));
+  const yes=eligible.filter(p=>nom.votes[p.id]==='yes' && p!==voidedP).length;
   const no=eligible.filter(p=>nom.votes[p.id]==='no').length;
   const ratio=den2?yes/den2:0;
   const master=S.players.find(q=>hasStatus(q,'master'));
@@ -4762,7 +4790,10 @@ function renderNomOpen(nom){
     <div>${eligible.map(p=>{
       const v=nom.votes[p.id];
       const isDead=!p.alive;
-      const butlerFlag = p.alive && p.charId==='butler' && !isMalfunctioning(p);
+      /* 실제로 무효가 되는 좌석에만 경고를 띄운다 — 인라인 술어를 쓰면 집사가 둘인 판에서
+         둘 다에게 뜨는데 실제 무효는 첫 집사 하나뿐이다(voteVoided 가 그 범위를 쥔다). */
+      const butlerFlag = p.alive && p.charId==='butler' && !isMalfunctioning(p)
+                         && S.players.find(q=>q.alive && q.charId==='butler' && !isMalfunctioning(q))===p;
       const masterYes = master && nom.votes[master.id]==='yes';
       return `<div class="voterow ${isDead?'deadrow':''}">
         <span class="vname">${esc(p.name)}${isDead?' 👻':''}</span>
