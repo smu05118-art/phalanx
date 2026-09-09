@@ -38,17 +38,33 @@ KCE = os.path.dirname(HERE)
 # (계룡건설 `경기 성남 삼두아파트, 은영빌라` → 다음 분기 `삼두아파트? 은영빌라`).
 _NM_DROP = re.compile(r"[\s()（）\[\]{}·ㆍ,，.\-–—_/\\'\"?？!~～∼〜:：;；&＆+＋*※#|]+")
 _NM_TAIL = re.compile(r"(공사|현장|사업|신축|외\d+건)+$")
-# 이름 끝에 붙는 주석 표시. HL D&I는 분기마다 전 현장 이름 끝에 `(A)`를 달았다 뗐다
-# 한다(2025Q1·2025Q3·2026Q2에만 있다) — 이름의 일부로 보면 그 분기마다 27개 현장이
-# 통째로 새 현장이 된다. 한글은 남긴다(`(옵션)`·`(파우더)`는 진짜 이름 조각이다).
+# 이름 끝에 붙는 한두 글자 표시. HL D&I는 분기마다 현장 이름 끝에 `(A)`(본도급)를
+# 달았다 뗐다 한다(2025Q1·2025Q3·2026Q2에만 있다) — 이름의 일부로 보면 그 분기마다
+# 27개 현장이 통째로 새 현장이 된다. 한글은 남긴다(`(옵션)`·`(자체)`는 이름 조각이다).
 _NM_MARK = re.compile(r"[\s]*[(（]\s*[A-Za-z0-9*※]{1,2}\s*[)）]\s*$")
 
 
 def nm_key(s):
-    """현장 이름 매칭 키. 표기 흔들림('OO 신축공사'/'OO신축 공사')을 흡수한다."""
-    t = _NM_MARK.sub("", (s or "").strip())
-    t = _NM_DROP.sub("", t).lower()
+    """**한 분기 표 안에서** 계약을 가르는 이름 키.
+
+    표기 흔들림('OO 신축공사'/'OO신축 공사')만 흡수하고, 원문이 붙인 구분자는
+    한 글자도 지우지 않는다 — HL D&I 2026Q2의 `인천작전동APT (A)`(본도급 2,072억)와
+    `인천작전동APT (O)`(옵션 32억)는 **서로 다른 계약**이라, 표시를 떼면 한 칸으로
+    뭉쳐 옵션 잔고가 사라진다.
+    """
+    t = _NM_DROP.sub("", (s or "")).lower()
     return _NM_TAIL.sub("", t) or t
+
+
+def nm_link(s):
+    """**분기를 이을 때만** 쓰는 느슨한 이름 키. 끝의 한두 글자 표시를 뗀다.
+
+    표시는 분기마다 붙었다 떨어진다(HL D&I 2026Q1 `인천작전동APT` →
+    2026Q2 `인천작전동APT (A)`). 같은 분기 안에서 표시가 다른 두 계약이 이 키로
+    겹쳐도, 연결은 사이트당 한 행만 받는 1:1 짝짓기라 도급액이 가까운 쪽끼리
+    제대로 이어진다(207,190↔207,190 · 3,236↔3,236).
+    """
+    return nm_key(_NM_MARK.sub("", (s or "").strip()))
 
 
 def _norm_date(s):
@@ -111,7 +127,7 @@ def site_key(row):
 
 def _ident(row):
     """계약 동일성 판단에 쓰는 필드 묶음. _LINK의 각 수준이 여기서 키를 만든다."""
-    return {"nm": nm_key(row.get("nm")), "cl": nm_key(row.get("cl")),
+    return {"nm": nm_link(row.get("nm")), "cl": nm_link(row.get("cl")),
             "d": _norm_day(row.get("sd")) or "",
             "m": _norm_date(row.get("sd")) or "",
             "em": _norm_date(row.get("ed")) or "",
@@ -181,7 +197,7 @@ def _generic_names(got):
             for row in tab["rows"]:
                 if is_total_row(row) or is_agg_row(row):
                     continue
-                k = nm_key(row.get("nm"))
+                k = nm_link(row.get("nm"))
                 if not k:
                     continue
                 sk = site_key(row)
