@@ -1820,6 +1820,12 @@ function renderKpi(){
     const pvN=x=>x==null?'—':(+x).toLocaleString();
     const pvTL=t=>t==='preview'?'프리뷰':'리뷰';
     const pvCut=(s,n)=>{const t=pvPlain(s);return t.length>n?t.slice(0,n)+'…':t;};
+    // 컨센서스 기간 라벨 — 2026-Q3→26Q3 · 2026-FY→26FY, 그 외는 문서 원문 그대로(창작·환산 없음)
+    const pvPer=s=>{const t=String(s==null?'':s).trim(); if(!t) return '';
+      let m=/^(\d{4})-Q([1-4])$/.exec(t); if(m) return m[1].slice(2)+'Q'+m[2];
+      m=/^(\d{4})-FY$/.exec(t); if(m) return m[1].slice(2)+'FY';
+      m=/^FY-?(\d{4})$/.exec(t); if(m) return m[1].slice(2)+'FY';
+      return t.length>28?t.slice(0,28)+'…':t;};
     // 인덱스 압축 엔트리 → 이름 붙은 객체 (schema: n,f,r,t,d,l,h — preview_harvest.py 참조)
     const pvCo=tk=>{const c=PVCOS[tk]; if(!c) return null; const h=c.h||[], l=c.l||[]; const fr=PVFID[c.f]||'';
       return {tk:tk,name:c.n||tk,frame:fr,frame_label:String(PVFRD[fr]||fr||'').split(':')[0],
@@ -1905,6 +1911,23 @@ function renderKpi(){
         <div style="font-size:9.5px;color:var(--dim)">${lb}</div><div style="font-size:14px;font-weight:800;font-family:var(--mono);color:${col||'var(--ink)'}">${val}</div>
         <div style="font-size:9.5px;color:var(--dim);margin-top:2px">${sub||''}</div></div>`;
       const pb=F.prob||{};
+      // 컨센 타일 보조줄 — 값과 함께 '어느 기간의 컨센서스인지' 를 반드시 같이 찍는다.
+      // C5/S3 병합분에는 문서 분기(예: 2026-Q2)와 다른 기간(다음 분기·통기) 추정치가 섞여 있어
+      // 기간 표시 없이 찍으면 사람이 문서 분기의 컨센으로 오독한다. 단위는 원문 그대로(억원·B KRW·TWD…), 환산·재계산 금지.
+      const csFE=Array.isArray(CS.forward_estimates)?CS.forward_estimates:[];
+      const csFM=CS.forward_estimates_meta||{};
+      const csHix=(csFM.headline_index!=null&&csFE[csFM.headline_index])?csFM.headline_index:0;
+      const csHi=csFE.length?(csFE[csHix]||{}):null;
+      const csDq=String(D.quarter||'');
+      const csWarn=p=>{const t=String(p==null?'':p); return !!t&&t!==csDq&&t.indexOf(csDq)!==0;};
+      const csAmt=(v,u)=>pvN(v)+(u?' <span style="font-size:9.5px">'+pvE(u)+'</span>':'');
+      const csTag=p=>{const t=pvPer(p); if(!t) return ' <span style="color:var(--dim)">(기간 미표기)</span>';
+        const w=csWarn(p); return ' <span style="color:'+(w?'#ffbe2e':'var(--dim)')+';font-weight:700">('+pvE(t)+(w?' · 문서 '+pvE(pvPer(csDq)):'')+')</span>';};
+      const csSub=(CS.value!=null)
+        ?('컨센 '+csAmt(CS.value,CS.unit)+csTag(CS.period||CS.quarter||''))
+        :((csHi&&csHi.value!=null)
+          ?('선행컨센 '+csAmt(csHi.value,csHi.unit)+csTag(csHi.period||'')+' <span style="color:var(--dim)">· 문서 분기 컨센 없음</span>')
+          :'컨센 미확보(사유 아래)');
       html+=`<div class="panel" style="border-left:3px solid ${vc};margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px">
           <span style="font-size:12px;font-weight:800;padding:3px 13px;border-radius:999px;background:${vc}1f;color:${vc};border:1px solid ${vc}55">판정 · ${pvE(V.call||'—')}</span>
@@ -1913,12 +1936,15 @@ function renderKpi(){
         ${V.bias?`<div style="font-size:11px;color:var(--dim);margin-bottom:9px">▸ ${pvT(V.bias)}</div>`:''}
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${tile('예측 base',pvN(F.base)+' <span style="font-size:9.5px;color:var(--dim)">'+pvE(F.unit||'')+'</span>','bear '+pvN(F.bear)+' / bull '+pvN(F.bull)+(pb.base!=null?' · P(base) '+Math.round(pb.base*100)+'%':''),'#4ea1ff')}
-          ${tile('컨센 갭',CS.gap_pct!=null?pvPct(CS.gap_pct):'—',CS.value!=null?('컨센 '+pvN(CS.value)+(CS.unit?' '+pvE(CS.unit):'')):'컨센 미확보(사유 아래)',CS.gap_pct>0?'#59d0a8':(CS.gap_pct<0?'#ff6b7d':'var(--dim)'))}
+          ${tile('컨센 갭',CS.gap_pct!=null?pvPct(CS.gap_pct):'—',csSub,CS.gap_pct>0?'#59d0a8':(CS.gap_pct<0?'#ff6b7d':'var(--dim)'))}
           ${tile('가격 비교값',PI.pct_est!=null?PI.pct_est+'%':'—','문서 원문 정의 참조','#ffbe2e')}
           ${tile('base 변화율(문서 기준)',pvPct(UP.base_pct),'bull '+pvPct(UP.bull_pct)+' · down '+pvPct(UP.downside_pct),UP.base_pct>0?'#59d0a8':'#ff6b7d')}
         </div>
         ${F.metric?`<div style="font-size:10.5px;color:var(--dim);margin-top:8px">예측 대상 <b style="color:var(--ink)">${pvE(F.metric)}</b>${F.method?' · '+pvE(pvCut(F.method,230)):''}</div>`:''}
-        ${(CS.note||CS.src)?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>컨센서스.</b> ${pvT(pvCut(CS.src?('['+CS.src+'] '):'' ,90))}${pvT(pvCut(CS.note||'',330))}</div>`:''}
+        ${(CS.note||CS.src||CS.metric)?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>컨센서스.</b> ${CS.metric?`지표 <b style="color:var(--ink)">${pvE(pvCut(CS.metric,70))}</b>${(CS.period||CS.quarter)?` · 기간 <b style="color:var(--ink)">${pvE(pvPer(CS.period||CS.quarter))}</b>`:''} — `:''}${pvT(pvCut(CS.src?('['+CS.src+'] '):'' ,90))}${pvT(pvCut(CS.note||'',330))}</div>`:''}
+        ${csFE.length?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b style="color:#ffbe2e">기간별 선행 컨센서스 ${csFE.length}건.</b> <span style="color:var(--dim)">문서 분기(${pvE(csDq)}) 의 컨센서스가 아니다 — 원문 기간·단위 그대로이며 환산·갭 재계산을 하지 않았다.</span>
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:5px">${csFE.slice(0,12).map((e,i)=>`<span style="font-family:var(--mono);font-size:10px;padding:2px 7px;border:1px solid ${i===csHix?'#4ea1ff':'var(--line)'};border-radius:6px;${i===csHix?'color:#4ea1ff':''}"><b>${pvE(pvPer(e.period))}</b> ${pvE(pvCut(e.metric||e.metric_label||'',40))} <b style="color:var(--ink)">${pvN(e.value)}</b> ${pvE(e.unit||'')}${i===csHix?' ◂대표':''}</span>`).join('')}${csFE.length>12?`<span style="font-size:10px">외 ${csFE.length-12}건</span>`:''}</div>
+          ${(csFM.source_id||csFM.collected_at||csFM.why_value_null)?`<div style="margin-top:4px;font-size:10px">${csFM.source_id?`출처 <span style="font-family:var(--mono)">${pvE(pvCut(csFM.source_id,40))}</span>`:''}${csFM.collected_at?` · 수집 ${pvE(String(csFM.collected_at).slice(0,10))}`:''}${csFM.why_value_null?` · ${pvT(pvCut(csFM.why_value_null,220))}`:''}</div>`:''}</div>`:''}
         ${PI.summary?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>가격 비교값 근거.</b> ${pvT(pvCut(PI.summary,330))}</div>`:''}
         ${UP.valuation_basis?`<div style="font-size:10.5px;color:var(--dim);margin-top:5px"><b>밸류에이션 근거.</b> ${pvT(pvCut(UP.valuation_basis,330))}</div>`:''}
         <div style="font-size:10px;color:#ffbe2e;border-top:1px solid var(--line);margin-top:8px;padding-top:6px">투자판단 참고용 — 예측치이며 실현을 보장하지 않습니다.</div></div>`;
