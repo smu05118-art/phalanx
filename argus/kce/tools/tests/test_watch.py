@@ -144,5 +144,68 @@ class TestLinkInjection(unittest.TestCase):
                             "python3 inject_kce_link.py --apply 로 복구하라")
 
 
+class TestRetry(unittest.TestCase):
+    """DART는 연속 요청에 약하다 — 일시적 오류는 재시도로 흡수해야 한다.
+
+    2026-09-06 스케줄 실행에서 7사 전부 `urlopen error timed out`으로 실패했다.
+    """
+
+    def setUp(self):
+        import kce_fetch
+        self.KF = kce_fetch
+        self.orig_backoff = kce_fetch.BACKOFF
+        self.orig_gap = kce_fetch.MIN_GAP
+        kce_fetch.BACKOFF = (0, 0, 0)          # 테스트에서 실제로 기다리지 않는다
+        kce_fetch.MIN_GAP = 0
+
+    def tearDown(self):
+        self.KF.BACKOFF = self.orig_backoff
+        self.KF.MIN_GAP = self.orig_gap
+
+    def test_retries_transient_error_then_succeeds(self):
+        calls = {"n": 0}
+
+        class FakeResp:
+            def read(self, n):
+                return b"OK"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def flaky(req, timeout=None):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise OSError("timed out")
+            return FakeResp()
+
+        orig = self.KF.urllib.request.urlopen
+        self.KF.urllib.request.urlopen = flaky
+        try:
+            body = self.KF._get("https://dart.fss.or.kr/x")
+        finally:
+            self.KF.urllib.request.urlopen = orig
+        self.assertEqual(body, b"OK")
+        self.assertEqual(calls["n"], 3)          # 2번 실패 후 3번째 성공
+
+    def test_gives_up_after_retries(self):
+        def always_fail(req, timeout=None):
+            raise OSError("timed out")
+
+        orig = self.KF.urllib.request.urlopen
+        self.KF.urllib.request.urlopen = always_fail
+        try:
+            with self.assertRaises(OSError):
+                self.KF._get("https://dart.fss.or.kr/x")
+        finally:
+            self.KF.urllib.request.urlopen = orig
+
+    def test_does_not_retry_allowlist_violation(self):
+        with self.assertRaises(ValueError):
+            self.KF._get("https://evil.example.com/x")
+
+
 if __name__ == "__main__":
     unittest.main()

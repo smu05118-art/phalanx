@@ -34,16 +34,47 @@ SECTION_PATTERNS = [
 ]
 
 
-def _get(url, data=None, timeout=60):
+# DART는 연속 요청에 약하다 — GitHub Actions에서 7사를 잇달아 조회하다 전 회사가
+# `urlopen error timed out`으로 실패한 적이 있다(2026-09-06 실행). 재시도와 요청 간
+# 최소 간격으로 흡수한다.
+RETRIES = 3
+BACKOFF = (2, 5, 10)          # 초
+MIN_GAP = 0.7                 # 연속 요청 사이 최소 간격(초)
+_last_call = [0.0]
+
+
+def _pace():
+    import time
+    gap = time.monotonic() - _last_call[0]
+    if gap < MIN_GAP:
+        time.sleep(MIN_GAP - gap)
+    _last_call[0] = time.monotonic()
+
+
+def _get(url, data=None, timeout=45):
     u = urllib.parse.urlparse(url)
     if u.scheme != "https" or u.hostname not in ALLOW_HOSTS:
         raise ValueError("allowlist 밖 URL: %s" % url)
-    req = urllib.request.Request(url, data=data, headers=UA)
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        body = r.read(MAX_BYTES + 1)
-    if len(body) > MAX_BYTES:
-        raise ValueError("응답 크기 상한 초과: %s" % url)
-    return body
+    import time
+    last = None
+    for i in range(RETRIES):
+        _pace()
+        try:
+            req = urllib.request.Request(url, data=data, headers=UA)
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                body = r.read(MAX_BYTES + 1)
+            if len(body) > MAX_BYTES:
+                raise ValueError("응답 크기 상한 초과: %s" % url)
+            return body
+        except ValueError:
+            raise                                  # 크기 초과·allowlist는 재시도 무의미
+        except Exception as e:                     # 타임아웃·연결 리셋·5xx
+            last = e
+            if i < RETRIES - 1:
+                sys.stderr.write("[retry %d/%d] %s — %s\n"
+                                 % (i + 1, RETRIES - 1, type(e).__name__, url[:90]))
+                time.sleep(BACKOFF[i])
+    raise last
 
 
 def _decode(body, rcp_no=""):
