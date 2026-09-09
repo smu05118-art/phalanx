@@ -1,8 +1,8 @@
 {
  "schema_version": "1.0",
  "mock": false,
- "updated": "2026-09-09T11:19:57+09:00",
- "updated_ts": 1788920397,
+ "updated": "2026-09-10T00:39:53+09:00",
+ "updated_ts": 1788968393,
  "year": 2026,
  "sources": [
   "https://www.federalreserve.gov/monetarypolicy/fomc.htm",
@@ -11548,7 +11548,7 @@
     "openalex_note": "소속에 Federal Reserve · bio 상 기관 일치"
    },
    "holdings": {
-    "status": "ocr_pending",
+    "status": "ok",
     "form": "FRB-FormA",
     "report_year": 2025,
     "period_end": null,
@@ -11556,15 +11556,443 @@
     "published": null,
     "source_url": "https://www.newyorkfed.org/medialibrary/media/aboutthefed/Williams-Financials-2025.pdf",
     "source_sha256": "9b4c44a5b0cd5e6dcb99cc0f906916534cc45db26b0ee0480e8178db3bfdb5f7",
-    "extraction": null,
-    "ocr_confidence": null,
+    "extraction": "ocr",
+    "ocr_confidence": 0.75,
     "pages": 15,
-    "reason": "scan_pdf_ocr_required",
-    "summary": null,
-    "rows": [],
+    "summary": {
+     "total_lo": 2228014,
+     "total_hi": 7646000,
+     "total_mid": 4937000,
+     "n_rows": 16,
+     "single_stocks": [],
+     "single_stock_mid": 0,
+     "by_class": {
+      "other": 3939000,
+      "fund_balanced": 750000,
+      "fund_equity_intl": 175000,
+      "cash": 40500,
+      "fund_equity_us": 32500
+     },
+     "rate_sensitivity": "채권·MMF·현금 0.8%(중앙값 합 기준), 개별주 0건, 총 16행"
+    },
+    "rows": [
+     {
+      "part": "2",
+      "row": "1",
+      "parent_row": null,
+      "desc_raw": "AIG Fixed Account Plus (403B)",
+      "name": "AIG Fixed Account Plus",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "LVIP SSgA S&P 500 Index Fund (403B =a —",
+      "name": "LVIP SSgA S&P 500 Index Fund (403B =a —",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "3",
+      "parent_row": null,
+      "desc_raw": "Fidelity Growth Portfolio (403B plan)",
+      "name": "Fidelity Growth Portfolio",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "University of California UC Pathway 2040",
+      "name": "University of California UC Pathway 2040",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": "Vanguard neural Target Date Retirement 2030 _",
+      "name": "Vanguard neural Target Date Retirement 2030 _",
+      "ticker": null,
+      "asset_class": "fund_balanced",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "6",
+      "parent_row": null,
+      "desc_raw": "University of California Pathway omer in",
+      "name": "University of California Pathway omer in",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "7",
+      "parent_row": null,
+      "desc_raw": "University of California Pathway 2035 Fund",
+      "name": "University of California Pathway 2035 Fund",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$250,001 - $500,000",
+       "lo": 250001,
+       "hi": 500000,
+       "mid": 375000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "8",
+      "parent_row": null,
+      "desc_raw": "New York University (Employer)",
+      "name": "New York University",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": "Salary",
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "9",
+      "parent_row": null,
+      "desc_raw": "SavingsPlus Short-Term Investment Fund (457B) _",
+      "name": "SavingsPlus Short-Term Investment Fund (457B) _",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "40",
+      "parent_row": null,
+      "desc_raw": "lips International Equity Index Fund",
+      "name": "lips International Equity Index Fund",
+      "ticker": null,
+      "asset_class": "fund_equity_intl",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "1",
+      "parent_row": null,
+      "desc_raw": "MSIF Growth A Fund (MSEGX)",
+      "name": "MSIF Growth A Fund",
+      "ticker": "MSEGX",
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "— =n",
+      "name": "— =n",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "3",
+      "parent_row": null,
+      "desc_raw": "=a ee A Fund (MACGX) —_",
+      "name": "=a ee A Fund (MACGX) —_",
+      "ticker": "MACGX",
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "ian #1 — Account",
+      "name": "ian #1 — Account",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$250,001 - $500,000",
+       "lo": 250001,
+       "hi": 500000,
+       "mid": 375000
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "$5,001 - $15,000",
+       "lo": 5001,
+       "hi": 15000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": "US bank #2 Cash = : 7",
+      "name": "US bank #2 Cash = : 7",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "6",
+      "parent_row": null,
+      "desc_raw": "US —_ Union # Caan Account",
+      "name": "US —_ Union # Caan Account",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "None (or less than $1,001)",
+       "lo": 0,
+       "hi": 1000,
+       "mid": 500
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     }
+    ],
     "rows_truncated": false,
     "transactions": [],
-    "liabilities": []
+    "liabilities": [
+     {
+      "row": "2",
+      "creditor": "More Year Favorable ca Creditor Name Debtor Type Amount Incurred Interest Rate Term Terms? a kala inal Joint a $100,001 - $250,000 2019 2.950 30 years No Columbia Bank (formerly Umpqua Bank) CA Joint Second home mortgage",
+      "type": null,
+      "amount": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "owner": null
+     }
+    ]
    },
    "notes": [
     "FOMC 부의장(상시 투표)",
@@ -11689,7 +12117,7 @@
     "openalex_note": "소속에 Federal Reserve · 제목 주제비율 0.643(14건) · 비경제 논문 6건 제외(저자 레코드 병합 의심)"
    },
    "holdings": {
-    "status": "ocr_pending",
+    "status": "ok",
     "form": "FRB-FormA",
     "report_year": 2026,
     "period_end": null,
@@ -11697,15 +12125,1607 @@
     "published": null,
     "source_url": "https://www.clevelandfed.org/-/media/project/clevelandfedtenant/clevelandfedsite/about-us/corporate-governance/cle-hammack-form-a-2026-certified.pdf",
     "source_sha256": "8ff7830ab0ee1a6e5bc7aeb3d93bfd7f0c8f9fa4fd457c7e47c3f3a0de2ef2f2",
-    "extraction": null,
-    "ocr_confidence": null,
+    "extraction": "ocr",
+    "ocr_confidence": 0.662,
     "pages": 14,
-    "reason": "scan_pdf_ocr_required",
-    "summary": null,
-    "rows": [],
-    "rows_truncated": false,
-    "transactions": [],
-    "liabilities": []
+    "summary": {
+     "total_lo": 11477063,
+     "total_hi": null,
+     "total_mid": 25126510,
+     "n_rows": 62,
+     "single_stocks": [],
+     "single_stock_mid": 0,
+     "by_class": {
+      "etf": 7740002,
+      "other": 6536002,
+      "fund_bond": 4412502,
+      "fund_equity_intl": 3382502,
+      "private_fund": 2665002,
+      "real_estate": 207500,
+      "fund_equity_us": 175000,
+      "money_market": 8000
+     },
+     "rate_sensitivity": "채권·MMF·현금 17.6%(중앙값 합 기준), 개별주 0건, 총 62행"
+    },
+    "rows": [
+     {
+      "part": "2",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "DERE EE AE Sea) Filer Yes $1,000,001 - $5,000,000 None (or less than $201) fj ee oY Filer Yes $500,001 - $1,000,000 None (or less than $201) g Wellington Small Cap Eq (GS 401(K) Filer Yes $500,001 - $1,000,000 None (or less than $201) Capital Group US High Yield Bond Fund (GS 401(k))",
+      "name": "DERE EE AE Sea) Filer Yes $1,000,001 - $5,000,000 None (or less than $201) fj ee oY Filer Yes $500,001 - $1,000,000 None (or less than $201) g Wellington Small Cap Eq (GS 401(K) Filer Yes $500,001 - $1,000,000 None (or less than $201) Capital Group US High Yield Bond Fund (GS 401(k))",
+      "ticker": null,
+      "asset_class": "fund_bond",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": "apps iia ice a",
+      "name": "apps iia ice a",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "6",
+      "parent_row": null,
+      "desc_raw": "shite imine ae ascertainable",
+      "name": "shite imine ae ascertainable",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "7",
+      "parent_row": null,
+      "desc_raw": "Case Western Reserve University compensation",
+      "name": "Case Western Reserve University compensation",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "9",
+      "parent_row": null,
+      "desc_raw": "g Bench Consulting LLC (Private Consulting Company) Spouse / Domestic Partner No $1,001 - $15,000 None (or less than $201) Credit Suisse - Pension (value not readily ascertainable)",
+      "name": "g Bench Consulting LLC (Private Consulting Company) Spouse / Domestic Partner No $1,001 - $15,000 None (or less than $201) Credit Suisse - Pension",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "11",
+      "parent_row": null,
+      "desc_raw": "jg, NATE: TSG AONT AENR) = EE Sh) Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) Spouse IRA",
+      "name": "jg, NATE: TSG AONT AENR) = EE Sh) Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) Spouse IRA",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "12",
+      "parent_row": null,
+      "desc_raw": "Fidellty Goverment Cash Reserves",
+      "name": "Fidellty Goverment Cash Reserves",
+      "ticker": null,
+      "asset_class": "money_market",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "14",
+      "parent_row": null,
+      "desc_raw": "ia, CS hong net a REN Spouse | Domestic Partner Yes $500,001 - $1,000,000 None (or less than $201) Ishares Core S&P 500 ETF (IVV) Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201)",
+      "name": "ia, CS hong net a REN Spouse | Domestic Partner Yes $500,001 - $1,000,000 None (or less than $201) Ishares Core S&P 500 ETF (IVV) Spouse / Domestic Partner Yes $100,001 - $250,000 None",
+      "ticker": "IVV",
+      "asset_class": "etf",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "17",
+      "parent_row": null,
+      "desc_raw": "4g MONS MSCIEAFE ETP ETA Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) 4g ‘shares S&P Euro (EV) Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) 'Shares MSCI Asia ETF (AAXJ)",
+      "name": "4g MONS MSCIEAFE ETP ETA Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) 4g ‘shares S&P Euro (EV) Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) 'Shares MSCI Asia ETF",
+      "ticker": "EV",
+      "asset_class": "fund_equity_intl",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "29",
+      "parent_row": null,
+      "desc_raw": "4g ‘Shares MSCI ACW ETF (ACW) Spouse / Domestic Partner ves $50,001 - $100,000 None (or less than $201) 4g SPDR S&P 500 ETF Trust (SPY) Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) ~—- Vanguard Int Equity Allworld (VEU)",
+      "name": "4g ‘Shares MSCI ACW ETF (ACW) Spouse / Domestic Partner ves $50,001 - $100,000 None (or less than $201) 4g SPDR S&P 500 ETF Trust (SPY) Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) ~—- Vanguard Int Equity Allworld",
+      "ticker": "ACW",
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "21",
+      "parent_row": null,
+      "desc_raw": "san Broad USD High Yield Corporate Bond ETF",
+      "name": "san Broad USD High Yield Corporate Bond ETF",
+      "ticker": null,
+      "asset_class": "fund_bond",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "9",
+      "parent_row": null,
+      "desc_raw": "SPDR S&P International ETF (DWX) Spouse [Domestic Partner Yas",
+      "name": "SPDR S&P International ETF (DWX) Spouse [Domestic Partner Yas",
+      "ticker": "DWX",
+      "asset_class": "fund_equity_intl",
+      "owner": null,
+      "eif": null,
+      "value": {
+       "raw": "$15,004 - $50,000",
+       "lo": 15004,
+       "hi": 50000,
+       "mid": 32502
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "23",
+      "parent_row": null,
+      "desc_raw": "AirMettle (Big data analytics tool) vested stock options",
+      "name": "AirMettle (Big data analytics tool) vested stock options",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "j Ve tenet eee Filer No $100,001 - $250,000 None (or less than $201) p WS. benk#e (Canty Filer No None (or less than $1,001) interest $2,501 - $5,000 g YeRRHaN siemens Maney Baan Filer Yes $500,004 - $1,000,000 $2,501 - $5,000 Brokerage Account",
+      "name": "j Ve tenet eee Filer No $100,001 - $250,000 None (or less than $201) p WS. benk#e (Canty Filer No None (or less than $1,001) interest $2,501 - $5,000 g YeRRHaN siemens Maney Baan Filer Yes $500,004 - $1,000,000 $2,501 - $5,000 Brokerage Account",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": ". ee Square Treasury Instruments Fund",
+      "name": ". ee Square Treasury Instruments Fund",
+      "ticker": null,
+      "asset_class": "fund_bond",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$100,001 - $1,000,000",
+       "lo": 100001,
+       "hi": 1000000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "8",
+      "parent_row": null,
+      "desc_raw": "6 iShares Core S&P 500 ETF CMN ({IVV) Filer Yes $1,000,001 - $5,000,000 $15,001 - $50,000 + OY al Intermediate Term Bond Index Fund ETF Filer Yes $1,000,001 - $5,000,000 $50,001 - $100,000 an” Broad USD High Yield Corporate Bond ETF",
+      "name": "6 iShares Core S&P 500 ETF CMN ({IVV) Filer Yes $1,000,001 - $5,000,000 $15,001 - $50,000 + OY al Intermediate Term Bond Index Fund ETF Filer Yes $1,000,001 - $5,000,000 $50,001 - $100,000 an” Broad USD High Yield Corporate Bond ETF",
+      "ticker": "IVV",
+      "asset_class": "etf",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$100,001 - $1,000,000",
+       "lo": 100001,
+       "hi": 1000000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "490",
+      "parent_row": null,
+      "desc_raw": "iShares S&P 500 Value ETF CMN (IVE) Filer Yes $1,000,001 - $5,000,000 $15,001 - $50,000 SPDR S&P 500 ETF Trust (SPY)",
+      "name": "iShares S&P 500 Value ETF CMN (IVE) Filer Yes $1,000,001 - $5,000,000 $15,001 - $50,000 SPDR S&P 500 ETF Trust",
+      "ticker": "IVE",
+      "asset_class": "etf",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$500,004 - $1,000,000",
+       "lo": 500004,
+       "hi": 1000000,
+       "mid": 750002
+      },
+      "income": {
+       "type": null,
+       "raw": "$5,001 - $15,000",
+       "lo": 5001,
+       "hi": 15000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "42",
+      "parent_row": null,
+      "desc_raw": "eee Sachs Dynamic Municipal income Fund Filer Yes $5,000,001 - $25,000,000 $100,001 - $1,000,000 Vanguard Small cap ETF (VB) 11 Filer Yes $500,001 - $1,000,000 $5,001 - $15,000",
+      "name": "eee Sachs Dynamic Municipal income Fund Filer Yes $5,000,001 - $25,000,000 $100,001 - $1,000,000 Vanguard Small cap ETF (VB) 11 Filer Yes $500,001 - $1,000,000 $5,001 - $15,000",
+      "ticker": "VB",
+      "asset_class": "etf",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "$5,001 - $15,000",
+       "lo": 5001,
+       "hi": 15000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "43",
+      "parent_row": null,
+      "desc_raw": "Shares Core MSCI EAFE ETF (IEFA)",
+      "name": "Shares Core MSCI EAFE ETF",
+      "ticker": "IEFA",
+      "asset_class": "fund_equity_intl",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "14",
+      "parent_row": null,
+      "desc_raw": "iShares Currency Hedged MSCI EAFE ETF (HEFA)",
+      "name": "iShares Currency Hedged MSCI EAFE ETF",
+      "ticker": "HEFA",
+      "asset_class": "etf",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "15",
+      "parent_row": null,
+      "desc_raw": "iShares Core MSCI Emerging Markets ETF (IEMG)",
+      "name": "iShares Core MSCI Emerging Markets ETF",
+      "ticker": "IEMG",
+      "asset_class": "fund_equity_intl",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "$2,501 - $5,000",
+       "lo": 2501,
+       "hi": 5000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "16",
+      "parent_row": null,
+      "desc_raw": "sera! pov ali Zone Solutions LLC - Real",
+      "name": "sera! pov ali Zone Solutions LLC - Real",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "filer",
+      "eif": null,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "20",
+      "parent_row": null,
+      "desc_raw": "18 (cont'd from line 17) to information that the investment was worthless) it ony ial saeaeilaialasiniiiaabions Filer No $50,004 - $100,000 Distributions $1,954 ett LLC (holds commercial real",
+      "name": "18 (cont'd from line 17) to information that the investment was worthless) it ony ial saeaeilaialasiniiiaabions Filer No $50,004 - $100,000 Distributions $1,954 ett LLC (holds commercial real",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "21",
+      "parent_row": null,
+      "desc_raw": "sibeieiia Th QOF LLC (holds commercial real estate,",
+      "name": "sibeieiia Th QOF LLC (holds commercial real estate,",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "filer",
+      "eif": null,
+      "value": {
+       "raw": "$50,004 - $100,000",
+       "lo": 50004,
+       "hi": 100000,
+       "mid": 75002
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "22",
+      "parent_row": null,
+      "desc_raw": "Romack Holdings 1 LLC (Boat Lease)",
+      "name": "Romack Holdings 1 LLC",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$250,001 - $600,000",
+       "lo": 250001,
+       "hi": 600000,
+       "mid": 425000
+      },
+      "income": {
+       "type": null,
+       "raw": "$45,001 - $50,000",
+       "lo": 45001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "23",
+      "parent_row": null,
+      "desc_raw": "US Treasury Series | Bonds",
+      "name": "US Treasury Series | Bonds",
+      "ticker": null,
+      "asset_class": "fund_bond",
+      "owner": "filer",
+      "eif": null,
+      "value": {
+       "raw": "$15,001 - $60,000",
+       "lo": 15001,
+       "hi": 60000,
+       "mid": 37500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "24",
+      "parent_row": null,
+      "desc_raw": "Family Trust #1",
+      "name": "Family Trust #1",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "25",
+      "parent_row": null,
+      "desc_raw": "Vintage Vill Employee LP",
+      "name": "Vintage Vill Employee LP",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "filer",
+      "eif": null,
+      "value": {
+       "raw": "$250,001 - $500,000",
+       "lo": 250001,
+       "hi": 500000,
+       "mid": 375000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "26",
+      "parent_row": null,
+      "desc_raw": "Vintage VII Employee LP (Carried Interest)",
+      "name": "Vintage VII Employee LP",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,004 - $50,000",
+       "lo": 15004,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "i chimtiendiveiio File No $50,001 - $100,000 None (or ess than $201) x barb te ae Rental Management) (Preferred",
+      "name": "i chimtiendiveiio File No $50,001 - $100,000 None (or ess than $201) x barb te ae Rental Management) (Preferred",
+      "ticker": null,
+      "asset_class": "real_estate",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "30",
+      "parent_row": null,
+      "desc_raw": "pane easily (oseponel toleind Phoanent (ato) Fle No",
+      "name": "pane easily (oseponel toleind Phoanent (ato) Fle No",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$16,001 - $50,000",
+       "lo": 16001,
+       "hi": 50000,
+       "mid": 33000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "31",
+      "parent_row": null,
+      "desc_raw": "at ae dar cae aa at cost) (Holds Pierpoint",
+      "name": "at ae dar cae aa at cost) (Holds Pierpoint",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$50,004 - $100,000",
+       "lo": 50004,
+       "hi": 100000,
+       "mid": 75002
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "32",
+      "parent_row": null,
+      "desc_raw": "Vetnos LLC (Gaming Softward and IP) assets:",
+      "name": "Vetnos LLC (Gaming Softward and IP) assets:",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "33",
+      "parent_row": null,
+      "desc_raw": "cane i (listed at cost) - Simple Agreement for",
+      "name": "cane i (listed at cost) - Simple Agreement for",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "34",
+      "parent_row": null,
+      "desc_raw": "“a LLC Litigation Payment Agreement (listed at",
+      "name": "“a LLC Litigation Payment Agreement (listed at",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "35",
+      "parent_row": null,
+      "desc_raw": "Vetnos LLC (LLC Membership) (listed at cost)",
+      "name": "Vetnos LLC (LLC Membership)",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "36",
+      "parent_row": null,
+      "desc_raw": "Wagmo Inc (Pet insurance technology) (listed at cost)",
+      "name": "Wagmo Inc (Pet insurance technology)",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "37",
+      "parent_row": null,
+      "desc_raw": "Carbon Capture Inc (Climate Technology Co.) (listed at cost)",
+      "name": "Carbon Capture Inc (Climate Technology Co.)",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "38",
+      "parent_row": null,
+      "desc_raw": "e an ee Square Treasury Instruments Fund",
+      "name": "e an ee Square Treasury Instruments Fund",
+      "ticker": null,
+      "asset_class": "fund_bond",
+      "owner": "filer",
+      "eif": null,
+      "value": {
+       "raw": "$250,004 - $500,000",
+       "lo": 250004,
+       "hi": 500000,
+       "mid": 375002
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "44",
+      "parent_row": null,
+      "desc_raw": "gig MASSA, Whale: Pokoy Filer No $1,000,001 - $5,000,000 None (or less than $201) ‘ey ener Filer No $250,001 - $500,000 Interest $5,001 - $15,000 gy Fevly Trustee Spouse / Domestic Partner No gq pee? Spouse / Domestic Partner Yes $250,001 - $500,000 $15,001 - $50,000 jg, VSRRg RIE Epoyon Ey camel pened Spouse / Domestic Partner Yes $500,001 - $1,000,000 $15,001 - $50,000 pissed inayt Rell (based on most",
+      "name": "gig MASSA, Whale: Pokoy Filer No $1,000,001 - $5,000,000 None (or less than $201) ‘ey ener Filer No $250,001 - $500,000 Interest $5,001 - $15,000 gy Fevly Trustee Spouse / Domestic Partner No gq pee? Spouse / Domestic Partner Yes $250,001 - $500,000 $15,001 - $50,000 jg, VSRRg RIE Epoyon Ey camel pened Spouse / Domestic Partner Yes $500,001 - $1,000,000 $15,001 - $50,000 pissed inayt Rell (based on most",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$250,001 - $500,000",
+       "lo": 250001,
+       "hi": 500000,
+       "mid": 375000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "45",
+      "parent_row": null,
+      "desc_raw": "PP ee piste old criti for Futinw Eouity",
+      "name": "PP ee piste old criti for Futinw Eouity",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "46",
+      "parent_row": null,
+      "desc_raw": "gia ae a pnt) Orne M pnsaeanent Teton",
+      "name": "gia ae a pnt) Orne M pnsaeanent Teton",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "47",
+      "parent_row": null,
+      "desc_raw": "cides cal foul dad fy ston deste a",
+      "name": "cides cal foul dad fy ston deste a",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "8",
+      "parent_row": null,
+      "desc_raw": "wx aegdaeteen | Spouee Dennaesc Paar No",
+      "name": "wx aegdaeteen | Spouee Dennaesc Paar No",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "49",
+      "parent_row": null,
+      "desc_raw": "Vetnos LLC (Gaming Softward and IP) assets:",
+      "name": "Vetnos LLC (Gaming Softward and IP) assets:",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": null,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "50",
+      "parent_row": null,
+      "desc_raw": "PN ery (listed at cost) - Simple Agreement for",
+      "name": "PN ery (listed at cost) - Simple Agreement for",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "51",
+      "parent_row": null,
+      "desc_raw": "oe LLC Litigation Payment Agreement (listed at",
+      "name": "oe LLC Litigation Payment Agreement (listed at",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "52",
+      "parent_row": null,
+      "desc_raw": "Vetnos LLC (LLC Membership) (listed at cost) Spouse / Domestic Partner No $50,001 - $100,000 None (or less than $201)",
+      "name": "Vetnos LLC (LLC Membership) (listed at cost) Spouse / Domestic Partner No $50,001 - $100,000 None",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "53",
+      "parent_row": null,
+      "desc_raw": "Wegmo Inc (Pet insurance technology) (letod at cost)",
+      "name": "Wegmo Inc (Pet insurance technology)",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "55",
+      "parent_row": null,
+      "desc_raw": "tig ee Spouse / Domestic Partner No $50,001 - $100,000 None (or less than $201) Mass Mutual, Whole Life Policy Spouse / Domestic Partner No $1,000,001 - $5,000,000 None (or less than $201)",
+      "name": "tig ee Spouse / Domestic Partner No $50,001 - $100,000 None (or less than $201) Mass Mutual, Whole Life Policy Spouse / Domestic Partner No $1,000,001 - $5,000,000 None",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "62",
+      "parent_row": null,
+      "desc_raw": "ge Lean to Family Member Spouse / Domestic Partner No $250,001 - $500,000 interest $5,001 - $15,000 a iia ai i Spouse / Domestic Partner Yes $1,000,001 - $5,000,000 $15,001 - $50,000 gy: “WA SO a ETE eS Spouse / Domestic Partner Yes $250,001 - $500,000 $2,501 - $5,000 gg «= SRR eeey Spouse / Domestic Partner Yes $500,001 - $1,000,000 $15,004 - $50,000 gg SAREE Cry ig Se ESE ey Spouse / Domestic Partner Yes $500,001 - $1,000,000 $15,001 - $50,000 - tiaeniaiaiiaaiaaimia:. ss dma la Spouse / Domestic Partner Yes $100,004 - $250,000 $5,001 - $15,000 ile SUES THOORY, CSI IES EU",
+      "name": "ge Lean to Family Member Spouse / Domestic Partner No $250,001 - $500,000 interest $5,001 - $15,000 a iia ai i Spouse / Domestic Partner Yes $1,000,001 - $5,000,000 $15,001 - $50,000 gy: “WA SO a ETE eS Spouse / Domestic Partner Yes $250,001 - $500,000 $2,501 - $5,000 gg «= SRR eeey Spouse / Domestic Partner Yes $500,001 - $1,000,000 $15,004 - $50,000 gg SAREE Cry ig Se ESE ey Spouse / Domestic Partner Yes $500,001 - $1,000,000 $15,001 - $50,000 - tiaeniaiaiiaaiaaimia:. ss dma la Spouse / Domestic Partner Yes $100,004 - $250,000 $5,001 - $15,000 ile SUES THOORY, CSI IES EU",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,004 - $50,000",
+       "lo": 15004,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "65",
+      "parent_row": null,
+      "desc_raw": "Sn Filer No $5,000,004 - $25,000,000 Rental Income $50,001 - $100,000 e4 Brokerage Account: Spouse / Domestic Partner No emer ae eee",
+      "name": "Sn Filer No $5,000,004 - $25,000,000 Rental Income $50,001 - $100,000 e4 Brokerage Account: Spouse / Domestic Partner No emer ae eee",
+      "ticker": null,
+      "asset_class": "real_estate",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "$5,001 - $15,000",
+       "lo": 5001,
+       "hi": 15000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "68",
+      "parent_row": null,
+      "desc_raw": "go 6S Sterling Liquid Reserves Fund Spouse / Domestic Partner Yes $100,001 - $250,000 $1,001 - $2,500 ¢ Se Spouse / Domestic Partner Yes $100,001 - $250,000 $1,001 - $2,500 i aa BEE ey eee eo",
+      "name": "go 6S Sterling Liquid Reserves Fund Spouse / Domestic Partner Yes $100,001 - $250,000 $1,001 - $2,500 ¢ Se Spouse / Domestic Partner Yes $100,001 - $250,000 $1,001 - $2,500 i aa BEE ey eee eo",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "69",
+      "parent_row": null,
+      "desc_raw": "US Treasury Series | Bonds",
+      "name": "US Treasury Series | Bonds",
+      "ticker": null,
+      "asset_class": "fund_bond",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "72",
+      "parent_row": null,
+      "desc_raw": "a Spouse / Domestic Partner No $1,004 - $15,000 None (or less than $201) oi: MERON TERROR Spouse / Domestic Partner Yes $250,001 - $500,000 $5,001 - $15,000 Irrevocable Trust #1 (Dependent non-minor child)",
+      "name": "a Spouse / Domestic Partner No $1,004 - $15,000 None (or less than $201) oi: MERON TERROR Spouse / Domestic Partner Yes $250,001 - $500,000 $5,001 - $15,000 Irrevocable Trust #1",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "dependent",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "73",
+      "parent_row": null,
+      "desc_raw": "coe ARNG TREY POE REE",
+      "name": "coe ARNG TREY POE REE",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "dependent",
+      "eif": true,
+      "value": {
+       "raw": "Over $1,000,000",
+       "lo": 1000000,
+       "hi": null,
+       "mid": 1500000
+      },
+      "income": {
+       "type": null,
+       "raw": "$50,004 - $100,000",
+       "lo": 50004,
+       "hi": 100000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "74",
+      "parent_row": null,
+      "desc_raw": "«| -SRSURRISED RSPEI SEY",
+      "name": "«| -SRSURRISED RSPEI SEY",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "dependent",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "$1,001 - $2,500",
+       "lo": 1001,
+       "hi": 2500
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "79",
+      "parent_row": null,
+      "desc_raw": "yy 46 SORSIISROR SO GRE eo Dependent Child Yes $15,001 - $50,000 $201 - $1,000 qq | NESE RAP OVA EIP NE) Dependent Child Yes $250,001 - $500,000 $1,001 - $2,500 yy | MERI Dependent Child Yes $100,001 - $250,000 $2,501 - $5,000 zy | NOSE UE MR ETT vOM Dependent Child Yes $100,001 - $250,000 $5,001 - $15,000 Vanguard Star Fund International (VXUS) Dependent Child Yes $15,001 - $50,000 $201 - $1,000",
+      "name": "yy 46 SORSIISROR SO GRE eo Dependent Child Yes $15,001 - $50,000 $201 - $1,000 qq | NESE RAP OVA EIP NE) Dependent Child Yes $250,001 - $500,000 $1,001 - $2,500 yy | MERI Dependent Child Yes $100,001 - $250,000 $2,501 - $5,000 zy | NOSE UE MR ETT vOM Dependent Child Yes $100,001 - $250,000 $5,001 - $15,000 Vanguard Star Fund International (VXUS) Dependent Child Yes $15,001 - $50,000 $201 - $1,000",
+      "ticker": "VXUS",
+      "asset_class": "etf",
+      "owner": "dependent",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "6",
+      "parent_row": null,
+      "desc_raw": "en OnE Soy Reese",
+      "name": "en OnE Soy Reese",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "dependent",
+      "eif": false,
+      "value": {
+       "raw": "None (or less than $1,001)",
+       "lo": 0,
+       "hi": 1000,
+       "mid": 500
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "83",
+      "parent_row": null,
+      "desc_raw": "Gi SNORRSEDE sine ecemates Cromi cena copay Dependent Child No $1,000,001 - $5,000,000 interest $100,001 - $1,000,000 ig SOITMSROIy: Note: Receives (rom: Farry Merrie? Dependent Child No $250,001 - $500,000 Interest $15,001 - $50,000 BE Ey ae CEs",
+      "name": "Gi SNORRSEDE sine ecemates Cromi cena copay Dependent Child No $1,000,001 - $5,000,000 interest $100,001 - $1,000,000 ig SOITMSROIy: Note: Receives (rom: Farry Merrie? Dependent Child No $250,001 - $500,000 Interest $15,001 - $50,000 BE Ey ae CEs",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "dependent",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     }
+    ],
+    "rows_truncated": true,
+    "transactions": [
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "1",
+      "desc": "se ai — Income Fund Class P - Monthly Automatic Dividend",
+      "type": null,
+      "date": null,
+      "amount": {
+       "raw": "$250,001 - $500,000",
+       "lo": 250001,
+       "hi": 500000,
+       "mid": 375000
+      },
+      "owner": "filer",
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "3",
+      "desc": "Teeieiaeaadalt: sa ialeiideiiia Spouse / Domestic Partner Sale 03/28/2025 $15,001 - $50,000 GS Sterling Liquid Reserves",
+      "type": "Sale",
+      "date": "2025-09-22",
+      "amount": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "owner": "spouse",
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "4",
+      "desc": "pny itn am 2022 LP - Capital Contribution Zero Carbon Capital 2022 LP",
+      "type": null,
+      "date": "2025-03-26",
+      "amount": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "owner": "spouse",
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "5",
+      "desc": "rot ee a ae 2022 LP - Capital Contribution Zero Carbon Capital 2022 LP",
+      "type": null,
+      "date": "2025-09-23",
+      "amount": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "owner": "spouse",
+      "published": null
+     }
+    ],
+    "liabilities": [
+     {
+      "row": "1",
+      "creditor": "More Year Favorable # Creditor Name Debtor Type Amount Incurred Interest Rate Term Terms? Outstanding Capital Call Obligation Zero Carbon 2022 LP",
+      "type": null,
+      "amount": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "owner": "spouse"
+     }
+    ]
    },
    "notes": [
     "Form A 2026 스캔(11MB) → OCR"
@@ -12409,15 +14429,16 @@
     "published": null,
     "source_url": "https://www.dallasfed.org/-/media/Documents/fed/disclosures/2025findisclosure-Logan.pdf",
     "source_sha256": "1b35e43f506bf1b08bc3fa23eaf7c57163cce4924391b64cc43de900460a80a2",
-    "extraction": "pypdf",
+    "extraction": "pdftotext",
     "ocr_confidence": null,
     "pages": 10,
     "summary": {
-     "total_lo": 2348016,
+     "total_lo": 3499024,
      "total_hi": null,
-     "total_mid": 3746500,
-     "n_rows": 21,
+     "total_mid": 5555000,
+     "n_rows": 31,
      "single_stocks": [
+      "ABBV",
       "ABNB",
       "AMAT",
       "DNA",
@@ -12426,31 +14447,107 @@
       "HLLY",
       "IQV",
       "LBTYK",
-      "NSRGY",
       "NWL",
       "PR",
+      "ROIV",
       "SNRE",
       "STNG",
-      "TER"
+      "TER",
+      "WearWare Inc. Series Q-2 Preferred Stock"
      ],
-     "single_stock_mid": 1996500,
+     "single_stock_mid": 2005000,
      "by_class": {
-      "stock": 1996500,
-      "fund_equity_us": 1500000,
-      "other": 175000,
-      "fund_balanced": 75000
+      "stock": 2005000,
+      "fund_equity_us": 1575000,
+      "other": 1150000,
+      "fund_balanced": 825000
      },
-     "rate_sensitivity": "채권·MMF·현금 0.0%(중앙값 합 기준), 개별주 14건(ABNB, AMAT, DNA, EPD, GRNT), 총 21행"
+     "rate_sensitivity": "채권·MMF·현금 0.0%(중앙값 합 기준), 개별주 16건(ABBV, ABNB, AMAT, DNA, EPD), 총 31행"
     },
     "rows": [
      {
       "part": "2",
-      "row": "4",
+      "row": "1",
       "parent_row": null,
-      "desc_raw": "and other business income, honoraria, scholarships, and prizes). For your spouse or domestic partner, report the source, exact value, and date of honoraria exceeding $200, and report the source, but not the amount, of other earned or non-investment income exceeding $1,000. Report each asset related to your or your spouse’s or domestic partner’s business, employment, or other income-generating activities if the value of the asset at the end of the reporting period exceeded $1,000 or if more than $200 in income was received during the reporting period (e.g., equity in a business or partnership, stock options, retirement plans/accounts and their underlying holdings as appropriate, anticipated payments such as severance payments, deferred compensation, and intellectual property, such as book deals and patents). # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount 1 Vanguard Vinson & Elkins Plan A: State St US Extended Market Index Non-Lending Series Fund Class X Spouse / Domestic Partner Yes $250,001 - $500,000 None (or less than $201) 2 Vanguard Vinson & Elkins Plan A: State Street Growth Target Retirement 2035 SL SF Cl III Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) 3 Vinson & Elkins Variable Annuity Plan (underlying assets not disclosed) Spouse / Domestic Partner No $500,001 - $1,000,000 None (or less than $201) King & Spalding (Law Firm)",
-      "name": "and other business income, honoraria, scholarships, and prizes). For your spouse or domestic partner, report the source, exact value, and date of honoraria exceeding $200, and report the source, but not the amount, of other earned or non-investment income exceeding $1,000. Report each asset related to your or your spouse’s or domestic partner’s business, employment, or other income-generating activities if the value of the asset at the end of the reporting period exceeded $1,000 or if more than $200 in income was received during the reporting period (e.g., equity in a business or partnership, stock options, retirement plans/accounts and their underlying holdings as appropriate, anticipated payments such as severance payments, deferred compensation, and intellectual property, such as book deals and patents). # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount 1 Vanguard Vinson & Elkins Plan A: State St US Extended Market Index Non-Lending Series Fund Class X Spouse / Domestic Partner Yes $250,001 - $500,000 None (or less than $201) 2 Vanguard Vinson & Elkins Plan A: State Street Growth Target Retirement 2035 SL SF Cl III Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) 3 Vinson & Elkins Variable Annuity Plan (underlying assets not disclosed) Spouse / Domestic Partner No $500,001 - $1,000,000 None (or less than $201) King & Spalding",
+      "desc_raw": "Vanguard Vinson & Elkins Plan A: State St US Extended Spouse / Domestic Partner Yes $250,001 - $500,000 None (or less than $201)",
+      "name": "Vanguard Vinson & Elkins Plan A: State St US Extended Spouse / Domestic Partner Yes $250,001 - $500,000 None",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$250,001 - $500,000",
+       "lo": 250001,
+       "hi": 500000,
+       "mid": 375000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "Market Index Non-Lending Series Fund Class X Vanguard Vinson & Elkins Plan A: State Street Growth Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201)",
+      "name": "Market Index Non-Lending Series Fund Class X Vanguard Vinson & Elkins Plan A: State Street Growth Spouse / Domestic Partner Yes $50,001 - $100,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "3",
+      "parent_row": null,
+      "desc_raw": "Target Retirement 2035 SL SF Cl III Vinson & Elkins Variable Annuity Plan (underlying assets Spouse / Domestic Partner No $500,001 - $1,000,000 None (or less than $201)",
+      "name": "Target Retirement 2035 SL SF Cl III Vinson & Elkins Variable Annuity Plan",
       "ticker": null,
       "asset_class": "fund_balanced",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "not disclosed) King & Spalding (Law Firm)",
+      "name": "not disclosed) King & Spalding",
+      "ticker": null,
+      "asset_class": "other",
       "owner": "spouse",
       "eif": false,
       "value": {
@@ -12470,10 +14567,35 @@
      },
      {
       "part": "2",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": "King & Spalding (capital account - value withheld due to Spouse / Domestic Partner No",
+      "name": "King & Spalding (capital account - value withheld due to Spouse / Domestic Partner No",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
       "row": "6",
       "parent_row": null,
-      "desc_raw": "5 King & Spalding (capital account - value withheld due to confidentiality requirements) Spouse / Domestic Partner No Vanguard King & Spalding Target Ret Tr 2035 II",
-      "name": "5 King & Spalding (capital account - value withheld due to confidentiality requirements) Spouse / Domestic Partner No Vanguard King & Spalding Target Ret Tr 2035 II",
+      "desc_raw": "confidentiality requirements) Vanguard King & Spalding Target Ret Tr 2035 II",
+      "name": "confidentiality requirements) Vanguard King & Spalding Target Ret Tr 2035 II",
       "ticker": null,
       "asset_class": "fund_balanced",
       "owner": "spouse",
@@ -12497,10 +14619,10 @@
       "part": "3",
       "row": "1",
       "parent_row": null,
-      "desc_raw": "greater than $1,000 or from which more than $200 in income was received during the reporting period. # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount AbbVie Inc.(ABBV) Common",
-      "name": "greater than $1,000 or from which more than $200 in income was received during the reporting period. # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount AbbVie Inc.(ABBV) Common",
+      "desc_raw": "AbbVie Inc.(ABBV) Common",
+      "name": "AbbVie Inc.(ABBV) Common",
       "ticker": "ABBV",
-      "asset_class": "other",
+      "asset_class": "stock",
       "owner": "spouse",
       "eif": false,
       "value": {
@@ -12725,7 +14847,7 @@
       "desc_raw": "Nestle ADR (NSRGY)",
       "name": "Nestle ADR",
       "ticker": "NSRGY",
-      "asset_class": "stock",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": false,
       "value": {
@@ -12741,7 +14863,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "3",
@@ -12770,11 +14892,36 @@
      },
      {
       "part": "3",
+      "row": "12",
+      "parent_row": null,
+      "desc_raw": "Sunrise Communications (SNRE) Common (acquired via Spouse / Domestic Partner No None (or less than $1,001) Dividends/Gains $1,001 - $2,500",
+      "name": "Sunrise Communications (SNRE) Common (acquired via Spouse / Domestic Partner No None (or less than $1,001) Dividends/Gains $1,001 - $2,500",
+      "ticker": "SNRE",
+      "asset_class": "stock",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "None (or less than $1,001)",
+       "lo": 0,
+       "hi": 1000,
+       "mid": 500
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$1,001 - $2,500",
+       "lo": 1001,
+       "hi": 2500
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
       "row": "13",
       "parent_row": null,
-      "desc_raw": "12 Sunrise Communications (SNRE) Common (acquired via spin-off from Liberty Global PLC) Spouse / Domestic Partner No None (or less than $1,001) Dividends/Gains $1,001 - $2,500 Roivant Sciences ltd. (ROIV) Common",
-      "name": "12 Sunrise Communications (SNRE) Common (acquired via spin-off from Liberty Global PLC) Spouse / Domestic Partner No None (or less than $1,001) Dividends/Gains $1,001 - $2,500 Roivant Sciences ltd. (ROIV) Common",
-      "ticker": "SNRE",
+      "desc_raw": "spin-off from Liberty Global PLC) Roivant Sciences ltd. (ROIV) Common",
+      "name": "spin-off from Liberty Global PLC) Roivant Sciences ltd. (ROIV) Common",
+      "ticker": "ROIV",
       "asset_class": "stock",
       "owner": "spouse",
       "eif": false,
@@ -12870,10 +15017,60 @@
      },
      {
       "part": "3",
+      "row": "17",
+      "parent_row": null,
+      "desc_raw": "WearWare Inc. Series Q-2 Preferred Stock (Flywire Spouse / Domestic Partner No $1,001 - $15,000 None (or less than $201)",
+      "name": "WearWare Inc. Series Q-2 Preferred Stock",
+      "ticker": null,
+      "asset_class": "stock",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "18",
+      "parent_row": null,
+      "desc_raw": "Cameras) Vanguard New York Long-Term Tax Exempt Fund Spouse / Domestic Partner Yes $100,001 - $250,000 $5,001 - $15,000",
+      "name": "Cameras) Vanguard New York Long-Term Tax Exempt Fund Spouse / Domestic Partner Yes $100,001 - $250,000 $5,001 - $15,000",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "$5,001 - $15,000",
+       "lo": 5001,
+       "hi": 15000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
       "row": "19",
       "parent_row": null,
-      "desc_raw": "17 WearWare Inc. Series Q-2 Preferred Stock (Flywire Cameras) Spouse / Domestic Partner No $1,001 - $15,000 None (or less than $201) 18 Vanguard New York Long-Term Tax Exempt Fund (VNYUX) Spouse / Domestic Partner Yes $100,001 - $250,000 $5,001 - $15,000 Fidelity IRA-Large Cap Growth (FGCKX)",
-      "name": "17 WearWare Inc. Series Q-2 Preferred Stock (Flywire Cameras) Spouse / Domestic Partner No $1,001 - $15,000 None (or less than $201) 18 Vanguard New York Long-Term Tax Exempt Fund (VNYUX) Spouse / Domestic Partner Yes $100,001 - $250,000 $5,001 - $15,000 Fidelity IRA-Large Cap Growth",
+      "desc_raw": "(VNYUX) Fidelity IRA-Large Cap Growth (FGCKX)",
+      "name": "(VNYUX) Fidelity IRA-Large Cap Growth",
       "ticker": "VNYUX",
       "asset_class": "fund_equity_us",
       "owner": "spouse",
@@ -12920,10 +15117,35 @@
      },
      {
       "part": "3",
+      "row": "21",
+      "parent_row": null,
+      "desc_raw": "21.1 Vanguard Global Equity Portfolio (name change Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201)",
+      "name": "21.1 Vanguard Global Equity Portfolio",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
       "row": "22",
       "parent_row": null,
-      "desc_raw": "21 21.1 Vanguard Global Equity Portfolio (name change from Aggressive Growth Portfolio) Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) New York's 529 College Savings Program",
-      "name": "21 21.1 Vanguard Global Equity Portfolio (name change from Aggressive Growth Portfolio) Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) New York's 529 College Savings Program",
+      "desc_raw": "from Aggressive Growth Portfolio) New York's 529 College Savings Program",
+      "name": "from Aggressive Growth Portfolio) New York's 529 College Savings Program",
       "ticker": null,
       "asset_class": "cash",
       "owner": "spouse",
@@ -12945,10 +15167,35 @@
      },
      {
       "part": "3",
+      "row": "23",
+      "parent_row": null,
+      "desc_raw": "23.1 Vanguard Global Equity Portfolio (name change Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201)",
+      "name": "23.1 Vanguard Global Equity Portfolio",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
       "row": "24",
       "parent_row": null,
-      "desc_raw": "23 23.1 Vanguard Global Equity Portfolio (name change from Aggressive Growth Portfolio) Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) New York's 529 College Savings Program",
-      "name": "23 23.1 Vanguard Global Equity Portfolio (name change from Aggressive Growth Portfolio) Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) New York's 529 College Savings Program",
+      "desc_raw": "from Aggressive Growth Portfolio) New York's 529 College Savings Program",
+      "name": "from Aggressive Growth Portfolio) New York's 529 College Savings Program",
       "ticker": null,
       "asset_class": "cash",
       "owner": "spouse",
@@ -12967,14 +15214,54 @@
       },
       "account_context": null,
       "notes": null
+     },
+     {
+      "part": "3",
+      "row": "25",
+      "parent_row": null,
+      "desc_raw": "25.1 Vanguard Global Equity Portfolio (name change Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201)",
+      "name": "25.1 Vanguard Global Equity Portfolio",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
      }
     ],
     "rows_truncated": false,
     "transactions": [
      {
       "form": "FRB-FormA-Part5",
+      "row": "1",
+      "desc": "Voluntary delisting by Sunrise Communications AG (SNRE) resulting in return of Spouse / Domestic Partner Sale 12/02/2025 $1,001 - $15,000",
+      "type": "Sale",
+      "date": "2025-12-02",
+      "amount": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "owner": "spouse",
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
       "row": "2",
-      "desc": "partner, or your dependent child during the reporting period. This Part is not required for New Filer reports. # Description Owner Type Date (MM/DD/YYYY) Amount 1 Voluntary delisting by Sunrise Communications AG (SNRE) resulting in return of capital Spouse / Domestic Partner Sale 12/02/2025 $1,001 - $15,000 ATI Physical Therapy Inc. (AITP) (redemption based on company going private)",
+      "desc": "capital ATI Physical Therapy Inc. (AITP) (redemption based on company going private)",
       "type": "Sale",
       "date": null,
       "amount": {
@@ -12988,8 +15275,23 @@
      },
      {
       "form": "FRB-FormA-Part5",
+      "row": "3",
+      "desc": "Plan administrator initiated: State Street Russell Small Mid Cap Index Non-Lending Spouse / Domestic Partner Sale 10/31/2025 $100,001 - $250,000",
+      "type": "Sale",
+      "date": "2025-10-31",
+      "amount": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "owner": "spouse",
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
       "row": "4",
-      "desc": "3 Plan administrator initiated: State Street Russell Small Mid Cap Index Non-Lending Series Fund Class K Spouse / Domestic Partner Sale 10/31/2025 $100,001 - $250,000 Plan administrator initiated: Schwab Managed 36 Retirement Trust Fund 2035 VI",
+      "desc": "Series Fund Class K Plan administrator initiated: Schwab Managed 36 Retirement Trust Fund 2035 VI",
       "type": "Sale",
       "date": "2025-10-31",
       "amount": {
@@ -13003,8 +15305,23 @@
      },
      {
       "form": "FRB-FormA-Part5",
+      "row": "5",
+      "desc": "Plan administrator initiated: State Street US Extended Market Index Non-Lending Spouse / Domestic Partner Purchase 10/31/2025 $100,001 - $250,000",
+      "type": "Purchase",
+      "date": "2025-10-31",
+      "amount": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "owner": "spouse",
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
       "row": "6",
-      "desc": "5 Plan administrator initiated: State Street US Extended Market Index Non-Lending Series Fund Class X Spouse / Domestic Partner Purchase 10/31/2025 $100,001 - $250,000 Plan administrator initiated: State Street Growth Target Retirement 2035 SL CL III",
+      "desc": "Series Fund Class X Plan administrator initiated: State Street Growth Target Retirement 2035 SL CL III",
       "type": "Purchase",
       "date": "2025-10-31",
       "amount": {
@@ -13017,7 +15334,20 @@
       "published": null
      }
     ],
-    "liabilities": []
+    "liabilities": [
+     {
+      "row": "1",
+      "creditor": "More Year Favorable # Creditor Name Debtor Type Amount Incurred Interest Rate Term Terms? Residential -owner Wells Fargo Home Mortgage Joint",
+      "type": null,
+      "amount": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "owner": null
+     }
+    ]
    },
    "notes": [
     "2025 Form A: 배우자 개별주(ABBV·AMAT 등) 보유 — 정책 민감 항목"
@@ -13821,7 +16151,7 @@
     "openalex_note": "동명이인 의심 — 제목 주제비율 0.0(3건) < 0.5"
    },
    "holdings": {
-    "status": "ocr_pending",
+    "status": "ok",
     "form": "FRB-FormA",
     "report_year": 2025,
     "period_end": null,
@@ -13829,15 +16159,765 @@
     "published": null,
     "source_url": "https://www.richmondfed.org/-/media/RichmondFedOrg/about_us/our_governance/pdf/barkin_financial_disclosure_2025.pdf",
     "source_sha256": "b8a19d1d7939c6e95492d77d1deb8a316925f36ed10010ef028bb4d37b82ab53",
-    "extraction": null,
-    "ocr_confidence": null,
+    "extraction": "ocr",
+    "ocr_confidence": 0.625,
     "pages": 15,
-    "reason": "scan_pdf_ocr_required",
-    "summary": null,
-    "rows": [],
+    "summary": {
+     "total_lo": 42080028,
+     "total_hi": 204350000,
+     "total_mid": 123215002,
+     "n_rows": 25,
+     "single_stocks": [],
+     "single_stock_mid": 0,
+     "by_class": {
+      "other": 39375000,
+      "retirement_annuity": 30175000,
+      "fund_equity_us": 15000000,
+      "money_market": 15000000,
+      "etf": 14250000,
+      "fund_equity_intl": 6000002,
+      "private_fund": 3000000,
+      "cash": 415000
+     },
+     "rate_sensitivity": "채권·MMF·현금 12.5%(중앙값 합 기준), 개별주 0건, 총 25행"
+    },
+    "rows": [
+     {
+      "part": "2",
+      "row": "1",
+      "parent_row": null,
+      "desc_raw": "McKinsey 401(k) (underlying assets not disclosed)",
+      "name": "McKinsey 401(k)",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$5,000,001 - $25,000,000",
+       "lo": 5000001,
+       "hi": 25000000,
+       "mid": 15000000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "Spouse 401(k) (Coca-Cola stock)",
+      "name": "Spouse 401(k)",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "1",
+      "parent_row": null,
+      "desc_raw": "Merrill acct: ishares S&P small (TICKER: IJR)",
+      "name": "Merrill acct: ishares S&P small",
+      "ticker": "IJR",
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "a accts: ishares MSCI EAFE (TICKER:",
+      "name": "a accts: ishares MSCI EAFE (TICKER:",
+      "ticker": null,
+      "asset_class": "fund_equity_intl",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,004 - $5,000,000",
+       "lo": 1000004,
+       "hi": 5000000,
+       "mid": 3000002
+      },
+      "income": {
+       "type": null,
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "3",
+      "parent_row": null,
+      "desc_raw": "Vanguard acct: Div Growth (TICKER: VDIGX)",
+      "name": "Vanguard acct: Div Growth",
+      "ticker": "VDIGX",
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$100,001 - $1,000,000",
+       "lo": 100001,
+       "hi": 1000000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "Vanguard acct: Global ex US RE ETF (TICKER: VNQI)",
+      "name": "Vanguard acct: Global ex US RE ETF",
+      "ticker": "VNQI",
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": "MS/Schwab accts: iShares MSCI Emerging (TICKER:",
+      "name": "MS/Schwab accts: iShares MSCI Emerging (TICKER:",
+      "ticker": null,
+      "asset_class": "fund_equity_intl",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "6",
+      "parent_row": null,
+      "desc_raw": "EEM) Schwab acct: ishares North American Natural Resources : ETF (TICKER: IGE)",
+      "name": "EEM) Schwab acct: ishares North American Natural Resources : ETF",
+      "ticker": null,
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "$5,001 - $15,000",
+       "lo": 5001,
+       "hi": 15000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "7",
+      "parent_row": null,
+      "desc_raw": "Schwab acct: ishares select dividend (TICKER: DVY)",
+      "name": "Schwab acct: ishares select dividend",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$100,001 - $1,000,000",
+       "lo": 100001,
+       "hi": 1000000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "8",
+      "parent_row": null,
+      "desc_raw": "Schwab acct: spdr dow jones reit etf (TICKER: RWR)",
+      "name": "Schwab acct: spdr dow jones reit etf",
+      "ticker": null,
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$100,001 - $1,000,000",
+       "lo": 100001,
+       "hi": 1000000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "8",
+      "parent_row": null,
+      "desc_raw": "Schwab acct: STATE STREET MATRL SLCT SCTR . SPDR ETF (TICKER: XLB)",
+      "name": "Schwab acct: STATE STREET MATRL SLCT SCTR . SPDR ETF",
+      "ticker": null,
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "10",
+      "parent_row": null,
+      "desc_raw": "MS acct: ishares Russell 2000 (TICKER IWM)",
+      "name": "MS acct: ishares Russell 2000",
+      "ticker": "IWM",
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "11",
+      "parent_row": null,
+      "desc_raw": "MS acct: Coca Cola Stock",
+      "name": "MS acct: Coca Cola Stock",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "12",
+      "parent_row": null,
+      "desc_raw": "Truist acct: ishares Europe ETF (TICKER: IEV)",
+      "name": "Truist acct: ishares Europe ETF",
+      "ticker": null,
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "13",
+      "parent_row": null,
+      "desc_raw": "Spy} acct: State Street SPDR S&P 500 etf (TICKER:",
+      "name": "Spy} acct: State Street SPDR S&P 500 etf (TICKER:",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$5,000,001 - $25,000,000",
+       "lo": 5000001,
+       "hi": 25000000,
+       "mid": 15000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "14",
+      "parent_row": null,
+      "desc_raw": "sortfolo” (amet soe fund) enroliment",
+      "name": "sortfolo” (amet soe fund) enroliment",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$250,001 - $500,000",
+       "lo": 250001,
+       "hi": 500000,
+       "mid": 375000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "15",
+      "parent_row": null,
+      "desc_raw": "MIO USL Variable Annuity (underlying investments not",
+      "name": "MIO USL Variable Annuity (underlying investments not",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$5,000,001 - $25,000,000",
+       "lo": 5000001,
+       "hi": 25000000,
+       "mid": 15000000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "16",
+      "parent_row": null,
+      "desc_raw": "disclosed) MIO Compass Private Equity (underlying investments not disclosed",
+      "name": "disclosed) MIO Compass Private Equity (underlying investments not disclosed",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$100,001 - $1,000,000",
+       "lo": 100001,
+       "hi": 1000000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "17",
+      "parent_row": null,
+      "desc_raw": "Investnnte not dieclesed) (underlying",
+      "name": "Investnnte not dieclesed) (underlying",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$5,000,001 - $25,000,000",
+       "lo": 5000001,
+       "hi": 25000000,
+       "mid": 15000000
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$100,001 - $1,000,000",
+       "lo": 100001,
+       "hi": 1000000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "18",
+      "parent_row": null,
+      "desc_raw": "Truist cash",
+      "name": "Truist cash",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "$1,001 - $2,500",
+       "lo": 1001,
+       "hi": 2500
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "19",
+      "parent_row": null,
+      "desc_raw": "Vanguard Federal Money Market Fund",
+      "name": "Vanguard Federal Money Market Fund",
+      "ticker": null,
+      "asset_class": "money_market",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$5,000,001 - $25,000,000",
+       "lo": 5000001,
+       "hi": 25000000,
+       "mid": 15000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$100,001 - $1,000,000",
+       "lo": 100001,
+       "hi": 1000000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "20",
+      "parent_row": null,
+      "desc_raw": "Merrill/BOA cash",
+      "name": "Merrill/BOA cash",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "$2,501 - $5,000",
+       "lo": 2501,
+       "hi": 5000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "21",
+      "parent_row": null,
+      "desc_raw": "Schwab Prime Advantage Money Fund (SNAXX)",
+      "name": "Schwab Prime Advantage Money Fund",
+      "ticker": "SNAXX",
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$5,000,001 - $25,000,000",
+       "lo": 5000001,
+       "hi": 25000000,
+       "mid": 15000000
+      },
+      "income": {
+       "type": null,
+       "raw": "$100,001 - $1,000,000",
+       "lo": 100001,
+       "hi": 1000000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "22",
+      "parent_row": null,
+      "desc_raw": "Morgan Stanley cash",
+      "name": "Morgan Stanley cash",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "23",
+      "parent_row": null,
+      "desc_raw": "Schwab cash",
+      "name": "Schwab cash",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     }
+    ],
     "rows_truncated": false,
-    "transactions": [],
-    "liabilities": []
+    "transactions": [
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "3",
+      "desc": "DIVIDEND REINVESTMENTS) MULTIPLE",
+      "type": "Purchase",
+      "date": null,
+      "amount": {
+       "raw": "$50,004 - $100,000",
+       "lo": 50004,
+       "hi": 100000,
+       "mid": 75002
+      },
+      "owner": "joint",
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "4",
+      "desc": "CAPITAL GAINS REINVESIMENTS) MULTIPLE",
+      "type": "Purchase",
+      "date": null,
+      "amount": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "owner": "joint",
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "9",
+      "desc": "TRUIST ACCT: S&P 500 ETF (TICKER: SPY) (AUTOMATIC QUARTERLY",
+      "type": "Purchase",
+      "date": null,
+      "amount": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "owner": "joint",
+      "published": null
+     }
+    ],
+    "liabilities": [
+     {
+      "row": "1",
+      "creditor": "More Year Favorable # Creditor Name Debtor Type Amount Incurred Interest Rate Term Terms? MIO Compass Private Equity 2015 LLC Joint Unfunded Capital",
+      "type": null,
+      "amount": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "owner": null
+     },
+     {
+      "row": "2",
+      "creditor": "Commitment MIO Compass Private Equity 2016 LLC Joint Unfunded Capital",
+      "type": null,
+      "amount": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "owner": null
+     },
+     {
+      "row": "3",
+      "creditor": "Commitment , , . . . Unfunded Capital MIO Compass Private Equity 2017 LLC Joint :",
+      "type": null,
+      "amount": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "owner": null
+     },
+     {
+      "row": "4",
+      "creditor": "Commitment . . . Unfunded Capital MIO Compass Private Equity V LLC Joint C :",
+      "type": null,
+      "amount": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "owner": null
+     },
+     {
+      "row": "5",
+      "creditor": "ommitment . . . Unfunded Capital MIO Compass Private Equity VI LLC Joint :",
+      "type": null,
+      "amount": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "owner": null
+     }
+    ]
    },
    "notes": [],
    "last_verified": "2026-09-08",
@@ -13940,7 +17020,7 @@
     "openalex_note": "소속에 Federal Reserve · bio 상 기관 일치 · 비경제 논문 1건 제외(저자 레코드 병합 의심)"
    },
    "holdings": {
-    "status": "ocr_pending",
+    "status": "ok",
     "form": "FRB-FormA",
     "report_year": 2026,
     "period_end": null,
@@ -13948,15 +17028,644 @@
     "published": null,
     "source_url": "https://www.frbsf.org/wp-content/uploads/SF-Daly-2026-Form-A.pdf",
     "source_sha256": "32f98eec8152dcb556365c0037715a32039dbe7facb3504da7db8a599ede7fae",
-    "extraction": null,
-    "ocr_confidence": null,
+    "extraction": "ocr",
+    "ocr_confidence": 0.769,
     "pages": 9,
-    "reason": "scan_pdf_ocr_required",
-    "summary": null,
-    "rows": [],
+    "summary": {
+     "total_lo": 1111223,
+     "total_hi": 2666000,
+     "total_mid": 1888602,
+     "n_rows": 24,
+     "single_stocks": [],
+     "single_stock_mid": 0,
+     "by_class": {
+      "fund_equity_us": 575000,
+      "other": 390600,
+      "etf": 382500,
+      "cash": 290502,
+      "retirement_annuity": 175000,
+      "fund_equity_intl": 75000
+     },
+     "rate_sensitivity": "채권·MMF·현금 15.4%(중앙값 합 기준), 개별주 0건, 총 24행"
+    },
+    "rows": [
+     {
+      "part": "2",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "City and County of San Francisco 457(b) deferred compensation plan (see lines 2-6 below) SFDCP Large Cap Eqty S&P 500",
+      "name": "City and County of San Francisco 457(b) deferred compensation plan (see lines 2-6 below) SFDCP Large Cap Eqty S&P 500",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "3",
+      "parent_row": null,
+      "desc_raw": "SFDCP Large Cap Growth Equity",
+      "name": "SFDCP Large Cap Growth Equity",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "SFDCP Large Cap Value",
+      "name": "SFDCP Large Cap Value",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": "SFDCP International Equity",
+      "name": "SFDCP International Equity",
+      "ticker": null,
+      "asset_class": "fund_equity_intl",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "6",
+      "parent_row": null,
+      "desc_raw": "SFDCP Large Cap Social Equity",
+      "name": "SFDCP Large Cap Social Equity",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "7",
+      "parent_row": null,
+      "desc_raw": "Traditional IRA + SEP (TIAA Traditional Annuity)",
+      "name": "Traditional IRA + SEP",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "8",
+      "parent_row": null,
+      "desc_raw": "gal ieieags arin” rt i“",
+      "name": "gal ieieags arin” rt i“",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000,
+       "mid": 600
+      },
+      "income": {
+       "type": "Royalties",
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "9",
+      "parent_row": null,
+      "desc_raw": "Rochelle !. Frank Psychology Practice",
+      "name": "Rochelle !. Frank Psychology Practice",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "10",
+      "parent_row": null,
+      "desc_raw": "The Wright Institute, 7/28/2025",
+      "name": "The Wright Institute, 7/28/2025",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "11",
+      "parent_row": null,
+      "desc_raw": "The Wright Institute, 8/6/2025",
+      "name": "The Wright Institute, 8/6/2025",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "12",
+      "parent_row": null,
+      "desc_raw": "UC Berkeley, 6/4/2025",
+      "name": "UC Berkeley, 6/4/2025",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "41",
+      "parent_row": null,
+      "desc_raw": "Consumer Discretionary SPDR CLIENT (XLY)",
+      "name": "Consumer Discretionary SPDR CLIENT",
+      "ticker": "XLY",
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "ISHARES IBOXX $INVT GRADE CORP (LQD)",
+      "name": "ISHARES IBOXX $INVT GRADE CORP",
+      "ticker": "LQD",
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$2,501 - $5,000",
+       "lo": 2501,
+       "hi": 5000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "3",
+      "parent_row": null,
+      "desc_raw": "MATERIALS SELECT SECTOR SPDR (XLB)",
+      "name": "MATERIALS SELECT SECTOR SPDR",
+      "ticker": "XLB",
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "SECTOR SPDR CONSMERS STPL (XLP)",
+      "name": "SECTOR SPDR CONSMERS STPL",
+      "ticker": "XLP",
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$1,001 - $2,500",
+       "lo": 1001,
+       "hi": 2500
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": "SECTOR SPDR INDUSTRIAL ACTUAL (XLI)",
+      "name": "SECTOR SPDR INDUSTRIAL ACTUAL",
+      "ticker": "XLI",
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "6",
+      "parent_row": null,
+      "desc_raw": "VANGUARD FTSE DEVELOPED MARKETS (VEA)",
+      "name": "VANGUARD FTSE DEVELOPED MARKETS",
+      "ticker": "VEA",
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$1,004 - $2,500",
+       "lo": 1004,
+       "hi": 2500
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "7",
+      "parent_row": null,
+      "desc_raw": "VANGUARD GROWTH ETF CLIENT (VUG)",
+      "name": "VANGUARD GROWTH ETF CLIENT",
+      "ticker": "VUG",
+      "asset_class": "etf",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "8",
+      "parent_row": null,
+      "desc_raw": "VANGUARD INFORMATION TECH EFT (VGT)",
+      "name": "VANGUARD INFORMATION TECH EFT",
+      "ticker": "VGT",
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "9",
+      "parent_row": null,
+      "desc_raw": "VANGUARD SMALL CAP GROWTH ETF (VBkK)",
+      "name": "VANGUARD SMALL CAP GROWTH ETF",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "joint",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": "Dividends",
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "10",
+      "parent_row": null,
+      "desc_raw": "U.S. bank #1 (cash)",
+      "name": "U.S. bank #1",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": "$50,004 - $100,000",
+       "lo": 50004,
+       "hi": 100000,
+       "mid": 75002
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "11",
+      "parent_row": null,
+      "desc_raw": "U.S. bank #2 (cash)",
+      "name": "U.S. bank #2",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "12",
+      "parent_row": null,
+      "desc_raw": "U.S. brokerage (cash)",
+      "name": "U.S. brokerage",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "13",
+      "parent_row": null,
+      "desc_raw": "U.S. bank #3 (cash)",
+      "name": "U.S. bank #3",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": "Interest",
+       "raw": "$2,501 - $5,000",
+       "lo": 2501,
+       "hi": 5000
+      },
+      "account_context": null,
+      "notes": null
+     }
+    ],
     "rows_truncated": false,
     "transactions": [],
-    "liabilities": []
+    "liabilities": [
+     {
+      "row": "1",
+      "creditor": "More Year Favorable # Creditor Name Debtor Type Amount Incurred Interest Rate Term Terms? Fay Servicing, LLC, Farmers Branch, TX Joint Mortgage",
+      "type": null,
+      "amount": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "owner": null
+     }
+    ]
    },
    "notes": [],
    "last_verified": "2026-09-08",
@@ -15125,33 +18834,33 @@
     "published": null,
     "source_url": "https://www.atlantafed.org/-/media/Project/Atlanta/FRBA/Documents/who-we-are/people/executive-leadership-committee/disclosures/venable-2026-financial-disclosures.pdf",
     "source_sha256": "3e89fe23b88ab22e6383f1e786c9a921df429be75496765a1bc996bbe8846893",
-    "extraction": "pypdf",
+    "extraction": "pdftotext",
     "ocr_confidence": null,
     "pages": 15,
     "summary": {
-     "total_lo": 2710024,
-     "total_hi": 8825000,
-     "total_mid": 5767500,
-     "n_rows": 27,
+     "total_lo": 2771029,
+     "total_hi": 9040000,
+     "total_mid": 5905500,
+     "n_rows": 32,
      "single_stocks": [],
      "single_stock_mid": 0,
      "by_class": {
       "money_market": 3557500,
-      "etf": 1480500,
+      "etf": 1488500,
       "fund_equity_us": 632500,
-      "cash": 40500,
-      "fund_equity_intl": 32500,
-      "fund_bond": 24000
+      "private_fund": 130000,
+      "other": 56500,
+      "cash": 40500
      },
-     "rate_sensitivity": "채권·MMF·현금 62.8%(중앙값 합 기준), 개별주 0건, 총 27행"
+     "rate_sensitivity": "채권·MMF·현금 60.9%(중앙값 합 기준), 개별주 0건, 총 32행"
     },
     "rows": [
      {
       "part": "2",
       "row": "2",
       "parent_row": null,
-      "desc_raw": "and other business income, honoraria, scholarships, and prizes). For your spouse or domestic partner, report the source, exact value, and date of honoraria exceeding $200, and report the source, but not the amount, of other earned or non-investment income exceeding $1,000. Report each asset related to your or your spouse’s or domestic partner’s business, employment, or other income-generating activities if the value of the asset at the end of the reporting period exceeded $1,000 or if more than $200 in income was received during the reporting period (e.g., equity in a business or partnership, stock options, retirement plans/accounts and their underlying holdings as appropriate, anticipated payments such as severance payments, deferred compensation, and intellectual property, such as book deals and patents). # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount 1 A. Traditional IRA No A.1. SPAXX Fidelity Government Money Market",
-      "name": "and other business income, honoraria, scholarships, and prizes). For your spouse or domestic partner, report the source, exact value, and date of honoraria exceeding $200, and report the source, but not the amount, of other earned or non-investment income exceeding $1,000. Report each asset related to your or your spouse’s or domestic partner’s business, employment, or other income-generating activities if the value of the asset at the end of the reporting period exceeded $1,000 or if more than $200 in income was received during the reporting period (e.g., equity in a business or partnership, stock options, retirement plans/accounts and their underlying holdings as appropriate, anticipated payments such as severance payments, deferred compensation, and intellectual property, such as book deals and patents). # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount 1 A. Traditional IRA No A.1. SPAXX Fidelity Government Money Market",
+      "desc_raw": "1 A. Traditional IRA No A.1. SPAXX Fidelity Government Money Market",
+      "name": "1 A. Traditional IRA No A.1. SPAXX Fidelity Government Money Market",
       "ticker": "SPAXX",
       "asset_class": "money_market",
       "owner": "filer",
@@ -15328,7 +19037,7 @@
       "desc_raw": "B.2. DODIX Dodge & Cox Income Cl I",
       "name": "B.2. DODIX Dodge & Cox Income Cl I",
       "ticker": "DODIX",
-      "asset_class": "fund_bond",
+      "asset_class": "other",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -15344,7 +19053,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -15423,11 +19132,36 @@
      },
      {
       "part": "2",
+      "row": "13",
+      "parent_row": null,
+      "desc_raw": "C.3. VWO Vanguard Intl Equity Index Fds FTSE EMR Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "C.3. VWO Vanguard Intl Equity Index Fds FTSE EMR Spouse / Domestic Partner Yes $1,001 - $15,000 None",
+      "ticker": "VWO",
+      "asset_class": "etf",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
       "row": "14",
       "parent_row": null,
-      "desc_raw": "13 C.3. VWO Vanguard Intl Equity Index Fds FTSE EMR MKT ETF Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) C.4. VOO Vanguard Index Funds S&P 500 ETF USD",
-      "name": "13 C.3. VWO Vanguard Intl Equity Index Fds FTSE EMR MKT ETF Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) C.4. VOO Vanguard Index Funds S&P 500 ETF USD",
-      "ticker": "VWO",
+      "desc_raw": "MKT ETF C.4. VOO Vanguard Index Funds S&P 500 ETF USD",
+      "name": "MKT ETF C.4. VOO Vanguard Index Funds S&P 500 ETF USD",
+      "ticker": "VOO",
       "asset_class": "etf",
       "owner": "spouse",
       "eif": true,
@@ -15478,7 +19212,7 @@
       "desc_raw": "C.6. VGHCX Vanguard Health Care Investor",
       "name": "C.6. VGHCX Vanguard Health Care Investor",
       "ticker": "VGHCX",
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": true,
       "value": {
@@ -15494,7 +19228,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -15648,10 +19382,110 @@
      },
      {
       "part": "3",
+      "row": "1",
+      "parent_row": null,
+      "desc_raw": "E.1. Real Estate LP: Lane Road Solar Investments LP a Spouse / Domestic Partner Yes $15,001 - $50,000 $201 - $1,000",
+      "name": "E.1. Real Estate LP: Lane Road Solar Investments LP a Spouse / Domestic Partner Yes $15,001 - $50,000 $201 - $1,000",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "Georgia LP: Fee Simple Land Donation E.2. Real Estate LP: Old Garrison Investments LP a Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201)",
+      "name": "Georgia LP: Fee Simple Land Donation E.2. Real Estate LP: Old Garrison Investments LP a Spouse / Domestic Partner Yes $15,001 - $50,000 None",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "3",
+      "parent_row": null,
+      "desc_raw": "Delaware LP E.3. Real Estate LP: Cole Creek Investments LP a Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201)",
+      "name": "Delaware LP E.3. Real Estate LP: Cole Creek Investments LP a Spouse / Domestic Partner Yes $15,001 - $50,000 None",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "Delaware LP E.4. Real Estate LLC: Landings Investors LLC a Spouse / Domestic Partner Yes $15,001 - $50,000 $201 - $1,000",
+      "name": "Delaware LP E.4. Real Estate LLC: Landings Investors LLC a Spouse / Domestic Partner Yes $15,001 - $50,000 $201 - $1,000",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "$201 - $1,000",
+       "lo": 201,
+       "hi": 1000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
       "row": "5",
       "parent_row": null,
-      "desc_raw": "greater than $1,000 or from which more than $200 in income was received during the reporting period. # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount 1 E.1. Real Estate LP: Lane Road Solar Investments LP a Georgia LP: Fee Simple Land Donation Spouse / Domestic Partner Yes $15,001 - $50,000 $201 - $1,000 2 E.2. Real Estate LP: Old Garrison Investments LP a Delaware LP Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 3 E.3. Real Estate LP: Cole Creek Investments LP a Delaware LP Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 4 E.4. Real Estate LLC: Landings Investors LLC a Delaware LL Spouse / Domestic Partner Yes $15,001 - $50,000 $201 - $1,000 E.5. SPAXX Fidelity Government Money Market",
-      "name": "greater than $1,000 or from which more than $200 in income was received during the reporting period. # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount 1 E.1. Real Estate LP: Lane Road Solar Investments LP a Georgia LP: Fee Simple Land Donation Spouse / Domestic Partner Yes $15,001 - $50,000 $201 - $1,000 2 E.2. Real Estate LP: Old Garrison Investments LP a Delaware LP Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 3 E.3. Real Estate LP: Cole Creek Investments LP a Delaware LP Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 4 E.4. Real Estate LLC: Landings Investors LLC a Delaware LL Spouse / Domestic Partner Yes $15,001 - $50,000 $201 - $1,000 E.5. SPAXX Fidelity Government Money Market",
+      "desc_raw": "Delaware LL E.5. SPAXX Fidelity Government Money Market",
+      "name": "Delaware LL E.5. SPAXX Fidelity Government Money Market",
       "ticker": "SPAXX",
       "asset_class": "money_market",
       "owner": "joint",
@@ -15678,7 +19512,7 @@
       "desc_raw": "E.6. VWAHX Vanguard High Yield Tax Exempt Inv. Cl",
       "name": "E.6. VWAHX Vanguard High Yield Tax Exempt Inv. Cl",
       "ticker": "VWAHX",
-      "asset_class": "fund_bond",
+      "asset_class": "other",
       "owner": "joint",
       "eif": true,
       "value": {
@@ -15694,7 +19528,7 @@
        "hi": 1000
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "3",
@@ -15753,7 +19587,7 @@
       "desc_raw": "E.9. VTEB Vanguard Mun Bd Fds Tax Exempt",
       "name": "E.9. VTEB Vanguard Mun Bd Fds Tax Exempt",
       "ticker": null,
-      "asset_class": "fund_bond",
+      "asset_class": "other",
       "owner": "joint",
       "eif": true,
       "value": {
@@ -15769,7 +19603,7 @@
        "hi": 1000
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "3",
@@ -15827,7 +19661,7 @@
     "liabilities": [
      {
       "row": "1",
-      "creditor": "# Creditor Name Debtor Type Amount Year Incurred Interest Rate Term More Favorable Terms? Stockton Mortgage, Duluth, GA Joint mortgage",
+      "creditor": "More Year Favorable # Creditor Name Debtor Type Amount Incurred Interest Rate Term Terms? Stockton Mortgage, Duluth, GA Joint mortgage",
       "type": null,
       "amount": {
        "raw": "$250,001 - $500,000",
@@ -15913,35 +19747,33 @@
     "published": null,
     "source_url": "https://www.bostonfed.org/-/media/Documents/disclosures/2025/Calendar-Year-2025-Form-A-for-publication.pdf",
     "source_sha256": "8b8e8944533533562124d48bc93bbe88e815cd416cff6f790b6d47ed9143540a",
-    "extraction": "pypdf",
+    "extraction": "pdftotext",
     "ocr_confidence": null,
     "pages": 22,
     "summary": {
-     "total_lo": 2002047,
-     "total_hi": 4805000,
-     "total_mid": 3403500,
-     "n_rows": 48,
+     "total_lo": 3520078,
+     "total_hi": 8350000,
+     "total_mid": 5935000,
+     "n_rows": 79,
      "single_stocks": [],
      "single_stock_mid": 0,
      "by_class": {
-      "fund_equity_intl": 1692500,
-      "retirement_annuity": 1073500,
-      "fund_equity_us": 423000,
-      "real_estate": 115500,
-      "fund_bond": 91000,
-      "private_fund": 8000
+      "fund_equity_us": 2225000,
+      "other": 1653000,
+      "fund_equity_intl": 1379000,
+      "real_estate": 678000
      },
-     "rate_sensitivity": "채권·MMF·현금 2.7%(중앙값 합 기준), 개별주 0건, 총 48행"
+     "rate_sensitivity": "채권·MMF·현금 0.0%(중앙값 합 기준), 개별주 0건, 총 79행"
     },
     "rows": [
      {
       "part": "2",
       "row": "1",
       "parent_row": null,
-      "desc_raw": "and other business income, honoraria, scholarships, and prizes). For your spouse or domestic partner, report the source, exact value, and date of honoraria exceeding $200, and report the source, but not the amount, of other earned or non-investment income exceeding $1,000. Report each asset related to your or your spouse’s or domestic partner’s business, employment, or other income-generating activities if the value of the asset at the end of the reporting period exceeded $1,000 or if more than $200 in income was received during the reporting period (e.g., equity in a business or partnership, stock options, retirement plans/accounts and their underlying holdings as appropriate, anticipated payments such as severance payments, deferred compensation, and intellectual property, such as book deals and patents). # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount Plan 1 TIAA Stable",
-      "name": "and other business income, honoraria, scholarships, and prizes). For your spouse or domestic partner, report the source, exact value, and date of honoraria exceeding $200, and report the source, but not the amount, of other earned or non-investment income exceeding $1,000. Report each asset related to your or your spouse’s or domestic partner’s business, employment, or other income-generating activities if the value of the asset at the end of the reporting period exceeded $1,000 or if more than $200 in income was received during the reporting period (e.g., equity in a business or partnership, stock options, retirement plans/accounts and their underlying holdings as appropriate, anticipated payments such as severance payments, deferred compensation, and intellectual property, such as book deals and patents). # Description Owner Excepted Investment Fund (EIF) Value Income Type Income Amount Plan 1 TIAA Stable",
+      "desc_raw": "Plan 1 TIAA Stable",
+      "name": "Plan 1 TIAA Stable",
       "ticker": null,
-      "asset_class": "private_fund",
+      "asset_class": "other",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -15966,7 +19798,7 @@
       "desc_raw": "Plan 1 TIAA Traditional",
       "name": "Plan 1 TIAA Traditional",
       "ticker": null,
-      "asset_class": "retirement_annuity",
+      "asset_class": "other",
       "owner": "filer",
       "eif": false,
       "value": {
@@ -15982,7 +19814,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -15991,7 +19823,7 @@
       "desc_raw": "Plan 1 CREF Global Equities R3",
       "name": "Plan 1 CREF Global Equities R3",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -16007,7 +19839,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16016,7 +19848,7 @@
       "desc_raw": "Plan 1 Nuveen Core Equity Fund R6",
       "name": "Plan 1 Nuveen Core Equity Fund R6",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -16032,7 +19864,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16136,12 +19968,87 @@
      },
      {
       "part": "2",
-      "row": "12",
+      "row": "9",
       "parent_row": null,
-      "desc_raw": "9 Plan 1 Vanguard Emerging Markets Stock Index Institutional Plus Filer Yes $15,001 - $50,000 None (or less than $201) 10 Plan 1 Vanguard Institutional Index Fund Institutional Plus Filer Yes $50,001 - $100,000 None (or less than $201) 11 Plan 1 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Filer Yes $1,001 - $15,000 None (or less than $201) Plan 1 TIAA Real Estate",
-      "name": "9 Plan 1 Vanguard Emerging Markets Stock Index Institutional Plus Filer Yes $15,001 - $50,000 None (or less than $201) 10 Plan 1 Vanguard Institutional Index Fund Institutional Plus Filer Yes $50,001 - $100,000 None (or less than $201) 11 Plan 1 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Filer Yes $1,001 - $15,000 None (or less than $201) Plan 1 TIAA Real Estate",
+      "desc_raw": "Plan 1 Vanguard Emerging Markets Stock Index Filer Yes $15,001 - $50,000 None (or less than $201)",
+      "name": "Plan 1 Vanguard Emerging Markets Stock Index Filer Yes $15,001 - $50,000 None",
       "ticker": null,
       "asset_class": "fund_equity_intl",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "10",
+      "parent_row": null,
+      "desc_raw": "Institutional Plus Plan 1 Vanguard Institutional Index Fund Institutional Filer Yes $50,001 - $100,000 None (or less than $201)",
+      "name": "Institutional Plus Plan 1 Vanguard Institutional Index Fund Institutional Filer Yes $50,001 - $100,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "11",
+      "parent_row": null,
+      "desc_raw": "Plus Plan 1 Vanguard Mid Cap Index Fund Institutional Plus Filer Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "Plus Plan 1 Vanguard Mid Cap Index Fund Institutional Plus Filer Yes $1,001 - $15,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "12",
+      "parent_row": null,
+      "desc_raw": "Class Shares Plan 1 TIAA Real Estate",
+      "name": "Class Shares Plan 1 TIAA Real Estate",
+      "ticker": null,
+      "asset_class": "real_estate",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -16166,7 +20073,7 @@
       "desc_raw": "Plan 2 TIAA Stable",
       "name": "Plan 2 TIAA Stable",
       "ticker": null,
-      "asset_class": "fund_bond",
+      "asset_class": "other",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -16182,7 +20089,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16191,7 +20098,7 @@
       "desc_raw": "Plan 2 TIAA Traditional",
       "name": "Plan 2 TIAA Traditional",
       "ticker": null,
-      "asset_class": "retirement_annuity",
+      "asset_class": "other",
       "owner": "filer",
       "eif": false,
       "value": {
@@ -16207,7 +20114,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16216,7 +20123,7 @@
       "desc_raw": "Plan 2 CREF Global Equities R3",
       "name": "Plan 2 CREF Global Equities R3",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -16232,7 +20139,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16241,7 +20148,7 @@
       "desc_raw": "Plan 2 Nuveen Core Equity Fund R6",
       "name": "Plan 2 Nuveen Core Equity Fund R6",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -16257,7 +20164,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16361,12 +20268,87 @@
      },
      {
       "part": "2",
-      "row": "24",
+      "row": "21",
       "parent_row": null,
-      "desc_raw": "21 Plan 2 Vanguard Emerging Markets Stock Index Institutional Plus Filer Yes $100,001 - $250,000 None (or less than $201) 22 Plan 2 Vanguard Institutional Index Fund Institutional Plus Filer Yes $250,001 - $500,000 None (or less than $201) 23 Plan 2 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Filer Yes $15,001 - $50,000 None (or less than $201) Plan 2 TIAA Real Estate",
-      "name": "21 Plan 2 Vanguard Emerging Markets Stock Index Institutional Plus Filer Yes $100,001 - $250,000 None (or less than $201) 22 Plan 2 Vanguard Institutional Index Fund Institutional Plus Filer Yes $250,001 - $500,000 None (or less than $201) 23 Plan 2 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Filer Yes $15,001 - $50,000 None (or less than $201) Plan 2 TIAA Real Estate",
+      "desc_raw": "Plan 2 Vanguard Emerging Markets Stock Index Filer Yes $100,001 - $250,000 None (or less than $201)",
+      "name": "Plan 2 Vanguard Emerging Markets Stock Index Filer Yes $100,001 - $250,000 None",
       "ticker": null,
       "asset_class": "fund_equity_intl",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "22",
+      "parent_row": null,
+      "desc_raw": "Institutional Plus Plan 2 Vanguard Institutional Index Fund Institutional Filer Yes $250,001 - $500,000 None (or less than $201)",
+      "name": "Institutional Plus Plan 2 Vanguard Institutional Index Fund Institutional Filer Yes $250,001 - $500,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$250,001 - $500,000",
+       "lo": 250001,
+       "hi": 500000,
+       "mid": 375000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "23",
+      "parent_row": null,
+      "desc_raw": "Plus Plan 2 Vanguard Mid Cap Index Fund Institutional Plus Filer Yes $15,001 - $50,000 None (or less than $201)",
+      "name": "Plus Plan 2 Vanguard Mid Cap Index Fund Institutional Plus Filer Yes $15,001 - $50,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "24",
+      "parent_row": null,
+      "desc_raw": "Class Shares Plan 2 TIAA Real Estate",
+      "name": "Class Shares Plan 2 TIAA Real Estate",
+      "ticker": null,
+      "asset_class": "real_estate",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -16391,7 +20373,7 @@
       "desc_raw": "Plan 3 TIAA Traditional",
       "name": "Plan 3 TIAA Traditional",
       "ticker": null,
-      "asset_class": "retirement_annuity",
+      "asset_class": "other",
       "owner": "filer",
       "eif": false,
       "value": {
@@ -16407,7 +20389,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16416,7 +20398,7 @@
       "desc_raw": "Plan 3 CREF Global Equities R3",
       "name": "Plan 3 CREF Global Equities R3",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -16432,7 +20414,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16511,12 +20493,87 @@
      },
      {
       "part": "2",
-      "row": "33",
+      "row": "30",
       "parent_row": null,
-      "desc_raw": "30 Plan 3 Vanguard Emerging Markets Stock Index Institutional Plus Filer Yes $100,001 - $250,000 None (or less than $201) 31 Plan 3 Vanguard Institutional Index Fund Institutional Plus Filer Yes $500,001 - $1,000,000 None (or less than $201) 32 Plan 3 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Filer Yes $50,001 - $100,000 None (or less than $201) Plan 3 TIAA Real Estate",
-      "name": "30 Plan 3 Vanguard Emerging Markets Stock Index Institutional Plus Filer Yes $100,001 - $250,000 None (or less than $201) 31 Plan 3 Vanguard Institutional Index Fund Institutional Plus Filer Yes $500,001 - $1,000,000 None (or less than $201) 32 Plan 3 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Filer Yes $50,001 - $100,000 None (or less than $201) Plan 3 TIAA Real Estate",
+      "desc_raw": "Plan 3 Vanguard Emerging Markets Stock Index Filer Yes $100,001 - $250,000 None (or less than $201)",
+      "name": "Plan 3 Vanguard Emerging Markets Stock Index Filer Yes $100,001 - $250,000 None",
       "ticker": null,
       "asset_class": "fund_equity_intl",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "31",
+      "parent_row": null,
+      "desc_raw": "Institutional Plus Plan 3 Vanguard Institutional Index Fund Institutional Filer Yes $500,001 - $1,000,000 None (or less than $201)",
+      "name": "Institutional Plus Plan 3 Vanguard Institutional Index Fund Institutional Filer Yes $500,001 - $1,000,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "32",
+      "parent_row": null,
+      "desc_raw": "Plus Plan 3 Vanguard Mid Cap Index Fund Institutional Plus Filer Yes $50,001 - $100,000 None (or less than $201)",
+      "name": "Plus Plan 3 Vanguard Mid Cap Index Fund Institutional Plus Filer Yes $50,001 - $100,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "filer",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "33",
+      "parent_row": null,
+      "desc_raw": "Class Shares Plan 3 TIAA Real Estate",
+      "name": "Class Shares Plan 3 TIAA Real Estate",
+      "ticker": null,
+      "asset_class": "real_estate",
       "owner": "filer",
       "eif": true,
       "value": {
@@ -16541,7 +20598,7 @@
       "desc_raw": "Plan 4 TIAA Traditional",
       "name": "Plan 4 TIAA Traditional",
       "ticker": null,
-      "asset_class": "retirement_annuity",
+      "asset_class": "other",
       "owner": "filer",
       "eif": false,
       "value": {
@@ -16557,7 +20614,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16566,7 +20623,7 @@
       "desc_raw": "Plan 5 TIAA Traditional",
       "name": "Plan 5 TIAA Traditional",
       "ticker": null,
-      "asset_class": "retirement_annuity",
+      "asset_class": "other",
       "owner": "filer",
       "eif": false,
       "value": {
@@ -16582,7 +20639,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16591,7 +20648,7 @@
       "desc_raw": "Plan 6 TIAA Traditional",
       "name": "Plan 6 TIAA Traditional",
       "ticker": null,
-      "asset_class": "retirement_annuity",
+      "asset_class": "other",
       "owner": "filer",
       "eif": false,
       "value": {
@@ -16607,7 +20664,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16641,7 +20698,7 @@
       "desc_raw": "Spouse Plan 1 TIAA Stable",
       "name": "Spouse Plan 1 TIAA Stable",
       "ticker": null,
-      "asset_class": "fund_bond",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": true,
       "value": {
@@ -16657,7 +20714,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16666,7 +20723,7 @@
       "desc_raw": "Spouse Plan 1 TIAA Traditional",
       "name": "Spouse Plan 1 TIAA Traditional",
       "ticker": null,
-      "asset_class": "retirement_annuity",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": false,
       "value": {
@@ -16682,7 +20739,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16691,7 +20748,7 @@
       "desc_raw": "Spouse Plan 1 CREF Global Equities R3",
       "name": "Spouse Plan 1 CREF Global Equities R3",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": true,
       "value": {
@@ -16707,7 +20764,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16716,7 +20773,7 @@
       "desc_raw": "Spouse Plan 1 Nuveen Core Equity Fund R6",
       "name": "Spouse Plan 1 Nuveen Core Equity Fund R6",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": true,
       "value": {
@@ -16732,14 +20789,14 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
-      "row": "44",
+      "row": "42",
       "parent_row": null,
-      "desc_raw": "42 Spouse Plan 1 Nuveen International Equity Index Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 43 Spouse Plan 1 Nuveen Large Cap Growth Index Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 1 Nuveen Quant Small Cap Equity Fund R6",
-      "name": "42 Spouse Plan 1 Nuveen International Equity Index Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 43 Spouse Plan 1 Nuveen Large Cap Growth Index Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 1 Nuveen Quant Small Cap Equity Fund R6",
+      "desc_raw": "Spouse Plan 1 Nuveen International Equity Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "Spouse Plan 1 Nuveen International Equity Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None",
       "ticker": null,
       "asset_class": "fund_equity_intl",
       "owner": "spouse",
@@ -16761,12 +20818,162 @@
      },
      {
       "part": "2",
-      "row": "49",
+      "row": "43",
       "parent_row": null,
-      "desc_raw": "45 Spouse Plan 1 Nuveen Real Estate Securities Select Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 46 Spouse Plan 1 Vanguard Emerging Markets Stock Index Institutional Plus Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 47 Spouse Plan 1 Vanguard Institutional Index Fund Institutional Plus Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 48 Spouse Plan 1 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 1 TIAA Real Estate",
-      "name": "45 Spouse Plan 1 Nuveen Real Estate Securities Select Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 46 Spouse Plan 1 Vanguard Emerging Markets Stock Index Institutional Plus Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 47 Spouse Plan 1 Vanguard Institutional Index Fund Institutional Plus Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 48 Spouse Plan 1 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 1 TIAA Real Estate",
+      "desc_raw": "R6 Spouse Plan 1 Nuveen Large Cap Growth Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "R6 Spouse Plan 1 Nuveen Large Cap Growth Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "44",
+      "parent_row": null,
+      "desc_raw": "R6 Spouse Plan 1 Nuveen Quant Small Cap Equity Fund R6",
+      "name": "R6 Spouse Plan 1 Nuveen Quant Small Cap Equity Fund R6",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "45",
+      "parent_row": null,
+      "desc_raw": "Spouse Plan 1 Nuveen Real Estate Securities Select Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "Spouse Plan 1 Nuveen Real Estate Securities Select Spouse / Domestic Partner Yes $1,001 - $15,000 None",
+      "ticker": null,
+      "asset_class": "real_estate",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "46",
+      "parent_row": null,
+      "desc_raw": "Fund R6 Spouse Plan 1 Vanguard Emerging Markets Stock Index Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "Fund R6 Spouse Plan 1 Vanguard Emerging Markets Stock Index Spouse / Domestic Partner Yes $1,001 - $15,000 None",
       "ticker": null,
       "asset_class": "fund_equity_intl",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "47",
+      "parent_row": null,
+      "desc_raw": "Institutional Plus Spouse Plan 1 Vanguard Institutional Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "Institutional Plus Spouse Plan 1 Vanguard Institutional Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "48",
+      "parent_row": null,
+      "desc_raw": "Institutional Plus Spouse Plan 1 Vanguard Mid Cap Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "Institutional Plus Spouse Plan 1 Vanguard Mid Cap Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "49",
+      "parent_row": null,
+      "desc_raw": "Institutional Plus Class Shares Spouse Plan 1 TIAA Real Estate",
+      "name": "Institutional Plus Class Shares Spouse Plan 1 TIAA Real Estate",
+      "ticker": null,
+      "asset_class": "real_estate",
       "owner": "spouse",
       "eif": true,
       "value": {
@@ -16791,7 +20998,7 @@
       "desc_raw": "Spouse Plan 2 TIAA Stable",
       "name": "Spouse Plan 2 TIAA Stable",
       "ticker": null,
-      "asset_class": "fund_bond",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": true,
       "value": {
@@ -16807,7 +21014,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16816,7 +21023,7 @@
       "desc_raw": "Spouse Plan 2 TIAA Traditional",
       "name": "Spouse Plan 2 TIAA Traditional",
       "ticker": null,
-      "asset_class": "retirement_annuity",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": false,
       "value": {
@@ -16832,7 +21039,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16841,7 +21048,7 @@
       "desc_raw": "Spouse Plan 2 CREF Global Equities R3",
       "name": "Spouse Plan 2 CREF Global Equities R3",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": true,
       "value": {
@@ -16857,7 +21064,7 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
      },
      {
       "part": "2",
@@ -16866,7 +21073,7 @@
       "desc_raw": "Spouse Plan 2 Nuveen Core Equity Fund R6",
       "name": "Spouse Plan 2 Nuveen Core Equity Fund R6",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "other",
       "owner": "spouse",
       "eif": true,
       "value": {
@@ -16882,14 +21089,114 @@
        "hi": 200
       },
       "account_context": null,
-      "notes": "llm_reclass"
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "54",
+      "parent_row": null,
+      "desc_raw": "Spouse Plan 2 Nuveen International Equity Index Fund Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201)",
+      "name": "Spouse Plan 2 Nuveen International Equity Index Fund Spouse / Domestic Partner Yes $50,001 - $100,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_intl",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "55",
+      "parent_row": null,
+      "desc_raw": "R6 Spouse Plan 2 Nuveen Large Cap Growth Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "R6 Spouse Plan 2 Nuveen Large Cap Growth Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
      },
      {
       "part": "2",
       "row": "56",
       "parent_row": null,
-      "desc_raw": "54 Spouse Plan 2 Nuveen International Equity Index Fund R6 Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) 55 Spouse Plan 2 Nuveen Large Cap Growth Index Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 2 Nuveen Quant Small Cap Equity Fund R6",
-      "name": "54 Spouse Plan 2 Nuveen International Equity Index Fund R6 Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) 55 Spouse Plan 2 Nuveen Large Cap Growth Index Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 2 Nuveen Quant Small Cap Equity Fund R6",
+      "desc_raw": "R6 Spouse Plan 2 Nuveen Quant Small Cap Equity Fund R6",
+      "name": "R6 Spouse Plan 2 Nuveen Quant Small Cap Equity Fund R6",
+      "ticker": null,
+      "asset_class": "fund_equity_us",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "57",
+      "parent_row": null,
+      "desc_raw": "Spouse Plan 2 Nuveen Real Estate Securities Select Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "Spouse Plan 2 Nuveen Real Estate Securities Select Spouse / Domestic Partner Yes $1,001 - $15,000 None",
+      "ticker": null,
+      "asset_class": "real_estate",
+      "owner": "spouse",
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "58",
+      "parent_row": null,
+      "desc_raw": "Fund R6 Spouse Plan 2 Vanguard Emerging Markets Stock Index Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201)",
+      "name": "Fund R6 Spouse Plan 2 Vanguard Emerging Markets Stock Index Spouse / Domestic Partner Yes $15,001 - $50,000 None",
       "ticker": null,
       "asset_class": "fund_equity_intl",
       "owner": "spouse",
@@ -16911,187 +21218,12 @@
      },
      {
       "part": "2",
-      "row": "61",
+      "row": "59",
       "parent_row": null,
-      "desc_raw": "57 Spouse Plan 2 Nuveen Real Estate Securities Select Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 58 Spouse Plan 2 Vanguard Emerging Markets Stock Index Institutional Plus Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 59 Spouse Plan 2 Vanguard Institutional Index Fund Institutional Plus Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) 60 Spouse Plan 2 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 2 TIAA Real Estate",
-      "name": "57 Spouse Plan 2 Nuveen Real Estate Securities Select Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 58 Spouse Plan 2 Vanguard Emerging Markets Stock Index Institutional Plus Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 59 Spouse Plan 2 Vanguard Institutional Index Fund Institutional Plus Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) 60 Spouse Plan 2 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 2 TIAA Real Estate",
+      "desc_raw": "Institutional Plus Spouse Plan 2 Vanguard Institutional Index Fund Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201)",
+      "name": "Institutional Plus Spouse Plan 2 Vanguard Institutional Index Fund Spouse / Domestic Partner Yes $50,001 - $100,000 None",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
-      "owner": "spouse",
-      "eif": true,
-      "value": {
-       "raw": "$15,001 - $50,000",
-       "lo": 15001,
-       "hi": 50000,
-       "mid": 32500
-      },
-      "income": {
-       "type": null,
-       "raw": "None (or less than $201)",
-       "lo": 0,
-       "hi": 200
-      },
-      "account_context": null,
-      "notes": null
-     },
-     {
-      "part": "2",
-      "row": "62",
-      "parent_row": null,
-      "desc_raw": "Spouse Plan 3 TIAA Traditional",
-      "name": "Spouse Plan 3 TIAA Traditional",
-      "ticker": null,
-      "asset_class": "retirement_annuity",
-      "owner": "spouse",
-      "eif": false,
-      "value": {
-       "raw": "$1,001 - $15,000",
-       "lo": 1001,
-       "hi": 15000,
-       "mid": 8000
-      },
-      "income": {
-       "type": null,
-       "raw": "None (or less than $201)",
-       "lo": 0,
-       "hi": 200
-      },
-      "account_context": null,
-      "notes": "llm_reclass"
-     },
-     {
-      "part": "2",
-      "row": "63",
-      "parent_row": null,
-      "desc_raw": "Spouse Plan 3 CREF Global Equities R3",
-      "name": "Spouse Plan 3 CREF Global Equities R3",
-      "ticker": null,
-      "asset_class": "fund_equity_intl",
-      "owner": "spouse",
-      "eif": true,
-      "value": {
-       "raw": "$1,001 - $15,000",
-       "lo": 1001,
-       "hi": 15000,
-       "mid": 8000
-      },
-      "income": {
-       "type": null,
-       "raw": "None (or less than $201)",
-       "lo": 0,
-       "hi": 200
-      },
-      "account_context": null,
-      "notes": "llm_reclass"
-     },
-     {
-      "part": "2",
-      "row": "65",
-      "parent_row": null,
-      "desc_raw": "64 Spouse Plan 3 Nuveen International Equity Index Fund R6 Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) Spouse Plan 3 Nuveen Quant Small Cap Equity Fund R6",
-      "name": "64 Spouse Plan 3 Nuveen International Equity Index Fund R6 Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) Spouse Plan 3 Nuveen Quant Small Cap Equity Fund R6",
-      "ticker": null,
-      "asset_class": "fund_equity_intl",
-      "owner": "spouse",
-      "eif": true,
-      "value": {
-       "raw": "$1,001 - $15,000",
-       "lo": 1001,
-       "hi": 15000,
-       "mid": 8000
-      },
-      "income": {
-       "type": null,
-       "raw": "None (or less than $201)",
-       "lo": 0,
-       "hi": 200
-      },
-      "account_context": null,
-      "notes": null
-     },
-     {
-      "part": "2",
-      "row": "70",
-      "parent_row": null,
-      "desc_raw": "66 Spouse Plan 3 Nuveen Real Estate Securities Select Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 67 Spouse Plan 3 Vanguard Emerging Markets Stock Index Institutional Plus Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 68 Spouse Plan 3 Vanguard Institutional Index Fund Institutional Plus Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 69 Spouse Plan 3 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 3 TIAA Real Estate",
-      "name": "66 Spouse Plan 3 Nuveen Real Estate Securities Select Fund R6 Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 67 Spouse Plan 3 Vanguard Emerging Markets Stock Index Institutional Plus Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) 68 Spouse Plan 3 Vanguard Institutional Index Fund Institutional Plus Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 69 Spouse Plan 3 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201) Spouse Plan 3 TIAA Real Estate",
-      "ticker": null,
-      "asset_class": "fund_equity_intl",
-      "owner": "spouse",
-      "eif": true,
-      "value": {
-       "raw": "$1,001 - $15,000",
-       "lo": 1001,
-       "hi": 15000,
-       "mid": 8000
-      },
-      "income": {
-       "type": null,
-       "raw": "None (or less than $201)",
-       "lo": 0,
-       "hi": 200
-      },
-      "account_context": null,
-      "notes": null
-     },
-     {
-      "part": "2",
-      "row": "71",
-      "parent_row": null,
-      "desc_raw": "Spouse Plan 4 TIAA Traditional",
-      "name": "Spouse Plan 4 TIAA Traditional",
-      "ticker": null,
-      "asset_class": "retirement_annuity",
-      "owner": "spouse",
-      "eif": false,
-      "value": {
-       "raw": "$50,001 - $100,000",
-       "lo": 50001,
-       "hi": 100000,
-       "mid": 75000
-      },
-      "income": {
-       "type": null,
-       "raw": "None (or less than $201)",
-       "lo": 0,
-       "hi": 200
-      },
-      "account_context": null,
-      "notes": "llm_reclass"
-     },
-     {
-      "part": "2",
-      "row": "72",
-      "parent_row": null,
-      "desc_raw": "Spouse Plan 4 CREF Global Equities R3",
-      "name": "Spouse Plan 4 CREF Global Equities R3",
-      "ticker": null,
-      "asset_class": "fund_equity_intl",
-      "owner": "spouse",
-      "eif": true,
-      "value": {
-       "raw": "$50,001 - $100,000",
-       "lo": 50001,
-       "hi": 100000,
-       "mid": 75000
-      },
-      "income": {
-       "type": null,
-       "raw": "None (or less than $201)",
-       "lo": 0,
-       "hi": 200
-      },
-      "account_context": null,
-      "notes": "llm_reclass"
-     },
-     {
-      "part": "2",
-      "row": "74",
-      "parent_row": null,
-      "desc_raw": "73 Spouse Plan 4 Nuveen International Equity Index Fund R6 Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) Spouse Plan 4 Nuveen Quant Small Cap Equity Fund R6",
-      "name": "73 Spouse Plan 4 Nuveen International Equity Index Fund R6 Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) Spouse Plan 4 Nuveen Quant Small Cap Equity Fund R6",
-      "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "fund_equity_us",
       "owner": "spouse",
       "eif": true,
       "value": {
@@ -17111,19 +21243,19 @@
      },
      {
       "part": "2",
-      "row": "79",
+      "row": "60",
       "parent_row": null,
-      "desc_raw": "75 Spouse Plan 4 Nuveen Real Estate Securities Select Fund R6 Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 76 Spouse Plan 4 Vanguard Emerging Markets Stock Index Institutional Plus Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) 77 Spouse Plan 4 Vanguard Institutional Index Fund Institutional Plus Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) 78 Spouse Plan 4 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) Spouse Plan 4 TIAA Real Estate",
-      "name": "75 Spouse Plan 4 Nuveen Real Estate Securities Select Fund R6 Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) 76 Spouse Plan 4 Vanguard Emerging Markets Stock Index Institutional Plus Spouse / Domestic Partner Yes $50,001 - $100,000 None (or less than $201) 77 Spouse Plan 4 Vanguard Institutional Index Fund Institutional Plus Spouse / Domestic Partner Yes $100,001 - $250,000 None (or less than $201) 78 Spouse Plan 4 Vanguard Mid Cap Index Fund Institutional Plus Class Shares Spouse / Domestic Partner Yes $15,001 - $50,000 None (or less than $201) Spouse Plan 4 TIAA Real Estate",
+      "desc_raw": "Institutional Plus Spouse Plan 2 Vanguard Mid Cap Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None (or less than $201)",
+      "name": "Institutional Plus Spouse Plan 2 Vanguard Mid Cap Index Fund Spouse / Domestic Partner Yes $1,001 - $15,000 None",
       "ticker": null,
-      "asset_class": "fund_equity_intl",
+      "asset_class": "fund_equity_us",
       "owner": "spouse",
       "eif": true,
       "value": {
-       "raw": "$50,001 - $100,000",
-       "lo": 50001,
-       "hi": 100000,
-       "mid": 75000
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
       },
       "income": {
        "type": null,
@@ -17135,12 +21267,12 @@
       "notes": null
      }
     ],
-    "rows_truncated": false,
+    "rows_truncated": true,
     "transactions": [
      {
       "form": "FRB-FormA-Part5",
       "row": "1",
-      "desc": "partner, or your dependent child during the reporting period. This Part is not required for New Filer reports. # Description Owner Type Date (MM/DD/YYYY) Amount Plan 1 TIAA Stable",
+      "desc": "Plan 1 TIAA Stable",
       "type": "Purchase",
       "date": "2025-10-13",
       "amount": {
@@ -18356,7 +22488,7 @@
     "liabilities": [
      {
       "row": "1",
-      "creditor": "# Creditor Name Debtor Type Amount Year Incurred Interest Rate Term More Favorable Terms? Old National Bank Joint Mortgage",
+      "creditor": "More Year Favorable # Creditor Name Debtor Type Amount Incurred Interest Rate Term Terms? Old National Bank Joint Mortgage",
       "type": null,
       "amount": {
        "raw": "$500,001 - $1,000,000",
@@ -18568,7 +22700,7 @@
     "openalex_note": "제목 주제비율 0.5(8건) · 비경제 논문 2건 제외(저자 레코드 병합 의심)"
    },
    "holdings": {
-    "status": "ocr_pending",
+    "status": "ok",
     "form": "FRB-FormA",
     "report_year": 2025,
     "period_end": null,
@@ -18576,14 +22708,901 @@
     "published": null,
     "source_url": "https://www.stlouisfed.org/-/media/project/frbstl/stlouisfed/files/pdfs/about-us/leadership-governance/stl-musalem-form-a.pdf",
     "source_sha256": "047938c535687b4ff74e999fa95e90c0f903d4fe6adcfc43b3ada5524fce891e",
-    "extraction": null,
-    "ocr_confidence": null,
+    "extraction": "ocr",
+    "ocr_confidence": 0.59,
     "pages": 11,
-    "reason": "scan_pdf_ocr_required",
-    "summary": null,
-    "rows": [],
+    "summary": {
+     "total_lo": 2375021,
+     "total_hi": 8152000,
+     "total_mid": 5263500,
+     "n_rows": 33,
+     "single_stocks": [],
+     "single_stock_mid": 0,
+     "by_class": {
+      "real_estate": 3450000,
+      "other": 1108000,
+      "cash": 264500,
+      "fund_bond": 250000,
+      "private_fund": 175000,
+      "retirement_annuity": 16000
+     },
+     "rate_sensitivity": "채권·MMF·현금 9.8%(중앙값 합 기준), 개별주 0건, 총 33행"
+    },
+    "rows": [
+     {
+      "part": "2",
+      "row": "1",
+      "parent_row": null,
+      "desc_raw": "Contributory Roth IRA",
+      "name": "Contributory Roth IRA",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "e Roth IRA Account (US brokerage omelce No",
+      "name": "e Roth IRA Account (US brokerage omelce No",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "3",
+      "parent_row": null,
+      "desc_raw": "Rollover IRA #1",
+      "name": "Rollover IRA #1",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "e IRA Account (US brokerage account wil No",
+      "name": "e IRA Account (US brokerage account wil No",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": "wie SOHIAE US TREASURY MONEY Yes",
+      "name": "wie SOHIAE US TREASURY MONEY Yes",
+      "ticker": null,
+      "asset_class": "fund_bond",
+      "owner": null,
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "6",
+      "parent_row": null,
+      "desc_raw": "af SWVXX SCHWAB VALUE ADVANTAGE MONEY Yes",
+      "name": "af SWVXX SCHWAB VALUE ADVANTAGE MONEY Yes",
+      "ticker": "SWVXX",
+      "asset_class": "other",
+      "owner": null,
+      "eif": true,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "7",
+      "parent_row": null,
+      "desc_raw": "Rollover IRA #2",
+      "name": "Rollover IRA #2",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "8",
+      "parent_row": null,
+      "desc_raw": "IRA account (US brokerage account cash) No",
+      "name": "IRA account (US brokerage account cash) No",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "None (or less than $1,001)",
+       "lo": 0,
+       "hi": 1000,
+       "mid": 500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "9",
+      "parent_row": null,
+      "desc_raw": "oe I IE ARETE EY Yes",
+      "name": "oe I IE ARETE EY Yes",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": null,
+      "eif": true,
+      "value": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "13",
+      "parent_row": null,
+      "desc_raw": "—— - —_—— Jointly Owned No Div., Cap. Gains, & Rent $100,001 - $1,000,000 11. © U.S. bank #1 (cash) No $50,001 - $100,000 12 U.S. brokerage account #1 No o US brokerage account (cash) ‘ No",
+      "name": "—— - —_—— Jointly Owned No Div., Cap. Gains, & Rent $100,001 - $1,000,000 11. © U.S. bank #1 (cash) No $50,001 - $100,000 12 U.S. brokerage account #1 No o US brokerage account (cash) ‘ No",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "14",
+      "parent_row": null,
+      "desc_raw": "o HTSXX JP MORGAN 100% US Treasury Secs Mny Mkt Fund Yes",
+      "name": "o HTSXX JP MORGAN 100% US Treasury Secs Mny Mkt Fund Yes",
+      "ticker": "HTSXX",
+      "asset_class": "fund_bond",
+      "owner": null,
+      "eif": true,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "16",
+      "parent_row": null,
+      "desc_raw": "15 e HHMP 1 LLC (NY-organized real estate investment No company) o Commercial real estate in New York, NY No",
+      "name": "15 e HHMP 1 LLC (NY-organized real estate investment No company) o Commercial real estate in New York, NY No",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "17",
+      "parent_row": null,
+      "desc_raw": "_ @ Residential real estate in Baltimore, MD No",
+      "name": "_ @ Residential real estate in Baltimore, MD No",
+      "ticker": null,
+      "asset_class": "real_estate",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$1,000,001 - $5,000,000",
+       "lo": 1000001,
+       "hi": 5000000,
+       "mid": 3000000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "18",
+      "parent_row": null,
+      "desc_raw": "e Residential real estate in Rockville, MD No",
+      "name": "e Residential real estate in Rockville, MD No",
+      "ticker": null,
+      "asset_class": "real_estate",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$250,001 - $500,000",
+       "lo": 250001,
+       "hi": 500000,
+       "mid": 375000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "20",
+      "parent_row": null,
+      "desc_raw": "49 _ * MP-CM Lisbon 01,LLC (DE-organized real estate No investment company) o US bank #1 (cash) No",
+      "name": "49 _ * MP-CM Lisbon 01,LLC (DE-organized real estate No investment company) o US bank #1 (cash) No",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "21",
+      "parent_row": null,
+      "desc_raw": "MP Capital Management LLC (self-employment , teed ts)",
+      "name": "MP Capital Management LLC",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "22",
+      "parent_row": null,
+      "desc_raw": "Mota Pinto Real Estate LLC (DE-organized real estate ; | company)",
+      "name": "Mota Pinto Real Estate LLC",
+      "ticker": null,
+      "asset_class": "private_fund",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "23",
+      "parent_row": null,
+      "desc_raw": "@ Residential real estate in Orlando, FL . No",
+      "name": "@ Residential real estate in Orlando, FL . No",
+      "ticker": null,
+      "asset_class": "real_estate",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$50,001 - $100,000",
+       "lo": 50001,
+       "hi": 100000,
+       "mid": 75000
+      },
+      "income": {
+       "type": "Rent",
+       "raw": "$2,501 - $5,000",
+       "lo": 2501,
+       "hi": 5000
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "24",
+      "parent_row": null,
+      "desc_raw": "401(k) Retirement Account",
+      "name": "401(k) Retirement Account",
+      "ticker": null,
+      "asset_class": "retirement_annuity",
+      "owner": "spouse",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "2",
+      "row": "25",
+      "parent_row": null,
+      "desc_raw": "—_ e 401(k) account (cash) No",
+      "name": "—_ e 401(k) account (cash) No",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "2",
+      "row": "26",
+      "parent_row": null,
+      "desc_raw": "«VY TROWEPRICE CAPTL APPREC PT R6 Yes",
+      "name": "«VY TROWEPRICE CAPTL APPREC PT R6 Yes",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": null,
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "1",
+      "parent_row": null,
+      "desc_raw": "U.S. bank #1 (cash)",
+      "name": "U.S. bank #1",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "2",
+      "parent_row": null,
+      "desc_raw": "U.S. bank #2 (cash)",
+      "name": "U.S. bank #2",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "3",
+      "parent_row": null,
+      "desc_raw": "U.S. bank #3 (cash)",
+      "name": "U.S. bank #3",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$15,001 - $50,000",
+       "lo": 15001,
+       "hi": 50000,
+       "mid": 32500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "4",
+      "parent_row": null,
+      "desc_raw": "US. bank #4 (cash)",
+      "name": "US. bank #4",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "5",
+      "parent_row": null,
+      "desc_raw": "U.S. brokerage account #1",
+      "name": "U.S. brokerage account #1",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "6",
+      "parent_row": null,
+      "desc_raw": "=e Brokerage account (cash) No",
+      "name": "=e Brokerage account (cash) No",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "7",
+      "parent_row": null,
+      "desc_raw": "U.S. brokerage account #2",
+      "name": "U.S. brokerage account #2",
+      "ticker": null,
+      "asset_class": "other",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "8",
+      "parent_row": null,
+      "desc_raw": "© Brokerage account (cash) No",
+      "name": "© Brokerage account (cash) No",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "None (or less than $1,001)",
+       "lo": 0,
+       "hi": 1000,
+       "mid": 500
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "12",
+      "parent_row": null,
+      "desc_raw": "° yee JPMORGAN TR II LIQUID ASSETS MONEY Yes $15,001 - $50,000 $15,001 - $50,000 ———————— Yes $1,000,001 - $5,000,000 $15,001 - $50,000 + swe Pri aa FDS 100% TREASURY SECS ae $1,000,001 - $5,000,000 $15,001 - $50,000 U.S. brokerage account #3",
+      "name": "° yee JPMORGAN TR II LIQUID ASSETS MONEY Yes $15,001 - $50,000 $15,001 - $50,000 ———————— Yes $1,000,001 - $5,000,000 $15,001 - $50,000 + swe Pri aa FDS 100% TREASURY SECS ae $1,000,001 - $5,000,000 $15,001 - $50,000 U.S. brokerage account #3",
+      "ticker": null,
+      "asset_class": "fund_bond",
+      "owner": "joint",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "13",
+      "parent_row": null,
+      "desc_raw": "Brokerage account (cash) No",
+      "name": "Brokerage account (cash) No",
+      "ticker": null,
+      "asset_class": "cash",
+      "owner": null,
+      "eif": false,
+      "value": {
+       "raw": "$1,001 - $15,000",
+       "lo": 1001,
+       "hi": 15000,
+       "mid": 8000
+      },
+      "income": {
+       "type": null,
+       "raw": "None (or less than $201)",
+       "lo": 0,
+       "hi": 200
+      },
+      "account_context": null,
+      "notes": null
+     },
+     {
+      "part": "3",
+      "row": "15",
+      "parent_row": null,
+      "desc_raw": "14. @ SPAXX FIDELITY GOVERNMENT MARKET FUND Yes $1,001 - $15,000 None (or less than $201) Virginia 529 College Savings Pian",
+      "name": "14. @ SPAXX FIDELITY GOVERNMENT MARKET FUND Yes $1,001 - $15,000 None (or less than $201) Virginia 529 College Savings Pian",
+      "ticker": "SPAXX",
+      "asset_class": "money_market",
+      "owner": "filer",
+      "eif": false,
+      "value": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "income": {
+       "type": null,
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": "ocr_col_unsplit"
+     },
+     {
+      "part": "3",
+      "row": "16",
+      "parent_row": null,
+      "desc_raw": "e AAFXX AMERICAN FUNDS US GOVT MONEY a WaARKET FUND | Yes |",
+      "name": "e AAFXX AMERICAN FUNDS US GOVT MONEY a WaARKET FUND | Yes |",
+      "ticker": "AAFXX",
+      "asset_class": "other",
+      "owner": null,
+      "eif": true,
+      "value": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "income": {
+       "type": "Distributions",
+       "raw": null,
+       "lo": null,
+       "hi": null
+      },
+      "account_context": null,
+      "notes": null
+     }
+    ],
     "rows_truncated": false,
-    "transactions": [],
+    "transactions": [
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "1",
+      "desc": "partner, or your dependent child during the reporting period. This Part is not required for New Filer reports. Filers Name: Alberto Musalem _] None (Nothing to report) Date # Description Owner Type (MMIDDIYYYY) Amount MP Capital Management LLC",
+      "type": null,
+      "date": null,
+      "amount": {
+       "raw": null,
+       "lo": null,
+       "hi": null,
+       "mid": null
+      },
+      "owner": "joint",
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "2",
+      "desc": "Residential real estate in Rockville, MD Sale 01/31/2025",
+      "type": "Sale",
+      "date": "2025-01-31",
+      "amount": {
+       "raw": "$500,001 - $1,000,000",
+       "lo": 500001,
+       "hi": 1000000,
+       "mid": 750000
+      },
+      "owner": null,
+      "published": null
+     },
+     {
+      "form": "FRB-FormA-Part5",
+      "row": "4",
+      "desc": "3. e Residential real estate in Rockville, MD Sale 01/31/2025 $500,001 - $1,000,000 Residential real estate in Baltimore, MD Purchase 02/04/2025",
+      "type": "Purchase",
+      "date": "2025-02-04",
+      "amount": {
+       "raw": "$100,001 - $250,000",
+       "lo": 100001,
+       "hi": 250000,
+       "mid": 175000
+      },
+      "owner": null,
+      "published": null
+     }
+    ],
     "liabilities": []
    },
    "notes": [
