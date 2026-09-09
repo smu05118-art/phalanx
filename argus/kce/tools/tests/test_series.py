@@ -13,6 +13,7 @@ TOOLS = os.path.dirname(HERE)
 sys.path.insert(0, TOOLS)
 
 import kce_series as KS                                   # noqa: E402
+S = KS                                                    # 짧은 별칭
 
 
 class TestTotalRow(unittest.TestCase):
@@ -358,3 +359,88 @@ class TestParallel(unittest.TestCase):
             kce_fetch.MIN_GAP = old
         self.assertGreaterEqual(dt, (n - 1) * 0.02 * 0.8,
                                 "레인이 전역 요청률 상한을 뚫었다")
+
+
+class TestNormDay(unittest.TestCase):
+    """착공일을 일자까지 볼 수 있는가 — 같은 달 계약이 한 칸으로 뭉개지는 것을 막는다."""
+
+    def test_full_dates(self):
+        for raw, want in (("2026.05.06", "2026-05-06"), ("2026-05-13", "2026-05-13"),
+                          ("20260506", "2026-05-06"), ("2026년 5월 6일", "2026-05-06")):
+            self.assertEqual(S._norm_day(raw), want, raw)
+
+    def test_month_only_is_not_a_day(self):
+        """'2019.12'를 12월 1일이나 1월 2일로 읽으면 안 된다 — 일자가 없으면 None."""
+        for raw in ("2019.12", "201912", "24년12월", "25.12", "", "-"):
+            self.assertIsNone(S._norm_day(raw), raw)
+
+
+class TestSubtotalByValue(unittest.TestCase):
+    """이름이 묶음처럼 보여도 **값이 개별 합과 같으면 소계**다(HS화성 잔고 2배 사건)."""
+
+    def _row(self, nm, amt, cmp_, bal):
+        return {"nm": nm, "amt": amt, "cmp": cmp_, "bal": bal}
+
+    def test_matching_totals_are_subtotal(self):
+        ind = {"amt": 2285824, "cmp": 475954, "bal": 1809870}
+        row = self._row("계약잔액 50억 미만", 2285824, 475954, 1809870)
+        self.assertTrue(S.is_subtotal_of(row, ind, 41))
+
+    def test_genuine_remainder_is_not_subtotal(self):
+        ind = {"amt": 2285824, "cmp": 475954, "bal": 1809870}
+        row = self._row("계약잔액 50억 미만", 12000, 3000, 9000)
+        self.assertFalse(S.is_subtotal_of(row, ind, 41))
+
+    def test_needs_at_least_two_individual_rows(self):
+        """개별이 한 행뿐이면 '합이 같다'는 게 우연이라 근거가 못 된다."""
+        ind = {"amt": 100, "cmp": 10, "bal": 90}
+        self.assertFalse(S.is_subtotal_of(self._row("기타", 100, 10, 90), ind, 1))
+
+
+class TestFitAgg(unittest.TestCase):
+    """잔여 묶음이 공시 총계를 넘길 때만, 묶음만 줄인다."""
+
+    def test_stale_plug_is_trimmed(self):
+        aggs = [{"amt": 3051455, "cmp": 0, "bal": 3051455}]
+        ind = {"amt": 792425, "cmp": 0, "bal": 792425}
+        tot = {"amt": 3664094, "cmp": 0, "bal": 3664094}
+        self.assertTrue(S.fit_agg(aggs, ind, tot))
+        self.assertAlmostEqual(ind["bal"] + aggs[0]["bal"], tot["bal"], places=3)
+
+    def test_individuals_alone_exceeding_total_is_left_alone(self):
+        """소계가 개별로 섞여 든 상황 — 묶음을 깎아 덮으면 대조율 경보가 죽는다."""
+        aggs = [{"amt": 100, "cmp": 0, "bal": 100}]
+        ind = {"amt": 5000, "cmp": 0, "bal": 5000}
+        tot = {"amt": 3000, "cmp": 0, "bal": 3000}
+        self.assertFalse(S.fit_agg(aggs, ind, tot))
+        self.assertEqual(aggs[0]["bal"], 100)
+
+    def test_more_than_half_cut_is_refused(self):
+        """절반 넘게 깎아야 하면 plug 실수가 아니라 표를 잘못 읽은 것이다."""
+        aggs = [{"amt": 1000, "cmp": 0, "bal": 1000}]
+        ind = {"amt": 100, "cmp": 0, "bal": 100}
+        tot = {"amt": 400, "cmp": 0, "bal": 400}
+        self.assertFalse(S.fit_agg(aggs, ind, tot))
+        self.assertEqual(aggs[0]["bal"], 1000)
+
+    def test_rounding_noise_is_ignored(self):
+        aggs = [{"amt": 0, "cmp": 0, "bal": 101}]
+        ind = {"amt": 0, "cmp": 0, "bal": 900}
+        tot = {"amt": 0, "cmp": 0, "bal": 1000}
+        self.assertFalse(S.fit_agg(aggs, ind, tot))
+
+
+class TestNameKeys(unittest.TestCase):
+    """분기 **안**에서 가르는 키와 분기를 **잇는** 키는 요구가 반대다."""
+
+    def test_marker_distinguishes_within_a_quarter(self):
+        """HL D&I `(A)` 본도급과 `(O)` 옵션은 서로 다른 계약이다."""
+        self.assertNotEqual(S.nm_key("인천작전동APT (A)"), S.nm_key("인천작전동APT (O)"))
+
+    def test_marker_is_ignored_across_quarters(self):
+        """같은 계약인데 분기마다 표시가 붙었다 떨어진다."""
+        self.assertEqual(S.nm_link("인천작전동APT (A)"), S.nm_link("인천작전동APT"))
+
+    def test_korean_parenthetical_survives(self):
+        """`(옵션)`·`(자체)`는 표시가 아니라 이름 조각이다."""
+        self.assertNotEqual(S.nm_link("OO아파트 (옵션)"), S.nm_link("OO아파트"))

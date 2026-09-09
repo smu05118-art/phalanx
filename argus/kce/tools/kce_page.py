@@ -158,6 +158,18 @@ def company_html(D):
                  '싣습니다. 아래 「부문」 행은 개별 공사 현장이 아니라 '
                  '사업부문 합계입니다.</div>')
 
+    # 우리가 원문 값을 고친 분기가 있으면 **반드시 화면에 남긴다.** `fit_agg`는 잔여
+    # 묶음(`기타`)이 공시 총계를 넘길 때 묶음만 총계에 맞춰 줄이는데(원문이 '총계 −
+    # 개별'을 계산하며 새 현장을 빼지 않은 경우), 그건 숫자를 우리가 바꾼 것이다.
+    # 조용히 고치면 화면이 원문인 척하게 된다.
+    fixq = D.get("aggFix") or []
+    if fixq:
+        grainnote += (
+            '<div class="note">%s 분기는 원문의 <b>잔여 묶음(「기타」) 행이 공시 총계를 '
+            '넘겨</b>, 묶음만 총계에 맞춰 줄였습니다. 개별 현장 값은 원문 그대로입니다 '
+            '— 원문이 「총계 − 개별」을 계산하며 그 분기에 새로 실린 현장을 빼지 않은 '
+            '경우입니다.</div>' % E(" · ".join(fixq)))
+
     out = """<!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

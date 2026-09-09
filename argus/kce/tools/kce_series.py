@@ -284,6 +284,12 @@ def is_subtotal_of(row, ind_sum, n_ind):
         _eq(row.get("bal"), ind_sum.get("bal"))
 
 
+def _tidy(v):
+    """원문이 정수로 적은 칸을 보정 뒤에도 정수로 되돌린다(JSON 노이즈 방지)."""
+    r = round(v, 6)
+    return int(r) if r == int(r) else r
+
+
 def fit_agg(aggs, ind_sum, tot):
     """잔여 묶음이 원문 총계를 넘칠 때 총계에 맞춰 줄인다. 줄였으면 True.
 
@@ -294,8 +300,12 @@ def fit_agg(aggs, ind_sum, tot):
     새로 올린 현장을 빼지 않은 것이다(나머지 7개 분기는 오차 0~2로 맞는다).
     잔여 묶음은 정의상 '총계 − 개별'이므로 원문 총계를 믿고 묶음만 줄인다.
 
-    **개별 합만으로 이미 총계를 넘으면 손대지 않는다** — 그건 소계가 개별로 섞여
-    든 것이고, 묶음을 줄여 덮으면 대조율 경보(reconOver)가 죽어 버린다.
+    손대지 않는 두 경우 — 둘 다 원문 값을 고쳐 쓰기엔 근거가 모자라는 상황이라
+    그대로 두고 대조율이 말하게 한다(fail-closed):
+      · **개별 합만으로 이미 총계를 넘을 때.** 그건 소계가 개별로 섞여 든 것이고,
+        묶음을 줄여 덮으면 대조율 경보(reconOver)가 죽어 버린다.
+      · **묶음을 절반 넘게 깎아야 할 때.** 그 정도면 '총계에서 개별을 덜 뺀 실수'가
+        아니라 표 자체를 잘못 읽은 것이다 — 공시된 나머지를 통째로 지우지 않는다.
     """
     fixed = False
     for f in FIELDS:
@@ -304,7 +314,7 @@ def fit_agg(aggs, ind_sum, tot):
             continue
         ind = ind_sum.get(f) or 0
         agg = sum(r.get(f) or 0 for r in aggs)
-        if agg <= 0 or ind > top:
+        if agg <= 0 or ind > top or (top - ind) * 2 < agg:
             continue
         # 원문 반올림 오차(±1~2)까지 손대면 멀쩡한 표를 매 분기 건드리게 된다
         if ind + agg <= top + max(2.0, abs(top) * 0.001):
@@ -324,12 +334,6 @@ def fit_agg(aggs, ind_sum, tot):
                 r[f] = _tidy(r[f])
         fixed = True
     return fixed
-
-
-def _tidy(v):
-    """원문이 정수로 적은 칸을 보정 뒤에도 정수로 되돌린다(JSON 노이즈 방지)."""
-    r = round(v, 6)
-    return int(r) if r == int(r) else r
 
 
 def split_table(rows, ti):
