@@ -2067,6 +2067,9 @@ function expireStatuses(){
    implemented:false 인 항목은 근거만 남기고 절대 발동하지 않는다(무행동 전환 계약). */
 const DEATH_SRC_KO = {demon:'악마의 살해', night:'밤 살해', execution:'처형',
   slayer:'처단자의 일격', witch:'마녀의 저주', exile:'여행자 추방'};
+/* 낮에 공개적으로 벌어지는 능력 사망 — '오늘 밤' 을 조건으로 하는 보호(수도사·여관 주인·수동 토큰)의
+   대상이 아니다. 처형과 함께 '밤이 아닌 사망'을 이룬다. */
+const DEATH_DAY_ABILITY_SRC = ['slayer','witch','exile'];
 const DEATH_MODIFIERS = [
   {id:'assassin-pierce', ko:'암살자 관통', precedence:0, stage:['block','kill'], effect:'pierce',
    official:'Assassin: "Once per game, at night*, choose a player: they die, even if for some reason they could not." (official/roles181.json:1375) — "어떤 이유로든 죽을 수 없었더라도"가 찻집 여인·보호·군인·선원을 모두 뚫는 근거다. block 단계뿐 아니라 kill 단계에도 서 있어야 한다: 좀버얼의 "The 1st time you die, you live but register as dead."(roles181.json:1766)와 어릿광대의 "The 1st time you die, you don\'t."(roles181.json:851)도 결과가 "실제로는 죽지 않음"이므로 같은 문구가 뚫는 대상이다. 관통 여부는 사인 문자열이 아니라 컨텍스트(ctx.bypass)로 전달된다.',
@@ -2084,10 +2087,17 @@ const DEATH_MODIFIERS = [
    when:(t,c)=> c.sourceType!=='execution' && hasStatus(t,'stormcaught'),
    reason:()=> '폭풍잡이가 공표한 캐릭터 — 처형 외의 사망 없음'},
 
+  /* 보호 토큰의 시점 계약 — 공식은 수도사 "safe from the Demon tonight" · 여관 주인 "they can't
+     die tonight" 으로 둘 다 '오늘 밤'을 못 박는다. 아래 when() 은 오랫동안 '처형이 아니면 밤'이라는
+     대리조건을 썼는데, 사인 어휘가 demon/night/execution 셋뿐이던 시절엔 그것이 동치였다.
+     2026-09-09 에 낮 능력 사인(처단자·마녀·추방)을 추가하면서 깨졌다 — 낮에 수동으로 놓은 🛡 토큰이
+     그날 낮의 처단자 일격·마녀의 저주·여행자 추방까지 막는다. 낮 사인을 명시적으로 제외한다.
+     (사인이 없는 옛 호출부(null)는 종전대로 막는다 — 이번 수정은 새 사인만 되돌린다.) */
   {id:'protect-token', ko:'보호 토큰(수도사·여관 주인·수동)', precedence:20, stage:'block', effect:'block',
    official:'Monk: "they are safe from the Demon tonight." (roles181.json:424) · Innkeeper: "they can\'t die tonight, but 1 is drunk until dusk." (roles181.json:409). 둘 다 \'타인의\' 능력이므로 대상이 중독·취해도 유효하다. 수도사는 악마의 살해만, 여관 주인·수동 토큰은 모든 밤 사망을 막는다. 처형은 어느 쪽도 막지 않는다 — Leviathan/Riot 징크스가 "보호받는 플레이어를 지명·처형하면 선 승리"라고 따로 규정한 것이 그 반증이다(official/jinxes.json).',
    when:(t,c)=>{ const pr=(t.statuses||[]).find(s=>s.key==='protect'); c._pr=pr;
-                 return !!pr && c.sourceType!=='execution' && (pr.source!=='수도사' || c.sourceType==='demon'); },
+                 return !!pr && c.sourceType!=='execution' && DEATH_DAY_ABILITY_SRC.indexOf(c.sourceType)<0
+                        && (pr.source!=='수도사' || c.sourceType==='demon'); },
    reason:(t,c)=> `보호 중(${c._pr.source||'보호 토큰'})`},
 
   {id:'devils-advocate', ko:'악마의 변호사', precedence:30, stage:'block', effect:'block',
@@ -4071,7 +4081,12 @@ function doInnkeeperProtect(pids){
     log(`여관 주인 오작동: ${list.map(x=>x.name).join(', ')} 보호 불발`); save(); renderAll(); return;
   }
   const exp=(S.phase.kind==='night')? {kind:'day', n:S.phase.n} : {kind:'day', n:S.phase.n+1};
-  list.forEach(t=>{ if(!hasStatus(t,'protect')) addStatus(t,'protect','여관 주인',exp); });
+  list.forEach(t=>{
+    if(!hasStatus(t,'protect')) addStatus(t,'protect','여관 주인',exp);
+    /* 원장에 남겨야 레비아탄·폭동 징크스 감사('보호받은 플레이어를 처형하면 선 승리')가 판정할 수
+       있다 — 수도사 경로(doProtect 래퍼)는 이미 남기고 있었고 여기만 빠져 있었다. */
+    try{ if(typeof emitEv==='function') emitEv('protect', ik? ik.id : null, t.id, {src:'여관 주인', mal:false}); }catch(e){}
+  });
   toast(`🏠 ${list.map(x=>x.name).join(' · ')} 🛡보호 — 오늘 밤 죽지 않습니다(암살자는 관통).`,'ok');
   save(); renderAll();
 }
@@ -6851,8 +6866,12 @@ function wizShowVal(v){ const sc=wiz.scenes[wiz.idx]; sc._val=v; sc._shown=true;
 function wizEffect(){ const sc=wiz.scenes[wiz.idx]; const tgt=(wiz.vars[sc.from]||[])[0];
   if(!tgt){ toast('대상이 선택되지 않았습니다 — 이전 단계에서 선택하세요.','warn'); return; }
   try{
+    /* 다중 대상 판정은 씬이 all:true 로 '선언'한다 — 이름 열거는 새 다중대상 함수가 들어올 때마다
+       빠뜨리기 쉬웠다(여관 주인 보호가 실제로 그렇게 빠져 2명 중 1명에게만 토큰이 붙었다).
+       열거는 하위호환으로 남긴다 — all 을 안 붙인 옛 씬도 그대로 동작한다. */
+    const multi = sc.all===true || sc.fn==='doSwapChars' || sc.fn==='doSnakeSwap';
     if(sc.fn==='doStepKill') doStepKill(tgt, charOf(wiz.stepId)?.id);
-    else if(sc.fn==='doSwapChars'||sc.fn==='doSnakeSwap') window[sc.fn](wiz.vars[sc.from]||[]);
+    else if(multi) window[sc.fn](wiz.vars[sc.from]||[]);
     else window[sc.fn](tgt);
   }catch(e){ toast('판정 함수 오류: '+sc.fn,'warn'); }
   wizNext();
@@ -7178,7 +7197,7 @@ courtier:{first:[
 innkeeper:{other:[
   {t:'wake'},
   {t:'pick-player',n:2,who:'player',label:'여관 주인이 재울 손님 2명',filter:'alive',storeAs:'pair'},
-  {t:'effect',fn:'doInnkeeperProtect',from:'pair'},
+  {t:'effect',fn:'doInnkeeperProtect',from:'pair',all:true},
   {t:'note',text:'두 명 모두 오늘 밤 죽지 않습니다 — 🛡보호 토큰 2개가 자동으로 놓였습니다. 암살자의 살해만은 이 보호를 관통하며, 여관 주인이 중독이면 보호·취함 모두 무효입니다(취함은 판정 함수가 자동 차단).'},
   {t:'pick-player',n:1,who:'st',label:'둘 중 취할 1명을 사회자가 선택',filter:'alive',storeAs:'soak'},
   {t:'effect',fn:'doInnkeeperDrunk',from:'soak'},
