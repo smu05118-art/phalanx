@@ -444,3 +444,93 @@ class TestNameKeys(unittest.TestCase):
     def test_korean_parenthetical_survives(self):
         """`(옵션)`·`(자체)`는 표시가 아니라 이름 조각이다."""
         self.assertNotEqual(S.nm_link("OO아파트 (옵션)"), S.nm_link("OO아파트"))
+
+
+class TestLiteNewQuarter(unittest.TestCase):
+    """새 분기가 실제로 들어올 때 lite 경로가 옳게 동작하는가.
+
+    정밀 경로에는 `test_newquarter`가 있는데 lite 경로에는 없었다. 분기 적재는
+    이 파이프라인이 **평시에 하는 유일한 일**이라, 여기가 조용히 틀어지면
+    매일 도는 Action이 매일 틀린 값을 배포한다.
+    """
+
+    Q = ["2026Q1", "2026Q2", "2026Q3"]
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self._old, KS.CACHE = KS.CACHE, self.tmp
+        self.rec = {"stock": "999999", "name": "테스트건설", "slug": "999999",
+                    "market": "유가", "industry": "토목 건설업"}
+
+    def tearDown(self):
+        KS.CACHE = self._old
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _put(self, quarter, rows):
+        p = KS.cache_path("999999", quarter)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump({"stock": "999999", "quarter": quarter, "ok": True,
+                       "note": "", "rcpNo": "2026" + "0" * 10,
+                       "grain": "project",
+                       "tables": [{"lead": "(단위 : 백만원)", "rows": rows}],
+                       "rows": rows}, f)
+
+    def _row(self, nm, amt, cmp_, bal, cl="한국철도공단", sd="2024.03.15"):
+        return {"nm": nm, "cl": cl, "sd": sd, "ed": "2027.12",
+                "amt": amt, "cmp": cmp_, "bal": bal}
+
+    def _seed_two(self):
+        self._put("2026Q1", [self._row("가현장", 1000, 200, 800),
+                             self._row("나현장", 500, 100, 400, cl="서울시")])
+        self._put("2026Q2", [self._row("가현장", 1000, 300, 700),
+                             self._row("나현장", 500, 200, 300, cl="서울시")])
+
+    def test_new_quarter_extends_axis_and_keeps_links(self):
+        self._seed_two()
+        self._put("2026Q3", [self._row("가현장", 1000, 450, 550),
+                             self._row("나현장", 500, 260, 240, cl="서울시")])
+        D = KS.build(self.rec, self.Q)
+        self.assertEqual(D["fq"], self.Q)
+        # 사업장이 늘어나면 안 된다 — 같은 계약이 분기마다 새로 생기는 게 최대 위험이다
+        self.assertEqual(len(D["sites"]), 2, [s["nm"] for s in D["sites"]])
+        for s in D["sites"]:
+            self.assertEqual(len(s["s"]["bal"]), 3, s["nm"])
+            self.assertTrue(all(v is not None for v in s["s"]["bal"]), s["nm"])
+        self.assertEqual(D["summary"]["bal"], [1200, 1000, 790])
+
+    def test_site_absent_in_new_quarter_gets_no_phantom_value(self):
+        """그 분기 원문에 없는 현장은 **비어 있어야** 한다. 직전 값을 끌어오면
+        준공된 현장이 영원히 잔고를 들고 있게 된다."""
+        self._seed_two()
+        self._put("2026Q3", [self._row("가현장", 1000, 450, 550)])   # 나현장 준공
+        D = KS.build(self.rec, self.Q)
+        by = {s["nm"]: s for s in D["sites"]}
+        self.assertIsNone(by["나현장"]["s"]["bal"][2])
+        self.assertEqual(by["가현장"]["s"]["bal"][2], 550)
+        self.assertEqual(D["summary"]["bal"][2], 550)
+
+    def test_new_site_appears_only_from_its_first_quarter(self):
+        self._seed_two()
+        self._put("2026Q3", [self._row("가현장", 1000, 450, 550),
+                             self._row("나현장", 500, 260, 240, cl="서울시"),
+                             self._row("다현장", 900, 0, 900, cl="부산시")])
+        D = KS.build(self.rec, self.Q)
+        by = {s["nm"]: s for s in D["sites"]}
+        self.assertEqual(by["다현장"]["s"]["bal"], [None, None, 900])
+
+    def test_rebuild_is_idempotent(self):
+        """같은 캐시로 두 번 빌드하면 결과가 같아야 한다 — Action이 매일 돈다."""
+        self._seed_two()
+        self._put("2026Q3", [self._row("가현장", 1000, 450, 550)])
+        a = json.dumps(KS.build(self.rec, self.Q), sort_keys=True, default=str)
+        b = json.dumps(KS.build(self.rec, self.Q), sort_keys=True, default=str)
+        self.assertEqual(a, b)
+
+    def test_unpublished_quarter_is_skipped_not_zeroed(self):
+        """아직 공시되지 않은 분기는 축에서 빠져야 한다 — 0으로 채우면 화면에
+        '수주잔고가 0으로 급감'한 것처럼 보인다."""
+        self._seed_two()                       # 2026Q3 캐시 없음
+        D = KS.build(self.rec, self.Q)
+        self.assertEqual(D["fq"], ["2026Q1", "2026Q2"])
+        self.assertEqual(len(D["summary"]["bal"]), 2)
