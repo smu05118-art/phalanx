@@ -188,9 +188,16 @@ _UNIT_SCALE = [("십억원", 1000.0), ("백만원", 1.0), ("억원", 100.0),
 _UNIT_RE = re.compile(r"단위\s*:?\s*([^)\]]{1,12})")
 
 
-def unit_scale(lead):
-    """표 앞 문맥의 '(단위 : xxx)' → 백만원 기준 배수. 없으면 1.0(백만원 가정)."""
+def unit_scale(lead, cols=None):
+    """표의 '(단위 : xxx)' → 백만원 기준 배수. 없으면 1.0(백만원 가정).
+
+    단위 캡션이 표 앞 문맥이 아니라 **머리행 셀 안**에 들어가는 회사가 있다
+    (동신건설: `(단위 : 천원) 품목`). lead만 보면 천원을 백만원으로 읽어 값이
+    1000배가 된다 — 실제로 수주잔고가 256조로 부풀었다. lead에 없으면 열명도 본다.
+    """
     m = _UNIT_RE.findall(lead or "")
+    if not m and cols:
+        m = _UNIT_RE.findall(" ".join(cols))
     if not m:
         return 1.0
     txt = m[-1].replace(" ", "")
@@ -258,7 +265,9 @@ def _near_miss(t, need):
 # 같은 표준 필드로 매핑되는 열이 여럿일 때의 우선순위(정규화 열명 기준).
 # 예: 삼성물산 상세표는 품목(='건설사업')과 공사명이 공존 — 공사명이 정답.
 _PREF = {
-    "nm": ["공사명", "프로젝트명", "구분", "품목"],
+    # 구체적인 이름일수록 앞. `구분`은 건축/토목 같은 분류 열인 경우가 많아 뒤로 민다
+    # (태영건설은 `구분`=공종 · `수주내용`=현장명, 계룡건설은 `현장명`이 정답).
+    "nm": ["공사명", "계약명", "프로젝트명", "수주내용", "현장명", "구분", "품목"],
     "sd": ["계약일(공사착공일)", "공사착공일", "공사시작일", "계약시작일",
            "계약일", "계약일(착공예정일)", "계약착공일"],
 }
@@ -304,7 +313,7 @@ def _records(t, need):
         return None
     money = ("amt", "cmp", "bal", "ub", "ubimp", "rc", "allw", "xi_amt",
              "xi_supCur", "xi_supCum", "xi_recvCur", "xi_recvCum")
-    scale = unit_scale(t.get("lead"))     # 표 단위를 백만원으로 정규화
+    scale = unit_scale(t.get("lead"), t.get("cols"))   # 표 단위를 백만원으로 정규화
     recs = []
     for r in t["rows"]:
         rec = {}

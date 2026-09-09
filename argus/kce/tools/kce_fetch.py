@@ -22,7 +22,7 @@ import urllib.request
 from kce_lib import CORP, report_kind, atomic_write
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ALLOW_HOSTS = ("dart.fss.or.kr", "opendart.fss.or.kr")
+ALLOW_HOSTS = ("dart.fss.or.kr", "opendart.fss.or.kr", "kind.krx.co.kr")
 MAX_BYTES = 30 * 1024 * 1024
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh) kce_fetch/1.0"}
 
