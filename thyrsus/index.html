@@ -2217,8 +2217,12 @@ function runModifiers(table, t, ctx, stages){
     if(m.effect==='pierce'){ out.pierced=true; note(m,true,'이후 모든 보호·면역을 무시한다'); decided=true; continue; }
     let why=''; try{ why=m.reason(t,c)||''; }catch(e){ why=m.ko; }
     note(m,true,why);
-    decided=true;
     spec.apply(out,m,c,why);
+    /* 사슬을 여기서 끊을지는 표가 정한다. 사망은 '첫 성립이 곧 결론'이라 항상 끊지만
+       (첫 보호가 걸리면 뒤 항목을 볼 이유가 없다), 투표 무게는 누적돼야 한다 —
+       관료 ×3 위에 도둑의 부호 반전이 얹혀 −3 이 되는 것이 공식이다.
+       spec.terminal 이 없으면 종전대로 항상 끊는다 — 사망 표의 동작은 1비트도 안 바뀐다. */
+    decided = spec.terminal? !!spec.terminal(m,out,c) : true;
   }
   return out;
 }
@@ -2272,26 +2276,81 @@ const INFO_MODIFIERS = [];   // 다음 라운드에 채운다
 INFO_MODIFIERS.spec = INFO_SPEC;
 function runInfoModifiers(t, ctx, stages){ return runModifiers(INFO_MODIFIERS, t, ctx, stages); }
 
-/* ── 투표 판정 표(골격) — 이번 라운드는 '빈 표'다 ────────────────────────────
-   목적: 투표 가능 여부·표 무게를 바꾸는 사유(죽은 자의 유령표 1회 · 여행자 추방 · 버틀러의
-   주인 제약 · 투표 가중 캐릭터 등)를 한 표로 모은다. 단계는 'cast'(표를 던질 수 있나) ·
-   'tally'(집계할 때 몇 표인가)를 쓸 예정이다. 지금은 빈 표이고 호출부도 없다 — 자리만 잡는다. */
+/* ══════════ 투표 판정 표 ══════════
+   [무엇을 담나] '기본값을 바꾸는 규칙'만 담는다. 분모·문턱 같은 기본 산술은 표 밖의 순수
+   헬퍼(voteDenominator·voteThreshold)가 소유한다 — 그래야 표가 사망 표와 같은 형태로 남는다.
+   [단계]
+     count  — 던진 찬성표가 집계에 드는가(집사 무효표)
+     weight — 그 표가 몇 표인가(관료 ×3 · 도둑 부호 반전)
+   [누적] 무게는 첫 성립에서 끊으면 안 된다. 관료 ×3 위에 도둑이 얹히면 −3 이다.
+     그래서 VOTE_SPEC.terminal 이 'weight 는 계속, 그 밖은 끊는다'를 선언한다.
+   [순수성] when() 은 상태를 바꾸지 않고 사회자에게 묻지도 않는다. 투표 기록(nom)은 ctx 로
+     받아 읽기만 한다 — 표가 상태를 만지기 시작하면 차등 검증의 전제가 무너진다. */
 const VOTE_SPEC = {
   kind:'vote',
-  defaultStages:['cast'],
-  ctx:(t)=>({voteKind:'day', nominee:null, cause:'',
-             phase:(S.phase&&S.phase.kind)||null, alive:!!(t&&t.alive)}),
-  probeCtx:()=>({voteKind:'day', nominee:null, cause:''}),
-  result:()=>({allowed:true, weight:1, changedBy:null, reason:null, effect:null, pierced:false}),
+  defaultStages:['count','weight'],
+  ctx:(t)=>({voteKind:'day', stageKind:'ballot', nom:null, nominee:null, cause:'',
+             travel:null, phase:(S.phase&&S.phase.kind)||null, alive:!!(t&&t.alive)}),
+  probeCtx:()=>({voteKind:'day', stageKind:'ballot', nom:null, nominee:null, cause:'', travel:null}),
+  result:()=>({allowed:true, counted:true, weight:1, changedBy:null, changedIds:[], reason:null, effect:null, pierced:false}),
   apply:(out,m,c,why)=>{
     out.changedBy=m.id; out.effect=m.effect; out.reason=why;
+    out.changedIds.push(m.id);
     if(m.effect==='block') out.allowed=false;
-    else if(m.effect==='weight' && typeof m.weight==='number') out.weight=m.weight;
-  }
+    else if(m.effect==='void') out.counted=false;
+    else if(m.effect==='weight'){
+      const f=(typeof m.factor==='function')? m.factor(out.weight) : m.factor;
+      if(typeof f==='number') out.weight=f;
+    }
+  },
+  /* 무게만 누적한다 — 나머지는 사망 표와 같이 첫 성립에서 끊는다. */
+  terminal:(m)=> m.effect!=='weight'
 };
-const VOTE_MODIFIERS = [];   // 다음 라운드에 채운다
+/* 표에 넣지 않은 것과 그 이유 — 잘못 끌어오면 두 주인이 생긴다.
+   · 시장(mayor)      : '처형이 있었나' 축이지 투표 축이 아니다.
+   · 꽃팔이 소녀·전령 : 투표 기록을 '읽는' 정보 캐릭터 — INFO 소관이다.
+   · 성결자·마녀·고블린·공포 조장가 : 지명(nominate) 축이고 이미 newNomination 안에 있다.
+   · 부두술사·거지     : 자격·토큰 비용 축(eligible/cast)이라 이 라운드의 두 단계 밖이다. */
+const VOTE_MODIFIERS = [
+  {id:'butler-master', ko:'집사 — 주인 미찬성 시 찬성 무효', precedence:40, stage:'count', effect:'void',
+   official:'Butler: "Each night, choose a player (not yourself): tomorrow, you may only vote if they are voting too." (official/roles181.json) — 주인이 찬성하지 않으면 집사의 찬성은 집계에 들지 않는다. 오작동(중독·취함) 집사는 자유 투표라 대상이 아니다.',
+   /* '살아 있는 집사 중 첫 번째'만 본다 — 캐릭터 교체·식인종으로 집사가 둘이 되는 판에서
+      지금 동작은 첫 번째만 무효로 처리한다. 표로 옮기면서 그 범위를 넓히면 무행동이 깨진다. */
+   when:(t,c)=>{
+     const nom=c.nom; if(!nom) return false;
+     if(t.charId!=='butler' || !t.alive || isMalfunctioning(t)) return false;
+     if(S.players.find(q=>q.alive && q.charId==='butler' && !isMalfunctioning(q))!==t) return false;
+     if((nom.votes||{})[t.id]!=='yes') return false;
+     const master=S.players.find(q=>hasStatus(q,'master'));
+     return !master || (nom.votes||{})[master.id]!=='yes';
+   },
+   reason:(t)=>{ const m=S.players.find(q=>hasStatus(q,'master'));
+                 return `집사(${t.name}) 찬성 무효 — 주인${m?`(${m.name}) 미찬성`:' 미지정'}`; }},
+
+  {id:'bureaucrat-x3', ko:'관료 — 지목한 표는 3표', precedence:50, stage:'weight', effect:'weight', factor:3,
+   official:'Bureaucrat: "Each night, choose a player (not yourself): their vote counts as 3 votes tomorrow." (official/roles181.json)',
+   when:(t,c)=> !!(c.travel && c.travel.bu && c.travel.bu.id===t.id),
+   reason:(t)=> `관료가 지목 — ${t.name}의 표는 3표`},
+
+  {id:'thief-negate', ko:'도둑 — 지목한 표는 음수', precedence:52, stage:'weight', effect:'weight',
+   factor:(w)=> -w,
+   official:'Thief: "Each night, choose a player (not yourself): their vote counts negatively tomorrow." (official/roles181.json) — 관료와 겹치면 3×(−1)=−3 이다. 그래서 이 항목은 앞 무게를 뒤집는 함수형 계수를 쓴다.',
+   when:(t,c)=> !!(c.travel && c.travel.th && c.travel.th.id===t.id),
+   reason:(t)=> `도둑이 지목 — ${t.name}의 표는 부호가 뒤집힌다`},
+];
 VOTE_MODIFIERS.spec = VOTE_SPEC;
 function runVoteModifiers(t, ctx, stages){ return runModifiers(VOTE_MODIFIERS, t, ctx, stages); }
+/* 표를 읽는 두 창구 — 호출부는 이 둘만 쓴다.
+   voteWeightOf : 그 좌석의 표가 몇 표인가(여행자 가중). travel 스냅샷은 호출부가 넘긴다.
+   voteVoided   : 그 좌석의 찬성이 집계에서 빠지는가(집사). */
+function voteWeightOf(t, travel){
+  if(!t) return 1;
+  return runVoteModifiers(t, {travel:travel||null}, ['weight']).weight;
+}
+function voteVoided(t, nom){
+  if(!t || !nom) return false;
+  return runVoteModifiers(t, {nom:nom}, ['count']).counted===false;
+}
 
 /* 실제 판정 진입점 — 결과를 근거 사슬과 함께 남긴다. 남긴 것은 그대로 사회자 화면(renderDeathTraces)에 뜬다. */
 function resolveDeath(t, ctx, stages){
@@ -4767,14 +4826,13 @@ function closeBallot(nid){
      null 대입이 아니라 delete 인 이유: '무효 없음'의 표현을 undefined 하나로 유지해야
      n.butlerVoided 를 읽는 쪽(SABER OUT_BUTLER · 가중 래퍼)이 빈 값을 두 가지로 만나지 않는다. */
   delete n.butlerVoided;
-  const butler=uniq.find(p=>p.alive && p.charId==='butler' && !isMalfunctioning(p));
-  if(butler && n.votes[butler.id]==='yes'){
+  /* 무효 판정의 단일 출처는 VOTE_MODIFIERS 의 butler-master 항목이다(공식 근거도 거기 있다). */
+  const butler=uniq.find(p=>voteVoided(p, n));
+  if(butler){
     const master=S.players.find(q=>hasStatus(q,'master'));
-    if(!master || n.votes[master.id]!=='yes'){
-      yes--; n.butlerVoided=butler.id;
-      log(`🤵 집사(${butler.name}) 찬성 무효 — 주인${master?`(${master.name}) 미찬성`:' 미지정'} · 집계에서 제외`);
-      toast(`집사 ${butler.name}의 찬성은 주인이 찬성하지 않아 무효 처리했습니다.`,'warn');
-    }
+    yes--; n.butlerVoided=butler.id;
+    log(`🤵 집사(${butler.name}) 찬성 무효 — 주인${master?`(${master.name}) 미찬성`:' 미지정'} · 집계에서 제외`);
+    toast(`집사 ${butler.name}의 찬성은 주인이 찬성하지 않아 무효 처리했습니다.`,'warn');
   }
   n.yes=yes; n.den=den; n.need=need; n.ratio=den?yes/den:0;
   n.closed=true; n.result = yes>=need? 'pass':'yesFail';
@@ -10159,12 +10217,9 @@ function quickToggleDeath(pid){
   }
   /* 기본 1표 · 관료 지정은 3표 · 도둑 지정은 부호 반전.
      둘 다 걸리면 3×(−1) = −3표. 찬성표에만 적용된다(BotC 는 찬성만 센다). */
-  function weightOf(c,pid){
-    let w=1;
-    if(c.bu && c.bu.id===pid) w=3;
-    if(c.th && c.th.id===pid) w=-w;
-    return w;
-  }
+  /* 무게 계산의 단일 출처는 VOTE_MODIFIERS 다 — 관료 ×3 · 도둑 부호 반전이 그 표에 있다.
+     여기서 다시 계산하면 규칙이 두 곳에 살고, 한쪽만 고치면 화면과 집계가 갈라진다. */
+  function weightOf(c,pid){ return voteWeightOf(playerOf(pid), c); }
   function adjOf(nom){
     const c=ctxOf(); const rows=[]; const seen={}; let delta=0;
     [c.bu,c.th].forEach(p=>{
