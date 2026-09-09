@@ -164,6 +164,7 @@ function switchTab(tab){
   document.getElementById('shipview').hidden=(tab!=='ship');
   document.getElementById('humanview').hidden=(tab!=='human');
   document.getElementById('llmview').hidden=(tab!=='llm');
+  document.getElementById('fedview').hidden=(tab!=='fed');
   document.getElementById('headStat').style.display=isMap?'':'none';
   if(isMap && MAP){setTimeout(()=>MAP.resize(),50);}
   if(tab==='sig' && window.PV){ PV.loadSignals(); }
@@ -172,7 +173,47 @@ function switchTab(tab){
   if(tab==='ship'){ loadShip(); }
   if(tab==='human'){ loadHuman(); }
   if(tab==='llm'){ loadLLM(); }
+  if(tab==='fed'){ loadFed(); }
 }
+// ===== 🏛 연준 =====
+const FED_FILES=['fed_roster.json','fed_positions.json','fed_statements.json','fed_calendar.json','fed_reaction.json','taco.json'];
+let _fedHandle=null, _fedTs=0, _fedTimer=null, _fedBusy=false;
+function fedTabOn(){ const b=document.getElementById('fedview'); return !!(b && !b.hidden); }
+async function fedFetchAll(){
+  const bust='?t='+Math.floor(Date.now()/6e5);   // proview 관례 10분 버킷
+  const J=p=>fetch('data/fed/'+p+bust).then(r=>r.ok?r.json():null).catch(()=>null);
+  const [roster,positions,statements,calendar,reaction,taco]=await Promise.all(FED_FILES.map(J));
+  return {roster,positions,statements,calendar,reaction,taco};
+}
+async function fedAutoRefresh(){
+  // 열린 탭 자동 갱신: 문서가 보이고 fed 탭이 활성일 때만 재fetch(아니면 요청 0)
+  if(document.visibilityState!=='visible') return;
+  if(!fedTabOn() || !_fedHandle || _fedBusy) return;
+  const m=document.querySelector('.fd-modal'); if(m && !m.hidden) return;   // 모달 열려 있으면 재렌더 보류
+  _fedBusy=true;
+  try{ const d=await fedFetchAll(); if(d.roster||d.positions){ _fedHandle.refresh(d); _fedTs=Date.now(); } }
+  catch(e){ console.warn('fed auto', e); }
+  finally{ _fedBusy=false; }
+}
+async function loadFed(){
+  const box=document.getElementById('fedview'); if(!box) return;
+  if(!_fedTimer){ _fedTimer=setInterval(fedAutoRefresh, 5*60*1000); }   // 인터벌은 1개만
+  if(_fedBusy) return;                                                  // 진행 중이면 중복 fetch 금지
+  if(box.dataset.loaded){
+    if(Date.now()-_fedTs>=6e5) fedAutoRefresh();                        // 재진입 + 10분 경과 → 재fetch 후 refresh()
+    else if(_fedHandle) _fedHandle.refresh();
+    return;
+  }
+  _fedBusy=true;
+  box.innerHTML='<p class="hint" style="padding:20px">연준 데이터 로딩…</p>';
+  try{
+    const d=await fedFetchAll();
+    if(!d.roster && !d.positions) throw new Error('core missing');
+    box.innerHTML=''; _fedHandle=renderFed(box,d); _fedTs=Date.now(); box.dataset.loaded='1';
+  }catch(e){ console.warn('fed', e); box.innerHTML='<p class="hint" style="padding:20px">연준 데이터 준비 중…</p>'; }
+  finally{ _fedBusy=false; }
+}
+// ===== /연준 =====
 async function loadLLM(){
   const box=document.getElementById('llmview');
   if(box.dataset.loaded) return;
