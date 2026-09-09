@@ -2725,7 +2725,7 @@ function renderTopbar(){
   const deadTok=S.players.filter(p=>!p.alive&&p.deadVote!==false).length;
   $('#quickstats').innerHTML = total? `
     <span class="qstat">생존 <b class="num">${alive}</b>/<b class="num">${total}</b></span>
-    <span class="qstat">거수 과반 <b class="num">${majority(alive)}</b></span>
+    <span class="qstat">거수 과반 <b class="num">${voteThreshold('hand')}</b></span>
     <span class="qstat">사망 투표 토큰 <b class="num">${deadTok}</b></span>
     <span class="qstat">☠ <b class="num">${S.players.filter(p=>hasStatus(p,'poison')).length}</b></span>`:'';
 }
@@ -4607,9 +4607,29 @@ function ballotEligible(nom){
   const votes=(nom&&nom.votes)||{};
   return S.players.filter(p=> p.alive || hands.includes(p.id) || votes[p.id]!==undefined);
 }
+/* ══ 투표 산술의 단일 출처 ══
+   분모(표시·찬성률의 밑)와 문턱(통과 기준)은 기준 인원이 **다르다**. 그 사실이 지금까지
+   renderNomOpen·closeHands·closeBallot·추방 화면 네 곳에 각각 적혀 있었다 — 한 곳만 고치면
+   '화면에선 통과인데 마감하면 부결' 이 된다. 계약을 여기 한 번만 쓴다.
+
+   [1차 거수] 분모=생존자 · 문턱=생존자의 과반.
+   [2차 찬반] 분모=자격자(생존자 ∪ 1차 거수자, 사망자 포함) · 문턱은 **생존자**의 과반.
+     공식이 "at least half the living players" 라 사망자 표는 분자에만 들어가고 기준 인원에는
+     들어가지 않는다. 분모를 그대로 문턱에 쓰면, 사망자가 1차에 손만 들고 2차에 기권해
+     (토큰도 쓰지 않고) 문턱을 올려 처형을 막을 수 있다.
+   [추방] 분모·문턱 모두 좌석 전원(사망자·여행자 포함) — 여행자 추방은 별개의 투표다. */
+function voteDenominator(nom, stageKind){
+  if(stageKind==='exile') return S.players.length;
+  if(stageKind==='hand')  return alivePlayers().length;
+  return ballotEligible(nom).length;
+}
+function voteThreshold(stageKind){
+  if(stageKind==='exile') return majority(S.players.length);
+  return majority(alivePlayers().length);
+}
 function renderNomOpen(nom){
   const alive=alivePlayers();
-  const den1=alive.length, need1=majority(den1), num1=nom.hands.length;
+  const den1=voteDenominator(nom,'hand'), need1=voteThreshold('hand'), num1=nom.hands.length;
   const handRows=handEligible(nom);
   const deadHands=nom.hands.filter(id=>{ const q=playerOf(id); return q && !q.alive; }).length;
   const torN=esc(playerOf(nom.nominator)?.name||'?'), neeN=esc(playerOf(nom.nominee)?.name||'?');
@@ -4645,8 +4665,8 @@ function renderNomOpen(nom){
   /* 문턱(need2)의 기준 인원은 생존자다 — closeBallot 과 같은 계약(사망자 표는 분자에만 들어간다).
      분모(den2)는 화면 표시·찬성률 계산에만 쓴다. 화면과 확정이 같은 식을 써야
      '화면에선 통과인데 마감하면 부결' 같은 어긋남이 생기지 않는다. */
-  const aliveN2=alivePlayers().length;
-  const den2=eligible.length, need2=majority(aliveN2);
+  const den2=voteDenominator(nom,'ballot'), need2=voteThreshold('ballot');
+  const aliveN2=alivePlayers().length;              // 화면 문구 '과반 기준(생존 N)' 표시용
   const yes=eligible.filter(p=>nom.votes[p.id]==='yes').length;
   const no=eligible.filter(p=>nom.votes[p.id]==='no').length;
   const ratio=den2?yes/den2:0;
@@ -4686,7 +4706,7 @@ function renderNomOpen(nom){
 function findNom(id){ return S.noms.find(n=>n.id===id); }
 function toggleHand(nid,pid){ const n=findNom(nid); const i=n.hands.indexOf(pid);
   if(i>=0)n.hands.splice(i,1); else n.hands.push(pid); save(); renderAll(); }
-function closeHands(nid){ const n=findNom(nid); const den=alivePlayers().length, need=majority(den);
+function closeHands(nid){ const n=findNom(nid); const den=voteDenominator(n,'hand'), need=voteThreshold('hand');
   if(n.hands.length>=need){ n.stage=2; log(`거수 ${n.hands.length}/${den} (기준 ${need}) — 통과, 찬반 투표로`); }
   else { n.closed=true; n.result='handsFail'; log(`거수 ${n.hands.length}/${den} (기준 ${need}) — 미달, 부결`); }
   save(); renderAll(); }
@@ -4717,7 +4737,7 @@ function closeBallot(nid){
      사망자 표는 분자에만 들어가고 기준 인원에는 들어가지 않는다. den 을 그대로 문턱에 쓰면
      사망자가 1차에 손만 들고 2차에서 기권해(토큰도 쓰지 않고) 문턱을 올려 처형을 막을 수 있다.
      1단계 closeHands 는 이미 alivePlayers() 기준이라 그쪽 계약과도 이걸로 맞는다. */
-  const den=uniq.length, need=majority(alivePlayers().length);
+  const den=voteDenominator(n,'ballot'), need=voteThreshold('ballot');
   let yes=uniq.filter(p=>n.votes[p.id]==='yes').length;
   // 집사 무효표: 주인이 '찬성'하지 않았으면 집사의 찬성을 집계에서 뺀다
   // (공식: "주인이 투표할 때만 집사도 투표 가능" — 오작동 집사는 자유 투표라 제외)
@@ -8107,7 +8127,7 @@ function exRender(){
     return;
   }
   const t=playerOf(ex.tid);
-  const den=S.players.length, need=majority(den), yes=ex.yes.length;
+  const den=voteDenominator(null,'exile'), need=voteThreshold('exile'), yes=ex.yes.length;
   ovOpen(`🚷 추방 투표 — ${esc(t?.name||'?')} (${esc(t?charName(t):'?')})`,
     ovWrap(`
       <div class="alertbox blue">추방 기준: <b>전체 플레이어 ${den}명(사망자 포함, 투표 토큰 불요)</b>의 과반 = <b>${need}표</b> 이상.<br>
@@ -8130,7 +8150,7 @@ function exToggle(pid){
 }
 function exClose(){
   const t=playerOf(ex.tid); if(!t){ ovClose(); return; }
-  const den=S.players.length, need=majority(den), yes=ex.yes.length;
+  const den=voteDenominator(null,'exile'), need=voteThreshold('exile'), yes=ex.yes.length;
   if(yes>=need){
     log(`🚷 여행자 추방 투표: ${t.name}(${charName(t)}) — 찬성 ${yes}/${den} (기준 ${need}) 가결`);
     /* 추방은 처형이 아니지만 사망이다 — 일탈자의 "cannot die by exile" 이 그 근거다.
@@ -10253,10 +10273,9 @@ function quickToggleDeath(pid){
         ? ballotEligible(nom)
         : alivePlayers().concat(S.players.filter(p=>!p.alive && (p.deadVote!==false || (nom&&nom.votes&&nom.votes[p.id]!==undefined))));
       rawYes=elig.filter(p=>nom&&nom.votes&&nom.votes[p.id]==='yes').length;
-      /* 문턱은 생존자 기준이다 — closeBallot·renderNomOpen 과 같은 계약.
-         elig 는 분자(rawYes)를 세는 집합일 뿐이라 문턱의 기준 인원이 아니다.
-         여기가 어긋나면 가중 내역 카드만 다른 과반 기준을 보여준다. */
-      need=majority(alivePlayers().length);
+      /* 문턱은 생존자 기준이다 — 계약은 voteThreshold() 한 곳에만 있다.
+         elig 는 분자(rawYes)를 세는 집합일 뿐이라 문턱의 기준 인원이 아니다. */
+      need=voteThreshold('ballot');
     } finally { restored.forEach(p=>{ p.deadVote=false; }); }
     if(!nom || nom.stage!==2) return html;
     const a=adjOf(nom);
@@ -11517,8 +11536,8 @@ function buildMatchRecord(winner, pgid){
     _ch(nid);
     const n=findNom(nid);
     if(n){
-      const den=alivePlayers().length;
-      emitEv('tally', null, n.nominee, {nomId:nid, stage:1, num:n.hands.length, den, need:majority(den), pass:n.stage===2});
+      const den=voteDenominator(n,'hand');
+      emitEv('tally', null, n.nominee, {nomId:nid, stage:1, num:n.hands.length, den, need:voteThreshold('hand'), pass:n.stage===2});
     }
   };
   const _cb=closeBallot;
