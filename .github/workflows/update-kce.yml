@@ -97,10 +97,15 @@ jobs:
         id: changed
         shell: bash
         run: |
-          if git diff --quiet -- argus/kce argus/index.html; then
+          # `git diff --quiet`는 **추적 중인 파일만** 본다. corp_code 캐시처럼 새로
+          # 생성된 파일(untracked)은 잡지 못해, 캐시가 영영 커밋되지 않고 매 실행마다
+          # 수 MB ZIP을 다시 받게 된다(#6에서 4분 39초 소요). status --porcelain은
+          # untracked도 함께 본다.
+          if [ -z "$(git status --porcelain -- argus/kce argus/index.html)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            git status --porcelain -- argus/kce argus/index.html
           fi
 
       - name: Commit updated quarter
@@ -114,8 +119,8 @@ jobs:
           git config user.email "phalanx-kce-bot@users.noreply.github.com"
           git add -- argus/kce argus/index.html
           if [ "${UPDATED}" = "0" ]; then
-            # 보고서 갱신은 없고 진입 링크만 복구된 경우
-            git commit -m "kce: 한국건설 진입 링크 재주입 (argus/index.html 크론 덮어쓰기 복구)"
+            # 보고서 갱신 없음 — 진입 링크 복구나 corp_code 캐시 생성 등 부수 변경
+            git commit -m "kce: 자동 갱신 부수 변경 (진입 링크 재주입 / corp_code 캐시)"
           else
             git commit -m "kce: DART 정기보고서 반영 — ${SUMMARY}"
           fi
