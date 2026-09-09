@@ -891,6 +891,10 @@ const STATUS_DEFS = {
   /* 폭풍잡이가 공표한 캐릭터에게 놓는 영구 토큰. 만료 규칙이 없다(expiresAt=null) — 그 캐릭터가
      판에 있는 한 게임 내내 유지되고, 사회자가 ×로 직접 걷어낼 때만 사라진다. */
   stormcaught:{ko:'폭풍 보호', icon:'⛈', cls:'protect', desc:'폭풍잡이가 공표한 선한 캐릭터. 처형 외의 어떤 원인으로도 죽지 않는다(악한 플레이어들은 그가 누구인지 안다). 자동 해제 없음.'},
+  /* 리치의 숙주 — 첫 밤에 리치가 고른 플레이어. 공식: "You start by choosing a player: they are
+     poisoned. You die if & only if they are dead." 숙주는 게임 내내 중독이고(중독 토큰은 따로 놓는다),
+     이 토큰은 '누가 숙주인가'만 가리킨다. 자동 해제 없음 — 판이 끝날 때까지 유지된다. */
+  lleechHost:{ko:'리치 숙주', icon:'🪱', cls:'custom', desc:'리치가 첫 밤에 고른 숙주. 숙주가 살아 있는 동안 리치는 죽지 않고, 숙주가 죽으면 리치도 죽는다(공식 "if & only if"). 숙주는 게임 내내 중독 상태다 — 중독 토큰은 따로 놓는다. 자동 해제 없음.'},
 };
 
 /* ══════════ 에디션: 피로 물든 달(BMR) · 화단에 꽃피운 이단(SV) ══════════
@@ -2046,7 +2050,8 @@ function expireStatuses(){
      10~50    서로 결과가 같다(전부 사망 차단). 사회자에게 보여줄 사유 문자열의 순서이며 기존 코드 순서를 그대로 보존한다.
      55~70    기존 실행 시점 순서(공격 단계 → killPlayer)를 숫자로 옮긴 것이다.
    implemented:false 인 항목은 근거만 남기고 절대 발동하지 않는다(무행동 전환 계약). */
-const DEATH_SRC_KO = {demon:'악마의 살해', night:'밤 살해', execution:'처형'};
+const DEATH_SRC_KO = {demon:'악마의 살해', night:'밤 살해', execution:'처형',
+  slayer:'처단자의 일격', witch:'마녀의 저주', exile:'여행자 추방'};
 const DEATH_MODIFIERS = [
   {id:'assassin-pierce', ko:'암살자 관통', precedence:0, stage:['block','kill'], effect:'pierce',
    official:'Assassin: "Once per game, at night*, choose a player: they die, even if for some reason they could not." (official/roles181.json:1375) — "어떤 이유로든 죽을 수 없었더라도"가 찻집 여인·보호·군인·선원을 모두 뚫는 근거다. block 단계뿐 아니라 kill 단계에도 서 있어야 한다: 좀버얼의 "The 1st time you die, you live but register as dead."(roles181.json:1766)와 어릿광대의 "The 1st time you die, you don\'t."(roles181.json:851)도 결과가 "실제로는 죽지 않음"이므로 같은 문구가 뚫는 대상이다. 관통 여부는 사인 문자열이 아니라 컨텍스트(ctx.bypass)로 전달된다.',
@@ -2096,9 +2101,12 @@ const DEATH_MODIFIERS = [
    reason:()=> '군인 — 악마에게 죽지 않음'},
 
   {id:'lleech-host', ko:'리치 — 숙주 생존', precedence:45, stage:'block', effect:'block',
-   implemented:false, uncertain:true,
    official:'Lleech: "You die if & only if they are dead."(숙주) (roles181.json:1860) — 현재 코드에 판정이 전혀 없다(기존 미구현 결함). 무행동 전환 계약에 따라 이번 라운드에서는 켜지 않는다.',
-   when:()=> false, reason:()=> '리치 숙주 생존 — 현재 미구현(사회자 수동)'},
+   /* 숙주 토큰(lleechHost)이 살아 있는 좌석에 있으면 리치는 어떤 원인으로도 죽지 않는다.
+      토큰이 없으면(사회자가 아직 안 놓았거나 그런 판이 아니면) 조용히 물러난다 — 옛 동작 그대로.
+      리치 자신이 오작동이어도 이 조항은 남는다: "if & only if" 는 리치의 능력이 아니라 존재 규칙이다. */
+   when:(t,c)=> t.charId==='lleech' && lleechHostAlive(),
+   reason:()=>{ const h=lleechHostOf(); return `리치 — 숙주(${h?h.name:'?'})가 살아 있어 죽지 않음`; }},
 
   {id:'sailor', ko:'선원', precedence:50, stage:'block', effect:'block',
    official:'Sailor: "Each night, choose an alive player: either you or they are drunk until dusk. You can\'t die." (roles181.json:187) — 자신의 능력이므로 스스로 취하면 무효다. 원인 제한이 없어 처형도 막는다.',
@@ -2367,8 +2375,12 @@ function clearEffectsFromChar(charId, why){
     });
   });
 }
-/* 죽은 플레이어가 지속효과 출처 캐릭터면 그 출처의 상태를 전원에게서 정리한다 */
-function reconcileDeath(p){ clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`); }
+/* 죽은 플레이어가 지속효과 출처 캐릭터면 그 출처의 상태를 전원에게서 정리한다.
+   리치 숙주 사망 알림도 여기 붙인다 — 사망이 확정된 모든 경로가 지나는 한 곳이다. */
+function reconcileDeath(p){
+  clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`);
+  try{ noticeLleechHostDeath(p); }catch(e){ console.warn('[lleech] host', e); }
+}
 function killPlayer(p, cause, opts){
   opts=opts||{};
   /* 사망 컨텍스트 — 표에 넘길 값을 여기 한 번만 만들어 kill 단계 전체가 같은 입력을 본다.
@@ -2460,7 +2472,7 @@ function toast(msg, kind){
    [기준 2] 사망 판정 사슬에 자리만 있고 판정은 사회자 수동인 규칙(DEATH_MODIFIERS implemented:false):
             재상 낮 면역 · 사이코패스 가위바위보 · 평화주의자 · 리치 숙주. 밤 순서는 있어도 판정이 비어 있다.
    커스텀 캐릭터는 제외한다 — 순서·능력을 사회자가 직접 정의한 것이라 '미구현'이 아니다. */
-const PARTIAL_IMPL_CHARS={vizier:'낮 사망 면역 판정 수동', psychopath:'가위바위보 판정 수동', pacifist:'처형 생존 판정 수동', lleech:'숙주 생존 판정 수동'};
+const PARTIAL_IMPL_CHARS={vizier:'낮 사망 면역 판정 수동', psychopath:'가위바위보 판정 수동', pacifist:'처형 생존 판정 수동'};
 /* 한 판에만 유효한 일회성 값들. 새 판을 시작할 때 반드시 되돌려야 하는 것만 담는다.
    [왜 목록인가] blank() 는 '전부' 비우지만 여기는 '판만' 비운다 — 등록부·전적·커스텀은 그대로 두고
    판 단위 값만 되돌려야 하므로 두 곳의 기준이 갈라진다. 새 필드가 판 단위면 여기에도 넣어야 한다.
@@ -3916,6 +3928,23 @@ function doDevilsAdvocate(pid){
   save(); renderAll();
 }
 /* 찻집 여인: t가 '정상 작동 중인 생존 찻집 여인'의 살아있는 양옆 이웃이고, 그 이웃 둘 다 선(주민/외지인)이면 보호 */
+/* 리치의 숙주 — 토큰을 가진 좌석. 여러 곳에 놓였으면 첫 번째만 본다(사회자 실수 방어). */
+function lleechHostOf(){ return S.players.find(q=>hasStatus(q,'lleechHost')) || null; }
+function lleechHostAlive(){ const h=lleechHostOf(); return !!(h && h.alive); }
+/* 숙주가 죽는 순간 리치도 죽는다 — 공식 "if & only if" 의 나머지 절반.
+   자동으로 죽이지 않고 알리기만 하는 이유: 주모자 징크스가 예외를 만든다
+   ("주모자가 살아 있고 리치의 숙주가 처형으로 죽으면, 리치는 살아남되 능력을 잃는다").
+   두 규칙이 겹치는 판에서 앱이 임의로 죽이면 사회자가 되돌릴 방법이 없다. */
+function noticeLleechHostDeath(p){
+  if(!p || !hasStatus(p,'lleechHost')) return;
+  const ll=S.players.find(q=>q.charId==='lleech' && q.alive);
+  if(!ll) return;
+  const mm=S.players.find(q=>q.charId==='mastermind' && q.alive);
+  log(`🪱 리치의 숙주(${p.name}) 사망 — 리치(${ll.name})도 죽습니다`+(mm? ' / 주모자 징크스 확인 필요' : ''));
+  toast(mm
+    ? `🪱 숙주 ${p.name} 사망 — 원칙상 리치(${ll.name})도 죽습니다. 다만 주모자(${mm.name})가 살아 있고 숙주가 '처형'으로 죽었다면 리치는 살아남되 능력을 잃습니다(징크스). 어느 쪽인지 판정해 직접 처리하세요.`
+    : `🪱 숙주 ${p.name} 사망 — 리치(${ll.name})도 죽습니다. 그리모어에서 리치를 사망 처리하세요.`, 'warn');
+}
 function teaLadyBlock(t){
   const n=S.players.length;
   for(const tl of S.players){
@@ -3998,6 +4027,25 @@ function doSailorDrunk(pid){
   if(hasStatus(t,'drunkS')){ toast(`${t.name}은(는) 이미 취해 있습니다 — 중복 부여하지 않습니다.`,'warn'); return; }
   addStatus(t,'drunkS','선원',drunkExpiry('dusk')); save(); renderAll();
   toast(`⚓ ${t.name} 🍺취함 — 다음 황혼(밤 ${drunkExpiry('dusk').n} 시작)에 자동 해제`,'ok');
+}
+/* 여관 주인 — 공식: "Each night*, choose 2 players: they can't die tonight, but 1 is drunk until dusk."
+   지금까지 앱은 취함만 자동이고 보호는 "🛡토큰을 놓으세요" 안내문뿐이었다. 안내문은 잊히고,
+   잊히면 그날 밤 악마의 살해가 그대로 통과한다 — 보호는 강제 능력이므로 자동으로 놓는다.
+   만료는 수도사와 같은 규칙(밤에 부여 → 그 다음 낮 시작에 해제)이라 addStatusUI 와 어긋나지 않는다.
+   출처를 '여관 주인'으로 적어 두면 protect-token 항목이 수도사 전용 조건(악마 한정)에서 벗어난다
+   — 공식대로 여관 주인의 보호는 '오늘 밤 어떤 사망이든' 막는다. */
+function doInnkeeperProtect(pids){
+  const list=(Array.isArray(pids)? pids : [pids]).map(playerOf).filter(Boolean);
+  if(!list.length) return;
+  const ik=S.players.find(q=>q.alive && q.charId==='innkeeper');
+  if(ik && isMalfunctioning(ik)){
+    toast('여관 주인이 오작동 상태 — 보호가 발동하지 않습니다. 기록만 남깁니다.','warn');
+    log(`여관 주인 오작동: ${list.map(x=>x.name).join(', ')} 보호 불발`); save(); renderAll(); return;
+  }
+  const exp=(S.phase.kind==='night')? {kind:'day', n:S.phase.n} : {kind:'day', n:S.phase.n+1};
+  list.forEach(t=>{ if(!hasStatus(t,'protect')) addStatus(t,'protect','여관 주인',exp); });
+  toast(`🏠 ${list.map(x=>x.name).join(' · ')} 🛡보호 — 오늘 밤 죽지 않습니다(암살자는 관통).`,'ok');
+  save(); renderAll();
 }
 function doInnkeeperDrunk(pid){
   if(!pid)return; const t=playerOf(pid);
@@ -4123,6 +4171,23 @@ function offerMayorSubstitute(t, dr, cause, opts, retry){
     return true;
   }
   resolveNightDeath(ap, cause+'(시장 대체 사망)', sub);
+  return true;
+}
+/* 낮 능력 사망 창구(처단자·마녀의 저주 등) — 밤 살해가 아닌 사망도 block 단계를 거쳐야 한다.
+   [무엇이 문제였나] 이 경로들이 killPlayer 를 직접 불러 왔다. killPlayer 는 kill 단계
+   (어릿광대 1회 생존·좀버얼 죽은 척)만 돌리므로, block 단계에 있는 찻집 여인·선원·
+   폭풍잡이 보호가 통째로 무시됐다 — 공식으로는 전부 "죽지 않는다"가 성립하는 상황이다.
+   [무엇은 걸리지 않나] 수도사·군인은 sourceType==='demon' 전용, 악마의 변호사는 'execution'
+   전용, 시장 대체는 밤 전용이라 각 항목의 when() 이 알아서 물러난다 — 표를 고칠 필요가 없다.
+   반환 true = 실제로 죽음까지 처리했다. false = 보호로 막혀 아무도 죽지 않았다. */
+function resolveDayAbilityDeath(t, sourceType, cause){
+  const dr=resolveDeath(t, {sourceType, cause:cause||''}, ['block']);
+  if(dr.reason){
+    log(`${t.name}: ${cause} 불발 — ${dr.reason}`);
+    toast(`${t.name}: ${dr.reason} — 죽지 않습니다.`,'ok');
+    save(); renderAll(); return false;
+  }
+  killPlayer(t, cause, {sourceType});
   return true;
 }
 /* 밤 사망 창구 — opts(관통·살해 출처)를 killPlayer 로 그대로 흘려보낸다.
@@ -4447,7 +4512,7 @@ function newNomination(){
   if(hasStatus(torP0,'curse')){
     const witch=S.players.find(p=>p.alive&&p.charId==='witch');
     if(witch && !isMalfunctioning(witch) && alivePlayers().length>=4){
-      thyConfirm(`🧹 마녀의 저주 발동! 지명자 ${torP0.name}은(는) 저주받은 상태입니다.\n즉시 사망 처리할까요? (지명 절차는 그대로 진행됩니다)`, ok=>{ if(ok){ killPlayer(torP0,'마녀의 저주 — 지명 즉시 사망'); save(); renderAll(); } }, {title:'🧹 마녀의 저주', ok:'즉시 사망 처리', cancel:'사망 없음', danger:true});
+      thyConfirm(`🧹 마녀의 저주 발동! 지명자 ${torP0.name}은(는) 저주받은 상태입니다.\n즉시 사망 처리할까요? (지명 절차는 그대로 진행됩니다)`, ok=>{ if(ok){ resolveDayAbilityDeath(torP0,'witch','마녀의 저주 — 지명 즉시 사망'); save(); renderAll(); } }, {title:'🧹 마녀의 저주', ok:'즉시 사망 처리', cancel:'사망 없음', danger:true});
     } else { toast('저주 토큰이 있으나 마녀가 죽었거나 오작동, 또는 생존 3인 — 저주 불발.','warn'); }
   }
   // 성결자 체크
@@ -4708,9 +4773,11 @@ function doSlayerOn(sl, t){
   addStatus(sl,'slayerUsed','공개 지목',null);
   if(isMalfunctioning(sl)){ toast('처단자가 오작동 상태 — "아무 일도 일어나지 않습니다"라고 공표. 능력 소진.','warn'); log(`처단자 오발(오작동): ${t.name}`); save(); renderAll(); return; }
   const c=charOf(t.charId);
-  if(c?.type==='demon' && t.alive){ killPlayer(t,'처단자의 일격'); toast(`😈 ${t.name}(악마) 즉사! 탕녀·생존자 수를 확인하세요.`,'warn'); }
+  if(c?.type==='demon' && t.alive){
+    if(resolveDayAbilityDeath(t,'slayer','처단자의 일격')){ toast(`😈 ${t.name}(악마) 즉사! 탕녀·생존자 수를 확인하세요.`,'warn'); }
+  }
   else if(t.charId==='recluse' && t.alive){
-    thyConfirm(`${t.name}은(는) 은둔자 — 악마로 등록시켜 죽일까요? (재량)`, ok=>{ if(ok){ killPlayer(t,'처단자의 일격(은둔자 악마 등록)'); toast('은둔자가 쓰러졌습니다 — 게임은 끝나지 않습니다. 태연하게!','warn'); } else { toast('"아무 일도 일어나지 않습니다" 공표.','ok'); log(`처단자 → 은둔자 ${t.name}: 미등록 처리`); } save(); renderAll(); }, {title:'은둔자 등록 재량', ok:'악마로 등록 → 사망', cancel:'미등록'});
+    thyConfirm(`${t.name}은(는) 은둔자 — 악마로 등록시켜 죽일까요? (재량)`, ok=>{ if(ok){ if(resolveDayAbilityDeath(t,'slayer','처단자의 일격(은둔자 악마 등록)')) toast('은둔자가 쓰러졌습니다 — 게임은 끝나지 않습니다. 태연하게!','warn'); } else { toast('"아무 일도 일어나지 않습니다" 공표.','ok'); log(`처단자 → 은둔자 ${t.name}: 미등록 처리`); } save(); renderAll(); }, {title:'은둔자 등록 재량', ok:'악마로 등록 → 사망', cancel:'미등록'});
   }
   else { toast('"아무 일도 일어나지 않습니다"라고 공표하세요.','ok'); log(`처단자 오발: ${t.name}`); }
   save(); renderAll();
@@ -7063,7 +7130,8 @@ courtier:{first:[
 innkeeper:{other:[
   {t:'wake'},
   {t:'pick-player',n:2,who:'player',label:'여관 주인이 재울 손님 2명',filter:'alive',storeAs:'pair'},
-  {t:'note',text:'두 명 모두 오늘 밤 죽지 않습니다 — 🛡보호 토큰 2개를 그리모어에 놓으세요. 암살자의 살해만은 이 보호를 관통하며, 여관 주인이 중독이면 보호·취함 모두 무효입니다(취함은 판정 함수가 자동 차단).'},
+  {t:'effect',fn:'doInnkeeperProtect',from:'pair'},
+  {t:'note',text:'두 명 모두 오늘 밤 죽지 않습니다 — 🛡보호 토큰 2개가 자동으로 놓였습니다. 암살자의 살해만은 이 보호를 관통하며, 여관 주인이 중독이면 보호·취함 모두 무효입니다(취함은 판정 함수가 자동 차단).'},
   {t:'pick-player',n:1,who:'st',label:'둘 중 취할 1명을 사회자가 선택',filter:'alive',storeAs:'soak'},
   {t:'effect',fn:'doInnkeeperDrunk',from:'soak'},
   {t:'sleep'}]},
