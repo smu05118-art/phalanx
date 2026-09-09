@@ -891,6 +891,10 @@ const STATUS_DEFS = {
   /* 폭풍잡이가 공표한 캐릭터에게 놓는 영구 토큰. 만료 규칙이 없다(expiresAt=null) — 그 캐릭터가
      판에 있는 한 게임 내내 유지되고, 사회자가 ×로 직접 걷어낼 때만 사라진다. */
   stormcaught:{ko:'폭풍 보호', icon:'⛈', cls:'protect', desc:'폭풍잡이가 공표한 선한 캐릭터. 처형 외의 어떤 원인으로도 죽지 않는다(악한 플레이어들은 그가 누구인지 안다). 자동 해제 없음.'},
+  /* 리치의 숙주 — 첫 밤에 리치가 고른 플레이어. 공식: "You start by choosing a player: they are
+     poisoned. You die if & only if they are dead." 숙주는 게임 내내 중독이고(중독 토큰은 따로 놓는다),
+     이 토큰은 '누가 숙주인가'만 가리킨다. 자동 해제 없음 — 판이 끝날 때까지 유지된다. */
+  lleechHost:{ko:'리치 숙주', icon:'🪱', cls:'custom', desc:'리치가 첫 밤에 고른 숙주. 숙주가 살아 있는 동안 리치는 죽지 않고, 숙주가 죽으면 리치도 죽는다(공식 "if & only if"). 숙주는 게임 내내 중독 상태다 — 중독 토큰은 따로 놓는다. 자동 해제 없음.'},
 };
 
 /* ══════════ 에디션: 피로 물든 달(BMR) · 화단에 꽃피운 이단(SV) ══════════
@@ -1419,6 +1423,10 @@ const blank = () => ({
      damselGuessUsed = 하수인의 아가씨 추측 1회 소진 여부(악 진영 전체를 통틀어 1회).
      politicianAsked = 종료 화면에서 정치인 전환을 이미 물었는가(판당 1회). */
   goodExecCount:0, damselGuessUsed:false, politicianAsked:false,
+  /* 판이 끝났는가. 지금까지 선언 없이 S.gameOver=true 로만 세워 왔는데, 그러면 '판 단위 값을
+     되돌리는' 목록(NEWGAME_RESET_KEYS)이 blank() 를 기준으로 삼을 때 이 필드를 놓친다.
+     migrateState 에도 같은 이름이 있다 — 한쪽만 고치면 스키마가 갈라진다. */
+  gameOver:false,
   /* 건달 — 그 밤의 '최초 지목'이 이미 지나간 밤 번호. null 이면 아직 아무도 건달을 지목하지 않았다.
      goonStep = 그 잠금을 소모한 위저드 씬 키('<stepId>#<씬번호>').
      goonUndo = 되돌릴 정보 {chooserPid, goonPid, prevAlignment, addedDrunk}.
@@ -1714,6 +1722,7 @@ function migrateState(raw){
     voters:{mvp:Math.max(0,(pgr.voters&&pgr.voters.mvp)|0), bust:Math.max(0,(pgr.voters&&pgr.voters.bust)|0)}
   };
   st.endKind=['win','concede','fiddler','manual'].includes(st.endKind)? st.endKind : null;
+  st.gameOver=!!st.gameOver;
   /* 판 식별자 — 문자열이 아니면(구버전·손상) 재발급한다. gid 가 비면 buildMatchRecord 가 null 을 적어
      판 무효(void)가 이 판의 레코드를 못 찾고, 마감의 '임의종료만 통계 제외'가 조용히 빗나간다. */
   if(typeof st.gameId!=='string' || !st.gameId) st.gameId=mkid();
@@ -1902,6 +1911,21 @@ function thyExecAnswer(key, p, message, o){
 }
 
 const uid = () => Math.random().toString(36).slice(2,9);
+/* 동적 래핑 원장 — `window[변수]=` 로 얹는 래퍼는 정적 정규식이 셀 수 없다. 설치하는 순간
+   여기에 적어 두면 로드 뒤 thyAudit.dynamicWrap() 이 '선언한 체인이 실제로 걸렸는가'를 대조한다.
+   [왜 함수에 표식을 붙이지 않는가] 표식 방식도 만들어 봤지만, 그 위에 정적 래퍼가 한 겹
+   더 얹히면 표식이 통째로 사라진다(정적 래퍼는 이 헬퍼를 거치지 않는다) — 실제로 renderSheet·
+   renderCustom 이 그 경우였다. 원장은 설치 사실 자체를 남기므로 나중에 무엇이 얹히든 남는다.
+   표식(__thyWrap)은 조기 캡처 판별용으로 함께 남긴다.
+   래핑 헬퍼들(swapWrap·wrapRender·statusboard·djWrap 등)보다 반드시 먼저 정의돼야 한다. */
+const THY_WRAP_LOG=[];
+function thyStampWrap(fn, orig, tag, name){
+  try{
+    fn.__thyWrap=((orig && orig.__thyWrap) || []).concat(tag);
+    THY_WRAP_LOG.push({name:name||null, tag:tag});
+  }catch(e){}
+  return fn;
+}
 
 function allChars(){ return CHARACTERS.concat(S.customs||[]); }
 function charOf(id){ return allChars().find(c=>c.id===id); }
@@ -2041,7 +2065,8 @@ function expireStatuses(){
      10~50    서로 결과가 같다(전부 사망 차단). 사회자에게 보여줄 사유 문자열의 순서이며 기존 코드 순서를 그대로 보존한다.
      55~70    기존 실행 시점 순서(공격 단계 → killPlayer)를 숫자로 옮긴 것이다.
    implemented:false 인 항목은 근거만 남기고 절대 발동하지 않는다(무행동 전환 계약). */
-const DEATH_SRC_KO = {demon:'악마의 살해', night:'밤 살해', execution:'처형'};
+const DEATH_SRC_KO = {demon:'악마의 살해', night:'밤 살해', execution:'처형',
+  slayer:'처단자의 일격', witch:'마녀의 저주', exile:'여행자 추방'};
 const DEATH_MODIFIERS = [
   {id:'assassin-pierce', ko:'암살자 관통', precedence:0, stage:['block','kill'], effect:'pierce',
    official:'Assassin: "Once per game, at night*, choose a player: they die, even if for some reason they could not." (official/roles181.json:1375) — "어떤 이유로든 죽을 수 없었더라도"가 찻집 여인·보호·군인·선원을 모두 뚫는 근거다. block 단계뿐 아니라 kill 단계에도 서 있어야 한다: 좀버얼의 "The 1st time you die, you live but register as dead."(roles181.json:1766)와 어릿광대의 "The 1st time you die, you don\'t."(roles181.json:851)도 결과가 "실제로는 죽지 않음"이므로 같은 문구가 뚫는 대상이다. 관통 여부는 사인 문자열이 아니라 컨텍스트(ctx.bypass)로 전달된다.',
@@ -2071,19 +2096,27 @@ const DEATH_MODIFIERS = [
    reason:()=> '악마의 변호사의 변호 — 처형돼도 죽지 않음'},
 
   {id:'vizier-dayimmune', ko:'재상 낮 사망 면역', precedence:32, stage:'block', effect:'block',
-   implemented:false, uncertain:true,
    official:'Vizier: "All players know who you are. You can not die during the day. If good voted, you may choose to execute immediately." (wiki.bloodontheclocktower.com/Vizier) — 원인 제한이 없으므로 처형·처단자를 포함한 낮 사망 전부가 대상이고, 대상 자신의 능력이므로 중독·취함이면 무효다(파일 안 vizier.warn 의 판단과 같다). 자동 판정을 켜면 처형 흐름 전체(executedToday·성자·탕녀 계승·재상 즉시 처형)를 함께 다시 짜야 하므로 무행동 전환 계약에 따라 이번에는 표에만 올린다 — 표에 없으면 renderDeathTraces 의 근거 사슬에서 재상만 존재하지 않는 규칙처럼 보인다.',
-   when:()=> false, reason:()=> '재상 — 낮에는 죽지 않음(사회자 수동 판정)'},
+   /* 원인을 가리지 않는 절대 규칙이다 — 낮이면 처형·처단자·마녀·추방 무엇이든 죽지 않는다.
+      재상 본인의 능력이므로 중독·취함이면 무효다. 밤 사망은 이 조항 밖이다. */
+   when:(t,c)=> t.charId==='vizier' && S.phase.kind==='day' && !isMalfunctioning(t),
+   reason:()=> '재상 — 낮에는 죽지 않음'},
 
   {id:'psychopath-roshambo', ko:'사이코패스 가위바위보', precedence:33, stage:'block', effect:'block',
-   implemented:false, uncertain:true,
    official:'Psychopath: "If executed, you only die if you lose roshambo." (roles181.json:1365) — 결과가 앱 밖(가위바위보)에서 정해져 자동 판정 대상이 아니다. 현재도 판정하지 않는다.',
-   when:()=> false, reason:()=> '사이코패스 — 가위바위보 결과로 사회자가 수동 판정'},
+   when:(t,c)=> c.sourceType==='execution' && t.charId==='psychopath' && !isMalfunctioning(t)
+                && thyExecAnswer('psycho', t, `🎲 ${t.name}은(는) 사이코패스입니다.\n가위바위보에서 이겼습니까?\n\n[예] 처형돼도 죽지 않습니다 / [아니오] 평소대로 사망`, {ok:'예 — 이김(죽지 않음)', cancel:'아니오 — 짐'}),
+   reason:()=> '사이코패스 — 가위바위보에서 이겨 처형돼도 죽지 않음'},
 
   {id:'pacifist', ko:'평화주의자', precedence:35, stage:'block', effect:'block',
-   implemented:false, uncertain:true,
-   official:'Pacifist: "Executed good players might not die." (roles181.json:900) — "might"(재량)이라 자동 판정 대상이 아니다. 현재도 판정하지 않는다.',
-   when:()=> false, reason:()=> '평화주의자 — 사회자 재량, 자동 판정 없음'},
+   official:'Pacifist: "Executed good players might not die." (roles181.json:900) — "might" 는 사회자 재량이다. 자동으로 살리지 않고 처형 확정 전에 묻는다(executeNominee 사전 질문 묶음). 대상은 처형되는 선한 플레이어이며, 평화주의자 본인이 아니라 평화주의자가 판에 살아 있는지를 본다.',
+   when:(t,c)=>{
+     if(c.sourceType!=='execution' || isEvil(t)) return false;
+     const pf=S.players.find(x=>x.alive && x.charId==='pacifist' && !isMalfunctioning(x));
+     if(!pf) return false;
+     return thyExecAnswer('pacifist', t, `🕊 평화주의자(${pf.name})가 있습니다.\n처형되는 ${t.name}은(는) 선한 플레이어입니다.\n이번 처형에서 살려 주시겠습니까? (재량)`, {ok:'예 — 죽지 않음', cancel:'아니오 — 사망'});
+   },
+   reason:()=> '평화주의자 — 사회자 재량으로 처형된 선한 플레이어가 죽지 않음'},
 
   {id:'soldier', ko:'군인', precedence:40, stage:'block', effect:'block',
    official:'Soldier: "You are safe from the Demon." (roles181.json:700) — 대상 \'자신의\' 능력이므로 중독·취함이면 무효다. 여기가 수도사(타인 능력)와 갈리는 비대칭의 자리다.',
@@ -2091,9 +2124,17 @@ const DEATH_MODIFIERS = [
    reason:()=> '군인 — 악마에게 죽지 않음'},
 
   {id:'lleech-host', ko:'리치 — 숙주 생존', precedence:45, stage:'block', effect:'block',
-   implemented:false, uncertain:true,
    official:'Lleech: "You die if & only if they are dead."(숙주) (roles181.json:1860) — 현재 코드에 판정이 전혀 없다(기존 미구현 결함). 무행동 전환 계약에 따라 이번 라운드에서는 켜지 않는다.',
-   when:()=> false, reason:()=> '리치 숙주 생존 — 현재 미구현(사회자 수동)'},
+   /* 숙주 토큰(lleechHost)이 살아 있는 좌석에 있으면 리치는 어떤 원인으로도 죽지 않는다.
+      토큰이 없으면(사회자가 아직 안 놓았거나 그런 판이 아니면) 조용히 물러난다 — 옛 동작 그대로.
+      리치 자신이 오작동이어도 이 조항은 남는다: "if & only if" 는 리치의 능력이 아니라 존재 규칙이다. */
+   when:(t,c)=> t.charId==='lleech' && lleechHostAlive(),
+   reason:()=>{ const h=lleechHostOf(); return `리치 — 숙주(${h?h.name:'?'})가 살아 있어 죽지 않음`; }},
+
+  {id:'deviant-exile', ko:'일탈자 — 추방 면역', precedence:48, stage:'block', effect:'block',
+   implemented:false, uncertain:true,
+   official:'Deviant: "If you were funny today, you cannot die by exile." (roles181.json) — 추방 사망을 막는 유일한 능력이자, 추방이 \'막을 수 있는 사망\'임을 공식이 인정하는 근거다. "재미있었는가"는 전적으로 사회자 판단이라 자동 판정하지 않는다 — 추방 확정 직전에 사회자에게 묻고(exClose), 그 답이 이 자리를 대신한다.',
+   when:()=> false, reason:()=> '일탈자 — 오늘 재미있었으면 추방으로 죽지 않음(사회자 판단)'},
 
   {id:'sailor', ko:'선원', precedence:50, stage:'block', effect:'block',
    official:'Sailor: "Each night, choose an alive player: either you or they are drunk until dusk. You can\'t die." (roles181.json:187) — 자신의 능력이므로 스스로 취하면 무효다. 원인 제한이 없어 처형도 막는다.',
@@ -2362,8 +2403,12 @@ function clearEffectsFromChar(charId, why){
     });
   });
 }
-/* 죽은 플레이어가 지속효과 출처 캐릭터면 그 출처의 상태를 전원에게서 정리한다 */
-function reconcileDeath(p){ clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`); }
+/* 죽은 플레이어가 지속효과 출처 캐릭터면 그 출처의 상태를 전원에게서 정리한다.
+   리치 숙주 사망 알림도 여기 붙인다 — 사망이 확정된 모든 경로가 지나는 한 곳이다. */
+function reconcileDeath(p){
+  clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`);
+  try{ noticeLleechHostDeath(p); }catch(e){ console.warn('[lleech] host', e); }
+}
 function killPlayer(p, cause, opts){
   opts=opts||{};
   /* 사망 컨텍스트 — 표에 넘길 값을 여기 한 번만 만들어 kill 단계 전체가 같은 입력을 본다.
@@ -2455,7 +2500,28 @@ function toast(msg, kind){
    [기준 2] 사망 판정 사슬에 자리만 있고 판정은 사회자 수동인 규칙(DEATH_MODIFIERS implemented:false):
             재상 낮 면역 · 사이코패스 가위바위보 · 평화주의자 · 리치 숙주. 밤 순서는 있어도 판정이 비어 있다.
    커스텀 캐릭터는 제외한다 — 순서·능력을 사회자가 직접 정의한 것이라 '미구현'이 아니다. */
-const PARTIAL_IMPL_CHARS={vizier:'낮 사망 면역 판정 수동', psychopath:'가위바위보 판정 수동', pacifist:'처형 생존 판정 수동', lleech:'숙주 생존 판정 수동'};
+const PARTIAL_IMPL_CHARS={};
+/* 한 판에만 유효한 일회성 값들. 새 판을 시작할 때 반드시 되돌려야 하는 것만 담는다.
+   [왜 목록인가] blank() 는 '전부' 비우지만 여기는 '판만' 비운다 — 등록부·전적·커스텀은 그대로 두고
+   판 단위 값만 되돌려야 하므로 두 곳의 기준이 갈라진다. 새 필드가 판 단위면 여기에도 넣어야 한다.
+   gameId 는 따로 다룬다(새로 발급해야 하므로). */
+const NEWGAME_RESET_KEYS=['gameOver','endKind','politicianAsked','goodExecCount','damselGuessUsed',
+  'goonNight','goonStep','goonUndo','moonchildChoice','executedToday','executedPrevDay',
+  'executedTodayPid','executedDiedToday','poCharged','exorcistPrev','daPrev','pukkaVictimId',
+  'mastermindDay','fangGuJumped','demonBlockedNight','demonBlockedPid'];
+/* 마감(finalizeEndedGame)을 거치지 않고 새 판을 시작하는 경로의 뒤처리.
+   [무엇이 문제였나] 종료 화면을 닫고 설정으로 돌아가 곧장 [첫 번째 밤 시작]을 누르면
+   S.gameOver·endKind 가 그대로 남아 새 판이 '이미 끝난 판'이 된다 — 종료 메뉴가 [종료 확정]만
+   보여주고, 승리 판정(askWin·recheckEndConditions·처형 판정)이 전부 즉시 물러난다.
+   게다가 gameId 가 같아서, 지난 판이 적립한 전적과 이번 판의 전적이 같은 gid 를 갖는다
+   → 판 무효 한 번에 둘 다 지워진다. 그래서 gameId 를 새로 발급한다. */
+function clearEndedGameState(){
+  const wasOver=!!S.gameOver;
+  NEWGAME_RESET_KEYS.forEach(k=>{ const b=blank(); if(k in b) S[k]=b[k]; });
+  S.postgame=blank().postgame;
+  if(wasOver) S.gameId=uid();          // 지난 판의 전적과 gid 가 겹치지 않게
+  return wasOver;
+}
 function unimplementedInPlay(){
   const out=[];
   S.players.forEach(p=>{
@@ -2477,6 +2543,21 @@ function advancePhase(){
     if(ft && !S.redHerringId){ toast('점쟁이가 있습니다 — 붉은 청어를 먼저 지정하세요(설정 탭).','warn'); return; }
     const dr=S.players.find(p=>p.charId==='drunk');
     if(dr && !S.drunkMaskChar){ toast('주정뱅이가 있습니다 — 위장할 마을 주민을 먼저 지정하세요(설정 탭).','warn'); return; }
+    /* 마감하지 않고 남은 '끝난 판' 상태 — 알리고 새 판으로 넘어간다(지난 판의 전적은 건드리지 않는다).
+       임의 종료 판은 애초에 적립되지 않으므로 여기서도 남길 것이 없다. */
+    if(S.gameOver){
+      const ackC='advance:carryover:'+S.gameId;
+      if(!thyAckHas(ackC)){
+        const banked=(Array.isArray(S.history)? S.history : []).some(h=>h && h.gid && h.gid===S.gameId);
+        const now=thyAsk({kind:'confirm', title:'지난 판이 마감되지 않았습니다', ok:'새 판 시작', cancel:'돌아가기',
+            message:'직전 판이 종료됐지만 마감(종료 확정)을 거치지 않았습니다.\n\n'
+              +'· 그리모어·게임 기록은 이 판 것으로 이어집니다 — 지우려면 [전체 초기화]를 쓰세요.\n'
+              +(banked? '· 지난 판의 전적은 그대로 남습니다.\n' : '· 지난 판은 전적에 적립되지 않았습니다.\n')
+              +'\n새 판으로 시작할까요?'},
+          (ok,syncNow)=>{ if(!ok){ thyAckClear('advance:'); return; } thyAckSet(ackC); if(!syncNow) advancePhase(); });
+        if(!now || !thyAckHas(ackC)) return;
+      }
+    }
     /* 미구현 캐릭터 경고 — 진행은 사회자 재량으로 허용하되, 시작 전에 몇 명인지·누구인지 알린다.
        설정 탭의 [첫 번째 밤 시작]과 헤더 진행 버튼이 모두 여기를 지나므로 한 곳이면 충분하다.
        확인 릴레이 경고보다 앞에 둔다 — 기기를 돌리기 전에 알아야 하는 셋업 수준의 문제다. */
@@ -2509,15 +2590,15 @@ function advancePhase(){
       }
     }
     thyAckClear('advance:');
+    if(clearEndedGameState()) log('⚠ 지난 판을 마감하지 않고 새 판을 시작합니다 — 종료 상태를 해제하고 판 식별자를 새로 발급했습니다.');
     S.phase={kind:'night', n:1};
     /* 다른 두 전환 분기(밤→낮·낮→밤)와 동일하게 여기서도 한 번 쓸어낸다. 이 분기만 빠져 있어
        {night,1} 만료를 가진 토큰은 만나야 할 페이즈를 영영 만나지 못하고 판이 끝날 때까지
        남았다 — 중독이 남으면 isMalfunctioning 이 계속 참이라 그 캐릭터가 내내 불발한다. */
     expireStatuses();
-    /* 새 판이 시작되면 지난 판의 동료 평가는 끊는다. 전체 초기화 없이 이름만 바꿔
-       다시 시작하면 좌석 pid 가 그대로라 지난 표가 이번 판 OP스코어의 PEER 항으로
-       새어 들어간다(레코드는 이미 pgid 로 확정돼 있으므로 전적은 영향 없음). */
-    S.postgame=blank().postgame;
+    /* 지난 판의 동료 평가·일회성 플래그는 clearEndedGameState() 가 함께 끊는다.
+       전체 초기화 없이 이름만 바꿔 다시 시작하면 좌석 pid 가 그대로라 지난 표가
+       이번 판 OP스코어의 PEER 항으로 새어 들어간다(레코드는 pgid 로 확정돼 전적은 영향 없음). */
     log('── 게임 시작: 첫날 밤 ──');
     switchTab('night');
   } else if(ph.kind==='night'){
@@ -2644,7 +2725,7 @@ function renderTopbar(){
   const deadTok=S.players.filter(p=>!p.alive&&p.deadVote!==false).length;
   $('#quickstats').innerHTML = total? `
     <span class="qstat">생존 <b class="num">${alive}</b>/<b class="num">${total}</b></span>
-    <span class="qstat">거수 과반 <b class="num">${majority(alive)}</b></span>
+    <span class="qstat">거수 과반 <b class="num">${voteThreshold('hand')}</b></span>
     <span class="qstat">사망 투표 토큰 <b class="num">${deadTok}</b></span>
     <span class="qstat">☠ <b class="num">${S.players.filter(p=>hasStatus(p,'poison')).length}</b></span>`:'';
 }
@@ -3875,6 +3956,23 @@ function doDevilsAdvocate(pid){
   save(); renderAll();
 }
 /* 찻집 여인: t가 '정상 작동 중인 생존 찻집 여인'의 살아있는 양옆 이웃이고, 그 이웃 둘 다 선(주민/외지인)이면 보호 */
+/* 리치의 숙주 — 토큰을 가진 좌석. 여러 곳에 놓였으면 첫 번째만 본다(사회자 실수 방어). */
+function lleechHostOf(){ return S.players.find(q=>hasStatus(q,'lleechHost')) || null; }
+function lleechHostAlive(){ const h=lleechHostOf(); return !!(h && h.alive); }
+/* 숙주가 죽는 순간 리치도 죽는다 — 공식 "if & only if" 의 나머지 절반.
+   자동으로 죽이지 않고 알리기만 하는 이유: 주모자 징크스가 예외를 만든다
+   ("주모자가 살아 있고 리치의 숙주가 처형으로 죽으면, 리치는 살아남되 능력을 잃는다").
+   두 규칙이 겹치는 판에서 앱이 임의로 죽이면 사회자가 되돌릴 방법이 없다. */
+function noticeLleechHostDeath(p){
+  if(!p || !hasStatus(p,'lleechHost')) return;
+  const ll=S.players.find(q=>q.charId==='lleech' && q.alive);
+  if(!ll) return;
+  const mm=S.players.find(q=>q.charId==='mastermind' && q.alive);
+  log(`🪱 리치의 숙주(${p.name}) 사망 — 리치(${ll.name})도 죽습니다`+(mm? ' / 주모자 징크스 확인 필요' : ''));
+  toast(mm
+    ? `🪱 숙주 ${p.name} 사망 — 원칙상 리치(${ll.name})도 죽습니다. 다만 주모자(${mm.name})가 살아 있고 숙주가 '처형'으로 죽었다면 리치는 살아남되 능력을 잃습니다(징크스). 어느 쪽인지 판정해 직접 처리하세요.`
+    : `🪱 숙주 ${p.name} 사망 — 리치(${ll.name})도 죽습니다. 그리모어에서 리치를 사망 처리하세요.`, 'warn');
+}
 function teaLadyBlock(t){
   const n=S.players.length;
   for(const tl of S.players){
@@ -3957,6 +4055,25 @@ function doSailorDrunk(pid){
   if(hasStatus(t,'drunkS')){ toast(`${t.name}은(는) 이미 취해 있습니다 — 중복 부여하지 않습니다.`,'warn'); return; }
   addStatus(t,'drunkS','선원',drunkExpiry('dusk')); save(); renderAll();
   toast(`⚓ ${t.name} 🍺취함 — 다음 황혼(밤 ${drunkExpiry('dusk').n} 시작)에 자동 해제`,'ok');
+}
+/* 여관 주인 — 공식: "Each night*, choose 2 players: they can't die tonight, but 1 is drunk until dusk."
+   지금까지 앱은 취함만 자동이고 보호는 "🛡토큰을 놓으세요" 안내문뿐이었다. 안내문은 잊히고,
+   잊히면 그날 밤 악마의 살해가 그대로 통과한다 — 보호는 강제 능력이므로 자동으로 놓는다.
+   만료는 수도사와 같은 규칙(밤에 부여 → 그 다음 낮 시작에 해제)이라 addStatusUI 와 어긋나지 않는다.
+   출처를 '여관 주인'으로 적어 두면 protect-token 항목이 수도사 전용 조건(악마 한정)에서 벗어난다
+   — 공식대로 여관 주인의 보호는 '오늘 밤 어떤 사망이든' 막는다. */
+function doInnkeeperProtect(pids){
+  const list=(Array.isArray(pids)? pids : [pids]).map(playerOf).filter(Boolean);
+  if(!list.length) return;
+  const ik=S.players.find(q=>q.alive && q.charId==='innkeeper');
+  if(ik && isMalfunctioning(ik)){
+    toast('여관 주인이 오작동 상태 — 보호가 발동하지 않습니다. 기록만 남깁니다.','warn');
+    log(`여관 주인 오작동: ${list.map(x=>x.name).join(', ')} 보호 불발`); save(); renderAll(); return;
+  }
+  const exp=(S.phase.kind==='night')? {kind:'day', n:S.phase.n} : {kind:'day', n:S.phase.n+1};
+  list.forEach(t=>{ if(!hasStatus(t,'protect')) addStatus(t,'protect','여관 주인',exp); });
+  toast(`🏠 ${list.map(x=>x.name).join(' · ')} 🛡보호 — 오늘 밤 죽지 않습니다(암살자는 관통).`,'ok');
+  save(); renderAll();
 }
 function doInnkeeperDrunk(pid){
   if(!pid)return; const t=playerOf(pid);
@@ -4082,6 +4199,23 @@ function offerMayorSubstitute(t, dr, cause, opts, retry){
     return true;
   }
   resolveNightDeath(ap, cause+'(시장 대체 사망)', sub);
+  return true;
+}
+/* 낮 능력 사망 창구(처단자·마녀의 저주 등) — 밤 살해가 아닌 사망도 block 단계를 거쳐야 한다.
+   [무엇이 문제였나] 이 경로들이 killPlayer 를 직접 불러 왔다. killPlayer 는 kill 단계
+   (어릿광대 1회 생존·좀버얼 죽은 척)만 돌리므로, block 단계에 있는 찻집 여인·선원·
+   폭풍잡이 보호가 통째로 무시됐다 — 공식으로는 전부 "죽지 않는다"가 성립하는 상황이다.
+   [무엇은 걸리지 않나] 수도사·군인은 sourceType==='demon' 전용, 악마의 변호사는 'execution'
+   전용, 시장 대체는 밤 전용이라 각 항목의 when() 이 알아서 물러난다 — 표를 고칠 필요가 없다.
+   반환 true = 실제로 죽음까지 처리했다. false = 보호로 막혀 아무도 죽지 않았다. */
+function resolveDayAbilityDeath(t, sourceType, cause){
+  const dr=resolveDeath(t, {sourceType, cause:cause||''}, ['block']);
+  if(dr.reason){
+    log(`${t.name}: ${cause} 불발 — ${dr.reason}`);
+    toast(`${t.name}: ${dr.reason} — 죽지 않습니다.`,'ok');
+    save(); renderAll(); return false;
+  }
+  killPlayer(t, cause, {sourceType});
   return true;
 }
 /* 밤 사망 창구 — opts(관통·살해 출처)를 killPlayer 로 그대로 흘려보낸다.
@@ -4406,7 +4540,7 @@ function newNomination(){
   if(hasStatus(torP0,'curse')){
     const witch=S.players.find(p=>p.alive&&p.charId==='witch');
     if(witch && !isMalfunctioning(witch) && alivePlayers().length>=4){
-      thyConfirm(`🧹 마녀의 저주 발동! 지명자 ${torP0.name}은(는) 저주받은 상태입니다.\n즉시 사망 처리할까요? (지명 절차는 그대로 진행됩니다)`, ok=>{ if(ok){ killPlayer(torP0,'마녀의 저주 — 지명 즉시 사망'); save(); renderAll(); } }, {title:'🧹 마녀의 저주', ok:'즉시 사망 처리', cancel:'사망 없음', danger:true});
+      thyConfirm(`🧹 마녀의 저주 발동! 지명자 ${torP0.name}은(는) 저주받은 상태입니다.\n즉시 사망 처리할까요? (지명 절차는 그대로 진행됩니다)`, ok=>{ if(ok){ resolveDayAbilityDeath(torP0,'witch','마녀의 저주 — 지명 즉시 사망'); save(); renderAll(); } }, {title:'🧹 마녀의 저주', ok:'즉시 사망 처리', cancel:'사망 없음', danger:true});
     } else { toast('저주 토큰이 있으나 마녀가 죽었거나 오작동, 또는 생존 3인 — 저주 불발.','warn'); }
   }
   // 성결자 체크
@@ -4473,9 +4607,29 @@ function ballotEligible(nom){
   const votes=(nom&&nom.votes)||{};
   return S.players.filter(p=> p.alive || hands.includes(p.id) || votes[p.id]!==undefined);
 }
+/* ══ 투표 산술의 단일 출처 ══
+   분모(표시·찬성률의 밑)와 문턱(통과 기준)은 기준 인원이 **다르다**. 그 사실이 지금까지
+   renderNomOpen·closeHands·closeBallot·추방 화면 네 곳에 각각 적혀 있었다 — 한 곳만 고치면
+   '화면에선 통과인데 마감하면 부결' 이 된다. 계약을 여기 한 번만 쓴다.
+
+   [1차 거수] 분모=생존자 · 문턱=생존자의 과반.
+   [2차 찬반] 분모=자격자(생존자 ∪ 1차 거수자, 사망자 포함) · 문턱은 **생존자**의 과반.
+     공식이 "at least half the living players" 라 사망자 표는 분자에만 들어가고 기준 인원에는
+     들어가지 않는다. 분모를 그대로 문턱에 쓰면, 사망자가 1차에 손만 들고 2차에 기권해
+     (토큰도 쓰지 않고) 문턱을 올려 처형을 막을 수 있다.
+   [추방] 분모·문턱 모두 좌석 전원(사망자·여행자 포함) — 여행자 추방은 별개의 투표다. */
+function voteDenominator(nom, stageKind){
+  if(stageKind==='exile') return S.players.length;
+  if(stageKind==='hand')  return alivePlayers().length;
+  return ballotEligible(nom).length;
+}
+function voteThreshold(stageKind){
+  if(stageKind==='exile') return majority(S.players.length);
+  return majority(alivePlayers().length);
+}
 function renderNomOpen(nom){
   const alive=alivePlayers();
-  const den1=alive.length, need1=majority(den1), num1=nom.hands.length;
+  const den1=voteDenominator(nom,'hand'), need1=voteThreshold('hand'), num1=nom.hands.length;
   const handRows=handEligible(nom);
   const deadHands=nom.hands.filter(id=>{ const q=playerOf(id); return q && !q.alive; }).length;
   const torN=esc(playerOf(nom.nominator)?.name||'?'), neeN=esc(playerOf(nom.nominee)?.name||'?');
@@ -4511,8 +4665,8 @@ function renderNomOpen(nom){
   /* 문턱(need2)의 기준 인원은 생존자다 — closeBallot 과 같은 계약(사망자 표는 분자에만 들어간다).
      분모(den2)는 화면 표시·찬성률 계산에만 쓴다. 화면과 확정이 같은 식을 써야
      '화면에선 통과인데 마감하면 부결' 같은 어긋남이 생기지 않는다. */
-  const aliveN2=alivePlayers().length;
-  const den2=eligible.length, need2=majority(aliveN2);
+  const den2=voteDenominator(nom,'ballot'), need2=voteThreshold('ballot');
+  const aliveN2=alivePlayers().length;              // 화면 문구 '과반 기준(생존 N)' 표시용
   const yes=eligible.filter(p=>nom.votes[p.id]==='yes').length;
   const no=eligible.filter(p=>nom.votes[p.id]==='no').length;
   const ratio=den2?yes/den2:0;
@@ -4552,7 +4706,7 @@ function renderNomOpen(nom){
 function findNom(id){ return S.noms.find(n=>n.id===id); }
 function toggleHand(nid,pid){ const n=findNom(nid); const i=n.hands.indexOf(pid);
   if(i>=0)n.hands.splice(i,1); else n.hands.push(pid); save(); renderAll(); }
-function closeHands(nid){ const n=findNom(nid); const den=alivePlayers().length, need=majority(den);
+function closeHands(nid){ const n=findNom(nid); const den=voteDenominator(n,'hand'), need=voteThreshold('hand');
   if(n.hands.length>=need){ n.stage=2; log(`거수 ${n.hands.length}/${den} (기준 ${need}) — 통과, 찬반 투표로`); }
   else { n.closed=true; n.result='handsFail'; log(`거수 ${n.hands.length}/${den} (기준 ${need}) — 미달, 부결`); }
   save(); renderAll(); }
@@ -4583,7 +4737,7 @@ function closeBallot(nid){
      사망자 표는 분자에만 들어가고 기준 인원에는 들어가지 않는다. den 을 그대로 문턱에 쓰면
      사망자가 1차에 손만 들고 2차에서 기권해(토큰도 쓰지 않고) 문턱을 올려 처형을 막을 수 있다.
      1단계 closeHands 는 이미 alivePlayers() 기준이라 그쪽 계약과도 이걸로 맞는다. */
-  const den=uniq.length, need=majority(alivePlayers().length);
+  const den=voteDenominator(n,'ballot'), need=voteThreshold('ballot');
   let yes=uniq.filter(p=>n.votes[p.id]==='yes').length;
   // 집사 무효표: 주인이 '찬성'하지 않았으면 집사의 찬성을 집계에서 뺀다
   // (공식: "주인이 투표할 때만 집사도 투표 가능" — 오작동 집사는 자유 투표라 제외)
@@ -4667,9 +4821,11 @@ function doSlayerOn(sl, t){
   addStatus(sl,'slayerUsed','공개 지목',null);
   if(isMalfunctioning(sl)){ toast('처단자가 오작동 상태 — "아무 일도 일어나지 않습니다"라고 공표. 능력 소진.','warn'); log(`처단자 오발(오작동): ${t.name}`); save(); renderAll(); return; }
   const c=charOf(t.charId);
-  if(c?.type==='demon' && t.alive){ killPlayer(t,'처단자의 일격'); toast(`😈 ${t.name}(악마) 즉사! 탕녀·생존자 수를 확인하세요.`,'warn'); }
+  if(c?.type==='demon' && t.alive){
+    if(resolveDayAbilityDeath(t,'slayer','처단자의 일격')){ toast(`😈 ${t.name}(악마) 즉사! 탕녀·생존자 수를 확인하세요.`,'warn'); }
+  }
   else if(t.charId==='recluse' && t.alive){
-    thyConfirm(`${t.name}은(는) 은둔자 — 악마로 등록시켜 죽일까요? (재량)`, ok=>{ if(ok){ killPlayer(t,'처단자의 일격(은둔자 악마 등록)'); toast('은둔자가 쓰러졌습니다 — 게임은 끝나지 않습니다. 태연하게!','warn'); } else { toast('"아무 일도 일어나지 않습니다" 공표.','ok'); log(`처단자 → 은둔자 ${t.name}: 미등록 처리`); } save(); renderAll(); }, {title:'은둔자 등록 재량', ok:'악마로 등록 → 사망', cancel:'미등록'});
+    thyConfirm(`${t.name}은(는) 은둔자 — 악마로 등록시켜 죽일까요? (재량)`, ok=>{ if(ok){ if(resolveDayAbilityDeath(t,'slayer','처단자의 일격(은둔자 악마 등록)')) toast('은둔자가 쓰러졌습니다 — 게임은 끝나지 않습니다. 태연하게!','warn'); } else { toast('"아무 일도 일어나지 않습니다" 공표.','ok'); log(`처단자 → 은둔자 ${t.name}: 미등록 처리`); } save(); renderAll(); }, {title:'은둔자 등록 재량', ok:'악마로 등록 → 사망', cancel:'미등록'});
   }
   else { toast('"아무 일도 일어나지 않습니다"라고 공표하세요.','ok'); log(`처단자 오발: ${t.name}`); }
   save(); renderAll();
@@ -7022,7 +7178,8 @@ courtier:{first:[
 innkeeper:{other:[
   {t:'wake'},
   {t:'pick-player',n:2,who:'player',label:'여관 주인이 재울 손님 2명',filter:'alive',storeAs:'pair'},
-  {t:'note',text:'두 명 모두 오늘 밤 죽지 않습니다 — 🛡보호 토큰 2개를 그리모어에 놓으세요. 암살자의 살해만은 이 보호를 관통하며, 여관 주인이 중독이면 보호·취함 모두 무효입니다(취함은 판정 함수가 자동 차단).'},
+  {t:'effect',fn:'doInnkeeperProtect',from:'pair'},
+  {t:'note',text:'두 명 모두 오늘 밤 죽지 않습니다 — 🛡보호 토큰 2개가 자동으로 놓였습니다. 암살자의 살해만은 이 보호를 관통하며, 여관 주인이 중독이면 보호·취함 모두 무효입니다(취함은 판정 함수가 자동 차단).'},
   {t:'pick-player',n:1,who:'st',label:'둘 중 취할 1명을 사회자가 선택',filter:'alive',storeAs:'soak'},
   {t:'effect',fn:'doInnkeeperDrunk',from:'soak'},
   {t:'sleep'}]},
@@ -7970,7 +8127,7 @@ function exRender(){
     return;
   }
   const t=playerOf(ex.tid);
-  const den=S.players.length, need=majority(den), yes=ex.yes.length;
+  const den=voteDenominator(null,'exile'), need=voteThreshold('exile'), yes=ex.yes.length;
   ovOpen(`🚷 추방 투표 — ${esc(t?.name||'?')} (${esc(t?charName(t):'?')})`,
     ovWrap(`
       <div class="alertbox blue">추방 기준: <b>전체 플레이어 ${den}명(사망자 포함, 투표 토큰 불요)</b>의 과반 = <b>${need}표</b> 이상.<br>
@@ -7993,11 +8150,26 @@ function exToggle(pid){
 }
 function exClose(){
   const t=playerOf(ex.tid); if(!t){ ovClose(); return; }
-  const den=S.players.length, need=majority(den), yes=ex.yes.length;
+  const den=voteDenominator(null,'exile'), need=voteThreshold('exile'), yes=ex.yes.length;
   if(yes>=need){
     log(`🚷 여행자 추방 투표: ${t.name}(${charName(t)}) — 찬성 ${yes}/${den} (기준 ${need}) 가결`);
-    killPlayer(t, '여행자 추방(exile) 가결 — 처형 횟수와 무관');
-    toast(`🚷 ${t.name} 추방 — 오늘의 처형 횟수에는 영향을 주지 않습니다.`,'warn');
+    /* 추방은 처형이 아니지만 사망이다 — 일탈자의 "cannot die by exile" 이 그 근거다.
+       그래서 block 단계를 거친다: 찻집 여인·폭풍잡이 보호 같은 절대 면역이 여기서 걸린다.
+       악마의 변호사(처형 전용)·수도사·군인(악마 전용)은 when() 이 알아서 물러난다. */
+    const fin=(skip)=>{
+      if(skip){
+        log(`🚷 일탈자 ${t.name} — 오늘 재미있었으므로 추방으로 죽지 않음(사회자 판단)`);
+        toast(`🚷 ${t.name}은(는) 일탈자입니다 — 추방됐지만 죽지 않습니다. 게임에는 남습니다.`,'ok');
+      } else {
+        resolveDayAbilityDeath(t, 'exile', '여행자 추방(exile) 가결 — 처형 횟수와 무관');
+        toast(`🚷 ${t.name} 추방 — 오늘의 처형 횟수에는 영향을 주지 않습니다.`,'warn');
+      }
+      save();
+    };
+    if(t.charId==='deviant'){
+      thyConfirm(`🎭 ${t.name}은(는) 일탈자입니다.\n오늘 재미있었습니까?\n\n[예] 추방되지만 죽지 않습니다 / [아니오] 평소대로 사망 판정`,
+        ok=>fin(!!ok), {title:'🎭 일탈자', ok:'예 — 죽지 않음', cancel:'아니오'});
+    } else fin(false);
   } else {
     log(`🚷 여행자 추방 투표: ${t.name}(${charName(t)}) — 찬성 ${yes}/${den} (기준 ${need}) 부결`);
     toast('추방 부결 — 과반 미달.','warn');
@@ -9548,6 +9720,12 @@ function confirmWin(yes){
         qs.push({key:'saint', message:`🚨 ${p.name}은(는) 성자이며 오작동 상태가 아닙니다!\n처형을 확정하면 선한 팀이 패배합니다. 진행할까요?`, ok:'처형 확정', cancel:'취소', danger:true});
       if(p.charId==='goblin' && !isMalfunctioning(p))
         qs.push({key:'goblin', message:`👺 ${p.name}은(는) 고블린입니다.\n오늘 지명당한 그 순간 공개적으로 고블린임을 선언했습니까?`, ok:'예 → 악한 팀 승리', cancel:'아니오'});
+      if(p.charId==='psychopath' && !isMalfunctioning(p))
+        qs.push({key:'psycho', message:`🎲 ${p.name}은(는) 사이코패스입니다.\n가위바위보에서 이겼습니까?\n\n[예] 처형돼도 죽지 않습니다 / [아니오] 평소대로 사망`, ok:'예 — 이김(죽지 않음)', cancel:'아니오 — 짐'});
+      {
+        const pf=S.players.find(x=>x.alive && x.charId==='pacifist' && !isMalfunctioning(x));
+        if(pf && !isEvil(p)) qs.push({key:'pacifist', message:`🕊 평화주의자(${pf.name})가 있습니다.\n처형되는 ${p.name}은(는) 선한 플레이어입니다.\n이번 처형에서 살려 주시겠습니까? (재량)`, ok:'예 — 죽지 않음', cancel:'아니오 — 사망'});
+      }
       const fm=S.players.find(x=>x.alive && x.charId==='fearmonger' && !isMalfunctioning(x));
       if(fm) qs.push({key:'fear', message:`😱 공포 조장가(${fm.name})가 있습니다.\n처형되는 ${p.name}이(가) 현재 공포 표식 대상이고, 공포 조장가 본인이 지명했습니까?`, ok:'예 → 대상 진영 패배', cancel:'아니오'});
       if(qs.length){
@@ -10095,10 +10273,9 @@ function quickToggleDeath(pid){
         ? ballotEligible(nom)
         : alivePlayers().concat(S.players.filter(p=>!p.alive && (p.deadVote!==false || (nom&&nom.votes&&nom.votes[p.id]!==undefined))));
       rawYes=elig.filter(p=>nom&&nom.votes&&nom.votes[p.id]==='yes').length;
-      /* 문턱은 생존자 기준이다 — closeBallot·renderNomOpen 과 같은 계약.
-         elig 는 분자(rawYes)를 세는 집합일 뿐이라 문턱의 기준 인원이 아니다.
-         여기가 어긋나면 가중 내역 카드만 다른 과반 기준을 보여준다. */
-      need=majority(alivePlayers().length);
+      /* 문턱은 생존자 기준이다 — 계약은 voteThreshold() 한 곳에만 있다.
+         elig 는 분자(rawYes)를 세는 집합일 뿐이라 문턱의 기준 인원이 아니다. */
+      need=voteThreshold('ballot');
     } finally { restored.forEach(p=>{ p.deadVote=false; }); }
     if(!nom || nom.stage!==2) return html;
     const a=adjOf(nom);
@@ -11316,7 +11493,7 @@ function buildMatchRecord(winner, pgid){
   // swap — 이발사·뱀 조련사. 원본 검증을 통과해 charId 가 실제로 바뀐 경우만 [EV.swap]
   const swapWrap=(name, why)=>{
     const o=window[name];
-    window[name]=function(pids){
+    window[name]=thyStampWrap(function(pids){
       const a=playerOf((pids||[])[0]), b=playerOf((pids||[])[1]);
       const ac=a? a.charId : null, bc=b? b.charId : null;
       o(pids);
@@ -11324,7 +11501,7 @@ function buildMatchRecord(winner, pgid){
         emitEv('swap', a.id, a.id, {from:ac, to:a.charId, why});
         emitEv('swap', b.id, b.id, {from:bc, to:b.charId, why});
       }
-    };
+    }, o, 'swap', name);
   };
   swapWrap('doSwapChars','이발사 교환');
   swapWrap('doSnakeSwap','뱀 조련사 스왑');
@@ -11359,8 +11536,8 @@ function buildMatchRecord(winner, pgid){
     _ch(nid);
     const n=findNom(nid);
     if(n){
-      const den=alivePlayers().length;
-      emitEv('tally', null, n.nominee, {nomId:nid, stage:1, num:n.hands.length, den, need:majority(den), pass:n.stage===2});
+      const den=voteDenominator(n,'hand');
+      emitEv('tally', null, n.nominee, {nomId:nid, stage:1, num:n.hands.length, den, need:voteThreshold('hand'), pass:n.stage===2});
     }
   };
   const _cb=closeBallot;
@@ -12211,9 +12388,27 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
     killPlayer:1, doImpKill:1, doFangGuAttack:1, doPukkaPick:1, doStepKill:1,
     doProtect:1, doPoison:1, doExorcist:1, doDevilsAdvocate:1, doMad:1,
     doSwapChars:0, doSnakeSwap:0,
-    newNomination:1, toggleHand:1, closeHands:1, resolveExecution:1, confirmWin:2,
-    switchTab:1, openSheet:1, startFromSheet:1, setNomPick:1, wizTitle:1,
-    showGameOver:1};
+    newNomination:1, toggleHand:1, closeHands:1, resolveExecution:2, confirmWin:2,
+    switchTab:1, openSheet:1, startFromSheet:2, setNomPick:1, wizTitle:1,
+    showGameOver:1,
+    /* 2026-09-09 실측 반영(node thyrsus_sim/wrap_baseline.js). 앞의 두 값은 낡아 있었다 —
+       resolveExecution 1→2(승리 판정 래퍼), startFromSheet 1→2(내 스크립트 연결 해제 래퍼).
+       낡은 기준선은 로드마다 거짓 알림을 냈고, 거짓 알림이 상시로 뜨는 감사는 곧 무시된다.
+       아래 셋은 래핑돼 있는데 애초에 검사 목록에 없었다 — 재대입이 조용히 사라져도 몰랐다. */
+    libDetail:2, renderCustom:1, setupIssues:1};
+
+/* ── 동적 래핑 선언 ──
+   정적 정규식은 `window[변수]=` 형태를 셀 수 없다. 그런 래핑이 14곳 있고, 지금까지는
+   주석 한 줄로만 인정하고 검사 대상 밖에 뒀다 — 조용히 빠져도 아무도 모른다.
+   여기서 '어느 이름에 어떤 래퍼가 어떤 순서로 얹히는가'를 데이터로 선언하고,
+   각 헬퍼가 자기가 얹은 래퍼에 표식(fn.__thyWrap)을 남기게 해서 로드 시 대조한다.
+   배열 순서 = 설치 순서 = 안쪽부터. 마지막 원소가 가장 바깥(먼저 진입)이다. */
+const THY_WRAP_DYNAMIC={
+  doSwapChars:['swap'], doSnakeSwap:['swap'],
+  renderSheet:['stnotes','djinn'], renderCustom:['ccaudit','djinn'],
+  addCustom:['customnotice'], importScript:['customnotice'],
+  renderNight:['statusboard','djinn'], renderDay:['statusboard','djinn'],
+  renderGrim:['statusboard'], renderSetup:['djinn']};
   /* 재대입 지점부터 함수 본문 끝까지를 서명으로 뽑는다(공백 정규화).
      중괄호 세기는 문자열·주석 속 괄호를 구분하지 않지만, 어긋나도 같은 사고를
      양쪽에 똑같이 일으키므로 '복제 탐지'라는 목적에는 영향이 없다. */
@@ -12259,7 +12454,29 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
       +' 에 본문이 글자까지 같은 재대입이 2회 이상 — 같은 블록이 두 번 들어갔는지 확인하세요.\n  '
       +d.sig.slice(0,140)+'…'));
     AUDIT.lastCounts=counts;
-    return {counts:counts, dupes:dupes};
+    const dyn=AUDIT.dynamicWrap();
+    return {counts:counts, dupes:dupes, dynamic:dyn};
+  };
+  /* 동적 래핑 대조 — 선언(THY_WRAP_DYNAMIC)과 실제 표식(fn.__thyWrap)을 맞춰 본다.
+     소스 텍스트가 아니라 '지금 전역 이름에 무엇이 걸려 있는가'를 보므로 헤드리스에서도 성립한다.
+     누락(선언에는 있는데 안 걸림)은 그 기능이 조용히 죽은 것이고, 순서 뒤바뀜은 렌더 앵커
+     의존이 깨졌다는 뜻이다 — 둘 다 예외도 로그도 없이 조용히 틀리는 사고 유형이다. */
+  /* 선언표를 밖에서도 읽게 연다 — 콘솔에서 `thyAudit.dynamicSpec` 으로 현황을 보고,
+     회귀 테스트가 선언과 실제를 대조한다(감사 자신이 유일한 독자면 낡아도 아무도 모른다). */
+  AUDIT.dynamicSpec=THY_WRAP_DYNAMIC;
+  AUDIT.dynamicWrap=function(){
+    const bad=[];
+    Object.keys(THY_WRAP_DYNAMIC).forEach(name=>{
+      const want=THY_WRAP_DYNAMIC[name];
+      const fn=(typeof window!=='undefined')? window[name] : undefined;
+      if(typeof fn!=='function'){ bad.push({name, kind:'missing-fn'}); return; }
+      const got=THY_WRAP_LOG.filter(e=>e.name===name).map(e=>e.tag);
+      if(got.join('>')!==want.join('>')) bad.push({name, kind:'chain', want:want.join('>'), got:got.join('>')||'(없음)'});
+    });
+    bad.forEach(b=> console.warn('[thyAudit] 동적 래핑 불일치: '+b.name+' — 선언 ['+(b.want||'')+'] · 실제 ['+(b.got||'')+']'
+      +' / 그 블록이 통째로 빠졌거나 설치 순서가 바뀌었습니다.'));
+    AUDIT.lastDynamic=bad;
+    return bad;
   };
 
   /* ══ 래핑 순서 실측(2026-09-03 작성 · 2026-09-04 파일 10,830줄에서 계수만 재확인) ══
@@ -12689,7 +12906,7 @@ window.thyCcAuditHTML=ccAuditHTML;
 function wrapRender(name, hostId, htmlFn, paneId){
   if(typeof window[name]!=='function') return;
   const _prev=window[name];
-  window[name]=function(){
+  window[name]=thyStampWrap(function(){
     const r=_prev.apply(this, arguments);
     try{
       const pane=document.querySelector(paneId);
@@ -12701,7 +12918,7 @@ function wrapRender(name, hostId, htmlFn, paneId){
       }
     }catch(e){ console.warn('[thyrsus] '+name+' 부가 렌더 실패', e); }
     return r;
-  };
+  }, _prev, hostId, name);
 }
 wrapRender('renderSheet','stnotes',()=>stNotesHTML((typeof sheetEd!=='undefined'&&sheetEd)||'tb'),'#pane-sheet');
 wrapRender('renderCustom','ccaudit',()=>ccAuditHTML(),'#pane-custom');
@@ -12727,7 +12944,7 @@ if(typeof window.buildChecklist==='function'){
 ['addCustom','importScript'].forEach(function(fn){
   if(typeof window[fn]!=='function') return;
   const _prev=window[fn];
-  window[fn]=function(){
+  window[fn]=thyStampWrap(function(){
     const r=_prev.apply(this, arguments);
     try{
       const ws=thyAuditCustomScript();
@@ -12737,7 +12954,7 @@ if(typeof window.buildChecklist==='function'){
       }
     }catch(e){ console.warn('[thyrsus] 검증 요약 실패', e); }
     return r;
-  };
+  }, _prev, 'customnotice', fn);
 });
 
 /* 이 블록이 늦게 얹히므로 현재 화면을 한 번 다시 그린다. */
@@ -12870,11 +13087,11 @@ try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
   Object.keys(PANES).forEach(fn=>{
     const orig = window[fn];
     if(typeof orig!=='function') return;
-    window[fn] = function(){
+    window[fn] = thyStampWrap(function(){
       const ret = orig.apply(this, arguments);
       try{ injectInto(PANES[fn]); }catch(err){ console.warn('[statusboard]', err); }
       return ret;
-    };
+    }, orig, 'statusboard', fn);
   });
 
   /* 설치 시점에 이미 그려진 활성 탭에는 즉시 한 번 끼워 넣는다(첫 렌더는 이 블록보다 먼저 끝난다) */
@@ -13848,7 +14065,9 @@ if(typeof DEATH_MODIFIERS!=='undefined' && Array.isArray(DEATH_MODIFIERS)
     stage:'block', effect:'block', implemented:false, uncertain:true,
     official:'Djinn 규칙: 징크스가 걸린 조합은 지니가 그 예외를 강제한다(official/jinxes.json). '
       +'사망 관련 징크스(kind:death) 9쌍은 모두 앱이 관측하지 않는 입력에 걸려 있다 — '
-      +'릴 몬스타/리치 숙주의 보유자, 소환사로 악마가 둘이 된 밤의 "사회자 재량" 등. '
+      +'릴 몬스타의 보유자, 소환사로 악마가 둘이 된 밤의 "사회자 재량" 등. '
+      +'(리치의 숙주만은 2026-09-09 에 lleechHost 토큰으로 관측 가능해졌다 — lleech-host 항목이 그 판정을 맡는다. '
+      +'다만 lleech|slayer 징크스는 "처단자가 숙주를 지목하면 숙주가 죽는다"라 대상이 리치가 아니라 숙주이므로 여기 남는다.) '
       +'따라서 자동 판정 대상이 아니며 현재 동작을 보존한다(사회자 수동).',
     when:()=> false,
     reason:()=> '지니 징크스의 사망 예외 — 사회자 수동 판정'
@@ -13990,11 +14209,11 @@ function djAppend(paneSel, html){
 function djWrap(name, fn){
   if(typeof window==='undefined' || typeof window[name]!=='function') return;
   const prev=window[name];
-  window[name]=function(){
+  window[name]=thyStampWrap(function(){
     const r=prev.apply(this, arguments);
     try{ fn.call(this, r, arguments); }catch(e){ console.warn('[djinn] '+name, e); }
     return r;                                   /* resolveExecution 등 반환값 계약 보존 */
-  };
+  }, prev, 'djinn', name);
 }
 djWrap('renderSetup', function(){ djAppend('#pane-setup', djSetupCardHTML()); });
 djWrap('renderDay',   function(){ djAppend('#pane-day',   djDayCardHTML()); });
