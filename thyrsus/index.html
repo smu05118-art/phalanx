@@ -1735,6 +1735,172 @@ function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e)
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ══════════ 인앱 대화상자 — 네이티브 confirm()/prompt()/alert() 대체 ══════════
+   [왜] 홈화면 앱·일부 모바일 브라우저·'추가 대화상자 차단'이 켜진 크롬에서는 네이티브 대화상자가
+   즉시 false/null 을 돌려주거나 아예 지원되지 않아, 시작·종료·처형 같은 핵심 흐름이 조용히 막혔다.
+   [계약] thyDialog(opts, cb) — kind: confirm(→bool) · prompt(→string|null) · choice(→id|null) ·
+          alert(→true) · copy(→true, 텍스트 선택 박스). 한 번에 하나만 띄우고 나머지는 큐에 둔다.
+   [동기 훅] window.thyDialogSync(opts) 가 있으면 UI 없이 그 답으로 즉시 cb 를 부른다 —
+          헤드리스 시뮬레이터가 기존 confirm/prompt 스텁을 그대로 태우는 통로다(harness.js).
+   [thyAsk] 답이 동기(훅)면 next(v,true) 를 지금, UI 면 next(v,false) 를 나중에 부른다. 래핑된 함수
+          (advancePhase·executeNominee·startFromSheet·doImpKill)는 이 구분으로 '지금 이어가기' 와
+          '토큰(ack) 들고 자기 자신을 재호출' 을 가른다 — 재호출이어야 바깥 래퍼들이 결과를 관측한다.
+   [ack] thyAck* — 재호출 때 같은 질문을 다시 하지 않도록 답을 잠깐 보관한다(키는 판·페이즈에 묶는다).
+   [보안] 메시지·라벨·값은 전부 esc(). 사용자 데이터를 onclick 에 보간하지 않는다(data-td 위임). */
+const THY_DLG={q:[], open:false, cur:null};
+const THY_ACK=new Map();
+function thyAckSet(k,v){ THY_ACK.set(k, v===undefined? true : v); }
+/* 재호출(retry) 구간 표식 — 인앱 대화상자의 답이 온 뒤 호출부를 처음부터 다시 부르는 동안만 참이다.
+   원장(emitEv)이 '이건 같은 행동의 재생'임을 알아야 같은 공격을 두 번 적지 않는다.
+   표식 없이 (주체,대상) 동일성만으로 거르면 주체가 둘 다 null 인 서로 다른 살해
+   (죽은 대부 · 달의 자손처럼 actor 를 못 찾는 경로)를 같은 공격으로 오인해 원장에서 지운다. */
+let THY_RETRY=0;
+function thyRetry(fn){ THY_RETRY++; try{ return fn(); } finally { THY_RETRY--; } }
+function thyAckGet(k){ return THY_ACK.get(k); }
+function thyAckHas(k){ return THY_ACK.has(k); }
+function thyAckClear(prefix){ Array.from(THY_ACK.keys()).forEach(k=>{ if(k===prefix || k.indexOf(prefix)===0) THY_ACK.delete(k); }); }
+function thyDialogNorm(o, v){
+  if(o.kind==='confirm') return !!v;
+  if(o.kind==='prompt') return (v===null||v===undefined)? null : String(v);
+  if(o.kind==='choice'){ if(v===null||v===undefined) return null; const c=(o.choices||[]).find(x=>x.id===v); return c? c.id : null; }
+  return true;
+}
+function thyDialog(opts, cb){
+  const o=Object.assign({kind:'confirm', message:''}, opts||{});
+  const done=(typeof cb==='function')? cb : function(){};
+  if(typeof window!=='undefined' && typeof window.thyDialogSync==='function'){
+    let v=null; try{ v=window.thyDialogSync(o); }catch(e){ v=null; }
+    done(thyDialogNorm(o, v)); return;
+  }
+  THY_DLG.q.push({o, done});
+  if(!THY_DLG.open) thyDialogNext();
+}
+/* 답이 동기면 next(v,true) 를 지금 부르고 true 를 돌려준다. UI 면 false 를 돌려주고 나중에 next(v,false). */
+function thyAsk(opts, next){
+  let sync=true, now=false;
+  thyDialog(opts, v=>{ const s=sync; if(s) now=true; next(v, s); });
+  sync=false; return now;
+}
+function thyConfirm(message, cb, o){ thyDialog(Object.assign({kind:'confirm', message}, o||{}), cb); }
+function thyPrompt(message, value, cb, o){ thyDialog(Object.assign({kind:'prompt', message, value:(value==null?'':String(value))}, o||{}), cb); }
+function thyChoose(message, choices, cb, o){ thyDialog(Object.assign({kind:'choice', message, choices}, o||{}), cb); }
+function thyAlert(message, cb){ thyDialog({kind:'alert', message}, cb); }
+function thyCopyBox(text, title){ thyDialog({kind:'copy', message:title||'클립보드 복사가 막혀 있습니다 — 아래 내용을 길게 눌러 복사하세요.', value:String(text==null?'':text)}, function(){}); }
+/* 플레이어 선택지 — 이름을 라벨로, 캐릭터·생사를 부제로. 시뮬레이터의 prompt 스텁은 라벨(이름)로도 맞춘다 */
+function thyPlayerChoices(list){
+  return (list||[]).map(q=>({id:q.id, label:String(q.name||'?'), sub:(q.alive? '' : '사망 · ')+(typeof charName==='function'? charName(q) : (q.charId||''))}));
+}
+/* 취함 출처 정책 — addStatusUI·togglePStatus 가 같은 표를 쓴다 */
+const THY_DRUNK_CHOICES=[
+  {id:'dusk',  label:'다음 황혼까지',      sub:'선원 · 여관 주인 · 건달 · 음유시인'},
+  {id:'court', label:'궁정대신 (3밤 + 3낮)', sub:'궁정대신의 취함'},
+  {id:'perm',  label:'영구',              sub:'주정뱅이 · 사랑에 빠진 사람 등'},
+];
+function thyDrunkPolicy(id){
+  if(id==='court') return {exp:drunkExpiry('court'), src:'궁정대신(3밤+3낮)'};
+  if(id==='perm')  return {exp:null, src:'영구'};
+  return {exp:drunkExpiry('dusk'), src:'다음 황혼까지'};
+}
+function thyDialogEl(){
+  let el=document.getElementById('thydlg');
+  if(el) return el;
+  el=document.createElement('div'); el.id='thydlg'; el.hidden=true;
+  document.body.appendChild(el);
+  el.addEventListener('click', e=>{
+    const b=(e.target && e.target.closest)? e.target.closest('[data-td]') : null;
+    if(b){ e.stopPropagation(); thyDialogAnswer(b.getAttribute('data-td')); return; }
+    if(e.target===el) thyDialogAnswer('cancel');          // 바탕 탭 = 취소
+  });
+  el.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){ e.preventDefault(); thyDialogAnswer('cancel'); }
+    else if(e.key==='Enter'){
+      const tg=e.target;
+      if(tg && tg.tagName==='TEXTAREA') return;             // 여러 줄 입력은 줄바꿈
+      /* 포커스된 버튼이 있으면 '그 버튼의' 동작으로 답한다. 무조건 'ok' 로 보내면 [취소]에 포커스를 두고
+         Enter 를 눌러도 확인으로 처리돼 판 무효·전체 초기화 같은 되돌릴 수 없는 동작이 실행된다.
+         네이티브 버튼 활성화에 맡기지 않는 이유: 자동화·보조기술이 넣는 키 이벤트는 기본 동작을
+         일으키지 않아 Enter 가 통째로 먹히는 환경이 있다. 여기서 직접 처리하면 어디서나 같게 동작한다. */
+      const btn=(tg && tg.closest)? tg.closest('[data-td]') : null;
+      if(btn){ e.preventDefault(); thyDialogAnswer(btn.getAttribute('data-td')); return; }
+      const cur=THY_DLG.cur && THY_DLG.cur.o;
+      if(cur && cur.kind==='choice') return;                // 선택지는 골라야 확정된다
+      e.preventDefault(); thyDialogAnswer('ok');
+    }
+  });
+  return el;
+}
+function thyDialogNext(){
+  const item=THY_DLG.q.shift();
+  if(!item){ THY_DLG.open=false; THY_DLG.cur=null; const el=document.getElementById('thydlg'); if(el) el.hidden=true; return; }
+  THY_DLG.open=true; THY_DLG.cur=item;
+  const o=item.o, el=thyDialogEl();
+  const msg=esc(o.message).replace(/\n/g,'<br>');
+  let body='';
+  if(o.kind==='prompt') body= o.multiline
+      ? `<textarea id="thydlg-in" rows="6" placeholder="${esc(o.placeholder||'')}">${esc(o.value||'')}</textarea>`
+      : `<input id="thydlg-in" type="${o.inputType==='number'?'number':'text'}" value="${esc(o.value||'')}" placeholder="${esc(o.placeholder||'')}"${o.inputType==='number'?' inputmode="numeric"':''}${o.maxlength?` maxlength="${parseInt(o.maxlength,10)||120}"`:''}>`;
+  else if(o.kind==='copy') body=`<textarea id="thydlg-in" rows="8" readonly>${esc(o.value||'')}</textarea>`;
+  else if(o.kind==='choice') body=`<div class="tdchoices">${(o.choices||[]).map(c=>`<button type="button" class="tdchoice ${esc(c.cls||'')}" data-td="c:${esc(c.id)}"><b>${esc(c.label)}</b>${c.sub?`<small>${esc(c.sub)}</small>`:''}</button>`).join('')}</div>`;
+  const okLabel=esc(o.ok || ((o.kind==='alert'||o.kind==='copy')? '닫기' : '확인'));
+  const cancelLabel=esc(o.cancel || '취소');
+  const acts = (o.kind==='choice')
+      ? (o.noCancel? '' : `<button type="button" class="ghost" data-td="cancel">${cancelLabel}</button>`)
+      : (o.kind==='alert'||o.kind==='copy')
+        ? `<button type="button" class="gold" data-td="ok">${okLabel}</button>`
+        : `<button type="button" class="${o.danger?'danger':'gold'}" data-td="ok">${okLabel}</button><button type="button" data-td="cancel">${cancelLabel}</button>`;
+  el.innerHTML=`<div class="tdcard" role="dialog" aria-modal="true">
+    ${o.title?`<div class="tdtitle">${esc(o.title)}</div>`:''}
+    <div class="tdmsg">${msg}</div>${body}
+    <div class="tdacts">${acts}</div></div>`;
+  el.hidden=false;
+  try{
+    const inp=el.querySelector('#thydlg-in');
+    if(inp){ inp.focus(); if(inp.select && (o.kind==='copy' || (o.kind==='prompt' && !o.multiline))) inp.select(); }
+    else {
+      /* 되돌릴 수 없는 동작(danger)은 기본 포커스를 [취소]에 둔다 — Enter 오타 한 번에 실행되지 않게 */
+      const f=(o.danger? el.querySelector('[data-td="cancel"]') : null)
+           || el.querySelector('[data-td="ok"]') || el.querySelector('[data-td]');
+      if(f) f.focus();
+    }
+  }catch(e){}
+}
+function thyDialogAnswer(act){
+  const item=THY_DLG.cur; if(!item) return;
+  const o=item.o; let v=null;
+  if(o.kind==='choice'){ if(act==='ok') return; v=(act && act.indexOf('c:')===0)? act.slice(2) : null; }
+  else if(act==='ok'){
+    if(o.kind==='prompt'){ const inp=document.getElementById('thydlg-in'); v=inp? inp.value : ''; }
+    else v=true;
+  } else v=(o.kind==='confirm')? false : (o.kind==='prompt'? null : true);
+  if(o.kind==='copy') v=true;
+  THY_DLG.cur=null; THY_DLG.open=false;
+  const el=document.getElementById('thydlg'); if(el){ el.hidden=true; el.innerHTML=''; }
+  try{ item.done(thyDialogNorm(o, v)); }catch(err){ console.warn('[dialog] cb', err); }
+  if(THY_DLG.q.length && !THY_DLG.open) thyDialogNext();
+}
+/* 처형 전 사전 질문의 답(선한 쌍둥이·성자·고블린·공포 조장가) — executeNominee 래퍼가 싣고,
+   처형 경로(원본·resolveExecution 래퍼·evalWinEvent)가 읽는다. 사전 질문 없이 들어온 경로는
+   동기 훅이 있을 때만 그 자리에서 묻고, UI 면 '아니오'로 본다(뒤늦게 뜨는 창은 오판을 부른다). */
+let THY_EXEC_ANS=null;
+/* 종료 뒤 진영이 바뀐 플레이어(정치인)의 전적 스냅샷 보정 — 인앱 확인은 비동기라 confirmWin 래퍼가
+   레코드를 먼저 적립한다. 이미 적립된 이 판의 레코드에서 그 좌석의 alignment 만 고치고 프로필을 다시 만든다. */
+function thyPatchBankedAlignment(p){
+  if(!p || !Array.isArray(S.history)) return;
+  const h=S.history.find(x=>x && x.gid && x.gid===S.gameId);
+  if(!h || !Array.isArray(h.players)) return;
+  const r=h.players.find(x=>x && x.pid===p.id);
+  if(r){ r.alignment=isEvil(p)? 'evil' : 'good'; }
+  try{ if(typeof profileRebuild==='function') profileRebuild(); }catch(e){}
+}
+function thyExecAnswer(key, p, message, o){
+  const A=THY_EXEC_ANS;
+  if(A && p && A.pid===p.id && A.answers && Object.prototype.hasOwnProperty.call(A.answers, key)) return !!A.answers[key];
+  if(typeof window!=='undefined' && typeof window.thyDialogSync==='function'){
+    let v=false; thyDialog(Object.assign({kind:'confirm', message}, o||{}), ok=>{ v=!!ok; }); return v;
+  }
+  return false;
+}
+
 const uid = () => Math.random().toString(36).slice(2,9);
 
 function allChars(){ return CHARACTERS.concat(S.customs||[]); }
@@ -2084,6 +2250,12 @@ function resolveDeath(t, ctx, stages){
 }
 function recordDeathTrace(t, r, stage){
   if(!Array.isArray(S.deathTraces)) S.deathTraces=[];
+  /* 재호출(시장 대체·별 넘기기)은 같은 판정을 한 번 더 밟는다 — 직전 항목과 완전히 같으면 적지 않는다.
+     연속된 동일 판정은 사회자에게 새 정보가 없고, 20건 상한만 갉아먹는다. */
+  const _prev=S.deathTraces[S.deathTraces.length-1];
+  if(_prev && _prev.stage===stage && _prev.pid===(t?t.id:null) && _prev.at===phaseName()
+     && _prev.died===r.died && _prev.blockedBy===r.blockedBy && _prev.reason===r.reason
+     && _prev.cause===String(r.ctx.cause||'').slice(0,80)) return;
   S.traceSeq=(S.traceSeq|0)+1;
   S.deathTraces.push({seq:S.traceSeq, at:phaseName(), stage,
     pid:t?t.id:null, name:t?t.name:'?', charId:t?t.charId:null,
@@ -2310,13 +2482,15 @@ function advancePhase(){
        확인 릴레이 경고보다 앞에 둔다 — 기기를 돌리기 전에 알아야 하는 셋업 수준의 문제다. */
     {
       const un=unimplementedInPlay();
-      if(un.length){
-        let ok=true;
-        try{ ok=confirm('미구현된 캐릭터 '+un.length+'명이 있습니다:\n'
-          +un.map(x=>(S.players.indexOf(x.p)+1)+'번 '+x.p.name+' — '+x.c.ko+' ('+x.why+')').join('\n')
-          +'\n\n해당 캐릭터는 사회자가 수동으로 진행해야 합니다. 그래도 진행하시겠습니까?'); }
-        catch(e){ ok=true; toast('미구현 캐릭터 '+un.length+'명 포함 — '+un.map(x=>x.c.ko).join(', ')+' (사회자 수동 진행)','warn'); }
-        if(!ok) return;
+      /* 좌석·캐릭터 구성을 키에 넣는다 — 뒤 질문을 취소하고 배정을 바꿔 다시 시작하면 새로 물어야 한다 */
+      const ackU='advance:unimpl:'+S.gameId+':'+un.map(x=>x.p.id+'/'+x.c.id).join(',');
+      if(un.length && !thyAckHas(ackU)){
+        const now=thyAsk({kind:'confirm', title:'미구현 캐릭터', danger:true, ok:'그래도 진행', cancel:'돌아가기',
+            message:'미구현된 캐릭터 '+un.length+'명이 있습니다:\n'
+              +un.map(x=>(S.players.indexOf(x.p)+1)+'번 '+x.p.name+' — '+x.c.ko+' ('+x.why+')').join('\n')
+              +'\n\n해당 캐릭터는 사회자가 수동으로 진행해야 합니다. 그래도 진행하시겠습니까?'},
+          (ok,syncNow)=>{ if(!ok){ thyAckClear('advance:'); return; } thyAckSet(ackU); if(!syncNow) advancePhase(); });
+        if(!now || !thyAckHas(ackU)) return;          // UI 답 대기(답이 오면 재호출) · 동기 취소
       }
       if(un.length) log('⚠ 미구현 캐릭터 '+un.length+'명 포함 시작: '+un.map(x=>x.c.ko).join(', '));
     }
@@ -2324,11 +2498,17 @@ function advancePhase(){
        revealCharId() 가 최종 캐릭터를 가리킨다. 진행 자체는 사회자 재량으로 허용한다.
        (릴레이 블록은 이 함수보다 뒤 script 라 로드 실패 시 조용히 건너뛴다) */
     if(typeof revealPending==='function'){
-      const _left=revealPending();
-      if(_left.length && !confirm('아직 캐릭터를 확인하지 않은 좌석이 '+_left.length+'곳 있습니다:\n'
-          +_left.map(p=>(S.players.indexOf(p)+1)+'번 '+p.name).join(', ')
-          +'\n\n그래도 첫 번째 밤을 시작할까요?')) return;
+      const _left=revealPending(), ackR='advance:reveal:'+S.gameId+':'+_left.map(x=>x.id).join(',');
+      if(_left.length && !thyAckHas(ackR)){
+        const now=thyAsk({kind:'confirm', title:'캐릭터 확인 미완', ok:'그래도 시작', cancel:'돌아가기',
+            message:'아직 캐릭터를 확인하지 않은 좌석이 '+_left.length+'곳 있습니다:\n'
+              +_left.map(p=>(S.players.indexOf(p)+1)+'번 '+p.name).join(', ')
+              +'\n\n그래도 첫 번째 밤을 시작할까요?'},
+          (ok,syncNow)=>{ if(!ok){ thyAckClear('advance:'); return; } thyAckSet(ackR); if(!syncNow) advancePhase(); });
+        if(!now || !thyAckHas(ackR)) return;
+      }
     }
+    thyAckClear('advance:');
     S.phase={kind:'night', n:1};
     /* 다른 두 전환 분기(밤→낮·낮→밤)와 동일하게 여기서도 한 번 쓸어낸다. 이 분기만 빠져 있어
        {night,1} 만료를 가진 토큰은 만나야 할 페이즈를 영영 만나지 못하고 판이 끝날 때까지
@@ -2598,8 +2778,8 @@ function finalizeEndedGame(){
   return true;
 }
 function resetAllKeepAssets(){
-  if(!confirm('전체 게임 상태를 초기화할까요?\n(참가자 등록부 · 판 전적 · 내 캐릭터 · 내 스크립트 · 테마는 유지됩니다)')) return;
-  resetGameState('keep');
+  thyConfirm('전체 게임 상태를 초기화할까요?\n(참가자 등록부 · 판 전적 · 내 캐릭터 · 내 스크립트 · 테마는 유지됩니다)',
+    ok=>{ if(ok) resetGameState('keep'); }, {title:'전체 초기화', ok:'초기화', danger:true});
 }
 /* ── 판 무효 ──
    "이 판은 없던 일로 한다" — 중단·오심·연습판. 초기화가 하는 일 전부에 더해
@@ -2607,13 +2787,15 @@ function resetAllKeepAssets(){
    남지 않게 한다. 등록부·다른 판의 전적·커스텀·테마는 그대로다. */
 function voidCurrentGame(){
   const banked=(Array.isArray(S.history)? S.history : []).some(h=>h && h.gid && h.gid===S.gameId);
-  if(!confirm('이 판을 무효 처리할까요?\n\n· 진행 중인 판의 그리모어 · 게임 기록 · 원장이 모두 사라집니다'
+  thyConfirm('이 판을 무효 처리할까요?\n\n· 진행 중인 판의 그리모어 · 게임 기록 · 원장이 모두 사라집니다'
     +(banked? '\n· 이미 적립된 이 판의 전적도 삭제됩니다 (전광판 · 판 기록에서 사라집니다)' : '')
     +'\n· 참가자 등록부 · 다른 판의 전적 · 내 캐릭터 · 내 스크립트 · 테마는 유지됩니다'
-    +'\n\n되돌릴 수 없습니다.')) return;
-  try{ statsOpenHist.clear(); }catch(e){}   // 인덱스 기반 펼침 상태 — 레코드가 빠지면 어긋난다
-  resetGameState('void');
-  toast(banked? '판을 무효 처리했습니다 — 전적에서도 제거했습니다.' : '판을 무효 처리했습니다.','ok');
+    +'\n\n되돌릴 수 없습니다.', ok=>{
+    if(!ok) return;
+    try{ statsOpenHist.clear(); }catch(e){}   // 인덱스 기반 펼침 상태 — 레코드가 빠지면 어긋난다
+    resetGameState('void');
+    toast(banked? '판을 무효 처리했습니다 — 전적에서도 제거했습니다.' : '판을 무효 처리했습니다.','ok');
+  }, {title:'판 무효', ok:'무효 처리', danger:true});
 }
 function setupIssues(){
   const n=S.players.length;
@@ -2815,10 +2997,13 @@ function rosterDel(rid){
   /* 등록부가 '참가 자격'의 단일 출처가 된 뒤로 착석 중인 사람을 지우면 그 좌석이
      미등록 상태로 남는다(게임은 계속 굴러가지만 전적이 사람에 안 붙는다) — 먼저 알린다. */
   const _r=rosterOf(rid);
-  if(_r && rosterSeatOf(rid) && !confirm(_r.name+' 은(는) 지금 좌석에 앉아 있습니다.\n등록을 삭제하면 그 좌석은 미등록 상태가 되고 이후 전적이 사람 단위로 누적되지 않습니다.\n계속할까요?')) return;
-  S.roster=rosterList().filter(r=>r.id!==rid);
-  S.players.forEach(p=>{ if(p.rosterId===rid) p.rosterId=null; });   // 진행 중 게임은 유지, 연결만 끊는다
-  save(); renderAll();
+  const _go=()=>{
+    S.roster=rosterList().filter(r=>r.id!==rid);
+    S.players.forEach(p=>{ if(p.rosterId===rid) p.rosterId=null; });   // 진행 중 게임은 유지, 연결만 끊는다
+    save(); renderAll();
+  };
+  if(_r && rosterSeatOf(rid)){ thyConfirm(_r.name+' 은(는) 지금 좌석에 앉아 있습니다.\n등록을 삭제하면 그 좌석은 미등록 상태가 되고 이후 전적이 사람 단위로 누적되지 않습니다.\n계속할까요?', ok=>{ if(ok) _go(); }, {title:'등록 삭제', ok:'삭제', danger:true}); return; }
+  _go();
 }
 /* 등록부 칩 토글 — 참가자 목록에 넣거나 뺀다. 빈 좌석이 있으면 새로 밀지 않고 그 좌석을 채운다 */
 function rosterToggle(rid){
@@ -2826,9 +3011,9 @@ function rosterToggle(rid){
   const seat=rosterSeatOf(rid);
   if(seat){
     /* 진행 중 게임에서는 칩 오탭 한 번에 살아있는 좌석이 통째로 사라진다 — 캐릭터가 배정됐으면 확인받는다 */
-    if(S.phase.kind!=='setup' && seat.charId &&
-       !confirm(r.name+' 좌석을 게임에서 빼시겠습니까? 캐릭터·상태·기록이 함께 사라집니다.')) return;
-    S.players=S.players.filter(p=>p.id!==seat.id); save(); renderAll(); return;
+    const _drop=()=>{ S.players=S.players.filter(p=>p.id!==seat.id); save(); renderAll(); };
+    if(S.phase.kind!=='setup' && seat.charId){ thyConfirm(r.name+' 좌석을 게임에서 빼시겠습니까? 캐릭터·상태·기록이 함께 사라집니다.', ok=>{ if(ok) _drop(); }, {title:'좌석 제거', ok:'빼기', danger:true}); return; }
+    _drop(); return;
   }
   const empty=S.players.find(p=>!String(p.name||'').trim() && !p.charId && !p.rosterId);
   if(empty){ empty.name=r.name; empty.rosterId=rid; save(); renderAll(); return; }
@@ -2870,9 +3055,9 @@ function seatEnroll(pid){
 function seatAssign(pid, rid){
   const p=playerOf(pid); if(!p) return;
   if(!rid){
-    if(S.phase.kind!=='setup' && p.charId &&
-       !confirm(p.name+' 좌석의 참가자를 비우시겠습니까? 캐릭터는 남지만 이름·등록 연결이 사라집니다.')){ renderAll(); return; }
-    p.rosterId=null; p.name=''; save(); renderAll(); return;
+    const _clear=()=>{ p.rosterId=null; p.name=''; save(); renderAll(); };
+    if(S.phase.kind!=='setup' && p.charId){ thyConfirm(p.name+' 좌석의 참가자를 비우시겠습니까? 캐릭터는 남지만 이름·등록 연결이 사라집니다.', ok=>{ if(ok) _clear(); else renderAll(); }, {title:'좌석 비우기', ok:'비우기', danger:true}); return; }
+    _clear(); return;
   }
   const r=rosterOf(rid);
   if(!r){ toast('등록부에서 사라진 참가자입니다.','warn'); renderAll(); return; }
@@ -3007,7 +3192,7 @@ function setChar(pid,cid){ const p=playerOf(pid); p.charId=cid;
    이웃 판정(요리사·초공감자·찻집 여인 등)이 좌석 순서에 의존하므로 배정 전에 쓰는 게 안전하다. */
 function shuffleSeats(){
   if(S.players.length<2) return;
-  if(S.phase.kind!=='setup' && !confirm('게임이 이미 진행 중입니다. 좌석을 섞으면 이웃 기반 판정(요리사·초공감자·찻집 여인 등)이 모두 바뀝니다. 계속할까요?')) return;
+  const _go=()=>{
   for(let i=S.players.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
     [S.players[i],S.players[j]]=[S.players[j],S.players[i]];
@@ -3015,16 +3200,21 @@ function shuffleSeats(){
   log('🔀 자리 섞기 — 좌석 순서 무작위 재배치');
   toast('좌석을 섞었습니다. 이웃 기반 판정이 바뀌었으니 그리모어를 확인하세요.','ok');
   save(); renderAll();
+  };
+  if(S.phase.kind!=='setup'){ thyConfirm('게임이 이미 진행 중입니다. 좌석을 섞으면 이웃 기반 판정(요리사·초공감자·찻집 여인 등)이 모두 바뀝니다. 계속할까요?', ok=>{ if(ok) _go(); }, {title:'자리 섞기', ok:'섞기', danger:true}); return; }
+  _go();
 }
 /* 캐릭터 배정만 전부 지운다 — 플레이어·좌석은 유지 */
 function clearAssign(){
   if(!S.players.some(p=>p.charId)){ toast('배정된 캐릭터가 없습니다.','warn'); return; }
-  if(!confirm('모든 플레이어의 캐릭터 배정을 지웁니다. 플레이어와 좌석은 유지됩니다. 계속할까요?')) return;
+  thyConfirm('모든 플레이어의 캐릭터 배정을 지웁니다. 플레이어와 좌석은 유지됩니다. 계속할까요?', ok=>{
+    if(!ok) return;
   S.players.forEach(p=>{ p.charId=''; p.alignment=null;
     p.statuses=(p.statuses||[]).filter(x=>x.key!=='drunkS'&&x.key!=='herring'); });
   S.drunkMaskChar=null; S.redHerringId=null;
   log('배정 전체 비우기');
   save(); renderAll();
+  }, {title:'배정 비우기', ok:'비우기', danger:true});
 }
 function setHerring(pid){ S.redHerringId=pid;
   S.players.forEach(p=>p.statuses=(p.statuses||[]).filter(s=>s.key!=='herring'));
@@ -3143,7 +3333,15 @@ function renderSheet(){
 }
 function startFromSheet(ed){
   if(S.phase.kind!=='setup' && S.edition!==ed){
-    if(!confirm('진행 중인 게임이 있습니다. 이 스크립트로 새 게임을 준비하면 배정이 초기화될 수 있습니다. 계속할까요?')) return;
+    /* 래퍼 2개(최근 스크립트 기록·내 스크립트 연결 해제)가 반환 뒤 결과를 관측한다 — UI 답이 오면 재호출 */
+    const akey='sheet:'+ed;
+    if(!thyAckHas(akey)){
+      const now=thyAsk({kind:'confirm', title:'새 게임 준비', ok:'계속', danger:true,
+          message:'진행 중인 게임이 있습니다. 이 스크립트로 새 게임을 준비하면 배정이 초기화될 수 있습니다. 계속할까요?'},
+        (ok,syncNow)=>{ if(!ok) return; thyAckSet(akey); if(!syncNow) startFromSheet(ed); });
+      if(!now || !thyAckHas(akey)) return;
+    }
+    thyAckClear('sheet:');
   }
   if(S.edition!==ed){
     S.edition=ed;
@@ -3156,7 +3354,7 @@ function startFromSheet(ed){
 function downloadScriptJSON(ed){
   const data=JSON.stringify({name:SCRIPTS_META.find(s=>s.id===ed).ko, author:'Thyrsus',
     characters:allChars().filter(c=>(c.edition||'tb')===ed||c.custom).map(c=>c.id)}, null, 1);
-  navigator.clipboard?.writeText(data).then(()=>toast('스크립트 JSON을 클립보드에 복사했습니다.','ok'),()=>prompt('복사하세요:',data));
+  navigator.clipboard?.writeText(data).then(()=>toast('스크립트 JSON을 클립보드에 복사했습니다.','ok'),()=>thyCopyBox(data));
 }
 
 /* ══════════════════ 그리모어 탭 ══════════════════ */
@@ -3230,7 +3428,7 @@ function playerCardHTML(p,i){
     </div>`;
 }
 function confirmKill(pid){ const p=playerOf(pid); if(!p) return;
-  if(confirm(`${p.name} 사망 처리?`)){ killPlayer(p,'사회자 수동 처리'); save(); renderAll(); } }
+  thyConfirm(`${p.name} 사망 처리?`, ok=>{ if(ok){ killPlayer(p,'사회자 수동 처리'); save(); renderAll(); } }, {title:'사망 처리', ok:'사망', danger:true}); }
 /* 소생은 사회자의 '되돌리기'다 — 공식에 일반 부활 능력은 없고 이 버튼은 오판 정정용이다.
    사망에 딸려 소비된 상태(사망 투표 토큰·사망 시각)를 함께 되돌리지 않으면, 다시 죽었을 때
    handEligible 이 p.deadVote===false 로 걸러 정당한 1회 사망 투표를 잃고, 남아 있는 diedAt 이
@@ -3251,17 +3449,17 @@ function addStatusUI(pid,key){
   if(key==='protect'){ exp = ph.kind==='night'? {kind:'day', n:ph.n} : {kind:'day', n:ph.n+1}; }  // 낮 부여분은 다음 낮 시작에 해제(그 사이 밤 동안 유효)
   if(key==='master'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='master')); exp={kind:'night', n:nightExp}; }
   if(key==='drunkS'){                                   // 취함은 출처별 만료가 다르다 — 정책 선택
-    const c=prompt('취함 출처 선택 — 1: 선원/여관 주인/건달/음유시인(다음 황혼까지) · 2: 궁정대신(3밤+3낮) · 3: 영구(주정뱅이·사랑꾼·뱀 조련사)','1');
-    if(c===null) return;
-    if(c.trim()==='2'){ exp=drunkExpiry('court'); src='궁정대신(3밤+3낮)'; }
-    else if(c.trim()==='3'){ exp=null; src='영구'; }
-    else { exp=drunkExpiry('dusk'); src='다음 황혼까지'; }
+    thyChoose('취함 출처를 고르세요 — 출처마다 만료 시점이 다릅니다.', THY_DRUNK_CHOICES, id=>{
+      if(id===null) return;
+      const d=thyDrunkPolicy(id); addStatus(p,key,d.src,d.exp); save(); renderAll();
+    }, {title:'취함 출처', syncPromptMap:{'1':'dusk','2':'court','3':'perm'}});
+    return;
   }
   addStatus(p,key,src,exp); save(); renderAll();
 }
 function exportGame(){
   const blob=JSON.stringify(S,null,1);
-  navigator.clipboard?.writeText(blob).then(()=>toast('게임 상태 JSON을 클립보드에 복사했습니다.','ok'),()=>prompt('복사하세요:',blob));
+  navigator.clipboard?.writeText(blob).then(()=>toast('게임 상태 JSON을 클립보드에 복사했습니다.','ok'),()=>thyCopyBox(blob));
 }
 </script>
 
@@ -3804,8 +4002,17 @@ function doImpKill(pid){
     const minions=S.players.filter(q=>q.alive && charOf(q.charId)?.type==='minion');
     if(minions.length){
       const sw=minions.find(m=>m.charId==='scarletwoman');
-      const pick=prompt(`임프가 될 하수인 이름을 입력하세요 (생존 하수인: ${minions.map(m=>m.name+'('+charName(m)+')').join(', ')})${sw?'\n관례: 탕녀 우선':''}`, (sw||minions[0]).name);
-      const np=minions.find(m=>m.name===pick)||sw||minions[0];
+      /* 래퍼(SABER)가 호출 전후의 임프 보유자 차이로 별 넘기기를 관측한다 — UI 답이 오면 재호출 */
+      const dflt=(sw||minions[0]).id, akey='star:'+t.id+':'+S.phase.n;
+      if(!thyAckHas(akey)){
+        const order=sw? [sw].concat(minions.filter(x=>x!==sw)) : minions;
+        const now=thyAsk({kind:'choice', title:'★ 별 넘기기', syncFallback:dflt,
+            message:'임프가 될 하수인을 고르세요.'+(sw? '\n관례: 탕녀가 있으면 탕녀가 됩니다.' : ''),
+            choices:order.map(x=>({id:x.id, label:x.name, sub:charName(x)+(x===sw? ' · 관례' : '')}))},
+          (id,syncNow)=>{ thyAckSet(akey, id||dflt); if(!syncNow) thyRetry(()=>doImpKill(pid)); });
+        if(!now) return;
+      }
+      const np=playerOf(thyAckGet(akey))||sw||minions[0]; thyAckClear(akey);
       np.charId='imp'; log(`★ ${np.name}이(가) 새 임프가 됨 — 깨워서 임프 토큰을 보여주세요`);
       toast(`${np.name}이(가) 새 임프입니다. 지금 깨워 임프 토큰을 보여주세요.`,'warn');
     }
@@ -3816,7 +4023,7 @@ function doImpKill(pid){
   const dr=resolveDeath(t,{sourceType:'demon', sourceCharId:'imp', cause:'임프의 공격'},['block','substitute']);
   const blk=dr.reason;
   if(blk){ toast(`${t.name}: ${blk} — 사망 없음. 임프에게 알리지 마세요.`,'ok'); log(`임프 공격 → ${t.name} 무효(${blk})`); save(); renderAll(); return; }
-  if(offerMayorSubstitute(t, dr, '임프')){ save(); renderAll(); return; }
+  if(offerMayorSubstitute(t, dr, '임프', undefined, ()=>doImpKill(pid))){ save(); renderAll(); return; }
   resolveNightDeath(t, '임프의 공격');
   save(); renderAll();
 }
@@ -3830,13 +4037,34 @@ function doImpKill(pid){
    빠지므로 대체의 대체(순환)가 구조적으로 불가능하다.
    반환 true = 이 창구가 결말까지 처리했으니 호출부는 원래 대상을 죽이지 말 것
    (대체 대상이 보호돼 아무도 죽지 않는 경우도 포함한다 — 시장은 어느 쪽이든 살아남는다). */
-function offerMayorSubstitute(t, dr, cause, opts){
+function offerMayorSubstitute(t, dr, cause, opts, retry){
   if(!dr || dr.blockedBy!=='mayor-substitute') return false;
-  if(!confirm(`${t.name}은(는) 시장입니다. [확인] = 다른 플레이어가 대신 사망(재량), [취소] = 시장이 그대로 사망`)) return false;
-  const alt=prompt(`대신 죽을 플레이어 이름 — 죽은 플레이어·군인·수도사가 보호한 플레이어를 고르면 공식 재정상 오늘 밤 아무도 죽지 않습니다.\n전체: ${S.players.map(q=>q.name+(q.alive?'':' 💀')).join(', ')}`);
-  const ap=S.players.find(q=>q.name===alt);
+  /* 인앱 대화상자는 비동기다 — 답이 오기 전에는 '이 창구가 처리 중'(true)으로 돌려 시장을 죽이지 않고,
+     답이 오면 retry() 로 호출부를 다시 불러 같은 판정을 동기적으로 다시 밟는다(그때는 아래 ack 가 답을 준다).
+     retry 를 안 넘긴 옛 호출부는 동기 훅이 있을 때만 대화가 성립하고, 없으면 시장이 그대로 죽는다. */
+  const akey='mayor:'+t.id+':'+S.phase.kind+S.phase.n;
+  let decision=thyAckGet(akey);
+  if(decision===undefined){
+    let syncAns;
+    const decide=(v, syncNow)=>{ thyAckSet(akey, v); if(syncNow) syncAns=v; else if(typeof retry==='function') thyRetry(retry); };
+    const cands=S.players.filter(q=>q!==t).map(q=>({id:q.id, label:q.name,
+      sub:(q.alive? charName(q) : '사망')+(q.alive? '' : ' · 고르면 오늘 밤 아무도 죽지 않음(공식)')}));
+    thyAsk({kind:'confirm', title:'시장', ok:'다른 플레이어가 대신 사망', cancel:'시장이 그대로 사망',
+        message:`${t.name}은(는) 시장입니다.\n다른 플레이어가 대신 죽게 할까요? (재량)`},
+      (ok,s1)=>{
+        if(!ok){ decide('die', s1); return; }
+        thyAsk({kind:'choice', title:'시장 대체 사망', choices:cands,
+            message:'대신 죽을 플레이어 — 죽은 플레이어·군인·수도사가 보호한 플레이어를 고르면 공식 재정상 오늘 밤 아무도 죽지 않습니다.'},
+          (id,s2)=>{ decide(id||'die', s2); });
+      });
+    if(syncAns===undefined) return true;         // UI 답 대기 — 시장은 아직 죽지 않는다
+    decision=syncAns;
+  }
+  thyAckClear(akey);
+  if(decision==='die'){ if(typeof retry!=='function' && typeof window!=='undefined' && typeof window.thyDialogSync!=='function') return false; return false; }
+  const ap=playerOf(decision);
   if(!ap){ toast('대상을 찾지 못해 시장 사망으로 처리합니다.','warn'); return false; }
-  /* 시장 본인을 적으면 '대신 죽는다'가 성립하지 않는다 — 재진입 없이 원래 경로(시장 사망)로 돌린다. */
+  /* 시장 본인을 고르면 '대신 죽는다'가 성립하지 않는다 — 재진입 없이 원래 경로(시장 사망)로 돌린다. */
   if(ap===t){ toast('시장 본인은 대체 대상이 될 수 없습니다 — 시장이 그대로 사망합니다.','warn'); return false; }
   /* 원래 악마 컨텍스트를 그대로 물려준다 — 군인 면역은 sourceType==='demon' 일 때만 성립하므로
      출처를 잃으면 판정이 조용히 달라진다. */
@@ -3891,28 +4119,35 @@ function sweepMoonchildChoice(){
                           && !(S.moonchildChoice && S.moonchildChoice.sourcePid===q.id));
   if(p) askMoonchildChoice(p);
 }
-function askMoonchildChoice(p){
+function askMoonchildChoice(p, onDone){
   if(!p || p.charId!=='moonchild') return false;
   if(S.moonchildChoice && S.moonchildChoice.sourcePid===p.id) return false;
   const cands=alivePlayers().filter(q=>q!==p);
   if(!cands.length){ log('🌙 달의 자손 공개 지목 — 지목할 생존자가 없어 건너뜁니다'); return false; }
-  const raw=prompt(`🌙 ${p.name}(달의 자손)이 공개로 지목한 플레이어 이름을 적으세요 — 지목 시점의 진영이 그대로 굳습니다.\n생존자: ${cands.map(q=>q.name).join(', ')}\n(아직 지목하지 않았다면 [취소] — 밤 단계에서 다시 받을 수 있습니다)`);
-  if(raw===null) return false;
-  const t=cands.find(q=>q.name===String(raw).trim());
-  if(!t){ toast('그 이름의 생존 플레이어가 없어 공개 지목을 기록하지 못했습니다 — 밤 단계에서 다시 입력할 수 있습니다.','warn'); return false; }
-  const evil=isEvil(t);
-  S.moonchildChoice={sourcePid:p.id, targetPid:t.id, alignmentAtChoice:(evil?'evil':'good'),
-                     day:S.phase.n, resolved:false};
-  log(`🌙 달의 자손 공개 지목 — ${p.name} → ${t.name} (지목 시점 진영: ${evil?'악':'선'})`);
-  toast(`🌙 공개 지목 기록: ${t.name} (지목 시점 ${evil?'악':'선'}). 판정은 다음 밤의 달의 자손 단계에서 하며, 그때는 달의 자손 본인의 중독·취함만 봅니다.`,'warn');
-  save(); renderAll();
-  return true;
+  const commit=(t)=>{
+    const evil=isEvil(t);
+    S.moonchildChoice={sourcePid:p.id, targetPid:t.id, alignmentAtChoice:(evil?'evil':'good'),
+                       day:S.phase.n, resolved:false};
+    log(`🌙 달의 자손 공개 지목 — ${p.name} → ${t.name} (지목 시점 진영: ${evil?'악':'선'})`);
+    toast(`🌙 공개 지목 기록: ${t.name} (지목 시점 ${evil?'악':'선'}). 판정은 다음 밤의 달의 자손 단계에서 하며, 그때는 달의 자손 본인의 중독·취함만 봅니다.`,'warn');
+    save(); renderAll();
+    if(typeof onDone==='function') onDone(true);
+  };
+  const now=thyAsk({kind:'choice', title:'🌙 달의 자손 공개 지목', choices:thyPlayerChoices(cands),
+      message:`${p.name}(달의 자손)이 공개로 지목한 플레이어를 고르세요 — 지목 시점의 진영이 그대로 굳습니다.`},
+    id=>{
+      if(id===null) return;                                 // 취소 — 옛 prompt(null) 처럼 조용히 끝낸다
+      const t=cands.find(q=>q.id===id);
+      if(!t){ toast('그 이름의 생존 플레이어가 없어 공개 지목을 기록하지 못했습니다 — 밤 단계에서 다시 입력할 수 있습니다.','warn'); return; }
+      commit(t);
+    });
+  return now && !!(S.moonchildChoice && S.moonchildChoice.sourcePid===p.id);
 }
 /* 지목을 놓쳤을 때의 회수 창구 — 밤 단계 카드의 버튼이 부른다(그 경우 진영은 지금 시점으로 굳는다) */
 function askMoonchildChoiceNow(){
   const p=S.players.find(q=>q.charId==='moonchild' && !q.alive) || S.players.find(q=>q.charId==='moonchild');
   if(!p){ toast('달의 자손이 판에 없습니다.','warn'); return false; }
-  const ok=askMoonchildChoice(p);
+  const ok=askMoonchildChoice(p, ()=>{ if(typeof wiz!=='undefined' && wiz) renderWiz(); });
   if(ok && typeof wiz!=='undefined' && wiz) renderWiz();
   return ok;
 }
@@ -3977,7 +4212,7 @@ function doFangGuAttack(pid){
     if(fg) killPlayer(fg,'팡 구 점프 — 기존 팡 구 사망',{skipSuccession:true});
     save(); renderAll(); return;
   }
-  if(offerMayorSubstitute(t, dr, '팡 구')){ save(); renderAll(); return; }
+  if(offerMayorSubstitute(t, dr, '팡 구', undefined, ()=>doFangGuAttack(pid))){ save(); renderAll(); return; }
   resolveNightDeath(t,'팡 구의 공격');
   save(); renderAll();
 }
@@ -4010,7 +4245,7 @@ function doStepKill(pid, killerId){ if(!pid)return; const t=playerOf(pid);
      옛 호출부용 fallback 으로만 남는다(사회자가 사유에 '암살자'를 적어도 오판하지 않는다). */
   const killerKo2 = charOf(kid)?.ko || (actor?charName(actor):'악마');
   const kctx={sourceType:dr.ctx.sourceType, sourceCharId:dr.ctx.sourceCharId, bypass:!!dr.ctx.bypass};
-  if(offerMayorSubstitute(t, dr, killerKo2, kctx)){ save(); renderAll(); return; }
+  if(offerMayorSubstitute(t, dr, killerKo2, kctx, ()=>doStepKill(pid, killerId))){ save(); renderAll(); return; }
   resolveNightDeath(t, killerKo2+'의 공격', kctx);
   // 비고르모르티스가 하수인을 죽였다면: 죽어도 능력 유지(영구 토큰) + 주민 이웃 1명 중독 안내
   if(kid==='vigormortis' && !t.alive && charOf(t.charId)?.type==='minion'){
@@ -4171,9 +4406,7 @@ function newNomination(){
   if(hasStatus(torP0,'curse')){
     const witch=S.players.find(p=>p.alive&&p.charId==='witch');
     if(witch && !isMalfunctioning(witch) && alivePlayers().length>=4){
-      if(confirm(`🧹 마녀의 저주 발동! 지명자 ${torP0.name}은(는) 저주받은 상태입니다.\n즉시 사망 처리할까요? (지명 절차는 그대로 진행됩니다)`)){
-        killPlayer(torP0,'마녀의 저주 — 지명 즉시 사망');
-      }
+      thyConfirm(`🧹 마녀의 저주 발동! 지명자 ${torP0.name}은(는) 저주받은 상태입니다.\n즉시 사망 처리할까요? (지명 절차는 그대로 진행됩니다)`, ok=>{ if(ok){ killPlayer(torP0,'마녀의 저주 — 지명 즉시 사망'); save(); renderAll(); } }, {title:'🧹 마녀의 저주', ok:'즉시 사망 처리', cancel:'사망 없음', danger:true});
     } else { toast('저주 토큰이 있으나 마녀가 죽었거나 오작동, 또는 생존 3인 — 저주 불발.','warn'); }
   }
   // 성결자 체크
@@ -4192,12 +4425,14 @@ function newNomination(){
       log('성결자 발동 — 오늘 이미 처형이 있어 추가 처형 없음');
       nom.closed=true; nom.result='virginTriggered';
     } else if(torIsTF){
-      if(confirm(`⚜ 성결자 발동! 지명자 ${torP.name}(${torC.ko})는 마을 주민입니다.\n즉시 처형 처리할까요? (오늘의 처형으로 기록되며, 이 지명은 종료됩니다)`)){
+      thyConfirm(`⚜ 성결자 발동! 지명자 ${torP.name}(${torC.ko})는 마을 주민입니다.\n즉시 처형 처리할까요? (오늘의 처형으로 기록되며, 이 지명은 종료됩니다)`, ok=>{
+        if(!ok) return;
         resolveExecution(torP,'성결자 발동 — 즉시 처형');
         S.executedToday=`${torP.name} (${charName(torP)}) — 성결자 발동`;
         nom.closed=true; nom.result='virginTriggered';
         toast('오늘은 추가 처형이 불가합니다. 장의사는 처형으로 실제 죽은 경우에만 그 캐릭터를 봅니다.','warn');
-      }
+        save(); renderAll();
+      }, {title:'⚜ 성결자', ok:'즉시 처형', cancel:'처형 없음', danger:true});
     } else if(torP.charId==='spy'){
       toast('⚜ 성결자 최초 지명 — 지명자가 첩자입니다. "마을 주민으로 등록"시켜 발동시킬지 재량으로 결정하세요. 발동시키려면 그리모어에서 수동 처형 처리.','warn');
     } else {
@@ -4410,7 +4645,7 @@ function resolveExecution(p, cause){
 function executeNominee(nid){
   const n=findNom(nid); const p=playerOf(n.nominee);
   const saintCheck = p.charId==='saint' && !isMalfunctioning(p);
-  if(saintCheck && !confirm(`🚨 ${p.name}은(는) 성자이며 오작동 상태가 아닙니다!\n처형을 확정하면 선한 팀이 패배합니다. 진행할까요?`)) return;
+  if(saintCheck && thyExecAnswer('saint', p, `🚨 ${p.name}은(는) 성자이며 오작동 상태가 아닙니다!\n처형을 확정하면 선한 팀이 패배합니다. 진행할까요?`, {ok:'처형 확정', cancel:'취소', danger:true})!==true) return;
   /* resolveExecution 은 '실제로 죽었는가'를 boolean 으로 돌려준다 — 반환값을 버리면
      찻집 여인·악마의 변호사로 살아남은 성자에게도 악 승리를 공표하게 된다. 승리 엔진 쪽
      래퍼(evalWinEvent 'execute')는 p.alive 를 보고 물러나므로 두 판정이 정면으로 어긋난다.
@@ -4423,15 +4658,18 @@ function executeNominee(nid){
 function doSlayer(){
   const sl=S.players.find(p=>p.alive&&p.charId==='slayer'&&!hasStatus(p,'slayerUsed'));
   if(!sl) return;
-  const name=prompt('처단자가 지목한 플레이어 이름:'); const t=S.players.find(p=>p.name===name);
-  if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
+  thyChoose('처단자가 공개 지목한 플레이어를 고르세요.', thyPlayerChoices(S.players), tid=>{
+    const t=playerOf(tid); if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
+    doSlayerOn(sl, t);
+  }, {title:'🗡 처단자'});
+}
+function doSlayerOn(sl, t){
   addStatus(sl,'slayerUsed','공개 지목',null);
   if(isMalfunctioning(sl)){ toast('처단자가 오작동 상태 — "아무 일도 일어나지 않습니다"라고 공표. 능력 소진.','warn'); log(`처단자 오발(오작동): ${t.name}`); save(); renderAll(); return; }
   const c=charOf(t.charId);
   if(c?.type==='demon' && t.alive){ killPlayer(t,'처단자의 일격'); toast(`😈 ${t.name}(악마) 즉사! 탕녀·생존자 수를 확인하세요.`,'warn'); }
   else if(t.charId==='recluse' && t.alive){
-    if(confirm(`${t.name}은(는) 은둔자 — 악마로 등록시켜 죽일까요? (재량)`)){ killPlayer(t,'처단자의 일격(은둔자 악마 등록)'); toast('은둔자가 쓰러졌습니다 — 게임은 끝나지 않습니다. 태연하게!','warn'); }
-    else { toast('"아무 일도 일어나지 않습니다" 공표.','ok'); log(`처단자 → 은둔자 ${t.name}: 미등록 처리`); }
+    thyConfirm(`${t.name}은(는) 은둔자 — 악마로 등록시켜 죽일까요? (재량)`, ok=>{ if(ok){ killPlayer(t,'처단자의 일격(은둔자 악마 등록)'); toast('은둔자가 쓰러졌습니다 — 게임은 끝나지 않습니다. 태연하게!','warn'); } else { toast('"아무 일도 일어나지 않습니다" 공표.','ok'); log(`처단자 → 은둔자 ${t.name}: 미등록 처리`); } save(); renderAll(); }, {title:'은둔자 등록 재량', ok:'악마로 등록 → 사망', cancel:'미등록'});
   }
   else { toast('"아무 일도 일어나지 않습니다"라고 공표하세요.','ok'); log(`처단자 오발: ${t.name}`); }
   save(); renderAll();
@@ -4850,11 +5088,13 @@ function addCustom(){
 function delCustom(id){ S.customs=S.customs.filter(c=>c.id!==id); S.players.forEach(p=>{if(p.charId===id)p.charId='';}); save(); renderAll(); }
 function exportScript(){
   const data=JSON.stringify({name:'티르소스 커스텀 시트', base:'trouble-brewing', customs:S.customs}, null, 1);
-  navigator.clipboard?.writeText(data).then(()=>toast('시트 JSON 복사됨 — Claude에게 붙여넣어 검증을 요청하세요.','ok'),()=>prompt('복사하세요:',data));
+  navigator.clipboard?.writeText(data).then(()=>toast('시트 JSON 복사됨 — Claude에게 붙여넣어 검증을 요청하세요.','ok'),()=>thyCopyBox(data));
 }
 /* 가져온 시트는 신뢰할 수 없다 — 스키마·타입·길이를 검증하고 id 를 안전한 형태로 재발급한다. */
 function importScript(){
-  const raw=prompt('시트 JSON을 붙여넣으세요:'); if(!raw)return;
+  thyPrompt('시트 JSON을 붙여넣으세요:', '', raw=>{ if(raw) importScriptRaw(raw); }, {title:'시트 가져오기', multiline:true, ok:'가져오기'});
+}
+function importScriptRaw(raw){
   let d; try{ d=JSON.parse(raw); }catch(e){ toast('JSON 파싱 실패','warn'); return; }
   /* {name, author, characters:[id…]} 는 downloadScriptJSON·botcscripts·공식 스크립트 툴의 배포
      형식이다. 여기서 거절하면 방금 자기가 내보낸 JSON 조차 되돌릴 수 없고, 억지로 customs 로
@@ -4869,77 +5109,80 @@ function importScript(){
   }
   if(!d || !Array.isArray(d.customs)){ toast('customs 배열도 characters 배열도 없습니다.','warn'); return; }
   /* 진행 중 교체는 밤 순서·체크리스트·배정을 그 자리에서 바꿔버린다 — 되돌릴 수 없으므로 확인받는다 */
-  if(S.phase.kind!=='setup' && !confirm(`게임 진행 중입니다(${phaseName()}).\n시트를 교체하면 밤 순서·체크리스트가 즉시 새 시트 기준으로 바뀌고,\n새 시트에 없는 캐릭터를 쥔 좌석은 배정이 해제됩니다.\n계속할까요?`)) return;
+  const _cont=()=>{
   const str=v=>typeof v==='string'? v.slice(0,400):'';
-  const arr=v=>Array.isArray(v)? v.filter(x=>typeof x==='string').map(x=>x.slice(0,400)).slice(0,20):[];
-  const TYPES=['townsfolk','outsider','minion','demon','traveler','fabled'];
-  /* id 는 조용한 오작동의 근원이다 — 기본 캐릭터나 밤 순서 정보 단계(minioninfo·demoninfo)와
-     같은 id 를 쓰면 charOf() 가 CHARACTERS 를 먼저 찾고 nightSteps() 가 INFO_STEPS 분기를
-     먼저 타서, 가져오기는 성공한 것처럼 보이는데 그 커스텀은 통째로 가려진다.
-     차단하지 않는다 — 새 id 를 발급하고, 그 id 를 가리키던 밤 순서 기준까지 같이 옮긴 뒤
-     무엇을 바꿨는지 알린다. */
-  const RESERVED=new Set(
-    (typeof CHARACTERS!=='undefined'? CHARACTERS.map(c=>c.id):[])
-      .concat(typeof INFO_STEPS!=='undefined'? Object.keys(INFO_STEPS):[]));
-  const remap=Object.create(null), reissued=[];
-  const seen=new Set();
-  S.customs=d.customs.slice(0,60).filter(c=>c&&typeof c==='object'&&!Array.isArray(c)).map(c=>{
-    const raw=(typeof c.id==='string' && /^[A-Za-z0-9_-]{1,64}$/.test(c.id))? c.id : null;
-    let id=raw||('cx_'+uid());
-    if(raw && RESERVED.has(raw)){
-      id='cx_'+uid();
-      if(!remap[raw]) remap[raw]=id;   /* 같은 예약 id 가 여러 번 오면 앵커는 첫 건만 따라간다 */
-      reissued.push((typeof c.ko==='string'&&c.ko.trim()? c.ko.trim().slice(0,30):raw)+'('+raw+')');
-    }
-    while(seen.has(id)||RESERVED.has(id)) id='cx_'+uid();
-    seen.add(id);
-    return { id, ko:str(c.ko)||'(이름 없음)', en:str(c.en), type:TYPES.includes(c.type)?c.type:'townsfolk',
-      ability:str(c.ability)||'(능력 미기재)', first:!!c.first, other:!!c.other,
-      firstAfter:typeof c.firstAfter==='string'?c.firstAfter:null,
-      otherAfter:typeof c.otherAfter==='string'?c.otherAfter:null,
-      voteRelated:!!c.voteRelated, voteNote:str(c.voteNote),
-      reminders:arr(c.reminders), warn:arr(c.warn), custom:true };
-  });
-  /* 재발급된 id 를 기준으로 삼던 커스텀의 앵커를 새 id 로 옮긴다 — 안 옮기면 그 커스텀만 밤 맨 끝으로 밀린다 */
-  S.customs.forEach(c=>{ ['firstAfter','otherAfter'].forEach(k=>{ if(c[k]&&remap[c[k]]) c[k]=remap[c[k]]; }); });
-  /* 밤 순서 기준 존재 검증 — 어느 에디션 밤 순서에도, 다른 커스텀에도 없는 이름은
-     nightSteps() 에서 조용히 맨 끝(악마 살해 뒤)으로 밀린다. 값은 그대로 두고 알리기만 한다:
-     아직 만들지 않은 캐릭터를 미리 적어 둔 시트일 수도 있다. */
-  const anchorOK=new Set(S.customs.map(c=>c.id));
-  if(typeof EDITIONS!=='undefined') Object.keys(EDITIONS).forEach(k=>{
-    const e=EDITIONS[k]||{};
-    (Array.isArray(e.first)? e.first:[]).forEach(x=>anchorOK.add(x));
-    (Array.isArray(e.other)? e.other:[]).forEach(x=>anchorOK.add(x));
-  });
-  const badAnchor=[];
-  S.customs.forEach(c=>{
-    if(c.first && c.firstAfter && !anchorOK.has(c.firstAfter)) badAnchor.push(c.ko+'·첫날 밤');
-    if(c.other && c.otherAfter && !anchorOK.has(c.otherAfter)) badAnchor.push(c.ko+'·그 외 밤');
-  });
-  /* 순환 참조 — A 는 B 다음, B 는 A 다음. 삽입 시점에 기준이 아직 없어 둘 다 맨 끝으로 밀린다. */
-  const cycIds=new Set(), byId=Object.create(null);
-  S.customs.forEach(c=>{ byId[c.id]=c; });
-  ['firstAfter','otherAfter'].forEach(k=>{
-    S.customs.forEach(c=>{
-      const path=[], on=Object.create(null); let cur=c, g=0;
-      while(cur && g++<=S.customs.length+1){
-        if(on[cur.id]){ path.slice(path.indexOf(cur.id)).forEach(x=>cycIds.add(x)); break; }
-        on[cur.id]=1; path.push(cur.id); cur=byId[cur[k]];
+    const arr=v=>Array.isArray(v)? v.filter(x=>typeof x==='string').map(x=>x.slice(0,400)).slice(0,20):[];
+    const TYPES=['townsfolk','outsider','minion','demon','traveler','fabled'];
+    /* id 는 조용한 오작동의 근원이다 — 기본 캐릭터나 밤 순서 정보 단계(minioninfo·demoninfo)와
+       같은 id 를 쓰면 charOf() 가 CHARACTERS 를 먼저 찾고 nightSteps() 가 INFO_STEPS 분기를
+       먼저 타서, 가져오기는 성공한 것처럼 보이는데 그 커스텀은 통째로 가려진다.
+       차단하지 않는다 — 새 id 를 발급하고, 그 id 를 가리키던 밤 순서 기준까지 같이 옮긴 뒤
+       무엇을 바꿨는지 알린다. */
+    const RESERVED=new Set(
+      (typeof CHARACTERS!=='undefined'? CHARACTERS.map(c=>c.id):[])
+        .concat(typeof INFO_STEPS!=='undefined'? Object.keys(INFO_STEPS):[]));
+    const remap=Object.create(null), reissued=[];
+    const seen=new Set();
+    S.customs=d.customs.slice(0,60).filter(c=>c&&typeof c==='object'&&!Array.isArray(c)).map(c=>{
+      const raw=(typeof c.id==='string' && /^[A-Za-z0-9_-]{1,64}$/.test(c.id))? c.id : null;
+      let id=raw||('cx_'+uid());
+      if(raw && RESERVED.has(raw)){
+        id='cx_'+uid();
+        if(!remap[raw]) remap[raw]=id;   /* 같은 예약 id 가 여러 번 오면 앵커는 첫 건만 따라간다 */
+        reissued.push((typeof c.ko==='string'&&c.ko.trim()? c.ko.trim().slice(0,30):raw)+'('+raw+')');
       }
+      while(seen.has(id)||RESERVED.has(id)) id='cx_'+uid();
+      seen.add(id);
+      return { id, ko:str(c.ko)||'(이름 없음)', en:str(c.en), type:TYPES.includes(c.type)?c.type:'townsfolk',
+        ability:str(c.ability)||'(능력 미기재)', first:!!c.first, other:!!c.other,
+        firstAfter:typeof c.firstAfter==='string'?c.firstAfter:null,
+        otherAfter:typeof c.otherAfter==='string'?c.otherAfter:null,
+        voteRelated:!!c.voteRelated, voteNote:str(c.voteNote),
+        reminders:arr(c.reminders), warn:arr(c.warn), custom:true };
     });
-  });
-  const impNotes=[];
-  if(reissued.length) impNotes.push(`기본 캐릭터와 겹친 id ${reissued.length}건에 새 id 를 발급했습니다(${reissued.slice(0,3).join(', ')}${reissued.length>3?' 외':''})`);
-  if(badAnchor.length) impNotes.push(`밤 순서 기준을 찾을 수 없는 항목 ${badAnchor.length}건(${badAnchor.slice(0,3).join(', ')}${badAnchor.length>3?' 외':''}) — 그대로 두면 밤 맨 끝으로 밀립니다`);
-  if(cycIds.size) impNotes.push(`밤 순서 기준이 서로를 가리킵니다 — ${[...cycIds].map(id=>byId[id]?byId[id].ko:id).join(' → ')}`);
-  if(impNotes.length) setTimeout(()=>toast('가져오기 주의 — '+impNotes.join(' / '),'warn'), 1200);
-  /* 시트를 갈아끼우면 사라진 커스텀을 쥔 좌석은 유령 charId 가 된다 — charOf() 가 못 찾아
-     밤 순서·구성 집계·승리 판정에서 조용히 빠진다. delCustom 과 같은 규칙으로 끊고 알린다. */
-  const liveIds=new Set(CHARACTERS.map(c=>c.id).concat(S.customs.map(c=>c.id)));
-  const orphans=S.players.filter(p=>p.charId && !liveIds.has(p.charId));
-  orphans.forEach(p=>{ p.charId=''; });
-  save(); renderAll(); toast(`가져오기 완료 — ${S.customs.length}종 (id·필드 검증 적용)`,'ok');
-  if(orphans.length) setTimeout(()=>toast(`⚠ 새 시트에 없는 캐릭터를 쥐고 있던 ${orphans.length}개 좌석의 배정을 해제했습니다 — ${orphans.map(p=>p.name).join(', ')}. 다시 배정하세요.`,'warn'), 700);
+    /* 재발급된 id 를 기준으로 삼던 커스텀의 앵커를 새 id 로 옮긴다 — 안 옮기면 그 커스텀만 밤 맨 끝으로 밀린다 */
+    S.customs.forEach(c=>{ ['firstAfter','otherAfter'].forEach(k=>{ if(c[k]&&remap[c[k]]) c[k]=remap[c[k]]; }); });
+    /* 밤 순서 기준 존재 검증 — 어느 에디션 밤 순서에도, 다른 커스텀에도 없는 이름은
+       nightSteps() 에서 조용히 맨 끝(악마 살해 뒤)으로 밀린다. 값은 그대로 두고 알리기만 한다:
+       아직 만들지 않은 캐릭터를 미리 적어 둔 시트일 수도 있다. */
+    const anchorOK=new Set(S.customs.map(c=>c.id));
+    if(typeof EDITIONS!=='undefined') Object.keys(EDITIONS).forEach(k=>{
+      const e=EDITIONS[k]||{};
+      (Array.isArray(e.first)? e.first:[]).forEach(x=>anchorOK.add(x));
+      (Array.isArray(e.other)? e.other:[]).forEach(x=>anchorOK.add(x));
+    });
+    const badAnchor=[];
+    S.customs.forEach(c=>{
+      if(c.first && c.firstAfter && !anchorOK.has(c.firstAfter)) badAnchor.push(c.ko+'·첫날 밤');
+      if(c.other && c.otherAfter && !anchorOK.has(c.otherAfter)) badAnchor.push(c.ko+'·그 외 밤');
+    });
+    /* 순환 참조 — A 는 B 다음, B 는 A 다음. 삽입 시점에 기준이 아직 없어 둘 다 맨 끝으로 밀린다. */
+    const cycIds=new Set(), byId=Object.create(null);
+    S.customs.forEach(c=>{ byId[c.id]=c; });
+    ['firstAfter','otherAfter'].forEach(k=>{
+      S.customs.forEach(c=>{
+        const path=[], on=Object.create(null); let cur=c, g=0;
+        while(cur && g++<=S.customs.length+1){
+          if(on[cur.id]){ path.slice(path.indexOf(cur.id)).forEach(x=>cycIds.add(x)); break; }
+          on[cur.id]=1; path.push(cur.id); cur=byId[cur[k]];
+        }
+      });
+    });
+    const impNotes=[];
+    if(reissued.length) impNotes.push(`기본 캐릭터와 겹친 id ${reissued.length}건에 새 id 를 발급했습니다(${reissued.slice(0,3).join(', ')}${reissued.length>3?' 외':''})`);
+    if(badAnchor.length) impNotes.push(`밤 순서 기준을 찾을 수 없는 항목 ${badAnchor.length}건(${badAnchor.slice(0,3).join(', ')}${badAnchor.length>3?' 외':''}) — 그대로 두면 밤 맨 끝으로 밀립니다`);
+    if(cycIds.size) impNotes.push(`밤 순서 기준이 서로를 가리킵니다 — ${[...cycIds].map(id=>byId[id]?byId[id].ko:id).join(' → ')}`);
+    if(impNotes.length) setTimeout(()=>toast('가져오기 주의 — '+impNotes.join(' / '),'warn'), 1200);
+    /* 시트를 갈아끼우면 사라진 커스텀을 쥔 좌석은 유령 charId 가 된다 — charOf() 가 못 찾아
+       밤 순서·구성 집계·승리 판정에서 조용히 빠진다. delCustom 과 같은 규칙으로 끊고 알린다. */
+    const liveIds=new Set(CHARACTERS.map(c=>c.id).concat(S.customs.map(c=>c.id)));
+    const orphans=S.players.filter(p=>p.charId && !liveIds.has(p.charId));
+    orphans.forEach(p=>{ p.charId=''; });
+    save(); renderAll(); toast(`가져오기 완료 — ${S.customs.length}종 (id·필드 검증 적용)`,'ok');
+    if(orphans.length) setTimeout(()=>toast(`⚠ 새 시트에 없는 캐릭터를 쥐고 있던 ${orphans.length}개 좌석의 배정을 해제했습니다 — ${orphans.map(p=>p.name).join(', ')}. 다시 배정하세요.`,'warn'), 700);
+  };
+  if(S.phase.kind!=='setup'){ thyConfirm(`게임 진행 중입니다(${phaseName()}).\n시트를 교체하면 밤 순서·체크리스트가 즉시 새 시트 기준으로 바뀌고,\n새 시트에 없는 캐릭터를 쥔 좌석은 배정이 해제됩니다.\n계속할까요?`, ok=>{ if(ok) _cont(); }, {title:'시트 교체', ok:'교체', danger:true}); return; }
+  _cont();
 }
 document.addEventListener('click', e=>{
   const b=e.target.closest && e.target.closest('[data-delcustom]');
@@ -6726,7 +6969,7 @@ function cloudTryRestore(){
     const msg=localEmpty
       ? `☁ 클라우드 저장본(${when}, ${cloud.players.length}명 · ${cloud.phase.kind==='setup'?'준비':(cloud.phase.kind==='night'?'밤 ':'낮 ')+cloud.phase.n})을 불러올까요?`
       : `☁ 클라우드 저장본(${when})이 이 기기의 게임과 다릅니다.\n[확인] 클라우드 저장본으로 교체 / [취소] 이 기기 상태 유지`;
-    if(confirm(msg)){ S=migrateState(cloud); save(); log('☁ 클라우드 저장본 복원'); renderAll(); }
+    thyConfirm(msg, ok=>{ if(ok){ S=migrateState(cloud); save(); log('☁ 클라우드 저장본 복원'); renderAll(); } }, {title:'☁ 클라우드 저장본', ok:'클라우드로 교체', cancel:'이 기기 유지'});
   }catch(e){}
 }
 (function(){
@@ -7578,12 +7821,13 @@ function _dtTick(){
   }
 }
 function setDayLimit(){
-  const v=prompt('낮 제한시간(분). 0 이면 제한 없음.', String((S.dayTimer&&S.dayTimer.limit)||0));
-  if(v===null) return;
-  const m=Math.max(0, parseInt(v,10)||0);
-  S.dayTimer=S.dayTimer||{start:Date.now(), n:S.phase.n};
-  S.dayTimer.limit=m; save(); _dtTick();
-  toast(m? `낮 제한시간 ${m}분 설정` : '낮 제한시간 해제','ok');
+  thyPrompt('낮 제한시간(분). 0 이면 제한 없음.', String((S.dayTimer&&S.dayTimer.limit)||0), v=>{
+    if(v===null) return;
+    const m=Math.max(0, parseInt(v,10)||0);
+    S.dayTimer=S.dayTimer||{start:Date.now(), n:S.phase.n};
+    S.dayTimer.limit=m; save(); _dtTick();
+    toast(m? `낮 제한시간 ${m}분 설정` : '낮 제한시간 해제','ok');
+  }, {title:'⏱ 낮 제한시간', inputType:'number', ok:'설정'});
 }
 function resetDayTimer(){ S.dayTimer={start:Date.now(), n:S.phase.n, limit:(S.dayTimer&&S.dayTimer.limit)||0}; save(); _dtTick(); }
 (function(){
@@ -7691,8 +7935,8 @@ function showReplay(){
 }
 function copyReplay(){
   const txt='[전말 요약 — 스포일러 포함]\n'+_rpGroups().map(g=>`\n== ${g.t} ==\n`+g.items.map(m=>' - '+m).join('\n')).join('\n');
-  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>toast('전말 요약 텍스트를 클립보드에 복사했습니다.','ok'),()=>prompt('복사하세요:',txt));
-  else prompt('복사하세요:',txt);
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>toast('전말 요약 텍스트를 클립보드에 복사했습니다.','ok'),()=>thyCopyBox(txt));
+  else thyCopyBox(txt);
 }
 
 /* ══════════ 4) 여행자 추방(exile) 투표 (renderDay 래핑 주입) ══════════ */
@@ -7788,6 +8032,21 @@ function exClose(){
 /* 플레이어 모달 */
 #pmodal{position:fixed;inset:0;z-index:95;background:rgba(8,4,16,.72);display:flex;align-items:center;justify-content:center;padding:16px}
 #pmodal[hidden]{display:none!important}
+/* 인앱 대화상자 — 모든 오버레이(#winask 120·#pgvote 101) 위 */
+#thydlg{position:fixed;inset:0;z-index:150;background:rgba(6,3,14,.82);display:flex;align-items:center;justify-content:center;padding:18px}
+#thydlg[hidden]{display:none!important}
+#thydlg .tdcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;padding:18px 18px 16px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+#thydlg .tdtitle{font-size:18px;font-weight:700;margin:0 0 8px}
+#thydlg .tdmsg{line-height:1.65;font-size:15px;word-break:keep-all}
+#thydlg input,#thydlg textarea{display:block;width:100%;box-sizing:border-box;margin-top:12px;min-height:44px;font:inherit;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--sunken);color:inherit}
+#thydlg textarea{resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+#thydlg .tdchoices{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+#thydlg .tdchoice{display:block;text-align:left;width:100%;min-height:52px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--raised);color:inherit;font:inherit;cursor:pointer}
+#thydlg .tdchoice:hover{border-color:var(--accent)}
+#thydlg .tdchoice b{display:block;font-size:15px}
+#thydlg .tdchoice small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px;line-height:1.45}
+#thydlg .tdacts{display:flex;gap:10px;margin-top:16px}
+#thydlg .tdacts button{flex:1 1 0;min-height:48px;border-radius:12px;font-size:15px}
 #pmodal .pmcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)}
 #pmodal .pmhead{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
 #pmodal .pmhead h3{margin:0;font-size:21px}
@@ -7905,7 +8164,7 @@ function openPlayerModal(pid){
   el.onclick=()=>closePlayerModal();
 }
 function modalKill(pid){ const p=playerOf(pid); if(!p) return;
-  if(confirm(`${p.name} 사망 처리?`)){ killPlayer(p,'사회자 수동 처리'); save(); closePlayerModal(); } }
+  thyConfirm(`${p.name} 사망 처리?`, ok=>{ if(ok){ killPlayer(p,'사회자 수동 처리'); save(); closePlayerModal(); } }, {title:'사망 처리', ok:'사망', danger:true}); }
 function closePlayerModal(){ const el=$('#pmodal'); el.hidden=true; el.innerHTML=''; focusPid=null; renderAll(); }
 function togglePStatus(pid,key){
   const p=playerOf(pid); const ph=S.phase;
@@ -7921,11 +8180,11 @@ function togglePStatus(pid,key){
     if(key==='master'||key==='curse'||key==='mad'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!==key)); exp={kind:'night', n:nightExp}; }
     let src='사회자 수동';
     if(key==='drunkS'){                                 // 취함은 출처별 만료가 다르다 — 정책 선택
-      const c=prompt('취함 출처 선택 — 1: 선원/여관 주인/건달/음유시인(다음 황혼까지) · 2: 궁정대신(3밤+3낮) · 3: 영구(주정뱅이·사랑꾼·뱀 조련사)','1');
-      if(c===null) return;
-      if(c.trim()==='2'){ exp=drunkExpiry('court'); src='궁정대신(3밤+3낮)'; }
-      else if(c.trim()==='3'){ exp=null; src='영구'; }
-      else { exp=drunkExpiry('dusk'); src='다음 황혼까지'; }
+      thyChoose('취함 출처를 고르세요 — 출처마다 만료 시점이 다릅니다.', THY_DRUNK_CHOICES, id=>{
+        if(id===null){ openPlayerModal(pid); return; }
+        const d=thyDrunkPolicy(id); addStatus(p,key,d.src,d.exp); save(); openPlayerModal(pid);
+      }, {title:'취함 출처', syncPromptMap:{'1':'dusk','2':'court','3':'perm'}});
+      return;
     }
     addStatus(p,key,src,exp);
   }
@@ -8112,9 +8371,11 @@ function grimConcede(losing){
     rule:`기권은 공식 승리 조건이 아니라 사회자 재량 종료입니다. 전적에는 ${koW} 승리로 기록됩니다.`,
     endKind:'concede' };                      // confirmWin(true) 가 S.endKind 로 확정한다
   if(typeof askWin==='function' && typeof isWinRes==='function' && isWinRes(res)){ askWin(res); return; }
-  if(!confirm(`${koL} 기권 — ${koW} 승리로 게임을 종료합니다.`)) return;
-  S.endKind='concede'; S.gameOver=true; save();
-  showGameOver(winner, res.reason+' — '+res.rule);
+  thyConfirm(`${koL} 기권 — ${koW} 승리로 게임을 종료합니다.`, ok=>{
+    if(!ok) return;
+    S.endKind='concede'; S.gameOver=true; save();
+    showGameOver(winner, res.reason+' — '+res.rule);
+  }, {title:'기권', ok:'종료', danger:true});
 }
 /* 바이올린 연주자(우화) — 공식: "Once per game, the Demon secretly chooses an opposing
    player: all players choose which of these 2 players win." 발동하면 앱의 통상 승리 판정과
@@ -8122,16 +8383,16 @@ function grimConcede(losing){
    grimConcede 와 같은 방식으로 승리 엔진 유무를 확인한 뒤 넘긴다(엔진은 뒤쪽 블록이다). */
 function fiddlerCall(){
   if(S.gameOver){ toast('이미 종료된 게임입니다.','warn'); return; }
-  const evilWon=confirm('🎻 바이올린 연주자 — 전원 투표 결과를 입력합니다.\n[확인] 악마 쪽이 이겼다 → 악한 팀 승리\n[취소] 지목된 상대 플레이어 쪽이 이겼다 → 선한 팀 승리');
-  const team=evilWon? 'evil':'good';
+  thyChoose('🎻 바이올린 연주자 — 전원 투표 결과를 입력합니다.',
+    [{id:'evil', label:'악마 쪽이 이겼다', sub:'악한 팀 승리'}, {id:'good', label:'지목된 상대 플레이어 쪽이 이겼다', sub:'선한 팀 승리'}], team=>{
+    if(team!=='evil' && team!=='good') return;
   const res={team, reason:'바이올린 연주자 — 전원 투표로 승자를 결정했습니다.',
     rule:'바이올린 연주자(우화): 악마가 상대 진영 1명을 비밀리에 지목하면 전원이 둘 중 누가 이길지 투표하고, 그 결과로 게임이 즉시 끝납니다.',
     endKind:'fiddler'};
   log(`🎻 바이올린 연주자 — 전원 투표로 ${team==='good'?'선한':'악한'} 팀 승리`);
-  if(typeof askWin==='function' && typeof isWinRes==='function'){ askWin(res); return; }
-  if(!confirm(`${team==='good'?'선한':'악한'} 팀 승리로 게임을 종료합니다.`)) return;
-  S.endKind='fiddler'; S.gameOver=true; save();
-  showGameOver(team, res.reason+' — '+res.rule);
+    if(typeof askWin==='function' && typeof isWinRes==='function'){ askWin(res); return; }
+    thyConfirm(`${team==='good'?'선한':'악한'} 팀 승리로 게임을 종료합니다.`, ok=>{ if(!ok) return; S.endKind='fiddler'; S.gameOver=true; save(); showGameOver(team, res.reason+' — '+res.rule); }, {ok:'종료', danger:true});
+  }, {title:'🎻 바이올린 연주자', syncFallback:'evil'});
 }
 function openEndMenu(){
   const el=$('#pmodal'); if(!el) return;
@@ -8355,23 +8616,19 @@ function showGameOver(team, reason){
       else{
         const polLost=(isEvil(pol)? 'evil':'good')!==team;   // 내 진영이 졌는가
         if(!polLost) log(`🎩 정치인(${pol.name}) — 자기 진영이 이겼으므로 전환 없음`);
-        else if(confirm(`🎩 정치인(${pol.name})이 있습니다.\n자기 진영이 패배한 데 가장 큰 책임이 있는 플레이어가 ${pol.name}였습니까?\n[확인] 예 → 진영을 바꿔 혼자 승리(팀 결과는 그대로) / [취소] 아니오`)){
+        else thyConfirm(`🎩 정치인(${pol.name})이 있습니다.\n자기 진영이 패배한 데 가장 큰 책임이 있는 플레이어가 ${pol.name}였습니까?\n[확인] 예 → 진영을 바꿔 혼자 승리(팀 결과는 그대로) / [취소] 아니오`, ok=>{ if(ok){
           pol.alignment=isEvil(pol)? 'good':'evil';
+          thyPatchBankedAlignment(pol);            // 이미 적립된 전적 스냅샷의 진영도 함께 고친다
           log(`🎩 정치인 전환 — ${pol.name}이(가) 진영을 바꿔 개인 승리(팀 결과는 그대로 유지)`);
           toast(`🎩 정치인 ${pol.name} — 진영을 바꿔 혼자 이겼습니다. 팀 결과는 바뀌지 않습니다.`,'warn');
-        }
-        else log(`🎩 정치인(${pol.name}) — 사회자가 '가장 큰 책임 아님'으로 판정, 전환 없음`);
+        } else log(`🎩 정치인(${pol.name}) — 사회자가 '가장 큰 책임 아님'으로 판정, 전환 없음`); save(); }, {title:'🎩 정치인', ok:'예 → 진영 전환', cancel:'아니오'});
       }
     }
   }catch(err){ console.warn('[win] politician', err); }
   log(`🏁 게임 종료 — ${team==='good'?'선한 팀':'악한 팀'} 승리: ${reason||''}`);
   save();
 }
-function endGameManual(){
-  const t=confirm('게임을 종료합니다.\n[확인] 선한 팀 승리 / [취소] 악한 팀 승리로 기록');
-  S.endKind='manual'; S.gameOver=true; save();
-  showGameOver(t?'good':'evil','사회자가 수동으로 종료했습니다.');
-}
+function endGameManual(){ endGameManually(); }   // 레거시 진입점 — 인앱 모달로 위임
 /* 종료 판정 토스트에 결과 화면 연동 */
 (function(){
   const _t=toast;
@@ -9101,14 +9358,14 @@ function evalWinEvent(kind, ctx){
        that day, your team wins." 지명당한 순간의 공개 선언은 앱이 관측할 수 없으므로
        선한 쌍둥이와 같은 계약으로 사회자에게 확인받는다. 중독·취함이면 선언해도 불발. */
     if(p && p.charId==='goblin' && !isMalfunctioning(p) &&
-       confirm(`👺 ${p.name}은(는) 고블린입니다.\n오늘 지명당한 그 순간 공개적으로 고블린임을 선언했습니까?\n[확인] 예 → 악한 팀 승리 / [취소] 아니오`))
+       thyExecAnswer('goblin', p, `👺 ${p.name}은(는) 고블린입니다.\n오늘 지명당한 그 순간 공개적으로 고블린임을 선언했습니까?\n[확인] 예 → 악한 팀 승리 / [취소] 아니오`))
       return {team:'evil', reason:`고블린(${p.name})이 선언 후 처형되었습니다.`, rule:'고블린: 지명당했을 때 공개적으로 고블린임을 선언하고 그날 처형되면 악한 팀이 승리합니다.'};
     /* 공포 조장가 — 공식: "Each night, choose a player: if you nominate & execute them,
        their team loses." 공포 표식과 지명자 연동이 앱에 없으므로 두 조건을 한 번에 확인받는다.
        지는 쪽은 '처형된 대상의 진영'이다 — 선한 대상이면 악이, 악한 대상이면 선이 이긴다. */
     const fm=S.players.find(x=>x.alive && x.charId==='fearmonger' && !isMalfunctioning(x));
     if(fm && p &&
-       confirm(`😱 공포 조장가(${fm.name})가 있습니다.\n처형된 ${p.name}이(가) 현재 공포 표식 대상이고, 공포 조장가 본인이 지명했습니까?\n[확인] 예 → ${isEvil(p)?'선한':'악한'} 팀 승리 / [취소] 아니오`))
+       thyExecAnswer('fear', p, `😱 공포 조장가(${fm.name})가 있습니다.\n처형된 ${p.name}이(가) 현재 공포 표식 대상이고, 공포 조장가 본인이 지명했습니까?\n[확인] 예 → ${isEvil(p)?'선한':'악한'} 팀 승리 / [취소] 아니오`))
       return {team: isEvil(p)?'good':'evil', reason:`공포 조장가의 대상 ${p.name}이(가) 공포 조장가의 지명으로 처형되었습니다.`, rule:'공포 조장가: 자신이 지명한 공포 대상이 처형되면 그 대상의 진영이 패배합니다.'};
     /* 레비아탄 — 공식: "If more than 1 good player is executed, evil wins."
        기준은 '처형된 사람이 선했는가'이고 실제 사망 여부와 무관하다(앱의 warn 도 동일).
@@ -9277,12 +9534,42 @@ function confirmWin(yes){
   executeNominee=function(nid){
     const n=findNom(nid); const p=n?playerOf(n.nominee):null;
     const et=S.players.find(x=>x.alive&&x.charId==='eviltwin');
-    let isGoodTwin=false;
-    if(et && p && p!==et && !isEvil(p) && !isMalfunctioning(et)){
-      isGoodTwin = confirm(`👥 사악한 쌍둥이가 게임에 있습니다.\n${p.name}이(가) 선한 쌍둥이입니까?\n[확인] 예 → 처형 시 악한 팀 승리 / [취소] 아니오`);
+    /* 처형 전에 사회자 재량 질문을 한 번에 모아 묻는다(선한 쌍둥이·성자·고블린·공포 조장가).
+       인앱 대화상자는 비동기라 답을 THY_EXEC_ANS 에 실어 두고 처형 경로(원본·resolveExecution 래퍼·
+       evalWinEvent)가 읽게 한다. UI 면 답이 다 모인 뒤 executeNominee(nid) 를 다시 부른다 —
+       재호출이어야 이 래퍼 바깥의 래퍼들도 처형 결과를 관측한다. */
+    const akey='exec:'+nid;
+    let pre=thyAckGet(akey);
+    if(!pre && p){
+      const qs=[];
+      if(et && p!==et && !isEvil(p) && !isMalfunctioning(et))
+        qs.push({key:'twin', message:`👥 사악한 쌍둥이가 게임에 있습니다.\n${p.name}이(가) 선한 쌍둥이입니까?`, ok:'예 → 처형 시 악한 팀 승리', cancel:'아니오'});
+      if(p.charId==='saint' && !isMalfunctioning(p))
+        qs.push({key:'saint', message:`🚨 ${p.name}은(는) 성자이며 오작동 상태가 아닙니다!\n처형을 확정하면 선한 팀이 패배합니다. 진행할까요?`, ok:'처형 확정', cancel:'취소', danger:true});
+      if(p.charId==='goblin' && !isMalfunctioning(p))
+        qs.push({key:'goblin', message:`👺 ${p.name}은(는) 고블린입니다.\n오늘 지명당한 그 순간 공개적으로 고블린임을 선언했습니까?`, ok:'예 → 악한 팀 승리', cancel:'아니오'});
+      const fm=S.players.find(x=>x.alive && x.charId==='fearmonger' && !isMalfunctioning(x));
+      if(fm) qs.push({key:'fear', message:`😱 공포 조장가(${fm.name})가 있습니다.\n처형되는 ${p.name}이(가) 현재 공포 표식 대상이고, 공포 조장가 본인이 지명했습니까?`, ok:'예 → 대상 진영 패배', cancel:'아니오'});
+      if(qs.length){
+        const answers={}; let allSync=true, finished=false;
+        const step=(i)=>{
+          if(i>=qs.length){ finished=true; thyAckSet(akey, answers); if(!allSync) executeNominee(nid); return; }
+          const q=qs[i];
+          thyAsk({kind:'confirm', title:'처형 전 확인', message:q.message, ok:q.ok, cancel:q.cancel, danger:!!q.danger},
+            (ok,sy)=>{ if(!sy) allSync=false; answers[q.key]=!!ok; if(q.key==='saint' && !ok){ finished=true; return; } step(i+1); });
+        };
+        step(0);
+        if(!finished || !allSync) return;         // UI 답 대기(재호출) · 또는 성자 취소
+        pre=thyAckGet(akey);
+        if(!pre) return;                          // 동기 훅에서 성자 취소
+      }
     }
+    pre=pre||{};
+    thyAckClear(akey);
+    THY_EXEC_ANS={pid:p? p.id : null, answers:pre};
+    const isGoodTwin=!!pre.twin;
     const executedToday=S.executedTodayPid;
-    _exec(nid);
+    try{ _exec(nid); } finally { THY_EXEC_ANS=null; }
     if(!p) return;
     /* 사악한 쌍둥이는 '선한 쌍둥이가 처형되면' 악 승리다 — 사망이 조건이 아니다.
        p.alive 로 막으면 보호(악마의 변호사·찻집 여인)로 살아남은 선한 쌍둥이의
@@ -9352,16 +9639,15 @@ function damselCall(){
   if(S.damselGuessUsed){ toast('하수인의 아가씨 추측은 게임당 1회입니다 — 이미 사용했습니다.','warn'); return; }
   /* 죽은 플레이어는 능력을 잃는다 — 죽은 아가씨는 맞혀도 발동하지 않는다 */
   if(!dm.alive){ toast('아가씨가 이미 죽었습니다 — 죽은 플레이어는 능력을 잃으므로 추측이 성립하지 않습니다.','warn'); return; }
-  const name=prompt('하수인이 낮에 공개적으로 지목한 플레이어 이름:');
-  if(name===null) return;
-  const t=S.players.find(p=>p.name===name);
-  if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
-  S.damselGuessUsed=true;
-  log(`👗 하수인의 아가씨 추측: ${t.name}`);
-  if(t.charId!=='damsel'){ toast(`${t.name}은(는) 아가씨가 아닙니다 — 추측 실패. 기회는 소진되었습니다.`,'ok'); save(); renderAll(); return; }
-  if(isMalfunctioning(dm)){ toast('아가씨가 중독·취함 상태 — 맞혔지만 발동하지 않습니다(기회는 소진).','warn'); log('아가씨 추측 적중 — 오작동으로 무효'); save(); renderAll(); return; }
-  save(); renderAll();
-  askWin({team:'evil', reason:`하수인이 아가씨(${dm.name})를 공개적으로 정확히 지목했습니다.`, rule:'아가씨: 하수인이 낮에 공개적으로 아가씨를 맞히면(게임당 1회) 선한 팀이 패배합니다.'});
+  thyChoose('하수인이 낮에 공개적으로 지목한 플레이어를 고르세요.', thyPlayerChoices(S.players), tid=>{
+    const t=playerOf(tid); if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
+    S.damselGuessUsed=true;
+    log(`👗 하수인의 아가씨 추측: ${t.name}`);
+    if(t.charId!=='damsel'){ toast(`${t.name}은(는) 아가씨가 아닙니다 — 추측 실패. 기회는 소진되었습니다.`,'ok'); save(); renderAll(); return; }
+    if(isMalfunctioning(dm)){ toast('아가씨가 중독·취함 상태 — 맞혔지만 발동하지 않습니다(기회는 소진).','warn'); log('아가씨 추측 적중 — 오작동으로 무효'); save(); renderAll(); return; }
+    save(); renderAll();
+    askWin({team:'evil', reason:`하수인이 아가씨(${dm.name})를 공개적으로 정확히 지목했습니다.`, rule:'아가씨: 하수인이 낮에 공개적으로 아가씨를 맞히면(게임당 1회) 선한 팀이 패배합니다.'});
+  }, {title:'👗 아가씨 추측'});
 }
 /* 알사히르 — 공식: "Each day, if you publicly guess which players are Minion(s) and which
    are Demon(s), good wins." 공개 추측이라 사회자 확인으로 받는다. 정답은 사회자 화면에만
@@ -9372,14 +9658,12 @@ function alsaahirCall(){
   const fmt=a=>a.length? a.map(p=>p.name).join(', ') : '(없음)';
   const mins=S.players.filter(p=>charOf(p.charId)?.type==='minion');
   const dems=S.players.filter(p=>charOf(p.charId)?.type==='demon');
-  if(!confirm(`🔎 알사히르(${al.name})의 공개 추측 판정\n\n정답 — 하수인: ${fmt(mins)} / 악마: ${fmt(dems)}\n\n추측이 하수인 전원과 악마를 모두 정확히 맞혔습니까?\n[확인] 예 → 선한 팀 승리 / [취소] 아니오`)){
-    log('🔎 알사히르 공개 추측 — 오답(승리 미성립)');
-    toast('추측이 정확하지 않습니다 — 아무 일도 일어나지 않습니다.','ok');
-    return;
-  }
-  if(isMalfunctioning(al)){ toast('알사히르가 중독·취함 상태 — 정답이어도 승리가 발동하지 않습니다.','warn'); log('알사히르 추측 적중 — 오작동으로 무효'); return; }
-  log('🔎 알사히르 공개 추측 적중 — 선한 팀 승리');
-  askWin({team:'good', reason:`알사히르(${al.name})가 하수인과 악마를 모두 정확히 맞혔습니다.`, rule:'알사히르: 낮에 공개적으로 하수인 전원과 악마를 모두 맞히면 선한 팀이 승리합니다.'});
+  thyConfirm(`🔎 알사히르(${al.name})의 공개 추측 판정\n\n정답 — 하수인: ${fmt(mins)} / 악마: ${fmt(dems)}\n\n추측이 하수인 전원과 악마를 모두 정확히 맞혔습니까?\n[확인] 예 → 선한 팀 승리 / [취소] 아니오`, ok=>{
+    if(!ok){ log('🔎 알사히르 공개 추측 — 오답(승리 미성립)'); toast('추측이 정확하지 않습니다 — 아무 일도 일어나지 않습니다.','ok'); return; }
+    if(isMalfunctioning(al)){ toast('알사히르가 중독·취함 상태 — 정답이어도 승리가 발동하지 않습니다.','warn'); log('알사히르 추측 적중 — 오작동으로 무효'); return; }
+    log('🔎 알사히르 공개 추측 적중 — 선한 팀 승리');
+    askWin({team:'good', reason:`알사히르(${al.name})가 하수인과 악마를 모두 정확히 맞혔습니다.`, rule:'알사히르: 낮에 공개적으로 하수인 전원과 악마를 모두 맞히면 선한 팀이 승리합니다.'});
+  }, {title:'🔎 알사히르', ok:'정답 → 선한 팀 승리', cancel:'오답'});
 }
 /* 교주 — 공식: "Each night, you become the alignment of an alive neighbor. If all good
    players choose to join your cult, your team wins." 가입 선언은 공개 행위라 확인으로 받는다.
@@ -9390,21 +9674,23 @@ function cultLeaderCall(){
   if(!cl){ toast('살아 있는 교주가 없습니다.','warn'); return; }
   if(isMalfunctioning(cl)){ toast('교주가 중독·취함 상태 — 전원 가입해도 승리가 발동하지 않습니다.','warn'); return; }
   const team=isEvil(cl)? 'evil':'good';
-  if(!confirm(`🕯 교주(${cl.name})의 현재 성향: ${team==='evil'?'악':'선'}\n\n살아 있는 선한 플레이어 전원이 교단 가입을 선언했습니까?\n[확인] 예 → ${team==='evil'?'악한':'선한'} 팀 승리 / [취소] 아니오`)) return;
-  log(`🕯 교주 전원 가입 선언 — ${team==='evil'?'악':'선'}한 팀 승리`);
-  askWin({team, reason:`선한 플레이어 전원이 교주(${cl.name})의 교단 가입을 선언했습니다.`, rule:'교주: 선한 플레이어 전원이 교단 가입을 선언하면 판정 시점의 교주 진영이 승리합니다.'});
+  thyConfirm(`🕯 교주(${cl.name})의 현재 성향: ${team==='evil'?'악':'선'}\n\n살아 있는 선한 플레이어 전원이 교단 가입을 선언했습니까?\n[확인] 예 → ${team==='evil'?'악한':'선한'} 팀 승리 / [취소] 아니오`, ok=>{
+    if(!ok) return;
+    log(`🕯 교주 전원 가입 선언 — ${team==='evil'?'악':'선'}한 팀 승리`);
+    askWin({team, reason:`선한 플레이어 전원이 교주(${cl.name})의 교단 가입을 선언했습니다.`, rule:'교주: 선한 플레이어 전원이 교단 가입을 선언하면 판정 시점의 교주 진영이 승리합니다.'});
+  }, {title:'🕯 교주', ok:'전원 가입 → 승리', cancel:'아니오'});
 }
 /* 얼뜨기 지목 판정 버튼(낮 패널) */
 function klutzCall(){
   const kl=S.players.find(p=>p.charId==='klutz' && !p.alive);
   if(!kl){ toast('사망한 얼뜨기가 없습니다.','warn'); return; }
-  const name=prompt('얼뜨기가 공개 지목한 플레이어 이름:');
-  const t=S.players.find(p=>p.name===name);
-  if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
-  if(isMalfunctioning(kl)){ toast('얼뜨기가 중독/오작동 상태로 죽었습니다 — 발동하지 않습니다.','warn'); log(`얼뜨기 지목(${t.name}) — 오작동으로 무효`); return; }
-  log(`🤡 얼뜨기 공개 지목: ${t.name}`);
-  const res=evalWinEvent('klutz', {targetEvil:isEvil(t), klutzName:kl.name});
-  if(isWinRes(res)) askWin(res); else toast(`${t.name}은(는) 선한 플레이어입니다 — 아무 일도 일어나지 않습니다.`,'ok');
+  thyChoose('얼뜨기가 공개 지목한 플레이어를 고르세요.', thyPlayerChoices(S.players), tid=>{
+    const t=playerOf(tid); if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
+    if(isMalfunctioning(kl)){ toast('얼뜨기가 중독/오작동 상태로 죽었습니다 — 발동하지 않습니다.','warn'); log(`얼뜨기 지목(${t.name}) — 오작동으로 무효`); return; }
+    log(`🤡 얼뜨기 공개 지목: ${t.name}`);
+    const res=evalWinEvent('klutz', {targetEvil:isEvil(t), klutzName:kl.name});
+    if(isWinRes(res)) askWin(res); else toast(`${t.name}은(는) 선한 플레이어입니다 — 아무 일도 일어나지 않습니다.`,'ok');
+  }, {title:'🤡 얼뜨기'});
 }
 (function(){
   const _rd=renderDay;
@@ -10654,6 +10940,17 @@ renderAll(); // 아이콘 교체 반영
 function emitEv(t, a, b, d){
   if(!Array.isArray(S.events)) S.events=[];
   const ph=S.phase||{kind:'setup', n:0};
+  /* 인앱 대화상자(시장 대체·별 넘기기)가 호출부를 재호출하면 같은 공격이 한 번 더 관측된다 —
+     같은 페이즈·같은 주체·같은 대상의 attack 이 연달아 오면 뒤 것을 버린다(정상 플레이에선 생기지 않는 조합). */
+  if(t==='attack' && THY_RETRY>0 && S.events.length){
+    /* 재호출 구간에서만 거른다. 마지막 이벤트만 보면 안 된다 — 재호출 사이에 death 가 끼면(별 넘기기)
+       비교가 빗나간다. 같은 페이즈를 거슬러 본다. */
+    const aa=(a==null?null:a), bb=(b==null?null:b);
+    for(let i=S.events.length-1;i>=0;i--){
+      const e=S.events[i]; if(!e || e.k!==ph.kind || e.n!==ph.n) break;
+      if(e.t==='attack' && e.a===aa && e.b===bb) return;
+    }
+  }
   S.evSeq=(S.evSeq|0)+1;
   S.events.push({i:S.evSeq, k:ph.kind, n:ph.n, t, a:(a==null? null:a), b:(b==null? null:b), d:d||{}});
   if(S.events.length>SABER.MAX_EVENTS) S.events.splice(0, S.events.length-SABER.MAX_EVENTS);
@@ -11503,8 +11800,8 @@ function thyShareCurrent(){
   const title='🕰 티르소스 — '+(THY_TAB_KO[activeTab]||'사회자 콘솔');
   const copy=()=>{
     if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(url).then(()=>toast('현재 화면 링크를 복사했습니다 — '+url,'ok'), ()=>prompt('복사하세요:',url));
-    } else prompt('복사하세요:',url);
+      navigator.clipboard.writeText(url).then(()=>toast('현재 화면 링크를 복사했습니다 — '+url,'ok'), ()=>thyCopyBox(url));
+    } else thyCopyBox(url);
   };
   if(navigator.share){
     try{
@@ -14383,18 +14680,20 @@ function groupAll(t){
   touch(sc); paint();
 }
 function doNew(){
-  const v=prompt('새 스크립트 이름:', '내 스크립트 '+(scripts().length+1));
-  if(v===null) return;
-  const sc={id:'ms_'+uid(), name:String(v).trim().slice(0,60)||'이름 없는 스크립트',
-            chars:[], note:'', updatedAt:Date.now()};
-  scripts().push(sc); selId=sc.id; save(); paint();
-  toast(`${sc.name} 를 만들었습니다 — 아래에서 캐릭터를 골라 담으세요.`,'ok');
+  thyPrompt('새 스크립트 이름:', '내 스크립트 '+(scripts().length+1), v=>{
+    if(v===null) return;
+    const sc={id:'ms_'+uid(), name:String(v).trim().slice(0,60)||'이름 없는 스크립트',
+              chars:[], note:'', updatedAt:Date.now()};
+    scripts().push(sc); selId=sc.id; save(); paint();
+    toast(`${sc.name} 를 만들었습니다 — 아래에서 캐릭터를 골라 담으세요.`,'ok');
+  }, {title:'새 스크립트', ok:'만들기', maxlength:60});
 }
 function doRename(){
   const sc=cur(); if(!sc) return;
-  const v=prompt('스크립트 이름:', sc.name);
-  if(v===null) return;
-  sc.name=String(v).trim().slice(0,60)||sc.name; touch(sc); paint();
+  thyPrompt('스크립트 이름:', sc.name, v=>{
+    if(v===null) return;
+    sc.name=String(v).trim().slice(0,60)||sc.name; touch(sc); paint();
+  }, {title:'이름 바꾸기', ok:'저장', maxlength:60});
 }
 function doDup(){
   const sc=cur(); if(!sc) return;
@@ -14404,15 +14703,18 @@ function doDup(){
 }
 function doDel(){
   const sc=cur(); if(!sc) return;
-  if(!confirm(`"${sc.name}" 스크립트를 삭제합니다. 되돌릴 수 없습니다. 계속할까요?`)) return;
-  S.myScripts=scripts().filter(x=>x.id!==sc.id);
-  if(S.myScriptActive===sc.id) S.myScriptActive=null;
-  selId=null; save(); paint(); toast('삭제했습니다.','ok');
+  thyConfirm(`"${sc.name}" 스크립트를 삭제합니다. 되돌릴 수 없습니다. 계속할까요?`, ok=>{
+    if(!ok) return;
+    S.myScripts=scripts().filter(x=>x.id!==sc.id);
+    if(S.myScriptActive===sc.id) S.myScriptActive=null;
+    selId=null; save(); paint(); toast('삭제했습니다.','ok');
+  }, {title:'스크립트 삭제', ok:'삭제', danger:true});
 }
 function doClear(){
   const sc=cur(); if(!sc || !sc.chars.length) return;
-  if(!confirm(`"${sc.name}" 에서 캐릭터 ${sc.chars.length}종을 모두 뺍니다. 계속할까요?`)) return;
-  sc.chars=[]; touch(sc); paint();
+  thyConfirm(`"${sc.name}" 에서 캐릭터 ${sc.chars.length}종을 모두 뺍니다. 계속할까요?`, ok=>{
+    if(!ok) return; sc.chars=[]; touch(sc); paint();
+  }, {title:'모두 빼기', ok:'빼기', danger:true});
 }
 /* 내보내기 — downloadScriptJSON 의 {name, author, characters} 에 exportScript 의 {customs} 를
    얹는다. 담긴 커스텀 정의를 같이 실어야 다른 기기에서 그 id 를 되찾을 수 있다. */
@@ -14424,19 +14726,23 @@ function doExport(){
   if(navigator.clipboard && navigator.clipboard.writeText)
     navigator.clipboard.writeText(data).then(
       ()=>toast('스크립트 JSON을 클립보드에 복사했습니다.','ok'),
-      ()=>prompt('복사하세요:', data));
-  else prompt('복사하세요:', data);
+      ()=>thyCopyBox(data));
+  else thyCopyBox(data);
 }
 /* 가져오기 — 신뢰할 수 없는 입력이다. importScript 와 같은 규칙으로 타입·길이·id 를 검증한다. */
 function doImport(pre){
   /* pre 를 주면 이미 파싱된 객체를 그대로 받는다 — 커스텀 탭의 importScript() 가
      {characters:[id…]} 형식을 만났을 때 사용자에게 다시 붙여넣게 하지 않고 여기로 넘긴다.
      위임 리스너는 언제나 인자 없이 부르므로(doImport()) 기존 동작은 그대로다. */
-  let d=pre;
-  if(d===undefined){
-    const raw=prompt('스크립트 JSON을 붙여넣으세요:'); if(!raw) return;
-    try{ d=JSON.parse(raw); }catch(e){ toast('JSON 파싱 실패','warn'); return; }
+  if(pre===undefined){
+    thyPrompt('스크립트 JSON을 붙여넣으세요:', '', raw=>{
+      if(!raw) return;
+      let d2; try{ d2=JSON.parse(raw); }catch(e){ toast('JSON 파싱 실패','warn'); return; }
+      doImport(d2);
+    }, {title:'스크립트 가져오기', multiline:true, ok:'가져오기'});
+    return;
   }
+  let d=pre;
   if(!d || typeof d!=='object' || Array.isArray(d)){ toast('스크립트 객체가 아닙니다.','warn'); return; }
   const IDRE=/^[A-Za-z0-9_-]{1,64}$/;
   const str=v=>typeof v==='string'? v.slice(0,400):'';
@@ -14504,25 +14810,34 @@ function doStart(){
   const cs=charsOf(sc);
   if(!cs.length){ toast('담긴 캐릭터가 없습니다.','warn'); return; }
   const errs=warns(sc).filter(w=>w.sev==='error');
-  if(errs.length && !confirm(`구성 오류 ${errs.length}건이 있습니다:\n\n${
-    errs.map(w=>'· '+w.txt).join('\n')}\n\n그래도 이 스크립트로 시작할까요?`)) return;
   const base=baseEd(sc);
-  /* 밤 순서표는 공식 3스크립트에만 있다. 그 밖의 캐릭터(실험·로릭·다른 에디션)는 기준
-     순서표에 자리가 없어 밤 진행에서 맨 뒤에 붙는다 — 시작 전에 무엇이 그런지 알린다. */
   const outs=cs.filter(c=>!c.custom && c.type!=='fabled' && c.type!=='traveler'
                           && edOf(c)!==base && (c.first||c.other));
-  if(outs.length && !confirm(`기준 밤 순서: ${EDITIONS[base].ko}\n\n`
+  const go=()=>{
+    if(typeof startFromSheet!=='function'){ toast('게임 시작 흐름을 찾을 수 없습니다.','warn'); return; }
+    /* startFromSheet 의 '진행 중 게임' 확인은 여기서 미리 받고 토큰을 넘긴다 — 인앱 대화상자는 비동기라
+       startFromSheet 가 답을 기다리며 돌아오면 아래 S.edition 검사가 '취소'로 오인한다. */
+    const ask3=(S.phase.kind!=='setup' && S.edition!==base);
+    const fin=()=>{
+      if(ask3) thyAckSet('sheet:'+base);
+      startFromSheet(base);
+      if(S.edition!==base) return;
+      S.myScriptActive=sc.id;
+      log(`📜 내 스크립트로 시작: ${sc.name} (기준 ${EDITIONS[base].ko} · ${cs.length}종)`);
+      save(); renderAll();
+      toast(`${sc.name} — 설정 탭의 캐릭터 목록이 이 스크립트로 좁혀졌습니다.`,'ok');
+    };
+    if(ask3){ thyConfirm('진행 중인 게임이 있습니다. 이 스크립트로 새 게임을 준비하면 배정이 초기화될 수 있습니다. 계속할까요?', ok=>{ if(ok) fin(); }, {title:'새 게임 준비', ok:'계속', danger:true}); return; }
+    fin();
+  };
+  const step2=()=>{ if(outs.length){ thyConfirm(`기준 밤 순서: ${EDITIONS[base].ko}\n\n`
     + `담긴 캐릭터 중 ${outs.length}종은 그 순서표에 없어 밤 진행에서 맨 뒤에 붙습니다:\n`
     + outs.slice(0,8).map(c=>'· '+c.ko).join('\n')
     + (outs.length>8? `\n… 외 ${outs.length-8}종` : '')
-    + '\n\n계속할까요?')) return;
-  if(typeof startFromSheet!=='function'){ toast('게임 시작 흐름을 찾을 수 없습니다.','warn'); return; }
-  startFromSheet(base);
-  if(S.edition!==base) return;                 /* startFromSheet 안에서 취소당했다 */
-  S.myScriptActive=sc.id;
-  log(`📜 내 스크립트로 시작: ${sc.name} (기준 ${EDITIONS[base].ko} · ${cs.length}종)`);
-  save(); renderAll();
-  toast(`${sc.name} — 설정 탭의 캐릭터 목록이 이 스크립트로 좁혀졌습니다.`,'ok');
+    + '\n\n계속할까요?', ok=>{ if(ok) go(); }, {title:'밤 순서 안내', ok:'계속'}); return; } go(); };
+  if(errs.length){ thyConfirm(`구성 오류 ${errs.length}건이 있습니다:\n\n${
+    errs.map(w=>'· '+w.txt).join('\n')}\n\n그래도 이 스크립트로 시작할까요?`, ok=>{ if(ok) step2(); }, {title:'구성 오류', ok:'그래도 시작', danger:true}); return; }
+  step2();
 }
 function unlink(){
   if(!S.myScriptActive) return;
