@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>엑사이엔씨 부문별 데이터</title>
+<title>엑사이엔씨 현장별 데이터</title>
 <style>
 :root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;
  --tx3:#5d6675;--a:#60a5fa;--up:#4ade80;--dn:#f87171;--wn:#fbbf24}
@@ -59,7 +59,7 @@ footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
  border:1px solid rgba(251,191,36,.25);border-radius:7px;padding:8px 11px;margin-top:14px}
 </style></head><body>
 <header><div class="hd">
- <h1>엑사이엔씨 부문별 데이터</h1>
+ <h1>엑사이엔씨 현장별 데이터</h1>
  <span class="code">054940</span>
  <span class="tag">코스닥</span>
  <span class="tag">실내건축 및 건축마무리 공사업</span>
@@ -70,12 +70,12 @@ footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
  </span>
 </div></header>
 <main>
-<div class="note">이 회사는 정기보고서에 <b>사업부문 단위로만</b> 수주를 공시합니다 — 개별 현장으로 쪼갤 수 없어 부문별 잔고 시계열만 싣습니다. 아래 「부문」 행은 개별 공사 현장이 아니라 사업부문 합계입니다.</div>
+<div class="note">이 회사의 수주표에는 <b>합계행이 없어</b> 수록 현장 합을 원문 총계와 대조할 수 없습니다 — 원문을 빠짐없이 읽었는지 자동 검증되지 않은 시계열입니다.</div>
 <div class="kpi">
  <div><b>520<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>수주잔고 · 2026Q2</span><i class="dn">−308억</i></div>
  <div><b>2,241<span style="font-size:12px;color:var(--tx3)"> 억</span></b><span>도급액 합계</span></div>
- <div><b>2</b><span>잔고 있는 부문</span></div>
- <div><b>3</b><span>수록 부문(누적)</span></div>
+ <div><b>2</b><span>잔고 있는 현장</span></div>
+ <div><b>3</b><span>수록 현장(누적)</span></div>
  <div><b>8</b><span>수록 분기 · 2024Q3–2026Q2</span></div>
  
 </div>
@@ -86,17 +86,17 @@ footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
 </section>
 
 <section>
- <h2>부문 목록 <em>머리행을 누르면 정렬</em></h2>
+ <h2>현장 목록 <em>머리행을 누르면 정렬</em></h2>
  <div class="ctl">
-  <input id="q" type="search" placeholder="부문·발주처 검색" aria-label="부문 검색">
+  <input id="q" type="search" placeholder="현장·발주처 검색" aria-label="현장 검색">
   <select id="fSeg" aria-label="공종"><option value="">공종 전체</option></select>
   <select id="fReg" aria-label="지역"><option value="">지역 전체</option></select>
   <label style="font-size:11.5px;color:var(--tx2);display:flex;align-items:center;gap:5px">
-   <input type="checkbox" id="onlyLive" checked style="min-width:0"> 잔고 있는 부문만</label>
+   <input type="checkbox" id="onlyLive" checked style="min-width:0"> 잔고 있는 현장만</label>
  </div>
  <div class="wrap"><table id="tb">
   <thead><tr>
-   <th class="l" data-k="nm">부문명</th><th class="l" data-k="cl">발주처</th>
+   <th class="l" data-k="nm">현장명</th><th class="l" data-k="cl">발주처</th>
    <th class="l" data-k="seg">공종</th><th class="l" data-k="reg">지역</th>
    <th data-k="sd">착공</th><th data-k="ed">완공예정</th>
    <th data-k="amt">도급액</th><th data-k="cmp">완성공사액</th>
@@ -106,7 +106,7 @@ footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
 </section>
 
 <section>
- <h2>분기 매트릭스 <em>부문 × 분기 계약잔액(억) · 상위 60개</em></h2>
+ <h2>분기 매트릭스 <em>현장 × 분기 계약잔액(억) · 상위 60개</em></h2>
  <div class="wrap"><table id="mx"><thead></thead><tbody></tbody></table></div>
 </section>
 
@@ -121,7 +121,7 @@ footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
 <footer>출처 DART 정기보고서 II. 사업의 내용 — 수주상황. 단위 억원(원문 백만원 환산).
 2026Q2 정기보고서 기준. 참고용 · 투자조언 아님.</footer>
 <script src="../vendor/chart.umd.min.js"></script>
-<script>const DATA={"recon":[null,null,null,null,null,null,null,null],"reconOver":[],"aggFix":[],"co":"엑사이엔씨","stock":"054940","slug":"054940","market":"코스닥","industry":"실내건축 및 건축마무리 공사업","fq":["2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1","2026Q2"],"codeGen":"2026Q2","grain":"segment","src":{"2024Q3":"20241113000490","2024Q4":"20250320000973","2025Q1":"20250515002305","2025Q2":"20250813001161","2025Q3":"20251119000220","2025Q4":"20260316001688","2026Q1":"20260514000782","2026Q2":"20260812000891"},"sites":[{"id":"054940-0001","nm":"CR/수장/파티션","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2021-01","ed":null,"s":{"amt":[130168,137808,81948,107344,168076,195684,null,null],"cmp":[80325,103250,56047,68782,70511,110769,null,null],"bal":[49843,34557,25901,38562,97564,84914,null,null],"pr":[61.7,74.9,68.4,64.1,42.0,56.6,null,null]}},{"id":"054940-0002","nm":"인테리어","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2021-01","ed":null,"s":{"amt":[36350,70737,39809,77400,44330,37718,33333,45445],"cmp":[27697,42706,12806,45767,14697,11338,7814,20366],"bal":[8653,28031,27003,31633,29633,26379,25519,25078],"pr":[76.2,60.4,32.2,59.1,33.2,30.1,23.4,44.8]}},{"id":"054940-0003","nm":"CR/수장/시스템파티션","cl":"","reg":"국내","seg":"기타","agg":false,"sd":"2021-01","ed":null,"s":{"amt":[null,null,null,null,null,null,161184,178641],"cmp":[null,null,null,null,null,null,103956,151753],"bal":[null,null,null,null,null,null,57229,26888],"pr":[null,null,null,null,null,null,64.5,84.9]}}],"summary":{"amt":[166518,208545,121757,184744,212406,233402,194517,224086],"cmp":[108022,145956,68853,114549,85208,122107,111770,172119],"bal":[58496,62588,52904,70195,127197,111293,82748,51966]},"declared":[null,null,null,null,null,null,null,null],"dom":[58496,62588,52904,70195,127197,111293,82748,51966],"ovs":[null,null,null,null,null,null,null,null],"segList":["기타"],"seg":{"기타":[58496,62588,52904,70195,127197,111293,82748,51966]}};</script>
+<script>const DATA={"recon":[null,null,null,null,null,null,null,null],"reconOver":[],"aggFix":[],"co":"엑사이엔씨","stock":"054940","slug":"054940","market":"코스닥","industry":"실내건축 및 건축마무리 공사업","fq":["2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1","2026Q2"],"codeGen":"2026Q2","grain":"project","src":{"2024Q3":"20241113000490","2024Q4":"20250320000973","2025Q1":"20250515002305","2025Q2":"20250813001161","2025Q3":"20251119000220","2025Q4":"20260316001688","2026Q1":"20260514000782","2026Q2":"20260812000891"},"sites":[{"id":"054940-0001","nm":"CR/수장/파티션","cl":"","reg":"미상","seg":"기타","agg":false,"sd":"2021-01","ed":null,"s":{"amt":[130168,137808,81948,107344,168076,195684,null,null],"cmp":[80325,103250,56047,68782,70511,110769,null,null],"bal":[49843,34557,25901,38562,97564,84914,null,null],"pr":[61.7,74.9,68.4,64.1,42.0,56.6,null,null]}},{"id":"054940-0002","nm":"인테리어","cl":"","reg":"미상","seg":"기타","agg":false,"sd":"2021-01","ed":null,"s":{"amt":[36350,70737,39809,77400,44330,37718,33333,45445],"cmp":[27697,42706,12806,45767,14697,11338,7814,20366],"bal":[8653,28031,27003,31633,29633,26379,25519,25078],"pr":[76.2,60.4,32.2,59.1,33.2,30.1,23.4,44.8]}},{"id":"054940-0003","nm":"CR/수장/시스템파티션","cl":"","reg":"미상","seg":"기타","agg":false,"sd":"2021-01","ed":null,"s":{"amt":[null,null,null,null,null,null,161184,178641],"cmp":[null,null,null,null,null,null,103956,151753],"bal":[null,null,null,null,null,null,57229,26888],"pr":[null,null,null,null,null,null,64.5,84.9]}}],"summary":{"amt":[166518,208545,121757,184744,212406,233402,194517,224086],"cmp":[108022,145956,68853,114549,85208,122107,111770,172119],"bal":[58496,62588,52904,70195,127197,111293,82748,51966]},"declared":[null,null,null,null,null,null,null,null],"dom":[null,null,null,null,null,null,null,null],"ovs":[null,null,null,null,null,null,null,null],"segList":["기타"],"seg":{"기타":[58496,62588,52904,70195,127197,111293,82748,51966]}};</script>
 <script>
 (function(){
  var fq=DATA.fq, K=fq.length-1, S=DATA.sites;

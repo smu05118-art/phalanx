@@ -138,11 +138,14 @@ def company_html(D):
 
     # 원문이 스스로 적은 총계와 수록 현장 합의 차이 — 상세표에 없는 소규모 현장 몫이다.
     dec = (D.get("declared") or [None] * len(fq))[k]
-    if dec and bal:
-        cov = 100.0 * bal / dec
+    # 대조율은 **빌더가 계산한 recon** 을 그대로 쓴다. 여기서 bal/dec 로 다시 계산하면
+    # 분자(전체 표)와 분모(합계행이 있는 표)가 어긋나 HJ중공업에서 '수록분이 123%'가
+    # 화면에 찍혔다 — 커버리지가 100%를 넘는다는 말은 참일 수 없다.
+    rc = (D.get("recon") or [None] * len(fq))[k]
+    if dec and rc is not None:
         decl = ('<div><b>%s<span style="font-size:12px;color:var(--tx3)"> 억</span></b>'
-                '<span>공시 총계</span><i class="mut">수록분이 %.0f%%</i></div>'
-                % (fmt_eok(dec), cov))
+                '<span>공시 총계</span><i class="mut">대조율 %.0f%%</i></div>'
+                % (fmt_eok(dec), rc))
     elif dec:
         decl = ('<div><b>%s<span style="font-size:12px;color:var(--tx3)"> 억</span></b>'
                 '<span>공시 총계</span></div>' % fmt_eok(dec))
@@ -162,6 +165,18 @@ def company_html(D):
     # 묶음(`기타`)이 공시 총계를 넘길 때 묶음만 총계에 맞춰 줄이는데(원문이 '총계 −
     # 개별'을 계산하며 새 현장을 빼지 않은 경우), 그건 숫자를 우리가 바꾼 것이다.
     # 조용히 고치면 화면이 원문인 척하게 된다.
+    # 검증 수단의 유무도 말한다. 원문에 합계행이 없으면 "우리가 다 읽었는가"를 자동으로
+    # 확인할 길이 없다 — 그걸 숨기면 대조 100%인 회사와 같은 얼굴로 보인다.
+    recon = D.get("recon") or []
+    if recon and all(v is None for v in recon):
+        grainnote += ('<div class="note">이 회사의 수주표에는 <b>합계행이 없어</b> 수록 현장 합을 '
+                      '원문 총계와 대조할 수 없습니다 — 원문을 빠짐없이 읽었는지 자동 검증되지 '
+                      '않은 시계열입니다.</div>')
+    over = D.get("reconOver") or []
+    if over:
+        grainnote += ('<div class="note">%s 분기는 수록 합이 원문 총계를 <b>넘습니다</b>(중복 계상 '
+                      '의심). 원문이 같은 사업을 두 행으로 적은 경우가 확인됐고, 근거 없이 '
+                      '합치지 않았습니다.</div>' % E(" · ".join(over)))
     fixq = D.get("aggFix") or []
     if fixq:
         grainnote += (
@@ -369,9 +384,10 @@ COMPANY_JS = r"""
 # ── 커버리지 지도 ────────────────────────────────────────────
 
 TIER_LABEL = {
+    "corp": ("정밀", "정밀 경로 — II-4·III-8·XI-1 교차검증", "up"),
     "site": ("수록", "현장 단위 시계열", "up"),
     "segment": ("부분", "사업부문 단위만 공시", "wn"),
-    "agg": ("미수록", "수주 표를 인식하지 못함", "tx3"),
+    "agg": ("미수록", "파서가 수주 표를 인식하지 못함 — 원문 확인 필요", "tx3"),
     "none": ("미수록", "보고서에 수주 절 없음", "tx3"),
     "error": ("미수록", "보고서 접근 실패", "dn"),
 }
@@ -379,15 +395,31 @@ TIER_LABEL = {
 
 def coverage_html(recs, probe, built):
     rows = []
-    order = {"site": 0, "segment": 1, "agg": 2, "none": 3, "error": 4}
-    for r in sorted(recs, key=lambda r: (order.get(probe.get(r["stock"], {}).get("tier"), 9),
-                                         r["name"])):
+    order = {"corp": 0, "site": 1, "segment": 2, "agg": 3, "none": 4, "error": 5}
+    corp_stocks = {v["stock"] for v in CORP.values() if v.get("stock")}
+
+    def tier_of(r):
+        # 정밀 경로 회사는 프로브 등급과 무관하게 정밀 페이지를 갖는다. 프로브의
+        # 'segment'를 그대로 찍으면 자이에스앤디가 "현장 단위로 쪼갤 수 없다"고
+        # 적힌 채 163개 현장짜리 정밀 페이지로 링크되는 모순이 생긴다.
+        if r["stock"] in corp_stocks:
+            return "corp"
+        # 페이지가 실제로 만들어졌으면 그 페이지의 입도가 등급이다. 프로브 등급을 쓰면
+        # 규칙이 바뀐 뒤 프로브를 다시 돌리기 전까지 지도와 페이지가 서로 다른 말을 한다.
+        b = built.get(r["stock"])
+        if b:
+            return "site" if b.get("grain") == "project" else "segment"
+        return probe.get(r["stock"], {}).get("tier", "error")
+
+    for r in sorted(recs, key=lambda r: (order.get(tier_of(r), 9), r["name"])):
         p = probe.get(r["stock"], {})
-        tier = p.get("tier", "error")
+        tier = tier_of(r)
         label, why, cls = TIER_LABEL[tier]
+        if tier == "corp":
+            p = dict(p, note="")            # 프로브 사유는 정밀 페이지와 무관하다
         b = built.get(r["stock"])
         link = ("<a href=\"%s/index.html\">%s</a>" % (E(r["slug"]), E(r["name"]))
-                if (b or r["stock"] in {v["stock"] for v in CORP.values()})
+                if (b or tier == "corp")
                 else E(r["name"]))
         rows.append(
             "<tr><td class=\"l\">%s</td><td class=\"mut\">%s</td><td class=\"l mut\">%s</td>"
@@ -419,7 +451,7 @@ def coverage_html(recs, probe, built):
 <div class="kpi">
  <div><b class="up">{site}</b><span>현장 단위 수록</span></div>
  <div><b class="wn">{segment}</b><span>사업부문 단위만 공시</span></div>
- <div><b class="tx3">{rest}</b><span>수주 표 없음 · 미수록</span></div>
+ <div><b class="tx3">{rest}</b><span>파서 미인식 · 미수록</span></div>
  <div><b>{n}</b><span>모집단 전체</span></div>
 </div>
 <section>
@@ -438,10 +470,12 @@ def coverage_html(recs, probe, built):
    <th>현장·부문</th><th>분기</th></tr></thead>
   <tbody>{rows}</tbody></table></div>
 </section>
-<div class="note"><b>등급이 뜻하는 것</b> — <b>수록</b>: 착공일·완공예정일이 붙은 개별 현장 행이
+<div class="note"><b>등급이 뜻하는 것</b> — <b>정밀</b>: 원본(encprojects) 복제본으로 II-4·III-8·XI-1
+삼중 교차검증·예측·백테스트를 갖춘다. <b>수록</b>: 착공일·완공예정일이 붙은 개별 현장 행이
 파싱된다. <b>부분</b>: 수주표는 있으나 '건축부문/토목부문'처럼 사업부문 합계만 공시해
-현장 단위로 쪼갤 수 없다. <b>미수록</b>: 정기보고서에 인식 가능한 수주 표가 없다.
-등급은 추정이 아니라 매 분기 원문을 열어 다시 매깁니다.</div>
+현장 단위로 쪼갤 수 없다. <b>미수록</b>: <b>우리 파서가</b> 수주 표를 인식하지 못했다 —
+원문에 표가 없는 경우와 아직 흡수하지 못한 머리행인 경우가 섞여 있으며, 후자는 파서를
+넓히면 수록된다. 등급은 추정이 아니라 매 분기 원문을 열어 다시 매깁니다.</div>
 </main>
 <footer>출처 KRX KIND 상장법인목록 · DART 정기보고서. 생성 {gen}. 참고용 · 투자조언 아님.</footer>
 </body></html>""".format(
@@ -638,7 +672,9 @@ def main():
             old = f.read()
         atomic_write(ip, picker_html(recs, probe, built, old))
         print("index.html — 원본 %d + 신규 %d" % (len(CORP), len(built)))
-    return 0
+    # 빌드 실패를 0으로 끝내면 Action이 "정상"으로 보고하고 그 회사는 조용히 사라진다.
+    # 성공한 회사는 이미 썼으므로 여기서 실패로 종료해도 산출물은 보존된다.
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

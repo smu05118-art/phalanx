@@ -467,7 +467,22 @@ def _missing(recs, quarters):
                 continue
             if not d.get("ok") and not d.get("note"):
                 todo.append((rec, q))
+                continue
+            # 부정 캐시를 영구로 두면 늦게 제출한 회사는 그 분기가 영영 빈칸으로 굳는다.
+            # 정기보고서는 분기말 뒤 45~90일 안에 오므로, 분기말 후 150일까지는
+            # "없음"을 결론이 아니라 '아직'으로 보고 다시 묻는다.
+            if not d.get("ok") and _still_filing(q):
+                todo.append((rec, q))
     return todo
+
+
+def _still_filing(quarter, grace_days=150):
+    """그 분기 보고서가 아직 제출될 수 있는 기간인가."""
+    import datetime
+    y, qn = int(quarter[:4]), int(quarter[5])
+    m = qn * 3
+    end = datetime.date(y + (m == 12), (m % 12) + 1, 1) - datetime.timedelta(days=1)
+    return (datetime.date.today() - end).days <= grace_days
 
 
 def collect(recs, quarters, force=False, log=sys.stderr, sweeps=2):
@@ -535,10 +550,44 @@ _SEG = [("건축", re.compile(r"건축|주택|아파트|APT|오피스텔|빌딩"
         ("기타", re.compile(r"."))]
 
 
+_FOREIGN = re.compile(
+    r"싱가포르|싱가폴|필리핀|베트남|인도네시아|말레이시아|태국|미얀마|라오스|캄보디아|방글라데시|"
+    r"파키스탄|스리랑카|네팔|인도(?!네시아)|몽골|카자흐|우즈베크|투르크|아제르|조지아|러시아|"
+    r"중국|일본|대만|홍콩|마카오|호주|뉴질랜드|사우디|아랍|UAE|두바이|아부다비|쿠웨이트|카타르|"
+    r"오만|바레인|이라크|이란|요르단|이스라엘|이집트|알제리|모로코|리비아|나이지리아|가나|"
+    r"에티오피아|케냐|탄자니아|남아공|미국|캐나다|멕시코|브라질|칠레|페루|콜롬비아|파나마|"
+    r"에콰도르|영국|독일|프랑스|폴란드|헝가리|체코|루마니아|터키|튀르키예|노르웨이|"
+    r"Singapore|Philippin|Vietnam|Indonesia|Malaysia|Thailand|Saudi|Qatar|Kuwait|Oman|"
+    r"Iraq|Egypt|Nigeria|Australia|Panama|Chile|Peru|Mexico|Poland|Hungary|Turkey|Norway")
+_KR_REGION = re.compile(
+    r"서울|부산|인천|대구|광주|대전|울산|세종|경기|강원|충북|충남|충청|전북|전남|전라|경북|경남|"
+    r"경상|제주|수원|성남|용인|고양|화성|평택|안산|안양|남양주|김포|파주|의정부|시흥|하남|"
+    r"창원|김해|양산|진주|포항|구미|경주|청주|천안|아산|전주|익산|군산|목포|여수|순천|춘천|원주|강릉")
+_KR_PUBLIC = re.compile(
+    r"(한국|국가|서울|부산|인천|경기|LH|SH|GH|iH).*?(공사|공단|공무원)|공사$|공단$|"
+    r"(특별|광역)?(시|도|군|구)(청|본부)?$|교육청|국토관리청|지방조달청|조달청|국방부|"
+    r"국가철도공단|한국토지주택|한국도로공사|한국전력|한국수자원|한국가스|한국철도|한국농어촌|"
+    r"한국환경|한국수력|한국남부발전|한국중부발전|한국서부발전|한국동서발전|한국남동발전|"
+    r"도시공사|개발공사|시설공단|주택도시|재개발|재건축|정비사업|조합$")
+
+
 def classify(rec, lead=""):
-    """지역(국내/해외)·공종. 원문에 신호가 없으면 국내·기타로 둔다."""
+    """지역(국내/해외/미상)·공종. **신호가 없으면 단정하지 않는다.**
+
+    없으면 '국내'로 두던 규칙은 lite 1,268행 전부를 「지역: 국내」로 찍었다 —
+    싱가포르·필리핀 현장까지. 원문이 지역을 말하지 않으면 우리도 모르는 것이다.
+    """
     blob = " ".join(str(rec.get(k) or "") for k in ("nm", "cl", "seg")) + " " + lead
-    reg = "해외" if _OVS.search(blob) else "국내"
+    # 해외 신호가 '해외'라는 낱말뿐이면 「필리핀 세부 신항만」「싱가포르 …」이 전부
+    # 미상으로 남는다. 국가·외국 도시명은 현장명에 그대로 적히므로 그것으로 읽는다.
+    # 국내 신호는 행정구역명과 공공 발주처(…공사·…공단·…시·…군·…청)다 — 단, 국내
+    # 발주처가 해외 현장을 낼 수 있으므로(한국전력의 해외 전력구) 해외 신호가 먼저다.
+    if _OVS.search(blob) or _FOREIGN.search(blob):
+        reg = "해외"
+    elif _DOM.search(blob) or _KR_REGION.search(blob) or _KR_PUBLIC.search(str(rec.get("cl") or "")):
+        reg = "국내"
+    else:
+        reg = "미상"
     for name, pat in _SEG:
         if pat.search(blob):
             return reg, name
@@ -723,7 +772,10 @@ def build(rec, quarters):
         # codeGen은 **데이터에서 유도**한다. 오늘 날짜를 쓰면 내용이 같아도 매일
         # 페이지가 바뀌어 자동 갱신이 빈 커밋을 만든다.
         "fq": fq, "codeGen": fq[-1],
-        "grain": got[-1]["grain"],
+        # 입도는 **빌드 시점에 캐시 원행으로 다시 잰다.** 수집 때 박아 둔 값을 쓰면
+        # 판별 규칙을 고쳐도 전 종목을 다시 받기 전까지 화면이 옛 판정을 유지한다
+        # (범양건영이 '5행 미만 → 부문' 규칙 폐기 뒤에도 부문으로 남아 있던 이유).
+        "grain": grain_of(got[-1].get("tables") or [{"rows": got[-1].get("rows") or []}]),
         "src": {d["quarter"]: d["rcpNo"] for d in got},
         "sites": site_list,
         "summary": summary, "declared": declared, "dom": dom, "ovs": ovs,
@@ -743,16 +795,22 @@ def main():
     ap.add_argument("--lanes", type=int, help="병렬 레인 수(기본 KCE_LANES 또는 6)")
     ap.add_argument("--sweeps", type=int, default=3,
                     help="빈 칸 재훑기 횟수 — 일시적 실패를 메운다")
-    ap.add_argument("--tier", default="site", help="이 등급만 (기본 site)")
+    # 기본값에 segment를 포함한다. site만 받으면 부문 공시 5사는 페이지는 계속
+    # 만들어지는데 수집은 영영 안 돼, 다음 분기부터 화면이 옛 분기에 멈춘다.
+    ap.add_argument("--tier", default="site,segment",
+                    help="이 등급만 (기본 site,segment)")
     ap.add_argument("--new-only", action="store_true",
                     help="원본 7사 제외 — 그쪽은 encprojects 시드가 이미 있다")
     a = ap.parse_args()
 
     recs = load_universe()
     probe = {}
-    ppath = os.path.join(HERE, "assets", "probe_2026Q2.json")
-    if os.path.exists(ppath):
-        with open(ppath, encoding="utf-8") as f:
+    # 분기별 파일명(probe_<분기>.json)이라 하나를 박아 두면 분기가 넘어가는 순간
+    # 수집기와 페이지 생성기가 서로 다른 등급표를 보게 된다. 가장 최근 것을 쓴다.
+    cands = sorted(f for f in os.listdir(os.path.join(HERE, "assets"))
+                   if f.startswith("probe_") and f.endswith(".json"))
+    if cands:
+        with open(os.path.join(HERE, "assets", cands[-1]), encoding="utf-8") as f:
             probe = {r["stock"]: r for r in json.load(f)["rows"]}
     if a.tier:
         want = set(a.tier.split(","))

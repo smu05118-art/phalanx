@@ -54,11 +54,15 @@ def grain_of(tables):
     """
     for t in tables:
         rows = t["rows"]
-        if len(rows) < 5:
+        if not rows:
             continue
+        # 행 수 하한을 두지 않는다. '5행 미만이면 부문'으로 잘랐더니 범양건영처럼
+        # 현장이 3개뿐인 회사가 — 착공일·발주처가 다 붙어 있는데도 — 부문 단위로
+        # 오분류돼 화면이 "사업부문 단위로만 공시"라고 거짓 고지를 띄웠다.
+        # 판별은 오직 날짜 유무다: 부문 합계 행에는 날짜가 없다.
         dated = sum(1 for r in rows
                     if _DATE.search((r.get("sd") or "") + " " + (r.get("ed") or "")))
-        if dated >= 0.6 * len(rows):
+        if dated >= 1 and dated >= 0.6 * len(rows):
             return "project"
     return "segment"
 
