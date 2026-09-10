@@ -226,3 +226,36 @@ class TestProbeArtifact(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestProbeFailClosed(unittest.TestCase):
+    """DART 접근 실패를 '미수록' 관측으로 굳히지 않는다 — 굳히면 lite 29사가 통째로 사라진 채 배포된다."""
+
+    def _row(self, stock, tier, note=""):
+        return {"stock": stock, "name": stock, "tier": tier, "note": note}
+
+    def test_mass_failure_refuses_to_write(self):
+        rows = [self._row(str(i), "error", "URLError") for i in range(10)]
+        _, ok = kce_probe.reconcile_with_previous(rows, {})
+        self.assertFalse(ok)
+
+    def test_single_failure_inherits_previous_observation(self):
+        prev = {"1": self._row("1", "site"), "2": self._row("2", "site")}
+        rows = [self._row("1", "error", "timeout"), self._row("2", "site")]
+        out, ok = kce_probe.reconcile_with_previous(rows, prev)
+        self.assertTrue(ok)
+        self.assertEqual(out[0]["tier"], "site")
+        self.assertIn("승계", out[0]["note"])
+
+    def test_collapse_of_coverage_refuses_to_write(self):
+        prev = {str(i): self._row(str(i), "site") for i in range(10)}
+        rows = [self._row(str(i), "agg", "표 인식 0") for i in range(10)]   # 접근은 됐지만 전부 오독
+        _, ok = kce_probe.reconcile_with_previous(rows, prev)
+        self.assertFalse(ok)
+
+    def test_normal_run_passes_through(self):
+        prev = {str(i): self._row(str(i), "site") for i in range(10)}
+        rows = [self._row(str(i), "site") for i in range(9)] + [self._row("9", "segment")]
+        out, ok = kce_probe.reconcile_with_previous(rows, prev)
+        self.assertTrue(ok)
+        self.assertEqual([r["tier"] for r in out][-1], "segment")

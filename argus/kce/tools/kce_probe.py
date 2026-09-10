@@ -162,6 +162,39 @@ def probe_one(rec, quarter, keep_dir=None):
         return out
 
 
+
+def reconcile_with_previous(rows, prev, err_max=0.3, drop_max=0.3):
+    """접근 실패를 관측으로 굳히지 않는다(fail-closed). (rows, ok) 를 돌려준다.
+
+    DART가 연결을 끊는 날 프로브는 회사마다 'error'를 돌려주는데, 그걸 관측 결과로
+    저장하면 페이지 생성기가 그 위에서 lite 29사를 통째로 지운 index·coverage를 만들고,
+    전부 0으로 끝나 그대로 커밋·푸시된다(격리본에서 100% 재현).
+      · 실패가 err_max 를 넘으면 쓰지 않는다(ok=False)
+      · 개별 실패는 직전 관측을 승계한다(사유는 note 에 남긴다)
+      · 수록 가능(site+segment) 회사 수가 직전 대비 drop_max 넘게 줄면 오독으로 보고 쓰지 않는다
+    """
+    rows = [dict(r) for r in rows]
+    n_err = sum(1 for r in rows if r["tier"] == "error")
+    if rows and n_err > err_max * len(rows):
+        sys.stderr.write("[fail-closed] 접근 실패 %d/%d — 관측 결과를 쓰지 않는다\n" % (n_err, len(rows)))
+        return rows, False
+    kept = 0
+    for i, r in enumerate(rows):
+        old = prev.get(r["stock"])
+        if r["tier"] == "error" and old and old.get("tier") != "error":
+            rows[i] = dict(old, note="(직전 관측 승계 — 이번 접근 실패: %s)" % (r.get("note") or "")[:60])
+            kept += 1
+    if kept:
+        sys.stderr.write("[fail-closed] 접근 실패 %d사는 직전 관측을 승계했다\n" % kept)
+    if prev:
+        was = sum(1 for r in prev.values() if r.get("tier") in ("site", "segment"))
+        now = sum(1 for r in rows if r["tier"] in ("site", "segment"))
+        if was and now < (1 - drop_max) * was:
+            sys.stderr.write("[fail-closed] 수록 가능 회사 %d → %d — 관측 결과를 쓰지 않는다\n" % (was, now))
+            return rows, False
+    return rows, True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quarter", help="기본: 오늘 기준 접수 완료된 최신 분기")
@@ -214,6 +247,20 @@ def main():
     payload = {"quarter": a.quarter, "n": len(rows), "tally": by, "rows": rows}
     out = a.out if os.path.isabs(a.out) else os.path.join(HERE, a.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
+    prev = {}
+    if os.path.exists(out):
+        try:
+            with open(out, encoding="utf-8") as f:
+                prev = {r["stock"]: r for r in json.load(f)["rows"]}
+        except Exception:
+            prev = {}
+    rows, ok = reconcile_with_previous(rows, prev)
+    if not ok:
+        return 1
+    by = {}
+    for r in rows:
+        by[r["tier"]] = by.get(r["tier"], 0) + 1
+    payload["tally"], payload["rows"] = by, rows
     atomic_write(out, json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
     sys.stderr.write("\n== %s: %s (%.0fs)\n" % (a.quarter, by, time.time() - t0))
 
