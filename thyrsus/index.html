@@ -4550,6 +4550,24 @@ function doImpKill(pid){
     : S.players.find(q=>abilityActs(q) && charOf(q.charId)?.type==='demon');
   if(!imp || isMalfunctioning(imp)){ toast('악마가 능력을 쓸 수 없는 상태 — 오늘 밤 살해 불발. 아무도 죽지 않습니다.','warn'); log(`악마 살해 불발: ${t.name}`); save(); renderAll(); return; }
   if(t===imp){ // 자살 → 별 넘기기 (승격을 먼저 하고 사망 처리해야 오판정이 없다)
+    /* 자살도 '악마의 살해'다 — 대상이 자신일 뿐이다. 그러므로 정상 경로와 **같은 사망 차단
+       판정을 먼저** 통과해야 한다.
+       [무엇이 문제였나] 이 분기가 승격을 끝내고 곧장 killPlayer 로 내려가 block 단계를 통째로
+       건너뛰었다. 표를 읽는 유일한 창구인 resolveDeath 는 아래 정상 경로에만 있어서, 수도사·
+       여관 주인 보호가 임프에게 걸려 있어도 무시하고 죽였고 **죽지 않아야 할 상황에서 별까지
+       넘어갔다.** 공식 Imp: "If you kill yourself this way, a Minion becomes the Imp." —
+       "this way"(실제로 죽었을 때)가 조건이므로 별 넘기기는 살해의 원인이 아니라 **결과**다.
+       그 순서가 여기 판정을 앞에 두는 이유다.
+       시장 대체는 자기 지목에서 성립할 수 없으므로(악마가 시장일 수 없다) block 만 태운다.
+       승격 대화의 비동기 재호출 때 같은 판정을 다시 밟지만, recordDeathTrace 가 직전 항목과
+       같으면 적지 않으므로 근거 사슬에는 한 줄만 남는다. */
+    const _sui=resolveDeath(t,{sourceType:'demon', sourceCharId:'imp', cause:'임프 자살(★ 별 넘기기)'},['block']);
+    if(_sui.reason){
+      toast(`${t.name}(임프)의 자살: ${_sui.reason} — 죽지 않았습니다. 죽지 않았으므로 별 넘기기도 일어나지 않습니다.`,'ok');
+      log(`임프 자살 무효(${_sui.reason}) — 별 넘기기 없음`);
+      thyAckClear('star:'+t.id+':'+S.phase.n);
+      save(); renderAll(); return;
+    }
     const minions=S.players.filter(q=>q.alive && charOf(q.charId)?.type==='minion');
     if(minions.length){
       const sw=minions.find(m=>m.charId==='scarletwoman');
@@ -9030,18 +9048,62 @@ function grimConcede(losing){
    player: all players choose which of these 2 players win." 발동하면 앱의 통상 승리 판정과
    무관하게 그 자리에서 게임이 끝난다. 결과를 승리 엔진에 태워야 사유와 함께 전적에 남는다.
    grimConcede 와 같은 방식으로 승리 엔진 유무를 확인한 뒤 넘긴다(엔진은 뒤쪽 블록이다). */
+/* 공식 Fiddler: "Once per game, the Demon secretly chooses an opposing player: all players
+   choose which of these 2 players win."
+   [무엇이 문제였나] 승자는 **두 사람 중 하나**이고 승리 팀은 그 사람의 진영에서 나와야 하는데,
+   이 함수는 두 당사자가 누구인지 아예 받지도 않고 선택지 id 를 그대로 팀 문자열로 썼다
+   ('악마 쪽 = 악한 팀'을 상수로 박아 둔 것이다). 이 앱은 진영을 캐릭터에서 유도하지 않고
+   p.alignment 로 따로 들고 있으며(isEvil), 이발사 교환은 공식대로 캐릭터만 바꾸고 진영은
+   각자 보존한다 — 그래서 **선한 악마가 앱 자체 경로로 실제로 생긴다.** 그 상태에서 악마가
+   이기면 코드는 악마의 진영(선)이 아니라 'evil' 을 승리 팀으로 제안했다. 반대 선택도 뒤집혔다.
+   이제 두 당사자를 먼저 확정하고, 이긴 '사람'의 그 시점 진영으로 팀을 정한다.
+   상대 후보는 캐릭터 타입이 아니라 isEvil() 기준의 '반대 진영'으로 거른다 — 선한 악마일 때
+   악한 플레이어가 후보로 떠야 공식의 "opposing player" 와 맞는다.
+   이단자 반전은 askWin 한 곳에서만 하므로 여기서 또 얹지 않는다. */
 function fiddlerCall(){
   if(S.gameOver){ toast('이미 종료된 게임입니다.','warn'); return; }
-  thyChoose('🎻 바이올린 연주자 — 전원 투표 결과를 입력합니다.',
-    [{id:'evil', label:'악마 쪽이 이겼다', sub:'악한 팀 승리'}, {id:'good', label:'지목된 상대 플레이어 쪽이 이겼다', sub:'선한 팀 승리'}], team=>{
-    if(team!=='evil' && team!=='good') return;
-  const res={team, reason:'바이올린 연주자 — 전원 투표로 승자를 결정했습니다.',
-    rule:'바이올린 연주자(우화): 악마가 상대 진영 1명을 비밀리에 지목하면 전원이 둘 중 누가 이길지 투표하고, 그 결과로 게임이 즉시 끝납니다.',
+  const demons=S.players.filter(p=>p.alive && charOf(p.charId)?.type==='demon');
+  if(!demons.length){ toast('살아 있는 악마가 없습니다 — 바이올린 연주자는 악마가 발동합니다.','warn'); return; }
+  /* ① 어느 악마가 썼는가 — 악마가 하나면 묻지 않는다 */
+  const kD='fiddler:demon:'+(S.gameId||'');
+  if(demons.length>1 && !thyAckHas(kD)){
+    const now=thyAsk({kind:'choice', title:'🎻 바이올린 연주자 ①', syncFallback:demons[0].id,
+        message:'어느 악마가 이 능력을 썼습니까?',
+        choices:demons.map(x=>({id:x.id, label:x.name, sub:charName(x)+(isEvil(x)?'':' · 선한 진영')}))},
+      (id,syncNow)=>{ if(id==null){ thyAckClear('fiddler:'); return; } thyAckSet(kD,id); if(!syncNow) thyRetry(()=>fiddlerCall()); });
+    if(!now || !thyAckHas(kD)) return;
+  }
+  const dem = demons.length>1 ? (playerOf(thyAckGet(kD))||demons[0]) : demons[0];
+  /* ② 악마가 비밀리에 지목한 '반대 진영' 상대 */
+  const foes=S.players.filter(p=>p.alive && p.id!==dem.id && isEvil(p)!==isEvil(dem));
+  if(!foes.length){ toast(`${dem.name}(악마)와 반대 진영인 생존자가 없습니다 — 지목이 성립하지 않습니다.`,'warn'); thyAckClear('fiddler:'); return; }
+  const kF='fiddler:foe:'+(S.gameId||'');
+  if(!thyAckHas(kF)){
+    const now=thyAsk({kind:'choice', title:'🎻 바이올린 연주자 ②', syncFallback:foes[0].id,
+        message:`${dem.name}(악마${isEvil(dem)?'':' · 선한 진영'})이(가) 비밀리에 지목한 상대는 누구입니까?`,
+        choices:foes.map(x=>({id:x.id, label:x.name, sub:charName(x)+' · '+(isEvil(x)?'악한':'선한')+' 진영'}))},
+      (id,syncNow)=>{ if(id==null){ thyAckClear('fiddler:'); return; } thyAckSet(kF,id); if(!syncNow) thyRetry(()=>fiddlerCall()); });
+    if(!now || !thyAckHas(kF)) return;
+  }
+  const foe=playerOf(thyAckGet(kF))||foes[0];
+  /* ③ 전원 투표 결과 — 팀이 아니라 '두 사람 중 누구'를 묻는다 */
+  const kW='fiddler:win:'+(S.gameId||'');
+  if(!thyAckHas(kW)){
+    const now=thyAsk({kind:'choice', title:'🎻 바이올린 연주자 ③', syncFallback:dem.id,
+        message:'전원 투표에서 누가 이겼습니까?',
+        choices:[dem,foe].map(x=>({id:x.id, label:x.name, sub:charName(x)+' · '+(isEvil(x)?'악한':'선한')+' 진영이 승리합니다'}))},
+      (id,syncNow)=>{ if(id==null){ thyAckClear('fiddler:'); return; } thyAckSet(kW,id); if(!syncNow) thyRetry(()=>fiddlerCall()); });
+    if(!now || !thyAckHas(kW)) return;
+  }
+  const win=playerOf(thyAckGet(kW))||dem;
+  thyAckClear('fiddler:');
+  const team=isEvil(win)? 'evil':'good';
+  const res={team, reason:`바이올린 연주자 — ${dem.name}(악마) 대 ${foe.name}의 전원 투표에서 ${win.name}이(가) 이겼습니다.`,
+    rule:`바이올린 연주자(우화): 악마가 반대 진영 1명을 비밀리에 지목하면 전원이 **둘 중 누가 이길지** 투표하고 그 결과로 게임이 즉시 끝납니다. 이긴 사람이 속한 팀이 승리합니다 — 지금은 ${team==='evil'?'악한':'선한'} 팀입니다.`,
     endKind:'fiddler'};
-  log(`🎻 바이올린 연주자 — 전원 투표로 ${team==='good'?'선한':'악한'} 팀 승리`);
-    if(typeof askWin==='function' && typeof isWinRes==='function'){ askWin(res); return; }
-    thyConfirm(`${team==='good'?'선한':'악한'} 팀 승리로 게임을 종료합니다.`, ok=>{ if(!ok) return; S.endKind='fiddler'; S.gameOver=true; save(); showGameOver(team, res.reason+' — '+res.rule); }, {ok:'종료', danger:true});
-  }, {title:'🎻 바이올린 연주자', syncFallback:'evil'});
+  log(`🎻 바이올린 연주자 — ${dem.name} 대 ${foe.name} 투표에서 ${win.name} 승리 → ${team==='good'?'선한':'악한'} 팀`);
+  if(typeof askWin==='function' && typeof isWinRes==='function'){ askWin(res); return; }
+  thyConfirm(`${team==='good'?'선한':'악한'} 팀 승리로 게임을 종료합니다.`, ok=>{ if(!ok) return; S.endKind='fiddler'; S.gameOver=true; save(); showGameOver(team, res.reason+' — '+res.rule); }, {ok:'종료', danger:true});
 }
 function openEndMenu(){
   const el=$('#pmodal'); if(!el) return;
