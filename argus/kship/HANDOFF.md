@@ -32,15 +32,17 @@ python3 inject_link.py --apply             # argus/index.html 에 ⚓ 한국조�
 | 기자재 부품 분류 | 정기보고서 II-2 주요제품 + KIND 문구 → 키워드 규칙 | 미분류는 `assets/unclassified.csv`, 수동 지정은 `parts_override.csv` |
 | 기자재→조선사 연결 | II 절 본문의 조선사 이름 언급(횟수), 비중은 적힌 경우만 | 근거 등급을 화면에 표시(주요고객 주석 > 계약 공시 > 본문 언급 > KIND) |
 
-## 지금 상태
+## 지금 상태 (2026-09-10 저녁)
 
-- 조선사 5사 **2026Q2만** 수집됨(과거 7분기는 DART 차단으로 중단 — `kship_yards.py --collect --quarter 2026Q1` … 순서로 재개).
-- 척당 계약 189건(2024~) 캐시·집계 완료. **정정공시 23건은 인코딩 버그로 캐시가 깨져 삭제** — `kship_contracts.py --collect` 재실행이면 다시 받는다(kce_fetch EUC-KR 판정을 고쳤다).
-- 기자재 35사 중 30사 원문 캐시됨(5사 미수집: 범한퓨얼셀·현대힘스·케이앤에스아이앤씨·한국선재·화인베스틸) — `kship_suppliers.py --collect` 재실행.
-- 한국카본 등 **주요제품 표의 '비중'을 금액으로 읽던 버그**는 파서를 고쳤지만 캐시에는 옛 값이 남아 있다 → `kship_suppliers.py --collect --force` 로 재수집하면 정확해진다(빌드 단계 방어로 화면 오염은 막아 둠).
-- 삼성중공업 통화선도 매도 USD 482억달러는 주석 표를 그대로 읽은 값이다 — 잔고(원화 35조≈240억달러)보다 커서 **원문 대조 필요**(만기 미도래 롤오버 누적일 수 있음).
-- 페이지: 허브 · 커버리지 · 조선사 5 · 기자재 35 · parts.html 인포그래픽. ARGUS 진입 링크 주입기 있음.
-- 없음(다음 단계): GitHub Action(`update-kship.yml`), tests/, README·LOGIC 문서, 모바일 점검, 대한조선·HJ중공업 헤지 공시 확인, 인도시점→매출인식 시점 매핑(진행률 기준은 주석 「수익」에서 읽어야 함).
+- 페이지: 허브 · 커버리지 · 조선사 5 · 기자재 35 · parts.html 인포그래픽(375px 점검 완료). ARGUS 진입 링크 주입됨.
+- 문서: README.md(화면) · LOGIC.md(판정 규칙) · 이 문서. 테스트 12건 `cd tools && python3 -m unittest discover -s tests`.
+- 자동 갱신: `.github/workflows/update-kship.yml` 매일 10:40 KST — 수집기 하나씩, 테스트 전후, 성공분만 커밋.
+- 조선사 5사 **2026Q2만** 수집됨. 과거 분기는 DART 차단으로 미수집 — 복구되면
+  `python3 kship_yards.py --collect --quarter 2026Q1`(… 2025Q4 … 2024Q3) **하나씩**.
+- 척당 계약 189건(2024~) 집계. **정정공시 23건은 인코딩 버그로 캐시를 지웠다** — `kship_contracts.py --collect`가 다시 받는다(EUC-KR 판정 수정됨). 선종 미판정 12건은 `contracts.json`에서 `type=null`로 남아 있다(추정하지 않음).
+- 기자재 35사 중 30사 캐시. 5사 미수집(범한퓨얼셀·현대힘스·케이앤에스아이앤씨·한국선재·화인베스틸)과 **비중→금액 오독 캐시**(한국카본 등)는 `kship_suppliers.py --collect --force` 한 번이면 둘 다 해결 → `--build`.
+- 삼성중공업 통화선도 매도 USD 482억달러는 주석 표 그대로 — 잔고(원화 35조≈240억달러)보다 커서 **원문 대조 필요**(롤오버 누적일 수 있음).
+- 남은 일: 위 재수집 후 `kship_page.py --all` · `kship_parts.py --all` · 커밋. 대한조선·HJ중공업 헤지 공시 확인. 진행률(매출인식) 기준을 주석 「수익」에서 읽기. 인포그래픽에서 관련도 0인 소분류 흐리게.
 
 ## DART 주의
 
