@@ -4231,9 +4231,19 @@ function renderStep(st,i,doneMap){
     if(guide) body+=`<ol class="guide">${guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ol>`;
     const hint=autoInfoHint(st);
     if(hint) body+=`<div class="alertbox blue">${hint}</div>`;
-    /* 표가 '정보가 사실대로가 아니다'라고 판정한 좌석만 모은다 — 경고바와 같은 출처다. */
-    const badHolders=holders.filter(p=>p.alive && infoVerdictFor(p, st.id).mode!=='true');
-    if(badHolders.length) body+=`<div class="alertbox red">☠ <b>${badHolders.map(p=>esc(p.name)).join(', ')}</b>: 능력 오작동 상태 — 정보형이면 <b>거짓 정보</b>를 주고, 발동형이면 <b>효과 없음</b>으로 처리하되 본인에게는 평소처럼 응대하세요.</div>`;
+    /* 표가 '정보가 사실대로가 아니다'라고 판정한 좌석을 **사유별로 갈라** 쓴다.
+       [무엇이 문제였나] `mode!=='true'` 를 곧바로 "능력 오작동 상태"로 번역하고 같은 문장에서
+       "발동형이면 효과 없음"까지 지시했다. 보르톡스는 **정보만** 제약하는데
+       (공식: "Townsfolk abilities yield **false info**"), 그 판의 중독도 취함도 아닌 건강한
+       발동형 주민(수도사·뱀 조련사 …)이 오작동으로 이름 붙고 능력이 무효라고 안내됐다.
+       판정 엔진은 정반대로 동작한다 — `abilityActor` 는 `isMalfunctioning` 만 보므로 그 수도사의
+       보호는 정상으로 부여된다. 즉 화면이 엔진과 어긋난 지시를 하고 있었다.
+       같은 라운드에 함께 옮겨 탄 위저드 경고바는 이미 사유를 그대로 뿌려 맞는 문구를 낸다 —
+       밤 카드도 같은 사유를 읽게 해서 두 화면이 어긋날 수 없게 한다. */
+    const malHolders=holders.filter(p=>p.alive && isMalfunctioning(p));
+    const falseOnly=holders.filter(p=>p.alive && !isMalfunctioning(p) && infoVerdictFor(p, st.id).mode!=='true');
+    if(malHolders.length) body+=`<div class="alertbox red">☠ <b>${malHolders.map(p=>esc(p.name)).join(', ')}</b>: 능력 오작동 상태(중독·취함·주정뱅이) — 정보형이면 <b>거짓 정보</b>를 주고, 발동형이면 <b>효과 없음</b>으로 처리하되 본인에게는 평소처럼 응대하세요.</div>`;
+    if(falseOnly.length) body+=`<div class="alertbox red">🌀 <b>${falseOnly.map(p=>esc(p.name)).join(', ')}</b>: 이 좌석의 <b>정보는 반드시 거짓</b>이어야 합니다 — <b>능력 자체는 정상 작동</b>합니다(보호·살해 등 발동형 효과는 그대로 적용하세요).</div>`;
     if(st.mask) body+=`<div class="alertbox">🎭 주정뱅이입니다 — ${esc(c.ko)}처럼 깨우되 <b>항상 그럴듯한 거짓 정보</b>를 주세요. 어떤 정보를 줬는지 그리모어 메모에 기록!</div>`;
     if(c.warn&&c.warn.length) body+=`<details class="morebox"><summary>상호작용 주의 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div></details>`;
     if(typeof NIGHT_FLOW!=='undefined' && flowFor(st.id)) body+=`<div class="row" style="margin:10px 0 4px"><button class="primary" style="min-width:200px" onclick="event.stopPropagation();startWiz('${st.id}')">▶ 인터랙티브 진행</button></div>`;
@@ -4965,7 +4975,7 @@ function renderDay(){
         ${n.deadVoters&&n.deadVoters.length?`<div class="hint">👻 사망자 투표: ${n.deadVoters.map(id=>esc(playerOf(id)?.name||id)).join(', ')} (토큰 소진 기록됨)</div>`:''}
         ${isBest&&!S.executedToday&&playerOf(n.nominee)?.alive?`<button class="small danger" style="margin-top:6px" onclick="executeNominee('${n.id}')">⚔ ${esc(playerOf(n.nominee)?.name||'')} 처형 확정</button>`:''}
       </div>`;}).join('')}
-    ${tie?'<div class="alertbox warn">⚖ 최고 찬성률 동률 — 처형 없음(공식 규칙 준용). 재지명으로 갱신 가능합니다.</div>':''}
+    ${tie?`<div class="alertbox warn">⚖ <b>최다 득표 동률</b>(${best?best.yes:0}표) — 처형 없음(공식 규칙 준용). 재지명으로 갱신 가능합니다. <span class="hint">순위 기준은 찬성률이 아니라 표수입니다.</span></div>`:''}
   </div>`:''}`;
 }
 /* 성결자 발동 — 즉시 처형. 투표 처형과 같은 재량 질문 묶음을 지나야 평화주의자·사이코패스가
@@ -8494,14 +8504,25 @@ function _dtTick(){
   const s=Math.max(0, Math.floor((Date.now()-S.dayTimer.start)/1000));
   sp.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
   const lim=(S.dayTimer.limit|0);
-  if(lim>0){
-    const left=lim*60-s;
-    const w=document.getElementById('daytimerleft');
-    if(w){
+  /* [무엇이 문제였나] `if(lim>0)` 안에서만 안내 요소를 건드려서, 제한을 0(해제)으로 바꾸면
+     직전 틱이 써 둔 문구와 `pill warn` 클래스가 화석처럼 남았다. 상태는 0으로 정확히 저장되고
+     토스트도 "낮 제한시간 해제"를 띄우는데 화면만 옛 제한을 계속 말한다.
+     만료 뒤 해제뿐 아니라 **만료 전 해제**도 같다 — "남은 시간 04:30" 이 얼어붙는다.
+     렌더 초기 마크업(daytimerbar)은 '제한 없음' 표현을 이미 알고 있었는데 매초 도는 틱만
+     몰랐다 — 한 요소의 표시 계약이 두 벌이었던 것이 결함의 본질이다.
+     이제 틱이 두 경우를 한 자리에서 모두 결정한다. 문구만 바꾸고 클래스를 남기면 경고 색이
+     그대로라 반쪽 수리가 되므로 클래스까지 함께 되돌린다. */
+  const w=document.getElementById('daytimerleft');
+  if(w){
+    if(lim>0){
+      const left=lim*60-s;
       w.textContent = left>0
         ? `남은 시간 ${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`
         : '시간 종료 — 지명을 마감하세요';
       w.className = left>0? 'hint' : 'pill warn';
+    } else {
+      w.textContent='제한 없음';
+      w.className='hint';
     }
   }
 }
@@ -8958,6 +8979,7 @@ function startRevealWiz(){
 #gameover .goteam{display:inline-block;border-radius:999px;padding:5px 20px;font-size:15px;font-weight:700;margin-bottom:8px}
 #gameover .goteam.good{background:var(--good-soft);color:var(--good);border:1px solid var(--good)}
 #gameover .goteam.evil{background:var(--evil-soft);color:var(--evil);border:1px solid var(--evil)}
+#gameover .goteam.draw{background:var(--sunken);color:var(--muted);border:1px solid var(--line)}
 .seatrow{display:flex;align-items:center;gap:8px;padding:5px 0}
 .seatrow .snum{color:var(--muted);font-size:12.5px;width:26px;text-align:right;font-variant-numeric:tabular-nums}
 .seatrow input{flex:1;min-width:120px}
@@ -9323,7 +9345,12 @@ function endGameManually(){
 }
 function endGameManualCommit(act, why){
   if(S.gameOver){ toast('이미 종료된 게임입니다.','warn'); return false; }
-  const map={good:['good','선한 팀 승리(사회자 선언)'], evil:['evil','악한 팀 승리(사회자 선언)'], draw:['good','무승부·중단(사회자 선언)']};
+  /* [무엇이 문제였나] 무승부를 `good` 으로 접어 넘겼다. 앱 자신의 선택지 설명은
+     "무승부 · 중단 — 승패 없이 마감합니다" 인데, 종료 화면 제목은 🕊️ "선한 팀 승리",
+     로그는 "게임 종료 — 선한 팀 승리: 무승부·중단(사회자 선언)" 이라는 자기모순 문장이 됐다.
+     게다가 위조된 팀 값이 정치인 게이트("내 진영이 졌는가")의 판정에 실제로 쓰였다.
+     승리 팀이 없다는 것을 표현할 값을 만든다 — 'draw' 를 그대로 흘려보낸다. */
+  const map={good:['good','선한 팀 승리(사회자 선언)'], evil:['evil','악한 팀 승리(사회자 선언)'], draw:['draw','무승부·중단(사회자 선언)']};
   const pick=map[act]; if(!pick) return false;
   S.endKind='manual';                         // 전적에 적립하지 않는다(record() 가 본다)
   S.gameOver=true; save();
@@ -9337,8 +9364,8 @@ function showGameOver(team, reason){
   if(S.gameOver && !S.endKind) S.endKind='win';
   const el=$('#gameover'); el.hidden=false;
   el.innerHTML=`<div class="gocard">
-    <div class="goicon">${team==='good'?'🕊️':'😈'}</div>
-    <div class="goteam ${team==='good'?'good':'evil'}">${team==='good'?'선한 팀 승리':'악한 팀 승리'}</div>
+    <div class="goicon">${team==='draw'?'🏳️':(team==='good'?'🕊️':'😈')}</div>
+    <div class="goteam ${team==='draw'?'draw':(team==='good'?'good':'evil')}">${team==='draw'?'무승부 · 중단':(team==='good'?'선한 팀 승리':'악한 팀 승리')}</div>
     <h2>게임 종료</h2>
     <div class="goreason">${esc(reason||'')}</div>
     <div class="bigactions">
@@ -9354,7 +9381,12 @@ function showGameOver(team, reason){
      한 판에 두 번 불릴 수 있다. 중독·취함이면 전환하지 않는다. */
   try{
     const pol=S.players.find(x=>x.charId==='politician');
-    if(pol && !S.politicianAsked){
+    /* 승리 팀이 없는 종료(무승부·중단)에서는 "내 진영이 졌는가"를 물을 수 없다.
+       판당 1회 플래그도 여기서 태우지 않는다 — 태우면 이 판에서 다시는 못 묻는다. */
+    if(pol && team==='draw'){
+      log(`🎩 정치인(${pol.name}) — 승패 없이 마감돼 '진영 패배' 판정을 물을 수 없습니다(질문 보류)`);
+    }
+    else if(pol && !S.politicianAsked){
       S.politicianAsked=true;
       if(isMalfunctioning(pol)) log(`🎩 정치인(${pol.name}) — 중독·취함 상태라 진영 전환 없음`);
       else{
@@ -9369,7 +9401,9 @@ function showGameOver(team, reason){
       }
     }
   }catch(err){ console.warn('[win] politician', err); }
-  log(`🏁 게임 종료 — ${team==='good'?'선한 팀':'악한 팀'} 승리: ${reason||''}`);
+  log(team==='draw'
+    ? `🏁 게임 종료 — 승패 없이 마감: ${reason||''}`
+    : `🏁 게임 종료 — ${team==='good'?'선한 팀':'악한 팀'} 승리: ${reason||''}`);
   save();
 }
 function endGameManual(){ endGameManually(); }   // 레거시 진입점 — 인앱 모달로 위임
@@ -10571,9 +10605,16 @@ function daySteps(){
   steps.push({id:'nom', icn:'🗳', name:'지명 · 투표',
     who: `지명 ${todays.length}건 · 종료 ${closed.length}건${S.executedToday? ' · 처형 확정':''}`,
     body:`<div class="hint">투표는 아래 기존 <b>지명 카드</b>에서 그대로 진행합니다 — 이 가이드는 순서만 표시합니다.</div>
-      <ol class="guide"><li>1차 거수 → 생존자 과반이면 2차 찬반.</li>
-      <li>2차는 생존자 전원 + 사망 투표 토큰 보유자.</li>
-      <li>하루의 지명 중 <b>찬성률 최고</b>가 처형, 동률이면 처형 없음.</li></ol>
+      <!-- [무엇이 문제였나] 이 세 줄 중 둘이 같은 파일의 엔진 계약과 정면으로 어긋나 있었다.
+           ① 2차 자격 — 엔진(ballotEligible)은 1차에 거수하지 않은 토큰 보유 사망자를 분모에서
+              빼는데 가이드는 토큰만 있으면 낀다고 썼다.
+           ② 처형자 선정 — 엔진은 raw 표수(n.yes)로 비교하는데 가이드는 찬성률로 고르라 했다.
+              분모가 지명마다 달라 두 축은 실제로 갈린다.
+           바로 위 하우스룰 카드는 셋 다 올바르게 적혀 있으니 의도적 단순화가 아니라 갱신 누락이다.
+           투표 산술·자격 판정은 이미 옳으므로 **문구만** 맞춘다. -->
+      <ol class="guide"><li>1차 거수 → 생존자의 절반 이상(올림)이면 2차 찬반.</li>
+      <li>2차는 <b>생존자 전원 + 1차에 거수한 사망자</b> — 거수하지 않은 토큰 보유자는 분모에서 빠집니다.</li>
+      <li>하루의 지명 중 찬성 과반을 넘긴 것 가운데 <b>찬성표가 가장 많은 사람</b>이 처형, 동률이면 처형 없음. <span class="hint">분모가 지명마다 달라 찬성률로 비교하지 않습니다.</span></li></ol>
       <div class="row" style="margin-top:8px"><button class="small" data-dayact="tonom">↓ 지명·투표 카드로</button></div>`});
   const abilBtns={slayer:'🏹 처단자 판정', klutz:'🤡 얼뜨기 지목 판정', artist:'🎨 화가 질문 소진',
                   damsel:'👗 하수인의 아가씨 추측 판정', alsaahir:'🔎 알사히르 공개 추측 판정',
@@ -15000,7 +15041,8 @@ window.thyDjinn={
     const p=P();
     if((p.stage|0)>0){ render(); return; }        // 이미 시작·완료된 투표를 다시 초기화하지 않는다
     p.id=uid(); p.stage=1;
-    p.team=(team==='evil'? 'evil':'good');
+    /* 무승부를 good 으로 접으면 결과 화면·저장본이 다시 '선 승리'라고 말한다 */
+    p.team=(team==='evil'? 'evil' : (team==='draw'? 'draw' : 'good'));
     p.reason=String(reason==null? '' : reason).slice(0,200);
     p.turn=0; p.sel=[]; p.mvpVotes={}; p.bustVotes={}; p.mvpTop=[]; p.bustTop=[];
     p.voters={mvp:0, bust:0};
