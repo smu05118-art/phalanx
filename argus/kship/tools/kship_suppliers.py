@@ -104,7 +104,11 @@ def parse_products(html):
         if not cols or len(t["rows"]) < 1:
             continue
         i_name = next((i for i, c in enumerate(cols) if any(k in c for k in ("품목", "제품", "구분", "주요제품", "품명", "제품명", "서비스"))), None)
-        i_share = next((i for i, c in enumerate(cols) if "비율" in c or "비중" in c or "%" in c), None)
+        # 비중 열은 이름에 '비율/비중'이 있는 열만 믿는다. '%'는 '(단위: 백만원, %)' 같은 단위
+        # 캡션이 금액 열에도 붙어 한국카본의 매출액 430,877이 '비중 430877%'로 실렸다.
+        i_share = next((i for i, c in enumerate(cols) if "비율" in c or "비중" in c), None)
+        if i_share is None:
+            i_share = next((i for i, c in enumerate(cols) if c.endswith("%") or "(%)" in c), None)
         i_amt = next((i for i, c in enumerate(cols) if ("매출" in c or "금액" in c) and i != i_share), None)
         if i_name is None or (i_share is None and i_amt is None):
             continue
@@ -119,6 +123,8 @@ def parse_products(html):
             amt = num_of(r[i_amt]) if i_amt is not None and i_amt < len(r) else None
             if amt is not None and mul != 1.0:
                 amt = round(amt * mul, 3)
+            if share is not None and share > 100:      # 비중이 100%를 넘으면 금액을 잘못 읽은 것이다
+                amt, share = (amt if amt is not None else share), None
             if share is None and amt is None:
                 continue
             out.append({"prod": name, "share": share, "amt": amt, "cur": cur})
@@ -238,6 +244,8 @@ def build(quarter):
         if not srcs:
             srcs = [{"prod": r["product"], "share": None, "amt": None, "cur": None, "kind": True}]
         for pr in srcs:
+            if pr.get("share") is not None and pr["share"] > 100:     # 옛 캐시의 오독 방어
+                pr = dict(pr, amt=pr.get("amt") if pr.get("amt") is not None else pr["share"], share=None)
             key = (r["stock"], _norm(pr["prod"]))
             ids = [ovr[key]] if key in ovr else classify_product(pr["prod"], ctx)
             for cid in ids:
