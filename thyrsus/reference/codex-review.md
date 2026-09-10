@@ -1426,3 +1426,44 @@ if(monk && isMalfunctioning(monk)){ …불발… }
 ### 아직 가드가 없는 4종
 
 `doCurse`·`doMad`·`doMaster`·`doSwapChars`. 각각 공식 근거를 확인해야 해서 다음 라운드로 둔다.
+
+---
+
+## 라운드 16 — 여행자 인원과 무신론자 (2026-09-10)
+
+### C06 — 두 규칙의 인원 기준이 실제로 다르다 [치명]
+
+```
+공식 Character Types: "They do not count as players for the evil win condition —
+    when a Traveller and two regular players are alive, evil has won."
+공식 Mayor(How to Run): "Travellers count as players for the Mayor's victory,
+    so must be exiled first."
+```
+기본 악 승리('생존 2인')는 여행자를 **빼고** 세고, 시장의 3인은 여행자를 **포함**한다.
+앱은 `realAliveCount()` 하나로 둘 다 처리했다 — 일반인 2 + 여행자 1이면 이미 악이 이겼는데
+3명으로 읽어 판을 계속 굴렸고, 선이 다음 처형으로 악마를 잡을 기회를 얻었다.
+
+**하나로 합치면 둘 중 하나가 반드시 틀린다.** `realAliveCount` 는 시장용으로 그대로 두고
+`realAliveNonTravelerCount()` 를 따로 뒀다. 죽은 척 좀버얼 보정은 양쪽 모두에 있다.
+
+### C07 — 무신론자는 '사회자'가 처형돼야 한다 [치명]
+
+```
+공식 roles181.json : "The Storyteller can break the game rules, and if executed,
+                      good wins, even if you are dead."
+공식 위키 How to Run: "Good wins if the Storyteller is executed."
+```
+앱은 **무신론자 좌석**을 처형하면 선 승리 확인창을 띄웠다. 무신론자를 찾아낸 악한 팀이 그
+처형으로 오히려 지는 뒤집힌 판정이었다.
+
+같은 파일의 **폭동×무신론자 징크스는 맞게 적혀 있었다** — "사회자가 지명되면 투표를 진행한다.
+사회자가 처형될 만큼 표를 받으면 게임이 끝나고…". 규칙이 한 파일 안에서 두 벌로 적혀 서로
+어긋나 있었고, 승리 판정은 틀린 쪽을 따랐다. 한국어 능력문·백과·리마인더도 전부 틀린 쪽이었다
+— 함께 고쳤다. **규칙 설명문은 장식이 아니라 사회자가 실제로 따르는 지시다.**
+
+승리는 이제 자동으로 나지 않고, 처형 시 사회자에게 진짜 조건을 알려 준다(마을이 사회자를
+지명·처형하면 종료 메뉴에서 [선한 팀 승리]를 선언). 앱이 관측할 수 없는 사건이므로 선언 경로가
+맞다 — 고블린·선한 쌍둥이와 같은 계약이다.
+
+**검증**: 규칙 46케이스 0실패(신규 2, 수정 전 빌드에서 정확히 실패) · 종료 26 · 더미 220 ·
+퍼저 400판 위반 0(커버리지 25.8 동일) · 커스텀 90판 위반 0 · 돌연변이 40종 미검출 0.
