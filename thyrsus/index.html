@@ -1423,6 +1423,10 @@ const blank = () => ({
      damselGuessUsed = 하수인의 아가씨 추측 1회 소진 여부(악 진영 전체를 통틀어 1회).
      politicianAsked = 종료 화면에서 정치인 전환을 이미 물었는가(판당 1회). */
   goodExecCount:0, damselGuessUsed:false, politicianAsked:false,
+  /* startEvilCount = 첫 밤이 시작된 시점의 악한 플레이어 수. 상아의 정령("There can't be more
+     than 1 extra evil player.")이 그 기준을 요구하는데 지금까지 어디에도 없었다.
+     null 이면 '아직 판이 시작되지 않았다'는 뜻이고, 그때는 상한을 걸지 않는다. */
+  startEvilCount:null,
   /* 판이 끝났는가. 지금까지 선언 없이 S.gameOver=true 로만 세워 왔는데, 그러면 '판 단위 값을
      되돌리는' 목록(NEWGAME_RESET_KEYS)이 blank() 를 기준으로 삼을 때 이 필드를 놓친다.
      migrateState 에도 같은 이름이 있다 — 한쪽만 고치면 스키마가 갈라진다. */
@@ -1636,6 +1640,9 @@ function migrateState(raw){
      터지므로 0 으로 되돌린다(구버전 저장본에는 아예 없다). */
   st.goodExecCount=(typeof st.goodExecCount==='number' && isFinite(st.goodExecCount) && st.goodExecCount>0)
     ? Math.floor(st.goodExecCount) : 0;
+  /* 옛 저장본에는 없다 — null 이면 상한을 걸지 않으므로 종전 동작 그대로다 */
+  st.startEvilCount=(typeof st.startEvilCount==='number' && isFinite(st.startEvilCount) && st.startEvilCount>=0)
+    ? Math.floor(st.startEvilCount) : null;
   st.damselGuessUsed=!!st.damselGuessUsed;
   st.politicianAsked=!!st.politicianAsked;
   /* 잠금을 소모한 씬 키와 되돌릴 정보 — 구버전 저장본에는 없다. 형태가 깨졌으면 '없음'으로 돌린다
@@ -2870,7 +2877,7 @@ const PARTIAL_IMPL_CHARS={};
    [왜 목록인가] blank() 는 '전부' 비우지만 여기는 '판만' 비운다 — 등록부·전적·커스텀은 그대로 두고
    판 단위 값만 되돌려야 하므로 두 곳의 기준이 갈라진다. 새 필드가 판 단위면 여기에도 넣어야 한다.
    gameId 는 따로 다룬다(새로 발급해야 하므로). */
-const NEWGAME_RESET_KEYS=['gameOver','endKind','politicianAsked','goodExecCount','damselGuessUsed',
+const NEWGAME_RESET_KEYS=['gameOver','endKind','politicianAsked','goodExecCount','damselGuessUsed','startEvilCount',
   'goonNight','goonStep','goonUndo','moonchildChoice','executedToday','executedPrevDay',
   'executedTodayPid','executedDiedToday','poCharged','exorcistPrev','daPrev','pukkaVictimId',
   'mastermindDay','fangGuJumped','demonBlockedNight','demonBlockedPid'];
@@ -2964,6 +2971,8 @@ function advancePhase(){
     /* 지난 판의 동료 평가·일회성 플래그는 clearEndedGameState() 가 함께 끊는다.
        전체 초기화 없이 이름만 바꿔 다시 시작하면 좌석 pid 가 그대로라 지난 표가
        이번 판 OP스코어의 PEER 항으로 새어 들어간다(레코드는 pgid 로 확정돼 전적은 영향 없음). */
+    /* 상아의 정령의 기준선 — 첫 밤이 열리는 이 자리에서 한 번만 찍는다 */
+    S.startEvilCount=S.players.filter(p=>isEvil(p)).length;
     log('── 게임 시작: 첫날 밤 ──');
     switchTab('night');
   } else if(ph.kind==='night'){
@@ -5296,6 +5305,17 @@ function doSlayer(){
   }, {title:'🗡 처단자'});
 }
 function doSlayerOn(sl, t){
+  /* 공식 Slayer: "**Once per game**, during the day, publicly choose a player…"
+     [무엇이 문제였나] 소진 검사(`!hasStatus(p,'slayerUsed')`)가 doSlayer 의 **요청을 만드는
+     시점**에만 있고, 답이 돌아온 시점에는 다시 확인하지 않았다. 대화상자가 열려 있는 동안
+     진입 함수가 한 번 더 불리면 큐에 두 건이 쌓이고 두 콜백이 모두 실행돼, 첫 오발 뒤에도
+     두 번째 지목으로 악마를 죽일 수 있었다. 콜백은 `sl` 을 클로저에 얼려 두므로 요청 시점의
+     판단이 그대로 굳는다 — 그래서 **소비하는 자리에서** 다시 봐야 한다. */
+  if(hasStatus(sl,'slayerUsed')){
+    toast(`${sl.name}(처단자)은 이미 능력을 썼습니다 — 게임당 1회입니다. 아무 일도 일어나지 않습니다.`,'warn');
+    log(`처단자 중복 발동 차단: ${sl.name} → ${t?t.name:'?'}`);
+    return;
+  }
   addStatus(sl,'slayerUsed','공개 지목',null);
   if(isMalfunctioning(sl)){ toast('처단자가 오작동 상태 — "아무 일도 일어나지 않습니다"라고 공표. 능력 소진.','warn'); log(`처단자 오발(오작동): ${t.name}`); save(); renderAll(); return; }
   const c=charOf(t.charId);
@@ -7403,6 +7423,19 @@ function goonPickCheck(sc){
               prevAlignment:(goon.alignment==='good'||goon.alignment==='evil')? goon.alignment : null,
               addedDrunk};
   if(addedDrunk) addStatus(chooser,'drunkS','건달',drunkExpiry('dusk'));
+  /* 상아의 정령: "There can't be more than 1 extra evil player."(reminders: "No More Evil")
+     앱 자신의 howto 도 "이미 한도에 도달했다면 이후의 성향 전환은 그냥 일어나지 않는다.
+     대상 본인에게는 아무 일도 없었던 것처럼 처리해 정보가 새지 않게 하라"고 적어 두었는데,
+     건달 자동 전향만 그 상한을 한 번도 보지 않아 문서와 코드가 갈라져 있었다.
+     기준선(startEvilCount)이 없는 판(옛 저장본·시작 전)에서는 종전대로 상한을 걸지 않는다. */
+  const _ivoryOn = Array.isArray(S.fabled) && S.fabled.indexOf('spiritofivory')>=0;
+  const _wouldAddEvil = isEvil(chooser) && !isEvil(goon);
+  if(_ivoryOn && _wouldAddEvil && typeof S.startEvilCount==='number'
+     && S.players.filter(p=>isEvil(p)).length >= S.startEvilCount+1){
+    log(`🐘 상아의 정령 — 악 인원 한도(시작 ${S.startEvilCount}명 +1) 도달: ${goon.name}의 전향이 일어나지 않음`);
+    toast(`🐘 상아의 정령: 악한 플레이어가 이미 한도(+1)에 도달했습니다 — ${goon.name}은(는) 전향하지 않습니다. 본인에게는 아무 일도 없었던 것처럼 처리하세요(취함은 그대로 적용).`,'warn');
+    save(); renderAll(); return;
+  }
   goon.alignment = isEvil(chooser)? 'evil':'good';
   const after = isEvil(goon)? '악':'선';
   log(`🥊 건달: 오늘 밤 ${chooser.name}이(가) 처음으로 건달을 지목 — ${chooser.name} 🍺취함(다음 황혼까지), 건달 진영 ${before} → ${after}`);
@@ -10421,7 +10454,14 @@ function cultLeaderCall(){
   if(!cl){ toast('살아 있는 교주가 없습니다.','warn'); return; }
   if(isMalfunctioning(cl)){ toast('교주가 중독·취함 상태 — 전원 가입해도 승리가 발동하지 않습니다.','warn'); return; }
   const team=isEvil(cl)? 'evil':'good';
-  thyConfirm(`🕯 교주(${cl.name})의 현재 성향: ${team==='evil'?'악':'선'}\n\n살아 있는 선한 플레이어 전원이 교단 가입을 선언했습니까?\n[확인] 예 → ${team==='evil'?'악한':'선한'} 팀 승리 / [취소] 아니오`, ok=>{
+  /* 공식 Cult Leader: "Each night, you become the alignment of **an alive neighbor**.
+     If **all good players** choose to join your cult, your team wins."
+     같은 문장 안에서 생존 한정을 정렬 전환에만 붙이고 승리 조건에는 안 붙였다 — 공식 코퍼스는
+     생존 한정이 필요할 때 늘 명시한다(Mayor "3 players live", Zealot "players alive").
+     [무엇이 문제였나] 이 확인 문구 한 줄만 "살아 있는 선한 플레이어 전원" 으로 좁혀져 있었고,
+     바로 아래 reason·rule 과 캐릭터 카드·코드 주석은 전부 "선한 플레이어 전원" 이다.
+     사회자는 화면 문구를 따르므로, 죽은 선한 플레이어를 세지 않고 승리를 확정하게 된다. */
+  thyConfirm(`🕯 교주(${cl.name})의 현재 성향: ${team==='evil'?'악':'선'}\n\n선한 플레이어 **전원**(사망자 포함)이 교단 가입을 선언했습니까?\n[확인] 예 → ${team==='evil'?'악한':'선한'} 팀 승리 / [취소] 아니오`, ok=>{
     if(!ok) return;
     log(`🕯 교주 전원 가입 선언 — ${team==='evil'?'악':'선'}한 팀 승리`);
     askWin({team, reason:`선한 플레이어 전원이 교주(${cl.name})의 교단 가입을 선언했습니다.`, rule:'교주: 선한 플레이어 전원이 교단 가입을 선언하면 판정 시점의 교주 진영이 승리합니다.'});
