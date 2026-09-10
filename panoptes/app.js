@@ -155,7 +155,10 @@ function select(id,fly){
 // ===== 탭 전환 =====
 let _liqLoaded=false, _mapInit=false;
 function switchTab(tab){
-  document.querySelectorAll('.ptab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
+  document.querySelectorAll('.ptab').forEach(t=>{
+    const selected=t.dataset.tab===tab;
+    t.classList.toggle('on',selected); t.setAttribute('aria-selected',String(selected)); t.tabIndex=selected?0:-1;
+  });
   const isMap=tab==='map';
   document.getElementById('mapview').hidden=!isMap;
   document.getElementById('sigview').hidden=(tab!=='sig');
@@ -176,14 +179,16 @@ function switchTab(tab){
   if(tab==='fed'){ loadFed(); }
 }
 // ===== 🏛 연준 =====
-const FED_FILES=['fed_roster.json','fed_positions.json','fed_statements.json','fed_calendar.json','fed_reaction.json','taco.json'];
+const FED_FILES=['fed_roster.json','fed_positions.json','fed_statements.json','fed_calendar.json','fed_reaction.json','taco.json','portraits.json'];
 let _fedHandle=null, _fedTs=0, _fedTimer=null, _fedBusy=false;
 function fedTabOn(){ const b=document.getElementById('fedview'); return !!(b && !b.hidden); }
 async function fedFetchAll(){
   const bust='?t='+Math.floor(Date.now()/6e5);   // proview 관례 10분 버킷
   const J=p=>fetch('data/fed/'+p+bust).then(r=>r.ok?r.json():null).catch(()=>null);
-  const [roster,positions,statements,calendar,reaction,taco]=await Promise.all(FED_FILES.map(J));
-  return {roster,positions,statements,calendar,reaction,taco};
+  const values=await Promise.all(FED_FILES.map(J));
+  const data={};
+  ['roster','positions','statements','calendar','reaction','taco','photos'].forEach((key,i)=>{ if(values[i]) data[key]=values[i]; });
+  return data; // 일시 실패한 파일은 기존 렌더 데이터로 유지
 }
 async function fedAutoRefresh(){
   // 열린 탭 자동 갱신: 문서가 보이고 fed 탭이 활성일 때만 재fetch(아니면 요청 0)
@@ -201,7 +206,7 @@ async function loadFed(){
   if(_fedBusy) return;                                                  // 진행 중이면 중복 fetch 금지
   if(box.dataset.loaded){
     if(Date.now()-_fedTs>=6e5) fedAutoRefresh();                        // 재진입 + 10분 경과 → 재fetch 후 refresh()
-    else if(_fedHandle) _fedHandle.refresh();
+    // 최신 데이터로 재진입할 때 기존 DOM과 스크롤을 그대로 유지한다.
     return;
   }
   _fedBusy=true;
@@ -216,7 +221,7 @@ async function loadFed(){
 // ===== /연준 =====
 async function loadLLM(){
   const box=document.getElementById('llmview');
-  if(box.dataset.loaded) return;
+  if(box.dataset.loaded){ if(box.__orResize) box.__orResize(); return; } // 숨긴 동안 바뀐 화면 폭 반영
   box.innerHTML='<p class="hint" style="padding:20px">LLM 랭킹 데이터 로딩…</p>';
   try{ const d=await fetch('data/llm_rankings.json').then(r=>r.json());
     box.innerHTML=''; renderLLM(box, d); box.dataset.loaded='1';
@@ -262,7 +267,22 @@ async function loadTech2(){
   try{ const dv=await fetch('data/deriv_kr.json').then(r=>r.ok?r.json():null);
     if(dv && window.renderDeriv){ const el=document.createElement('div'); el.style.marginTop='20px'; box.appendChild(el); renderDeriv(el, dv); } }catch(e){ console.warn('deriv', e); }
 }
-document.querySelectorAll('.ptab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+const mainTabs=Array.from(document.querySelectorAll('.ptab'));
+mainTabs.forEach((t,i)=>{
+  const panel=document.getElementById(t.dataset.tab+'view');
+  if(panel){ panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',t.id); }
+  t.onclick=()=>switchTab(t.dataset.tab);
+  t.addEventListener('keydown',e=>{
+    let next=i;
+    if(e.key==='ArrowRight') next=(i+1)%mainTabs.length;
+    else if(e.key==='ArrowLeft') next=(i+mainTabs.length-1)%mainTabs.length;
+    else if(e.key==='Home') next=0;
+    else if(e.key==='End') next=mainTabs.length-1;
+    else return;
+    e.preventDefault(); mainTabs[next].focus(); mainTabs[next].click();
+    mainTabs[next].scrollIntoView({block:'nearest',inline:'nearest'});
+  });
+});
 
 // ===== 💧 유동성 =====
 const LIQC={green:'#59d0a8',yellow:'#ffd23d',orange:'#ff8a3d',red:'#ff4d5e',gray:'#8a93a3'};

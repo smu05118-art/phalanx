@@ -15,11 +15,14 @@
   *{margin:0;padding:0;box-sizing:border-box}
   [hidden]{display:none!important}
   html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden}
-  #app{display:flex;flex-direction:column;height:100vh}
+  #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
   header{display:flex;align-items:center;gap:16px;padding:0 18px;height:52px;flex:0 0 52px;background:var(--panel);border-bottom:1px solid var(--line);z-index:10}
   header h1{font-size:16px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
   nav.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
-  .ptab{font-size:13px;font-weight:600;padding:6px 14px;border-radius:8px;cursor:pointer;color:var(--dim);transition:.13s;white-space:nowrap}
+  .ptab{appearance:none;border:0;background:none;font-family:inherit;min-height:40px;flex-shrink:0;font-size:13px;font-weight:600;padding:6px 14px;border-radius:8px;cursor:pointer;color:var(--dim);transition:.13s;white-space:nowrap}
+  .ptab:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  @media(max-width:700px){header{height:auto;min-height:88px;flex-basis:auto;flex-wrap:wrap;gap:4px;padding:8px 12px}header h1{font-size:14px}nav.tabs{flex-basis:100%;order:3}.ptab{min-height:40px;padding:6px 12px}header .stat{font-size:9px}#fedview,#llmview{min-height:0;overscroll-behavior:contain}}
+  @media(prefers-reduced-motion:reduce){.ptab{transition:none}}
   .ptab:hover{background:rgba(127,150,170,.08);color:var(--ink)}
   .ptab.on{background:rgba(43,192,212,.14);color:var(--accent)}
   header .stat{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim)}
@@ -152,15 +155,15 @@
 <div id="app">
   <header>
     <h1>🛰 Panoptes</h1>
-    <nav class="tabs">
-      <span class="ptab on" data-tab="map">🗺 분쟁지도</span>
-      <span class="ptab" data-tab="sig">📡 시그널</span>
-      <span class="ptab" data-tab="liq">💧 유동성</span>
-      <span class="ptab" data-tab="tech">📐 기술적</span>
-      <span class="ptab" data-tab="ship">🚢 해운</span>
-      <span class="ptab" data-tab="human">👥 인간지표</span>
-      <span class="ptab" data-tab="llm">🧠 LLM</span>
-      <span class="ptab" data-tab="fed">🏛 연준</span>
+    <nav class="tabs" role="tablist" aria-label="Panoptes 화면">
+      <button type="button" class="ptab on" data-tab="map" id="tab-map" role="tab" aria-controls="mapview" aria-selected="true" tabindex="0">🗺 분쟁지도</button>
+      <button type="button" class="ptab" data-tab="sig" id="tab-sig" role="tab" aria-controls="sigview" aria-selected="false" tabindex="-1">📡 시그널</button>
+      <button type="button" class="ptab" data-tab="liq" id="tab-liq" role="tab" aria-controls="liqview" aria-selected="false" tabindex="-1">💧 유동성</button>
+      <button type="button" class="ptab" data-tab="tech" id="tab-tech" role="tab" aria-controls="techview" aria-selected="false" tabindex="-1">📐 기술적</button>
+      <button type="button" class="ptab" data-tab="ship" id="tab-ship" role="tab" aria-controls="shipview" aria-selected="false" tabindex="-1">🚢 해운</button>
+      <button type="button" class="ptab" data-tab="human" id="tab-human" role="tab" aria-controls="humanview" aria-selected="false" tabindex="-1">👥 인간지표</button>
+      <button type="button" class="ptab" data-tab="llm" id="tab-llm" role="tab" aria-controls="llmview" aria-selected="false" tabindex="-1">🧠 LLM</button>
+      <button type="button" class="ptab" data-tab="fed" id="tab-fed" role="tab" aria-controls="fedview" aria-selected="false" tabindex="-1">🏛 연준</button>
     </nav>
     <div class="stat" id="headStat"><b id="stEvents">0</b> events · <b id="stActive">0</b> shown · <span id="stUpdated">—</span></div>
   </header>
@@ -219,10 +222,10 @@
 <script src="tech_charts.js"></script>
 <script src="deriv_charts.js"></script>
 <script src="shipping_charts.js"></script>
-<script src="llm_charts.js"></script>
+<script src="llm_charts.js?v=20260910-ui5"></script>
 <script src="tga_target.js"></script>
 <script src="liq_charts.js"></script>
-<script src="fed.js"></script>
-<script src="app.js"></script>
+<script src="fed.js?v=20260910-ui5"></script>
+<script src="app.js?v=20260910-ui5"></script>
 </body>
 </html>
