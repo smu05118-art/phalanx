@@ -1209,3 +1209,22 @@ safe('inittext',function(){
 /* ---------- 이미 렌더된 화면이 있으면 새 UI로 재도장 ---------- */
 safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); render(); } });
 })();
+
+/* AI 클라우드 관측실: 크론 생성물 대신 영속 UI 패치에서 지연 로드. */
+(function(){
+  'use strict';
+  if(typeof window.renderAI2!=='function'||window.__phxCloudHook)return;
+  window.__phxCloudHook=true;
+  var original=window.renderAI2,loading=false;
+  window.renderAI2=function(){
+    if(window.PhxCloud){window.PhxCloud.render(original);return;}
+    original();
+    if(loading)return;
+    loading=true;
+    var script=document.createElement('script');script.src='ui/cloud_signals.js';
+    script.onload=function(){loading=false;if(typeof ST!=='undefined'&&ST.tab==='ai')window.renderAI2();};
+    script.onerror=function(){loading=false;var m=document.getElementById('main');if(m){var p=document.createElement('p');p.textContent='업체별 신호 모듈을 불러오지 못했습니다. 기존 차트를 표시합니다.';m.prepend(p);}};
+    document.head.appendChild(script);
+  };
+  if(typeof ST!=='undefined'&&ST.tab==='ai')window.renderAI2();
+})();
