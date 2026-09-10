@@ -1,0 +1,2360 @@
+{
+ "ver": "2026-09",
+ "unit_note": "rel 값 0~3(3 핵심·2 중요·1 공통·0 없음). 등급 A=물리적 존재/부재·규제 의무로 확정, B=업계 통념(선가 구성비·규제 동향), C=설계자 추정(화면에 점선 '추정' 표시, override csv로 수정 가능). 수식어(mods) 가산 후 상한 3.",
+ "types": [
+  {
+   "id": "LNGC",
+   "ko": "LNG운반선",
+   "en": "LNG carrier",
+   "includes": "FSRU·LNG벙커링선 포함(FLNG는 OFFSH)",
+   "aliases": [
+    "LNG운반선",
+    "LNG선",
+    "LNGC",
+    "LNG Carrier",
+    "액화천연가스운반선",
+    "LNG 운반선",
+    "174K LNGC",
+    "174,000CBM급 LNG운반선",
+    "200K LNGC",
+    "LNG운반선(174K)",
+    "FSRU",
+    "LNG-FSRU",
+    "LNG FSRU",
+    "부유식 LNG 저장·재기화설비",
+    "부유식 저장·재기화설비",
+    "LNG벙커링선",
+    "LNG BV",
+    "소형LNG운반선",
+    "중소형 LNG운반선",
+    "LNG-FSU",
+    "LNG 저장선",
+    "LNG 벙커링",
+    "액화천연가스"
+   ],
+   "variant": "default",
+   "color_slot": 2
+  },
+  {
+   "id": "VLGC",
+   "ko": "LPG·암모니아운반선",
+   "en": "LPG / ammonia carrier (VLGC·VLAC)",
+   "includes": "MGC·에틸렌운반선(LEG) 포함",
+   "aliases": [
+    "LPG운반선",
+    "LPG운반선(VLGC)",
+    "VLGC",
+    "초대형LPG운반선",
+    "초대형 LPG운반선",
+    "LPG선",
+    "액화석유가스운반선",
+    "LPG Carrier",
+    "암모니아운반선",
+    "암모니아 운반선",
+    "VLAC",
+    "VLAC(초대형 암모니아운반선)",
+    "초대형암모니아운반선",
+    "LPG/암모니아운반선",
+    "LPG·암모니아운반선",
+    "LPG/NH3 운반선",
+    "암모니아추진 LPG운반선",
+    "MGC",
+    "중형가스운반선",
+    "중형 LPG운반선",
+    "에틸렌운반선",
+    "LEG운반선",
+    "LPG/에틸렌운반선",
+    "88K VLGC",
+    "91K VLGC",
+    "93K VLGC",
+    "LPGC",
+    "VLEC",
+    "LEG",
+    "LPG 운반선",
+    "LPG/암모니아",
+    "액화석유가스",
+    "LCO2",
+    "액화이산화탄소",
+    "에탄운반선",
+    "가스운반선"
+   ],
+   "variant": "default",
+   "color_slot": 4
+  },
+  {
+   "id": "CONT",
+   "ko": "컨테이너선",
+   "en": "Container ship",
+   "includes": "피더선~ULCV 전 크기",
+   "aliases": [
+    "컨테이너선",
+    "컨선",
+    "콘테이너선",
+    "컨테이너운반선",
+    "Container Carrier",
+    "Container Ship",
+    "Container",
+    "초대형컨테이너선",
+    "초대형 컨테이너선",
+    "ULCV",
+    "ULCS",
+    "메탄올추진컨테이너선",
+    "메탄올 추진 컨테이너선",
+    "LNG추진컨테이너선",
+    "LNG 추진 컨테이너선",
+    "피더컨테이너선",
+    "피더선",
+    "24,000TEU급 컨테이너선",
+    "16,000TEU급 컨테이너선",
+    "15,000TEU급 컨테이너선",
+    "8,000TEU급 컨테이너선",
+    "2,800TEU급 컨테이너선",
+    "TEU급 컨테이너선",
+    "네오파나막스 컨테이너선",
+    "암모니아추진 컨테이너선",
+    "컨테이너 운반선",
+    "TEU",
+    "컨테이너"
+   ],
+   "variant": "CONT",
+   "color_slot": 1
+  },
+  {
+   "id": "VLCC",
+   "ko": "원유운반선",
+   "en": "Crude oil tanker (VLCC·Suezmax·Aframax)",
+   "includes": "수에즈막스·아프라막스 포함",
+   "aliases": [
+    "원유운반선",
+    "초대형원유운반선(VLCC)",
+    "초대형원유운반선",
+    "초대형 원유운반선",
+    "VLCC",
+    "원유운반선(VLCC)",
+    "Crude Oil Tanker",
+    "Crude Carrier",
+    "원유선",
+    "유조선",
+    "탱커",
+    "Tanker",
+    "수에즈막스",
+    "Suezmax",
+    "수에즈막스 원유운반선",
+    "아프라막스",
+    "Aframax",
+    "아프라막스 원유운반선",
+    "석유운반선",
+    "300K VLCC",
+    "157K Suezmax",
+    "셔틀탱커",
+    "Shuttle Tanker",
+    "LNG-DF VLCC",
+    "원유 운반선",
+    "원유탱커"
+   ],
+   "variant": "default",
+   "color_slot": 3
+  },
+  {
+   "id": "PC",
+   "ko": "석유제품·화학제품선",
+   "en": "Product / chemical tanker",
+   "includes": "MR·LR1·LR2·케미컬탱커",
+   "aliases": [
+    "석유제품운반선",
+    "석유화학제품운반선",
+    "석유제품·화학제품운반선",
+    "석유제품/화학제품운반선",
+    "PC선",
+    "P/C",
+    "제품운반선",
+    "프로덕트탱커",
+    "Product Carrier",
+    "Product Tanker",
+    "화학제품운반선",
+    "화학제품선",
+    "케미컬탱커",
+    "케미칼탱커",
+    "Chemical Tanker",
+    "MR탱커",
+    "MR PC",
+    "MR급 석유제품운반선",
+    "LR1",
+    "LR2",
+    "LR2급 석유제품운반선",
+    "LR1급 석유제품운반선",
+    "석유제품선",
+    "정유운반선",
+    "50K PC",
+    "115K LR2",
+    "74K LR1",
+    "Stainless Chemical Tanker",
+    "스테인리스 케미컬탱커",
+    "MR급",
+    "석유제품 운반선"
+   ],
+   "variant": "default",
+   "color_slot": 3,
+   "shares_slot_with": "VLCC"
+  },
+  {
+   "id": "BULK",
+   "ko": "벌크선",
+   "en": "Bulk carrier",
+   "includes": "광탄선·VLOC 포함",
+   "aliases": [
+    "벌크선",
+    "벌커",
+    "살물선",
+    "산적화물선",
+    "벌크캐리어",
+    "Bulk Carrier",
+    "Bulker",
+    "건화물선",
+    "케이프사이즈",
+    "Capesize",
+    "케이프사이즈 벌크선",
+    "파나막스",
+    "Panamax",
+    "캄사르막스",
+    "Kamsarmax",
+    "수프라막스",
+    "Supramax",
+    "울트라막스",
+    "Ultramax",
+    "핸디사이즈",
+    "Handysize",
+    "광탄선",
+    "광석운반선",
+    "VLOC",
+    "초대형광석운반선",
+    "뉴캐슬막스",
+    "Newcastlemax",
+    "시멘트운반선",
+    "우드칩운반선",
+    "캠사르막스"
+   ],
+   "variant": "BULK",
+   "color_slot": 7
+  },
+  {
+   "id": "PCTC",
+   "ko": "자동차운반선",
+   "en": "Pure car & truck carrier (PCTC/PCC)",
+   "includes": "RORO·로로선 포함",
+   "aliases": [
+    "자동차운반선",
+    "자동차 운반선",
+    "PCTC",
+    "PCC",
+    "PCTC/PCC",
+    "Pure Car and Truck Carrier",
+    "Pure Car Carrier",
+    "자동차전용운반선",
+    "자동차전용선",
+    "카캐리어",
+    "Car Carrier",
+    "차량운반선",
+    "LNG추진 자동차운반선",
+    "LNG 이중연료 자동차운반선",
+    "메탄올추진 자동차운반선",
+    "7,000CEU급 자동차운반선",
+    "8,600CEU급 자동차운반선",
+    "9,000CEU급 자동차운반선",
+    "CEU급 자동차운반선",
+    "RORO선",
+    "로로선",
+    "Ro-Ro",
+    "Ro-Ro Carrier",
+    "ROPAX",
+    "카페리",
+    "LNG-PCTC"
+   ],
+   "variant": "PCTC",
+   "color_slot": 8
+  },
+  {
+   "id": "OFFSH",
+   "ko": "해양플랜트",
+   "en": "Offshore unit (FPSO·FLNG·drillship)",
+   "includes": "FPSO·FLNG·FPU·FSO·드릴십·리그·WTIV·고정식 플랫폼",
+   "aliases": [
+    "해양플랜트",
+    "해양 플랜트",
+    "FPSO",
+    "부유식 원유생산저장하역설비",
+    "부유식 원유 생산·저장·하역설비",
+    "FLNG",
+    "부유식 LNG생산설비",
+    "부유식 액화천연가스 생산설비",
+    "FPU",
+    "부유식 생산설비",
+    "FSO",
+    "부유식 저장·하역설비",
+    "드릴십",
+    "Drillship",
+    "시추선",
+    "반잠수식시추선",
+    "반잠수식 시추설비",
+    "Semi-submersible",
+    "Semi-Rig",
+    "잭업리그",
+    "Jack-up Rig",
+    "고정식플랫폼",
+    "고정식 플랫폼",
+    "Fixed Platform",
+    "TLP",
+    "해양설비",
+    "해양구조물",
+    "해양생산설비",
+    "WTIV",
+    "해상풍력설치선",
+    "해상풍력 발전기 설치선",
+    "부유식 해상풍력 하부구조물",
+    "탑사이드",
+    "Topside Module",
+    "해양 모듈",
+    "Offshore",
+    "해상풍력",
+    "부유식",
+    "반잠수식",
+    "FSU",
+    "해양 구조물",
+    "부유식 원유"
+   ],
+   "variant": "OFFSH",
+   "color_slot": 5
+  },
+  {
+   "id": "NAVAL",
+   "ko": "함정·특수선",
+   "en": "Naval & special-purpose vessels",
+   "includes": "수상함·잠수함·해경함정·관공선·조사선·쇄빙선 등 특수목적선",
+   "aliases": [
+    "함정",
+    "특수선",
+    "군함",
+    "해군함정",
+    "군용선박",
+    "수상함",
+    "잠수함",
+    "잠수함(장보고-III)",
+    "장보고-III",
+    "Batch-I",
+    "Batch-II",
+    "KDDX",
+    "한국형 차기 구축함",
+    "구축함",
+    "호위함",
+    "울산급 Batch-III",
+    "초계함",
+    "상륙함",
+    "군수지원선",
+    "훈련함",
+    "경비함",
+    "경비정",
+    "해경 경비함",
+    "해경함정",
+    "해양경찰 경비함",
+    "순찰선",
+    "관공선",
+    "조사선",
+    "해양조사선",
+    "연구선",
+    "쇄빙선",
+    "쇄빙연구선",
+    "실습선",
+    "어업지도선",
+    "방제선",
+    "Naval Vessel",
+    "Frigate",
+    "Submarine",
+    "특수목적선",
+    "기타 특수선",
+    "해경",
+    "군수지원함",
+    "고속정",
+    "이지스",
+    "정부 발주",
+    "해군"
+   ],
+   "variant": "NAVAL",
+   "color_slot": 6
+  }
+ ],
+ "mods": [
+  {
+   "id": "DF",
+   "ko": "이중연료(LNG·메탄올·암모니아 DF)",
+   "en": "Dual-fuel",
+   "plus": {
+    "ENG.FUEL": 1,
+    "PROP.MAIN": 1
+   },
+   "note": "LNG/메탄올/암모니아 이중연료 추진 사양. FGSS·LFSS·DF 주기관 비중 상승. 합산 상한 3."
+  },
+  {
+   "id": "SCRUBBER",
+   "ko": "스크러버 장착",
+   "en": "Scrubber fitted",
+   "plus": {
+    "PIPE.SCRUBBER": 1
+   },
+   "note": "SOx 스크러버(EGCS) 장착 사양. HFO 연료 선종에서만 의미(DF·LNG추진선은 불요). 합산 상한 3."
+  }
+ ],
+ "rel": {
+  "LNGC": {
+   "HULL.BLOCK": [
+    2,
+    "B"
+   ],
+   "HULL.PLATE": [
+    2,
+    "B"
+   ],
+   "HULL.CAST": [
+    1,
+    "B"
+   ],
+   "HULL.OUTFIT": [
+    1,
+    "C"
+   ],
+   "PROP.MAIN": [
+    3,
+    "B"
+   ],
+   "PROP.AUX": [
+    2,
+    "A"
+   ],
+   "PROP.PROP": [
+    2,
+    "B"
+   ],
+   "PROP.SHAFT": [
+    2,
+    "A"
+   ],
+   "PROP.RUDDER": [
+    2,
+    "A"
+   ],
+   "PROP.ESD": [
+    2,
+    "B"
+   ],
+   "ENG.LINER": [
+    2,
+    "A"
+   ],
+   "ENG.PISTON": [
+    2,
+    "A"
+   ],
+   "ENG.VALVE": [
+    2,
+    "A"
+   ],
+   "ENG.CRANK": [
+    2,
+    "A"
+   ],
+   "ENG.TURBO": [
+    2,
+    "A"
+   ],
+   "ENG.FUEL": [
+    3,
+    "A"
+   ],
+   "CARGO.LNG": [
+    3,
+    "A"
+   ],
+   "CARGO.LPG": [
+    0,
+    "A"
+   ],
+   "CARGO.PUMP": [
+    2,
+    "A"
+   ],
+   "CARGO.GASHANDLE": [
+    3,
+    "A"
+   ],
+   "CARGO.CONT": [
+    0,
+    "A"
+   ],
+   "CARGO.INERT": [
+    2,
+    "A"
+   ],
+   "DECK.CRANE": [
+    1,
+    "B"
+   ],
+   "DECK.WINCH": [
+    2,
+    "A"
+   ],
+   "DECK.HATCH": [
+    0,
+    "A"
+   ],
+   "DECK.OTHER": [
+    1,
+    "C"
+   ],
+   "PIPE.VALVE": [
+    3,
+    "B"
+   ],
+   "PIPE.FITTING": [
+    2,
+    "B"
+   ],
+   "PIPE.PIPE": [
+    3,
+    "B"
+   ],
+   "PIPE.PUMP": [
+    2,
+    "B"
+   ],
+   "PIPE.HEX": [
+    2,
+    "B"
+   ],
+   "PIPE.BWTS": [
+    2,
+    "A"
+   ],
+   "PIPE.SCRUBBER": [
+    0,
+    "B"
+   ],
+   "ELEC.CABLE": [
+    2,
+    "B"
+   ],
+   "ELEC.SWBD": [
+    2,
+    "B"
+   ],
+   "ELEC.LIGHT": [
+    1,
+    "C"
+   ],
+   "ELEC.AUTO": [
+    2,
+    "B"
+   ],
+   "NAV.NAV": [
+    2,
+    "B"
+   ],
+   "ACCOM.DECKHOUSE": [
+    2,
+    "B"
+   ],
+   "ACCOM.INTERIOR": [
+    1,
+    "B"
+   ],
+   "ACCOM.HVAC": [
+    1,
+    "B"
+   ],
+   "SAFE.FIRE": [
+    2,
+    "B"
+   ],
+   "SAFE.LIFE": [
+    1,
+    "A"
+   ],
+   "SAFE.ENV": [
+    2,
+    "C"
+   ],
+   "COAT.PAINT": [
+    2,
+    "B"
+   ],
+   "COAT.WORK": [
+    2,
+    "A"
+   ],
+   "COAT.INSUL": [
+    1,
+    "C"
+   ],
+   "OFFSH.TOPSIDE": [
+    0,
+    "A"
+   ],
+   "OFFSH.MOORING": [
+    0,
+    "A"
+   ],
+   "OFFSH.SUBSEA": [
+    0,
+    "A"
+   ],
+   "SVC.DESIGN": [
+    1,
+    "C"
+   ],
+   "SVC.INSPECT": [
+    1,
+    "C"
+   ],
+   "SVC.LABOR": [
+    1,
+    "C"
+   ]
+  },
+  "VLGC": {
+   "HULL.BLOCK": [
+    2,
+    "B"
+   ],
+   "HULL.PLATE": [
+    2,
+    "B"
+   ],
+   "HULL.CAST": [
+    1,
+    "B"
+   ],
+   "HULL.OUTFIT": [
+    1,
+    "C"
+   ],
+   "PROP.MAIN": [
+    3,
+    "B"
+   ],
+   "PROP.AUX": [
+    2,
+    "A"
+   ],
+   "PROP.PROP": [
+    2,
+    "B"
+   ],
+   "PROP.SHAFT": [
+    2,
+    "A"
+   ],
+   "PROP.RUDDER": [
+    2,
+    "A"
+   ],
+   "PROP.ESD": [
+    2,
+    "B"
+   ],
+   "ENG.LINER": [
+    2,
+    "A"
+   ],
+   "ENG.PISTON": [
+    2,
+    "A"
+   ],
+   "ENG.VALVE": [
+    2,
+    "A"
+   ],
+   "ENG.CRANK": [
+    2,
+    "A"
+   ],
+   "ENG.TURBO": [
+    2,
+    "A"
+   ],
+   "ENG.FUEL": [
+    3,
+    "A"
+   ],
+   "CARGO.LNG": [
+    1,
+    "A"
+   ],
+   "CARGO.LPG": [
+    3,
+    "A"
+   ],
+   "CARGO.PUMP": [
+    2,
+    "A"
+   ],
+   "CARGO.GASHANDLE": [
+    3,
+    "A"
+   ],
+   "CARGO.CONT": [
+    0,
+    "A"
+   ],
+   "CARGO.INERT": [
+    1,
+    "A"
+   ],
+   "DECK.CRANE": [
+    1,
+    "B"
+   ],
+   "DECK.WINCH": [
+    2,
+    "A"
+   ],
+   "DECK.HATCH": [
+    0,
+    "A"
+   ],
+   "DECK.OTHER": [
+    1,
+    "C"
+   ],
+   "PIPE.VALVE": [
+    3,
+    "B"
+   ],
+   "PIPE.FITTING": [
+    2,
+    "B"
+   ],
+   "PIPE.PIPE": [
+    2,
+    "B"
+   ],
+   "PIPE.PUMP": [
+    2,
+    "B"
+   ],
+   "PIPE.HEX": [
+    2,
+    "B"
+   ],
+   "PIPE.BWTS": [
+    2,
+    "A"
+   ],
+   "PIPE.SCRUBBER": [
+    1,
+    "B"
+   ],
+   "ELEC.CABLE": [
+    2,
+    "B"
+   ],
+   "ELEC.SWBD": [
+    2,
+    "B"
+   ],
+   "ELEC.LIGHT": [
+    1,
+    "C"
+   ],
+   "ELEC.AUTO": [
+    2,
+    "B"
+   ],
+   "NAV.NAV": [
+    2,
+    "B"
+   ],
+   "ACCOM.DECKHOUSE": [
+    2,
+    "B"
+   ],
+   "ACCOM.INTERIOR": [
+    1,
+    "B"
+   ],
+   "ACCOM.HVAC": [
+    1,
+    "B"
+   ],
+   "SAFE.FIRE": [
+    2,
+    "B"
+   ],
+   "SAFE.LIFE": [
+    1,
+    "A"
+   ],
+   "SAFE.ENV": [
+    2,
+    "C"
+   ],
+   "COAT.PAINT": [
+    2,
+    "B"
+   ],
+   "COAT.WORK": [
+    2,
+    "A"
+   ],
+   "COAT.INSUL": [
+    1,
+    "C"
+   ],
+   "OFFSH.TOPSIDE": [
+    0,
+    "A"
+   ],
+   "OFFSH.MOORING": [
+    0,
+    "A"
+   ],
+   "OFFSH.SUBSEA": [
+    0,
+    "A"
+   ],
+   "SVC.DESIGN": [
+    1,
+    "C"
+   ],
+   "SVC.INSPECT": [
+    1,
+    "C"
+   ],
+   "SVC.LABOR": [
+    1,
+    "C"
+   ]
+  },
+  "CONT": {
+   "HULL.BLOCK": [
+    2,
+    "B"
+   ],
+   "HULL.PLATE": [
+    2,
+    "B"
+   ],
+   "HULL.CAST": [
+    1,
+    "B"
+   ],
+   "HULL.OUTFIT": [
+    1,
+    "C"
+   ],
+   "PROP.MAIN": [
+    3,
+    "B"
+   ],
+   "PROP.AUX": [
+    2,
+    "A"
+   ],
+   "PROP.PROP": [
+    3,
+    "B"
+   ],
+   "PROP.SHAFT": [
+    2,
+    "A"
+   ],
+   "PROP.RUDDER": [
+    2,
+    "A"
+   ],
+   "PROP.ESD": [
+    3,
+    "B"
+   ],
+   "ENG.LINER": [
+    2,
+    "A"
+   ],
+   "ENG.PISTON": [
+    2,
+    "A"
+   ],
+   "ENG.VALVE": [
+    2,
+    "A"
+   ],
+   "ENG.CRANK": [
+    2,
+    "A"
+   ],
+   "ENG.TURBO": [
+    2,
+    "A"
+   ],
+   "ENG.FUEL": [
+    2,
+    "B"
+   ],
+   "CARGO.LNG": [
+    0,
+    "A"
+   ],
+   "CARGO.LPG": [
+    0,
+    "A"
+   ],
+   "CARGO.PUMP": [
+    0,
+    "A"
+   ],
+   "CARGO.GASHANDLE": [
+    0,
+    "A"
+   ],
+   "CARGO.CONT": [
+    3,
+    "A"
+   ],
+   "CARGO.INERT": [
+    0,
+    "A"
+   ],
+   "DECK.CRANE": [
+    1,
+    "B"
+   ],
+   "DECK.WINCH": [
+    2,
+    "A"
+   ],
+   "DECK.HATCH": [
+    3,
+    "A"
+   ],
+   "DECK.OTHER": [
+    1,
+    "C"
+   ],
+   "PIPE.VALVE": [
+    2,
+    "B"
+   ],
+   "PIPE.FITTING": [
+    2,
+    "B"
+   ],
+   "PIPE.PIPE": [
+    2,
+    "B"
+   ],
+   "PIPE.PUMP": [
+    2,
+    "B"
+   ],
+   "PIPE.HEX": [
+    2,
+    "B"
+   ],
+   "PIPE.BWTS": [
+    2,
+    "A"
+   ],
+   "PIPE.SCRUBBER": [
+    2,
+    "B"
+   ],
+   "ELEC.CABLE": [
+    2,
+    "B"
+   ],
+   "ELEC.SWBD": [
+    2,
+    "B"
+   ],
+   "ELEC.LIGHT": [
+    1,
+    "C"
+   ],
+   "ELEC.AUTO": [
+    2,
+    "B"
+   ],
+   "NAV.NAV": [
+    2,
+    "B"
+   ],
+   "ACCOM.DECKHOUSE": [
+    2,
+    "B"
+   ],
+   "ACCOM.INTERIOR": [
+    1,
+    "B"
+   ],
+   "ACCOM.HVAC": [
+    1,
+    "B"
+   ],
+   "SAFE.FIRE": [
+    3,
+    "B"
+   ],
+   "SAFE.LIFE": [
+    1,
+    "A"
+   ],
+   "SAFE.ENV": [
+    1,
+    "C"
+   ],
+   "COAT.PAINT": [
+    2,
+    "B"
+   ],
+   "COAT.WORK": [
+    2,
+    "A"
+   ],
+   "COAT.INSUL": [
+    1,
+    "C"
+   ],
+   "OFFSH.TOPSIDE": [
+    0,
+    "A"
+   ],
+   "OFFSH.MOORING": [
+    0,
+    "A"
+   ],
+   "OFFSH.SUBSEA": [
+    0,
+    "A"
+   ],
+   "SVC.DESIGN": [
+    1,
+    "C"
+   ],
+   "SVC.INSPECT": [
+    1,
+    "C"
+   ],
+   "SVC.LABOR": [
+    1,
+    "C"
+   ]
+  },
+  "VLCC": {
+   "HULL.BLOCK": [
+    2,
+    "B"
+   ],
+   "HULL.PLATE": [
+    3,
+    "B"
+   ],
+   "HULL.CAST": [
+    1,
+    "B"
+   ],
+   "HULL.OUTFIT": [
+    1,
+    "C"
+   ],
+   "PROP.MAIN": [
+    2,
+    "B"
+   ],
+   "PROP.AUX": [
+    2,
+    "A"
+   ],
+   "PROP.PROP": [
+    2,
+    "B"
+   ],
+   "PROP.SHAFT": [
+    2,
+    "A"
+   ],
+   "PROP.RUDDER": [
+    2,
+    "A"
+   ],
+   "PROP.ESD": [
+    2,
+    "B"
+   ],
+   "ENG.LINER": [
+    2,
+    "A"
+   ],
+   "ENG.PISTON": [
+    2,
+    "A"
+   ],
+   "ENG.VALVE": [
+    2,
+    "A"
+   ],
+   "ENG.CRANK": [
+    2,
+    "A"
+   ],
+   "ENG.TURBO": [
+    2,
+    "A"
+   ],
+   "ENG.FUEL": [
+    1,
+    "B"
+   ],
+   "CARGO.LNG": [
+    0,
+    "A"
+   ],
+   "CARGO.LPG": [
+    0,
+    "A"
+   ],
+   "CARGO.PUMP": [
+    3,
+    "A"
+   ],
+   "CARGO.GASHANDLE": [
+    0,
+    "A"
+   ],
+   "CARGO.CONT": [
+    0,
+    "A"
+   ],
+   "CARGO.INERT": [
+    3,
+    "A"
+   ],
+   "DECK.CRANE": [
+    1,
+    "B"
+   ],
+   "DECK.WINCH": [
+    2,
+    "A"
+   ],
+   "DECK.HATCH": [
+    0,
+    "A"
+   ],
+   "DECK.OTHER": [
+    1,
+    "C"
+   ],
+   "PIPE.VALVE": [
+    3,
+    "B"
+   ],
+   "PIPE.FITTING": [
+    2,
+    "B"
+   ],
+   "PIPE.PIPE": [
+    2,
+    "B"
+   ],
+   "PIPE.PUMP": [
+    2,
+    "B"
+   ],
+   "PIPE.HEX": [
+    2,
+    "B"
+   ],
+   "PIPE.BWTS": [
+    2,
+    "A"
+   ],
+   "PIPE.SCRUBBER": [
+    2,
+    "B"
+   ],
+   "ELEC.CABLE": [
+    2,
+    "B"
+   ],
+   "ELEC.SWBD": [
+    2,
+    "B"
+   ],
+   "ELEC.LIGHT": [
+    1,
+    "C"
+   ],
+   "ELEC.AUTO": [
+    2,
+    "B"
+   ],
+   "NAV.NAV": [
+    2,
+    "B"
+   ],
+   "ACCOM.DECKHOUSE": [
+    2,
+    "B"
+   ],
+   "ACCOM.INTERIOR": [
+    1,
+    "B"
+   ],
+   "ACCOM.HVAC": [
+    1,
+    "B"
+   ],
+   "SAFE.FIRE": [
+    2,
+    "B"
+   ],
+   "SAFE.LIFE": [
+    1,
+    "A"
+   ],
+   "SAFE.ENV": [
+    2,
+    "C"
+   ],
+   "COAT.PAINT": [
+    2,
+    "B"
+   ],
+   "COAT.WORK": [
+    2,
+    "A"
+   ],
+   "COAT.INSUL": [
+    1,
+    "C"
+   ],
+   "OFFSH.TOPSIDE": [
+    0,
+    "A"
+   ],
+   "OFFSH.MOORING": [
+    0,
+    "A"
+   ],
+   "OFFSH.SUBSEA": [
+    0,
+    "A"
+   ],
+   "SVC.DESIGN": [
+    1,
+    "C"
+   ],
+   "SVC.INSPECT": [
+    1,
+    "C"
+   ],
+   "SVC.LABOR": [
+    1,
+    "C"
+   ]
+  },
+  "PC": {
+   "HULL.BLOCK": [
+    2,
+    "B"
+   ],
+   "HULL.PLATE": [
+    2,
+    "B"
+   ],
+   "HULL.CAST": [
+    1,
+    "B"
+   ],
+   "HULL.OUTFIT": [
+    1,
+    "C"
+   ],
+   "PROP.MAIN": [
+    2,
+    "B"
+   ],
+   "PROP.AUX": [
+    2,
+    "A"
+   ],
+   "PROP.PROP": [
+    2,
+    "B"
+   ],
+   "PROP.SHAFT": [
+    2,
+    "A"
+   ],
+   "PROP.RUDDER": [
+    2,
+    "A"
+   ],
+   "PROP.ESD": [
+    2,
+    "B"
+   ],
+   "ENG.LINER": [
+    2,
+    "A"
+   ],
+   "ENG.PISTON": [
+    2,
+    "A"
+   ],
+   "ENG.VALVE": [
+    2,
+    "A"
+   ],
+   "ENG.CRANK": [
+    2,
+    "A"
+   ],
+   "ENG.TURBO": [
+    2,
+    "A"
+   ],
+   "ENG.FUEL": [
+    1,
+    "B"
+   ],
+   "CARGO.LNG": [
+    0,
+    "A"
+   ],
+   "CARGO.LPG": [
+    0,
+    "A"
+   ],
+   "CARGO.PUMP": [
+    3,
+    "A"
+   ],
+   "CARGO.GASHANDLE": [
+    0,
+    "A"
+   ],
+   "CARGO.CONT": [
+    0,
+    "A"
+   ],
+   "CARGO.INERT": [
+    3,
+    "A"
+   ],
+   "DECK.CRANE": [
+    1,
+    "B"
+   ],
+   "DECK.WINCH": [
+    2,
+    "A"
+   ],
+   "DECK.HATCH": [
+    0,
+    "A"
+   ],
+   "DECK.OTHER": [
+    1,
+    "C"
+   ],
+   "PIPE.VALVE": [
+    3,
+    "B"
+   ],
+   "PIPE.FITTING": [
+    2,
+    "B"
+   ],
+   "PIPE.PIPE": [
+    2,
+    "B"
+   ],
+   "PIPE.PUMP": [
+    2,
+    "B"
+   ],
+   "PIPE.HEX": [
+    2,
+    "B"
+   ],
+   "PIPE.BWTS": [
+    2,
+    "A"
+   ],
+   "PIPE.SCRUBBER": [
+    2,
+    "B"
+   ],
+   "ELEC.CABLE": [
+    2,
+    "B"
+   ],
+   "ELEC.SWBD": [
+    2,
+    "B"
+   ],
+   "ELEC.LIGHT": [
+    1,
+    "C"
+   ],
+   "ELEC.AUTO": [
+    2,
+    "B"
+   ],
+   "NAV.NAV": [
+    2,
+    "B"
+   ],
+   "ACCOM.DECKHOUSE": [
+    2,
+    "B"
+   ],
+   "ACCOM.INTERIOR": [
+    1,
+    "B"
+   ],
+   "ACCOM.HVAC": [
+    1,
+    "B"
+   ],
+   "SAFE.FIRE": [
+    2,
+    "B"
+   ],
+   "SAFE.LIFE": [
+    1,
+    "A"
+   ],
+   "SAFE.ENV": [
+    2,
+    "C"
+   ],
+   "COAT.PAINT": [
+    3,
+    "B"
+   ],
+   "COAT.WORK": [
+    2,
+    "A"
+   ],
+   "COAT.INSUL": [
+    1,
+    "C"
+   ],
+   "OFFSH.TOPSIDE": [
+    0,
+    "A"
+   ],
+   "OFFSH.MOORING": [
+    0,
+    "A"
+   ],
+   "OFFSH.SUBSEA": [
+    0,
+    "A"
+   ],
+   "SVC.DESIGN": [
+    1,
+    "C"
+   ],
+   "SVC.INSPECT": [
+    1,
+    "C"
+   ],
+   "SVC.LABOR": [
+    1,
+    "C"
+   ]
+  },
+  "BULK": {
+   "HULL.BLOCK": [
+    2,
+    "B"
+   ],
+   "HULL.PLATE": [
+    3,
+    "B"
+   ],
+   "HULL.CAST": [
+    1,
+    "B"
+   ],
+   "HULL.OUTFIT": [
+    1,
+    "C"
+   ],
+   "PROP.MAIN": [
+    2,
+    "B"
+   ],
+   "PROP.AUX": [
+    2,
+    "A"
+   ],
+   "PROP.PROP": [
+    2,
+    "B"
+   ],
+   "PROP.SHAFT": [
+    2,
+    "A"
+   ],
+   "PROP.RUDDER": [
+    2,
+    "A"
+   ],
+   "PROP.ESD": [
+    3,
+    "B"
+   ],
+   "ENG.LINER": [
+    2,
+    "A"
+   ],
+   "ENG.PISTON": [
+    2,
+    "A"
+   ],
+   "ENG.VALVE": [
+    2,
+    "A"
+   ],
+   "ENG.CRANK": [
+    2,
+    "A"
+   ],
+   "ENG.TURBO": [
+    2,
+    "A"
+   ],
+   "ENG.FUEL": [
+    1,
+    "B"
+   ],
+   "CARGO.LNG": [
+    0,
+    "A"
+   ],
+   "CARGO.LPG": [
+    0,
+    "A"
+   ],
+   "CARGO.PUMP": [
+    0,
+    "A"
+   ],
+   "CARGO.GASHANDLE": [
+    0,
+    "A"
+   ],
+   "CARGO.CONT": [
+    0,
+    "A"
+   ],
+   "CARGO.INERT": [
+    0,
+    "A"
+   ],
+   "DECK.CRANE": [
+    3,
+    "B"
+   ],
+   "DECK.WINCH": [
+    2,
+    "A"
+   ],
+   "DECK.HATCH": [
+    3,
+    "A"
+   ],
+   "DECK.OTHER": [
+    1,
+    "C"
+   ],
+   "PIPE.VALVE": [
+    1,
+    "B"
+   ],
+   "PIPE.FITTING": [
+    1,
+    "B"
+   ],
+   "PIPE.PIPE": [
+    1,
+    "B"
+   ],
+   "PIPE.PUMP": [
+    2,
+    "B"
+   ],
+   "PIPE.HEX": [
+    1,
+    "B"
+   ],
+   "PIPE.BWTS": [
+    2,
+    "A"
+   ],
+   "PIPE.SCRUBBER": [
+    2,
+    "B"
+   ],
+   "ELEC.CABLE": [
+    1,
+    "B"
+   ],
+   "ELEC.SWBD": [
+    1,
+    "B"
+   ],
+   "ELEC.LIGHT": [
+    1,
+    "C"
+   ],
+   "ELEC.AUTO": [
+    1,
+    "B"
+   ],
+   "NAV.NAV": [
+    1,
+    "B"
+   ],
+   "ACCOM.DECKHOUSE": [
+    2,
+    "B"
+   ],
+   "ACCOM.INTERIOR": [
+    1,
+    "B"
+   ],
+   "ACCOM.HVAC": [
+    1,
+    "B"
+   ],
+   "SAFE.FIRE": [
+    1,
+    "B"
+   ],
+   "SAFE.LIFE": [
+    1,
+    "A"
+   ],
+   "SAFE.ENV": [
+    1,
+    "C"
+   ],
+   "COAT.PAINT": [
+    2,
+    "B"
+   ],
+   "COAT.WORK": [
+    2,
+    "A"
+   ],
+   "COAT.INSUL": [
+    1,
+    "C"
+   ],
+   "OFFSH.TOPSIDE": [
+    0,
+    "A"
+   ],
+   "OFFSH.MOORING": [
+    0,
+    "A"
+   ],
+   "OFFSH.SUBSEA": [
+    0,
+    "A"
+   ],
+   "SVC.DESIGN": [
+    1,
+    "C"
+   ],
+   "SVC.INSPECT": [
+    1,
+    "C"
+   ],
+   "SVC.LABOR": [
+    1,
+    "C"
+   ]
+  },
+  "PCTC": {
+   "HULL.BLOCK": [
+    2,
+    "B"
+   ],
+   "HULL.PLATE": [
+    2,
+    "B"
+   ],
+   "HULL.CAST": [
+    1,
+    "B"
+   ],
+   "HULL.OUTFIT": [
+    1,
+    "C"
+   ],
+   "PROP.MAIN": [
+    2,
+    "B"
+   ],
+   "PROP.AUX": [
+    2,
+    "A"
+   ],
+   "PROP.PROP": [
+    2,
+    "B"
+   ],
+   "PROP.SHAFT": [
+    2,
+    "A"
+   ],
+   "PROP.RUDDER": [
+    2,
+    "A"
+   ],
+   "PROP.ESD": [
+    2,
+    "B"
+   ],
+   "ENG.LINER": [
+    2,
+    "A"
+   ],
+   "ENG.PISTON": [
+    2,
+    "A"
+   ],
+   "ENG.VALVE": [
+    2,
+    "A"
+   ],
+   "ENG.CRANK": [
+    2,
+    "A"
+   ],
+   "ENG.TURBO": [
+    2,
+    "A"
+   ],
+   "ENG.FUEL": [
+    3,
+    "B"
+   ],
+   "CARGO.LNG": [
+    0,
+    "A"
+   ],
+   "CARGO.LPG": [
+    0,
+    "A"
+   ],
+   "CARGO.PUMP": [
+    0,
+    "A"
+   ],
+   "CARGO.GASHANDLE": [
+    0,
+    "A"
+   ],
+   "CARGO.CONT": [
+    0,
+    "A"
+   ],
+   "CARGO.INERT": [
+    0,
+    "A"
+   ],
+   "DECK.CRANE": [
+    1,
+    "B"
+   ],
+   "DECK.WINCH": [
+    2,
+    "A"
+   ],
+   "DECK.HATCH": [
+    3,
+    "A"
+   ],
+   "DECK.OTHER": [
+    1,
+    "C"
+   ],
+   "PIPE.VALVE": [
+    1,
+    "B"
+   ],
+   "PIPE.FITTING": [
+    1,
+    "B"
+   ],
+   "PIPE.PIPE": [
+    1,
+    "B"
+   ],
+   "PIPE.PUMP": [
+    2,
+    "B"
+   ],
+   "PIPE.HEX": [
+    1,
+    "B"
+   ],
+   "PIPE.BWTS": [
+    2,
+    "A"
+   ],
+   "PIPE.SCRUBBER": [
+    1,
+    "B"
+   ],
+   "ELEC.CABLE": [
+    1,
+    "B"
+   ],
+   "ELEC.SWBD": [
+    1,
+    "B"
+   ],
+   "ELEC.LIGHT": [
+    2,
+    "C"
+   ],
+   "ELEC.AUTO": [
+    1,
+    "B"
+   ],
+   "NAV.NAV": [
+    1,
+    "B"
+   ],
+   "ACCOM.DECKHOUSE": [
+    2,
+    "B"
+   ],
+   "ACCOM.INTERIOR": [
+    1,
+    "B"
+   ],
+   "ACCOM.HVAC": [
+    2,
+    "B"
+   ],
+   "SAFE.FIRE": [
+    3,
+    "B"
+   ],
+   "SAFE.LIFE": [
+    1,
+    "A"
+   ],
+   "SAFE.ENV": [
+    1,
+    "C"
+   ],
+   "COAT.PAINT": [
+    2,
+    "B"
+   ],
+   "COAT.WORK": [
+    2,
+    "A"
+   ],
+   "COAT.INSUL": [
+    1,
+    "C"
+   ],
+   "OFFSH.TOPSIDE": [
+    0,
+    "A"
+   ],
+   "OFFSH.MOORING": [
+    0,
+    "A"
+   ],
+   "OFFSH.SUBSEA": [
+    0,
+    "A"
+   ],
+   "SVC.DESIGN": [
+    1,
+    "C"
+   ],
+   "SVC.INSPECT": [
+    1,
+    "C"
+   ],
+   "SVC.LABOR": [
+    1,
+    "C"
+   ]
+  },
+  "OFFSH": {
+   "HULL.BLOCK": [
+    3,
+    "B"
+   ],
+   "HULL.PLATE": [
+    2,
+    "B"
+   ],
+   "HULL.CAST": [
+    1,
+    "B"
+   ],
+   "HULL.OUTFIT": [
+    2,
+    "C"
+   ],
+   "PROP.MAIN": [
+    1,
+    "A"
+   ],
+   "PROP.AUX": [
+    3,
+    "A"
+   ],
+   "PROP.PROP": [
+    0,
+    "A"
+   ],
+   "PROP.SHAFT": [
+    0,
+    "A"
+   ],
+   "PROP.RUDDER": [
+    0,
+    "A"
+   ],
+   "PROP.ESD": [
+    0,
+    "A"
+   ],
+   "ENG.LINER": [
+    1,
+    "A"
+   ],
+   "ENG.PISTON": [
+    1,
+    "A"
+   ],
+   "ENG.VALVE": [
+    1,
+    "A"
+   ],
+   "ENG.CRANK": [
+    1,
+    "A"
+   ],
+   "ENG.TURBO": [
+    1,
+    "A"
+   ],
+   "ENG.FUEL": [
+    1,
+    "B"
+   ],
+   "CARGO.LNG": [
+    3,
+    "A"
+   ],
+   "CARGO.LPG": [
+    1,
+    "A"
+   ],
+   "CARGO.PUMP": [
+    2,
+    "A"
+   ],
+   "CARGO.GASHANDLE": [
+    3,
+    "A"
+   ],
+   "CARGO.CONT": [
+    0,
+    "A"
+   ],
+   "CARGO.INERT": [
+    1,
+    "A"
+   ],
+   "DECK.CRANE": [
+    3,
+    "B"
+   ],
+   "DECK.WINCH": [
+    3,
+    "A"
+   ],
+   "DECK.HATCH": [
+    0,
+    "A"
+   ],
+   "DECK.OTHER": [
+    2,
+    "C"
+   ],
+   "PIPE.VALVE": [
+    3,
+    "B"
+   ],
+   "PIPE.FITTING": [
+    3,
+    "B"
+   ],
+   "PIPE.PIPE": [
+    3,
+    "B"
+   ],
+   "PIPE.PUMP": [
+    3,
+    "B"
+   ],
+   "PIPE.HEX": [
+    2,
+    "B"
+   ],
+   "PIPE.BWTS": [
+    0,
+    "A"
+   ],
+   "PIPE.SCRUBBER": [
+    0,
+    "A"
+   ],
+   "ELEC.CABLE": [
+    3,
+    "B"
+   ],
+   "ELEC.SWBD": [
+    3,
+    "B"
+   ],
+   "ELEC.LIGHT": [
+    2,
+    "C"
+   ],
+   "ELEC.AUTO": [
+    3,
+    "B"
+   ],
+   "NAV.NAV": [
+    1,
+    "B"
+   ],
+   "ACCOM.DECKHOUSE": [
+    3,
+    "B"
+   ],
+   "ACCOM.INTERIOR": [
+    3,
+    "B"
+   ],
+   "ACCOM.HVAC": [
+    3,
+    "B"
+   ],
+   "SAFE.FIRE": [
+    3,
+    "B"
+   ],
+   "SAFE.LIFE": [
+    2,
+    "A"
+   ],
+   "SAFE.ENV": [
+    2,
+    "C"
+   ],
+   "COAT.PAINT": [
+    2,
+    "B"
+   ],
+   "COAT.WORK": [
+    2,
+    "A"
+   ],
+   "COAT.INSUL": [
+    2,
+    "C"
+   ],
+   "OFFSH.TOPSIDE": [
+    3,
+    "A"
+   ],
+   "OFFSH.MOORING": [
+    3,
+    "A"
+   ],
+   "OFFSH.SUBSEA": [
+    3,
+    "A"
+   ],
+   "SVC.DESIGN": [
+    2,
+    "C"
+   ],
+   "SVC.INSPECT": [
+    2,
+    "C"
+   ],
+   "SVC.LABOR": [
+    2,
+    "C"
+   ]
+  },
+  "NAVAL": {
+   "HULL.BLOCK": [
+    2,
+    "B"
+   ],
+   "HULL.PLATE": [
+    1,
+    "B"
+   ],
+   "HULL.CAST": [
+    1,
+    "B"
+   ],
+   "HULL.OUTFIT": [
+    2,
+    "C"
+   ],
+   "PROP.MAIN": [
+    2,
+    "B"
+   ],
+   "PROP.AUX": [
+    2,
+    "A"
+   ],
+   "PROP.PROP": [
+    3,
+    "B"
+   ],
+   "PROP.SHAFT": [
+    2,
+    "A"
+   ],
+   "PROP.RUDDER": [
+    2,
+    "A"
+   ],
+   "PROP.ESD": [
+    0,
+    "B"
+   ],
+   "ENG.LINER": [
+    1,
+    "A"
+   ],
+   "ENG.PISTON": [
+    1,
+    "A"
+   ],
+   "ENG.VALVE": [
+    1,
+    "A"
+   ],
+   "ENG.CRANK": [
+    1,
+    "A"
+   ],
+   "ENG.TURBO": [
+    1,
+    "A"
+   ],
+   "ENG.FUEL": [
+    1,
+    "B"
+   ],
+   "CARGO.LNG": [
+    0,
+    "A"
+   ],
+   "CARGO.LPG": [
+    0,
+    "A"
+   ],
+   "CARGO.PUMP": [
+    0,
+    "A"
+   ],
+   "CARGO.GASHANDLE": [
+    0,
+    "A"
+   ],
+   "CARGO.CONT": [
+    0,
+    "A"
+   ],
+   "CARGO.INERT": [
+    0,
+    "A"
+   ],
+   "DECK.CRANE": [
+    1,
+    "B"
+   ],
+   "DECK.WINCH": [
+    2,
+    "A"
+   ],
+   "DECK.HATCH": [
+    0,
+    "A"
+   ],
+   "DECK.OTHER": [
+    2,
+    "C"
+   ],
+   "PIPE.VALVE": [
+    2,
+    "B"
+   ],
+   "PIPE.FITTING": [
+    2,
+    "B"
+   ],
+   "PIPE.PIPE": [
+    2,
+    "B"
+   ],
+   "PIPE.PUMP": [
+    2,
+    "B"
+   ],
+   "PIPE.HEX": [
+    2,
+    "B"
+   ],
+   "PIPE.BWTS": [
+    0,
+    "A"
+   ],
+   "PIPE.SCRUBBER": [
+    0,
+    "B"
+   ],
+   "ELEC.CABLE": [
+    3,
+    "B"
+   ],
+   "ELEC.SWBD": [
+    3,
+    "B"
+   ],
+   "ELEC.LIGHT": [
+    2,
+    "C"
+   ],
+   "ELEC.AUTO": [
+    3,
+    "B"
+   ],
+   "NAV.NAV": [
+    3,
+    "B"
+   ],
+   "ACCOM.DECKHOUSE": [
+    3,
+    "B"
+   ],
+   "ACCOM.INTERIOR": [
+    3,
+    "B"
+   ],
+   "ACCOM.HVAC": [
+    3,
+    "B"
+   ],
+   "SAFE.FIRE": [
+    3,
+    "B"
+   ],
+   "SAFE.LIFE": [
+    2,
+    "A"
+   ],
+   "SAFE.ENV": [
+    1,
+    "C"
+   ],
+   "COAT.PAINT": [
+    2,
+    "B"
+   ],
+   "COAT.WORK": [
+    2,
+    "A"
+   ],
+   "COAT.INSUL": [
+    2,
+    "C"
+   ],
+   "OFFSH.TOPSIDE": [
+    0,
+    "A"
+   ],
+   "OFFSH.MOORING": [
+    0,
+    "A"
+   ],
+   "OFFSH.SUBSEA": [
+    0,
+    "A"
+   ],
+   "SVC.DESIGN": [
+    2,
+    "C"
+   ],
+   "SVC.INSPECT": [
+    2,
+    "C"
+   ],
+   "SVC.LABOR": [
+    2,
+    "C"
+   ]
+  }
+ },
+ "legend": {
+  "rel": {
+   "3": "핵심(선가·마진 결정, 선종 특화)",
+   "2": "중요",
+   "1": "공통",
+   "0": "없음"
+  },
+  "grade": {
+   "A": "물리적 존재/부재로 확정",
+   "B": "업계 통념",
+   "C": "추정"
+  },
+  "col_order": [
+   "LNGC",
+   "VLGC",
+   "CONT",
+   "VLCC",
+   "PC",
+   "BULK",
+   "PCTC",
+   "OFFSH",
+   "NAVAL"
+  ],
+  "cap": 3,
+  "color_slot_source": "palette.json categorical_order_fixed (1 컨테이너 · 2 LNG · 3 탱커 · 4 LPG·VLAC · 5 해양 · 6 특수선 · 7 벌크 · 8 PCTC). PC는 슬롯 3을 VLCC와 공유."
+ }
+}
