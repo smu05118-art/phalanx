@@ -125,6 +125,8 @@ def parse_products(html):
                 amt = round(amt * mul, 3)
             if share is not None and share > 100:      # 비중이 100%를 넘으면 금액을 잘못 읽은 것이다
                 amt, share = (amt if amt is not None else share), None
+            if share is not None and share < 0:        # 음수 비중은 증감률 행(전년비)이다 — 비중이 아니다
+                share = None
             if share is None and amt is None:
                 continue
             out.append({"prod": name, "share": share, "amt": amt, "cur": cur})
@@ -246,6 +248,8 @@ def build(quarter):
         for pr in srcs:
             if pr.get("share") is not None and pr["share"] > 100:     # 옛 캐시의 오독 방어
                 pr = dict(pr, amt=pr.get("amt") if pr.get("amt") is not None else pr["share"], share=None)
+            if pr.get("share") is not None and pr["share"] < 0:       # 증감률 행 — 비중이 아니다
+                pr = dict(pr, share=None)
             key = (r["stock"], _norm(pr["prod"]))
             ids = [ovr[key]] if key in ovr else classify_product(pr["prod"], ctx)
             for cid in ids:

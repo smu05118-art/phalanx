@@ -200,6 +200,8 @@ def parse_hedge_any(html, where):
                                          "hedge": "현금흐름" if "현금흐름" in col else ("공정가치" if "공정가치" in col else ""),
                                          "instr": "스왑" if "스왑" in col else "선도", "col": col[:40]})
                 out["shape"] = out["shape"] or "note-label"
+                # 원문 표를 캐시에 남긴다 — 열이 XBRL 멤버('파생상품5…')라 당기·전기 구분을 사람이 확인해야 한다
+                out.setdefault("raw", []).append({"cols": t["cols"], "row": r, "lead": lead})
                 continue
             # (3) 한화오션형: 'USD 매도' … 'USD', 금액, 'KRW', 금액
             if re.match(r"\s*(USD|EUR|JPY|CNY)\s*(매도|매입)", lab):
