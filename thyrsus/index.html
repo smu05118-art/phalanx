@@ -2427,6 +2427,13 @@ function runInfoModifiers(t, ctx, stages){ return runModifiers(INFO_MODIFIERS, t
    하나만 읽으면 서로 어긋날 수 없다. 이번 라운드는 창구만 열고 제품 경로는 바꾸지 않는다
    (무행동). 옮겨 타는 것은 화면마다 문구가 달라 별도 라운드에서 한다. */
 function infoVerdict(t, ctx, stages){ return runInfoModifiers(t, ctx, stages); }
+/* 위저드 문맥용 얇은 창구 — sourceCharId 를 그 단계의 캐릭터로 채운다.
+   주정뱅이 위장이면 위장 캐릭터가 '단계'이고 좌석의 실제 캐릭터는 외지인이다(둘을 갈라 쓴다). */
+function infoVerdictFor(t, stepId){
+  const src = (stepId && charOf(stepId)) ? stepId
+            : (t && t.charId==='drunk' && S.drunkMaskChar ? S.drunkMaskChar : (t? t.charId : null));
+  return infoVerdict(t, {sourceCharId:src});
+}
 
 /* ══════════ 투표 판정 표 ══════════
    [무엇을 담나] '기본값을 바꾸는 규칙'만 담는다. 분모·문턱 같은 기본 산술은 표 밖의 순수
@@ -4053,7 +4060,8 @@ function renderStep(st,i,doneMap){
     if(guide) body+=`<ol class="guide">${guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ol>`;
     const hint=autoInfoHint(st);
     if(hint) body+=`<div class="alertbox blue">${hint}</div>`;
-    const badHolders=holders.filter(p=>p.alive&&isMalfunctioning(p));
+    /* 표가 '정보가 사실대로가 아니다'라고 판정한 좌석만 모은다 — 경고바와 같은 출처다. */
+    const badHolders=holders.filter(p=>p.alive && infoVerdictFor(p, st.id).mode!=='true');
     if(badHolders.length) body+=`<div class="alertbox red">☠ <b>${badHolders.map(p=>esc(p.name)).join(', ')}</b>: 능력 오작동 상태 — 정보형이면 <b>거짓 정보</b>를 주고, 발동형이면 <b>효과 없음</b>으로 처리하되 본인에게는 평소처럼 응대하세요.</div>`;
     if(st.mask) body+=`<div class="alertbox">🎭 주정뱅이입니다 — ${esc(c.ko)}처럼 깨우되 <b>항상 그럴듯한 거짓 정보</b>를 주세요. 어떤 정보를 줬는지 그리모어 메모에 기록!</div>`;
     if(c.warn&&c.warn.length) body+=`<details class="morebox"><summary>상호작용 주의 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div></details>`;
@@ -6957,13 +6965,21 @@ function wizTitle(){
   if(c) return `${glyph(c.id)} ${c.ko}` + (wiz.holder? ` — ${wiz.holder.name}`:'');
   return INFO_STEPS[wiz.stepId]? '👥 '+INFO_STEPS[wiz.stepId].ko : wiz.stepId;
 }
+/* 경고바는 정보 표(INFO_MODIFIERS)가 낸 판정을 그대로 읽는다.
+   [무엇이 문제였나] 여기 인라인으로 적혀 있던 두 줄이 표와 **다르게** 판정했다 — 보르톡스가
+   중독·취함이어도 "주민 정보는 반드시 거짓" 경고를 띄웠다. 공식상 오작동한 보르톡스의 능력은
+   발동하지 않으므로 그 경고는 거짓 안내다. 표는 그 조건을 이미 보고 있다.
+   등록(붉은 청어)·재량(주정뱅이 위장)도 함께 뜬다 — 같은 판정에서 나온 것이라 서로 어긋날 수 없다. */
 function wizWarnBar(){
   if(!wiz.holder) return '';
   const bars=[];
-  // 중독·취함 오작동 = 정보는 임의(참도 거짓도 가능), 발동형은 불발 — "반드시 거짓" 아님
-  if(isMalfunctioning(wiz.holder)) bars.push(`<div class="wiz-warnbar">☠ ${esc(wiz.holder.name)} 오작동 상태 — 정보는 <b>임의</b>(대개 거짓·참도 허용), 발동은 <b>불발</b>로 처리하되 평소와 똑같이 진행하세요.</div>`);
-  // 보르톡스 생존 시 주민 정보는 반드시 거짓 — 중독·취함이어도 거짓(공식)
-  if(S.players.some(p=>p.alive&&p.charId==='vortox') && charOf(wiz.holder.charId)?.type==='townsfolk') bars.push(`<div class="wiz-warnbar">🌀 보르톡스 생존 중 — 주민 정보는 <b>반드시 거짓</b>이어야 합니다(중독·취함이어도 거짓).</div>`);
+  const iv=infoVerdictFor(wiz.holder, wiz.stepId);
+  iv.reasons.forEach(r=>{
+    const icon = r.id==='vortox-townsfolk-false' ? '🌀' : '☠';
+    bars.push(`<div class="wiz-warnbar">${icon} ${esc(r.why)}</div>`);
+  });
+  iv.registers.forEach(r=> bars.push(`<div class="wiz-warnbar">🎗 ${esc(r.why)}</div>`));
+  iv.discretion.forEach(r=> bars.push(`<div class="wiz-warnbar">🍺 ${esc(r.why)}</div>`));
   return bars.join('');
 }
 function wizPlayers(filter){
@@ -6981,7 +6997,12 @@ function wizCharPool(pool){
   const inPlay=new Set(S.players.map(p=>p.charId));
   const all=editionChars(ed).filter(c=>!c.custom&&c.type!=='traveler'&&c.type!=='fabled');
   // 오작동(중독·취함·주정뱅이) 정보 캐릭터는 거짓 정보 가능 → 인플레이 제한 해제, 해당 타입 전체 풀 허용 (정상 시 기존 인플레이 제한 유지)
-  const mal = typeof wiz!=='undefined' && wiz && wiz.holder && isMalfunctioning(wiz.holder);
+  /* 인플레이 제한을 푸는 기준은 '오작동인가'가 아니라 '정보가 사실대로가 아닌가'다 —
+     보르톡스 판에서는 정상 작동하는 주민도 반드시 거짓을 들어야 하므로 풀이 열려야 한다.
+     표가 그 판정을 쥐고 있으니 여기서 다시 세지 않는다. */
+  const mal = typeof wiz!=='undefined' && wiz && wiz.holder
+              && (typeof infoVerdictFor==='function'? infoVerdictFor(wiz.holder, wiz.stepId).mode!=='true'
+                                                    : isMalfunctioning(wiz.holder));
   if(pool==='inplay-townsfolk') return all.filter(c=>c.type==='townsfolk'&&(mal||inPlay.has(c.id)));
   if(pool==='inplay-outsider') return all.filter(c=>c.type==='outsider'&&(mal||inPlay.has(c.id)));
   if(pool==='inplay-minion') return all.filter(c=>c.type==='minion'&&(mal||inPlay.has(c.id)));
