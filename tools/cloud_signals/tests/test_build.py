@@ -37,11 +37,13 @@ class BuildTests(unittest.TestCase):
     def test_official_validation(self):
         providers,_=b.import_signals(b.read_assignment(ROOT/'data_ai.js','AID'))
         rows=json.loads((ROOT/'data/cloud_signals/reviewed.json').read_text())['signals']
-        for r in rows:b.validate_observation(r,providers,b.date('2026-09-10'))
-        for change in ({'source_url':'https://assets.nebius.com.evil.invalid/x'}, {'verified_at':'2027-01-01'},
-                       {'published_at':'2027-01-01'},{'direction':True},{'value':None},{'evidence':'target'}):
+        today=b.dt.datetime.now(b.dt.timezone.utc).date()
+        future=(today+b.dt.timedelta(days=1)).isoformat()
+        for r in rows:b.validate_observation(r,providers,today)
+        for change in ({'source_url':'https://assets.nebius.com.evil.invalid/x'}, {'verified_at':future},
+                       {'published_at':future},{'direction':True},{'value':None},{'evidence':'target'}):
             r=dict(rows[0],**change)
-            with self.subTest(change=change),self.assertRaises(ValueError):b.validate_observation(r,providers,b.date('2026-09-10'))
+            with self.subTest(change=change),self.assertRaises(ValueError):b.validate_observation(r,providers,today)
     def test_atomic_size_failure_keeps_file(self):
         with tempfile.TemporaryDirectory() as t:
             p=Path(t)/'out';p.write_text('old')
