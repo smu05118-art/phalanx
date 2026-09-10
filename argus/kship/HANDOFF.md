@@ -39,7 +39,7 @@ python3 inject_link.py --apply             # argus/index.html 에 ⚓ 한국조�
 - 자동 갱신: `.github/workflows/update-kship.yml` 매일 10:40 KST — 수집기 하나씩, 테스트 전후, 성공분만 커밋.
 - 조선사 5사 **2026Q2만** 수집됨. 과거 분기는 DART 차단으로 미수집 — 복구되면
   `python3 kship_yards.py --collect --quarter 2026Q1`(… 2025Q4 … 2024Q3) **하나씩**.
-- 척당 계약 189건(2024~) 집계. **정정공시 23건은 인코딩 버그로 캐시를 지웠다** — `kship_contracts.py --collect`가 다시 받는다(EUC-KR 판정 수정됨). 선종 미판정 12건은 `contracts.json`에서 `type=null`로 남아 있다(추정하지 않음).
+- 척당 계약 189건(2024~) 집계. **정정공시 23건은 인코딩 버그로 캐시를 지웠다** — `kship_contracts.py --collect`가 다시 받는다(EUC-KR 판정 수정됨). 선종은 189건 전부 판정됨(HJ중공업 건설공사 등 선박 아닌 계약은 `OTHER` 52건).
 - 기자재 35사 중 30사 캐시. 5사 미수집(범한퓨얼셀·현대힘스·케이앤에스아이앤씨·한국선재·화인베스틸)과 **비중→금액 오독 캐시**(한국카본 등)는 `kship_suppliers.py --collect --force` 한 번이면 둘 다 해결 → `--build`.
 - 삼성중공업 통화선도 매도 USD 482억달러는 **의심**: 주석 라벨형 표의 모든 숫자 열을 더한 값인데 캐시 항목이 두 묶음(25,537 / 22,656)으로 갈라져 있어 당기·전기 열을 함께 더했을 가능성이 크다(HD현대重은 열이 위험회피 유형이라 합산이 맞다). 파서에 전기 열 제외를 넣었고 항목마다 열 머리(`col`)를 남기도록 했다 → DART 복구 후 `python3 kship_yards.py --collect --quarter 2026Q2 --only 010140 --force` 로 다시 받아 열 머리를 보고 확정할 것.
 - 남은 일: 위 재수집 후 `kship_page.py --all` · `kship_parts.py --all` · 커밋. 대한조선·HJ중공업 헤지 공시 확인. 진행률(매출인식) 기준을 주석 「수익」에서 읽기. 인포그래픽에서 관련도 0인 소분류 흐리게.
