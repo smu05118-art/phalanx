@@ -3236,7 +3236,24 @@ function renderSetup(){
   }
   else {
     const issues=setupIssues();
-    body = issues.length? `
+    /* [무엇이 문제였나] 이 화면은 S.phase 를 보지 않아서, 지난 판이 낮 2에서 끝났든 지금 낮 3이
+       진행 중이든 똑같이 "게임 준비 완료! 첫 번째 밤을 시작하세요"라고 말했다. 화면이 사실과
+       다른 말을 하면 그 아래 버튼이 무엇을 하든 사회자는 속는다 — 실제로 그 버튼은 첫 밤이
+       아니라 지난 판의 **다음 밤**으로 갔다.
+       그래서 버튼의 동작만 고치지 않고 화면이 상태를 사실대로 말하게 한다. 여기서 새 판을
+       '알아서' 시작해 주지도 않는다 — 진행 중인 판을 조용히 버리는 경로는 만들지 않는다.
+       끝났지만 마감 안 한 판은 앱이 이미 가진 유일한 새 판 경로(finalizeEndedGame)로 보낸다. */
+    const _ph=S.phase||{kind:'setup', n:0};
+    const _where=(_ph.kind==='night'? '밤 ':'낮 ')+_ph.n+'일차';
+    body = (_ph.kind!=='setup') ? (S.gameOver? `
+      <div class="alertbox">🏁 <b>지난 판이 아직 마감되지 않았습니다</b> (${esc(_where)}에서 종료).<br>
+        마감해야 전적이 정리되고 이전 설정 그대로 새 판을 준비합니다.</div>
+      <div class="bigactions"><button class="gold" onclick="finalizeEndedGame()">지난 판 마감하고 새 판 준비 ›</button></div>` : `
+      <div class="alertbox">▶ <b>게임이 진행 중입니다</b> (${esc(_where)}).<br>
+        새 판을 시작하려면 먼저 지금 판을 끝내세요 — 종료 메뉴의 [사회자 임의 종료]를 쓰면
+        이 판은 전적에 남지 않습니다.</div>
+      <div class="bigactions"><button class="gold" onclick="switchTab('${_ph.kind}')">진행 중인 판으로 돌아가기 ›</button></div>`)
+    : issues.length? `
       <div class="alertbox">아직 준비가 끝나지 않았습니다:<ul class="guide">${issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
       <div class="bigactions"><button onclick="gotoSetupStep(${issues[0].includes('플레이어')?1:2})">‹ 돌아가서 마저 준비하기</button></div>`
     : `<div class="ready-hero">
@@ -3246,13 +3263,34 @@ function renderSetup(){
       </div>
       <div class="bigactions">
         <button onclick="startRevealWiz()">👥 캐릭터 확인하기${typeof revealStats==='function'&&revealStats().total?` <span class="num">${revealStats().done}/${revealStats().total}</span>`:''}</button>
-        <button class="gold" onclick="advancePhase()">첫 번째 밤 시작 ›</button>
+        <button class="gold" onclick="startFirstNight()">첫 번째 밤 시작 ›</button>
       </div>
       <p class="hint" style="text-align:center;margin-top:14px">캐릭터 확인하기: 기기를 좌석 순서대로 돌리며 각자 자기 캐릭터를 비공개로 확인합니다.<br>주정뱅이에게는 위장 캐릭터가 표시됩니다.</p>`;
   }
   el.innerHTML=`<div class="card">
     <h2>게임 설정</h2><p class="hint" style="margin-top:-6px">${editionOf().ko}</p>
     ${stepper}${body}</div>`;
+}
+/* 설정 화면의 [첫 번째 밤 시작]은 말 그대로 '첫 번째 밤'이어야 한다.
+   [무엇이 문제였나] 이 버튼은 advancePhase() 를 직접 불렀고, advancePhase 는 S.phase.kind 로
+   분기한다. 지난 판이 낮 2에서 끝났으면 kind 가 'day' 라 '낮→밤' 분기로 들어가 **밤 3**으로
+   갔다 — 종료 상태(gameOver·endKind)와 판 식별자까지 그대로. 진행 중인 판에서는 밤 4로 갔다.
+   2765의 뒤처리(clearEndedGameState)는 정확히 이 시나리오를 서술해 놓고도 'setup' 분기 안에만
+   있어서 이 경로가 닿지 못했다. S.phase.kind 가 'setup' 이 되는 자리는 blank()·migrate 뿐이라,
+   판이 한 번 시작하면 전체 초기화 전까지 그 분기는 영영 오지 않는다.
+   **종료 흐름 테스트가 S.phase={kind:'setup'} 을 직접 주입해서** 이 구멍을 오래 못 봤다 —
+   테스트가 전제를 스스로 만들어 주면 실제 진입 경로를 묻지 않게 된다.
+   여기서 준비 상태로 되돌린 뒤 같은 분기를 태운다. 검증(인원·미배정·붉은 청어·위장 지정)과
+   뒤처리는 전부 advancePhase 의 setup 분기에 그대로 있다 — 여기서 다시 세지 않는다. */
+function startFirstNight(){
+  const ph=S.phase||{kind:'setup', n:0};
+  if(ph.kind==='setup'){ advancePhase(); return; }
+  /* 화면(위)이 이미 이 버튼을 안 그리지만, 낡은 렌더가 남아 있어도 페이즈를 진행시키지는
+     않는다 — 이 버튼이 하면 안 되는 단 하나가 '지난 판을 이어 가기'다. */
+  const where=(ph.kind==='night'? '밤 ':'낮 ')+ph.n+'일차';
+  if(S.gameOver){ toast(`지난 판이 아직 마감되지 않았습니다(${where}) — 마감해야 새 판을 시작합니다.`,'warn'); }
+  else { toast(`게임이 진행 중입니다(${where}) — 새 판을 시작하려면 먼저 지금 판을 끝내세요.`,'warn'); }
+  try{ renderSetup(); }catch(e){}
 }
 function startRevealWiz(){
   const scenes=[];
@@ -3768,8 +3806,20 @@ function confirmKill(pid){ const p=playerOf(pid); if(!p) return;
    handEligible 이 p.deadVote===false 로 걸러 정당한 1회 사망 투표를 잃고, 남아 있는 diedAt 이
    살아 있는 좌석에 사망 시각을 붙여 통계·리플레이(SURV·장의사 판정)를 오염시킨다. */
 function revivePlayer(pid){ const p=playerOf(pid); if(!p) return;
+  const undone=[];
+  /* 좀버얼의 '죽은 척'은 그 사망이 소비한 1회 생존이다 — 토큰을 남겨 두면 살아난 좌석이
+     첫 사망을 이미 써 버린 상태가 되어, 다음 진짜 첫 사망이 두 번째 사망으로 처리된다.
+     두 번째 사망을 되돌리는 경우에는 토큰이 이미 없으므로(killPlayer 가 떼어낸다) 무해하다. */
+  const zi=(p.statuses||[]).findIndex(s=>s.key==='fakedead');
+  if(zi>=0){ p.statuses.splice(zi,1); undone.push('좀버얼 첫 사망 무효화'); }
+  /* 오늘 처형으로 죽은 사람이 이 좌석이었다면 그 기록도 함께 정정한다 — 남겨 두면 장의사에게
+     살아 있는 좌석을 '오늘 처형으로 죽은 캐릭터'로 알려준다.
+     처형이 있었다는 사실(executedToday)은 지우지 않는다. 처형은 실제로 있었고, 보르톡스 판정도
+     '처형이 있었는가'를 본다 — 사망만 정정하는 것이 사실에 맞다. */
+  if(S.executedTodayPid===p.id && S.executedDiedToday){ S.executedDiedToday=null; undone.push('오늘 처형 사망 기록'); }
   p.alive=true; p.deadVote=true; p.diedAt=null;
-  log(`${p.name} 소생(수동) — 사망 투표 토큰·사망 기록 복원`); save(); renderAll(); }
+  log(`${p.name} 소생(수동) — 사망 투표 토큰·사망 기록 복원${undone.length? ' · '+undone.join(' · '):''}`);
+  save(); renderAll(); }
 function setDeadVote(pid,v){ const p=playerOf(pid); if(!p) return; p.deadVote=v; log(`${p.name} 투표 토큰 ${v?'복원':'수동 소진'}`); save(); renderAll(); }
 function addStatusUI(pid,key){
   const p=playerOf(pid); const ph=S.phase;
@@ -9867,23 +9917,30 @@ function evalWinEvent(kind, ctx){
        있고 처형이 일어나지 않으면 선이 승리한다' — 인원 조건이 없으므로 아래의 시장 3인
        분기와는 별개다. 그래서 시장 예외를 레비아탄 분기 '안'에서 먼저 처리한다:
        뒤의 시장 분기에 맡기면 생존 3명이 아닐 때 아무도 반환하지 않아 게임이 5일을 넘긴다. */
-    const lv=S.players.find(x=>x.alive && x.charId==='leviathan');
+    /* 공식 용어집: "A drunk player has no ability but thinks they do."(Poisoned 도 같은 문장)
+       — 캐릭터 유형 예외가 없다. 중독·취한 악마의 승리 조항도 발동하지 않는다.
+       같은 함수의 시장이 이미 !isMalfunctioning 을 쓰고, 정보 표의 vortox 항목도 같은 조건을
+       본다. 여기만 빠져 있어 오작동한 악마가 판을 끝냈다. */
+    const lv=S.players.find(x=>x.alive && x.charId==='leviathan' && !isMalfunctioning(x));
     if(lv && S.phase.n>=5){
       const mayorL=S.players.find(x=>x.alive && x.charId==='mayor' && !isMalfunctioning(x));
       if(mayorL && !ctx.executed)
         return {team:'good', reason:`낮 ${S.phase.n}에 처형이 없었고 시장(${mayorL.name})이 살아 있습니다.`, rule:'징크스(레비아탄×시장): 5일차에 레비아탄과 시장이 모두 살아 있고 처형이 일어나지 않으면 선한 팀이 승리합니다.'};
       return {team:'evil', reason:`레비아탄이 살아 있는 채로 낮 ${S.phase.n}이(가) 끝났습니다.`, rule:'레비아탄: 5일차 낮이 끝나면 악한 팀이 승리합니다.'};
     }
-    const vx=S.players.find(x=>x.alive && charOf(x.charId)?.type==='demon' && x.charId==='vortox');
-    /* 공식 Vortox: "Each day, if no-one died by execution, evil wins." — 게이트는 '처형이
-       있었나'가 아니라 '처형으로 죽었나'다. 악마의 변호사·찻집 여인·선원·폭풍잡이로 처형이
-       무산되면 아무도 처형으로 죽지 않았으므로 악 승리다. 앱은 이미 그 구분을
-       S.executedDiedToday 로 들고 있다(resolveExecution 이 실제 사망일 때만 채운다).
-       바로 아래 시장은 공식 문구가 "no execution occurs"라 ctx.executed 를 그대로 써야 한다 —
-       두 분기의 게이트가 서로 다르므로 하나로 합치지 마라. */
-    const execDied = (ctx.executedDied!==undefined)? !!ctx.executedDied : !!S.executedDiedToday;
-    if(vx && !execDied)
-      return {team:'evil', reason:'보르톡스가 살아 있는데 오늘 처형으로 죽은 사람이 없습니다.', rule:'보르톡스: 처형으로 아무도 죽지 않은 채 낮이 끝나면 악한 팀이 승리합니다 — 처형이 보호(악마의 변호사·찻집 여인 등)로 무산된 경우도 포함합니다.'};
+    const vx=S.players.find(x=>x.alive && charOf(x.charId)?.type==='demon' && x.charId==='vortox' && !isMalfunctioning(x));
+    /* 공식 Vortox(roles181.json): "Each day, if no-one is executed, evil wins."
+       위키 How to Run: "Each dusk, if no player was executed today, the game ends and the evil
+       team wins." — 게이트는 '처형으로 죽었나'가 아니라 **'처형이 있었나'** 다.
+       [무엇이 문제였나] 여기 적혀 있던 근거 인용문("if no-one died by execution")은 공식에
+       없는 문장이었다. 그 잘못된 인용을 따라 게이트가 S.executedDiedToday 를 읽고 있어서,
+       악마의 변호사·찻집 여인·선원이 처형을 막아 대상이 살아남으면 '처형이 아예 없었던 것'과
+       똑같이 악 승리를 냈다. 처형은 있었다 — 죽지 않았을 뿐이다.
+       **근거를 적어 두는 것만으로는 부족하다. 적어 둔 근거가 원문과 같은지 대조해야 한다.**
+       아래 시장도 같은 게이트("no execution occurs")를 쓴다. 이제 셋이 한 뜻이다. */
+    const execHappened = (ctx.executed!==undefined)? !!ctx.executed : !!S.executedToday;
+    if(vx && !execHappened)
+      return {team:'evil', reason:'보르톡스가 살아 있는데 오늘 처형이 없었습니다.', rule:'보르톡스: 처형이 일어나지 않은 채 낮이 끝나면 악한 팀이 승리합니다 — 처형이 있었으나 보호로 대상이 살아남은 경우는 처형이 있었던 것으로 셉니다.'};
     const mayor=S.players.find(x=>x.alive && x.charId==='mayor');
     /* 인원 판정은 realAliveCount() 하나만 쓴다 — 죽은 척 중인 좀버얼은 실제로 살아 있다 */
     if(mayor && !isMalfunctioning(mayor) && realAliveCount()===3 && !ctx.executed)
