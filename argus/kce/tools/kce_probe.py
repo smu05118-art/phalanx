@@ -175,7 +175,8 @@ def reconcile_with_previous(rows, prev, err_max=0.3, drop_max=0.3):
     """
     rows = [dict(r) for r in rows]
     n_err = sum(1 for r in rows if r["tier"] == "error")
-    if rows and n_err > err_max * len(rows):
+    # 비율만 보면 소표본(--only 2사)에서 1건 실패로 전체가 막힌다 — 절대 하한 3건을 함께 본다.
+    if rows and n_err >= 3 and n_err > err_max * len(rows):
         sys.stderr.write("[fail-closed] 접근 실패 %d/%d — 관측 결과를 쓰지 않는다\n" % (n_err, len(rows)))
         return rows, False
     kept = 0
