@@ -1769,3 +1769,59 @@ precedence 20 의 보호 토큰, 40 의 군인, 10 의 찻집 여인이 전부 �
 돌연변이 40종 미검출 0.
 **DOM 골든 게이트**: 6개 fixture 에 차이(전부 의도한 문구·무승부 표시) · CSS 원문 변경 True
 (`.goteam.draw` 추가) · **달라진 S 키는 `log`·`postgame` 둘뿐**.
+
+---
+
+## 라운드 22 — 밤 순서가 조용히 좁아지던 셋 (2026-09-10)
+
+### C11 — 첫밤과 이후밤이 같은 능력인데 범위가 달랐다
+
+```
+공식 Cerenovus: firstNightReminder === otherNightReminder
+                "The Cerenovus chooses a player & a character."
+ability: "Each night, choose a player & **a good character**: they are 'mad'…"
+```
+능력문이 **글자 하나 다르지 않고**, 생존 한정도 없으며, 캐릭터는 "a good character" —
+주민 **또는 외지인**이다. 그런데 이후밤 가지만 `filter:'alive'` · `pool:'townsfolk'` 로
+좁아져 있어 **둘째 밤부터 사망자와 외지인이 선택지에서 조용히 사라졌다.**
+(`roles181.json` 에서 생존 한정을 본문에 명시하는 역할은 11개이고 세레노버스는 그 목록에 없다.)
+
+### C12 — 위장 밤 단계가 기반 에디션으로 잠겨 있었다
+
+`S.edition==='tb'` 가 두 곳에 손으로 복사돼 있었고(주석 자체가 "nightSteps() 의 mask 와 같은
+기준"이라고 적고 있었다) BMR·SV 기반 커스텀 대본에서는 주정뱅이 위장 단계가 **통째로 사라졌다.**
+
+정작 앱은 스스로 그 반대를 약속한다 — `setupIssues` 가 위장 지정을 **강제**하고,
+`advancePhase` 가 미지정이면 첫밤을 **막고**, 설정 화면이 "밤 순서에 자동 반영"이라고 **적어 둔다.**
+`S.edition` 은 커스텀 대본이 **어느 밤 순서표를 기준으로 삼는가**를 고르는 값이지 능력의 유무를
+정하는 값이 아니다. 판정을 `drunkMaskSeat(stepId)` 하나로 모아 두 곳이 그것만 읽게 했다.
+
+### C14 — 사망 트리거 표가 로스터와 따로 놀았다
+
+`DEATH_TRIGGER_STEPS` 가 5종만 담고 있었는데, 로스터에 실려 있는 farmer·poppygrower·hatter·
+plaguedoctor·banshee 는 전부 `other:true` 로 밤 단계를 가진다. `stepSkipReason` 이 이들을
+트리거로 못 찾고 `!anyAlive` 분기로 흘려보내 **'사망 — 깨우지 않음'** 을 돌려줬다 —
+**극성이 정확히 뒤집혀 있었다.** 이 다섯은 **죽어야** 깨우는 역할이고, 공식 otherNightReminder
+가 전부 `"If the X died…"` 로 시작한다.
+
+기존 세 종류로는 모자라 둘을 더했다:
+
+| 종류 | 공식 근거 |
+|---|---|
+| `night-demon` | Banshee `"If the Demon kills you"` — 처형사(死)는 해당 없음 |
+| `untildone` | Plague Doctor `"If you haven't done this yet, **do so now**."` — 밤 번호가 아니라 완료 표식이 조건 |
+
+`night-demon` 판정을 위해 `killPlayer` 가 `diedAt.srcType` 을 함께 남긴다. **사인을 모르는 옛
+저장본은 숨기지 않고 보여준다** — 사회자가 건너뛰는 비용이 놓치는 비용보다 싸다.
+
+**덤으로 반대 방향도 고쳐졌다**: 전에는 **살아 있는** 농부·양귀비 재배자를 매일 밤 깨웠다
+(트리거 표에 없으니 아무 게이트에도 안 걸렸다). 이제 "아직 생존 — 죽는 경우에만 이 시점에
+깨움"이 뜬다.
+
+**검증**: 규칙 64케이스 0실패(신규 3 · 개별 단정 9개가 수정 전 빌드에서 정확히 실패) ·
+종료 26 · 더미 220 · 퍼저 400판 위반 0(커버리지 25.8 동일) · 커스텀 90판 위반 0 ·
+돌연변이 40종 미검출 0.
+**DOM 골든 게이트**: 사망이 있는 fixture 둘만 차이 · **달라진 player 키는 `diedAt.srcType` 하나뿐**.
+
+돌연변이 `moonchild_trigger_nextnight_to_night` 의 앵커가 `DEATH_TRIGGER_STEPS` 를 넓히며
+상했다(앵커부실 1) — 재앵커했다. **표를 고치면 그 표를 겨눈 돌연변이도 같이 봐야 한다.**

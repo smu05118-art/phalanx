@@ -2047,6 +2047,18 @@ function realAliveNonTravelerCount(){
     S.players.filter(p=>!p.alive && p.charId==='zombuul' && hasStatus(p,'fakedead')).length;
 }
 function playerOf(pid){ return S.players.find(p=>p.id===pid); }
+/* 주정뱅이 위장 좌석 — '이 판에 주정뱅이가 있고 위장 캐릭터가 지정돼 있는가' 하나만 묻는다.
+   [무엇이 문제였나] 이 판정이 `S.edition==='tb'` 로 잠겨 있었다(두 곳에 손으로 복사돼 있었고,
+   주석 자체가 "nightSteps() 의 mask 와 같은 기준"이라고 적고 있었다). `S.edition` 은 커스텀
+   대본이 **어느 밤 순서표를 기준으로 삼는가**를 고르는 값이지 능력의 유무를 정하는 값이 아니다.
+   그래서 BMR·SV 기반 커스텀 대본에서는 위장 밤 단계가 통째로 사라졌는데, 정작 앱은
+   setupIssues 가 위장 지정을 **강제**하고 advancePhase 가 미지정이면 첫밤을 **막고**
+   설정 화면이 "밤 순서에 자동 반영"이라고 **약속**한다 — 앱이 스스로와 어긋나 있었다.
+   반환: 위장 캐릭터 id 가 stepId 와 같을 때의 주정뱅이 좌석(없으면 null). */
+function drunkMaskSeat(stepId){
+  if(!S.drunkMaskChar || S.drunkMaskChar!==stepId) return null;
+  return S.players.find(p=>p.charId==='drunk') || null;
+}
 /* 지명당할 수 있는 좌석 — '겉보기 생존'이 아니라 '실제 생존'이다.
    [무엇이 문제였나] 낮 지명 경로 네 곳(피지명자 격자·지명 개시 버튼·newNomination 가드·
    처형 확정 버튼)이 전부 alivePlayers() 하나만 보고 있었다. 그런데 공식 Zombuul 은
@@ -2817,7 +2829,9 @@ function killPlayer(p, cause, opts){
     const zi=(p.statuses||[]).findIndex(s=>s.key==='fakedead');
     if(zi>=0){ p.statuses.splice(zi,1); log(`🪦 ${p.name}(좀버얼) 두 번째 사망 — 죽은 척 해제, 실제 사망`); }
   }
-  p.alive=false; p.diedAt={kind:S.phase.kind, n:S.phase.n, cause:cause||''};
+  /* srcType 을 함께 남긴다 — 밴시처럼 '무엇에 죽었나'가 조건인 역할이 사인 문자열을
+     되짚지 않아도 되게 한다. 옛 저장본에는 없으므로 읽는 쪽이 없을 때를 견뎌야 한다. */
+  p.alive=false; p.diedAt={kind:S.phase.kind, n:S.phase.n, cause:cause||'', srcType:dctx.sourceType||null};
   log(`💀 ${p.name}(${charName(p)}) 사망 — ${cause}`);
   reconcileDeath(p);   // 출처 사망 → 그의 독·보호·저주·광기 등 지속효과 즉시 정리
   /* 달의 자손: 공개 지목은 '사망을 안 때'다 — 낮 사망이면 지금, 밤 사망이면 새벽(advancePhase)에 받는다.
@@ -4050,7 +4064,7 @@ function nightSteps(){
     order.splice(at,0,id);
   });
   // 주정뱅이 위장: 위장 캐릭터가 시트에 없으므로, 그 캐릭터의 원래 순서 위치에 삽입
-  const drunkP = S.edition==='tb'? S.players.find(p=>p.charId==='drunk') : null;
+  const drunkP = S.drunkMaskChar? (S.players.find(p=>p.charId==='drunk')||null) : null;
   const maskC = S.drunkMaskChar? charOf(S.drunkMaskChar): null;
   const steps=[];
   order.forEach(id=>{
@@ -4091,10 +4105,20 @@ function nightSteps(){
   return steps.filter(st=>{ if(seenStep.has(st.id)) return false; seenStep.add(st.id); return true; });
 }
 /* 사망을 계기로 발동하는 역할들.
-   'night'    = 그 밤에 죽어야 발동(까마귀지기·현자)
-   'today'    = 오늘(직전 낮 또는 이 밤) 죽어야 발동(이발사·사랑꾼)
-   'nextnight'= 죽음을 안 낮에 공개 지목하고 그 '다음' 밤에 판정(문차일드) */
-const DEATH_TRIGGER_STEPS={ravenkeeper:'night', sage:'night', barber:'today', sweetheart:'today', moonchild:'nextnight'};
+   'night'      = 그 밤에 죽어야 발동(까마귀지기·현자·농부)
+   'night-demon'= 그 밤에 **악마에게** 죽어야 발동(밴시)
+   'today'      = 오늘(직전 낮 또는 이 밤) 죽어야 발동(이발사·사랑꾼·양귀비 재배자·모자 장수)
+   'nextnight'  = 죽음을 안 낮에 공개 지목하고 그 '다음' 밤에 판정(문차일드)
+   'untildone'  = 죽은 뒤로 계속 남고 사회자가 처리 표시를 할 때까지 사라지지 않는다(역병 의사)
+
+   [무엇이 문제였나] 이 표가 5종만 담고 있었고, 로스터에 실려 있는 farmer·poppygrower·hatter·
+   plaguedoctor·banshee 는 전부 `other:true` 로 밤 단계를 가지면서도 여기 없었다. 그래서
+   `stepSkipReason` 이 이들을 트리거로 못 찾고 그대로 `!anyAlive` 분기로 흘려보내
+   **'사망 — 깨우지 않음'** 을 돌려줬다 — 극성이 정확히 뒤집혀 있었다. 이 다섯은 **죽어야**
+   깨우는 역할이다. 공식 otherNightReminder 가 전부 "If the X died…" 로 시작한다. */
+const DEATH_TRIGGER_STEPS={ravenkeeper:'night', sage:'night', farmer:'night', banshee:'night-demon',
+  barber:'today', sweetheart:'today', poppygrower:'today', hatter:'today',
+  moonchild:'nextnight', plaguedoctor:'untildone'};
 function stepSkipReason(st){
   const first=S.phase.n===1;
   if(st.info) return null;
@@ -4117,6 +4141,18 @@ function stepSkipReason(st){
     const prevDay    = d && d.kind==='day'   && d.n===S.phase.n-1;
     if(trig==='night' && !thisNight) return '오늘 밤 사망이 아님 — 깨우지 않음';
     if(trig==='today' && !(thisNight||prevDay)) return '오늘 죽지 않음 — 깨우지 않음';
+    /* 밴시 — 공식: "If the Banshee was killed by the Demon tonight". 사인을 모르는 옛 저장본은
+       숨기지 말고 보여준다(사회자가 건너뛰는 비용 < 놓치는 비용). */
+    if(trig==='night-demon'){
+      if(!thisNight) return '오늘 밤 사망이 아님 — 깨우지 않음';
+      if(d && d.srcType && d.srcType!=='demon') return '악마의 살해가 아님 — 깨우지 않음';
+    }
+    /* 역병 의사 — 공식: "If you haven't done this yet, do so now." 어느 밤이든 사회자가
+       처리 표시를 할 때까지 남는다. 밤 체크(nightDone)가 그 표식이다. */
+    if(trig==='untildone'){
+      const anyDone=Object.keys(S.nightDone||{}).some(k=>(S.nightDone[k]||{})[st.id]);
+      if(anyDone) return '이미 처리함 — 깨우지 않음';
+    }
     /* 밤 n 사망이든 낮 n 사망이든 공개 지목은 낮 n, 판정은 밤 n+1 → d.n === S.phase.n-1 */
     if(trig==='nextnight' && !(d && d.n===S.phase.n-1)) return '지목한 낮의 다음 밤이 아님 — 깨우지 않음';
     return null;
@@ -7165,7 +7201,7 @@ function startWiz(stepId){
      주정뱅이 위장 단계는 시트에 그 캐릭터의 보유자가 없으므로 nightSteps() 의 mask 와 같은
      기준(tb + S.drunkMaskChar)으로 주정뱅이 본인을 holder 로 잡는다. */
   const all=c? playersByChar(stepId) : [];
-  const masked=(S.edition==='tb' && S.drunkMaskChar===stepId)? S.players.find(p=>p.charId==='drunk') : null;
+  const masked=drunkMaskSeat(stepId);
   const holder=all.find(p=>p.alive) || all[0] || masked || null;
   wiz={stepId, idx:0, vars:{}, holder, scenes};
   /* 기기 전달 도중 탭이 날아가 저장돼 있던 선택을 되살린다 — 같은 밤·같은 단계일 때만.
@@ -7992,10 +8028,16 @@ cerenovus:{first:[
   {t:'effect',fn:'doMad',from:'tgt'},
   {t:'note',text:'대상을 깨워 "내일 하루, 자신이 그 캐릭터라고 미친 듯이 주장해야 한다"고 알려주세요. 광기 캐릭터가 무엇인지 반드시 그리모어 메모에 적어 두세요 — 위반 시 재량 처형 가능(경고성 관용도 가능).'},
   {t:'sleep'}],
+ /* [무엇이 문제였나] 공식은 첫밤과 이후밤의 능력문이 **글자 하나 다르지 않다**
+    (firstNightReminder === otherNightReminder: "The Cerenovus chooses a player & a character").
+    능력문에도 생존 한정이 없고 캐릭터는 "a good character" — 주민 **또는 외지인**이다.
+    그런데 이후밤 가지만 filter:'alive' · pool:'townsfolk' 로 좁아져 있어, 둘째 밤부터
+    사망자와 외지인이 선택지에서 조용히 사라졌다. 첫밤 가지와 같은 범위로 맞춘다.
+    (roles181.json 에서 생존 한정을 본문에 명시하는 역할은 11개이고 세레노버스는 그 목록에 없다.) */
  other:[
   {t:'wake'},
-  {t:'pick-player',n:1,who:'player',label:'오늘 밤의 새 광기 대상',filter:'alive',storeAs:'tgt'},
-  {t:'pick-character',pool:'townsfolk',label:'광기로 강요할 선한 캐릭터',storeAs:'madchar'},
+  {t:'pick-player',n:1,who:'player',label:'오늘 밤의 새 광기 대상(사망자 포함)',filter:'any',storeAs:'tgt'},
+  {t:'pick-character',pool:'good-characters',label:'광기로 강요할 선한 캐릭터(주민 또는 외지인)',storeAs:'madchar'},
   {t:'effect',fn:'doMad',from:'tgt'},
   {t:'note',text:'대상을 깨워 광기 내용을 알려주고, 광기 캐릭터를 그리모어 메모에 갱신하세요.'},
   {t:'sleep'}]},
