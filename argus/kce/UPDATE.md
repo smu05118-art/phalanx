@@ -476,6 +476,21 @@ python3 argus/kce/tools/inject_kce_link.py --apply  # 재주입(멱등)
 **근본 해결은 로컬 `argus_build.py` 템플릿에 링크를 넣는 것**이고, 그러면 이 스크립트는
 자동으로 no-op이 된다.
 
+**[2026-09-10 근본 해결 반영 — 맥미니 빌더]** 로컬 `argus_build.py`가 템플릿 복사 직후
+`argus/<dir>/index.html`이 있는 서브사이트 디렉터리를 **자동 발견**해 `mockBadge` 뒤
+`<!-- argus-subsites:start -->…<!-- argus-subsites:end -->` 블록으로 헤더 링크를 생성한다
+(`inject_subsite_links`). `kce`는 기본 라벨 「🏗 한국건설」·순서 10이 빌더에 내장돼 있고,
+링크 마크업은 이 스크립트의 `LINK`와 동일하므로 `has_link`가 참 → 예정대로 **no-op**,
+`test_live_file_has_link`도 계속 통과한다. 이제 크론이 링크를 지우지 않는다.
+
+**새 서브사이트(예: 한국조선) 편입 계약**: `argus/<dir>/index.html`만 있으면 다음 빌드에
+자동 링크된다. 라벨·순서를 지정하려면 그 디렉터리에 `site.json`을 둔다 —
+`{"label": "🚢 한국조선", "order": 20}` (없으면 `<title>` 40자 → 디렉터리명, 순서 100).
+`data`·`map_data`·`vendor`·`tools`·`assets`·`_`/`.` 접두 디렉터리는 발견 대상에서 제외된다.
+**`argus/index.html`은 여전히 빌더 산출물이므로 직접 편집하지 말 것** — 서브사이트 안쪽만
+소유하면 빌더와 절대 충돌하지 않는다(맥미니 크론 07:40 반영, 수동 반영은 맥미니에서
+`python3 argus/argus_build.py`).
+
 ## 7. 파생 페이지 스테일 문제
 
 `--apply` 후 `index.html`의 DATA만 갱신되고 나머지 5종은 **옛 데이터로 남는다**:
