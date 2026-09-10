@@ -193,9 +193,12 @@ def parse_hedge_any(html, where):
                     if x is None:
                         continue
                     col = t["cols"][i + 1] if i + 1 < len(t["cols"]) else ""
+                    # 비교표시 기간(전기말·전년) 열은 명목액이 아니라 지난 기의 값이다 — 더하면 두 배가 된다
+                    if re.search(r"전기|전년|직전|전반기|전분기", col):
+                        continue
                     out["items"].append({"side": m.group(1), "ccy": m.group(2), "amt_m": round(x * mul, 3),
                                          "hedge": "현금흐름" if "현금흐름" in col else ("공정가치" if "공정가치" in col else ""),
-                                         "instr": "스왑" if "스왑" in col else "선도"})
+                                         "instr": "스왑" if "스왑" in col else "선도", "col": col[:40]})
                 out["shape"] = out["shape"] or "note-label"
                 continue
             # (3) 한화오션형: 'USD 매도' … 'USD', 금액, 'KRW', 금액
