@@ -9940,8 +9940,15 @@ function evalWinEvent(kind, ctx){
     /* 공식 성자: "If you die by execution, your team loses." — 처형 성립만으로는 부족하고
        사망이 필요하다(찻집 여인·악마의 변호사·선원으로 살아남으면 발동하지 않는다).
        위 executeNominee 래퍼가 이제 처형 성립만 확인하고 넘기므로, 사망 요구는 여기서 건다. */
-    if(p && p.charId==='saint' && !isMalfunctioning(p) && !p.alive)
-      return {team:'evil', reason:`성자(${p.name})가 처형되었습니다.`, rule:'성자: 처형으로 죽으면 선한 팀이 패배합니다. (중독·취함 상태였다면 발동하지 않습니다)'};
+    /* 공식 Saint: "If you die by execution, **your team** loses." — 지는 것은 캐릭터의
+       기본 색이 아니라 **지금 그 좌석의 진영**이다. 이발사 교환은 캐릭터만 바꾸고 진영은
+       각자 보존하므로(공식 계약), 악한 좌석이 성자를 들고 있을 수 있다. 그때 처형되면
+       악이 지는 것이고, 앱이 늘 '악 승리'로 굳히면 승자가 통째로 뒤집힌다. */
+    if(p && p.charId==='saint' && !isMalfunctioning(p) && !p.alive){
+      const ev=isEvil(p);
+      return {team: ev? 'good':'evil', reason:`성자(${p.name}${ev?' · 악한 진영':''})가 처형되었습니다.`,
+              rule:`성자: 처형으로 죽으면 **그 좌석이 속한 팀**이 패배합니다 — 지금은 ${ev?'악한':'선한'} 팀이 패배합니다. (중독·취함 상태였다면 발동하지 않습니다)`};
+    }
     if(p && p.charId==='eviltwin')
       return null; // 사악한 쌍둥이 본인 처형은 종료 아님
     const et=S.players.find(x=>x.charId==='eviltwin' && x.alive);
@@ -9969,7 +9976,8 @@ function evalWinEvent(kind, ctx){
        선한 쌍둥이와 같은 계약으로 사회자에게 확인받는다. 중독·취함이면 선언해도 불발. */
     if(p && p.charId==='goblin' && !isMalfunctioning(p) &&
        thyExecAnswer('goblin', p, `👺 ${p.name}은(는) 고블린입니다.\n오늘 지명당한 그 순간 공개적으로 고블린임을 선언했습니까?\n[확인] 예 → 악한 팀 승리 / [취소] 아니오`))
-      return {team:'evil', reason:`고블린(${p.name})이 선언 후 처형되었습니다.`, rule:'고블린: 지명당했을 때 공개적으로 고블린임을 선언하고 그날 처형되면 악한 팀이 승리합니다.'};
+      return {team: isEvil(p)? 'evil':'good', reason:`고블린(${p.name}${isEvil(p)?'':' · 선한 진영'})이 선언 후 처형되었습니다.`,
+              rule:`고블린: 지명당했을 때 공개적으로 고블린임을 선언하고 그날 처형되면 **그 좌석이 속한 팀**이 승리합니다 — 지금은 ${isEvil(p)?'악한':'선한'} 팀이 승리합니다.`};
     /* 공포 조장가 — 공식: "Each night, choose a player: if you nominate & execute them,
        their team loses." 공포 표식과 지명자 연동이 앱에 없으므로 두 조건을 한 번에 확인받는다.
        지는 쪽은 '처형된 대상의 진영'이다 — 선한 대상이면 악이, 악한 대상이면 선이 이긴다. */
@@ -10035,8 +10043,14 @@ function evalWinEvent(kind, ctx){
       return {team:'evil', reason:'보르톡스가 살아 있는데 오늘 처형이 없었습니다.', rule:'보르톡스: 처형이 일어나지 않은 채 낮이 끝나면 악한 팀이 승리합니다 — 처형이 있었으나 보호로 대상이 살아남은 경우는 처형이 있었던 것으로 셉니다.'};
     const mayor=S.players.find(x=>x.alive && x.charId==='mayor');
     /* 인원 판정은 realAliveCount() 하나만 쓴다 — 죽은 척 중인 좀버얼은 실제로 살아 있다 */
-    if(mayor && !isMalfunctioning(mayor) && realAliveCount()===3 && !ctx.executed)
-      return {team:'good', reason:'생존자 3명 상태에서 처형 없이 낮이 끝났습니다.', rule:'시장: 생존자가 3명일 때 처형이 일어나지 않으면 선한 팀이 승리합니다.'};
+    /* 공식 Mayor: "If only 3 players live & no execution occurs, **your team** wins."
+       여기서도 팀은 지금 그 좌석의 진영이다(위키가 악한 시장을 따로 설명한다).
+       인원 3은 여행자를 **포함**한다(Mayor How to Run) — realAliveCount 를 그대로 쓴다. */
+    if(mayor && !isMalfunctioning(mayor) && realAliveCount()===3 && !ctx.executed){
+      const ev=isEvil(mayor);
+      return {team: ev? 'evil':'good', reason:`생존자 3명 상태에서 처형 없이 낮이 끝났습니다${ev?' (시장이 악한 진영)':''}.`,
+              rule:`시장: 생존자가 3명일 때 처형이 일어나지 않으면 **그 좌석이 속한 팀**이 승리합니다 — 지금은 ${ev?'악한':'선한'} 팀이 승리합니다. (여행자도 이 인원에 셉니다)`};
+    }
   }
   if(kind==='death'){
     const demonAlive=S.players.some(x=>(x.alive||(x.charId==='zombuul'&&hasStatus(x,'fakedead'))) && charOf(x.charId)?.type==='demon');
@@ -10198,6 +10212,17 @@ function confirmWin(yes){
       if(!S.gameOver && !pendingWin){
         const r=evalWinEvent('executeAct', {player:p});
         if(isWinRes(r)) askWin(r);
+      }
+      /* '처형으로 죽었는가'가 조건인 판정(성자·선한 쌍둥이)도 같은 통로에서 낸다.
+         [무엇이 문제였나] 이 판정은 executeNominee 래퍼에만 있었다. 성결자 발동은
+         executeNominee 를 거치지 않고 resolveExecution 을 직접 부르므로, 성결자로 즉시
+         처형된 선한 쌍둥이의 악 승리가 조용히 사라졌다(통상 투표 처형은 정상이었다).
+         두 경로가 공유하는 통로는 여기 하나뿐이다 — executeAct 와 같은 자리에 둔다.
+         사회자 답(선한 쌍둥이 여부)은 두 경로 모두 THY_EXEC_ANS 에 실려 온다. */
+      if(!S.gameOver && !pendingWin){
+        const _ans=(THY_EXEC_ANS && p && THY_EXEC_ANS.pid===p.id)? (THY_EXEC_ANS.answers||{}) : {};
+        const r2=evalWinEvent('execute', {player:p, isGoodTwin:!!_ans.twin, died:!p.alive});
+        if(isWinRes(r2)) askWin(r2);
       }
       save();
     }catch(err){ console.warn('[win] executeAct', err); }
