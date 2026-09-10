@@ -12908,7 +12908,16 @@ const SETUPMOD_RE=/구성 변경|외지인\s*[+\-−±]|주민\s*[+\-−±]|외�
 
 function thyAuditCustomScript(){
   const out=[];
-  const add=(sev,cat,id,txt)=>{ out.push({sev,cat,id,txt}); };
+  /* 체크박스 키는 항목마다 달라야 한다 — 두 줄이 키를 공유하면 하나만 '확인함'을 눌러도
+     둘 다 확인된 것처럼 보여, 사회자가 안 본 경고를 봤다고 착각한다.
+     키의 재료인 커스텀 id 는 중복될 수 있고(중복 자체는 dupid 경고가 따로 낸다), 그때
+     shadow:·infoshadow:·noko: 가 같은 키를 두 번 찍었다. 계열마다 고치면 다음 계열이 또 샌다 —
+     키를 찍는 이 자리에서 막는다. 첫 항목의 키는 그대로 둬서 기존 체크 상태를 잃지 않는다. */
+  const seenKey={};
+  const add=(sev,cat,id,txt)=>{
+    const n=(seenKey[id]=(seenKey[id]||0)+1);
+    out.push({sev,cat,id:(n>1? id+'#'+n : id),txt});
+  };
   if(typeof S==='undefined'||!S) return out;
   const customs=Array.isArray(S.customs)? S.customs.filter(c=>c&&typeof c==='object') : [];
   const ed=S.edition||'tb';
