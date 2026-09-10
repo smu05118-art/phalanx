@@ -106,7 +106,9 @@ class TestContract(unittest.TestCase):
         cases = {"LPGC 4척": "VLGC", "LNG운반선 2척": "LNGC", "17,000TEU급 컨테이너선 6척": "CONT",
                  "VLCC 2척": "VLCC", "MR탱커 4척": "PC", "PCTC 4척": "PCTC", "KDDX 1척": "NAVAL",
                  "FPSO 1기": "OFFSH", "보령화력 1~8호기 저탄장 옥내화 공사": "OTHER",
-                 "엔진발전기 공급": "OTHER", "다목적 화학방제함 1척 건조": "NAVAL"}
+                 "엔진발전기 공급": "OTHER", "다목적 화학방제함 1척 건조": "NAVAL",
+                 "초대형 LPG/AMMONIA 운반선 1척": "VLGC", "부산 범천5구역 재개발정비사업": "OTHER",
+                 "KSS-II 성능개량 체계개발사업": "NAVAL", "필리핀 따굼 홍수조절사업": "OTHER"}
         for name, want in cases.items():
             self.assertEqual(ship_type_of(name), want, name)
 
