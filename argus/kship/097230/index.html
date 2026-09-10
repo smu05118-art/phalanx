@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HJ중공업 조선 수주</title>
+<link rel="stylesheet" href="../assets/kship.css">
+</head>
+<body>
+<header class="top"><div class="hd"><h1>HJ중공업</h1><span class="tag">097230</span><span class="tag">유가</span><span class="tag">토목 건설업</span><span class="sp"><a href="../index.html">허브</a><a href="../parts.html">인포그래픽</a><a href="../coverage.html">커버리지</a><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260812000297" target="_blank" rel="noopener noreferrer">DART 원문 ↗</a></span></div><div class="crumb"><a href="../../index.html">ARGUS</a> › <a href="../index.html">한국조선</a> › <span>HJ중공업</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">정기보고서 수주표는 사업부문 롤포워드(원화)라 선종·척수·인도시점이 없습니다. 그 셋은 척당 계약 공시(단일판매ㆍ공급계약체결)에서, 환헤지는 위험관리·파생금융상품 주석에서 읽었습니다. 추정 항목은 표시합니다.</p>
+<div class="kpi"><div class="hero"><b>19,043<small>억</small></b><span>수주잔고(원화, 정기보고서 2026Q2)</span><i class="mut">직전 관측 없음</i></div><div><b>4<small>척</small></b><span>척당 계약 공시 누적(2024~) · 3건</span></div><div><b>10,230<small>억</small></b><span>척당 계약 금액 합(원화 공시)</span></div><div><b>16,676<small>억</small></b><span>기납품(매출인식)</span></div><div><b class="mut">—</b><span>통화선도 명목액</span><i class="mut">헤지 공시를 찾지 못함</i></div><div><b>67<small>%</small></b><span>계약상대 익명 비율(척당 공시)</span></div></div>
+<div class="note info">비조선 계약 27건(공사·엔진·블록 납품)과 선종 미판정 11건은 척수·선종 집계에서 제외했습니다. 미판정은 계약명이 비었거나(정정공시 표 형식) 선종 별칭 사전에 없는 표기입니다.</div>
+<div class="grid2" style="margin-top:20px">
+ <section class="card" style="margin-top:0"><h2>부문별 수주잔고 추이 <em>정기보고서 롤포워드 · 억원</em></h2><div class="chart"><canvas id="cRoll"></canvas></div></section>
+ <section class="card" style="margin-top:0"><h2>선종 구성 <em>척당 계약 공시 누적(2024~) · 계약금액 기준</em></h2><div class="chart"><canvas id="cType"></canvas></div><div class="wrap"><table data-sortable><thead><tr><th class="l">선종</th><th>계약</th><th>척</th><th>금액(억)</th><th>척당(억)</th></tr></thead><tbody><tr><td class="l"><i class="sw" style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#3987e5;margin-right:7px;vertical-align:-1px"></i>컨테이너선</td><td data-v="2">2</td><td data-v="4">4</td><td data-v="710464">7,105</td><td data-v="177616">1,776</td></tr><tr><td class="l"><i class="sw" style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#008300;margin-right:7px;vertical-align:-1px"></i>함정·특수선</td><td data-v="1">1</td><td data-v="0">0</td><td data-v="312576">3,126</td><td data-v="0">—</td></tr></tbody></table></div></section>
+</div>
+<section class="card"><h2>선표(인도 스케줄) <em>척당 계약의 계약기간 종료일 → 분기 · 척수</em></h2><div class="tl"><div class="head"><div></div><div class="lane" style="position:relative"><span style="left:7.14%">2028Q2</span><span style="left:21.43%">2028Q3</span><span style="left:35.71%">2028Q4</span><span style="left:50.00%">2029Q1</span><span style="left:64.29%">2029Q2</span><span style="left:78.57%">2029Q3</span><span style="left:92.86%">2029Q4</span></div></div><div class="row"><div class="lbl">컨테이너선</div><div class="lane"><div class="bar2" style="left:0.00%;width:13.99%;background:#3987e5" title="2028Q2 컨테이너선 2척 · 3,533억" data-q="2028Q2" data-t="CONT"></div><span style="position:absolute;left:0.40%;top:5px;font-size:10px;color:var(--tx)">2</span><div class="bar2" style="left:28.57%;width:13.99%;background:#3987e5" title="2028Q4 컨테이너선 2척 · 3,572억" data-q="2028Q4" data-t="CONT"></div><span style="position:absolute;left:28.97%;top:5px;font-size:10px;color:var(--tx)">2</span></div></div></div><div class="legend"><span>막대의 숫자 = 그 분기 인도 예정 척수(계약기간 종료일 기준 — 시리즈 계약은 마지막 호선 기준이라 실제 인도는 앞당겨 분포한다)</span></div></section>
+<section class="card"><h2>수주 롤포워드 <em>기초 + 신규증감 − 기납품 = 기말 · 억원 · 부문별</em></h2><div class="wrap"><table><thead><tr><th class="l">분기</th><th>기초</th><th>신규증감</th><th>기납품</th><th>기말잔고</th><th class="l">부문별 기말(억)</th><th class="l">출처</th></tr></thead><tbody><tr><td class="l">2026Q2</td><td>—</td><td>—</td><td>16,676</td><td><b>19,043</b></td><td class="l mut">특수선 10,461 · 상선 7,956 · 수리 626</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260812000297" target="_blank" rel="noopener noreferrer">원문</a></td></tr></tbody></table></div></section>
+
+
+<section class="card"><h2>반복건조(시리즈) 추정 <em>같은 선종·같은 상대 표기·같은 지역, 수주일 180일 이내 — 공시에 시리즈 표시가 없어 <b>추정</b>입니다</em></h2><div class="wrap"><table data-sortable><thead><tr><th class="l">선종</th><th class="l">상대(공시 표기)</th><th class="l">지역</th><th>계약</th><th>척</th><th>금액(억)</th><th class="l">단서</th></tr></thead><tbody><tr><td class="l">컨테이너선</td><td class="l">유럽 선주</td><td class="l">유럽 지역</td><td>2</td><td>4</td><td>7,105</td><td class="l"> <span class="pill est">추정</span></td></tr></tbody></table></div></section>
+<section class="card"><h2>척당 계약 공시 <em>단일판매ㆍ공급계약체결 · 3건</em></h2><div class="ctl"><input data-filter="#ct" type="search" placeholder="선종·상대·지역 검색"></div><div class="wrap tall"><table id="ct" data-sortable><thead><tr><th class="l">수주일</th><th class="l">선종</th><th class="l">계약명</th><th>척</th><th>금액(억)</th><th class="l">상대</th><th class="l">지역</th><th class="l">인도(종료일)</th><th class="l">대금조건</th><th class="l">출처</th></tr></thead><tbody><tr><td class="l">2026-04-24</td><td class="l"><i class="sw" style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#3987e5;margin-right:6px"></i>컨테이너선</td><td class="l">컨테이너선 2척 수주</td><td data-v="2">2</td><td data-v="357198">3,572</td><td class="l">유럽 선주 <span class="pill">익명</span></td><td class="l">유럽 지역</td><td class="l">2028-10-31</td><td class="l">공사 진척에 따른 수금 · 선급금 유</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260427800078" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">2026-02-10</td><td class="l"><i class="sw" style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#3987e5;margin-right:6px"></i>컨테이너선</td><td class="l">컨테이너선 2척 수주</td><td data-v="2">2</td><td data-v="353266">3,533</td><td class="l">유럽 선주 <span class="pill">익명</span></td><td class="l">유럽 지역</td><td class="l">2028-06-30</td><td class="l">공사 진척에 따른 수금 · 선급금 유</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260211800125" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">2025-12-17</td><td class="l"><i class="sw" style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#008300;margin-right:6px"></i>함정·특수선</td><td class="l">검독수리 Batch-II 후속함(13~16번함)</td><td data-v="0">—</td><td data-v="312576">3,126</td><td class="l">방위사업청(대한민국 해군)</td><td class="l">대한민국</td><td class="l">2029-10-31</td><td class="l">방위산업에 관한 착수금 및 중도금 지급규칙 및 기성제도 운영지침에 의거 대금 지급 · 선급금 유</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20251217800479" target="_blank" rel="noopener noreferrer">원문</a></td></tr></tbody></table></div></section>
+
+<script>const DATA={"roll":[{"q":"2026Q2","segs":[{"seg":"특수선","closing":1046100,"new":null,"delivered":781200},{"seg":"상선","closing":795600,"new":null,"delivered":853000},{"seg":"수리","closing":62600,"new":null,"delivered":33400}],"closing":1904300}],"types":[{"id":"CONT","ko":"컨테이너선","color":"#3987e5","amt":710464.192,"ships":4},{"id":"NAVAL","ko":"함정·특수선","color":"#008300","amt":312576.0,"ships":0}]};const SEGC=["#3987e5", "#199e70", "#9085e9", "#c98500", "#d55181", "#008300"];</script>
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+</script>
+<script>
+(function(){
+  var ds=[]; var segs={}; DATA.roll.forEach(function(r){ r.segs.forEach(function(s){ segs[s.seg]=1; }); });
+  Object.keys(segs).forEach(function(seg,i){ ds.push({label:seg,backgroundColor:SEGC[i%SEGC.length],data:DATA.roll.map(function(r){var x=r.segs.filter(function(s){return s.seg===seg})[0];return x&&x.closing!=null?Math.round(x.closing/100):null;})}); });
+  new Chart(document.getElementById('cRoll'),{type:'bar',data:{labels:DATA.roll.map(function(r){return r.q}),datasets:ds},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:function(v){return v.toLocaleString()}}}},plugins:{tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+(c.parsed.y||0).toLocaleString()+'억'}}}}}});
+  new Chart(document.getElementById('cType'),{type:'bar',data:{labels:DATA.types.map(function(t){return t.ko}),datasets:[{label:'계약금액(억)',data:DATA.types.map(function(t){return Math.round(t.amt/100)}),backgroundColor:DATA.types.map(function(t){return t.color})}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){var t=DATA.types[c.dataIndex];return (c.parsed.x||0).toLocaleString()+'억 · '+t.ships+'척'}}}},scales:{x:{ticks:{callback:function(v){return v.toLocaleString()}}},y:{grid:{display:false}}}}});
+})();
+</script>
+<script>
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+</script>
+</main>
+<footer>출처 DART 정기보고서·수시공시, KRX KIND 상장법인목록. 단위 백만원(원화)·백만달러(외화). 참고용 · 투자조언 아님.</footer>
+</body></html>

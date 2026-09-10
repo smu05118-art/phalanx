@@ -113,16 +113,18 @@ def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), ta
         for label, href in crumbs:
             parts.append('<a href="%s">%s</a>' % (E(href), E(label)) if href else "<span>%s</span>" % E(label))
         crumbh = '<div class="crumb">%s</div>' % " › ".join(parts)
+    # 외부 스크립트(Chart.js)는 **본문보다 먼저** 둔다 — 본문의 인라인 차트 코드가 그 전역을
+    # 즉시 쓰기 때문이다. 꼬리에 두면 `Chart is not defined`로 차트가 통째로 빠진다(실사고).
     sh = "".join('<script src="%s"></script>' % E(s) for s in scripts)
     return ("<!doctype html>\n<html lang=\"ko\"><head><meta charset=\"utf-8\">\n"
             "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n"
             "<title>%s</title>\n<link rel=\"stylesheet\" href=\"%sassets/kship.css\">\n%s</head>\n"
-            "<body>\n<header class=\"top\"><div class=\"hd\"><h1>%s</h1>%s<span class=\"sp\">%s</span></div>%s</header>\n"
+            "<body>\n<header class=\"top\"><div class=\"hd\"><h1>%s</h1>%s<span class=\"sp\">%s</span></div>%s</header>\n%s"
             "<main>%s%s</main>\n"
             "<footer>출처 DART 정기보고서·수시공시, KRX KIND 상장법인목록. 단위 백만원(원화)·백만달러(외화). "
-            "참고용 · 투자조언 아님.</footer>\n%s</body></html>\n"
-            % (E(title), r, head_extra, E(h1 or title), tagh, navh, crumbh,
-               ('<p class="lead">%s</p>' % lead) if lead else "", body, sh))
+            "참고용 · 투자조언 아님.</footer>\n</body></html>\n"
+            % (E(title), r, head_extra, E(h1 or title), tagh, navh, crumbh, sh,
+               ('<p class="lead">%s</p>' % lead) if lead else "", body))
 
 
 # Chart.js 공용 기본값 — dataviz 규격: 얇은 마크(≤24px), 데이터 끝 4px 라운드,

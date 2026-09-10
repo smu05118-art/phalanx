@@ -120,8 +120,10 @@ def _get(url, data=None, timeout=45):
 
 
 def _decode(body, rcp_no=""):
-    # 거래소공시(rcpNo 9번째 자리부터 800)는 EUC-KR
-    if len(rcp_no) == 14 and rcp_no[8:11] == "800":
+    # 거래소공시(rcpNo 9번째 자리가 8 — 800xxx 뿐 아니라 801xxx 도 있다)는 EUC-KR.
+    # '800' 완전일치로 두었더니 [기재정정] 단일판매ㆍ공급계약(…801172)이 전부 깨진 글자로
+    # 캐시됐다(조선 척당 계약 23건). 세 자리가 아니라 첫 자리로 판정한다.
+    if len(rcp_no) == 14 and rcp_no[8] == "8":
         return body.decode("euc-kr", "replace")
     return body.decode("utf-8", "replace")
 

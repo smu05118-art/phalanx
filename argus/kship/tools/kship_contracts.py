@@ -28,7 +28,7 @@ from kship_lib import (ASSETS, atomic_write, fetch_section, load_asset, num_of,
 from kship_universe import load as load_universe
 
 CACHE = os.path.join(ASSETS, "contracts")
-_SHIPS = re.compile(r"(\d+)\s*척")
+_SHIPS = re.compile(r"(\d+)\s*(?:척|기|대)(?![가-힣])")     # 해양플랜트는 'FPSO 1기'로 센다
 _OPTION = re.compile(r"옵션|option|동형|시리즈|series", re.I)
 
 
@@ -45,8 +45,12 @@ def _types():
 _TYPE_PAIRS = None
 
 
+_NONSHIP = re.compile(r"공사|마감|저탄장|플랜트|발전기|엔진|블록|기자재|설계|용역|납품|모듈|설비|구조물|건설", re.I)
+
+
 def ship_type_of(name):
-    """체결계약명 → 선종 id. 못 찾으면 None(추정하지 않는다)."""
+    """체결계약명 → 선종 id. 선박이 아닌 계약(조선사의 건설·엔진·블록 납품)은 'OTHER'.
+    못 찾으면 None(추정하지 않는다)."""
     global _TYPE_PAIRS
     if _TYPE_PAIRS is None:
         _TYPE_PAIRS = _types()
@@ -54,6 +58,10 @@ def ship_type_of(name):
     for alias, tid in _TYPE_PAIRS:
         if alias and alias in t:
             return tid
+    if "척" not in t and _NONSHIP.search(name or ""):
+        return "OTHER"                    # HJ중공업 건설공사·HD현대重 엔진발전기·대한조선 블록 납품
+    if re.search(r"쇄빙|조사선|관공선|여객선|페리|카페리|예인선|준설선", name or ""):
+        return "NAVAL"
     return None
 
 

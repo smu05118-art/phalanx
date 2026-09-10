@@ -162,6 +162,75 @@ def parse_hedge_tables(html):
     return out
 
 
+_CCY = re.compile(r"\b(USD|EUR|CNY|JPY|GBP|KRW|SGD|NOK|DKK|CHF)\b")
+
+
+def parse_hedge_any(html, where):
+    """세 회사 세 모양의 통화선도 표를 하나의 결과로 — {'usd_sell_m','avg_rate','items','shape'}.
+
+      · HD현대중공업(주석): 행 라벨 '매도금액, 파생상품, USD [USD, 천]' → 천 단위
+      · 삼성중공업(위험관리 절): [매도통화, 매도금액, 매입통화, 매입금액, …] 행, 단위 '외화:천'
+      · 한화오션(위험관리 절): ['USD 매도', 평균약정환율, 'USD', 금액(백만USD), 'KRW', 금액(백만원), …]
+    금액은 전부 **백만 통화단위**로 맞춘다. 못 읽으면 items 가 비고 shape 가 None — 추정하지 않는다.
+    """
+    out = {"items": [], "shape": None, "where": where}
+    for t in parse_tables(html):
+        head = " ".join(t["cols"]); lead = (t.get("lead") or "")[-160:]
+        unit_txt = (head + " " + lead)
+        k = 1e-3 if re.search(r"외화\s*:\s*천|\[USD,\s*천\]|\(단위\s*:\s*천", unit_txt) else 1.0
+        if "백만USD" in unit_txt or "백만 USD" in unit_txt:
+            k = 1.0
+        for r in t["rows"]:
+            if not r:
+                continue
+            lab = r[0]
+            # (1) HHI 주석형
+            m = re.search(r"(매도|매입)금액.*?([A-Z]{3})\s*\[[A-Z]{3},\s*(천|백만)\]", lab)
+            if m:
+                mul = 1e-3 if m.group(3) == "천" else 1.0
+                for i, v in enumerate(r[1:]):
+                    x = num_of(v)
+                    if x is None:
+                        continue
+                    col = t["cols"][i + 1] if i + 1 < len(t["cols"]) else ""
+                    out["items"].append({"side": m.group(1), "ccy": m.group(2), "amt_m": round(x * mul, 3),
+                                         "hedge": "현금흐름" if "현금흐름" in col else ("공정가치" if "공정가치" in col else ""),
+                                         "instr": "스왑" if "스왑" in col else "선도"})
+                out["shape"] = out["shape"] or "note-label"
+                continue
+            # (3) 한화오션형: 'USD 매도' … 'USD', 금액, 'KRW', 금액
+            if re.match(r"\s*(USD|EUR|JPY|CNY)\s*(매도|매입)", lab):
+                ccy, side = re.match(r"\s*([A-Z]{3})\s*(매도|매입)", lab).groups()
+                amt = None; rate = None
+                for i, c in enumerate(r[1:], 1):
+                    if c.strip() == ccy and i + 1 < len(r):
+                        amt = num_of(r[i + 1]); break
+                if len(r) > 1:
+                    rate = num_of(r[1])
+                if amt is not None:
+                    out["items"].append({"side": side, "ccy": ccy, "amt_m": round(amt * k, 3), "hedge": "공정가치", "instr": "선도"})
+                    if rate and rate > 100:
+                        out["avg_rate"] = rate
+                out["shape"] = out["shape"] or "row-ccy"
+                continue
+            # (2) 삼성중공업형: [매도통화, 매도금액, 매입통화, 매입금액, …]
+            if len(r) >= 4 and _CCY.fullmatch(r[0].strip() or "") and _CCY.fullmatch(r[2].strip() or ""):
+                sell_ccy, sell_amt, buy_ccy, buy_amt = r[0].strip(), num_of(r[1]), r[2].strip(), num_of(r[3])
+                if sell_amt is not None:
+                    out["items"].append({"side": "매도", "ccy": sell_ccy, "amt_m": round(sell_amt * k, 3), "hedge": "", "instr": "선도"})
+                if buy_amt is not None:
+                    out["items"].append({"side": "매입", "ccy": buy_ccy, "amt_m": round(buy_amt * k, 3), "hedge": "", "instr": "선도"})
+                out["shape"] = out["shape"] or "pair-cols"
+                continue
+            if "평균만기" in lab:
+                out["avg_maturity"] = [v for v in r[1:] if v]
+            if "계약건수" in lab:
+                out["contracts"] = [num_of(v) for v in r[1:]]
+    out["usd_sell_m"] = round(sum(i["amt_m"] for i in out["items"] if i["side"] == "매도" and i["ccy"] == "USD"), 3)
+    out["usd_buy_m"] = round(sum(i["amt_m"] for i in out["items"] if i["side"] == "매입" and i["ccy"] == "USD"), 3)
+    return out
+
+
 def collect_one(rec, quarter, force=False):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
@@ -188,16 +257,20 @@ def collect_one(rec, quarter, force=False):
         return out
     out["orders"] = max(orders, key=lambda o: len(o["rows"]))
     out["revenue"] = revenue[0] if revenue else None
+    hedges = []
     if "risk" in found:
         rhtml = fetch_section(found["risk"])
         fx = [x for x in (parse_fx_table(t) for t in parse_tables(rhtml) if t["cols"]) if x]
         out["fx"] = fx[0] if fx else None            # 첫 표 = 당반기
-    # 헤지 주석: 제목에 '파생금융상품'이 들어간 연결 주석
-    hn = [n for n in nodes if "파생금융상품" in n["text"] and "연결" in n["text"]]
-    if not hn:
-        hn = [n for n in nodes if "파생금융상품" in n["text"]]
+        hedges.append(parse_hedge_any(rhtml, "risk"))
+    # 헤지 주석: 제목에 '파생금융상품'이 들어간 연결 주석(없는 회사도 있다 — 한화오션은 절에만)
+    hn = [n for n in nodes if "파생금융상품" in n["text"] and "연결" in n["text"]] or \
+         [n for n in nodes if "파생금융상품" in n["text"]]
     if hn:
-        out["hedge"] = parse_hedge_tables(fetch_section(hn[0]))
+        hedges.append(parse_hedge_any(fetch_section(hn[0]), "note"))
+    # 절과 주석이 같은 계약을 둘 다 적는 회사가 있다 — USD 매도 명목액이 큰 쪽 하나를 채택한다
+    hedges = [h for h in hedges if h["items"]]
+    out["hedge"] = max(hedges, key=lambda h: h["usd_sell_m"]) if hedges else None
     out["ok"] = True
     os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic_write(path, json.dumps(out, ensure_ascii=False, indent=1) + "\n")
@@ -229,7 +302,7 @@ def main():
             o = d["orders"]
             tot = [x for x in o["rows"] if x["total"]]
             close = tot[0]["closing"] if tot else sum((x["closing"] or 0) for x in o["rows"])
-            fwd = sum(f["amt_m"] for f in (d.get("hedge") or {}).get("forwards", []) if f["side"] == "매도" and f["ccy"] == "USD")
+            fwd = (d.get("hedge") or {}).get("usd_sell_m") or 0
             ca = (d.get("fx") or {}).get("contract_asset")
             print("%s %-10s ✓ 잔고 %s %s · 부문 %d · 헤지매도 USD %sM · 계약자산USD %s" % (
                 r["stock"], r["name"], format(round(close or 0), ","), o["cur"],

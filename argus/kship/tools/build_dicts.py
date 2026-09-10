@@ -45,7 +45,7 @@ CATS = [
      ["주기관", "선박용엔진", "저속엔진", "2행정", "이중연료엔진", "DF엔진", "ME-GI", "X-DF", "메탄올엔진", "대형엔진", "대형선박용엔진", "저속디젤엔진", "선박엔진"],
      ["힘센엔진", "중속엔진", "발전기엔진", "엔진부품", "실린더라이너"], ["R_MAIN_ENGINE"]),
     ("PROP.AUX", "보기·발전기엔진·보일러", "Auxiliary engines & boilers", 75, False,
-     ["힘센엔진", "중속엔진", "발전기엔진", "보조엔진", "보기", "선박용보일러", "발전기세트", "디젤발전기", "중형엔진", "4행정"], [], ["R_AUX"]),
+     ["힘센엔진", "중속엔진", "발전기엔진", "보조엔진", "보기", "선박용보일러", "발전기세트", "디젤발전기", "중형엔진", "4행정", "내연기관", "디젤엔진"], [], ["R_AUX"]),
     ("PROP.PROP", "프로펠러·스러스터", "Propellers & thrusters", 75, True,
      ["프로펠러", "추진기", "스러스터", "아지무스", "사이드스러스터", "포드추진", "바우스러스터"], ["로켓"], ["R_STERN_PROP", "R_BOW"]),
     ("PROP.SHAFT", "축계·선미관·베어링", "Shafting", 70, True,
@@ -57,14 +57,16 @@ CATS = [
     ("ENG.LINER", "실린더라이너·커버", "Cylinder liners & covers", 85, False,
      ["실린더라이너", "실린더커버", "실린더헤드", "라이너"], [], ["Z_LINER"]),
     ("ENG.PISTON", "피스톤·링·크로스헤드", "Pistons", 85, False,
-     ["피스톤", "피스톤링", "피스톤크라운", "연접봉", "크로스헤드", "커넥팅로드"], [], ["Z_PISTON"]),
+     ["피스톤", "피스톤링", "피스톤크라운", "연접봉", "크로스헤드", "커넥팅로드", "콘로드"], [], ["Z_PISTON"]),
     ("ENG.VALVE", "배기밸브·연료분사밸브", "Engine valves", 90, False,
      ["배기밸브", "흡배기밸브", "연료분사밸브", "인젝터", "밸브시트", "밸브스핀들", "엔진밸브", "선박엔진용밸브"], [], ["Z_VALVE"]),
     ("ENG.CRANK", "크랭크샤프트·베드플레이트·프레임", "Crankshaft & frame", 85, False,
-     ["크랭크샤프트", "크랭크축", "캠샤프트", "베드플레이트", "엔진프레임", "엔진블록", "MBS", "엔진구조재", "베드플레이트"], [], ["Z_CRANK"]),
+     ["크랭크샤프트", "크랭크축", "캠샤프트", "베드플레이트", "엔진프레임", "엔진블록", "MBS", "엔진구조재", "금속구조재"], [], ["Z_CRANK"]),
     ("ENG.TURBO", "터보차저", "Turbochargers", 85, False, ["터보차저", "과급기", "터보챠저"], [], ["Z_TURBO"]),
     ("ENG.FUEL", "연료공급(FGSS·LFSS)", "Fuel supply systems", 85, False,
      ["FGSS", "LFSS", "연료가스공급", "연료공급시스템", "고압펌프", "연료분사펌프", "벙커링", "연료공급장치", "LNG연료공급"], [], ["Z_FUEL", "R_FUEL_TANK"]),
+    ("ENG.PARTS", "엔진부품(일반)", "Engine parts (general)", 84, False,
+     ["선박엔진부품", "엔진부품", "대형(저속)엔진부품", "중형(중속)엔진부품", "저속엔진부품", "중속엔진부품", "엔진부품사업", "선박엔진용부품", "엔진용부품"], [], ["Z_CRANK", "R_MAIN_ENGINE"]),
     ("CARGO.LNG", "LNG 화물창·보냉재", "LNG containment & insulation", 95, False,
      ["화물창", "보냉재", "멤브레인", "Mark III", "NO96", "인바", "2차방벽", "트리플렉스", "R-PUF", "폴리우레탄폼", "단열패널", "보냉판넬", "앵커스트립", "마스틱", "초저온보냉재", "LNG보냉", "카고컨테인먼트"],
      [], ["R_CARGO_1", "R_CARGO_2", "R_CARGO_3", "R_CARGO_4"]),
@@ -88,7 +90,7 @@ CATS = [
     ("PIPE.VALVE", "밸브·액추에이터", "Valves & actuators", 70, True,
      ["선박용밸브", "버터플라이밸브", "볼밸브", "글로브밸브", "게이트밸브", "체크밸브", "안전밸브", "극저온밸브", "액추에이터", "원격조작밸브", "밸브", "계장용밸브"], ["배기밸브", "연료분사밸브", "엔진밸브"], ["R_DECK_PIPING"]),
     ("PIPE.FITTING", "피팅·플랜지", "Fittings & flanges", 70, True,
-     ["피팅", "관이음쇠", "플랜지", "엘보", "파이프피팅", "계장용피팅", "튜브피팅"], [], ["R_DECK_PIPING"]),
+     ["피팅", "관이음쇠", "플랜지", "엘보", "파이프피팅", "계장용피팅", "튜브피팅", "elbow", "reducer", "elbowtee", "프랜지", "벤드"], [], ["R_DECK_PIPING"]),
     ("PIPE.PIPE", "배관·스풀·극저온배관", "Piping & spools", 68, True,
      ["배관", "선박용배관", "파이프스풀", "스풀", "이중배관", "극저온배관", "진공단열배관", "배관제작", "파이프", "배관자재"], ["교량용케이블"], ["R_DECK_PIPING"]),
     ("PIPE.PUMP", "일반펌프", "Service pumps", 60, True,
@@ -113,9 +115,9 @@ CATS = [
      ["선실내장", "내장재", "선실패널", "천장재", "바닥재", "선박용가구", "선실가구", "갤리", "주방기기", "선박용창", "선박용문", "방화문", "방화패널"], [], ["R_DECKHOUSE"]),
     ("ACCOM.HVAC", "공조·냉동·통풍", "HVAC", 65, True, ["HVAC", "공조", "냉동공조", "선박용냉동", "에어컨", "덕트", "냉동창고", "선박용공조"], [], ["R_DECKHOUSE"]),
     ("SAFE.FIRE", "소화·화재탐지", "Fire safety", 78, True,
-     ["소화", "소화장치", "고정식소화", "CO2", "워터미스트", "스프링클러", "화재탐지", "화재경보", "소화설비"], ["소화기계"], ["R_LIFEBOAT", "R_DECK_CARGO"]),
+     ["소화", "소화장치", "고정식소화", "CO2", "워터미스트", "스프링클러", "화재탐지", "화재경보", "소화설비", "firefighting", "drypowder", "소화기"], ["소화기계"], ["R_LIFEBOAT", "R_DECK_CARGO"]),
     ("SAFE.LIFE", "구명정·대빗", "Life-saving", 78, True, ["구명정", "구명뗏목", "구명벌", "대빗", "구명동의", "구명설비", "탈출"], [], ["R_LIFEBOAT"]),
-    ("SAFE.ENV", "오수처리·소각기·가스탐지", "Environmental", 60, True, ["오수처리", "소각기", "폐기물", "가스탐지", "가스검지", "환경장비"], [], ["R_AUX"]),
+    ("SAFE.ENV", "오수처리·소각기·가스탐지", "Environmental", 60, True, ["오수처리", "소각기", "폐기물", "가스탐지", "가스검지", "환경장비", "가스감지"], [], ["R_AUX"]),
     ("COAT.PAINT", "선박용도료", "Marine coatings", 72, True, ["선박용도료", "방오도료", "방식도료", "도료", "페인트", "에폭시", "방오"], [], ["R_WATERLINE", "R_HULL_SIDE"]),
     ("COAT.WORK", "도장공사·족장·음극방식", "Coating works", 62, True, ["도장공사", "블라스팅", "족장", "발판", "표면처리", "희생양극", "음극방식", "ICCP", "도장"], [], ["R_HULL_SIDE"]),
     ("COAT.INSUL", "일반 단열·보온", "General insulation", 55, True, ["단열재", "보온재", "방열", "단열"], ["보냉재", "LNG"], ["R_DECKHOUSE"]),
@@ -125,10 +127,10 @@ CATS = [
     ("OFFSH.SUBSEA", "라이저·해저구조", "Risers & subsea", 80, False, ["라이저", "해저구조물", "서브시", "해저"], ["해저케이블"], ["R_TURRET"]),
     ("SVC.DESIGN", "선박설계", "Ship design", 50, True, ["선박설계", "기본설계", "상세설계", "생산설계", "엔지니어링", "설계"], [], []),
     ("SVC.INSPECT", "비파괴검사·시운전", "Inspection & trials", 50, True, ["비파괴검사", "시운전", "모형시험", "검사", "선급"], [], []),
-    ("SVC.LABOR", "사내협력·임가공", "Subcontract labour", 45, True, ["사내협력", "임가공", "블록가공", "의장공사", "용접"], [], []),
+    ("SVC.LABOR", "사내협력·임가공", "Subcontract labour", 45, True, ["사내협력", "임가공", "블록가공", "의장공사", "용접", "수리조선"], [], []),
 ]
 
-CTX_KW = ["선박", "조선", "해양", "선용", "marine", "ship", "vessel", "offshore", "해상"]
+CTX_KW = ["선박", "조선", "해양", "선용", "marine", "ship", "vessel", "offshore", "해상", "함정", "잠수함", "선용", "조선소"]
 
 # ── SVG 영역 ─────────────────────────────────────────────────
 # 뷰박스 1000×400. 선미(좌)→선수(우). 용골 y≈360, 흘수선 y≈300, 주갑판 y≈215.
@@ -270,6 +272,12 @@ def build():
     if set(Z_ORDER) != {r["id"] for r in regions}:
         raise RuntimeError("z-order 와 영역 목록이 다르다: %s" % (set(Z_ORDER) ^ {r["id"] for r in regions}))
     st = load_asset("ship_types.json")
+    changed = False
+    for tid, row in st["rel"].items():
+        if "ENG.PARTS" not in row and "ENG.LINER" in row:
+            row["ENG.PARTS"] = list(row["ENG.LINER"]); changed = True   # 엔진부품 일반은 라이너와 같은 관련도
+    if changed:
+        write_asset("ship_types.json", st)
     rel_keys = set(st["rel"]["LNGC"])
     if rel_keys != cat_ids:
         raise RuntimeError("ship_types.rel 과 소분류가 다르다: %s" % sorted(rel_keys ^ cat_ids))

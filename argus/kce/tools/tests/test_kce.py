@@ -37,6 +37,20 @@ def _data(co):
     return extract_data(os.path.join(KCE, co, "index.html"))
 
 
+class TestDecode(unittest.TestCase):
+    """거래소공시(EUC-KR) 판정 — 접수번호 9번째 자리가 8이면 전부 EUC-KR 이다."""
+
+    def test_exchange_filings_are_euc_kr(self):
+        from kce_fetch import _decode
+        body = "단일판매".encode("euc-kr")
+        for rcp in ("20250327800122", "20250327801172", "20260213801163"):
+            self.assertEqual(_decode(body, rcp), "단일판매", rcp)
+
+    def test_regular_reports_are_utf8(self):
+        from kce_fetch import _decode
+        self.assertEqual(_decode("반기".encode("utf-8"), "20260814002879"), "반기")
+
+
 class TestNorm(unittest.TestCase):
     """headers.html 머리행 카탈로그의 실제 변형 사례가 흡수되는지."""
 
