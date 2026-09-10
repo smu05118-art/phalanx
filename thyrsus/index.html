@@ -2059,8 +2059,28 @@ function doSwapChars(pids){
 }
 /* 뱀 조련사: 캐릭터와 진영을 함께 교환하고, 새 뱀 조련사(전 악마)는 영구 중독 */
 function doSnakeSwap(pids){
-  const a=playerOf((pids||[])[0]), b=playerOf((pids||[])[1]);
-  if(!a||!b||a===b){ toast('서로 다른 두 명을 선택하세요.','warn'); return; }
+  /* 공식(roles181.json snakecharmer): "Each night, choose an alive player: a chosen **Demon**
+     swaps characters & alignments with you & is then poisoned."
+     [무엇이 문제였나] 씬이 두 명을 받게 돼 있었고(플레이어는 한 명만 고른다) 이 함수는 그 둘을
+     **조건 없이** 맞바꿨다. 공식대로 요리사 한 명만 지목한 플레이어는 반환조차 못 하고,
+     사회자가 화면의 두 자리를 채우면 멀쩡한 두 사람의 캐릭터가 뒤바뀌었다 — 악마는 그대로 둔 채.
+     이제 지목은 한 명이고, 조련사 본인은 행동 좌석(wiz.holder)으로 확정한다. */
+  const arr=Array.isArray(pids)? pids.slice() : (pids? [pids] : []);
+  const A=abilityActor('snakecharmer');
+  let a, b;
+  if(arr.length>=2){ a=playerOf(arr[0]); b=playerOf(arr[1]); }   // 옛 두 명 경로(하위호환)
+  else { a=A.actor; b=playerOf(arr[0]); }
+  if(!a||!b||a===b){ toast('뱀 조련사와 지목 대상을 확인하세요 — 서로 다른 두 좌석이어야 합니다.','warn'); return; }
+  if(!A.ok){
+    toast(`뱀 조련사가 능력을 쓸 수 없는 상태(${A.why}) — 교환은 일어나지 않습니다. 기록만 남기세요.`,'warn');
+    log(`🐍 뱀 조련사 불발(${A.why}): ${b.name} 지목 — 교환 없음`); save(); renderAll(); return;
+  }
+  /* '지목당한 악마'만 교환한다 — 대상이 악마가 아니면 아무 일도 일어나지 않는다 */
+  const dem = charOf(a.charId)?.type==='demon'? a : (charOf(b.charId)?.type==='demon'? b : null);
+  if(!dem){
+    toast(`${b.name}은(는) 악마가 아닙니다 — 아무 일도 일어나지 않습니다. 그대로 재우세요(어느 쪽이었는지 밝히지 마세요).`,'ok');
+    log(`🐍 뱀 조련사 지목 ${b.name} — 악마가 아니므로 교환 없음`); save(); renderAll(); return;
+  }
   applySwapAlignment(a, b, true);                    // 진영도 함께 교환 — 규칙은 applySwapAlignment 한 곳
   const aOld=a.charId, bOld=b.charId;                // 교환 전 캐릭터(지속효과 출처 정리 기준)
   let t=a.charId; a.charId=b.charId; b.charId=t;
@@ -2073,6 +2093,54 @@ function doSnakeSwap(pids){
 }
 function hasStatus(p,key){ return (p.statuses||[]).some(s=>s.key===key); }
 function isMalfunctioning(p){ return hasStatus(p,'poison') || hasStatus(p,'drunkS') || (p.charId==='drunk'); }
+/* ══════════ 행동 좌석 창구 ══════════
+   [무엇이 문제였나] 밤 효과 함수 12개가 저마다 charId 로 좌석을 찾아 오작동을 물었다:
+       const monk=S.players.find(q=>q.charId==='monk');
+       if(monk && isMalfunctioning(monk)){ …불발… }
+   `&&` 때문에 **좌석을 못 찾으면 가드가 조용히 통과한다.** 주정뱅이가 수도사로 위장한 판에는
+   charId==='monk' 인 좌석이 아예 없어서, 있지도 않은 수도사의 보호가 실제로 부여됐다.
+   위저드는 그 단계를 수행하는 좌석을 이미 알고 있는데(wiz.holder) 효과 호출에서 그것을 버렸다.
+   [실패 방향을 뒤집는다] 좌석을 못 찾으면 이제 '작동하지 않음'이다(fail-closed).
+   그래서 '죽었지만 능력을 유지하는 좌석'을 여기서 함께 인정해야 한다 — 그 목록은 밤 순서
+   (nightSteps 의 anyAlive 분기)가 이미 쥐고 있는 것과 같은 둘이다. 한쪽만 늘리면 어긋난다. */
+function abilityActs(p){
+  if(!p) return false;
+  if(p.alive) return true;
+  /* 좀버얼 첫 사망은 '겉보기 사망 · 실제 생존' — 계속 깨우고 능력도 작동한다 */
+  if(p.charId==='zombuul' && hasStatus(p,'fakedead')) return true;
+  /* 공식 Vigormortis: "Minions you kill keep their ability" — 비고르모르티스가 살아 있고
+     정상인 동안만이다. 그 조건은 nightSteps 와 같은 문장을 쓴다. */
+  if(hasStatus(p,'vigorAbility') && charOf(p.charId)?.type==='minion'){
+    const vg=S.players.find(q=>q.alive && q.charId==='vigormortis');
+    return !!(vg && !isMalfunctioning(vg));
+  }
+  /* **사망이 곧 발동 조건인 능력**은 죽어 있는 것이 정상이다 — 까마귀지기·현자·이발사·
+     연인·달의 자손(밤) / 얼뜨기·연인·이발사(낮). 이 목록은 밤·낮 순서가 이미 쥐고 있는
+     것을 그대로 읽는다. 여기서 따로 세면 한쪽만 늘어나 조용히 어긋난다.
+     [왜 이 줄이 필요한가] 이 창구를 fail-closed 로 뒤집자 달의 자손의 사망 판정이
+     '행동 좌석이 죽었다'는 이유로 막혔다 — 그 좌석은 죽었기 때문에 행동하는 것이다.
+     시나리오 220 중 moonchild-pick-frozen-good 1건이 이것을 잡았다. */
+  if((typeof DEATH_TRIGGER_STEPS!=='undefined' && DEATH_TRIGGER_STEPS[p.charId])
+     || (typeof DAY_DEAD_TRIGGER!=='undefined' && DAY_DEAD_TRIGGER.has(p.charId))) return true;
+  return false;
+}
+/* 이 단계의 능력이 실제로 작동하는가. 반환 {ok, actor, why} — ok=false 면 다른 좌석을 바꾸는
+   효과를 내면 안 된다(플레이어 응대·기록은 평소대로 한다). */
+function abilityActor(charId){
+  const w=(typeof wiz!=='undefined' && wiz)? wiz : null;
+  let actor=null;
+  /* 지금 열린 위저드가 **이 능력의 단계**일 때만 holder 를 행동자로 삼는다 — 다른 단계가 열린
+     채 그리모어 수동 버튼을 누르면 엉뚱한 좌석이 행동자가 된다.
+     주정뱅이 위장이면 단계(stepId)는 위장 캐릭터이고 좌석의 실제 캐릭터는 외지인이다.
+     여기서 맞춰 보는 것은 '단계'다 — 정보 표의 sourceCharId 와 같은 구분이다. */
+  if(w && w.holder && (!charId || w.stepId===charId)) actor=w.holder;
+  if(!actor && charId) actor=S.players.find(q=>q.charId===charId && abilityActs(q)) || null;
+  const ko=charId? ((typeof charOf==='function' && charOf(charId)?.ko) || charId) : '행동자';
+  if(!actor) return {ok:false, actor:null, why:`${ko} 좌석이 없습니다 — 능력이 작동하지 않습니다`};
+  if(!abilityActs(actor)) return {ok:false, actor, why:`${actor.name} 사망 — 능력이 작동하지 않습니다`};
+  if(isMalfunctioning(actor)) return {ok:false, actor, why:`${actor.name}(${charName(actor)}) 오작동 상태`};
+  return {ok:true, actor, why:null};
+}
 /* 공식 문턱은 '과반(majority)'이 아니라 '살아 있는 플레이어 수의 절반 이상, 올림'이다
    (Trouble Brewing 룰북 Voting / wiki.bloodontheclocktower.com/Execution:
     "at least half the number of alive players"). 6명 생존이면 4표가 아니라 3표다.
@@ -4225,9 +4293,9 @@ function doExorcist(pid){
   }
   S.exorcistPrev={pid, n:S.phase.n};
   log(`📿 구마사제 지목: ${t.name}(${charName(t)})`);
-  const ex=S.players.find(q=>q.alive&&q.charId==='exorcist');
+  const _ex=abilityActor('exorcist');
   if(charOf(t.charId)?.type==='demon'){
-    if(ex && isMalfunctioning(ex)) toast('대상이 악마지만 구마사제가 오작동 상태 — 효과 없음. 악마는 평소대로 활동합니다.','warn');
+    if(!_ex.ok) toast('대상이 악마지만 구마사제가 능력을 쓸 수 없는 상태 — 효과 없음. 악마는 평소대로 활동합니다.','warn');
     else {
       S.demonBlockedNight=S.phase.n; S.demonBlockedPid=t.id;   // 밤 큐에서 이 악마의 단계를 실제로 건너뛴다
       log(`📿 구마 성공 — 밤 ${S.phase.n} 동안 ${t.name}(${charName(t)})의 능력 단계를 건너뜁니다`);
@@ -4247,8 +4315,8 @@ function doDevilsAdvocate(pid){
     toast(`⚖️ ${t.name}은(는) 어제의 변호 대상 — 전날과 다른 사람을 지목해야 합니다.`,'warn'); return;
   }
   S.daPrev={pid, n:S.phase.n};
-  const da=S.players.find(q=>q.alive&&q.charId==='devilsadvocate');
-  if(da && isMalfunctioning(da)){
+  const _da=abilityActor('devilsadvocate');
+  if(!_da.ok){
     toast('악마의 변호사가 오작동 상태 — 보호가 걸리지 않습니다. 기록만 남깁니다.','warn');
     log(`⚖️ 악마의 변호사 오작동: ${t.name} 처형 보호 불발`);
     save(); renderAll(); return;
@@ -4293,20 +4361,20 @@ function teaLadyBlock(t){
   }
   return null;
 }
-function doPoison(pid){ if(!pid)return; const p=playerOf(pid); const poisoner=S.players.find(q=>q.charId==='poisoner');
+function doPoison(pid){ if(!pid)return; const p=playerOf(pid); const _po=abilityActor('poisoner');
   if(hasStatus(p,'poison')){ toast(`${p.name}은(는) 이미 중독 상태입니다 — 중복 부여하지 않습니다.`,'warn'); return; }
-  if(poisoner && isMalfunctioning(poisoner)){ toast('독살범 본인이 오작동 상태 — 독이 퍼지지 않습니다. 기록만 남깁니다.','warn'); log(`독살범 오작동: ${p.name} 중독 불발`); save(); renderAll(); return; }
+  if(!_po.ok){ toast('독살범이 능력을 쓸 수 없는 상태 — 독이 퍼지지 않습니다. 기록만 남깁니다.','warn'); log(`독살범 불발(${_po.why}): ${p.name} 중독 불발`); save(); renderAll(); return; }
   addStatus(p,'poison','독살범',{kind:'night', n:S.phase.n+1}); save(); renderAll(); toast(`${p.name} 중독 — 내일 황혼(밤 ${S.phase.n+1} 시작)에 자동 해제`,'ok'); }
 /* 푸카는 독살범과 수명주기가 다르다 — doPoison 재사용이 결함이었다.
    공식: 밤마다 1명을 물면 즉시 중독, '이전에 문 사람'이 그때 죽으면서 건강해진다.
    푸카가 오작동이면 새 중독도 지연 사망도 없다. 페이즈 기반 expiresAt 을 쓰면 안 된다. */
 function doPukkaPick(pid){
   if(!pid)return; const t=playerOf(pid);
-  const pk=S.players.find(q=>(q.alive||(q.charId==='zombuul'&&hasStatus(q,'fakedead'))) && q.charId==='pukka');
+  const _pk=abilityActor('pukka');
   const prev=S.pukkaVictimId? playerOf(S.pukkaVictimId): null;
-  if(pk && isMalfunctioning(pk)){
-    toast('푸카가 중독/취함 상태 — 새로 무는 것도, 이전 희생자의 사망도 일어나지 않습니다. 기록만 남깁니다.','warn');
-    log(`푸카 오작동: ${t.name} 중독 불발 — 이전 희생자 사망 보류`);
+  if(!_pk.ok){
+    toast('푸카가 능력을 쓸 수 없는 상태 — 새로 무는 것도, 이전 희생자의 사망도 일어나지 않습니다. 기록만 남깁니다.','warn');
+    log(`푸카 불발(${_pk.why}): ${t.name} 중독 불발 — 이전 희생자 사망 보류`);
     save(); renderAll(); return;
   }
   if(hasStatus(t,'poison')) toast(`${t.name}은(는) 이미 중독 상태 — 토큰을 중복 부여하지 않습니다.`,'warn');
@@ -4351,10 +4419,10 @@ function drunkExpiry(policy){
 }
 function doSailorDrunk(pid){
   if(!pid)return; const t=playerOf(pid);
-  const sl=S.players.find(q=>q.alive && q.charId==='sailor');
-  if(sl && isMalfunctioning(sl)){
-    toast('선원 본인이 오작동 상태 — 아무도 취하지 않습니다. 기록만 남깁니다.','warn');
-    log(`선원 오작동: ${t.name} 취함 불발`); save(); renderAll(); return;
+  const _sl=abilityActor('sailor');
+  if(!_sl.ok){
+    toast('선원이 능력을 쓸 수 없는 상태 — 아무도 취하지 않습니다. 기록만 남깁니다.','warn');
+    log(`선원 불발(${_sl.why}): ${t.name} 취함 불발`); save(); renderAll(); return;
   }
   if(hasStatus(t,'drunkS')){ toast(`${t.name}은(는) 이미 취해 있습니다 — 중복 부여하지 않습니다.`,'warn'); return; }
   addStatus(t,'drunkS','선원',drunkExpiry('dusk')); save(); renderAll();
@@ -4369,9 +4437,9 @@ function doSailorDrunk(pid){
 function doInnkeeperProtect(pids){
   const list=(Array.isArray(pids)? pids : [pids]).map(playerOf).filter(Boolean);
   if(!list.length) return;
-  const ik=S.players.find(q=>q.alive && q.charId==='innkeeper');
-  if(ik && isMalfunctioning(ik)){
-    toast('여관 주인이 오작동 상태 — 보호가 발동하지 않습니다. 기록만 남깁니다.','warn');
+  const _ikp=abilityActor('innkeeper');
+  if(!_ikp.ok){
+    toast('여관 주인이 능력을 쓸 수 없는 상태 — 보호가 발동하지 않습니다. 기록만 남깁니다.','warn');
     log(`여관 주인 오작동: ${list.map(x=>x.name).join(', ')} 보호 불발`); save(); renderAll(); return;
   }
   const exp=(S.phase.kind==='night')? {kind:'day', n:S.phase.n} : {kind:'day', n:S.phase.n+1};
@@ -4379,16 +4447,16 @@ function doInnkeeperProtect(pids){
     if(!hasStatus(t,'protect')) addStatus(t,'protect','여관 주인',exp);
     /* 원장에 남겨야 레비아탄·폭동 징크스 감사('보호받은 플레이어를 처형하면 선 승리')가 판정할 수
        있다 — 수도사 경로(doProtect 래퍼)는 이미 남기고 있었고 여기만 빠져 있었다. */
-    try{ if(typeof emitEv==='function') emitEv('protect', ik? ik.id : null, t.id, {src:'여관 주인', mal:false}); }catch(e){}
+    try{ if(typeof emitEv==='function') emitEv('protect', _ikp.actor? _ikp.actor.id : null, t.id, {src:'여관 주인', mal:false}); }catch(e){}
   });
   toast(`🏠 ${list.map(x=>x.name).join(' · ')} 🛡보호 — 오늘 밤 죽지 않습니다(암살자는 관통).`,'ok');
   save(); renderAll();
 }
 function doInnkeeperDrunk(pid){
   if(!pid)return; const t=playerOf(pid);
-  const ik=S.players.find(q=>q.alive && q.charId==='innkeeper');
-  if(ik && isMalfunctioning(ik)){
-    toast('여관 주인이 오작동 상태 — 보호도 취함도 무효입니다. 기록만 남깁니다.','warn');
+  const _ikd=abilityActor('innkeeper');
+  if(!_ikd.ok){
+    toast('여관 주인이 능력을 쓸 수 없는 상태 — 보호도 취함도 무효입니다. 기록만 남깁니다.','warn');
     log(`여관 주인 오작동: ${t.name} 취함 불발`); save(); renderAll(); return;
   }
   if(hasStatus(t,'drunkS')){ toast(`${t.name}은(는) 이미 취해 있습니다 — 중복 부여하지 않습니다.`,'warn'); return; }
@@ -4397,9 +4465,9 @@ function doInnkeeperDrunk(pid){
 }
 function doCourtierDrunk(cid){
   if(!cid)return;
-  const co=S.players.find(q=>q.alive && q.charId==='courtier');
+  const _co=abilityActor('courtier');
   doSpend('courtier');                                    // 발동 즉시 1회 소진(불발이어도 소모)
-  if(co && isMalfunctioning(co)){
+  if(!_co.ok){
     toast('궁정대신이 오작동 상태 — 취함이 걸리지 않습니다(능력은 소진).','warn');
     log(`궁정대신 오작동: ${charOf(cid)?.ko||cid} 취함 불발`); save(); renderAll(); return;
   }
@@ -4412,18 +4480,23 @@ function doCourtierDrunk(cid){
   save(); renderAll();
   toast(`🍷 ${holders.map(p=>p.name).join(', ')} 🍺취함 — 3밤+3낮(밤 ${drunkExpiry('court').n} 시작 시 자동 해제)`,'ok');
 }
-function doProtect(pid){ if(!pid)return; const p=playerOf(pid); const monk=S.players.find(q=>q.charId==='monk');
-  if(monk && isMalfunctioning(monk)){
-    toast('수도사가 오작동 상태 — 보호가 작동하지 않습니다! 토큰을 놓지 않고 기록만 남깁니다. 임프가 이 대상을 지목하면 그대로 사망 처리하세요.','warn');
-    log(`수도사 오작동: ${p.name} 보호 무효(토큰 미부여)`); save(); renderAll(); return;
+function doProtect(pid){ if(!pid)return; const p=playerOf(pid); const _mo=abilityActor('monk');
+  if(!_mo.ok){
+    toast('수도사가 능력을 쓸 수 없는 상태 — 보호가 작동하지 않습니다! 토큰을 놓지 않고 기록만 남깁니다. 임프가 이 대상을 지목하면 그대로 사망 처리하세요.','warn');
+    log(`수도사 불발(${_mo.why}): ${p.name} 보호 무효(토큰 미부여)`); save(); renderAll(); return;
   }
   addStatus(p,'protect','수도사',{kind:'day', n:S.phase.n}); save(); renderAll(); }
 function doMaster(pid){ if(!pid)return; S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='master'));
   const p=playerOf(pid); addStatus(p,'master','집사',{kind:'night', n:S.phase.n+1}); save(); renderAll(); }
 function doImpKill(pid){
   if(!pid)return; const t=playerOf(pid);
-  const imp=S.players.find(q=>q.alive && charOf(q.charId)?.type==='demon');
-  if(imp && isMalfunctioning(imp)){ toast('임프가 중독/오작동 — 오늘 밤 살해 불발. 아무도 죽지 않습니다.','warn'); log(`임프 오작동: ${t.name} 살해 불발`); save(); renderAll(); return; }
+  /* 악마 좌석은 charId 가 아니라 '유형'으로 찾는다 — 별 넘기기로 누가 임프인지 바뀐다.
+     그래서 abilityActor 의 charId 경로 대신 여기서 직접 고르되, 실패 방향은 같게 한다:
+     좌석을 못 찾으면 불발이다(전에는 `imp &&` 때문에 조용히 살해가 진행됐다). */
+  const imp=(typeof wiz!=='undefined' && wiz && wiz.holder && charOf(wiz.holder.charId)?.type==='demon')
+    ? wiz.holder
+    : S.players.find(q=>abilityActs(q) && charOf(q.charId)?.type==='demon');
+  if(!imp || isMalfunctioning(imp)){ toast('악마가 능력을 쓸 수 없는 상태 — 오늘 밤 살해 불발. 아무도 죽지 않습니다.','warn'); log(`악마 살해 불발: ${t.name}`); save(); renderAll(); return; }
   if(t===imp){ // 자살 → 별 넘기기 (승격을 먼저 하고 사망 처리해야 오판정이 없다)
     const minions=S.players.filter(q=>q.alive && charOf(q.charId)?.type==='minion');
     if(minions.length){
@@ -4633,8 +4706,8 @@ function doMad(pid){ if(!pid)return; S.players.forEach(q=>q.statuses=(q.statuses
    보호로 죽지 않았다면 점프도 없다. */
 function doFangGuAttack(pid){
   if(!pid)return; const t=playerOf(pid);
-  const fg=S.players.find(q=>q.alive && q.charId==='fanggu');
-  if(fg && isMalfunctioning(fg)){ toast('팡 구가 중독/오작동 — 오늘 밤 살해 불발.','warn'); log(`팡 구 오작동: ${t.name} 살해 불발`); save(); renderAll(); return; }
+  const _fg=abilityActor('fanggu');
+  if(!_fg.ok){ toast('팡 구가 능력을 쓸 수 없는 상태 — 오늘 밤 살해 불발.','warn'); log(`팡 구 불발(${_fg.why}): ${t.name} 살해 불발`); save(); renderAll(); return; }
   const dr=resolveDeath(t,{sourceType:'demon', sourceCharId:'fanggu', cause:'팡 구의 공격'},['block','substitute']);
   const blk=dr.reason;
   if(blk){
@@ -4646,6 +4719,7 @@ function doFangGuAttack(pid){
   /* 점프 소진은 S.fangGuJumped 와 'spent' 토큰 두 곳에 따로 적혀 있었다 — 리마인더의
      '✔ 소진 기록' 버튼은 토큰만 세우고 점프를 막지 못했고, 실제 점프는 토큰을 세우지
      않아 리마인더가 계속 '● 남음'으로 보였다. 양방향으로 맞춘다. */
+  const fg=_fg.actor;
   if(isOut && !S.fangGuJumped && !(fg && hasStatus(fg,'spent'))){
     S.fangGuJumped=true;
     if(fg && !hasStatus(fg,'spent')) addStatus(fg,'spent','팡 구 점프 — 1회 소진',null);
@@ -4661,8 +4735,8 @@ function doFangGuAttack(pid){
 }
 function doStepKill(pid, killerId){ if(!pid)return; const t=playerOf(pid);
   const kid = killerId || window.__stepKiller;
-  const actor=S.players.find(q=>(q.alive || (q.charId==='zombuul'&&hasStatus(q,'fakedead'))) && q.charId===kid);
-  if(actor && isMalfunctioning(actor)){ toast(`${charName(actor)}이(가) 오작동 상태 — 이 살해는 불발입니다.`,'warn'); log(`${charName(actor)} 오작동: ${t.name} 살해 불발`); save(); renderAll(); return; }
+  const _ak=abilityActor(kid); const actor=_ak.actor;
+  if(!_ak.ok){ toast(`${actor? charName(actor)+'이(가)' : (charOf(kid)?.ko||kid)+' 좌석이'} 능력을 쓸 수 없는 상태 — 이 살해는 불발입니다.`,'warn'); log(`살해 불발(${_ak.why}): ${t.name}`); save(); renderAll(); return; }
   if(!t.alive){ toast('이미 죽은 대상입니다 — 같은 사람을 두 번 지목할 수 없습니다. 다른 대상을 고르세요.','warn'); return; }
   // 보호·면역 통합 판정. 군인은 '악마의' 살해에만 면역이므로 살해 출처를 구분한다.
   let dr=null;   // 블록 밖에서도 봐야 한다 — 종단의 시장 대체 판정이 같은 결과를 쓴다
@@ -7765,13 +7839,13 @@ philosopher:{first:[
   {t:'sleep'}]},
 snakecharmer:{first:[
   {t:'wake'},
-  {t:'pick-player',n:2,who:'player',label:'스왑 성립 시 두 명(뱀 조련사 + 지목당한 악마) — 스왑 없으면 그대로 닫기',filter:'alive',storeAs:'pair'},
+  {t:'pick-player',n:1,who:'player',label:'뱀 조련사가 지목한 생존자 한 명 — 그 대상이 악마일 때만 교환됩니다',filter:'alive',storeAs:'pair'},
   {t:'effect',fn:'doSnakeSwap',from:'pair'},
   {t:'note',text:'지목 대상이 악마가 아니면 아무 일도 없습니다 — 그대로 재우세요. 악마라면 스왑(강제, 재량 아님): ① 그리모어에서 두 사람의 캐릭터·진영을 맞바꿉니다 ② 각각 조용히 깨워 새 캐릭터 토큰을 보여줍니다 ③ 새 뱀 조련사(전 악마)에게 ☠영구 중독 토큰 ④ 이후 밤 순서를 새 배치 기준으로 재확인. 단, 뱀 조련사가 중독/취함 상태로 지목했다면 스왑은 불발입니다.'},
   {t:'sleep'}],
  other:[
   {t:'wake'},
-  {t:'pick-player',n:2,who:'player',label:'스왑 성립 시 두 명(뱀 조련사 + 지목당한 악마) — 스왑 없으면 그대로 닫기',filter:'alive',storeAs:'pair'},
+  {t:'pick-player',n:1,who:'player',label:'뱀 조련사가 지목한 생존자 한 명 — 그 대상이 악마일 때만 교환됩니다',filter:'alive',storeAs:'pair'},
   {t:'effect',fn:'doSnakeSwap',from:'pair'},
   {t:'note',text:'악마 지목 시 스왑(강제): ① 그리모어에서 캐릭터·진영 교체 ② 각각 깨워 새 토큰 안내 ③ 새 뱀 조련사(전 악마) ☠영구 중독 ④ 밤 순서 재확인. 오작동 상태의 지목이면 불발.'},
   {t:'sleep'}]},
@@ -11788,9 +11862,11 @@ function buildMatchRecord(winner, pgid){
   const _pr=doProtect;
   doProtect=function(pid){
     const t=playerOf(pid);
-    const monk=S.players.find(q=>q.charId==='monk');
+    /* 원장의 mal 표시도 본문과 같은 출처를 봐야 한다 — charId 로 찾으면 주정뱅이 위장판에서
+       좌석을 못 찾아 mal:false 로 적히고, 원장만 보면 보호가 실제로 걸린 것처럼 읽힌다. */
+    const _mw=abilityActor('monk');
     _pr(pid);
-    if(t) emitEv('protect', monk? monk.id : null, pid, {src:'수도사', mal:monk? isMalfunctioning(monk) : false});
+    if(t) emitEv('protect', _mw.actor? _mw.actor.id : null, pid, {src:'수도사', mal:!_mw.ok});
   };
   const _po=doPoison;
   doPoison=function(pid){
