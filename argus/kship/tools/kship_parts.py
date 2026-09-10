@@ -93,7 +93,7 @@ def parts_html(data):
 </div>
 <section class="card"><h2>선종을 고르면 관련 부품이 강조됩니다 <em>관련도 3 핵심 · 2 중요 · 1 공통 · 0 없음 — 부품 영역을 누르면 담당 회사</em><span class="right"><button class="chip" id="reset">전체 보기</button></span></h2>
  <div class="ctl"><div class="chips" id="types">%s</div><span class="mut" style="font-size:10.5px">수식어</span><div class="chips" id="mods">%s</div></div>
- <div class="grid2" style="grid-template-columns:minmax(0,2fr) minmax(300px,1fr)">
+ <div class="ig">
   <div class="ship">%s<div class="legend"><span><i style="background:rgba(96,165,250,.26)"></i>핵심(3)</span><span><i style="background:rgba(96,165,250,.14)"></i>중요(2)</span><span><i style="background:rgba(96,165,250,.06)"></i>공통(1)</span><span><i style="background:rgba(255,255,255,.015)"></i>해당 없음(0)</span><span><i style="border-style:dashed"></i>상장 기자재사 없음</span><span id="zoomhint" class="mut"></span></div></div>
   <div class="panel" id="panel"><h3>부품 영역을 누르세요 <em>또는 아래 대분류 칩</em></h3><p class="mut" style="font-size:12px">영역 → 소분류 → 그 부품을 만드는 상장 기자재사 → 납품 조선사(근거). 회사 이름을 누르면 회사 페이지로 갑니다.</p></div>
  </div>

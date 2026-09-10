@@ -71,7 +71,9 @@ def unit_of(lead, cols=None):
     return "KRW", 1.0, False
 
 
-_TOTAL = re.compile(r"(?:합계|총계|소계|누계|계)(?![가-힣])")
+# 낱자 '계'는 앞이 공백·괄호일 때만 소계다 — '기본설계'·'실시설계'·'통합제어계'를 소계로
+# 오인하면 사업장이 통째로 집계에서 빠진다(건설 탭에서 실제로 겪은 오류).
+_TOTAL = re.compile(r"(?:합계|총계|소계|누계)(?![가-힣])")
 _TOTAL_BARE = re.compile(r"(?:^|[\s)\]])계\s*$")
 
 

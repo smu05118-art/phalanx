@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""한국조선 파이프라인 계약 테스트.
+
+실행: cd argus/kship/tools && python3 -m unittest discover -s tests
+원문 픽스처: HD현대중공업 2026 반기 수주상황(부문 롤포워드)·척당 계약 공시(LPGC 4척).
+"""
+import json
+import os
+import re
+import sys
+import unittest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+TOOLS = os.path.dirname(HERE)
+FIX = os.path.join(HERE, "fixtures")
+sys.path.insert(0, TOOLS)
+
+import kship_lib as L                                     # noqa: E402
+from kship_parse import parse_orders, unit_of, is_total   # noqa: E402
+from kship_contracts import parse_contract, ship_type_of  # noqa: E402
+from kship_yards import parse_orders_table, parse_revenue_table  # noqa: E402
+from kship_suppliers import classify_product              # noqa: E402
+
+
+def _fx(name):
+    with open(os.path.join(FIX, name), encoding="utf-8") as f:
+        return f.read()
+
+
+class TestUnits(unittest.TestCase):
+    def test_currency_and_scale(self):
+        self.assertEqual(unit_of("(단위 : 백만달러, 척)"), ("USD", 1.0, True))
+        self.assertEqual(unit_of("(단위 : 천달러)"), ("USD", 0.001, True))
+        self.assertEqual(unit_of("(단위 : 억원)"), ("KRW", 100.0, True))
+        self.assertEqual(unit_of("", ["(단위 : 천원) 품목"]), ("KRW", 0.001, True))
+        self.assertEqual(unit_of("")[2], False)          # 단위를 못 읽으면 unit_seen=False
+
+    def test_total_rows(self):
+        for s in ("합 계", "합계", "총계", "소계"):
+            self.assertTrue(is_total(s), s)
+        for s in ("조 선", "LNG운반선", "기 타", "기본설계"):
+            self.assertFalse(is_total(s), s)
+
+
+class TestShipOrdersTable(unittest.TestCase):
+    """조선 수주표 방언: 척수 열 보존 · 합계행 보존 · 달러 단위."""
+
+    HTML = """<p>가. 수주상황</p><p>(단위 : 백만달러, 척)</p><table>
+<tr><td rowspan=2>선종</td><td colspan=2>수주총액</td><td colspan=2>기납품액</td><td colspan=2>수주잔고</td><td rowspan=2>인도예정</td></tr>
+<tr><td>수량</td><td>금액</td><td>수량</td><td>금액</td><td>수량</td><td>금액</td></tr>
+<tr><td>LNG운반선</td><td>42</td><td>10,500.5</td><td>12</td><td>3,000</td><td>30</td><td>7,500.5</td><td>2026~2029</td></tr>
+<tr><td>합 계</td><td>42</td><td>10,500.5</td><td>12</td><td>3,000</td><td>30</td><td>7,500.5</td><td>-</td></tr></table>"""
+
+    def test_quantity_total_currency(self):
+        r = parse_orders(self.HTML)
+        self.assertEqual(r["unknown_headers"], [])
+        t = r["tables"][0]
+        self.assertEqual(t["cur"], "USD")
+        rows = t["rows"]
+        self.assertEqual(rows[0]["qty"], 42)
+        self.assertEqual(rows[0]["qty_bal"], 30)
+        self.assertAlmostEqual(rows[0]["bal"], 7500.5)
+        self.assertTrue(rows[1]["total"])                 # 합계행이 사라지지 않는다
+        self.assertEqual(t["n"], 1)
+
+
+class TestYardRollforward(unittest.TestCase):
+    """HD현대중공업 2026 반기 원문 — 부문 롤포워드와 매출실적."""
+
+    def test_rollforward_from_fixture(self):
+        from kship_lib import parse_tables
+        tabs = parse_tables(_fx("hhi_orders_2026H1.html"))
+        orders = [x for x in (parse_orders_table(t) for t in tabs if t["cols"]) if x and x["rows"]]
+        self.assertTrue(orders)
+        o = max(orders, key=lambda o: len(o["rows"]))
+        tot = [r for r in o["rows"] if r["total"]][0]
+        self.assertEqual(tot["closing"], 69514154)
+        self.assertEqual(tot["opening"] + tot["new"] - tot["delivered"], tot["closing"])
+        segs = {r["seg"].replace(" ", ""): r for r in o["rows"] if not r["total"]}
+        self.assertEqual(segs["조선"]["closing"], 55573921)
+        self.assertEqual(o["cur"], "KRW")
+
+    def test_revenue_from_fixture(self):
+        from kship_lib import parse_tables
+        tabs = parse_tables(_fx("hhi_orders_2026H1.html"))
+        rev = [x for x in (parse_revenue_table(t) for t in tabs if t["cols"]) if x]
+        self.assertTrue(rev)
+        rows = rev[0]["rows"]
+        ship_export = [r for r in rows if r["seg"].replace(" ", "") == "조선" and r["kind"] == "수출"][0]
+        self.assertEqual(ship_export["vals"][0], 8882303)
+
+
+class TestContract(unittest.TestCase):
+    def test_parse_contract_fixture(self):
+        r = parse_contract(_fx("hhi_contract_20260824800122.html"), "20260824800122", "단일판매ㆍ공급계약체결", "329180")
+        self.assertEqual(r["name"], "LPGC 4척")
+        self.assertEqual(r["type"], "VLGC")
+        self.assertEqual(r["ships"], 4)
+        self.assertEqual(r["amt_krw_m"], 515400.0)
+        self.assertEqual(r["end"], "2030-03-31")
+        self.assertTrue(r["party_anon"])
+        self.assertEqual(r["payterm"], "공사진척에 따른 수금")
+
+    def test_ship_type_tokens(self):
+        cases = {"LPGC 4척": "VLGC", "LNG운반선 2척": "LNGC", "17,000TEU급 컨테이너선 6척": "CONT",
+                 "VLCC 2척": "VLCC", "MR탱커 4척": "PC", "PCTC 4척": "PCTC", "KDDX 1척": "NAVAL",
+                 "FPSO 1기": "OFFSH", "보령화력 1~8호기 저탄장 옥내화 공사": "OTHER",
+                 "엔진발전기 공급": "OTHER", "다목적 화학방제함 1척 건조": "NAVAL"}
+        for name, want in cases.items():
+            self.assertEqual(ship_type_of(name), want, name)
+
+
+class TestTaxonomy(unittest.TestCase):
+    """정적 사전의 교차 참조가 깨지면 인포그래픽이 잘못된 회사를 보여 준다."""
+
+    def test_rel_keys_match_categories(self):
+        tax = L.load_asset("parts_taxonomy.json")
+        st = L.load_asset("ship_types.json")
+        cat_ids = {c["id"] for c in tax["cats"]}
+        for tid, row in st["rel"].items():
+            self.assertEqual(set(row), cat_ids, tid)
+
+    def test_regions_reference_existing_categories(self):
+        tax = L.load_asset("parts_taxonomy.json")
+        svg = L.load_asset("svg_regions.json")
+        cat_ids = {c["id"] for c in tax["cats"]}
+        for r in svg["regions"] + svg["engine_zoom"]["regions"]:
+            for c in r["cats"]:
+                self.assertIn(c, cat_ids, r["id"])
+
+    def test_classify_examples(self):
+        self.assertIn("CARGO.LNG", classify_product("초저온 보냉재", True))
+        self.assertIn("PIPE.FITTING", classify_product("관이음쇠", True))
+        self.assertIn("ENG.PARTS", classify_product("선박엔진부품", False))
+        self.assertIn("PROP.MAIN", classify_product("대형선박용엔진", False))
+        self.assertEqual(classify_product("XML/SGML 관련 제품 및 솔루션", False), ["UNCL"])
+        # 문맥 필요 낱말은 해상 문맥이 없으면 채택하지 않는다(육상 밸브·크레인 오탐 방지)
+        self.assertEqual(classify_product("볼밸브", False), ["UNCL"])
+        self.assertIn("PIPE.VALVE", classify_product("선박용 볼밸브", False))
+
+
+class TestPageShell(unittest.TestCase):
+    def test_external_scripts_precede_body(self):
+        h = L.page("t", "<script>Chart.x</script>", depth=1, scripts=("../vendor/chart.umd.min.js",))
+        self.assertLess(h.index("chart.umd.min.js"), h.index("Chart.x"))
+        self.assertIn('href="../assets/kship.css"', h)
+
+    def test_json_for_html_escapes_script_close(self):
+        s = L.json_for_html({"nm": "악성</script><img>"})
+        self.assertNotIn("</script>", s)
+
+
+if __name__ == "__main__":
+    unittest.main()

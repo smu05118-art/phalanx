@@ -60,7 +60,9 @@ def ship_type_of(name):
             return tid
     if "척" not in t and _NONSHIP.search(name or ""):
         return "OTHER"                    # HJ중공업 건설공사·HD현대重 엔진발전기·대한조선 블록 납품
-    if re.search(r"쇄빙|조사선|관공선|여객선|페리|카페리|예인선|준설선", name or ""):
+    # 특수선: 관공선·조사선·방제선처럼 사전에 없는 이름은 '…함/…선 N척' 꼴로 잡는다
+    if re.search(r"쇄빙|조사선|관공선|여객선|페리|카페리|예인선|준설선|방제|경비|순찰|훈련함|지원함", name or "") \
+       or re.search(r"[가-힣]함\s*\d+\s*척", name or ""):
         return "NAVAL"
     return None
 
