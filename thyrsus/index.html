@@ -2040,6 +2040,21 @@ function realAliveNonTravelerCount(){
     S.players.filter(p=>!p.alive && p.charId==='zombuul' && hasStatus(p,'fakedead')).length;
 }
 function playerOf(pid){ return S.players.find(p=>p.id===pid); }
+/* 지명당할 수 있는 좌석 — '겉보기 생존'이 아니라 '실제 생존'이다.
+   [무엇이 문제였나] 낮 지명 경로 네 곳(피지명자 격자·지명 개시 버튼·newNomination 가드·
+   처형 확정 버튼)이 전부 alivePlayers() 하나만 보고 있었다. 그런데 공식 Zombuul 은
+   "The 1st time you die, **you live** but register as dead." — 죽은 척 중인 좀버얼은 살아
+   있는 플레이어다. 앱도 이미 그렇게 안다(abilityActs·realAliveCount 가 그를 생존자로 센다).
+   그래서 마을이 죽은 척을 알아맞혀도 그 좌석을 지명할 수 없었고, "두 번째 사망이 진짜"라는
+   공식 조항이 앱 안에서 **도달 불가능**해졌다 — 처형이 앱의 유일한 마을 살해 수단인데
+   그 문이 닫혀 있었다.
+   네 자리가 이 함수 하나만 보게 한다. 한 곳만 풀면 지명은 되는데 처형이 막히는 반쪽이 된다.
+   진짜로 죽어 있는 평범한 좌석까지 열 것인지는 공식 원문(캐릭터 능력 코퍼스)으로 결론이
+   나지 않아 열지 않는다 — 근거가 직접 있는 좀버얼만 연다. */
+function nomineeEligible(){
+  return S.players.filter(p=> p.alive || (p.charId==='zombuul' && hasStatus(p,'fakedead')));
+}
+function canBeNominated(p){ return !!p && (p.alive || (p.charId==='zombuul' && hasStatus(p,'fakedead'))); }
 /* 진영은 캐릭터에서 '유도'하면 이발사 교환·건달·팡 구에서 오염된다.
    p.alignment 가 명시돼 있으면 그것이 우선, 없으면 캐릭터 타입에서 유도한다. */
 function isEvil(p){
@@ -2290,8 +2305,14 @@ const DEATH_MODIFIERS = [
    official:'Lleech: "Each night*, choose a player: they die. You start by choosing a player: they are poisoned. You die if & only if they are dead." (roles181.json:1860) — 보호받는 쪽은 **리치**다: 숙주가 살아 있는 한 리치는 처형·처단자·밤 공격 어느 것으로도 죽지 않는다. 숙주 자신은 평소대로 죽는다. 숙주는 lleechHost 토큰으로 표시하며, 숙주가 죽으면 리치도 죽는다 — 다만 주모자 징크스가 예외를 만들어(숙주가 처형으로 죽으면 리치는 살아남되 능력 상실) 자동으로 죽이지 않고 알리기만 한다. 2026-09-09 부터 판정이 켜져 있다.',
    /* 숙주 토큰(lleechHost)이 살아 있는 좌석에 있으면 리치는 어떤 원인으로도 죽지 않는다.
       토큰이 없으면(사회자가 아직 안 놓았거나 그런 판이 아니면) 조용히 물러난다 — 옛 동작 그대로.
-      리치 자신이 오작동이어도 이 조항은 남는다: "if & only if" 는 리치의 능력이 아니라 존재 규칙이다. */
-   when:(t,c)=> t.charId==='lleech' && lleechHostAlive(),
+      [무엇이 문제였나] 여기 "리치 자신이 오작동이어도 이 조항은 남는다: 'if & only if' 는
+      리치의 능력이 아니라 존재 규칙이다" 라고 적혀 있었다. **그 구분은 공식 어디에도 없다.**
+      공식은 그 문장을 리치의 `ability` 필드 안에 넣어 두었고, 주모자 징크스는 숙주-리치 사망
+      연결을 끊는 수단을 "loses their ability" 라고 부른다 — 공식 스스로 그것을 능력이라 부른다.
+      공식 위키 Lleech 예시가 정면으로 못박는다: "The drunk Lleech is executed and dies, and
+      good wins." 즉 취한 리치는 이 조항의 보호를 받지 못한다.
+      실제 결과: 독살자·궁정대신으로 리치를 오작동시켜 처형해도 앱이 막아 **선 승리가 사라졌다**. */
+   when:(t,c)=> t.charId==='lleech' && lleechHostAlive() && !isMalfunctioning(t),
    reason:()=>{ const h=lleechHostOf(); return `리치 — 숙주(${h?h.name:'?'})가 살아 있어 죽지 않음`; }},
 
   {id:'deviant-exile', ko:'일탈자 — 추방 면역', precedence:48, stage:'block', effect:'block',
@@ -2299,7 +2320,12 @@ const DEATH_MODIFIERS = [
    /* 재량 답은 판정 '전에' 모아 ctx.deviantFunny 로 넘긴다 — when() 은 읽기만 한다(계약 2).
       표 안에 있어야 근거 사슬(deathTraces)에 한 줄이 남고, 찻집 여인·폭풍잡이 같은 절대 면역이
       더 앞선 precedence 로 먼저 걸리면 일탈자에게 묻지도 않는다(묻는 순서 = 판정 순서). */
-   when:(t,c)=> c.sourceType==='exile' && t.charId==='deviant' && c.deviantFunny===true,
+   /* 오작동이면 성립하지 않는다 — 이 면역은 그 좌석 **자신의** 능력이다.
+      [무엇이 문제였나] 같은 표의 자기-능력 면역 일곱(재상·사이코패스·군인·선원·시장·좀버얼·
+      어릿광대)은 전부 `!isMalfunctioning(t)` 로 잠겨 있는데 일탈자만 빠져 있었다. 군인 항목의
+      근거 문구가 "대상 '자신의' 능력이므로 중독·취함이면 무효다"라고 선언해 놓고 여기서만
+      그 규칙을 안 지켜 표가 스스로와 어긋났다. 공식에도 예외 징크스가 없다(jinxes 0건). */
+   when:(t,c)=> c.sourceType==='exile' && t.charId==='deviant' && c.deviantFunny===true && !isMalfunctioning(t),
    reason:(t)=> `일탈자(${t.name}) — 오늘 재미있었으므로 추방으로 죽지 않음(사회자 판단)`},
 
   {id:'sailor', ko:'선원', precedence:50, stage:'block', effect:'block',
@@ -2714,9 +2740,15 @@ function promoteScarletWoman(dead, aliveBefore){
 /* ── 상태-출처 연동(최소침습): 지속효과 출처가 능력을 잃으면 효과도 끝난다 ──
    공식 근거(위키 Poisoner 예시): 독살범이 임프가 되자 시장의 중독이 풀린다 —
    "독살범이 인플레이에 없기 때문". 사망도 동일(죽은 자는 능력이 없다).
-   대상: 독살범 독 · 수도사 보호 · 여관 주인 보호/취함 · 궁정대신 취함 · 마녀 저주 · 세레노버스 광기 · 푸카 독.
-   유지: 주정뱅이(캐릭터 자체) · 사랑꾼(사망 '후' 발동하는 능력) · 뱀 조련사 스왑 독(영구) · 집사 주인. */
-const EFFECT_SOURCE_KO = {poisoner:'독살범', monk:'수도사', innkeeper:'여관 주인', courtier:'궁정대신', witch:'마녀', cerenovus:'세레노버스', pukka:'푸카'};
+   대상: 독살범 독 · 수도사 보호 · 여관 주인 보호/취함 · 궁정대신 취함 · 마녀 저주 · 세레노버스 광기 ·
+         푸카 독 · **악마의 변호사 처형 보호**.
+   유지: 주정뱅이(캐릭터 자체) · 사랑꾼(사망 '후' 발동하는 능력) · 뱀 조련사 스왑 독(영구) · 집사 주인.
+   [무엇이 문제였나] 악마의 변호사만 이 표에서 빠져 있었다. 그래서 변호사가 죽거나 이발사·
+   마귀할멈으로 캐릭터를 잃어도 execProtect 토큰이 그대로 남고, 사망 판정 표는 토큰 존재만
+   보므로 **없어진 변호사의 변호가 계속 처형을 막았다.** 같은 부류인 수도사·여관 주인의
+   보호 토큰은 이미 정리 대상이었으므로 같은 종류를 정반대로 처리하는 내부 모순이었다.
+   (대상 본인의 중독은 계속 무시한다 — 이것은 타인의 능력이라는 현재 계약이 옳다.) */
+const EFFECT_SOURCE_KO = {poisoner:'독살범', monk:'수도사', innkeeper:'여관 주인', courtier:'궁정대신', witch:'마녀', cerenovus:'세레노버스', pukka:'푸카', devilsadvocate:'악마의 변호사'};
 /* 출처 문자열 대조 — 자동 부여는 '궁정대신'이지만 상태 대시보드의 수동 부여는
    만료 안내가 괄호로 붙은 '궁정대신(3밤+3낮)'으로 저장된다. 화면 표시 문자열을 건드리지
    않고 '이름(…)' 접미 형태까지 같은 출처로 본다 — 수동 부여분도 출처 사망·캐릭터 변경 때
@@ -4351,6 +4383,14 @@ function noticeLleechHostDeath(p){
   if(!p || !hasStatus(p,'lleechHost')) return;
   const ll=S.players.find(q=>q.charId==='lleech' && q.alive);
   if(!ll) return;
+  /* 리치가 오작동 중이면 "if & only if" 절이 통째로 정지한다 — 숙주가 죽어도 리치는 죽지 않는다.
+     전에는 이 안내가 오작동을 보지 않고 "리치도 죽습니다. 사망 처리하세요"라고 확정형으로
+     지시했다. 앱이 자동으로 죽이지는 않지만 사회자가 지시대로 따르면 죽지 않아야 할 악마가 죽는다. */
+  if(isMalfunctioning(ll)){
+    log(`🪱 리치의 숙주(${p.name}) 사망 — 리치(${ll.name})는 지금 오작동 상태라 죽지 않습니다`);
+    toast(`🪱 숙주 ${p.name} 사망 — 그러나 리치(${ll.name})는 중독·취함 상태입니다. 능력이 꺼져 있으므로 리치는 **죽지 않습니다**. 나중에 정상으로 돌아오면 그때 다시 판정하세요.`,'warn');
+    return;
+  }
   const mm=S.players.find(q=>q.charId==='mastermind' && q.alive);
   log(`🪱 리치의 숙주(${p.name}) 사망 — 리치(${ll.name})도 죽습니다`+(mm? ' / 주모자 징크스 확인 필요' : ''));
   toast(mm
@@ -4874,11 +4914,13 @@ function renderDay(){
       <div class="pickgrid">${alivePlayers().map(p=>`<button class="pcell ${_np.tor===p.id?'sel':''}" onclick="setNomPick('tor','${p.id}')">
         <span class="pcnum num">${S.players.indexOf(p)+1}</span><span class="pcname">${esc(p.name)}</span></button>`).join('')}</div>
       <div class="picklab" style="margin-top:12px">피지명자 <span class="hint">${_np.nee?esc(playerOf(_np.nee)?.name||''):'선택'}</span></div>
-      <div class="pickgrid">${alivePlayers().map(p=>`<button class="pcell ${_np.nee===p.id?'sel nee':''}" onclick="setNomPick('nee','${p.id}')">
-        <span class="pcnum num">${S.players.indexOf(p)+1}</span><span class="pcname">${esc(p.name)}</span></button>`).join('')}</div>
+      <div class="pickgrid">${nomineeEligible().map(p=>`<button class="pcell ${_np.nee===p.id?'sel nee':''}" onclick="setNomPick('nee','${p.id}')">
+        <span class="pcnum num">${S.players.indexOf(p)+1}</span><span class="pcname">${esc(p.name)}${p.alive?'':' <span class="hint">(죽은 척)</span>'}</span></button>`).join('')}</div>
       <div class="bigactions" style="margin-top:14px">
-        <!-- nomPick 은 페이즈·사망을 넘어 유지된다 — 고른 뒤 죽은 좌석이면 버튼을 잠근다(공식: 죽은 플레이어는 지명·피지명 불가). playerOf(null)?.alive 는 undefined 라 미선택 조건도 그대로 걸린다 -->
-        <button class="gold" onclick="newNomination()" ${(!playerOf(_np.tor)?.alive||!playerOf(_np.nee)?.alive)?'disabled':''}>
+        <!-- nomPick 은 페이즈·사망을 넘어 유지된다 — 고른 뒤 죽은 좌석이면 버튼을 잠근다.
+             지명자는 '겉보기 생존'(죽은 자는 지명할 수 없다), 피지명자는 '실제 생존'(죽은 척
+             중인 좀버얼은 지명당할 수 있다) — 두 축이 다르므로 따로 묻는다. -->
+        <button class="gold" onclick="newNomination()" ${(!playerOf(_np.tor)?.alive||!canBeNominated(playerOf(_np.nee)))?'disabled':''}>
           ${_np.tor&&_np.nee?`${esc(playerOf(_np.tor)?.name||'')} → ${esc(playerOf(_np.nee)?.name||'')} 지명 개시`:'지명 개시'}</button>
       </div>
     </div>
@@ -4931,7 +4973,7 @@ function newNomination(){
     if(typeof nomPick!=='undefined'){ nomPick.tor=null; nomPick.nee=null; } renderAll(); return; }
   if(!_tp.alive){ toast(`${_tp.name}은(는) 사망했습니다 — 죽은 플레이어는 지명할 수 없습니다.`,'warn');
     if(typeof nomPick!=='undefined') nomPick.tor=null; renderAll(); return; }
-  if(!_np.alive){ toast(`${_np.name}은(는) 이미 사망했습니다 — 죽은 플레이어는 지명당할 수 없습니다.`,'warn');
+  if(!canBeNominated(_np)){ toast(`${_np.name}은(는) 이미 사망했습니다 — 죽은 플레이어는 지명당할 수 없습니다.`,'warn');
     if(typeof nomPick!=='undefined') nomPick.nee=null; renderAll(); return; }
   if(tor===nee){ toast('자기 자신을 지명했습니다 — 공식 규칙상 허용됩니다. 그대로 진행합니다.','warn'); }
   /* 공식은 "한 플레이어는 하루 1회만 지명할 수 있고, 하루 1회만 지명당할 수 있다"이지만
@@ -5196,7 +5238,10 @@ function cancelNom(nid){
    처형에서 판정이 통째로 뒤집히므로 여기서 반드시 갈라 둔다.
    일반 처형·성결자 발동이 이 함수를 공유한다. */
 function resolveExecution(p, cause){
-  const before=p.alive;
+  /* '죽었는가'를 겉보기 alive 로만 재면 좀버얼의 두 번째 사망을 놓친다 — 그 좌석은 첫 사망
+     때 이미 alive=false 이므로 before/after 가 둘 다 false 다. 실제 생존 축으로 잰다. */
+  const _reallyAlive=q=> !!q && (q.alive || (q.charId==='zombuul' && hasStatus(q,'fakedead')));
+  const before=_reallyAlive(p);
   S.executedToday=`${p.name} (${charName(p)})`; S.executedTodayPid=p.id; S.executedDiedToday=null;
   const blk=resolveDeath(p,{sourceType:'execution', cause:cause||''}).reason;
   if(blk){
@@ -5205,7 +5250,7 @@ function resolveExecution(p, cause){
     save(); renderAll(); return false;
   }
   killPlayer(p, cause);
-  const died = before && !p.alive;                  // 어릿광대 1회 생존 등으로 버틴 경우 제외
+  const died = before && !_reallyAlive(p);          // 어릿광대 1회 생존·좀버얼 죽은 척으로 버틴 경우 제외
   S.executedDiedToday = died? `${p.name} (${charName(p)})` : null;
   if(!died) toast(`⚔ ${p.name} 처형 — 그러나 죽지 않았습니다. 오늘의 처형은 사용되었고, 장의사에게는 아무 캐릭터도 보여주지 마세요.`,'warn');
   else toast(`${p.name} 처형. 오늘 밤 장의사에게 보여줄 캐릭터: ${charName(p)} (첩자/은둔자/주정뱅이면 등록 재량)`,'ok');
@@ -9993,9 +10038,27 @@ function evalWinEvent(kind, ctx){
     return null;
   }
   if(kind==='klutz'){
-    if(ctx.targetEvil)
-      return {team:'evil', reason:`얼뜨기(${ctx.klutzName})가 악한 플레이어를 지목했습니다.`, rule:'얼뜨기: 사망 후 공개 지목한 대상이 악하면 선한 팀이 패배합니다. (중독·취함 상태로 죽었다면 발동하지 않습니다)'};
+    /* 공식 Klutz: "…if they are evil, **your team** loses." 지는 쪽은 캐릭터의 기본 색이 아니라
+       판정 시점 얼뜨기 좌석의 진영이다. 이발사 교환은 캐릭터만 바꾸고 진영은 보존하므로
+       악한 얼뜨기가 앱 자체 경로로 생긴다. 성자·고블린·시장은 이미 같은 계약으로 고쳤는데
+       얼뜨기·아가씨 둘만 옛 동작으로 남아 서로 어긋나 있었다.
+       대상의 악 여부는 '발동 조건'이고, 지는 팀은 '얼뜨기 본인의 진영'이다 — 둘을 갈라 쓴다. */
+    if(ctx.targetEvil){
+      const kEvil=!!ctx.klutzEvil;
+      return {team: kEvil? 'good':'evil',
+              reason:`얼뜨기(${ctx.klutzName}${kEvil?' · 악한 진영':''})가 악한 플레이어를 지목했습니다.`,
+              rule:`얼뜨기: 사망 후 공개 지목한 대상이 악하면 **그 좌석이 속한 팀**이 패배합니다 — 지금은 ${kEvil?'악한':'선한'} 팀이 패배합니다. (중독·취함 상태로 죽었다면 발동하지 않습니다)`};
+    }
     return null;
+  }
+  /* 아가씨 — 공식: "If a Minion publicly guesses you (once), **your team** loses."
+     전에는 damselCall 이 askWin({team:'evil'}) 을 직접 굳혀 반환해, 사유·rule 문구·전적이
+     이 함수 밖에서 만들어졌다. 다른 승리 조항과 같은 자리로 옮겨 한 곳에서 나오게 한다. */
+  if(kind==='damsel'){
+    const dEvil=!!ctx.damselEvil;
+    return {team: dEvil? 'good':'evil',
+            reason:`하수인이 아가씨(${ctx.damselName}${dEvil?' · 악한 진영':''})를 공개적으로 정확히 지목했습니다.`,
+            rule:`아가씨: 하수인이 낮에 공개적으로 아가씨를 맞히면(게임당 1회) **그 좌석이 속한 팀**이 패배합니다 — 지금은 ${dEvil?'악한':'선한'} 팀이 패배합니다.`};
   }
   if(kind==='dayEnd'){
     if(S.mastermindDay && S.phase.n===S.mastermindDay){
@@ -10267,7 +10330,8 @@ function damselCall(){
     if(t.charId!=='damsel'){ toast(`${t.name}은(는) 아가씨가 아닙니다 — 추측 실패. 기회는 소진되었습니다.`,'ok'); save(); renderAll(); return; }
     if(isMalfunctioning(dm)){ toast('아가씨가 중독·취함 상태 — 맞혔지만 발동하지 않습니다(기회는 소진).','warn'); log('아가씨 추측 적중 — 오작동으로 무효'); save(); renderAll(); return; }
     save(); renderAll();
-    askWin({team:'evil', reason:`하수인이 아가씨(${dm.name})를 공개적으로 정확히 지목했습니다.`, rule:'아가씨: 하수인이 낮에 공개적으로 아가씨를 맞히면(게임당 1회) 선한 팀이 패배합니다.'});
+    const _res=evalWinEvent('damsel', {damselEvil:isEvil(dm), damselName:dm.name});
+    if(isWinRes(_res)) askWin(_res);
   }, {title:'👗 아가씨 추측'});
 }
 /* 알사히르 — 공식: "Each day, if you publicly guess which players are Minion(s) and which
@@ -10305,11 +10369,18 @@ function cultLeaderCall(){
 function klutzCall(){
   const kl=S.players.find(p=>p.charId==='klutz' && !p.alive);
   if(!kl){ toast('사망한 얼뜨기가 없습니다.','warn'); return; }
-  thyChoose('얼뜨기가 공개 지목한 플레이어를 고르세요.', thyPlayerChoices(S.players), tid=>{
+  /* 공식 Klutz: "publicly choose **1 alive player**". 전에는 좌석 전체를 후보로 넣고(사망자는
+     부제에 '사망 · ' 만 붙여 그대로 고를 수 있었다) 콜백도 생사를 안 봐서, 불법 지목이 그대로
+     승패 판정에 들어갔다. 같은 "1 alive player" 형태인 달의 자손이 이미 올바른 선례다 —
+     후보를 생존자로 만들고, 콜백에서 다시 확인하고, 후보가 0명이면 지목 자체를 건너뛴다. */
+  const cands=alivePlayers();
+  if(!cands.length){ toast('지목할 생존자가 없습니다 — 얼뜨기의 지목은 성립하지 않습니다.','warn'); log('🤡 얼뜨기 지목 — 생존자가 없어 성립하지 않음'); return; }
+  thyChoose('얼뜨기가 공개 지목한 플레이어를 고르세요 (생존자만).', thyPlayerChoices(cands), tid=>{
     const t=playerOf(tid); if(!t){ toast('플레이어를 찾지 못했습니다.','warn'); return; }
+    if(!cands.some(q=>q.id===t.id)){ toast(`${t.name}은(는) 살아 있지 않습니다 — 얼뜨기는 생존자만 지목할 수 있습니다.`,'warn'); return; }
     if(isMalfunctioning(kl)){ toast('얼뜨기가 중독/오작동 상태로 죽었습니다 — 발동하지 않습니다.','warn'); log(`얼뜨기 지목(${t.name}) — 오작동으로 무효`); return; }
     log(`🤡 얼뜨기 공개 지목: ${t.name}`);
-    const res=evalWinEvent('klutz', {targetEvil:isEvil(t), klutzName:kl.name});
+    const res=evalWinEvent('klutz', {targetEvil:isEvil(t), klutzName:kl.name, klutzEvil:isEvil(kl)});
     if(isWinRes(res)) askWin(res); else toast(`${t.name}은(는) 선한 플레이어입니다 — 아무 일도 일어나지 않습니다.`,'ok');
   }, {title:'🤡 얼뜨기'});
 }
