@@ -102,6 +102,20 @@ class TestContract(unittest.TestCase):
         self.assertTrue(r["party_anon"])
         self.assertEqual(r["payterm"], "공사진척에 따른 수금")
 
+    def test_new_krx_template_fields(self):
+        """2025~ 신형 서식: 계약명이 '판매ㆍ공급계약 구분/세부내용'에, 수주일 라벨이 '계약(수주)일'."""
+        from kship_contracts import _fields_from_kv, _kv_from_raw
+        raw = [("1. 판매ㆍ공급계약 구분", "공사수주"), ("- 세부내용", "VLCC 2척"),
+               ("2. 계약내역 계약금액(원)", "349,000,000,000"), ("3. 계약상대", "아시아 소재 선사"),
+               ("4. 판매ㆍ공급지역", "아시아"), ("5. 계약기간 시작일", "2025-06-12"), ("5. 계약기간 종료일", "2027-08-31"),
+               ("6. 주요 계약조건 계약금ㆍ선급금 유무", "유"), ("7. 계약(수주)일", "2025-06-12")]
+        f = _fields_from_kv(_kv_from_raw(raw))
+        self.assertEqual((f["name"], f["type"], f["ships"], f["amt_krw_m"], f["signed"], f["end"], f["region"]),
+                         ("VLCC 2척", "VLCC", 2, 349000.0, "2025-06-12", "2027-08-31", "아시아"))
+        # 정정공시: 앞에 붙는 정정 표의 '5. 계약기간 -종료일 2029-03-31'→'2028-11-30' 은 본표 값을 덮지 않는다
+        raw2 = [("정정항목 정정전", "정정후"), ("5. 계약기간 -종료일 2029-03-31", "2028-11-30")] + raw
+        self.assertEqual(_fields_from_kv(_kv_from_raw(raw2))["end"], "2027-08-31")
+
     def test_ship_type_tokens(self):
         cases = {"LPGC 4척": "VLGC", "LNG운반선 2척": "LNGC", "17,000TEU급 컨테이너선 6척": "CONT",
                  "VLCC 2척": "VLCC", "MR탱커 4척": "PC", "PCTC 4척": "PCTC", "KDDX 1척": "NAVAL",

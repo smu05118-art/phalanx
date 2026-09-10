@@ -82,25 +82,27 @@ def _kv(html):
             if not key:
                 continue
             raw.append((key, val))
-            k = re.sub(r"^\s*[\d]+\.\s*|^\s*-\s*|[\s　ㆍ·]", "", key)
-            kv.setdefault(k, val)
+            kv.setdefault(_norm_key(key), val)
     return kv, raw
 
 
 def _find(kv, *needles):
-    for k, v in kv.items():
-        if all(n in k for n in needles):
-            return v
-    return None
+    """needle 을 모두 품은 라벨 중 **가장 짧은** 라벨의 값. 정정공시는 앞에 '계약기간-종료일2029-03-31'
+    같은 정정 표 라벨이 먼저 오는데, 본표의 '계약기간종료일'이 더 짧아 본표 값이 이긴다."""
+    hits = [(len(k), i, v) for i, (k, v) in enumerate(kv.items()) if all(n in k for n in needles)]
+    return min(hits)[2] if hits else None
 
 
-def parse_contract(html, rcp, title, stock):
-    kv, raw = _kv(html)
+def _fields_from_kv(kv):
+    """정규화 라벨 사전 → 계약 필드. 거래소 서식이 둘이다:
+      · 구형: '체결계약명' 행에 계약명
+      · 2025~ 신형(HD현대重 등): '1. 판매ㆍ공급계약 구분'(공사수주) + '- 세부내용'(VLCC 2척), 수주일 라벨은 '계약(수주)일'
+    정정공시는 앞에 정정 표(정정전/정정후)가 붙지만 본표 라벨은 같다."""
     name = _find(kv, "체결계약명") or _find(kv, "계약명") or ""
+    if not name and _find(kv, "판매공급계약구분"):
+        name = _find(kv, "세부내용") or ""
     amt_krw = num_of(_find(kv, "계약금액(원)") or _find(kv, "계약금액") or "")
-    rec = {
-        "rcp": rcp, "stock": stock, "title": title,
-        "corrected": "정정" in (title or ""),
+    return {
         "name": name,
         "type": ship_type_of(name),
         "ships": (int(_SHIPS.search(name).group(1)) if _SHIPS.search(name) else None),
@@ -110,13 +112,32 @@ def parse_contract(html, rcp, title, stock):
         "region": _find(kv, "판매", "지역") or _find(kv, "공급지역") or "",
         "start": _find(kv, "계약기간", "시작") or _find(kv, "시작일") or "",
         "end": _find(kv, "계약기간", "종료") or _find(kv, "종료일") or "",
-        "signed": _find(kv, "수주", "일자") or _find(kv, "계약(수주)일자") or "",
+        "signed": _find(kv, "수주", "일자") or _find(kv, "계약(수주)일자") or _find(kv, "계약(수주)일") or "",
         "advance": _find(kv, "선급금") or "",
         "payterm": _find(kv, "대금지급") or "",
         "withheld": _find(kv, "공시유보") or _find(kv, "유보") or "",
         "note": _find(kv, "기타", "중요") or _find(kv, "기타") or "",
-        "kv": raw,
     }
+
+
+def _norm_key(key):
+    return re.sub(r"^\s*[\d]+\.\s*|^\s*-\s*|[\s　ㆍ·]", "", key)
+
+
+def _kv_from_raw(raw):
+    """캐시의 원문 (라벨, 값) 목록 → 정규화 사전(첫 값 우선). 정정 표의 '5. 계약기간 -종료일 2029-03-31'
+    같은 라벨은 본표의 '계약기간 종료일'과 다른 키가 되므로 본표 값이 그대로 남는다."""
+    kv = {}
+    for k, v in raw:
+        kv.setdefault(_norm_key(k), v)
+    return kv
+
+
+def parse_contract(html, rcp, title, stock):
+    kv, raw = _kv(html)
+    rec = {"rcp": rcp, "stock": stock, "title": title, "corrected": "정정" in (title or "")}
+    rec.update(_fields_from_kv(kv))
+    rec["kv"] = raw
     blob = " ".join(v for _, v in raw)
     rec["option_hint"] = bool(_OPTION.search(blob))
     rec["party_anon"] = bool(re.search(r"소재|선사|선주|비공개|유보", rec["party"]))
@@ -164,9 +185,12 @@ def build(stocks):
         for r in sorted(recs, key=lambda r: r["rcp"]):      # rcp 오름차순 → 뒤(정정)가 덮는다
             # 선종·척수는 캐시값을 믿지 않고 이름에서 다시 뽑는다 — 별칭 사전이 자라도
             # 재수집 없이 반영되도록(캐시는 원문 보존이 목적이지 판정 보존이 아니다).
-            r["type"] = ship_type_of(r["name"])
-            m = _SHIPS.search(r["name"] or "")
-            r["ships"] = int(m.group(1)) if m else r.get("ships")
+            if r.get("kv"):
+                r.update(_fields_from_kv(_kv_from_raw(r["kv"])))
+            else:
+                r["type"] = ship_type_of(r["name"])
+                m = _SHIPS.search(r["name"] or "")
+                r["ships"] = int(m.group(1)) if m else r.get("ships")
             key = (r["stock"], r["name"], r["signed"] or r["start"])
             if key in by:
                 r["supersedes"] = by[key]["rcp"]
