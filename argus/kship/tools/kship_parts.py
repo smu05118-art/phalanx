@@ -140,11 +140,14 @@ def parts_html(data):
     S.sel=selId; var pan=document.getElementById('panel'); pan.textContent='';
     var h=el('h3',null,title); var em=el('em',null,S.type?('관련도 기준 선종: '+P.types.filter(function(t){return t.id===S.type})[0].ko):'선종 미선택'); h.appendChild(em); pan.appendChild(h);
     if(!catIds.length){ pan.appendChild(el('p','mut','이 영역은 묶음 영역입니다 — 안쪽 영역을 누르세요.')); return; }
+    var root=pan;
     catIds.slice().sort(function(a,b){ return (relOf(b)||0)-(relOf(a)||0); }).forEach(function(cid){
-      var c=catById[cid]; if(!c) return; var rel=relOf(cid), gr=gradeOf(cid);
+      var pan=root; var c=catById[cid]; if(!c) return; var rel=relOf(cid), gr=gradeOf(cid);
+      // 선종을 골랐는데 관련도 0인 소분류는 흐리게 — 영역이 여러 소분류를 품을 때 눈에 띄는 것은 해당 선종 것이어야 한다
+      var box=el('div', rel===0?'catbox off':'catbox'); pan.appendChild(box); pan=box;
       var head=el('div',null); head.style.cssText='margin-top:10px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap';
       var b=el('b',null,c.ko); head.appendChild(b); var s=el('span','mut',(P.groups[c.p]||c.p)+' · '+c.id); s.style.fontSize='10.5px'; head.appendChild(s);
-      if(rel!==null){ var pill=el('span','pill','관련도 '+rel+(gr?' · 근거 '+gr:'')); if(gr==='C') pill.className='pill est'; head.appendChild(pill); }
+      if(rel!==null){ var pill=el('span','pill',rel===0?'이 선종 해당 없음':('관련도 '+rel+(gr?' · 근거 '+gr:''))); if(gr==='C'&&rel) pill.className='pill est'; head.appendChild(pill); }
       pan.appendChild(head);
       var cos=P.idx[cid]||[]; if(!cos.length){ pan.appendChild(el('p','mut','이 부품을 주력으로 하는 상장사가 모집단에 없거나 아직 원문 확인 전입니다.')); return; }
       var ul=el('ul'); cos.slice().sort(function(a,b){return (b.confirmed?1:0)-(a.confirmed?1:0)}).forEach(function(co){
