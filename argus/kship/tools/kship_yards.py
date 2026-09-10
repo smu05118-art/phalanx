@@ -174,9 +174,21 @@ def parse_hedge_any(html, where):
     금액은 전부 **백만 통화단위**로 맞춘다. 못 읽으면 items 가 비고 shape 가 None — 추정하지 않는다.
     """
     out = {"items": [], "shape": None, "where": where}
+    seen_label_sets = []                      # 앞 표들의 행 라벨 집합 — 같은 라벨 묶음이 다시 나오면 비교표시(전기)다
     for t in parse_tables(html):
         head = " ".join(t["cols"]); lead = (t.get("lead") or "")[-160:]
         unit_txt = (head + " " + lead)
+        # 주석은 '당반기말 (단위: 천원)' 표 뒤에 '전기말 (단위: 천원)' 표를 나란히 둔다(삼성重 실측).
+        # 전기 표를 더하면 명목액이 두 배가 된다 — 표 앞머리의 기간 표기로 거르고, 표기가 없으면
+        # 앞 표와 행 라벨이 같은 표(비교표시)를 거른다.
+        tail = lead[-40:]
+        if re.search(r"전기말|전년말|전기\s*\(|직전", tail) and not re.search(r"당반기말|당분기말|당기말|당기\s*\(", tail):
+            continue
+        labels = frozenset(r[0].strip() for r in t["rows"] if r and re.search(r"(매도|매입)금액.*?[A-Z]{3}\s*\[", r[0]))
+        if labels and labels in seen_label_sets:
+            continue
+        if labels:
+            seen_label_sets.append(labels)
         k = 1e-3 if re.search(r"외화\s*:\s*천|\[USD,\s*천\]|\(단위\s*:\s*천", unit_txt) else 1.0
         if "백만USD" in unit_txt or "백만 USD" in unit_txt:
             k = 1.0
@@ -188,11 +200,21 @@ def parse_hedge_any(html, where):
             m = re.search(r"(매도|매입)금액.*?([A-Z]{3})\s*\[[A-Z]{3},\s*(천|백만)\]", lab)
             if m:
                 mul = 1e-3 if m.group(3) == "천" else 1.0
+                # 사업보고서 주석은 멤버마다 '매매 목적 / 공정가치위험회피 / 현금흐름위험회피 / 합계' 네 열을 다 둔다 —
+                # 전부 더하면 두 배가 된다(삼성重 2025Q4 453억달러). 목적 열과 합계 열이 함께 있으면 합계 열만 쓴다.
+                has_total = any("합계" in c for c in t["cols"])
+                has_purpose = any(re.search(r"매매\s*목적|공정가치|현금흐름", c) for c in t["cols"])
+                # 멤버별('파생상품15 … 합계') 열 옆에 총합계('파생상품 계약 유형 합계') 열이 또 있으면 총합계만 센다
+                has_grand = any("합계" in c and not re.search(r"파생상품\s*\d+", c) for c in t["cols"])
                 for i, v in enumerate(r[1:]):
                     x = num_of(v)
                     if x is None:
                         continue
                     col = t["cols"][i + 1] if i + 1 < len(t["cols"]) else ""
+                    if has_total and has_purpose and "합계" not in col:
+                        continue
+                    if has_grand and ("합계" not in col or re.search(r"파생상품\s*\d+", col)):
+                        continue
                     # 비교표시 기간(전기말·전년) 열은 명목액이 아니라 지난 기의 값이다 — 더하면 두 배가 된다
                     if re.search(r"전기|전년|직전|전반기|전분기", col):
                         continue

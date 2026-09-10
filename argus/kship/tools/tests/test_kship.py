@@ -127,6 +127,38 @@ class TestContract(unittest.TestCase):
             self.assertEqual(ship_type_of(name), want, name)
 
 
+class TestHedgeNote(unittest.TestCase):
+    """주석의 '당반기말' 표 뒤에 오는 '전기말' 비교표를 더하면 명목액이 두 배가 된다(삼성重 482억달러 오류의 원인)."""
+
+    def test_hedge_note_skips_prior_period(self):
+        from kship_yards import parse_hedge_any
+        tbl = ("<table><tr><th></th><th>금융상품 파생상품 파생상품1 위험회피 매매 목적</th></tr>"
+               "<tr><td>외화파생상품 매도금액, USD [USD, 천]</td><td>%s</td></tr></table>")
+        html = ("<p>위험회피에 대한 세부 정보 공시 당반기말 (단위 : 천원)</p>" + tbl % "1,000,000"
+                + "<p>전기말 (단위 : 천원)</p>" + tbl % "2,000,000")
+        h = parse_hedge_any(html, "note")
+        self.assertEqual(h["shape"], "note-label")
+        self.assertEqual(h["usd_sell_m"], 1000.0)            # 천달러 → 백만달러, 전기 표 제외
+        # 기간 표기가 없어도 같은 라벨 묶음이 반복되면 뒤 표는 비교표시다
+        html2 = "<p>(단위 : 천원)</p>" + tbl % "1,000,000" + "<p>(단위 : 천원)</p>" + tbl % "2,000,000"
+        self.assertEqual(parse_hedge_any(html2, "note")["usd_sell_m"], 1000.0)
+
+
+class TestHedgeNoteColumns(unittest.TestCase):
+    def test_hedge_note_uses_total_column(self):
+        """사업보고서 주석: 멤버마다 목적별 3열 + 합계 열 — 합계 열만 세어야 두 배가 되지 않는다."""
+        from kship_yards import parse_hedge_any
+        html = ("<p>당기 (단위 : 천원)</p><table><tr><th></th><th>파생상품1 매매 목적</th><th>파생상품1 공정가치위험회피</th>"
+                "<th>파생상품1 현금흐름위험회피</th><th>파생상품1 합계</th></tr>"
+                "<tr><td>외화파생상품 매도금액, USD [USD, 천]</td><td>1,000</td><td>2,000</td><td>3,000</td><td>6,000</td></tr></table>")
+        self.assertEqual(parse_hedge_any(html, "note")["usd_sell_m"], 6.0)
+        # 멤버별 합계 열 + 총합계 열(삼성重 사업보고서): 총합계만
+        html2 = ("<p>당기 (단위 : 천원)</p><table><tr><th></th><th>통화 관련 파생상품5 파생상품 목적의 지정 합계</th>"
+                 "<th>통화 관련 파생상품15 파생상품 목적의 지정 합계</th><th>파생상품 계약 유형 합계</th></tr>"
+                 "<tr><td>외화파생상품 매도금액, USD [USD, 천]</td><td>1,000</td><td>5,000</td><td>6,000</td></tr></table>")
+        self.assertEqual(parse_hedge_any(html2, "note")["usd_sell_m"], 6.0)
+
+
 class TestTaxonomy(unittest.TestCase):
     """정적 사전의 교차 참조가 깨지면 인포그래픽이 잘못된 회사를 보여 준다."""
 

@@ -122,7 +122,13 @@ def yard_summary(stock, data):
         tot = [r for r in o["rows"] if r["total"]]
         row = tot[0] if tot else None
         segs = [r for r in o["rows"] if not r["total"]]
-        roll.append({"q": q, "closing": (row["closing"] if row else sum((r["closing"] or 0) for r in segs)),
+        seg_sum = sum((r["closing"] or 0) for r in segs) if any(r["closing"] is not None for r in segs) else None
+        closing = row["closing"] if row else seg_sum
+        note = ""
+        # 합계 행이 부문합과 1% 넘게 어긋나면 합계 셀이 깨진 것이다(삼성重 2024Q4 '315,350'이 31,535로 읽힘) — 부문합을 쓴다
+        if row and seg_sum and closing is not None and abs(closing - seg_sum) > 0.01 * seg_sum:
+            closing, note = seg_sum, "합계행 판독불가→부문합"
+        roll.append({"q": q, "closing": closing, "note": note,
                      "new": (row["new"] if row else None), "delivered": (row["delivered"] if row else None),
                      "opening": (row["opening"] if row else None), "cur": o["cur"],
                      "segs": [{"seg": r["seg"], "closing": r["closing"], "new": r["new"], "delivered": r["delivered"]} for r in segs],
@@ -233,14 +239,27 @@ def yard_html(s, data):
         tl = '<p class="mut">척당 계약 공시에서 인도 예정일을 찾지 못했습니다.</p>'
 
     # 부문 롤포워드 표
+    # 정기보고서 수주표의 기초는 **연초**(직전 사업연도 말) 잔고이고 신규·기납품은 연초 누계다 — 분기 간 연속성은
+    # 같은 해 분기들의 기초가 전년 Q4 기말과 같은지로 대조한다(HD현대重 2025Q1~Q4 기초 = 2024Q4 기말 실측).
+    q4_close = {r["q"][:4]: r["closing"] for r in roll if r["q"].endswith("Q4") and r["closing"] is not None}
     rr = []
     for r in roll:
-        rr.append("<tr><td class=\"l\">%s</td><td>%s</td><td>%s</td><td>%s</td><td><b>%s</b></td><td class=\"l mut\">%s</td>"
+        chk = ""
+        prev_close = q4_close.get(str(int(r["q"][:4]) - 1))
+        if r["opening"] is not None and prev_close:
+            d = r["opening"] - prev_close
+            chk = ('<span class="up">= 전년말</span>' if abs(d) <= 0.001 * prev_close
+                   else '<span class="dn">전년말 대비 %+s억</span>' % fmt_eok(d))
+        elif r["opening"] is None and r["delivered"] is not None:
+            chk = '<span class="mut">기초 미기재(총액−기납품 형식)</span>'
+        if r.get("note"):
+            chk = (chk + " · " if chk else "") + '<span class="dn">%s</span>' % E(r["note"])
+        rr.append("<tr><td class=\"l\">%s</td><td>%s</td><td>%s</td><td>%s</td><td><b>%s</b></td><td class=\"l mut\">%s</td><td class=\"l\">%s</td>"
                   "<td class=\"l\"><a href=\"https://dart.fss.or.kr/dsaf001/main.do?rcpNo=%s\" target=\"_blank\" rel=\"noopener noreferrer\">원문</a></td></tr>"
                   % (E(r["q"]), fmt_eok(r["opening"]), fmt_eok(r["new"]), fmt_eok(r["delivered"]), fmt_eok(r["closing"]),
-                     E(" · ".join("%s %s" % (x["seg"], fmt_eok(x["closing"])) for x in r["segs"])), E(r["rcp"])))
-    roll_table = ('<div class="wrap"><table><thead><tr><th class="l">분기</th><th>기초</th><th>신규증감</th><th>기납품</th><th>기말잔고</th>'
-                  '<th class="l">부문별 기말(억)</th><th class="l">출처</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(rr))
+                     E(" · ".join("%s %s" % (x["seg"], fmt_eok(x["closing"])) for x in r["segs"])), chk, E(r["rcp"])))
+    roll_table = ('<div class="wrap"><table><thead><tr><th class="l">분기</th><th>기초(연초)</th><th>신규증감(누계)</th><th>기납품(누계)</th><th>기말잔고</th>'
+                  '<th class="l">부문별 기말(억)</th><th class="l">대조</th><th class="l">출처</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(rr))
 
     # 매출
     rev_html = ""
@@ -326,7 +345,7 @@ def yard_html(s, data):
  <section class="card" style="margin-top:0"><h2>선종 구성 <em>척당 계약 공시 누적(2024~) · 계약금액 기준</em></h2><div class="chart"><canvas id="cType"></canvas></div>%s</section>
 </div>
 <section class="card"><h2>선표(인도 스케줄) <em>척당 계약의 계약기간 종료일 → 분기 · 척수</em></h2>%s</section>
-<section class="card"><h2>수주 롤포워드 <em>기초 + 신규증감 − 기납품 = 기말 · 억원 · 부문별</em></h2>%s</section>
+<section class="card"><h2>수주 롤포워드 <em>연초 기초 + 신규증감(누계) − 기납품(누계) = 기말 · 억원 · 부문별 · 매출인식 = 기납품 누계의 증분</em></h2>%s</section>
 %s
 %s
 %s
