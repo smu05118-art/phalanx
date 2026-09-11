@@ -29,20 +29,26 @@
 - [x] **메모리/비메모리 노출**(`ksemi_exposure.py`) — II-2 주요제품·II-4 매출실적 절 낱말만.
       산업 전망 문단(사업개요·기타)은 세지 않는다. 83사 중 메모리 15·비메모리 4·양쪽 11·미확인 53.
       무접속. 회사 페이지 카드+칩, 허브 칩. 테스트 +14 (합계 123건)
-- [ ] **수집 실행 중**(17:34/17:41 시작): `ksemi_reports.py --write` · `ksemi_contracts.py --all
-      --write`. 끝나면 ① 새 편입 4사를 `--only 058470,389500,452280,060310` 로 이어 받고
-      ② `ksemi_page.py --all` · `ksemi_parts.py --write` 재실행
-- [ ] site.json 재추가(허브가 실제 데이터로 채워진 것을 확인한 뒤) · 생성된 페이지 커밋
+- [x] **수집 완주**(2026-09-11 19:13 / 20:12) — 정기보고서 **83사 · 8분기 · 오류 0**
+      (잔고 29사 합 29,716억 · 인식기준 18 · 주요고객 23 · 수출/내수 64),
+      계약공시 **919건 / 90종목**(정정 371 · 중국 186 · 익명 26 · 단위 미확인 18).
+      재판정 4사도 두 번째 패스에서 이어 받았다(3S는 3월 결산 — find_periodic).
+- [x] **매출인식 인용 중복 고침** — 한 문장에 `설치완료`와 `통제가 고객에게 이전되는 시점`이
+      같이 있어 같은 인용이 「설치완료」·「인도」로 두 번 실렸다. 한 문장은 한 번만 판정한다.
+      `--reparse`(무접속)로 reports.json 을 고쳐 썼다. 테스트 124건.
+- [x] **페이지 전체 재생성·커밋** — 허브·회사 83·커버리지·parts.html. `site.json` 추적 중.
+
+**웨이브 완료.** 남은 것은 원문에 없어서 못 채운 칸(HANDOFF ③)뿐이다.
 
 ## 0-1. 다음 명령 (끊겼을 때)
 
 ```sh
 cd argus/ksemi/tools
-tail -3 /tmp/ksemi_reports.log /tmp/ksemi_contracts.log   # 수집이 살아 있나
-python3 ksemi_reports.py --write                          # 캐시가 있으면 빠르게 이어받는다
+python3 -m unittest discover -s tests                     # 먼저 통과하는지
+python3 ksemi_reports.py --write                          # 새 분기 — 캐시가 있으면 빠진 것만
 python3 ksemi_contracts.py --all --write
-python3 ksemi_page.py --all && python3 ksemi_parts.py --write   # 렌더
-python3 -m unittest discover -s tests
+python3 ksemi_peers.py --write && python3 ksemi_exposure.py --write   # 무접속
+python3 ksemi_page.py --all && python3 ksemi_parts.py --write        # 렌더
 ```
 
 수집은 **캐시를 먼저 본다** — 다시 돌려도 빠진 것만 받는다(실패는 캐시하지 않는다).
