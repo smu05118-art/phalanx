@@ -400,6 +400,14 @@ def role_for(row):
         return "epc"
     if re.search(r"변압기|차단기|개폐기|배전반|수배전|스위치기어|인버터|PCS|전력변환", prod, re.I):
         return "maker"
+    # KIND 문구는 소재인데 **본문에서 기기를 만든다**고 말하는 경우가 있다 — KBI메탈 024840 은
+    # 제품 문구가 `동ROD, 모터코어`인데 본문에 "변압기 사업부인 KBI일렉트릭(주)은 … 몰드변압기
+    # 제조를 목적으로 설립된 회사"가 나온다(2026.04 지분 100% 취득). 기기 이름이 고유 낱말로
+    # 잡혔으면 maker 로 본다.
+    if re.search(r"몰드\s?변압기|유입\s?변압기|건식\s?변압기|주상\s?변압기|전력용\s?변압기|"
+                 r"배전용\s?변압기|특고압\s?변압기|초고압\s?변압기|GIS\s?차단기|GIS\s?개폐장치|"
+                 r"가스\s?절연", terms, re.I):
+        return "maker"
     return "part"                       # 본문으로 들어온 것은 대개 부품·소재다(스펙 ③)
 
 
@@ -411,16 +419,27 @@ def load_rows():
     return load_asset(ROWS).get("rows") or {}
 
 
-def save_rows(rows, quarter):
-    write_asset(ROWS, {"quarter": quarter, "n": len(rows),
-                       "scanned_at": time.strftime("%Y-%m-%d"),
-                       "rows": {k: rows[k] for k in sorted(rows)}})
+def load_failed():
+    if not has_asset(ROWS):
+        return {}
+    return load_asset(ROWS).get("failed") or {}
+
+
+def save_rows(rows, quarter, failed=None):
+    d = {"quarter": quarter, "n": len(rows), "scanned_at": time.strftime("%Y-%m-%d"),
+         "rows": {k: rows[k] for k in sorted(rows)}}
+    # 못 읽은 회사도 남긴다 — 조용히 사라지면 커버리지가 거짓말을 한다(COMMON §0-2).
+    # 다만 **행은 캐시하지 않으므로** 다시 --probe 하면 이들만 재시도한다.
+    d["failed"] = {k: failed[k] for k in sorted(failed)} if failed else (load_failed() or {})
+    write_asset(ROWS, d)
 
 
 def _run(cands, quarter, rows, tag, log):
     """후보를 순차로 읽는다. DART 는 프로세스 하나로만 두드린다(COMMON §2)."""
     done = ok = 0
-    for i, r in enumerate(cands, 1):
+    failed = dict(load_failed())
+    for r in cands:
+        failed.pop(r["stock"], None)
         row = probe_one(r, quarter)
         if r["stock"] in EXTRA:
             row["extra"] = EXTRA[r["stock"]]
@@ -428,14 +447,18 @@ def _run(cands, quarter, rows, tag, log):
             ok += 1
             rows[r["stock"]] = row
         else:
+            failed[r["stock"]] = {"stock": r["stock"], "name": r["name"],
+                                  "industry": r.get("industry", ""),
+                                  "product": r.get("product", ""), "note": row["note"]}
             log.write("  [warn] %s %s — %s\n" % (r["stock"], r["name"][:14], row["note"]))
         done += 1
         if done % 10 == 0:
-            save_rows(rows, quarter)                  # 중간 저장 — 끊겨도 이어서 돈다
+            save_rows(rows, quarter, failed)          # 중간 저장 — 끊겨도 이어서 돈다
             log.write("  … %s %d/%d (읽음 %d)\n" % (tag, done, len(cands), ok))
             log.flush()
-    save_rows(rows, quarter)
-    log.write("%s 완료: %d사 시도 · %d사 본문 확보\n" % (tag, done, ok))
+    save_rows(rows, quarter, failed)
+    log.write("%s 완료: %d사 시도 · %d사 본문 확보 · %d사 못 읽음\n"
+              % (tag, done, ok, len(failed)))
     return rows
 
 
@@ -519,12 +542,14 @@ def build(log=sys.stderr):
                              universe_source=row.get("universe_source", ""),
                              universe_reason=row.get("universe_reason", "")))
     rejected.sort(key=lambda x: (x["scope"] != "universe", -x["strong"], x["stock"]))
+    failed = [d.get("failed", {})[k] for k in sorted(d.get("failed") or {})]
     out = {"quarter": quarter, "rule": RULE, "candidates": len(rows),
            "built_at": time.strftime("%Y-%m-%d"),
-           "promoted": promoted, "rejected": rejected, "kept": kept}
+           "promoted": promoted, "rejected": rejected, "kept": kept, "failed": failed}
     write_asset("universe_probe.json", out)
-    log.write("후보(본문 확보) %d · 승격 %d · 제외 %d · 모집단 유지 %d → assets/universe_probe.json\n"
-              % (len(rows), len(promoted), len(rejected), len(kept)))
+    log.write("후보(본문 확보) %d · 승격 %d · 제외 %d · 모집단 유지 %d · 못 읽음 %d "
+              "→ assets/universe_probe.json\n"
+              % (len(rows), len(promoted), len(rejected), len(kept), len(failed)))
     for st, p in sorted(promoted.items()):
         log.write("  [승격] %s %-14s %-5s s=%-3d %s\n"
                   % (st, p["name"][:14], p["role"], p["strong"], p["reason"][:80]))

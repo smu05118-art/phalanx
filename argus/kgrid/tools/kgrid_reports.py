@@ -401,6 +401,14 @@ def parse_revenue_table(t):
                      "segkind": seg_kind(seg) or seg_kind(" ".join(labels))})
     if not rows:
         return None
+    # 내수/수출 표라고 하려면 `합계`가 있거나 `내수`·`수출`이 **둘 다** 있어야 한다.
+    # 한전KPS 매출실적 표는 `사업구분|지배회사 및 종속회사|제43기 반기|제42기|…` 인데
+    # 어느 행의 둘째 칸이 `수출` 이어서 이 파서가 표를 가로챘다 — 그러면 뒤의
+    # `parse_segment_sales` 가 그 표를 못 보고 연매출이 해외매출 1,340억이 된다(배수 19.7년).
+    # 여기서 놓아 주면 부문별 매출 파서가 제대로 읽는다.
+    kinds = {r["kind"] for r in rows}
+    if "합계" not in kinds and not {"내수", "수출"} <= kinds:
+        return None
     head = " ".join(t["cols"][:max(1, i_kind + 1)])
     basis = "customer" if (_CUST_COL.search(head) or _CUST_COL.search((t.get("lead") or "")[-120:])) \
         else "segment"
@@ -423,7 +431,10 @@ def parse_segment_sales(t):
     lead = t.get("lead") or ""
     if not (_SALES_LEAD.search(lead) or any("매출" in c for c in cols)):
         return None
-    if any(_clean(c) in _KIND_REAL for r in t["rows"][:8] for c in r[:4]):
+    # 내수/수출 표는 `parse_revenue_table` 의 몫이다. 다만 '셀에 수출이 한 번이라도 있으면
+    # 넘긴다'로 두면 안 된다 — 한전KPS 매출실적 표는 어느 행의 둘째 칸이 `수출` 이어서 이
+    # 파서까지 빠져나가 연매출이 통째로 사라졌다(실측). 실제로 저쪽이 **받는 표만** 넘긴다.
+    if parse_revenue_table(t):
         return None
     if _CUST_COL.search(" ".join(cols[:2])):
         return None
@@ -898,6 +909,18 @@ def _is_fy(col):
     return True
 
 
+def _rev_usable(rv):
+    """이 매출 표를 **연매출의 분모**로 써도 되는가.
+
+    `합계` 행이 있거나 `내수`·`수출` 이 **둘 다** 있어야 회사 전체 매출이다. 한쪽만 있으면
+    그것은 해외매출·수출실적 같은 부분 표다(한전KPS `수출` 한 행)."""
+    rows = (rv or {}).get("rows") or []
+    if not rows:
+        return False
+    kinds = {r.get("kind") for r in rows}
+    return "합계" in kinds or {"내수", "수출"} <= kinds
+
+
 def _norm_co(s):
     return re.sub(r"[\s().,·\-—'\"]|주식회사|\(주\)|CO|LTD|INC|CORP|유한공사", "",
                   (s or ""), flags=re.I).lower()
@@ -1033,6 +1056,12 @@ def build(rows, qs):
             ent = o.get("entity") or ""
             fy = fy_col = fy_cur = None
             fy_basis = "all"
+            if not _rev_usable(rv):
+                # 내수/수출 표가 **한쪽만** 있는 회사가 있다 — 한전KPS 는 `수출` 한 행짜리
+                # 해외매출 표를 싣는다(제42기 133,995 = 해외 1,340억). 그것을 연매출로 쓰면
+                # 배수가 19.7년이 된다(실제 1.8년). 이 표는 분모로 쓰지 않고 부문별 매출로 넘긴다.
+                rv = {}
+                ent = ""
             if ent:
                 sub = _entity_subset(rv, ent)
                 if sub:

@@ -133,7 +133,8 @@ REGIONS = [
      "note": "전압을 154kV·22.9kV로 낮춘다. 차단기·개폐기·보호계전기가 모인다"},
     {"id": "DIST", "ko": "배전 선로", "en": "Distribution", "x": 604, "y": 76, "w": 132, "h": 116,
      "products": ["dist_tr", "tr_unknown", "switch", "cable", "fitting", "relay"],
-     "note": "주상변압기·개폐기·배전자동화 단말. **회전 산업**의 자리다(잔고가 짧다)"},
+     # 이 note 는 화면에 **글자 그대로** 나간다 — 마크다운 강조를 쓰지 않는다.
+     "note": "주상변압기·개폐기·배전자동화 단말. 회전 산업의 자리다(받아서 몇 달 안에 내보낸다)"},
     {"id": "LOAD", "ko": "수용가", "en": "Customer premises", "x": 760, "y": 56, "w": 188, "h": 156,
      "products": ["switchgear", "converter", "relay"],
      "note": "데이터센터·공장·건물. 수배전반과 전력변환(ESS PCS·인버터)이 들어간다"},

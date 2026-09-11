@@ -216,7 +216,7 @@ class 판정선(unittest.TestCase):
         self.assertTrue(ok)
 
     def test_한전_체계업체_언급이_받치면_점수6으로_승격된다(self):
-        ok, why = S.judge(self.row(strong=2, mid=0, kepco=2, terms={"절연유": 2}))
+        ok, why = S.judge(self.row(strong=2, mid=1, kepco=2, terms={"절연유": 2}))
         self.assertTrue(ok, why)
         self.assertIn("체계업체 언급", why)
 
@@ -225,6 +225,36 @@ class 판정선(unittest.TestCase):
                                    neg_terms={"해양플랜트": 5, "조선소": 3}))
         self.assertFalse(ok)
         self.assertIn("압도한다", why)
+
+    def test_전력을_파는_쪽은_제외다(self):
+        """스펙 ④ — 금양그린파워 282720 실측: `발전매출`·`발전사업 허가`·`SMP+REC` 14회 대
+        전력망 고유 낱말 2회. 신재생 발전소를 지어 전기를 파는 회사는 공급망이 아니다."""
+        ok, why = S.judge(self.row(strong=2, mid=3, kepco=2, gen=14,
+                                   gen_terms={"발전매출": 8, "발전사업 허가": 4},
+                                   terms={"계통연계": 1, "송변전": 1}))
+        self.assertFalse(ok)
+        self.assertIn("파는", why)
+
+    def test_정비_공급자는_gen_낱말이_있어도_남는다(self):
+        """한전KPS 051600 실측: gen 1회 대 고유 낱말 26회(송전선로 유지·HVDC 설비점검)."""
+        ok, why = S.judge(self.row(strong=26, mid=25, kepco=11, gen=1,
+                                   gen_terms={"전력거래소": 1}, terms={"송변전": 9}))
+        self.assertTrue(ok, why)
+
+    def test_전력기기_낱말이_한_번도_없으면_남의_산업_이야기다(self):
+        """SIMPAC 009160 실측: `전기강판` 4회가 전부고 변압기·차단기·배전은 0회다 —
+        합금철이 전기강판 **생산 부원료**라는 뜻이지 전력기기 부품이 아니다."""
+        ok, why = S.judge(self.row(strong=4, mid=0, terms={"전기강판": 3, "방향성 전기강판": 1}))
+        self.assertFalse(ok)
+        self.assertIn("한 번도 없다", why)
+
+    def test_짧은_보고서도_빈_띠_위면_승격된다(self):
+        """대원전선 006340 실측: 본문이 6.3KB뿐이라 점수는 10이지만 제품표 용도가
+        `전력송배전`이다. 오탐 상한(5)과 모집단 하한(15) 사이의 빈 띠에 선을 둔 이유."""
+        ok, why = S.judge(self.row(strong=2, mid=4, terms={"송배전": 2}))
+        self.assertTrue(ok, why)
+        self.assertGreaterEqual(S.PROMOTE_SCORE, 6)
+        self.assertLessEqual(S.PROMOTE_SCORE, 14)
 
 
 if __name__ == "__main__":
