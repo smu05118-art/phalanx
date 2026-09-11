@@ -777,10 +777,17 @@ const CHARACTERS = [
  warn:['숙주가 살아 있는 동안 리치는 처형돼도 죽지 않는다(처형 자체는 소모됨).','숙주가 죽으면 리치도 죽는다 — 선의 핵심 승리 루트.','숙주 중독의 지속 조건 등 세부·징크스는 공식 위키 확인 권장.'],
  remind:['숙주 표시를 게임 끝까지 유지']},
 {id:'alhadikhia',ko:'알하디키아',en:'Al-Hadikhia',type:'demon',edition:'exp',first:false,other:true,killer:true,
- ability:'매일 밤(첫날 제외) 3명을 지목할 수 있으며, 누가 지목됐는지는 모든 플레이어가 알게 된다. 지목된 각자는 은밀히 삶 또는 죽음을 선택한다. 죽음을 택하면 죽고, 셋 모두 삶을 택하면 셋 다 죽는다.',
- guideOther:['알하디키아를 깨워 3명을 지목받는다(1·2·3 순서 기록) — 지목하지 않는 선택도 가능.','지목된 플레이어를 순서대로 1명씩 깨워 선택을 받는다: 살 것인가, 죽을 것인가(엄지 위/아래 손짓 권장).','죽음을 택한 자는 즉시 사망 처리. 셋 모두 삶을 택했다면 셋 다 사망.','다음 새벽, 지목된 3명이 누구였는지 전원에게 공지한다.'],
+ /* 공식: "each silently chooses to live or die, but **if all live, all die**."
+    위키 How to Run: "**If all three players are alive** (_none of them have a shroud_) then add a
+    shroud to all three."
+    [무엇이 틀렸나] '셋 모두 **삶을 택하면**'으로 적었는데 조건은 '셋 모두 **살아 있으면**'이다 —
+    죽음을 택했지만 보호·소생으로 살아 있는 좌석이 있으면 그 좌석도 '살아 있음'에 든다.
+    그리고 지목된 3명이 누구인지는 **지목 시점에** 전원이 알게 된다(새벽이 아니다). 새벽에
+    공지하는 것은 '셋 중 누가 살고 누가 죽었는가'다. */
+ ability:'매일 밤(첫날 제외) 3명을 지목할 수 있으며, 누가 지목됐는지는 그 자리에서 모든 플레이어가 알게 된다. 지목된 각자는 은밀히 삶 또는 죽음을 선택한다. 죽음을 택하면 죽고, 그러고도 **셋이 모두 살아 있으면** 셋 다 죽는다.',
+ guideOther:['알하디키아를 깨워 3명을 지목받는다(1·2·3 순서 기록) — 지목하지 않는 선택도 가능.','**지목된 3명이 누구인지 그 자리에서 전원에게 알린다.**','지목된 플레이어를 순서대로 1명씩 깨워 선택을 받는다: 살 것인가, 죽을 것인가(엄지 위/아래 손짓 권장).','죽음을 택한 자는 즉시 사망 처리. 그러고도 **셋이 모두 살아 있으면**(죽음을 택했지만 보호·소생으로 살아남은 경우 포함) 셋 다 사망.','다음 새벽, 1·2·3 중 누가 살고 누가 죽었는지 공지한다.'],
  warn:['같은 플레이어 중복 지목·죽은 플레이어 지목 등 변칙 판정은 공식 위키 확인 권장.','선택을 물을 때 다른 플레이어가 알 수 없게 진행할 것.','중독/취함이면 아무도 죽지 않지만 절차는 그대로 연출할 수 있다.'],
- remind:['새벽 공지(지목 3인)를 잊지 말 것']},
+ remind:['지목 즉시 3인 공개 · 새벽에는 생사 공지']},
 {id:'riot',ko:'폭동',en:'Riot',type:'demon',edition:'exp',first:false,other:true,
  ability:'3일차가 되면 하수인들도 폭동이 되며, 지명된 플레이어는 죽되 즉시 살아 있는 플레이어 1명을 지명한다. 이는 반드시 일어난다.',
  guideOther:['깨우지 않는다 — 일차 카운터만 1 올린다(밤 사망 없음).'],
@@ -989,8 +996,15 @@ const BMR_CHARS=[
  guideOther:['발동 의사 확인 — 발동 시 1명 지목받아 무조건 사망 처리(보호·면역 무시).'],
  warn:['군인류·여관 주인 보호·찻집 여인·어릿광대 전부 관통.','암살자가 중독·취함이어도 발동을 시도했다면 1회 능력은 반드시 소진 — 살해만 불발.'],remind:['소진 여부 표시']},
 {id:'mastermind',ko:'주모자',en:'Mastermind',type:'minion',edition:'bmr',first:false,other:false,passive:true,
- ability:'악마가 처형으로 죽어도 게임이 하루 더 이어진다. 다음 낮 처형으로 선한 플레이어가 죽으면 악이 승리하고, 아니면 선이 승리한다.',
- warn:['악마 처형 시 태연하게 하루 더 진행 — 밤엔 아무도 죽지 않는다.','다음 낮의 처형 결과로 즉시 승패 판정.','주모자 중독 시 발동 없음 = 악마 사망 즉시 선 승리.'],remind:['악마 처형일 표시'],
+ /* 공식: "If the Demon dies by execution (ending the game), play for 1 more day.
+    If a player is then **executed**, **their team** loses."
+    [무엇이 틀렸나] ① '처형되면'을 '**처형으로 죽으면**'으로 좁혔다 — 보호로 살아남아도 처형은
+    성립한다(보르톡스에서 고친 것과 같은 축이다). ② '그 사람의 팀이 진다'를 '선한 플레이어가
+    죽으면 악 승리'로 한쪽만 적어, 악한 좌석이 처형되는 경우가 빠졌다.
+    ③ warn 의 "밤엔 아무도 죽지 않는다"는 공식에 없다 — 악마가 죽었으니 악마의 킬이 없을 뿐,
+    암살자 등 다른 원인의 밤 사망은 그대로 일어난다. */
+ ability:'악마가 처형으로 죽어도 게임이 하루 더 이어진다. 그 다음 낮에 누군가 처형되면 **그 사람이 속한 팀**이 패배한다(처형으로 죽지 않아도 성립).',
+ warn:['악마 처형 시 태연하게 하루 더 진행 — 악마가 죽었으므로 악마의 밤 살해만 없다. 암살자 등 다른 원인의 밤 사망은 그대로 일어난다.','연장된 낮에 **처형이 성립하면** 그 처형된 사람의 팀이 패배한다 — 보호로 살아남아도 성립한다.','연장된 낮에 아무도 처형되지 않으면 공식 문구가 다루지 않는다 — 공식 위키를 확인해 판정할 것.','주모자 중독 시 발동 없음 = 악마 사망 즉시 선 승리.'],remind:['악마 처형일 표시'],
  dayNotice:'🧠 주모자: 악마가 처형돼도 게임은 하루 연장 — 종료 선언 전 반드시 확인!'},
 /* 악마 */
 {id:'zombuul',ko:'좀버얼',en:'Zombuul',type:'demon',edition:'bmr',first:false,other:true,killer:true,
@@ -1003,9 +1017,13 @@ const BMR_CHARS=[
  guideOther:['어제 중독자를 사망 처리(독 해제), 새 대상 지목받아 ☠토큰.'],
  warn:['사망은 지목 다음 밤에 일어난다 — 타이밍 헷갈리지 말 것.','푸카가 중독되면 그 밤 지목 무효.'],remind:['중독→사망 2단계 추적']},
 {id:'shabaloth',ko:'샤발로스',en:'Shabaloth',type:'demon',edition:'bmr',first:false,other:true,killer:true,
- ability:'매일 밤(첫날 제외) 2명을 지목해 죽인다. 전날 밤 자신이 죽인 1명을 되살릴 수 있다(사회자 재량).',
- guideOther:['2명 지목받아 각각 살해 판정.','재량: 전날 희생자 1명 소생 가능(게 토해내기).'],
- warn:['소생 재량은 균형 도구 — 남발 금지.','보호(여관 주인 등)와 각각 판정.'],remind:['전날 희생자 기록']},
+ /* 공식: "A dead player **you chose last night** might be regurgitated."
+    [무엇이 틀렸나] 소생 대상을 '전날 자신이 **죽인**' 사람으로 좁혔다. 공식은 '전날 **지목한**'
+    사람 중 지금 죽어 있는 사람이다 — 지목은 됐지만 보호로 살아남았다가 다른 원인으로 죽은
+    좌석도 대상이다. 지목 기록과 살해 기록은 다르므로 좁히면 대상이 사라진다. */
+ ability:'매일 밤(첫날 제외) 2명을 지목해 죽인다. **전날 밤 자신이 지목했던** 사람 중 지금 죽어 있는 1명을 되살릴 수 있다(사회자 재량).',
+ guideOther:['2명 지목받아 각각 살해 판정.','재량: **전날 지목한** 2명 중 지금 죽어 있는 1명을 소생 가능(게 토해내기) — 자신이 죽인 사람이 아니어도 된다.'],
+ warn:['소생 재량은 균형 도구 — 남발 금지.','보호(여관 주인 등)와 각각 판정.','소생 후보는 **전날 지목한** 사람이다 — 보호로 살아남았다가 나중에 다른 원인으로 죽은 좌석도 포함된다.'],remind:['전날 지목한 2명을 기록(죽었는지와 무관하게)']},
 {id:'po',ko:'포',en:'Po',type:'demon',edition:'bmr',first:false,other:true,killer:true,
  ability:'매일 밤(첫날 제외) 1명을 죽이거나 아무도 지목하지 않을 수 있다. 전날 밤 아무도 지목하지 않았다면 이번 밤 3명을 죽인다.',
  guideOther:['지목 0명 또는 1명 — 0명이면 다음 밤 3명 지목 예고.','충전 상태면 3명 지목받아 각각 판정.'],
@@ -5116,7 +5134,8 @@ function renderDay(){
       return `<div class="nomcard ${isBest?'leader':''}">
         <div class="nomtitle">${esc(playerOf(n.nominator)?.name||'?')} → ${esc(playerOf(n.nominee)?.name||'?')}
           ${n.result==='pass'?`<span class="pill ok">찬성 ${n.yes}/${n.den} · ${(n.ratio*100).toFixed(1)}%</span>`:
-            n.result==='handsFail'?'<span class="pill warn">거수 미달</span>':'<span class="pill warn">찬성 과반 미달</span>'}
+            n.result==='handsFail'?'<span class="pill warn">거수 미달</span>':
+            n.result==='legionFail'?`<span class="pill warn">🩸 군단 — 악만 투표해 실패 (찬성 ${n.yes}/${n.den})</span>`:'<span class="pill warn">찬성 과반 미달</span>'}
           ${isBest?'<span class="pill demon">처형 후보 1위</span>':''}
         </div>
         ${n.deadVoters&&n.deadVoters.length?`<div class="hint">👻 사망자 투표: ${n.deadVoters.map(id=>esc(playerOf(id)?.name||id)).join(', ')} (토큰 소진 기록됨)</div>`:''}
@@ -5402,9 +5421,26 @@ function closeBallot(nid){
     log(`🤵 집사(${butler.name}) 찬성 무효 — 주인${master?`(${master.name}) 미찬성`:' 미지정'} · 집계에서 제외`);
     toast(`집사 ${butler.name}의 찬성은 주인이 찬성하지 않아 무효 처리했습니다.`,'warn');
   }
+  /* 군단 — 공식: "**Executions fail if only evil voted.**" (roles181.json legion.ability)
+     [무엇이 문제였나] 이 문장이 캐릭터 설명에는 적혀 있는데 **투표·처형 엔진에는 없었다.**
+     군단 5명만 찬성해 선한 좌석을 처형해도 그대로 성립했다(감사 재현:
+     `LEGION_EVIL_ONLY_VOTE {"voteResult":"pass","yes":5,"targetAlive":false,"executed":true}`).
+     사회자가 자동 결과를 손으로 되돌려야 했다.
+     군단의 능력이므로 **살아 있고 정상 작동하는 군단**이 있어야 성립한다(용어집: 오작동한
+     플레이어는 능력이 없다). 찬성표가 하나도 없으면 '악만 투표했다'가 성립하지 않는다. */
+  const _legion=S.players.find(q=>q.alive && q.charId==='legion' && !isMalfunctioning(q));
+  let _legionFail=false;
+  if(_legion && yes>0){
+    const yesVoters=uniq.filter(p=>n.votes[p.id]==='yes' && !(n.butlerVoided===p.id));
+    if(yesVoters.length && yesVoters.every(p=>isEvil(p))) _legionFail=true;
+  }
   n.yes=yes; n.den=den; n.need=need; n.ratio=den?yes/den:0;
-  n.closed=true; n.result = yes>=need? 'pass':'yesFail';
-  log(`찬반 마감: ${playerOf(n.nominee).name} — 찬성 ${yes}/${den} (기준 ${need}, ${(n.ratio*100).toFixed(1)}%) → ${n.result==='pass'?'과반 통과':'부결'}`);
+  n.closed=true; n.result = _legionFail? 'legionFail' : (yes>=need? 'pass':'yesFail');
+  if(_legionFail){
+    log(`🩸 군단 — 찬성표가 전부 악한 플레이어라 이 처형은 실패합니다(공식: "Executions fail if only evil voted")`);
+    toast('🩸 군단: 찬성한 사람이 전부 악한 플레이어입니다 — 이 처형은 실패합니다. 오늘의 처형으로 세지 마세요.','warn');
+  }
+  log(`찬반 마감: ${playerOf(n.nominee).name} — 찬성 ${yes}/${den} (기준 ${need}, ${(n.ratio*100).toFixed(1)}%) → ${n.result==='pass'?'과반 통과':(n.result==='legionFail'?'군단 — 악만 투표해 실패':'부결')}`);
   save(); renderAll();
 }
 function cancelNom(nid){
@@ -11211,7 +11247,9 @@ function quickToggleDeath(pid){
       const before=n.yes;
       n.yes=before+a.delta;
       n.ratio=n.den? n.yes/n.den : 0;
-      n.result=(n.yes>=n.need)? 'pass' : 'yesFail';
+      /* 군단의 '악만 투표' 실패는 표수와 무관한 **강제 규칙**이다 — 가중을 다시 계산하면서
+         덮어쓰면 안 된다(closeBallot 이 이미 판정했다). */
+      if(n.result!=='legionFail') n.result=(n.yes>=n.need)? 'pass' : 'yesFail';
       log(`🧳 여행자 표 가중 반영: 찬성 ${before} → ${n.yes}/${n.den} (기준 ${n.need}) → ${n.result==='pass'?'과반 통과':'부결'}`);
       toast(`여행자 표 가중 반영 — 찬성 ${before} → ${n.yes} (기준 ${n.need})`,'warn');
       save(); renderAll();
@@ -12080,7 +12118,8 @@ function opBreakdown(pid, cutoff){
   const inCut=n=>{ const s=st[n.id]; return cutoff==null? true : !!(s && (s.nomI||s.closedI)); };
   const nomsAll=(S.noms||[]).filter(inCut);
   const nomsClosed=nomsAll.filter(n=>n.closed && (cutoff==null || (st[n.id]&&st[n.id].closedI)));
-  const closed2=nomsClosed.filter(n=>n.result==='pass'||n.result==='yesFail');
+  /* legionFail 도 '찬반까지 간 지명'이다 — 빼면 그 판의 표가 통계에서 통째로 사라진다 */
+  const closed2=nomsClosed.filter(n=>n.result==='pass'||n.result==='yesFail'||n.result==='legionFail');
   // 대상(악?)이 처형되는 것이 내 팀에 이득인가: +1 / -1
   const gain=tEvil=>(tEvil!==meEvil? 1 : -1);
   // 그 지명이 실제 처형 사망으로 끝났나 — EV.exec 우선, 구버전 원장은 diedAt 으로 보강
