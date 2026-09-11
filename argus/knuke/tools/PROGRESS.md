@@ -11,19 +11,19 @@
 
 ## 완료
 - [x] `_specs/COMMON.md`·`knuke.md`·scout_tools(probe/contracts)·kdef 본보기 정독
+- [x] `knuke_lib.py` · `assets/knuke.css`(kdef.css 복제) · vendor/chart · .gitignore · `_config.yml` exclude
+- [x] `build_dicts.py` — 발전원 5·공급계층 8·부품 9/18·SVG 실루엣 2/영역 16 (교차검증 통과)
+- [x] `knuke_scan.py` — II절 본문 탐색: 후보 69 · 승격 10 · 제외 57 · 실패 2 → universe_probe.json
+- [x] `knuke_universe.py` — 네 겹 **25종목**(KIND 7·지정 8·탐색 10)
+- [x] `knuke_contracts.py`·`knuke_reports.py`·`knuke_suppliers.py`·`knuke_page.py`·`knuke_parts.py` 작성
+- [x] `tools/tests`(11건 통과) · `update-knuke.yml`(concurrency kship-dart) · README/LOGIC/HANDOFF
+- [x] 템플릿 스모크: 회사 22쪽·허브·커버리지·parts 생성(계약/보고서 수집 전 상태)
 
 ## 진행 중 / 남은 일
-1. [ ] `knuke_lib.py` · `assets/knuke.css`(kdef.css 복제) · vendor/chart · site.json · .gitignore
-2. [ ] `build_dicts.py` — 발전원 9 · 공급계층 · 부품 · 발전소 SVG
-3. [ ] `knuke_universe.py` — 모집단 ①KIND ②지정 ③탐색 ④제외
-4. [ ] `knuke_scan.py` — II절 본문 탐색(한수원·원전·발전소 언급) 승격
-5. [ ] `knuke_contracts.py` — I001 단일판매공급계약 (발주처 관급/해외 갈래)
-6. [ ] `knuke_reports.py` — II-4 수주상황(도급형·표준형·롤포워드) + 발주처·사업명·계약기간 행 + 부문매출
-7. [ ] `knuke_suppliers.py` — 공급계층 분류 · 발주처/주기기사 연결
-8. [ ] `knuke_page.py` — 허브·회사·커버리지 (+ 호기별 타임라인)
-9. [ ] `knuke_parts.py` — 발전소 단면 인포그래픽
-10. [ ] `tools/tests` · `.github/workflows/update-knuke.yml`(concurrency kship-dart) · `_config.yml` exclude
-11. [ ] README/LOGIC/HANDOFF · site.json 공개 · `/tmp/knuke.done`
+1. [~] `knuke_contracts.py --collect` (DART 백그라운드, 1/25 — DART IP 게이트로 느림) → `--build`
+2. [ ] `knuke_reports.py --collect --n 8` (DART) → `--build`  ※ 계약 수집 끝난 뒤(동시 금지)
+3. [ ] `knuke_suppliers.py --build && knuke_page.py --all && knuke_parts.py` 재생성
+4. [ ] site.json 공개 · 커밋 · `/tmp/knuke.done`
 
 ## 다음 명령
 ```sh

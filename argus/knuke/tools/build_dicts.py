@@ -210,9 +210,10 @@ def build_domains():
 
 
 def build_types():
+    # 튜플은 (id, ko, en, slot, pattern, _) 순서다.
     return {"n": len(CONTRACT_TYPES),
             "types": [{"id": i, "ko": ko, "en": en, "pattern": p, "slot": s}
-                      for i, ko, en, p, s, _ in CONTRACT_TYPES]}
+                      for i, ko, en, s, p, _ in CONTRACT_TYPES]}
 
 
 def build_parts():

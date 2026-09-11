@@ -211,7 +211,11 @@ def parse_orders_table(t):
             continue
         start = cell(i_start)
         end = cell(i_end)
-        rec = {"label": label, "total": is_total(label) or is_total(name) or is_total(client),
+        # 합계 행 판정 — 발주처·사업명뿐 아니라 앞쪽 '구분' 열('합계'·'소계')까지 본다.
+        lead_cells = [client, name] + [(r[i] or "").strip() for i in range(min(3, len(r)))
+                                       if i not in num_idx]
+        is_tot = any(is_total(c) for c in lead_cells if c)
+        rec = {"label": label, "total": is_tot,
                "client": client, "name": name,
                "opening": g(i_open), "new": g(i_new), "delivered": g(i_done),
                "gross": g(i_gross), "closing": g(i_close),
