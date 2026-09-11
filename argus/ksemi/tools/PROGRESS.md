@@ -10,8 +10,8 @@
 - [x] 스캐폴딩: `argus/ksemi/{tools,assets,vendor}`, `ksemi_lib.py`, `site.json`, `assets/ksemi.css`(kship 복사)
 - [x] **DART 원문 확인**(§1 — 5건) · KIND 업종 체계 확인
 - [x] 모집단(ksemi_universe.py) — 154종목(어휘 133 · 지정 21), `assets/universe.json`
-- [x] ④ 본문 탐색(ksemi_scan.py) — 편입 79 · 배제 67 · 보류 7 · 오류 1, `assets/scan.json`
-- [x] 분류 사전(build_dicts.py) — 공정 13단계 + 부품, `assets/stages.json`·`stage_tags.json`(88사 태그)
+- [x] ④ 본문 탐색(ksemi_scan.py) — 편입 83 · 배제 71(아래 재판정 반영), `assets/scan.json`
+- [x] 분류 사전(build_dicts.py) — 공정 13단계 + 부품, `assets/stages.json`·`stage_tags.json`
 - [x] 정기보고서 파서(ksemi_parse.py) · 수집기(ksemi_reports.py) 작성
 - [x] 페이지(ksemi_page.py) — 허브·회사·커버리지. 데이터 없이도 렌더된다(수집과 렌더 분리)
 - [x] 인포그래픽(ksemi_parts.py) · 파서 계약 테스트 70건 · README/LOGIC/HANDOFF · 일일 워크플로
