@@ -1092,7 +1092,7 @@ const SV_CHARS=[
 {id:'towncrier',ko:'포고꾼',en:'Town Crier',type:'townsfolk',edition:'sv',first:false,other:true,
  ability:'매일 밤(첫날 제외), 오늘 낮 하수인이 지명했는지 알게 된다.',
  guideOther:['오늘 지명자 중 하수인이 있었는지 예/아니오.'],
- warn:['지명 기록은 자동 저장됨.','중독/보르톡스 거짓 가능.'],remind:[]},
+ warn:['**군단이 인플레이면 군단의 지명도 "하수인이 지명했다"로 센다** — 공식상 군단은 하수인으로도 등록되며, 첩자·은둔자의 "might" 등록과 달리 재량이 아니다.','지명 기록은 자동 저장됨.','중독/보르톡스 거짓 가능.'],remind:[]},
 {id:'oracle',ko:'예언자',en:'Oracle',type:'townsfolk',edition:'sv',first:false,other:true,
  ability:'매일 밤(첫날 제외), 죽은 플레이어 중 악한 수를 알게 된다.',
  guideOther:['사망자 중 악 수를 손가락으로.'],warn:['등록 재량(첩자류 없음, SV는 은둔자류 없음) 단순 집계.','중독/보르톡스 거짓 가능.'],remind:[]},
@@ -2719,6 +2719,12 @@ const INFO_MODIFIERS = [
    effect:'register', implemented:false, uncertain:true,
    official:'Recluse: "You might register as evil & as a Minion or Demon, even if dead." (roles181.json) — 첩자와 같은 축이고 같은 이유로 자동 판정하지 않는다.',
    when:()=> false, reason:()=> '은둔자 — 등록은 사회자 재량'},
+
+  {id:'legion-registers-minion', ko:'군단 — 하수인으로도 등록(강제)', precedence:26, stage:'gather',
+   effect:'register',
+   official:'Legion: "You register as a Minion too." (roles181.json) · 위키: "Each Legion registers as a Minion as well as a Demon." — 첩자·은둔자의 "might"(재량)와 달리 **강제**다. 하수인을 세거나 하수인인지 판별하는 정보는 군단을 하수인으로 포함해 계산한다.',
+   when:()=> S.players.some(q=>q.charId==='legion'),
+   reason:()=> '군단이 인플레이 — 하수인 판별 정보는 군단을 하수인으로 포함해 계산할 것'},
 
   {id:'drunk-mask', ko:'주정뱅이 위장 — 그 단계의 캐릭터로 보인다', precedence:32, stage:'gather',
    effect:'discretion',
@@ -7527,6 +7533,16 @@ function wizCharPool(pool){
   if(pool==='good-notinplay') return all.filter(c=>(c.type==='townsfolk'||c.type==='outsider')&&!inPlay.has(c.id)&&c.id!==S.drunkMaskChar);
   return all;
 }
+/* 등록상 하수인인가 — 실제 타입과 '등록되는 타입'을 가른다.
+   공식 Legion: "You register as a Minion too." · 위키: "Each Legion registers as a Minion as
+   well as a Demon." 첩자·은둔자의 "might"(사회자 재량)와 달리 **강제**라 여기서 자동 반영한다.
+   하수인을 세거나 하수인인지 판별하는 정보는 전부 이 창구를 쓴다.
+   최상위 함수 선언이어야 한다 — WIZ_SUGGEST 객체 리터럴 안에 두면 구문 오류다. */
+function registersAsMinion(p){
+  const c=p&&charOf(p.charId); if(!c) return false;
+  return c.type==='minion' || p.charId==='legion';
+}
+
 /* 정보 제약 문장의 단일 출처. 계산기 note 마다 '보르톡스 생존 시…' 를 손으로 다시
    구현하다가 규칙이 갈라졌다(A41). 판정은 infoVerdictFor 하나만 쥔다.
    note 는 esc() 를 타므로 여기서는 마크업을 쓰지 않는다 — 평문이어야 한다.
@@ -8192,7 +8208,15 @@ Object.assign(WIZ_SUGGEST,{
     const n=S.players.length;
     const dem=S.players.filter(p=>{const c=charOf(p.charId); return c&&c.type==='demon';});
     const min=S.players.filter(p=>{const c=charOf(p.charId); return c&&c.type==='minion';});
-    if(!dem.length||!min.length) return {v:'?', note:'악마 또는 하수인이 배정되어 있지 않다'};
+    if(!dem.length||!min.length){
+      /* 군단 판에서는 "악마가 없다" 가 거짓이다 — 군단이 곧 악마이고 하수인으로도 등록된다.
+         다만 '가장 가까운 하수인'이 자기 자신인지 이웃 군단인지는 공식에 없으므로
+         숫자를 만들지 않고 사회자에게 넘긴다. */
+      const legion=S.players.some(q=>q.charId==='legion');
+      return {v:'?', note: legion
+        ? '군단 판 — 군단은 악마이면서 하수인으로도 등록된다. 다만 "가장 가까운 하수인"을 자기 자신으로 볼지 이웃 군단으로 볼지는 공식에 정해져 있지 않으니 사회자가 기준을 정해 답하세요.'
+        : '악마 또는 하수인이 배정되어 있지 않다'};
+    }
     let best=null, pair=null;
     dem.forEach(d=>{ const i=S.players.indexOf(d);
       min.forEach(m=>{ const j=S.players.indexOf(m);
@@ -8242,9 +8266,11 @@ Object.assign(WIZ_SUGGEST,{
   towncrierMinionNom(){
     const day=(S.phase&&S.phase.kind==='night')? S.phase.n-1 : ((S.phase&&S.phase.n)|0);
     const noms=(S.noms||[]).filter(x=>x.day===day);
-    const hit=noms.filter(x=>{ const p=playerOf(x.nominator), c=p&&charOf(p.charId); return !!c && c.type==='minion'; });
+    const hit=noms.filter(x=>registersAsMinion(playerOf(x.nominator)));
+    const legionHit=hit.filter(x=>(playerOf(x.nominator)||{}).charId==='legion')
+      .map(x=>(playerOf(x.nominator)||{}).name).join(', ');
     return {v:hit.length?'예':'아니오',
-      note:`낮 ${day} 지명 ${noms.length}건 기준 — 은둔자의 악 등록 재량은 반영하지 않았다 — ${infoConstraintNote()}`};
+      note:`낮 ${day} 지명 ${noms.length}건 기준${legionHit?` — 군단(${legionHit})의 지명을 하수인 지명으로 세었다(공식: 군단은 하수인으로도 등록된다)`:''} — 첩자·은둔자의 등록은 사회자 재량이라 자동 반영하지 않았다 — ${infoConstraintNote()}`};
   },
 
   /* 곡예사: 첫 낮의 공개 추측은 앱 어디에도 기록되지 않는다 — 참값을 지어내지 않는다. */

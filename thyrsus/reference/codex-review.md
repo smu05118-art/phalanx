@@ -2649,3 +2649,42 @@ return {v:list.length, note:`토큰 기준: … 주정뱅이 본인 제외 …`}
 
 **Fable 은 이번에도 크레딧 소진이라 반박 서브에이전트를 못 띄웠다.**
 공식 대조는 직접 했다 — `roles181.json` 의 sober 언급 역할 전수(거지·바리스타 둘뿐)와 위키 Beggar.
+
+## 라운드 39 — A43 군단의 강제 하수인 등록 · PR #60
+
+공식 `roles181.json` (legion): *"… **You register as a Minion too.** [Most players are Legion]"*
+공식 위키 How to Run: *"**Each Legion registers as a Minion as well as a Demon.**"*
+
+**문장 자체가 다르다.** 첩자·은둔자는 *"You **might** register as …"* — 사회자 재량이다.
+군단에는 `might` 가 없다 = 강제. `jinxes.json` 의 legion 징크스 상대는
+engineer·hatter·magician·minstrel·politician·preacher·summoner 뿐이고 포고꾼 예외는 없다.
+
+실측(수정 전): 군단이 지명한 낮에 포고꾼 제안이 **"아니오"**.
+
+### 실제 타입과 '등록되는 타입'을 갈랐다
+
+`registersAsMinion(p)` 하나를 두고 하수인 판별 정보가 전부 그 창구를 쓰게 했다.
+재량 등록(첩자·은둔자)은 **자동 반영하지 않는다** — 표의 `spy-registers`·`recluse-registers` 가
+이미 `implemented:false, uncertain:true` 로 그 축을 지키고 있고, 군단만 강제라서 다르다.
+정보 판정 표에도 `legion-registers-minion` 항목을 `effect:'register'` 로 넣어 근거를 노출했다.
+
+### 시계공은 고치지 않았다
+
+공식에도 위키에도 **군단과 시계공의 상호작용이 없다.** "가장 가까운 하수인"이 자기 자신인지
+이웃 군단인지 정해져 있지 않은데 숫자를 만들면 규율 2를 어기는 것이다.
+다만 현재 note 가 군단 판에서 *"악마 또는 하수인이 배정되어 있지 않다"* 고 **거짓을 말하고**
+있었다 — 군단이 곧 악마다. 그 문장만 사실대로 고치고 판정은 사회자에게 넘겼다.
+백로그에 별도 항목으로 남겼다.
+
+### 두 번 걸려 넘어졌다
+
+1. **함수 선언을 객체 리터럴 안에 넣었다.** `registersAsMinion` 을 포고꾼 계산기 주석 앞에
+   두었는데 그 자리는 `Object.assign(WIZ_SUGGEST,{…})` 안이라 구문 오류가 났다
+   (`로드오류 1`). 최상위(이미 검증된 `infoConstraintNote` 옆)로 옮겼다.
+2. **수정 전 빌드에서 예외가 앞선 단정을 가렸다.** 옛 빌드에는 `registersAsMinion` 이 없어
+   `ReferenceError` 로 죽었고, 케이스 결과가 예외 하나로 덮여 "군단 지명이 아니오였다"는
+   진짜 실패가 보이지 않았다. 존재 여부를 `typeof` 로 먼저 단정하게 고쳐
+   8건이 전부 제대로 실패하는 것을 확인했다.
+
+**Fable 은 이번에도 크레딧 소진이라 반박 서브에이전트를 못 띄웠다.**
+공식 대조는 직접 했다 — `roles181.json` 의 legion·towncrier·recluse·spy·clockmaker 능력문과 위키 Legion.
