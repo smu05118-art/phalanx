@@ -30,6 +30,8 @@ from scout_lib import (ASSETS, atomic_write, fetch_section, load_asset, num_of,
 from kce_lib import COL_ALIAS, norm_col
 
 CACHE = os.path.join(ASSETS, "probe_cache")
+# 절 원문은 따로 보관한다 — 파서를 고쳤을 때 DART를 다시 두드리지 않기 위해.
+HTML_CACHE = os.path.join(ASSETS, "probe_html")
 
 # 목차에서 찾을 절. 기업공시서식 표준은 「4. 매출 및 수주상황」이지만 회사마다 제목이 흔들린다.
 SECTION_PATTERNS = [
@@ -154,7 +156,14 @@ def classify(t):
     # 잔고 열만 있는 변형(계약잔액·수주잔액)
     if _find_col(t, re.compile(r"수주잔고|수주잔액|계약잔액|잔여수주|수주잔량")) is not None:
         return "std"
-    if re.search(r"매출실적|매출액현황|매출현황", lead) or (
+    # 계약 목록형 — 잔고 열은 없지만 **발주처가 실명으로 적힌** 그 해 수주 목록
+    # (두산에너빌리티 '당해년도 체결된 주요 수주 상황' 20행: 프로젝트·계약시기·발주처·계약금액).
+    # 잔고를 못 주므로 점수의 잔고 축에는 안 쓰지만 '계약상대 공개' 축의 증거다.
+    if (_idx(t, "cl") is not None or _find_col(t, re.compile(r"발주처|계약상대|고객|수요처")) is not None) \
+            and _find_col(t, re.compile(r"계약금액|수주금액|금액|계약규모")) is not None:
+        return "clist"
+    # '매출 실적'처럼 낱말 사이에 공백이 들어가는 회사가 있다(현대로템) — 공백을 지우고 본다
+    if re.search(r"매출실적|매출액현황|매출현황", re.sub(r"\s", "", lead)) or (
             "매출액" in "".join(t["ncols"]) and re.search(r"사업부문|품목|사업구분|구분", "".join(t["ncols"]))):
         return "sales"
     return None
@@ -193,7 +202,9 @@ def grain_of(t):
     if i_sd is None and i_ed is None:
         return ("project" if len(rows) >= 8 else "segment"), len(rows)
     dated = sum(1 for r in rows if _DATE.search(_cell(r, i_sd) + " " + _cell(r, i_ed)))
-    return (("project" if dated >= 0.6 * len(rows) else "segment"), len(rows))
+    # 행이 1~2개면 날짜가 있어도 계약 단위가 아니다 — HD현대일렉트릭은 '전기전자부문' **한 줄**에
+    # 수주일자 '2025.12.31 까지'를 적는다. 날짜만 보고 project라 부르면 없는 입도를 주장하게 된다.
+    return (("project" if dated >= 0.6 * len(rows) and len(rows) >= 3 else "segment"), len(rows))
 
 
 def sales_of(t):
@@ -289,16 +300,33 @@ def probe_one(rec, quarter, force=False):
             out.update(tier="none_sec", note="목차에 매출·수주 절 없음")
             return out
         out["sec_title"] = found.get("text")
-        html = fetch_section(found)
+        hpath = os.path.join(HTML_CACHE, "%s_%s.html" % (st, rcp))
+        if os.path.exists(hpath) and not force:
+            with open(hpath, encoding="utf-8") as f:
+                html = f.read()
+        else:
+            html = fetch_section(found)
+            os.makedirs(HTML_CACHE, exist_ok=True)
+            atomic_write(hpath, html)
         tabs = norm_tables(html)
         txt = text_of(html)
         out["flags"] = {k: len(re.findall(p, txt, re.I)) for k, p, _ in TEXT_FLAGS}
         out["na_phrase"] = bool(re.search(r"수주[^.\n]{0,20}(해당\s*사항\s*이?\s*없|해당없|없습니다)", txt))
         out["n_tables"] = len(tabs)
 
-        orders, sales = [], []
+        orders, sales, clists = [], [], []
         for t in tabs:
             k = classify(t)
+            if k == "clist":
+                ic = _idx(t, "cl")
+                if ic is None:
+                    ic = _find_col(t, re.compile(r"발주처|계약상대|고객|수요처"))
+                names = [(_cell(r, ic) or "").strip() for r in t["rows"]]
+                names = [n for n in names if n and not _SUM.match(norm_col(n) or "")]
+                hidden = sum(1 for n in names if re.search(r"공개\s*유보|비공개|영업비밀|미공개|익명", n))
+                clists.append({"n_rows": len(names), "hidden": hidden, "sample": names[:6],
+                               "cols": t["cols"], "lead": t["lead"][-120:]})
+                continue
             if k in ("std", "roll"):
                 b = backlog_of(t, k)
                 if b:
@@ -318,6 +346,10 @@ def probe_one(rec, quarter, force=False):
         orders.sort(key=lambda b: (-b["n_rows"], -(b["bal"] or 0)))
         out["orders"] = orders
         out["sales"] = sales
+        out["clists"] = clists
+        if clists:
+            b = max(clists, key=lambda c: c["n_rows"])
+            out["clist_rows"], out["clist_hidden"] = b["n_rows"], b["hidden"]
         if sales:
             revs = [s["rev"] for s in sales if s["rev"]]
             out["rev"] = sales[0]["rev"]
