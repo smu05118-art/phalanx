@@ -1098,7 +1098,7 @@ const SV_CHARS=[
  guideOther:['사망자 중 악 수를 손가락으로.'],warn:['등록 재량(첩자류 없음, SV는 은둔자류 없음) 단순 집계.','중독/보르톡스 거짓 가능.'],remind:[]},
 {id:'savant',ko:'백치천재',en:'Savant',type:'townsfolk',edition:'sv',first:false,other:false,dayAbility:true,
  ability:'매일 낮 1회 사회자에게 찾아와 정보 2개를 듣는다. 하나는 참, 하나는 거짓이다.',
- warn:['정보 짝을 미리 준비해 두면 진행이 매끄럽다.','중독·취함이면 정보가 임의 — 둘 다 거짓일 수도, 참이 섞일 수도 있다.','보르톡스 생존 시엔 두 정보 모두 반드시 거짓이어야 한다(참1·거짓1 구조가 깨짐 — 공식 예시).'],remind:['매일 낮 백치천재 응대 준비'],
+ warn:['정보 짝을 미리 준비해 두면 진행이 매끄럽다.','중독·취함이면 정보가 임의 — 둘 다 거짓일 수도, 참이 섞일 수도 있다.','**보르톡스가 살아 있고 정상 작동이면** 두 정보 모두 반드시 거짓이어야 한다(참1·거짓1 구조가 깨짐 — 공식 예시). 중독된 보르톡스는 능력이 없어 이 제약이 걸리지 않는다.'],remind:['매일 낮 백치천재 응대 준비'],
  dayNotice:'🧪 백치천재: 오늘의 정보 2개(참1·거짓1) 준비됐는가?'},
 {id:'seamstress',ko:'재봉사',en:'Seamstress',type:'townsfolk',edition:'sv',first:true,other:true,conditional:'1회 발동',
  ability:'게임 중 1회, 밤에 자신 외 2명을 지목해 서로 같은 진영인지 알게 된다.',
@@ -4470,10 +4470,17 @@ function renderStep(st,i,doneMap){
        같은 라운드에 함께 옮겨 탄 위저드 경고바는 이미 사유를 그대로 뿌려 맞는 문구를 낸다 —
        밤 카드도 같은 사유를 읽게 해서 두 화면이 어긋날 수 없게 한다. */
     const malHolders=holders.filter(p=>p.alive && isMalfunctioning(p));
+    /* 오작동이라고 다 같지 않다. 보르톡스가 살아 있고 정상 작동이면 정보는 '반드시 거짓'이고,
+       그렇지 않으면 '사회자 재량'이다 — 공식 Poisoner: "you can give false information
+       to them **if you wish**". 판정은 infoVerdictFor 가 이미 쥐고 있으므로 여기서 다시 만들지 않는다. */
+    const malV=new Map(malHolders.map(p=>[p, infoVerdictFor(p, st.id)]));
+    const malMust=malHolders.filter(p=>malV.get(p).mustLie);
+    const malDisc=malHolders.filter(p=>!malV.get(p).mustLie);
     const falseOnly=holders.filter(p=>p.alive && !isMalfunctioning(p) && infoVerdictFor(p, st.id).mode!=='true');
-    if(malHolders.length) body+=`<div class="alertbox red">☠ <b>${malHolders.map(p=>esc(p.name)).join(', ')}</b>: 능력 오작동 상태(중독·취함·주정뱅이) — 정보형이면 <b>거짓 정보</b>를 주고, 발동형이면 <b>효과 없음</b>으로 처리하되 본인에게는 평소처럼 응대하세요.</div>`;
+    if(malDisc.length) body+=`<div class="alertbox red">☠ <b>${malDisc.map(p=>esc(p.name)).join(', ')}</b>: 능력 오작동 상태(중독·취함·주정뱅이) — 발동형(보호·면역·계승 등)은 <b>효과 없음</b>으로 처리합니다. 정보형은 <b>사회자 재량</b>이라 참·거짓 모두 가능합니다 — 대개 그럴듯한 거짓이 유효하지만 참을 줘도 규칙 위반이 아닙니다. 본인에게는 평소처럼 응대하세요.</div>`;
+    if(malMust.length) body+=`<div class="alertbox red">☠🌀 <b>${malMust.map(p=>esc(p.name)).join(', ')}</b>: 능력 오작동 상태 + 보르톡스 — 발동형은 <b>효과 없음</b>이고, 정보는 재량이 아니라 <b>반드시 거짓</b>이어야 합니다.</div>`;
     if(falseOnly.length) body+=`<div class="alertbox red">🌀 <b>${falseOnly.map(p=>esc(p.name)).join(', ')}</b>: 이 좌석의 <b>정보는 반드시 거짓</b>이어야 합니다 — <b>능력 자체는 정상 작동</b>합니다(보호·살해 등 발동형 효과는 그대로 적용하세요).</div>`;
-    if(st.mask) body+=`<div class="alertbox">🎭 주정뱅이입니다 — ${esc(c.ko)}처럼 깨우되 <b>항상 그럴듯한 거짓 정보</b>를 주세요. 어떤 정보를 줬는지 그리모어 메모에 기록!</div>`;
+    if(st.mask) body+=`<div class="alertbox">🎭 주정뱅이입니다 — ${esc(c.ko)}처럼 깨우되 정보는 <b>사회자 재량</b>입니다. 공식은 "주정뱅이는 <b>거짓 정보가 아니라 신뢰할 수 없는 정보</b>를 받는다"이고, <b>거짓을 주면 정체가 드러날 상황에서는 참을 줘도 된다</b>고 명시합니다 — 대개는 거짓이 유효합니다. 어떤 정보를 줬는지 그리모어 메모에 기록!</div>`;
     if(c.warn&&c.warn.length) body+=`<details class="morebox"><summary>상호작용 주의 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${escEm(w)}</li>`).join('')}</ul></div></details>`;
     if(typeof NIGHT_FLOW!=='undefined' && flowFor(st.id)) body+=`<div class="row" style="margin:10px 0 4px"><button class="primary" style="min-width:200px" onclick="event.stopPropagation();startWiz('${st.id}')">▶ 인터랙티브 진행</button></div>`;
     body+=stepWidget(st,c);
@@ -7137,7 +7144,7 @@ examples:[
 /* ── 화단에 꽃피운 이단(SV) ── */
 clockmaker:{howto:[
  '첫날 밤 한 번뿐 — 셋업 직후 좌석표에서 악마↔최근접 하수인 거리를 미리 계산해 둔다.',
- '보르톡스 게임이면 반드시 틀린 수를 줄 것(거짓 의무).'],
+ '시계공이 중독·취함이면 답은 **사회자 재량**이다(참도 가능). **보르톡스가 살아 있고 정상 작동이면** 반드시 틀린 수를 줄 것(거짓 의무).'],
 examples:[
  '시계공이 "2"를 받았다. 낮 좌석 추리로 후보 쌍이 좁혀지자, 하수인이 먼저 "내가 시계공인데 3을 받았다"고 나서며 정보전을 흐렸다.']},
 dreamer:{howto:[
@@ -7177,7 +7184,7 @@ examples:[
  '백치천재에게 "이 게임에 외지인은 2명이다"(참)와 "하수인 둘이 이웃해 앉아 있다"(거짓)를 줬다. 마을은 이틀에 걸쳐 두 명제를 교차 검증하며 낮 토론의 축으로 삼았다.']},
 seamstress:{howto:[
  '발동은 1회 — 지목한 2명이 "서로 같은 진영인지"만 예/아니오로 답하고 소진 표시.',
- '중독·취함이면 답은 임의(거짓 가능·참도 가능), 보르톡스 생존 시엔 반드시 거짓 — 답하기 전 상태 확인.'],
+ '중독·취함이면 답은 사회자 재량(거짓도 참도 가능). **보르톡스가 살아 있고 정상 작동이면** 반드시 거짓 — 중독된 보르톡스는 능력이 없어 이 제약이 걸리지 않는다. 답하기 전 상태 확인.'],
 examples:[
  '재봉사가 서로 으르렁대던 두 명을 지목해 "예(같은 진영)"를 받았다. 둘 다 선이라는 뜻이었지만 마을 일부는 "둘 다 악"으로 해석했다 — 정보의 양면성이 낮을 뜨겁게 달궜다.']},
 philosopher:{howto:[
@@ -7499,6 +7506,19 @@ function wizCharPool(pool){
   if(pool==='evil-characters') return all.filter(c=>c.type==='minion'||c.type==='demon');
   if(pool==='good-notinplay') return all.filter(c=>(c.type==='townsfolk'||c.type==='outsider')&&!inPlay.has(c.id)&&c.id!==S.drunkMaskChar);
   return all;
+}
+/* 정보 제약 문장의 단일 출처. 계산기 note 마다 '보르톡스 생존 시…' 를 손으로 다시
+   구현하다가 규칙이 갈라졌다(A41). 판정은 infoVerdictFor 하나만 쥔다.
+   note 는 esc() 를 타므로 여기서는 마크업을 쓰지 않는다 — 평문이어야 한다.
+   kind==='num' 이면 '거짓' 대신 '다른 수'로 읽히게 한다. */
+function infoConstraintNote(kind){
+  if(typeof wiz==='undefined' || !wiz || !wiz.holder) return '';
+  let v; try{ v=infoVerdictFor(wiz.holder, wiz.stepId); }catch(e){ return ''; }
+  if(!v) return '';
+  const wrong = (kind==='num') ? '이 수가 아닌 다른 수를' : '거짓을';
+  if(v.mustLie) return '보르톡스가 살아 있고 정상 작동 — 반드시 '+wrong+' 보여주세요(정보원이 중독·취함이어도 거짓 의무는 유지).';
+  if(v.mode==='arbitrary') return '이 정보원이 오작동(중독·취함·주정뱅이) — 답은 사회자 재량입니다(거짓도, 참도 가능).';
+  return '정상 작동 — 계산된 이 값을 그대로 보여주세요.';
 }
 const WIZ_SUGGEST={
   chefPairs(){ let n=0; const s=S.players; for(let i=0;i<s.length;i++){ if(isEvil(s[i])&&isEvil(s[(i+1)%s.length])) n++; } return {v:n, note:'실제 인접 악 쌍(등록 재량 반영 전)'}; },
@@ -8116,11 +8136,11 @@ chambermaid:{first:[
 /* SV용 제안 계산기 (WIZ_SUGGEST 확장) */
 Object.assign(WIZ_SUGGEST,{
   oracleDeadEvil(){ const n=S.players.filter(p=>!p.alive&&isEvil(p)).length;
-    return {v:n, note:'사망자 중 악 진영 수(실제 집계 — 보르톡스 생존 시 반드시 다른 수, 중독·취함이면 임의)'}; },
+    return {v:n, note:'사망자 중 악 진영 수(실제 집계) — '+infoConstraintNote('num')}; },
   seamstressSame(){ const pair=(wiz.vars.pair||[]).map(playerOf).filter(Boolean);
     if(pair.length<2) return {v:'?', note:'두 명이 아직 선택되지 않음'};
     const same=isEvil(pair[0])===isEvil(pair[1]);
-    return {v:same?'예':'아니오', note:'실제 진영 비교(보르톡스 생존 시 반드시 거짓, 중독·취함이면 임의)'}; },
+    return {v:same?'예':'아니오', note:'실제 진영 비교(등록 재량 반영 전) — '+infoConstraintNote()}; },
 
   /* ── 참값 계산기 추가분 ──
      여기 없던 정보 씬은 사회자가 매번 그리모어를 손으로 세야 했다. 계산 결과는 '제안'일 뿐
@@ -8182,7 +8202,7 @@ Object.assign(WIZ_SUGGEST,{
       if(((x.hands||[]).indexOf(id)>=0 || (x.votes||{})[id]==='yes') && who.indexOf(id)<0) who.push(id);
     }));
     return {v:who.length?'예':'아니오',
-      note:`낮 ${day} 지명 ${noms.length}건 기준${who.length?' — '+who.map(id=>(playerOf(id)||{}).name).join(', '):''} (보르톡스 생존 시 반드시 거짓)`};
+      note:`낮 ${day} 지명 ${noms.length}건 기준${who.length?' — '+who.map(id=>(playerOf(id)||{}).name).join(', '):''} — ${infoConstraintNote()}`};
   },
 
   /* 마을 포고꾼: "오늘 낮 하수인이 지명했는가"(official/roles181.json: towncrier). */
@@ -8191,7 +8211,7 @@ Object.assign(WIZ_SUGGEST,{
     const noms=(S.noms||[]).filter(x=>x.day===day);
     const hit=noms.filter(x=>{ const p=playerOf(x.nominator), c=p&&charOf(p.charId); return !!c && c.type==='minion'; });
     return {v:hit.length?'예':'아니오',
-      note:`낮 ${day} 지명 ${noms.length}건 기준 — 은둔자의 악 등록 재량은 반영하지 않았다(보르톡스 생존 시 반드시 거짓)`};
+      note:`낮 ${day} 지명 ${noms.length}건 기준 — 은둔자의 악 등록 재량은 반영하지 않았다 — ${infoConstraintNote()}`};
   },
 
   /* 곡예사: 첫 낮의 공개 추측은 앱 어디에도 기록되지 않는다 — 참값을 지어내지 않는다. */
@@ -8267,7 +8287,7 @@ cerenovus:{first:[
 clockmaker:{first:[
   {t:'wake'},
   {t:'show-number',suggest:'clockmakerSteps',caption:'악마↔최근접 하수인 좌석 거리'},
-  {t:'note',text:'거리는 짧은 쪽 방향의 좌석 칸 수입니다. 시계공이 중독이거나 보르톡스 게임이면 반드시 틀린 수를 보여주세요.'},
+  {t:'note',text:'거리는 짧은 쪽 방향의 좌석 칸 수입니다. 시계공이 중독·취함이면 답은 사회자 재량이고(참도 가능), 보르톡스가 살아 있고 정상 작동이면 반드시 틀린 수를 보여주세요.'},
   {t:'sleep'}]},
 dreamer:{first:[
   {t:'wake'},
@@ -8356,7 +8376,7 @@ sage:{other:[
 flowergirl:{other:[
   {t:'wake'},
   {t:'show-answer',options:['예','아니오'],suggest:'flowergirlDemonVoted',caption:'오늘 낮 악마가 투표했는가'},
-  {t:'note',text:'낮 투표 기록에서 악마의 거수 여부를 확인해 답하세요. 보르톡스 생존 시 반드시 거짓, 중독·취함이면 임의(참도 가능).'},
+  {t:'note',text:'낮 투표 기록에서 악마의 거수 여부를 확인해 답하세요. 꽃 파는 소녀가 중독·취함이면 답은 사회자 재량이고(참도 가능), 보르톡스가 살아 있고 정상 작동이면 반드시 거짓입니다 — 중독된 보르톡스는 능력이 없어 이 제약이 걸리지 않습니다.'},
   {t:'sleep'}]},
 towncrier:{other:[
   {t:'wake'},
