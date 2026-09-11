@@ -20,7 +20,6 @@
 """
 import argparse
 import collections
-import json
 import os
 import re
 import sys
@@ -28,6 +27,7 @@ import sys
 from kdef_lib import ASSETS, load_asset, write_asset
 from kdef_universe import load as load_universe
 import kdef_contracts
+import kdef_products
 import kdef_reports
 
 # 방산 문맥 낱말 — 부품 소분류 중 `ctx=True` 인 것은 이 낱말이 같이 있어야 채택한다
@@ -85,7 +85,7 @@ def match_cats(tax, texts):
     return sorted(hits.values(), key=lambda h: (-h["prio"], h["cat"]))
 
 
-_SRC_RANK = ["contract", "body", "kind"]        # 앞일수록 강한 근거
+_SRC_RANK = ["contract", "report", "body", "kind"]   # 앞일수록 강한 근거
 BASIS = {"customer": (1, "주요고객 주석"), "contract": (2, "계약공시 상대"),
          "body": (3, "본문 언급"), "kind": (4, "KIND 문구")}
 
@@ -97,6 +97,7 @@ def build(write=True):
         os.path.join(ASSETS, "universe_probe.json")) else {"promoted": {}, "rejected": []}
     cons = kdef_contracts.load()
     reports = kdef_reports.load()["companies"]
+    prod_text = kdef_products.load()          # 정기보고서 「II-2 주요 제품」 절 본문
     primes = {r["stock"]: r["name"] for r in uni if r["role"] == "prime"}
     names = {r["stock"]: r["name"] for r in uni}
     con_by = collections.defaultdict(list)
@@ -113,7 +114,9 @@ def build(write=True):
         cnames = " ".join((c["name"] or "") for c in con_by.get(st, []))
         # 탐색이 남긴 **인용문**만 쓴다 — terms 는 탐지기의 어휘 목록이라 그걸 제품으로
         # 읽으면 '전자전'·'전투체계'가 안료 회사의 부품이 된다(실측).
-        texts = [("contract", cnames), ("body", re.sub(r"^[^\"]*\"", "", quote)),
+        texts = [("contract", cnames),
+                 ("report", prod_text.get(st, "")),
+                 ("body", re.sub(r"^[^\"]*\"", "", quote)),
                  ("kind", (r.get("product") or "") + " " + (r.get("industry") or ""))]
         cats = match_cats(tax, texts)
 

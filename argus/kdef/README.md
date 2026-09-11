@@ -25,7 +25,7 @@
 | 방산/민수 · 내수/수출 | II-4 매출실적 — 부문 이름은 회사마다 다르다 | 부문 매출 표(원문 이름 + def/civil/mixed 판정) |
 | 사업 단위 계약 | 수시공시 「단일판매ㆍ공급계약체결」(I001) — 유가·코스닥 양식 둘 다 | 계약 표(사업명·계통·유형·금액·기간·상대)·계통/유형 차트 |
 | 무기체계 계통 8 + 민수 | 계약명 → `assets/domains.json`(체계 이름 prio 90 > 일반 어휘 50) | 계통 칩·차트 |
-| 부품 분류(대분류 11·소분류 31) | 계약명 · 정기보고서 II절 본문 · KIND 주요제품 문구 | `parts.html` 인포그래픽·회사 페이지 부품 칩(근거 표시) |
+| 부품 분류(대분류 11·소분류 31) | 계약명 · 정기보고서 「주요 제품」 절 · II절 본문 · KIND 문구 | `parts.html` 인포그래픽·회사 페이지 부품 칩(근거 표시) |
 | 부품사 → 체계업체 | 주요고객 주석 > 계약공시 상대 > 본문 언급 | 근거 등급 배지와 근거 문장 |
 
 모집단은 네 겹 전수다 — ① KIND 업종(항공기·우주선/무기·총포탄) · ② KIND 제품 문구의 방산 어휘 ·
@@ -51,7 +51,8 @@ python3 kdef_contracts.py --collect --build
 python3 kdef_reports.py --collect --n 8 --only <체계업체들>
 python3 kdef_reports.py --collect --n 2 --only <나머지>
 python3 kdef_reports.py --build --n 8
-python3 kdef_suppliers.py --build         # 부품 분류 + 체계업체 연결(수집 없음)
+python3 kdef_products.py --collect         # 「II-2 주요 제품」 절(회사당 한 번)
+python3 kdef_suppliers.py --build          # 부품 분류 + 체계업체 연결(수집 없음)
 python3 kdef_page.py --all && python3 kdef_parts.py
 python3 -m unittest discover -s tests
 ```

@@ -18,13 +18,12 @@
 """
 import argparse
 import collections
-import datetime
 import json
 import os
 import re
 import sys
 
-from kdef_lib import (E, KDEF, CHART_DEFAULTS_JS, TABLE_JS, atomic_write, fmt_eok, fmt_n,
+from kdef_lib import (E, KDEF, CHART_DEFAULTS_JS, TABLE_JS, atomic_write, fmt_eok,
                       fmt_x, json_for_html, load_asset, page, pct, slot_color)
 from kdef_universe import load as load_universe
 import kdef_contracts
@@ -180,13 +179,14 @@ def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel
                E(cm["ko"]), nm,
                (amt or 0), fmt_eok(amt), (c["years"] if c["years"] is not None else -1),
                fmt_x(c["years"]) if c["years"] is not None else "—",
-               party, E(PARTY_KO.get(c["party_kind"], c["party_kind"])),
+               party, E(PARTY_KO.get(c["party_kind"], c["party_kind"]))
+               + ((" · " + E(c["region"])) if (c.get("region") or "").strip("- ") else ""),
                E((c["start"] or "—") + " ~ " + (c["end"] or "—")),
                E(DART % c["rcp"]),
                ' <span class="pill">정정</span>' if c.get("corrected") else ""))
     head = ('<tr><th class="l">수주일</th>%s<th class="l">계통</th><th class="l">유형</th>'
             '<th class="l">사업명(체결계약명)</th><th>금액(억)</th><th>기간(년)</th>'
-            '<th class="l">계약상대</th><th class="l">계약기간</th><th class="l">출처</th></tr>'
+            '<th class="l">계약상대 · 공급지역</th><th class="l">계약기간</th><th class="l">출처</th></tr>'
             % ('<th class="l">회사</th>' if show_company else ""))
     return ('<div class="ctl"><input data-filter="#%s" type="search" placeholder="사업명·계통·유형·상대 검색"></div>'
             '<div class="wrap tall"><table id="%s" data-sortable><thead>%s</thead><tbody>%s</tbody></table></div>'
@@ -316,7 +316,8 @@ def company_html(s, data):
     parts_html = ""
     if sup.get("cats"):
         chips = " ".join(_chip(cat_ko(data, h["cat"]), None, href="../parts.html#" + h["cat"],
-                               title="근거: %s 「%s」" % ({"contract": "계약명", "body": "II절 본문",
+                               title="근거: %s 「%s」" % ({"contract": "계약명", "report": "정기보고서 제품 절",
+                                                        "body": "II절 본문",
                                                         "kind": "KIND 주요제품"}.get(h["src"], h["src"]),
                                                        h["kw"]))
                          for h in sup["cats"])
@@ -595,10 +596,15 @@ def coverage_html(data, sums):
                 '(방산 낱말 많은 순)</summary><div class="wrap"><table data-sortable><thead><tr>'
                 '<th class="l">회사</th><th>종목코드</th><th class="l">업종</th><th>방산 낱말</th>'
                 '<th class="l">낱말</th><th class="l">체계업체 언급 · 제품</th></tr></thead>'
-                '<tbody>%s</tbody></table></div></details></section>'
+                '<tbody>%s</tbody></table></div></details>%s</section>'
                 % (E(probe.get("quarter", "")), probe.get("n_cand", 0),
                    len(probe.get("promoted") or {}), len(rej), len(probe.get("failed") or []),
-                   E(probe.get("rule", "")), rj))
+                   E(probe.get("rule", "")), rj,
+                   ('<p class="mut" style="font-size:11.5px;margin-top:8px">원문을 못 읽어 판정하지 못한 회사'
+                    '(승격하지 않는다): %s</p>'
+                    % E(", ".join("%s(%s — %s)" % (x["name"], x["stock"], x.get("note", ""))
+                                  for x in (probe.get("failed") or [])[:20])))
+                   if probe.get("failed") else ""))
     body = """
 <section class="card" style="margin-top:0"><h2>모집단 규칙 <em>재현 가능한 네 겹 · 이름으로 넣지 않습니다</em></h2>
 <p style="font-size:12px;color:var(--tx2);line-height:1.8">

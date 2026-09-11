@@ -22,7 +22,8 @@ from kdef_lib import (E, KDEF, TABLE_JS, atomic_write, json_for_html, load_asset
 from kdef_universe import load as load_universe
 import kdef_suppliers
 
-SRC_KO = {"contract": "계약명", "body": "정기보고서 본문", "kind": "KIND 주요제품"}
+SRC_KO = {"contract": "계약명", "report": "정기보고서 제품 절", "body": "정기보고서 본문",
+          "kind": "KIND 주요제품"}
 
 
 def cat_index(sup):
@@ -36,7 +37,7 @@ def cat_index(sup):
                 "primes": [{"nm": p["nm"], "stock": p["stock"], "basis": p["basis_ko"]}
                            for p in co["primes"][:3]]})
     for v in idx.values():
-        v.sort(key=lambda c: ({"contract": 0, "body": 1, "kind": 2}[c["src"]], c["nm"]))
+        v.sort(key=lambda c: (kdef_suppliers._SRC_RANK.index(c["src"]), c["nm"]))
     return idx
 
 
@@ -65,6 +66,8 @@ def build(data):
         "groups": {g["id"]: g["ko"] for g in groups},
         "idx": idx,
         "srcKo": SRC_KO,
+        # 페이지가 생성된 회사만 링크한다 — 자료가 없어 페이지를 안 만든 회사는 이름만 보인다.
+        "pages": sorted(data["pages"]),
     }
     body = """
 <div class="kpi">
@@ -93,7 +96,7 @@ def build(data):
 </section>
 <section class="card"><h2>부품 대분류로 진입 <em>위치가 없는 분류(소재·시험/정비)도 여기서 들어갑니다 · 숫자는 연결된 회사 수</em></h2>
  <div class="chips" id="groups">%s</div></section>
-<div class="note info">부품 분류는 <b>규칙</b>입니다 — 계약명·정기보고서 II절 본문·KIND 주요제품 문구에서 부품 낱말을 찾습니다.
+<div class="note info">부품 분류는 <b>규칙</b>입니다 — 계약명·정기보고서 「주요 제품」 절·II절 본문·KIND 주요제품 문구에서 부품 낱말을 찾습니다.
 회사 칩에 근거(무엇을 보고 넣었는지)를 달아 두었습니다. 민수 낱말과 겹치는 짧은 약어는 방산 문맥이 가까이 있을 때만 채택합니다.
 납품처(체계업체) 연결의 근거 등급은 주요고객 주석 &gt; 계약공시 상대 &gt; 본문 언급 순입니다.</div>
 <script>const P=%s;</script>
@@ -137,9 +140,14 @@ def build(data):
    var on=b.getAttribute('data-group')===S.group; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
   });
  }
+ var PAGES={}; (P.pages||[]).forEach(function(s){PAGES[s]=1;});
+ function link(stock,label,cls){
+  var c=cls?' class="'+cls+'"':'';
+  return PAGES[stock]?'<a'+c+' href="'+stock+'/index.html">'+label+'</a>':'<span'+c+'>'+label+'</span>';
+ }
  function coHtml(c){
-  var primes=c.primes.map(function(p){return '<a href="'+p.stock+'/index.html">'+p.nm+'</a> <span class="mut">'+p.basis+'</span>'}).join(' · ');
-  return '<li><a class="co" href="'+c.stock+'/index.html">'+c.nm+'</a>'
+  var primes=c.primes.map(function(p){return link(p.stock,p.nm)+' <span class="mut">'+p.basis+'</span>'}).join(' · ');
+  return '<li>'+link(c.stock,c.nm,'co')
    +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
    +(primes?'<div class="mut" style="font-size:11px;margin-top:2px">납품처 '+primes+'</div>':'')
    +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
@@ -204,8 +212,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true", default=True)
     ap.parse_args()
+    uni = load_universe()
     data = {"tax": load_asset("parts_taxonomy.json"), "svg": load_asset("svg_regions.json"),
-            "sup": kdef_suppliers.load(), "uni": load_universe()}
+            "sup": kdef_suppliers.load(), "uni": uni,
+            "pages": {r["stock"] for r in uni
+                      if os.path.exists(os.path.join(KDEF, r["stock"], "index.html"))}}
     atomic_write(os.path.join(KDEF, "parts.html"), build(data))
     idx = cat_index(data["sup"])
     print("parts.html · 소분류 %d(회사 붙은 것 %d) · 영역 %d"

@@ -56,6 +56,7 @@ jobs:
           python3 kdef_reports.py --collect --n 8 --only "$PRIMES" "${Q[@]}"
           python3 kdef_reports.py --collect --n 2 --only "$REST" "${Q[@]}"
           python3 kdef_reports.py --build --n 8 "${Q[@]}"
+          python3 kdef_products.py --collect      # 「주요 제품」 절 — 없는 회사만 받는다
           python3 kdef_suppliers.py --build
           python3 kdef_page.py --all
           python3 kdef_parts.py
