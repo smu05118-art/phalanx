@@ -161,6 +161,21 @@ class TestContracts(unittest.TestCase):
         self.assertEqual(rec["start"], "2023-05-11")
         self.assertEqual(rec["end"], "2027-11-03")
 
+    def test_merged_correction_row_is_not_money(self):
+        """정정공시에 라벨과 값이 뭉쳐 온 행(값에 숫자 3개)을 금액으로 읽지 않는다.
+
+        실측: 빅텍 `20260320900593` — 그대로 읽으면 868억짜리 계약이 8.7×10^24 원이 된다."""
+        fx = fixture("merged_row_correction.json")
+        rec = KC._fields_from_kv(KC._kv_from_raw(fx["kv"]))
+        self.assertEqual(rec["amt_krw_m"], 86764.475)
+        self.assertEqual(rec["party"], "국방과학연구소")
+        self.assertEqual(KC.party_kind(rec["party"])[0], "GOV")
+
+    def test_find_ignores_spaces_in_needle(self):
+        """라벨은 공백이 지워져 있으므로 `계약금액 총액(원)` 같은 검색어도 찾아야 한다."""
+        kv = KC._kv_from_raw([["2. 계약내역 계약금액 총액(원)", "1,000"]])
+        self.assertEqual(KC._find(kv, "계약금액 총액(원)"), "1,000")
+
     def test_party_kinds(self):
         cases = [("방위사업청", "GOV"), ("대한무역투자진흥공사(KOTRA)", "GOV"),
                  ("노르웨이 국방물자청(NDMA)", "G2G"), ("폴란드 군비청", "G2G"),

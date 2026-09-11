@@ -193,13 +193,26 @@ def _kv_from_raw(raw):
 
 def _find(kv, *needles):
     """needle 을 모두 품은 라벨 중 **가장 짧은** 라벨의 값 — 정정공시의 정정 표(긴 라벨)보다
-    본표(짧은 라벨)가 이긴다."""
+    본표(짧은 라벨)가 이긴다. 라벨은 공백이 지워진 상태이므로 needle 도 지워서 본다
+    (`"계약금액 총액(원)"` 을 그대로 찾으면 영영 못 찾는다 — 실측 버그)."""
+    needles = [_norm_key(n) for n in needles]
     hits = [(len(k), i, v) for i, (k, v) in enumerate(kv.items()) if all(n in k for n in needles)]
     return min(hits)[2] if hits else None
 
 
 # 국내 방산 계약의 대금 성격 — 원문 문구 그대로(FINDINGS §4). 이익률 수치는 공시에 없다.
 _DEF_PAY = re.compile(r"방위산업에\s*관한\s*착수금\s*및\s*중도금\s*지급규칙|착수금\s*및\s*중도금")
+
+
+_NUMTOK = re.compile(r"-?[\d,]*\d")
+
+
+def _num1(v):
+    """값에 숫자 토큰이 **하나뿐일 때만** 숫자로 읽는다(뭉쳐 온 정정행 방어, fail-closed)."""
+    if v is None:
+        return None
+    toks = [t for t in _NUMTOK.findall(str(v)) if any(c.isdigit() for c in t)]
+    return num_of(v) if len(toks) == 1 else None
 
 
 def _fields_from_kv(kv):
@@ -209,8 +222,11 @@ def _fields_from_kv(kv):
             or _find(kv, "판매", "공급계약", "내용") or _find(kv, "공급계약 내용") or "")
     if not name and _find(kv, "판매공급계약구분"):
         name = _find(kv, "세부내용") or ""
-    amt_krw = num_of(_find(kv, "계약금액 총액(원)") or _find(kv, "계약금액(원)")
-                     or _find(kv, "확정 계약금액") or _find(kv, "계약금액") or "")
+    # 정정공시에는 라벨과 값이 **뭉쳐 온** 행이 있다(`…계약금액 총액(원) - 매출액 대비(%) …` /
+    # 값 `86,764,475,454 86,764,475,454 188.08`). 그대로 num_of 하면 숫자가 이어 붙어
+    # 8.7×10^24 원짜리 계약이 된다(실측 5건) — 숫자 토큰이 둘 이상인 값은 쓰지 않는다.
+    amt_krw = _num1(_find(kv, "계약금액총액(원)") or _find(kv, "계약금액(원)")
+                    or _find(kv, "확정계약금액") or _find(kv, "계약금액") or "")
     party = _find(kv, "계약상대") or ""
     kind, prime = party_kind(party)
     start = _date(_find(kv, "계약기간", "시작") or _find(kv, "시작일") or "")
