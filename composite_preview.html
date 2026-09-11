@@ -67,13 +67,45 @@ const HAS=typeof Chart!=='undefined';
 if(HAS){Chart.defaults.color='#8a93a6';Chart.defaults.borderColor='#232a3a';Chart.defaults.font.size=11;}
 const CH=(...a)=>{if(!HAS)return;try{new Chart(...a)}catch(err){console.error('chart',err)}};
 const tabs=document.getElementById('tabs'),panels=document.getElementById('panels');
+// [고도화] 해시 라우팅 — 탭 상태를 URL 에 실어야 특정 기업 판정을 링크로 공유할 수 있고
+// 새로고침해도 종합으로 튕기지 않는다. 탭 전환 로직이 종합/기업 두 군데에 복제돼 있던 것을
+// selectTab() 하나로 합쳤다 — 중복을 남기면 한쪽만 해시와 동기화돼 URL 과 탭이 어긋난다.
+const OVER='OVER';  // 종합 탭 키 — 패널 id 가 'p'+key 규칙이라 기존 pOVER 와 맞춰 둔다
+const tabEls={};    // 키 → 탭 DOM. 해시로 진입할 때 칠할 탭을 찾으려면 목록이 필요하다
+function tabHash(key){
+ // 종합은 기본 상태라 해시를 붙이지 않는다(공유 링크가 깔끔해야 한다)
+ return key===OVER?'':'#c='+encodeURIComponent(key);
+}
+function hashKey(){
+ const h=location.hash||'';
+ if(h.slice(0,3)!=='#c=') return OVER;
+ let want=h.slice(3);
+ try{want=decodeURIComponent(want);}
+ catch(err){/* 깨진 % 이스케이프면 원문 그대로 매칭 시도 */}
+ want=want.toLowerCase();  // 사람이 주소창에 #c=dell 로 칠 수 있어 대소문자는 무시한다
+ return Object.keys(tabEls).find(k=>k.toLowerCase()===want)||OVER;  // 없는 티커는 조용히 종합으로
+}
+function selectTab(key,push){
+ const p=document.getElementById('p'+key);
+ if(!p) return;  // 패널이 없는 키로는 화면을 비우지 않는다
+ document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+ document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+ const t=tabEls[key];
+ if(t){t.classList.add('on');
+  // 기업 탭이 31개라 뒤쪽 탭은 첫 화면 밖이다 — 해시로 들어와도 선택 탭이 보이게 끌어온다
+  if(t.scrollIntoView) t.scrollIntoView({block:'nearest',inline:'nearest'});}
+ p.classList.add('on');
+ // 클릭은 히스토리에 쌓아 뒤로가기로 직전 탭에 돌아가게 하고,
+ // 프로그램 전환(최초 로드·popstate)은 덮어써서 뒤로가기 루프를 만들지 않는다
+ const url=location.pathname+location.search+tabHash(key);
+ try{push?history.pushState({tab:key},'',url):history.replaceState({tab:key},'',url);}
+ catch(err){/* file:// 로 직접 열면 pushState 가 막힌다 — 탭 전환 자체는 살려 둔다 */}
+}
 // [고도화] 종합 오버뷰 탭 — 전 기업 판정 한눈에 (발표일 순)
 (function(){
  const t=document.createElement('div');t.className='tab on';t.textContent='📋 종합';
- t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
-  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
-  t.classList.add('on');document.getElementById('pOVER').classList.add('on');};
- tabs.appendChild(t);
+ t.onclick=()=>selectTab(OVER,true);
+ tabEls[OVER]=t;tabs.appendChild(t);
  const p=document.createElement('div');p.className='panel on';p.id='pOVER';
  const rows=DATA.companies.map(c=>{const e=c.est||{},m=c.market||{},d=c.disp;
   const dt=(String(m.report||'').match(/\d{4}-\d{2}-\d{2}/)||[''])[0];
@@ -95,10 +127,8 @@ const tabs=document.getElementById('tabs'),panels=document.getElementById('panel
 })();
 DATA.companies.forEach((c,i)=>{
  const t=document.createElement('div');t.className='tab';t.textContent=c.id;
- t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
-  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
-  t.classList.add('on');document.getElementById('p'+c.id).classList.add('on');};
- tabs.appendChild(t);
+ t.onclick=()=>selectTab(c.id,true);
+ tabEls[c.id]=t;tabs.appendChild(t);
  const e=c.est||{},m=c.market||{},d=c.disp,fit=c.fit||{};
  const p=document.createElement('div');p.className='panel';p.id='p'+c.id;
  p.innerHTML=`
@@ -286,4 +316,8 @@ DATA.companies.forEach((c,i)=>{
     plugins:{legend:{labels:{boxWidth:10}}}}});
  }
 });
+// [고도화] 탭·패널이 다 만들어진 뒤에 해시를 반영한다(그 전엔 tabEls 가 비어 매칭이 실패한다).
+// 최초 진입은 replaceState — 뒤로가기 첫 번째가 같은 페이지로 되돌아오는 함정을 막는다.
+selectTab(hashKey(),false);
+window.addEventListener('popstate',()=>selectTab(hashKey(),false));
 </script></div></body></html>

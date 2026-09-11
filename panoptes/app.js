@@ -154,7 +154,8 @@ function select(id,fly){
 
 // ===== 탭 전환 =====
 let _liqLoaded=false, _mapInit=false;
-function switchTab(tab){
+// nav: 'push'=사용자 클릭(뒤로가기로 이전 탭에 돌아가야 함) · 'none'=popstate(해시 재기록 금지) · 그 외=프로그램 호출(replace)
+function switchTab(tab,nav){
   document.querySelectorAll('.ptab').forEach(t=>{
     const selected=t.dataset.tab===tab;
     t.classList.toggle('on',selected); t.setAttribute('aria-selected',String(selected)); t.tabIndex=selected?0:-1;
@@ -177,7 +178,36 @@ function switchTab(tab){
   if(tab==='human'){ loadHuman(); }
   if(tab==='llm'){ loadLLM(); }
   if(tab==='fed'){ loadFed(); }
+  routeWrite(tab,nav);
 }
+
+// ===== 해시 라우팅 (#<data-tab>) =====
+// 탭 목록을 하드코딩하지 않고 DOM 에서 뽑는다 — 나중에 .ptab 이 늘어도 이 코드는 안 고쳐도 되게.
+const HASH_DEFAULT_TAB='map';
+function tabIds(){ return Array.from(document.querySelectorAll('.ptab[data-tab]'),t=>t.dataset.tab); }
+function hashTab(){
+  let h=(location.hash||'').replace(/^#/,'');
+  try{ h=decodeURIComponent(h); }catch(e){}      // 깨진 퍼센트 인코딩 — 던지지 말고 원문 그대로
+  return tabIds().indexOf(h)>=0?h:null;          // 모르는 해시는 null → 호출부가 조용히 무시한다
+}
+function routeWrite(tab,nav){
+  if(nav==='none') return;                       // popstate 로 들어온 전환 — 다시 쓰면 루프가 된다
+  if(tabIds().indexOf(tab)<0) return;            // 알 수 없는 탭은 주소창에 남기지 않는다
+  const want=tab===HASH_DEFAULT_TAB?'':'#'+tab;  // 기본 탭은 해시를 비운다('#' 쓰레기 금지)
+  if(location.hash===want) return;               // 같은 탭 반복 클릭으로 뒤로가기 스택을 늘리지 않는다
+  try{
+    history[nav==='push'?'pushState':'replaceState'](null,'',location.pathname+location.search+want);
+  }catch(e){
+    // file:// 등 history API 가 막히는 환경 폴백. 기본 탭이면 '#' 한 글자가 남지만
+    // 리로드 없이 지울 방법이 없어 감수한다(동작에는 영향 없음).
+    location.hash=want;
+  }
+}
+function applyHashRoute(){
+  const t=hashTab();
+  if(t) switchTab(t);                            // 유효한 #탭만 반영(replace). 모르는 해시는 손대지 않고 기본 탭 유지
+}
+// ===== /해시 라우팅 =====
 // ===== 🏛 연준 =====
 const FED_FILES=['fed_roster.json','fed_positions.json','fed_statements.json','fed_calendar.json','fed_reaction.json','taco.json','portraits.json'];
 let _fedHandle=null, _fedTs=0, _fedTimer=null, _fedBusy=false;
@@ -271,7 +301,7 @@ const mainTabs=Array.from(document.querySelectorAll('.ptab'));
 mainTabs.forEach((t,i)=>{
   const panel=document.getElementById(t.dataset.tab+'view');
   if(panel){ panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',t.id); }
-  t.onclick=()=>switchTab(t.dataset.tab);
+  t.onclick=()=>switchTab(t.dataset.tab,'push');   // 사용자 클릭만 push — 뒤로가기가 이전 탭으로 돌아가게
   t.addEventListener('keydown',e=>{
     let next=i;
     if(e.key==='ArrowRight') next=(i+1)%mainTabs.length;
@@ -283,6 +313,8 @@ mainTabs.forEach((t,i)=>{
     mainTabs[next].scrollIntoView({block:'nearest',inline:'nearest'});
   });
 });
+// 뒤로/앞으로 — 해시가 가리키는 탭으로만 전환하고 해시는 다시 쓰지 않는다
+window.addEventListener('popstate',()=>{ switchTab(hashTab()||HASH_DEFAULT_TAB,'none'); });
 
 // ===== 💧 유동성 =====
 const LIQC={green:'#59d0a8',yellow:'#ffd23d',orange:'#ff8a3d',red:'#ff4d5e',gray:'#8a93a3'};
@@ -494,4 +526,6 @@ async function loadHuman(){
 }
 // ===== /인간지표 =====
 
-boot();
+// 초기 해시 적용은 boot() 의 데이터 준비가 끝난 뒤. 로드 직후 #탭 으로 들어오면
+// 지연 렌더 차트가 빈 데이터로 굳을 수 있어서다. boot() 가 실패해도 라우팅은 살아야 하므로 finally.
+boot().finally(applyHashRoute);

@@ -667,6 +667,15 @@ function writeHash(){
   catch(e){ try{location.hash=h;}catch(_){} }
   _lastNav=sig;
 }
+// 탭 화이트리스트의 단일 진실원은 탭바 DOM 이다 — 탭을 추가해도 라우터가 따라오게 해서
+// 목록 드리프트를 원천 차단한다(종전 삼항 연쇄는 탭바 20개 중 14개만 나열돼
+// ecal·tmap·kpi·ops 가 조용히 dash 로 떨어졌다). applyHash 최초 호출부는 문서 끝 인라인
+// <script> 라 탭바 마크업보다 뒤에 실행되므로 이 시점에 #tabs 는 이미 파싱돼 있다.
+let _tabIds=null;
+function tabIds(){                                   // 비어 있으면 재조회 — 늦게 주입되는 탭도 흡수
+  if(!_tabIds||!_tabIds.length) _tabIds=[...document.querySelectorAll('#tabs .tab[data-tab]')].map(e=>e.dataset.tab);
+  return _tabIds;
+}
 function applyHash(){
   const raw=(location.hash||'').replace(/^#/,''); if(!raw) return false;
   const q={}; raw.split('&').forEach(kv=>{ const i=kv.indexOf('='); if(i>0) q[kv.slice(0,i)]=decodeURIComponent(kv.slice(i+1)); });
@@ -674,7 +683,7 @@ function applyHash(){
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
-  ST.tab=(q.tab==='watch')?'watch':(q.tab==='nowcast'?'nowcast':(q.tab==='lux'?'lux':(q.tab==='mem'?'mem':(q.tab==='bio'?'bio':(q.tab==='rack'?'rack':(q.tab==='tech'?'tech':(q.tab==='ppi'?'ppi':(q.tab==='game'?'game':(q.tab==='app'?'app':(q.tab==='plat'?'plat':(q.tab==='comm'?'comm':(q.tab==='ai'?'ai':(q.tab==='ins'?'ins':'dash')))))))))))));
+  ST.tab=(q.tab&&tabIds().indexOf(q.tab)>=0)?q.tab:'dash';   // 모르는 값은 종전과 동일하게 dash (dc 는 아래에서 별도 처리)
   if(q.tab==='game'&&q.gco){ ST.gview='co_'+q.gco; }
   if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
   if(q.tab==='dc'){                                    // ⚡ DC 탭 — 탭 + 뷰·필터·선택 복원
