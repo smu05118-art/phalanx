@@ -43,6 +43,26 @@ def basis_ko(key):
     return BASIS_KO.get(key, key or "")
 
 
+def china_exposure(contracts):
+    """중국 노출(스펙 「산업 특성 6」) — **공시된 단일계약의 공급지역 칸**으로만 센다.
+
+    지역별 매출은 II-4 매출실적이 수출/내수까지만 나누는 회사가 대부분이라 원문에 없다.
+    반면 「단일판매ㆍ공급계약체결」에는 `4. 판매ㆍ공급지역` 칸이 있고, 주성엔지니어링
+    `20240710900488` 은 거기에 **중국**이라 적혀 있다(PROGRESS §1-1). 그래서 이 지표는
+    **매출 비중이 아니라 '공시된 계약 금액 중 중국향 비중'** 이다 — 화면에도 그렇게 적는다.
+
+    금액 칸을 못 읽은 계약(`amt_mkrw` 없음)은 금액 분모·분자에서 빼고 건수만 센다.
+    분모가 0이면 `share=None`(fail-closed — 0%로 적지 않는다).
+    """
+    cn = [c for c in contracts if c.get("region_cn")]
+    known = [c for c in contracts if c.get("amt_mkrw")]
+    cn_amt = sum(c["amt_mkrw"] for c in cn if c.get("amt_mkrw"))
+    all_amt = sum(c["amt_mkrw"] for c in known)
+    return {"n": len(cn), "n_all": len(contracts), "amt": cn_amt,
+            "share": (100.0 * cn_amt / all_amt) if all_amt else None,
+            "regions": sorted({(c.get("region") or "").strip() for c in cn} - {""})}
+
+
 # ── 데이터 ─────────────────────────────────────────────────
 
 def _opt(name, default=None):
@@ -226,6 +246,16 @@ def company_html(data, s):
         amt = sum(c.get("amt_mkrw") or 0 for c in s["contracts"])
         kp.append('<div><b>%s<small>억</small></b><span>공시 단일계약 누적 · %d건</span></div>'
                   % (fmt_eok(amt), len(s["contracts"])))
+        cn = china_exposure(s["contracts"])
+        if cn["n"]:
+            kp.append('<div><b>%s</b><span>중국향 공시계약 · %d건</span>'
+                      '<i class="mut">계약 금액 기준 · 매출 비중이 아닙니다%s</i></div>'
+                      % (("%.0f%%" % cn["share"]) if cn["share"] is not None
+                         else "%d건" % cn["n"], cn["n"],
+                         (" · " + E(" · ".join(cn["regions"]))) if cn["regions"] else ""))
+        else:
+            kp.append('<div><b class="mut">0<small>건</small></b><span>중국향 공시계약</span>'
+                      '<i class="mut">공급지역 칸에 중국이 적힌 계약이 없습니다</i></div>')
 
     # ── 잔고 롤포워드
     rr = []
@@ -541,6 +571,7 @@ def hub_html(data, sums):
  <div><b>%d</b><span>매출인식 기준 원문 확인</span></div>
  <div><b>%d</b><span>주요고객 주석 확인</span></div>
  <div><b>%d</b><span>단일판매ㆍ공급계약 공시</span></div>
+ <div><b>%d</b><span>중국향 계약을 공시한 회사</span><i class="mut">공급지역 칸 기준 · 매출 비중이 아닙니다</i></div>
 </div>
 %s
 <div class="chips" style="margin-top:12px">%s</div>
@@ -557,6 +588,8 @@ def hub_html(data, sums):
 <script>%s</script>
 """ % (fmt_eok(bsum), len(with_bal), len(sums), n_basis, n_cust,
        len([c for c in data["contracts"] if c["stock"] in mem_stocks]),
+       len({c["stock"] for c in data["contracts"]
+            if c["stock"] in mem_stocks and c.get("region_cn")}),
        note, bchips, "".join(cards), stage_tbl, big_tbl, len(data["uni"]), TABLE_JS)
     return page("한국반도체장비 — 수주잔고·매출인식·고객집중", body, depth=0,
                 h1="🔧 한국반도체장비",
