@@ -1715,7 +1715,21 @@ function migrateState(raw){
     });
     return out;
   };
-  const pgList=(a,ids)=>(Array.isArray(a)? a:[]).filter(x=>typeof x==='string' && ids.has(x)).slice(0,8);
+  /* 두 상한을 가른다 — 같은 8을 쓰던 것이 결함이었다.
+     [무엇이 문제였나] `mvpTop`/`bustTop` 의 8은 결과 순위의 동점 확장 상한(topOf 의
+     `out.length<8`)과 짝이 맞는 값이다. 그런데 **현재 투표자가 이번 차례에 누른 목록**(`sel`)
+     에도 같은 8을 걸어서, 9명 이상 고르고 새로고침하면 9번째부터가 잘려 나갔다.
+     득표 객체(mvpVotes·bustVotes)는 pgTally 로 상한 없이 살아남으므로 **표는 남고 되돌릴
+     근거만 사라진다** — `blank()` 의 postgame 주석이 "새로고침으로 표만 남고 되돌릴 수 없게
+     되는 것을 막으려 함께 저장한다"고 선언한 바로 그 상태다.
+     게다가 `pick()` 이 `p.sel.indexOf(pid)` 로 토글하므로, 잘려 나간 좌석을 취소하려고 다시
+     누르면 취소가 아니라 **+1** 이 된다.
+     `sel` 의 상한은 좌석 상한 15다(addPlayer·ensureSeats·설정 화면이 모두 15로 막는다).
+     `pick` 이 중복을 못 만들므로 정상 저장본은 언제나 15 안에 들어온다 — 상한을 없애지 않고
+     손상·악성 저장본 방어라는 migrateState 의 역할은 그대로 둔다. */
+  const pgCap=(a,ids,cap)=>(Array.isArray(a)? a:[]).filter(x=>typeof x==='string' && ids.has(x)).slice(0,cap);
+  const pgList=(a,ids)=>pgCap(a,ids,8);          // 결과 순위 — topOf 의 동점 확장 상한과 짝
+  const pgSel =(a,ids)=>pgCap(a,ids,15);         // 투표자 선택 목록 — 좌석 상한
   const pgStage=pgr.stage|0;
   st.postgame={
     id:(typeof pgr.id==='string' && pgr.id)? pgr.id.slice(0,16) : null,
@@ -1723,7 +1737,7 @@ function migrateState(raw){
     team:(pgr.team==='good'||pgr.team==='evil')? pgr.team : null,
     reason:(typeof pgr.reason==='string')? pgr.reason.slice(0,200) : '',
     turn:Math.max(0, pgr.turn|0),
-    sel:pgList(pgr.sel, pgIds),
+    sel:pgSel(pgr.sel, pgIds),
     mvpVotes:pgTally(pgr.mvpVotes, pgIds), bustVotes:pgTally(pgr.bustVotes, pgIds),
     mvpTop:pgList(pgr.mvpTop, pgIds),      bustTop:pgList(pgr.bustTop, pgIds),
     voters:{mvp:Math.max(0,(pgr.voters&&pgr.voters.mvp)|0), bust:Math.max(0,(pgr.voters&&pgr.voters.bust)|0)}
@@ -1906,6 +1920,24 @@ function thyPatchBankedAlignment(p){
   if(!h || !Array.isArray(h.players)) return;
   const r=h.players.find(x=>x && x.pid===p.id);
   if(r){ r.alignment=isEvil(p)? 'evil' : 'good'; }
+  /* 진영을 고쳤으면 그 진영에 의존하는 값도 다시 확정해야 한다.
+     [무엇이 문제였나] 이 함수는 `r.alignment` 한 필드만 고치고 곧장 profileRebuild 를 불렀다.
+     그런데 `opBreakdown` 은 `isEvil(me)` 로 갈리는 함수다 — 진영이 바뀌면 xEXE 부호가 뒤집히고
+     선 전용 CROSS 가 빠지며 SURV·HEAT·POLI 가 붙거나 떨어진다. 게다가 **다른 좌석의 점수도**
+     정치인의 진영에 의존한다(지명·투표 상대의 진영으로 갈리는 항이 있다). 그래서 정치인
+     좌석만 고치는 것으로는 반쪽이고, 그 레코드 전 좌석을 다시 확정해야 한다.
+     `profileRebuild` 는 레코드의 `p.score` 를 그대로 읽으므로 **순서가 핵심이다** —
+     재확정을 뒤에 두면 옛 점수가 캐시에 굳는다(profileSig 는 점수를 안 보므로 다음 렌더가
+     고쳐 주지도 않는다).
+     관용구는 finish() 가 이미 쓰는 것과 같다 — 규칙을 두 벌로 적지 않는다. */
+  try{
+    if(typeof matchMVP==='function' && typeof scorePlayer==='function'){
+      const _mvp=matchMVP();
+      h.players.forEach(x=>{ if(x && typeof x==='object' && playerOf(x.pid)){
+        x.score=scorePlayer(x.pid); x.mvp=(x.pid===_mvp);
+      }});
+    }
+  }catch(e){ console.warn('[politician] rescore', e); }
   try{ if(typeof profileRebuild==='function') profileRebuild(); }catch(e){}
 }
 /* 처형 전 사회자 재량 질문 묶음 — 처형의 두 진입점이 공유하는 단일 출처.
