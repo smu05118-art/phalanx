@@ -285,6 +285,10 @@ _TIER_OF = {n: t for t, _, names in TIERS for n in names}
 ABBREV = {
     "KAL": ("대한항공", "prime"),
     "KAI": ("한국항공우주", "prime"),
+    # 하이즈항공 매출처 표는 `BOE(주4)` 로 적고 각주에서 `BOE(Boeing Commercial Airplanes)`
+    # 라고 풀어 준다. 각주 표를 아직 이름과 잇지 못하므로(HANDOFF ③-4) 여기서는 **추정**으로
+    # 편다. 이 사전은 우주항공 모집단 안에서만 쓰인다(디스플레이 회사 BOE와 겹치지 않는다).
+    "BOE": ("Boeing", "oem"),
 }
 ABBREV_STOCK = {"KAL": "003490", "KAI": "047810"}
 PRIME_NAME = {"047810": "한국항공우주", "012450": "한화에어로스페이스", "003490": "대한항공",
@@ -644,7 +648,10 @@ def customer_name(cells, heads):
         names.append(c)
     if not names:
         return None, False
-    name = names[-1]
+    # 각주 표시(`ACM(주1)`)는 이름이 아니다 — 떼고 싣는다(각주 본문은 본문 문구로 따로 읽힌다).
+    name = re.sub(r"\s*\(\s*주\s*\d+\s*\)\s*$", "", names[-1]).strip()
+    if not name:
+        return None, False
     return name, bool(_ANON_NAME.match(clean(name)))
 
 
@@ -839,12 +846,15 @@ def _last_total_group(rows):
     return [r for r in rows if clean(r["seg"]) == last]
 
 
-def _fy_revenue(rv):
-    """매출 표에서 **온전한 1년** 열 → (값, 열 이름). 반기 누계를 두 배로 늘리지 않는다."""
+def _fy_revenue(rv, tab=None):
+    """매출 표에서 **온전한 1년** 열 → (값, 열 이름). 반기 누계를 두 배로 늘리지 않는다.
+
+    `tab` 을 주면 그 탭 몫의 부문 행만 더한다 — 겸업사의 커버리지 분모를 만들 때 쓴다
+    (한화에어로 항공 잔고를 **전사 매출**로 나누면 14년이 1.2년으로 줄어든다)."""
     if not rv or not rv.get("unit_seen"):
         return None, None
     cols = rv.get("period_cols") or []
-    rows = rv.get("rows") or []
+    rows = [r for r in (rv.get("rows") or []) if tab is None or r.get("tab") == tab]
 
     def ok(r):
         return len(r.get("vals") or []) == len(cols)
@@ -859,11 +869,12 @@ def _fy_revenue(rv):
     return None, None
 
 
-def _fy_segsales(ss):
+def _fy_segsales(ss, tab=None):
     if not ss or not ss.get("unit_seen"):
         return None, None
     cols = ss.get("period_cols") or []
-    rows = [r for r in (ss.get("rows") or []) if len(r.get("vals") or []) == len(cols)]
+    rows = [r for r in (ss.get("rows") or []) if len(r.get("vals") or []) == len(cols)
+            and (tab is None or r.get("tab") == tab)]
     for i in (i for i, c in enumerate(cols) if _is_fy(c)):
         grand = _last_total_group([r for r in rows if is_total(r["seg"])])
         sub = [r for r in rows if r.get("total") and not is_total(r["seg"])]
@@ -1014,24 +1025,47 @@ def _build_quarter(d):
                               "amount": c.get("amount"), "share_pct": c.get("share_pct"),
                               "matched": ([] if anon else customers_in(name)), "src": "매출처표"})
     # 커버리지(년) — 잔고 ÷ 연매출. **통화가 같을 때만** 만든다(환산 금지).
+    # ── 커버리지(년) = 잔고 ÷ 연매출 ─────────────────────────────────────
+    # 분자와 분모의 **범위가 같아야** 한다. 겸업사는 잔고를 항공·우주 부문으로 걸렀으므로
+    # 분모도 그 부문 매출이어야 한다 — 한화에어로 항공 잔고 32.3조를 전사 매출 26.7조로
+    # 나누면 1.2년이지만, 항공 부문 매출 2.3조로 나누면 14년이다(이쪽이 맞는 값이다).
     cover, cover_note = None, ""
-    if fy and rev_cur and rev_cur in backlog and backlog[rev_cur]:
-        cover = backlog[rev_cur] / fy
+    cover_fy, cover_fy_col, cover_scope = fy, fy_col, "전사"
+    # 범위가 어긋나는 두 경우: ① 부문 필터로 행을 뺐다 ② 같은 통화 표가 여럿인데 그중
+    # 항공·우주 표 하나만 골랐다(대한항공 — 항공운수보조·지상조업·IT 표가 따로 있다).
+    partial = bool(dup) or any((o.get("n_tables") or 1) > 1 for o in orders.values())
+    if partial:
+        a_fy, a_col = _fy_revenue(rv, tab="kaero")
+        if a_fy is None:
+            a_fy, a_col = _fy_segsales(ss, tab="kaero")
+        if a_fy:
+            cover_fy, cover_fy_col, cover_scope = a_fy, a_col, "항공·우주 부문"
+        else:
+            cover_fy, cover_fy_col, cover_scope = None, None, "부문 매출 못 읽음"
+            cover_note = ("수주잔고는 항공·우주 부문만 실었는데 그에 맞는 부문 매출을 못 읽어 "
+                          "커버리지를 만들지 않았다 — 전사 매출로 나누면 범위가 어긋난다")
+    if cover_fy and rev_cur and rev_cur in backlog and backlog[rev_cur]:
+        cover = backlog[rev_cur] / cover_fy
         other = {c: v for c, v in backlog.items() if c != rev_cur and v}
         if other:
             # 아스트가 그렇다 — 잔고는 27억달러인데 매출표는 원화뿐이다. 원화 잔고만으로
-            # 낸 커버리지는 0.001년이 되어 **뜻이 없다**. 환산하지 않고 사실을 적는다.
-            cover_note = ("잔고에 %s 도 있는데 매출표는 %s 뿐이라 커버리지는 %s 잔고만으로 냈다 — "
-                          "환산하지 않았다" % ("·".join(sorted(other)), rev_cur, rev_cur))
-    elif fy and backlog and rev_cur:
-        cover_note = "매출 통화(%s)와 같은 통화의 수주잔고가 없어 커버리지를 만들지 않았다" % rev_cur
+            # 낸 커버리지는 0.001년이 되어 **뜻이 없다**. 값을 만들지 않고 사실을 적는다.
+            cover = None
+            cover_note = ("수주잔고가 %s 로도 있는데 매출표는 %s 뿐이다 — 환산하지 않으므로 "
+                          "커버리지를 만들지 않았다(%s 잔고만으로 내면 뜻이 없다)"
+                          % ("·".join(sorted(other)), rev_cur, rev_cur))
+    elif cover_fy and backlog and rev_cur:
+        cover_note = cover_note or (
+            "매출 통화(%s)와 같은 통화의 수주잔고가 없어 커버리지를 만들지 않았다" % rev_cur)
     return {
         "ok": True, "rcp": d.get("rcp"), "title": d.get("title"),
         "orders_src": src, "shapes": shapes, "scopes": scopes,
         "backlog": backlog, "backlog_all": backlog_all,
-        "opening": {c: _closing_field(o, "opening") for c, o in orders.items()},
-        "delivered": {c: _closing_field(o, "delivered") for c, o in orders.items()},
-        "gross": {c: _closing_field(o, "gross") for c, o in orders.items()},
+        # 롤포워드의 기초·총액·기납품도 **잔고와 같은 필터**를 쓴다 — 안 그러면 한화에어로가
+        # 수주총액 162조(전 부문)에 잔고 32조(항공만)로 찍혀 표가 말이 안 된다.
+        "opening": {c: _closing_field(o, "opening", _aero_rows(o)) for c, o in orders.items()},
+        "delivered": {c: _closing_field(o, "delivered", _aero_rows(o)) for c, o in orders.items()},
+        "gross": {c: _closing_field(o, "gross", _aero_rows(o)) for c, o in orders.items()},
         "dup_segments": dup,
         "domains": domains, "domains_src": dom_src, "natures": natures,
         "order_customers": sorted(custs.values(), key=lambda c: -sum(c["backlog"].values())),
@@ -1050,16 +1084,23 @@ def _build_quarter(d):
         "text_customers": d.get("text_customers") or [],
         "quotes": d.get("quotes") or [],
         "coverage_years": cover, "coverage_note": cover_note,
+        "coverage_fy": cover_fy, "coverage_fy_col": cover_fy_col, "coverage_scope": cover_scope,
+        # 부문 잔고 ÷ 부문 매출은 **추정**이다 — 수주표의 부문 구분과 매출표의 부문 구분이
+        # 정확히 같지 않다(KAI 수주표는 `국내방산|완제기수출|기체부품`, 매출표는
+        # `방산 및 완제기수출|기체부품 및 민수`). 화면에 '추정'이라 적는다.
+        "coverage_est": cover_scope != "전사",
         "security_note": d.get("security_note", False),
         "notes": notes,
     }
 
 
-def _closing_field(o, field):
-    tot = [r for r in o["rows"] if r["total"]]
-    if tot and tot[0].get(field) is not None:
-        return tot[0][field]
-    return _sum(o["rows"], field)
+def _closing_field(o, field, pred=None):
+    """합계 행이 있으면 그것을(필터가 없을 때만), 없으면 낱 행을 더한다."""
+    if pred is None:
+        tot = [r for r in o["rows"] if r["total"]]
+        if tot and tot[0].get(field) is not None:
+            return tot[0][field]
+    return _sum(o["rows"], field, pred)
 
 
 def _contract_rows(orders, aero_only=True):

@@ -50,6 +50,11 @@ def _norm(s):
     return _NORM.sub("", (s or "").lower())
 
 
+def clean_name(s):
+    """회사 이름 비교용 — 법인격 표기와 공백을 지운다(`㈜한화에어로스페이스` = `한화에어로스페이스`)."""
+    return _NORM.sub("", re.sub(r"㈜|주식회사|\(주\)|Co\.?|Ltd\.?|Inc\.?", "", s or "", flags=re.I).lower())
+
+
 def _kw_spans(raw, kw):
     """원문에서 낱말 위치(사이에 공백·가운뎃점이 끼어도 찾는다)."""
     pat = _SEP.join(re.escape(ch) for ch in kw if not _NORM.match(ch))
@@ -133,6 +138,10 @@ def build(write=True):
         links = {}
 
         def add(name, tier, basis, detail, grade_hint="B", stock=None, extra=None):
+            # 자기 자신은 고객이 아니다 — 연결 수주표의 회사 열에 모회사 이름이 들어 있어
+            # 한화에어로스페이스가 제 고객으로 잡혔다(실측).
+            if stock == st or clean_name(name) == clean_name(r["name"]):
+                return
             g, ko = BASIS[basis]
             cur = links.get(name)
             rec = {"name": name, "tier": tier, "basis": basis, "basis_ko": ko, "grade": g,

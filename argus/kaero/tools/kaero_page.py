@@ -107,6 +107,10 @@ def summary(stock, data):
         "backlog": backlog, "curs": curs,
         "fy": (latest or {}).get("revenue_fy"), "fy_cur": (latest or {}).get("revenue_cur"),
         "coverage": (latest or {}).get("coverage_years"),
+        "cov_fy": (latest or {}).get("coverage_fy"),
+        "cov_fy_col": (latest or {}).get("coverage_fy_col"),
+        "cov_scope": (latest or {}).get("coverage_scope") or "전사",
+        "cov_est": bool((latest or {}).get("coverage_est")),
         "coverage_note": (latest or {}).get("coverage_note") or "",
         "exp_share": pct(exp, (exp or 0) + (dom_rev or 0)) if latest else None,
         "dom_amt": dom_amt, "nat_amt": nat_amt,
@@ -226,10 +230,13 @@ def company_html(s, data):
         kpi.append('<div class="hero"><b class="mut">—</b><span>수주잔고</span>'
                    '<i class="mut">%s</i></div>' % E(why))
     if s["coverage"] is not None:
-        kpi.append('<div><b>%s<small>년</small></b><span>잔고 커버리지 = 잔고 ÷ 연매출</span>'
-                   '<i class="mut">분모 %s(%s)</i></div>'
-                   % (fmt_x(s["coverage"]), fmt_money_u(s["fy"], s["fy_cur"] or "KRW"),
-                      E((latest or {}).get("revenue_fy_col") or "직전 사업연도")))
+        kpi.append('<div><b>%s<small>년</small></b>%s<span>잔고 커버리지 = 잔고 ÷ 연매출</span>'
+                   '<i class="mut">분모 %s · %s 매출(%s)</i></div>'
+                   % (fmt_x(s["coverage"]),
+                      (" " + _pill("추정", "", "수주표의 부문 구분과 매출표의 부문 구분이 "
+                                             "정확히 같지는 않습니다")) if s["cov_est"] else "",
+                      fmt_money_u(s["cov_fy"], s["fy_cur"] or "KRW"), E(s["cov_scope"]),
+                      E(s["cov_fy_col"] or "직전 사업연도")))
     else:
         kpi.append('<div><b class="mut">—</b><span>잔고 커버리지</span>'
                    '<i class="mut">%s</i></div>'
@@ -267,7 +274,8 @@ def company_html(s, data):
                            fmt_money((v.get("backlog") or {}).get(c), c),
                            E(SHAPE_KO.get((v.get("shapes") or {}).get(c),
                                           (v.get("shapes") or {}).get(c) or "—")),
-                           E(DART % (v.get("rcp") or "")) if i == 0 else ""))
+                           ('<a href="%s" target="_blank" rel="noopener noreferrer">원문</a>'
+                            % E(DART % (v.get("rcp") or ""))) if i == 0 else ""))
     roll_html = ('<div class="wrap"><table><thead><tr><th class="l">분기</th><th class="l">통화</th>'
                  '<th>기초</th><th>수주총액</th><th>기납품</th><th>수주잔고</th>'
                  '<th class="l">표 모양</th><th class="l">출처</th></tr></thead>'
@@ -284,9 +292,6 @@ def company_html(s, data):
                if TAB_HREF.get(d["tab"]) else E(TAB_KO.get(d["tab"], d["tab"])),
                E(str(d.get("n", 1))), fmt_money_u(d["closing"], d["cur"]))
             for d in sorted(s["dup"], key=lambda d: -(d["closing"] or 0)))
-        tot = collections.defaultdict(float)
-        for d in s["dup"]:
-            tot[d["cur"]] += d["closing"] or 0
         dup_html = ('<section class="card"><h2>다른 탭과 겹치는 부문 '
                     '<em>이 회사의 공시 수주표에는 우주항공이 아닌 부문이 함께 들어 있습니다 — '
                     '이 탭 집계에서 뺐습니다</em></h2>'
@@ -384,6 +389,11 @@ def company_html(s, data):
                      % ("·".join(c for c in s["curs"] if c != "KRW")))
     if s["coverage_note"]:
         notes.append(E(s["coverage_note"]))
+    if s["cov_est"]:
+        notes.append("커버리지의 분모는 <b>%s 매출</b>입니다 — 수주잔고를 항공·우주 부문으로 "
+                     "걸렀으므로 분모도 같은 범위여야 합니다. 다만 수주표의 부문 구분과 "
+                     "매출표의 부문 구분이 정확히 같지는 않아 <b>추정</b>으로 적습니다."
+                     % E(s["cov_scope"]))
     if s["security"]:
         notes.append("이 회사는 정기보고서에 <b>보안·영업비밀로 수주 상세를 생략한다</b>고 적었습니다.")
     for n in s["notes"]:
@@ -727,6 +737,36 @@ def coverage_html(data, sums):
                      '<th>분기</th><th class="l">이유</th></tr></thead><tbody>%s</tbody></table>'
                      '</div></section>' % "".join(tr))
 
+    # 겸업사 부문 필터의 근거 — 스펙 §화면 "커버리지: 겸업사 부문 필터의 근거"
+    dup_rows = []
+    for s in sums:
+        for d in s["dup"]:
+            dup_rows.append((s, d))
+    dup_html = ""
+    if dup_rows:
+        tr = "".join(
+            '<tr><td class="l"><a href="%s/index.html">%s</a></td><td class="l">%s</td>'
+            '<td class="l">%s</td><td>%s</td><td>%s</td><td>%s</td></tr>'
+            % (E(s["stock"]), E(s["rec"]["name"]), E(d["seg"]),
+               E(TAB_KO.get(d["tab"], d["tab"])), E(str(d.get("n", 1))),
+               fmt_money_u(d["closing"], d["cur"]),
+               money_cell(s["backlog"]))
+            for s, d in sorted(dup_rows, key=lambda sd: -(sd[1]["closing"] or 0)))
+        dup_html = ('<section class="card"><h2>겸업사 부문 필터 '
+                    '<em>공시 수주표 안에 우주항공이 아닌 부문이 함께 들어 있는 회사 — '
+                    '무엇을 왜 뺐는가</em></h2>'
+                    '<p style="font-size:12px;color:var(--tx2);line-height:1.8">'
+                    '부문 열은 <b>머리행 이름이 아니라 값으로</b> 찾습니다. 한화에어로 '
+                    '「4. 수주상황(상세)」의 머리행은 <code>부문 | 사업 | 품목</code> 인데 '
+                    '<code>부문</code> 칸에 든 것은 <b>회사 이름</b>(한화오션㈜ 및종속회사)이고 '
+                    '사업부문은 <code>사업</code> 열입니다 — 머리행을 믿으면 해양 26.7조가 '
+                    '이 탭 잔고로 들어옵니다. 그래서 부문으로 판정되는 값의 비율이 가장 높은 열을 '
+                    '(절반 이상일 때만) 부문 열로 봅니다.</p>'
+                    '<div class="wrap"><table data-sortable><thead><tr><th class="l">회사</th>'
+                    '<th class="l">뺀 부문(원문)</th><th class="l">어느 탭 몫</th>'
+                    '<th>계약 줄</th><th>뺀 잔고</th><th>이 탭에 남긴 잔고</th></tr></thead>'
+                    '<tbody>%s</tbody></table></div></section>' % tr)
+
     probe = data.get("probe") or {}
     rej = probe.get("rejected") or []
     scan = ""
@@ -777,6 +817,7 @@ kdef·kship과 겹치는 회사는 빼지 않고 <b>부문 단위로 갈라</b> 
 <tbody>%s</tbody></table></div></section>
 %s
 %s
+%s
 <div class="note info">
 <p><b>통화.</b> 수주표는 표마다 통화가 다릅니다(아스트 국외수주 USD · 국내수주 원). 환산하지 않고
  통화별로 싣습니다 — 공시에 환율이 적혀 있지 않아 환산하면 추정이 됩니다. 캡션에 통화가 둘 이상이거나
@@ -788,7 +829,7 @@ kdef·kship과 겹치는 회사는 빼지 않고 <b>부문 단위로 갈라</b> 
 <p><b>배수의 뜻.</b> 장기공급계약(LTA)은 기종이 단종될 때까지 자동 연장되는 관행이 있어
  프로그램 <b>누적 총액</b>이 잔고로 잡히는 회사가 있습니다. 커버리지가 10년을 넘으면 그렇게 읽으십시오.</p></div>
 <script>%s</script>
-""" % (len(data["uni"]), "".join(rows), miss_html, scan, TABLE_JS)
+""" % (len(data["uni"]), "".join(rows), dup_html, miss_html, scan, TABLE_JS)
     return page("한국우주항공 커버리지", body, depth=0, h1="커버리지",
                 nav=(("허브", "index.html"), ("← ARGUS", "../index.html")),
                 crumbs=(("ARGUS", "../index.html"), ("한국우주항공", "index.html"),
