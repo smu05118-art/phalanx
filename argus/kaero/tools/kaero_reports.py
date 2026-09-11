@@ -122,31 +122,43 @@ _CUR_TOK = re.compile(r"백만달러|백만불|천달러|천불|USD|달러|EUR|�
 
 
 def _carry_units(tables):
-    """표마다 단위 캡션을 읽되, 자기 lead 에 없으면 **직전에 본 캡션**을 물려준다.
+    """자기 lead 에 없는 것을 **직전 표에서 물려준다** — 단위 캡션과 제목 둘 다.
 
-    하이즈항공 「4. 수주상황」은 `(기준일 : …) (단위 : 백만원)` 한 줄짜리 표 다음에 데이터
-    표가 오고 데이터 표의 lead 가 비어 있다 — 그대로 두면 1.16조가 '단위 미확인'이 된다."""
-    out, last = [], None
+    하이즈항공은 `(기준일 : …) (단위 : 백만원)` 한 줄짜리 표를 먼저 싣고 데이터 표의 lead 를
+    비워 둔다. 캡션을 안 물려주면 1.16조가 '단위 미확인'이 되고(FINDINGS §5), **제목**을
+    안 물려주면 「2. 주요 매출처 등 현황」이 매출처 표로 인식되지 않는다(고객 축이 통째로
+    빈다). 캡션 표의 lead 가 바로 그 제목이므로 둘을 함께 물려준다."""
+    out, last_cap, last_lead = [], None, ""
     for t in tables:
-        blob = " ".join([t.get("lead") or ""] + list(t["cols"])
-                        + [" ".join(r) for r in t["rows"][:2]])
+        lead = t.get("lead") or ""
+        blob = " ".join([lead] + list(t["cols"]) + [" ".join(r) for r in t["rows"][:2]])
         caps = _UNIT_CAP.findall(blob)
         d = dict(t)
+        new_lead = lead
+        if not lead.strip() and last_lead.strip():
+            new_lead = last_lead
+            d["lead_from_prev"] = True
         if caps:
-            last = caps[-1]
-        elif last:
-            d["lead"] = (t.get("lead") or "") + " (%s)" % last
+            last_cap = caps[-1]
+        elif last_cap:
+            new_lead = new_lead + " (%s)" % last_cap
             d["unit_from_prev"] = True
+        d["lead"] = new_lead
         out.append(d)
+        last_lead = lead if lead.strip() else last_lead
     return out
 
 
 def _scaled(v, mul):
+    """숫자 × 단위배수. **배수를 못 정했으면(mul=None) 값을 만들지 않는다** —
+    통화가 섞인 표(FINDINGS §6)에서 배수를 1로 가정하면 763억원이 76.4백만달러가 된다."""
     x = num_of(v)
-    if x is None:
+    if x is None or mul is None:
         return None
     x = x * mul
-    return int(x) if float(x).is_integer() else round(x, 3)
+    # 자릿수를 넉넉히 남긴다 — 백만 단위로 줄인 뒤 3자리에서 끊으면 원(달러는 1,000달러)
+    # 아래가 날아가 원문 합계와 어긋난다(아스트 USD 잔고에서 423달러가 틀렸다).
+    return int(x) if float(x).is_integer() else round(x, 6)
 
 
 # ══ 통화 ══════════════════════════════════════════════════════════════════
@@ -558,8 +570,12 @@ def parse_segment_sales(t):
         if i_amt >= len(r):
             continue
         raw = r[i_amt]
+        if num_of(raw) is None:
+            continue
+        # 통화가 섞여 배수를 못 정한 표(mul=None)도 **행 이름은 남긴다** — 금액은 비우되
+        # 품목 이름(`항공기 부품`·`우주항공원소재`)이 영역 판정과 부품 분류의 재료가 된다.
         v = _scaled(raw, mul)
-        if v is None:
+        if v is None and mul is not None:
             continue
         is_usd = bool(_DOLLAR.search(raw))
         if is_usd:
@@ -591,6 +607,45 @@ def parse_segment_sales(t):
 _CUST_LEAD = re.compile(r"주요\s*거래처|주요\s*매출처|매출처\s*현황|주요\s*고객|매출처별|거래처별")
 _CUST_BAD = re.compile(r"판매경로|판매방법|판매조직")
 _PCT = re.compile(r"(\d+(?:\.\d+)?)\s*%")
+# 이름 칸에 오지만 **고객이 아닌** 말들. 매출처 표는 `매출처|구분|금액|비중` 처럼 구분 열이
+# 함께 오고(방위사업청 등 | 내수 | 1,072,101), 품목 열이 앞에 오기도 한다(제품 | 국내 | P사).
+# 이 말들을 지우고 남는 마지막 칸이 이름이다 — 그냥 첫 칸이나 끝 칸을 쓰면 `내수`가 고객이 된다.
+_NOT_NAME = re.compile(r"^(내\s*수|수\s*출|국\s*내|해\s*외|제\s*품|상\s*품|용\s*역|기\s*타|"
+                       r"합\s*계|소\s*계|총\s*계|총\s*매출액|매출액|매출처|거래처|고객|구\s*분|"
+                       r"품\s*목|업\s*체|비\s*중|비\s*율|금\s*액|결제조건|[-—]|)$")
+# 기간·단위 머리행이 본문 행으로 되풀이되는 표가 있다 — `2026년 반기(제28기)` 를 고객으로 싣지 않는다.
+_PERIOD = re.compile(r"제\s*\d+\s*기|20\d\d\s*년|단위\s*:|기준일|분기|반기")
+# 수주표를 매출처 표로 오인하지 않게 — 열 이름이 수주표면 여기서 손대지 않는다.
+_ORDER_COLS = re.compile(r"수주총액|수주잔고|기납품|수주일자|납기")
+# 익명 표기 — 공시가 이름을 가린 것이다. 지우지 말고 **익명이라 적는다**(COMMON §0-6).
+_ANON_NAME = re.compile(r"^([A-Z]\s*사|고객\s*\d+|업체\s*\d+|[○ㅇ]{2,}|[A-Z]{1,2})$")
+
+
+def customer_name(cells, heads):
+    """매출처 표의 한 행 → (이름, 익명여부) 또는 (None, False).
+
+    이름은 **첫 숫자 칸 앞**에 있다(`국내 | 한국항공 | 13,842 | … | 현금`). 뒤까지 보면
+    결제조건 칸의 `현금`이 고객이 된다(실측). 그 앞 칸들에서 머리행·구분어(내수/수출/제품…)·
+    기간 문구를 지우고 **남는 마지막 칸**을 이름으로 본다."""
+    head_cells = []
+    for c in cells:
+        if num_of(c) is not None:
+            break
+        head_cells.append(c)
+    names = []
+    for c in (head_cells or cells):
+        c = (c or "").strip()
+        if not c or num_of(c) is not None:
+            continue
+        if clean(c) in heads or _NOT_NAME.match(clean(c)) or _PERIOD.search(c):
+            continue
+        if is_total(c):
+            continue
+        names.append(c)
+    if not names:
+        return None, False
+    name = names[-1]
+    return name, bool(_ANON_NAME.match(clean(name)))
 
 
 def parse_customers(t):
@@ -605,20 +660,19 @@ def parse_customers(t):
         good = 0
     if good < 0 or bad > good:
         return None
+    if _ORDER_COLS.search(" ".join(t["cols"])):
+        return None            # 수주표다 — 매출처 표가 아니다(이노스페이스 실측)
     cur, mul, seen, _ = table_currency(t)
-    heads = {clean(c) for c in t["cols"]} | {"매출처", "거래처", "구분", "고객", "품목",
-                                             "매출액", "업체", "결제조건", "합계", "계"}
+    heads = {clean(c) for c in t["cols"]}
     out = []
     for r in t["rows"]:
         cells = [c.strip() for c in r if c and c.strip()]
-        if len(cells) < 2 or num_of(cells[0]) is not None:
+        if len(cells) < 2:
             continue
-        # 이름 열 = 숫자가 아닌 앞쪽 셀들. `국내|한국항공`처럼 구분+이름으로 오기도 한다.
-        names = [c for c in cells if num_of(c) is None and clean(c) not in heads]
-        if not names:
+        name, anon = customer_name(cells, heads)
+        if not name:
             continue
-        name = names[-1]
-        kind = names[0] if len(names) > 1 and clean(names[0]) in ("국내", "수출", "내수", "해외") else ""
+        kind = next((clean(c) for c in cells if clean(c) in ("국내", "수출", "내수", "해외")), "")
         share = None
         for c in cells[1:]:
             m = _PCT.search(c)
@@ -626,11 +680,9 @@ def parse_customers(t):
                 share = float(m.group(1))
                 break
         amt = next((_scaled(c, mul) for c in cells if num_of(c) is not None), None)
-        if is_total(name) or clean(name) in heads:
-            continue
-        out.append({"name": name, "kind": _KIND_WORDS.get(clean(kind), ""),
+        out.append({"name": name, "anon": anon, "kind": _KIND_WORDS.get(kind, ""),
                     "amount": amt if seen else None, "share_pct": share,
-                    "customers": customers_in(name), "raw": cells[:4]})
+                    "customers": ([] if anon else customers_in(name)), "raw": cells[:4]})
     return {"cur": cur, "unit_seen": seen, "rows": out, "lead": lead[-200:],
             "cols": t["cols"]} if out else None
 
@@ -946,11 +998,21 @@ def _build_quarter(d):
             dom_src = "매출품목"
 
     # 매출처 — 이 산업의 고객 축. 수주표에서 읽은 것과 합친다(출처를 각각 남긴다).
+    # 이름 판정은 **빌드 때 캐시에서 다시** 한다 — 사전·규칙이 자라도 재수집이 필요 없게
+    # 원문 셀(`raw`)을 남겨 뒀다(COMMON §0-4). 옛 캐시의 잘못 잡힌 이름(`내수`·`비중`)도
+    # 여기서 걸러진다.
     cust_rows = []
-    for c in (d.get("customers") or {}).get("rows") or []:
-        cust_rows.append({"name": c["name"], "kind": c.get("kind", ""),
-                          "amount": c.get("amount"), "share_pct": c.get("share_pct"),
-                          "matched": c.get("customers") or [], "src": "매출처표"})
+    ct = d.get("customers") or {}
+    if ct and not _ORDER_COLS.search(" ".join(ct.get("cols") or [])):
+        heads = {clean(c) for c in (ct.get("cols") or [])}
+        for c in ct.get("rows") or []:
+            raw = c.get("raw") or [c.get("name") or ""]
+            name, anon = customer_name(raw, heads)
+            if not name:
+                continue
+            cust_rows.append({"name": name, "anon": anon, "kind": c.get("kind", ""),
+                              "amount": c.get("amount"), "share_pct": c.get("share_pct"),
+                              "matched": ([] if anon else customers_in(name)), "src": "매출처표"})
     # 커버리지(년) — 잔고 ÷ 연매출. **통화가 같을 때만** 만든다(환산 금지).
     cover, cover_note = None, ""
     if fy and rev_cur and rev_cur in backlog and backlog[rev_cur]:

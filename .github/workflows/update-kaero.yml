@@ -1,0 +1,89 @@
+# 한국우주항공(argus/kaero) 일일 자동 갱신.
+#
+# 이 산업은 계약 공시가 드물다(표본 중앙값 연 0.75건) — 장기공급계약이 기종 단종까지 자동
+# 연장되기 때문이다. 그래서 매일 새로 뜨는 것은 거의 없고, 분기마다 정기보고서가 바뀐다.
+# 수집기는 **하나씩** 돌린다(DART 는 IP 단위로 끊는다). concurrency 그룹은 kce·kship·kdef 와
+# 같은 `kship-dart` — 여러 탭이 동시에 DART 를 두드리면 안 된다.
+name: update-kaero
+on:
+  schedule:
+    - cron: "40 3 * * *"          # 12:40 KST — kdef(11:20) 뒤
+  workflow_dispatch:
+    inputs:
+      quarter:
+        description: "정기보고서 분기 강제(예: 2026Q3) — 비우면 최신 분기"
+        required: false
+      scan:
+        description: "④ 본문 탐색까지 다시 돌릴지(느리다 · 후보 74사)"
+        required: false
+        default: "no"
+permissions:
+  contents: write
+concurrency:
+  group: kship-dart
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Tests (before)
+        run: cd argus/kaero/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Collect and build
+        id: build
+        continue-on-error: true
+        env:
+          QUARTER_INPUT: ${{ github.event.inputs.quarter }}
+          SCAN_INPUT: ${{ github.event.inputs.scan }}
+        shell: bash
+        working-directory: argus/kaero/tools
+        run: |
+          set -o pipefail
+          Q=()
+          if [ -n "${QUARTER_INPUT:-}" ]; then
+            if ! printf '%s' "$QUARTER_INPUT" | grep -Eq '^[0-9]{4}Q[1-4]$'; then echo "::error::quarter 형식"; exit 2; fi
+            Q=(--quarter "$QUARTER_INPUT")
+          fi
+          python3 build_dicts.py --write
+          if [ "${SCAN_INPUT:-no}" = "yes" ]; then
+            python3 kaero_scan.py --scan "${Q[@]}"
+          fi
+          python3 kaero_universe.py --write
+          python3 kaero_contracts.py --collect
+          python3 kaero_contracts.py --build
+          # 잔고 추이는 6분기면 충분하다(이 산업의 잔고는 LTA 라 분기 변동이 작다).
+          python3 kaero_reports.py --collect --n 6 "${Q[@]}"
+          python3 kaero_reports.py --build --n 6 "${Q[@]}"
+          python3 kaero_suppliers.py --build
+          python3 kaero_page.py --all
+          python3 kaero_parts.py
+      - name: Tests (after)
+        run: |
+          cd argus/kaero/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+          git diff --check || true
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "kaero-bot"
+          git config user.email "kaero-bot@users.noreply.github.com"
+          git reset -q -- '*.pyc' '**/__pycache__/**' 2>/dev/null || true
+          if [ -z "$(git status --porcelain -- argus/kaero)" ]; then
+            echo "변경 없음"; exit 0
+          fi
+          git add -- argus/kaero
+          git commit -m "kaero: 자동 갱신 $(date -u +%Y-%m-%d) (정기보고서 수주표·계약공시·고객 연결)"
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Fail if build errored
+        if: always() && steps.build.outcome == 'failure'
+        run: |
+          echo "::error::수집·생성 단계 실패 — 성공한 산출물은 커밋됐다. 로그를 확인하라"
+          exit 1

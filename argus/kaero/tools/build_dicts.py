@@ -48,9 +48,16 @@ GROUPS = [
     ("SVC", "정비·시험", "MRO & test"),
 ]
 
-# (cat_id, group, ko, 키워드, [실루엣 영역 id])
+# (cat_id, group, ko, 키워드, [실루엣 영역 id])  — 옵션은 아래 OPTS 에 따로 적는다
 # 키워드는 **제품·계약 문구에서 실제로 본 말**만 넣는다. 짧은 말은 넣지 않는다
 # (`케이스`는 반도체 케이스와 겹치고 `디스크`는 저장장치와 겹친다 — 앞말과 붙은 꼴만).
+#
+# 옵션:
+#   ctx=True  낱말이 항공·우주 밖에서도 흔하다 → 가까이에 항공·우주 문맥어가 있어야 채택한다.
+#             `단조품`·`정밀가공`·`액추에이터`·`안테나`·`열처리`가 그렇다 — 문맥을 안 보면
+#             자동차 단조사와 통신 안테나사가 항공 부품사가 된다(kdef 가 같은 사고를 겪었다).
+#   neg=[…]  이 말이 함께 있으면 그 소분류로 보지 않는다.
+#   prio      같은 회사에 여러 소분류가 걸릴 때의 표시 순서(클수록 먼저).
 CATS = [
     ("STRUCT.FUSELAGE", "STRUCT", "동체·섹션", ["동체", "Fuselage", "Section48", "Section 48",
                                             "벌크헤드", "Bulkhead", "스트링거", "Stringer",
@@ -123,6 +130,28 @@ CATS = [
      ["LV_UPPER"]),
 ]
 
+# 소분류별 옵션. ctx=True 는 **낱말 가까이에 항공·우주 문맥어가 있어야** 채택한다는 뜻이다.
+OPTS = {
+    "STRUCT.FUSELAGE": {"ctx": True, "neg": ["자동차", "선박", "철도", "건축"]},
+    "STRUCT.GEAR": {"ctx": True, "neg": ["자동차", "건설기계", "굴삭기"]},
+    "ENGINE.FAN": {"ctx": True, "neg": ["송풍", "환기", "공조", "에어컨"]},
+    "ENGINE.TURBINE": {"ctx": True, "neg": ["풍력", "발전용", "증기터빈", "가스터빈 발전"]},
+    "ENGINE.COMBUST": {"ctx": True, "neg": ["보일러", "소각"]},
+    "ENGINE.CASE": {"ctx": True, "neg": ["반도체", "전자부품"]},
+    "ENGINE.ACC": {"ctx": True, "neg": ["자동차", "건설기계"]},
+    "AVION.COMM": {"ctx": True, "neg": ["위성방송", "중계기", "휴대폰"]},
+    "AVION.FCS": {"ctx": True, "neg": ["자동차", "산업용 로봇"]},
+    "AVION.PWR": {"ctx": True, "neg": ["전력망", "배전반", "변압기", "태양광 인버터"]},
+    "AVION.SENSOR": {"ctx": True, "neg": ["차량", "LiDAR", "스마트폰"]},
+    "MAT.ALLOY": {"ctx": True, "neg": ["자동차", "건설기계", "조선", "풍력"]},
+    "MAT.COMP": {"ctx": True, "neg": ["낚시대", "골프", "테니스", "스포츠"]},
+    "MAT.SURF": {"ctx": True, "neg": ["반도체", "디스플레이", "이차전지"]},
+    "SVC.MRO": {"ctx": True, "neg": ["소모성 자재", "구매대행"]},
+    "SVC.TEST": {"ctx": True, "neg": ["임상", "비임상", "생동성"]},
+}
+# 표시 순서 — 이 산업의 값이 큰 쪽을 앞에 둔다(기체구조·엔진 > 우주 > 전자 > 소재 > 정비).
+PRIO = {"STRUCT": 90, "ENGINE": 85, "SPACE": 80, "AVION": 60, "MAT": 50, "SVC": 40}
+
 # ── 실루엣과 영역 ──────────────────────────────────────────
 # viewBox 400×200. 기술 도면이 아니라 **누를 수 있는 그림**이다 — 영역은 굵게 잡는다.
 SILHOUETTES = [
@@ -191,9 +220,14 @@ def build():
             raise SystemExit("부품 소분류 %s 가 없는 영역 %s 를 가리킨다" % (cid, bad))
         if not kws:
             raise SystemExit("부품 소분류 %s 에 키워드가 없다" % cid)
+        o = OPTS.get(cid, {})
         cats.append({"id": cid, "group": grp, "ko": ko, "regions": regs,
+                     "prio": PRIO[grp], "ctx": bool(o.get("ctx")), "neg": o.get("neg") or [],
                      "keywords": sorted(set(kws), key=lambda k: (-len(k), k))})
     cids = {c["id"] for c in cats}
+    stray = sorted(set(OPTS) - cids)
+    if stray:
+        raise SystemExit("OPTS 에 없는 소분류가 있다: %s" % stray)
 
     sil = [{"id": s, "ko": ko, "en": en, "domain": dom} for s, ko, en, dom in SILHOUETTES]
     sids = {s["id"] for s in sil}
