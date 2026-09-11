@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>피앤씨테크 — 한국전력기기</title>
+<link rel="stylesheet" href="../assets/kgrid.css">
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+
+
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+
+var SER=[{"q":"2025Q1","backlog":1375,"new":null,"delivered":null,"cov":0.03958543256081762},{"q":"2025Q2","backlog":1375,"new":null,"delivered":null,"cov":0.03958543256081762},{"q":"2025Q3","backlog":719,"new":null,"delivered":656,"cov":0.02069958255362027},{"q":"2026Q1","backlog":718,"new":null,"delivered":657,"cov":0.026006012532145316},{"q":"2026Q2","backlog":2201,"new":null,"delivered":754,"cov":0.0797203810351697}];
+
+(function(){
+  var el=document.getElementById('cbal'); if(!el||!window.Chart||!SER.length) return;
+  var css=getComputedStyle(document.documentElement);
+  var s1=css.getPropertyValue('--s1').trim(), s3=css.getPropertyValue('--s3').trim(),
+      s2=css.getPropertyValue('--s2').trim();
+  var ds=[{type:'bar',label:'수주잔고',data:SER.map(function(r){return r.backlog;}),backgroundColor:s1,order:3}];
+  if(SER.some(function(r){return r['new']!=null;}))
+    ds.push({type:'line',label:'당기 신규수주',data:SER.map(function(r){return r['new'];}),borderColor:s3,order:1});
+  if(SER.some(function(r){return r.delivered!=null;}))
+    ds.push({type:'line',label:'기납품액',data:SER.map(function(r){return r.delivered;}),borderColor:s2,order:2});
+  new Chart(el,{data:{labels:SER.map(function(r){return r.q;}),datasets:ds},
+    options:{scales:{y:{beginAtZero:true,ticks:{callback:function(v){return (v/100).toLocaleString();}},
+      title:{display:true,text:'억원(원화 공시) · 외화는 백만 단위'}}}}});
+})();
+</script></head>
+<body>
+<header class="top"><div class="hd"><h1>피앤씨테크</h1><span class="tag">237750</span><span class="tag">부품·소재</span><span class="tag">코스닥</span><span class="tag">회전</span><span class="sp"><a href="../index.html">허브</a><a href="../grid.html">단선도</a><a href="../coverage.html">커버리지</a></span></div><div class="crumb"><a href="../index.html">⚡ 한국전력기기</a> › <span>회사</span> › <span>피앤씨테크</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">계전기·보호제어 — KIND 주요제품 문구에 `배전` — 배전자동화단말장치</p><div class="kpi"><div class="hero"><b>22억</b><span>수주잔고 (2026Q2)</span></div><div><b>0.08<small>년</small></b><span>커버리지(잔고÷연매출)</span></div><div><b>회전</b><span>잔고 성격(기준 1.0년)</span></div><div><b>276억</b><span>연매출 제27기</span></div><div><b>50.4%</b><span>수출비중(매출실적)</span></div><div><b>—</b><span>최대 외부고객 비중</span></div></div><p class="note" style="margin-top:14px">· 수주표의 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 (최대 행이 잔고의 30.6%).</p><section class="card"><h2>수주잔고 추이 <em>KRW — 분기 5개</em></h2><div class="chart"><canvas id="cbal"></canvas></div><p class="mut" style="margin-top:8px">신규수주·기납품액을 같이 공시하는 회사라 롤포워드(기초+신규−기납품=기말)를 그릴 수 있습니다.</p></section><section class="card"><h2>수주표 행 <em>2026Q2 원문 그대로</em><span class="right">수주일자·납기가 기간 표기인 회사가 많습니다</span></h2><div class="wrap"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l sort">품목</th><th class="sort">기초·이월</th><th class="sort">신규·총액</th><th class="sort">기납품</th><th class="sort">잔고</th><th class="l">수주일자</th><th class="l">납기</th></tr></thead><tbody><tr><td class="l">ECMS</td><td class="l mut"></td><td class="mut">—</td><td data-v="708.000">7</td><td data-v="708.000">7</td><td data-v="0.000">0</td><td class="l mut">2024.12.24</td><td class="l mut">2025.09.30</td></tr><tr><td class="l">SYSTEM</td><td class="l mut"></td><td class="mut">—</td><td data-v="667.000">7</td><td data-v="46.000">0</td><td data-v="620.000">6</td><td class="l mut">2025.02.28</td><td class="l mut">2027.01.12</td></tr><tr><td class="l">SYSTEM</td><td class="l mut"></td><td class="mut">—</td><td data-v="361.000">4</td><td class="mut">—</td><td data-v="361.000">4</td><td class="l mut">2025.08.28</td><td class="l mut">2026.11.24</td></tr><tr><td class="l">SYSTEM</td><td class="l mut"></td><td class="mut">—</td><td data-v="276.000">3</td><td class="mut">—</td><td data-v="276.000">3</td><td class="l mut">2025.10.20</td><td class="l mut">2026.09.23</td></tr><tr><td class="l">SYSTEM</td><td class="l mut"></td><td class="mut">—</td><td data-v="270.000">3</td><td class="mut">—</td><td data-v="270.000">3</td><td class="l mut">2025.06.25</td><td class="l mut">2026.06.28</td></tr><tr><td class="l">SYSTEM</td><td class="l mut"></td><td class="mut">—</td><td data-v="674.000">7</td><td class="mut">—</td><td data-v="674.000">7</td><td class="l mut">2026.06.30</td><td class="l mut">2026.10.09</td></tr></tbody></table></div></section><section class="card"><h2>매출 구성 <em>2026Q2</em></h2><div class="grid2"><div><h2>부문 × 내수/수출 <em>원문 이름 그대로</em></h2><div class="wrap tall"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l">품목</th><th class="l sort">구분</th><th class="sort">금액</th></tr></thead><tbody><tr><td class="l">제품</td><td class="l mut">배전자동화단말장치</td><td class="l">내수</td><td data-v="4125.000">41</td></tr><tr><td class="l">제품</td><td class="l mut">배전자동화단말장치</td><td class="l">수출</td><td data-v="1434.000">14</td></tr><tr><td class="l">제품</td><td class="l mut">배전자동화단말장치</td><td class="l">합계</td><td data-v="6685.000">67</td></tr><tr><td class="l">제품</td><td class="l mut">디지털보호계전기</td><td class="l">내수</td><td data-v="2112.000">21</td></tr><tr><td class="l">제품</td><td class="l mut">디지털보호계전기</td><td class="l">수출</td><td data-v="76.000">1</td></tr><tr><td class="l">제품</td><td class="l mut">디지털보호계전기</td><td class="l">합계</td><td data-v="2193.000">22</td></tr><tr><td class="l">제품</td><td class="l mut">고장점표정장치</td><td class="l">내수</td><td data-v="163.000">2</td></tr><tr><td class="l">제품</td><td class="l mut">고장점표정장치</td><td class="l">수출</td><td data-v="116.000">1</td></tr><tr><td class="l">제품</td><td class="l mut">고장점표정장치</td><td class="l">합계</td><td data-v="116.000">1</td></tr><tr><td class="l">제품</td><td class="l mut">METER</td><td class="l">내수</td><td data-v="34.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">METER</td><td class="l">수출</td><td data-v="1.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">METER</td><td class="l">합계</td><td data-v="34.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">원격감시제어시스템</td><td class="l">내수</td><td data-v="1135.000">11</td></tr><tr><td class="l">제품</td><td class="l mut">원격감시제어시스템</td><td class="l">수출</td><td data-v="24.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">원격감시제어시스템</td><td class="l">합계</td><td data-v="1159.000">12</td></tr><tr><td class="l">제품</td><td class="l mut">자동소화장치/환기 센서</td><td class="l">내수</td><td data-v="15.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">자동소화장치/환기 센서</td><td class="l">합계</td><td data-v="15.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">개폐기</td><td class="l">내수</td><td data-v="41.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">개폐기</td><td class="l">수출</td><td data-v="277.000">3</td></tr><tr><td class="l">제품</td><td class="l mut">개폐기</td><td class="l">합계</td><td data-v="277.000">3</td></tr><tr><td class="l">제품</td><td class="l mut">전자식전력량계HPGP</td><td class="l">내수</td><td data-v="1.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">전자식전력량계HPGP</td><td class="l">합계</td><td data-v="1.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">기타</td><td class="l">내수</td><td data-v="217.000">2</td></tr><tr><td class="l">제품</td><td class="l mut">기타</td><td class="l">합계</td><td data-v="217.000">2</td></tr><tr><td class="l">제품</td><td class="l mut">합계</td><td class="l">내수</td><td data-v="7639.000">76</td></tr><tr><td class="l">제품</td><td class="l mut">합계</td><td class="l">수출</td><td data-v="1927.000">19</td></tr><tr><td class="l">제품</td><td class="l mut">합계</td><td class="l">합계</td><td data-v="10697.000">107</td></tr><tr><td class="l">상품</td><td class="l mut"></td><td class="l">내수</td><td data-v="6.000">0</td></tr><tr><td class="l">상품</td><td class="l mut"></td><td class="l">수출</td><td data-v="11768.000">118</td></tr><tr><td class="l">상품</td><td class="l mut"></td><td class="l">합계</td><td data-v="11774.000">118</td></tr><tr><td class="l">임대</td><td class="l mut"></td><td class="l">내수</td><td data-v="76.000">1</td></tr><tr><td class="l">임대</td><td class="l mut"></td><td class="l">합계</td><td data-v="76.000">1</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">내수</td><td data-v="7721.000">77</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">수출</td><td data-v="13695.000">137</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">합계</td><td data-v="22547.000">225</td></tr></tbody></table></div></div></div></section><section class="card"><h2>수요 축 — 원문 인용 <em>II절 본문</em><span class="right"></span></h2><div class="grid2"><div class="panel"><h3>초고압(154·345·765kV) <em>14회</em></h3><ul><li>국내, 한전 보호계전기 시장은 전압레벨에 따라 765kV, 345kV, 154kV, 22.9kV, 6.6kV 등으로 구분되며 사용되는 송변전용 기기에 따라 보호대상이 구분됩니다.</li></ul></div><div class="panel"><h3>중동 전력청 <em>6회</em></h3><ul><li>국내 시장을 꾸준히 확보하여 고객의 굳은 신뢰성을 기반으로 해외시장으로도 그 영역을 넓히기 위하여 노력한 결과, 현재 동남아를 비롯한 인도, 중동, 동유럽, 남미 등지에 수출을 활발히 진행하고 있습니다.</li><li>당사 제품은 해외 여러 전력청에서 이미 사용되고 있으며, 독일계 전력회사 EON에서 ABB시스템과의 연동시험을 거쳐 시범 사용되고 있습니다.</li></ul></div><div class="panel"><h3>신재생 연계 <em>3회</em></h3><ul><li>최근 스마트그리드 확산과 태양광 발전 등 발전설비를 보유한 수용가가 늘면서 직접 전기를 생산하고, 여분의 전기를 전력회사에 되팔 수 있도록 가능하게 하는 기술 중 하나가 양방향 전력량계라고 할 수 있습니다.</li></ul></div><div class="panel"><h3>북미 유틸리티 <em>1회</em></h3><ul><li>그리하여 2000년 북미(미국, 캐나다)와 아세안 지역(태국, 인도네시아, 말레이시아)에 시장 개척을 위한 탐방을 시작으로 해외 사업 추진을 시작하였습니다.</li></ul></div></div></section><section class="card"><h2>되짚기 <em>이 숫자가 어디서 왔는가</em></h2><p class="mut"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260814003816" target="_blank" rel="noopener noreferrer">DART 원문 보고서</a><br>KIND 업종 <code>전동기, 발전기 및 전기 변환 · 공급 · 제어 장치 제조업</code><br>편입 근거: KIND 주요제품 문구에 `배전` — 배전자동화단말장치<br>제품군 판정 근거: 계전기·보호제어 ← KIND 주요제품「배전자동화단말장치」</p></section></main>
+<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. 수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>

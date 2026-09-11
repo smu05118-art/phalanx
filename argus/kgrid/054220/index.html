@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>비츠로시스 — 한국전력기기</title>
+<link rel="stylesheet" href="../assets/kgrid.css">
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+
+
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+
+var SER=[{"q":"2025Q1","backlog":9192.046,"new":null,"delivered":null,"cov":null},{"q":"2025Q2","backlog":null,"new":null,"delivered":null,"cov":null},{"q":"2025Q3","backlog":null,"new":null,"delivered":null,"cov":null},{"q":"2025Q4","backlog":null,"new":null,"delivered":null,"cov":null},{"q":"2026Q1","backlog":null,"new":null,"delivered":null,"cov":null},{"q":"2026Q2","backlog":null,"new":null,"delivered":null,"cov":null}];
+
+(function(){
+  var el=document.getElementById('cbal'); if(!el||!window.Chart||!SER.length) return;
+  var css=getComputedStyle(document.documentElement);
+  var s1=css.getPropertyValue('--s1').trim(), s3=css.getPropertyValue('--s3').trim(),
+      s2=css.getPropertyValue('--s2').trim();
+  var ds=[{type:'bar',label:'수주잔고',data:SER.map(function(r){return r.backlog;}),backgroundColor:s1,order:3}];
+  if(SER.some(function(r){return r['new']!=null;}))
+    ds.push({type:'line',label:'당기 신규수주',data:SER.map(function(r){return r['new'];}),borderColor:s3,order:1});
+  if(SER.some(function(r){return r.delivered!=null;}))
+    ds.push({type:'line',label:'기납품액',data:SER.map(function(r){return r.delivered;}),borderColor:s2,order:2});
+  new Chart(el,{data:{labels:SER.map(function(r){return r.q;}),datasets:ds},
+    options:{scales:{y:{beginAtZero:true,ticks:{callback:function(v){return (v/100).toLocaleString();}},
+      title:{display:true,text:'억원(원화 공시) · 외화는 백만 단위'}}}}});
+})();
+</script></head>
+<body>
+<header class="top"><div class="hd"><h1>비츠로시스</h1><span class="tag">054220</span><span class="tag">전력기기 제조</span><span class="tag">코스닥</span><span class="tag">미상</span><span class="sp"><a href="../index.html">허브</a><a href="../grid.html">단선도</a><a href="../coverage.html">커버리지</a></span></div><div class="crumb"><a href="../index.html">⚡ 한국전력기기</a> › <span>회사</span> › <span>비츠로시스</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">계전기·보호제어 — KIND 주요제품 문구에 `원방감시` — 원방감시제어시스템, 분산제어시스템</p><div class="kpi"><div class="hero"><b>—</b><span>수주잔고 (2026Q2)</span></div><div><b>—<small>년</small></b><span>커버리지(잔고÷연매출)</span></div><div><b>미상</b><span>잔고 성격(기준 1.0년)</span></div><div><b>448억</b><span>연매출 제38기</span></div><div><b>0.0%</b><span>수출비중(매출실적)</span></div><div><b>—</b><span>최대 외부고객 비중</span></div></div><p class="note" style="margin-top:14px">· 수주표의 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다.</p><section class="card"><h2>수주잔고 추이 <em>KRW — 분기 6개</em></h2><div class="chart"><canvas id="cbal"></canvas></div><p class="mut" style="margin-top:8px">이 회사 수주표에는 신규수주·기납품액 열이 없어 잔고 수준만 그립니다.</p></section><section class="card"><h2>매출 구성 <em>2026Q2</em></h2><div class="grid2"><div><h2>부문 × 내수/수출 <em>원문 이름 그대로</em></h2><div class="wrap tall"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l">품목</th><th class="l sort">구분</th><th class="sort">금액</th></tr></thead><tbody><tr><td class="l">인프라사업</td><td class="l mut">제품,용역 전력제어시스템 및 PSD</td><td class="l">수출</td><td data-v="3.039">0</td></tr><tr><td class="l">인프라사업</td><td class="l mut">제품,용역 전력제어시스템 및 PSD</td><td class="l">내수</td><td data-v="13818.335">138</td></tr><tr><td class="l">인프라사업</td><td class="l mut">제품,용역 전력제어시스템 및 PSD</td><td class="l">합계</td><td data-v="13821.374">138</td></tr><tr><td class="l">환경사업</td><td class="l mut">제품,용역 수처리시스템 및 수질유지보수</td><td class="l">수출</td><td data-v="1118.287">11</td></tr><tr><td class="l">환경사업</td><td class="l mut">제품,용역 수처리시스템 및 수질유지보수</td><td class="l">내수</td><td data-v="4092.154">41</td></tr><tr><td class="l">환경사업</td><td class="l mut">제품,용역 수처리시스템 및 수질유지보수</td><td class="l">합계</td><td data-v="4092.154">41</td></tr><tr><td class="l">공사사업</td><td class="l mut">제품,용역 전기계장설계 및 시공</td><td class="l">수출</td><td data-v="652.931">7</td></tr><tr><td class="l">공사사업</td><td class="l mut">제품,용역 전기계장설계 및 시공</td><td class="l">내수</td><td data-v="20599.472">206</td></tr><tr><td class="l">공사사업</td><td class="l mut">제품,용역 전기계장설계 및 시공</td><td class="l">합계</td><td data-v="20599.472">206</td></tr><tr><td class="l">펀드운영</td><td class="l mut">기타 기업투자외</td><td class="l">내수</td><td data-v="97.383">1</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">수출</td><td data-v="3.039">0</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">내수</td><td data-v="38509.961">385</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">합계</td><td data-v="38513.000">385</td></tr></tbody></table></div></div></div></section><section class="card"><h2>계약 공시 <em>「단일판매ㆍ공급계약체결」 유효 13건 · 해지 1건</em><span class="right">금액 합계 656억(환산 근거가 있는 13건)</span></h2><p class="note info">이 산업의 수주표는 <b>사업부문 합계</b>라 계약 단위 원장은 이 공시뿐입니다. 다만 공시 의무 기준(최근 매출액 대비 비율)을 넘는 계약만 나오므로 <b>전부가 아닙니다</b>. 외화 계약의 원화 금액은 우리가 환산한 것이 아니라 <b>공시가 환율을 적은 경우</b> 그 값입니다 — 근거가 없으면 원문 통화로 둡니다.</p><div class="ctl"><input data-filter="#tct" placeholder="계약명·상대 검색"></div><div class="wrap tall"><table id="tct" data-sortable><thead><tr><th class="l sort">계약명</th><th class="l sort">계약상대</th><th class="sort">금액</th><th class="sort">매출액 대비</th><th class="l sort">수요처</th><th class="l sort">지역</th><th class="l sort">계약일·기간</th><th class="l">원문</th></tr></thead><tbody><tr><td class="l" title="SRT 통합정보시스템 구축사업">SRT 통합정보시스템 구축사업</td><td class="l mut">주식회사 에스알<span class="pill">해지</span></td><td data-v="2114.712">21억</td><td>10.8%</td><td class="l mut"></td><td class="l mut"></td><td class="l mut">2026-08-10 · 2024-08-28 ~ 2026-07-31 (1.9년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260810900692" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="경부선 금정역 등 4개역 승장장안전문(PSD) 전장품 등 제조설치">경부선 금정역 등 4개역 승장장안전문(PSD) 전장품 등 제조설치</td><td class="l mut">국가철도공단</td><td data-v="25296.181">253억</td><td>98.6%</td><td class="l mut">국내 한전·공기업</td><td class="l mut">내수</td><td class="l mut">2026-02-25 · 2026-02-25 ~ 2027-10-30 (1.7년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260226900002" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="신한울3·4호기 보조 및 현장제어반(J210) 구매">신한울3·4호기 보조 및 현장제어반(J210) 구매</td><td class="l mut">한국수력원자력(주)</td><td data-v="4070.000">41억</td><td>15.9%</td><td class="l mut">국내 한전·공기업</td><td class="l mut">내수</td><td class="l mut">2026-01-16 · 2026-01-16 ~ 2029-07-31 (3.5년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260116900336" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="서해선 초지역 승강장안전문 제조설치">서해선 초지역 승강장안전문 제조설치</td><td class="l mut">국가철도공단</td><td data-v="5791.543">58억</td><td>22.6%</td><td class="l mut">국내 한전·공기업</td><td class="l mut">내수</td><td class="l mut">2025-08-20 · 2025-08-20 ~ 2026-09-30 (1.1년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260831900419" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="고리2호기 이동형 공기압축기 계측자재 캐비닛">고리2호기 이동형 공기압축기 계측자재 캐비닛</td><td class="l mut">한국수력원자력 주식회사</td><td data-v="1273.400">13억</td><td>6.5%</td><td class="l mut">국내 한전·공기업</td><td class="l mut">내수</td><td class="l mut">2024-10-16 · 2024-10-16 ~ 2025-06-30 (0.7년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250429900860" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="SRT 통합정보시스템 구축 사업">SRT 통합정보시스템 구축 사업</td><td class="l mut">주식회사 에스알</td><td data-v="14570.000">146억</td><td>74.5%</td><td class="l mut"></td><td class="l mut">내수</td><td class="l mut">2024-08-29 · 2024-08-28 ~ 2026-12-10 (2.3년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240830900072" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="광양시 노후 상수관망 정비사업 구축공사 (계장제어장치)">광양시 노후 상수관망 정비사업 구축공사 (계장제어장치)</td><td class="l mut">전라남도 광양시 물관리센터 상수도과</td><td data-v="947.779">9억</td><td>10.1%</td><td class="l mut"></td><td class="l mut">내수</td><td class="l mut">2024-03-25 · 2024-03-24 ~ 2025-03-25 (1.0년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250224900438" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="SK에코플랜트 용인반도체 클러스터 용수공급 공급 및 설치사업">SK에코플랜트 용인반도체 클러스터 용수공급 공급 및 설치사업</td><td class="l mut">(주)삼진일렉스</td><td data-v="1077.000">11억</td><td>12.0%</td><td class="l mut">산업 플랜트</td><td class="l mut">내수</td><td class="l mut">2024-02-22 · 2024-02-05 ~ 2027-01-31 (3.0년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260729900917" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="연천군 공공하폐수처리시설 TMS 유지관리">연천군 공공하폐수처리시설 TMS 유지관리</td><td class="l mut">경기도 연천군</td><td data-v="1508.780">15억</td><td>16.8%</td><td class="l mut"></td><td class="l mut">내수</td><td class="l mut">2024-01-30 · 2024-02-01 ~ 2027-01-31 (3.0년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260127900451" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="철도운영정보시스템 고도화 사업">철도운영정보시스템 고도화 사업</td><td class="l mut">한국철도공사</td><td data-v="4304.015">43억</td><td>25.6%</td><td class="l mut">국내 한전·공기업</td><td class="l mut">내수</td><td class="l mut">2022-11-02 · 2022-11-01 ~ 2024-10-31 (2.0년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240625900225" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="경부고속철도 고장점표정장치 제조설치">경부고속철도 고장점표정장치 제조설치</td><td class="l mut">국가철도공단</td><td data-v="1282.767">13억</td><td>35.1%</td><td class="l mut">국내 한전·공기업</td><td class="l mut">내수</td><td class="l mut">2021-10-22 · 2021-10-22 ~ 2025-11-30 (4.1년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20251127900418" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="경부고속철도 전철제어반 제조설치">경부고속철도 전철제어반 제조설치</td><td class="l mut">국가철도공단</td><td data-v="2986.697">30억</td><td>81.7%</td><td class="l mut">국내 한전·공기업</td><td class="l mut">내수</td><td class="l mut">2021-09-10 · 2021-09-10 ~ 2025-11-30 (4.2년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20251127900417" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="전철제어반 제조설치">전철제어반 제조설치</td><td class="l mut">국가철도공단</td><td data-v="1488.338">15억</td><td>40.7%</td><td class="l mut">국내 한전·공기업</td><td class="l mut">내수</td><td class="l mut">2021-07-05 · 2021-07-05 ~ 2024-10-31 (3.3년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240628900576" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="고정점표정장치 제조설치">고정점표정장치 제조설치</td><td class="l mut">국가철도공단</td><td data-v="1022.084">10억</td><td>27.9%</td><td class="l mut">국내 한전·공기업</td><td class="l mut">내수</td><td class="l mut">2021-06-29 · 2021-06-28 ~ 2024-10-30 (3.3년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240626900574" target="_blank" rel="noopener noreferrer">원문</a></td></tr></tbody></table></div></section><section class="card"><h2>수요 축 — 원문 인용 <em>II절 본문</em><span class="right"></span></h2><div class="grid2"><div class="panel"><h3>신재생 연계 <em>3회</em></h3><ul><li>직접적인 영향을 미치는 등 경기 변동에 대한 민감도가 높았습니다. 그러나 최근에는 AI 산업 발전에 따른 전력 수요 급증과 전 세계적인 탄소중립 및 신재생 에너지 확대 정책 등 구조적인 메가 트렌드가 형성됨에 따라, 단기적인 경기 침체와 무관하게 필수불가결한 인프라 투자가 지속적으로 집행되고 있어 과거 대비 경기 민감도가 점차 완화되는 추세입니다.</li><li>- 정책 및 규제 변화 : 스마트그리드, 신재생에너지, 공공 안전 시스템 등과 관련된 정부의 정책 및 법규 변화에 따라 시장 수요가 증대되거나 감소할 수 있습니다.</li></ul></div><div class="panel"><h3>AI 전력수요 <em>1회</em></h3><ul><li>차세대 소형모듈원전(SMR) 제어 설비 전 세계적인 탄소중립 기조와 AI 전력 수요 급증으로 인해 차세대 원전인 소형모듈원전(SMR)이 미래 핵심 에너지원으로 부상하고 있습니다.</li></ul></div></div></section><section class="card"><h2>되짚기 <em>이 숫자가 어디서 왔는가</em></h2><p class="mut"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260812000536" target="_blank" rel="noopener noreferrer">DART 원문 보고서</a><br>KIND 업종 <code>전동기, 발전기 및 전기 변환 · 공급 · 제어 장치 제조업</code><br>편입 근거: KIND 주요제품 문구에 `원방감시` — 원방감시제어시스템, 분산제어시스템<br>제품군 판정 근거: 계전기·보호제어 ← KIND 주요제품「원방감시제어시스템, 분산제어시스템」</p></section></main>
+<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. 수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>

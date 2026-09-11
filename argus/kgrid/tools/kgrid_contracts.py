@@ -28,8 +28,11 @@
    계약 단위로도 선다 — `Public Service Electric and Gas Company`(북미 유틸리티),
    `한국수력원자력 주식회사`(국내 공기업). 다만 **관계회사를 거친 재발주**가 흔하다
    (HD현대일렉트릭 → `HD Hyundai Electric America Corporation`, 회사와의 관계 `자회사`).
-   이때 최종 수요처는 주석에만 있다(「미국 MISO·SPP 권역의 765kV급 송전망 기반 대형 유틸리티」).
-   그래서 수요처 판정은 계약상대 → (관계사면) 주석 → 공급지역 순으로 본다.
+   이때 최종 수요처는 주석에만 있다(「미국 MISO·SPP 권역의 765kV급 송전망 기반 대형 유틸리티」,
+   효성중공업 20260210800044 「미국 대형 유틸 리티로부터 수주한 후 당사로 재발주한」).
+   그래서 수요처 판정은 계약상대 → 계약명 → 주석 순이고, 관계사 건은 주석을 먼저 본다.
+   **지역은 수요처와 다른 축이다** — 「4. 판매ㆍ공급지역」은 `region` 으로만 싣고,
+   나라 이름으로 발주처 성격을 추정하지 않는다(이집트 계약의 발주처가 터널청인 실례가 있다).
 
 캐시: `assets/contracts/<종목코드>.json` — 공시별 원문 (라벨,값) 전부 보존(`kv`).
 분류는 **빌드 때 캐시에서 다시** 한다(사전이 자라도 재수집이 필요 없게, COMMON §0-4).
@@ -73,6 +76,23 @@ _CUR_BANDS = {
     "AUD": (500.0, 1500.0),
     "CAD": (500.0, 1600.0),
     "SGD": (600.0, 1600.0),
+    # 중동 계약은 현지 통화로 온다 — 일진전기 20240315800256 「KWD 29,990,000 … 매매기준율
+    # KWD/KRW 4,274.13원」(쿠웨이트 수전력부). 통화를 모르면 이 계약의 금액이 원화로만 남는다.
+    "KWD": (3000.0, 5500.0),
+    "BHD": (2800.0, 5000.0),
+    "OMR": (2800.0, 5000.0),
+    "QAR": (250.0, 520.0),
+    "EGP": (8.0, 90.0),
+    "TWD": (25.0, 70.0),
+    "MYR": (180.0, 450.0),
+    "THB": (22.0, 65.0),
+    "HKD": (100.0, 260.0),
+    "NOK": (80.0, 220.0),
+    "SEK": (80.0, 220.0),
+    "DKK": (120.0, 300.0),
+    "PLN": (200.0, 480.0),
+    "CHF": (1100.0, 2400.0),
+    "NZD": (550.0, 1300.0),
 }
 # 원문 표기 방언. `미화`·`달러`·`유로`·`엔` 같은 한국어 표기도 실제로 쓰인다.
 _CUR_ALIAS = [
@@ -86,11 +106,32 @@ _CUR_ALIAS = [
     (r"INR|루피", "INR"),
     (r"AUD|호주\s*달러", "AUD"),
     (r"CAD|캐나다\s*달러", "CAD"),
-    (r"SGD|싱가포르\s*달러", "SGD"),
+    (r"SGD|싱가포르\s*달러|싱가폴\s*달러", "SGD"),
+    (r"KWD|쿠웨이트\s*디나르", "KWD"),
+    (r"BHD|바레인\s*디나르", "BHD"),
+    (r"OMR|오만\s*리알", "OMR"),
+    (r"QAR|카타르\s*리얄", "QAR"),
+    (r"EGP|이집트\s*파운드", "EGP"),
+    (r"TWD|대만\s*달러", "TWD"),
+    (r"MYR|링깃", "MYR"),
+    (r"THB|바트", "THB"),
+    (r"HKD|홍콩\s*달러", "HKD"),
+    (r"NOK|노르웨이\s*크로네", "NOK"),
+    (r"SEK|스웨덴\s*크로나", "SEK"),
+    (r"DKK|덴마크\s*크로네", "DKK"),
+    (r"PLN|즈워티", "PLN"),
+    (r"CHF|스위스\s*프랑", "CHF"),
+    (r"NZD|뉴질랜드\s*달러", "NZD"),
 ]
 _NUM = r"\d[\d,]*(?:\.\d+)?"
-# 통화가 앞에 오는 꼴(`USD 36,284,748`, `USD29,852,335.45`)과 뒤에 오는 꼴(`36,284,748 달러`)
-_CUR_BEFORE = [(re.compile(r"(?:%s)\s*(%s)" % (pat, _NUM), re.I), code) for pat, code in _CUR_ALIAS]
+# 통화가 **섞인** 계약이 있다 — 엘에스일렉트릭 20251017800268 「EUR 66,962,779.99 PLUS
+# EGP 202,288,652.00」(이집트 모노레일). 한 통화만 적으면 금액이 그 통화 전부인 줄 오해하니
+# 세 글자 통화코드+큰 숫자가 둘 이상이면 `cur_mixed` 로 표시한다(환산·합산은 하지 않는다).
+_CODE_NUM = re.compile(r"\b([A-Z]{3})\s*(\d[\d,]{5,})")
+# 통화가 앞에 오는 꼴(`USD 36,284,748`, `USD29,852,335.45`)과 뒤에 오는 꼴(`36,284,748 달러`).
+# 앞에 오는 꼴에는 닫는 괄호가 끼기도 한다 — `싱가폴달러(SGD) 87,275,703.35`(일진전기 실측).
+_CUR_BEFORE = [(re.compile(r"(?:%s)\s*[)\]:=]?\s*(%s)" % (pat, _NUM), re.I), code)
+               for pat, code in _CUR_ALIAS]
 _CUR_AFTER = [(re.compile(r"(%s)\s*(?:%s)" % (_NUM, pat), re.I), code) for pat, code in _CUR_ALIAS]
 
 
@@ -141,8 +182,18 @@ _DEMAND_RULES = [
     ("datacenter", r"데이터\s*센터|데이터센타|IDC\b|하이퍼스케일|Data\s*Cent(?:er|re)|"
                    r"아마존|Amazon|AWS\b|마이크로소프트|Microsoft|구글|Google|메타플랫폼|Meta\s*Platform"),
     # 신재생 연계 — 태양광·풍력 발전단지, PCS·ESS 계통연계.
+    # 신재생 연계 — 태양광·풍력 발전단지, 계통 배터리(BESS), 연료전지.
+    # `BESS`·`ESS`는 **낱말 경계를 붙여** 본다(FINDINGS §1: `ACESS FLOOR`·`CESS` 오탐).
+    # 실측: 엘에스일렉트릭 `Widow Hill BESS PJT`(BURNLEY BESS LIMITED),
+    #      `북미 신재생에너지 PJT`, `북미 데이터센터용 연료전지 전력설비`,
+    #      선도전기 `수소연료전지 발전사업 건설공사 배전반`.
+    # `BESS용`·`ESS용`처럼 조사가 붙으므로 **왼쪽 경계만** 요구하고 오른쪽은 라틴문자만 막는다
+    # (`\bESS\b`로 하면 `BESS용 변압기`가 안 걸린다 — 산일전기 실측).
     ("renewable", r"태양광|풍력|해상풍력|신재생|재생에너지|발전단지|Solar|Wind\s*(?:Farm|Power)|"
-                  r"NextEra|넥스트에라|에너지저장|ESS\s*(?:연계|사업)|수소연료전지|연료전지"),
+                  # `Renewable` 단독은 쓰지 않는다 — 쿠웨이트 `Ministry of Electricity &
+                  # Water & Renewable Energy`가 신재생으로 갔다(실측). 기관 이름에 들어간다.
+                  r"GE\s*Renewable|Photovoltaic|NextEra|넥스트에라|에너지저장|수소연료전지|연료전지|"
+                  r"\bB?ESS(?![A-Za-z])"),
     # 국내 한전·공기업 — 발주처다(모집단에서는 제외했지만 계약상대로는 자주 나온다).
     # 발전 공기업(남동·남부·동서·서부·중부발전)은 한전 자회사다 — **신재생이 아니다**.
     # 하동 화력 7,8호기 고압차단기(선도전기 20260310800257)가 신재생으로 가던 것을 여기서 막았다.
@@ -150,92 +201,206 @@ _DEMAND_RULES = [
               r"한국남동발전|한국남부발전|한국동서발전|한국서부발전|한국중부발전|발전\s*공기업|"
               r"한국가스공사|한국철도공사|국가철도공단|한국도로공사|한국토지주택공사|LH공사|"
               r"서울교통공사|부산교통공사|인천교통공사|한국공항공사|인천국제공항공사|"
-              r"조달청|국방부|방위사업청"),
-    # 중동 전력청 — 사우디 SEC·아람코, UAE·쿠웨이트·카타르 전력수전청.
-    ("me_utility", r"사우디\s*전력청|Saudi\s*Electric|SEC\b|아람코|Aramco|"
-                   r"두바이\s*수전력청|DEWA|아부다비|ADNOC|TRANSCO|EWEC|ADDC|AADC|"
-                   r"쿠웨이트|Kuwait|카타르|Qatar|오만|Oman|바레인|Bahrain|"
-                   r"이라크|Iraq|요르단|Jordan|이집트|Egypt|사우디|Saudi|UAE|Emirates"),
-    # 북미 유틸리티 — 실명 전력회사와 미국/캐나다 공급지역.
-    ("na_utility", r"Electric\s*(?:and|&)\s*Gas|Public\s*Service\s*Electric|PSE&G|"
-                   r"Power\s*(?:and|&)\s*Light|Energy\s*Corp|Electric\s*Power|Utilit|"
+              # 한전 발주는 **조합을 거쳐** 온다 — `한국중전기사업협동조합`(제룡전기·서전기전),
+              # `한국전기공업협동조합`(세명전기 19건, 동해안~신가평 HVDC 애자·금구류).
+              # 조합은 한전 구매의 창구다(계약명의 현장이 모두 한전 변전소·송전선로다).
+              r"조달청|국방부|방위사업청|한국전력기술|중전기사업협동조합|전기공업협동조합"),
+    # 중동 전력청 — **나라 이름만으로는 판정하지 않는다.** 엘에스일렉트릭 20251017800268은
+    # 이집트 계약이지만 발주처가 `이집트터널청(NAT)`이고 물건이 모노레일 전력설비다 —
+    # 나라를 어휘에 넣으면 이것이 '중동 전력청'이 된다(실측). **나라 + 전력사업자**가 함께
+    # 적힌 꼴만 본다: `카타르 국영 수전력청 (Qatar General Electricity & Water Corporation)`
+    # (대한전선 실측)처럼 사이에 낱말이 끼므로 조금 띄워 받는다.
+    ("me_utility", r"두바이\s*수전력청|DEWA\b|SEWA\b|FEWA\b|KAHRAMAA|"
+                   r"TRANSCO|EWEC\b|ADDC\b|AADC\b|"
+                   r"(?:사우디|UAE|아랍에미리트|아부다비|두바이|쿠웨이트|카타르|오만|바레인|"
+                   r"이라크|요르단|이집트|Saudi|Qatar|Kuwait|Oman|Bahrain|Iraq|Jordan|Egypt|"
+                   r"Emirates|Dubai|Abu\s*Dhabi)[^,\n]{0,10}"
+                   r"(?:전력청|수전력청|전력공사|전력회사|전기청|Electric|Power|Water\s*Auth)"),
+    # 북미 유틸리티 — 실명 전력회사. 회사 이름에 전력사업자임이 적혀 있는 꼴만 본다
+    # (실측 실명: American Electric Power · Public Service Electric and Gas).
+    ("na_utility", r"(?:미국|캐나다|북미|U\.?S\.?A?|Canada)[^,\n]{0,10}"
+                   r"(?:전력청|전력회사|전력공사|유틸\s*리티|유틸리티|Utilit)|"
+                   r"Electric\s*(?:and|&)\s*Gas|Public\s*Service\s*Electric|PSE&G|"
+                   r"Power\s*(?:and|&)\s*Light|Electric\s*Power|Electric\s*Comp|"
                    r"Xcel|Dominion|Duke\s*Energy|Southern\s*Company|Entergy|Exelon|"
                    r"American\s*Electric|Consolidated\s*Edison|Con\s*Edison|PG&E|"
                    r"Pacific\s*Gas|Georgia\s*Power|Florida\s*Power|Oncor|CenterPoint|"
                    r"Hydro[\s-]?(?:One|Qu)|BC\s*Hydro|TVA\b|MISO|SPP\b|ERCOT|PJM\b|"
-                   r"전력청|전력회사|유틸리티"),
-    # 산업 플랜트 — 제철·석유화학·조선·반도체 공장, EPC.
-    ("industrial", r"제철|포스코|현대제철|석유화학|정유|화학\s*플랜트|플랜트|정제|LNG|"
-                   r"조선소|중공업|엔지니어링|건설|E&C|EPC|반도체\s*(?:공장|라인)|"
-                   r"삼성전자|SK하이닉스|삼성물산|현대건설|대우건설|GS건설|DL이앤씨|"
-                   r"현대엔지니어링|삼성E&A|SK에코플랜트|두산에너빌리티"),
+                   r"(?:대형\s*)?유틸리티|Utility\s*Comp"),
+    # 산업 플랜트 — **발주처가 산업설비라고 원문이 말할 때만**이다. `건설`·`엔지니어링`·`EPC`는
+    # 넣지 않았다: 광명전기 계약상대의 절반이 건설사인데 물건은 아파트·오피스텔 수배전반이고
+    # (`전주시 효자동 본아르떼 공동주택`), 그것을 산업 플랜트라 부르면 축이 무너진다(실측).
+    # 대신 원문에 이름이 나온 최종 산업 수요처(반도체 팹·석유화학·제철)를 넣는다.
+    ("industrial", r"제철|포스코|현대제철|석유화학|석화|정유|정제|화학\s*플랜트|LNG|"
+                   r"플랜트|제련|시멘트|아람코|Aramco|Sadara|"
+                   r"반도체|삼성전자|에스케이하이닉스|SK하이닉스|삼성디스플레이|엘지디스플레이|"
+                   r"LG디스플레이|디스플레이\s*공장|조선소|제조\s*공장|공장\s*신설"),
 ]
 _DEMAND_RX = [(k, re.compile(p, re.I)) for k, p in _DEMAND_RULES]
 
-# 공급지역만으로 내리는 **약한** 판정 — 계약상대에서 아무 것도 못 읽었을 때만 쓴다.
-# 지역은 수요처가 아니다(미국 계약이라고 다 유틸리티는 아니다). 그래서 근거 등급을 낮춰
-# `demand_src="region"` 으로 남기고, 화면에서 구분할 수 있게 한다.
-_REGION_DEMAND = [
-    ("me_utility", r"사우디|UAE|아랍|중동|쿠웨이트|카타르|오만|바레인|이라크|요르단|이집트"),
+# ── 지역 ────────────────────────────────────────────────────
+# **수요처와 지역은 다른 축이다.** 공시의 「4. 판매ㆍ공급지역」은 지역만 말한다 —
+# 미국 계약이라고 다 유틸리티가 아니고(광명전기는 국내 건축현장, 엘에스일렉트릭 이집트 건은
+# 모노레일이다), 그래서 지역으로 수요처를 추정하지 않는다. 지역은 지역 축(kgrid_lib.REGION_*)에
+# 그대로 싣는다. 아래 어휘는 실제로 나온 `공급지역` 값만 넣었고, 못 읽으면 None이다.
+_REGION_RULES = [
+    # 국내는 `국내`라고만 적히지 않는다 — `경기도 평택시`(HD현대일렉트릭 20240130800387),
+    # `신청주 변전소`(제룡전기 20240329904005)처럼 현장 지명이 온다.
+    # 실측 값: `국내`·`대한민국`·`경기도 평택시`·`전라남도 영광군 염산면 일원`·`신청주 변전소`·
+    # `동해안-신가평 송전선로 건설현장`·`음성천연가스발전소 송전선로 건설현장`.
+    (r"국내|한국|대한민국|Korea|서울|경기|인천|부산|대구|광주|대전|울산|세종|강원|"
+     r"충청|충북|충남|전라|전북|전남|경상|경북|경남|제주|변전소|발전소|송전선로|건설현장|"
+     r"동해안|동해\s*지역", "dom"),
+    (r"미국|미주|북미|캐나다|멕시코|U\.?S\.?A|United\s*States|America|Canada", "na"),
+    (r"사우디|UAE|아랍에미리트|중동|쿠웨이트|카타르|오만|바레인|이라크|요르단|이집트|"
+     r"Saudi|Emirates|Kuwait|Qatar|Oman|Egypt", "me"),
+    (r"유럽|영국|독일|프랑스|네덜란드|스페인|이탈리아|폴란드|스웨덴|노르웨이|덴마크|핀란드|"
+     r"아일랜드|Europe|United\s*Kingdom|Germany|France|Netherlands|Spain|Poland", "eu"),
+    (r"아시아|일본|요코하마|중국|대만|베트남|인도네시아|인도|말레이|태국|필리핀|싱가포르|"
+     r"방글라데시|미얀마|몽골|카자흐|우즈베키|Japan|China|Taiwan|Vietnam|India|Thailand", "asia"),
+    (r"호주|뉴질랜드|남미|중남미|브라질|칠레|페루|아프리카|Australia|Brazil|Chile|Africa", "etc"),
 ]
-_REGION_RX = [(k, re.compile(p, re.I)) for k, p in _REGION_DEMAND]
+_REGION_RX = [(re.compile(p, re.I), k) for p, k in _REGION_RULES]
+
+
+def region_of(region_raw):
+    """「판매ㆍ공급지역」 문구 → 지역 키. 못 읽으면 None(추정하지 않는다)."""
+    t = region_raw or ""
+    for rx, key in _REGION_RX:
+        if rx.search(t):
+            return key
+    return None
 
 # 관계회사 재발주 — 계약상대가 자회사면 그 이름으로는 수요처를 알 수 없다(실측:
 # HD현대일렉트릭 → HD Hyundai Electric America). 주석의 최종 수요처 문구를 대신 본다.
 _REL_AFFIL = re.compile(r"자회사|계열회사|계열사|종속회사|모회사|관계회사|최대주주")
 
+# **발주처가 전력사업자인가**는 수요처 6갈래와 따로 센다. 스펙의 6갈래에는 아시아·유럽
+# 전력청 자리가 없는데 원문에는 많다(실측: 대한전선 13건 중 10건이 `싱가포르 전력청
+# (SP POWERASSETS LIMITED)`, 효성중공업 6건이 `노르웨이 송전청(Statnett SF)`,
+# HD현대일렉트릭 3건이 `영국 National Grid`). 이것을 버리면 이 회사들의 원장이 통째로
+# '미상'이 되므로, 지역(region)과 함께 볼 수 있도록 표시만 남긴다 — 새 갈래를 만들지 않는다.
+_UTILITY = re.compile(
+    r"전력청|수전력청|송전청|배전청|전력공사|전력회사|유틸\s*리티|유틸리티|"
+    r"Utilit|Electric\s*Comp|Electricity\s*(?:Comp|Board)|Power\s*Grid|POWERASSETS|"
+    r"Transmission\s*(?:System|Corp|Comp)|National\s*Grid|Statnett|"
+    # 중동은 전력과 수도를 한 부처가 맡는다 — `Ministry of Electricity & Water`(쿠웨이트 MEW),
+    # `THE ELECTRICITY AND WATER AUTHORITY`(바레인 EWA)가 실제 계약상대다(일진전기 실측).
+    r"Ministry\s*of\s*(?:Electricity|Energy)|Electricity\s*(?:and|&)?\s*(?:Water\s*)?Auth|"
+    r"Water\s*Auth|"
+    # 발전사업자(IPP)도 전력사업자다 — 일진전기 20260105800073 「미국 판매법인(ILJIN Electric
+    # USA)과 **미국 발전사업자**와의 계약으로 당사로 재 발주한」. 이름은 비밀유지로 없다.
+    r"발전\s*사업자|발전회사|발전사|\bIPP\b|Power\s*(?:Producer|Generation)|"
+    r"Electric\s*(?:and|&)\s*Gas|Electric\s*Power", re.I)
 
-def demand_of(party, rel, note, name, region):
-    """(수요처 키, 근거) — 계약상대 → 계약명 → (상대를 모를 때만) 주석 → 공급지역 순.
+# 계약상대가 **이름 없이** 오는 꼴. 공시유보 칸과는 다르다 — 유보 칸은 `-`인데 주석에
+# 「계약상대의 비밀유지 요청에 따라 구체적인 이름을 기재하지 않습니다」라고 적는다
+# (일진전기 20260105800073). HD현대일렉트릭은 유보기한이 지나자 정정공시로 `사우디 소재 EPC`
+# → `ALGIHAZ`를 공개했다(20241220800451) — 익명은 영구적이지 않다.
+_ANON_PARTY = re.compile(r"^\s*[-–—]\s*$|비공개|익명|^[A-Z]사$|소재\s*(?:업체|법인|EPC|기업)|"
+                         r"해외\s*(?:업체|고객|법인|기업)")
+_ANON_NOTE = re.compile(r"비밀유지\s*요청|구체적인\s*이름을\s*기재하지\s*않|"
+                        r"계약상대(?:방)?의?\s*(?:요청|비공개)|상대방\s*비공개|"
+                        r"계약상대(?:방)?\s*(?:이름|명)\s*(?:을|는)?\s*기재")
 
-    **주석은 함부로 보지 않는다.** 주석은 「계약금액 및 계약기간은 공사진행 상황에 따라
-    변경될 수 있습니다」 같은 상투구가 대부분이라, 통째로 훑으면 상투구의 낱말로 수요처가
-    정해진다(실측: 선도전기 에스케이하이닉스 건이 주석 문구 때문에 산업 플랜트로 갔다).
-    그래서 계약상대가 **관계회사이거나 비어 있을 때만** 주석을 본다 — 그때는 최종 수요처가
-    주석에만 있기 때문이다(HD현대일렉트릭 재발주 건, 위 §3).
+
+def demand_of(party, rel, note, name, utility=False, region=None):
+    """(수요처 키, 근거) — 계약상대 → 계약명 → 주석 순. 관계사 건은 주석을 먼저 본다.
+
+    **주석에 최종 수요처가 적혀 있다**(실측): 「발주처인 한국전력공사에서 발주하여 … 주관사인
+    카페스(KAPES)에 당사가 …」(엘에스일렉트릭 20241202800060), 「미국 Big Tech Data Center 에
+    공급하는 PJT로서 … LS ELECTRIC AMERICA Inc.에 당사가 …」(20250318800092),
+    「이집트터널청(NAT)에서 발주하여 … 계약자인 BT에 …」(20251017800268).
+    그래서 주석을 버리지 않는다. 다만 주석에는 상투구도 섞이니 **계약상대·계약명이 먼저**고,
+    계약상대가 관계회사이거나 비어 있으면(재발주·유보) 주석을 먼저 본다.
 
     판정 못 하면 (None, ""). 스펙의 6갈래 밖으로 나가지 않는다.
     """
     affil = bool(_REL_AFFIL.search(rel or "")) or _blank(party)
-    order = [("party", party), ("name", name)]
+    order = [("party", party), ("name", name), ("note", note)]
     if affil:
-        order = [("note", note)] + order
+        order = [("note", note)] + order[:-1]
     for src, text in order:
         if not text:
             continue
-        for key, rx in _DEMAND_RX:
-            if rx.search(text):
-                return key, src
-    for key, rx in _REGION_RX:
-        if rx.search(region or ""):
-            return key, "region"
+        # **원문에 낱말 안쪽 줄바꿈이 있다.** 효성중공업 20260210800044 주석은
+        # 「미국 대형 유틸 리티로부터 수주한 후」, HD현대일렉트릭 20260106800025는
+        # 「전력 회사로부터」로 온다 — 낱말이 두 조각이다. 그래서 공백을 지운 사본으로도
+        # 한 번 더 본다. 단 **지운 사본에서는 짧은 낱말을 믿지 않는다**: `공시규정 제6조`가
+        # 붙으면 `정제`가 생겨 하폐수 TMS 계약이 산업 플랜트로 갔다(비츠로시스 실측).
+        for probe, minlen in ((text, 0), (re.sub(r"\s+", "", text), 3)):
+            for key, rx in _DEMAND_RX:
+                m = rx.search(probe)
+                if m and len(m.group(0)) >= minlen:
+                    return key, src
+    # 이름을 못 짚었지만 **발주처가 전력사업자이고 공급지역이 북미·중동**이면 그 갈래다.
+    # 두 근거 모두 원문 칸에서 나온 것이다(전력사업자 문구 + 「4. 판매ㆍ공급지역」).
+    # 실측: 「미국 내 최대 765kV 송전망 운영 전력 회사로부터 수주받은 후 당사로 재 발주한」
+    # (HD현대일렉트릭 20260106800025) — 회사 실명이 없고 수식어만 길어 이름으로는 못 잡는다.
+    if utility and region in ("na", "me"):
+        return ("na_utility" if region == "na" else "me_utility"), "utility+region"
     return None, ""
 
 
 # ── 제품군 분류 ─────────────────────────────────────────────
 # 계약명 문구로만 판정한다(FINDINGS §6의 품목 어휘). 확신이 없으면 **비운다**.
-# 순서가 중요하다: `가스절연개폐장치(GIS)`는 차단기 갈래지 개폐기가 아니고(스펙 §분류),
-# `초고압 변압기`가 `변압기`보다 먼저다.
+# 두 갈래가 같은 계약명에 나오면(`380kv 고압차단기 및 변압기 등`) **먼저 적힌 것**을 쓴다 —
+# 계약명은 주력 품목을 앞에 적는다(HD현대일렉트릭·선도전기 실측). 낱말 위치로 고르므로
+# 아래 목록 순서는 위치가 같을 때의 우선순위일 뿐이다.
 _PRODUCT_RULES = [
-    ("ehv", r"초고압|765\s*[kK][vV]|345\s*[kK][vV]|154\s*[kK][vV]|"
-            r"(?:超|초)고압\s*변압기|대형\s*변압기|전력용\s*변압기|주변압기|Main\s*Transformer"),
-    ("breaker", r"차단기|가스절연|GIS\s*(?:차단기|개폐장치)?|GCB|VCB|ACB|MCCB|"
-                r"가스절연개폐장치|SF6|진공차단기|초고압\s*개폐장치"),
-    ("switchgear", r"수배전|배전반|분전반|배전\s*설비|MCC|전동기\s*제어반|제어반|큐비클|"
-                   r"스위치기어|Switchgear|배전\s*센터|전기실"),
-    ("dist_tr", r"배전\s*변압기|주상\s*변압기|패드\s*변압기|몰드\s*변압기|유입\s*변압기|"
-                r"건식\s*변압기|Pad[\s-]?Mount|변압기"),
+    ("ehv", r"초고압|(?:超|초)고압\s*변압기|대형\s*변압기|전력용\s*변압기|주변압기|"
+            r"Main\s*Transformer"),
+    # 개폐'장치'는 차단기 갈래다 — 한전 발주 `25.8kV 친환경개폐장치(MAIN) 4BAY`(선도전기),
+    # `170kV GIS(가스절연개폐장치)`(제룡전기)가 같은 물건이다. 배전선로에 매다는
+    # `개폐기`(부하개폐기·리클로저)와는 다르므로 아래 switch 와 갈라 둔다.
+    # `GIS`는 **양쪽 낱말 경계**를 요구한다 — `AEGIS`·`EGIS`가 걸리기 때문이다(FINDINGS §1).
+    ("breaker", r"차단기|가스절연|친환경개폐장치|개폐장치|\bC-?GIS\b|\bGIS\b|GCB|VCB|ACB|MCCB|"
+                r"SF6|진공차단기"),
+    ("switchgear", r"수배전|배전반|분전반|배전\s*설비|\bMCC\b|전동기\s*제어반|제어반|큐비클|"
+                   r"스위치기어|Switchgear|SWGR|저압\s*(?:Panel|판넬|패널)|LV\s*Panel|"
+                   r"배전\s*센터|전기실"),
+    # **`변압기` 단독은 갈래를 못 가른다.** HD현대일렉트릭의 `변압기`는 초고압이고 산일전기의
+    # `변압기`는 배전급이다(FINDINGS §6) — 계약명만으로는 모른다. 그래서 등급을 말해 주는
+    # 수식어가 붙은 것만 배전용으로 본다(실측: `주상변압기`·`배전변압기`·`Pad Mount transformer`).
+    ("dist_tr", r"(?:배전|주상|패드|PAD|몰드|유입|건식|폴리머|완제품)\s*변압기|"
+                r"Pad[\s-]?Mount|Distribution\s*Transformer"),
     ("switch", r"개폐기|부하개폐기|리클로저|Recloser|단로기|Disconnect"),
-    ("converter", r"인버터|Inverter|PCS\b|전력변환|컨버터|Converter|ESS\b|에너지저장|"
-                  r"충전기|정류기|UPS\b"),
-    ("cable", r"전력선|전력\s*케이블|케이블|전선|가공송전선|절연선|Cable"),
+    # `ESS`·`PCS`는 양쪽 낱말 경계를 요구한다 — `BESS용 PAD Mount 변압기`가 전력변환으로 가던
+    # 것을 막았다(실측). BESS 연계 계약이라도 물건이 변압기면 변압기다.
+    ("converter", r"인버터|Inverter|\bPCS(?![A-Za-z])|전력변환|컨버터|Converter|"
+                  r"\bESS(?![A-Za-z])|에너지저장장치|충전기|정류기|\bUPS(?![A-Za-z])"),
+    # `전선`은 **`전선로`를 피해야 한다** — `동해안-신가평 송전선로 강관철탑 공급계약`
+    # (보성파워텍 13건)이 전선으로 갔다. 그 계약의 물건은 철탑이다(아래 fitting).
+    # 초전도 선재도 도체다(서남 294630 `2세대 고온 초전도 선재 공급 계약`) — FINDINGS §1 이
+    # 이 회사를 전선 계열로 본 것과 같은 갈래에 둔다.
+    ("cable", r"전력선|전력\s*케이블|케이블|가공송전선|절연선|전선(?!로)|Cable|"
+              r"초전도\s*(?:선재|선|도체)"),
     ("relay", r"계전기|보호제어|배전자동화|원방감시|SCADA|전력량계|원격검침|감시제어"),
+    # `전주`(電柱)는 넣지 않았다 — 광명전기 `전주시 효자동 본아르떼 공동주택 신축공사`가
+    # 금구류로 갔다(실측 오탐). 도시 이름과 겹치는 낱말은 쓰지 않는다.
+    # 철탑·철골은 넣는다(보성파워텍 실측 `강관철탑`·`철탑재`·`철골`) — 송전 구조물이다.
+    # 도시 이름과 겹치는 `전주`(電柱)는 여전히 넣지 않는다(`전주시` 오탐).
     ("fitting", r"금구류|애자|절연유|부스덕트|부스웨이|Busway|송배전\s*자재|배전\s*자재|"
-                r"전주|철탑|가공\s*배전"),
+                r"가공\s*배전|랙크|완금|철탑|철골|철구"),
 ]
-_PRODUCT_RX = [(k, re.compile(p)) for k, p in _PRODUCT_RULES]
+# 대소문자를 가리지 않는다 — 같은 물건이 `Pad Mount`·`PAD Mount`·`PAD MOUNT`로 온다(산일전기 실측).
+_PRODUCT_RX = [(k, re.compile(p, re.I)) for k, p in _PRODUCT_RULES]
 assert set(k for k, _ in _PRODUCT_RULES) <= set(PRODUCT_ORDER)
 assert set(k for k, _ in _DEMAND_RULES) <= set(DEMAND_ORDER)
+
+
+# 전압으로 가르는 마지막 수단 — 계약명이 `변압기`라고만 할 때 쓴다.
+# 국내 관행대로 **154kV 이상이 송전(초고압)·22.9kV 이하가 배전**이다. 그 사이(66kV 등)는
+# 판정하지 않는다. 실측: `415/140KV 750MVA 및 500MVA 변압기 5대`(HD현대일렉트릭 스웨덴),
+# `400kV 및 275kV급 변압기 9대`(영국 National Grid) — 초고압이라는 낱말 없이 전압만 적는다.
+_KV = re.compile(r"(\d+(?:\.\d+)?)\s*(?:kv|㎸)", re.I)
+_TR = re.compile(r"변압기|transformer", re.I)
+EHV_KV, DIST_KV = 100.0, 36.0
+
+
+def _max_kv(t):
+    vals = [float(m.group(1)) for m in _KV.finditer(t or "")]
+    return max(vals) if vals else None
 
 
 def product_of(name):
@@ -245,9 +410,23 @@ def product_of(name):
     (산일전기 `리액터 공급`은 인버터용 수동소자이고, 초고압 분로리액터도 같은 이름이다).
     """
     t = name or ""
-    for key, rx in _PRODUCT_RX:
-        if rx.search(t):
-            return key
+    if not t:
+        return None
+    hits = []
+    for i, (key, rx) in enumerate(_PRODUCT_RX):
+        m = rx.search(t)
+        if m:
+            hits.append((m.start(), i, key))
+    if hits:
+        return min(hits)[2]
+    # 어느 어휘도 안 걸렸지만 `변압기`라고 적혀 있으면 전압으로 가른다.
+    if _TR.search(t):
+        kv = _max_kv(t)
+        if kv is not None:
+            if kv >= EHV_KV:
+                return "ehv"
+            if kv <= DIST_KV:
+                return "dist_tr"
     return None
 
 
@@ -278,7 +457,8 @@ def _kv(html):
             # 전폭 행: 모든 칸이 같거나(colspan 펼침), 긴 본문이 앞머리를 공유하며 반복되는 꼴
             wide = len(set(cells)) == 1 or (
                 len(first) > 120
-                and all(c.startswith(first[:60]) or first.startswith(c[:60]) for c in cells))
+                and all(len(c) >= 40 and (c.startswith(first[:40]) or first.startswith(c[:40]))
+                        for c in cells))
             if wide:
                 text = max(cells, key=len)
                 if not text:
@@ -309,10 +489,19 @@ def _kv_from_raw(raw):
     return kv
 
 
+# 라벨 길이 상한. 정정공시의 정정 표는 `(정정전 텍스트) => (정정후 텍스트)` 꼴이라
+# **본문 문장이 라벨 자리에 들어온다**. 일진전기 20260730800338의 정정전 문구에는
+# 「5. 현재 계약상대방과 계약기간 변경을 협의중이며…」가 들어 있어, 이것이 `계약상대방`
+# 라벨로 잡혀 **계약상대가 주석 문장으로 채워졌다**(실측 오류). 진짜 라벨은 다 짧다
+# (가장 긴 것이 `기타투자판단과관련한중요사항※관련공시` 21자).
+_MAX_KEY = 32
+
+
 def _find(kv, *needles):
     """needle 을 모두 품은 라벨 중 **가장 짧은** 라벨의 값 — 정정공시의 정정 표(긴 라벨)보다
-    본표(짧은 라벨)가 이긴다."""
-    hits = [(len(k), i, v) for i, (k, v) in enumerate(kv.items()) if all(n in k for n in needles)]
+    본표(짧은 라벨)가 이긴다. 라벨이 문장 길이면 라벨이 아니다(위 _MAX_KEY)."""
+    hits = [(len(k), i, v) for i, (k, v) in enumerate(kv.items())
+            if len(k) <= _MAX_KEY and all(n in k for n in needles)]
     return min(hits)[2] if hits else None
 
 
@@ -346,13 +535,21 @@ def _blank(v):
 def _fields_from_kv(kv):
     # 양식 두 갈래 — 유가증권 「- 체결계약명」, 코스닥 「1. 판매ㆍ공급계약 내용」.
     name = (_find(kv, "체결계약명") or _find(kv, "계약명")
-            or _find(kv, "판매", "공급계약", "내용") or _find(kv, "공급계약내용") or "")
+            or _find(kv, "판매", "공급계약", "내용") or _find(kv, "공급계약내용")
+            # 해지공시에는 계약명 대신 「- 세부물건」이 온다(광명전기 20240926800592
+            # `평택 P4 PH2(하층동편) 수배전반`). 이것을 안 보면 해지 건이 익명이 된다.
+            or _find(kv, "세부물건")
+            # 자율공시 양식은 「1. 판매ㆍ공급계약 구분 = 상품공급」 + 「- 세부내용」이다
+            # (HD현대일렉트릭 20240830800135 `415/140KV 750MVA 및 500MVA 변압기 5대`).
+            # `상품공급`만 남기면 품목을 통째로 잃는다.
+            or _find(kv, "세부내용") or "")
     if _blank(name):
         # 유가증권 양식에서 계약명이 비면 계약 '구분'(상품공급·기타 판매ㆍ공급계약)이라도 남긴다.
         name = _find(kv, "판매", "공급계약", "구분") or name or ""
-    # 금액 라벨도 양식마다 다르다(코스닥: 확정/조건부/총액).
+    # 금액 라벨도 양식마다 다르다(코스닥: 확정/조건부/총액, 해지공시: 해지금액).
     amt_krw = num_of(_find(kv, "계약금액총액(원)") or _find(kv, "계약금액(원)")
-                     or _find(kv, "확정계약금액") or _find(kv, "계약금액") or "")
+                     or _find(kv, "확정계약금액") or _find(kv, "계약금액")
+                     or _find(kv, "해지금액") or "")
     rev = num_of(_find(kv, "최근매출액(원)") or _find(kv, "최근매출액") or "")
     party = (_find(kv, "계약상대방") or _find(kv, "계약상대") or "").strip()
     rel = (_find(kv, "회사와의관계") or "").strip()
@@ -360,21 +557,47 @@ def _fields_from_kv(kv):
     note = (_find(kv, "기타", "중요") or _find(kv, "기타", "참고") or _find(kv, "기타") or "").strip()
     start = _date(_find(kv, "계약기간", "시작") or _find(kv, "시작일") or "")
     end = _date(_find(kv, "계약기간", "종료") or _find(kv, "종료일") or "")
-    signed = _date(_find(kv, "계약(수주)일자") or _find(kv, "수주", "일자") or "")
+    signed = _date(_find(kv, "계약(수주)일자") or _find(kv, "수주", "일자")
+                   or _find(kv, "해지일자") or "")
+    # 정정공시는 **왜** 고쳤는지가 중요하다 — 「계약상대방 요청에 의해 납품금액이 변경예정」
+    # (광명전기 20241015800547)처럼 금액이 `-` 로 지워진 이유가 여기 있다.
+    fix_why = (_find(kv, "정정사유") or "").strip()
+    cancel_why = (_find(kv, "해지", "주요사유") or _find(kv, "해지사유") or "").strip()
     withheld_why = (_find(kv, "공시유보", "유보사유") or _find(kv, "유보사유") or "").strip()
     withheld_until = (_find(kv, "공시유보", "유보기한") or _find(kv, "유보기한") or "").strip()
     # 공시유보 — 계약상대·금액을 영업비밀로 유보한 건. `유보사유`에 문구가 있거나,
     # 계약상대·금액이 비었는데 유보 칸이 채워진 경우다. 추정하지 않고 '유보'라고 적는다.
     withheld = (not _blank(withheld_why)) or (not _blank(withheld_until))
     amt, cur, fx, fx_src = currency_amount(note, amt_krw)
+    mixed = len(set(m.group(1) for m in _CODE_NUM.finditer(note))) > 1 if cur else False
     if amt is None:
         amt, cur = amt_krw, ("KRW" if amt_krw is not None else None)
-    dem, dem_src = demand_of(party, rel, note, name, region)
+    # **지주회사는 자회사 계약을 그대로 재공시한다.** 효성(004800)의 43건은 제목이
+    # 「단일판매ㆍ공급계약체결 (자회사의 주요경영사항)」이고 첫 행이 `자회사인 효성중공업(주)`이다 —
+    # 효성중공업(298040)이 낸 같은 계약과 **이중계산**된다(같은 계약명·같은 금액, rcpNo만 다르다).
+    # 그래서 어느 회사 것인지 원문에서 읽어 표시한다(버리지 않는다, COMMON §0-2).
+    sub = ""
+    for k in kv:
+        if k.startswith("자회사인"):
+            sub = k[len("자회사인"):].strip(" ()의")
+            break
+    reg = region_of(region)
+    # 계약명에도 발주처가 적힌다 — `방글라데시 전력청 HV(고압)케이블 공급 및 설치공사`는
+    # 계약상대가 EPC(Larsen & Toubro)이고 전력청은 계약명에만 있다(일진전기 실측).
+    util = any(_UTILITY.search(t) or _UTILITY.search(re.sub(r"\s+", "", t))
+               for t in (party, name, note) if t)
+    dem, dem_src = demand_of(party, rel, note, name, util, reg)
     return {
         "name": name,
+        # 「1. 판매ㆍ공급계약 구분」 원문 그대로 — `기타 판매ㆍ공급계약`·`상품공급`·`공사수주`·
+        # `용역제공`이 실제로 온다. 효성중공업은 건설부문 수주(`공사수주`: 재개발·아파트)와
+        # 중공업 기자재 공급(`기타 판매ㆍ공급계약`: 420kV 변압기)이 이 칸으로 갈린다 —
+        # 전력기기 집계에서 건설 도급을 빼야 하므로 **분류하지 않고 원문을 넘긴다**.
+        "kind_raw": (_find(kv, "판매", "공급계약", "구분") or "").strip(),
         "product": product_of(name),
         "amt": amt,                                                    # 원통화 그대로
         "cur": cur,                                                    # KRW/USD/…
+        "cur_mixed": mixed,                                            # 두 통화가 섞인 계약
         "fx": fx,                                                      # 회사가 적용한 내재환율
         "fx_src": fx_src,                                              # 그 근거 문구
         "amt_krw_m": (round(amt_krw / 1e6, 3) if amt_krw is not None else None),   # 백만원
@@ -383,8 +606,14 @@ def _fields_from_kv(kv):
         "party": party,
         "party_rel": rel,
         "affiliate": bool(_REL_AFFIL.search(rel or "")),
+        # 이름 없는 계약상대 — '빈칸'이 아니라 '익명'이라고 적는다(COMMON §0-6).
+        "anon": bool(_ANON_PARTY.search(party) or _ANON_NOTE.search(re.sub(r"\s+", " ", note))),
         "demand": dem,
         "demand_src": dem_src,
+        # 발주처가 전력사업자인지(지역과 함께 보면 아시아·유럽 전력청도 센다). 관계사 재발주는
+        # 상대 이름이 판매법인이므로 주석까지 본다.
+        "utility": util,
+        "region": reg,
         "region_raw": region,
         "start": start or "",
         "end": end or "",
@@ -395,15 +624,19 @@ def _fields_from_kv(kv):
         "withheld": withheld,
         "withheld_why": withheld_why if not _blank(withheld_why) else "",
         "withheld_until": withheld_until if not _blank(withheld_until) else "",
+        "fix_why": "" if _blank(fix_why) else fix_why,
+        "cancel_why": "" if _blank(cancel_why) else cancel_why,
         "note": note[:400],
     }
 
 
-def parse_contract(html, rcp, title, stock):
+def parse_contract(html, rcp, doc_title, stock):
+    """공시 하나 → 레코드. `doc_title`은 **공시 제목**이다(`계약명`이 아니다) — 이름을 갈라
+    두지 않으면 화면의 계약명 칸에 「단일판매ㆍ공급계약체결」이 줄줄이 찍힌다."""
     kv, raw = _kv(html)
-    rec = {"rcp": rcp, "stock": stock, "title": title,
-           "corrected": bool(_FIX.search(title or "")),
-           "canceled": bool(_CANCEL.search(title or ""))}
+    rec = {"rcp": rcp, "stock": stock, "doc_title": doc_title,
+           "corrected": bool(_FIX.search(doc_title or "")),
+           "canceled": bool(_CANCEL.search(doc_title or ""))}
     rec.update(_fields_from_kv(kv))
     rec["kv"] = raw
     return rec
@@ -424,9 +657,15 @@ def _load_cache(stock):
 
 
 def _save_cache(stock, cache):
+    """캐시를 정규화해 쓴다(키 정렬 — 같은 데이터는 같은 바이트라 diff가 조용하다).
+
+    검색 상한(`capped`)·수집 창(`window`)도 함께 남긴다 — 나중에 이 캐시만 보고
+    '왜 2023년 건이 없나'를 답할 수 있어야 한다.
+    """
     os.makedirs(CACHE, exist_ok=True)
     docs = cache.get("docs", {})
     out = {"stock": stock, "n": len(docs),
+           "window": cache.get("window"), "capped": cache.get("capped", False),
            "docs": {k: docs[k] for k in sorted(docs)}}
     atomic_write(_cache_path(stock), json.dumps(out, ensure_ascii=False, indent=1) + "\n")
 
@@ -477,6 +716,9 @@ def collect(stocks, years=3, end=None, force=False, log=sys.stderr):
             docs[rcp] = rec
             got += 1
             new += 1
+            if new % 10 == 0:        # 중간 저장 — 끊겨도 받은 것은 남는다(다시 돌리면 빠진 것만)
+                cache["window"] = {"years": years, "end": end}
+                _save_cache(st, cache)
         cache["capped"] = capped
         cache["window"] = {"years": years, "end": end}
         if docs:
@@ -516,15 +758,29 @@ def build(stocks=None):
         for r in sorted(recs, key=lambda r: r["rcp"]):   # rcp 오름차순 → 뒤(정정)가 덮는다
             if r.get("kv"):                              # 분류는 캐시에서 **다시** 한다
                 r.update(_fields_from_kv(_kv_from_raw(r["kv"])))
+            if "title" in r:                             # 옛 캐시 이름 이관(공시 제목)
+                r["doc_title"] = r.pop("title")
             key = _dedup_key(r)
-            if key in by:
-                prev = by[key]
+            prev = by.get(key)
+            if prev is not None and r.get("canceled") and not prev.get("canceled"):
+                # 해지 공시는 **원본을 덮지 않는다** — 양식이 달라 금액·기간이 비기 때문이다.
+                # 원본 행에 해지 표시만 붙여, 집계에서 뺄 수 있게 남긴다.
+                prev["canceled"] = True
+                prev["canceled_rcp"] = r["rcp"]
+                continue
+            if prev is not None:
                 r["supersedes"] = (prev.get("supersedes") or []) + [prev["rcp"]]
+                r["canceled"] = r.get("canceled") or prev.get("canceled", False)
             by[key] = r
         out.extend(by.values())
     out.sort(key=lambda r: (r["stock"], r.get("signed") or r.get("start") or "", r["rcp"]))
     for r in out:
-        r.pop("kv", None)
+        r.pop("kv", None)                   # 원문 kv 는 캐시에만 둔다(산출 JSON은 가볍게)
+        # 화면 쪽(kgrid_page.contracts_of)이 찾는 이름으로 **별칭**을 하나씩 둔다.
+        # 값을 새로 만들지 않고 있는 값을 그대로 가리킨다.
+        r["date"] = r.get("signed") or r.get("start") or ""
+        r["period"] = ("%s~%s" % (r.get("start") or "", r.get("end") or "")
+                       if (r.get("start") or r.get("end")) else "")
     write_asset("contracts.json", {"n": len(out), "rows": out})
     return out
 

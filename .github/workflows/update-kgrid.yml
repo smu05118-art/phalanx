@@ -1,0 +1,94 @@
+# 한국전력기기(argus/kgrid) 일일 자동 갱신.
+#
+# 계약 공시(수시)는 매일 새로 뜨고 정기보고서는 분기마다 뜬다 — 둘 다 캐시가 있으면 건너뛰므로
+# 평시 비용은 검색 몇 건이다. 수집기는 **하나씩** 돌린다(DART 는 IP 단위로 끊는다).
+# concurrency 그룹은 kce·kship·kdef·ksemi 와 같은 `kship-dart` — 탭이 동시에 DART 를 두드리면 안 된다.
+name: update-kgrid
+on:
+  schedule:
+    - cron: "40 2 * * *"          # 11:40 KST — kdef(11:20) 뒤
+  workflow_dispatch:
+    inputs:
+      quarter:
+        description: "정기보고서 분기 강제(예: 2026Q3) — 비우면 최신 분기"
+        required: false
+permissions:
+  contents: write
+concurrency:
+  group: kship-dart
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Tests (before)
+        run: cd argus/kgrid/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Collect and build
+        id: build
+        continue-on-error: true
+        env:
+          QUARTER_INPUT: ${{ github.event.inputs.quarter }}
+        shell: bash
+        working-directory: argus/kgrid/tools
+        run: |
+          set -o pipefail
+          Q=()
+          if [ -n "${QUARTER_INPUT:-}" ]; then
+            if ! printf '%s' "$QUARTER_INPUT" | grep -Eq '^[0-9]{4}Q[1-4]$'; then echo "::error::quarter 형식"; exit 2; fi
+            Q=(--quarter "$QUARTER_INPUT")
+          fi
+          python3 kgrid_dicts.py --write
+          python3 kgrid_universe.py --write
+          python3 kgrid_contracts.py --collect || echo "::warning::계약 수집 일부 실패"
+          python3 kgrid_contracts.py --build
+          # 잔고를 공시하는 회사는 6분기(롤포워드 추이), 나머지는 최근 2분기면 충분하다.
+          # 잔고 공시 여부는 지난 회차 산출물(reports.json)에서 읽는다 — 없으면 전수 6분기.
+          WITH=$(python3 -c 'import json;d=json.load(open("assets/reports.json"));print(",".join(sorted(st for st,c in d["companies"].items() if any(v.get("backlog") is not None for v in c["quarters"].values()))))' 2>/dev/null || true)
+          if [ -n "$WITH" ]; then
+            REST=$(python3 -c 'import json,sys;w=set(sys.argv[1].split(","));print(",".join(r["stock"] for r in json.load(open("assets/universe.json"))["rows"] if r["stock"] not in w))' "$WITH")
+            python3 kgrid_reports.py --collect --n 6 --only "$WITH" "${Q[@]}"
+            [ -n "$REST" ] && python3 kgrid_reports.py --collect --n 2 --only "$REST" "${Q[@]}"
+          else
+            python3 kgrid_reports.py --collect --n 6 "${Q[@]}"
+          fi
+          # 파서가 바뀌었을 수 있으니 캐시의 원문 표로 값을 다시 뽑는다(DART 요청 0건).
+          python3 kgrid_reports.py --reparse --n 6 "${Q[@]}"
+          python3 kgrid_reports.py --build --n 6 "${Q[@]}"
+          python3 kgrid_page.py --all
+      - name: Tests (after)
+        run: |
+          cd argus/kgrid/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+          git diff --check || true
+      - name: Guard output size
+        shell: bash
+        run: |
+          # Pages 배포물은 5MB 이하여야 한다(COMMON §3).
+          BIG=$(find argus/kgrid -type f -not -path '*/tools/*' -size +5M | head -5)
+          if [ -n "$BIG" ]; then echo "::error::5MB 초과 파일: $BIG"; exit 1; fi
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "kgrid-bot"
+          git config user.email "kgrid-bot@users.noreply.github.com"
+          git reset -q -- '*.pyc' '**/__pycache__/**' 2>/dev/null || true
+          if [ -z "$(git status --porcelain -- argus/kgrid)" ]; then
+            echo "변경 없음"; exit 0
+          fi
+          git add -- argus/kgrid
+          git commit -m "kgrid: 자동 갱신 $(date -u +%Y-%m-%d) (정기보고서 수주·매출처·계약공시)"
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Fail if build errored
+        if: always() && steps.build.outcome == 'failure'
+        run: |
+          echo "::error::수집·생성 단계 실패 — 성공한 산출물은 커밋됐다. 로그를 확인하라"
+          exit 1

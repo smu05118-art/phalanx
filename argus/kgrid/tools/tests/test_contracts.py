@@ -8,6 +8,7 @@ fixture 는 DART 수시공시 본문 HTML을 그대로 잘라 넣은 것이고, 
 
     cd argus/kgrid/tools && python3 -m unittest discover -s tests
 """
+import json
 import os
 import sys
 import unittest
@@ -162,6 +163,39 @@ class CurrencyGuard(unittest.TestCase):
         self.assertEqual(C.currency_amount("", 1000)[:2], (None, None))
 
 
+class CorrectionTableLabels(unittest.TestCase):
+    """정정공시의 정정 표는 `(정정전 문장) => (정정후 문장)` 꼴이라 **문장이 라벨 자리에 온다**.
+
+    일진전기 20260730800338(fixture는 그 공시의 (라벨,값) 원문 그대로)의 정정전 문구에는
+    「5. 현재 계약상대방과 계약기간 변경을 협의중이며…」가 들어 있다. 라벨 길이를 재지 않으면
+    이 문장이 `계약상대방` 라벨로 뽑혀 **계약상대가 주석 문장으로 채워진다**(실측 오류).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(FIX, "103590_20260730800338_kv.json"), encoding="utf-8") as f:
+            cls.fx = json.load(f)
+        cls.r = C._fields_from_kv(C._kv_from_raw(cls.fx["kv"]))
+
+    def test_party_is_the_counterparty_not_a_sentence(self):
+        self.assertEqual(self.r["party"], "싱가포르 전력청(SPGroup)")
+
+    def test_corrected_amount_and_currency(self):
+        # 정정후 금액 81,238,842,949원 / 주석의 원통화 SGD 87,275,703.35
+        self.assertEqual(self.r["amt_krw_m"], 81238.843)
+        self.assertEqual(self.r["cur"], "SGD")
+        self.assertEqual(self.r["amt"], 87275703.35)
+
+    def test_reason_for_correction_is_kept(self):
+        self.assertIn("계약금액", self.r["fix_why"])
+
+    def test_utility_and_region(self):
+        self.assertTrue(self.r["utility"])          # `전력청`
+        self.assertEqual(self.r["region"], "asia")  # 공급지역 `싱가포르`
+        # 아시아 전력청은 스펙의 6갈래에 없다 — 없는 갈래를 만들지 않고 비운다(FINDINGS §7).
+        self.assertIsNone(self.r["demand"])
+
+
 class Classify(unittest.TestCase):
     """분류 축 — 어휘는 실제 수집한 계약명·계약상대에서 뽑았다(FINDINGS §7)."""
 
@@ -173,18 +207,79 @@ class Classify(unittest.TestCase):
         self.assertEqual(C.product_of("765kV 변압기"), "ehv")
         self.assertEqual(C.product_of("주상변압기 구매"), "dist_tr")
 
+    def test_first_word_wins_when_two_products_are_named(self):
+        # `380kv 고압차단기 및 변압기 등`(HD현대일렉트릭) — 계약명은 주력 품목을 앞에 적는다.
+        self.assertEqual(C.product_of("380kv 고압차단기 및 변압기 등"), "breaker")
+        # `SHC-1 PROJECT 中 SWGR & MCC & C-GIS`(선도전기) — 앞의 SWGR 이 이긴다.
+        self.assertEqual(C.product_of("SHC-1 PROJECT 中 SWGR & MCC & C-GIS"), "switchgear")
+
+    def test_voltage_decides_a_bare_transformer(self):
+        # 낱말로는 등급을 모르지만 전압이 적힌 계약명이 있다(HD현대일렉트릭 실측).
+        self.assertEqual(C.product_of("400kV 및 275kV급 변압기 9대"), "ehv")
+        self.assertEqual(C.product_of("415/140KV 750MVA 및 500MVA 변압기 5대"), "ehv")
+        self.assertEqual(C.product_of("22.9kV 변압기 공급"), "dist_tr")
+        # 66kV 는 송전도 배전도 아니라고 단정하지 않는다.
+        self.assertIsNone(C.product_of("66kV 변압기 공급"))
+
     def test_product_unknown_stays_empty(self):
         # `리액터`는 초고압 분로리액터인지 인버터용인지 원문으로 못 가른다 — 비운다.
         self.assertIsNone(C.product_of("리액터 공급"))
         self.assertIsNone(C.product_of(""))
 
     def test_demand_unknown_stays_none(self):
-        self.assertEqual(C.demand_of("A사", "", "", "", ""), (None, ""))
+        self.assertEqual(C.demand_of("A사", "", "", ""), (None, ""))
 
-    def test_demand_region_is_weak_evidence(self):
-        # 계약상대에서 못 읽으면 공급지역으로만 약하게 판정하고 근거를 낮춰 적는다.
-        key, src = C.demand_of("", "", "", "", "사우디아라비아")
-        self.assertEqual((key, src), ("me_utility", "region"))
+    def test_country_alone_is_not_a_demand(self):
+        # 나라 이름은 수요처가 아니다 — 이집트 계약이라도 발주처가 터널청이면 중동 전력청이
+        # 아니다(엘에스일렉트릭 20251017800268 실측). 지역은 지역 축으로만 싣는다.
+        self.assertEqual(C.demand_of("Bombardier Transportation (BT)", "-",
+                                     "본 계약은 이집트터널청(NAT)에서 발주하여 진행하는 "
+                                     "모노레일 라인 구축의 E&M 과업 계약자인 BT에 당사가 "
+                                     "전력공급 및 배전 시스템을 공급하는 사업임",
+                                     "delivery of Power Supply Monorail"), (None, ""))
+        self.assertEqual(C.region_of("이집트"), "me")
+        self.assertEqual(C.region_of("국내"), "dom")
+        self.assertEqual(C.region_of("미국"), "na")
+        # 지역 칸에 현장 지명이 오는 꼴 — `변전소`·시도 이름으로 국내라고 읽는다.
+        self.assertEqual(C.region_of("신청주 변전소"), "dom")
+        self.assertEqual(C.region_of("경기도 평택시"), "dom")
+        self.assertEqual(C.region_of("사우디 아라비아"), "me")
+        self.assertIsNone(C.region_of("-"))
+
+    def test_note_carries_the_end_customer(self):
+        # 관계사 재발주 건은 주석에만 최종 수요처가 있다(위 KospiForm 과 같은 근거).
+        key, src = C.demand_of("LS ELECTRIC AMERICA Inc.", "자회사",
+                               "- 본 계약은 미국 Big Tech Data Center 에 공급하는 PJT로서, "
+                               "Power Supply System을 수주한 LS ELECTRIC AMERICA Inc.에 "
+                               "당사가 전력공급 및 배전 시스템을 공급하는 사업임",
+                               "Big Tech Data Center PJT")
+        self.assertEqual((key, src), ("datacenter", "note"))
+
+    def test_generic_construction_is_not_industrial(self):
+        # 계약상대가 건설사여도 물건이 공동주택 수배전반이면 '산업 플랜트'가 아니다(광명전기 실측).
+        self.assertEqual(C.demand_of("주식회사 주성산업개발", "-", "",
+                                     "전주시 효자동 본아르떼 공동주택 신축공사"), (None, ""))
+        # 반면 원문이 반도체 팹을 이름으로 말하면 산업 플랜트다.
+        self.assertEqual(C.demand_of("에스케이하이닉스(주)", "-", "",
+                                     "M15X Ph-3 Project_저압 Panel 제작 및 설치")[0], "industrial")
+
+
+class DictCrossRef(unittest.TestCase):
+    """분류 사전 교차참조 — 파서가 쓰는 키가 kgrid_lib 의 축과 같아야 한다(COMMON §4).
+
+    한쪽만 고치면 화면에서 라벨 없는 칩이 생긴다.
+    """
+
+    def test_keys_are_known(self):
+        import kgrid_lib
+        self.assertTrue(set(k for k, _ in C._PRODUCT_RULES) <= set(kgrid_lib.PRODUCT_ORDER))
+        self.assertTrue(set(k for k, _ in C._DEMAND_RULES) <= set(kgrid_lib.DEMAND_ORDER))
+        self.assertTrue(set(k for _, k in C._REGION_RULES) <= set(kgrid_lib.REGION_ORDER))
+
+    def test_every_demand_key_has_a_rule(self):
+        # 스펙이 세운 6갈래 모두에 판정 어휘가 있어야 한다 — 빈 갈래는 화면에서 영원히 0이다.
+        import kgrid_lib
+        self.assertEqual(set(k for k, _ in C._DEMAND_RULES), set(kgrid_lib.DEMAND_ORDER))
 
 
 class Dedup(unittest.TestCase):

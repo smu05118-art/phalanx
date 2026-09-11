@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>전력망 단선도 — 한국전력기기</title>
+<link rel="stylesheet" href="assets/kgrid.css">
+<script>
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+
+var REG=[{"id":"GEN","ko":"발전소","en":"Generation","x":12,"y":96,"w":104,"h":76,"products":[],"note":"이 탭의 모집단이 아니다 — 전력기기의 시작점으로만 그린다"},{"id":"STEPUP","ko":"승압 변전소","en":"Step-up substation","x":140,"y":76,"w":128,"h":116,"products":["ehv","tr_unknown","breaker","fitting"],"note":"발전 전압을 345·765kV로 올린다. 초고압 변압기와 가스절연 차단기(GIS)의 자리"},{"id":"TRANS","ko":"송전 선로","en":"Transmission line","x":292,"y":40,"w":132,"h":152,"products":["cable","fitting"],"note":"가공 송전선·지중 초고압 케이블·HVDC. 철탑 금구류와 애자가 여기 붙는다"},{"id":"SUB","ko":"변전소","en":"Substation","x":448,"y":76,"w":132,"h":116,"products":["ehv","breaker","switch","relay"],"note":"전압을 154kV·22.9kV로 낮춘다. 차단기·개폐기·보호계전기가 모인다"},{"id":"DIST","ko":"배전 선로","en":"Distribution","x":604,"y":76,"w":132,"h":116,"products":["dist_tr","tr_unknown","switch","cable","fitting","relay"],"note":"주상변압기·개폐기·배전자동화 단말. **회전 산업**의 자리다(잔고가 짧다)"},{"id":"LOAD","ko":"수용가","en":"Customer premises","x":760,"y":56,"w":188,"h":156,"products":["switchgear","converter","relay"],"note":"데이터센터·공장·건물. 수배전반과 전력변환(ESS PCS·인버터)이 들어간다"}];
+var PER={"ehv":[{"stock":"001440","name":"대한전선","backlog":4062935,"cur":"KRW","cov":1.1174188668866887,"kind":"long"},{"stock":"125020","name":"티씨머티리얼즈","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"017510","name":"세명전기","backlog":15528,"cur":"KRW","cov":null,"kind":"unknown"}],"dist_tr":[{"stock":"062040","name":"산일전기","backlog":556788,"cur":"KRW","cov":1.1092587648870595,"kind":"long"},{"stock":"298040","name":"효성중공업","backlog":32958249,"cur":"KRW","cov":8.042885548245968,"kind":"long"}],"breaker":[{"stock":"017040","name":"광명전기","backlog":132636,"cur":"KRW","cov":1.3835129186702688,"kind":"long"},{"stock":"042370","name":"비츠로테크","backlog":81754,"cur":"KRW","cov":0.18911972832863352,"kind":"rotating"},{"stock":"267260","name":"HD현대일렉트릭","backlog":12310500,"cur":"KRW","cov":3.017650701140189,"kind":"long"},{"stock":"298040","name":"효성중공업","backlog":32958249,"cur":"KRW","cov":8.042885548245968,"kind":"long"}],"switchgear":[{"stock":"007610","name":"선도전기","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"010120","name":"엘에스일렉트릭","backlog":6999800,"cur":"KRW","cov":2.0214621884801662,"kind":"long"},{"stock":"017040","name":"광명전기","backlog":132636,"cur":"KRW","cov":1.3835129186702688,"kind":"long"},{"stock":"042370","name":"비츠로테크","backlog":81754,"cur":"KRW","cov":0.18911972832863352,"kind":"rotating"},{"stock":"108380","name":"대양전기공업","backlog":327611,"cur":"KRW","cov":0.7853629184985592,"kind":"rotating"},{"stock":"189860","name":"서전기전","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"199820","name":"제일일렉트릭","backlog":90999,"cur":"KRW","cov":0.46419535187414557,"kind":"rotating"},{"stock":"267260","name":"HD현대일렉트릭","backlog":12310500,"cur":"KRW","cov":3.017650701140189,"kind":"long"},{"stock":"388050","name":"지투파워","backlog":114135,"cur":"KRW","cov":1.4750316627465172,"kind":"long"}],"switch":[{"stock":"042370","name":"비츠로테크","backlog":81754,"cur":"KRW","cov":0.18911972832863352,"kind":"rotating"}],"converter":[{"stock":"010120","name":"엘에스일렉트릭","backlog":6999800,"cur":"KRW","cov":2.0214621884801662,"kind":"long"},{"stock":"037030","name":"파워넷","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"267260","name":"HD현대일렉트릭","backlog":12310500,"cur":"KRW","cov":3.017650701140189,"kind":"long"},{"stock":"377330","name":"이지트로닉스","backlog":4590,"cur":"KRW","cov":0.34657203261854425,"kind":"rotating"},{"stock":"388050","name":"지투파워","backlog":114135,"cur":"KRW","cov":1.4750316627465172,"kind":"long"}],"cable":[{"stock":"000500","name":"가온전선","backlog":597824,"cur":"KRW","cov":0.2348369680928374,"kind":"rotating"},{"stock":"001440","name":"대한전선","backlog":4062935,"cur":"KRW","cov":1.1174188668866887,"kind":"long"},{"stock":"060370","name":"LS마린솔루션","backlog":664600,"cur":"KRW","cov":2.7214839990991178,"kind":"long"},{"stock":"103590","name":"일진전기","backlog":null,"cur":"USD","cov":null,"kind":"unknown"},{"stock":"125020","name":"티씨머티리얼즈","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"217590","name":"티엠씨","backlog":169671,"cur":"KRW","cov":0.4977367733986535,"kind":"rotating"},{"stock":"294630","name":"서남","backlog":920.053,"cur":"KRW","cov":0.27172268163024216,"kind":"rotating"},{"stock":"043220","name":"티에스넥스젠","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"147830","name":"제룡산업","backlog":5351.17,"cur":"KRW","cov":0.1411029071338214,"kind":"rotating"}],"relay":[{"stock":"054220","name":"비츠로시스","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"057540","name":"옴니시스템","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"237750","name":"피앤씨테크","backlog":2201,"cur":"KRW","cov":0.0797203810351697,"kind":"rotating"}],"tr_unknown":[{"stock":"007610","name":"선도전기","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"010120","name":"엘에스일렉트릭","backlog":6999800,"cur":"KRW","cov":2.0214621884801662,"kind":"long"},{"stock":"033100","name":"제룡전기","backlog":141580,"cur":"KRW","cov":0.6320055700412361,"kind":"rotating"},{"stock":"062040","name":"산일전기","backlog":556788,"cur":"KRW","cov":1.1092587648870595,"kind":"long"},{"stock":"267260","name":"HD현대일렉트릭","backlog":12310500,"cur":"KRW","cov":3.017650701140189,"kind":"long"},{"stock":"298040","name":"효성중공업","backlog":32958249,"cur":"KRW","cov":8.042885548245968,"kind":"long"},{"stock":"103590","name":"일진전기","backlog":null,"cur":"USD","cov":null,"kind":"unknown"}],"fitting":[{"stock":"033100","name":"제룡전기","backlog":141580,"cur":"KRW","cov":0.6320055700412361,"kind":"rotating"},{"stock":"003650","name":"미창석유공업","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"006910","name":"보성파워텍","backlog":null,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"017510","name":"세명전기","backlog":15528,"cur":"KRW","cov":null,"kind":"unknown"},{"stock":"147830","name":"제룡산업","backlog":5351.17,"cur":"KRW","cov":0.1411029071338214,"kind":"rotating"}]};
+var PLAB={"ehv":"초고압 변압기","dist_tr":"배전용 변압기","breaker":"고압 차단기(GIS·VCB)","switchgear":"배전반·수배전","switch":"개폐기","converter":"전력변환(인버터·PCS)","cable":"전선·케이블","relay":"계전기·보호제어","tr_unknown":"변압기(전압 계급 미상)","fitting":"금구류·부자재"};
+
+(function(){
+  var pan=document.getElementById('pan');
+  function fmt(v){return v==null?'—':Math.round(v/100).toLocaleString()+'억';}
+  function show(id){
+    var r=REG.filter(function(x){return x.id===id;})[0]; if(!r) return;
+    document.querySelectorAll('.rg').forEach(function(e){e.classList.toggle('sel',e.dataset.region===id);});
+    pan.textContent='';
+    var h=document.createElement('h3'); h.textContent=r.ko;
+    var em=document.createElement('em'); em.textContent=r.en; h.appendChild(em); pan.appendChild(h);
+    var p=document.createElement('p'); p.className='mut'; p.textContent=r.note; pan.appendChild(p);
+    if(!r.products.length){ return; }
+    r.products.forEach(function(k){
+      var box=document.createElement('div'); box.className='catbox';
+      var t=document.createElement('h3'); t.textContent=PLAB[k]||k;
+      var e=document.createElement('em'); e.textContent=(PER[k]||[]).length+'사'; t.appendChild(e);
+      box.appendChild(t);
+      var ul=document.createElement('ul');
+      (PER[k]||[]).forEach(function(c){
+        var li=document.createElement('li');
+        var a=document.createElement('a'); a.href=c.stock+'/index.html'; a.textContent=c.name;
+        var y=document.createElement('span'); y.className='y';
+        y.textContent=(c.cur==='KRW'?fmt(c.backlog):(c.cur+' 공시'))+(c.cov?(' · '+c.cov.toFixed(1)+'년'):'');
+        li.appendChild(a); li.appendChild(y); ul.appendChild(li);
+      });
+      if(!(PER[k]||[]).length){ var li=document.createElement('li'); li.textContent='해당 회사 없음'; ul.appendChild(li); }
+      box.appendChild(ul); pan.appendChild(box);
+    });
+  }
+  document.querySelectorAll('.rg').forEach(function(e){
+    if(e.classList.contains('rel0')) return;
+    e.addEventListener('click',function(){show(e.dataset.region);});
+    e.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();show(e.dataset.region);}});
+  });
+})();
+</script></head>
+<body>
+<header class="top"><div class="hd"><h1>전력망 단선도</h1><span class="sp"><a href="index.html">허브</a><a href="coverage.html">커버리지</a></span></div><div class="crumb"><a href="index.html">⚡ 한국전력기기</a> › <span>단선도</span></div></header>
+<main><p class="lead">전력기기는 <b>전기가 흐르는 자리</b>로 나뉩니다. 승압 변전소의 초고압 변압기와 배전 선로의 주상변압기는 같은 '변압기'라는 낱말을 쓰지만 납기와 잔고의 성격이 다릅니다. 영역을 눌러 그 자리의 제품군과 회사를 봅니다.</p><section class="card"><h2>전력망 단선도 <em>발전 → 승압 → 송전 → 변전 → 배전 → 수용가</em></h2><div class="ig"><div class="ship"><svg viewBox="0 0 960 260" role="img" aria-label="전력망 단선도"><line x1="116" y1="134" x2="140" y2="134" stroke="rgba(147,197,253,.55)" stroke-width="3.0"></line><line x1="268" y1="134" x2="292" y2="134" stroke="rgba(147,197,253,.55)" stroke-width="2.4"></line><line x1="424" y1="134" x2="448" y2="134" stroke="rgba(147,197,253,.55)" stroke-width="2.4"></line><line x1="580" y1="134" x2="604" y2="134" stroke="rgba(147,197,253,.55)" stroke-width="1.8"></line><line x1="736" y1="134" x2="760" y2="134" stroke="rgba(147,197,253,.55)" stroke-width="1.4"></line><rect class="rg rel0" id="rg-GEN" data-region="GEN" x="12" y="96" width="104" height="76" rx="10" tabindex="-1" role="button" aria-label="발전소"></rect><rect class="rg" id="rg-STEPUP" data-region="STEPUP" x="140" y="76" width="128" height="116" rx="10" tabindex="0" role="button" aria-label="승압 변전소"></rect><rect class="rg" id="rg-TRANS" data-region="TRANS" x="292" y="40" width="132" height="152" rx="10" tabindex="0" role="button" aria-label="송전 선로"></rect><rect class="rg" id="rg-SUB" data-region="SUB" x="448" y="76" width="132" height="116" rx="10" tabindex="0" role="button" aria-label="변전소"></rect><rect class="rg" id="rg-DIST" data-region="DIST" x="604" y="76" width="132" height="116" rx="10" tabindex="0" role="button" aria-label="배전 선로"></rect><rect class="rg" id="rg-LOAD" data-region="LOAD" x="760" y="56" width="188" height="156" rx="10" tabindex="0" role="button" aria-label="수용가"></rect><text x="64" y="88" text-anchor="middle">발전소</text><text class="sm" x="64" y="187" text-anchor="middle">모집단 아님</text><text x="204" y="68" text-anchor="middle">승압 변전소</text><text class="sm" x="204" y="207" text-anchor="middle">19사</text><text x="358" y="32" text-anchor="middle">송전 선로</text><text class="sm" x="358" y="207" text-anchor="middle">14사</text><text x="514" y="68" text-anchor="middle">변전소</text><text class="sm" x="514" y="207" text-anchor="middle">11사</text><text x="670" y="68" text-anchor="middle">배전 선로</text><text class="sm" x="670" y="207" text-anchor="middle">27사</text><text x="854" y="48" text-anchor="middle">수용가</text><text class="sm" x="854" y="227" text-anchor="middle">17사</text></svg><div class="legend"><span><i style="background:rgba(96,165,250,.26)"></i>회사가 있는 자리</span><span><i style="background:rgba(255,255,255,.015)"></i>모집단이 아닌 자리</span><span>선 굵기 = 전압 계급(왼쪽이 높다)</span></div></div><div class="panel" id="pan"><h3>영역을 누르세요 <em>제품군 → 회사</em></h3><p class="mut">전기가 흐르는 순서대로 왼쪽부터 놓았습니다. 발전소는 이 탭의 모집단이 아니라 시작점으로만 그렸습니다.</p></div></div></section><section class="card"><h2>영역과 제품군 <em>왜 그 자리인가</em></h2><div class="wrap"><table><thead><tr><th class="l">영역</th><th class="l">제품군</th><th class="l">근거·뜻</th></tr></thead><tbody><tr><td class="l"><b>발전소</b> <span class="basis">Generation</span></td><td class="l">—</td><td class="l mut">이 탭의 모집단이 아니다 — 전력기기의 시작점으로만 그린다</td></tr><tr><td class="l"><b>승압 변전소</b> <span class="basis">Step-up substation</span></td><td class="l">초고압 변압기, 변압기(전압 계급 미상), 고압 차단기(GIS·VCB), 금구류·부자재</td><td class="l mut">발전 전압을 345·765kV로 올린다. 초고압 변압기와 가스절연 차단기(GIS)의 자리</td></tr><tr><td class="l"><b>송전 선로</b> <span class="basis">Transmission line</span></td><td class="l">전선·케이블, 금구류·부자재</td><td class="l mut">가공 송전선·지중 초고압 케이블·HVDC. 철탑 금구류와 애자가 여기 붙는다</td></tr><tr><td class="l"><b>변전소</b> <span class="basis">Substation</span></td><td class="l">초고압 변압기, 고압 차단기(GIS·VCB), 개폐기, 계전기·보호제어</td><td class="l mut">전압을 154kV·22.9kV로 낮춘다. 차단기·개폐기·보호계전기가 모인다</td></tr><tr><td class="l"><b>배전 선로</b> <span class="basis">Distribution</span></td><td class="l">배전용 변압기, 변압기(전압 계급 미상), 개폐기, 전선·케이블, 금구류·부자재, 계전기·보호제어</td><td class="l mut">주상변압기·개폐기·배전자동화 단말. **회전 산업**의 자리다(잔고가 짧다)</td></tr><tr><td class="l"><b>수용가</b> <span class="basis">Customer premises</span></td><td class="l">배전반·수배전, 전력변환(인버터·PCS), 계전기·보호제어</td><td class="l mut">데이터센터·공장·건물. 수배전반과 전력변환(ESS PCS·인버터)이 들어간다</td></tr></tbody></table></div></section></main>
+<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. 수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>

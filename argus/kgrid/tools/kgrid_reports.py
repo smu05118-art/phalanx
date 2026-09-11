@@ -26,9 +26,11 @@
 원문 표(cols·rows·lead)를 캐시에 그대로 남긴다 — 파서가 자라면 재수집 없이 다시 뽑는다(COMMON §0-4).
 
     python3 kgrid_reports.py --collect [--quarter 2026Q2] [--n 6] [--only 267260]
+    python3 kgrid_reports.py --reparse    # 파서를 고친 뒤 — DART를 다시 긁지 않는다
     python3 kgrid_reports.py --build
 """
 import argparse
+import html
 import json
 import os
 import re
@@ -120,10 +122,19 @@ def _two_row_header(t):
     for a, b in zip(rows[0], rows[1]):
         a, b = (a or "").strip(), (b or "").strip()
         cols.append(a if _clean(a) == _clean(b) or not b else (a + " " + b).strip())
-    if len({_clean(c) for c in cols}) != len(cols):
+    # 이어 붙인 뒤에도 **앞쪽 이름 열**이 겹치는 표가 있다 — 대양전기공업 매출실적은
+    # `매출유형|품목|품목|2026년 2분기 수량|… 금액|… 비율|…` 이다. 겹친다고 표를 버리면
+    # 수량 열과 금액 열을 못 가르고(그 뒤 첫 숫자를 매출로 읽어 연매출이 대수가 된다)
+    # 표가 통째로 사라진다. 겹친 이름만 번호를 붙여 가른다.
+    seen, out_cols = {}, []
+    for c in cols:
+        k = _clean(c)
+        seen[k] = seen.get(k, 0) + 1
+        out_cols.append(c if seen[k] == 1 else "%s#%d" % (c, seen[k]))
+    if len({_clean(c) for c in out_cols}) != len(out_cols):
         return None
     d = dict(t)
-    d["cols"], d["rows"] = cols, rows[2:]
+    d["cols"], d["rows"] = out_cols, rows[2:]
     d["header_synth"] = "2row"
     return d
 
@@ -222,14 +233,24 @@ def parse_orders_table(t):
     caps = _UNIT_CAP.findall(" ".join([t.get("lead") or ""] + list(t["cols"])))
     qty_only = bool(caps and _UNIT_QTY_ONLY.search(caps[-1].strip()) and not seen)
 
-    def col(*keys):
-        """keys 를 모두 품은 열. 금액 열을 수량 열보다 먼저 고른다(`수주잔고 수량|금액`).
+    def col(*keys, **kw):
+        """keys 를 모두 품은 열. **수량 열을 먼저 버리고** 금액 열을 고른다.
 
-        엘에스일렉트릭 표는 수량 열이 금액 열 **앞**에 오므로 이 우선순위가 없으면
-        잔고 69,998억이 `-`(수량 빈칸)로 읽힌다."""
-        cand = [i for i, c in enumerate(cols) if all(k in c for k in keys)]
+        `drop` 으로 거를 낱말을 준다 — 효성중공업 수주표는
+        `전기말 수주잔(2025.12.31) | 당기 수주액 | 당기 매출액 | 당기말 수주잔(2026.6.30)` 이라
+        `기말` 로 찾으면 **전기말**(기초)이 먼저 걸려 잔고가 전기 값이 된다(실측).
+
+        엘에스일렉트릭 표는 수량 열이 금액 열 **앞**에 오고, 두 줄 머리행을 이어 붙이면 둘 다
+        `당기 수주금액 수량`·`당기 수주금액 금액` 이 되어 **양쪽에 `금액`이 들어 있다**.
+        '금액을 품은 열'로 고르면 수량 열이 먼저 걸려 34,293억이 `-` 로 읽힌다(실측).
+        그래서 `수량`이 들어간 열을 먼저 뺀 뒤, 남은 것 중 `금액` 열을 고른다."""
+        drop = kw.get("drop") or ()
+        cand = [i for i, c in enumerate(cols)
+                if all(k in c for k in keys) and not any(d in c for d in drop)]
         if not cand:
             return None
+        noqty = [i for i in cand if "수량" not in cols[i]]
+        cand = noqty or cand
         amt = [i for i in cand if "금액" in cols[i]]
         return (amt or cand)[0]
 
@@ -239,12 +260,20 @@ def parse_orders_table(t):
                 return c
         return None
 
-    i_open = first(col("이월", "금액"), col("이월"), col("기초", "금액"), col("기초"))
-    i_new = first(col("당기수주", "금액"), col("당기수주"), col("신규", "금액"), col("신규"))
-    i_done = first(col("기납품", "금액"), col("기납품"), col("매출인식"))
-    i_gross = first(col("수주총액", "금액"), col("수주총액"), col("계약금액"), col("수주금액"))
-    i_close = first(col("수주잔고", "금액"), col("수주잔고"), col("수주잔액"),
-                    col("기말", "금액"), col("기말"), col("잔액"))
+    i_open = first(col("이월", "금액"), col("이월"), col("기초", "금액"), col("기초"),
+                   col("전기말"), col("전분기말"))
+    i_new = first(col("당기수주", "금액"), col("당기수주"), col("당기수주액"),
+                  col("신규", "금액"), col("신규"))
+    i_done = first(col("기납품", "금액"), col("기납품"), col("당기매출액"), col("매출인식"))
+    i_gross = first(col("수주총액", "금액"), col("수주총액"), col("계약금액"),
+                    col("수주금액", drop=("당기",)))
+    # `당기말` 을 `기말` 보다 먼저, `기말` 은 `전기말` 을 걸러서 본다.
+    i_close = first(col("수주잔고", "금액"), col("수주잔고"),
+                    col("당기말"), col("당분기말"),
+                    col("수주잔액", drop=("전기", "전분기")),
+                    col("기말", "금액", drop=("전기", "전분기")),
+                    col("기말", drop=("전기", "전분기")),
+                    col("잔액", drop=("전기", "전분기")))
     i_date = first(col("수주일자"), col("계약일자"), col("수주일"))
     i_due = first(col("납기"), col("인도예정"), col("완공예정"), col("공사기간"))
     # `당기 수주금액` 열이 `수주금액` 으로도 잡혀 i_gross 와 겹칠 수 있다 — 겹치면 신규 쪽을 남긴다.
@@ -263,9 +292,12 @@ def parse_orders_table(t):
     num_idx = {i for i in (i_open, i_new, i_done, i_gross, i_close, i_date, i_due) if i is not None}
     name_idx = [i for i in range(len(cols)) if i not in num_idx
                 and not re.search(r"수량|금액|비고", cols[i] or "")]
-    rows = []
+    rows, seen_sig = [], set()
     for r in t["rows"]:
-        labels = [r[i].strip() for i in name_idx if i < len(r) and r[i].strip()]
+        # 이름 칸에 **숫자가 들어온** 행이 있다(rowspan 평탄화가 열을 밀어 낸 결과) —
+        # 효성중공업 수주표에서 `23,834,404` 가 품목 라벨로 들어왔다. 숫자는 라벨이 아니다.
+        labels = [r[i].strip() for i in name_idx
+                  if i < len(r) and r[i].strip() and num_of(r[i]) is None]
         labels = [x for x in dict.fromkeys(labels)]
         if not labels:
             continue
@@ -294,6 +326,16 @@ def parse_orders_table(t):
         rec["area"] = ("dom" if re.search(r"^(국내|내수)$", _clean(item) or _clean(seg)) else
                        "ovs" if re.search(r"^(해외|수출)$", _clean(item) or _clean(seg)) else None)
         rec["kind"] = seg_kind(rec["seg"]) or seg_kind(rec["item"])
+        # **rowspan 평탄화 중복 행**을 접는다. 효성중공업 수주표는 `중공업` 부문 아래 종속회사
+        # 5곳이 행으로 오는데 금액 네 개가 **다 같다**(부문 합계가 rowspan 으로 복제된 것이다).
+        # 그대로 더하면 23.8조가 119조가 되고 배수가 41년이 된다(실측).
+        # 부문 이름과 숫자 묶음이 완전히 같은 행만 접는다 — 값이 다르면(건설 부문의 효성중공업 ·
+        # 진흥기업) 둘 다 남긴다.
+        sig = (rec["seg"], rec["opening"], rec["new"], rec["delivered"], rec["gross"],
+               rec["closing"])
+        if sig in seen_sig:
+            continue
+        seen_sig.add(sig)
         rows.append(rec)
     if not rows:
         return None
@@ -330,6 +372,16 @@ def parse_revenue_table(t):
     if not votes:
         return None
     i_kind = max(votes, key=lambda i: votes[i])
+    # 기간 열에 **수량 열이 끼어 있는** 회사가 있다 — 제룡전기 매출실적은
+    # `제41기 반기 수량|제41기 반기 금액|제40기 수량|제40기 금액|…` 이다(실측).
+    # 첫 숫자를 값으로 집으면 4,912대가 매출이 되고 연매출이 2,500억 → 25백만원으로 줄어
+    # 배수가 5,585년이 된다. 금액이 아닌 열은 **아예 뺀다**.
+    # `외화` 열도 뺀다 — 같은 매출을 외화로 한 번 더 적은 열이라 더하면 이중계산이다
+    # (대양전기공업 `2025년 수량|2025년 판매액|2025년 외화`).
+    val_idx = [i for i in range(i_kind + 1, len(t["cols"]))
+               if not re.search(r"수량|비중|비율|비고|증감|외화", _clean(t["cols"][i]))]
+    if not val_idx:
+        return None
     rows = []
     for r in t["rows"]:
         if i_kind >= len(r):
@@ -339,7 +391,7 @@ def parse_revenue_table(t):
             continue
         labels = [c.strip() for c in r[:i_kind] if c.strip()]
         labels = [x for x in dict.fromkeys(labels)]
-        vals = [_scaled(v, mul) for v in r[i_kind + 1:]]
+        vals = [_scaled(r[i], mul) if i < len(r) else None for i in val_idx]
         nums = [v for v in vals if v is not None]
         if not nums:
             continue
@@ -354,7 +406,7 @@ def parse_revenue_table(t):
         else "segment"
     return {"basis": basis, "cur": cur, "unit_seen": seen, "i_kind": i_kind, "rows": rows,
             "entity": entity_of(t.get("lead")),
-            "period_cols": t["cols"][i_kind + 1:], "cols": t["cols"],
+            "period_cols": [t["cols"][i] for i in val_idx], "cols": t["cols"],
             "lead": (t.get("lead") or "")[-240:]}
 
 
@@ -379,12 +431,13 @@ def parse_segment_sales(t):
         return None
     cur, mul, seen = unit_of(lead, t.get("cols"))
     i_amt = next((i for i, c in enumerate(cols)
-                  if i >= 1 and "비중" not in c and "비율" not in c
+                  if i >= 1 and not re.search(r"비중|비율|수량|증감|외화", c)
                   and sum(1 for r in t["rows"] if i < len(r) and num_of(r[i]) is not None) >= 2), None)
     if i_amt is None:
         return None
     i_pct = next((i for i, c in enumerate(cols) if i > i_amt and ("비중" in c or "비율" in c)), None)
-    val_idx = [i for i in range(i_amt, len(cols)) if "비중" not in cols[i] and "비율" not in cols[i]]
+    val_idx = [i for i in range(i_amt, len(cols))
+               if not re.search(r"비중|비율|수량|증감|외화", cols[i])]
     rows = []
     for r in t["rows"]:
         if i_amt >= len(r):
@@ -555,24 +608,47 @@ DEMAND_WORDS = [
 ]
 
 
+_DIGITS = re.compile(r"[\d,]{3,}")
+# 표가 문장으로 뽑혔다는 표지 — 단위 캡션·표 머리행·주석 기호는 문장에 안 나온다.
+_TABLEISH = re.compile(r"단위\s*:|매출처명|비\s*율|※|^\S{0,4};")
+
+
+def _readable(s):
+    """인용할 만한 문장인가.
+
+    같은 절에 표도 섞여 있어 그대로 뽑으면 `매출처명 금액 비율 NextEra Energy 347,203 15.9%`
+    같은 **표 덤프**가 인용문으로 실린다(실측). 단위 캡션·표 머리행 표지가 있거나 숫자 덩어리가
+    많은 조각은 문장이 아니다. 화면 쪽(kgrid_page.clean_quote)도 같은 판정을 한다 — 이미 받아 둔
+    캐시를 다시 긁지 않으려고 두 군데서 막는다."""
+    if len(s) < 24:
+        return False
+    return len(_DIGITS.findall(s)) <= 3 and not _TABLEISH.search(s)
+
+
 def demand_quotes(text, limit=3):
-    """II절 본문에서 수요 낱말이 나온 문장을 뽑는다 → {키: {n, quotes[]}}."""
-    flat = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text or ""))
-    sents = re.split(r"(?<=[.。])\s+|(?<=다)\s{2,}|·{2,}", flat)
+    """II절 본문에서 수요 낱말이 나온 문장을 뽑는다 → {키: {n, quotes[]}}.
+
+    `&nbsp;` 같은 엔티티를 먼저 풀어 둔다 — 화면에 `&amp;nbsp;` 로 두 번 이스케이프돼 나온다."""
+    flat = re.sub(r"<[^>]+>", " ", text or "")
+    flat = html.unescape(flat).replace(" ", " ")
+    flat = re.sub(r"\s+", " ", flat)
+    sents = re.split(r"(?<=[.。])\s+|(?<=니다)\s+|(?<=됩니다)\s+|·{2,}", flat)
     out = {}
     for key, pat in DEMAND_WORDS:
-        hits = [s.strip() for s in sents if pat.search(s)]
         n = len(pat.findall(flat))
         if not n:
             continue
         qs = []
-        for s in hits:
+        for s in sents:
             s = s.strip()
-            if len(s) > 220:
+            if not pat.search(s):
+                continue
+            if len(s) > 240:
                 m = pat.search(s)
-                s = s[max(0, m.start() - 90):m.start() + 130].strip()
-            if s and s not in qs:
-                qs.append(s)
+                s = s[max(0, m.start() - 100):m.start() + 140].strip()
+            if not _readable(s) or s in qs:
+                continue
+            qs.append(s)
             if len(qs) >= limit:
                 break
         out[key] = {"n": n, "quotes": qs}
@@ -634,7 +710,7 @@ def _keep(t):
     return bool(re.search(r"수주|매출|거래처|매출처|고객|납기|잔고|잔액|지역", blob))
 
 
-def collect_one(rec, quarter, force=False, log=sys.stderr):
+def collect_one(rec, quarter, force=False, log=sys.stderr, with_text=True):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
     if os.path.exists(path) and not force:
@@ -683,14 +759,18 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
     out["customers"] = (max(customers, key=lambda c: len(c["rows"])) if customers else None)
     out["raw_tables"] = [{"cols": t["cols"], "rows": t["rows"], "lead": (t.get("lead") or "")[-240:]}
                          for t in tables if _keep(t)]
+    # 수요 낱말은 **최신 분기에서만** 읽는다. 시장 서술은 분기마다 거의 같은데 절을 3장 더
+    # 받으면 요청이 두 배가 된다(DART는 IP 하나로 게이트가 걸려 벽시계 시간이 그대로 늘어난다).
     txt = html
-    for key in ("products", "overview", "etc"):
-        if key in found:
-            try:
-                txt += fetch_section(found[key])
-            except Exception:
-                pass
+    if with_text:
+        for key in ("products", "overview", "etc"):
+            if key in found:
+                try:
+                    txt += fetch_section(found[key])
+                except Exception:
+                    pass
     out["demand"] = demand_quotes(txt)
+    out["demand_scope"] = "II절 전체" if with_text else "II-4 수주·매출 절만"
     out["ok"] = bool(out["orders"] or out["revenue"] or out["segment_sales"])
     if not out["ok"]:
         out["note"] = "수주·매출표 인식 실패 — 머리행 %s" % [t["cols"] for t in tables][:3]
@@ -701,6 +781,61 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
                                     (out["orders"] or {}).get("cur", "-")))
     log.flush()
     return out
+
+
+def reparse_one(path, log=sys.stderr):
+    """캐시의 `raw_tables`(원문 cols·rows·lead)만으로 파싱 결과를 **다시 만든다**.
+
+    COMMON §0-4 가 원문 캐시를 남기라고 한 이유가 이것이다 — 파서를 고쳤을 때 DART를 다시
+    긁지 않고 값을 다시 뽑는다. 수요 낱말은 본문 전체가 있어야 하므로 손대지 않고 그대로 둔다
+    (본문은 캐시에 담지 않는다 — 담으면 캐시가 수백 MB가 된다).
+
+    `lead` 는 캐시에 240자로 잘려 있다. 단위 캡션·종속회사 라벨은 표 바로 앞에 오므로 그 안에
+    들어 있지만, 아주 긴 앞 문맥에 캡션이 있던 표는 `unit_seen=False` 가 될 수 있다 —
+    그 경우 금액으로 싣지 않는다(fail-closed). 값이 늘어나지 않고 줄어드는 방향이라 안전하다.
+    """
+    with open(path, encoding="utf-8") as f:
+        d = json.load(f)
+    if not d.get("raw_tables"):
+        return d
+    tables = _headered(_carry_units(d["raw_tables"]))
+    group_hint = re.sub(r"\s*(주식회사|\(주\)|홀딩스|그룹)\s*", "", d.get("name", ""))[:4]
+    parsed = [(t, parse_orders_table(t)) for t in tables]
+    orders = [o for _t, o in parsed if o]
+    rest = [t for t, o in parsed if not o]
+    revenue = [x for x in (parse_revenue_table(t) for t in rest) if x]
+    segsales = [x for x in (parse_segment_sales(t) for t in rest) if x]
+    regions = [x for x in (parse_region_table(t) for t in rest) if x]
+    customers = [x for x in (parse_customers(t, group_hint) for t in tables) if x]
+    d["orders"] = _pick_orders(orders, d.get("name", ""))
+    d["orders_all"] = orders or []
+    seg_rev = [r for r in revenue if r["basis"] == "segment"]
+    d["revenue"] = max(seg_rev or revenue, key=lambda r: len(r["rows"])) if revenue else None
+    d["revenue_all"] = revenue or []
+    d["segment_sales"] = max(segsales, key=lambda r: len(r["rows"])) if segsales else None
+    d["segment_sales_all"] = segsales or []
+    d["regions"] = max(regions, key=lambda r: len(r["rows"])) if regions else None
+    d["customers_all"] = customers or []
+    d["customers"] = max(customers, key=lambda c: len(c["rows"])) if customers else None
+    d["reparsed"] = True
+    d["ok"] = bool(d["orders"] or d["revenue"] or d["segment_sales"])
+    atomic_write(path, json.dumps(d, ensure_ascii=False, indent=1) + "\n")
+    log.write("%s %s reparse %s %s\n" % (d.get("stock"), d.get("quarter"),
+                                         "ok" if d["ok"] else "FAIL",
+                                         (d["orders"] or {}).get("shape", "-")))
+    return d
+
+
+def reparse(rows, qs):
+    want = {r["stock"] for r in rows}
+    n = 0
+    for st in sorted(want):
+        for q in qs:
+            p = os.path.join(CACHE, st, q + ".json")
+            if os.path.exists(p):
+                reparse_one(p)
+                n += 1
+    return n
 
 
 def quarters(latest, n=6):
@@ -715,10 +850,11 @@ def quarters(latest, n=6):
 
 
 def collect(rows, qs, force=False):
+    last = qs[-1] if qs else None
     for rec in rows:
         for q in qs:
             try:
-                collect_one(rec, q, force)
+                collect_one(rec, q, force, with_text=(q == last))
             except Exception as e:
                 sys.stderr.write("[warn] %s %s %s\n" % (rec["stock"], q, e))
 
@@ -740,13 +876,26 @@ def _sum_rows_rev(rrows, kind):
 
 
 _FY_COL = re.compile(r"20\d\d년|제\d+기")
-_PART_YEAR = re.compile(r"반기|분기|누적|개월|기중|비중|비율")
+# 수량 열도 1년 열처럼 `제40기 수량` 으로 온다 — 여기서 막지 않으면 매출 대신 대수를 쓴다.
+_PART_YEAR = re.compile(r"반기|분기|누적|개월|기중|비중|비율|수량|증감")
+
+
+_MONTH_RANGE = re.compile(r"(\d{1,2})~(\d{1,2})월")
 
 
 def _is_fy(col):
-    """'제18기'·'2025년'은 1년 열, '제19기 반기'·'제10기 2분기(누적)'는 아니다."""
+    """'제18기'·'2025년'은 1년 열, '제19기 반기'·'제10기 2분기(누적)'는 아니다.
+
+    효성중공업은 기간을 **달 범위**로 적는다 — `제9기(2026년 1~6월)`(반기) 과
+    `제8기(2025년 1~12월)`(1년). `반기`·`분기` 라는 낱말이 없어 낱말 검사만으로는 못 가른다.
+    반기를 1년으로 읽으면 배수가 두 배가 된다(실측: 배수 15.4년 ← 실제 8.0년)."""
     c = _clean(col)
-    return bool(_FY_COL.search(c)) and not _PART_YEAR.search(c)
+    if not _FY_COL.search(c) or _PART_YEAR.search(c):
+        return False
+    m = _MONTH_RANGE.search(c)
+    if m and int(m.group(2)) - int(m.group(1)) + 1 < 12:
+        return False
+    return True
 
 
 def _norm_co(s):
@@ -832,10 +981,17 @@ def _fy_from(tbl, kind_field=None):
             sub = [r for r in rows if r.get("total") and not is_total(r["seg"])]
             base = [r for r in rows if not r.get("total")]
             groups = (grand, sub, base)
-        for use in groups:
+        for gi, use in enumerate(groups):
             vals = [r["vals"][i] for r in use if r["vals"][i] is not None]
-            if vals:
-                return sum(vals), cols[i], tbl.get("cur")
+            if not vals:
+                continue
+            # 총계 행이 **여럿** 오는 표가 있다 — 가온전선은 `단순합계`(2,791,007) ·
+            # `내부 거래 제거`(−245,309) · `합 계`(2,545,698) 를 차례로 싣는다.
+            # 총계를 다 더하면 매출이 5.3조가 된다(실측). 총계 후보는 **문서 순서의 마지막**
+            # 하나만 쓴다(내부거래를 지운 최종 합계가 뒤에 온다). 부문·낱 행은 더한다.
+            if gi == 0 and len(vals) > 1:
+                return vals[-1], cols[i], tbl.get("cur")
+            return sum(vals), cols[i], tbl.get("cur")
     return None, None, None
 
 
@@ -990,6 +1146,8 @@ def load():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--collect", action="store_true")
+    ap.add_argument("--reparse", action="store_true",
+                    help="DART를 다시 긁지 않고 캐시의 원문 표만으로 파싱 결과를 다시 만든다")
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--quarter", default=None)
     ap.add_argument("--n", type=int, default=6)
@@ -1003,6 +1161,8 @@ def main():
     qs = quarters(a.quarter or latest_quarter(), a.n)
     if a.collect:
         collect(rows, qs, a.force)
+    if a.reparse:
+        print("재파싱 %d건" % reparse(rows, qs), file=sys.stderr)
     if a.build:
         res = build(rows, qs)
         ok = sum(1 for c in res.values() for v in c["quarters"].values() if v.get("ok"))

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>가온전선 — 한국전력기기</title>
+<link rel="stylesheet" href="../assets/kgrid.css">
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+
+
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+
+var SER=[{"q":"2025Q1","backlog":71280,"new":null,"delivered":639297,"cov":0.0412713999851775},{"q":"2025Q2","backlog":168310,"new":null,"delivered":1282587,"cov":0.09745215111539317},{"q":"2025Q3","backlog":153171,"new":null,"delivered":1932005,"cov":0.08868661064996665},{"q":"2025Q4","backlog":209499,"new":null,"delivered":2545698,"cov":0.082295307613079},{"q":"2026Q1","backlog":265349,"new":null,"delivered":763576,"cov":0.10423428073557822},{"q":"2026Q2","backlog":597824,"new":null,"delivered":1632967,"cov":0.2348369680928374}];
+
+(function(){
+  var el=document.getElementById('cbal'); if(!el||!window.Chart||!SER.length) return;
+  var css=getComputedStyle(document.documentElement);
+  var s1=css.getPropertyValue('--s1').trim(), s3=css.getPropertyValue('--s3').trim(),
+      s2=css.getPropertyValue('--s2').trim();
+  var ds=[{type:'bar',label:'수주잔고',data:SER.map(function(r){return r.backlog;}),backgroundColor:s1,order:3}];
+  if(SER.some(function(r){return r['new']!=null;}))
+    ds.push({type:'line',label:'당기 신규수주',data:SER.map(function(r){return r['new'];}),borderColor:s3,order:1});
+  if(SER.some(function(r){return r.delivered!=null;}))
+    ds.push({type:'line',label:'기납품액',data:SER.map(function(r){return r.delivered;}),borderColor:s2,order:2});
+  new Chart(el,{data:{labels:SER.map(function(r){return r.q;}),datasets:ds},
+    options:{scales:{y:{beginAtZero:true,ticks:{callback:function(v){return (v/100).toLocaleString();}},
+      title:{display:true,text:'억원(원화 공시) · 외화는 백만 단위'}}}}});
+})();
+</script></head>
+<body>
+<header class="top"><div class="hd"><h1>가온전선</h1><span class="tag">000500</span><span class="tag">전선·케이블</span><span class="tag">유가</span><span class="tag">회전</span><span class="sp"><a href="../index.html">허브</a><a href="../grid.html">단선도</a><a href="../coverage.html">커버리지</a></span></div><div class="crumb"><a href="../index.html">⚡ 한국전력기기</a> › <span>회사</span> › <span>가온전선</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">전선·케이블 — KIND 주요제품 문구에 `전력선` — 전력선,통신케이블 제조,도매,수출입</p><div class="kpi"><div class="hero"><b>5,978억</b><span>수주잔고 (2026Q2)</span></div><div><b>0.23<small>년</small></b><span>커버리지(잔고÷연매출)</span></div><div><b>회전</b><span>잔고 성격(기준 1.0년)</span></div><div><b>25,457억</b><span>연매출 제78기</span></div><div><b>25.0%</b><span>수출비중(매출실적)</span></div><div><b>—</b><span>최대 외부고객 비중</span></div></div><section class="card"><h2>수주잔고 추이 <em>KRW — 분기 6개</em></h2><div class="chart"><canvas id="cbal"></canvas></div><p class="mut" style="margin-top:8px">신규수주·기납품액을 같이 공시하는 회사라 롤포워드(기초+신규−기납품=기말)를 그릴 수 있습니다.</p></section><section class="card"><h2>수주표 행 <em>2026Q2 원문 그대로</em><span class="right">수주일자·납기가 기간 표기인 회사가 많습니다</span></h2><div class="wrap"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l sort">품목</th><th class="sort">기초·이월</th><th class="sort">신규·총액</th><th class="sort">기납품</th><th class="sort">잔고</th><th class="l">수주일자</th><th class="l">납기</th></tr></thead><tbody><tr><td class="l">전력</td><td class="l mut">가온전선</td><td class="mut">—</td><td data-v="806140.000">8,061</td><td data-v="745868.000">7,459</td><td data-v="60272.000">603</td><td class="l mut">~ &#x27;26.06</td><td class="l mut">-</td></tr><tr><td class="l">전력</td><td class="l mut">종속회사</td><td class="mut">—</td><td data-v="997669.000">9,977</td><td data-v="465415.000">4,654</td><td data-v="532254.000">5,323</td><td class="l mut">~ &#x27;26.06</td><td class="l mut">-</td></tr><tr><td class="l">통신</td><td class="l mut">가온전선</td><td class="mut">—</td><td data-v="107265.000">1,073</td><td data-v="102478.000">1,025</td><td data-v="4787.000">48</td><td class="l mut">~ &#x27;26.06</td><td class="l mut">-</td></tr><tr><td class="l">통신</td><td class="l mut">종속회사</td><td class="mut">—</td><td data-v="1616.000">16</td><td data-v="1616.000">16</td><td class="mut">—</td><td class="l mut">~ &#x27;26.06</td><td class="l mut">-</td></tr><tr><td class="l">특수</td><td class="l mut">종속회사</td><td class="mut">—</td><td data-v="312414.000">3,124</td><td data-v="312414.000">3,124</td><td class="mut">—</td><td class="l mut">~ &#x27;26.06</td><td class="l mut">-</td></tr><tr><td class="l">목드럼</td><td class="l mut">종속회사</td><td class="mut">—</td><td data-v="5687.000">57</td><td data-v="5176.000">52</td><td data-v="511.000">5</td><td class="l mut">~ &#x27;26.06</td><td class="l mut">-</td></tr></tbody></table></div></section><section class="card"><h2>매출 구성 <em>2026Q2</em></h2><div class="grid2"><div><h2>부문 × 내수/수출 <em>원문 이름 그대로</em></h2><div class="wrap tall"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l">품목</th><th class="l sort">구분</th><th class="sort">금액</th></tr></thead><tbody><tr><td class="l">전력사업부</td><td class="l mut">제품 전력케이블 및 절연전선</td><td class="l">수출</td><td data-v="211796.000">2,118</td></tr><tr><td class="l">전력사업부</td><td class="l mut">제품 전력케이블 및 절연전선</td><td class="l">내수</td><td data-v="702522.000">7,025</td></tr><tr><td class="l">전력사업부</td><td class="l mut">제품 전력케이블 및 절연전선</td><td class="l">합계</td><td data-v="914318.000">9,143</td></tr><tr><td class="l">전력사업부</td><td class="l mut">상품 전력케이블 및 절연전선, 버스덕트</td><td class="l">수출</td><td data-v="154815.000">1,548</td></tr><tr><td class="l">전력사업부</td><td class="l mut">상품 전력케이블 및 절연전선, 버스덕트</td><td class="l">내수</td><td data-v="295728.000">2,957</td></tr><tr><td class="l">전력사업부</td><td class="l mut">상품 전력케이블 및 절연전선, 버스덕트</td><td class="l">합계</td><td data-v="450543.000">4,505</td></tr><tr><td class="l">전력사업부</td><td class="l mut">공사 토목,전기공사</td><td class="l">수출</td><td data-v="889.000">9</td></tr><tr><td class="l">전력사업부</td><td class="l mut">공사 토목,전기공사</td><td class="l">내수</td><td data-v="3849.000">38</td></tr><tr><td class="l">전력사업부</td><td class="l mut">공사 토목,전기공사</td><td class="l">합계</td><td data-v="4738.000">47</td></tr><tr><td class="l">전력사업부</td><td class="l mut">기타 부산물 외</td><td class="l">수출</td><td data-v="5876.000">59</td></tr><tr><td class="l">전력사업부</td><td class="l mut">기타 부산물 외</td><td class="l">내수</td><td data-v="5647.000">56</td></tr><tr><td class="l">전력사업부</td><td class="l mut">기타 부산물 외</td><td class="l">합계</td><td data-v="11523.000">115</td></tr><tr><td class="l">통신사업부</td><td class="l mut">제품 통신케이블</td><td class="l">수출</td><td data-v="31760.000">318</td></tr><tr><td class="l">통신사업부</td><td class="l mut">제품 통신케이블</td><td class="l">내수</td><td data-v="38843.000">388</td></tr><tr><td class="l">통신사업부</td><td class="l mut">제품 통신케이블</td><td class="l">합계</td><td data-v="70603.000">706</td></tr><tr><td class="l">통신사업부</td><td class="l mut">상품 통신케이블</td><td class="l">수출</td><td data-v="35.000">0</td></tr><tr><td class="l">통신사업부</td><td class="l mut">상품 통신케이블</td><td class="l">내수</td><td data-v="31009.000">310</td></tr><tr><td class="l">통신사업부</td><td class="l mut">상품 통신케이블</td><td class="l">합계</td><td data-v="31044.000">310</td></tr><tr><td class="l">통신사업부</td><td class="l mut">기타 부산물 외</td><td class="l">내수</td><td data-v="3292.000">33</td></tr><tr><td class="l">통신사업부</td><td class="l mut">기타 부산물 외</td><td class="l">합계</td><td data-v="3292.000">33</td></tr><tr><td class="l">특수케이블사업부</td><td class="l mut">제품 특수케이블</td><td class="l">수출</td><td data-v="3350.000">34</td></tr><tr><td class="l">특수케이블사업부</td><td class="l mut">제품 특수케이블</td><td class="l">내수</td><td data-v="322776.000">3,228</td></tr><tr><td class="l">특수케이블사업부</td><td class="l mut">제품 특수케이블</td><td class="l">합계</td><td data-v="326126.000">3,261</td></tr><tr><td class="l">특수케이블사업부</td><td class="l mut">상품 특수케이블</td><td class="l">내수</td><td data-v="77.000">1</td></tr><tr><td class="l">특수케이블사업부</td><td class="l mut">상품 특수케이블</td><td class="l">합계</td><td data-v="77.000">1</td></tr><tr><td class="l">특수케이블사업부</td><td class="l mut">기타 부산물 외</td><td class="l">내수</td><td data-v="9924.000">99</td></tr><tr><td class="l">특수케이블사업부</td><td class="l mut">기타 부산물 외</td><td class="l">합계</td><td data-v="9924.000">99</td></tr><tr><td class="l">목드럼사업부</td><td class="l mut">제품 목드럼</td><td class="l">내수</td><td data-v="5549.000">55</td></tr><tr><td class="l">목드럼사업부</td><td class="l mut">제품 목드럼</td><td class="l">합계</td><td data-v="5549.000">55</td></tr><tr><td class="l">목드럼사업부</td><td class="l mut">상품 목드럼</td><td class="l">내수</td><td data-v="9984.000">100</td></tr><tr><td class="l">목드럼사업부</td><td class="l mut">상품 목드럼</td><td class="l">합계</td><td data-v="9984.000">100</td></tr><tr><td class="l">목드럼사업부</td><td class="l mut">기타 부산물 외</td><td class="l">내수</td><td data-v="38.000">0</td></tr><tr><td class="l">목드럼사업부</td><td class="l mut">기타 부산물 외</td><td class="l">합계</td><td data-v="38.000">0</td></tr><tr><td class="l">단순합계</td><td class="l mut"></td><td class="l">수출</td><td data-v="408521.000">4,085</td></tr><tr><td class="l">단순합계</td><td class="l mut"></td><td class="l">내수</td><td data-v="1429238.000">14,292</td></tr><tr><td class="l">단순합계</td><td class="l mut"></td><td class="l">합계</td><td data-v="1837759.000">18,378</td></tr><tr><td class="l">내부 거래 제거</td><td class="l mut"></td><td class="l">내수</td><td data-v="-204792.000">-2,048</td></tr><tr><td class="l">내부 거래 제거</td><td class="l mut"></td><td class="l">합계</td><td data-v="-204792.000">-2,048</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">수출</td><td data-v="408521.000">4,085</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">내수</td><td data-v="1224446.000">12,244</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">합계</td><td data-v="1632967.000">16,330</td></tr></tbody></table></div></div></div></section><section class="card"><h2>수요 축 — 원문 인용 <em>II절 본문</em><span class="right"></span></h2><div class="grid2"><div class="panel"><h3>신재생 연계 <em>2회</em></h3><ul><li>보고부문 소속회사명 주요재화 주요고객 전력사업부 가온전선㈜ 전력사업부, ㈜모보, ㈜디케이씨, (유)문경가온태양광발전, LSCUS와 그 종속회사 전력케이블, 버스덕트 등 한국전력공사, GS건설 등 통신사업부 가온전선㈜통신사업부, 이지전선㈜, (유)전주가온태양광발전 통신케이블 등 케이티, LG유플러스 등 특수케이블 사업부 ㈜지앤피와 그 종속</li></ul></div><div class="panel"><h3>북미 유틸리티 <em>2회</em></h3><ul><li>최근에는 LS CABLE &amp; SYSTEM U.S.A.,INC.(약칭: LSCUS) 미국법인의 지분 100%를 확보하여 북미시장을 포함한 글로벌시장 사업영역 확대에 적극적으로 나서고 있습니다.</li><li>2000년 이후로는 동남아 및 인도, 중동지역 등 이머징 마켓을 중심으로 한 인프라 투자 수요가 증가하고있으며, 향후 북미지역과 유럽 등 선진국 시장의 노후화된 전력선 교체와 신규 인프라 구축사업으로 인해 전선수요는 꾸준히 증가할 것으로 전망됩니다.</li></ul></div><div class="panel"><h3>AI 전력수요 <em>2회</em></h3><ul><li>글로벌 빅테크를 중심으로 AI 데이터센터 구축이 빠르게 확대되면서, AI 산업의 성장을 뒷받침하는 전력 인프라 산업도 구조적으로 성장하고 있습니다.</li><li>당사는 미국 자회사 LSCUS를 기반으로 글로벌 빅테크와의 장기공급계약 및 직접 거래를 통해 전력케이블 및 버스덕트 공급을 확대하여, AI 전력 인프라 산업의 핵심 공급사로 입지를 강화하고 있습니다.</li></ul></div><div class="panel"><h3>데이터센터 <em>1회</em></h3><ul><li>글로벌 빅테크를 중심으로 AI 데이터센터 구축이 빠르게 확대되면서, AI 산업의 성장을 뒷받침하는 전력 인프라 산업도 구조적으로 성장하고 있습니다.</li></ul></div><div class="panel"><h3>중동 전력청 <em>1회</em></h3><ul><li>2000년 이후로는 동남아 및 인도, 중동지역 등 이머징 마켓을 중심으로 한 인프라 투자 수요가 증가하고있으며, 향후 북미지역과 유럽 등 선진국 시장의 노후화된 전력선 교체와 신규 인프라 구축사업으로 인해 전선수요는 꾸준히 증가할 것으로 전망됩니다.</li></ul></div><div class="panel"><h3>초고압(154·345·765kV) <em>1회</em></h3><ul><li class="mut">낱말은 나오지만 문장으로 뽑을 조각이 표 안에 있었습니다 — 원문 보고서를 보세요</li></ul></div></div></section><section class="card"><h2>되짚기 <em>이 숫자가 어디서 왔는가</em></h2><p class="mut"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260814000919" target="_blank" rel="noopener noreferrer">DART 원문 보고서</a><br>KIND 업종 <code>절연선 및 케이블 제조업</code><br>편입 근거: KIND 주요제품 문구에 `전력선` — 전력선,통신케이블 제조,도매,수출입<br>제품군 판정 근거: 전선·케이블 ← KIND 주요제품「전력선,통신케이블 제조,도매,수출입」</p></section></main>
+<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. 수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>

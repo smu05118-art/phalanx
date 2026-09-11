@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LS마린솔루션 — 한국전력기기</title>
+<link rel="stylesheet" href="../assets/kgrid.css">
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+
+
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+
+var SER=[{"q":"2025Q1","backlog":614300,"new":null,"delivered":45500,"cov":4.715264931416422},{"q":"2025Q2","backlog":631500,"new":null,"delivered":84500,"cov":4.847289279162413},{"q":"2025Q3","backlog":676200,"new":null,"delivered":159200,"cov":5.190399066618565},{"q":"2025Q4","backlog":825600,"new":null,"delivered":260600,"cov":3.3807661595790424},{"q":"2026Q1","backlog":715300,"new":null,"delivered":289300,"cov":2.9290964558465222},{"q":"2026Q2","backlog":664600,"new":null,"delivered":366300,"cov":2.7214839990991178}];
+
+(function(){
+  var el=document.getElementById('cbal'); if(!el||!window.Chart||!SER.length) return;
+  var css=getComputedStyle(document.documentElement);
+  var s1=css.getPropertyValue('--s1').trim(), s3=css.getPropertyValue('--s3').trim(),
+      s2=css.getPropertyValue('--s2').trim();
+  var ds=[{type:'bar',label:'수주잔고',data:SER.map(function(r){return r.backlog;}),backgroundColor:s1,order:3}];
+  if(SER.some(function(r){return r['new']!=null;}))
+    ds.push({type:'line',label:'당기 신규수주',data:SER.map(function(r){return r['new'];}),borderColor:s3,order:1});
+  if(SER.some(function(r){return r.delivered!=null;}))
+    ds.push({type:'line',label:'기납품액',data:SER.map(function(r){return r.delivered;}),borderColor:s2,order:2});
+  new Chart(el,{data:{labels:SER.map(function(r){return r.q;}),datasets:ds},
+    options:{scales:{y:{beginAtZero:true,ticks:{callback:function(v){return (v/100).toLocaleString();}},
+      title:{display:true,text:'억원(원화 공시) · 외화는 백만 단위'}}}}});
+})();
+</script></head>
+<body>
+<header class="top"><div class="hd"><h1>LS마린솔루션</h1><span class="tag">060370</span><span class="tag">전선·케이블</span><span class="tag">코스닥</span><span class="tag">장납기</span><span class="sp"><a href="../index.html">허브</a><a href="../grid.html">단선도</a><a href="../coverage.html">커버리지</a></span></div><div class="crumb"><a href="../index.html">⚡ 한국전력기기</a> › <span>회사</span> › <span>LS마린솔루션</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">전선·케이블 — KIND 주요제품 문구에 `해저케이블` — 해저케이블등의 건설 및 유지보수 업무</p><div class="kpi"><div class="hero"><b>6,646억</b><span>수주잔고 (2026Q2)</span></div><div><b>2.72<small>년</small></b><span>커버리지(잔고÷연매출)</span></div><div><b>장납기</b><span>잔고 성격(기준 1.0년)</span></div><div><b>2,442억</b><span>연매출 제31기</span></div><div><b>92.0%</b><span>수출비중(매출실적)</span></div><div><b>—</b><span>최대 외부고객 비중</span></div></div><p class="note" style="margin-top:14px">· 수주표의 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 (최대 행이 잔고의 90.4%).</p><section class="card"><h2>수주잔고 추이 <em>KRW — 분기 6개</em></h2><div class="chart"><canvas id="cbal"></canvas></div><p class="mut" style="margin-top:8px">신규수주·기납품액을 같이 공시하는 회사라 롤포워드(기초+신규−기납품=기말)를 그릴 수 있습니다.</p></section><section class="card"><h2>수주표 행 <em>2026Q2 원문 그대로</em><span class="right">수주일자·납기가 기간 표기인 회사가 많습니다</span></h2><div class="wrap"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l sort">품목</th><th class="sort">기초·이월</th><th class="sort">신규·총액</th><th class="sort">기납품</th><th class="sort">잔고</th><th class="l">수주일자</th><th class="l">납기</th></tr></thead><tbody><tr><td class="l">해저케이블</td><td class="l mut"></td><td class="mut">—</td><td data-v="101200.000">1,012</td><td data-v="37600.000">376</td><td data-v="63600.000">636</td><td class="l mut">~2026년 반기</td><td class="l mut">-</td></tr><tr><td class="l">지중케이블</td><td class="l mut"></td><td class="mut">—</td><td data-v="929700.000">9,297</td><td data-v="328700.000">3,287</td><td data-v="601000.000">6,010</td><td class="l mut">~2026년 반기</td><td class="l mut">-</td></tr></tbody></table></div></section><section class="card"><h2>매출 구성 <em>2026Q2</em></h2><div class="grid2"><div><h2>부문 × 내수/수출 <em>원문 이름 그대로</em></h2><div class="wrap tall"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l">품목</th><th class="l sort">구분</th><th class="sort">금액</th></tr></thead><tbody><tr><td class="l">해저케이블</td><td class="l mut"></td><td class="l">내수</td><td data-v="8598.000">86</td></tr><tr><td class="l">해저케이블</td><td class="l mut"></td><td class="l">수출</td><td data-v="34204.000">342</td></tr><tr><td class="l">해저케이블</td><td class="l mut"></td><td class="l">합계</td><td data-v="42802.000">428</td></tr><tr><td class="l">지중케이블</td><td class="l mut"></td><td class="l">내수</td><td data-v="3310.000">33</td></tr><tr><td class="l">지중케이블</td><td class="l mut"></td><td class="l">수출</td><td data-v="102123.000">1,021</td></tr><tr><td class="l">지중케이블</td><td class="l mut"></td><td class="l">합계</td><td data-v="105433.000">1,054</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">합계</td><td data-v="148235.000">1,482</td></tr></tbody></table></div></div></div></section><section class="card"><h2>계약 공시 <em>「단일판매ㆍ공급계약체결」 유효 8건 · 해지 1건</em><span class="right">금액 합계 3,528억(환산 근거가 있는 8건)</span></h2><p class="note info">이 산업의 수주표는 <b>사업부문 합계</b>라 계약 단위 원장은 이 공시뿐입니다. 다만 공시 의무 기준(최근 매출액 대비 비율)을 넘는 계약만 나오므로 <b>전부가 아닙니다</b>. 외화 계약의 원화 금액은 우리가 환산한 것이 아니라 <b>공시가 환율을 적은 경우</b> 그 값입니다 — 근거가 없으면 원문 통화로 둡니다.</p><div class="ctl"><input data-filter="#tct" placeholder="계약명·상대 검색"></div><div class="wrap tall"><table id="tct" data-sortable><thead><tr><th class="l sort">계약명</th><th class="l sort">계약상대</th><th class="sort">금액</th><th class="sort">매출액 대비</th><th class="l sort">수요처</th><th class="l sort">지역</th><th class="l sort">계약일·기간</th><th class="l">원문</th></tr></thead><tbody><tr><td class="l" title="Offshore and Onshore Export Cables Supply, Transport, Installation and Commissioning">Offshore and Onshore Export Cables Supply, Transport, Installation and Commi</td><td class="l mut">안마해상풍력 주식회사(Anma Offshore Wind Ene<span class="pill">해지</span></td><td data-v="93990.000">940억</td><td>72.2%</td><td class="l mut">신재생 연계</td><td class="l mut"></td><td class="l mut">2026-04-24 · 2025-07-07</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260427900710" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="Offshore and Onshore Export Cables Supply, Transport, Installation and Commissioning">Offshore and Onshore Export Cables Supply, Transport, Installation and Commi</td><td class="l mut">안마해상풍력 주식회사(Anma Offshore Wind Ene</td><td data-v="93990.000">940억</td><td>72.2%</td><td class="l mut">신재생 연계</td><td class="l mut">내수</td><td class="l mut">2025-07-07 · 2025-07-07 ~ 2028-05-01 (2.8년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250708900063" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="해저광통신케이블 설치 공사">해저광통신케이블 설치 공사</td><td class="l mut">LS전선 주식회사<span class="ev rel">관계회사</span></td><td data-v="33290.160">333억<span class="cur">원문 USD</span></td><td>25.6%</td><td class="l mut"></td><td class="l mut">남해 지역</td><td class="l mut">2025-06-20 · 2025-06-20 ~ 2027-08-11 (2.1년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250620900309" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="TPC Offshore Wind Power Generation Phase 2 Project (Submarine Cables Trenching &amp; Burial Scope)">TPC Offshore Wind Power Generation Phase 2 Project (Submarine Cables Trenchi</td><td class="l mut">FOXWELL ENERGY CORPORATION LTD.<span class="ev named">전력회사</span></td><td data-v="17515.112">175억<span class="cur">원문 USD</span></td><td>13.4%</td><td class="l mut">신재생 연계</td><td class="l mut">아시아</td><td class="l mut">2025-04-28 · 2025-05-04 ~ 2026-09-30 (1.4년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260831900160" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="원거리탐지용 음향센서(B해역) 수중설치">원거리탐지용 음향센서(B해역) 수중설치</td><td class="l mut">LIG넥스원(주)</td><td data-v="27999.000">280억</td><td>39.6%</td><td class="l mut"></td><td class="l mut">내수</td><td class="l mut">2024-06-10 · 2024-06-10 ~ 2026-01-15 (1.6년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20251211900337" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="원거리탐지용 음행센서(B해역) 수중설치">원거리탐지용 음행센서(B해역) 수중설치</td><td class="l mut">LIG넥스원(주)</td><td data-v="12756.000">128억</td><td>18.0%</td><td class="l mut"></td><td class="l mut">내수</td><td class="l mut">2024-06-10 · 2024-06-10 ~ 2026-01-15 (1.6년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240610900089" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="원거리탐지용 음향센서(A해역) 수중설치">원거리탐지용 음향센서(A해역) 수중설치</td><td class="l mut">LIG넥스원(주)</td><td data-v="17160.000">172억</td><td>40.1%</td><td class="l mut"></td><td class="l mut">내수</td><td class="l mut">2023-06-09 · 2023-06-09 ~ 2025-01-20 (1.6년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20241216900539" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="Jeonnam 1 Offshore Windfarm Offshore Cable EPCi Contract (전남해상풍력 1단지 해저케이블 EPCi 건설 계약)">Jeonnam 1 Offshore Windfarm Offshore Cable EPCi Contract (전남해상풍력 1단지 해저케이블 E</td><td class="l mut">JOWP(전남해상풍력(주))</td><td data-v="58000.000">580억</td><td>194.1%</td><td class="l mut">신재생 연계</td><td class="l mut">내수</td><td class="l mut">2022-06-09 · 2022-06-09 ~ 2025-02-28 (2.7년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250123900416" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="요코하마존 해저통신케이블 유지보수 계약 체결">요코하마존 해저통신케이블 유지보수 계약 체결</td><td class="l mut">요코하마존 MA</td><td data-v="92120.464">921억<span class="cur">원문 USD</span></td><td>176.4%</td><td class="l mut"></td><td class="l mut">아시아</td><td class="l mut">2017-09-27 · 2017-09-27 ~ 2029-12-31 (12.3년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240116900110" target="_blank" rel="noopener noreferrer">원문</a></td></tr></tbody></table></div></section><section class="card"><h2>수요 축 — 원문 인용 <em>II절 본문</em><span class="right"></span></h2><div class="grid2"><div class="panel"><h3>신재생 연계 <em>38회</em></h3><ul><li>특히 해저전력케이블 사업은 국내 도서지역을 신규로 연결하는 국내 도서연계 사업이 대다수를 이루었으나 최근에는 해상풍력 및 해상그리드 사업을 위한 해저케이블 건설사업으로 사업의 형태가 변화하고 있어 지속적으로 유관기관 및 관련 업체와의 협력을 통한 수주 활동을 전개하고 있습니다.</li><li>또한, 국내 해상풍력 관련 각종 세미나와 컨퍼런스 등에 참여함으로써 시장 변화에 대응하고 있습니다. - 지중케이블 공기업, 민간기업의 입찰활동에 적극 참여하여 성장 기반을 강화하고 있으며, 고수익 PJT 수주 및 연계 공사를 통한 수익성 개선에 주력하고 있습니다.</li></ul></div><div class="panel"><h3>HVDC(초고압직류) <em>7회</em></h3><ul><li>국내 HVDC, 신재생에너지 전력망 구축 필요성 증대로 해당분야의 수요 또한 지속적으로 증가될 것으로 예상하고 있으며, LS전선과 전략적 협업을 통해 공동 수주활동을 전개하고 있습니다.</li><li>유럽 및 북미 시장을 중심으로 해외시장 네트워크 구축에 공격적으로 나서고 있으며, 최근 Energy Market의 급증하는 전력 수요를 담당하는 HVDC, 신재생에너지 사업의 중추적인 역할을 수행할 수 있도록 적극 대응하고 있습니다.</li></ul></div><div class="panel"><h3>북미 유틸리티 <em>4회</em></h3><ul><li>유럽 및 북미 시장을 중심으로 해외시장 네트워크 구축에 공격적으로 나서고 있으며, 최근 Energy Market의 급증하는 전력 수요를 담당하는 HVDC, 신재생에너지 사업의 중추적인 역할을 수행할 수 있도록 적극 대응하고 있습니다.</li><li>해저전력케이블 사업은 국내 도서지역을 신규로 연결하는 국내 도서연계 사업이 대다수를 이루었으나, 최근에는 해상풍력 및 해상그리드 사업을 위한 해저케이블 건설사업으로 사업의 형태가 변화하고 있어 동남아는 물론 북미, 유럽 등 선진 시장으로의 진출이 가속화되고 있습니다.</li></ul></div><div class="panel"><h3>데이터센터 <em>2회</em></h3><ul><li>특히, 최근에는 OTT 사업자들이 자체적으로 통신망 구축 및 데이터센터를 각국에 설치하는 추세로 OTT 사업자와의 관계도 지속 관리가 필요합니다.</li><li>다만, 신재생 관련 투자 증가로 인한 지속적인 사업기회가 예상되며, 유럽과 미국, 아시아 등의 개발 및 데이터센터 수요 증가로 시장점유율이 점차 확대될 것으로 예상됩니다.</li></ul></div><div class="panel"><h3>중동 전력청 <em>2회</em></h3><ul><li>이 외에도 국내의 경우 노후화된 전선 교체사업이 활발히 진행중이며, 동남아 및 인도, 중동지역등 이머징 마켓을 중심으로 한 인프라 투자수요 또한 지속 증가하고 있습니다.</li><li>- 지중케이블 사업은 대용량 송전을 위한 증용량 케이블과 광섬유를 포함하여 통신 기능을 추가한 광복합 가공지선의 사용이 지속 증가하고 있어 국내뿐만 아니라 북미와 유럽, 그리고 중동 등에서 케이블 시공에 대한 수요가 지속 증가하고 있습니다.</li></ul></div><div class="panel"><h3>초고압(154·345·765kV) <em>1회</em></h3><ul><li>(2) 산업의 성장성 - 전력케이블 2025년 5월 한국전력은 국가 에너지 수급 안정 및 에너지 전환 기반 확립을 위한 &#x27;제11차 장기송변전설비 계획&#x27; 을 발표하며 해양 송변전 설비인 서해안 HVDC(초고압직류송전) 기간망 구축 계획을 제시하였습니다.</li></ul></div></div></section><section class="card"><h2>되짚기 <em>이 숫자가 어디서 왔는가</em></h2><p class="mut"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260814001451" target="_blank" rel="noopener noreferrer">DART 원문 보고서</a><br>KIND 업종 <code>전기 및 통신 공사업</code><br>편입 근거: KIND 주요제품 문구에 `해저케이블` — 해저케이블등의 건설 및 유지보수 업무<br>제품군 판정 근거: 전선·케이블 ← KIND 주요제품「해저케이블등의 건설 및 유지보수 업무」</p></section></main>
+<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. 수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>

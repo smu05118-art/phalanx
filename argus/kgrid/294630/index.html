@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>서남 — 한국전력기기</title>
+<link rel="stylesheet" href="../assets/kgrid.css">
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+
+
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+
+var SER=[{"q":"2025Q1","backlog":3198.302,"new":null,"delivered":589.11,"cov":2.2747524893314366},{"q":"2025Q2","backlog":2590.588,"new":null,"delivered":1138.946,"cov":1.8425234708392604},{"q":"2025Q3","backlog":2216.452,"new":null,"delivered":1570.96,"cov":1.5764238975817926},{"q":"2025Q4","backlog":1828.877,"new":null,"delivered":1958.535,"cov":0.5401290608387478},{"q":"2026Q1","backlog":1513.729,"new":null,"delivered":2273.683,"cov":0.4470552274069699},{"q":"2026Q2","backlog":920.053,"new":null,"delivered":2867.359,"cov":0.27172268163024216}];
+
+(function(){
+  var el=document.getElementById('cbal'); if(!el||!window.Chart||!SER.length) return;
+  var css=getComputedStyle(document.documentElement);
+  var s1=css.getPropertyValue('--s1').trim(), s3=css.getPropertyValue('--s3').trim(),
+      s2=css.getPropertyValue('--s2').trim();
+  var ds=[{type:'bar',label:'수주잔고',data:SER.map(function(r){return r.backlog;}),backgroundColor:s1,order:3}];
+  if(SER.some(function(r){return r['new']!=null;}))
+    ds.push({type:'line',label:'당기 신규수주',data:SER.map(function(r){return r['new'];}),borderColor:s3,order:1});
+  if(SER.some(function(r){return r.delivered!=null;}))
+    ds.push({type:'line',label:'기납품액',data:SER.map(function(r){return r.delivered;}),borderColor:s2,order:2});
+  new Chart(el,{data:{labels:SER.map(function(r){return r.q;}),datasets:ds},
+    options:{scales:{y:{beginAtZero:true,ticks:{callback:function(v){return (v/100).toLocaleString();}},
+      title:{display:true,text:'억원(원화 공시) · 외화는 백만 단위'}}}}});
+})();
+</script></head>
+<body>
+<header class="top"><div class="hd"><h1>서남</h1><span class="tag">294630</span><span class="tag">전선·케이블</span><span class="tag">코스닥</span><span class="tag">회전</span><span class="sp"><a href="../index.html">허브</a><a href="../grid.html">단선도</a><a href="../coverage.html">커버리지</a></span></div><div class="crumb"><a href="../index.html">⚡ 한국전력기기</a> › <span>회사</span> › <span>서남</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">전선·케이블 — KIND 주요제품 문구에 `초전도선` — 고온초전도선재</p><div class="kpi"><div class="hero"><b>9억</b><span>수주잔고 (2026Q2)</span></div><div><b>0.27<small>년</small></b><span>커버리지(잔고÷연매출)</span></div><div><b>회전</b><span>잔고 성격(기준 1.0년)</span></div><div><b>34억</b><span>연매출 2025년(제22기) 금액</span></div><div><b>0.0%</b><span>수출비중(매출실적)</span></div><div><b>—</b><span>최대 외부고객 비중</span></div></div><p class="note" style="margin-top:14px">· 수주표의 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 (최대 행이 잔고의 100.0%).</p><section class="card"><h2>수주잔고 추이 <em>KRW — 분기 6개</em></h2><div class="chart"><canvas id="cbal"></canvas></div><p class="mut" style="margin-top:8px">신규수주·기납품액을 같이 공시하는 회사라 롤포워드(기초+신규−기납품=기말)를 그릴 수 있습니다.</p></section><section class="card"><h2>수주표 행 <em>2026Q2 원문 그대로</em><span class="right">수주일자·납기가 기간 표기인 회사가 많습니다</span></h2><div class="wrap"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l sort">품목</th><th class="sort">기초·이월</th><th class="sort">신규·총액</th><th class="sort">기납품</th><th class="sort">잔고</th><th class="l">수주일자</th><th class="l">납기</th></tr></thead><tbody><tr><td class="l">Reel-to-Reel PVD system</td><td class="l mut"></td><td class="mut">—</td><td data-v="3787.412">38</td><td data-v="2867.359">29</td><td data-v="920.053">9</td><td class="l mut">2024.11.16</td><td class="l mut">2026.11.15</td></tr></tbody></table></div></section><section class="card"><h2>매출 구성 <em>2026Q2</em></h2><div class="grid2"><div><h2>부문 × 내수/수출 <em>원문 이름 그대로</em></h2><div class="wrap tall"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l">품목</th><th class="l sort">구분</th><th class="sort">금액</th></tr></thead><tbody><tr><td class="l">제품</td><td class="l mut">2세대 고온초전도 선재</td><td class="l">내수</td><td data-v="193.000">2</td></tr><tr><td class="l">제품</td><td class="l mut">2세대 고온초전도 선재</td><td class="l">합계</td><td data-v="668.000">7</td></tr><tr><td class="l">제품</td><td class="l mut">초전도 버퍼선재</td><td class="l">내수</td><td data-v="13.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">초전도 버퍼선재</td><td class="l">합계</td><td data-v="18.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">초전도 선재제조장비</td><td class="l">합계</td><td data-v="909.000">9</td></tr><tr><td class="l">제품</td><td class="l mut">기타</td><td class="l">내수</td><td data-v="27.000">0</td></tr><tr><td class="l">제품</td><td class="l mut">기타</td><td class="l">합계</td><td data-v="103.000">1</td></tr><tr><td class="l">상품</td><td class="l mut"></td><td class="l">내수</td><td data-v="2.000">0</td></tr><tr><td class="l">상품</td><td class="l mut"></td><td class="l">합계</td><td data-v="56.000">1</td></tr><tr><td class="l">용역</td><td class="l mut"></td><td class="l">내수</td><td data-v="55.000">1</td></tr><tr><td class="l">용역</td><td class="l mut"></td><td class="l">합계</td><td data-v="87.000">1</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">수출</td><td data-v="1456.000">15</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">내수</td><td data-v="195.000">2</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">합계</td><td data-v="1651.000">17</td></tr></tbody></table></div></div></div></section><section class="card"><h2>계약 공시 <em>「단일판매ㆍ공급계약체결」 유효 3건</em><span class="right">금액 합계 47억(환산 근거가 있는 3건)</span></h2><p class="note info">이 산업의 수주표는 <b>사업부문 합계</b>라 계약 단위 원장은 이 공시뿐입니다. 다만 공시 의무 기준(최근 매출액 대비 비율)을 넘는 계약만 나오므로 <b>전부가 아닙니다</b>. 외화 계약의 원화 금액은 우리가 환산한 것이 아니라 <b>공시가 환율을 적은 경우</b> 그 값입니다 — 근거가 없으면 원문 통화로 둡니다.</p><div class="ctl"><input data-filter="#tct" placeholder="계약명·상대 검색"></div><div class="wrap tall"><table id="tct" data-sortable><thead><tr><th class="l sort">계약명</th><th class="l sort">계약상대</th><th class="sort">금액</th><th class="sort">매출액 대비</th><th class="l sort">수요처</th><th class="l sort">지역</th><th class="l sort">계약일·기간</th><th class="l">원문</th></tr></thead><tbody><tr><td class="l" title="2세대 고온 초전도 선재 공급 계약">2세대 고온 초전도 선재 공급 계약</td><td class="l mut">-<span class="pill est">공시유보</span><span class="ev anon">익명</span></td><td data-v="662.348">7억<span class="cur">원문 USD</span></td><td>19.6%</td><td class="l mut"></td><td class="l mut">북미</td><td class="l mut">2026-09-04 · 2026-09-04 ~ 2027-02-10 (0.4년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260904900634" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="초전도 선재 제품 공급계약">초전도 선재 제품 공급계약</td><td class="l mut">VEIR, Inc.</td><td data-v="434.021">4억<span class="cur">원문 USD</span></td><td>12.8%</td><td class="l mut"></td><td class="l mut">북미</td><td class="l mut">2026-07-13 · 2026-07-13 ~ 2026-10-13 (0.3년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260714900490" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l" title="A Reel to Reel PVD system 장비공급 계약">A Reel to Reel PVD system 장비공급 계약</td><td class="l mut">University of Houston</td><td data-v="3577.431">36억<span class="cur">원문 USD</span></td><td>56.0%</td><td class="l mut"></td><td class="l mut">북미</td><td class="l mut">2024-09-21 · 2024-09-21 ~ 2026-11-16 (2.2년)</td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20241118900249" target="_blank" rel="noopener noreferrer">원문</a></td></tr></tbody></table></div></section><section class="card"><h2>수요 축 — 원문 인용 <em>II절 본문</em><span class="right"></span></h2><div class="grid2"><div class="panel"><h3>데이터센터 <em>12회</em></h3><ul><li>최근 AI 데이터센터의 전력 수요 증가와 에너지 효율에 대한 요구 확대로 초전도 기술의 상업적 중요성은 더욱 커지고 있습니다.</li><li>더불어, 최근 AI 기술의 급격한 발전으로 인해 대형 AI 데이터 센터에 대한 투자가 빠르게 증가하고 있습니다.</li></ul></div><div class="panel"><h3>AI 전력수요 <em>4회</em></h3><ul><li>최근 AI 데이터센터의 전력 수요 증가와 에너지 효율에 대한 요구 확대로 초전도 기술의 상업적 중요성은 더욱 커지고 있습니다.</li><li>더불어, 최근 AI 기술의 급격한 발전으로 인해 대형 AI 데이터 센터에 대한 투자가 빠르게 증가하고 있습니다.</li></ul></div><div class="panel"><h3>신재생 연계 <em>3회</em></h3><ul><li>구체적으로 초전도 응용분야는 선재의 성능에 따라 운전온도별 응용범위가 다양한데, 주요 분야로는 초전도 케이블, 초전도 한류기, 핵융합 발전, 초전도 자석(MRI, NMR), 초전도 코일(풍력발전기, 모터 등) 등을 들 수 있습니다.</li><li>예를 들어, 전력 분야에서는 초전도 케이블, 한류기, 변압기 등의 전력 기기에 적용될 수 있으며, 선박 추진용 모터 및 풍력 발전기 등 회전기기, NMR 및 MRI와 같은 의료·바이오 기기, 단결정 성장 장치 등 소재 산업에도 혁신적인 변화를 가져올 수 있습니다.</li></ul></div><div class="panel"><h3>북미 유틸리티 <em>2회</em></h3><ul><li>국가 단위 프로젝트급의 대형 프로젝트가 많은바, 유럽/미주 선진국의 프로젝트 참여를 위해 현지 협회 정회원참여, 현지 영업사무소 또는 제조시설 설립 등 해외 시장 점유율 확대를 위한 판매 전략을 수립하고 있습니다.</li><li>최근 유럽의 전력 솔루션 기업 NKT와 독일 SWM 유틸리티는 역대 최장 길이인 15km 구간에 고온초전도 케이블을 도입하는 &#x27;SuperLink Project&#x27; 추진을 위해 MOU를 체결하였습니다.</li></ul></div><div class="panel"><h3>노후 전력망 교체 <em>1회</em></h3><ul><li>그러나 노후화된 케이블 교체 수요나 초전도 케이블 설치가 필수적인 지역의 경우 경기변동과 무관하게 사업이 진행되므로, 상대적으로 경기변동에 대한 민감도는 크지 않은 편입니다.</li></ul></div><div class="panel"><h3>초고압(154·345·765kV) <em>1회</em></h3><ul><li>아울러 당사는 해외 대형 한류기 프로젝트로의 공급망 확대를 추진하고 있습니다. 독일 연방경제에너지부(BMWK) 지원 하에 카를스루에 공과대학교(KIT)가 총괄하고 Siemens Energy, TSO 등이 참여하는 380kV 초고압망용 초전도 전류제한기 개발 프로젝트에 당사의 초전도 선재를 공급하게 되었습니다.</li></ul></div></div></section><section class="card"><h2>되짚기 <em>이 숫자가 어디서 왔는가</em></h2><p class="mut"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260813001650" target="_blank" rel="noopener noreferrer">DART 원문 보고서</a><br>KIND 업종 <code>기타 전기장비 제조업</code><br>편입 근거: KIND 주요제품 문구에 `초전도선` — 고온초전도선재<br>제품군 판정 근거: 전선·케이블 ← KIND 주요제품「고온초전도선재」</p></section></main>
+<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. 수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>
