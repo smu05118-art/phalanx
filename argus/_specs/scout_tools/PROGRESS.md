@@ -11,22 +11,33 @@
 - [x] `scout_peek.py` — 원문 육안 확인 CLI
 - [x] **원문 3건 직접 확인**(아래 §원문 확인)
 - [x] `scout_sectors.py` — 후보 산업 15개(보정 2개 포함) 정의 + 표본 97사 선정(`assets/sample.json`)
-- [x] `scout_probe.py` — 회사별 수주 절 관측(`assets/probe_cache/`, 절 원문 `assets/probe_html/`)
+- [x] `scout_probe.py` — 회사별 수주 절 관측(`assets/probe_cache/`, 절 원문 `assets/_raw/probe_html/`(비커밋))
 - [x] `scout_contracts.py` — 「단일판매ㆍ공급계약체결」 2년 건수 97사(`assets/contracts.json`, 12사는 검색상한 도달 `capped`)
 - [x] 파서 보정 3건(아래 §파서 보정) 후 97사 **전량 재관측**(`--force`)
-- [ ] `scout_score.py --write` → `argus/_specs/scout_evidence.json`
-- [ ] `argus/_specs/scout_report.md` — 섹터 표 · 상위 3개 탭 스펙 초안 · '만들지 말 것' 목록
-- [ ] `/tmp/scout.done`
+- [x] 파서 보정 4건째 — **표마다 통화**(아래 §파서 보정 7). 97사 전량 재관측(674s)
+- [x] `tests/test_scout_probe.py` 17건 (통화·머리행 폴백·롤포워드 단위·껍데기 표·매출 방언·행 입도)
+- [x] 원문 HTML을 `assets/_raw/probe_html/` 로 옮기고 `.gitignore`(감독 메모 반영)
+- [x] `scout_score.py --write` → `argus/_specs/scout_evidence.json` (+ `--md` 로 보고서 표 생성)
+- [x] `argus/_specs/scout_report.md` — 섹터 표 · 상위 3개 탭 스펙 초안 · '만들지 말 것' 목록
+- [x] `/tmp/scout.done`
+
+**웨이브 SCOUT 종료.** 결론: 1 원자력·발전기자재(82.0) · 2 전력기기·전력망(63.8) ·
+3 우주·항공부품(63.8). 보정 섹터 건설 95.0 · 조선 90.0 이 상단에 와 눈금은 맞았다.
 
 ## 재현 명령
 
 ```sh
 cd argus/_specs/scout_tools
 python3 scout_sectors.py --write                      # 표본 선정(DART 안 씀)
-for s in npp power batt_eq disp_eq rail; do python3 scout_probe.py --sector $s --quarter 2025Q4; done  # 3그룹 병렬
+python3 scout_probe.py --quarter 2025Q4               # 97사 관측(약 11분). 절별 병렬은 --sector
 python3 scout_contracts.py --end 20260911
-python3 scout_score.py --write
+python3 scout_score.py --write                        # → ../scout_evidence.json
+python3 scout_score.py --md                           # 보고서 §2 표
+python3 tests/test_scout_probe.py                     # 파서 회귀 17건
 ```
+
+`--force` 는 관측 JSON을 버리고 다시 파싱한다(원문 캐시는 그대로 쓰지만 rcpNo·목차는 DART를
+다시 두드린다 — 97사 약 11분). 원문 캐시 `assets/_raw/` 는 커밋하지 않는다.
 
 ## 원문 확인 (가설 → 실측)
 
@@ -68,3 +79,26 @@ python3 scout_score.py --write
    `사업부문|품 목|제42기…`로 '매출액'이라는 낱말이 어디에도 없다. → 제목 방언 목록
    (`_SALES_CUE`)에 넣고, 표 모양(기수/연도 열 또는 부문·품목 라벨)을 함께 요구한다.
    금호건설 002990은 II-4에 매출실적 표가 아예 없다(주요공사현황=시공실적뿐) → **매출 미확인으로 남긴다**.
+
+7. **표마다 통화가 다르다** — `_currency_of` 가 정의돼 있었는데 `norm_tables` 가 `cur` 을 채우지
+   않아 죽은 코드였다. 아스트 067390 국외수주 `(단위 : USD )`를 백만원으로 읽어 잔고가
+   **2,688조원**이 됐다(실제 26.9억달러). 씨에스윈드 112610 `(단위 : 백만USD)`,
+   일진전기 103590 `(단위 : 천USD )`도 같은 사고. 셋 다 배수에서 뺐다(환율을 지어내지 않는다).
+   - 원화·외화로 **표를 쪼갠** 회사(아스트: 국내=원/국외=USD, 루닛 328130)는 원화 표만으로
+     잔고를 대표할 수 없다 → `bal_fx_split` 로 배수를 버린다.
+   - **행 자체가 통화**인 표(KC코트렐 119650 「주요 환종별 수주상황」 KRW/USD/EUR/INR/TWD 5행)는
+     세로 합계가 허수다 → `cur="MIX"`.
+   - 반대로 `[단위 : 백만원 (천USD)]`(포메탈 119500)·`(단위 :천원, 천USD )`(로체시스템즈 071280)는
+     **원화 표**다(괄호 병기). 여기까지 버리면 멀쩡한 관측을 잃으므로 원화 단위가 같이 적힌
+     캡션은 원화로 본다.
+   - 캡션이 여러 개 붙을 수 있으므로(껍데기 표 lead 이어붙임) `unit_scale` 과 같이 **마지막
+     캡션**만 본다.
+
+## 남긴 숙제 (다음 라운드가 탭을 만들 때)
+
+- `scout_probe.py` 에 **--reparse**(관측 JSON의 rcpNo + `assets/_raw/probe_html` 만으로 다시 파싱,
+  DART 미접속)가 있으면 파서 수정 회전이 11분 → 수초가 된다. 지금은 `--force` 가 목차를 다시 받는다.
+- `grain_of` 가 LS일렉트릭 010120처럼 **열은 계약 단위인데 행은 부문 합계**인 표를 계약 단위로
+  본다(수주일자 칸이 `~'25.12` 라는 기간 표기). 날짜 형식까지 봐야 한다 — scout_report.md §6.
+- 모집단 `n_cand` 는 KIND 주요제품 문구 검색값이라 **하한**이다. 탭을 만들 때는 `kship_scan.py`
+  식 본문 탐색(④ 겹)으로 넓혀야 한다.
