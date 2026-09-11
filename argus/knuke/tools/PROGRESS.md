@@ -20,13 +20,16 @@
 - [x] 수출 계약명(영문) 사전 보강 · EPC 계층 신설 · 공시 「판매ㆍ공급계약 구분」 폴백(d8165ae)
 - [x] 템플릿 스모크: 회사 22쪽·허브·커버리지·parts 생성(계약/보고서 수집 전 상태)
 
-## 진행 중 / 남은 일
-1. [~] `knuke_contracts.py --collect` — 25종목을 3레인(`--only` 분할)으로 재개.
-   2026-09-11 재개 시점: 034020(24)·052690(29) 완료, 나머지 23종목 수집 중.
-   로그 `/tmp/knuke_c1..c3.log`. 끝나면 `--build`.
-2. [ ] `knuke_reports.py --collect --n 8` (DART) → `--build`  ※ 계약 수집 끝난 뒤(동시 금지)
-3. [ ] `knuke_suppliers.py --build && knuke_page.py --all && knuke_parts.py` 재생성
-4. [ ] site.json 공개 · 커밋 · `/tmp/knuke.done`
+- [x] `knuke_contracts.py --collect` 25종목 전수 → **계약 317건**(e648f83)
+- [x] `knuke_reports.py --collect --n 8` 25사 × 8분기 → **193 분기레코드**(71ba260)
+- [x] 외화 수주표 fail-closed(이성씨엔아이 `천달러`) · 테스트가 진짜 산출물을 덮어쓰던 버그 수정
+- [x] `knuke_suppliers.py`·`knuke_page.py --all`·`knuke_parts.py` 재생성 · `site.json` 공개
+- [x] 테스트 14건 통과 · 원문 대조(한전기술 2026Q2 도급형 18행 = 화면 값)
+
+## 남은 일 — **없음**(2026-09-11 기준 한 바퀴 완료)
+
+다음에 넓힐 곳은 `HANDOFF.md` §③ 6번에 적었다(II-2 주요 제품 절 · 발주처 역채움 ·
+「판매ㆍ공급지역」으로 수출 지역 축). 새로 이어받는 에이전트는 HANDOFF 부터 읽어라.
 
 ## 다음 명령
 ```sh
