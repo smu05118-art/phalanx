@@ -39,11 +39,10 @@ import time
 import traceback
 
 import ksemi_parse as P
-from ksemi_lib import (atomic_write, latest_quarter, q_range, report_kind,
+from ksemi_lib import (atomic_write, find_periodic, latest_quarter, q_range,
                        write_asset)
 from ksemi_fetch import fetch_section, toc
-from kce_fetch import parallel, pick_report, search_reports
-from kce_probe import report_window
+from kce_fetch import parallel
 import ksemi_universe as U
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -264,8 +263,9 @@ def _resolve(stock, q, ix, force=False, reparse=False, keys=QUARTERLY):
             return {"rcpNo": cur["rcpNo"], "title": cur["title"],
                     "nodes": cur["nodes"]}
         return None
-    start, end = report_window(q)
-    reps = pick_report(search_reports(stock, start, end, report_kind(q)), q)
+    # 보고서 종류를 하나로 못 박지 않는다 — 3월 결산 회사는 달력 분기와 서식이 어긋난다
+    # (3S 060310: 달력 2026Q2를 담는 문서가 분기보고서 (2026.06)다). ksemi_lib.find_periodic 참조.
+    reps = find_periodic(stock, q)
     if not reps:
         ix[ck] = {"none": True}
         return None

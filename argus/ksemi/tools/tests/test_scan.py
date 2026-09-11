@@ -130,8 +130,9 @@ class TestStoredVerdictsAreReproducible(unittest.TestCase):
                  "at": {"material": None, "device": None, "dist": None}}
             got = S.judge(m, "")[0]
             # 지정(SEED) 종목은 판정하지 않고 편입한다 — 규칙 결과는 따로 남아 있다.
+            # 사람이 재판정한 행(HOLD_CALLS)도 마찬가지로 규칙 결과가 rule_verdict 에 있다.
             want = (r.get("judge_if_scanned") if r.get("source") == "지정"
-                    else r["verdict"])
+                    else r.get("rule_verdict") or r["verdict"])
             if got != want:
                 bad.append((r["stock"], r["name"], want, got, r["scores"]))
         self.assertGreater(n, 100, "검증 대상 행이 너무 적다")
@@ -154,6 +155,22 @@ class TestStoredVerdictsAreReproducible(unittest.TestCase):
     def test_every_verdict_has_a_reason(self):
         bad = [r["stock"] for r in self.d["rows"] if not (r.get("reason") or "").strip()]
         self.assertEqual(bad, [])
+
+    def test_manual_calls_carry_the_rule_result_and_a_quote(self):
+        """재판정 행은 ① 규칙 결과를 지우지 않고 ② 원문 인용을 단다."""
+        manual = [r for r in self.d["rows"] if r.get("manual")]
+        self.assertTrue(manual, "HOLD_CALLS 재판정 행이 하나도 없다")
+        for r in manual:
+            self.assertIn(r["stock"], S.HOLD_CALLS)
+            self.assertIn(r["verdict"], ("편입", "배제"))
+            self.assertTrue(r.get("rule_verdict"), r["stock"])
+            self.assertTrue((r.get("quote") or "").strip(), r["stock"])
+            self.assertTrue(r["reason"].startswith("재판정 — "), r["stock"])
+
+    def test_nothing_is_left_on_hold(self):
+        """`보류`는 사람이 볼 때까지의 임시 등급이다 — 화면에 남기지 않는다."""
+        left = [(r["stock"], r["name"]) for r in self.d["rows"] if r["verdict"] == "보류"]
+        self.assertEqual(left, [], "보류가 남았다 — ksemi_scan.HOLD_CALLS 에 원문 근거로 적어라")
 
 
 if __name__ == "__main__":
