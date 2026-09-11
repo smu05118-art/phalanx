@@ -29,10 +29,14 @@ exclude:
   - vendor/cache/
   - vendor/gems/
   - vendor/ruby/
-  # ↓ 파이프라인 소스·픽스처·원장 — 배포물이 아니다(건설·조선·방산·반도체장비·우주항공·섹터 정찰).
+  # ↓ 파이프라인 소스·픽스처·원장 — 배포물이 아니다. 탭이 늘어도 고칠 필요 없게 glob 을 함께 둔다
+  #   (웨이브가 각자 자기 줄만 더하다 병합에서 남의 줄을 지운 일이 세 번 있었다 — 이 블록은 건드리지 마라).
+  - argus/*/tools/
   - argus/kce/tools/
   - argus/kship/tools/
   - argus/kdef/tools/
   - argus/ksemi/tools/
+  - argus/knuke/tools/
+  - argus/kgrid/tools/
   - argus/kaero/tools/
   - argus/_specs/
