@@ -63,16 +63,36 @@ TEXT_FLAGS = [
 
 # ── 표 정규화 ───────────────────────────────────────────────
 
-def norm_tables(html):
-    """parse_tables 위에 **첫 행 머리행 폴백**을 얹는다.
+_UNIT_ONLY = re.compile(r"^[(（\[]?\s*단위")
 
-    원문 확인에서 본 사고: 두산에너빌리티·HD현대일렉트릭의 수주표는 머리행 셀이 `<th>`가
-    아니라 `<td>`여서 `parse_tables`의 `cols`가 비고 머리행이 rows[0]으로 들어온다.
-    그대로 쓰면 '수주잔고' 열을 영원히 못 찾는다.
+
+def norm_tables(html):
+    """parse_tables 위에 **첫 행 머리행 폴백**과 **껍데기 표의 lead 이어붙임**을 얹는다.
+
+    원문 확인에서 본 사고 둘:
+    ① 두산에너빌리티·HD현대일렉트릭의 수주표는 머리행 셀이 `<th>`가 아니라 `<td>`여서
+       `parse_tables`의 `cols`가 비고 머리행이 rows[0]으로 들어온다. 그대로 쓰면
+       '수주잔고' 열을 영원히 못 찾는다.
+    ② 단위 캡션만 담은 **1×n 껍데기 표**를 앞에 두고 실제 표를 그 뒤에 놓는 회사가 있다
+       (SFA 056190: `(단위 : 백만원)` 표 → 매출실적 표). 껍데기를 그냥 버리면 소절 제목
+       ('(1) 매출실적')과 단위가 같이 사라져 뒤 표가 **분류도 단위 확인도 안 된다**.
+       → 껍데기는 표로 내보내지 않고 lead·캡션을 다음 표에 넘긴다.
     """
     out = []
+    pending = ""
     for t in parse_tables(html):
+        lead = (pending + "\n" + (t.get("lead") or "")) if pending else (t.get("lead") or "")
         cols, rows = list(t["cols"]), [list(r) for r in t["rows"]]
+        cells = [c.strip() for r in rows for c in r if c and c.strip()]
+        if not cols and cells and all(_UNIT_ONLY.match(c) for c in cells):
+            pending = lead + " " + " ".join(cells)        # 껍데기 — 다음 표로 넘긴다
+            continue
+        pending = ""
+        if cols and all(_UNIT_ONLY.match(c or "") for c in cols if (c or "").strip()):
+            # 머리행 자리에 단위 캡션만 들어간 표(금호건설 002990) — 단위는 lead로 넘기고
+            # 진짜 머리행은 아래 첫 행 폴백에 맡긴다.
+            lead = lead + " " + cols[0]
+            cols = []
         if not cols and rows:
             head = rows[0]
             # 숫자가 하나도 없고 셀이 2개 이상이면 머리행으로 본다
@@ -81,10 +101,10 @@ def norm_tables(html):
         if not rows:
             continue
         ncols = [norm_col(c) for c in cols]
-        out.append({"lead": t.get("lead") or "", "cols": cols, "ncols": ncols,
+        out.append({"lead": lead, "cols": cols, "ncols": ncols,
                     "fields": [COL_ALIAS.get(c) for c in ncols], "rows": rows,
-                    "unit": unit_scale(t.get("lead"), cols),
-                    "unit_seen": bool(re.search(r"단위", (t.get("lead") or "") + " ".join(cols)))})
+                    "unit": unit_scale(lead, cols),
+                    "unit_seen": bool(re.search(r"단위", lead + " ".join(cols)))})
     return out
 
 
@@ -145,6 +165,22 @@ def sum_column(t, i):
 
 # ── 수주 표 ─────────────────────────────────────────────────
 
+# 매출실적 표의 소절 제목 방언(공백 제거 후). '매출및수주상황'(절 제목 자체)은 넣지 않는다 —
+# 절의 첫 표 아무것이나 매출표로 만들어 버린다.
+_SALES_CUE = r"매출실적|매출액현황|매출현황|매출에관한사항|매출및매출원가|매출유형|판매실적|매출개요"
+
+
+def _period_cols(t):
+    """머리행에서 '기수/연도/당기' 열 인덱스 — 매출실적 표의 표지. (비중·증감 열은 뺀다)"""
+    out = []
+    for i, c in enumerate(t["ncols"]):
+        if re.search(r"비중|비율|증감|구성비|^%", c or ""):
+            continue
+        if re.search(r"제\d+기|20\d{2}|^당기|^당분기|^당반기|^금기", c or ""):
+            out.append(i)
+    return out
+
+
 def classify(t):
     """표 한 개 → 'std'(수주총액·기납품액·수주잔고) / 'roll'(기초·증감·기말) / 'sales' / None."""
     f = set(x for x in t["fields"] if x)
@@ -163,8 +199,13 @@ def classify(t):
             and _find_col(t, re.compile(r"계약금액|수주금액|금액|계약규모")) is not None:
         return "clist"
     # '매출 실적'처럼 낱말 사이에 공백이 들어가는 회사가 있다(현대로템) — 공백을 지우고 본다
-    if re.search(r"매출실적|매출액현황|매출현황", re.sub(r"\s", "", lead)) or (
-            "매출액" in "".join(t["ncols"]) and re.search(r"사업부문|품목|사업구분|구분", "".join(t["ncols"]))):
+    # 소절 제목 방언 + 표 모양(기수/연도 열 또는 '매출액' 열 또는 부문·품목 라벨)
+    # (세명전기 017510: 소절 제목이 '가. 매출에 관한 사항'이고 열은 `사업부문|품 목|제42기…`)
+    lab = re.search(r"사업부문|품\s*목|구\s*분|제품|유형|부문", "".join(t["cols"]))
+    if re.search(_SALES_CUE, re.sub(r"\s", "", lead)) and (
+            _period_cols(t) or "매출액" in "".join(t["ncols"]) or lab):
+        return "sales"
+    if "매출액" in "".join(t["ncols"]) and re.search(r"사업부문|품목|사업구분|구분", "".join(t["ncols"])):
         return "sales"
     return None
 
@@ -284,20 +325,36 @@ def probe_one(rec, quarter, force=False):
         if not reports:
             out.update(tier="error", note="정기보고서 없음(2년)")
             return out
-        rcp, title = pick_report(reports, quarter)[0]
-        out.update(rcpNo=rcp, title=title)
-        nodes = toc(rcp)
-        if not nodes:
-            out.update(tier="error", note="목차 없음")
-            return out
-        found = None
-        for n in nodes:
-            txt = n.get("text") or ""
-            if any(p in txt for p in SECTION_PATTERNS[0][1]):
-                found = n
+        # 후보를 순서대로 열어 **수주 절이 있는 문서**를 찾는다. 첫 후보로 끝내면 안 된다 —
+        # `[첨부정정] 사업보고서 (2025.12)` 는 제목의 기준월이 맞아 맨 앞에 오지만 목차가
+        # 「정정 신고」·「영업보고서」 두 줄뿐이다(한화에어로스페이스 012450 실사례).
+        cands = pick_report(reports, quarter)[:3]
+        rcp = title = found = None
+        tried = []
+        for rcp_c, title_c in cands:
+            nodes = toc(rcp_c)
+            hit = None
+            for n in nodes or []:
+                if any(p in (n.get("text") or "") for p in SECTION_PATTERNS[0][1]):
+                    hit = n
+                    break
+            tried.append({"rcpNo": rcp_c, "title": title_c, "n_nodes": len(nodes or []),
+                          "has_sec": bool(hit)})
+            if rcp is None:                      # 첫 후보는 근거로 남긴다(절을 못 찾아도)
+                rcp, title = rcp_c, title_c
+            if hit:
+                rcp, title, found = rcp_c, title_c, hit
                 break
+        out.update(rcpNo=rcp, title=title)
+        if len(tried) > 1:
+            out["tried"] = tried
         if not found:
-            out.update(tier="none_sec", note="목차에 매출·수주 절 없음")
+            if not any(t["n_nodes"] for t in tried):
+                out.update(tier="error", note="목차 없음")
+                return out                       # 접근 실패 — 캐시하지 않는다
+            out.update(tier="none_sec", note="목차에 매출·수주 절 없음(후보 %d건 확인)" % len(tried))
+            os.makedirs(CACHE, exist_ok=True)
+            atomic_write(path, json.dumps(out, ensure_ascii=False, indent=1) + "\n")
             return out
         out["sec_title"] = found.get("text")
         hpath = os.path.join(HTML_CACHE, "%s_%s.html" % (st, rcp))
