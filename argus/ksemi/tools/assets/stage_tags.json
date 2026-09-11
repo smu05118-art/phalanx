@@ -3,19 +3,19 @@
  "n": 154,
  "input": "scan.json(있으면) > universe.json 주요제품 > 스펙 지정 사유. 어느 것을 썼는지 stages[].source·evidence_source 에 남긴다.",
  "per_stage": {
-  "photo": 4,
-  "etch": 3,
-  "depo": 5,
-  "implant": 0,
-  "thermal": 1,
-  "cmp": 1,
-  "clean": 8,
-  "metro": 20,
-  "handling": 16,
-  "test": 19,
-  "pkg": 14,
-  "parts": 15,
-  "service": 4
+  "photo": 25,
+  "etch": 30,
+  "depo": 39,
+  "implant": 7,
+  "thermal": 20,
+  "cmp": 11,
+  "clean": 27,
+  "metro": 63,
+  "handling": 40,
+  "test": 40,
+  "pkg": 48,
+  "parts": 52,
+  "service": 11
  },
  "rows": [
   {
@@ -75,11 +75,19 @@
   {
    "stock": "017900",
    "name": "광전자",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "트랜지스터,SMD TR,발광소자,리모콘모듈,발광다이오드(L.E.D),다이오드용웨이퍼팹(Fab) 제조,판매",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "parts",
+     "words": [
+      "부품 제조"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "parts",
+   "front_back": "공통",
+   "evidence": "트랜지스터,SMD TR,발광소자,리모콘모듈,발광다이오드(L.E.D),다이오드용웨이퍼팹(Fab) 제조,판매 / 1. 사업의 개요 당사는 전자부품 제조 업체로써 Discrete 반도체, 광센서,",
+   "evidence_source": "scan"
   },
   {
    "stock": "020760",
@@ -95,17 +103,46 @@
    "name": "HLB이노베이션",
    "stages": [
     {
+     "key": "test",
+     "words": [
+      "테스트",
+      "소켓"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "확산"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "pkg",
      "words": [
       "리드프레임"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "반도체부품"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "pkg",
-   "front_back": "후공정",
-   "evidence": "리드프레임",
-   "evidence_source": "product"
+   "primary": "test",
+   "front_back": "전후공정 겸업",
+   "evidence": "또한, AI 기술 확산과 자율주행, 전기차 산업의 성장에 맞춰 산업용 IoT, 센서, 테스트 소켓 등 전방 산업에 대응할 수 있는 제품 경쟁력도 강화하고 있습니다. 바이오 부문에서는 미국 소재 종속회사인 Verismo Therapeutics를 / 현재 국내외 글로벌 메모리 반도체 검사 장비 업체들과 거래 중이며, 경기 침체의 영향으로 시장 수요가 일시적으로 감소하기도 했으나, 최근 AI 시장의 활성화로 인해 수요가 다시 상승하는 추세 / 리드프레임 / 사업부문 회사명 주요제품 반도체부품 HLB이노베이션 리드프레임(LEAD FRAME), 컨택핀(CONTACT PIN) 등 제조 바이오 Verismo Therapeutics, Inc.",
+   "evidence_source": "scan"
   },
   {
    "stock": "025560",
@@ -117,27 +154,28 @@
       "테스트",
       "핸들러"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "pkg",
      "words": [
+      "패키징",
       "리드프레임"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "metro",
      "words": [
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "PCB마운터,반도체검사장비(반도체테스트핸들러),LCD 검사장비,리드프레임매가진 제조,도매,무역",
-   "evidence_source": "product"
+   "evidence": "n Technology Co., Ltd, CONG TY TNHH MIRAE CORPORATION VINA 반도체 장비 (Test Handler) 등 - MAI사업부 미래산업(주) Suzhou Mirae Automation Technology Co., / u Mirae Automation Technology Co., Ltd, CONG TY TNHH MIRAE CORPORATION VINA 반도체 장비 (Test Handler) 등 - MAI사업부 미래산업(주) Suzhou Mirae Automation / 최근에는 AIㆍ전력반도체ㆍ첨단 패키징 중심으로 반도체 산업 구조가 빠르게 재편되면서 고속ㆍ고정밀 검사장비 수요가 확대되고 있으며, 이에 따라 장비의 자동화 및 고도화 중요성도 지속적으로 증가하고 있습니다. (나) 산업의 성장성 반도체 검 / PCB마운터,반도체검사장비(반도체테스트핸들러),LCD 검사장비,리드프레임매가진 제조,도매,무역",
+   "evidence_source": "scan"
   },
   {
    "stock": "029460",
@@ -146,39 +184,45 @@
     {
      "key": "handling",
      "words": [
-      "chemical 공급"
+      "c.c.s.s",
+      "scrubber",
+      "가스 공급",
+      "chemical 공급",
+      "배관",
+      "가스"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
-   "evidence": "가스/Chemical 공급 장치 등 제조 및 판매",
-   "evidence_source": "product"
+   "evidence": "종속회사인 (주)케이씨이앤씨는 반도체 및 디스플레이 분야의 배관시공을 전문으로 하고 있으며 (주)케이씨이노베이션은 반도체 장비인 Gas Scrubber, Purifier, IR Oven을 생산하고 있습니다. (주)케이씨 인더스트리얼은 반도체의 산업용 가스 / 특수가스 공급과 무역업을 영위하고 있 / 종속회사인 (주)케이씨이앤씨는 반도체 및 디스플레이 분야의 배관시공을 전문으로 하고 있으며 (주)케이씨이노베이션은 반도체 장비인 Gas Scrubber, Purifier, IR Oven을 생산하고 있습니다. (주)케이씨 인더스트리얼은 반도체의 산업용 가스 / 특수가스 공급 / 학약품을 중앙에서 분산 및 자동화로 공급하는 시스템으로 다양한 양산 설비의 엄격한 공급 사양에 따라 제품을 구현하기 위한 기술 집약적인 사업으로 C.C.S.S(Central Chemical Supply System)으로 불립니다. 반도체 산업과 디스플레이 산업 주요 메이커사의 신규 장치 투자와 밀접한 / 가스/Chemical 공급 장치 등 제조 및 판매 / (주)케이씨 인더스트리얼은 반도체의 산업용 가스 / 특수가스 공급과 무역업을 영위하고 있습니다. (주)케이씨투자파트너스는 신산업 분야에 투자 및 기술 기업 발굴 등 투자업을 영위하고 있으며 (주",
+   "evidence_source": "scan"
   },
   {
    "stock": "031980",
    "name": "피에스케이홀딩스",
    "stages": [
     {
+     "key": "pkg",
+     "words": [
+      "패키징",
+      "reflow"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "clean",
      "words": [
       "descum"
      ],
-     "source": "product"
-    },
-    {
-     "key": "pkg",
-     "words": [
-      "reflow"
-     ],
-     "source": "product"
+     "source": "scan"
     }
    ],
-   "primary": "clean",
+   "primary": "pkg",
    "front_back": "전후공정 겸업",
-   "evidence": "Descum, Reflow",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 현재 반도체장비(패키징 장비)의 제조와 판매(그 부속 부품 및 기술서비스 포함)라는 1개의 주된 사업부문을 영위하고 있으며, 종속회사의 주요사업 역시 동일하므로 / Descum, Reflow",
+   "evidence_source": "scan"
   },
   {
    "stock": "033170",
@@ -189,13 +233,13 @@
      "words": [
       "패키징"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "pkg",
    "front_back": "후공정",
-   "evidence": "반도체 패키징",
-   "evidence_source": "product"
+   "evidence": "③ 생산체제 전략 1) Fine pitch wire bonder 구비 고집접화, 고용량화라는 반도체 시장변화에 따라 시장의 주력제품이 기존 PDIP / SOIC 등 제품에서 BGA / FBGA / Flip / 반도체산업은 크게 반도체 소자제조업, 반도체장비 및 원ㆍ부자재 제조업등을 모두 포함하며 반도체산업의 인프라를 구성하는 기초ㆍ기반기술, 지식산업으로 구분할 수있습니다. 좁은 의미의 반도체산업은 설 / 반도체 패키징",
+   "evidence_source": "scan"
   },
   {
    "stock": "036200",
@@ -204,15 +248,18 @@
     {
      "key": "handling",
      "words": [
-      "scrubber"
+      "칠러",
+      "스크러버",
+      "scrubber",
+      "가스"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
-   "evidence": "반도체장비(DryGasScrubber)",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 반도체/디스플레이 장비 전문기업으로 우수한 연구인력 및 기술력을 확보하여 반도체 장비, 디스플레이 장비, 태양광 장비 등을 제작, 판매 및 A/S를 제공하고 있습니다. 주력 생산품목으로는 반도체/디스플레이 제조 공정상 발생되는 유해 / 주력 생산품목으로는 반도체/디스플레이 제조 공정상 발생되는 유해가스 정화장치인 스크러버(Scrubber), 반도체 Main 공정상 안정적인 온도 유지를 제공하는 온도조절 장치인 칠러(Chiller)를 주요사업으로 영위하고 있습니다. / 반도체장비(DryGasScrubber)",
+   "evidence_source": "scan"
   },
   {
    "stock": "036560",
@@ -226,11 +273,19 @@
   {
    "stock": "036890",
    "name": "진성티이씨",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "트랙롤라. 플로팅 씰",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "parts",
+     "words": [
+      "장비 부품"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "parts",
+   "front_back": "공통",
+   "evidence": "사업부문 품 목 국가 구체적용도 매출액(비율) 건설중장비 부품 Roller류 한국,미국,중국,일본, 태국 등 자회사 중장비 하부주행체 및 기타 부품 289,220(100%) / 트랙롤라. 플로팅 씰 / 1. 사업의 개요 당사가 속한 사업은 건설중장비를 생산하는 부품 산업으로 하부주행",
+   "evidence_source": "scan"
   },
   {
    "stock": "036930",
@@ -239,15 +294,30 @@
     {
      "key": "depo",
      "words": [
+      "증착",
       "ald"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "depo",
-   "front_back": "전공정",
-   "evidence": "ALG, ALD",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "1995년 당사는 반도체 DRAM 제조의 핵심인 커패시터 전용 증착 장비를 세계 최초로 개발에 성공하였으며, 해당 기술을 국내 주요 종합반도체 회사와 협업하여 대한민국 DRAM 기술이 세계 1등을 달성하는데 큰 기반을 / 1993년 반도체 핵심 전공정 장비를 전량 외국 수입품에만 의존하고 있던 상황에 당사는 독자적인 혁신 기술을 바탕으로 반도체 증착 제조 장비 및 부품 개발에 성공해 대한민국 장비 산 / 반도체 산업은 크게 소자산업, 장비산업, 원재료산업으로 구분할 수 있으며, 이중 반도체 장비산업은 크게 전공정 장비, 후공정 장비 및 검사 장비로 분류할 수 있습니다.최근 반도체 장비는 미· 중 간 기술 패권 경쟁이 심화됨에 따라 첨단 반도체 생산에 핵심 기술로 인식되며 글로벌 반도체 기업 / ALG, ALD",
+   "evidence_source": "scan"
   },
   {
    "stock": "039030",
@@ -256,47 +326,89 @@
     {
      "key": "pkg",
      "words": [
-      "마커"
+      "마커",
+      "레이저",
+      "laser"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "cleaning"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "inspection"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "pkg",
-   "front_back": "후공정",
-   "evidence": "레이저 마커 및 레이저 응용기기",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "1) 국내외 시장여건 당사는 지난 1989년 설립 이래로 레이저 마킹분야를 시작으로 드릴링, 트리밍, 커팅 등 다양한 레이저 응용분야로 진출해오고 있으며, 30여년간 꾸준하게 성장해 오고 있습니다. 당사가 판매하는 / 현재까지는 반도체 생산 장비로서 Laser Marker, Laser Cutter가 주요 사업 Item이었고, 동 사업에서 축적한 Laser 제어기술 등 Know-How를 / 특히 반도체 산업에 대한 Laser 응용 분야는 고집적 반도체 제작에 필요한 레이저Lithography, 레이저Repair, 레이저3D Inspection, 레이저Marking, 레이저Cutting, 레이저Trimming, 레이저Drilling, 레이저Cleaning 등 반도체 산업 및 전자산업에 / 레이저 마커 및 레이저 응용기기",
+   "evidence_source": "scan"
   },
   {
    "stock": "039440",
    "name": "에스티아이",
    "stages": [
     {
+     "key": "pkg",
+     "words": [
+      "패키징",
+      "본딩",
+      "tsv",
+      "리플로"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "handling",
      "words": [
       "c.c.s.s",
+      "약액",
       "중앙공급"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정",
+      "cleaner"
+     ],
+     "source": "scan"
     },
     {
      "key": "etch",
      "words": [
       "식각"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
-     "key": "clean",
+     "key": "test",
      "words": [
-      "세정"
+      "테스트"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "세라믹"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "handling",
-   "front_back": "전공정",
-   "evidence": "Chemical 중앙공급시스템(C.C.S.S), 세정·식각시스템",
-   "evidence_source": "product"
+   "primary": "pkg",
+   "front_back": "전후공정 겸업",
+   "evidence": "뿐만 아니라 디스플레이 포토트렉시스템 장비를 수주하며 기존의 CF 공정 설비 뿐만 아니라 OLED 전공정 설비 및 터치 패널 등 전공정 장비까지 진출에 성공하였습니다. 2005년부터 개발에 착수해 기술을 확보한 잉크젯 프린터는 세라믹, OCR 등 산업용 프린터, 3D프린터 등으로 활용되 / 사업의 개요 당사의 사업부문은 반도체 및 디스플레이 장비로 고순도 약액 공급장치인 C.C.S.S.(Central Chemical Supply System) 및 WET System 등이 있으며, 동 제품들을 생산, 공급하고 있습니다. 당사는 / AI 서버용 HBM과 첨단 DRAM 수요에 대응하기 위한 메모리 생산능력 확대와 공정 전환이 본격화되면서, 전공정 장비뿐 아니라 TSV, 본딩, 패키징 및 테스트 장비 투자도 함께 증가한 것으로 분석됩니다. 대만의 장비 매출은 87억7,000만 달러로 전년 동기 대비 24 / ,144 85.6% WET SYSTEM (세정/식각/현상, 리플로우) FPD 생산시 사용되는 장비로 cleaner, developer, glass slimming system 등이 있음. ■ Cleaner : panel을 깨끗하게 세정하는 장비 ■ Developer : pan / Chemical 중앙공급시스템(C.C.S.S), 세정·식각시스템",
+   "evidence_source": "scan"
   },
   {
    "stock": "039610",
@@ -312,18 +424,53 @@
    "name": "아이씨디",
    "stages": [
     {
+     "key": "etch",
+     "words": [
+      "식각",
+      "etch",
+      "etcher",
+      "dry etch"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "정전척",
+      "esc",
+      "전극"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "clean",
      "words": [
       "세정",
       "건식세정"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "이송",
+      "진공"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "clean",
+   "primary": "etch",
    "front_back": "전공정",
-   "evidence": "건식세정기,LCD,반도체 장비,광정보통신 부품,장비 제조,연구개발,용역 서비스,수출입",
-   "evidence_source": "product"
+   "evidence": "및 Touch Sensor 제조의 핵심 공정 중 하나인 박막식각 공정 중 Plasma를 이용한 HDP(High Density Plasma) Dry Etcher 장비와 OLED 증착공정 중 진공상태에서 Glass 기판을 이송하는 진공물류장비(증착기)가 있습니다. 또한 Plasma 기술을 활용한 Plasma / 또 한 주요계열회사인 아이씨디 머트리얼즈는 ESC(정전척)을 생산하는 회사로써, 2018년 6월 1일 장비사업부문과 부품사업부문을 분리하여 각 사업부분에 전념할 수 있도록 물적분할 설립 되었습니다. / 의 공정 완료된 Glass 를 재사용할 수 있도록 하는 공정 장비 2000.9.16 R2600 - - - CVD, 증착기, 증착전 Asher OLED 공정중 Plasma 를 R/G/B, 전극수송층, 정공수송층등을 증착하기전 OLED 재료의 발광효율을 높일 / 제28기 2분기 제27기 제26기 금액 금액 금액 제품 AM-OLED용 전공정장비 수 출 18,352 128,549 54,470 국 내 15,589 33,727 67,331 / 건식세정기,LCD,반도체 장비,광정보통신 부품,장비 제조,연구개발,용역 서비스,수출입 / 1. 사업의 개요 당사는 2000년 2월 26일 설립",
+   "evidence_source": "scan"
   },
   {
    "stock": "041440",
@@ -342,15 +489,31 @@
      "key": "handling",
      "words": [
       "유량계",
-      "유량 제어"
+      "유량 제어",
+      "약액"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "계측",
+      "측정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "handling",
-   "front_back": "공통",
-   "evidence": "반도체장비용 유량계와 유량 제어장치",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "제어계측기기 부문 유량계, LFC, 스피너 모터 등 반도체 장비 부문 반도체 PKG 가공용 STRIP GRINDER 등 제어계측기기 부문의 유량계와 LFC는 반도체 세정설비에 탑재되어 약액의 유량을 정확히 측정하고 토출량을 미세 제어 / 사업의 개요 주식회사 이엘씨와 종속기업(이하 \"연결실체\")은 제어계측기기를 제조 및 판매하는 사업과 반도체 장비 사업을 영위하고 있습니다. 당사는 2024년 03월 21일 BLU 사업부문 영업정지에 대해 이사회 결의를 하였습니다. 자세한 사항은 당사의 202 / 반도체 장비 부문 반도체 PKG 가공용 STRIP GRINDER 등 제어계측기기 부문의 유량계와 LFC는 반도체 세정설비에 탑재되어 약액의 유량을 정확히 측정하고 토출량을 미세 제어하는핵심 부품입니다. 반도체 미세공정에서 수율 확보를 위해 주요 전공정 간에 고도화된 세 / 반도체장비용 유량계와 유량 제어장치",
+   "evidence_source": "scan"
   },
   {
    "stock": "042700",
@@ -359,16 +522,33 @@
     {
      "key": "pkg",
      "words": [
+      "본더",
+      "본딩",
       "후공정",
       "금형"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "inspection",
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "테스트"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "pkg",
    "front_back": "후공정",
-   "evidence": "반도체 후공정장비,반도체금형 제조/부동산 매매,임대",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 한미반도체는 1980년 설립후 반도체 제조용 장비를 개발 및 출시해 왔으며, 자체 기술을 적용하여 주물, 설계, 제작, 조립, 검사와 테스트까지의 수직통합제조(Vertical Integrati / 당사의 주력 장비 'HBM TC(Thermal Compression) 본더'는 메모리칩에 정밀한 열과 압력을 가해 12단, 16단과 같은 고적층 HBM을 생산하는 핵심 장비입니다. AI 서버와 데이터센터 투자 확대에 따라 고 / '6-SIDE INSPECTION' 장비는 TC 본딩 전후공정에서 HBM 수율을 관리하는 필수 검사 장비입니다. TC 본더로 적층하기 전 개별 다이의 6면을 정밀 검사하고, 적 / 반도체 후공정장비,반도체금형 제조/부동산 매매,임대",
+   "evidence_source": "scan"
   },
   {
    "stock": "043340",
@@ -393,24 +573,45 @@
    "name": "성우테크론",
    "stages": [
     {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "이송"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "pkg",
      "words": [
       "리드프레임"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "metro",
      "words": [
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "지그"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "pkg",
-   "front_back": "후공정",
-   "evidence": "리드프레임,반도체검사장비",
-   "evidence_source": "product"
+   "primary": "clean",
+   "front_back": "전후공정 겸업",
+   "evidence": "부문 사업부 사업내용 주요고객 완제품 매출 장비사업부 LOC, PCB 검사장비 자동차용 검사장비 전지용 검사장비 삼성전기, 엘지이노텍, 해성DS(주) 엘지에너지솔루션 임가공 매출 부품 / 매출유형 품 목 구 분 판매경로 판매경로별 매출액 비중 제품매출 반도체장비 내수 수주→생산→검수→출고→납품 10,687,395 40.77% LOC,TR가공 내수 재료(무상사 / 특허권 2020.06.18 검사용 지그장치 특허권 2020.09.28 통신모듈 인쇄회로기판용 세정시스템 특허권 2023.08.10 리드프레임 테이핑 장치 특허권 2024.01.11 리드프레임 이송 / 리드프레임,반도체검사장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "048770",
@@ -424,11 +625,19 @@
   {
    "stock": "049080",
    "name": "기가레인",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "RF통신부품 및 반도체 장비",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "etch",
+   "front_back": "전공정",
+   "evidence": "주식회사 기가레인은 2024년 7월 중국 우시에 반도체 장비 제조, 판매 확장 뿐만 아니라 현지 고객을 위한 연구개발 대응역량 확대를 위한 법인을 신설하였으며, 2025년 12월말 기준 으로 국내법인 1개사 / 바일 기기 분야에 사용되는 무선통신(RF) 케이블/커넥터를 개발, 제조하고 있습니다.반도체급 나노패턴솔루션사업은 반도체 제조 공정용 ICP/DRIE 식각장비, XR(AR/VR), Micro/Nano LED 및 디스플레이용 미세패턴 형성에 활용되는 나노임프린터 및 임프린트 공정용 소재(레진)를 개발, 공급 / RF통신부품 및 반도체 장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "049120",
@@ -442,11 +651,19 @@
   {
    "stock": "049630",
    "name": "재영솔루텍",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "플라스틱 사출금형",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "photo",
+   "front_back": "전공정",
+   "evidence": "플라스틱 사출금형 / 1. 사업의 개요 당반기말 현재 당사는 사업의 성격에 따라 나노광학 부문을 영위하",
+   "evidence_source": "scan"
   },
   {
    "stock": "051490",
@@ -466,13 +683,13 @@
      "words": [
       "클린룸"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
-   "evidence": "클린룸 설비",
-   "evidence_source": "product"
+   "evidence": "클린룸 설비 / 1. 사업의 개요 가. 사업의 현황 1) 산업용 클린룸 (반도체/디스플레이) 반도체/디",
+   "evidence_source": "scan"
   },
   {
    "stock": "053620",
@@ -490,15 +707,25 @@
     {
      "key": "test",
      "words": [
-      "소켓"
+      "probe",
+      "검사용 소켓",
+      "소켓",
+      "socket"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "리노핀, 반도체 소켓 등",
-   "evidence_source": "product"
+   "evidence": "당사는 전량 수입에 의존하던 검사용 PROBE(SPRING CONTACT PROBE:LEENO PIN)와 반도체 검사용 소켓(IC TEST SOCKET)을 자체브랜드로 개발하여 제조 및 판매하는 사업과 초음파 진단기 등에 적용되는 의료기기 부품을 제조 및 판매하는사업 등을 영위하고 있습니다. / 리노핀, 반도체 소켓 등",
+   "evidence_source": "scan"
   },
   {
    "stock": "059090",
@@ -507,15 +734,67 @@
     {
      "key": "parts",
      "words": [
+      "esc",
+      "세라믹 부품",
+      "장비 부품",
+      "히터",
+      "세라믹",
+      "전극",
       "부품 제조"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각",
+      "etch",
+      "etcher"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "스크러버",
+      "가스"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "service",
+     "words": [
+      "코팅"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "parts",
-   "front_back": "공통",
-   "evidence": "반도체 및 디스플레이 부품 제조",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "[선박 기자재 사업] 1) 산업의 특성 (가) 스크러버 스크러버는 국제해사기구(IMO)의 황산화물(SOx) 배출 규제(IMO 2020)에 대응하기 위한 배기가스 정화 장치입니다. 2020년 1월 1일부터 / 기 제27기 매출액 비율 매출액 비율 반도체 제품/상품 등 Heater, ESC 및 세라믹 부품, 세정, 코팅, 디스플레이용 ESC 외 (부품) 반도체 공정 및 디스플레이용 장비 부품 (세정, 코팅) 반도체 공정용 장비부품 / [미생물진단부문 사업] (1) dRAST(신속 항균제 감수성 검사 시스템) ① 산업의 특성 Global Sepsis Alliance에 따르면 패혈증은 신체 내부 혹은 외부에서 발생한 미생물에 의해 혈류감염(균혈증)이 진 / 반도체 제조 장비 시장 또한 이러한 업황 변화에 연동되어 2023년 감소 이후 2024년부터 회복세를 보이고 있으며, 2025년에는 글로벌 주요 반도체 기업들의 / 반도체 前 공정용 증착 장비인 CVD 장비용 세라믹 히터, 前 공정용 식각 장비인 Etcher 장비용 ESC, OLED&LCD용 ESC 제품인 하부전극 등이 그 대표적인 제품 / 반도체 및 디스플레이 부품 제조",
+   "evidence_source": "scan"
   },
   {
    "stock": "060310",
@@ -526,30 +805,48 @@
      "words": [
       "웨이퍼 캐리어"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
    "evidence": "반도체 웨이퍼 캐리어",
-   "evidence_source": "product"
+   "evidence_source": "scan"
   },
   {
    "stock": "061970",
    "name": "LB세미콘",
    "stages": [
     {
+     "key": "test",
+     "words": [
+      "테스터",
+      "테스트",
+      "프로브"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "pkg",
      "words": [
-      "범핑"
+      "패키징",
+      "범핑",
+      "후공정"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "pkg",
+   "primary": "test",
    "front_back": "후공정",
-   "evidence": "골드범핑, 솔더범핑 등",
-   "evidence_source": "product"
+   "evidence": "출원국 산업재산권의종류 등록일자 명칭 한국 특허 2010.08.13 반도체칩 테스터용 프로브 카드와 이를 사용하는 테스터 및 그 테스터를 이용한 반도체칩의 검사방법 특허 2012.01.18 프로브 카드의 / 이러한 흐름은 반도체 장비 및 후공정 시장에서도 명확히 확인됩니다. SEMI에 따르면, 2025년의 폭발적 성장에 이어 2026년 반도체 테스트 및 패키징 장비 시장은 역대 / 단점 당사는 고객사(반도체 제조 및 설계업체)의 요청에 따른 사양과 개발 일정에 맞춰 팹리스에서 설계한 주문형 반도체(ASIC, SoC 등)에 대한 범핑(Bumping), 웨이퍼 레벨 패키징(WLP), 고급 패키징(2.5D·3D 패키징) 및 테스트 사업을 전문으로 수행하는 반도체 후공정(OSAT) 기업 / 골드범핑, 솔더범핑 등 / 반도체 기업은 크게 종합반도체기업(IDM), 설계전문기업(Fabless), 수탁제조기업(Foundry), 후공정기업(OSAT)으로 구분됩니다. 그중 당사는 반도체 후공정(OSAT, Outsourced Semic",
+   "evidence_source": "scan"
   },
   {
    "stock": "064760",
@@ -558,41 +855,99 @@
     {
      "key": "parts",
      "words": [
-      "흑연"
+      "흑연",
+      "graphite",
+      "sic"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "ald"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "클린룸"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "parts",
-   "front_back": "공통",
-   "evidence": "반도체 제조공정용 고순도 흑연제품",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "이러한 반도체 산업의 분류방법에서 당사와 연관되어 있는 반도체 공정용 부분품에 대한 개념은 아직 명확히 구분되지 않습니다만, 일반적으로 반도체 소자를 생산하는 과정에서 소요되는 공정용 소모품으로 반도체 재료산업에 포함된 개념 / 주요 제품은 Growing 장비용 Graphite 부품, 반도체 Device업체 장비용 Solid SiC Wafer와 Ring, 반도체 ALD 장비용 Susceptor류와 LED Chip 생산용 Wafer Carrier 등을 제조 및 판매 하고 있으며, 주요 매출처는 반도체 제조 및 태양광 / 이 중 반도체 주변산업(후방산업)은 소자생산을 위한 반도체 장비산업(기계, 기구, 전자장비), 반도체 주변장치산업(클린룸 등) 및 소자생산용 소재를 공급하는 반도체 재료산업으로 구분됩니다. 이러한 반도체 산업의 / 반도체 제조공정용 고순도 흑연제품",
+   "evidence_source": "scan"
   },
   {
    "stock": "066310",
    "name": "큐에스아이",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "레이저다이오드(LaserDiode)",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "pkg",
+     "words": [
+      "본딩",
+      "레이저"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "링"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "pkg",
+   "front_back": "후공정",
+   "evidence": "제조 방법 특허법 발명자 3인 2019-03-18 상용화 특허권 2020-12-14 레이저 솔더링 본딩 기술을 이용한 고출력 레이저 다이오드 모듈 제조 방법 특허법 발명자 3인 2019-04-08 상용화 특허권 / 레이저다이오드(LaserDiode) / 1. 사업의 개요 연결회사는 반도체 레이저, 광반도체 관련 제품 등의 제조, 판매",
+   "evidence_source": "scan"
   },
   {
    "stock": "067310",
    "name": "하나마이크론",
    "stages": [
     {
+     "key": "parts",
+     "words": [
+      "석영",
+      "sic",
+      "실리콘 부품"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "포토",
+      "포토마스크",
+      "마스크"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각",
+      "에칭"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "pkg",
      "words": [
       "패키징"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
-   "primary": "pkg",
-   "front_back": "후공정",
-   "evidence": "반도체패키징,IOT",
-   "evidence_source": "product"
+   "primary": "parts",
+   "front_back": "전후공정 겸업",
+   "evidence": "(2) 반도체 재료 부문 반도체 재료부문은 반도체 등의 제조공정에 사용되는 실리콘 부품(Si-Parts)사업과 신규사업인 실리콘카바이드사업(SiC-Parts)으로 구성되며, 이는 반도체의 핵심 제조공정인 에칭(식각)공정에 사용되는 소 / 반도체산업은 크게 반도체 소자제조업, 반도체장비 및 원ㆍ부자재 제조업 등을 모두 포함하며 반도체산업의 인프라를 구성하는 기초ㆍ기반기술, 지식산업으로 구분할 수 있으며, 작게는 설계, 웨이퍼가공, / 구분 종 류 용 도 기능재료 웨이퍼 칩의 기판 공정재료 포토마스크 석영유리에 회로를 묘화한 회로도 원판 펠리클 마스크의 오염방지를 위한 보호막 포토레지스트 웨이퍼에 / 종속회사 Hana Micron Vina Co.,Ltd 반도체 재료 종속회사 하나머티리얼즈(주) 반도체식각장비의 Silicon parts 등 신기술사업금융 종속회사 하나에스앤비인베스트먼트(주) 신기술사업 투자 등 / 반도체패키징,IOT",
+   "evidence_source": "scan"
   },
   {
    "stock": "071280",
@@ -601,15 +956,23 @@
     {
      "key": "handling",
      "words": [
-      "이송"
+      "이송",
+      "efem"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "반도체용"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
-   "evidence": "LCD 제조용 이송장비",
-   "evidence_source": "product"
+   "evidence": "FPD 및 반도체 생산장비에 관한 물류제어 기술을 이용하여 FPD (Indexer), Wafer Cassette Station (EFEM), 디스플레이 Module장비 등 / 산하는 제조업체로 Glass Cutting System을 비롯하여 반도체용 Mobile RobotㆍEFEM, 디스플레이용 IndexㆍSorterㆍStockerㆍModule 장비 등의 장비를 개발ㆍ공급하여 수익을 창출하고 있습니다. 현재 당사가 영위하는 주요 사업의 내용은 다음과 같습니다. 가. FPD / 류이송장비를 생산하는 제조업체로 Glass Cutting System을 비롯하여 반도체용 Mobile RobotㆍEFEM, 디스플레이용 IndexㆍSorterㆍStockerㆍModule 장비 등의 장비를 개발ㆍ공급하여 수익을 창출하고 있습니다. 현재 당사가 영위하는 주요 사업의 내용은 다음과 같습니다. / LCD 제조용 이송장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "071670",
@@ -623,11 +986,28 @@
   {
    "stock": "078150",
    "name": "HB테크놀러지",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "TFT-LCD검사장비",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "metro",
+     "words": [
+      "inspection",
+      "측정",
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "확산"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "metro",
+   "front_back": "전공정",
+   "evidence": "사업의 개요 회사는 OLED 전공정 AOI(Automatic Optical Inspection, 자동광학 측정검사) 검사 장비, 리페어 장비, 2차전지 외관검사장비 등의 제품을 생산ㆍ판매하는 장비사업과 Display 백라이트유닛인 도광판 / 등 부품소재사업부문 도광판, 확산판 (1) 장비사업부문 회사는 1997년 설립 이후 반도체 Test Handler를 시작으로 LCD 및 AMOLED 검사장비 개발에 성공하여 국내외 시장에서 외산 장비를 대체하였습니다. 주요 거래처로는 삼성디스플레이, BOE, / 20,967 32.33% 2차전지 통합검사기 외 통합검사기 1,140 1.76% 부품 장비부품 외 4,204 6.48% 용역 설치 용역 용역매출 11,580 17.85% 소계 / TFT-LCD검사장비 / 1. 사업의 개요 회사는 OLED 전공정 AOI(Automatic Optical Ins",
+   "evidence_source": "scan"
   },
   {
    "stock": "079170",
@@ -643,24 +1023,55 @@
    "name": "제우스",
    "stages": [
     {
-     "key": "clean",
-     "words": [
-      "세정"
-     ],
-     "source": "seed"
-    },
-    {
      "key": "handling",
      "words": [
-      "이송"
+      "반송",
+      "진공",
+      "밸브"
      ],
-     "source": "seed"
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정",
+      "cleaner"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "포토"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "etch"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "clean",
+   "primary": "handling",
    "front_back": "전공정",
-   "evidence": "제우스 — 세정·이송 장비 (스펙 지정)",
-   "evidence_source": "seed"
+   "evidence": "디스플레이 Glass의 반송과 정보 처리를 담당하는 통합 관리 System HELIA 10,628 7.74 반도체 제조 장비 반도체 세정장비 ATOM, APOLLON, VENUS 84,060 61.23 플러그밸브 플러그밸브 / 사업의 개요 당사는 반도체 및 디스플레이 제조공정에 사용되는 매엽식 반도체 웨이퍼 세정장비, 디스플레이 열장비, 검사장비, 공정장비 및 산업용 로봇, Process 플러그밸브 등을 제조, 판매하고 있습니다. 매출 유 / 사업의 개요 당사는 반도체 및 디스플레이 제조공정에 사용되는 매엽식 반도체 웨이퍼 세정장비, 디스플레이 열장비, 검사장비, 공정장비 및 산업용 로봇, Process 플러그밸브 등을 제조, 판매하고 있습니다. 매출 유형별 실적은 다음과 같습니다. / 서 사용되는 진공 Gauge Thin Film Coating System 화합물반도체, 광전자, 포토닉스산업에서 사용되는 전자빔증착장비 Nano Technology 장비 나노입자 박막증착장비 소재 및 분석장비 Chemical류 디스플레 / 소재 및 분석장비 Chemical류 디스플레이 및 반도체 제조공정에 사용되는 각종 Chemical(Etchant, Developer, Cleaner 등) Chemical & Gas 분석장비 디스플레이 및 반도체 제조공정에 사용되는 Chemical 및 G / LCD제조용장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "079900",
@@ -678,17 +1089,25 @@
     {
      "key": "etch",
      "words": [
+      "식각",
       "etch",
       "etcher",
       "dry etch"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "진공"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "etch",
    "front_back": "전공정",
-   "evidence": "Dry Etcher, 진공합착기, LCD Panel 검사장비, OLED용 진공합착기",
-   "evidence_source": "product"
+   "evidence": "주요 핵심 부품인 Panel 제조를 위한 장비 개발에 착수하여 현재까지 식각 장비인 Dry Etcher를 중심으로 합착기, 진공물류시스템, Plasma Treatment, AOI 등으로 사업 영역을 꾸준히 확장하고 있습니다. 종 / Dry Etcher, 진공합착기, LCD Panel 검사장비, OLED용 진공합착기 / 1. 사업의 개요 당사는 TFT-LCD, OLED 등의 디스플레이 패널을 제조하는",
+   "evidence_source": "scan"
   },
   {
    "stock": "080580",
@@ -698,22 +1117,25 @@
      "key": "test",
      "words": [
       "검사용 소켓",
-      "소켓"
+      "번인",
+      "burn-in",
+      "소켓",
+      "socket"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "metro",
      "words": [
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "반도체 검사용 소켓",
-   "evidence_source": "product"
+   "evidence": "당사는 1998년 설립 이래 국내 최초로 번인 소켓 (Burn-In Socket) 을 개발, 기존 해외 메이커 제품이 주도하고 있던 번인 소켓 시장에 진입하였습니다. 반도체 검사용 소켓의 개발 및 / 일반적으로 반도체 소자업체의 경기변동은 일정한 주기로 호황기와 침체기를 반복하는 양상을 보이고 있으며, 이러한 경기 사이클은 반도체 장비업체에도 적용되고 있습니다. 그러나, 당사의 제품은 대규모의 자본 지출을수반하는 설비 투자 성격보다는 반도체 생산 공정에서 제조 수량에 직접적으로 / 번인 소켓의 경우 주로 반도체검사용 보드 제작업체 및 검사장비업체를 통해 납품 되어지며, 반도체 소자 제조업체에서소자 검사를 실시하기 위하여 검사용 PCB 보드 의 상부에 부착된 형태로 납품되는데, 이에 따라 / 반도체 검사용 소켓",
+   "evidence_source": "scan"
   },
   {
    "stock": "081180",
@@ -722,15 +1144,23 @@
     {
      "key": "metro",
      "words": [
-      "x-ray"
+      "x-ray",
+      "검사"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "tsv"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "metro",
-   "front_back": "공통",
-   "evidence": "X-ray 검사장비, LINAC, Tabletop SEM",
-   "evidence_source": "product"
+   "front_back": "후공정",
+   "evidence": "사업의 개요 주식회사 쎄크는 전자빔 원천기술 기반의 핵심부품 및 이를 활용한 검사장비를 개발, 제조, 판매하는 회사입니다. 당사의 검사장비는 크게 - 반도체 및 배터리 산업용 X-ray System - 방위 산업용 LINAC(선형가속 / Wafer level HBM 반도체의 TSV, Micro-Bump 등의 초정밀 검사용으로 주로 활용. Semi-Scan-W 개발완료 Wafer Level HBM 적층 / X-ray 검사장비, LINAC, Tabletop SEM",
+   "evidence_source": "scan"
   },
   {
    "stock": "082210",
@@ -748,15 +1178,24 @@
     {
      "key": "handling",
      "words": [
-      "scrubber"
+      "스크러버",
+      "scrubber",
+      "가스"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "service",
+     "words": [
+      "재생"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
-   "evidence": "ChemicalAirFilter,GasScrubber",
-   "evidence_source": "product"
+   "evidence": "제02938050768044 제거용 공정장치 4 유해가스제거와 필터의 재생이동시에 가능토록 한 배기가스 처리용 가스스크러버 및 그 개비처리방법공기 정화용 필터 조립체 국내 제0333930호0777639 gas scrubber 5 복합 / 이와 관련하여 글로벌 주요 반도체 제조사의 신규 생산시설 및 첨단 공정 적용 확대에 따라 생산 환경 및 반도체 제조장비 내부 환경 제어를 위한 Chemical Air Filter 적용 범위가 확대되는 추세이며, 당사의 Chemical Air Filter 또한 북미 / ChemicalAirFilter,GasScrubber",
+   "evidence_source": "scan"
   },
   {
    "stock": "083310",
@@ -767,15 +1206,44 @@
      "words": [
       "진공",
       "진공펌프",
-      "펌프"
+      "펌프",
+      "가스"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "cvd"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "챔버"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "handling",
-   "front_back": "공통",
-   "evidence": "반도체제조용진공펌프",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "사업의 개요 당사는 진공(Vacuum)기술을 기반으로 반도체, 디스플레이 등 첨단산업용 건식진공펌프 사업을 영위할 목적으로 2002년 3월에 설립되었습니다. 이후 세계최초 진공펌프 회사인 독일의 Oerilkon Leybold Vacuum사로부터 미 / 구분 내용 주요 제품 진공펌프 부문 반도체 장비용 진공펌프 제조, 판매 및 수리 Fore Vacuum용 건식진공펌프 등 장비 부문 반도체, 액정표시장치(LCD) 제어장 / 2006.11.10 루츠 로터와 스크루 로터 복합건식진공펌프 상용화 2 특허권 2007.06.07 Al-CVD 공정으로부터의 공정부산물을 트래핑하기 위한 방법 및 장치 상용화 3 특허권 2007.08.14 Al₂O₃ AL / 6 특허권 2024.05.23 터보 분자 펌프 상용화 67 특허권 2024.06.28 반도체 공정 챔버 배기가스 처리용 플라즈마 장비 및 이를 위한 플라즈마 차단 장치 상용화 68 특허권 2024.07.16 유도 / 반도체 장비는 전공정장비, 후공정장비 및 검사장비로 분류할 수 있습니다. 이 중 전공정장비는 대부분 진공장비로서 진공펌프를 장착하고 있으며, 공정 미세화에 따라 후공정장비 또한 진공펌프가 장착되고 / 반도체제조용진공펌프",
+   "evidence_source": "scan"
   },
   {
    "stock": "084370",
@@ -785,40 +1253,92 @@
      "key": "depo",
      "words": [
       "증착",
-      "cvd"
+      "cvd",
+      "ald"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "depo",
    "front_back": "전공정",
-   "evidence": "실리콘질화막증착용LP-CVD",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 2000년에 설립된 반도체 장비 제조회사로 전공정의 웨이퍼 처리공정 중 박막형성재료를 화학반응에 의해 반도체기판(wafer)위에 박막을 형성하는 장비를 제공하고 있습니다. 반도체 / 이 외에도 Plasma Treatment System인 Albatross™을 개발하여 국내 소자업체에 공급하였으며, Batch type ALD(Atomic Layer Deposion) System인 Harrier™을 개발하여 공급하고 있습니다. 반도체 소재 부문에서는 국내 반도체 소자업체에 / 주요 반도체 장비 특히, 노광기, 증착기, 식각기 등 전공정에 사용하는 장비는 반도체칩의 미세화기술과 품질을 좌우합니다. 반도체장비산업은 교체주기가 빠른 지식집약적 산업이며, / 실리콘질화막증착용LP-CVD",
+   "evidence_source": "scan"
   },
   {
    "stock": "086390",
    "name": "유니테스트",
    "stages": [
     {
+     "key": "depo",
+     "words": [
+      "cvd",
+      "pvd"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "test",
      "words": [
       "테스터",
       "테스트"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "확산",
+      "산화"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "장비 부품"
+     ],
+     "source": "scan"
     },
     {
      "key": "metro",
      "words": [
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
-   "primary": "test",
-   "front_back": "후공정",
-   "evidence": "반도체메모리주검사장비생산(메모리컴포넌트테스터,메모리모듈테스트)",
-   "evidence_source": "product"
+   "primary": "depo",
+   "front_back": "전후공정 겸업",
+   "evidence": "특히 반도체사업에서는 반도체 후공정의 핵심이라고 할 수 있는 메모리 모듈 테스터 및 메모리 컴포넌트 테스터를 국내 업계 최초로 개발 완료하여 그 기술력을 인정받았고, 국산화 및 양산용 제품에 성공함으로써 국내 반도체 산업 경쟁력 / 사업의 개요 당사는 2000년도에 설립되어, 주된사업은 반도체 검사장비를 전문으로 개발·판매하는 기업으로써, 2009년부터는 태양광사업을 신규사업으로 시작하였습니다. 특히 반도체사업에서는 반도체 후공정의 핵심이라고 할 / 반도체 사업부문 (1) 반도체 장비 산업 반도체 산업 발전과정은 곧 반도체 장비산업의 발전과정이라는 말이 있듯이 반도체 장비산업은 반도체의 고집적화에 따라 그 중요성이 점점 커 / 관련 장비는 Expose M/C, Photo Resist M/C, 산화, 확산 처리장비, 불순물 주입장비, CVD, PVD, 평탄화 장비, 세정·건조장비, Wafer 검사장비 등이 있습니다. 후공정 장비는 전공정 후 조립 및 검사에 관련된 공정에서 사용되는 장비 / 2022-02-03 2022-11-15 - 7,268 - 7,268 - - 반도체 검사장비 부품 2022-07-20 2023-09-15 - 7,413 - 7,413 - - ESS설치공 / 반도체메모리주검사장비생산(메모리컴포넌트테스터,메모리모듈테스트)",
+   "evidence_source": "scan"
   },
   {
    "stock": "086670",
@@ -832,20 +1352,65 @@
   {
    "stock": "088130",
    "name": "동아엘텍",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "LCD검사장비",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "depo",
+   "front_back": "전공정",
+   "evidence": "사업의 개요 당사는 수익을 창출하는 재화와 용역의 성격, 이익창출의 단위, 제품 및 제조공정의 특징 및 시장의 특성을 고려하여 디스플레이검사장비부문과 OLED제조장비부문 및 신기술사업금융업부문 으로 사업을 구분하고 있습니다. 지배회사 및 종속회사의 사업부문별 현황을 요약하면 아래와 같습니다. / 기타 396(0.42%) 소 계 58,009(61.48%) OLED 제조장비 제품/용역 증착장비 유기물질 증착 Sunicel Plus-400외 33,028(35.01%) 상품/기타 Part 및 기타 기 / 또한, 매년 신제품이 출시되는 경우에는 제품의 변화로 인해 매출기회가 지속적으로 발생할 수 있어 다른 전공정장비와는 투자 성향이 다릅니다. 2) 산업의 성장성 지금까지의OLED는 스마트폰용 및 TV용 위주로 공격적인 투자가 이루어져 왔습니다. Covid / LCD검사장비 / 1. 사업의 개요 당사는 수익을 창출하는 재화와 용역의 성격, 이익창출의 단위,",
+   "evidence_source": "scan"
   },
   {
    "stock": "088280",
    "name": "쏘닉스",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "RF필터 파운드리",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "cmp",
+     "words": [
+      "cmp",
+      "연마"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "implant",
+     "words": [
+      "이온주입"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "cmp",
+   "front_back": "전공정",
+   "evidence": "서 마이크로 이하의 두께로 그라인딩(Grinding)한 후 화학적 기계적 연마(Chemical Mechanical Polishing, CMP) 또는 이온주입을 LT 웨이퍼에 인가하는 Smart-cut 기법으로 만들어집니다. 향후 통신 시스템이 5G 및 6G등 진화에 따라서 우수한 삽입손실, 온도 변화에도 / 4인치와 6인치는 웨이퍼 사이즈 때문에 동일한 장비를 사용하기 어렵고, 일부 호환이 되는 장비(웨이퍼 세정 공정, 웨이퍼 검사공정 등)를 제외한 모든 장비가 사이즈별 전용 장비의 도입이 필요합니다. 뿐만 아니라, 대부분의 장비는 기성품 장비가 아니라 필 / 막 제 10-2687950호 등록 2023.10.13 2024.07.19 7 TF-SAW 공정을 위한 Stepper Defocus 불량 개선 장치 및 방법 제 10-2756492호 등록 2024.09.11 2025.01.14 / 수십 마이크로에서 마이크로 이하의 두께로 그라인딩(Grinding)한 후 화학적 기계적 연마(Chemical Mechanical Polishing, CMP) 또는 이온주입을 LT 웨이퍼에 인가하는 Smart-cut 기법으로 만들어집니다. 향후 통신 시스템이 5G 및 6G등 진화에 따라서 우수한 삽입손실 / 4인치와 6인치는 웨이퍼 사이즈 때문에 동일한 장비를 사용하기 어렵고, 일부 호환이 되는 장비(웨이퍼 세정 공정, 웨이퍼 검사공정 등)를 제외한 모든 장비가 사이즈별 전용 장비의 도입이 필요합니다. 뿐만 아니라, 대부분의 장비는 기성품 장비가 아니라 필터 공정에 적합하게 / RF필터 파운드리 / 당사는 미국 및 중화권의 20여개 이상의 통신반도체 팹리스 거래선들을 확보하고 5G 스마트폰용 RF 필터 파운드리 제조 및 판매 사업을 확대 진행하고 있습니다. 파운드리 사업과 병행하여 브랜드 사업으로 산업",
+   "evidence_source": "scan"
   },
   {
    "stock": "089030",
@@ -856,16 +1421,31 @@
      "words": [
       "테스트",
       "핸들러",
+      "probe",
       "change over kit",
       "c.o.k"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "tsv"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "반도체테스트핸들러,C.O.K(Change Over Kit)",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 2002년 설립되었으며, 반도체 전 분야의 검사장비를 개발 및 제조하여 유수의 글로벌 반도체 고객사들에게 제품을 공급하고 있는 반도체 검사장비 전문업체입니다. 당사는 2011년 코스닥에 상장하였습니다 / 당사 주력 제품으로는 Cube Prober, Probe Station, Memory 및 SOC Test Handler 등이 있으며, 당사는 반도체 전 분야의 검사장비를 개발 및 제조할 수 / 반도체 장비 유지보수 및 부품 판매 25 - - 0.02% - - 합 계 109,176 / 특히 적층 칩 간의 구멍(TSV) 연결 상태와 발열 제어를 검사하는 난이도가 가중되어, 메모리 ATE 시장은 매년 견조한 두 자릿수 성장세를 이어가고 있습니다. SOC(Sys / 반도체테스트핸들러,C.O.K(Change Over Kit)",
+   "evidence_source": "scan"
   },
   {
    "stock": "089790",
@@ -876,13 +1456,27 @@
      "words": [
       "burn-in"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "반도체장비(Burn-in Sorter 등)",
-   "evidence_source": "product"
+   "evidence": "구분 사업의 내용 주요고객 반도체 검사장비 Test Handler, Burn-In Sorter, LSI Test Handler, 비메모리 Test Hander 등 삼성전자, SK hynix, Micron / 사업의 개요 당사는 반도체 검사 장비 전문 제조 기업입니다. 구분 사업의 내용 주요고객 반도체 검 / 구분 사업의 내용 주요고객 반도체 검사장비 Test Handler, Burn-In Sorter, LSI Test Handler, 비메모리 Test Hander 등 삼성전자, SK hynix, Micron 등 가. / 는 반도체 제조 공정을 전공정(Front-end)과 후공정(Back-end)으로 구분할 때, 후공정 분야의 최종 검사장비를 주력으로 개발·제조하는 반도체 장비 전문기업입니다. 특히 삼성전자, SK하이닉스, Micron 등 글로벌 메모리 반도체 기업의 Burn-In 공정에 당사 장비가 적용되고 있으며, 이 / 비 기타 Conversion Kit / Parts 장비에 사용하는 Pick-up Tool Kit 및 자동화장비에 사용되는 부분품 반도체 공정 장비 Die Transfer 웨이퍼에서 개별적으로 절단된 칩(Die)을 검사하여 외관 검사 결과 Good/N / 반도체장비(Burn-in Sorter 등)",
+   "evidence_source": "scan"
   },
   {
    "stock": "089970",
@@ -891,74 +1485,183 @@
     {
      "key": "etch",
      "words": [
+      "식각",
       "etch",
+      "etcher",
+      "dry etch",
       "poly etch"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd",
+      "ald"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "implant",
+     "words": [
+      "이온주입"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "확산"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "efem"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "챔버"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "etch",
    "front_back": "전공정",
-   "evidence": "300mm Poly Etch System",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 반도체 제조 전공정 장비인 건식 식각장비(Dry Etcher) 제조업체로서 관련한원천기술을 다수 보유하고 있습니다. 특히 당사가 보유하고 있는 '플라즈마 소스'기술은 현재 300mm / 사업의 개요 당사는 반도체 제조 전공정 장비인 건식 식각장비(Dry Etcher) 제조업체로서 관련한원천기술을 다수 보유하고 있습니다. 특히 당사가 보유하고 있는 '플라즈마 소스'기술은 현재 / 주요 제품 또는 서비스에 관한 내용 1) 식각장비 구성 [poly etch 장비 구성도 및 공정 챔버 사진] 당사의 30mm Poly 식각 장비는 위 그림과 같이 Load Port와 EFEM(Equipment Front End / 또한 본 원천기술은 반도체 제조공정인 화학기상증착(Chemical Vapor Deposition, CVD) 장비, 원자층 박막증착(Atomic Layer Deposition, ALD) 장비, 원자층식각(Atomic Layer Etch, ALE) 장비 등 / Doping 도핑 반도체의 전도 형태를 바꿔주기 위해 p형 또는 n형의 불순물을 확산이나 이온주입에 의해서 주입하는 것. Double Patterning(DP) 이중패터닝 하나의 회로 패턴을 완성하기 위해 같 / 300mm Poly Etch System",
+   "evidence_source": "scan"
   },
   {
    "stock": "092870",
    "name": "엑시콘",
    "stages": [
     {
+     "key": "test",
+     "words": [
+      "테스터",
+      "테스트",
+      "신뢰성"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "패키지",
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "metro",
      "words": [
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
-   "primary": "metro",
-   "front_back": "공통",
-   "evidence": "반도체 검사장비",
-   "evidence_source": "product"
+   "primary": "test",
+   "front_back": "전후공정 겸업",
+   "evidence": "2005년 DDR2 테스트 장비 (880Mbps 패키지 테스터, 256para) 개발을 시작으로, 고속화된 DDR4, DDR5 메모리 소자를 검사 분류하는 검사장비를 개발하여 판매하고 있으며, 높은 생산성과 신 / 회사의 현황 1) 영업개황 및 사업부문의 구분 (가) 영업개황 당사는 반도체의 성능 및 신뢰성을 검사하는 반도체 검사장비 사업을 영위하고 있으며, 해당 공급장비를 통하여 반도체 제품의 이상 유무를 판단하고 불량의 원인 분석 등을 통해 설계 및 제조 공정상의 수율을 개선 / (나) 공시대상 사업부문의 구분 당사의 사업부문은 반도체 장비 제조이며, 한국 표준산업분류의 세세분류에 의하여 C29271(반도체 제조용 기계 제조업)으로 구분 됩니다. / 전공정은 미세화 기술 등 반도체 칩의 품질을 좌우하는 단계로서 노광기, 증착기, 식각기 등의 장비로 구성되고, 후공정은 최종적인 칩모습을 형성하는 조립단계로 절단, 금속연결로 구성, 고집적화 및 다양한 수요대응 기술 / 반도체 검사장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "095610",
    "name": "테스",
    "stages": [
     {
+     "key": "etch",
+     "words": [
+      "식각",
+      "etch"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "depo",
      "words": [
-      "증착"
+      "증착",
+      "cvd"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "cleaning"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "depo",
+   "primary": "etch",
    "front_back": "전공정",
-   "evidence": "반도체장비(화학증착장비)",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 반도체 소자 생산에 필요한 전공정 장비 제조를 주력사업으로 영위하며 반도체 장비 관련 매출이 전체 매출의 95% 이상을 차지하고 있습니다. 반도체 공정은 크게 웨이퍼를 가공하여 칩을 만 / 공하여 칩을 만드는 전(前)공정과 만들어진 칩을 조립하고 검사하는 후(後)공정으로 나눌 수 있으며, 당사는 전공정 중에서 박막 형성을 위해 사용되는 증착장비인 PECVD(Plasma Enhanced Chemical Vapor Deposition)와 건식식각장비인 Gas Phase Etch & Cleani / 당사는 전공정 중에서 박막 형성을 위해 사용되는 증착장비인 PECVD(Plasma Enhanced Chemical Vapor Deposition)와 건식식각장비인 Gas Phase Etch & Cleaning 장비를 생산하여 국내 반도체 소자 업체에 공급하고 있습니다. 그 외에도 디스플레이 제조에 사용되 / 반도체장비(화학증착장비)",
+   "evidence_source": "scan"
   },
   {
    "stock": "097800",
    "name": "윈팩",
    "stages": [
     {
+     "key": "pkg",
+     "words": [
+      "패키징",
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "test",
      "words": [
       "테스트"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
-     "key": "pkg",
+     "key": "metro",
      "words": [
-      "패키징"
+      "검사"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
-   "primary": "test",
+   "primary": "pkg",
    "front_back": "후공정",
-   "evidence": "반도체 패키징 및 테스트",
-   "evidence_source": "product"
+   "evidence": "기존에는 오류의 유무만 검사하는 단순 공정이었으나 최근 반도체 칩의 내/외관 검사기능은 물론 여러가지 분석업무를 통해 웨이퍼 설계나 가공단계에서의 수율개선에 있어서 중요한 역할을 담당하고 있습니다. (4) 반도체 산업의 성장성 / 반도체 패키징 및 테스트 / 여 반도체로서 기능을 할 수 있게 해주는 패키징(PKG)과 반도체의 기능이 제대로 작동되는지 이상 유무를 확인하는 테스트(TEST)를 포함하는 반도체 후공정 외주사업입니다. 당사는 기존 국내 반도체 후공정 업체들이 패키징 사업 또는 테스트 사업으로 양분되어 사업을 진행하고 있는 것과는 달리 두 가지 후공",
+   "evidence_source": "scan"
   },
   {
    "stock": "098120",
@@ -967,16 +1670,27 @@
     {
      "key": "test",
      "words": [
+      "테스트",
+      "번인",
       "burn-in",
-      "socket"
+      "소켓",
+      "socket",
+      "신뢰성"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "BGA IC Burn-In Socket,DRAM Module Socket",
-   "evidence_source": "product"
+   "evidence": "사업부문 매출유형 주요품목 세미콘 사업부문 상품, 제품, 임대 아이씨소켓, 번인소켓, 모듈소켓 어플라이언스 사업부문 상품, 제품 써멀프로덱터, 산업용 전자개폐기, 컨택 어셈블리 / 켓(Burn-In Socket), 모듈 소켓(Module Socket), 테스트 소켓(Test Socket), SSD 테스트 인터페이스 및 반도체 검사 장비용 커넥터입니다. * 번인 소켓 : 단품 메모리 반도체의 번인테스트(Burn-In test)를 위한 소켓으로 가혹한 온도 조건에서 반도체의 신뢰성을 / 반도체 시장은 컴퓨터 산업의 변동에 따라 큰변동성을 가지며, 반도체 장비 산업은 소자업체들의 설비 투자계획에 민감하게 반응합니다. 하지만 소켓산업은 반도체 제조 수량에 따라 소비되는 특성상 반도체 장비 업체보다 경기변동 / BGA IC Burn-In Socket,DRAM Module Socket",
+   "evidence_source": "scan"
   },
   {
    "stock": "098460",
@@ -985,15 +1699,16 @@
     {
      "key": "metro",
      "words": [
+      "측정",
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "metro",
    "front_back": "공통",
-   "evidence": "전자제품및반도체생산용 3차원 납도포검사장비",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사의 주요 사업은 3D 측정 기반 검사 장비 및 솔루션으로 메카트로닉스, 광학, 비전, SW, AI 기술을 핵심 원천 기술로 보유하고 있습니다. 이러한 핵심 원천 기술을 바탕으로 전자제품 및 / 전자제품및반도체생산용 3차원 납도포검사장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "101160",
@@ -1002,17 +1717,21 @@
     {
      "key": "parts",
      "words": [
+      "쿼츠",
+      "sic",
+      "실리콘 부품",
+      "세라믹",
       "전극",
       "링",
       "반도체용"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "parts",
    "front_back": "공통",
-   "evidence": "반도체용링및전극",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사의 사업분야는 반도체 등의 제조공정에 투입되는 실리콘 부품(Silicon Parts)사업, 쿼츠 부품(Quartz Parts) 사업 및 실리콘, 쿼츠 이외는 ALN, SiC 등의 소재로 제작되는 파인세라믹 / WSTS) Global semiconductor market (이미지 출처: WSTS) 또한 국제반도체장비재료협회(SEMI)의 반도체 장비 산업 동향자료에 의하면 반도체 제조장비 시장이 AI 투자에 힘입어 2027년 사상 최대 규모로 성장할 것이라는 전 / 반도체용링및전극",
+   "evidence_source": "scan"
   },
   {
    "stock": "101490",
@@ -1021,15 +1740,33 @@
     {
      "key": "photo",
      "words": [
-      "블랭크마스크"
+      "포토",
+      "블랭크마스크",
+      "포토마스크",
+      "마스크"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "쿼츠",
+      "석영"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "photo",
    "front_back": "전공정",
-   "evidence": "블랭크마스크",
-   "evidence_source": "product"
+   "evidence": "블랭크마스크는 반도체 웨이퍼에 회로를 새기기 위해 사용되는 포토마스크(Photo Mask)의 원재료로, 석영(쿼츠, Quartz) 기판 위에 금속막(크롬, Cr)과 감광액(Photo Resist, PR)을 도포하여 / 블랭크마스크는 반도체 웨이퍼에 회로를 새기기 위해 사용되는 포토마스크(Photo Mask)의 원재료로, 석영(쿼츠, Quartz) 기판 위에 금속막(크롬, Cr)과 감광액(Photo Resist, PR)을 도포하여 제조됩니다. 이후, 설계된 회로 패턴을 블랭크마스 / 이 제조 과정은 극도의 정밀도와 균일한 박막 증착 기술이 요구되며, 불순물 제거와 엄격한 품질 관리 기준을 충족해야 합니다. 블랭크마스크의 우수한 품질과 기술력은 전체 생산 수율에 직결되는 중요한 / 블랭크마스크",
+   "evidence_source": "scan"
   },
   {
    "stock": "104460",
@@ -1052,20 +1789,67 @@
   {
    "stock": "105840",
    "name": "우진",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "원전용계측기",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "parts",
+     "words": [
+      "챔버"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "산화"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "parts",
+   "front_back": "전공정",
+   "evidence": "계측제어설비 경상정비용역과 더불어 원자력발전소 계획예방정비시 발전소의 각종 계측기와 계측장비를 점검하는 별도 용역도 수행하고 있으며, 발전소의 계측제어설비와 주요 설비 국산화 개발을 위해 노력하고 있습니다. (다) 산업용 계측기 / AI 서버, HBM, 고성능 로직 공정은 발열이 커서 정밀한 온도 모니터링용 센서가 필요하며 첨단 공정에서도 공정 챔버 및 장비 내부 온도 제어 중요성이 커져 산업용과 반도체 공정용 온도센서 채택이 증가할 것으로 보입니다. 더 나아가, 대만 TSMC는 반도체 / 원전용계측기",
+   "evidence_source": "scan"
   },
   {
    "stock": "110990",
    "name": "디아이티",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "반도체 제조 장비",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "thermal",
+     "words": [
+      "annealing",
+      "anneal"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "inspection",
+      "측정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "레이저",
+      "laser"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "thermal",
+   "front_back": "전후공정 겸업",
+   "evidence": "(1) AOI Solution AOI(Automatic Optical Inspection) Solution이란, 대상체에 빛을 조사하여 투과 또는 반사되는 빛을 Lens를 통해 카메라의 Sensor에 전달시켜 해당 이미지의 광량차이 / 허청 23 특허권 반도체 표면처리 시스템 및 방법 디아이티 2019-05-13 2021-03-03 반도체 장비 국내 특허청 24 특허권 반도체 표면처리 장치 디아이티 2019-12-26 2021-04-19 / Laser Annealing System 당사는 DRAM / NAND FLASH 웨이퍼의 수율을 향상시키는 Laser Annealing System을 개발하였으며, / 특허권 표시장치의 가공장치 및 표시장치의 가공 방법 디아아티/ 삼성디스플레이 2018-08-31 2022-06-17 레이저 가공장비 중국 특허 30 특허권 레이저 모니터링이 가능한 레이저 조사 장치 및 방법 디아이티/ SK하이닉스 2 / 대한 균일한 UV 조사가 가능한 UV조사장치 및 이를 이용한 UV 조사방법 디아이티 2010-04-02 2010-11-22 UV노광장비 국내 특허청 2 특허권 디지털 홀로그래피를 이용한 입체 측정장치 디아이티 /펨트론 /전북대 2011-09 / 반도체 제조 장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "114810",
@@ -1074,23 +1858,47 @@
     {
      "key": "parts",
      "words": [
+      "챔버",
       "장비 부품",
       "부품 제조"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "service",
      "words": [
-      "제조 및 세정"
+      "제조 및 세정",
+      "세정 및 코팅",
+      "코팅"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "산화"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "parts",
-   "front_back": "공통",
-   "evidence": "반도체 장비 부품 제조 및 세정, LCD 장비 부품 제조",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "사업의 개요 당사는 반도체 전공정 및 디스플레이 제조 장비 부품의 정밀 가공 및 세정.코팅을 주요 사업으로 하고 있으며 경기도 안성시에 위치한 본사를 포함하여 경기도 화성시와 안성시에 세정,코팅 사업장과 동탄 / 설립 초기 반도체 장비 부품과 디스플레이 장비 부품의 정밀 가공을 시작으로 현재 반도체 장비 부품 초정밀 세정/코팅으로 사업 영역을 확장하였으며, 국산화 연구, 신소재 / 또한 극자외선 노광장비에 사용되는 파츠 리유즈(Re-use) 사업에 아시아 최초로 고객사에 인증을 받아 진출하였습니다. 리유즈(Re-use) 사업은 고객사 공급망 전반적으 / 66 76.16 정밀세정코팅부문 제품 Depo shield 류 외 다수 챔버 내벽 손상 보호를 위한 부품의 세정 및 코팅 20,819 20.23 합 계 102,900 100.00 나. 주요 제품 등의 / 반도체 장비 부품 제조 및 세정, LCD 장비 부품 제조",
+   "evidence_source": "scan"
   },
   {
    "stock": "119830",
@@ -1099,24 +1907,79 @@
     {
      "key": "test",
      "words": [
-      "테스트"
+      "테스터",
+      "테스트",
+      "핸들러"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "패키징",
+      "패키지",
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "esc"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "test",
-   "front_back": "후공정",
-   "evidence": "비메모리 반도체 테스트",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "일반화된 테스트 기법 및 항목이 존재 제품의 설계목적에 따른 각 제품에 대한 다른 테스트 기법 및 항목 적용 투자 비용 테스터 대당 가격(30억원~100억원) 테스터 대당 가격(5억원~20억원) 대상 제품 소품종에 대한 대량 생산 다품종에 대 / 불량을 검증하기 위한 테스터, 패키지테스트를 위한 핸들러, 웨이퍼 테스트를 위한 웨이퍼 프로버, 테스트가 완료된 제품의 외관 검사 및 패킹을 위한 후공정 장비 등이 필요합니다. 2-2) 비용구조의 특이성 테스트 산업은 반도체 제조공정의 마지막 공정으로 고객으로부터 제공받은 웨이퍼와 반도체 칩의 불량유무를 / 2) 시장의 특성 그래핀은 생산 방식에 따라 그래핀 플레이크(Flake)와 CVD(Chemical Vaper Deposition, 화학기상증착법) 그래핀으로 구분되며 응용분야도 생산방식에 따라 달라집니다. 2-1) 물리적 방식( / , 비메모리분야는 다양한 제품을 모두 패키징 처리 할 수 없어 외부 위탁함 - 반도체 테스트는 전수 검사 이므로 자체적으로 조립 업체에서 하지만, 검사 장비가 고가이므로 다양한 칩을 모두 할 수 없어 테스트 전문 업체에 위탁함 ASE Test, Amkor, Siliconware Prescisio, / 비메모리 반도체 테스트",
+   "evidence_source": "scan"
   },
   {
    "stock": "121600",
    "name": "나노신소재",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "인듐계 산화물 TCO Target, 반도체 CMP Slurry 등",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "cmp",
+     "words": [
+      "cmp"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "전극"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "etch",
+   "front_back": "전공정",
+   "evidence": "겟 /아연계산화물 TCO 타겟/Silver ink / 중공형실리카 디스플레이용 투명전도성 전극 및 저반사 소재 반도체소재 CMP slurry 반도체 웨이퍼 식각액 이차전지소재 CNT 등 이차전지 도전재 태양전지소재 인듐계산 / 인듐계 산화물 TCO Target, 반도체 CMP Slurry 등 / 나노신소재는 원재료인 금속 또는 비금속 Metal을 구입하여 초미립 나노 분말로 합성하고 이를 다시 고체인 Target 형태나 Paste/Sol/Slurry 형태의 액상으로 제품화할 수 있는 기술력을 확보하고 있습니다. 이러한 기술을 통해서 디스플레이 패널시장 및 태양전지 시장, 반도체 CMP공정에 투",
+   "evidence_source": "scan"
   },
   {
    "stock": "123010",
@@ -1127,13 +1990,13 @@
      "words": [
       "패키징"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "pkg",
    "front_back": "후공정",
-   "evidence": "이미지센서 패키징",
-   "evidence_source": "product"
+   "evidence": "이미지센서 패키징 / 자동차용 공조부품 임가공 사업 - 당사는 자동차 부품 중, 공조부품에 해당하는 제품을 임가공하여 납품하고있습니다. - 자동차 공조 시스템(Heating,",
+   "evidence_source": "scan"
   },
   {
    "stock": "131290",
@@ -1142,17 +2005,54 @@
     {
      "key": "test",
      "words": [
+      "테스트",
       "probe",
       "probe card",
       "socket"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "계측",
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "euv"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "패키징"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "test",
-   "front_back": "후공정",
-   "evidence": "Probe Card, Test Interface Board, OLED Test Equipment, Test Socket",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "부문명 주요 제품 및 서비스 유형 매출액 비중 반도체 검사장비 Probe Card, Interface Board, Test Socket, OLED Test 장비/장치 제조 245,281,882 72.3 / 회사와 그 종속기업(이하'연결 회사')는 반도체와 디스플레이의 테스트 외 관련 제품을 공급하는 전문기업으로서 당사 제품의 특성에 따라 \"반도체 검사장비\", \"전자제품 검사장치\", \"반도체 검사용역\", \"반도체 외 생산설비\"로 나누어 독립 경영을 하고 제조 및 판매하는 사업 등을 영위하고 있습니다. / 과거에는 반도체 제조업체가 기술 혁신을 주도하는 경향이 강했으나, 최근에는 EUV 및 High-NA EUV, 정밀 식각·증착, 계측·검사, 첨단 패키징 장비 등에서 장비 업체의 기술력이 차세대 공정 구현을 선도하는 역할을 하고 있 / 반도체 장비 산업은 고객사의 공정 요구사양에 맞춰 생산되는 주문형 산업이며, 반도체 업황과 설비투자(Capex) 규모에 따라 수요가 크게 변동하는 특성이 있습 / Probe Card, Test Interface Board, OLED Test Equipment, Test Socket",
+   "evidence_source": "scan"
   },
   {
    "stock": "131970",
@@ -1163,13 +2063,13 @@
      "words": [
       "테스트"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "반도체 테스트",
-   "evidence_source": "product"
+   "evidence": "반도체 테스트 / 반도체 산업은 반도체 설계자산(IP)만 전문 개발하는 IP업체와 반도체 설계를 전문으로 하는 팹리스 업체, 외부업체의 위탁받아 칩 생산만을 전문으로 하는 파운드리(Found",
+   "evidence_source": "scan"
   },
   {
    "stock": "137080",
@@ -1180,13 +2080,13 @@
      "words": [
       "포토"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "photo",
    "front_back": "전공정",
-   "evidence": "디스플레이 장비 (포토, 코팅, 모듈 장비)",
-   "evidence_source": "product"
+   "evidence": "디스플레이 장비 (포토, 코팅, 모듈 장비) / 1. 사업의 개요 당사는 OLED용 평판디스플레이(FPD) 공정 장비를 비롯하여",
+   "evidence_source": "scan"
   },
   {
    "stock": "140860",
@@ -1195,24 +2095,87 @@
     {
      "key": "metro",
      "words": [
-      "현미경"
+      "계측",
+      "결함",
+      "현미경",
+      "측정",
+      "검사"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "포토",
+      "포토마스크",
+      "마스크"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "cmp",
+     "words": [
+      "cmp"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "metro",
-   "front_back": "공통",
-   "evidence": "연구용 및 산업용 원자현미경",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "사업의 개요 당사는 첨단 나노계측장비인 원자현미경(Atomic Force Microscope)을 개발, 생산하여 전 세계에 판매하는 기술벤처기업입니다. 당사의 주요 수익 모델은 원자현미 / NX-Mask는 공정중에 포토마스크 위에 생기는 이물질을 제거하여 다시 포토마스크를 재사용할 수 있게 해주는 리페어 장비입니다. 해당 장비는 글로벌 반도체 제조업체 및 마스크 제조업 / NX-Wafer는 당사의 대표 산업용 장비로서, 웨이퍼 검사 및 분석, 자동 결함 검토, CMP 후 조도 측정 등의 기능을 제공합니다. 반도체 샘플이 매우 미세하고 복잡한 3차원 형태가 되어가고 있기 때문에 해당 제품은 반도체 공정내에 여러 곳 / 연구용 및 산업용 원자현미경",
+   "evidence_source": "scan"
   },
   {
    "stock": "141000",
    "name": "비아트론",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "디스플레이 및 반도체 제조용 장비",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "pkg",
+     "words": [
+      "패키징",
+      "본더",
+      "범프",
+      "laser"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd",
+      "epi"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "열처리",
+      "annealing",
+      "anneal"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "테스트"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "pkg",
+   "front_back": "전후공정 겸업",
+   "evidence": "아울러 어드밴스드 패키징 장비 부문에서는 이종 칩 간 접합을 위한 하이브리드 본더(Hybrid Bonder), 마이크로 범프 접합을 위한 LAB(Laser Assisted Bonder), 그리고 패키징 기판(Package Subst / ED TFT POLED TFT(LTPO) PI Curing Flexible AMOLED 반도체 제조 장비 Epitaxial-CVD [Logic] source-drain, channel and contact for FinFET / ction), 수소/탈수소화(Hydrogenation/Dehydrogenation), 활성화(Dopant Activation), Contact Annealing, IGZO Annealing 등에 적용되는 열처리 장비의 개발, 제조 및 판매를 주력 사업으로 영위하고 있으며, 글로벌 시장에서 선도적 지위를 / 차세대 사업아이템으로 개발 중인Epitaxial-CVD 장비는 3차원 소자 구조를 형성하는 Si/SiGe 박막 증착 장비입니다. 이는 고성능 컴퓨팅 수요 급증에 따라 차세대 반도체에 필수적인 고성능 및 / [반도체 제조 장비시장] 반도체 제조 장비 시장은 크게 전(front-end)공정 장비, 패키징(back-end)공정 장비, 그리고 테스트 및 검사장비로 구분됩니다. 전공정 분야에서는 반도체 소자의 미세화가 가속화됨에 따라 2020년대 중반 2nm 공정 양산이 시작될 예정이며, 후반부터는 / 디스플레이 및 반도체 제조용 장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "144510",
@@ -1228,25 +2191,49 @@
    "name": "뉴파워프라즈마",
    "stages": [
     {
+     "key": "etch",
+     "words": [
+      "식각",
+      "etch"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "clean",
      "words": [
       "세정",
       "cleaning"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "진공",
+      "가스"
+     ],
+     "source": "scan"
     },
     {
      "key": "parts",
      "words": [
       "generator"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
-   "primary": "clean",
+   "primary": "etch",
    "front_back": "전공정",
-   "evidence": "플라즈마 세정기(Remote Plasma Cleaning Generator)",
-   "evidence_source": "product"
+   "evidence": "박막 공정이나 건식각 공정장비의 진공 방(Vacuum Chamber)에 가스를 공급하여 Plasma를 발생하는데 필요한 전원을 공급하는 모듈(RF Generator 및 Matcher)입니다. Remote Plasma Generator는 박막 공정에서 발생한 부산물을 F계열 Gas를 사용하여 Cham / 반도체와 디스플레이 산업이 지속되는 한 이 산업의 가장 큰 축을 차지하는 CVD 및 Etch 공정의 지속성은 보장되어 있으며, 이 공정들을 유지하기 위한 가장 근원적인 Clean(RPG) 및 Power 공급(RF Generato / Plasma 발생 전원장치 모듈(RF Generator 및 Matcher)은 박막과 건식각 장비의 Plasma Source의 구성 및 공정필름 증착이나 식각에 따라 전원장치의 모듈이 다양하게 사용되고 있습니다. 전원장치는 주파수와 공급전 / 종속회사 에이씨엔은 반도체 장비 제조업 등을 주사업 목적으로 2008년 설립 되었 으며, 부동산 임대 사업 또한 영위하고 있습니다. 종속회사 도우인시스는 폴더블 스마트폰에 / 플라즈마 세정기(Remote Plasma Cleaning Generator)",
+   "evidence_source": "scan"
   },
   {
    "stock": "145210",
@@ -1265,17 +2252,36 @@
      "key": "parts",
      "words": [
       "쿼츠",
+      "sic",
+      "cvd-sic",
       "포커스링",
+      "소모성 부품",
+      "세라믹",
       "링",
       "반도체용"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "테스트",
+      "소켓"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "parts",
-   "front_back": "공통",
-   "evidence": "반도체용 합성쿼츠 포커스링",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "사업의 개요 당사의 사업분야는 반도체 제조공정에 사용되는 소모성 부품 중 합성쿼츠, 천연쿼츠,실리콘, 세라믹 등의 소재를 기반으로하는 부품의 제조와 부품 소재의 개발입니다. 현재 합성쿼츠 소재인 QD9+를 개발해 양산에 성공하여 고 / 당사의 판매방식은 크게 반도체 제조회사에 직접 납품하는 방식과 반도체 장비회사에 납품하는 방식이며, 2026년 반기말 연결기준 총매출액 505억 원 중에서 반도체 제조회사에 405억 원(80.3%) 그리고 반도체 장비회사 / 현재 합성쿼츠 소재인 QD9+를 개발해 양산에 성공하여 고객사에 공급을 하고 있으며, 기존의 CVD-SiC 부품을 대체하게 될 신소재 CD9 부품을 개발하여 고객사 퀄테스트 완료 후 양산 공급 중입니다. 최근에는 단결정 및 다결정 실리콘(Si) 잉 / 23 12421623 2043-12-13 SD9 미국 54 특허권 낮은 수분 흡수성을 갖는 반도체 테스트 소켓용 바디 제조방법 2024-04-08 2026-03-04 10-2936452 2044-04-08 BC-T1 대한민국 / ㉡식각장비에 주로 사용된다. ㉢지속적으로 교체를 해주어야 하는 소모품이다. 나. 주요 제품 등의 현황 당사의 매출액, 품목별 매출비율은 다음과 같습 / 반도체용 합성쿼츠 포커스링",
+   "evidence_source": "scan"
   },
   {
    "stock": "147760",
@@ -1287,38 +2293,87 @@
       "프로브",
       "프로브카드"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "metro",
      "words": [
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "반도체 검사용 프로브카드",
-   "evidence_source": "product"
+   "evidence": "04년 설립, 초소형 정밀 기계 기술인 MEMS(Micro Electronic Mechanical System) 기술을 기반으로 한 3D MEMS 프로브 카드를 개발하여 2006년 상용화 하였으며, 2023년 5월부터 2D MEMS 프로브 카드를 개발, 상용화하여 고객사에 공급하고 있습니다. MEMS P / 프로브 카드는 반도체 웨이퍼 칩 검사 장비인 프로브 스테이션의 소모성 교체 부품으로써, 동 제품의 후방 산업은 프로브 카드 제조에 요구되는 부품·소재 산업으로, 전방 산업은 반도체 검사장비 / 반도체 검사용 프로브카드",
+   "evidence_source": "scan"
   },
   {
    "stock": "149950",
    "name": "아바텍",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "Glass Slimming & ITO코팅 제품, PDP필터",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "진공"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "etch",
+   "front_back": "전공정",
+   "evidence": "■ Metal 코팅 Metal 코팅은 당사에서 수행하는 식각(Glass Slimming), ITO 코팅 공정 후에 이루어 지는 작업으로, 진공증착 설비를 이용하여 배면 ITO 코팅면에 전극소재로 Metal 증착을 수행하는 공정입니다. 태블릿 PC 등 중소형 IT 제품들의 슬림화 및 고도의 터 / Glass Slimming & ITO코팅 제품, PDP필터 / 사업의 개요 당사는 코팅 및 식각 기술을 활용하여 휴대폰, TV, 태블릿 PC 등의 디스플레이 관련제품과 가전제품 생산에 사용되는 부품 및 원재료를 공급하는 회사입니다. 당사의 주요 제품인 Glass Slimming, ITO코팅 & Meta",
+   "evidence_source": "scan"
   },
   {
    "stock": "159010",
    "name": "아스플로",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "강관, 피팅, 밸브류 등",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "parts",
+     "words": [
+      "장비용 부품",
+      "반도체 부품",
+      "세라믹"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "이송",
+      "밸브",
+      "가스",
+      "피팅"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "service",
+     "words": [
+      "코팅"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "parts",
+   "front_back": "공통",
+   "evidence": "사업의 개요 당사는 반도체 제조공정에서 사용되는 다양한 공정가스를 저장시설에서 반도체 제조장비까지 안정적으로 이송하기 위한 고청정 부품 및 소재를 제조하는 반도체 부품소재 전문기업입니다. 당사는 핵심기술인 극청정 표면처리 기술을 / Hastelloy C-22 소재의 가공 및 용접 역량을 강화하고 있으며, 이를 활용하여 고부식성 공정가스에 사용되는 튜브, 피팅, 밸브, 필터 및 장비용 부품 등 고부가가치 제품으로 제품군을 확대할 계획입니다. 당사는 2020년 09월 본사 확장이전을 통하여 확보한 생산능력을 바탕으로 기존 반 / ㈜아스플로 2010.03.30 2012.06.15 밸브 한국 6 특허 알루미늄 기재에 내열성 세라믹 코팅막을 형성하는 방법 ㈜아스플로 2010.05.24 2013.05.15 밸브 한국 7 특허 다이 / 강관, 피팅, 밸브류 등",
+   "evidence_source": "scan"
   },
   {
    "stock": "160980",
@@ -1330,15 +2385,17 @@
       "이송",
       "efem",
       "lpm",
-      "cluster tool"
+      "cluster tool",
+      "scrubber",
+      "가스"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
-   "evidence": "웨이퍼 이송장치(Cluster Tool, EFEM, LPM 등)",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 반도체장비 사업부문과 에너지/환경설비 사업부문으로 구성되어 있습니다. 반도체장비 사업부문의 주요 생산 품목은 Cluster Tool System, EFEM( / 품목 2026년 2분기 2025년 2024년 반도체장비 제ㆍ상품, 용역 및 기타매출 반도체 웨이퍼 이송장비 등 103,217 164,674 165,311 기타 부문간 내부 거래 제거 등 (184) (2 / (나) Marble Scrubber 물탱크, Spray Nozzle, 필터 부, 유리구슬로 구성되며 유리구슬로 형성된 여과 층을 통과한 함진가스는 작은 기포로 되고 각각의 기포는 / 웨이퍼 이송장치(Cluster Tool, EFEM, LPM 등)",
+   "evidence_source": "scan"
   },
   {
    "stock": "166090",
@@ -1347,17 +2404,44 @@
     {
      "key": "parts",
      "words": [
+      "sic",
       "실리콘부품",
+      "실리콘 부품",
       "세라믹부품",
-      "세라믹"
+      "소모성 부품",
+      "반도체 부품",
+      "세라믹",
+      "링"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각",
+      "에칭"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "카세트"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "parts",
-   "front_back": "공통",
-   "evidence": "실리콘부품, 세라믹부품, 특수가스",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "사업의 개요 반도체 부품 부문 당사의 주요제품은 반도체 등의 제조공정에 사용되는 실리콘 부품(Si-Parts), 실리콘카바이드 부품(SiC-Parts)이며, 이는 반도체의 핵심 제조공정인 에칭(식각)공정에 사용되는 소모성 부품입니다. 최근 / SiC Ring, Tube, Disk, Ingot 등 신기술사업금융 종속회사 신기술사업 투자 등 - 2026년 반도체 장비부품 부문 당반기 매출은 1,823억원으로 전년 동기 대비 49% 증가하였으며, 영업이익은 468억으로 전년 동기 대비 170% 증가하였습니다. 신 / 특허청 특허 코어링 휠 및 이를 이용한 잉곳 코어링 장치 08.12.16 특허청 특허 카세트 및 이를 구비하는 세정 장치 09.06.15 특허청 특허 플라즈마 처리 장치용 실리콘 소재의 제조 방법 09.09.11 특허청 특허 / 구체적용도 주요 상표 등 제20기 반기 매출액 비율(%) 반도체 부품 제품 외 실리콘부품 반도체 식각장비의 주요 소모품 외 TEL 163,065 88.87 기타 - - 19,284 10.51 신기술사업금융 / 실리콘부품, 세라믹부품, 특수가스",
+   "evidence_source": "scan"
   },
   {
    "stock": "168360",
@@ -1366,125 +2450,330 @@
     {
      "key": "metro",
      "words": [
-      "측정"
+      "측정",
+      "검사"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "service",
+     "words": [
+      "코팅"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "metro",
    "front_back": "공통",
-   "evidence": "3D 정밀측정 검사장비",
-   "evidence_source": "product"
+   "evidence": "산업용 고속 카메라로 획득한 영상을 이용한 머신비전(Machine Vision) 및 영상처리 SW 기술에 기반한 3D측정 및 AI 딥러닝을 이용한 검사기술을 바탕으로 SMT, 반도체 시장의 3D 정밀공정검사장비 제조, 판매를 주요사업으로 영위하고 있습니다. 고속 카메라, 정밀 광학 렌즈, 정밀 / 판매 시작,-2013년 AOI장비, 2015년 MOI장비, 16년 최초로 코팅검사장비 CI, 하부 PIN검사장비 개발 - SMT장비 위주에서 반도체장비등 응용제품을 개발하여 제품의 다양화로 매출증대 및 본격 해외시장 공략, 본격 해외 수출로 수출의 탑 등 수상 현재 / 3D 정밀측정 검사장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "169670",
    "name": "코스텍시스템",
    "stages": [
     {
+     "key": "pkg",
+     "words": [
+      "패키징",
+      "본더",
+      "본딩",
+      "몰딩",
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각",
+      "etch",
+      "etcher"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd",
+      "pvd"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "implant",
+     "words": [
+      "이온 주입"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "열처리"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "cmp",
+     "words": [
+      "cmp"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "handling",
      "words": [
       "이송"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
-     "key": "pkg",
+     "key": "test",
      "words": [
-      "본딩"
+      "테스트"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "반도체용"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "handling",
-   "front_back": "후공정",
-   "evidence": "반도체 웨이퍼 이송장비, 본딩장비",
-   "evidence_source": "product"
+   "primary": "pkg",
+   "front_back": "전후공정 겸업",
+   "evidence": "rary Bonding & Debonding 장비, Peel-off System, UV bump De-taping 장비, 전력반도체용 Sinter Bonder, 그리고 Micro LED 디스플레이 패널 제조를 위한 대량 전사 및 접합 장비를 개발·공급하고 있습니다. 주요 고객사로는 삼성전자, SK하이닉스 / 업계현황 및 전망 1) 반도체 장비산업과 마이크로 LED 디스플레이 장비 산업의 특성 - 반도체 장비 산업 반도체 산업은 전자, 정보통신, 자동차, 기계, 항공우주 / 주요 제품으로는 반도체 제조 라인의 웨이퍼 이송 장비인 Vacuum Cluster System 및 Vacuum Transfer Robot을 비롯하여, AI용 반도체인 HBM-PIM(고대역폭 메모 / 전공정(Fab) 장비에는 노광, 식각(Etcher), CMP, 세정, 열처리, 이온 주입, 박막 증착(CVD, Sputter, PVD) 등이 있으며, 후공정(패키징) 장비에는 그라인딩, 웨이퍼 절단, 칩 본더, 몰딩, 마킹, 싱귤레이션, 테스트 및 / 전공정(Fab) 장비에는 노광, 식각(Etcher), CMP, 세정, 열처리, 이온 주입, 박막 증착(CVD, Sputter, PVD) 등이 있으며, 후공정(패키징) 장비에는 그라인딩, 웨이퍼 절 / 반도체 웨이퍼 이송장비, 본딩장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "172670",
    "name": "에이엘티",
    "stages": [
     {
+     "key": "test",
+     "words": [
+      "테스트",
+      "핸들러",
+      "프로브"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "pkg",
      "words": [
       "패키징",
+      "마커",
       "후공정"
      ],
-     "source": "product"
-    },
-    {
-     "key": "test",
-     "words": [
-      "테스트"
-     ],
-     "source": "product"
+     "source": "scan"
     }
    ],
-   "primary": "pkg",
+   "primary": "test",
    "front_back": "후공정",
-   "evidence": "반도체 테스트 및 패키징(반도체 후공정)",
-   "evidence_source": "product"
+   "evidence": "량 센서를 이용한 인체바이오마커센서 및 모듈 ㈜에이엘티 08.07.04 2 제10-1212359호 필름형 칩용 핸들러 ㈜에이엘티 12.12.07 3 제10-1223584호 프로브 카드의 정렬 장치 ㈜에이엘티 13.01 / 반도체 테스트 및 패키징(반도체 후공정) / 사업의 개요 당사의 사업은 반도체 공정 중 후공정에 속하며, 전공정에 속하는 파운드리 업체, 팹리스 업체 등에서 의뢰하는 다양한 시스템반도체의 테스트 사업 등을 영위하고 있습니다. ALT 사업 영역",
+   "evidence_source": "scan"
   },
   {
    "stock": "183300",
    "name": "코미코",
    "stages": [
     {
+     "key": "parts",
+     "words": [
+      "정전척",
+      "esc",
+      "장비 부품",
+      "장비용 부품",
+      "반도체 부품",
+      "히터",
+      "세라믹"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd",
+      "ald"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "service",
      "words": [
       "부품 세정",
       "세정 및 코팅",
+      "재생",
       "코팅"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
-     "key": "parts",
+     "key": "etch",
      "words": [
-      "반도체 부품"
+      "식각"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "service",
-   "front_back": "공통",
-   "evidence": "반도체 부품 세정 및 코팅",
-   "evidence_source": "product"
+   "primary": "parts",
+   "front_back": "전공정",
+   "evidence": "사업의 개요 당사의 주요 사업으로 고가의 반도체 공정 장비 부품을 재생하는 세정ㆍ코팅 사업 부문과 반도체 장비용 부품을 제작하는 세라믹 소재 부품 사업 부문이 있습니다. 주요 사업부문은 세정, 코팅, 부품으로 / 사업의 개요 당사의 주요 사업으로 고가의 반도체 공정 장비 부품을 재생하는 세정ㆍ코팅 사업 부문과 반도체 장비용 부품을 제작하는 세라믹 소재 부품 사업 부문이 있습니다. 주요 사업부문은 세정, 코팅, / 둘째, 전방산업의 업황이 둔화되거나 고객사의 원가 절감 필요성이 증가할 경우, 신규 부품의 대체재로서 세정ㆍ코팅 서비스에 대한 수요가 증가하는 경향이 있습니다. 셋째, 다년간 축적된 기술력과 노하우, 기반 시설이 요구되는 사업으로 경쟁자의 시장 진입이 어려운 / 미코세라믹스의 주력 제품인 세라믹 히터(Heater)는 CVD(Chemical Vapor Deposition), ALD(Atomic Layer Deposition) 등 반도체 증착 공정 장비에 사용되어 웨이퍼에 / 넷째, 주력 제품인 히터(Heater)와 정전척(Electrostatic Chuck, ESC)은 증착 및 식각 장비의 핵심 부품으로, 고객사의 공정 조건에 최적화된 맞춤형 설계와 제작이 이루어집니다. 미코세라믹스의 주력 제품인 세라믹 히터(Heater)는 CVD / 반도체 부품 세정 및 코팅",
+   "evidence_source": "scan"
   },
   {
    "stock": "195870",
    "name": "해성디에스",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "반도체 패키지용 Substrate",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "photo",
+     "words": [
+      "포토",
+      "포토마스크",
+      "마스크"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "cvd"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "패키징"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "석영"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "photo",
+   "front_back": "전후공정 겸업",
+   "evidence": "FBGA, FC-FBGA, COB 등 PC, Server, 모바일 등 메모리 반도체 패키징 재료 기타 그래핀 CVD 제품 그래핀 다양한 응용제품 개발이 가능 Flake (1) 반도체 Substrate 반도체를 / 분석」, 2026년 4월) 반도체 재료산업은 종합 반도체 업체가 신규 라인을 건설하거나 생산량을 증가시킬 때 일시적으로 시장 규모가 급증하는 반도체 장비산업에 비해 상대적으로 안정적인 성장을 하는 시장이라고 볼 수 있습니다. 또한 반도체 재료의 품질은 완제품 전체의 성능에 영향을 미치게 되기에 매우 / 전공정 (Front-End Process) 웨이퍼 재료 기능재료 웨이퍼 칩의 기판 공정재료 포토마스크 석영유리에 회로를 묘화한 회로도의 원판 펠리클 마스크의 입자로 인한 오염 방지를 위한 보호막 포토레지스 / 공정 (Front-End Process) 웨이퍼 재료 기능재료 웨이퍼 칩의 기판 공정재료 포토마스크 석영유리에 회로를 묘화한 회로도의 원판 펠리클 마스크의 입자로 인한 오염 방지를 위한 보호막 포토레지스트 웨이퍼에 / 반도체 패키지용 Substrate",
+   "evidence_source": "scan"
   },
   {
    "stock": "200470",
    "name": "에이팩트",
    "stages": [
     {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "노광",
+      "마스크"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "implant",
+     "words": [
+      "이온주입"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "test",
      "words": [
       "테스트"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "산화"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "test",
-   "front_back": "후공정",
-   "evidence": "메모리 반도체 테스트",
-   "evidence_source": "product"
+   "primary": "depo",
+   "front_back": "전후공정 겸업",
+   "evidence": "반도체 산업은 크게 반도체 소자제조업, 반도체장비 및 원ㆍ부자재 제조업 등을 모두 포함하며 반도체 산업의 인프라를 구성하는 기초ㆍ기반기술, 지식산업으로 구분할 수 있습니다. 좁은 의미의 반도체 산 / → 화학기상증착(CVD) → 금속배석(Metalization) 웨이퍼 자동선별(EDS Test) → 웨이퍼 절단(Sawing) → 칩 접작(Die Attach) → 금속 연결(Wire Bonding) → 성형(Molding) 최종검사 / tion) → 노광(Exposure) → 현상(Development) → 이온주입(Implementation) → 화학기상증착(CVD) → 금속배석(Metalization) 웨이퍼 자동선별(EDS Test) → 웨이퍼 절단(Sawing) → 칩 접작 / → 마스크 제작 산화공정(Oxidation) → 노광(Exposure) → 현상(Development) → 이온주입(Implementation) → 화학기상증착(CVD) → 금속배석(Metalization) 웨이퍼 자동선별(EDS Tes / FA반도체, 시그네틱스, 윈팩, 에이팩트 등 (ASE, Amkor) 테스트 전문기업 (Testing) - 검사장비가 고가이므로 테스트 전문업체에 위탁 - 시스템 IC 중 전문화된 테스트 팹리스 업체 개발시 개발지원 테스트 프로그램 개발 아이텍반도 / 메모리 반도체 테스트",
+   "evidence_source": "scan"
   },
   {
    "stock": "212710",
    "name": "아이에스티이",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "반도체 제조용 장비",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "handling",
+     "words": [
+      "진공",
+      "foup",
+      "efem"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정",
+      "cleaner"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "cvd"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "handling",
+   "front_back": "전공정",
+   "evidence": "사업의 개요 당사는 조창현 대표이사가 2013년 08월 설립 이후 독창적이고 차별화된 기술력을 확보해 반도체 장비 회사로 성장해왔습니다. 설립 초기에는 주로 OLED, LCD, 자동차 등 다양한 산업에 사용되는 진공 물류 장비를 2차 벤더로서 공급하였으며, 반 / 또한, 반도체 장비사업의 고도화를 위해 반도체 핵심 공정장비인 PECVD 장비를 개발하여 2025년 11월 첫 판매를 성공하며 사업화를 고도화하고 있습니다. 당사는 2016년 설립 4년여만에 매출 100억원을 / 동차 등 다양한 산업에 사용되는 진공 물류 장비를 2차 벤더로서 공급하였으며, 반도체 미세화와 고집적화에 따라 새로이 요구되는 기술적 수요에 걸맞은 FOUP Cleaner, Sorter, EFEM 등의 반도체 장비를 개발했습니다. 2016년부터 현재까지 당사의 주요 고객사이자 세계적인 종합반도체 회사인 / 당사 2016.11.02 2016.11.02 FOUP Cleaner 한국 24 특허권 캐리어 세정 장치 및 그 세정 방법 제10-1551545호 당사 2013.12.11 2015.09.02 FOUP Cleaner 한국 / 되는 진공 물류 장비를 2차 벤더로서 공급하였으며, 반도체 미세화와 고집적화에 따라 새로이 요구되는 기술적 수요에 걸맞은 FOUP Cleaner, Sorter, EFEM 등의 반도체 장비를 개발했습니다. 2016년부터 현재까지 당사의 주요 고객사이자 세계적인 종합반도체 회사인 SK하이닉스의 BP사(Bus / 반도체 제조용 장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "217190",
@@ -1493,65 +2782,174 @@
     {
      "key": "pkg",
      "words": [
-      "후공정"
+      "패키지",
+      "본딩",
+      "범프",
+      "후공정",
+      "laser"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정",
+      "세척"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "inspection",
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "진공"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "pkg",
-   "front_back": "후공정",
-   "evidence": "반도체 후공정 장비",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "험을 토대로 하여 서로 상이한 회사의 장비를 자동화하여 업체에 신뢰를 축적하고 있음 (다) 경기변동과의 관계 반도체 장비 산업은 반도체 회로 설계, 웨이퍼의 제조, 웨이퍼의 가공, 반도체 칩의 조립, 검사 등 반도체 소자를 생산하기 위하여 사용되는 제반 장비를 제조하 / 제품은 HBM Automation, EMI Shielding, Saw Singulation, Laser Marking/Cutting, Test Handler, Pick & Place 및 기타 자동화 장비이며, 대부분 고객 맞춤형(Customizing)으로 제작·납품합니다. / Automation, HBM 생산용 웨이퍼 마운터(Wafer Mounter), 테이프 리무버(Tape Remover), 패키지 소터(Package Sorter) 등을 공급합니다. 최근 하이브리드 본딩 시대에 대비해 다이트랜스퍼(Die Transfer), 진공 마운터(Vacuum Mounter) 등 신규 / UNICON-G7의 장점은 절단에 이어 세정 장치까지 인라인으로 설계한 부분이며, FC-BGA는 범프(BUMP)가 작아 미세한 먼지에도 민감해 세척 공정의 중요성이 높아 UNICON-G7을 사용하 / 장비의 주요 작업으로는 반도체 패키지의 절단, 세척 및 건조, Vision Inspection, 불량 선별, 적재까지 처리합니다. 반도체 제조 공정에서 필수적인 장비이며 회사는 고객의 편의성을 고려한 기능, ABC (Auto Bla / 반도체 후공정 장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "217500",
    "name": "러셀",
    "stages": [
     {
+     "key": "etch",
+     "words": [
+      "식각",
+      "etch"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "implant",
+     "words": [
+      "이온주입",
+      "implant"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "burn-in"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "service",
      "words": [
       "리퍼비시"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "산화"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "service",
-   "front_back": "공통",
-   "evidence": "반도체장비 리퍼비시",
-   "evidence_source": "product"
+   "primary": "etch",
+   "front_back": "전후공정 겸업",
+   "evidence": "사업부문 회사명 주요제품 비고 반도체장비 (주)러셀 반도체증착장비 - 무인자동화시스템 (주)러셀로보틱스 무인운반차(AGV) - / 사업부문 회사명 주요제품 비고 반도체장비 (주)러셀 반도체증착장비 - 무인자동화시스템 (주)러셀로보틱스 무인운반차(AGV) - 당사는 반도체산업의 후방 산 / 인자동화시스템 (주)러셀로보틱스 무인운반차(AGV) - 당사는 반도체산업의 후방 산업으로 분류되는 반도체 장비 리퍼비시 전문 기업으로 반도체 장비부문과 2020년 자회사로 편입된 러셀로보틱스의 무인자동화 시스템부문의 사업을영위하고 있으며 2025년 매출액 기준 반도체 / 산화(Oxidation) - 감광액(Photo Resist) - 노광(Exposure) - 현상(Development) - 식각(Etching) - 이온주입(Ion implantation) - 화학기상증착(CVD) - 금속배선(Metallization) - 선별(EDS Test) - 절단(Sawin / - Dicing: Dicer - Bonding : Die/Wire Bonder - Packing : Molding, Marking - 검사: Tester, Handler, Burn-in [자료:한국반도체산업협회(KSIA)] (2) 산업의 성장성 WSTS(세계반도체무역 / 반도체장비 리퍼비시",
+   "evidence_source": "scan"
   },
   {
    "stock": "222080",
    "name": "SFA넥셀",
    "stages": [
     {
+     "key": "metro",
+     "words": [
+      "측정",
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "depo",
      "words": [
       "증착"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
-     "key": "metro",
+     "key": "handling",
      "words": [
-      "측정"
+      "진공"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "전극"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "depo",
+   "primary": "metro",
    "front_back": "전공정",
-   "evidence": "이차전지 전극공정 장비, 증착·검사·측정 장비",
-   "evidence_source": "product"
+   "evidence": "및 기타 개발장비와 사업화 전 개발사업인 전고체 고체전해질 및 제조장비 등 증착 및 검사ㆍ측정 장비 사업 디스플레이 증착 및 검사장비, 이차전지 및 반도체, PCB 검사ㆍ측정장비 사업 등 가. 사업의 내용 [이차전지 전극공정 장비 사업] 당사는 / [증착 및 검사ㆍ측정 장비 사업부] (1) 디스플레이 증착장비 디스플레이 패널 제조 공정에서 증착장비는 OLED 유기층을 정밀하고 균일하게 형성하여 화질과 수율을 결정짓는 핵심 장비입니다. 당사는 진공 증 / 구 분 사업내용 이차전지 전극공정 장비 사업 리튬 이차전지 생산에 필요한 전극제조 관련 장비(Coater, Calender, Slitter 등) 및 기타 개발장비와 사업화 전 개발사업인 전고체 고체전해질 및 제조장비 등 증착 및 검사ㆍ / 이차전지 전극공정 장비, 증착·검사·측정 장비 / 사업의 개요 (주)SFA넥셀과 그 종속기업(이하 '연결회사')은 이차전지 전극공정 장비 사업과 증착 및 검사ㆍ측정 장비 사업 등을 주된 사업으로 영위하고 있으며, 주요 사업은 다음과 같습니다.",
+   "evidence_source": "scan"
   },
   {
    "stock": "222420",
    "name": "쎄노텍",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "세라믹 비드",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "cmp",
+     "words": [
+      "cmp"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "반도체용"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "cmp",
+   "front_back": "전공정",
+   "evidence": "공급 세라믹 비드 전기전자용 CZY60 초소형 비드 CSS36 SEP-ZY(분리파우더) ■ MLCC, 반도체용 CMP, 이차전지 소재 제조 공정용 비드 및 파우더 소재 등(양극재(LFP), 음극재, 분리막) 광산용 및 제지/잉크 등 / 세라믹 비드 / 1. 사업의 개요 가. 사업부문의 구분",
+   "evidence_source": "scan"
   },
   {
    "stock": "227950",
@@ -1560,16 +2958,32 @@
     {
      "key": "parts",
      "words": [
+      "샤워헤드",
       "장비 부품",
       "부품 제조"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "진공",
+      "밸브"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "parts",
-   "front_back": "공통",
-   "evidence": "반도체장비 부품 제조업",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "사업의 개요 당사는 반도체 공정에 필요한 진공 Chamber와 해당 Chamber에 필요한 특수 진공 밸브를 생산 및 판매하는 특수 목적용 기계 제조기업입니다. 지역별로 보면 국내 안성 본사에서 제품의 생산과 판매 및 국내 제품 수리 서비스를 담당하고 / 1차 벤더사에 납품한 제품 수리 서비스를 전담하고 있습니다 한편, 주요종속회사는 투자업을 영위하고 있으며, 연결기준 당사와 종속회사의 사업은 반도체 장비부품 제조 및 판매 부문과 투자 부문으로 구성되어 있습니다. 2. 주요 제 / 사가 1차 벤더사에 납품한 제품 수리 서비스를 전담하고 있습니다 한편, 주요종속회사는 투자업을 영위하고 있으며, 연결기준 당사와 종속회사의 사업은 반도체 장비부품 제조 및 판매 부문과 투자 부문으로 구성되어 있습니다. 2. 주 / 특허권 서셉터의 메인플레이트 2006-03-17 2006-12-27 4 특허권 샤워헤드 및 이를 채용한 증착장치 2007-05-17 2009-05-18 5 특허권 화학기상증착장비 2007-05-31 2008-10 / 반도체장비 부품 제조업",
+   "evidence_source": "scan"
   },
   {
    "stock": "232140",
@@ -1578,52 +2992,190 @@
     {
      "key": "test",
      "words": [
-      "테스터"
+      "테스터",
+      "테스트",
+      "프로브"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "test",
-   "front_back": "후공정",
-   "evidence": "메모리 웨이퍼 테스터",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "업계현황 및 전망 (1) 산업의 특징 반도체 장비는 반도체 회로설계, 실리콘 웨이퍼 제조 등 반도체 제조를 위한 준비 단계부터 웨이퍼를 가공하고 칩을 만들고, 조립 및 검사하는 단계까지의 모든 장 / 연결기업은 반도체 제조공정 중 EDS 테스트 공정에서 필요로 하는 반도체 검사 장비를 제작 및 판매하는 사업과 웨이퍼를 직접 컨택하여 테스트하는 프로브 카드에 사용되는 다층 세라믹 기판 제조 및 판매사업을 영위하고 있습니다. 가. 업계현황 및 전망 (1) 산업의 특징 반도체 장비는 반도체 회 / 사업의 개요 연결기업은 반도체 제조공정 중 EDS 테스트 공정에서 필요로 하는 반도체 검사 장비를 제작 및 판매하는 사업과 웨이퍼를 직접 컨택하여 테스트하는 프로브 카드에 사용되는 다층 세라믹 기판 제조 및 판매사업을 영위하고 있습니다. / 전공정은 미세화 기술 등 반도체 칩의 품질을 좌우하는 단계로서 노광기, 증착기, 식각기 등의 장비로 구성되고, 후공정은 최종적인 칩모습을 형성하는 조립단계로 절단, 금속연결로 구성, 고집적화 및 다양한 수요대응 기술이 / 메모리 웨이퍼 테스터",
+   "evidence_source": "scan"
   },
   {
    "stock": "234030",
    "name": "싸이닉솔루션",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "ASIC, ASSP, 용역, 상품 등",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "test",
+     "words": [
+      "테스트",
+      "프로브",
+      "probe",
+      "probe card"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "포토",
+      "포토마스크",
+      "마스크"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "test",
+   "front_back": "전후공정 겸업",
+   "evidence": "아울러 합리적인 가격과 품질의 포토마스크(Photo Mask) 공급사와 고품질과 높은 효율을 제공하는 Memory IP 공급사와의 라이선스 계약으로 고객사의 파운드리 위탁생산에 보다 폭넓 / Probe Card (프로브 카드) 반도체의 동작을 검사하기 위하여 반도체 칩과 테스트 장비를 연결하는 장치로써, 프로브 카드에 장착되어 있는 프로브 / 등의 다양한 분야에 사용이 되고 이미지 센서는 악천후나 불투명 환경을 투과하여 물체의 형상, 크랙, 내부 구조를 영상으로 구현할 수 있어 반도체 웨이퍼 검사, 자율주행, 안개/연무 투과 CCTV, 야간 감시, 드론 기반 정찰 등 매우 다양한 분야에 활용이 될 수 있습니다. cMUT 초음파 센서는 미세한 / ASIC, ASSP, 용역, 상품 등 / 용 어 설 명 다이 (Die) 반도체를 제조할 때 반도체 설계도면이 모두 반영된 완전한 전자회로가 웨이퍼에 수백~수만개 반복되어 생성되는데, 각 전자회로를 다이(Die)라고 부릅니다. 디자인하",
+   "evidence_source": "scan"
   },
   {
    "stock": "240600",
    "name": "유진테크놀로지",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "이차전지 정밀금형 외",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "pvd"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "결함",
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "어닐"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "신뢰성"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "금형"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "링"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "depo",
+   "front_back": "전후공정 겸업",
+   "evidence": "드 대응, 불량 감소와 생산성 향상 기대 17 특허 이차전지 검사장치 및 검사방법 2025.03.27 이차전지 검사장비 플라즈마 이온응용 파우치형 이차전지 케이스 결함 검사 장치 기술로 향상된 파우치 표면검사 검사 신뢰성 기대 18 특허 / 아울러, 이차전지 자동화 장비의 설계 및 제작하며, 이차전지 전공정 장비공급과 IN-LINE 시스템의 TOTAL SOLUTION을 제공합니다. 주요 설비로는 DEGAS M/C, FORMING M/C, SLITTER M/ / 리드탭 PVD Cr증착법을 사용하지 않고도 리드탭 부착력 강화 가능한 공정 방법으로 당사 리드탭 부착력 향상 기대 16 특허 이차전지용 / 5 특허 이차전지 전극 제조용 프레스 롤 세정장치 2019.03.21. 6 특허 이차전지용 리드탭 모서리 가공장치 2019.04.09. 리드탭, / 16 특허 이차전지용 리드탭 제조방법 2024.08.07 리드탭 금속 리드 양면에 절연필름을 단계적 가,진접합 및 어닐링으로 융착해 공극을 제거하는 리드탭 제조방법으로, 기밀설,절연 신뢰성 향상, 두꺼운 리드 대응, 불량 감소와 생산성 향상 기대 17 / 이차전지 정밀금형 외 / 1. 사업의 개요 당사는 2010년 설립 이래 정밀 금형 분야에서 축적된 기술력과",
+   "evidence_source": "scan"
   },
   {
    "stock": "240810",
    "name": "원익IPS",
    "stages": [
     {
+     "key": "etch",
+     "words": [
+      "etch",
+      "etcher",
+      "dry etch"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "depo",
      "words": [
-      "증착",
       "cvd",
       "ald"
      ],
-     "source": "seed"
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "furnace"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "laser"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "depo",
-   "front_back": "전공정",
-   "evidence": "원익IPS — 전공정 증착(PE-CVD·ALD) 장비 (스펙 지정)",
-   "evidence_source": "seed"
+   "primary": "etch",
+   "front_back": "전후공정 겸업",
+   "evidence": "구분 비고 반도체 제조용 장비 PECVD, ALD, Diffusion Thermal System 등 Display 제조용 장비 Dry Etcher, Las / 구분 비고 반도체 제조용 장비 PECVD, ALD, Diffusion Thermal System 등 Display 제조용 장비 Dry Etcher, Laser Driller / n Thermal System 등 Display 제조용 장비 Dry Etcher, Laser Driller, PECVD, LTPS Furnace, PI Curing 등 나. 매출 현황 (1) 연결기준 (단위 : 백만원, %) / 반도체 제조용 장비 PECVD, ALD, Diffusion Thermal System 등 Display 제조용 장비 Dry Etcher, Laser Driller, PECVD, LTPS Furnace, PI Curing 등 나. 매출 현황 (1) 연결기준 / 반도체 제조용 기계",
+   "evidence_source": "scan"
   },
   {
    "stock": "241770",
@@ -1633,25 +3185,79 @@
      "key": "parts",
      "words": [
       "히터블록",
+      "장비 부품",
       "히터",
+      "세라믹",
       "반도체용"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "parts",
    "front_back": "공통",
-   "evidence": "반도체용 전구체 및 히터블록",
-   "evidence_source": "product"
+   "evidence": "주요 제품 등의 현황 회사는 반도체 장비 부품 및 기타제품 등을 생산, 판매하고 있으며, 제품별 매출액과 총매출액에서 차지하는 비율은 다음과 같습니다. / 당사는 사업다각화를 통한 지속성장 기반 확보를 위해 질화알루미늄(AlN) 소재의 반도체 공정용 세라믹 히터를 개발해 왔으며 2026년 7월 고객사와의 공동개발 과제를 종료하고 품질 인증을 완료하여 양산 단계에 진입하였습니다. 이를 통해 기존 메탈 히터블 / 반도체용 전구체 및 히터블록",
+   "evidence_source": "scan"
   },
   {
    "stock": "241790",
    "name": "티이엠씨씨엔에스",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "반도체 케미칼 및 특수가스, 반도체 장비",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "handling",
+     "words": [
+      "c.c.s.s",
+      "중앙공급"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "cmp",
+     "words": [
+      "cmp",
+      "연마"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "열처리"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "inspection"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "전극"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "handling",
+   "front_back": "전공정",
+   "evidence": "반도체장비 부문에서는 화학물질 중앙공급장치(반도체 케미칼 공급장치)를 제조 설치하고 유지보수하는 사업을 영위하고 있으며, 화학물질 중앙공급장치(C.C.S.S/S.S.S)는 여러 가지 화학물질을 일정한 비율로 혼합한 후 설계된 프로그램에 따라 혼합된 화학물질을 순차적으로 공급하는 장치를 말하며, 반도체 / 또한 반도체장비 부문에서는 화학물질 중앙공급장치(반도체 케미칼 공급장치)를 제조 설치하고 유지보수하는 사업을 영위하고 있으며, 화학물질 중앙공급장치(C.C.S.S / [(주)와이에이치티] 1) Folding&Inspection 설비 전극, 조립, 화성 공정으로 구분되는 EV 용 배터리 공정 중 화성공정 최후반부에 위치하는 설비로서 파우치 타입 전용입니다. Fol / 특수가스인 Si2H6는 또한 증착용 특수가스로, 박막 증착시 저온에서 고속으로 균일한 막질을 형성하기 위한 용도로 사용되고 있습니다. 또한 반도체장비 부문에서는 화학물질 중앙공급장치(반도체 케미칼 공급장치 / S.S.S는 반도체 제조 공정 중 전공정(기판공정)인 세정, 열처리, 불순물도입, 박막형성, 리소그래피(lithography)와 평탄화 공정 장비인 CMP 장비에 연마제를 공급하는 장비입니다. CMP 장비는 반도체 표면을 연마하는 장비로 슬러리(Slurry)를 이용하여 표면을 연마합니다. 따라서 슬러리 / 반도체 케미칼 및 특수가스, 반도체 장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "250030",
@@ -1665,28 +3271,76 @@
   {
    "stock": "252990",
    "name": "샘씨엔에스",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "세라믹 STF(다층 세라믹 기판)",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "test",
+     "words": [
+      "테스트",
+      "프로브",
+      "프로브카드"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "정전척",
+      "세라믹",
+      "부품 제조"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "패키징"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "test",
+   "front_back": "후공정",
+   "evidence": "사업의 개요 ㈜샘씨엔에스(이하 \"당사\")는 반도체 제조공정 중 테스트 공정에서 필요로 하는 프로브카드에 사용되는 반도체 프로브카드용 세라믹STF(Space Transformer)를 제작하여 납품하고 있습니다. 세라믹STF는 웨이퍼의 전기적 성능평가 / 또한 세라믹 기술을 기반으로 한 신사업 (첨단 패키징,5G/6G 통신 모듈, 전장 모듈, 정전척 등) 진출도 모색하고 있습니다. 이처럼 기술 및 제품의 확장으로 매출 확대 및 사업다각화에 성공하게 되면서 글로벌 세라믹 소재 전문 기업으로 나아가 / 세라믹STF는 웨이퍼의 전기적 성능평가를 위한 프로브카드의 핵심부품으로, MEMS Pin을 지지하고, 전기적 신호를 PCB를 통해 테스트 검사 장비로 전달하여 웨이퍼의 양품 및 불량품 판정을 담당하는 테스트 장비의 핵심 부품 제조 및 판매사업을 영위하고 있습니다. 당사는 2026년 반기말 영업 / 세라믹 STF(다층 세라믹 기판)",
+   "evidence_source": "scan"
   },
   {
    "stock": "253590",
    "name": "네오셈",
    "stages": [
     {
+     "key": "test",
+     "words": [
+      "burn-in",
+      "신뢰성"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "metro",
      "words": [
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
-   "primary": "metro",
-   "front_back": "공통",
-   "evidence": "반도체 검사장비",
-   "evidence_source": "product"
+   "primary": "test",
+   "front_back": "후공정",
+   "evidence": "사업의 개요 당사는 2002년 4월 설립된 반도체 후공정 검사장비 업체로 메모리반도체의 제조 공정 중 제품의 성능과 신뢰성을 검사하는 장비사업을 주 사업으로 영위하고 있으며, 크게 SSD(SOLID STATE DR / SOLID STATE DRIVE)의 성능 및 신뢰성을 검사하는 사업과, 메모리반도체에 가혹 조건을 적용하여 검사하는 MBT (MONITORING BURN-IN TESTER) 장비 사업으로 나누어집니다. 기타 사업으로 반도체 및 정밀산업에 적용되는 해외 기업의 ASSEMBLY MACHINE, PARTIC / 동 산업은 웨이퍼 공정에 투입되는 전공정 장비와는 달리, 반도체 후공정 이후 최종 단계에서 제품의 품질을 확인하는 역할을 수행하며, 최종 제품 출하 및 고객사 공급과 직접적으로 연계되어 있습니 / 반도체 검사장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "254120",
@@ -1695,49 +3349,141 @@
     {
      "key": "metro",
      "words": [
-      "엑스레이"
+      "결함",
+      "엑스레이",
+      "검사"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "신뢰성"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "tsv"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "전극"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "metro",
-   "front_back": "공통",
-   "evidence": "자동엑스레이검사장비",
-   "evidence_source": "product"
+   "front_back": "후공정",
+   "evidence": "특히 배터리 결함으로 인한 대규모 리콜 사태 이후, 글로벌 완성차 및 제조사들은 제품의 신뢰성 확보를 위해 '전수 검사 시스템' 도입을 필수화하고 있습니다. 또한, 식품 안전에 대한 소비자 인식 제고와 정부의 HACCP 관리 강화에 따라 식품 이물 선별 장비의 수요 역시 / TGV는 유리기판에 수직으로 미세한 구멍(Via)를 가공하여 층간 전기적 연결을 구현하는 기술로, 기존의 TSV(실리콘 관통전극) 공정 대비 높은 집적도와 전기적 특성을 요구합니다. 이에 따라 TGV 전용 검사장비는 미세 가공 정밀도, 내부 결함 검출력, 빠른 / <반도체 검사장비 시장> 반도체 장비는 반도체 회로 설계, 웨이퍼 제조 등 반도체 제조를 위한 준비 단계부터 웨이퍼를 가공하고 칩을 제조하며, 조립 및 검사하는 단계까지의 모든 장비를 / 자동엑스레이검사장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "256630",
    "name": "포인트엔지니어링",
    "stages": [
     {
+     "key": "test",
+     "words": [
+      "테스트",
+      "프로브",
+      "소켓"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "parts",
      "words": [
+      "소모성 부품",
       "장비 부품"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "etch"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "산화"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "parts",
-   "front_back": "공통",
-   "evidence": "디스플레이 및 반도체 장비 부품",
-   "evidence_source": "product"
+   "primary": "test",
+   "front_back": "전후공정 겸업",
+   "evidence": "차별화된 알루미늄 양극산화(Anodizing)기술과 이로부터 파생된 다공성 양극산화피막(AAO; Anodic Alum)소재 기술을 기반으로 반도체 장비부품, Pin Foundry(반도체 검사용 부품), 디스플레이 장비부품 사업을 영위하고 있습니다. 반도체 사업부는 CVD 등 증착 공정장비의 Chambe / 반도체 사업부는 CVD 등 증착 공정장비의 Chamber 내 핵심 소모성 부품인 Face Plate, SV Gate, RF Strap, Liner 등의 표면처리를 수행하고 / 차별화된 알루미늄 양극산화(Anodizing)기술과 이로부터 파생된 다공성 양극산화피막(AAO; Anodic Alum)소재 기술을 기반으로 반도체 장비부품, Pin Foundry(반도체 검사용 부품), 디스플레이 장비부품 사업을 영위하고 있습니다. 반도체 사업부는 CVD 등 증착 공정장비의 Cha / 신규사업인 Pin Foundry 사업부는 반도체 검사용 프로브 카드·테스트 소켓에 적용되는 MEMS Pin 및 Guide Plate를 공급하고 있습니다. 디스플레이 사업부는 PECVD 장비용 Diffuser, Su / 전기자동차, Smart phone, 산업용 센서 등 비메모리(시스템) 반도체 및 메모리·비메모리 검사장비의 수요 증가 및 성능 향상이 요구되면서 그 중요성이 커지고 있습니다. (2) AAO 가이드 플레이트 장점 Etching 공정으로 제 / 디스플레이 및 반도체 장비 부품",
+   "evidence_source": "scan"
   },
   {
    "stock": "264660",
    "name": "씨앤지하이테크",
    "stages": [
     {
+     "key": "depo",
+     "words": [
+      "증착",
+      "pvd"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "handling",
      "words": [
+      "ccss",
       "약액"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "cmp",
+     "words": [
+      "cmp"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "service",
+     "words": [
+      "재생"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "handling",
-   "front_back": "공통",
-   "evidence": "약액혼합공급장치, 화학약품재생장치",
-   "evidence_source": "product"
+   "primary": "depo",
+   "front_back": "전공정",
+   "evidence": "CCSS 장치는 용도에 따라 아래와 같이 나누어 집니다. [CCSS 장치의 용도별 구분] 구 분 / 반도체 CMP 공정 후 발생되는 슬러리나 금속 미립자로 인해 발생되는 불순물을 제거하기 위한 세정 공정에 적용됩니다. 반도체가 고집적화, 패턴의 미세화가 진행됨에 / 당사의 핵심 기술은 △이온빔 표면처리를 이용한 구리와 글라스 간의 강력한 접착력 확보 △복잡 형상의 관통홀 내벽에 금속 증착이 가능한 M-PVD 공정 △이 두 가지 공정의 상호 연계성 등 입니다. 이에 더하여 기존 공정에서 문제가 되었던 △유독성 화학약품 사용으로 인한 환경오염 △복잡한 기판 / 약액혼합공급장치, 화학약품재생장치",
+   "evidence_source": "scan"
   },
   {
    "stock": "272110",
@@ -1747,39 +3493,95 @@
      "key": "parts",
      "words": [
       "sic",
-      "cvd-sic"
+      "cvd-sic",
+      "반도체 부품",
+      "반도체부품"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각",
+      "에칭"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "패키지",
+      "소잉"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "service",
+     "words": [
+      "재생",
+      "코팅"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "parts",
-   "front_back": "공통",
-   "evidence": "Edge Grinder, CVD-SiC Ring",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "[반도체부품 사업부문] 반도체 부품 사업부문은 반도체 웨이퍼 에칭(식각) 공정의 필수 소모품인 CVD-SiC Focus Ring 및 반도체·LED 공정용 CVD-SiC 코팅 제품을 주력으로 생산합니다. 당사의 CVD-SiC 제품은 기존 실리콘(Si) 소재 대비 내화학성과 / [반도체부품 사업부문] 반도체 부품 사업부문은 반도체 웨이퍼 에칭(식각) 공정의 필수 소모품인 CVD-SiC Focus Ring 및 반도체·LED 공정용 CVD-SiC 코팅 제품을 주력으로 생산합니다. 당사의 CVD-SiC 제품은 기존 실리콘(Si) / 함하는 부품의 제조 방법 주식회사 케이엔제이 2022-02-04 특허청 20 특허권 외란 저감형 롤투롤 검사 시스템 주식회사 케이엔제이 2022-02-15 특허청 21 특허권 레벨 조절형 롤투롤 검사 시스템 주식회 / 번호 구분 내용 권리자 등록일 주무관청 1 특허권 벤투리 튜브를 구비하는 기판 홀더 및 소잉/소팅 장치 주식회사 케이엔제이 2008-10-15 특허청 2 특허권 반도체 패키지의 소팅테이블 주식회 / 검사 시스템 주식회사 케이엔제이 2024-05-16 특허청 27 특허권 반도체 제조용 부품의 재생방법 및 재생부품 주식회사 케이엔제이 2024-09-23 특허청 28 특허권 대상물의 위치 정렬 장치 주식회사 케이엔 / Edge Grinder, CVD-SiC Ring",
+   "evidence_source": "scan"
   },
   {
    "stock": "281820",
    "name": "케이씨텍",
    "stages": [
     {
+     "key": "pkg",
+     "words": [
+      "본딩",
+      "몰딩",
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "cmp",
      "words": [
       "cmp"
      ],
-     "source": "seed"
+     "source": "scan"
     },
     {
      "key": "clean",
      "words": [
-      "세정"
+      "cleaning"
      ],
-     "source": "seed"
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "가스"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "cmp",
-   "front_back": "전공정",
-   "evidence": "케이씨텍 — CMP·세정 장비 (스펙 지정)",
-   "evidence_source": "seed"
+   "primary": "pkg",
+   "front_back": "전후공정 겸업",
+   "evidence": "사업의 개요 당사는 2017년 11월 1일을 분할기일로 하여 주식회사 케이씨로부터 반도체 장비, 디스플레이 장비 및 소재 사업부문이 인적분할되어 설립되었습니다. 반도체 장비 제품으로는 CMP, Wet Cleaning System이 있으며, / 반도체 장비 제품으로는 CMP, Wet Cleaning System이 있으며, 디스플레이장비는 Wet Station, Coater 등이 있습니다. 그리고 소재는 Ceria Slurry, Silica Slurry, Zirconia, Hollow Silica가 / 반도체 장비 제품으로는 CMP, Wet Cleaning System이 있으며, 디스플레이장비는 Wet Station, Coater 등이 있습니다. 그리고 소재는 Ceria Slurry, Silica Slurry, Zirconia, Hollow Silica가 있습니다. 보고 부 / 반도체 장비 제품으로는 CMP, Wet Cleaning System이 있으며, 디스플레이장비는 Wet Station, Coater 등이 있습니다. 그리고 소재는 Ceria Slu / 불순물 주입 및 박막 형성 공정 등을 전공정이라 하고, 웨이퍼 절단, 칩 본딩, 와이어본딩, 몰딩 공정 등을 후공정이라 하며, 이의 성능을 시험하는 검사장비 외가스를 공급하거나 사용 가스를 무해한 상태로 처리하는 등 각각의 제조 공정을 돕는관련 장비로 크게 구분 됩니다. 반도체 제조장비 산업은 반도체 소 / 반도체, 디스플레이 제조 장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "289930",
@@ -1793,20 +3595,44 @@
   {
    "stock": "290520",
    "name": "신도기연",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "OLED용 후공정장비(라미네이터, 오토클레이브 등)",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "pkg",
+     "words": [
+      "본더",
+      "몰딩"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "장비 부품"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "pkg",
+   "front_back": "후공정",
+   "evidence": "특히 세계최초로 2004년에는 미세기포를 제거하는 매엽식 탈포기(STA), 2015년에는 곡면(3D) 형태의 디스플레이 패널을 합착할 수 있는 곡면 진공합착기(3D Laminator) 등을 개발하여 국내외 / D와 기판을 부착하는데 필요한 본더장비(Vacuum Press)와 LED/ LED 사이에 레진(Resin)을 넣어 시야 굴곡 평탄도를 유지하는 UV몰딩 장비 등의 제품이 있으며, 주요 고객사는 국내 S사, L사, 해외 CSOT 등 국내외 디스플레이패널 제조회사입니다. 제27기(2026년 반기말) / 23.53% 26,016 81.50% 4,280 40.39% 용역 및 부품판매 장비 개조 용역매출 및 장비 부품 판매 등 393 4.39% 1,544 4.84% 3,541 33.41% 합계 8,959 / OLED용 후공정장비(라미네이터, 오토클레이브 등) / 1. 사업의 개요 당사는 디스플레이제조장비 등을 개발하여 국내외 기업에 제작 판매",
+   "evidence_source": "scan"
   },
   {
    "stock": "295310",
    "name": "에이치브이엠",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "Ni계 합금, Fe계 합금, 스퍼터링타겟, Cu계 합금 등",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "depo",
+   "front_back": "전공정",
+   "evidence": "되고, 열전도가 우수한 고강도 합금 7,042 13.4% 9,253 13.9% 5,675 12.6% 스퍼터링타겟 박막증착 기술에 사용되는 합금재료 2,804 5.4% 3,283 4.9% 3,889 8.6% / Ni계 합금, Fe계 합금, 스퍼터링타겟, Cu계 합금 등 / 1. 사업의 개요 당사는 20년 이상의 업력을 보유한 첨단·특수 금속 소재 국산화",
+   "evidence_source": "scan"
   },
   {
    "stock": "297090",
@@ -1820,11 +3646,42 @@
   {
    "stock": "297890",
    "name": "HB솔루션",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "디스플레이 제조용 장비(도포기, 조립기, 검사기)",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "metro",
+     "words": [
+      "현미경",
+      "측정",
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "이송"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "프로브"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "후공정"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "metro",
+   "front_back": "후공정",
+   "evidence": "사업의 개요 당사는 2001년 9월 6일 설립하였으며 레진 도포 및 접합, 검사 설비 제작 기술과 물성분석기술 등을 바탕으로 디스플레이 전후공정 설비와 반도체 측정·검사 및 제조설비, 이차전지 검사장비, 잉크젯 프린팅 기술을 이용한 / 접목한 웨이퍼 검사장비인 Nano-Meis를 연구 개발하여 납품한 실적을 보유하고 있으며, 최근 열영상 현미경 기술을 KBSI를 통해 이전받아 반도체 공정장비 분야의 수요가 증가할 것으로 예상하고 있습니다. 당사가 영위하고 있는 장비사업은 수주산업으로 주문자 생산방식의 특성을 지니고 있어 수주상황에 따 / 내 기판 이송 장치 및 이를 위한 시스템 10-2482535 2022-12-26 - 9 국내 대형 프로브 카드를 사용하여 디스플레이 패널을 검사하는 장치 및 방법 10-2504856 2023-02-23 - 10 국내 / 디스플레이 제조용 장비(도포기, 조립기, 검사기)",
+   "evidence_source": "scan"
   },
   {
    "stock": "302430",
@@ -1833,34 +3690,86 @@
     {
      "key": "metro",
      "words": [
+      "x-ray",
       "엑스레이"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "metro",
    "front_back": "공통",
-   "evidence": "엑스레이검사 장비",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 X-ray를 이용한 글로벌 2차전지 검사장비 전문업체입니다. 당사의 검사장비는 방사선 투과검사(RT, Radiographic Testing) 기술을 이용하여 제품을 파괴하지 않고 외부에서 내부 / 엑스레이검사 장비 / 1. 사업의 개요 당사는 X-ray를 이용한 글로벌 2차전지 검사장비 전문업체입니",
+   "evidence_source": "scan"
   },
   {
    "stock": "319660",
    "name": "피에스케이",
    "stages": [
     {
+     "key": "thermal",
+     "words": [
+      "열처리",
+      "annealing",
+      "anneal",
+      "rtp",
+      "furnace"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "clean",
      "words": [
+      "세정",
       "클리닝",
+      "cleaning",
       "스트립",
       "드라이클리닝"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "cvd",
+      "pvd",
+      "epi"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "probe",
+      "burn-in"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "implant",
+     "words": [
+      "implant"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "cmp",
+     "words": [
+      "cmp"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "scrubber"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "clean",
-   "front_back": "전공정",
-   "evidence": "드라이스트립, 드라이클리닝",
-   "evidence_source": "product"
+   "primary": "thermal",
+   "front_back": "전후공정 겸업",
+   "evidence": "사업의 개요 당사는 2019년 4월 1일 설립되어 반도체 제조용 장비(전공정 장비) 및 부품의 제조, 판매, C/S를 주요사업으로 영위하고 있으며, 현재는 화성시 동탄 신도시 지구에 본사 및 공장, 성남시에 판교 / g Molding, Trimming/Forming, Banking, Soldering, Marking 검 사 Wafer Prober, Tester(Logic Tester, Memory Tester), Test Handler, Burn-In 기 타 설계, w / 문 사업부문 주 요 제 품 반도체장비 반도체장비부문 Dry Strip, Dry Cleaning, Wafer Edge Clean / Furnace, Annealing M/C, RTP 불순물 주입 Ion Implanter 박막 형성 CVD(LPCVD, APCVD, PECVD, MOCVD), PVD(Sputter,Evaporator), Epitaxial 성장, CMP 후 / 세정 및 건조 Wet Station, Dry Cleaning, Wafer Scrubber, Dryer 열처리 Furnace, Annealing M/C, RTP 불순물 주입 Ion Implanter 박막 형성 CVD(LPCVD / 드라이스트립, 드라이클리닝",
+   "evidence_source": "scan"
   },
   {
    "stock": "320000",
@@ -1869,15 +3778,25 @@
     {
      "key": "metro",
      "words": [
-      "비전검사"
+      "계측",
+      "비전검사",
+      "검사"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "본딩",
+      "후공정"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "metro",
-   "front_back": "공통",
-   "evidence": "비전검사장비",
-   "evidence_source": "product"
+   "front_back": "후공정",
+   "evidence": "컨덴서, 인덕터, 저항 등의 마이크로 칩 형태 수동부품의 외관/계측/포장 검사기, 디스플레이 제작공정 중 패널에 부품을 부착하는 BONDER 라인에서 정상적인 패널 위치와 부품의 부착 상태를 검사하는 디스플레이 검사기, 이차전지 / 컨덴서, 인덕터, 저항 등의 마이크로 칩 형태 수동부품의 외관/계측/포장 검사기, 디스플레이 제작공정 중 패널에 부품을 부착하는 BONDER 라인에서 정상적인 패널 위치와 부품의 부착 상태를 검사하는 디스플레이 검사기, 이차전지에 사용되는 동박필름의 외관을 검사하는 필름검사기를 주력 사 / 당사의 검사장비는 이러한 검사결과를 본딩 장비등 후공정 장비로 송출하는 역할까지 담당합니다. ③ 필름 검사장비 당사의 필름 검사장비는 이차전지용 필름의 불량을 검사하는 장비입니다. 주로 이차전지 / 비전검사장비 / 1) 머신비전 부문 당사는 머신비전(Machine Vision) 및 화상처리를 통한 전자 부품, 디스플레이, 필름 검사 S/W 개발 및 장비를 제작하고 있습니다. 컨덴서, 인덕터, 저항 등의 마이크로 칩 형태 수동부품의 외관/계측/포장 검사기, 디스플레",
+   "evidence_source": "scan"
   },
   {
    "stock": "321260",
@@ -1886,23 +3805,25 @@
     {
      "key": "test",
      "words": [
+      "프로브",
       "probe",
+      "프로브카드",
       "probe card"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "metro",
      "words": [
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "반도체검사장치 Probe Card",
-   "evidence_source": "product"
+   "evidence": "목적으로 2006년 2월에 설립되었으며, 독자적인 설계 기술력과 지속적인 연구개발을 통해 OLED 및 LCD 디스플레이 검사장치, 반도체 검사용 프로브카드 등을 제조 및 판매하는 글로벌 검사 장치 전문기업으로 자리 잡았습니다. 세계 최초의 필름형 프로브 블록(Probe Block) 특허를 기반으로 디 / 2008년 1월 전기전자제품 및 자동차의 자원순환에 관한 법률 전류나 전자기장에 의해 작동하는 전기 전자제품 (부분품 부속품 포함) 및 폐전기 폐전자제품 한국 2015년 1월 화평법 화 / 반도체검사장치 Probe Card / 사업의 개요 당사는 디스플레이 및 반도체 검사장치 제조와 판매를 목적으로 2006년 2월에 설립되었으며, 독자적인 설계 기술력과 지속적인 연구개발을 통해 OLED 및 LCD 디",
+   "evidence_source": "scan"
   },
   {
    "stock": "322310",
@@ -1912,24 +3833,64 @@
      "key": "metro",
      "words": [
       "계측",
-      "overlay"
+      "overlay",
+      "inspection",
+      "측정"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "tsv",
+      "후공정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "산화"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "metro",
-   "front_back": "공통",
-   "evidence": "반도체 Overlay 계측 장비",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "사업의 개요 당사는 반도체 제조 전공정 중 노광공정 장비인 반도체 Wafer의 MI(Metrology, Inspection) 장비 제조를 주력 사업으로 영위하는 업체로써 관련 원천기술을 다수 보유하고 있으며, 경쟁기업들의 제품과 비교하여 우수한 / 의 제품과 비교하여 우수한 성능 및 가격 경쟁력, 신속한 고객대응 서비스를 보유하여 MI(Metrology, Inspection) 장비와 관련하여 반도체 장비의 국산화를 성공시켰습니다. 당사의 제품 중 가장 많은 매출 비중을 차지하고 있는 Overlay 계측 장비는 반도체 공정상 회로패턴이 수없이 적층 / 노광장비를 통해 패턴이 한 장 쌓일 때마다 Overlay 계측을 통해 나노 단위로 오차를 파악하여 노광기의 위치를 보정하게 됩니다. 경쟁력 요소는 정밀도(T / (2) 후공정 Overlay & Critical Dimension(CD) 계측 장비 당사 Overlay & CD 계측장비는 TSV(Through Silicon Via)라는 후공정에서 사용됩니다. 소정의 패턴이 형성된 웨이퍼 표면을 측정하는 방법에 있어서, 웨이퍼 상에 형성된 패 / 반도체 Overlay 계측 장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "327260",
    "name": "RF머트리얼즈",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "광통신, RF통신용 패키지",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "pkg",
+     "words": [
+      "패키지",
+      "레이저"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "계측"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "pkg",
+   "front_back": "후공정",
+   "evidence": "패키지 142 469 703 군수용 패키지 1,336 2,259 1,074 군수용 장비부품 19,274 32,671 23,693 기타 2,398 5,053 5,637 소계 / 그 결과 처음에 군수용으로 주로 개발되던 것이 민수 사업으로 확장되어 오늘날에는 열 화상 카메라를 비롯한 여러 계측 장비에 적용되고 있습니다. (나) 시장규모 및 전망 1) 통신용 패키지 사업부문 화합물 반도체는 반도체의 안정된 동작을 위하여 밀 / 그중 자동차와 철강 분야에서는 금속의 절삭 용도로, 반도체 외 여러 분야에서는 레이저 마킹 용도로 사용되며, 의료 분야에서는 수술 또는 치료 목적으로 전 세계적으로 널리 사용되고 있습니다. 또한, 레이저를 이용한 무기 체계가 도입됨에 따 / 광통신, RF통신용 패키지",
+   "evidence_source": "scan"
   },
   {
    "stock": "330860",
@@ -1940,13 +3901,13 @@
      "words": [
       "테스트"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "반도체 테스트 서비스",
-   "evidence_source": "product"
+   "evidence": "반도체 테스트 서비스 / 당사가 테스트 솔루션을 제공하는 주요 제품군으로 ① 전력반도체(PMIC, Power Management IC), ② 디스플레이 구동칩(DDI, Display Driver IC), ③ SoC(System on Chip/ex.Application Processor), ④ RF(R",
+   "evidence_source": "scan"
   },
   {
    "stock": "347000",
@@ -1962,27 +3923,126 @@
    "name": "넥스틴",
    "stages": [
     {
+     "key": "photo",
+     "words": [
+      "노광",
+      "레티클",
+      "마스크"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "metro",
      "words": [
       "결함",
+      "측정",
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "implant",
+     "words": [
+      "이온주입",
+      "implant"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "패키징",
+      "tsv"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "열처리"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "cmp",
+     "words": [
+      "cmp"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "테스트"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "metro",
-   "front_back": "공통",
-   "evidence": "반도체 전공정용 패턴결함 검사장비(AEGIS 등)",
-   "evidence_source": "product"
+   "primary": "photo",
+   "front_back": "전후공정 겸업",
+   "evidence": "사업의 개요 반도체 전(前)공정 패턴 결함 검사 장비는 웨이퍼 표면에 형성된 전기 회로의 이미지를 촬상하고 반복되는 동일한 이미지를 서로 비교하여 차이점을 찾아내는 장비입니다. 웨이퍼 표면에 형 / [산업의 특성] 반도체 장비산업의 특징은 1) 기술집약형 산업, 2) 급속한 기술혁신이 요구되는 산업, 3) 반도체 업계의 성장추이에 종속, 4) 고가의 자본재 산업, 5) / 불순물 주입(Implantation) 공정, 3) 주입된 불순물이 박막에 적절히 분포하도록 열을 가하는 열처리 (Diffusion) 공정, 4)레티클(Reticle) 또는 마스크(Mask)에 사전 제작된 회로 패턴 (Pattern)을 박막 표면에 전사하기 위하여 감광제(Photo Resist)를 / HBM은 다수의 메모리 칩을 수직 적층(3D Stacking) 하고 TSV(Through-Silicon Via) 로 연결하여, 기존 DRAM 대비 월등히 높은 대역폭(Bandwidth) 과 에너지 효율(Efficiency) / 전자/전기 공학 ▶ 광학 ▶ 화학 ▶ 정밀가공 기술 ▶ 기계설계 ▶ 노광장비 ▶ 식각장비 ▶ 세정장비 ▶ CMP장비 ▶ 이온주입장비 ▶ 증착장비 ▶ 열처리장비 ▶ 측정분석장비 ▶ 패키징장비 ▶ 테스트장비 ▶ 반도체 소자 ▶ 디스플레이 ▶ LED/OLED ▶ 태양광장비 ▶ 바이오 ▶ ME / 반도체 전공정용 패턴결함 검사장비(AEGIS 등)",
+   "evidence_source": "scan"
   },
   {
    "stock": "348350",
    "name": "위드텍",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "AMCs 모니터링 시스템, 공정 프로세스 모니터링 시스템, TMS",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "handling",
+     "words": [
+      "foup",
+      "약액",
+      "가스"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "링"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "handling",
+   "front_back": "전공정",
+   "evidence": "2008-04-28 KR 3 제 10-0860269호 단일 웨이퍼 공정에서의 위에퍼 세정액 온라인 모니터링 방법, 웨이퍼 세정액 온라인 모니터링 장치 및 상기장치에 사용되는 시약 용기 2008-09-19 KR 4 제 10-0879009호 / 니터링 시스템), NaVi-TM100/TM200(산성가스/암모니아/오존 복합 모니터링) 공정 프로세스 CFR-100(FOUP 세정기 시스템),SOMA-1000/3000(UPW/약액 內 금속 이온 모니터링 시스템),WIM-100(약액 內 금속 이온 모니터링 시스템),SIT- / 원과 적극적인 현지 Demo를 통해 신규시장 및 신규 고객사 확대, 다변화 모색 (2) 시장점유율 (가) 경쟁상황 반도체 장비시장의 경우 초기 기술개발에 대한 어려움으로 시장접근이 어렵고, 기술개발 및 설비 투자 비용이 과다하여 신규업체가 진입하기 어려운 높은 진입 장벽을 / 웨이퍼 표면의 오염물 샘플링 노즐 및 샘플링 방법 2021-02-26 KR 49 제 10-2226471호 기판 검사기의 시료 용액 샘플링 방법 및 그 장치 2021-03-05 KR 50 제 10-2267278호 운송 인클로저 내 / AMCs 모니터링 시스템, 공정 프로세스 모니터링 시스템, TMS",
+   "evidence_source": "scan"
   },
   {
    "stock": "352090",
@@ -1996,11 +4056,28 @@
   {
    "stock": "355150",
    "name": "코스텍시스",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "RF PKG. Spacer",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "pkg",
+     "words": [
+      "본딩",
+      "범프",
+      "tsv"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "sic"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "pkg",
+   "front_back": "후공정",
+   "evidence": "HBM 3D 적층은 여러 개의 DRAM 다이를 TSV(Through-Silicon Via), 마이크로범프, 하이브리드 본딩 등 미세 인터커넥트 기술로 수직 적층하는 구조가 일반적이며, 매우 많은 수의 / RF PKG. Spacer / ompound Semiconductor 화합물 반도체 화합물 반도체는 주기율표의 서로 다른 원소가 결합하여 형성된 반도체 소재로, 대표적으로 GaN, GaAs, InP, SiC 등이 있음. 이러한 소재는 높은 전자 이동도, 높은 항복 전압 및 우수한 고주파 특성을 가지며,",
+   "evidence_source": "scan"
   },
   {
    "stock": "360350",
@@ -2009,15 +4086,51 @@
     {
      "key": "metro",
      "words": [
-      "현미경"
+      "현미경",
+      "검사"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "코터"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "스퍼터"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "링"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "service",
+     "words": [
+      "코팅"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "metro",
-   "front_back": "공통",
-   "evidence": "주사전자현미경(SEM)",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "사의 핵심 제품은 주사전자현미경(SEM), Tabletop 형태로 소형화한 주사전자현미경(Tabletop SEM) 및 전처리장비(이온밀러(IP), 이온코터(SPT))이며 상용화를 앞두고 있는 제품으로는주사전자현미경 기술을 응용한 이온밀링 결합 주사전자현미경(IP-SEM), 대기압 주사전자현미경(A SEM / 여 TEM, STEM, EELS와 같은 시료 전처리 장비로 사용하였으나 최근에는 단순 식각 방식이 아닌 대면적 식각방식을 접목하여 흔히 사용하는 Polisher와 동등하게 대면적으로 식각이 가능하고 더욱 정밀하게 식각이 가능해졌습니다. 이로써 재료 내부의 결정립 (Grain)과 결정립계 (Grain Bo / 다만, 전자현미경과 같이 고유의 기능과 확실한 용도를 가지고 있는 장비는 유행을 타는 소비재, 교체주기가 빠른 통신장비나 반도체 제조장비(process equipment)와 달리 시장의부침이 적고 기술수명주기(technology life cycle)가 상대적으로 긴 특징을 가지고 / 이러한 현상을 방지하고 고품질의 이미지를 얻기 위해서 얇은 전도성 층으로 샘플 표면을 덮는 과정이 필요합니다.당사의 이온코터 SPT-20은 DC 스퍼터링 원리를 이용하여 시료 표면에 전도성 물질(Au,Pt,Pd,Pt-Pd)을 코팅하는 장치입니다. 비전도체인 시료도 전자현미경에서 관찰을 위하여 사용하며 / 표면 정보나 소재를 개발하기 위한 재료과학 등 복잡한 결합구조의 3차원 정보를 얻고 싶을 때 많이 이용되며 재료의 표면 정보가 중요한 산업체에서 검사 장비로 이용이 확대되는 추세입니다. 당사는 일반적으로 사용되는 Normal SEM을 개발한 후 사업 전략을 시장 접근이 용이하고 기술 개발 기 / 주사전자현미경(SEM)",
+   "evidence_source": "scan"
   },
   {
    "stock": "382800",
@@ -2026,16 +4139,22 @@
     {
      "key": "handling",
      "words": [
+      "진공",
+      "진공펌프",
       "스크러버",
-      "트랩"
+      "scrubber",
+      "트랩",
+      "배관",
+      "펌프",
+      "가스"
      ],
-     "source": "product"
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
-   "evidence": "스크러버, 트랩, 백연제거장치 등",
-   "evidence_source": "product"
+   "evidence": "제품 종류 기능 스크러버(Scrubber) 일반 반도체, 디스플레이, 태양광 제조공정 유해가스 처리 무폐수 물 사용과 폐수 발생없이 공정시 / 플라즈마 백연 제거장치 - 저온, 저전력의 플라즈마를 이용한 백연제거 장치 파우더 트랩 - 공정상 진공펌프 배관에 쌓이는 파우더 최소화 장치 반도체 산업은 AI 4차산업 및 반도체법 시행 등 각 국가들이 반도체 생산량을 크게 늘 / UL 인증 (각제품별 미국 수출) - MET Laboratories 2022년 사업자 면허 반도체장비 제조업 면허 기계 설비 공사업 면허 환경 전문 공사업 면허 지방 세무서 및 관공서 2005년 / 스크러버, 트랩, 백연제거장치 등",
+   "evidence_source": "scan"
   },
   {
    "stock": "388210",
@@ -2044,24 +4163,67 @@
     {
      "key": "parts",
      "words": [
-      "소모성 부품"
+      "챔버",
+      "esc",
+      "소모성 부품",
+      "전극",
+      "링"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "cvd",
+      "ald"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각",
+      "etch"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "cmp",
+     "words": [
+      "cmp"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "parts",
-   "front_back": "공통",
-   "evidence": "반도체 장비용 소모성 부품",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "실리콘 링 (Silicon Ring) Wafer 주변에 장착되어 플라즈마 밀도를 균일하게 또는 정확하게 유지시켜 주며 Wafer 및 ESC, 전극 등을 보호하는 역할을 수행합니다. 실리콘 링의 종류는 Focus Ring, Insert Ring, Collar Ring, Shield Rin / 실리콘 파츠는 주로 식각 장비 내부, 특히 플라즈마가 발생하는 반응 챔버(Reaction Chamber)의 내벽이나 구성 요소로 사용되는 소모성 부품(Consumable Par / 환경에 적합한 정밀 부품으로, 장비 내부의 절연, 내마모, 내플라즈마, 내화학, 내열특성을 요구하는 부위에 사용되며 특히, 식각(Etch), 증착(CVD), ALD, CMP 등 Plasma나 고온·고화학 반응이 일어나는 공정에서 금속 오염 방지 및 부식 방지목적으로 필수적으로 사용됩니다. 사파이어 파 / 56,756 97.66 105,991 97.7 62,238 91.5 Ceramic Parts 기타 반도체 장비 소모품 325 0.35 477 0.3 338 0.3 77 0.1 Sapphire Par / 부품으로, 장비 내부의 절연, 내마모, 내플라즈마, 내화학, 내열특성을 요구하는 부위에 사용되며 특히, 식각(Etch), 증착(CVD), ALD, CMP 등 Plasma나 고온·고화학 반응이 일어나는 공정에서 금속 오염 방지 및 부식 방지목적으로 필수적으로 사용됩니다. 사파이어 파츠는 AI203 초고 / 반도체 장비용 소모성 부품",
+   "evidence_source": "scan"
   },
   {
    "stock": "389500",
    "name": "에스비비테크",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "베어링, 감속기",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "handling",
+     "words": [
+      "이송"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "링"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "handling",
+   "front_back": "공통",
+   "evidence": "robo bearing적용 반도체 장비 (주3) WRIST WRIST는 반도체 웨이퍼를 이송하는 로봇의 핵심 구동 부품입니다. 아래 사진과 같이 로봇의 / 베어링, 감속기",
+   "evidence_source": "scan"
   },
   {
    "stock": "402490",
@@ -2070,16 +4232,54 @@
     {
      "key": "service",
      "words": [
+      "세정 및 코팅",
       "보호코팅",
       "코팅"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "depo",
+     "words": [
+      "증착",
+      "pvd"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "장비 부품",
+      "장비용 부품"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "euv"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "가스"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "service",
-   "front_back": "공통",
-   "evidence": "반도체 및 디스플레이 장비 보호코팅 및 소재",
-   "evidence_source": "product"
+   "front_back": "전공정",
+   "evidence": "직접 개발 및 제조하여, 상부, 측면, 하부 각각의 부품에 적용할 수 있는 각 사양의 코팅층과 코팅이 응용된 부품을 제작하거나, 오염된 부품을 세정 및 코팅하고 있습니다. 반도체의 고효율화 및 디스플레이의 고도화 등으로 인하여 건식식각 공정의 환경이 급격하게 혹독해지며, 2020년 사업연도 이후부터 / 반도체 건식식각 장비 부품에 부식가스에 의한 식각 손상, 오염 물질 및 입자 발생을 방지하기 위하여 각각 특성과 사양에 맞는 보호코팅을 적용하고 있습니다. 이러한 / 한 개의 반도체 소자 내에서 더 많은 정보를 처리할 수 있는 방안으로 EUV 공정이 도입되기 시작하고 있습니다. 초미세 패터닝 공정은 EUV 광원을 이용하여 반도체 기판 위에 새겨지는 전자 회로의 물리적 선폭을 10nm 이하 / 사업의 개요 당사의 주 목적사업은 반도체 및 디스플레이 공정 장비용 부품에 적용되는 내식성과 내플라즈마성을 제고하는 보호코팅을 위한 코팅소재의 제조 및 코팅입니다. 반도체 건식식각 장비 부품에 부식가스에 의한 식각 손상 / 동사는 물리적 기상증착방식(PVD)을 활용한 초고밀도 코팅을 직접 개발 및 제조하여, 상부, 측면, 하부 각각의 부품에 적용할 수 있는 각 사양의 코팅층과 코팅이 응용된 부품을 제작 / 반도체 및 디스플레이 장비 보호코팅 및 소재",
+   "evidence_source": "scan"
   },
   {
    "stock": "403870",
@@ -2088,15 +4288,24 @@
     {
      "key": "thermal",
      "words": [
-      "어닐"
+      "어닐",
+      "annealing",
+      "anneal"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "링"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "thermal",
    "front_back": "전공정",
-   "evidence": "고압 수소 어닐링 장비",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 고유전율(High-K) 절연막을 사용하는 트랜지스터의 계면 특성을 개선하는 고압 수소 어닐링(High Pressure Annealing, 이하 \"HPA\") 장비에 대한 연구·개발 및 제조, 판매를 전문으로 하고 있습니다. / 당사의 고압 수소 어닐링 장비는 반도체 소자 계면의 문제점 개선을 목표로 연구개발하여 제품화한 반도체 전공정 장비입니다. 트랜지스터 막을 형성하는 High-K소재(HfO2, 하프늄옥사이드)는 28나노미터(이하 \"㎚\") 이하 공정에서 발생하는 터널링 현상으로 인 / 고압 수소 어닐링 장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "405100",
@@ -2105,24 +4314,83 @@
     {
      "key": "test",
      "words": [
+      "burn-in",
       "신뢰성"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "패키징"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "test",
    "front_back": "후공정",
-   "evidence": "반도체 신뢰성 검사 및 종합분석",
-   "evidence_source": "product"
+   "evidence": "대응하여 업스크리닝, 반도체 소프트에러(SEE)/SEU 평가, 무선주파수 수명 예측(RF HTOL) 서비스, GaN RF 반도체 수명평가, AI Burn-in, HBM 신뢰성 평가 및 첨단 패키징 관련 종합분석 서비스를 유기적으로 연계합니다. 서비스, 분석, 장비 개발 역량의 결합을 통해 고객사의 개발 / bal Automotive Semiconductor Market Overview [출처 :research Nester] 바) 반도체 장비 2026년부터 2027년까지 글로벌 반도체 장비 시장은 인공지능(AI) 인프라 확충과 최첨단 공정 전환에 힘입어 시장 규모가 확대될 전망입니 / 2023-06-21 2041-04-15 특허청 7 특허권 전력 반도체 소자의 검사 방법, 및 이를 위한 검사 시스템 큐알티 2021-10-21 2023-09-27 2041-10-21 특허청 8 특허권 복합가속 / 반도체 신뢰성 검사 및 종합분석",
+   "evidence_source": "scan"
   },
   {
    "stock": "412350",
    "name": "레이저쎌",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "에어리어 레이저솔루션, LSR, LCB, LSB, BSOM 등",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "test",
+     "words": [
+      "테스트",
+      "프로브",
+      "probe",
+      "프로브카드",
+      "probe card"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "패키징",
+      "tsv",
+      "리플로",
+      "레이저"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "챔버",
+      "전극"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "진공"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "test",
+   "front_back": "후공정",
+   "evidence": "제작된 수천개에서 수만개의 프로브핀(Probe pin)을 가진 기판 형태의 카드 2.5D / 3D 패키징 TSV(Through Silicon Via, 실리콘 관통전극) 또는 유사한 기술을 사용하여 칩과 칩을 수직방향으로 3차원적으로 연결하는 기술. 2.5D패키 / 이에 기존의 장비 회사가 반도체 장비 회사, 디스플레이 장비 회사 등으로 나누어져 전방산업의 수요 변동에 큰 폭으로 영향을 받았던 부분에서 일부 탈피를 할 수 있을 것으로 판단됩니다. / 에서 외부 업체가 설계한 반도체 제품을 위탁받아 생산공급하는 공장을 가진 전문 생산 업체 또는 이 업체가 수행하는 사업 프로브카드 (Probe Card) 반도체의 동작을 검사하기 위하여 웨이퍼 상태의 반도체 칩과 테스트 장비를 연결해 주는 웨에퍼보다 약간 크게 / 레이저 광학모듈 설계 및 제조기술 - 레이저 리플로우 장비 (LSR) - 레이저 가압 리플로우 장비 (LCB) - 반도체검사기판용 레이저 리플로우 장비(LPB) 차세대 디스플레이 - 대면적 면광원 라인빔 광학모듈(BSOM) 설 / 우를 갖는 플랫탑 레이저빔 헤드 모듈 특허 2022-0063645 등록 2024.08.12 2695706 진공챔버를 구비한 가압 방식의 레이저 리플로우 장치 특허 2022-0063635 등록 2025.01.05 2752100 / 에어리어 레이저솔루션, LSR, LCB, LSB, BSOM 등",
+   "evidence_source": "scan"
   },
   {
    "stock": "417500",
@@ -2135,29 +4403,59 @@
       "포토마스크",
       "마스크"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "parts",
      "words": [
-      "쿼츠"
+      "쿼츠",
+      "반도체용"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "신뢰성"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "photo",
-   "front_back": "전공정",
-   "evidence": "반도체 프리커서 및 쿼츠/블랭크/포토마스크용 케이스",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "사업의 개요 주식회사 제이아이테크 및 종속회사는 반도체용 프리커서 원료 및 제품과 FPD용 포토마스크 케이스 원료 및 제품을 생산, 판매하고 있습니다. 또한, OLED 유기재료를 정제가공하여 디스플레이 제조사에 납품하고 있으며, CO2를 포집하여 / 포토마스크 사업과 관련하여 쿼츠/블랭크/포토마스크 공정 특성상 케이스 제품은 기술력과 더불어 신뢰성이 보장 되어야만 제조업체에 납품할 수 있습니다. 따라서 각 완제품 제조업체는 제품 / 반도체 프리커서 및 쿼츠/블랭크/포토마스크용 케이스 / 사업의 개요 주식회사 제이아이테크 및 종속회사는 반도체용 프리커서 원료 및 제품과 FPD용 포토마스크 케이스 원료 및 제품을 생산, 판매하고 있습니다. 또한, OLED 유기재료를 정제가공하여 디스플레이 제조사에 납",
+   "evidence_source": "scan"
   },
   {
    "stock": "419080",
    "name": "엔젯",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "EHD 잉크젯 프린터, EHD 코터",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "depo",
+     "words": [
+      "증착"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "진공"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "장비 부품"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "depo",
+   "front_back": "전공정",
+   "evidence": "당사 주요 제품군 <EHD 프린터, 코터 등 주요 제품> 그림02 <주요 기능성 전자 소재> 그림03 / omated Multifunction Repair) 시리즈는 당사의 EHD 초정밀 인쇄 기술, 레이저, 픽앤플레이스(Pick & Place), AI 검사 기술을 하나의 시스템에 복합 통합한 마이크로디바이스 리페어 장비입니다. 마이크로LED 디스플레이의 칩 리페어 공정에 주력으로 활용되며, 2025년부터 / 성 글로벌 스마트폰 제조기업들은 스마트폰 보급이 급격히 증가함에 따라 원가절감의 혁신을 이루어 가격 경쟁력을 확보하고자 투자비용이 높은 진공 증착 장비의 대체 기술을 탐색하고 있었습니다. 2015년에는 20nm급의 초박막 코팅을 요구하는 스마트폰 지문방지(Anti-fingerprinting) 공정 / 구분 품목 주요이용고객 판매전략 장비 부품 소재 eNano Spray Coater A사 외 디스플레이용 OLED산업의 특성상 디스플레이 패널 제조 기업을 중심으로 판매 / EHD 잉크젯 프린터, EHD 코터",
+   "evidence_source": "scan"
   },
   {
    "stock": "420770",
@@ -2166,34 +4464,68 @@
     {
      "key": "metro",
      "words": [
+      "결함",
+      "inspection",
       "광학검사",
       "검사"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "레이저"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "metro",
-   "front_back": "공통",
-   "evidence": "반도체 기판용 광학검사 및 수리장비",
-   "evidence_source": "product"
+   "front_back": "후공정",
+   "evidence": "사업의 개요 기가비스 주식회사는 2004년 설립된 반도체 기판 자동광학검사기(AOI: Automatic Optical Inspection) 및 자동광학수리기(AOR: Automatic Optical Repair)를 제작/판매 / tomatic Optical Inspection) 및 자동광학수리기(AOR: Automatic Optical Repair)를 제작/판매하는 글로벌 반도체 장비 업체입니다. 당사는 광학기술을 통해서 반도체 기판의 결함을 검사(AOI장비)하고, 레이저 가공 기술을 통해서 불량을 수리하여 수율을 향상(AOR장 / 반도체 기판용 광학검사 및 수리장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "424980",
    "name": "마이크로투나노",
    "stages": [
     {
+     "key": "etch",
+     "words": [
+      "식각",
+      "etch",
+      "etcher"
+     ],
+     "source": "scan"
+    },
+    {
      "key": "test",
      "words": [
       "테스트",
-      "프로브"
+      "프로브",
+      "프로브카드"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "photo",
+     "words": [
+      "포토",
+      "euv"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "검사"
+     ],
+     "source": "scan"
     }
    ],
-   "primary": "test",
-   "front_back": "후공정",
-   "evidence": "메모리 테스트용 프로브 카드",
-   "evidence_source": "product"
+   "primary": "etch",
+   "front_back": "전후공정 겸업",
+   "evidence": "사업의 개요 당사는 MEMS(Micro-Electro Mechanical Systems) 기술을 기반으로 반도체 테스트 공정에 사용되는 프로브카드 및 파운드리 서비스를 제공하는 전문 기업입니다. 핵심 제품인 프로브카드는 반도체 칩이 집적된 웨이퍼에 직접 접촉하여 전기 신호를 전달하고, 이를 / 이 장비는 반도체 장비에 속하지만, 반도체 제품의 종류가 변경될 때마다 새로운 제품으로 교체해야 하므로 소모품적인 성격을 갖고 있습니다. 프로브카드 제조사는 고객사 / 이에따라 반도체 생산 공정에서의 불량 여부를 판정하기 위한 검사시스템도 제조 기술에 비례하여 빠른 발전이 요구되고 있습니다. 이러한 검사시스템의 핵심 소모품인 프로브카드의 개발의 중요도는 상당히 높습니다. / 프로브카드는 아직 포토리소그래피용 EUV(Extreme Ultraviolet) 공정 장비, 식각용 etcher 등과 같은 반도체 전공정 장비처럼 무역 규제 품목에 포함되지 않지만, 상대적으로 기술적 난이도가 전공정 장비보다 낮아 자국 기업들로부터 공급받으려 / 프로브카드는 아직 포토리소그래피용 EUV(Extreme Ultraviolet) 공정 장비, 식각용 etcher 등과 같은 반도체 전공정 장비처럼 무역 규제 품목에 포함되지 않지만, 상대적으 / 메모리 테스트용 프로브 카드",
+   "evidence_source": "scan"
   },
   {
    "stock": "451220",
@@ -2203,22 +4535,69 @@
      "key": "clean",
      "words": [
       "세정",
+      "cleaner",
       "건식세정"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "photo",
      "words": [
+      "노광",
       "euv"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "test",
+     "words": [
+      "테스트",
+      "프로브"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "측정",
+      "검사"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "etch",
+     "words": [
+      "식각"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "thermal",
+     "words": [
+      "열처리"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "장비 부품"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "레이저",
+      "laser"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "clean",
-   "front_back": "전공정",
-   "evidence": "건식세정 장비 및 EUV Mask Baking Laser",
-   "evidence_source": "product"
+   "front_back": "전후공정 겸업",
+   "evidence": "사업의 개요 당사는 건식세정 장비 사업, 레이저 열처리 응용 장비 사업 및 반도체 화학 분석 장비 사업, 첨단 산업용 소재ㆍ부품 사업을 영위하고 있습니다. 건식세정은 화학약품 또는 / 광학적 측정 EDS 웨이퍼 상태에서 완성된 각각의 반도체 다이의 전기적 테스트 레이저 프로브 카드 Cleaner (세계최초, 다수 고객사 채택) 후 공 정 조립 패턴 웨이퍼를 / 0P 제10-1814493호 등록 15 특허 반도체 장비 부품의 세정 장치 및 방법 ㈜아이엠티 2018년 06월 01일 국내 100P, 2 / 고객사의 증가하는 정밀 제품 생산을 위한 세정 기술과 높은 시너지를 보여주는 분석 검사 기술로 고객사의 문제를 해결하는 토탈 솔루션을 제공하고 있습니다. [반도체 공정 일람 및 당사가 참여하는 분 / 전 공 정 노광 빛을 사용하여 웨이퍼 위에 회로 패턴을 그려 넣는 작업 EUV Mask용 레이저 응용 장비 (세계최초, 고객사 A 공동개발) 식각 그려진 회로도를 깎아서 반도체 구조물 / 건식세정 장비 및 EUV Mask Baking Laser",
+   "evidence_source": "scan"
   },
   {
    "stock": "452160",
@@ -2227,40 +4606,81 @@
     {
      "key": "handling",
      "words": [
-      "진공"
+      "진공",
+      "진공펌프",
+      "펌프"
      ],
-     "source": "product"
+     "source": "scan"
     },
     {
      "key": "parts",
      "words": [
+      "챔버",
       "정밀가공 부품"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "metro",
+     "words": [
+      "측정"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
-   "evidence": "진공 펌프용 유틸리티 장치(Stacker 등), 정밀가공 부품",
-   "evidence_source": "product"
+   "evidence": "사업의 개요 당사는 주로 반도체 제조 시설에 들어가는 진공펌프 연동 utility platform인 stacker system 장비 제조와 초고진공 펌프에 들어가는 정밀가공부품을 공급하고 있습니다. 가. 장비제 / 반도체 장비 성능에 직접적인 영향을 주는 진공 펌프의 펌핑 스피드를 일정하게 유지하기 위해 진공 챔버와 가깝게 설치하여 진공 펌프가 최상의 성능을 발휘할 수 / 1 μm 단위의 정밀 가공장비를 보유하고있고, 0.1 μm 단위의 수치 측정까지 할 수 있는 3차원측정 장비를 통해 고정밀 가공이 필요한 진공펌프 부품들을 안정적으로 공급하고 있습니다. / 진공 펌프용 유틸리티 장치(Stacker 등), 정밀가공 부품",
+   "evidence_source": "scan"
   },
   {
    "stock": "452190",
    "name": "한빛레이저",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "산업용 레이저 가공장비",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "metro",
+     "words": [
+      "inspection"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "pkg",
+     "words": [
+      "laser"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "metro",
+   "front_back": "후공정",
+   "evidence": "(4) 경기 변동의 특성 레이저 가공장비의 전방산업은 이차전지, 자동차, 마이크로일렉트로닉스 시장으로, 이들 시장은 글로벌 경기 변동에 따라 수요와 공급이 결정되기 때문에 경기변동에 밀 / aser stripping 피복제거 시스템 - 반도체 및 전자 초미세 부품 피복제거 장비- 비전시스템을 이용해, Pre & Post inspection 진행 Laser Film cutter PCB Film Cutting System - PCB 및 FPCB 제조중 / 산업용 레이저 가공장비",
+   "evidence_source": "scan"
   },
   {
    "stock": "452280",
    "name": "한선엔지니어링",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "계장용 피팅 및 밸브, 모듈",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "metro",
+     "words": [
+      "계측"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "handling",
+     "words": [
+      "밸브",
+      "피팅"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "metro",
+   "front_back": "공통",
+   "evidence": "이러한 생산 기반을 바탕으로 초고순도(UHP) 피팅 및 밸브 제품의 품질 경쟁력을 강화하고 있으며, 국내 반도체 장비업체뿐만 아니라 유럽 및 미주 등 해외 시장으로도 공급 범위를 확대하고 있습니다. 최근에는 미주 지역 현지 파트너를 통해 글로벌 반도체 제조사 및 / 사업의 개요 당사는 계측장비용(계장용) 피팅, 밸브 및 플러밍 제품의 제조ㆍ판매를 주력 사업으로 영위하고 있으며, 자체 브랜드인 S-LOK을 통해 국내외 다양한 전방산업에 제품 / 계장용 피팅 및 밸브, 모듈",
+   "evidence_source": "scan"
   },
   {
    "stock": "455180",
@@ -2299,22 +4719,51 @@
       "클린룸",
       "드라이룸"
      ],
-     "source": "product"
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "세라믹"
+     ],
+     "source": "scan"
     }
    ],
    "primary": "handling",
    "front_back": "공통",
-   "evidence": "드라이룸/클린룸 등 건물용 기계, 장비 설치 공사업",
-   "evidence_source": "product"
+   "evidence": "0.3 전산기기 전산기 제조공정, 전산기 사용실 100~10,000 0.5~100 요업 정밀 세라믹 100~10,000 0.1 인쇄 정밀제판, 전자제판 1,000~10,000 0.3 합성 / 드라이룸/클린룸 등 건물용 기계, 장비 설치 공사업 / 사업의 개요 최근 AI, IoT 등 4차 산업혁명에 따른 반도체 수요 증가와 전기차용 배터리 시장의 확대로 클린룸과 드라이룸의 중요성이 부각되고 있습니다. 당사의 드라이룸 시스템과 클린룸 시스템은 반도체, 2차전지, 바이오 등 다양한 분야(",
+   "evidence_source": "scan"
   },
   {
    "stock": "482630",
    "name": "삼양엔씨켐",
-   "stages": [],
-   "primary": null,
-   "front_back": "",
-   "evidence": "반도체 포토레지스트용 기초화합물(KrF PR용 소재, ArF PR용 소재, Wet Chemical)",
-   "evidence_source": null
+   "stages": [
+    {
+     "key": "photo",
+     "words": [
+      "노광"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "clean",
+     "words": [
+      "세정"
+     ],
+     "source": "scan"
+    },
+    {
+     "key": "parts",
+     "words": [
+      "반도체용"
+     ],
+     "source": "scan"
+    }
+   ],
+   "primary": "photo",
+   "front_back": "전공정",
+   "evidence": "IT수요 및 반도체 제조사의 Capex 정책에 따라 반도체 장비, 소재 업체의 실적 또한 영향을 받는 구조이며, 당사가 영위하는 포토레지스트(PR)용 소재(Polymer, PAG)는 DRAM, NAND 등 메모 / 반도체 포토레지스트용 기초화합물(KrF PR용 소재, ArF PR용 소재, Wet Chemical) / 한국표준산업분류상 그 외 기타 화학제품 제조업(C2049)에 속하는 회사로 반도체용 정밀화학 소재를 전문적으로 개발 및 생산하는 기업으로 글로벌 반도체 소재 선도 기업을 목표로 하고 있습니다. 당사는 반도체용 정밀화학 소재를 전문으로 생산하는 기업으로, 반도체 제조 공정 중 노광 공정 및 세정 공정에",
+   "evidence_source": "scan"
   }
  ]
 }

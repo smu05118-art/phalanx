@@ -1,0 +1,82 @@
+# 한국반도체장비(argus/ksemi) 일일 자동 갱신.
+#
+# 「단일판매ㆍ공급계약체결」(I001)은 매일 새로 뜨고, 정기보고서 II-4 수주상황은 분기마다
+# 뜬다. 둘 다 캐시가 있으면 건너뛰므로 평시 비용은 검색 몇 건이다. 수집기는 **하나씩**
+# 돌린다 — DART는 공인 IP 단위로 막는다(kce·kship 과 같은 concurrency 그룹을 쓴다).
+#
+# 매출인식 기준·주요고객 주석은 **사업보고서에만** 있어서 4Q 때만 새로 받는다
+# (반기보고서의 「중요한 회계정책」 절은 수익 문단이 통째로 빠져 있다 — PROGRESS §1-4).
+name: update-ksemi
+on:
+  schedule:
+    - cron: "20 2 * * *"          # 11:20 KST — kce(10:00)·kship(10:40) 뒤
+  workflow_dispatch:
+    inputs:
+      quarter:
+        description: "정기보고서 기준 분기 강제(예: 2026Q3) — 비우면 최신 분기"
+        required: false
+permissions:
+  contents: write
+concurrency:
+  group: kship-dart               # kce·kship 과 같은 그룹 — DART 는 IP 당 프로세스 하나
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Tests (before)
+        run: cd argus/ksemi/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Collect and build
+        id: build
+        continue-on-error: true
+        env:
+          QUARTER_INPUT: ${{ github.event.inputs.quarter }}
+        shell: bash
+        working-directory: argus/ksemi/tools
+        run: |
+          set -o pipefail
+          Q=()
+          if [ -n "${QUARTER_INPUT:-}" ]; then
+            if ! printf '%s' "$QUARTER_INPUT" | grep -Eq '^[0-9]{4}Q[1-4]$'; then
+              echo "::error::quarter 형식은 YYYYQn"; exit 2
+            fi
+            Q=(--quarter "$QUARTER_INPUT")
+          fi
+          python3 ksemi_universe.py --write
+          python3 ksemi_scan.py --write
+          python3 build_dicts.py --write
+          python3 ksemi_contracts.py --all --write
+          python3 ksemi_reports.py --write "${Q[@]}"
+          python3 ksemi_page.py --all
+          python3 ksemi_parts.py --write
+      - name: Tests (after)
+        run: |
+          cd argus/ksemi/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+          git diff --check || true
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "ksemi-bot"
+          git config user.email "ksemi-bot@users.noreply.github.com"
+          git reset -q -- '*.pyc' '**/__pycache__/**' 2>/dev/null || true
+          if [ -z "$(git status --porcelain -- argus/ksemi)" ]; then
+            echo "변경 없음"; exit 0
+          fi
+          git add -- argus/ksemi
+          git commit -m "ksemi: 자동 갱신 $(date -u +%Y-%m-%d) (계약공시·정기보고서 수주상황·페이지)"
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Fail if build errored
+        if: always() && steps.build.outcome == 'failure'
+        run: |
+          echo "::error::수집·생성 단계 실패 — 성공한 산출물은 커밋됐다. 로그를 확인하라"
+          exit 1
