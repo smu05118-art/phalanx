@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>탈로스 — 방산 수주</title>
+<link rel="stylesheet" href="../assets/kdef.css">
+</head>
+<body>
+<header class="top"><div class="hd"><h1>탈로스</h1><span class="tag">434190</span><span class="tag">코넥스</span><span class="tag">부품</span><span class="tag">일차전지 및 이차전지 제조업</span><span class="sp"><a href="../index.html">허브</a><a href="../parts.html">인포그래픽</a><a href="../coverage.html">커버리지</a><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260323001652" target="_blank" rel="noopener noreferrer">DART 원문 ↗</a></span></div><div class="crumb"><a href="../../index.html">ARGUS</a> › <a href="../index.html">한국방산</a> › <span>탈로스</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">수주잔고·부문매출은 정기보고서 II-4에서, 사업 단위 계약(사업명·계통·유형·금액·기간·상대)은 수시공시 「단일판매ㆍ공급계약체결」에서 읽었습니다. 방산 수주표는 보안 때문에 요약만 공시하는 회사가 있어, 잔고가 없으면 그 사실을 그대로 적습니다.</p>
+<div class="kpi"><div class="hero"><b class="mut">—</b><span>수주잔고</span><i class="mut">정기보고서 II-4 수주표를 찾지 못함</i></div><div><b class="mut">—</b><span>잔고 커버리지</span><i class="mut">잔고 또는 연매출 열을 못 읽음</i></div><div><b>0<small>건</small></b><span>방산 계약 공시 · 0억</span><i class="mut">민수 0건은 따로 셈</i></div></div>
+<div class="grid2" style="margin-top:20px">
+ <section class="card" style="margin-top:0"><h2>수주잔고 추이 <em>정기보고서 II-4 · 억원</em></h2>
+  <div class="chart"><canvas id="cRoll"></canvas></div></section>
+ <section class="card" style="margin-top:0"><h2>계통 구성 <em>계약 공시 금액 기준 · 억원</em></h2>
+  <div class="chart"><canvas id="cDom"></canvas></div></section>
+</div>
+<section class="card"><h2>수주 롤포워드 <em>회사마다 표 모양이 다릅니다 — 원문 모양을 같이 적습니다</em></h2><div class="wrap"><table><thead><tr><th class="l">분기</th><th>기초</th><th>수주총액</th><th>기납품액</th><th>수주잔고</th><th class="l">표 모양</th><th class="l">비고</th><th class="l">출처</th></tr></thead><tbody><tr><td class="l">2025Q4</td><td>—</td><td>—</td><td>—</td><td><b>—</b></td><td class="l mut">—</td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260323001652" target="_blank" rel="noopener noreferrer">원문</a></td></tr></tbody></table></div></section>
+<section class="card"><h2>부문 매출 <em>2025Q4 · 억원 · 부문 이름은 원문 그대로, 방산/민수 판정은 이름에서 — 한쪽으로 못 가르면 <b>혼재</b></em></h2><div class="wrap"><table data-sortable><thead><tr><th class="l">부문(원문)</th><th class="l">품목</th><th class="l">판정</th><th class="l">구분</th><th>금액(억)</th></tr></thead><tbody><tr><td class="l">제품</td><td class="l mut">리튬이온 이차전지</td><td class="l">미판정</td><td class="l">내수</td><td data-v="9823">98</td></tr><tr><td class="l">제품</td><td class="l mut">리튬이온 이차전지</td><td class="l">미판정</td><td class="l">합계</td><td data-v="9823">98</td></tr><tr><td class="l">합 계</td><td class="l mut">합 계</td><td class="l">혼재</td><td class="l">수출</td><td data-v="4">0</td></tr><tr><td class="l">합 계</td><td class="l mut">합 계</td><td class="l">혼재</td><td class="l">내수</td><td data-v="10126">101</td></tr><tr><td class="l">합 계</td><td class="l mut">합 계</td><td class="l">혼재</td><td class="l">합계</td><td data-v="10126">101</td></tr></tbody></table></div></section>
+<div class="grid2">
+ <section class="card"><h2>계약 유형 구성 <em>계약명에서 읽은 유형 · 이익 성격이 다릅니다</em></h2>
+  <div class="chart"><canvas id="cType"></canvas></div>
+  <p class="mut" style="font-size:12px;margin-top:10px">탐색·체계개발은 원가보상 성격, 최초양산은 초기 원가,
+   후속양산은 원가절감분이 이익, 성능개량·후속군수지원(PBL)은 장기 매출입니다. 계약명에서 못 읽으면 '미상'입니다.</p></section>
+ <section class="card"><h2>계약 상대 <em>방산은 상대가 공개입니다</em></h2><p class="mut">계약 공시가 없습니다.</p></section>
+</div>
+<section class="card"><h2>계약 공시 <em>단일판매ㆍ공급계약체결 · 0건(민수 포함 0건)</em></h2><div class="ctl"><input data-filter="#ct434190" type="search" placeholder="사업명·계통·유형·상대 검색"></div><div class="wrap tall"><table id="ct434190" data-sortable><thead><tr><th class="l">수주일</th><th class="l">계통</th><th class="l">유형</th><th class="l">사업명(체결계약명)</th><th>금액(억)</th><th>기간(년)</th><th class="l">계약상대</th><th class="l">계약기간</th><th class="l">출처</th></tr></thead><tbody></tbody></table></div></section>
+<section class="card"><h2>부품 분류 <em>계약명·정기보고서 본문·KIND 주요제품 문구에서 읽은 낱말 — 칩에 근거가 붙어 있습니다</em></h2><div class="chips"><a class="chip" href="../parts.html#ELEC.POWER" title="근거: KIND 주요제품 「이차전지」">전원·배전</a></div></section>
+
+<div class="note info"><p>이 회사는 정기보고서에 <b>보안 관계상 수주 상세를 생략한다</b>고 적었습니다 — 잔고는 요약치(잔액·기말)만 공시됩니다.</p> <p>방산 계약은 <b>진행기준</b> 수익인식이 많아 수주·인도·매출 시점이 다릅니다. 잔고 커버리지는 '몇 년치 일감'을 보는 값이지 연도별 매출 예측이 아닙니다.</p></div>
+<script>const DATA={"roll":[{"q":"2025Q4","backlog":null,"def":null}],"doms":[],"ctypes":[]};</script>
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+</script>
+<script>
+(function(){
+  if(DATA.roll.length){
+    new Chart(document.getElementById('cRoll'),{type:'line',data:{labels:DATA.roll.map(function(r){return r.q}),
+      datasets:[{label:'수주잔고(억)',data:DATA.roll.map(function(r){return r.backlog==null?null:Math.round(r.backlog/100)}),
+        borderColor:'#3987e5',backgroundColor:'rgba(57,135,229,.18)',fill:true,tension:.25,spanGaps:true},
+       {label:'방산분(억)',data:DATA.roll.map(function(r){return r.def==null?null:Math.round(r.def/100)}),
+        borderColor:'#c98500',backgroundColor:'rgba(201,133,0,.14)',fill:true,tension:.25,spanGaps:true}]},
+      options:{scales:{y:{ticks:{callback:function(v){return v.toLocaleString()}}},x:{grid:{display:false}}}}});
+  }
+  if(DATA.doms.length){
+    new Chart(document.getElementById('cDom'),{type:'bar',data:{labels:DATA.doms.map(function(d){return d.ko}),
+      datasets:[{label:'계약금액(억)',data:DATA.doms.map(function(d){return Math.round(d.amt/100)}),
+        backgroundColor:DATA.doms.map(function(d){return d.color})}]},
+      options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){
+        var d=DATA.doms[c.dataIndex];return (c.parsed.x||0).toLocaleString()+'억 · '+d.n+'건'}}}},
+        scales:{x:{ticks:{callback:function(v){return v.toLocaleString()}}},y:{grid:{display:false}}}}});
+  }
+  if(DATA.ctypes.length){
+    new Chart(document.getElementById('cType'),{type:'doughnut',data:{labels:DATA.ctypes.map(function(d){return d.ko}),
+      datasets:[{data:DATA.ctypes.map(function(d){return Math.round(d.amt/100)}),
+        backgroundColor:DATA.ctypes.map(function(d){return d.color})}]},
+      options:{plugins:{tooltip:{callbacks:{label:function(c){var d=DATA.ctypes[c.dataIndex];
+        return d.ko+': '+(c.parsed||0).toLocaleString()+'억 · '+d.n+'건'}}}}}});
+  }
+})();
+</script>
+<script>
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+</script>
+</main>
+<footer>출처 DART 정기보고서(사업의 내용·주석)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 방산 계약은 진행기준 수익인식이 많아 수주·인도·매출 시점이 다릅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>

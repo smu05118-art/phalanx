@@ -41,10 +41,16 @@ CACHE = os.path.join(ASSETS, "contracts")
 # 원문 실례는 FINDINGS §1. `대한민국 방위사업청`·`방위사업청(Defense Acquisition…)` 처럼
 # 영문 병기가 붙으므로 부분일치로 본다.
 _GOV = re.compile(r"방위사업청|국방과학연구소|국방기술진흥연구소|대한민국\s*국방부|육군|해군|공군|해병대|"
-                  r"국군|조달청|Defense Acquisition Program|DAPA")
+                  r"국군|조달청|경찰청|해양경찰|산림청|소방청|관세청|한국수력원자력|한국전력|"
+                  r"대한무역투자진흥공사|KOTRA|한국항공우주연구원|한국원자력|국가정보원|"
+                  r"Defense Acquisition Program|DAPA")
 # 해외 국방부 — `크로아티아 국방부 (The Ministry of Defence…)`. 우리 국방부와 섞이지 않게
 # `대한민국`이 함께 적힌 건은 GOV 로 보낸다.
-_G2G = re.compile(r"국방부|Ministry of Defen[cs]e|Ministry of National Defen[cs]e|Defence Ministry")
+# 해외 국방 조달기관은 이름이 나라마다 다르다 — `노르웨이 국방물자청(NDMA)`·`폴란드 군비청`.
+# 기업으로 분류하면 방산 수출(G2G)이 통째로 '해외 기업'이 된다(실측).
+_G2G = re.compile(r"국방부|국방물자청|국방조달|군비청|방위성|방위장비청|국방획득|국방부처|"
+                  r"Ministry of Defen[cs]e|Ministry of National Defen[cs]e|Defence Ministry|"
+                  r"Defen[cs]e Materiel|Armament Agency|Defen[cs]e Acquisition(?! Program Admin)")
 _KR = re.compile(r"대한민국|Republic of Korea")
 # 익명 표기 — 실측 19건 중 1건(KAI `해외 완제기 업체`). 이름이 없으면 없다고 적는다.
 _ANON = re.compile(r"비공개|공시유보|유보|익명|영업비밀|소재\s*업체|소재\s*법인|"
@@ -197,10 +203,14 @@ _DEF_PAY = re.compile(r"방위산업에\s*관한\s*착수금\s*및\s*중도금\s
 
 
 def _fields_from_kv(kv):
-    name = _find(kv, "체결계약명") or _find(kv, "계약명") or ""
+    # 양식이 두 갈래다 — 유가증권 「- 체결계약명」, 코스닥 「1. 판매ㆍ공급계약 내용」.
+    # 코스닥 양식을 안 보면 계약명이 통째로 빈칸이 된다(실측 57건: 스페코·한일단조 등).
+    name = (_find(kv, "체결계약명") or _find(kv, "계약명")
+            or _find(kv, "판매", "공급계약", "내용") or _find(kv, "공급계약 내용") or "")
     if not name and _find(kv, "판매공급계약구분"):
         name = _find(kv, "세부내용") or ""
-    amt_krw = num_of(_find(kv, "계약금액(원)") or _find(kv, "계약금액") or "")
+    amt_krw = num_of(_find(kv, "계약금액 총액(원)") or _find(kv, "계약금액(원)")
+                     or _find(kv, "확정 계약금액") or _find(kv, "계약금액") or "")
     party = _find(kv, "계약상대") or ""
     kind, prime = party_kind(party)
     start = _date(_find(kv, "계약기간", "시작") or _find(kv, "시작일") or "")

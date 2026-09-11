@@ -307,6 +307,11 @@ def parse_revenue_table(t):
                      "segkind": seg_kind(seg) or seg_kind(" ".join(labels))})
     if not rows:
         return None
+    # `판매경로·판매방법·판매전략` 표는 매출실적이 아니라 영업방식 설명이다 —
+    # 시장구분 열에 내수/수출이 적혀 있어 매출표로 오인된다(한화시스템 실측: 비중 100 을
+    # 매출로 읽어 연매출이 1억원이 된다).
+    if re.search(r"판매경로|판매방법|판매전략", " ".join(t["cols"])):
+        return None
     head = " ".join(t["cols"][:max(1, i_kind + 1)])
     basis = "customer" if (_CUST_COL.search(head) or _CUST_COL.search((t.get("lead") or "")[-120:])) \
         else "segment"
@@ -341,6 +346,7 @@ def parse_segment_sales(t):
         return None
     i_pct = next((i for i, c in enumerate(cols)
                   if i > i_amt and ("비중" in c or "비율" in c)), None)
+    val_idx = [i for i in range(i_amt, len(cols)) if "비중" not in cols[i] and "비율" not in cols[i]]
     rows = []
     for r in t["rows"]:
         if i_amt >= len(r):
@@ -356,11 +362,15 @@ def parse_segment_sales(t):
         rows.append({"seg": seg, "item": item,
                      # 부문 안의 `소 계`(한화시스템 상품/제품/용역/기타 → 소계)도 합계다.
                      "val": v, "total": is_total(seg) or is_total(item),
+                     # 기간 열을 다 남긴다 — 잔고 커버리지의 분모(연매출)는 당기 누계가
+                     # 아니라 **직전 사업연도 열**에서 읽어야 추정이 되지 않는다.
+                     "vals": [_scaled(r[i], mul) if i < len(r) else None for i in val_idx],
                      "pct": (num_of(r[i_pct]) if i_pct is not None and i_pct < len(r) else None),
                      "segkind": seg_kind(seg) or seg_kind(" ".join(labels))})
     if not rows:
         return None
     return {"cur": cur, "unit_seen": seen, "rows": rows, "cols": t["cols"],
+            "period_cols": [t["cols"][i] for i in val_idx],
             "lead": (t.get("lead") or "")[-200:]}
 
 
@@ -538,6 +548,61 @@ def _sum_rows(rows, field, kinds=None):
     return sum(vals) if vals else None
 
 
+_FY_COL = re.compile(r"20\d\d년|제\d+기")
+_PART_YEAR = re.compile(r"반기|분기|누적|개월|기중|비중|비율")
+
+
+def _is_fy(col):
+    """'2025년(제27기) 금액'·'제26기' 는 1년 열, '2026년 반기'·'비중' 은 아니다."""
+    c = _clean(col)
+    return bool(_FY_COL.search(c)) and not _PART_YEAR.search(c)
+
+
+def _fy_revenue(rv):
+    """매출 표에서 **온전한 1년** 열을 찾아 총매출을 만든다 → (값, 열 이름).
+
+    잔고 커버리지(잔고 ÷ 연매출, 년)의 분모다. 반기 누계를 두 배로 늘리면 추정이 되므로
+    공시에 실제로 적힌 직전 사업연도 열을 쓴다. 열과 값의 개수가 어긋나면 만들지 않는다."""
+    if not rv:
+        return None, None
+    cols = rv.get("period_cols") or []
+    rows = rv.get("rows") or []
+    idx = [i for i, c in enumerate(cols) if _is_fy(c)]
+    def ok(r):
+        return len(r.get("vals") or []) == len(cols)
+
+    for i in idx:
+        # 부문별 `합계` 행과 전체 `합 계` 행이 **둘 다** 오는 표가 있다(한화에어로) —
+        # 다 더하면 매출이 정확히 두 배가 된다. 전체 합계가 있으면 그것만 쓴다.
+        grand = [r for r in rows if r["kind"] == "합계" and is_total(r["seg"]) and ok(r)]
+        per_seg = [r for r in rows if r["kind"] == "합계" and not is_total(r["seg"]) and ok(r)]
+        use = grand or per_seg or [r for r in rows if r["kind"] in ("내수", "수출") and ok(r)]
+        vals = [r["vals"][i] for r in use if r["vals"][i] is not None]
+        if vals:
+            return sum(vals), cols[i]
+    return None, None
+
+
+def _fy_segsales(ss):
+    """부문별 매출 표에서 연매출 → (값, 열 이름). 내수/수출 표가 없는 회사(한화시스템)용.
+
+    전체 `합 계` 행이 있으면 그것만, 없으면 부문 `소 계` 행들을, 그것도 없으면 낱 행을 더한다
+    (소계와 낱 행을 함께 더하면 두 배가 된다)."""
+    if not ss:
+        return None, None
+    cols = ss.get("period_cols") or []
+    rows = [r for r in (ss.get("rows") or []) if len(r.get("vals") or []) == len(cols)]
+    for i in (i for i, c in enumerate(cols) if _is_fy(c)):
+        grand = [r for r in rows if is_total(r["seg"])]
+        sub = [r for r in rows if r.get("total") and not is_total(r["seg"])]
+        base = [r for r in rows if not r.get("total")]
+        for use in (grand, sub, base):
+            vals = [r["vals"][i] for r in use if r["vals"][i] is not None]
+            if vals:
+                return sum(vals), cols[i]
+    return None, None
+
+
 def build(rows, qs):
     """캐시 → reports.json. 회사 × 분기의 수주잔고·방산비중·수출비중·커버리지."""
     out = {}
@@ -571,8 +636,16 @@ def build(rows, qs):
             mix_src = ("revenue" if (rv.get("basis") == "segment"
                                      and any(r["segkind"] for r in rrows)) else
                        ("segment_sales" if any(r["segkind"] for r in srows) else None))
-            mix_rows = ([r for r in rrows if r["kind"] == "합계"] or rrows) \
-                if mix_src == "revenue" else srows
+            # 전체 `합 계` 행과 부문 `합계` 행이 같이 오는 표(한화에어로)에서 둘 다 더하면
+            # 매출이 두 배가 되고 방산비중이 반토막 난다(13.8% ← 실제 27%). 전체 합계 행은
+            # 분모로만 쓰고, 부문 판정은 **부문 행**에서 한다.
+            if mix_src == "revenue":
+                seg_tot = [r for r in rrows if r["kind"] == "합계" and not is_total(r["seg"])]
+                real = [r for r in rrows if r["kind"] in ("내수", "수출") and not is_total(r["seg"])]
+                mix_rows = seg_tot or real or rrows
+            else:
+                seg_tot = [r for r in srows if r.get("total") and not is_total(r["seg"])]
+                mix_rows = seg_tot or [r for r in srows if not r.get("total")] or srows
             def_sales = sum(r["val"] for r in mix_rows
                             if r.get("segkind") == "def" and r.get("val") is not None) or None
             all_sales = sum(r["val"] for r in mix_rows if r.get("val") is not None) or None
@@ -595,6 +668,9 @@ def build(rows, qs):
                               "due": r.get("due"), "order_date": r.get("order_date")}
                              for r in orows if not r["total"]],
                 "revenue_basis": rv.get("basis"),
+                "revenue_fy": (_fy_revenue(rv)[0] or _fy_segsales(ss)[0]),
+                "revenue_fy_col": (_fy_revenue(rv)[1] or _fy_segsales(ss)[1]),
+                "revenue_cols": rv.get("period_cols") or [],
                 "revenue_domestic": dom, "revenue_export": exp,
                 "revenue_segments": [{"seg": r["seg"], "item": r["item"], "kind": r["kind"],
                                       "segkind": r["segkind"], "val": r["val"]} for r in rrows],
