@@ -155,6 +155,31 @@ class 어휘함정(unittest.TestCase):
         self.assertIsNone(S.MID.search("분말야금제품(초고압용공구)"))
 
 
+class 역할힌트(unittest.TestCase):
+    """role 은 힌트다 — 수주표·계약 공시가 확인하면 뒤 단계가 고친다(kgrid_universe 머리말)."""
+
+    def test_KIND문구가_소재라도_본문이_변압기를_만든다면_maker다(self):
+        """KBI메탈 024840 실측: 제품 문구는 `동ROD, 모터코어`인데 본문에
+        "변압기 사업부인 KBI일렉트릭(주)은 … 몰드변압기 제조를 목적으로 설립된 회사"가 나온다."""
+        self.assertEqual(S.role_for({"industry": "1차 비철금속 제조업", "product": "동ROD, 모터코어",
+                                     "terms": {"몰드변압기": 2, "유입변압기": 1, "규소강판": 2}}),
+                         "maker")
+
+    def test_금구류_회사가_부르는_주상변압기로는_maker가_되지_않는다(self):
+        """보성파워텍 006910 실측: `주상변압기` 2회는 **설치 대상**이지 자기 제품이 아니다."""
+        self.assertEqual(S.role_for({"industry": "구조용 금속제품, 탱크 및 증기발생기 제조업",
+                                     "product": "송배전용자재",
+                                     "terms": {"전력기자재": 5, "변전소": 3, "주상변압기": 2}}),
+                         "part")
+
+    def test_케이블_업종은_cable_정비는_epc다(self):
+        self.assertEqual(S.role_for({"industry": "절연선 및 케이블 제조업",
+                                     "product": "전선,통신케이블", "terms": {"송배전": 2}}), "cable")
+        self.assertEqual(S.role_for({"industry": "전기 및 통신 공사업",
+                                     "product": "일반전기공사,발전설비정비공사,점검,수리",
+                                     "terms": {"송변전": 9}}), "epc")
+
+
 class 후보풀(unittest.TestCase):
     """어휘로 **먼저 좁힌다**(COMMON §2 — 수천 건을 한 번에 긁지 않는다)."""
 
