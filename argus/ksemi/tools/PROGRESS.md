@@ -14,11 +14,16 @@
 - [x] 분류 사전(build_dicts.py) — 공정 13단계 + 부품, `assets/stages.json`·`stage_tags.json`(88사 태그)
 - [x] 정기보고서 파서(ksemi_parse.py) · 수집기(ksemi_reports.py) 작성
 - [x] 페이지(ksemi_page.py) — 허브·회사·커버리지. 데이터 없이도 렌더된다(수집과 렌더 분리)
-- [ ] **수집 실행 중**(2026-09-11 13:5x 시작): `ksemi_reports.py --write` 79종목 8분기 ·
-      `ksemi_contracts.py --all --write` 79종목 I001. 끝나면 `ksemi_page.py --all` 재실행
-- [ ] 인포그래픽(ksemi_parts.py) — 진행 중(서브에이전트)
-- [ ] 테스트(tools/tests/) — 진행 중(서브에이전트)
-- [ ] site.json 재추가(허브·회사 페이지가 실제로 볼 만해진 뒤) · 워크플로 · README/LOGIC/HANDOFF
+- [x] 인포그래픽(ksemi_parts.py) · 파서 계약 테스트 70건 · README/LOGIC/HANDOFF · 일일 워크플로
+- [x] **④ 보류 7 · 오류 1 재판정**(2026-09-11 18:0x) — `ksemi_scan.HOLD_CALLS` 에 원문 매출표
+      근거로 적었다. 편입 4(리노공업·에스비비테크·한선엔지니어링·3S) · 배제 4(시그네틱스·
+      젬백스·우진·한빛레이저). **편입 79 → 83, 보류·오류 0.** 단계 태그도 다시 만들었다.
+- [x] **3월 결산 회사 구멍 메움** — `ksemi_lib.find_periodic`. 3S는 달력 2026Q2를 담는 문서가
+      반기가 아니라 분기보고서 (2026.06)라 A002만 두드리던 옛 코드가 통째로 놓쳤다.
+- [ ] **수집 실행 중**(17:34/17:41 시작): `ksemi_reports.py --write` · `ksemi_contracts.py --all
+      --write`. 끝나면 ① 새 편입 4사를 `--only 058470,389500,452280,060310` 로 이어 받고
+      ② `ksemi_page.py --all` · `ksemi_parts.py --write` 재실행
+- [ ] site.json 재추가(허브가 실제 데이터로 채워진 것을 확인한 뒤) · 생성된 페이지 커밋
 
 ## 0-1. 다음 명령 (끊겼을 때)
 
@@ -27,7 +32,7 @@ cd argus/ksemi/tools
 tail -3 /tmp/ksemi_reports.log /tmp/ksemi_contracts.log   # 수집이 살아 있나
 python3 ksemi_reports.py --write                          # 캐시가 있으면 빠르게 이어받는다
 python3 ksemi_contracts.py --all --write
-python3 ksemi_page.py --all                               # 렌더
+python3 ksemi_page.py --all && python3 ksemi_parts.py --write   # 렌더
 python3 -m unittest discover -s tests
 ```
 
