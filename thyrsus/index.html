@@ -9440,6 +9440,14 @@ function endGameManualCommit(act, why){
   const pick=map[act]; if(!pick) return false;
   S.endKind='manual';                         // 전적에 적립하지 않는다(record() 가 본다)
   S.gameOver=true; save();
+  /* 열려 있던 승리 확인 창을 여기서 닫는다 — 안 닫으면 그 카드가 종료 화면(z 98)·동료 평가
+     (z 101) **위에**(z 120) 그대로 남아, 사회자가 방금 끝낸 판 위에서 낡은 질문을 본다.
+     confirmWin 의 가드가 상태 변경은 이미 막지만, 화면에 남는 것 자체가 오안내다.
+     pendingWin 은 뒤쪽 블록의 let 이라 typeof 로 접근한다. */
+  try{
+    const _wa=document.getElementById('winask'); if(_wa) _wa.hidden=true;
+    if(typeof pendingWin!=='undefined') pendingWin=null;
+  }catch(e){}
   showGameOver(pick[0], String(why||'').trim() || pick[1]);
   return true;
 }
@@ -10148,16 +10156,6 @@ function wizClearPick(){
 .voterow.spent .vbtn{pointer-events:none;opacity:.4}
 .spentlab{font-size:12px;color:var(--muted)}
 #winask{position:fixed;inset:0;z-index:120;background:rgba(6,3,14,.8);display:flex;align-items:center;justify-content:center;padding:18px}
-(7355 #gameover 의 z-index:98 → 118 로 함께 상향)
-
-추가 — 큐 정지(7531 뒤에 삽입):
-old_string:     if(!done){ wizQueue=null; toast('밤 연속 진행을 중단했습니다. 리스트에서 개별 단계로 이어갈 수 있습니다.','warn'); return; }
-new_string:     if(!done){ wizQueue=null; toast('밤 연속 진행을 중단했습니다. 리스트에서 개별 단계로 이어갈 수 있습니다.','warn'); return; }
-    /* 밤 도중 승리 판정이 걸렸으면 남은 단계를 더 열지 않는다 — 위저드가 확인창을 덮은 채
-       큐가 계속 돌아 밤 능력이 전부 적용되던 자리다. */
-    if((typeof pendingWin!=='undefined' && pendingWin) || S.gameOver){
-      wizQueue=null; toast('승리 조건이 판정되었습니다 — 밤 연속 진행을 멈춥니다. 확인창을 처리하세요.','warn'); return;
-    }
 #winask[hidden]{display:none!important}
 #winask .wcard{background:var(--panel);border:2px solid var(--accent);border-radius:16px;max-width:540px;width:100%;padding:26px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.65)}
 #winask .wicon{font-size:56px;line-height:1}
@@ -10436,7 +10434,16 @@ function confirmWin(yes){
   const el=$('#winask'); el.hidden=true;
   const res=pendingWin; pendingWin=null;
   if(!res) return;
-  if(yes && S.gameOver){ toast('이미 끝난 판입니다 — 낡은 승리 확인 창을 닫습니다.','warn'); return; }
+  /* 낡은 창은 **예·아니오 모두** 판 상태를 바꾸지 않는다.
+     [무엇이 문제였나] 이 방어가 `yes &&` 였다. 그래서 같은 낡은 창을 [아니오 — 계속 진행]으로
+     닫으면 아래 분기가 `S.endKind=null` 을 실행했다 — 다른 경로로 이미 임의종료한 판이면
+     그 제외 표식이 지워져 **통계에 임의종료 1판이 적립된다**(record() 가 endKind 로 가른다).
+     실측: 승리 창이 뜬 채 키보드로 종료 메뉴→임의종료를 밟고 낡은 [아니오]를 누르면
+     endKind 가 null 이 되고 동료 평가·마감을 거쳐 전적 1건이 남았다(headless Chrome 재현).
+     포인터·터치는 #winask(z 120)가 가로막아 못 가지만 Tab/Enter 로는 도달한다.
+     안전 근거: askWin 은 끝난 판에서 열리지 않으므로(자체 가드), 응답 시점의 gameOver===true 는
+     정의상 "창이 뜬 뒤 **다른 경로로** 끝난 판"이다. */
+  if(S.gameOver){ toast('이미 끝난 판입니다 — 낡은 승리 확인 창을 닫습니다.','warn'); return; }
   /* 종료 종류는 승리값이 가진다(res.endKind) — 전역에 남아 있던 값은 믿지 않는다(취소된 기권의 잔존).
      임의 종료는 이 함수를 지나지 않고 자기 경로에서 'manual' 을 찍는다. */
   if(yes){ S.endKind=(res.endKind==='concede'||res.endKind==='fiddler')? res.endKind : 'win'; S.gameOver=true; save(); showGameOver(res.team, res.reason+' — '+res.rule); }
