@@ -419,7 +419,15 @@ def revenue_basis(html):
             quote = scope[s:(e + 1 if e > 0 else min(len(scope), i + 320))].strip()
             if not any(m in quote for m in _QUOTE_MUST):
                 continue          # 수익과 무관한 문단에 묻어 온 낱말 — 버린다
-            out["bases"].append({"key": key, "phrase": w, "quote": quote[:320]})
+            quote = quote[:320]
+            # **한 문장은 한 번만 판정한다.** 원익IPS 주석의 *"설비의 판매 수익은 자산에
+            # 대한 통제가 고객에게 이전되는 시점인 설치완료 시점에 인식됩니다"* 한 문장에는
+            # `설치완료` 와 `통제가 고객에게 이전되는 시점`(인도 낱말)이 같이 있다. 그냥
+            # 두면 **같은 인용이 「설치완료」와 「인도」로 두 번** 화면에 실린다. 위의
+            # 우선순위가 이미 지배 낱말을 골랐으므로 같은 문장은 다시 세지 않는다.
+            if any(b["quote"] == quote for b in out["bases"]):
+                break
+            out["bases"].append({"key": key, "phrase": w, "quote": quote})
             break
     if out["bases"]:
         out["found"] = True
