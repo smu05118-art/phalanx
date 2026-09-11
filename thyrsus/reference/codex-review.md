@@ -2822,3 +2822,56 @@ A47 의 풀은 규칙 스위트가 `wizCharPool('cerenovus-mad')` 을 직접 호
 **Fable 은 이번에도 크레딧 소진이라 반박 서브에이전트를 못 띄웠다.**
 공식 대조는 직접 했다 — `roles181.json` cerenovus(첫밤·이후밤 리마인더가 바이트 단위로 동일),
 `jinxes.json` cerenovus 징크스 전수, 위키 Cerenovus.
+
+## 라운드 43 — 마술사×망령 원문 복구 · 리바이어던 발생원 판정 · PR #64
+
+### A48 — 앞선 라운드의 '수정'이 이번 라운드의 결함이었다
+
+공식 `jinxes.json` magician→wraith:
+> "**After each execution, the living Magician may publicly guess a living player as the Wraith.
+> If correct, the Demon must choose the Wraith tonight.**"
+
+앱은 이 줄을 *"망령이 그리모어를 볼 때, 악마와 마술사의 캐릭터 토큰은 치워 둔다"* 로 바꿔 놓고,
+주석에 이유를 이렇게 적어 두었다 — "alchemist↔wraith 를 복붙하다 이름만 바꾼 오류라서
+spy↔magician · widow↔magician 계열로 되돌린다."
+
+**그 추정이 틀렸다.** 공식 원문이 바로 그 공개 지목 절차다. 망령에게는 그리모어 열람 능력이
+없으므로 첩자·과부 계열로 묶은 것 자체가 오분류였다.
+
+구제할 점은 그 주석이 **"공식 원문 재대조는 아직"** 이라고 스스로 밝히고 `confidence:'check'` 를
+달아 둔 것이다. 그 표식이 있었기에 이번 재대조 대상이 됐다. 이제 `'high'` 로 올렸다.
+분류도 `M info night` → `M night day` 로 옮겼다 — `where` 가 `day` 여야 낮 판정 카드에 떠서
+사회자가 **처형 직후** 그 절차를 볼 창구가 생긴다.
+
+### A50 — "nominates and executes" 의 and 를 구현하지 않고 있었다
+
+공식 `leviathan→soldier`: *"If the Leviathan **nominates and executes** the Soldier, good wins."*
+
+`djExecNominatedBy` 는 그날 그 대상에 대한 **모든 지명**을 훑어 지명자만 맞으면 성립으로 봤다.
+실측: 리바이어던의 지명이 **부결**되고 다른 사람의 지명으로 군인이 처형돼도 `hit` 였다.
+
+처형을 **낳은** 지명을 `S.execNomId` 로 기록한다. 설계에서 한 가지를 뒤집었다 —
+경로마다 지우는 대신 **처형 창구(`resolveExecution`)가 기본값으로 null 을 쓰고, 지명 경로
+(`executeNominee`)만 직후에 발생원을 남긴다.** 그래야 앞으로 새 처형 경로가 생겨도
+자동으로 '지명이 아님'으로 분류된다. 순서가 이 수정의 전부다.
+
+새 필드라 `blank()` 와 `NEWGAME_RESET_KEYS`, 낮→밤 초기화에 함께 넣었다.
+(키 목록이 두 곳인 줄 알고 두 번 고치려다 패치가 멈췄다 — 실제로는 한 곳뿐이었고,
+`migrateState` 는 `Object.assign(blank(), raw)` 라 `blank()` 만으로 덮인다.)
+
+| 시나리오 | 수정 전 | 수정 후 |
+|---|---|---|
+| 리바이어던이 지명해 처형 | 성립 | 성립(유지) |
+| 리바이어던 지명 **부결** · 타인 지명으로 처형 | **성립** | 미성립 |
+| 지명이 아닌 처형(능력·성결자) | **성립** | 미성립 |
+
+### 게이트를 만들다 또 하나 찾았다
+
+낮 판정 카드가 안 떠서 파고드니 **진 활성 판정이 두 갈래**였다 —
+`isFabledActive('djinn')` 는 `S.fabled` 를 보고 `djInPlay()` 는 `S.djinn.accepted` 또는
+**좌석에 앉은** djinn 을 본다. 전설은 좌석을 차지하지 않으므로, 전설 목록으로만 켠 판에서는
+징크스 카드가 통째로 안 뜬다. 자체 수락 흐름(`thyDjinn.accept`)이 있어 의도일 수 있으나
+두 판정이 갈린 채 두면 언젠가 어긋난다 — 백로그에 적었다.
+
+**Fable 은 이번에도 크레딧 소진이라 반박 서브에이전트를 못 띄웠다.**
+공식 대조는 직접 했다 — `jinxes.json` 의 magician·leviathan 징크스 전수.
