@@ -1861,6 +1861,10 @@ function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e)
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    /* 사회자용 산문(능력·경고·밤 안내·백과)에서만 쓰는 강조 렌더.
+       이스케이프가 **먼저**이므로 여기서 나오는 <b> 는 이 함수가 만든 것뿐이다.
+       esc() 를 고치면 이름·캐릭터명까지 전부 영향을 받으므로 별도 함수로 둔다. */
+    const escEm = s => esc(s).replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>');
 /* ══════════ 인앱 대화상자 — 네이티브 confirm()/prompt()/alert() 대체 ══════════
    [왜] 홈화면 앱·일부 모바일 브라우저·'추가 대화상자 차단'이 켜진 크롬에서는 네이티브 대화상자가
    즉시 false/null 을 돌려주거나 아예 지원되지 않아, 시작·종료·처형 같은 핵심 흐름이 조용히 막혔다.
@@ -3604,8 +3608,8 @@ function startRevealWiz(){
 }
 function charCard(c){
   return `<div class="charcard"><span class="cname">${esc(c.ko)}</span><span class="cen">${esc(c.en||'')}</span>
-  <div class="cab">${esc(c.ability)}</div>
-  ${(c.warn&&c.warn.length)?`<details class="morebox"><summary>사회자 노트 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div></details>`:''}
+  <div class="cab">${escEm(c.ability)}</div>
+  ${(c.warn&&c.warn.length)?`<details class="morebox"><summary>사회자 노트 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${escEm(w)}</li>`).join('')}</ul></div></details>`:''}
   </div>`;
 }
 /* 이름으로 좌석을 만드는 경로. 요구 2("등록된 플레이어만 참여")에 맞춰 이름을 좌석에 그냥
@@ -3971,8 +3975,8 @@ function renderSheet(){
     return `<div class="sheetrow" style="${S.players.length&&!inPlay?'opacity:.45':''}">
       <div class="ctoken ${c.type}" data-cid="${esc(c.id)}">${glyph(c.id)}</div>
       <div style="min-width:0"><span class="sname">${esc(c.ko)}</span><span class="sen">${esc(c.en||'')}</span>${c.setup||c.setupChar?' <span class="pill warn">셋업</span>':''}${inPlay?' <span class="pill ok">인플레이</span>':''}
-      <div class="sab">${esc(c.ability)}</div>
-      ${(c.warn&&c.warn.length)?`<details class="morebox"><summary>사회자 노트 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div></details>`:''}
+      <div class="sab">${escEm(c.ability)}</div>
+      ${(c.warn&&c.warn.length)?`<details class="morebox"><summary>사회자 노트 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${escEm(w)}</li>`).join('')}</ul></div></details>`:''}
       </div></div>`;
   };
   const nightList=(order,isFirstNight)=>['dusk'].concat(order.filter(id=>!INFO_STEPS[id]||S.players.length===0||S.players.length>=INFO_STEPS[id].minPlayers)).concat(['dawn'])
@@ -4411,7 +4415,7 @@ function renderStep(st,i,doneMap){
     const targets = st.id==='minioninfo' ? S.players.filter(p=>charOf(p.charId)?.type==='minion')
                                          : S.players.filter(p=>charOf(p.charId)?.type==='demon');
     who=targets.map(p=>esc(p.name)).join(', ');
-    body=`<ol class="guide">${inf.guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ol>`;
+    body=`<ol class="guide">${inf.guide.map(g=>`<li>${escEm(g)}</li>`).join('')}</ol>`;
     if(typeof NIGHT_FLOW!=='undefined' && flowFor(st.id)) body=`<div class="row" style="margin:4px 0 10px"><button class="primary" style="min-width:200px" onclick="event.stopPropagation();startWiz('${st.id}')">▶ 인터랙티브 진행</button></div>`+body;
     if(st.id==='demoninfo'){
       const inPlay=new Set(S.players.map(p=>p.charId));
@@ -4435,7 +4439,7 @@ function renderStep(st,i,doneMap){
     }).join(', ');
     if(st.mask) who += (who?' · ':'')+`🎭 ${esc(st.mask.name)} (주정뱅이 — ${esc(c.ko)} 행세)`;
     const guide = first? (c.guideFirst||c.guideOther) : (c.guideOther||c.guideFirst);
-    if(guide) body+=`<ol class="guide">${guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ol>`;
+    if(guide) body+=`<ol class="guide">${guide.map(g=>`<li>${escEm(g)}</li>`).join('')}</ol>`;
     const hint=autoInfoHint(st);
     if(hint) body+=`<div class="alertbox blue">${hint}</div>`;
     /* 표가 '정보가 사실대로가 아니다'라고 판정한 좌석을 **사유별로 갈라** 쓴다.
@@ -4452,7 +4456,7 @@ function renderStep(st,i,doneMap){
     if(malHolders.length) body+=`<div class="alertbox red">☠ <b>${malHolders.map(p=>esc(p.name)).join(', ')}</b>: 능력 오작동 상태(중독·취함·주정뱅이) — 정보형이면 <b>거짓 정보</b>를 주고, 발동형이면 <b>효과 없음</b>으로 처리하되 본인에게는 평소처럼 응대하세요.</div>`;
     if(falseOnly.length) body+=`<div class="alertbox red">🌀 <b>${falseOnly.map(p=>esc(p.name)).join(', ')}</b>: 이 좌석의 <b>정보는 반드시 거짓</b>이어야 합니다 — <b>능력 자체는 정상 작동</b>합니다(보호·살해 등 발동형 효과는 그대로 적용하세요).</div>`;
     if(st.mask) body+=`<div class="alertbox">🎭 주정뱅이입니다 — ${esc(c.ko)}처럼 깨우되 <b>항상 그럴듯한 거짓 정보</b>를 주세요. 어떤 정보를 줬는지 그리모어 메모에 기록!</div>`;
-    if(c.warn&&c.warn.length) body+=`<details class="morebox"><summary>상호작용 주의 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div></details>`;
+    if(c.warn&&c.warn.length) body+=`<details class="morebox"><summary>상호작용 주의 ${c.warn.length}건</summary><div class="inner"><ul>${c.warn.map(w=>`<li>${escEm(w)}</li>`).join('')}</ul></div></details>`;
     if(typeof NIGHT_FLOW!=='undefined' && flowFor(st.id)) body+=`<div class="row" style="margin:10px 0 4px"><button class="primary" style="min-width:200px" onclick="event.stopPropagation();startWiz('${st.id}')">▶ 인터랙티브 진행</button></div>`;
     body+=stepWidget(st,c);
     const recTargets=holders.filter(p=>p.alive).concat(st.mask&&st.mask.alive?[st.mask]:[]);
@@ -5922,7 +5926,7 @@ function renderCheck(){
   <p class="hint">현재 배정된 캐릭터 기준으로 자동 생성됩니다. 배정이 바뀌면 목록도 바뀝니다.</p>
   ${items.length?groups.map(g=>`<h3>${g}</h3>${items.filter(i=>i.group===g).map(i=>`
     <div class="checkitem"><input type="checkbox" ${S.checks[i.key]?'checked':''} onchange="toggleCheck(${JSON.stringify(i.key).replace(/"/g,'&quot;')},this.checked)">
-    <span><span class="src">[${esc(i.src)}]</span> ${esc(i.txt)}</span></div>`).join('')}`).join('')
+    <span><span class="src">[${esc(i.src)}]</span> ${escEm(i.txt)}</span></div>`).join('')}`).join('')
    :'<p class="hint">캐릭터를 배정하면 시트 맞춤 체크리스트가 생성됩니다.</p>'}
   </div>`;
 }
@@ -7513,7 +7517,7 @@ function renderWiz(){
       ${sc.who?`<div class="reveal-who">${esc(sc.who)}</div>`:''}
       <h2>당신의 캐릭터</h2>
       <div class="reveal-token"><span class="rname">${c?esc(c.ko):'?'}</span><span class="ricon">${c?glyph(c.id):sysIcon('unknown')}</span></div>
-      <div class="reveal-ability">${c?esc(c.ability):''}</div>
+      <div class="reveal-ability">${c?escEm(c.ability):''}</div>
       <div class="wiz-showhint">확인했으면 화면을 탭하세요</div></div>`;
   }
   else if(sc.t==='show-token'){
@@ -9097,7 +9101,7 @@ function openPlayerModal(pid){
             ${p.alive?'':'<span class="pill neutral">사망</span>'}
             ${(p.statuses||[]).map(s=>STATUS_DEFS[s.key]?`<span class="pill warn">${STATUS_DEFS[s.key].icon} ${STATUS_DEFS[s.key].ko}</span>`:'').join('')}
           </div>
-          <div class="pmability">${c?esc(c.ability):'캐릭터가 배정되지 않았습니다.'}</div>
+          <div class="pmability">${c?escEm(c.ability):'캐릭터가 배정되지 않았습니다.'}</div>
           ${p.charId==='drunk'&&charOf(S.drunkMaskChar)?`<div class="alertbox" style="margin-top:10px">🎭 본인은 <b>${esc(charOf(S.drunkMaskChar).ko)}</b>라고 믿고 있습니다.</div>`:''}
         </div>
       </div>
@@ -9923,7 +9927,7 @@ function showCharInfo(cid){
   const c=charOf(cid); if(!c) return;
   const ex=(typeof WIKI_EXTRA!=='undefined'&&WIKI_EXTRA[cid])||{};
   const el=$('#pmodal'); el.hidden=false;
-  const sec=(t,items)=>items&&items.length?`<div class="pmsec">${t}</div><ul class="guide">${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'';
+  const sec=(t,items)=>items&&items.length?`<div class="pmsec">${t}</div><ul class="guide">${items.map(x=>`<li>${escEm(x)}</li>`).join('')}</ul>`:'';
   el.innerHTML=`<div class="pmcard" onclick="event.stopPropagation()">
     <div class="pmhead"><h3>${esc(c.ko)}</h3>
       <span class="hint" style="font-style:italic">${esc(c.en||'')}</span>
@@ -9937,7 +9941,7 @@ function showCharInfo(cid){
             <span class="pill neutral" title="${esc((typeof scriptLabel==='function'&&(scriptLabel(c.edition)||[])[1]) || '')}">${esc((typeof scriptLabel==='function'&&(scriptLabel(c.edition)||[])[0]) || EDITIONS[c.edition||'tb']?.ko || '커스텀')}</span>
             ${c.setup||c.setupChar?'<span class="pill warn">셋업 변경</span>':''}
           </div>
-          <div class="pmability">${esc(c.ability)}</div>
+          <div class="pmability">${escEm(c.ability)}</div>
         </div>
       </div>
       ${c.setupNote?`<div class="alertbox" style="margin-top:12px">셋업: ${esc(c.setupNote)}</div>`:''}
