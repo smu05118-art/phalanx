@@ -19,12 +19,14 @@
 - [x] `kaero_page.py` — 허브 · 회사 20쪽 · 커버리지  /  `kaero_parts.py` — `parts.html`
 - [x] 수집 완료 — 6분기 · 분기레코드 **109건**(실패 0)
 - [x] `tools/tests` **50건 통과**(픽스처는 DART 원문 절)
-- [x] `site.json` · `_config.yml` exclude · `.github/workflows/update-kaero.yml` · `vendor/`
+- [x] `site.json` · `.github/workflows/update-kaero.yml` · `vendor/`
+      (`_config.yml` 은 **건드리지 않는다** — 감독 메모 2. `argus/*/tools/` glob 이 덮는다)
 - [x] README.md · LOGIC.md · HANDOFF.md · `/tmp/kaero.done`
 
 ## 남은 일 (HANDOFF ③ 에 자세히)
 
-1. [ ] 표 복구 3함수가 kdef 와 두 벌이다 — 공용 층(`kce_parse`)으로 올리기
+1. [ ] (맥미니 몫) 공용 층 2건 — `pick_report` 의 `[첨부정정]` 문제, 표 복구 3함수의 kdef 중복.
+       이 웨이브는 고치지 않고 `tools/FINDINGS.md` §8 에 근거와 함께 적었다.
 2. [ ] 대한항공 매출표(부문 아래 총매출액/연결조정액/순매출액 3줄)를 읽어 커버리지 분모 만들기
 3. [ ] 수주표 부문 이름 ↔ 매출표 부문 이름 사전(KAI 커버리지의 범위 오차)
 4. [ ] 「II-2 주요 제품」 절을 따로 수집해 영역 `기타·미상` 줄이기

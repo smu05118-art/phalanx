@@ -43,9 +43,11 @@
 
 ## ③ 남은 일
 
-1. **표 복구 3함수(`_headered`·`_two_row_header`·`_carry_units`)가 kdef 와 두 벌이다.**
-   산업과 무관한 DART 표 복구이므로 공용 층(`argus/kce/tools/kce_parse.py`)으로 올리고
-   양쪽에서 import 하는 것이 맞다. 이 웨이브는 자기 디렉터리만 커밋하는 규약이라 미뤘다.
+1. **공용 층 2건은 고치지 않고 보고만 했다**(감독 메모 2 — 공용 파일은 읽기만).
+   근거는 `tools/FINDINGS.md` §8 에 있다:
+   ① `kce_fetch.pick_report` 가 `[첨부정정] 사업보고서` 를 1순위로 준다(II절이 없는 문서다).
+   ② 표 복구 3함수(`_headered`·`_two_row_header`·`_carry_units`)가 kdef 와 두 벌이다 —
+     `kce_parse` 가 제 집이고, kaero 가 보탠 **제목 물림**도 함께 가야 한다.
 2. **`kaero_scan.py --scan` 은 자동 갱신에서 기본으로 돌지 않는다**(후보 74사, 느리다).
    `workflow_dispatch` 의 `scan: yes` 로 분기마다 한 번 돌리면 된다.
 3. **영역이 `기타·미상`인 잔고**가 남아 있다(한화에어로 항공 부문의 `상세내역 참조` 행 등).
