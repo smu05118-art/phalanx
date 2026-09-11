@@ -1,0 +1,93 @@
+{
+ "viewBox": "0 0 960 260",
+ "regions": [
+  {
+   "id": "GEN",
+   "ko": "발전소",
+   "en": "Generation",
+   "x": 12,
+   "y": 96,
+   "w": 104,
+   "h": 76,
+   "products": [],
+   "note": "이 탭의 모집단이 아니다 — 전력기기의 시작점으로만 그린다"
+  },
+  {
+   "id": "STEPUP",
+   "ko": "승압 변전소",
+   "en": "Step-up substation",
+   "x": 140,
+   "y": 76,
+   "w": 128,
+   "h": 116,
+   "products": [
+    "ehv",
+    "breaker",
+    "fitting"
+   ],
+   "note": "발전 전압을 345·765kV로 올린다. 초고압 변압기와 가스절연 차단기(GIS)의 자리"
+  },
+  {
+   "id": "TRANS",
+   "ko": "송전 선로",
+   "en": "Transmission line",
+   "x": 292,
+   "y": 40,
+   "w": 132,
+   "h": 152,
+   "products": [
+    "cable",
+    "fitting"
+   ],
+   "note": "가공 송전선·지중 초고압 케이블·HVDC. 철탑 금구류와 애자가 여기 붙는다"
+  },
+  {
+   "id": "SUB",
+   "ko": "변전소",
+   "en": "Substation",
+   "x": 448,
+   "y": 76,
+   "w": 132,
+   "h": 116,
+   "products": [
+    "ehv",
+    "breaker",
+    "switch",
+    "relay"
+   ],
+   "note": "전압을 154kV·22.9kV로 낮춘다. 차단기·개폐기·보호계전기가 모인다"
+  },
+  {
+   "id": "DIST",
+   "ko": "배전 선로",
+   "en": "Distribution",
+   "x": 604,
+   "y": 76,
+   "w": 132,
+   "h": 116,
+   "products": [
+    "dist_tr",
+    "switch",
+    "cable",
+    "fitting",
+    "relay"
+   ],
+   "note": "주상변압기·개폐기·배전자동화 단말. **회전 산업**의 자리다(잔고가 짧다)"
+  },
+  {
+   "id": "LOAD",
+   "ko": "수용가",
+   "en": "Customer premises",
+   "x": 760,
+   "y": 56,
+   "w": 188,
+   "h": 156,
+   "products": [
+    "switchgear",
+    "converter",
+    "relay"
+   ],
+   "note": "데이터센터·공장·건물. 수배전반과 전력변환(ESS PCS·인버터)이 들어간다"
+  }
+ ]
+}
