@@ -250,13 +250,13 @@ def company_html(s, data):
             k = {"def": "방산", "civil": "민수", "mixed": "혼재"}.get(r["segkind"], "미판정")
             rows.append('<tr><td class="l">%s</td><td class="l mut">%s</td><td class="l">%s</td>'
                         '<td class="l">%s</td><td data-v="%.0f">%s</td></tr>'
-                        % (E(r["seg"] or "—"), E((r["item"] or "")[:40]), E(k), E(r["kind"]),
+                        % (E(r["seg"] or "(부문 표기 없음)"), E((r["item"] or "")[:40]), E(k), E(r["kind"]),
                            r["val"] or 0, fmt_eok(r["val"])))
         for r in latest.get("sales_segments") or []:
             k = {"def": "방산", "civil": "민수", "mixed": "혼재"}.get(r["segkind"], "미판정")
             rows.append('<tr><td class="l">%s</td><td class="l mut">%s</td><td class="l">%s</td>'
                         '<td class="l">%s</td><td data-v="%.0f">%s</td></tr>'
-                        % (E(r["seg"] or "—"), E((r["item"] or "")[:40]), E(k),
+                        % (E(r["seg"] or "(부문 표기 없음)"), E((r["item"] or "")[:40]), E(k),
                            ("비중 %.1f%%" % r["pct"]) if r.get("pct") else "—",
                            r["val"] or 0, fmt_eok(r["val"])))
         seg_html = ('<section class="card"><h2>부문 매출 <em>%s · 억원 · 부문 이름은 원문 그대로, '
@@ -350,7 +350,7 @@ def company_html(s, data):
    후속양산은 원가절감분이 이익, 성능개량·후속군수지원(PBL)은 장기 매출입니다. 계약명에서 못 읽으면 '미상'입니다.</p></section>
  <section class="card"><h2>계약 상대 <em>방산은 상대가 공개입니다</em></h2>%s</section>
 </div>
-<section class="card"><h2>계약 공시 <em>단일판매ㆍ공급계약체결 · %d건(민수 포함 %d건)</em></h2>%s</section>
+<section class="card"><h2>계약 공시 <em>단일판매ㆍ공급계약체결 · 방산 %d건 · 민수 %d건(계통 CIVIL 로 갈라 집계에서 뺐습니다)</em></h2>%s</section>
 %s
 %s
 <div class="note info">%s</div>
@@ -385,7 +385,8 @@ def company_html(s, data):
 </script>
 <script>%s</script>
 """ % ("".join(kpi), roll_html, seg_html, party_html(s), len(s["def_contracts"]),
-       len(s["contracts"]), contracts_table(s["contracts"], data, tid="ct%s" % s["stock"]),
+       len(s["contracts"]) - len(s["def_contracts"]),
+       contracts_table(s["contracts"], data, tid="ct%s" % s["stock"]),
        parts_html, rel_html,
        " ".join("<p>%s</p>" % n for n in notes),
        json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS)
