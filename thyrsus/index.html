@@ -1423,6 +1423,11 @@ const blank = () => ({
      damselGuessUsed = 하수인의 아가씨 추측 1회 소진 여부(악 진영 전체를 통틀어 1회).
      politicianAsked = 종료 화면에서 정치인 전환을 이미 물었는가(판당 1회). */
   goodExecCount:0, damselGuessUsed:false, politicianAsked:false,
+  /* politicianPending = 정치인 질문을 **꺼냈으나 답을 못 받은** 상태 {pid, team, gid} 또는 null.
+     [왜 필요한가] politicianAsked 하나로는 '물었다'와 '판단이 끝났다'를 구분할 수 없다.
+     답을 기다리는 큐(THY_DLG.q)는 메모리에만 살아서, 질문이 열린 채 새로고침하면
+     질문만 사라지고 '이미 물었음'만 남아 사회자가 판단할 기회를 영영 잃었다. */
+  politicianPending:null,
   /* startEvilCount = 첫 밤이 시작된 시점의 악한 플레이어 수. 상아의 정령("There can't be more
      than 1 extra evil player.")이 그 기준을 요구하는데 지금까지 어디에도 없었다.
      null 이면 '아직 판이 시작되지 않았다'는 뜻이고, 그때는 상한을 걸지 않는다. */
@@ -1645,6 +1650,13 @@ function migrateState(raw){
     ? Math.floor(st.startEvilCount) : null;
   st.damselGuessUsed=!!st.damselGuessUsed;
   st.politicianAsked=!!st.politicianAsked;
+  /* 옛 저장본에는 없다 — 형태가 맞을 때만 살린다(pid 문자열·team 은 good/evil) */
+  (function(){
+    const pp=st.politicianPending;
+    st.politicianPending=(pp && typeof pp==='object' && typeof pp.pid==='string'
+      && (pp.team==='good'||pp.team==='evil'))
+      ? {pid:pp.pid, team:pp.team, gid:(typeof pp.gid==='string'? pp.gid : null)} : null;
+  })();
   /* 잠금을 소모한 씬 키와 되돌릴 정보 — 구버전 저장본에는 없다. 형태가 깨졌으면 '없음'으로 돌린다
      (되돌릴 정보가 없으면 재진행 때 잠금만 풀리고 앞선 효과는 사회자가 손으로 정리한다). */
   st.goonStep=(typeof st.goonStep==='string' && st.goonStep)? st.goonStep : null;
@@ -2923,7 +2935,7 @@ const PARTIAL_IMPL_CHARS={};
    [왜 목록인가] blank() 는 '전부' 비우지만 여기는 '판만' 비운다 — 등록부·전적·커스텀은 그대로 두고
    판 단위 값만 되돌려야 하므로 두 곳의 기준이 갈라진다. 새 필드가 판 단위면 여기에도 넣어야 한다.
    gameId 는 따로 다룬다(새로 발급해야 하므로). */
-const NEWGAME_RESET_KEYS=['gameOver','endKind','politicianAsked','goodExecCount','damselGuessUsed','startEvilCount',
+const NEWGAME_RESET_KEYS=['gameOver','endKind','politicianAsked','politicianPending','goodExecCount','damselGuessUsed','startEvilCount',
   'goonNight','goonStep','goonUndo','moonchildChoice','executedToday','executedPrevDay',
   'executedTodayPid','executedDiedToday','poCharged','exorcistPrev','daPrev','pukkaVictimId',
   'mastermindDay','fangGuJumped','demonBlockedNight','demonBlockedPid'];
@@ -9431,6 +9443,34 @@ function endGameManualCommit(act, why){
   showGameOver(pick[0], String(why||'').trim() || pick[1]);
   return true;
 }
+/* 정치인 질문 — showGameOver 와 **부팅 복구**가 같이 부르는 단일 출처.
+   [무엇이 문제였나] 질문을 꺼내기 **전에** `S.politicianAsked=true` 를 세우고 그 상태가 저장됐다.
+   답을 기다리는 큐(THY_DLG.q)는 메모리에만 살아서, 질문이 열린 채 새로고침하면 질문만 사라지고
+   '이미 물었음'만 남았다 — 사회자는 판단할 기회를 영영 잃는다. 재부팅 뒤 showGameOver 를 다시
+   부르는 UI 경로도 없다(종료 메뉴에는 '동료 평가 이어서 / 결과 다시 보기 / 종료 확정'뿐).
+   이제 '꺼냈다'(politicianPending)를 먼저 저장하고, '판단이 끝났다'(politicianAsked)는 **답이
+   돌아온 자리에서만** 찍는다. 예·아니오 어느 쪽이든 판단은 끝난 것이므로 둘 다 찍는다.
+   답을 추정하지 않는다 — 미완은 미완으로 남겨 다시 묻는다. */
+function thyAskPolitician(pol, team){
+  if(!pol) return;
+  const gid=S.gameId;
+  S.politicianPending={pid:pol.id, team:team, gid:gid};
+  save();
+  thyConfirm(`🎩 정치인(${pol.name})이 있습니다.\n자기 진영이 패배한 데 가장 큰 책임이 있는 플레이어가 ${pol.name}였습니까?\n[확인] 예 → 진영을 바꿔 혼자 승리(팀 결과는 그대로) / [취소] 아니오`, ok=>{
+    /* 물었을 때의 판이 아직 같은 판일 때만 상태를 만진다 — finalizeEndedGame 은 열린 대화상자를
+       닫지 않으므로, 마감 뒤 도착한 낡은 답이 **새 판의** 플래그를 태우면 안 된다. */
+    if(S.gameId!==gid) return;
+    S.politicianAsked=true; S.politicianPending=null;
+    const p=playerOf(pol.id)||pol;
+    if(ok){
+      p.alignment=isEvil(p)? 'good':'evil';
+      thyPatchBankedAlignment(p);            // 이미 적립된 전적 스냅샷의 진영·점수도 함께 고친다
+      log(`🎩 정치인 전환 — ${p.name}이(가) 진영을 바꿔 개인 승리(팀 결과는 그대로 유지)`);
+      toast(`🎩 정치인 ${p.name} — 진영을 바꿔 혼자 이겼습니다. 팀 결과는 바뀌지 않습니다.`,'warn');
+    } else log(`🎩 정치인(${p.name}) — 사회자가 '가장 큰 책임 아님'으로 판정, 전환 없음`);
+    save();
+  }, {title:'🎩 정치인', ok:'예 → 진영 전환', cancel:'아니오'});
+}
 function showGameOver(team, reason){
   /* 합류점 계약: S.gameOver 는 호출자가 세운다(승리 엔진·기권·임의 종료·레거시 게이트→askWin).
      여기서 강제로 세우면 '화면을 연 것'이 '되돌릴 수 없는 종료'가 된다 — 오판정을 잠그는 셈이다.
@@ -9460,18 +9500,13 @@ function showGameOver(team, reason){
     if(pol && team==='draw'){
       log(`🎩 정치인(${pol.name}) — 승패 없이 마감돼 '진영 패배' 판정을 물을 수 없습니다(질문 보류)`);
     }
-    else if(pol && !S.politicianAsked){
-      S.politicianAsked=true;
-      if(isMalfunctioning(pol)) log(`🎩 정치인(${pol.name}) — 중독·취함 상태라 진영 전환 없음`);
+    else if(pol && !S.politicianAsked && !S.politicianPending){
+      /* 그 자리에서 판단이 끝나는 둘은 즉시 완료로 찍는다 — 되살릴 것이 없다 */
+      if(isMalfunctioning(pol)){ S.politicianAsked=true; log(`🎩 정치인(${pol.name}) — 중독·취함 상태라 진영 전환 없음`); }
       else{
         const polLost=(isEvil(pol)? 'evil':'good')!==team;   // 내 진영이 졌는가
-        if(!polLost) log(`🎩 정치인(${pol.name}) — 자기 진영이 이겼으므로 전환 없음`);
-        else thyConfirm(`🎩 정치인(${pol.name})이 있습니다.\n자기 진영이 패배한 데 가장 큰 책임이 있는 플레이어가 ${pol.name}였습니까?\n[확인] 예 → 진영을 바꿔 혼자 승리(팀 결과는 그대로) / [취소] 아니오`, ok=>{ if(ok){
-          pol.alignment=isEvil(pol)? 'good':'evil';
-          thyPatchBankedAlignment(pol);            // 이미 적립된 전적 스냅샷의 진영도 함께 고친다
-          log(`🎩 정치인 전환 — ${pol.name}이(가) 진영을 바꿔 개인 승리(팀 결과는 그대로 유지)`);
-          toast(`🎩 정치인 ${pol.name} — 진영을 바꿔 혼자 이겼습니다. 팀 결과는 바뀌지 않습니다.`,'warn');
-        } else log(`🎩 정치인(${pol.name}) — 사회자가 '가장 큰 책임 아님'으로 판정, 전환 없음`); save(); }, {title:'🎩 정치인', ok:'예 → 진영 전환', cancel:'아니오'});
+        if(!polLost){ S.politicianAsked=true; log(`🎩 정치인(${pol.name}) — 자기 진영이 이겼으므로 전환 없음`); }
+        else thyAskPolitician(pol, team);
       }
     }
   }catch(err){ console.warn('[win] politician', err); }
@@ -15325,6 +15360,22 @@ window.thyDjinn={
 
   /* 집계 도중 새로고침하면 그 단계에서 이어 받는다(결과 화면은 다시 띄우지 않는다) */
   try{ const s=S.postgame && (S.postgame.stage|0); if(s===1 || s===2) render(); }catch(e){}
+
+  /* 답을 못 받은 정치인 질문을 **부팅 때 되살린다**. 큐는 메모리에만 살아서 재부팅에 사라지고,
+     재부팅 뒤 showGameOver 를 다시 부르는 UI 경로가 없으므로 되살릴 자리는 여기뿐이다.
+     이 블록은 모든 <script> 가 로드된 뒤라 thyPatchBankedAlignment·profileRebuild·scorePlayer 가
+     전부 존재한다(showGameOver 가 있는 블록 끝에 두면 동기 훅 환경에서 콜백이 즉시 돌 때
+     아직 정의되지 않은 함수를 부른다). */
+  try{
+    const pp=S.politicianPending;
+    if(S.gameOver && pp && !S.politicianAsked && pp.gid===S.gameId){
+      const pol=playerOf(pp.pid);
+      if(pol && pol.charId==='politician' && typeof thyAskPolitician==='function'){
+        S.politicianPending=null;              // 같은 질문이 두 벌 쌓이지 않게 먼저 비운다
+        thyAskPolitician(pol, pp.team);        // 다시 기록하고 다시 묻는다
+      }
+    }
+  }catch(e){ console.warn('[politician] resume', e); }
 
   /* 시뮬레이터 창구 */
   window.thyPostgame={
