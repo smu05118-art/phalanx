@@ -1,0 +1,344 @@
+{
+ "viewBox": "0 0 400 200",
+ "silhouettes": [
+  {
+   "id": "TANK",
+   "ko": "전차",
+   "en": "Main battle tank",
+   "domain": "GROUND"
+  },
+  {
+   "id": "JET",
+   "ko": "전투기",
+   "en": "Fighter aircraft",
+   "domain": "AIR"
+  },
+  {
+   "id": "SHIP",
+   "ko": "함정",
+   "en": "Naval vessel",
+   "domain": "NAVAL"
+  },
+  {
+   "id": "MSL",
+   "ko": "유도탄",
+   "en": "Guided missile",
+   "domain": "MISSILE"
+  }
+ ],
+ "regions": [
+  {
+   "id": "TANK_TURRET",
+   "silhouette": "TANK",
+   "ko": "포탑·주포",
+   "points": "150,70 300,70 305,95 285,105 150,105 140,88",
+   "label": {
+    "x": 225,
+    "y": 88
+   },
+   "cats": [
+    "ARMOR.APS",
+    "ARMOR.PLATE",
+    "GUN.BARREL",
+    "GUN.FCS",
+    "GUN.SMALL",
+    "GUN.TURRET",
+    "MAT.COMP",
+    "OPT.EOIR",
+    "OPT.SIGHT"
+   ]
+  },
+  {
+   "id": "TANK_HULL",
+   "silhouette": "TANK",
+   "ko": "차체·동력장치",
+   "points": "70,105 340,105 350,135 60,135",
+   "label": {
+    "x": 205,
+    "y": 122
+   },
+   "cats": [
+    "ARMOR.PLATE",
+    "ELEC.POWER",
+    "MAT.METAL",
+    "PROP.ENGINE",
+    "PROP.TRANS"
+   ]
+  },
+  {
+   "id": "TANK_TRACK",
+   "silhouette": "TANK",
+   "ko": "현가·궤도",
+   "points": "58,137 352,137 352,165 58,165",
+   "label": {
+    "x": 205,
+    "y": 153
+   },
+   "cats": [
+    "PROP.SUSP"
+   ]
+  },
+  {
+   "id": "JET_RADAR",
+   "silhouette": "JET",
+   "ko": "기수 레이다",
+   "points": "20,95 70,82 70,112 20,105",
+   "label": {
+    "x": 45,
+    "y": 98
+   },
+   "cats": [
+    "ELEC.RADAR"
+   ]
+  },
+  {
+   "id": "JET_AVIONICS",
+   "silhouette": "JET",
+   "ko": "항전·조종석",
+   "points": "72,80 130,78 132,112 72,112",
+   "label": {
+    "x": 102,
+    "y": 96
+   },
+   "cats": [
+    "ELEC.AVION",
+    "ELEC.COMM",
+    "GUID.INS",
+    "SVC.SIM"
+   ]
+  },
+  {
+   "id": "JET_FUSELAGE",
+   "silhouette": "JET",
+   "ko": "동체",
+   "points": "134,78 300,84 300,112 134,112",
+   "label": {
+    "x": 215,
+    "y": 96
+   },
+   "cats": [
+    "AERO.STRUCT",
+    "SVC.MRO"
+   ]
+  },
+  {
+   "id": "JET_WING",
+   "silhouette": "JET",
+   "ko": "주익·미익",
+   "points": "160,112 250,112 215,168 145,168",
+   "label": {
+    "x": 195,
+    "y": 140
+   },
+   "cats": [
+    "AERO.STRUCT",
+    "MAT.COMP"
+   ]
+  },
+  {
+   "id": "JET_EOTS",
+   "silhouette": "JET",
+   "ko": "EO/IR 조준장치",
+   "points": "110,113 150,113 150,130 110,130",
+   "label": {
+    "x": 130,
+    "y": 124
+   },
+   "cats": [
+    "OPT.EOIR"
+   ]
+  },
+  {
+   "id": "JET_ENGINE",
+   "silhouette": "JET",
+   "ko": "엔진·노즐",
+   "points": "300,84 370,90 370,106 300,112",
+   "label": {
+    "x": 335,
+    "y": 99
+   },
+   "cats": [
+    "PROP.ENGINE"
+   ]
+  },
+  {
+   "id": "JET_EW",
+   "silhouette": "JET",
+   "ko": "전자전·기만",
+   "points": "250,60 320,60 320,80 250,84",
+   "label": {
+    "x": 285,
+    "y": 73
+   },
+   "cats": [
+    "ARMOR.APS",
+    "ELEC.EW"
+   ]
+  },
+  {
+   "id": "JET_GEAR",
+   "silhouette": "JET",
+   "ko": "착륙장치",
+   "points": "150,113 190,113 190,150 150,150",
+   "label": {
+    "x": 170,
+    "y": 134
+   },
+   "cats": [
+    "AERO.GEAR"
+   ]
+  },
+  {
+   "id": "SHIP_RADAR",
+   "silhouette": "SHIP",
+   "ko": "탐색·추적 레이다",
+   "points": "180,28 215,28 215,60 180,60",
+   "label": {
+    "x": 198,
+    "y": 46
+   },
+   "cats": [
+    "ELEC.RADAR"
+   ]
+  },
+  {
+   "id": "SHIP_MAST",
+   "silhouette": "SHIP",
+   "ko": "통합마스트·전자전",
+   "points": "196,10 206,10 212,28 190,28",
+   "label": {
+    "x": 201,
+    "y": 22
+   },
+   "cats": [
+    "ELEC.COMM",
+    "ELEC.EW"
+   ]
+  },
+  {
+   "id": "SHIP_EOTS",
+   "silhouette": "SHIP",
+   "ko": "EO/IR 추적",
+   "points": "216,40 240,40 240,60 216,60",
+   "label": {
+    "x": 228,
+    "y": 52
+   },
+   "cats": [
+    "OPT.EOIR"
+   ]
+  },
+  {
+   "id": "SHIP_GUN",
+   "silhouette": "SHIP",
+   "ko": "함포·발사대",
+   "points": "90,78 140,78 140,100 90,100",
+   "label": {
+    "x": 115,
+    "y": 91
+   },
+   "cats": [
+    "GUN.BARREL",
+    "GUN.SMALL"
+   ]
+  },
+  {
+   "id": "SHIP_CIC",
+   "silhouette": "SHIP",
+   "ko": "전투체계·소나",
+   "points": "142,62 250,62 250,100 142,100",
+   "label": {
+    "x": 196,
+    "y": 83
+   },
+   "cats": [
+    "GUN.FCS",
+    "SHIPEQ.CMS"
+   ]
+  },
+  {
+   "id": "SHIP_HULL",
+   "silhouette": "SHIP",
+   "ko": "선체·추진",
+   "points": "60,102 350,102 320,150 90,150",
+   "label": {
+    "x": 205,
+    "y": 128
+   },
+   "cats": [
+    "ELEC.POWER",
+    "PROP.ENGINE",
+    "SHIPEQ.AUX",
+    "SHIPEQ.PROP",
+    "SVC.MRO"
+   ]
+  },
+  {
+   "id": "MSL_SEEKER",
+   "silhouette": "MSL",
+   "ko": "탐색기",
+   "points": "30,88 90,88 90,112 30,112",
+   "label": {
+    "x": 60,
+    "y": 102
+   },
+   "cats": [
+    "GUID.SEEKER"
+   ]
+  },
+  {
+   "id": "MSL_WARHEAD",
+   "silhouette": "MSL",
+   "ko": "탄두·신관",
+   "points": "92,86 160,86 160,114 92,114",
+   "label": {
+    "x": 126,
+    "y": 102
+   },
+   "cats": [
+    "GUID.FUZE",
+    "MAT.EXPL"
+   ]
+  },
+  {
+   "id": "MSL_BODY",
+   "silhouette": "MSL",
+   "ko": "유도조종부",
+   "points": "162,86 250,86 250,114 162,114",
+   "label": {
+    "x": 206,
+    "y": 102
+   },
+   "cats": [
+    "GUID.INS",
+    "MAT.METAL"
+   ]
+  },
+  {
+   "id": "MSL_MOTOR",
+   "silhouette": "MSL",
+   "ko": "추진기관",
+   "points": "252,86 350,86 350,114 252,114",
+   "label": {
+    "x": 301,
+    "y": 102
+   },
+   "cats": [
+    "PROP.ROCKET"
+   ]
+  },
+  {
+   "id": "MSL_FIN",
+   "silhouette": "MSL",
+   "ko": "조종날개·구동",
+   "points": "300,60 360,60 360,86 300,86",
+   "label": {
+    "x": 330,
+    "y": 74
+   },
+   "cats": [
+    "GUID.ACT"
+   ]
+  }
+ ]
+}
