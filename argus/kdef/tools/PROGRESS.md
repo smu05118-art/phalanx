@@ -8,30 +8,32 @@
 - [x] `kdef_lib.py` · `assets/kdef.css`(+ 인포그래픽 전용 규칙)
 - [x] `kdef_universe.py` — 네 겹 모집단 **71종목**(④ 탐색 승격 27 포함) → `assets/universe.json`
 - [x] `kdef_scan.py` — 본문 탐색(후보 224 · 승격 27 · 제외 187) → `assets/universe_probe.json`
-- [x] `kdef_contracts.py` — I001 계약 공시 → `assets/contracts.json` (352건, 민수 100건 분리)
+- [x] `kdef_contracts.py` — I001 계약 공시 **전수 699건** → `assets/contracts.json`
+      (방산 551건·88조 / 민수 148건 분리) · 뭉쳐 온 정정행 금액 오독 차단
       · 코스닥 양식(「1. 판매ㆍ공급계약 내용」) 인식 · 정정공시 supersedes
 - [x] **공용 버그 수정** `kce_fetch._decode` — 코스닥 거래소공시(rcpNo[8]=='9') EUC-KR 판정.
       깨진 캐시 366건 삭제 후 재수집.
 - [x] `kdef_reports.py` — 71사 수집(체계업체 8분기 · 나머지 2분기), 표 5갈래 · 두 줄 머리행 ·
       단위 물림 · 수량 단위 거부 · 본체 표 선택 · 연매출(직전 사업연도 열) → `assets/reports.json`
 - [x] `build_dicts.py` — 계통 9 · 계약유형 6 · 부품 11/31 · 실루엣 4/영역 22
-- [x] `kdef_suppliers.py` — 부품 분류 42사 · 체계업체 연결 20사(근거 등급) → `assets/suppliers.json`
+- [x] `kdef_products.py` — 「II-2 주요 제품」 절 71사 → `assets/products/`
+- [x] `kdef_suppliers.py` — 부품 분류 58사 · 체계업체 연결 38사(근거 등급) → `assets/suppliers.json`
 - [x] `kdef_page.py` — 허브 · 회사 70쪽 · 커버리지
 - [x] `kdef_parts.py` — `parts.html` 인포그래픽(실루엣 4종 · 영역 클릭 → 부품 → 회사)
-- [x] `tools/tests` 21건 통과 · `site.json` · `_config.yml` exclude · `update-kdef.yml` ·
+- [x] `tools/tests` 23건 통과 · `site.json` · `_config.yml` exclude · `update-kdef.yml` ·
       `tools/.gitignore` · README/LOGIC/HANDOFF
 
-## 남은 일
+## 남은 일 (선택 — 웨이브 산출물은 완성)
 
-1. [ ] 계약 수집 마무리(`kdef_contracts.py --collect` 잔여 회사) → `--build` → `kdef_suppliers/page/parts` 재생성
-2. [ ] 계통 '미상' 중 계약명이 빈칸인 정정공시는 원본 계약명을 물려받게(HANDOFF ③)
-3. [ ] 부품 분류 정밀화 — 정기보고서 「II-2 주요 제품」 절을 따로 수집해 제품 문구로 분류
+1. [ ] 계통 '미상' 192건: 무기체계 이름 없는 부품 계약(IMU·자이로 칩)과 우주 발사체 — 계통 축에
+       '우주'를 더할지 결정
+2. [ ] 인포그래픽 영역별 관련도(계통 선택 시 농도) — kship 의 `rel` 표 방식
 
-## 다음 명령
+## 다음 명령 (재현·갱신)
 
 ```sh
-cd argus/kdef/tools
-python3 kdef_contracts.py --collect && python3 kdef_contracts.py --build
-python3 kdef_suppliers.py --build && python3 kdef_page.py --all && python3 kdef_parts.py
-python3 -m unittest discover -s tests
+cd argus/kdef/tools && python3 kdef_contracts.py --collect && python3 kdef_contracts.py --build
+python3 kdef_products.py --collect && python3 kdef_suppliers.py --build
+python3 kdef_page.py --all && python3 kdef_parts.py && python3 -m unittest discover -s tests
 ```
+자동 갱신은 `.github/workflows/update-kdef.yml`(매일 11:20 KST)가 같은 순서로 돌린다.
