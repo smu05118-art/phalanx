@@ -527,6 +527,7 @@ def hub_html(data, sums):
                       for c in data["ctype_order"]]}),
        CHART_DEFAULTS_JS, TABLE_JS)
     return page("한국방산 — 수주·계약·부품", body, depth=0, h1="🛡 한국방산",
+                scripts=("vendor/chart.umd.min.js",),
                 nav=(("← ARGUS", "../index.html"), ("🏗 한국건설", "../kce/index.html"),
                      ("⚓ 한국조선", "../kship/index.html")),
                 lead="국내 상장 방산기업의 수주를 이 산업의 축으로 읽습니다 — 사업 단위 계약(계약상대가 공개입니다), "
