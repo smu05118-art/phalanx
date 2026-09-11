@@ -66,6 +66,8 @@ def build(data):
         "groups": {g["id"]: g["ko"] for g in groups},
         "idx": idx,
         "srcKo": SRC_KO,
+        # 페이지가 생성된 회사만 링크한다 — 자료가 없어 페이지를 안 만든 회사는 이름만 보인다.
+        "pages": sorted(data["pages"]),
     }
     body = """
 <div class="kpi">
@@ -138,9 +140,14 @@ def build(data):
    var on=b.getAttribute('data-group')===S.group; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
   });
  }
+ var PAGES={}; (P.pages||[]).forEach(function(s){PAGES[s]=1;});
+ function link(stock,label,cls){
+  var c=cls?' class="'+cls+'"':'';
+  return PAGES[stock]?'<a'+c+' href="'+stock+'/index.html">'+label+'</a>':'<span'+c+'>'+label+'</span>';
+ }
  function coHtml(c){
-  var primes=c.primes.map(function(p){return '<a href="'+p.stock+'/index.html">'+p.nm+'</a> <span class="mut">'+p.basis+'</span>'}).join(' · ');
-  return '<li><a class="co" href="'+c.stock+'/index.html">'+c.nm+'</a>'
+  var primes=c.primes.map(function(p){return link(p.stock,p.nm)+' <span class="mut">'+p.basis+'</span>'}).join(' · ');
+  return '<li>'+link(c.stock,c.nm,'co')
    +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
    +(primes?'<div class="mut" style="font-size:11px;margin-top:2px">납품처 '+primes+'</div>':'')
    +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
@@ -205,8 +212,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true", default=True)
     ap.parse_args()
+    uni = load_universe()
     data = {"tax": load_asset("parts_taxonomy.json"), "svg": load_asset("svg_regions.json"),
-            "sup": kdef_suppliers.load(), "uni": load_universe()}
+            "sup": kdef_suppliers.load(), "uni": uni,
+            "pages": {r["stock"] for r in uni
+                      if os.path.exists(os.path.join(KDEF, r["stock"], "index.html"))}}
     atomic_write(os.path.join(KDEF, "parts.html"), build(data))
     idx = cat_index(data["sup"])
     print("parts.html · 소분류 %d(회사 붙은 것 %d) · 영역 %d"
