@@ -20,6 +20,7 @@ import argparse
 import collections
 import json
 import os
+import re
 import sys
 
 from ksemi_lib import (ASSETS, CHART_DEFAULTS_JS, E, KSEMI, TABLE_JS,
@@ -42,6 +43,26 @@ def basis_ko(key):
     return BASIS_KO.get(key, key or "")
 
 
+def china_exposure(contracts):
+    """중국 노출(스펙 「산업 특성 6」) — **공시된 단일계약의 공급지역 칸**으로만 센다.
+
+    지역별 매출은 II-4 매출실적이 수출/내수까지만 나누는 회사가 대부분이라 원문에 없다.
+    반면 「단일판매ㆍ공급계약체결」에는 `4. 판매ㆍ공급지역` 칸이 있고, 주성엔지니어링
+    `20240710900488` 은 거기에 **중국**이라 적혀 있다(PROGRESS §1-1). 그래서 이 지표는
+    **매출 비중이 아니라 '공시된 계약 금액 중 중국향 비중'** 이다 — 화면에도 그렇게 적는다.
+
+    금액 칸을 못 읽은 계약(`amt_mkrw` 없음)은 금액 분모·분자에서 빼고 건수만 센다.
+    분모가 0이면 `share=None`(fail-closed — 0%로 적지 않는다).
+    """
+    cn = [c for c in contracts if c.get("region_cn")]
+    known = [c for c in contracts if c.get("amt_mkrw")]
+    cn_amt = sum(c["amt_mkrw"] for c in cn if c.get("amt_mkrw"))
+    all_amt = sum(c["amt_mkrw"] for c in known)
+    return {"n": len(cn), "n_all": len(contracts), "amt": cn_amt,
+            "share": (100.0 * cn_amt / all_amt) if all_amt else None,
+            "regions": sorted({(c.get("region") or "").strip() for c in cn} - {""})}
+
+
 # ── 데이터 ─────────────────────────────────────────────────
 
 def _opt(name, default=None):
@@ -59,6 +80,7 @@ def load_all():
     scan = _opt("scan.json", {"rows": []})
     contracts = _opt("contracts.json", {"rows": []})
     reports = _opt("reports.json", {"rows": [], "quarters": []})
+    peers = _opt("peers.json", {"rows": [], "_by_target": {}})
     return {
         "uni": uni["rows"],
         "stages": stages,
@@ -68,6 +90,9 @@ def load_all():
         "scan": {r["stock"]: r for r in scan.get("rows", [])},
         "scan_meta": scan,
         "contracts": contracts.get("rows", []),
+        "peers": {r["stock"]: r for r in peers.get("rows", [])},
+        "peers_rev": peers.get("_by_target", {}),
+        "peers_meta": peers,
         "reports": {r["stock"]: r for r in reports.get("rows", [])},
         "report_meta": reports,
     }
@@ -131,7 +156,9 @@ def summary(data, rec):
             "kpi": rep.get("kpi") or {}, "basis": rep.get("basis"),
             "customers": rep.get("customers"), "contracts": cons,
             "tags": data["tags"].get(st) or {}, "parts": part_keys(data, st),
-            "scan": data["scan"].get(st) or {}}
+            "scan": data["scan"].get(st) or {},
+            "peers": (data["peers"].get(st) or {}).get("mentions") or [],
+            "peers_rev": data["peers_rev"].get(st) or []}
 
 
 # ── 조각 ───────────────────────────────────────────────────
@@ -219,6 +246,16 @@ def company_html(data, s):
         amt = sum(c.get("amt_mkrw") or 0 for c in s["contracts"])
         kp.append('<div><b>%s<small>억</small></b><span>공시 단일계약 누적 · %d건</span></div>'
                   % (fmt_eok(amt), len(s["contracts"])))
+        cn = china_exposure(s["contracts"])
+        if cn["n"]:
+            kp.append('<div><b>%s</b><span>중국향 공시계약 · %d건</span>'
+                      '<i class="mut">계약 금액 기준 · 매출 비중이 아닙니다%s</i></div>'
+                      % (("%.0f%%" % cn["share"]) if cn["share"] is not None
+                         else "%d건" % cn["n"], cn["n"],
+                         (" · " + E(" · ".join(cn["regions"]))) if cn["regions"] else ""))
+        else:
+            kp.append('<div><b class="mut">0<small>건</small></b><span>중국향 공시계약</span>'
+                      '<i class="mut">공급지역 칸에 중국이 적힌 계약이 없습니다</i></div>')
 
     # ── 잔고 롤포워드
     rr = []
@@ -371,6 +408,39 @@ def company_html(data, s):
                         '<th class="l">부품</th><th class="l">근거 문구(KIND 주요제품)</th></tr></thead>'
                         '<tbody>%s</tbody></table></div></section>' % (len(rows), tr))
 
+    # ── 원문에 이름이 나오는 상장사 (ksemi_peers)
+    peer_html = ""
+    if s["peers"] or s["peers_rev"]:
+        pr = []
+        for m in s["peers"]:
+            pr.append('<tr><td class="l">우리 본문 →</td>'
+                      '<td class="l"><a href="../%s/index.html">%s</a></td>'
+                      '<td class="l">%s</td><td>%d</td><td class="l mut">%s</td>'
+                      '<td class="qt">%s</td></tr>'
+                      % (E(m["stock"]), E(m["name"]), chip(m["kind"]), m["n"],
+                         E(m.get("cue") or "—"), E(m["quote"])))
+        for m in s["peers_rev"]:
+            # 방향이 있는 관계는 뒤집어 적는다 — 코스텍시스템이 「주요 고객사로는 … 원익IPS」
+            # 라고 쓴 것은 **원익IPS가 코스텍시스템의 고객**이라는 뜻이다.
+            rev = {"고객": "우리가 그 회사의 고객"}.get(m["kind"], m["kind"])
+            pr.append('<tr><td class="l">→ 우리를 적었다</td>'
+                      '<td class="l"><a href="../%s/index.html">%s</a></td>'
+                      '<td class="l">%s</td><td>%d</td><td class="l mut">—</td>'
+                      '<td class="qt">%s</td></tr>'
+                      % (E(m["stock"]), E(m["name"]), chip(rev), m["n"],
+                         E(m["quote"])))
+        peer_html = ('<section class="card"><h2>원문에 이름이 나오는 상장사 '
+                     '<em>%d건 · 정기보고서 II절</em></h2>'
+                     '<div class="note info">이 탭의 다른 회사 이름이 <b>본문에 실제로 적힌</b> 것만 '
+                     '모았습니다. 관계는 문장의 단서 낱말로 나눕니다 — <b>계열·경쟁·고객</b>은 그렇게 적혀 '
+                     '있다는 뜻이고, <b>업체나열</b>은 같은 목록에 있지만 경쟁사인지 전방 장비사인지 원문이 '
+                     '말하지 않는 경우입니다(예: 뉴파워프라즈마의 RF 제너레이터는 그 목록의 장비에 들어갑니다). '
+                     '<b>납품 계약이 아닙니다.</b></div>'
+                     '<div class="wrap tall"><table data-sortable><thead><tr><th class="l">방향</th>'
+                     '<th class="l">회사</th><th class="l">관계</th><th>언급</th><th class="l">단서</th>'
+                     '<th class="l">원문</th></tr></thead><tbody>%s</tbody></table></div></section>'
+                     % (len(s["peers"]) + len(s["peers_rev"]), "".join(pr)))
+
     chart = {"roll": [{"q": r["q"], "bal": r["backlog"], "amt": r["order_amt"],
                        "cmp": r["delivered"]} for r in roll]}
     dart_href = DART % (latest["rcp"] if latest and latest["rcp"]
@@ -380,6 +450,7 @@ def company_html(data, s):
 <div class="chips" style="margin-top:14px">%s%s</div>
 <section class="card"><h2>수주잔고 롤포워드 <em>정기보고서 II-4 수주상황 · 억원 · 8분기</em></h2>
  <div class="chart"><canvas id="cRoll"></canvas></div>%s</section>
+%s
 %s
 %s
 %s
@@ -403,7 +474,7 @@ def company_html(data, s):
 <script>%s</script>
 """ % ("".join(kp), stage_chips(data, s, "../"),
        chip(s["tags"].get("front_back") or "전/후공정 미판정"),
-       roll_tbl, item_tbl, sales_html, basis_html, cust_html, con_html, rel_html,
+       roll_tbl, item_tbl, sales_html, basis_html, cust_html, con_html, peer_html, rel_html,
        json_for_html(chart), CHART_DEFAULTS_JS,
        stage_color(s["tags"].get("primary") or "parts"), "#5d6675", TABLE_JS)
     return page("%s 수주잔고·매출인식" % name, body, depth=1, h1=name,
@@ -500,6 +571,7 @@ def hub_html(data, sums):
  <div><b>%d</b><span>매출인식 기준 원문 확인</span></div>
  <div><b>%d</b><span>주요고객 주석 확인</span></div>
  <div><b>%d</b><span>단일판매ㆍ공급계약 공시</span></div>
+ <div><b>%d</b><span>중국향 계약을 공시한 회사</span><i class="mut">공급지역 칸 기준 · 매출 비중이 아닙니다</i></div>
 </div>
 %s
 <div class="chips" style="margin-top:12px">%s</div>
@@ -516,6 +588,8 @@ def hub_html(data, sums):
 <script>%s</script>
 """ % (fmt_eok(bsum), len(with_bal), len(sums), n_basis, n_cust,
        len([c for c in data["contracts"] if c["stock"] in mem_stocks]),
+       len({c["stock"] for c in data["contracts"]
+            if c["stock"] in mem_stocks and c.get("region_cn")}),
        note, bchips, "".join(cards), stage_tbl, big_tbl, len(data["uni"]), TABLE_JS)
     return page("한국반도체장비 — 수주잔고·매출인식·고객집중", body, depth=0,
                 h1="🔧 한국반도체장비",
@@ -576,6 +650,25 @@ def coverage_html(data, sums):
                     E((r.get("reason") or "")[:80]))
                  for r in rej[:120])
 
+    # 사람이 원문을 열고 다시 판정한 행(ksemi_scan.HOLD_CALLS)
+    man = [r for r in sm.get("rows", []) if r.get("manual")]
+    man.sort(key=lambda r: (r["verdict"], r["name"]))
+    mn = "".join('<tr><td class="l">%s</td><td class="mut">%s</td><td class="l">%s</td>'
+                 '<td class="l mut">%s</td><td class="l">%s</td><td class="qt">%s</td></tr>'
+                 % (E(r["name"]), E(r["stock"]), E(r["verdict"]), E(r.get("rule_verdict") or ""),
+                    E(re.sub(r"^재판정 — ", "", r.get("reason") or "")), E(r.get("quote") or ""))
+                 for r in man)
+
+    # ⑤ 원문 언급 지도(ksemi_peers)
+    pm = data["peers_meta"]
+    pe = []
+    for r in pm.get("rows", []):
+        for m in r["mentions"]:
+            pe.append('<tr><td class="l">%s</td><td class="l">%s</td><td class="l">%s</td>'
+                      '<td>%d</td><td class="l mut">%s</td><td class="qt">%s</td></tr>'
+                      % (E(r["name"]), E(m["name"]), chip(m["kind"]), m["n"],
+                         E(m.get("cue") or "—"), E(m["quote"])))
+
     no_disc = [s for s in sums if s["roll"] and s["kpi"].get("backlog") is None]
     nd = "".join('<tr><td class="l"><a href="%s/index.html">%s</a></td><td class="mut">%s</td>'
                  '<td class="l mut">%s</td></tr>'
@@ -610,18 +703,38 @@ KIND 업종은 그보다 굵어서 장비사는 <code>특수 목적용 기계 �
 
 <section class="card"><h2>④ 본문 탐색 — 배제·보류 <em>후보 %d사 중 상위 %d사</em></h2>
 <p style="font-size:12px;color:var(--tx2)">제외한 회사도 근거를 남깁니다. 점수는 정기보고서 II절 본문의 낱말 횟수입니다 —
-장비 점수가 소자·소재 점수에 눌리면 배제합니다. 경계에 걸린 회사는 <code>tools/ksemi_scan.py</code> 의 지정 목록에
-사유와 함께 넣으면 다음 탐색에서 다시 봅니다.</p>
+장비 점수가 소자·소재 점수에 눌리면 배제합니다. 경계에 걸려 <b>보류</b>가 된 회사는 아래 ④-1에서 원문을 열어
+다시 판정했습니다 — 지금 보류로 남은 회사는 없습니다.</p>
 <details><summary style="cursor:pointer;font-size:12px">배제·보류 목록 펼치기</summary>
 <div class="wrap tall"><table data-sortable><thead><tr><th class="l">회사</th><th>종목코드</th>
 <th class="l">판정</th><th class="l">업종</th><th>장비</th><th>소자</th><th>소재</th>
 <th class="l">사유</th></tr></thead><tbody>%s</tbody></table></div></details></section>
+
+<section class="card"><h2>④-1 보류 재판정 <em>%d사 — 사람이 원문을 열고 내린 판정</em></h2>
+<div class="note info">낱말 점수가 경계에 걸린 회사는 규칙으로 가르지 않고 <b>II-2 주요제품 매출 구성표</b>를 직접 읽어
+판정했습니다. 규칙이 뭐라고 했는지(<b>규칙 판정</b>)를 지우지 않고 같이 싣습니다 — 규칙과 사람이 어긋나는 곳이
+다음에 고칠 곳입니다. 표는 <code>tools/ksemi_scan.py</code> 의 <code>HOLD_CALLS</code> 에 있습니다.</div>
+<div class="wrap"><table data-sortable><thead><tr><th class="l">회사</th><th>종목코드</th>
+<th class="l">재판정</th><th class="l">규칙 판정</th><th class="l">사유</th><th class="l">원문</th></tr></thead>
+<tbody>%s</tbody></table></div></section>
+
+<section class="card"><h2>⑤ 원문 언급 지도 <em>%d사 · %d간선 — 정기보고서 II절</em></h2>
+<div class="note info">회사들이 <b>서로의 이름을 본문에 적은 것</b>만 모았습니다(<code>tools/ksemi_peers.py</code>).
+관계는 문장의 단서 낱말로 나눕니다 — <b>업체나열</b>은 같은 목록에 있지만 경쟁사인지 전방 장비사인지 원문이 말하지
+않는 경우입니다. <b>납품 계약이 아닙니다.</b> DART를 다시 두드리지 않고 스캔 캐시만 읽으므로 언제든 다시 만들 수 있습니다.</div>
+<div class="ctl"><input data-filter="#pm" type="search" placeholder="회사·관계·원문 검색"></div>
+<div class="wrap tall"><table id="pm" data-sortable><thead><tr><th class="l">적은 회사</th>
+<th class="l">적힌 회사</th><th class="l">관계</th><th>언급</th><th class="l">단서</th>
+<th class="l">원문</th></tr></thead><tbody>%s</tbody></table></div></section>
 <script>%s</script>
 """ % (E(sm.get("rule", "")),
        "".join(chip(k, None, v) for k, v in sorted(dist.items(), key=lambda kv: -kv[1])),
        len(data["uni"]), "".join(rows), len(no_disc),
        nd or '<tr><td colspan="3" class="l mut">해당 없음</td></tr>',
-       sm.get("n", 0), min(120, len(rej)), rj, TABLE_JS)
+       sm.get("n", 0), min(120, len(rej)), rj,
+       len(man), mn or '<tr><td colspan="6" class="l mut">해당 없음</td></tr>',
+       pm.get("n", 0), pm.get("n_edges", 0),
+       "".join(pe) or '<tr><td colspan="6" class="l mut">언급 없음</td></tr>', TABLE_JS)
     return page("한국반도체장비 커버리지", body, depth=0, h1="커버리지",
                 nav=(("허브", "index.html"), ("공정 흐름", "parts.html"),
                      ("← ARGUS", "../index.html")),

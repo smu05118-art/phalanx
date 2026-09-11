@@ -56,6 +56,7 @@ jobs:
           python3 build_dicts.py --write
           python3 ksemi_contracts.py --all --write
           python3 ksemi_reports.py --write "${Q[@]}"
+          python3 ksemi_peers.py --write        # 무접속 — 위 스캔이 받아 둔 절 캐시만 읽는다
           python3 ksemi_page.py --all
           python3 ksemi_parts.py --write
       - name: Tests (after)

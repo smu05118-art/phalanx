@@ -38,8 +38,11 @@ class TestStagesDict(unittest.TestCase):
         cls.d = C.asset(STAGES_JSON)
         cls.keys = [s["key"] for s in cls.d["stages"]]
         cls.words = set()
+        cls.part_words = set()
         for s in cls.d["stages"]:
             cls.words |= set(s["words"]["strong"]) | set(s["words"]["weak"])
+            for p in s["parts"]:
+                cls.part_words |= {_norm(w) for w in p["words"]}
 
     def test_thirteen_unique_stages(self):
         self.assertEqual(self.d["n"], N_STAGES)
@@ -65,10 +68,11 @@ class TestStagesDict(unittest.TestCase):
         missing = {w for w in self.words if w not in equip}
         self.assertTrue(missing, "요청 목록이 빈 상태라면 이 계약이 의미가 없다")
         self.assertEqual(sorted(missing - extra), [])
-        # 요청 목록에 실제로 안 쓰는 낱말을 담아 두지 않는다.
-        self.assertEqual(sorted(extra - self.words), [])
+        # 요청 목록에 실제로 안 쓰는 낱말을 담아 두지 않는다(부품 이름으로만 쓰는 것도 쓰는 것이다).
+        self.assertEqual(sorted(extra - self.words - self.part_words), [])
 
     def test_part_words_come_from_the_same_dictionary(self):
+        """부품 낱말도 사전 한 벌에서 나온다 — 요청 목록(extra_words)에 실리면 그것도 사전이다."""
         known = ({_norm(w) for w in EQUIP_WORDS}
                  | {_norm(w) for w in self.d["unmatched"]["extra_words"]}
                  | self.words)

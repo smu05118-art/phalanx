@@ -143,7 +143,10 @@ EXTRA_WORDS = (
     "중앙공급", "약액", "유량계", "유량 제어", "드라이룸", "트랩", "피팅",
     # 후공정
     "쏘잉", "범프", "리플로", "reflow", "백그라인딩", "laser",
-    # 부품
+    # 부품 — 아래 셋은 II-2 주요제품 표에만 나오는 부품 이름이다(포인트엔지니어링 실측:
+    # 「Face Plate(반도체) … CVD Chamber 내에서 플라즈마가스를 Wafer에 고루 분사」·
+    # 「SUSCEPTOR … 온도를 목표온도까지 승온」). KIND 40자 문구에는 안 나온다.
+    "디퓨저", "diffuser", "face plate", "서셉터", "susceptor",
     "히터블록", "세라믹부품", "세라믹 부품", "소모성 부품", "장비 부품", "장비용 부품",
     "반도체 부품", "반도체부품", "정밀가공 부품", "부품 제조", "반도체용", "cvd-sic",
     "generator", "지그",
@@ -193,8 +196,8 @@ STAGES = [
      [],
      ["cvd-sic", "스퍼터링타겟", "스퍼터링 타겟"],
      [("chamber", "챔버", ["챔버"]),
-      ("showerhead", "샤워헤드", ["샤워헤드"]),
-      ("heater", "히터·서셉터", ["히터", "히터블록"]),
+      ("showerhead", "샤워헤드·디퓨저", ["샤워헤드", "디퓨저", "diffuser", "face plate"]),
+      ("heater", "히터·서셉터", ["히터", "히터블록", "서셉터", "susceptor"]),
       ("esc", "정전척(ESC)", ["정전척", "esc"]),
       ("quartz", "쿼츠·석영", ["쿼츠", "석영"]),
       ("sic", "SiC·흑연 부품", ["sic", "흑연", "graphite", "cvd-sic"]),
@@ -362,8 +365,8 @@ STAGES = [
       "descum", "asic", "basic", "classic", "music"],
      [("chamber", "챔버", ["챔버"]),
       ("esc", "정전척(ESC)", ["정전척", "esc"]),
-      ("showerhead", "샤워헤드", ["샤워헤드"]),
-      ("heater", "히터·히터블록", ["히터", "히터블록"]),
+      ("showerhead", "샤워헤드·디퓨저", ["샤워헤드", "디퓨저", "diffuser", "face plate"]),
+      ("heater", "히터·히터블록·서셉터", ["히터", "히터블록", "서셉터", "susceptor"]),
       ("quartz", "쿼츠·석영", ["쿼츠", "석영"]),
       ("ceramic", "세라믹 부품", ["세라믹", "세라믹부품", "세라믹 부품"]),
       ("sic", "SiC·흑연 부품", ["sic", "흑연", "graphite", "cvd-sic"]),
@@ -375,7 +378,11 @@ STAGES = [
      "장비의 **부분품**을 만드는 회사. 원문 확인: 하나머티리얼즈 「실리콘부품, 세라믹부품」·"
      "티씨케이 「고순도 흑연제품」·월덱스 「반도체용링및전극」·비씨엔씨 「합성쿼츠 포커스링」·"
      "미코 「반도체 및 디스플레이 부품 제조」·씨엠티엑스 「반도체 장비용 소모성 부품」·"
-     "엔투텍 「반도체장비 부품 제조업」·포인트엔지니어링 「디스플레이 및 반도체 장비 부품」·"
+     "엔투텍 「반도체장비 부품 제조업」·포인트엔지니어링 「디스플레이 및 반도체 장비 부품」"
+     "(부품 이름은 KIND 문구에 없고 II-2 매출표에만 있다 — 「Face Plate(반도체) … CVD "
+     "Chamber 내에서 플라즈마가스를 Wafer에 고루 분사」·「SUSCEPTOR … 온도를 목표온도까지 "
+     "승온」. 그래서 `디퓨저`·`face plate`·`서셉터`를 낱말로 넣고 ksemi_parts 가 주요제품 "
+     "절 원문에서 맞춘다)·"
      "메카로 「히터블록」·케이엔제이 「CVD-SiC Ring」·뉴파워프라즈마 「Plasma Cleaning "
      "Generator」. 흐름 밖이라 `flow_order=null`. 전구체·특수가스·슬러리·포토레지스트 같은 "
      "**소재**는 이 단계가 아니다(장비 부분품이 아니다) — 스펙이 부품소재를 챔버·정전척·"
@@ -662,7 +669,11 @@ def cross_check(tags=None):
            "equip_unassigned": unassigned,
            "equip_unassigned_why": {w: UNASSIGNED_NOTE[w] for w in unassigned},
            "pointer_words": sorted(pointer),
-           "extra_words": sorted(w for w in assigned if w in extra),
+           # 부품 낱말만 쓰는 것도 요청 목록에 싣는다 — 「디퓨저」·「서셉터」처럼 단계 낱말이
+           # 아니라 **부품 이름**으로만 쓰는 낱말이 있다(포인트엔지니어링 II-2 매출표).
+           "extra_words": sorted({w for w in assigned if w in extra} |
+                                 {_norm(w) for st in COMPILED for _k, _l, pw in st["parts"]
+                                  for w in pw if _norm(w) in extra}),
            "dead_words": dead,
            "shared_words": {w: ks for w, ks in sorted(shared.items())},
            "palette_slots": pal_map,

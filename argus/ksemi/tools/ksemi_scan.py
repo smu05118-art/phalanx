@@ -49,6 +49,14 @@
   6. 장비·부품·서비스 낱말 점수가 `EQUIP_IN` 이상이면 `편입`, `EQUIP_HOLD` 이상이면 `보류`.
   7. 그 밖은 `배제`(장비 실질 낱말 없음) — 인용을 남긴다.
 
+## 보류 재판정 (`HOLD_CALLS`)
+
+규칙이 `보류`로 남긴 회사는 **사람이 원문을 열어** 판정한다. 낱말 점수가 애매한 이유는
+대개 둘이다 — ① 장비 낱말이 자사 *생산설비* 이야기다(OSAT), ② 반도체는 여러 전방 중
+하나다(겸업). 둘 다 매출 구성표(II-2 주요제품)를 보면 갈린다. 그래서 재판정의 근거는
+**매출 비율과 품목 설명의 원문 인용**이고, 아래 표에 그대로 적는다. 규칙 점수는
+`rule_verdict` 로 남겨 둔다 — 나중에 규칙을 고쳤을 때 사람 판정과 어긋나는지 보려는 것이다.
+
 ## 원문 캐시 (COMMON.md §0-4)
 
 `assets/cache/` 아래에 절 HTML을 그대로 남긴다. 파서가 자라면 **재수집 없이** 다시 뽑는다
@@ -75,11 +83,10 @@ import sys
 import time
 from collections import Counter
 
-from ksemi_lib import (ASSETS, atomic_write, has_asset, latest_quarter, load_asset,
-                       report_kind, write_asset)
+from ksemi_lib import (ASSETS, atomic_write, find_periodic, has_asset, latest_quarter,
+                       load_asset, write_asset)
 import ksemi_fetch as kfetch                       # 인코딩 판정을 덮어쓴 수집기(코스닥 rcpNo[8]=='9')
-from kce_fetch import find_sections, parallel, pick_report   # 산업 무관 층 — 새로 만들지 않는다
-from kce_probe import report_window
+from kce_fetch import find_sections, parallel   # 산업 무관 층 — 새로 만들지 않는다
 import ksemi_universe
 
 CACHE = os.path.join(ASSETS, "cache")
@@ -259,6 +266,59 @@ EQUIP_IN = 12          # 장비·부품·서비스 점수 — 편입
 EQUIP_HOLD = 4         # 이 사이는 보류(사람이 본다)
 DEVICE_MARGIN = 1.2    # 소자·팹리스 점수가 장비 점수의 이 배를 넘으면 고객 업종
 MATERIAL_MARGIN = 1.0  # 소재 점수가 장비 점수보다 크면 소재사
+# ── 보류 재판정 — 사람이 원문(II-2 주요제품 매출 구성표)을 열고 내린 판정 ──────────────
+# 값: (판정, 사유, 원문 인용). 인용은 2026Q2 반기보고서 II절에서 그대로 옮긴 것이다.
+# 판정 기준은 스펙 ④ 한 줄이다 — "장비·부품·공정 서비스만. 고객 업종(소자사 자신)은 제외."
+HOLD_CALLS = {
+    "033170": ("배제",
+               "반도체 패키징 수탁(OSAT) — 장비·부품을 만들어 팔지 않는다. 본문의 bonder 4회는 "
+               "자사 생산설비 이야기다. 두산테스나·네패스아크·윈팩·LB세미콘을 뺀 기준과 같다",
+               "당사는 후공정에 속하는 반도체패키징업(테스트포함)을 주목적 사업으로 하고 있습니다."),
+    "058470": ("편입",
+               "테스트 단계 소모성 부품사 — IC TEST SOCKET 68.48% + LEENO PIN 23.25% = 매출 91.7%가 "
+               "반도체 검사용 부품이다. 규칙이 놓친 이유는 이 회사가 '장비'가 아니라 '부품'을 만들어 "
+               "장비 낱말이 TEST SOCKET 하나뿐이었기 때문이다",
+               "2026년도 반기 매출기준으로 반도체(메모리 및 비메모리) 테스트 PACKAGE용 장비의 소모성 "
+               "부품인 IC TEST SOCKET 류는 전체 매출대비 68.48%(1,664억원)를 차지하였으며, … "
+               "LEENO PIN 류는 전체 매출대비 23.25%(565억원)"),
+    "060310": ("편입",
+               "이송 단계 — FOSB(웨이퍼 이송장치)가 매출의 92.7%다. 환경시험장치(칼로리메타)를 "
+               "겸업하지만 반도체 쪽이 본업이 됐다. 이 회사는 3월 결산이라 달력 2026Q2를 담는 "
+               "문서가 반기보고서가 아니라 분기보고서 (2026.06)였다 — 그래서 한동안 '오류'였다",
+               "웨이퍼캐리어 제품 FOSB 반도체 웨이퍼 이송장치 GSW-300 5,165,497 92.7%"),
+    "082270": ("배제",
+               "환경오염제어 부문 매출의 99.65%가 클린룸용 Chemical Air Filter — 팹 소모성 필터이지 "
+               "장비도 장비 부분품도 아니다(스펙 §4 부품소재 목록에 필터는 없다). 본문의 '스크러버' "
+               "7회는 특허 목록이고 환경설비(시스템) 매출은 0.03%다. 바이오 신약 부문 병존",
+               "Chemical Air FiIter … 40,819 99.65% / 환경설비 (시스템) 대기 및 실내공기질 개선설비 "
+               "13 0.03%"),
+    "105840": ("배제",
+               "원전 계측기 회사다. '온도센서 및 계측기사업 등' 71.5% 안에 '반도체 공정용 온도센서'가 "
+               "있으나 반도체 몫을 원문에서 특정할 수 없다 — fail-closed",
+               "당사는 축적된 계측기 관련 기술력을 응용하여 원자력발전소용 계측기를 핵심사업으로 "
+               "영위하고 있으며, 이 외에 반도체 및 산업용 온도센서, 철강산업용 자동화장치, "
+               "설비진단시스템을 주요 사업으로 하고 있습니다."),
+    "389500": ("편입",
+               "이송·진공 장비의 구동 부품사 — ROBO BEARING 22.8% + WRIST 21.1% = 매출 43.9%가 "
+               "반도체 웨이퍼 이송 로봇 부품이다. 감속기(31.5%)는 로봇 일반용이라 규칙 점수가 낮았다",
+               "ROBO BEARING은 반도체 생산 공정에서 적용되는 로봇의 구동 부품이며 … 반도체 제조 공정 중 "
+               "진공 로봇 구동부의 필수 부품이고 / WRIST는 반도체 웨이퍼를 이송하는 로봇의 핵심 구동 부품입니다."),
+    "452190": ("배제",
+               "레이저 가공장비사인데 반도체 전용 장비를 원문에서 특정하지 못했다. '기타(반도체/전자기기) "
+               "제조장비' 44.35%의 품목 설명은 MLCC 인쇄공정·LED 도광판·PCB 필름 커팅·피복제거로 팹 공정 "
+               "장비가 아니다. 이차전지 31.01% + 자동차 22.46%가 본업",
+               "이차전지제조장비 3,331,794 31.01% / 자동차(전기차)제조장비 2,413,440 22.46% / "
+               "기타 (반도체 / 전자기기) 제조장비 4,765,339 44.35% … Laser Ablation 레이저 표면처리 시스템 - "
+               "MLCC 인쇄공정 중 불량 시트 발생 시 특정마크를 제거하는 장비"),
+    "452280": ("편입",
+               "장비 가스라인 부품사(스펙 §4 부품소재의 '밸브') — UHP 피팅 2.69% + UHP 밸브 1.09% + "
+               "모듈 14.34% ≈ 18%가 반도체 장비 내부 초고순도 가스배관용이다. 아스플로(UHP 튜브·피팅)를 "
+               "편입한 기준과 같다. 나머지 매출은 석유화학·조선이라는 점을 회사 페이지에 적는다",
+               "반도체 제조 장비의 초고순도 가스배관에 설치되어 유로를 빠르게 개폐 유체 흐름을 제어하는 "
+               "제품입니다. 모듈 및 기타 배관 모듈은 … 블록을 조립하듯 쉽고 간편하게 전체 장비의 내부에 "
+               "조립됩니다."),
+}
+
 RULE = ("반도체 낱말 ≥%d · 타산업 낱말 < %.1f배 · 소자·팹리스 점수 < 장비×%.1f · "
         "소재 점수 < 장비×%.1f · 장비 점수 ≥%d → 편입(≥%d 보류)"
         % (SEMI_MIN, OTHER_RATIO, DEVICE_MARGIN, MATERIAL_MARGIN, EQUIP_IN, EQUIP_HOLD))
@@ -382,14 +442,14 @@ def collect_one(rec, quarter, force=False, cache_only=False):
 
     try:
         q = quarter
-        start, end = report_window(q)
         # 종목코드는 DART 검색에서 정확일치 키다(동명 회사 혼선 없음 — kce_probe에서 확인).
-        reports = pick_report(kfetch.search_reports(st, start, end, report_kind(q)), q)
+        # 보고서 종류를 하나로 못 박지 않는다 — 3월 결산 회사는 달력 분기와 서식이 어긋난다
+        # (3S: 달력 2026Q2가 반기보고서가 아니라 분기보고서 (2026.06)). find_periodic 참조.
+        reports = find_periodic(st, q)
         if not reports and int(q[5]) != 4:
             # 코넥스·일부 코스닥은 분기·반기보고서를 내지 않는다 — 사업보고서로 폴백.
             q2 = "%dQ4" % (int(q[:4]) - 1)
-            start, end = report_window(q2)
-            r2 = pick_report(kfetch.search_reports(st, start, end, report_kind(q2)), q2)
+            r2 = find_periodic(st, q2)
             if r2:
                 reports, q = r2, q2
         if not reports:
@@ -537,6 +597,11 @@ def row_for(rec, col):
         row["judge_if_scanned"] = v                 # 규칙 검증용 — 지정사가 규칙으로도 통과하나
     else:
         row["verdict"], row["reason"], row["quote"] = v, reason, quote
+        call = HOLD_CALLS.get(rec["stock"])
+        if call:                                    # 사람이 원문을 열고 내린 판정이 규칙을 이긴다
+            row["rule_verdict"], row["rule_reason"] = v, reason
+            row["verdict"], row["reason"], row["quote"] = call[0], "재판정 — %s" % call[1], call[2]
+            row["manual"] = True
     return row
 
 

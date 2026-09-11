@@ -36,15 +36,19 @@
 """
 import argparse
 import collections
+import json
 import os
+import re
 import sys
 
-from ksemi_lib import (E, KSEMI, TABLE_JS, atomic_write, fmt_eok, has_asset,
+from ksemi_lib import (ASSETS, E, KSEMI, TABLE_JS, atomic_write, fmt_eok, has_asset,
                        json_for_html, load_asset, page, slot_color)
+import ksemi_scan as SCAN                       # 절 HTML → 평문(같은 규칙을 두 벌로 두지 않는다)
 
 # 근거 출처 라벨 — stage_tags.evidence_source / 부품 매칭 출처.
 SRC_KO = {"product": "KIND 주요제품 문구", "seed": "스펙 지정 사유",
-          "scan": "정기보고서 II절 본문", "": "원문 근거 없음"}
+          "scan": "정기보고서 II절 본문", "주요제품": "정기보고서 II-2 주요제품",
+          "": "원문 근거 없음"}
 
 # scan.json 의 단계 힌트 라벨 → stages.json 의 단계 키.
 # scan 쪽 라벨(ksemi_scan.PATTERNS 의 두 번째 열)은 화면 표기이고 사전 키가 아니다.
@@ -123,13 +127,68 @@ def match_words(text, words, rule, ctx_words, need_ctx=True):
 
 # ── 자료 모으기 ─────────────────────────────────────────────
 
+PROD_MAX = 2500                 # 주요제품 절에서 읽을 글자 수. 표 머리 + 품목 줄이면 충분하다
+# 매출 구성표의 **품목 줄**만 받기 위한 자물쇠 — 낱말 옆에 금액·비율이 있어야 한다.
+# 금액·비율의 표시는 둘 중 하나다 — 단위가 붙거나(54.07% · 14,849백만원), 천 단위 쉼표가
+# 있거나(78,366). 비율 칸은 머리행에만 (%)를 적고 값에는 안 붙이는 표가 많다(한솔아이원스).
+_NUM_NEAR = re.compile(r"\d[\d,\.]*\s*(?:%|％|백만원|천원|원\b)|\d{1,3}(?:,\d{3})+")
+NUM_WINDOW = 80
+
+
+def _first_listed(text, word):
+    """그 낱말이 **매출 구성표의 품목 줄**로 나온 첫 자리. 없으면 -1.
+
+    자물쇠가 없으면 '자기 부품이 들어가는 자리'를 설명한 문장이 그대로 걸린다 —
+    비씨엔씨 「Chamber 하부의 plasma 노출 부위 부품」· 한솔아이원스 「챔버 내벽 손상 보호를
+    위한 부품의 세정」· 제이엔비 「진공 챔버와 가깝게 설치하여」. 셋 다 챔버를 만들지 않는다.
+    품목 줄에는 옆에 금액·비율이 붙어 있다(「CHAMBER, GATE VALVE 외 14,849 54.07%」).
+    한 낱말이 여러 번 나오면 **품목 줄로 나온 자리**를 고른다(설명 문장이 먼저 와도).
+    """
+    tl, wl = text.lower(), word.lower()
+    at = tl.find(wl)
+    while at >= 0:
+        if _NUM_NEAR.search(text[max(0, at - NUM_WINDOW):at + NUM_WINDOW]):
+            return at
+        at = tl.find(wl, at + 1)
+    return -1
+
+
+def products_text(stock, quarter):
+    """그 회사의 **II-2 「주요 제품 및 서비스」 절 원문**(평문). 캐시가 없으면 "".
+
+    부품 이름은 KIND 40자 문구에도, 낱말 근거 인용에도 안 나오는 일이 흔하다 — 엔투텍의
+    `CHAMBER, GATE VALVE`, 제이엔비의 `쿨링 트랩·매니폴드·게이트 밸브`, 포인트엔지니어링의
+    `DIFFUSER·SUSCEPTOR·Face Plate` 는 **매출 구성표 안에만** 있다(2026 반기 실측).
+    이 절은 '그 회사가 파는 물건'을 적는 곳이라 「만든다」의 근거로 쓸 수 있다 —
+    장비사 본문에 나오는 '자기가 쓰는 부품' 이름과 다르다. 그래서 **부품사 풀에만** 쓴다.
+
+    DART를 두드리지 않는다(ksemi_scan 이 받아 둔 절 캐시만 읽는다).
+    """
+    mp = os.path.join(ASSETS, "cache", "meta_%s_%s.json" % (stock, quarter))
+    if not os.path.exists(mp):
+        return ""
+    try:
+        with open(mp, encoding="utf-8") as f:
+            meta = json.load(f)
+        fp = os.path.join(ASSETS, "cache", "sec_%s_products.html" % meta["rcpNo"])
+        if not os.path.exists(fp):
+            return ""
+        with open(fp, encoding="utf-8") as f:
+            return re.sub(r"\s+", " ", SCAN.text_of(f.read()))[:PROD_MAX]
+    except Exception:                                        # noqa: BLE001
+        return ""                                            # 깨진 캐시는 없는 것으로 본다
+
+
 def load_all():
     """인포그래픽이 쓰는 자료 한 벌. reports.json 은 있으면 쓰고 없으면 None."""
     st = load_asset("stages.json")
     tags = load_asset("stage_tags.json")
     scan = load_asset("scan.json")
     rep = load_asset("reports.json") if has_asset("reports.json") else None
-    return {"stages": st, "tags": tags, "scan": scan, "reports": rep}
+    quarter = scan.get("quarter") or ""
+    prod = {r["stock"]: products_text(r["stock"], quarter)
+            for r in scan.get("rows", []) if r.get("verdict") == "편입"}
+    return {"stages": st, "tags": tags, "scan": scan, "reports": rep, "prod": prod}
 
 
 def backlog_by_stock(rep):
@@ -216,6 +275,15 @@ def build(data):
                 # 나온다(브이엠의 ESC 14회는 식각기 안의 정전척이지 브이엠의 제품이 아니다) —
                 # 그걸 받으면 「만든다」고 지어내는 셈이 된다.
                 if t["stock"] in pool_ids:
+                    # II-2 주요제품 절 — 부품 이름이 여기에만 있는 회사가 있다
+                    pt = data["prod"].get(t["stock"]) or ""
+                    for w in match_words(pt, p["words"], prule, ctx_words, need_ctx=False):
+                        at = _first_listed(pt, w)
+                        if at < 0:
+                        # **품목 줄일 때만** 받는다 — 금액·비율이 옆에 있어야 한다.
+                            continue
+                        hits.append({"term": w, "n": None, "src": "주요제품",
+                                     "quote": pt[max(0, at - 60):at + 160].strip()})
                     for e in (scan.get(t["stock"]) or {}).get("evidence") or []:
                         term = e.get("term") or ""
                         if HINT_MAP.get(e.get("stage") or "") != "parts":
@@ -412,7 +480,8 @@ PARTS_JS = r"""
   function scanLine(sc){
     if(!sc) return null;
     var p=el('p','ev');
-    p.appendChild(el('span','src','정기보고서 II절 본문 '+(sc.term||'')+(sc.n?' '+sc.n+'회':'')+' — '));
+    var where=(sc.src==='주요제품')?'정기보고서 II-2 주요제품':'정기보고서 II절 본문';
+    p.appendChild(el('span','src',where+' '+(sc.term||'')+(sc.n?' '+sc.n+'회':'')+' — '));
     p.appendChild(el('span','q','「'+(sc.quote||'')+'…」'));
     return p;
   }

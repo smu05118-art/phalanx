@@ -12,6 +12,7 @@
 import html
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))           # argus/ksemi/tools
@@ -49,6 +50,41 @@ def write_asset(name, data):
     os.makedirs(ASSETS, exist_ok=True)
     atomic_write(os.path.join(ASSETS, name),
                  json.dumps(data, ensure_ascii=False, indent=1) + "\n")
+
+
+_KINDS = ("A003", "A002", "A001")          # 분기 · 반기 · 사업
+
+
+def find_periodic(stock, quarter):
+    """그 분기를 커버하는 **정기보고서 후보 목록**을 돌려준다(적합 순).
+
+    `report_kind(q)` 하나만 검색하면 **3월 결산 회사를 통째로 놓친다**. 3S(060310)를 원문에서
+    확인했다: 사업보고서가 `(2026.03)`, 달력 2026Q2를 담는 문서는 **반기보고서가 아니라
+    분기보고서 `(2026.06)`** 다. 12월 결산 회사만 있다고 보고 A002만 두드리면 "정기보고서
+    검색 결과 없음"으로 떨어진다(2026-09-11 실측 — A002 0건, A003 6건).
+
+    그래서 기대하는 종류를 먼저 보고, 비면 나머지 종류를 같은 창에서 이어 본다. 어느
+    종류로 받았든 `pick_report` 가 제목의 기준월(YYYY.MM)로 거른다 — 결산월이 달라도
+    **분기말이 맞는 문서만** 앞에 온다. 검색을 더 내는 것은 못 찾았을 때뿐이다.
+    """
+    start, end = report_window(quarter)
+    want = report_kind(quarter)
+    first = []
+    for kind in (want,) + tuple(k for k in _KINDS if k != want):
+        reps = pick_report(search_reports(stock, start, end, kind), quarter)
+        if reps and covers(reps[0][1], quarter):
+            return reps                            # 기준월이 분기말과 맞는다 — 더 두드리지 않는다
+        first = first or reps
+    return first                                   # 기준월이 안 맞아도 있는 것은 돌려준다
+
+
+_TITLE_MONTH = re.compile(r"\((\d{4})[.\-/](\d{2})\)")
+
+
+def covers(title, quarter):
+    """보고서 제목의 기준월(`… (2026.06)`)이 그 분기말인가."""
+    m = _TITLE_MONTH.search(title or "")
+    return bool(m) and (int(m.group(1)), int(m.group(2))) == (int(quarter[:4]), int(quarter[5]) * 3)
 
 
 _PAL = None
