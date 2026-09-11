@@ -126,12 +126,33 @@ def role_of(rec, seed_role=None, probe_role=None):
     return "part"
 
 
-def _probe_promoted():
-    """kgrid_scan.py 가 정기보고서 본문으로 찾아 승격한 종목(없으면 빈 사전)."""
+def _probe():
     try:
-        return load_asset("universe_probe.json").get("promoted") or {}
+        return load_asset("universe_probe.json") or {}
     except Exception:
         return {}
+
+
+def _probe_promoted():
+    """kgrid_scan.py 가 정기보고서 본문으로 찾아 승격한 종목(없으면 빈 사전)."""
+    return _probe().get("promoted") or {}
+
+
+def _probe_rejected():
+    """본문 근거로 **아니라고 판정된** 종목 → {종목코드: 이유}.
+
+    어휘로는 걸리지만 II절 본문이 다른 산업을 말하는 회사가 있다(실측):
+      · 파워넷 037030 `전력변환장치` — 본문은 SMPS·가전기기·배터리 팩이다
+      · 대양전기공업 108380 `배전반류` — 본문은 선박용·잠수함·조선소다(방산 탭의 몫)
+      · 제일일렉트릭 199820 `분전반` — 본문은 배선기구·건설사다(저압 배선기구)
+      · 티엠씨 217590 `전력용케이블` — 본문은 해양플랜트·조선소·선박용이다
+    **어휘로 들어온 종목만** 뺀다 — 지정(사유를 적은 것)·지주는 손대지 않는다.
+    뺀 것은 `demoted` 로 남겨 커버리지 화면이 이유와 함께 보인다(지우지 않는다)."""
+    out = {}
+    for r in (_probe().get("rejected") or []):
+        if isinstance(r, dict) and r.get("stock"):
+            out[r["stock"]] = r.get("reason") or ""
+    return out
 
 
 def _grid_hit(product):
@@ -149,8 +170,9 @@ def _grid_hit(product):
 
 
 def select(recs):
-    picked, seen = [], set()
+    picked, seen, demoted = [], set(), []
     probe = _probe_promoted()
+    rejected = _probe_rejected()
     for r in recs:
         stock, ind, prod = r["stock"], r["industry"], r.get("product") or ""
         seed = SEED.get(stock)
@@ -170,6 +192,11 @@ def select(recs):
         elif pr:
             src = "탐색"
         if not src:
+            continue
+        if src in ("업종", "제품") and stock in rejected:
+            demoted.append({"stock": stock, "name": r["name"], "industry": ind,
+                            "product": prod[:90], "source": src,
+                            "reason": rejected[stock]})
             continue
         d = dict(r)
         d["slug"] = stock
@@ -197,17 +224,19 @@ def select(recs):
         raise RuntimeError("모집단이 %d개뿐 — KIND 응답이 깨졌거나 업종명 체계가 바뀌었다" % len(picked))
     order = {"maker": 0, "cable": 1, "part": 2, "epc": 3, "holding": 4}
     picked.sort(key=lambda x: (order[x["role"]], x["stock"]))
-    return picked
+    demoted.sort(key=lambda x: x["stock"])
+    return picked, demoted
 
 
 def fetch(write=False):
     recs = parse_kind(_get(KIND_URL))
     if len(recs) < MIN_ROWS:
         raise RuntimeError("KIND 목록이 %d행뿐" % len(recs))
-    picked = select(recs)
+    picked, demoted = select(recs)
     if write:
-        write_asset("universe.json", {"source": KIND_URL, "n": len(picked), "rows": picked})
-    return picked
+        write_asset("universe.json", {"source": KIND_URL, "n": len(picked), "rows": picked,
+                                     "n_demoted": len(demoted), "demoted": demoted})
+    return picked, demoted
 
 
 def load():
@@ -217,17 +246,28 @@ def load():
         return []
 
 
+def load_demoted():
+    """어휘로는 걸렸지만 **본문 근거로 뺀** 종목. 커버리지 화면이 이유와 함께 보인다."""
+    try:
+        return load_asset("universe.json").get("demoted") or []
+    except FileNotFoundError:
+        return []
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true")
     a = ap.parse_args()
-    recs = fetch(write=a.write)
+    recs, demoted = fetch(write=a.write)
     for r in recs:
         print("%-7s %-7s %-4s %-16s %-4s %s"
               % (r["role"], r["stock"], r["source"][:2], r["name"][:16], r["market"][:4],
                  (r["reason"] or r["product"])[:76]))
     print("— %d종목 %s" % (len(recs), dict(Counter(r["role"] for r in recs))), file=sys.stderr)
     print("  출처 %s" % dict(Counter(r["source"] for r in recs)), file=sys.stderr)
+    for d in demoted:
+        print("[본문 근거로 뺐다] %s %s — %s" % (d["stock"], d["name"], d["reason"][:90]),
+              file=sys.stderr)
 
 
 if __name__ == "__main__":

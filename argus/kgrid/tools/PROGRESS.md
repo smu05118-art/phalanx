@@ -8,19 +8,24 @@
 - [x] **공용 층 수정** `kship_parse.unit_of` — `천USD`·`백만USD`·`천EUR` 표기 + 원화 병기 판정
       (일진전기 잔고가 1000배 작아지던 것)
 - [x] `kgrid_lib.py`(제품군 10슬롯 색·잔고 성격·통화 보존 표기·커버리지 fail-closed) · `assets/kgrid.css`
-- [x] `kgrid_universe.py` — 모집단 **40종목**(업종 13·지정 15·제품 1·**탐색 8**·지주 3)
+- [x] `kgrid_universe.py` — 모집단 **34종목**(업종 9·지정 15·탐색 7·지주 3) +
+      본문 근거로 **뺀 5사**(`demoted`) — 커버리지에 이유와 함께 남긴다
 - [x] `kgrid_dicts.py` — 제품군 10 · 수요처 6 · 전력망 단선도 영역 6(교차 검증)
-- [x] `kgrid_reports.py` — 40사 × 6분기 수집(**실패 0**) · 수주표 4갈래 ·
+- [x] `kgrid_reports.py` — 41사 × 6분기 수집(**실패 0**) · 수주표 4갈래 ·
       표마다 통화 · 종속회사 표 분리 · `--reparse`(DART 재요청 없이 재파싱)
 - [x] `kgrid_scan.py` — 본문 탐색(부품사 승격·오탐 재판정) → `assets/universe_probe.json`
 - [x] `kgrid_contracts.py` — I001 계약 공시 → `assets/contracts.json`
-- [x] `kgrid_page.py` — 허브 · 전력망 단선도 · 커버리지 · 회사 40쪽 ·
+- [x] `kgrid_page.py` — 허브 · 전력망 단선도 · 커버리지 · 회사 34쪽(모집단에서 빠진 쪽은 삭제) ·
       계약 원장(지주·모회사의 자회사 재공시 분리)
-- [x] `tools/tests` **101건 통과** · `site.json` · `_config.yml` exclude ·
+- [x] `tools/tests` **105건 통과** · `site.json` · `_config.yml` exclude ·
       `.github/workflows/update-kgrid.yml` · README/LOGIC/HANDOFF
 
 ## 남은 일
 
+0. [x] `kgrid_scan.py --rejudge` 로 어휘 오탐 5사를 본문 근거로 뺐다 — 파워넷(가전 SMPS) ·
+       대양전기공업(선박·철도용 배전반) · 제일일렉트릭(세대 배선기구) · 티엠씨(해양·조선) ·
+       이지트로닉스(전기차·방산 차량용). **부싱·탭체인저를 파는 상장사는 191사 본문에 없었다** —
+       대신 규소강판·필름커패시터·전력량계/AMI 갈래가 나왔다(FINDINGS §8)
 1. [ ] 제품군 분류 정밀화 — II-2「주요 제품 및 서비스」 절을 따로 수집해 제품 문구로 분류
        (지금은 KIND 문구·수주표 품목·제품군별 매출 행만 본다)
 2. [ ] `tr_unknown`(전압 계급 미상 변압기) 줄이기 — II-2 본문에 `초고압`·`345kV` 가 있으면 `ehv` 로 올린다

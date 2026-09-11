@@ -115,6 +115,16 @@ class 승격규칙(unittest.TestCase):
             for q in row["evidence"]:
                 self.assertIn(q, text, "%s 인용문이 원문에 없다: %r" % (stock, q))
 
+    def test_고유낱말이_0인_회사도_제외_인용문은_남는다(self):
+        """파워넷·대양전기공업·제일일렉트릭은 고유 낱말이 0이라 `evidence` 가 빈다 —
+        그러면 제외 근거를 보여 줄 원문이 없어진다. `neg_evidence` 가 그 자리를 메운다."""
+        for stock in ("037030", "108380", "199820", "377330"):
+            row, text = measured(stock)
+            self.assertEqual(row["evidence"], [], "%s 는 고유 낱말이 0이어야 한다" % stock)
+            self.assertTrue(row["neg_evidence"], "%s 제외 인용문이 비었다" % stock)
+            for q in row["neg_evidence"]:
+                self.assertIn(q, text, "%s 제외 인용문이 원문에 없다: %r" % (stock, q))
+
     def test_본문을_못_읽으면_승격하지_않는다(self):
         """fail-closed — ok=False 면 낱말 수가 아무리 커도 승격 금지(COMMON §0-2)."""
         ok, why = S.judge({"ok": False, "strong": 99, "mid": 99, "note": "정기보고서 없음",

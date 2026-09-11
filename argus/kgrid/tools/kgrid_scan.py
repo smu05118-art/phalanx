@@ -265,13 +265,16 @@ def _counts(pat, text):
     return dict(sorted(c.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
-def quotes(text, limit=3, width=90):
-    """승격 근거로 남길 **원문 인용문**. STRONG 낱말 주변을 그대로 잘라 낸다(추정 금지).
+def quotes(text, pat=STRONG, limit=3, width=90):
+    """근거로 남길 **원문 인용문**. 낱말 주변을 그대로 잘라 낸다(추정 금지, COMMON §0-1).
 
     같은 낱말이 반복되면 서로 다른 낱말이 걸린 토막을 우선해 다양한 근거를 남긴다.
+    STRONG 으로 부르면 승격 근거, NEG 으로 부르면 **제외 근거**가 된다 — 파워넷·대양전기공업·
+    제일일렉트릭처럼 고유 낱말이 0인 회사는 STRONG 인용문이 아예 없으므로, 제외 이유를 보여 줄
+    인용문은 NEG 쪽에서 뽑아야 한다.
     """
     out, used = [], set()
-    for m in STRONG.finditer(text):
+    for m in pat.finditer(text):
         key = re.sub(r"\s+", "", m.group(0)).lower()
         if key in used:
             continue
@@ -320,6 +323,8 @@ def measure(row, text):
     row["mentions"] = {k: len(re.findall(p, text, re.I))
                        for k, p in PRIME_NAMES.items() if re.search(p, text, re.I)}
     row["evidence"] = quotes(text)
+    # 제외 근거 인용문 — 고유 낱말이 0인 회사는 evidence 가 비므로 이쪽이 유일한 원문 근거다.
+    row["neg_evidence"] = quotes(text, NEG)
     row["ok"] = True
     return row
 
@@ -487,13 +492,14 @@ def rejudge(quarter, limit=None, log=sys.stderr):
     """
     universe = load_universe()
     rows = load_rows()
-    todo = [r for r in universe
-            if r.get("role") != "holding" and rows.get(r["stock"], {}).get("scope") != "universe"]
-    log.write("모집단 %d사 중 재판정 대상 %d사\n" % (len(universe), len(todo)))
+    # 지주회사는 뺀다 — 제품 문구에 자회사 제품이 다 적혀 본문 판정이 뜻을 잃는다(FINDINGS §1).
+    # **출처가 `탐색`인 종목도 뺀다** — 그건 이 스크립트가 올린 것이다. 모집단으로 보고
+    # `kept` 로 옮기면 `promoted` 가 비고, 다음 `kgrid_universe.py --write` 가 그 종목을 다시
+    # 떨어뜨린다(피드백 고리). 승격분은 언제나 promoted 에 남아 있어야 한다.
+    todo = [r for r in universe if r.get("role") != "holding" and r.get("source") != "탐색"]
+    log.write("모집단 %d사 중 재판정 대상 %d사(지주·탐색 출처 제외)\n" % (len(universe), len(todo)))
     if limit:
         todo = todo[:limit]
-    for r in todo:
-        rows.pop(r["stock"], None)
     rows = _run(todo, quarter, rows, "rejudge", log)
     for r in todo:
         if r["stock"] in rows:
@@ -516,6 +522,10 @@ def build(log=sys.stderr):
     rows, quarter = d.get("rows") or {}, d.get("quarter") or ""
     remeasure(rows, quarter, log)
     save_rows(rows, quarter)
+    # 어떤 행이 '모집단 재판정'이고 어떤 행이 '후보 승격'인지는 `--rejudge` 가 행에 적어 둔
+    # `scope` 로 정한다. **판정 때 universe.json 을 다시 읽지 않는다** — 모집단은 이 스크립트와
+    # 나란히 갱신되므로, 읽는 순간에 따라 승격분이 통째로 흔들린다(실제로 한 번 그랬다).
+    # 고리를 막는 곳은 `--rejudge` 다: 출처가 `탐색`인 종목에는 scope 를 붙이지 않는다.
     promoted, rejected, kept = {}, [], []
     for st in sorted(rows):
         row = rows[st]
@@ -528,7 +538,8 @@ def build(log=sys.stderr):
                 "kepco": row.get("kepco", 0), "mentions": row.get("mentions") or {},
                 "terms": row.get("terms") or {}, "neg_terms": row.get("neg_terms") or {},
                 "rcp": row.get("rcp", ""), "title": row.get("title", ""),
-                "score": score_of(row), "evidence": row.get("evidence") or []}
+                "score": score_of(row), "evidence": row.get("evidence") or [],
+                "neg_evidence": row.get("neg_evidence") or []}
         if row.get("extra"):
             base["extra"] = row["extra"]
         if ok and not in_uni:

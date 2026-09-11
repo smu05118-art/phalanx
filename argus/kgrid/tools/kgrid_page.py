@@ -34,7 +34,7 @@ from kgrid_lib import (BACKLOG_LABEL, DEMAND_LABEL, DEMAND_ORDER, E, EVIDENCE_LA
                        CHART_DEFAULTS_JS, TABLE_JS, atomic_write, backlog_kind, fmt_eok,
                        fmt_money, fmt_n, fmt_pct, fmt_x, has_asset, json_for_html, load_asset,
                        page, pct, product_color)
-from kgrid_universe import load as load_universe
+from kgrid_universe import load as load_universe, load_demoted
 import kgrid_dicts
 import kgrid_reports
 
@@ -89,6 +89,7 @@ def load_all():
         "quarters": reports.get("quarters", []),
         "contracts": contracts,
         "probe": probe,
+        "demoted": load_demoted(),
     }
 
 
@@ -681,6 +682,26 @@ def coverage_page(data):
         '<th class="l sort">수록 상태</th><th class="l">제품군</th><th class="l">편입 근거</th>'
         '</tr></thead><tbody>%s</tbody></table></div></section>' % (len(ss), "".join(trs)))
 
+    dem = data.get("demoted") or []
+    if dem:
+        rows = "".join(
+            '<tr><td class="l">%s <span class="basis">%s</span></td>'
+            '<td class="l mut">%s</td><td class="l mut">%s</td><td class="l mut">%s</td></tr>'
+            % (E(d["name"]), E(d["stock"]), E(d["source"]), E(d.get("product", "")[:50]),
+               E(d.get("reason", "")[:160]))
+            for d in dem)
+        body.append(
+            '<section class="card"><h2>어휘로는 걸렸지만 <b>본문 근거로 뺀</b> 회사 '
+            '<em>%d사</em></h2>'
+            '<p class="note">KIND 주요제품 문구에 전력망 낱말이 있어도 정기보고서 II절 본문이 '
+            '다른 산업을 말하면 뺍니다 — 같은 낱말을 다른 산업에서 쓰기 때문입니다. '
+            '예: `배전반`이 <b>선박용·철도차량용</b>(대양전기공업), `분전반`이 <b>세대 내 '
+            '배선기구</b>(제일일렉트릭), `전력변환장치`가 <b>가전용 SMPS</b>(파워넷)·'
+            '<b>전기차·방산 차량용</b>(이지트로닉스). 지운 것이 아니라 이유와 함께 남깁니다.</p>'
+            '<div class="wrap"><table><thead><tr><th class="l">회사</th><th class="l">걸린 경로</th>'
+            '<th class="l">KIND 주요제품</th><th class="l">뺀 이유(본문 근거)</th></tr></thead>'
+            '<tbody>%s</tbody></table></div></section>' % (len(dem), rows))
+
     pr = data.get("probe") or {}
     if pr:
         prom = pr.get("promoted") or {}
@@ -1070,7 +1091,21 @@ def main():
     for r in data["uni"]:
         write("%s/index.html" % r["stock"], company(data, r["stock"]))
         n += 1
-    print("허브·단선도·커버리지 + 회사 %d쪽" % n)
+    # 모집단에서 빠진 회사의 쪽은 **지운다**. 본문 근거로 뺀 종목(파워넷·대양전기공업 등)의
+    # 옛 쪽이 남아 있으면 허브에서 링크가 없는데도 배포물에 실려, 커버리지가 "뺐다"고 적은
+    # 회사의 페이지가 살아 있는 모순이 생긴다.
+    want = {r["stock"] for r in data["uni"]}
+    stale = []
+    for name in sorted(os.listdir(KGRID)):
+        d = os.path.join(KGRID, name)
+        if re.match(r"^[0-9A-Z]{6}$", name) and os.path.isdir(d) and name not in want:
+            for f in os.listdir(d):
+                os.remove(os.path.join(d, f))
+            os.rmdir(d)
+            stale.append(name)
+    print("허브·단선도·커버리지 + 회사 %d쪽%s"
+          % (n, (" · 모집단에서 빠진 쪽 %d개 삭제(%s)" % (len(stale), ",".join(stale)))
+             if stale else ""))
 
 
 if __name__ == "__main__":
