@@ -118,6 +118,45 @@ class TestDomainTierParty(unittest.TestCase):
         self.assertEqual(KC.party_kind("공시유보")[0], "ANON")
         self.assertEqual(KC.party_kind("")[0], "UNKNOWN")
 
+    def test_domain_of_english_contract_names(self):
+        """수출 계약은 계약명이 영문이다 — 실제 공시 계약명으로 검증한다."""
+        self.assertEqual(KC.domain_of("O Mon IV Thermal Power Plant"), "THERMAL")
+        self.assertEqual(KC.domain_of("ESP and FGD for Long Phu1TPP Project"), "THERMAL")
+        self.assertEqual(KC.domain_of("PP12 Expansion CCGT IPP"), "THERMAL")
+        self.assertEqual(KC.domain_of("Jafurah Cogeneration Plant Project"), "THERMAL")
+        self.assertEqual(KC.domain_of("Upper Trishuli-1 Hydroelectric Power Project"), "RENEW")
+        self.assertEqual(KC.domain_of("Dukovany 5&6 Turbine Generator Supply Contract"), "NUKE")
+        # 연료를 알 수 없는 IPP 는 추정하지 않는다(fail-closed).
+        self.assertIsNone(KC.domain_of("Duqm Independent Power Project"))
+        # 발전이 아닌 계약(선박·방산 엔진)은 발전원이 없다.
+        self.assertIsNone(KC.domain_of("선박엔진 공급계약"))
+
+    def test_tier_of_english_and_epc(self):
+        self.assertEqual(KC.ctype_of("Dukovany 5&6 Turbine Generator Supply Contract"), "MAIN")
+        self.assertEqual(KC.ctype_of("FGD system for Kota Super Thermal Power Station"), "AUX")
+        self.assertEqual(KC.ctype_of("가스복합 열병합발전 사업 EPC 공사"), "EPC")
+        self.assertEqual(KC.ctype_of("논산 바이오매스 발전사업 건설공사"), "EPC")
+        # 정비·설계가 EPC 보다 앞이어야 한다(계획예방정비공사는 건설이 아니다).
+        self.assertEqual(KC.ctype_of("고리 3호기 계획예방정비공사"), "OM")
+        self.assertEqual(KC.ctype_of("태안 1~4호기 석탄취급설비 위탁운전용역"), "OM")
+        self.assertEqual(KC.ctype_of("신고리5,6호기 설계형상관리체계 구축 용역"), "ENG")
+
+    def test_tier_falls_back_to_disclosure_kind(self):
+        """계약명으로 못 읽으면 공시 「판매ㆍ공급계약 구분」의 '공사수주'만 근거로 쓴다."""
+        f = KC._fields_from_kv({"판매공급계약구분": "공사수주",
+                                "체결계약명": "Duqm Independent Power Project"})
+        self.assertEqual(f["tier"], "EPC")
+        self.assertEqual(f["tier_basis"], "kind")
+        self.assertEqual(f["kind_raw"], "공사수주")
+        # '용역제공'은 설계·정비·검사를 한데 묶은 말이라 계층을 가르지 못한다 — 승격하지 않는다.
+        g = KC._fields_from_kv({"판매공급계약구분": "용역제공", "체결계약명": "무슨무슨 사업"})
+        self.assertEqual(g["tier"], "UNKNOWN")
+        self.assertEqual(g["tier_basis"], "")
+        # 계약명에서 읽힌 것은 구분이 덮어쓰지 않는다.
+        h = KC._fields_from_kv({"판매공급계약구분": "공사수주",
+                                "체결계약명": "고리 3호기 계획예방정비공사"})
+        self.assertEqual((h["tier"], h["tier_basis"]), ("OM", "name"))
+
     def test_smr_tag(self):
         f = KC._fields_from_kv({"체결계약명": "i-SMR 표준설계 용역", "계약상대": "한국수력원자력"})
         self.assertTrue(f["smr"])

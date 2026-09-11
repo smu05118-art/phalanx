@@ -96,7 +96,9 @@ def domain_of(name):
 
 
 def _ctypes():
-    return [(re.compile(c["pattern"]), c["id"]) for c in load_asset("contract_types.json")["types"]]
+    # 수출 계약명은 영문이다(`Gas Turbine`·`FGD`) — 대소문자를 가리지 않는다.
+    return [(re.compile(c["pattern"], re.I), c["id"])
+            for c in load_asset("contract_types.json")["types"]]
 
 
 _CT = None
@@ -112,6 +114,16 @@ def ctype_of(name):
         if rx.search(n):
             return cid
     return "UNKNOWN"
+
+
+# 공시 첫 칸 「1. 판매ㆍ공급계약 구분」 — 실측 분포 공사수주·용역제공·기타 판매ㆍ공급계약.
+# 계약명으로 계층을 못 읽었을 때만 이 **원문 칸**을 근거로 쓴다(추정이 아니라 공시 구분의 직역).
+# '용역제공'은 설계·정비·검사를 한데 묶은 말이라 계층을 가르지 못하므로 승격시키지 않는다.
+_KIND_TIER = {"공사수주": "EPC"}
+
+
+def tier_from_kind(kind_raw):
+    return _KIND_TIER.get(re.sub(r"[\s　]", "", kind_raw or ""))
 
 
 _DATE = re.compile(r"(\d{4})[-.\s/]*(\d{1,2})[-.\s/]*(\d{1,2})")
@@ -185,13 +197,20 @@ def _fields_from_kv(kv):
                      or _find(kv, "확정 계약금액") or _find(kv, "계약금액") or "")
     party = _find(kv, "계약상대") or ""
     kind, prime = party_kind(party)
+    kind_raw = _find(kv, "판매공급계약구분") or ""
+    tier, tier_basis = ctype_of(name), "name"
+    if tier == "UNKNOWN":
+        t2 = tier_from_kind(kind_raw)
+        tier, tier_basis = (t2, "kind") if t2 else ("UNKNOWN", "")
     start = _date(_find(kv, "계약기간", "시작") or _find(kv, "시작일") or "")
     end = _date(_find(kv, "계약기간", "종료") or _find(kv, "종료일") or "")
     dom = domain_of(name)
     return {
         "name": name,
         "domain": dom,
-        "tier": ctype_of(name),
+        "tier": tier,
+        "tier_basis": tier_basis,      # 'name'(계약명) | 'kind'(공시 「판매ㆍ공급계약 구분」) | ''
+        "kind_raw": kind_raw,
         "smr": bool(_SMR.search(name or "")),
         "amt_krw_m": (round(amt_krw / 1e6, 3) if amt_krw is not None else None),   # 백만원
         "rev_ratio": num_of(_find(kv, "매출액대비") or ""),

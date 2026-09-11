@@ -20,7 +20,9 @@
 - [x] 템플릿 스모크: 회사 22쪽·허브·커버리지·parts 생성(계약/보고서 수집 전 상태)
 
 ## 진행 중 / 남은 일
-1. [~] `knuke_contracts.py --collect` (DART 백그라운드, 1/25 — DART IP 게이트로 느림) → `--build`
+1. [~] `knuke_contracts.py --collect` — 25종목을 3레인(`--only` 분할)으로 재개.
+   2026-09-11 재개 시점: 034020(24)·052690(29) 완료, 나머지 23종목 수집 중.
+   로그 `/tmp/knuke_c1..c3.log`. 끝나면 `--build`.
 2. [ ] `knuke_reports.py --collect --n 8` (DART) → `--build`  ※ 계약 수집 끝난 뒤(동시 금지)
 3. [ ] `knuke_suppliers.py --build && knuke_page.py --all && knuke_parts.py` 재생성
 4. [ ] site.json 공개 · 커밋 · `/tmp/knuke.done`

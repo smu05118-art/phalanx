@@ -165,13 +165,20 @@ def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel
         party = E(c["party"] or "—")
         if c["party_prime"]:
             party = '<a href="%s%s/index.html">%s</a>' % (rel, E(c["party_prime"]), party)
+        # 계층 판정 근거를 툴팁으로 — 계약명에서 읽었는지, 공시 「판매ㆍ공급계약 구분」에서 왔는지.
+        tier_ko = E(tm["ko"])
+        if c.get("tier_basis") == "kind":
+            tier_ko = ('<span title="계약명으로는 못 읽어 공시 「판매ㆍ공급계약 구분」 %s 에서 판정">%s*</span>'
+                       % (E(c.get("kind_raw") or ""), E(tm["ko"])))
+        elif tm["id"] == "UNKNOWN" and c.get("kind_raw"):
+            tier_ko = '<span class="mut" title="공시 구분만 있음">미상(%s)</span>' % E(c["kind_raw"])
         tr.append(
             '<tr><td class="l">%s</td>%s<td class="l">%s%s</td><td class="l">%s</td>'
             '<td class="l">%s</td><td data-v="%.0f">%s</td><td data-v="%s">%s</td>'
             '<td class="l">%s<br><span class="mut">%s</span></td><td class="l mut">%s</td>'
             '<td class="l"><a href="%s" target="_blank" rel="noopener noreferrer">원문</a>%s</td></tr>'
             % (E(c["signed"] or c["start"] or "—"), who, _sw(dm["color"]), E(dm["ko"]),
-               E(tm["ko"]), nm,
+               tier_ko, nm,
                (amt or 0), fmt_eok(amt), (c["years"] if c["years"] is not None else -1),
                fmt_x(c["years"]) if c["years"] is not None else "—",
                party, E(PARTY_KO.get(c["party_kind"], c["party_kind"])),
