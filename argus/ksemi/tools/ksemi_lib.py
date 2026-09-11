@@ -24,8 +24,8 @@ if KCE_TOOLS not in sys.path:
     sys.path.insert(0, KCE_TOOLS)
 
 # 산업 무관 층 — kce에서 가져온다. 이 이름들로 ksemi 모듈 전체가 쓴다.
-from kce_lib import (atomic_write, json_for_html, latest_quarter, norm_col,   # noqa: E402,F401
-                     num_of, q_next, q_of, q_range, report_kind)
+from kce_lib import (COL_ALIAS, atomic_write, json_for_html, latest_quarter,  # noqa: E402,F401
+                     norm_col, num_of, q_next, q_of, q_range, report_kind)
 from kce_fetch import (fetch_section, find_sections, pick_report,             # noqa: E402,F401
                        search_reports, toc, _get)
 from kce_parse import parse_tables                                           # noqa: E402,F401
