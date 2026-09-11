@@ -1,0 +1,80 @@
+# 한국원전·발전기자재(argus/knuke) 일일 자동 갱신.
+#
+# 계약 공시(수시)는 매일 새로 뜨고 정기보고서는 분기마다 뜬다 — 둘 다 캐시가 있으면 건너뛰므로
+# 평시 비용은 검색 몇 건이다. 수집기는 하나씩 돌린다(DART 는 IP 단위로 끊는다).
+# concurrency 그룹은 kce·kship·kdef 와 같은 `kship-dart` — 여러 탭이 동시에 DART 를 두드리면 안 된다.
+name: update-knuke
+on:
+  schedule:
+    - cron: "40 2 * * *"          # 11:40 KST — kdef(11:20) 뒤
+  workflow_dispatch:
+    inputs:
+      quarter:
+        description: "정기보고서 분기 강제(예: 2026Q3) — 비우면 최신 분기"
+        required: false
+permissions:
+  contents: write
+concurrency:
+  group: kship-dart
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Tests (before)
+        run: cd argus/knuke/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Collect and build
+        id: build
+        continue-on-error: true
+        env:
+          QUARTER_INPUT: ${{ github.event.inputs.quarter }}
+        shell: bash
+        working-directory: argus/knuke/tools
+        run: |
+          set -o pipefail
+          Q=()
+          if [ -n "${QUARTER_INPUT:-}" ]; then
+            if ! printf '%s' "$QUARTER_INPUT" | grep -Eq '^[0-9]{4}Q[1-4]$'; then echo "::error::quarter 형식"; exit 2; fi
+            Q=(--quarter "$QUARTER_INPUT")
+          fi
+          python3 build_dicts.py --write
+          python3 knuke_scan.py --scan "${Q[@]}"
+          python3 knuke_universe.py --write
+          python3 knuke_contracts.py --collect
+          python3 knuke_contracts.py --build
+          python3 knuke_reports.py --collect --n 8 "${Q[@]}"
+          python3 knuke_reports.py --build --n 8 "${Q[@]}"
+          python3 knuke_suppliers.py --build
+          python3 knuke_page.py --all
+          python3 knuke_parts.py
+      - name: Tests (after)
+        run: |
+          cd argus/knuke/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+          git diff --check || true
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "knuke-bot"
+          git config user.email "knuke-bot@users.noreply.github.com"
+          git reset -q -- '*.pyc' '**/__pycache__/**' 2>/dev/null || true
+          if [ -z "$(git status --porcelain -- argus/knuke)" ]; then
+            echo "변경 없음"; exit 0
+          fi
+          git add -- argus/knuke
+          git commit -m "knuke: 자동 갱신 $(date -u +%Y-%m-%d) (계약공시·정기보고서·부품 연결)"
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Fail if build errored
+        if: always() && steps.build.outcome == 'failure'
+        run: |
+          echo "::error::수집·생성 단계 실패 — 성공한 산출물은 커밋됐다. 로그를 확인하라"
+          exit 1
