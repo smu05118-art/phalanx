@@ -264,9 +264,13 @@ def parse_orders_table(t):
                    col("전기말"), col("전분기말"))
     i_new = first(col("당기수주", "금액"), col("당기수주"), col("당기수주액"),
                   col("신규", "금액"), col("신규"))
-    i_done = first(col("기납품", "금액"), col("기납품"), col("당기매출액"), col("매출인식"))
+    # 도급 형식 수주표 — 전기공사·정비 회사는 `기본도급액|완성공사액|계약잔액` 으로 적는다
+    # (한전KPS 실측). 이 별칭이 없으면 `완성공사액` 이 이름 열로 읽혀 공사명 자리에 숫자가 오고,
+    # 총액·기납품이 빈칸이 된다.
+    i_done = first(col("기납품", "금액"), col("기납품"), col("당기매출액"), col("매출인식"),
+                   col("완성공사액"), col("기성액"))
     i_gross = first(col("수주총액", "금액"), col("수주총액"), col("계약금액"),
-                    col("수주금액", drop=("당기",)))
+                    col("기본도급액"), col("도급액"), col("수주금액", drop=("당기",)))
     # `당기말` 을 `기말` 보다 먼저, `기말` 은 `전기말` 을 걸러서 본다.
     i_close = first(col("수주잔고", "금액"), col("수주잔고"),
                     col("당기말"), col("당분기말"),
@@ -274,7 +278,8 @@ def parse_orders_table(t):
                     col("기말", "금액", drop=("전기", "전분기")),
                     col("기말", drop=("전기", "전분기")),
                     col("잔액", drop=("전기", "전분기")))
-    i_date = first(col("수주일자"), col("계약일자"), col("수주일"))
+    i_date = first(col("수주일자"), col("계약일자"), col("수주일"),
+                   col("최초계약일"), col("공사시작일"), col("착공"))
     i_due = first(col("납기"), col("인도예정"), col("완공예정"), col("공사기간"))
     # `당기 수주금액` 열이 `수주금액` 으로도 잡혀 i_gross 와 겹칠 수 있다 — 겹치면 신규 쪽을 남긴다.
     if i_new is not None and i_gross == i_new:
@@ -305,8 +310,11 @@ def parse_orders_table(t):
         def g(i):
             return _scaled(r[i], mul) if i is not None and i < len(r) else None
         seg = labels[0]
-        item = labels[-1] if len(labels) > 1 else ""
-        label = (seg + (" · " + item[:40] if item else "")).strip()
+        # 가운데 라벨을 버리지 않는다 — 한전KPS 수주표에는 `구분|발주처|공사명` 세 칸이 있고
+        # 발주처가 한국동서발전·한국수력원자력·한국전력공사라는 **실명**이다. 마지막 하나만
+        # 남기면 이 산업에서 가장 값어치 있는 칸이 사라진다.
+        item = " · ".join(labels[1:])[:120]
+        label = (seg + (" · " + item[:60] if item else "")).strip()
         # 소계 판정 — 라벨 중 **하나라도** 계/합계면 소계다. 일진전기 수주표는
         # `전력선 등|계` 라는 품목 소계와 `합 계|계` 라는 총계가 같이 온다. `전력선 등|계` 를
         # 낱 행으로 두고 다 더하면 잔고가 정확히 두 배가 된다(실측).
