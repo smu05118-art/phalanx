@@ -2737,3 +2737,46 @@ engineer·hatter·magician·minstrel·politician·preacher·summoner 뿐이고 �
 
 **Fable 은 이번에도 크레딧 소진이라 반박 서브에이전트를 못 띄웠다.**
 공식 대조는 직접 했다 — `roles181.json` 의 toymaker 전 필드.
+
+## 라운드 41 — 규칙 설명문 7건 · PR #62
+
+A45·A49·A51·A52·A53·A54·A55. 전부 공식 원문과 위키를 직접 읽어 확정했다.
+
+| 건 | 공식 | 앱이 적던 것 |
+|---|---|---|
+| A45 공작부인 | ability "Each day, **3 players** may choose to visit" · reminders `['Visitor','Visitor','False Info']` = 정확히 3 · 위키 "If more or less than three players volunteer to visit, **do not add these reminders**." | "**최대** 3명" · "3명 미만이어도 그대로 진행" |
+| A49 카잘리×성가대 소년 | 위키 Kazali "The Kazali can make whatever player they want into a Minion, regardless of that player's character ability e.g. Soldier, Goon, Damsel, **King**." · 공식 kazali 징크스는 bountyhunter·marionette·summoner **3건뿐** | "성가대 소년이 인플레이면 카잘리는 왕을 하수인으로 만들 수 없다" |
+| A51 제노맨서 | "learns a piece of **true** info" · 위키 "This is true **even if they are drunk or poisoned**, since this is due to the Zenomancer, not their character." | "참인 정보를 줄지는 배치 전에 정해 두고" |
+| A52 우그의 신 | `special:[{type:'vote',name:'multiplier',value:2}]` — 생존 조건 없음 · 위키 "If the player wearing the Ug hat votes, it counts as two votes." | "2표는 **살아 있는 동안에만** 의미가 있다" |
+| A53 밀주업자 | 위키 "inform the group of **all the homebrew characters and/or rules** you are using" | "자작 규칙의 **내용까지 밝힐 필요는 없다**" (정반대) |
+| A54 복화술사 | ability "If **a player** is mad as a fresh character during **their** nomination" · 위키 "different to a character that **you** have previously claimed" | "**지명자**가 **아무도** 주장하지 않은" — 주체와 기준이 둘 다 틀렸다 |
+| A55 진 | 위키 "inform the group of all Djinn special rules for this game. (**Do this even if there are no jinxed characters in play.**)" | "게임에 없는 캐릭터의 징크스까지 공개할지는 미리 정할 것" |
+
+A49 는 '공식 파일에 없어서 보류' 가 아니라 **반박**이라 삭제가 정본이었다. 징크스 표와
+분류 키를 함께 지워 앱 자신의 감사(`thyDjinn.audit`)가 146/146 → **145/145, missing·extra 0**
+을 내는 것을 확인했다. 지운 상호작용 메모는 버리지 않고 카잘리·성가대 소년의 `warn` 으로 옮겼다.
+
+### 게이트가 내가 새로 만든 결함을 잡았다
+
+공작부인 능력문에 `**정확히 3명**` 을 넣었더니 A56 가드(`noLiteralBoldMarkersAnywhere`)가 울렸다.
+셋업의 **전설 선택 목록**이 능력문을 `escEm` 없이 그린다 — 게다가 그 계열에는 `textContent` 로
+그리는 경로까지 있어 마크다운이 **원리적으로** 불가능하다.
+
+그래서 규칙을 하나 세웠다: **`ability` 에는 `**` 를 쓰지 않는다.** 강조는
+`warn`/`guide*`/`howto`/`examples`/`remind` 에서만 쓴다. BACKLOG 맨 위에 적어 두었다.
+`ability` 에 `**` 가 남은 5종(atheist·alhadikhia·mastermind·shabaloth·fanggu)은
+5개 에디션 × 8개 탭 스윕으로 **화면에 닿지 않음**을 확인했다.
+
+### 맥스튜디오만 실패를 냈고, 그게 옳았다
+
+전 스위트에서 맥미니는 실패 0, 맥스튜디오는 **시나리오 실패 런 1** 이었다.
+실패한 시나리오는 정확히 `jinx:kazali|choirboy` — 이번에 **일부러 지운 쌍**이다.
+
+원인은 `scenarios_jinx.js` 가 기대값을 **정본**에서 만들기 때문이다(돌연변이 자멸 방지).
+맥스튜디오의 정본은 이전 릴리스라 그 쌍을 아직 기대했고, `THY_JINX_SRC` 를 후보로 지정하면 0이 된다.
+
+문제는 반대쪽이다 — **맥미니에서는 그 정본 경로가 내가 편집하는 워크트리**라
+징크스를 지우면 기대값도 같이 사라져 **조용히 통과한다.** 이번엔 의도한 삭제였지만,
+의도하지 않은 삭제도 로컬에선 안 잡힌다. 백로그에 하니스 항목으로 적었다.
+
+**검증기를 다른 기계에서 돌리면 자기 거짓말이 드러난다** — 라운드 35 와 같은 교훈이 또 나왔다.
