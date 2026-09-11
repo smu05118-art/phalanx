@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>삼영 — 한국전력기기</title>
+<link rel="stylesheet" href="../assets/kgrid.css">
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+
+
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+
+var SER=[{"q":"2025Q1","backlog":null,"new":null,"delivered":null,"cov":null},{"q":"2025Q2","backlog":null,"new":null,"delivered":null,"cov":null},{"q":"2025Q3","backlog":null,"new":null,"delivered":9284,"cov":null},{"q":"2025Q4","backlog":null,"new":null,"delivered":21084,"cov":null},{"q":"2026Q1","backlog":28500,"new":null,"delivered":12572,"cov":0.18602161767009556},{"q":"2026Q2","backlog":28500,"new":null,"delivered":25150,"cov":0.18602161767009556}];
+
+(function(){
+  var el=document.getElementById('cbal'); if(!el||!window.Chart||!SER.length) return;
+  var css=getComputedStyle(document.documentElement);
+  var s1=css.getPropertyValue('--s1').trim(), s3=css.getPropertyValue('--s3').trim(),
+      s2=css.getPropertyValue('--s2').trim();
+  var ds=[{type:'bar',label:'수주잔고',data:SER.map(function(r){return r.backlog;}),backgroundColor:s1,order:3}];
+  if(SER.some(function(r){return r['new']!=null;}))
+    ds.push({type:'line',label:'당기 신규수주',data:SER.map(function(r){return r['new'];}),borderColor:s3,order:1});
+  if(SER.some(function(r){return r.delivered!=null;}))
+    ds.push({type:'line',label:'기납품액',data:SER.map(function(r){return r.delivered;}),borderColor:s2,order:2});
+  new Chart(el,{data:{labels:SER.map(function(r){return r.q;}),datasets:ds},
+    options:{scales:{y:{beginAtZero:true,ticks:{callback:function(v){return (v/100).toLocaleString();}},
+      title:{display:true,text:'억원(원화 공시) · 외화는 백만 단위'}}}}});
+})();
+</script></head>
+<body>
+<header class="top"><div class="hd"><h1>삼영</h1><span class="tag">003720</span><span class="tag">부품·소재</span><span class="tag">유가</span><span class="tag">회전</span><span class="sp"><a href="../index.html">허브</a><a href="../grid.html">단선도</a><a href="../coverage.html">커버리지</a></span></div><div class="crumb"><a href="../index.html">⚡ 한국전력기기</a> › <span>회사</span> › <span>삼영</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">합성수지(BOPP,캐파시타),PPC,랩,종이상자(카톤팩) 제조 — 탐색 — 반기보고서 (2026.06) 점수 25(고유 낱말 5회: 송배전 3, 전력망 2 · 관련 낱말 10회)</p><div class="kpi"><div class="hero"><b>285억</b><span>수주잔고 (2026Q2)</span></div><div><b>0.19<small>년</small></b><span>커버리지(잔고÷연매출)</span></div><div><b>회전</b><span>잔고 성격(기준 1.0년)</span></div><div><b>1,532억</b><span>연매출 제63기 연간</span></div><div><b>48.1%</b><span>수출비중(매출실적)</span></div><div><b>—</b><span>최대 외부고객 비중</span></div></div><p class="note" style="margin-top:14px">· 수주표의 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 (최대 행이 잔고의 100.0%).</p><section class="card"><h2>수주잔고 추이 <em>KRW — 분기 6개</em></h2><div class="chart"><canvas id="cbal"></canvas></div><p class="mut" style="margin-top:8px">신규수주·기납품액을 같이 공시하는 회사라 롤포워드(기초+신규−기납품=기말)를 그릴 수 있습니다.</p></section><section class="card"><h2>수주표 행 <em>2026Q2 원문 그대로</em><span class="right">수주일자·납기가 기간 표기인 회사가 많습니다</span></h2><div class="wrap"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l sort">품목</th><th class="sort">기초·이월</th><th class="sort">신규·총액</th><th class="sort">기납품</th><th class="sort">잔고</th><th class="l">수주일자</th><th class="l">납기</th></tr></thead><tbody><tr><td class="l">엔진프레임외</td><td class="l mut"></td><td data-v="28500.000">285</td><td data-v="32090.000">321</td><td data-v="25150.000">252</td><td data-v="28500.000">285</td><td class="l mut">2026.06.30현재</td><td class="l mut">-</td></tr></tbody></table></div></section><section class="card"><h2>매출 구성 <em>2026Q2</em></h2><div class="grid2"><div><h2>부문 × 내수/수출 <em>원문 이름 그대로</em></h2><div class="wrap tall"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l">품목</th><th class="l sort">구분</th><th class="sort">금액</th></tr></thead><tbody><tr><td class="l">PPC</td><td class="l mut">제품 커패시터필 름</td><td class="l">수출</td><td data-v="28693.000">287</td></tr><tr><td class="l">PPC</td><td class="l mut">제품 커패시터필 름</td><td class="l">내수</td><td data-v="4693.000">47</td></tr><tr><td class="l">PPC</td><td class="l mut">제품 커패시터필 름</td><td class="l">합계</td><td data-v="33386.000">334</td></tr><tr><td class="l">BOPP</td><td class="l mut">제품 이축연신필 름</td><td class="l">수출</td><td data-v="119.000">1</td></tr><tr><td class="l">BOPP</td><td class="l mut">제품 이축연신필 름</td><td class="l">내수</td><td data-v="17833.000">178</td></tr><tr><td class="l">BOPP</td><td class="l mut">제품 이축연신필 름</td><td class="l">합계</td><td data-v="17952.000">180</td></tr><tr><td class="l">PE랩</td><td class="l mut">제품 랩</td><td class="l">내수</td><td data-v="23.000">0</td></tr><tr><td class="l">PE랩</td><td class="l mut">제품 랩</td><td class="l">합계</td><td data-v="23.000">0</td></tr><tr><td class="l">PO랩</td><td class="l mut">제품 랩</td><td class="l">내수</td><td data-v="2.000">0</td></tr><tr><td class="l">PO랩</td><td class="l mut">제품 랩</td><td class="l">합계</td><td data-v="0.000">0</td></tr><tr><td class="l">기타</td><td class="l mut">상품 -</td><td class="l">수출</td><td data-v="2642.000">26</td></tr><tr><td class="l">기타</td><td class="l mut">상품 -</td><td class="l">내수</td><td data-v="2776.000">28</td></tr><tr><td class="l">기타</td><td class="l mut">상품 -</td><td class="l">합계</td><td data-v="5418.000">54</td></tr><tr><td class="l">조선기자재부문</td><td class="l mut">제품 라이너외</td><td class="l">내수</td><td data-v="16167.000">162</td></tr><tr><td class="l">조선기자재부문</td><td class="l mut">제품 라이너외</td><td class="l">합계</td><td data-v="16167.000">162</td></tr><tr><td class="l">조선기자재부문</td><td class="l mut">제품 엔진부품외</td><td class="l">수출</td><td data-v="14209.000">142</td></tr><tr><td class="l">조선기자재부문</td><td class="l mut">제품 엔진부품외</td><td class="l">내수</td><td data-v="10942.000">109</td></tr><tr><td class="l">조선기자재부문</td><td class="l mut">제품 엔진부품외</td><td class="l">합계</td><td data-v="25151.000">252</td></tr><tr><td class="l">랩부문</td><td class="l mut">제품 PVC랩</td><td class="l">수출</td><td data-v="3643.000">36</td></tr><tr><td class="l">랩부문</td><td class="l mut">제품 PVC랩</td><td class="l">내수</td><td data-v="763.000">8</td></tr><tr><td class="l">랩부문</td><td class="l mut">제품 PVC랩</td><td class="l">합계</td><td data-v="4406.000">44</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">수출</td><td data-v="49306.000">493</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">내수</td><td data-v="53174.000">532</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">합계</td><td data-v="102480.000">1,025</td></tr></tbody></table></div></div></div></section><section class="card"><h2>수요 축 — 원문 인용 <em>II절 본문</em><span class="right"></span></h2><div class="grid2"><div class="panel"><h3>신재생 연계 <em>42회</em></h3><ul><li>리드, 전기차, 수소연료전지차)용 커패시터 필름의 품질 안정화 및 양산을 통한 수익 극대화 3) 인버터, 콘덴서등의 수출시장 다변화로 매출증진(인도, 중국, 유럽 미국등) 4) 신재생 에너지 분야의 커패시터 필름 판매 확대(풍력,태양광등) 5) 신규시장 진출 및 중국, 유럽시장 공략을 통한 매출 확대 6) 매출처 다변화 (2차전지 및 반도체, 전자필름) 7) 반도체용 절연필름 시장 공략을 통한 수익극대화 8) 기존 납품업체</li><li>커패시터 필름은 국내 유일, 세계3위 생산업체로서 현재 시장을 주도하고 있는 AI데이터센터, BEV등 친환경자동차, UAM, 신재생에너지, E.S.S, 휴머노이드등의 로봇산업 등 향후 5년내 가장 빠른 성장구간에 있는 핵심 산업에서 필름 콘덴서가 사용되고 있어 성장성이 매우 높은 사업부문입니다.</li></ul></div><div class="panel"><h3>데이터센터 <em>26회</em></h3><ul><li>업체 (3) 판매방법 및 조건 내수판매업체 * 가능한 담보설정 * 당월매출 익월수금조건 * 현금, 어음 3개월 이내 수출업체 * NS, NU, T/T등 (4) 판매전략 1) AI 데이터센터등과 관련된 전력인프라, 전력전자장치(PSU, PDU, UPS, 인버터등) 의 소비증대에 따른 신성장 사업부문에 박막, 고내열성, 품질고도화로 점유율 확대를 통 한 시장 선점등 수익극대화 전략 2) 경량화,소형화,안정성 향상을 위한 극초박막</li><li>커패시터 필름은 국내 유일, 세계3위 생산업체로서 현재 시장을 주도하고 있는 AI데이터센터, BEV등 친환경자동차, UAM, 신재생에너지, E.S.S, 휴머노이드등의 로봇산업 등 향후 5년내 가장 빠른 성장구간에 있는 핵심 산업에서 필름 콘덴서가 사용되고 있어 성장성이 매우 높은 사업부문입니다.</li></ul></div><div class="panel"><h3>AI 전력수요 <em>17회</em></h3><ul><li>수판매업체 (3) 판매방법 및 조건 내수판매업체 * 가능한 담보설정 * 당월매출 익월수금조건 * 현금, 어음 3개월 이내 수출업체 * NS, NU, T/T등 (4) 판매전략 1) AI 데이터센터등과 관련된 전력인프라, 전력전자장치(PSU, PDU, UPS, 인버터등) 의 소비증대에 따른 신성장 사업부문에 박막, 고내열성, 품질고도화로 점유율 확대를 통 한 시장 선점등 수익극대화 전략 2) 경량화,소형화,안정성 향상을 위한 극초</li><li>커패시터 필름은 국내 유일, 세계3위 생산업체로서 현재 시장을 주도하고 있는 AI데이터센터, BEV등 친환경자동차, UAM, 신재생에너지, E.S.S, 휴머노이드등의 로봇산업 등 향후 5년내 가장 빠른 성장구간에 있는 핵심 산업에서 필름 콘덴서가 사용되고 있어 성장성이 매우 높은 사업부문입니다.</li></ul></div><div class="panel"><h3>HVDC(초고압직류) <em>9회</em></h3><ul><li>HVDC(초고압 직류 송전)고압전기를 송전시에도 필름커패시터는 전압 안정화 핵심부품으로 사용되고 AI변압기 내부에 고전압을 견디는 절연 및 보조전원 역할을 수행합니다.</li><li>- 전력송배전 인프라 및 초고압직류송전(HVDC) 전력인프라 및 산업용 설비에는 대규모 전력을 송배전 하는데 송배전망에서도 핵심적인 역활을 하는 변압기등 전력 인프라 설비에 전력손실을 방지하고 고가의 설비를 보호하기 위하여 커패시터 필름이 사용되고 있고, 고전압직류송전(HVDC)은 엄청난 고압을 견뎌야 하므로 초박막이면서 절연파괴전압이 높은 필름형 커패시터를 사용하기에 수요가 크게 증가하고 있습니다.</li></ul></div><div class="panel"><h3>초고압(154·345·765kV) <em>3회</em></h3><ul><li>HVDC(초고압 직류 송전)고압전기를 송전시에도 필름커패시터는 전압 안정화 핵심부품으로 사용되고 AI변압기 내부에 고전압을 견디는 절연 및 보조전원 역할을 수행합니다.</li><li>- 전력송배전 인프라 및 초고압직류송전(HVDC) 전력인프라 및 산업용 설비에는 대규모 전력을 송배전 하는데 송배전망에서도 핵심적인 역활을 하는 변압기등 전력 인프라 설비에 전력손실을 방지하고 고가의 설비를 보호하기 위하여 커패시터 필름이 사용되고 있고, 고전압직류송전(HVDC)은 엄청난 고압을 견뎌야 하므로 초박막이면서 절연파괴전압이 높은 필름형 커패시터를 사용하기에 수요가 크게 증가하고 있습니다.</li></ul></div><div class="panel"><h3>노후 전력망 교체 <em>1회</em></h3><ul><li>장기적 순환 주기 (Super Cycle)는 일반적인 경기 사이클보다 긴 20~25년 단위의 선박 교체 주기 및 환경 규제 변화에 따른 대규모 교체 수요에 따라 장기적인 호황과 불황이 반복되는 특성을 가집니다.</li></ul></div></div></section><section class="card"><h2>되짚기 <em>이 숫자가 어디서 왔는가</em></h2><p class="mut"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260813000317" target="_blank" rel="noopener noreferrer">DART 원문 보고서</a><br>KIND 업종 <code>플라스틱제품 제조업</code><br>편입 근거: 탐색 — 반기보고서 (2026.06) 점수 25(고유 낱말 5회: 송배전 3, 전력망 2 · 관련 낱말 10회)</p></section></main>
+<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. 수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>

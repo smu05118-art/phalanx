@@ -34,7 +34,7 @@ from kgrid_lib import (BACKLOG_LABEL, DEMAND_LABEL, DEMAND_ORDER, E, EVIDENCE_LA
                        CHART_DEFAULTS_JS, TABLE_JS, atomic_write, backlog_kind, fmt_eok,
                        fmt_money, fmt_n, fmt_pct, fmt_x, has_asset, json_for_html, load_asset,
                        page, pct, product_color)
-from kgrid_universe import load as load_universe
+from kgrid_universe import load as load_universe, load_demoted
 import kgrid_dicts
 import kgrid_reports
 
@@ -89,6 +89,7 @@ def load_all():
         "quarters": reports.get("quarters", []),
         "contracts": contracts,
         "probe": probe,
+        "demoted": load_demoted(),
     }
 
 
@@ -99,7 +100,27 @@ def load_all():
 #   환율을 적은 경우) · rev_ratio 최근 매출액 대비 % · demand 수요처 · region 지역 ·
 #   product 제품군 · signed 계약일 · start/end/years 기간 · withheld 공시유보 · canceled 해지
 
-def contracts_of(data, stock, include_canceled=False):
+def demand_label_of(r):
+    """계약 한 건의 수요처 표시. 스펙의 6갈래로 못 담는 실명이 있다.
+
+    싱가포르 전력청(SP PowerAssets)·노르웨이 송전청(Statnett)·영국 National Grid 는
+    분명히 **전력회사 발주**인데 스펙 갈래(북미·중동·국내 한전)에 없다. 키를 우리가 임의로
+    늘리지 않고, 수집기가 원문으로 판정한 `utility` 와 지역을 합쳐 그대로 보인다."""
+    if r.get("demand"):
+        return _demand_ko(r["demand"])
+    if r.get("utility"):
+        reg = REGION_LABEL.get(r.get("region") or "", "") or (r.get("region_raw") or "")
+        return "전력회사%s" % (" · " + reg if reg else "")
+    return ""
+
+
+def contracts_of(data, stock, include_canceled=False, own_only=True):
+    """그 회사의 계약. 기본은 **자사 계약만**.
+
+    지주회사는 자회사 계약을 대신 공시한다(`subsidiary=True`, `sub_name`) — 효성·LS·
+    일진홀딩스뿐 아니라 비츠로테크도 그렇다(자사 계약 0건 · 전부 비츠로셀·비츠로넥스텍).
+    이것을 자사 계약으로 세면 같은 계약이 두 번 세어지고, 비츠로테크가 11건을 수주한 것처럼
+    보인다. 재공시는 따로 모아 회사 페이지에 '자회사 대신 낸 공시'로 보인다."""
     c = data["contracts"]
     rows = None
     if isinstance(c.get("companies"), dict):
@@ -118,6 +139,8 @@ def contracts_of(data, stock, include_canceled=False):
         if r.get("superseded") or r.get("superseded_by"):
             continue
         if r.get("canceled") and not include_canceled:
+            continue
+        if own_only and r.get("subsidiary"):
             continue
         out.append(r)
     out.sort(key=lambda r: (str(r.get("signed") or ""), str(r.get("rcp") or "")), reverse=True)
@@ -187,6 +210,10 @@ def product_keys(data, stock):
             if k not in keys:
                 keys.append(k)
                 why.append({"key": k, "src": label, "text": txt[:80]})
+    # `tr_unknown`(전압 계급 미상)을 본문의 `초고압` 낱말로 `ehv` 로 올려 보았지만 **되돌렸다**.
+    # II절 본문의 `초고압`·`154kV` 는 시장 서술일 때가 많아(제룡전기는 배전변압기·금구류 회사인데
+    # 본문에 초고압이 나온다) 절반쯤 틀렸다. 낱말이 있다는 사실은 회사 페이지에 힌트로만 적고
+    # 분류는 바꾸지 않는다(COMMON §0-1: 추정하지 않는다).
     keys.sort(key=lambda k: PRODUCT_ORDER.index(k))
     return keys, why
 
@@ -378,21 +405,19 @@ def hub(data):
     # 계약 공시로 본 발주처·지역 — 수요 축을 **계약 단위**로 받치는 유일한 원천이다.
     allc = [r for st in (x["stock"] for x in ss) for r in contracts_of(data, st)]
     if allc:
-        def agg(field, labeller):
-            c = collections.Counter()
-            amt = collections.Counter()
+        def agg(key_of):
+            """계약을 한 축으로 묶어 건수·금액을 센다. 라벨이 빈 것은 '판정 못 함'이다."""
+            c, amt = collections.Counter(), collections.Counter()
             for r in allc:
-                k = r.get(field)
+                k = key_of(r) or "판정 못 함"
                 c[k] += 1
                 if r.get("amt_krw_m") is not None:
                     amt[k] += r["amt_krw_m"]
-            rows = []
-            for k, n in c.most_common():
-                rows.append('<tr><td class="l">%s</td><td data-v="%d">%d</td>'
-                            '<td data-v="%.1f">%s</td></tr>'
-                            % (E(labeller(k) if k else "판정 못 함"), n, n,
-                               amt.get(k, 0), E(fmt_eok(amt[k]) if amt.get(k) else "—")))
-            return "".join(rows)
+            return "".join(
+                '<tr><td class="l">%s</td><td data-v="%d">%d</td>'
+                '<td data-v="%.1f">%s</td></tr>'
+                % (E(k), n, n, amt.get(k, 0), E(fmt_eok(amt[k]) if amt.get(k) else "—"))
+                for k, n in c.most_common())
         util = sum(1 for r in allc if r.get("utility"))
         body.append(
             '<section class="card"><h2>계약 공시로 본 발주처 <em>%d건 — 수주표가 부문 합계인 '
@@ -405,9 +430,12 @@ def hub(data):
             '<th class="l sort">지역</th><th class="sort">건</th><th class="sort">금액(억)</th>'
             '</tr></thead><tbody>%s</tbody></table></div></div></div>'
             '<p class="mut" style="margin-top:8px">금액은 <b>공시가 환율을 적은 계약</b>만 '
-            '원화로 더했습니다(우리가 환산하지 않습니다). 해지 공시는 뺐습니다.</p></section>'
-            % (len(allc), util, agg("demand", _demand_ko),
-               agg("region", lambda k: REGION_LABEL.get(k, k))))
+            '원화로 더했습니다(우리가 환산하지 않습니다). 해지 공시와 <b>지주가 자회사 대신 낸 '
+            '재공시</b>는 뺐습니다 — 세면 같은 계약이 두 번 세어집니다.</p></section>'
+            % (len(allc), util, agg(demand_label_of),
+               # 지역은 **정규화된 키만** 센다. 원문 문구(`과천 지식정보타운 상업 5BL`·
+               # `알제리 우마쉐`)를 섞으면 한 건짜리 칸이 줄줄이 생겨 집계가 아니게 된다.
+               agg(lambda r: REGION_LABEL.get(r.get("region") or "", ""))))
 
     # 회사 표
     trs = []
@@ -654,6 +682,26 @@ def coverage_page(data):
         '<th class="l sort">수록 상태</th><th class="l">제품군</th><th class="l">편입 근거</th>'
         '</tr></thead><tbody>%s</tbody></table></div></section>' % (len(ss), "".join(trs)))
 
+    dem = data.get("demoted") or []
+    if dem:
+        rows = "".join(
+            '<tr><td class="l">%s <span class="basis">%s</span></td>'
+            '<td class="l mut">%s</td><td class="l mut">%s</td><td class="l mut">%s</td></tr>'
+            % (E(d["name"]), E(d["stock"]), E(d["source"]), E(d.get("product", "")[:50]),
+               E(d.get("reason", "")[:160]))
+            for d in dem)
+        body.append(
+            '<section class="card"><h2>어휘로는 걸렸지만 <b>본문 근거로 뺀</b> 회사 '
+            '<em>%d사</em></h2>'
+            '<p class="note">KIND 주요제품 문구에 전력망 낱말이 있어도 정기보고서 II절 본문이 '
+            '다른 산업을 말하면 뺍니다 — 같은 낱말을 다른 산업에서 쓰기 때문입니다. '
+            '예: `배전반`이 <b>선박용·철도차량용</b>(대양전기공업), `분전반`이 <b>세대 내 '
+            '배선기구</b>(제일일렉트릭), `전력변환장치`가 <b>가전용 SMPS</b>(파워넷)·'
+            '<b>전기차·방산 차량용</b>(이지트로닉스). 지운 것이 아니라 이유와 함께 남깁니다.</p>'
+            '<div class="wrap"><table><thead><tr><th class="l">회사</th><th class="l">걸린 경로</th>'
+            '<th class="l">KIND 주요제품</th><th class="l">뺀 이유(본문 근거)</th></tr></thead>'
+            '<tbody>%s</tbody></table></div></section>' % (len(dem), rows))
+
     pr = data.get("probe") or {}
     if pr:
         prom = pr.get("promoted") or {}
@@ -738,6 +786,12 @@ def company(data, stock):
     if s.get("revenue_basis") == "entity":
         notes.append("커버리지의 분모는 <b>같은 주체</b>의 연매출입니다 — 종속회사 매출을 다 더해 "
                      "나누면 배수가 낮아집니다.")
+    if "tr_unknown" in s["products"]:
+        hv = (s.get("demand") or {}).get("ultra_hv") or {}
+        notes.append("품목 문구가 <b>`변압기`</b> 뿐이라 전압 계급(초고압/배전용)을 정하지 "
+                     "않았습니다." + (" 다만 II절 본문에 `초고압`·`345kV` 류가 %d회 나옵니다 — "
+                                     "시장 서술일 수 있어 분류는 바꾸지 않았습니다."
+                                     % hv["n"] if hv.get("n") else ""))
     if s.get("grain") == "segment":
         notes.append("수주표의 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다"
                      + (" (최대 행이 잔고의 %s)" % fmt_pct(s["top_share"], 1)
@@ -895,7 +949,7 @@ def company(data, stock):
                    "".join(tags),
                    contract_amount_cell(r),
                    E(fmt_pct(r.get("rev_ratio"), 1)),
-                   E(_demand_ko(r["demand"]) if r.get("demand") else ""),
+                   E(demand_label_of(r)),
                    E(REGION_LABEL.get(r.get("region") or "", "") or (r.get("region_raw") or "")),
                    E(str(r.get("signed") or "") + (" · " + period if period else "")),
                    ('<a href="%s" target="_blank" rel="noopener noreferrer">원문</a>'
@@ -917,6 +971,31 @@ def company(data, stock):
             '</tr></thead><tbody>%s</tbody></table></div></section>'
             % (len(live), (" · 해지 %d건" % (len(cs) - len(live))) if len(cs) > len(live) else "",
                fmt_eok(sum(krw)) if krw else "—", len(krw), "".join(trs)))
+
+    # 자회사 대신 낸 재공시 — **자사 계약이 아니다**. 지주뿐 아니라 비츠로테크도 그렇다.
+    subs = [r for r in contracts_of(data, stock, include_canceled=True, own_only=False)
+            if r.get("subsidiary")]
+    if subs:
+        trs = "".join(
+            '<tr><td class="l">%s</td><td class="l mut">%s</td><td class="l mut">%s</td>%s'
+            '<td class="l mut">%s</td><td class="l">%s</td></tr>'
+            % (E(str(r.get("sub_name") or "자회사")), E(str(r.get("name") or "")[:66]),
+               E(str(r.get("party") or "")[:28]), contract_amount_cell(r),
+               E(str(r.get("signed") or "")),
+               ('<a href="%s" target="_blank" rel="noopener noreferrer">원문</a>'
+                % E(DART % r["rcp"]) if r.get("rcp") else ""))
+            for r in subs[:120])
+        body.append(
+            '<section class="card"><h2>자회사 대신 낸 공시 <em>%d건 — 자사 계약이 아닙니다</em>'
+            '</h2><p class="note">지주회사·모회사는 자회사의 계약을 대신 공시합니다. 위 '
+            '「계약 공시」 집계에서는 <b>뺐습니다</b> — 세면 같은 계약이 두 번 세어집니다. '
+            '다만 비상장 자회사의 계약이 여기서만 보이므로 참고용으로 남깁니다%s.</p>'
+            '<div class="wrap tall"><table data-sortable><thead><tr>'
+            '<th class="l sort">자회사</th><th class="l">계약명</th><th class="l">계약상대</th>'
+            '<th class="sort">금액</th><th class="l sort">계약일</th><th class="l">원문</th>'
+            '</tr></thead><tbody>%s</tbody></table></div></section>'
+            % (len(subs),
+               ("(이 회사는 <b>자사 계약 공시가 0건</b>입니다)" if not cs else ""), trs))
 
     # 수요 낱말 인용
     if s.get("demand"):
@@ -1012,7 +1091,21 @@ def main():
     for r in data["uni"]:
         write("%s/index.html" % r["stock"], company(data, r["stock"]))
         n += 1
-    print("허브·단선도·커버리지 + 회사 %d쪽" % n)
+    # 모집단에서 빠진 회사의 쪽은 **지운다**. 본문 근거로 뺀 종목(파워넷·대양전기공업 등)의
+    # 옛 쪽이 남아 있으면 허브에서 링크가 없는데도 배포물에 실려, 커버리지가 "뺐다"고 적은
+    # 회사의 페이지가 살아 있는 모순이 생긴다.
+    want = {r["stock"] for r in data["uni"]}
+    stale = []
+    for name in sorted(os.listdir(KGRID)):
+        d = os.path.join(KGRID, name)
+        if re.match(r"^[0-9A-Z]{6}$", name) and os.path.isdir(d) and name not in want:
+            for f in os.listdir(d):
+                os.remove(os.path.join(d, f))
+            os.rmdir(d)
+            stale.append(name)
+    print("허브·단선도·커버리지 + 회사 %d쪽%s"
+          % (n, (" · 모집단에서 빠진 쪽 %d개 삭제(%s)" % (len(stale), ",".join(stale)))
+             if stale else ""))
 
 
 if __name__ == "__main__":

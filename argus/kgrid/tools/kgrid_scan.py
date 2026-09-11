@@ -130,6 +130,13 @@ NEG = re.compile(
     r"반도체\s?장비|디스플레이|휴대폰|스마트폰|가전기기|생활가전|SMPS|Adaptor|어댑터", re.I)
 # 발주처 — 한국전력공사는 **고객**이다(모집단에는 안 넣지만, 언급은 전력망이라는 증거다).
 KEPCO = re.compile(r"한국전력공사|한국전력거래소|KEPCO|한전\s?KDN|한국전력", re.I)
+# GEN = 전력을 **파는** 쪽의 말(스펙 ④ 제외 대상 — 발전사업자·발주처). 전력기기 공급망이 아니다.
+# 실측: 금양그린파워 282720 은 `발전매출`·`발전사업 허가`·`SMP+REC` 가 14회인데 전력망 고유 낱말은
+# 2회다 — 신재생 발전소를 개발·시공하고 전기를 파는 회사다. 반면 한전KPS 051600 은 gen 1회 ·
+# 고유 낱말 26회(송전선로 유지·HVDC 설비점검)로 정비 **공급자**다. 그래서 절대수가 아니라
+# gen 과 고유 낱말의 **크기 비교**로 가른다.
+GEN = re.compile(r"발전매출|발전사업\s?허가|SMP\s?\+?\s?REC|전력\s?판매|전력거래소|발전사업자|"
+                 r"REC\s?판매", re.I)
 # 모집단 체계업체 언급 — 이들에게 납품한다면 전력기기 공급망이다.
 PRIME_NAMES = {
     "267260": r"HD\s?현대일렉트릭|현대일렉트릭",
@@ -159,21 +166,29 @@ PRIME_NAMES = {
 #       제룡전기 16 · 선도전기 16 · 제룡산업 15   ← 모집단 하한
 #     ✕ 대양전기공업 6(선박·철도 배전반) · 이지트로닉스 5(전기차·방산 전력변환) ·
 #       티엠씨 3(선박·해양 케이블) · 파워넷 0(가전 SMPS) · 제일일렉트릭 41이지만 **s=0**
-#   → 하한 15 와 상한 6 사이가 비어 있다. 승격선을 그 사이(12)에 두고, s=0 을 문지기로 세웠다.
+#   → 하한 15 와 상한 6 사이가 비어 있다. s=0 을 문지기로 세우고 승격선을 그 빈 띠에 둔다.
+#
+#   후보 191사 쪽에서도 같은 빈 띠가 나왔다: 대원전선 10(제품표 용도가 `전력송배전`인 전력선 회사) ·
+#   그 아래는 지엔씨에너지 5 · 한국쉘석유 4 · POSCO홀딩스 4 처럼 부수 언급뿐이다.
+#   그래서 승격선은 **10**(5와 15 사이의 빈 띠)로 둔다. 보고서가 짧으면 낱말 수도 적어진다 —
+#   대원전선 본문은 6.3KB뿐인데 내용은 명백하다(밀도가 아니라 빈 띠로 선을 긋는 이유다).
 STRONG_WEIGHT = 3
-PROMOTE_SCORE = 12           # s*3 + mid. 모집단 하한 15와 제외 상한 6 사이
+PROMOTE_SCORE = 10           # s*3 + mid. 모집단 하한 15와 오탐 상한 5 사이의 빈 띠
 PROMOTE_SCORE_WITH_REF = 6   # 한전·체계업체 언급이 받쳐 주면 이만큼으로 충분하다
 PROMOTE_REF = 2              # 받쳐 주는 언급의 최소 합(한국전력공사 + 전력기기 체계업체)
+PROMOTE_MID = 1              # 전력기기 낱말이 한 번도 없으면 그 고유 낱말은 남의 산업 이야기다
 NEG_RATIO = 2.0              # 비전력망 문맥이 점수의 이 배를 넘으면 승격하지 않는다
 RULE = ("II절 본문에서 **전력망 고유 낱말** s(부싱·탭체인저·절연유·애자·변류기·부스덕트·전력량계·"
-        "송배전·변전소·전력계통·154/345/765kV·가스절연·지중케이블 …)와 **전력망 관련 낱말** mid"
-        "(변압기·차단기·개폐기·배전반·배전·송전 …)를 센다. 점수 = s×%d + mid. "
-        "s ≥ 1(고유 낱말이 하나도 없으면 무조건 제외) 이면서 점수 ≥ %d, 또는 한국전력공사·전력기기 "
-        "체계업체 언급 ≥ %d 이면서 점수 ≥ %d 이면 승격. 단 비전력망 문맥(선박·함정·철도차량·"
-        "세대배선·자동차·가전) 낱말이 점수의 %.0f배를 넘으면 승격하지 않는다. "
-        "II절을 못 읽은 회사·인용문을 못 뽑은 회사는 승격하지 않는다(fail-closed). "
+        "송배전·변전소·전력계통·154/345/765kV·가스절연·지중케이블·전기강판 …)와 **전력기기 낱말** "
+        "mid(변압기·차단기·개폐기·배전반·배전·송전·전력선 …)를 센다. 점수 = s×%d + mid. "
+        "s ≥ 1 · mid ≥ %d 이면서 점수 ≥ %d, 또는 한국전력공사·전력기기 체계업체 언급 ≥ %d 이면서 "
+        "점수 ≥ %d 이면 승격. 다음이면 승격하지 않는다 — ① 고유 낱말이 하나도 없다(s=0) "
+        "② 비전력망 문맥(선박·함정·철도차량·세대배선·자동차·가전) 낱말이 점수의 %.0f배를 넘는다 "
+        "③ 전력을 **파는** 쪽 낱말(발전매출·발전사업 허가·SMP+REC)이 고유 낱말보다 많다(스펙 ④ "
+        "발주처·발전사업자) ④ II절을 못 읽었거나 인용문을 못 뽑았다(fail-closed). "
         "`GIS`·`ESS`·`초고압` 단독은 어휘에 넣지 않았다(FINDINGS §1 실측 오탐)."
-        % (STRONG_WEIGHT, PROMOTE_SCORE, PROMOTE_REF, PROMOTE_SCORE_WITH_REF, NEG_RATIO))
+        % (STRONG_WEIGHT, PROMOTE_MID, PROMOTE_SCORE, PROMOTE_REF, PROMOTE_SCORE_WITH_REF,
+           NEG_RATIO))
 
 
 # ── 후보 뽑기 ───────────────────────────────────────────────
@@ -250,13 +265,16 @@ def _counts(pat, text):
     return dict(sorted(c.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
-def quotes(text, limit=3, width=90):
-    """승격 근거로 남길 **원문 인용문**. STRONG 낱말 주변을 그대로 잘라 낸다(추정 금지).
+def quotes(text, pat=STRONG, limit=3, width=90):
+    """근거로 남길 **원문 인용문**. 낱말 주변을 그대로 잘라 낸다(추정 금지, COMMON §0-1).
 
     같은 낱말이 반복되면 서로 다른 낱말이 걸린 토막을 우선해 다양한 근거를 남긴다.
+    STRONG 으로 부르면 승격 근거, NEG 으로 부르면 **제외 근거**가 된다 — 파워넷·대양전기공업·
+    제일일렉트릭처럼 고유 낱말이 0인 회사는 STRONG 인용문이 아예 없으므로, 제외 이유를 보여 줄
+    인용문은 NEG 쪽에서 뽑아야 한다.
     """
     out, used = [], set()
-    for m in STRONG.finditer(text):
+    for m in pat.finditer(text):
         key = re.sub(r"\s+", "", m.group(0)).lower()
         if key in used:
             continue
@@ -299,9 +317,14 @@ def measure(row, text):
     row["neg_terms"] = dict(list(neg.items())[:8])
     row["neg"] = sum(neg.values())
     row["kepco"] = len(KEPCO.findall(text))
+    gen = _counts(GEN, text)
+    row["gen_terms"] = dict(list(gen.items())[:6])
+    row["gen"] = sum(gen.values())
     row["mentions"] = {k: len(re.findall(p, text, re.I))
                        for k, p in PRIME_NAMES.items() if re.search(p, text, re.I)}
     row["evidence"] = quotes(text)
+    # 제외 근거 인용문 — 고유 낱말이 0인 회사는 evidence 가 비므로 이쪽이 유일한 원문 근거다.
+    row["neg_evidence"] = quotes(text, NEG)
     row["ok"] = True
     return row
 
@@ -351,6 +374,14 @@ def judge(row):
     if neg > sc * NEG_RATIO:
         return False, ("점수 %d(고유 %d·관련 %d)보다 비전력망 문맥(%s)이 %d회로 압도한다 — "
                        "같은 낱말을 다른 산업에서 쓴다" % (sc, s, mid, negs, neg))
+    if row.get("gen", 0) > s:
+        return False, ("본문이 전력을 **파는** 쪽을 말한다(%s 등 %d회 > 전력망 고유 낱말 %d회) — "
+                       "발전사업자·발주처는 공급망이 아니다(스펙 ④)"
+                       % (", ".join(list(row.get("gen_terms") or {})[:3]), row["gen"], s))
+    if mid < PROMOTE_MID:
+        return False, ("전력망 고유 낱말은 %d회 나오는데(%s) 전력기기 낱말(변압기·차단기·배전…)이 "
+                       "한 번도 없다 — 자기 제품이 아니라 남의 산업을 말하는 것이다"
+                       % (s, ", ".join(list(row.get("terms") or {})[:3])))
     top = ", ".join("%s %d" % kv for kv in list((row.get("terms") or {}).items())[:4])
     if sc >= PROMOTE_SCORE:
         return True, "점수 %d(고유 낱말 %d회: %s · 관련 낱말 %d회)" % (sc, s, top, mid)
@@ -372,7 +403,18 @@ def role_for(row):
             or re.search(r"전기공사|정비\s*용역|발전설비\s*정비|유지보수", prod)) \
             and not re.search(r"제조|생산", prod):
         return "epc"
-    if re.search(r"변압기|차단기|개폐기|배전반|수배전|스위치기어", prod):
+    if re.search(r"변압기|차단기|개폐기|배전반|수배전|스위치기어|인버터|PCS|전력변환", prod, re.I):
+        return "maker"
+    # KIND 문구는 소재인데 **본문에서 기기를 만든다**고 말하는 경우가 있다 — KBI메탈 024840 은
+    # 제품 문구가 `동ROD, 모터코어`인데 본문에 "변압기 사업부인 KBI일렉트릭(주)은 … 몰드변압기
+    # 제조를 목적으로 설립된 회사"가 나온다(2026.04 지분 100% 취득).
+    # `주상변압기`는 여기서 빼 뒀다 — 금구류 회사가 **설치 대상**으로 부르는 말이다
+    # (보성파워텍 006910 본문에 2회. 그 회사는 기기가 아니라 자재를 만든다).
+    n = sum(v for k, v in (row.get("terms") or {}).items()
+            if re.match(r"몰드\s?변압기|유입\s?변압기|건식\s?변압기|전력용\s?변압기|"
+                        r"배전용\s?변압기|특고압\s?변압기|초고압\s?변압기|GIS\s?차단기|"
+                        r"GIS\s?개폐장치|가스절연개폐장치", k, re.I))
+    if n >= 2:
         return "maker"
     return "part"                       # 본문으로 들어온 것은 대개 부품·소재다(스펙 ③)
 
@@ -385,16 +427,27 @@ def load_rows():
     return load_asset(ROWS).get("rows") or {}
 
 
-def save_rows(rows, quarter):
-    write_asset(ROWS, {"quarter": quarter, "n": len(rows),
-                       "scanned_at": time.strftime("%Y-%m-%d"),
-                       "rows": {k: rows[k] for k in sorted(rows)}})
+def load_failed():
+    if not has_asset(ROWS):
+        return {}
+    return load_asset(ROWS).get("failed") or {}
+
+
+def save_rows(rows, quarter, failed=None):
+    d = {"quarter": quarter, "n": len(rows), "scanned_at": time.strftime("%Y-%m-%d"),
+         "rows": {k: rows[k] for k in sorted(rows)}}
+    # 못 읽은 회사도 남긴다 — 조용히 사라지면 커버리지가 거짓말을 한다(COMMON §0-2).
+    # 다만 **행은 캐시하지 않으므로** 다시 --probe 하면 이들만 재시도한다.
+    d["failed"] = {k: failed[k] for k in sorted(failed)} if failed else (load_failed() or {})
+    write_asset(ROWS, d)
 
 
 def _run(cands, quarter, rows, tag, log):
     """후보를 순차로 읽는다. DART 는 프로세스 하나로만 두드린다(COMMON §2)."""
     done = ok = 0
-    for i, r in enumerate(cands, 1):
+    failed = dict(load_failed())
+    for r in cands:
+        failed.pop(r["stock"], None)
         row = probe_one(r, quarter)
         if r["stock"] in EXTRA:
             row["extra"] = EXTRA[r["stock"]]
@@ -402,14 +455,18 @@ def _run(cands, quarter, rows, tag, log):
             ok += 1
             rows[r["stock"]] = row
         else:
+            failed[r["stock"]] = {"stock": r["stock"], "name": r["name"],
+                                  "industry": r.get("industry", ""),
+                                  "product": r.get("product", ""), "note": row["note"]}
             log.write("  [warn] %s %s — %s\n" % (r["stock"], r["name"][:14], row["note"]))
         done += 1
         if done % 10 == 0:
-            save_rows(rows, quarter)                  # 중간 저장 — 끊겨도 이어서 돈다
+            save_rows(rows, quarter, failed)          # 중간 저장 — 끊겨도 이어서 돈다
             log.write("  … %s %d/%d (읽음 %d)\n" % (tag, done, len(cands), ok))
             log.flush()
-    save_rows(rows, quarter)
-    log.write("%s 완료: %d사 시도 · %d사 본문 확보\n" % (tag, done, ok))
+    save_rows(rows, quarter, failed)
+    log.write("%s 완료: %d사 시도 · %d사 본문 확보 · %d사 못 읽음\n"
+              % (tag, done, ok, len(failed)))
     return rows
 
 
@@ -435,13 +492,14 @@ def rejudge(quarter, limit=None, log=sys.stderr):
     """
     universe = load_universe()
     rows = load_rows()
-    todo = [r for r in universe
-            if r.get("role") != "holding" and rows.get(r["stock"], {}).get("scope") != "universe"]
-    log.write("모집단 %d사 중 재판정 대상 %d사\n" % (len(universe), len(todo)))
+    # 지주회사는 뺀다 — 제품 문구에 자회사 제품이 다 적혀 본문 판정이 뜻을 잃는다(FINDINGS §1).
+    # **출처가 `탐색`인 종목도 뺀다** — 그건 이 스크립트가 올린 것이다. 모집단으로 보고
+    # `kept` 로 옮기면 `promoted` 가 비고, 다음 `kgrid_universe.py --write` 가 그 종목을 다시
+    # 떨어뜨린다(피드백 고리). 승격분은 언제나 promoted 에 남아 있어야 한다.
+    todo = [r for r in universe if r.get("role") != "holding" and r.get("source") != "탐색"]
+    log.write("모집단 %d사 중 재판정 대상 %d사(지주·탐색 출처 제외)\n" % (len(universe), len(todo)))
     if limit:
         todo = todo[:limit]
-    for r in todo:
-        rows.pop(r["stock"], None)
     rows = _run(todo, quarter, rows, "rejudge", log)
     for r in todo:
         if r["stock"] in rows:
@@ -464,6 +522,10 @@ def build(log=sys.stderr):
     rows, quarter = d.get("rows") or {}, d.get("quarter") or ""
     remeasure(rows, quarter, log)
     save_rows(rows, quarter)
+    # 어떤 행이 '모집단 재판정'이고 어떤 행이 '후보 승격'인지는 `--rejudge` 가 행에 적어 둔
+    # `scope` 로 정한다. **판정 때 universe.json 을 다시 읽지 않는다** — 모집단은 이 스크립트와
+    # 나란히 갱신되므로, 읽는 순간에 따라 승격분이 통째로 흔들린다(실제로 한 번 그랬다).
+    # 고리를 막는 곳은 `--rejudge` 다: 출처가 `탐색`인 종목에는 scope 를 붙이지 않는다.
     promoted, rejected, kept = {}, [], []
     for st in sorted(rows):
         row = rows[st]
@@ -472,10 +534,12 @@ def build(log=sys.stderr):
         base = {"stock": st, "name": row["name"], "industry": row.get("industry", ""),
                 "product": row.get("product", ""), "strong": row.get("strong", 0),
                 "mid": row.get("mid", 0), "neg": row.get("neg", 0),
+                "gen": row.get("gen", 0), "gen_terms": row.get("gen_terms") or {},
                 "kepco": row.get("kepco", 0), "mentions": row.get("mentions") or {},
                 "terms": row.get("terms") or {}, "neg_terms": row.get("neg_terms") or {},
                 "rcp": row.get("rcp", ""), "title": row.get("title", ""),
-                "score": score_of(row), "evidence": row.get("evidence") or []}
+                "score": score_of(row), "evidence": row.get("evidence") or [],
+                "neg_evidence": row.get("neg_evidence") or []}
         if row.get("extra"):
             base["extra"] = row["extra"]
         if ok and not in_uni:
@@ -492,12 +556,14 @@ def build(log=sys.stderr):
                              universe_source=row.get("universe_source", ""),
                              universe_reason=row.get("universe_reason", "")))
     rejected.sort(key=lambda x: (x["scope"] != "universe", -x["strong"], x["stock"]))
+    failed = [d.get("failed", {})[k] for k in sorted(d.get("failed") or {})]
     out = {"quarter": quarter, "rule": RULE, "candidates": len(rows),
            "built_at": time.strftime("%Y-%m-%d"),
-           "promoted": promoted, "rejected": rejected, "kept": kept}
+           "promoted": promoted, "rejected": rejected, "kept": kept, "failed": failed}
     write_asset("universe_probe.json", out)
-    log.write("후보(본문 확보) %d · 승격 %d · 제외 %d · 모집단 유지 %d → assets/universe_probe.json\n"
-              % (len(rows), len(promoted), len(rejected), len(kept)))
+    log.write("후보(본문 확보) %d · 승격 %d · 제외 %d · 모집단 유지 %d · 못 읽음 %d "
+              "→ assets/universe_probe.json\n"
+              % (len(rows), len(promoted), len(rejected), len(kept), len(failed)))
     for st, p in sorted(promoted.items()):
         log.write("  [승격] %s %-14s %-5s s=%-3d %s\n"
                   % (st, p["name"][:14], p["role"], p["strong"], p["reason"][:80]))

@@ -4,27 +4,48 @@
 
 ## 완료
 
-- [x] `argus/_specs/COMMON.md`·`kgrid.md` 정독
-- [x] **원문 실측** — 엘에스일렉트릭 010120(롤포워드 12열·단위 억원·종속회사별 표),
-      HD현대일렉트릭 267260(총액−기납품 1행·매출처 실명 NextEra 15.9%·사우디전력청 5.0%),
-      일진전기 103590(**단위 천USD**·국내/해외 분리) → `tools/FINDINGS.md`
-- [x] **공용 층 수정** `kship_parse._UNIT_TABLE` — `천USD`·`백만USD`·`천EUR` 표기를 넣고
-      원화 단위가 병기된 캡션은 원화로 판정. 일진전기 잔고가 1000배 작아지던 것을 막았다(FINDINGS §5)
-- [x] `kgrid_lib.py`(제품군 9슬롯 색·잔고 성격·통화 보존 표기·커버리지 fail-closed) · `assets/kgrid.css`
+- [x] `COMMON.md`·`kgrid.md` 정독 · **원문 실측 5사** → `tools/FINDINGS.md`
+- [x] **공용 층 수정** `kship_parse.unit_of` — `천USD`·`백만USD`·`천EUR` 표기 + 원화 병기 판정
+      (일진전기 잔고가 1000배 작아지던 것)
+- [x] `kgrid_lib.py`(제품군 10슬롯 색·잔고 성격·통화 보존 표기·커버리지 fail-closed) · `assets/kgrid.css`
+- [x] `kgrid_universe.py` — 모집단 **34종목**(업종 9·지정 15·탐색 7·지주 3) +
+      본문 근거로 **뺀 5사**(`demoted`) — 커버리지에 이유와 함께 남긴다
+- [x] `kgrid_dicts.py` — 제품군 10 · 수요처 6 · 전력망 단선도 영역 6(교차 검증)
+- [x] `kgrid_reports.py` — 41사 × 6분기 수집(**분기레코드 203 · 실패 0**) · 수주표 4갈래 ·
+      표마다 통화 · 종속회사 표 분리 · `--reparse`(DART 재요청 없이 재파싱)
+- [x] `kgrid_scan.py` — 본문 탐색(부품사 승격·오탐 재판정) → `assets/universe_probe.json`
+- [x] `kgrid_contracts.py` — I001 계약 공시 → `assets/contracts.json`
+- [x] `kgrid_page.py` — 허브 · 전력망 단선도 · 커버리지 · 회사 34쪽(모집단에서 빠진 쪽은 삭제) ·
+      계약 원장(지주·모회사의 자회사 재공시 분리)
+- [x] `tools/tests` **105건 통과** · `site.json` · `_config.yml` exclude ·
+      `.github/workflows/update-kgrid.yml` · README/LOGIC/HANDOFF
 
 ## 남은 일
 
-1. [ ] `kgrid_universe.py` — 모집단(업종 4갈래 + 제품 어휘 + 지정 + 탐색)
-2. [ ] `kgrid_scan.py` — 본문 탐색으로 부품사 승격
-3. [ ] `kgrid_reports.py` — II-4 수주표·매출처·부문매출 수집
-4. [ ] `kgrid_contracts.py` — I001 계약 공시
-5. [ ] `build_dicts.py` — 제품군·수요처 분류 사전 + 전력망 계통도 영역
-6. [ ] `kgrid_page.py` — 허브·회사·커버리지
-7. [ ] 테스트·`site.json`·`_config.yml`·`update-kgrid.yml`·README/LOGIC/HANDOFF
+0. [x] `kgrid_scan.py --rejudge` 로 어휘 오탐 5사를 본문 근거로 뺐다 — 파워넷(가전 SMPS) ·
+       대양전기공업(선박·철도용 배전반) · 제일일렉트릭(세대 배선기구) · 티엠씨(해양·조선) ·
+       이지트로닉스(전기차·방산 차량용). **부싱·탭체인저를 파는 상장사는 191사 본문에 없었다** —
+       대신 규소강판·필름커패시터·전력량계/AMI 갈래가 나왔다(FINDINGS §8)
+1. [ ] 제품군 분류 정밀화 — II-2「주요 제품 및 서비스」 절을 따로 수집해 제품 문구로 분류
+       (지금은 KIND 문구·수주표 품목·제품군별 매출 행만 본다)
+2. [ ] `tr_unknown`(전압 계급 미상 변압기) 줄이기 — II-2 본문에 `초고압`·`345kV` 가 있으면 `ehv` 로 올린다
+3. [ ] 수주표가 없는 7사(선도전기·파워넷·티씨머티리얼즈·미창석유공업·보성파워텍·티에스넥스젠·
+       옴니시스템)는 매출만 싣는다 — 계약 공시로 잔고를 대신할 수 있는지 확인
+4. [ ] 매출처 표의 종속회사 귀속 — 엘에스일렉트릭은 표가 11장인데 대괄호 라벨이 없어 `entity` 가 비었다.
+       `사업부문` 열 값으로 귀속을 추정할 수 있는지(추정이면 표시)
+5. [x] 도급 형식 수주표(`기본도급액|완성공사액|계약잔액`·`최초계약일`)를 읽고, 가운데 라벨을
+       버리지 않게 고쳤다 — 한전KPS 발주처 실명(한국동서발전·한국수력원자력·한국전력공사)이 살아났다.
+       같은 모양을 쓰는 다른 전기공사 회사에도 그대로 먹힌다.
+6. [ ] 스펙의 수요처 6갈래에 **아시아·유럽 전력청이 없다**(싱가포르 전력청·노르웨이 Statnett·
+       영국 National Grid). 지금은 `전력회사 · 아시아` 처럼 지역과 합쳐 보인다 — 키 확장을 검토
 
 ## 다음 명령
 
 ```sh
 cd argus/kgrid/tools
 python3 kgrid_universe.py --write
+python3 kgrid_contracts.py --collect && python3 kgrid_contracts.py --build
+python3 kgrid_reports.py --collect --n 6 && python3 kgrid_reports.py --reparse --build --n 6
+python3 kgrid_page.py --all
+python3 -m unittest discover -s tests
 ```

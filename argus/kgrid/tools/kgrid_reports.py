@@ -264,9 +264,13 @@ def parse_orders_table(t):
                    col("전기말"), col("전분기말"))
     i_new = first(col("당기수주", "금액"), col("당기수주"), col("당기수주액"),
                   col("신규", "금액"), col("신규"))
-    i_done = first(col("기납품", "금액"), col("기납품"), col("당기매출액"), col("매출인식"))
+    # 도급 형식 수주표 — 전기공사·정비 회사는 `기본도급액|완성공사액|계약잔액` 으로 적는다
+    # (한전KPS 실측). 이 별칭이 없으면 `완성공사액` 이 이름 열로 읽혀 공사명 자리에 숫자가 오고,
+    # 총액·기납품이 빈칸이 된다.
+    i_done = first(col("기납품", "금액"), col("기납품"), col("당기매출액"), col("매출인식"),
+                   col("완성공사액"), col("기성액"))
     i_gross = first(col("수주총액", "금액"), col("수주총액"), col("계약금액"),
-                    col("수주금액", drop=("당기",)))
+                    col("기본도급액"), col("도급액"), col("수주금액", drop=("당기",)))
     # `당기말` 을 `기말` 보다 먼저, `기말` 은 `전기말` 을 걸러서 본다.
     i_close = first(col("수주잔고", "금액"), col("수주잔고"),
                     col("당기말"), col("당분기말"),
@@ -274,7 +278,8 @@ def parse_orders_table(t):
                     col("기말", "금액", drop=("전기", "전분기")),
                     col("기말", drop=("전기", "전분기")),
                     col("잔액", drop=("전기", "전분기")))
-    i_date = first(col("수주일자"), col("계약일자"), col("수주일"))
+    i_date = first(col("수주일자"), col("계약일자"), col("수주일"),
+                   col("최초계약일"), col("공사시작일"), col("착공"))
     i_due = first(col("납기"), col("인도예정"), col("완공예정"), col("공사기간"))
     # `당기 수주금액` 열이 `수주금액` 으로도 잡혀 i_gross 와 겹칠 수 있다 — 겹치면 신규 쪽을 남긴다.
     if i_new is not None and i_gross == i_new:
@@ -305,8 +310,11 @@ def parse_orders_table(t):
         def g(i):
             return _scaled(r[i], mul) if i is not None and i < len(r) else None
         seg = labels[0]
-        item = labels[-1] if len(labels) > 1 else ""
-        label = (seg + (" · " + item[:40] if item else "")).strip()
+        # 가운데 라벨을 버리지 않는다 — 한전KPS 수주표에는 `구분|발주처|공사명` 세 칸이 있고
+        # 발주처가 한국동서발전·한국수력원자력·한국전력공사라는 **실명**이다. 마지막 하나만
+        # 남기면 이 산업에서 가장 값어치 있는 칸이 사라진다.
+        item = " · ".join(labels[1:])[:120]
+        label = (seg + (" · " + item[:60] if item else "")).strip()
         # 소계 판정 — 라벨 중 **하나라도** 계/합계면 소계다. 일진전기 수주표는
         # `전력선 등|계` 라는 품목 소계와 `합 계|계` 라는 총계가 같이 온다. `전력선 등|계` 를
         # 낱 행으로 두고 다 더하면 잔고가 정확히 두 배가 된다(실측).
@@ -401,6 +409,14 @@ def parse_revenue_table(t):
                      "segkind": seg_kind(seg) or seg_kind(" ".join(labels))})
     if not rows:
         return None
+    # 내수/수출 표라고 하려면 `합계`가 있거나 `내수`·`수출`이 **둘 다** 있어야 한다.
+    # 한전KPS 매출실적 표는 `사업구분|지배회사 및 종속회사|제43기 반기|제42기|…` 인데
+    # 어느 행의 둘째 칸이 `수출` 이어서 이 파서가 표를 가로챘다 — 그러면 뒤의
+    # `parse_segment_sales` 가 그 표를 못 보고 연매출이 해외매출 1,340억이 된다(배수 19.7년).
+    # 여기서 놓아 주면 부문별 매출 파서가 제대로 읽는다.
+    kinds = {r["kind"] for r in rows}
+    if "합계" not in kinds and not {"내수", "수출"} <= kinds:
+        return None
     head = " ".join(t["cols"][:max(1, i_kind + 1)])
     basis = "customer" if (_CUST_COL.search(head) or _CUST_COL.search((t.get("lead") or "")[-120:])) \
         else "segment"
@@ -423,7 +439,10 @@ def parse_segment_sales(t):
     lead = t.get("lead") or ""
     if not (_SALES_LEAD.search(lead) or any("매출" in c for c in cols)):
         return None
-    if any(_clean(c) in _KIND_REAL for r in t["rows"][:8] for c in r[:4]):
+    # 내수/수출 표는 `parse_revenue_table` 의 몫이다. 다만 '셀에 수출이 한 번이라도 있으면
+    # 넘긴다'로 두면 안 된다 — 한전KPS 매출실적 표는 어느 행의 둘째 칸이 `수출` 이어서 이
+    # 파서까지 빠져나가 연매출이 통째로 사라졌다(실측). 실제로 저쪽이 **받는 표만** 넘긴다.
+    if parse_revenue_table(t):
         return None
     if _CUST_COL.search(" ".join(cols[:2])):
         return None
@@ -898,6 +917,18 @@ def _is_fy(col):
     return True
 
 
+def _rev_usable(rv):
+    """이 매출 표를 **연매출의 분모**로 써도 되는가.
+
+    `합계` 행이 있거나 `내수`·`수출` 이 **둘 다** 있어야 회사 전체 매출이다. 한쪽만 있으면
+    그것은 해외매출·수출실적 같은 부분 표다(한전KPS `수출` 한 행)."""
+    rows = (rv or {}).get("rows") or []
+    if not rows:
+        return False
+    kinds = {r.get("kind") for r in rows}
+    return "합계" in kinds or {"내수", "수출"} <= kinds
+
+
 def _norm_co(s):
     return re.sub(r"[\s().,·\-—'\"]|주식회사|\(주\)|CO|LTD|INC|CORP|유한공사", "",
                   (s or ""), flags=re.I).lower()
@@ -1033,6 +1064,12 @@ def build(rows, qs):
             ent = o.get("entity") or ""
             fy = fy_col = fy_cur = None
             fy_basis = "all"
+            if not _rev_usable(rv):
+                # 내수/수출 표가 **한쪽만** 있는 회사가 있다 — 한전KPS 는 `수출` 한 행짜리
+                # 해외매출 표를 싣는다(제42기 133,995 = 해외 1,340억). 그것을 연매출로 쓰면
+                # 배수가 19.7년이 된다(실제 1.8년). 이 표는 분모로 쓰지 않고 부문별 매출로 넘긴다.
+                rv = {}
+                ent = ""
             if ent:
                 sub = _entity_subset(rv, ent)
                 if sub:
