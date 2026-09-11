@@ -1419,6 +1419,13 @@ const blank = () => ({
      **믿는 캐릭터는 앱이 기본값을 고르지 않는다** — 공식은 미치광이가 어느 악마를 믿는지
      정하지 않는다(ability 는 "a Demon"). 사회자가 고를 때까지 null 이고, null 이면 릴레이는
      그 좌석을 아예 열지 않는다. */
+  /* dawnChars = **지난 새벽 시점의 좌석별 캐릭터** {좌석id: charId}.
+     [왜 필요한가] 밤 순서와 위저드 대본이 "지금이 밤 1인가"라는 전역 밤 번호 하나만 봤다.
+     그래서 밤 2 이후에 이발사 교환·마귀할멈 등으로 **새로 얻은** 캐릭터가 첫밤 전용
+     (first:true, other:false — 앱 데이터로 23종)이면 순서표에도 위저드에도 존재하지 않았다.
+     취득 시점을 캐릭터가 바뀌는 8곳에서 찍으면 새 변경 지점이 생길 때 조용히 샌다.
+     국면 전환이 유일한 공통 통로이므로 **새벽에 한 번 찍고 그 차이로 판정한다.** */
+  dawnChars:{},
   edition:'tb', redHerringId:null, drunkMaskChar:null, lunaticMaskChar:null, marionetteMaskChar:null,
   executedToday:null, executedPrevDay:null,
   customs:[], roster:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null, daPrev:null,
@@ -1657,6 +1664,16 @@ function migrateState(raw){
     ? Math.floor(st.startEvilCount) : null;
   st.damselGuessUsed=!!st.damselGuessUsed;
   st.politicianAsked=!!st.politicianAsked;
+  /* 좌석 키만 남긴다 — revealDone 정규화와 같은 모양. 없으면 {} 이고, 그러면 술어가 거짓이라
+     종전 동작(전역 밤 번호 판정)이 그대로 유지된다(fail-closed). */
+  (function(){
+    const dc=st.dawnChars;
+    if(!dc || typeof dc!=='object' || Array.isArray(dc)){ st.dawnChars={}; return; }
+    const ids=new Set((st.players||[]).map(p=>p&&p.id).filter(Boolean));
+    const out={};
+    Object.keys(dc).forEach(k=>{ if(ids.has(k) && typeof dc[k]==='string') out[k]=dc[k]; });
+    st.dawnChars=out;
+  })();
   /* 옛 저장본에는 없다 — 형태가 맞을 때만 살린다(pid 문자열·team 은 good/evil) */
   (function(){
     const pp=st.politicianPending;
@@ -2098,6 +2115,21 @@ function realAliveNonTravelerCount(){
     S.players.filter(p=>!p.alive && p.charId==='zombuul' && hasStatus(p,'fakedead')).length;
 }
 function playerOf(pid){ return S.players.find(p=>p.id===pid); }
+/* 이 좌석이 **이 능력의 첫밤을 아직 안 치렀는가** — 지난 새벽 이후 캐릭터가 바뀌었는가로 본다.
+   밤 1에는 언제나 거짓이다(전역 밤 번호 판정이 그대로 담당하므로 밤 1 순서는 1비트도 안 바뀐다).
+   스냅샷이 없는 옛 저장본에서도 거짓이라 종전 동작이 유지된다.
+   새벽에 스냅샷을 다시 찍으므로 **다음 밤부터 저절로 멈춘다** — 별도 완료 표식이 필요 없다. */
+function firstNightPending(p){
+  if(!p || !p.charId) return false;
+  if(!S.phase || S.phase.n<=1) return false;
+  const dc=S.dawnChars;
+  if(!dc || typeof dc!=='object') return false;
+  const was=dc[p.id];
+  return typeof was==='string' && was!==p.charId;
+}
+function anyFirstNightPending(charId){
+  return S.players.some(p=>p.charId===charId && firstNightPending(p));
+}
 /* 주정뱅이 위장 좌석 — '이 판에 주정뱅이가 있고 위장 캐릭터가 지정돼 있는가' 하나만 묻는다.
    [무엇이 문제였나] 이 판정이 `S.edition==='tb'` 로 잠겨 있었다(두 곳에 손으로 복사돼 있었고,
    주석 자체가 "nightSteps() 의 mask 와 같은 기준"이라고 적고 있었다). `S.edition` 은 커스텀
@@ -2942,7 +2974,7 @@ const PARTIAL_IMPL_CHARS={};
    [왜 목록인가] blank() 는 '전부' 비우지만 여기는 '판만' 비운다 — 등록부·전적·커스텀은 그대로 두고
    판 단위 값만 되돌려야 하므로 두 곳의 기준이 갈라진다. 새 필드가 판 단위면 여기에도 넣어야 한다.
    gameId 는 따로 다룬다(새로 발급해야 하므로). */
-const NEWGAME_RESET_KEYS=['gameOver','endKind','politicianAsked','politicianPending','goodExecCount','damselGuessUsed','startEvilCount',
+const NEWGAME_RESET_KEYS=['gameOver','endKind','politicianAsked','politicianPending','goodExecCount','damselGuessUsed','startEvilCount','dawnChars',
   'goonNight','goonStep','goonUndo','moonchildChoice','executedToday','executedPrevDay',
   'executedTodayPid','executedDiedToday','poCharged','exorcistPrev','daPrev','pukkaVictimId',
   'mastermindDay','fangGuJumped','demonBlockedNight','demonBlockedPid'];
@@ -3042,11 +3074,17 @@ function advancePhase(){
        이번 판 OP스코어의 PEER 항으로 새어 들어간다(레코드는 pgid 로 확정돼 전적은 영향 없음). */
     /* 상아의 정령의 기준선 — 첫 밤이 열리는 이 자리에서 한 번만 찍는다 */
     S.startEvilCount=S.players.filter(p=>isEvil(p)).length;
+    /* 캐릭터 취득 기준선도 같은 자리에서 — 밤 1은 전역 판정이 담당하므로 값은 안 쓰이지만,
+       밤 1에 바뀐 좌석이 밤 2에 유령 대기로 뜨지 않게 하려면 기준선이 있어야 한다. */
+    S.dawnChars=Object.fromEntries(S.players.map(p=>[p.id, p.charId||'']));
     log('── 게임 시작: 첫날 밤 ──');
     switchTab('night');
   } else if(ph.kind==='night'){
     S.phase={kind:'day', n:ph.n};
     expireStatuses();
+    /* 새벽 기준선 — 이 밤에 바뀐 좌석이 여기서 흡수되므로 다음 밤부터 반복이 멈춘다.
+       낮→밤 분기에는 찍지 않는다: 찍으면 **낮에** 바뀐 좌석이 밤 시작 직전에 흡수돼 놓친다. */
+    S.dawnChars=Object.fromEntries(S.players.map(p=>[p.id, p.charId||'']));
     log(`── 낮 ${ph.n} 시작 ──`);
     /* 새벽 = 밤 사망을 공표하는 시점 = 달의 자손이 자기 죽음을 '아는' 시점.
        공개 지목을 여기서 받아 그때의 대상 진영을 얼린다(판정은 다음 밤의 달의 자손 단계). */
@@ -4119,8 +4157,12 @@ function nightSteps(){
   const noOrder=Object.create(null);
   [...new Set(S.players.map(p=>p&&p.charId).filter(Boolean))].forEach(id=>{
     if(order.indexOf(id)>=0 || INFO_STEPS[id]) return;
+    /* 첫밤 전용 능력을 **이 밤에 새로 얻은** 좌석이 있으면 그 밤에도 편입한다 —
+       바로 위 주석이 적은 대로 "순서표에 없는 id 는 행조차 생기지 않아 사회자가 빠진 사실
+       자체를 알 수 없다". 앱은 이발사·마귀할멈·뱀 조련사 대본과 사냥꾼 warn 에서 네 번
+       "밤 순서에 새로 편입된다 / 재계산하세요"라고 약속해 놓고 지키지 않고 있었다. */
     const c=charOf(id); if(!c || c.type==='fabled') return;
-    if(!(first? c.first : c.other)) return;
+    if(!(first? c.first : (c.other || (c.first && anyFirstNightPending(id))))) return;
     const pos=sgOrder? sgOrder.indexOf(id) : -1;
     if(pos<0){ noOrder[id]=1; order.push(id); return; }
     /* 공식 순서상 이 캐릭터보다 뒤인 첫 항목 앞에 넣는다 — 순서표에 없는 항목(-1)은 기준이 못 된다 */
@@ -4141,9 +4183,10 @@ function nightSteps(){
       return;
     }
     const c=charOf(id); if(!c) return;
-    const wakes = first? c.first : c.other;
-    if(!wakes) return;
     const holders = playersByChar(id);
+    /* 편입 블록과 **같은 술어**를 써야 한다 — 하나만 풀면 편입은 됐다가 여기서 버려진다 */
+    const wakes = first? c.first : (c.other || (c.first && holders.some(firstNightPending)));
+    if(!wakes) return;
     const maskHere = drunkP && maskC && maskC.id===id; // 위장 캐릭터가 실제로도 플레이 중일 수 있음
     /* 전설은 좌석을 차지하지 않으므로 holders 가 비어 있는 게 정상이다 — '보유자 없음'으로
        걸러내면 S.fabled 로 켠 전설이 밤 순서에서 통째로 사라진다.
@@ -7251,7 +7294,11 @@ let wiz=null;
 function flowFor(stepId){
   const f=NIGHT_FLOW[stepId]; if(!f) return null;
   const first=S.phase.n===1;
-  return first? (f.first||null) : (f.other||null);
+  if(first) return f.first||null;
+  /* 이후밤 대본이 없는 첫밤 전용 능력을 이 밤에 새로 얻은 좌석이 있으면 first 대본을 준다.
+     이후밤 대본이 **있는** 캐릭터는 종전대로 other 를 쓴다 — 범위를 넓히지 않는다. */
+  if(!f.other && f.first && anyFirstNightPending(stepId)) return f.first;
+  return f.other||null;
 }
 function startWiz(stepId){
   /* 앞 위저드에 남은 사회자 대리 입력 예외와 기기 전달 상태를 버린다
