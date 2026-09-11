@@ -4,25 +4,34 @@
 
 ## 완료
 
-- [x] `argus/_specs/COMMON.md`·`kdef.md` 정독
-- [x] **원문 실측** → `tools/FINDINGS.md` (KIND 업종·종목코드 확인, 계약공시 19건, 정기보고서 4사 II-4)
-      핵심: LIG는 상호가 `LIG디펜스앤에어로스페이스`(079550) · 계약상대 4갈래 · 수주표 3갈래(총액형/품목형/잔액형)
-- [x] `tools/kdef_lib.py` — kce/kship 도구 import, 페이지 셸, 색, 포맷
-- [x] `assets/kdef.css` — kship.css 복사 + 방산 토큰
+- [x] `argus/_specs/COMMON.md`·`kdef.md` 정독 · **원문 실측** → `tools/FINDINGS.md`
+- [x] `kdef_lib.py` · `assets/kdef.css`(+ 인포그래픽 전용 규칙)
+- [x] `kdef_universe.py` — 네 겹 모집단 **71종목**(④ 탐색 승격 27 포함) → `assets/universe.json`
+- [x] `kdef_scan.py` — 본문 탐색(후보 224 · 승격 27 · 제외 187) → `assets/universe_probe.json`
+- [x] `kdef_contracts.py` — I001 계약 공시 → `assets/contracts.json` (352건, 민수 100건 분리)
+      · 코스닥 양식(「1. 판매ㆍ공급계약 내용」) 인식 · 정정공시 supersedes
+- [x] **공용 버그 수정** `kce_fetch._decode` — 코스닥 거래소공시(rcpNo[8]=='9') EUC-KR 판정.
+      깨진 캐시 366건 삭제 후 재수집.
+- [x] `kdef_reports.py` — 71사 수집(체계업체 8분기 · 나머지 2분기), 표 5갈래 · 두 줄 머리행 ·
+      단위 물림 · 수량 단위 거부 · 본체 표 선택 · 연매출(직전 사업연도 열) → `assets/reports.json`
+- [x] `build_dicts.py` — 계통 9 · 계약유형 6 · 부품 11/31 · 실루엣 4/영역 22
+- [x] `kdef_suppliers.py` — 부품 분류 42사 · 체계업체 연결 20사(근거 등급) → `assets/suppliers.json`
+- [x] `kdef_page.py` — 허브 · 회사 70쪽 · 커버리지
+- [x] `kdef_parts.py` — `parts.html` 인포그래픽(실루엣 4종 · 영역 클릭 → 부품 → 회사)
+- [x] `tools/tests` 21건 통과 · `site.json` · `_config.yml` exclude · `update-kdef.yml` ·
+      `tools/.gitignore` · README/LOGIC/HANDOFF
 
-## 남은 일 (순서)
+## 남은 일
 
-1. [ ] `kdef_universe.py` — 네 겹 모집단 → `tools/assets/universe.json`
-2. [ ] `kdef_contracts.py` — I001 계약 공시 → `tools/assets/contracts.json`
-3. [ ] `kdef_reports.py` — 정기보고서 II-4(수주·부문매출·거래처) → `tools/assets/reports.json`
-4. [ ] `kdef_scan.py` — 본문 탐색 승격 → `tools/assets/universe_probe.json`
-5. [ ] `build_dicts.py` — 계통·부품·계약유형 사전
-6. [ ] `kdef_page.py` / `kdef_parts.py` — 허브·회사·커버리지·parts
-7. [ ] tests · site.json · `_config.yml` exclude · `.github/workflows/update-kdef.yml` · README/LOGIC/HANDOFF
-8. [ ] `/tmp/kdef.done`
+1. [ ] 계약 수집 마무리(`kdef_contracts.py --collect` 잔여 회사) → `--build` → `kdef_suppliers/page/parts` 재생성
+2. [ ] 계통 '미상' 중 계약명이 빈칸인 정정공시는 원본 계약명을 물려받게(HANDOFF ③)
+3. [ ] 부품 분류 정밀화 — 정기보고서 「II-2 주요 제품」 절을 따로 수집해 제품 문구로 분류
 
 ## 다음 명령
 
 ```sh
-cd argus/kdef/tools && python3 kdef_universe.py --write
+cd argus/kdef/tools
+python3 kdef_contracts.py --collect && python3 kdef_contracts.py --build
+python3 kdef_suppliers.py --build && python3 kdef_page.py --all && python3 kdef_parts.py
+python3 -m unittest discover -s tests
 ```

@@ -73,7 +73,10 @@ def _headered(tables):
         if any(num_of(c) is not None for c in rows[0]):
             continue
         if len({_clean(c) for c in rows[0]}) != len(rows[0]):
-            continue      # `기 초 | 기 초`(수량·금액) — 부머리행이 따로 있는 표다. 손대지 않는다.
+            d = _two_row_header(t)      # `기 초 | 기 초`(수량·금액) — 부머리행이 따로 있다
+            if d:
+                out.append(d)
+            continue
         if not any(num_of(c) is not None for r in rows[1:] for c in r):
             continue
         d = dict(t)
@@ -81,6 +84,63 @@ def _headered(tables):
         d["header_synth"] = True
         out.append(d)
     return out
+
+
+_UNIT_CAP = re.compile(r"단위\s*:?\s*[^)\]]{1,24}")
+# 금액이 아닌 단위 — 풍산 「수주상황」은 **M/T(톤)** 이다. 돈으로 실으면 600억짜리 회사가 된다.
+_UNIT_QTY = re.compile(r"M\s*/\s*T|톤|kg|개|대\b|척|セット|set", re.I)
+
+
+def _carry_units(tables):
+    """표마다 단위 캡션을 읽되, 자기 lead 에 없으면 **직전에 본 캡션**을 물려준다.
+
+    한화에어로 「다. 수주상황(요약)」은 단위가 바로 앞 한 줄짜리 표 안에 들어 있고
+    (`(기준일 : … ) (단위 : 백만원)`) 정작 수주표의 lead 는 비어 있다 — 그대로 두면
+    unit_seen=False 로 114조가 '단위 미확인'이 된다(실측). 물려준 단위는 표시를 남긴다."""
+    out, last = [], None
+    for t in tables:
+        blob = " ".join([t.get("lead") or ""] + list(t["cols"])
+                        + [" ".join(r) for r in t["rows"][:2]])
+        caps = _UNIT_CAP.findall(blob)
+        d = dict(t)
+        if caps:
+            last = caps[-1]
+        elif last:
+            d["lead"] = (t.get("lead") or "") + " (%s)" % last
+            d["unit_from_prev"] = True
+        out.append(d)
+    return out
+
+
+def _two_row_header(t):
+    """머리행이 **두 줄**인 표(rowspan/colspan 평탄화 결과)를 살린다.
+
+    KAI 2026 반기 「나. 수주상황」이 이 모양이다(원문 실측):
+        구 분 | 기 초(2026.01.01) | 기 초(2026.01.01) | 기 말(2026.06.30) | 기 말(2026.06.30) | 비 고
+        구 분 |       수량        |       금액        |       수량        |       금액        | 비 고
+        국내방산 | - | 109,868 | - | 102,355 | -
+    첫 줄만 머리행으로 쓰면 `기초 금액`과 `기초 수량`을 못 가른다(잔고가 통째로 빠진다).
+    두 줄을 이어 붙여 `기 초(2026.01.01) 금액` 으로 만든다. fail-closed —
+    두 줄 다 비숫자이고, 둘째 줄이 첫 줄과 다르며, 셋째 행부터 숫자가 있어야 한다."""
+    rows = t["rows"]
+    if len(rows) < 3 or len(rows[0]) < 3 or len(rows[1]) != len(rows[0]):
+        return None
+    if any(num_of(c) is not None for c in rows[0] + rows[1]):
+        return None
+    if [_clean(c) for c in rows[0]] == [_clean(c) for c in rows[1]]:
+        return None
+    if not any(num_of(c) is not None for r in rows[2:] for c in r):
+        return None
+    cols = []
+    for a, b in zip(rows[0], rows[1]):
+        a, b = (a or "").strip(), (b or "").strip()
+        cols.append(a if _clean(a) == _clean(b) or not b else (a + " " + b).strip())
+    if len({_clean(c) for c in cols}) != len(cols):
+        return None                     # 이어 붙여도 안 갈라지면 손대지 않는다
+    d = dict(t)
+    d["cols"], d["rows"] = cols, rows[2:]
+    d["header_synth"] = "2row"
+    return d
 
 
 def _scaled(v, mul):
@@ -125,6 +185,8 @@ def parse_orders_table(t):
     """수주표 한 장 → {shape, cur, unit_seen, rows}. 네 모양을 한 함수로 가른다."""
     cols = [_clean(c) for c in t["cols"]]
     cur, mul, seen = unit_of(t.get("lead"), t.get("cols"))
+    caps = _UNIT_CAP.findall(" ".join([t.get("lead") or ""] + list(t["cols"])))
+    qty_unit = bool(caps and _UNIT_QTY.search(caps[-1]) and not seen)
 
     def col(*keys, **kw):
         """keys 를 모두 품은 열. 금액 열을 수량 열보다 먼저 고른다(`수주총액 수량|금액`)."""
@@ -152,7 +214,9 @@ def parse_orders_table(t):
     if i_close is None and i_gross is None:
         return None
     if i_open is not None and i_close is not None:
-        shape = "roll"
+        # 기초·기말만 있고 신규·기납품이 없는 표(KAI — 보안관계상 순증감만 적는다)는
+        # 롤포워드가 아니다. 화면에서 '신규 −' 로 비워야 하므로 모양을 따로 부른다.
+        shape = "roll" if (i_new is not None or i_done is not None) else "openclose"
     elif i_gross is not None and i_close is not None:
         shape = "item" if i_date is not None or i_due is not None else "gross"
     elif i_close is not None:
@@ -190,7 +254,8 @@ def parse_orders_table(t):
         rows.append(rec)
     if not rows:
         return None
-    return {"shape": shape, "cur": cur, "unit_seen": seen, "rows": rows,
+    return {"shape": shape, "cur": cur, "unit_seen": seen, "qty_unit": qty_unit, "rows": rows,
+            "unit_from_prev": bool(t.get("unit_from_prev")),
             "cols": t["cols"], "lead": (t.get("lead") or "")[-200:],
             "security_note": bool(_SECURITY.search(t.get("lead") or ""))}
 
@@ -242,6 +307,11 @@ def parse_revenue_table(t):
                      "segkind": seg_kind(seg) or seg_kind(" ".join(labels))})
     if not rows:
         return None
+    # `판매경로·판매방법·판매전략` 표는 매출실적이 아니라 영업방식 설명이다 —
+    # 시장구분 열에 내수/수출이 적혀 있어 매출표로 오인된다(한화시스템 실측: 비중 100 을
+    # 매출로 읽어 연매출이 1억원이 된다).
+    if re.search(r"판매경로|판매방법|판매전략", " ".join(t["cols"])):
+        return None
     head = " ".join(t["cols"][:max(1, i_kind + 1)])
     basis = "customer" if (_CUST_COL.search(head) or _CUST_COL.search((t.get("lead") or "")[-120:])) \
         else "segment"
@@ -276,6 +346,7 @@ def parse_segment_sales(t):
         return None
     i_pct = next((i for i, c in enumerate(cols)
                   if i > i_amt and ("비중" in c or "비율" in c)), None)
+    val_idx = [i for i in range(i_amt, len(cols)) if "비중" not in cols[i] and "비율" not in cols[i]]
     rows = []
     for r in t["rows"]:
         if i_amt >= len(r):
@@ -291,11 +362,15 @@ def parse_segment_sales(t):
         rows.append({"seg": seg, "item": item,
                      # 부문 안의 `소 계`(한화시스템 상품/제품/용역/기타 → 소계)도 합계다.
                      "val": v, "total": is_total(seg) or is_total(item),
+                     # 기간 열을 다 남긴다 — 잔고 커버리지의 분모(연매출)는 당기 누계가
+                     # 아니라 **직전 사업연도 열**에서 읽어야 추정이 되지 않는다.
+                     "vals": [_scaled(r[i], mul) if i < len(r) else None for i in val_idx],
                      "pct": (num_of(r[i_pct]) if i_pct is not None and i_pct < len(r) else None),
                      "segkind": seg_kind(seg) or seg_kind(" ".join(labels))})
     if not rows:
         return None
     return {"cur": cur, "unit_seen": seen, "rows": rows, "cols": t["cols"],
+            "period_cols": [t["cols"][i] for i in val_idx],
             "lead": (t.get("lead") or "")[-200:]}
 
 
@@ -351,6 +426,40 @@ def parse_customers(t):
 
 # ── 수집 ───────────────────────────────────────────────────
 
+_PARENT = re.compile(r"지배회사의\s*내용|지배회사\s*기준|당사의\s*수주")
+_SUB = re.compile(r"종속회사의\s*내용")
+
+
+def _orders_total(o):
+    tot = [r for r in o["rows"] if r["total"]]
+    if tot and tot[0].get("closing") is not None:
+        return tot[0]["closing"]
+    vals = [r["closing"] for r in o["rows"] if not r["total"] and r.get("closing") is not None]
+    return sum(vals) if vals else 0
+
+
+def _pick_orders(orders):
+    """여러 수주표 중 **회사 본체**의 표를 고른다.
+
+    KAI 2026 반기에는 수주표가 5장 온다 — 지배회사(억원, 25.8조)와 종속회사 4곳(백만원,
+    수백억~1천억). 행 수로 고르면 자회사 에스앤케이항공(5행)이 이겨 KAI 수주잔고가
+    8,233억으로 실려 버린다(실측). 앞선 문장의 `[지배회사의 내용]` 표시를 1순위로,
+    표시가 없으면 잔고가 가장 큰 표를 고른다(잔액형은 뒤로 민다). 나머지는 orders_all 에 남는다."""
+    if not orders:
+        return None
+
+    def key(o):
+        lead = o.get("lead") or ""
+        mark = 1 if (_PARENT.search(lead) and not _SUB.search(lead)) else (-1 if _SUB.search(lead) else 0)
+        money = bool(o.get("unit_seen")) and not o.get("qty_unit")
+        return (money, mark, o["shape"] != "balance", _orders_total(o), len(o["rows"]))
+    best = max(orders, key=key)
+    best = dict(best)
+    lead = best.get("lead") or ""
+    best["scope"] = "parent" if _PARENT.search(lead) else ("sub" if _SUB.search(lead) else "unknown")
+    return best
+
+
 def _keep(t):
     """캐시에 남길 표인지 — 수주·매출·거래처 표만(정기보고서 전체를 담으면 캐시가 터진다)."""
     blob = " ".join(t["cols"]) + " " + (t.get("lead") or "")[-200:]
@@ -381,7 +490,7 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
         out["note"] = "매출·수주 절 없음"
         return out
     html = fetch_section(found["sales"])
-    tables = _headered(parse_tables(html))
+    tables = _headered(_carry_units(parse_tables(html)))
     # 수주표로 읽힌 표는 매출표 후보에서 뺀다 — 현대로템 `진행률적용 수주 상황`(품목 45행)이
     # 매출실적으로 다시 읽히면 방산비중이 통째로 오염된다(실측).
     parsed = [(t, parse_orders_table(t)) for t in tables]
@@ -390,8 +499,7 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
     revenue = [x for x in (parse_revenue_table(t) for t in rest) if x]
     segsales = [x for x in (parse_segment_sales(t) for t in rest) if x]
     customers = [x for x in (parse_customers(t) for t in tables) if x]
-    # 수주표는 행이 가장 많은 것(요약표보다 상세표), 잔액형은 행이 1~2개뿐이라 모양도 본다
-    out["orders"] = max(orders, key=lambda o: (len(o["rows"]), o["shape"] != "balance")) if orders else None
+    out["orders"] = _pick_orders(orders)
     out["orders_all"] = orders or []
     seg_rev = [r for r in revenue if r["basis"] == "segment"]
     out["revenue"] = max(seg_rev or revenue, key=lambda r: len(r["rows"])) if revenue else None
@@ -440,6 +548,61 @@ def _sum_rows(rows, field, kinds=None):
     return sum(vals) if vals else None
 
 
+_FY_COL = re.compile(r"20\d\d년|제\d+기")
+_PART_YEAR = re.compile(r"반기|분기|누적|개월|기중|비중|비율")
+
+
+def _is_fy(col):
+    """'2025년(제27기) 금액'·'제26기' 는 1년 열, '2026년 반기'·'비중' 은 아니다."""
+    c = _clean(col)
+    return bool(_FY_COL.search(c)) and not _PART_YEAR.search(c)
+
+
+def _fy_revenue(rv):
+    """매출 표에서 **온전한 1년** 열을 찾아 총매출을 만든다 → (값, 열 이름).
+
+    잔고 커버리지(잔고 ÷ 연매출, 년)의 분모다. 반기 누계를 두 배로 늘리면 추정이 되므로
+    공시에 실제로 적힌 직전 사업연도 열을 쓴다. 열과 값의 개수가 어긋나면 만들지 않는다."""
+    if not rv:
+        return None, None
+    cols = rv.get("period_cols") or []
+    rows = rv.get("rows") or []
+    idx = [i for i, c in enumerate(cols) if _is_fy(c)]
+    def ok(r):
+        return len(r.get("vals") or []) == len(cols)
+
+    for i in idx:
+        # 부문별 `합계` 행과 전체 `합 계` 행이 **둘 다** 오는 표가 있다(한화에어로) —
+        # 다 더하면 매출이 정확히 두 배가 된다. 전체 합계가 있으면 그것만 쓴다.
+        grand = [r for r in rows if r["kind"] == "합계" and is_total(r["seg"]) and ok(r)]
+        per_seg = [r for r in rows if r["kind"] == "합계" and not is_total(r["seg"]) and ok(r)]
+        use = grand or per_seg or [r for r in rows if r["kind"] in ("내수", "수출") and ok(r)]
+        vals = [r["vals"][i] for r in use if r["vals"][i] is not None]
+        if vals:
+            return sum(vals), cols[i]
+    return None, None
+
+
+def _fy_segsales(ss):
+    """부문별 매출 표에서 연매출 → (값, 열 이름). 내수/수출 표가 없는 회사(한화시스템)용.
+
+    전체 `합 계` 행이 있으면 그것만, 없으면 부문 `소 계` 행들을, 그것도 없으면 낱 행을 더한다
+    (소계와 낱 행을 함께 더하면 두 배가 된다)."""
+    if not ss:
+        return None, None
+    cols = ss.get("period_cols") or []
+    rows = [r for r in (ss.get("rows") or []) if len(r.get("vals") or []) == len(cols)]
+    for i in (i for i, c in enumerate(cols) if _is_fy(c)):
+        grand = [r for r in rows if is_total(r["seg"])]
+        sub = [r for r in rows if r.get("total") and not is_total(r["seg"])]
+        base = [r for r in rows if not r.get("total")]
+        for use in (grand, sub, base):
+            vals = [r["vals"][i] for r in use if r["vals"][i] is not None]
+            if vals:
+                return sum(vals), cols[i]
+    return None, None
+
+
 def build(rows, qs):
     """캐시 → reports.json. 회사 × 분기의 수주잔고·방산비중·수출비중·커버리지."""
     out = {}
@@ -458,9 +621,11 @@ def build(rows, qs):
             o = d.get("orders") or {}
             orows = o.get("rows") or []
             tot = [r for r in orows if r["total"]]
+            # 단위를 못 읽었거나(캡션 없음) 금액이 아닌 단위(풍산 M/T)면 **금액으로 싣지 않는다**.
+            money = bool(o.get("unit_seen")) and not o.get("qty_unit")
             backlog = (tot[0]["closing"] if tot and tot[0].get("closing") is not None
-                       else _sum_rows(orows, "closing"))
-            backlog_def = _sum_rows(orows, "closing", kinds=("def",))
+                       else _sum_rows(orows, "closing")) if money else None
+            backlog_def = _sum_rows(orows, "closing", kinds=("def",)) if money else None
             rv = d.get("revenue") or {}
             rrows = rv.get("rows") or []
             dom = _sum_rows_rev(rrows, "내수")
@@ -471,8 +636,16 @@ def build(rows, qs):
             mix_src = ("revenue" if (rv.get("basis") == "segment"
                                      and any(r["segkind"] for r in rrows)) else
                        ("segment_sales" if any(r["segkind"] for r in srows) else None))
-            mix_rows = ([r for r in rrows if r["kind"] == "합계"] or rrows) \
-                if mix_src == "revenue" else srows
+            # 전체 `합 계` 행과 부문 `합계` 행이 같이 오는 표(한화에어로)에서 둘 다 더하면
+            # 매출이 두 배가 되고 방산비중이 반토막 난다(13.8% ← 실제 27%). 전체 합계 행은
+            # 분모로만 쓰고, 부문 판정은 **부문 행**에서 한다.
+            if mix_src == "revenue":
+                seg_tot = [r for r in rrows if r["kind"] == "합계" and not is_total(r["seg"])]
+                real = [r for r in rrows if r["kind"] in ("내수", "수출") and not is_total(r["seg"])]
+                mix_rows = seg_tot or real or rrows
+            else:
+                seg_tot = [r for r in srows if r.get("total") and not is_total(r["seg"])]
+                mix_rows = seg_tot or [r for r in srows if not r.get("total")] or srows
             def_sales = sum(r["val"] for r in mix_rows
                             if r.get("segkind") == "def" and r.get("val") is not None) or None
             all_sales = sum(r["val"] for r in mix_rows if r.get("val") is not None) or None
@@ -480,13 +653,24 @@ def build(rows, qs):
                 "ok": True, "rcp": d.get("rcp"), "shape": o.get("shape"),
                 "cur": o.get("cur"), "unit_seen": o.get("unit_seen"),
                 "backlog": backlog, "backlog_def": backlog_def,
-                "delivered": _sum_rows(orows, "delivered"),
-                "gross": _sum_rows(orows, "gross"),
+                "opening": ((tot[0]["opening"] if tot and tot[0].get("opening") is not None
+                             else _sum_rows(orows, "opening"))) if money else None,
+                "delivered": _sum_rows(orows, "delivered") if money else None,
+                "gross": _sum_rows(orows, "gross") if money else None,
+                "unit_note": ("" if money else
+                              ("수주표 단위가 금액이 아님(%s) — 금액으로 싣지 않음"
+                               % (o.get("cur") or "미상") if o.get("qty_unit")
+                               else "수주표 단위 캡션을 못 읽음 — 금액으로 싣지 않음") if o else ""),
+                "unit_from_prev": bool(o.get("unit_from_prev")),
+                "orders_scope": o.get("scope"),
                 "segments": [{"label": r["label"], "kind": r.get("kind"), "closing": r["closing"],
                               "gross": r.get("gross"), "delivered": r.get("delivered"),
                               "due": r.get("due"), "order_date": r.get("order_date")}
                              for r in orows if not r["total"]],
                 "revenue_basis": rv.get("basis"),
+                "revenue_fy": (_fy_revenue(rv)[0] or _fy_segsales(ss)[0]),
+                "revenue_fy_col": (_fy_revenue(rv)[1] or _fy_segsales(ss)[1]),
+                "revenue_cols": rv.get("period_cols") or [],
                 "revenue_domestic": dom, "revenue_export": exp,
                 "revenue_segments": [{"seg": r["seg"], "item": r["item"], "kind": r["kind"],
                                       "segkind": r["segkind"], "val": r["val"]} for r in rrows],

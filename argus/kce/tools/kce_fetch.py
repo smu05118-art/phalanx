@@ -168,12 +168,27 @@ def _get(url, data=None, timeout=45):
 
 
 def _decode(body, rcp_no=""):
-    # 거래소공시(rcpNo 9번째 자리가 8 — 800xxx 뿐 아니라 801xxx 도 있다)는 EUC-KR.
-    # '800' 완전일치로 두었더니 [기재정정] 단일판매ㆍ공급계약(…801172)이 전부 깨진 글자로
-    # 캐시됐다(조선 척당 계약 23건). 세 자리가 아니라 첫 자리로 판정한다.
-    if len(rcp_no) == 14 and rcp_no[8] == "8":
+    """원문 인코딩 판정 — 선언된 charset → rcpNo 규칙 → UTF-8 엄격 시도 순.
+
+    거래소공시(rcpNo 9번째 자리가 8·9)는 EUC-KR, 정기보고서는 UTF-8이다.
+    '800' 완전일치로 두었더니 [기재정정] 단일판매ㆍ공급계약(…801172)이 전부 깨진 글자로
+    캐시됐고(조선 척당 계약 23건), 첫 자리 '8' 만 보게 고쳤더니 이번엔 **코스닥**
+    거래소공시(…900399 — 9번째 자리가 9)가 같은 식으로 깨졌다(방산 탭 계약공시 수십 건이
+    계약명·금액 통째로 빈칸). 자리 규칙만 믿지 말고 문서가 선언한 charset 을 먼저 읽고,
+    선언이 없으면 UTF-8 **엄격** 디코딩이 실패할 때 EUC-KR로 내려간다(fail-closed).
+    """
+    m = re.search(br"charset\s*=\s*[\"']?([\w-]+)", body[:2048], re.I)
+    enc = m.group(1).decode("ascii", "replace").lower() if m else ""
+    if enc in ("euc-kr", "euckr", "ks_c_5601-1987", "cp949", "ms949"):
         return body.decode("euc-kr", "replace")
-    return body.decode("utf-8", "replace")
+    if enc in ("utf-8", "utf8"):
+        return body.decode("utf-8", "replace")
+    if len(rcp_no) == 14 and rcp_no[8] in "89":
+        return body.decode("euc-kr", "replace")
+    try:
+        return body.decode("utf-8")
+    except UnicodeDecodeError:
+        return body.decode("euc-kr", "replace")
 
 
 # ── 무키 웹 경로 ─────────────────────────────────────────────

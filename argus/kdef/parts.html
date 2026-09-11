@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>한국방산 — 무기체계 인포그래픽</title>
+<link rel="stylesheet" href="assets/kdef.css">
+</head>
+<body>
+<header class="top"><div class="hd"><h1>무기체계 인포그래픽</h1><span class="sp"><a href="index.html">허브</a><a href="coverage.html">커버리지</a><a href="../index.html">← ARGUS</a></span></div><div class="crumb"><a href="../index.html">ARGUS</a> › <a href="index.html">한국방산</a> › <span>인포그래픽</span></div></header>
+<main><p class="lead">전차·전투기·함정·유도탄을 단순 기하도형으로 그린 모식도입니다. 부품 영역을 누르면 그 부품의 소분류와, 원문(계약명·정기보고서 본문·KIND 문구)에서 그 부품을 만든다고 읽힌 상장사가 열립니다.</p>
+<div class="kpi">
+ <div><b>31</b><span>부품 소분류 · 회사가 붙은 소분류 26</span></div>
+ <div><b>42</b><span>부품이 확인된 상장사</span></div>
+ <div><b>4</b><span>무기체계 실루엣 · 영역 22</span></div>
+ <div><b>10</b><span>부품 대분류</span></div>
+</div>
+<section class="card"><h2>무기체계를 고르고 부품 영역을 누르세요
+ <em>영역 → 부품 소분류 → 그 부품을 만드는 상장사 → 납품처(체계업체)</em>
+ <span class="right"><button class="chip" id="reset">처음으로</button></span></h2>
+ <div class="ctl"><div class="chips" id="sils"><button class="chip" data-sil="TANK" aria-pressed="false">전차</button><button class="chip" data-sil="JET" aria-pressed="false">전투기</button><button class="chip" data-sil="SHIP" aria-pressed="false">함정</button><button class="chip" data-sil="MSL" aria-pressed="false">유도탄</button></div></div>
+ <div class="ig">
+  <div class="ship">
+   <svg id="fig" viewBox="0 0 400 200" role="img" aria-label="무기체계 단면 — 부품 영역을 눌러 담당 상장사를 봅니다" preserveAspectRatio="xMidYMid meet">
+    <g id="deco"></g><g id="regions"></g><g id="labels" aria-hidden="true"></g>
+   </svg>
+   <div class="legend">
+    <span><i style="background:rgba(57,135,229,.30)"></i>상장사가 있는 영역</span>
+    <span><i style="background:rgba(255,255,255,.04)"></i>상장사 미확인</span>
+    <span class="mut">도형은 단순 기하도형으로 그린 모식도입니다(축척·형상 아님)</span>
+   </div>
+  </div>
+  <div class="panel" id="panel"></div>
+ </div>
+</section>
+<section class="card"><h2>부품 대분류로 진입 <em>위치가 없는 분류(소재·시험/정비)도 여기서 들어갑니다 · 숫자는 연결된 회사 수</em></h2>
+ <div class="chips" id="groups"><button class="chip" data-group="PROP" aria-pressed="false">추진 <span class="n">9</span></button><button class="chip" data-group="GUN" aria-pressed="false">화력 <span class="n">10</span></button><button class="chip" data-group="ARMOR" aria-pressed="false">방호 <span class="n">4</span></button><button class="chip" data-group="GUID" aria-pressed="false">유도 <span class="n">2</span></button><button class="chip" data-group="ELEC" aria-pressed="false">전자 <span class="n">25</span></button><button class="chip" data-group="OPT" aria-pressed="false">광학 <span class="n">5</span></button><button class="chip" data-group="AERO" aria-pressed="false">항공구조물 <span class="n">6</span></button><button class="chip" data-group="SHIPEQ" aria-pressed="false">함정장비 <span class="n">3</span></button><button class="chip" data-group="MAT" aria-pressed="false">소재 <span class="n">2</span></button><button class="chip" data-group="SVC" aria-pressed="false">시험·정비 <span class="n">10</span></button></div></section>
+<div class="note info">부품 분류는 <b>규칙</b>입니다 — 계약명·정기보고서 II절 본문·KIND 주요제품 문구에서 부품 낱말을 찾습니다.
+회사 칩에 근거(무엇을 보고 넣었는지)를 달아 두었습니다. 민수 낱말과 겹치는 짧은 약어는 방산 문맥이 가까이 있을 때만 채택합니다.
+납품처(체계업체) 연결의 근거 등급은 주요고객 주석 &gt; 계약공시 상대 &gt; 본문 언급 순입니다.</div>
+<script>const P={"viewBox":"0 0 400 200","sils":[{"id":"TANK","ko":"전차","en":"Main battle tank","domain":"GROUND"},{"id":"JET","ko":"전투기","en":"Fighter aircraft","domain":"AIR"},{"id":"SHIP","ko":"함정","en":"Naval vessel","domain":"NAVAL"},{"id":"MSL","ko":"유도탄","en":"Guided missile","domain":"MISSILE"}],"regions":[{"id":"TANK_TURRET","silhouette":"TANK","ko":"포탑·주포","points":"150,70 300,70 305,95 285,105 150,105 140,88","label":{"x":225,"y":88},"cats":["ARMOR.APS","ARMOR.PLATE","GUN.BARREL","GUN.FCS","GUN.SMALL","GUN.TURRET","MAT.COMP","OPT.EOIR","OPT.SIGHT"]},{"id":"TANK_HULL","silhouette":"TANK","ko":"차체·동력장치","points":"70,105 340,105 350,135 60,135","label":{"x":205,"y":122},"cats":["ARMOR.PLATE","ELEC.POWER","MAT.METAL","PROP.ENGINE","PROP.TRANS"]},{"id":"TANK_TRACK","silhouette":"TANK","ko":"현가·궤도","points":"58,137 352,137 352,165 58,165","label":{"x":205,"y":153},"cats":["PROP.SUSP"]},{"id":"JET_RADAR","silhouette":"JET","ko":"기수 레이다","points":"20,95 70,82 70,112 20,105","label":{"x":45,"y":98},"cats":["ELEC.RADAR"]},{"id":"JET_AVIONICS","silhouette":"JET","ko":"항전·조종석","points":"72,80 130,78 132,112 72,112","label":{"x":102,"y":96},"cats":["ELEC.AVION","ELEC.COMM","GUID.INS","SVC.SIM"]},{"id":"JET_FUSELAGE","silhouette":"JET","ko":"동체","points":"134,78 300,84 300,112 134,112","label":{"x":215,"y":96},"cats":["AERO.STRUCT","SVC.MRO"]},{"id":"JET_WING","silhouette":"JET","ko":"주익·미익","points":"160,112 250,112 215,168 145,168","label":{"x":195,"y":140},"cats":["AERO.STRUCT","MAT.COMP"]},{"id":"JET_EOTS","silhouette":"JET","ko":"EO/IR 조준장치","points":"110,113 150,113 150,130 110,130","label":{"x":130,"y":124},"cats":["OPT.EOIR"]},{"id":"JET_ENGINE","silhouette":"JET","ko":"엔진·노즐","points":"300,84 370,90 370,106 300,112","label":{"x":335,"y":99},"cats":["PROP.ENGINE"]},{"id":"JET_EW","silhouette":"JET","ko":"전자전·기만","points":"250,60 320,60 320,80 250,84","label":{"x":285,"y":73},"cats":["ARMOR.APS","ELEC.EW"]},{"id":"JET_GEAR","silhouette":"JET","ko":"착륙장치","points":"150,113 190,113 190,150 150,150","label":{"x":170,"y":134},"cats":["AERO.GEAR"]},{"id":"SHIP_RADAR","silhouette":"SHIP","ko":"탐색·추적 레이다","points":"180,28 215,28 215,60 180,60","label":{"x":198,"y":46},"cats":["ELEC.RADAR"]},{"id":"SHIP_MAST","silhouette":"SHIP","ko":"통합마스트·전자전","points":"196,10 206,10 212,28 190,28","label":{"x":201,"y":22},"cats":["ELEC.COMM","ELEC.EW"]},{"id":"SHIP_EOTS","silhouette":"SHIP","ko":"EO/IR 추적","points":"216,40 240,40 240,60 216,60","label":{"x":228,"y":52},"cats":["OPT.EOIR"]},{"id":"SHIP_GUN","silhouette":"SHIP","ko":"함포·발사대","points":"90,78 140,78 140,100 90,100","label":{"x":115,"y":91},"cats":["GUN.BARREL","GUN.SMALL"]},{"id":"SHIP_CIC","silhouette":"SHIP","ko":"전투체계·소나","points":"142,62 250,62 250,100 142,100","label":{"x":196,"y":83},"cats":["GUN.FCS","SHIPEQ.CMS"]},{"id":"SHIP_HULL","silhouette":"SHIP","ko":"선체·추진","points":"60,102 350,102 320,150 90,150","label":{"x":205,"y":128},"cats":["ELEC.POWER","PROP.ENGINE","SHIPEQ.AUX","SHIPEQ.PROP","SVC.MRO"]},{"id":"MSL_SEEKER","silhouette":"MSL","ko":"탐색기","points":"30,88 90,88 90,112 30,112","label":{"x":60,"y":102},"cats":["GUID.SEEKER"]},{"id":"MSL_WARHEAD","silhouette":"MSL","ko":"탄두·신관","points":"92,86 160,86 160,114 92,114","label":{"x":126,"y":102},"cats":["GUID.FUZE","MAT.EXPL"]},{"id":"MSL_BODY","silhouette":"MSL","ko":"유도조종부","points":"162,86 250,86 250,114 162,114","label":{"x":206,"y":102},"cats":["GUID.INS","MAT.METAL"]},{"id":"MSL_MOTOR","silhouette":"MSL","ko":"추진기관","points":"252,86 350,86 350,114 252,114","label":{"x":301,"y":102},"cats":["PROP.ROCKET"]},{"id":"MSL_FIN","silhouette":"MSL","ko":"조종날개·구동","points":"300,60 360,60 360,86 300,86","label":{"x":330,"y":74},"cats":["GUID.ACT"]}],"cats":[{"id":"PROP.ENGINE","g":"PROP","ko":"엔진·가스터빈","en":"Engines"},{"id":"PROP.TRANS","g":"PROP","ko":"변속기·동력전달","en":"Transmission"},{"id":"PROP.SUSP","g":"PROP","ko":"현가·궤도","en":"Suspension & tracks"},{"id":"PROP.ROCKET","g":"PROP","ko":"추진기관(로켓)","en":"Rocket motors"},{"id":"GUN.BARREL","g":"GUN","ko":"포신·포열","en":"Barrels"},{"id":"GUN.TURRET","g":"GUN","ko":"포탑·구동","en":"Turrets"},{"id":"GUN.FCS","g":"GUN","ko":"사격통제","en":"Fire control"},{"id":"GUN.SMALL","g":"GUN","ko":"총포·탄약","en":"Small arms & ammo"},{"id":"ARMOR.PLATE","g":"ARMOR","ko":"장갑·방탄","en":"Armour"},{"id":"ARMOR.APS","g":"ARMOR","ko":"능동방호·연막","en":"APS & smoke"},{"id":"GUID.SEEKER","g":"GUID","ko":"탐색기","en":"Seekers"},{"id":"GUID.ACT","g":"GUID","ko":"구동장치·조종날개","en":"Actuators & fins"},{"id":"GUID.FUZE","g":"GUID","ko":"신관·안전장전","en":"Fuzes"},{"id":"GUID.INS","g":"GUID","ko":"관성항법·유도조종","en":"INS & guidance"},{"id":"ELEC.RADAR","g":"ELEC","ko":"레이다·안테나","en":"Radar & antenna"},{"id":"ELEC.EW","g":"ELEC","ko":"전자전·피아식별","en":"EW & IFF"},{"id":"ELEC.COMM","g":"ELEC","ko":"통신·암호","en":"Comms & crypto"},{"id":"ELEC.AVION","g":"ELEC","ko":"항전·임무컴퓨터","en":"Avionics"},{"id":"ELEC.POWER","g":"ELEC","ko":"전원·배전","en":"Power"},{"id":"OPT.EOIR","g":"OPT","ko":"EO/IR·열영상","en":"EO/IR"},{"id":"OPT.SIGHT","g":"OPT","ko":"조준경·야시","en":"Sights & night vision"},{"id":"AERO.STRUCT","g":"AERO","ko":"기체구조물","en":"Airframe structures"},{"id":"AERO.GEAR","g":"AERO","ko":"착륙장치·유압","en":"Landing gear & hydraulics"},{"id":"SHIPEQ.CMS","g":"SHIPEQ","ko":"전투체계·소나","en":"Combat system & sonar"},{"id":"SHIPEQ.PROP","g":"SHIPEQ","ko":"함정 추진·발전","en":"Naval propulsion"},{"id":"SHIPEQ.AUX","g":"SHIPEQ","ko":"함정 의장·보조기기","en":"Naval auxiliaries"},{"id":"MAT.METAL","g":"MAT","ko":"특수강·비철","en":"Special metals"},{"id":"MAT.COMP","g":"MAT","ko":"복합소재","en":"Composites"},{"id":"MAT.EXPL","g":"MAT","ko":"화약·추진제","en":"Explosives"},{"id":"SVC.MRO","g":"SVC","ko":"정비·창정비","en":"MRO"},{"id":"SVC.SIM","g":"SVC","ko":"시뮬레이터·훈련체계","en":"Simulators"}],"groups":{"PROP":"추진","GUN":"화력","ARMOR":"방호","GUID":"유도","ELEC":"전자","OPT":"광학","AERO":"항공구조물","SHIPEQ":"함정장비","MAT":"소재","SVC":"시험·정비"},"idx":{"PROP.ENGINE":[{"stock":"012450","nm":"한화에어로스페이스","role":"prime","src":"kind","kw":"항공기엔진","prod":"항공기엔진,특수방산장비 제조/정비사업","primes":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대"}]}],"GUN.FCS":[{"stock":"003570","nm":"SNT다이내믹스","role":"part","src":"contract","kw":"사격지휘","prod":"자동차부품(동력전달장치 등),공작기계(CNC선반 등),사출성형기 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"}]},{"stock":"065450","nm":"빅텍","role":"part","src":"contract","kw":"FCS","prod":"전자전시스템 장치류","primes":[{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대"},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]},{"stock":"272210","nm":"한화시스템","role":"prime","src":"contract","kw":"사격통제","prod":"정밀기기(육해공군관련전자제어시스템,열영상감시장비,탐지추적장치,전투지휘체계시스템) 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"현대로템","stock":"064350","basis":"계약공시 상대"}]},{"stock":"042660","nm":"한화오션","role":"prime","src":"contract","kw":"FCS","prod":"선박 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"}]}],"AERO.GEAR":[{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"착륙장치","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","primes":[]}],"AERO.STRUCT":[{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"동체","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","primes":[]},{"stock":"377480","nm":"마음AI","role":"part","src":"body","kw":"동체","prod":"종합 인공지능 엔진 및 플랫폼","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"본문 언급"},{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"본문 언급"}]},{"stock":"067390","nm":"아스트","role":"part","src":"kind","kw":"동체","prod":"항공기용 부품 제조 및 동체 조립","primes":[]},{"stock":"274090","nm":"켄코아에어로스페이스","role":"part","src":"kind","kw":"항공가공품","prod":"항공가공품 및 조립품","primes":[]},{"stock":"221840","nm":"하이즈항공","role":"part","src":"kind","kw":"날개구조","prod":"B787 날개구조물 등","primes":[]}],"ELEC.COMM":[{"stock":"079550","nm":"LIG디펜스앤에어로스페이스","role":"prime","src":"contract","kw":"무전기","prod":"정밀유도무기 등","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한국항공우주","stock":"047810","basis":"주요고객 주석"}]},{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"무전기","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","primes":[]},{"stock":"272210","nm":"한화시스템","role":"prime","src":"contract","kw":"무전기","prod":"정밀기기(육해공군관련전자제어시스템,열영상감시장비,탐지추적장치,전투지휘체계시스템) 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"현대로템","stock":"064350","basis":"계약공시 상대"}]},{"stock":"487400","nm":"케이앤에스아이앤씨","role":"part","src":"kind","kw":"위성통신","prod":"군용 위성통신안테나(잠수함용, 수상함용, 무인항공기용 등), 해상용 위성통신안테나(VSAT","primes":[]},{"stock":"005870","nm":"휴니드테크놀러지스","role":"part","src":"kind","kw":"무전기","prod":"무선통신기기,군납용무전기,위성방송수신기 제조","primes":[{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]}],"SVC.MRO":[{"stock":"079550","nm":"LIG디펜스앤에어로스페이스","role":"prime","src":"contract","kw":"수리부속","prod":"정밀유도무기 등","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한국항공우주","stock":"047810","basis":"주요고객 주석"}]},{"stock":"077970","nm":"STX엔진","role":"part","src":"contract","kw":"창정비","prod":"엔진,터빈,내연기관 제조,도매","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한화오션","stock":"042660","basis":"주요고객 주석"},{"nm":"현대로템","stock":"064350","basis":"주요고객 주석"}]},{"stock":"065450","nm":"빅텍","role":"part","src":"contract","kw":"PBL","prod":"전자전시스템 장치류","primes":[{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대"},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]},{"stock":"484870","nm":"엠앤씨솔루션","role":"part","src":"contract","kw":"창정비","prod":"방위산업용 유압식/전기식 부품 및 시스템","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"현대로템","stock":"064350","basis":"계약공시 상대"}]},{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"수리부속","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","primes":[]},{"stock":"272210","nm":"한화시스템","role":"prime","src":"contract","kw":"수리부속","prod":"정밀기기(육해공군관련전자제어시스템,열영상감시장비,탐지추적장치,전투지휘체계시스템) 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"현대로템","stock":"064350","basis":"계약공시 상대"}]},{"stock":"064350","nm":"현대로템","role":"prime","src":"contract","kw":"창정비","prod":"철도차량, 특수중기, 산업기계","primes":[]},{"stock":"005870","nm":"휴니드테크놀러지스","role":"part","src":"contract","kw":"PBL","prod":"무선통신기기,군납용무전기,위성방송수신기 제조","primes":[{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]}],"GUN.TURRET":[{"stock":"064350","nm":"현대로템","role":"prime","src":"contract","kw":"포탑","prod":"철도차량, 특수중기, 산업기계","primes":[]}],"ELEC.EW":[{"stock":"079550","nm":"LIG디펜스앤에어로스페이스","role":"prime","src":"contract","kw":"전자전","prod":"정밀유도무기 등","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한국항공우주","stock":"047810","basis":"주요고객 주석"}]},{"stock":"065450","nm":"빅텍","role":"part","src":"contract","kw":"전자전","prod":"전자전시스템 장치류","primes":[{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대"},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]},{"stock":"005870","nm":"휴니드테크놀러지스","role":"part","src":"contract","kw":"피아식별","prod":"무선통신기기,군납용무전기,위성방송수신기 제조","primes":[{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]}],"ELEC.RADAR":[{"stock":"079550","nm":"LIG디펜스앤에어로스페이스","role":"prime","src":"contract","kw":"레이더","prod":"정밀유도무기 등","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한국항공우주","stock":"047810","basis":"주요고객 주석"}]},{"stock":"065450","nm":"빅텍","role":"part","src":"contract","kw":"레이더","prod":"전자전시스템 장치류","primes":[{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대"},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]},{"stock":"272210","nm":"한화시스템","role":"prime","src":"contract","kw":"레이다","prod":"정밀기기(육해공군관련전자제어시스템,열영상감시장비,탐지추적장치,전투지휘체계시스템) 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"현대로템","stock":"064350","basis":"계약공시 상대"}]},{"stock":"049080","nm":"기가레인","role":"part","src":"body","kw":"안테나","prod":"RF통신부품 및 반도체 장비","primes":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]},{"stock":"088800","nm":"에이스테크","role":"part","src":"body","kw":"안테나","prod":"단말기용안테나,기지국용안테나","primes":[]},{"stock":"474610","nm":"RF시스템즈","role":"part","src":"kind","kw":"레이더","prod":"방산제품(레이더시스템, 안테나시스템, 환경제어시스템 등)","primes":[]},{"stock":"487400","nm":"케이앤에스아이앤씨","role":"part","src":"kind","kw":"안테나","prod":"군용 위성통신안테나(잠수함용, 수상함용, 무인항공기용 등), 해상용 위성통신안테나(VSAT","primes":[]}],"SHIPEQ.CMS":[{"stock":"079550","nm":"LIG디펜스앤에어로스페이스","role":"prime","src":"contract","kw":"음탐","prod":"정밀유도무기 등","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한국항공우주","stock":"047810","basis":"주요고객 주석"}]},{"stock":"272210","nm":"한화시스템","role":"prime","src":"contract","kw":"전투체계","prod":"정밀기기(육해공군관련전자제어시스템,열영상감시장비,탐지추적장치,전투지휘체계시스템) 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"현대로템","stock":"064350","basis":"계약공시 상대"}]}],"ARMOR.APS":[{"stock":"079550","nm":"LIG디펜스앤에어로스페이스","role":"prime","src":"contract","kw":"생존장비","prod":"정밀유도무기 등","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한국항공우주","stock":"047810","basis":"주요고객 주석"}]},{"stock":"484590","nm":"삼양컴텍","role":"part","src":"kind","kw":"위장망","prod":"방위산업방탄제품(K-SAP, 유리섬유제품, 방탄헬멧, 위장망, 방탄복), 항공기부품 제조,","primes":[]}],"GUN.SMALL":[{"stock":"064960","nm":"SNT모티브","role":"part","src":"contract","kw":"소총","prod":"자동차부품(서스펜션모듈,전장품,속옵서버,에어백,트로틀바디,너클),방산품(총포) 제조,도매","primes":[]},{"stock":"103140","nm":"풍산","role":"prime","src":"contract","kw":"탄약","prod":"","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"현대로템","stock":"064350","basis":"계약공시 상대"}]},{"stock":"079550","nm":"LIG디펜스앤에어로스페이스","role":"prime","src":"kind","kw":"총포","prod":"정밀유도무기 등","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한국항공우주","stock":"047810","basis":"주요고객 주석"}]},{"stock":"484590","nm":"삼양컴텍","role":"part","src":"kind","kw":"총포","prod":"방위산업방탄제품(K-SAP, 유리섬유제품, 방탄헬멧, 위장망, 방탄복), 항공기부품 제조,","primes":[]},{"stock":"010820","nm":"퍼스텍","role":"part","src":"kind","kw":"총포","prod":"방위산업제품,프린터,불소화합물,자동차용 매트 제조/얼굴인식시스템 개발","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대"}]}],"PROP.SUSP":[{"stock":"079550","nm":"LIG디펜스앤에어로스페이스","role":"prime","src":"contract","kw":"궤도","prod":"정밀유도무기 등","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한국항공우주","stock":"047810","basis":"주요고객 주석"}]},{"stock":"064960","nm":"SNT모티브","role":"part","src":"kind","kw":"서스펜션모듈","prod":"자동차부품(서스펜션모듈,전장품,속옵서버,에어백,트로틀바디,너클),방산품(총포) 제조,도매","primes":[]}],"OPT.EOIR":[{"stock":"272210","nm":"한화시스템","role":"prime","src":"contract","kw":"TOD","prod":"정밀기기(육해공군관련전자제어시스템,열영상감시장비,탐지추적장치,전투지휘체계시스템) 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"현대로템","stock":"064350","basis":"계약공시 상대"}]},{"stock":"327260","nm":"RF머트리얼즈","role":"part","src":"body","kw":"적외선센서","prod":"광통신, RF통신용 패키지","primes":[]},{"stock":"105550","nm":"엣지파운드리","role":"part","src":"body","kw":"열영상","prod":"자동차용 센서(APS, TPS, IAPS, SLS)","primes":[{"nm":"한화시스템","stock":"272210","basis":"본문 언급"}]},{"stock":"214430","nm":"아이쓰리시스템","role":"part","src":"kind","kw":"적외선영상","prod":"적외선 영상센서, 엑스레이 영상센서","primes":[]}],"OPT.SIGHT":[{"stock":"272210","nm":"한화시스템","role":"prime","src":"contract","kw":"조준경","prod":"정밀기기(육해공군관련전자제어시스템,열영상감시장비,탐지추적장치,전투지휘체계시스템) 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"현대로템","stock":"064350","basis":"계약공시 상대"}]}],"PROP.TRANS":[{"stock":"003570","nm":"SNT다이내믹스","role":"part","src":"contract","kw":"변속기","prod":"자동차부품(동력전달장치 등),공작기계(CNC선반 등),사출성형기 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"}]},{"stock":"010820","nm":"퍼스텍","role":"part","src":"contract","kw":"구동장치","prod":"방위산업제품,프린터,불소화합물,자동차용 매트 제조/얼굴인식시스템 개발","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대"}]},{"stock":"437730","nm":"삼현","role":"part","src":"body","kw":"감속기","prod":"스마트 액추에이터, 스마트 파워유닛","primes":[]},{"stock":"389500","nm":"에스비비테크","role":"part","src":"body","kw":"감속기","prod":"베어링, 감속기","primes":[]},{"stock":"101170","nm":"우림피티에스","role":"part","src":"body","kw":"동력전달","prod":"트랜스미션,감속기,기어전동축 제조","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"본문 언급"},{"nm":"한국항공우주","stock":"047810","basis":"본문 언급"},{"nm":"현대로템","stock":"064350","basis":"본문 언급"}]}],"ELEC.AVION":[{"stock":"005870","nm":"휴니드테크놀러지스","role":"part","src":"contract","kw":"항공전자","prod":"무선통신기기,군납용무전기,위성방송수신기 제조","primes":[{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]},{"stock":"064960","nm":"SNT모티브","role":"part","src":"kind","kw":"전장품","prod":"자동차부품(서스펜션모듈,전장품,속옵서버,에어백,트로틀바디,너클),방산품(총포) 제조,도매","primes":[]},{"stock":"448710","nm":"코츠테크놀로지","role":"part","src":"kind","kw":"전시기","prod":"싱글보드컴퓨터(SBC), 군용 전시기 등","primes":[]}],"GUID.ACT":[{"stock":"010820","nm":"퍼스텍","role":"part","src":"contract","kw":"구동장치","prod":"방위산업제품,프린터,불소화합물,자동차용 매트 제조/얼굴인식시스템 개발","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대"},{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대"},{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대"}]}],"ELEC.POWER":[{"stock":"065450","nm":"빅텍","role":"part","src":"contract","kw":"전원공급","prod":"전자전시스템 장치류","primes":[{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대"},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대"}]},{"stock":"267320","nm":"나인테크","role":"part","src":"body","kw":"이차전지","prod":"이차전지 제조 장비","primes":[]},{"stock":"136150","nm":"원일티엔아이","role":"material","src":"body","kw":"연료전지","prod":"수소저장합금, 고압연소식기화기","primes":[{"nm":"한화오션","stock":"042660","basis":"주요고객 주석"}]},{"stock":"095270","nm":"웨이브일렉트로","role":"part","src":"body","kw":"전원공급","prod":"이동통신중계기용전력증폭기","primes":[]},{"stock":"108380","nm":"대양전기공업","role":"part","src":"kind","kw":"배전반","prod":"해상용 조명등기구, (함정용)전자시스템, 배전반류 등","primes":[]},{"stock":"382900","nm":"범한퓨얼셀","role":"part","src":"kind","kw":"연료전지","prod":"잠수함용 연료전지모듈, 건물용 연료전지 시스템, 수소충전소 구축","primes":[]},{"stock":"434190","nm":"탈로스","role":"part","src":"kind","kw":"이차전지","prod":"군용 리튬이온 이차전지","primes":[]}],"ARMOR.PLATE":[{"stock":"065950","nm":"웰크론","role":"part","src":"contract","kw":"방탄","prod":"기능성 침구용품, 크리너, 필터, 방탄·방검복","primes":[]},{"stock":"484590","nm":"삼양컴텍","role":"part","src":"kind","kw":"방탄","prod":"방위산업방탄제품(K-SAP, 유리섬유제품, 방탄헬멧, 위장망, 방탄복), 항공기부품 제조,","primes":[]}],"SHIPEQ.AUX":[{"stock":"108380","nm":"대양전기공업","role":"part","src":"kind","kw":"배전반","prod":"해상용 조명등기구, (함정용)전자시스템, 배전반류 등","primes":[]}],"MAT.COMP":[{"stock":"484590","nm":"삼양컴텍","role":"part","src":"kind","kw":"유리섬유","prod":"방위산업방탄제품(K-SAP, 유리섬유제품, 방탄헬멧, 위장망, 방탄복), 항공기부품 제조,","primes":[]}],"PROP.ROCKET":[{"stock":"488900","nm":"비츠로넥스텍","role":"part","src":"kind","kw":"로켓연소기","prod":"로켓연소기 및 가스발생기, 초전도가속장치, 핵융합 플라즈마 대향장치 등 제조","primes":[]}],"MAT.EXPL":[{"stock":"000880","nm":"한화","role":"material","src":"kind","kw":"화약","prod":"화약,화공품,자동선반류,공작기계 제조,전자교환기,건설,정보통신,종합무역/임직원 및 개인대상","primes":[]}],"GUID.SEEKER":[{"stock":"0015G0","nm":"그린광학","role":"material","src":"body","kw":"탐색기","prod":"초정밀 광학 시스템 및 광학 소재","primes":[]}],"SVC.SIM":[{"stock":"274400","nm":"이노시뮬레이션","role":"service","src":"kind","kw":"시뮬레이터","prod":"스마트 모빌리티 시뮬레이터, XR 가상훈련 시스템 등","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"본문 언급"},{"nm":"한국항공우주","stock":"047810","basis":"본문 언급"},{"nm":"현대로템","stock":"064350","basis":"본문 언급"}]},{"stock":"318660","nm":"타임기술","role":"service","src":"kind","kw":"IETM","prod":"ILS(종합군수지원), IETM(전자식기술교범), CBT(전자식교보재), 기술번역","primes":[{"nm":"한화에어로스페이스","stock":"012450","basis":"주요고객 주석"},{"nm":"한화오션","stock":"042660","basis":"주요고객 주석"},{"nm":"한국항공우주","stock":"047810","basis":"주요고객 주석"}]}]},"srcKo":{"contract":"계약명","body":"정기보고서 본문","kind":"KIND 주요제품"}};</script>
+<script>
+(function(){
+ var S={sil:P.sils[0].id, sel:null, group:null};
+ var fig=document.getElementById('fig'), RG=document.getElementById('regions'),
+     LB=document.getElementById('labels'), DC=document.getElementById('deco'),
+     panel=document.getElementById('panel');
+ var NS='http://www.w3.org/2000/svg';
+ function el(n,attrs){ var e=document.createElementNS(NS,n); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+ function catById(id){ return P.cats.filter(function(c){return c.id===id})[0]; }
+ function hasCo(r){ return r.cats.some(function(c){return (P.idx[c]||[]).length}); }
+ // 실루엣마다 알아보기 쉬우라고 얹는 단순 도형(포신·기수·물결·핀). 영역이 아니라 장식이다.
+ var DECO={
+  TANK:[['rect',{x:300,y:78,width:96,height:7,rx:3}],['circle',{cx:95,cy:151,r:13}],
+        ['circle',{cx:150,cy:151,r:13}],['circle',{cx:205,cy:151,r:13}],
+        ['circle',{cx:260,cy:151,r:13}],['circle',{cx:315,cy:151,r:13}]],
+  JET:[['polygon',{points:'8,100 22,95 22,105'}],['polygon',{points:'300,60 340,30 352,32 322,66'}]],
+  SHIP:[['rect',{x:20,y:150,width:360,height:3,rx:1}],['polygon',{points:'20,150 380,150 350,168 55,168'}]],
+  MSL:[['polygon',{points:'10,100 40,88 40,112'}]]
+ };
+ function draw(){
+  RG.textContent=''; LB.textContent=''; DC.textContent='';
+  (DECO[S.sil]||[]).forEach(function(d){ var e=el(d[0],d[1]); e.setAttribute('class','deco'); DC.appendChild(e); });
+  P.regions.filter(function(r){return r.silhouette===S.sil}).forEach(function(r){
+   var g=el('polygon',{points:r.points});
+   g.setAttribute('class','rg'+(hasCo(r)?' has':'')+(S.sel===r.id?' on':''));
+   g.setAttribute('tabindex','0'); g.setAttribute('role','button');
+   g.setAttribute('aria-label',r.ko);
+   g.addEventListener('click',function(){ S.group=null; S.sel=r.id; draw(); showRegion(r); });
+   g.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault(); g.dispatchEvent(new Event('click'));} });
+   RG.appendChild(g);
+   var t=el('text',{x:r.label.x,y:r.label.y}); t.setAttribute('class','rlbl');
+   t.setAttribute('text-anchor','middle'); t.textContent=r.ko; LB.appendChild(t);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
+   var on=b.getAttribute('data-sil')===S.sil; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#groups .chip'),function(b){
+   var on=b.getAttribute('data-group')===S.group; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
+  });
+ }
+ function coHtml(c){
+  var primes=c.primes.map(function(p){return '<a href="'+p.stock+'/index.html">'+p.nm+'</a> <span class="mut">'+p.basis+'</span>'}).join(' · ');
+  return '<li><a class="co" href="'+c.stock+'/index.html">'+c.nm+'</a>'
+   +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
+   +(primes?'<div class="mut" style="font-size:11px;margin-top:2px">납품처 '+primes+'</div>':'')
+   +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
+ }
+ function catBlock(cid){
+  var c=catById(cid); if(!c) return '';
+  var cos=P.idx[cid]||[];
+  return '<div class="pblock"><h4 id="'+cid+'">'+c.ko+' <span class="mut">'+P.groups[c.g]+' · '+c.en+'</span>'
+   +' <span class="n">'+cos.length+'</span></h4>'
+   +(cos.length?'<ul class="colist">'+cos.map(coHtml).join('')+'</ul>'
+    :'<p class="mut" style="font-size:12px">이 부품을 만드는 상장사를 원문에서 찾지 못했습니다 — 비상장이거나 문구가 짧아 규칙에 안 걸립니다.</p>')
+   +'</div>';
+ }
+ function showRegion(r){
+  panel.innerHTML='<h3>'+r.ko+' <em>'+r.cats.length+'개 소분류</em></h3>'+r.cats.map(catBlock).join('');
+ }
+ function showGroup(gid){
+  var cs=P.cats.filter(function(c){return c.g===gid});
+  panel.innerHTML='<h3>'+P.groups[gid]+' <em>'+cs.length+'개 소분류</em></h3>'+cs.map(function(c){return catBlock(c.id)}).join('');
+ }
+ function showCat(cid){
+  var c=catById(cid); if(!c) return false;
+  var r=P.regions.filter(function(r){return r.cats.indexOf(cid)>=0})[0];
+  if(r){ S.sil=r.silhouette; S.sel=r.id; }
+  S.group=null; draw();
+  panel.innerHTML='<h3>'+c.ko+' <em>'+P.groups[c.g]+'</em></h3>'+catBlock(cid)
+   +(r?'<p class="mut" style="font-size:12px">위치: '+r.ko+'</p>':'');
+  return true;
+ }
+ function intro(){
+  panel.innerHTML='<h3>부품 영역을 누르세요 <em>또는 아래 대분류 칩</em></h3>'
+   +'<p class="mut" style="font-size:12px">영역 → 부품 소분류 → 그 부품을 만드는 상장사 → 납품처(체계업체). '
+   +'회사 이름을 누르면 그 회사의 계약·부문매출 페이지로 갑니다.</p>';
+ }
+ Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
+  b.addEventListener('click',function(){ S.sil=b.getAttribute('data-sil'); S.sel=null; S.group=null; draw(); intro(); });
+ });
+ Array.prototype.forEach.call(document.querySelectorAll('#groups .chip'),function(b){
+  b.addEventListener('click',function(){ S.group=b.getAttribute('data-group'); S.sel=null; draw(); showGroup(S.group); });
+ });
+ document.getElementById('reset').addEventListener('click',function(){ S.sel=null; S.group=null; draw(); intro(); });
+ window.addEventListener('hashchange',function(){ var h=location.hash.slice(1); if(h) showCat(h); });
+ var h=location.hash.slice(1);
+ draw();
+ if(!(h&&showCat(h))) intro();
+})();
+</script>
+<script>
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+</script>
+</main>
+<footer>출처 DART 정기보고서(사업의 내용·주석)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 방산 계약은 진행기준 수익인식이 많아 수주·인도·매출 시점이 다릅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>
