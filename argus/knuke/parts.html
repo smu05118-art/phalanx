@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>한국원전·발전기자재 — 발전소 인포그래픽</title>
+<link rel="stylesheet" href="assets/knuke.css">
+</head>
+<body>
+<header class="top"><div class="hd"><h1>발전소 인포그래픽</h1><span class="sp"><a href="index.html">허브</a><a href="coverage.html">커버리지</a><a href="../index.html">← ARGUS</a></span></div><div class="crumb"><a href="../index.html">ARGUS</a> › <a href="index.html">한국원전·발전기자재</a> › <span>인포그래픽</span></div></header>
+<main><p class="lead">원자력발전소·화력/복합발전소를 단순 기하도형으로 그린 모식도입니다. 부품 영역을 누르면 그 부품의 소분류와, 원문(계약명·정기보고서 본문·KIND 문구)에서 그 기자재를 만든다고 읽힌 상장사가 열립니다.</p>
+<div class="kpi">
+ <div><b>18</b><span>부품 소분류 · 회사가 붙은 소분류 16</span></div>
+ <div><b>24</b><span>기자재가 확인된 상장사</span></div>
+ <div><b>2</b><span>발전소 실루엣 · 영역 16</span></div>
+ <div><b>8</b><span>부품 대분류(공급 계층)</span></div>
+</div>
+<section class="card"><h2>발전소를 고르고 부품 영역을 누르세요
+ <em>영역 → 부품 소분류 → 그 기자재를 만드는 상장사 → 납품처(주기기·설계·정비 대형사)</em>
+ <span class="right"><button class="chip" id="reset">처음으로</button></span></h2>
+ <div class="ctl"><div class="chips" id="sils"><button class="chip" data-sil="NPP" aria-pressed="false">원자력발전소</button><button class="chip" data-sil="FOSSIL" aria-pressed="false">화력·복합발전소</button></div></div>
+ <div class="ig">
+  <div class="ship">
+   <svg id="fig" viewBox="0 0 400 200" role="img" aria-label="발전소 단면 — 부품 영역을 눌러 담당 상장사를 봅니다" preserveAspectRatio="xMidYMid meet">
+    <g id="deco"></g><g id="regions"></g><g id="labels" aria-hidden="true"></g>
+   </svg>
+   <div class="legend">
+    <span><i style="background:rgba(57,135,229,.30)"></i>상장사가 있는 영역</span>
+    <span><i style="background:rgba(255,255,255,.04)"></i>상장사 미확인</span>
+    <span class="mut">도형은 단순 기하도형으로 그린 모식도입니다(축척·형상 아님)</span>
+   </div>
+  </div>
+  <div class="panel" id="panel"></div>
+ </div>
+</section>
+<section class="card"><h2>부품 대분류(공급 계층)로 진입 <em>위치가 없는 분류(설계·정비·검사)도 여기서 · 숫자는 연결된 회사 수</em></h2>
+ <div class="chips" id="groups"><button class="chip" data-group="NSSS" aria-pressed="false">원자로계통 <span class="n">7</span></button><button class="chip" data-group="TG" aria-pressed="false">터빈·발전기 <span class="n">7</span></button><button class="chip" data-group="BOP" aria-pressed="false">보조기기 <span class="n">24</span></button><button class="chip" data-group="IANDC" aria-pressed="false">계측제어 <span class="n">4</span></button><button class="chip" data-group="ELEC" aria-pressed="false">전기설비 <span class="n">7</span></button><button class="chip" data-group="ENG" aria-pressed="false">설계·엔지니어링 <span class="n">5</span></button><button class="chip" data-group="OM" aria-pressed="false">정비·검사 <span class="n">9</span></button><button class="chip" data-group="MAT" aria-pressed="false">소재·주단조 <span class="n">0</span></button></div></section>
+<div class="note info">부품 분류는 <b>규칙</b>입니다 — 계약명·정기보고서 II절 본문·KIND 주요제품 문구에서 부품 낱말을 찾습니다.
+회사 칩에 근거(무엇을 보고 넣었는지)를 달아 두었습니다. 일반 기계와 겹치는 낱말(펌프·밸브·탱크·발전기)은 발전 문맥이 가까이 있을 때만 채택합니다.
+납품처(대형사) 연결의 근거 등급은 계약공시 상대 &gt; 본문 언급 순입니다.</div>
+<script>const P={"viewBox":"0 0 400 200","sils":[{"id":"NPP","ko":"원자력발전소","en":"Nuclear power plant","domain":"NUKE"},{"id":"FOSSIL","ko":"화력·복합발전소","en":"Thermal/CC power plant","domain":"THERMAL"}],"regions":[{"id":"CONTAIN","silhouette":"NPP","ko":"격납건물","points":"40,120 40,70 60,45 100,45 120,70 120,120","label":{"x":80,"y":132},"cats":["NSSS.RV"]},{"id":"REACTOR","silhouette":"NPP","ko":"원자로·압력용기","points":"62,110 98,110 98,80 62,80","label":{"x":80,"y":97},"cats":["MAT.FORGE","NSSS.RV"]},{"id":"SG","silhouette":"NPP","ko":"증기발생기","points":"48,78 60,78 60,118 48,118","label":{"x":54,"y":100},"cats":["NSSS.SG"]},{"id":"PZR","silhouette":"NPP","ko":"가압기·냉각재펌프","points":"100,78 112,78 112,118 100,118","label":{"x":106,"y":100},"cats":["NSSS.SG"]},{"id":"FUEL","silhouette":"NPP","ko":"핵연료취급","points":"40,122 120,122 120,140 40,140","label":{"x":80,"y":133},"cats":["NSSS.FUEL"]},{"id":"TURB","silhouette":"NPP","ko":"증기터빈","points":"150,80 230,80 230,108 150,108","label":{"x":190,"y":96},"cats":["MAT.FORGE","TG.TURBINE"]},{"id":"GEN","silhouette":"NPP","ko":"발전기","points":"232,80 290,80 290,108 232,108","label":{"x":261,"y":96},"cats":["TG.GEN"]},{"id":"COND","silhouette":"NPP","ko":"복수기·급수","points":"150,110 290,110 290,132 150,132","label":{"x":220,"y":123},"cats":["BOP.HX","BOP.VESSEL"]},{"id":"IC","silhouette":"NPP","ko":"계측제어(MMIS)","points":"150,58 230,58 230,78 150,78","label":{"x":190,"y":70},"cats":["IANDC.INSTR","IANDC.MMIS"]},{"id":"TRANSF","silhouette":"NPP","ko":"변압기·송변전","points":"310,90 360,90 360,132 310,132","label":{"x":335,"y":113},"cats":["ELEC.CABLE","ELEC.SWGR"]},{"id":"BOILER","silhouette":"FOSSIL","ko":"보일러·배열회수보일러","points":"40,40 90,40 90,140 40,140","label":{"x":65,"y":92},"cats":["BOP.BOILER"]},{"id":"GT","silhouette":"FOSSIL","ko":"가스터빈","points":"110,95 170,95 170,125 110,125","label":{"x":140,"y":112},"cats":["TG.TURBINE"]},{"id":"STURB","silhouette":"FOSSIL","ko":"증기터빈","points":"180,95 250,95 250,125 180,125","label":{"x":215,"y":112},"cats":["TG.TURBINE"]},{"id":"GEN2","silhouette":"FOSSIL","ko":"발전기","points":"252,95 300,95 300,125 252,125","label":{"x":276,"y":112},"cats":["TG.GEN"]},{"id":"STACK","silhouette":"FOSSIL","ko":"탈황·탈질·연돌","points":"320,20 350,20 350,140 320,140","label":{"x":335,"y":92},"cats":["BOP.ENV"]},{"id":"PUMP","silhouette":"FOSSIL","ko":"펌프·밸브·배관","points":"110,128 300,128 300,148 110,148","label":{"x":205,"y":140},"cats":["BOP.PUMP"]}],"cats":[{"id":"NSSS.RV","g":"NSSS","ko":"원자로·압력용기","en":"Reactor vessel"},{"id":"NSSS.SG","g":"NSSS","ko":"증기발생기","en":"Steam generator"},{"id":"NSSS.FUEL","g":"NSSS","ko":"핵연료·연료취급","en":"Fuel"},{"id":"TG.TURBINE","g":"TG","ko":"증기터빈·가스터빈","en":"Turbines"},{"id":"TG.GEN","g":"TG","ko":"발전기","en":"Generators"},{"id":"BOP.HX","g":"BOP","ko":"열교환기·복수기","en":"Heat exchangers"},{"id":"BOP.VESSEL","g":"BOP","ko":"압력용기·저장탱크","en":"Vessels & tanks"},{"id":"BOP.BOILER","g":"BOP","ko":"보일러·HRSG","en":"Boilers"},{"id":"BOP.PUMP","g":"BOP","ko":"펌프·밸브·배관","en":"Pumps, valves & piping"},{"id":"BOP.ENV","g":"BOP","ko":"탈황·탈질·집진","en":"Emission control"},{"id":"IANDC.MMIS","g":"IANDC","ko":"계측제어·MMIS","en":"I&C / MMIS"},{"id":"IANDC.INSTR","g":"IANDC","ko":"계측기·센서","en":"Instruments & sensors"},{"id":"ELEC.SWGR","g":"ELEC","ko":"변압기·수배전","en":"Transformers & switchgear"},{"id":"ELEC.CABLE","g":"ELEC","ko":"케이블·전선","en":"Cables"},{"id":"ENG.DESIGN","g":"ENG","ko":"설계·엔지니어링","en":"Design"},{"id":"OM.MAINT","g":"OM","ko":"정비·O&M","en":"Maintenance"},{"id":"OM.INSP","g":"OM","ko":"검사·방사선관리","en":"Inspection & RP"},{"id":"MAT.FORGE","g":"MAT","ko":"주·단조·특수강","en":"Forgings & special steel"}],"groups":{"NSSS":"원자로계통","TG":"터빈·발전기","BOP":"보조기기","IANDC":"계측제어","ELEC":"전기설비","ENG":"설계·엔지니어링","OM":"정비·검사","MAT":"소재·주단조"},"idx":{"TG.TURBINE":[{"stock":"034020","nm":"두산에너빌리티","role":"main","src":"contract","kw":"가스터빈","prod":"기관,터어빈,선박용엔진,주단조품,제강제품 제조/종합건설","primes":[]},{"stock":"119850","nm":"지엔씨에너지","role":"part","src":"contract","kw":"가스터빈","prod":"비상발전기, 소형열병합발전설비, 바이오가스발전설비","primes":[]}],"NSSS.RV":[{"stock":"052690","nm":"한전기술","role":"eng","src":"contract","kw":"NSSS","prod":"원자력발전소 설계 등","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"015590","nm":"DKME","role":"part","src":"kind","kw":"압력용기","prod":"열교환기,압력용기,저장탱크,산업용보일러 제조","primes":[]},{"stock":"094820","nm":"일진파워","role":"part","src":"kind","kw":"압력용기","prod":"열교환기,압력용기","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]}],"ENG.DESIGN":[{"stock":"282720","nm":"금양그린파워","role":"part","src":"contract","kw":"사업관리","prod":"플랜트, 발전소 및 신재생에너지 발전소 공사 및 용역","primes":[]},{"stock":"052690","nm":"한전기술","role":"eng","src":"contract","kw":"종합설계","prod":"원자력발전소 설계 등","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"379390","nm":"이성씨엔아이","role":"eng","src":"kind","kw":"엔지니어링","prod":"원자력발전소 계측제어 서비스(경상정비)","primes":[]},{"stock":"051600","nm":"한전KPS","role":"om","src":"kind","kw":"엔지니어링","prod":"일반전기공사,발전설비정비공사,점검,수리,엔지니어링","primes":[]},{"stock":"130660","nm":"한전산업","role":"eng","src":"kind","kw":"엔지니어링","prod":"발전설비 운전·정비, 전기검침","primes":[]}],"BOP.BOILER":[{"stock":"119650","nm":"KC코트렐","role":"part","src":"contract","kw":"보일러","prod":"전기집진기 등","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"126720","nm":"수산인더스트리","role":"om","src":"contract","kw":"보일러","prod":"전력발전설비 정비 용역","primes":[]},{"stock":"094820","nm":"일진파워","role":"part","src":"contract","kw":"보일러","prod":"열교환기,압력용기","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"130660","nm":"한전산업","role":"eng","src":"contract","kw":"보일러","prod":"발전설비 운전·정비, 전기검침","primes":[]},{"stock":"015590","nm":"DKME","role":"part","src":"kind","kw":"보일러","prod":"열교환기,압력용기,저장탱크,산업용보일러 제조","primes":[]},{"stock":"114190","nm":"강원에너지","role":"part","src":"kind","kw":"보일러","prod":"플랜트설비(산업용 보일러)","primes":[]},{"stock":"008470","nm":"부스타","role":"part","src":"kind","kw":"보일러","prod":"관류보일러,진공온수보일러,무압온수보일러,난방기 제조,판매","primes":[]},{"stock":"083650","nm":"비에이치아이","role":"part","src":"kind","kw":"보일러","prod":"보일러,열교환기등","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]}],"BOP.ENV":[{"stock":"119650","nm":"KC코트렐","role":"part","src":"contract","kw":"탈황","prod":"전기집진기 등","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"077970","nm":"STX엔진","role":"part","src":"contract","kw":"SCR","prod":"엔진,터빈,내연기관 제조,도매","primes":[]},{"stock":"083650","nm":"비에이치아이","role":"part","src":"contract","kw":"환경설비","prod":"보일러,열교환기등","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"126720","nm":"수산인더스트리","role":"om","src":"contract","kw":"탈황","prod":"전력발전설비 정비 용역","primes":[]},{"stock":"130660","nm":"한전산업","role":"eng","src":"contract","kw":"환경설비","prod":"발전설비 운전·정비, 전기검침","primes":[]}],"OM.MAINT":[{"stock":"126720","nm":"수산인더스트리","role":"om","src":"contract","kw":"경상정비","prod":"전력발전설비 정비 용역","primes":[]},{"stock":"046120","nm":"오르비텍","role":"om","src":"contract","kw":"예방정비","prod":"방사선안전관리, 항공기 정밀부품 제조 등","primes":[]},{"stock":"105840","nm":"우진","role":"part","src":"contract","kw":"예방정비","prod":"원전용계측기","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"457550","nm":"우진엔텍","role":"eng","src":"contract","kw":"정비용역","prod":"발전소 계측제어설비 정비 서비스","primes":[]},{"stock":"094820","nm":"일진파워","role":"part","src":"contract","kw":"경상정비","prod":"열교환기,압력용기","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"051600","nm":"한전KPS","role":"om","src":"contract","kw":"경상정비","prod":"일반전기공사,발전설비정비공사,점검,수리,엔지니어링","primes":[]},{"stock":"130660","nm":"한전산업","role":"eng","src":"contract","kw":"경상정비","prod":"발전설비 운전·정비, 전기검침","primes":[]},{"stock":"379390","nm":"이성씨엔아이","role":"eng","src":"kind","kw":"경상정비","prod":"원자력발전소 계측제어 서비스(경상정비)","primes":[]}],"IANDC.MMIS":[{"stock":"105840","nm":"우진","role":"part","src":"contract","kw":"MMIS","prod":"원전용계측기","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"457550","nm":"우진엔텍","role":"eng","src":"contract","kw":"계측제어","prod":"발전소 계측제어설비 정비 서비스","primes":[]},{"stock":"379390","nm":"이성씨엔아이","role":"eng","src":"kind","kw":"계측제어","prod":"원자력발전소 계측제어 서비스(경상정비)","primes":[]}],"NSSS.SG":[{"stock":"046120","nm":"오르비텍","role":"om","src":"contract","kw":"증기발생기","prod":"방사선안전관리, 항공기 정밀부품 제조 등","primes":[]},{"stock":"008470","nm":"부스타","role":"part","src":"kind","kw":"증기발생기","prod":"관류보일러,진공온수보일러,무압온수보일러,난방기 제조,판매","primes":[]},{"stock":"258610","nm":"케일럼","role":"part","src":"kind","kw":"증기발생기","prod":"지열발전설비, 항공기MRO, 항공부품제조","primes":[]},{"stock":"098070","nm":"한텍","role":"part","src":"kind","kw":"증기발생기","prod":"열교환기 등 화공기기, 저장용 탱크","primes":[]}],"OM.INSP":[{"stock":"046120","nm":"오르비텍","role":"om","src":"contract","kw":"방사선관리","prod":"방사선안전관리, 항공기 정밀부품 제조 등","primes":[]}],"BOP.PUMP":[{"stock":"046120","nm":"오르비텍","role":"om","src":"contract","kw":"배관","prod":"방사선안전관리, 항공기 정밀부품 제조 등","primes":[]},{"stock":"086670","nm":"비엠티","role":"part","src":"body","kw":"밸브","prod":"정밀계장용피팅및밸브류,전원분배장치(MCPD)","primes":[]}],"ELEC.CABLE":[{"stock":"105840","nm":"우진","role":"part","src":"contract","kw":"케이블","prod":"원전용계측기","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"051600","nm":"한전KPS","role":"om","src":"contract","kw":"전선","prod":"일반전기공사,발전설비정비공사,점검,수리,엔지니어링","primes":[]},{"stock":"189860","nm":"서전기전","role":"part","src":"body","kw":"전선","prod":"수배전반, 전력기기, 전기공사","primes":[]}],"BOP.VESSEL":[{"stock":"015590","nm":"DKME","role":"part","src":"kind","kw":"압력용기","prod":"열교환기,압력용기,저장탱크,산업용보일러 제조","primes":[]},{"stock":"008470","nm":"부스타","role":"part","src":"kind","kw":"탱크","prod":"관류보일러,진공온수보일러,무압온수보일러,난방기 제조,판매","primes":[]},{"stock":"258610","nm":"케일럼","role":"part","src":"kind","kw":"탱크","prod":"지열발전설비, 항공기MRO, 항공부품제조","primes":[]},{"stock":"098070","nm":"한텍","role":"part","src":"kind","kw":"탱크","prod":"열교환기 등 화공기기, 저장용 탱크","primes":[]}],"BOP.HX":[{"stock":"258610","nm":"케일럼","role":"part","src":"contract","kw":"열교환기","prod":"지열발전설비, 항공기MRO, 항공부품제조","primes":[]},{"stock":"098070","nm":"한텍","role":"part","src":"contract","kw":"열교환기","prod":"열교환기 등 화공기기, 저장용 탱크","primes":[]},{"stock":"015590","nm":"DKME","role":"part","src":"kind","kw":"열교환기","prod":"열교환기,압력용기,저장탱크,산업용보일러 제조","primes":[]},{"stock":"083650","nm":"비에이치아이","role":"part","src":"kind","kw":"열교환기","prod":"보일러,열교환기등","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]},{"stock":"094820","nm":"일진파워","role":"part","src":"kind","kw":"열교환기","prod":"열교환기,압력용기","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]}],"TG.GEN":[{"stock":"077970","nm":"STX엔진","role":"part","src":"contract","kw":"발전기","prod":"엔진,터빈,내연기관 제조,도매","primes":[]},{"stock":"119850","nm":"지엔씨에너지","role":"part","src":"contract","kw":"발전기","prod":"비상발전기, 소형열병합발전설비, 바이오가스발전설비","primes":[]},{"stock":"189860","nm":"서전기전","role":"part","src":"kind","kw":"발전기","prod":"수배전반, 전력기기, 전기공사","primes":[]},{"stock":"288620","nm":"에스프리즘","role":"part","src":"kind","kw":"발전기","prod":"건물용 연료전지, 발전용 연료전지","primes":[]},{"stock":"388050","nm":"지투파워","role":"part","src":"kind","kw":"발전기","prod":"수·배전반, 태양광발전시스템, 인버터(PCS)","primes":[]}],"IANDC.INSTR":[{"stock":"105840","nm":"우진","role":"part","src":"contract","kw":"계측기","prod":"원전용계측기","primes":[{"nm":"두산에너빌리티","stock":"034020","basis":"계약공시 상대"}]}],"ELEC.SWGR":[{"stock":"189860","nm":"서전기전","role":"part","src":"contract","kw":"배전반","prod":"수배전반, 전력기기, 전기공사","primes":[]},{"stock":"288620","nm":"에스프리즘","role":"part","src":"kind","kw":"전동기","prod":"건물용 연료전지, 발전용 연료전지","primes":[]},{"stock":"119850","nm":"지엔씨에너지","role":"part","src":"kind","kw":"전동기","prod":"비상발전기, 소형열병합발전설비, 바이오가스발전설비","primes":[]},{"stock":"388050","nm":"지투파워","role":"part","src":"kind","kw":"배전반","prod":"수·배전반, 태양광발전시스템, 인버터(PCS)","primes":[]}]},"srcKo":{"contract":"계약명","body":"정기보고서 본문","kind":"KIND 주요제품"}};</script>
+<script>
+(function(){
+ var S={sil:P.sils[0].id, sel:null, group:null};
+ var fig=document.getElementById('fig'), RG=document.getElementById('regions'),
+     LB=document.getElementById('labels'), DC=document.getElementById('deco'),
+     panel=document.getElementById('panel');
+ var NS='http://www.w3.org/2000/svg';
+ function el(n,attrs){ var e=document.createElementNS(NS,n); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+ function catById(id){ return P.cats.filter(function(c){return c.id===id})[0]; }
+ function hasCo(r){ return r.cats.some(function(c){return (P.idx[c]||[]).length}); }
+ // 실루엣마다 알아보기 쉬우라고 얹는 단순 장식(원전 돔·냉각탑·연돌·터빈건물 지붕). 영역이 아니다.
+ var DECO={
+  NPP:[['path',{d:'M40,70 A40,40 0 0,1 120,70',fill:'none'}],
+       ['line',{x1:295,y1:60,x2:335,y2:60}],['line',{x1:290,y1:80,x2:290,y2:60}]],
+  FOSSIL:[['polygon',{points:'320,20 350,20 345,10 325,10'}],
+          ['rect',{x:40,y:30,width:50,height:10,rx:2}]]
+ };
+ function draw(){
+  RG.textContent=''; LB.textContent=''; DC.textContent='';
+  (DECO[S.sil]||[]).forEach(function(d){ var e=el(d[0],d[1]); e.setAttribute('class','deco'); DC.appendChild(e); });
+  P.regions.filter(function(r){return r.silhouette===S.sil}).forEach(function(r){
+   var g=el('polygon',{points:r.points});
+   g.setAttribute('class','rg'+(hasCo(r)?' has':'')+(S.sel===r.id?' on':''));
+   g.setAttribute('tabindex','0'); g.setAttribute('role','button');
+   g.setAttribute('aria-label',r.ko);
+   g.addEventListener('click',function(){ S.group=null; S.sel=r.id; draw(); showRegion(r); });
+   g.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault(); g.dispatchEvent(new Event('click'));} });
+   RG.appendChild(g);
+   var t=el('text',{x:r.label.x,y:r.label.y}); t.setAttribute('class','rlbl');
+   t.setAttribute('text-anchor','middle'); t.textContent=r.ko; LB.appendChild(t);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
+   var on=b.getAttribute('data-sil')===S.sil; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#groups .chip'),function(b){
+   var on=b.getAttribute('data-group')===S.group; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
+  });
+ }
+ function coHtml(c){
+  var primes=c.primes.map(function(p){return '<a href="'+p.stock+'/index.html">'+p.nm+'</a> <span class="mut">'+p.basis+'</span>'}).join(' · ');
+  return '<li><a class="co" href="'+c.stock+'/index.html">'+c.nm+'</a>'
+   +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
+   +(primes?'<div class="mut" style="font-size:11px;margin-top:2px">납품처 '+primes+'</div>':'')
+   +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
+ }
+ function catBlock(cid){
+  var c=catById(cid); if(!c) return '';
+  var cos=P.idx[cid]||[];
+  return '<div class="pblock"><h4 id="'+cid+'">'+c.ko+' <span class="mut">'+P.groups[c.g]+' · '+c.en+'</span>'
+   +' <span class="n">'+cos.length+'</span></h4>'
+   +(cos.length?'<ul class="colist">'+cos.map(coHtml).join('')+'</ul>'
+    :'<p class="mut" style="font-size:12px">이 기자재를 만드는 상장사를 원문에서 찾지 못했습니다 — 비상장이거나 문구가 짧아 규칙에 안 걸립니다.</p>')
+   +'</div>';
+ }
+ function showRegion(r){
+  panel.innerHTML='<h3>'+r.ko+' <em>'+r.cats.length+'개 소분류</em></h3>'+r.cats.map(catBlock).join('');
+ }
+ function showGroup(gid){
+  var cs=P.cats.filter(function(c){return c.g===gid});
+  panel.innerHTML='<h3>'+P.groups[gid]+' <em>'+cs.length+'개 소분류</em></h3>'+cs.map(function(c){return catBlock(c.id)}).join('');
+ }
+ function showCat(cid){
+  var c=catById(cid); if(!c) return false;
+  var r=P.regions.filter(function(r){return r.cats.indexOf(cid)>=0})[0];
+  if(r){ S.sil=r.silhouette; S.sel=r.id; }
+  S.group=null; draw();
+  panel.innerHTML='<h3>'+c.ko+' <em>'+P.groups[c.g]+'</em></h3>'+catBlock(cid)
+   +(r?'<p class="mut" style="font-size:12px">위치: '+r.ko+'</p>':'');
+  return true;
+ }
+ function intro(){
+  panel.innerHTML='<h3>부품 영역을 누르세요 <em>또는 아래 대분류 칩</em></h3>'
+   +'<p class="mut" style="font-size:12px">영역 → 부품 소분류 → 그 기자재를 만드는 상장사 → 납품처(대형사). '
+   +'회사 이름을 누르면 그 회사의 계약·부문매출 페이지로 갑니다.</p>';
+ }
+ Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
+  b.addEventListener('click',function(){ S.sil=b.getAttribute('data-sil'); S.sel=null; S.group=null; draw(); intro(); });
+ });
+ Array.prototype.forEach.call(document.querySelectorAll('#groups .chip'),function(b){
+  b.addEventListener('click',function(){ S.group=b.getAttribute('data-group'); S.sel=null; draw(); showGroup(S.group); });
+ });
+ document.getElementById('reset').addEventListener('click',function(){ S.sel=null; S.group=null; draw(); intro(); });
+ window.addEventListener('hashchange',function(){ var h=location.hash.slice(1); if(h) showCat(h); });
+ var h=location.hash.slice(1);
+ draw();
+ if(!(h&&showCat(h))) intro();
+})();
+</script>
+<script>
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+</script>
+</main>
+<footer>출처 DART 정기보고서(사업의 내용 II-4 매출·수주상황·부문 매출)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 원전·발전 주기기는 진행기준 수익인식이 많아 수주·완성·매출 시점이 다릅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>
