@@ -95,5 +95,9 @@ python3 ksemi_parts.py --write                 # 공정 흐름
   계약공시를 먼저 끝내고 정기보고서를 돌리는 편이 벽시계로 빠르다.
 - **원문 HTML 캐시(`tools/assets/cache/`)는 커밋하지 않는다**(`.gitignore`). 커밋하는 것은
   파싱 결과 JSON이다. 파서를 고치면 `--reparse` 로 재수집 없이 다시 뽑는다.
+- `contracts.json` 은 계약마다 원문 라벨·값 쌍(`kv`)을 통째로 들고 있어 **3.9MB**다
+  (COMMON §0-4 — 파서가 자라면 재수집 없이 다시 뽑기 위해서다). 파일 5MB 한도에 가깝다 —
+  계약이 더 쌓여 한도를 넘으면 `kv` 를 **쓰는 라벨만 남기거나** 별도 파일로 분리하라.
+  화면이 쓰는 필드는 `content·party·region·amt_mkrw·signed·end·amendments` 뿐이다.
 - 파서를 고칠 때는 `tools/tests/` 를 같이 키워라 — 이 탭의 덫(단위 캡션이 둘째 머리행 안에
   있는 것, 당기/전기 비교표, EUC-KR `rcpNo[8]=='9'`)은 전부 테스트로 고정돼 있다.
