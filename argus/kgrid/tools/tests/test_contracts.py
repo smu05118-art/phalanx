@@ -173,6 +173,20 @@ class Classify(unittest.TestCase):
         self.assertEqual(C.product_of("765kV 변압기"), "ehv")
         self.assertEqual(C.product_of("주상변압기 구매"), "dist_tr")
 
+    def test_first_word_wins_when_two_products_are_named(self):
+        # `380kv 고압차단기 및 변압기 등`(HD현대일렉트릭) — 계약명은 주력 품목을 앞에 적는다.
+        self.assertEqual(C.product_of("380kv 고압차단기 및 변압기 등"), "breaker")
+        # `SHC-1 PROJECT 中 SWGR & MCC & C-GIS`(선도전기) — 앞의 SWGR 이 이긴다.
+        self.assertEqual(C.product_of("SHC-1 PROJECT 中 SWGR & MCC & C-GIS"), "switchgear")
+
+    def test_voltage_decides_a_bare_transformer(self):
+        # 낱말로는 등급을 모르지만 전압이 적힌 계약명이 있다(HD현대일렉트릭 실측).
+        self.assertEqual(C.product_of("400kV 및 275kV급 변압기 9대"), "ehv")
+        self.assertEqual(C.product_of("415/140KV 750MVA 및 500MVA 변압기 5대"), "ehv")
+        self.assertEqual(C.product_of("22.9kV 변압기 공급"), "dist_tr")
+        # 66kV 는 송전도 배전도 아니라고 단정하지 않는다.
+        self.assertIsNone(C.product_of("66kV 변압기 공급"))
+
     def test_product_unknown_stays_empty(self):
         # `리액터`는 초고압 분로리액터인지 인버터용인지 원문으로 못 가른다 — 비운다.
         self.assertIsNone(C.product_of("리액터 공급"))
@@ -192,7 +206,11 @@ class Classify(unittest.TestCase):
         self.assertEqual(C.region_of("이집트"), "me")
         self.assertEqual(C.region_of("국내"), "dom")
         self.assertEqual(C.region_of("미국"), "na")
-        self.assertIsNone(C.region_of("신청주 변전소"))
+        # 지역 칸에 현장 지명이 오는 꼴 — `변전소`·시도 이름으로 국내라고 읽는다.
+        self.assertEqual(C.region_of("신청주 변전소"), "dom")
+        self.assertEqual(C.region_of("경기도 평택시"), "dom")
+        self.assertEqual(C.region_of("사우디 아라비아"), "me")
+        self.assertIsNone(C.region_of("-"))
 
     def test_note_carries_the_end_customer(self):
         # 관계사 재발주 건은 주석에만 최종 수요처가 있다(위 KospiForm 과 같은 근거).
