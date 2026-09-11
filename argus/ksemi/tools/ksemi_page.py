@@ -390,11 +390,14 @@ def company_html(data, s):
                       % (E(m["stock"]), E(m["name"]), chip(m["kind"]), m["n"],
                          E(m.get("cue") or "—"), E(m["quote"])))
         for m in s["peers_rev"]:
+            # 방향이 있는 관계는 뒤집어 적는다 — 코스텍시스템이 「주요 고객사로는 … 원익IPS」
+            # 라고 쓴 것은 **원익IPS가 코스텍시스템의 고객**이라는 뜻이다.
+            rev = {"고객": "우리가 그 회사의 고객"}.get(m["kind"], m["kind"])
             pr.append('<tr><td class="l">→ 우리를 적었다</td>'
                       '<td class="l"><a href="../%s/index.html">%s</a></td>'
                       '<td class="l">%s</td><td>%d</td><td class="l mut">—</td>'
                       '<td class="qt">%s</td></tr>'
-                      % (E(m["stock"]), E(m["name"]), chip(m["kind"]), m["n"],
+                      % (E(m["stock"]), E(m["name"]), chip(rev), m["n"],
                          E(m["quote"])))
         peer_html = ('<section class="card"><h2>원문에 이름이 나오는 상장사 '
                      '<em>%d건 · 정기보고서 II절</em></h2>'
