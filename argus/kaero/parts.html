@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>한국우주항공 — 부품 인포그래픽</title>
+<link rel="stylesheet" href="assets/kaero.css">
+</head>
+<body>
+<header class="top"><div class="hd"><h1>부품 인포그래픽</h1><span class="sp"><a href="index.html">허브</a><a href="coverage.html">커버리지</a><a href="../index.html">← ARGUS</a></span></div><div class="crumb"><a href="../index.html">ARGUS</a> › <a href="index.html">한국우주항공</a> › <span>인포그래픽</span></div></header>
+<main><p class="lead">여객기·터보팬 엔진·인공위성·우주 발사체를 단순 기하도형으로 그린 모식도입니다. 부품 영역을 누르면 그 부품의 소분류와, 원문(공시 품목명·계약명·본문·KIND 문구)에서 그 부품을 만든다고 읽힌 상장사가 열립니다.</p>
+<div class="kpi">
+ <div><b>23</b><span>부품 소분류 · 회사가 붙은 소분류 14</span></div>
+ <div><b>16</b><span>부품이 확인된 상장사</span></div>
+ <div><b>4</b><span>실루엣 · 영역 25</span></div>
+ <div><b>6</b><span>부품 대분류</span></div>
+</div>
+<section class="card"><h2>그림을 고르고 부품 영역을 누르세요
+ <em>영역 → 부품 소분류 → 그 부품을 만드는 상장사 → 그 회사의 고객</em>
+ <span class="right"><button class="chip" id="reset">처음으로</button></span></h2>
+ <div class="ctl"><div class="chips" id="sils"><button class="chip" data-sil="AIRLINER" aria-pressed="false">민항 여객기(평면도)</button><button class="chip" data-sil="ENG" aria-pressed="false">터보팬 엔진(단면)</button><button class="chip" data-sil="SAT" aria-pressed="false">인공위성</button><button class="chip" data-sil="LV" aria-pressed="false">우주 발사체</button></div></div>
+ <div class="ig">
+  <div class="ship">
+   <svg id="fig" viewBox="0 0 400 200" role="img" aria-label="항공기·엔진·위성·발사체 모식도 — 부품 영역을 눌러 담당 상장사를 봅니다" preserveAspectRatio="xMidYMid meet">
+    <g id="deco"></g><g id="regions"></g><g id="labels" aria-hidden="true"></g>
+   </svg>
+   <div class="legend">
+    <span><i style="background:rgba(57,135,229,.30)"></i>상장사가 있는 영역</span>
+    <span><i style="background:rgba(255,255,255,.04)"></i>상장사 미확인</span>
+    <span class="mut">도형은 단순 기하도형으로 그린 모식도입니다(축척·형상 아님)</span>
+   </div>
+  </div>
+  <div class="panel" id="panel"></div>
+ </div>
+</section>
+<section class="card"><h2>부품 대분류로 진입 <em>위치가 애매한 분류(소재·정비/시험)도 여기서 들어갑니다 · 숫자는 연결된 회사 수</em></h2>
+ <div class="chips" id="groups"><button class="chip" data-group="STRUCT" aria-pressed="false">기체구조 <span class="n">9</span></button><button class="chip" data-group="ENGINE" aria-pressed="false">엔진 <span class="n">4</span></button><button class="chip" data-group="AVION" aria-pressed="false">항공전자·장비 <span class="n">5</span></button><button class="chip" data-group="SPACE" aria-pressed="false">우주 <span class="n">19</span></button><button class="chip" data-group="MAT" aria-pressed="false">소재·공정 <span class="n">0</span></button><button class="chip" data-group="SVC" aria-pressed="false">정비·시험 <span class="n">5</span></button></div></section>
+<div class="note info">부품 분류는 <b>규칙</b>입니다 — 공시 품목명(수주표·매출표)·계약명·정기보고서 II절 본문·
+KIND 주요제품 문구에서 부품 낱말을 찾습니다. 회사 칩에 근거를 달아 두었습니다.
+항공·우주 밖에서도 흔한 낱말(단조품·정밀가공·안테나·열처리)은 <b>가까이에 항공·우주 문맥어가 있을 때만</b>
+채택합니다 — 그러지 않으면 자동차 단조사와 통신 안테나사가 항공 부품사가 됩니다.
+고객 연결의 근거 등급은 매출처 표 &gt; 수주표 품목 &gt; 계약공시 상대 &gt; 본문 언급 순이고,
+약칭을 사전으로 편 이름은 <b>추정</b>으로 적습니다.</div>
+<script>const P={"viewBox":"0 0 400 200","sils":[{"id":"AIRLINER","ko":"민항 여객기(평면도)","en":"Airliner (plan view)","domain":"struct"},{"id":"ENG","ko":"터보팬 엔진(단면)","en":"Turbofan (section)","domain":"engine"},{"id":"SAT","ko":"인공위성","en":"Satellite","domain":"space"},{"id":"LV","ko":"우주 발사체","en":"Launch vehicle","domain":"space"}],"regions":[{"id":"AIRLINER_NOSE","silhouette":"AIRLINER","ko":"기수·레이돔","points":"40,100 72,84 96,84 96,116 72,116","label":{"x":68,"y":100},"cats":["AVION.COMM","AVION.NAV","AVION.SENSOR","STRUCT.FUSELAGE"]},{"id":"AIRLINER_FWD","silhouette":"AIRLINER","ko":"전방동체","points":"96,84 172,84 172,116 96,116","label":{"x":134,"y":100},"cats":["AVION.PWR","MAT.ALLOY","STRUCT.FUSELAGE"]},{"id":"AIRLINER_WING_U","silhouette":"AIRLINER","ko":"주익(상)","points":"162,84 196,24 228,24 210,84","label":{"x":196,"y":56},"cats":["AVION.FCS","MAT.COMP","STRUCT.WING"]},{"id":"AIRLINER_WING_L","silhouette":"AIRLINER","ko":"주익(하)","points":"162,116 196,176 228,176 210,116","label":{"x":196,"y":144},"cats":["AVION.FCS","MAT.COMP","STRUCT.WING"]},{"id":"AIRLINER_ENG_U","silhouette":"AIRLINER","ko":"엔진·나셀(상)","points":"182,50 208,50 208,72 182,72","label":{"x":195,"y":61},"cats":["STRUCT.NACELLE"]},{"id":"AIRLINER_ENG_L","silhouette":"AIRLINER","ko":"엔진·나셀(하)","points":"182,128 208,128 208,150 182,150","label":{"x":195,"y":139},"cats":["STRUCT.NACELLE"]},{"id":"AIRLINER_GEAR","silhouette":"AIRLINER","ko":"착륙장치","points":"150,116 168,116 168,132 150,132","label":{"x":159,"y":124},"cats":["STRUCT.GEAR"]},{"id":"AIRLINER_AFT","silhouette":"AIRLINER","ko":"후방동체","points":"172,86 300,90 300,110 172,114","label":{"x":236,"y":100},"cats":["MAT.SURF","STRUCT.FUSELAGE","SVC.MRO"]},{"id":"AIRLINER_TAIL","silhouette":"AIRLINER","ko":"미익(수평·수직)","points":"300,90 322,58 348,58 334,92 334,108 348,142 322,142 300,110","label":{"x":324,"y":100},"cats":["STRUCT.WING"]},{"id":"ENG_FAN","silhouette":"ENG","ko":"팬","points":"40,52 92,44 92,156 40,148","label":{"x":66,"y":100},"cats":["ENGINE.FAN"]},{"id":"ENG_COMP","silhouette":"ENG","ko":"압축기","points":"92,66 172,78 172,122 92,134","label":{"x":132,"y":100},"cats":["ENGINE.FAN"]},{"id":"ENG_COMB","silhouette":"ENG","ko":"연소기","points":"172,76 216,76 216,124 172,124","label":{"x":194,"y":100},"cats":["ENGINE.COMBUST"]},{"id":"ENG_TURB","silhouette":"ENG","ko":"터빈","points":"216,72 282,68 282,132 216,128","label":{"x":249,"y":100},"cats":["ENGINE.TURBINE","MAT.ALLOY"]},{"id":"ENG_NOZZ","silhouette":"ENG","ko":"배기노즐","points":"282,68 352,86 352,114 282,132","label":{"x":317,"y":100},"cats":["ENGINE.COMBUST"]},{"id":"ENG_CASE","silhouette":"ENG","ko":"케이싱","points":"40,44 92,44 92,52 40,52","label":{"x":66,"y":40},"cats":["ENGINE.CASE","SVC.MRO"]},{"id":"ENG_ACC","silhouette":"ENG","ko":"보기류·기어박스","points":"130,134 210,134 210,160 130,160","label":{"x":170,"y":147},"cats":["ENGINE.ACC"]},{"id":"SAT_BUS","silhouette":"SAT","ko":"본체(버스)","points":"162,72 238,72 238,128 162,128","label":{"x":200,"y":100},"cats":["SPACE.BUS"]},{"id":"SAT_PANEL_L","silhouette":"SAT","ko":"태양전지판(좌)","points":"40,82 160,82 160,118 40,118","label":{"x":100,"y":100},"cats":["SPACE.BUS"]},{"id":"SAT_PANEL_R","silhouette":"SAT","ko":"태양전지판(우)","points":"240,82 360,82 360,118 240,118","label":{"x":300,"y":100},"cats":["SPACE.BUS"]},{"id":"SAT_PAY","silhouette":"SAT","ko":"탑재체","points":"178,34 222,34 234,72 166,72","label":{"x":200,"y":54},"cats":["AVION.SENSOR","SPACE.PAYLOAD"]},{"id":"SAT_ANT","silhouette":"SAT","ko":"안테나·지상국","points":"186,128 214,128 222,164 178,164","label":{"x":200,"y":146},"cats":["AVION.COMM","SPACE.GROUND"]},{"id":"LV_FAIRING","silhouette":"LV","ko":"페어링·위성","points":"28,100 76,70 108,70 108,130 76,130","label":{"x":72,"y":100},"cats":["MAT.COMP"]},{"id":"LV_UPPER","silhouette":"LV","ko":"상단(2단)","points":"108,72 198,72 198,128 108,128","label":{"x":153,"y":100},"cats":["SPACE.LAUNCH","SVC.TEST"]},{"id":"LV_FIRST","silhouette":"LV","ko":"1단","points":"198,68 318,68 318,132 198,132","label":{"x":258,"y":100},"cats":["SPACE.LAUNCH"]},{"id":"LV_ENGINE","silhouette":"LV","ko":"추진기관","points":"318,72 352,48 372,60 372,140 352,152 318,128","label":{"x":344,"y":100},"cats":["SPACE.LAUNCH"]}],"cats":[{"id":"STRUCT.FUSELAGE","g":"STRUCT","ko":"동체·섹션"},{"id":"STRUCT.WING","g":"STRUCT","ko":"주익·미익"},{"id":"STRUCT.NACELLE","g":"STRUCT","ko":"나셀·파일런"},{"id":"STRUCT.GEAR","g":"STRUCT","ko":"착륙장치·도어"},{"id":"ENGINE.FAN","g":"ENGINE","ko":"팬·압축기"},{"id":"ENGINE.TURBINE","g":"ENGINE","ko":"터빈·디스크"},{"id":"ENGINE.COMBUST","g":"ENGINE","ko":"연소기·노즐"},{"id":"ENGINE.CASE","g":"ENGINE","ko":"케이싱·구조부"},{"id":"ENGINE.ACC","g":"ENGINE","ko":"기어박스·보기류"},{"id":"AVION.NAV","g":"AVION","ko":"항법·관성"},{"id":"AVION.COMM","g":"AVION","ko":"통신·안테나"},{"id":"AVION.FCS","g":"AVION","ko":"비행제어·구동"},{"id":"AVION.PWR","g":"AVION","ko":"전원·배전"},{"id":"AVION.SENSOR","g":"AVION","ko":"센서·광학"},{"id":"SPACE.LAUNCH","g":"SPACE","ko":"발사체·추진기관"},{"id":"SPACE.BUS","g":"SPACE","ko":"위성 본체·전장품"},{"id":"SPACE.PAYLOAD","g":"SPACE","ko":"탑재체"},{"id":"SPACE.GROUND","g":"SPACE","ko":"지상국·영상"},{"id":"MAT.ALLOY","g":"MAT","ko":"특수합금·티타늄"},{"id":"MAT.COMP","g":"MAT","ko":"복합재"},{"id":"MAT.SURF","g":"MAT","ko":"정밀가공·표면처리"},{"id":"SVC.MRO","g":"SVC","ko":"정비·창정비"},{"id":"SVC.TEST","g":"SVC","ko":"시험·인증"}],"groups":{"STRUCT":"기체구조","ENGINE":"엔진","AVION":"항공전자·장비","SPACE":"우주","MAT":"소재·공정","SVC":"정비·시험"},"idx":{"ENGINE.ACC":[{"stock":"012450","nm":"한화에어로스페이스","role":"prime","src":"item","kw":"APU","prod":"항공기엔진,특수방산장비 제조/정비사업","custs":[{"nm":"GE Aerospace","stock":null,"basis":"수주표 품목","est":false},{"nm":"Pratt & Whitney","stock":null,"basis":"수주표 품목","est":false},{"nm":"쎄트렉아이","stock":null,"basis":"수주표 품목","est":false}]}],"ENGINE.TURBINE":[{"stock":"012450","nm":"한화에어로스페이스","role":"prime","src":"item","kw":"HPT","prod":"항공기엔진,특수방산장비 제조/정비사업","custs":[{"nm":"GE Aerospace","stock":null,"basis":"수주표 품목","est":false},{"nm":"Pratt & Whitney","stock":null,"basis":"수주표 품목","est":false},{"nm":"쎄트렉아이","stock":null,"basis":"수주표 품목","est":false}]}],"SPACE.BUS":[{"stock":"099320","nm":"쎄트렉아이","role":"space","src":"item","kw":"위성 시스템","prod":"인공위성시스템, 위성지상국, 위성부분품 개발 및 제조","custs":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대","est":false},{"nm":"한국항공우주연구원","stock":null,"basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false}]},{"stock":"012450","nm":"한화에어로스페이스","role":"prime","src":"item","kw":"위성 시스템","prod":"항공기엔진,특수방산장비 제조/정비사업","custs":[{"nm":"GE Aerospace","stock":null,"basis":"수주표 품목","est":false},{"nm":"Pratt & Whitney","stock":null,"basis":"수주표 품목","est":false},{"nm":"쎄트렉아이","stock":null,"basis":"수주표 품목","est":false}]},{"stock":"478340","nm":"나라스페이스테크놀로지","role":"space","src":"kind","kw":"인공위성","prod":"초소형 인공위성 및 위성 데이터 서비스","custs":[{"nm":"주식회사 제노코","stock":null,"basis":"매출처 표","est":false},{"nm":"한국천문연구원","stock":null,"basis":"매출처 표","est":false},{"nm":"한국항공우주","stock":"047810","basis":"매출처 표","est":false}]},{"stock":"474170","nm":"루미르","role":"space","src":"kind","kw":"위성 시스템","prod":"인공위성 시스템 및 전장품, 위성 영상 및 정보","custs":[{"nm":"한국항공우주","stock":"047810","basis":"본문 언급","est":false},{"nm":"한국항공우주연구원","stock":null,"basis":"본문 언급","est":false}]}],"SPACE.GROUND":[{"stock":"478340","nm":"나라스페이스테크놀로지","role":"space","src":"item","kw":"위성영상","prod":"초소형 인공위성 및 위성 데이터 서비스","custs":[{"nm":"주식회사 제노코","stock":null,"basis":"매출처 표","est":false},{"nm":"한국천문연구원","stock":null,"basis":"매출처 표","est":false},{"nm":"한국항공우주","stock":"047810","basis":"매출처 표","est":false}]},{"stock":"099320","nm":"쎄트렉아이","role":"space","src":"item","kw":"위성영상","prod":"인공위성시스템, 위성지상국, 위성부분품 개발 및 제조","custs":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대","est":false},{"nm":"한국항공우주연구원","stock":null,"basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false}]},{"stock":"451760","nm":"컨텍","role":"space","src":"item","kw":"위성영상","prod":"지상국 시스템 엔지니어링 솔루션, 위성영상 생성을 위한 데이터처리 솔루션","custs":[{"nm":"A사","stock":null,"basis":"매출처 표","est":false},{"nm":"P사","stock":null,"basis":"매출처 표","est":false},{"nm":"Q사","stock":null,"basis":"매출처 표","est":false}]},{"stock":"012450","nm":"한화에어로스페이스","role":"prime","src":"item","kw":"지상국","prod":"항공기엔진,특수방산장비 제조/정비사업","custs":[{"nm":"GE Aerospace","stock":null,"basis":"수주표 품목","est":false},{"nm":"Pratt & Whitney","stock":null,"basis":"수주표 품목","est":false},{"nm":"쎄트렉아이","stock":null,"basis":"수주표 품목","est":false}]},{"stock":"474170","nm":"루미르","role":"space","src":"kind","kw":"위성영상","prod":"인공위성 시스템 및 전장품, 위성 영상 및 정보","custs":[{"nm":"한국항공우주","stock":"047810","basis":"본문 언급","est":false},{"nm":"한국항공우주연구원","stock":null,"basis":"본문 언급","est":false}]},{"stock":"361390","nm":"제노코","role":"space","src":"kind","kw":"위성운용국","prod":"위성탑재체, 위성운용국, 항공전자 등","custs":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false},{"nm":"Airbus","stock":null,"basis":"본문 언급","est":false}]}],"SPACE.LAUNCH":[{"stock":"488900","nm":"비츠로넥스텍","role":"space","src":"item","kw":"연소기","prod":"로켓연소기 및 가스발생기, 초전도가속장치, 핵융합 플라즈마 대향장치 등 제조","custs":[{"nm":"고객1","stock":null,"basis":"매출처 표","est":false},{"nm":"고객2","stock":null,"basis":"매출처 표","est":false},{"nm":"고객3","stock":null,"basis":"매출처 표","est":false}]},{"stock":"462350","nm":"이노스페이스","role":"space","src":"item","kw":"추진기관","prod":"소형발사체, 로켓추진기관, 과학로켓, 시험평가용역","custs":[{"nm":"LIG디펜스앤에어로스페이스","stock":"079550","basis":"계약공시 상대","est":false},{"nm":"한화에어로스페이스","stock":"012450","basis":"계약공시 상대","est":false}]},{"stock":"012450","nm":"한화에어로스페이스","role":"prime","src":"item","kw":"추진기관","prod":"항공기엔진,특수방산장비 제조/정비사업","custs":[{"nm":"GE Aerospace","stock":null,"basis":"수주표 품목","est":false},{"nm":"Pratt & Whitney","stock":null,"basis":"수주표 품목","est":false},{"nm":"쎄트렉아이","stock":null,"basis":"수주표 품목","est":false}]}],"AVION.SENSOR":[{"stock":"214430","nm":"아이쓰리시스템","role":"part","src":"item","kw":"전자광학","prod":"적외선 영상센서, 엑스레이 영상센서","custs":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대","est":false},{"nm":"한국항공우주연구원","stock":null,"basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false}]},{"stock":"012450","nm":"한화에어로스페이스","role":"prime","src":"item","kw":"전자광학","prod":"항공기엔진,특수방산장비 제조/정비사업","custs":[{"nm":"GE Aerospace","stock":null,"basis":"수주표 품목","est":false},{"nm":"Pratt & Whitney","stock":null,"basis":"수주표 품목","est":false},{"nm":"쎄트렉아이","stock":null,"basis":"수주표 품목","est":false}]},{"stock":"099320","nm":"쎄트렉아이","role":"space","src":"contract","kw":"전자광학","prod":"인공위성시스템, 위성지상국, 위성부분품 개발 및 제조","custs":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대","est":false},{"nm":"한국항공우주연구원","stock":null,"basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false}]}],"SVC.MRO":[{"stock":"012450","nm":"한화에어로스페이스","role":"prime","src":"item","kw":"MRO","prod":"항공기엔진,특수방산장비 제조/정비사업","custs":[{"nm":"GE Aerospace","stock":null,"basis":"수주표 품목","est":false},{"nm":"Pratt & Whitney","stock":null,"basis":"수주표 품목","est":false},{"nm":"쎄트렉아이","stock":null,"basis":"수주표 품목","est":false}]},{"stock":"361390","nm":"제노코","role":"space","src":"contract","kw":"MRO","prod":"위성탑재체, 위성운용국, 항공전자 등","custs":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false},{"nm":"Airbus","stock":null,"basis":"본문 언급","est":false}]},{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"PBL","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","custs":[{"nm":"Airbus","stock":null,"basis":"매출처 표","est":false},{"nm":"Boeing","stock":null,"basis":"매출처 표","est":false},{"nm":"Embraer","stock":null,"basis":"매출처 표","est":false}]},{"stock":"003490","nm":"대한항공","role":"part","src":"body","kw":"MRO","prod":"여객운송,화물운송,항공기 제조,판매,정비수리/기내식 제조판매,면세품 판매","custs":[{"nm":"Airbus","stock":null,"basis":"본문 언급","est":false},{"nm":"GE Aerospace","stock":null,"basis":"본문 언급","est":false},{"nm":"Pratt & Whitney","stock":null,"basis":"본문 언급","est":false}]},{"stock":"258610","nm":"케일럼","role":"part","src":"kind","kw":"MRO","prod":"지열발전설비, 항공기MRO, 항공부품제조","custs":[{"nm":"GE Aerospace","stock":null,"basis":"수주표 품목","est":false}]}],"STRUCT.FUSELAGE":[{"stock":"067390","nm":"아스트","role":"struct","src":"contract","kw":"Stringer","prod":"항공기용 부품 제조 및 동체 조립","custs":[{"nm":"Bombardier","stock":null,"basis":"수주표 품목","est":false},{"nm":"Embraer","stock":null,"basis":"수주표 품목","est":false},{"nm":"IAI","stock":null,"basis":"수주표 품목","est":false}]},{"stock":"274090","nm":"켄코아에어로스페이스","role":"struct","src":"contract","kw":"동체","prod":"항공가공품 및 조립품","custs":[{"nm":"Airbus","stock":null,"basis":"계약공시 상대","est":false},{"nm":"Embraer","stock":null,"basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false}]},{"stock":"221840","nm":"하이즈항공","role":"struct","src":"contract","kw":"동체","prod":"B787 날개구조물 등","custs":[{"nm":"ACM","stock":null,"basis":"매출처 표","est":false},{"nm":"BTC","stock":null,"basis":"매출처 표","est":false},{"nm":"Boeing","stock":null,"basis":"매출처 표","est":true}]},{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"Section 48","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","custs":[{"nm":"Airbus","stock":null,"basis":"매출처 표","est":false},{"nm":"Boeing","stock":null,"basis":"매출처 표","est":false},{"nm":"Embraer","stock":null,"basis":"매출처 표","est":false}]}],"STRUCT.GEAR":[{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"착륙장치","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","custs":[{"nm":"Airbus","stock":null,"basis":"매출처 표","est":false},{"nm":"Boeing","stock":null,"basis":"매출처 표","est":false},{"nm":"Embraer","stock":null,"basis":"매출처 표","est":false}]}],"STRUCT.NACELLE":[{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"Nacelle","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","custs":[{"nm":"Airbus","stock":null,"basis":"매출처 표","est":false},{"nm":"Boeing","stock":null,"basis":"매출처 표","est":false},{"nm":"Embraer","stock":null,"basis":"매출처 표","est":false}]}],"STRUCT.WING":[{"stock":"067390","nm":"아스트","role":"struct","src":"item","kw":"U/L Deck","prod":"항공기용 부품 제조 및 동체 조립","custs":[{"nm":"Bombardier","stock":null,"basis":"수주표 품목","est":false},{"nm":"Embraer","stock":null,"basis":"수주표 품목","est":false},{"nm":"IAI","stock":null,"basis":"수주표 품목","est":false}]},{"stock":"221840","nm":"하이즈항공","role":"struct","src":"contract","kw":"수평미익","prod":"B787 날개구조물 등","custs":[{"nm":"ACM","stock":null,"basis":"매출처 표","est":false},{"nm":"BTC","stock":null,"basis":"매출처 표","est":false},{"nm":"Boeing","stock":null,"basis":"매출처 표","est":true}]},{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"Wing","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","custs":[{"nm":"Airbus","stock":null,"basis":"매출처 표","est":false},{"nm":"Boeing","stock":null,"basis":"매출처 표","est":false},{"nm":"Embraer","stock":null,"basis":"매출처 표","est":false}]}],"SPACE.PAYLOAD":[{"stock":"214430","nm":"아이쓰리시스템","role":"part","src":"item","kw":"광학탑재","prod":"적외선 영상센서, 엑스레이 영상센서","custs":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대","est":false},{"nm":"한국항공우주연구원","stock":null,"basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false}]},{"stock":"478340","nm":"나라스페이스테크놀로지","role":"space","src":"contract","kw":"탑재체","prod":"초소형 인공위성 및 위성 데이터 서비스","custs":[{"nm":"주식회사 제노코","stock":null,"basis":"매출처 표","est":false},{"nm":"한국천문연구원","stock":null,"basis":"매출처 표","est":false},{"nm":"한국항공우주","stock":"047810","basis":"매출처 표","est":false}]},{"stock":"099320","nm":"쎄트렉아이","role":"space","src":"contract","kw":"SAR","prod":"인공위성시스템, 위성지상국, 위성부분품 개발 및 제조","custs":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대","est":false},{"nm":"한국항공우주연구원","stock":null,"basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false}]},{"stock":"361390","nm":"제노코","role":"space","src":"contract","kw":"SAR","prod":"위성탑재체, 위성운용국, 항공전자 등","custs":[{"nm":"한국항공우주","stock":"047810","basis":"계약공시 상대","est":false},{"nm":"한화시스템","stock":"272210","basis":"계약공시 상대","est":false},{"nm":"Airbus","stock":null,"basis":"본문 언급","est":false}]},{"stock":"451760","nm":"컨텍","role":"space","src":"contract","kw":"광학탑재","prod":"지상국 시스템 엔지니어링 솔루션, 위성영상 생성을 위한 데이터처리 솔루션","custs":[{"nm":"A사","stock":null,"basis":"매출처 표","est":false},{"nm":"P사","stock":null,"basis":"매출처 표","est":false},{"nm":"Q사","stock":null,"basis":"매출처 표","est":false}]},{"stock":"047810","nm":"한국항공우주","role":"prime","src":"contract","kw":"SAR","prod":"정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품","custs":[{"nm":"Airbus","stock":null,"basis":"매출처 표","est":false},{"nm":"Boeing","stock":null,"basis":"매출처 표","est":false},{"nm":"Embraer","stock":null,"basis":"매출처 표","est":false}]}],"AVION.COMM":[{"stock":"451760","nm":"컨텍","role":"space","src":"contract","kw":"레이돔","prod":"지상국 시스템 엔지니어링 솔루션, 위성영상 생성을 위한 데이터처리 솔루션","custs":[{"nm":"A사","stock":null,"basis":"매출처 표","est":false},{"nm":"P사","stock":null,"basis":"매출처 표","est":false},{"nm":"Q사","stock":null,"basis":"매출처 표","est":false}]},{"stock":"487400","nm":"케이앤에스아이앤씨","role":"part","src":"kind","kw":"위성통신 안테나","prod":"군용 위성통신안테나(잠수함용, 수상함용, 무인항공기용 등), 해상용 위성통신안테나(VSAT","custs":[]}],"ENGINE.COMBUST":[{"stock":"488900","nm":"비츠로넥스텍","role":"space","src":"item","kw":"연소기","prod":"로켓연소기 및 가스발생기, 초전도가속장치, 핵융합 플라즈마 대향장치 등 제조","custs":[{"nm":"고객1","stock":null,"basis":"매출처 표","est":false},{"nm":"고객2","stock":null,"basis":"매출처 표","est":false},{"nm":"고객3","stock":null,"basis":"매출처 표","est":false}]},{"stock":"258610","nm":"케일럼","role":"part","src":"item","kw":"Nozzle","prod":"지열발전설비, 항공기MRO, 항공부품제조","custs":[{"nm":"GE Aerospace","stock":null,"basis":"수주표 품목","est":false}]}]},"srcKo":{"item":"공시 품목명","contract":"계약명","body":"II절 본문","kind":"KIND 주요제품"}};</script>
+<script>
+(function(){
+ var S={sil:P.sils[0].id, sel:null, group:null};
+ var fig=document.getElementById('fig'), RG=document.getElementById('regions'),
+     LB=document.getElementById('labels'), DC=document.getElementById('deco'),
+     panel=document.getElementById('panel');
+ var NS='http://www.w3.org/2000/svg';
+ function el(n,attrs){ var e=document.createElementNS(NS,n); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+ function catById(id){ return P.cats.filter(function(c){return c.id===id})[0]; }
+ function hasCo(r){ return r.cats.some(function(c){return (P.idx[c]||[]).length}); }
+ // 알아보기 쉬우라고 얹는 단순 도형(기수 끝·축선·윙렛). 영역이 아니라 장식이다.
+ var DECO={
+  AIRLINER:[['polygon',{points:'28,100 40,96 40,104'}],
+            ['rect',{x:224,y:24,width:6,height:14,rx:2}],
+            ['rect',{x:224,y:162,width:6,height:14,rx:2}]],
+  ENG:[['rect',{x:92,y:97,width:230,height:6,rx:3}],
+       ['circle',{cx:66,cy:100,r:6}]],
+  SAT:[['rect',{x:196,y:164,width:8,height:14,rx:2}],
+       ['circle',{cx:200,cy:30,r:5}]],
+  LV:[['polygon',{points:'16,100 30,93 30,107'}],
+      ['rect',{x:198,y:56,width:6,height:12,rx:2}],
+      ['rect',{x:198,y:132,width:6,height:12,rx:2}]]
+ };
+ function draw(){
+  RG.textContent=''; LB.textContent=''; DC.textContent='';
+  (DECO[S.sil]||[]).forEach(function(d){ var e=el(d[0],d[1]); e.setAttribute('class','deco'); DC.appendChild(e); });
+  P.regions.filter(function(r){return r.silhouette===S.sil}).forEach(function(r){
+   var g=el('polygon',{points:r.points});
+   g.setAttribute('class','rg'+(hasCo(r)?' has':'')+(S.sel===r.id?' on':''));
+   g.setAttribute('tabindex','0'); g.setAttribute('role','button');
+   g.setAttribute('aria-label',r.ko);
+   g.addEventListener('click',function(){ S.group=null; S.sel=r.id; draw(); showRegion(r); });
+   g.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault(); g.dispatchEvent(new Event('click'));} });
+   RG.appendChild(g);
+   var t=el('text',{x:r.label.x,y:r.label.y}); t.setAttribute('class','rlbl');
+   t.setAttribute('text-anchor','middle'); t.textContent=r.ko; LB.appendChild(t);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
+   var on=b.getAttribute('data-sil')===S.sil; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#groups .chip'),function(b){
+   var on=b.getAttribute('data-group')===S.group; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
+  });
+ }
+ function coHtml(c){
+  var cu=c.custs.map(function(p){
+    var nm=p.stock?('<a href="'+p.stock+'/index.html">'+p.nm+'</a>'):p.nm;
+    return nm+' <span class="mut">'+p.basis+(p.est?' · 추정':'')+'</span>';
+  }).join(' · ');
+  return '<li><a class="co" href="'+c.stock+'/index.html">'+c.nm+'</a>'
+   +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
+   +(cu?'<div class="mut" style="font-size:11px;margin-top:2px">고객 '+cu+'</div>':'')
+   +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
+ }
+ function catBlock(cid){
+  var c=catById(cid); if(!c) return '';
+  var cos=P.idx[cid]||[];
+  return '<div class="pblock"><h4 id="'+cid+'">'+c.ko+' <span class="mut">'+P.groups[c.g]+'</span>'
+   +' <span class="n">'+cos.length+'</span></h4>'
+   +(cos.length?'<ul class="colist">'+cos.map(coHtml).join('')+'</ul>'
+    :'<p class="mut" style="font-size:12px">이 부품을 만드는 상장사를 원문에서 찾지 못했습니다 — 비상장이거나 공시 문구가 짧아 규칙에 안 걸립니다.</p>')
+   +'</div>';
+ }
+ function showRegion(r){
+  panel.innerHTML='<h3>'+r.ko+' <em>'+r.cats.length+'개 소분류</em></h3>'+r.cats.map(catBlock).join('');
+ }
+ function showGroup(gid){
+  var cs=P.cats.filter(function(c){return c.g===gid});
+  panel.innerHTML='<h3>'+P.groups[gid]+' <em>'+cs.length+'개 소분류</em></h3>'+cs.map(function(c){return catBlock(c.id)}).join('');
+ }
+ function showCat(cid){
+  var c=catById(cid); if(!c) return false;
+  var r=P.regions.filter(function(r){return r.cats.indexOf(cid)>=0})[0];
+  if(r){ S.sil=r.silhouette; S.sel=r.id; }
+  S.group=null; draw();
+  panel.innerHTML='<h3>'+c.ko+' <em>'+P.groups[c.g]+'</em></h3>'+catBlock(cid)
+   +(r?'<p class="mut" style="font-size:12px">위치: '+r.ko+'</p>':'');
+  return true;
+ }
+ function intro(){
+  panel.innerHTML='<h3>부품 영역을 누르세요 <em>또는 아래 대분류 칩</em></h3>'
+   +'<p class="mut" style="font-size:12px">영역 → 부품 소분류 → 그 부품을 만드는 상장사 → 그 회사의 고객. '
+   +'회사 이름을 누르면 그 회사의 수주·고객 페이지로 갑니다.</p>';
+ }
+ Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
+  b.addEventListener('click',function(){ S.sil=b.getAttribute('data-sil'); S.sel=null; S.group=null; draw(); intro(); });
+ });
+ Array.prototype.forEach.call(document.querySelectorAll('#groups .chip'),function(b){
+  b.addEventListener('click',function(){ S.group=b.getAttribute('data-group'); S.sel=null; draw(); showGroup(S.group); });
+ });
+ document.getElementById('reset').addEventListener('click',function(){ S.sel=null; S.group=null; draw(); intro(); });
+ window.addEventListener('hashchange',function(){ var h=location.hash.slice(1); if(h) showCat(h); });
+ var h=location.hash.slice(1);
+ draw();
+ if(!(h&&showCat(h))) intro();
+})();
+</script>
+<script>
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+</script>
+</main>
+<footer>출처 DART 정기보고서 「II-4 매출 및 수주상황」(과 XII 상세표)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. <b>통화는 환산하지 않습니다</b> — 수주표마다 통화가 다르고 공시에 환율이 없습니다. 원화는 억원, 외화는 백만 단위로 적습니다. 참고용 · 투자조언 아님.</footer>
+</body></html>
