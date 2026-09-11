@@ -9,6 +9,7 @@ argus/kce/<co>/index.html에 임베드된 DATA의 2026Q2(실측) 값과 일치�
 import json
 import os
 import sys
+import time
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -223,6 +224,31 @@ class TestDataContract(unittest.TestCase):
                 else:
                     self.assertEqual(sum(v or 0 for v in vals),
                                      D["summary"]["total"][k], (co, k))
+
+class TestDartGate(unittest.TestCase):
+    """DART는 공인 IP 단위로 막는다 — 수집기 프로세스가 여러 개여도 총 요청률은 하나여야 한다."""
+
+    def test_pace_is_shared_across_processes(self):
+        import subprocess
+        import tempfile
+        import kce_fetch
+        if kce_fetch.fcntl is None:
+            self.skipTest("fcntl 없음 — 프로세스 간 게이트 비활성")
+        gate = os.path.join(tempfile.mkdtemp(), "gate")
+        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        code = ("import sys, time; sys.path.insert(0, %r); import kce_fetch as f; f.MIN_GAP = 0.3\n"
+                "t = time.time()\n"
+                "[f._pace() for _ in range(4)]\n"
+                "print('%%.3f' %% (time.time() - t))" % here)
+        env = dict(os.environ, DART_GATE=gate)
+        t0 = time.time()
+        ps = [subprocess.Popen([sys.executable, "-c", code], env=env, stdout=subprocess.PIPE, text=True)
+              for _ in range(3)]
+        for p in ps:
+            p.communicate()
+        elapsed = time.time() - t0
+        # 12요청 × 0.3초 = 3.6초. 게이트가 없으면 프로세스마다 1.2초(≈1.2초 전체)로 끝난다.
+        self.assertGreater(elapsed, 3.6 * 0.7, "프로세스 간 요청 간격이 지켜지지 않는다(%0.2fs)" % elapsed)
 
 
 if __name__ == "__main__":

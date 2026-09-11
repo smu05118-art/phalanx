@@ -16,6 +16,11 @@ import json
 import os
 import re
 import sys
+try:
+    import fcntl                                   # POSIX 전용 — 없으면 프로세스 간 게이트를 끈다
+except ImportError:                              # pragma: no cover
+    fcntl = None
+import tempfile
 import threading
 import time
 import urllib.parse
@@ -52,14 +57,57 @@ _pace_lock = threading.Lock()
 LANES = int(os.environ.get("KCE_LANES") or 6)
 
 
+# ── 프로세스 사이 게이트 ─────────────────────────────────────────────────────
+# DART는 **공인 IP 단위**로 막는다. 스레드 레인은 위 _pace_lock이 묶지만, 수집기를 두세 개
+# 동시에 띄우면(탭이 늘면서 실제로 일어난다) 각자 자기 몫만 지켜 총 요청률이 배가 되고
+# 30~60분 차단당한다(2026-09-10 실측). 그래서 같은 머신의 **모든 프로세스**가 파일 락
+# 하나로 마지막 요청 시각을 공유한다 — 락은 간격 계산 동안만 잡고, 응답 대기 중에는 푼다.
+_GATE = os.environ.get("DART_GATE") or os.path.join(tempfile.gettempdir(), "argus_dart_gate")
+
+
+def _pace_cross_process():
+    """파일 락으로 마지막 요청 시각을 공유해 프로세스가 몇 개든 총 요청률을 1/MIN_GAP로 묶는다.
+
+    fcntl이 없거나(윈도우) 락 파일을 못 쓰면(권한·tmpfs 없음) 조용히 스레드 페이싱만 쓴다 —
+    수집을 세우는 것보다 낫지만, 그때는 수집기를 하나씩 돌려야 한다.
+    """
+    if fcntl is None:
+        return False
+    try:
+        fd = os.open(_GATE, os.O_RDWR | os.O_CREAT, 0o666)
+    except OSError:
+        return False
+    try:
+        while True:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            try:
+                os.lseek(fd, 0, os.SEEK_SET)
+                raw = os.read(fd, 64).decode("ascii", "replace").split("\x00")[0].strip()
+                last = float(raw) if raw.replace(".", "", 1).isdigit() else 0.0
+                now = time.time()                      # 프로세스 간 비교라 monotonic 불가
+                wait = MIN_GAP - (now - last)
+                if wait <= 0 or wait > 60:             # 시계가 뒤로 갔거나 오래된 값
+                    stamp = ("%.6f" % now).encode("ascii")
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    os.write(fd, stamp)
+                    os.ftruncate(fd, len(stamp))       # NUL 패딩이 남으면 값이 안 읽혀 게이트가 열린다
+                    return True
+            finally:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+            time.sleep(min(wait, MIN_GAP))
+    finally:
+        os.close(fd)
+
+
 def _pace():
-    """전역 요청 간격 유지. 여러 레인이 동시에 들어와도 총 요청률은 1/MIN_GAP를 넘지 않는다."""
+    """전역 요청 간격 유지. 여러 레인·여러 프로세스가 동시에 들어와도 총 요청률은 1/MIN_GAP를 넘지 않는다."""
     while True:
         with _pace_lock:
             now = time.monotonic()
             wait = MIN_GAP - (now - _last_call[0])
             if wait <= 0:
                 _last_call[0] = now
+                _pace_cross_process()
                 return
         time.sleep(wait)
 
