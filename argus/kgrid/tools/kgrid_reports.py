@@ -29,6 +29,7 @@
     python3 kgrid_reports.py --build
 """
 import argparse
+import html
 import json
 import os
 import re
@@ -330,6 +331,14 @@ def parse_revenue_table(t):
     if not votes:
         return None
     i_kind = max(votes, key=lambda i: votes[i])
+    # 기간 열에 **수량 열이 끼어 있는** 회사가 있다 — 제룡전기 매출실적은
+    # `제41기 반기 수량|제41기 반기 금액|제40기 수량|제40기 금액|…` 이다(실측).
+    # 첫 숫자를 값으로 집으면 4,912대가 매출이 되고 연매출이 2,500억 → 25백만원으로 줄어
+    # 배수가 5,585년이 된다. 금액이 아닌 열은 **아예 뺀다**.
+    val_idx = [i for i in range(i_kind + 1, len(t["cols"]))
+               if not re.search(r"수량|비중|비율|비고|증감", _clean(t["cols"][i]))]
+    if not val_idx:
+        return None
     rows = []
     for r in t["rows"]:
         if i_kind >= len(r):
@@ -339,7 +348,7 @@ def parse_revenue_table(t):
             continue
         labels = [c.strip() for c in r[:i_kind] if c.strip()]
         labels = [x for x in dict.fromkeys(labels)]
-        vals = [_scaled(v, mul) for v in r[i_kind + 1:]]
+        vals = [_scaled(r[i], mul) if i < len(r) else None for i in val_idx]
         nums = [v for v in vals if v is not None]
         if not nums:
             continue
@@ -354,7 +363,7 @@ def parse_revenue_table(t):
         else "segment"
     return {"basis": basis, "cur": cur, "unit_seen": seen, "i_kind": i_kind, "rows": rows,
             "entity": entity_of(t.get("lead")),
-            "period_cols": t["cols"][i_kind + 1:], "cols": t["cols"],
+            "period_cols": [t["cols"][i] for i in val_idx], "cols": t["cols"],
             "lead": (t.get("lead") or "")[-240:]}
 
 
@@ -379,12 +388,13 @@ def parse_segment_sales(t):
         return None
     cur, mul, seen = unit_of(lead, t.get("cols"))
     i_amt = next((i for i, c in enumerate(cols)
-                  if i >= 1 and "비중" not in c and "비율" not in c
+                  if i >= 1 and not re.search(r"비중|비율|수량|증감", c)
                   and sum(1 for r in t["rows"] if i < len(r) and num_of(r[i]) is not None) >= 2), None)
     if i_amt is None:
         return None
     i_pct = next((i for i, c in enumerate(cols) if i > i_amt and ("비중" in c or "비율" in c)), None)
-    val_idx = [i for i in range(i_amt, len(cols)) if "비중" not in cols[i] and "비율" not in cols[i]]
+    val_idx = [i for i in range(i_amt, len(cols))
+               if not re.search(r"비중|비율|수량|증감", cols[i])]
     rows = []
     for r in t["rows"]:
         if i_amt >= len(r):
@@ -555,24 +565,43 @@ DEMAND_WORDS = [
 ]
 
 
+_DIGITS = re.compile(r"[\d,]{3,}")
+
+
+def _readable(s):
+    """인용할 만한 문장인가.
+
+    같은 절에 표도 섞여 있어 그대로 뽑으면 `매출처명 금액 비율 NextEra Energy 347,203 15.9%`
+    같은 **표 덤프**가 인용문으로 실린다(실측). 숫자 덩어리가 많은 조각은 문장이 아니다."""
+    if len(s) < 24:
+        return False
+    return len(_DIGITS.findall(s)) <= 4
+
+
 def demand_quotes(text, limit=3):
-    """II절 본문에서 수요 낱말이 나온 문장을 뽑는다 → {키: {n, quotes[]}}."""
-    flat = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text or ""))
-    sents = re.split(r"(?<=[.。])\s+|(?<=다)\s{2,}|·{2,}", flat)
+    """II절 본문에서 수요 낱말이 나온 문장을 뽑는다 → {키: {n, quotes[]}}.
+
+    `&nbsp;` 같은 엔티티를 먼저 풀어 둔다 — 화면에 `&amp;nbsp;` 로 두 번 이스케이프돼 나온다."""
+    flat = re.sub(r"<[^>]+>", " ", text or "")
+    flat = html.unescape(flat).replace(" ", " ")
+    flat = re.sub(r"\s+", " ", flat)
+    sents = re.split(r"(?<=[.。])\s+|(?<=니다)\s+|(?<=됩니다)\s+|·{2,}", flat)
     out = {}
     for key, pat in DEMAND_WORDS:
-        hits = [s.strip() for s in sents if pat.search(s)]
         n = len(pat.findall(flat))
         if not n:
             continue
         qs = []
-        for s in hits:
+        for s in sents:
             s = s.strip()
-            if len(s) > 220:
+            if not pat.search(s):
+                continue
+            if len(s) > 240:
                 m = pat.search(s)
-                s = s[max(0, m.start() - 90):m.start() + 130].strip()
-            if s and s not in qs:
-                qs.append(s)
+                s = s[max(0, m.start() - 100):m.start() + 140].strip()
+            if not _readable(s) or s in qs:
+                continue
+            qs.append(s)
             if len(qs) >= limit:
                 break
         out[key] = {"n": n, "quotes": qs}
@@ -634,7 +663,7 @@ def _keep(t):
     return bool(re.search(r"수주|매출|거래처|매출처|고객|납기|잔고|잔액|지역", blob))
 
 
-def collect_one(rec, quarter, force=False, log=sys.stderr):
+def collect_one(rec, quarter, force=False, log=sys.stderr, with_text=True):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
     if os.path.exists(path) and not force:
@@ -683,14 +712,18 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
     out["customers"] = (max(customers, key=lambda c: len(c["rows"])) if customers else None)
     out["raw_tables"] = [{"cols": t["cols"], "rows": t["rows"], "lead": (t.get("lead") or "")[-240:]}
                          for t in tables if _keep(t)]
+    # 수요 낱말은 **최신 분기에서만** 읽는다. 시장 서술은 분기마다 거의 같은데 절을 3장 더
+    # 받으면 요청이 두 배가 된다(DART는 IP 하나로 게이트가 걸려 벽시계 시간이 그대로 늘어난다).
     txt = html
-    for key in ("products", "overview", "etc"):
-        if key in found:
-            try:
-                txt += fetch_section(found[key])
-            except Exception:
-                pass
+    if with_text:
+        for key in ("products", "overview", "etc"):
+            if key in found:
+                try:
+                    txt += fetch_section(found[key])
+                except Exception:
+                    pass
     out["demand"] = demand_quotes(txt)
+    out["demand_scope"] = "II절 전체" if with_text else "II-4 수주·매출 절만"
     out["ok"] = bool(out["orders"] or out["revenue"] or out["segment_sales"])
     if not out["ok"]:
         out["note"] = "수주·매출표 인식 실패 — 머리행 %s" % [t["cols"] for t in tables][:3]
@@ -715,10 +748,11 @@ def quarters(latest, n=6):
 
 
 def collect(rows, qs, force=False):
+    last = qs[-1] if qs else None
     for rec in rows:
         for q in qs:
             try:
-                collect_one(rec, q, force)
+                collect_one(rec, q, force, with_text=(q == last))
             except Exception as e:
                 sys.stderr.write("[warn] %s %s %s\n" % (rec["stock"], q, e))
 
@@ -740,7 +774,8 @@ def _sum_rows_rev(rrows, kind):
 
 
 _FY_COL = re.compile(r"20\d\d년|제\d+기")
-_PART_YEAR = re.compile(r"반기|분기|누적|개월|기중|비중|비율")
+# 수량 열도 1년 열처럼 `제40기 수량` 으로 온다 — 여기서 막지 않으면 매출 대신 대수를 쓴다.
+_PART_YEAR = re.compile(r"반기|분기|누적|개월|기중|비중|비율|수량|증감")
 
 
 def _is_fy(col):

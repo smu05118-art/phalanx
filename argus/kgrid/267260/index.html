@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HD현대일렉트릭 — 한국전력기기</title>
+<link rel="stylesheet" href="../assets/kgrid.css">
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+
+
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+
+var SER=[{"q":"2026Q2","backlog":12310500,"new":null,"delivered":2178313,"cov":3.017650701140189}];
+
+(function(){
+  var el=document.getElementById('cbal'); if(!el||!window.Chart||!SER.length) return;
+  var css=getComputedStyle(document.documentElement);
+  var s1=css.getPropertyValue('--s1').trim(), s3=css.getPropertyValue('--s3').trim(),
+      s2=css.getPropertyValue('--s2').trim();
+  var ds=[{type:'bar',label:'수주잔고',data:SER.map(function(r){return r.backlog;}),backgroundColor:s1,order:3}];
+  if(SER.some(function(r){return r['new']!=null;}))
+    ds.push({type:'line',label:'당기 신규수주',data:SER.map(function(r){return r['new'];}),borderColor:s3,order:1});
+  if(SER.some(function(r){return r.delivered!=null;}))
+    ds.push({type:'line',label:'기납품액',data:SER.map(function(r){return r.delivered;}),borderColor:s2,order:2});
+  new Chart(el,{data:{labels:SER.map(function(r){return r.q;}),datasets:ds},
+    options:{scales:{y:{beginAtZero:true,ticks:{callback:function(v){return (v/100).toLocaleString();}},
+      title:{display:true,text:'억원(원화 공시) · 외화는 백만 단위'}}}}});
+})();
+</script></head>
+<body>
+<header class="top"><div class="hd"><h1>HD현대일렉트릭</h1><span class="tag">267260</span><span class="tag">전력기기 제조</span><span class="tag">유가</span><span class="tag">장납기</span><span class="sp"><a href="../index.html">허브</a><a href="../grid.html">단선도</a><a href="../coverage.html">커버리지</a></span></div><div class="crumb"><a href="../index.html">⚡ 한국전력기기</a> › <span>회사</span> › <span>HD현대일렉트릭</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">고압 차단기(GIS·VCB), 배전반·수배전, 전력변환(인버터·PCS), 변압기(전압 계급 미상) — HD현대일렉트릭 — 변압기·고압차단기·회전기·배전반. 수주표 부문 합계 1행(FINDINGS §2)</p><div class="kpi"><div class="hero"><b>123,105억</b><span>수주잔고 (2026Q2)</span></div><div><b>3.02<small>년</small></b><span>커버리지(잔고÷연매출)</span></div><div><b>장납기</b><span>잔고 성격(기준 1.0년)</span></div><div><b>40,795억</b><span>연매출 제9기</span></div><div><b>78.3%</b><span>수출비중(매출실적)</span></div><div><b>15.9%</b><span>최대 외부고객 비중</span></div></div><p class="note" style="margin-top:14px">· 수주표의 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 (최대 행이 잔고의 100.0%).</p><section class="card"><h2>수주잔고 추이 <em>KRW — 분기 1개</em></h2><div class="chart"><canvas id="cbal"></canvas></div><p class="mut" style="margin-top:8px">신규수주·기납품액을 같이 공시하는 회사라 롤포워드(기초+신규−기납품=기말)를 그릴 수 있습니다.</p></section><section class="card"><h2>수주표 행 <em>2026Q2 원문 그대로</em><span class="right">수주일자·납기가 기간 표기인 회사가 많습니다</span></h2><div class="wrap"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l sort">품목</th><th class="sort">기초·이월</th><th class="sort">신규·총액</th><th class="sort">기납품</th><th class="sort">잔고</th><th class="l">수주일자</th><th class="l">납기</th></tr></thead><tbody><tr><td class="l">전기전자부문</td><td class="l mut">변압기, 고압차단기회전기, 저압전동기배전반, 중저압차단기전력변환 및 에너지저장장치 등</td><td class="mut">—</td><td data-v="14488813.000">144,888</td><td data-v="2178313.000">21,783</td><td data-v="12310500.000">123,105</td><td class="l mut">2026.06.30 까지</td><td class="l mut"></td></tr></tbody></table></div></section><section class="card"><h2>매출 구성 <em>2026Q2</em></h2><div class="grid2"><div><h2>부문 × 내수/수출 <em>원문 이름 그대로</em></h2><div class="wrap tall"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l">품목</th><th class="l sort">구분</th><th class="sort">금액</th></tr></thead><tbody><tr><td class="l">전기전자부 문</td><td class="l mut">제 품기타매출 변압기, 고압차단기중저압차단기, 회전기배전반, 전력제어 外</td><td class="l">수출</td><td data-v="1706656.000">17,067</td></tr><tr><td class="l">전기전자부 문</td><td class="l mut">제 품기타매출 변압기, 고압차단기중저압차단기, 회전기배전반, 전력제어 外</td><td class="l">내수</td><td data-v="471657.000">4,717</td></tr><tr><td class="l">전기전자부 문</td><td class="l mut">제 품기타매출 변압기, 고압차단기중저압차단기, 회전기배전반, 전력제어 外</td><td class="l">합계</td><td data-v="2178313.000">21,783</td></tr></tbody></table></div></div><div><h2>제품군별 매출실적 <em>제품군 구성의 근거</em></h2><div class="wrap tall"><table data-sortable><thead><tr><th class="l sort">구분</th><th class="l">품목</th><th class="sort">금액</th><th class="sort">비중</th></tr></thead><tbody><tr><td class="l">전력기기</td><td class="l mut"></td><td data-v="1476122.000">14,761</td><td>—</td></tr><tr><td class="l">회전기기</td><td class="l mut"></td><td data-v="351638.000">3,516</td><td>—</td></tr><tr><td class="l">배전기기 外</td><td class="l mut"></td><td data-v="350553.000">3,506</td><td>—</td></tr></tbody></table></div></div></div></section><section class="card"><h2>주요 매출처 <em>2행 · 표 1장</em><span class="right">실명 / 익명 / 고객분류 / 관계회사를 배지로 구분합니다</span></h2><p class="note info">비중은 대개 <b>그 사업부문·종속회사 안에서의 비중</b>이며 회사 전체 매출 대비가 아닙니다. <b>표 1</b>이 본체 표입니다 — 뒤 표는 종속회사 것이라 비중이 커도 회사 전체로는 작습니다. 또 "연결 매출의 5% 이상만 기재"라는 주석이 붙는 회사가 있어 최대고객 비중은 <b>하한</b>입니다.</p><div class="ctl"><input data-filter="#tcu" placeholder="매출처 검색"></div><div class="wrap tall"><table id="tcu" data-sortable><thead><tr><th class="l sort">매출처</th><th class="l sort">부문</th><th class="sort">비중</th><th class="sort">금액</th><th class="l sort">출처</th></tr></thead><tbody><tr><td class="l">NextEra Energy<span class="ev named">실명</span></td><td class="l mut"></td><td>15.9%</td><td data-v="347203.000">3,472</td><td class="l mut">표 1</td></tr><tr><td class="l">사우디 전력청<span class="ev named">실명</span></td><td class="l mut"></td><td>5.0%</td><td data-v="109097.000">1,091</td><td class="l mut">표 1</td></tr></tbody></table></div></section><section class="card"><h2>수요 축 — 원문 인용 <em>II절 본문</em><span class="right"></span></h2><div class="grid2"><div class="panel"><h3>신재생 연계 <em>60회</em></h3><ul><li>향후 전 사업에 걸친 전기화 및 탈탄소화가 전력시장에 큰 영향을 미칠 것으로 전망됨에 따라, 전력에너지의 효율적 사용을 위해 시스템을 구축하는 솔루션 사업 및 신ㆍ재생에너지를 활용해 마이크로그리드 단위의 탄소중립을 실현하는융복합사업을 에너지 신사업으로 추진하고 있습니다.</li><li>향후 에너지시장은 전 산업에 걸친 전기화로 전력수요 증가, 신재생발전 증가와 이에 따른 전력변환 및 에너지저장 시장 성장, IT 기술을 접목하여 효율적으로 에너지를 관리하는스마트그리드 시장 성장으로 요약할 수 있습니다.</li></ul></div><div class="panel"><h3>중동 전력청 <em>10회</em></h3><ul><li>연결매출 중 5%를 초과하는 주요 매출처는 NextEra Energy, 사우디전력청 입니다.</li><li>(3) 경기변동의 특성 전기전자기기의 주요 고객은 국가별 전력청 및 민간 Utility 사업자, EPC 업체 등이며, 이에 따라 전기전자기기 발주 규모는 각국 정부의 전력 정책 및 글로벌 건설 경기에 민감한 영향을 받고 있습니다.</li></ul></div><div class="panel"><h3>데이터센터 <em>8회</em></h3><ul><li>신재생 발전원 설치 증가, AI 시장과 데이터센터 건설 확대에 따른 전력 수급 변동성 증가로 인해 국내 및 글로벌 전력 시장에서의 ESS 수요는 당분간 계속될 것으로 전망합니다.</li><li>추가로, 전력 소비가 많은 인공지능(AI) 산업과 데이터센터, 반도체 공장 건설 확대에 따른 대규모 전력기기 설비 투자가 이어질 것으로 예상됩니다.</li></ul></div><div class="panel"><h3>노후 전력망 교체 <em>8회</em></h3><ul><li>지역별로는 미국 내 산업 설비 투자 증가에 따른 전력 수요 확대 및 노후 설비 교체에 따른 신규 투자수요, 유럽의 노후 설비 교체 수요 및 신재생 인프라 투자수요와 아시아·태평양, 중남미 등 이머징 마켓의 신규 전력 인프라 증설 수요를 바탕으로 성장이 예상되며, 4차 산업혁명과 친환경 트렌드 확산에 따라 ICT 융합 솔루션과 친환경 기술 적용 제품의 시장 확대가 예상됩니다.</li><li>추가로, 미국 데이터센터를 포함한 신규 전력 수요처 증가와 노후 전력 인프라 교체 수요에 따른 전력망 인프라 확충과 유럽 국가들의 친환경 전력기기 수주가 확대되고 있습니다.</li></ul></div><div class="panel"><h3>북미 유틸리티 <em>7회</em></h3><ul><li>연결매출 중 5%를 초과하는 주요 매출처는 NextEra Energy, 사우디전력청 입니다.</li><li>- 제품별 영업의 개황 [전력기기] 북미 시장의 경우, 노후화된 전력 인프라 교체와 데이터센터 연결을 위한 신규 전력망 구축이 겹쳐, 최근 전력기기 수요가 급증하고 있습니다.</li></ul></div></div></section><section class="card"><h2>되짚기 <em>이 숫자가 어디서 왔는가</em></h2><p class="mut"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260814003228" target="_blank" rel="noopener noreferrer">DART 원문 보고서</a><br>KIND 업종 <code>전동기, 발전기 및 전기 변환 · 공급 · 제어 장치 제조업</code><br>편입 근거: HD현대일렉트릭 — 변압기·고압차단기·회전기·배전반. 수주표 부문 합계 1행(FINDINGS §2)<br>제품군 판정 근거: 고압 차단기(GIS·VCB) ← KIND 주요제품「변압기, 고압차단기, 회전기, 배전반 등」 / 배전반·수배전 ← KIND 주요제품「변압기, 고압차단기, 회전기, 배전반 등」 / 변압기(전압 계급 미상) ← KIND 주요제품「변압기, 고압차단기, 회전기, 배전반 등」 / 전력변환(인버터·PCS) ← 수주표 품목「변압기, 고압차단기회전기, 저압전동기배전반, 중저압차단기전력변환 」</p></section></main>
+<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. 수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>

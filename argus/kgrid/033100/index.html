@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>제룡전기 — 한국전력기기</title>
+<link rel="stylesheet" href="../assets/kgrid.css">
+<script>
+(function(){
+  if(!window.Chart) return;
+  var C=window.Chart, css=getComputedStyle(document.documentElement);
+  var tx2=css.getPropertyValue('--tx2').trim()||'#98a1b0', grid=css.getPropertyValue('--grid').trim()||'#2a2f3a';
+  C.defaults.color=tx2; C.defaults.font.family=css.getPropertyValue('--sans')||'sans-serif'; C.defaults.font.size=11;
+  C.defaults.plugins.legend.labels.boxWidth=10; C.defaults.plugins.legend.labels.boxHeight=10;
+  C.defaults.plugins.legend.labels.usePointStyle=false; C.defaults.plugins.legend.position='bottom';
+  C.defaults.plugins.tooltip.backgroundColor='#0b0d12'; C.defaults.plugins.tooltip.borderColor='#343a47';
+  C.defaults.plugins.tooltip.borderWidth=1; C.defaults.plugins.tooltip.titleColor='#e6e8ec'; C.defaults.plugins.tooltip.bodyColor='#e6e8ec';
+  C.defaults.plugins.tooltip.padding=8; C.defaults.plugins.tooltip.displayColors=true; C.defaults.plugins.tooltip.boxWidth=10; C.defaults.plugins.tooltip.boxHeight=2;
+  C.defaults.scale.grid.color=grid; C.defaults.scale.grid.lineWidth=1; C.defaults.scale.border.display=false;
+  C.defaults.scale.ticks.color=tx2; C.defaults.scale.ticks.font={size:10.5};
+  C.defaults.elements.bar.borderRadius=4; C.defaults.elements.bar.borderSkipped='bottom';
+  C.defaults.elements.line.borderWidth=2; C.defaults.elements.line.tension=0.25; C.defaults.elements.point.radius=0; C.defaults.elements.point.hoverRadius=4;
+  C.defaults.datasets.bar.maxBarThickness=24; C.defaults.datasets.bar.borderWidth=2; C.defaults.datasets.bar.borderColor='#171a21';
+  C.defaults.animation.duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:350;
+  C.defaults.interaction={mode:'index',intersect:false};
+})();
+
+
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+
+var SER=[{"q":"2025Q1","backlog":219456,"new":null,"delivered":50202,"cov":0.8352717457871818},{"q":"2025Q2","backlog":167438,"new":null,"delivered":110560,"cov":0.6372859733664795},{"q":"2025Q3","backlog":143828,"new":null,"delivered":180310,"cov":0.5474239239441108},{"q":"2025Q4","backlog":150076,"new":null,"delivered":224017,"cov":0.6699312609797186},{"q":"2026Q1","backlog":153251,"new":null,"delivered":34673,"cov":0.6841042916682404},{"q":"2026Q2","backlog":141580,"new":null,"delivered":70323,"cov":0.6320055700412361}];
+
+(function(){
+  var el=document.getElementById('cbal'); if(!el||!window.Chart||!SER.length) return;
+  var css=getComputedStyle(document.documentElement);
+  var s1=css.getPropertyValue('--s1').trim(), s3=css.getPropertyValue('--s3').trim(),
+      s2=css.getPropertyValue('--s2').trim();
+  var ds=[{type:'bar',label:'수주잔고',data:SER.map(function(r){return r.backlog;}),backgroundColor:s1,order:3}];
+  if(SER.some(function(r){return r['new']!=null;}))
+    ds.push({type:'line',label:'당기 신규수주',data:SER.map(function(r){return r['new'];}),borderColor:s3,order:1});
+  if(SER.some(function(r){return r.delivered!=null;}))
+    ds.push({type:'line',label:'기납품액',data:SER.map(function(r){return r.delivered;}),borderColor:s2,order:2});
+  new Chart(el,{data:{labels:SER.map(function(r){return r.q;}),datasets:ds},
+    options:{scales:{y:{beginAtZero:true,ticks:{callback:function(v){return (v/100).toLocaleString();}},
+      title:{display:true,text:'억원(원화 공시) · 외화는 백만 단위'}}}}});
+})();
+</script></head>
+<body>
+<header class="top"><div class="hd"><h1>제룡전기</h1><span class="tag">033100</span><span class="tag">전력기기 제조</span><span class="tag">코스닥</span><span class="tag">회전</span><span class="sp"><a href="../index.html">허브</a><a href="../grid.html">단선도</a><a href="../coverage.html">커버리지</a></span></div><div class="crumb"><a href="../index.html">⚡ 한국전력기기</a> › <span>회사</span> › <span>제룡전기</span></div></header>
+<script src="../vendor/chart.umd.min.js"></script><main><p class="lead">변압기(전압 계급 미상), 금구류·부자재 — 제룡전기 — 송배전용금구류·변압기</p><div class="kpi"><div class="hero"><b>1,416억</b><span>수주잔고 (2026Q2)</span></div><div><b>0.63<small>년</small></b><span>커버리지(잔고÷연매출)</span></div><div><b>회전</b><span>잔고 성격(기준 1.0년)</span></div><div><b>2,240억</b><span>연매출 제40기 금액</span></div><div><b>89.0%</b><span>수출비중(매출실적)</span></div><div><b>—</b><span>최대 외부고객 비중</span></div></div><p class="note" style="margin-top:14px">· 수주표의 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 (최대 행이 잔고의 100.0%).</p><section class="card"><h2>수주잔고 추이 <em>KRW — 분기 6개</em></h2><div class="chart"><canvas id="cbal"></canvas></div><p class="mut" style="margin-top:8px">신규수주·기납품액을 같이 공시하는 회사라 롤포워드(기초+신규−기납품=기말)를 그릴 수 있습니다.</p></section><section class="card"><h2>수주표 행 <em>2026Q2 원문 그대로</em><span class="right">수주일자·납기가 기간 표기인 회사가 많습니다</span></h2><div class="wrap"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l sort">품목</th><th class="sort">기초·이월</th><th class="sort">신규·총액</th><th class="sort">기납품</th><th class="sort">잔고</th><th class="l">수주일자</th><th class="l">납기</th></tr></thead><tbody><tr><td class="l">변압기 등</td><td class="l mut"></td><td class="mut">—</td><td data-v="211903.000">2,119</td><td data-v="70323.000">703</td><td data-v="141580.000">1,416</td><td class="l mut">2026.06.30까지</td><td class="l mut"></td></tr></tbody></table></div></section><section class="card"><h2>매출 구성 <em>2026Q2</em></h2><div class="grid2"><div><h2>부문 × 내수/수출 <em>원문 이름 그대로</em></h2><div class="wrap tall"><table data-sortable><thead><tr><th class="l sort">부문</th><th class="l">품목</th><th class="l sort">구분</th><th class="sort">금액</th></tr></thead><tbody><tr><td class="l">중전기</td><td class="l mut">제품매출 변압기</td><td class="l">수출</td><td data-v="4.912">0</td></tr><tr><td class="l">중전기</td><td class="l mut">제품매출 변압기</td><td class="l">내수</td><td data-v="0.584">0</td></tr><tr><td class="l">중전기</td><td class="l mut">제품매출 변압기</td><td class="l">합계</td><td data-v="5.496">0</td></tr><tr><td class="l">중전기</td><td class="l mut">제품매출 기타</td><td class="l">수출</td><td data-v="0.020">0</td></tr><tr><td class="l">중전기</td><td class="l mut">제품매출 기타</td><td class="l">내수</td><td data-v="0.005">0</td></tr><tr><td class="l">중전기</td><td class="l mut">제품매출 기타</td><td class="l">합계</td><td data-v="0.005">0</td></tr><tr><td class="l">중전기</td><td class="l mut">상품매출 변압기</td><td class="l">수출</td><td data-v="7.844">0</td></tr><tr><td class="l">중전기</td><td class="l mut">상품매출 변압기</td><td class="l">내수</td><td data-v="0.018">0</td></tr><tr><td class="l">중전기</td><td class="l mut">상품매출 변압기</td><td class="l">합계</td><td data-v="0.018">0</td></tr><tr><td class="l">중전기</td><td class="l mut">공사매출 변압기</td><td class="l">내수</td><td data-v="2.456">0</td></tr><tr><td class="l">중전기</td><td class="l mut">공사매출 변압기</td><td class="l">합계</td><td data-v="2.456">0</td></tr><tr><td class="l">중전기</td><td class="l mut">공사매출 기타</td><td class="l">내수</td><td data-v="2673.431">27</td></tr><tr><td class="l">중전기</td><td class="l mut">공사매출 기타</td><td class="l">합계</td><td data-v="2673.431">27</td></tr><tr><td class="l">중전기</td><td class="l mut">용역매출 기타</td><td class="l">내수</td><td data-v="26.810">0</td></tr><tr><td class="l">중전기</td><td class="l mut">용역매출 기타</td><td class="l">합계</td><td data-v="26.810">0</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">수출</td><td data-v="4.912">0</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">내수</td><td data-v="0.607">0</td></tr><tr><td class="l">합 계</td><td class="l mut"></td><td class="l">합계</td><td data-v="5.519">0</td></tr></tbody></table></div></div></div></section><section class="card"><h2>계약 공시 <em>「단일판매ㆍ공급계약체결」 9건</em><span class="right">정정공시는 최신본만 셉니다</span></h2><div class="ctl"><input data-filter="#tct" placeholder="계약·상대 검색"></div><div class="wrap tall"><table id="tct" data-sortable><thead><tr><th class="l sort">계약명</th><th class="l sort">계약상대</th><th class="sort">금액</th><th class="l sort">계약일</th><th class="l">기간</th><th class="l">원문</th></tr></thead><tbody><tr><td class="l">[기재정정] 단일판매ㆍ공급계약체결</td><td class="l mut">Public Service Electric and Gas Company</td><td>$35982.25bn<span class="cur">USD</span></td><td class="l mut"></td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260108900173" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">[기재정정] 단일판매ㆍ공급계약체결</td><td class="l mut">Public Service Electric and Gas Company</td><td>$34425.30bn<span class="cur">USD</span></td><td class="l mut"></td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250721900287" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">[기재정정] 단일판매ㆍ공급계약체결</td><td class="l mut">Public Service Electric and Gas Company</td><td>$21742.00bn<span class="cur">USD</span></td><td class="l mut"></td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250721900286" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">[기재정정] 단일판매ㆍ공급계약체결</td><td class="l mut">Public Service Electric and Gas Company</td><td>$48455.26bn<span class="cur">USD</span></td><td class="l mut"></td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20241230900930" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">단일판매ㆍ공급계약체결</td><td class="l mut">Public Service Electric and Gas Company</td><td>$29647.83bn<span class="cur">USD</span></td><td class="l mut"></td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20241224900263" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">[기재정정] 단일판매ㆍ공급계약체결</td><td class="l mut">American Electric Power</td><td>$12849.50bn<span class="cur">USD</span></td><td class="l mut"></td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20241031900205" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">[기재정정] 단일판매ㆍ공급계약체결</td><td class="l mut">American Electric Power</td><td>$6020.50bn<span class="cur">USD</span></td><td class="l mut"></td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240430900825" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">[기재정정] 단일판매ㆍ공급계약체결</td><td class="l mut">American Electric Power</td><td>$9630.25bn<span class="cur">USD</span></td><td class="l mut"></td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240329904199" target="_blank" rel="noopener noreferrer">원문</a></td></tr><tr><td class="l">[기재정정] 단일판매ㆍ공급계약체결</td><td class="l mut">한국중전기사업협동조합</td><td data-v="9675386183.000">96,753,862</td><td class="l mut"></td><td class="l mut"></td><td class="l"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240329904005" target="_blank" rel="noopener noreferrer">원문</a></td></tr></tbody></table></div><p class="mut" style="margin-top:8px">수주표가 부문 합계인 이 산업에서 <b>계약 단위 원장</b>은 이 공시뿐입니다. 다만 공시 의무 기준(매출액 대비 비율)을 넘는 계약만 나오므로 전부가 아닙니다.</p></section><section class="card"><h2>수요 축 — 원문 인용 <em>II절 본문</em><span class="right"></span></h2><div class="grid2"><div class="panel"><h3>데이터센터 <em>7회</em></h3><ul><li>2020년대 들어와서는 탄소중립 실현과 에너지 전환 가속화 그리고 AI 데이터센터 확산에 따른 전력 수요 급증이 전 세계적으로 우선순위로 부상하면서,정부 및 글로벌 기업의 탈탄소 정책, 친환경 기기 개발 투자가 급증하고 있습니다.</li><li>이에 따라 에너지 절약형·고효율 및 친환경 전기기기의 개발ㆍ보급은 미래 성장동력으로 더욱 주목받고 있으며, 전기차, ESS, AI 데이터센터 등 신산업 성장과 함께 산업 혁신과 디지털화가 본격화되고 있습니다.</li></ul></div><div class="panel"><h3>신재생 연계 <em>6회</em></h3><ul><li>이에 따라 에너지 절약형·고효율 및 친환경 전기기기의 개발ㆍ보급은 미래 성장동력으로 더욱 주목받고 있으며, 전기차, ESS, AI 데이터센터 등 신산업 성장과 함께 산업 혁신과 디지털화가 본격화되고 있습니다.</li><li>최근 국내외 경기가 완만한 회복세를 보이는 가운데, AI 데이터센터의 급격한 확장, 노후 전력망 교체 수요, 신재생에너지와 연계된 분산형 전력망 구축의 확대,ESS 및 스마트그리드 등 차세대 전력 솔루션 수요가 구조적으로 증가하고 있습니다.</li></ul></div><div class="panel"><h3>노후 전력망 교체 <em>5회</em></h3><ul><li>최근 국내외 경기가 완만한 회복세를 보이는 가운데, AI 데이터센터의 급격한 확장, 노후 전력망 교체 수요, 신재생에너지와 연계된 분산형 전력망 구축의 확대,ESS 및 스마트그리드 등 차세대 전력 솔루션 수요가 구조적으로 증가하고 있습니다.</li><li>특히 미국ㆍ유럽 등 주요국에서 노후 전력망 교체와 데이터센터 인프라 투자가 동시에 진행되면서, 전력기기 시장은 중장기 성장 국면에 진입한 것으로 평가되고 있습니다.</li></ul></div><div class="panel"><h3>AI 전력수요 <em>5회</em></h3><ul><li>2020년대 들어와서는 탄소중립 실현과 에너지 전환 가속화 그리고 AI 데이터센터 확산에 따른 전력 수요 급증이 전 세계적으로 우선순위로 부상하면서,정부 및 글로벌 기업의 탈탄소 정책, 친환경 기기 개발 투자가 급증하고 있습니다.</li><li>이에 따라 에너지 절약형·고효율 및 친환경 전기기기의 개발ㆍ보급은 미래 성장동력으로 더욱 주목받고 있으며, 전기차, ESS, AI 데이터센터 등 신산업 성장과 함께 산업 혁신과 디지털화가 본격화되고 있습니다.</li></ul></div><div class="panel"><h3>초고압(154·345·765kV) <em>2회</em></h3><ul><li>더불어, 중장기적인 성장기반 확보를 위해 중대형 변압기 시장 진출 및 제품군 확대(154kV 전력용 변압기 등 개발)에 최선을 다하겠습니다.</li><li>더불어, 중장기적인 성장기반 확보를 위해 중대형 변압기 시장 진출 및 제품군 확대(154kV 전력용 변압기 등 개발)를 추진할 계획입니다.</li></ul></div><div class="panel"><h3>북미 유틸리티 <em>1회</em></h3><ul><li>미국 시장은 경쟁이 한층 치열해지는 동시에, 미국 정부의 관세 조치 등 정책적 영향이 늘어날 것으로 예상됩니다.</li></ul></div></div></section><section class="card"><h2>되짚기 <em>이 숫자가 어디서 왔는가</em></h2><p class="mut"><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260813001320" target="_blank" rel="noopener noreferrer">DART 원문 보고서</a><br>KIND 업종 <code>전동기, 발전기 및 전기 변환 · 공급 · 제어 장치 제조업</code><br>편입 근거: 제룡전기 — 송배전용금구류·변압기<br>제품군 판정 근거: 변압기(전압 계급 미상) ← KIND 주요제품「송배전용금구류,변압기」 / 금구류·부자재 ← KIND 주요제품「송배전용금구류,변압기」</p></section></main>
+<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. 수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. 참고용 · 투자조언 아님.</footer>
+</body></html>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""build_dicts — 전력기기 탭의 정적 사전을 코드에서 생성한다(손으로 JSON을 쓰지 않는다).
+"""kgrid_dicts — 전력기기 탭의 정적 사전을 코드에서 생성한다(손으로 JSON을 쓰지 않는다).
 
   assets/products.json   제품군 9갈래 — 품목 문구 → 제품군
   assets/demand.json     수요처 6갈래 — 매출처·계약상대 문구 → 수요처
@@ -14,7 +14,7 @@
 매칭은 길이가 아니라 **우선순위**다. `초고압 변압기`를 길이로 고르면 `변압기`(배전용)가
 이길 수 있다 — 전압 계급이 붙은 이름에 높은 우선순위를 준다.
 
-    python3 build_dicts.py --write
+    python3 kgrid_dicts.py --write
 """
 import argparse
 import re
@@ -33,8 +33,10 @@ PRODUCTS = [
     ("dist_tr",
      ["배전용변압기", "주상변압기", "몰드변압기", "유입변압기", "건식변압기", "지상변압기",
       "패드변압기", "Pad Mount"],
-     ["변압기", "주상", "몰드", "유입", "건식", "변압"],
-     "산일전기 KIND `유입, 몰드, 주상, 건식 변압기 등`·제룡전기 `변압기`"),
+     # 여기에 맨 `변압기` 를 넣으면 안 된다 — 그러면 HD현대일렉트릭(초고압 변압기의 대표
+     # 회사)이 '배전용'으로 분류된다. 계급을 밝히지 않은 `변압기` 는 tr_unknown 의 몫이다.
+     ["주상", "몰드", "유입변압", "건식변압", "패드마운트"],
+     "산일전기 KIND `유입, 몰드, 주상, 건식 변압기 등`·제룡전기 `주상변압기`"),
     ("breaker",
      ["가스절연개폐장치", "가스절연", "GIS개폐장치", "GIS차단기", "진공차단기", "VCB", "GCB",
       "ACB", "기중차단기", "고압차단기", "초고압차단기"],
@@ -64,6 +66,12 @@ PRODUCTS = [
       "전력감시제어", "배전자동화"],
      ["계전기", "보호제어", "감시제어", "RTU", "FRTU", "전력량계", "원격검침", "MOF"],
      "피앤씨테크 `배전자동화단말장치`·비츠로시스 `원방감시제어시스템`·옴니시스템 `전자식전력량계`"),
+    # 원문이 전압 계급을 밝히지 않은 `변압기` — 초고압인지 배전용인지 정하지 않는다.
+    # 강한 어휘를 두지 않는다(강한 어휘가 있으면 ehv·dist_tr 을 이겨 버린다).
+    ("tr_unknown",
+     [],
+     ["변압기", "변압", "중전기", "Transformer"],
+     "HD현대일렉트릭 품목 `변압기, 고압차단기…` — II절 어디에도 `초고압`·`345kV`가 없다(실측)"),
     ("fitting",
      ["송배전금구류", "송배전 금구류", "송변전용금구류", "전기절연유", "변압기유", "탭체인저",
       "부싱", "애자"],
@@ -115,7 +123,7 @@ REGIONS = [
     {"id": "GEN", "ko": "발전소", "en": "Generation", "x": 12, "y": 96, "w": 104, "h": 76,
      "products": [], "note": "이 탭의 모집단이 아니다 — 전력기기의 시작점으로만 그린다"},
     {"id": "STEPUP", "ko": "승압 변전소", "en": "Step-up substation", "x": 140, "y": 76, "w": 128, "h": 116,
-     "products": ["ehv", "breaker", "fitting"],
+     "products": ["ehv", "tr_unknown", "breaker", "fitting"],
      "note": "발전 전압을 345·765kV로 올린다. 초고압 변압기와 가스절연 차단기(GIS)의 자리"},
     {"id": "TRANS", "ko": "송전 선로", "en": "Transmission line", "x": 292, "y": 40, "w": 132, "h": 152,
      "products": ["cable", "fitting"],
@@ -124,7 +132,7 @@ REGIONS = [
      "products": ["ehv", "breaker", "switch", "relay"],
      "note": "전압을 154kV·22.9kV로 낮춘다. 차단기·개폐기·보호계전기가 모인다"},
     {"id": "DIST", "ko": "배전 선로", "en": "Distribution", "x": 604, "y": 76, "w": 132, "h": 116,
-     "products": ["dist_tr", "switch", "cable", "fitting", "relay"],
+     "products": ["dist_tr", "tr_unknown", "switch", "cable", "fitting", "relay"],
      "note": "주상변압기·개폐기·배전자동화 단말. **회전 산업**의 자리다(잔고가 짧다)"},
     {"id": "LOAD", "ko": "수용가", "en": "Customer premises", "x": 760, "y": 56, "w": 188, "h": 156,
      "products": ["switchgear", "converter", "relay"],

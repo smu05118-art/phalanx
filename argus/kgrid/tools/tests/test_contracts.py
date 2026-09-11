@@ -179,12 +179,55 @@ class Classify(unittest.TestCase):
         self.assertIsNone(C.product_of(""))
 
     def test_demand_unknown_stays_none(self):
-        self.assertEqual(C.demand_of("A사", "", "", "", ""), (None, ""))
+        self.assertEqual(C.demand_of("A사", "", "", ""), (None, ""))
 
-    def test_demand_region_is_weak_evidence(self):
-        # 계약상대에서 못 읽으면 공급지역으로만 약하게 판정하고 근거를 낮춰 적는다.
-        key, src = C.demand_of("", "", "", "", "사우디아라비아")
-        self.assertEqual((key, src), ("me_utility", "region"))
+    def test_country_alone_is_not_a_demand(self):
+        # 나라 이름은 수요처가 아니다 — 이집트 계약이라도 발주처가 터널청이면 중동 전력청이
+        # 아니다(엘에스일렉트릭 20251017800268 실측). 지역은 지역 축으로만 싣는다.
+        self.assertEqual(C.demand_of("Bombardier Transportation (BT)", "-",
+                                     "본 계약은 이집트터널청(NAT)에서 발주하여 진행하는 "
+                                     "모노레일 라인 구축의 E&M 과업 계약자인 BT에 당사가 "
+                                     "전력공급 및 배전 시스템을 공급하는 사업임",
+                                     "delivery of Power Supply Monorail"), (None, ""))
+        self.assertEqual(C.region_of("이집트"), "me")
+        self.assertEqual(C.region_of("국내"), "dom")
+        self.assertEqual(C.region_of("미국"), "na")
+        self.assertIsNone(C.region_of("신청주 변전소"))
+
+    def test_note_carries_the_end_customer(self):
+        # 관계사 재발주 건은 주석에만 최종 수요처가 있다(위 KospiForm 과 같은 근거).
+        key, src = C.demand_of("LS ELECTRIC AMERICA Inc.", "자회사",
+                               "- 본 계약은 미국 Big Tech Data Center 에 공급하는 PJT로서, "
+                               "Power Supply System을 수주한 LS ELECTRIC AMERICA Inc.에 "
+                               "당사가 전력공급 및 배전 시스템을 공급하는 사업임",
+                               "Big Tech Data Center PJT")
+        self.assertEqual((key, src), ("datacenter", "note"))
+
+    def test_generic_construction_is_not_industrial(self):
+        # 계약상대가 건설사여도 물건이 공동주택 수배전반이면 '산업 플랜트'가 아니다(광명전기 실측).
+        self.assertEqual(C.demand_of("주식회사 주성산업개발", "-", "",
+                                     "전주시 효자동 본아르떼 공동주택 신축공사"), (None, ""))
+        # 반면 원문이 반도체 팹을 이름으로 말하면 산업 플랜트다.
+        self.assertEqual(C.demand_of("에스케이하이닉스(주)", "-", "",
+                                     "M15X Ph-3 Project_저압 Panel 제작 및 설치")[0], "industrial")
+
+
+class DictCrossRef(unittest.TestCase):
+    """분류 사전 교차참조 — 파서가 쓰는 키가 kgrid_lib 의 축과 같아야 한다(COMMON §4).
+
+    한쪽만 고치면 화면에서 라벨 없는 칩이 생긴다.
+    """
+
+    def test_keys_are_known(self):
+        import kgrid_lib
+        self.assertTrue(set(k for k, _ in C._PRODUCT_RULES) <= set(kgrid_lib.PRODUCT_ORDER))
+        self.assertTrue(set(k for k, _ in C._DEMAND_RULES) <= set(kgrid_lib.DEMAND_ORDER))
+        self.assertTrue(set(k for _, k in C._REGION_RULES) <= set(kgrid_lib.REGION_ORDER))
+
+    def test_every_demand_key_has_a_rule(self):
+        # 스펙이 세운 6갈래 모두에 판정 어휘가 있어야 한다 — 빈 갈래는 화면에서 영원히 0이다.
+        import kgrid_lib
+        self.assertEqual(set(k for k, _ in C._DEMAND_RULES), set(kgrid_lib.DEMAND_ORDER))
 
 
 class Dedup(unittest.TestCase):

@@ -111,13 +111,16 @@ STRONG = re.compile(
     r"유입\s?변압기|건식\s?변압기|전력용\s?변압기|배전용\s?변압기|특고압\s?변압기|"
     r"가스\s?절연|GIS\s?차단기|GIS\s?개폐장치|GIS\s?개폐기|가스절연개폐장치|"
     r"방향성\s?전기강판|무방향성\s?전기강판|규소\s?강판|전기\s?강판|"
+    r"해저\s?전력\s?케이블|지중\s?케이블|지중\s?선로|"
+    r"고온\s?초전도|초전도\s?선재|전력용\s?초전도|초전도\s?한류기|초전도\s?케이블|"
     r"송배전용|전력\s?기자재|전력\s?설비용|수배전\s?설비|"
     r"154\s?kV|345\s?kV|765\s?kV|22\.9\s?kV|66\s?kV|25\.8\s?kV|170\s?kV|362\s?kV|800\s?kV",
     re.I)
 # MID = 전력망을 말할 수도, 아닐 수도 있는 말. 혼자서는 승격 못 한다(선박용 배전반이 이 무리다).
 MID = re.compile(
     r"변압기|차단기|개폐기|배전반|수배전|스위치기어|전력기기|전력설비|계전기|보호계전|"
-    r"전력용|권선|철심|절연물|몰드\s?성형|배전|송전|변전", re.I)
+    r"전력용|권선|철심|절연물|몰드\s?성형|배전|송전|변전|"
+    r"전력\s?케이블|전력선|해저\s?케이블|초전도", re.I)
 # NEG = 같은 낱말을 쓰지만 **전력망이 아닌 곳**. 세는 이유는 판정이 아니라 견제다
 # (대양전기공업의 `배전반`은 선박·철도용이었다 — §--rejudge 실측).
 NEG = re.compile(
@@ -143,17 +146,31 @@ PRIME_NAMES = {
     "LS전선": r"LS전선|엘에스전선",
 }
 
-PROMOTE_STRONG = 6           # 전력망 고유 낱말이 이만큼 나오면 본업이 전력망이다
-PROMOTE_STRONG_WITH_REF = 3  # 한전·체계업체 언급이 받쳐 주면 이만큼으로 충분하다
-PROMOTE_REF = 2              # 받쳐 주는 언급의 최소 합(한전 + 체계업체)
-NEG_RATIO = 3.0              # 비전력망 문맥이 전력망 낱말의 이 배를 넘으면 승격하지 않는다
-RULE = ("II절 본문의 **전력망 고유 낱말**(부싱·탭체인저·절연유·애자·변류기·부스덕트·전력량계·"
-        "송배전·변전소·전력계통·154/345/765kV·가스절연 …) 횟수 s 로 판정한다. "
-        "s ≥ %d, 또는 한국전력공사·전력기기 체계업체 언급 ≥ %d 이면서 s ≥ %d 이면 승격. "
-        "단 비전력망 문맥(선박·철도차량·세대배선·자동차·가전) 낱말이 s 의 %.0f배를 넘으면 승격하지 "
-        "않는다. II절을 못 읽은 회사는 승격하지 않는다(fail-closed). "
+# ── 판정선은 모집단 29사의 실측값으로 맞췄다(`--rejudge` 로 본문을 다 읽어 세어 본 것) ──
+# 전력망 고유 낱말(s)만으로는 선이 서지 않는다 — HD현대일렉트릭 s=1(`전력기자재` 1회)·
+# 엘에스일렉트릭 s=2 다. 이 회사들은 본문에서 `변압기`·`차단기`라고만 쓴다. 반대로
+# 파워넷·대양전기공업·제일일렉트릭·이지트로닉스는 **s=0** 이었다(고유 낱말이 한 번도 안 나온다).
+# 그래서 두 신호를 함께 본다: s 는 **문지기**(0이면 무조건 제외), 점수는 s*3 + mid 로 센다.
+#
+#   실측 점수: 피앤씨테크 365 · 산일전기 283 · 서전기전 204 · 지투파워 125 · 티에스넥스젠 47 ·
+#             엘에스일렉트릭 40 · HD현대일렉트릭 40 · 비츠로테크 37 · 옴니시스템 37 ·
+#             광명전기 23 · 미창석유공업 17 · 가온전선 17 · 제룡전기 16 · 선도전기 16 ·
+#             제룡산업 12  ← 모집단 하한
+#             ✕ 티엠씨 3(선박·해양 케이블) · 이지트로닉스 5 · 대양전기공업 6 · 제일일렉트릭 41(s=0)
+STRONG_WEIGHT = 3
+PROMOTE_SCORE = 12           # s*3 + mid. 모집단 하한(제룡산업 12)에 맞췄다
+PROMOTE_SCORE_WITH_REF = 6   # 한전·체계업체 언급이 받쳐 주면 이만큼으로 충분하다
+PROMOTE_REF = 2              # 받쳐 주는 언급의 최소 합(한국전력공사 + 전력기기 체계업체)
+NEG_RATIO = 2.0              # 비전력망 문맥이 점수의 이 배를 넘으면 승격하지 않는다
+RULE = ("II절 본문에서 **전력망 고유 낱말** s(부싱·탭체인저·절연유·애자·변류기·부스덕트·전력량계·"
+        "송배전·변전소·전력계통·154/345/765kV·가스절연·지중케이블 …)와 **전력망 관련 낱말** mid"
+        "(변압기·차단기·개폐기·배전반·배전·송전 …)를 센다. 점수 = s×%d + mid. "
+        "s ≥ 1(고유 낱말이 하나도 없으면 무조건 제외) 이면서 점수 ≥ %d, 또는 한국전력공사·전력기기 "
+        "체계업체 언급 ≥ %d 이면서 점수 ≥ %d 이면 승격. 단 비전력망 문맥(선박·함정·철도차량·"
+        "세대배선·자동차·가전) 낱말이 점수의 %.0f배를 넘으면 승격하지 않는다. "
+        "II절을 못 읽은 회사·인용문을 못 뽑은 회사는 승격하지 않는다(fail-closed). "
         "`GIS`·`ESS`·`초고압` 단독은 어휘에 넣지 않았다(FINDINGS §1 실측 오탐)."
-        % (PROMOTE_STRONG, PROMOTE_REF, PROMOTE_STRONG_WITH_REF, NEG_RATIO))
+        % (STRONG_WEIGHT, PROMOTE_SCORE, PROMOTE_REF, PROMOTE_SCORE_WITH_REF, NEG_RATIO))
 
 
 # ── 후보 뽑기 ───────────────────────────────────────────────
@@ -265,6 +282,12 @@ def probe_one(rec, quarter):
         row["note"] = title
         return row
     row["title"] = title
+    measure(row, text)
+    return row
+
+
+def measure(row, text):
+    """본문 한 덩어리 → 낱말 횟수·인용문. 어휘를 고치면 원문 캐시로 **다시 셀 수 있게** 떼어 뒀다."""
     strong = _counts(STRONG, text)
     row["terms"] = dict(list(strong.items())[:12])
     row["strong"] = sum(strong.values())
@@ -280,29 +303,60 @@ def probe_one(rec, quarter):
     return row
 
 
+def remeasure(rows, quarter, log=sys.stderr):
+    """원문 캐시(assets/_raw/probe/<분기>/<종목>.txt)가 있으면 **어휘로 다시 센다**.
+
+    낱말을 고쳤을 때 DART 를 다시 두드리지 않기 위한 것이다(COMMON §0-4 — 원문을 남겨 두면
+    파서가 자라도 재수집이 필요 없다). 캐시가 없는 행은 그대로 둔다.
+    """
+    n = 0
+    for st, row in rows.items():
+        p = _raw_path(row.get("quarter") or quarter, st)
+        if not os.path.exists(p):
+            continue
+        with open(p, encoding="utf-8") as f:
+            head = f.readline().rstrip("\n")
+            text = f.read()
+        row["rcp"], _, row["title"] = head.partition("\t")
+        measure(row, text)
+        n += 1
+    if n:
+        log.write("원문 캐시로 다시 센 회사 %d사\n" % n)
+    return rows
+
+
 # ── 판정 ────────────────────────────────────────────────────
+
+def score_of(row):
+    return STRONG_WEIGHT * row.get("strong", 0) + row.get("mid", 0)
+
 
 def judge(row):
     """승격 여부와 사유. 본문을 못 읽었으면 절대 승격하지 않는다(fail-closed)."""
     if not row.get("ok"):
         return False, "II절 본문을 읽지 못했다(%s) — 근거 없이 넣지 않는다" % (row.get("note") or "사유 미상")
-    s, neg = row.get("strong", 0), row.get("neg", 0)
+    s, mid, neg = row.get("strong", 0), row.get("mid", 0), row.get("neg", 0)
+    sc = score_of(row)
     ref = row.get("kepco", 0) + sum((row.get("mentions") or {}).values())
+    negs = ", ".join(list(row.get("neg_terms") or {})[:4])
     if s == 0:
-        return False, "II절 본문에 전력망 고유 낱말이 하나도 없다(전력망 관련 어휘 %d회)" % row.get("mid", 0)
+        return False, ("II절 본문에 전력망 고유 낱말이 하나도 없다(전력망 관련 낱말은 %d회, "
+                       "비전력망 문맥 %d회%s) — 같은 낱말을 다른 산업에서 쓴다"
+                       % (mid, neg, (": " + negs) if negs else ""))
     if not row.get("evidence"):
         return False, "인용문을 뽑지 못했다 — 증거 없는 승격은 하지 않는다"
-    if neg > s * NEG_RATIO:
-        return False, ("전력망 낱말 %d회보다 비전력망 문맥(%s)이 %d회로 압도한다 — 같은 낱말을 다른 "
-                       "산업에서 쓴다" % (s, ", ".join(list(row.get("neg_terms") or {})[:4]), neg))
+    if neg > sc * NEG_RATIO:
+        return False, ("점수 %d(고유 %d·관련 %d)보다 비전력망 문맥(%s)이 %d회로 압도한다 — "
+                       "같은 낱말을 다른 산업에서 쓴다" % (sc, s, mid, negs, neg))
     top = ", ".join("%s %d" % kv for kv in list((row.get("terms") or {}).items())[:4])
-    if s >= PROMOTE_STRONG:
-        return True, "II절 본문에 전력망 고유 낱말 %d회(%s)" % (s, top)
-    if ref >= PROMOTE_REF and s >= PROMOTE_STRONG_WITH_REF:
-        return True, "II절 본문에 전력망 고유 낱말 %d회 + 한전·전력기기 체계업체 언급 %d회(%s)" % (
-            s, ref, ", ".join(sorted((row.get("mentions") or {}).keys())) or "한국전력공사")
-    return False, ("전력망 고유 낱말이 %d회뿐이다(승격선 %d, 한전·체계업체 언급이 받치면 %d) — "
-                   "부수 언급으로 본다" % (s, PROMOTE_STRONG, PROMOTE_STRONG_WITH_REF))
+    if sc >= PROMOTE_SCORE:
+        return True, "점수 %d(고유 낱말 %d회: %s · 관련 낱말 %d회)" % (sc, s, top, mid)
+    if ref >= PROMOTE_REF and sc >= PROMOTE_SCORE_WITH_REF:
+        return True, "점수 %d(고유 낱말 %d회: %s) + 한전·전력기기 체계업체 언급 %d회(%s)" % (
+            sc, s, top, ref, ", ".join(sorted((row.get("mentions") or {}).keys())) or "한국전력공사")
+    return False, ("점수가 %d뿐이다(고유 낱말 %d회·관련 낱말 %d회, 승격선 %d, 한전·체계업체 언급이 "
+                   "받치면 %d) — 부수 언급으로 본다"
+                   % (sc, s, mid, PROMOTE_SCORE, PROMOTE_SCORE_WITH_REF))
 
 
 def role_for(row):
@@ -405,6 +459,8 @@ def build(log=sys.stderr):
     """
     d = load_asset(ROWS)
     rows, quarter = d.get("rows") or {}, d.get("quarter") or ""
+    remeasure(rows, quarter, log)
+    save_rows(rows, quarter)
     promoted, rejected, kept = {}, [], []
     for st in sorted(rows):
         row = rows[st]
