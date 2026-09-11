@@ -491,16 +491,37 @@ function renderOverview(){
 
 /* ============================================================ WIRING ======== */
 const TABS=[['overview','총괄'],['browse','분류'],['ranking','급등·급락'],['curated','큐레이션'],['companies','기업 확정치']];
-function switchTab(id){
+/* 해시 라우팅 — `#ranking` 처럼 특정 탭을 바로 여는 링크를 쓰기 위한 것.
+   기본 탭은 해시 없이 둔다(해시 없는 기존 URL 이 지금과 똑같이 동작해야 하므로).
+   DEFAULT_TAB 이 TABS 첫 항목(overview)이 아닌 이유: 이 대시보드는 원래 부트에서
+   ranking 을 열었다(맨 아래 boot 줄). 부트 탭을 그대로 기본값으로 둬야 동작이 안 바뀐다. */
+const DEFAULT_TAB='ranking';
+function tabFromHash(){let id='';
+  try{id=decodeURIComponent((location.hash||'').slice(1));}catch(e){}  // 깨진 %인코딩(#%)도 조용히 넘긴다
+  return TABS.some(([t])=>t===id)?id:DEFAULT_TAB;}  // 모르는 값은 조용히 기본 탭
+/* try/catch 인 이유: standalone 산출물은 file:// 로 직접 열리는데(build_standalone.py),
+   file:// 문서는 origin 이 null 이라 크롬이 pushState/replaceState 를 거부한다.
+   그 경우 해시만 직접 건드려 폴백한다(기본 탭이면 '#' 만 남지만 읽는 쪽은 동일하게 처리). */
+function writeHash(id,push){const want=id===DEFAULT_TAB?'':'#'+id;
+  if((location.hash||'')===want)return;             // 변화 없으면 히스토리를 건드리지 않는다
+  try{const url=location.pathname+location.search+want;
+    if(push)history.pushState(null,'',url);else history.replaceState(null,'',url);}
+  catch(e){location.hash=id===DEFAULT_TAB?'':id;}
+}
+function switchTab(id,opts){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.id===id));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v_'+id));
   if(id==='overview')renderOverview();
   if(id==='browse')renderBrowse();
   if(id==='curated'&&!curCode){curCode=(TD.curated.order||[])[0];renderCuratedTabs();renderItem(curCode);}
   if(id==='companies')renderCompanies();
+  /* 탭 클릭만 push. 카드·칩 클릭 같은 내부 전환은 replace 라 뒤로가기 기록을 더럽히지 않는다.
+     opts 없이 부르던 기존 호출부(gotoCurated·총괄 카드)는 그래서 그대로 둬도 된다. */
+  const o=opts||{};
+  if(o.hash!==false)writeHash(id,o.push===true);
 }
 function buildTabs(){const box=document.getElementById('tabs');
-  TABS.forEach(([id,label])=>{const t=document.createElement('div');t.className='tab';t.dataset.id=id;t.textContent=label;t.onclick=()=>switchTab(id);box.appendChild(t);});}
+  TABS.forEach(([id,label])=>{const t=document.createElement('div');t.className='tab';t.dataset.id=id;t.textContent=label;t.onclick=()=>switchTab(id,{push:true});box.appendChild(t);});}
 function buildRankingControls(){
   const sc=document.getElementById('sorts');
   SORTS.forEach(([k,label])=>{const b=document.createElement('button');b.className='pill'+(k===state.sort?' on':'');b.textContent=label;
@@ -525,7 +546,8 @@ function syncSort(){
 }
 document.getElementById('src').innerHTML=`source: <a href="${M.source_url}" target="_blank" rel="noopener">ryannronn/trade-dashboard</a> · archived ${M.archived_at}<br>data ${M.ranking_generated_at||M.generated_at} · ${MONTHS[0]}~${MONTHS[MONTHS.length-1]}`;
 buildTabs();buildRankingControls();
-switchTab('ranking');rebuild();
+window.addEventListener('popstate',()=>switchTab(tabFromHash(),{hash:false}));  // 뒤로/앞으로 — URL 이 이미 정답이라 다시 쓰지 않는다
+switchTab(tabFromHash());rebuild();  // 해시가 있으면 그 탭으로, 없으면 예전처럼 기본 탭(ranking)
 </script>
 </body>
 </html>
