@@ -596,10 +596,15 @@ def coverage_html(data, sums):
                 '(방산 낱말 많은 순)</summary><div class="wrap"><table data-sortable><thead><tr>'
                 '<th class="l">회사</th><th>종목코드</th><th class="l">업종</th><th>방산 낱말</th>'
                 '<th class="l">낱말</th><th class="l">체계업체 언급 · 제품</th></tr></thead>'
-                '<tbody>%s</tbody></table></div></details></section>'
+                '<tbody>%s</tbody></table></div></details>%s</section>'
                 % (E(probe.get("quarter", "")), probe.get("n_cand", 0),
                    len(probe.get("promoted") or {}), len(rej), len(probe.get("failed") or []),
-                   E(probe.get("rule", "")), rj))
+                   E(probe.get("rule", "")), rj,
+                   ('<p class="mut" style="font-size:11.5px;margin-top:8px">원문을 못 읽어 판정하지 못한 회사'
+                    '(승격하지 않는다): %s</p>'
+                    % E(", ".join("%s(%s — %s)" % (x["name"], x["stock"], x.get("note", ""))
+                                  for x in (probe.get("failed") or [])[:20])))
+                   if probe.get("failed") else ""))
     body = """
 <section class="card" style="margin-top:0"><h2>모집단 규칙 <em>재현 가능한 네 겹 · 이름으로 넣지 않습니다</em></h2>
 <p style="font-size:12px;color:var(--tx2);line-height:1.8">
