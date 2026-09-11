@@ -1,0 +1,1271 @@
+{
+ "n": 20,
+ "grades": {
+  "customer": {
+   "grade": 1,
+   "ko": "매출처 표"
+  },
+  "order": {
+   "grade": 2,
+   "ko": "수주표 품목"
+  },
+  "contract": {
+   "grade": 3,
+   "ko": "계약공시 상대"
+  },
+  "body": {
+   "grade": 4,
+   "ko": "본문 언급"
+  }
+ },
+ "srcs": {
+  "item": "공시 품목명",
+  "contract": "계약명",
+  "body": "II절 본문",
+  "kind": "KIND 주요제품"
+ },
+ "cos": [
+  {
+   "stock": "012450",
+   "nm": "한화에어로스페이스",
+   "role": "prime",
+   "market": "유가",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "항공기엔진,특수방산장비 제조/정비사업",
+   "source": "업종",
+   "reason": "한화에어로스페이스 — 항공엔진·RSP. 「4. 수주상황(상세)」에 RSP 계약 원장(FINDINGS §3)",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "ENGINE.ACC",
+     "kw": "APU",
+     "src": "item"
+    },
+    {
+     "cat": "ENGINE.TURBINE",
+     "kw": "HPT",
+     "src": "item"
+    },
+    {
+     "cat": "SPACE.BUS",
+     "kw": "위성 시스템",
+     "src": "item"
+    },
+    {
+     "cat": "SPACE.GROUND",
+     "kw": "지상국",
+     "src": "item"
+    },
+    {
+     "cat": "SPACE.LAUNCH",
+     "kw": "추진기관",
+     "src": "item"
+    },
+    {
+     "cat": "AVION.SENSOR",
+     "kw": "전자광학",
+     "src": "item"
+    },
+    {
+     "cat": "SVC.MRO",
+     "kw": "MRO",
+     "src": "item"
+    }
+   ],
+   "customers": [
+    {
+     "name": "GE Aerospace",
+     "tier": "oem",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 KRW 346,163",
+     "backlog": {
+      "KRW": 346163
+     }
+    },
+    {
+     "name": "Pratt & Whitney",
+     "tier": "oem",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 KRW 11,309,229",
+     "backlog": {
+      "KRW": 11309229
+     }
+    },
+    {
+     "name": "쎄트렉아이",
+     "tier": "prime",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 KRW 557,442",
+     "backlog": {
+      "KRW": 557442
+     }
+    },
+    {
+     "name": "한화에어로스페이스",
+     "tier": "prime",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 KRW 31,723,101",
+     "backlog": {
+      "KRW": 31723101
+     }
+    },
+    {
+     "name": "Rolls-Royce",
+     "tier": "oem",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한화시스템",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "272210",
+     "detail": "II-4 본문에 이름"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "047810",
+   "nm": "한국항공우주",
+   "role": "prime",
+   "market": "유가",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "정부방산 및 완제기 수출(T-50계열, KUH계열, KT-1계열 등), 기체부품",
+   "source": "업종",
+   "reason": "한국항공우주 — 완제기·기체부품. 잔고배수 7.5년으로 이 산업 최장(FINDINGS)",
+   "seen": true,
+   "cats": [],
+   "customers": [
+    {
+     "name": "Airbus",
+     "tier": "oem",
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "B",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「Airbus 계열」 비중 11.1%",
+     "amount": 245707,
+     "share": 11.06,
+     "raw": "Airbus 계열"
+    },
+    {
+     "name": "Boeing",
+     "tier": "oem",
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "B",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「Boeing 계열」 비중 9.1%",
+     "amount": 201518,
+     "share": 9.07,
+     "raw": "Boeing 계열"
+    },
+    {
+     "name": "Embraer",
+     "tier": "oem",
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "B",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「IAI, EMBRAER 등」 비중 1.6%",
+     "amount": 34690,
+     "share": 1.56,
+     "raw": "IAI, EMBRAER 등"
+    },
+    {
+     "name": "방위사업청 등",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「방위사업청 등」 비중 48.2%",
+     "amount": 1072101,
+     "share": 48.24,
+     "raw": "방위사업청 등"
+    },
+    {
+     "name": "폴란드 등완제기 수출국",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「폴란드 등완제기 수출국」 비중 30.1%",
+     "amount": 668228,
+     "share": 30.07,
+     "raw": "폴란드 등완제기 수출국"
+    },
+    {
+     "name": "IAI",
+     "tier": "tier1",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한국항공우주",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "047810",
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한국항공우주연구원",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한화시스템",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "272210",
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한화에어로스페이스",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "012450",
+     "detail": "II-4 본문에 이름"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "067390",
+   "nm": "아스트",
+   "role": "struct",
+   "market": "코스닥",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "항공기용 부품 제조 및 동체 조립",
+   "source": "업종",
+   "reason": "아스트 — 동체(Section48)·벌크헤드. 국외수주 USD 표·국내수주 원 표 분리(FINDINGS §1)",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "STRUCT.FUSELAGE",
+     "kw": "동체",
+     "src": "kind"
+    },
+    {
+     "cat": "STRUCT.WING",
+     "kw": "U/L Deck",
+     "src": "item"
+    }
+   ],
+   "customers": [
+    {
+     "name": "Bombardier",
+     "tier": "oem",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 USD 29",
+     "backlog": {
+      "USD": 29.113
+     }
+    },
+    {
+     "name": "Embraer",
+     "tier": "oem",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 USD 1,461",
+     "backlog": {
+      "USD": 1461.075
+     }
+    },
+    {
+     "name": "IAI",
+     "tier": "tier1",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 USD 49",
+     "backlog": {
+      "USD": 49.677
+     }
+    },
+    {
+     "name": "RUAG",
+     "tier": "tier1",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 USD 30",
+     "backlog": {
+      "USD": 30.441
+     }
+    },
+    {
+     "name": "Spirit",
+     "tier": "tier1",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 USD 901",
+     "backlog": {
+      "USD": 901.208
+     }
+    },
+    {
+     "name": "TAI",
+     "tier": "tier1",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 USD 36",
+     "backlog": {
+      "USD": 36.595
+     }
+    },
+    {
+     "name": "대한항공",
+     "tier": "prime",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "C",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 KRW 244",
+     "backlog": {
+      "KRW": 244.239
+     }
+    },
+    {
+     "name": "Boeing",
+     "tier": "oem",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "221840",
+   "nm": "하이즈항공",
+   "role": "struct",
+   "market": "코스닥",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "B787 날개구조물 등",
+   "source": "업종",
+   "reason": "하이즈항공 — B787 날개구조물. 매출처 각주에 `BOE(Boeing Commercial Airplanes)`",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "STRUCT.WING",
+     "kw": "날개 구조",
+     "src": "kind"
+    }
+   ],
+   "customers": [
+    {
+     "name": "Boeing",
+     "tier": "oem",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "SAMC",
+     "tier": "oem",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "대한항공",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "003490",
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한국항공우주",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "047810",
+     "detail": "II-4 본문에 이름"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "274090",
+   "nm": "켄코아에어로스페이스",
+   "role": "struct",
+   "market": "코스닥",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "항공가공품 및 조립품",
+   "source": "업종",
+   "reason": "켄코아에어로스페이스 — 항공가공품·조립품. 표 안에 통화가 섞인다(FINDINGS §6)",
+   "seen": false,
+   "cats": [],
+   "customers": [],
+   "n_contracts": 0
+  },
+  {
+   "stock": "288180",
+   "nm": "케이피항공산업",
+   "role": "struct",
+   "market": "코스닥",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "항공기 및 우주 방산 구조물 제작",
+   "source": "업종",
+   "reason": "케이피항공산업 — 항공·우주 방산 구조물. 수주표가 없고 매출처 표만 있다(FINDINGS §2)",
+   "seen": true,
+   "cats": [],
+   "customers": [
+    {
+     "name": "㈜스페이스프로",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「㈜스페이스프로」",
+     "amount": 8370,
+     "share": null,
+     "raw": "㈜스페이스프로"
+    },
+    {
+     "name": "대한항공",
+     "tier": "prime",
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "B",
+     "stock": "003490",
+     "detail": "2026Q2 매출처 표 「㈜대한항공」",
+     "amount": 8660,
+     "share": null,
+     "raw": "㈜대한항공"
+    },
+    {
+     "name": "한국항공우주",
+     "tier": "prime",
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "B",
+     "stock": "047810",
+     "detail": "2026Q2 매출처 표 「한국항공우주산업㈜」",
+     "amount": 4858,
+     "share": null,
+     "raw": "한국항공우주산업㈜"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "099320",
+   "nm": "쎄트렉아이",
+   "role": "space",
+   "market": "코스닥",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "인공위성시스템, 위성지상국, 위성부분품 개발 및 제조",
+   "source": "업종",
+   "reason": "KIND 업종 `항공기,우주선 및 부품 제조업`",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "SPACE.BUS",
+     "kw": "위성 시스템",
+     "src": "item"
+    },
+    {
+     "cat": "SPACE.GROUND",
+     "kw": "위성영상",
+     "src": "item"
+    }
+   ],
+   "customers": [],
+   "n_contracts": 0
+  },
+  {
+   "stock": "361390",
+   "nm": "제노코",
+   "role": "space",
+   "market": "코스닥",
+   "industry": "통신 및 방송 장비 제조업",
+   "prod_raw": "위성탑재체, 위성운용국, 항공전자 등",
+   "source": "제품",
+   "reason": "KIND 주요제품 문구에 `위성탑재체` — 위성탑재체, 위성운용국, 항공전자 등",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "SPACE.GROUND",
+     "kw": "위성운용국",
+     "src": "kind"
+    },
+    {
+     "cat": "SPACE.PAYLOAD",
+     "kw": "탑재체",
+     "src": "kind"
+    }
+   ],
+   "customers": [
+    {
+     "name": "Airbus",
+     "tier": "oem",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "Boeing",
+     "tier": "oem",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "Lockheed",
+     "tier": "oem",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "대한항공",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "003490",
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한국항공우주",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "047810",
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한국항공우주연구원",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한화시스템",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "272210",
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한화에어로스페이스",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "012450",
+     "detail": "II-4 본문에 이름"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "451760",
+   "nm": "컨텍",
+   "role": "space",
+   "market": "코스닥",
+   "industry": "컴퓨터 프로그래밍, 시스템 통합 및 관리업",
+   "prod_raw": "지상국 시스템 엔지니어링 솔루션, 위성영상 생성을 위한 데이터처리 솔루션",
+   "source": "제품",
+   "reason": "KIND 주요제품 문구에 `지상국` — 지상국 시스템 엔지니어링 솔루션, 위성영상 생성을 위한 데이터처리 솔루션",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "SPACE.GROUND",
+     "kw": "위성영상",
+     "src": "item"
+    }
+   ],
+   "customers": [
+    {
+     "name": "A사",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「A사」 비중 16.6%",
+     "amount": 6022,
+     "share": 16.63,
+     "raw": "A사"
+    },
+    {
+     "name": "P사",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「P사」 비중 16.7%",
+     "amount": 6030,
+     "share": 16.66,
+     "raw": "P사"
+    },
+    {
+     "name": "Q사",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「Q사」 비중 5.0%",
+     "amount": 1816,
+     "share": 5.01,
+     "raw": "Q사"
+    },
+    {
+     "name": "Y사",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「Y사」 비중 5.1%",
+     "amount": 1843,
+     "share": 5.09,
+     "raw": "Y사"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "462350",
+   "nm": "이노스페이스",
+   "role": "space",
+   "market": "코스닥",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "소형발사체, 로켓추진기관, 과학로켓, 시험평가용역",
+   "source": "업종",
+   "reason": "이노스페이스 — 소형발사체·로켓추진기관",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "SPACE.LAUNCH",
+     "kw": "추진기관",
+     "src": "item"
+    }
+   ],
+   "customers": [],
+   "n_contracts": 0
+  },
+  {
+   "stock": "474170",
+   "nm": "루미르",
+   "role": "space",
+   "market": "코스닥",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "인공위성 시스템 및 전장품, 위성 영상 및 정보",
+   "source": "업종",
+   "reason": "루미르 — 인공위성 시스템·전장품",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "SPACE.BUS",
+     "kw": "위성 시스템",
+     "src": "kind"
+    },
+    {
+     "cat": "SPACE.GROUND",
+     "kw": "위성영상",
+     "src": "kind"
+    }
+   ],
+   "customers": [
+    {
+     "name": "한국항공우주",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "047810",
+     "detail": "II-4 본문에 이름"
+    },
+    {
+     "name": "한국항공우주연구원",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "478340",
+   "nm": "나라스페이스테크놀로지",
+   "role": "space",
+   "market": "코스닥",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "초소형 인공위성 및 위성 데이터 서비스",
+   "source": "업종",
+   "reason": "KIND 업종 `항공기,우주선 및 부품 제조업`",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "SPACE.BUS",
+     "kw": "인공위성",
+     "src": "kind"
+    },
+    {
+     "cat": "SPACE.GROUND",
+     "kw": "위성영상",
+     "src": "item"
+    }
+   ],
+   "customers": [
+    {
+     "name": "주식회사 제노코",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「주식회사 제노코」",
+     "amount": 0,
+     "share": 0.0,
+     "raw": "주식회사 제노코"
+    },
+    {
+     "name": "한국천문연구원",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「한국천문연구원」",
+     "amount": 0,
+     "share": 0.0,
+     "raw": "한국천문연구원"
+    },
+    {
+     "name": "한국항공우주",
+     "tier": "prime",
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "B",
+     "stock": "047810",
+     "detail": "2026Q2 매출처 표 「한국항공우주연구원」 비중 2.3%",
+     "amount": 54.545,
+     "share": 2.31,
+     "raw": "한국항공우주연구원"
+    },
+    {
+     "name": "한화시스템",
+     "tier": "prime",
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "B",
+     "stock": "272210",
+     "detail": "2026Q2 매출처 표 「한화시스템(주)」 비중 52.4%",
+     "amount": 1235.812,
+     "share": 52.35,
+     "raw": "한화시스템(주)"
+    },
+    {
+     "name": "한국항공우주연구원",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "488900",
+   "nm": "비츠로넥스텍",
+   "role": "space",
+   "market": "코스닥",
+   "industry": "항공기,우주선 및 부품 제조업",
+   "prod_raw": "로켓연소기 및 가스발생기, 초전도가속장치, 핵융합 플라즈마 대향장치 등 제조",
+   "source": "업종",
+   "reason": "KIND 업종 `항공기,우주선 및 부품 제조업`",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "ENGINE.COMBUST",
+     "kw": "연소기",
+     "src": "item"
+    },
+    {
+     "cat": "SPACE.LAUNCH",
+     "kw": "연소기",
+     "src": "item"
+    }
+   ],
+   "customers": [
+    {
+     "name": "고객1",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「고객1」",
+     "amount": 3833.756,
+     "share": null,
+     "raw": "고객1"
+    },
+    {
+     "name": "고객2",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「고객2」",
+     "amount": 2368.793,
+     "share": null,
+     "raw": "고객2"
+    },
+    {
+     "name": "고객3",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「고객3」",
+     "amount": 2177.819,
+     "share": null,
+     "raw": "고객3"
+    },
+    {
+     "name": "고객4",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「고객4」",
+     "amount": 1815.712,
+     "share": null,
+     "raw": "고객4"
+    },
+    {
+     "name": "고객5",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「고객5」",
+     "amount": 1104.038,
+     "share": null,
+     "raw": "고객5"
+    },
+    {
+     "name": "한화에어로스페이스",
+     "tier": "prime",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": "012450",
+     "detail": "II-4 본문에 이름"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "003490",
+   "nm": "대한항공",
+   "role": "part",
+   "market": "유가",
+   "industry": "항공 여객 운송업",
+   "prod_raw": "여객운송,화물운송,항공기 제조,판매,정비수리/기내식 제조판매,면세품 판매",
+   "source": "탐색",
+   "reason": "II-4 표의 부문·품목 이름 ['2. 항공우주사업', '군용기MROU', '무인기', '항공기체'] — 항공·우주 사업이 표로 구분돼 있다",
+   "seen": false,
+   "cats": [
+    {
+     "cat": "SVC.MRO",
+     "kw": "MRO",
+     "src": "body"
+    }
+   ],
+   "customers": [],
+   "n_contracts": 0
+  },
+  {
+   "stock": "046120",
+   "nm": "오르비텍",
+   "role": "part",
+   "market": "코스닥",
+   "industry": "기타 과학기술 서비스업",
+   "prod_raw": "방사선안전관리, 항공기 정밀부품 제조 등",
+   "source": "제품",
+   "reason": "KIND 주요제품 문구에 `항공기` — 방사선안전관리, 항공기 정밀부품 제조 등",
+   "seen": true,
+   "cats": [],
+   "customers": [
+    {
+     "name": "ISI 사업",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「ISI 사업」 비중 6.2%",
+     "amount": 6816.185,
+     "share": 6.23,
+     "raw": "ISI 사업"
+    },
+    {
+     "name": "Spirit",
+     "tier": "tier1",
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "B",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「SPIRIT AEROSYSTEMS INC」 비중 12.4%",
+     "amount": 4821.537,
+     "share": 12.37,
+     "raw": "SPIRIT AEROSYSTEMS INC"
+    },
+    {
+     "name": "㈜에이에스티지",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「㈜에이에스티지」",
+     "amount": 0,
+     "share": 0.0,
+     "raw": "㈜에이에스티지"
+    },
+    {
+     "name": "기타(㈜파인테크닉스)",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「기타(㈜파인테크닉스)」 비중 23.0%",
+     "amount": 8970.254,
+     "share": 23.02,
+     "raw": "기타(㈜파인테크닉스)"
+    },
+    {
+     "name": "원자력사업",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「원자력사업」 비중 9.3% · 2026Q2 매출처 표 「원자력사업」 비중 0.1%",
+     "amount": 3637.299,
+     "share": 9.33,
+     "raw": "원자력사업"
+    },
+    {
+     "name": "주식회사아스트",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「주식회사아스트」 비중 26.3%",
+     "amount": 10251.769,
+     "share": 26.31,
+     "raw": "주식회사아스트"
+    },
+    {
+     "name": "한국수력원자력㈜",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「한국수력원자력㈜」 비중 10.6% · 2026Q2 매출처 표 「한국수력원자력㈜」 비중 11.3%",
+     "amount": 4129.349,
+     "share": 10.6,
+     "raw": "한국수력원자력㈜"
+    },
+    {
+     "name": "한전KPS㈜",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「한전KPS㈜」 비중 1.5%",
+     "amount": 2429.287,
+     "share": 1.54,
+     "raw": "한전KPS㈜"
+    },
+    {
+     "name": "항공사업",
+     "tier": null,
+     "basis": "customer",
+     "basis_ko": "매출처 표",
+     "grade": 1,
+     "evidence": "A",
+     "stock": null,
+     "detail": "2026Q2 매출처 표 「항공사업」 비중 0.8%",
+     "amount": 315.475,
+     "share": 0.81,
+     "raw": "항공사업"
+    },
+    {
+     "name": "Boeing",
+     "tier": "oem",
+     "basis": "body",
+     "basis_ko": "본문 언급",
+     "grade": 4,
+     "evidence": "B",
+     "stock": null,
+     "detail": "II-4 본문에 이름"
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "214430",
+   "nm": "아이쓰리시스템",
+   "role": "part",
+   "market": "코스닥",
+   "industry": "전자부품 제조업",
+   "prod_raw": "적외선 영상센서, 엑스레이 영상센서",
+   "source": "탐색",
+   "reason": "II-4 표의 부문·품목 이름 ['다목적 실용위성 7A호 전자광학 탑재체 초점면유닛(FPU) 개발'] — 항공·우주 사업이 표로 구분돼 있다",
+   "seen": false,
+   "cats": [
+    {
+     "cat": "SPACE.PAYLOAD",
+     "kw": "광학탑재",
+     "src": "body"
+    },
+    {
+     "cat": "AVION.SENSOR",
+     "kw": "전자광학",
+     "src": "body"
+    }
+   ],
+   "customers": [],
+   "n_contracts": 0
+  },
+  {
+   "stock": "258610",
+   "nm": "케일럼",
+   "role": "part",
+   "market": "코스닥",
+   "industry": "구조용 금속제품, 탱크 및 증기발생기 제조업",
+   "prod_raw": "지열발전설비, 항공기MRO, 항공부품제조",
+   "source": "제품",
+   "reason": "KIND 주요제품 문구에 `항공기` — 지열발전설비, 항공기MRO, 항공부품제조",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "ENGINE.COMBUST",
+     "kw": "Nozzle",
+     "src": "item"
+    },
+    {
+     "cat": "SVC.MRO",
+     "kw": "MRO",
+     "src": "kind"
+    }
+   ],
+   "customers": [
+    {
+     "name": "GE Aerospace",
+     "tier": "oem",
+     "basis": "order",
+     "basis_ko": "수주표 품목",
+     "grade": 2,
+     "evidence": "B",
+     "stock": null,
+     "detail": "수주표 품목 열에 이름 — 잔고 KRW 41,712",
+     "backlog": {
+      "KRW": 41712
+     }
+    }
+   ],
+   "n_contracts": 0
+  },
+  {
+   "stock": "347700",
+   "nm": "스피어",
+   "role": "part",
+   "market": "코스닥",
+   "industry": "소프트웨어 개발 및 공급업",
+   "prod_raw": "우주항공산업 관련 부품 등 판매 / 디지털헬스 소프트웨어 개발 및 공급",
+   "source": "제품",
+   "reason": "KIND 주요제품 문구에 `우주항공` — 우주항공산업 관련 부품 등 판매 / 디지털헬스 소프트웨어 개발 및 공급",
+   "seen": true,
+   "cats": [],
+   "customers": [],
+   "n_contracts": 0
+  },
+  {
+   "stock": "484590",
+   "nm": "삼양컴텍",
+   "role": "part",
+   "market": "코스닥",
+   "industry": "무기 및 총포탄 제조업",
+   "prod_raw": "방위산업방탄제품(K-SAP, 유리섬유제품, 방탄헬멧, 위장망, 방탄복), 항공기부품 제조, 도매, 무역",
+   "source": "제품",
+   "reason": "KIND 주요제품 문구에 `항공기` — 방위산업방탄제품(K-SAP, 유리섬유제품, 방탄헬멧, 위장망, 방탄복), 항공기부품 제조, 도매, 무역",
+   "seen": true,
+   "cats": [],
+   "customers": [],
+   "n_contracts": 0
+  },
+  {
+   "stock": "487400",
+   "nm": "케이앤에스아이앤씨",
+   "role": "part",
+   "market": "코스닥",
+   "industry": "통신 및 방송 장비 제조업",
+   "prod_raw": "군용 위성통신안테나(잠수함용, 수상함용, 무인항공기용 등), 해상용 위성통신안테나(VSAT, TVRO), ESA 평판안테나",
+   "source": "제품",
+   "reason": "KIND 주요제품 문구에 `항공기` — 군용 위성통신안테나(잠수함용, 수상함용, 무인항공기용 등), 해상용 위성통신안테나(VSAT, TVRO), E",
+   "seen": true,
+   "cats": [
+    {
+     "cat": "AVION.COMM",
+     "kw": "위성통신 안테나",
+     "src": "kind"
+    }
+   ],
+   "customers": [],
+   "n_contracts": 0
+  }
+ ]
+}
