@@ -2398,3 +2398,44 @@ const escEm = s => esc(s).replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>');
 새 fixture `char_modal_prose` 에는 그 화면을 겨눈 대조군
 `char_prose_emphasis_removed` 를 같이 넣었다(9/9 → 10/10). 대조군이 없으면
 "별표가 없다" 단정은 모달이 비어 있어도 통과한다.
+
+## 라운드 34 (자동 12회차) — A35~A38 · PR #55
+
+**Fable 은 여전히 크레딧 소진 상태다**(반박 서브에이전트 2개가 `HTTP 429` 로 즉사).
+공식 대조는 직접 했다 — 로컬 `roles181.json`·`jinxes.json` 에 더해 위키 4쪽을 읽었다.
+
+| 건 | 공식 근거 | 앱이 적었던 것 |
+|---|---|---|
+| A35 곡예사 | ability "On **your** 1st day … **That night**" · 위키 예시 "During the fourth night, the Savant gets turned into the Juggler. **The next day**, the new Juggler guesses…" · 공식 징크스 "If the Juggler guesses on **their** first day" | 백과가 "**둘째 밤에만** 깨워 … 이후로는 깨우지 않는다" 로 게임 일차에 고정 |
+| A36 매춘부 | 위키 절차 "You may decide that **both** players die—mark them with DEAD reminders." | 백과가 "**누가 죽을지**는 사회자 재량" · "중독·취함이어도 사망 판정은 그대로 재량" · 예시가 한 명만 죽임 |
+| A37 픽시 | 용어집 Mad: "if the Storyteller thinks that a player has not put effort …, then **a penalty may apply**" — 벌칙 종류는 없음. 위키 Pixie 절차는 능력 미획득만 말한다 | 경고가 "처벌할 수 있다(**중독·거짓 정보 등**)" 로 벌칙을 창작 |
+| A38 연금술사 | 위키 "The Alchemist's ability is **usually** that of a not-in-play Minion, **but can duplicate an in-play Minion ability**." | 경고가 "게임에 없는 하수인 **중에서 고른다**" 로 금지처럼 적음 |
+
+### A37 은 전부 지우면 안 되는 건이었다
+
+지적서는 "광기 실패 처벌은 창작"이라 했지만, 공식 **용어집에는 벌칙 조항이 실제로 있다**
+("a penalty may apply"). 창작인 것은 **벌칙의 종류**(중독·거짓 정보)다. 그래서 조항은 남기고
+종류만 지웠고, 공식이 픽시에 대해 말하는 결과(능력 미획득)를 대신 적었다.
+덧붙여 중독·거짓 정보를 벌로 쓰면 수학자·점쟁이 판정까지 오염된다는 이유도 적었다 —
+이건 공식 문장이 아니라 이 앱의 엔진이 실제로 그렇게 동작하기 때문이다.
+
+지적서를 그대로 따랐으면 근거 있는 조항까지 지울 뻔했다.
+
+### 연금술사 징크스에서 한 번 틀렸다가 정정했다
+
+`{a:'alchemist',b:'...'}` 패턴으로 grep 해서 앱에 5쌍뿐이고 공식은 8쌍이니
+**3개가 빠졌다**고 판단했다. 틀렸다 — 앱은 징크스를 여러 문법으로 정의하고,
+그 패턴은 한 가지만 잡는다. 전체 대조를 다시 하니 **공식 131쌍이 앱에 전부 있었다**(누락 0).
+
+대신 반대 방향에서 진짜 물음이 나왔다: 앱에는 **공식 스냅샷에 없는 쌍이 15개** 있다.
+더 새 버전일 수도, 만들어 낸 것일 수도 있다 — `A57` 로 백로그에 적었다.
+
+교훈: **한 가지 패턴의 grep 으로 "없다"를 결론내지 마라.** 같은 데이터가 여러 문법으로
+적혀 있을 수 있다. 없음을 주장하려면 양쪽 집합을 다 만들어 차집합을 봐야 한다.
+
+### 문구만 고친 라운드도 DOM 으로 관측되게 했다
+
+처음 게이트를 돌렸더니 **프레임 차이 0** 이었다. 고친 네 캐릭터의 모달을 여는 fixture 가
+없었기 때문이다 — 게이트가 통과한 게 아니라 **보지 못한** 것이다.
+`char_modal_prose` 에 juggler·harlot·pixie·alchemist 프레임을 넣자 차이가 정확히 4프레임
+(전부 `html`, 상태·스토리지·핸들러는 그대로)으로 잡혔고, 그 본문을 읽어 의도한 문장인지 확인했다.
