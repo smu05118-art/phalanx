@@ -180,13 +180,14 @@ def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel
                E(cm["ko"]), nm,
                (amt or 0), fmt_eok(amt), (c["years"] if c["years"] is not None else -1),
                fmt_x(c["years"]) if c["years"] is not None else "—",
-               party, E(PARTY_KO.get(c["party_kind"], c["party_kind"])),
+               party, E(PARTY_KO.get(c["party_kind"], c["party_kind"]))
+               + ((" · " + E(c["region"])) if (c.get("region") or "").strip("- ") else ""),
                E((c["start"] or "—") + " ~ " + (c["end"] or "—")),
                E(DART % c["rcp"]),
                ' <span class="pill">정정</span>' if c.get("corrected") else ""))
     head = ('<tr><th class="l">수주일</th>%s<th class="l">계통</th><th class="l">유형</th>'
             '<th class="l">사업명(체결계약명)</th><th>금액(억)</th><th>기간(년)</th>'
-            '<th class="l">계약상대</th><th class="l">계약기간</th><th class="l">출처</th></tr>'
+            '<th class="l">계약상대 · 공급지역</th><th class="l">계약기간</th><th class="l">출처</th></tr>'
             % ('<th class="l">회사</th>' if show_company else ""))
     return ('<div class="ctl"><input data-filter="#%s" type="search" placeholder="사업명·계통·유형·상대 검색"></div>'
             '<div class="wrap tall"><table id="%s" data-sortable><thead>%s</thead><tbody>%s</tbody></table></div>'
@@ -316,7 +317,8 @@ def company_html(s, data):
     parts_html = ""
     if sup.get("cats"):
         chips = " ".join(_chip(cat_ko(data, h["cat"]), None, href="../parts.html#" + h["cat"],
-                               title="근거: %s 「%s」" % ({"contract": "계약명", "body": "II절 본문",
+                               title="근거: %s 「%s」" % ({"contract": "계약명", "report": "정기보고서 제품 절",
+                                                        "body": "II절 본문",
                                                         "kind": "KIND 주요제품"}.get(h["src"], h["src"]),
                                                        h["kw"]))
                          for h in sup["cats"])
