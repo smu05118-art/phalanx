@@ -10,11 +10,23 @@
 - [x] `scout_lib.py` — kce/kship 도구 import 층 + KIND 캐시
 - [x] `scout_peek.py` — 원문 육안 확인 CLI
 - [x] **원문 3건 직접 확인**(아래 §원문 확인)
-- [ ] `scout_sectors.py` — 후보 산업 정의 + 표본 선정
-- [ ] `scout_probe.py` — 회사별 수주 절 관측
-- [ ] `scout_contracts.py` — 단일판매·공급계약 공시 건수(최근 2년)
-- [ ] `scout_score.py` — 산업별 집계·점수
-- [ ] `scout_report.md` · `scout_evidence.json`
+- [x] `scout_sectors.py` — 후보 산업 15개(보정 2개 포함) 정의 + 표본 97사 선정(`assets/sample.json`)
+- [x] `scout_probe.py` — 회사별 수주 절 관측(`assets/probe_cache/`, 절 원문 `assets/probe_html/`)
+- [x] `scout_contracts.py` — 「단일판매ㆍ공급계약체결」 2년 건수 97사(`assets/contracts.json`, 12사는 검색상한 도달 `capped`)
+- [x] 파서 보정 3건(아래 §파서 보정) 후 97사 **전량 재관측**(`--force`)
+- [ ] `scout_score.py --write` → `argus/_specs/scout_evidence.json`
+- [ ] `argus/_specs/scout_report.md` — 섹터 표 · 상위 3개 탭 스펙 초안 · '만들지 말 것' 목록
+- [ ] `/tmp/scout.done`
+
+## 재현 명령
+
+```sh
+cd argus/_specs/scout_tools
+python3 scout_sectors.py --write                      # 표본 선정(DART 안 씀)
+for s in npp power batt_eq disp_eq rail; do python3 scout_probe.py --sector $s --quarter 2025Q4; done  # 3그룹 병렬
+python3 scout_contracts.py --end 20260911
+python3 scout_score.py --write
+```
 
 ## 원문 확인 (가설 → 실측)
 
@@ -40,3 +52,19 @@
 
 → 세 건 모두 II-4에 수주표가 있고 **기업공시서식 표준 양식(수주총액·기납품액·수주잔고)** 또는
   **롤포워드(기초·증감·기말)** 둘 중 하나다. 두 모양을 다 받는 파서를 만든다(kce의 COL_ALIAS가 이미 전자를 안다).
+
+## 파서 보정 (관측 중 원문에서 드러난 것 — 모두 scout_probe.py)
+
+4. **`[첨부정정] 사업보고서`의 목차는 두 줄뿐이다** — 한화에어로스페이스 012450 `20260319000633`의
+   목차는 「정 정 신 고」·「영 업 보 고 서」뿐이고 II-4가 없다. `pick_report`가 제목 기준월이 맞는
+   정정본을 맨 앞에 놓으므로 첫 후보만 열면 `none_sec`로 오판한다(같은 사고 4사: 012450·023160·
+   033500·288180). → **후보 3건까지 목차를 열어 수주 절이 있는 문서를 고른다.**
+   재관측 결과 012450 잔고 116,800,729 / 매출 26,702,901 백만원 → **×4.37**.
+5. **단위 캡션만 담은 껍데기 표** — SFA 056190은 `(단위 : 백만원)` 한 칸짜리 표를 앞에 두고
+   실제 매출실적 표를 그 뒤에 놓는다. 껍데기를 버리면 소절 제목('(1) 매출실적')과 단위가 같이
+   사라져 뒤 표가 분류도 단위 확인도 안 된다. → **껍데기의 lead·캡션을 다음 표로 넘긴다.**
+   (금호건설 002990처럼 머리행 자리 전체가 캡션인 표도 같은 방식으로 캡션을 lead로 옮긴다.)
+6. **매출실적 소절 제목 방언** — 세명전기 017510은 '가. **매출에 관한 사항**'이고 열은
+   `사업부문|품 목|제42기…`로 '매출액'이라는 낱말이 어디에도 없다. → 제목 방언 목록
+   (`_SALES_CUE`)에 넣고, 표 모양(기수/연도 열 또는 부문·품목 라벨)을 함께 요구한다.
+   금호건설 002990은 II-4에 매출실적 표가 아예 없다(주요공사현황=시공실적뿐) → **매출 미확인으로 남긴다**.
