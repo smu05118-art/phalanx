@@ -1413,7 +1413,14 @@ const ROSTER_FIELDS = () => ({id:'', name:'', affil:'', age:null, mbti:'', creat
 const blank = () => ({
   phase:{kind:'setup', n:0},
   players:[], log:[], nightDone:{}, dayDone:{}, checks:{}, noms:[],
-  edition:'tb', redHerringId:null, drunkMaskChar:null, executedToday:null, executedPrevDay:null,
+  /* 세 좌석은 '자기가 무엇이라고 믿는가'가 실제 캐릭터와 다르다 — 앱이 이미 셋을 같은
+     '정체 오인(mask)' 부류로 분류해 두었다(SG_SRC). 그런데 배포 토큰을 고르는 자리는
+     주정뱅이 하나만 보고 있었다. 나머지 둘의 필드를 나란히 둔다.
+     **믿는 캐릭터는 앱이 기본값을 고르지 않는다** — 공식은 미치광이가 어느 악마를 믿는지
+     정하지 않는다(ability 는 "a Demon"). 사회자가 고를 때까지 null 이고, null 이면 릴레이는
+     그 좌석을 아예 열지 않는다. */
+  edition:'tb', redHerringId:null, drunkMaskChar:null, lunaticMaskChar:null, marionetteMaskChar:null,
+  executedToday:null, executedPrevDay:null,
   customs:[], roster:[], nomSeq:1, theme:'auto', poCharged:false, exorcistPrev:null, daPrev:null,
   pukkaVictimId:null, mastermindDay:null, executedTodayPid:null, executedDiedToday:null,
   fangGuJumped:false, demonBlockedNight:null, demonBlockedPid:null, dayTimer:null,
@@ -2973,6 +2980,10 @@ function advancePhase(){
     if(ft && !S.redHerringId){ toast('점쟁이가 있습니다 — 붉은 청어를 먼저 지정하세요(설정 탭).','warn'); return; }
     const dr=S.players.find(p=>p.charId==='drunk');
     if(dr && !S.drunkMaskChar){ toast('주정뱅이가 있습니다 — 위장할 마을 주민을 먼저 지정하세요(설정 탭).','warn'); return; }
+    const lu=S.players.find(p=>p.charId==='lunatic');
+    if(lu && !S.lunaticMaskChar){ toast('미치광이가 있습니다 — 본인이 믿을 악마를 먼저 지정하세요(설정 탭). 정하지 않으면 캐릭터 확인에서 정체가 샙니다.','warn'); return; }
+    const mn=S.players.find(p=>p.charId==='marionette');
+    if(mn && !S.marionetteMaskChar){ toast('꼭두각시가 있습니다 — 본인이 믿을 선한 캐릭터를 먼저 지정하세요(설정 탭).','warn'); return; }
     /* 마감하지 않고 남은 '끝난 판' 상태 — 알리고 새 판으로 넘어간다(지난 판의 전적은 건드리지 않는다).
        임의 종료 판은 애초에 적립되지 않으므로 여기서도 남길 것이 없다. */
     if(S.gameOver){
@@ -3331,6 +3342,8 @@ function setupIssues(){
     issues.push(`구성 불일치 — 권장 ${comps.map(c=>c.join('/')).join(' 또는 ')}, 현재 ${counts.townsfolk}/${counts.outsider}/${counts.minion}/${counts.demon}`);
   if(S.players.some(p=>p.charId==='fortuneteller') && !S.redHerringId) issues.push('점쟁이의 붉은 청어를 지정하세요.');
   if(S.players.some(p=>p.charId==='drunk') && !S.drunkMaskChar) issues.push('주정뱅이의 위장 캐릭터를 지정하세요.');
+  if(S.players.some(p=>p.charId==='lunatic') && !S.lunaticMaskChar) issues.push('미치광이가 믿을 악마를 지정하세요.');
+  if(S.players.some(p=>p.charId==='marionette') && !S.marionetteMaskChar) issues.push('꼭두각시가 믿을 선한 캐릭터를 지정하세요.');
   return issues;
 }
 function setupStepDone(k){
@@ -3356,6 +3369,9 @@ function renderSetup(){
   const compOK = comps && comps.some(comp=>counts.townsfolk===comp[0]&&counts.outsider===comp[1]&&counts.minion===comp[2]&&counts.demon===comp[3]);
   const ft=S.players.find(p=>p.charId==='fortuneteller');
   const dr=S.players.find(p=>p.charId==='drunk');
+  /* 정체 오인 좌석 셋은 '시작 전 사회자 결정' 블록을 함께 연다 — 선택기와 게이트가 같은 조건을 본다 */
+  const lu=S.players.find(p=>p.charId==='lunatic');
+  const mn=S.players.find(p=>p.charId==='marionette');
   /* 커스텀 이름은 사용자 입력이다 — 이스케이프하지 않으면 옵션 라벨이 저장형 XSS 통로가 된다 */
   /* 전설은 좌석을 차지하지 않는다 — S.fabled 토글이 유일한 배치 창구다(blank() 주석 · isFabledActive).
      좌석에 넣으면 alivePlayers()·거수 과반·evalWinEvent 의 생존자 수에 그대로 섞여 악 승리가
@@ -3400,13 +3416,19 @@ function renderSetup(){
         <span class="vname">${esc(p.name)}</span>
         <select onchange="setChar('${p.id}',this.value)"><option value="">— 캐릭터 —</option>${opts(p.charId)}</select>
       </div>`).join('')}</div>
-    ${(ft||dr)?`<hr class="divider"><h3>시작 전 사회자 결정</h3>
+    ${(ft||dr||lu||mn)?`<hr class="divider"><h3>시작 전 사회자 결정</h3>
       ${ft?`<div class="fieldrow"><label>🎗 붉은 청어</label><div><select onchange="setHerring(this.value)"><option value="">— 선한 플레이어 선택 —</option>
         ${S.players.filter(p=>{const c=charOf(p.charId);return c&&(c.type==='townsfolk'||c.type==='outsider');}).map(p=>`<option value="${p.id}" ${S.redHerringId===p.id?'selected':''}>${esc(p.name)} (${esc(charName(p))})</option>`).join('')}
       </select> <span class="hint">점쟁이에게 악마처럼 감지될 선한 플레이어 1명 — 게임 내내 유지</span></div></div>`:''}
       ${dr?`<div class="fieldrow"><label>🎭 주정뱅이 위장</label><div><select onchange="setDrunkMask(this.value)"><option value="">— 위장할 마을 주민 —</option>
         ${CHARACTERS.filter(c=>c.type==='townsfolk' && (c.edition||'tb')===S.edition && !S.players.some(p=>p.charId===c.id)).map(c=>`<option value="${c.id}" ${S.drunkMaskChar===c.id?'selected':''}>${c.ko}</option>`).join('')}
-      </select> <span class="hint">주정뱅이 본인이 믿게 될 주민 — 미사용 캐릭터에서 선택. 밤 순서에 자동 반영</span></div></div>`:''}`:''}
+      </select> <span class="hint">주정뱅이 본인이 믿게 될 주민 — 미사용 캐릭터에서 선택. 밤 순서에 자동 반영</span></div></div>`:''}
+      ${lu?`<div class="fieldrow"><label>🌙 미치광이가 믿을 악마</label><div><select onchange="setLunaticMask(this.value)"><option value="">— 믿을 악마 선택 —</option>
+        ${editionChars().filter(c=>c.type==='demon').map(c=>`<option value="${c.id}" ${S.lunaticMaskChar===c.id?'selected':''}>${c.ko}</option>`).join('')}
+      </select> <span class="hint">미치광이 본인이 자기라고 믿을 악마 — <b>공식은 어느 악마인지 정하지 않으므로 사회자가 고릅니다.</b> 캐릭터 확인에서 이 토큰을 보여줍니다(밤 순서는 미치광이 단계 그대로)</span></div></div>`:''}
+      ${mn?`<div class="fieldrow"><label>🎎 꼭두각시가 믿을 캐릭터</label><div><select onchange="setMarionetteMask(this.value)"><option value="">— 믿을 선한 캐릭터 선택 —</option>
+        ${editionChars().filter(c=>(c.type==='townsfolk'||c.type==='outsider') && !S.players.some(p=>p.charId===c.id)).map(c=>`<option value="${c.id}" ${S.marionetteMaskChar===c.id?'selected':''}>${c.ko}</option>`).join('')}
+      </select> <span class="hint">꼭두각시 본인이 자기라고 믿을 선한 캐릭터 — 미사용 캐릭터에서 선택</span></div></div>`:''}`:''}
     <div class="bigactions" style="margin-top:16px"><button class="gold" onclick="gotoSetupStep(3)">다음: 시작 ›</button></div>
     <details class="morebox" style="margin-top:14px"><summary>캐릭터 일람 (${editionOf().ko}${S.customs.length?` + 커스텀 ${S.customs.length}종`:''})</summary><div class="inner">
     ${['townsfolk','outsider','minion','demon','traveler','fabled'].filter(t=>editionChars().some(c=>c.type===t)).map(t=>`
@@ -3444,7 +3466,7 @@ function renderSetup(){
         <button onclick="startRevealWiz()">👥 캐릭터 확인하기${typeof revealStats==='function'&&revealStats().total?` <span class="num">${revealStats().done}/${revealStats().total}</span>`:''}</button>
         <button class="gold" onclick="startFirstNight()">첫 번째 밤 시작 ›</button>
       </div>
-      <p class="hint" style="text-align:center;margin-top:14px">캐릭터 확인하기: 기기를 좌석 순서대로 돌리며 각자 자기 캐릭터를 비공개로 확인합니다.<br>주정뱅이에게는 위장 캐릭터가 표시됩니다.</p>`;
+      <p class="hint" style="text-align:center;margin-top:14px">캐릭터 확인하기: 기기를 좌석 순서대로 돌리며 각자 자기 캐릭터를 비공개로 확인합니다.<br>주정뱅이·미치광이·꼭두각시에게는 <b>본인이 믿는 캐릭터</b>가 표시됩니다(실제 정체가 아닙니다).</p>`;
   }
   el.innerHTML=`<div class="card">
     <h2>게임 설정</h2><p class="hint" style="margin-top:-6px">${editionOf().ko}</p>
@@ -3762,7 +3784,7 @@ function clearAssign(){
     if(!ok) return;
   S.players.forEach(p=>{ p.charId=''; p.alignment=null;
     p.statuses=(p.statuses||[]).filter(x=>x.key!=='drunkS'&&x.key!=='herring'); });
-  S.drunkMaskChar=null; S.redHerringId=null;
+  S.drunkMaskChar=null; S.lunaticMaskChar=null; S.marionetteMaskChar=null; S.redHerringId=null;
   log('배정 전체 비우기');
   save(); renderAll();
   }, {title:'배정 비우기', ok:'비우기', danger:true});
@@ -3772,6 +3794,8 @@ function setHerring(pid){ S.redHerringId=pid;
   const p=playerOf(pid); if(p) addStatus(p,'herring','점쟁이 셋업',null);
   save(); renderAll(); }
 function setDrunkMask(cid){ S.drunkMaskChar=cid; save(); renderAll(); log(`주정뱅이 위장 캐릭터: ${charOf(cid)?.ko||'-'}`); }
+function setLunaticMask(cid){ S.lunaticMaskChar=cid; save(); renderAll(); log(`미치광이가 믿을 악마: ${charOf(cid)?.ko||'-'}`); }
+function setMarionetteMask(cid){ S.marionetteMaskChar=cid; save(); renderAll(); log(`꼭두각시가 믿을 캐릭터: ${charOf(cid)?.ko||'-'}`); }
 function randomAssign(){
   const n=S.players.length; if(n<5) return;
   /* 후보 풀 = 이 판이 쓰는 캐릭터 전부(빌더로 연결한 내 스크립트가 있으면 그 목록).
@@ -3805,7 +3829,7 @@ function randomAssign(){
   });
   roles.sort(()=>Math.random()-.5);
   S.players.forEach((p,i)=>{ p.charId=roles[i]||''; p.statuses=[]; if(p.charId==='drunk') addStatus(p,'drunkS','주정뱅이',null); });
-  S.redHerringId=null; S.drunkMaskChar=null;
+  S.redHerringId=null; S.drunkMaskChar=null; S.lunaticMaskChar=null; S.marionetteMaskChar=null;
   if(short.length){
     log(`무작위 배정 — 시트에 캐릭터가 모자라 ${short.join(' · ')} 미배정`);
     toast(`시트 캐릭터 부족 — ${short.join(' · ')}을 채우지 못했습니다. 남은 좌석을 직접 배정하세요.`,'warn');
@@ -3897,7 +3921,7 @@ function startFromSheet(ed){
   if(S.edition!==ed){
     S.edition=ed;
     S.players.forEach(p=>{p.charId=''; p.statuses=[];});
-    S.redHerringId=null; S.drunkMaskChar=null;
+    S.redHerringId=null; S.drunkMaskChar=null; S.lunaticMaskChar=null; S.marionetteMaskChar=null;
     log(`스크립트 선택: ${EDITIONS[ed].ko}`);
   }
   save(); switchTab('setup');
@@ -9926,11 +9950,25 @@ function revealMap(){
   if(!S.revealDone || typeof S.revealDone!=='object' || Array.isArray(S.revealDone)) S.revealDone={};
   return S.revealDone;
 }
-/* 그 좌석에게 보여줄 캐릭터 — 주정뱅이에게는 위장 주민을 보여준다(본인은 그 주민이라고 믿는다) */
-function revealCharId(p){
-  if(!p || !p.charId) return '';
-  return (p.charId==='drunk' && S.drunkMaskChar)? S.drunkMaskChar : p.charId;
+/* 좌석이 **자기가 무엇이라고 믿는가** — 정체 오인 좌석의 믿는 캐릭터를 돌려주는 단일 창구.
+   {believed, needsPick} — needsPick 이면 사회자가 아직 안 골랐다는 뜻이다. */
+const MASK_FIELD={drunk:'drunkMaskChar', lunatic:'lunaticMaskChar', marionette:'marionetteMaskChar'};
+function believedCharOf(p){
+  if(!p || !p.charId) return {believed:'', needsPick:false};
+  const f=MASK_FIELD[p.charId];
+  if(!f) return {believed:p.charId, needsPick:false};
+  const v=S[f];
+  return v? {believed:v, needsPick:false} : {believed:'', needsPick:true};
 }
+/* 그 좌석에게 **보여줄** 캐릭터. 캐릭터 확인 릴레이는 이 앱에서 토큰 가방을 대신하는 유일한
+   배포 경로이므로, 여기서 새는 것은 곧 정체가 새는 것이다.
+   [무엇이 문제였나] 이 함수가 `drunk` 한 건만 치환하고 나머지는 실제 charId 를 그대로 돌려줬다.
+   그래서 미치광이 좌석에는 "당신의 캐릭터 / 미치광이 / 자신이 악마라고 믿는다"가 그대로 떴다 —
+   정체와 함께 "네가 앞으로 겪을 악마 체험은 가짜다"까지 한 화면에 적어 준 것이다.
+   꼭두각시도 같았고, 주정뱅이조차 위장 미지정이면 'drunk' 를 그대로 돌려주는 **fail-open**
+   이었다(설정 게이트가 버튼을 숨겨 가려져 있었을 뿐이다).
+   이제 **fail-closed** 다 — 믿는 캐릭터가 정해지지 않으면 아무것도 돌려주지 않는다. */
+function revealCharId(p){ return believedCharOf(p).believed; }
 /* 기록 값이 true 가 아니라 '그때 보여준 캐릭터 id' 인 이유:
    배정을 갈아엎으면(setChar·clearAssign·randomAssign·주정뱅이 위장 변경) 값이 어긋나
    그 좌석이 저절로 '미확인'으로 되돌아간다. 배정을 바꾸는 함수를 따로 훅할 필요가 없다. */
@@ -10013,7 +10051,13 @@ function revealGoto(scene){ if(!wiz) return; wiz.scenes=[scene]; wiz.idx=0; rend
    배정 전 좌석은 '?' 토큰만 보여주고 기록도 남지 않으므로 아예 열지 않는다. */
 function revealAsk(pid){
   const p=playerOf(pid); if(!p) return;
-  if(!revealCharId(p)){ toast('아직 캐릭터가 배정되지 않은 좌석입니다 — 설정에서 배정 후 확인하세요.','warn'); return; }
+  const _b=believedCharOf(p);
+  if(!_b.believed){
+    /* 사유를 가른다 — '배정 전'과 '믿는 캐릭터 미지정'은 사회자가 해야 할 일이 다르다 */
+    if(_b.needsPick) toast(`${charName(p)} 좌석은 **자기가 무엇이라고 믿을지**가 아직 정해지지 않았습니다 — 설정 ②에서 먼저 고르세요. (실제 캐릭터를 보여주면 정체가 샙니다)`,'warn');
+    else toast('아직 캐릭터가 배정되지 않은 좌석입니다 — 설정에서 배정 후 확인하세요.','warn');
+    return;
+  }
   revealGoto({t:'reveal-ask', _pid:pid});
 }
 /* ③ 공개 */
