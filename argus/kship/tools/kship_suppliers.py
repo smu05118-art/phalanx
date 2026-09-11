@@ -24,6 +24,7 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 
 from kship_lib import (ASSETS, atomic_write, fetch_section, find_sections, latest_quarter,
                        load_asset, num_of, parse_tables, pick_report, report_kind,
@@ -169,6 +170,10 @@ def parse_major_customers(html):
     return uniq[:8]
 
 
+_MARINE_TERM = re.compile(r"선박|조선소|조선사|조선업|조선 ?산업|조선기자재|조선해양|박용|해양플랜트|선급|선주|LNG ?선|LNG ?운반선|"
+                          r"컨테이너선|유조선|벌크선|함정|잠수함|해상풍력|선박용|marine|vessel|shipyard|shipbuilding", re.I)
+
+
 def collect_one(rec, quarter, force=False):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
@@ -205,6 +210,10 @@ def collect_one(rec, quarter, force=False):
     out["mentions"] = find_yard_mentions(blob)
     out["customers"] = cust
     out["marine_ctx"] = bool(re.search(r"선박|조선|해양|선용|marine|offshore", blob))
+    # 탐색(모집단 확장)용 증거 — 본문에서 조선을 말하는 낱말의 횟수. '조선'·'해양' 낱말 자체는 너무 넓어 뺀다.
+    terms = Counter(m.group(0) for m in _MARINE_TERM.finditer(blob))
+    out["marine_hits"] = sum(terms.values())
+    out["marine_terms"] = dict(terms.most_common(8))
     out["ok"] = bool(texts)
     if not out["ok"]:
         out["note"] = "II 절을 찾지 못함"

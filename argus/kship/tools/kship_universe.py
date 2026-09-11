@@ -95,25 +95,37 @@ def role_of(rec, seed_role=None):
     return "equip"
 
 
+def _probe_promoted():
+    """kship_scan.py 가 정기보고서 본문으로 찾아 승격한 종목 — assets/universe_probe.json (없으면 빈 사전)."""
+    try:
+        return load_asset("universe_probe.json").get("promoted") or {}
+    except Exception:
+        return {}
+
+
 def select(recs):
     picked = []
     seen = set()
+    probe = _probe_promoted()
     for r in recs:
         src = None
         seed = SEED.get(r["stock"])
+        pr = probe.get(r["stock"])
         if r["industry"] == YARD_INDUSTRY:
             src = "업종"
         elif seed:
             src = "지정"
         elif _MARINE.search(r["product"] or "") and r["industry"] not in _NOT_SUPPLY:
             src = "제품"
+        elif pr:
+            src = "탐색"                      # ④ 본문 탐색 — 근거 문장은 pr["reason"]
         if not src:
             continue
         d = dict(r)
         d["slug"] = r["stock"]
         d["source"] = src
-        d["role"] = role_of(r, seed[0] if seed else None)
-        d["reason"] = seed[1] if seed else ""
+        d["role"] = role_of(r, seed[0] if seed else (pr["role"] if (pr and src == "탐색") else None))
+        d["reason"] = seed[1] if seed else (pr["reason"] if (pr and src == "탐색") else "")
         d["confirmed"] = None            # 프로브가 원문에서 납품 관계를 확인하면 True/False
         picked.append(d)
         seen.add(r["stock"])

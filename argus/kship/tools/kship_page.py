@@ -41,6 +41,7 @@ def load_all():
     svg = load_asset("svg_regions.json")
     contracts = load_asset("contracts.json")["rows"] if os.path.exists(os.path.join(ASSETS, "contracts.json")) else []
     suppliers = load_asset("suppliers.json") if os.path.exists(os.path.join(ASSETS, "suppliers.json")) else {"cos": []}
+    probe = load_asset("universe_probe.json") if os.path.exists(os.path.join(ASSETS, "universe_probe.json")) else {}
     yards = {}
     for r in uni:
         if r["role"] != "yard":
@@ -54,7 +55,7 @@ def load_all():
                 if x.get("ok"):
                     qs[x["quarter"]] = x
         yards[r["stock"]] = {"rec": r, "q": qs}
-    return {"uni": uni, "types": types, "tax": tax, "svg": svg, "contracts": contracts,
+    return {"uni": uni, "probe": probe, "types": types, "tax": tax, "svg": svg, "contracts": contracts,
             "suppliers": suppliers, "yards": yards}
 
 
@@ -440,13 +441,32 @@ def coverage_html(data, summaries):
                 link = '<a href="%s/index.html">%s</a>' % (E(st), E(r["name"])) if c else E(r["name"])
         rows.append("<tr><td class=\"l\">%s</td><td class=\"mut\">%s</td><td class=\"l\">%s</td><td class=\"l mut\">%s</td><td class=\"l\"><b class=\"%s\">%s</b></td><td class=\"l mut\">%s</td><td class=\"l mut\">%s</td></tr>"
                     % (link, E(st), E(role_ko[r["role"]]), E(r["industry"][:22]), cls, E(status), E(r["source"]), E((r.get("reason") or r["product"])[:60])))
+    # ④ 본문 탐색 결과 — 승격은 위 표에 '탐색' 출처로 들어가고, 검토·제외는 여기서 근거(조선 낱말 횟수)와 함께 보인다
+    probe = data.get("probe") or {}
+    rej = probe.get("rejected") or []
+    scan_html = ""
+    if probe:
+        rj = "".join('<tr><td class="l">%s</td><td>%s</td><td class="l">%s</td><td>%d</td><td class="l mut">%s</td><td class="l mut">%s</td></tr>'
+                     % (E(x["name"]), E(x["stock"]), E((x.get("industry") or "")[:20]), x.get("hits", 0),
+                        E(", ".join("%s %d" % kv for kv in list((x.get("terms") or {}).items())[:3])),
+                        E(json.dumps(x.get("mentions") or {}, ensure_ascii=False) if x.get("mentions") else (x.get("note") or "")))
+                     for x in rej[:80])
+        scan_html = ('<section class="card"><h2>④ 본문 탐색 <em>%s 정기보고서 · 후보 %d사 · 승격 %d · 검토·제외 %d · 실패 %d</em></h2>'
+                     '<p style="font-size:12px;color:var(--tx2)">기준: %s. 제외된 회사도 근거를 남긴다 — 낱말 횟수가 기준에 조금 못 미치는 회사는 '
+                     '<code>tools/kship_scan.py</code>의 EXTRA 에 사유와 함께 지정하면 다음 탐색에서 다시 본다.</p>'
+                     '<details><summary style="cursor:pointer;font-size:12px">검토·제외 상위 %d사 (조선 낱말 많은 순)</summary><div class="wrap"><table data-sortable>'
+                     '<thead><tr><th class="l">회사</th><th>종목코드</th><th class="l">업종</th><th>조선 낱말</th><th class="l">낱말</th><th class="l">조선사 언급 · 비고</th></tr></thead>'
+                     '<tbody>%s</tbody></table></div></details></section>'
+                     % (E(probe.get("quarter", "")), probe.get("pool", 0), len(probe.get("promoted") or {}), len(rej),
+                        len(probe.get("failed") or []), E(probe.get("rule", "")), min(80, len(rej)), rj))
     body = """
-<section class="card" style="margin-top:0"><h2>모집단 규칙 <em>재현 가능한 세 겹</em></h2>
-<p style="font-size:12px;color:var(--tx2);line-height:1.8">① KIND 업종 <b>선박 및 보트 건조업</b> 전 종목 · ② KIND 주요제품 문구에 선박·조선·해양·선용·marine 등 해상 어휘가 있는 종목(해운사·도매업 제외) · ③ 업종·문구 모두에 안 걸리지만 실질이 조선 공급망인 종목을 <b>사유와 함께 지정</b>(엔진·보냉재·피팅·케이블·항해장비). 여기까지는 후보이고, 납품 관계는 정기보고서 원문(사업의 내용)에서 조선사 언급을 확인해 근거 등급을 붙입니다. 이름으로 배제하지 않습니다.</p></section>
+<section class="card" style="margin-top:0"><h2>모집단 규칙 <em>재현 가능한 네 겹</em></h2>
+<p style="font-size:12px;color:var(--tx2);line-height:1.8">① KIND 업종 <b>선박 및 보트 건조업</b> 전 종목 · ② KIND 주요제품 문구에 선박·조선·해양·선용·marine 등 해상 어휘가 있는 종목(해운사·도매업 제외) · ③ 업종·문구 모두에 안 걸리지만 실질이 조선 공급망인 종목을 <b>사유와 함께 지정</b>(엔진·보냉재·피팅·케이블·항해장비) · ④ 그래도 빠지는 회사(KIND 문구가 'SCR촉매'·'자유형단조품'처럼 짧은 경우)는 <b>정기보고서 본문 탐색</b>으로 찾는다 — 기자재 어휘에 걸리는 상장사 전부의 사업의 내용에서 조선 낱말 횟수와 조선사 언급을 세어 기준을 넘는 회사만 승격(%s). 여기까지는 후보이고, 납품 관계는 정기보고서 원문(사업의 내용)에서 조선사 언급을 확인해 근거 등급을 붙입니다. 이름으로 배제하지 않습니다.</p></section>
 <section class="card"><h2>종목별 상태 <em>%d종목</em></h2><div class="wrap"><table data-sortable><thead><tr><th class="l">회사</th><th>종목코드</th><th class="l">역할</th><th class="l">업종</th><th class="l">상태</th><th class="l">편입 근거</th><th class="l">제품·사유</th></tr></thead><tbody>%s</tbody></table></div></section>
+%s
 <div class="note info">HD현대미포·HD현대삼호는 상장법인목록에 없어(합병·비상장) HD한국조선해양 연결로만 보입니다. 척당 계약 공시의 계약상대는 대부분 '○○ 소재 선사'로 익명이며, 기자재사→조선사 연결은 본문 언급 수준이 많습니다 — 화면의 근거 등급이 그 한계입니다.</div>
 <script>%s</script>
-""" % (len(data["uni"]), "".join(rows), TABLE_JS)
+""" % (E(probe.get("rule", "기준 미정")), len(data["uni"]), "".join(rows), scan_html, TABLE_JS)
     return page("한국조선 커버리지", body, depth=0, h1="커버리지",
                 nav=(("허브", "index.html"), ("← ARGUS", "../index.html")),
                 crumbs=(("ARGUS", "../index.html"), ("한국조선", "index.html"), ("커버리지", None)))
