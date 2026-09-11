@@ -81,6 +81,7 @@ def load_all():
     contracts = _opt("contracts.json", {"rows": []})
     reports = _opt("reports.json", {"rows": [], "quarters": []})
     peers = _opt("peers.json", {"rows": [], "_by_target": {}})
+    expo = _opt("exposure.json", {"rows": []})
     return {
         "uni": uni["rows"],
         "stages": stages,
@@ -92,6 +93,8 @@ def load_all():
         "contracts": contracts.get("rows", []),
         "peers": {r["stock"]: r for r in peers.get("rows", [])},
         "peers_rev": peers.get("_by_target", {}),
+        "exposure": {r["stock"]: r for r in expo.get("rows", [])},
+        "exposure_meta": expo,
         "peers_meta": peers,
         "reports": {r["stock"]: r for r in reports.get("rows", [])},
         "report_meta": reports,
@@ -158,7 +161,8 @@ def summary(data, rec):
             "tags": data["tags"].get(st) or {}, "parts": part_keys(data, st),
             "scan": data["scan"].get(st) or {},
             "peers": (data["peers"].get(st) or {}).get("mentions") or [],
-            "peers_rev": data["peers_rev"].get(st) or []}
+            "peers_rev": data["peers_rev"].get(st) or [],
+            "exposure": data["exposure"].get(st) or {}}
 
 
 # ── 조각 ───────────────────────────────────────────────────
@@ -441,15 +445,37 @@ def company_html(data, s):
                      '<th class="l">원문</th></tr></thead><tbody>%s</tbody></table></div></section>'
                      % (len(s["peers"]) + len(s["peers_rev"]), "".join(pr)))
 
+    # ── 메모리 / 비메모리·파운드리 (ksemi_exposure — 낱말이지 비중이 아니다)
+    ex = s["exposure"] or {}
+    expo_html = ""
+    if ex.get("mem", {}).get("n") or ex.get("fnd", {}).get("n"):
+        qs = []
+        for side, ko in (("mem", "메모리"), ("fnd", "비메모리·파운드리")):
+            for q in (ex.get(side) or {}).get("quotes", []):
+                qs.append('<blockquote class="quote">%s<cite>%s · %s 「%s」</cite></blockquote>'
+                          % (E(q["quote"]), E(ko), E(q.get("sec_ko") or ""), E(q.get("word") or "")))
+        expo_html = ('<section class="card"><h2>메모리 · 비메모리 노출 '
+                     '<em>%s II-2 주요제품 · II-4 매출실적 원문 낱말</em></h2>'
+                     '<div class="chips" style="margin-bottom:10px">%s%s</div>'
+                     '<div class="note info">회사가 <b>메모리 매출 비중을 공시하지는 않습니다</b>. '
+                     '여기 있는 것은 그 회사의 <b>제품·매출 칸에 적힌 낱말</b>과 그 원문입니다. '
+                     '산업 전망 문단(사업의 개요·기타)의 「메모리 반도체 시장은…」 같은 문장은 '
+                     '그 회사의 노출이 아니므로 세지 않았습니다.</div>%s</section>'
+                     % (E(ex.get("quarter") or ""),
+                        chip("메모리 %d회" % ex["mem"]["n"]) if ex["mem"]["n"] else "",
+                        chip("비메모리·파운드리 %d회" % ex["fnd"]["n"]) if ex["fnd"]["n"] else "",
+                        "".join(qs)))
+
     chart = {"roll": [{"q": r["q"], "bal": r["backlog"], "amt": r["order_amt"],
                        "cmp": r["delivered"]} for r in roll]}
     dart_href = DART % (latest["rcp"] if latest and latest["rcp"]
                         else (s["rep"].get("annual_rcp") or ""))
     body = """
 <div class="kpi">%s</div>
-<div class="chips" style="margin-top:14px">%s%s</div>
+<div class="chips" style="margin-top:14px">%s%s%s</div>
 <section class="card"><h2>수주잔고 롤포워드 <em>정기보고서 II-4 수주상황 · 억원 · 8분기</em></h2>
  <div class="chart"><canvas id="cRoll"></canvas></div>%s</section>
+%s
 %s
 %s
 %s
@@ -474,7 +500,10 @@ def company_html(data, s):
 <script>%s</script>
 """ % ("".join(kp), stage_chips(data, s, "../"),
        chip(s["tags"].get("front_back") or "전/후공정 미판정"),
-       roll_tbl, item_tbl, sales_html, basis_html, cust_html, con_html, peer_html, rel_html,
+       chip(ex.get("verdict") if ex.get("verdict") and ex["verdict"] != "미확인"
+            else "메모리/비메모리 미확인"),
+       roll_tbl, item_tbl, sales_html, expo_html, basis_html, cust_html, con_html,
+       peer_html, rel_html,
        json_for_html(chart), CHART_DEFAULTS_JS,
        stage_color(s["tags"].get("primary") or "parts"), "#5d6675", TABLE_JS)
     return page("%s 수주잔고·매출인식" % name, body, depth=1, h1=name,
@@ -558,6 +587,10 @@ def hub_html(data, sums):
     basis_mix = collections.Counter(s["kpi"].get("basis") for s in sums
                                     if s["kpi"].get("basis"))
     bchips = "".join(chip(basis_ko(kk), None, n) for kk, n in basis_mix.most_common())
+    expo_mix = collections.Counter((s["exposure"] or {}).get("verdict") or "미확인"
+                                   for s in sums)
+    echips = "".join(chip(kk, None, n) for kk, n in
+                     sorted(expo_mix.items(), key=lambda x: (x[0] == "미확인", -x[1])))
     pending = len(sums) - len(data["reports"])
     note = ""
     if pending > 0:
@@ -575,6 +608,8 @@ def hub_html(data, sums):
 </div>
 %s
 <div class="chips" style="margin-top:12px">%s</div>
+<div class="chips" style="margin-top:8px">%s</div>
+<p class="mut" style="font-size:12px;margin-top:6px">메모리·비메모리 표시는 II-2 주요제품·II-4 매출실적 절에 적힌 <b>낱말</b>입니다 — 매출 비중이 아닙니다(산업 전망 문단은 세지 않습니다).</p>
 <h2 class="sec">수주잔고 상위<span>잔고 · 잔고/매출 배수 · 매출인식 기준 · 최대고객 비중</span></h2>
 <div class="cards">%s</div>
 <h2 class="sec">공정 단계<span>단계를 누르면 팹 공정 흐름 인포그래픽으로</span></h2>
@@ -590,7 +625,7 @@ def hub_html(data, sums):
        len([c for c in data["contracts"] if c["stock"] in mem_stocks]),
        len({c["stock"] for c in data["contracts"]
             if c["stock"] in mem_stocks and c.get("region_cn")}),
-       note, bchips, "".join(cards), stage_tbl, big_tbl, len(data["uni"]), TABLE_JS)
+       note, bchips, echips, "".join(cards), stage_tbl, big_tbl, len(data["uni"]), TABLE_JS)
     return page("한국반도체장비 — 수주잔고·매출인식·고객집중", body, depth=0,
                 h1="🔧 한국반도체장비",
                 nav=(("← ARGUS", "../index.html"), ("🏗 한국건설", "../kce/index.html"),
