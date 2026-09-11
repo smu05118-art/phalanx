@@ -1,0 +1,445 @@
+{
+ "groups": [
+  {
+   "id": "STRUCT",
+   "ko": "기체구조",
+   "en": "Airframe structures"
+  },
+  {
+   "id": "ENGINE",
+   "ko": "엔진",
+   "en": "Propulsion"
+  },
+  {
+   "id": "AVION",
+   "ko": "항공전자·장비",
+   "en": "Avionics & systems"
+  },
+  {
+   "id": "SPACE",
+   "ko": "우주",
+   "en": "Space systems"
+  },
+  {
+   "id": "MAT",
+   "ko": "소재·공정",
+   "en": "Materials & processes"
+  },
+  {
+   "id": "SVC",
+   "ko": "정비·시험",
+   "en": "MRO & test"
+  }
+ ],
+ "cats": [
+  {
+   "id": "STRUCT.FUSELAGE",
+   "group": "STRUCT",
+   "ko": "동체·섹션",
+   "regions": [
+    "AIRLINER_FWD",
+    "AIRLINER_AFT",
+    "AIRLINER_NOSE"
+   ],
+   "keywords": [
+    "Section 48",
+    "Section48",
+    "Bulkhead",
+    "Fuselage",
+    "Stringer",
+    "벌크헤드",
+    "스트링거",
+    "프레임",
+    "동체",
+    "스킨",
+    "판넬",
+    "패널"
+   ]
+  },
+  {
+   "id": "STRUCT.WING",
+   "group": "STRUCT",
+   "ko": "주익·미익",
+   "regions": [
+    "AIRLINER_WING_U",
+    "AIRLINER_WING_L",
+    "AIRLINER_TAIL"
+   ],
+   "keywords": [
+    "U/L Deck",
+    "날개 구조",
+    "Spar",
+    "Wing",
+    "날개구조",
+    "수직미익",
+    "수평미익",
+    "Rib",
+    "미익",
+    "주익"
+   ]
+  },
+  {
+   "id": "STRUCT.NACELLE",
+   "group": "STRUCT",
+   "ko": "나셀·파일런",
+   "regions": [
+    "AIRLINER_ENG_U",
+    "AIRLINER_ENG_L"
+   ],
+   "keywords": [
+    "Nacelle",
+    "Pylon",
+    "파일런",
+    "나셀",
+    "카울"
+   ]
+  },
+  {
+   "id": "STRUCT.GEAR",
+   "group": "STRUCT",
+   "ko": "착륙장치·도어",
+   "regions": [
+    "AIRLINER_GEAR"
+   ],
+   "keywords": [
+    "Landing Gear",
+    "액추에이터",
+    "Door",
+    "랜딩기어",
+    "착륙장치",
+    "도어"
+   ]
+  },
+  {
+   "id": "ENGINE.FAN",
+   "group": "ENGINE",
+   "ko": "팬·압축기",
+   "regions": [
+    "ENG_FAN",
+    "ENG_COMP"
+   ],
+   "keywords": [
+    "Compressor",
+    "블리스크",
+    "Fan",
+    "압축기",
+    "팬"
+   ]
+  },
+  {
+   "id": "ENGINE.TURBINE",
+   "group": "ENGINE",
+   "ko": "터빈·디스크",
+   "regions": [
+    "ENG_TURB"
+   ],
+   "keywords": [
+    "Turbine",
+    "터빈 디스크",
+    "Blade",
+    "노즐가이드",
+    "터빈디스크",
+    "블레이드",
+    "HPT",
+    "LPT",
+    "터빈"
+   ]
+  },
+  {
+   "id": "ENGINE.COMBUST",
+   "group": "ENGINE",
+   "ko": "연소기·노즐",
+   "regions": [
+    "ENG_COMB",
+    "ENG_NOZZ"
+   ],
+   "keywords": [
+    "Combustor",
+    "Nozzle",
+    "라이너",
+    "연소기",
+    "노즐"
+   ]
+  },
+  {
+   "id": "ENGINE.CASE",
+   "group": "ENGINE",
+   "ko": "케이싱·구조부",
+   "regions": [
+    "ENG_CASE"
+   ],
+   "keywords": [
+    "Housing",
+    "Casing",
+    "엔진케이스",
+    "디퓨저",
+    "케이싱",
+    "하우징"
+   ]
+  },
+  {
+   "id": "ENGINE.ACC",
+   "group": "ENGINE",
+   "ko": "기어박스·보기류",
+   "regions": [
+    "ENG_ACC"
+   ],
+   "keywords": [
+    "Gearbox",
+    "기어박스",
+    "액세서리",
+    "연료펌프",
+    "오일펌프",
+    "APU",
+    "보기류"
+   ]
+  },
+  {
+   "id": "AVION.NAV",
+   "group": "AVION",
+   "ko": "항법·관성",
+   "regions": [
+    "AIRLINER_NOSE"
+   ],
+   "keywords": [
+    "GPS 수신",
+    "Gyro",
+    "가속도계",
+    "관성항법",
+    "항법장치",
+    "INS",
+    "자이로"
+   ]
+  },
+  {
+   "id": "AVION.COMM",
+   "group": "AVION",
+   "ko": "통신·안테나",
+   "regions": [
+    "AIRLINER_NOSE",
+    "SAT_ANT"
+   ],
+   "keywords": [
+    "위성통신 안테나",
+    "항공용 안테나",
+    "Radome",
+    "데이터링크",
+    "항공통신",
+    "레이돔"
+   ]
+  },
+  {
+   "id": "AVION.FCS",
+   "group": "AVION",
+   "ko": "비행제어·구동",
+   "regions": [
+    "AIRLINER_WING_U",
+    "AIRLINER_WING_L"
+   ],
+   "keywords": [
+    "Flight Control",
+    "액추에이션",
+    "구동장치",
+    "비행제어",
+    "FBW",
+    "플랩"
+   ]
+  },
+  {
+   "id": "AVION.PWR",
+   "group": "AVION",
+   "ko": "전원·배전",
+   "regions": [
+    "AIRLINER_FWD"
+   ],
+   "keywords": [
+    "전원공급장치",
+    "항공기 전원",
+    "전력변환",
+    "발전기",
+    "축전지",
+    "배전"
+   ]
+  },
+  {
+   "id": "AVION.SENSOR",
+   "group": "AVION",
+   "ko": "센서·광학",
+   "regions": [
+    "SAT_PAY",
+    "AIRLINER_NOSE"
+   ],
+   "keywords": [
+    "적외선 센서",
+    "EO/IR",
+    "영상센서",
+    "전자광학",
+    "FPU",
+    "초점면",
+    "짐벌"
+   ]
+  },
+  {
+   "id": "SPACE.LAUNCH",
+   "group": "SPACE",
+   "ko": "발사체·추진기관",
+   "regions": [
+    "LV_FIRST",
+    "LV_ENGINE",
+    "LV_UPPER"
+   ],
+   "keywords": [
+    "가스발생기",
+    "고체추진",
+    "액체추진",
+    "추진기관",
+    "터보펌프",
+    "누리호",
+    "발사체",
+    "연소기",
+    "로켓"
+   ]
+  },
+  {
+   "id": "SPACE.BUS",
+   "group": "SPACE",
+   "ko": "위성 본체·전장품",
+   "regions": [
+    "SAT_BUS",
+    "SAT_PANEL_L",
+    "SAT_PANEL_R"
+   ],
+   "keywords": [
+    "위성 시스템",
+    "위성 본체",
+    "태양전지판",
+    "위성본체",
+    "위성전장",
+    "인공위성",
+    "전력조절"
+   ]
+  },
+  {
+   "id": "SPACE.PAYLOAD",
+   "group": "SPACE",
+   "ko": "탑재체",
+   "regions": [
+    "SAT_PAY"
+   ],
+   "keywords": [
+    "Payload",
+    "관측카메라",
+    "영상레이다",
+    "광학탑재",
+    "SAR",
+    "탑재체"
+   ]
+  },
+  {
+   "id": "SPACE.GROUND",
+   "group": "SPACE",
+   "ko": "지상국·영상",
+   "regions": [
+    "SAT_ANT"
+   ],
+   "keywords": [
+    "안테나 시스템",
+    "위성운용국",
+    "위성영상",
+    "수신국",
+    "지상국",
+    "관제"
+   ]
+  },
+  {
+   "id": "MAT.ALLOY",
+   "group": "MAT",
+   "ko": "특수합금·티타늄",
+   "regions": [
+    "ENG_TURB",
+    "AIRLINER_FWD"
+   ],
+   "keywords": [
+    "Titanium",
+    "니켈합금",
+    "정밀단조",
+    "단조품",
+    "인코넬",
+    "초내열",
+    "특수강",
+    "티타늄"
+   ]
+  },
+  {
+   "id": "MAT.COMP",
+   "group": "MAT",
+   "ko": "복합재",
+   "regions": [
+    "AIRLINER_WING_U",
+    "AIRLINER_WING_L",
+    "LV_FAIRING"
+   ],
+   "keywords": [
+    "샌드위치 패널",
+    "프리프레그",
+    "CFRP",
+    "탄소섬유",
+    "복합재"
+   ]
+  },
+  {
+   "id": "MAT.SURF",
+   "group": "MAT",
+   "ko": "정밀가공·표면처리",
+   "regions": [
+    "AIRLINER_AFT"
+   ],
+   "keywords": [
+    "Nadcap",
+    "아노다이징",
+    "5축가공",
+    "정밀가공",
+    "표면처리",
+    "화학처리",
+    "熱처리",
+    "열처리",
+    "도장"
+   ]
+  },
+  {
+   "id": "SVC.MRO",
+   "group": "SVC",
+   "ko": "정비·창정비",
+   "regions": [
+    "ENG_CASE",
+    "AIRLINER_AFT"
+   ],
+   "keywords": [
+    "기체정비",
+    "엔진정비",
+    "후속지원",
+    "MRO",
+    "PBL",
+    "오버홀",
+    "창정비"
+   ]
+  },
+  {
+   "id": "SVC.TEST",
+   "group": "SVC",
+   "ko": "시험·인증",
+   "regions": [
+    "LV_UPPER"
+   ],
+   "keywords": [
+    "AS9100",
+    "비행시험",
+    "인증시험",
+    "진동시험",
+    "형식증명",
+    "환경시험",
+    "감항"
+   ]
+  }
+ ]
+}
