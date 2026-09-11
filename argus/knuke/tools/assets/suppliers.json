@@ -24,16 +24,16 @@
    "prod_raw": "기관,터어빈,선박용엔진,주단조품,제강제품 제조/종합건설",
    "source": "지정",
    "reason": "두산에너빌리티 — 원자로·터빈 주기기(잔고 25.5조·배수 1.5년). 체코 두코바니 수주",
-   "seen": false,
+   "seen": true,
    "cats": [
     {
      "cat": "TG.TURBINE",
-     "kw": "터어빈",
-     "src": "kind"
+     "kw": "가스터빈",
+     "src": "contract"
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 21
   },
   {
    "stock": "052690",
@@ -44,16 +44,32 @@
    "prod_raw": "원자력발전소 설계 등",
    "source": "지정",
    "reason": "한전기술 — 원전 종합설계·엔지니어링. II-4 수주표에 발주처(한수원) 실명 23행",
-   "seen": false,
+   "seen": true,
    "cats": [
     {
+     "cat": "NSSS.RV",
+     "kw": "NSSS",
+     "src": "contract"
+    },
+    {
      "cat": "ENG.DESIGN",
-     "kw": "엔지니어링",
-     "src": "kind"
+     "kw": "종합설계",
+     "src": "contract"
     }
    ],
-   "primes": [],
-   "n_contracts": 0
+   "primes": [
+    {
+     "stock": "034020",
+     "nm": "두산에너빌리티",
+     "basis": "contract",
+     "basis_ko": "계약공시 상대",
+     "grade": 2,
+     "detail": "계약 2건",
+     "n_contracts": 2,
+     "amt_krw_m": 588231.162
+    }
+   ],
+   "n_contracts": 22
   },
   {
    "stock": "130660",
@@ -64,16 +80,31 @@
    "prod_raw": "발전설비 운전·정비, 전기검침",
    "source": "KIND",
    "reason": "KIND 주요제품 문구에 `발전설비` — 발전설비 운전·정비, 전기검침",
-   "seen": false,
+   "seen": true,
    "cats": [
+    {
+     "cat": "BOP.BOILER",
+     "kw": "보일러",
+     "src": "contract"
+    },
     {
      "cat": "ENG.DESIGN",
      "kw": "엔지니어링",
      "src": "kind"
+    },
+    {
+     "cat": "BOP.ENV",
+     "kw": "환경설비",
+     "src": "contract"
+    },
+    {
+     "cat": "OM.MAINT",
+     "kw": "경상정비",
+     "src": "contract"
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 19
   },
   {
    "stock": "379390",
@@ -119,16 +150,16 @@
     {
      "cat": "IANDC.MMIS",
      "kw": "계측제어",
-     "src": "body"
+     "src": "contract"
     },
     {
      "cat": "OM.MAINT",
-     "kw": "성능개선",
-     "src": "body"
+     "kw": "정비용역",
+     "src": "contract"
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 1
   },
   {
    "stock": "046120",
@@ -139,16 +170,31 @@
    "prod_raw": "방사선안전관리, 항공기 정밀부품 제조 등",
    "source": "지정",
    "reason": "오르비텍 — 방사선안전관리·비파괴검사, 항공기 정밀부품 겸업",
-   "seen": false,
+   "seen": true,
    "cats": [
     {
+     "cat": "NSSS.SG",
+     "kw": "증기발생기",
+     "src": "contract"
+    },
+    {
      "cat": "OM.INSP",
-     "kw": "방사선안전관리",
-     "src": "kind"
+     "kw": "방사선관리",
+     "src": "contract"
+    },
+    {
+     "cat": "OM.MAINT",
+     "kw": "예방정비",
+     "src": "contract"
+    },
+    {
+     "cat": "BOP.PUMP",
+     "kw": "배관",
+     "src": "contract"
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 18
   },
   {
    "stock": "051600",
@@ -159,7 +205,7 @@
    "prod_raw": "일반전기공사,발전설비정비공사,점검,수리,엔지니어링",
    "source": "지정",
    "reason": "한전KPS — 발전설비 경상·예방정비(O&M). 요르단 IPP3 O&M 등 해외 정비",
-   "seen": false,
+   "seen": true,
    "cats": [
     {
      "cat": "ENG.DESIGN",
@@ -168,12 +214,17 @@
     },
     {
      "cat": "OM.MAINT",
-     "kw": "정비공사",
-     "src": "kind"
+     "kw": "경상정비",
+     "src": "contract"
+    },
+    {
+     "cat": "ELEC.CABLE",
+     "kw": "전선",
+     "src": "contract"
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 18
   },
   {
    "stock": "126720",
@@ -187,13 +238,23 @@
    "seen": true,
    "cats": [
     {
+     "cat": "BOP.BOILER",
+     "kw": "보일러",
+     "src": "contract"
+    },
+    {
+     "cat": "BOP.ENV",
+     "kw": "탈황",
+     "src": "contract"
+    },
+    {
      "cat": "OM.MAINT",
      "kw": "경상정비",
-     "src": "body"
+     "src": "contract"
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 18
   },
   {
    "stock": "008470",
@@ -234,7 +295,7 @@
    "prod_raw": "열교환기,압력용기,저장탱크,산업용보일러 제조",
    "source": "지정",
    "reason": "DKME(대경기계기술) — 열교환기·압력용기·산업용보일러",
-   "seen": false,
+   "seen": true,
    "cats": [
     {
      "cat": "NSSS.RV",
@@ -258,7 +319,7 @@
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 3
   },
   {
    "stock": "043220",
@@ -269,10 +330,10 @@
    "prod_raw": "발전설비 Damper, 전력설비 Busway",
    "source": "KIND",
    "reason": "KIND 주요제품 문구에 `발전설비` — 발전설비 Damper, 전력설비 Busway",
-   "seen": false,
+   "seen": true,
    "cats": [],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 2
   },
   {
    "stock": "077970",
@@ -283,10 +344,21 @@
    "prod_raw": "엔진,터빈,내연기관 제조,도매",
    "source": "KIND",
    "reason": "KIND 주요제품 문구에 `터빈` — 엔진,터빈,내연기관 제조,도매",
-   "seen": false,
-   "cats": [],
+   "seen": true,
+   "cats": [
+    {
+     "cat": "BOP.ENV",
+     "kw": "SCR",
+     "src": "contract"
+    },
+    {
+     "cat": "TG.GEN",
+     "kw": "발전기",
+     "src": "contract"
+    }
+   ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 28
   },
   {
    "stock": "083650",
@@ -297,7 +369,7 @@
    "prod_raw": "보일러,열교환기등",
    "source": "지정",
    "reason": "비에이치아이 — 보일러·열교환기 등 발전 보조기기. 계약공시 잦음(2년 24건)",
-   "seen": false,
+   "seen": true,
    "cats": [
     {
      "cat": "BOP.BOILER",
@@ -308,10 +380,26 @@
      "cat": "BOP.HX",
      "kw": "열교환기",
      "src": "kind"
+    },
+    {
+     "cat": "BOP.ENV",
+     "kw": "환경설비",
+     "src": "contract"
     }
    ],
-   "primes": [],
-   "n_contracts": 0
+   "primes": [
+    {
+     "stock": "034020",
+     "nm": "두산에너빌리티",
+     "basis": "contract",
+     "basis_ko": "계약공시 상대",
+     "grade": 2,
+     "detail": "계약 5건",
+     "n_contracts": 5,
+     "amt_krw_m": 326404.47
+    }
+   ],
+   "n_contracts": 37
   },
   {
    "stock": "086670",
@@ -331,7 +419,7 @@
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 1
   },
   {
    "stock": "094820",
@@ -350,13 +438,34 @@
      "src": "kind"
     },
     {
+     "cat": "BOP.BOILER",
+     "kw": "보일러",
+     "src": "contract"
+    },
+    {
      "cat": "BOP.HX",
      "kw": "열교환기",
      "src": "kind"
+    },
+    {
+     "cat": "OM.MAINT",
+     "kw": "경상정비",
+     "src": "contract"
     }
    ],
-   "primes": [],
-   "n_contracts": 0
+   "primes": [
+    {
+     "stock": "034020",
+     "nm": "두산에너빌리티",
+     "basis": "contract",
+     "basis_ko": "계약공시 상대",
+     "grade": 2,
+     "detail": "계약 1건",
+     "n_contracts": 1,
+     "amt_krw_m": 23849.186
+    }
+   ],
+   "n_contracts": 12
   },
   {
    "stock": "098070",
@@ -367,7 +476,7 @@
    "prod_raw": "열교환기 등 화공기기, 저장용 탱크",
    "source": "KIND",
    "reason": "KIND 주요제품 문구에 `열교환기` — 열교환기 등 화공기기, 저장용 탱크",
-   "seen": false,
+   "seen": true,
    "cats": [
     {
      "cat": "NSSS.SG",
@@ -377,7 +486,7 @@
     {
      "cat": "BOP.HX",
      "kw": "열교환기",
-     "src": "kind"
+     "src": "contract"
     },
     {
      "cat": "BOP.VESSEL",
@@ -386,7 +495,7 @@
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 6
   },
   {
    "stock": "105840",
@@ -397,16 +506,42 @@
    "prod_raw": "원전용계측기",
    "source": "지정",
    "reason": "우진 — 원전용 계측기(노내핵계측·온도센서)",
-   "seen": false,
+   "seen": true,
    "cats": [
+    {
+     "cat": "IANDC.MMIS",
+     "kw": "MMIS",
+     "src": "contract"
+    },
     {
      "cat": "IANDC.INSTR",
      "kw": "계측기",
-     "src": "kind"
+     "src": "contract"
+    },
+    {
+     "cat": "OM.MAINT",
+     "kw": "예방정비",
+     "src": "contract"
+    },
+    {
+     "cat": "ELEC.CABLE",
+     "kw": "케이블",
+     "src": "contract"
     }
    ],
-   "primes": [],
-   "n_contracts": 0
+   "primes": [
+    {
+     "stock": "034020",
+     "nm": "두산에너빌리티",
+     "basis": "contract",
+     "basis_ko": "계약공시 상대",
+     "grade": 2,
+     "detail": "계약 6건",
+     "n_contracts": 6,
+     "amt_krw_m": 45907.274
+    }
+   ],
+   "n_contracts": 20
   },
   {
    "stock": "114190",
@@ -417,7 +552,7 @@
    "prod_raw": "플랜트설비(산업용 보일러)",
    "source": "KIND",
    "reason": "KIND 주요제품 문구에 `보일러` — 플랜트설비(산업용 보일러)",
-   "seen": false,
+   "seen": true,
    "cats": [
     {
      "cat": "BOP.BOILER",
@@ -426,7 +561,7 @@
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 17
   },
   {
    "stock": "119650",
@@ -440,13 +575,29 @@
    "seen": true,
    "cats": [
     {
+     "cat": "BOP.BOILER",
+     "kw": "보일러",
+     "src": "contract"
+    },
+    {
      "cat": "BOP.ENV",
-     "kw": "집진",
-     "src": "kind"
+     "kw": "탈황",
+     "src": "contract"
     }
    ],
-   "primes": [],
-   "n_contracts": 0
+   "primes": [
+    {
+     "stock": "034020",
+     "nm": "두산에너빌리티",
+     "basis": "contract",
+     "basis_ko": "계약공시 상대",
+     "grade": 2,
+     "detail": "계약 1건",
+     "n_contracts": 1,
+     "amt_krw_m": 40300.0
+    }
+   ],
+   "n_contracts": 19
   },
   {
    "stock": "119850",
@@ -460,9 +611,14 @@
    "seen": true,
    "cats": [
     {
+     "cat": "TG.TURBINE",
+     "kw": "가스터빈",
+     "src": "contract"
+    },
+    {
      "cat": "TG.GEN",
      "kw": "발전기",
-     "src": "body"
+     "src": "contract"
     },
     {
      "cat": "ELEC.SWGR",
@@ -471,7 +627,7 @@
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 23
   },
   {
    "stock": "189860",
@@ -491,8 +647,8 @@
     },
     {
      "cat": "ELEC.SWGR",
-     "kw": "전력변환",
-     "src": "body"
+     "kw": "배전반",
+     "src": "contract"
     },
     {
      "cat": "ELEC.CABLE",
@@ -501,7 +657,7 @@
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 7
   },
   {
    "stock": "258610",
@@ -512,12 +668,17 @@
    "prod_raw": "지열발전설비, 항공기MRO, 항공부품제조",
    "source": "KIND",
    "reason": "KIND 주요제품 문구에 `발전설비` — 지열발전설비, 항공기MRO, 항공부품제조",
-   "seen": false,
+   "seen": true,
    "cats": [
     {
      "cat": "NSSS.SG",
      "kw": "증기발생기",
      "src": "kind"
+    },
+    {
+     "cat": "BOP.HX",
+     "kw": "열교환기",
+     "src": "contract"
     },
     {
      "cat": "BOP.VESSEL",
@@ -526,7 +687,7 @@
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 6
   },
   {
    "stock": "282720",
@@ -538,9 +699,15 @@
    "source": "탐색",
    "reason": "정기보고서 II절에서 원전·발전 낱말 36회, 한수원·한전 등 발주처 7회 — \"로 하고 있는 종합건설기업입니다. 1993년에 설립해 31년간 전기공사업에서 역량을 쌓아온 당사는 플랜트, 발전소, 신재생에너지 등 주요 사업영역의 전기·계장분야에서 다양한 경험 및 노하우를 축적하여 사업을 확장했습\"",
    "seen": true,
-   "cats": [],
+   "cats": [
+    {
+     "cat": "ENG.DESIGN",
+     "kw": "사업관리",
+     "src": "contract"
+    }
+   ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 11
   },
   {
    "stock": "288620",
@@ -565,7 +732,7 @@
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 3
   },
   {
    "stock": "388050",
@@ -590,7 +757,7 @@
     }
    ],
    "primes": [],
-   "n_contracts": 0
+   "n_contracts": 5
   }
  ]
 }

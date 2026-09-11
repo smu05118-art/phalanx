@@ -525,7 +525,10 @@ def build(rows, qs):
             o = d.get("orders") or {}
             orows = o.get("rows") or []
             tot = [r for r in orows if r["total"]]
-            money = bool(o.get("unit_seen")) and not o.get("qty_unit")
+            # 화면은 전부 **억원**이다. 단위 캡션이 외화면(이성씨엔아이 수주표 `(단위: 천달러)`)
+            # 환산 없이 억원 칸에 넣으면 값이 통째로 틀린다 — 환율을 쓰지 않으므로 빈칸으로 둔다.
+            money = (bool(o.get("unit_seen")) and not o.get("qty_unit")
+                     and o.get("cur") == "KRW")
             backlog = (tot[0]["closing"] if tot and tot[0].get("closing") is not None
                        else _sum_rows(orows, "closing")) if money else None
             # 발전원별 잔고 — award 표의 행별 계약잔액을 발전원으로 묶는다(합계행 제외).
@@ -554,6 +557,10 @@ def build(rows, qs):
             exp = _sum_rev(rrows, "수출")
             ss = d.get("segment_sales") or {}
             srows = [r for r in (ss.get("rows") or []) if not r["total"]]
+            # 잔고 커버리지의 분모(연매출)도 억원이다 — 매출 표가 원화가 아니면 쓰지 않는다.
+            fy, fy_col = (_fy_from(rv) if rv.get("cur") == "KRW" else (None, None))
+            if fy is None and ss.get("cur") == "KRW":
+                fy, fy_col = _fy_seg(ss)
             per_q[q] = {
                 "ok": True, "rcp": d.get("rcp"), "shape": o.get("shape"),
                 "cur": o.get("cur"), "unit_seen": o.get("unit_seen"),
@@ -565,6 +572,8 @@ def build(rows, qs):
                 "gross": _sum_rows(orows, "gross") if money else None,
                 "unit_note": ("" if money else
                               ("수주표 단위가 금액이 아님(%s)" % (o.get("cur") or "미상") if o.get("qty_unit")
+                               else "수주표가 원화가 아님(%s) — 환율을 쓰지 않으므로 억원으로 싣지 않음"
+                               % o.get("cur") if o.get("unit_seen") and o.get("cur") != "KRW"
                                else "수주표 단위 캡션을 못 읽음") if o else ""),
                 "unit_from_prev": bool(o.get("unit_from_prev")),
                 "orders_scope": o.get("scope"),
@@ -578,8 +587,9 @@ def build(rows, qs):
                               "start": r.get("start"), "end": r.get("end"),
                               "start_raw": r.get("start_raw"), "end_raw": r.get("end_raw")}
                              for r in orows if not r["total"]],
-                "revenue_fy": (_fy_from(rv)[0] or _fy_seg(ss)[0]),
-                "revenue_fy_col": (_fy_from(rv)[1] or _fy_seg(ss)[1]),
+                "revenue_fy": fy,
+                "revenue_fy_col": fy_col,
+                "revenue_cur": rv.get("cur") or ss.get("cur"),
                 "revenue_domestic": dom, "revenue_export": exp,
                 "revenue_segments": [{"seg": r["seg"], "item": r["item"], "kind": r["kind"],
                                       "segdomain": r["segdomain"], "val": r["val"]} for r in rrows],

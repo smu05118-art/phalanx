@@ -14,7 +14,9 @@
 """
 import json
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -78,14 +80,19 @@ class TestAwardOrders(unittest.TestCase):
         d = {"stock": "052690", "name": "한전기술", "quarter": "2026Q2", "ok": True,
              "rcp": "X", "orders": self.o, "revenue": None, "segment_sales": None,
              "orders_all": [self.o], "raw_tables": [], "security_note": False}
-        os.makedirs(os.path.join(KR.CACHE, "052690"), exist_ok=True)
-        path = os.path.join(KR.CACHE, "052690", "TEST.json")
-        with open(path, "w", encoding="utf-8") as f:
+        # 캐시도 산출 JSON 도 **진짜 assets 를 건드리면 안 된다** — 임시 디렉터리와
+        # 가짜 write_asset 으로 갈아 끼운다(테스트가 수집 결과를 덮어쓴 적이 있다).
+        tmp = tempfile.mkdtemp()
+        cache, writer = KR.CACHE, KR.write_asset
+        KR.CACHE, KR.write_asset = tmp, lambda *a, **k: None
+        os.makedirs(os.path.join(tmp, "052690"))
+        with open(os.path.join(tmp, "052690", "TEST.json"), "w", encoding="utf-8") as f:
             json.dump(d, f, ensure_ascii=False)
         try:
             res = KR.build([{"stock": "052690", "name": "한전기술", "role": "eng"}], ["TEST"])
         finally:
-            os.remove(path)
+            KR.CACHE, KR.write_asset = cache, writer
+            shutil.rmtree(tmp, ignore_errors=True)
         v = res["052690"]["quarters"]["TEST"]
         self.assertEqual(v["backlog"], 1280000)
         self.assertGreaterEqual(v["dom_backlog"].get("NUKE", 0), 1230000)  # 신한울+새울
