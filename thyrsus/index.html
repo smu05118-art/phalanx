@@ -2303,7 +2303,10 @@ function doSnakeSwap(pids){
   save(); renderAll();
 }
 function hasStatus(p,key){ return (p.statuses||[]).some(s=>s.key===key); }
-function isMalfunctioning(p){ return hasStatus(p,'poison') || hasStatus(p,'drunkS') || (p.charId==='drunk'); }
+/* 거지는 토큰이 어떻게든 붙어 있어도 오작동이 아니다 — 부여를 막는 것만으로는 부족하다.
+   구버전 저장본·가져온 게임 JSON 에 무효 토큰이 남아 있을 수 있어 판정을 여기서 고정한다. */
+function isMalfunctioning(p){ if(p && p.charId==='beggar') return false;
+  return hasStatus(p,'poison') || hasStatus(p,'drunkS') || (p.charId==='drunk'); }
 /* ══════════ 행동 좌석 창구 ══════════
    [무엇이 문제였나] 밤 효과 함수 12개가 저마다 charId 로 좌석을 찾아 오작동을 물었다:
        const monk=S.players.find(q=>q.charId==='monk');
@@ -2362,10 +2365,22 @@ function phaseName(){ const ph=S.phase; if(ph.kind==='setup') return '준비'; r
 function log(msg){ S.log.push({t:phaseName(), msg}); save(); }
 
 /* 상태 토큰 부여/해제. expiresAt: {kind,n} = 해당 페이즈 '시작 시' 자동 해제 */
+/* 적용됐으면 true, 규칙상 막혔으면 false 를 돌려준다 — 호출부가 "부여됨" 이라고
+   잘못 알리지 않게 하기 위해서다. */
 function addStatus(p, key, source, expiresAt){
+  /* 거지는 공식이 강제로 멀쩡하게 둔다 — roles181.json: "You are sober & healthy."
+     위키 How to Run: "If the Beggar would become drunk or poisoned, they do not."
+     부여 지점이 아홉 곳(독살범·푸카·선원·여관 주인·궁정대신·건달·뱀 조련사·수동)이라
+     호출부마다 막지 않고 이 창구 하나에서 막는다. */
+  if(p && p.charId==='beggar' && (key==='poison' || key==='drunkS')){
+    log(`${p.name}(거지)는 항상 멀쩡하다 — ${STATUS_DEFS[key].ko} 부여 불발 (공식: "You are sober & healthy.")`);
+    if(typeof toast==='function') toast(`${p.name}은(는) 거지 — 취하지도 중독되지도 않습니다. 토큰을 부여하지 않습니다.`,'warn');
+    return false;
+  }
   p.statuses = p.statuses||[];
   p.statuses.push({key, source:source||'', expiresAt:expiresAt||null});
   log(`${p.name}: ${STATUS_DEFS[key].icon}${STATUS_DEFS[key].ko} 부여` + (source?` (${source})`:''));
+  return true;
 }
 function removeStatus(p, idx){ const s=p.statuses.splice(idx,1)[0]; log(`${p.name}: ${STATUS_DEFS[s.key].ko} 해제`); }
 function expireStatuses(){
@@ -4671,7 +4686,8 @@ function teaLadyBlock(t){
 function doPoison(pid){ if(!pid)return; const p=playerOf(pid); const _po=abilityActor('poisoner');
   if(hasStatus(p,'poison')){ toast(`${p.name}은(는) 이미 중독 상태입니다 — 중복 부여하지 않습니다.`,'warn'); return; }
   if(!_po.ok){ toast('독살범이 능력을 쓸 수 없는 상태 — 독이 퍼지지 않습니다. 기록만 남깁니다.','warn'); log(`독살범 불발(${_po.why}): ${p.name} 중독 불발`); save(); renderAll(); return; }
-  addStatus(p,'poison','독살범',{kind:'night', n:S.phase.n+1}); save(); renderAll(); toast(`${p.name} 중독 — 내일 황혼(밤 ${S.phase.n+1} 시작)에 자동 해제`,'ok'); }
+  if(!addStatus(p,'poison','독살범',{kind:'night', n:S.phase.n+1})){ save(); renderAll(); return; }
+  save(); renderAll(); toast(`${p.name} 중독 — 내일 황혼(밤 ${S.phase.n+1} 시작)에 자동 해제`,'ok'); }
 /* 푸카는 독살범과 수명주기가 다르다 — doPoison 재사용이 결함이었다.
    공식: 밤마다 1명을 물면 즉시 중독, '이전에 문 사람'이 그때 죽으면서 건강해진다.
    푸카가 오작동이면 새 중독도 지연 사망도 없다. 페이즈 기반 expiresAt 을 쓰면 안 된다. */
@@ -4732,7 +4748,8 @@ function doSailorDrunk(pid){
     log(`선원 불발(${_sl.why}): ${t.name} 취함 불발`); save(); renderAll(); return;
   }
   if(hasStatus(t,'drunkS')){ toast(`${t.name}은(는) 이미 취해 있습니다 — 중복 부여하지 않습니다.`,'warn'); return; }
-  addStatus(t,'drunkS','선원',drunkExpiry('dusk')); save(); renderAll();
+  if(!addStatus(t,'drunkS','선원',drunkExpiry('dusk'))){ save(); renderAll(); return; }
+  save(); renderAll();
   toast(`⚓ ${t.name} 🍺취함 — 다음 황혼(밤 ${drunkExpiry('dusk').n} 시작)에 자동 해제`,'ok');
 }
 /* 여관 주인 — 공식: "Each night*, choose 2 players: they can't die tonight, but 1 is drunk until dusk."
@@ -4767,7 +4784,8 @@ function doInnkeeperDrunk(pid){
     log(`여관 주인 오작동: ${t.name} 취함 불발`); save(); renderAll(); return;
   }
   if(hasStatus(t,'drunkS')){ toast(`${t.name}은(는) 이미 취해 있습니다 — 중복 부여하지 않습니다.`,'warn'); return; }
-  addStatus(t,'drunkS','여관 주인',drunkExpiry('dusk')); save(); renderAll();
+  if(!addStatus(t,'drunkS','여관 주인',drunkExpiry('dusk'))){ save(); renderAll(); return; }
+  save(); renderAll();
   toast(`🏠 ${t.name} 🍺취함 — 다음 황혼(밤 ${drunkExpiry('dusk').n} 시작)에 자동 해제`,'ok');
 }
 function doCourtierDrunk(cid){
@@ -6628,7 +6646,7 @@ const TRAVELER_CHARS=[
  dayNotice:'🔫 총잡이: 오늘 첫 투표 집계 직후, 그 투표에서 손을 든 플레이어 1명을 지목해 죽일 수 있음 — 집계 후 즉시 의사를 물을 것.',voteRelated:true},
 {id:'beggar',ko:'거지',en:'Beggar',type:'traveler',edition:'tb',first:false,other:false,
  ability:'투표하려면 사망 투표 토큰이 필요하다. 죽은 플레이어가 자기 토큰을 거지에게 줄 수 있으며, 받으면 그 사람의 진영을 알게 된다. 거지는 취하지도 중독되지도 않는다.',
- warn:['토큰을 준 사망자는 사망 투표 기회를 잃는다 — 앱의 토큰 기록을 수동 조정할 것.','여행자 공통: 캐릭터 공개, 구성 카운트 미포함, 추방 가능.','세부 룰은 공식 위키 확인.'],
+ warn:['**거지는 취하지도 중독되지도 않는다 — 사회자 재량이 아니라 강제다**(공식 위키: "If the Beggar would become drunk or poisoned, they do not"). 독살범·푸카·선원·여관 주인·궁정대신·건달이 거지를 지목해도 아무 일도 일어나지 않는다 — 이 앱은 토큰 자체를 붙이지 않는다.','토큰을 준 사망자는 사망 투표 기회를 잃는다 — 앱의 토큰 기록을 수동 조정할 것.','여행자 공통: 캐릭터 공개, 구성 카운트 미포함, 추방 가능.','세부 룰은 공식 위키 확인.'],
  remind:['토큰 수수 시 거지에게 준 사람의 진영을 알려줄 것.'],
  dayNotice:'🥣 거지: 투표 토큰을 받은 경우에만 투표 가능 — 토큰을 준 사망자의 진영을 거지에게 알려줄 것.',voteRelated:true},
 {id:'bureaucrat',ko:'관료',en:'Bureaucrat',type:'traveler',edition:'tb',first:true,other:true,
