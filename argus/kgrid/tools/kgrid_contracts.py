@@ -576,10 +576,12 @@ def _fields_from_kv(kv):
     # 「단일판매ㆍ공급계약체결 (자회사의 주요경영사항)」이고 첫 행이 `자회사인 효성중공업(주)`이다 —
     # 효성중공업(298040)이 낸 같은 계약과 **이중계산**된다(같은 계약명·같은 금액, rcpNo만 다르다).
     # 그래서 어느 회사 것인지 원문에서 읽어 표시한다(버리지 않는다, COMMON §0-2).
+    # 비츠로테크(042370)의 11건도 자회사(비츠로셀·비츠로넥스텍) 계약이었다 — 리튬전지·발사체
+    # 엔진이 이 회사 계약으로 보였던 이유가 이것이다.
     sub = ""
     for k in kv:
         if k.startswith("자회사인"):
-            sub = k[len("자회사인"):].strip(" ()의")
+            sub = re.sub(r"[(（]주[)）]?$", "", k[len("자회사인"):]).strip()
             break
     reg = region_of(region)
     # 계약명에도 발주처가 적힌다 — `방글라데시 전력청 HV(고압)케이블 공급 및 설치공사`는
@@ -606,6 +608,8 @@ def _fields_from_kv(kv):
         "party": party,
         "party_rel": rel,
         "affiliate": bool(_REL_AFFIL.search(rel or "")),
+        "subsidiary": bool(sub),        # 자회사 계약을 지주가 재공시한 건 — 집계에서 뺀다
+        "sub_name": sub,
         # 이름 없는 계약상대 — '빈칸'이 아니라 '익명'이라고 적는다(COMMON §0-6).
         "anon": bool(_ANON_PARTY.search(party) or _ANON_NOTE.search(re.sub(r"\s+", " ", note))),
         "demand": dem,
@@ -760,6 +764,8 @@ def build(stocks=None):
                 r.update(_fields_from_kv(_kv_from_raw(r["kv"])))
             if "title" in r:                             # 옛 캐시 이름 이관(공시 제목)
                 r["doc_title"] = r.pop("title")
+            if "자회사의 주요경영사항" in (r.get("doc_title") or ""):
+                r["subsidiary"] = True                   # 제목만으로도 드러난다
             key = _dedup_key(r)
             prev = by.get(key)
             if prev is not None and r.get("canceled") and not prev.get("canceled"):
@@ -809,14 +815,19 @@ def main():
     if a.build:
         from collections import Counter
         rows = build(set(stocks) if a.only else None)
-        print("계약 %d건 · 회사 %d사" % (len(rows), len(set(r["stock"] for r in rows))))
+        own = [r for r in rows if not r.get("subsidiary")]
+        print("계약 %d건 · 회사 %d사 (지주가 자회사 대신 낸 재공시 %d건을 빼면 %d건)"
+              % (len(rows), len(set(r["stock"] for r in rows)),
+                 len(rows) - len(own), len(own)))
         print("  통화 %s" % dict(Counter(r["cur"] for r in rows)))
         print("  수요처 %s" % dict(Counter(r["demand"] for r in rows)))
         print("  제품군 %s" % dict(Counter(r["product"] for r in rows)))
-        print("  유보 %d건 · 정정 %d건 · 해지 %d건"
+        print("  유보 %d건 · 익명 %d건 · 정정본 %d건 · 해지 %d건 · 지주 재공시 %d건"
               % (sum(1 for r in rows if r["withheld"]),
+                 sum(1 for r in rows if r.get("anon")),
                  sum(1 for r in rows if r.get("supersedes")),
-                 sum(1 for r in rows if r.get("canceled"))))
+                 sum(1 for r in rows if r.get("canceled")),
+                 sum(1 for r in rows if r.get("subsidiary"))))
 
 
 if __name__ == "__main__":
