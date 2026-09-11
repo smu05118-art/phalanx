@@ -4551,7 +4551,12 @@ function stepWidget(st,c){
   if(st.id==='imp') return `<h3>🗡 살해 판정</h3><p class="hint">임프가 지목한 대상을 선택하면 보호·군인·시장·중독을 자동 판정합니다.</p>`+selPlayers('doImpKill', p=>true, '임프가 지목한 대상');
   if(st.id==='ravenkeeper') return `<h3>🔮 캐릭터 확인</h3><p class="hint">까마귀지기가 오늘 밤 죽어 지목한 대상 — 실제 캐릭터를 확인하세요(등록 재량 적용 가능).</p>`+selPlayers('doRavenPeek', p=>true, '까마귀지기가 지목한 대상');
   if(st.id==='witch') return `<h3>🧹 저주 대상 기록</h3>`+selPlayers('doCurse', p=>p.alive, '마녀가 지목한 대상');
-  if(st.id==='cerenovus') return `<h3>🌀 광기 대상 기록</h3><p class="hint">대상 지정 후, 어떤 캐릭터의 광기인지 그리모어 메모에 적으세요.</p>`+selPlayers('doMad', p=>p.alive, '세레노버스가 지목한 대상');
+  /* 공식 능력문에 생존 한정이 없고, 위키 Tips & Tricks 가 "Your ability can also affect
+     dead players!" 라고 못 박는다. 위저드 가지는 filter:'any' 인데 이 수동 위젯만
+     p.alive 로 좁아져 있어 두 화면이 다른 계약을 쓰고 있었다. selPlayers 는 사망자에
+     💀 를 붙여 주므로 별도 표식은 필요 없다. 이 문자열은 escEm 을 거치지 않는 원시
+     HTML 이라 강조는 <b> 로 쓴다. */
+  if(st.id==='cerenovus') return `<h3>🌀 광기 대상 기록</h3><p class="hint">공식 능력문에 생존 한정이 없습니다 — <b>사망자도 지목할 수 있습니다</b>(죽어 있어도 광기를 어기면 처형될 수 있습니다). 광기로 강요할 캐릭터는 <b>주민 또는 외지인</b>이며, 고블린 징크스가 성립한 판에서는 고블린도 가능합니다. 대상 지정 후 어떤 캐릭터의 광기인지 반드시 그리모어 메모에 적으세요.</p>`+selPlayers('doMad', p=>true, '세레노버스가 지목한 대상(사망자 포함)');
   if(st.id==='exorcist'){
     const prev=(S.exorcistPrev && S.exorcistPrev.n<S.phase.n)? playerOf(S.exorcistPrev.pid):null;
     const cur=(S.exorcistPrev && S.exorcistPrev.n===S.phase.n)? playerOf(S.exorcistPrev.pid):null;
@@ -7526,6 +7531,18 @@ function wizCharPool(pool){
   const mal = typeof wiz!=='undefined' && wiz && wiz.holder
               && (typeof infoVerdictFor==='function'? infoVerdictFor(wiz.holder, wiz.stepId).mode!=='true'
                                                     : isMalfunctioning(wiz.holder));
+  /* 세레노버스 전용 — 공식 징크스: "The Cerenovus may choose to make a player mad that
+     they are the Goblin." 앱이 이 징크스를 화면에 띄우면서 선택은 막고 있었다.
+     띄우는 판정(activeJinxes)과 같은 판정으로 선택지를 연다 — 두 화면이 어긋나지 않게.
+     기존 'good-characters' 는 철학자·요리사 토큰 등 여러 단계가 공유하므로 건드리지 않는다. */
+  if(pool==='cerenovus-mad'){
+    const good=all.filter(c=>c.type==='townsfolk'||c.type==='outsider');
+    const jinxOn = typeof activeJinxes==='function' && activeJinxes().some(j=>
+      (j.a==='cerenovus'&&j.b==='goblin')||(j.a==='goblin'&&j.b==='cerenovus'));
+    if(!jinxOn) return good;
+    const gob=all.find(c=>c.id==='goblin') || (typeof charOf==='function'? charOf('goblin') : null);
+    return gob? good.concat([gob]) : good;
+  }
   if(pool==='inplay-townsfolk') return all.filter(c=>c.type==='townsfolk'&&(mal||inPlay.has(c.id)));
   if(pool==='inplay-outsider') return all.filter(c=>c.type==='outsider'&&(mal||inPlay.has(c.id)));
   if(pool==='inplay-minion') return all.filter(c=>c.type==='minion'&&(mal||inPlay.has(c.id)));
@@ -8342,7 +8359,8 @@ witch:{first:[
 cerenovus:{first:[
   {t:'wake'},
   {t:'pick-player',n:1,who:'player',label:'광기에 빠뜨릴 대상(사망자 포함)',filter:'any',storeAs:'tgt'},
-  {t:'pick-character',pool:'good-characters',label:'광기로 강요할 선한 캐릭터(주민 또는 외지인)',storeAs:'madchar'},
+  {t:'pick-character',pool:'cerenovus-mad',label:'광기로 강요할 캐릭터(주민 또는 외지인 — 고블린 징크스가 성립한 판이면 고블린도)',storeAs:'madchar'},
+  {t:'note',text:'🧞 세레노버스↔고블린 징크스: 이 판에 고블린이 함께 있으면 대상에게 "자신이 고블린이다"라는 광기를 걸 수 있습니다. 고블린은 선한 캐릭터가 아니지만 이 징크스가 성립할 때만 예외로 선택지에 나타납니다.'},
   {t:'effect',fn:'doMad',from:'tgt'},
   {t:'note',text:'대상을 깨워 "내일 하루, 자신이 그 캐릭터라고 미친 듯이 주장해야 한다"고 알려주세요. 광기 캐릭터가 무엇인지 반드시 그리모어 메모에 적어 두세요 — 위반 시 재량 처형 가능(경고성 관용도 가능).'},
   {t:'sleep'}],
@@ -8355,7 +8373,8 @@ cerenovus:{first:[
  other:[
   {t:'wake'},
   {t:'pick-player',n:1,who:'player',label:'오늘 밤의 새 광기 대상(사망자 포함)',filter:'any',storeAs:'tgt'},
-  {t:'pick-character',pool:'good-characters',label:'광기로 강요할 선한 캐릭터(주민 또는 외지인)',storeAs:'madchar'},
+  {t:'pick-character',pool:'cerenovus-mad',label:'광기로 강요할 캐릭터(주민 또는 외지인 — 고블린 징크스가 성립한 판이면 고블린도)',storeAs:'madchar'},
+  {t:'note',text:'🧞 세레노버스↔고블린 징크스: 이 판에 고블린이 함께 있으면 대상에게 "자신이 고블린이다"라는 광기를 걸 수 있습니다. 고블린은 선한 캐릭터가 아니지만 이 징크스가 성립할 때만 예외로 선택지에 나타납니다.'},
   {t:'effect',fn:'doMad',from:'tgt'},
   {t:'note',text:'대상을 깨워 광기 내용을 알려주고, 광기 캐릭터를 그리모어 메모에 갱신하세요.'},
   {t:'sleep'}]},
