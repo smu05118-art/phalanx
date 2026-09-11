@@ -1,0 +1,195 @@
+/* 한국조선(argus/kship) 공용 디자인 시스템.
+   한국건설(kce) 탭과 같은 다크 토큰을 쓰되, 페이지마다 인라인으로 복제하지 않고 한 파일로 둔다 —
+   조선사·기자재사·부품 페이지가 수십 장이라 인라인이면 같은 규칙이 수십 벌 생긴다.
+   시리즈 색은 tools/assets/palette.json 에서 검증된 값이다(다크 표면 #171a21·#0f1116, 인접 ΔE 8.4).
+   색은 엔티티(선종)에 고정한다 — 필터로 시리즈가 줄어도 재배색하지 않는다. */
+:root{
+  --bg:#0f1116; --pn:#171a21; --pn2:#1e222b; --pn3:#242935; --ln:#2a2f3a; --ln2:#343a47;
+  --tx:#e6e8ec; --tx2:#98a1b0; --tx3:#5d6675; --a:#60a5fa; --a2:#93c5fd;
+  --up:#4ade80; --dn:#f87171; --wn:#fbbf24;
+  /* 선종 시리즈(고정 슬롯) */
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  /* 순차(파랑 램프) — 인포그래픽 농도·히트맵 */
+  --q1:#0d366b; --q2:#184f95; --q3:#256abf; --q4:#3987e5; --q5:#6da7ec; --q6:#9ec5f4;
+  --grid:#2a2f3a; --axis:#343a47;
+  --r:10px; --r2:7px;
+  --sans:'Pretendard',-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 var(--sans);padding:0 0 64px;-webkit-font-smoothing:antialiased}
+a{color:var(--a);text-decoration:none}
+a:hover{color:var(--a2)}
+:focus-visible{outline:2px solid var(--a);outline-offset:2px;border-radius:4px}
+b,strong{font-weight:600}
+.num{font-variant-numeric:tabular-nums}
+.mut{color:var(--tx3)}.dim{color:var(--tx2)}
+.up{color:var(--up)}.dn{color:var(--dn)}.wn{color:var(--wn)}
+
+/* ── 머리 ─────────────────────────────────────────── */
+header.top{position:sticky;top:0;z-index:20;background:rgba(15,17,22,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--ln);padding:11px clamp(14px,3vw,32px)}
+.hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;max-width:1320px;margin:0 auto}
+.hd h1{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.hd .code{font-size:11px;color:var(--tx3);font-family:var(--mono)}
+.hd .tag{font-size:10.5px;color:var(--tx2);border:1px solid var(--ln);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.hd .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.hd .sp a{font-size:11px;color:var(--tx2);border:1px solid var(--ln);border-radius:6px;padding:4px 10px;transition:border-color .12s,color .12s}
+.hd .sp a:hover{border-color:var(--a);color:var(--a2)}
+.crumb{max-width:1320px;margin:0 auto;font-size:11px;color:var(--tx3);display:flex;gap:6px;flex-wrap:wrap;padding:6px 0 0}
+.crumb a{color:var(--tx2)}
+
+main{max-width:1320px;margin:0 auto;padding:20px clamp(14px,3vw,32px)}
+.lead{color:var(--tx2);font-size:12.5px;max-width:860px;margin-bottom:18px}
+
+/* ── KPI 타일: 라벨 · 값 · 델타 · 스파크 ───────────── */
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+.kpi>div{background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);padding:13px 15px 12px;min-width:0}
+.kpi b{display:block;font-size:20px;font-weight:600;letter-spacing:-.4px;line-height:1.15}
+.kpi b small{font-size:11.5px;color:var(--tx3);font-weight:500;margin-left:3px}
+.kpi span{display:block;font-size:10.5px;color:var(--tx3);margin-top:4px}
+.kpi i{font-style:normal;font-size:11px;font-variant-numeric:tabular-nums}
+.kpi .hero b{font-size:34px;letter-spacing:-.8px}
+
+/* ── 카드·구획 ──────────────────────────────────────── */
+section.card{margin-top:20px;background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);padding:15px 17px}
+section.card>h2{font-size:12.5px;font-weight:600;color:var(--tx2);margin-bottom:11px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+section.card>h2 em{font-style:normal;font-size:10.5px;color:var(--tx3);font-weight:400}
+section.card>h2 .right{margin-left:auto;font-size:10.5px;color:var(--tx3);font-weight:400}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px}
+/* 인포그래픽: 그림 2 : 패널 1. 좁은 화면에서 패널 최소폭이 그림을 0으로 누르므로 1열로 */
+.ig{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:14px}
+@media(max-width:900px){.ig{grid-template-columns:1fr}}
+.note{color:var(--wn);font-size:11px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.22);border-radius:var(--r2);padding:8px 11px;margin:0 0 12px}
+.note.info{color:var(--tx2);background:rgba(96,165,250,.06);border-color:rgba(96,165,250,.2)}
+.chart{position:relative;height:260px}
+.chart.tall{height:340px}
+
+/* ── 필터 행: 차트 위 한 줄 ─────────────────────────── */
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.ctl input,.ctl select{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;color:var(--tx);font:12px var(--sans);padding:5px 9px}
+.ctl input{min-width:200px}
+.ctl label{font-size:11.5px;color:var(--tx2);display:flex;align-items:center;gap:5px}
+.seg{display:inline-flex;border:1px solid var(--ln);border-radius:7px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--tx2);font:12px var(--sans);padding:5px 11px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--pn3);color:var(--tx)}
+.seg button+button{border-left:1px solid var(--ln)}
+
+/* ── 칩(선종·부품 대분류) ──────────────────────────── */
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--tx2);border:1px solid var(--ln);
+  border-radius:999px;padding:4px 11px;background:var(--pn2);cursor:pointer;transition:border-color .12s,background .12s,color .12s}
+.chip:hover{border-color:var(--ln2);color:var(--tx)}
+.chip[aria-pressed="true"],.chip.on{border-color:var(--a);color:var(--tx);background:rgba(96,165,250,.1)}
+.chip .sw{width:9px;height:9px;border-radius:3px;background:var(--tx3)}
+.chip .n{font-size:10px;color:var(--tx3);font-variant-numeric:tabular-nums}
+
+/* ── 표 ───────────────────────────────────────────── */
+.wrap{overflow-x:auto}
+@media(min-width:768px){.wrap.tall{max-height:70vh;overflow-y:auto}}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 9px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap;vertical-align:middle}
+th{color:var(--tx3);font-weight:500;font-size:10.5px;text-align:right;position:sticky;top:0;background:var(--pn);z-index:1;
+  box-shadow:inset 0 -1px 0 var(--ln);user-select:none}
+th.sort{cursor:pointer}th.sort:hover{color:var(--a)}
+th.l,td.l{text-align:left}
+td.l{max-width:360px;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:var(--pn2)}
+tbody tr.sel{background:rgba(96,165,250,.08)}
+.bar{display:inline-block;height:5px;border-radius:3px;background:var(--a);vertical-align:middle;margin-right:6px}
+.pill{display:inline-block;font-size:10px;border:1px solid var(--ln);border-radius:999px;padding:0 7px;color:var(--tx2);line-height:16px;margin-left:4px}
+.pill.est{border-style:dashed;color:var(--tx3)}
+.basis{font-size:10px;color:var(--tx3);font-family:var(--mono)}
+
+/* ── 선표(인도 스케줄) 타임라인 ───────────────────── */
+.tl{position:relative;overflow-x:auto}
+.tl .row{display:grid;grid-template-columns:200px 1fr;align-items:center;min-height:26px;border-bottom:1px solid var(--ln)}
+.tl .lbl{font-size:11.5px;color:var(--tx2);padding:0 9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl .lane{position:relative;height:26px}
+.tl .bar2{position:absolute;top:7px;height:12px;border-radius:0 4px 4px 0;opacity:.9;min-width:6px}
+.tl .bar2.est{opacity:.55;background-image:repeating-linear-gradient(135deg,transparent 0 4px,rgba(0,0,0,.25) 4px 6px)}
+.tl .tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--grid)}
+.tl .tick.now{border-left:1px solid var(--tx3)}
+.tl .head{display:grid;grid-template-columns:200px 1fr;font-size:10.5px;color:var(--tx3)}
+.tl .head .lane{height:20px}
+.tl .head span{position:absolute;top:2px;transform:translateX(-50%)}
+
+/* ── 인포그래픽(선박 단면) ─────────────────────────── */
+.ship{background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);padding:12px}
+.ship svg{width:100%;height:auto;display:block}
+.ship .sea{fill:rgba(96,165,250,.05)}
+.ship .hull{fill:rgba(255,255,255,.035);stroke:rgba(255,255,255,.28);stroke-width:1.2}
+.ship .rg{fill:rgba(255,255,255,.05);stroke:rgba(255,255,255,.18);stroke-width:1;cursor:pointer;transition:fill .12s,stroke .12s}
+.ship .rg:hover,.ship .rg:focus-visible{fill:rgba(96,165,250,.28);stroke:var(--a);outline:0}
+.ship .rg.sel{fill:rgba(96,165,250,.36);stroke:var(--a2);stroke-width:1.5}
+.ship .rg.rel0{fill:rgba(255,255,255,.015);stroke:rgba(255,255,255,.07);cursor:default}
+.ship .rg.rel1{fill:rgba(96,165,250,.06)}
+.ship .rg.rel2{fill:rgba(96,165,250,.14)}
+.ship .rg.rel3{fill:rgba(96,165,250,.26);stroke:rgba(147,197,253,.5)}
+.ship .rg.has{stroke-dasharray:none}
+.ship .rg.none{stroke-dasharray:3 3}
+.ship text{font:11px var(--sans);fill:var(--tx2);pointer-events:none}
+.ship text.sm{font-size:9.5px;fill:var(--tx3)}
+.ship .cnt{font:10px var(--mono);fill:var(--tx)}
+.ship .wl{stroke:rgba(96,165,250,.35);stroke-width:1;stroke-dasharray:4 4}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10.5px;color:var(--tx3);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px;border:1px solid rgba(255,255,255,.18)}
+.panel{background:var(--pn2);border:1px solid var(--ln);border-radius:var(--r2);padding:12px 13px;min-height:120px}
+.panel h3{font-size:12.5px;font-weight:600;margin-bottom:6px;display:flex;align-items:baseline;gap:8px}
+.panel h3 em{font-style:normal;font-size:10.5px;color:var(--tx3);font-weight:400}
+.panel ul{list-style:none}
+.panel li{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--ln);font-size:12px}
+.panel li:last-child{border-bottom:0}
+.panel li .y{font-size:10px;color:var(--tx3)}
+.panel .catbox.off{opacity:.42;transition:opacity .15s}.panel .catbox.off:hover{opacity:.85}
+.yardtag{display:inline-block;font-size:10px;border-radius:4px;padding:0 5px;line-height:15px;margin-left:3px;background:var(--pn3);color:var(--tx2)}
+
+/* ── 툴팁 ─────────────────────────────────────────── */
+.tip{position:fixed;z-index:50;pointer-events:none;background:#0b0d12;border:1px solid var(--ln2);border-radius:7px;
+  padding:7px 10px;font-size:11.5px;color:var(--tx);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:300px}
+.tip b{font-size:12.5px}
+.tip .k{display:inline-block;width:12px;height:2px;vertical-align:middle;margin-right:6px;border-radius:1px}
+.tip .row{display:flex;justify-content:space-between;gap:12px}
+.tip .row span:last-child{color:var(--tx2)}
+
+/* ── 회사 카드 격자(허브) ───────────────────────────── */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:13px}
+.cardlink{display:block;background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);padding:15px 17px;color:inherit;transition:border-color .12s,background .12s,transform .12s}
+.cardlink:hover{border-color:var(--a);background:var(--pn2);color:inherit;transform:translateY(-1px)}
+.cardlink .t{display:flex;align-items:baseline;gap:8px}
+.cardlink .t b{font-size:15px}
+.cardlink .t .code{font-family:var(--mono);font-size:10.5px;color:var(--tx3)}
+.cardlink p{color:var(--tx2);font-size:11.5px;margin-top:5px;min-height:30px}
+.cardlink .stat{display:flex;gap:16px;margin-top:11px;padding-top:11px;border-top:1px solid var(--ln)}
+.cardlink .stat div{display:flex;flex-direction:column}
+.cardlink .stat b{font-size:14px;font-variant-numeric:tabular-nums}
+.cardlink .stat span{font-size:10px;color:var(--tx3);margin-top:1px}
+.cardlink .go{margin-top:11px;font-size:11.5px;color:var(--a)}
+h2.sec{font-size:12.5px;font-weight:600;color:var(--tx2);margin:28px 0 10px;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+h2.sec span{font-size:10.5px;color:var(--tx3);font-weight:400}
+
+footer{max-width:1320px;margin:28px auto 0;padding:0 clamp(14px,3vw,32px);color:var(--tx3);font-size:10.5px;line-height:1.8}
+@media(max-width:640px){
+  .kpi b{font-size:17px}.kpi .hero b{font-size:26px}
+  .tl .row,.tl .head{grid-template-columns:120px 1fr}
+  .hd .sp{margin-left:0;width:100%}
+}
+@media print{header.top{position:static}.ship .rg{cursor:default}}
+
+/* ── 무기체계 인포그래픽(parts.html) — kdef 전용 ───────────── */
+/* 실루엣은 영역 폴리곤이 모여 만든다(별도 외곽선 없음). 선택은 .on, 회사가 붙은 영역은 .has. */
+.ship .rg.on{fill:rgba(96,165,250,.38);stroke:var(--a2);stroke-width:1.6}
+.ship .rg.has{fill:rgba(57,135,229,.30);stroke:rgba(147,197,253,.55)}
+.ship .rg.has.on{fill:rgba(96,165,250,.46)}
+.ship .deco{fill:rgba(255,255,255,.10);stroke:rgba(255,255,255,.22);stroke-width:1}
+.ship text.rlbl{font:9.5px var(--sans);fill:var(--tx2);pointer-events:none}
+.panel .pblock{margin-top:10px;padding-top:8px;border-top:1px solid var(--ln)}
+.panel .pblock:first-of-type{border-top:0}
+.panel .pblock h4{font-size:12px;font-weight:600;margin-bottom:5px;display:flex;align-items:baseline;gap:6px}
+.panel .pblock h4 .mut{font-weight:400;font-size:10.5px}
+.panel .pblock h4 .n{margin-left:auto;font:10px var(--mono);color:var(--tx3)}
+.panel ul.colist li{display:block;padding:5px 0}
+.panel ul.colist a.co{font-weight:600}
