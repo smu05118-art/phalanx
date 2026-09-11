@@ -46,9 +46,17 @@ _II4_NEED = {"nm", "amt", "bal"}          # 조선 표 판별 핵심(cmp는 없�
 
 # 단위 캡션 → (통화, 백만 단위 환산 배수)
 _UNIT_RE = re.compile(r"단위\s*:?\s*([^)\]]{1,24})")
+# **긴 이름이 먼저** 와야 한다(십억원 > 억원 > 원). 배수 접두사가 붙은 **영문 통화 코드**
+# (`천USD`·`백만USD`)를 빼먹으면 짧은 `usd` 항목에 먼저 걸려 1000배 틀린다 — 일진전기 103590
+# 수주표 캡션이 `(단위 : 천USD )`이고, 219,129천USD가 0.219백만USD로 읽혔다(kgrid FINDINGS §2).
 _UNIT_TABLE = [
-    ("백만달러", "USD", 1.0), ("백만불", "USD", 1.0), ("million usd", "USD", 1.0), ("mil.usd", "USD", 1.0),
-    ("천달러", "USD", 0.001), ("천불", "USD", 0.001), ("usd", "USD", 1e-6), ("달러", "USD", 1e-6),
+    ("백만달러", "USD", 1.0), ("백만불", "USD", 1.0), ("백만usd", "USD", 1.0),
+    ("million usd", "USD", 1.0), ("mil.usd", "USD", 1.0),
+    ("천달러", "USD", 0.001), ("천불", "USD", 0.001), ("천usd", "USD", 0.001),
+    ("thousand usd", "USD", 0.001),
+    ("usd", "USD", 1e-6), ("달러", "USD", 1e-6), ("us$", "USD", 1e-6),
+    ("백만유로", "EUR", 1.0), ("백만eur", "EUR", 1.0),
+    ("천유로", "EUR", 0.001), ("천eur", "EUR", 0.001), ("eur", "EUR", 1e-6), ("유로", "EUR", 1e-6),
     ("십억원", "KRW", 1000.0), ("백만원", "KRW", 1.0), ("억원", "KRW", 100.0),
     ("천원", "KRW", 0.001), ("만원", "KRW", 0.01), ("원", "KRW", 1e-6),
 ]
@@ -65,10 +73,15 @@ def unit_of(lead, cols=None):
     if not m:
         return "KRW", 1.0, False
     txt = m[-1].replace(" ", "").lower()
-    for name, cur, mul in _UNIT_TABLE:
-        if name.lower() in txt:
-            return cur, mul, True
-    return "KRW", 1.0, False
+    hits = [(cur, mul) for name, cur, mul in _UNIT_TABLE if name.lower() in txt]
+    if not hits:
+        return "KRW", 1.0, False
+    # 원화 단위가 **같이 적힌** 캡션은 원화 표다 — 외화는 괄호 병기일 뿐이고 표의 숫자는 원화다
+    # (포메탈 119500 `[단위 : 백만원 (천USD)]`, 로체시스템즈 071280 `(단위 :천원, 천USD )`).
+    # 이 갈래를 두지 않으면 멀쩡한 원화 표가 통째로 외화가 된다.
+    krw = [h for h in hits if h[0] == "KRW"]
+    cur, mul = (krw or hits)[0]
+    return cur, mul, True
 
 
 # 낱자 '계'는 앞이 공백·괄호일 때만 소계다 — '기본설계'·'실시설계'·'통합제어계'를 소계로
