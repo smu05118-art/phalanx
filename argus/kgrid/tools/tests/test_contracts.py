@@ -8,6 +8,7 @@ fixture 는 DART 수시공시 본문 HTML을 그대로 잘라 넣은 것이고, 
 
     cd argus/kgrid/tools && python3 -m unittest discover -s tests
 """
+import json
 import os
 import sys
 import unittest
@@ -160,6 +161,39 @@ class CurrencyGuard(unittest.TestCase):
 
     def test_no_note_no_currency(self):
         self.assertEqual(C.currency_amount("", 1000)[:2], (None, None))
+
+
+class CorrectionTableLabels(unittest.TestCase):
+    """정정공시의 정정 표는 `(정정전 문장) => (정정후 문장)` 꼴이라 **문장이 라벨 자리에 온다**.
+
+    일진전기 20260730800338(fixture는 그 공시의 (라벨,값) 원문 그대로)의 정정전 문구에는
+    「5. 현재 계약상대방과 계약기간 변경을 협의중이며…」가 들어 있다. 라벨 길이를 재지 않으면
+    이 문장이 `계약상대방` 라벨로 뽑혀 **계약상대가 주석 문장으로 채워진다**(실측 오류).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(FIX, "103590_20260730800338_kv.json"), encoding="utf-8") as f:
+            cls.fx = json.load(f)
+        cls.r = C._fields_from_kv(C._kv_from_raw(cls.fx["kv"]))
+
+    def test_party_is_the_counterparty_not_a_sentence(self):
+        self.assertEqual(self.r["party"], "싱가포르 전력청(SPGroup)")
+
+    def test_corrected_amount_and_currency(self):
+        # 정정후 금액 81,238,842,949원 / 주석의 원통화 SGD 87,275,703.35
+        self.assertEqual(self.r["amt_krw_m"], 81238.843)
+        self.assertEqual(self.r["cur"], "SGD")
+        self.assertEqual(self.r["amt"], 87275703.35)
+
+    def test_reason_for_correction_is_kept(self):
+        self.assertIn("계약금액", self.r["fix_why"])
+
+    def test_utility_and_region(self):
+        self.assertTrue(self.r["utility"])          # `전력청`
+        self.assertEqual(self.r["region"], "asia")  # 공급지역 `싱가포르`
+        # 아시아 전력청은 스펙의 6갈래에 없다 — 없는 갈래를 만들지 않고 비운다(FINDINGS §7).
+        self.assertIsNone(self.r["demand"])
 
 
 class Classify(unittest.TestCase):

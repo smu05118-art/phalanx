@@ -723,6 +723,9 @@ def company(data, stock):
     body.append(kpi(tiles))
 
     notes = []
+    if s["role"] == "holding":
+        notes.append("<b>지주회사</b>입니다 — 이 잔고·매출은 연결 종속회사의 표에서 읽은 것이라 "
+                     "자회사 페이지와 <b>겹칩니다</b>. 허브의 합계·이분 막대에서는 뺐습니다.")
     if s.get("unit_note"):
         notes.append(s["unit_note"])
     if s.get("coverage_note"):
