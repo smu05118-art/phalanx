@@ -1853,6 +1853,24 @@ function migrateState(raw){
     const pv=h.peerVoters;
     h.peerVoters={mvp:Math.max(0,(pv&&pv.mvp)|0), bust:Math.max(0,(pv&&pv.bust)|0)};
   });
+  /* 커스텀 체크리스트 키를 이름 기준 → id 기준으로 옮긴다.
+     이름에 '|' 가 들어 있을 수 있으므로 잘라서 파싱하지 않고, 알려진 커스텀 이름으로
+     접두사를 맞춰 본다. 같은 이름이 여럿이면 그들 전부에 표시를 옮긴다 —
+     사용자가 화면에서 본 것이 '체크박스 하나가 둘을 덮는' 상태였기 때문이다. */
+  if(st.checks && typeof st.checks==='object' && Array.isArray(st.customs) && st.customs.length){
+    const moved={};
+    Object.keys(st.checks).forEach(k=>{
+      if(!k.startsWith('커스텀|')){ moved[k]=st.checks[k]; return; }
+      let hit=false;
+      st.customs.forEach(c=>{
+        if(!c || typeof c!=='object' || !c.id) return;
+        const pre='커스텀|'+String(c.ko)+'|';
+        if(k.startsWith(pre)){ moved['커스텀|'+c.id+'|'+k.slice(pre.length)]=st.checks[k]; hit=true; }
+      });
+      if(!hit) moved[k]=st.checks[k];
+    });
+    st.checks=moved;
+  }
   st.schema=2;
   return st;
 }
@@ -5865,7 +5883,10 @@ genDiscretion = (function(orig){
 
 /* ══════════════════ 체크리스트 탭 (시트별 잊지 말 것) ══════════════════ */
 function buildChecklist(){
-  const items=[]; const add=(group,src,txt)=>items.push({group,src,txt,key:group+'|'+src+'|'+txt});
+  const items=[]; /* keySrc 는 '신원', src 는 '화면에 보이는 이름'이다. 내장 캐릭터는 한국어 이름이
+     유일해서 둘이 같아도 됐지만, 커스텀은 같은 이름이 여럿일 수 있다 —
+     이름으로 키를 만들면 두 캐릭터가 체크박스 하나를 공유한다. */
+  const add=(group,src,txt,keySrc)=>items.push({group,src,txt,key:group+'|'+(keySrc||src)+'|'+txt});
   const inPlay=id=>S.players.some(p=>p.charId===id);
   // 셋업
   if(inPlay('baron')) add('셋업','남작','구성 변경 적용 확인: 마을 주민 −2 / 외지인 +2');
@@ -5911,8 +5932,8 @@ function buildChecklist(){
   // 커스텀
   (S.customs||[]).forEach(c=>{
     if(S.players.some(p=>p.charId===c.id)){
-      (c.reminders||[]).forEach(r=>add('커스텀',c.ko,r));
-      if(!(c.reminders||[]).length) add('커스텀',c.ko,'커스텀 캐릭터 — 상호작용 검증 필요(제작자에게 시트 검토 요청)');
+      (c.reminders||[]).forEach(r=>add('커스텀',c.ko,r,c.id));
+      if(!(c.reminders||[]).length) add('커스텀',c.ko,'커스텀 캐릭터 — 상호작용 검증 필요(제작자에게 시트 검토 요청)',c.id);
     }
   });
   return items;
