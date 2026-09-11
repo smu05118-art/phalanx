@@ -2,18 +2,18 @@
   "validated_on": ["#171a21 (panel)", "#0f1116 (bg)"],
   "mode": "dark",
   "categorical_order_fixed": [
-    {"slot": 1, "hex": "#3987e5", "hue": "blue",    "use": "컨테이너선"},
-    {"slot": 2, "hex": "#d95926", "hue": "orange",  "use": "LNG운반선"},
-    {"slot": 3, "hex": "#199e70", "hue": "aqua",    "use": "탱커(원유·제품·화학)"},
-    {"slot": 4, "hex": "#c98500", "hue": "yellow",  "use": "LPG·암모니아(VLAC·VLGC)"},
-    {"slot": 5, "hex": "#d55181", "hue": "magenta", "use": "해양플랜트·FPSO·FLNG"},
-    {"slot": 6, "hex": "#008300", "hue": "green",   "use": "특수선·군함·기타"},
-    {"slot": 7, "hex": "#9085e9", "hue": "violet",  "use": "예비(벌크·PCTC 등 등장 시)"},
-    {"slot": 8, "hex": "#e66767", "hue": "red",     "use": "예비"}
+    {"slot": 1, "hex": "#3987e5", "hue": "blue",    "use": "증착(CVD·ALD·PVD·에피)", "stages": ["depo"]},
+    {"slot": 2, "hex": "#d95926", "hue": "orange",  "use": "식각", "stages": ["etch"]},
+    {"slot": 3, "hex": "#199e70", "hue": "aqua",    "use": "세정·CMP(스트립·애싱 포함)", "stages": ["clean", "cmp"]},
+    {"slot": 4, "hex": "#c98500", "hue": "yellow",  "use": "전공정 기타(포토·열처리/RTP·이온주입)", "stages": ["photo", "thermal", "implant"]},
+    {"slot": 5, "hex": "#d55181", "hue": "magenta", "use": "계측·검사(오버레이·결함·CD)", "stages": ["metro"]},
+    {"slot": 6, "hex": "#008300", "hue": "green",   "use": "이송/진공·유틸리티", "stages": ["handling"]},
+    {"slot": 7, "hex": "#9085e9", "hue": "violet",  "use": "후공정(테스트·패키징)", "stages": ["test", "pkg"]},
+    {"slot": 8, "hex": "#e66767", "hue": "red",     "use": "부품소재·공정서비스", "stages": ["parts", "service"]}
   ],
-  "rules": "색은 선종(엔티티)에 고정 — 필터로 시리즈가 줄어도 재배색 금지. 9번째 선종은 '기타'로 접는다. 전쌍 형식(산점·버블)은 3슬롯 상한.",
+  "rules": "색은 공정 단계(엔티티)에 고정 — 필터로 시리즈가 줄어도 재배색 금지. hex·슬롯 순서는 kship에서 검증된 그대로 두고(results 참조) `use`/`stages` 만 이 탭의 엔티티로 다시 배정했다. 단계는 13개(스펙 「산업 특성 4」 12개 + 공정서비스)인데 슬롯은 8개라 아래 규칙으로 접는다 — 접기는 회사 수(순위)가 아니라 공정 인접성으로 정했다(순위로 접으면 다음 갱신에 색이 바뀐다). ① 상장사가 많고 축으로 쓰는 단계는 단독 슬롯: 증착(1)·식각(2)·계측검사(5)·이송/진공(6). ② CMP는 세정과 한 슬롯(3) — post-CMP 세정이 공정상 붙어 있고 국내 상장사는 케이씨텍처럼 둘을 겸한다. ③ 포토·열처리/RTP·이온주입은 '전공정 기타'로 한 슬롯(4) — 노광기·이온주입기는 국내 상장사가 없고 열처리는 HPSP 한 곳이다. ④ 테스트와 패키징은 '후공정' 한 슬롯(7) — front_back 축이 이미 전/후를 가르고, 원문에서 두 일을 겸하는 회사가 흔하다(에이엘티 「반도체 테스트 및 패키징」·윈팩 「반도체 패키징 및 테스트」). ⑤ 부품소재와 공정서비스는 한 슬롯(8) — 둘 다 팹 흐름 밖(flow_order=null)이고 코미코처럼 겸업한다. 슬롯 대응은 stages.json 의 단계 키와 1:1로 맞아야 하고 `build_dicts.py --check` 가 대조한다(빠지거나 겹치면 오류). 9번째 엔티티가 생기면 새 색을 만들지 말고 '기타'로 접거나 스몰멀티플로 쪼갠다. 전쌍 형식(산점·버블)은 3슬롯 상한.",
   "sequential_blue": ["#cde2fb","#b7d3f6","#9ec5f4","#86b6ef","#6da7ec","#5598e7","#3987e5","#2a78d6","#256abf","#1c5cab","#184f95","#104281","#0d366b"],
-  "sequential_use": "인포그래픽 부품 영역의 납품사 수·매출비중 농도, 히트맵",
+  "sequential_use": "팹 흐름 인포그래픽의 단계·부품 영역 농도(그 단계 상장사 수·수주잔고 합), 히트맵",
   "status_fixed": {"good": "#0ca30c", "warning": "#fab219", "serious": "#ec835a", "critical": "#d03b3b"},
   "chrome_dark": {"ink": "#e6e8ec", "ink2": "#98a1b0", "muted": "#5d6675", "grid": "#2a2f3a", "surface": "#171a21", "page": "#0f1116"},
   "results": {"eight_adjacent": "pass (CVD 8.4 protan, normal 19.3, contrast all>=3:1)", "three_allpairs": "pass (CVD 9.4 deutan, normal 20.9)"}
