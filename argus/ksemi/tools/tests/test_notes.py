@@ -54,6 +54,18 @@ class TestRevenueBasis(unittest.TestCase):
         flat = P._txt(__import__("re").sub(r"<[^>]+>", " ", self.html))
         self.assertIn(top["quote"], flat)
 
+    def test_one_sentence_is_judged_once(self):
+        """같은 문장이 두 기준으로 두 번 실리면 안 된다.
+
+        원익IPS 주석의 *"…통제가 고객에게 이전되는 시점인 **설치완료** 시점에 인식됩니다"*
+        한 문장에는 `설치완료` 와 `통제가 고객에게 이전되는 시점`(인도 낱말)이 같이 있다.
+        우선순위가 이미 설치완료를 골랐으므로 같은 인용이 「인도」로 또 실리면 안 된다.
+        """
+        quotes = [b["quote"] for b in self.b["bases"]]
+        self.assertEqual(len(quotes), len(set(quotes)), quotes)
+        same = [b["key"] for b in self.b["bases"] if QUOTE in b["quote"]]
+        self.assertEqual(same, ["설치완료"], "이 문장의 판정은 설치완료 하나뿐이어야 한다")
+
     def test_no_basis_is_not_guessed(self):
         """어느 낱말도 안 걸리면 추정하지 않는다(빈칸으로 남긴다)."""
         b = P.revenue_basis("<p>해당 사항 없음</p>")
