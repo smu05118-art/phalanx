@@ -128,6 +128,27 @@ def match_words(text, words, rule, ctx_words, need_ctx=True):
 # ── 자료 모으기 ─────────────────────────────────────────────
 
 PROD_MAX = 2500                 # 주요제품 절에서 읽을 글자 수. 표 머리 + 품목 줄이면 충분하다
+# 매출 구성표의 **품목 줄**만 받기 위한 자물쇠 — 낱말 옆에 금액·비율이 있어야 한다.
+_NUM_NEAR = re.compile(r"\d[\d,\.]*\s*(?:%|％|백만원|천원|원\b)")
+NUM_WINDOW = 80
+
+
+def _first_listed(text, word):
+    """그 낱말이 **매출 구성표의 품목 줄**로 나온 첫 자리. 없으면 -1.
+
+    자물쇠가 없으면 '자기 부품이 들어가는 자리'를 설명한 문장이 그대로 걸린다 —
+    비씨엔씨 「Chamber 하부의 plasma 노출 부위 부품」· 한솔아이원스 「챔버 내벽 손상 보호를
+    위한 부품의 세정」· 제이엔비 「진공 챔버와 가깝게 설치하여」. 셋 다 챔버를 만들지 않는다.
+    품목 줄에는 옆에 금액·비율이 붙어 있다(「CHAMBER, GATE VALVE 외 14,849 54.07%」).
+    한 낱말이 여러 번 나오면 **품목 줄로 나온 자리**를 고른다(설명 문장이 먼저 와도).
+    """
+    tl, wl = text.lower(), word.lower()
+    at = tl.find(wl)
+    while at >= 0:
+        if _NUM_NEAR.search(text[max(0, at - NUM_WINDOW):at + NUM_WINDOW]):
+            return at
+        at = tl.find(wl, at + 1)
+    return -1
 
 
 def products_text(stock, quarter):
@@ -255,7 +276,10 @@ def build(data):
                     # II-2 주요제품 절 — 부품 이름이 여기에만 있는 회사가 있다
                     pt = data["prod"].get(t["stock"]) or ""
                     for w in match_words(pt, p["words"], prule, ctx_words, need_ctx=False):
-                        at = pt.lower().find(w.lower())
+                        at = _first_listed(pt, w)
+                        if at < 0:
+                        # **품목 줄일 때만** 받는다 — 금액·비율이 옆에 있어야 한다.
+                            continue
                         hits.append({"term": w, "n": None, "src": "주요제품",
                                      "quote": pt[max(0, at - 60):at + 160].strip()})
                     for e in (scan.get(t["stock"]) or {}).get("evidence") or []:
