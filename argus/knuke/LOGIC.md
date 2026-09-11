@@ -4,7 +4,7 @@
 
 | 단계 | 파일 | 산출 |
 |---|---|---|
-| 사전 | `build_dicts.py` | `domains.json`(발전원 5) · `contract_types.json`(공급계층 8) · `parts_taxonomy.json`(대분류 9/소분류 18) · `svg_regions.json`(실루엣 2/영역 16). 교차참조 검증 |
+| 사전 | `build_dicts.py` | `domains.json`(발전원 5) · `contract_types.json`(공급계층 9) · `parts_taxonomy.json`(대분류 9/소분류 18) · `svg_regions.json`(실루엣 2/영역 16). 교차참조 검증 |
 | 모집단 ③ | `knuke_scan.py` | `universe_probe.json` — 정기보고서 II절 본문에서 원전·발전 낱말·한수원/한전 언급으로 승격 |
 | 모집단 | `knuke_universe.py` | `universe.json` — ①KIND ②지정 ③탐색 ④제외 네 겹 |
 | 계약 | `knuke_contracts.py` | `contracts/<종목>/<rcp>.json` 원문 보존 → `contracts.json`. 발전원·공급계층·계약상대 갈래 |
@@ -16,7 +16,8 @@
 
 - **발전원(domain)** — 계약명·사업명의 낱말. 호기·사업 이름(신한울·두코바니·삼척화력)이 prio 90,
   일반 어휘(원자력·화력·풍력)가 prio 50. 못 찾으면 None(추정하지 않는다).
-- **공급 계층(tier)** — 계약명에서 위에서부터: 해체·검사·정비O&M·설계·계측제어·주기기·보조기기·기자재.
+- **공급 계층(tier)** — 계약명에서 위에서부터: 해체·검사·정비O&M·설계·EPC건설설치·계측제어·주기기·보조기기·기자재.
+  계약명으로 못 가르면 공시 「판매ㆍ공급계약 구분」의 '공사수주'만 EPC 로 올리고 근거를 함께 남긴다.
   '원자로설비 정비'는 정비(OM)로 가도록 O&M 계열을 주기기보다 앞에 둔다.
 - **계약상대(party)** — GOV(한수원·한전·발전 5사·조달청 등 관급) · PRIME(두산에너빌리티·한전기술·
   한전KPS 하도급) · FOREIGN(해외 발전사·EPC) · DOMESTIC · ANON(공시유보).

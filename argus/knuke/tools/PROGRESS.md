@@ -4,7 +4,7 @@
 
 ## 축 (원문에서 확인한 것 — `_specs/knuke.md`)
 - **발전원(domain)**: 원자력·화력·신재생·송변전·기타산업설비
-- **공급 계층(tier)**: 주기기·보조기기·계측제어·설계엔지니어링·정비O&M·검사방사선·해체방폐물·기자재공급
+- **공급 계층(tier)**: 주기기·보조기기·계측제어·설계엔지니어링·EPC건설설치·정비O&M·검사방사선·해체방폐물·기자재공급
 - **발주 성격(party)**: 관급(한수원·한전·발전5사) · 민간IPP · 해외(EPC 하도·직수출)
 - 차별점: II-4 수주표에 **발주처 실명·사업명·계약기간**이 행마다 있다(한전기술 23행·한전KPS) →
   '호기별 타임라인'·'발주처 집중도'를 만들 수 있다(조선의 익명 선주 문제가 없다).
@@ -12,11 +12,12 @@
 ## 완료
 - [x] `_specs/COMMON.md`·`knuke.md`·scout_tools(probe/contracts)·kdef 본보기 정독
 - [x] `knuke_lib.py` · `assets/knuke.css`(kdef.css 복제) · vendor/chart · .gitignore · `_config.yml` exclude
-- [x] `build_dicts.py` — 발전원 5·공급계층 8·부품 9/18·SVG 실루엣 2/영역 16 (교차검증 통과)
+- [x] `build_dicts.py` — 발전원 5·공급계층 9(EPC 추가)·부품 9/18·SVG 실루엣 2/영역 16 (교차검증 통과)
 - [x] `knuke_scan.py` — II절 본문 탐색: 후보 69 · 승격 10 · 제외 57 · 실패 2 → universe_probe.json
 - [x] `knuke_universe.py` — 네 겹 **25종목**(KIND 7·지정 8·탐색 10)
 - [x] `knuke_contracts.py`·`knuke_reports.py`·`knuke_suppliers.py`·`knuke_page.py`·`knuke_parts.py` 작성
-- [x] `tools/tests`(11건 통과) · `update-knuke.yml`(concurrency kship-dart) · README/LOGIC/HANDOFF
+- [x] `tools/tests`(14건 통과) · `update-knuke.yml`(concurrency kship-dart) · README/LOGIC/HANDOFF
+- [x] 수출 계약명(영문) 사전 보강 · EPC 계층 신설 · 공시 「판매ㆍ공급계약 구분」 폴백(d8165ae)
 - [x] 템플릿 스모크: 회사 22쪽·허브·커버리지·parts 생성(계약/보고서 수집 전 상태)
 
 ## 진행 중 / 남은 일

@@ -140,6 +140,11 @@ class TestDomainTierParty(unittest.TestCase):
         self.assertEqual(KC.ctype_of("고리 3호기 계획예방정비공사"), "OM")
         self.assertEqual(KC.ctype_of("태안 1~4호기 석탄취급설비 위탁운전용역"), "OM")
         self.assertEqual(KC.ctype_of("신고리5,6호기 설계형상관리체계 구축 용역"), "ENG")
+        self.assertEqual(KC.ctype_of("신고리 5,6호기 ICI Assembly"), "INC")
+        self.assertEqual(KC.ctype_of("신한울3,4호기 고압차단기반(E207)"), "AUX")
+        # `발전기\b`·`터빈\b` 로는 '발전기등'을 못 맞춘다(한글엔 낱말 경계가 없다).
+        self.assertEqual(KC.ctype_of("카카오 데이터센터(IDC) 발전기등"), "MAIN")
+        self.assertEqual(KC.ctype_of("발전기자재 납품"), "SUPPLY")
 
     def test_tier_falls_back_to_disclosure_kind(self):
         """계약명으로 못 읽으면 공시 「판매ㆍ공급계약 구분」의 '공사수주'만 근거로 쓴다."""
