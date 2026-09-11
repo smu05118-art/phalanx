@@ -18,13 +18,12 @@
 """
 import argparse
 import collections
-import datetime
 import json
 import os
 import re
 import sys
 
-from kdef_lib import (E, KDEF, CHART_DEFAULTS_JS, TABLE_JS, atomic_write, fmt_eok, fmt_n,
+from kdef_lib import (E, KDEF, CHART_DEFAULTS_JS, TABLE_JS, atomic_write, fmt_eok,
                       fmt_x, json_for_html, load_asset, page, pct, slot_color)
 from kdef_universe import load as load_universe
 import kdef_contracts

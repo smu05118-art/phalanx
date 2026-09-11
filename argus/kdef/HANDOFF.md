@@ -10,7 +10,8 @@
 | 주요 거래처(부품사 연결의 최상급 근거) | II-4 「주요 매출처」 | `parse_customers` |
 | 계약(사업명·계통·유형·금액·기간·상대) | 수시공시 I001 「단일판매ㆍ공급계약체결」 | `kdef_contracts` → `assets/contracts/<종목>/<rcp>.json` → `contracts.json` |
 | 계통·계약유형·부품 소분류·SVG 영역 | 코드에서 생성하는 사전 | `build_dicts.py` → `assets/{domains,contract_types,parts_taxonomy,svg_regions}.json` |
-| 부품 분류·납품 관계(근거 등급) | 위 사전 + 계약명 + II절 인용문 + KIND 문구 | `kdef_suppliers.py` → `assets/suppliers.json` |
+| 제품 서술(부품 분류 근거) | 정기보고서 II-2 「주요 제품 및 서비스」 | `kdef_products.py` → `assets/products/<종목>.json` |
+| 부품 분류·납품 관계(근거 등급) | 위 사전 + 계약명 + 제품 절 + II절 인용문 + KIND 문구 | `kdef_suppliers.py` → `assets/suppliers.json` |
 | 모집단 네 겹 | KIND 상장법인목록 + ④ 본문 탐색 | `kdef_universe.py` · `kdef_scan.py` → `universe.json` · `universe_probe.json` |
 | 페이지 | 위 JSON만 읽는다(수집 없음) | `kdef_page.py`(허브·회사·커버리지) · `kdef_parts.py`(인포그래픽) |
 
@@ -48,6 +49,7 @@ python3 kdef_contracts.py --collect && python3 kdef_contracts.py --build
 PRIMES=$(python3 -c "import json;print(','.join(r['stock'] for r in json.load(open('assets/universe.json'))['rows'] if r['role']=='prime'))")
 python3 kdef_reports.py --collect --n 8 --only "$PRIMES"
 python3 kdef_reports.py --build --n 8
+python3 kdef_products.py --collect
 python3 kdef_suppliers.py --build
 python3 kdef_page.py --all && python3 kdef_parts.py
 python3 -m unittest discover -s tests
