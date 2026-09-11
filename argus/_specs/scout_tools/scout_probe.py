@@ -30,8 +30,9 @@ from scout_lib import (ASSETS, atomic_write, fetch_section, load_asset, num_of,
 from kce_lib import COL_ALIAS, norm_col
 
 CACHE = os.path.join(ASSETS, "probe_cache")
-# 절 원문은 따로 보관한다 — 파서를 고쳤을 때 DART를 다시 두드리지 않기 위해.
-HTML_CACHE = os.path.join(ASSETS, "probe_html")
+# 절 원문은 따로 보관한다 — 파서를 고쳤을 때 원문을 다시 받지 않기 위해.
+# `assets/_raw/` 는 .gitignore 대상이다(원문 HTML을 저장소에 넣지 않는다 — 감독 메모 2026-09-11).
+HTML_CACHE = os.path.join(ASSETS, "_raw", "probe_html")
 
 # 목차에서 찾을 절. 기업공시서식 표준은 「4. 매출 및 수주상황」이지만 회사마다 제목이 흔들린다.
 SECTION_PATTERNS = [
@@ -100,12 +101,61 @@ def norm_tables(html):
                 cols, rows = head, rows[1:]
         if not rows:
             continue
+        # 2단 머리행: 첫 데이터 행이 숫자 없이 '수량/금액/수출/내수/비중'뿐이면 머리행의 아랫단이다.
+        # 병합하지 않으면 '기 말'이 두 개가 되어 **수량 열**을 금액으로 읽는다(한국항공우주 실사례).
+        if cols and rows and len(rows[0]) == len(cols) \
+                and not any(num_of(c) is not None for c in rows[0]) \
+                and sum(1 for c in rows[0]
+                        if re.search(r"수량|금액|비중|수출|내수|국내|합\s*계|당기|전기|20\d{2}", c or "")) >= 2:
+            cols = [("%s %s" % (a, b)).strip() for a, b in zip(cols, rows[0])]
+            rows = rows[1:]
+            if not rows:
+                continue
         ncols = [norm_col(c) for c in cols]
+        # 통화는 unit_scale 과 **같은 캡션**에서 읽는다(lead 우선, 없으면 머리행).
+        cap = lead if re.search(r"단위", lead) else " ".join(cols)
+        cur = _currency_of(cap) or ("MIX" if _MIXED_CUR.search(lead) else None)
         out.append({"lead": lead, "cols": cols, "ncols": ncols,
                     "fields": [COL_ALIAS.get(c) for c in ncols], "rows": rows,
-                    "unit": unit_scale(lead, cols),
+                    "unit": unit_scale(lead, cols), "cur": cur,
                     "unit_seen": bool(re.search(r"단위", lead + " ".join(cols)))})
     return out
+
+
+_FX = re.compile(r"(USD|US\s*\$|\$|달러|EUR|유로|JPY|엔화|CNY|위안)", re.I)
+_FX_NORM = {"USD": "USD", "US$": "USD", "$": "USD", "달러": "USD",
+            "EUR": "EUR", "유로": "EUR", "JPY": "JPY", "엔화": "JPY",
+            "CNY": "CNY", "위안": "CNY"}
+_KRW_UNIT = re.compile(r"십억원|백만원|천원|만원|억원|원")
+# 행 자체가 통화인 표(KC코트렐 119650 「주요 환종별 수주상황」: KRW/USD/EUR/INR/TWD 5행).
+# 열을 세로로 더하면 원·달러·루피가 섞인 숫자가 나온다 — 환율 없이 합계를 만들 수 없다.
+_MIXED_CUR = re.compile(r"환종|통화별|외화별|화폐별")
+
+
+def _currency_of(blob):
+    """표의 단위 캡션이 **외화**면 통화 코드를 돌려준다(원화면 None).
+
+    아스트 067390의 국외수주 표는 `(단위 : USD )`, 씨에스윈드 112610은 `(단위 : 백만USD)`,
+    일진전기 103590은 `(단위 : 천USD )`다. 이걸 백만원으로 읽으면 아스트 잔고가 2,688조원이
+    된다(실제 26.9억달러). 환율은 무키 경로로 못 얻으므로 **환산하지 않고 배수 계산에서
+    뺀다**(COMMON.md §0: 모르면 빈칸).
+
+    단 원화 단위가 **같이 적힌** 캡션은 원화 표다 — 외화는 괄호 병기일 뿐이고 표의 숫자는
+    원화다(포메탈 119500 `[단위 : 백만원 (천USD)]`, 로체시스템즈 071280 `(단위 :천원, 천USD )`).
+    여기서 배수를 버리면 멀쩡한 관측을 잃는다.
+
+    lead 에 단위 캡션이 여러 개 붙을 수 있으므로(껍데기 표 이어붙임) `unit_scale` 과 같이
+    **마지막 캡션**만 본다. 앞 절에 남은 '(단위 : USD)'가 뒤 원화 표를 오염시키지 않게.
+    """
+    blob = blob or ""
+    i = blob.rfind("단위")
+    if i < 0:
+        return None
+    cap = blob[i:i + 20]
+    m = _FX.search(cap)
+    if not m or _KRW_UNIT.search(cap):
+        return None
+    return _FX_NORM.get(m.group(1).upper().replace(" ", ""))
 
 
 def _idx(t, field):
@@ -119,6 +169,26 @@ def _find_col(t, pat):
     for i, c in enumerate(t["ncols"]):
         if pat.search(c or ""):
             return i
+    return None
+
+
+def _amount_col(t, pat):
+    """pat에 걸리는 열 중 **금액 열**을 고른다.
+
+    표준 양식은 `기초수주잔액(수량, 금액)`처럼 (수량, 금액) 쌍으로 온다. 첫 매칭을 그냥 쓰면
+    값이 전부 '-'인 **수량** 열을 잡아 잔고가 통째로 사라진다(HD현대중공업 56조가 0이 됐다).
+    kce의 COL_ALIAS가 '수주잔고금액'만 매핑하는 것과 같은 이유다.
+    """
+    hit = [i for i, c in enumerate(t["ncols"]) if pat.search(c or "")]
+    if not hit:
+        return None
+    amt = [i for i in hit if "금액" in (t["ncols"][i] or "")]
+    if amt:
+        return amt[0]
+    qty = [i for i in hit if "수량" in (t["ncols"][i] or "")]
+    rest = [i for i in hit if i not in qty]
+    if rest:
+        return rest[0]
     return None
 
 
@@ -176,6 +246,8 @@ def _period_cols(t):
     for i, c in enumerate(t["ncols"]):
         if re.search(r"비중|비율|증감|구성비|^%", c or ""):
             continue
+        if re.search(r"수\s*량", c or ""):      # '제40기 수량'은 매출액이 아니다
+            continue
         if re.search(r"제\d+기|20\d{2}|^당기|^당분기|^당반기|^금기", c or ""):
             out.append(i)
     return out
@@ -190,7 +262,7 @@ def classify(t):
     if _find_col(t, _ROLL_BEGIN) is not None and _find_col(t, _ROLL_END) is not None:
         return "roll"
     # 잔고 열만 있는 변형(계약잔액·수주잔액)
-    if _find_col(t, re.compile(r"수주잔고|수주잔액|계약잔액|잔여수주|수주잔량")) is not None:
+    if _amount_col(t, re.compile(r"수주잔고|수주잔액|계약잔액|잔여수주")) is not None:
         return "std"
     # 계약 목록형 — 잔고 열은 없지만 **발주처가 실명으로 적힌** 그 해 수주 목록
     # (두산에너빌리티 '당해년도 체결된 주요 수주 상황' 20행: 프로젝트·계약시기·발주처·계약금액).
@@ -213,12 +285,12 @@ def classify(t):
 def backlog_of(t, kind):
     """수주 표 → 잔고(백만원)와 근거. 단위 배수를 곱해 정규화한다."""
     if kind == "roll":
-        i = _find_col(t, _ROLL_END)
+        i = _amount_col(t, _ROLL_END)
         label = t["cols"][i] if i is not None and i < len(t["cols"]) else "기말"
     else:
         i = _idx(t, "bal")
         if i is None:
-            i = _find_col(t, re.compile(r"수주잔고|수주잔액|계약잔액|잔여수주|수주잔량"))
+            i = _amount_col(t, re.compile(r"수주잔고|수주잔액|계약잔액|잔여수주"))
         label = t["cols"][i] if i is not None and i < len(t["cols"]) else "수주잔고"
     if i is None:
         return None
@@ -227,7 +299,7 @@ def backlog_of(t, kind):
     if raw is None:
         return None
     mul = t["unit"]
-    return {"col": label, "raw": raw, "unit_mul": mul, "unit_seen": t["unit_seen"],
+    return {"col": label, "raw": raw, "unit_mul": mul, "unit_seen": t["unit_seen"], "cur": t.get("cur"),
             "bal": round(raw * mul, 3), "rows": s["n"],
             "row_sum": round(s["sum"] * mul, 3) if s["sum"] is not None else None,
             "max_row": round(s["max"] * mul, 3) if s["max"] is not None else None,
@@ -242,7 +314,14 @@ def grain_of(t):
         return "segment", 0
     if i_sd is None and i_ed is None:
         return ("project" if len(rows) >= 8 else "segment"), len(rows)
-    dated = sum(1 for r in rows if _DATE.search(_cell(r, i_sd) + " " + _cell(r, i_ed)))
+    def _contract_date(r):
+        cell = _cell(r, i_sd) + " " + _cell(r, i_ed)
+        # "'25.12.31일까지"는 **기준일** 표기지 계약일이 아니다 — 부문 한 줄에 붙는다
+        # (HD현대중공업 조선/해양플랜트/기타 3행, HD현대일렉트릭 전기전자부문 1행).
+        if "까지" in cell:
+            return False
+        return bool(_DATE.search(cell))
+    dated = sum(1 for r in rows if _contract_date(r))
     # 행이 1~2개면 날짜가 있어도 계약 단위가 아니다 — HD현대일렉트릭은 '전기전자부문' **한 줄**에
     # 수주일자 '2025.12.31 까지'를 적는다. 날짜만 보고 project라 부르면 없는 입도를 주장하게 된다.
     return (("project" if dated >= 0.6 * len(rows) and len(rows) >= 3 else "segment"), len(rows))
@@ -252,7 +331,7 @@ def sales_of(t):
     """매출실적 표 → 당기 총매출(백만원). 당기 열은 '제N기'의 최대 N·'당기'·최대 연도로 고른다."""
     cand = []
     for i, c in enumerate(t["ncols"]):
-        if re.search(r"비중|비율|증감|구성비|^%", c or ""):
+        if re.search(r"비중|비율|증감|구성비|^%|수\s*량", c or ""):
             continue
         m = re.search(r"제(\d+)기", c or "")
         if m:
@@ -298,13 +377,13 @@ def sales_of(t):
             grand, how = sum(groups.values()), "부문별 합계 행 %d개 합" % len(groups)
     if grand is None:
         return None
-    return {"col": label, "raw": grand, "unit_mul": t["unit"], "unit_seen": t["unit_seen"],
+    return {"col": label, "raw": grand, "unit_mul": t["unit"], "unit_seen": t["unit_seen"], "cur": t.get("cur"),
             "rev": round(grand * t["unit"], 3), "how": how}
 
 
 # ── 한 회사 관측 ────────────────────────────────────────────
 
-def probe_one(rec, quarter, force=False):
+def probe_one(rec, quarter, force=False, refetch=False):
     st = rec["stock"]
     path = os.path.join(CACHE, "%s_%s.json" % (st, quarter))
     if os.path.exists(path) and not force:
@@ -358,7 +437,7 @@ def probe_one(rec, quarter, force=False):
             return out
         out["sec_title"] = found.get("text")
         hpath = os.path.join(HTML_CACHE, "%s_%s.html" % (st, rcp))
-        if os.path.exists(hpath) and not force:
+        if os.path.exists(hpath) and not refetch:
             with open(hpath, encoding="utf-8") as f:
                 html = f.read()
         else:
@@ -410,12 +489,25 @@ def probe_one(rec, quarter, force=False):
         if sales:
             revs = [s["rev"] for s in sales if s["rev"]]
             out["rev"] = sales[0]["rev"]
+            out["rev_cur"] = sales[0].get("cur")
             out["rev_conflict"] = bool(revs and max(revs) > 1.05 * min(revs))
         if orders:
-            # 잔고는 **총액이 가장 큰 표**(전사 합계)를 쓴다 — 잘게 쪼갠 표가 일부 부문만일 수 있다
-            best = max(orders, key=lambda b: b["bal"] or 0)
-            out["bal"] = best["bal"]
+            # 잔고는 **총액이 가장 큰 표**(전사 합계)를 쓴다 — 잘게 쪼갠 표가 일부 부문만일 수 있다.
+            # 다만 원화 표를 먼저 본다 — 외화 표(아스트 국외수주 USD)는 환산 없이 비교할 수 없다.
+            krw = [b for b in orders if not b.get("cur")]
+            fx = [b for b in orders if b.get("cur")]
+            best = max(krw or orders, key=lambda b: b["bal"] or 0)
             out["bal_src"] = best["col"]
+            out["bal_cur"] = best.get("cur")
+            # 원화표·외화표로 **쪼개 실은** 회사(아스트: 국내수주=원, 국외수주=USD)는
+            # 원화 표만으로 잔고를 대표할 수 없다 — 합계를 못 만드니 배수를 버린다.
+            out["bal_fx_split"] = fx[0]["cur"] if (krw and fx) else None
+            # 외화 표뿐이면 **금액을 싣지 않는다**(원문 값은 orders[].raw 에 남는다)
+            out["bal"] = None if best.get("cur") else best["bal"]
+            if best.get("cur") == "MIX":
+                out["note"] = "잔고 표가 환종별(행마다 통화) — 환율 없이 합계를 만들지 않는다"
+            elif best.get("cur"):
+                out["note"] = "잔고 표가 외화(%s) — 환율 없이 원화로 바꾸지 않는다" % best["cur"]
             out["grain"] = orders[0]["grain"]
             out["n_rows"] = orders[0]["n_rows"]
             out["has_client"] = any(b["has_client"] for b in orders)
@@ -429,7 +521,27 @@ def probe_one(rec, quarter, force=False):
             out["note"] = ("절에 '수주 해당사항 없음' 문구" if out["na_phrase"]
                            else "수주 절은 있으나 인식되는 수주표 없음(표 %d개)" % len(tabs))
         if out.get("bal") and out.get("rev"):
-            out["mult"] = round(out["bal"] / out["rev"], 2)
+            m = round(out["bal"] / out["rev"], 2)
+            # fail-closed: 배수를 못 믿을 이유가 있으면 **숫자를 버리고 사유를 남긴다**.
+            #  · 외화 표를 원화로 읽으면 1000배가 된다(아스트 국외수주 USD)
+            #  · 20년치 일감은 수주기반 산업에도 없다 — 단위·열 오독의 신호다
+            why = None
+            c = out.get("bal_cur") or out.get("rev_cur")
+            if c == "MIX":
+                why = "행마다 통화가 다른 환종별 표 — 환율 없이 합계를 만들 수 없다"
+            elif c:
+                why = "외화 표(%s) — 환율 없이 환산하지 않는다" % c
+            elif out.get("bal_fx_split"):
+                why = ("수주표가 원화·외화(%s)로 나뉘어 있다 — 환율 없이 잔고 합계를 못 만든다"
+                       % out["bal_fx_split"])
+            elif m > 20:
+                why = "배수 %.1f년 — 단위·열 오독으로 보고 버린다" % m
+            elif m <= 0:
+                why = "잔고 0 이하"
+            if why:
+                out["mult_reject"] = why
+            else:
+                out["mult"] = m
         os.makedirs(CACHE, exist_ok=True)
         atomic_write(path, json.dumps(out, ensure_ascii=False, indent=1) + "\n")
         return out
@@ -442,7 +554,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quarter", default="2025Q4")
     ap.add_argument("--only", help="종목코드 쉼표 구분")
-    ap.add_argument("--force", action="store_true")
+    ap.add_argument("--force", action="store_true", help="관측 JSON을 무시하고 다시 파싱(원문 캐시는 그대로 쓴다)")
+    ap.add_argument("--refetch", action="store_true", help="원문 캐시까지 버리고 DART에서 다시 받는다")
     ap.add_argument("--dump", action="store_true", help="표·근거를 자세히 출력")
     ap.add_argument("--sector", help="그 섹터만")
     a = ap.parse_args()
@@ -461,7 +574,7 @@ def main():
             recs.append(r)
     t0 = time.time()
     for i, r in enumerate(recs, 1):
-        d = probe_one(r, a.quarter, a.force)
+        d = probe_one(r, a.quarter, a.force or a.refetch, a.refetch)
         sys.stderr.write("[%3d/%d] %-6s %-16s %-9s bal=%-12s rev=%-12s ×%-6s %s\n" % (
             i, len(recs), d["stock"], (d.get("name") or "")[:16], d["tier"],
             d.get("bal"), d.get("rev"), d.get("mult"), (d.get("note") or "")[:40]))

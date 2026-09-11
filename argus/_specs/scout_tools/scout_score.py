@@ -142,14 +142,35 @@ def score(rows, sectors):
     return out
 
 
+def md_table(secs, rows):
+    """scout_report.md 의 섹터 표를 **그대로** 찍는다 — 손으로 옮겨 적다 틀리지 않게."""
+    out = ["| 산업 | 후보 | 표본 | 읽힘 | 수주표 | A 공시율 | B 배수(년) | C 계약(건/년) | D 계약입도 | 점수 | 대표 종목(배수) |",
+           "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|"]
+    for s in secs:
+        top = ", ".join("%s(%s)" % (t["name"], "%.1f" % t["mult"] if t["mult"] else "—")
+                        for t in s["top"][:3])
+        out.append("| %s | %d | %d | %d | %d | %s | %s | %s | %s | **%s** | %s |" % (
+            s["label"], s["n_cand"], s["n_sample"], s["n_readable"], s["n_order"],
+            "%.0f%%" % (100 * s["A_disclose"]) if s["A_disclose"] is not None else "—",
+            s["B_mult_med"] if s["B_mult_med"] is not None else "—",
+            s["C_freq_med"] if s["C_freq_med"] is not None else "—",
+            "%.0f%%" % (100 * s["D_proj_ratio"]) if s["D_proj_ratio"] is not None else "—",
+            s["score"] if s["score"] is not None else "—", top))
+    return "\n".join(out)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quarter", default="2025Q4")
     ap.add_argument("--write", action="store_true")
+    ap.add_argument("--md", action="store_true", help="보고서용 마크다운 표만 찍는다")
     a = ap.parse_args()
     sample = load_asset("sample.json")
     rows = rows_for(sample, a.quarter)
     secs = score(rows, sample["sectors"])
+    if a.md:
+        print(md_table(secs, rows))
+        return 0
     print(FORMULA + "\n")
     print("%-10s %-22s %5s %5s %5s %6s %6s %6s %6s" % (
         "id", "label", "표본", "읽힘", "수주", "A", "B(년)", "C(건/년)", "점수"))
