@@ -10883,8 +10883,17 @@ function quickToggleDeath(pid){
       /* 찬반의 분자를 건드리는 규칙은 둘이다 — closeBallot 의 집사 무효표(결과를 n.butlerVoided
          에 남긴다)와 이 여행자 가중. 서로 모르면 무효 처리된 찬성표가 여기서 3표(또는 −3표)로
          되살아난다. '집계에 들어간 찬성표인가'는 closeBallot 이 남긴 기록 하나만 보고 판단한다.
-         마감 전(renderNomOpen)에는 butlerVoided 가 아직 없으므로 화면 미리보기는 그대로다. */
-      const voided = !!(nom && nom.butlerVoided===p.id);
+         [무엇이 문제였나] 여기 "마감 전에는 butlerVoided 가 아직 없으므로 화면 미리보기는
+         그대로다"라고 적어 두고 **그것을 결함이 아니라 사실 서술로 남겨 두었다.** 그 결과
+         한 화면 안에서 같은 지명의 찬성 분자가 두 술어로 따로 세어졌다 — 기본 블록은
+         voteVoided() 라는 '지금' 판정으로 집사 무효를 빼고, 이 블록은 지난 마감 기록을 읽어
+         무효표를 되살렸다. 실측: 기본 3(fail) 과 최종 6(pass) 이 한 화면에 같이 뜨고
+         마감하면 3 부결이다. 이제 기본 블록과 같은 술어를 쓴다.
+         마감 경로에서는 closeBallot 이 방금 같은 술어·같은 상태로 butlerVoided 를 다시 쓰므로
+         두 값이 항상 같다 — 확정 결과는 1비트도 안 바뀐다. */
+      const voided = (typeof voteVoided==='function')
+        ? !!voteVoided(p, nom)
+        : !!(nom && nom.butlerVoided===p.id);
       const yes = !voided && !!(nom && nom.votes && nom.votes[p.id]==='yes');
       const d=yes? (w-1) : 0;
       delta+=d;
@@ -11000,7 +11009,11 @@ function quickToggleDeath(pid){
       const elig=(typeof ballotEligible==='function')
         ? ballotEligible(nom)
         : alivePlayers().concat(S.players.filter(p=>!p.alive && (p.deadVote!==false || (nom&&nom.votes&&nom.votes[p.id]!==undefined))));
-      rawYes=elig.filter(p=>nom&&nom.votes&&nom.votes[p.id]==='yes').length;
+      /* 분자도 기본 블록과 같은 술어를 쓴다 — 무효 처리된 찬성표를 빼고 센다.
+         이것을 빼먹으면 관료가 **집사가 아닌** 사람을 지목한 판에서도 '가중 전 찬성'이
+         기본 블록보다 1 많아 두 숫자가 어긋난다(가중과 무관한 별개의 어긋남이었다). */
+      rawYes=elig.filter(p=>nom&&nom.votes&&nom.votes[p.id]==='yes'
+                            && !(typeof voteVoided==='function' && voteVoided(p, nom))).length;
       /* 문턱은 생존자 기준이다 — 계약은 voteThreshold() 한 곳에만 있다.
          elig 는 분자(rawYes)를 세는 집합일 뿐이라 문턱의 기준 인원이 아니다. */
       need=voteThreshold('ballot');
@@ -11019,7 +11032,7 @@ function quickToggleDeath(pid){
         <div class="vmbox ${fin>=need?'pass':'fail'}"><div class="vlab">최종 찬성</div><div class="vval">${fin}</div></div>
         <div class="vmbox ${fin>=need?'pass':'fail'}"><div class="vlab">과반 기준</div><div class="vval">${need}</div></div>
       </div>
-      ${a.rows.map(r=>`<div class="hint">${wlab(r.w)} 지정 <b>${esc(r.name)}</b> — ${r.yes?`찬성 반영 ${sg(r.d)}`:'아직 찬성표 없음 (보정 0)'}</div>`).join('')}
+      ${a.rows.map(r=>`<div class="hint">${wlab(r.w)} 지정 <b>${esc(r.name)}</b> — ${r.yes?`찬성 반영 ${sg(r.d)}`:(r.voided?'집사 무효표 — 가중 대상 아님 (보정 0)':'아직 찬성표 없음 (보정 0)')}</div>`).join('')}
       ${a.c.notes.map(t=>`<div class="hint"><mark>${esc(t)}</mark></div>`).join('')}
       ${c.voudon?`<div class="hint">🪬 부두술사(${esc(c.voudon.name)}) 생존 — 사망자는 토큰 없이 투표하며 토큰이 소진되지 않습니다.</div>`:''}
       <div class="hint">※ 분모·과반 기준은 기존 규칙 그대로이며, 위 보정은 찬성(분자)에만 적용됩니다.</div>
