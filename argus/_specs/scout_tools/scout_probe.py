@@ -1,0 +1,386 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""scout_probe — 표본 각 사의 정기보고서 II-4 「매출 및 수주상황」을 **실제로 열어** 잰다.
+
+추측하지 않는다. 재는 것은 다섯 가지뿐이다(scout.md §2):
+  ① 수주상황 표가 있는가 — 있으면 어떤 모양인가
+  ② 수주잔고 금액 / 연매출 = 몇 년치 일감인가
+  ③ 행 입도(프로젝트 단위인가 부문 단위인가) · 발주처 열 · 수주일자·납기 열이 있는가
+  ④ 단일 계약이 잔고의 몇 %인가
+  ⑤ 본문 낱말 신호(진행기준·환위험·관급·지체상금…) — 그 산업의 축 후보
+
+원문 3건(두산에너빌리티·현대로템·HD현대일렉트릭)에서 확인한 두 모양을 다 받는다:
+  · 표준형   `품목|수주일자|납기|수주총액|기납품액|수주잔고`  (kce COL_ALIAS가 이미 안다)
+  · 롤포워드 `구분|주요계약명|기초|증감|매출계상액|기말`
+단위는 **표마다** 읽는다(두산은 매출 백만원·수주 억원). 못 읽으면 unit_seen=false로 남긴다.
+
+    python3 scout_probe.py --quarter 2025Q4                 # assets/sample.json 전수
+    python3 scout_probe.py --only 034020,064350 --dump      # 일부만, 근거 출력
+"""
+import argparse
+import json
+import os
+import re
+import sys
+import time
+
+from scout_lib import (ASSETS, atomic_write, fetch_section, load_asset, num_of,
+                       parse_tables, pick_report, report_kind, report_window,
+                       search_reports, text_of, toc, unit_scale, write_asset)
+from kce_lib import COL_ALIAS, norm_col
+
+CACHE = os.path.join(ASSETS, "probe_cache")
+
+# 목차에서 찾을 절. 기업공시서식 표준은 「4. 매출 및 수주상황」이지만 회사마다 제목이 흔들린다.
+SECTION_PATTERNS = [
+    ("ii4", ["매출 및 수주상황", "수주상황", "수주 상황", "수주현황", "매출실적"]),
+]
+
+_SUM = re.compile(r"^(합\s*계|총\s*계|계|소\s*계|연결기준합계|합계\(.*\)|총합계)$")
+_SUM_LOOSE = re.compile(r"합\s*계|총\s*계|^계$")
+# 롤포워드형 머리행
+_ROLL_BEGIN = re.compile(r"^(기초|전기이월|기초잔액|기초수주잔고)")
+_ROLL_END = re.compile(r"^(기말|기말잔액|기말수주잔고|차기이월|당기말)")
+# 날짜 방언(kce_probe와 같은 규칙 — 부문 합계 행에는 날짜가 없다)
+_DATE = re.compile(r"(?:(?:19|20)\d{2}\s*[-./년]|(?:19|20)\d{4}|\b\d{2}\s*[.\-년]\s*\d{1,2})")
+# 익명화된 계약명('철도A'·'선박 A'·'Project B'·'A사') — 조선의 익명 선주와 같은 문제
+_ANON = re.compile(r"^[\w가-힣]{0,6}\s*[A-Z]{1,3}\d*$")
+
+# 본문 낱말 신호 → 그 산업의 축 후보. 값은 (정규식, 설명).
+TEXT_FLAGS = [
+    ("progress", r"진행기준|진행률|투입원가|총계약원가", "매출인식이 진행기준(인도와 매출 시점이 다름)"),
+    ("fx", r"통화선도|환위험|환헤지|환율변동위험|파생상품계약", "환노출·환헤지 축"),
+    ("gov", r"조달청|관급|정부기관|공공기관|국가기관|방위사업청|한국수력원자력|한국전력", "공공 발주 축"),
+    ("ld", r"지체상금|지연배상금|납기지연|Liquidated", "납기·지체상금(실행 리스크) 축"),
+    ("export", r"수\s*출", "내수/수출 구분"),
+    ("turnkey", r"턴키|EPC|일괄도급|설계.{0,4}구매.{0,4}시공", "EPC/턴키 축"),
+    ("option", r"옵션\s*계약|옵션분|추가\s*발주", "옵션 계약 축"),
+    ("longterm", r"장기공급계약|장기계약|다년|LTSA|MRO|유지보수계약", "다년 계약 축"),
+]
+
+
+# ── 표 정규화 ───────────────────────────────────────────────
+
+def norm_tables(html):
+    """parse_tables 위에 **첫 행 머리행 폴백**을 얹는다.
+
+    원문 확인에서 본 사고: 두산에너빌리티·HD현대일렉트릭의 수주표는 머리행 셀이 `<th>`가
+    아니라 `<td>`여서 `parse_tables`의 `cols`가 비고 머리행이 rows[0]으로 들어온다.
+    그대로 쓰면 '수주잔고' 열을 영원히 못 찾는다.
+    """
+    out = []
+    for t in parse_tables(html):
+        cols, rows = list(t["cols"]), [list(r) for r in t["rows"]]
+        if not cols and rows:
+            head = rows[0]
+            # 숫자가 하나도 없고 셀이 2개 이상이면 머리행으로 본다
+            if len(head) >= 2 and not any(num_of(c) is not None for c in head):
+                cols, rows = head, rows[1:]
+        if not rows:
+            continue
+        ncols = [norm_col(c) for c in cols]
+        out.append({"lead": t.get("lead") or "", "cols": cols, "ncols": ncols,
+                    "fields": [COL_ALIAS.get(c) for c in ncols], "rows": rows,
+                    "unit": unit_scale(t.get("lead"), cols),
+                    "unit_seen": bool(re.search(r"단위", (t.get("lead") or "") + " ".join(cols)))})
+    return out
+
+
+def _idx(t, field):
+    try:
+        return t["fields"].index(field)
+    except ValueError:
+        return None
+
+
+def _find_col(t, pat):
+    for i, c in enumerate(t["ncols"]):
+        if pat.search(c or ""):
+            return i
+    return None
+
+
+def _cell(row, i):
+    return row[i] if i is not None and i < len(row) else ""
+
+
+def _is_sum(row, n_label):
+    for c in row[:max(1, n_label)]:
+        if _SUM.match(norm_col(c) or ""):
+            return True
+    return False
+
+
+def _n_label(t):
+    """머리행에서 숫자가 아닌 라벨 열의 개수(대부분 행에서 비숫자인 선두 열)."""
+    n = 0
+    for i in range(len(t["cols"])):
+        vals = [num_of(_cell(r, i)) for r in t["rows"][:12]]
+        if any(v is not None for v in vals):
+            break
+        n += 1
+    return n
+
+
+def sum_column(t, i):
+    """열 i의 금액 합계. 합계 행은 버리지 않고 따로 돌려준다(COMMON.md §2).
+
+    반환 {'sum': 비합계행 합, 'total': 합계행 값, 'n': 비합계 행수, 'max': 최대값}.
+    """
+    n_label = max(1, _n_label(t))
+    vals, total = [], None
+    for r in t["rows"]:
+        v = num_of(_cell(r, i))
+        if v is None:
+            continue
+        if _is_sum(r, n_label):
+            total = v if total is None else max(total, v)   # 부문합계가 여럿이면 총계가 최대
+            continue
+        vals.append(v)
+    return {"sum": round(sum(vals), 3) if vals else None, "total": total,
+            "n": len(vals), "max": max(vals) if vals else None}
+
+
+# ── 수주 표 ─────────────────────────────────────────────────
+
+def classify(t):
+    """표 한 개 → 'std'(수주총액·기납품액·수주잔고) / 'roll'(기초·증감·기말) / 'sales' / None."""
+    f = set(x for x in t["fields"] if x)
+    lead = t["lead"]
+    if "bal" in f and ("amt" in f or "cmp" in f):
+        return "std"
+    if _find_col(t, _ROLL_BEGIN) is not None and _find_col(t, _ROLL_END) is not None:
+        return "roll"
+    # 잔고 열만 있는 변형(계약잔액·수주잔액)
+    if _find_col(t, re.compile(r"수주잔고|수주잔액|계약잔액|잔여수주|수주잔량")) is not None:
+        return "std"
+    if re.search(r"매출실적|매출액현황|매출현황", lead) or (
+            "매출액" in "".join(t["ncols"]) and re.search(r"사업부문|품목|사업구분|구분", "".join(t["ncols"]))):
+        return "sales"
+    return None
+
+
+def backlog_of(t, kind):
+    """수주 표 → 잔고(백만원)와 근거. 단위 배수를 곱해 정규화한다."""
+    if kind == "roll":
+        i = _find_col(t, _ROLL_END)
+        label = t["cols"][i] if i is not None and i < len(t["cols"]) else "기말"
+    else:
+        i = _idx(t, "bal")
+        if i is None:
+            i = _find_col(t, re.compile(r"수주잔고|수주잔액|계약잔액|잔여수주|수주잔량"))
+        label = t["cols"][i] if i is not None and i < len(t["cols"]) else "수주잔고"
+    if i is None:
+        return None
+    s = sum_column(t, i)
+    raw = s["total"] if s["total"] is not None else s["sum"]
+    if raw is None:
+        return None
+    mul = t["unit"]
+    return {"col": label, "raw": raw, "unit_mul": mul, "unit_seen": t["unit_seen"],
+            "bal": round(raw * mul, 3), "rows": s["n"],
+            "row_sum": round(s["sum"] * mul, 3) if s["sum"] is not None else None,
+            "max_row": round(s["max"] * mul, 3) if s["max"] is not None else None,
+            "total_row": s["total"] is not None}
+
+
+def grain_of(t):
+    """행이 개별 계약(프로젝트)인가 부문 묶음인가 — 판별은 **날짜 유무**(kce_probe와 같은 규칙)."""
+    i_sd, i_ed = _idx(t, "sd"), _idx(t, "ed")
+    rows = [r for r in t["rows"] if not _is_sum(r, max(1, _n_label(t)))]
+    if not rows:
+        return "segment", 0
+    if i_sd is None and i_ed is None:
+        return ("project" if len(rows) >= 8 else "segment"), len(rows)
+    dated = sum(1 for r in rows if _DATE.search(_cell(r, i_sd) + " " + _cell(r, i_ed)))
+    return (("project" if dated >= 0.6 * len(rows) else "segment"), len(rows))
+
+
+def sales_of(t):
+    """매출실적 표 → 당기 총매출(백만원). 당기 열은 '제N기'의 최대 N·'당기'·최대 연도로 고른다."""
+    cand = []
+    for i, c in enumerate(t["ncols"]):
+        if re.search(r"비중|비율|증감|구성비|^%", c or ""):
+            continue
+        m = re.search(r"제(\d+)기", c or "")
+        if m:
+            cand.append((int(m.group(1)), i, c))
+            continue
+        m = re.search(r"(20\d{2})", c or "")
+        if m:
+            cand.append((int(m.group(1)), i, c))
+            continue
+        if re.search(r"^당기|^당분기|^당반기|^금기", c or ""):
+            cand.append((10 ** 6, i, c))
+    if not cand:
+        # 머리행에 기수가 없으면 첫 숫자 열(대부분 당기)로 폴백하되 근거를 남긴다
+        n_label = _n_label(t)
+        for i in range(n_label, len(t["cols"]) or 0):
+            if any(num_of(_cell(r, i)) is not None for r in t["rows"]):
+                cand = [(0, i, (t["cols"][i] if i < len(t["cols"]) else "?") + " (폴백)")]
+                break
+    if not cand:
+        return None
+    cand.sort(key=lambda x: -x[0])
+    _, i, label = cand[0]
+    n_label = max(1, _n_label(t))
+    # ① 첫 셀이 합계인 행(총합계)  ② 없으면 라벨 어딘가가 합계인 행을 부문별로 하나씩 더한다
+    grand = None
+    for r in t["rows"]:
+        if _SUM.match(norm_col(_cell(r, 0)) or ""):
+            v = num_of(_cell(r, i))
+            if v is not None:
+                grand = v if grand is None else max(grand, v)
+    how = "총합계 행"
+    if grand is None:
+        groups = {}
+        for r in t["rows"]:
+            labs = [norm_col(c) for c in r[:n_label]]
+            if not any(_SUM_LOOSE.search(x or "") for x in labs):
+                continue
+            key = tuple(labs[:max(0, next((j for j, x in enumerate(labs) if _SUM_LOOSE.search(x or "")), 0))])
+            v = num_of(_cell(r, i))
+            if v is not None:
+                groups[key] = v
+        if groups:
+            grand, how = sum(groups.values()), "부문별 합계 행 %d개 합" % len(groups)
+    if grand is None:
+        return None
+    return {"col": label, "raw": grand, "unit_mul": t["unit"], "unit_seen": t["unit_seen"],
+            "rev": round(grand * t["unit"], 3), "how": how}
+
+
+# ── 한 회사 관측 ────────────────────────────────────────────
+
+def probe_one(rec, quarter, force=False):
+    st = rec["stock"]
+    path = os.path.join(CACHE, "%s_%s.json" % (st, quarter))
+    if os.path.exists(path) and not force:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    out = {"stock": st, "name": rec["name"], "market": rec.get("market"),
+           "industry": rec.get("industry"), "product": rec.get("product"),
+           "quarter": quarter, "tier": "error", "note": "", "rcpNo": None, "title": None}
+    try:
+        start, end = report_window(quarter)
+        reports = search_reports(st, start, end, report_kind(quarter))
+        if not reports:                      # 결산월이 12월이 아니거나 신규상장 — 직전 연도로
+            q0 = "%dQ4" % (int(quarter[:4]) - 1)
+            start, end = report_window(q0)
+            reports = search_reports(st, start, end, report_kind(q0))
+            if reports:
+                out["quarter"] = quarter = q0
+        if not reports:
+            out.update(tier="error", note="정기보고서 없음(2년)")
+            return out
+        rcp, title = pick_report(reports, quarter)[0]
+        out.update(rcpNo=rcp, title=title)
+        nodes = toc(rcp)
+        if not nodes:
+            out.update(tier="error", note="목차 없음")
+            return out
+        found = None
+        for n in nodes:
+            txt = n.get("text") or ""
+            if any(p in txt for p in SECTION_PATTERNS[0][1]):
+                found = n
+                break
+        if not found:
+            out.update(tier="none_sec", note="목차에 매출·수주 절 없음")
+            return out
+        out["sec_title"] = found.get("text")
+        html = fetch_section(found)
+        tabs = norm_tables(html)
+        txt = text_of(html)
+        out["flags"] = {k: len(re.findall(p, txt, re.I)) for k, p, _ in TEXT_FLAGS}
+        out["na_phrase"] = bool(re.search(r"수주[^.\n]{0,20}(해당\s*사항\s*이?\s*없|해당없|없습니다)", txt))
+        out["n_tables"] = len(tabs)
+
+        orders, sales = [], []
+        for t in tabs:
+            k = classify(t)
+            if k in ("std", "roll"):
+                b = backlog_of(t, k)
+                if b:
+                    g, nr = grain_of(t)
+                    anon = sum(1 for r in t["rows"] if _ANON.match((_cell(r, 0) or "").strip()))
+                    b.update(kind=k, grain=g, n_rows=nr,
+                             has_client=_idx(t, "cl") is not None,
+                             has_date=(_idx(t, "sd") is not None or _idx(t, "ed") is not None),
+                             anon_rows=anon, cols=t["cols"], lead=t["lead"][-120:])
+                    orders.append(b)
+            elif k == "sales":
+                s = sales_of(t)
+                if s:
+                    s.update(cols=t["cols"], lead=t["lead"][-120:])
+                    sales.append(s)
+        # 수주 표가 여럿이면 **행이 가장 잘게 쪼개진 것**을 대표로(요약표에 희석되지 않게)
+        orders.sort(key=lambda b: (-b["n_rows"], -(b["bal"] or 0)))
+        out["orders"] = orders
+        out["sales"] = sales
+        if sales:
+            revs = [s["rev"] for s in sales if s["rev"]]
+            out["rev"] = sales[0]["rev"]
+            out["rev_conflict"] = bool(revs and max(revs) > 1.05 * min(revs))
+        if orders:
+            # 잔고는 **총액이 가장 큰 표**(전사 합계)를 쓴다 — 잘게 쪼갠 표가 일부 부문만일 수 있다
+            best = max(orders, key=lambda b: b["bal"] or 0)
+            out["bal"] = best["bal"]
+            out["bal_src"] = best["col"]
+            out["grain"] = orders[0]["grain"]
+            out["n_rows"] = orders[0]["n_rows"]
+            out["has_client"] = any(b["has_client"] for b in orders)
+            out["has_date"] = any(b["has_date"] for b in orders)
+            out["anon_rows"] = max(b["anon_rows"] for b in orders)
+            out["top_share"] = (round(100.0 * best["max_row"] / best["bal"], 1)
+                                if best.get("max_row") and best["bal"] else None)
+            out["tier"] = "proj" if out["grain"] == "project" else "seg"
+        else:
+            out["tier"] = "no_table"
+            out["note"] = ("절에 '수주 해당사항 없음' 문구" if out["na_phrase"]
+                           else "수주 절은 있으나 인식되는 수주표 없음(표 %d개)" % len(tabs))
+        if out.get("bal") and out.get("rev"):
+            out["mult"] = round(out["bal"] / out["rev"], 2)
+        os.makedirs(CACHE, exist_ok=True)
+        atomic_write(path, json.dumps(out, ensure_ascii=False, indent=1) + "\n")
+        return out
+    except Exception as e:
+        out.update(tier="error", note="%s: %s" % (type(e).__name__, str(e)[:90]))
+        return out                      # 실패는 캐시하지 않는다 — 다시 돌리면 빠진 것만 받는다
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--quarter", default="2025Q4")
+    ap.add_argument("--only", help="종목코드 쉼표 구분")
+    ap.add_argument("--force", action="store_true")
+    ap.add_argument("--dump", action="store_true", help="표·근거를 자세히 출력")
+    ap.add_argument("--sector", help="그 섹터만")
+    a = ap.parse_args()
+
+    if a.only:
+        recs = [{"stock": s.strip(), "name": s.strip()} for s in a.only.split(",")]
+    else:
+        d = load_asset("sample.json")
+        seen, recs = set(), []
+        for r in d["rows"]:
+            if a.sector and r["sector"] != a.sector:
+                continue
+            if r["stock"] in seen:
+                continue
+            seen.add(r["stock"])
+            recs.append(r)
+    t0 = time.time()
+    for i, r in enumerate(recs, 1):
+        d = probe_one(r, a.quarter, a.force)
+        sys.stderr.write("[%3d/%d] %-6s %-16s %-9s bal=%-12s rev=%-12s ×%-6s %s\n" % (
+            i, len(recs), d["stock"], (d.get("name") or "")[:16], d["tier"],
+            d.get("bal"), d.get("rev"), d.get("mult"), (d.get("note") or "")[:40]))
+        sys.stderr.flush()
+        if a.dump:
+            print(json.dumps(d, ensure_ascii=False, indent=1))
+    sys.stderr.write("== %d사 %.0fs\n" % (len(recs), time.time() - t0))
+
+
+if __name__ == "__main__":
+    sys.exit(main())
