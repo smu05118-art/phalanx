@@ -250,6 +250,23 @@ class TestDartGate(unittest.TestCase):
         # 12요청 × 0.3초 = 3.6초. 게이트가 없으면 프로세스마다 1.2초(≈1.2초 전체)로 끝난다.
         self.assertGreater(elapsed, 3.6 * 0.7, "프로세스 간 요청 간격이 지켜지지 않는다(%0.2fs)" % elapsed)
 
+class TestPickReport(unittest.TestCase):
+    """[첨부정정] 문서는 본문이 '정정 신고'·'영업보고서' 두 줄뿐이라 II절이 없을 때가 많다 —
+    기준월이 맞아도 원본 뒤로 민다(버리지는 않는다). kaero 웨이브가 실측으로 보고한 건."""
+
+    def test_pick_report_defers_attachment_corrections(self):
+        from kce_fetch import pick_report
+        reports = [("2026A", "[첨부정정]반기보고서 (2026.06)"),
+                   ("2026B", "반기보고서 (2026.06)"),
+                   ("2025C", "반기보고서 (2025.06)")]
+        got = [r for r, _ in pick_report(reports, "2026Q2")]
+        self.assertEqual(got, ["2026B", "2026A", "2025C"])
+
+    def test_pick_report_keeps_correction_when_it_is_the_only_one(self):
+        from kce_fetch import pick_report
+        reports = [("2026A", "[첨부정정]반기보고서 (2026.06)"), ("2025C", "반기보고서 (2025.06)")]
+        self.assertEqual([r for r, _ in pick_report(reports, "2026Q2")], ["2026A", "2025C"])
+
 
 if __name__ == "__main__":
     unittest.main()

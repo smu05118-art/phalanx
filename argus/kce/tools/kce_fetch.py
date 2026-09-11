@@ -220,17 +220,25 @@ def pick_report(reports, quarter):
     `reports[0]`을 그냥 쓰면 안 된다 — 같은 기간에 접수된 `정정신고(보고)`가 목록 맨 위에
     오면 수주 절이 없는 문서를 붙잡고 실패한다(DL이앤씨 2025Q4 실사례). 제목의 기준월이
     분기말과 맞는 것만 남기고, 그마저 없으면 원래 순서로 폴백한다.
+
+    순서: 기준월이 맞는 원본 → 기준월이 맞는 [첨부정정]·[첨부추가] → 나머지.
     """
     y, qn = int(quarter[:4]), int(quarter[5])
     want = "%04d.%02d" % (y, qn * 3)
-    good, rest = [], []
+    good, fixed, rest = [], [], []
     for rcp, title in reports:
         m = _REPORT_TITLE.search(title or "")
-        if m and "%s.%s" % (m.group(2), m.group(3)) == want:
+        ok = bool(m) and "%s.%s" % (m.group(2), m.group(3)) == want
+        # [첨부정정]·[첨부추가]는 기준월이 맞아도 본문이 '정정 신고'·'영업보고서' 두 줄뿐이라
+        # II절이 없는 경우가 많다(한화에어로 012450·케이피항공산업 288180 실사례, kaero 웨이브 보고).
+        # 버리지는 않는다 — 정정본에 II절이 들어 있는 회사도 있어 뒤 순서로 미루기만 한다.
+        if ok and re.search(r"\[첨부(?:정정|추가)\]", title or ""):
+            fixed.append((rcp, title))
+        elif ok:
             good.append((rcp, title))
         else:
             rest.append((rcp, title))
-    return good + rest
+    return good + fixed + rest
 
 
 def toc(rcp_no):
