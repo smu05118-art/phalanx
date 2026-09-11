@@ -61,6 +61,7 @@ python3 build_dicts.py --write        # 공정 13단계·부품 사전, 종목�
 python3 ksemi_contracts.py --all --write
 python3 ksemi_reports.py --write      # 8분기 수주상황·매출실적 + 사업보고서 주석
 python3 ksemi_peers.py --write        # II절 본문의 상장사 이름 언급 → 관계(무접속)
+python3 ksemi_exposure.py --write     # II-2·II-4 절의 메모리/비메모리 낱말(무접속)
 python3 ksemi_page.py --all           # 허브·회사·커버리지
 python3 ksemi_parts.py --write        # 팹 공정 흐름
 python3 -m unittest discover -s tests
