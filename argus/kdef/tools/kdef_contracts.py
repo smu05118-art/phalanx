@@ -237,7 +237,10 @@ def _fields_from_kv(kv):
         "advance": _find(kv, "선급금") or "",
         "payterm": payterm,
         "def_payrule": bool(_DEF_PAY.search(payterm or "")),
-        "withheld": _find(kv, "공시유보") or "",
+        # 공시유보 — 방산에서 드물지 않다(경영상 비밀유지). 계약명·금액이 '-' 인 이유가 이것이므로
+        # 사유와 기한을 따로 남겨 화면에 '빈칸'이 아니라 '유보'라고 적는다.
+        "withheld": _find(kv, "공시유보", "유보사유") or _find(kv, "유보사유") or "",
+        "withheld_until": _find(kv, "공시유보", "유보기한") or _find(kv, "유보기한") or "",
         "note": _find(kv, "기타", "중요") or _find(kv, "기타") or "",
     }
 

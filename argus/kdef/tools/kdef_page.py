@@ -158,6 +158,16 @@ def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel
         if show_company:
             nm = (by_stock or {}).get(c["stock"], {}).get("name", c["stock"])
             who = '<td class="l"><a href="%s%s/index.html">%s</a></td>' % (rel, E(c["stock"]), E(nm))
+        nm = (c["name"] or "").strip()
+        if nm in ("", "-"):
+            # 계약명이 비어 있는 건은 대개 **공시유보**다 — 빈칸이 아니라 유보라고 적는다.
+            w = (c.get("withheld") or "").strip("- ")
+            nm = ('<span class="pill">공시유보</span> %s%s'
+                  % (E(w or "사유 미기재"),
+                     (" · 기한 %s" % E(c["withheld_until"])) if (c.get("withheld_until") or "").strip("- ") else "")) \
+                if (w or (c.get("withheld_until") or "").strip("- ")) else "—"
+        else:
+            nm = E(nm[:70])
         party = E(c["party"] or "—")
         if c["party_prime"]:
             party = '<a href="%s%s/index.html">%s</a>' % (rel, E(c["party_prime"]), party)
@@ -167,7 +177,7 @@ def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel
             '<td class="l">%s<br><span class="mut">%s</span></td><td class="l mut">%s</td>'
             '<td class="l"><a href="%s" target="_blank" rel="noopener noreferrer">원문</a>%s</td></tr>'
             % (E(c["signed"] or c["start"] or "—"), who, _sw(dm["color"]), E(dm["ko"]),
-               E(cm["ko"]), E((c["name"] or "—")[:70]),
+               E(cm["ko"]), nm,
                (amt or 0), fmt_eok(amt), (c["years"] if c["years"] is not None else -1),
                fmt_x(c["years"]) if c["years"] is not None else "—",
                party, E(PARTY_KO.get(c["party_kind"], c["party_kind"])),
@@ -445,13 +455,15 @@ def hub_html(data, sums):
                      '<div class="chips" style="margin-top:8px">%s</div>'
                      '<div class="stat"><div><b>%s</b><span>수주잔고(억, %s)</span></div>'
                      '<div><b>%s</b><span>커버리지(년)</span></div>'
-                     '<div><b>%s</b><span>방산비중</span></div></div>'
+                     '<div><b>%s</b><span>방산비중</span></div>'
+                     '<div><b>%s</b><span>수출비중</span></div></div>'
                      '<div class="go">회사 데이터 →</div></a>'
                      % (E(rec["stock"]), E(rec["name"]), E(rec["stock"]),
                         E((rec["product"] or "")[:70]), chips,
                         fmt_eok(s["backlog"]), E(s["latest_q"] or "—"),
                         fmt_x(s["coverage"]) if s["coverage"] else "—",
-                        ("%.0f%%" % s["def_share"]) if s["def_share"] is not None else "—"))
+                        ("%.0f%%" % s["def_share"]) if s["def_share"] is not None else "—",
+                        ("%.0f%%" % s["exp_share"]) if s["exp_share"] is not None else "—"))
     cons = data["contracts"]
     defc = [c for c in cons if not c["civil"]]
     dom_amt = collections.Counter()
@@ -477,7 +489,7 @@ def hub_html(data, sums):
 <h2 class="sec">체계업체<span>수주잔고 순 · 칩은 계약 공시 상위 계통(건수)</span></h2>
 <div class="cards">%s</div>
 <div class="grid2">
- <section class="card"><h2>계통별 계약 금액 <em>방산 계약 공시 누적 · 억원</em></h2>
+ <section class="card"><h2>계통별 계약 금액 <em>수주잔고는 계통별로 공시되지 않습니다 — 계통 구성은 계약 공시 금액으로 봅니다 · 억원</em></h2>
   <div class="chart"><canvas id="cDom"></canvas></div>
   <div class="chips" style="margin-top:10px">%s</div></section>
  <section class="card"><h2>계약 유형별 금액 <em>이익 성격이 유형마다 다릅니다</em></h2>
