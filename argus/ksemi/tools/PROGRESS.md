@@ -9,12 +9,29 @@
 - [x] 본보기 코드 정독(kship_lib/universe/scan/contracts/yards/suppliers/page/parts/build_dicts, kce_fetch/parse/lib/universe/probe)
 - [x] 스캐폴딩: `argus/ksemi/{tools,assets,vendor}`, `ksemi_lib.py`, `site.json`, `assets/ksemi.css`(kship 복사)
 - [x] **DART 원문 확인**(§1 — 5건) · KIND 업종 체계 확인
-- [ ] 모집단(ksemi_universe.py) ← 지금 여기
-- [ ] 정기보고서 수집·파서(ksemi_reports.py)
-- [ ] 계약 공시(ksemi_contracts.py)
-- [ ] 분류 사전(build_dicts.py) · 인포그래픽(ksemi_parts.py)
-- [ ] 페이지(ksemi_page.py) · 커버리지
-- [ ] 테스트 · 워크플로 · 문서
+- [x] 모집단(ksemi_universe.py) — 154종목(어휘 133 · 지정 21), `assets/universe.json`
+- [x] ④ 본문 탐색(ksemi_scan.py) — 편입 79 · 배제 67 · 보류 7 · 오류 1, `assets/scan.json`
+- [x] 분류 사전(build_dicts.py) — 공정 13단계 + 부품, `assets/stages.json`·`stage_tags.json`(88사 태그)
+- [x] 정기보고서 파서(ksemi_parse.py) · 수집기(ksemi_reports.py) 작성
+- [x] 페이지(ksemi_page.py) — 허브·회사·커버리지. 데이터 없이도 렌더된다(수집과 렌더 분리)
+- [ ] **수집 실행 중**(2026-09-11 13:5x 시작): `ksemi_reports.py --write` 79종목 8분기 ·
+      `ksemi_contracts.py --all --write` 79종목 I001. 끝나면 `ksemi_page.py --all` 재실행
+- [ ] 인포그래픽(ksemi_parts.py) — 진행 중(서브에이전트)
+- [ ] 테스트(tools/tests/) — 진행 중(서브에이전트)
+- [ ] site.json 재추가(허브·회사 페이지가 실제로 볼 만해진 뒤) · 워크플로 · README/LOGIC/HANDOFF
+
+## 0-1. 다음 명령 (끊겼을 때)
+
+```sh
+cd argus/ksemi/tools
+tail -3 /tmp/ksemi_reports.log /tmp/ksemi_contracts.log   # 수집이 살아 있나
+python3 ksemi_reports.py --write                          # 캐시가 있으면 빠르게 이어받는다
+python3 ksemi_contracts.py --all --write
+python3 ksemi_page.py --all                               # 렌더
+python3 -m unittest discover -s tests
+```
+
+수집은 **캐시를 먼저 본다** — 다시 돌려도 빠진 것만 받는다(실패는 캐시하지 않는다).
 
 ## 1. 원문 확인 기록
 

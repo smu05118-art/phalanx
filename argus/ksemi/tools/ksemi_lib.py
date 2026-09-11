@@ -69,6 +69,20 @@ def slot_color(slot):
     raise KeyError(slot)
 
 
+# 공정 단계는 13개인데 검증된 범주형 슬롯은 8개다(palette.json). 순환해 쓰되 **단계 키에
+# 고정**한다 — 필터로 단계가 줄어도 색이 따라 움직이면 안 된다(dataviz 규칙).
+_STAGE_ORDER = ["photo", "etch", "depo", "implant", "thermal", "cmp", "clean",
+                "metro", "handling", "test", "pkg", "parts", "service"]
+
+
+def stage_color(key):
+    try:
+        i = _STAGE_ORDER.index(key)
+    except ValueError:
+        return "#5d6675"
+    return slot_color((i % 8) + 1)
+
+
 # ── 숫자 표기 ───────────────────────────────────────────────
 
 def fmt_eok(v):
