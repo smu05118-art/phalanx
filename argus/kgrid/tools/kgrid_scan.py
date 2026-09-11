@@ -26,7 +26,6 @@
 않는다. 승격은 **본문 인용문이 있을 때만** 한다(COMMON §0-1).
 """
 import argparse
-import json
 import os
 import re
 import sys
@@ -152,13 +151,17 @@ PRIME_NAMES = {
 # 파워넷·대양전기공업·제일일렉트릭·이지트로닉스는 **s=0** 이었다(고유 낱말이 한 번도 안 나온다).
 # 그래서 두 신호를 함께 본다: s 는 **문지기**(0이면 무조건 제외), 점수는 s*3 + mid 로 센다.
 #
-#   실측 점수: 피앤씨테크 365 · 산일전기 283 · 서전기전 204 · 지투파워 125 · 티에스넥스젠 47 ·
-#             엘에스일렉트릭 40 · HD현대일렉트릭 40 · 비츠로테크 37 · 옴니시스템 37 ·
-#             광명전기 23 · 미창석유공업 17 · 가온전선 17 · 제룡전기 16 · 선도전기 16 ·
-#             제룡산업 12  ← 모집단 하한
-#             ✕ 티엠씨 3(선박·해양 케이블) · 이지트로닉스 5 · 대양전기공업 6 · 제일일렉트릭 41(s=0)
+#   실측 점수(2026Q2 반기보고서, `--rejudge` 29사):
+#     ○ 피앤씨테크 577 · 산일전기 286 · 서전기전 204 · 서남 193 · 지투파워 125 · 보성파워텍 69 ·
+#       티에스넥스젠 48 · 효성중공업 47 · 티씨머티리얼즈 47 · 세명전기 44 · 엘에스일렉트릭 42 ·
+#       HD현대일렉트릭 40 · LS마린솔루션 40 · 옴니시스템 37 · 비츠로테크 37 · 일진전기 32 ·
+#       대한전선 32 · 가온전선 27 · 광명전기 23 · 미창석유공업 17 · 비츠로시스 17 ·
+#       제룡전기 16 · 선도전기 16 · 제룡산업 15   ← 모집단 하한
+#     ✕ 대양전기공업 6(선박·철도 배전반) · 이지트로닉스 5(전기차·방산 전력변환) ·
+#       티엠씨 3(선박·해양 케이블) · 파워넷 0(가전 SMPS) · 제일일렉트릭 41이지만 **s=0**
+#   → 하한 15 와 상한 6 사이가 비어 있다. 승격선을 그 사이(12)에 두고, s=0 을 문지기로 세웠다.
 STRONG_WEIGHT = 3
-PROMOTE_SCORE = 12           # s*3 + mid. 모집단 하한(제룡산업 12)에 맞췄다
+PROMOTE_SCORE = 12           # s*3 + mid. 모집단 하한 15와 제외 상한 6 사이
 PROMOTE_SCORE_WITH_REF = 6   # 한전·체계업체 언급이 받쳐 주면 이만큼으로 충분하다
 PROMOTE_REF = 2              # 받쳐 주는 언급의 최소 합(한국전력공사 + 전력기기 체계업체)
 NEG_RATIO = 2.0              # 비전력망 문맥이 점수의 이 배를 넘으면 승격하지 않는다
@@ -472,10 +475,13 @@ def build(log=sys.stderr):
                 "kepco": row.get("kepco", 0), "mentions": row.get("mentions") or {},
                 "terms": row.get("terms") or {}, "neg_terms": row.get("neg_terms") or {},
                 "rcp": row.get("rcp", ""), "title": row.get("title", ""),
-                "evidence": row.get("evidence") or []}
+                "score": score_of(row), "evidence": row.get("evidence") or []}
+        if row.get("extra"):
+            base["extra"] = row["extra"]
         if ok and not in_uni:
             promoted[st] = dict(base, role=role_for(row),
-                                reason="탐색 — %s %s" % (row.get("title") or "정기보고서", why))
+                                reason="탐색 — %s %s%s" % (row.get("title") or "정기보고서", why,
+                                                         " · " + row["extra"] if row.get("extra") else ""))
             continue
         if ok and in_uni:
             kept.append(dict(base, verdict="유지", reason=why,

@@ -93,10 +93,13 @@ def load_all():
 
 
 # ── 계약 공시 붙이기 ────────────────────────────────────────
-# 계약 수집기(kgrid_contracts.py)는 다른 갈래로 자라는 중이다. 스키마가 조금 달라도
-# 페이지가 죽지 않게 **있는 것만** 읽는다(없으면 그 구획을 아예 그리지 않는다).
+# `kgrid_contracts.py` 가 만든 `assets/contracts.json` 의 행을 그대로 읽는다.
+# 스키마가 없거나 달라도 페이지가 죽지 않게 **있는 것만** 읽는다(없으면 구획을 그리지 않는다).
+#   name 계약명 · party 계약상대 · amt/cur 원문 통화 금액 · amt_krw_m 원화 환산(백만원, 공시가
+#   환율을 적은 경우) · rev_ratio 최근 매출액 대비 % · demand 수요처 · region 지역 ·
+#   product 제품군 · signed 계약일 · start/end/years 기간 · withheld 공시유보 · canceled 해지
 
-def contracts_of(data, stock):
+def contracts_of(data, stock, include_canceled=False):
     c = data["contracts"]
     rows = None
     if isinstance(c.get("companies"), dict):
@@ -114,8 +117,10 @@ def contracts_of(data, stock):
             continue
         if r.get("superseded") or r.get("superseded_by"):
             continue
+        if r.get("canceled") and not include_canceled:
+            continue
         out.append(r)
-    out.sort(key=lambda r: str(r.get("date") or r.get("rcp") or ""), reverse=True)
+    out.sort(key=lambda r: (str(r.get("signed") or ""), str(r.get("rcp") or "")), reverse=True)
     return out
 
 
@@ -124,6 +129,26 @@ def _cf(r, *keys, **kw):
         if r.get(k) not in (None, ""):
             return r[k]
     return kw.get("default")
+
+
+def contract_amount_cell(r):
+    """계약금액 칸. 원화 환산값이 있으면 억원으로, 원문 통화가 다르면 배지로 함께 보인다.
+
+    환산은 **우리가 한 것이 아니다** — 공시가 "SGD 131,918,500을 원화환산하여 기재"처럼
+    환율을 적은 경우 그 값을 쓴다(`fx_src` 에 그 문구가 남아 있다). 환산 근거가 없으면
+    원문 통화 그대로 보이고 원화 합계에서 뺀다."""
+    krw_m = r.get("amt_krw_m")
+    cur = r.get("cur") or "KRW"
+    if krw_m is not None:
+        # 원문이 외화인 계약은 '원문 SGD' 라고 적는다 — 통화 코드만 붙이면 그 숫자가 외화인 줄
+        # 오해한다(값은 공시가 적은 환율로 원화 환산된 것이다).
+        badge = ('' if cur == "KRW"
+                 else '<span class="cur">원문 %s</span>' % E(cur))
+        return '<td data-v="%.3f">%s억%s</td>' % (krw_m, E(fmt_eok(krw_m)), badge)
+    amt = r.get("amt")
+    if amt is None:
+        return '<td class="mut">%s</td>' % ("유보" if r.get("withheld") else "—")
+    return '<td>%s %s</td>' % (E(format(int(amt), ",d")), E(cur))
 
 
 # ── 회사 집계 ───────────────────────────────────────────────
@@ -349,6 +374,40 @@ def hub(data):
             '<th class="l">회사(앞부분)</th></tr></thead><tbody>%s</tbody></table></div>'
             '<p class="mut" style="margin-top:8px">낱말이 나온 <b>문장</b>은 회사 페이지에 그대로 '
             '인용해 두었습니다.</p></section>' % rows)
+
+    # 계약 공시로 본 발주처·지역 — 수요 축을 **계약 단위**로 받치는 유일한 원천이다.
+    allc = [r for st in (x["stock"] for x in ss) for r in contracts_of(data, st)]
+    if allc:
+        def agg(field, labeller):
+            c = collections.Counter()
+            amt = collections.Counter()
+            for r in allc:
+                k = r.get(field)
+                c[k] += 1
+                if r.get("amt_krw_m") is not None:
+                    amt[k] += r["amt_krw_m"]
+            rows = []
+            for k, n in c.most_common():
+                rows.append('<tr><td class="l">%s</td><td data-v="%d">%d</td>'
+                            '<td data-v="%.1f">%s</td></tr>'
+                            % (E(labeller(k) if k else "판정 못 함"), n, n,
+                               amt.get(k, 0), E(fmt_eok(amt[k]) if amt.get(k) else "—")))
+            return "".join(rows)
+        util = sum(1 for r in allc if r.get("utility"))
+        body.append(
+            '<section class="card"><h2>계약 공시로 본 발주처 <em>%d건 — 수주표가 부문 합계인 '
+            '이 산업에서 계약 단위 근거</em><span class="right">전력회사 상대 %d건</span></h2>'
+            '<div class="grid2">'
+            '<div><h2>수요처</h2><div class="wrap"><table data-sortable><thead><tr>'
+            '<th class="l sort">수요처</th><th class="sort">건</th><th class="sort">금액(억)</th>'
+            '</tr></thead><tbody>%s</tbody></table></div></div>'
+            '<div><h2>지역</h2><div class="wrap"><table data-sortable><thead><tr>'
+            '<th class="l sort">지역</th><th class="sort">건</th><th class="sort">금액(억)</th>'
+            '</tr></thead><tbody>%s</tbody></table></div></div></div>'
+            '<p class="mut" style="margin-top:8px">금액은 <b>공시가 환율을 적은 계약</b>만 '
+            '원화로 더했습니다(우리가 환산하지 않습니다). 해지 공시는 뺐습니다.</p></section>'
+            % (len(allc), util, agg("demand", _demand_ko),
+               agg("region", lambda k: REGION_LABEL.get(k, k))))
 
     # 회사 표
     trs = []
@@ -804,34 +863,57 @@ def company(data, stock):
             '<tbody>%s</tbody></table></div></section>'
             % (len(cust), (v.get("customer_tables") or 1), trs))
 
-    # 계약 공시
-    cs = contracts_of(data, stock)
+    # 계약 공시 — 이 산업에서 **계약 단위 원장**은 이것뿐이다(수주표는 부문 합계다).
+    cs = contracts_of(data, stock, include_canceled=True)
     if cs:
+        live = [r for r in cs if not r.get("canceled")]
         trs = []
         for r in cs[:200]:
-            amt = _cf(r, "amt", "amount", "contract_amount")
-            cur = _cf(r, "cur", "currency", default="KRW")
+            tags = []
+            if r.get("canceled"):
+                tags.append('<span class="pill">해지</span>')
+            if r.get("withheld"):
+                tags.append('<span class="pill est">공시유보</span>')
+            if r.get("affiliate"):
+                tags.append('<span class="ev rel">관계회사</span>')
+            if r.get("anon"):
+                tags.append('<span class="ev anon">익명</span>')
+            if r.get("utility"):
+                tags.append('<span class="ev named">전력회사</span>')
+            period = " ~ ".join(x for x in (r.get("start"), r.get("end")) if x)
+            if r.get("years"):
+                period += " (%s년)" % fmt_x(r["years"], 1)
             trs.append(
-                '<tr><td class="l">%s</td><td class="l mut">%s</td>%s<td class="l mut">%s</td>'
+                '<tr><td class="l" title="%s">%s</td><td class="l mut">%s%s</td>%s'
+                '<td>%s</td><td class="l mut">%s</td><td class="l mut">%s</td>'
                 '<td class="l mut">%s</td><td class="l">%s</td></tr>'
-                % (E(str(_cf(r, "title", "name", "subject", default="") or "")[:90]),
-                   E(str(_cf(r, "counterparty", "party", "customer", default="") or "")[:40]),
-                   money_cell(amt if isinstance(amt, (int, float)) else None, cur),
-                   E(str(_cf(r, "date", "contract_date", default="") or "")),
-                   E(str(_cf(r, "period", "term", default="") or "")),
+                % (E(str(r.get("name") or "")), E(str(r.get("name") or "")[:76]),
+                   E(str(r.get("party") or ("유보" if r.get("withheld") else "—"))[:34]),
+                   "".join(tags),
+                   contract_amount_cell(r),
+                   E(fmt_pct(r.get("rev_ratio"), 1)),
+                   E(_demand_ko(r["demand"]) if r.get("demand") else ""),
+                   E(REGION_LABEL.get(r.get("region") or "", "") or (r.get("region_raw") or "")),
+                   E(str(r.get("signed") or "") + (" · " + period if period else "")),
                    ('<a href="%s" target="_blank" rel="noopener noreferrer">원문</a>'
                     % E(DART % r["rcp"]) if r.get("rcp") else "")))
+        krw = [r["amt_krw_m"] for r in live if r.get("amt_krw_m") is not None]
         body.append(
-            '<section class="card"><h2>계약 공시 <em>「단일판매ㆍ공급계약체결」 %d건</em>'
-            '<span class="right">정정공시는 최신본만 셉니다</span></h2>'
-            '<div class="ctl"><input data-filter="#tct" placeholder="계약·상대 검색"></div>'
+            '<section class="card"><h2>계약 공시 <em>「단일판매ㆍ공급계약체결」 유효 %d건'
+            '%s</em><span class="right">금액 합계 %s억(환산 근거가 있는 %d건)</span></h2>'
+            '<p class="note info">이 산업의 수주표는 <b>사업부문 합계</b>라 계약 단위 원장은 '
+            '이 공시뿐입니다. 다만 공시 의무 기준(최근 매출액 대비 비율)을 넘는 계약만 나오므로 '
+            '<b>전부가 아닙니다</b>. 외화 계약의 원화 금액은 우리가 환산한 것이 아니라 '
+            '<b>공시가 환율을 적은 경우</b> 그 값입니다 — 근거가 없으면 원문 통화로 둡니다.</p>'
+            '<div class="ctl"><input data-filter="#tct" placeholder="계약명·상대 검색"></div>'
             '<div class="wrap tall"><table id="tct" data-sortable><thead><tr>'
             '<th class="l sort">계약명</th><th class="l sort">계약상대</th>'
-            '<th class="sort">금액</th><th class="l sort">계약일</th><th class="l">기간</th>'
-            '<th class="l">원문</th></tr></thead><tbody>%s</tbody></table></div>'
-            '<p class="mut" style="margin-top:8px">수주표가 부문 합계인 이 산업에서 '
-            '<b>계약 단위 원장</b>은 이 공시뿐입니다. 다만 공시 의무 기준(매출액 대비 비율)을 '
-            '넘는 계약만 나오므로 전부가 아닙니다.</p></section>' % (len(cs), "".join(trs)))
+            '<th class="sort">금액</th><th class="sort">매출액 대비</th>'
+            '<th class="l sort">수요처</th><th class="l sort">지역</th>'
+            '<th class="l sort">계약일·기간</th><th class="l">원문</th>'
+            '</tr></thead><tbody>%s</tbody></table></div></section>'
+            % (len(live), (" · 해지 %d건" % (len(cs) - len(live))) if len(cs) > len(live) else "",
+               fmt_eok(sum(krw)) if krw else "—", len(krw), "".join(trs)))
 
     # 수요 낱말 인용
     if s.get("demand"):
