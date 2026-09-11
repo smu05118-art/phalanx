@@ -209,6 +209,10 @@ def product_keys(data, stock):
             if k not in keys:
                 keys.append(k)
                 why.append({"key": k, "src": label, "text": txt[:80]})
+    # `tr_unknown`(전압 계급 미상)을 본문의 `초고압` 낱말로 `ehv` 로 올려 보았지만 **되돌렸다**.
+    # II절 본문의 `초고압`·`154kV` 는 시장 서술일 때가 많아(제룡전기는 배전변압기·금구류 회사인데
+    # 본문에 초고압이 나온다) 절반쯤 틀렸다. 낱말이 있다는 사실은 회사 페이지에 힌트로만 적고
+    # 분류는 바꾸지 않는다(COMMON §0-1: 추정하지 않는다).
     keys.sort(key=lambda k: PRODUCT_ORDER.index(k))
     return keys, why
 
@@ -761,6 +765,12 @@ def company(data, stock):
     if s.get("revenue_basis") == "entity":
         notes.append("커버리지의 분모는 <b>같은 주체</b>의 연매출입니다 — 종속회사 매출을 다 더해 "
                      "나누면 배수가 낮아집니다.")
+    if "tr_unknown" in s["products"]:
+        hv = (s.get("demand") or {}).get("ultra_hv") or {}
+        notes.append("품목 문구가 <b>`변압기`</b> 뿐이라 전압 계급(초고압/배전용)을 정하지 "
+                     "않았습니다." + (" 다만 II절 본문에 `초고압`·`345kV` 류가 %d회 나옵니다 — "
+                                     "시장 서술일 수 있어 분류는 바꾸지 않았습니다."
+                                     % hv["n"] if hv.get("n") else ""))
     if s.get("grain") == "segment":
         notes.append("수주표의 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다"
                      + (" (최대 행이 잔고의 %s)" % fmt_pct(s["top_share"], 1)
