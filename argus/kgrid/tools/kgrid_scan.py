@@ -130,6 +130,13 @@ NEG = re.compile(
     r"반도체\s?장비|디스플레이|휴대폰|스마트폰|가전기기|생활가전|SMPS|Adaptor|어댑터", re.I)
 # 발주처 — 한국전력공사는 **고객**이다(모집단에는 안 넣지만, 언급은 전력망이라는 증거다).
 KEPCO = re.compile(r"한국전력공사|한국전력거래소|KEPCO|한전\s?KDN|한국전력", re.I)
+# GEN = 전력을 **파는** 쪽의 말(스펙 ④ 제외 대상 — 발전사업자·발주처). 전력기기 공급망이 아니다.
+# 실측: 금양그린파워 282720 은 `발전매출`·`발전사업 허가`·`SMP+REC` 가 14회인데 전력망 고유 낱말은
+# 2회다 — 신재생 발전소를 개발·시공하고 전기를 파는 회사다. 반면 한전KPS 051600 은 gen 1회 ·
+# 고유 낱말 26회(송전선로 유지·HVDC 설비점검)로 정비 **공급자**다. 그래서 절대수가 아니라
+# gen 과 고유 낱말의 **크기 비교**로 가른다.
+GEN = re.compile(r"발전매출|발전사업\s?허가|SMP\s?\+?\s?REC|전력\s?판매|전력거래소|발전사업자|"
+                 r"REC\s?판매", re.I)
 # 모집단 체계업체 언급 — 이들에게 납품한다면 전력기기 공급망이다.
 PRIME_NAMES = {
     "267260": r"HD\s?현대일렉트릭|현대일렉트릭",
@@ -159,21 +166,29 @@ PRIME_NAMES = {
 #       제룡전기 16 · 선도전기 16 · 제룡산업 15   ← 모집단 하한
 #     ✕ 대양전기공업 6(선박·철도 배전반) · 이지트로닉스 5(전기차·방산 전력변환) ·
 #       티엠씨 3(선박·해양 케이블) · 파워넷 0(가전 SMPS) · 제일일렉트릭 41이지만 **s=0**
-#   → 하한 15 와 상한 6 사이가 비어 있다. 승격선을 그 사이(12)에 두고, s=0 을 문지기로 세웠다.
+#   → 하한 15 와 상한 6 사이가 비어 있다. s=0 을 문지기로 세우고 승격선을 그 빈 띠에 둔다.
+#
+#   후보 191사 쪽에서도 같은 빈 띠가 나왔다: 대원전선 10(제품표 용도가 `전력송배전`인 전력선 회사) ·
+#   그 아래는 지엔씨에너지 5 · 한국쉘석유 4 · POSCO홀딩스 4 처럼 부수 언급뿐이다.
+#   그래서 승격선은 **10**(5와 15 사이의 빈 띠)로 둔다. 보고서가 짧으면 낱말 수도 적어진다 —
+#   대원전선 본문은 6.3KB뿐인데 내용은 명백하다(밀도가 아니라 빈 띠로 선을 긋는 이유다).
 STRONG_WEIGHT = 3
-PROMOTE_SCORE = 12           # s*3 + mid. 모집단 하한 15와 제외 상한 6 사이
+PROMOTE_SCORE = 10           # s*3 + mid. 모집단 하한 15와 오탐 상한 5 사이의 빈 띠
 PROMOTE_SCORE_WITH_REF = 6   # 한전·체계업체 언급이 받쳐 주면 이만큼으로 충분하다
 PROMOTE_REF = 2              # 받쳐 주는 언급의 최소 합(한국전력공사 + 전력기기 체계업체)
+PROMOTE_MID = 1              # 전력기기 낱말이 한 번도 없으면 그 고유 낱말은 남의 산업 이야기다
 NEG_RATIO = 2.0              # 비전력망 문맥이 점수의 이 배를 넘으면 승격하지 않는다
 RULE = ("II절 본문에서 **전력망 고유 낱말** s(부싱·탭체인저·절연유·애자·변류기·부스덕트·전력량계·"
-        "송배전·변전소·전력계통·154/345/765kV·가스절연·지중케이블 …)와 **전력망 관련 낱말** mid"
-        "(변압기·차단기·개폐기·배전반·배전·송전 …)를 센다. 점수 = s×%d + mid. "
-        "s ≥ 1(고유 낱말이 하나도 없으면 무조건 제외) 이면서 점수 ≥ %d, 또는 한국전력공사·전력기기 "
-        "체계업체 언급 ≥ %d 이면서 점수 ≥ %d 이면 승격. 단 비전력망 문맥(선박·함정·철도차량·"
-        "세대배선·자동차·가전) 낱말이 점수의 %.0f배를 넘으면 승격하지 않는다. "
-        "II절을 못 읽은 회사·인용문을 못 뽑은 회사는 승격하지 않는다(fail-closed). "
+        "송배전·변전소·전력계통·154/345/765kV·가스절연·지중케이블·전기강판 …)와 **전력기기 낱말** "
+        "mid(변압기·차단기·개폐기·배전반·배전·송전·전력선 …)를 센다. 점수 = s×%d + mid. "
+        "s ≥ 1 · mid ≥ %d 이면서 점수 ≥ %d, 또는 한국전력공사·전력기기 체계업체 언급 ≥ %d 이면서 "
+        "점수 ≥ %d 이면 승격. 다음이면 승격하지 않는다 — ① 고유 낱말이 하나도 없다(s=0) "
+        "② 비전력망 문맥(선박·함정·철도차량·세대배선·자동차·가전) 낱말이 점수의 %.0f배를 넘는다 "
+        "③ 전력을 **파는** 쪽 낱말(발전매출·발전사업 허가·SMP+REC)이 고유 낱말보다 많다(스펙 ④ "
+        "발주처·발전사업자) ④ II절을 못 읽었거나 인용문을 못 뽑았다(fail-closed). "
         "`GIS`·`ESS`·`초고압` 단독은 어휘에 넣지 않았다(FINDINGS §1 실측 오탐)."
-        % (STRONG_WEIGHT, PROMOTE_SCORE, PROMOTE_REF, PROMOTE_SCORE_WITH_REF, NEG_RATIO))
+        % (STRONG_WEIGHT, PROMOTE_MID, PROMOTE_SCORE, PROMOTE_REF, PROMOTE_SCORE_WITH_REF,
+           NEG_RATIO))
 
 
 # ── 후보 뽑기 ───────────────────────────────────────────────
@@ -299,6 +314,9 @@ def measure(row, text):
     row["neg_terms"] = dict(list(neg.items())[:8])
     row["neg"] = sum(neg.values())
     row["kepco"] = len(KEPCO.findall(text))
+    gen = _counts(GEN, text)
+    row["gen_terms"] = dict(list(gen.items())[:6])
+    row["gen"] = sum(gen.values())
     row["mentions"] = {k: len(re.findall(p, text, re.I))
                        for k, p in PRIME_NAMES.items() if re.search(p, text, re.I)}
     row["evidence"] = quotes(text)
@@ -351,6 +369,14 @@ def judge(row):
     if neg > sc * NEG_RATIO:
         return False, ("점수 %d(고유 %d·관련 %d)보다 비전력망 문맥(%s)이 %d회로 압도한다 — "
                        "같은 낱말을 다른 산업에서 쓴다" % (sc, s, mid, negs, neg))
+    if row.get("gen", 0) > s:
+        return False, ("본문이 전력을 **파는** 쪽을 말한다(%s 등 %d회 > 전력망 고유 낱말 %d회) — "
+                       "발전사업자·발주처는 공급망이 아니다(스펙 ④)"
+                       % (", ".join(list(row.get("gen_terms") or {})[:3]), row["gen"], s))
+    if mid < PROMOTE_MID:
+        return False, ("전력망 고유 낱말은 %d회 나오는데(%s) 전력기기 낱말(변압기·차단기·배전…)이 "
+                       "한 번도 없다 — 자기 제품이 아니라 남의 산업을 말하는 것이다"
+                       % (s, ", ".join(list(row.get("terms") or {})[:3])))
     top = ", ".join("%s %d" % kv for kv in list((row.get("terms") or {}).items())[:4])
     if sc >= PROMOTE_SCORE:
         return True, "점수 %d(고유 낱말 %d회: %s · 관련 낱말 %d회)" % (sc, s, top, mid)
@@ -372,7 +398,7 @@ def role_for(row):
             or re.search(r"전기공사|정비\s*용역|발전설비\s*정비|유지보수", prod)) \
             and not re.search(r"제조|생산", prod):
         return "epc"
-    if re.search(r"변압기|차단기|개폐기|배전반|수배전|스위치기어", prod):
+    if re.search(r"변압기|차단기|개폐기|배전반|수배전|스위치기어|인버터|PCS|전력변환", prod, re.I):
         return "maker"
     return "part"                       # 본문으로 들어온 것은 대개 부품·소재다(스펙 ③)
 
@@ -472,6 +498,7 @@ def build(log=sys.stderr):
         base = {"stock": st, "name": row["name"], "industry": row.get("industry", ""),
                 "product": row.get("product", ""), "strong": row.get("strong", 0),
                 "mid": row.get("mid", 0), "neg": row.get("neg", 0),
+                "gen": row.get("gen", 0), "gen_terms": row.get("gen_terms") or {},
                 "kepco": row.get("kepco", 0), "mentions": row.get("mentions") or {},
                 "terms": row.get("terms") or {}, "neg_terms": row.get("neg_terms") or {},
                 "rcp": row.get("rcp", ""), "title": row.get("title", ""),

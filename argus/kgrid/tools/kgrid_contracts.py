@@ -34,6 +34,13 @@
    **지역은 수요처와 다른 축이다** — 「4. 판매ㆍ공급지역」은 `region` 으로만 싣고,
    나라 이름으로 발주처 성격을 추정하지 않는다(이집트 계약의 발주처가 터널청인 실례가 있다).
 
+4. **집계에서 빼야 하는 두 갈래를 원문으로 표시한다**(버리지는 않는다, COMMON §0-2).
+   · `subsidiary` — 지주가 자회사 대신 낸 재공시(효성 36·LS 24·비츠로테크 11·일진홀딩스 5).
+     제목이 「…(자회사의 주요경영사항)」이고 표 첫 행이 `자회사인 효성중공업(주)`다.
+     그대로 두면 효성중공업·엘에스일렉트릭·일진전기 계약이 **두 번** 잡힌다.
+   · `kind_raw` — 「1. 판매ㆍ공급계약 구분」 원문(`기타 판매ㆍ공급계약`·`상품공급`·`공사수주`·
+     `용역제공`). 효성중공업은 건설부문 도급(`공사수주`)과 중전기 공급이 이 칸으로 갈린다.
+
 캐시: `assets/contracts/<종목코드>.json` — 공시별 원문 (라벨,값) 전부 보존(`kv`).
 분류는 **빌드 때 캐시에서 다시** 한다(사전이 자라도 재수집이 필요 없게, COMMON §0-4).
 
@@ -221,7 +228,11 @@ _DEMAND_RULES = [
     ("na_utility", r"(?:미국|캐나다|북미|U\.?S\.?A?|Canada)[^,\n]{0,10}"
                    r"(?:전력청|전력회사|전력공사|유틸\s*리티|유틸리티|Utilit)|"
                    r"Electric\s*(?:and|&)\s*Gas|Public\s*Service\s*Electric|PSE&G|"
-                   r"Power\s*(?:and|&)\s*Light|Electric\s*Power|Electric\s*Comp|"
+                   # `Electric Power` 단독은 쓰지 않는다 — **공급사 이름**에 들어 있다
+                   # (`delivery of LS Electric Power Supply & Distribution …`가 북미
+                   # 유틸리티로 갔다. 실제 발주처는 이집트터널청이다).
+                   r"Power\s*(?:and|&)\s*Light|Electric\s*Power\s*(?:Co|Corp|Comp|Board|Auth)|"
+                   r"Electric\s*Comp|"
                    r"Xcel|Dominion|Duke\s*Energy|Southern\s*Company|Entergy|Exelon|"
                    r"American\s*Electric|Consolidated\s*Edison|Con\s*Edison|PG&E|"
                    r"Pacific\s*Gas|Georgia\s*Power|Florida\s*Power|Oncor|CenterPoint|"
@@ -291,7 +302,7 @@ _UTILITY = re.compile(
     # 발전사업자(IPP)도 전력사업자다 — 일진전기 20260105800073 「미국 판매법인(ILJIN Electric
     # USA)과 **미국 발전사업자**와의 계약으로 당사로 재 발주한」. 이름은 비밀유지로 없다.
     r"발전\s*사업자|발전회사|발전사|\bIPP\b|Power\s*(?:Producer|Generation)|"
-    r"Electric\s*(?:and|&)\s*Gas|Electric\s*Power", re.I)
+    r"Electric\s*(?:and|&)\s*Gas|Electric\s*Power\s*(?:Co|Corp|Comp|Board|Auth)", re.I)
 
 # 계약상대가 **이름 없이** 오는 꼴. 공시유보 칸과는 다르다 — 유보 칸은 `-`인데 주석에
 # 「계약상대의 비밀유지 요청에 따라 구체적인 이름을 기재하지 않습니다」라고 적는다
