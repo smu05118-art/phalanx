@@ -266,11 +266,19 @@ def build(quarter):
                     uncl.append((r["stock"], r["name"], pr["prod"]))
                 cats.append({"cat": cid, "prod": pr["prod"], "share": pr.get("share"), "amt": pr.get("amt"),
                              "est": len(ids) > 1 or bool(pr.get("kind")), "basis": ("kind" if pr.get("kind") else "report")})
-        # 시드 사유에 적힌 제품도 분류에 보탠다(KIND 문구가 빈약한 회사: 한국카본 '카본')
-        if r.get("reason"):
+        # 시드 사유에 적힌 제품도 분류에 보탠다(KIND 문구가 빈약한 회사: 한국카본 '카본').
+        # 탐색('탐색 — … 선급 1회')의 사유는 증거 문장이지 제품이 아니다 — 지정 사유만 본다.
+        if r.get("reason") and r.get("source") == "지정":
             for cid in classify_product(r["reason"], True):
                 if cid != "UNCL" and cid not in {c["cat"] for c in cats}:
                     cats.append({"cat": cid, "prod": r["reason"].split("—")[-1].strip(), "share": None, "amt": None, "est": True, "basis": "seed"})
+        # 주요제품 표가 '제품'·'기타'·품번뿐이라 아무것도 못 나누면(케이씨씨·한선엔지니어링) KIND 제품 문구로 한 번 더 —
+        # 근거는 'kind'(추정)로 남긴다. override 는 (종목, KIND 문구)로도 걸 수 있다.
+        if not [c for c in cats if c["cat"] != "UNCL"] and r.get("product"):
+            key = (r["stock"], _norm(r["product"]))
+            for cid in ([ovr[key]] if key in ovr else classify_product(r["product"], ctx)):
+                if cid != "UNCL" and cid not in {c["cat"] for c in cats}:
+                    cats.append({"cat": cid, "prod": r["product"][:40], "share": None, "amt": None, "est": True, "basis": "kind"})
         yards = []
         for yid, n in sorted(((d or {}).get("mentions") or {}).items(), key=lambda kv: -kv[1]):
             yards.append({"yard": yid, "mentions": n, "basis": "text", "share": None})

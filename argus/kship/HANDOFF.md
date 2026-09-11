@@ -41,6 +41,11 @@ python3 inject_link.py --apply             # argus/index.html 에 ⚓ 한국조�
 - 신형 거래소 서식(2025~ '판매ㆍ공급계약 구분/세부내용', '계약(수주)일') 파싱 추가. 빌드가 캐시 원문 라벨에서 필드를 다시 뽑는다.
 - `site.json` — 맥미니 ARGUS 빌더(`argus_build.py inject_subsite_links`)가 크론마다 ⚓ 링크를 재생성하므로 되쓰기 경쟁이 끝났다.
 - 테스트 15건 `cd tools && python3 -m unittest discover -s tests`. 자동 갱신 `.github/workflows/update-kship.yml` 매일 10:40 KST.
+- **모집단 ④ 본문 탐색(9/11 02:50)**: `tools/kship_scan.py` 가 KIND 기자재 어휘 후보 230사의 정기보고서 II 절을 읽어 16사 승격
+  (나노·DSR·한국주강·케이씨씨·금강공업·한일철강·한선엔지니어링·영흥·해성에어로보틱스·서암기계공업·원일티엔아이·에스앤더블류·삼영엠텍·
+  한화시스템·HD현대마린솔루션·서호전기) → 모집단 41→57, 기자재 51사(조선사 언급 확인 26). 기준: 조선 낱말 ≥6 또는 (조선사 언급 ≥2 ∧ 낱말 ≥3),
+  고객 업종(가스공사) 제외. 제외 214사는 커버리지 페이지 '④' 접힘 표. 기준 변경 시 `--rejudge`(DART 불필요). 주 1회 `scan-kship.yml`.
+  케이프(064820)·한화엔진(082740)은 처음부터 모집단에 있었다. 근접 제외: 디케이락(낱말 4·HD현대重 1) — EXTRA 로 지정해도 승격은 증거 기준.
 - 남은 일(선택): 인포그래픽 미분류 제품 39건(`tools/assets/unclassified.csv` → `parts_override.csv`), HJ중공업 사업보고서 수주 절 제목 대응, 진행률(매출인식) 기준을 주석 「수익」에서 읽기.
 
 ## DART 주의

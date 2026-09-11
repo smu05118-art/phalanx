@@ -21,12 +21,15 @@ class TestPool(unittest.TestCase):
         self.assertEqual(got, {"187790", "044490"})
 
     def test_promotion_rule_is_fail_closed(self):
-        ok = lambda d: bool(d.get("ok") and (sum((d.get("mentions") or {}).values()) >= S.PROMOTE_MENTIONS
-                                             or d.get("marine_hits", 0) >= S.PROMOTE_HITS))
-        self.assertTrue(ok({"ok": True, "mentions": {"042660": 3}, "marine_hits": 6}))
-        self.assertTrue(ok({"ok": True, "mentions": {}, "marine_hits": 40}))
-        self.assertFalse(ok({"ok": True, "mentions": {"329180": 1}, "marine_hits": 7}))
-        self.assertFalse(ok({"ok": False, "mentions": {"329180": 9}, "marine_hits": 99}))   # II 절을 못 읽으면 승격 없음
+        J = S.judge
+        self.assertTrue(J({"ok": True, "industry": "일반 목적용 기계 제조업", "mentions": {"042660": 3}, "hits": 6}))
+        self.assertTrue(J({"ok": True, "industry": "기초 화학물질 제조업", "mentions": {}, "hits": 10}))          # 나노
+        self.assertTrue(J({"ok": True, "industry": "전동기 제조업", "mentions": {"010140": 3, "097230": 1}, "hits": 3}))  # 서호전기
+        self.assertFalse(J({"ok": True, "industry": "전동기 제조업", "mentions": {"042660": 2}, "hits": 0}))    # 효성重 — 언급뿐
+        self.assertFalse(J({"ok": True, "industry": "전동기 제조업", "mentions": {"329180": 1, "KSOE_GRP": 1}, "hits": 1}))
+        self.assertFalse(J({"ok": True, "industry": "연료용 가스 제조 및 배관공급업", "mentions": {"010140": 2}, "hits": 7}))  # 가스공사=고객
+        self.assertFalse(J({"ok": True, "industry": "일반 목적용 기계 제조업", "mentions": {"329180": 1}, "hits": 4}))   # 디케이락 근접
+        self.assertFalse(J({"ok": False, "industry": "일반 목적용 기계 제조업", "mentions": {"329180": 9}, "hits": 99}))  # II 절 못 읽음
 
     def test_role_for(self):
         self.assertEqual(S.role_for({"industry": "1차 철강 제조업", "product": "후판"}, {}), "steel")

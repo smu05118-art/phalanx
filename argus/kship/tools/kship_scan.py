@@ -34,7 +34,21 @@ EXCL = re.compile(r"자동차|의약|반도체|소프트웨어|금융|은행|보
 EXTRA = {"272210": "한화시스템 — 함정 전투체계", "443060": "HD현대마린솔루션 — 선박 AM·개조", "298040": "효성중공업 — 선박용 변압기·전동기?",
          "187790": "나노 — 선박용 SCR 탈질촉매"}
 PROMOTE_MENTIONS = 2
-PROMOTE_HITS = 8
+PROMOTE_HITS = 6                 # 본문에서 조선을 이만큼 말하면 공급망으로 본다(한선엔지니어링 7·영흥 7이 경계)
+PROMOTE_HITS_WITH_MENTIONS = 3   # 조선사 언급만으로는 부족하다 — 계열사·고객 언급(효성重 0회·HD현대일렉트릭 1회)을 거른다
+# 조선사를 언급해도 **고객**인 업종은 공급망이 아니다(한국가스공사는 LNG선 발주처)
+_CUSTOMER_INDUSTRY = re.compile(r"가스 제조 및 배관공급|해상 운송|임대업|전기 공급")
+RULE = "조선 낱말 ≥ %d, 또는 조선사 언급 ≥ %d 이면서 조선 낱말 ≥ %d · 고객 업종(가스공급·해운·임대) 제외" % (
+    PROMOTE_HITS, PROMOTE_MENTIONS, PROMOTE_HITS_WITH_MENTIONS)
+
+
+def judge(row):
+    """탐색 행 → 승격 여부. II 절을 못 읽었으면(ok=False) 절대 승격하지 않는다."""
+    if not row.get("ok", True) or _CUSTOMER_INDUSTRY.search(row.get("industry") or ""):
+        return False
+    hits = row.get("hits", 0)
+    ment = sum((row.get("mentions") or {}).values())
+    return hits >= PROMOTE_HITS or (ment >= PROMOTE_MENTIONS and hits >= PROMOTE_HITS_WITH_MENTIONS)
 
 
 def pool(recs, universe):
@@ -74,9 +88,10 @@ def scan(quarter, log=sys.stderr):
             continue
         hits = d.get("marine_hits", 0)
         ment = d.get("mentions") or {}
-        ok = d.get("ok") and (sum(ment.values()) >= PROMOTE_MENTIONS or hits >= PROMOTE_HITS)
-        row = {"stock": r["stock"], "name": r["name"], "industry": r["industry"], "product": r["product"],
-               "hits": hits, "terms": d.get("marine_terms", {}), "mentions": ment, "rcp": d.get("rcp"), "note": d.get("note", "")}
+        row = {"stock": r["stock"], "name": r["name"], "industry": r["industry"], "product": r["product"], "ok": bool(d.get("ok")),
+               "hits": hits, "terms": d.get("marine_terms", {}), "mentions": ment, "rcp": d.get("rcp"), "note": d.get("note", ""),
+               "title": d.get("title", "")}
+        ok = judge(row)
         if ok:
             reason = "탐색 — %s 본문: 조선 낱말 %d회(%s)%s%s" % (
                 d.get("title", "정기보고서"), hits, ", ".join("%s %d" % kv for kv in list(row["terms"].items())[:3]),
@@ -87,21 +102,51 @@ def scan(quarter, log=sys.stderr):
             rejected.append(row)
         log.write("%3d/%d %s %-14s hits=%-3d ment=%s %s\n" % (i, len(cands), r["stock"], r["name"][:14], hits, ment or "-", "승격" if ok else ""))
         log.flush()
-    out = {"quarter": quarter, "scanned": time.strftime("%Y-%m-%d"), "pool": len(cands),
-           "rule": "조선사 언급 ≥ %d 또는 조선 낱말 ≥ %d" % (PROMOTE_MENTIONS, PROMOTE_HITS),
+    out = {"quarter": quarter, "scanned": time.strftime("%Y-%m-%d"), "pool": len(cands), "rule": RULE,
            "promoted": promoted, "rejected": sorted(rejected, key=lambda x: -x["hits"]), "failed": failed}
     write_asset("universe_probe.json", out)
     log.write("승격 %d · 제외 %d · 실패 %d → assets/universe_probe.json\n" % (len(promoted), len(rejected), len(failed)))
     return out
 
 
+def _reason(row):
+    return "탐색 — %s 본문: 조선 낱말 %d회(%s)%s%s" % (
+        row.get("title") or "정기보고서", row.get("hits", 0),
+        ", ".join("%s %d" % kv for kv in list((row.get("terms") or {}).items())[:3]),
+        (" · 조선사 언급 %s" % json.dumps(row.get("mentions"), ensure_ascii=False)) if row.get("mentions") else "",
+        (" · " + EXTRA[row["stock"]]) if row["stock"] in EXTRA else "")
+
+
+def rejudge(log=sys.stderr):
+    """기준을 바꿨을 때 DART 없이 지난 탐색 결과를 다시 판정한다(증거는 파일에 다 있다)."""
+    d = load_asset("universe_probe.json")
+    rows = list(d.get("promoted", {}).values()) + list(d.get("rejected", []))
+    promoted, rejected = {}, []
+    for row in rows:
+        row = {k: v for k, v in row.items() if k not in ("role", "reason")}
+        if judge(row):
+            promoted[row["stock"]] = dict(row, role=role_for(row, {"marine_terms": row.get("terms", {})}), reason=_reason(row))
+        else:
+            rejected.append(row)
+    d.update({"rule": RULE, "promoted": promoted, "rejected": sorted(rejected, key=lambda x: -x["hits"]),
+              "rejudged": time.strftime("%Y-%m-%d")})
+    write_asset("universe_probe.json", d)
+    log.write("재판정: 승격 %d · 제외 %d\n" % (len(promoted), len(rejected)))
+    for r in promoted.values():
+        log.write("  %s %-12s hits=%-3d ment=%s\n" % (r["stock"], r["name"][:12], r["hits"], r["mentions"] or "-"))
+    return d
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scan", action="store_true")
+    ap.add_argument("--rejudge", action="store_true")
     ap.add_argument("--quarter", default="2026Q2")
     a = ap.parse_args()
     if a.scan:
         scan(a.quarter)
+    if a.rejudge:
+        rejudge()
 
 
 if __name__ == "__main__":
