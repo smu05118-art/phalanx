@@ -1084,7 +1084,7 @@ const SV_CHARS=[
 {id:'mathematician',ko:'수학자',en:'Mathematician',type:'townsfolk',edition:'sv',first:true,other:true,
  ability:'매일 밤, 새벽 이후 다른 캐릭터의 능력 때문에 능력이 비정상 작동한 플레이어 수를 알게 된다.',
  guideFirst:['새벽 이후 다른 캐릭터의 능력 탓에 오작동한 플레이어 수를 알려준다 — 수학자 자신은 제외, 중독·취함이어도 우연히 정상 결과였다면 제외.'],guideOther:['동일 — 밤 순서 마지막이므로 오늘 전체 집계.'],
- warn:['다른 캐릭터가 원인인 오작동만 센다 — 취함 그 자체는 카운트 아님, 실제로 비정상 결과가 나와야 카운트.','수학자 본인이 중독이면 거짓 수.'],remind:['오작동 발생 시 카운트 메모']},
+ warn:['다른 캐릭터가 원인인 오작동만 센다 — 취함 그 자체는 카운트 아님, 실제로 비정상 결과가 나와야 카운트.','수학자 본인이 중독이면 거짓 수.','주정뱅이·꼭두각시도 **거짓 정보를 받았거나 능력이 불발됐다면 센다** — 공식 징크스가 명시한다. 다만 토큰이 있어도 결과가 정상이었으면 세지 않는다.'],remind:['오작동 발생 시 카운트 메모']},
 {id:'flowergirl',ko:'꽃팔이 소녀',en:'Flowergirl',type:'townsfolk',edition:'sv',first:false,other:true,
  ability:'매일 밤(첫날 제외), 오늘 낮 악마가 투표했는지 알게 된다.',
  guideOther:['오늘 찬반에서 악마의 투표 여부를 예/아니오로.'],
@@ -7159,7 +7159,9 @@ examples:[
  '3일차 밤 뱀 조련사가 노 다시를 지목해 스왑됐다. 영구 중독된 새 뱀 조련사(전 악마)는 매일 지목을 이어갔지만 효과가 없었고, 낮에 진실을 말해도 아무도 믿지 않았다.']},
 mathematician:{howto:[
  '하루 동안 "능력이 규칙대로 작동하지 않은" 플레이어를 그때그때 카운트 — 중독·취함으로 거짓 정보를 준 경우가 대표.',
- '집계 기준(등록 재량 포함 여부 등)을 첫날 정해 게임 내내 유지.'],
+ '집계 기준(등록 재량 포함 여부 등)을 첫날 정해 게임 내내 유지.',
+ '공식 절차는 **토큰 세기가 아니라 그때그때 표시하기**다 — 오작동이 생길 때마다 그리모어에 표시를 남기고, 수학자에게 그 수를 보여준 뒤 표시를 모두 지운다.',
+ '**중독·취함 그 자체는 집계 대상이 아니다**(공식: "does not detect drunkenness or poisoning itself"). 취한 곡예사가 우연히 정확한 정보를 받았다면 세지 않는다 — 공식이 직접 드는 미집계 예시다.'],
 examples:[
  '중독된 꿈꾸는 자가 거짓 쌍을 받은 날, 수학자에게 "1"을 알려줬다. 수학자가 공개하자 마을은 "어젯밤 누군가의 정보 하나는 가짜"라며 전날 공개된 정보들을 재검증했다.']},
 flowergirl:{howto:[
@@ -8181,12 +8183,25 @@ Object.assign(WIZ_SUGGEST,{
     return {v:best, note:`${pair[0].name} → ${pair[1].name} (좌석 = 설정 탭의 플레이어 순서 가정)`};
   },
 
-  /* 수학자: "다른 캐릭터의 능력 때문에 능력이 비정상 작동한 사람 수"(official/roles181.json: mathematician).
-     앱이 확실히 아는 것은 ☠중독·🍺취함 토큰뿐이다. 주정뱅이는 '자기 캐릭터'가 원인이라 세지 않고,
-     보호 때문에 살해가 불발된 경우처럼 토큰이 남지 않는 사례는 사회자가 더해야 한다. */
+  /* 수학자: "매일 밤, 새벽 이후 다른 캐릭터의 능력 때문에 능력이 비정상 작동한 플레이어 수"
+     (official/roles181.json: mathematician).
+
+     **토큰 수는 정답이 아니다.** 공식 위키가 못을 박는다 — "The Mathematician does not detect
+     drunkenness or poisoning itself, but does detect when drunk or poisoned players' abilities
+     did not work as intended." 미집계 예시로 "The drunk Juggler gets correct information" 을 든다.
+     반대로 토큰이 남지 않는 불발(수도사 보호로 살해 실패 등)은 센다.
+
+     옛 주석은 "주정뱅이는 '자기 캐릭터'가 원인이라 세지 않는다"고 적었으나 그건 틀렸다 —
+     공식 징크스와 이 앱 자신의 징크스 줄이 정반대다: "The Mathematician learns if the Drunk's
+     ability yielded false info or failed to work properly."(꼭두각시도 같다.)
+
+     앱은 '실제 결과가 비정상이었는가'를 관측하지 못하므로 숫자를 확정 제안하지 않는다.
+     검토 후보만 내고 판정은 사회자에게 남긴다. note 는 esc() 를 타므로 평문으로 쓴다. */
   mathematicianMal(){
-    const list=S.players.filter(p=>hasStatus(p,'poison')||hasStatus(p,'drunkS'));
-    return {v:list.length, note:`토큰 기준: ${list.map(p=>p.name).join(', ')||'없음'} — 주정뱅이 본인 제외, 토큰이 남지 않는 불발(보호로 살해 실패 등)은 직접 더할 것`};
+    const cand=S.players.filter(p=>hasStatus(p,'poison')||hasStatus(p,'drunkS')
+      || p.charId==='drunk' || p.charId==='marionette');
+    const names=cand.map(p=>p.name).join(', ')||'없음';
+    return {v:'?', note:`토큰 수는 정답이 아닙니다 — 검토 후보(☠중독·🍺취함·주정뱅이·꼭두각시): ${names}. 이 중 오늘 새벽 이후 실제로 거짓 정보를 줬거나 발동이 불발된 사람만 세세요. 우연히 정상 결과가 나온 중독자는 빼고, 토큰이 남지 않는 불발(수도사 보호로 살해 실패 등)은 더하세요.`};
   },
 
   /* 꽃 파는 소녀: "오늘 낮 악마가 투표했는가"(official/roles181.json: flowergirl).
@@ -8321,11 +8336,12 @@ seamstress:{first:[
 mathematician:{first:[
   {t:'wake'},
   {t:'show-number',suggest:'mathematicianMal',caption:'오늘 오작동한 능력 수'},
-  {t:'note',text:'집계 기준(중독·취함 등으로 능력이 규칙대로 작동하지 않은 플레이어 수)을 게임 내내 일관되게 유지하세요. 수학자 본인이 오작동이면 거짓 수.'},
+  {t:'note',text:'집계 기준은 토큰 수가 아니라 실제 비정상 결과입니다 — 중독·취함이어도 정상 결과가 나왔다면 세지 않고, 토큰 없이 불발된 경우(수도사 보호로 살해 실패 등)는 셉니다. 공식 절차는 오작동이 생길 때마다 그리모어에 표시를 남겼다가 수학자에게 보여준 뒤 지우는 것입니다. 수학자 본인이 오작동이면 거짓 수를 주세요.'},
   {t:'sleep'}],
  other:[
   {t:'wake'},
   {t:'show-number',suggest:'mathematicianMal',caption:'오늘 오작동한 능력 수'},
+  {t:'note',text:'집계 기준은 토큰 수가 아니라 실제 비정상 결과입니다 — 중독·취함이어도 정상 결과가 나왔다면 세지 않고, 토큰 없이 불발된 경우는 셉니다. 주정뱅이·꼭두각시도 거짓 정보를 받았거나 능력이 불발됐다면 셉니다(공식 징크스). 수학자 본인이 오작동이면 거짓 수를 주세요.'},
   {t:'sleep'}]},
 pithag:{other:[
   {t:'wake'},
