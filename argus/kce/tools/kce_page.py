@@ -26,6 +26,7 @@ import time
 from kce_lib import CORP, atomic_write, json_for_html, latest_quarter
 from kce_universe import CONSTRUCTION_INDUSTRIES, load as load_universe
 import kce_series
+import kce_detail_ui
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KCE = os.path.dirname(HERE)
@@ -226,7 +227,7 @@ def company_html(D):
 </section>
 
 <section>
- <h2>{unit} 목록 <em>머리행을 누르면 정렬</em></h2>
+ <h2>{unit} 목록 <em>이름을 누르면 공시 상세 · 머리행을 누르면 정렬</em></h2>
  <div class="ctl">
   <input id="q" type="search" placeholder="{unit}·발주처 검색" aria-label="{unit} 검색">
   <select id="fSeg" aria-label="공종"><option value="">공종 전체</option></select>
@@ -245,26 +246,28 @@ def company_html(D):
  </table></div>
 </section>
 
+{detail_html}
 <section>
  <h2>분기 매트릭스 <em>{unit} × 분기 계약잔액(억) · 상위 60개</em></h2>
  <div class="wrap"><table id="mx"><thead></thead><tbody></tbody></table></div>
 </section>
 
-<div class="note">이 회사는 DART 정기보고서의 <b>수주상황 표를 분기마다 다시 읽어</b> 만든
-실측 시계열입니다. 원본 7사 페이지와 달리 <b>예측(S-curve)·백테스트·실적 대비가 없습니다</b> —
-그 자산은 복제 시드에서 온 것이라 신규 편입사에는 존재하지 않습니다.
+<div class="note">DART 정기보고서의 <b>수주상황·진행률 적용 수주계약·계약 주석</b>을 연결한
+공시 시계열입니다. 현장명을 누르면 원문 관측과 분기별 대조를 볼 수 있습니다.
+예측(S-curve)·백테스트는 적용하지 않으며, 공시 관측과 계산값을 구분합니다.
 현장은 이름으로 분기 간 연결하므로, 원문이 표기를 크게 바꾸면 다른 현장으로 잡힐 수 있습니다.
 「공시 총계」가 있으면 원문이 직접 적은 수주잔고 합계입니다. <b>묶음</b> 표시가 붙은 행은
 원문이 개별 기재를 생략하고 '기타현장'처럼 한 줄로 합쳐 적은 <b>나머지</b>이며,
 합계를 맞추기 위해 집계에는 포함하되 현장 수에서는 빼고 셉니다.</div>
 </main>
-<footer>출처 DART 정기보고서 II. 사업의 내용 — 수주상황. 단위 억원(원문 백만원 환산).
+<footer>출처 DART 정기보고서 II. 수주상황 · III. 진행률 적용 수주계약 · 계약 관련 주석. 금액은 원문 단위를 확인해 백만원으로 정규화 후 억원 표시.
 {gen} 정기보고서 기준. 참고용 · 투자조언 아님.</footer>
 <script src="../vendor/chart.umd.min.js"></script>
 <script>const DATA={data};</script>
 <script>{js}</script>
 </body></html>""".format(
-        css=CSS, js=COMPANY_JS, data=json_for_html(D),
+        css=CSS+kce_detail_ui.CSS, js=COMPANY_JS+kce_detail_ui.JS,
+        detail_html=kce_detail_ui.HTML, data=json_for_html(D),
         nm=E(D["co"]), stock=E(D["stock"]), market=E(D["market"]),
         kind=KIND, unit=UNIT, grainnote=grainnote,
         industry=E(D["industry"]), dart=E(dart), gen=E(D["codeGen"]),
@@ -345,7 +348,7 @@ COMPANY_JS = r"""
   var r=rows(), h=[];
   r.forEach(function(s){
    var a=s.s.amt[K],c=s.s.cmp[K],b=s.s.bal[K],p=s.s.pr[K];
-   h.push('<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+
+   h.push('<tr><td class="l" title="'+esc(s.nm)+'"><button type="button" class="site-open" data-site="'+esc(s.id)+'" aria-controls="siteDetail">'+esc(s.nm)+'</button>'+
     (s.agg?' <span class="mut" style="font-size:10px;border:1px solid var(--ln);border-radius:4px;padding:0 4px">묶음</span>':'')+'</td>'+
     '<td class="l mut">'+esc(s.cl||'—')+'</td><td class="l mut">'+esc(s.seg)+'</td>'+
     '<td class="l mut">'+esc(s.reg)+'</td>'+
