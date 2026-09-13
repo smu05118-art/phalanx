@@ -242,6 +242,13 @@ if(_t==='light')document.documentElement.dataset.theme='light';}catch(e){}</scri
 @media(max-width:700px){.lux-grailed{padding:16px;border-radius:10px}.lux-grailed .lg-head{flex-direction:column;gap:10px}.lux-grailed .lg-title{font-size:23px}.lux-grailed .lg-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.lux-grailed .lg-stats>div{padding:12px!important}.lux-grailed .lg-stats>div:nth-child(2){border-right:0}.lux-grailed .lg-stats>div:nth-child(-n+2){border-bottom:1px solid var(--lg-border)}.lux-grailed .lg-stats strong{font-size:25px}.lux-grailed .lg-tabs button{font-size:11px;padding:8px 10px;flex:1 0 auto}.lux-grailed .lg-controls{gap:10px}.lux-grailed .lg-controls label{flex:1 1 125px;min-width:0}.lux-grailed .lg-controls input{min-width:0;width:100%}.lux-grailed .lg-context{padding:10px 12px}.lux-grailed .lg-history{grid-template-columns:repeat(2,minmax(0,1fr))}.lux-grailed td,.lux-grailed th{padding:9px 10px}.lux-grailed .lg-chip{white-space:normal}}
 @media(prefers-reduced-motion:reduce){.lux-grailed *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 @media(max-width:520px){.lux-grailed .lg-scatter .lg-axis,.lux-grailed .lg-scatter .lg-axis-title,.lux-grailed .lg-scatter .lg-point-label{font-size:24px}}
+
+/* Cross-page LUX evidence explorer: all selectors scoped to this component. */
+.lux-linkage{--ll-bg:var(--s1,var(--panel,#101820));--ll-raised:var(--s2,var(--panel2,#18232a));--ll-ink:var(--tx,var(--ink,#e6edf3));--ll-dim:var(--dim,#9caab6);--ll-border:var(--bd,var(--line,#35434a));--ll-accent:#7bd3b5;--ll-warn:#f5bb82;border:1px solid var(--ll-border);border-radius:14px;background:var(--ll-bg);color:var(--ll-ink);padding:24px;margin:16px 0;font:13px/1.65 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;min-width:0;max-width:100%;isolation:isolate}
+:root[data-theme=light] .lux-linkage,.lux-linkage[data-theme=light]{--ll-bg:#fff;--ll-raised:#f3f6f2;--ll-ink:#23362f;--ll-dim:#536a60;--ll-border:#d3dfd7;--ll-accent:#216348;--ll-warn:#975528;color-scheme:light}.lux-linkage[data-theme=dark]{--ll-bg:#101820;--ll-raised:#18232a;--ll-ink:#e6edf3;--ll-dim:#9caab6;--ll-border:#35434a;--ll-accent:#7bd3b5;--ll-warn:#f5bb82;color-scheme:dark}
+.lux-linkage *{box-sizing:border-box}.lux-linkage [hidden]{display:none!important}.lux-linkage h3,.lux-linkage h4,.lux-linkage h5,.lux-linkage p{margin:0}.lux-linkage button,.lux-linkage input,.lux-linkage select{font:inherit}.lux-linkage a{color:var(--ll-accent);text-decoration:underline;text-underline-offset:3px}.lux-linkage button{cursor:pointer}.lux-linkage button:focus-visible,.lux-linkage input:focus-visible,.lux-linkage select:focus-visible,.lux-linkage a:focus-visible,.lux-linkage summary:focus-visible{outline:2px solid var(--ll-accent);outline-offset:3px}.lux-linkage .ll-eyebrow{font-size:10px;font-weight:750;letter-spacing:.15em;color:var(--ll-accent);margin-bottom:7px}.lux-linkage h3{font-size:25px;line-height:1.3;letter-spacing:-.04em}.lux-linkage .ll-note{font-size:12px;color:var(--ll-dim);margin-top:7px;overflow-wrap:anywhere}.lux-linkage .ll-controls{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0 14px}.lux-linkage .ll-controls label{font-size:11px;color:var(--ll-dim);display:grid;gap:4px}.lux-linkage .ll-controls label:first-child{flex:1;min-width:190px}.lux-linkage input,.lux-linkage select{padding:9px 11px;border:1px solid var(--ll-border);border-radius:7px;background:var(--ll-raised);color:var(--ll-ink);min-width:0;max-width:100%}.lux-linkage .ll-grid{display:grid;grid-template-columns:minmax(205px,.8fr) minmax(0,2fr);gap:20px;align-items:start}.lux-linkage .ll-list{max-height:670px;overflow:auto;overscroll-behavior:contain;border:1px solid var(--ll-border);border-radius:8px;padding:5px;min-width:0}.lux-linkage .ll-count{font-size:11px;color:var(--ll-dim);padding:6px 8px}.lux-linkage .ll-item{display:block;width:100%;border:1px solid transparent;background:transparent;color:var(--ll-ink);text-align:left;padding:10px;border-radius:6px;margin:2px 0}.lux-linkage .ll-item strong{display:block;font-size:12px;overflow-wrap:anywhere}.lux-linkage .ll-item small{display:block;font-size:10px;color:var(--ll-dim);overflow-wrap:anywhere}.lux-linkage .ll-item[aria-pressed=true]{background:var(--ll-raised);border-color:var(--ll-accent)}.lux-linkage .ll-more,.lux-linkage .ll-action{border:1px solid var(--ll-border);border-radius:6px;padding:6px 10px;background:var(--ll-raised);color:var(--ll-accent);font-size:11px}.lux-linkage .ll-more{margin:8px}.lux-linkage .ll-detail{min-width:0}.lux-linkage .ll-detail h4{font-size:21px;line-height:1.4;letter-spacing:-.025em}.lux-linkage .ll-detail h5{font-size:12px;font-weight:700;margin:17px 0 7px;color:var(--ll-dim)}.lux-linkage .ll-badges,.lux-linkage .ll-links{display:flex;gap:7px 10px;flex-wrap:wrap;align-items:baseline;margin-top:8px}.lux-linkage .ll-badge{display:inline-block;border:1px solid var(--ll-border);border-radius:99px;padding:2px 8px;font-size:10px;color:var(--ll-dim)}.lux-linkage .ll-links a{font-size:11px}.lux-linkage .ll-current{padding:10px 13px;border-left:2px solid var(--ll-accent);background:var(--ll-raised);margin:14px 0;border-radius:0 6px 6px 0}.lux-linkage .ll-current .ll-note{margin:0}.lux-linkage .ll-relation{border:1px solid var(--ll-border);padding:12px 14px;border-radius:7px;margin:7px 0;overflow-wrap:anywhere}.lux-linkage .ll-relation strong{font-size:12px}.lux-linkage .ll-relation .ll-note{font-size:11px}.lux-linkage .ll-warning{color:var(--ll-warn)}.lux-linkage .ll-empty{padding:20px;border:1px dashed var(--ll-border);border-radius:8px;color:var(--ll-dim);font-size:12px}.lux-linkage .ll-source{border:1px solid var(--ll-border);border-radius:7px;margin:8px 0;overflow:hidden}.lux-linkage .ll-source>summary{cursor:pointer;padding:10px 13px;background:var(--ll-raised);font-size:12px;font-weight:650;overflow-wrap:anywhere}.lux-linkage .ll-source-body{padding:4px 12px 12px}.lux-linkage .ll-table-wrap{overflow:auto;max-height:380px;max-width:100%;overscroll-behavior:contain;margin-top:9px}.lux-linkage table{width:100%;border-collapse:collapse;font-size:11px;text-align:left}.lux-linkage td,.lux-linkage th{padding:8px 9px;border-bottom:1px solid var(--ll-border);white-space:nowrap;font-size:11px;color:var(--ll-ink)}.lux-linkage th{position:sticky;top:0;background:var(--ll-raised);color:var(--ll-dim);font-size:10px}.lux-linkage .ll-num{font-variant-numeric:tabular-nums;text-align:right}.lux-linkage .ll-audit{margin-top:17px;padding-top:13px;border-top:1px solid var(--ll-border)}.lux-linkage .ll-audit summary{cursor:pointer;font-size:11px;color:var(--ll-dim)}
+@media(max-width:760px){.lux-linkage{padding:16px;border-radius:10px}.lux-linkage h3{font-size:22px}.lux-linkage .ll-grid{grid-template-columns:1fr;gap:16px}.lux-linkage .ll-list{max-height:235px}.lux-linkage .ll-controls{margin-top:16px}.lux-linkage .ll-controls label:first-child{min-width:160px}.lux-linkage .ll-controls label{max-width:100%}.lux-linkage .ll-detail h4{font-size:19px}.lux-linkage .ll-relation{padding:10px 12px}}
+.lux-linkage .ll-table-wrap td small{display:block;font-size:10px;line-height:1.5;margin-top:2px;color:var(--ll-dim)}
 </style><link rel="preload" as="script" href="chartjs_bundle.js">
 <link rel="preload" as="script" href="manifest.js">
 <link rel="preload" as="script" href="search_index.js">
@@ -652,7 +659,7 @@ function savePrefs(){ try{ localStorage.setItem(PKEY,JSON.stringify({region:ST.r
 
 // ---------- URL deep-link (shareable state via location.hash + back-button) ----------
 let _lastNav=null;
-function navSig(){ return [ST.region,ST.tab,ST.view,ST.cat,ST.company,ST.port].join('|'); }
+function navSig(){ return [ST.region,ST.tab,ST.view,ST.cat,ST.company,ST.port,ST.tab==='lux'?[ST.luxview,ST.luxbrand,ST.luxticker,ST.luxcompany].join(':'):''].join('|'); }
 function writeHash(){
   const p=[], add=(k,v)=>{ if(v!=null&&v!=='') p.push(k+'='+encodeURIComponent(v)); };
   add('r',ST.region);
@@ -663,6 +670,10 @@ function writeHash(){
   if(ST.view==='country'&&ST.port) add('port',ST.port);
   if(ST.cur!=='JPY') add('cur',ST.cur);
   if(ST.gran!=='M') add('g',ST.gran);
+  if(ST.tab==='lux'){
+    add('luxview',ST.luxview||'comp');add('luxbrand',ST.luxbrand);
+    add('luxticker',ST.luxticker);add('luxcompany',ST.luxcompany);
+  }
   if(ST.tab==='dc'){                                   // ⚡ DC 탭 서브상태(뷰·국가필터·프로젝트·에너지원·트리노드)
     if(ST.dcv&&ST.dcv!=='map') add('dcv',ST.dcv);
     if(['map','global'].includes(ST.dcv)&&ST.dcCountry) add('dcco',ST.dcCountry);
@@ -693,12 +704,18 @@ function tabIds(){                                   // 비어 있으면 재조�
 }
 function applyHash(){
   const raw=(location.hash||'').replace(/^#/,''); if(!raw) return false;
-  const q={}; raw.split('&').forEach(kv=>{ const i=kv.indexOf('='); if(i>0) q[kv.slice(0,i)]=decodeURIComponent(kv.slice(i+1)); });
+  const q=Object.create(null); raw.split('&').forEach(kv=>{ const i=kv.indexOf('='); if(i>0){try{q[kv.slice(0,i)]=decodeURIComponent(kv.slice(i+1));}catch(_){/* malformed field is ignored */}} });
   if(q.r && REGIONS.some(r=>r.id===q.r)) ST.region=q.r;
   applyRegion();
   if(q.cur && CUR[q.cur]) ST.cur=q.cur;
   if(['M','Q','Y'].includes(q.g)) ST.gran=q.g;
   ST.tab=(q.tab&&tabIds().indexOf(q.tab)>=0)?q.tab:'dash';   // 모르는 값은 종전과 동일하게 dash (dc 는 아래에서 별도 처리)
+  if(ST.tab==='lux'){
+    ST.luxview=/^(?:[a-z][a-z0-9_]{0,63}|co_[A-Za-z0-9._:-]{1,64})$/.test(q.luxview||'')?q.luxview:'comp';
+    ST.luxbrand=/^brand:[a-f0-9]{20}$/.test(q.luxbrand||'')?q.luxbrand:null;
+    ST.luxticker=/^[A-Za-z0-9.^=_-]{1,64}$/.test(q.luxticker||'')?q.luxticker:null;
+    ST.luxcompany=/^company:[A-Za-z0-9._:^=-]{1,100}$/.test(q.luxcompany||'')?q.luxcompany:null;
+  }
   if(q.tab==='game'&&q.gco){ ST.gview='co_'+q.gco; }
   if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
   if(q.tab==='dc'){                                    // ⚡ DC 탭 — 탭 + 뷰·필터·선택 복원
@@ -712,7 +729,7 @@ function applyHash(){
     if(['gw','mw'].indexOf(q.dcgm)>=0) ST.dcgM=q.dcgm;
   }
   ST.company=null; ST.view='overview'; ST.port=null; ST.cat=(q.cat||'all');
-  if(q.co && P.companies.some(c=>c.id===q.co)){
+  if(ST.tab!=='lux' && q.co && P.companies.some(c=>c.id===q.co)){
     ST.company=q.co; const co=P.companies.find(c=>c.id===q.co); if(co) ST.cat=co.category;
     if(q.v==='country'){ ST.view='country'; ST.port=q.port||'ALL'; } else ST.view='detail';
   }
@@ -4232,7 +4249,8 @@ function gMountCharts(G){
 /* Shared dependency-free Grailed report explorer, payload schema_version 1.
  * LuxGrailed.render(Element, payload, options) => cleanup()
  * options: title (default 'Grailed 리포트 관측'), initialPanel (panel id or
- * 'comparison'), initialPeriod (period or 'all'), theme ('auto'|'dark'|'light').
+ * 'comparison'), initialPeriod (period or 'all'), theme ('auto'|'dark'|'light'),
+ * state/onStateChange, linkage (lux_linkage.py payload), site ('phalanx'|'ensemble').
  * All writes stay inside container. Text uses textContent; source URLs permit
  * only absolute http(s). Calling render again cleans up its previous instance.
  */
@@ -4289,11 +4307,25 @@ function gMountCharts(G){
       if (parent) parent.append(node);
       return node;
     }
-    function link(parent, text, url) {
-      const href = safeUrl(url);
+    function link(parent, text, url, local) {
+      let href = safeUrl(url);
       if (!href) return;
+      if (local) {
+        try {
+          const target = new URL(href), current = new URL(doc.location.href);
+          if (options.site === 'ensemble') {
+            ['luxbrand', 'luxcompany', 'luxticker'].forEach(k => {
+              const value = target.searchParams.get(k);
+              if (value) current.searchParams.set(k, value); else current.searchParams.delete(k);
+            });
+          }
+          current.hash = target.hash;
+          href = current.href;
+        } catch (_) { return; }
+      }
       const a = el('a', '', text, parent);
-      a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.href = href;
+      if (!local) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
     }
     function message(parent, text, kind) { return el('p', 'lg-note' + (kind ? ' lg-' + kind : ''), text, parent); }
     function breakRecord(parent, b, compact) {
@@ -4472,6 +4504,21 @@ function gMountCharts(G){
       el('span', '', '선택 관측 ' + row.data_period + ' · ' + (row.value == null ? '관심 × 성장' : valueText(row)) +
         ' · 공개 ' + (row.published_at || row.available_at || '미확보') + (row.vintage === 'restated' ? ' · 수정판' : ''), selectedMeta);
       link(selectedMeta, '발표 페이지 ↗', row.source_url); link(selectedMeta, '보존본 ↗', row.archive_url);
+      if (options.linkage) {
+        const mapping = (options.linkage.grailed_links || {})[row.stored_name];
+        const brand = mapping?.status === 'matched' ? (options.linkage.brands || []).find(b => b.brand_id === mapping.brand_id) : null;
+        const related = el('div', 'lg-context lg-related', null, detail);
+        if (brand) {
+          el('h5', '', '연결된 브랜드 · 기업', related);
+          message(related, brand.display + (brand.owner_name ? ' · 소유자 ' + brand.owner_name : ' · 소유자 미확보') + '. 현재 연결 원장 기준이며 과거 매출 귀속을 뜻하지 않습니다.');
+          const targets = mapping.links || brand.links || {}, site = options.site === 'ensemble' ? 'ensemble' : 'phalanx';
+          const rowLinks = el('div', 'lg-note lg-links', null, related);
+          link(rowLinks, '연결 브랜드·출처 보기', targets[site], true);
+          link(rowLinks, site === 'ensemble' ? 'Phalanx 브랜드 보기 ↗' : 'Ensemble 브랜드 보기 ↗', targets[site === 'ensemble' ? 'phalanx' : 'ensemble']);
+        } else {
+          message(related, '아직 연결 원장에 등록되지 않은 이름입니다. 인물·검색어일 수도 있어 다른 브랜드나 기업으로 추정하지 않습니다.');
+        }
+      }
       const current = panels.find(p => p.id === state.panel);
       const relatedPanels = current ? [current] : panels.filter(p => p.id.endsWith('growth_pct'));
       relatedPanels.forEach(panel => {
@@ -4567,6 +4614,212 @@ function gMountCharts(G){
   global.LuxGrailed = Object.freeze({render: render, version: 1});
 })(typeof window !== 'undefined' ? window : globalThis);
 
+/* LuxLinkage.render(container,payload,{brandId,companyId,ticker,site,onSelect,
+ *   grailedData?,theme?}) => cleanup(). Source: lux_linkage.py schema v1.
+ * Identity matches only supplied canonical IDs and exact grailed_links keys.
+ * onSelect({brandId,companyId,ticker}) fires on user selection, never on mount.
+ * Company and source tables are created only for the selected entity; source
+ * history tables are mounted when opened. No global events or dependencies.
+ */
+(function(global){
+  'use strict';
+  const instances=new WeakMap();
+  const num=new Intl.NumberFormat('ko-KR',{maximumFractionDigits:2});
+  const REL={own:'소유',owned:'소유',licensed:'라이선스',license:'라이선스',distribution:'유통',retail:'리테일',operator:'운영'};
+  function safeUrl(value){
+    try{if(typeof value!=='string'||/[\x00-\x20]/.test(value))return null;
+      const u=new URL(value);return /^https?:$/.test(u.protocol)&&!u.username&&!u.password?u.href:null;
+    }catch(_){return null;}
+  }
+  function localUrl(value,site,location){
+    const safe=safeUrl(value);if(!safe)return null;
+    try{const target=new URL(safe), current=new URL(location.href);
+      if(site==='phalanx')current.hash=target.hash;
+      else{['luxbrand','luxcompany','luxticker'].forEach(k=>{
+        const v=target.searchParams.get(k);if(v)current.searchParams.set(k,v);else current.searchParams.delete(k);
+      });current.hash=target.hash;}
+      return current.href;
+    }catch(_){return safe;}
+  }
+  function render(container,payload,options){
+    if(!container||container.nodeType!==1)throw new TypeError('LuxLinkage requires an Element');
+    if(instances.has(container))instances.get(container)();
+    options=options||{};
+    const doc=container.ownerDocument,site=options.site==='ensemble'?'ensemble':'phalanx';
+    const root=doc.createElement('section');root.className='lux-linkage';root.dataset.theme=options.theme||'auto';
+    root.setAttribute('aria-label','LUX 브랜드·기업 연결 탐색');container.replaceChildren(root);
+    let disposed=false;
+    const cleanup=()=>{disposed=true;root.remove();if(instances.get(container)===cleanup)instances.delete(container);};
+    instances.set(container,cleanup);
+    function el(tag,cls,text,parent){const n=doc.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=String(text);if(parent)parent.append(n);return n;}
+    function note(parent,text,extra){return el('p','ll-note'+(extra?' '+extra:''),text,parent);}
+    function link(parent,label,url,local){const href=local?localUrl(url,site,doc.location):safeUrl(url);if(!href)return null;
+      const a=el('a','',label,parent);a.href=href;if(!local){a.target='_blank';a.rel='noopener noreferrer';}return a;}
+    function links(parent,record){const urls=record&&record.links||{};const row=el('div','ll-links',null,parent);
+      link(row,'이 화면의 선택 링크',urls[site],true);
+      link(row,site==='ensemble'?'Phalanx 브랜드·기업 보기 ↗':'Ensemble 체인 보기 ↗',urls[site==='ensemble'?'phalanx':'ensemble']);
+      return row;
+    }
+    if(!payload||!Array.isArray(payload.brands)||!Array.isArray(payload.companies)||(payload.status&&payload.status!=='available')){
+      note(root,'브랜드·기업 연결 자료를 불러오지 못했습니다. Grailed 원자료와 다른 LUX 화면은 계속 확인할 수 있습니다.','ll-empty');return cleanup;
+    }
+    const brands=payload.brands,companies=payload.companies;
+    const brandBy=new Map(brands.map(b=>[b.brand_id,b])),companyBy=new Map(companies.map(c=>[c.company_id,c]));
+    const selectedCompany=companyBy.get(options.companyId)||companies.find(c=>options.ticker&&c.ticker===options.ticker);
+    const selectedBrand=brandBy.get(options.brandId);
+    const defaultBrand=brands.find(b=>(b.grailed_observation_ids||[]).length)||brands[0];
+    const state={kind:options.brandId?'brand':selectedCompany?'company':'brand',id:options.brandId||selectedCompany?.company_id||options.companyId||defaultBrand?.brand_id,
+      scope:selectedCompany&&!selectedBrand?'company':'brand',query:'',limit:60};
+    el('div','ll-eyebrow','LUX · CONNECTED EVIDENCE',root);
+    el('h3','','브랜드에서 기업, 근거까지',root);
+    note(root,'Grailed에 나온 이름을 확인된 브랜드·소유자·운영자와 연결합니다. 검색으로 전체 브랜드와 회사를 탐색할 수 있습니다.');
+    const controls=el('div','ll-controls',null,root);
+    const qlabel=el('label','','이름 · 기업 · 티커 검색',controls);
+    const search=el('input','',null,qlabel);search.type='search';search.placeholder='예: Dior, LVMH, MC.PA';search.setAttribute('aria-label','연결 브랜드·회사 검색');
+    const slabel=el('label','','찾을 대상',controls);const scope=el('select','',null,slabel);scope.setAttribute('aria-label','연결 탐색 대상');
+    [['brand','브랜드'],['company','회사']].forEach(([v,t])=>{const o=el('option','',t,scope);o.value=v;});scope.value=state.scope;
+    const grid=el('div','ll-grid',null,root),list=el('div','ll-list',null,grid),detail=el('div','ll-detail',null,grid);
+    const searchHay=new Map();
+    brands.forEach(b=>searchHay.set(b.brand_id,[b.display,b.norm,b.owner_name,b.owner_ticker,b.brand_id,...(b.grailed_names||[])].filter(Boolean).join(' ').toLocaleLowerCase()));
+    companies.forEach(c=>searchHay.set(c.company_id,[c.name,c.ticker,c.company_id].filter(Boolean).join(' ').toLocaleLowerCase()));
+    Object.entries(payload.grailed_links||{}).forEach(([name,g])=>{if(g.status==='matched'&&brandBy.has(g.brand_id))searchHay.set(g.brand_id,searchHay.get(g.brand_id)+' '+name.toLocaleLowerCase());});
+    const refs=payload.observations||[],refBy=new Map(refs.map(o=>[o.observation_id,o]));
+    const values=new Map(),sourceValues=new Map(),panelLabels=new Map();
+    const observationKey=o=>JSON.stringify([o.panel,o.stored_name,o.data_period]);
+    (options.grailedData?.panels||[]).forEach(p=>{
+      panelLabels.set(p.id,p.label);panelLabels.set(p.source_field,p.label);
+      (p.observations||[]).forEach(o=>{values.set(o.id,o);sourceValues.set(observationKey({panel:p.source_field||p.id,stored_name:o.stored_name,data_period:o.data_period}),o);});
+    });
+    const orderedBrands=brands.slice().sort((a,b)=>((b.grailed_observation_ids||[]).length>0)-((a.grailed_observation_ids||[]).length>0)||String(a.display).localeCompare(String(b.display),'ko'));
+    const orderedCompanies=companies.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
+    function choose(kind,id,notify){
+      const record=kind==='brand'?brandBy.get(id):companyBy.get(id);if(!record)return;
+      state.kind=kind;state.id=id;state.scope=kind;scope.value=kind;
+      updateList();updateDetail();
+      if(notify&&typeof options.onSelect==='function')options.onSelect(kind==='brand'?{brandId:id,companyId:record.owner_company_id||null,ticker:record.owner_ticker||null}:{brandId:null,companyId:id,ticker:record.ticker||null});
+    }
+    function updateList(){
+      if(disposed)return;list.replaceChildren();const q=state.query.trim().toLocaleLowerCase();
+      const source=state.scope==='company'?orderedCompanies:orderedBrands;
+      const found=source.filter(r=>!q||searchHay.get(r.brand_id||r.company_id)?.includes(q));
+      el('div','ll-count',(state.scope==='brand'&&!q?'Grailed 연결 브랜드 우선 · ':'')+found.length+'개 중 '+Math.min(state.limit,found.length)+'개 표시',list).setAttribute('role','status');
+      if(!found.length)note(list,'일치하는 등록 항목이 없습니다. 원자료 이름을 다른 브랜드로 추정해서 연결하지 않습니다.','ll-empty');
+      found.slice(0,state.limit).forEach(r=>{
+        const id=r.brand_id||r.company_id,kind=r.brand_id?'brand':'company';const b=el('button','ll-item',null,list);b.type='button';
+        b.setAttribute('aria-pressed',String(id===state.id));b.dataset[kind+'Id']=id;
+        el('strong','',r.display||r.name,b);
+        el('small','',kind==='brand'?[(r.grailed_observation_ids||[]).length?'Grailed '+r.grailed_observation_ids.length+'개 관측':null,r.owner_name||'소유자 미확보'].filter(Boolean).join(' · '):[r.ticker||'비상장',(r.owned_brand_ids||[]).length+'개 소유 브랜드'].join(' · '),b);
+        b.addEventListener('click',()=>choose(kind,id,true));
+      });
+      if(found.length>state.limit){const more=el('button','ll-more','다음 60개 보기',list);more.type='button';more.addEventListener('click',()=>{state.limit+=60;updateList();});}
+    }
+    function companyAction(parent,companyId,label){
+      if(!companyBy.has(companyId))return;
+      const b=el('button','ll-action',label||'기업 근거 펼치기',parent);b.type='button';b.dataset.companyId=companyId;
+      b.addEventListener('click',()=>choose('company',companyId,true));
+    }
+    function financialLinks(parent,c){
+      const row=el('div','ll-links',null,parent);
+      link(row,'Ensemble 회사 재무·모델 ↗',c.links?.ensemble,site==='ensemble');
+      if(c.phalanx_score_available===true&&c.ticker&&safeUrl(c.links?.phalanx)){
+        const target=new URL(c.links.phalanx),hash=new URLSearchParams(target.hash.replace(/^#/,''));
+        hash.set('luxview','co_'+c.ticker);target.hash=hash.toString();
+        link(row,'Phalanx 기업 실적 ↗',target.href,site==='phalanx');
+      }
+    }
+    function currentNote(parent,asof){const box=el('div','ll-current',null,parent);
+      note(box,'소유·운영 관계 기준 '+(asof||payload.asof||payload.relationship_asof||'미확보')+' · 현재 원장 관계입니다. 과거 Grailed 기간의 소유관계나 당시 기업 매출로 소급하지 않습니다.');}
+    function shareNote(parent,b){
+      const value=b.rev_share_pct,bound=b.rev_share_bound;
+      if(typeof value==='number'){
+        const prefix=bound==='upper'?'≤ ':bound==='lower'?'≥ ':'';
+        note(parent,'소유사 매출비중 '+prefix+num.format(value)+'%'+(bound==='upper'?' · 복수 브랜드 버킷 상한':bound==='lower'?' · 제외 항목이 있는 하한':''));
+      }else note(parent,'소유사 매출비중 미확보');
+      if(b.rev_share_basis){const source=el('details','ll-audit',null,parent);el('summary','','비중 기준 · 원장 표기',source);note(source,b.rev_share_basis);}
+      if(typeof b.rev_share_est_pct==='number'&&b.rev_share_est_pct>0)note(parent,'추정 배분 포함 '+num.format(b.rev_share_est_pct)+'%p · 공시 단독 브랜드 매출과 구분','ll-warning');
+      if(b.rev_share_note)note(parent,b.rev_share_note);
+      if(b.bucket_alias_shift||b.bucket_covers_share===false)note(parent,'별칭 또는 버킷 범위 문제로 이 브랜드의 정확한 비중·상한을 단정할 수 없습니다.','ll-warning');
+      if(b.bucket_n)note(parent,'버킷 구성 '+b.bucket_n+'개 · 개별 브랜드 금액으로 분할하지 않습니다.');
+      if(b.bucket_excluded?.length)note(parent,'제외 항목: '+b.bucket_excluded.join(' · '));
+    }
+    function brandRelations(parent,b){
+      el('h5','','브랜드 소유자',parent);const owner=el('div','ll-relation',null,parent);
+      el('strong','',b.owner_name||'소유자 미확보',owner);
+      note(owner,[b.owner_ticker,b.owner_kind==='listed'?'상장 소유자':b.owner_kind==='unlisted_brand'||b.owner_kind==='unlisted_company'?'비상장 소유자':null].filter(Boolean).join(' · ')||'원장에 확인된 관계만 표시합니다.');
+      shareNote(owner,b);companyAction(owner,b.owner_company_id);
+      if(companyBy.has(b.owner_company_id)){links(owner,companyBy.get(b.owner_company_id));financialLinks(owner,companyBy.get(b.owner_company_id));}
+      el('h5','','라이선스 · 유통 · 운영',parent);
+      if(!(b.licensees||[]).length){note(parent,'등록된 운영자 관계가 없습니다. 브랜드 소유자로 대신 추정하지 않습니다.');return;}
+      b.licensees.forEach(r=>{const box=el('div','ll-relation',null,parent);el('strong','',(REL[r.relation]||r.relation||'관계 미확보')+' · '+(r.name||r.ticker||'이름 미확보'),box);
+        note(box,'소유자와 별도 관계'+(r.license_expiry?' · 계약 만료 '+r.license_expiry:''));
+        if(typeof r.share==='number')note(box,'원장 기재 비중 '+num.format(r.share)+'% · 해당 운영 관계 범위');
+        companyAction(box,r.company_id);links(box,r);
+      });
+    }
+    function sourceRegistry(id){const registry=payload.source_registry||payload.sources||{};return Array.isArray(registry)?registry.find(s=>(s.source_id||s.id)===id)||{}:registry[id]||{};}
+    function sourceCard(parent,b,id){
+      const meta=sourceRegistry(id),d=el('details','ll-source',null,parent);
+      const observations=id==='grailed'?(b.grailed_observation_ids||[]).map(k=>refBy.get(k)).filter(Boolean):[];
+      el('summary','',(meta.name||meta.label||id)+(observations.length?' · '+observations.length+'개 관측':''),d);
+      let mounted=false;
+      d.addEventListener('toggle',()=>{if(!d.open||mounted)return;mounted=true;
+        const body=el('div','ll-source-body',null,d);note(body,id==='grailed'?'5개 패널은 동일 출처 1개입니다. 관측 기간과 공개일을 분리해 읽습니다.':'브랜드 점수 원장에 연결된 출처입니다. 이 항목의 기여를 새로운 독립 점수로 다시 더하지 않습니다.');
+        if(meta.latest)note(body,'자료 최신 기간 '+meta.latest);
+        if(meta.published_at)note(body,'공개일 '+meta.published_at);
+        const urls=el('div','ll-links',null,body);link(urls,'보고서 원문 ↗',meta.source_url||meta.url);
+        if(id!=='grailed'){if(!meta.source_url&&!meta.url)note(body,'이 출처의 원문 URL은 연결 원장에 없습니다. 이름만으로 링크를 추정하지 않습니다.');return;}
+        if(!observations.length){note(body,'연결된 Grailed 관측이 없습니다.');return;}
+        const wrap=el('div','ll-table-wrap',null,body);wrap.tabIndex=0;wrap.setAttribute('aria-label','Grailed 연결 관측 표');
+        const table=el('table','',null,wrap),head=el('tr','',null,el('thead','',null,table));
+        ['저장 이름 · 패널','데이터 기간','저장값','공개일','원문'].forEach(t=>el('th','',t,head).scope='col');
+        const tb=el('tbody','',null,table);
+        observations.sort((a,z)=>String(z.data_period).localeCompare(String(a.data_period))||String(a.panel).localeCompare(String(z.panel))).forEach(o=>{
+          const tr=el('tr','',null,tb),actual=values.get(o.observation_id)||sourceValues.get(observationKey(o));
+          const cell=el('td','',o.stored_name,tr);el('small','ll-note',panelLabels.get(actual?.panel_id||o.panel)||o.panel,cell);
+          el('td','',o.data_period,tr);el('td','ll-num',actual&&typeof actual.value==='number'?num.format(actual.value)+(actual.unit==='pct'?'%':'위'):'관측 참조',tr);
+          el('td','',o.published_at||actual?.published_at||'미확보',tr);const source=el('td','',null,tr);link(source,'원문 ↗',o.source_url||actual?.source_url);
+        });
+      });
+    }
+    function brandDetail(b){
+      el('h4','',b.display,detail);const badges=el('div','ll-badges',null,detail);
+      el('span','ll-badge',b.entity_level==='company'?'회사 단위 자료':b.entity_level==='mixed'?'브랜드·회사 자료 혼재':b.entity_level==='brand'?'등록 브랜드':'대상 등급 미확인',badges);
+      el('span','ll-badge','Grailed '+(b.grailed_observation_ids||[]).length+'개 관측',badges);
+      links(detail,b);currentNote(detail,b.relationship_asof);
+      brandRelations(detail,b);
+      el('h5','','연결된 출처 · 펼쳐서 확인',detail);
+      const sources=Array.from(new Set([...(b.sources||[]),...(b.grailed_observation_ids?.length?['grailed']:[])]));
+      sources.sort((a,z)=>(a==='grailed'?-1:z==='grailed'?1:a.localeCompare(z)));
+      if(!sources.length)note(detail,'연결된 출처가 없습니다.');else sources.forEach(id=>sourceCard(detail,b,id));
+      const audit=el('details','ll-audit',null,detail);el('summary','','연결 식별자와 한계',audit);
+      note(audit,'canonical ID '+b.brand_id+' · 정규화 키 '+b.norm);
+      note(audit,'현재 연결 원장의 식별자입니다. 회사 소유와 운영을 구분하며 아카이브 인기를 현재 기업 매출로 환산하지 않습니다.');
+    }
+    function companyDetail(c){
+      el('h4','',c.name,detail);note(detail,c.ticker||'비상장 회사');links(detail,c);financialLinks(detail,c);currentNote(detail,c.relationship_asof);
+      if(c.score_hold_reason)note(detail,c.score_hold_reason,'ll-warning');
+      const lists=[['소유 브랜드',c.owned_brand_ids||[]],['운영 관계 브랜드',c.operated_brand_ids||[]]];
+      lists.forEach(([label,ids])=>{el('h5','',label+' · '+ids.length,detail);
+        if(!ids.length){note(detail,'등록된 연결이 없습니다.');return;}
+        const block=el('div','',null,detail);let limit=30;
+        const fill=()=>{block.replaceChildren();ids.slice(0,limit).forEach(id=>{const b=brandBy.get(id);if(!b)return;
+          const button=el('button','ll-item',null,block);button.type='button';button.dataset.brandId=id;
+          el('strong','',b.display,button);el('small','',(b.sources||[]).length+'개 연결 출처',button);button.addEventListener('click',()=>choose('brand',id,true));
+        });if(ids.length>limit){const more=el('button','ll-more','다음 30개 보기',block);more.type='button';more.addEventListener('click',()=>{limit+=30;fill();});}};fill();
+      });
+      note(detail,'회사의 재무·나우캐스트는 Ensemble 회사 카드와 Phalanx 기업 보기에서 확인합니다. 연결된 브랜드의 원자료를 기업 실적으로 대체하지 않습니다.');
+    }
+    function updateDetail(){detail.replaceChildren();const record=state.kind==='brand'?brandBy.get(state.id):companyBy.get(state.id);
+      if(!record){note(detail,options.brandId||options.companyId?'요청한 식별자가 현재 연결 원장에 없습니다. 다른 브랜드로 자동 변경하지 않았습니다. 검색에서 확인된 항목을 선택하세요.':'확인된 연결 항목을 선택하세요.','ll-empty');return;}
+      if(state.kind==='brand')brandDetail(record);else companyDetail(record);
+    }
+    search.addEventListener('input',()=>{state.query=search.value;state.limit=60;updateList();});
+    scope.addEventListener('change',()=>{state.scope=scope.value;state.limit=60;updateList();});
+    updateList();updateDetail();return cleanup;
+  }
+  global.LuxLinkage=Object.freeze({render,version:1});
+})(typeof window!=='undefined'?window:globalThis);
+
 function loadLux(cb){ if(_luxLoaded||window.LUXD){_luxLoaded=true;return cb();}
   const sc=document.createElement('script'); sc.src='data_lux.js';
   sc.onload=()=>{_luxLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="empty-msg">Luxury 데이터 로드 실패</div>';};
@@ -4587,13 +4840,14 @@ function renderLux(){
   plats.sort((a,b)=>((cat[b.id]?(cat[b.id].cred*cat[b.id].users):(0))-(cat[a.id]?(cat[a.id].cred*cat[a.id].users):0)));
   const TAGC={'리셀':'#ff8a3d','시계':'#26c6da','검색':'#5b8def','GenZ설문':'#2fae66','컨설팅':'#c45cff','브랜드가치':'#ffd23d','중고명품':'#e06666','중고':'#e06666','중고의류':'#e06666','미디어':'#f06292','스트릿':'#a0d911','커머스':'#8bc34a','투자지수':'#ffb300','주가지수':'#8a90a8','부유층설문':'#b58cf0','검색·수요':'#5b8def'};
   const tagChip=id=>{const t=cat[id]&&cat[id].tag; return t?`<i style="font-style:normal;font-size:9px;font-weight:700;margin-left:5px;padding:1px 5px;border-radius:4px;background:${(TAGC[t]||'#8a90a8')}22;color:${TAGC[t]||'#8a90a8'}">${t}</i>`:'';};
-  const tabs=[['comp','트렌드종합',''],['ncast','나우캐스트',''],['bt','모델 검증',''],['grailed','Grailed 관측',tagChip('grailed')],...plats.filter(p=>p.id!=='grailed').map(p=>[p.id,(cat[p.id]&&cat[p.id].name||p.name).split(' ')[0],tagChip(p.id)])];
+  const tabs=[['comp','트렌드종합',''],['ncast','나우캐스트',''],['bt','모델 검증',''],['grailed','Grailed 관측',tagChip('grailed')],['link','데이터 연결',''],...plats.filter(p=>p.id!=='grailed').map(p=>[p.id,(cat[p.id]&&cat[p.id].name||p.name).split(' ')[0],tagChip(p.id)])];
   const nav=tabs.map(([k,l,tg])=>`<span class="ltab ${(ST.luxview===k||(k==='comp'&&ST.luxview.startsWith('co_')))?'on':''}" data-lv="${k}">${l}${tg||''}</span>`).join('');
   let body='';
   if(ST.luxview==='comp'||(ST.luxview&&ST.luxview.startsWith('co_'))) body=luxComp(L);
   else if(ST.luxview==='ncast') body=luxNcast(L);
   else if(ST.luxview==='bt') body=luxBt(L);
-  else if(ST.luxview==='grailed') body='<div id="luxGrailedPanel"></div>'+luxObservationStatus(L);
+  else if(ST.luxview==='grailed') body='<div id="luxGrailedPanel"></div>'+luxObservationStatus(L)+luxArchiveStatus(L.research_archive);
+  else if(ST.luxview==='link') body='<div id="luxLinkagePanel"></div>'+luxArchiveStatus(L.research_archive);
   else body=luxPlat(L,ST.luxview);
   main.innerHTML=`<style>
     .ltabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
@@ -4617,11 +4871,14 @@ function renderLux(){
     canvas.bump{width:100%;height:420px;display:block}
   </style>
   <div class="ltabs">${nav}</div>${body}`;
-  main.querySelectorAll('.ltab').forEach(t=>t.onclick=()=>{ST.luxview=t.dataset.lv;renderLux();window.scrollTo(0,0);});
-  main.querySelectorAll('tr.lr').forEach(tr=>tr.onclick=()=>{ST.luxview='co_'+tr.dataset.tk;renderLux();});
+  main.querySelectorAll('.ltab').forEach(t=>t.onclick=()=>{ST.luxview=t.dataset.lv;renderLux();writeHash();window.scrollTo(0,0);});
+  main.querySelectorAll('tr.lr').forEach(tr=>tr.onclick=()=>{ST.luxview='co_'+tr.dataset.tk;ST.luxticker=tr.dataset.tk;ST.luxbrand=null;ST.luxcompany=null;renderLux();writeHash();});
   const gp=document.getElementById('luxGrailedPanel');
-  if(gp&&window.LuxGrailed) window.LuxGrailed.render(gp,L.grailed,{theme:'auto',
+  if(gp&&window.LuxGrailed) window.LuxGrailed.render(gp,L.grailed,{theme:'auto',site:'phalanx',linkage:L.linkage,
     state:ST.luxGrailedState,onStateChange:s=>{ST.luxGrailedState=s;}});
+  const lp=document.getElementById('luxLinkagePanel');
+  if(lp&&window.LuxLinkage) window.LuxLinkage.render(lp,L.linkage,{site:'phalanx',grailedData:L.grailed,brandId:ST.luxbrand,companyId:ST.luxcompany,ticker:ST.luxticker,
+    onSelect:s=>{ST.luxbrand=s.brandId||null;ST.luxcompany=s.companyId||null;ST.luxticker=s.ticker||null;writeHash();}});
   const bc=document.getElementById('bumpcv'); if(bc) drawBump(bc,JSON.parse(bc.dataset.d),bc.dataset.dir==='lower_better');
 }
 function luxComp(L){
@@ -4648,10 +4905,20 @@ function luxCoDetail(L,tk){
     <td><span class="scb" style="background:${scCol(b.score)}">${b.score.toFixed(1)}</span></td><td class="mono">${b.n}소스</td></tr>`).join('');
   const yo=(rq.yoy5||[]).map(x=>`<tr><td class="mono">${x[0]}</td><td class="mono" style="color:${x[1]>=0?'#2fae66':'#e06666'}">${x[1]>=0?'+':''}${x[1]}%</td></tr>`).join('');
   return `<p class="lxh">${c.name} <span class="mono" style="font-size:13px;color:#8a90a8">${c.ticker}</span> — <span class="scb" style="background:${scCol(c.score)}">${c.score.toFixed(1)}</span></p>
+  ${luxCompanyConnections(L,tk)}
   <p class="lxs">브랜드별 점수 × 매출비중 가중평균. <span class="ltab" data-lv="comp" style="cursor:pointer">← 목록으로</span></p>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
   <div class="lxt"><table><thead><tr><th>브랜드</th><th>매출비중</th><th>점수</th><th>근거</th></tr></thead><tbody>${br}</tbody></table></div>
   <div class="lxt"><table><thead><tr><th>분기</th><th>매출 YoY</th></tr></thead><tbody>${yo||'<tr><td colspan=2 style="color:#8a90a8">IR 분기 미확보</td></tr>'}</tbody></table></div></div>`;
+}
+function luxCompanyConnections(L,tk){
+  const co=((L.linkage||{}).companies||[]).find(c=>c.ticker===tk);if(!co||!co.links)return '';
+  return '<p class="lxs"><a href="'+luxEsc(co.links.phalanx)+'">브랜드·자료 연결 보기</a> · <a href="'+luxEsc(co.links.ensemble)+'" target="_blank" rel="noopener">앙상블 회사 상세 ↗</a></p>';
+}
+function luxArchiveStatus(A){
+  A=A||{};
+  const state={archived:'보관 중',not_archived:'미초기화',unavailable:'확인 필요'}[A.state]||'확인 필요';
+  return '<div class="bcard" style="margin-top:14px"><b>맥미니 비공개 자료 이력 · '+state+'</b><p class="lxs">'+luxNum(A.snapshot_count)+'회 스냅샷 · 자료 '+luxNum(A.source_count)+'개 · Grailed 보고서 '+luxNum(A.grailed_observations)+'개 관측값 + '+luxNum(A.grailed_restatements)+'개 수정판<br>마지막 자료 변경 보관 '+luxEsc(A.captured_at)+' · 현재 빌드가 확인한 상태</p><p class="lxs">보고서·기업관계·모델 입력의 변경 이력을 보존합니다. 실제 매물 관측과 별도이며 과거 공개시점을 새로 입증하지 않습니다. 원본 증거 '+luxNum(A.original_evidence_count)+'개 · 실제 매물 '+luxEsc(A.raw_listing_state==='not_collected'?'미수집':A.raw_listing_state)+'</p></div>';
 }
 function luxEsc(v){return String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function luxNum(v,suffix=''){return typeof v==='number'&&Number.isFinite(v)?v.toLocaleString('en-US',{maximumFractionDigits:6})+suffix:'—';}
