@@ -1344,6 +1344,7 @@ function mlccPeriodGrid(observations){
 }
 const mlccLink=(url,label)=>/^https:\/\//.test(url||'')?`<a href="${mlccEsc(url)}" target="_blank" rel="noopener noreferrer">${mlccEsc(label)}</a>`:mlccEsc(label);
 function mlccHubMarkup(){
+  if(typeof mcMarkup==='function')return mcMarkup();
   const H=(window.KPID||{}).mlcc?.hub;
   if(!H)return '<div class="panel" style="padding:20px">MLCC 근거 데이터가 아직 준비되지 않았습니다.</div>';
   const cos=H.companies||[], p=H.policy, B=H.breadth;
@@ -1400,6 +1401,7 @@ function mlccHubMarkup(){
   return html;
 }
 function bindMlccHub(){
+  if(typeof mcBind==='function')return mcBind();
   const root=document.getElementById('mlcc-hub');if(!root)return;
   const redraw=()=>ST.tab==='mlcc'?renderMlcc():renderKpi();
   for(const [attr,key] of [['role','mlccRole'],['region','mlccRegion'],['co','mlccCompany'],['metric','mlccMetric']]){
@@ -1419,6 +1421,132 @@ function renderMlcc(){
   kDestroy();document.getElementById('catRow').style.display='none';
   document.getElementById('cnt').textContent='';document.getElementById('crumb').textContent='MLCC · 글로벌 기업과 산업 시그널';
   document.getElementById('main').innerHTML=mlccHubMarkup();bindMlccHub();
+}
+
+/* Evidence-first extension of the canonical hub. No proxy feeds breadth voting. */
+const MC_AXES={orders:'수요·수주',sales:'매출·믹스',supply:'가동·생산',price:'가격·수익성',inventory:'재고 부담',capacity:'투자·증설'};
+const MC_KINDS={direct:'직접 공시',proxy:'대체 프록시',qualitative:'정성 근거',forecast:'계획'};
+// Capture before the host's generic hash writer drops MLCC-specific parameters.
+const MC_ENTRY_PARAMS=new URLSearchParams(location.hash.replace(/^#/,''));
+const mcSales=c=>c.latest.monthly_rev||c.latest.seg_rev||c.latest.company_rev||{};
+const mcGrowth=c=>{const s=mcSales(c);return s.status==='actual'?(s.yoy_3m??s.yoy):null;};
+const mcButtons=(items,key,value)=>items.map(([id,label])=>`<button type="button" class="pill ${value===id?'on':''}" data-mc-${key}="${id}" aria-pressed="${value===id}">${label}</button>`).join('');
+function mcShown(H){
+  const q=(ST.mlccQuery||'').trim().toLowerCase();
+  return H.companies.filter(c=>(!ST.mlccRole||ST.mlccRole==='all'||(ST.mlccRole==='direct'?c.role!=='adjacent':c.role==='adjacent'))&&
+    (!ST.mlccRegion||ST.mlccRegion==='all'||c.region===ST.mlccRegion)&&
+    (!q||[c.name,c.name_en,c.local_name,c.ticker,...(c.aliases||[])].join(' ').toLowerCase().includes(q))&&
+    (ST.mcWatch!=='watch'||c.alerts.length)).sort((a,b)=>{
+      if(ST.mcSort==='growth')return (mcGrowth(b)??-Infinity)-(mcGrowth(a)??-Infinity);
+      if(ST.mcSort==='coverage')return b.observable_axes-a.observable_axes;
+      if(ST.mcSort==='name')return a.name.localeCompare(b.name,'ko');
+      return b.alerts.length-a.alerts.length;
+    });
+}
+function mcCell(e){
+  if(!e)return '<span class="mc-badge missing">미확인</span><div class="mc-small">확인 경로 제공</div>';
+  const sales=['monthly_rev','seg_rev','company_rev'].includes(e.key);
+  return `<span class="mc-badge ${e.kind}">${MC_KINDS[e.kind]}</span><div class="mc-value">${sales?mlccPct(e.yoy_3m??e.yoy):e.value==null?'공시 기록':mlccFmt(e.value,e.key==='bb'?2:1)+' <small>'+mlccEsc(e.unit||'')+'</small>'}</div><div class="mc-small">${mlccEsc(sales?(e.key==='monthly_rev'?'3개월 합 매출 YoY':'분기 매출 YoY'):e.value==null?MC_KINDS[e.kind]:e.label)}<br>${mlccEsc(e.period||'')}</div>`;
+}
+function mcCompareSeries(c){
+  const monthly=c.series.monthly_rev?.observations,values={};let label='제품군 분기매출';
+  const ok=o=>o&&['actual','stale'].includes(o.status)&&Number.isFinite(o.value);
+  if(monthly){
+    label='전사 월차 합산 분기매출';
+    for(const p of Object.keys(monthly)){
+      const [y,m]=p.split('-').map(Number);if(m%3)continue;
+      const os=[0,1,2].map(i=>monthly[y+'-'+String(m-i).padStart(2,'0')]);
+      if(os.every(ok))values[y+'-Q'+m/3]=os.reduce((a,o)=>a+o.value,0);
+    }
+  }else{
+    const s=c.series.seg_rev||c.series.company_rev;label=s?.label||label;
+    for(const [p,o] of Object.entries(s?.observations||{}))if(ok(o))values[p]=o.value;
+  }
+  const yoy={};for(const [p,v] of Object.entries(values)){const prior=(Number(p.slice(0,4))-1)+p.slice(4);if(values[prior]>0)yoy[p]=(v/values[prior]-1)*100;}
+  return {label,values:yoy};
+}
+function mcMarkup(){
+  const H=window.KPID?.mlcc?.hub;if(!H)return '<div class="panel">MLCC 근거 데이터를 불러오는 중입니다.</div>';
+  if(!ST.mcHydrated){const p=MC_ENTRY_PARAMS;if(H.companies.some(c=>c.ticker===p.get('mc')))ST.mlccCompany=p.get('mc');if(['radar','compare','sources'].includes(p.get('mv')))ST.mcView=p.get('mv');ST.mcHydrated=true;}
+  const shown=mcShown(H),B=H.breadth,view=ST.mcView||'radar';
+  if(!shown.some(c=>c.ticker===ST.mlccCompany))ST.mlccCompany=shown[0]?.ticker;
+  let h=`<section id="mlcc-hub"><style>
+  #mlcc-hub{--mc:#00a6b5;margin-bottom:25px}#mlcc-hub *{box-sizing:border-box}#mlcc-hub .mc-small{font-size:11px;line-height:1.65;color:var(--dim);font-weight:400}
+  #mlcc-hub .mc-hero{padding:22px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(110deg,rgba(0,166,181,.1),transparent 75%)}
+  #mlcc-hub .mc-eyebrow{font-size:10px;letter-spacing:.15em;color:var(--mc);font-weight:700;margin-bottom:9px}#mlcc-hub h2,#mlcc-hub h3{margin:0 0 9px}
+  #mlcc-hub .mc-head{display:flex;justify-content:space-between;align-items:start;gap:12px}#mlcc-hub .mc-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}
+  #mlcc-hub .mc-card{padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow-wrap:anywhere}#mlcc-hub .mc-kpis strong{font-size:27px;display:block;margin:8px 0;line-height:1.1}
+  #mlcc-hub small{font-size:10px;font-weight:400}#mlcc-hub .mc-filters{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:13px 0}#mlcc-hub button,#mlcc-hub select,#mlcc-hub summary{cursor:pointer}
+  #mlcc-hub .mc-tabs{border-bottom:1px solid var(--line);padding-bottom:13px}#mlcc-hub input,#mlcc-hub select{padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);max-width:100%}
+  #mlcc-hub .mc-table{max-width:100%;overflow:auto}#mlcc-hub .tbl{min-width:1050px;width:100%;border-collapse:collapse}#mlcc-hub .tbl td,#mlcc-hub .tbl th{padding:12px 9px;border-bottom:1px solid var(--line);vertical-align:top}#mlcc-hub .tbl th{font-size:11px;white-space:nowrap}
+  #mlcc-hub .mc-select{background:none;border:0;text-align:left;color:var(--ink);font:inherit;padding:0}#mlcc-hub tr[aria-selected=true]{background:rgba(0,166,181,.08)}
+  #mlcc-hub .mc-badge{display:inline-block;font-size:10px;border:1px solid var(--line);padding:2px 6px;border-radius:5px;white-space:nowrap}#mlcc-hub .mc-badge.direct{color:#009aa8;background:rgba(0,166,181,.07)}#mlcc-hub .mc-badge.proxy{color:#7988cf;background:rgba(115,125,195,.08)}#mlcc-hub .mc-badge.forecast{color:#b88729}#mlcc-hub .mc-badge.missing{color:var(--dim)}
+  #mlcc-hub .mc-value{font-size:16px;font-weight:700;margin:7px 0 3px;font-variant-numeric:tabular-nums}#mlcc-hub .mc-table .mc-value{white-space:nowrap}
+  #mlcc-hub .mc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:12px 0}#mlcc-hub .mc-detail{border:1px solid var(--line);border-radius:12px;padding:20px;margin-top:16px}
+  #mlcc-hub .mc-alert{border-left:3px solid #bc9139;background:rgba(188,145,57,.06)}#mlcc-hub a{color:var(--mc)}#mlcc-hub .mc-chart{height:300px;position:relative;margin:18px 0}#mlcc-hub .mc-event{border-bottom:1px solid var(--line);padding:14px 0}
+  #mlcc-hub .mc-check{display:flex;align-items:center;gap:4px;padding:7px;border:1px solid var(--line);border-radius:7px;font-size:12px}
+  @media(max-width:700px){#mlcc-hub .mc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#mlcc-hub .mc-hero,#mlcc-hub .mc-detail{padding:13px}#mlcc-hub .mc-kpis strong{font-size:23px}#mlcc-hub .mc-grid{grid-template-columns:1fr}#mlcc-hub .mc-head{flex-wrap:wrap}}
+  @media print{#mlcc-hub button,#mlcc-hub .mc-filters{display:none}#mlcc-hub .mc-table{overflow:visible}#mlcc-hub .tbl{min-width:0;font-size:9px}}
+  </style><div class="mc-hero"><div class="mc-eyebrow">MLCC OBSERVATORY / EVIDENCE FIRST</div><div class="mc-head"><div><h2>수요의 변화, 공급의 반응</h2><div class="mc-small">11개 기업 · 6개 관측 축 · ${H.asof} 기준<br>수주 → 매출·믹스 → 가격·재고·투자. 관측 근거를 연결하고 한계를 구분합니다.</div></div><button class="pill" type="button" data-mc-open>MLCC 허브 ↗</button></div></div>
+  <div class="mc-kpis"><div class="mc-card">현재 필터 기업<strong>${shown.length}<small> / 11개사</small></strong><span class="mc-small">MLCC·소재 ${shown.filter(c=>c.role!=='adjacent').length} · 비교군 ${shown.filter(c=>c.role==='adjacent').length}</span></div><div class="mc-card">현재 필터 관측 축<strong>${shown.reduce((n,c)=>n+c.observable_axes,0)}<small> / ${shown.length*6}</small></strong><span class="mc-small">직접·프록시·정성 포함<br>독립 신호 수 / 투자 점수 아님</span></div><div class="mc-card">전체 시장 매출 가속 확산<strong>${B.up_pct==null?'보류':mlccFmt(B.up_pct)+'%'}</strong><span class="mc-small">필터 무관 · ${B.up_groups}/${B.observed_groups}그룹 개선<br>계열 중복·비교군 제외</span></div><div class="mc-card">현재 필터 확인 이슈<strong>${shown.reduce((n,c)=>n+c.alerts.length,0)}<small>건</small></strong><span class="mc-small">재고·매출 괴리 / 공시 대사<br>문제 없음·매수 신호를 뜻하지 않음</span></div></div>
+  <div class="mc-filters mc-tabs">${mcButtons([['radar','시그널 레이더'],['compare','기업 비교'],['sources','근거·빈칸 관리']],'view',view)}<span style="flex:1"></span><button class="pill" data-mc-export type="button">현재 표 CSV ↓</button></div>
+  <div class="mc-filters">${mcButtons([['all','전체'],['direct','MLCC·소재'],['adjacent','인접 콘덴서']],'role',ST.mlccRole||'all')}<span style="flex:1"></span>${mcButtons([['all','모든 국가'],['JP','일본'],['KR','한국'],['TW','대만']],'region',ST.mlccRegion||'all')}</div>
+  <div class="mc-filters"><input id="mc-search" aria-label="MLCC 기업 검색" placeholder="회사명 · 티커 · 현지명" value="${mlccEsc(ST.mlccQuery||'')}"><select id="mc-sort" aria-label="기업 정렬">${[['watch','확인 이슈 우선'],['growth','매출 성장률 순'],['coverage','관측 축 많은 순'],['name','회사명 순']].map(([v,l])=>`<option value="${v}" ${v===(ST.mcSort||'watch')?'selected':''}>${l}</option>`).join('')}</select>${mcButtons([['all','모든 상태'],['watch','확인 이슈만']],'watch',ST.mcWatch||'all')}</div>`;
+  if(!shown.length)h+='<div class="mc-card">조건에 맞는 회사가 없습니다. 검색·국가·이슈 필터를 해제해 주세요.</div>';
+  else if(view==='compare')h+=mcCompareMarkup(shown);
+  else if(view==='sources')h+=mcSourcesMarkup(shown,H);
+  else{
+    const alerts=shown.flatMap(c=>c.alerts.map(a=>({c,a}))).slice(0,3);
+    h+=`<div class="mc-grid">${alerts.map(({c,a})=>`<div class="mc-card mc-alert"><button type="button" class="mc-select" data-mc-co="${c.ticker}"><b>${mlccEsc(c.name)} · ${mlccEsc(a.title)}</b></button><p class="mc-small">${mlccEsc(a.text)}</p></div>`).join('')}</div><p class="mc-small">기업명을 누르면 산식·분모·원문을 확인할 수 있습니다. 매출 프록시를 수주로, 전사 마진을 MLCC 가격으로, 반기 가동률을 단독분기 실적으로 해석하지 않습니다.</p><div class="panel mc-table"><table class="tbl"><thead><tr><th>기업 / 관측 상태</th>${Object.values(MC_AXES).map(a=>`<th>${a}</th>`).join('')}</tr></thead><tbody>${shown.map(c=>`<tr aria-selected="${c.ticker===ST.mlccCompany}"><td><button type="button" class="mc-select" data-mc-co="${c.ticker}"><b>${mlccEsc(c.name)}</b><div class="mc-small">${c.ticker} · ${c.role==='adjacent'?'비교군':c.region}<br>${mlccEsc(c.state)}<br>관측 ${c.observable_axes}/6축</div></button></td>${Object.keys(MC_AXES).map(a=>`<td>${mcCell(c.axis_cards[a].evidence)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    h+=mcCompanyMarkup(shown.find(c=>c.ticker===ST.mlccCompany),H);
+  }
+  h+=`<details style="margin:20px 0"><summary>산업 교차 확인 · 관세 금액 × 중량 × 단가</summary><div class="mc-grid">${H.trade.map(t=>`<div class="mc-card"><b>${t.region==='JP'?'일본':'한국'} ${t.flow==='Export'?'수출':'수입'} · ${t.period}</b><p class="mc-small">${MLCC_STATUS[t.status]} · ${mlccEsc(t.scope)}<br>${mlccEsc(t.label)}<br>금액 YoY ${mlccPct(t.amount_yoy)} · 중량 ${mlccPct(t.weight_yoy)}<br>단가 ${mlccPct(t.unit_value_yoy)} (${mlccEsc(t.unit)})<br>세관 ${t.customs_count} · 상대국 ${t.partner_count} · ${mlccLink(t.source,'통계 원문')}</p></div>`).join('')}</div><p class="mc-small">HS853224 수집 패널 기준. 일본 전국 전체 통계 아님. 한국 금액은 USD×고정 1,350원 표시. 금액÷중량은 제품·목적지 믹스를 포함한 단가이며 MLCC 개당 ASP가 아닙니다. 패널 변동·중량 누락 시 방향 판정 보류.</p></details><details style="margin:20px 0"><summary>시그널 규칙 · 갱신 구조</summary><p class="mc-small">${mlccEsc(B.note)}<br>${mlccEsc(H.policy.signal_note)}<br>월차는 연속 3개월 합 YoY와 직전 3개월 합 YoY를 비교하여 ${H.policy.monthly_acceleration_pp}%p 이상 가속을 관찰합니다. 누락 달 건너뛰기·전망의 실적 승격·같은 매출의 중복 투표 금지.<br>기간 말 기준 월차 ${H.policy.monthly_max_age_days}일 / 분기·반기 ${H.policy.quarterly_max_age_days}일 후 경고. H1은 누적 반기, Q2는 4~6월 단독분기. 재고일수는 연결 전사 계산값이며 사업 구성 차이가 큽니다.<br>기존 월차·KPI와 검증 재무 스냅샷을 빌드마다 재결합. TWSE 재무 갱신은 MLCC 수집기에 연결, PDF/DART는 원문 대조 후 반영. 빌드일을 관측일로 사용하지 않습니다.<br>${mlccLink(H.index_source,'공식 구성종목 근거')} · 이미지 비중은 기준일 미상으로 가중치 미사용. 니치콘·리롱 비교군 제외, Walsin·PDC 한 그룹.<br>${mlccEsc(H.observability.note)}</p></details></section>`;
+  return h;
+}
+function mcCompanyMarkup(c,H){
+  const keys=Object.keys(c.series);if(!keys.includes(ST.mlccMetric))ST.mlccMetric=keys.includes('bb')?'bb':keys.includes('monthly_rev')?'monthly_rev':keys[0];
+  const s=c.latest[ST.mlccMetric]||{},records=Object.entries(c.series[ST.mlccMetric]?.observations||{}).sort(([a],[b])=>b.localeCompare(a)).slice(0,8);
+  return `<div class="mc-detail" id="mc-company"><div class="mc-head"><div><div class="mc-eyebrow">COMPANY DOSSIER</div><h3>${mlccEsc(c.name)} <small>${c.ticker}</small></h3></div><div class="mc-small">${mlccLink(c.ir,'공식 IR')} · ${mlccLink(c.product_source,'제품 근거')}</div></div><p class="mc-small">${mlccEsc(c.scope_note)}</p>${c.issues.map(x=>`<p class="mc-small mc-alert">${mlccEsc(x)}</p>`).join('')}<h4>관측 가능한 재무·운영 프록시</h4><div class="mc-grid">${c.observables.map(o=>`<div class="mc-card"><span class="mc-badge ${o.kind}">${MC_KINDS[o.kind]}</span> <b>${mlccEsc(o.label)}</b><div class="mc-value">${mlccFmt(o.value,2)} <small>${mlccEsc(o.unit)}</small></div><div class="mc-small">${mlccEsc(o.period)} · ${MLCC_STATUS[o.status]}<br>${mlccEsc(o.scope)}</div><details style="margin-top:7px"><summary class="mc-small">산식·분모·원문</summary><p class="mc-small">${mlccEsc(o.formula||'공시값 채택')}<br>${mlccEsc(o.note||'')}<br>${o.inputs&&Object.keys(o.inputs).length?mlccEsc(JSON.stringify(o.inputs))+'<br>':''}${o.previous_value!=null?'비교 '+mlccFmt(o.previous_value)+' ('+mlccEsc(o.previous_period)+')<br>':''}${mlccLink(o.source,'원문 열기')}</p></details></div>`).join('')||'<p class="mc-small">추가 재무 수치 미확인. 기존 매출·공시 기록을 확인합니다.</p>'}</div>
+  <h4>원시 지표 시계열</h4><div class="mc-filters">${keys.map(k=>`<button class="pill ${ST.mlccMetric===k?'on':''}" type="button" data-mc-metric="${k}">${mlccEsc(c.series[k].label)}</button>`).join('')}</div><p class="mc-small">${mlccEsc(s.scope||'')} · ${mlccEsc(s.unit||'')} · ${MLCC_STATUS[s.status]||'미확인'}<br>${mlccEsc(s.reason||'')} · YoY ${mlccPct(s.yoy)}${s.yoy_3m!=null?' · 3개월 합 '+mlccPct(s.yoy_3m):''} · 가속 ${mlccFmt(s.acceleration_pp)}%p</p><div class="mc-chart"><canvas id="mc-series" role="img" aria-label="기업 원시 지표 시계열"></canvas></div><details><summary>최근 관측값 · 원문 ${records.length}개</summary><div class="mc-table"><table class="tbl"><thead><tr><th>기간</th><th>값·상태</th><th>기준</th><th>근거</th></tr></thead><tbody>${records.map(([p,o])=>`<tr><td>${p}</td><td>${mlccFmt(o.value,2)} ${mlccEsc(o.unit)}<br>${MLCC_STATUS[o.status]}</td><td class="mc-small">${mlccEsc(o.note||o.basis||o.scope)}</td><td>${o.source_urls.map((u,i)=>mlccLink(u,'원문 '+(i+1))).join(' · ')}</td></tr>`).join('')}</tbody></table></div></details>
+  <h4 style="margin-top:20px">회사별 공시 타임라인</h4>${H.events.filter(e=>e.ticker===c.ticker).map(e=>`<div class="mc-event"><span class="mc-badge ${e.kind==='forecast'?'forecast':'qualitative'}">${e.kind==='forecast'?'계획/전망':'공시 발언'}</span> <b>${MC_AXES[e.axis]}</b><div class="mc-small">발표 ${e.published_on} · 대상 ${mlccEsc(e.period)} · ${e.freshness==='stale'?'기간 경과':'최근 공시'}</div><p>${mlccEsc(e.text)}</p><span class="mc-small">${mlccEsc(e.scope)} · ${mlccLink(e.source,e.page?'원문 p.'+e.page:'공식 원문')}</span></div>`).join('')||'<p class="mc-small">검증된 정성 기록 없음. 공시 자체가 없다는 뜻은 아닙니다.</p>'}<h4>다음 확인할 빈칸</h4><div class="mc-grid">${c.next_checks.map(x=>`<div class="mc-card"><b>${x.label}</b><p class="mc-small">${mlccEsc(x.action)}</p>${mlccLink(x.url,'공식 확인 경로 ↗')}</div>`).join('')||'<p class="mc-small">현재 6축 직접 관측. MLCC 단독 범위는 별도 확인 필요.</p>'}</div></div>`;
+}
+function mcCompareMarkup(shown){
+  if(!ST.mcCompare)ST.mcCompare=shown.slice(0,4).map(c=>c.ticker);
+  const selected=shown.filter(c=>ST.mcCompare.includes(c.ticker)).slice(0,6);
+  const dates={};shown.forEach(c=>c.observables.forEach(o=>{if(/^[0-9]{4}-(Q[1-4]|H1|9M|FY)$/.test(o.period))dates[o.period]=o.end;}));
+  const periods=Object.keys(dates).sort((a,b)=>dates[b].localeCompare(dates[a])||b.localeCompare(a));
+  const count=p=>selected.reduce((n,c)=>n+c.observables.filter(o=>o.period===p&&o.status==='actual'&&['gross_margin','operating_margin','inventory_days_proxy','capex_intensity'].includes(o.key)).length,0);
+  const best=periods.slice().sort((a,b)=>count(b)-count(a))[0];
+  const p=periods.includes(ST.mcPeriod)?ST.mcPeriod:best||'';ST.mcPeriod=p;
+  const labels=periods.map(p=>[p,p.replace('-',' ')+(p.endsWith('H1')?' 누적반기':p.endsWith('9M')?' 9개월 누적':p.endsWith('FY')?' 누적연간':' 단독분기')]);
+  return `<div class="mc-detail"><h3>통화 대신 변화율로 비교</h3><p class="mc-small">최대 6개사 · 분기 매출 YoY. 대만은 누락 없는 월차 3개월 합, 나머지는 제품군/전사 매출. 사업 구성·M&amp;A 차이는 제거되지 않습니다. 누락 구간의 선은 연결하지 않습니다.</p><div class="mc-filters">${shown.map(c=>`<label class="mc-check"><input type="checkbox" data-mc-compare="${c.ticker}" ${selected.includes(c)?'checked':''}>${mlccEsc(c.name)}</label>`).join('')}</div><div id="mc-limit" class="mc-small" aria-live="polite">${selected.length}/6개사 선택</div><div class="mc-chart"><canvas id="mc-comparison" role="img" aria-label="기업 분기 매출 성장률 비교"></canvas></div><div class="mc-grid">${selected.map(c=>`<div class="mc-card"><b>${mlccEsc(c.name)}</b><div class="mc-value">${mlccPct(mcGrowth(c))}</div><div class="mc-small">최신 ${mcSales(c).yoy_3m!=null?'3개월 합':'분기'} · ${mcSales(c).period||'—'}<br>${mlccEsc(mcCompareSeries(c).label)}<br>${mlccEsc(c.scope_note)}</div></div>`).join('')}</div><h4>동일 보고기간의 수익성·재고·투자</h4><div class="mc-filters">${mcButtons(labels,'period',p)}</div><p class="mc-small">위에서 선택한 회사만 표시. DIO는 전사 재고일수 계산값이며 산업 평균·적정 재고 기준이 아닙니다. 다른 통화의 금액은 합산하지 않습니다.</p><div class="mc-table"><table class="tbl"><thead><tr><th>기업</th><th>매출총이익률</th><th>영업이익률</th><th>재고일수 계산값</th><th>현금투자/매출</th></tr></thead><tbody>${selected.map(c=>`<tr><td>${mlccEsc(c.name)}<div class="mc-small">${p}</div></td>${['gross_margin','operating_margin','inventory_days_proxy','capex_intensity'].map(k=>{const o=c.observables.find(o=>o.key===k&&o.period===p&&o.status==='actual');return `<td>${o?mlccFmt(o.value,2)+' '+o.unit+'<div class="mc-small">'+mlccLink(o.source,'같은 기간 근거')+'</div>':'<span class="mc-small">해당 기간 미확인</span>'}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+}
+function mcSourcesMarkup(shown,H){
+  return `<div class="mc-detail"><h3>빈칸을 숨기지 않는 관측 지도</h3><p class="mc-small">현재 필터 ${shown.length}개사. 계획은 관측 커버리지에서 제외. 마지막 보완 원문 검증 ${H.observability.verified_on}.</p><div class="mc-grid">${Object.entries(MC_AXES).map(([a,l])=>{const es=shown.map(c=>c.axis_cards[a].evidence);return `<div class="mc-card"><b>${l}</b><div class="mc-value">${es.filter(e=>e?.status==='actual').length}/${shown.length}</div><div class="mc-small">직접 ${es.filter(e=>e?.kind==='direct'&&e.status==='actual').length} · 프록시 ${es.filter(e=>e?.kind==='proxy'&&e.status==='actual').length} · 정성 ${es.filter(e=>e?.kind==='qualitative'&&e.status==='actual').length} · 계획 ${es.filter(e=>e?.kind==='forecast').length}</div></div>`;}).join('')}</div>${shown.map(c=>`<details class="mc-card" style="margin:10px 0"><summary><b>${mlccEsc(c.name)}</b> · ${c.observable_axes}/6축 · 추가 확인 ${c.next_checks.length}개</summary><p class="mc-small">${mlccEsc(c.scope_note)}</p>${c.issues.map(x=>`<p class="mc-small mc-alert">${mlccEsc(x)}</p>`).join('')}<div class="mc-grid">${Object.values(c.axis_cards).map(x=>`<div class="mc-card"><b>${x.label}</b>${mcCell(x.evidence)}<p class="mc-small">${mlccEsc(x.evidence?.scope||'')}<br>${mlccEsc(x.evidence?.note||x.recipe)}</p>${(x.evidence?.source_urls||[c.ir]).map((u,i)=>mlccLink(u,x.evidence?'근거 '+(i+1):'다음 확인 경로')).join(' · ')}</div>`).join('')}</div><button type="button" class="pill" data-mc-co="${c.ticker}">기업 상세 열기</button></details>`).join('')}</div>`;
+}
+function mcBind(){
+  const root=document.getElementById('mlcc-hub');if(!root)return;
+  const redraw=()=>ST.tab==='mlcc'?renderMlcc():renderKpi();
+  const sync=()=>{if(ST.tab!=='mlcc')return;const p=new URLSearchParams(location.hash.replace(/^#/,''));p.set('tab','mlcc');p.set('mv',ST.mcView||'radar');if(ST.mlccCompany)p.set('mc',ST.mlccCompany);history.replaceState(null,'','#'+p.toString());};
+  for(const [a,k] of [['view','mcView'],['role','mlccRole'],['region','mlccRegion'],['co','mlccCompany'],['metric','mlccMetric'],['watch','mcWatch'],['period','mcPeriod']])root.querySelectorAll('[data-mc-'+a+']').forEach(b=>b.onclick=()=>{ST[k]=b.getAttribute('data-mc-'+a);if(a==='co')ST.mcView='radar';sync();redraw();if(a==='co')document.getElementById('mc-company')?.scrollIntoView({block:'start'});});
+  root.querySelector('[data-mc-open]').onclick=()=>{ST.tab='mlcc';ST.view='overview';render();window.scrollTo(0,0);};
+  const input=root.querySelector('#mc-search');input.oninput=()=>{const pos=input.selectionStart;ST.mlccQuery=input.value;redraw();const n=document.getElementById('mc-search');n?.focus();n?.setSelectionRange(pos,pos);};
+  root.querySelector('#mc-sort').onchange=e=>{ST.mcSort=e.target.value;redraw();};
+  root.querySelectorAll('[data-mc-compare]').forEach(b=>b.onchange=()=>{const t=b.getAttribute('data-mc-compare'),visible=new Set(mcShown(window.KPID.mlcc.hub).map(c=>c.ticker)),list=(ST.mcCompare||[]).filter(t=>visible.has(t));if(b.checked&&list.length>=6){b.checked=false;root.querySelector('#mc-limit').textContent='최대 6개사까지 비교할 수 있습니다.';return;}ST.mcCompare=b.checked?[...list,t]:list.filter(v=>v!==t);redraw();});
+  root.querySelector('[data-mc-export]').onclick=()=>{
+    const quote=s=>'"'+String(s??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';
+    const rows=[['기업','티커','축','근거종류','지표','기간','값','단위','범위','원문']];
+    mcShown(window.KPID.mlcc.hub).forEach(c=>Object.values(c.axis_cards).forEach(x=>{const e=x.evidence||{};rows.push([c.name,c.ticker,x.label,MC_KINDS[e.kind]||'미확인',e.label,e.period,e.value,e.unit,e.scope,(e.source_urls||[]).join(' ')]);}));
+    const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(quote).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='mlcc-observability-'+window.KPID.mlcc.hub.asof+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
+  if(typeof Chart==='undefined')return;
+  const H=window.KPID.mlcc.hub,c=H.companies.find(c=>c.ticker===ST.mlccCompany),s=c?.series[ST.mlccMetric],canvas=document.getElementById('mc-series');
+  const options={responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:8}},y:{beginAtZero:false}}};
+  if(canvas&&s){if(KCH.mlcc)KCH.mlcc.destroy();const ps=mlccPeriodGrid(s.observations);KCH.mlcc=new Chart(canvas,{type:'line',data:{labels:ps,datasets:[{label:s.label,data:ps.map(p=>{const o=s.observations[p];return o&&['actual','stale'].includes(o.status)?o.value:null;}),borderColor:'#00a6b5',pointRadius:2,borderWidth:2,spanGaps:false,tension:0}]},options});}
+  const cmp=document.getElementById('mc-comparison');if(cmp){
+    if(KCH.mlccCompare)KCH.mlccCompare.destroy();const cs=mcShown(H).filter(c=>(ST.mcCompare||[]).includes(c.ticker)).slice(0,6),ss=cs.map(mcCompareSeries),all={};ss.forEach(s=>Object.keys(s.values).forEach(p=>all[p]=1));const ps=mlccPeriodGrid(all).slice(-12),colors=['#00a6b5','#a17ddb','#d79a37','#5383c4','#cf6b8e','#749a59'];
+    KCH.mlccCompare=new Chart(cmp,{type:'line',data:{labels:ps,datasets:cs.map((c,i)=>({label:c.name,data:ps.map(p=>ss[i].values[p]??null),borderColor:colors[i],pointRadius:3,borderWidth:2,spanGaps:false,tension:0}))},options:{...options,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+mlccPct(ctx.raw)}}},scales:{x:{ticks:{maxTicksLimit:8}},y:{title:{display:true,text:'전년동기 대비 %'},ticks:{callback:v=>v+'%'}}}}});
+  }
 }
 
 function renderKpi(){
