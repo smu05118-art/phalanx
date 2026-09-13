@@ -70,6 +70,8 @@ def build(data):
         "groups": {g["id"]: g["ko"] for g in groups},
         "idx": idx,
         "srcKo": SRC_KO,
+        "pages": sorted({c["stock"] for rows in idx.values() for c in rows
+                         if os.path.isfile(os.path.join(KAERO, c["stock"], "index.html"))}),
     }
     body = """
 <div class="kpi">
@@ -104,7 +106,9 @@ KIND 주요제품 문구에서 부품 낱말을 찾습니다. 회사 칩에 근�
 채택합니다 — 그러지 않으면 자동차 단조사와 통신 안테나사가 항공 부품사가 됩니다.
 고객 연결의 근거 등급은 매출처 표 &gt; 수주표 품목 &gt; 계약공시 상대 &gt; 본문 언급 순이고,
 약칭을 사전으로 편 이름은 <b>추정</b>으로 적습니다.</div>
-<script>const P=%s;</script>
+<link rel="stylesheet" href="../ui/parts-explorer.css?v=2">
+<script src="../ui/parts-explorer.js?v=2"></script>
+<script>const P=%s; PartsExplorer.setup(P);</script>
 <script>
 (function(){
  var S={sil:P.sils[0].id, sel:null, group:null};
@@ -142,6 +146,7 @@ KIND 주요제품 문구에서 부품 낱말을 찾습니다. 회사 칩에 근�
    var t=el('text',{x:r.label.x,y:r.label.y}); t.setAttribute('class','rlbl');
    t.setAttribute('text-anchor','middle'); t.textContent=r.ko; LB.appendChild(t);
   });
+  PartsExplorer.labels(LB,(P.regions.filter(function(r){return r.id===S.sel})[0]||{}).ko);
   Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
    var on=b.getAttribute('data-sil')===S.sil; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
   });
@@ -149,45 +154,27 @@ KIND 주요제품 문구에서 부품 낱말을 찾습니다. 회사 칩에 근�
    var on=b.getAttribute('data-group')===S.group; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
   });
  }
- function coHtml(c){
-  var cu=c.custs.map(function(p){
-    var nm=p.stock?('<a href="'+p.stock+'/index.html">'+p.nm+'</a>'):p.nm;
-    return nm+' <span class="mut">'+p.basis+(p.est?' · 추정':'')+'</span>';
-  }).join(' · ');
-  return '<li><a class="co" href="'+c.stock+'/index.html">'+c.nm+'</a>'
-   +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
-   +(cu?'<div class="mut" style="font-size:11px;margin-top:2px">고객 '+cu+'</div>':'')
-   +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
- }
- function catBlock(cid){
-  var c=catById(cid); if(!c) return '';
-  var cos=P.idx[cid]||[];
-  return '<div class="pblock"><h4 id="'+cid+'">'+c.ko+' <span class="mut">'+P.groups[c.g]+'</span>'
-   +' <span class="n">'+cos.length+'</span></h4>'
-   +(cos.length?'<ul class="colist">'+cos.map(coHtml).join('')+'</ul>'
-    :'<p class="mut" style="font-size:12px">이 부품을 만드는 상장사를 원문에서 찾지 못했습니다 — 비상장이거나 공시 문구가 짧아 규칙에 안 걸립니다.</p>')
-   +'</div>';
- }
  function showRegion(r){
-  panel.innerHTML='<h3>'+r.ko+' <em>'+r.cats.length+'개 소분류</em></h3>'+r.cats.map(catBlock).join('');
+  history.replaceState(null,'',location.pathname+location.search);
+  PartsExplorer.show({title:r.ko, sections:[{label:'구성 부품',items:PartsExplorer.categories(r.cats)}]});
  }
  function showGroup(gid){
-  var cs=P.cats.filter(function(c){return c.g===gid});
-  panel.innerHTML='<h3>'+P.groups[gid]+' <em>'+cs.length+'개 소분류</em></h3>'+cs.map(function(c){return catBlock(c.id)}).join('');
+  history.replaceState(null,'',location.pathname+location.search);
+  var ids=P.cats.filter(function(c){return c.g===gid}).map(function(c){return c.id});
+  PartsExplorer.show({title:P.groups[gid], sections:[{label:'부품 소분류',items:PartsExplorer.categories(ids)}]});
  }
  function showCat(cid){
   var c=catById(cid); if(!c) return false;
   var r=P.regions.filter(function(r){return r.cats.indexOf(cid)>=0})[0];
-  if(r){ S.sil=r.silhouette; S.sel=r.id; }
-  S.group=null; draw();
-  panel.innerHTML='<h3>'+c.ko+' <em>'+P.groups[c.g]+'</em></h3>'+catBlock(cid)
-   +(r?'<p class="mut" style="font-size:12px">위치: '+r.ko+'</p>':'');
+  if(r){S.sil=r.silhouette;S.sel=r.id;}
+  S.group=null;draw();
+  PartsExplorer.show({title:r?r.ko:P.groups[c.g], sections:[{label:'구성 부품',items:PartsExplorer.categories(r?r.cats:[cid])}],selected:cid});
   return true;
  }
  function intro(){
-  panel.innerHTML='<h3>부품 영역을 누르세요 <em>또는 아래 대분류 칩</em></h3>'
-   +'<p class="mut" style="font-size:12px">영역 → 부품 소분류 → 그 부품을 만드는 상장사 → 그 회사의 고객. '
-   +'회사 이름을 누르면 그 회사의 수주·고객 페이지로 갑니다.</p>';
+  PartsExplorer.clear();
+  history.replaceState(null,'',location.pathname+location.search);
+  panel.innerHTML='<h3>부품 영역을 누르세요</h3><p class="px-note">그림 아래에 구성 부품이 펼쳐집니다. 부품을 선택하면 연결 기업을 좁혀 볼 수 있습니다.</p>';
  }
  Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
   b.addEventListener('click',function(){ S.sil=b.getAttribute('data-sil'); S.sel=null; S.group=null; draw(); intro(); });

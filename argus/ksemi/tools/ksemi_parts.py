@@ -460,179 +460,7 @@ def svg(d):
 
 # ── 페이지 ──────────────────────────────────────────────────
 
-PARTS_JS = r"""
-(function(){
-  var S={sel:null, level:1, fb:'all'};
-  var panel=document.getElementById('panel');
-  function el(tag,cls,text){var e=document.createElement(tag); if(cls)e.className=cls; if(text!=null)e.textContent=text; return e;}
-  function stageOf(k){ for(var i=0;i<P.stages.length;i++){ if(P.stages[i].key===k) return P.stages[i]; } return null; }
-  function fbOk(fb){ if(S.fb==='all') return true;
-    if(fb==='공통'||fb==='전후공정 겸업') return true;
-    return fb===(S.fb==='front'?'전공정':'후공정'); }
-  function srcKo(s){ return P.src[s||'']||P.src['']; }
-  function evLine(co){
-    var p=el('p','ev');
-    if(co.ev){ p.appendChild(el('span','q','「'+co.ev+'」')); p.appendChild(el('span','src',' '+srcKo(co.src))); }
-    else { p.appendChild(el('span','src','원문 근거 없음 — 분류하지 않음')); }
-    if(co.words&&co.words.length){ p.appendChild(el('span','src',' · 걸린 낱말 '+co.words.join('·'))); }
-    return p;
-  }
-  function scanLine(sc){
-    if(!sc) return null;
-    var p=el('p','ev');
-    var where=(sc.src==='주요제품')?'정기보고서 II-2 주요제품':'정기보고서 II절 본문';
-    p.appendChild(el('span','src',where+' '+(sc.term||'')+(sc.n?' '+sc.n+'회':'')+' — '));
-    p.appendChild(el('span','q','「'+(sc.quote||'')+'…」'));
-    return p;
-  }
-  function coRow(co){
-    var li=el('li');
-    var top=el('div','r1');
-    var a=el('a',null,co.nm); a.href=co.stock+'/index.html'; top.appendChild(a);
-    top.appendChild(el('span','code',co.stock));
-    if(co.primary) top.appendChild(el('span','pill','주단계'));
-    if(co.fb) top.appendChild(el('span','tagm',co.fb));
-    if(co.bl!=null&&P.hasRep) top.appendChild(el('span','y','수주잔고 '+co.blf+'억'+(co.blq?' ('+co.blq+')':'')));
-    else if(P.hasRep) top.appendChild(el('span','y','잔고 미공시'));
-    li.appendChild(top);
-    li.appendChild(evLine(co));
-    var s=scanLine(co.scan); if(s) li.appendChild(s);
-    return li;
-  }
-  function head(st,level){
-    var h=el('h3',null,st.label);
-    h.appendChild(el('em',null,(st.flow?('팹 흐름 '+st.flow+'단계'):'흐름 밖')+' · '+st.fb));
-    panel.appendChild(h);
-    var seg=el('div','seg');
-    [['1','장비사'],['2','부품·부품사']].forEach(function(o){
-      var b=el('button',null,o[1]); b.setAttribute('aria-pressed',String(String(level)===o[0]));
-      b.addEventListener('click',function(){ select(st.key,parseInt(o[0],10)); });
-      seg.appendChild(b);
-    });
-    panel.appendChild(seg);
-    var a=P.agg[st.key][S.fb];
-    var m=el('p','meta');
-    m.appendChild(el('b',null,a.n+'사'));
-    if(P.hasRep){ m.appendChild(el('span',null,a.bl!=null?(' · 수주잔고 합 '+a.blf+'억 (공시 '+a.nbl+'사 · 미공시 '+a.nmiss+'사)'):' · 수주잔고 공시 회사 없음')); }
-    else { m.appendChild(el('span','src',' · 수주잔고는 reports.json 이 아직 없어 싣지 않습니다')); }
-    panel.appendChild(m);
-  }
-  function level1(st){
-    if(!fbOk(st.fb)) panel.appendChild(el('p','src','이 단계는 '+st.fb+'입니다 — 지금 고른 필터('+(S.fb==='front'?'전공정':'후공정')+') 밖입니다.'));
-    var cos=(P.cos[st.key]||[]).filter(function(c){return fbOk(c.fb);});
-    var hidden=(P.cos[st.key]||[]).length-cos.length;
-    if(!cos.length){
-      panel.appendChild(el('p','mut', (P.cos[st.key]||[]).length ? '이 필터에 해당하는 회사가 없습니다.' : '이 단계의 장비를 만드는 상장사를 원문에서 확인하지 못했습니다 — 지어내지 않습니다.'));
-    } else {
-      var ul=el('ul'); cos.forEach(function(c){ ul.appendChild(coRow(c)); }); panel.appendChild(ul);
-    }
-    if(hidden) panel.appendChild(el('p','src',hidden+'사는 현재 필터(전/후공정)에서 숨겼습니다.'));
-    var hints=P.hints[st.key]||[];
-    if(hints.length){
-      panel.appendChild(el('h4',null,'본문 힌트 '+hints.length+'사 — 분류 아님'));
-      panel.appendChild(el('p','src','단계 태그가 없는 편입사입니다. 정기보고서 II절 본문에 이 단계 낱말이 있어 가리키기만 합니다.'));
-      var ul2=el('ul');
-      hints.forEach(function(h){
-        var li=el('li'); var t=el('div','r1');
-        var a=el('a',null,h.nm); a.href=h.stock+'/index.html'; t.appendChild(a);
-        t.appendChild(el('span','code',h.stock)); t.appendChild(el('span','pill est','미분류'));
-        li.appendChild(t);
-        if(h.prod){ var p=el('p','ev'); p.appendChild(el('span','q','「'+h.prod+'」')); p.appendChild(el('span','src',' KIND 주요제품 문구')); li.appendChild(p); }
-        (h.ev||[]).forEach(function(e){ var s=scanLine(e); if(s) li.appendChild(s); });
-        ul2.appendChild(li);
-      });
-      panel.appendChild(ul2);
-    }
-    if(st.note){ var n=el('p','note2',st.note); panel.appendChild(n); }
-  }
-  function level2(st){
-    var per=P.partcos[st.key]||{};
-    if(!(st.parts||[]).length){ panel.appendChild(el('p','mut','이 단계의 부품 목록이 사전에 없습니다.')); return; }
-    st.parts.forEach(function(p){
-      var box=el('div','partbox');
-      var h=el('div','r1'); h.appendChild(el('b',null,p.label)); h.appendChild(el('span','code',p.key));
-      box.appendChild(h);
-      var rows=per[p.key]||[];
-      if(!rows.length){ box.appendChild(el('p','mut','이 부품을 만든다고 원문에 적은 상장 부품사를 확인하지 못했습니다.')); }
-      else {
-        var ul=el('ul');
-        rows.forEach(function(r){
-          var li=el('li'); var t=el('div','r1');
-          var a=el('a',null,r.nm); a.href=r.stock+'/index.html'; t.appendChild(a);
-          t.appendChild(el('span','code',r.stock));
-          if(r.role) t.appendChild(el('span','tagm',r.role));
-          li.appendChild(t);
-          if(r.words&&r.words.length){ var p1=el('p','ev'); p1.appendChild(el('span','q','「'+r.ev+'」')); p1.appendChild(el('span','src',' '+srcKo(r.src)+' · 낱말 '+r.words.join('·'))); li.appendChild(p1); }
-          (r.scan||[]).forEach(function(s){ var l=scanLine(s); if(l) li.appendChild(l); });
-          ul.appendChild(li);
-        });
-        box.appendChild(ul);
-      }
-      panel.appendChild(box);
-    });
-    if(st.key==='parts'&&P.unspec.length){
-      panel.appendChild(el('h4',null,'부품 종류를 원문에서 특정하지 못한 부품사 '+P.unspec.length+'사'));
-      var ul3=el('ul');
-      P.unspec.forEach(function(r){
-        var li=el('li'); var t=el('div','r1');
-        var a=el('a',null,r.nm); a.href=r.stock+'/index.html'; t.appendChild(a);
-        t.appendChild(el('span','code',r.stock)); t.appendChild(el('span','pill est','부품 미특정'));
-        li.appendChild(t);
-        var p=el('p','ev'); p.appendChild(el('span','q','「'+r.ev+'」')); p.appendChild(el('span','src',' '+srcKo(r.src))); li.appendChild(p);
-        (r.scan||[]).forEach(function(s){ var l=scanLine(s); if(l) li.appendChild(l); });
-        ul3.appendChild(li);
-      });
-      panel.appendChild(ul3);
-    } else {
-      panel.appendChild(el('p','src','부품 종류를 원문에서 특정하지 못한 부품사 '+P.unspec.length+'곳(제품 문구가 「반도체 장비 부품」처럼 두루뭉술한 회사)은 「부품소재」 단계에서 봅니다.'));
-    }
-  }
-  function render(){
-    panel.textContent='';
-    if(!S.sel){
-      panel.appendChild(el('h3',null,'단계를 누르세요'));
-      panel.appendChild(el('p','mut','단계 → 그 장비를 만드는 편입 상장사 → 한 번 더 누르면 그 단계 장비의 부품과 부품사. 회사 이름을 누르면 회사 페이지로 갑니다.'));
-      return;
-    }
-    var st=stageOf(S.sel); if(!st) return;
-    head(st,S.level);
-    if(S.level===1) level1(st); else level2(st);
-  }
-  function paint(){
-    document.querySelectorAll('#fab .node').forEach(function(g){
-      var k=g.dataset.stage, st=stageOf(k);
-      g.classList.toggle('sel',S.sel===k);
-      g.classList.toggle('off',!fbOk(st.fb));
-      var c=g.querySelector('[data-cnt]'); if(c) c.textContent=P.agg[k][S.fb].n+'사';
-      g.setAttribute('aria-label',st.label+' · '+(st.flow?('팹 흐름 '+st.flow+'단계'):'흐름 밖')+' · '+st.fb+' · 상장사 '+P.agg[k][S.fb].n+'곳');
-      g.setAttribute('aria-expanded',String(S.sel===k));
-    });
-  }
-  function select(k,level){
-    if(S.sel===k&&level===undefined){ S.level=(S.level===1?2:1); }
-    else { S.level=level||1; }
-    S.sel=k; paint(); render();
-    if(history.replaceState) history.replaceState(null,'','#'+k);
-  }
-  document.querySelectorAll('#fab .node').forEach(function(g){
-    g.addEventListener('click',function(){ select(g.dataset.stage); });
-    g.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); select(g.dataset.stage); } });
-  });
-  document.querySelectorAll('#fbseg button').forEach(function(b){
-    b.addEventListener('click',function(){
-      S.fb=b.dataset.fb;
-      document.querySelectorAll('#fbseg button').forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.fb===S.fb));});
-      paint(); render();
-    });
-  });
-  document.getElementById('reset').addEventListener('click',function(){
-    S.sel=null; S.level=1; S.fb='all';
-    document.querySelectorAll('#fbseg button').forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.fb==='all'));});
-    paint(); render();
-  });
-  var h=location.hash.slice(1); if(h&&stageOf(h)) select(h,1); else { paint(); render(); }
-})();
-"""
+PARTS_JS = "PartsExplorer.semi(P);"
 
 
 def parts_html(d):
@@ -688,7 +516,7 @@ def parts_html(d):
 
     body = """
 <div class="kpi">%s</div>
-<section class="card"><h2>팹 공정 흐름 <em>단계를 누르면 그 단계 장비를 만드는 편입 상장사 · 한 번 더 누르면 그 단계 장비의 부품과 부품사</em>
+<section class="card"><h2>팹 공정 흐름 <em>단계 선택 → 그림 아래 세부 공정·부품 → 오른쪽 연결 기업</em>
  <span class="right"><button class="chip" id="reset">선택 해제</button></span></h2>
  <div class="ctl">
   <span class="mut" style="font-size:10.5px">전/후공정</span>
@@ -712,6 +540,8 @@ def parts_html(d):
  단계 태그가 있으나 편입이 아닌 회사 %d곳은 이 화면에 넣지 않았습니다.
  <b>부품 ↔ 회사</b> 연결 규칙: ① 회사의 KIND 주요제품 문구·지정 사유에 그 부품 이름이 적혀 있거나, ② <b>부품·공정서비스사</b>의 정기보고서 II절 본문에서 scan 이 <b>장비 부분품</b>으로 본 낱말이 그 부품 이름일 때만 잇습니다.
  장비사 본문에 나오는 부품 이름(식각기 안의 정전척 같은)은 잇지 않습니다 — 자기가 쓰는 부품이지 만드는 부품이 아닙니다. 어느 쪽 근거인지는 회사마다 적었고, 연결은 「원문에 그렇게 적혀 있다」는 뜻일 뿐 납품 관계를 주장하지 않습니다.%s</div>
+<link rel="stylesheet" href="../ui/parts-explorer.css?v=2">
+<script src="../ui/parts-explorer.js?v=2"></script>
 <script>const P=%s;</script>
 <script>%s</script>
 <script>%s</script>
@@ -727,7 +557,7 @@ def parts_html(d):
                 nav=(("허브", "index.html"), ("커버리지", "coverage.html"), ("← ARGUS", "../index.html")),
                 crumbs=(("ARGUS", "../index.html"), ("한국반도체장비", "index.html"), ("인포그래픽", None)),
                 lead="웨이퍼 투입에서 패키징까지 팹 공정을 단계로 나누고, 각 단계의 장비를 만드는 국내 상장사와 "
-                     "그 장비의 부품·부품사를 원문 근거와 함께 연결했습니다. 단계를 누르면 회사가, 한 번 더 누르면 부품이 열립니다.")
+                     "그 장비의 부품·부품사를 원문 근거와 함께 연결했습니다. 단계를 누르면 세부 공정·부품이 그림 아래에 펼쳐집니다.")
 
 
 # ── 실행 ───────────────────────────────────────────────────

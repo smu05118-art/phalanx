@@ -99,7 +99,9 @@ def build(data):
 <div class="note info">부품 분류는 <b>규칙</b>입니다 — 계약명·정기보고서 「주요 제품」 절·II절 본문·KIND 주요제품 문구에서 부품 낱말을 찾습니다.
 회사 칩에 근거(무엇을 보고 넣었는지)를 달아 두었습니다. 민수 낱말과 겹치는 짧은 약어는 방산 문맥이 가까이 있을 때만 채택합니다.
 납품처(체계업체) 연결의 근거 등급은 주요고객 주석 &gt; 계약공시 상대 &gt; 본문 언급 순입니다.</div>
-<script>const P=%s;</script>
+<link rel="stylesheet" href="../ui/parts-explorer.css?v=2">
+<script src="../ui/parts-explorer.js?v=2"></script>
+<script>const P=%s; PartsExplorer.setup(P);</script>
 <script>
 (function(){
  var S={sil:P.sils[0].id, sel:null, group:null};
@@ -133,6 +135,7 @@ def build(data):
    var t=el('text',{x:r.label.x,y:r.label.y}); t.setAttribute('class','rlbl');
    t.setAttribute('text-anchor','middle'); t.textContent=r.ko; LB.appendChild(t);
   });
+  PartsExplorer.labels(LB,(P.regions.filter(function(r){return r.id===S.sel})[0]||{}).ko);
   Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
    var on=b.getAttribute('data-sil')===S.sil; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
   });
@@ -145,42 +148,27 @@ def build(data):
   var c=cls?' class="'+cls+'"':'';
   return PAGES[stock]?'<a'+c+' href="'+stock+'/index.html">'+label+'</a>':'<span'+c+'>'+label+'</span>';
  }
- function coHtml(c){
-  var primes=c.primes.map(function(p){return link(p.stock,p.nm)+' <span class="mut">'+p.basis+'</span>'}).join(' · ');
-  return '<li>'+link(c.stock,c.nm,'co')
-   +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
-   +(primes?'<div class="mut" style="font-size:11px;margin-top:2px">납품처 '+primes+'</div>':'')
-   +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
- }
- function catBlock(cid){
-  var c=catById(cid); if(!c) return '';
-  var cos=P.idx[cid]||[];
-  return '<div class="pblock"><h4 id="'+cid+'">'+c.ko+' <span class="mut">'+P.groups[c.g]+' · '+c.en+'</span>'
-   +' <span class="n">'+cos.length+'</span></h4>'
-   +(cos.length?'<ul class="colist">'+cos.map(coHtml).join('')+'</ul>'
-    :'<p class="mut" style="font-size:12px">이 부품을 만드는 상장사를 원문에서 찾지 못했습니다 — 비상장이거나 문구가 짧아 규칙에 안 걸립니다.</p>')
-   +'</div>';
- }
  function showRegion(r){
-  panel.innerHTML='<h3>'+r.ko+' <em>'+r.cats.length+'개 소분류</em></h3>'+r.cats.map(catBlock).join('');
+  history.replaceState(null,'',location.pathname+location.search);
+  PartsExplorer.show({title:r.ko, sections:[{label:'구성 부품',items:PartsExplorer.categories(r.cats)}]});
  }
  function showGroup(gid){
-  var cs=P.cats.filter(function(c){return c.g===gid});
-  panel.innerHTML='<h3>'+P.groups[gid]+' <em>'+cs.length+'개 소분류</em></h3>'+cs.map(function(c){return catBlock(c.id)}).join('');
+  history.replaceState(null,'',location.pathname+location.search);
+  var ids=P.cats.filter(function(c){return c.g===gid}).map(function(c){return c.id});
+  PartsExplorer.show({title:P.groups[gid], sections:[{label:'부품 소분류',items:PartsExplorer.categories(ids)}]});
  }
  function showCat(cid){
   var c=catById(cid); if(!c) return false;
   var r=P.regions.filter(function(r){return r.cats.indexOf(cid)>=0})[0];
-  if(r){ S.sil=r.silhouette; S.sel=r.id; }
-  S.group=null; draw();
-  panel.innerHTML='<h3>'+c.ko+' <em>'+P.groups[c.g]+'</em></h3>'+catBlock(cid)
-   +(r?'<p class="mut" style="font-size:12px">위치: '+r.ko+'</p>':'');
+  if(r){S.sil=r.silhouette;S.sel=r.id;}
+  S.group=null;draw();
+  PartsExplorer.show({title:r?r.ko:P.groups[c.g], sections:[{label:'구성 부품',items:PartsExplorer.categories(r?r.cats:[cid])}],selected:cid});
   return true;
  }
  function intro(){
-  panel.innerHTML='<h3>부품 영역을 누르세요 <em>또는 아래 대분류 칩</em></h3>'
-   +'<p class="mut" style="font-size:12px">영역 → 부품 소분류 → 그 부품을 만드는 상장사 → 납품처(체계업체). '
-   +'회사 이름을 누르면 그 회사의 계약·부문매출 페이지로 갑니다.</p>';
+  PartsExplorer.clear();
+  history.replaceState(null,'',location.pathname+location.search);
+  panel.innerHTML='<h3>부품 영역을 누르세요</h3><p class="px-note">그림 아래에 구성 부품이 펼쳐집니다. 부품을 선택하면 연결 기업을 좁혀 볼 수 있습니다.</p>';
  }
  Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
   b.addEventListener('click',function(){ S.sil=b.getAttribute('data-sil'); S.sel=null; S.group=null; draw(); intro(); });
