@@ -692,7 +692,8 @@ def backlog_disclosure(text):
         if "잔여수주잔고내역이없습니다" in compact:
             status = "잔여 잔고 없음 명시"
         elif any(x in compact for x in ("기재하지않", "공시되고있지않", "비공개사항")):
-            status = "수주상황 비공개"
+            status = ("수주상황 비공개" if any(x in compact for x in ("비공개", "기밀", "손실"))
+                      else "수주상황 미기재")
         elif "기재할만한사항은없" in compact:
             status = "단기 발주 · 별도 기재 없음"
         elif compact.startswith("해당사항없음"):

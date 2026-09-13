@@ -21,7 +21,7 @@ class Connections(unittest.TestCase):
     def test_explicit_disclosure_is_not_a_numeric_zero(self):
         prefix = '<h1>4. 매출 및 수주상황</h1><p>매출 실적</p><h2>마. 수주상황</h2>'
         self.assertEqual(R.backlog_disclosure(prefix + '잔여 수주잔고 내역이 없습니다.')['status'], '잔여 잔고 없음 명시')
-        self.assertEqual(R.backlog_disclosure(prefix + '수주상황은 기재하지 않습니다.')['status'], '수주상황 비공개')
+        self.assertEqual(R.backlog_disclosure(prefix + '수주상황은 기재하지 않습니다.')['status'], '수주상황 미기재')
         self.assertIsNone(R.backlog_disclosure(prefix + '고객에게 납품합니다.'))
 
     def test_vendor_canvas_initializer_order(self):
