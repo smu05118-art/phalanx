@@ -21,6 +21,7 @@ permissions:
   contents: write
 concurrency:
   group: kship-dart
+  queue: max  # Preserve every waiting industry refresh (up to 100).
   cancel-in-progress: false
 env:
   PYTHONDONTWRITEBYTECODE: "1"

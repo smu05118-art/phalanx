@@ -169,7 +169,11 @@ def _carry_units(tables):
 
 
 def _scaled(v, mul):
-    x = num_of(v)
+    # DART 금액 셀의 정수 끝 소수점(59,066.)도 수치다. 문장·중간 문자는 허용하지 않는다.
+    text = str(v).strip() if v is not None else ""
+    if re.fullmatch(r"-?(?:\d{1,3}(?:,\d{3})+|\d+)\.", text):
+        text = text[:-1]
+    x = num_of(text)
     if x is None:
         return None
     x = x * mul
@@ -566,6 +570,9 @@ def parse_customers(t, group_hint=""):
       (a) `매출처명|금액|비율` — HD현대일렉트릭(금액까지 적는다)
       (b) `사업부문|주요매출처|매출 비중` — 엘에스일렉트릭(종속회사별로 12벌)
     `판매경로 별 매출비중` 표가 같은 lead 에 섞여 오므로 표 **바로 앞** 제목으로 가른다."""
+    # 앞 문단의 주요매출처 제목이 수주표까지 흘러 들어오는 것을 차단한다.
+    if any(re.search(r"수주잔|기납품|수주총액", c or "") for c in t["cols"]):
+        return None
     lead = t.get("lead") or ""
     good = max((m.end() for m in _CUST_LEAD.finditer(lead)), default=-1)
     bad = max((m.end() for m in _CUST_BAD.finditer(lead)), default=-1)
@@ -674,6 +681,27 @@ def demand_quotes(text, limit=3):
     return out
 
 
+def backlog_disclosure(text):
+    """Preserve an explicit disclosure reason; absence never implies zero."""
+    flat = html.unescape(re.sub(r"<[^>]+>", " ", text or ""))
+    flat = re.sub(r"\s+", " ", flat).strip()
+    for match in list(re.finditer(r"수주\s*상황", flat))[1:]:
+        part = flat[match.end():match.end() + 900].strip(" .:-")
+        compact = re.sub(r"\s+", "", part)
+        status = None
+        if "잔여수주잔고내역이없습니다" in compact:
+            status = "잔여 잔고 없음 명시"
+        elif any(x in compact for x in ("기재하지않", "공시되고있지않", "비공개사항")):
+            status = "수주상황 비공개"
+        elif "기재할만한사항은없" in compact:
+            status = "단기 발주 · 별도 기재 없음"
+        elif compact.startswith("해당사항없음"):
+            status = "해당사항 없음 명시"
+        if status:
+            return {"status": status, "quote": part[:600], "section": "매출 및 수주상황"}
+    return None
+
+
 # ── 수집 ───────────────────────────────────────────────────
 
 _PARENT = re.compile(r"지배회사|당사\s*및\s*그\s*종속회사|및\s*그\s*종속회사")
@@ -753,6 +781,7 @@ def collect_one(rec, quarter, force=False, log=sys.stderr, with_text=True):
         out["note"] = "매출·수주 절 없음"
         return out
     html = fetch_section(found["sales"])
+    out["backlog_disclosure"] = backlog_disclosure(html)
     tables = _headered(_carry_units(parse_tables(html)))
     group_hint = re.sub(r"\s*(주식회사|\(주\)|홀딩스|그룹)\s*", "", rec.get("name", ""))[:4]
     # 수주표로 읽힌 표는 매출표 후보에서 뺀다 — 수주표의 품목 행이 매출실적으로 다시 읽히면
@@ -1113,6 +1142,7 @@ def build(rows, qs):
                               if backlog and base else None),
                 "total_mismatch": bool(mismatch),
                 "backlog": backlog,
+                "backlog_disclosure": d.get("backlog_disclosure"),
                 "backlog_grid": _sum_rows(orows, "closing", kinds=("grid",)) if money else None,
                 # 국내/해외는 **낱 행에서만** 더한다. 일진전기 수주표에는 `합 계|국내` 라는
                 # 총계 행이 또 있어 소계와 함께 더하면 국내 잔고가 두 배가 된다(실측).

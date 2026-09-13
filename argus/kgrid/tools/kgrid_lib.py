@@ -193,7 +193,7 @@ def _rel(depth):
 
 
 def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), tags=(),
-         nav=(), lead=""):
+         nav=(), lead="", body_end=""):
     """공용 셸. depth=0 은 kgrid 루트, 1 은 회사 디렉터리.
 
     외부 스크립트(Chart.js)는 **본문보다 먼저** 둔다 — 본문의 인라인 차트 코드가 그 전역을
@@ -224,6 +224,6 @@ def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), ta
             "수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. "
             "단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. "
             "수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. "
-            "참고용 · 투자조언 아님.</footer>\n</body></html>\n"
+            "참고용 · 투자조언 아님.</footer>\n%s</body></html>\n"
             % (E(title), r, head_extra, E(h1 or title), tagh, navh, crumbh, sh,
-               ('<p class="lead">%s</p>' % lead) if lead else "", body))
+               ('<p class="lead">%s</p>' % lead) if lead else "", body, body_end))

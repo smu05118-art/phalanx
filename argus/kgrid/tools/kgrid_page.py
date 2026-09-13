@@ -511,7 +511,7 @@ def hub(data):
                      "액수보다 <b>커버리지(잔고 ÷ 연매출)</b>가 뜻이 있고, 고객이 전력회사 실명으로 "
                      "나옵니다. 외화로 공시한 표는 환율을 원문에서 얻을 수 없어 <b>환산하지 "
                      "않습니다</b>.",
-                head_extra=scr)
+                body_end=scr)
 
 
 # ── 전력망 단선도 ───────────────────────────────────────────
@@ -655,7 +655,7 @@ def coverage_page(data):
     return page("커버리지 — 한국전력기기", "".join(body), depth=0,
                 h1="커버리지", crumbs=[("⚡ 한국전력기기", "index.html"), ("커버리지", None)],
                 nav=[("허브", "index.html"), ("전력망 계통도", "grid.html")],
-                head_extra="<script>%s</script>" % TABLE_JS,
+                body_end="<script>%s</script>" % TABLE_JS,
                 lead="모집단을 어떻게 세웠고, 무엇을 못 실었는지 적습니다. 빠진 것도 이유와 함께 "
                      "보이는 것이 이 페이지의 목적입니다.")
 
@@ -692,6 +692,15 @@ def company(data, stock):
         notes.append(s["coverage_note"])
     if s.get("total_mismatch"):
         notes.append("수주표 낱 행의 합과 원문 총계가 1% 넘게 어긋납니다 — 원문 표를 확인하세요.")
+    if v and all(v.get(k) is not None for k in ("gross", "delivered", "backlog")):
+        delta = v["gross"] - v["delivered"] - v["backlog"]
+        if abs(delta) > max(1, abs(v["backlog"]) * .01):
+            notes.append("<b>원문 수치 불일치:</b> 수주총액 − 기납품액과 공시 잔고가 맞지 않습니다. "
+                         "잔고는 원문 값을 유지하며 차액을 임의 보정하지 않았습니다.")
+    if v and v.get("backlog_disclosure") and v.get("backlog") is None:
+        disc = v["backlog_disclosure"]
+        notes.append("<b>%s:</b> %s · <a href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">공시 원문</a>"
+                     % (E(disc["status"]), E(disc["quote"]), E(DART % v["rcp"])))
     if s.get("entity"):
         notes.append("수주표는 <b>%s</b> 표에서 읽었습니다(보고서에 종속회사 표가 여러 벌 옵니다)."
                      % E(s["entity"]))
@@ -712,20 +721,27 @@ def company(data, stock):
         body.append('<p class="note" style="margin-top:14px">%s</p>'
                     % "<br>".join("· " + n for n in notes))
 
-    # 잔고 추이·롤포워드
+    # 기말 잔고는 시점 값이다. 누적 기납품액·계약 총액과 같은 축에 섞지 않는다.
     if qs:
-        series = [{"q": q, **{k: c["quarters"][q].get(k) for k in
-                              ("backlog", "opening", "new", "delivered", "gross",
-                               "coverage_years", "cur")}} for q in qs]
-        roll = [x for x in series if x.get("new") is not None or x.get("delivered") is not None]
-        body.append(
-            '<section class="card"><h2>수주잔고 추이 <em>%s — 분기 %d개</em></h2>'
-            '<div class="chart"><canvas id="cbal"></canvas></div>%s</section>'
-            % (E(s["cur"]), len(qs),
-               ('<p class="mut" style="margin-top:8px">신규수주·기납품액을 같이 공시하는 회사라 '
-                '롤포워드(기초+신규−기납품=기말)를 그릴 수 있습니다.</p>' if roll else
-                '<p class="mut" style="margin-top:8px">이 회사 수주표에는 신규수주·기납품액 열이 '
-                '없어 잔고 수준만 그립니다.</p>')))
+        history = []
+        for q in qs:
+            r = c["quarters"][q]
+            link = ('<a href="%s" target="_blank" rel="noopener noreferrer">공시 원문</a>'
+                    % E(DART % r["rcp"])) if r.get("rcp") else "—"
+            history.append('<tr><td class="l">%s</td>%s<td class="l">%s</td></tr>' % (
+                E(q), money_cell(r.get("backlog"), r.get("cur") or "KRW"), link))
+        points = sum(c["quarters"][q].get("backlog") is not None for q in qs)
+        chart_html = ('<div class="chart"><canvas id="cbal" role="img" '
+                      'aria-label="분기말 수주잔고 추이. 아래 표에서 값과 원문을 확인할 수 있습니다."></canvas></div>') if points else (
+                      '<p class="note">수집한 보고서에서 금액 기준 수주잔고를 확인하지 못했습니다. '
+                      '계약 공시 합계로 대신 채우지 않으며 다음 보고서를 다시 확인합니다.</p>')
+        body.append('<section class="card"><h2>수주잔고 추이 <em>확인된 분기 %d / %d</em></h2>%s'
+                    '<p class="mut">분기말 잔고 · 원화는 억원, 외화는 백만 단위. '
+                    '미확인 분기는 선을 끊어 표시합니다. 기납품액·신규수주의 누적 기간은 아래 원문 표를 따릅니다.</p>'
+                    '<details><summary>분기별 수치와 공시 원문</summary><div class="wrap">'
+                    '<table id="backlog-history"><thead><tr><th class="l">분기</th><th>수주잔고</th>'
+                    '<th class="l">근거</th></tr></thead><tbody>%s</tbody></table></div></details></section>'
+                    % (points, len(qs), chart_html, "".join(history)))
         if v and (v.get("segments") or []):
             trs = "".join(
                 '<tr><td class="l">%s</td><td class="l mut">%s</td>%s%s%s%s'
@@ -942,23 +958,24 @@ def company(data, stock):
     scr = ("<script>%s\n%s\n" % (CHART_DEFAULTS_JS, TABLE_JS)
            + "var SER=%s;\n" % json_for_html(
                [{"q": q, "backlog": c["quarters"][q].get("backlog"),
-                 "new": c["quarters"][q].get("new"),
-                 "delivered": c["quarters"][q].get("delivered"),
-                 "cov": c["quarters"][q].get("coverage_years")} for q in qs])
+                 "cur": c["quarters"][q].get("cur") or "KRW"} for q in qs])
            + r"""
 (function(){
   var el=document.getElementById('cbal'); if(!el||!window.Chart||!SER.length) return;
-  var css=getComputedStyle(document.documentElement);
-  var s1=css.getPropertyValue('--s1').trim(), s3=css.getPropertyValue('--s3').trim(),
-      s2=css.getPropertyValue('--s2').trim();
-  var ds=[{type:'bar',label:'수주잔고',data:SER.map(function(r){return r.backlog;}),backgroundColor:s1,order:3}];
-  if(SER.some(function(r){return r['new']!=null;}))
-    ds.push({type:'line',label:'당기 신규수주',data:SER.map(function(r){return r['new'];}),borderColor:s3,order:1});
-  if(SER.some(function(r){return r.delivered!=null;}))
-    ds.push({type:'line',label:'기납품액',data:SER.map(function(r){return r.delivered;}),borderColor:s2,order:2});
-  new Chart(el,{data:{labels:SER.map(function(r){return r.q;}),datasets:ds},
-    options:{scales:{y:{beginAtZero:true,ticks:{callback:function(v){return (v/100).toLocaleString();}},
-      title:{display:true,text:'억원(원화 공시) · 외화는 백만 단위'}}}}});
+  var colors=['#3987e5','#d95926','#199e70'];
+  var currencies=Array.from(new Set(SER.filter(r=>r.backlog!=null).map(r=>r.cur)));
+  var scales={};
+  var ds=currencies.map(function(cur,i){
+    var unit=cur==='KRW'?'억원':'백만 '+cur, id='y'+i;
+    scales[id]={type:'linear',position:i?'right':'left',beginAtZero:true,
+      grid:{drawOnChartArea:!i},title:{display:true,text:unit},
+      ticks:{callback:v=>v.toLocaleString()}};
+    return {label:'수주잔고 · '+unit,data:SER.map(r=>r.cur===cur&&r.backlog!=null?r.backlog/(cur==='KRW'?100:1):null),
+      borderColor:colors[i%3],backgroundColor:colors[i%3]+'22',yAxisID:id,
+      pointRadius:4,pointHoverRadius:6,borderWidth:2,fill:true,spanGaps:false,tension:0};
+  });
+  new Chart(el,{type:'line',data:{labels:SER.map(r=>r.q),datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,animation:window.matchMedia('(prefers-reduced-motion: reduce)').matches?false:{duration:240},scales:scales}});
 })();
 </script>""")
     return page("%s — 한국전력기기" % s["name"], "".join(body), depth=1,
@@ -969,7 +986,7 @@ def company(data, stock):
                 crumbs=[("⚡ 한국전력기기", "../index.html"), ("회사", None), (s["name"], None)],
                 nav=[("허브", "../index.html"), ("단선도", "../grid.html"),
                      ("커버리지", "../coverage.html")],
-                head_extra=scr,
+                body_end=scr,
                 lead=E(", ".join(PRODUCT_LABEL[k] for k in s["products"])
                        or s["product"][:80] or "제품군 미분류")
                      + (" — " + E(s["reason"][:120]) if s["reason"] else ""))

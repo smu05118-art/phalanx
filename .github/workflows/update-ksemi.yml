@@ -19,6 +19,7 @@ permissions:
   contents: write
 concurrency:
   group: kship-dart               # kce·kship 과 같은 그룹 — DART 는 IP 당 프로세스 하나
+  queue: max  # Preserve every waiting industry refresh (up to 100).
   cancel-in-progress: false
 env:
   PYTHONDONTWRITEBYTECODE: "1"
