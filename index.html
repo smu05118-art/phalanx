@@ -229,7 +229,20 @@ if(_t==='light')document.documentElement.dataset.theme='light';}catch(e){}</scri
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="ui/patch.css">
-<link rel="preload" as="script" href="chartjs_bundle.js">
+<style>/* Scoped report explorer. Auto theme inherits either Phalanx or chain tokens. */
+.lux-grailed{--lg-bg:var(--s1,var(--panel,#101820));--lg-raised:var(--s2,var(--panel2,#18232a));--lg-ink:var(--tx,var(--ink,#e6edf3));--lg-dim:var(--dim,#9caab6);--lg-border:var(--bd,#35434a);--lg-accent:#7bd3b5;--lg-warn:#f5bb82;color:var(--lg-ink);background:var(--lg-bg);border:1px solid var(--lg-border);border-radius:14px;padding:26px;margin:16px 0;font:13px/1.65 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;min-width:0;max-width:100%;isolation:isolate}
+.lux-grailed[data-theme=light],:root[data-theme=light] .lux-grailed[data-theme=auto]{--lg-bg:#fff;--lg-raised:#f3f6f2;--lg-ink:#23362f;--lg-dim:#536a60;--lg-border:#d3dfd7;--lg-accent:#216348;--lg-warn:#975528;color-scheme:light}
+.lux-grailed[data-theme=dark]{--lg-bg:#101820;--lg-raised:#18232a;--lg-ink:#e6edf3;--lg-dim:#9caab6;--lg-border:#35434a;--lg-accent:#7bd3b5;--lg-warn:#f5bb82;color-scheme:dark}
+.lux-grailed *{box-sizing:border-box}.lux-grailed [hidden]{display:none!important}.lux-grailed h3,.lux-grailed h4,.lux-grailed h5,.lux-grailed p{margin:0}.lux-grailed a{color:var(--lg-accent);text-decoration:underline;text-underline-offset:3px}.lux-grailed .lg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding-bottom:20px}.lux-grailed .lg-eyebrow{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--lg-accent);margin-bottom:6px}.lux-grailed .lg-title{font-size:26px;letter-spacing:-.04em;line-height:1.3;color:var(--lg-ink)}.lux-grailed .lg-note{font-size:12px;color:var(--lg-dim);line-height:1.7;margin-top:8px;overflow-wrap:anywhere}.lux-grailed .lg-chip{display:inline-block;border:1px solid var(--lg-border);border-radius:99px;padding:4px 11px;flex-shrink:0;font-size:11px;color:var(--lg-dim)}
+.lux-grailed .lg-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-block:1px solid var(--lg-border);margin:0 0 24px}.lux-grailed .lg-stats>div{padding:15px 18px;border-right:1px solid var(--lg-border)}.lux-grailed .lg-stats>div:first-child{padding-left:0}.lux-grailed .lg-stats>div:last-child{border-right:0}.lux-grailed .lg-stats strong{display:block;font-size:28px;line-height:1.3;font-weight:550;font-variant-numeric:tabular-nums;color:var(--lg-ink)}.lux-grailed .lg-stats span{font-size:11px;color:var(--lg-dim)}
+.lux-grailed button,.lux-grailed input,.lux-grailed select{font:inherit}.lux-grailed button{cursor:pointer}.lux-grailed button:focus-visible,.lux-grailed input:focus-visible,.lux-grailed select:focus-visible,.lux-grailed a:focus-visible,.lux-grailed summary:focus-visible{outline:2px solid var(--lg-accent);outline-offset:3px}.lux-grailed .lg-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.lux-grailed .lg-tabs button{padding:8px 13px;background:transparent;color:var(--lg-dim);border:1px solid var(--lg-border);border-radius:7px;font-size:12px;white-space:nowrap}.lux-grailed .lg-tabs button[aria-pressed=true]{background:var(--lg-accent);border-color:var(--lg-accent);color:var(--lg-bg);font-weight:750}.lux-grailed .lg-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-bottom:17px}.lux-grailed .lg-controls label{display:grid;gap:4px;font-size:11px;color:var(--lg-dim)}.lux-grailed .lg-controls select,.lux-grailed .lg-controls input{border:1px solid var(--lg-border);background:var(--lg-raised);color:var(--lg-ink);border-radius:6px;padding:8px 10px;min-height:36px;max-width:100%}.lux-grailed .lg-controls input{min-width:220px}.lux-grailed .lg-controls select:disabled{opacity:.55}.lux-grailed .lg-links{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline}.lux-grailed .lg-context{padding:12px 16px;border:1px solid var(--lg-border);background:var(--lg-raised);border-radius:8px;margin-bottom:18px}.lux-grailed .lg-context>.lg-note:first-child{margin-top:0}.lux-grailed .lg-warning{color:var(--lg-warn);padding-top:5px}.lux-grailed .lg-count{font-size:11px;color:var(--lg-dim);margin-bottom:8px}
+.lux-grailed .lg-table-wrap{overflow:auto;max-height:440px;border:1px solid var(--lg-border);border-radius:8px;max-width:100%;overscroll-behavior:contain}.lux-grailed table{width:100%;border-collapse:collapse;font-size:12px;text-align:left;table-layout:auto}.lux-grailed th,.lux-grailed td{padding:10px 12px;border-bottom:1px solid var(--lg-border);white-space:nowrap;font-size:12px;color:var(--lg-ink)}.lux-grailed th{position:sticky;top:0;background:var(--lg-raised);font-size:11px;font-weight:600;color:var(--lg-dim);z-index:1}.lux-grailed .lg-num{text-align:right;font-variant-numeric:tabular-nums}.lux-grailed .lg-name{border:0;background:none;padding:1px 0;color:var(--lg-accent);text-align:left;font-weight:600}.lux-grailed .lg-selected{background:var(--lg-raised)}.lux-grailed .lg-cell-note{display:block;font-size:10px;font-weight:400;color:var(--lg-dim)}.lux-grailed .lg-badge{display:inline-block;padding:1px 6px;border:1px solid var(--lg-border);border-radius:4px;font-size:10px}.lux-grailed .lg-anomaly{color:var(--lg-warn)}.lux-grailed .lg-empty{padding:24px;background:var(--lg-raised);border-radius:8px;text-align:center}
+.lux-grailed .lg-detail{border-top:1px solid var(--lg-border);margin-top:22px;padding-top:20px}.lux-grailed .lg-detail-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.lux-grailed h4{font-size:19px;line-height:1.4;color:var(--lg-ink)}.lux-grailed h5{font-size:12px;margin:16px 0 8px;color:var(--lg-dim);font-weight:600}.lux-grailed .lg-history{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:8px}.lux-grailed .lg-point{border:1px solid var(--lg-border);border-radius:7px;padding:10px;min-width:0}.lux-grailed .lg-point>span{font-size:11px;color:var(--lg-dim)}.lux-grailed .lg-point>strong{display:block;font-weight:550;font-size:21px;font-variant-numeric:tabular-nums}.lux-grailed .lg-point>small,.lux-grailed .lg-point a{display:block;font-size:10px;color:var(--lg-dim)}.lux-grailed .lg-point a{color:var(--lg-accent)}.lux-grailed .lg-missing{border-style:dashed}.lux-grailed .lg-missing strong{color:var(--lg-dim)}.lux-grailed .lg-revision{margin-top:7px;padding-top:7px;border-top:1px dashed var(--lg-border);font-size:10px;color:var(--lg-warn)}.lux-grailed .lg-audit{margin-top:24px;border-top:1px solid var(--lg-border);padding-top:14px}.lux-grailed summary{cursor:pointer;font-size:12px;font-weight:650;color:var(--lg-dim)}.lux-grailed .lg-break{margin:14px 0;padding:10px 14px;background:var(--lg-raised);border-radius:6px}.lux-grailed .lg-break>strong{font-size:11px;color:var(--lg-warn)}.lux-grailed .lg-break .lg-note{margin-top:4px}
+.lux-grailed .lg-original{margin:4px 0 8px}.lux-grailed .lg-original summary{font-size:10px;font-weight:500}.lux-grailed .lg-original code{font-size:10px;color:var(--lg-dim)}.lux-grailed .lg-scatter{padding:16px 18px 8px;border:1px solid var(--lg-border);border-radius:8px;margin-bottom:14px;background:var(--lg-raised)}.lux-grailed .lg-scatter h4{font-size:15px}.lux-grailed .lg-scatter svg{display:block;width:100%;height:auto;max-height:350px;margin-top:10px;overflow:visible}.lux-grailed .lg-gridline{stroke:var(--lg-border);stroke-width:1}.lux-grailed .lg-axis{font-size:11px;fill:var(--lg-dim)}.lux-grailed .lg-axis-title{font-size:11px;font-weight:600;fill:var(--lg-dim)}.lux-grailed .lg-dot{fill:var(--lg-accent);stroke:var(--lg-bg);stroke-width:2;opacity:.72;cursor:pointer}.lux-grailed .lg-dot-selected,.lux-grailed .lg-dot:focus-visible{fill:var(--lg-warn);stroke:var(--lg-ink);stroke-width:2.5;opacity:1;outline:none}.lux-grailed .lg-point-label{font-size:12px;font-weight:600;fill:var(--lg-ink);paint-order:stroke;stroke:var(--lg-raised);stroke-width:4px;stroke-linejoin:round}
+@media(max-width:700px){.lux-grailed{padding:16px;border-radius:10px}.lux-grailed .lg-head{flex-direction:column;gap:10px}.lux-grailed .lg-title{font-size:23px}.lux-grailed .lg-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.lux-grailed .lg-stats>div{padding:12px!important}.lux-grailed .lg-stats>div:nth-child(2){border-right:0}.lux-grailed .lg-stats>div:nth-child(-n+2){border-bottom:1px solid var(--lg-border)}.lux-grailed .lg-stats strong{font-size:25px}.lux-grailed .lg-tabs button{font-size:11px;padding:8px 10px;flex:1 0 auto}.lux-grailed .lg-controls{gap:10px}.lux-grailed .lg-controls label{flex:1 1 125px;min-width:0}.lux-grailed .lg-controls input{min-width:0;width:100%}.lux-grailed .lg-context{padding:10px 12px}.lux-grailed .lg-history{grid-template-columns:repeat(2,minmax(0,1fr))}.lux-grailed td,.lux-grailed th{padding:9px 10px}.lux-grailed .lg-chip{white-space:normal}}
+@media(prefers-reduced-motion:reduce){.lux-grailed *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+@media(max-width:520px){.lux-grailed .lg-scatter .lg-axis,.lux-grailed .lg-scatter .lg-axis-title,.lux-grailed .lg-scatter .lg-point-label{font-size:24px}}
+</style><link rel="preload" as="script" href="chartjs_bundle.js">
 <link rel="preload" as="script" href="manifest.js">
 <link rel="preload" as="script" href="search_index.js">
 <script>(function(){try{var m=(location.hash.match(/[#&]r=([A-Z]+)/)||[])[1],p='';try{var j=JSON.parse(localStorage.getItem('phalanx_prefs_v1')||'{}');p=(j&&typeof j.region==='string')?j.region:''}catch(e){}var r=m||p||'JP';if(!/^[A-Z]{2,4}$/.test(r))r='JP';var l=document.createElement('link');l.rel='preload';l.as='script';l.href='data_'+r.toLowerCase()+'.js';document.head.appendChild(l);}catch(e){}})();</script>
@@ -4216,6 +4229,344 @@ function gMountCharts(G){
     const ds=tops.map(t=>({type:'line',label:t.c.name,data:gArr(D.x,DY[t.c.co_key]),borderColor:t.c.color,borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true}));
     gChart(dm,D.x,ds,v=>v.toFixed(1)+'億'); }
 }
+/* Shared dependency-free Grailed report explorer, payload schema_version 1.
+ * LuxGrailed.render(Element, payload, options) => cleanup()
+ * options: title (default 'Grailed 리포트 관측'), initialPanel (panel id or
+ * 'comparison'), initialPeriod (period or 'all'), theme ('auto'|'dark'|'light').
+ * All writes stay inside container. Text uses textContent; source URLs permit
+ * only absolute http(s). Calling render again cleans up its previous instance.
+ */
+(function (global) {
+  'use strict';
+  const instances = new WeakMap();
+  const fmt = new Intl.NumberFormat('ko-KR', {maximumFractionDigits: 2});
+  const statuses = {
+    match: '일치', mismatch: '불일치', prior_rank_missing: '전기 순위 없음',
+    prior_period_unavailable: '전기 자료 없음', not_reported: '발표 변동 없음',
+    continued: '연속 관측', reentry_in_published_list: '목록 재관측',
+    first_seen_in_published_list: '목록 첫 관측', frequency_or_construction_break: '주기·구성 단절'
+  };
+  const breakLabels = {
+    no_standalone_edition: '독립 보고서 없음 · 2018 순위는 2019판에 수록된 전년 열입니다.',
+    restatement: '2019 순위는 최초판과 2020판 재수록 값이 다릅니다. 판본을 선택해 비교할 수 있습니다.',
+    different_construction: '2017년은 미리 고른 30개 브랜드의 분기 순위입니다. 이후 연간 목록과 구성이 다릅니다.',
+    depth_and_frequency_change: '2021년 1분기는 Top 10만 공개됐습니다. 11~30위를 이탈로 판정하지 않습니다.',
+    series_suspended: '2021~2023 연간 순위는 없습니다. 2021년 1분기 자료와 구분합니다.',
+    rebrand_and_label_change: '2024년에 보고서가 재개되며 이름과 순위 표기가 바뀌었습니다.',
+    inconsistent_rank_deltas: '발표된 순위 변동과 이전 목록으로 계산한 변동에 불일치가 있습니다. 두 값을 함께 보존합니다.',
+    panel_ordering_anomaly: '급성장 패널의 발표 순서와 증가율 크기가 일부 다릅니다. 정렬 기준을 선택할 수 있습니다.'
+  };
+  const sign = n => n == null ? '—' : (n > 0 ? '+' : '') + fmt.format(n);
+  const valueText = row => row.value == null ? '—' : fmt.format(row.value) + (row.unit === 'pct' ? '%' : '위');
+  function safeUrl(value) {
+    try {
+      if (typeof value !== 'string' || /[\x00-\x20]/.test(value)) return null;
+      const u = new URL(value);
+      return /^(https?:)$/.test(u.protocol) && !u.username && !u.password ? u.href : null;
+    } catch (_) { return null; }
+  }
+  function render(container, payload, options) {
+    if (!container || container.nodeType !== 1) throw new TypeError('LuxGrailed requires a container Element');
+    if (instances.has(container)) instances.get(container)();
+    options = options || {};
+    const doc = container.ownerDocument;
+    const root = doc.createElement('section');
+    root.className = 'lux-grailed';
+    root.dataset.theme = ['light', 'dark'].includes(options.theme) ? options.theme : 'auto';
+    root.setAttribute('aria-label', 'Grailed 리포트 탐색');
+    container.replaceChildren(root);
+    let disposed = false;
+    const cleanup = () => {
+      disposed = true;
+      root.remove();
+      if (instances.get(container) === cleanup) instances.delete(container);
+    };
+    instances.set(container, cleanup);
+    function el(tag, cls, text, parent) {
+      const node = doc.createElement(tag);
+      if (cls) node.className = cls;
+      if (text != null) node.textContent = String(text);
+      if (parent) parent.append(node);
+      return node;
+    }
+    function link(parent, text, url) {
+      const href = safeUrl(url);
+      if (!href) return;
+      const a = el('a', '', text, parent);
+      a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    }
+    function message(parent, text, kind) { return el('p', 'lg-note' + (kind ? ' lg-' + kind : ''), text, parent); }
+    function breakRecord(parent, b, compact) {
+      message(parent, breakLabels[b.type] || '이 기간에 측정 기준 또는 자료 범위의 변경이 기록되어 있습니다.', compact ? 'warning' : '');
+      const original = el('details', 'lg-original', null, parent);
+      el('summary', '', '원문 기록 · ' + b.period, original);
+      el('code', '', b.type, original);
+      message(original, b.detail);
+    }
+    if (!payload || payload.schema_version !== 1 || !Array.isArray(payload.panels) || payload.validation_status === 'unavailable' || !payload.panels.length) {
+      message(root, payload?.unavailable_reason || 'Grailed 리포트 자료를 불러오지 못했습니다. 다음 데이터 갱신 후 다시 확인하세요.', 'empty');
+      return cleanup;
+    }
+    const panels = payload.panels;
+    const saved = options.state || {};
+    options = {...options, initialPanel: saved.panel || options.initialPanel,
+      initialPeriod: saved.period || options.initialPeriod};
+    const state = {
+      panel: panels.some(p => p.id === options.initialPanel) || options.initialPanel === 'comparison' ? options.initialPanel : panels[0]?.id,
+      period: options.initialPeriod === 'all' || (payload.periods || []).some(p => p.period === options.initialPeriod) ? options.initialPeriod : payload.latest_period,
+      query: typeof saved.query === 'string' ? saved.query : '',
+      order: ['published','value','name'].includes(saved.order) ? saved.order : 'published',
+      vintage: saved.vintage === 'restated' && options.initialPeriod === '2019' ? 'restated' : 'first_published',
+      selected: saved.selected || null
+    };
+    const head = el('div', 'lg-head', null, root);
+    const heading = el('div', '', null, head);
+    el('div', 'lg-eyebrow', 'GRAILED · MARKETPLACE REPORTS', heading);
+    el('h3', 'lg-title', options.title || 'Grailed 리포트 관측', heading);
+    message(heading, '거래 규모, 성장, 검색을 나란히 읽고 발표값의 근거까지 확인합니다.');
+    el('span', 'lg-chip', (payload.latest_period || '기간 미확보') + '년까지의 회고 자료', head);
+    const stats = el('div', 'lg-stats', null, root);
+    [
+      [payload.stats?.observations, '전체 저장 관측'],
+      [payload.stats?.panel_count, '측정 패널 · 출처 1개'],
+      [payload.stats?.latest_primary_count, '최신 거래 규모 목록'],
+      [payload.stats?.latest_mismatched_deltas + ' / ' + payload.stats?.latest_comparable_deltas, '최신 발표·계산 변동 불일치']
+    ].forEach(pair => { const box = el('div', '', null, stats); el('strong', '', pair[0] ?? '—', box); el('span', '', pair[1], box); });
+    const nav = el('div', 'lg-tabs', null, root); nav.setAttribute('aria-label', '관측 패널');
+    const tabButtons = new Map();
+    panels.map(p => [p.id, p.label]).concat([['comparison', '관심 × 성장']]).forEach(([id, label]) => {
+      const b = el('button', '', label, nav); b.type = 'button'; b.dataset.panel = id;
+      b.addEventListener('click', () => { state.panel = id; state.selected = null; state.vintage = 'first_published'; update(); });
+      tabButtons.set(id, b);
+    });
+    const controls = el('div', 'lg-controls', null, root);
+    function control(label, type) {
+      const l = el('label', '', label, controls);
+      const field = el(type, '', null, l);
+      field.setAttribute('aria-label', label === '2019 순위 판본' ? '2019 판본' : label);
+      return field;
+    }
+    function option(select, val, text) { const opt = el('option', '', text, select); opt.value = val; }
+    const periodSelect = control('데이터 기간', 'select');
+    (payload.periods || []).slice().reverse().forEach(p => option(periodSelect, p.period, p.period));
+    option(periodSelect, 'all', '전체 이력');
+    periodSelect.value = state.period;
+    periodSelect.addEventListener('change', () => { state.period = periodSelect.value; state.selected = null; state.vintage = 'first_published'; update(); });
+    const search = control('저장 이름 검색', 'input');
+    search.type = 'search'; search.placeholder = '브랜드 · 인물 · 검색어';
+    search.value = state.query;
+    search.addEventListener('input', () => { state.query = search.value; update(); });
+    const order = control('정렬', 'select');
+    option(order, 'published', '발표 순서'); option(order, 'value', '값으로 정렬'); option(order, 'name', '이름순');
+    order.value = state.order;
+    order.addEventListener('change', () => { state.order = order.value; update(); });
+    const vintage = control('2019 순위 판본', 'select');
+    option(vintage, 'first_published', '최초 발표 · 2019-12-30');
+    option(vintage, 'restated', '2020판 재수록 수정치');
+    vintage.addEventListener('change', () => { state.vintage = vintage.value; state.selected = null; update(); });
+    const context = el('div', 'lg-context', null, root);
+    const result = el('div', 'lg-result', null, root);
+    const detail = el('div', 'lg-detail', null, root); detail.setAttribute('aria-live', 'polite');
+    const audit = el('details', 'lg-audit', null, root);
+    el('summary', '', '자료 범위 · 판본 · 단절 기록', audit);
+    (payload.limitations || []).forEach(t => message(audit, t));
+    (payload.breaks || []).forEach(b => {
+      const row = el('div', 'lg-break', null, audit);
+      el('strong', '', b.period, row);
+      breakRecord(row, b, false);
+    });
+    const method = el('details', '', null, audit);
+    el('summary', '', '저장본의 전체 방법론', method);
+    message(method, payload.method_note);
+    function rowsForPanel(panel) {
+      if (!panel) return [];
+      let rows = panel.observations || [];
+      if (panel.id === 'top_designers_rank' && state.period === '2019' && state.vintage === 'restated') rows = payload.restatements || [];
+      return rows.filter(r => (state.period === 'all' || r.data_period === state.period));
+    }
+    function addTable(parent, columns, rows, makeCells) {
+      const wrap = el('div', 'lg-table-wrap', null, parent);
+      wrap.tabIndex = 0; wrap.setAttribute('role', 'region'); wrap.setAttribute('aria-label', '관측 표 · 가로 스크롤 가능');
+      const table = el('table', '', null, wrap);
+      const tr = el('tr', '', null, el('thead', '', null, table));
+      columns.forEach(c => { const th = el('th', '', c, tr); th.scope = 'col'; });
+      const tbody = el('tbody', '', null, table);
+      rows.forEach(r => { const row = el('tr', '', null, tbody); row.dataset.name = r.stored_name; row.dataset.period = r.data_period; makeCells(row, r); });
+      return table;
+    }
+    function numberCell(row, text, cls) { return el('td', 'lg-num' + (cls ? ' ' + cls : ''), text, row); }
+    function selectRow(observation) { state.selected = observation; updateDetail(); }
+    function nameCell(row, r) {
+      const td = el('td', '', null, row); const b = el('button', 'lg-name', r.stored_name, td); b.type = 'button';
+      b.setAttribute('aria-label', r.stored_name + ' · ' + r.data_period + ' 이력 보기');
+      b.addEventListener('click', () => selectRow(r));
+    }
+    function scatter(parent, rows) {
+      // A single annual cohort only. Values are plotted directly in percent;
+      // the two panels share one source and are never combined into a score.
+      if (new Set(rows.map(r => r.data_period)).size !== 1) {
+        message(parent, '한 연도를 선택하면 관심과 성장의 분포를 볼 수 있습니다.');
+        return;
+      }
+      const box = el('div', 'lg-scatter', null, parent);
+      el('h4', '', rows[0].data_period + ' · 관심과 성장의 위치', box);
+      message(box, '가로: 검색량 증가율 · 세로: 매출 증가율 · 단위 % · Grailed 단일 출처. 점을 선택하면 이력을 확인합니다.');
+      const ns = 'http://www.w3.org/2000/svg';
+      const svg = doc.createElementNS(ns, 'svg');
+      svg.setAttribute('viewBox', '0 0 660 320');
+      svg.setAttribute('role', 'group'); svg.setAttribute('aria-label', '검색량 증가율과 매출 증가율 산점도, 단위 퍼센트');
+      box.append(svg);
+      function shape(tag, attrs, text) {
+        const node = doc.createElementNS(ns, tag);
+        Object.entries(attrs || {}).forEach(([k,v]) => node.setAttribute(k, String(v)));
+        if (text != null) node.textContent = text;
+        svg.append(node); return node;
+      }
+      const values = rows.filter(r => Number.isFinite(r.search_growth_pct) && Number.isFinite(r.sales_growth_pct));
+      if (!values.length) { svg.remove(); message(box, '두 증가율을 모두 확보한 관측이 없습니다.'); return; }
+      const xMin = Math.min(0, ...values.map(r => r.search_growth_pct));
+      const yMin = Math.min(0, ...values.map(r => r.sales_growth_pct));
+      const xMax = Math.max(1, ...values.map(r => r.search_growth_pct));
+      const yMax = Math.max(1, ...values.map(r => r.sales_growth_pct));
+      const xTop = xMax + (xMax - xMin) * .12, yTop = yMax + (yMax - yMin) * .15;
+      const left = 62, top = 24, width = 566, height = 234;
+      const x = v => left + (v - xMin) / (xTop - xMin) * width;
+      const y = v => top + height - (v - yMin) / (yTop - yMin) * height;
+      for (let i = 0; i <= 4; i++) {
+        const xv = xMin + (xTop - xMin) * i / 4, yv = yMin + (yTop - yMin) * i / 4;
+        shape('line', {x1:x(xv), x2:x(xv), y1:top, y2:top+height, class:'lg-gridline'});
+        shape('line', {x1:left, x2:left+width, y1:y(yv), y2:y(yv), class:'lg-gridline'});
+        shape('text', {x:x(xv), y:top+height+20, 'text-anchor':'middle', class:'lg-axis'}, fmt.format(xv));
+        shape('text', {x:left-9, y:y(yv)+4, 'text-anchor':'end', class:'lg-axis'}, fmt.format(yv));
+      }
+      shape('text', {x:left, y:13, class:'lg-axis-title'}, '매출 증가율 (%)');
+      shape('text', {x:left+width/2, y:310, 'text-anchor':'middle', class:'lg-axis-title'}, '검색량 증가율 (%)');
+      const activeLabel = shape('text', {x:left, y:top+18, class:'lg-point-label'});
+      activeLabel.dataset.pointLabel = 'true';
+      values.forEach(r => {
+        const point = shape('circle', {cx:x(r.search_growth_pct), cy:y(r.sales_growth_pct), r:6.5, class:'lg-dot', tabindex:0, role:'button',
+          'aria-label':r.stored_name + ', 검색 증가율 ' + r.search_growth_pct + '%, 매출 증가율 ' + r.sales_growth_pct + '%, 이력 보기'});
+        point.dataset.name = r.stored_name; point.dataset.period = r.data_period;
+        const title = doc.createElementNS(ns, 'title'); title.textContent = r.stored_name + ' · 검색 ' + sign(r.search_growth_pct) + '% · 매출 ' + sign(r.sales_growth_pct) + '%'; point.append(title);
+        const activate = () => selectRow(r);
+        point.addEventListener('click', activate);
+        point.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); } });
+      });
+    }
+    function updateDetail() {
+      if (typeof options.onStateChange === 'function') options.onStateChange({...state});
+      detail.replaceChildren();
+      const row = state.selected;
+      result.querySelectorAll('tbody tr').forEach(tr => tr.classList.toggle('lg-selected', !!row && tr.dataset.name === row.stored_name && tr.dataset.period === row.data_period));
+      result.querySelectorAll('.lg-dot').forEach(dot => {
+        const selected = !!row && dot.dataset.name === row.stored_name && dot.dataset.period === row.data_period;
+        dot.classList.toggle('lg-dot-selected', selected); dot.setAttribute('aria-pressed', String(selected));
+      });
+      const activeLabel = result.querySelector('[data-point-label]');
+      if (activeLabel) activeLabel.textContent = row ? '선택: ' + row.stored_name : '';
+      if (!row) { message(detail, '이름을 선택하면 전체 관측 이력과 출처가 표시됩니다.'); return; }
+      const titleLine = el('div', 'lg-detail-head', null, detail);
+      el('h4', '', row.stored_name, titleLine);
+      el('span', 'lg-chip', '저장본 정규화 이름', titleLine);
+      const selectedMeta = el('div', 'lg-note lg-links', null, detail);
+      el('span', '', '선택 관측 ' + row.data_period + ' · ' + (row.value == null ? '관심 × 성장' : valueText(row)) +
+        ' · 공개 ' + (row.published_at || row.available_at || '미확보') + (row.vintage === 'restated' ? ' · 수정판' : ''), selectedMeta);
+      link(selectedMeta, '발표 페이지 ↗', row.source_url); link(selectedMeta, '보존본 ↗', row.archive_url);
+      const current = panels.find(p => p.id === state.panel);
+      const relatedPanels = current ? [current] : panels.filter(p => p.id.endsWith('growth_pct'));
+      relatedPanels.forEach(panel => {
+        el('h5', '', panel.label + ' · 저장 이력', detail);
+        const history = el('div', 'lg-history', null, detail);
+        panel.periods.forEach(period => {
+          const obs = panel.observations.find(r => r.stored_name === row.stored_name && r.data_period === period);
+          const card = el('div', 'lg-point' + (!obs ? ' lg-missing' : ''), null, history);
+          el('span', '', period, card);
+          el('strong', '', obs ? valueText(obs) : '—', card);
+          el('small', '', obs ? '공개 ' + (obs.published_at || '미확보') : '저장 관측 없음', card);
+          if (obs) link(card, '출처 ↗', obs.source_url);
+          if (panel.id === 'top_designers_rank') {
+            const revision = (payload.restatements || []).find(r => r.stored_name === row.stored_name && r.data_period === period);
+            if (revision) {
+              const rev = el('div', 'lg-revision', '수정 ' + valueText(revision) + ' · 공개 ' + (revision.published_at || '미확보'), card);
+              link(rev, '수정판 ↗', revision.source_url);
+            }
+          }
+        });
+      });
+      message(detail, '공백은 저장 관측이 없다는 뜻입니다. 공개 목록 밖 순위를 수치로 채우지 않으며, 2021~2023 연간 자료와 분기 자료를 이어 붙이지 않습니다.');
+    }
+    function update() {
+      if (disposed) return;
+      tabButtons.forEach((button, id) => button.setAttribute('aria-pressed', String(id === state.panel)));
+      vintage.parentElement.hidden = !(state.panel === 'top_designers_rank' && state.period === '2019');
+      vintage.value = state.vintage;
+      const comparison = state.panel === 'comparison';
+      order.disabled = comparison;
+      context.replaceChildren(); result.replaceChildren();
+      const panel = panels.find(p => p.id === state.panel);
+      message(context, comparison ? '같은 연도·같은 저장 이름의 검색 증가율과 매출 증가율 교집합입니다. 동일 출처 1개의 회고 관측이며 독립 확인이나 현재 수요 신호가 아닙니다.' : panel?.description || '관측 패널 없음');
+      const meta = (payload.periods || []).find(p => p.period === state.period);
+      if (meta) {
+        const line = el('div', 'lg-note lg-links', null, context);
+        el('span', '', '데이터 ' + meta.period + ' · 최초 공개 ' + (meta.published_at || '미확보') +
+          (state.panel === 'top_designers_rank' ? ' · 공개 범위 Top ' + (meta.primary_depth || '미확보') : ''), line);
+        link(line, '발표 페이지 ↗', meta.source_url); link(line, '보존본 ↗', meta.archive_url);
+        (meta.breaks || []).forEach(b => breakRecord(context, b, true));
+      } else if (state.period === 'all') message(context, '전체 이력: 각 행의 데이터 기간과 실제 공개일을 함께 확인하세요. 서로 다른 기간을 하나의 순위로 합산하지 않습니다.');
+      if (state.vintage === 'restated') {
+        const rev = (payload.restatements || []).find(r => r.data_period === state.period);
+        const line = message(context, '선택 판본: 2020판의 2019 수정치 · 공개 ' + (rev?.published_at || '미확보') + '. 당시 최초판과 별도 보존합니다.', 'warning');
+        if (rev) link(line, ' 수정판 ↗', rev.source_url);
+      }
+      const all = comparison ? (payload.same_source_comparisons || []).filter(r => state.period === 'all' || r.data_period === state.period) : rowsForPanel(panel);
+      const query = state.query.trim().toLocaleLowerCase();
+      const rows = all.filter(r => r.stored_name.toLocaleLowerCase().includes(query));
+      rows.sort((a, b) => {
+        if (state.period === 'all' && a.data_period !== b.data_period) return b.data_period.localeCompare(a.data_period);
+        if (state.order === 'name') return a.stored_name.localeCompare(b.stored_name, 'en');
+        const av = comparison ? -a.search_growth_pct : state.order === 'published' ? (a.published_rank ?? Infinity) : panel.unit === 'rank' ? a.value : -a.value;
+        const bv = comparison ? -b.search_growth_pct : state.order === 'published' ? (b.published_rank ?? Infinity) : panel.unit === 'rank' ? b.value : -b.value;
+        return av - bv || a.stored_name.localeCompare(b.stored_name, 'en');
+      });
+      el('div', 'lg-count', (state.period === 'all' ? '전체 이력' : state.period) + ' · ' + rows.length + ' / ' + all.length + '개 관측', result).setAttribute('role', 'status');
+      if (!rows.length) {
+        message(result, query ? '이 조건에 맞는 저장 관측이 없습니다. 검색어나 데이터 기간을 바꿔보세요.' : '이 기간에는 이 측정치가 저장되어 있지 않습니다. 다른 기간·패널 또는 전체 이력을 선택하세요.', 'empty');
+        state.selected = null; updateDetail(); return;
+      }
+      if (comparison) {
+        scatter(result, rows);
+        addTable(result, ['이름', '데이터 기간', '매출 증가율', '검색 증가율', '공개일'], rows, (tr, r) => {
+          nameCell(tr, r); el('td', '', r.data_period, tr); numberCell(tr, sign(r.sales_growth_pct) + '%');
+          numberCell(tr, sign(r.search_growth_pct) + '%'); el('td', '', r.available_at || '미확보', tr);
+        });
+      } else {
+        const primary = panel.id === 'top_designers_rank';
+        const columns = ['이름', '기간', panel.unit === 'rank' ? '저장 순위' : '저장 증가율', '발표 순서'];
+        if (primary) columns.push('계산 변동', '발표 변동', '비교 상태');
+        columns.push('공개일');
+        addTable(result, columns, rows, (tr, r) => {
+          nameCell(tr, r); el('td', '', r.data_period, tr); numberCell(tr, valueText(r));
+          numberCell(tr, r.published_rank == null ? '—' : r.published_rank + '위');
+          if (primary) {
+            const td = numberCell(tr, sign(r.computed_delta));
+            if (r.computed_delta != null) el('small', 'lg-cell-note', r.comparison_period + (r.comparison_vintage === 'restated' ? ' 수정판 기준' : ' 기준'), td);
+            numberCell(tr, sign(r.reported_delta), r.delta_status === 'mismatch' ? 'lg-anomaly' : '');
+            const status = el('td', '', null, tr);
+            el('span', 'lg-badge' + (r.delta_status === 'mismatch' ? ' lg-anomaly' : ''), r.vintage === 'restated' ? '수정판' : statuses[r.delta_status] || '비교 없음', status);
+            if (r.rank_status && r.rank_status !== 'continued') el('small', 'lg-cell-note', statuses[r.rank_status] || r.rank_status, status);
+          }
+          el('td', '', r.published_at || '미확보', tr);
+        });
+      }
+      state.selected = rows.find(r => state.selected && r.stored_name === state.selected.stored_name && r.data_period === state.selected.data_period && r.vintage === state.selected.vintage) || rows[0];
+      updateDetail();
+    }
+    update();
+    return cleanup;
+  }
+  global.LuxGrailed = Object.freeze({render: render, version: 1});
+})(typeof window !== 'undefined' ? window : globalThis);
+
 function loadLux(cb){ if(_luxLoaded||window.LUXD){_luxLoaded=true;return cb();}
   const sc=document.createElement('script'); sc.src='data_lux.js';
   sc.onload=()=>{_luxLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="empty-msg">Luxury 데이터 로드 실패</div>';};
@@ -4225,7 +4576,7 @@ function scCol(v){ return v>=6.5?'#2fae66':v>=5.5?'#8bc34a':v>=4.5?'#e0a24a':'#e
 function luxSpark(yoy){ if(!yoy||!yoy.length) return '';
   const w=86,h=26,vals=yoy.map(x=>x[1]);
   const mn=Math.min(...vals,0),mx=Math.max(...vals,0),rg=(mx-mn)||1;
-  const pts=vals.map((v,i)=>`${(i/(vals.length-1))*w},${h-((v-mn)/rg)*h}`).join(' ');
+  const pts=vals.map((v,i)=>`${(i/Math.max(vals.length-1,1))*w},${h-((v-mn)/rg)*h}`).join(' ');
   const zero=h-((0-mn)/rg)*h;
   const col=vals[vals.length-1]>=0?'#2fae66':'#e06666';
   return `<svg width="${w}" height="${h}" style="vertical-align:middle"><line x1="0" y1="${zero}" x2="${w}" y2="${zero}" stroke="#8a90a8" stroke-width=".5" opacity=".5"/><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.6"/></svg>`; }
@@ -4236,12 +4587,13 @@ function renderLux(){
   plats.sort((a,b)=>((cat[b.id]?(cat[b.id].cred*cat[b.id].users):(0))-(cat[a.id]?(cat[a.id].cred*cat[a.id].users):0)));
   const TAGC={'리셀':'#ff8a3d','시계':'#26c6da','검색':'#5b8def','GenZ설문':'#2fae66','컨설팅':'#c45cff','브랜드가치':'#ffd23d','중고명품':'#e06666','중고':'#e06666','중고의류':'#e06666','미디어':'#f06292','스트릿':'#a0d911','커머스':'#8bc34a','투자지수':'#ffb300','주가지수':'#8a90a8','부유층설문':'#b58cf0','검색·수요':'#5b8def'};
   const tagChip=id=>{const t=cat[id]&&cat[id].tag; return t?`<i style="font-style:normal;font-size:9px;font-weight:700;margin-left:5px;padding:1px 5px;border-radius:4px;background:${(TAGC[t]||'#8a90a8')}22;color:${TAGC[t]||'#8a90a8'}">${t}</i>`:'';};
-  const tabs=[['comp','트렌드종합',''],['ncast','나우캐스트',''],['bt','백테스트',''],...plats.map(p=>[p.id,(cat[p.id]&&cat[p.id].name||p.name).split(' ')[0],tagChip(p.id)])];
+  const tabs=[['comp','트렌드종합',''],['ncast','나우캐스트',''],['bt','모델 검증',''],['grailed','Grailed 관측',tagChip('grailed')],...plats.filter(p=>p.id!=='grailed').map(p=>[p.id,(cat[p.id]&&cat[p.id].name||p.name).split(' ')[0],tagChip(p.id)])];
   const nav=tabs.map(([k,l,tg])=>`<span class="ltab ${(ST.luxview===k||(k==='comp'&&ST.luxview.startsWith('co_')))?'on':''}" data-lv="${k}">${l}${tg||''}</span>`).join('');
   let body='';
   if(ST.luxview==='comp'||(ST.luxview&&ST.luxview.startsWith('co_'))) body=luxComp(L);
   else if(ST.luxview==='ncast') body=luxNcast(L);
   else if(ST.luxview==='bt') body=luxBt(L);
+  else if(ST.luxview==='grailed') body='<div id="luxGrailedPanel"></div>'+luxObservationStatus(L);
   else body=luxPlat(L,ST.luxview);
   main.innerHTML=`<style>
     .ltabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
@@ -4267,6 +4619,9 @@ function renderLux(){
   <div class="ltabs">${nav}</div>${body}`;
   main.querySelectorAll('.ltab').forEach(t=>t.onclick=()=>{ST.luxview=t.dataset.lv;renderLux();window.scrollTo(0,0);});
   main.querySelectorAll('tr.lr').forEach(tr=>tr.onclick=()=>{ST.luxview='co_'+tr.dataset.tk;renderLux();});
+  const gp=document.getElementById('luxGrailedPanel');
+  if(gp&&window.LuxGrailed) window.LuxGrailed.render(gp,L.grailed,{theme:'auto',
+    state:ST.luxGrailedState,onStateChange:s=>{ST.luxGrailedState=s;}});
   const bc=document.getElementById('bumpcv'); if(bc) drawBump(bc,JSON.parse(bc.dataset.d),bc.dataset.dir==='lower_better');
 }
 function luxComp(L){
@@ -4281,9 +4636,10 @@ function luxComp(L){
       <td class="mono" style="font-size:11px">${c.coverage_pct}%·${c.n_brands}브랜드</td>
       <td>${luxSpark(rq.yoy5)}</td>
       <td class="mono" style="font-size:11px;color:#8a90a8">${gen}</td></tr>`;}).join('');
-  return `<p class="lxh">트렌드종합 — 매수매력도 (10점 만점)</p>
+  return `<p class="lxh">브랜드 트렌드 점수 (10점 만점)</p>
   <p class="lxs">전세계 트렌드 리포트 ${Object.keys(L.platforms||{}).length}종 정량화 → 수준 40% + <b>변화율 60%</b>(상향가중), 소스가중=공신력×유저기반 → 산하 브랜드 점수를 <b>최신 연간 매출비중 가중평균</b>. 행 클릭 → 브랜드 분해. 스파크라인=최근 5분기 매출 YoY(IR).</p>
-  <div class="lxt"><table><thead><tr><th>#</th><th>기업 · 티커</th><th>매력도</th><th>커버리지</th><th>5Q 매출YoY</th><th>업데이트</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  <p class="lxs">소비자 관심·브랜드 수요의 합성 점수입니다. 밸류에이션과 기대수익률은 포함하지 않습니다.</p>
+  <div class="lxt"><table><thead><tr><th>#</th><th>기업 · 티커</th><th>트렌드 점수</th><th>커버리지</th><th>5Q 매출YoY</th><th>업데이트</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function luxCoDetail(L,tk){
   const c=((L.scores||{}).companies||[]).find(x=>x.ticker===tk); if(!c) return '<div class="empty-msg">기업 없음</div>';
@@ -4297,52 +4653,73 @@ function luxCoDetail(L,tk){
   <div class="lxt"><table><thead><tr><th>브랜드</th><th>매출비중</th><th>점수</th><th>근거</th></tr></thead><tbody>${br}</tbody></table></div>
   <div class="lxt"><table><thead><tr><th>분기</th><th>매출 YoY</th></tr></thead><tbody>${yo||'<tr><td colspan=2 style="color:#8a90a8">IR 분기 미확보</td></tr>'}</tbody></table></div></div>`;
 }
-function luxNcast(L){
-  const cos=((L.scores||{}).companies||[]);
-  const gap=c=>{const rq=(L.revq||{})[c.ticker]||{};const yy=rq.yoy5||[];const last=yy.length?yy[yy.length-1][1]:null;
-    const K=L.calib;const e=last==null?null:(K?K.a+K.b*c.score+K.c*last:null);
-    const cv=((L.consensus||{})[c.ticker]||{}).nextq_rev_yoy_pct;
-    return (e!=null&&cv!=null)?Math.abs(e-cv):-1;};
-  const sorted=[...cos].sort((a,b)=>gap(b)-gap(a));
-  const hot=new Set(sorted.slice(0,3).filter(c=>gap(c)>0).map(c=>c.ticker));
-  const cards=sorted.map(c=>{
-    const rq=(L.revq||{})[c.ticker]||{}; const yy=rq.yoy5||[];
-    const last=yy.length?yy[yy.length-1][1]:null;
-    // 추정 v2: 캘리브 회귀 next=a+b·score+c·lastYoY (R² 표기), 캘리브 없으면 v1 휴리스틱
-    const K=L.calib; const est=last==null?null:Math.round(((K? K.a+K.b*c.score+K.c*last : last+0.8*(c.score-5)))*10)/10;
-    const cons=((L.consensus||{})[c.ticker]||{}); const cv=cons.nextq_rev_yoy_pct;
-    return `<div class="bcard" style="${hot.has(c.ticker)?'border-color:#ff8a3d':''}"><div class="bn">${hot.has(c.ticker)?'🔥 ':''}${c.name} <span class="bt">${c.ticker}</span></div>
-      <div class="brow"><span>매력도</span><span class="scb" style="background:${scCol(c.score)}">${c.score.toFixed(1)}</span></div>
-      <div class="brow"><span>5Q YoY</span><span>${luxSpark(yy)}</span></div>
-      <div class="brow"><span>최근분기</span><span class="mono" style="color:${last>=0?'#2fae66':'#e06666'}">${last==null?'—':(last>=0?'+':'')+last+'%'} <em style="color:#8a90a8;font-style:normal">${rq.lastq||''}</em></span></div>
-      ${est==null?'':`<div class="est">다음분기 추정 <b style="color:${est>=0?'#2fae66':'#e06666'}">${est>=0?'+':''}${est}%</b> · 컨센${cons.period?`<span style=\"color:#8a90a8;font-size:9.5px\"> (${String(cons.period).split('(')[0].trim()})</span>`:''} ${cv==null?'<span style="color:#8a90a8">—</span>':`<b style="color:${cv>=0?'#2fae66':'#e06666'}">${cv>=0?'+':''}${cv}%</b>`}${cv!=null?` · <span style="color:${est-cv>=0?'#2fae66':'#e06666'}">${est-cv>=0?'▲':'▼'}${Math.abs(Math.round((est-cv)*10)/10)}pp</span>`:''}</div>`}
-    </div>`;}).join('');
+function luxEsc(v){return String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function luxNum(v,suffix=''){return typeof v==='number'&&Number.isFinite(v)?v.toLocaleString('en-US',{maximumFractionDigits:6})+suffix:'—';}
+function luxModelSummary(S){
+  if(!S||S.status!=='available') return '<div class="bcard"><b>모델 데이터 확인 필요</b><p class="lxs">검증된 모델 원장이 없어 추정치를 표시하지 않습니다.</p></div>';
+  const m=S.method||{},o=m.oos_mae||{},k=m.coef_final||{};
+  return `<div class="bcard" style="margin-bottom:14px"><p class="lxh">채택 모델 ${luxEsc(m.adopted)}</p>
+    <p class="lxs">${luxEsc(m.gate_note)} · 모델 기준 ${luxEsc(S.asof)} · 생성 기록 ${luxEsc(S.built)}</p>
+    <div class="bb"><div><b>${luxNum(m.panel_n)}</b> 학습 패널 · <b>${luxNum(m.wf_n)}</b> 순차 OOS 표본</div>
+    <div>OOS MAE: M1 <b>${luxNum(o.m1,'pp')}</b> / M2 <b>${luxNum(o.m2,'pp')}</b></div></div>
+    <p class="lxs" style="margin:10px 0 0">M1: 직전 성장률 · M2: 브랜드 점수 추가. 채택 계수 a=${luxNum(k.a)}, b=${luxNum(k.b)}, c=${luxNum(k.c)}. 회사별 예측은 모델 원장값을 그대로 표시합니다.</p>
+    <p class="brk">공개시점 검증: ${luxEsc(S.pit_status)} — ${luxEsc(S.pit_caveat)}</p>
+    ${(S.validation_warnings||[]).length?'<p class="brk">입력 기록 점검: '+(S.validation_warnings||[]).map(w=>luxEsc(w==='source_built_precedes_asof'?'생성 기록이 모델 기준일보다 앞섭니다. 원장 날짜 확인 필요':w)).join(' · ')+'</p>':''}</div>`;
+}
+function luxObservationStatus(L){
+  const s=L.grailed_observatory||{};
+  const labels={not_collected:'미수집',observed:'관측 표본',insufficient_sample:'표본 부족',access_unavailable:'접근·자료 확인 필요',publication_not_permitted:'집계 공개 보류'};
+  const mm=s.metrics||{},metric=(key,suffix)=>luxNum(mm[key]?.value,suffix);
+  return `<div class="bcard" style="margin-top:16px"><p class="lxh">매물 관측 · ${luxEsc(labels[s.state]||s.state)}</p>
+    <p class="lxs">연간 보고서와 매물 관측은 별도 데이터입니다. 허용된 데이터 제공 범위와 필드 정의를 확인한 뒤, 같은 매물의 관심·가격·판매상태를 반복 관측합니다.</p>
+    <div class="bb"><div>관심 증가 속도 <b>${metric('favorite_velocity',' / 매물·일')}</b></div><div>동일 매물 가격 변화 <b>${metric('matched_ask_log_change',' log비율')}</b></div><div>확인 순거래 <b>${metric('confirmed_net_transactions','건')}</b></div></div>
+    <p class="lxs" style="margin-top:10px">관측 ${luxEsc(s.observed_from)} ~ ${luxEsc(s.observed_to)} · 매물 ${luxNum(s.n_items)} · 판매자 ${luxNum(s.n_sellers)} · 수신 범위 ${luxNum(s.coverage)}. 표본 밖 시장 전체로 확대 해석하지 않습니다.</p>
+    <p class="brk">자동 수집 미가동 · 관측 지표의 트렌드 점수·재무 예측 반영 0 · 표본과 관측기간 확보 전 판정 보류</p></div>`;
+}
+function luxBrandHeatboard(L){
   const B=(L.scores||{}).brands||{};
   const topB=Object.values(B).filter(b=>b.n_sources>=3).sort((a,b)=>b.score-a.score).slice(0,16);
   const bcards=topB.map(b=>`<div class="bcard"><div class="bn">${b.name}</div>
     <div class="brow"><span>브랜드점수</span><span class="scb" style="background:${scCol(b.score)}">${b.score.toFixed(1)}</span></div>
     <div class="brow"><span>수준/변화</span><span class="mono">${b.level.toFixed(1)} / ${b.chg.toFixed(1)}</span></div>
     <div class="brow"><span>근거</span><span class="mono" style="font-size:10px">${b.n_sources}소스 · ${b.latest}</span></div></div>`).join('');
-  return `<p class="lxh">브랜드 나우캐스트</p>
-  <p class="lxs">최근 5분기 매출 YoY(IR) 트렌드 + <b>다음분기 성장률 추정</b>(캘리브 회귀 next=a+b·트렌드점수+c·직전YoY (풀드 182표본 R²0.61) vs 애널리스트 컨센서스 — ▲추정>컨센=서프라이즈 후보).</p>
-  <div class="bb">${cards}</div>
-  <p class="lxh" style="margin-top:22px">브랜드 단위 히트보드 (Top16)</p>
-  <p class="lxs">기업 소속 무관 브랜드 자체 트렌드 점수 — 3소스 이상 근거만.</p>
-  <div class="bb">${bcards}</div>`;
+  return `<p class="lxh" style="margin-top:22px">브랜드 히트보드 (Top16)</p><p class="lxs">3소스 이상 근거가 있는 브랜드 트렌드 점수입니다.</p><div class="bb">${bcards}</div>`;
+}
+function luxNcast(L){
+  const S=L.model_state;
+  if(!S||S.status!=='available') return luxModelSummary(S);
+  const scoreBy=Object.fromEntries(((L.scores||{}).companies||[]).map(c=>[c.ticker,c]));
+  const gap=c=>{const q=c.consensus||{};return c.status==='ready'&&!q.stale&&!q.period_mismatch&&!q.basis_mismatch&&typeof q.gap_pp==='number'?Math.abs(q.gap_pp):-1;};
+  const cos=[...(S.companies||[])].sort((a,b)=>gap(b)-gap(a)||String(a.ticker).localeCompare(String(b.ticker)));
+  const cards=cos.map(c=>{
+    const n=c.nowcast||{},q=c.consensus||{},sc=scoreBy[c.ticker],rq=(L.revq||{})[c.ticker]||{};
+    const canGap=gap(c)>=0;
+    const statuses={ready:'표본 기준 충족',pooled_only:'풀드 모형 참고 · 발행 보류',insufficient:'자료 부족'};
+    const flags=[q.period_mismatch?'기간 불일치':null,q.basis_mismatch?'회계 기준 불일치':null,q.stale?'컨센서스 오래됨':null].filter(Boolean);
+    return `<div class="bcard"><div class="bn">${luxEsc(c.name||sc?.name||c.ticker)} <span class="bt">${luxEsc(c.ticker)}</span></div>
+      <div class="brk">${luxEsc(statuses[c.status]||c.status)} · 표본 ${luxNum(c.panel_n)}</div>
+      ${c.hold_reason?`<p class="lxs" style="margin:6px 0">${luxEsc(c.hold_reason)}</p>`:''}
+      <div class="brow"><span>모델 입력 점수</span><b class="mono">${luxNum(n.score_used)}</b></div>
+      <div class="brow"><span>실적 ${luxEsc(n.last_period)}</span><span>${luxNum(n.last_yoy,'%')}</span></div>
+      <div class="brow"><span>관측 실적 추이</span>${luxSpark(rq.yoy5)}</div>
+      <div class="est">${luxEsc(n.next_period)} · ${luxEsc(n.freq)} 주기 추정 <b>${luxNum(n.yoy,'%')}</b>
+      <br>경험적 80% 구간 ${Array.isArray(n.band80)?n.band80.map(v=>luxNum(v,'%')).join(' ~ '):'—'} <span class="bt">미보정</span></div>
+      <div class="brow"><span>컨센 ${luxEsc(q.period)}</span><b>${luxNum(q.nextq_rev_yoy_pct,'%')}</b></div>
+      <div class="bt">컨센 기준일 ${luxEsc(q.asof)} · ${luxEsc(q.basis)}</div>
+      ${flags.length?`<div class="brk">${flags.map(luxEsc).join(' · ')} — 격차 해석 보류</div>`:''}
+      ${canGap?`<div class="brow"><span>동일 기간·기준 격차</span><b>${luxNum(q.gap_pp,'pp')}</b></div>`:''}</div>`;
+  }).join('');
+  return `<p class="lxh">매출 나우캐스트</p><p class="lxs">기업별 보고 주기에 따른 추정입니다. 메인 탭과 체인 페이지가 같은 모델 원장을 사용합니다. 값이 없는 항목은 — 로 표시합니다.</p>${luxModelSummary(S)}<div class="bb">${cards}</div>${luxBrandHeatboard(L)}`;
 }
 function luxBt(L){
-  const bt=L.backtest||{}; const rows=Object.entries(bt).map(([tk,arr])=>{
-    const n=arr.length; if(n<4) return '';
-    const sc=arr.map(r=>r[1]), ny=arr.map(r=>r[3]);
-    const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
-    const ms=mean(sc),my=mean(ny);
-    let num=0,d1=0,d2=0; for(let i=0;i<n;i++){num+=(sc[i]-ms)*(ny[i]-my);d1+=(sc[i]-ms)**2;d2+=(ny[i]-my)**2;}
-    const corr=(d1&&d2)?num/Math.sqrt(d1*d2):0;
-    return `<tr><td class="mono">${tk}</td><td class="mono">${n}Q</td><td class="mono" style="color:${corr>=0?'#2fae66':'#e06666'}">${corr.toFixed(2)}</td><td>${luxSpark(arr.map(r=>[r[0],r[3]]))}</td></tr>`;
-  }).join('');
-  return `<p class="lxh">백테스트 — 시점별 트렌드점수 vs 다음분기 매출YoY</p>
-  <p class="lxs">기업별 과거 각 분기 as-of 스코어와 이후 실현 YoY의 상관. ⚠️ within-FE 검정상 스코어의 증분 예측력은 아직 미유의(t=0.73) — 관성모델 병행 사용, 분기 이력 축적 후 재캘리브 예정.</p>
-  <div class="lxt"><table><thead><tr><th>티커</th><th>표본</th><th>corr</th><th>다음분기 YoY 궤적</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const S=L.model_state;
+  if(!S||S.status!=='available') return luxModelSummary(S);
+  const m=S.method||{},prev=m.calib_prev||{};
+  const rows=(S.companies||[]).map(c=>`<tr><td class="mono">${luxEsc(c.ticker)}</td><td>${luxEsc(c.status)}</td><td class="mono">${luxNum(c.panel_n)}</td><td>${luxEsc(c.nowcast?.freq)}</td><td>${luxEsc(c.hold_reason||'—')}</td></tr>`).join('');
+  return `<p class="lxh">모델 검증 · M1 / M2</p>${luxModelSummary(S)}
+    <p class="lxs">이전 보정 진단: 원시 점수 계수 ${luxNum(prev.b_raw)} · within t ${luxNum(prev.t_score_within)} · 게이트 ${prev.gated===true?'적용':prev.gated===false?'미적용':'—'}. 현재 채택 판단은 위 순차 OOS 검증과 모델 원장의 채택 사유를 따릅니다.</p>
+    <p class="lxs">예측 구간: ${luxEsc(m.band_rule)}. 아래 표는 회사별 표본 기여와 보류 이유입니다.</p>
+    <div class="lxt"><table><thead><tr><th>티커</th><th>상태</th><th>표본</th><th>보고 주기</th><th>보류 이유</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function luxPlat(L,pid){
   const p=(L.platforms||{})[pid]; if(!p) return '<div class="empty-msg">데이터 준비중</div>';
