@@ -652,8 +652,9 @@ function writeHash(){
   if(ST.gran!=='M') add('g',ST.gran);
   if(ST.tab==='dc'){                                   // ⚡ DC 탭 서브상태(뷰·국가필터·프로젝트·에너지원·트리노드)
     if(ST.dcv&&ST.dcv!=='map') add('dcv',ST.dcv);
-    if(ST.dcv==='map'&&ST.dcCountry) add('dcco',ST.dcCountry);
-    if(ST.dcv==='map'&&ST.dcProj) add('dcp',ST.dcProj);
+    if(['map','global'].includes(ST.dcv)&&ST.dcCountry) add('dcco',ST.dcCountry);
+    if(['map','global'].includes(ST.dcv)&&ST.dcProj) add('dcp',ST.dcProj);
+    if(ST.dcv==='global'){add('dcq',ST.dcQuery);add('dcst',ST.dcState);}
     if(ST.dcv==='energy'&&ST.dcSrc) add('dcs',ST.dcSrc);
     if(ST.dcv==='tam'&&ST.dcNode) add('dcn',ST.dcNode);
     if(ST.dcv==='grid'){                               // 🔋 기간칩·용량기준·표시단위(기본값은 URL 미기재)
@@ -689,8 +690,9 @@ function applyHash(){
   if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
   if(q.tab==='dc'){                                    // ⚡ DC 탭 — 탭 + 뷰·필터·선택 복원
     ST.tab='dc';
-    ST.dcv=(['map','energy','tam','grid'].indexOf(q.dcv)>=0)?q.dcv:'map';
+    ST.dcv=(['map','global','energy','tam','grid'].indexOf(q.dcv)>=0)?q.dcv:'map';
     ST.dcCountry=q.dcco||null; ST.dcProj=q.dcp||null;
+    ST.dcQuery=q.dcq||'';ST.dcState=['operating','construction','planned','unknown'].includes(q.dcst)?q.dcst:'';
     ST.dcSrc=q.dcs||null; ST.dcNode=q.dcn||null;
     if(['12','36','60','all'].indexOf(q.dcgr)>=0) ST.dcgR=q.dcgr;
     if(['s','n'].indexOf(q.dcgb)>=0) ST.dcgB=q.dcgb;
@@ -4801,6 +4803,9 @@ function dcDestroy(){ Object.keys(charts).forEach(k=>{ if(k.indexOf('dc_')===0){
 const DCSRC={gas_turbine:['가스터빈','#ff8a3d'],engine_4s:['4행정엔진','#ffbe2e'],engine_2s:['2행정엔진','#c9a227'],
   solar_ess:['태양광+ESS','#a0d911'],wind:['풍력','#42d4f4'],nuclear_smr:['SMR·원전','#c45cff'],
   fuel_cell:['연료전지','#00e6b8'],grid_ppa:['그리드 PPA','#3d8bfd'],diesel_backup:['디젤백업','#8a90a8'],bess:['BESS','#f06292']};
+Object.assign(DCSRC,{grid:['계통수전','#3d8bfd'],renewable_grid:['재생 전력','#59d0a8'],hvo_backup:['HVO 백업','#a4b67c'],backup:['비상발전','#8a90a8']});
+const dcBasis=k=>({it:'IT 부하',critical_power:'Critical power',utility_design:'수전 설계',phase_capacity:'초기 단계',target_capacity:'목표 용량',operator_total_capacity:'운영사 전체 사양'})[k]||'Epoch 원본';
+const dcCap=(v,q,unit)=>v==null?'—':(String(q||'').replace('+','')+dcNum(v,2)+(String(q||'').includes('+')?'+':'')+(unit?' MW':''));
 const dcSL=t=>(DCSRC[t]||[t])[0], dcSC=t=>(DCSRC[t]||[t,'#8a90a8'])[1];
 const DCCOL=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1','#ff9e64','#9ccc65','#e06666','#8a90a8'];
 const dcEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -4814,7 +4819,10 @@ function dcHatch(col){ const c=document.createElement('canvas'); c.width=c.heigh
   const x=c.getContext('2d'); x.clearRect(0,0,8,8); x.strokeStyle=col; x.lineWidth=2.4; x.globalAlpha=.85;
   x.beginPath(); x.moveTo(-2,10); x.lineTo(10,-2); x.moveTo(-2,2); x.lineTo(2,-2); x.moveTo(6,10); x.lineTo(10,6); x.stroke();
   return x.createPattern(c,'repeat'); }
-function dcStatus(p){ const cur=+(p.cur||0), plan=+(p.plan||0);
+function dcStatus(p){
+  if(p.origin==='dcm_research') return ({operating:{k:3,l:'운영',c:'#59d0a8'},construction:{k:2,l:'공사중',c:'#ffbe2e'},
+    planned:{k:1,l:'계획',c:'#8bafff'},unknown:{k:0,l:'확인 필요',c:'#9aa2b4'}})[p.lifecycle]||{k:0,l:'확인 필요',c:'#9aa2b4'};
+  const cur=+(p.cur||0), plan=+(p.plan||0);
   if(cur<=0) return {k:0,l:'계획·건설',c:'#8a90a8'};
   if(plan>cur+1) return {k:1,l:'가동+증설',c:'#ffbe2e'};
   return {k:2,l:'가동',c:'#59d0a8'}; }
@@ -4876,6 +4884,7 @@ const DCSTYLE=`<style>
 .dckpi div{min-width:96px}
 .dckpi b{display:block;font-size:19px;font-weight:800;font-family:ui-monospace,monospace}
 .dckpi span{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+#dcCard{scroll-margin-top:95px}
 .dcmapwrap{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:8px;margin-bottom:12px;overflow-x:auto}
 .dcmap{display:block;width:100%;min-width:560px;height:auto}
 .dcbub{cursor:pointer;fill:rgba(255,138,61,.34);stroke:#ff8a3d;stroke-width:1.1;transition:.12s}
@@ -4950,17 +4959,22 @@ function renderDC(){
   document.getElementById('cnt').innerHTML='';
   const TM=(D.tam&&D.tam._meta)||{};
   document.getElementById('crumb').innerHTML='<b>⚡ DC 공급망 메가허브 — 프로젝트 · 에너지원 · 탑다운 TAM</b>'+
-    '<span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">'+dcEsc(TM.date||'')+
-    ' · Epoch AI 추적 프런티어 AI DC 유니버스 · 창작 금지(수치 전건 출처)</span>';
+    '<span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">'+dcEsc(ST.dcv==='global'?((D.global||{}).meta||{}).checked||'':TM.date||'')+
+    (ST.dcv==='global'?' · 비북미 공개자료 보강 · 항목별 출처 확인':' · Epoch AI 추적 프런티어 AI DC 유니버스 · 창작 금지(수치 전건 출처)')+'</span>';
   if(!D.projects){ main.innerHTML='<div class="empty-msg">⚡ DC 공급망 허브 데이터 준비 중…</div>'; return; }
-  const views=[['map','🗺 프로젝트 맵·테이블'],['energy','🔌 에너지원 미래 시계열'],['tam','🌲 탑다운 TAM 트리'],
+  if(ST.dcProj&&!window.DCPROJ) return loadDCProj(renderDC);
+  const views=[['map','🗺 프로젝트 맵·테이블'],['global','🌏 비북미 글로벌 DC'],['energy','🔌 에너지원 미래 시계열'],['tam','🌲 탑다운 TAM 트리'],
     ['grid','🔋 발전설비 순증(EIA-860M)']];
   main.innerHTML=DCSTYLE+'<div class="dcnav">'+views.map(v=>
     '<span class="dcv'+(ST.dcv===v[0]?' on':'')+'" data-dcv="'+v[0]+'">'+v[1]+'</span>').join('')+'</div>'
     +capexStrip(D.capex_common,'dc')+'<div id="dcBody"></div>';
-  main.querySelectorAll('.dcv').forEach(e=>e.onclick=()=>{ST.dcv=e.dataset.dcv;renderDC();window.scrollTo(0,0);});
+  main.querySelectorAll('.dcv').forEach(e=>e.onclick=()=>{ST.dcv=e.dataset.dcv;ST.dcCountry=null;ST.dcProj=null;renderDC();window.scrollTo(0,0);});
   const body=document.getElementById('dcBody');
-  if(ST.dcv==='energy') dcViewEnergy(body,D);
+  if(ST.dcv==='global'){
+    if(D.global) dcViewMap(body,Object.assign({},D,{projects:D.global.projects,isGlobal:true,globalMeta:D.global}));
+    else body.innerHTML='<div class="empty-msg">비북미 보강 데이터가 아직 준비되지 않았습니다.</div>';
+  }
+  else if(ST.dcv==='energy') dcViewEnergy(body,D);
   else if(ST.dcv==='tam') dcViewTam(body,D);
   else if(ST.dcv==='grid'){                            // 별도 lazy 샤드(data_dc_grid.js)
     if(window.DCGRID) dcViewGrid(body,window.DCGRID);
@@ -4971,33 +4985,34 @@ function renderDC(){
 
 // ---------- 뷰 1: 프로젝트 맵 + 정렬 테이블 + 프로젝트 카드 ----------
 function dcViewMap(el,D){
-  const PR=D.projects||[], geo=D.geo||{}, alias=geo.alias||{}, cent=geo.cent||{};
+  const PR=D.projects||[], G=!!D.isGlobal, GM=D.globalMeta||{}, geo=D.geo||{}, alias=geo.alias||{}, cent=geo.cent||{};
   const byC={}; PR.forEach(p=>{const c=p.c||'미상'; const o=(byC[c]=byC[c]||{cur:0,plan:0,n:0}); o.cur+=(+p.cur||0); o.plan+=(+p.plan||0); o.n++;});
   const tCur=PR.reduce((a,p)=>a+(+p.cur||0),0), tPlan=PR.reduce((a,p)=>a+(+p.plan||0),0);
   const tCx=PR.reduce((a,p)=>a+(+p.cx||0),0);
-  const maxV=Math.max(1,...Object.keys(byC).map(c=>byC[c].plan||byC[c].cur));
+  const maxV=Math.max(1,...Object.keys(byC).map(c=>G?byC[c].n:(byC[c].plan||byC[c].cur)));
   const bubs=Object.keys(byC).map(c=>{ const xy=cent[alias[c]||c]; if(!xy) return null;
-    const v=byC[c].plan||byC[c].cur;
+    const v=G?byC[c].n:(byC[c].plan||byC[c].cur);
     return {c:c,x:xy[0],y:xy[1],r:Math.max(4.5,Math.min(38,Math.sqrt(v/maxV)*38)),v:v,o:byC[c]};
   }).filter(Boolean).sort((a,b)=>b.r-a.r);
   const noXY=Object.keys(byC).filter(c=>!cent[alias[c]||c]);
   const sel=ST.dcCountry;
 
-  let h='<p class="dch">🗺 DC 프로젝트 마스터 <span style="color:var(--dim);font-size:11.5px;font-weight:500">'+PR.length+'건 · '+Object.keys(byC).length+'개국</span></p>'+
-    '<p class="dcs">Epoch AI 추적 프런티어 AI 데이터센터 상위 '+PR.length+'건(현장 위성·인허가·유틸리티·IR 문서 보강). 버블 = 국가별 <b>계획 MW 합</b>(계획 미상이면 현재 MW) — 클릭하면 국가 필터. 표의 행을 클릭하면 그 프로젝트의 <b>단계 타임라인 · 에너지원 구성 · 건설/냉각 공급사 · 출처</b> 카드가 열립니다.</p>'+
+  let h='<p class="dch">'+(G?'🌏 비북미 글로벌 데이터센터':'🗺 DC 프로젝트 마스터')+' <span style="color:var(--dim);font-size:11.5px;font-weight:500">'+PR.length+'건 · '+Object.keys(byC).length+(G?'개 국가·지역':'개국')+'</span></p>'+
+    (G?'<p class="dcs">기존 비북미 '+GM.baseline+'건 + 공개자료 보강 '+GM.added+'건 · '+dcEsc((GM.meta||{}).checked||'')+' 확인. 지도는 <b>국가별 시설 수</b>입니다. 시설을 누르면 사양·일정·전력·냉각·공급사와 출처를 볼 수 있습니다. <b>전 세계 전수 수록은 아닙니다.</b></p>':
+    '<p class="dcs">Epoch AI 추적 프런티어 AI 데이터센터 상위 '+PR.length+'건(현장 위성·인허가·유틸리티·IR 문서 보강). 버블 = 국가별 <b>계획 MW 합</b>(계획 미상이면 현재 MW) — 클릭하면 국가 필터. 표의 행을 클릭하면 그 프로젝트의 <b>단계 타임라인 · 에너지원 구성 · 건설/냉각 공급사 · 출처</b> 카드가 열립니다.</p>')+
     '<div class="dckpi">'+
       '<div><span>프로젝트</span><b>'+PR.length+'</b></div>'+
-      '<div><span>현재 전력</span><b style="color:#59d0a8">'+dcMW(tCur)+'</b></div>'+
-      '<div><span>계획 전력</span><b style="color:#ff8a3d">'+dcMW(tPlan)+'</b></div>'+
-      '<div><span>CAPEX 합</span><b style="color:#4ea1ff">'+dcB(tCx)+'</b></div>'+
-      '<div><span>국가</span><b>'+Object.keys(byC).length+'</b></div>'+
+      '<div><span>'+(G?'이번 보강':'현재 전력')+'</span><b style="color:#59d0a8">'+(G?GM.added:dcMW(tCur))+'</b></div>'+
+      '<div><span>'+(G?'용량 공개':'계획 전력')+'</span><b style="color:#ff8a3d">'+(G?PR.filter(p=>p.plan!=null).length:dcMW(tPlan))+'</b></div>'+
+      '<div><span>'+(G?'원문 불일치 기록':'CAPEX 합')+'</span><b style="color:#4ea1ff">'+(G?PR.filter(p=>p.conflicts>0).length:dcB(tCx))+'</b></div>'+
+      '<div><span>'+(G?'국가·지역':'국가')+'</span><b>'+Object.keys(byC).length+'</b></div>'+
     '</div>';
 
   const MW_=geo.w||1000, MH_=geo.h||394;
   h+='<div class="dcmapwrap"><svg class="dcmap" viewBox="0 0 '+MW_+' '+MH_+'" preserveAspectRatio="xMidYMid meet">'+
      '<rect x="0" y="0" width="'+MW_+'" height="'+MH_+'" fill="#080b16"/>'+
      (geo.land?'<path d="'+geo.land+'" fill="#18213a" stroke="#2c3a5e" stroke-width="0.5"/>':'')+
-     bubs.map(b=>'<circle class="dcbub'+(sel===b.c?' on':'')+'" data-dcco="'+dcEsc(b.c)+'" cx="'+b.x+'" cy="'+b.y+'" r="'+b.r.toFixed(1)+'"><title>'+dcEsc(b.c)+' — '+b.o.n+'건 · 현재 '+dcMW(b.o.cur)+' · 계획 '+dcMW(b.o.plan)+'</title></circle>').join('')+
+     bubs.map(b=>'<circle class="dcbub'+(sel===b.c?' on':'')+'" data-dcco="'+dcEsc(b.c)+'" cx="'+b.x+'" cy="'+b.y+'" r="'+b.r.toFixed(1)+'"><title>'+dcEsc(b.c)+' — '+b.o.n+'건'+(G?'':' · 현재 '+dcMW(b.o.cur)+' · 계획 '+dcMW(b.o.plan))+'</title></circle>').join('')+
      bubs.filter(b=>b.r>=11).map(b=>'<text class="dcbl" x="'+b.x+'" y="'+(b.y+b.r+9).toFixed(1)+'">'+dcEsc(b.c)+'</text>').join('')+
      '</svg></div>';
 
@@ -5005,33 +5020,44 @@ function dcViewMap(el,D){
   const chSel='border-color:#00e6b8;color:#00e6b8;background:rgba(0,230,184,.12)';
   h+='<div class="dcchips" style="margin-top:10px">'+
      '<span class="dcchip" data-dcco="" style="'+(sel?'':chSel)+'">전체 '+PR.length+'</span>'+
-     Object.keys(byC).sort((a,b)=>(byC[b].plan||byC[b].cur)-(byC[a].plan||byC[a].cur)).map(c=>
+     Object.keys(byC).sort((a,b)=>G?byC[b].n-byC[a].n:(byC[b].plan||byC[b].cur)-(byC[a].plan||byC[a].cur)).map(c=>
        '<span class="dcchip" data-dcco="'+dcEsc(c)+'" style="'+(sel===c?chSel:'')+'">'+dcEsc(c)+'<i>'+byC[c].n+'</i></span>').join('')+
      '</div>';
 
+  if(G) h+='<form id="dcGlobalFilter" style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">'+
+    '<input type="search" id="dcGlobalQuery" aria-label="시설·운영사 검색" placeholder="시설명 · 운영사 · 도시 검색" value="'+dcEsc(ST.dcQuery||'')+'" style="min-width:180px;flex:1;background:var(--bg2);color:var(--tx);border:1px solid var(--bd);padding:9px;border-radius:6px">'+
+    '<select id="dcGlobalState" aria-label="시설 상태" style="background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:6px">'+
+    [['','상태 전체'],['operating','운영'],['construction','공사중'],['planned','계획'],['unknown','확인 필요']].map(v=>'<option value="'+v[0]+'"'+((ST.dcState||'')===v[0]?' selected':'')+'>'+v[1]+'</option>').join('')+'</select><button class="back" type="submit">검색</button><button class="back" id="dcGlobalClear" type="button">초기화</button></form>';
   h+='<div id="dcCard"></div>';
 
-  const rows=PR.filter(p=>!sel||p.c===sel);
-  const K=ST.dcSort, dsc=ST.dcDesc;
+  const query=String(ST.dcQuery||'').trim().toLocaleLowerCase();
+  const rows=PR.filter(p=>(!sel||p.c===sel)&&(!G||(!query||[p.n,p.op,p.c,p.rg].join(' ').toLocaleLowerCase().includes(query))&&(!ST.dcState||p.lifecycle===ST.dcState)));
+  if(G) h+='<div class="dcnote">검색 결과 '+rows.length+' / '+PR.length+'건 · 상태는 각 출처의 공개 내용, 원본 11건은 Epoch 파생 라벨입니다. 상태 필터는 보강 시설에 적용됩니다.</div>';
+  const K=(G&&ST.dcSort==='cur')?'n':ST.dcSort, dsc=(G&&ST.dcSort==='cur')?false:ST.dcDesc;
   const kv=p=>K==='n'?String(p.n||'').toLowerCase():K==='op'?String(p.op||'').toLowerCase():
     K==='c'?String(p.c||'').toLowerCase():K==='st'?dcStatus(p).k:K==='plan'?(+p.plan||0):(+p.cur||0);
   rows.sort((a,b)=>{const x=kv(a),y=kv(b); if(x===y) return String(a.n).localeCompare(String(b.n));
     return (typeof x==='string')?(dsc?String(y).localeCompare(String(x)):String(x).localeCompare(String(y))):(dsc?y-x:x-y);});
   const th=(k,l)=>'<th class="s" data-dcs="'+k+'">'+l+(K===k?(dsc?' ▾':' ▴'):'')+'</th>';
   h+='<div class="dct" style="margin-top:12px"><table><thead><tr>'+
-     th('n','프로젝트')+th('op','운영사')+th('c','국가')+th('cur','현재 MW')+th('plan','계획 MW')+th('st','상태')+
+     th('n','프로젝트')+th('op','운영사')+th('c','국가')+(G?'<th>용량 기준</th>':th('cur','현재 MW'))+th('plan',G?'공개 용량 MW':'계획 MW')+th('st','상태')+
      '<th>에너지원</th><th>근거</th></tr></thead><tbody>'+
      rows.map(p=>{const s=dcStatus(p);
        return '<tr class="cl'+(ST.dcProj===p.id?' on':'')+'" data-dcp="'+dcEsc(p.id)+'">'+
          '<td><b>'+dcEsc(p.n)+'</b>'+(p.us&&p.us.length?'<div style="font-size:9.5px;color:var(--dim)">'+dcEsc(p.us.join(' · '))+'</div>':'')+'</td>'+
          '<td>'+dcEsc(p.op||'—')+'</td><td>'+dcEsc(p.c||'—')+(p.rg?' <span style="color:var(--dim);font-size:9.5px">'+dcEsc(p.rg)+'</span>':'')+'</td>'+
-         '<td class="mn">'+dcNum(p.cur)+'</td><td class="mn">'+dcNum(p.plan)+'</td>'+
+         '<td class="mn">'+(G?dcEsc(dcBasis(p.basis)):dcNum(p.cur))+'</td><td class="mn">'+(G?dcCap(p.plan,p.qual,false):dcNum(p.plan))+'</td>'+
          '<td><span class="dcbadge" style="background:'+s.c+'22;color:'+s.c+'">'+s.l+'</span>'+(p.ld?'<div style="font-size:9px;color:var(--dim)" class="mn">'+dcEsc(p.ld)+'</div>':'')+'</td>'+
          '<td>'+(p.et||[]).map(t=>'<span class="dcbadge" style="background:'+dcSC(t)+'26;color:'+dcSC(t)+'">'+dcEsc(dcSL(t))+'</span>').join('')+'</td>'+
-         '<td class="mn" style="font-size:9.5px;color:var(--dim)">단계'+p.np+' · 출처'+p.ns+(p.nc?' · 건설'+p.nc:'')+(p.nl?' · 냉각'+p.nl:'')+'</td></tr>';}).join('')+
+         '<td class="mn" style="font-size:9.5px;color:var(--dim)">단계'+p.np+' · 출처'+p.ns+(G&&p.conflicts?' · 불일치 '+p.conflicts:'')+(p.nc?' · 건설'+p.nc:'')+(p.nl?' · 냉각'+p.nl:'')+'</td></tr>';}).join('')+
      '</tbody></table></div>';
-  h+='<div class="dcnote">현재/계획 MW 는 epoch 원본 집계(전체 현재 12,712 MW / 계획 45,611 MW)와 동일합니다. 상태는 현재·계획 MW 대비로 파생한 라벨이며 원문 서술은 카드에서 확인하세요.</div>';
+  h+=G?'<div class="dcnote">IT 부하·수전·캠퍼스 전체·초기 단계의 기준이 달라 MW 총합을 계산하지 않습니다. + / &gt; / 최대 표기를 유지하며 — 는 미확인입니다. 현재 가동 MW와 이용사·장비 정보는 카드에서 별도로 확인하세요.</div>':'<div class="dcnote">현재/계획 MW 는 epoch 원본 집계(전체 현재 12,712 MW / 계획 45,611 MW)와 동일합니다. 상태는 현재·계획 MW 대비로 파생한 라벨이며 원문 서술은 카드에서 확인하세요.</div>';
   el.innerHTML=h;
+  if(G){
+    el.querySelector('#dcGlobalFilter').onsubmit=e=>{e.preventDefault();ST.dcQuery=el.querySelector('#dcGlobalQuery').value;ST.dcState=el.querySelector('#dcGlobalState').value;ST.dcProj=null;renderDC();};
+    el.querySelector('#dcGlobalState').onchange=()=>el.querySelector('#dcGlobalFilter').requestSubmit();
+    el.querySelector('#dcGlobalClear').onclick=()=>{ST.dcQuery='';ST.dcState='';ST.dcCountry=null;ST.dcProj=null;renderDC();};
+  }
   el.querySelectorAll('[data-dcco]').forEach(e=>e.onclick=()=>{
     const c=e.dataset.dcco; ST.dcCountry=(!c||ST.dcCountry===c)?null:c; ST.dcProj=null; renderDC(); });
   el.querySelectorAll('th.s').forEach(e=>e.onclick=()=>{
@@ -5048,7 +5074,8 @@ function dcProjCard(el,D,pid){
   if(!el) return;
   const idx=(D.projects||[]).find(p=>p.id===pid); if(!idx){ el.innerHTML=''; return; }
   const det=(window.DCPROJ||{})[pid];
-  if(!det){ el.innerHTML='<div class="dcpan">프로젝트 상세 로딩…</div>'; return; }
+  if(!det){ el.innerHTML='<div class="dcpan">프로젝트 상세를 불러오지 못했습니다. 페이지를 새로고침해 다시 시도하세요.</div>'; return; }
+  const isExtra=idx.origin==='dcm_research';
   const pw=det.power||{}, phases=(pw.phases||[]).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
   const maxMw=Math.max(1,...phases.map(x=>+x.mw||0));
   const srcs=((det.energy||{}).sources)||[], cool=det.cooling||{}, con=det.construction||[];
@@ -5061,17 +5088,17 @@ function dcProjCard(el,D,pid){
       '<button class="back" data-dcclose="1">✕ 닫기</button></div>'+
     '<div class="dckpi" style="margin:12px 0 4px">'+
       '<div><span>현재</span><b style="color:#59d0a8">'+dcMW(pw.current_mw)+'</b></div>'+
-      '<div><span>계획</span><b style="color:#ff8a3d">'+dcMW(pw.planned_mw)+'</b></div>'+
+      '<div><span>'+(isExtra?'공개 용량 · '+dcEsc(dcBasis(pw.planned_basis)):'계획')+'</span><b style="color:#ff8a3d">'+(isExtra?dcCap(pw.planned_mw,pw.planned_qualifier,true):dcMW(pw.planned_mw))+'</b></div>'+
       (pw.planned_mw_doc!=null?'<div><span>문서 계획</span><b class="mn" style="color:#4ea1ff">'+dcMW(pw.planned_mw_doc)+'</b></div>':'')+
       '<div><span>CAPEX</span><b>'+dcB(idx.cx)+'</b></div></div>'+
-    (pw.planned_mw_src?'<div class="dcnote">문서 계획 출처: '+dcA(pw.planned_mw_src)+'</div>':'');
+    (pw.planned_mw_src?'<div class="dcnote">'+(isExtra?'공개 용량 출처: ':'문서 계획 출처: ')+dcA(pw.planned_mw_src)+'</div>':'');
 
   if(phases.length){
     h+='<div class="sub-ttl" style="margin:14px 0 8px">📶 단계 타임라인 <span style="font-weight:400;color:var(--dim);font-size:10px">'+phases.length+'단계 · 파랑=epoch 위성 관측 · 초록=공식문서(인허가·IR·보도)</span></div><div class="dcph">';
-    phases.forEach(x=>{ const mw=+x.mw||0, doc=(x._from==='opus1_doc');
+    phases.forEach(x=>{ const mw=+x.mw||0, doc=(x._from==='opus1_doc'||x._from==='official_doc');
       const col=doc?'#00e6b8':'#4ea1ff';
       h+='<div class="dcphd">'+dcEsc(x.date||'')+'</div><div>'+
-        (mw>0?'<div class="dcphb" style="width:'+Math.max(2,mw/maxMw*100).toFixed(1)+'%;background:'+col+'33;border-left:3px solid '+col+'"><span class="mn" style="font-size:9.5px;color:'+col+';position:absolute;left:6px;top:1px">'+dcNum(mw)+' MW</span></div>':'')+
+        (mw>0?'<div class="dcphb" style="width:'+Math.max(2,mw/maxMw*100).toFixed(1)+'%;background:'+col+'33;border-left:3px solid '+col+'"><span class="mn" style="font-size:9.5px;color:'+col+';position:absolute;left:6px;top:1px">'+dcCap(mw,x.qualifier,false)+' MW</span></div>':'')+
         '<div class="dcphl">'+(doc?'<span class="dcbadge" style="background:#00e6b822;color:#00e6b8">'+dcEsc(x.status||'')+'</span> ':'')+
         dcMd(doc?(x.detail||''):(x.status||''))+(x.src?' '+dcA(x.src):'')+'</div></div>';});
     h+='</div>';
@@ -5102,7 +5129,18 @@ function dcProjCard(el,D,pid){
         '<td style="font-size:10px;color:var(--dim)">'+((c.catalog_matches||[]).length?dcEsc((c.catalog_matches||[]).join(' · ')):'—')+'</td></tr>').join('')+'</tbody></table></div>';
     h+='</div>';
   }
-  if(det.status) h+='<div class="sub-ttl" style="margin:16px 0 6px">📝 원문 판정(epoch)</div><div style="font-size:11px;line-height:1.7;color:var(--dim)">'+dcMd(det.status)+'</div>';
+  if(isExtra){
+    h+='<div class="dcnote">'+dcEsc(det.record_unit==='campus'?'캠퍼스 단위':'개별 시설 단위')+' · 공개자료 확인 '+dcEsc(det.verified_at||'')+
+      (det.lifecycle_src?' · 상태 근거 '+dcA(det.lifecycle_src):' · 상태 미확인')+'</div>';
+    if((det.facts||[]).length) h+='<div class="sub-ttl" style="margin:16px 0 7px">시설 사양</div><div class="dct"><table><thead><tr><th>항목</th><th>확인 내용</th><th>근거</th></tr></thead><tbody>'+
+      det.facts.map(f=>'<tr><td>'+dcEsc(f.label)+'</td><td>'+dcEsc(f.value)+'</td><td>'+dcA(f.src)+'</td></tr>').join('')+'</tbody></table></div>';
+    const systems=(cool.systems||[]).map(c=>({company:c.company||'제조사 미확인',role:c.kind,detail:c.detail,src:c.src})).concat(det.equipment||[]);
+    if(systems.length) h+='<div class="sub-ttl" style="margin:16px 0 7px">냉각 방식 · 전력 장비사</div><div class="dct"><table><thead><tr><th>기업</th><th>구분</th><th>공개 사양</th><th>출처</th></tr></thead><tbody>'+
+      systems.map(c=>'<tr><td>'+dcEsc(c.company)+'</td><td>'+dcEsc(c.role)+'</td><td>'+dcEsc(c.detail)+'</td><td>'+dcA(c.src)+'</td></tr>').join('')+'</tbody></table></div>';
+    if((det.conflicts||[]).length) h+='<div class="dcwarn" style="margin-top:12px"><b>원문 간 불일치 · 확인 보류</b><ul>'+det.conflicts.map(x=>'<li>'+dcEsc(x)+'</li>').join('')+'</ul></div>';
+    if((det.missing||[]).length) h+='<div class="dcnote" style="margin-top:10px">미확인: '+det.missing.map(dcEsc).join(' · ')+'</div>';
+  }
+  if(det.status) h+='<div class="sub-ttl" style="margin:16px 0 6px">📝 '+(isExtra?'공개자료 확인 내용':'원문 판정(epoch)')+'</div><div style="font-size:11px;line-height:1.7;color:var(--dim)">'+dcMd(det.status)+'</div>';
   const rs=(det.energy||{}).research;
   if(rs&&rs.notes) h+='<div class="dcwarn" style="margin-top:12px"><b>보강 리서치 메모</b> ('+dcEsc(rs.researched||'')+') — '+dcMd(rs.notes)+'</div>';
   const ss=det.sources||[];
