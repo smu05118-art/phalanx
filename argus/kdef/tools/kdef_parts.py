@@ -4,7 +4,7 @@
 
 실루엣 4종(전차·전투기·함정·유도탄)을 **단순한 기하 도형**으로 직접 그린다(외부 이미지 금지).
 계통을 고르면 그 계통의 실루엣이 열리고, 부품 영역을 누르면 그 영역의 부품 소분류와
-**그 부품을 만드는 상장사**가 하위 공정·부품 탐색 패널에 열린다. 회사 이름을 누르면 회사 페이지로 간다.
+**그 부품을 만드는 상장사**가 오른쪽 패널에 열린다. 회사 이름을 누르면 회사 페이지로 간다.
 
 부품 분류는 규칙(계약명·정기보고서 본문·KIND 문구의 낱말)이라 근거를 칩에 달아 둔다 —
 `계약명 「변속기」` 처럼 무엇을 보고 넣었는지 화면에서 바로 보이게 한다(COMMON §0-1).
@@ -99,9 +99,7 @@ def build(data):
 <div class="note info">부품 분류는 <b>규칙</b>입니다 — 계약명·정기보고서 「주요 제품」 절·II절 본문·KIND 주요제품 문구에서 부품 낱말을 찾습니다.
 회사 칩에 근거(무엇을 보고 넣었는지)를 달아 두었습니다. 민수 낱말과 겹치는 짧은 약어는 방산 문맥이 가까이 있을 때만 채택합니다.
 납품처(체계업체) 연결의 근거 등급은 주요고객 주석 &gt; 계약공시 상대 &gt; 본문 언급 순입니다.</div>
-<link rel="stylesheet" href="../ui/industry-explorer.css?v=20260913">
-<script src="../ui/industry-explorer.js?v=20260913"></script>
-<script>const P=%s; IndustryExplorer.setup(P);</script>
+<script>const P=%s;</script>
 <script>
 (function(){
  var S={sil:P.sils[0].id, sel:null, group:null};
@@ -147,26 +145,42 @@ def build(data):
   var c=cls?' class="'+cls+'"':'';
   return PAGES[stock]?'<a'+c+' href="'+stock+'/index.html">'+label+'</a>':'<span'+c+'>'+label+'</span>';
  }
+ function coHtml(c){
+  var primes=c.primes.map(function(p){return link(p.stock,p.nm)+' <span class="mut">'+p.basis+'</span>'}).join(' · ');
+  return '<li>'+link(c.stock,c.nm,'co')
+   +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
+   +(primes?'<div class="mut" style="font-size:11px;margin-top:2px">납품처 '+primes+'</div>':'')
+   +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
+ }
+ function catBlock(cid){
+  var c=catById(cid); if(!c) return '';
+  var cos=P.idx[cid]||[];
+  return '<div class="pblock"><h4 id="'+cid+'">'+c.ko+' <span class="mut">'+P.groups[c.g]+' · '+c.en+'</span>'
+   +' <span class="n">'+cos.length+'</span></h4>'
+   +(cos.length?'<ul class="colist">'+cos.map(coHtml).join('')+'</ul>'
+    :'<p class="mut" style="font-size:12px">이 부품을 만드는 상장사를 원문에서 찾지 못했습니다 — 비상장이거나 문구가 짧아 규칙에 안 걸립니다.</p>')
+   +'</div>';
+ }
  function showRegion(r){
-  history.replaceState(null,'',location.pathname+location.search);
-  IndustryExplorer.show({title:r.ko, children:IndustryExplorer.categories(r.cats)});
+  panel.innerHTML='<h3>'+r.ko+' <em>'+r.cats.length+'개 소분류</em></h3>'+r.cats.map(catBlock).join('');
  }
  function showGroup(gid){
-  history.replaceState(null,'',location.pathname+location.search);
-  var ids=P.cats.filter(function(c){return c.g===gid}).map(function(c){return c.id});
-  IndustryExplorer.show({title:P.groups[gid], children:IndustryExplorer.categories(ids)});
+  var cs=P.cats.filter(function(c){return c.g===gid});
+  panel.innerHTML='<h3>'+P.groups[gid]+' <em>'+cs.length+'개 소분류</em></h3>'+cs.map(function(c){return catBlock(c.id)}).join('');
  }
  function showCat(cid){
   var c=catById(cid); if(!c) return false;
   var r=P.regions.filter(function(r){return r.cats.indexOf(cid)>=0})[0];
   if(r){ S.sil=r.silhouette; S.sel=r.id; }
   S.group=null; draw();
-  IndustryExplorer.show({title:r?r.ko:P.groups[c.g], children:IndustryExplorer.categories(r?r.cats:[cid]), selected:cid});
+  panel.innerHTML='<h3>'+c.ko+' <em>'+P.groups[c.g]+'</em></h3>'+catBlock(cid)
+   +(r?'<p class="mut" style="font-size:12px">위치: '+r.ko+'</p>':'');
   return true;
  }
  function intro(){
-  history.replaceState(null,'',location.pathname+location.search);
-  IndustryExplorer.intro();
+  panel.innerHTML='<h3>부품 영역을 누르세요 <em>또는 아래 대분류 칩</em></h3>'
+   +'<p class="mut" style="font-size:12px">영역 → 부품 소분류 → 그 부품을 만드는 상장사 → 납품처(체계업체). '
+   +'회사 이름을 누르면 그 회사의 계약·부문매출 페이지로 갑니다.</p>';
  }
  Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
   b.addEventListener('click',function(){ S.sil=b.getAttribute('data-sil'); S.sel=null; S.group=null; draw(); intro(); });

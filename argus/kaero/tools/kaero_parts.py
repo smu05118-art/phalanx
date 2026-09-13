@@ -4,7 +4,7 @@
 
 실루엣 4종(여객기 평면도·터보팬 엔진 단면·인공위성·우주 발사체)을 **단순한 기하 도형**으로
 직접 그린다(외부 이미지 금지). 그림을 고르고 부품 영역을 누르면 그 영역의 부품 소분류와
-**그 부품을 만드는 상장사**가 하위 공정·부품 탐색 패널에 열린다. 회사 이름을 누르면 회사 페이지로 간다.
+**그 부품을 만드는 상장사**가 오른쪽 패널에 열린다. 회사 이름을 누르면 회사 페이지로 간다.
 
 이 산업에서는 회사 뒤에 **고객(OEM·Tier-1·체계업체)** 을 함께 보인다 — 부품보다 고객이
 더 잘 공시되기 때문이다(FINDINGS §2: 아스트 수주표 품목 열이 곧 발주처다).
@@ -70,8 +70,6 @@ def build(data):
         "groups": {g["id"]: g["ko"] for g in groups},
         "idx": idx,
         "srcKo": SRC_KO,
-        "pages": sorted({c["stock"] for rows in idx.values() for c in rows
-                         if os.path.isfile(os.path.join(KAERO, c["stock"], "index.html"))}),
     }
     body = """
 <div class="kpi">
@@ -106,9 +104,7 @@ KIND 주요제품 문구에서 부품 낱말을 찾습니다. 회사 칩에 근�
 채택합니다 — 그러지 않으면 자동차 단조사와 통신 안테나사가 항공 부품사가 됩니다.
 고객 연결의 근거 등급은 매출처 표 &gt; 수주표 품목 &gt; 계약공시 상대 &gt; 본문 언급 순이고,
 약칭을 사전으로 편 이름은 <b>추정</b>으로 적습니다.</div>
-<link rel="stylesheet" href="../ui/industry-explorer.css?v=20260913">
-<script src="../ui/industry-explorer.js?v=20260913"></script>
-<script>const P=%s; IndustryExplorer.setup(P);</script>
+<script>const P=%s;</script>
 <script>
 (function(){
  var S={sil:P.sils[0].id, sel:null, group:null};
@@ -153,26 +149,45 @@ KIND 주요제품 문구에서 부품 낱말을 찾습니다. 회사 칩에 근�
    var on=b.getAttribute('data-group')===S.group; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
   });
  }
+ function coHtml(c){
+  var cu=c.custs.map(function(p){
+    var nm=p.stock?('<a href="'+p.stock+'/index.html">'+p.nm+'</a>'):p.nm;
+    return nm+' <span class="mut">'+p.basis+(p.est?' · 추정':'')+'</span>';
+  }).join(' · ');
+  return '<li><a class="co" href="'+c.stock+'/index.html">'+c.nm+'</a>'
+   +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
+   +(cu?'<div class="mut" style="font-size:11px;margin-top:2px">고객 '+cu+'</div>':'')
+   +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
+ }
+ function catBlock(cid){
+  var c=catById(cid); if(!c) return '';
+  var cos=P.idx[cid]||[];
+  return '<div class="pblock"><h4 id="'+cid+'">'+c.ko+' <span class="mut">'+P.groups[c.g]+'</span>'
+   +' <span class="n">'+cos.length+'</span></h4>'
+   +(cos.length?'<ul class="colist">'+cos.map(coHtml).join('')+'</ul>'
+    :'<p class="mut" style="font-size:12px">이 부품을 만드는 상장사를 원문에서 찾지 못했습니다 — 비상장이거나 공시 문구가 짧아 규칙에 안 걸립니다.</p>')
+   +'</div>';
+ }
  function showRegion(r){
-  history.replaceState(null,'',location.pathname+location.search);
-  IndustryExplorer.show({title:r.ko, children:IndustryExplorer.categories(r.cats)});
+  panel.innerHTML='<h3>'+r.ko+' <em>'+r.cats.length+'개 소분류</em></h3>'+r.cats.map(catBlock).join('');
  }
  function showGroup(gid){
-  history.replaceState(null,'',location.pathname+location.search);
-  var ids=P.cats.filter(function(c){return c.g===gid}).map(function(c){return c.id});
-  IndustryExplorer.show({title:P.groups[gid], children:IndustryExplorer.categories(ids)});
+  var cs=P.cats.filter(function(c){return c.g===gid});
+  panel.innerHTML='<h3>'+P.groups[gid]+' <em>'+cs.length+'개 소분류</em></h3>'+cs.map(function(c){return catBlock(c.id)}).join('');
  }
  function showCat(cid){
   var c=catById(cid); if(!c) return false;
   var r=P.regions.filter(function(r){return r.cats.indexOf(cid)>=0})[0];
   if(r){ S.sil=r.silhouette; S.sel=r.id; }
   S.group=null; draw();
-  IndustryExplorer.show({title:r?r.ko:P.groups[c.g], children:IndustryExplorer.categories(r?r.cats:[cid]), selected:cid});
+  panel.innerHTML='<h3>'+c.ko+' <em>'+P.groups[c.g]+'</em></h3>'+catBlock(cid)
+   +(r?'<p class="mut" style="font-size:12px">위치: '+r.ko+'</p>':'');
   return true;
  }
  function intro(){
-  history.replaceState(null,'',location.pathname+location.search);
-  IndustryExplorer.intro();
+  panel.innerHTML='<h3>부품 영역을 누르세요 <em>또는 아래 대분류 칩</em></h3>'
+   +'<p class="mut" style="font-size:12px">영역 → 부품 소분류 → 그 부품을 만드는 상장사 → 그 회사의 고객. '
+   +'회사 이름을 누르면 그 회사의 수주·고객 페이지로 갑니다.</p>';
  }
  Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
   b.addEventListener('click',function(){ S.sil=b.getAttribute('data-sil'); S.sel=null; S.group=null; draw(); intro(); });

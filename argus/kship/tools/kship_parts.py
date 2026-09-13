@@ -4,7 +4,7 @@
 
 인포그래픽: 선종을 고르면 그 선종에 관련된 부품 영역이 강조되고(관련도 0~3, 근거 등급 A/B/C),
 영역을 누르면 그 영역의 소분류 → 그 부품을 만드는 상장 기자재사 → 납품 조선사(근거 등급)가
-하위 부품 탐색 패널에 열린다. 회사 이름을 누르면 회사 페이지로 간다. 기관실은 2차 확대(엔진부품 6영역).
+오른쪽 패널에 열린다. 회사 이름을 누르면 회사 페이지로 간다. 기관실은 2차 확대(엔진부품 6영역).
 
 원칙: 분류는 원문 제품 문구의 키워드 규칙이고(est 표시), 납품 관계는 정기보고서 본문 언급
 수준이 많다 — 근거 등급을 항상 같이 보여 준다. 임베드 JSON은 json_for_html 로만 넣는다.
@@ -82,8 +82,6 @@ def parts_html(data):
         "mods": types.get("mods", []),
         "rel": types["rel"],
         "idx": idx,
-        "pages": sorted({c["stock"] for rows in idx.values() for c in rows
-                         if os.path.isfile(os.path.join(KSHIP, c["stock"], "index.html"))}),
         "yards": YARD_LABEL, "yardPage": sorted(YARD_PAGE), "basis": BASIS_KO,
     }
     body = """
@@ -93,7 +91,7 @@ def parts_html(data):
  <div><b>%d</b><span>선종 · 관련도는 근거 등급 A/B/C</span></div>
  <div><b>%d</b><span>인포그래픽 영역 · 기관실 확대 %d</span></div>
 </div>
-<section class="card"><h2>선종을 고르면 관련 부품이 강조됩니다 <em>관련도 3 핵심 · 2 중요 · 1 공통 · 0 없음 — 부품 영역 → 세부 부품 → 연결 기업</em><span class="right"><button class="chip" id="reset">전체 보기</button></span></h2>
+<section class="card"><h2>선종을 고르면 관련 부품이 강조됩니다 <em>관련도 3 핵심 · 2 중요 · 1 공통 · 0 없음 — 부품 영역을 누르면 담당 회사</em><span class="right"><button class="chip" id="reset">전체 보기</button></span></h2>
  <div class="ctl"><div class="chips" id="types">%s</div><span class="mut" style="font-size:10.5px">수식어</span><div class="chips" id="mods">%s</div></div>
  <div class="ig">
   <div class="ship">%s<div class="legend"><span><i style="background:rgba(96,165,250,.26)"></i>핵심(3)</span><span><i style="background:rgba(96,165,250,.14)"></i>중요(2)</span><span><i style="background:rgba(96,165,250,.06)"></i>공통(1)</span><span><i style="background:rgba(255,255,255,.015)"></i>해당 없음(0)</span><span><i style="border-style:dashed"></i>상장 기자재사 없음</span><span id="zoomhint" class="mut"></span></div></div>
@@ -102,9 +100,7 @@ def parts_html(data):
 </section>
 <section class="card"><h2>대분류로 진입 <em>분산 시스템(전장·배관·도장·안전)은 특정 위치가 없어 여기서 들어갑니다 · 숫자는 연결된 회사 수</em></h2><div class="chips" id="groups">%s</div></section>
 <div class="note info">부품 분류는 정기보고서 「주요 제품」·KIND 주요제품 문구의 키워드 규칙이고, 납품 조선사는 사업의 내용 본문에서 이름이 언급된 것을 근거로 합니다(주요고객 비중이 적힌 경우만 %%). 근거가 약한 항목은 <span class="pill est">추정</span>으로 표시합니다. 선종별 관련도 등급 C는 업계 통념에 기댄 추정입니다.</div>
-<link rel="stylesheet" href="../ui/industry-explorer.css?v=20260913">
-<script src="../ui/industry-explorer.js?v=20260913"></script>
-<script>const P=%s; IndustryExplorer.setup(P);</script>
+<script>const P=%s;</script>
 <script>%s</script>
 <script>
 (function(){
@@ -135,34 +131,39 @@ def parts_html(data):
   }
   function drawEngine(){ EG.textContent=''; EL.textContent=''; P.engine.regions.forEach(function(r){ var el=shapeEl(r.poly); el.setAttribute('class','rg'+(S.sel==='E:'+r.id?' sel':'')); el.setAttribute('tabindex','0'); el.setAttribute('role','button');
       var rel=S.type?Math.max.apply(null,r.cats.map(relOf)):null; if(rel!==null) el.classList.add('rel'+rel); if(!r.cats.some(function(c){return (P.idx[c]||[]).length})) el.classList.add('none');
-      el.setAttribute('aria-label',r.ko); el.addEventListener('click',function(){selectCats(r.cats,r.ko,'E:'+r.id)}); el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();selectCats(r.cats,r.ko,'E:'+r.id);}}); EG.appendChild(el);
+      el.addEventListener('click',function(){selectCats(r.cats,r.ko,'E:'+r.id)}); EG.appendChild(el);
       var c=centroid(r.poly); var tx=document.createElementNS('http://www.w3.org/2000/svg','text'); tx.setAttribute('x',c[0]); tx.setAttribute('y',c[1]+4); tx.setAttribute('text-anchor','middle'); tx.textContent=r.ko; EL.appendChild(tx); }); }
-  function select(id){ var r=regById[id]; if(!r) return; if(r.zoom==='engine'){ S.zoom=!S.zoom; esvg.toggleAttribute('hidden',!S.zoom); if(S.zoom){drawEngine();} }
+  function select(id){ var r=regById[id]; if(!r) return; if(r.zoom==='engine'){ S.zoom=!S.zoom; esvg.hidden=!S.zoom; if(S.zoom){drawEngine();} }
     S.sel=id; draw(); selectCats(r.cats,r.ko,id); }
   function el(tag,cls,text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
   function selectCats(catIds,title,selId){
-    S.sel=selId;
-    history.replaceState(null,'',location.pathname+location.search+(selId.indexOf('G:')===0?'#'+selId.slice(2):''));
-    document.querySelectorAll('#groups .chip').forEach(function(b){b.setAttribute('aria-pressed',String(selId==='G:'+b.dataset.group));});
-    var ids=catIds.slice().sort(function(a,b){return (relOf(b)||0)-(relOf(a)||0)});
-    IndustryExplorer.show({title:title, children:IndustryExplorer.categories(ids,function(cid){
-      var rel=relOf(cid), grade=gradeOf(cid);
-      return {dim:rel===0, meta:rel===null?'선종 미선택':('관련도 '+rel+(grade?' · 근거 '+grade:'')+(grade==='C'?' · 추정':''))};
-    }), note:'선종별 관련도는 3 핵심 · 2 중요 · 1 공통 · 0 해당 없음입니다. 근거 등급 C는 추정이며, 회사별 납품처 언급과는 별도입니다.'});
-    if(S.zoom) drawEngine();
+    S.sel=selId; var pan=document.getElementById('panel'); pan.textContent='';
+    var h=el('h3',null,title); var em=el('em',null,S.type?('관련도 기준 선종: '+P.types.filter(function(t){return t.id===S.type})[0].ko):'선종 미선택'); h.appendChild(em); pan.appendChild(h);
+    if(!catIds.length){ pan.appendChild(el('p','mut','이 영역은 묶음 영역입니다 — 안쪽 영역을 누르세요.')); return; }
+    var root=pan;
+    catIds.slice().sort(function(a,b){ return (relOf(b)||0)-(relOf(a)||0); }).forEach(function(cid){
+      var pan=root; var c=catById[cid]; if(!c) return; var rel=relOf(cid), gr=gradeOf(cid);
+      // 선종을 골랐는데 관련도 0인 소분류는 흐리게 — 영역이 여러 소분류를 품을 때 눈에 띄는 것은 해당 선종 것이어야 한다
+      var box=el('div', rel===0?'catbox off':'catbox'); pan.appendChild(box); pan=box;
+      var head=el('div',null); head.style.cssText='margin-top:10px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap';
+      var b=el('b',null,c.ko); head.appendChild(b); var s=el('span','mut',(P.groups[c.p]||c.p)+' · '+c.id); s.style.fontSize='10.5px'; head.appendChild(s);
+      if(rel!==null){ var pill=el('span','pill',rel===0?'이 선종 해당 없음':('관련도 '+rel+(gr?' · 근거 '+gr:''))); if(gr==='C'&&rel) pill.className='pill est'; head.appendChild(pill); }
+      pan.appendChild(head);
+      var cos=P.idx[cid]||[]; if(!cos.length){ pan.appendChild(el('p','mut','이 부품을 주력으로 하는 상장사가 모집단에 없거나 아직 원문 확인 전입니다.')); return; }
+      var ul=el('ul'); cos.slice().sort(function(a,b){return (b.confirmed?1:0)-(a.confirmed?1:0)}).forEach(function(co){
+        var li=el('li'); var a=el('a',null,co.nm); a.href=co.stock+'/index.html'; li.appendChild(a);
+        var right=el('span'); if(co.share!=null){ right.appendChild(el('span','y','매출비중 '+co.share+'%% ')); }
+        if(co.est){ right.appendChild(el('span','pill est','추정')); }
+        (co.yards||[]).forEach(function(y){ var t=el('span','yardtag',P.yards[y]||y); right.appendChild(t); });
+        if(!(co.yards||[]).length) right.appendChild(el('span','y','납품처 언급 없음'));
+        li.appendChild(right); ul.appendChild(li); });
+      pan.appendChild(ul); });
   }
-  function refreshPanel(){
-    if(!S.sel) return;
-    var r=regById[S.sel];
-    if(r) selectCats(r.cats,r.ko,S.sel);
-    else if(S.sel.indexOf('E:')===0){r=P.engine.regions.filter(function(x){return 'E:'+x.id===S.sel})[0];if(r) selectCats(r.cats,r.ko,S.sel);}
-    else if(S.sel.indexOf('G:')===0){var g=S.sel.slice(2);selectCats(P.cats.filter(function(c){return c.p===g}).map(function(c){return c.id}),P.groups[g],S.sel);}
-  }
-  document.querySelectorAll('#types .chip').forEach(function(b){ b.addEventListener('click',function(){ var t=b.dataset.type; S.type=(S.type===t?null:t); document.querySelectorAll('#types .chip').forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.type===S.type))}); draw(); if(S.zoom) drawEngine(); refreshPanel(); }); });
-  document.querySelectorAll('#mods .chip').forEach(function(b){ b.addEventListener('click',function(){ var m=b.dataset.mod; S.mods[m]=!S.mods[m]; b.setAttribute('aria-pressed',String(!!S.mods[m])); draw(); if(S.zoom) drawEngine(); refreshPanel(); }); });
-  document.querySelectorAll('#groups .chip').forEach(function(b){ b.addEventListener('click',function(){ var g=b.dataset.group; document.querySelectorAll('#groups .chip').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))}); selectCats(P.cats.filter(function(c){return c.p===g}).map(function(c){return c.id}),(P.groups[g]||g)+' — 대분류 전체','G:'+g); draw(); }); });
-  document.getElementById('reset').addEventListener('click',function(){ S.type=null; S.mods={}; S.sel=null; S.zoom=false; esvg.setAttribute('hidden',''); document.querySelectorAll('.chip[aria-pressed]').forEach(function(x){x.setAttribute('aria-pressed','false')}); draw(); history.replaceState(null,'',location.pathname+location.search); IndustryExplorer.intro(); });
-  if(location.hash){ var g=location.hash.slice(1); var btn=Array.from(document.querySelectorAll('#groups .chip')).find(function(b){return b.dataset.group===g;}); if(btn) btn.click(); }
+  document.querySelectorAll('#types .chip').forEach(function(b){ b.addEventListener('click',function(){ var t=b.dataset.type; S.type=(S.type===t?null:t); document.querySelectorAll('#types .chip').forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.type===S.type))}); draw(); if(S.zoom) drawEngine(); if(S.sel){ var r=regById[S.sel]; if(r) selectCats(r.cats,r.ko,S.sel); } }); });
+  document.querySelectorAll('#mods .chip').forEach(function(b){ b.addEventListener('click',function(){ var m=b.dataset.mod; S.mods[m]=!S.mods[m]; b.setAttribute('aria-pressed',String(!!S.mods[m])); draw(); if(S.zoom) drawEngine(); }); });
+  document.querySelectorAll('#groups .chip').forEach(function(b){ b.addEventListener('click',function(){ var g=b.dataset.group; document.querySelectorAll('#groups .chip').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))}); selectCats(P.cats.filter(function(c){return c.p===g}).map(function(c){return c.id}),(P.groups[g]||g)+' — 대분류 전체','G:'+g); S.sel=null; draw(); }); });
+  document.getElementById('reset').addEventListener('click',function(){ S.type=null; S.mods={}; S.sel=null; S.zoom=false; esvg.hidden=true; document.querySelectorAll('.chip[aria-pressed]').forEach(function(x){x.setAttribute('aria-pressed','false')}); draw(); document.getElementById('panel').innerHTML=''; document.getElementById('panel').appendChild(el('h3',null,'부품 영역을 누르세요')); });
+  if(location.hash){ var g=location.hash.slice(1); var btn=document.querySelector('#groups .chip[data-group="'+g+'"]'); if(btn) btn.click(); }
   draw();
 })();
 </script>
