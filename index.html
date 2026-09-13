@@ -1549,6 +1549,128 @@ function mcBind(){
   }
 }
 
+/* Shared, dependency-free evidence panels for Rack and Ensemble. */
+const SC_KIND={direct:'공시·실측',proxy:'대체 관측',qualitative:'회사 설명',forecast:'전망·계획',diagnostic:'통계 대조'};
+const SC_STATE={actual:'관측',stale:'오래됨',future:'향후 기간',forecast:'계획',missing:'미확보'};
+function scEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function scNum(x,d=1){return typeof x==='number'&&Number.isFinite(x)?x.toLocaleString('en-US',{maximumFractionDigits:d}):'—';}
+function scPct(x){return typeof x==='number'&&Number.isFinite(x)?(x>0?'+':'')+scNum(x)+'%':'—';}
+function scLink(url,label){if(typeof url!=='string'||!url.trim())return scEsc(label);try{const u=new URL(url,location.href);if(!['https:','http:'].includes(u.protocol))return scEsc(label);return `<a href="${scEsc(u.href)}" target="_blank" rel="noopener noreferrer">${scEsc(label)} ↗</a>`;}catch(e){return scEsc(label);}}
+function scVal(o){return !o?'—':o.value==null?scEsc(o.text||o.label||'정성 관측'):`${scNum(o.value,2)} <small>${scEsc(o.unit||'')}</small>`;}
+function scMonthShift(m,n){const [y,mo]=m.split('-').map(Number),i=y*12+mo-1+n;return `${Math.floor(i/12)}-${String((i%12+12)%12+1).padStart(2,'0')}`;}
+function scSpark(series,mode='value'){
+ const valid=Object.keys(series||{}).filter(m=>/^\d{4}-\d{2}$/.test(m)).sort();if(!valid.length)return '<p class="sc-muted">월차 시계열 없음</p>';
+ const end=valid.at(-1),start=scMonthShift(end,-23),ms=Array.from({length:24},(_,i)=>scMonthShift(start,i));
+ const vs=ms.map(m=>{const o=series[m];if(!o||typeof o.value!=='number'||!Number.isFinite(o.value))return null;if(mode==='value')return o.value;const p=series[scMonthShift(m,-12)];return Number.isFinite(p?.value)&&p.value>0?(o.value/p.value-1)*100:null;});
+ const nums=vs.filter(v=>typeof v==='number'&&Number.isFinite(v));if(!nums.length)return '<p class="sc-muted">동일월 비교값 부족</p>';
+ const min=Math.min(...nums),max=Math.max(...nums),range=max-min||1;let segments=[],points=[];
+ vs.forEach((v,i)=>{if(v==null){if(points.length)segments.push(points.join(' '));points=[];}else points.push(`${35+i/23*430},${78-(v-min)/range*60}`);});if(points.length)segments.push(points.join(' '));
+ return `<svg class="sc-spark" viewBox="0 0 490 110" role="img" aria-label="최근 24개월 ${mode==='value'?'월매출':'월매출 YoY'} 추이"><title>월매출 ${start}~${end}; 결측은 연결하지 않음. 범위 ${scNum(min)}~${scNum(max)}</title><text x="4" y="16">${scNum(max,0)}</text><text x="4" y="82">${scNum(min,0)}</text>${segments.map(p=>`<polyline points="${p}"/>`).join('')}${vs.map((v,i)=>v==null?'':`<circle cx="${35+i/23*430}" cy="${78-(v-min)/range*60}" r="2.4"><title>${ms[i]} · ${scNum(v,1)}${mode==='value'?' NTD thousand':'%'}</title></circle>`).join('')}<text x="35" y="104">${start}</text><text x="413" y="104">${end}</text></svg>`;
+}
+function scStyles(){return `<style>
+ .sc-root{--sc-accent:#59d7ce;--sc-ink:var(--text,var(--ink,#dce3f0));--sc-sub:var(--muted,var(--sub,#929fb2));color:var(--sc-ink);min-width:0;line-height:1.6;font-size:13px}
+ .sc-root *{box-sizing:border-box}.sc-root a{color:var(--sc-accent);text-decoration:none}.sc-root a:hover{text-decoration:underline}
+ .sc-muted{color:var(--sc-sub);font-size:11.5px}.sc-root small{font-size:10.5px;color:var(--sc-sub)}
+ .sc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.sc-duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .sc-card{padding:13px 15px;background:var(--panel,var(--card,#121b25));border:1px solid var(--line,#263343);border-radius:12px;min-width:0;overflow-wrap:anywhere}
+ .sc-card h3,.sc-card h4{font-size:13px;margin:0 0 6px}.sc-card p{margin:5px 0}.sc-value{font-size:23px;font-weight:760;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+ .sc-pill{display:inline-block;padding:2px 7px;border:1px solid var(--line,#263343);border-radius:6px;font-size:10.5px;margin:2px 3px 2px 0;color:var(--sc-sub)}
+ .sc-pill.actual{color:#4bc69b}.sc-pill.stale,.sc-pill.forecast,.sc-pill.future{color:#e3b362}.sc-note{padding:10px 13px;background:#bd943414;border-left:3px solid #b59145;color:var(--sc-sub);font-size:11.5px;margin:10px 0}
+ .sc-table{width:100%;overflow:auto;border:1px solid var(--line,#263343);border-radius:10px}.sc-table table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+ .sc-table th,.sc-table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line,#263343);font-variant-numeric:tabular-nums}.sc-table th{font-size:10.5px;color:var(--sc-sub);font-weight:600;position:sticky;top:0;background:var(--panel,var(--card,#121b25))}
+ .sc-table tr:last-child td{border-bottom:0}.sc-table tr[data-selected=true]{background:#5bd9cf0d}.sc-table .sc-wrap{white-space:normal;min-width:210px}
+ .sc-root button,.sc-root input,.sc-root select{font:inherit;color:var(--sc-ink);background:var(--panel,var(--card,#121b25));border:1px solid var(--line,#263343);border-radius:7px;padding:6px 9px;max-width:100%}.sc-root button{cursor:pointer}.sc-root button:hover{border-color:var(--sc-accent)}.sc-root button[aria-pressed=true]{border-color:var(--sc-accent);color:var(--sc-accent);background:#5bd9cf10}
+ .sc-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}.sc-controls label{font-size:11px;color:var(--sc-sub);display:flex;align-items:center;gap:5px}.sc-controls input[type=search]{width:200px}
+ .sc-root details{margin-top:10px}.sc-root summary{cursor:pointer;font-size:12px;color:var(--sc-sub);padding:7px 0}.sc-root h2{font-size:18px;margin:20px 0 8px}.sc-spark{width:100%;height:auto;max-height:145px}.sc-spark text{fill:var(--sc-sub);font-size:9px}.sc-spark polyline{fill:none;stroke:var(--sc-accent);stroke-width:2}.sc-spark circle{fill:var(--sc-accent)}
+ .sc-bigtitle{font-size:24px;font-weight:800;letter-spacing:-.04em}.sc-eyebrow{letter-spacing:.18em;color:var(--sc-accent);font-size:10px;font-weight:750}.sc-inset{margin-top:10px}.sc-empty{padding:30px;text-align:center;color:var(--sc-sub)}
+ @media(max-width:700px){.sc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sc-duo{grid-template-columns:1fr}.sc-card{padding:11px}.sc-value{font-size:20px}.sc-controls input[type=search]{width:150px}}
+ @media(max-width:390px){.sc-grid{grid-template-columns:1fr 1fr}.sc-value{font-size:18px}}
+ </style>`;}
+function scEvidence(o){if(!o)return '<span class="sc-muted">미확보 · 추정 대입 없음</span>';
+ return `<span class="sc-pill ${scEsc(o.status)}">${scEsc(SC_STATE[o.status]||o.status)}</span><span class="sc-pill">${scEsc(SC_KIND[o.kind]||o.kind)}</span><div><b>${scVal(o)}</b></div><p class="sc-muted">${scEsc(o.period||'')} · ${scEsc(o.label||'')}</p><p class="sc-muted">${scEsc(o.scope||'')}</p>${(o.source_urls||[]).slice(0,1).map(u=>scLink(u,'원문')).join('')}`;
+}
+function scModel(n){
+ if(!n||n.forecast==null)return `<div class="sc-note">${scEsc(n?.reason||'공통 입력·비교 이력이 부족하여 모델 산출 보류.')}</div>`;
+ const b=n.empirical_band||[],spread=n.model_spread||[];
+ return `<div class="sc-grid"><div class="sc-card"><h4>${scEsc(n.target)} 월차 합계 예측</h4><div class="sc-value">${scNum(n.forecast/1e6,2)} <small>B NT$</small></div><div>${scPct(n.forecast_yoy)} <small>전년 같은 분기 월차 합 대비</small></div><p class="sc-muted">${n.months_used}/3개월 관측 · ${scEsc(n.input_end)}까지</p></div>
+ <div class="sc-card"><h4>과거 오차 적용 참고폭</h4><div class="sc-value">${scNum(b[0]/1e6,2)}–${scNum(b[1]/1e6,2)}</div><small>B NT$ · 보장 확률 아님</small><p class="sc-muted">모형 간 범위 ${scNum(spread[0]/1e6,2)}–${scNum(spread[1]/1e6,2)}</p></div>
+ <div class="sc-card"><h4>동일 관측개월수 진단</h4><div class="sc-value">${scNum(n.mape_pct)}<small>% 평균절대오차</small></div><p class="sc-muted">중앙값 ${scNum(n.median_ape_pct)}% · ${n.backtest_n}분기</p><small>월차 개정본 사용 · 당시값 검증 아님</small></div></div>
+ <p class="sc-note">${scEsc(n.reason)} ${scEsc(n.scope)}. ${scEsc(n.note)}</p>
+ <details><summary>3모형 가중·재현 진단 보기</summary><div class="sc-table"><table><thead><tr><th>고정 모형</th><th>가중</th><th>합계 예측(B NT$)</th><th>평균절대오차</th></tr></thead><tbody>${n.models.map(m=>`<tr><td>${scEsc(m.label)}</td><td>⅓</td><td>${scNum(m.value/1e6,2)}</td><td>${scNum(m.mape_pct)}%</td></tr>`).join('')}</tbody></table></div><p class="sc-muted">${scEsc(n.backtest_note)} ${scEsc(n.band_note)}</p>
+ <div class="sc-table"><table><thead><tr><th>과거 목표분기</th><th>입력 절단월</th><th>모형(B NT$)</th><th>월차 합 실측(B NT$)</th><th>오차</th></tr></thead><tbody>${(n.walk||[]).slice().reverse().map(w=>`<tr><td>${scEsc(w.period)}</td><td>${scEsc(w.cutoff)}</td><td>${scNum(w.prediction/1e6,2)}</td><td>${scNum(w.actual/1e6,2)}</td><td>${scPct((w.prediction/w.actual-1)*100)}</td></tr>`).join('')}</tbody></table></div></details>`;
+}
+function scDetail(c){
+ const obs=c.observables||[],axes=c.axis_cards||{},trade=c.trade_model||{};
+ return `<div class="sc-root"><div class="sc-card"><div class="sc-eyebrow">${scEsc(c.sector||'rack')} / COMPANY EVIDENCE</div><div class="sc-bigtitle">${scEsc(c.name)} <small>${scEsc(c.name_en)} · ${scEsc(c.ticker)}</small></div><p>${scEsc(c.business||c.focus||'')}</p><p class="sc-muted">${scEsc(c.scope||c.scope_note||'')} · 계열 묶음 ${scEsc(c.group)}</p><div class="sc-controls">${scLink(c.ir,'공식 IR')}${scLink(c.product_source,'사업·제품')}${scLink(c.ensemble_url||`composite_preview.html#c=${c.id}`,'앙상블')}${c.hub_url?scLink(c.hub_url,'Phalanx 허브'):''}</div></div>
+ <h2>관측 축 · ${c.observable_axes??0}개 연결</h2><p class="sc-muted">연결 축 수는 독립 신호 수나 투자 점수가 아닙니다. 매출을 수주 대체 관측으로 쓴 경우 중복표가 아닙니다.</p>
+ <div class="sc-grid">${Object.values(axes).map(a=>`<div class="sc-card"><h4>${scEsc(a.label)}</h4>${scEvidence(a.evidence)}</div>`).join('')}</div>
+ ${Object.keys(c.monthly_series||{}).length?`<div class="sc-duo sc-inset"><div class="sc-card"><h4>전사 월매출 · NTD thousand</h4>${scSpark(c.monthly_series)}</div><div class="sc-card"><h4>전사 월매출 YoY · %</h4>${scSpark(c.monthly_series,'yoy')}</div></div>`:''}
+ <h2>월차 매출 앙상블</h2>${scModel(c.monthly_model)}
+ ${trade.status?`<div class="sc-card sc-inset"><h4>기존 무역 회귀모델과의 연결</h4><span class="sc-pill">${scEsc(trade.status)}</span><span class="sc-muted">${scEsc(trade.target||'')} · 산출 ${scEsc(trade.asof||'—')} · 매출 YoY ${scPct(trade.forecast_yoy)}</span><p class="sc-muted">${scEsc(trade.reason)}</p>${(trade.routes||[]).map(r=>`<div class="sc-muted">${scEsc(r.label)} · ${scEsc(r.note)}</div>`).join('')}</div>`:''}
+ ${(c.issues||[]).length?`<div class="sc-note"><b>대사·범위 확인 ${c.issues.length}건</b>${c.issues.map(x=>`<div>${scEsc(x)}</div>`).join('')}</div>`:''}
+ <details><summary>근거 원장 ${obs.length}건 · 기간·범위·공식·출처</summary><div class="sc-table"><table><thead><tr><th>기간</th><th>지표·범위</th><th>값</th><th>분류</th><th>근거</th></tr></thead><tbody>${obs.map(o=>`<tr><td>${scEsc(o.period||'')}<br><small>${scEsc(o.end||o.period_end||'')}</small></td><td class="sc-wrap"><b>${scEsc(o.label)}</b><br><small>${scEsc(o.scope)} ${scEsc(o.note||'')}</small>${o.formula?`<br><small>계산: ${scEsc(o.formula)} · ${scEsc(JSON.stringify(o.inputs||{}))}</small>`:''}</td><td class="sc-wrap">${scVal(o)}</td><td>${scEsc(SC_KIND[o.kind]||o.kind)}<br><small>${scEsc(SC_STATE[o.status]||o.status)}</small></td><td>${(o.source_urls||[]).slice(0,1).map(u=>scLink(u,'원문')).join('')}</td></tr>`).join('')}</tbody></table></div></details>
+ <details open><summary>다음 확인 항목 ${(c.next_checks||[]).length}개</summary><div class="sc-grid">${(c.next_checks||[]).map(x=>`<div class="sc-card"><h4>${scEsc(x.label)}</h4><p class="sc-muted">${scEsc(x.action)}</p>${scLink(x.url,'확인 경로')}</div>`).join('')}</div></details></div>`;
+}
+function scCsv(rows){return '\uFEFF'+rows.map(row=>row.map(v=>{let s=String(v??'');if(/^[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';}).join(',')).join('\r\n');}
+function scDownload(rows,name){const u=URL.createObjectURL(new Blob([scCsv(rows)],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+function scInstallEnsemble(){
+ const all=DATA.observatory?.companies||[];if(!all.length)return;
+ const toolbar=document.createElement('div');toolbar.className='sc-root';toolbar.innerHTML=scStyles()+`<div class="sc-card"><div class="sc-eyebrow">SUPPLY CHAIN OBSERVATORY</div><h2 style="margin:2px 0">랙 ${DATA.observatory.counts.rack}사 · MLCC ${DATA.observatory.counts.mlcc}사</h2><p class="sc-muted">${scEsc(DATA.observatory.note)} · ${scEsc(DATA.observatory.asof)}</p><div class="sc-controls"><label>기업군 <select id="scSector"><option value="all">전체</option><option value="rack">랙·서버</option><option value="mlcc">MLCC·인접</option></select></label><label>검색 <input id="scSearch" type="search" placeholder="회사·티커" aria-label="앙상블 회사 검색"></label><button id="scExport">관측 목록 CSV</button><span id="scCount" class="sc-muted"></span></div><div id="scCatalog"></div></div>`;
+ tabs.before(toolbar);
+ const by=Object.fromEntries(all.map(c=>[c.id,c]));
+ for(const c of all){
+  let panel=document.getElementById('p'+c.id);
+  if(!panel){const t=document.createElement('div');t.className='tab';t.textContent=c.id;t.onclick=()=>selectTab(c.id,true);tabEls[c.id]=t;tabs.appendChild(t);panel=document.createElement('div');panel.className='panel';panel.id='p'+c.id;panels.appendChild(panel);}
+  const evidence=document.createElement('div');evidence.innerHTML=scDetail(c);panel.prepend(evidence);
+ }
+ const filters={sector:'all',query:''};
+ const filtered=()=>all.filter(c=>(filters.sector==='all'||c.sector===filters.sector)&&`${c.id} ${c.ticker} ${c.name} ${c.name_en}`.toLowerCase().includes(filters.query.toLowerCase()));
+ function render(){const cs=filtered();document.getElementById('scCount').textContent=`${cs.length}/${all.length}사 관측 · 예측 미등록 기업도 표시`;
+  document.getElementById('scCatalog').innerHTML=`<div class="sc-table"><table><thead><tr><th>회사</th><th>기업군</th><th>월차 3M YoY</th><th>모델 연결 상태</th><th>입력 말</th><th>대사</th></tr></thead><tbody>${cs.map(c=>`<tr><td><button data-sc-company="${scEsc(c.id)}">${scEsc(c.name)} <small>${scEsc(c.id)}</small></button></td><td>${scEsc(c.sector)}</td><td>${scPct(c.monthly?.yoy_3m)}</td><td>${scEsc(c.model_gate)}</td><td>${scEsc(c.monthly?.period||'분기 공시')}</td><td>${(c.issues||[]).length}건</td></tr>`).join('')}</tbody></table></div>${cs.length?'':'<p class="sc-empty">검색 결과 없음</p>'}`;
+  document.querySelectorAll('[data-sc-company]').forEach(b=>b.onclick=()=>{selectTab(b.dataset.scCompany,true);document.getElementById('p'+b.dataset.scCompany)?.scrollIntoView({block:'start'});});
+  Object.entries(tabEls).forEach(([id,t])=>{const c=by[id],ok=filters.sector==='all'?!filters.query||cs.some(c=>c.id===id)||!c:c&&cs.some(v=>v.id===id);t.style.display=id==='OVER'||ok?'':'none';});
+  const hiddenSelected=Object.values(tabEls).some(t=>t.style.display==='none'&&t.classList.contains('on'));
+  if(hiddenSelected)selectTab(cs[0]?.id||'OVER',true);
+ }
+ document.getElementById('scSector').onchange=e=>{filters.sector=e.target.value;render();};
+ document.getElementById('scSearch').oninput=e=>{filters.query=e.target.value;render();};
+ document.getElementById('scExport').onclick=()=>scDownload([['company','ticker','sector','period','3m_yoy_pct','model_gate','issues','source'],...filtered().map(c=>[c.id,c.ticker,c.sector,c.monthly?.period,c.monthly?.yoy_3m,c.model_gate,(c.issues||[]).join(' / '),c.ir])],'ensemble-supply-chain.csv');
+ render();
+}
+
+/* Registry-driven Rack UI, including companies without historical unit estimates. */
+const RK_ENTRY=new URLSearchParams(typeof location==='undefined'?'':location.hash.replace(/^#/,''));
+const RK_VIEW={selected:RK_ENTRY.get('rc')||'WISTRON',role:'all',region:'all',query:'',sort:'requested',view:'radar',compare:['WISTRON','HONHAI','QUANTA','INVENTEC','MITAC','ASUS']};
+const RK_ROLES={odm:'ODM·랙 통합',brand:'브랜드·서버',oem:'OEM',ems:'EMS',component:'부품'};
+function rkCompanies(){return (window.RACKD?.hub?.companies||[]).filter(c=>(RK_VIEW.role==='all'||c.role===RK_VIEW.role)&&(RK_VIEW.region==='all'||c.region===RK_VIEW.region)&&`${c.name} ${c.name_en} ${c.id} ${c.ticker}`.toLowerCase().includes(RK_VIEW.query.toLowerCase())).sort((a,b)=>RK_VIEW.sort==='growth'?(b.monthly?.yoy_3m??-Infinity)-(a.monthly?.yoy_3m??-Infinity):RK_VIEW.sort==='issues'?(b.issues?.length||0)-(a.issues?.length||0):RK_VIEW.sort==='name'?a.name_en.localeCompare(b.name_en):Number(!!b.requested)-Number(!!a.requested));}
+function rkMargin(c){return (c.observables||[]).find(o=>o.key==='gross_margin'&&o.status==='actual');}
+function rkWrite(){const q=new URLSearchParams(location.hash.replace(/^#/,''));q.set('tab','rack');q.set('rc',RK_VIEW.selected);history.replaceState(null,'',location.pathname+location.search+'#'+q.toString());}
+function rkCompare(cs){const rows=cs.filter(c=>RK_VIEW.compare.includes(c.id)),m=window.RACKD.hub.asof.slice(0,4)+'-H1';
+ return `<p class="sc-muted">최대 6개사. 월매출은 전사 기준, 공통 H1 마진은 같은 기간끼리 비교합니다. 서로 다른 통화의 매출은 합산하지 않습니다.</p><div class="sc-controls">${cs.map(c=>`<label><input type="checkbox" data-rk-compare="${c.id}" ${RK_VIEW.compare.includes(c.id)?'checked':''}>${scEsc(c.name)}</label>`).join('')}</div><div class="sc-duo">${rows.map(c=>`<div class="sc-card"><h3>${scEsc(c.name)} · 월차 YoY</h3>${scSpark(c.monthly_series,'yoy')}<small>3M YoY ${scPct(c.monthly?.yoy_3m)} · 가속 ${scNum(c.monthly?.acceleration_pp)}pp</small></div>`).join('')}</div>
+ <h2>${m} 전사 이익률 · 동일 기간</h2><div class="sc-table"><table><thead><tr><th>기업</th><th>매출총이익률</th><th>영업이익률</th><th>기간·범위</th></tr></thead><tbody>${rows.map(c=>{const os=c.observables||[],gm=os.find(o=>o.period===m&&o.key==='gross_margin'),op=os.find(o=>o.period===m&&o.key==='operating_margin');return `<tr><td>${scEsc(c.name)}</td><td>${scPct(gm?.value)}</td><td>${scPct(op?.value)}</td><td class="sc-wrap">${gm?scEsc(gm.scope):'동일 H1 공시 미연결 · 다른 분기로 대체하지 않음'}</td></tr>`;}).join('')}</tbody></table></div>`;
+}
+function rkSignals(R){const X=R.idx||{};return `<p class="sc-note">아래는 회사 전용 통계가 아닌 공통 수요·무역 대조입니다. 미국 수출 $/kg는 중량·품목 믹스의 영향을 받으므로 AI 랙 ASP나 물량으로 단정하지 않습니다.</p><div class="sc-grid">${[['unit_price','미국발 HS8471 수출 단가','$/kg'],['srv_share','서버형 HS847150 / HS8471','%'],['lead_index','조립국 부품유입 지표','기존 지수']].map(([k,label,unit])=>{const s=X[k]||{},keys=Object.keys(s).sort(),last=keys.at(-1);return `<div class="sc-card"><h4>${label}</h4><div class="sc-value">${scNum(s[last])}<small> ${unit}</small></div><p class="sc-muted">입력 기간 ${scEsc(last||'미확보')}</p><small>개별 업체 귀속·확정 선행성 검증과 별개</small></div>`;}).join('')}</div>
+ <h2>최종 수요 · 하이퍼스케일러 CAPEX</h2>${typeof capexStrip==='function'?capexStrip(R.capex_common,'rack'):''}<p class="sc-muted">CAPEX에는 건물·네트워크·전력 등도 포함. 랙 업체 주문·매출과 합산하거나 고정 비율로 환산하지 않습니다.</p>`;
+}
+function renderRackV2(){
+ const R=window.RACKD||{},H=R.hub;if(!H)return renderRackLegacy();
+ const main=document.getElementById('main'),cs=rkCompanies(),B=H.breadth||{};
+ const current=cs.find(c=>c.id===RK_VIEW.selected)||cs[0];if(current)RK_VIEW.selected=current.id;
+ const modelN=cs.filter(c=>c.monthly_model?.forecast!=null).length,issuesN=cs.reduce((s,c)=>s+(c.issues||[]).length,0);
+ main.innerHTML=scStyles()+`<div class="sc-root" id="rackObservatory"><div class="sc-eyebrow">PHALANX / RACK OBSERVATORY</div><div class="sc-bigtitle">서버·랙 공급망 관측실</div><p class="sc-muted">${H.asof} · 요청 8개사 포함 ${H.companies.length}사 · 공식 월차·손익과 사업모델 연결</p><div class="sc-note">${scEsc(H.policy)}</div>
+ <div class="sc-grid"><div class="sc-card"><h4>필터 기업</h4><div class="sc-value">${cs.length}<small> / ${H.companies.length}사</small></div><small>월차 모형 ${modelN}사 · 대사 확인 ${issuesN}건</small></div><div class="sc-card"><h4>대만 관련기업 상승가속 확산도 · 전체</h4><div class="sc-value">${scNum(B.pct)}<small>% · ${B.up_groups}/${B.covered_groups}그룹</small></div><small>${scEsc(B.period)} · 계열 중복 제거 / 필터 무관</small></div><div class="sc-card"><h4>공식 월차·YTD 스냅샷</h4><div class="sc-value">${scEsc(H.snapshot_verified_on||'대기')}</div><small>무역 대조 입력 ${scEsc(H.trade_period||'미확보')}</small></div></div>
+ <div class="sc-controls"><button data-rkv="radar" aria-pressed="${RK_VIEW.view==='radar'}">기업 레이더</button><button data-rkv="compare" aria-pressed="${RK_VIEW.view==='compare'}">6사 비교</button><button data-rkv="signals" aria-pressed="${RK_VIEW.view==='signals'}">공통 수요·프록시</button><button id="rkLegacy">기존 출하 추정표</button>${scLink('composite_preview.html#c='+RK_VIEW.selected,'앙상블 열기')}</div>
+ <div class="sc-controls"><label>검색 <input id="rkQuery" type="search" value="${scEsc(RK_VIEW.query)}" placeholder="회사·티커" aria-label="랙 회사 검색"></label><label>역할 <select id="rkRole"><option value="all">전체</option>${Object.entries(RK_ROLES).map(([k,v])=>`<option value="${k}" ${RK_VIEW.role===k?'selected':''}>${v}</option>`).join('')}</select></label><label>지역 <select id="rkRegion">${['all','TW','US','HK'].map(k=>`<option value="${k}" ${RK_VIEW.region===k?'selected':''}>${k==='all'?'전체':k}</option>`).join('')}</select></label><label>정렬 <select id="rkSort">${[['requested','요청기업 우선'],['growth','3M 성장률'],['issues','대사 확인'],['name','이름']].map(([k,v])=>`<option value="${k}" ${RK_VIEW.sort===k?'selected':''}>${v}</option>`).join('')}</select></label><button id="rkCsv">현재 목록 CSV</button></div>
+ ${RK_VIEW.view==='compare'?rkCompare(cs):RK_VIEW.view==='signals'?rkSignals(R):`<div class="sc-table"><table><thead><tr><th>기업·티커</th><th>공식 월매출</th><th>3M YoY</th><th>가속(pp)</th><th>전사 GM</th><th>관측 연결</th><th>대사</th></tr></thead><tbody>${cs.map(c=>{const m=c.monthly||{},gm=rkMargin(c);return `<tr data-selected="${c.id===RK_VIEW.selected}"><td><button data-rkc="${c.id}">${scEsc(c.name)}</button><br><small>${scEsc(c.ticker)} · ${scEsc(RK_ROLES[c.role])}</small></td><td>${m.value!=null?scNum(m.value/1e6,2)+' B NT$':'분기 공시 참고'}<br><small>${scEsc(m.period||'월차 미공시')} · ${scEsc(SC_STATE[m.status]||'')}</small></td><td>${scPct(m.yoy_3m)}</td><td>${scNum(m.acceleration_pp)}</td><td>${scPct(gm?.value)}<br><small>${scEsc(gm?.period||'')}</small></td><td>${c.observable_axes}/6축<br><small>${c.monthly_model?.forecast!=null?'월차 모형 연결':'분기/무역 모델 대조'}</small></td><td>${c.issues.length}건</td></tr>`;}).join('')}</tbody></table></div><details><summary>확산도·계열 묶음 규칙</summary><p class="sc-muted">${scEsc(B.note)}</p>${B.groups.map(g=>`<span class="sc-pill">${scEsc(g.members.join(' / '))} · ${scEsc(g.direction||'보류')}</span>`).join('')}</details>${current?`<div class="sc-inset" id="rackCompanyDetail">${scDetail(current)}</div>`:'<div class="sc-empty">검색 결과 없음 · 필터를 조정해주세요.</div>'}`}</div>`;
+ main.querySelectorAll('[data-rkv]').forEach(b=>b.onclick=()=>{RK_VIEW.view=b.dataset.rkv;renderRackV2();});
+ main.querySelectorAll('[data-rkc]').forEach(b=>b.onclick=()=>{RK_VIEW.selected=b.dataset.rkc;rkWrite();renderRackV2();document.getElementById('rackCompanyDetail')?.scrollIntoView({block:'start'});});
+ main.querySelectorAll('[data-rk-compare]').forEach(b=>b.onchange=()=>{if(b.checked){if(RK_VIEW.compare.length>=6){b.checked=false;return;}RK_VIEW.compare.push(b.dataset.rkCompare);}else RK_VIEW.compare=RK_VIEW.compare.filter(x=>x!==b.dataset.rkCompare);renderRackV2();});
+ for(const [id,key] of [['rkRole','role'],['rkRegion','region'],['rkSort','sort']])document.getElementById(id).onchange=e=>{RK_VIEW[key]=e.target.value;renderRackV2();};
+ document.getElementById('rkQuery').oninput=e=>{const start=e.target.selectionStart;RK_VIEW.query=e.target.value;renderRackV2();const q=document.getElementById('rkQuery');q.focus();q.setSelectionRange(start,start);};
+ document.getElementById('rkLegacy').onclick=()=>{renderRackLegacy();const b=document.createElement('button');b.textContent='← 고도화 관측실로';b.onclick=renderRackV2;main.prepend(b);};
+ document.getElementById('rkCsv').onclick=()=>scDownload([['company','ticker','scope','period','sales_NTD_thousand','3m_yoy','acceleration_pp','issues','source'],...cs.map(c=>[c.id,c.ticker,c.scope,c.monthly?.period,c.monthly?.value,c.monthly?.yoy_3m,c.monthly?.acceleration_pp,c.issues.join(' / '),c.ir])],'rack-observatory.csv');
+}
+
 function renderKpi(){
   kDestroy(); const K=window.KPID||{};
   document.getElementById('catRow').style.display='none';
@@ -2927,6 +3049,10 @@ function loadRack(cb){ if(window.RACKD) return cb();
   sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="empty-msg">Rack 데이터 로드 실패</div>';};
   document.head.appendChild(sc); }
 function renderRack(){
+  if(typeof renderRackV2==='function') return renderRackV2();
+  return renderRackLegacy();
+}
+function renderRackLegacy(){
   const R=window.RACKD||{}; const main=document.getElementById('main');
   const VORD=['DELL','HPE','Quanta','HonHai','Wiwynn','SMCI','Lenovo','Inventec','Gigabyte'];
   const ship=R.ship||{}; const qs=[...new Set(Object.values(ship).flatMap(v=>Object.keys(v)))].map(q=>q.replace(/(\d{4})Q/,'$1-Q')).sort();
