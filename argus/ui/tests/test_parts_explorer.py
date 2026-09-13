@@ -7,7 +7,7 @@ import unittest
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[3]
-INDUSTRIES = ('ksemi','kship','kdef','knuke','kaero')
+INDUSTRIES = ('ksemi','kship','kdef','kaero')
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -15,7 +15,7 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-class PartsExplorerTest(unittest.TestCase):
+class BrowserTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.server = http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Quiet,directory=str(ROOT)))
@@ -45,6 +45,8 @@ class PartsExplorerTest(unittest.TestCase):
         target='#fab [data-stage=depo]' if name=='ksemi' else '#groups .chip'
         self.page.locator(target).first.click()
 
+
+class PartsExplorerTest(BrowserTest):
     def test_overview_stays_in_place_and_leaf_filters_companies(self):
         for name in INDUSTRIES:
             with self.subTest(industry=name):
@@ -75,7 +77,7 @@ class PartsExplorerTest(unittest.TestCase):
                 self.assertEqual(self.page.locator('.px-leaf').count(),0)
 
     def test_all_silhouettes_keep_source_geometry_and_clear_label_collisions(self):
-        for name in ('kdef','knuke','kaero'):
+        for name in ('kdef','kaero'):
             self.open(name)
             buttons=self.page.locator('#sils .chip')
             for i in range(buttons.count()):
@@ -103,7 +105,7 @@ class PartsExplorerTest(unittest.TestCase):
         self.assertEqual(actual,expected)
         self.page.get_by_role('button',name='구성 부품',exact=True).click()
         self.assertGreater(self.page.locator('[data-child^=part-]').count(),0)
-        for name in ('kdef','knuke','kaero'):
+        for name in ('kdef','kaero'):
             self.open(name)
             cat=self.page.evaluate('P.cats.find(c=>(P.idx[c.id]||[]).length).id')
             self.open(name,'#'+cat)
@@ -134,6 +136,42 @@ class PartsExplorerTest(unittest.TestCase):
                 if width>900:
                     self.assertTrue(self.page.evaluate('document.querySelector("#panel").getBoundingClientRect().x>document.querySelector(".ig").getBoundingClientRect().x+100'))
 
+
+class PowerAtlasTest(BrowserTest):
+    def test_equipment_children_search_and_source(self):
+        for route, node, child in [('kgrid/grid.html','POLE','pole-transformer'),
+                                   ('knuke/parts.html','SG','NSSS.SG')]:
+            self.page.goto(self.base+'/argus/'+route)
+            svg=self.page.locator('.pa-svg')
+            bounds='e=>{const r=e.getBoundingClientRect();return [r.x+scrollX,r.y+scrollY,r.width,r.height]}'
+            before=svg.evaluate(bounds)
+            self.page.locator(f'.pa-node[data-node="{node}"]').press('Enter')
+            leaf=self.page.locator(f'[data-child="{child}"]')
+            count=int(leaf.locator('small').inner_text().removesuffix('사'))
+            leaf.press('Enter')
+            self.assertEqual(self.page.locator('.pa-co').count(),count)
+            self.assertEqual(svg.evaluate(bounds),before)
+            self.page.locator('.pa-search').fill('UNMATCHED_TEST')
+            self.assertEqual(self.page.locator('.pa-co').count(),0)
+            self.page.locator('.pa-search').fill('')
+            self.assertEqual(self.page.locator('.pa-co').count(),count)
+            self.page.locator('.pa-co summary').first.press('Space')
+            self.assertGreater(self.page.locator('.pa-co details[open] blockquote').count(),0)
+            self.page.reload()
+            self.assertEqual(self.page.locator('.pa-child[aria-pressed=true]').get_attribute('data-child'),child)
+
+    def test_power_scenes_accessibility_and_mobile(self):
+        for width in (1440,390):
+            self.page.set_viewport_size({'width':width,'height':900})
+            for route in ('knuke/parts.html','kgrid/grid.html'):
+                self.page.goto(self.base+'/argus/'+route)
+                tabs=self.page.locator('[data-scene]')
+                for i in range(tabs.count()):
+                    tabs.nth(i).click()
+                    self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
+                    self.page.locator('[data-motion]').click()
+                    self.assertEqual(self.page.locator('[data-motion]').get_attribute('aria-pressed'),'false')
+                    self.assertEqual(self.page.locator('.pa-node').count(),self.page.locator('[data-jump]').count())
 
 if __name__=='__main__':
     unittest.main()

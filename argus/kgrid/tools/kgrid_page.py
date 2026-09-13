@@ -517,110 +517,22 @@ def hub(data):
 # ── 전력망 단선도 ───────────────────────────────────────────
 
 def grid_page(data):
-    ss = [s for s in all_summaries(data) if s["role"] != "holding"]
-    reg = data["regions"]
-    per_prod = {}
-    for k in PRODUCT_ORDER:
-        per_prod[k] = [{"stock": s["stock"], "name": s["name"],
-                        "backlog": s["backlog"] if s["cur"] == "KRW" else None,
-                        "cur": s["cur"], "cov": s["coverage"], "kind": s["kind"]}
-                       for s in ss if k in s["products"]]
-    shapes, labels = [], []
-    for r in reg["regions"]:
-        n = sum(len(per_prod[p]) for p in r["products"])
-        cls = "rg" + ("" if r["products"] else " rel0")
-        shapes.append(
-            '<rect class="%s" id="rg-%s" data-region="%s" x="%d" y="%d" width="%d" height="%d" '
-            'rx="10" tabindex="%s" role="button" aria-label="%s"></rect>'
-            % (cls, E(r["id"]), E(r["id"]), r["x"], r["y"], r["w"], r["h"],
-               "0" if r["products"] else "-1", E(r["ko"])))
-        labels.append(
-            '<text x="%d" y="%d" text-anchor="middle">%s</text>'
-            '<text class="sm" x="%d" y="%d" text-anchor="middle">%s</text>'
-            % (r["x"] + r["w"] // 2, r["y"] - 8, E(r["ko"]),
-               r["x"] + r["w"] // 2, r["y"] + r["h"] + 15,
-               E("%d사" % n if r["products"] else "모집단 아님")))
-    # 계통 선 — 영역 사이를 잇는 도선. 전압이 낮아질수록 선을 얇게 그린다.
-    lines = []
-    rs = reg["regions"]
-    for a, b, w in zip(rs, rs[1:], (3.0, 2.4, 2.4, 1.8, 1.4)):
-        y = 134
-        lines.append('<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="rgba(147,197,253,.55)" '
-                     'stroke-width="%.1f"></line>'
-                     % (a["x"] + a["w"], y, b["x"], y, w))
-    svg = ('<div class="ship"><svg viewBox="%s" role="img" aria-label="전력망 단선도">'
-           '%s%s%s</svg><div class="legend">'
-           '<span><i style="background:rgba(96,165,250,.26)"></i>회사가 있는 자리</span>'
-           '<span><i style="background:rgba(255,255,255,.015)"></i>모집단이 아닌 자리</span>'
-           '<span>선 굵기 = 전압 계급(왼쪽이 높다)</span></div></div>'
-           % (E(reg["viewBox"]), "".join(lines), "".join(shapes), "".join(labels)))
-
-    panel = ('<div class="panel" id="pan"><h3>영역을 누르세요 <em>제품군 → 회사</em></h3>'
-             '<p class="mut">전기가 흐르는 순서대로 왼쪽부터 놓았습니다. '
-             '발전소는 이 탭의 모집단이 아니라 시작점으로만 그렸습니다.</p></div>')
-
-    body = ['<section class="card"><h2>전력망 단선도 <em>발전 → 승압 → 송전 → 변전 → 배전 → 수용가'
-            '</em></h2><div class="ig">%s%s</div></section>' % (svg, panel)]
-
-    rows = []
-    for r in reg["regions"]:
-        rows.append('<tr><td class="l"><b>%s</b> <span class="basis">%s</span></td>'
-                    '<td class="l">%s</td><td class="l mut">%s</td></tr>'
-                    % (E(r["ko"]), E(r["en"]),
-                       E(", ".join(PRODUCT_LABEL[p] for p in r["products"]) or "—"),
-                       E(r["note"])))
-    body.append('<section class="card"><h2>영역과 제품군 <em>왜 그 자리인가</em></h2>'
-                '<div class="wrap"><table><thead><tr><th class="l">영역</th>'
-                '<th class="l">제품군</th><th class="l">근거·뜻</th></tr></thead>'
-                '<tbody>%s</tbody></table></div></section>' % "".join(rows))
-
-    scr = ("<script>%s\n" % TABLE_JS
-           + "var REG=%s;\nvar PER=%s;\nvar PLAB=%s;\n"
-           % (json_for_html(reg["regions"]), json_for_html(per_prod),
-              json_for_html(PRODUCT_LABEL))
-           + r"""
-(function(){
-  var pan=document.getElementById('pan');
-  function fmt(v){return v==null?'—':Math.round(v/100).toLocaleString()+'억';}
-  function show(id){
-    var r=REG.filter(function(x){return x.id===id;})[0]; if(!r) return;
-    document.querySelectorAll('.rg').forEach(function(e){e.classList.toggle('sel',e.dataset.region===id);});
-    pan.textContent='';
-    var h=document.createElement('h3'); h.textContent=r.ko;
-    var em=document.createElement('em'); em.textContent=r.en; h.appendChild(em); pan.appendChild(h);
-    var p=document.createElement('p'); p.className='mut'; p.textContent=r.note; pan.appendChild(p);
-    if(!r.products.length){ return; }
-    r.products.forEach(function(k){
-      var box=document.createElement('div'); box.className='catbox';
-      var t=document.createElement('h3'); t.textContent=PLAB[k]||k;
-      var e=document.createElement('em'); e.textContent=(PER[k]||[]).length+'사'; t.appendChild(e);
-      box.appendChild(t);
-      var ul=document.createElement('ul');
-      (PER[k]||[]).forEach(function(c){
-        var li=document.createElement('li');
-        var a=document.createElement('a'); a.href=c.stock+'/index.html'; a.textContent=c.name;
-        var y=document.createElement('span'); y.className='y';
-        y.textContent=(c.cur==='KRW'?fmt(c.backlog):(c.cur+' 공시'))+(c.cov?(' · '+c.cov.toFixed(1)+'년'):'');
-        li.appendChild(a); li.appendChild(y); ul.appendChild(li);
-      });
-      if(!(PER[k]||[]).length){ var li=document.createElement('li'); li.textContent='해당 회사 없음'; ul.appendChild(li); }
-      box.appendChild(ul); pan.appendChild(box);
-    });
-  }
-  document.querySelectorAll('.rg').forEach(function(e){
-    if(e.classList.contains('rel0')) return;
-    e.addEventListener('click',function(){show(e.dataset.region);});
-    e.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();show(e.dataset.region);}});
-  });
-})();
-</script>""")
-    return page("전력망 단선도 — 한국전력기기", "".join(body), depth=0,
-                h1="전력망 단선도", crumbs=[("⚡ 한국전력기기", "index.html"), ("단선도", None)],
-                nav=[("허브", "index.html"), ("커버리지", "coverage.html")],
-                lead="전력기기는 <b>전기가 흐르는 자리</b>로 나뉩니다. 승압 변전소의 초고압 변압기와 "
-                     "배전 선로의 주상변압기는 같은 '변압기'라는 낱말을 쓰지만 납기와 잔고의 성격이 "
-                     "다릅니다. 영역을 눌러 그 자리의 제품군과 회사를 봅니다.",
-                head_extra=scr)
+    ui_tools = os.path.abspath(os.path.join(KGRID, '..', 'ui', 'tools'))
+    if ui_tools not in sys.path:
+        sys.path.insert(0, ui_tools)
+    from power_diagrams import grid_payload, markup
+    summaries = all_summaries(data)
+    pages = sorted(s['stock'] for s in summaries
+                   if os.path.isfile(os.path.join(KGRID, s['stock'], 'index.html')))
+    payload = grid_payload(summaries, pages)
+    n_co = len({r['stock'] for rows in payload['rows'].values() for r in rows})
+    body = markup(payload, '전기가 도착하기까지',
+                  '발전소에서 송전·변전·배전을 거쳐 우리 곁으로. 설비를 누르고 하위 장비를 선택하면 관련 기업을 볼 수 있습니다.',
+                  [('주요 흐름', 7), ('연결 상장사', n_co), ('세부 장비', len(payload['rows']))])
+    return page('전력기기 밸류체인 — 송전·변전·배전', body, depth=0,
+                h1='전력기기 밸류체인',
+                crumbs=[('ARGUS', '../index.html'), ('한국전력기기', 'index.html'), ('인포그래픽', None)],
+                nav=[('허브', 'index.html'), ('발전소 내부', '../knuke/parts.html'), ('커버리지', 'coverage.html')])
 
 
 # ── 커버리지 ───────────────────────────────────────────────
