@@ -82,7 +82,7 @@ document.addEventListener('keydown',function(e){
    ============================================================ */
 var TAB_LOADER={lux:'loadLux',mem:'loadMem',rack:'loadRack',dc:'loadDC',tech:'loadTech',bio:'loadBio',
   ecal:'loadEcal',tmap:'loadTmap',ppi:'loadPpi',game:'loadGame',app:'loadApparel',ops:'loadOps',
-  plat:'loadPlat',kpi:'loadKpi',comm:'loadComm',ai:'loadAI',ins:'loadIns'};
+  plat:'loadPlat',kpi:'loadKpi',mlcc:'loadKpi',comm:'loadComm',ai:'loadAI',ins:'loadIns'};
 var TAB_DEFS=[
  ['기업',[
    ['dash','대시보드','현재 리전의 기업 카드·차트 일람'],
@@ -92,6 +92,7 @@ var TAB_DEFS=[
  ['AI 인프라',[
    ['mem','메모리','DRAM·NAND·HBM 밸류체인 프록시'],
    ['rack','서버·랙','AI 서버 랙 밸류체인'],
+   ['mlcc','MLCC','글로벌 11개사 · 수주·매출·가동률과 관세 신호'],
    ['dc','데이터센터','데이터센터 전력·설비·프로젝트 맵'],
    ['ai','AI·클라우드','AI 캐펙스·클라우드 지표'],
    ['tmap','공급망 지도','AI 인프라 공급망 그래프'],
