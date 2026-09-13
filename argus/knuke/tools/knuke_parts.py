@@ -4,7 +4,7 @@
 
 실루엣 2종(원자력발전소·화력/복합발전소)을 단순 기하 도형으로 직접 그린다(외부 이미지 금지).
 발전원을 고르면 그 실루엣이 열리고, 부품 영역(원자로·증기발생기·터빈·보일러·계측제어·변전…)을
-누르면 그 영역의 부품 소분류와 **그 기자재를 만드는 상장사**가 오른쪽 패널에 열린다.
+누르면 그 영역의 부품 소분류와 **그 기자재를 만드는 상장사**가 하위 공정·부품 탐색 패널에 열린다.
 
 부품 분류는 규칙(계약명·정기보고서 본문·KIND 문구의 낱말)이라 근거를 칩에 달아 둔다(COMMON §0-1).
 회사 페이지의 부품 칩은 `parts.html#NSSS.SG` 로 들어온다 — 해시로 그 소분류를 연다.
@@ -62,6 +62,8 @@ def build(data):
         "groups": {g["id"]: g["ko"] for g in groups},
         "idx": idx,
         "srcKo": SRC_KO,
+        "pages": sorted({c["stock"] for rows in idx.values() for c in rows
+                         if os.path.isfile(os.path.join(KNUKE, c["stock"], "index.html"))}),
     }
     body = """
 <div class="kpi">
@@ -93,7 +95,9 @@ def build(data):
 <div class="note info">부품 분류는 <b>규칙</b>입니다 — 계약명·정기보고서 II절 본문·KIND 주요제품 문구에서 부품 낱말을 찾습니다.
 회사 칩에 근거(무엇을 보고 넣었는지)를 달아 두었습니다. 일반 기계와 겹치는 낱말(펌프·밸브·탱크·발전기)은 발전 문맥이 가까이 있을 때만 채택합니다.
 납품처(대형사) 연결의 근거 등급은 계약공시 상대 &gt; 본문 언급 순입니다.</div>
-<script>const P=%s;</script>
+<link rel="stylesheet" href="../ui/industry-explorer.css?v=20260913">
+<script src="../ui/industry-explorer.js?v=20260913"></script>
+<script>const P=%s; IndustryExplorer.setup(P);</script>
 <script>
 (function(){
  var S={sil:P.sils[0].id, sel:null, group:null};
@@ -132,42 +136,26 @@ def build(data):
    var on=b.getAttribute('data-group')===S.group; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);
   });
  }
- function coHtml(c){
-  var primes=c.primes.map(function(p){return '<a href="'+p.stock+'/index.html">'+p.nm+'</a> <span class="mut">'+p.basis+'</span>'}).join(' · ');
-  return '<li><a class="co" href="'+c.stock+'/index.html">'+c.nm+'</a>'
-   +' <span class="pill" title="'+(P.srcKo[c.src]||c.src)+'에서 «'+c.kw+'»">'+(P.srcKo[c.src]||c.src)+' 「'+c.kw+'」</span>'
-   +(primes?'<div class="mut" style="font-size:11px;margin-top:2px">납품처 '+primes+'</div>':'')
-   +(c.prod?'<div class="mut" style="font-size:11px">'+c.prod+'</div>':'')+'</li>';
- }
- function catBlock(cid){
-  var c=catById(cid); if(!c) return '';
-  var cos=P.idx[cid]||[];
-  return '<div class="pblock"><h4 id="'+cid+'">'+c.ko+' <span class="mut">'+P.groups[c.g]+' · '+c.en+'</span>'
-   +' <span class="n">'+cos.length+'</span></h4>'
-   +(cos.length?'<ul class="colist">'+cos.map(coHtml).join('')+'</ul>'
-    :'<p class="mut" style="font-size:12px">이 기자재를 만드는 상장사를 원문에서 찾지 못했습니다 — 비상장이거나 문구가 짧아 규칙에 안 걸립니다.</p>')
-   +'</div>';
- }
  function showRegion(r){
-  panel.innerHTML='<h3>'+r.ko+' <em>'+r.cats.length+'개 소분류</em></h3>'+r.cats.map(catBlock).join('');
+  history.replaceState(null,'',location.pathname+location.search);
+  IndustryExplorer.show({title:r.ko, children:IndustryExplorer.categories(r.cats)});
  }
  function showGroup(gid){
-  var cs=P.cats.filter(function(c){return c.g===gid});
-  panel.innerHTML='<h3>'+P.groups[gid]+' <em>'+cs.length+'개 소분류</em></h3>'+cs.map(function(c){return catBlock(c.id)}).join('');
+  history.replaceState(null,'',location.pathname+location.search);
+  var ids=P.cats.filter(function(c){return c.g===gid}).map(function(c){return c.id});
+  IndustryExplorer.show({title:P.groups[gid], children:IndustryExplorer.categories(ids)});
  }
  function showCat(cid){
   var c=catById(cid); if(!c) return false;
   var r=P.regions.filter(function(r){return r.cats.indexOf(cid)>=0})[0];
   if(r){ S.sil=r.silhouette; S.sel=r.id; }
   S.group=null; draw();
-  panel.innerHTML='<h3>'+c.ko+' <em>'+P.groups[c.g]+'</em></h3>'+catBlock(cid)
-   +(r?'<p class="mut" style="font-size:12px">위치: '+r.ko+'</p>':'');
+  IndustryExplorer.show({title:r?r.ko:P.groups[c.g], children:IndustryExplorer.categories(r?r.cats:[cid]), selected:cid});
   return true;
  }
  function intro(){
-  panel.innerHTML='<h3>부품 영역을 누르세요 <em>또는 아래 대분류 칩</em></h3>'
-   +'<p class="mut" style="font-size:12px">영역 → 부품 소분류 → 그 기자재를 만드는 상장사 → 납품처(대형사). '
-   +'회사 이름을 누르면 그 회사의 계약·부문매출 페이지로 갑니다.</p>';
+  history.replaceState(null,'',location.pathname+location.search);
+  IndustryExplorer.intro();
  }
  Array.prototype.forEach.call(document.querySelectorAll('#sils .chip'),function(b){
   b.addEventListener('click',function(){ S.sil=b.getAttribute('data-sil'); S.sel=null; S.group=null; draw(); intro(); });
