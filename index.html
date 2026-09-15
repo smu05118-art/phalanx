@@ -3301,6 +3301,16 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   main.innerHTML=`<style>.lxt{overflow-x:auto;border:1px solid var(--line,#233038);border-radius:10px}.lxt table{border-collapse:collapse;width:100%;font-size:11.5px}.lxt th,.lxt td{padding:5px 8px;border-bottom:1px solid var(--line,#233038);text-align:left}.lxt tr:last-child td{border-bottom:none}.mono{font-family:ui-monospace,monospace}.bcard{background:var(--panel,#151d23);border:1px solid var(--line,#233038);border-radius:12px;padding:13px 15px}.bn{font-weight:750}.bt{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a90a8}.est{font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(43,192,212,.09)}.ltab{display:inline-block;font-size:11px;padding:4px 10px;border:1px solid var(--line,#233038);border-radius:999px;color:#8a90a8;margin:3px}</style>
   <p style="font-size:17px;font-weight:800;margin:0 0 3px">🧠 Memory — 반도체·AI 수요 트래커</p>
   <p style="color:#8a90a8;font-size:12px;margin:0 0 14px">가격·공급(PS) → P×Q → 캐파 → 전방수요(DI). 7사 분기 Q·P + 가이던스, 스팟 일간, 빅테크 CAPEX·클라우드 RPO.</p>
+  <section aria-label="메모리 소매가격 지수" style="margin:16px 0 22px">
+    <p style="font-size:14px;font-weight:750;margin:0 0 5px">소매가격 지수 · 독일 DDR5 / 다나와 SSD·HDD·DRAM</p>
+    <p class="bt">다나와 각 24개 상품의 고정 비중 · 일간 관측 · 분기 리밸런싱. 지수를 누르면 구성비·제품별 추이·원문을 확인합니다.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:10px">
+      <a class="bcard" href="retail-memory/#germany" style="color:inherit;text-decoration:none"><b>독일 DDR5 ↗</b><div class="bt" style="margin-top:5px">3DCenter · 소매가격 · 월간</div></a>
+      <a class="bcard" href="retail-memory/#ssd" style="color:inherit;text-decoration:none"><b>다나와 SSD ↗</b><div class="bt" style="margin-top:5px">24 SKU · 용량·PCIe 세대·SATA</div></a>
+      <a class="bcard" href="retail-memory/#hdd" style="color:inherit;text-decoration:none"><b>다나와 HDD ↗</b><div class="bt" style="margin-top:5px">24 SKU · PC·NAS·용량대</div></a>
+      <a class="bcard" href="retail-memory/#dram" style="color:inherit;text-decoration:none"><b>다나와 DRAM ↗</b><div class="bt" style="margin-top:5px">24 SKU · DDR4·DDR5·노트북</div></a>
+    </div>
+  </section>
   ${spotBox}
   ${secs}
   ${ddBox}
