@@ -10,7 +10,93 @@
     liq: new URL('./#liq', scriptURL).href,
     tech: new URL('./#tech', scriptURL).href
   };
-  var data = null, failed = false, observers = new Map(), states = new WeakMap();
+  var data = null, failed = false, observers = new Map(), liveMounts = new Map();
+  // Widget kinds are stable across parent replacement and across app pages.
+  // Only these selection values enter storage or the research-desk snapshot API.
+  var storageKey = 'phx:market-evidence:state:v1';
+  var stateRules = {
+    flow: { ticker: ['005930', '000660'], investor: ['foreign_net_shares', 'institution_net_shares', 'individual_net_shares'], mode: ['daily', 'cumulative'] },
+    episodes: { index: ['kospi', 'kosdaq', 'sp500', 'nasdaq'], horizon: ['5', '20', '60'] }
+  };
+  var widgetStates = {
+    flow: { ticker: '005930', investor: 'foreign_net_shares', mode: 'daily' },
+    episodes: { index: 'kospi', horizon: '20' }
+  };
+  function plainObject(value) {
+    try { if (!value || typeof value !== 'object') return false; var proto = Object.getPrototypeOf(value); return proto === Object.prototype || proto === null; }
+    catch (_) { return false; }
+  }
+  function ownValue(value, key) {
+    try { var descriptor = value && Object.getOwnPropertyDescriptor(value, key); return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') ? descriptor.value : undefined; }
+    catch (_) { return undefined; }
+  }
+  function safeStatePatch(input) {
+    var result = {};
+    if (!plainObject(input)) return result;
+    Object.keys(stateRules).forEach(function (kind) {
+      var candidate = ownValue(input, kind);
+      if (!plainObject(candidate)) return;
+      Object.keys(stateRules[kind]).forEach(function (key) {
+        var value = ownValue(candidate, key);
+        if (typeof value !== 'string' || stateRules[kind][key].indexOf(value) < 0) return;
+        if (!result[kind]) result[kind] = {};
+        result[kind][key] = value;
+      });
+    });
+    return result;
+  }
+  function snapshotState() {
+    var result = {};
+    Object.keys(stateRules).forEach(function (kind) {
+      result[kind] = {};
+      Object.keys(stateRules[kind]).forEach(function (key) { result[kind][key] = widgetStates[kind][key]; });
+    });
+    return result;
+  }
+  function applyStatePatch(input) {
+    var patch = safeStatePatch(input), changed = false;
+    Object.keys(patch).forEach(function (kind) {
+      Object.keys(patch[kind]).forEach(function (key) {
+        if (widgetStates[kind][key] !== patch[kind][key]) { widgetStates[kind][key] = patch[kind][key]; changed = true; }
+      });
+    });
+    return changed;
+  }
+  function persistState(kinds) {
+    // Separate keys prevent an older page changing one widget from resetting another.
+    kinds.forEach(function (kind) {
+      try { window.localStorage.setItem(storageKey + ':' + kind, JSON.stringify({ version: 1, state: snapshotState()[kind] })); }
+      catch (_) { /* Blocked storage or quota failure leaves in-page controls usable. */ }
+    });
+  }
+  function loadState() {
+    Object.keys(stateRules).forEach(function (kind) {
+      var key = storageKey + ':' + kind, stored;
+      try { stored = window.localStorage.getItem(key); } catch (_) { return; }
+      if (stored == null) return;
+      try {
+        if (typeof stored !== 'string' || stored.length > 10000) throw new Error('state-size');
+        var envelope = JSON.parse(stored);
+        if (!plainObject(envelope) || ownValue(envelope, 'version') !== 1 || !plainObject(ownValue(envelope, 'state'))) throw new Error('state-schema');
+        var input = {}; input[kind] = ownValue(envelope, 'state'); applyStatePatch(input);
+      } catch (_) {
+        try { window.localStorage.removeItem(key); } catch (_) { /* Defaults are still available. */ }
+      }
+    });
+  }
+  function stateFor(kind) { return widgetStates[kind] || {}; }
+  function repaintMounts(kind) {
+    liveMounts.forEach(function (mountedKind, section) {
+      if (!section.isConnected) { liveMounts.delete(section); return; }
+      if (kind === mountedKind || !kind && Object.prototype.hasOwnProperty.call(stateRules, mountedKind)) paint(section, mountedKind, stateFor(mountedKind));
+    });
+  }
+  function restoreState(input) {
+    var patch = safeStatePatch(input);
+    if (applyStatePatch(patch)) { persistState(Object.keys(patch)); repaintMounts(); }
+    return snapshotState();
+  }
+  loadState();
   var number = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 });
   function valid(v) { return typeof v === 'number' && Number.isFinite(v); }
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
@@ -122,7 +208,6 @@
     var component = data && data.semiconductor, stocks = component && component.stocks || {}, codes = ['005930', '000660'].filter(function (c) { return stocks[c]; });
     if (!codes.length) return head('반도체 연속 수급', '', 'semiconductor', null) + empty();
     var ticker = codes.indexOf(state.ticker) >= 0 ? state.ticker : codes[0], stock = stocks[ticker], rows = ordered(stock.records), last = latest(rows);
-    state.ticker = ticker;
     var html = head('반도체 연속 수급', '순매수 주식수 · 외국인·기관·개인', 'semiconductor', asof(stock));
     html += '<div class="me-controls">' + select('종목', 'ticker', codes.map(function (code) { return [code, stocks[code].name || code]; }), ticker) + '</div>';
     html += '<div class="me-table-wrap"><table class="me-table"><thead><tr><th>투자자</th><th>5거래일 순매수(주)</th><th>20거래일 순매수(주)</th></tr></thead><tbody>';
@@ -153,7 +238,7 @@
   function episodesHTML(state) {
     var component = data && data.episodes, indices = component && component.indices || {}, keys = Object.keys(indices);
     if (!keys.length) return head('과거 낙폭 사례', '직전 252거래일 고점에서 -10%를 처음 하향 통과한 관측', 'episodes', null) + empty('비교할 과거 사례를 확인한 뒤 표시합니다.');
-    var key = keys.indexOf(state.index) >= 0 ? state.index : keys[0], index = indices[key]; state.index = key;
+    var key = keys.indexOf(state.index) >= 0 ? state.index : keys[0], index = indices[key];
     var horizon = ['5', '20', '60'].indexOf(String(state.horizon)) >= 0 ? String(state.horizon) : '20';
     var sum = index.summary && index.summary[horizon] || {};
     var html = head('과거 낙폭 사례', '직전 252거래일 고점에서 -10%를 처음 하향 통과한 관측', 'episodes', asof(index));
@@ -189,7 +274,16 @@
   function paint(section, kind, state) {
     section.innerHTML = failed ? empty('관측 근거를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.') : renderers[kind](state);
     section.querySelectorAll('select[data-me-control]').forEach(function (selectEl) {
-      selectEl.addEventListener('change', function () { state[selectEl.dataset.meControl] = selectEl.value; paint(section, kind, state); var fresh = section.querySelector('select[data-me-control="' + selectEl.dataset.meControl + '"]'); if (fresh) fresh.focus(); });
+      selectEl.addEventListener('change', function () {
+        var key = selectEl.dataset.meControl, patch = {};
+        // Controls and external saved views pass through the same whitelist.
+        if (Object.prototype.hasOwnProperty.call(stateRules, kind) && Object.prototype.hasOwnProperty.call(stateRules[kind], key)) {
+          patch[kind] = {}; patch[kind][key] = selectEl.value;
+        }
+        if (applyStatePatch(patch)) { persistState([kind]); repaintMounts(kind); }
+        else paint(section, kind, stateFor(kind));
+        var fresh = section.querySelector('select[data-me-control="' + key + '"]'); if (fresh) fresh.focus();
+      });
     });
   }
   async function mount(parent, kind) {
@@ -199,8 +293,9 @@
     if (existing) return existing;
     var section = document.createElement('section'); section.className = 'me-wrap' + (kind === 'argus' ? ' me-compact' : ''); section.dataset.phxEvidence = kind;
     section.setAttribute('aria-label', ({ memory: 'DDR5 근거', credit: '국내 신용·예탁금', flow: '반도체 연속 수급', episodes: '과거 낙폭 사례', argus: '반도체 관측 근거' })[kind]);
-    var state = states.get(parent) || { ticker: '005930', investor: 'foreign_net_shares', mode: 'daily', index: 'kospi', horizon: '20' };
-    states.set(parent, state); paint(section, kind, state); parent.prepend(section); return section;
+    // Drop detached sections when the host recreates a tab or card.
+    liveMounts.forEach(function (_, mounted) { if (!mounted.isConnected) liveMounts.delete(mounted); });
+    paint(section, kind, stateFor(kind)); parent.prepend(section); liveMounts.set(section, kind); return section;
   }
   function watch(id, kind) {
     var parent = document.getElementById(id); if (!parent || observers.has(parent)) return;
@@ -215,5 +310,6 @@
     installStyle(); watch('liqview', 'credit'); watch('humanview', 'flow'); watch('techview', 'episodes'); watch('argusRoot', 'argus');
   }
   window.PHXEvidence = { ready: ready, mountMemory: function (p) { return mount(p, 'memory'); }, mountCredit: function (p) { return mount(p, 'credit'); }, mountFlow: function (p) { return mount(p, 'flow'); }, mountEpisodes: function (p) { return mount(p, 'episodes'); }, mountArgus: function (p) { return mount(p, 'argus'); }, boot: boot };
+  window.PHXEvidenceState = { snapshot: snapshotState, restore: restoreState };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
 }());

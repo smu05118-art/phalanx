@@ -1233,3 +1233,11 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   }
   attach();
 })();
+
+// Shared research desk: public navigation, calendar and browser-local saved views.
+(function(){
+  if(window.PHXResearchDesk)return;
+  var s=document.createElement('script');
+  s.src='panoptes/research_desk.js?v=20260915-1';
+  document.head.appendChild(s);
+})();
