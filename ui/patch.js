@@ -1210,3 +1210,26 @@ safe('inittext',function(){
 /* ---------- 이미 렌더된 화면이 있으면 새 UI로 재도장 ---------- */
 safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); render(); } });
 })();
+
+/* Shared source-backed market evidence (2026-09-15). */
+(function () {
+  'use strict';
+  var loading = false;
+  function attach() {
+    if (typeof ST === 'undefined' || ST.tab !== 'mem') return;
+    if (window.PHXEvidence) { window.PHXEvidence.mountMemory(document.getElementById('main')); return; }
+    if (loading) return;
+    loading = true;
+    var loader = document.createElement('script');
+    loader.src = 'panoptes/market_evidence.js?v=20260915-1';
+    loader.onload = attach;
+    loader.onerror = function () { loading = false; };
+    document.body.appendChild(loader);
+  }
+  var original = window.renderMem;
+  if (typeof original === 'function' && !original._marketEvidence) {
+    var wrapped = function () { var result = original.apply(this, arguments); attach(); return result; };
+    wrapped._marketEvidence = true; window.renderMem = wrapped;
+  }
+  attach();
+})();
