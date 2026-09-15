@@ -659,7 +659,7 @@ function savePrefs(){ try{ localStorage.setItem(PKEY,JSON.stringify({region:ST.r
 
 // ---------- URL deep-link (shareable state via location.hash + back-button) ----------
 let _lastNav=null;
-function navSig(){ return [ST.region,ST.tab,ST.view,ST.cat,ST.company,ST.port,ST.tab==='lux'?[ST.luxview,ST.luxbrand,ST.luxticker,ST.luxcompany].join(':'):''].join('|'); }
+function navSig(){ return [ST.region,ST.tab,ST.view,ST.cat,ST.company,ST.port,ST.tab==='lux'?[ST.luxview,ST.luxbrand,ST.luxticker,ST.luxcompany].join(':'):ST.tab==='app'?[ST.aview,ST.apKr,ST.apBrand,ST.apPeriod,ST.apMetric].join(':'):''].join('|'); }
 function writeHash(){
   const p=[], add=(k,v)=>{ if(v!=null&&v!=='') p.push(k+'='+encodeURIComponent(v)); };
   add('r',ST.region);
@@ -674,6 +674,7 @@ function writeHash(){
     add('luxview',ST.luxview||'comp');add('luxbrand',ST.luxbrand);
     add('luxticker',ST.luxticker);add('luxcompany',ST.luxcompany);
   }
+  if(ST.tab==='app'){add('av',ST.aview||'chain');add('ak',ST.apKr);add('ab',ST.apBrand);add('aq',ST.apPeriod);add('am',ST.apMetric);}
   if(ST.tab==='dc'){                                   // ⚡ DC 탭 서브상태(뷰·국가필터·프로젝트·에너지원·트리노드)
     if(ST.dcv&&ST.dcv!=='map') add('dcv',ST.dcv);
     if(['map','global'].includes(ST.dcv)&&ST.dcCountry) add('dcco',ST.dcCountry);
@@ -715,6 +716,11 @@ function applyHash(){
     ST.luxbrand=/^brand:[a-f0-9]{20}$/.test(q.luxbrand||'')?q.luxbrand:null;
     ST.luxticker=/^[A-Za-z0-9.^=_-]{1,64}$/.test(q.luxticker||'')?q.luxticker:null;
     ST.luxcompany=/^company:[A-Za-z0-9._:^=-]{1,100}$/.test(q.luxcompany||'')?q.luxcompany:null;
+  }
+  if(ST.tab==='app'){
+    ST.aview=['chain','odm','mat','jp','gl','kr','customers','all'].includes(q.av)?q.av:'chain';
+    ST.apKr=/^\d{6}$/.test(q.ak||'')?q.ak:'';ST.apBrand=/^[A-Za-z0-9.^_-]{1,30}$/.test(q.ab||'')?q.ab:'';
+    ST.apPeriod=/^\d{4}-\d{2}$/.test(q.aq||'')?q.aq:'';ST.apMetric=['products','geography','customers','named_customer_sales','timeline'].includes(q.am)?q.am:'customers';
   }
   if(q.tab==='game'&&q.gco){ ST.gview='co_'+q.gco; }
   if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
@@ -3416,7 +3422,7 @@ function loadApparel(cb){ if(_appLoaded) return cb();
   const main=document.getElementById('main');
   const tick=(i,lab)=>{ if(main) main.innerHTML=`<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">👕 의류 데이터 로딩 중… <b style="color:var(--fg,#dfe6ee)">${lab}</b> <span style="font-family:var(--mono)">${i}/${seq.length+1}</span></div>`; };
   const step=i=>{ if(i>=seq.length){ tick(seq.length+1,'브랜드 실적');
-      return loadLux(()=>{ _appLoaded=true; const sb=document.getElementById('sub'); if(sb&&/loading/i.test(sb.textContent)) sb.textContent=''; cb(); }); }
+      return loadLux(()=>loadApparelData(()=>{ _appLoaded=true; const sb=document.getElementById('sub'); if(sb&&/loading/i.test(sb.textContent)) sb.textContent=''; cb(); })); }
     tick(i+1,seq[i][1]); loadRegion(seq[i][0],()=>loadDetail(seq[i][0],()=>step(i+1))); };
   step(0); }
 function aDestroy(){ for(const k in ACH){ try{ACH[k].destroy();}catch(e){} delete ACH[k]; } }
@@ -3453,15 +3459,15 @@ function aSpark(v,w,h,col){ const li=aLast(v); if(li<13) return '';
   return `<svg width="${w}" height="${h}" style="vertical-align:-2px"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4" opacity=".85"/></svg>`; }
 function aPct(x,dec){ return x==null?'—':((x>=0?'+':'')+x.toFixed(dec==null?1:dec)+'%'); }
 function aCol(x){ return x==null?'var(--dim)':(x>=0?'#59d0a8':'#ff6b7d'); }
-function aLuxYoY(k){ const R=((window.LUXD||{}).revq||{})[k]; const a=R&&R.yoy_all;
+function aLuxYoY(k){ const R=aBrandData(k); const a=R&&R.yoy_all;
   if(!a||!a.length) return null; const last=a[a.length-1]; return {q:last[0],y:last[1]}; }
 function renderApparel(){
   aDestroy(); ST.aview=ST.aview||'chain';
   document.getElementById('catRow').style.display='none';
   document.getElementById('cnt').innerHTML='';
   const nTw=AP_TW.filter(x=>x.g!=='skip'&&aCo(x.id)).length, nJp=AP_JP.filter(aCo).length;
-  document.getElementById('crumb').innerHTML=`<b>👕 의류 — 브랜드 × ODM 밸류체인</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">대만 월매출 ${nTw}사 · 일본 월차 ${nJp}사 · 글로벌 브랜드 ${AP_GL.length}사</span>`;
-  const tabs=[['chain','🔗 밸류체인'],['odm','📈 ODM 모멘텀'],['mat','🧵 원단·소재'],['jp','🇯🇵 일본 월차'],['gl','🌍 브랜드 실적'],['all','📋 전체 명부']];
+  document.getElementById('crumb').innerHTML=`<b>👕 의류 — 브랜드 × ODM 밸류체인</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">대만 월매출 ${nTw}사 · 일본 월차 ${nJp}사 · 글로벌 ${AP_GL.length}사 · 한국 ${apKrList().length}사</span>`;
+  const tabs=[['chain','🔗 밸류체인'],['odm','📈 ODM 모멘텀'],['mat','🧵 원단·소재'],['jp','🇯🇵 일본 월차'],['gl','🌍 브랜드 실적'],['kr','🇰🇷 한국 ODM 공시'],['customers','🔎 고객 연결'],['all','📋 전체 명부']];
   const nav=`<div class="row" style="margin:0 0 12px;flex-wrap:wrap">${tabs.map(([k,l])=>`<span class="ltab ${ST.aview===k?'on':''}" data-av="${k}">${l}</span>`).join('')}</div>`;
   let body='';
   if(ST.aview==='chain') body=avChain();
@@ -3469,6 +3475,8 @@ function renderApparel(){
   else if(ST.aview==='mat') body=avMat();
   else if(ST.aview==='jp') body=avJp();
   else if(ST.aview==='gl') body=avGl();
+  else if(ST.aview==='kr') body=apparelRenderKr();
+  else if(ST.aview==='customers') body=apparelRenderLinks();
   else body=avAll();
   document.getElementById('main').innerHTML=`<style>
     .ap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
@@ -3486,7 +3494,9 @@ function renderApparel(){
     .ap-tbl tr:hover td{background:rgba(127,150,170,.06)}
     .ap-tag{font-size:9.5px;padding:1px 6px;border-radius:5px;margin-left:4px}
     .ap-note{font-size:11px;color:var(--dim);margin:0 0 12px;max-width:88ch;line-height:1.6}
-  </style>${nav}${body}`;
+  </style>${apparelStyles()}${nav}${window._apDataError?'<p class="ap-empty">의류 공시 데이터 로드 실패 · 페이지를 다시 열어주세요.</p>':''}${body}`;
+  apparelBind();
+  writeHash();
   document.getElementById('main').querySelectorAll('[data-av]').forEach(t=>t.onclick=()=>{ST.aview=t.dataset.av;renderApparel();window.scrollTo(0,0);});
   document.getElementById('main').querySelectorAll('[data-ago]').forEach(t=>t.onclick=()=>{ const c=aCo(t.dataset.ago); if(!c) return;
     ST.region=c.region||'TWC'; ST.tab='dash'; ST.company=c.id; ST.view='detail'; applyRegion(); buildCurRow(); render(); window.scrollTo(0,0); });
@@ -3504,12 +3514,12 @@ function avChain(){
     const lx=m.lux?aLuxYoY(m.lux):null;
     const ys=m.odm.map(([id])=>{ const v=aSer(id); return v?aYoY(v,3):null; }).filter(x=>x!=null);
     const avg=ys.length?Math.round(10*ys.reduce((a,b)=>a+b,0)/ys.length)/10:null;
-    return `<div class="ap-card"><h4>${m.b} ${lx?`<span class="ap-tag" style="background:rgba(89,208,168,.14);color:#59d0a8">${lx.q} ${aPct(lx.y)}</span>`:''}</h4>
-      <div class="ap-sub">공급 ODM ${m.odm.length}사 · 프록시 3M YoY 평균 <b style="color:${aCol(avg)}">${aPct(avg)}</b>${lx?` · 브랜드 분기 실적 대비`:''}</div>
+    return `<div class="ap-card"><h4>${m.b} ${lx?`<span class="ap-tag" style="background:rgba(89,208,168,.14);color:#59d0a8">${lx.q} ${apFreq(aBrandData(m.lux).freq)} ${aPct(lx.y)}</span>`:''}</h4>
+      <div class="ap-sub">공급 ODM ${m.odm.length}사 · 프록시 3M YoY 평균 <b style="color:${aCol(avg)}">${aPct(avg)}</b>${lx?` · 브랜드 공시 실적 대비`:''}</div>
       ${m.odm.map(([id,p])=>apOdmRow(id,p)).join('')}</div>`;
   }).join('');
   return `<p class="ap-note"><b>브랜드가 발주하면 ODM 월매출에 먼저 찍힌다.</b> 대만 ODM은 매월 10일 MOPS에 전월 매출을 공시하므로, 분기 실적만 내는 글로벌 브랜드보다 <b>1~2개월 앞선다</b>.
-   각 카드는 브랜드별 공급 ODM의 최근 3개월 매출 YoY(전년 동기 대비)이며, %는 해당 ODM 매출에서 그 브랜드가 차지하는 비중(공시·리서치 기준 추정)이다. 초록 뱃지는 브랜드 자체의 최신 분기 매출 YoY. 기업명 클릭 → 상세.</p>
+   각 카드는 브랜드별 공급 ODM의 최근 3개월 매출 YoY(전년 동기 대비)이며, %는 해당 ODM 매출에서 그 브랜드가 차지하는 비중(공시·리서치 기준 추정)이다. 초록 뱃지는 해당 상장 그룹의 최신 공시 매출 YoY와 공시 주기입니다. 기업명 클릭 → 상세.</p>
    <div class="ap-grid">${cards}</div>`;
 }
 function avOdm(){
@@ -3564,6 +3574,7 @@ function avJp(){
    <div class="ap-tbl"><table><thead><tr><th>#</th><th>기업</th><th>업태</th><th>당월 YoY</th><th>3M YoY</th><th>12M YoY</th><th>최신</th></tr></thead><tbody>${tr}</tbody></table></div>`;
 }
 function avGl(){
+  if(apData().global.length) return apparelRenderBrands();
   const rows=AP_GL.map(([k,n,seg])=>{ const y=aLuxYoY(k); const R=((window.LUXD||{}).revq||{})[k];
     const hist=(R&&R.yoy_all||[]).slice(-6);
     return {k,n,seg,y,hist};
@@ -3591,7 +3602,7 @@ function avAll(){
       <td style="font-size:10.5px;color:var(--dim)">${c.subcategory||''}</td>
       <td style="width:70px;text-align:right;font-family:var(--mono);color:${aCol(m3)}">${aPct(m3)}</td></tr>`; };
   const glRow=([k,n,seg])=>{ const y=aLuxYoY(k);
-    return `<tr><td style="width:220px"><b>${n}</b></td><td style="width:70px;color:var(--dim);font-family:var(--mono);font-size:11px">${k}</td>
+    return `<tr><td style="width:220px"><b class="ap-click" data-apbrand="${k}">${apEsc(n)}</b></td><td style="width:70px;color:var(--dim);font-family:var(--mono);font-size:11px">${k}</td>
       <td style="font-size:10.5px;color:var(--dim)">${seg}</td>
       <td style="width:70px;text-align:right;font-family:var(--mono);color:${aCol(y&&y.y)}">${y?aPct(y.y):'—'}</td></tr>`; };
   const byG=g=>AP_TW.filter(x=>x.g===g&&aCo(x.id));
@@ -3600,16 +3611,116 @@ function avAll(){
       return `<tr><td style="width:220px"><b data-ago="${id}" style="cursor:pointer">${(aCo(id).name||'').slice(0,28)}</b></td>
         <td style="width:70px"></td><td style="font-size:10.5px;color:var(--dim)">${desc}</td>
         <td style="width:70px;text-align:right;font-family:var(--mono);color:${aCol(y3)}">${aPct(y3)}</td></tr>`; });
-  return `<p class="ap-note">팔랑크스 전 데이터에서 모은 <b>의류·신발 밸류체인 상장사 전수 명부</b>. 우측 값은 대만·기타는 월매출 3M YoY, 일본은 월차 3M YoY, 글로벌은 최신 분기 YoY. 기업명 클릭 → 원 지역 탭의 상세 카드.</p>
+  return `<p class="ap-note">팔랑크스 전 데이터에서 모은 <b>의류·신발 밸류체인 수록 기업 명부</b>. 우측 값은 대만·기타는 월매출 3M YoY, 일본은 월차 3M YoY, 글로벌은 최신 공시기간 YoY. 기업명 클릭 → 원 지역 탭의 상세 카드.</p>
     ${sec('👟 대만 신발 ODM',byG('shoe'),twRow)}
     ${sec('👕 대만 의류 ODM',byG('gmt'),twRow)}
     ${sec('🧷 대만 부자재',byG('trim'),twRow)}
     ${sec('🧵 대만 원단·소재',byG('mat'),twRow)}
     ${sec('🏬 대만 브랜드·리테일',byG('brand'),twRow)}
     ${sec('🇯🇵 일본 어패럴·소매 (월차공시)',AP_JP.filter(id=>aCo(id)&&aCo(id).revenue),jpRow)}
-    ${sec('🌍 글로벌 브랜드 (분기)',AP_GL,glRow)}
+    ${sec('🌍 글로벌 브랜드 (공시 주기별)',AP_GL,glRow)}
+    ${apparelAllKr()}
     ${others.length?`<p class="lxh" style="margin:16px 0 6px;font-size:13px;font-weight:700">🔎 기타 프록시 <span style="color:var(--dim);font-weight:400;font-size:11px">${others.length}건</span></p><div class="ap-tbl"><table><tbody>${others.join('')}</tbody></table></div>`:''}`;
 }
+// 의류 공시 원장: 브랜드 실적과 한국 OEM/ODM의 공시 기간·고객 근거를 연결한다.
+function apEsc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function apUrl(v){try{const u=new URL(v);return u.protocol==='https:'?apEsc(u.href):'';}catch(e){return '';}}
+function apSource(u,label){const href=apUrl(u);return href?`<a class="ap-source" href="${href}" target="_blank" rel="noopener noreferrer">${apEsc(label||'공시 원문')} ↗</a>`:'';}
+function apData(){return window.APPAREL||{global:[],korea:[],links:[],methodology:{}};}
+function aBrandData(k){return apData().global.find(c=>c.ticker===k||(c.aliases||[]).includes(k))||((window.LUXD||{}).revq||{})[k]||{};}
+function apListing(v){return ({active_sec_listed:'SEC 상장 확인',active_official_listing:'공식 상장 확인',active_otc:'OTC 거래',listed_existing_unverified:'상장 상태 미재검증',existing_registry_not_revalidated:'기존 등록 기업',listing_requires_official_verification:'상장 상태 재확인 필요',historical_delisted:'상장폐지 · 과거 실적',existing_registry:'기존 등록'})[v]||v||'';}
+function apBasis(v){return ({CFS:'연결',OFS:'별도',business_disclosure_scope_unspecified:'사업 공시 · 범위 원문 참고'})[v]||v||'범위 원문 참고';}
+function apPeriodLabel(v,f){return ({quarter:'3개월',cumulative:'누적'+(f?.cumulative_months?' '+f.cumulative_months+'개월':''),annual:'연간',quarter_and_cumulative:'3개월 / 누적'})[v]||v||'원문 기간';}
+function apFreq(f){return ({Q:'분기',H:'반기',Y:'연간'})[f]||'주기 미확인';}
+function apInit(){const rows=apData().global;if(rows.length)AP_GL.splice(0,AP_GL.length,...rows.map(c=>[c.ticker,c.name,c.segment||'의류·신발']));const resolved={'Gap':'GAP','Amer (Salomon)':'AS','On Running':'ONON','ANTA (FILA)':'2020.HK'};AP_MAP.forEach(m=>{if(resolved[m.b])m.lux=resolved[m.b];});}
+function loadApparelData(cb){
+  if(window.APPAREL){apInit();return cb();}
+  const s=document.createElement('script');s.src='data_apparel.js';
+  s.onload=()=>{apInit();cb();};
+  s.onerror=()=>{window._apDataError=true;cb();};document.head.appendChild(s);
+}
+function apparelStyles(){return `<style>
+ .ap-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px}.ap-tools input,.ap-tools select,.ap-tools button,.ap-button{background:var(--panel,#12121e);border:1px solid var(--line,#303047);border-radius:7px;color:var(--fg,#ececf4);padding:8px 10px;font:inherit;font-size:12px}.ap-tools input{min-width:230px}.ap-button{cursor:pointer}.ap-stats{display:flex;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--line,#303047);padding:8px 0 15px;margin-bottom:14px}.ap-stats b{font-size:22px;font-family:var(--mono)}.ap-stats span{color:var(--dim);font-size:11px}.ap-source{color:var(--a1,#a8a4ff);font-size:11px;text-decoration:none}.ap-cellnum{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}.ap-badge{display:inline-block;border:1px solid var(--line,#303047);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--dim)}.ap-amber{color:#e8b36e}.ap-empty{padding:20px;border:1px dashed var(--line,#303047);border-radius:9px;font-size:12px;color:var(--dim)}.ap-section{margin:20px 0 10px;font-size:15px}.ap-raw{margin:8px 0 16px}.ap-raw summary{cursor:pointer;font-size:12px;padding:10px;background:rgba(140,130,200,.06);border:1px solid var(--line,#303047);border-radius:6px}.ap-raw .ap-tbl{margin-top:6px}.ap-raw td{max-width:340px;white-space:normal;vertical-align:top}.ap-raw caption{text-align:left;padding:8px;font-size:11px;color:var(--dim)}.ap-pills{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.ap-pill{cursor:pointer;padding:6px 9px;border:1px solid var(--line,#303047);border-radius:7px;font-size:11px}.ap-pill.on{background:rgba(155,145,255,.18);border-color:#8479ce}.ap-kcard{cursor:pointer}.ap-kcard:hover{border-color:#8479ce}.ap-flow{display:grid;grid-template-columns:minmax(180px,1fr) 28px minmax(230px,2fr);align-items:center;gap:12px;padding:12px;border-top:1px solid var(--line,#303047)}.ap-flow p{font-size:11px;color:var(--dim);margin:5px 0}.ap-scroll{max-height:470px;overflow:auto}.ap-click{cursor:pointer;color:inherit;text-decoration:underline;text-decoration-color:rgba(155,145,255,.4);text-underline-offset:3px}.ap-customer-note{font-size:11px;line-height:1.7;border-left:2px solid #b99b62;padding:8px 12px;color:var(--dim);margin:10px 0 14px}.ap-progress{display:flex;gap:4px;flex-wrap:wrap}.ap-period{font:10px var(--mono);padding:4px;background:rgba(100,180,150,.1);border-radius:3px}.ap-tablewrap{overflow:auto;max-height:600px}.ap-tablewrap th{position:sticky;top:0;background:var(--panel,#12121e);z-index:1}@media(max-width:600px){.ap-grid{grid-template-columns:1fr}.ap-tools input{width:100%;min-width:0}.ap-stats{gap:14px}.ap-flow{grid-template-columns:1fr}.ap-flow>span{display:none}.ap-tbl table{font-size:11px}.ap-card{padding:11px}}
+ </style>`;}
+function apBrandRevenue(c){const q=c.quarters||[];return q.length?q[q.length-1]:null;}
+function apparelRenderBrands(){
+ const all=apData().global, query=(ST.apQuery||'').toLowerCase(),freq=ST.apFreq||'all';
+ const rows=all.filter(c=>(!query||[c.ticker,c.name,c.segment,...(c.brands||[]),...(c.aliases||[])].join(' ').toLowerCase().includes(query))&&(freq==='all'||c.freq===freq));
+ const covered=all.filter(c=>(c.yoy_all||[]).length).length;
+ const selected=all.find(c=>c.ticker===ST.apBrand), detail=selected?apBrandDetail(selected):'';
+ return `<div class="ap-stats"><div><b>${all.length}</b> <span>글로벌 브랜드·리테일</span></div><div><b>${covered}</b> <span>매출 YoY 연결</span></div><div><b>${all.filter(c=>c.freq==='Q').length}</b> <span>분기 공시</span></div></div>
+ <div class="ap-tools"><input id="ap-search" aria-label="브랜드 검색" placeholder="브랜드·티커 검색 (KTB, WWW, VNCE…)" value="${apEsc(ST.apQuery||'')}"><select id="ap-freq" aria-label="공시 주기"><option value="all">모든 공시 주기</option>${['Q','H','Y'].map(f=>`<option value="${f}" ${f===freq?'selected':''}>${apFreq(f)}</option>`).join('')}</select><span class="ap-badge">${rows.length}사 표시</span></div>
+ <p class="ap-note">기업을 누르면 실적 이력과 근거가 있는 한국 공급사로 이어집니다. 회계기간 종료월 기준이며 분기·반기·연간을 구분합니다. 비어 있는 값은 확인되지 않은 값입니다.</p>${detail}
+ <div class="ap-tbl ap-tablewrap"><table><thead><tr><th>기업 / 티커</th><th>분류</th><th>공시 주기</th><th>최근 종료월</th><th>매출 YoY</th><th>최근 6개 공시</th><th>한국 공급사</th></tr></thead><tbody>${rows.map(c=>{
+ const hist=c.yoy_all||[],last=hist[hist.length-1],links=apData().links.filter(l=>l.brand_ticker===c.ticker),codes=[...new Set(links.map(l=>l.code))];
+ return `<tr><td><b class="ap-click" tabindex="0" role="button" data-apbrand="${apEsc(c.ticker)}">${apEsc(c.name)}</b><div class="ap-sub">${apEsc(c.ticker)}${c.status&&c.status!=='active'?` · ${apEsc(apListing(c.status))}`:''}</div></td><td>${apEsc(c.segment||'')}</td><td><span class="ap-badge">${apFreq(c.freq)}</span></td><td class="ap-cellnum">${apEsc(last?.[0]||c.lastq||'—')}</td><td class="ap-cellnum" style="color:${aCol(last?.[1])}">${aPct(last?.[1])}</td><td class="ap-cellnum">${hist.slice(-6).map(h=>`<span title="${apEsc(h[0])}" style="color:${aCol(h[1])}">${aPct(h[1],0)}</span>`).join(' · ')||'미확인'}</td><td>${codes.length?codes.map(code=>`<span class="ap-click" data-apkr="${code}">${apEsc(apData().korea.find(x=>x.code===code)?.name||code)}</span>`).join(' · '):'<span class="ap-sub">공식 연결 근거 미확보</span>'}</td></tr>`;
+ }).join('')}</tbody></table></div>`;
+}
+function apBrandDetail(c){
+ const links=apData().links.filter(l=>l.brand_ticker===c.ticker),q=c.quarters||[],hist=c.yoy_all||[];
+ return `<div class="ap-card" style="margin-bottom:16px"><h4>${apEsc(c.name)} <span class="ap-badge">${apEsc(c.ticker)}</span></h4><p class="ap-note">${apEsc(c.scope_note||c.note||'')} ${apSource(c.ir_url,'공식 IR')}${c.official_latest_check?' · '+apSource(c.official_latest_check.source_url,'최신 매출 공식 대조'):''}</p>
+ <div class="ap-tbl ap-scroll"><table><thead><tr><th>종료일</th><th>공시 주기</th><th>매출</th><th>YoY</th><th>출처</th></tr></thead><tbody>${(q.length?q.map(x=>[x.end,x.revenue,x.currency,x.source_url]):hist.map(x=>[x[0],null,null,null])).slice().reverse().map(([end,rev,cur,url])=>`<tr><td>${apEsc(end)}</td><td>${apFreq(c.freq)}</td><td class="ap-cellnum">${rev==null?'—':Number(rev).toLocaleString('en-US',{maximumFractionDigits:2})+' '+apEsc(cur||'')}</td><td>${aPct(hist.find(h=>h[0]===String(end).slice(0,7))?.[1])}</td><td>${apSource(url||c.source_url,String(c.source_kind||'').includes('secondary')?'재무 집계 출처':'출처')}</td></tr>`).join('')}</tbody></table></div>
+ <p class="ap-note">${apEsc(c.source_label||'')} · 금액 조회 ${apEsc(c.as_of||'')} · YoY ${c.yoy_source==='existing_luxury_revq'?'기존 실적 자료 ('+apEsc((c.yoy_cache_mtime||'').slice(0,10))+')':'동일 집계 자료 계산'}. ${apEsc(c.fiscal_label_note||'')} ${apEsc(c.source_anomaly_note||'')} ${apEsc(c.comparison_note||'')}</p><p class="ap-note">브랜드 연결의 재무 실적은 표시된 상장 그룹의 연결 매출입니다.</p><h4 class="ap-section">한국 공급사 연결</h4>${links.length?links.map(apLinkRow).join(''):'<p class="ap-empty">확인된 공급사 연결 근거가 아직 없습니다. 고객사 비중을 임의로 배정하지 않습니다.</p>'}</div>`;
+}
+function apKrList(){return apData().korea||[];}
+function apCustomerName(r){const label=apEsc(r.label||r.name||r.real_name||'');return r.brand_ticker&&apData().global.some(c=>c.ticker===r.brand_ticker)?`<span class="ap-click" tabindex="0" role="button" data-apbrand="${apEsc(r.brand_ticker)}">${label}</span> <span class="ap-badge">${apEsc(r.brand_ticker)}</span>`:label;}
+function apCustomerSummary(f,view){const rec=(f.customer_records||[]).filter(r=>view==='named_customer_sales'?r.source_kind==='business_customer_sales':r.source_kind==='major_customer_note');return rec.length?`<div class="ap-tbl" style="margin:12px 0"><table><thead><tr><th>고객 원문</th><th>매출</th><th>기간</th><th>범위</th><th>비중</th><th>실명</th></tr></thead><tbody>${rec.map(r=>`<tr><td>${apCustomerName(r)}</td><td class="ap-cellnum">${r.revenue==null?'미공개':Number(r.revenue).toLocaleString('en-US',{maximumFractionDigits:3})} ${apEsc(r.unit||'')}</td><td>${apEsc(apPeriodLabel(r.period_basis,f))}</td><td>${apEsc(apBasis(r.basis))}</td><td class="ap-cellnum">${r.share_pct==null?'미공개':Number(r.share_pct).toFixed(2)+'%'}</td><td>${apEsc(r.real_name||'익명')}</td></tr>`).join('')}</tbody></table></div>`:'';}
+function apKrSourceTable(t,filing,idx){
+ let rows=t.rows||[];if(!rows.length)return '';
+ const tableId=t.table_index??idx;
+ return `<details class="ap-raw" open><summary>${apEsc(t.title||'공시 매출표')} <span class="ap-badge">${apEsc(apBasis(t.basis))}</span> <span class="ap-badge">${apEsc(apPeriodLabel(t.period_basis,filing))}</span> · ${apEsc(t.unit||'단위는 원문 참고')} <span class="ap-badge">${apEsc(({current:'당기',prior:'전기 비교',current_and_prior:'당기 / 전기'})[t.comparison]||'')}</span></summary>
+ <div class="ap-tbl ap-scroll"><table><caption>${apSource(filing.url,'DART 원문')} · 표 ${tableId} · ${apEsc(filing.period_end)} ${t.context?'<br>'+apEsc(t.context):''}</caption><tbody>${rows.map((row,i)=>`<tr>${row.map((cell,j)=>{const span=t.cell_spans?.[i]?.[j]||{};const v=typeof cell==='object'?(cell.text||cell.value||''):cell;return `<td class="${/^[\s\d,().%\-]+$/.test(String(v))?'ap-cellnum':''}"${span.colspan>1?` colspan="${Math.min(30,Number(span.colspan))}"`:''}${span.rowspan>1?` rowspan="${Math.min(100,Number(span.rowspan))}"`:''}>${apEsc(v)}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>${t.note?`<p class="ap-note">${apEsc(t.note)}</p>`:''}</details>`;
+}
+function apMissingAxis(co,f,view,title){const alternatives=(co.filings||[]).filter(x=>x.period_end!==f.period_end&&((x[view]||[]).length||(view==='geography'&&(x.geography_business||[]).length))).sort((a,b)=>b.period_end.localeCompare(a.period_end));return `<p class="ap-empty">선택한 공시의 ${apEsc(title)} 표 미확인.${alternatives.length?` <button class="ap-button" data-apfallback="${alternatives[0].period_end}">${alternatives[0].period_end} 공개 표 보기</button>`:' 아래 원문 검토 메모를 확인하세요.'}</p>`;}
+function apparelRenderKr(){
+ const all=apKrList(),co=all.find(x=>x.code===ST.apKr),total=all.reduce((n,c)=>n+(c.filings||[]).length,0);
+ if(!co)return `<div class="ap-stats"><div><b>${all.length}</b> <span>한국 의류·신발 제조 및 관련 기업</span></div><div><b>${total}</b> <span>DART 정기공시</span></div></div><p class="ap-note">회사 선택 → 공시기간 선택 → 품목·국가/지역·10% 주요 고객 확인. OEM/ODM, 소재, 자체 브랜드를 회사별로 구분합니다.</p><div class="ap-grid">${all.map(c=>{const f=(c.filings||[]).slice().sort((a,b)=>b.period_end.localeCompare(a.period_end)),latest=f[0];return `<div class="ap-card ap-kcard" tabindex="0" role="button" data-apkr="${c.code}"><h4>${apEsc(c.name)} <span class="ap-badge">${c.code}</span></h4><div class="ap-sub">${apEsc(c.role||'의류 제조')} · ${f.length}개 공시 · 최신 ${apEsc(latest?.period_end||'—')}</div><div class="ap-progress">${f.slice().reverse().map(x=>`<span class="ap-period" title="${apEsc(x.reporting_caption||x.report_name||x.period)}">${apEsc(x.period_end)}</span>`).join('')}</div></div>`;}).join('')}</div>`;
+ const filings=(co.filings||[]).slice().sort((a,b)=>b.period_end.localeCompare(a.period_end));
+ const f=filings.find(x=>x.period_end===ST.apPeriod)||filings[0],view=ST.apMetric||'customers';
+ if(!f)return '<p class="ap-empty">공시 원문 미확보</p>';
+ const titles={products:'품목별 매출',geography:'국가·지역별 매출',customers:'10% 주요 고객 주석',named_customer_sales:'실명 고객별 매출'};
+ const rel=apData().links.filter(l=>l.code===co.code);
+ return `<div class="ap-tools"><button id="ap-krback">← 한국 전체</button><select id="ap-company" aria-label="한국 기업">${all.map(c=>`<option value="${c.code}" ${c.code===co.code?'selected':''}>${apEsc(c.name)} · ${c.code}</option>`).join('')}</select><select id="ap-period" aria-label="공시 기간">${filings.map(x=>`<option value="${x.period_end}" ${x.period_end===f.period_end?'selected':''}>${apEsc(x.period_end)} · ${apEsc(x.reporting_caption||x.report_name||x.period)}</option>`).join('')}</select><button id="ap-csv">현재 공시 CSV</button></div>
+ <h3>${apEsc(co.name)} <span class="ap-badge">${co.code} · ${apEsc(co.role||'')}</span></h3><p class="ap-note">${apSource(f.url,'공시 원문')} · 기간 말 ${apEsc(f.period_end)} · 제출 ${apEsc(f.filed_at||'')} ${apEsc(co.note||'')}</p>
+ <div class="ap-pills">${Object.entries(titles).map(([k,v])=>`<span class="ap-pill ${view===k?'on':''}" data-apmetric="${k}">${v} · ${(f[k]||[]).length}표</span>`).join('')}<span class="ap-pill ${view==='timeline'?'on':''}" data-apmetric="timeline">고객 공시 이력</span></div>
+ ${['customers','named_customer_sales'].includes(view)?apCustomerSummary(f,view):''}${view==='timeline'?apCustomerTimeline(co):`<p class="ap-customer-note">${apEsc(view==='customers'?apData().methodology.customer_identity:view==='geography'?apData().methodology.geography:apData().methodology.period)}</p>${(f[view]||[]).length?(f[view]||[]).map((t,i)=>apKrSourceTable(t,f,i)).join(''):apMissingAxis(co,f,view,titles[view])}`}
+ ${view==='customers'&&(f.customers_ofs||[]).length?'<h4 class="ap-section">별도 재무제표의 주요 고객</h4>'+f.customers_ofs.map((t,i)=>apKrSourceTable(t,f,i)).join(''):''}${view==='geography'&&(f.geography_business||[]).length?'<h4 class="ap-section">사업 공시의 수출국·지역 매출</h4>'+f.geography_business.map((t,i)=>apKrSourceTable(t,f,i)).join(''):''}${view==='geography'&&(f.geography_ofs||[]).length?'<h4 class="ap-section">별도 재무제표의 국가·지역별 매출</h4>'+f.geography_ofs.map((t,i)=>apKrSourceTable(t,f,i)).join(''):''}
+ ${view==='customers'&&(f.customer_narratives||[]).length?'<p class="ap-customer-note">'+f.customer_narratives.map(x=>apEsc(typeof x==='string'?x:x.text||x.context||'')).join('<br>')+'</p>':''}
+ ${(f.notes||[]).length?`<details class="ap-raw"><summary>원문 검토 메모</summary><p class="ap-note">${(f.notes||[]).map(apEsc).join('<br>')}</p></details>`:''}
+ <h4 class="ap-section">공시·공식 자료에서 이름이 확인된 고객</h4><p class="ap-note">아래 연결은 납품 관계의 근거입니다. 익명 고객 번호 및 10% 매출 비중과의 동일성이 확인되지 않은 연결에는 비중을 표시하지 않습니다.</p>${rel.length?rel.map(apLinkRow).join(''):'<p class="ap-empty">실명 고객 연결 근거 미확보</p>'}`;
+}
+function apNamedQuarterTable(c){const rows=(c.named_customer_quarters||[]).filter(r=>r.quarter_revenue!=null).slice().sort((a,b)=>b.period_end.localeCompare(a.period_end));return rows.length?`<h4 class="ap-section">실명이 확인된 고객의 분기 매출</h4><p class="ap-note">같은 실명·회계 범위·단위의 연속 누적 공시에서 계산한 값은 두 원문과 계산식을 표시합니다. 익명 고객은 차감하지 않습니다.</p><div class="ap-tbl ap-scroll"><table><thead><tr><th>종료월</th><th>고객</th><th>3개월 매출</th><th>범위</th><th>산출 근거</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.period_end}</td><td>${apCustomerName(r)}</td><td class="ap-cellnum">${r.quarter_revenue.toLocaleString('en-US',{maximumFractionDigits:3})} ${apEsc(r.unit)}</td><td>${apBasis(r.basis)}</td><td>${apEsc(r.method)}${r.formula?' · '+apEsc(r.formula):''} ${r.source_urls.map((u,i)=>apSource(u,'원문 '+(i+1))).join(' ')}</td></tr>`).join('')}</tbody></table></div>`:'';}
+function apCustomerTimeline(c){
+ const fs=(c.filings||[]).slice().sort((a,b)=>a.period_end.localeCompare(b.period_end));
+ return `${apNamedQuarterTable(c)}<h4 class="ap-section">모든 고객 공시 이력</h4><p class="ap-customer-note">같은 A·B·고객1 표기라도 보고서가 달라지면 동일 고객이라고 확정할 수 없습니다. 각 행은 해당 공시의 원문 고객이며, 당기/누적 범위를 함께 표시합니다. 실명은 공개 근거가 있는 경우에만 연결합니다.</p><div class="ap-tbl ap-tablewrap"><table><thead><tr><th>공시 종료월</th><th>고객 원문</th><th>매출</th><th>단위</th><th>기간 / 범위</th><th>식별 상태 / 현재 비중</th><th>원문</th></tr></thead><tbody>${fs.map(f=>{
+ const records=f.customer_records||[];
+ return records.length?records.map(r=>`<tr><td><span class="ap-click" data-apperiod="${f.period_end}">${f.period_end}</span></td><td>${apCustomerName(r)}</td><td class="ap-cellnum">${r.revenue==null?'미공개':Number(r.revenue).toLocaleString('en-US',{maximumFractionDigits:3})}</td><td>${apEsc(r.unit||'')}</td><td>${apEsc(apPeriodLabel(r.period_basis,f))+' · '+apEsc(apBasis(r.basis))}</td><td>${apEsc(r.real_name||'익명 · 연속성 미확인')}${r.share_pct!=null?' · '+Number(r.share_pct).toFixed(2)+'%':''}<div class="ap-sub">${r.source_kind==='business_customer_sales'?'실명 고객 매출표':'주요 고객 주석'}</div></td><td>${apSource(f.url,'표 '+(r.table_index??''))}</td></tr>`).join(''):`<tr><td>${f.period_end}</td><td colspan="5">숫자 요약 미추출 · 주요 고객 원문 ${(f.customers||[]).length}표</td><td>${apSource(f.url)}</td></tr>`;
+ }).join('')}</tbody></table></div>`;
+}
+function apLinkRow(l){
+ const c=apKrList().find(x=>x.code===l.code),hasFinance=apData().global.some(x=>x.ticker===l.brand_ticker),operator=apData().global.find(x=>x.ticker===l.operator_ticker);
+ const privateStatus=String(l.ticker_mapping_status||'').startsWith('private_since_');
+ return `<div class="ap-flow"><div><b class="ap-click" data-apkr="${apEsc(l.code)}">${apEsc(c?.name||l.code)}</b><p>${apEsc(l.as_of||'')}${l.source_kind==='official_customer_logo'?' · 로고 열람일':''}</p></div><span style="color:#8c81cc">→</span><div><b ${hasFinance?`class="ap-click" data-apbrand="${apEsc(l.brand_ticker)}"`:''}>${apEsc(l.customer_name)}</b> ${l.brand_ticker?`<span class="ap-badge">${apEsc(l.brand_ticker)}</span>`:''}${privateStatus?'<span class="ap-badge">비상장</span>':''}
+ ${operator?`<p><span class="ap-click" data-apbrand="${apEsc(operator.ticker)}">라이선스 운영사 실적: ${apEsc(operator.name)} · ${apEsc(operator.ticker)}</span></p>`:''}
+ <p>${apEsc(l.source_quote||l.note||'공식 자료의 고객 관계')} ${apSource(l.source_url,'관계 근거')}${l.ownership_source?' · '+apSource(l.ownership_source,'소유 관계 근거'):''}</p>
+ ${l.ticker_valid_from?`<p>이 티커 연결 적용: ${apEsc(l.ticker_valid_from)} 이후 · 해당 공급관계의 관측일과 구분</p>`:''}
+ <span class="ap-badge">${l.share!=null?apEsc(l.share)+'% · '+apEsc(l.period||l.as_of):'관계 확인 · 10% 고객번호 대응 미확인'}</span></div></div>`;
+}
+function apparelRenderLinks(){const q=(ST.apLinkQuery||'').toLowerCase(),all=apData().links,links=all.filter(l=>[l.customer_name,l.brand_ticker,l.code,apKrList().find(c=>c.code===l.code)?.name].join(' ').toLowerCase().includes(q));return `<div class="ap-tools"><input id="ap-link-search" aria-label="고객 연결 검색" placeholder="고객·브랜드·ODM 검색" value="${apEsc(ST.apLinkQuery||'')}"><span class="ap-badge">${links.length}개 공식 관계</span></div><p class="ap-customer-note">브랜드 실적 ↔ 한국 공급사 공시를 오갈 수 있습니다. 실명 고객 관계와 주석의 익명 10% 고객은 근거 수준이 달라 구분해서 표시합니다. 공시기간이 없는 과거 관계를 최신 분기의 매출 비중으로 해석하지 않습니다.</p>${links.length?links.map(apLinkRow).join(''):'<p class="ap-empty">검색한 고객의 공식 연결 근거 미확보</p>'}`;}
+function apparelAllKr(){return `<h4 class="ap-section">🇰🇷 한국 OEM·ODM 및 관련 기업 <span class="ap-badge">${apKrList().length}사</span></h4><div class="ap-tbl"><table><tbody>${apKrList().map(c=>`<tr><td><b class="ap-click" data-apkr="${c.code}">${apEsc(c.name)}</b></td><td>${c.code}</td><td>${apEsc(c.role||'')}</td><td>${(c.filings||[]).length}개 공시</td></tr>`).join('')}</tbody></table></div>`;}
+function apparelBind(){
+ const root=document.getElementById('main'),bind=(id,event,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener(event,fn);};
+ root.querySelectorAll('[data-apbrand]').forEach(e=>{const go=()=>{ST.aview='gl';ST.apBrand=e.dataset.apbrand;ST.apQuery='';renderApparel();window.scrollTo(0,0);};e.onclick=go;e.onkeydown=x=>{if(x.key==='Enter')go();};});
+ root.querySelectorAll('[data-apkr]').forEach(e=>{const go=()=>{ST.aview='kr';ST.apKr=e.dataset.apkr;ST.apPeriod='';renderApparel();window.scrollTo(0,0);};e.onclick=go;e.onkeydown=x=>{if(x.key==='Enter')go();};});
+ root.querySelectorAll('[data-apmetric]').forEach(e=>e.onclick=()=>{ST.apMetric=e.dataset.apmetric;renderApparel();});
+ root.querySelectorAll('[data-apfallback]').forEach(e=>e.onclick=()=>{ST.apPeriod=e.dataset.apfallback;renderApparel();});
+ root.querySelectorAll('[data-apperiod]').forEach(e=>e.onclick=()=>{ST.apPeriod=e.dataset.apperiod;ST.apMetric='customers';renderApparel();});
+ const search=(id,key)=>bind(id,'input',e=>{const pos=e.target.selectionStart;ST[key]=e.target.value;if(key==='apQuery')ST.apBrand='';renderApparel();const el=document.getElementById(id);el.focus();el.setSelectionRange(pos,pos);});
+ search('ap-search','apQuery');search('ap-link-search','apLinkQuery');
+ bind('ap-freq','change',e=>{ST.apFreq=e.target.value;renderApparel();});bind('ap-company','change',e=>{ST.apKr=e.target.value;ST.apPeriod='';renderApparel();});bind('ap-period','change',e=>{ST.apPeriod=e.target.value;renderApparel();});bind('ap-krback','click',()=>{ST.apKr='';renderApparel();});
+ bind('ap-csv','click',()=>{const c=apKrList().find(c=>c.code===ST.apKr),fs=c?.filings||[],f=fs.find(f=>f.period_end===ST.apPeriod)||fs.slice().sort((a,b)=>b.period_end.localeCompare(a.period_end))[0];if(!f)return;const rows=[['기업','종목코드','공시기간','축','표','행','값','출처']];for(const k of ['products','geography','customers','named_customer_sales','customers_ofs','geography_ofs','geography_business'])for(const t of f[k]||[])for(const [i,r] of (t.rows||[]).entries())rows.push([c.name,c.code,f.period_end,k,t.title,i+1,r.map(v=>typeof v==='object'?v.text:v).join(' | '),f.url]);const enc=v=>'"'+String(v??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(enc).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`apparel-${c.code}-${f.period_end}.csv`;a.click();URL.revokeObjectURL(url);});
+}
+
 // ===== 🎮 Game 탭 — 상장사 게임 나우캐스트 (Steam·PC방·메이플·모바일·DMM) =====
 let _gameLoaded=false; const GCH={};
 /* ==== ecal 탭 (2026-08-28 구현 — 호출부만 있고 미구현이던 탭, ui/patch.js가 자동 재노출) ==== */
@@ -6438,9 +6549,9 @@ const FOOT_GAME=
   <b>추세·상대비교</b>용입니다(특히 DMM은 game-i 자체 추정치·조정중). CCU·메이플 주화시세 축은 스코어에서 제외. Not investment advice.
   Source: Steam · gametrics · iTunes RSS · game-i.`;
 const FOOT_APP=
- `<b>의류 밸류체인.</b> 기존 샤드(대만 TWC·TWX <b>MOPS 월매출</b> / 일본 JPC <b>월차공시</b> / 글로벌 LUX <b>분기실적</b> / 미국 BOL / 한국 수출)를 재조합한 크로스샤드 뷰 — 새 데이터 수집 없음.
-  대만 ODM은 매월 10일 전월 매출을 공시하므로 분기 공시만 하는 글로벌 브랜드보다 <b>1~2개월 선행</b>. 고객 비중 %는 해당 ODM 매출 중 그 브랜드가 차지하는 비중(공시·리서치 기반 추정).
-  YoY는 <b>3개월 합</b> 기준(당월 단독은 선적 타이밍·연휴로 노이즈). 일본 월차는 회사별 원계열이 기존점 지수(前年同月=100) 또는 실액(百万円)으로 섞여 있으나 YoY는 동일하게 성립. Not investment advice.`;
+ `<b>의류 밸류체인.</b> 대만 MOPS 월매출 / 일본 월차공시 / 글로벌 브랜드의 분기·반기 실적 / 한국 DART 품목·매출 지역·주요 고객 공시를 연결합니다. 한국 고객 자료는 공시 기간·연결 범위·익명 여부를 유지하며, 생산국가와 판매국가를 구분합니다.
+  대만 ODM은 매월 10일 전월 매출을 공시하므로 분기 공시만 하는 글로벌 브랜드보다 <b>1~2개월 선행</b>. 대만 프록시 카드의 고객 비중 %는 공시·리서치 기반 추정이며, 한국 공시의 실측 고객 비중과 구분합니다.
+  대만 월매출 프록시의 YoY는 <b>3개월 합</b> 기준입니다. 글로벌 실적은 각 공시 주기 기준입니다. 일본 월차는 회사별 원계열이 기존점 지수(前年同月=100) 또는 실액(百万円)으로 섞여 있으나 YoY는 동일하게 성립. Not investment advice.`;
 function setFoot(tab){ const el=document.getElementById('foot'); if(!el)return; el.innerHTML=tab==='mlcc'?'<b>MLCC 관측.</b> 공시 범위·기간·원문·실적/전망을 구분합니다. 수주·가동률·매출과 HS853224 금액/중량 지표의 교차 확인이며 가격 상승이나 주가 수익률 예측이 아닙니다. 결측·계열 중복·오래된 데이터는 판정에서 제외합니다.':(tab==='game')?FOOT_GAME:(tab==='app'?FOOT_APP:FOOT_CUSTOMS); }
 setFoot(ST.tab);
 
