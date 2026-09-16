@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const state = { data: null, selected: null, product: null, historyGroups: [] };
+  const state = { data: null, selected: null, product: null, historyGroups: [], historyPeriods: [] };
   const colors = { ssd: 'var(--ssd)', hdd: 'var(--hdd)', dram: 'var(--dram)' };
   const brandColors = ['#71bca8', '#86aee0', '#b699d6', '#d5af75', '#da979f', '#89b5b9', '#9caa7c', '#b2aabf', '#bc9b88', '#869db6'];
   const number = (value, digits = 2) => Number.isFinite(value) ? value.toLocaleString('ko-KR', { maximumFractionDigits: digits, minimumFractionDigits: digits }) : '—';
@@ -35,6 +35,11 @@
     return timestamp === null ? null : Math.floor((Date.now() - timestamp) / 86400000);
   }
   function isGap(before, after, frequency) {
+    if (frequency === 'mixed') {
+      if (after.bridge_from === before.date && before.frequency === 'monthly' && after.frequency === 'daily') return false;
+      if (before.frequency !== after.frequency || before.basis !== after.basis) return true;
+      return isGap(before, after, after.frequency || 'daily');
+    }
     if (frequency === 'monthly') {
       const month = (v) => Number(v.slice(0, 4)) * 12 + Number(v.slice(5, 7));
       return month(after.date) - month(before.date) > 1;
@@ -82,6 +87,8 @@
       let lastLabelX = -Infinity;
       for (let i = 0; i < labels.length; i++) {
         const p = labels[i];
+        const endpoint = points[points.length - 1];
+        if (p !== endpoint && labels.length > 1 && x(endpoint) - x(p) < 90) continue;
         if (x(p) - lastLabelX < 90 && labels.length > 1) continue;
         lastLabelX = x(p);
         svg += `<text x="${x(p)}" y="${height - 15}" text-anchor="middle" class="chart-label">${escape(p.date)}</text>`;
@@ -95,19 +102,28 @@
         svg += `<rect x="${x(p) - barWidth / 2}" y="${Math.min(y(p.plotted), y(0))}" width="${barWidth}" height="${Math.max(1, Math.abs(y(p.plotted) - y(0)))}" rx="2" fill="${color}" opacity=".7" tabindex="0" role="img" aria-label="${escape(tooltip)}" data-tip="${escape(tooltip)}"><title>${escape(tooltip)}</title></rect>`;
       });
     } else {
-      let segments = [], current = [], previous = null;
+      const mixed = frequency === 'mixed';
+      const pointKind = (p) => mixed && p.basis === 'historical_reconstruction' ? 'historical' : 'live';
+      let segments = [], current = [], previous = null, currentKind = null;
+      const flush = () => { if (current.length) segments.push({ points: current, kind: currentKind }); current = []; };
       for (const p of points) {
-        if (!Number.isFinite(p.plotted)) { if (current.length) segments.push(current); current = []; previous = null; continue; }
-        if (previous && isGap(previous, p, frequency)) { if (current.length) segments.push(current); current = []; }
-        current.push(p); previous = p;
+        if (!Number.isFinite(p.plotted)) { flush(); previous = null; continue; }
+        const gap = previous && isGap(previous, p, frequency);
+        const edgeKind = previous && mixed && p.bridge_from === previous.date && previous.frequency === 'monthly' && p.frequency === 'daily' ? 'bridge' : pointKind(p);
+        if (!previous || gap) { flush(); current = [p]; currentKind = pointKind(p); }
+        else if (edgeKind !== currentKind) { flush(); current = [previous, p]; currentKind = edgeKind; }
+        else current.push(p);
+        previous = p;
       }
-      if (current.length) segments.push(current);
+      flush();
       for (const segment of segments) {
-        if (segment.length > 1) svg += `<path d="${segment.map((p, i) => `${i ? 'L' : 'M'}${x(p).toFixed(2)},${y(p.plotted).toFixed(2)}`).join(' ')}" class="data-line" fill="none" stroke="${color}" stroke-width="${miniature ? 2.4 : 2.6}"/>`;
+        if (segment.points.length > 1) svg += `<path d="${segment.points.map((p, i) => `${i ? 'L' : 'M'}${x(p).toFixed(2)},${y(p.plotted).toFixed(2)}`).join(' ')}" class="data-line ${mixed ? `${segment.kind}-line` : ''}" data-segment="${escape(segment.kind)}" fill="none" stroke="${color}" stroke-width="${miniature ? 2.4 : 2.6}"/>`;
       }
       valid.forEach((p) => {
-        const tooltip = `${p.date}\n${formatter(p.plotted)}${unit === '지수' ? ' pt' : ''}${Number.isFinite(p.coverage_weight) ? `\n비중 커버리지 ${percent(p.coverage_weight)}` : ''}`;
-        svg += `<circle class="data-point" cx="${x(p)}" cy="${y(p.plotted)}" r="${miniature ? 2.8 : 3.7}" fill="${color}"${miniature ? '' : ` tabindex="0" role="img" aria-label="${escape(tooltip)}" data-tip="${escape(tooltip)}"`}><title>${escape(tooltip)}</title></circle>`;
+        const kind = pointKind(p);
+        const label = mixed ? kind === 'historical' ? '월간 과거 재구성' : '일간 직접 관측' : '';
+        const tooltip = `${p.date}${label ? ` · ${label}` : ''}\n${formatter(p.plotted)}${unit === '지수' ? ' pt' : ''}${Number.isFinite(p.coverage_count) ? `\n포함 제품 ${p.coverage_count}개` : ''}${Number.isFinite(p.coverage_weight) ? `\n${mixed && kind === 'historical' ? '최초 비중 확보율' : '비중 커버리지'} ${percent(p.coverage_weight)}` : ''}${mixed && p.bridge_from ? `\n${p.bridge_from} 월간 값에서 일간으로 연결` : ''}`;
+        svg += `<circle class="data-point" data-basis="${escape(p.basis || '')}" data-date="${escape(p.date)}" cx="${x(p)}" cy="${y(p.plotted)}" r="${miniature ? 2.8 : 3.7}" fill="${kind === 'historical' ? 'var(--surface)' : color}"${kind === 'historical' ? ` style="stroke:${color}"` : ''}${miniature ? '' : ` tabindex="0" role="img" aria-label="${escape(tooltip)}" data-tip="${escape(tooltip)}"`}><title>${escape(tooltip)}</title></circle>`;
       });
     }
     svg += '</svg>';
@@ -133,10 +149,10 @@
   function renderCards() {
     $('index-cards').innerHTML = state.data.indices.map((index, ordinal) => {
       const level = Number.isFinite(index.value) ? number(index.value) : '—';
-      const change = Number.isFinite(index.value) ? `<span class="change">${signed(index.value - 100)}</span> 기준일 대비` : '산출 조건 확인 중';
+      const change = Number.isFinite(index.value) ? `<span class="change">${signed(index.value - 100)}</span> ${String(index.base_date).length === 7 ? '기준월' : '기준일'} 대비` : '산출 조건 확인 중';
       return `<button type="button" class="index-card" data-id="${escape(index.id)}" data-index="${ordinal}" aria-pressed="false" aria-controls="index-detail"><span class="card-top"><span class="card-label">${escape(String(index.id).toUpperCase())}</span><span class="card-arrow" aria-hidden="true">↗</span></span><span class="card-subtitle">${escape(index.name)}</span><span class="card-number">${level}</span><span class="card-change">${change}</span><span class="mini-chart" id="spark-${ordinal}" aria-hidden="true"></span><span class="card-footer"><span>${escape(index.as_of || '관측일 미확보')}</span><span>${escape(index.coverage_count ?? 0)} / ${escape(index.basket_count ?? 0)}개 · ${percent(index.coverage_weight)}</span></span></button>`;
     }).join('');
-    state.data.indices.forEach((index, i) => chart($(`spark-${i}`), index.series, { miniature: true, color: colors[index.id] || 'var(--accent)' }));
+    state.data.indices.forEach((index, i) => chart($(`spark-${i}`), index.series, { miniature: true, frequency: 'mixed', color: colors[index.id] || 'var(--accent)' }));
     $('index-cards').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
       const index = state.data.indices[Number(button.dataset.index)];
       if (index) { history.pushState(null, '', `#${encodeURIComponent(index.id)}`); navigateFromHash(); }
@@ -173,7 +189,7 @@
     const complete = index.status === 'ok' && Number.isFinite(index.value);
     text('detail-status', complete ? '관측 완료' : '산출 조건 미충족');
     $('detail-status').className = `pill ${complete ? 'ok' : 'warning'}`;
-    const meta = [['바스켓', index.basket_id || '미확보'], ['기준일', index.base_date || '미확보'], ['최근 관측', index.as_of || '미확보'], ['비중 커버리지', percent(index.coverage_weight)], ['제품 커버리지', `${index.coverage_count ?? 0} / ${index.basket_count ?? 0}개`]];
+    const meta = [['바스켓', index.basket_id || '미확보'], [String(index.base_date).length === 7 ? '기준월' : '기준일', index.base_date || '미확보'], ['최근 관측', index.as_of || '미확보'], ['현재 비중 커버리지', percent(index.coverage_weight)], ['현재 제품 커버리지', `${index.coverage_count ?? 0} / ${index.basket_count ?? 0}개`]];
     $('detail-meta').innerHTML = meta.map(([key, value]) => `<span>${escape(key)}<strong>${escape(value)}</strong></span>`).join('');
     const warnings = [];
     if (!complete) warnings.push('현재 지수는 산출 조건을 충족하지 않아 공표되지 않았습니다. 확보한 제품 관측은 아래에서 확인할 수 있습니다.');
@@ -183,13 +199,53 @@
     if (age === null) warnings.push('최근 관측일을 확인할 수 없습니다.');
     $('index-notice').hidden = !warnings.length; $('index-notice').className = 'notice warning'; text('index-notice', warnings.join(' '));
     text('index-base', index.base_date ? `${index.base_date} = 100` : '기준일 미확보');
-    chart($('index-chart'), index.series, { color: colors[index.id] || 'var(--accent)', baseline: 100, title: `${index.name} 공식 일간 지수 관측` });
+    renderIndexChart(index);
+    renderHistoricalCoverage(index);
     renderBrandWeights(index);
     const rebalance = index.rebalance || {};
     const rebalanceStatus = { initial: '최초 바스켓 · 관측 축적 중', deferred: '검토 보류', completed: '검토 완료', pending: '검토 대기', applied: '새 바스켓 적용' };
     $('rebalance').innerHTML = `<p class="rebalance-date">${escape(rebalance.next_review || '일정 미확보')}</p><p>${escape(rebalanceStatus[rebalance.status] || rebalance.status || '')}</p>${notes(rebalance.notes).map((note) => `<p>${escape(note)}</p>`).join('')}`;
     $('product-search').value = '';
     renderConstituents();
+  }
+  function renderIndexChart(index) {
+    chart($('index-chart'), index.series, { frequency: 'mixed', color: colors[index.id] || 'var(--accent)', baseline: 100, title: `${index.name} 월간 과거 재구성과 일간 직접 관측 지수` });
+  }
+  function renderHistoricalCoverage(index) {
+    const historyData = index.history || {};
+    const monthly = array(historyData.series);
+    $('history-coverage').hidden = !monthly.length;
+    $('history-intro').hidden = !monthly.length;
+    $('history-coverage').open = false;
+    text('index-history-caption', monthly.length ? `${historyData.base_date || index.base_date}~${historyData.last_month || '미확보'}: 월간 과거 재구성 · ${historyData.daily_start_date || '미확보'}부터: 일간 직접 관측. 명시된 월간→일간 연결 구간 외의 결측은 연결하지 않습니다. 월간 점 사이의 선은 일간 관측을 뜻하지 않습니다.` : '확보된 가격 관측을 표시합니다. 결측 구간은 선을 연결하지 않습니다.');
+    if (!monthly.length) { state.historyPeriods = []; return; }
+    const count = historyData.initial_coverage_count ?? monthly[0].coverage_count;
+    const weight = historyData.initial_coverage_weight ?? monthly[0].coverage_weight;
+    $('history-intro').className = `notice ${Number.isFinite(weight) && weight < 1 - 1e-9 ? 'warning' : ''}`;
+    $('history-intro').innerHTML = `<strong>과거 시작월 ${escape(historyData.base_date || index.base_date)}: ${escape(count ?? '—')} / ${escape(index.basket_count ?? '—')}개 · 최초 바스켓 비중 ${percent(weight)} 확보</strong><p>${escape(historyData.note || '최초 선정 바스켓의 비중으로 과거를 재구성했습니다. 당시의 판매 구성비를 재현한 지수가 아니며, 확보되지 않은 가격을 보간하지 않습니다.')}</p><p>과거 부분 표본은 확보 제품 사이에서 비중을 다시 나누므로, 구간 적용 비중이 현재 24개 바스켓의 SKU·브랜드 상한을 초과할 수 있습니다.</p>`;
+    state.historyPeriods = monthly.map((point, i) => ({ ...point, from_date: point.from_date || (i ? monthly[i - 1].date : null), kind: i ? '월간 연결' : '시작월' }));
+    if (historyData.bridge) {
+      const bridge = historyData.bridge;
+      const point = array(index.series).find((p) => p.date === bridge.date && p.bridge_from === bridge.from_date);
+      state.historyPeriods.push({ ...bridge, value: bridge.value ?? point?.value, kind: '월간 → 일간 연결' });
+    }
+    $('history-periods').innerHTML = state.historyPeriods.map((period, i) => `<tr><td><button class="period-button" type="button" data-history-period="${i}" aria-controls="history-members">${escape(period.date)}</button></td><td class="numeric">${number(period.value)}</td><td class="numeric">${escape(period.coverage_count ?? '—')} / ${escape(index.basket_count ?? '—')}</td><td class="numeric">${percent(period.coverage_weight)}</td><td class="period-kind">${escape(period.kind)}</td></tr>`).join('');
+    $('history-month').innerHTML = state.historyPeriods.map((period, i) => `<option value="${i}">${escape(period.date)} · ${escape(period.kind)}</option>`).join('');
+    $('history-periods').querySelectorAll('[data-history-period]').forEach((button) => button.addEventListener('click', () => {
+      $('history-month').value = button.dataset.historyPeriod;
+      renderHistoricalMembers();
+      $('history-month').focus({ preventScroll: true });
+      $('history-match-summary').scrollIntoView({ block: 'nearest' });
+    }));
+    renderHistoricalMembers();
+  }
+  function renderHistoricalMembers() {
+    const period = state.historyPeriods[Number($('history-month').value)];
+    if (!period) return;
+    const members = array(period.constituents).slice().sort((a, b) => (b.weight || 0) - (a.weight || 0));
+    text('history-match-summary', `${period.from_date ? `${period.from_date} → ` : ''}${period.date} · ${period.kind} · ${period.coverage_count ?? members.length}개 · 최초 바스켓 비중 ${percent(period.coverage_weight)} 확보. 구간 적용 비중은 포함 제품의 최초 비중을 합계 100%로 다시 나눈 값입니다.`);
+    $('history-members').innerHTML = members.length ? members.map((item) => `<tr><td>${escape(item.name)}<span class="product-subline">상품 ID ${escape(item.id)}</span></td><td class="numeric">${percent(item.weight)}</td><td class="numeric">${percent(item.initial_weight)}</td><td>${sourceLink(item.source_url)}</td></tr>`).join('') : '<tr><td colspan="4" class="missing">구성 제품이 확보되지 않았습니다.</td></tr>';
+    $('history-periods').querySelectorAll('[data-history-period]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.historyPeriod === $('history-month').value)));
   }
   function renderConstituents() {
     const query = $('product-search').value.trim().toLocaleLowerCase('ko-KR');
@@ -231,7 +287,7 @@
   function renderProductHistory() {
     const group = state.historyGroups[Number($('history-series').value)];
     chart($('product-chart'), group?.points || [], { field: 'price', unit: '원', color: colors[state.selected.id] || 'var(--accent)', frequency: group?.frequency || 'daily', title: `${state.product.name} ${group ? historyLabel(group.frequency, group.basis, group.windowMonths) : '가격 흐름'}`, formatter: won });
-    const note = group?.basis === 'danawa_chart' ? '다나와 원문 차트에서 확보한 과거 가격입니다. 월간·주간 값은 일간 관측으로 변환하지 않으며, 공식 지수의 과거 실적이 아닙니다.' : '직접 관측한 제품별 최저가입니다. 관측 시점의 제품 가격이며, 지수 자체의 수익률이나 제품 판매량을 뜻하지 않습니다.';
+    const note = group?.basis === 'danawa_chart' ? '다나와 원문 차트의 제품별 과거 가격입니다. 월간 원문 가격은 과거 지수 재구성에 사용하며, 월간·주간 값은 해당 주기의 관측으로 표시합니다.' : '직접 관측한 제품별 최저가입니다. 관측 시점의 제품 가격이며, 지수 자체의 수익률이나 제품 판매량을 뜻하지 않습니다.';
     text('product-history-note', `${group ? `${historyLabel(group.frequency, group.basis, group.windowMonths)} · ${array(group.points).filter((p) => Number.isFinite(p.price)).length}개 가격 관측. ` : ''}${note} 서로 다른 조회 창은 혼합하지 않습니다. 결측 기간은 선을 연결하지 않습니다.`);
   }
   function renderGermany() {
@@ -288,6 +344,7 @@
   async function start() {
     initTheme();
     $('product-search').addEventListener('input', renderConstituents);
+    $('history-month').addEventListener('change', renderHistoricalMembers);
     $('dialog-close').addEventListener('click', () => $('product-dialog').close());
     $('product-dialog').addEventListener('click', (event) => {
       if (event.target !== $('product-dialog')) return;
@@ -315,7 +372,7 @@
       window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-          if (state.selected) chart($('index-chart'), state.selected.series, { color: colors[state.selected.id] || 'var(--accent)', baseline: 100, title: `${state.selected.name} 공식 일간 지수 관측` });
+          if (state.selected) renderIndexChart(state.selected);
           renderGermany();
           if ($('product-dialog').open) renderProductHistory();
         }, 120);

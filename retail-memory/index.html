@@ -6,8 +6,8 @@
   <meta name="color-scheme" content="dark light">
   <meta name="description" content="독일 DDR5 소매가격과 다나와 SSD·HDD·DRAM 가격 지수. 바스켓 비중, 제품별 관측가격, 원문과 산출 규칙을 함께 확인합니다.">
   <title>메모리 리테일 가격 | PHALANX</title>
-  <link rel="stylesheet" href="style.css?v=1.0.2">
-  <script src="app.js?v=1.0.2" defer></script>
+  <link rel="stylesheet" href="style.css?v=1.1.0">
+  <script src="app.js?v=1.1.0" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
@@ -26,17 +26,26 @@
         <section aria-labelledby="korea-heading" class="section">
           <div class="section-heading"><div><p class="eyebrow">01 / KOREA</p><h2 id="korea-heading">다나와 소매가격 지수</h2></div><span class="muted small">카드를 눌러 구성 제품 보기 ↓</span></div>
           <div class="index-cards" id="index-cards" aria-label="가격 지수 선택"></div>
-          <p class="section-caption">각 지수의 기준일 = 100 · 원화 가격 기준 · 실제 판매수량 지수가 아닙니다.</p>
+          <p class="section-caption">각 지수의 기준월 = 100 · 월간 과거 재구성 → 일간 직접 관측 · 원화 기준</p>
         </section>
         <section class="panel detail-section" aria-labelledby="detail-heading" id="index-detail" tabindex="-1">
           <div class="panel-heading"><div><p class="eyebrow" id="detail-eyebrow">BASKET DETAIL</p><h2 id="detail-heading">지수 구성</h2></div><span id="detail-status" class="pill"></span></div>
           <div id="detail-meta" class="metadata"></div>
           <div id="index-notice" class="notice" hidden></div>
-          <div class="chart-caption"><h3>공식 지수 관측</h3><span id="index-base" class="muted small"></span></div>
+          <div class="chart-caption"><h3>과거부터 현재까지</h3><span id="index-base" class="muted small"></span></div>
+          <div class="index-legend" aria-label="지수 관측 구분"><span><i class="legend-history" aria-hidden="true"></i>월간 과거 재구성</span><span><i class="legend-bridge" aria-hidden="true"></i>월간 → 일간 연결</span><span><i class="legend-live" aria-hidden="true"></i>일간 직접 관측</span></div>
           <div id="index-chart" class="chart-host"></div>
-          <p class="small muted chart-note">저장된 지수 관측만 표시합니다. 현재 구성 제품의 과거 가격을 소급하여 지수로 만들지 않습니다. 결측 구간은 선을 연결하지 않습니다.</p>
+          <p class="small muted chart-note" id="index-history-caption"></p>
+          <div id="history-intro" class="notice" hidden></div>
+          <details id="history-coverage" class="history-coverage" hidden><summary>월별 커버리지 · 실제 연결 제품 확인</summary>
+            <p class="small muted">과거에는 당시 가격이 확보된 제품만 사용합니다. 최초 바스켓 비중 대비 확보율과 각 구간에 적용된 제품 비중을 함께 표시합니다.</p>
+            <div class="table-wrap coverage-table-wrap" tabindex="0" role="region" aria-label="월별 지수와 커버리지"><table><thead><tr><th scope="col">기간</th><th scope="col" class="numeric">지수</th><th scope="col" class="numeric">포함 제품</th><th scope="col" class="numeric">최초 비중 확보율</th><th scope="col">구분</th></tr></thead><tbody id="history-periods"></tbody></table></div>
+            <div class="history-selection"><h3>구간별 실제 포함 제품</h3><label>기간 선택 <select id="history-month" aria-label="과거 지수 구성 제품을 볼 기간"></select></label></div>
+            <p class="small muted" id="history-match-summary"></p>
+            <div class="table-wrap" tabindex="0" role="region" aria-label="선택 기간의 실제 구성 제품과 적용 비중"><table><thead><tr><th scope="col">제품</th><th scope="col" class="numeric">구간 적용 비중</th><th scope="col" class="numeric">최초 바스켓 비중</th><th scope="col">원문</th></tr></thead><tbody id="history-members"></tbody></table></div>
+          </details>
           <div class="basket-grid"><div><h3>브랜드별 비중</h3><div id="brand-weights"></div></div><div class="rebalance-box"><h3>다음 바스켓 점검</h3><div id="rebalance"></div></div></div>
-          <div class="table-heading"><div><h3>전체 구성 제품 <span id="constituent-count" class="count"></span></h3><p class="small muted">제품명을 누르면 개별 가격 흐름과 원문을 확인할 수 있습니다.</p></div><label class="search-box"><span class="sr-only">제품 또는 브랜드 검색</span><input id="product-search" type="search" placeholder="제품 · 브랜드 검색" autocomplete="off"></label></div>
+          <div class="table-heading"><div><h3>현재 구성 제품 <span id="constituent-count" class="count"></span></h3><p class="small muted">제품명을 누르면 개별 가격 흐름과 원문을 확인할 수 있습니다.</p></div><label class="search-box"><span class="sr-only">제품 또는 브랜드 검색</span><input id="product-search" type="search" placeholder="제품 · 브랜드 검색" autocomplete="off"></label></div>
           <div class="table-wrap" tabindex="0" role="region" aria-label="구성 제품과 비중. 좁은 화면에서는 가로로 스크롤할 수 있습니다."><table><thead><tr><th scope="col">제품 / 제품라인</th><th scope="col">세대 · 용량</th><th scope="col" class="numeric">비중</th><th scope="col" class="numeric">관측 최저가</th><th scope="col" class="numeric">인기순위</th><th scope="col" class="numeric">판매처</th><th scope="col">원문</th></tr></thead><tbody id="constituents"></tbody></table></div>
           <p class="small muted table-note">비중은 바스켓 구성비입니다. 인기순위는 판매량의 대리 지표이며 실제 판매수량·매출 비중을 뜻하지 않습니다. 가격 미확보는 0원으로 처리하지 않습니다.</p>
         </section>
