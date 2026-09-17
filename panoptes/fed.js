@@ -1124,6 +1124,85 @@
     var ot = arr(taco.open_threats).length;
     return '오늘 위협 ' + nT + ' · 유지 ' + nH + ' · 철회 ' + nR + ' — 최고 강도 ' + n2(mx) + ', 열린 위협 ' + ot + '건';
   }
+  /* TACO v2 전용: 구버전에는 마크업/CSS를 추가하지 않는다. */
+  function tacoV2Table(taco) {
+    var ix = obj(taco.index_v2), c = obj(ix.components), topics = obj(c.by_topic);
+    var rows = '<tr><th scope="row">정밀지수</th><td class="n">' + nf(ix.value, 4) + '</td><td>—</td></tr>';
+    rows += '<tr><th scope="row">철회율 성분</th><td class="n">' + nf(c.retreat_rate, 4) + '</td><td>—</td></tr>';
+    rows += '<tr><th scope="row">속도 성분</th><td class="n">' + nf(c.speed, 4) + '</td><td>—</td></tr>';
+    Object.keys(topics).forEach(function (key) {
+      var t = obj(topics[key]);
+      rows += '<tr><th scope="row">' + esc(key) + '</th><td class="n">' + nf(t.value, 4) + '</td><td class="n">' + (isN(t.n) ? t.n : '—') + '</td></tr>';
+    });
+    return '<div style="flex:1 1 240px;min-width:0"><table class="fd-tb fd-taco-v2"><caption style="text-align:left;color:#f5c542">TACO 정밀지수 · 0–1</caption><thead><tr><th>성분 / 토픽</th><th class="n">값</th><th class="n">n</th></tr></thead><tbody>' + rows + '</tbody></table><div class="fd-foot">n: 토픽 표본수 · —: 미제공</div></div>';
+  }
+  function tacoV2Percent(v) { return isN(v) ? nf(v * 100, 1) + '%' : '—'; }
+  function tacoForward(taco, id) {
+    if (!str(id)) return '';
+    var f = arr(taco.forward).filter(function (v) { return v && v.threat_id === id; })[0];
+    if (!f) return '';
+    var parts = [];
+    ['p7', 'p30'].forEach(function (k) {
+      if (!isN(f[k])) return;
+      parts.push(k.toUpperCase() + ' ' + tacoV2Percent(f[k]) + (isN(f[k + '_lo']) && isN(f[k + '_hi']) ? ' [' + tacoV2Percent(f[k + '_lo']) + '–' + tacoV2Percent(f[k + '_hi']) + ']' : ''));
+    });
+    return parts.length ? '<span class="fd-taco-forward fd-mono" style="display:block;color:#2bc0d4;font-size:10px">전방 철회확률 · ' + parts.join(' · ') + '</span>' : '';
+  }
+  function tacoIndexChart(taco) {
+    var points = arr(taco.index_series).filter(function (p) { return p && /^\d{4}-\d{2}-\d{2}$/.test(str(p.date)) && isFinite(Date.parse(p.date)); }).slice().sort(function (a, b) { return a.date.localeCompare(b.date); });
+    if (!points.some(function (p) { return isN(p.value); })) return '';
+    var W = 960, H = 290, L = 52, R = 22, T = 18, B = 40;
+    var first = Date.parse(points[0].date), last = Date.parse(points[points.length - 1].date), low = 0, high = 1;
+    var keys = ['value', 'p05', 'p25', 'p75', 'p95', 'env_mid', 'env_dn1', 'env_up1', 'env_dn2', 'env_up2'];
+    points.forEach(function (p) { keys.forEach(function (k) { if (isN(p[k])) { low = Math.min(low, p[k]); high = Math.max(high, p[k]); } }); });
+    function x(p) { return L + (last === first ? 0.5 : (Date.parse(p.date) - first) / (last - first)) * (W - L - R); }
+    function y(v) { return T + (high - v) / (high - low) * (H - T - B); }
+    function xy(p, k) { return nf(x(p), 2) + ',' + nf(y(p[k]), 2); }
+    // 결측 구간은 연결하지 않는다. 밴드마다 유효 구간을 따로 구성한다.
+    function runs(ks) {
+      var result = [], run = [];
+      points.forEach(function (p) {
+        if (ks.every(function (k) { return isN(p[k]); })) run.push(p);
+        else if (run.length) { result.push(run); run = []; }
+      });
+      if (run.length) result.push(run);
+      return result;
+    }
+    function band(lo, hi, color, opacity, name) {
+      return '<g class="' + name + '" fill="' + color + '" fill-opacity="' + opacity + '">' + runs([lo, hi]).map(function (run) {
+        return '<path d="M' + run.map(function (p) { return xy(p, hi); }).join(' L') + ' L' + run.slice().reverse().map(function (p) { return xy(p, lo); }).join(' L') + ' Z"/>';
+      }).join('') + '</g>';
+    }
+    function line(k, color, dash) {
+      return '<path class="fd-taco-' + k + '" fill="none" stroke="' + color + '" stroke-width="2"' + (dash ? ' stroke-dasharray="6 4"' : '') + ' d="' + runs([k]).map(function (run) { return 'M' + run.map(function (p) { return xy(p, k); }).join(' L'); }).join(' ') + '"/>';
+    }
+    var s = '<svg class="fd-taco-series" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;width:100%;min-width:720px;height:auto" role="img" aria-label="TACO 정밀지수 시계열, 신뢰대와 레짐 밴드"><title>TACO 정밀지수 시계열</title>';
+    for (var tick = 0; tick <= 4; tick++) {
+      var v = low + (high - low) * tick / 4, yy = nf(y(v), 2);
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="#1f2937"/><text x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end" fill="#8a93a3" font-size="10">' + nf(v, 2) + '</text>';
+    }
+    s += band('p05', 'p95', '#2bc0d4', '.12', 'fd-taco-ci90') + band('p25', 'p75', '#2bc0d4', '.28', 'fd-taco-ci50');
+    s += '<g class="fd-taco-regime">' + band('env_dn2', 'env_up2', '#9b7bff', '.10', 'fd-taco-sigma2') + band('env_dn1', 'env_up1', '#9b7bff', '.22', 'fd-taco-sigma1') + '</g>';
+    s += line('env_mid', '#9b7bff', true) + line('value', '#f5c542', false);
+    points.forEach(function (p) {
+      if (!isN(p.value) || (p.breakout !== 'up' && p.breakout !== 'down')) return;
+      var xx = nf(x(p), 2), yy = nf(y(p.value), 2), color = p.breakout === 'up' ? '#59d0a8' : '#ff4d5e';
+      s += '<g class="fd-taco-breakout"><title>' + esc(p.date + ' · breakout ' + p.breakout + ' · ' + nf(p.value, 4)) + '</title><line x1="' + xx + '" x2="' + xx + '" y1="' + yy + '" y2="' + (H - B) + '" stroke="' + color + '" stroke-opacity=".25" stroke-dasharray="2 4"/><circle cx="' + xx + '" cy="' + yy + '" r="3" fill="' + color + '"/></g>';
+    });
+    var tickIndices = [];
+    for (var i = 0; i <= 4; i++) {
+      var idx = Math.round((points.length - 1) * i / 4);
+      if (tickIndices.indexOf(idx) >= 0) continue;
+      tickIndices.push(idx);
+      s += '<text x="' + nf(x(points[idx]), 2) + '" y="' + (H - 14) + '" text-anchor="' + (i === 0 ? 'start' : i === 4 ? 'end' : 'middle') + '" fill="#8a93a3" font-size="10">' + esc(points[idx].date) + '</text>';
+    }
+    s += '</svg>';
+    var c = obj(taco.envelope_calib), proxy = obj(c.proxy);
+    var caption = '포함률 · 50% ' + tacoV2Percent(c.coverage_50) + ' / 90% ' + tacoV2Percent(c.coverage_90) + ' (n=' + (isN(c.n) ? c.n : '—') + ')';
+    if (!isN(c.coverage_50) || !isN(c.coverage_90)) caption += ' · 실제 포함률 미확인';
+    if (isN(proxy.coverage_50) || isN(proxy.coverage_90)) caption += ' · proxy(' + str(proxy.target) + '): 50% ' + tacoV2Percent(proxy.coverage_50) + ' / 90% ' + tacoV2Percent(proxy.coverage_90) + ' (n=' + (isN(proxy.n) ? proxy.n : '—') + ')';
+    return '<section class="fd-taco-chart" style="margin-top:14px;min-width:0"><style>.fd-taco .fd-taco-env-toggle:not(:checked)~.fd-taco-scroll .fd-taco-regime{display:none}</style><div class="fd-sec">정밀지수 시계열</div><input class="fd-taco-env-toggle" type="checkbox" checked aria-label="±1σ·±2σ 레짐 밴드 표시" style="accent-color:#9b7bff"><span class="fd-legend"> ±1σ·±2σ 레짐 밴드 표시</span><div class="fd-taco-scroll fd-table-scroll" tabindex="0" role="region" aria-label="정밀지수 차트, 좁은 화면에서 가로 스크롤" style="overflow-x:auto;max-width:100%">' + s + '</div><div class="fd-legend">노랑: 지수 · 청록: p05–p95(연함), p25–p75(진함) 신뢰대 · 보라 점선: env_mid · 보라 밴드: ±2σ(연함), ±1σ(진함) · 초록/빨강 점: 상향/하향 breakout(날짜는 마우스 오버)</div><div class="fd-foot">' + esc(caption) + '</div></section>';
+  }
   function rTaco(ST, D) {
     var taco = D.taco;
     var head = '<div class="fd-h"><b>🌮 TACO — Truth Social 발언 엔진</b>' +
@@ -1133,10 +1212,14 @@
     var body = '<p class="tsum">' + esc(tacoSummary(taco)) + '</p>';
     var viz = obj(taco.viz), i;
 
+    var hasV2 = !!taco.index_v2 && typeof taco.index_v2 === 'object';
+    if (hasV2) body += '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><div style="flex:3 1 560px;min-width:0">';
     /* B — 아크 보드 */
     var vt = str(viz.type);
     if (vt && TACO_VIZ[vt]) { try { body += TACO_VIZ[vt](viz, taco); } catch (e) { body += '<p class="fd-hint">시각화 준비 중…</p>'; } }
     else body += '<p class="fd-hint">시각화 준비 중… (viz.type=' + esc(vt || '—') + ')</p>';
+
+    if (hasV2) body += '</div>' + tacoV2Table(taco) + '</div>' + tacoIndexChart(taco);
 
     body += '<div class="fd-grid2" style="margin-top:14px">';
     /* A — 오늘 발언 카드 스택 */
@@ -1171,7 +1254,7 @@
     for (i = 0; i < ots.length; i++) {
       A += '<div class="fd-hint" style="padding:2px 0;font-size:11px">· ' + esc(str(ots[i].summary_ko) || ots[i].id) +
         ' — <b style="color:#f5c542">예상 철회정도 ' + esc(degStr(ots[i].degree_expected, ots[i].degree_band)) + '</b>' +
-        (str(ots[i].degree_src) ? ' <span style="font-size:10px">(' + esc(ots[i].degree_src) + ')</span>' : '') + '</div>';
+        (str(ots[i].degree_src) ? ' <span style="font-size:10px">(' + esc(ots[i].degree_src) + ')</span>' : '') + (hasV2 ? tacoForward(taco, ots[i].id) : '') + '</div>';
     }
     if (isN(cb.hit_rate_p7) || isN(cb.brier)) {
       A += '<div class="fd-hint" style="font-size:10px;padding:2px 0">캘리브레이션 · P7 적중 ' + n2(cb.hit_rate_p7) + ' · Brier ' + n2(cb.brier) + '</div>';
