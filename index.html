@@ -4873,7 +4873,7 @@ function gMountCharts(G){
       if(!(b.licensees||[]).length){note(parent,'등록된 운영자 관계가 없습니다. 브랜드 소유자로 대신 추정하지 않습니다.');return;}
       b.licensees.forEach(r=>{const box=el('div','ll-relation',null,parent);el('strong','',(REL[r.relation]||r.relation||'관계 미확보')+' · '+(r.name||r.ticker||'이름 미확보'),box);
         note(box,'소유자와 별도 관계'+(r.license_expiry?' · 계약 만료 '+r.license_expiry:''));
-        if(typeof r.share==='number')note(box,'원장 기재 비중 '+num.format(r.share)+'% · 해당 운영 관계 범위');
+        if(typeof r.share==='number')note(box,'원장 기재 비중 '+num.format(r.share)+'%'+(r.share_est?' (추정 배분 · 공시값 아님)':'')+' · 해당 운영 관계 범위');
         companyAction(box,r.company_id);links(box,r);
       });
     }
