@@ -100,6 +100,55 @@ _DETAIL_PAGES = (("matrix.html", "분기 매트릭스"), ("trace.html", "원문 
                  ("backtest.html", "예측 성적표"), ("status.html", "페이지·판정 안내"))
 
 
+
+# Y+2 추정 섹션(스튜디오 Codex 산출 `forecast_section.py` + `assets/forecast_panel.json`).
+# 산출이 없거나 회사가 빠져 있으면 **섹션을 만들지 않는다** — 빈 칸으로 흉내 내면 화면이 거짓말을 한다.
+_FC = {"panel": None, "src": None, "mod": None, "tried": False}
+
+
+
+def _panel_entry(D):
+    """회사 페이지 DATA → 추정 생성기가 기대하는 원장 엔트리(v4 패널 형식)."""
+    sites = []
+    for s0 in D.get("sites", []):
+        ss = s0.get("s") or {}
+        r = {k: s0.get(k) for k in ("id", "nm", "cl", "reg", "seg", "agg", "sd", "ed")}
+        r.update({"amt": ss.get("amt"), "cmp": ss.get("cmp"), "bal": ss.get("bal"),
+                  "sFilled": ss.get("sFilled")})
+        sites.append(r)
+    fq = D.get("fq") or []
+    tot = {k: [None] * len(fq) for k in ("amt", "cmp", "bal")}
+    for k in tot:
+        for qi in range(len(fq)):
+            vals = [(s0.get(k) or [None] * len(fq))[qi] for s0 in sites if not s0.get("agg")]
+            vals = [x for x in vals if isinstance(x, (int, float))]
+            tot[k][qi] = round(sum(vals), 3) if vals else None
+    return {"co": D.get("co"), "stock": D.get("stock"), "src": "신규", "fq": fq,
+            "grain": D.get("grain"), "declared": D.get("declared"), "summary": D.get("summary"),
+            "site_total": tot, "sites": sites}
+
+def _forecast_section(stock, D=None):
+    if not _FC["tried"]:
+        _FC["tried"] = True
+        try:
+            import forecast_section as _fs
+            _FC["mod"] = _fs
+            with open(os.path.join(ASSETS, "forecast_panel.json"), encoding="utf-8") as f:
+                _FC["panel"] = {c["company_id"]: c for c in json.load(f)["companies"]}
+        except Exception as e:
+            sys.stderr.write("[warn] 추정 섹션 비활성: %s\n" % e)
+    if not _FC["panel"] or stock not in _FC["panel"]:
+        return ""
+    _FC["src"] = _panel_entry(D) if D is not None else None
+    entry = _FC["src"]
+    if entry is None:
+        return ""
+    try:
+        return _FC["mod"].render_forecast_section(entry, _FC["panel"][stock]) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 추정 섹션 렌더 실패: %s\n" % (stock, e))
+        return ""
+
 def _detail_nav(out_dir, stock):
     import os as _os
     links = []
@@ -262,6 +311,7 @@ def company_html(D, out_dir=None):
 </section>
 
 {detail_html}
+{forecast_html}
 <section>
  <h2>분기 매트릭스 <em>{unit} × 분기 계약잔액(억) · 상위 60개</em></h2>
  <div class="wrap"><table id="mx"><thead></thead><tbody></tbody></table></div>
@@ -282,7 +332,7 @@ def company_html(D, out_dir=None):
 <script>{js}</script>
 </body></html>""".format(
         css=CSS+kce_detail_ui.CSS, js=COMPANY_JS+kce_detail_ui.JS,
-        detail_html=kce_detail_ui.HTML, data=json_for_html(D),
+        detail_html=kce_detail_ui.HTML, forecast_html=_forecast_section(D["stock"], D), data=json_for_html(D),
         nm=E(D["co"]), stock=E(D["stock"]), market=E(D["market"]),
         kind=KIND, unit=UNIT, grainnote=grainnote,
         detailnav=_detail_nav(out_dir, D["stock"]) if out_dir else "",
