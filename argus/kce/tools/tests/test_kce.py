@@ -270,3 +270,51 @@ class TestPickReport(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestOrderTableVariants(unittest.TestCase):
+    """2026Q2 원문 실측으로 확인한 두 변형. 셋 다 '미수록'으로 남아 있던 회사들이다.
+    증거: tools/assets/unrecorded_probe.json (접수번호·표 lead·행)."""
+
+    def _tab(self, html):
+        from kce_parse import parse_ii4
+        return parse_ii4(html)
+
+    def test_progress_style_order_table(self):
+        """특수건설 `나. 수주현황` — 도급액·완성공사액·잔액 대신 계약금액·진행률(%)."""
+        html = ("<p>나. 수주현황 (단위: 원)</p><table>"
+                "<tr><th>현장명</th><th>구분</th><th>계약금액</th><th>계약일</th>"
+                "<th>종료예정일</th><th>진행률(%)</th></tr>"
+                "<tr><td>영종도해저송수관로</td><td>쉴드</td><td>33,400,584,000</td>"
+                "<td>2022/06/02</td><td>2026/12/19</td><td>94.91%</td></tr></table>")
+        out = self._tab(html)
+        self.assertEqual(len(out["tables"]), 1, "진행률형 수주표를 인식하지 못했다")
+        r = out["tables"][0]["rows"][0]
+        self.assertEqual(r["nm"], "영종도해저송수관로")
+        self.assertAlmostEqual(r["amt"], 33400.584, places=3)        # 원 → 백만원
+        self.assertEqual(r["ed"], "2026/12/19")                       # 종료예정일 별칭
+        self.assertAlmostEqual(r["cmp"], 33400.584 * 0.9491, places=2)
+        self.assertIn("cmp", r.get("_derived", ""), "유도값 표시가 없다")
+
+    def test_unit_caption_row_does_not_kill_table(self):
+        """KCC건설 상세표 — 첫 행이 `(단위:원)` 반복이라 머리행 감지가 실패하던 표."""
+        html = ("<p>(1) 관급공사</p><table>"
+                "<tr><td>(단위:원)</td><td>(단위:원)</td><td>(단위:원)</td>"
+                "<td>(단위:원)</td><td>(단위:원)</td></tr>"
+                "<tr><td>발 주 처</td><td>공 사 명</td><td>기본도급액</td>"
+                "<td>완성공사액</td><td>계약잔액</td></tr>"
+                "<tr><td>국가철도공단</td><td>삼성동탄 광역철도 1공구</td><td>70,083,347,955</td>"
+                "<td>69,157,646,103</td><td>925,701,852</td></tr></table>")
+        out = self._tab(html)
+        self.assertEqual(len(out["tables"]), 1, "단위 캡션 행 때문에 표가 버려졌다")
+        r = out["tables"][0]["rows"][0]
+        self.assertEqual(r["cl"], "국가철도공단")
+        self.assertAlmostEqual(r["amt"], 70083.347955, places=5)      # 캡션이 살아 원→백만원 환산
+        self.assertAlmostEqual(r["bal"], 925.701852, places=5)
+
+    def test_revenue_table_is_not_taken_as_orders(self):
+        """매출실적 표를 수주표로 세면 안 된다 — 미수록 5사가 이 함정에 걸려 있었다."""
+        html = ("<p>4. 매출 및 수주상황 가. 매출실적 (단위: 백만원)</p><table>"
+                "<tr><th>사업부문</th><th>매출유형</th><th>품목</th><th>제29기</th></tr>"
+                "<tr><td>인테리어</td><td>제품</td><td>건설공사</td><td>4,442</td></tr></table>")
+        self.assertEqual(len(self._tab(html)["tables"]), 0)
