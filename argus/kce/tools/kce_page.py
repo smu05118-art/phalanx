@@ -93,6 +93,21 @@ footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
 """
 
 
+
+# 상세 페이지(kce_detail_pages.py 산출)는 등급이 허락하는 회사에만 생긴다.
+# **파일이 실제로 있을 때만** 링크한다 — 없는 페이지를 가리키면 화면이 거짓말을 한다.
+_DETAIL_PAGES = (("matrix.html", "분기 매트릭스"), ("trace.html", "원문 배치"),
+                 ("backtest.html", "예측 성적표"), ("status.html", "페이지·판정 안내"))
+
+
+def _detail_nav(out_dir, stock):
+    import os as _os
+    links = []
+    for fn, label in _DETAIL_PAGES:
+        if _os.path.exists(_os.path.join(out_dir, stock, fn)):
+            links.append('  <a href="%s">%s</a>\n' % (fn, label))
+    return "".join(links)
+
 def newest_probe():
     """가장 최근 분기의 프로브 산출물. 분기가 넘어가면 파일명이 바뀐다."""
     got = sorted(f for f in os.listdir(ASSETS)
@@ -109,7 +124,7 @@ def fmt_eok(v):
     return format(round(v / 100), ",d")
 
 
-def company_html(D):
+def company_html(D, out_dir=None):
     """신규사 대시보드 한 장. 입도(현장/부문)에 따라 라벨이 바뀐다 —
     부문 단위로만 공시하는 회사에 '현장별'이라고 쓰면 없는 정밀도를 주장하게 된다."""
     fq, sites = D["fq"], D["sites"]
@@ -205,7 +220,7 @@ def company_html(D):
  <span class="tag">{market}</span>
  <span class="tag">{industry}</span>
  <span class="sp">
-  <a href="../coverage.html">커버리지</a>
+{detailnav}  <a href="../coverage.html">커버리지</a>
   <a href="../index.html">회사 선택</a>
   <a href="{dart}" rel="noopener noreferrer" target="_blank">DART 원문 ↗</a>
  </span>
@@ -270,6 +285,7 @@ def company_html(D):
         detail_html=kce_detail_ui.HTML, data=json_for_html(D),
         nm=E(D["co"]), stock=E(D["stock"]), market=E(D["market"]),
         kind=KIND, unit=UNIT, grainnote=grainnote,
+        detailnav=_detail_nav(out_dir, D["stock"]) if out_dir else "",
         industry=E(D["industry"]), dart=E(dart), gen=E(D["codeGen"]),
         bal=fmt_eok(bal), amt=fmt_eok(D["summary"]["amt"][k]), chg=chg,
         live=live, nsite=n_site, nq=len(fq), last=E(fq[-1]), decl=decl,
@@ -662,7 +678,7 @@ def main():
         built[r["stock"]] = D
         d = os.path.join(KCE, r["slug"])
         os.makedirs(d, exist_ok=True)
-        atomic_write(os.path.join(d, "index.html"), company_html(D))
+        atomic_write(os.path.join(d, "index.html"), company_html(D, KCE))
         rc = D["recon"][-1]
         over = D["reconOver"]
         if over:
