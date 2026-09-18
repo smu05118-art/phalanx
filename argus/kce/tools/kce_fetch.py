@@ -16,6 +16,11 @@ import json
 import os
 import re
 import sys
+try:
+    import fcntl                                   # POSIX 전용 — 없으면 프로세스 간 게이트를 끈다
+except ImportError:                              # pragma: no cover
+    fcntl = None
+import tempfile
 import threading
 import time
 import urllib.parse
@@ -52,14 +57,57 @@ _pace_lock = threading.Lock()
 LANES = int(os.environ.get("KCE_LANES") or 6)
 
 
+# ── 프로세스 사이 게이트 ─────────────────────────────────────────────────────
+# DART는 **공인 IP 단위**로 막는다. 스레드 레인은 위 _pace_lock이 묶지만, 수집기를 두세 개
+# 동시에 띄우면(탭이 늘면서 실제로 일어난다) 각자 자기 몫만 지켜 총 요청률이 배가 되고
+# 30~60분 차단당한다(2026-09-10 실측). 그래서 같은 머신의 **모든 프로세스**가 파일 락
+# 하나로 마지막 요청 시각을 공유한다 — 락은 간격 계산 동안만 잡고, 응답 대기 중에는 푼다.
+_GATE = os.environ.get("DART_GATE") or os.path.join(tempfile.gettempdir(), "argus_dart_gate")
+
+
+def _pace_cross_process():
+    """파일 락으로 마지막 요청 시각을 공유해 프로세스가 몇 개든 총 요청률을 1/MIN_GAP로 묶는다.
+
+    fcntl이 없거나(윈도우) 락 파일을 못 쓰면(권한·tmpfs 없음) 조용히 스레드 페이싱만 쓴다 —
+    수집을 세우는 것보다 낫지만, 그때는 수집기를 하나씩 돌려야 한다.
+    """
+    if fcntl is None:
+        return False
+    try:
+        fd = os.open(_GATE, os.O_RDWR | os.O_CREAT, 0o666)
+    except OSError:
+        return False
+    try:
+        while True:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            try:
+                os.lseek(fd, 0, os.SEEK_SET)
+                raw = os.read(fd, 64).decode("ascii", "replace").split("\x00")[0].strip()
+                last = float(raw) if raw.replace(".", "", 1).isdigit() else 0.0
+                now = time.time()                      # 프로세스 간 비교라 monotonic 불가
+                wait = MIN_GAP - (now - last)
+                if wait <= 0 or wait > 60:             # 시계가 뒤로 갔거나 오래된 값
+                    stamp = ("%.6f" % now).encode("ascii")
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    os.write(fd, stamp)
+                    os.ftruncate(fd, len(stamp))       # NUL 패딩이 남으면 값이 안 읽혀 게이트가 열린다
+                    return True
+            finally:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+            time.sleep(min(wait, MIN_GAP))
+    finally:
+        os.close(fd)
+
+
 def _pace():
-    """전역 요청 간격 유지. 여러 레인이 동시에 들어와도 총 요청률은 1/MIN_GAP를 넘지 않는다."""
+    """전역 요청 간격 유지. 여러 레인·여러 프로세스가 동시에 들어와도 총 요청률은 1/MIN_GAP를 넘지 않는다."""
     while True:
         with _pace_lock:
             now = time.monotonic()
             wait = MIN_GAP - (now - _last_call[0])
             if wait <= 0:
                 _last_call[0] = now
+                _pace_cross_process()
                 return
         time.sleep(wait)
 
@@ -120,10 +168,27 @@ def _get(url, data=None, timeout=45):
 
 
 def _decode(body, rcp_no=""):
-    # 거래소공시(rcpNo 9번째 자리부터 800)는 EUC-KR
-    if len(rcp_no) == 14 and rcp_no[8:11] == "800":
+    """원문 인코딩 판정 — 선언된 charset → rcpNo 규칙 → UTF-8 엄격 시도 순.
+
+    거래소공시(rcpNo 9번째 자리가 8·9)는 EUC-KR, 정기보고서는 UTF-8이다.
+    '800' 완전일치로 두었더니 [기재정정] 단일판매ㆍ공급계약(…801172)이 전부 깨진 글자로
+    캐시됐고(조선 척당 계약 23건), 첫 자리 '8' 만 보게 고쳤더니 이번엔 **코스닥**
+    거래소공시(…900399 — 9번째 자리가 9)가 같은 식으로 깨졌다(방산 탭 계약공시 수십 건이
+    계약명·금액 통째로 빈칸). 자리 규칙만 믿지 말고 문서가 선언한 charset 을 먼저 읽고,
+    선언이 없으면 UTF-8 **엄격** 디코딩이 실패할 때 EUC-KR로 내려간다(fail-closed).
+    """
+    m = re.search(br"charset\s*=\s*[\"']?([\w-]+)", body[:2048], re.I)
+    enc = m.group(1).decode("ascii", "replace").lower() if m else ""
+    if enc in ("euc-kr", "euckr", "ks_c_5601-1987", "cp949", "ms949"):
         return body.decode("euc-kr", "replace")
-    return body.decode("utf-8", "replace")
+    if enc in ("utf-8", "utf8"):
+        return body.decode("utf-8", "replace")
+    if len(rcp_no) == 14 and rcp_no[8] in "89":
+        return body.decode("euc-kr", "replace")
+    try:
+        return body.decode("utf-8")
+    except UnicodeDecodeError:
+        return body.decode("euc-kr", "replace")
 
 
 # ── 무키 웹 경로 ─────────────────────────────────────────────
@@ -155,17 +220,25 @@ def pick_report(reports, quarter):
     `reports[0]`을 그냥 쓰면 안 된다 — 같은 기간에 접수된 `정정신고(보고)`가 목록 맨 위에
     오면 수주 절이 없는 문서를 붙잡고 실패한다(DL이앤씨 2025Q4 실사례). 제목의 기준월이
     분기말과 맞는 것만 남기고, 그마저 없으면 원래 순서로 폴백한다.
+
+    순서: 기준월이 맞는 원본 → 기준월이 맞는 [첨부정정]·[첨부추가] → 나머지.
     """
     y, qn = int(quarter[:4]), int(quarter[5])
     want = "%04d.%02d" % (y, qn * 3)
-    good, rest = [], []
+    good, fixed, rest = [], [], []
     for rcp, title in reports:
         m = _REPORT_TITLE.search(title or "")
-        if m and "%s.%s" % (m.group(2), m.group(3)) == want:
+        ok = bool(m) and "%s.%s" % (m.group(2), m.group(3)) == want
+        # [첨부정정]·[첨부추가]는 기준월이 맞아도 본문이 '정정 신고'·'영업보고서' 두 줄뿐이라
+        # II절이 없는 경우가 많다(한화에어로 012450·케이피항공산업 288180 실사례, kaero 웨이브 보고).
+        # 버리지는 않는다 — 정정본에 II절이 들어 있는 회사도 있어 뒤 순서로 미루기만 한다.
+        if ok and re.search(r"\[첨부(?:정정|추가)\]", title or ""):
+            fixed.append((rcp, title))
+        elif ok:
             good.append((rcp, title))
         else:
             rest.append((rcp, title))
-    return good + rest
+    return good + fixed + rest
 
 
 def toc(rcp_no):

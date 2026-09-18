@@ -1,0 +1,20 @@
+{
+  "validated_on": ["#171a21 (panel)", "#0f1116 (bg)"],
+  "mode": "dark",
+  "categorical_order_fixed": [
+    {"slot": 1, "hex": "#3987e5", "hue": "blue",    "use": "컨테이너선"},
+    {"slot": 2, "hex": "#d95926", "hue": "orange",  "use": "LNG운반선"},
+    {"slot": 3, "hex": "#199e70", "hue": "aqua",    "use": "탱커(원유·제품·화학)"},
+    {"slot": 4, "hex": "#c98500", "hue": "yellow",  "use": "LPG·암모니아(VLAC·VLGC)"},
+    {"slot": 5, "hex": "#d55181", "hue": "magenta", "use": "해양플랜트·FPSO·FLNG"},
+    {"slot": 6, "hex": "#008300", "hue": "green",   "use": "특수선·군함·기타"},
+    {"slot": 7, "hex": "#9085e9", "hue": "violet",  "use": "예비(벌크·PCTC 등 등장 시)"},
+    {"slot": 8, "hex": "#e66767", "hue": "red",     "use": "예비"}
+  ],
+  "rules": "색은 선종(엔티티)에 고정 — 필터로 시리즈가 줄어도 재배색 금지. 9번째 선종은 '기타'로 접는다. 전쌍 형식(산점·버블)은 3슬롯 상한.",
+  "sequential_blue": ["#cde2fb","#b7d3f6","#9ec5f4","#86b6ef","#6da7ec","#5598e7","#3987e5","#2a78d6","#256abf","#1c5cab","#184f95","#104281","#0d366b"],
+  "sequential_use": "인포그래픽 부품 영역의 납품사 수·매출비중 농도, 히트맵",
+  "status_fixed": {"good": "#0ca30c", "warning": "#fab219", "serious": "#ec835a", "critical": "#d03b3b"},
+  "chrome_dark": {"ink": "#e6e8ec", "ink2": "#98a1b0", "muted": "#5d6675", "grid": "#2a2f3a", "surface": "#171a21", "page": "#0f1116"},
+  "results": {"eight_adjacent": "pass (CVD 8.4 protan, normal 19.3, contrast all>=3:1)", "three_allpairs": "pass (CVD 9.4 deutan, normal 20.9)"}
+}

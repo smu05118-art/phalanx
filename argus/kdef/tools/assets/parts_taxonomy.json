@@ -1,0 +1,734 @@
+{
+ "groups": [
+  {
+   "id": "PROP",
+   "ko": "추진",
+   "en": "Propulsion"
+  },
+  {
+   "id": "GUN",
+   "ko": "화력",
+   "en": "Armament"
+  },
+  {
+   "id": "ARMOR",
+   "ko": "방호",
+   "en": "Protection"
+  },
+  {
+   "id": "GUID",
+   "ko": "유도",
+   "en": "Guidance"
+  },
+  {
+   "id": "ELEC",
+   "ko": "전자",
+   "en": "Electronics"
+  },
+  {
+   "id": "OPT",
+   "ko": "광학",
+   "en": "Optronics"
+  },
+  {
+   "id": "AERO",
+   "ko": "항공구조물",
+   "en": "Airframe"
+  },
+  {
+   "id": "SHIPEQ",
+   "ko": "함정장비",
+   "en": "Naval equipment"
+  },
+  {
+   "id": "MAT",
+   "ko": "소재",
+   "en": "Materials"
+  },
+  {
+   "id": "SVC",
+   "ko": "시험·정비",
+   "en": "Test & MRO"
+  },
+  {
+   "id": "UNCL",
+   "ko": "미분류",
+   "en": "Unclassified"
+  }
+ ],
+ "cats": [
+  {
+   "id": "PROP.ENGINE",
+   "group": "PROP",
+   "ko": "엔진·가스터빈",
+   "en": "Engines",
+   "prio": 70,
+   "ctx": true,
+   "kw": [
+    "항공엔진",
+    "항공기엔진",
+    "가스터빈",
+    "디젤엔진",
+    "추진기관",
+    "엔진부품",
+    "터보샤프트",
+    "터보팬",
+    "보조동력장치",
+    "APU"
+   ],
+   "neg": [
+    "선박용엔진"
+   ],
+   "regions": [
+    "TANK_HULL",
+    "JET_ENGINE",
+    "SHIP_HULL"
+   ]
+  },
+  {
+   "id": "PROP.TRANS",
+   "group": "PROP",
+   "ko": "변속기·동력전달",
+   "en": "Transmission",
+   "prio": 65,
+   "ctx": true,
+   "kw": [
+    "변속기",
+    "동력전달",
+    "감속기",
+    "종감속",
+    "구동장치",
+    "트랜스미션",
+    "파워팩"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_HULL"
+   ]
+  },
+  {
+   "id": "PROP.SUSP",
+   "group": "PROP",
+   "ko": "현가·궤도",
+   "en": "Suspension & tracks",
+   "prio": 65,
+   "ctx": true,
+   "kw": [
+    "현가장치",
+    "궤도",
+    "무한궤도",
+    "로드휠",
+    "토션바",
+    "서스펜션모듈",
+    "차축"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_TRACK"
+   ]
+  },
+  {
+   "id": "PROP.ROCKET",
+   "group": "PROP",
+   "ko": "추진기관(로켓)",
+   "en": "Rocket motors",
+   "prio": 70,
+   "ctx": false,
+   "kw": [
+    "고체추진",
+    "로켓모터",
+    "추진제",
+    "로켓연소기",
+    "가스발생기",
+    "추력"
+   ],
+   "neg": [],
+   "regions": [
+    "MSL_MOTOR"
+   ]
+  },
+  {
+   "id": "GUN.BARREL",
+   "group": "GUN",
+   "ko": "포신·포열",
+   "en": "Barrels",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "포신",
+    "포열",
+    "총열",
+    "약실",
+    "강선"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_TURRET",
+    "SHIP_GUN"
+   ]
+  },
+  {
+   "id": "GUN.TURRET",
+   "group": "GUN",
+   "ko": "포탑·구동",
+   "en": "Turrets",
+   "prio": 75,
+   "ctx": true,
+   "kw": [
+    "포탑",
+    "포탑구동",
+    "선회장치",
+    "고저장치",
+    "자동장전",
+    "장전장치"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_TURRET"
+   ]
+  },
+  {
+   "id": "GUN.FCS",
+   "group": "GUN",
+   "ko": "사격통제",
+   "en": "Fire control",
+   "prio": 75,
+   "ctx": false,
+   "kw": [
+    "사격통제",
+    "사격지휘",
+    "FCS",
+    "조준경",
+    "탄도계산"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_TURRET",
+    "SHIP_CIC"
+   ]
+  },
+  {
+   "id": "GUN.SMALL",
+   "group": "GUN",
+   "ko": "총포·탄약",
+   "en": "Small arms & ammo",
+   "prio": 70,
+   "ctx": false,
+   "kw": [
+    "소총",
+    "기관총",
+    "권총",
+    "총포",
+    "탄약",
+    "포탄",
+    "유탄",
+    "신관",
+    "장약",
+    "뇌관",
+    "탄두"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_TURRET",
+    "SHIP_GUN"
+   ]
+  },
+  {
+   "id": "ARMOR.PLATE",
+   "group": "ARMOR",
+   "ko": "장갑·방탄",
+   "en": "Armour",
+   "prio": 75,
+   "ctx": false,
+   "kw": [
+    "방탄",
+    "장갑판",
+    "복합장갑",
+    "방탄복",
+    "방탄헬멧",
+    "방검",
+    "K-SAP",
+    "반응장갑"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_HULL",
+    "TANK_TURRET"
+   ]
+  },
+  {
+   "id": "ARMOR.APS",
+   "group": "ARMOR",
+   "ko": "능동방호·연막",
+   "en": "APS & smoke",
+   "prio": 70,
+   "ctx": false,
+   "kw": [
+    "능동방호",
+    "APS",
+    "연막",
+    "레이저경고",
+    "미사일경고",
+    "생존장비",
+    "위장망"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_TURRET",
+    "JET_EW"
+   ]
+  },
+  {
+   "id": "GUID.SEEKER",
+   "group": "GUID",
+   "ko": "탐색기",
+   "en": "Seekers",
+   "prio": 85,
+   "ctx": false,
+   "kw": [
+    "탐색기",
+    "시커",
+    "seeker",
+    "종말유도",
+    "호밍"
+   ],
+   "neg": [],
+   "regions": [
+    "MSL_SEEKER"
+   ]
+  },
+  {
+   "id": "GUID.ACT",
+   "group": "GUID",
+   "ko": "구동장치·조종날개",
+   "en": "Actuators & fins",
+   "prio": 75,
+   "ctx": true,
+   "kw": [
+    "구동장치",
+    "조종날개",
+    "액추에이터",
+    "날개구동",
+    "조종장치"
+   ],
+   "neg": [],
+   "regions": [
+    "MSL_FIN"
+   ]
+  },
+  {
+   "id": "GUID.FUZE",
+   "group": "GUID",
+   "ko": "신관·안전장전",
+   "en": "Fuzes",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "신관",
+    "안전장전",
+    "기폭",
+    "근접신관"
+   ],
+   "neg": [],
+   "regions": [
+    "MSL_WARHEAD"
+   ]
+  },
+  {
+   "id": "GUID.INS",
+   "group": "GUID",
+   "ko": "관성항법·유도조종",
+   "en": "INS & guidance",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "관성항법",
+    "INS",
+    "IMU",
+    "자이로",
+    "유도조종",
+    "항법장치",
+    "GPS수신"
+   ],
+   "neg": [],
+   "regions": [
+    "MSL_BODY",
+    "JET_AVIONICS"
+   ]
+  },
+  {
+   "id": "ELEC.RADAR",
+   "group": "ELEC",
+   "ko": "레이다·안테나",
+   "en": "Radar & antenna",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "레이다",
+    "레이더",
+    "안테나",
+    "TRM",
+    "송수신모듈",
+    "AESA",
+    "위상배열",
+    "도파관"
+   ],
+   "neg": [
+    "레이더디텍터"
+   ],
+   "regions": [
+    "SHIP_RADAR",
+    "JET_RADAR"
+   ]
+  },
+  {
+   "id": "ELEC.EW",
+   "group": "ELEC",
+   "ko": "전자전·피아식별",
+   "en": "EW & IFF",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "전자전",
+    "피아식별",
+    "IFF",
+    "ESM",
+    "ECM",
+    "재밍",
+    "전파방해",
+    "방향탐지"
+   ],
+   "neg": [],
+   "regions": [
+    "JET_EW",
+    "SHIP_MAST"
+   ]
+  },
+  {
+   "id": "ELEC.COMM",
+   "group": "ELEC",
+   "ko": "통신·암호",
+   "en": "Comms & crypto",
+   "prio": 70,
+   "ctx": true,
+   "kw": [
+    "무전기",
+    "위성통신",
+    "데이터링크",
+    "암호장비",
+    "통신단말",
+    "전술통신",
+    "중계기"
+   ],
+   "neg": [],
+   "regions": [
+    "SHIP_MAST",
+    "JET_AVIONICS"
+   ]
+  },
+  {
+   "id": "ELEC.AVION",
+   "group": "ELEC",
+   "ko": "항전·임무컴퓨터",
+   "en": "Avionics",
+   "prio": 75,
+   "ctx": true,
+   "kw": [
+    "항공전자",
+    "항전",
+    "임무컴퓨터",
+    "비행제어",
+    "전시기",
+    "싱글보드컴퓨터",
+    "SBC",
+    "임무장비",
+    "전장품"
+   ],
+   "neg": [],
+   "regions": [
+    "JET_AVIONICS"
+   ]
+  },
+  {
+   "id": "ELEC.POWER",
+   "group": "ELEC",
+   "ko": "전원·배전",
+   "en": "Power",
+   "prio": 60,
+   "ctx": true,
+   "kw": [
+    "전원공급",
+    "배전반",
+    "전원장치",
+    "축전지",
+    "이차전지",
+    "연료전지",
+    "발전기",
+    "전력변환"
+   ],
+   "neg": [],
+   "regions": [
+    "SHIP_HULL",
+    "TANK_HULL"
+   ]
+  },
+  {
+   "id": "OPT.EOIR",
+   "group": "OPT",
+   "ko": "EO/IR·열영상",
+   "en": "EO/IR",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "열영상",
+    "적외선영상",
+    "EO/IR",
+    "전자광학",
+    "적외선센서",
+    "열상감시",
+    "TOD",
+    "적외선검출"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_TURRET",
+    "JET_EOTS",
+    "SHIP_EOTS"
+   ]
+  },
+  {
+   "id": "OPT.SIGHT",
+   "group": "OPT",
+   "ko": "조준경·야시",
+   "en": "Sights & night vision",
+   "prio": 75,
+   "ctx": false,
+   "kw": [
+    "조준경",
+    "야시",
+    "야간투시",
+    "잠망경",
+    "관측경",
+    "레이저거리측정"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_TURRET"
+   ]
+  },
+  {
+   "id": "AERO.STRUCT",
+   "group": "AERO",
+   "ko": "기체구조물",
+   "en": "Airframe structures",
+   "prio": 70,
+   "ctx": false,
+   "kw": [
+    "기체구조",
+    "동체",
+    "날개구조",
+    "주익",
+    "미익",
+    "파일런",
+    "기체부품",
+    "항공구조물",
+    "항공가공품",
+    "조립품"
+   ],
+   "neg": [],
+   "regions": [
+    "JET_FUSELAGE",
+    "JET_WING"
+   ]
+  },
+  {
+   "id": "AERO.GEAR",
+   "group": "AERO",
+   "ko": "착륙장치·유압",
+   "en": "Landing gear & hydraulics",
+   "prio": 70,
+   "ctx": true,
+   "kw": [
+    "착륙장치",
+    "랜딩기어",
+    "유압시스템",
+    "작동기"
+   ],
+   "neg": [],
+   "regions": [
+    "JET_GEAR"
+   ]
+  },
+  {
+   "id": "SHIPEQ.CMS",
+   "group": "SHIPEQ",
+   "ko": "전투체계·소나",
+   "en": "Combat system & sonar",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "전투체계",
+    "소나",
+    "음탐",
+    "전투지휘체계",
+    "함정전투",
+    "수중음향"
+   ],
+   "neg": [],
+   "regions": [
+    "SHIP_CIC"
+   ]
+  },
+  {
+   "id": "SHIPEQ.PROP",
+   "group": "SHIPEQ",
+   "ko": "함정 추진·발전",
+   "en": "Naval propulsion",
+   "prio": 70,
+   "ctx": true,
+   "kw": [
+    "함정용엔진",
+    "추진전동기",
+    "감속기어",
+    "축계",
+    "프로펠러",
+    "함정용발전"
+   ],
+   "neg": [],
+   "regions": [
+    "SHIP_HULL"
+   ]
+  },
+  {
+   "id": "SHIPEQ.AUX",
+   "group": "SHIPEQ",
+   "ko": "함정 의장·보조기기",
+   "en": "Naval auxiliaries",
+   "prio": 60,
+   "ctx": true,
+   "kw": [
+    "배전반",
+    "조명등",
+    "밸브",
+    "펌프",
+    "공조",
+    "소화설비",
+    "탈염",
+    "청수"
+   ],
+   "neg": [],
+   "regions": [
+    "SHIP_HULL"
+   ]
+  },
+  {
+   "id": "MAT.METAL",
+   "group": "MAT",
+   "ko": "특수강·비철",
+   "en": "Special metals",
+   "prio": 60,
+   "ctx": true,
+   "kw": [
+    "특수강",
+    "티타늄",
+    "탄소강",
+    "단조품",
+    "주조품",
+    "알루미늄합금",
+    "동합금",
+    "소전",
+    "신동품",
+    "봉강"
+   ],
+   "neg": [],
+   "regions": [
+    "TANK_HULL",
+    "MSL_BODY"
+   ]
+  },
+  {
+   "id": "MAT.COMP",
+   "group": "MAT",
+   "ko": "복합소재",
+   "en": "Composites",
+   "prio": 65,
+   "ctx": true,
+   "kw": [
+    "복합소재",
+    "복합재",
+    "탄소섬유",
+    "유리섬유",
+    "프리프레그",
+    "아라미드"
+   ],
+   "neg": [],
+   "regions": [
+    "JET_WING",
+    "TANK_TURRET"
+   ]
+  },
+  {
+   "id": "MAT.EXPL",
+   "group": "MAT",
+   "ko": "화약·추진제",
+   "en": "Explosives",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "화약",
+    "화공품",
+    "추진화약",
+    "폭약",
+    "기폭약",
+    "질산",
+    "니트로"
+   ],
+   "neg": [],
+   "regions": [
+    "MSL_WARHEAD"
+   ]
+  },
+  {
+   "id": "SVC.MRO",
+   "group": "SVC",
+   "ko": "정비·창정비",
+   "en": "MRO",
+   "prio": 70,
+   "ctx": false,
+   "kw": [
+    "창정비",
+    "정비용역",
+    "수리부속",
+    "오버홀",
+    "MRO",
+    "PBL"
+   ],
+   "neg": [],
+   "regions": [
+    "SHIP_HULL",
+    "JET_FUSELAGE"
+   ]
+  },
+  {
+   "id": "SVC.SIM",
+   "group": "SVC",
+   "ko": "시뮬레이터·훈련체계",
+   "en": "Simulators",
+   "prio": 75,
+   "ctx": false,
+   "kw": [
+    "시뮬레이터",
+    "훈련체계",
+    "모의비행",
+    "전술훈련",
+    "IETM",
+    "교보재",
+    "종합군수지원"
+   ],
+   "neg": [],
+   "regions": [
+    "JET_AVIONICS"
+   ]
+  }
+ ]
+}

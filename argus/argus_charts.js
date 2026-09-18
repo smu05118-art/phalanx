@@ -522,7 +522,7 @@
     }
     function rHealth() {
       var h = data.health || {};
-      body('health').innerHTML = '<div class="ag-card ag-health"><div class="metric"><span>총 시리즈</span><b>' + (h.total || 0) + '</b></div>' +
+      body('health').innerHTML = '<p><a href="connections.html">데이터 연결 현황 · 품목별 원문·실제 관측 그래프 →</a></p><div class="ag-card ag-health"><div class="metric"><span>총 시리즈</span><b>' + (h.total || 0) + '</b></div>' +
         '<div class="metric"><span>활성(신호 적격)</span><b style="color:' + UP + '">' + (h.active || 0) + '</b></div>' +
         '<div class="metric"><span>stale</span><b style="color:' + DOWN + '">' + (h.stale || 0) + '</b></div>' +
         '<div class="metric"><span>저신뢰(표본 부족)</span><b style="color:' + WARN + '">' + (h.low_confidence || 0) + '</b></div>' +
@@ -634,6 +634,7 @@
           (fin(r.pos) ? '<span class="ag-badge" style="color:' + posColor(r.pos) + ';border:1px solid ' + posColor(r.pos) + '">pos ' + r.pos.toFixed(0) + '</span>' : '') +
           huntBadges(r.hunt) +
           '<span class="lv">' + fmt(r.last) + ' <span style="font-weight:500;color:' + DIM + '">' + (fin(r.m4) ? '' : '') + '</span></span></div>' +
+          '<div class="ag-meta">관측 ' + esc(r.last_date || '미확인') + ' · ' + esc(r.freshness || '') + ' · <a href="connections.html#' + encodeURIComponent(r.sid) + '">갱신 경로·원문</a></div>' +
           chart(chunk.axis, [{ name: r.name, v: r.v, col: col, hunt: r.hunt }], { h: 150, unit: r.unit, title: r.name }) + '</div>';
       }).join('') + '</div>' +
         (rows.length > ST.spLimit ? '<div class="ag-more"><button type="button" class="ag-chip" data-act="spmore">▼ ' + (rows.length - ST.spLimit) + '개 더 보기</button></div>' :
@@ -675,7 +676,7 @@
         var r = mains[i];
         var cell = r ? '<div class="ag-stage"><div class="sn">' + o[1].toUpperCase() + '</div><div class="pn">' + esc(r.name) + '</div>' +
           '<div class="pv" style="color:' + posColor(r.pos) + '">' + fmt(r.last) + ' <span class="pu">' + esc(r.unit || '') + '</span></div>' +
-          '<div class="pm">WoW ' + fmtPct(r.m1) + ' · 4W ' + fmtPct(r.m4) + (fin(r.pos) ? ' · pos <b style="color:' + posColor(r.pos) + '">' + r.pos.toFixed(0) + '</b>' : '') + '</div>' +
+          '<div class="ag-meta">관측 ' + esc(r.last_date || '미확인') + ' · <a href="connections.html#' + encodeURIComponent(r.sid) + '">가격 기준·원문</a></div><div class="pm">WoW ' + fmtPct(r.m1) + ' · 4W ' + fmtPct(r.m4) + (fin(r.pos) ? ' · pos <b style="color:' + posColor(r.pos) + '">' + r.pos.toFixed(0) + '</b>' : '') + '</div>' +
           '<div style="margin-top:6px">' + spark((r.v || []).slice(-104).filter(function (_, j) { return true; }), 150, 30, posColor(r.pos)) + '</div>' +
           '<div class="ag-hbadges" style="margin-top:6px">' + huntBadges(r.hunt) + '</div></div>'
           : '<div class="ag-stage"><div class="sn">' + o[1] + '</div><div class="ag-empty">—</div></div>';
@@ -684,10 +685,10 @@
       var mainRows = mains.filter(Boolean).map(function (r, i) {
         return { name: r.name, v: r.v, col: PAL[i], hunt: r.hunt };
       });
-      var modRows = ss.filter(function (r) { return r.stage === 'module'; }).slice(0, 6).map(function (r, i) {
+      var modRows = ss.filter(function (r) { return r.stage === 'module' && r.unit === 'USD/W'; }).slice(0, 6).map(function (r, i) {
         return { name: r.name, v: r.v, col: PAL[(i + 4) % PAL.length], hunt: r.hunt };
       });
-      body('solar').innerHTML = flow +
+      body('solar').innerHTML = '<p class="ag-meta">공개 현물과 원장 가격은 규격·지역에 따라 다릅니다. <a href="connections.html#sol_pvi_module_182_perc">전체 태양광 연결·신규 현물 보기 →</a></p>' + flow +
         '<div class="ag-grid2" style="margin-top:12px">' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">단계별 가격 지수 (5년, 시작=100)</div>' +
         chart(chunk.axis, mainRows, { h: 200, idx: true, title: '태양광 단계별 가격 지수' }) +

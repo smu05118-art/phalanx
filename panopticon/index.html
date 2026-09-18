@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="dark light">
+<title>PANOPTICON</title>
+<!-- 홈 화면 설치(PWA). 아이콘 PNG 는 맥미니에서 사람이 넣는다 — 빌더는 안 만든다. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PANOPTICON">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{
+  --bg:#06060e; --s1:#0d0d1a; --s2:#141428; --bd:#28284a;
+  --tx:#e8e8f4; --dim:#6a6a9a;
+  --a1:#00e6b8; --a2:#3d8bfd; --a3:#ff5c5c; --a4:#ffbe2e; --a5:#c45cff;
+  --onacc:#04121b;
+  --r:14px; --r2:10px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo',sans-serif;
+}
+[data-theme=light]{
+  --bg:#f3f4f9; --s1:#ffffff; --s2:#e9ebf4; --bd:#d3d7e8;
+  --tx:#1b1d33; --dim:#565b80;
+  --a1:#00795f; --a2:#2266d0; --a3:#c03434; --a4:#8a6300; --a5:#8f3fd6;
+  --onacc:#ffffff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx); font-family:var(--sans);
+  font-size:14px; line-height:1.55; -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+[hidden]{display:none !important}
+
+/* ── 게이트 ─────────────────────────────────────────── */
+#gate{
+  position:fixed; inset:0; display:grid; place-items:center;
+  /* standalone 으로 뜨면 status-bar 아래까지 페이지가 깔린다 — 노치만큼 밀어준다. */
+  padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));
+  background:
+    radial-gradient(90ch 60ch at 50% -10%, color-mix(in srgb,var(--a2) 13%,transparent), transparent 62%),
+    var(--bg);
+  z-index:60;
+}
+.gate-card{
+  width:min(420px,100%); background:var(--s1); border:1px solid var(--bd);
+  border-radius:var(--r); padding:30px 28px 24px; text-align:center;
+  box-shadow:0 24px 70px -30px rgba(0,0,0,.85);
+}
+.eye{width:58px;height:58px;margin:0 auto 16px;display:block}
+.gate-card h1{
+  margin:0 0 4px; font-size:19px; font-weight:650; letter-spacing:.22em;
+}
+.gate-card .sub{margin:0 0 22px;color:var(--dim);font-size:11.5px;letter-spacing:.06em}
+.field{position:relative;margin-bottom:12px}
+.field input{
+  width:100%; padding:12px 42px 12px 14px; border-radius:var(--r2);
+  border:1px solid var(--bd); background:var(--s2); color:var(--tx);
+  font:inherit; letter-spacing:.06em; outline:none;
+}
+.field input:focus{border-color:var(--a1);box-shadow:0 0 0 3px color-mix(in srgb,var(--a1) 18%,transparent)}
+.reveal{position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:8px;color:var(--dim);border-radius:8px}
+.reveal:hover{color:var(--tx)}
+.gate-btn{
+  width:100%; padding:12px; border-radius:var(--r2); background:var(--a1);
+  color:var(--onacc); font-weight:650; letter-spacing:.08em;
+  transition:filter .15s, opacity .15s;
+}
+.gate-btn:hover{filter:brightness(1.08)}
+.gate-btn[disabled]{opacity:.55;cursor:progress}
+.remember{
+  display:flex; align-items:center; gap:7px; justify-content:center;
+  margin:14px 0 0; color:var(--dim); font-size:12px; cursor:pointer;
+}
+.remember input{accent-color:var(--a1);margin:0}
+.gate-msg{min-height:20px;margin:14px 0 0;font-size:12.5px;color:var(--a3)}
+.gate-msg.info{color:var(--dim)}
+.gate-foot{margin:18px 0 0;color:var(--dim);font-size:10.5px;letter-spacing:.04em;font-family:var(--mono)}
+@keyframes shake{10%,90%{transform:translateX(-2px)}30%,70%{transform:translateX(4px)}50%{transform:translateX(-5px)}}
+.shake{animation:shake .4s}
+
+/* ── 셸 ─────────────────────────────────────────────── */
+#app{max-width:1320px;margin:0 auto;padding:0 20px calc(72px + env(safe-area-inset-bottom,0px))}
+header.top{
+  position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:14px;
+  /* 노치 아래로 헤더가 먹히지 않게. 브라우저 탭에서는 inset 이 0 이라 지금과 동일하다. */
+  padding:calc(14px + env(safe-area-inset-top,0px)) 0 12px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(14px); border-bottom:1px solid var(--bd); flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:9px;font-weight:650;letter-spacing:.2em;font-size:13.5px}
+.brand svg{width:22px;height:22px;flex:none}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-left:2px}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+  border:1px solid var(--bd); background:var(--s1); font-size:11.5px;
+  font-family:var(--mono); color:var(--dim); white-space:nowrap;
+}
+.chip b{color:var(--tx);font-weight:600}
+.chip.ok b{color:var(--a1)} .chip.fail b{color:var(--a3)} .chip.stale b{color:var(--a4)}
+.dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--dim)}
+.dot.ok{background:var(--a1)} .dot.fail{background:var(--a3)} .dot.stale{background:var(--a4)}
+.dot.none{background:var(--bd)}
+.dot.fail{box-shadow:0 0 0 0 color-mix(in srgb,var(--a3) 60%,transparent);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.spacer{flex:1 1 auto}
+.icon-btn{
+  display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:9px;
+  border:1px solid var(--bd);background:var(--s1);color:var(--dim);font-size:12px;
+  transition:color .15s,border-color .15s;
+}
+.icon-btn:hover{color:var(--tx);border-color:var(--dim)}
+.icon-btn kbd{
+  font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:4px;
+  background:var(--s2);border:1px solid var(--bd);color:var(--dim);
+}
+nav.tabs{display:flex;gap:4px;padding:16px 0 4px;flex-wrap:wrap}
+nav.tabs button{
+  padding:7px 14px;border-radius:999px;font-size:12.5px;color:var(--dim);
+  border:1px solid transparent;transition:all .15s;
+}
+nav.tabs button:hover{color:var(--tx)}
+nav.tabs button[aria-selected=true]{background:var(--s2);border-color:var(--bd);color:var(--tx);font-weight:600}
+nav.tabs .count{font-family:var(--mono);font-size:10.5px;opacity:.65;margin-left:5px}
+
+/* ── 사이트 카드 ─────────────────────────────────────── */
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(316px,1fr));padding-top:14px}
+.card{
+  position:relative;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
+  padding:17px 18px 15px;display:flex;flex-direction:column;gap:11px;overflow:hidden;
+  transition:border-color .18s,transform .18s;
+}
+.card:hover{border-color:color-mix(in srgb,var(--ac) 55%,var(--bd));transform:translateY(-2px)}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac)}
+.card-h{display:flex;align-items:flex-start;gap:10px;padding-right:26px}
+.card-h .nm{font-size:15.5px;font-weight:650;letter-spacing:-.01em}
+.pin{
+  position:absolute;right:9px;top:11px;padding:4px;border-radius:7px;color:var(--bd);
+  line-height:0;transition:color .15s,background .15s;
+}
+.pin:hover{color:var(--dim);background:var(--s2)}
+.pin[aria-pressed=true]{color:var(--ac)}
+.card.pinned{border-color:color-mix(in srgb,var(--ac) 40%,var(--bd))}
+.card-h .tag{display:block;font-size:11px;color:var(--dim);font-weight:400;letter-spacing:.02em;margin-top:1px}
+.card .desc{font-size:12.5px;color:var(--dim);line-height:1.6;margin:0}
+.meta{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.meta span{display:inline-flex;align-items:center;gap:5px}
+.links{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:3px}
+.links a{
+  padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--s2);
+  font-size:11.5px;color:var(--dim);transition:all .15s;
+}
+.links a:hover{color:var(--tx);border-color:var(--ac)}
+.links a.primary{background:color-mix(in srgb,var(--ac) 15%,transparent);border-color:color-mix(in srgb,var(--ac) 45%,transparent);color:var(--tx);font-weight:600}
+
+/* ── 함대 ───────────────────────────────────────────── */
+.toolbar{display:flex;gap:8px;align-items:center;padding:16px 0 10px;flex-wrap:wrap}
+.toolbar input{
+  flex:1 1 220px;max-width:320px;padding:8px 12px;border-radius:9px;border:1px solid var(--bd);
+  background:var(--s1);color:var(--tx);font:inherit;font-size:12.5px;outline:none;
+}
+.toolbar input:focus{border-color:var(--a2)}
+.seg{display:flex;border:1px solid var(--bd);border-radius:9px;overflow:hidden}
+.seg button{padding:7px 12px;font-size:12px;color:var(--dim)}
+.seg button[aria-pressed=true]{background:var(--s2);color:var(--tx);font-weight:600}
+table.fleet{width:100%;border-collapse:collapse;font-size:12.5px}
+table.fleet th{
+  text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.1em;color:var(--dim);
+  font-weight:500;border-bottom:1px solid var(--bd);white-space:nowrap;
+}
+table.fleet td{padding:10px;border-bottom:1px solid color-mix(in srgb,var(--bd) 55%,transparent);vertical-align:top}
+table.fleet tr:hover td{background:color-mix(in srgb,var(--s1) 70%,transparent)}
+td.jn{font-family:var(--mono);font-weight:600;white-space:nowrap}
+td.jn small{display:block;font-weight:400;color:var(--dim);font-size:10px;letter-spacing:.03em;margin-top:2px}
+td.note{color:var(--dim);font-size:11.5px;max-width:520px}
+.badge{
+  display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.06em;font-weight:600;
+  border:1px solid;white-space:nowrap;
+}
+.badge.ok{color:var(--a1);border-color:color-mix(in srgb,var(--a1) 40%,transparent);background:color-mix(in srgb,var(--a1) 10%,transparent)}
+.badge.fail{color:var(--a3);border-color:color-mix(in srgb,var(--a3) 40%,transparent);background:color-mix(in srgb,var(--a3) 10%,transparent)}
+.badge.stale{color:var(--a4);border-color:color-mix(in srgb,var(--a4) 40%,transparent);background:color-mix(in srgb,var(--a4) 10%,transparent)}
+.badge.none{color:var(--dim);border-color:var(--bd)}
+.gauge{width:110px;height:5px;border-radius:3px;background:var(--s2);overflow:hidden;margin-top:5px}
+.gauge i{display:block;height:100%;border-radius:3px;background:var(--a1)}
+.gauge i.warn{background:var(--a4)} .gauge i.over{background:var(--a3)}
+.age{font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+
+/* 14일 스트립 — 칸 하나가 하루. 색은 상태 배지와 같은 토큰을 쓴다. */
+.strip{display:inline-flex;gap:2px;align-items:center;height:15px}
+.strip i{width:6px;height:15px;border-radius:2px;background:var(--bd);opacity:.42}
+.strip i.ok{background:var(--a1);opacity:1}
+.strip i.fail{background:var(--a3);opacity:1}
+.strip i.stale{background:var(--a4);opacity:1}
+
+/* ── 인시던트 ───────────────────────────────────────── */
+.inc-list{padding-top:16px;display:flex;flex-direction:column;gap:8px}
+.inc{
+  background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);
+  padding:11px 14px;display:flex;flex-direction:column;gap:5px;
+}
+.inc.live{border-color:color-mix(in srgb,var(--a3) 45%,var(--bd));background:color-mix(in srgb,var(--a3) 6%,var(--s1))}
+.inc-h{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.inc-job{font-family:var(--mono);font-weight:600;font-size:12.5px}
+.inc-site{font-size:11px;color:var(--dim)}
+.inc-live{
+  font-size:10px;font-family:var(--mono);letter-spacing:.08em;font-weight:600;color:var(--a3);
+  padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--a3) 14%,transparent);
+}
+.inc-dur{font-family:var(--mono);font-size:11.5px;color:var(--dim);white-space:nowrap}
+.inc-t{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.inc-note{font-size:11.5px;color:var(--dim);line-height:1.5}
+.inc-empty{padding:46px 20px;text-align:center;color:var(--dim);font-size:12.5px}
+
+/* ── 활동 ───────────────────────────────────────────── */
+.feed{padding-top:16px;display:flex;flex-direction:column;gap:1px}
+.ev{display:flex;gap:12px;padding:9px 12px;border-radius:9px;align-items:baseline}
+.ev:hover{background:var(--s1)}
+.ev time{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap;flex:none;width:104px}
+.ev .sha{font-family:var(--mono);font-size:11px;color:var(--a2);flex:none;width:62px}
+.ev .msg{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── 커맨드 팔레트 ──────────────────────────────────── */
+#palette{position:fixed;inset:0;z-index:70;display:grid;place-items:start center;padding:12vh 20px 20px;background:rgba(3,3,10,.62);backdrop-filter:blur(3px)}
+[data-theme=light] #palette{background:rgba(30,32,60,.34)}
+.pal{width:min(600px,100%);background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;box-shadow:0 30px 80px -30px rgba(0,0,0,.8)}
+.pal input{width:100%;padding:15px 18px;border:0;border-bottom:1px solid var(--bd);background:transparent;color:var(--tx);font:inherit;font-size:15px;outline:none}
+.pal ul{list-style:none;margin:0;padding:6px;max-height:52vh;overflow:auto}
+.pal li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;font-size:13px}
+.pal li[aria-selected=true]{background:var(--s2)}
+.pal li .k{font-family:var(--mono);font-size:10px;color:var(--onacc);background:var(--ac,var(--a2));padding:2px 6px;border-radius:5px;flex:none;letter-spacing:.05em}
+.pal li .sub{color:var(--dim);font-size:11.5px;margin-left:auto;font-family:var(--mono)}
+.pal .empty{padding:22px;text-align:center;color:var(--dim);font-size:12.5px}
+
+.foot{padding:26px 0 0;color:var(--dim);font-size:10.5px;font-family:var(--mono);letter-spacing:.04em;display:flex;gap:14px;flex-wrap:wrap;border-top:1px solid var(--bd);margin-top:26px}
+@media(max-width:640px){
+  #app{padding:0 13px calc(56px + env(safe-area-inset-bottom,0px))}
+  .ev time{width:78px}
+  .ev .sha{display:none}
+  /* 메모는 14일 스트립이 들어오면서 5번째 열이 됐다. */
+  td.note{display:none} table.fleet th:nth-child(5){display:none}
+  /* 좁은 화면에서 스트립·게이지가 표를 밀어내지 않게 줄인다(칸 수는 그대로 14). */
+  .strip i{width:4px} .gauge{width:74px}
+}
+.work-head{display:flex;gap:18px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin:8px 0 18px}
+.work-head h2{font-size:25px;margin:0}.work-head p{margin:5px 0;color:var(--dim)}
+.work-health{border:1px solid var(--bd);border-left:3px solid var(--a4);padding:13px 16px;border-radius:10px;background:var(--s1);margin-bottom:18px}
+.work-health.fresh{border-left-color:var(--a1)}.work-health strong{display:block}.work-health small{color:var(--dim)}
+.work-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px}
+.work-kpi{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:14px}.work-kpi b{display:block;font-size:31px;font-weight:650}.work-kpi span{color:var(--dim);font-size:12px}
+.work-map{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.work-family{border:1px solid var(--bd);border-radius:14px;background:var(--s1);padding:18px;min-width:0}.work-family h3{margin:0 0 8px;font-size:18px}.work-family svg{width:100%;height:auto;display:block;margin:14px 0}.work-family p{color:var(--dim);margin:5px 0;font-size:12px}
+.work-guard{padding:15px 18px;border:1px solid var(--bd);border-radius:12px;margin:15px 0;display:flex;gap:16px;flex-wrap:wrap;align-items:center;background:var(--s2)}
+.work-guard strong{color:var(--a4)}.work-guard small{color:var(--dim)}
+.work-filter{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 12px}.work-filter button{padding:6px 13px;border:1px solid var(--bd);border-radius:999px}.work-filter button[aria-pressed=true]{border-color:var(--a1);color:var(--a1)}
+.work-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.work-item{border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--s1);min-width:0}.work-item h4{margin:6px 0;overflow-wrap:anywhere}.work-item small{color:var(--dim)}.work-item .badge{margin-right:8px}.work-empty{color:var(--dim);padding:25px 0}.work-note{color:var(--dim);font-size:12px;margin-top:14px}
+@media(max-width:850px){.work-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.work-map{grid-template-columns:1fr}.work-family svg{max-width:440px}}
+@media(max-width:520px){.work-list{grid-template-columns:1fr}.work-head h2{font-size:22px}.work-kpi{padding:10px}.work-kpi b{font-size:26px}.work-guard{gap:8px}.work-health{font-size:13px}}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <form class="gate-card" id="gateForm" autocomplete="on">
+    <svg class="eye" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" style="color:var(--a1)">
+      <path d="M3 32s11-17 29-17 29 17 29 17-11 17-29 17S3 32 3 32Z"/>
+      <circle cx="32" cy="32" r="9"/><circle cx="32" cy="32" r="3.2" fill="currentColor" stroke="none"/>
+    </svg>
+    <h1>PANOPTICON</h1>
+    <p class="sub">PHALANX · PANOPTES · ARGUS · THYRSUS · ENSEMBLE</p>
+    <div class="field">
+      <input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password"
+             spellcheck="false" autocapitalize="off" aria-label="비밀번호">
+      <button type="button" class="reveal" id="reveal" aria-label="비밀번호 표시">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </div>
+    <button class="gate-btn" id="unlock" type="submit">해 제</button>
+    <label class="remember"><input type="checkbox" id="remember"> 이 브라우저에서 30일간 기억</label>
+    <p class="gate-msg" id="gateMsg" role="status" aria-live="polite"></p>
+    <p class="gate-foot">AES-256-GCM · PBKDF2-SHA256</p>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="top">
+    <span class="brand">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" style="color:var(--a1)">
+        <path d="M3 32s11-17 29-17 29 17 29 17-11 17-29 17S3 32 3 32Z"/><circle cx="32" cy="32" r="9"/>
+      </svg>
+      PANOPTICON
+    </span>
+    <div class="chips" id="chips"></div>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="openPal">검색 <kbd>⌘K</kbd></button>
+    <button class="icon-btn" id="themeBtn" title="테마 전환">◐</button>
+    <button class="icon-btn" id="lockBtn" title="잠그기">잠금</button>
+  </header>
+
+  <nav class="tabs" id="navTabs">
+    <button data-view="tasks" aria-selected="false">작업 현황 <span class="count" id="cTasks"></span></button>
+    <button data-view="sites" aria-selected="true">사이트 <span class="count" id="cSites"></span></button>
+    <button data-view="fleet" aria-selected="false">함대 <span class="count" id="cJobs"></span></button>
+    <button data-view="feed" aria-selected="false">활동</button>
+    <button data-view="inc" aria-selected="false">인시던트 <span class="count" id="cInc"></span></button>
+  </nav>
+
+  <main>
+    <section id="view-tasks" hidden>
+      <div class="work-head"><div><h2>지금, 어떤 작업이 어디에 있나</h2><p>팔랑크스 · 티르소스 · 공통 운영</p></div><button class="icon-btn" id="workRefresh">현황 새로고침 ↻</button></div>
+      <div id="workHealth" class="work-health" role="status" aria-live="polite"></div>
+      <div id="workKpis" class="work-kpis"></div>
+      <div id="workMap" class="work-map"></div>
+      <div id="workGuard" class="work-guard"></div>
+      <div class="work-filter" id="workFilter"><button data-family="all" aria-pressed="true">전체</button><button data-family="phalanx" aria-pressed="false">팔랑크스</button><button data-family="thyrsus" aria-pressed="false">티르소스</button><button data-family="operations" aria-pressed="false">공통 운영</button></div>
+      <div id="workList" class="work-list"></div>
+      <p class="work-note">진행 수는 함대 큐의 실행 기록입니다. 실제 모델 진척과 완료·검증·배포는 별도 확인합니다. 가져온 대화 수와 파일 예약은 실행 수에 포함하지 않습니다. 기존 수동 CLI·예약 실행은 이 감시 범위 밖입니다.</p>
+    </section>
+    <section id="view-sites"><div class="grid" id="siteGrid"></div></section>
+
+    <section id="view-fleet" hidden>
+      <div class="toolbar">
+        <input id="fleetQ" type="search" placeholder="잡 이름·메모 검색" spellcheck="false">
+        <div class="seg" id="fleetFilter">
+          <button data-f="all" aria-pressed="true">전체</button>
+          <button data-f="bad" aria-pressed="false">문제만</button>
+          <button data-f="ok" aria-pressed="false">정상</button>
+        </div>
+      </div>
+      <table class="fleet">
+        <thead><tr><th>잡</th><th>상태</th><th title="칸 하나가 하루. 왼쪽이 14일 전, 오른쪽이 오늘">14일</th><th title="막대 = 침묵시간 ÷ 워치독 한계">마지막 실행</th><th>메모</th></tr></thead>
+        <tbody id="fleetBody"></tbody>
+      </table>
+    </section>
+
+    <section id="view-feed" hidden><div class="feed" id="feedList"></div></section>
+
+    <section id="view-inc" hidden><div class="inc-list" id="incList"></div></section>
+  </main>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<div id="palette" hidden>
+  <div class="pal" role="dialog" aria-modal="true" aria-label="빠른 이동">
+    <input id="palQ" type="text" placeholder="사이트·탭·잡 이름으로 이동…" spellcheck="false" autocomplete="off">
+    <ul id="palList"></ul>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const KEYSTORE='pnpt.k', THEME='pnpt.theme', PINS='pnpt.pins', VAULT='vault.json', IVAULT='index_vault.json';
+const b64d=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const b64e=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
+let DATA=null, IDX=null, RAWKEY=null, view=location.hash==='#tasks'?'tasks':'sites', palIdx=0, palRows=[];
+const LOCAL_LIVE=!!document.querySelector('meta[name="panopticon-live"][content="same-origin"]')&&['127.0.0.1','localhost'].includes(location.hostname);
+let WORK=null, workNetwork='waiting', workChecked=null, workBusy=false, workFamily='all';
+
+/* ── 테마 ───────────────────────────────────────────── */
+const setTheme=t=>{document.documentElement.dataset.theme=t;try{localStorage.setItem(THEME,t)}catch(e){}};
+try{const t=localStorage.getItem(THEME); if(t) document.documentElement.dataset.theme=t;}catch(e){}
+
+/* ── 핀 ─────────────────────────────────────────────── */
+/* 핀은 볼트가 아니라 브라우저에 산다 — 사람마다 다르고, 재로그인해도 남아야 한다. */
+let pins=(()=>{ try{
+  const a=JSON.parse(localStorage.getItem(PINS)||'[]');
+  return Array.isArray(a)?a.filter(x=>typeof x==='string'):[];
+}catch(e){ return []; } })();
+const pinned=k=>pins.indexOf(k)>=0;
+function togglePin(k){
+  const i=pins.indexOf(k); if(i<0) pins.push(k); else pins.splice(i,1);
+  try{ localStorage.setItem(PINS,JSON.stringify(pins)); }catch(e){}
+  renderSites();
+}
+/* 고정된 것만 앞으로 당긴다. sort 는 안정 정렬이라 나머지 순서는 그대로다. */
+const pinFirst=(arr,key)=>arr.slice().sort((a,b)=>(pinned(key(b))?1:0)-(pinned(key(a))?1:0));
+
+/* ── 볼트 ───────────────────────────────────────────── */
+async function fetchVault(){
+  const r=await fetch(VAULT+'?t='+Date.now(),{cache:'no-store'});
+  if(!r.ok) throw new Error('볼트를 불러오지 못했습니다 (HTTP '+r.status+')');
+  return r.json();
+}
+async function deriveKey(pw,kdf){
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits(
+    {name:'PBKDF2',salt:b64d(kdf.salt),iterations:kdf.iter,hash:kdf.hash},base,256);
+  return new Uint8Array(bits);
+}
+async function openVault(rawKey,vault){
+  const key=await crypto.subtle.importKey('raw',rawKey,'AES-GCM',false,['decrypt']);
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(vault.iv)},key,b64d(vault.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function storeKey(raw,persist){
+  const rec=JSON.stringify({k:b64e(raw),exp:persist?Date.now()+30*864e5:0});
+  try{ (persist?localStorage:sessionStorage).setItem(KEYSTORE,rec); }catch(e){}
+}
+function loadKey(){
+  for(const st of [sessionStorage,localStorage]){
+    try{
+      const rec=st.getItem(KEYSTORE); if(!rec) continue;
+      const o=JSON.parse(rec);
+      if(o.exp && Date.now()>o.exp){ st.removeItem(KEYSTORE); continue; }
+      return b64d(o.k);
+    }catch(e){}
+  }
+  return null;
+}
+function clearKey(){ for(const st of [sessionStorage,localStorage]){try{st.removeItem(KEYSTORE)}catch(e){}} }
+
+/* ── 게이트 ─────────────────────────────────────────── */
+const msg=(t,info)=>{const m=$('#gateMsg'); m.textContent=t; m.className='gate-msg'+(info?' info':'');};
+$('#reveal').onclick=()=>{const i=$('#pw'); i.type=i.type==='password'?'text':'password'; i.focus();};
+
+$('#gateForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const pw=$('#pw').value; if(!pw) return;
+  const btn=$('#unlock'); btn.disabled=true; btn.textContent='확 인 중';
+  msg('키를 유도하는 중…',true);
+  try{
+    const vault=await fetchVault();
+    const raw=await deriveKey(pw,vault.kdf);
+    const data=await openVault(raw,vault);       // 실패 = 비번 불일치
+    storeKey(raw,$('#remember').checked);
+    RAWKEY=raw; boot(data);
+  }catch(err){
+    const net=/볼트/.test(err.message||'');
+    msg(net?err.message:'비밀번호가 맞지 않습니다.');
+    $('.gate-card').classList.remove('shake'); void $('.gate-card').offsetWidth;
+    $('.gate-card').classList.add('shake');
+    $('#pw').select();
+  }finally{ btn.disabled=false; btn.textContent='해 제'; }
+});
+
+async function tryStoredKey(){
+  const raw=loadKey(); if(!raw) return false;
+  try{ const v=await fetchVault(); const d=await openVault(raw,v); RAWKEY=raw; boot(d); return true; }
+  catch(e){ clearKey(); return false; }
+}
+
+/* ── 전역 검색 색인 (지연 로드) ────────────────────────
+   260KB 라 첫 화면을 막으면 안 된다. 로그인 뒤 조용히 받아 팔레트에만 얹는다.
+   본 볼트와 같은 키로 열린다(빌더가 salt 를 물려쓴다). 없거나 깨져도 무시한다. */
+async function loadIndex(){
+  if(IDX||!RAWKEY) return;
+  try{
+    const r=await fetch(IVAULT+'?t='+Date.now(),{cache:'no-store'});
+    if(!r.ok) return;
+    const d=await openVault(RAWKEY,await r.json());
+    IDX=(d&&Array.isArray(d.items))?d.items:null;
+    if(IDX){
+      const q=$('#palQ');
+      if(q) q.placeholder='사이트·탭·잡·기업 '+(palSource().length+IDX.length).toLocaleString()+'건 검색…';
+      if(!$('#palette').hidden) palRender();
+    }
+  }catch(e){}
+}
+
+/* ── 포맷 ───────────────────────────────────────────── */
+const pad=n=>String(n).padStart(2,'0');
+function when(ts){
+  const d=new Date(ts*1000), n=new Date();
+  const same=d.toDateString()===n.toDateString();
+  return same? pad(d.getHours())+':'+pad(d.getMinutes())
+             : (d.getMonth()+1)+'/'+d.getDate()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function ago(ts){
+  const h=(Date.now()/1000-ts)/3600;
+  if(h<1) return Math.max(1,Math.round(h*60))+'분 전';
+  if(h<48) return h.toFixed(1)+'시간 전';
+  return Math.round(h/24)+'일 전';
+}
+/* 지속시간. 진행 중인 인시던트는 볼트에 길이가 없다(있으면 매 빌드마다 볼트가
+   바뀌어 빌더의 무변경 건너뛰기가 죽는다) — 시작시각과 지금으로 여기서 잰다. */
+function dur(ms){
+  const h=ms/36e5;
+  if(!isFinite(h)||h<0) return '—';
+  if(h<1) return Math.max(1,Math.round(h*60))+'분';
+  if(h<48) return h.toFixed(1)+'시간';
+  return Math.round(h/24)+'일';
+}
+const ts=s=>Date.parse(String(s||'').replace(' ','T'));
+const cls=s=>s==='OK'?'ok':((s==='FAIL'||s==='EXIT')?'fail':((s==='STALE'||s==='WARN')?'stale':'none'));
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const url=h=>LOCAL_LIVE&&DATA?DATA.base+'/'+h:'../'+h;
+
+/* ── 렌더 ───────────────────────────────────────────── */
+/* 워치독 산출이 26시간 넘게 안 바뀌면 '전부 정상'이 거짓일 수 있다. */
+function staleVault(){
+  const t=DATA.ops_generated||DATA.built; if(!t) return '';
+  const h=(Date.now()-Date.parse(t.replace(' ','T')))/36e5;
+  return h>26? (h<48? h.toFixed(0)+'시간' : Math.round(h/24)+'일') : '';
+}
+function renderChips(){
+  const c=DATA.counts, bad=DATA.sites.filter(s=>s.status==='FAIL').length;
+  $('#chips').innerHTML=[
+    `<span class="chip ok"><i class="dot ok"></i>정상 <b>${c.ok}</b></span>`,
+    c.fail?`<span class="chip fail"><i class="dot fail"></i>실패 <b>${c.fail}</b></span>`:'',
+    c.stale?`<span class="chip stale"><i class="dot stale"></i>지연 <b>${c.stale}</b></span>`:'',
+    bad?`<span class="chip fail">영향 사이트 <b>${bad}</b></span>`:'',
+    `<span class="chip">갱신 <b>${esc((DATA.ops_generated||DATA.built).slice(5,16))}</b></span>`,
+    staleVault()?`<span class="chip stale"><i class="dot stale"></i>관제 데이터 <b>${staleVault()}</b> 지연</span>`:''
+  ].join('');
+  $('#cSites').textContent=DATA.sites.length;
+  $('#cJobs').textContent=DATA.jobs.length;
+  const inc=DATA.incidents||[], liveInc=inc.filter(x=>!x.end).length;
+  $('#cInc').textContent=liveInc?liveInc+'/'+inc.length:(inc.length||'');
+}
+function renderSites(){
+  $('#siteGrid').innerHTML=pinFirst(DATA.sites,s=>s.key).map(s=>{
+    const g=s.git||{}, st=cls(s.status), on=pinned(s.key), dts=s.data_ts||0;
+    /* 데이터가 코드보다 하루 넘게 뒤처졌다 = 코드만 고쳐놓고 데이터는 안 돈다. */
+    const behind=(g.ts&&dts)?(g.ts-dts)>86400:false;
+    const links=[`<a class="primary" href="${esc(url(s.href))}">열기 ↗</a>`]
+      .concat((s.links||[]).map(([l,h])=>`<a href="${esc(url(h))}">${esc(l)}</a>`)).join('');
+    return `<div class="card${on?' pinned':''}" style="--ac:var(--${s.accent})">
+      <button class="pin" data-pin="${esc(s.key)}" aria-pressed="${on}"
+              title="${on?'고정 해제':'맨 앞에 고정'}" aria-label="${esc(s.name)} 고정">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="${on?'currentColor':'none'}"
+             stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+          <path d="M9 3h6l-1 6 4 3v2H6v-2l4-3-1-6Z"/><path d="M12 14v7" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="card-h">
+        <i class="dot ${st}" title="${s.status==='NONE'?'감시 잡 없음':esc(s.status)+(s.worst_job?' · '+esc(s.worst_job):'')}"></i>
+        <div><span class="nm">${esc(s.name)}</span><span class="tag">${esc(s.tag)}</span></div>
+      </div>
+      <p class="desc">${esc(s.desc)}</p>
+      <div class="meta">
+        ${g.ts?`<span title="마지막 커밋 · ${esc(g.subject)}">⟳ 코드 ${ago(g.ts)}</span>`:''}
+        ${dts?`<span title="데이터 산출물 최종 갱신"${behind?' style="color:var(--a4)"':''}>▣ 데이터 ${ago(dts)}</span>`:''}
+        ${s.jobs.length?`<span>잡 ${s.jobs.length}</span>`:''}
+        ${(s.status==='FAIL'||s.status==='EXIT')?`<span style="color:var(--a3)">⚠ ${esc(s.worst_job)}</span>`:''}
+        ${s.status==='STALE'?`<span style="color:var(--a4)">⏱ ${esc(s.worst_job)}</span>`:''}
+        ${s.tabs.length?`<span>탭 ${s.tabs.length}</span>`:''}
+      </div>
+      <div class="links">${links}</div>
+    </div>`;
+  }).join('');
+}
+function renderFleet(){
+  const q=$('#fleetQ').value.trim().toLowerCase();
+  const f=$('#fleetFilter button[aria-pressed=true]').dataset.f;
+  const rank=j=>({FAIL:0,EXIT:0,STALE:1,WARN:1,UNKNOWN:2,OK:3})[j.status]??2;
+  const rows=DATA.jobs
+    .filter(j=>f==='all'||(f==='bad'?j.status!=='OK':j.status==='OK'))
+    .filter(j=>!q||j.name.toLowerCase().includes(q)||(j.note||'').toLowerCase().includes(q))
+    .sort((a,b)=>rank(a)-rank(b)||a.name.localeCompare(b.name));
+  $('#fleetBody').innerHTML=rows.length?rows.map(j=>{
+    const site=DATA.sites.find(s=>s.key===j.site);
+    let bar='';
+    if(j.age!=null&&j.limit){
+      const p=Math.min(100,j.age/j.limit*100);
+      bar=`<div class="gauge"><i class="${p>100?'over':p>70?'warn':''}" style="width:${p.toFixed(0)}%"></i></div>`;
+    }
+    return `<tr><td class="jn">${esc(j.name)}${site?`<small>${esc(site.name)}</small>`:''}</td>
+      <td><span class="badge ${cls(j.status)}">${esc(j.status)}</span></td>
+      <td>${stripHTML(j.hist)}</td>
+      <td><span class="age">${j.age!=null?ago(Date.parse(j.last.replace(' ','T'))/1000):'—'}</span>${bar}</td>
+      <td class="note">${esc((j.note||'').slice(0,200))}</td></tr>`;
+  }).join(''):`<tr><td colspan="5" style="padding:30px;text-align:center;color:var(--dim)">해당 잡이 없습니다</td></tr>`;
+}
+/* 14일 스트립. 왼쪽이 오래된 날, 오른쪽이 오늘. 이력이 없어도 칸 수는 유지한다
+   — 콜드 스타트에서 표가 흔들리면 안 된다. */
+const HSTAT={O:['ok','OK'],F:['fail','FAIL'],S:['stale','STALE']};
+function stripHTML(h){
+  const s=String(h||''), n=s.length||14, out=[], t=new Date();
+  for(let i=0;i<n;i++){
+    const m=HSTAT[s[i]]||['none','기록 없음'];
+    const d=new Date(t.getFullYear(),t.getMonth(),t.getDate()-(n-1-i));
+    const iso=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    out.push(`<i class="${m[0]}" title="${iso} · ${m[1]}"></i>`);
+  }
+  return `<span class="strip">${out.join('')}</span>`;
+}
+function renderInc(){
+  const rows=DATA.incidents||[];
+  $('#incList').innerHTML=rows.length?rows.map(x=>{
+    const site=DATA.sites.find(s=>s.key===x.site), live=!x.end;
+    const t0=ts(x.start), t1=live?Date.now():ts(x.end);
+    return `<div class="inc${live?' live':''}">
+      <div class="inc-h">
+        <span class="badge ${cls(x.status)}">${esc(x.status)}</span>
+        <span class="inc-job">${esc(x.job)}</span>
+        ${site?`<span class="inc-site">${esc(site.name)}</span>`:''}
+        ${live?'<span class="inc-live">진행 중</span>':''}
+        <span class="spacer"></span>
+        <span class="inc-dur">${dur(t1-t0)}</span>
+      </div>
+      <div class="inc-t">${esc(x.start)} → ${live?'지금':esc(x.end)}</div>
+      ${x.note?`<div class="inc-note">${esc(x.note)}</div>`:''}
+    </div>`;
+  }).join(''):'<div class="inc-empty">최근 장애 없음</div>';
+}
+function renderFeed(){
+  $('#feedList').innerHTML=DATA.feed.map(e=>
+    `<div class="ev"><time>${when(e.ts)}</time><span class="sha">${esc(e.sha)}</span><span class="msg">${esc(e.subject)}</span></div>`
+  ).join('');
+}
+function renderFoot(){
+  $('#foot').innerHTML=[
+    `빌드 ${esc(DATA.built)}`, `워치독 ${esc(DATA.ops_generated||'—')}`,
+    `HEAD ${esc(DATA.head)}`, `사이트 ${DATA.sites.length} · 잡 ${DATA.jobs.length}`
+  ].map(s=>`<span>${s}</span>`).join('');
+}
+/* ── 작업 인포그래픽: 로컬 15초 관측 / Pages 배포 시점 스냅샷 ── */
+const WORK_LABEL={running:'진행 기록',queued:'대기',succeeded:'실행 완료',needs_review:'확인 필요',failed:'실패',cancelled:'취소'};
+const WORK_COLOR={running:'var(--a2)',queued:'var(--a4)',succeeded:'var(--a1)',needs_review:'var(--a5)',failed:'var(--a3)',cancelled:'var(--dim)'};
+const FAMILY_LABEL={phalanx:'팔랑크스',thyrsus:'티르소스',operations:'공통 운영'};
+const ROUTE_LABEL={'studio-claude':'Studio Claude','studio-codex':'Studio Codex','mini-claude':'Mini Claude','mini-codex':'Mini Codex'};
+const HOLD_LABEL={cooldown:'사용량 한도 대기',identity_unknown:'계정 구분 미확인 · 공통 한도 대기',awaiting_review:'검토 대기'};
+const workDate=v=>v&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'관측 없음';
+function renderWork(){
+  const d=WORK||DATA.work_status, h=$('#workHealth');
+  const localFresh=LOCAL_LIVE&&workNetwork==='ok'&&workChecked&&Date.now()-workChecked<45000;
+  h.className='work-health'+(localFresh?' fresh':'');
+  h.innerHTML=`<strong>${LOCAL_LIVE?(localFresh?'● 로컬 현황 연결됨 · 15초마다 확인':workNetwork==='failed'?'● 현황 연결 실패 · 마지막 관측 유지':'● 로컬 현황 확인 중'):workNetwork==='failed'?'스냅샷 갱신 연결 실패 · 마지막 관측 유지':'배포 시점 스냅샷 · 5분마다 새 배포 확인'}</strong><small>측정 ${workDate(d&&d.observed_at)} · ${LOCAL_LIVE?'최근 연결 '+workDate(workChecked):'Pages에는 정기 배포 결과가 표시됩니다. 초 단위 실시간 화면은 이 Mac의 로컬 판옵티콘에서 볼 수 있습니다.'}</small>`;
+  if(!d){$('#workKpis').innerHTML='';$('#workMap').innerHTML='';$('#workGuard').textContent='작업 관측 자료가 없습니다. 최신 판옵티콘 빌드 후 확인하세요.';$('#workList').innerHTML='';return;}
+  $('#cTasks').textContent=(d.counts.running||0)+(d.counts.queued||0)||'';
+  $('#workKpis').innerHTML=Object.entries(WORK_LABEL).map(([k,v])=>`<div class="work-kpi"><b style="color:${WORK_COLOR[k]}">${Number(d.counts[k]||0)}</b><span>${v}</span></div>`).join('');
+  $('#workMap').innerHTML=Object.entries(FAMILY_LABEL).map(([key,label])=>{
+    const c=d.families[key]||{}, total=Object.values(c).reduce((a,b)=>a+Number(b),0);
+    let x=0;const bars=Object.keys(WORK_LABEL).map(k=>{const width=total?Number(c[k]||0)/total*300:0;const r=width?`<rect x="${x}" y="8" width="${width}" height="20" fill="${WORK_COLOR[k]}"/>`:'';x+=width;return r}).join('');
+    const summary=`진행 ${c.running||0} · 대기 ${c.queued||0} · 완료 ${c.succeeded||0} · 확인 ${c.needs_review||0} · 실패 ${c.failed||0} · 취소 ${c.cancelled||0}`;
+    return `<article class="work-family"><h3>${label}</h3><p>감시 대상 ${total}개</p><svg viewBox="0 0 300 36" role="img" aria-label="${label}: ${summary}"><rect y="8" width="300" height="20" rx="5" fill="var(--s2)"/>${bars}</svg><p>${summary}</p></article>`;
+  }).join('');
+  const claim=d.claims||{}, con=d.consolidation||{}, missing=(d.sources||[]).filter(s=>s.state!=='ok');
+  $('#workGuard').innerHTML=`<strong>공유 파일 · 배포는 한 작업씩</strong><span>${claim.state==='ok'?`예약 ${Number(claim.paths||0)}개 경로 · ${Number(claim.owners||0)}개 작업${claim.overlaps?' · ⚠ 중복 예약 '+Number(claim.overlaps):''}`:'예약 기록 확인 필요'}</span><small>협력형 예약이며 기존 실행을 강제 차단하지 않습니다.</small>${Object.keys(con).length?`<span>대화 정리: 검토 ${con.reviewed??'—'} · 통합 ${con.merged??'—'} · 보관 ${con.archived??'—'} · 유지 ${con.preserved??'—'}</span>`:''}${d.cooldowns&&d.cooldowns.count?`<span>한도 대기 ${d.cooldowns.count}개 풀 · 다음 해제 ${workDate(d.cooldowns.next_reset)}</span>`:''}${missing.length?`<span>⚠ 일부 관측 자료 없음 (${missing.length})</span>`:''}`;
+  const rows=(d.tasks||[]).filter(t=>workFamily==='all'||t.family===workFamily);
+  $('#workList').innerHTML=rows.length?rows.map(t=>`<article class="work-item"><span class="badge" style="color:${WORK_COLOR[t.status]||'var(--dim)'}">${WORK_LABEL[t.status]||'확인 필요'}</span><small>${FAMILY_LABEL[t.family]||'공통 운영'}${t.route?' · '+esc(ROUTE_LABEL[t.route]||t.route)+(t.requested_model?' / Fable':'')+(t.route_is_requested?' 예정':''):''}</small><h4>${esc(t.title)}</h4><small>${workDate(t.updated_at)}${t.stale?' · 실행 기록 5분 경과, 진척 확인 필요':''}${t.evidence==='unverified_running'?' · 실행 근거 미확인':''}${t.status==='queued'&&HOLD_LABEL[t.hold_reason]?' · '+HOLD_LABEL[t.hold_reason]+(t.eligible_after?' · 재평가 '+workDate(t.eligible_after):''):''}</small></article>`).join(''):'<p class="work-empty">이 분류에서 감시 중인 작업이 없습니다.</p>';
+  if(d.total>(d.tasks||[]).length) $('#workList').insertAdjacentHTML('beforeend',`<p class="work-note">전체 ${d.total}개 중 상태 우선 최근 ${d.tasks.length}개 표시</p>`);
+}
+async function refreshWork(){
+  if(!RAWKEY||workBusy||document.hidden)return;
+  workBusy=true;const key=RAWKEY;
+  try{
+    if(LOCAL_LIVE){
+      const r=await fetch('/api/task-status?t='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});
+      if(!r.ok)throw new Error('status');
+      const payload=await openVault(key,await r.json());
+      if(RAWKEY!==key)return;
+      WORK=payload.work_status;
+    }else{
+      const payload=await openVault(key,await fetchVault());
+      if(RAWKEY!==key)return;
+      DATA=payload;WORK=payload.work_status;renderChips();renderFoot();
+    }
+    workChecked=Date.now();workNetwork='ok';
+  }catch(e){workNetwork='failed';}finally{workBusy=false;if(DATA)renderWork();}
+}
+function setView(v){
+  view=v;
+  $$('#navTabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.view===v)));
+  ['sites','fleet','feed','inc','tasks'].forEach(k=>{$('#view-'+k).hidden=(k!==v)});
+  if(v==='fleet') renderFleet(); if(v==='feed') renderFeed(); if(v==='inc') renderInc();
+  if(v==='tasks')renderWork();
+  try{history.replaceState(null,'',v==='tasks'?'#tasks':location.pathname+location.search)}catch(e){}
+}
+
+/* ── 커맨드 팔레트 ──────────────────────────────────── */
+function palSource(){
+  const out=[];
+  pinFirst(DATA.sites,s=>s.key).forEach(s=>{   /* 고정 사이트가 먼저 나온다 */
+    out.push({k:'사이트',t:s.name,s:s.tag,href:url(s.href),ac:s.accent});
+    (s.links||[]).forEach(([l,h])=>out.push({k:s.name,t:l,s:'',href:url(h),ac:s.accent}));
+    (s.tabs||[]).forEach(([l,h])=>out.push({k:s.name,t:l,s:'탭',href:url(h),ac:s.accent}));
+  });
+  DATA.jobs.forEach(j=>out.push({k:'잡',t:j.name,s:j.status,job:1,ac:cls(j.status)==='fail'?'a3':'a4'}));
+  return out;
+}
+function palRender(){
+  const q=$('#palQ').value.trim().toLowerCase();
+  const all=palSource();
+  let rows;
+  if(!q){
+    rows=all;                         // 질의가 없으면 큐레이션된 목적지만 보여준다
+  }else{
+    rows=all.filter(r=>(r.t+' '+r.k+' '+r.s).toLowerCase().includes(q));
+    if(IDX){                          // 기업·시리즈 2천여건은 '검색할 때만' 합류시킨다
+      for(const e of IDX){
+        if(rows.length>=400) break;
+        if((e.t+' '+e.k+' '+(e.s||'')).toLowerCase().includes(q))
+          rows.push({k:e.k,t:e.t,s:e.s||'',href:url(e.h),ac:'a2'});
+      }
+    }
+  }
+  palRows=rows.slice(0,200);
+  if(palIdx>=palRows.length) palIdx=0;
+  $('#palList').innerHTML=palRows.length?palRows.map((r,i)=>
+    `<li data-i="${i}" aria-selected="${i===palIdx}" style="--ac:var(--${r.ac||'a2'})">
+       <span class="k">${esc(r.k)}</span><span>${esc(r.t)}</span>
+       ${r.s?`<span class="sub">${esc(r.s)}</span>`:''}</li>`
+  ).join(''):'<div class="empty">일치하는 항목이 없습니다</div>';
+  const sel=$('#palList li[aria-selected=true]'); if(sel) sel.scrollIntoView({block:'nearest'});
+}
+function palGo(r){
+  if(!r) return;
+  palClose();
+  if(r.job){ setView('fleet'); $('#fleetQ').value=r.t; renderFleet(); return; }
+  location.href=r.href;
+}
+const palOpen=()=>{$('#palette').hidden=false; $('#palQ').value=''; palIdx=0; palRender(); $('#palQ').focus();};
+const palClose=()=>{$('#palette').hidden=true};
+
+/* ── 배선 ───────────────────────────────────────────── */
+$('#navTabs').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setView(b.dataset.view)});
+$('#workRefresh').onclick=refreshWork;
+$('#workFilter').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;workFamily=b.dataset.family;$$('#workFilter button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderWork();});
+$('#siteGrid').addEventListener('click',e=>{
+  const b=e.target.closest('.pin'); if(!b) return;
+  e.preventDefault(); togglePin(b.dataset.pin);
+});
+$('#fleetQ').addEventListener('input',renderFleet);
+$('#fleetFilter').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  $$('#fleetFilter button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  renderFleet();
+});
+$('#themeBtn').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+$('#lockBtn').onclick=()=>{clearKey(); location.reload()};
+$('#openPal').onclick=palOpen;
+$('#palQ').addEventListener('input',()=>{palIdx=0;palRender()});
+$('#palList').addEventListener('click',e=>{const li=e.target.closest('li'); if(li) palGo(palRows[+li.dataset.i])});
+$('#palette').addEventListener('mousedown',e=>{if(e.target.id==='palette') palClose()});
+
+document.addEventListener('keydown',e=>{
+  const palOn=!$('#palette').hidden;
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault(); palOn?palClose():palOpen(); return;}
+  if(palOn){
+    if(e.key==='Escape'){palClose();}
+    else if(e.key==='ArrowDown'){e.preventDefault(); palIdx=Math.min(palIdx+1,palRows.length-1); palRender();}
+    else if(e.key==='ArrowUp'){e.preventDefault(); palIdx=Math.max(palIdx-1,0); palRender();}
+    else if(e.key==='Enter'){e.preventDefault(); palGo(palRows[palIdx]);}
+    return;
+  }
+  if($('#app').hidden) return;
+  const tag=(e.target.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea') return;
+  if(e.key==='/'){e.preventDefault(); palOpen();}
+  else if(e.key==='1') setView('sites');
+  else if(e.key==='2') setView('fleet');
+  else if(e.key==='3') setView('feed');
+  else if(e.key==='4') setView('inc');
+  else if(e.key==='5') setView('tasks');
+});
+
+/* ── 부팅 ───────────────────────────────────────────── */
+function boot(data){
+  DATA=data;
+  $('#gate').hidden=true; $('#app').hidden=false;
+  renderChips(); renderSites(); renderFoot(); setView(view);
+  WORK=data.work_status||null;renderWork();if(LOCAL_LIVE)refreshWork();
+  setTimeout(loadIndex,120);          // 첫 페인트를 막지 않는다
+}
+/* 5분마다 볼트를 다시 열어 상태를 갱신한다 (재로그인 없음). */
+setInterval(async()=>{
+  if(!RAWKEY||document.hidden) return;
+  try{ const v=await fetchVault(); const d=await openVault(RAWKEY,v);
+       DATA=d; renderChips(); renderSites(); renderFoot();
+       if(view==='fleet') renderFleet(); if(view==='feed') renderFeed();
+       if(view==='inc') renderInc();if(!LOCAL_LIVE){WORK=d.work_status;workNetwork='ok';workChecked=Date.now();}renderWork(); }catch(e){if(!LOCAL_LIVE){workNetwork='failed';renderWork();}}
+},300000);
+setInterval(()=>{if(LOCAL_LIVE)refreshWork();},15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&LOCAL_LIVE)refreshWork();});
+
+(async()=>{
+  if(!(window.crypto&&crypto.subtle)){ msg('이 브라우저는 Web Crypto 를 지원하지 않습니다. HTTPS 로 접속하세요.'); return; }
+  if(await tryStoredKey()) return;
+  $('#pw').focus();
+})();
+})();
+</script>
+</body>
+</html>

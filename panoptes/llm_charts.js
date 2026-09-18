@@ -75,13 +75,18 @@
     '.or-new{font-size:9.5px;font-weight:800;color:#f6c85f;border:1px solid rgba(246,200,95,.45);padding:1px 6px;border-radius:999px}',
     '.or-more{margin-top:10px;text-align:center}',
     /* ── 플롯 공통 ── */
-    '.or-plot{position:relative}',
+    '.or-plot{position:relative;outline:none}',
+    '.or-plot:focus-visible{outline:2px solid ' + ACC + ';outline-offset:4px;border-radius:4px}',
     '.or-plot svg{display:block;width:100%;height:auto;overflow:visible}',
     '.or-tip{position:absolute;pointer-events:none;opacity:0;background:rgba(8,11,17,.94);border:1px solid var(--line,#1f2937);border-radius:8px;padding:6px 9px;font-family:' + MONO + ';font-size:10.5px;line-height:1.7;color:#e6edf3;white-space:nowrap;z-index:4;transition:opacity .1s;transform:translate(-50%,0)}',
     '.or-plot.on .or-tip{opacity:1}',
     '.or-lgd{display:flex;gap:5px 12px;flex-wrap:wrap;margin-top:9px}',
     '.or-lgd span{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:' + DIM + '}',
     '.or-lgd i{width:9px;height:9px;border-radius:3px;flex:0 0 auto}',
+    '.or-period-note{font-size:11px;line-height:1.65;color:' + DIM + ';margin:8px 0 0}',
+    '.or-period-note b{color:#f6c85f;font-weight:700}',
+    '.or-period-swatch{display:inline-block;width:12px;height:10px;margin-right:5px;border:1px dashed #f6c85f;background:repeating-linear-gradient(135deg,transparent,transparent 3px,#f6c85f55 3px,#f6c85f55 4px);vertical-align:-1px}',
+    '@media(max-width:640px){.or-tip{font-size:9.5px;white-space:normal;width:max-content;max-width:calc(100% - 12px);box-sizing:border-box}.or-period-note{font-size:10.5px}}',
     /* ── 벤치마크 ── */
     '.or-brow{display:flex;align-items:center;gap:9px;margin:5px 0}',
     '.or-brow .nm{flex:0 0 218px;font-size:12px;font-weight:650;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -189,11 +194,37 @@
   function sum(arr) { var s = 0; for (var i = 0; i < arr.length; i++) s += (arr[i] || 0); return s; }
   function last(arr) { return arr && arr.length ? arr[arr.length - 1] : null; }
 
-  /* ============ 스택 영역차트 (재사용) ============ */
-  // pack = {dates, series}, opts = {h, pct(100%모드), topN, id, unitFmt}
+  function utcDay(s) {
+    s = String(s || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    var d = Date.parse(s + 'T00:00:00Z');
+    return isFinite(d) && new Date(d).toISOString().slice(0, 10) === s ? d / 86400000 : null;
+  }
+  // 주간 계열의 x는 주 시작일. 수집 시각이나 값의 감소율로 완료 여부를 추정하지 않는다.
+  function periodInfo(date, periodDays, asOf) {
+    var start = utcDay(date), cutoff = utcDay(asOf);
+    if (start == null || cutoff == null) return { partial: false, known: false };
+    var end = start + (periodDays || 1) - 1;
+    return { partial: start <= cutoff && cutoff < end, known: start <= cutoff,
+      end: new Date(end * 86400000).toISOString().slice(0, 10) };
+  }
+  function completeIndex(pack, periodDays, asOf) {
+    var dates = (pack || {}).dates || [];
+    for (var i = dates.length - 1; i >= 0; i--) {
+      var p = periodInfo(dates[i], periodDays, asOf);
+      if (p.known && !p.partial) return i;
+    }
+    return -1;
+  }
+
+  /* ============ 누적 막대 / 점유율 영역차트 (재사용) ============ */
+  // pack = {dates, series}, opts = {h, bars, pct, topN, id, periodDays, asOf}
   function stackedArea(pack, opts) {
     opts = opts || {};
-    var W = 900, H = opts.h || 240, PL2 = 8, PR2 = 52, PT2 = 12, PB2 = 22;
+    // 좁은 카드는 실제 CSS 폭으로 좌표계를 만들어 SVG 글자까지 1/3로 축소되는 것을 막는다.
+    var compact = opts.w > 0 && opts.w < 640;
+    var W = compact ? Math.max(220, opts.w) : 900, H = compact ? Math.max(210, opts.h || 240) : (opts.h || 240);
+    var PL2 = 8, PR2 = compact ? 48 : 52, PT2 = compact ? 15 : 12, PB2 = compact ? 26 : 22, axisSize = compact ? 10.5 : 9.5;
     var dates = pack.dates || [], keys = Object.keys(pack.series || {});
     if (!dates.length || !keys.length) return '<div class="or-empty">데이터 없음</div>';
     // 사용량이 지수 성장하므로 절대량 랭킹은 최근만 남는다 —
@@ -229,9 +260,13 @@
     main = main.filter(function (k) { return k !== 'Others' && k !== 'others'; }).concat(main.filter(function (k) { return k === 'Others' || k === 'others'; }));
 
     var n = dates.length;
+    var gid = opts.id || ('sa' + hashN(main.join(',')) % 100000);
+    var periods = dates.map(function (d) { return periodInfo(d, opts.periodDays, opts.asOf); });
     var stackTot = dates.map(function (_, i) { return main.reduce(function (s, k) { return s + (pack.series[k][i] || 0); }, 0); });
     var maxT = Math.max.apply(null, stackTot) || 1;
-    var x = function (i) { return PL2 + (W - PL2 - PR2) * (n === 1 ? 0.5 : i / (n - 1)); };
+    var slot = (W - PL2 - PR2) / n;
+    var barW = Math.min(44, slot * 0.76);
+    var x = function (i) { return PL2 + (W - PL2 - PR2) * (opts.bars ? (i + 0.5) / n : (n === 1 ? 0.5 : i / (n - 1))); };
     var y = function (v) { return PT2 + (H - PT2 - PB2) * (1 - v / (opts.pct ? 1 : maxT)); };
 
     var polys = '', legend = '', cum = dates.map(function () { return 0; });
@@ -246,6 +281,16 @@
     }
     layers.forEach(function (L, li) {
       var col = seriesColor(L.key, li);
+      if (opts.bars) {
+        for (var bi = 0; bi < n; bi++) {
+          var bv = pack.series[L.key][bi] || 0;
+          if (!bv) continue;
+          var hi = opts.pct ? L.hi[bi] / (stackTot[bi] || 1) : L.hi[bi];
+          var lo = opts.pct ? L.lo[bi] / (stackTot[bi] || 1) : L.lo[bi];
+          polys += '<rect class="or-stack-bar" data-period="' + esc(dates[bi]) + '" x="' + (x(bi) - barW / 2).toFixed(2) + '" y="' + y(hi).toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + Math.max(0, y(lo) - y(hi)).toFixed(2) + '" fill="' + col + '" fill-opacity="' + (periods[bi].partial ? '0.62' : '0.86') + '"/>';
+        }
+        return;
+      }
       var top = '', bot = '';
       for (var i = 0; i < n; i++) {
         var hv = opts.pct ? (stackTot[i] ? L.hi[i] / stackTot[i] : 0) : L.hi[i];
@@ -268,21 +313,36 @@
       var tv = (opts.pct ? t / 3 : maxT * t / 3);
       var ty = y(opts.pct ? t / 3 : tv);
       ticks += '<line x1="' + PL2 + '" y1="' + ty.toFixed(1) + '" x2="' + (W - PR2) + '" y2="' + ty.toFixed(1) + '" stroke="#1f2937" stroke-width="0.6" stroke-dasharray="3 4"/>' +
-        '<text x="' + (W - PR2 + 5) + '" y="' + (ty + 3.5).toFixed(1) + '" font-size="9.5" fill="' + DIM + '" font-family="ui-monospace,Menlo,monospace">' + (opts.pct ? Math.round(t / 3 * 100) + '%' : fmtTok(tv)) + '</text>';
+        '<text x="' + (W - PR2 + 5) + '" y="' + (ty + 3.5).toFixed(1) + '" font-size="' + axisSize + '" fill="' + DIM + '" font-family="ui-monospace,Menlo,monospace">' + (opts.pct ? Math.round(t / 3 * 100) + '%' : fmtTok(tv)) + '</text>';
     }
-    // x축 라벨 (5개)
+    // 미완료 주도 원본 누적값을 그대로 표시하되 빗금으로 완료 주와 구분한다.
+    var partial = '';
+    if (opts.bars) {
+      partial = '<defs><pattern id="' + gid + '-partial" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M-1 1L1 -1M0 6L6 0M5 7L7 5" stroke="#f6c85f" stroke-opacity="0.7" stroke-width="1"/></pattern></defs>';
+      periods.forEach(function (p, i) {
+        if (!p.partial) return;
+        var py = y(opts.pct ? (stackTot[i] ? 1 : 0) : stackTot[i]);
+        partial += '<rect data-partial-period="' + esc(dates[i]) + '" x="' + (x(i) - barW / 2).toFixed(2) + '" y="' + py.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + (H - PB2 - py).toFixed(2) + '" fill="url(#' + gid + '-partial)" stroke="#f6c85f" stroke-width="1" stroke-dasharray="3 2"/>';
+      });
+    }
+    // x축 라벨 (최대 5개, 짧은 fixture / 부분 수집에서도 중복하지 않음)
     var xl = '';
-    for (var xi = 0; xi < 5; xi++) {
-      var idx = Math.round((n - 1) * xi / 4);
-      var anchor = xi === 0 ? 'start' : (xi === 4 ? 'end' : 'middle');
-      xl += '<text x="' + x(idx).toFixed(1) + '" y="' + (H - 6) + '" font-size="9.5" fill="' + DIM + '" text-anchor="' + anchor + '" font-family="ui-monospace,Menlo,monospace">' + esc(String(dates[idx]).slice(2)) + '</text>';
+    var labelCount = Math.min(compact ? 3 : 5, n);
+    for (var xi = 0; xi < labelCount; xi++) {
+      var idx = labelCount === 1 ? 0 : Math.round((n - 1) * xi / (labelCount - 1));
+      var anchor = xi === 0 ? 'start' : (xi === labelCount - 1 ? 'end' : 'middle');
+      xl += '<text x="' + x(idx).toFixed(1) + '" y="' + (H - 6) + '" font-size="' + axisSize + '" fill="' + (periods[idx].partial ? '#f6c85f' : DIM) + '" text-anchor="' + anchor + '" font-family="ui-monospace,Menlo,monospace">' + esc(String(dates[idx]).slice(2)) + (periods[idx].partial ? '*' : '') + '</text>';
     }
-    var gid = opts.id || ('sa' + hashN(main.join(',')) % 100000);
-    var html = '<div class="or-plot" data-sa="' + gid + '"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + ticks + polys +
+    var note = '';
+    if (opts.periodDays === 7) {
+      var lp = periods[n - 1];
+      note = '<div class="or-period-note">' + (lp.partial ? '<span class="or-period-swatch"></span><b>진행 중인 주 · ' + esc(dates[n - 1]) + ' 시작</b> · 기준일 ' + esc(opts.asOf) + '. 현재 누적값이므로 완료 주와 집계 기간이 다릅니다.' : (lp.known ? '막대 1개 = 1주(UTC) · 날짜는 주 시작일입니다.' : '막대 1개 = 1주(UTC) · 최신 주의 집계 완료 여부를 확인할 기준일이 없습니다.')) + '</div>';
+    }
+    var html = '<div class="or-plot" data-sa="' + gid + '" tabindex="0" role="group" aria-label="' + (opts.bars ? '누적 막대 그래프' : '점유율 그래프') + ', 좌우 방향키 또는 터치로 날짜별 상세 확인"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + ticks + polys + partial +
       '<line class="or-guide" x1="0" y1="' + PT2 + '" x2="0" y2="' + (H - PB2) + '" stroke="#e6edf3" stroke-opacity="0" stroke-width="1"/>' + xl + '</svg>' +
-      '<div class="or-tip"></div></div><div class="or-lgd">' + legend + '</div>';
+      '<div class="or-tip" role="status"></div></div>' + note + '<div class="or-lgd">' + legend + '</div>';
     // 호버 데이터 저장
-    stackedArea._store[gid] = { dates: dates, main: main, series: pack.series, tot: stackTot, pct: !!opts.pct, W: W, PL: PL2, PR: PR2, labelFn: opts.labelFn };
+    stackedArea._store[gid] = { dates: dates, main: main, series: pack.series, tot: stackTot, pct: !!opts.pct, bars: !!opts.bars, W: W, PL: PL2, PR: PR2, labelFn: opts.labelFn, periods: periods, periodDays: opts.periodDays, asOf: opts.asOf, unit: opts.unit || '토큰' };
     return html;
   }
   stackedArea._store = {};
@@ -291,25 +351,47 @@
     root.querySelectorAll('.or-plot[data-sa]').forEach(function (plot) {
       var st = stackedArea._store[plot.dataset.sa]; if (!st) return;
       var svg = plot.querySelector('svg'), tip = plot.querySelector('.or-tip'), guide = plot.querySelector('.or-guide');
-      plot.addEventListener('mousemove', function (ev) {
+      var active = st.dates.length - 1, shown = -1;
+      function show(i) {
+        if (i === shown) return;
         var r = svg.getBoundingClientRect();
-        var fx = (ev.clientX - r.left) / r.width * st.W;
-        var frac = Math.min(1, Math.max(0, (fx - st.PL) / (st.W - st.PL - st.PR)));
-        var i = Math.round(frac * (st.dates.length - 1));
+        if (!r.width) return;
+        active = i; shown = i;
+        var frac = st.bars ? (i + 0.5) / st.dates.length : (st.dates.length === 1 ? 0.5 : i / (st.dates.length - 1));
+        var fx = st.PL + frac * (st.W - st.PL - st.PR);
         var rows = st.main.map(function (k) { return [k, st.series[k][i] || 0]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 6);
-        var tot = st.tot[i] || 1;
-        tip.innerHTML = '<b>' + esc(st.dates[i]) + '</b> · 합계 ' + fmtTok(tot) + '<br>' + rows.map(function (rw) {
+        var tot = st.tot[i], period = st.periods[i];
+        tip.innerHTML = '<b>' + esc(st.dates[i]) + (st.periodDays === 7 ? ' 시작 주' : '') + '</b>' + (period.partial ? ' · <b style="color:#f6c85f">진행 중</b>' : '') + '<br>합계 ' + fmtTok(tot) + ' ' + esc(st.unit) + (period.partial ? ' · 기준일 ' + esc(st.asOf) : '') + '<br>' + rows.map(function (rw) {
           var lb = (rw[0] === 'Others' || rw[0] === 'others') ? '기타' : (st.labelFn ? st.labelFn(rw[0]) : nameOf(rw[0]));
-          return '<span style="color:' + seriesColor(rw[0], 0) + '">●</span> ' + esc(lb) + ' ' + (st.pct ? fmtPct(rw[1] / tot) : fmtTok(rw[1]));
+          return '<span style="color:' + seriesColor(rw[0], 0) + '">●</span> ' + esc(lb) + ' ' + (st.pct ? fmtPct(tot ? rw[1] / tot : 0) : fmtTok(rw[1]));
         }).join('<br>');
-        var px = (st.PL + frac * (st.W - st.PL - st.PR)) / st.W * r.width;
-        tip.style.left = Math.min(r.width - 90, Math.max(90, px)) + 'px';
+        var px = fx / st.W * r.width;
+        var half = Math.min(r.width / 2, tip.offsetWidth / 2 + 6);
+        tip.style.left = Math.min(r.width - half, Math.max(half, px)) + 'px';
         tip.style.top = '6px';
         guide.setAttribute('x1', fx.toFixed(1)); guide.setAttribute('x2', fx.toFixed(1));
         guide.setAttribute('stroke-opacity', '0.35');
         plot.classList.add('on');
+      }
+      function fromPointer(ev) {
+        var r = svg.getBoundingClientRect();
+        if (!r.width) return;
+        var fx = (ev.clientX - r.left) / r.width * st.W;
+        var frac = Math.min(1, Math.max(0, (fx - st.PL) / (st.W - st.PL - st.PR)));
+        show(st.bars ? Math.min(st.dates.length - 1, Math.floor(frac * st.dates.length)) : Math.round(frac * (st.dates.length - 1)));
+      }
+      function hide() { shown = -1; plot.classList.remove('on'); guide.setAttribute('stroke-opacity', '0'); }
+      plot.addEventListener('pointermove', fromPointer);
+      plot.addEventListener('pointerdown', fromPointer);
+      plot.addEventListener('pointerleave', function (ev) { if (ev.pointerType !== 'touch') hide(); });
+      plot.addEventListener('focus', function () { show(active); });
+      plot.addEventListener('blur', hide);
+      plot.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') { hide(); return; }
+        if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(ev.key) < 0) return;
+        ev.preventDefault();
+        show(ev.key === 'Home' ? 0 : ev.key === 'End' ? st.dates.length - 1 : Math.max(0, Math.min(st.dates.length - 1, active + (ev.key === 'ArrowLeft' ? -1 : 1))));
       });
-      plot.addEventListener('mouseleave', function () { plot.classList.remove('on'); guide.setAttribute('stroke-opacity', '0'); });
     });
   }
 
@@ -350,14 +432,14 @@
 
     el.innerHTML = '<div class="or-wrap">' + hero() + nav() + kpis() +
       sec('lb', '🏆 리더보드', '토큰 처리량 순위 · 변화율 = 전주 대비', chipRow('view', [['day', '오늘'], ['week', '주간'], ['month', '월간'], ['trending', '트렌딩']], ST.view)) +
-      sec('top', '📈 Top Models — 주간 사용량', '52주 · 상위 10개 모델 + 기타 · 토큰 기준') +
+      sec('top', '📊 Top Models — 주간 사용량', '주별 누적 막대 · 주요 모델 + 기타 · 토큰 기준') +
       sec('share', '🧩 시장 점유율 — 모델 제작사', 'OpenRouter 텍스트 토큰 점유율', chipRow('share', [['pct', '비율'], ['abs', '절대']], ST.share)) +
       sec('bench', '🧠 벤치마크 — Artificial Analysis', '지수 상위 모델 · OpenRouter 실사용 모델 기준', chipRow('bench', [['intelligence', '지능'], ['coding', '코딩'], ['agentic', '에이전틱']], ST.bench)) +
       sec('task', '🗂 태스크별 점유율', '최근 30일 · 태스크 분류별 상위 모델', chipRow('taskSide', [['spend', '지출 기준'], ['tokens', '토큰 기준']], ST.taskSide)) +
       sec('cost', '💸 코딩 세션 비용', '유료 사용 중앙값 · 세션 길이별(단발/짧은/본격)', chipRow('harness', (data.session_cost.harnesses || []).map(function (h) { return [h.label, h.label]; }), ST.harness)) +
       sec('lang', '🌐 자연어별 사용량', '일간 토큰 · 3일 이동평균 계열', chipRow('lang', Object.keys(data.languages || {}).map(function (k) { return [k, langKo(k)]; }), ST.lang)) +
-      sec('prog', '💻 프로그래밍 언어별', '코드 컨텍스트 감지 기준', chipRow('prog', Object.keys(data.programming || {}).map(function (k) { return [k, k]; }), ST.prog)) +
-      sec('ctx', '📏 컨텍스트 길이별 요청', '프롬프트+컴플리션 길이 버킷', chipRow('ctx', [['1K', '< 1K'], ['10K', '1K–10K'], ['100K', '10K–100K'], ['1M', '100K–1M'], ['10M', '1M–10M']], ST.ctx)) +
+      sec('prog', '💻 프로그래밍 언어별', '원본 일간 계열 · 코드 컨텍스트 감지 기준', chipRow('prog', Object.keys(data.programming || {}).map(function (k) { return [k, k]; }), ST.prog)) +
+      sec('ctx', '📏 컨텍스트 길이별 요청', '주간 요청 수 · 프롬프트+컴플리션 길이 버킷', chipRow('ctx', [['1K', '< 1K'], ['10K', '1K–10K'], ['100K', '10K–100K'], ['1M', '100K–1M'], ['10M', '1M–10M']], ST.ctx)) +
       sec('tools', '🔧 툴콜 · 🖼 이미지', '주간 툴 호출 수 / 처리 이미지 수') +
       sec('apps', '📱 Top Apps', 'OpenRouter 경유 토큰 상위 앱', chipRow('apps', [['day', '오늘'], ['week', '주간'], ['month', '월간']], ST.apps)) +
       sec('perf', '⚡ 성능 — 지연 vs 처리량', 'p50 기준 · 버블 크기 = 주간 요청 수') +
@@ -382,24 +464,25 @@
       var gain = (data.leaderboard.trending || []).filter(function (r) { return r.ch != null && r.tok > 1e9; })
         .sort(function (a, b) { return b.ch - a.ch; })[0];
       var ts = data.tools_series || { series: {} }, isr = data.images_series || { series: {} };
-      var wkTc = sum(Object.keys(ts.series).map(function (k) { return last(ts.series[k]) || 0; }));
-      var wkImg = sum(Object.keys(isr.series).map(function (k) { return last(isr.series[k]) || 0; }));
+      var tcIndex = completeIndex(ts, 7, data.as_of), imgIndex = completeIndex(isr, 7, data.as_of);
+      var wkTc = tcIndex < 0 ? null : sum(Object.keys(ts.series).map(function (k) { return ts.series[k][tcIndex] || 0; }));
+      var wkImg = imgIndex < 0 ? null : sum(Object.keys(isr.series).map(function (k) { return isr.series[k][imgIndex] || 0; }));
       var app1 = (data.apps.week || [])[0];
       var ms = data.market_share, lastShare = null, lead = null;
       if (ms && ms.dates && ms.dates.length) {
-        var li = ms.dates.length - 1, tot2 = 0, best = null;
-        Object.keys(ms.series).forEach(function (a) { var v = ms.series[a][li] || 0; tot2 += v; if (a !== 'others' && (!best || v > best[1])) best = [a, v]; });
+        var li = completeIndex(ms, 7, data.as_of), tot2 = 0, best = null;
+        if (li >= 0) Object.keys(ms.series).forEach(function (a) { var v = ms.series[a][li] || 0; tot2 += v; if (a !== 'others' && (!best || v > best[1])) best = [a, v]; });
         if (best && tot2) { lead = best[0]; lastShare = best[1] / tot2; }
       }
       function kpi(color, lab, val, sub) { return '<div class="or-kpi" style="--kc:' + color + '"><div class="lab">' + lab + '</div><div class="val">' + val + '</div><div class="sub">' + sub + '</div></div>'; }
       return '<div class="or-kpis">' +
-        kpi(ACC, '주간 총 토큰 (상위 60)', fmtTok(totTok), fmtTok(totRq) + ' 요청') +
+        kpi(ACC, '최근 7일 토큰 (상위 60)', fmtTok(totTok), fmtTok(totRq) + ' 요청') +
         kpi('#f6c85f', '1위 모델', top1 ? esc(nameOf(top1.m)) : '—', top1 ? '점유 ' + fmtPct(top1.tok / totTok) + ' · ' + fmtTok(top1.tok) : '') +
         kpi(UP, '최대 상승 모델', gain ? esc(nameOf(gain.m)) : '—',
           gain ? '전주 대비 ' + (gain.ch >= 10 ? '×' + (gain.ch + 1).toFixed(0)
             : (gain.ch >= 0 ? '+' : '−') + Math.abs(gain.ch * 100).toFixed(0) + '%') : '') +
-        kpi('#b892ff', '제작사 점유 1위', lead ? esc(authorName(lead)) : '—', lastShare != null ? '주간 토큰의 ' + fmtPct(lastShare) : '') +
-        kpi('#ff8a3d', '주간 툴 호출', fmtTok(wkTc), '이미지 처리 ' + fmtTok(wkImg) + '장') +
+        kpi('#b892ff', '최근 완료 주 점유 1위', lead ? esc(authorName(lead)) : '—', lastShare != null ? esc(ms.dates[li]) + ' 시작 · ' + fmtPct(lastShare) : '집계 기준일 확인 필요') +
+        kpi('#ff8a3d', '최근 완료 주 툴 호출', fmtTok(wkTc), tcIndex < 0 ? '집계 기준일 확인 필요' : esc(ts.dates[tcIndex]) + ' 시작 · 이미지 ' + (imgIndex >= 0 && isr.dates[imgIndex] === ts.dates[tcIndex] ? fmtTok(wkImg) + '장' : '—')) +
         kpi('#7ec8e3', 'Top App', app1 ? esc(app1.title) : '—', app1 ? fmtTok(app1.tok) + ' · 주간' : '') +
         '</div>';
     }
@@ -416,6 +499,31 @@
       return M[k] || k;
     }
     function body(id) { return W.querySelector('[data-body="' + id + '"]'); }
+    function usageChart(pack, options) {
+      var card = body({ topchart: 'top', mshare: 'share', imgs: 'tools' }[options.id] || options.id);
+      var width = card.clientWidth || 0;
+      if (width && window.getComputedStyle) {
+        var style = window.getComputedStyle(card);
+        width -= (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+        if ((options.id === 'tools' || options.id === 'imgs') && window.matchMedia('(min-width:981px)').matches) width = (width - 12) / 2;
+      }
+      options.w = Math.round(width);
+      return stackedArea(clonePack(pack), options);
+    }
+
+    function syncNavOffset() {
+      var navEl = W.querySelector('.or-nav');
+      if (!navEl || !window.getComputedStyle) return;
+      var style = window.getComputedStyle(el), containerScroll = /auto|scroll|overlay/.test(style.overflowY);
+      var padding = parseFloat(style.paddingTop) || 0, headerInset = 0;
+      if (!containerScroll) {
+        var header = el.ownerDocument.querySelector('#app > header');
+        if (header && /sticky|fixed/.test(window.getComputedStyle(header).position)) headerInset = header.getBoundingClientRect().height;
+      }
+      navEl.style.top = headerInset + 'px';
+      var margin = Math.ceil(navEl.getBoundingClientRect().height + (containerScroll ? padding : headerInset) + 12);
+      W.querySelectorAll('.or-sec').forEach(function (section) { section.style.scrollMarginTop = margin + 'px'; });
+    }
 
     /* ---- 각 섹션 렌더 ---- */
     function rLeaderboard() {
@@ -442,8 +550,8 @@
       var mb = body('lb').querySelector('[data-act]');
       if (mb) mb.onclick = function () { ST.lbLimit = mb.dataset.act === 'more' ? 60 : 20; rLeaderboard(); };
     }
-    function rTop() { body('top').innerHTML = stackedArea(clonePack(data.top_chart), { h: 260, topN: 10, id: 'topchart' }); bindStackHover(body('top')); }
-    function rShare() { body('share').innerHTML = stackedArea(clonePack(data.market_share), { h: 250, topN: 12, pct: ST.share === 'pct', id: 'mshare', labelFn: authorName }); bindStackHover(body('share')); }
+    function rTop() { body('top').innerHTML = usageChart(data.top_chart, { h: 260, bars: true, periodDays: 7, asOf: data.as_of, topN: 10, id: 'topchart' }); bindStackHover(body('top')); }
+    function rShare() { body('share').innerHTML = usageChart(data.market_share, { h: 250, bars: true, periodDays: 7, asOf: data.as_of, topN: 12, pct: ST.share === 'pct', id: 'mshare', labelFn: authorName }); bindStackHover(body('share')); }
     function rBench() {
       var rows = (data.benchmarks[ST.bench] || []).slice(0, 22);
       if (!rows.length) { body('bench').innerHTML = '<div class="or-empty">데이터 없음</div>'; return; }
@@ -496,14 +604,14 @@
         }).join('') + '</tbody></table></div>';
       body('cost').innerHTML = html;
     }
-    function rLang() { var p = data.languages[ST.lang]; body('lang').innerHTML = p ? stackedArea(clonePack(p), { h: 220, topN: 9, id: 'lang' }) : '<div class="or-empty">데이터 없음</div>'; bindStackHover(body('lang')); }
-    function rProg() { var p = data.programming[ST.prog]; body('prog').innerHTML = p ? stackedArea(clonePack(p), { h: 220, topN: 9, id: 'prog' }) : '<div class="or-empty">데이터 없음</div>'; bindStackHover(body('prog')); }
-    function rCtx() { var p = data.context[ST.ctx]; body('ctx').innerHTML = p ? stackedArea(clonePack(p), { h: 220, topN: 9, id: 'ctx' }) : '<div class="or-empty">데이터 없음</div>'; bindStackHover(body('ctx')); }
+    function rLang() { var p = data.languages[ST.lang]; body('lang').innerHTML = p ? usageChart(p, { h: 220, bars: true, periodDays: 1, asOf: data.as_of, unit: '토큰 (3일 이동평균)', topN: 9, id: 'lang' }) : '<div class="or-empty">데이터 없음</div>'; bindStackHover(body('lang')); }
+    function rProg() { var p = data.programming[ST.prog]; body('prog').innerHTML = p ? usageChart(p, { h: 220, bars: true, periodDays: 1, asOf: data.as_of, topN: 9, id: 'prog' }) : '<div class="or-empty">데이터 없음</div>'; bindStackHover(body('prog')); }
+    function rCtx() { var p = data.context[ST.ctx]; body('ctx').innerHTML = p ? usageChart(p, { h: 220, bars: true, periodDays: 7, asOf: data.as_of, unit: '요청', topN: 9, id: 'ctx' }) : '<div class="or-empty">데이터 없음</div>'; bindStackHover(body('ctx')); }
     function rTools() {
       body('tools').innerHTML = '<div class="or-grid2"><div><div style="font-size:12px;font-weight:750;margin-bottom:8px">🔧 툴 호출 수 (주간)</div>' +
-        stackedArea(clonePack(data.tools_series), { h: 190, topN: 8, id: 'tools' }) + '</div>' +
+        usageChart(data.tools_series, { h: 190, bars: true, periodDays: 7, asOf: data.as_of, unit: '회', topN: 8, id: 'tools' }) + '</div>' +
         '<div><div style="font-size:12px;font-weight:750;margin-bottom:8px">🖼 처리 이미지 수 (주간)</div>' +
-        stackedArea(clonePack(data.images_series), { h: 190, topN: 8, id: 'imgs' }) + '</div></div>';
+        usageChart(data.images_series, { h: 190, bars: true, periodDays: 7, asOf: data.as_of, unit: '장', topN: 8, id: 'imgs' }) + '</div></div>';
       bindStackHover(body('tools'));
     }
     function rApps() {
@@ -570,6 +678,16 @@
 
     /* ---- 칩 이벤트 (위임) ---- */
     W.addEventListener('click', function (ev) {
+      var link = ev.target.closest('.or-nav a');
+      if (link) {
+        var target = W.querySelector(link.getAttribute('href'));
+        if (target) {
+          ev.preventDefault();
+          syncNavOffset();
+          target.scrollIntoView({ block: 'start', behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' });
+        }
+        return;
+      }
       var b = ev.target.closest('.or-chip'); if (!b) return;
       var row = b.closest('[data-ck]'); if (!row) return;
       var key = row.dataset.ck, val = b.dataset.cv;
@@ -588,6 +706,20 @@
     });
 
     rLeaderboard(); rTop(); rShare(); rBench(); rTask(); rCost(); rLang(); rProg(); rCtx(); rTools(); rApps(); rPerf();
+    if (window.getComputedStyle) syncNavOffset();
+    // 회전 / 창 크기 변경 시 사용량 그래프만 새 폭으로 그린다. 재진입 시 이전 리스너를 정리한다.
+    if (window.addEventListener) {
+      if (el.__orResize) window.removeEventListener('resize', el.__orResize);
+      if (el.__orResizeTimer) window.clearTimeout(el.__orResizeTimer);
+      el.__orResize = function () {
+        window.clearTimeout(el.__orResizeTimer);
+        el.__orResizeTimer = window.setTimeout(function () {
+          if (!el.isConnected || el.hidden || !el.clientWidth) return;
+          rTop(); rShare(); rLang(); rProg(); rCtx(); rTools(); syncNavOffset();
+        }, 100);
+      };
+      window.addEventListener('resize', el.__orResize, { passive: true });
+    }
   };
 
   function shallowPick(obj, keys) { var o = {}; keys.forEach(function (k) { o[k] = obj[k]; }); return o; }

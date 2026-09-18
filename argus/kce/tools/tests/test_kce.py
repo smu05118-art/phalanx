@@ -9,6 +9,7 @@ argus/kce/<co>/index.html에 임베드된 DATA의 2026Q2(실측) 값과 일치�
 import json
 import os
 import sys
+import time
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +36,20 @@ def _fx(name):
 
 def _data(co):
     return extract_data(os.path.join(KCE, co, "index.html"))
+
+
+class TestDecode(unittest.TestCase):
+    """거래소공시(EUC-KR) 판정 — 접수번호 9번째 자리가 8이면 전부 EUC-KR 이다."""
+
+    def test_exchange_filings_are_euc_kr(self):
+        from kce_fetch import _decode
+        body = "단일판매".encode("euc-kr")
+        for rcp in ("20250327800122", "20250327801172", "20260213801163"):
+            self.assertEqual(_decode(body, rcp), "단일판매", rcp)
+
+    def test_regular_reports_are_utf8(self):
+        from kce_fetch import _decode
+        self.assertEqual(_decode("반기".encode("utf-8"), "20260814002879"), "반기")
 
 
 class TestNorm(unittest.TestCase):
@@ -210,6 +225,96 @@ class TestDataContract(unittest.TestCase):
                     self.assertEqual(sum(v or 0 for v in vals),
                                      D["summary"]["total"][k], (co, k))
 
+class TestDartGate(unittest.TestCase):
+    """DART는 공인 IP 단위로 막는다 — 수집기 프로세스가 여러 개여도 총 요청률은 하나여야 한다."""
+
+    def test_pace_is_shared_across_processes(self):
+        import subprocess
+        import tempfile
+        import kce_fetch
+        if kce_fetch.fcntl is None:
+            self.skipTest("fcntl 없음 — 프로세스 간 게이트 비활성")
+        gate = os.path.join(tempfile.mkdtemp(), "gate")
+        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        code = ("import sys, time; sys.path.insert(0, %r); import kce_fetch as f; f.MIN_GAP = 0.3\n"
+                "t = time.time()\n"
+                "[f._pace() for _ in range(4)]\n"
+                "print('%%.3f' %% (time.time() - t))" % here)
+        env = dict(os.environ, DART_GATE=gate)
+        t0 = time.time()
+        ps = [subprocess.Popen([sys.executable, "-c", code], env=env, stdout=subprocess.PIPE, text=True)
+              for _ in range(3)]
+        for p in ps:
+            p.communicate()
+        elapsed = time.time() - t0
+        # 12요청 × 0.3초 = 3.6초. 게이트가 없으면 프로세스마다 1.2초(≈1.2초 전체)로 끝난다.
+        self.assertGreater(elapsed, 3.6 * 0.7, "프로세스 간 요청 간격이 지켜지지 않는다(%0.2fs)" % elapsed)
+
+class TestPickReport(unittest.TestCase):
+    """[첨부정정] 문서는 본문이 '정정 신고'·'영업보고서' 두 줄뿐이라 II절이 없을 때가 많다 —
+    기준월이 맞아도 원본 뒤로 민다(버리지는 않는다). kaero 웨이브가 실측으로 보고한 건."""
+
+    def test_pick_report_defers_attachment_corrections(self):
+        from kce_fetch import pick_report
+        reports = [("2026A", "[첨부정정]반기보고서 (2026.06)"),
+                   ("2026B", "반기보고서 (2026.06)"),
+                   ("2025C", "반기보고서 (2025.06)")]
+        got = [r for r, _ in pick_report(reports, "2026Q2")]
+        self.assertEqual(got, ["2026B", "2026A", "2025C"])
+
+    def test_pick_report_keeps_correction_when_it_is_the_only_one(self):
+        from kce_fetch import pick_report
+        reports = [("2026A", "[첨부정정]반기보고서 (2026.06)"), ("2025C", "반기보고서 (2025.06)")]
+        self.assertEqual([r for r, _ in pick_report(reports, "2026Q2")], ["2026A", "2025C"])
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestOrderTableVariants(unittest.TestCase):
+    """2026Q2 원문 실측으로 확인한 두 변형. 셋 다 '미수록'으로 남아 있던 회사들이다.
+    증거: tools/assets/unrecorded_probe.json (접수번호·표 lead·행)."""
+
+    def _tab(self, html):
+        from kce_parse import parse_ii4
+        return parse_ii4(html)
+
+    def test_progress_style_order_table(self):
+        """특수건설 `나. 수주현황` — 도급액·완성공사액·잔액 대신 계약금액·진행률(%)."""
+        html = ("<p>나. 수주현황 (단위: 원)</p><table>"
+                "<tr><th>현장명</th><th>구분</th><th>계약금액</th><th>계약일</th>"
+                "<th>종료예정일</th><th>진행률(%)</th></tr>"
+                "<tr><td>영종도해저송수관로</td><td>쉴드</td><td>33,400,584,000</td>"
+                "<td>2022/06/02</td><td>2026/12/19</td><td>94.91%</td></tr></table>")
+        out = self._tab(html)
+        self.assertEqual(len(out["tables"]), 1, "진행률형 수주표를 인식하지 못했다")
+        r = out["tables"][0]["rows"][0]
+        self.assertEqual(r["nm"], "영종도해저송수관로")
+        self.assertAlmostEqual(r["amt"], 33400.584, places=3)        # 원 → 백만원
+        self.assertEqual(r["ed"], "2026/12/19")                       # 종료예정일 별칭
+        self.assertAlmostEqual(r["cmp"], 33400.584 * 0.9491, places=2)
+        self.assertIn("cmp", r.get("_derived", ""), "유도값 표시가 없다")
+
+    def test_unit_caption_row_does_not_kill_table(self):
+        """KCC건설 상세표 — 첫 행이 `(단위:원)` 반복이라 머리행 감지가 실패하던 표."""
+        html = ("<p>(1) 관급공사</p><table>"
+                "<tr><td>(단위:원)</td><td>(단위:원)</td><td>(단위:원)</td>"
+                "<td>(단위:원)</td><td>(단위:원)</td></tr>"
+                "<tr><td>발 주 처</td><td>공 사 명</td><td>기본도급액</td>"
+                "<td>완성공사액</td><td>계약잔액</td></tr>"
+                "<tr><td>국가철도공단</td><td>삼성동탄 광역철도 1공구</td><td>70,083,347,955</td>"
+                "<td>69,157,646,103</td><td>925,701,852</td></tr></table>")
+        out = self._tab(html)
+        self.assertEqual(len(out["tables"]), 1, "단위 캡션 행 때문에 표가 버려졌다")
+        r = out["tables"][0]["rows"][0]
+        self.assertEqual(r["cl"], "국가철도공단")
+        self.assertAlmostEqual(r["amt"], 70083.347955, places=5)      # 캡션이 살아 원→백만원 환산
+        self.assertAlmostEqual(r["bal"], 925.701852, places=5)
+
+    def test_revenue_table_is_not_taken_as_orders(self):
+        """매출실적 표를 수주표로 세면 안 된다 — 미수록 5사가 이 함정에 걸려 있었다."""
+        html = ("<p>4. 매출 및 수주상황 가. 매출실적 (단위: 백만원)</p><table>"
+                "<tr><th>사업부문</th><th>매출유형</th><th>품목</th><th>제29기</th></tr>"
+                "<tr><td>인테리어</td><td>제품</td><td>건설공사</td><td>4,442</td></tr></table>")
+        self.assertEqual(len(self._tab(html)["tables"]), 0)

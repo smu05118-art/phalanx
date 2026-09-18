@@ -119,6 +119,7 @@ def _expand_grid(grid):
 
 
 # 헤더 어휘(정규화 후) — th 태그가 없는 표의 머리행 감지용
+_UNIT_ONLY = re.compile(r"\(?\s*단위\s*[:：][^)]*\)?")
 _HDR_VOCAB = set(COL_ALIAS) | {"비고", "구분", "합계", "신고일자", "품목", "회사명"}
 
 
@@ -135,6 +136,20 @@ def _split_header(mat):
     """행렬 → (평탄화 헤더 목록, 데이터 행들, 데이터 행별 colspan).
     헤더 = 선두의 th-포함 행 묶음(없으면 어휘 기반 감지). 다층이면 부모 프리픽스로 결합.
     colspan은 데이터 행에서만 쓰므로 헤더 행 몫은 잘라내고 같은 길이로 돌려준다."""
+    # 첫 행이 단위 캡션만 반복하는 표가 있다(KCC건설 상세표: `(단위:원)` × 7열).
+    # 그 행을 머리행 후보로 보면 어휘 감지가 실패해 표 전체가 버려진다 — 캡션 행은 걷어낸다.
+    skip = 0
+    while skip < len(mat) - 1:
+        cells = [c[0].strip() for c in mat[skip]]
+        uniq = {c for c in cells if c}
+        if uniq and len(uniq) == 1 and _UNIT_ONLY.fullmatch(next(iter(uniq))):
+            skip += 1
+        else:
+            break
+    caption = ""
+    if skip:
+        caption = " ".join(dict.fromkeys(c[0].strip() for c in mat[0] if c[0].strip()))
+        mat = mat[skip:]
     nh = 0
     for r in mat:
         if any(c[1] for c in r):
@@ -148,7 +163,7 @@ def _split_header(mat):
     txt = [[c[0] for c in r] for r in mat[nh:]]
     spans = [[c[2] for c in r] for r in mat[nh:]]
     if nh == 0:
-        return [], txt, spans
+        return [], txt, spans, caption
     width = max(len(r) for r in mat[:nh])
     cols = []
     for j in range(width):
@@ -158,7 +173,7 @@ def _split_header(mat):
             if t and (not parts or parts[-1] != t):
                 parts.append(t)
         cols.append(" ".join(parts))
-    return cols, txt, spans
+    return cols, txt, spans, caption
 
 
 def parse_tables(html):
@@ -168,10 +183,11 @@ def parse_tables(html):
     out = []
     for t in p.tables:
         mat = _expand_grid(t["grid"])
-        cols, rows, spans = _split_header(mat)
+        cols, rows, spans, caption = _split_header(mat)
         ncols = [norm_col(c) for c in cols]
         fields = [COL_ALIAS.get(c) for c in ncols]
-        out.append({"lead": t["lead"], "cols": cols, "ncols": ncols,
+        lead = ((t["lead"] or "") + " " + caption).strip() if caption else t["lead"]
+        out.append({"lead": lead, "cols": cols, "ncols": ncols,
                     "fields": fields, "rows": rows, "spans": spans,
                     "inherited": False})
     # 머리행 계승: 헤더 없는 표가 직전 헤더 표와 열수가 같으면 연속 표로 간주
@@ -390,6 +406,46 @@ def _records(t, need):
     return recs
 
 
+# 진행률형 수주표 — 도급액·완성공사액·잔액 세 열 대신 **계약금액과 진행률(%)** 로 적는 회사가 있다.
+# 2026Q2 원문 실측: 특수건설 `나. 수주현황`(현장명·구분·계약금액·계약일·종료예정일·진행률(%)·미청구공사…),
+# 엄지하우스(현장명·수주일자·납기·진행률(%)·수주잔고 금액·공사미수금). 기존 `_II4_NEED` 로는 통째로 버려져
+# 두 회사가 '미수록'으로 남아 있었다. 완성공사액·잔액은 **유도값**이므로 표시로 남긴다(원문 값이 아니다).
+_PR_NEED = {"nm", "pr"}
+
+
+def _progress_records(t):
+    """진행률형 표 → II-4 레코드. amt(계약금액) 또는 bal(수주잔고) 중 하나는 있어야 한다."""
+    recs = _records(t, _PR_NEED)
+    if not recs:
+        return None
+    out = []
+    for r in recs:
+        pr = r.get("pr")
+        amt = r.get("amt")
+        if amt is None:
+            amt = r.get("xi_amt")          # '계약금액' 은 XI-1 별칭으로 먼저 잡힌다
+        bal = r.get("bal")
+        if pr is None or (amt is None and bal is None):
+            continue
+        p = pr / 100.0 if pr > 1 else pr
+        if not (0.0 <= p <= 1.0):
+            continue
+        if amt is None and bal is not None and p < 1.0:
+            amt = round(bal / (1.0 - p), 6) if p < 1.0 else None   # 잔고·진행률 → 도급액(유도)
+            r["_derived"] = "amt"
+        if amt is None:
+            continue
+        r["amt"] = amt
+        if r.get("cmp") is None:
+            r["cmp"] = round(amt * p, 6)
+            r["_derived"] = (r.get("_derived") + "+cmp") if r.get("_derived") else "cmp"
+        if r.get("bal") is None:
+            r["bal"] = round(amt - r["cmp"], 6)
+            r["_derived"] = (r.get("_derived") or "") + "+bal"
+        out.append(r)
+    return out or None
+
+
 def parse_ii4(html):
     """II-4 수주상황(또는 XII 상세표) 절 → 사업장 행 목록 + 진단.
     복수 표(법인·관급/민간/해외 분할)를 전부 수집하며, 각 표의 lead를 tag로 보존."""
@@ -397,6 +453,8 @@ def parse_ii4(html):
     picked, unknown = [], []
     for t in tables:
         recs = _records(t, _II4_NEED)
+        if recs is None and re.search(r"수주", (t.get("lead") or "") + " ".join(t.get("cols") or [])):
+            recs = _progress_records(t)    # 진행률형 — 수주 문맥에서만 시도한다(매출실적 표 오인 방지)
         if recs is None:
             # 핵심 필드의 **절반 이상**이 매칭되는데 완성되지 않은 표만 경보한다.
             # (매출실적·시공실적 표처럼 '구분' 하나만 걸리는 표까지 경보하면

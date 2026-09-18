@@ -1,0 +1,427 @@
+{
+ "groups": [
+  {
+   "id": "NSSS",
+   "ko": "원자로계통",
+   "en": "Reactor systems"
+  },
+  {
+   "id": "TG",
+   "ko": "터빈·발전기",
+   "en": "Turbine & generator"
+  },
+  {
+   "id": "BOP",
+   "ko": "보조기기",
+   "en": "Balance of plant"
+  },
+  {
+   "id": "IANDC",
+   "ko": "계측제어",
+   "en": "I&C"
+  },
+  {
+   "id": "ELEC",
+   "ko": "전기설비",
+   "en": "Electrical"
+  },
+  {
+   "id": "ENG",
+   "ko": "설계·엔지니어링",
+   "en": "Engineering"
+  },
+  {
+   "id": "OM",
+   "ko": "정비·검사",
+   "en": "O&M & inspection"
+  },
+  {
+   "id": "MAT",
+   "ko": "소재·주단조",
+   "en": "Materials & forgings"
+  },
+  {
+   "id": "UNCL",
+   "ko": "미분류",
+   "en": "Unclassified"
+  }
+ ],
+ "cats": [
+  {
+   "id": "NSSS.RV",
+   "group": "NSSS",
+   "ko": "원자로·압력용기",
+   "en": "Reactor vessel",
+   "prio": 85,
+   "ctx": false,
+   "kw": [
+    "원자로용기",
+    "원자로압력용기",
+    "원자로\b",
+    "압력용기",
+    "핵증기공급",
+    "NSSS",
+    "격납"
+   ],
+   "neg": [],
+   "regions": [
+    "REACTOR",
+    "CONTAIN"
+   ]
+  },
+  {
+   "id": "NSSS.SG",
+   "group": "NSSS",
+   "ko": "증기발생기",
+   "en": "Steam generator",
+   "prio": 85,
+   "ctx": false,
+   "kw": [
+    "증기발생기",
+    "스팀제너레이터",
+    "가압기",
+    "냉각재펌프",
+    "원자로냉각재"
+   ],
+   "neg": [],
+   "regions": [
+    "SG",
+    "PZR"
+   ]
+  },
+  {
+   "id": "NSSS.FUEL",
+   "group": "NSSS",
+   "ko": "핵연료·연료취급",
+   "en": "Fuel",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "핵연료",
+    "연료집합체",
+    "연료취급",
+    "핵연료취급",
+    "원자력연료"
+   ],
+   "neg": [],
+   "regions": [
+    "FUEL"
+   ]
+  },
+  {
+   "id": "TG.TURBINE",
+   "group": "TG",
+   "ko": "증기터빈·가스터빈",
+   "en": "Turbines",
+   "prio": 75,
+   "ctx": false,
+   "kw": [
+    "증기터빈",
+    "가스터빈",
+    "터빈\b",
+    "터어빈",
+    "터빈블레이드",
+    "터빈로터",
+    "블레이드"
+   ],
+   "neg": [],
+   "regions": [
+    "TURB",
+    "GT"
+   ]
+  },
+  {
+   "id": "TG.GEN",
+   "group": "TG",
+   "ko": "발전기",
+   "en": "Generators",
+   "prio": 70,
+   "ctx": true,
+   "kw": [
+    "발전기",
+    "터빈발전기",
+    "여자기",
+    "회전자",
+    "고정자"
+   ],
+   "neg": [
+    "발전기자재"
+   ],
+   "regions": [
+    "GEN"
+   ]
+  },
+  {
+   "id": "BOP.HX",
+   "group": "BOP",
+   "ko": "열교환기·복수기",
+   "en": "Heat exchangers",
+   "prio": 75,
+   "ctx": false,
+   "kw": [
+    "열교환기",
+    "복수기",
+    "급수가열기",
+    "탈기기",
+    "냉각기",
+    "응축기"
+   ],
+   "neg": [],
+   "regions": [
+    "COND"
+   ]
+  },
+  {
+   "id": "BOP.VESSEL",
+   "group": "BOP",
+   "ko": "압력용기·저장탱크",
+   "en": "Vessels & tanks",
+   "prio": 70,
+   "ctx": true,
+   "kw": [
+    "압력용기",
+    "저장탱크",
+    "저장조",
+    "탱크",
+    "드럼",
+    "저장설비"
+   ],
+   "neg": [],
+   "regions": [
+    "COND"
+   ]
+  },
+  {
+   "id": "BOP.BOILER",
+   "group": "BOP",
+   "ko": "보일러·HRSG",
+   "en": "Boilers",
+   "prio": 75,
+   "ctx": false,
+   "kw": [
+    "보일러",
+    "HRSG",
+    "배열회수보일러",
+    "관류보일러",
+    "온수보일러",
+    "산업용보일러"
+   ],
+   "neg": [],
+   "regions": [
+    "BOILER"
+   ]
+  },
+  {
+   "id": "BOP.PUMP",
+   "group": "BOP",
+   "ko": "펌프·밸브·배관",
+   "en": "Pumps, valves & piping",
+   "prio": 60,
+   "ctx": true,
+   "kw": [
+    "펌프",
+    "밸브",
+    "배관",
+    "피팅",
+    "배관재",
+    "관로",
+    "송풍기",
+    "블로워"
+   ],
+   "neg": [],
+   "regions": [
+    "PUMP"
+   ]
+  },
+  {
+   "id": "BOP.ENV",
+   "group": "BOP",
+   "ko": "탈황·탈질·집진",
+   "en": "Emission control",
+   "prio": 70,
+   "ctx": false,
+   "kw": [
+    "탈황",
+    "탈질",
+    "집진",
+    "스크러버",
+    "전기집진",
+    "환경설비",
+    "SCR"
+   ],
+   "neg": [],
+   "regions": [
+    "STACK"
+   ]
+  },
+  {
+   "id": "IANDC.MMIS",
+   "group": "IANDC",
+   "ko": "계측제어·MMIS",
+   "en": "I&C / MMIS",
+   "prio": 80,
+   "ctx": false,
+   "kw": [
+    "계측제어",
+    "MMIS",
+    "RSP",
+    "원전계측",
+    "디지털제어",
+    "감시제어",
+    "원자로보호계통",
+    "안전등급제어"
+   ],
+   "neg": [],
+   "regions": [
+    "IC"
+   ]
+  },
+  {
+   "id": "IANDC.INSTR",
+   "group": "IANDC",
+   "ko": "계측기·센서",
+   "en": "Instruments & sensors",
+   "prio": 75,
+   "ctx": true,
+   "kw": [
+    "계측기",
+    "온도센서",
+    "노내계측",
+    "방사선측정",
+    "검출기",
+    "센서",
+    "측정기"
+   ],
+   "neg": [],
+   "regions": [
+    "IC"
+   ]
+  },
+  {
+   "id": "ELEC.SWGR",
+   "group": "ELEC",
+   "ko": "변압기·수배전",
+   "en": "Transformers & switchgear",
+   "prio": 65,
+   "ctx": true,
+   "kw": [
+    "변압기",
+    "배전반",
+    "수배전",
+    "개폐기",
+    "차단기",
+    "전동기",
+    "전력변환",
+    "가스절연"
+   ],
+   "neg": [],
+   "regions": [
+    "TRANSF"
+   ]
+  },
+  {
+   "id": "ELEC.CABLE",
+   "group": "ELEC",
+   "ko": "케이블·전선",
+   "en": "Cables",
+   "prio": 60,
+   "ctx": true,
+   "kw": [
+    "케이블",
+    "전선",
+    "전력케이블",
+    "제어케이블"
+   ],
+   "neg": [],
+   "regions": [
+    "TRANSF"
+   ]
+  },
+  {
+   "id": "ENG.DESIGN",
+   "group": "ENG",
+   "ko": "설계·엔지니어링",
+   "en": "Design",
+   "prio": 75,
+   "ctx": false,
+   "kw": [
+    "종합설계",
+    "기본설계",
+    "상세설계",
+    "설계용역",
+    "엔지니어링",
+    "감리",
+    "사업관리",
+    "원자로설계",
+    "기술용역"
+   ],
+   "neg": [],
+   "regions": []
+  },
+  {
+   "id": "OM.MAINT",
+   "group": "OM",
+   "ko": "정비·O&M",
+   "en": "Maintenance",
+   "prio": 70,
+   "ctx": false,
+   "kw": [
+    "경상정비",
+    "예방정비",
+    "계획예방정비",
+    "정비공사",
+    "정비용역",
+    "성능개선",
+    "개보수",
+    "오버홀",
+    "발전설비정비"
+   ],
+   "neg": [],
+   "regions": []
+  },
+  {
+   "id": "OM.INSP",
+   "group": "OM",
+   "ko": "검사·방사선관리",
+   "en": "Inspection & RP",
+   "prio": 75,
+   "ctx": false,
+   "kw": [
+    "방사선안전관리",
+    "방사선관리",
+    "비파괴검사",
+    "가동중검사",
+    "건전성평가",
+    "환경방사능",
+    "안전성평가"
+   ],
+   "neg": [],
+   "regions": []
+  },
+  {
+   "id": "MAT.FORGE",
+   "group": "MAT",
+   "ko": "주·단조·특수강",
+   "en": "Forgings & special steel",
+   "prio": 65,
+   "ctx": true,
+   "kw": [
+    "주단조",
+    "단조품",
+    "주조품",
+    "주강",
+    "특수강",
+    "합금강",
+    "소전",
+    "봉강",
+    "판재",
+    "클래드"
+   ],
+   "neg": [],
+   "regions": [
+    "REACTOR",
+    "TURB"
+   ]
+  }
+ ]
+}

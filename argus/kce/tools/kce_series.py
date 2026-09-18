@@ -684,7 +684,8 @@ def build(rec, quarters):
                 for key, row in pairs:
                     # 같은 분기의 다른 표에 같은 계약이 또 실리면 마지막 것만 남긴다
                     # (연결/별도 중복 게재). 자리는 처음 등장한 순서를 지킨다.
-                    entries[key] = {"row": row, "agg": is_agg, "f": _ident(row)}
+                    entries[key] = {"row": row, "agg": is_agg, "f": _ident(row),
+                                    "table_lead": tab.get('lead', '')}
                     mine += row.get("bal") or 0
             if tot is not None and tot.get("bal") is not None:
                 # 대조는 **그 총계가 덮는 표 안에서만** 성립한다. 합계행이 있는 표의
@@ -708,11 +709,27 @@ def build(rec, quarters):
                     "reg": reg, "seg": seg, "agg": e["agg"],
                     "sd": _norm_date(row.get("sd")), "ed": _norm_date(row.get("ed")),
                     "s": {f: [None] * n for f in ("amt", "cmp", "bal", "pr")},
+                    "observations": [None] * n,
+                    "events": [],
                 }
                 order.append(sid)
                 if e["agg"]:
                     agg_index[key] = sid
             s = sites[sid]
+            previous = next((x for x in reversed(s['observations'][:k]) if x), None)
+            obs = {field: row.get(field) for field in ('nm', 'cl', 'sd', 'ed', 'amt', 'cmp', 'bal', 'pr')}
+            obs['quarter'] = fq[k]
+            obs['rcpNo'] = d['rcpNo']
+            obs['table_lead'] = e.get('table_lead', '')
+            obs['progress_basis'] = 'reported' if row.get('pr') is not None else 'cmp_div_amt'
+            s['observations'][k] = obs
+            if previous:
+                for field in ('nm', 'cl', 'sd', 'ed', 'amt'):
+                    before, after = previous.get(field), obs.get(field)
+                    if before is not None and after is not None and before != after:
+                        s['events'].append({'quarter': fq[k], 'field': field,
+                                            'before': before, 'after': after,
+                                            'previous_quarter': previous['quarter']})
             for f in ("amt", "cmp", "bal"):
                 v = row.get(f)
                 if v is not None:
@@ -735,6 +752,12 @@ def build(rec, quarters):
     for s in site_list:              # 연결용 내부 필드는 페이지로 내보내지 않는다
         s.pop("_f", None)
         s.pop("_k", None)
+        # 인접 분기 원문 누계 차분만 계산한다. 빠진 분기와 음수 조정을 숨기지 않는다.
+        s['cmp_delta'] = [None] * n
+        for k in range(1, n):
+            prev, cur = s['s']['cmp'][k-1:k+1]
+            if prev is not None and cur is not None and len(q_range(fq[k-1], fq[k])) == 2:
+                s['cmp_delta'][k] = round(cur - prev, 6)
     summary = {f: [None] * n for f in ("amt", "cmp", "bal")}
     dom = [None] * n
     ovs = [None] * n
@@ -767,7 +790,7 @@ def build(rec, quarters):
             recon.append(None)
     over = [fq[k] for k, r in enumerate(recon) if r is not None and r > 102.0]
 
-    return {
+    result = {
         # aggFix는 **원문 값을 우리가 고친 분기**다. 잔여 묶음이 공시 총계를 넘겨
         # 총계에 맞춰 줄인 경우로, 숨기면 화면의 숫자가 원문과 다른 이유를 알 수 없다.
         "recon": recon, "reconOver": over, "aggFix": aggfix,
@@ -785,6 +808,8 @@ def build(rec, quarters):
         "summary": summary, "declared": declared, "dom": dom, "ovs": ovs,
         "segList": segs, "seg": seg_rows,
     }
+    from kce_detail import enrich
+    return enrich(result)
 
 
 def main():

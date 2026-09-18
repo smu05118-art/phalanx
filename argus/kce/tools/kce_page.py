@@ -26,6 +26,7 @@ import time
 from kce_lib import CORP, atomic_write, json_for_html, latest_quarter
 from kce_universe import CONSTRUCTION_INDUSTRIES, load as load_universe
 import kce_series
+import kce_detail_ui
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KCE = os.path.dirname(HERE)
@@ -92,6 +93,70 @@ footer{max-width:1280px;margin:26px auto 0;padding:0 clamp(12px,3vw,28px);
 """
 
 
+
+# 상세 페이지(kce_detail_pages.py 산출)는 등급이 허락하는 회사에만 생긴다.
+# **파일이 실제로 있을 때만** 링크한다 — 없는 페이지를 가리키면 화면이 거짓말을 한다.
+_DETAIL_PAGES = (("matrix.html", "분기 매트릭스"), ("trace.html", "원문 배치"),
+                 ("backtest.html", "예측 성적표"), ("status.html", "페이지·판정 안내"))
+
+
+
+# Y+2 추정 섹션(스튜디오 Codex 산출 `forecast_section.py` + `assets/forecast_panel.json`).
+# 산출이 없거나 회사가 빠져 있으면 **섹션을 만들지 않는다** — 빈 칸으로 흉내 내면 화면이 거짓말을 한다.
+_FC = {"panel": None, "src": None, "mod": None, "tried": False}
+
+
+
+def _panel_entry(D):
+    """회사 페이지 DATA → 추정 생성기가 기대하는 원장 엔트리(v4 패널 형식)."""
+    sites = []
+    for s0 in D.get("sites", []):
+        ss = s0.get("s") or {}
+        r = {k: s0.get(k) for k in ("id", "nm", "cl", "reg", "seg", "agg", "sd", "ed")}
+        r.update({"amt": ss.get("amt"), "cmp": ss.get("cmp"), "bal": ss.get("bal"),
+                  "sFilled": ss.get("sFilled")})
+        sites.append(r)
+    fq = D.get("fq") or []
+    tot = {k: [None] * len(fq) for k in ("amt", "cmp", "bal")}
+    for k in tot:
+        for qi in range(len(fq)):
+            vals = [(s0.get(k) or [None] * len(fq))[qi] for s0 in sites if not s0.get("agg")]
+            vals = [x for x in vals if isinstance(x, (int, float))]
+            tot[k][qi] = round(sum(vals), 3) if vals else None
+    return {"co": D.get("co"), "stock": D.get("stock"), "src": "신규", "fq": fq,
+            "grain": D.get("grain"), "declared": D.get("declared"), "summary": D.get("summary"),
+            "site_total": tot, "sites": sites}
+
+def _forecast_section(stock, D=None):
+    if not _FC["tried"]:
+        _FC["tried"] = True
+        try:
+            import forecast_section as _fs
+            _FC["mod"] = _fs
+            with open(os.path.join(ASSETS, "forecast_panel.json"), encoding="utf-8") as f:
+                _FC["panel"] = {c["company_id"]: c for c in json.load(f)["companies"]}
+        except Exception as e:
+            sys.stderr.write("[warn] 추정 섹션 비활성: %s\n" % e)
+    if not _FC["panel"] or stock not in _FC["panel"]:
+        return ""
+    _FC["src"] = _panel_entry(D) if D is not None else None
+    entry = _FC["src"]
+    if entry is None:
+        return ""
+    try:
+        return _FC["mod"].render_forecast_section(entry, _FC["panel"][stock]) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 추정 섹션 렌더 실패: %s\n" % (stock, e))
+        return ""
+
+def _detail_nav(out_dir, stock):
+    import os as _os
+    links = []
+    for fn, label in _DETAIL_PAGES:
+        if _os.path.exists(_os.path.join(out_dir, stock, fn)):
+            links.append('  <a href="%s">%s</a>\n' % (fn, label))
+    return "".join(links)
+
 def newest_probe():
     """가장 최근 분기의 프로브 산출물. 분기가 넘어가면 파일명이 바뀐다."""
     got = sorted(f for f in os.listdir(ASSETS)
@@ -108,7 +173,7 @@ def fmt_eok(v):
     return format(round(v / 100), ",d")
 
 
-def company_html(D):
+def company_html(D, out_dir=None):
     """신규사 대시보드 한 장. 입도(현장/부문)에 따라 라벨이 바뀐다 —
     부문 단위로만 공시하는 회사에 '현장별'이라고 쓰면 없는 정밀도를 주장하게 된다."""
     fq, sites = D["fq"], D["sites"]
@@ -204,7 +269,7 @@ def company_html(D):
  <span class="tag">{market}</span>
  <span class="tag">{industry}</span>
  <span class="sp">
-  <a href="../coverage.html">커버리지</a>
+{detailnav}  <a href="../coverage.html">커버리지</a>
   <a href="../index.html">회사 선택</a>
   <a href="{dart}" rel="noopener noreferrer" target="_blank">DART 원문 ↗</a>
  </span>
@@ -226,7 +291,7 @@ def company_html(D):
 </section>
 
 <section>
- <h2>{unit} 목록 <em>머리행을 누르면 정렬</em></h2>
+ <h2>{unit} 목록 <em>이름을 누르면 공시 상세 · 머리행을 누르면 정렬</em></h2>
  <div class="ctl">
   <input id="q" type="search" placeholder="{unit}·발주처 검색" aria-label="{unit} 검색">
   <select id="fSeg" aria-label="공종"><option value="">공종 전체</option></select>
@@ -245,28 +310,32 @@ def company_html(D):
  </table></div>
 </section>
 
+{detail_html}
+{forecast_html}
 <section>
  <h2>분기 매트릭스 <em>{unit} × 분기 계약잔액(억) · 상위 60개</em></h2>
  <div class="wrap"><table id="mx"><thead></thead><tbody></tbody></table></div>
 </section>
 
-<div class="note">이 회사는 DART 정기보고서의 <b>수주상황 표를 분기마다 다시 읽어</b> 만든
-실측 시계열입니다. 원본 7사 페이지와 달리 <b>예측(S-curve)·백테스트·실적 대비가 없습니다</b> —
-그 자산은 복제 시드에서 온 것이라 신규 편입사에는 존재하지 않습니다.
+<div class="note">DART 정기보고서의 <b>수주상황·진행률 적용 수주계약·계약 주석</b>을 연결한
+공시 시계열입니다. 현장명을 누르면 원문 관측과 분기별 대조를 볼 수 있습니다.
+예측(S-curve)·백테스트는 적용하지 않으며, 공시 관측과 계산값을 구분합니다.
 현장은 이름으로 분기 간 연결하므로, 원문이 표기를 크게 바꾸면 다른 현장으로 잡힐 수 있습니다.
 「공시 총계」가 있으면 원문이 직접 적은 수주잔고 합계입니다. <b>묶음</b> 표시가 붙은 행은
 원문이 개별 기재를 생략하고 '기타현장'처럼 한 줄로 합쳐 적은 <b>나머지</b>이며,
 합계를 맞추기 위해 집계에는 포함하되 현장 수에서는 빼고 셉니다.</div>
 </main>
-<footer>출처 DART 정기보고서 II. 사업의 내용 — 수주상황. 단위 억원(원문 백만원 환산).
+<footer>출처 DART 정기보고서 II. 수주상황 · III. 진행률 적용 수주계약 · 계약 관련 주석. 금액은 원문 단위를 확인해 백만원으로 정규화 후 억원 표시.
 {gen} 정기보고서 기준. 참고용 · 투자조언 아님.</footer>
 <script src="../vendor/chart.umd.min.js"></script>
 <script>const DATA={data};</script>
 <script>{js}</script>
 </body></html>""".format(
-        css=CSS, js=COMPANY_JS, data=json_for_html(D),
+        css=CSS+kce_detail_ui.CSS, js=COMPANY_JS+kce_detail_ui.JS,
+        detail_html=kce_detail_ui.HTML, forecast_html=_forecast_section(D["stock"], D), data=json_for_html(D),
         nm=E(D["co"]), stock=E(D["stock"]), market=E(D["market"]),
         kind=KIND, unit=UNIT, grainnote=grainnote,
+        detailnav=_detail_nav(out_dir, D["stock"]) if out_dir else "",
         industry=E(D["industry"]), dart=E(dart), gen=E(D["codeGen"]),
         bal=fmt_eok(bal), amt=fmt_eok(D["summary"]["amt"][k]), chg=chg,
         live=live, nsite=n_site, nq=len(fq), last=E(fq[-1]), decl=decl,
@@ -345,7 +414,7 @@ COMPANY_JS = r"""
   var r=rows(), h=[];
   r.forEach(function(s){
    var a=s.s.amt[K],c=s.s.cmp[K],b=s.s.bal[K],p=s.s.pr[K];
-   h.push('<tr><td class="l" title="'+esc(s.nm)+'">'+esc(s.nm)+
+   h.push('<tr><td class="l" title="'+esc(s.nm)+'"><button type="button" class="site-open" data-site="'+esc(s.id)+'" aria-controls="siteDetail">'+esc(s.nm)+'</button>'+
     (s.agg?' <span class="mut" style="font-size:10px;border:1px solid var(--ln);border-radius:4px;padding:0 4px">묶음</span>':'')+'</td>'+
     '<td class="l mut">'+esc(s.cl||'—')+'</td><td class="l mut">'+esc(s.seg)+'</td>'+
     '<td class="l mut">'+esc(s.reg)+'</td>'+
@@ -659,7 +728,7 @@ def main():
         built[r["stock"]] = D
         d = os.path.join(KCE, r["slug"])
         os.makedirs(d, exist_ok=True)
-        atomic_write(os.path.join(d, "index.html"), company_html(D))
+        atomic_write(os.path.join(d, "index.html"), company_html(D, KCE))
         rc = D["recon"][-1]
         over = D["reconOver"]
         if over:

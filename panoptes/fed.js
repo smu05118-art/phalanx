@@ -7,7 +7,8 @@
 
   /* ══════════════════ 1. CSS (1회 주입) ══════════════════ */
   var CSS = [
-    '.fd-wrap{display:flex;flex-direction:column;gap:16px;max-width:1280px;font-family:var(--sans,-apple-system,sans-serif);color:var(--ink,#e6edf3)}',
+    '.fd-wrap{display:flex;flex-direction:column;gap:16px;width:100%;max-width:1520px;margin-inline:auto;min-width:0;font-family:var(--sans,-apple-system,sans-serif);color:var(--ink,#e6edf3)}',
+    '.fd-wrap *,.fd-modal *{box-sizing:border-box}.fd-card[id]{scroll-margin-top:72px}',
     '.fd-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px}',
     '.fd-grid2{display:grid;grid-template-columns:minmax(0,2fr) minmax(340px,1fr);gap:14px}',
     '.fd-card{background:var(--panel,#111721);border:1px solid var(--line,#1f2937);border-radius:13px;padding:16px 18px;min-width:0}',
@@ -30,8 +31,9 @@
     '.fd-bd.dev{border-color:#ff4d5e;color:#ff4d5e;background:rgba(255,77,94,.12);font-weight:700}',
     /* nav / chips */
     '.fd-nav{position:sticky;top:0;z-index:6;display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;background:var(--bg,#0a0e14)}',
-    '.fd-chip{font-size:11.5px;padding:4px 11px;border:1px solid var(--line,#1f2937);border-radius:999px;cursor:pointer;color:var(--dim,#8a93a3);opacity:.62;transition:.13s;white-space:nowrap;background:none;font-family:inherit}',
+    '.fd-chip{font-size:11.5px;min-height:36px;padding:6px 12px;border:1px solid var(--line,#1f2937);border-radius:999px;cursor:pointer;color:var(--dim,#8a93a3);opacity:.85;transition:color .15s,border-color .15s,background-color .15s;white-space:nowrap;background:none;font-family:inherit;touch-action:manipulation}',
     '.fd-chip:hover{border-color:rgba(43,192,212,.4);color:var(--accent,#2bc0d4)}',
+    '.fd-chip:focus-visible,.fd-btn:focus-visible,.fd-x:focus-visible,.fd-table-scroll:focus-visible{outline:2px solid var(--accent,#2bc0d4);outline-offset:3px}',
     '.fd-chip.on{opacity:1;color:var(--accent,#2bc0d4);border-color:rgba(43,192,212,.4);background:rgba(43,192,212,.12)}',
     '.fd-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}',
     '.fd-chips .sep{width:1px;height:14px;background:var(--line,#1f2937);margin:0 3px}',
@@ -46,6 +48,11 @@
     '.fd-legend{font-size:10.5px;color:var(--dim,#8a93a3);line-height:1.6}',
     '.fd-tip{position:fixed;pointer-events:none;opacity:0;z-index:70;background:rgba(8,11,17,.95);border:1px solid var(--line,#1f2937);border-radius:8px;padding:6px 9px;font-family:var(--mono,monospace);font-size:10.5px;color:var(--ink,#e6edf3);line-height:1.55;max-width:280px;transition:opacity .1s}',
     '.fd-tip.on{opacity:1}',
+    '.fd-people{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-top:12px}',
+    '.fd-person{display:flex;align-items:center;gap:9px;min-width:0;min-height:60px;padding:8px;text-align:left;background:var(--panel2,#0d131c);border:1px solid var(--line,#1f2937);border-radius:10px;color:var(--ink,#e6edf3);font-family:inherit;cursor:pointer;touch-action:manipulation;transition:border-color .15s,background-color .15s}',
+    '.fd-person:hover{border-color:var(--accent,#2bc0d4);background:rgba(43,192,212,.07)}.fd-person:focus-visible{outline:2px solid var(--accent,#2bc0d4);outline-offset:2px}',
+    '.fd-avatar{position:relative;display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:50%;overflow:hidden;background:#253344;border:2px solid var(--fd-ring,#8a93a3);font-size:12px;font-weight:750}.fd-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}',
+    '.fd-person-text{min-width:0}.fd-person b{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fd-person small{display:block;font-size:10px;color:var(--dim,#8a93a3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}',
     /* 발언 피드 */
     '.fd-day{font-family:var(--mono,monospace);font-size:10px;color:var(--dim,#8a93a3);letter-spacing:.08em;margin:12px 0 6px;border-bottom:1px solid var(--line,#1f2937);padding-bottom:3px}',
     '.fd-sp{background:var(--panel2,#0d131c);border:1px solid var(--line,#1f2937);border-radius:9px;padding:10px 12px;margin-bottom:7px;transition:.13s}',
@@ -80,7 +87,9 @@
     '.fd-cal .ct{flex:1;line-height:1.4;min-width:0}',
     '.fd-cal .cs{font-family:var(--mono,monospace);font-size:9.5px;color:#f5c542;flex:0 0 auto}',
     '.fd-cal .cx{font-size:10px;color:var(--dim,#8a93a3);display:block;margin-top:2px}',
-    '.fd-cal .cav{display:inline-block;width:16px;height:16px;border-radius:50%;font-size:8px;line-height:16px;text-align:center;font-weight:800;vertical-align:-3px;margin-right:4px;cursor:pointer}',
+    '.fd-wrap .cav{position:relative;display:inline-grid;place-items:center;flex-shrink:0;width:32px;height:32px;padding:0;border:1px solid currentColor;border-radius:50%;overflow:hidden;font-family:inherit;font-size:11px;font-weight:800;vertical-align:middle;cursor:pointer;touch-action:manipulation}',
+    '.fd-wrap .cav img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}.fd-wrap .cav:focus-visible{outline:2px solid var(--accent,#2bc0d4);outline-offset:3px}',
+    '.fd-cal .cav{width:24px;height:24px;font-size:9px;margin-right:5px}',
     '.fd-cal .cblk{background:rgba(138,147,163,.14);border-left:3px solid #8a93a3;border-radius:5px;padding:5px 8px;font-size:11px;color:var(--dim,#8a93a3);margin:6px 0}',
     /* 시장반응 */
     '.fd-sig{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11.5px}',
@@ -107,12 +116,15 @@
     '.fd-tb th{color:var(--dim,#8a93a3);font-weight:600;font-size:10px}',
     '.fd-tb td.n{text-align:right;font-family:var(--mono,monospace)}',
     /* 모달 */
-    '.fd-modal{position:fixed;inset:0;background:rgba(3,6,10,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:60;overflow:auto}',
-    '.fd-sheet{max-width:760px;margin:6vh auto;background:var(--panel,#111721);border:1px solid var(--line,#1f2937);border-radius:16px;max-height:88vh;overflow:auto;padding:18px 20px}',
-    '.fd-mhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}',
+    '.fd-modal{position:fixed;inset:0;background:rgba(3,6,10,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:60;overflow:hidden;overscroll-behavior:contain}',
+    '.fd-sheet{position:relative;display:flex;flex-direction:column;width:calc(100% - 32px);max-width:760px;height:min(720px,88vh);margin:6vh auto;background:var(--panel,#111721);border:1px solid var(--line,#1f2937);border-radius:16px;overflow:hidden;padding:18px 20px;animation:fd-enter .18s ease-out}',
+    '.fd-mhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding-right:38px;flex-shrink:0}',
+    '.fd-mhead>svg{flex-shrink:0}.fd-mhead>div{min-width:0}.fd-mhead h3,.fd-mhead .mt{overflow-wrap:anywhere}',
+    '.fd-tabs{flex-shrink:0;gap:6px;flex-wrap:nowrap;overflow-x:auto;padding:3px 0 8px;margin:0 0 6px!important}',
+    '.fd-body{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:0 3px 10px}',
     '.fd-mhead h3{font-size:17px;font-weight:800}',
     '.fd-mhead .mt{font-size:11.5px;color:var(--dim,#8a93a3)}',
-    '.fd-x{margin-left:auto;background:none;border:1px solid var(--line,#1f2937);color:var(--dim,#8a93a3);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;font-family:inherit}',
+    '.fd-x{position:absolute;top:14px;right:14px;background:none;border:1px solid var(--line,#1f2937);color:var(--dim,#8a93a3);border-radius:10px;width:40px;height:40px;cursor:pointer;font-size:15px;font-family:inherit;touch-action:manipulation}',
     '.fd-x:hover{color:var(--ink,#e6edf3);border-color:var(--accent,#2bc0d4)}',
     '.fd-pane{display:none}',
     '.fd-pane.on{display:block}',
@@ -120,16 +132,21 @@
     '.fd-htb th,.fd-htb td{text-align:left;padding:5px 7px;border-bottom:1px solid rgba(31,41,55,.6)}',
     '.fd-htb th{color:var(--dim,#8a93a3);font-weight:600;font-size:10px}',
     '.fd-htb td.n{text-align:right;font-family:var(--mono,monospace)}',
+    '.fd-table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;margin-top:6px;border-radius:6px}.fd-table-scroll .fd-htb{margin-top:0;min-width:560px}',
+    '.fd-htb th{white-space:nowrap}.fd-htb td{overflow-wrap:anywhere}.fd-htb td.n{white-space:nowrap}.fd-kpi b{overflow-wrap:anywhere}',
     '.fd-sec{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim,#8a93a3);font-weight:700;margin:14px 0 6px}',
     /* 반응형 */
     '@media(max-width:1100px){.fd-grid{grid-template-columns:1fr}.fd-grid2{grid-template-columns:1fr}}',
     '@media(max-width:700px){',
     '.fd-node .fd-ring{r:16px}.fd-node .fd-bgc{r:14px}.fd-node .fd-img{x:-14px;y:-14px;width:28px;height:28px}',
     '.fd-name{display:none}.fd-sig .sn{flex:0 0 56px}',
-    '.fd-sheet{margin:auto 0 0;border-radius:16px 16px 0 0;max-height:80vh}',
+    '.fd-card{padding:14px 12px}.fd-sheet{position:absolute;bottom:0;width:100%;margin:0;border-radius:16px 16px 0 0;height:88vh;height:88dvh;padding:16px 12px max(12px,env(safe-area-inset-bottom))}',
+    '.fd-chip,.fd-btn{min-height:44px}.fd-x{width:44px;height:44px;top:10px;right:10px}.fd-mhead{gap:8px;padding-right:44px}.fd-mhead h3{font-size:16px}.fd-sig{flex-wrap:wrap}.fd-sig .sv{flex-basis:auto;margin-left:auto}.fd-ts{font-size:9px}',
+    '.fd-wrap .cav{min-width:44px;min-height:44px}',
     '.fd-cal .crow{font-size:11.5px}.fd-kpi{grid-template-columns:repeat(2,1fr)}',
     '}',
-    '@media(prefers-reduced-motion:reduce){.fd-node .fd-scale{transition:none}.fd-node:hover .fd-scale,.fd-node:focus .fd-scale{transform:none}.fd-node.chair .fd-ring{filter:none}}'
+    '@keyframes fd-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}',
+    '@media(prefers-reduced-motion:reduce){.fd-wrap *,.fd-modal *{transition:none!important;animation:none!important;scroll-behavior:auto!important}.fd-node:hover .fd-scale,.fd-node:focus .fd-scale{transform:none}.fd-node.chair .fd-ring{filter:none}}'
   ];
 
   var cssDone = false;
@@ -391,51 +408,62 @@
     return nm.slice(0, 2).toUpperCase();
   }
 
-  /* ══════════════════ 5. 사진 정책 · 프리로드 ══════════════════ */
-  var photoState = {};   // pid → 'ok' | 'fail' | 'try'
+  /* ══════════════════ 5. 사진 정책 · 개별 이미지 폴백 ══════════════════ */
   function photoUsable(r, policyMode) {
     if (!r || !str(r.photo)) return false;
+    if (r._fdPortraitVerified === true) return true;
     if (policyMode === 'internal') return true;
     return r.photo_license === 'us_gov_pd_presumed';   // pd_only(기본)
   }
-  function preloadPhotos(nodes, policyMode, done) {
-    var pend = [], i;
-    for (i = 0; i < nodes.length; i++) {
-      var r = nodes[i].r;
-      if (!photoUsable(r, policyMode)) continue;
-      if (photoState[r.id]) continue;
-      photoState[r.id] = 'try';
-      pend.push(r);
-    }
-    if (!pend.length) return;
-    var left = pend.length, fired = false;
-    function settle(changed) {
-      left--;
-      if (left <= 0 && !fired) { fired = true; if (changed || true) done(); }
-    }
-    for (i = 0; i < pend.length; i++) {
-      (function (r) {
-        var im;
-        try { im = new Image(); } catch (e) { photoState[r.id] = 'fail'; settle(true); return; }
-        im.onload = function () { photoState[r.id] = 'ok'; settle(false); };
-        im.onerror = function () { photoState[r.id] = 'fail'; settle(true); };
-        try { im.src = r.photo; } catch (e2) { photoState[r.id] = 'fail'; settle(true); }
-      })(pend[i]);
-    }
-    try {
-      setTimeout(function () {
-        if (fired) return;
-        fired = true;
-        for (var k = 0; k < pend.length; k++) if (photoState[pend[k].id] === 'try') photoState[pend[k].id] = 'fail';
-        done();
-      }, 1500);
-    } catch (e3) { /* 타이머 없는 환경 */ }
+  function bindPhotos(root) {
+    each(qa(root, 'image.fd-photo,img.fd-photo'), function (im) {
+      im.addEventListener('error', function () {
+        // 이니셜을 사진 아래에 항상 두므로 느린 요청도 기다림 없이 개별 복구된다.
+        if (im.parentNode) im.parentNode.removeChild(im);
+      }, { once: true });
+    });
+  }
+  function withPortraits(data) {
+    var D = Object.assign({}, obj(data)), roster = obj(D.roster), photos = obj(obj(D.photos).people);
+    if (!D.roster) return D;
+    D.roster = Object.assign({}, roster);
+    D.roster.people = arr(roster.people).map(function (r) {
+      var p = obj(photos[r.id]), copy = Object.assign({}, r);
+      copy._fdPortraitVerified = false;
+      if (p.name === r.name && p.usage === 'official_attributed' && /^[a-z0-9_-]+$/.test(r.id) &&
+          new RegExp('^data/fed/portraits/' + r.id + '\\.(?:jpe?g|png|webp)$').test(str(p.photo)) &&
+          /^https:\/\/[a-z0-9.-]+\//i.test(str(p.source_url)) && /^https:\/\/[a-z0-9.-]+\//i.test(str(p.source_page))) {
+        copy.photo = p.photo;
+        copy.photo_credit = str(p.attribution);
+        copy.photo_source_page = p.source_page;
+        copy._fdPortraitVerified = true;
+        copy.notes = arr(r.notes).filter(function (note) {
+          return note !== '사진은 1시간 만료 S3 서명 URL → 매번 페이지에서 재추출' &&
+            note !== 'kansascityfed.org 봇게이트(curl 기본 UA)';
+        });
+      }
+      return copy;
+    });
+    return D;
+  }
+
+  function rPeople(ST, D) {
+    var people = arr(obj(D.roster).people), mode = obj(obj(D.roster).photo_policy).mode || 'pd_only';
+    if (!people.length) return '';
+    var h = '<div class="fd-card wide" id="fdPeople"><div class="fd-h"><b>연준 인사</b><span class="fd-legend">' + people.length + '명 · 인물을 선택해 프로필 보기</span></div><div class="fd-people">';
+    each(people, function (r) {
+      var name = str(r.name) || r.id, short = str(r.short) || name, ring = ringOfPid(D, r.id, ST.neutralRing);
+      h += '<button type="button" class="fd-person" data-profile="' + attr(r.id) + '" aria-label="' + attr(name + ' 프로필 열기') + '"><span class="fd-avatar" style="--fd-ring:' + ring + '" aria-hidden="true">' + esc(initialsOf({ r: r, id: r.id }));
+      if (photoUsable(r, mode)) h += '<img class="fd-photo" src="' + attr(r.photo) + '" width="40" height="40" loading="lazy" decoding="async" alt="">';
+      h += '</span><span class="fd-person-text"><b>' + esc(short) + '</b><small>' + esc(str(r.bank) || ORG_KO[r.org] || str(r.title)) + (r.voter === true ? ' · 투표권' : '') + '</small></span></button>';
+    });
+    return h + '</div></div>';
   }
 
   /* ══════════════════ 6. 공통 조각 ══════════════════ */
   function chip(k, v, label, on, title) {
     return '<button type="button" class="fd-chip' + (on ? ' on' : '') + '" data-fk="' + attr(k) + '" data-fv="' + attr(v) + '"' +
-      (title ? ' title="' + attr(title) + '"' : '') + '>' + esc(label) + '</button>';
+      ' aria-pressed="' + (on ? 'true' : 'false') + '"' + (title ? ' title="' + attr(title) + '"' : '') + '>' + esc(label) + '</button>';
   }
   function defsSVG() {
     return '<svg class="fd-defs" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">' +
@@ -559,12 +587,11 @@
     g += '<circle class="fd-hit" r="24" fill="transparent"/>';
     g += '<circle class="fd-ring" r="25" fill="none" stroke="' + ring + '" stroke-width="' + sw + '"' + dash + op + '/>';
     g += '<circle class="fd-bgc" r="22" fill="' + ring + '2e"/>';
-    var showImg = photoUsable(r, policyMode) && photoState[id] !== 'fail';
+    var showImg = photoUsable(r, policyMode);
+    g += '<text class="fd-init" y="5" text-anchor="middle" font-size="15" font-weight="800" fill="#e6edf3">' + esc(initialsOf(n)) + '</text>';
     if (showImg) {
       g += '<clipPath id="clip-' + attr(id) + '"><circle r="22"/></clipPath>';
-      g += '<image class="fd-img" href="' + attr(r.photo) + '" xlink:href="' + attr(r.photo) + '" x="-22" y="-22" width="44" height="44" preserveAspectRatio="xMidYMin slice" clip-path="url(#clip-' + attr(id) + ')"/>';
-    } else {
-      g += '<text class="fd-init" y="5" text-anchor="middle" font-size="15" font-weight="800" fill="#e6edf3">' + esc(initialsOf(n)) + '</text>';
+      g += '<image class="fd-img fd-photo" href="' + attr(r.photo) + '" xlink:href="' + attr(r.photo) + '" x="-22" y="-22" width="44" height="44" preserveAspectRatio="xMidYMin slice" clip-path="url(#clip-' + attr(id) + ')"/>';
     }
     if (ST.names) g += '<text class="fd-name" y="' + n.nameY + '" text-anchor="middle" font-size="' + n.nameSize + '" fill="#ffffff" font-weight="650">' + esc(nm) + '</text>';
     if (ST.arrows && isN(n.delta) && Math.abs(n.delta) >= DEV_ARROW) {
@@ -633,6 +660,7 @@
   function rNav(ST) {
     return '<div class="fd-nav">' +
       '<button type="button" class="fd-chip" data-go="fdDist">성향 분포</button>' +
+      '<button type="button" class="fd-chip" data-go="fdPeople">연준 인사</button>' +
       '<button type="button" class="fd-chip" data-go="fdFeed">발언</button>' +
       '<button type="button" class="fd-chip" data-go="fdReact">시장반응</button>' +
       '<button type="button" class="fd-chip" data-go="fdCal">캘린더</button>' +
@@ -703,9 +731,15 @@
   function calAvatar(it, D) {
     var pid = str(it.pid) || (it.speaker && str(it.speaker.pid));
     if (!pid) return '';
+    return smallAvatar(D, pid, ringOfPid(D, pid, true));
+  }
+  function smallAvatar(D, pid, col) {
+    if (!pid) return '';
     var r = personOf(D, pid);
-    var col = ringOfPid(D, pid, true);
-    return '<span class="cav" data-pid="' + attr(pid) + '" style="background:' + col + '2e;color:' + col + '" title="' + attr((r && str(r.name)) || pid) + '">' + esc(r ? initialsOf({ r: r, id: pid }) : pid.slice(0, 2).toUpperCase()) + '</span>';
+    var name = (r && str(r.name)) || pid, mode = obj(obj(D.roster).photo_policy).mode || 'pd_only';
+    var h = '<button type="button" class="cav" data-pid="' + attr(pid) + '" style="background:' + col + '2e;color:' + col + '" title="' + attr(name) + '" aria-label="' + attr(name + ' 프로필 열기') + '"><span aria-hidden="true">' + esc(r ? initialsOf({ r: r, id: pid }) : pid.slice(0, 2).toUpperCase()) + '</span>';
+    if (photoUsable(r, mode)) h += '<img class="fd-photo" src="' + attr(r.photo) + '" width="32" height="32" loading="lazy" decoding="async" alt="">';
+    return h + '</button>';
   }
   function calExtra(it) {
     var x = [];
@@ -796,7 +830,7 @@
     var nm = (r && (str(r.short) || str(r.name))) || pid || '—';
     var h = '<div class="fd-sp' + (fresh ? ' fresh' : '') + '" data-sid="' + attr(it.id) + '">';
     h += '<div class="sph">';
-    h += '<span class="cav" data-pid="' + attr(pid) + '" style="width:28px;height:28px;line-height:28px;font-size:11px;border-radius:50%;display:inline-block;text-align:center;font-weight:800;cursor:pointer;background:' + ring + '2e;color:' + ring + '">' + esc(r ? initialsOf({ r: r, id: pid }) : (pid || '?').slice(0, 2).toUpperCase()) + '</span>';
+    h += smallAvatar(D, pid, ring);
     h += '<b>' + esc(nm) + '</b><span>' + esc((r && str(r.title)) || '') + '</span>';
     if (r && r.voter === true) h += '<span class="fd-bd vote">투표권</span>';
     else if (r && r.alternate === true) h += '<span class="fd-bd">대리</span>';
@@ -1090,6 +1124,85 @@
     var ot = arr(taco.open_threats).length;
     return '오늘 위협 ' + nT + ' · 유지 ' + nH + ' · 철회 ' + nR + ' — 최고 강도 ' + n2(mx) + ', 열린 위협 ' + ot + '건';
   }
+  /* TACO v2 전용: 구버전에는 마크업/CSS를 추가하지 않는다. */
+  function tacoV2Table(taco) {
+    var ix = obj(taco.index_v2), c = obj(ix.components), topics = obj(c.by_topic);
+    var rows = '<tr><th scope="row">정밀지수</th><td class="n">' + nf(ix.value, 4) + '</td><td>—</td></tr>';
+    rows += '<tr><th scope="row">철회율 성분</th><td class="n">' + nf(c.retreat_rate, 4) + '</td><td>—</td></tr>';
+    rows += '<tr><th scope="row">속도 성분</th><td class="n">' + nf(c.speed, 4) + '</td><td>—</td></tr>';
+    Object.keys(topics).forEach(function (key) {
+      var t = obj(topics[key]);
+      rows += '<tr><th scope="row">' + esc(key) + '</th><td class="n">' + nf(t.value, 4) + '</td><td class="n">' + (isN(t.n) ? t.n : '—') + '</td></tr>';
+    });
+    return '<div style="flex:1 1 240px;min-width:0"><table class="fd-tb fd-taco-v2"><caption style="text-align:left;color:#f5c542">TACO 정밀지수 · 0–1</caption><thead><tr><th>성분 / 토픽</th><th class="n">값</th><th class="n">n</th></tr></thead><tbody>' + rows + '</tbody></table><div class="fd-foot">n: 토픽 표본수 · —: 미제공</div></div>';
+  }
+  function tacoV2Percent(v) { return isN(v) ? nf(v * 100, 1) + '%' : '—'; }
+  function tacoForward(taco, id) {
+    if (!str(id)) return '';
+    var f = arr(taco.forward).filter(function (v) { return v && v.threat_id === id; })[0];
+    if (!f) return '';
+    var parts = [];
+    ['p7', 'p30'].forEach(function (k) {
+      if (!isN(f[k])) return;
+      parts.push(k.toUpperCase() + ' ' + tacoV2Percent(f[k]) + (isN(f[k + '_lo']) && isN(f[k + '_hi']) ? ' [' + tacoV2Percent(f[k + '_lo']) + '–' + tacoV2Percent(f[k + '_hi']) + ']' : ''));
+    });
+    return parts.length ? '<span class="fd-taco-forward fd-mono" style="display:block;color:#2bc0d4;font-size:10px">전방 철회확률 · ' + parts.join(' · ') + '</span>' : '';
+  }
+  function tacoIndexChart(taco) {
+    var points = arr(taco.index_series).filter(function (p) { return p && /^\d{4}-\d{2}-\d{2}$/.test(str(p.date)) && isFinite(Date.parse(p.date)); }).slice().sort(function (a, b) { return a.date.localeCompare(b.date); });
+    if (!points.some(function (p) { return isN(p.value); })) return '';
+    var W = 960, H = 290, L = 52, R = 22, T = 18, B = 40;
+    var first = Date.parse(points[0].date), last = Date.parse(points[points.length - 1].date), low = 0, high = 1;
+    var keys = ['value', 'p05', 'p25', 'p75', 'p95', 'env_mid', 'env_dn1', 'env_up1', 'env_dn2', 'env_up2'];
+    points.forEach(function (p) { keys.forEach(function (k) { if (isN(p[k])) { low = Math.min(low, p[k]); high = Math.max(high, p[k]); } }); });
+    function x(p) { return L + (last === first ? 0.5 : (Date.parse(p.date) - first) / (last - first)) * (W - L - R); }
+    function y(v) { return T + (high - v) / (high - low) * (H - T - B); }
+    function xy(p, k) { return nf(x(p), 2) + ',' + nf(y(p[k]), 2); }
+    // 결측 구간은 연결하지 않는다. 밴드마다 유효 구간을 따로 구성한다.
+    function runs(ks) {
+      var result = [], run = [];
+      points.forEach(function (p) {
+        if (ks.every(function (k) { return isN(p[k]); })) run.push(p);
+        else if (run.length) { result.push(run); run = []; }
+      });
+      if (run.length) result.push(run);
+      return result;
+    }
+    function band(lo, hi, color, opacity, name) {
+      return '<g class="' + name + '" fill="' + color + '" fill-opacity="' + opacity + '">' + runs([lo, hi]).map(function (run) {
+        return '<path d="M' + run.map(function (p) { return xy(p, hi); }).join(' L') + ' L' + run.slice().reverse().map(function (p) { return xy(p, lo); }).join(' L') + ' Z"/>';
+      }).join('') + '</g>';
+    }
+    function line(k, color, dash) {
+      return '<path class="fd-taco-' + k + '" fill="none" stroke="' + color + '" stroke-width="2"' + (dash ? ' stroke-dasharray="6 4"' : '') + ' d="' + runs([k]).map(function (run) { return 'M' + run.map(function (p) { return xy(p, k); }).join(' L'); }).join(' ') + '"/>';
+    }
+    var s = '<svg class="fd-taco-series" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;width:100%;min-width:720px;height:auto" role="img" aria-label="TACO 정밀지수 시계열, 신뢰대와 레짐 밴드"><title>TACO 정밀지수 시계열</title>';
+    for (var tick = 0; tick <= 4; tick++) {
+      var v = low + (high - low) * tick / 4, yy = nf(y(v), 2);
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="#1f2937"/><text x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end" fill="#8a93a3" font-size="10">' + nf(v, 2) + '</text>';
+    }
+    s += band('p05', 'p95', '#2bc0d4', '.12', 'fd-taco-ci90') + band('p25', 'p75', '#2bc0d4', '.28', 'fd-taco-ci50');
+    s += '<g class="fd-taco-regime">' + band('env_dn2', 'env_up2', '#9b7bff', '.10', 'fd-taco-sigma2') + band('env_dn1', 'env_up1', '#9b7bff', '.22', 'fd-taco-sigma1') + '</g>';
+    s += line('env_mid', '#9b7bff', true) + line('value', '#f5c542', false);
+    points.forEach(function (p) {
+      if (!isN(p.value) || (p.breakout !== 'up' && p.breakout !== 'down')) return;
+      var xx = nf(x(p), 2), yy = nf(y(p.value), 2), color = p.breakout === 'up' ? '#59d0a8' : '#ff4d5e';
+      s += '<g class="fd-taco-breakout"><title>' + esc(p.date + ' · breakout ' + p.breakout + ' · ' + nf(p.value, 4)) + '</title><line x1="' + xx + '" x2="' + xx + '" y1="' + yy + '" y2="' + (H - B) + '" stroke="' + color + '" stroke-opacity=".25" stroke-dasharray="2 4"/><circle cx="' + xx + '" cy="' + yy + '" r="3" fill="' + color + '"/></g>';
+    });
+    var tickIndices = [];
+    for (var i = 0; i <= 4; i++) {
+      var idx = Math.round((points.length - 1) * i / 4);
+      if (tickIndices.indexOf(idx) >= 0) continue;
+      tickIndices.push(idx);
+      s += '<text x="' + nf(x(points[idx]), 2) + '" y="' + (H - 14) + '" text-anchor="' + (i === 0 ? 'start' : i === 4 ? 'end' : 'middle') + '" fill="#8a93a3" font-size="10">' + esc(points[idx].date) + '</text>';
+    }
+    s += '</svg>';
+    var c = obj(taco.envelope_calib), proxy = obj(c.proxy);
+    var caption = '포함률 · 50% ' + tacoV2Percent(c.coverage_50) + ' / 90% ' + tacoV2Percent(c.coverage_90) + ' (n=' + (isN(c.n) ? c.n : '—') + ')';
+    if (!isN(c.coverage_50) || !isN(c.coverage_90)) caption += ' · 실제 포함률 미확인';
+    if (isN(proxy.coverage_50) || isN(proxy.coverage_90)) caption += ' · proxy(' + str(proxy.target) + '): 50% ' + tacoV2Percent(proxy.coverage_50) + ' / 90% ' + tacoV2Percent(proxy.coverage_90) + ' (n=' + (isN(proxy.n) ? proxy.n : '—') + ')';
+    return '<section class="fd-taco-chart" style="margin-top:14px;min-width:0"><style>.fd-taco .fd-taco-env-toggle:not(:checked)~.fd-taco-scroll .fd-taco-regime{display:none}</style><div class="fd-sec">정밀지수 시계열</div><input class="fd-taco-env-toggle" type="checkbox" checked aria-label="±1σ·±2σ 레짐 밴드 표시" style="accent-color:#9b7bff"><span class="fd-legend"> ±1σ·±2σ 레짐 밴드 표시</span><div class="fd-taco-scroll fd-table-scroll" tabindex="0" role="region" aria-label="정밀지수 차트, 좁은 화면에서 가로 스크롤" style="overflow-x:auto;max-width:100%">' + s + '</div><div class="fd-legend">노랑: 지수 · 청록: p05–p95(연함), p25–p75(진함) 신뢰대 · 보라 점선: env_mid · 보라 밴드: ±2σ(연함), ±1σ(진함) · 초록/빨강 점: 상향/하향 breakout(날짜는 마우스 오버)</div><div class="fd-foot">' + esc(caption) + '</div></section>';
+  }
   function rTaco(ST, D) {
     var taco = D.taco;
     var head = '<div class="fd-h"><b>🌮 TACO — Truth Social 발언 엔진</b>' +
@@ -1099,10 +1212,14 @@
     var body = '<p class="tsum">' + esc(tacoSummary(taco)) + '</p>';
     var viz = obj(taco.viz), i;
 
+    var hasV2 = !!taco.index_v2 && typeof taco.index_v2 === 'object';
+    if (hasV2) body += '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><div style="flex:3 1 560px;min-width:0">';
     /* B — 아크 보드 */
     var vt = str(viz.type);
     if (vt && TACO_VIZ[vt]) { try { body += TACO_VIZ[vt](viz, taco); } catch (e) { body += '<p class="fd-hint">시각화 준비 중…</p>'; } }
     else body += '<p class="fd-hint">시각화 준비 중… (viz.type=' + esc(vt || '—') + ')</p>';
+
+    if (hasV2) body += '</div>' + tacoV2Table(taco) + '</div>' + tacoIndexChart(taco);
 
     body += '<div class="fd-grid2" style="margin-top:14px">';
     /* A — 오늘 발언 카드 스택 */
@@ -1137,7 +1254,7 @@
     for (i = 0; i < ots.length; i++) {
       A += '<div class="fd-hint" style="padding:2px 0;font-size:11px">· ' + esc(str(ots[i].summary_ko) || ots[i].id) +
         ' — <b style="color:#f5c542">예상 철회정도 ' + esc(degStr(ots[i].degree_expected, ots[i].degree_band)) + '</b>' +
-        (str(ots[i].degree_src) ? ' <span style="font-size:10px">(' + esc(ots[i].degree_src) + ')</span>' : '') + '</div>';
+        (str(ots[i].degree_src) ? ' <span style="font-size:10px">(' + esc(ots[i].degree_src) + ')</span>' : '') + (hasV2 ? tacoForward(taco, ots[i].id) : '') + '</div>';
     }
     if (isN(cb.hit_rate_p7) || isN(cb.brier)) {
       A += '<div class="fd-hint" style="font-size:10px;padding:2px 0">캘리브레이션 · P7 적중 ' + n2(cb.hit_rate_p7) + ' · Brier ' + n2(cb.brier) + '</div>';
@@ -1371,10 +1488,10 @@
     var sub = [(r && str(r.title)) || '', (r && str(r.bank)) || '', ORG_KO[(r && r.org)] || ''].filter(function (x) { return x; }).join(' · ');
     var ini = r ? initialsOf({ r: r, id: pid }) : String(pid || '?').slice(0, 2).toUpperCase();
     var policyMode = (obj(D.roster).photo_policy && obj(D.roster).photo_policy.mode) || 'pd_only';
-    var showImg = photoUsable(r, policyMode) && photoState[pid] !== 'fail';
+    var showImg = photoUsable(r, policyMode);
     var av = '<svg width="64" height="64" viewBox="-32 -32 64 64" aria-hidden="true"><circle r="29" fill="none" stroke="' + ring + '" stroke-width="' + (r && r.role === 'chair' ? 3.5 : 2.5) + '"' + (r && r.voter === true ? '' : ' stroke-dasharray="4 3"') + '/><circle r="26" fill="' + ring + '2e"/>' +
-      (showImg ? '<clipPath id="mclip-' + attr(pid) + '"><circle r="26"/></clipPath><image href="' + attr(r.photo) + '" xlink:href="' + attr(r.photo) + '" x="-26" y="-26" width="52" height="52" preserveAspectRatio="xMidYMin slice" clip-path="url(#mclip-' + attr(pid) + ')"/>'
-        : '<text y="6" text-anchor="middle" font-size="17" font-weight="800" fill="#e6edf3">' + esc(ini) + '</text>') + '</svg>';
+      '<text y="6" text-anchor="middle" font-size="17" font-weight="800" fill="#e6edf3">' + esc(ini) + '</text>' +
+      (showImg ? '<clipPath id="mclip-' + attr(pid) + '"><circle r="26"/></clipPath><image class="fd-photo" href="' + attr(r.photo) + '" xlink:href="' + attr(r.photo) + '" x="-26" y="-26" width="52" height="52" preserveAspectRatio="xMidYMin slice" clip-path="url(#mclip-' + attr(pid) + ')"/>' : '') + '</svg>';
     var mg = '';
     if (p && isN(p.pos)) {
       var pctp = (clamp(p.pos, -1, 1) + 1) / 2 * 100;
@@ -1389,16 +1506,18 @@
     else h += '<span class="fd-bd">비투표</span>';
     h += mg + '<button type="button" class="fd-x" data-act="close" aria-label="닫기">✕</button></div>';
     var TABS = [['summary', '요약'], ['statements', '발언 이력'], ['holdings', '보유자산'], ['papers', '논문·전문']], i;
-    h += '<div class="fd-chips" style="margin:0 0 10px">';
-    for (i = 0; i < TABS.length; i++) h += chip('modalTab', TABS[i][0], TABS[i][1], tab === TABS[i][0]);
-    h += '</div>';
-    h += '<section class="fd-pane' + (tab === 'summary' ? ' on' : '') + '" data-pane="summary">' + paneSummary(D, ST, r, p, ring) + '</section>';
-    h += '<section class="fd-pane' + (tab === 'statements' ? ' on' : '') + '" data-pane="statements">' + paneStatements(D, ST, pid, ring) + '</section>';
-    h += '<section class="fd-pane' + (tab === 'holdings' ? ' on' : '') + '" data-pane="holdings">' + paneHoldings(r) + '</section>';
-    h += '<section class="fd-pane' + (tab === 'papers' ? ' on' : '') + '" data-pane="papers">' + panePapers(r) + '</section>';
+    h += '<div class="fd-chips fd-tabs" role="tablist" aria-label="프로필 정보">';
+    for (i = 0; i < TABS.length; i++) h += '<button type="button" class="fd-chip' + (tab === TABS[i][0] ? ' on' : '') + '" role="tab" id="fdm-tab-' + TABS[i][0] + '" aria-controls="fdm-pane-' + TABS[i][0] + '" aria-selected="' + (tab === TABS[i][0]) + '" tabindex="' + (tab === TABS[i][0] ? '0' : '-1') + '" data-fk="modalTab" data-fv="' + TABS[i][0] + '">' + TABS[i][1] + '</button>';
+    h += '</div><div class="fd-body">';
+    var panes = [paneSummary(D, ST, r, p, ring), paneStatements(D, ST, pid, ring), paneHoldings(r), panePapers(r)];
+    for (i = 0; i < TABS.length; i++) {
+      h += '<section class="fd-pane' + (tab === TABS[i][0] ? ' on' : '') + '" id="fdm-pane-' + TABS[i][0] + '" role="tabpanel" aria-labelledby="fdm-tab-' + TABS[i][0] + '" data-pane="' + TABS[i][0] + '"' + (tab === TABS[i][0] ? '' : ' hidden') + '>' +
+        panes[i].replace(/<table class="fd-htb">/g, '<div class="fd-table-scroll" role="region" aria-label="' + TABS[i][1] + ' 표, 좌우로 스크롤" tabindex="0"><table class="fd-htb">').replace(/<\/table>/g, '</table></div>') + '</section>';
+    }
+    if (r && r._fdPortraitVerified && showImg) h += '<div class="fd-foot">사진 · <a href="' + attr(r.photo_source_page) + '" target="_blank" rel="noopener" style="color:' + ACC + '">' + esc(r.photo_credit || '공식 약력') + ' ↗</a></div>';
     var nt = arr(r && r.notes);
     if (nt.length) { h += '<div class="fd-foot">'; for (i = 0; i < nt.length; i++) h += (i ? '<br>' : '') + '· ' + esc(nt[i]); h += '</div>'; }
-    h += '</div>';
+    h += '</div></div>';
     return h;
   }
 
@@ -1417,13 +1536,13 @@
     injectCSS();
     if (!el) return null;
     ensureModal();                    // body 부작용은 모달 1개뿐(최초 renderFed 때 append)
-    var D = obj(data);
+    var rawData = Object.assign({}, obj(data)), D = withPortraits(rawData);
     var ST = {}, k;
     for (k in DEFAULTS) if (Object.prototype.hasOwnProperty.call(DEFAULTS, k)) ST[k] = DEFAULTS[k];
     var O = obj(opts);
     for (k in O) if (Object.prototype.hasOwnProperty.call(O, k) && k !== 'now') ST[k] = O[k];
     ST.now = isN(O.now) ? O.now : Math.floor(Date.now() / 1000);
-    var openPid = null, openTab = ST.modalTab;
+    var openPid = null, openTab = ST.modalTab, tabScroll = {}, bodyOverflow = null;
 
     function haveCore() {
       return !!(D.roster || D.positions);
@@ -1432,22 +1551,14 @@
       if (!haveCore()) { el.innerHTML = '<p class="fd-hint" style="padding:20px">연준 데이터 준비 중…</p>'; return; }
       var h = '<div class="fd-wrap">' + defsSVG() + rHero(ST, D) + rNav(ST);
       h += '<div class="fd-grid">' + rCal(ST, D) + rDist(ST, D) + '</div>';
+      h += rPeople(ST, D);
       h += '<div class="fd-grid2">' + rFeed(ST, D) + rReact(ST, D) + '</div>';
       h += rTaco(ST, D);
       h += '<div class="fd-tip" id="fdTip"></div>';
       h += '</div>';
       el.innerHTML = h;
       bind();
-      startPreload();
-    }
-    function startPreload() {
-      var nodes = ST._nodes;
-      if (!nodes || !nodes.length) return;
-      var policyMode = (obj(D.roster).photo_policy && obj(D.roster).photo_policy.mode) || 'pd_only';
-      preloadPhotos(nodes, policyMode, function () {
-        if (modalEl && modalEl.hidden === false) return;   // 모달 열려 있으면 재렌더 보류
-        render();
-      });
+      bindPhotos(el);
     }
     function setState(patch) {
       var kk;
@@ -1455,10 +1566,30 @@
       render();
       return ST;
     }
-    function bind() {
+    function renderFilter(key) {
+      var id = '', html = '';
+      if (/^(group|hf|scale|arrows|names|neutralRing)$/.test(key)) { id = 'fdDist'; html = rDist(ST, D); }
+      else if (/^feed(Group|Kind|Dev|Sort)$/.test(key)) { id = 'fdFeed'; html = rFeed(ST, D); }
+      else if (/^cal(Star|Range)$/.test(key)) { id = 'fdCal'; html = rCal(ST, D); }
+      var current = id && el.querySelector ? el.querySelector('#' + id) : null;
+      if (!current || !current.parentNode) { render(); return; }
+      function replaceCard(card, markup) {
+        var holder = document.createElement('div'); holder.innerHTML = markup;
+        var next = holder.firstElementChild;
+        if (!next) return false;
+        card.parentNode.replaceChild(next, card); bind(next); bindPhotos(next); return true;
+      }
+      if (!replaceCard(current, html)) { render(); return; }
+      if (key === 'neutralRing') {
+        var people = el.querySelector('#fdPeople');
+        if (people) replaceCard(people, rPeople(ST, D));
+      }
+    }
+    function bind(root) {
+      root = root || el;
       var tip = null;
       try { tip = el.querySelector ? el.querySelector('#fdTip') : null; } catch (e) { tip = null; }
-      each(qa(el, '[data-fk]'), function (b) {
+      each(qa(root, '[data-fk]'), function (b) {
         b.addEventListener('click', function () {
           var kk = b.getAttribute ? b.getAttribute('data-fk') : null;
           var vv = b.getAttribute ? b.getAttribute('data-fv') : null;
@@ -1466,24 +1597,42 @@
           if (BOOLS[kk]) ST[kk] = (vv === '1');
           else ST[kk] = vv;
           if (kk === 'modalTab') { openTab = vv; if (openPid) { openProfile(openPid, vv); return; } }
-          render();
+          renderFilter(kk);
+          // 필터를 눌러도 키보드 초점과 화면 위치를 유지한다.
+          var replacement = null;
+          each(qa(el, '[data-fk]'), function (c) {
+            if (c.getAttribute('data-fk') === kk && (!replacement || c.getAttribute('data-fv') === vv)) replacement = c;
+          });
+          safeFocus(replacement);
         });
       });
-      each(qa(el, '[data-go]'), function (b) {
+      each(qa(root, '[data-go]'), function (b) {
         b.addEventListener('click', function () {
           var id = b.getAttribute('data-go'), t = el.querySelector ? el.querySelector('#' + id) : null;
-          if (t && t.scrollIntoView) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          if (t && t.scrollIntoView) {
+            var nav = el.querySelector ? el.querySelector('.fd-nav') : null;
+            var navHeight = nav && nav.getBoundingClientRect ? nav.getBoundingClientRect().height : 0;
+            var viewPadding = 0;
+            try {
+              var computed = window.getComputedStyle ? window.getComputedStyle(el) : null;
+              var padding = computed ? parseFloat(computed.paddingTop) : 0;
+              if (isN(padding) && padding > 0) viewPadding = padding;
+            } catch (e) { /* 스타일 실측이 불가능하면 기본 여백 유지 */ }
+            if (t.style) t.style.scrollMarginTop = (isN(navHeight) && navHeight > 0 ? Math.ceil(navHeight + viewPadding) + 12 : 72) + 'px';
+            t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+          }
         });
       });
-      each(qa(el, '[data-act="speak"]'), function (b) {
+      each(qa(root, '[data-act="speak"]'), function (b) {
         b.addEventListener('click', function () {
           try { if (window.PV && window.PV.speak) window.PV.speak(briefText(D)); } catch (e) { }
         });
       });
-      each(qa(el, '.fd-sum'), function (b) {
+      each(qa(root, '.fd-sum'), function (b) {
         b.addEventListener('click', function () { if (b.classList) b.classList.toggle('open'); });
       });
-      each(qa(el, '.fd-node'), function (g) {
+      each(qa(root, '.fd-node'), function (g) {
         var pid = g.getAttribute ? g.getAttribute('data-id') : null;
         g.addEventListener('click', function () { openProfile(pid); });
         g.addEventListener('keydown', function (ev) {
@@ -1495,10 +1644,13 @@
           g.addEventListener('focus', function () { });
         }
       });
-      each(qa(el, '.cav'), function (a) {
+      each(qa(root, '.cav'), function (a) {
         a.addEventListener('click', function (ev) { if (ev && ev.stopPropagation) ev.stopPropagation(); openProfile(a.getAttribute('data-pid')); });
       });
-      if (tip) each(qa(el, '.fd-arcg'), function (g) {
+      each(qa(root, '[data-profile]'), function (b) {
+        b.addEventListener('click', function () { openProfile(b.getAttribute('data-profile')); });
+      });
+      if (tip) each(qa(root, '.fd-arcg'), function (g) {
         var tid = g.getAttribute ? g.getAttribute('data-tid') : null;
         g.addEventListener('mousemove', function (ev) { showTip(tip, ev, arcTipHTML(tid)); });
         g.addEventListener('mouseleave', function () { hideTip(tip); });
@@ -1532,46 +1684,97 @@
       if (!a) return '';
       return esc(arcTip(a, idx[a.id] || {})).replace(/\n/g, '<br>');
     }
+    function safeFocus(target) {
+      if (!target || !target.focus) return;
+      try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
+    }
+    function switchTab(tab, focusTab) {
+      if (!/^(summary|statements|holdings|papers)$/.test(tab)) tab = 'summary';
+      var m = ensureModal(), scroller = m.querySelector ? m.querySelector('.fd-body') : null;
+      if (scroller) tabScroll[openTab] = scroller.scrollTop;
+      openTab = tab; ST.modalTab = tab;
+      each(qa(m, '[role="tab"]'), function (b) {
+        var on = b.getAttribute('data-fv') === tab;
+        if (b.classList) b.classList.toggle('on', on);
+        b.setAttribute('aria-selected', String(on)); b.setAttribute('tabindex', on ? '0' : '-1');
+        if (on && focusTab) safeFocus(b);
+      });
+      each(qa(m, '[data-pane]'), function (pane) {
+        var on = pane.getAttribute('data-pane') === tab;
+        if (pane.classList) pane.classList.toggle('on', on);
+        pane.hidden = !on;
+      });
+      if (scroller) scroller.scrollTop = tabScroll[tab] || 0;
+    }
     function openProfile(pid, tab) {
       if (!pid) return;
-      openPid = pid; openTab = str(tab) || openTab || 'summary';
       var m = ensureModal();
-      try { lastFocus = document.activeElement || null; } catch (e) { lastFocus = null; }
+      if (openPid === pid && m.hidden === false) { switchTab(str(tab) || openTab, true); return; }
+      if (m.hidden !== false) {
+        try { lastFocus = document.activeElement || null; } catch (e) { lastFocus = null; }
+        if (document.body && document.body.style) {
+          bodyOverflow = document.body.style.overflow;
+          document.body.style.overflow = 'hidden';
+        }
+      }
+      openPid = pid; openTab = str(tab) || openTab || 'summary'; tabScroll = {};
+      if (!/^(summary|statements|holdings|papers)$/.test(openTab)) openTab = 'summary';
       m.innerHTML = modalHTML(D, ST, pid, openTab);
       m.hidden = false;
+      bindPhotos(m);
+      hideTip(el.querySelector ? el.querySelector('#fdTip') : null);
       each(qa(m, '[data-act="close"]'), function (b) { b.addEventListener('click', closeProfile); });
-      each(qa(m, '[data-fk]'), function (b) {
-        b.addEventListener('click', function () {
-          var kk = b.getAttribute('data-fk'), vv = b.getAttribute('data-fv');
-          if (kk === 'modalTab') openProfile(openPid, vv);
-        });
+      each(qa(m, '[role="tab"]'), function (b) {
+        b.addEventListener('click', function () { switchTab(b.getAttribute('data-fv'), true); });
       });
       m.onclick = function (ev) { if (ev && ev.target === m) closeProfile(); };
-      m.addEventListener('keydown', function (ev) {
+      // 모달 재개방마다 하나의 핸들러만 교체한다. 숨긴 패널의 링크는 초점 순서에서 제외한다.
+      m.onkeydown = function (ev) {
         if (!ev) return;
-        if (ev.key === 'Escape' || ev.key === 'Esc') { closeProfile(); return; }
+        if (ev.key === 'Escape' || ev.key === 'Esc') {
+          if (ev.preventDefault) ev.preventDefault();
+          if (ev.stopPropagation) ev.stopPropagation();
+          closeProfile(); return;
+        }
+        var act = document.activeElement;
+        if (act && act.getAttribute && act.getAttribute('role') === 'tab') {
+          var tabs = qa(m, '[role="tab"]'), idx = 0, next = -1;
+          each(tabs, function (t, i) { if (t === act) idx = i; });
+          if (ev.key === 'ArrowRight') next = (idx + 1) % tabs.length;
+          else if (ev.key === 'ArrowLeft') next = (idx + tabs.length - 1) % tabs.length;
+          else if (ev.key === 'Home') next = 0;
+          else if (ev.key === 'End') next = tabs.length - 1;
+          if (next >= 0) {
+            if (ev.preventDefault) ev.preventDefault();
+            switchTab(tabs[next].getAttribute('data-fv'), true); return;
+          }
+        }
         if (ev.key !== 'Tab') return;
-        var f = qa(m, 'button,a[href],[tabindex]:not([tabindex="-1"])');
+        var f = [];
+        each(qa(m, 'button,a[href],[tabindex]:not([tabindex="-1"])'), function (n) {
+          if (!n.disabled && n.getAttribute('tabindex') !== '-1' && !(n.closest && n.closest('[hidden]'))) f.push(n);
+        });
         if (!f.length) return;
-        var first = f[0], last = f[f.length - 1], act = null;
-        try { act = document.activeElement; } catch (e2) { }
-        if (ev.shiftKey && act === first) { if (ev.preventDefault) ev.preventDefault(); if (last.focus) last.focus(); }
-        else if (!ev.shiftKey && act === last) { if (ev.preventDefault) ev.preventDefault(); if (first.focus) first.focus(); }
-      });
-      var sheet = m.querySelector ? m.querySelector('.fd-sheet') : null;
-      if (sheet && sheet.focus) sheet.focus();
+        var first = f[0], last = f[f.length - 1], sheet = m.querySelector ? m.querySelector('.fd-sheet') : null;
+        if (ev.shiftKey && (act === first || act === sheet)) { if (ev.preventDefault) ev.preventDefault(); safeFocus(last); }
+        else if (!ev.shiftKey && (act === last || act === sheet)) { if (ev.preventDefault) ev.preventDefault(); safeFocus(first); }
+      };
+      safeFocus(m.querySelector ? m.querySelector('.fd-sheet') : null);
     }
     function closeProfile() {
       openPid = null;
-      if (modalEl) { modalEl.hidden = true; modalEl.innerHTML = ''; }
-      try { if (lastFocus && lastFocus.focus) lastFocus.focus(); } catch (e) { }
+      if (modalEl) { modalEl.hidden = true; modalEl.innerHTML = ''; modalEl.onclick = null; modalEl.onkeydown = null; }
+      if (bodyOverflow !== null && document.body && document.body.style) document.body.style.overflow = bodyOverflow;
+      bodyOverflow = null;
+      try { if (lastFocus && lastFocus.isConnected !== false) safeFocus(lastFocus); } catch (e) { }
       lastFocus = null;
     }
 
     render();
     return {
       refresh: function (nd) {
-        if (nd && typeof nd === 'object') { var kk; for (kk in nd) if (Object.prototype.hasOwnProperty.call(nd, kk)) D[kk] = nd[kk]; }
+        if (nd && typeof nd === 'object') { var kk; for (kk in nd) if (Object.prototype.hasOwnProperty.call(nd, kk)) rawData[kk] = nd[kk]; }
+        D = withPortraits(rawData);
         ST.now = Math.floor(Date.now() / 1000);
         render();
       },

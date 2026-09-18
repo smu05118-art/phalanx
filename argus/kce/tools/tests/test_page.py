@@ -12,6 +12,8 @@ import os
 import re
 import sys
 import unittest
+from html.parser import HTMLParser
+from urllib.parse import urlsplit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
@@ -176,9 +178,18 @@ class TestGeneratedPagesOnDisk(unittest.TestCase):
         for page in pages:
             with open(page, encoding="utf-8") as f:
                 html = f.read()
-            for href in re.findall(r'(?:href|src)="([^"#?:]+)"', html):
-                if href.startswith(("http", "//", "mailto:", "data:")):
+            class Links(HTMLParser):
+                def __init__(self):
+                    super().__init__(); self.links = []
+                def handle_starttag(self, tag, attrs):
+                    self.links.extend(v for k, v in attrs if k in ('href', 'src') and v)
+            parsed = Links()
+            parsed.feed(html)
+            for href in parsed.links:
+                url = urlsplit(href)
+                if url.scheme or url.netloc or not url.path:
                     continue
+                href = url.path
                 target = os.path.normpath(
                     os.path.join(os.path.dirname(page), href))
                 if not os.path.exists(target):

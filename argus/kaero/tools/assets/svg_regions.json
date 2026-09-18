@@ -1,0 +1,372 @@
+{
+ "viewBox": "0 0 400 200",
+ "silhouettes": [
+  {
+   "id": "AIRLINER",
+   "ko": "민항 여객기(평면도)",
+   "en": "Airliner (plan view)",
+   "domain": "struct"
+  },
+  {
+   "id": "ENG",
+   "ko": "터보팬 엔진(단면)",
+   "en": "Turbofan (section)",
+   "domain": "engine"
+  },
+  {
+   "id": "SAT",
+   "ko": "인공위성",
+   "en": "Satellite",
+   "domain": "space"
+  },
+  {
+   "id": "LV",
+   "ko": "우주 발사체",
+   "en": "Launch vehicle",
+   "domain": "space"
+  }
+ ],
+ "regions": [
+  {
+   "id": "AIRLINER_NOSE",
+   "silhouette": "AIRLINER",
+   "ko": "기수·레이돔",
+   "points": "40,100 72,84 96,84 96,116 72,116",
+   "label": {
+    "x": 68,
+    "y": 100
+   },
+   "cats": [
+    "AVION.COMM",
+    "AVION.NAV",
+    "AVION.SENSOR",
+    "STRUCT.FUSELAGE"
+   ]
+  },
+  {
+   "id": "AIRLINER_FWD",
+   "silhouette": "AIRLINER",
+   "ko": "전방동체",
+   "points": "96,84 172,84 172,116 96,116",
+   "label": {
+    "x": 134,
+    "y": 100
+   },
+   "cats": [
+    "AVION.PWR",
+    "MAT.ALLOY",
+    "STRUCT.FUSELAGE"
+   ]
+  },
+  {
+   "id": "AIRLINER_WING_U",
+   "silhouette": "AIRLINER",
+   "ko": "주익(상)",
+   "points": "162,84 196,24 228,24 210,84",
+   "label": {
+    "x": 196,
+    "y": 56
+   },
+   "cats": [
+    "AVION.FCS",
+    "MAT.COMP",
+    "STRUCT.WING"
+   ]
+  },
+  {
+   "id": "AIRLINER_WING_L",
+   "silhouette": "AIRLINER",
+   "ko": "주익(하)",
+   "points": "162,116 196,176 228,176 210,116",
+   "label": {
+    "x": 196,
+    "y": 144
+   },
+   "cats": [
+    "AVION.FCS",
+    "MAT.COMP",
+    "STRUCT.WING"
+   ]
+  },
+  {
+   "id": "AIRLINER_ENG_U",
+   "silhouette": "AIRLINER",
+   "ko": "엔진·나셀(상)",
+   "points": "182,50 208,50 208,72 182,72",
+   "label": {
+    "x": 195,
+    "y": 61
+   },
+   "cats": [
+    "STRUCT.NACELLE"
+   ]
+  },
+  {
+   "id": "AIRLINER_ENG_L",
+   "silhouette": "AIRLINER",
+   "ko": "엔진·나셀(하)",
+   "points": "182,128 208,128 208,150 182,150",
+   "label": {
+    "x": 195,
+    "y": 139
+   },
+   "cats": [
+    "STRUCT.NACELLE"
+   ]
+  },
+  {
+   "id": "AIRLINER_GEAR",
+   "silhouette": "AIRLINER",
+   "ko": "착륙장치",
+   "points": "150,116 168,116 168,132 150,132",
+   "label": {
+    "x": 159,
+    "y": 124
+   },
+   "cats": [
+    "STRUCT.GEAR"
+   ]
+  },
+  {
+   "id": "AIRLINER_AFT",
+   "silhouette": "AIRLINER",
+   "ko": "후방동체",
+   "points": "172,86 300,90 300,110 172,114",
+   "label": {
+    "x": 236,
+    "y": 100
+   },
+   "cats": [
+    "MAT.SURF",
+    "STRUCT.FUSELAGE",
+    "SVC.MRO"
+   ]
+  },
+  {
+   "id": "AIRLINER_TAIL",
+   "silhouette": "AIRLINER",
+   "ko": "미익(수평·수직)",
+   "points": "300,90 322,58 348,58 334,92 334,108 348,142 322,142 300,110",
+   "label": {
+    "x": 324,
+    "y": 100
+   },
+   "cats": [
+    "STRUCT.WING"
+   ]
+  },
+  {
+   "id": "ENG_FAN",
+   "silhouette": "ENG",
+   "ko": "팬",
+   "points": "40,52 92,44 92,156 40,148",
+   "label": {
+    "x": 66,
+    "y": 100
+   },
+   "cats": [
+    "ENGINE.FAN"
+   ]
+  },
+  {
+   "id": "ENG_COMP",
+   "silhouette": "ENG",
+   "ko": "압축기",
+   "points": "92,66 172,78 172,122 92,134",
+   "label": {
+    "x": 132,
+    "y": 100
+   },
+   "cats": [
+    "ENGINE.FAN"
+   ]
+  },
+  {
+   "id": "ENG_COMB",
+   "silhouette": "ENG",
+   "ko": "연소기",
+   "points": "172,76 216,76 216,124 172,124",
+   "label": {
+    "x": 194,
+    "y": 100
+   },
+   "cats": [
+    "ENGINE.COMBUST"
+   ]
+  },
+  {
+   "id": "ENG_TURB",
+   "silhouette": "ENG",
+   "ko": "터빈",
+   "points": "216,72 282,68 282,132 216,128",
+   "label": {
+    "x": 249,
+    "y": 100
+   },
+   "cats": [
+    "ENGINE.TURBINE",
+    "MAT.ALLOY"
+   ]
+  },
+  {
+   "id": "ENG_NOZZ",
+   "silhouette": "ENG",
+   "ko": "배기노즐",
+   "points": "282,68 352,86 352,114 282,132",
+   "label": {
+    "x": 317,
+    "y": 100
+   },
+   "cats": [
+    "ENGINE.COMBUST"
+   ]
+  },
+  {
+   "id": "ENG_CASE",
+   "silhouette": "ENG",
+   "ko": "케이싱",
+   "points": "40,44 92,44 92,52 40,52",
+   "label": {
+    "x": 66,
+    "y": 40
+   },
+   "cats": [
+    "ENGINE.CASE",
+    "SVC.MRO"
+   ]
+  },
+  {
+   "id": "ENG_ACC",
+   "silhouette": "ENG",
+   "ko": "보기류·기어박스",
+   "points": "130,134 210,134 210,160 130,160",
+   "label": {
+    "x": 170,
+    "y": 147
+   },
+   "cats": [
+    "ENGINE.ACC"
+   ]
+  },
+  {
+   "id": "SAT_BUS",
+   "silhouette": "SAT",
+   "ko": "본체(버스)",
+   "points": "162,72 238,72 238,128 162,128",
+   "label": {
+    "x": 200,
+    "y": 100
+   },
+   "cats": [
+    "SPACE.BUS"
+   ]
+  },
+  {
+   "id": "SAT_PANEL_L",
+   "silhouette": "SAT",
+   "ko": "태양전지판(좌)",
+   "points": "40,82 160,82 160,118 40,118",
+   "label": {
+    "x": 100,
+    "y": 100
+   },
+   "cats": [
+    "SPACE.BUS"
+   ]
+  },
+  {
+   "id": "SAT_PANEL_R",
+   "silhouette": "SAT",
+   "ko": "태양전지판(우)",
+   "points": "240,82 360,82 360,118 240,118",
+   "label": {
+    "x": 300,
+    "y": 100
+   },
+   "cats": [
+    "SPACE.BUS"
+   ]
+  },
+  {
+   "id": "SAT_PAY",
+   "silhouette": "SAT",
+   "ko": "탑재체",
+   "points": "178,34 222,34 234,72 166,72",
+   "label": {
+    "x": 200,
+    "y": 54
+   },
+   "cats": [
+    "AVION.SENSOR",
+    "SPACE.PAYLOAD"
+   ]
+  },
+  {
+   "id": "SAT_ANT",
+   "silhouette": "SAT",
+   "ko": "안테나·지상국",
+   "points": "186,128 214,128 222,164 178,164",
+   "label": {
+    "x": 200,
+    "y": 146
+   },
+   "cats": [
+    "AVION.COMM",
+    "SPACE.GROUND"
+   ]
+  },
+  {
+   "id": "LV_FAIRING",
+   "silhouette": "LV",
+   "ko": "페어링·위성",
+   "points": "28,100 76,70 108,70 108,130 76,130",
+   "label": {
+    "x": 72,
+    "y": 100
+   },
+   "cats": [
+    "MAT.COMP"
+   ]
+  },
+  {
+   "id": "LV_UPPER",
+   "silhouette": "LV",
+   "ko": "상단(2단)",
+   "points": "108,72 198,72 198,128 108,128",
+   "label": {
+    "x": 153,
+    "y": 100
+   },
+   "cats": [
+    "SPACE.LAUNCH",
+    "SVC.TEST"
+   ]
+  },
+  {
+   "id": "LV_FIRST",
+   "silhouette": "LV",
+   "ko": "1단",
+   "points": "198,68 318,68 318,132 198,132",
+   "label": {
+    "x": 258,
+    "y": 100
+   },
+   "cats": [
+    "SPACE.LAUNCH"
+   ]
+  },
+  {
+   "id": "LV_ENGINE",
+   "silhouette": "LV",
+   "ko": "추진기관",
+   "points": "318,72 352,48 372,60 372,140 352,152 318,128",
+   "label": {
+    "x": 344,
+    "y": 100
+   },
+   "cats": [
+    "SPACE.LAUNCH"
+   ]
+  }
+ ]
+}
