@@ -156,6 +156,34 @@ def _chip(label, color=None, n=None, href=None, on=False):
     return '<span class="chip%s">%s</span>' % (" on" if on else "", inner)
 
 
+
+# Y+2 추정 섹션(스튜디오 Codex 산출 `kship_forecast_section.py` + `assets/forecast_panel.json.gz`).
+# 산출이 없거나 회사가 빠져 있으면 **섹션을 만들지 않는다** — 빈 칸으로 흉내 내면 화면이 거짓말을 한다.
+_FC = {"panel": None, "src": None, "mod": None, "tried": False}
+
+
+def _forecast_section(stock):
+    import gzip
+    if not _FC["tried"]:
+        _FC["tried"] = True
+        try:
+            import kship_forecast_section as _fs
+            _FC["mod"] = _fs
+            with gzip.open(os.path.join(ASSETS, "forecast_panel.json.gz"), "rt", encoding="utf-8") as f:
+                p = json.load(f)
+            _FC["panel"] = {c.get("company_id") or c.get("stock"): c for c in p["companies"]}
+            _FC["src"] = {c.get("company_id") or c.get("stock"): {"stock": c.get("stock"), "co": c.get("company_name")}
+                          for c in p["companies"]}
+        except Exception as e:
+            sys.stderr.write("[warn] 추정 섹션 비활성: %s\n" % e)
+    if not _FC["panel"] or stock not in _FC["panel"]:
+        return ""
+    try:
+        return _FC["mod"].render_forecast_section(_FC["src"][stock], _FC["panel"][stock]) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 추정 섹션 렌더 실패: %s\n" % (stock, e))
+        return ""
+
 def yard_html(s, data):
     tm = type_meta(data["types"])
     rec, roll = s["rec"], s["roll"]
@@ -364,7 +392,7 @@ def yard_html(s, data):
 </script>
 <script>%s</script>
 """ % ("".join(kpi), other_note, type_table, tl, roll_table, rev_html, fx_html, ser_html, len(s["contracts"]), con_table, sup_html,
-       json_for_html(chart), json.dumps(seg_colors), CHART_DEFAULTS_JS, TABLE_JS)
+       json_for_html(chart), json.dumps(seg_colors), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"])
     return page("%s 조선 수주" % rec["name"], body, depth=1, h1="%s" % rec["name"],
                 tags=(rec["stock"], rec["market"], rec["industry"]),
                 nav=(("허브", "../index.html"), ("인포그래픽", "../parts.html"), ("커버리지", "../coverage.html"), ("DART 원문 ↗", dart)),
