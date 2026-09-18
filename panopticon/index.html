@@ -228,6 +228,60 @@ td.note{color:var(--dim);font-size:11.5px;max-width:520px}
 .ev .sha{font-family:var(--mono);font-size:11px;color:var(--a2);flex:none;width:62px}
 .ev .msg{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* ── 금고 ───────────────────────────────────────────── */
+.sec-lock{max-width:430px;margin:48px auto;background:var(--s1);border:1px solid var(--bd);
+  border-radius:var(--r);padding:26px 24px;text-align:center}
+.sec-lock h3{margin:0 0 6px;font-size:15px;letter-spacing:.06em}
+.sec-lock p{margin:0 0 18px;color:var(--dim);font-size:12px;line-height:1.7}
+.sec-lock input{width:100%;padding:11px 13px;border-radius:var(--r2);border:1px solid var(--bd);
+  background:var(--s2);color:var(--tx);font:inherit;outline:none;letter-spacing:.05em}
+.sec-lock input:focus{border-color:var(--a5)}
+.sec-lock button{width:100%;margin-top:10px;padding:11px;border-radius:var(--r2);
+  background:var(--a5);color:var(--onacc);font-weight:650;letter-spacing:.06em}
+.sec-lock .msg{min-height:18px;margin-top:12px;font-size:12px;color:var(--a3)}
+.sec-lock .msg.info{color:var(--dim)}
+.sec-bar{display:flex;gap:8px;align-items:center;padding:16px 0 10px;flex-wrap:wrap}
+.sec-bar input[type=search]{flex:1 1 220px;max-width:320px;padding:8px 12px;border-radius:9px;
+  border:1px solid var(--bd);background:var(--s1);color:var(--tx);font:inherit;font-size:12.5px;outline:none}
+.sec-bar input[type=search]:focus{border-color:var(--a5)}
+.sec-bar .sp{flex:1}
+.sec-list{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.sec{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:13px 14px;
+  display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden}
+.sec::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--a5)}
+.sec.exp::before{background:var(--a3)} .sec.soon::before{background:var(--a4)}
+.sec .hd{display:flex;align-items:baseline;gap:8px}
+.sec .svc{font-weight:650;font-size:14px}
+.sec .kind{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim);
+  border:1px solid var(--bd);border-radius:999px;padding:1px 7px}
+.sec .acct{color:var(--dim);font-size:11.5px;font-family:var(--mono);word-break:break-all}
+.sec .val{display:flex;align-items:center;gap:6px;background:var(--s2);border-radius:8px;padding:7px 9px}
+.sec .val code{flex:1;font-family:var(--mono);font-size:12px;word-break:break-all;line-height:1.5}
+.sec .val button{padding:4px 7px;border-radius:6px;color:var(--dim);font-size:11px;border:1px solid transparent}
+.sec .val button:hover{color:var(--tx);border-color:var(--bd)}
+.sec .meta{display:flex;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:10px;color:var(--dim)}
+.sec .meta .warn{color:var(--a4)} .sec .meta .over{color:var(--a3)}
+.sec .note{font-size:11.5px;color:var(--dim);line-height:1.6}
+.sec .act{display:flex;gap:6px;margin-top:2px}
+.sec .act button{padding:4px 9px;border-radius:7px;border:1px solid var(--bd);font-size:11px;color:var(--dim)}
+.sec .act button:hover{color:var(--tx)}
+.sec-empty{padding:40px;text-align:center;color:var(--dim);font-size:12.5px;line-height:1.8}
+.sec-form{background:var(--s1);border:1px solid var(--a5);border-radius:var(--r2);padding:16px;
+  display:grid;gap:9px;grid-template-columns:1fr 1fr;margin-bottom:14px}
+.sec-form label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--dim)}
+.sec-form label.wide{grid-column:1/-1}
+.sec-form input,.sec-form select,.sec-form textarea{padding:8px 10px;border-radius:8px;
+  border:1px solid var(--bd);background:var(--s2);color:var(--tx);font:inherit;font-size:12.5px;outline:none}
+.sec-form textarea{resize:vertical;min-height:48px}
+.sec-form input:focus,.sec-form select:focus,.sec-form textarea:focus{border-color:var(--a5)}
+.sec-form .row{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+.sec-form .row button{padding:8px 16px;border-radius:8px;font-size:12.5px;border:1px solid var(--bd);color:var(--dim)}
+.sec-form .row button.go{background:var(--a5);color:var(--onacc);border-color:transparent;font-weight:650}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:80;
+  background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:9px 18px;font-size:12.5px;
+  box-shadow:0 12px 34px -14px rgba(0,0,0,.7)}
+@media(max-width:640px){.sec-form{grid-template-columns:1fr}}
+
 /* ── 커맨드 팔레트 ──────────────────────────────────── */
 #palette{position:fixed;inset:0;z-index:70;display:grid;place-items:start center;padding:12vh 20px 20px;background:rgba(3,3,10,.62);backdrop-filter:blur(3px)}
 [data-theme=light] #palette{background:rgba(30,32,60,.34)}
@@ -312,6 +366,7 @@ td.note{color:var(--dim);font-size:11.5px;max-width:520px}
     <button data-view="fleet" aria-selected="false">함대 <span class="count" id="cJobs"></span></button>
     <button data-view="feed" aria-selected="false">활동</button>
     <button data-view="inc" aria-selected="false">인시던트 <span class="count" id="cInc"></span></button>
+    <button data-view="sec" aria-selected="false">금고 <span class="count" id="cSec"></span></button>
   </nav>
 
   <main>
@@ -345,6 +400,34 @@ td.note{color:var(--dim);font-size:11.5px;max-width:520px}
     <section id="view-feed" hidden><div class="feed" id="feedList"></div></section>
 
     <section id="view-inc" hidden><div class="inc-list" id="incList"></div></section>
+
+    <section id="view-sec" hidden>
+      <!-- 금고는 포털 로그인과 **별도 암호**로 잠근다. 관제면을 보는 것과
+           자격증명을 꺼내는 것은 다른 권한이어야 한다. -->
+      <div class="sec-lock" id="secLock">
+        <h3>🔐 금 고</h3>
+        <p id="secHint"></p>
+        <input id="secPw" type="password" placeholder="금고 암호" autocomplete="off"
+               spellcheck="false" autocapitalize="off" aria-label="금고 암호">
+        <input id="secPw2" type="password" placeholder="새 암호 확인" autocomplete="off"
+               spellcheck="false" hidden aria-label="새 암호 확인">
+        <button id="secOpen" type="button">열 기</button>
+        <p class="msg" id="secMsg" role="status" aria-live="polite"></p>
+      </div>
+      <div id="secMain" hidden>
+        <div class="sec-bar">
+          <input id="secQ" type="search" placeholder="서비스·계정·태그 검색" spellcheck="false">
+          <span class="sp"></span>
+          <button class="icon-btn" id="secAdd">+ 추가</button>
+          <button class="icon-btn" id="secExport" title="같은 암호로 암호화된 파일을 내려받는다">내보내기</button>
+          <button class="icon-btn" id="secImport">가져오기</button>
+          <button class="icon-btn" id="secLockBtn" title="금고만 잠근다">잠금</button>
+          <input id="secFile" type="file" accept=".json,application/json" hidden>
+        </div>
+        <div id="secFormWrap"></div>
+        <div class="sec-list" id="secList"></div>
+      </div>
+    </section>
   </main>
 
   <div class="foot" id="foot"></div>
@@ -362,9 +445,10 @@ td.note{color:var(--dim);font-size:11.5px;max-width:520px}
 'use strict';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const KEYSTORE='pnpt.k', THEME='pnpt.theme', PINS='pnpt.pins', VAULT='vault.json', IVAULT='index_vault.json';
+const SECSTORE='pnpt.sec.v1';   // 금고 암호문. 이 브라우저 밖으로 나가지 않는다.
 const b64d=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const b64e=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
-let DATA=null, IDX=null, RAWKEY=null, view=location.hash==='#tasks'?'tasks':'sites', palIdx=0, palRows=[];
+let DATA=null, IDX=null, RAWKEY=null, SEC=null, SECKEY=null, SECSALT=null, secTouch=0, secEdit=null, view=location.hash==='#tasks'?'tasks':'sites', palIdx=0, palRows=[];
 const LOCAL_LIVE=!!document.querySelector('meta[name="panopticon-live"][content="same-origin"]')&&['127.0.0.1','localhost'].includes(location.hostname);
 let WORK=null, workNetwork='waiting', workChecked=null, workBusy=false, workFamily='all';
 
@@ -664,10 +748,167 @@ async function refreshWork(){
 function setView(v){
   view=v;
   $$('#navTabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.view===v)));
-  ['sites','fleet','feed','inc','tasks'].forEach(k=>{$('#view-'+k).hidden=(k!==v)});
+  ['sites','fleet','feed','inc','tasks','sec'].forEach(k=>{$('#view-'+k).hidden=(k!==v)});
   if(v==='fleet') renderFleet(); if(v==='feed') renderFeed(); if(v==='inc') renderInc();
   if(v==='tasks')renderWork();
+  if(v==='sec'){ if(SECKEY){ secTouch=Date.now(); secRender(); } else { secPrompt(); setTimeout(()=>$('#secPw').focus(),40); } }
   try{history.replaceState(null,'',v==='tasks'?'#tasks':location.pathname+location.search)}catch(e){}
+}
+
+
+/* ── 금고 ───────────────────────────────────────────────
+   설계 근거 — 이 사이트는 **공개** GitHub Pages 다. 자격증명은 암호화하더라도
+   저장소에 넣지 않는다(공개 암호문은 영구 보존·복제되므로, 암호가 언젠가 새면
+   과거분까지 한꺼번에 털린다). 그래서 금고는 **이 브라우저에만** 산다.
+   · 포털 로그인과 **다른 암호**를 쓴다. 관제면 열람과 비밀 열람은 다른 권한이다.
+   · 유도 키는 메모리에만 둔다. '기억하기' 없음 — 탭을 닫으면 잠긴다.
+   · 10분 무조작이면 자동 잠금. 저장소에는 늘 암호문만 남는다.
+   · 기기 간 이동은 같은 암호로 묶은 내보내기 파일로만 한다(서버 경유 없음). */
+const SEC_IDLE_MS=600000, SEC_CLIP_MS=45000, SEC_KINDS=[['api','API 키'],['token','토큰'],['pw','비밀번호'],['acct','계정'],['etc','기타']];
+
+function secBlob(){ try{ return JSON.parse(localStorage.getItem(SECSTORE)||'null'); }catch(e){ return null; } }
+function secToast(m){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=m;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2600);
+}
+async function secDerive(pw,saltB64){
+  const salt=saltB64?b64d(saltB64):crypto.getRandomValues(new Uint8Array(16));
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:600000,hash:'SHA-256'},base,256);
+  return {key:new Uint8Array(bits), salt:b64e(salt)};
+}
+async function secSeal(items){
+  const key=await crypto.subtle.importKey('raw',SECKEY,'AES-GCM',false,['encrypt']);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const pt=new TextEncoder().encode(JSON.stringify({items,updated:new Date().toISOString().slice(0,19).replace('T',' ')}));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,pt);
+  return {v:1,kdf:{salt:SECSALT,iter:600000,hash:'SHA-256'},cipher:'AES-GCM',iv:b64e(iv),ct:b64e(ct)};
+}
+async function secUnseal(blob,rawKey){
+  const key=await crypto.subtle.importKey('raw',rawKey,'AES-GCM',false,['decrypt']);
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(blob.iv)},key,b64d(blob.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function secSave(){
+  localStorage.setItem(SECSTORE,JSON.stringify(await secSeal(SEC)));
+}
+function secLockNow(silent){
+  SEC=null; SECKEY=null; SECSALT=null; secEdit=null;
+  $('#secMain').hidden=true; $('#secLock').hidden=false;
+  $('#secPw').value=''; $('#secPw2').value='';
+  secPrompt(); if(!silent) secToast('금고를 잠갔습니다');
+}
+function secPrompt(){
+  const blob=secBlob();
+  $('#secPw2').hidden=!!blob;
+  $('#secHint').textContent = blob
+    ? '이 브라우저에 보관된 금고입니다. 포털 로그인과 다른 암호를 씁니다.'
+    : '아직 금고가 없습니다. 새 암호를 정하세요. 잊으면 복구할 방법이 없습니다 — 내용은 이 브라우저에만 암호로 잠겨 저장되고 서버로 나가지 않습니다.';
+  $('#secOpen').textContent = blob ? '열 기' : '금고 만들기';
+  $('#secMsg').textContent='';
+}
+async function secOpen(){
+  const pw=$('#secPw').value, blob=secBlob(), msg=$('#secMsg');
+  if(!pw){ return; }
+  msg.className='msg info'; msg.textContent='키를 유도하는 중…';
+  try{
+    if(!blob){
+      if(pw.length<8){ msg.className='msg'; msg.textContent='암호는 8자 이상으로 하세요.'; return; }
+      if(pw!==$('#secPw2').value){ msg.className='msg'; msg.textContent='확인 암호가 다릅니다.'; return; }
+      const d=await secDerive(pw,null); SECKEY=d.key; SECSALT=d.salt; SEC=[];
+      await secSave();
+    }else{
+      const d=await secDerive(pw,blob.kdf.salt);
+      const data=await secUnseal(blob,d.key);    // 실패 = 암호 불일치
+      SECKEY=d.key; SECSALT=blob.kdf.salt; SEC=Array.isArray(data.items)?data.items:[];
+    }
+    $('#secPw').value=''; $('#secPw2').value=''; msg.textContent='';
+    $('#secLock').hidden=true; $('#secMain').hidden=false;
+    secTouch=Date.now(); secRender();
+  }catch(e){
+    msg.className='msg'; msg.textContent='암호가 맞지 않습니다.';
+  }
+}
+function secDays(d){
+  if(!d) return null;
+  const t=Date.parse(d+'T00:00:00'); if(isNaN(t)) return null;
+  return Math.ceil((t-Date.now())/864e5);
+}
+function secRender(){
+  const q=$('#secQ').value.trim().toLowerCase();
+  const rows=SEC.filter(x=>!q||((x.svc+' '+(x.acct||'')+' '+(x.note||'')+' '+(x.tags||[]).join(' ')).toLowerCase().includes(q)))
+    .sort((a,b)=>(a.svc||'').localeCompare(b.svc||''));
+  $('#cSec').textContent=SEC.length||'';
+  $('#secList').innerHTML = rows.length ? rows.map(x=>{
+    const left=secDays(x.expires);
+    const cls = left==null?'' : (left<0?'exp':(left<=30?'soon':''));
+    const kind=(SEC_KINDS.find(k=>k[0]===x.kind)||['','기타'])[1];
+    return `<div class="sec ${cls}" data-id="${esc(x.id)}">
+      <div class="hd"><span class="svc">${esc(x.svc)}</span><span class="kind">${esc(kind)}</span></div>
+      ${x.acct?`<div class="acct">${esc(x.acct)}</div>`:''}
+      <div class="val"><code data-v="${esc(x.val||'')}">${'•'.repeat(Math.min(28,(x.val||'').length||8))}</code>
+        <button data-a="show" title="표시">보기</button><button data-a="copy" title="복사">복사</button></div>
+      <div class="meta">
+        ${x.issued?`<span>발급 ${esc(x.issued)}</span>`:''}
+        ${x.expires?`<span class="${left<0?'over':(left<=30?'warn':'')}">만료 ${esc(x.expires)}${left!=null?` (${left<0?'지남':left+'일'})`:''}</span>`:''}
+        ${(x.tags||[]).length?`<span>${esc((x.tags||[]).join(' · '))}</span>`:''}
+      </div>
+      ${x.note?`<div class="note">${esc(x.note)}</div>`:''}
+      <div class="act"><button data-a="edit">수정</button><button data-a="del">삭제</button></div>
+    </div>`;
+  }).join('') : `<div class="sec-empty">${SEC.length?'검색 결과가 없습니다.':'아직 등록된 항목이 없습니다.<br>＋추가 로 넣거나, 맥에서 만든 내보내기 파일을 가져오세요.'}</div>`;
+}
+function secForm(item){
+  secEdit=item?item.id:null;
+  const x=item||{svc:'',acct:'',kind:'api',val:'',issued:'',expires:'',note:'',tags:[]};
+  $('#secFormWrap').innerHTML=`<form class="sec-form" id="secF">
+    <label>서비스<input name="svc" value="${esc(x.svc)}" required placeholder="예: OpenAI"></label>
+    <label>종류<select name="kind">${SEC_KINDS.map(k=>`<option value="${k[0]}"${k[0]===x.kind?' selected':''}>${k[1]}</option>`).join('')}</select></label>
+    <label class="wide">계정 · ID<input name="acct" value="${esc(x.acct||'')}" placeholder="예: smu05118@gmail.com"></label>
+    <label class="wide">값<textarea name="val" required placeholder="키·토큰·비밀번호">${esc(x.val||'')}</textarea></label>
+    <label>발급일<input name="issued" type="date" value="${esc(x.issued||'')}"></label>
+    <label>만료일<input name="expires" type="date" value="${esc(x.expires||'')}"></label>
+    <label class="wide">태그 (쉼표)<input name="tags" value="${esc((x.tags||[]).join(', '))}" placeholder="llm, 결제"></label>
+    <label class="wide">메모<textarea name="note" placeholder="용도·발급처·제한">${esc(x.note||'')}</textarea></label>
+    <div class="row"><button type="button" id="secCancel">취소</button><button type="submit" class="go">저장</button></div>
+  </form>`;
+  $('#secCancel').onclick=()=>{secEdit=null;$('#secFormWrap').innerHTML='';};
+  $('#secF').addEventListener('submit',async ev=>{
+    ev.preventDefault();
+    const f=new FormData(ev.target), o={};
+    ['svc','acct','kind','val','issued','expires','note'].forEach(k=>o[k]=(f.get(k)||'').trim());
+    o.tags=(f.get('tags')||'').split(',').map(t=>t.trim()).filter(Boolean);
+    if(secEdit){ Object.assign(SEC.find(y=>y.id===secEdit),o); }
+    else{ o.id=(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())); SEC.push(o); }
+    await secSave(); secEdit=null; $('#secFormWrap').innerHTML=''; secRender(); secToast('저장했습니다');
+  });
+  $('#secF').querySelector('[name=svc]').focus();
+}
+async function secImportFile(file){
+  try{
+    const blob=JSON.parse(await file.text());
+    if(!blob||!blob.kdf||!blob.ct) throw 0;
+    const d=await secDerive(prompt('가져올 파일의 암호를 입력하세요')||'',blob.kdf.salt);
+    const data=await secUnseal(blob,d.key);
+    const incoming=Array.isArray(data.items)?data.items:[];
+    let add=0, upd=0;
+    for(const it of incoming){
+      if(!it||!it.svc) continue;
+      // 같은 서비스+계정이면 덮어쓴다. 아니면 새로 넣는다.
+      const hit=SEC.find(y=>y.svc===it.svc && (y.acct||'')===(it.acct||''));
+      if(hit){ Object.assign(hit,it,{id:hit.id}); upd++; }
+      else{ SEC.push(Object.assign({},it,{id:it.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()))})); add++; }
+    }
+    await secSave(); secRender(); secToast(`가져오기 완료 — 신규 ${add} · 갱신 ${upd}`);
+  }catch(e){ secToast('가져오지 못했습니다 (암호 또는 파일 형식)'); }
+}
+async function secExportFile(){
+  const blob=await secSeal(SEC);
+  const url=URL.createObjectURL(new Blob([JSON.stringify(blob)],{type:'application/json'}));
+  const a=document.createElement('a');
+  a.href=url; a.download='panopticon-vault-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(url);
+  secToast('같은 금고 암호로 잠긴 파일을 내려받았습니다');
 }
 
 /* ── 커맨드 팔레트 ──────────────────────────────────── */
@@ -729,8 +970,43 @@ $('#fleetFilter').addEventListener('click',e=>{
   $$('#fleetFilter button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
   renderFleet();
 });
+$('#secOpen').onclick=secOpen;
+$('#secPw').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault(); secOpen();} });
+$('#secPw2').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault(); secOpen();} });
+$('#secQ').addEventListener('input',()=>{secTouch=Date.now(); secRender();});
+$('#secAdd').onclick=()=>{secTouch=Date.now(); secForm(null);};
+$('#secLockBtn').onclick=()=>secLockNow();
+$('#secExport').onclick=()=>{secTouch=Date.now(); secExportFile();};
+$('#secImport').onclick=()=>$('#secFile').click();
+$('#secFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) secImportFile(f); e.target.value=''; });
+$('#secList').addEventListener('click',async e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  const card=btn.closest('.sec'); if(!card) return;
+  secTouch=Date.now();
+  const id=card.dataset.id, item=SEC.find(x=>x.id===id), code=card.querySelector('code');
+  if(btn.dataset.a==='show'){
+    const on=btn.textContent==='가리기';
+    code.textContent = on ? '•'.repeat(Math.min(28,(item.val||'').length||8)) : (item.val||'');
+    btn.textContent = on ? '보기' : '가리기';
+    if(!on) setTimeout(()=>{ if(btn.textContent==='가리기'){ btn.click(); } },20000);  // 20초 뒤 자동 재마스킹
+  }else if(btn.dataset.a==='copy'){
+    try{
+      await navigator.clipboard.writeText(item.val||'');
+      secToast('복사했습니다 · 45초 뒤 클립보드를 비웁니다');
+      setTimeout(()=>{ navigator.clipboard.writeText('').catch(()=>{}); },SEC_CLIP_MS);
+    }catch(_){ secToast('복사에 실패했습니다'); }
+  }else if(btn.dataset.a==='edit'){ secForm(item); }
+  else if(btn.dataset.a==='del'){
+    if(!confirm(`'${item.svc}' 항목을 지웁니다. 되돌릴 수 없습니다.`)) return;
+    SEC=SEC.filter(x=>x.id!==id); await secSave(); secRender(); secToast('삭제했습니다');
+  }
+});
+/* 무조작 10분이면 금고만 잠근다. 포털 관제면은 계속 본다. */
+setInterval(()=>{ if(SECKEY && Date.now()-secTouch>SEC_IDLE_MS) secLockNow(true); },30000);
+['click','keydown'].forEach(ev=>document.addEventListener(ev,()=>{ if(SECKEY) secTouch=Date.now(); },true));
+
 $('#themeBtn').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
-$('#lockBtn').onclick=()=>{clearKey(); location.reload()};
+$('#lockBtn').onclick=()=>{SEC=null; SECKEY=null; clearKey(); location.reload()};
 $('#openPal').onclick=palOpen;
 $('#palQ').addEventListener('input',()=>{palIdx=0;palRender()});
 $('#palList').addEventListener('click',e=>{const li=e.target.closest('li'); if(li) palGo(palRows[+li.dataset.i])});
@@ -748,13 +1024,14 @@ document.addEventListener('keydown',e=>{
   }
   if($('#app').hidden) return;
   const tag=(e.target.tagName||'').toLowerCase();
-  if(tag==='input'||tag==='textarea') return;
+  if(tag==='input'||tag==='textarea'||tag==='select') return;
   if(e.key==='/'){e.preventDefault(); palOpen();}
   else if(e.key==='1') setView('sites');
   else if(e.key==='2') setView('fleet');
   else if(e.key==='3') setView('feed');
   else if(e.key==='4') setView('inc');
   else if(e.key==='5') setView('tasks');
+  else if(e.key==='6') setView('sec');
 });
 
 /* ── 부팅 ───────────────────────────────────────────── */
