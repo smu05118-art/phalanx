@@ -101,3 +101,13 @@ python3 ksemi_parts.py --write                 # 공정 흐름
   화면이 쓰는 필드는 `content·party·region·amt_mkrw·signed·end·amendments` 뿐이다.
 - 파서를 고칠 때는 `tools/tests/` 를 같이 키워라 — 이 탭의 덫(단위 캡션이 둘째 머리행 안에
   있는 것, 당기/전기 비교표, EUC-KR `rcpNo[8]=='9'`)은 전부 테스트로 고정돼 있다.
+
+## 2026-09-18 원장 19분기 · Y+2 추정
+
+- 원장을 **2021Q4~2026Q2 19분기**로 확장했다(이전 6~8분기). 재현: `python3 tools/ksemi_reports.py --collect --quarter 2026Q2 --n 19`
+  → `--build` → `tools/ksemi_page.py --all`. (조선은 `kship_yards.py --collect --quarter <분기>` 를 분기마다.)
+- 스튜디오 Codex(gpt-6-astra/ultra)가 만든 **Y+2 추정**(분기 T+1~T+10 · 연간 FY2026~FY2028)이 있으면
+  `tools/assets/forecast_panel.json.gz` + `tools/ksemi_forecast_section.py` 로 회사 페이지에 실린다.
+  산출이 없거나 회사가 빠지면 **섹션을 만들지 않는다**. 렌더러 파일명에 탭 접두가 붙은 이유는 그 파일 머리에 적었다.
+- 추정에는 시나리오 3종·잔고분/신규분 분해·민감도 구간이 붙고 `calibrated=false` 로 표기된다 —
+  통계적 신뢰구간이 아니며, 회계 매출이 아니라 수주원장 기준 대용치다.

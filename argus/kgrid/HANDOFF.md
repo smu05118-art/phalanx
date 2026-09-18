@@ -73,3 +73,13 @@ python3 -m unittest discover -s tests                # 97건
 **주의**: DART는 공인 IP 단위로 막는다(30~60분). 수집기는 동시에 3개를 넘기지 마라 —
 `kce_fetch` 가 파일 락으로 프로세스 간 요청 간격(0.7초)을 묶지만 캐시 경합은 피해야 한다.
 `--force` 대량 재수집은 파서를 고친 뒤 꼭 필요한 범위만(대개 `--reparse` 로 충분하다).
+
+## 2026-09-18 원장 19분기 · Y+2 추정
+
+- 원장을 **2021Q4~2026Q2 19분기**로 확장했다(이전 6~8분기). 재현: `python3 tools/kgrid_reports.py --collect --quarter 2026Q2 --n 19`
+  → `--build` → `tools/kgrid_page.py --all`. (조선은 `kship_yards.py --collect --quarter <분기>` 를 분기마다.)
+- 스튜디오 Codex(gpt-6-astra/ultra)가 만든 **Y+2 추정**(분기 T+1~T+10 · 연간 FY2026~FY2028)이 있으면
+  `tools/assets/forecast_panel.json.gz` + `tools/kgrid_forecast_section.py` 로 회사 페이지에 실린다.
+  산출이 없거나 회사가 빠지면 **섹션을 만들지 않는다**. 렌더러 파일명에 탭 접두가 붙은 이유는 그 파일 머리에 적었다.
+- 추정에는 시나리오 3종·잔고분/신규분 분해·민감도 구간이 붙고 `calibrated=false` 로 표기된다 —
+  통계적 신뢰구간이 아니며, 회계 매출이 아니라 수주원장 기준 대용치다.
