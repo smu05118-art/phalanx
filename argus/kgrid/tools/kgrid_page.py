@@ -29,7 +29,7 @@ import os
 import re
 import sys
 
-from kgrid_lib import (BACKLOG_LABEL, DEMAND_LABEL, DEMAND_ORDER, E, EVIDENCE_LABEL, KGRID,
+from kgrid_lib import (ASSETS, BACKLOG_LABEL, DEMAND_LABEL, DEMAND_ORDER, E, EVIDENCE_LABEL, KGRID,
                        PRODUCT_LABEL, PRODUCT_ORDER, REGION_LABEL, REGION_ORDER,
                        CHART_DEFAULTS_JS, TABLE_JS, atomic_write, backlog_kind, fmt_eok,
                        fmt_money, fmt_n, fmt_pct, fmt_x, has_asset, json_for_html, load_asset,
@@ -662,6 +662,34 @@ def coverage_page(data):
 
 # ── 회사 페이지 ─────────────────────────────────────────────
 
+
+# Y+2 추정 섹션(스튜디오 Codex 산출 `kgrid_forecast_section.py` + `assets/forecast_panel.json.gz`).
+# 산출이 없거나 회사가 빠져 있으면 **섹션을 만들지 않는다** — 빈 칸으로 흉내 내면 화면이 거짓말을 한다.
+_FC = {"panel": None, "src": None, "mod": None, "tried": False}
+
+
+def _forecast_section(stock):
+    import gzip
+    if not _FC["tried"]:
+        _FC["tried"] = True
+        try:
+            import kgrid_forecast_section as _fs
+            _FC["mod"] = _fs
+            with gzip.open(os.path.join(ASSETS, "forecast_panel.json.gz"), "rt", encoding="utf-8") as f:
+                p = json.load(f)
+            _FC["panel"] = {c.get("company_id") or c.get("stock"): c for c in p["companies"]}
+            _FC["src"] = {k: {"stock": v.get("stock"), "co": v.get("company_name"),
+                              "name": v.get("company_name")} for k, v in _FC["panel"].items()}
+        except Exception as e:
+            sys.stderr.write("[warn] 추정 섹션 비활성: %s\n" % e)
+    if not _FC["panel"] or stock not in _FC["panel"]:
+        return ""
+    try:
+        return _FC["mod"].render_forecast_section(_FC["src"][stock], _FC["panel"][stock]) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 추정 섹션 렌더 실패: %s\n" % (stock, e))
+        return ""
+
 def company(data, stock):
     s = summary(data, stock)
     c = data["reports"].get(stock) or {"quarters": {}}
@@ -986,7 +1014,7 @@ def company(data, stock):
                 crumbs=[("⚡ 한국전력기기", "../index.html"), ("회사", None), (s["name"], None)],
                 nav=[("허브", "../index.html"), ("단선도", "../grid.html"),
                      ("커버리지", "../coverage.html")],
-                body_end=scr,
+                body_end=scr + _forecast_section(stock),
                 lead=E(", ".join(PRODUCT_LABEL[k] for k in s["products"])
                        or s["product"][:80] or "제품군 미분류")
                      + (" — " + E(s["reason"][:120]) if s["reason"] else ""))

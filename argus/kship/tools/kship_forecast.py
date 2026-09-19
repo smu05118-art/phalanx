@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Offline KSHIP reference engine. Standard library; never imports the KCE engine.
 
-Round 2 extends the supplied R1 quarter, curve, metric, audit and collection helpers.
+Round 3 extends the supplied R2 adapter, runoff, cohort, audit and rendering contract.
 Native normalized ledger adapter; all amounts are reported-book-value proxies.
 No network, packages, invented exchange rates or input mutations.
 """
@@ -18,13 +18,16 @@ import statistics
 import sys
 
 sys.dont_write_bytecode = True
-VERSION = "kship-r2-1"
+VERSION = "kship-r3-1"
 ORIGIN = "2026Q2"
 AS_OF = "2026-09-18"
 SCENARIOS = {"conservative": (0.25, 0.95), "base": (0.50, 1.0),
              "optimistic": (0.75, 1.05)}
-EXPECTED_HISTORY = ["2024Q3", "2024Q4", "2025Q1", "2025Q2", "2025Q3",
-                    "2025Q4", "2026Q1", "2026Q2"]
+EXPECTED_HISTORY = [f"{y}Q{q}" for y in range(2021, 2027) for q in range(1, 5)
+                    if "2021Q4" <= f"{y}Q{q}" <= ORIGIN]
+MIN_BURN_SAMPLES = 2
+MIN_ORDER_SAMPLES = 4
+BACKTEST_HORIZON = 8
 REASONS = {
     "missing_reports_file": "입력에 kship_reports.json 없음; 문서의 수집 완료는 원장이 아님",
     "unsupported_reports_schema": "원본 원장 구조 미검증; 명시적 중간 스키마 어댑터 필요",
@@ -33,7 +36,7 @@ REASONS = {
     "holding_overlap": "지주 발행인 계약과 자회사 운영 범위·계열 중복 미분리",
     "unknown_unit_or_currency": "표 단위·통화·unit_seen 근거 불충분",
     "insufficient_burn_history": "동일 범위 인접분기 소진율 표본 2개 미만",
-    "insufficient_order_history": "환효과를 분리한 신규수주 분기 표본 4개 미만",
+    "insufficient_order_history": "동일 부문 유효 신규 순유입 대용치 표본 4개 미만 (환효과 미분리)",
     "fx_basis_missing": "USD 환산율 또는 원화잔고의 USD 노출비중 근거 없음",
     "recognition_basis_missing": "진행기준/인도기준 수익인식 주석 근거 없음",
     "scope_incomplete": "전체 부문 포괄성 미확인; 부분만 계산 가능",
@@ -227,7 +230,9 @@ def hashes(directory):
 # R2 native ledger adapter. Source fields are preserved; derived fields never fill them.
 SCENARIOS = {"conservative": (.25, 1.0), "base": (.50, 1.0), "optimistic": (.75, 1.0)}
 REASONS.update({
-    "insufficient_segment_history": "동일 부문 유효 소진율 또는 순유입 표본 2개 미만",
+    "insufficient_segment_history": "동일 부문 유효 소진율 2개 또는 순유입 4개 기준 미달",
+    "scope_mismatch": "입력 수주표가 해당 시기 조선부문 범위와 불일치; 다른 범위로 보존",
+    "segment_scope_changed": "부문 명칭·범위 변경; 근거 없이 과거 부문과 연결하지 않음",
     "book_value_only": "보고 장부환산액 기준 조건부 대용치; 미래 원화 회계매출 아님",
     "scope_unverified": "연결제거·부문 포괄성 또는 회사 회계매출 일치 미확인",
     "negative_net_inflow": "음수 순유입은 취소·환산 등을 포함; 신규 코호트는 분위수의 양수 부분만 가정",
@@ -287,9 +292,13 @@ def load_reports(path, evidence_path=None):
         for quarter, source in sorted(company.get("quarters", {}).items()):
             qnum(quarter)
             caption = source.get("raw_unit_caption")
-            unit_ok = (bool(evidence.get("unit_contract")) and source.get("unit_seen") is True
-                       and source.get("cur") == "KRW" and caption in
-                       evidence.get("companies", {}).get(stock, {}).get(quarter, []))
+            # R3 embeds the normalization contract in the ledger. A raw caption
+            # alone is insufficient; the stored numbers must be declared normalized.
+            embedded = raw.get("unit_contract") == "값은 kce_parse._UNIT_SCALE 로 표마다 백만원 정규화 후 저장. raw_unit_caption 은 원문 캡션."
+            external = (bool(evidence.get("unit_contract")) and caption in
+                        evidence.get("companies", {}).get(stock, {}).get(quarter, []))
+            unit_ok = (source.get("unit_seen") is True and source.get("cur") == "KRW"
+                       and caption in {"억원", "백만원", "척, 백만원"} and (embedded or external))
             available = date(str(source.get("rcp", ""))[:4] + "-" + str(source.get("rcp", ""))[4:6]
                              + "-" + str(source.get("rcp", ""))[6:8])
             issues = []
@@ -321,6 +330,9 @@ def load_reports(path, evidence_path=None):
             ids = [r["segment_id"] for r in rows]
             if len(ids) != len(set(ids)) or not all(ids):
                 issues.append("invalid_snapshot")
+            hj_marine = {"방산", "신조선", "기타(수리선)", "특수선", "상선", "수리"}
+            if stock == "097230" and not set(ids).issubset(hj_marine):
+                issues.append("scope_mismatch")
             comparisons = []
             for f, top in [("opening", "opening"), ("new", "new"), ("delivered", "delivered"), ("closing", "backlog"), ("gross", "gross")]:
                 leaf = complete_sum(r["source_fields"].get(f) for r in rows) if rows and unit_ok else None
@@ -331,9 +343,11 @@ def load_reports(path, evidence_path=None):
             snapshots.append({"quarter": quarter, "available_on": str(available) if available else None,
                               "rcp": source.get("rcp"), "issues": issues, "rows": rows,
                               "raw_unit_caption": caption, "unit_verified": unit_ok,
+                              "unit_basis": "embedded_normalization_contract" if embedded else "external_unit_evidence",
+                              "unit_independently_verified": False,
                               "normalization_applied_here": 1, "reconciliations": comparisons,
                               "revenue_audit": ra, "fx": source.get("fx"), "hedge": source.get("hedge"),
-                              "scope": "marine_segment" if stock == "097230" else "reported_segment_sum_uneliminated"})
+                              "scope": ("unverified_non_marine_table" if "scope_mismatch" in issues else "marine_segment") if stock == "097230" else "reported_segment_sum_uneliminated"})
         out[stock] = snapshots
     return out, []
 
@@ -446,12 +460,19 @@ def fit_native(stock, snapshots, current, schedule):
                     oq = r["backlog"]-prev["backlog"]+recognized
             if number(oq): orders.append({"quarter": q, "value": oq, "basis": basis})
         sched = [x for x in schedule if match_segment(stock, seg, x)]
-        eligible = number(row["backlog"]) and row["backlog"] >= 0 and len(burns) >= 2 and len(orders) >= 2
+        failures = []
+        if not number(row["backlog"]) or row["backlog"] < 0: failures.append("invalid_snapshot")
+        if len(burns) < MIN_BURN_SAMPLES: failures.append("insufficient_burn_history")
+        if len(orders) < MIN_ORDER_SAMPLES: failures.append("insufficient_order_history")
+        eligible = not failures
         fits.append({"segment_id": seg, "backlog": row["backlog"], "eligible": eligible,
                      "burn_samples": burns, "net_inflow_samples": orders, "excluded_samples": excluded,
                      "schedule": sched, "duration_basis": "median_observed_contract_period" if sched else "inverse_median_burn_proxy",
                      "recognition_basis": row["recognition_basis"], "source_rollforward_residual": row["rollforward_residual"],
-                     "reason_codes": [] if eligible else ["insufficient_segment_history"]})
+                     "sample_counts": {"burn": len(burns), "net_inflow": len(orders)},
+                     "minimum_samples": {"burn": MIN_BURN_SAMPLES, "net_inflow": MIN_ORDER_SAMPLES},
+                     "clean_new_order_samples": None,
+                     "reason_codes": failures})
     return fits
 
 
@@ -531,6 +552,7 @@ def project_native(company, snapshots, contracts, origin=ORIGIN, as_of=AS_OF):
     reasons = []
     if not snapshots: reasons.append("company_reports_absent")
     if not current: reasons.append("origin_snapshot_absent")
+    reasons.extend(code for s in snapshots if s["quarter"] == origin for code in s["issues"])
     if company["role"] == "holding":
         reasons.append("holding_overlap")
         current = None
@@ -539,6 +561,7 @@ def project_native(company, snapshots, contracts, origin=ORIGIN, as_of=AS_OF):
     if fits:
         reasons.extend(["book_value_only", "scope_unverified"])
         if len(eligible) != len(fits): reasons.append("insufficient_segment_history")
+        reasons.extend(code for f in fits for code in f["reason_codes"] if code not in reasons)
         if any(x["value"] < 0 for f in fits for x in f["net_inflow_samples"]): reasons.append("negative_net_inflow")
     observations = ledger_observations(valid)
     full = bool(fits) and len(eligible) == len(fits)
@@ -550,7 +573,8 @@ def project_native(company, snapshots, contracts, origin=ORIGIN, as_of=AS_OF):
            "modeled_flow_scope": "new_orders_new_backlog_remaining_existing_and_covered_fields_are_eligible_segments_only",
            "fiscal_year_end_month": 12, "fiscal_basis": "calendar_FY_requested; December_close_not_independently_verified",
            "scope": current["scope"] if current else "unknown", "unit_audit": {"verified_at_origin": bool(current and current["unit_verified"]),
-           "scale_applied": 1, "basis": "supplied_kship_unit_evidence; already_normalized_millions"},
+           "scale_applied": 1, "basis": "supplied_normalization_contract; already_normalized_millions",
+           "independently_verified_from_original": False},
            "coverage": {"group_additive": False, "full_reported_scope_model": full,
                         "modeled_segments": [f["segment_id"] for f in eligible],
                         "excluded_segments": [f["segment_id"] for f in fits if not f["eligible"]],
@@ -599,7 +623,8 @@ def project_native(company, snapshots, contracts, origin=ORIGIN, as_of=AS_OF):
             covered_n = complete_sum(qs[i]["covered_scope_new_revenue"] for i in indices)
             value = complete_sum([obs, es, ns]) if len(historical)+len(indices)==4 else None
             sensitivity = [sum(v[i]["existing"]+v[i]["new"] for i in indices) for v in variants]
-            bounds = interval(obs+min(sensitivity), obs+max(sensitivity)) if sensitivity and number(obs) and full else interval()
+            complete_year = len(historical)+len(indices)==4
+            bounds = interval(obs+min(sensitivity), obs+max(sensitivity)) if sensitivity and number(obs) and full and complete_year else interval()
             annual.append({"fiscal_year": year, "value": value, "observed_revenue": obs,
                            "observed_basis": "same_model_ledger_proxy; not_financial_statement_revenue",
                            "existing_backlog_revenue": es, "new_order_revenue": ns,
@@ -612,7 +637,7 @@ def project_native(company, snapshots, contracts, origin=ORIGIN, as_of=AS_OF):
             "order_basis": "positive_part_of_empirical_net_replenishment; includes_unseparated_FX_cancellations",
             "zero_floor_is_model_assumption": True, "schedule_blend": .5,
             "schedule_blend_basis": "explicit_unfitted_prior; sensitivity_0_0.5_1",
-            "minimum_history_samples": 2, "new_order_arrival": "quarter_end; first_recognition_next_quarter",
+            "minimum_history_samples": {"burn": MIN_BURN_SAMPLES, "net_inflow": MIN_ORDER_SAMPLES}, "new_order_arrival": "quarter_end; first_recognition_next_quarter",
             "progress_curve": "R1_smoothstep_unfitted; contract_period_not_actual_build_stage",
             "sensitivity_grid": {"burn_quantiles": [.1,.5,.9], "order_quantiles": [.1,.25,.5,.75,.9],
                                  "schedule_weights": [0,.5,1], "duration_scales": [.8,1,1.2]},
@@ -640,7 +665,7 @@ def backtest_native(universe, reports, contracts):
             scored = {}
             for target in snapshots:
                 h = qnum(target["quarter"]) - qnum(origin)
-                if not 1 <= h <= 10: continue
+                if not 1 <= h <= BACKTEST_HORIZON: continue
                 if sorted(r["segment_id"] for r in target["rows"]) != sorted(f["segment_id"] for f in fits):
                     exclusions["target_segment_scope_changed"] += 1
                     continue
@@ -660,126 +685,319 @@ def backtest_native(universe, reports, contracts):
                 if all(q in scored for q in qs):
                     annual_records.append({"company_id": stock, "origin": origin, "fiscal_year": year,
                         "prediction": complete_sum(scored[q]["prediction"] for q in qs),
-                        "actual": complete_sum(scored[q]["actual"] for q in qs)})
+                        "actual": complete_sum(scored[q]["actual"] for q in qs),
+                        "quarters": qs, "horizons": [scored[q]["horizon"] for q in qs],
+                        "information_cutoff": s["available_on"],
+                        "target_basis": "four_observed_same_scope_quarters; all_forecast_at_origin"})
     return {"quarterly": metric(records), "annual": metric(annual_records),
-            "by_horizon": {str(h):metric([r for r in records if r["horizon"]==h]) for h in range(1,11)},
+            "by_horizon": {str(h):metric([r for r in records if r["horizon"]==h]) for h in range(1,BACKTEST_HORIZON+1)},
+            "by_company": {c["stock"]: {"quarterly": metric([r for r in records if r["company_id"]==c["stock"]]),
+                            "annual": metric([r for r in annual_records if r["company_id"]==c["stock"]])} for c in universe},
+            "annual_by_year": {str(y):metric([r for r in annual_records if r["fiscal_year"]==y])
+                               for y in sorted({r["fiscal_year"] for r in annual_records})},
+            "annual_by_terminal_horizon": {str(h):metric([r for r in annual_records if max(r["horizons"])==h])
+                                           for h in range(4,BACKTEST_HORIZON+1)},
             "records": records, "annual_records": annual_records, "exclusions": dict(exclusions),
             "calibrated": False, "filled_cells_scored": 0,
             "method": "rolling_origin_retrospective_reported_scope_proxy; base_same_engine",
             "vintage_policy": "quarter_and_report_date_gated; latest_contract_snapshot_survivorship_and_revision_bias_unresolved",
             "strict_real_time": False, "independent_holdout": False,
             "schema_policy_basis": "developed_after_auditing_full_supplied_input; not_independent_holdout",
-            "sample_warning": "최대 8분기뿐인 소표본·중첩 예측. 보정·모델선택·장기 정확도 검증 불가. 공시일이 다음 분기 중간일 수 있음."}
+            "origin_range": {"first": min((r["origin"] for r in records),default=None),
+                             "last": max((r["origin"] for r in records),default=None)},
+            "unique_origins": len({(r["company_id"],r["origin"]) for r in records}),
+            "unique_targets": len({(r["company_id"],r["quarter"]) for r in records}),
+            "sample_warning": "최대19분기·회사별 길이 상이. 중첩 예측이며 독립 표본 아님; 공시일이 목표분기 중간일 수 있는 사후 재생. 구간 미보정."}
+
+
+def summarize_projection(f):
+    return {"status": f["status"], "coverage": f["coverage"],
+            "base_annual": f["scenarios"]["base"]["annual"],
+            "segments": [{"segment_id": x["segment_id"], "eligible": x["eligible"],
+                          "burn_n": len(x["burn_samples"]), "net_inflow_n": len(x["net_inflow_samples"]),
+                          "median_burn": quantile([r["value"] for r in x["burn_samples"]], .5),
+                          "median_net_inflow": quantile([r["value"] for r in x["net_inflow_samples"]], .5)}
+                         for x in f["evidence"]["segments"]]}
+
+
+def read_round2_report(path):
+    """Read the actual supplied report; never manufacture the missing R2 audit/panel."""
+    text = path.read_text()
+    horizons = {}
+    annual = collections.defaultdict(list)
+    for line in text.splitlines():
+        cells = line.strip("|").split("|")
+        if re.fullmatch(r"T\+\d+", cells[0]):
+            horizons[cells[0][2:]] = {"n": int(cells[1]), "wape_pct": None if cells[2]=="None" else float(cells[2])}
+        if len(cells)==7 and re.fullmatch(r"FY\d{4}", cells[1]):
+            annual[cells[0]].append({"fiscal_year": int(cells[1][2:]),
+                **{key: None if val=="None" else float(val) for key,val in zip(
+                    ("value","observed_revenue","existing_backlog_revenue","new_order_revenue","covered_future_value"),cells[2:])}})
+    pattern = r"분기 채점 \*\*(\d+)개\*\*, 연간 \*\*(\d+)개\*\*. 분기 MAE ([\d.]+)백만원, WAPE ([\d.]+)%, bias (-?[\d.]+)%"
+    match = re.search(pattern,text)
+    if not match: raise ValueError("supplied R2 report metrics not found")
+    n,an,mae,wape,bias = match.groups()
+    return {"source": path.name, "quarterly": {"n":int(n),"mae":float(mae),"wape_pct":float(wape),"bias_pct":float(bias)},
+            "annual": {"n":int(an)}, "by_horizon":horizons,"base_annual_by_name":dict(annual)}
+
+
+def comparison(input_dir, universe, reports, contracts, companies, bt):
+    # Execute the reviewed supplied module under a non-main name, without modifying it.
+    import runpy
+    from types import SimpleNamespace
+    prior = SimpleNamespace(**runpy.run_path(str(input_dir/'kship_forecast.py'),run_name='kship_round2_reference'))
+    short = {stock:[s for s in ss if s['quarter'] >= '2024Q3'] for stock,ss in reports.items()}
+    old_bt = prior.backtest_native(universe,short,contracts)
+    short_bt = backtest_native(universe,short,contracts)
+    reported = read_round2_report(input_dir/'kship_REPORT.md')
+    changes = []
+    for company,current in zip(universe,companies):
+        stock=company['stock']; snaps=short.get(stock,[])
+        rows=[r for r in contracts if r['stock']==stock]
+        old=prior.project_native(company,snaps,rows)
+        same=project_native(company,snaps,rows)
+        before, short4, now = map(summarize_projection,(old,same,current))
+        segold={f['segment_id']:f for f in short4['segments']}
+        segments=[]
+        for f in now['segments']:
+            p=segold.get(f['segment_id'])
+            segments.append({"segment_id":f['segment_id'],"short_ledger_same_rule":p,"extended_ledger":f,
+                             "newly_eligible":bool(f['eligible'] and p and not p['eligible'])})
+        value_changes=[]
+        previous={a['fiscal_year']:a for a in before['base_annual']}
+        for a in now['base_annual']:
+            b=previous[a['fiscal_year']]
+            comparable=before['coverage']['modeled_segments']==now['coverage']['modeled_segments']
+            delta=(a['covered_future_value']-b['covered_future_value']) if all(number(x) for x in (a['covered_future_value'],b['covered_future_value'])) else None
+            pct=100*delta/abs(b['covered_future_value']) if number(delta) and b['covered_future_value'] else None
+            value_changes.append({"fiscal_year":a['fiscal_year'],"round2_covered_future_value":b['covered_future_value'],
+                 "round3_covered_future_value":a['covered_future_value'],"same_modeled_scope":comparable,
+                 "difference":rounded(delta),"difference_pct":rounded(pct),
+                 "large_change_ge_10pct":bool(number(pct) and abs(pct)>=10),
+                 "interpretation":"same_scope_value_change" if comparable else "scope_changed_do_not_interpret_as_like_for_like"})
+        changes.append({"company_id":stock,"company_name":company['name'],"round2_replay":before,
+                        "short_ledger_four_sample_rule":short4,"round3":now,"segments":segments,
+                        "annual_changes":value_changes,
+                        "newly_estimable_under_same_four_sample_rule":same['status']=='unavailable' and current['status']!='unavailable'})
+    key=lambda r:(r['company_id'],r['origin'],r['quarter'])
+    old_records={key(r):r for r in old_bt['records']};new_records={key(r):r for r in bt['records']}
+    paired=sorted(old_records.keys() & new_records.keys())
+    metrics_match=all(reported['quarterly'][k]==old_bt['quarterly'][k] for k in ('n','mae','wape_pct','bias_pct'))
+    annual_checks=[]
+    for change in changes:
+        supplied=reported['base_annual_by_name'].get(change['company_name'],[])
+        for a in supplied:
+            replay=next(x for x in change['round2_replay']['base_annual'] if x['fiscal_year']==a['fiscal_year'])
+            annual_checks.append(all(replay[k]==v for k,v in a.items()))
+    return {"reported_round2":reported,"round2_code_minimum_order_samples":2,"round3_minimum_order_samples":MIN_ORDER_SAMPLES,
+            "round2_replay_matches_reported_metrics":metrics_match,
+            "round2_replay_matches_reported_annual_values":bool(annual_checks) and all(annual_checks),
+            "round2_ledger_reconstruction":"2024Q3..2026Q2 slice of supplied R3 ledger; separate R2 raw ledger absent",
+            "round2_snapshot_count":sum(map(len,short.values())),"round3_snapshot_count":sum(map(len,reports.values())),
+            "round2_replay_backtest":old_bt,"short_ledger_four_sample_backtest":short_bt,
+            "paired_records":{"n":len(paired),"round2":metric([old_records[k] for k in paired]),"round3":metric([new_records[k] for k in paired])},
+            "companies":changes}
+
+
+def reassess(company,change):
+    current=company['evidence']['segments'];old={x['segment_id']:x for x in change['short_ledger_four_sample_rule']['segments']}
+    resolved=[];pending=[]
+    for f in current:
+        p=old.get(f['segment_id'],{})
+        if f['eligible'] and p.get('eligible') is False: resolved.append(f['segment_id'])
+        if f['eligible']: continue
+        causes=list(f['reason_codes'])
+        if company['stock']=='042660' and f['segment_id']=='EP및특수선':
+            causes.append('segment_scope_changed')
+            detail='2026Q1에 새 부문명이 시작. 이전 해양및특수선/플랜트/E&I와 범위 일치 근거가 없어 연결하지 않음.'
+        elif company['stock']=='097230' and f['segment_id']=='수리':
+            detail='현행 수리는 2025Q1부터. 유효 순유입 2개; Q1 누적 기납품과 누락 2024Q4·2025Q4를 채우지 않음. 2022 기타(수리선)과 연결 근거 없음.'
+        else: detail='동일 부문·인접 분기·유효 흐름으로 표본을 제한한 뒤 최소 표본 미달.'
+        pending.append({"segment_id":f['segment_id'],"sample_counts":f['sample_counts'],"reason_codes":causes,
+                        "detail":detail,"next_evidence":"동일 범위 추가 분기 또는 원문에 근거한 과거 범위 대조"})
+    return {"source":"missing needs_longer_ledger/audit file; reassessed all supplied companies against explicit four-sample rule",
+            "resolved_segments":resolved,"pending_segments":pending,
+            "needs_longer_ledger":bool(pending),
+            "newly_estimable_under_four_sample_rule":change['newly_estimable_under_same_four_sample_rule'],
+            "disposition":"ledger_absent" if not current else "partially_resolved" if resolved and pending else "still_blocked" if pending else "sample_gate_satisfied",
+            "clean_gross_USD_orders_verified":False}
 
 
 def report_text(panel):
-    pop, bt = panel['population'], panel['backtest']
-    lines = ['# ARGUS-kship 2차 전수 추정', '',
-      f"기준 {ORIGIN}; 41사 전수 감사. 원장 5사 **35개 회사·분기**, 추정 가능한 범위 {pop['estimated_companies']}사, 미추정 {pop['unestimated_companies']}사.",
-      '수치는 **백만원**. 결과는 검증 가능한 부문의 보고 장부액 소진 및 순유입 조건부 대용치다. 회사 회계매출 전망으로 인증하지 않는다. `partial`은 범위·회계연결 한계가 남았다는 뜻이며, `value`는 모든 현재 원장 부문이 계산될 때만 제공한다.', '',
-      '## 계산 기준', '',
-      '- 1차 엔진의 분기 연산·smoothstep 코호트·지표·계약 감사 및 HTML 표/SVG를 이어 사용하고, 새 원장 어댑터를 추가했다. 1차 감사 328개 수집 항목은 재생성하지 않고 JSON에서 원본 항목에 2차 상태를 붙였다.',
-      '- `kship_unit_evidence.json`의 정규화 계약을 적용했다. 근거로 제공된 kce_parse.py:197–207, 345·357·359행은 이 작업에 원문 코드가 없으므로 독립 검증하지 않았다. 이미 백만원이므로 배율은 항상 1이다. 원문 캡션을 다시 곱하지 않는다.',
-      '- 부문 기초+신규−기납품−기말과 gross−기납품−기말을 대조한다. 2백만원 이하 차이는 정수 표의 반올림 허용치다. 초과 잔차는 남기고 해당 흐름 표본을 제외한다. 원문 합계는 덮어쓰지 않는다.',
-      '- 삼성은 누적 프로젝트 기납품을 YTD로 오인하지 않고 검증된 부문 매출 YTD를 차분한다. HJ는 같은 해 인접 분기의 기납품 차분만 사용하고 Q1·누락 연말은 채우지 않는다. 다른 세 회사는 롤포워드 기납품 YTD 대용치를 차분한다. 부문명은 공백만 정규화하며 재편 부문을 임의 연결하지 않는다.',
-      '- 신규가 있으면 균형이 맞는 표의 YTD 차분, 없으면 Δ기말잔고+인식액을 **순유입 대용치**로 계산한다. 환산·취소·범위변동을 분리한 달러 신규수주가 아니다. 음수 관측도 표본에 보존하고, 시나리오의 신규 코호트 투입은 분위수의 양수 부분(max(0,Qp))으로 가정한다. 이는 신규 순유입의 조건부 가정이며 취소 위험을 별도로 예측한 값이 아니다.',
-      '- 선표: 계약 접수일·서명일이 기준분기말 이전이고 유효한 시작·종료일·척수가 있는 미인도 계약만 사용한다. 계약 금액은 단위/환산을 별도 인증하지 못해 사용하지 않는다. 지주 계약을 자회사에 붙이지 않는다. 최신 정정본만 남은 자료의 생존편향은 해소하지 못했다.',
-      '- **진행기준이므로 인도 분기 ≠ 매출 분기.** 계약 종료일은 마지막 호선 인도 예정이며 개별 호선 인도일이 아니다. 잔고 배분은 관측 소진율의 기하 소진 50% + 척수 가중 smoothstep 잔여 공정곡선 50%의 미보정 가정이다. 선표가 없는 부문은 관측 소진율만 사용한다. 선종→부문 매핑, 계약기간→공정기간, 척수→잔고 비중은 모두 가정이며 선표의 금액 커버리지는 미상이다.',
-      '- 신규 코호트는 분기말 유입, 다음 분기부터 smoothstep 인식. 기간은 해당 선표 계약기간 중앙값, 선표가 없으면 소진율 역수 대용치다. 보수/기준/낙관은 순유입 Q25/Q50/Q75이며 성장률·환율을 추가하지 않는다.',
-      '- 민감도는 소진율 Q10/Q50/Q90 × 순유입 Q10/Q25/Q50/Q75/Q90 × 선표 가중 0/0.5/1 × 기간 0.8/1/1.2의 135개 경로 범위다. 연간 범위는 각 경로를 먼저 합친 뒤 min/max를 구한다. 통계적 신뢰구간이 아니며 **calibrated=false**. 환위험·누락 부문·연결제거·취소 전반을 포괄하는 구간은 아니다.',
-      '- FY2026 = Q1·Q2의 같은 범위 관측 대용치 + Q3·Q4 추정. FY2027·FY2028은 각 4분기 추정 합. 관측 분기가 빠지면 전체는 null, 확인 가능한 미래 구성분은 따로 제공한다. HJ FY2026 Q1은 누적 기납품에서 알 수 없어 null이다.',
-      '- HD한국조선해양(009540)은 `holding_overlap`으로 미추정. 모든 회사에 group_additive=false를 두고 회사간·그룹 합계는 만들지 않았다.', '',
-      '## 환과 헤지', '',
-      '수주의 달러 경제노출과 원화 매출은 구분한다. 모델은 이미 보고된 KRW 장부환산액을 재환산하지 않는 조건부 기준이다. 미래 현물환율·선도환율·환민감도 배수는 null이며, 미래 원화 회계매출에 대한 환 조정은 계산하지 않는다. USD 매도 명목액을 원화 잔고로 나누어 헤지비율을 만들지 않는다. 만기·헤지대상·기간별 회계배분이 없어서 명목액과 약정환율만으로도 유효 헤지비율을 알 수 없다.',
-      '한화의 fx 표는 평균약정환율과 금액이 섞여 셀 배율·열 대응을 검증할 수 없으므로 환율 원천으로 사용할 수 없다. hedge.avg_rate만 공시 약정환율 참고로 표시하며 미래 환율로 사용하지 않는다. HD/대한의 fx 표는 원화 표시 외화자산·부채 표이지 USD/KRW 환율 표가 아니다. hedge의 전기/당기 및 목적별 합산을 독립 검증하지 못해 제공된 집계값을 그대로 참고로 보존한다.', '',
-      '|회사|USD 매도 명목액(백만USD, 입력 집계)|공시 약정환율(원/USD)|환 테이블|USD열 순노출(원화 백만원)|', '|---|---:|---:|---|---:|']
+    pop,bt,cmp=panel['population'],panel['backtest'],panel['round2_comparison']
+    old=cmp['reported_round2']; short=cmp['short_ledger_four_sample_backtest']
+    def fmt(x): return f"{x:,.3f}" if number(x) else '—'
+    lines=['# ARGUS-kship 3차 — 확장 원장 재판정', '',
+      f"기준 {ORIGIN}, 입력 사용 가능일 {AS_OF}. 41사 전수, 원장 5사·79개 회사분기(2차 35개 대비 +44). 계산 가능한 범위 {pop['estimated_companies']}사, 미추정 {pop['unestimated_companies']}사.",
+      '**핵심 판정:** 같은 신규 순유입 4개 기준을 양쪽에 적용하면 HJ 특수선·상선이 각각 3→5개로 적격 전환된다. HJ 수리(2개), 한화 EP및특수선(1개)은 여전히 미달이다. 삼성·한화 상선/기타·HD·대한은 짧은 원장에서도 이미 4개를 충족했다. 19분기라는 달력 길이를 모든 부문의 18개 적격 표본으로 간주할 수 없다.',
+      '제공된 2차 실행 코드는 순유입 최소 **2개**를 사용해 이미 5사를 partial로 계산했다. 이번 요청의 **4개**와 다르다. 따라서 2차 발표 대비 새로 계산 가능한 회사 수는 0; 같은 4개 규칙의 짧은 원장 대비로는 HJ 1사가 부분 계산 가능해졌다. 기준 완화로 해제한 결과가 아니다.',
+      '금액은 **백만원(KRW_million)**. 신규분은 환산·취소가 섞인 장부 순유입 대용치이다. 깨끗한 USD 신규수주 4건 확보를 뜻하지 않는다. 회사 회계매출 인증·회사간 합산을 하지 않으며 전사 상태는 partial 또는 unavailable로 유지한다.', '',
+      '## 입력 및 재사용', '',
+      '- 2차 코드의 원장 어댑터·분기 차분·잔고 소진·smoothstep 신규 코호트·선표·환/헤지 처리·민감도·HTML 표/SVG와 기존 테스트를 이어 사용했다. 변경은 내장 단위계약 인식, 4개 표본 기준, 19분기 감사, 범위 예외, 지평 8개/연간 검증 및 비교 출력이다.',
+      '- 실제 입력은 7개 파일이다. 언급된 kship_audit.json, needs_longer_ledger, kship_unit_evidence.json, 이전 forecast_panel.json은 없다. 누락 산출물을 복원한 척하지 않고 제공 보고서 수치와 2차 코드를 직접 비교했다.',
+      '- 원장 최상위 unit_contract는 kce_parse._UNIT_SCALE로 표마다 백만원 정규화했다고 명시한다. unit_seen=true·KRW·알려진 단위 캡션을 함께 확인하고 배율 1을 적용한다. 원문/파서가 없어 독립 검증은 못 했다. 단위 근거 없는 셀은 계산하지 않는다.',
+      f"- 2024Q3 이후 35개를 잘라 2차 코드로 재생했다. 보고서와 분기 지표 일치: {cmp['round2_replay_matches_reported_metrics']}, 기준 연간 값 일치: {cmp['round2_replay_matches_reported_annual_values']}. 별도 2차 원장이 없어 과거 파일 동일성 자체는 확인할 수 없다.", '',
+      '## 표본 부족 재판정', '',
+      '|회사|원장 분기 수|현재 부문|순유입 2차 창→확장|소진율 2차 창→확장|4개 규칙 판정|',
+      '|---|---:|---|---:|---:|---|']
+    for change in cmp['companies']:
+        c=next(c for c in panel['companies'] if c['stock']==change['company_id'])
+        for r in change['segments']:
+            a,b=r['short_ledger_same_rule'],r['extended_ledger']
+            state='신규 적격' if r['newly_eligible'] else '적격 유지' if b['eligible'] else '보류'
+            lines.append(f"|{c['company_name']}|{c['audit']['quarter_count']}|{r['segment_id']}|{a['net_inflow_n']}→{b['net_inflow_n']}|{a['burn_n']}→{b['burn_n']}|{state}|")
+    lines += ['', '- 삼성·한화·HD 각 19분기, HJ 17분기, 대한 5분기다. 대한은 확장되지 않았지만 유효 순유입 4개로 경계값을 충족한다.',
+      '- 한화 EP및특수선은 2026Q1부터 새 범위로 등장한다. 이전 해양및특수선·플랜트·E&I를 임의 병합하지 않았다. 추가 과거 분기를 받아도 현행 부문의 순유입 1개·소진율 1개는 늘지 않았다.',
+      '- HJ 현행 특수선·상선은 2024Q1 이후 같은 이름의 이력만 사용한다. 2022~2023 방산·신조선과 연결하지 않는다. 수리는 유효 순유입이 2025Q3·2026Q2의 2개다. 2025Q1 기납품이 null이므로 2025Q2 차분도 만들 수 없다. 과거 기타(수리선) 연결은 근거 미상이다.',
+      '- HJ 2021Q4 수주표는 조선부문이 아닌 건설 프로젝트 목록이다. 원문 값을 보존하되 scope_mismatch로 학습·채점에서 제외했다. HJ 2024Q4·2025Q4는 없으며 Q1 프로젝트 누계를 분기매출로 채우지 않았다.',
+      '- 원장 없는 나머지 36사는 계속 unavailable이다. HD한국조선해양은 holding_overlap도 유지한다. 회사별 재판정은 JSON ledger_reassessment 및 최상위 needs_longer_ledger에 기록했다.', '',
+      '## 2차 대비 회사별 값 변화', '',
+      '기준 시나리오의 계산 가능 미래분 합을 비교한다. ±10% 이상을 큰 변화로 표시한다. HJ는 수리가 제외되어 비교 범위 자체가 바뀌었으므로 단순 성장률로 해석할 수 없다.', '',
+      '|회사|FY|2차 미래분|3차 미래분|차이 %|같은 범위|10% 이상|', '|---|---|---:|---:|---:|---|---|']
+    for c in cmp['companies']:
+        if not c['segments']: continue
+        for a in c['annual_changes']:
+            lines.append(f"|{c['company_name']}|{a['fiscal_year']}|{fmt(a['round2_covered_future_value'])}|{fmt(a['round3_covered_future_value'])}|{fmt(a['difference_pct'])}|{a['same_modeled_scope']}|{a['large_change_ge_10pct']}|")
+    lines += ['',
+      '- 삼성: 과거 조선해양의 낮은 소진율·순유입이 추가되면서 FY2027 −10.2%, FY2028 −15.2%. 토건의 순유입 중앙값은 오르지만 규모가 큰 조선해양 하락을 상쇄하지 못한다.',
+      '- 한화: 상선 소진율·순유입 중앙값 하락으로 FY2026 미래분 −12.7%, FY2027 −7.6%. EP및특수선의 보류 범위는 그대로다.',
+      '- HJ: 같은 4개 기준에서 특수선·상선이 새로 적격이다. 2차 발표 대비로는 수리가 제외되고, 상선 순유입 중앙값이 267,700→10,700으로 낮아져 FY2028 계산 범위 합이 −70.8% 변한다. 범위 축소와 가정 변경이 섞인 수치이다.',
+      '- HD: 조선·기타의 과거 낮은 순유입과 조선 소진율이 반영되어 FY2028 −15.4%. 모든 현행 부문은 계속 적격이다.',
+      '- 대한: 원장 5분기와 적격 표본 4개가 그대로라 3개 연도 값이 모두 같다. 최소 표본을 충족하지만 독립적인 정확도 근거는 아직 없다.', '',
+      '긴 원장의 효과는 경험적 소진율·순유입 분위수가 과거 구간까지 포함하도록 바뀌는 것이다. 기준잔고·현재 선표는 동일하다. 아래 중앙값으로 변화 방향을 확인할 수 있다. 외삽 성장률이나 환율 배수는 추가하지 않았다.', '',
+      '|회사·부문|소진율 중앙값 2차→3차|분기 순유입 중앙값 2차→3차 (백만원)|', '|---|---:|---:|']
+    for c in cmp['companies']:
+        pri={r['segment_id']:r for r in c['round2_replay']['segments']}
+        for r in c['round3']['segments']:
+            p=pri[r['segment_id']]
+            lines.append(f"|{c['company_name']}·{r['segment_id']}|{fmt(p['median_burn'])}→{fmt(r['median_burn'])}|{fmt(p['median_net_inflow'])}→{fmt(r['median_net_inflow'])}|")
+    lines += ['', '## 백테스트: 표본과 오차', '',
+      f"분기 T+1~T+8 **{bt['quarterly']['n']}개**, 완전한 미래 4분기의 연간 **{bt['annual']['n']}개**. 기준분기 {bt['origin_range']['first']}~{bt['origin_range']['last']}; 고유 회사·기준분기 {bt['unique_origins']}개, 고유 회사·목표분기 {bt['unique_targets']}개. 같은 목표를 여러 기준분기에서 예측하므로 독립 표본 수가 아니다.",
+      f"분기 MAE {fmt(bt['quarterly']['mae'])}, WAPE **{fmt(bt['quarterly']['wape_pct'])}%**, bias {fmt(bt['quarterly']['bias_pct'])}%. 연간 MAE {fmt(bt['annual']['mae'])}, WAPE **{fmt(bt['annual']['wape_pct'])}%**, bias {fmt(bt['annual']['bias_pct'])}%.",
+      '2차는 2개 문턱, 3차는 4개 문턱이다. 가운데 열은 같은 4개 문턱으로 짧은 원장을 재계산한 통제 비교이다. 표본 증가와 문턱 변경을 섞어 정확도 개선으로 주장하지 않는다.', '',
+      '|지평|2차 발표 n|짧은 원장·4개 기준 n|3차 n|발표 대비 증가|같은 기준 대비 증가|2차 WAPE %|3차 WAPE %|3차 MAE|3차 bias %|',
+      '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+    for h,m in bt['by_horizon'].items():
+        p=old['by_horizon'][h];sh=short['by_horizon'][h]
+        lines.append(f"|T+{h}|{p['n']}|{sh['n']}|{m['n']}|{m['n']-p['n']}|{m['n']-sh['n']}|{fmt(p['wape_pct'])}|{fmt(m['wape_pct'])}|{fmt(m['mae'])}|{fmt(m['bias_pct'])}|")
+    for label,key in [('분기 합계','quarterly'),('연간','annual')]:
+        p=old[key];m=bt[key];sh=short[key]
+        lines.append(f"|{label}|{p['n']}|{sh['n']}|{m['n']}|{m['n']-p['n']}|{m['n']-sh['n']}|{fmt(p.get('wape_pct'))}|{fmt(m['wape_pct'])}|{fmt(m['mae'])}|{fmt(m['bias_pct'])}|")
+    paired=cmp['paired_records']
+    lines += ['', f"동일 회사·기준분기·목표분기로 겹치는 {paired['n']}건만 비교하면 WAPE는 2차 {fmt(paired['round2']['wape_pct'])}% → 3차 {fmt(paired['round3']['wape_pct'])}%이다. 전체 성적과 같은 표본 비교를 모두 남겼다.", '',
+      '|회사|2차 분기 n|3차 분기 n|분기 MAE|분기 WAPE %|분기 bias %|연간 n|연간 MAE|연간 WAPE %|연간 bias %|',
+      '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
     for c in panel['companies']:
-        if c['stock'] in panel['audit']['ledger_company_ids']:
-            f=c['industry_axes']['fx']
-            lines.append(f"|{c['company_name']}|{f['usd_sell_m_reported']}|{f['hedge_avg_rate_reported_krw_per_usd']}|{f['fx_table_currency']}|{f['usd_exposure_column_krw_million'].get('순노출')}|")
-    lines += ['', '## 재감사와 범위', '', '|회사|분기 수|상태|계산 부문 / 제외 부문|기준 잔고(부문합)|', '|---|---:|---|---|---:|']
+        if not c['audit']['quarter_count']: continue
+        m=c['backtest'];qr=m['metrics'];a=m['annual_metrics']
+        pn=sum(r['company_id']==c['stock'] for r in cmp['round2_replay_backtest']['records'])
+        lines.append(f"|{c['company_name']}|{pn}|{qr['n']}|{fmt(qr['mae'])}|{fmt(qr['wape_pct'])}|{fmt(qr['bias_pct'])}|{a['n']}|{fmt(a['mae'])}|{fmt(a['wape_pct'])}|{fmt(a['bias_pct'])}|")
+    lines += ['', '|연간 목표|n|MAE|WAPE %|bias %|', '|---|---:|---:|---:|---:|']
+    for y,m in bt['annual_by_year'].items():
+        lines.append(f"|FY{y}|{m['n']}|{fmt(m['mae'])}|{fmt(m['wape_pct'])}|{fmt(m['bias_pct'])}|")
+    lines += ['', 'MAE = 평균 절대오차(백만원), WAPE = Σ|예측−관측|/Σ|관측|×100, bias = Σ(예측−관측)/Σ|관측|×100. 음수 조정 관측은 보존한다. 회사별 금액규모가 달라 전체 WAPE는 큰 회사의 영향을 많이 받는다.',
+      '각 기준분기 보고서 공시일까지 알려진 origin 이하 원장만 학습하고, 계약은 더 보수적으로 기준분기말까지 공시·서명된 것만 쓴다. 현재 정정본만 있는 이력의 수정·생존편향은 해소하지 못했다. 공시가 다음 분기 중간에 이뤄지므로 엄격한 분기말 실시간 성적이 아니다. 전부 같은 장부 대용치로 채점하며 독립 holdout 검증이 아니다.',
+      '연간은 원점 이후 Q1~Q4 네 분기 모두 같은 부문 범위·실제 관측을 갖고 T+8 안에 들어오는 경우만 합산했다. 현재 연도 관측분을 끼워 오차를 낮추지 않았다. 삼성은 모든 부문의 최초 적격 원점이 2024Q1이며 그 뒤 완결 가능한 FY2025에 2025Q2 소계 오류와 Q3 차분 불가가 있어 연간 채점이 없다. HJ는 Q1 프로젝트 누계로 분기 인식을 알 수 없어 연간 채점이 없고, 대한은 최소 표본 충족 시점이 최신 분기라 이후 실제값이 없어 채점이 없다.',
+      f"제외 건수(단위가 회사/기준분기/목표분기로 서로 다름): {json.dumps(bt['exclusions'],ensure_ascii=False)}. 모든 예측·실제·공시 컷오프·학습 분기·선표 접수번호는 JSON records/annual_records에 보존한다.", '',
+      '## 추정 구조와 민감도', '',
+      '- 신규 유입은 균형이 맞는 표의 YTD 차분 또는 Δ잔고+인식액. 소진율은 양수이고 1 이하인 인식/직전 잔고 표본만 사용한다. 삼성은 부문 매출 YTD, HJ는 동일 연도 프로젝트 누계 차분, HD·한화·대한은 기납품 YTD 대용치이다.',
+      '- 보수/기준/낙관은 순유입 Q25/Q50/Q75의 양수 부분. 음수 관측을 삭제하지 않고 투입 코호트에만 max(0,Qp)를 적용한다. 분기말 유입으로 T+1 신규분 0은 모델 구조다.',
+      '- 기존잔고는 관측 기하 소진과 계약 척수 가중 smoothstep 선표를 50:50으로 혼합한다. 선표가 없으면 소진율만 쓴다. 신규 기간은 선표 계약기간 중앙값 또는 소진율 역수. **진행기준이므로 인도 분기 ≠ 매출 분기**이며 계약 마지막 인도일을 전체 매출일로 쓰지 않는다.',
+      '- 소진 Q10/Q50/Q90 × 순유입 Q10/Q25/Q50/Q75/Q90 × 선표가중 0/0.5/1 × 기간 0.8/1/1.2 = 135개 경로. 분기는 경로별 min/max, 연간은 각 경로를 먼저 연간 합산한 뒤 min/max. 통계적 신뢰구간이 아니며 모든 구간 calibrated=false이다.',
+      '- 과거 관측·부문이 부족하면 전범위 value와 interval은 null. 계산 가능한 부문의 잔고분·신규분·covered_scope_interval 및 covered_future_interval은 별도 제공한다. FY2026=Q1/Q2 관측+Q3/Q4 추정, FY2027/2028=네 추정분기 합이다.',
+      '- 환율·헤지 배수는 미상으로 남긴다. 보고된 KRW 장부액을 재환산하지 않으며 USD 명목액/KRW 잔고로 헤지비율을 만들지 않는다. 계약 금액은 예측에 사용하지 않고 지주 계약을 자회사에 복제하지 않는다.', '',
+      '## 기준 시나리오 연간 분해', '',
+      '|회사|FY|전범위 값|관측 대용치|계산 가능 미래 잔고분|계산 가능 미래 신규분|계산 가능 미래합|미래합 민감도 하한~상한|',
+      '|---|---|---:|---:|---:|---:|---:|---|']
     for c in panel['companies']:
-        a=c['audit']; cov=c['coverage']
-        lines.append(f"|{c['company_name']} ({c['stock']})|{a['quarter_count']}|{c['status']}|{', '.join(cov['modeled_segments']) or '—'} / {', '.join(cov['excluded_segments']) or '—'}|{cov['reported_backlog']}|")
-    lines += ['', '주요 원장 불일치(입력 값을 보존; 모든 분기 감사는 JSON audit.snapshots):', '']
+        if c['status']=='unavailable': continue
+        for a in c['scenarios']['base']['annual']:
+            ci=a['covered_future_interval']
+            lines.append(f"|{c['company_name']}|{a['fiscal_year']}|{fmt(a['value'])}|{fmt(a['observed_revenue'])}|{fmt(a['covered_future_existing'])}|{fmt(a['covered_future_new'])}|{fmt(a['covered_future_value'])}|{fmt(ci['lower'])} ~ {fmt(ci['upper'])}|")
+    lines += ['', '세 시나리오의 2026Q3~2028Q4 10분기와 FY2026~FY2028 전체 결과는 forecast_panel.json에 있다(41사×3×10=1,230 분기행, 41사×3×3=369 연간행). null은 0이 아니다.', '',
+      '## 원장 감사와 전수 범위', '',
+      '|회사|분기|상태|계산 부문|제외 부문 / 미추정 사유|', '|---|---:|---|---|---|']
+    for c in panel['companies']:
+        cov=c['coverage']
+        lines.append(f"|{c['company_name']} ({c['stock']})|{c['audit']['quarter_count']}|{c['status']}|{', '.join(cov['modeled_segments']) or '—'}|{', '.join(cov['excluded_segments']) or (', '.join(c['reason_codes']) if c['status']=='unavailable' else '—')}|")
+    lines += ['', '원문 합계와 부문합 차이·흐름 잔차는 보존하며 임의 정정하지 않는다. 2백만원 이내는 기존 반올림 허용치다. 잔차 초과 흐름은 표본에서 제외한다. 다음은 계산에 영향을 주는 발견 사항이다.', '']
     for c in panel['companies']:
         for s in c['audit']['snapshots']:
+            if s['issues']: lines.append(f"- {c['company_name']} {s['quarter']}: {', '.join(s['issues'])}.")
             for r in s['reconciliations']:
                 if number(r['difference']) and abs(r['difference'])>2:
                     lines.append(f"- {c['company_name']} {s['quarter']} {r['field']}: 원문합계 {r['reported_total']}, 부문합 {r['leaf_sum']}, 차이 {r['difference']}.")
             for r in s['rows']:
                 for field in ('rollforward_residual','gross_residual'):
                     if number(r[field]) and abs(r[field])>2:
-                        lines.append(f"- {c['company_name']} {s['quarter']} {r['segment_id']} {field}: {r[field]} (흐름 표본 제외).")
+                        lines.append(f"- {c['company_name']} {s['quarter']} {r['segment_id']} {field}={r[field]}: 흐름 표본 제외.")
             for issue in s['revenue_audit']['issues']:
-                lines.append(f"- {c['company_name']} {s['quarter']} 매출 소계 불일치: {json.dumps(issue,ensure_ascii=False)}.")
-    lines += ['', '삼성 매출 부문합과 회사 합계 차이는 연결제거/파싱/범위 차이를 구분할 수 없어 회사 합계로 승격하지 않는다. 한화 EP 및 특수선은 과거 해양·플랜트 부문과 임의 병합하지 않는다. HJ 원장은 조선부문만이며 회사전체가 아니다. 대한조선은 상위 금액이 비어 있어도 균형이 맞는 원문 부문값은 계산 가능하다.', '',
-      '## 과거 검증', '',
-      f"분기 채점 **{bt['quarterly']['n']}개**, 연간 **{bt['annual']['n']}개**. 분기 MAE {bt['quarterly']['mae']}백만원, WAPE {bt['quarterly']['wape_pct']}%, bias {bt['quarterly']['bias_pct']}%. 최대 8분기 이력의 적은 중첩 표본이므로 장기 정확도나 신뢰구간 보정 근거가 아니다.",
-      '학습에는 origin 이하·해당 보고서 공시일 이하 자료만 넣었다. 원장 부문 집합이 달라진 목표·오류/누락 목표는 제외했다. 채점 대상은 실제 입력으로 계산한 같은 범위 인식 대용치이며 신규+잔고 총모델을 채점했다. 관측 매출이 없는 기간을 0으로 만들지 않았다. 현재 보존된 과거 원장과 계약 정정본을 사용하므로 엄격한 실시간 투자 백테스트는 아니다. 스키마·부문 처리 규칙은 전체 입력 감사 후 정했으므로 독립 holdout 검증도 아니다.', '',
-      '|horizon|분기 n|WAPE %|', '|---|---:|---:|']
-    for h,m in bt['by_horizon'].items(): lines.append(f"|T+{h}|{m['n']}|{m['wape_pct']}|")
-    lines += ['', '## 기준 시나리오 연간 결과', '', '|회사|연도|전체 대용치|관측 대용치|미래 잔고분|미래 신규분|미래 계산 가능 범위 합|', '|---|---|---:|---:|---:|---:|---:|']
-    for c in panel['companies']:
-        if c['status']=='unavailable': continue
-        for a in c['scenarios']['base']['annual']:
-            lines.append(f"|{c['company_name']}|FY{a['fiscal_year']}|{a['value']}|{a['observed_revenue']}|{a['existing_backlog_revenue']}|{a['new_order_revenue']}|{a['covered_future_value']}|")
-    lines += ['', 'null/None는 미상이며 0이 아니다. 한화의 계산 가능 범위 합은 제외 부문을 포함하지 않는다. 3종 시나리오의 T+1~T+10 전체 수치·잔고/신규 분해·민감도는 forecast_panel.json과 회사 HTML에 수록했다.', '',
-      '## 재현과 남은 확인', '', '```sh', 'python3 -B output/kship_forecast.py --input input --output output',
-      'python3 -B output/forecast_section.py --panel output/forecast_panel.json --output output/sections',
-      'python3 -B -m unittest discover -s output -p test_kship_forecast.py -v', '```', '',
-      '남은 확인은 누락 5개 회사·분기와 원장 없는 36사, 원장 부문 재편·대규모 잔차, 삼성 소계·연결제거, 달러 신규수주와 환조정 분리, 개별 호선 진행률 및 헤지 만기/회계배분이다. 입력 파일·정본은 수정하지 않았고 네트워크·외부 패키지·배포를 사용하지 않았다. tracker는 SSH 방식이므로 이번 네트워크 금지 범위에서 실행하지 않았다.']
+                lines.append(f"- {c['company_name']} {s['quarter']} 매출 감사: {json.dumps(issue,ensure_ascii=False)}.")
+    lines += ['', '## 재현·검증·남은 일', '', '```sh',
+      'python3 -B output/kship_forecast.py --input input --output output',
+      'python3 -B -m unittest discover -s output -p test_kship_forecast.py -v',
+      '# 선택: 기존 화면에 붙일 회사 섹션 생성',
+      'python3 -B output/forecast_section.py --panel output/forecast_panel.json --output output/sections', '```', '',
+      '입력 SHA-256 및 재사용 코드 해시는 JSON에 기록한다. 단위 실패 차단, 4개 경계값, 범위 분리, 미래정보 변조 불변성, 잔고/신규 보존, 분기·연간 합산, 백테스트 전건 재생 및 입력불변/재현성을 테스트한다.',
+      '남은 일: 한화 현행 EP및특수선·HJ 수리의 추가 적격 표본/범위 근거, HJ 누락 연말과 Q1 인식, 원장 없는 36사, 원문 단위·연결제거 및 환조정 검증. 성적이 나쁜 표본을 제거하거나 창을 성적에 맞춰 선택하지 않았다. 민감도는 보정하지 않았다.',
+      '작업은 output/에만 저장하며 정본 수정·배포·외부 패키지·외부 메시지·인증 작업을 하지 않았다. 시작 시 tracker preflight는 central_connection_failed로 실패했고 재시도/인계 취득 없이 로컬 output 소유권 기록을 남겼다. 원장 계산·검증은 네트워크 없이 수행한다.']
     return '\n'.join(lines)+'\n'
 
 
 def build(input_dir, output_dir):
-    before = hashes(input_dir)
-    universe = json.loads((input_dir/'kship_universe.json').read_text())['rows']
+    if input_dir.resolve()==output_dir.resolve() or input_dir.resolve() in output_dir.resolve().parents:
+        raise ValueError('output must not overwrite input')
+    before=hashes(input_dir)
+    universe=json.loads((input_dir/'kship_universe.json').read_text())['rows']
     if len({c['stock'] for c in universe}) != len(universe): raise ValueError('duplicate company')
-    contracts = json.loads((input_dir/'kship_contracts.json').read_text())['rows']
-    reports, issues = load_reports(input_dir/'kship_reports.json')
-    prior = json.loads((input_dir/'kship_audit.json').read_text())
-    prior_companies = {c['company_id']: c for c in prior['companies']}
-    companies=[]
+    contracts=json.loads((input_dir/'kship_contracts.json').read_text())['rows']
+    reports,issues=load_reports(input_dir/'kship_reports.json')
     bt=backtest_native(universe,reports,contracts)
+    companies=[]
     for c in universe:
-        stock=c['stock']; snaps=reports.get(stock,[])
-        f=project_native(c,snaps,[r for r in contracts if r['stock']==stock])
-        company_scores=[r for r in bt['records'] if r['company_id']==stock]
-        f['backtest']={'quarterly_n':len(company_scores), 'metrics':metric(company_scores), 'sample_warning':bt['sample_warning']}
-        old=prior_companies[stock]
-        tasks=[]
-        for task in old['collection_tasks']:
-            tasks.append({**task,'round2_disposition':'provided_verify_remaining_fields' if any(s['quarter']==task['quarter'] for s in snaps) else 'still_missing; do_not_fill'})
-        ca=contract_audit([r for r in contracts if r['stock']==stock])
-        ca['unfiltered_reference_schedule']=ca.pop('schedule')
+        stock=c['stock'];snaps=reports.get(stock,[])
+        rows=[r for r in contracts if r['stock']==stock]
+        f=project_native(c,snaps,rows)
+        scores=bt['by_company'][stock]
+        f['backtest']={'quarterly_n':scores['quarterly']['n'],'metrics':scores['quarterly'],
+                       'annual_n':scores['annual']['n'],'annual_metrics':scores['annual'],'sample_warning':bt['sample_warning']}
+        ca=contract_audit(rows);ca['unfiltered_reference_schedule']=ca.pop('schedule')
         ca['used_for_revenue_forecast']=f['industry_axes']['schedule_used_for_runoff']
         ca['use_semantics']='dates_and_unit_counts_only_for_book_runoff_timing; contract_amounts_unused'
         ca['used_schedule_rcps']=sorted({r['rcp'] for fit in f['evidence']['segments'] if fit['eligible'] for r in fit['schedule']})
-        f['audit']={'quarter_count':len(snaps),'missing_quarters':[q for q in EXPECTED_HISTORY if not any(s['quarter']==q for s in snaps)],
-                    'snapshots':snaps,'prior_reason_codes':old['reason_codes'], 'collection_tasks':tasks,
-                    'contract_audit':ca}
+        f['audit']={'quarter_count':len(snaps),'usable_quarter_count':len(usable(snaps,ORIGIN)),
+                    'missing_quarters':[q for q in EXPECTED_HISTORY if not any(s['quarter']==q for s in snaps)],
+                    'snapshots':snaps,'prior_audit_available':False,'contract_audit':ca}
         companies.append(f)
+    cmp=comparison(input_dir,universe,reports,contracts,companies,bt)
+    for c,ch in zip(companies,cmp['companies']):
+        c['ledger_reassessment']=reassess(c,ch)
+        c['round2_comparison']=ch
     counts=collections.Counter(c['status'] for c in companies)
-    population={'input_companies':len(universe),'ledger_companies':len(reports),
-                'status_counts':{s:counts[s] for s in ('full','partial','unavailable')},
-                'estimated_companies':counts['full']+counts['partial'],'unestimated_companies':counts['unavailable']}
-    panel={'schema_version':VERSION,'assignment':'ARGUS-kship round2','origin':ORIGIN,'as_of':AS_OF,
+    pop={'input_companies':len(universe),'ledger_companies':len(reports),
+         'status_counts':{s:counts[s] for s in ('full','partial','unavailable')},
+         'estimated_companies':counts['full']+counts['partial'],'unestimated_companies':counts['unavailable']}
+    panel={'schema_version':VERSION,'assignment':'ARGUS-kship round3','origin':ORIGIN,'as_of':AS_OF,
            'money_unit':'KRW_million','forecast_quarters':[qadd(ORIGIN,h) for h in range(1,11)],
            'input_sha256':before,'engine_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-           'round1_reuse':{'engine':before['kship_forecast.py'],'section':before['forecast_section.py'],'audit':before['kship_audit.json']},
-           'population':population,'backtest':bt,'calibrated':False,'company_aggregation_permitted':False,
-           'limitations':['진행기준: 인도 분기 ≠ 매출 분기','book_value_proxy_not_future_nominal_KRW_revenue',
-                          'net_inflow_not_clean_USD_orders','holding_overlap_no_group_sum','small_sample_uncalibrated'],
+           'round2_reuse':{name:before[name] for name in ('kship_forecast.py','forecast_section.py','test_kship_forecast.py','kship_REPORT.md')},
+           'population':pop,'backtest':bt,'round2_comparison':cmp,'calibrated':False,'company_aggregation_permitted':False,
+           'needs_longer_ledger':[{'company_id':c['stock'],'company_name':c['company_name'],**c['ledger_reassessment']}
+                                  for c in companies if c['ledger_reassessment']['needs_longer_ledger']],
+           'limitations':['book_value_proxy_not_future_nominal_KRW_revenue','net_inflow_not_clean_USD_orders',
+                          'holding_overlap_no_group_sum','uncalibrated_overlapping_retrospective_backtest','prior_audit_and_needs_file_absent'],
            'audit':{'global_issues':issues,'ledger_company_ids':sorted(reports),'actual_snapshot_count':sum(map(len,reports.values())),
-                    'expected_yard_snapshot_count':40,'prior_collection_task_count':prior['collection_task_count'],
-                    'missing_company_quarters':sum(len(c['audit']['missing_quarters']) for c in companies)},'companies':companies}
+                    'calendar_quarters':EXPECTED_HISTORY,'expected_yard_snapshot_count':len(reports)*len(EXPECTED_HISTORY),
+                    'missing_yard_company_quarters':sum(len(c['audit']['missing_quarters']) for c in companies if c['stock'] in reports),
+                    'missing_inputs':['kship_audit.json','needs_longer_ledger','kship_unit_evidence.json','round2 forecast_panel.json']},
+           'companies':companies}
     output_dir.mkdir(parents=True,exist_ok=True)
     (output_dir/'forecast_panel.json').write_text(json.dumps(panel,ensure_ascii=False,indent=2,allow_nan=False)+'\n')
     (output_dir/'kship_REPORT.md').write_text(report_text(panel))
     if hashes(input_dir)!=before: raise RuntimeError('input mutated')
-    return {'population':population,'backtest_n':bt['quarterly']['n'],'annual_backtest_n':bt['annual']['n'],
-            'input_unchanged':True,'quarterly_rows':len(universe)*30,'annual_rows':len(universe)*9}
+    return {'population':pop,'backtest_n':bt['quarterly']['n'],'annual_backtest_n':bt['annual']['n'],
+            'input_unchanged':True,'round2_reproduced':cmp['round2_replay_matches_reported_metrics'],
+            'quarterly_rows':len(universe)*30,'annual_rows':len(universe)*9}
 
 
 def main():

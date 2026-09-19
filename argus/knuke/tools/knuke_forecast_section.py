@@ -1,5 +1,5 @@
 # 주의: 파일명을 `forecast_section.py` 로 두면 섹터 도구가 sys.path 에 얹는 argus/kce/tools 의
-# 동명 모듈이 먼저 잡혀 건설 렌더러가 불린다(kdef 통합에서 실제로 conflict). 탭 접두를 붙인다.
+# 동명 모듈이 먼저 잡혀 건설 렌더러가 불린다. 탭 접두를 붙인다.
 #!/usr/bin/env python3
 """KNUKE drop-in HTML renderer. Inline SVG/CSS only; no external assets or JS.
 
@@ -154,12 +154,24 @@ def render_forecast_section(panel_entry, forecast_entry):
               f"<h2>{esc(name)} Y+2 추정 <span class='badge'>{status}</span></h2>",
               f"<p>기준 {esc(c['origin'])} · T+1~T+10 · FY2026~FY2028 · 12월 결산 가정(미검증). 금액 표시 단위: 백만원. 표 통화: {esc(c['unit_audit'].get('currency') or c['unit_audit'].get('latest_available_currency') or '미확인')}.</p>",
               "<p class='warning'>제공 수주 원장 범위의 납품·역무 인식 대용치입니다. 회사 전체 회계매출 또는 순수 원전 매출과 같지 않습니다. —는 미추정이며 0이 아닙니다. 민감도 범위는 통계적 신뢰구간이 아니며 calibrated=false입니다.</p>",
-              f"<p>원장 범위: {esc(c['scope'])}. 배분 가능 행 {c['coverage']['modeled_rows']}/{c['coverage']['current_rows']}. 회사·분기 캡션: {esc(' / '.join(c['unit_audit'].get('raw_unit_captions', [])) or '없음')}. 제공 캡션과 백만원 정규화 계약에 조건부 의존합니다. 표 위치·HTML 대응은 미검증이며 입력 금액을 재배율하지 않습니다.</p>",
+              f"<p>원장 범위: {esc(c['scope'])}. 배분 가능 행 {c['coverage']['modeled_rows']}/{c['coverage']['current_rows']}. 회사·분기 캡션: {esc(' / '.join(c['unit_audit'].get('raw_unit_captions', [])) or '없음')}. 단위 근거: {esc('같은 분기 KRW·unit_seen 파서 표식 + 제공 정규화 계약' if c['unit_audit'].get('parser_only') else '2차 감사의 동일 공시 캡션 + 제공 정규화 계약')}. 표 위치·HTML 대응은 미검증이며 입력 금액을 재배율하지 않습니다.</p>",
               "<details open><summary>판정 이유·막는 것</summary><ul>" + "".join("<li>" + esc(x) + "</li>" for x in c["audit_blockers"]) + "</ul><p>해석 한계</p><ul>" + "".join("<li>" + esc(x) + "</li>" for x in c.get("limitations", [])) + "</ul></details>"]
     bt = c.get("backtest", {})
     chunks.append(table(["대상", "금액 표본 n", "MAE 백만원", "WAPE %"],
                         [[label, bt.get(key, {}).get("n", 0), fmt(bt.get(key, {}).get("mae")), fmt(bt.get(key, {}).get("wape_pct"))]
                          for key, label in (("existing_contract", "동일 계약 잔고분"), ("total_ledger", "신규분 포함 원장 전체"))], "백테스트: 이 회사의 실측 대용치 표본"))
+    chunks.append(table(["지평", "잔고분 n", "잔고 WAPE %", "전체 n", "전체 WAPE %"],
+                        [["T+" + h, v["existing_contract"]["n"], fmt(v["existing_contract"]["wape_pct"]),
+                          v["total_ledger"]["n"], fmt(v["total_ledger"]["wape_pct"])]
+                         for h, v in bt.get("by_horizon", {}).items()], "T+1~T+8 분기 백테스트"))
+    annual_bt = bt.get("annual", {})
+    previous = c.get("round2_backtest") or {}
+    chunks.append(table(["대상", "2차 분기 n", "3차 분기 n", "3차 연간 n", "연간 MAE 백만원", "연간 WAPE %"],
+                        [[label, previous.get(key, {}).get("n", "모집단 밖"), bt.get(key, {}).get("n", 0),
+                          annual_bt.get(key, {}).get("n", 0), fmt(annual_bt.get(key, {}).get("mae")),
+                          fmt(annual_bt.get(key, {}).get("wape_pct"))]
+                         for key, label in (("existing_contract", "동일 계약 잔고분"), ("total_ledger", "원장 전체"))],
+                        "표본 증가·연간 백테스트: 연말 원점, 다음 1·2년의 네 분기 실측 완비 조건"))
     empty_horizons = ["T+" + h for h, v in bt.get("by_horizon", {}).items()
                       if not v["existing_contract"]["n"] and not v["total_ledger"]["n"]]
     chunks.append("<p class='warning'>" + esc(bt.get("warning") or "백테스트 자료 없음")
@@ -168,9 +180,12 @@ def render_forecast_section(panel_entry, forecast_entry):
     retry = c.get("retry", {})
     if retry.get("needs_longer_ledger"):
         chunks.append("<p class='warning'>needs_longer_ledger: 적격 신규수주 표본 "
-                      + esc(retry.get("eligible_new_order_sample_count")) + "/4. 2021Q4~2026Q2 원장 확장 후 재검사. "
+                      + esc(retry.get("eligible_new_order_sample_count")) + "/4. 확보 원장 "
+                      + esc(retry.get("observed_quarter_count")) + "/19분기, 확장본 재검사 완료. "
                       + esc(retry.get("acceptance")) + " 추가 조건: "
                       + esc(", ".join(retry.get("non_length_prerequisites", [])) or "적격 표본 확보") + "</p>")
+        chunks.append(table(["분기 쌍 탈락 사유", "쌍 수(사유 중복 가능)"],
+                            sorted(retry.get("remaining_pair_blockers", {}).items()), "달력 길이와 구분한 남은 근거"))
     for key, label in LABELS.items():
         s = c["scenarios"][key]
         premise = (f"신규수주 표본 P{int({'conservative':.25,'base':.5,'optimistic':.75}[key]*100)} 가정"
@@ -194,7 +209,9 @@ def render_forecast_section(panel_entry, forecast_entry):
                          fmt(r["new_order_revenue"]), f"{fmt(ci.get('lower'))}~{fmt(ci.get('upper'))}",
                          "완비" if r["complete"] else "미추정: " + (r.get("reason") or scope)])
         chunks.append(table(["연도", "원장 전체", "관측분", "미래 전체 잔고분", "미래 배분 가능분", "신규분", "민감도", "완비 여부·사유"], rows, label + " 연간 구성 · 백만원"))
-        chunks.append("<p><small>분기 신규수주 가정 " + fmt(s["assumptions"].get("new_orders_per_quarter_deseasonalized"))
+        chunks.append("<p><small>신규수주 총 적격 표본 " + esc(retry.get("eligible_new_order_sample_count"))
+                      + "개, 최근 적합 표본 " + esc(retry.get("fit_new_order_sample_count"))
+                      + "개. 분기 신규수주 가정 " + fmt(s["assumptions"].get("new_orders_per_quarter"))
                       + "백만원. 안정된 품목·부문 원장만 O=ΔB+R의 분위수를 사용합니다. 실제 착공시차·공기 미식별 시 임의 값을 채우지 않습니다. 수주 분기말 유입, 다음 분기부터 같은 부문 관측 소진율로 전환한다는 조건부 가정입니다. 날짜 계약은 잔여기간 균등배분, 민감도 지수 0.75/1/1.25. 세 시나리오의 인식 속도는 동일합니다.</small></p></details>")
     chunks.append("<h3>호기·계통·역무 선표</h3><p>계약명에서 확인되는 업무·호기만 표시합니다. 실제 공정단계와 가동 호기 수, 계속운전 승인·정비주기는 입력에 없어 미확인입니다. 계약기간은 실제 착공일·상업운전일과 다를 수 있습니다.</p>")
     chunks.append(timeline(c["row_forecasts"], uid + "-timeline"))

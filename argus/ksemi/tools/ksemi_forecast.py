@@ -2,7 +2,7 @@
 """Offline KSEMI ledger delivery proxy. Python 3.9+, standard library only.
 
 Never imports the construction engine. All external evidence is in input/.
-Continues the supplied round-1 engine. The supplied parser contract can establish
+Continues the supplied round-2 engine. The supplied parser contract can establish
 KRW-million normalization, but never verifies a source caption or accounting scope.
 """
 import argparse
@@ -58,6 +58,8 @@ REASONS = {
  'sales_scope_unverified': '매출표 단위 계약은 있으나 중복·기간·연결/별도 범위 미대조',
  'needs_longer_ledger': '학습·장기/연간 백테스트에 더 긴 적격 원장이 필요함',
  'stage_unassigned': '정본 배정 파일에 회사는 있으나 단계 배정이 비어 있음',
+ 'source_semantics_required': '원장 길이 외 단위·기간·잔고·품목 범위·정합성 보완 필요',
+ 'unit_contract_inherited': '단위 근거 JSON 미제공: 2차 보고서의 정규화 설명을 조건부 승계',
 }
 
 
@@ -141,9 +143,11 @@ def unit_audit(o, contract=None):
             'scale_from_input': 1 if code is None else None,
             'reason_code': code,
             'source_caption_verified': False,
-            'status_codes': ['unit_caption_unavailable'] if code is None and contract else [],
+            'status_codes': (['unit_caption_unavailable'] +
+                (['unit_contract_inherited'] if contract.get('evidence_tier') == 'prior_report_statement' else []))
+                if code is None and contract else [],
             'parser_contract': contract,
-            'basis': ('supplied parser contract; input already KRW million; scale 1, never rescale again'
+            'basis': ('normalization contract (see evidence tier); input already KRW million; scale 1, never rescale again'
                       if code is None and contract else
                       'parsed caption 백만원; raw and normalized million scale coincide' if code is None
                       else 'no rescaling of transformed JSON; no magnitude inference')}
@@ -514,7 +518,7 @@ def forecast_company(c, origin='2026Q2', count=10):
                      'flow_minimum': MIN_FLOWS, 'delivery_period_basis': 'explicit year/YTD date range in order rows only',
                      'seasonality': {'enabled': False, 'reason': 'no independently validated seasonal model; raw flow quantiles'},
                      'capex_link': {'enabled': False, 'reason': 'no customer CAPEX series or estimated elasticity in input'},
-                     'schedule': sched, 'recognition': rb, 'horizon_validation': 'FY+2 and T+4..10 not validated by short history'},
+                     'schedule': sched, 'recognition': rb, 'horizon_validation': {'status':'backtest_not_run'}},
         'scenarios': scenarios, 'normalized_forecast': normalized, 'actual_revenue_proxy': actual,
         'aggregate_forecast': {'site_id': '__order_table__', 'site_name': 'provided order-table scope',
             'method': 'pooled_delivery_hazard' if full else None,
@@ -539,6 +543,16 @@ def metrics(rows):
             'bias': sum(r['prediction']-r['actual'] for r in rows)/n,
             'naive_mae': sum(abs(r['naive']-r['actual']) for r in rows)/n,
             'sensitivity_coverage': sum(r['lower'] <= r['actual'] <= r['upper'] for r in rows)/n}
+
+
+def annual_metrics(rows):
+    return dict(metrics(rows),
+        unique_company_fiscal_years=len({(r['company_id'], r['fiscal_year']) for r in rows}),
+        by_horizon_year={str(h): metrics([r for r in rows if r['horizon_year'] == h]) for h in (1, 2)},
+        by_company={stock: metrics([r for r in rows if r['company_id'] == stock])
+                    for stock in sorted({r['company_id'] for r in rows})},
+        by_fiscal_year={str(y): metrics([r for r in rows if r['fiscal_year'] == y])
+                        for y in sorted({r['fiscal_year'] for r in rows})})
 
 
 def backtest(companies, quarters):
@@ -587,7 +601,10 @@ def backtest(companies, quarters):
                         'naive': 4*history[-1]['delivery'],
                         'lower': sum(byq[q]['interval']['lower'] for q in qs),
                         'upper': sum(byq[q]['interval']['upper'] for q in qs),
-                        'training_quarters': [x['quarter'] for x in history], 'calibrated': False})
+                        'training_quarters': [x['quarter'] for x in history],
+                        'first_quarter_horizon': qindex(qs[0])-qindex(origin),
+                        'last_quarter_horizon': qindex(qs[-1])-qindex(origin),
+                        'calibrated': False, 'nominal_level': None})
     scored = scenario_rows['base']; annual = annual_rows['base']
     return {'scope': 'total order-table delivery proxy including new orders; not financial revenue',
             'money_unit': MONEY, 'calibrated': False, 'small_sample': True,
@@ -597,11 +614,13 @@ def backtest(companies, quarters):
             'scored_origins': sorted({r['origin'] for r in scored}),
             'independence_warning': 'overlapping horizons reuse actuals; scored rows are not independent samples',
             'overall': metrics(scored),
+            't1_t8': metrics([r for r in scored if r['horizon'] <= 8]),
             'by_horizon': {str(h): metrics([r for r in scored if r['horizon'] == h]) for h in range(1, 11)},
-            'annual': dict(metrics(annual), reason=None if annual else 'needs_longer_ledger',
+            'annual': dict(annual_metrics(annual), reason=None if annual else 'no_eligible_fully_future_fiscal_year',
                 scoring_policy='four fully future observed fiscal quarters; no synthetic annual actuals', rows=annual),
             'by_scenario': {name: {'overall': metrics(rows), 'rows': rows,
-                'annual': dict(metrics(annual_rows[name]), rows=annual_rows[name])}
+                'by_horizon': {str(h): metrics([r for r in rows if r['horizon'] == h]) for h in range(1, 11)},
+                'annual': dict(annual_metrics(annual_rows[name]), rows=annual_rows[name])}
                 for name, rows in scenario_rows.items()},
             'by_company': {c['stock']: metrics([r for r in scored if r['company_id'] == c['stock']]) for c in companies},
             'exclusions': dict(exclusions), 'rows': scored}
@@ -754,6 +773,9 @@ def attach_peers(panels, peer_data):
             'comparisons': comparisons, 'known_affiliates_excluded': sorted(aff),
             'used_for_forecast': False, 'amount_aggregation': False,
             'limitation': '본문 이름 언급이며 계약 증거 아님. 같은 1차 단계 또는 경쟁 언급 비교만; 매출/잔고 합계 없음. 계열망 완전성 미확인'}
+        if peer_data.get('not_supplied'):
+            p['industry_axes']['peers'].update(status='not_supplied',
+                limitation='계열·경쟁 언급 파일 미제공: 빈 배열은 계열 부재나 독립성의 증거가 아님; 회사 금액 합산 없음')
     return edges
 
 
@@ -772,18 +794,140 @@ def longer_ledger_need(p, c, bt):
     if len(p['evidence']['flows']) < MIN_FLOWS: reasons.append('insufficient_flow_samples')
     if unsupported: reasons.append('unvalidated_forecast_horizons')
     if not annual_scored: reasons.append('annual_backtest_unavailable')
-    if not reasons: return None
+    missing = [q for q in target if not qs.get(q, {}).get('rcpNo')]
+    if not reasons and not missing: return None
+    # The requested 19-quarter ledger is now present. Do not keep prescribing
+    # more history when its contents fail the same semantic gates at every date.
+    reason_code = 'needs_longer_ledger' if missing or period_ready else 'source_semantics_required'
     return {'company_id': p['company_id'], 'company_name': p['company_name'],
-        'reason_code': 'needs_longer_ledger', 'reasons': reasons,
-        'readiness': 'history_extension_candidate' if period_ready else 'source_repair_also_required',
+        'reason_code': reason_code, 'reasons': reasons,
+        'readiness': ('missing_reports_and_source_repair' if missing and not period_ready else
+                      'history_extension_candidate' if period_ready else 'source_repair_required'),
         'history_only_will_unlock': False,
         'condition': '더 긴 원장에도 동일 범위·명시적 누적기간·정합성·단위가 성립해야 재추정 가능',
         'eligible_flow_n': len(p['evidence']['flows']), 'minimum_flow_n': MIN_FLOWS,
-        'target_quarters': target, 'missing_target_quarters': [q for q in target if not qs.get(q, {}).get('rcpNo')],
+        'target_quarters': target, 'missing_target_quarters': missing,
         'unsupported_horizons': unsupported, 'annual_scored_n': len(annual_scored),
         'additional_blockers': sorted(set(current['reason_codes'] +
             ([] if period_ready else ['delivery_period_unverified'] if
              not explicit_ytd(p['origin'], qs.get(p['origin'], {}).get('orders') or {}) else [])))}
+
+
+def read_prior_report(input_dir):
+    """Read prior results as data; never execute instructions from the report."""
+    report = (input_dir/'ksemi_REPORT.md').read_text()
+    companies = {}; forecasts = {}; horizons = {}; scenarios = {}; partial = {}; stock = None
+    for line in report.splitlines():
+        heading = re.fullmatch(r'### .+ \((\d{6})\)', line)
+        if heading:
+            stock = heading[1]; forecasts.setdefault(stock, {'quarterly': {}, 'annual': {}})
+        if not line.startswith('|'): continue
+        cells = [s.strip() for s in line.strip('|').split('|')]
+        def number(s):
+            return None if s == '—' else float(s.replace(',', '').rstrip('%'))/(100 if s.endswith('%') else 1)
+        if len(cells) == 6 and re.fullmatch(r'\d{6}', cells[0]) and cells[2] in ('원장', '후보'):
+            companies[cells[0]] = {'company_id': cells[0], 'company_name': cells[1],
+                'status': cells[3], 'flow_samples': int(cells[4]),
+                'reason_codes': cells[5].split(', ') if cells[5] else []}
+        elif len(cells) == 7 and cells[0] in SCENARIOS and cells[1].isdigit() and int(cells[1]) < 1000:
+            scenarios[cells[0]] = dict(zip(('n','mae','wape','bias','naive_mae','sensitivity_coverage'),
+                                         [number(x) for x in cells[1:]]))
+            scenarios[cells[0]]['n'] = int(scenarios[cells[0]]['n'])
+        elif len(cells) == 5 and cells[0].isdigit() and 1 <= int(cells[0]) <= 10:
+            horizons[cells[0]] = dict(zip(('n','mae','wape','naive_mae'), [number(x) for x in cells[1:]]))
+            horizons[cells[0]]['n'] = int(horizons[cells[0]]['n'])
+        elif stock and len(cells) == 7 and re.fullmatch(r'202[678]Q[1-4]', cells[0]):
+            forecasts[stock]['quarterly'][cells[0]] = {'value':number(cells[2]),
+                'existing_backlog_revenue':number(cells[4]), 'new_order_revenue':number(cells[5])}
+        elif stock and len(cells) == 7 and cells[0] == 'base' and cells[1] in ('2026','2027','2028'):
+            forecasts[stock]['annual'][cells[1]] = {'value':number(cells[2]),
+                'observed_revenue':number(cells[3]), 'existing_backlog_revenue':number(cells[4]),
+                'new_order_revenue':number(cells[5])}
+        elif len(cells) == 4 and re.fullmatch(r'\d{6}',cells[0]) and re.fullmatch(r'\d{4}Q[1-4]',cells[2]):
+            partial.setdefault(cells[0], {})[cells[2]] = number(cells[3])
+    if len(companies) != 154 or set(horizons) != {str(h) for h in range(1,11)} or set(scenarios) != set(SCENARIOS):
+        raise ValueError('prior report tables incomplete; do not fabricate a comparison baseline')
+    annual = re.search(r'연간 독립 미래 4분기 검증 (\d+)건', report)
+    unique = re.search(r'고유 회사×목표분기 (\d+)개', report)
+    if not annual or not unique: raise ValueError('prior sample counts unavailable')
+    return {'source_file': 'input/ksemi_REPORT.md', 'round': 2, 'reported_precision':
+        'amounts rounded to .001 million KRW; WAPE rounded to .01 percentage point',
+        'companies': list(companies.values()), 'forecasts_base': forecasts, 'partial_forecasts':partial,
+        'backtest': {'overall': scenarios['base'], 'by_horizon': horizons,
+                    'by_scenario': scenarios, 'annual': dict(metrics([]), n=int(annual[1])),
+                    'unique_company_target_quarters': int(unique[1])},
+        'population': {'input_companies': len(companies),
+                       'status_counts': dict(collections.Counter(c['status'] for c in companies.values()))}}
+
+
+def load_unit_contract(input_dir):
+    evidence = input_dir/'ksemi_unit_evidence.json'
+    if evidence.exists():
+        statement = json.loads(evidence.read_text()).get('unit_contract')
+        tier = 'supplied_parser_contract'; source = evidence.name
+    else:
+        report = (input_dir/'ksemi_REPORT.md').read_text()
+        statements = [s for s in report.splitlines() if '저장 금액은 이미 백만원' in s and '_UNIT_SCALE' in s]
+        if len(statements) != 1: return None
+        statement = statements[0]; tier = 'prior_report_statement'; source = 'ksemi_REPORT.md'
+    if not isinstance(statement, str) or not statement.strip(): return None
+    return {'evidence_file': source, 'statement': statement, 'evidence_tier': tier,
+        'code_reference': 'argus/kce/tools/kce_parse.py:197-207; applications 345,357,359 (reported, not inspected)',
+        'source_code_inspected': False, 'source_caption_available': False,
+        'normalization_assumption': 'expanded ledger retains the prior parser KRW-million convention; no rescaling',
+        'missing_primary_evidence': [] if evidence.exists() else ['ksemi_unit_evidence.json', 'parser source', 'DART HTML']}
+
+
+def reassess(p, c, previous):
+    need = p['remediation']; qs = c['quarters']; target = [qadd('2021Q4', n) for n in range(19)]
+    present = [q for q in target if qs.get(q, {}).get('rcpNo')]
+    source_codes = {'no_snapshot','backlog_missing','unit_unknown','mixed_currency',
+        'normalized_scale_unverified','aggregate_leaf_overlap','duplicate_row_identity',
+        'table_reconciliation_failed','future_order_in_snapshot','delivery_period_unverified',
+        'scope_changed','unit_changed','negative_delivery_delta','negative_net_order'}
+    rejections = [r for r in p['evidence']['flow_rejections'] if r['quarter'] != target[0]]
+    counts = dict(collections.Counter(code for r in rejections for code in r['reason_codes']))
+    result = {'company_id':p['company_id'], 'company_name':p['company_name'],
+        'previous_eligible_flow_n': previous['eligible_flow_n'], 'eligible_flow_n':len(p['evidence']['flows']),
+        'flow_n_increase':len(p['evidence']['flows'])-previous['eligible_flow_n'],
+        'minimum_flow_n':MIN_FLOWS, 'threshold_met':len(p['evidence']['flows']) >= MIN_FLOWS,
+        'newly_threshold_met': previous['eligible_flow_n'] < MIN_FLOWS <= len(p['evidence']['flows']),
+        'quarter_slots':len(qs), 'previous_receipted_quarter_n':19-len(previous['missing_target_quarters']),
+        'receipted_quarter_n':len(present), 'adjacent_receipted_pair_n':sum(qadd(q,-1) in present for q in present),
+        'maximum_flow_n':18, 'rejected_pair_n':18-len(p['evidence']['flows']),
+        'rejection_reason_counts_nonexclusive':counts,
+        'missing_target_quarters':[q for q in target if q not in present],
+        'previous_reason_code':previous['reason_code'],
+        'decision': 'resolved' if need is None else need['readiness'],
+        'reason_code': None if need is None else need['reason_code'],
+        'current_source_blockers': sorted(source_codes.intersection(p['reason_codes'])),
+        'unsupported_horizons':p['backtest']['unvalidated_horizons'],
+        'annual_scored_n':p['backtest']['annual']['n'],
+        'history_only_will_unlock':False,
+        'explanation': ('학습 4개 기준, T+1~T+10 및 연간 관측 검증 확보; 통계 보정/회계매출 검증을 뜻하지 않음'
+                       if need is None else
+                       '19개 슬롯 중 접수번호 없는 분기와 원문 의미 관문이 함께 남음; 추가 수집만으로 자동 승격 불가'
+                       if len(present)<19 else
+                       '19개 접수분기 확보 후에도 적격 흐름 부족; 기간·잔고·단위·정합성 검증이 필요하며 같은 형식 원장 추가만으로 해제 불가')}
+    return result
+
+
+def compare_backtests(previous, replay, current):
+    key = lambda r: (r['company_id'], r['origin'], r['horizon'])
+    keys = {key(r) for r in replay['rows']}
+    paired = [r for r in current['rows'] if key(r) in keys]
+    rows = []
+    for h in range(1,11):
+        old = previous['by_horizon'][str(h)]; new = current['by_horizon'][str(h)]
+        rows.append({'horizon':h, 'previous':old, 'current':new, 'sample_increase':new['n']-old['n']})
+    return {'published_round2':previous, 'horizon_comparison':rows,
+        'annual_sample_increase':current['annual']['n']-previous['annual']['n'],
+        'replay_basis':'current expanded snapshots restricted to round-2 available quarters from needs_longer_ledger.json; original round-2 ledger unavailable',
+        'same_targets':{'n':len(paired), 'round2_window_replay':metrics(replay['rows']),
+                        'expanded_history':metrics(paired), 'expanded_rows':paired},
+        'round2_window_replay':{'overall':replay['overall'], 'rows':replay['rows'],
+            'by_horizon':replay['by_horizon'], 'by_company':replay['by_company'], 'annual':replay['annual']},
+        'warning':'Full-window score changes mix different targets and training lengths; same-target replay isolates the history effect only within current-vintage inputs.'}
 
 
 def rounded(x):
@@ -803,16 +947,15 @@ def build(input_dir, output_dir):
     reports = json.loads((input_dir/'ksemi_reports.json').read_text())
     universe = json.loads((input_dir/'ksemi_universe.json').read_text())
     contracts = json.loads((input_dir/'ksemi_contracts.json').read_text())
-    tags = json.loads((input_dir/'ksemi_stage_tags.json').read_text())
-    exposure = json.loads((input_dir/'ksemi_exposure.json').read_text())
-    peers = json.loads((input_dir/'ksemi_peers.json').read_text())
-    prior = json.loads((input_dir/'ksemi_audit.json').read_text())
-    units = json.loads((input_dir/'ksemi_unit_evidence.json').read_text())
-    if not isinstance(units.get('unit_contract'), str) or not units['unit_contract'].strip():
-        raise ValueError('supplied parser normalization contract required')
-    contract = {'evidence_file': 'ksemi_unit_evidence.json', 'statement': units['unit_contract'],
-                'code_reference': 'argus/kce/tools/kce_parse.py:197-207; applications 345,357,359',
-                'source_code_inspected': False, 'source_caption_available': False}
+    def optional(name):
+        path = input_dir/name
+        return json.loads(path.read_text()) if path.exists() else {'rows': [], 'not_supplied': True}
+    tags = optional('ksemi_stage_tags.json'); exposure = optional('ksemi_exposure.json')
+    peers = optional('ksemi_peers.json')
+    prior = read_prior_report(input_dir)
+    prior_needs = json.loads((input_dir/'needs_longer_ledger.json').read_text())
+    prior_needs_byid = {r['company_id']:r for r in prior_needs}
+    contract = load_unit_contract(input_dir)
     tag_byid = {x['stock']: x for x in tags['rows']}
     exp_byid = {x['stock']: x for x in exposure['rows']}
     if len(tag_byid) != len(tags['rows']) or len(exp_byid) != len(exposure['rows']):
@@ -824,8 +967,11 @@ def build(input_dir, output_dir):
     for c in reports['rows']: allrows.setdefault(c['stock'], c)
     if len(byid) != len(reports['rows']) or len(allrows) != len(universe['rows']):
         raise ValueError('population identities require explicit reconciliation')
-    if set(tag_byid) != set(allrows) or set(exp_byid) != set(byid):
+    if ((not tags.get('not_supplied') and set(tag_byid) != set(allrows)) or
+            (not exposure.get('not_supplied') and set(exp_byid) != set(byid))):
         raise ValueError('authoritative stage/exposure population mismatch')
+    if set(prior_needs_byid) != set(byid):
+        raise ValueError('round-2 retry manifest population mismatch')
     panels = []; audits = []; tasks = []
     grouped = collections.defaultdict(list)
     for r in contracts['rows']: grouped[r['stock']].append(r)
@@ -886,20 +1032,27 @@ def build(input_dir, output_dir):
             'annual_score_n': p['backtest']['annual']['n'], 'financial_revenue_validated': False}
         p['audit_can']['backtest'] = 'yes_small_sample' if score['n'] else 'no'
         need = longer_ledger_need(p, byid.get(p['company_id'], {}), bt)
-        p['needs_longer_ledger'] = need
+        p['remediation'] = need
+        p['needs_longer_ledger'] = need if need and need['reason_code'] == 'needs_longer_ledger' else None
         if need:
-            retry.append(need)
-            p['reason_codes'] = sorted(set(p['reason_codes']+['needs_longer_ledger']))
+            if need['reason_code'] == 'needs_longer_ledger': retry.append(need)
+            p['reason_codes'] = sorted(set(p['reason_codes']+[need['reason_code']]))
         p['audit_blockers'] = [REASONS.get(x, x) for x in p['reason_codes']]
         p['warning_codes'] = [x for x in p['reason_codes'] if x in
             ('unit_caption_unavailable', 'financial_revenue_unverified', 'recognition_unverified',
-             'sales_scope_unverified', 'needs_longer_ledger', 'stage_unassigned')]
+             'sales_scope_unverified', 'needs_longer_ledger', 'stage_unassigned',
+             'stage_tags_absent', 'unit_contract_inherited')]
         p['full_forecast_blockers'] = [] if p['status'] == 'full' else [x for x in p['reason_codes'] if x not in p['warning_codes']]
         for scenario in p['scenarios'].values():
             for row in scenario['quarterly']:
                 row['reason_codes'] = p['reason_codes']
         a = next(a for a in audits if a['company_id'] == p['company_id'])
-        a.update(reason_codes=p['reason_codes'], blockers=p['audit_blockers'], needs_longer_ledger=need)
+        a.update(reason_codes=p['reason_codes'], blockers=p['audit_blockers'],
+                 needs_longer_ledger=p['needs_longer_ledger'], remediation=need)
+        if p['company_id'] in byid:
+            p['ledger_reassessment'] = reassess(p, byid[p['company_id']], prior_needs_byid[p['company_id']])
+        else:
+            p['ledger_reassessment'] = None
     counts = dict(collections.Counter(p['status'] for p in panels))
     rc = dict(collections.Counter(p['status'] for p in panels if p['in_report_population']))
     pop = {'input_entries': len(universe['rows']), 'input_companies': len(allrows),
@@ -920,6 +1073,10 @@ def build(input_dir, output_dir):
             'company_ids': [p['company_id'] for p in fs], 'descriptive_median_hazard': statistics.median(hs) if hs else None,
             'stage_speed_identified': False,
             'reason': '정본 태그 수용; 다중 단계·일반 산업·겸업 문구와 적은 적격 회사로 단계별 소진속도 차이 식별 불가'})
+    if tags.get('not_supplied'):
+        for row in stage_audit:
+            row.update(authoritative_tag_company_n=None, primary_company_n=None, flow_company_n=None,
+                       company_ids=None, reason='stage_tags_absent: supplied round-3 files contain no authoritative assignments')
     prior_byid = {x['company_id']: x for x in prior['companies']}
     delta = [{'company_id': p['company_id'], 'company_name': p['company_name'],
         'previous_status': prior_byid.get(p['company_id'], {}).get('status'), 'status': p['status'],
@@ -927,9 +1084,51 @@ def build(input_dir, output_dir):
         'flow_n': len(p['evidence']['flows']),
         'resolved_reason_codes': sorted(set(prior_byid.get(p['company_id'], {}).get('reason_codes', []))-set(p['reason_codes'])),
         'added_reason_codes': sorted(set(p['reason_codes'])-set(prior_byid.get(p['company_id'], {}).get('reason_codes', [])))} for p in panels]
+    for d, p in zip(delta, panels):
+        old = prior['forecasts_base'].get(p['company_id'], {})
+        changes = []
+        for frequency, period_key in [('quarterly','quarter'),('annual','fiscal_year')]:
+            for row in p['scenarios']['base'][frequency]:
+                previous_row = old.get(frequency, {}).get(str(row[period_key]))
+                if previous_row is None: continue
+                before, after = previous_row['value'], row['value']
+                changes.append({'frequency':frequency, 'period':row[period_key],
+                    'previous_value':before, 'value':after,
+                    'absolute_change':after-before if num(after) and num(before) else None,
+                    'relative_change':after/before-1 if num(after) and num(before) and before else None,
+                    'previous_components':previous_row,
+                    'components':{k:row[k] for k in ('existing_backlog_revenue','new_order_revenue')},
+                    'baseline_source':'published round-2 report, rounded amounts'})
+        d['base_forecast_changes'] = changes
+        d['partial_forecast_changes'] = [
+            {'quarter':q,'previous_value':before,'value':next(r['covered_sites_partial_revenue']
+                for r in p['scenarios']['base']['quarterly'] if r['quarter']==q),
+             'baseline_source':'published round-2 report; rounded .001 million KRW'}
+            for q,before in prior['partial_forecasts'].get(p['company_id'], {}).items()]
+        d['large_change_threshold'] = .20
+        d['large_value_change'] = any(num(r['relative_change']) and abs(r['relative_change']) >= .20 for r in changes)
+        d['explanation'] = ('추가 적격 과거분기로 회사 내 h·순수주 분위수가 바뀜; 추정식·4개 기준 유지'
+                            if d['flow_n'] > (d['previous_flow_n'] or 0) else
+                            '적격 표본 증가 없음; 기간·잔고·단위·정합성 관문 유지' if p['in_report_population'] else
+                            '보고서 원장 미제공 후보; 금액 추정 불가')
+    replay_companies = []
+    for c in reports['rows']:
+        old = prior_needs_byid[c['stock']]
+        allowed = set(old['target_quarters'])-set(old['missing_target_quarters'])
+        replay_companies.append(dict(c, quarters={q:s for q,s in c['quarters'].items() if q in allowed}))
+    replay_quarters = sorted({q for c in replay_companies for q in c['quarters']})
+    replay = backtest(replay_companies, replay_quarters)
+    for d in delta:
+        d['previous_backtest_replay'] = replay['by_company'].get(d['company_id'],metrics([]))
+    comparison = compare_backtests(prior['backtest'], replay, bt)
+    reassessments = [p['ledger_reassessment'] for p in panels if p['ledger_reassessment']]
     continuation = {'base_engine': 'input/ksemi_forecast.py', 'base_renderer': 'input/forecast_section.py',
-        'base_audit': 'input/ksemi_audit.json', 'previous_population': prior['population'], 'company_deltas': delta}
-    panel = {'schema_version': 'ksemi-r2-1', 'schema_family': 'kce-r4-1', 'assignment': 'ARGUS-ksemi',
+        'base_audit': None, 'base_audit_missing': True, 'baseline_source':'input/ksemi_REPORT.md',
+        'previous_population': prior['population'], 'company_deltas': delta,
+        'uncertainty':'round-2 panel/audit/original ledger absent; published report and retry manifest are the comparison evidence'}
+    missing_inputs = [name for name in ('ksemi_stage_tags.json','ksemi_exposure.json','ksemi_peers.json',
+        'ksemi_audit.json','ksemi_unit_evidence.json','forecast_panel.json') if not (input_dir/name).exists()]
+    panel = {'schema_version': 'ksemi-r3-1', 'schema_family': 'kce-r4-1', 'assignment': 'ARGUS-ksemi',
         'origin': origin, 'money_unit': MONEY, 'unit_status_codes': ['unit_caption_unavailable'],
         'numeric_decimal_places': 9, 'input_sha256': hashes,
         'engine_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -937,17 +1136,29 @@ def build(input_dir, output_dir):
         'fiscal_year_end_month': None, 'fiscal_basis': 'per-company observed annual report title month',
         'forecast_quarters': [qadd(origin, n) for n in range(1, 11)], 'population': pop,
         'unlisted_reference': [], 'backtest': bt, 'stage_audit': stage_audit,
+        'backtest_comparison': comparison, 'ledger_reassessment':reassessments,
+        'ledger_summary': {'quarters':reports['quarters'], 'slots':sum(len(c['quarters']) for c in reports['rows']),
+            'receipted_snapshots':sum(r['receipted_quarter_n'] for r in reassessments),
+            'previous_eligible_flow_n':sum(r['previous_eligible_flow_n'] for r in reassessments),
+            'eligible_flow_n':sum(r['eligible_flow_n'] for r in reassessments),
+            'decisions':dict(collections.Counter(r['decision'] for r in reassessments)),
+            'newly_threshold_met':[r['company_id'] for r in reassessments if r['newly_threshold_met']]},
         'continuation': continuation, 'unit_contract': contract,
         'reason_dictionary': REASONS, 'needs_longer_ledger': retry,
+        'source_repairs':[p['remediation'] for p in panels if p['remediation'] and
+                          p['remediation']['reason_code'] == 'source_semantics_required'],
+        'missing_input_files':missing_inputs,
         'aggregation_policy': 'No company, affiliate, peer or overlapping stage monetary totals',
         'enrichment_audit': {'stage_rows': len(tag_byid), 'empty_stage_rows': sum(not x['stages'] for x in tags['rows']),
             'memory_rows': len(exp_byid), 'memory_distribution': dict(collections.Counter(x['verdict'] for x in exposure['rows'])),
-            'peer_edges': len(edges), 'source_note': 'authoritative assignments accepted as supplied, not reread from DART'},
-        'note': '민감도는 통계적 신뢰구간 아님. 금액은 파서 계약의 백만원 단위 납품 대용치; unit_caption_unavailable.',
+            'peer_edges':len(edges), 'missing_files':missing_inputs,
+            'source_note':'Missing stage/exposure/peer JSON means unknown, not empty confirmed assignments or no affiliations'},
+        'note': '민감도는 통계적 신뢰구간 아님. 금액은 2차 보고서 정규화 설명을 승계한 백만원 납품 대용치; unit_caption_unavailable, unit_contract_inherited.',
         'companies': panels}
-    audit = {'schema_version': 'ksemi-audit-2', 'origin': origin, 'input_sha256': hashes, 'population': pop,
+    audit = {'schema_version': 'ksemi-audit-3', 'origin': origin, 'input_sha256': hashes, 'population': pop,
         'observed_errors': [{'company_id': c['stock'], 'errors': c.get('errors')} for c in reports['rows'] if c.get('errors')],
-        'scope_limit': 'DART HTML/parser source/scan verdict absent; supplied unit contract and stage/exposure/peer JSON used offline',
+        'scope_limit': 'DART HTML/parser source/audit/enrichment absent; prior report normalization statement used conditionally',
+        'missing_input_files':missing_inputs, 'ledger_reassessment':reassessments,
         'continuation': continuation, 'needs_longer_ledger': retry,
         'reason_dictionary': REASONS, 'stage_audit': stage_audit, 'companies': audits,
         'collection_queue': tasks, 'collection_task_count': len(tasks)}
@@ -971,16 +1182,17 @@ def write_report(panel, audit, out):
     full = [c for c in panel['companies'] if c['status'] == 'full']
     part = [c for c in panel['companies'] if c['status'] == 'partial']
     eligible = [r for r in panel['needs_longer_ledger'] if r['readiness'] == 'history_extension_candidate']
-    text = ['# ARGUS-ksemi 2차 보고서', '',
-        '1차 엔진·렌더러를 이어 수정하고 1차 감사와 회사별 사유 차이를 비교했다. 제공 JSON만 사용했으며 원문 HTML과 파서 소스는 직접 확인하지 못했다.', '',
+    text = ['# ARGUS-ksemi 3차 보고서', '',
+        '2차 엔진·렌더러·회귀검사를 이어 수정했다. 추정식과 적격 흐름 4개 기준은 유지했다. 확장 원장과 2차 보고서·보류 목록만으로 재판정했으며 원문과 파서 소스는 확인하지 못했다.', '',
+        '**새로 추정 가능해진 회사는 0사다.** 원익IPS와 티에스이의 needs_longer_ledger는 장기·연간 검증 확보로 해제했다. 나머지 81사는 적격 흐름 0개를 유지했다. 이 중 64사는 완전한 원장에서도 원문 의미·정합성 보완이 필요하고, 17사는 접수분기 누락도 남았다.',
+        '기준 백테스트 T+1~T+8은 12→150건(WAPE 34.98%→34.56%), T+1~T+10은 12→171건(34.98%→35.15%), 연간은 0→20건(WAPE 18.35%)이다. 같은 목표 12건에서 WAPE는 34.98%→42.20%로 악화됐다. 표본 확대를 정확도 개선으로 간주하지 않았다.', '',
         f"입력 {pop['input_companies']}사 = 추정 {pop['estimated_companies']}사(전체 조건부 납품 대용치 {len(full)}사 + 일부 미래 납기 잔고 {len(part)}사) + 미추정 {pop['unestimated_companies']}사.",
         f"보고서 원장 {pop['report_companies']}사와 후보만 있는 {pop['candidate_only_companies']}사를 구분했다. 후보의 개별 편입·배제 판정 파일은 미제공이다.",
         '전 회사에 T+1~T+10(2026Q3~2028Q4), FY2026~FY2028, 보수·기준·낙관 슬롯을 유지하고 불가능한 값은 null로 남겼다.', '',
         '## 메워진 입력과 남은 불확실성', '',
-        '- 정본 13단계 배정 파일 154행을 사용했다. 파일에 33사는 빈 배정이며, 이를 미제공이나 임의 배정으로 바꾸지 않았다. 단계별 금액을 합산하지 않았다.',
-        '- 메모리·파운드리는 83사 원문 낱말 판정이다. 중국 노출은 단위와 정정·중복을 검사한 공급계약 금액 기준이며 매출 비중이 아니다. 계약 자료는 현 정정본 누적 자료이고 분기 신규수주 입력으로 쓰지 않는다.',
-        '- 비교축은 같은 정본 주단계 또는 경쟁사 언급이다. 40개 원문 언급 간선을 보존하고 알려진 계열 관계의 연결 성분을 비교집단에서 제외했다. 관계 미언급을 독립성 증거로 간주하지 않는다.',
-        '- 단위는 제공된 `ksemi_unit_evidence.json`의 파서 계약을 사용했다: `argus/kce/tools/kce_parse.py:197-207 _UNIT_SCALE`, 적용 345·357·359행. 저장 금액은 이미 백만원이므로 추가 환산하지 않는다.',
+        '- 이번 입력에는 `ksemi_stage_tags.json`, `ksemi_exposure.json`, `ksemi_peers.json`, `ksemi_audit.json`, `ksemi_unit_evidence.json`, 2차 `forecast_panel.json`이 없다. 과거 보고서에 존재했다는 설명을 실제 파일 수신으로 취급하지 않았다.',
+        '- 공정 배정·메모리/파운드리·계열 간선은 미제공으로 남겼다. 계열망이 비어 있다고 독립 회사로 인정하거나 회사별 금액을 합산하지 않았다. 중국 노출은 제공 계약자료의 단위·중복 검사 후 설명용 비중만 유지했다.',
+        '- 단위 근거는 2차 보고서의 `_UNIT_SCALE` 설명과 “저장 금액은 이미 백만원” 문장을 조건부 승계했다. `unit_contract.evidence_tier=prior_report_statement`; 확장본도 같은 정규화 규약이라는 가정이며 원문·파서 검증 완료를 뜻하지 않는다. 원익IPS·티에스이 적격 흐름은 백만원 캡션으로도 성립한다. 비백만원 캡션의 일부 납기 금액은 특히 승계 근거에 의존한다. 재환산하지 않았다.',
         '- 원문 캡션을 확인하지 못했으므로 금액 사용 회사에 `unit_caption_unavailable`을 기록했다. `unit_seen=false`, 혼합통화, 합계·상세 중복, 정합성 실패는 계약만으로 해제하지 않았다.',
         '- 매출표의 환산 계약 수용과 회계매출 확정은 다르다. 매출표 중복·연결/별도·수행의무 범위가 미대조여서 전 추정은 수주표 기납품액 대용치다.', '',
         '## 산업 축과 추정 방법', '',
@@ -997,7 +1209,7 @@ def write_report(panel, audit, out):
          pct(c['scenarios']['base']['assumptions']['delivery_hazard']),
          f(c['scenarios']['base']['assumptions']['new_orders_per_quarter']),pct(c['coverage']['covered_fraction'])]
         for c in full+part])
-    text += ['', '금액 단위: 백만원. 모든 값은 조건부 납품 대용치이며 단위는 파서 계약에 의존한다.', '']
+    text += ['', '금액 단위: 백만원. 조건부 납품 대용치이며 정규화 근거는 2차 보고서에서 승계했다.', '']
     for c in full:
         text += ['### '+c['company_name']+' ('+c['company_id']+')', '']
         text += table(['분기','보수 전체','기준 전체','낙관 전체','기준 잔고분','기준 신규분','기준 민감도'], [
@@ -1014,26 +1226,68 @@ def write_report(panel, audit, out):
         for c in part for r in c['scenarios']['base']['quarterly'] if (r['covered_sites_partial_revenue'] or 0)>0])
     text += ['', '## 백테스트', '',
         '예측 시점 이후 원장 값을 학습에 사용하지 않는 rolling-origin 검증이다. 단, 최초 공시일별 원장 빈티지가 없어 현재 정정본을 자른 pseudo out-of-sample이며 실제 당시 투자자가 알았던 정보의 검증은 아니다. 기준 naive는 마지막 적격 분기 납품액의 반복이다.',
-        f"기준 시나리오 {bt['overall']['n']}건, 고유 회사×목표분기 {bt['unique_company_target_quarters']}개. 중첩 예측은 같은 실적을 재사용하므로 독립 표본 수가 아니다.", '']
+        f"기준 시나리오 {bt['overall']['n']}건, 고유 회사×목표분기 {bt['unique_company_target_quarters']}개. 중첩 예측은 같은 실적을 재사용하므로 독립 표본 수가 아니다.",
+        f"채점 가능한 기준분기는 {bt['scored_origins'][0]}~{bt['scored_origins'][-1]}의 {len(bt['scored_origins'])}개다. 매 기준분기까지의 적격 표본 전체를 사용하고 최소 4개 이전 예측은 채점하지 않았다. WAPE=절대오차 합/실측 절댓값 합, MAE=절대오차 평균, 편향=예측−실측 평균이다. 회사 금액 합계 전망은 만들지 않았으며 WAPE 분모의 집계는 오차 평가에만 사용했다.", '']
     text += table(['시나리오','n','MAE','WAPE','편향','naive MAE','민감도 포함률'], [
         [name,v['overall']['n'],f(v['overall']['mae']),pct(v['overall']['wape']),f(v['overall']['bias']),
          f(v['overall']['naive_mae']),pct(v['overall']['sensitivity_coverage'])] for name,v in bt['by_scenario'].items()])
-    text += ['']+table(['h','n','MAE','WAPE','naive MAE'], [
-        [h,m['n'],f(m['mae']),pct(m['wape']),f(m['naive_mae'])] for h,m in bt['by_horizon'].items()])
-    text += ['', f"연간 독립 미래 4분기 검증 {bt['annual']['n']}건. 표본이 없는 지평과 연간 성적은 null이며 적중률·정확도를 만들어 넣지 않았다.",
-        '전체 점수는 금액 가중 영향이 크고 회계매출 예측 정확도가 아니다. 분해된 기존분·신규분의 실제 정답이 없어 그 구성별 정확도는 별도 검증하지 못했다.', '',
-        '## 19분기 원장 수신 후 재실행 목록', '',
-        '`needs_longer_ledger.json`과 `forecast_panel.json.needs_longer_ledger`에 회사별 누락 분기, 학습 표본 수, 미검증 지평, 추가 차단 사유를 저장했다. 목표 범위는 2021Q4~2026Q2 19분기다. 이 목록은 실행 요청을 보내는 큐가 아닌 로컬 인계 자료다.',
-        f"현재 기간·범위 관문을 통과해 이력 확장의 직접 후보인 회사는 {len(eligible)}사다. 나머지는 원장 길이 외 원문 기간·범위 등 보완도 필요하다. 19분기 도착이 자동 추정 승격을 뜻하지 않는다.", '']
-    text += [f"적격 흐름 0개인 원장 회사는 {sum(len(c['evidence']['flows']) == 0 for c in panel['companies'] if c['in_report_population'])}사, 1~3개인 회사는 {sum(0 < len(c['evidence']['flows']) < MIN_FLOWS for c in panel['companies'] if c['in_report_population'])}사다. 이력 확장은 현재 적격 회사의 장기 검증을 넓힐 수 있지만 다른 회사에는 원문 의미와 정합성 관문도 남아 있다.", '']
-    text += table(['코드','회사','구분','적격 흐름','미검증 T+h','추가 차단'], [
-        [r['company_id'],r['company_name'],r['readiness'],r['eligible_flow_n'],
-         ','.join(map(str,r['unsupported_horizons'])),','.join(r['additional_blockers']) or '없음']
-        for r in panel['needs_longer_ledger']])
+    comparison = panel['backtest_comparison']; oldbt = comparison['published_round2']
+    text += ['', '### 2차 대비 지평별 표본과 오차', '',
+        '2차 값은 제공 보고서의 반올림 수치다. T+1~T+8을 기본 검증 범위로 집계하고 T+9~T+10도 추가 표시했다. 표본은 회사×기준분기×목표분기이며 회사 수가 아니다.', '']
+    text += table(['지평','2차 n','3차 n','증가','2차 WAPE','3차 WAPE','3차 MAE','3차 naive MAE'], [
+        ['T+'+str(r['horizon']),r['previous']['n'],r['current']['n'],r['sample_increase'],
+         pct(r['previous']['wape']),pct(r['current']['wape']),f(r['current']['mae']),f(r['current']['naive_mae'])]
+        for r in comparison['horizon_comparison']])
+    text += ['']+table(['범위','2차 n','3차 n','증가','2차 WAPE','3차 WAPE'], [
+        ['T+1~T+8',sum(oldbt['by_horizon'][str(h)]['n'] for h in range(1,9)),bt['t1_t8']['n'],
+         bt['t1_t8']['n']-sum(oldbt['by_horizon'][str(h)]['n'] for h in range(1,9)),pct(oldbt['overall']['wape']),pct(bt['t1_t8']['wape'])],
+        ['T+1~T+10',oldbt['overall']['n'],bt['overall']['n'],bt['overall']['n']-oldbt['overall']['n'],pct(oldbt['overall']['wape']),pct(bt['overall']['wape'])],
+        ['연간',oldbt['annual']['n'],bt['annual']['n'],comparison['annual_sample_increase'],'—',pct(bt['annual']['wape'])]])
+    paired = comparison['same_targets']
+    text += ['', f"같은 목표 {paired['n']}건만 대조하면 짧은 원장 재현 WAPE {pct(paired['round2_window_replay']['wape'])} → 긴 학습 원장 {pct(paired['expanded_history']['wape'])}다. 전체 기간 WAPE와 함께 해석해야 한다. 짧은 원장 재현은 보류 목록의 당시 보유 분기로 현 정정본을 제한한 계산이며 최초 2차 JSON 자체가 아니다.", '',
+        '### 회사별 검증', '']
+    deltas = {r['company_id']:r for r in panel['continuation']['company_deltas']}
+    text += table(['회사','2차 재현 n','2차 재현 WAPE','3차 n','3차 WAPE','3차 MAE','naive MAE'], [
+        [c['company_name'],deltas[c['company_id']]['previous_backtest_replay']['n'],
+         pct(deltas[c['company_id']]['previous_backtest_replay']['wape']),c['backtest']['n'],
+         pct(c['backtest']['wape']),f(c['backtest']['mae']),f(c['backtest']['naive_mae'])] for c in full])
+    text += ['', '### 연간 오차', '',
+        '기준분기 이후의 미래 4분기 실측이 모두 있고 동일 품목 범위를 유지한 회계연도만 채점했다. 당해연도 기관측분을 더한 쉬운 문제와 섞지 않았다. 전망의 FY2026은 기관측+미래분이지만 여기의 연간 검증은 온전히 미래 4분기다.',
+        f"연간 {bt['annual']['n']}건은 고유 회사×FY {bt['annual']['unique_company_fiscal_years']}개를 중복 사용한다. 서로 독립인 연도 표본 {bt['annual']['n']}개가 아니다.", '']
+    text += table(['시나리오','n','MAE','WAPE','편향','naive MAE','민감도 포함률'], [
+        [name,v['annual']['n'],f(v['annual']['mae']),pct(v['annual']['wape']),f(v['annual']['bias']),
+         f(v['annual']['naive_mae']),pct(v['annual']['sensitivity_coverage'])] for name,v in bt['by_scenario'].items()])
+    text += ['']+table(['연간 지평','n','MAE','WAPE','naive MAE'], [
+        ['FY+'+h,m['n'],f(m['mae']),pct(m['wape']),f(m['naive_mae'])] for h,m in bt['annual']['by_horizon_year'].items()])
+    text += ['']+table(['검증 대상 FY','n','MAE','WAPE','naive MAE'], [
+        [y,m['n'],f(m['mae']),pct(m['wape']),f(m['naive_mae'])] for y,m in bt['annual']['by_fiscal_year'].items()])
+    text += ['']+table(['회사','연간 n','MAE','WAPE','naive MAE'], [
+        [next(c['company_name'] for c in full if c['company_id']==stock),m['n'],f(m['mae']),pct(m['wape']),f(m['naive_mae'])]
+        for stock,m in bt['annual']['by_company'].items()])
+    text += ['', '기준 시나리오의 전체 WAPE는 2차보다 소폭 악화됐다. 지평·시나리오·회사에 따라 naive보다 나쁜 오차도 그대로 남겼다. 이 점수는 납품 대용치 정확도이며 회계매출 정확도가 아니다. 기존분·신규분의 실측 정답이 없어 구성별 정확도는 검증하지 못했다.', '',
+        '## 19분기 수신 후 보류 재판정', '']
+    summary = panel['ledger_summary']; rr = panel['ledger_reassessment']
+    text += [f"83사 × 19분기 = {summary['slots']}개 슬롯이지만 접수번호가 있는 원장은 {summary['receipted_snapshots']}개다. 적격 흐름은 {summary['previous_eligible_flow_n']}→{summary['eligible_flow_n']}개이며 새로 4개 문턱을 넘은 회사는 {len(summary['newly_threshold_met'])}사다.",
+        '81사는 2차에도 흐름 0개였고 이번에도 0개다. 표본 1~3개에서 대기하던 회사가 다수였던 것은 아니다. 19개 슬롯을 18개 적격 인접쌍으로 간주할 수 없다.',
+        '원익IPS 7→18개, 티에스이 7→16개는 T+1~T+10 및 연간 검증이 생겨 needs_longer_ledger를 해제했다. 티에스이 2024Q1 표 정합성 실패로 그 분기와 2024Q2 차분이 제외됐다. 2021Q4는 앞 분기가 없어 순수주 흐름으로 쓰지 않는다.',
+        '완전한 19분기 수신 회사의 의미·정합성 차단은 source_semantics_required로 재분류했다. 접수번호 누락 회사는 needs_longer_ledger와 원문 보완 필요를 함께 남겼다. 과거 오류 횟수는 중복 집계이므로 합계가 제외 쌍 수와 같지 않다.', '']
+    text += table(['재판정','회사 수'], [[k,v] for k,v in summary['decisions'].items()])
+    text += ['']+table(['코드','회사','2차→3차 흐름','접수/인접쌍','재판정','현재 원문 차단','누락 분기'], [
+        [r['company_id'],r['company_name'],str(r['previous_eligible_flow_n'])+'→'+str(r['eligible_flow_n']),
+         str(r['receipted_quarter_n'])+'/'+str(r['adjacent_receipted_pair_n']),r['decision'],
+         ', '.join(r['current_source_blockers']) or '없음',', '.join(r['missing_target_quarters']) or '없음'] for r in rr])
+    text += ['', '## 2차 대비 회사별 추정 변화', '',
+        '신규 추정 가능 회사는 없고 full 2사·partial 5사를 유지했다. 아래는 기준 시나리오의 제공 보고서 수치 대비 변화다. 절댓값 20% 이상을 큰 변화로 분류했다. 전체 154사 상태·사유 변화와 회사별 모든 분기·연간 수치 차이는 continuation.company_deltas에 저장했다.', '']
+    text += table(['회사','기간','2차','3차','변화율','3차 잔고분','3차 신규분'], [
+        [c['company_name'],str(r['period']),f(r['previous_value']),f(r['value']),pct(r['relative_change']),
+         f(r['components']['existing_backlog_revenue']),f(r['components']['new_order_revenue'])]
+        for c in full for r in deltas[c['company_id']]['base_forecast_changes'] if r['frequency']=='annual' or r['period']=='2026Q3'])
+    text += ['', '원익IPS는 과거 저수주 구간이 들어와 기준 분기 순수주 N이 260,929→155,594.5백만원으로 낮아지고 h는 36.57%→42.97%로 높아졌다. 단기 잔고분 소진은 빨라졌지만 장기 신규분이 줄었다. 티에스이는 N이 62,857→43,449.5백만원, h는 50.55%→48.76%로 내려갔다. 최신 분기의 잔고를 바꾼 효과가 아니라 학습기간 구성 변화다. 과거 수주 국면을 동일 가중하는 중앙값이 최근 국면을 잘 대표하는지는 미검증이다.',
+        '일부 납기형 5사의 양의 분기 금액은 2차 보고서와 0.001백만원 반올림 범위에서 동일하다. 신규분과 전체금액은 계속 null이다. 단계·노출·계열 정보의 미제공은 이번 전달 파일의 차이이며 회사 경제활동 변화로 해석하지 않는다.', '']
     text += ['', '## 정본 13단계 감사', '',
-        '다중 태그는 여러 단계에 재등장한다. 주단계 수는 단일 배정이며 단계 속도 중앙값은 기술통계에 한정한다. 단계 전체 금액·계열 매출 합계를 만들지 않았다.', '']
+        '이번 단계 배정 파일은 미제공이다. 아래 —는 무배정이나 0개라는 판정이 아니다. 단계 속도·계열 금액 합계를 만들지 않았다.', '']
     text += table(['단계','정본 태그 회사','주단계 회사','적격 회사','기술통계 h 중앙값'], [
-        [r['stage'],r['authoritative_tag_company_n'],r['primary_company_n'],r['flow_company_n'],pct(r['descriptive_median_hazard'])] for r in panel['stage_audit']])
+        [r['stage'],r['authoritative_tag_company_n'] if r['authoritative_tag_company_n'] is not None else '—',r['primary_company_n'] if r['primary_company_n'] is not None else '—',r['flow_company_n'] if r['flow_company_n'] is not None else '—',pct(r['descriptive_median_hazard'])] for r in panel['stage_audit']])
     text += ['', '## 전수 판정', '']+table(['코드','회사','입력 범위','상태','흐름 표본','사유 코드'], [
         [c['company_id'],c['company_name'],'원장' if c['in_report_population'] else '후보',c['status'],
          len(c['evidence']['flows']),', '.join(c['reason_codes'])] for c in panel['companies']])

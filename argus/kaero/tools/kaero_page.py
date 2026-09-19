@@ -17,10 +17,11 @@
 """
 import argparse
 import collections
+import json
 import os
 import sys
 
-from kaero_lib import (CUR_ORDER, CURRENCIES, E, KAERO, CHART_DEFAULTS_JS, TABLE_JS,
+from kaero_lib import (ASSETS, CUR_ORDER, CURRENCIES, E, KAERO, CHART_DEFAULTS_JS, TABLE_JS,
                        atomic_write, cur_unit, domain_color, domain_label, fmt_money,
                        fmt_money_u, fmt_n, fmt_x, json_for_html, load_asset, page, pct)
 from kaero_universe import load as load_universe
@@ -213,6 +214,35 @@ def _nature_ko(nid):
 
 
 # ── 회사 페이지 ─────────────────────────────────────────────
+
+
+# Y+2 추정 섹션(스튜디오 Codex 산출 `kaero_forecast_section.py` + `assets/forecast_panel.json.gz`).
+# 산출이 없거나 회사가 빠져 있으면 **섹션을 만들지 않는다** — 빈 칸으로 흉내 내면 화면이 거짓말을 한다.
+_FC = {"panel": None, "src": None, "mod": None, "tried": False}
+
+
+def _forecast_section(stock):
+    import gzip
+    if not _FC["tried"]:
+        _FC["tried"] = True
+        try:
+            import kaero_forecast_section as _fs
+            _FC["mod"] = _fs
+            with gzip.open(os.path.join(ASSETS, "forecast_panel.json.gz"), "rt", encoding="utf-8") as f:
+                p = json.load(f)
+            _FC["panel"] = {c.get("company_id") or c.get("stock"): c for c in p["companies"]}
+            _FC["src"] = {k: {"stock": v.get("stock"), "co": v.get("company_name"),
+                              "name": v.get("company_name"), "src": v.get("source")}
+                          for k, v in _FC["panel"].items()}
+        except Exception as e:
+            sys.stderr.write("[warn] 추정 섹션 비활성: %s\n" % e)
+    if not _FC["panel"] or stock not in _FC["panel"]:
+        return ""
+    try:
+        return _FC["mod"].render_forecast_section(_FC["src"][stock], _FC["panel"][stock]) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 추정 섹션 렌더 실패: %s\n" % (stock, e))
+        return ""
 
 def company_html(s, data):
     rec, latest = s["rec"], s["latest"]
@@ -479,7 +509,7 @@ def company_html(s, data):
        ledger_table(s["ledger"], tid="lg%s" % s["stock"]),
        cur_html(s), seg_html, cust_html, parts_html, con_html,
        " ".join("<p>%s</p>" % n for n in notes),
-       json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS)
+       json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"])
     tags = (rec["stock"], rec["market"], ROLE_KO.get(rec["role"], rec["role"]), rec["industry"])
     dart = DART % ((latest or {}).get("rcp") or "")
     return page("%s — 우주항공 수주" % rec["name"], body, depth=1, h1=rec["name"], tags=tags,

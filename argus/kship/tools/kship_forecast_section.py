@@ -1,5 +1,5 @@
 # 주의: 파일명을 `forecast_section.py` 로 두면 섹터 도구가 sys.path 에 얹는 argus/kce/tools 의
-# 동명 모듈이 먼저 잡혀 건설 렌더러가 불린다(kdef 통합에서 실제로 conflict 가 났다). 탭 접두를 붙인다.
+# 동명 모듈이 먼저 잡혀 건설 렌더러가 불린다. 탭 접두를 붙인다.
 #!/usr/bin/env python3
 """KSHIP company section. Inline SVG, no network, packages, JavaScript or CDN.
 
@@ -125,7 +125,18 @@ def render_forecast_section(panel_entry, forecast_entry):
       f'현재 원장 부문 잔고 {fmt(cov["reported_backlog"])} / 계산 범위 잔고 {fmt(cov["modeled_backlog"])}.</p>',
       '<p>회사전체/조선부문·연결제거 범위가 확인되지 않았습니다. 지주와 자회사 또는 회사간 합산은 금지합니다.</p>',
       f'<p>한계: {esc(reasons(c["reason_codes"]))}</p>',
-      f'<p><strong>분기 백테스트 {c["backtest"]["quarterly_n"]}개.</strong> {esc(c["backtest"]["sample_warning"])}</p>',
+      f'<p><strong>분기 백테스트 {c["backtest"]["quarterly_n"]}개, 연간 {c["backtest"].get("annual_n",0)}개.</strong> {esc(c["backtest"]["sample_warning"])}</p>',
+      table(['검증','n','MAE(백만원)','WAPE %','bias %'],
+            [[label,m.get('n',0),fmt(m.get('mae')),fmt(m.get('wape_pct')),fmt(m.get('bias_pct'))]
+             for label,m in [('분기 T+1~T+8',c['backtest']['metrics']),('연간',c['backtest'].get('annual_metrics',{}))]],
+            '같은 보고 범위의 장부 대용치 검증 · 중첩 예측'),
+      '<h3>확장 원장 표본 재판정</h3>',
+      table(['현재 부문','소진율 표본','순유입 표본','최소 소진/순유입','판정','보류 사유'],
+            [[f['segment_id'],len(f['burn_samples']),len(f['net_inflow_samples']),'2 / 4',
+              '계산 가능' if f['eligible'] else '보류',reasons(f['reason_codes'])]
+             for f in c['evidence']['segments']],
+            '신규분은 장부 순유입 대용치 · 정제된 USD 신규수주 표본이 아님'),
+      '<p>2차 제공 코드는 최소 순유입 2개, 이번 결과는 요청된 4개 기준입니다. 부문 범위가 바뀌면 과거 이름과 임의로 연결하지 않습니다.</p>',
       '<h3>환 · 헤지</h3>',
       '<p>수주의 USD 경제노출과 KRW 매출은 구분합니다. 미래 환율은 미상이며 이미 보고된 KRW 장부액을 재환산하지 않습니다. '
       'FX 시나리오·환위험 구간은 산출하지 않았습니다. USD 매도 명목액은 헤지비율이 아니며 약정환율은 미래 현물환율이 아닙니다.</p>',
@@ -190,6 +201,6 @@ def main():
         if c['status']=='unavailable':continue
         fragment=render_forecast_section({'stock':c['stock'],'co':c['company_name'],'src':c['source']},c)
         (args.output/(c['stock']+'.html')).write_text(fragment+'\n');count+=1
-    print(f'Rendered {count} eligible company sections; reused R1 inline SVG/table; offline.')
+    print(f'Rendered {count} eligible company sections; continued R2 inline SVG/table; offline.')
 
 if __name__=='__main__':main()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline KDEF audit and conditional forecast. Python standard library only.
+"""Offline KDEF round-3 continuation and conditional forecast. Python standard library only.
 
 Report amounts never receive an inferred unit multiplier. Contract schedules are
 partial, explicitly modelled disclosure cohorts, NOT observed remaining backlog.
@@ -39,7 +39,7 @@ REASONS = {
     'UNOBSERVED_CONTRACT_PROGRESS': '계약 기인식액 미제공; 일정상 잔여분은 모형값',
     'NEW_ORDER_SAMPLE_LT4': '금액 확인 원계약 발생 분기 표본 4개 미만',
     'DISCLOSURE_ORDER_PROXY': '신규분은 수주공시 발생 분기의 조건부 가정; 회사 순수주 아님',
-    'SHORT_HISTORY': '원장 최대 8분기; T+8~10 및 FY+2 장기 검증 부족',
+    'SHORT_HISTORY': '해당 회사의 유효 원장·동일 범위 표본 부족; 개별 재심사 참고',
     'NO_MONETARY_BACKTEST_TARGET': '보고서 단위 배수·분기 인식액 정답 미확인: 금액 채점 0건',
     'GROUP_OVERLAP': '계열사 중복 가능; 회사 간 합계 금지',
     'CIVIL_SCOPE_EXCLUDED': 'CIVIL/민수 행은 방산 추정에서 제외',
@@ -173,7 +173,8 @@ def report_unit(s):
             'verified': verified,
             'ratio_eligible': verified and s.get('cur') in ('KRW', 'USD'),
             'reason': None if verified else 'REPORT_SCALE_NOT_EXPORTED',
-            'basis': 'provided parser contract; stored amounts already normalized; no rescaling'}
+            'basis': 'round-2 report documents parser contract; raw unit-evidence JSON absent; stored amounts not rescaled',
+            'independently_verified': False}
 
 
 def report_progress_rows(snapshot, quarter):
@@ -857,7 +858,7 @@ def ledger_balance(s, axis):
             'scope_basis': 'same_explicit_def_or_civil_tags' if axis != 'all' else 'single_report_wide_balance_row'}
 
 
-def model_blocks(company, origin, history):
+def model_blocks_v2(company, origin, history):
     current = history[origin]
     qcount = int(origin[-1])
     categories = current['axes'] if current.get('axes') is not None else {'all': current['value']}
@@ -900,7 +901,12 @@ def block_path(block, factor=1., stretch=1., n=10):
                  'value': block['quarterly_run_rate']*factor} for _ in range(n)]
     duration = block['duration_quarters']*stretch
     b = block['balance']['value']
-    order = block['quarterly_run_rate']*factor
+    evidence = block.get('ledger_order_evidence', {})
+    if evidence.get('available'):
+        probability = {.6: .1, .8: .25, 1.: .5, 1.2: .75, 1.4: .9}[factor]
+        order = quantile([r['order_proxy'] for r in evidence['samples']], probability)
+    else:
+        order = block.get('new_orders_per_quarter_assumption', block['quarterly_run_rate'])*factor
     timing = [{'ctype': 'FOLLOW', 'weight': 1., 'duration_quarters': duration, 'lag_quarters': 0.}]
     new, _ = new_order_path(order, timing, n)
     return [{'existing': b*(min(1., h/duration)-min(1., (h-1)/duration)),
@@ -908,7 +914,7 @@ def block_path(block, factor=1., stretch=1., n=10):
              'value': b*(min(1., h/duration)-min(1., (h-1)/duration))+new[h-1]} for h in range(1, n+1)]
 
 
-def monetary_projection(company, origin=ORIGIN):
+def monetary_projection(company, origin=ORIGIN, order_mode="ledger_pairs"):
     history = sales_history(company, origin)
     decision = receipt_date(history.get(origin, {}).get('receipt'))
     if decision:
@@ -922,10 +928,12 @@ def monetary_projection(company, origin=ORIGIN):
         if obs.get('value') == 0:
             result['reason_codes'].append('ZERO_ORIGIN_SALES_RATE')
         return result
-    blocks = model_blocks(company, origin, history)
+    blocks = model_blocks(company, origin, history, order_mode)
     result['blocks'] = blocks
     result['reason_codes'] += ['REPORT_SCOPE_ASSUMED', 'REVENUE_YTD_ASSUMED', 'TYPE_SPEED_NOT_VERIFIED']
-    if any(b['backlog_model'] for b in blocks):
+    if any(b.get('ledger_order_evidence', {}).get('available') for b in blocks):
+        result['reason_codes'].append('LEDGER_NET_ORDER_PROXY')
+    if any(b['backlog_model'] and not b.get('ledger_order_evidence', {}).get('available') for b in blocks):
         result['reason_codes'].append('NEW_ORDER_REPLENISHMENT_ASSUMED')
     if not all(b['backlog_model'] for b in blocks):
         result['reason_codes'] += ['BACKLOG_SCOPE_UNMATCHED', 'UNALLOCATED_REVENUE']
@@ -949,15 +957,22 @@ def monetary_projection(company, origin=ORIGIN):
             if obs.get('routes'):
                 routes = {k: value*v/obs['value'] for k, v in obs['routes'].items()}
             grid = [sum(p[h]['value'] for p in ps) for ps in path_grid.values()]
+            component_bands = {}
+            for key, field in [('existing', 'covered_existing_backlog_interval'),
+                               ('new', 'covered_new_order_interval'),
+                               ('unallocated', 'unallocated_interval')]:
+                values = [[p[h][key] for p in ps if p[h][key] is not None] for ps in path_grid.values()]
+                component_bands[field] = interval([sum(v) for v in values] if all(values) else [],
+                                                   'explicit_order_and_duration_grid_component_envelope')
             qs.append({'quarter': qadd(origin, h+1), 'horizon': h+1, 'value': value,
                        'existing_backlog_revenue': existing if unallocated == 0 else None,
                        'new_order_revenue': new if unallocated == 0 else None,
                        'covered_existing_backlog_revenue': existing, 'covered_new_order_revenue': new,
-                       'unallocated_revenue': unallocated, 'axes': axes, 'routes': routes,
+                       'unallocated_revenue': unallocated, 'axes': axes, 'routes': routes, **component_bands,
                        'axes_rounding_residual': value-sum(v for v in axes.values() if number(v)) if axes else None,
                        'route_rounding_residual': value-sum(routes.values()) if routes else None,
                        'route_method': 'fixed_origin_sales_mix_assumption' if routes else None,
-                       'interval': interval(grid, 'new_orders_and_run_rate_x0.6_to1.4_duration_x0.8_to1.2'),
+                       'interval': interval(grid, 'ledger_proxy_P10_to_P90_or_fallback_rate_x0.6_to1.4_duration_x0.8_to1.2'),
                        'decomposition_complete': unallocated == 0 and bool(matched),
                        'scope': 'entire_reported_company_sales_table_conditional'})
         annual = []
@@ -985,6 +1000,8 @@ def monetary_projection(company, origin=ORIGIN):
                            'future_quarters': len(future), 'complete': complete, **components,
                            'component_scope': 'future_only; observed_YTD_is_separate',
                            'axes': axes, 'routes': routes, 'interval': band,
+                           **{key: sum_intervals(future, key) for key in (
+                               'covered_existing_backlog_interval', 'covered_new_order_interval', 'unallocated_interval')},
                            'axes_rounding_residual': (observed+sum(r['value'] for r in future))-sum(v for v in axes.values() if number(v)) if axes else None,
                            'route_rounding_residual': (observed+sum(r['value'] for r in future))-sum(routes.values()) if routes else None,
                            'decomposition_complete': all(r['decomposition_complete'] for r in future),
@@ -992,6 +1009,8 @@ def monetary_projection(company, origin=ORIGIN):
                            if number(components['covered_existing_backlog_revenue']) and sum(r['value'] for r in future) else None})
         result['scenarios'][scenario] = {'assumptions': {
             'calibrated': False, 'new_order_and_unallocated_run_rate_factor': factor,
+            'new_order_proxy_quantile': SCENARIOS[scenario],
+            'new_order_rule': 'eligible_pair_proxy_P25_P50_P75; otherwise_round2_rate_x0.8_1.0_1.2',
             'existing_schedule_same_across_scenarios': True,
             'new_award_timing': 'each_future_quarter_end; no_same_quarter_recognition',
             'duration': 'median_same_scope_backlog_divided_by_YTD_quarterly_sales_rate',
@@ -1075,12 +1094,12 @@ def make_company_v2(u, report, active, retained, prior):
     return f
 
 
-def money_backtest(reports):
+def money_backtest(reports, order_mode="ledger_pairs"):
     samples, annual, excluded = [], [], Counter()
     for stock, company in reports['companies'].items():
         history = sales_history(company)
         for origin in sorted(history):
-            model = monetary_projection(company, origin)
+            model = monetary_projection(company, origin, order_mode)
             if not model['available']:
                 excluded['origin_sales_invalid'] += 1; continue
             decision = receipt_date(history[origin].get('receipt'))
@@ -1096,7 +1115,7 @@ def money_backtest(reports):
                 if previous_truth is not None and (not receipt_date(previous_truth.get('receipt')) or receipt_date(previous_truth['receipt']) > target_date):
                     excluded['target_previous_YTD_filed_later'] += 1; continue
                 target_start = qend(qadd(target, -1))+timedelta(days=1)
-                last = observed_quarter(history, origin)
+                last = observed_quarter(model['observed_sales_ytd'], origin)
                 # Origin rate is also a transparent baseline when the actual
                 # preceding quarter is unavailable; never fill target truth.
                 baseline = last if number(last) else history[origin]['value']/int(origin[-1])
@@ -1112,20 +1131,38 @@ def money_backtest(reports):
                                 'previous_target_receipt': history.get(qadd(target,-1), {}).get('receipt') if not target.endswith('Q1') else None,
                                 'truth_basis': 'sales_table_YTD_difference; supplied_snapshot_not_original_vintage',
                                 'backlog_blocks': sum(b['backlog_model'] for b in model['blocks'])})
-            for fyh in (1, 2):
+            for fyh in (0, 1, 2):
+                if fyh == 0 and origin.endswith('Q4'):
+                    continue  # Already observed annual totals are not forecasts.
                 year = int(origin[:4])+fyh
                 qs = [f'{year}Q{i}' for i in range(1,5)]
                 truth = [observed_quarter(history, q) for q in qs]
                 predicted = next(r for r in model['scenarios']['base']['annual'] if r['fiscal_year'] == year)
                 target_receipt = history.get(qs[-1], {}).get('receipt')
-                if not all(number(x) for x in truth) or not number(predicted['value']) or not decision or not receipt_date(target_receipt):
+                if not all(number(x) for x in truth):
+                    excluded['annual_truth_incomplete'] += 1
+                    continue
+                if not number(predicted['value']):
+                    excluded['annual_forecast_beyond_ten_quarter_window'] += 1
+                    continue
+                if not decision or not receipt_date(target_receipt):
+                    excluded['annual_filing_date_unverifiable'] += 1
                     continue
                 if receipt_date(target_receipt) <= decision:
+                    excluded['annual_target_not_after_decision'] += 1
+                    continue
+                receipts = [receipt_date(history.get(q, {}).get('receipt')) for q in qs]
+                if any(d is None or d > receipt_date(target_receipt) for d in receipts):
+                    excluded['annual_component_filed_after_year_end_target'] += 1
                     continue
                 annual.append({'stock': stock, 'origin': origin, 'fiscal_year': year, 'fy_horizon': fyh,
                                'prediction': predicted['value'], 'actual': sum(truth),
                                'persistence': history[origin]['value']/int(origin[-1])*4,
                                'actual_quarters': dict(zip(qs, truth)),
+                               'target_receipt': target_receipt, 'origin_receipt': history[origin]['receipt'],
+                               'actual_quarter_receipts': {q: history[q]['receipt'] for q in qs},
+                               'observed_revenue': predicted['observed_revenue'],
+                               'future_quarters': predicted['future_quarters'],
                                'decision_date': decision.isoformat(), 'forward_only': decision < date(year,1,1)})
     summary = {'calibrated': False, 'money_unit': 'KRW_million',
                'scope': 'entire_reported_company_sales_table_conditional_model',
@@ -1133,7 +1170,7 @@ def money_backtest(reports):
                'limitations': ['same supplied snapshot; archived original vintages unavailable',
                               'YTD semantics follow current-period sales heading; not independently reread from raw filings',
                               'overlapping origins and affiliated companies are not independent samples',
-                              'short horizons do not calibrate FY+2 or the sensitivity envelope'],
+                              'sensitivity envelope is not calibrated even when longer-horizon samples exist'],
                'monetary': metrics(samples, unit='KRW_million'),
                'forward_only': metrics([r for r in samples if r['forward_only']], unit='KRW_million'),
                'model_slices': {'with_backlog_blocks': metrics([r for r in samples if r['backlog_blocks']], unit='KRW_million'),
@@ -1147,11 +1184,111 @@ def money_backtest(reports):
                                     'forward_only': metrics([r for r in rows if r['forward_only']], unit='KRW_million'),
                                     'sensitivity_covered_n': sum(r['interval']['lower'] <= r['actual'] <= r['interval']['upper'] for r in rows),
                                     'calibrated': False})
-    for h in (1,2):
+    for h in (0,1,2):
         rows = [r for r in annual if r['fy_horizon'] == h]
         summary['annual'].append({'fy_horizon': h, **metrics(rows, unit='KRW_million'),
-                                 'persistence': metrics(rows, 'persistence', 'KRW_million')})
+                                 'persistence': metrics(rows, 'persistence', 'KRW_million'),
+                                 'forward_only': metrics([r for r in rows if r['forward_only']], unit='KRW_million')})
     return summary
+
+
+def ledger_order_pairs(company, origin, history, axis, balance_axis):
+    """Conditional net additions proxy, never gross awards or observed orders.
+
+    Aggregated segment membership can change as contracts enter/leave. We do
+    not join individual contract rows or count those rows as independent samples.
+    Each eligible observation is exactly one adjacent calendar-quarter pair.
+    """
+    samples, rejected = [], []
+    quarters = company.get('quarters', {})
+    decision = receipt_date(history.get(origin, {}).get('receipt'))
+    candidates = sorted(q for q in quarters if q <= origin and qadd(q, -1) in quarters)
+    for q in candidates:
+        previous = qadd(q, -1)
+        s0, s1 = quarters[previous], quarters[q]
+        record = {'previous_quarter': previous, 'quarter': q, 'axis': axis,
+                  'balance_axis': balance_axis, 'previous_receipt': s0.get('rcp'),
+                  'receipt': s1.get('rcp'), 'reason_codes': []}
+        reasons = record['reason_codes']
+        d0, d1 = receipt_date(s0.get('rcp')), receipt_date(s1.get('rcp'))
+        if not decision or not d0 or not d1 or not d0 < d1 <= decision:
+            reasons.append('PAIR_FILING_ORDER_OR_VINTAGE_INVALID')
+        if previous not in history or q not in history:
+            reasons.append('PAIR_SALES_UNAVAILABLE_AT_DECISION')
+        if not s0.get('_normalized_million') or not s1.get('_normalized_million'):
+            reasons.append('PAIR_UNIT_CONTRACT_MISSING')
+        b0, b1 = ledger_balance(s0, balance_axis), ledger_balance(s1, balance_axis)
+        if not b0 or not b1:
+            reasons.append('PAIR_BALANCE_INVALID_OR_UNMATCHED')
+        elif s0.get('shape') != s1.get('shape'):
+            reasons.append('PAIR_LEDGER_SHAPE_CHANGED')
+        # Unknown scope is not silently promoted to verified. A transition
+        # between known/unknown scope is excluded too; no fuzzy scope repair.
+        if s0.get('orders_scope') != s1.get('orders_scope'):
+            reasons.append('PAIR_SCOPE_CHANGED')
+        sales_axis = None if axis == 'all' else axis
+        value = observed_quarter(history, q, sales_axis)
+        if not number(value):
+            reasons.append('PAIR_QUARTER_SALES_MISSING_OR_NEGATIVE')
+        # Q1 resets YTD, but both endpoints still need the selected sales axis
+        # to exist: an absent previous segment cannot establish continuity.
+        previous_obs = history.get(previous, {})
+        previous_sales = (previous_obs.get('value') if sales_axis is None else
+                          (previous_obs.get('axes') or {}).get(sales_axis))
+        if not number(previous_sales):
+            reasons.append('PAIR_PREVIOUS_SALES_SCOPE_MISSING')
+        if b0 and b1 and number(value):
+            proxy = b1['value']-b0['value']+value
+            record.update(previous_balance=b0['value'], balance=b1['value'],
+                          sales_quarter=value, order_proxy=proxy,
+                          previous_source_rows=b0['source_rows'], source_rows=b1['source_rows'],
+                          sales_ytd=history.get(q, {}).get('value') if sales_axis is None else
+                          (history.get(q, {}).get('axes') or {}).get(sales_axis),
+                          previous_sales_ytd=previous_sales,
+                          identity_set_changed={identity(s0['segments'][i]) for i in b0['source_rows']} !=
+                          {identity(s1['segments'][i]) for i in b1['source_rows']})
+            if proxy < 0:
+                reasons.append('PAIR_NEGATIVE_NET_ADDITIONS')
+        if reasons:
+            rejected.append(record)
+        else:
+            samples.append(record)
+    eligible = len(samples) >= 4
+    return {'available': eligible, 'minimum_quarters': 4, 'sample_quarters': len(samples),
+            'candidate_pairs': len(candidates), 'samples': samples, 'rejected_pairs': rejected,
+            'rejection_counts': dict(Counter(code for r in rejected for code in r['reason_codes'])),
+            'quantiles': {s: quantile([r['order_proxy'] for r in samples], p) if eligible else None
+                          for s, p in SCENARIOS.items()},
+            'P10': quantile([r['order_proxy'] for r in samples], .1) if eligible else None,
+            'P90': quantile([r['order_proxy'] for r in samples], .9) if eligible else None,
+            'reason': None if eligible else 'LEDGER_PAIR_SAMPLE_LT4', 'calibrated': False,
+            'scope_verified': False, 'currency': 'KRW', 'money_unit': 'KRW_million',
+            'basis': 'B_t - B_(t-1) + same_axis_quarter_sales; adjustments assumed absent',
+            'limitations': ['not observed gross new orders; cancellations/FX/reclassifications are not isolated',
+                           'negative net additions are retained as rejected evidence, never clipped to zero',
+                           'nonnegative sample selection can bias the future-cohort assumption upward',
+                           'same parsed segment tags/single company balance assumed scope-compatible; no raw-filing verification',
+                           'aggregate contract membership may change; no individual-contract continuity is asserted']}
+
+
+def model_blocks(company, origin, history, order_mode='ledger_pairs'):
+    blocks = model_blocks_v2(company, origin, history)
+    if order_mode == 'round2':
+        return blocks
+    if order_mode != 'ledger_pairs':
+        raise ValueError('unknown order mode')
+    for block in blocks:
+        if block['balance']:
+            evidence = ledger_order_pairs(company, origin, history, block['axis'], block['balance']['axis'])
+            block['ledger_order_evidence'] = evidence
+            if block['backlog_model'] and evidence['available']:
+                block['new_orders_per_quarter_assumption'] = evidence['quantiles']['base']
+                block['method'] = 'reported_backlog_runoff_plus_adjacent_pair_net_additions_proxy'
+            block['new_order_estimation_status'] = ('eligible_conditional_proxy' if evidence['available']
+                                                      else 'needs_qualified_pairs')
+        else:
+            block['new_order_estimation_status'] = 'scope_unmatched'
+    return blocks
 
 
 def write_json(path, obj):
@@ -1223,63 +1360,387 @@ def write_report_v2(path, panel):
     path.write_text('\n'.join(lines)+'\n', encoding='utf-8')
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Offline KDEF round-2 continuation; standard library only')
-    parser.add_argument('--input', type=Path, default=Path(__file__).resolve().parents[1]/'input')
-    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parent)
-    args = parser.parse_args()
-    if args.output.resolve() == args.input.resolve() or args.input.resolve() in args.output.resolve().parents:
-        parser.error('output must not overwrite input')
-    args.output.mkdir(parents=True, exist_ok=True)
-    hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.input.iterdir()) if p.is_file()}
-    def read(name): return json.loads((args.input/name).read_text())
-    universe, units, previous = read('kdef_universe.json'), read('kdef_unit_evidence.json'), read('kdef_audit.json')
+# Round 3 adds evidence and evaluation to the supplied Round 2 implementation.
+# The absent audit/unit/needs_longer_ledger JSON files are never fabricated.
+REASONS.update({
+    'LEDGER_NET_ORDER_PROXY': '동일 범위 인접쌍 잔고증감+분기매출 대용치; 취소·환율 등 조정 미분리',
+    'LEDGER_PAIR_SAMPLE_LT4': '동일 범위·단위·접수순서 확인 인접 분기 표본 4개 미만',
+    'PRIOR_UNIT_EVIDENCE_FILE_MISSING': '단위 증거 JSON 누락; 2차 보고서의 정규화 계약을 간접 근거로 계승',
+    'PRIOR_AUDIT_FILE_MISSING': '2차 감사·needs_longer_ledger 원본 목록 누락; 코드와 보고서로 재심사 대상 재구성',
+})
+
+
+def round2_reference(text):
+    """Read tables as data. Nothing from the report is evaluated as code."""
+    companies, quarters, annual, captions, blocks = {}, [], [], {}, {}
+    section = ''
+    for line in text.splitlines():
+        if line.startswith('## '):
+            section = line
+        if not line.startswith('|'):
+            continue
+        cells = [c.strip() for c in line.strip('|').split('|')]
+        if '회사별 FY2026' in section and len(cells) == 7 and re.fullmatch(r'\d{6}|\d{4}[A-Z]\d', cells[0]):
+            def parsed(x):
+                return float(x.replace(',', '')) if re.fullmatch(r'[\d,.]+', x) else None
+            companies[cells[0]] = {'stock': cells[0], 'name': cells[1],
+                                   'annual': {str(y): parsed(cells[i+2]) for i,y in enumerate((2026,2027,2028))},
+                                   'status': cells[6]}
+        if section == '## 백테스트' and re.fullmatch(r'T\+\d+|FY\+\d+', cells[0]):
+            horizon = int(cells[0].split('+')[1])
+            row = {'n': int(cells[1]), 'MAE': parsed(cells[3]), 'WAPE_pct': parsed(cells[4]),
+                   'source': 'input/kdef_REPORT.md published rounded table; raw rows unavailable'}
+            row['horizon' if cells[0].startswith('T') else 'fy_horizon'] = horizon
+            (quarters if cells[0].startswith('T') else annual).append(row)
+        if '방산 잔고가 확인된 블록' in section and len(cells) == 7 and re.fullmatch(r'\d{6}', cells[0]):
+            blocks.setdefault(cells[0], {})[cells[1]] = {
+                'balance': parsed(cells[2]), 'duration_quarters': parsed(cells[3]),
+                'source': 'round-2 report block table, rounded'}
+        if '원문 캡션 차이' in section and len(cells) == 3 and re.fullmatch(r'\d{6}|\d{4}[A-Z]\d', cells[0]):
+            for q, cap in re.findall(r'(20\d\dQ[1-4]):\s*([^;]+)', cells[2]):
+                captions.setdefault(cells[0], {})[q] = [s.strip() for s in cap.split(',') if s.strip()]
+    if len(companies) != 71 or len(quarters) != 10 or len(annual) != 2:
+        raise ValueError('round-2 report comparison tables incomplete')
+    return {'companies': companies, 'quarterly': quarters, 'annual': annual, 'captions': captions,
+            'backlog_blocks': blocks,
+            'published_company_total_count': sum(c['status']=='company_total_conditional' for c in companies.values()),
+            'published_backtest_n': sum(r['n'] for r in quarters), 'audit_list_supplied': False}
+
+
+def inherited_units(reference, prior_text):
+    required = ('저장값의 적용 배수는 항상 1', '금액은 백만원', '전역 정규화 계약')
+    if not all(x in prior_text for x in required):
+        raise ValueError('round-2 report does not document the stored-million unit contract')
+    return {'unit_contract': '2차 보고서 기록: 저장 금액은 이미 백만원, 적용 배수 1; 동일 스키마 확장본에도 계승',
+            'companies': reference['captions'],
+            'evidence_source': 'input/kdef_REPORT.md 단위와 범위 및 원문 캡션 표',
+            'original_unit_evidence_json_supplied': False, 'raw_parser_independently_verified': False,
+            'extended_quarters_unit_contract_assumed_same': True,
+            'new_quarters_raw_captions_available': False}
+
+
+def shorten_company(company, first='2024Q3'):
+    return dict(company, quarters={q: s for q,s in company['quarters'].items() if q >= first})
+
+
+def annual_value(model, year=2028):
+    if not model['available']:
+        return None
+    return next((r['value'] for r in model['scenarios']['base']['annual'] if r['fiscal_year']==year), None)
+
+
+def candidate_pair_audits(company, origin=ORIGIN):
+    history = sales_history(company, origin)
+    decision = receipt_date(history.get(origin, {}).get('receipt'))
+    if decision:
+        history = {q: r for q,r in history.items()
+                   if receipt_date(r.get('receipt')) and receipt_date(r['receipt']) <= decision}
+    current = history.get(origin, {})
+    snapshot = company['quarters'].get(origin, {})
+    axes = current.get('axes')
+    candidates = []
+    for axis in ('defense', 'civil'):
+        if ledger_balance(snapshot, axis):
+            candidates.append((axis, axis))
+    if ledger_balance(snapshot, 'all'):
+        # Preserve v2's sole-unknown-axis linkage; do not infer company scope
+        # from arbitrary multiple unknown rows.
+        only_unknown = bool(axes and number(axes.get('unknown')) and
+                            len([v for v in axes.values() if number(v) and v != 0]) == 1)
+        if axes is None or only_unknown:
+            candidates.append(('unknown' if only_unknown else 'all', 'all'))
+    return [{'axis': axis, 'balance_axis': balance_axis,
+             **ledger_order_pairs(company, origin, history, axis, balance_axis)} for axis,balance_axis in candidates]
+
+
+def reassess_company(f, report, reference):
+    short = shorten_company(report)
+    short_audits = candidate_pair_audits(short)
+    full_audits = candidate_pair_audits(report)
+    short_byaxis = {a['axis']: a for a in short_audits}
+    blocks = f['monetary_evidence']['blocks']
+    modeled = {b['axis'] for b in blocks if b['backlog_model'] and b.get('ledger_order_evidence',{}).get('available')}
+    for audit in full_audits:
+        old = short_byaxis.get(audit['axis'], {})
+        audit['short_window_sample_quarters'] = old.get('sample_quarters', 0)
+        audit['threshold_crossed_in_long_window'] = audit['available'] and not old.get('available', False)
+        audit['used_in_company_projection'] = audit['axis'] in modeled
+    reasons = []
+    if not f['company_total_available']:
+        reasons.extend(f['monetary_evidence']['reason_codes'])
+    for candidate in full_audits:
+        if not candidate['available']:
+            reasons.extend(candidate['rejection_counts'])
+    if not full_audits:
+        reasons.append('BACKLOG_SCOPE_UNMATCHED')
+    elif not modeled:
+        reasons.append('LEDGER_PAIR_SAMPLE_LT4' if not any(a['available'] for a in full_audits)
+                       else 'CURRENT_SALES_OR_TURNOVER_UNAVAILABLE')
+    fully = bool(blocks) and all(b['axis'] in modeled for b in blocks)
+    status = ('eligible_conditional_proxy_full_decomposition' if fully else
+              'eligible_conditional_proxy_partial_decomposition' if modeled else
+              'eligible_history_but_current_forecast_blocked' if any(a['available'] for a in full_audits) else
+              'needs_qualified_pairs' if any(a['sample_quarters']>0 for a in full_audits) else 'blocked_by_scope_or_target')
+    new_order = f['evidence']['new_orders']
+    prior_company = reference['companies'][f['stock']]
+    return {'status': status, 'priority_recheck': prior_company['status'] != 'company_total_conditional' or not new_order['available'],
+            'original_needs_longer_ledger_list_available': False,
+            'priority_basis': 'prior reported total unavailable or rerun disclosed-award sample <4; not exact absent audit list',
+            'reported_quarters': len(report['quarters']),
+            'calendar_adjacent_pairs': sum(qadd(q,-1) in report['quarters'] for q in report['quarters']),
+            'ledger_proxy_available': bool(modeled), 'full_proxy_decomposition': fully,
+            'newly_crossed_4_pair_threshold': any(a['threshold_crossed_in_long_window'] and a['used_in_company_projection'] for a in full_audits),
+            'short_window_is_exact_round2_ledger': False, 'short_window_start': '2024Q3',
+            'short_window_note': 'controlled eight-quarter truncation of current input; original company-quarter ledger not supplied',
+            'ledger_axes': full_audits, 'reason_codes': sorted(set(reasons)),
+            'disclosure_orders': {'available': new_order['available'], 'sample_quarters': new_order['sample_quarters'],
+                                  'changed_by_extended_report_ledger': False,
+                                  'reason': None if new_order['available'] else 'NEW_ORDER_SAMPLE_LT4',
+                                  'basis': 'round-2 original-contract award-quarter sampler unchanged; separate from ledger pairs'}}
+
+
+def comparison_rows(current, previous, horizon_key):
+    old = {r[horizon_key]: r for r in previous}
+    return [{horizon_key: r[horizon_key], 'round2_n': old.get(r[horizon_key], {}).get('n'),
+             'round3_n': r['n'], 'delta_n': r['n']-old[r[horizon_key]]['n'] if r[horizon_key] in old else None,
+             'round2_WAPE_pct': old.get(r[horizon_key], {}).get('WAPE_pct'),
+             'round3_WAPE_pct': r['WAPE_pct'], 'round3_MAE': r['MAE'],
+             'round3_Bias_pct': r['Bias_pct'], 'forward_only': r.get('forward_only'),
+             'persistence': r['persistence']} for r in current]
+
+
+def summary_backtest(bt):
+    return {k:v for k,v in bt.items() if k not in ('rows','annual_rows','progress_only')}
+
+
+def build_panel(input_dir):
+    hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(input_dir.iterdir()) if p.is_file()}
+    def read(name): return json.loads((input_dir/name).read_text())
+    prior_text = (input_dir/'kdef_REPORT.md').read_text()
+    reference = round2_reference(prior_text)
+    units = inherited_units(reference, prior_text)
     reports = normalized_inputs(read('kdef_reports.json'), units)
-    contracts = read('kdef_contracts.json')['rows']
-    ids = [u['stock'] for u in universe['rows']]
+    universe, contracts = read('kdef_universe.json'), read('kdef_contracts.json')['rows']
+    ids = [r['stock'] for r in universe['rows']]
     if len(set(ids)) != len(ids) or set(ids) != set(reports['companies']):
         raise ValueError('population mismatch')
-    prior = {c['stock']: c for c in previous['companies']}
     active, retained, excluded = contract_cohorts(contracts)
     forecasts = []
     for u in universe['rows']:
-        if reports['companies'][u['stock']]['name'] != u['name']:
+        report = reports['companies'][u['stock']]
+        if report['name'] != u['name']:
             raise ValueError('company identity mismatch')
-        f = make_company_v2(u, reports['companies'][u['stock']], active, retained, prior.get(u['stock'], {}))
-        f['evidence']['contract_exclusions'] = dict(Counter(reason for i,reason in excluded.items() if contracts[i]['stock'] == u['stock']))
+        f = make_company_v2(u, report, active, retained, reference['companies'][u['stock']])
+        f['evidence']['contract_exclusions'] = dict(Counter(reason for i,reason in excluded.items() if contracts[i]['stock']==u['stock']))
+        f['reason_codes'] = [r for r in f['reason_codes'] if r != 'SHORT_HISTORY']
+        f['reason_codes'] += ['PRIOR_UNIT_EVIDENCE_FILE_MISSING', 'PRIOR_AUDIT_FILE_MISSING']
+        f['unit_audit'].update(verified_at_origin=False, normalization_contract_inherited=True,
+                               independently_verified=False, unit_declared_by_assignment=False,
+                               evidence_source=units['evidence_source'])
+        f['provenance'].update(report_raw_captions_supplied=False,
+                               prior_report_caption_table_partially_available=True,
+                               origin_report_filing_date=(receipt_date(report['quarters'].get(ORIGIN,{}).get('rcp')).isoformat()
+                               if receipt_date(report['quarters'].get(ORIGIN,{}).get('rcp')) else None))
+        f['prior_audit'] = {'status': reference['companies'][u['stock']]['status'], 'reason_codes': None,
+                            'original_audit_json_available': False, 'source': 'round-2 report company table'}
+        for scenario in f['disclosure_only_scenarios'].values():
+            for row in scenario['quarterly']:
+                row['reason_codes'] = [r for r in row['reason_codes'] if r != 'SHORT_HISTORY']
+        audit = reassess_company(f, report, reference)
+        f['needs_longer_ledger_reassessment'] = audit
+        f['needs_longer_ledger'] = audit['status'] == 'needs_qualified_pairs'
+        if f['needs_longer_ledger']:
+            f['reason_codes'].append('LEDGER_PAIR_SAMPLE_LT4')
+        f['audit_blockers'] = [REASONS.get(r,r) for r in f['reason_codes']]
+        old = reference['companies'][u['stock']]
+        new_value = f['scenarios']['base']['annual'][-1]['value']
+        old_value = old['annual']['2028']
+        long_legacy = monetary_projection(report, order_mode='round2')
+        short_legacy = monetary_projection(shorten_company(report), order_mode='round2')
+        long_value, short_value = annual_value(long_legacy), annual_value(short_legacy)
+        delta = new_value-old_value if number(new_value) and number(old_value) else None
+        relative = delta/abs(old_value)*100 if number(delta) and old_value else None
+        reasons = []
+        if long_value != short_value: reasons.append('extended_history_changes_median_backlog_turnover')
+        if new_value != long_value: reasons.append('qualified_adjacent_pair_proxy_replaces_sales_rate_replenishment')
+        if f['coverage']['full_existing_coverage'] is False: reasons.append('unmatched_sales_axes_remain_run_rate_only')
+        if not f['company_total_available']: reasons.extend(f['monetary_evidence']['reason_codes'])
+        f['round2_comparison'] = {
+            'prior_status': old['status'], 'current_status': f['status'],
+            'new_company_total_available': old['status']!='company_total_conditional' and f['company_total_available'],
+            'prior_annual_base': old['annual'], 'current_annual_base': {str(r['fiscal_year']):r['value'] for r in f['scenarios']['base']['annual']},
+            'FY2028_delta': delta, 'FY2028_delta_pct': relative,
+            'large_change_threshold_pct': 20., 'large_change': number(relative) and abs(relative)>=20.,
+            'controlled_short_window_round2_FY2028': short_value, 'controlled_long_window_round2_FY2028': long_value,
+            'history_only_FY2028_delta': long_value-short_value if number(long_value) and number(short_value) else None,
+            'extended_round2_model_vs_published_FY2028_delta': long_value-old_value if number(long_value) and number(old_value) else None,
+            'proxy_rule_FY2028_delta': new_value-long_value if number(new_value) and number(long_value) else None,
+            'blocks': [{'axis': b['axis'],
+                        'prior_duration_quarters': reference['backlog_blocks'].get(u['stock'],{}).get(b['axis'],{}).get('duration_quarters'),
+                        'current_duration_quarters': b['duration_quarters'],
+                        'current_duration_observations': len(b['duration_samples']),
+                        'round2_sales_rate_order_assumption_on_current_origin': b['quarterly_run_rate'],
+                        'current_new_order_assumption': b['new_orders_per_quarter_assumption']}
+                       for b in f['monetary_evidence']['blocks'] if b['backlog_model']],
+            'reason_codes': reasons, 'exact_prior_reproduction_possible': False,
+            'limitation': 'published values rounded to 0.001; original ledger/audit/unit evidence JSON absent'}
         forecasts.append(f)
     bt = money_backtest(reports)
+    # Both controls use the same extraction and period rules; never tune them
+    # after inspecting target outcomes. The full-ledger v2 control isolates the
+    # new-order rule from the longer history. The eight-quarter control is NOT
+    # asserted to reproduce the actual, incompletely supplied round-2 input.
+    legacy_bt = money_backtest(reports, order_mode='round2')
+    identity_keys = lambda rows: [(r['stock'], r['origin'], r.get('target'), r.get('fiscal_year')) for r in rows]
+    same_control_samples = (identity_keys(bt['rows']) == identity_keys(legacy_bt['rows']) and
+                            identity_keys(bt['annual_rows']) == identity_keys(legacy_bt['annual_rows']))
+    if not same_control_samples:
+        raise ValueError('model-control score samples differ')
+    short_reports = dict(reports, companies={s:shorten_company(c) for s,c in reports['companies'].items()})
+    short_bt = money_backtest(short_reports)
     progress, progress_rows = progress_backtest(reports)
-    progress['warning'] = '진행률 평가만 해당; 별도 회사 매출 금액 백테스트와 혼합하지 않음'
+    progress['warning'] = '행 진행률 전용·분기말 스냅샷 평가; 회사 매출/수주 대용치 채점과 별개'
     bt['progress_only'] = progress
-    bt['contract_recognition'] = {'n': 0, 'reason': 'no_observed_contract_level_recognition_target'}
-    bt['component_recognition'] = {'n': 0, 'reason': 'no_observed_existing_vs_new_sales_split'}
+    bt['contract_recognition'] = {'n':0, 'reason':'no_observed_contract_level_recognition_target'}
+    bt['component_recognition'] = {'n':0, 'reason':'no_observed_existing_vs_new_sales_split'}
+    bt['new_order_proxy_accuracy'] = {'n':0, 'reason':'no_observed_gross_awards_or_adjustment_reconciliation'}
     for f in forecasts:
-        rows = [r for r in bt['rows'] if r['stock'] == f['stock']]
+        rows = [r for r in bt['rows'] if r['stock']==f['stock']]
+        annual_rows = [r for r in bt['annual_rows'] if r['stock']==f['stock']]
         f['backtest'] = {'monetary': metrics(rows, unit='KRW_million'),
-                         'forward_only_n': sum(r['forward_only'] for r in rows),
-                         'progress_samples': sum(r['stock'] == f['stock'] for r in progress_rows['quarterly']),
-                         'contract_recognition_n': 0, 'calibrated': False}
-    counts = dict(Counter(f['status'] for f in forecasts))
-    panel = {'schema_version': 'kdef-2.0', 'origin': ORIGIN, 'money_unit': 'KRW_million',
-             'input_sha256': hashes, 'engine_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-             'population': {'input_companies': len(ids), 'status_counts': counts,
-                            'company_total_forecast_companies': sum(f['company_total_available'] for f in forecasts)},
-             'unit_evidence': {'contract': units['unit_contract'], 'company_count': len(units['companies']),
-                               'quarter_count': sum(len(q) for q in units['companies'].values()),
-                               'stored_value_multiplier_applied': 1, 'no_rescaling': True},
-             'forecast_quarters': [qadd(ORIGIN,h) for h in range(1,11)], 'fiscal_years': [2026,2027,2028],
-             'calibrated': False, 'aggregate_forecast': None, 'group_aggregation_allowed': False,
-             'type_speed_evidence': {'verified': False, 'type_specific_speed_used': False,
-                                     'method': 'common_linear_assumption; contract_types_are_metadata_only'},
-             'reason_dictionary': REASONS, 'backtest': bt, 'companies': forecasts}
-    write_json(args.output/'forecast_panel.json', panel)
-    write_report_v2(args.output/'kdef_REPORT.md', panel)
-    from forecast_section import write_sections
-    n = write_sections(panel, args.output/'sections')
-    print(json.dumps({'population': panel['population'], 'monetary_backtest': bt['monetary'],
-                      'forward_only': bt['forward_only'], 'html_sections': n}, ensure_ascii=False))
+                         'forward_only': metrics([r for r in rows if r['forward_only']], unit='KRW_million'),
+                         'annual': [{ 'fy_horizon':h, **metrics([r for r in annual_rows if r['fy_horizon']==h], unit='KRW_million')} for h in (0,1,2)],
+                         'progress_samples': sum(r['stock']==f['stock'] for r in progress_rows['quarterly']),
+                         'contract_recognition_n':0, 'calibrated':False}
+    population = {'input_companies':len(ids), 'status_counts':dict(Counter(f['status'] for f in forecasts)),
+                  'company_total_forecast_companies':sum(f['company_total_available'] for f in forecasts),
+                  'full_decomposition_companies':sum(f['coverage']['full_existing_coverage'] for f in forecasts),
+                  'historically_eligible_proxy_companies':sum(any(a['available'] for a in f['needs_longer_ledger_reassessment']['ledger_axes']) for f in forecasts),
+                  'ledger_proxy_companies':sum(f['needs_longer_ledger_reassessment']['ledger_proxy_available'] for f in forecasts),
+                  'newly_crossed_4_pair_companies':sum(f['needs_longer_ledger_reassessment']['newly_crossed_4_pair_threshold'] for f in forecasts),
+                  'new_company_total_available':sum(f['round2_comparison']['new_company_total_available'] for f in forecasts)}
+    return {'schema_version':'kdef-3.0', 'origin':ORIGIN, 'money_unit':'KRW_million',
+            'input_sha256':hashes, 'engine_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            'population':population,
+            'ledger_coverage':{'quarters':reports['quarters'], 'calendar_quarter_count':len(reports['quarters']),
+                               'company_quarters':sum(len(c['quarters']) for c in reports['companies'].values()),
+                               'ok_company_quarters':sum(bool(s.get('ok')) for c in reports['companies'].values() for s in c['quarters'].values()),
+                               'max_input_quarters_per_company':max(len(c['quarters']) for c in reports['companies'].values()),
+                               'calendar_adjacent_pairs':sum(qadd(q,-1) in c['quarters'] for c in reports['companies'].values() for q in c['quarters'])},
+            'unit_evidence':dict(units, company_count=len(units['companies']),
+                                 quarter_count=sum(len(q) for q in units['companies'].values()),
+                                 stored_value_multiplier_applied=1, no_rescaling=True,
+                                 amounts_conditional_on_inherited_normalization_contract=True),
+            'round2_reference':reference,
+            'round2_comparison':{'quarterly':comparison_rows(bt['quarterly'],reference['quarterly'],'horizon'),
+                                  'annual':comparison_rows(bt['annual'],reference['annual'],'fy_horizon'),
+                                  'full_ledger_round2_model_control':summary_backtest(legacy_bt),
+                                  'eight_quarter_round3_model_control':summary_backtest(short_bt),
+                                  'full_ledger_controls_identical_sample_keys':same_control_samples,
+                                  'exact_prior_inputs_supplied':False},
+            'forecast_quarters':[qadd(ORIGIN,h) for h in range(1,11)], 'fiscal_years':[2026,2027,2028],
+            'calibrated':False, 'aggregate_forecast':None, 'group_aggregation_allowed':False,
+            'type_speed_evidence':{'verified':False,'type_specific_speed_used':False,
+                                  'method':'inherited_common_linear_assumption; contract_types_metadata_only'},
+            'reason_dictionary':REASONS, 'backtest':bt, 'companies':forecasts}
 
 
-if __name__ == '__main__':
+def write_report_v3(path, panel):
+    pop, bt = panel['population'], panel['backtest']
+    companies = panel['companies']
+    ref = panel['round2_reference']
+    old_n, new_n = ref['published_backtest_n'], bt['monetary']['n']
+    crossed = [c['company_name'] for c in companies if c['needs_longer_ledger_reassessment']['newly_crossed_4_pair_threshold']]
+    historical_only = [c['company_name'] for c in companies if c['needs_longer_ledger_reassessment']['status']=='eligible_history_but_current_forecast_blocked']
+    lines = ['# ARGUS-kdef 3차 — 19분기 원장 재심사', '',
+             f"원장은 71사·19개 달력분기(2021Q4~2026Q2), {panel['ledger_coverage']['company_quarters']:,}개 회사분기이며 읽기 성공은 {panel['ledger_coverage']['ok_company_quarters']:,}개다. 회사마다 19분기가 모두 있는 것은 아니다. 회사 전체 조건부 전망 {pop['company_total_forecast_companies']}사, 부분 전망 {pop['status_counts'].get('partial',0)}사, 미추정 {pop['status_counts'].get('unavailable',0)}사로, 2차 대비 새로 회사 전체를 추정하게 된 회사는 {pop['new_company_total_available']}사다.", '',
+             f"동일 범위의 인접쌍 4개 기준을 충족하는 이력은 {pop['historically_eligible_proxy_companies']}사에서 확인했고, 현재 회사 전망에 사용할 수 있는 곳은 {pop['ledger_proxy_companies']}사다. 8분기 절단 대조군 대비 4개 기준을 새로 넘어 현재 전망에 반영한 회사는 {', '.join(crossed) or '없음'}이다. {', '.join(historical_only) or '해당 없음'}의 경우 과거 적격 표본을 확보했지만 기준분기 매출 열이 모호해 회사 전체 전망은 여전히 보류한다.", '',
+             '## 먼저 확인한 입력 차이와 단위 근거', '',
+             '제공 파일은 확장 원장·계약·유니버스 JSON, 2차 코드 3개, 2차 보고서다. 요청에 언급된 2차 감사 JSON·`needs_longer_ledger` 원본 목록·`kdef_unit_evidence.json`·2차 forecast_panel.json은 없다. 따라서 원래 보류 목록의 정확한 복원이나 2차 원장 전체 재현은 할 수 없다. 보고서의 회사별 상태와 기존 코드의 계약 공시 표본 부족 조건으로 우선 대상을 재구성했고 71사 전부를 재심사했다.',
+             '제공 2차 코드의 4개 기준은 `order_evidence()`의 최근 8분기 중 원계약 공시 발생 분기 수에만 적용돼 있었다. 보고서 확장으로 계약 공시 표본이 늘었다고 처리하지 않았다. 이 공시 샘플러는 그대로 두고 `ledger_order_pairs()`를 추가해 원장의 인접 분기 대용치를 별도 판정했다. 원전 2차 성적은 이 입력의 KDEF 평가와 서로 다른 표본이므로 합치지 않았다.',
+             '금액 단위는 백만원이며 저장값을 재환산하지 않는다. 2차 보고서가 기록한 전역 파서 정규화 계약(저장값 배수 1)을 동일 스키마 확장본에 계승했다. 원래 단위 증거 JSON과 과거 원문 캡션은 제공되지 않아 독립 검증은 불가능하다. 새 과거 분기도 같은 파서 계약을 따른다는 조건부 결과이며 `unit_evidence`에 이 가정을 표시했다. 2차 보고서의 캡션 표에서 실제 읽힌 캡션만 복원했고 빈 캡션은 만들어 넣지 않았다. 외화 잔고는 원화 금액과 합치지 않았다.', '',
+             '## 인접쌍 재심사', '',
+             '후보는 달력상 정확히 인접한 두 분기다. 양쪽 보고서의 접수순서·기준 보고서 접수일 이전 가용성, 동일 통화·정규화 계약·원장 형태·orders_scope, 같은 매출 축의 존재, 잔고 행 대사, 비음수 분기 매출을 확인했다. 연중 분기 매출은 당기 누계−직전 분기 누계, Q1은 당기 누계다. 분기 누락을 건너뛰거나 누락값을 0으로 채우지 않는다.',
+             '`O_proxy(t)=B(t)−B(t−1)+Sales(t)`는 취소·환율·사업범위 이동 등이 없다는 가정 아래의 순증 대용치다. 실측 신규수주·총수주가 아니다. 음수 대용치는 탈락 근거에 원값을 보존하고 0으로 바꾸지 않는다. 비음수 표본 선택에 따른 상향 편향 가능성도 기록한다. 동일 태그의 부문 잔고 또는 단일 전체 잔고의 집계 범위를 가정하며 계약 행의 추가·종료는 허용하지만, 개별 계약을 같은 행으로 억지 연결하지 않는다. 부문 구성·범위의 원문 검증은 남아 있다.',
+             '아래의 “8분기”는 현재 확장본을 2024Q3 이후로 자른 통제 비교다. 2차 당시 실제 회사별 원장 길이는 서로 달랐으며 원본이 없어 이 숫자를 당시 실측 표본으로 부르지 않는다. 회사 내 축별 관측 수도 서로 합치지 않는다.', '',
+             '| 회사 | 축 | 달력 인접쌍 | 8분기 적격 | 확장 적격 | 현재 적용 | 남은 탈락 원인 |',
+             '|---|---|---:|---:|---:|---|---|']
+    for c in companies:
+        a = c['needs_longer_ledger_reassessment']
+        for x in a['ledger_axes']:
+            exclusions = ', '.join(f'{k}:{v}' for k,v in x['rejection_counts'].items()) or '없음'
+            lines.append(f"| {c['company_name']} ({c['stock']}) | {x['axis']} | {x['candidate_pairs']} | {x['short_window_sample_quarters']} | {x['sample_quarters']} | {'사용' if x['used_in_company_projection'] else '보류'} | {exclusions} |")
+    lines += ['', '## 전망 방식과 분해', '',
+              '2차의 분기 함수, 누계 매출 추출, 공시 필터, 선형 잔고 소진, 시나리오·민감도·HTML 구조를 이어 썼다. 매출·범위 판정 규칙을 바꿔 표본을 늘리지 않았다. 잔고 회전기간 D는 기준일까지의 같은 범위 잔고/(연초 누계 매출/경과 분기)의 중앙값으로 다시 계산한다. 실제 인도기간이나 유형별 인식 속도는 아니다.',
+              '잔고분은 B0×[clip(h/D)−clip((h−1)/D)]. 적격 인접쌍이 4개 이상인 블록의 신규분은 대용치 P25/P50/P75를 각각 보수/기준/낙관 분기 말 코호트로 넣어 같은 D에 걸쳐 인식한다. 당분기 발생 코호트의 당분기 인식은 0이다. 적격 미달 블록은 2차의 매출 속도×0.8/1.0/1.2 가정으로 남기며, 실증 신규수주로 승격하지 않는다. 잔고 범위를 연결하지 못한 매출도 같은 계수의 미분해 매출로 분리한다.',
+              '민감도는 대용치 P10/P90(대용치 미적격·미분해는 속도×0.6~1.4)와 D×0.8/1.0/1.2를 조합한 유한 격자다. JSON에 전체 및 가용 잔고·신규·미분해 구성별 범위를 저장했다. 모두 `calibrated=false`, `nominal_level=null`이다. 표본 수가 늘어도 신뢰구간으로 바꾸지 않았다.',
+              '분기 2026Q3~2028Q4는 시나리오별 10개, FY2026~FY2028은 3개다. FY2026=관측 H1+미래 Q3/Q4이고 연간 잔고/신규 분해는 미래분만 가리킨다. 모든 축을 분해하지 못하면 회사 전체 잔고분·신규분은 null이며 가용 구성과 미분해를 별도 저장한다. 회사 전체 미추정 행에도 기간·시나리오·null을 보존한다. 공시 계약의 부분 전망과 정확한 납기 잔고의 별도 소진표를 회사 전체에 더하지 않는다.',
+              '연결/별도 범위와 12월 결산·연초누계 해석은 조건부다. 미분류를 방산으로 바꾸지 않았다. 현대로템의 가용 원장은 CIVIL 철도행이고 방산 매출 축과 합쳐 방산 수주로 표현하지 않는다. 한화 계열 등을 포함한 모든 회사 간 합산은 금지되어 `aggregate_forecast=null`, `company_totals_additive=false`를 유지한다.', '',
+              '## 2차 대비 회사별 변화', '',
+              '| 회사 | 2차 FY2028 | 3차 FY2028 | 변동 % | 긴 원장+2차 모형 | 신규 대용치 규칙 효과 | 이유 |',
+              '|---|---:|---:|---:|---:|---:|---|']
+    changed = [c for c in companies if number(c['round2_comparison']['FY2028_delta']) and abs(c['round2_comparison']['FY2028_delta'])>.01]
+    for c in sorted(changed, key=lambda c:abs(c['round2_comparison']['FY2028_delta_pct'] or 0), reverse=True):
+        d = c['round2_comparison']
+        lines.append(f"| {c['company_name']} | {fmt(d['prior_annual_base']['2028'])} | {fmt(d['current_annual_base']['2028'])} | {fmt(d['FY2028_delta_pct'])} | {fmt(d['controlled_long_window_round2_FY2028'])} | {fmt(d['proxy_rule_FY2028_delta'])} | 기간 중앙값 재계산·신규 대용치 반영 |")
+    lines += ['', '| 회사·축 | 2차 기간 D | 3차 기간 D | 3차 기간 표본 | 종전 매출 속도 가정 | 3차 신규 대용치/가정 |',
+              '|---|---:|---:|---:|---:|---:|']
+    for c in companies:
+        for b in c['round2_comparison']['blocks']:
+            lines.append(f"| {c['company_name']} · {b['axis']} | {fmt(b['prior_duration_quarters'])} | {fmt(b['current_duration_quarters'])} | {b['current_duration_observations']} | {fmt(b['round2_sales_rate_order_assumption_on_current_origin'])} | {fmt(b['current_new_order_assumption'])} |")
+    lines += ['', '큰 변화의 기준은 FY2028 절대 변동률 20%다. 퍼스텍은 이를 넘고, 한국항공우주도 약 19% 변동해 위에 함께 표시했다. “긴 원장+2차 모형”은 같은 현재 원장에서 신규수주를 예전의 매출 속도 가정으로 계산한 통제값이다. 이 값과 3차 차이는 신규 대용치 규칙 효과이고, 2차 발표값과 통제값 차이는 입력 이력 차이까지 포함한다. 원래 회사별 2차 원장이 없어 모든 차이를 순수한 모형 개선이라고 단정할 수 없다. 회사별 JSON에는 현재 8분기 절단 통제값도 저장했다.', '',
+              '## 지평별·연간 백테스트와 표본 증가', '',
+              f"분기 금액 채점은 {old_n:,}→{new_n:,}건(+{new_n-old_n:,}, {new_n/old_n:.2f}배)이다. 2차 발표 전체 WAPE 18.728%에 비해 이번 WAPE는 {bt['monetary']['WAPE_pct']:.3f}%로 나빠졌다. MAE는 {fmt(bt['monetary']['MAE'])}백만원, Bias는 {fmt(bt['monetary']['Bias_pct'])}%다. 표본 구성·지평·이력이 달라 전체 WAPE 차이를 같은 표본의 성능 변화라고 해석할 수 없다.",
+              '기준은 원장 분기말이 아니라 기준 보고서 접수일이다. 매출표를 누계로 읽고 분기 차분으로 채점하며 기납품 차분을 정답으로 쓰지 않는다. 학습·회전기간·수주 표본은 기준분기 이하이면서 기준 접수일에 가용한 것만 사용한다. T+1은 이미 시작된 분기의 nowcast이므로 미래 분기 전체가 판단일 이후인 forward-only를 따로 집계한다. 원본 vintage가 없어 제공 스냅샷의 사후 정정은 통제하지 못한다.',
+              '연간은 Q1~Q4의 유효 분기 정답과 접수순서를 모두 확인한다. FY+0은 보고서의 관측 누계에 남은 분기 전망을 더하되 Q4처럼 이미 끝난 연간은 채점하지 않는다. FY+1·FY+2는 완전한 미래 연도만 채점하며, 10분기 예측창에 해당 연도 4분기가 전부 들어오지 않으면 제외한다. FY+2의 Q1 기준점은 이 예측창을 넘는다. 제외 사유별 건수는 JSON에 보존한다. 계약별 인식·잔고/신규 구성·신규수주 자체의 정확도는 독립 정답이 없어 각각 0건이다.', '',
+              '| 지평 | 2차 n | 3차 n | 증가 | 2차 WAPE % | 3차 WAPE % | 3차 MAE | Bias % | forward n | 지속모형 WAPE % |',
+              '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+    for kind, key in [('quarterly','horizon'),('annual','fy_horizon')]:
+        for r in panel['round2_comparison'][kind]:
+            label = ('T+' if kind=='quarterly' else 'FY+')+str(r[key])
+            old_count = str(r['round2_n']) if r['round2_n'] is not None else '미제공'
+            delta = str(r['delta_n']) if r['delta_n'] is not None else '비교 불가'
+            lines.append(f"| {label} | {old_count} | {r['round3_n']} | {delta} | {fmt(r['round2_WAPE_pct'])} | {fmt(r['round3_WAPE_pct'])} | {fmt(r['round3_MAE'])} | {fmt(r['round3_Bias_pct'])} | {r['forward_only']['n']} | {fmt(r['persistence']['WAPE_pct'])} |")
+    legacy = panel['round2_comparison']['full_ledger_round2_model_control']['monetary']
+    short = panel['round2_comparison']['eight_quarter_round3_model_control']['monetary']
+    lines += ['', f"동일 긴 원장·동일 {legacy['n']:,}개 표본에서 2차 규칙의 WAPE는 {legacy['WAPE_pct']:.3f}%, 3차 규칙은 {bt['monetary']['WAPE_pct']:.3f}%다. 신규 대용치 규칙이 이 평가에서 개선됐다고 주장하지 않는다. 현재 입력을 8분기로 절단한 3차 통제군은 {short['n']:,}건·WAPE {short['WAPE_pct']:.3f}%이며, 2차 발표 표본을 정확히 재현한 결과는 아니다.",
+              f"완전히 미래인 분기 표본은 {bt['forward_only']['n']:,}건, WAPE {fmt(bt['forward_only']['WAPE_pct'])}%다. 각 채점 행의 origin/target·접수번호·예측·정답·분기 누계 근거와 연간 구성은 forecast_panel.json에 있다. 겹치는 origin 및 계열 회사 표본은 독립이 아니다. WAPE의 오차 가중 집계는 업종·그룹 매출 합산 전망이 아니다. 작은 표본·낮은 실제 매출에서는 비율 오차가 커질 수 있다.", '',
+              '| 회사별 높은 WAPE 사례 | n | MAE | WAPE % | Bias % |', '|---|---:|---:|---:|---:|']
+    worst = sorted([c for c in companies if number(c['backtest']['monetary']['WAPE_pct'])],
+                   key=lambda c:c['backtest']['monetary']['WAPE_pct'], reverse=True)[:10]
+    for c in worst:
+        r=c['backtest']['monetary']
+        lines.append(f"| {c['company_name']} | {r['n']} | {fmt(r['MAE'])} | {fmt(r['WAPE_pct'])} | {fmt(r['Bias_pct'])} |")
+    lines += ['', '## 71사 전수 결과 — 기준 시나리오', '',
+              '| 종목 | 회사 | FY2026 | FY2027 | FY2028 | 상태 | 재심사 판정 | 잔여 사유 |',
+              '|---|---|---:|---:|---:|---|---|---|']
+    for c in companies:
+        a=c['needs_longer_ledger_reassessment']
+        reason='; '.join(a['reason_codes']) or ('일부 매출 축 잔고 미연결' if not a['full_proxy_decomposition'] else '표본 문턱 충족; 조정·범위 원문 미검증')
+        lines.append('| '+' | '.join([c['stock'],c['company_name'],*[fmt(r['value']) for r in c['scenarios']['base']['annual']],c['status'],a['status'],reason])+' |')
+    lines += ['', '## 재현·검증·남은 불확실성', '',
+              '```sh', 'python3 -B output/kdef_forecast.py --input input --output output',
+              'python3 -B -m unittest discover -s output -p test_kdef_forecast.py', '```', '',
+              '산출물은 forecast_panel.json, kdef_REPORT.md, forecast_section.py, kdef_forecast.py, test_kdef_forecast.py다. forecast_section.py는 기존 HTML/SVG 렌더러를 이어 쓰며 원장 대용치 표본·남은 사유·회사 변화도 표시한다. 기본 실행은 개별 HTML 파일을 추가 생성하지 않는다. 입력 SHA-256과 엔진 해시를 패널에 저장하고 실행 테스트·입력 불변성·재생성 일치는 validation.json에 기록한다.',
+              '남은 불확실성은 새 과거 분기의 원문 단위·매출 누계·동일 연결/별도 범위, 잔고 조정 항목, 공시 원본 vintage, 유형별 실제 인식·수주 정답이다. 회전기간과 신규수주 표본이 길어졌어도 이 항목들은 자동 해결되지 않는다. 누락값·미해결 축은 null 또는 명시한 미분해/조건부 가정으로 유지한다.',
+              '작업은 배정된 output/에만 저장했다. 사용자 지정 tracker preflight는 central_connection_failed였으며 재시도·인계 강제 회수·정본 수정·외부 데이터 수집·배포·인증 변경을 하지 않았다. task_claim.json에 현재 세션의 산출물 범위를 기록했다.']
+    path.write_text('\n'.join(lines)+'\n', encoding='utf-8')
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Offline KDEF round-3 continuation; standard library only')
+    parser.add_argument('--input', type=Path, default=Path(__file__).resolve().parents[1]/'input')
+    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parent)
+    args=parser.parse_args()
+    if args.output.resolve()==args.input.resolve() or args.input.resolve() in args.output.resolve().parents:
+        parser.error('output must not overwrite input')
+    args.output.mkdir(parents=True,exist_ok=True)
+    panel=build_panel(args.input)
+    write_json(args.output/'forecast_panel.json',panel)
+    write_report_v3(args.output/'kdef_REPORT.md',panel)
+    print(json.dumps({'population':panel['population'],'monetary_backtest':panel['backtest']['monetary'],
+                      'annual_backtest':[{'fy_horizon':r['fy_horizon'],'n':r['n'],'WAPE_pct':r['WAPE_pct']} for r in panel['backtest']['annual']]},ensure_ascii=False))
+
+
+if __name__=='__main__':
     main()

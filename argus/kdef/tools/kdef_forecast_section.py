@@ -1,5 +1,5 @@
 # 주의: 파일명을 `forecast_section.py` 로 두면 섹터 도구가 sys.path 에 얹는 argus/kce/tools 의
-# 같은 이름 모듈이 먼저 잡힌다 — 탭 접두를 붙여 구분한다.
+# 동명 모듈이 먼저 잡혀 건설 렌더러가 불린다. 탭 접두를 붙인다.
 #!/usr/bin/env python3
 """KDEF company fragment: inline SVG, HTML tables/details, no external assets."""
 import sys
@@ -179,9 +179,25 @@ def render_forecast_section(panel_entry, forecast_entry):
            '<p>회사 전체는 제공된 매출표 전체의 조건부 전망입니다. 연결/별도 범위와 12월 결산·매출 누계 해석은 독립 검증되지 않았습니다. <strong>calibrated=false</strong>: 구간은 민감도이며 통계적 신뢰구간이 아닙니다. —는 미확인입니다.</p>',
            '<p>계열 회사 간 합산 금지. 계약 공시 부분 전망은 아래 회사 전체 금액에 추가하지 않습니다.</p>']
     bt=f['backtest']
-    parts.append(f'<p>이 회사 매출 금액 채점 {bt["monetary"]["n"]}건 · 전 기간 공시 이후인 표본 {bt["forward_only_n"]}건 · MAE {fmt(bt["monetary"]["MAE"])} 백만원. 계약별 실제 인식 채점 0건. 짧은 중첩 표본으로 장기 정확도를 보증하지 않습니다.</p>')
+    forward_n=bt.get('forward_only',{}).get('n',bt.get('forward_only_n',0))
+    parts.append(f'<p>이 회사 매출 금액 채점 {bt["monetary"]["n"]}건 · 전 기간 공시 이후인 표본 {forward_n}건 · MAE {fmt(bt["monetary"]["MAE"])} 백만원 · WAPE {fmt(bt["monetary"]["WAPE_pct"])}%. 계약별 실제 인식 채점 0건. 중첩 표본이며 원본 공시 vintage가 없어 실시간 성능을 보증하지 않습니다.</p>')
+    reassessment=f.get('needs_longer_ledger_reassessment')
+    if reassessment:
+        parts.append('<details open><summary>확장 원장 재심사</summary><p>'+esc(reassessment['status'])+
+                     ' · '+esc(reasons(reassessment['reason_codes']))+'</p>')
+        parts.append(table(['범위','8분기 적격쌍','확장 적격쌍','현재 적용','기준 신규 대용치'],
+                           [[r['axis'],r['short_window_sample_quarters'],r['sample_quarters'],
+                             '적용' if r['used_in_company_projection'] else '보류',fmt(r['quantiles']['base'])]
+                            for r in reassessment['ledger_axes']],
+                           '8분기는 현재 입력의 절단 대조군; 정확한 2차 원본은 미제공'))
+        parts.append('<p>잔고증감+같은 범위 분기매출의 조건부 대용치입니다. 취소·환율·범위 변동을 분리하지 못해 실제 신규수주로 해석할 수 없습니다. 계약 공시 표본과는 별개입니다.</p></details>')
+    comparison=f.get('round2_comparison')
+    if comparison:
+        parts.append('<p>2차 대비 FY2028 기준 전망 변화: '+fmt(comparison['FY2028_delta_pct'])+
+                     '%. 원래 회사별 원장이 없어 입력 이력과 모형 효과는 보고서의 통제 비교를 함께 확인해야 합니다.</p>')
+    parts.append('<p>단위 증거 JSON은 미제공입니다. 2차 보고서의 저장값 백만원 정규화 계약을 확장본에도 계승했으며 새 과거 원문 단위는 독립 검증하지 못했습니다.</p>')
     if f['company_total_available']:
-        parts.append('<p>기존 잔고는 시나리오 간 동일합니다. 보수/기준/낙관은 신규수주와 미분해 매출 속도 ×0.8/1.0/1.2입니다. 관측 H1과 미래분을 구분하고, 나누지 못한 잔고·신규 구성은 미분해 매출로 표시합니다.</p>')
+        parts.append('<p>기존 잔고는 시나리오 간 동일합니다. 적격 인접쌍이 4개 이상인 신규 대용치는 P25/P50/P75, 미적격 신규와 미분해 매출은 2차의 속도 ×0.8/1.0/1.2 가정입니다. 관측 H1과 미래분을 구분하고, 나누지 못한 잔고·신규 구성은 미분해 매출로 표시합니다.</p>')
         for key,label in LABELS.items():
             s=f['scenarios'][key]
             parts.append(f'<details data-scenario="{key}"'+(' open' if key=='base' else '')+f'><summary>{label}</summary>')

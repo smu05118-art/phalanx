@@ -1,5 +1,5 @@
 # 주의: 파일명을 `forecast_section.py` 로 두면 섹터 도구가 sys.path 에 얹는 argus/kce/tools 의
-# 동명 모듈이 먼저 잡혀 건설 렌더러가 불린다(kdef 통합에서 실제로 conflict). 탭 접두를 붙인다.
+# 동명 모듈이 먼저 잡혀 건설 렌더러가 불린다. 탭 접두를 붙인다.
 #!/usr/bin/env python3
 """KSEMI company section. Inline SVG/CSS only; no scripts, network, packages.
 Compatibility entry: render_forecast_section(panel_entry, forecast_entry=None).
@@ -115,13 +115,18 @@ def render_forecast_section(panel_entry, forecast_entry=None):
         f'<p><span class="ks-chip">{esc(STATUS[c["status"]])}</span> 기준 {esc(c["origin"])} · {esc(unit)} · 결산월 {esc(c.get("fiscal_year_end_month") or "미확인")}</p>',
         '<p class="ks-note">수주표 납품액의 조건부 대용치입니다. 회계매출과 연결·별도 범위는 미대조입니다. 전체 추정에는 신규수주 가정이 포함됩니다. 민감도 범위는 <strong>통계적 신뢰구간이 아닙니다(calibrated=false)</strong>. —는 미추정입니다.</p>']
     if c.get('money_unit'):
-        pieces.append('<p class="ks-note">금액은 제공된 파서 정규화 계약에 따른 백만원입니다. 원문 캡션은 확인하지 못했습니다(unit_caption_unavailable). 이미 정규화된 금액을 다시 환산하지 않았습니다.</p>')
+        pieces.append('<p class="ks-note">백만원 정규화 근거는 2차 보고서 설명에서 승계했습니다. 단위 근거 JSON·원문·파서 소스는 이번 입력에 없습니다(unit_caption_unavailable, unit_contract_inherited). 추가 환산은 하지 않았습니다.</p>')
+    review = c.get('ledger_reassessment')
+    if review:
+        pieces.append('<p class="ks-note">19분기 재판정: 적격 흐름 '+
+            str(review['previous_eligible_flow_n'])+' → '+str(review['eligible_flow_n'])+'개 · '+
+            esc(review['explanation'])+'</p>')
     shares = [x['basis'] for x in rec['accepted']]
     pieces.append('<div class="ks-grid">')
     h = c['scenarios']['base']['assumptions']['delivery_hazard']
     for title, value in [
         ('인도·설치검수·진행기준', ', '.join(shares) or '적용 기준 미확인'),
-        ('정본 공정 단계', ', '.join(proc.get('stage_names', [])) or '정본 배정 없음'),
+        ('정본 공정 단계', ', '.join(proc.get('stage_names', [])) or '배정 파일 미제공'),
         ('전·후공정 / 주단계', (proc.get('front_back') or '미확인')+' / '+(proc.get('primary_name') or '미확인')),
         ('메모리·파운드리 원문 낱말', axes['memory_foundry']['verdict']+' · 매출 비중 아님'),
         ('회전 강도 h / 관측 수', f'{pct(h)} / {len(c["evidence"]["flows"])}개; 실제 리드타임 아님'),
@@ -129,7 +134,7 @@ def render_forecast_section(panel_entry, forecast_entry=None):
         ('수출·내수 매출 비중', '범위·중복 대조 전 미산출'),
         ('중국향 공시 계약 금액 비중', pct(axes['china_contracts']['china_contract_amount_share']))]:
         pieces.append('<div class="ks-card"><strong>'+esc(title)+'</strong><br>'+esc(value)+'</div>')
-    pieces.append('</div><p class="ks-muted">정본 단계 배정에는 산업 일반·겸업 설명이 섞여 있어 단계별 속도 계수로 변환하지 않습니다. 중국 비중은 제공된 누적 계약 기준이며 매출 비중이 아닙니다. 익명 고객 실명은 추정하지 않습니다. 전방 CAPEX 연동 계수·시계열이 없어 연동하지 않습니다.</p>')
+    pieces.append('</div><p class="ks-muted">단계·메모리 노출·계열 파일은 이번 입력에 없어 판정을 복원하지 않았습니다. 중국 비중은 제공된 누적 계약 기준이며 매출 비중이 아닙니다. 익명 고객 실명과 CAPEX 연동 계수는 추정하지 않습니다.</p>')
     pieces.append('<details><summary>단계·메모리·동종 비교 근거</summary><p>'+esc(proc.get('evidence_text') or '—')+'</p>')
     memory = axes['memory_foundry'].get('row') or {}
     pieces.append('<p>노출 근거 접수번호 '+esc(memory.get('rcpNo') or '—')+' · '+esc(axes['memory_foundry']['basis'])+'</p>')
@@ -154,7 +159,11 @@ def render_forecast_section(panel_entry, forecast_entry=None):
         ('MAE '+fmt(bt['mae'])+' 백만원, WAPE '+pct(bt['wape'])+'. ' if bt['n'] else '채점 가능한 표본이 없습니다. ')+
         '현재 정정본으로 재현한 납품 대용치 점수입니다. 미검증 지평: '+
         esc(', '.join('T+'+str(h) for h in bt['unvalidated_horizons']) or '없음')+
-        ' · 연간 검증 '+str(bt['annual']['n'])+'건.</p>')
+        ' · 연간 검증 '+str(bt['annual']['n'])+'건, WAPE '+pct(bt['annual']['wape'])+'. 중첩 목표는 독립 표본이 아닙니다.</p>')
+    pieces.append(table(['지평','n','MAE','WAPE','naive MAE'],
+        [['T+'+str(h),str(bt['by_horizon'][str(h)]['n']),fmt(bt['by_horizon'][str(h)]['mae']),
+          pct(bt['by_horizon'][str(h)]['wape']),fmt(bt['by_horizon'][str(h)]['naive_mae'])]
+         for h in range(1,9)], '기준 시나리오 T+1~T+8 · 백만원 · 현재 정정본을 자른 검증'))
     for name in SCENARIOS:
         s = c['scenarios'][name]; qs = s['quarterly']; annual = s['annual']
         pieces.append('<details'+(' open' if name == 'base' else '')+'><summary>'+LABELS[name]+' 시나리오</summary>')
