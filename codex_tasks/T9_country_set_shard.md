@@ -89,3 +89,31 @@ node --check ui/patch.js
 
 `data_kpi.js`(7.39MB)와 `korea_trade.html`(9.84MB)은 별건이다.
 조사 결과와 실측 축소안은 프로젝트 파일 `oversize-files-report.md` 참조.
+
+---
+
+## 부록 — korea_trade.html (9.84MB): `tools/shrink_korea_trade.py`
+
+같은 한도 위반 건이라 도구를 함께 뒀다. **빌더가 이 레포에도 `phalanx_update.sh`에도 없다.**
+추적 결과: 최초 생성은 2026-08-24 커밋 두 건(Claude 작성, 자체완결 HTML), 이후 갱신은
+로컬에서 `var TD=` 한 줄만 교체하는 스크립트다 — 2026-09-16 커밋 `0f65c240`은 1줄 변경이고
+`TD.meta.archived_at`(11:00:05)과 커밋 시각(11:00:20)이 15초 차이다. 맥에서 찾으려면
+`archived_at` 과 커밋 메시지 `korea trade HS6` 두 문자열로 grep하면 된다.
+
+그래서 빌더에 의존하지 않는 후처리 도구로 만들었다. 멱등하므로 로컬 갱신 뒤 다시 돌리면 된다.
+
+```
+python3 tools/shrink_korea_trade.py korea_trade.html --check   # 예상 크기만
+python3 tools/shrink_korea_trade.py korea_trade.html           # 적용
+```
+
+- 본문 9.84MB → **3.32MB**, `korea_trade_country/<hs2>.json` 96개(최대 696KB).
+- `rows[].c`(6.66MB·75%)는 클릭해야 열리는 드릴다운 두 곳에서만 쓰여 클릭 시점 fetch로 돌린다.
+- `c[].nm`(같은 국가명 3.8만 회 반복)을 걷어내고 `TD.cnames`를 41 → 184개국으로 채운다.
+  `CN`은 `dimItems`에서만 쓰여 부작용이 없다. 이름이 어긋나던 5건(AE·CZ·MH·RU·SA)은
+  화면에 실제로 찍히던 인라인 이름을 택했다.
+- **월은 자르지 않는다.** 월 선택 `<select id="month">`가 15개월을 전부 옵션으로 깔고
+  `state.lat`을 바꾸며 드릴다운이 그 값을 쓴다. 최신월만 남기면 나머지 14개월이 빈 표가 된다.
+
+검증: `tools/tests/test_shrink_korea_trade.py` 11건 + `tools/tests/drive_korea_trade.js`로
+Chromium에서 원본과 축소본의 드릴다운 3종(최신월·과거월·분류 탭)을 실제로 열어 문자 단위 일치 확인.
