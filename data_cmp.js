@@ -6594,209 +6594,103 @@ window.CMPD={
     },
     "target_period_end": "2026-09-30",
     "official_guidance": {
-      "FX_sensitivity": "No explicit per-1-yen forward sensitivity found in the reviewed current/prior Q\u0026A and presentations. Disclosed +2000m FX bridge is a historical forecast revision attribution, not a general elasticity.",
-      "annual_guidance_vintages": [
-        {
-          "annual_operating_profit": 48000,
-          "annual_ordinary_profit": 44000,
-          "annual_parent_net_profit": 28000,
-          "annual_revenue": 410000,
-          "as_of": "2025-05-08",
-          "issuer_fy_start_year": 2025,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "5da560cfc0354f21355a7ee0d2751906802852f97ba91ae7b3687906d0c01420",
-            "source_id": "140120250425524332",
-            "text_path": "text/140120250425524332.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/315b0004/b736/4525/b647/1b24f18960a5/140120250425524332.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 55000,
-          "annual_ordinary_profit": 51000,
-          "annual_parent_net_profit": 34000,
-          "annual_revenue": 415000,
-          "as_of": "2025-08-01",
-          "issuer_fy_start_year": 2025,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "c204d0f08ee7a135a06d307fa2c0820f40c9bd72fabc2842579f378561958ed7",
-            "source_id": "140120250731525400",
-            "text_path": "text/140120250731525400.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/0ba60856/1fcc/4768/98d7/78f23a52fb86/140120250731525400.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 61000,
-          "annual_ordinary_profit": 57000,
-          "annual_parent_net_profit": 37000,
-          "annual_revenue": 420000,
-          "as_of": "2025-10-30",
-          "issuer_fy_start_year": 2025,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "c24bd5958fd4e7cbbba17ad7c685d4fd0784b278d00b7a764fab14306c9970f8",
-            "source_id": "140120251029581128",
-            "text_path": "text/140120251029581128.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/27ce3efe/c3e6/4f8d/82ba/57462a9dc9e1/140120251029581128.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 61000,
-          "annual_ordinary_profit": 57000,
-          "annual_parent_net_profit": 37000,
-          "annual_revenue": 420000,
-          "as_of": "2026-02-03",
-          "issuer_fy_start_year": 2025,
-          "note": "2026-02-03 consolidated full-year guidance unchanged, although Electronics revenue/OP lowered from 255000/48000 to 250000/46500.",
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "386f5a7113bb2512d8eea9bcf3abc005359cfa470bb38b30383962f2e746f9c6",
-            "source_id": "140120260202544766",
-            "text_path": "text/140120260202544766.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/c1c26eb8/c0b1/4005/bca3/e1dcedab6ee9/140120260202544766.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 90000,
-          "annual_ordinary_profit": 90000,
-          "annual_parent_net_profit": 58000,
-          "annual_revenue": 500000,
-          "as_of": "2026-05-11",
-          "issuer_fy_start_year": 2026,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "d739979faaa1009b22ce6105e74922b3389dd4c7e05ebfe77cac6568aa1efd89",
-            "source_id": "140120260505517291",
-            "text_path": "text/140120260505517291.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/e3777744/eb13/41f0/8a69/68edaa9e6228/140120260505517291.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 127000,
-          "annual_ordinary_profit": 127000,
-          "annual_parent_net_profit": 84000,
-          "annual_revenue": 550000,
-          "as_of": "2026-08-04",
-          "issuer_fy_start_year": 2026,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
-            "source_id": "140120260803507041",
-            "text_path": "text/140120260803507041.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf"
-          }
-        }
-      ],
       "as_of": "2026-09-24",
       "current": {
-        "FY_current": {
-          "operating_profit": 127000,
-          "ordinary_profit": 127000,
-          "parent_net_profit": 84000,
-          "revenue": 550000
-        },
-        "FY_initial": {
-          "operating_profit": 90000,
-          "ordinary_profit": 90000,
-          "parent_net_profit": 58000,
-          "revenue": 500000
-        },
-        "H1_current": {
-          "operating_profit": 54500,
-          "ordinary_profit": 54000,
-          "parent_net_profit": 34000,
-          "revenue": 253500
-        },
+        "as_of": "2026-08-04",
+        "issuer_fy_start_year": 2026,
+        "fy_end": "2027-03-31",
+        "unit": "JPY million",
+        "initial_disclosed": "2026-05-11",
         "H1_initial": {
+          "revenue": 230000,
           "operating_profit": 38000,
           "ordinary_profit": 37500,
-          "parent_net_profit": 23000,
-          "revenue": 230000
+          "parent_net_profit": 23000
         },
-        "as_of": "2026-08-04",
-        "capex_FY_current": {
-          "ceramics": 2000,
-          "electronics": 200000,
-          "other": 8000,
-          "total": 210000
+        "H1_current": {
+          "revenue": 253500,
+          "operating_profit": 54500,
+          "ordinary_profit": 54000,
+          "parent_net_profit": 34000
         },
-        "depreciation_amortization_FY_current": 81000,
-        "electronic_OP_bridge": {
-          "ASP_product_mix": 26500,
-          "FX": 2000,
-          "initial": 75000,
-          "productivity_improvement_JP_original": 3500,
-          "revised": 110000,
-          "volume": 3000
+        "FY_initial": {
+          "revenue": 500000,
+          "operating_profit": 90000,
+          "ordinary_profit": 90000,
+          "parent_net_profit": 58000
         },
-        "evidence": [
-          {
-            "note": "full/H1 four-metric revision table",
-            "pdf_page": 1,
-            "sha256": "ea2835b1b02c69ed9647e85db128bd394bb5a8b5e435774265421d2821bfd069",
-            "source_id": "gyousekishuusei2026Q1",
-            "text_path": "text/gyousekishuusei2026Q1.txt",
-            "url": "https://www.ibiden.com/ir/items/gyousekishuusei2026Q1.pdf"
-          },
-          {
-            "note": "Japanese original revision table",
-            "pdf_page": 1,
-            "sha256": "031f2cf70f6e722d055c1dfeb07770ead5f01288a54cce9b4de1abaf843db0c2",
-            "source_id": "140120260803507042",
-            "text_path": "text/140120260803507042.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/fe65e483/646a/4d19/aded/df116cbc0009/140120260803507042.pdf"
-          },
-          {
-            "note": "visually verified H1 segment bars and FX table; graphic values absent from pdftotext",
-            "pdf_page": 3,
-            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
-            "source_id": "en_kessannsetsumei2026Q1",
-            "text_path": "text/en_kessannsetsumei2026Q1.txt",
-            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf"
-          },
-          {
-            "note": "visually verified FY segment bars and FX table",
-            "pdf_page": 4,
-            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
-            "source_id": "en_kessannsetsumei2026Q1",
-            "text_path": "text/en_kessannsetsumei2026Q1.txt",
-            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf"
-          },
-          {
-            "note": "Japanese OP bridge: +35 億円 生産性改善; English translation label inconsistent",
-            "pdf_page": 5,
-            "sha256": "a6495354c3a3773697fc7f804ec98627fbb78f0e7ca870933c9bf06b7e7a6f94",
-            "source_id": "kessannsetsumei2026Q1",
-            "text_path": "text/kessannsetsumei2026Q1.txt",
-            "url": "https://www.ibiden.co.jp/ir/items/kessannsetsumei2026Q1.pdf"
-          },
-          {
-            "note": "annual capex, D\u0026A, current actuals and segment forecast table",
-            "pdf_page": 1,
-            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
-            "source_id": "140120260803507041",
-            "text_path": "text/140120260803507041.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf"
-          }
+        "FY_current": {
+          "revenue": 550000,
+          "operating_profit": 127000,
+          "ordinary_profit": 127000,
+          "parent_net_profit": 84000
+        },
+        "segments_H1_initial": {
+          "electronics": [
+            150000,
+            33000
+          ],
+          "ceramics": [
+            38000,
+            2500
+          ],
+          "other": [
+            42000,
+            2500
+          ]
+        },
+        "segments_H1_current": {
+          "electronics": [
+            168000,
+            47500
+          ],
+          "ceramics": [
+            43000,
+            3500
+          ],
+          "other": [
+            42500,
+            3500
+          ]
+        },
+        "segments_FY_initial": {
+          "electronics": [
+            330000,
+            75000
+          ],
+          "ceramics": [
+            80000,
+            6000
+          ],
+          "other": [
+            90000,
+            9000
+          ]
+        },
+        "segments_FY_current": {
+          "electronics": [
+            375000,
+            110000
+          ],
+          "ceramics": [
+            84000,
+            6500
+          ],
+          "other": [
+            91000,
+            10500
+          ]
+        },
+        "segment_pair_order": [
+          "revenue",
+          "segment_profit"
         ],
         "fx_jpy_per_usd_eur": {
-          "FY_current": [
-            152,
-            181
+          "Q1_actual": [
+            158,
+            183
           ],
-          "FY_initial": [
+          "H1_initial": [
             150,
             180
           ],
@@ -6804,118 +6698,224 @@ window.CMPD={
             154,
             182
           ],
-          "H1_initial": [
+          "FY_initial": [
             150,
             180
           ],
-          "Q1_actual": [
-            158,
-            183
+          "FY_current": [
+            152,
+            181
           ]
         },
-        "fy_end": "2027-03-31",
-        "initial_disclosed": "2026-05-11",
-        "issuer_fy_start_year": 2026,
-        "segment_pair_order": [
-          "revenue",
-          "segment_profit"
-        ],
-        "segments_FY_current": {
-          "ceramics": [
-            84000,
-            6500
-          ],
-          "electronics": [
-            375000,
-            110000
-          ],
-          "other": [
-            91000,
-            10500
-          ]
+        "capex_FY_current": {
+          "total": 210000,
+          "electronics": 200000,
+          "ceramics": 2000,
+          "other": 8000
         },
-        "segments_FY_initial": {
-          "ceramics": [
-            80000,
-            6000
-          ],
-          "electronics": [
-            330000,
-            75000
-          ],
-          "other": [
-            90000,
-            9000
-          ]
+        "depreciation_amortization_FY_current": 81000,
+        "electronic_OP_bridge": {
+          "initial": 75000,
+          "ASP_product_mix": 26500,
+          "volume": 3000,
+          "FX": 2000,
+          "productivity_improvement_JP_original": 3500,
+          "revised": 110000
         },
-        "segments_H1_current": {
-          "ceramics": [
-            43000,
-            3500
-          ],
-          "electronics": [
-            168000,
-            47500
-          ],
-          "other": [
-            42500,
-            3500
-          ]
-        },
-        "segments_H1_initial": {
-          "ceramics": [
-            38000,
-            2500
-          ],
-          "electronics": [
-            150000,
-            33000
-          ],
-          "other": [
-            42000,
-            2500
-          ]
-        },
-        "unit": "JPY million"
+        "evidence": [
+          {
+            "source_id": "gyousekishuusei2026Q1",
+            "url": "https://www.ibiden.com/ir/items/gyousekishuusei2026Q1.pdf",
+            "pdf_page": 1,
+            "text_path": "text/gyousekishuusei2026Q1.txt",
+            "sha256": "ea2835b1b02c69ed9647e85db128bd394bb5a8b5e435774265421d2821bfd069",
+            "note": "full/H1 four-metric revision table"
+          },
+          {
+            "source_id": "140120260803507042",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/fe65e483/646a/4d19/aded/df116cbc0009/140120260803507042.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260803507042.txt",
+            "sha256": "031f2cf70f6e722d055c1dfeb07770ead5f01288a54cce9b4de1abaf843db0c2",
+            "note": "Japanese original revision table"
+          },
+          {
+            "source_id": "en_kessannsetsumei2026Q1",
+            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf",
+            "pdf_page": 3,
+            "text_path": "text/en_kessannsetsumei2026Q1.txt",
+            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
+            "note": "visually verified H1 segment bars and FX table; graphic values absent from pdftotext"
+          },
+          {
+            "source_id": "en_kessannsetsumei2026Q1",
+            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf",
+            "pdf_page": 4,
+            "text_path": "text/en_kessannsetsumei2026Q1.txt",
+            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
+            "note": "visually verified FY segment bars and FX table"
+          },
+          {
+            "source_id": "kessannsetsumei2026Q1",
+            "url": "https://www.ibiden.co.jp/ir/items/kessannsetsumei2026Q1.pdf",
+            "pdf_page": 5,
+            "text_path": "text/kessannsetsumei2026Q1.txt",
+            "sha256": "a6495354c3a3773697fc7f804ec98627fbb78f0e7ca870933c9bf06b7e7a6f94",
+            "note": "Japanese OP bridge: +35 億円 生産性改善; English translation label inconsistent"
+          },
+          {
+            "source_id": "140120260803507041",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260803507041.txt",
+            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
+            "note": "annual capex, D\u0026A, current actuals and segment forecast table"
+          }
+        ]
       },
       "derived_guidance_remainders": {
-        "H2": {
-          "electronics_revenue": 207000,
-          "electronics_segment_profit": 62500,
-          "operating_profit": 72500,
-          "period_end": "2027-03-31",
-          "period_start": "2026-10-01",
-          "revenue": 296500
-        },
-        "Q2": {
-          "electronics_revenue": 90478,
-          "electronics_segment_profit": 26125,
-          "operating_profit": 27620,
-          "period_end": "2026-09-30",
-          "period_start": "2026-07-01",
-          "revenue": 130281
-        },
-        "operands": "Q2=current H1 guidance minus official Q1 actual; H2=current FY guidance minus current H1 guidance. No distribution of H2 into Q3/Q4 inferred.",
         "status": "arithmetic_only_not_new_company_standalone_guidance_or_model_forecast",
-        "unit": "JPY million"
+        "unit": "JPY million",
+        "Q2": {
+          "period_start": "2026-07-01",
+          "period_end": "2026-09-30",
+          "revenue": 130281,
+          "operating_profit": 27620,
+          "electronics_revenue": 90478,
+          "electronics_segment_profit": 26125
+        },
+        "H2": {
+          "period_start": "2026-10-01",
+          "period_end": "2027-03-31",
+          "revenue": 296500,
+          "operating_profit": 72500,
+          "electronics_revenue": 207000,
+          "electronics_segment_profit": 62500
+        },
+        "operands": "Q2=current H1 guidance minus official Q1 actual; H2=current FY guidance minus current H1 guidance. No distribution of H2 into Q3/Q4 inferred."
       },
+      "annual_guidance_vintages": [
+        {
+          "as_of": "2025-05-08",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 410000,
+          "annual_operating_profit": 48000,
+          "annual_ordinary_profit": 44000,
+          "annual_parent_net_profit": 28000,
+          "source": {
+            "source_id": "140120250425524332",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/315b0004/b736/4525/b647/1b24f18960a5/140120250425524332.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120250425524332.txt",
+            "sha256": "5da560cfc0354f21355a7ee0d2751906802852f97ba91ae7b3687906d0c01420",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2025-08-01",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 415000,
+          "annual_operating_profit": 55000,
+          "annual_ordinary_profit": 51000,
+          "annual_parent_net_profit": 34000,
+          "source": {
+            "source_id": "140120250731525400",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/0ba60856/1fcc/4768/98d7/78f23a52fb86/140120250731525400.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120250731525400.txt",
+            "sha256": "c204d0f08ee7a135a06d307fa2c0820f40c9bd72fabc2842579f378561958ed7",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2025-10-30",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 420000,
+          "annual_operating_profit": 61000,
+          "annual_ordinary_profit": 57000,
+          "annual_parent_net_profit": 37000,
+          "source": {
+            "source_id": "140120251029581128",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/27ce3efe/c3e6/4f8d/82ba/57462a9dc9e1/140120251029581128.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120251029581128.txt",
+            "sha256": "c24bd5958fd4e7cbbba17ad7c685d4fd0784b278d00b7a764fab14306c9970f8",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2026-02-03",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 420000,
+          "annual_operating_profit": 61000,
+          "annual_ordinary_profit": 57000,
+          "annual_parent_net_profit": 37000,
+          "source": {
+            "source_id": "140120260202544766",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/c1c26eb8/c0b1/4005/bca3/e1dcedab6ee9/140120260202544766.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260202544766.txt",
+            "sha256": "386f5a7113bb2512d8eea9bcf3abc005359cfa470bb38b30383962f2e746f9c6",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": "2026-02-03 consolidated full-year guidance unchanged, although Electronics revenue/OP lowered from 255000/48000 to 250000/46500."
+        },
+        {
+          "as_of": "2026-05-11",
+          "issuer_fy_start_year": 2026,
+          "annual_revenue": 500000,
+          "annual_operating_profit": 90000,
+          "annual_ordinary_profit": 90000,
+          "annual_parent_net_profit": 58000,
+          "source": {
+            "source_id": "140120260505517291",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/e3777744/eb13/41f0/8a69/68edaa9e6228/140120260505517291.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260505517291.txt",
+            "sha256": "d739979faaa1009b22ce6105e74922b3389dd4c7e05ebfe77cac6568aa1efd89",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2026-08-04",
+          "issuer_fy_start_year": 2026,
+          "annual_revenue": 550000,
+          "annual_operating_profit": 127000,
+          "annual_ordinary_profit": 127000,
+          "annual_parent_net_profit": 84000,
+          "source": {
+            "source_id": "140120260803507041",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260803507041.txt",
+            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        }
+      ],
       "next_reporting_period": {
-        "checked_on": "2026-09-24",
+        "issuer_fy_start_year": 2026,
+        "fiscal_quarter": 2,
+        "standalone_start": "2026-07-01",
+        "standalone_end": "2026-09-30",
+        "reporting_cumulative_start": "2026-04-01",
+        "reporting_cumulative_end": "2026-09-30",
+        "japanese_label": "2027年3月期 第2四半期（中間期）",
         "earnings_date": null,
         "earnings_date_status": "TBD",
         "evidence_urls": [
           "https://www.ibiden.com/ir/calendar/",
           "https://www.ibiden.co.jp/ir/calendar/"
         ],
-        "fiscal_quarter": 2,
-        "issuer_fy_start_year": 2026,
-        "japanese_label": "2027年3月期 第2四半期（中間期）",
-        "note": "Both official calendars list latest Q1 results August 4, 2026; no exact next interim announcement date found. Aug 5 is the presentation event, not earnings release date.",
-        "reporting_cumulative_end": "2026-09-30",
-        "reporting_cumulative_start": "2026-04-01",
-        "standalone_end": "2026-09-30",
-        "standalone_start": "2026-07-01"
-      }
+        "checked_on": "2026-09-24",
+        "note": "Both official calendars list latest Q1 results August 4, 2026; no exact next interim announcement date found. Aug 5 is the presentation event, not earnings release date."
+      },
+      "FX_sensitivity": "No explicit per-1-yen forward sensitivity found in the reviewed current/prior Q\u0026A and presentations. Disclosed +2000m FX bridge is a historical forecast revision attribution, not a general elasticity."
     },
     "proxy_coverage": null,
     "currency": "JPY",
@@ -7211,8 +7211,8 @@ window.CMPD={
         "Q2_arithmetic": {
           "period_start": "2026-07-01",
           "period_end": "2026-09-30",
-          "revenue": 130281,
-          "operating_profit": 27620,
+          "revenue": 130281.0,
+          "operating_profit": 27620.0,
           "electronics_revenue": 90478,
           "electronics_segment_profit": 26125
         },
@@ -7489,8 +7489,8 @@ window.CMPD={
               "operating_profit": 55608.44708274219
             },
             "guide_implied_Q2_non_electronics": {
-              "revenue": 39803,
-              "operating_profit": 1495
+              "revenue": 39803.0,
+              "operating_profit": 1495.0
             },
             "history_segment_Q2_non_electronics": {
               "revenue": 45915.9457379404,
@@ -9468,209 +9468,103 @@ window.CMPD={
     },
     "target_period_end": "2026-09-30",
     "official_guidance": {
-      "FX_sensitivity": "No explicit per-1-yen forward sensitivity found in the reviewed current/prior Q\u0026A and presentations. Disclosed +2000m FX bridge is a historical forecast revision attribution, not a general elasticity.",
-      "annual_guidance_vintages": [
-        {
-          "annual_operating_profit": 48000,
-          "annual_ordinary_profit": 44000,
-          "annual_parent_net_profit": 28000,
-          "annual_revenue": 410000,
-          "as_of": "2025-05-08",
-          "issuer_fy_start_year": 2025,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "5da560cfc0354f21355a7ee0d2751906802852f97ba91ae7b3687906d0c01420",
-            "source_id": "140120250425524332",
-            "text_path": "text/140120250425524332.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/315b0004/b736/4525/b647/1b24f18960a5/140120250425524332.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 55000,
-          "annual_ordinary_profit": 51000,
-          "annual_parent_net_profit": 34000,
-          "annual_revenue": 415000,
-          "as_of": "2025-08-01",
-          "issuer_fy_start_year": 2025,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "c204d0f08ee7a135a06d307fa2c0820f40c9bd72fabc2842579f378561958ed7",
-            "source_id": "140120250731525400",
-            "text_path": "text/140120250731525400.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/0ba60856/1fcc/4768/98d7/78f23a52fb86/140120250731525400.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 61000,
-          "annual_ordinary_profit": 57000,
-          "annual_parent_net_profit": 37000,
-          "annual_revenue": 420000,
-          "as_of": "2025-10-30",
-          "issuer_fy_start_year": 2025,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "c24bd5958fd4e7cbbba17ad7c685d4fd0784b278d00b7a764fab14306c9970f8",
-            "source_id": "140120251029581128",
-            "text_path": "text/140120251029581128.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/27ce3efe/c3e6/4f8d/82ba/57462a9dc9e1/140120251029581128.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 61000,
-          "annual_ordinary_profit": 57000,
-          "annual_parent_net_profit": 37000,
-          "annual_revenue": 420000,
-          "as_of": "2026-02-03",
-          "issuer_fy_start_year": 2025,
-          "note": "2026-02-03 consolidated full-year guidance unchanged, although Electronics revenue/OP lowered from 255000/48000 to 250000/46500.",
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "386f5a7113bb2512d8eea9bcf3abc005359cfa470bb38b30383962f2e746f9c6",
-            "source_id": "140120260202544766",
-            "text_path": "text/140120260202544766.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/c1c26eb8/c0b1/4005/bca3/e1dcedab6ee9/140120260202544766.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 90000,
-          "annual_ordinary_profit": 90000,
-          "annual_parent_net_profit": 58000,
-          "annual_revenue": 500000,
-          "as_of": "2026-05-11",
-          "issuer_fy_start_year": 2026,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "d739979faaa1009b22ce6105e74922b3389dd4c7e05ebfe77cac6568aa1efd89",
-            "source_id": "140120260505517291",
-            "text_path": "text/140120260505517291.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/e3777744/eb13/41f0/8a69/68edaa9e6228/140120260505517291.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 127000,
-          "annual_ordinary_profit": 127000,
-          "annual_parent_net_profit": 84000,
-          "annual_revenue": 550000,
-          "as_of": "2026-08-04",
-          "issuer_fy_start_year": 2026,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
-            "source_id": "140120260803507041",
-            "text_path": "text/140120260803507041.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf"
-          }
-        }
-      ],
       "as_of": "2026-09-24",
       "current": {
-        "FY_current": {
-          "operating_profit": 127000,
-          "ordinary_profit": 127000,
-          "parent_net_profit": 84000,
-          "revenue": 550000
-        },
-        "FY_initial": {
-          "operating_profit": 90000,
-          "ordinary_profit": 90000,
-          "parent_net_profit": 58000,
-          "revenue": 500000
-        },
-        "H1_current": {
-          "operating_profit": 54500,
-          "ordinary_profit": 54000,
-          "parent_net_profit": 34000,
-          "revenue": 253500
-        },
+        "as_of": "2026-08-04",
+        "issuer_fy_start_year": 2026,
+        "fy_end": "2027-03-31",
+        "unit": "JPY million",
+        "initial_disclosed": "2026-05-11",
         "H1_initial": {
+          "revenue": 230000,
           "operating_profit": 38000,
           "ordinary_profit": 37500,
-          "parent_net_profit": 23000,
-          "revenue": 230000
+          "parent_net_profit": 23000
         },
-        "as_of": "2026-08-04",
-        "capex_FY_current": {
-          "ceramics": 2000,
-          "electronics": 200000,
-          "other": 8000,
-          "total": 210000
+        "H1_current": {
+          "revenue": 253500,
+          "operating_profit": 54500,
+          "ordinary_profit": 54000,
+          "parent_net_profit": 34000
         },
-        "depreciation_amortization_FY_current": 81000,
-        "electronic_OP_bridge": {
-          "ASP_product_mix": 26500,
-          "FX": 2000,
-          "initial": 75000,
-          "productivity_improvement_JP_original": 3500,
-          "revised": 110000,
-          "volume": 3000
+        "FY_initial": {
+          "revenue": 500000,
+          "operating_profit": 90000,
+          "ordinary_profit": 90000,
+          "parent_net_profit": 58000
         },
-        "evidence": [
-          {
-            "note": "full/H1 four-metric revision table",
-            "pdf_page": 1,
-            "sha256": "ea2835b1b02c69ed9647e85db128bd394bb5a8b5e435774265421d2821bfd069",
-            "source_id": "gyousekishuusei2026Q1",
-            "text_path": "text/gyousekishuusei2026Q1.txt",
-            "url": "https://www.ibiden.com/ir/items/gyousekishuusei2026Q1.pdf"
-          },
-          {
-            "note": "Japanese original revision table",
-            "pdf_page": 1,
-            "sha256": "031f2cf70f6e722d055c1dfeb07770ead5f01288a54cce9b4de1abaf843db0c2",
-            "source_id": "140120260803507042",
-            "text_path": "text/140120260803507042.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/fe65e483/646a/4d19/aded/df116cbc0009/140120260803507042.pdf"
-          },
-          {
-            "note": "visually verified H1 segment bars and FX table; graphic values absent from pdftotext",
-            "pdf_page": 3,
-            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
-            "source_id": "en_kessannsetsumei2026Q1",
-            "text_path": "text/en_kessannsetsumei2026Q1.txt",
-            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf"
-          },
-          {
-            "note": "visually verified FY segment bars and FX table",
-            "pdf_page": 4,
-            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
-            "source_id": "en_kessannsetsumei2026Q1",
-            "text_path": "text/en_kessannsetsumei2026Q1.txt",
-            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf"
-          },
-          {
-            "note": "Japanese OP bridge: +35 億円 生産性改善; English translation label inconsistent",
-            "pdf_page": 5,
-            "sha256": "a6495354c3a3773697fc7f804ec98627fbb78f0e7ca870933c9bf06b7e7a6f94",
-            "source_id": "kessannsetsumei2026Q1",
-            "text_path": "text/kessannsetsumei2026Q1.txt",
-            "url": "https://www.ibiden.co.jp/ir/items/kessannsetsumei2026Q1.pdf"
-          },
-          {
-            "note": "annual capex, D\u0026A, current actuals and segment forecast table",
-            "pdf_page": 1,
-            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
-            "source_id": "140120260803507041",
-            "text_path": "text/140120260803507041.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf"
-          }
+        "FY_current": {
+          "revenue": 550000,
+          "operating_profit": 127000,
+          "ordinary_profit": 127000,
+          "parent_net_profit": 84000
+        },
+        "segments_H1_initial": {
+          "electronics": [
+            150000,
+            33000
+          ],
+          "ceramics": [
+            38000,
+            2500
+          ],
+          "other": [
+            42000,
+            2500
+          ]
+        },
+        "segments_H1_current": {
+          "electronics": [
+            168000,
+            47500
+          ],
+          "ceramics": [
+            43000,
+            3500
+          ],
+          "other": [
+            42500,
+            3500
+          ]
+        },
+        "segments_FY_initial": {
+          "electronics": [
+            330000,
+            75000
+          ],
+          "ceramics": [
+            80000,
+            6000
+          ],
+          "other": [
+            90000,
+            9000
+          ]
+        },
+        "segments_FY_current": {
+          "electronics": [
+            375000,
+            110000
+          ],
+          "ceramics": [
+            84000,
+            6500
+          ],
+          "other": [
+            91000,
+            10500
+          ]
+        },
+        "segment_pair_order": [
+          "revenue",
+          "segment_profit"
         ],
         "fx_jpy_per_usd_eur": {
-          "FY_current": [
-            152,
-            181
+          "Q1_actual": [
+            158,
+            183
           ],
-          "FY_initial": [
+          "H1_initial": [
             150,
             180
           ],
@@ -9678,118 +9572,224 @@ window.CMPD={
             154,
             182
           ],
-          "H1_initial": [
+          "FY_initial": [
             150,
             180
           ],
-          "Q1_actual": [
-            158,
-            183
+          "FY_current": [
+            152,
+            181
           ]
         },
-        "fy_end": "2027-03-31",
-        "initial_disclosed": "2026-05-11",
-        "issuer_fy_start_year": 2026,
-        "segment_pair_order": [
-          "revenue",
-          "segment_profit"
-        ],
-        "segments_FY_current": {
-          "ceramics": [
-            84000,
-            6500
-          ],
-          "electronics": [
-            375000,
-            110000
-          ],
-          "other": [
-            91000,
-            10500
-          ]
+        "capex_FY_current": {
+          "total": 210000,
+          "electronics": 200000,
+          "ceramics": 2000,
+          "other": 8000
         },
-        "segments_FY_initial": {
-          "ceramics": [
-            80000,
-            6000
-          ],
-          "electronics": [
-            330000,
-            75000
-          ],
-          "other": [
-            90000,
-            9000
-          ]
+        "depreciation_amortization_FY_current": 81000,
+        "electronic_OP_bridge": {
+          "initial": 75000,
+          "ASP_product_mix": 26500,
+          "volume": 3000,
+          "FX": 2000,
+          "productivity_improvement_JP_original": 3500,
+          "revised": 110000
         },
-        "segments_H1_current": {
-          "ceramics": [
-            43000,
-            3500
-          ],
-          "electronics": [
-            168000,
-            47500
-          ],
-          "other": [
-            42500,
-            3500
-          ]
-        },
-        "segments_H1_initial": {
-          "ceramics": [
-            38000,
-            2500
-          ],
-          "electronics": [
-            150000,
-            33000
-          ],
-          "other": [
-            42000,
-            2500
-          ]
-        },
-        "unit": "JPY million"
+        "evidence": [
+          {
+            "source_id": "gyousekishuusei2026Q1",
+            "url": "https://www.ibiden.com/ir/items/gyousekishuusei2026Q1.pdf",
+            "pdf_page": 1,
+            "text_path": "text/gyousekishuusei2026Q1.txt",
+            "sha256": "ea2835b1b02c69ed9647e85db128bd394bb5a8b5e435774265421d2821bfd069",
+            "note": "full/H1 four-metric revision table"
+          },
+          {
+            "source_id": "140120260803507042",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/fe65e483/646a/4d19/aded/df116cbc0009/140120260803507042.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260803507042.txt",
+            "sha256": "031f2cf70f6e722d055c1dfeb07770ead5f01288a54cce9b4de1abaf843db0c2",
+            "note": "Japanese original revision table"
+          },
+          {
+            "source_id": "en_kessannsetsumei2026Q1",
+            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf",
+            "pdf_page": 3,
+            "text_path": "text/en_kessannsetsumei2026Q1.txt",
+            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
+            "note": "visually verified H1 segment bars and FX table; graphic values absent from pdftotext"
+          },
+          {
+            "source_id": "en_kessannsetsumei2026Q1",
+            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf",
+            "pdf_page": 4,
+            "text_path": "text/en_kessannsetsumei2026Q1.txt",
+            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
+            "note": "visually verified FY segment bars and FX table"
+          },
+          {
+            "source_id": "kessannsetsumei2026Q1",
+            "url": "https://www.ibiden.co.jp/ir/items/kessannsetsumei2026Q1.pdf",
+            "pdf_page": 5,
+            "text_path": "text/kessannsetsumei2026Q1.txt",
+            "sha256": "a6495354c3a3773697fc7f804ec98627fbb78f0e7ca870933c9bf06b7e7a6f94",
+            "note": "Japanese OP bridge: +35 億円 生産性改善; English translation label inconsistent"
+          },
+          {
+            "source_id": "140120260803507041",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260803507041.txt",
+            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
+            "note": "annual capex, D\u0026A, current actuals and segment forecast table"
+          }
+        ]
       },
       "derived_guidance_remainders": {
-        "H2": {
-          "electronics_revenue": 207000,
-          "electronics_segment_profit": 62500,
-          "operating_profit": 72500,
-          "period_end": "2027-03-31",
-          "period_start": "2026-10-01",
-          "revenue": 296500
-        },
-        "Q2": {
-          "electronics_revenue": 90478,
-          "electronics_segment_profit": 26125,
-          "operating_profit": 27620,
-          "period_end": "2026-09-30",
-          "period_start": "2026-07-01",
-          "revenue": 130281
-        },
-        "operands": "Q2=current H1 guidance minus official Q1 actual; H2=current FY guidance minus current H1 guidance. No distribution of H2 into Q3/Q4 inferred.",
         "status": "arithmetic_only_not_new_company_standalone_guidance_or_model_forecast",
-        "unit": "JPY million"
+        "unit": "JPY million",
+        "Q2": {
+          "period_start": "2026-07-01",
+          "period_end": "2026-09-30",
+          "revenue": 130281,
+          "operating_profit": 27620,
+          "electronics_revenue": 90478,
+          "electronics_segment_profit": 26125
+        },
+        "H2": {
+          "period_start": "2026-10-01",
+          "period_end": "2027-03-31",
+          "revenue": 296500,
+          "operating_profit": 72500,
+          "electronics_revenue": 207000,
+          "electronics_segment_profit": 62500
+        },
+        "operands": "Q2=current H1 guidance minus official Q1 actual; H2=current FY guidance minus current H1 guidance. No distribution of H2 into Q3/Q4 inferred."
       },
+      "annual_guidance_vintages": [
+        {
+          "as_of": "2025-05-08",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 410000,
+          "annual_operating_profit": 48000,
+          "annual_ordinary_profit": 44000,
+          "annual_parent_net_profit": 28000,
+          "source": {
+            "source_id": "140120250425524332",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/315b0004/b736/4525/b647/1b24f18960a5/140120250425524332.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120250425524332.txt",
+            "sha256": "5da560cfc0354f21355a7ee0d2751906802852f97ba91ae7b3687906d0c01420",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2025-08-01",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 415000,
+          "annual_operating_profit": 55000,
+          "annual_ordinary_profit": 51000,
+          "annual_parent_net_profit": 34000,
+          "source": {
+            "source_id": "140120250731525400",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/0ba60856/1fcc/4768/98d7/78f23a52fb86/140120250731525400.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120250731525400.txt",
+            "sha256": "c204d0f08ee7a135a06d307fa2c0820f40c9bd72fabc2842579f378561958ed7",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2025-10-30",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 420000,
+          "annual_operating_profit": 61000,
+          "annual_ordinary_profit": 57000,
+          "annual_parent_net_profit": 37000,
+          "source": {
+            "source_id": "140120251029581128",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/27ce3efe/c3e6/4f8d/82ba/57462a9dc9e1/140120251029581128.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120251029581128.txt",
+            "sha256": "c24bd5958fd4e7cbbba17ad7c685d4fd0784b278d00b7a764fab14306c9970f8",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2026-02-03",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 420000,
+          "annual_operating_profit": 61000,
+          "annual_ordinary_profit": 57000,
+          "annual_parent_net_profit": 37000,
+          "source": {
+            "source_id": "140120260202544766",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/c1c26eb8/c0b1/4005/bca3/e1dcedab6ee9/140120260202544766.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260202544766.txt",
+            "sha256": "386f5a7113bb2512d8eea9bcf3abc005359cfa470bb38b30383962f2e746f9c6",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": "2026-02-03 consolidated full-year guidance unchanged, although Electronics revenue/OP lowered from 255000/48000 to 250000/46500."
+        },
+        {
+          "as_of": "2026-05-11",
+          "issuer_fy_start_year": 2026,
+          "annual_revenue": 500000,
+          "annual_operating_profit": 90000,
+          "annual_ordinary_profit": 90000,
+          "annual_parent_net_profit": 58000,
+          "source": {
+            "source_id": "140120260505517291",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/e3777744/eb13/41f0/8a69/68edaa9e6228/140120260505517291.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260505517291.txt",
+            "sha256": "d739979faaa1009b22ce6105e74922b3389dd4c7e05ebfe77cac6568aa1efd89",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2026-08-04",
+          "issuer_fy_start_year": 2026,
+          "annual_revenue": 550000,
+          "annual_operating_profit": 127000,
+          "annual_ordinary_profit": 127000,
+          "annual_parent_net_profit": 84000,
+          "source": {
+            "source_id": "140120260803507041",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260803507041.txt",
+            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        }
+      ],
       "next_reporting_period": {
-        "checked_on": "2026-09-24",
+        "issuer_fy_start_year": 2026,
+        "fiscal_quarter": 2,
+        "standalone_start": "2026-07-01",
+        "standalone_end": "2026-09-30",
+        "reporting_cumulative_start": "2026-04-01",
+        "reporting_cumulative_end": "2026-09-30",
+        "japanese_label": "2027年3月期 第2四半期（中間期）",
         "earnings_date": null,
         "earnings_date_status": "TBD",
         "evidence_urls": [
           "https://www.ibiden.com/ir/calendar/",
           "https://www.ibiden.co.jp/ir/calendar/"
         ],
-        "fiscal_quarter": 2,
-        "issuer_fy_start_year": 2026,
-        "japanese_label": "2027年3月期 第2四半期（中間期）",
-        "note": "Both official calendars list latest Q1 results August 4, 2026; no exact next interim announcement date found. Aug 5 is the presentation event, not earnings release date.",
-        "reporting_cumulative_end": "2026-09-30",
-        "reporting_cumulative_start": "2026-04-01",
-        "standalone_end": "2026-09-30",
-        "standalone_start": "2026-07-01"
-      }
+        "checked_on": "2026-09-24",
+        "note": "Both official calendars list latest Q1 results August 4, 2026; no exact next interim announcement date found. Aug 5 is the presentation event, not earnings release date."
+      },
+      "FX_sensitivity": "No explicit per-1-yen forward sensitivity found in the reviewed current/prior Q\u0026A and presentations. Disclosed +2000m FX bridge is a historical forecast revision attribution, not a general elasticity."
     },
     "proxy_coverage": null,
     "currency": "JPY",
@@ -10085,8 +10085,8 @@ window.CMPD={
         "Q2_arithmetic": {
           "period_start": "2026-07-01",
           "period_end": "2026-09-30",
-          "revenue": 130281,
-          "operating_profit": 27620,
+          "revenue": 130281.0,
+          "operating_profit": 27620.0,
           "electronics_revenue": 90478,
           "electronics_segment_profit": 26125
         },
@@ -10363,8 +10363,8 @@ window.CMPD={
               "operating_profit": 55608.44708274219
             },
             "guide_implied_Q2_non_electronics": {
-              "revenue": 39803,
-              "operating_profit": 1495
+              "revenue": 39803.0,
+              "operating_profit": 1495.0
             },
             "history_segment_Q2_non_electronics": {
               "revenue": 45915.9457379404,
@@ -10424,209 +10424,103 @@ window.CMPD={
     },
     "target_period_end": "2026-09-30",
     "official_guidance": {
-      "FX_sensitivity": "No explicit per-1-yen forward sensitivity found in the reviewed current/prior Q\u0026A and presentations. Disclosed +2000m FX bridge is a historical forecast revision attribution, not a general elasticity.",
-      "annual_guidance_vintages": [
-        {
-          "annual_operating_profit": 48000,
-          "annual_ordinary_profit": 44000,
-          "annual_parent_net_profit": 28000,
-          "annual_revenue": 410000,
-          "as_of": "2025-05-08",
-          "issuer_fy_start_year": 2025,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "5da560cfc0354f21355a7ee0d2751906802852f97ba91ae7b3687906d0c01420",
-            "source_id": "140120250425524332",
-            "text_path": "text/140120250425524332.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/315b0004/b736/4525/b647/1b24f18960a5/140120250425524332.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 55000,
-          "annual_ordinary_profit": 51000,
-          "annual_parent_net_profit": 34000,
-          "annual_revenue": 415000,
-          "as_of": "2025-08-01",
-          "issuer_fy_start_year": 2025,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "c204d0f08ee7a135a06d307fa2c0820f40c9bd72fabc2842579f378561958ed7",
-            "source_id": "140120250731525400",
-            "text_path": "text/140120250731525400.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/0ba60856/1fcc/4768/98d7/78f23a52fb86/140120250731525400.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 61000,
-          "annual_ordinary_profit": 57000,
-          "annual_parent_net_profit": 37000,
-          "annual_revenue": 420000,
-          "as_of": "2025-10-30",
-          "issuer_fy_start_year": 2025,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "c24bd5958fd4e7cbbba17ad7c685d4fd0784b278d00b7a764fab14306c9970f8",
-            "source_id": "140120251029581128",
-            "text_path": "text/140120251029581128.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/27ce3efe/c3e6/4f8d/82ba/57462a9dc9e1/140120251029581128.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 61000,
-          "annual_ordinary_profit": 57000,
-          "annual_parent_net_profit": 37000,
-          "annual_revenue": 420000,
-          "as_of": "2026-02-03",
-          "issuer_fy_start_year": 2025,
-          "note": "2026-02-03 consolidated full-year guidance unchanged, although Electronics revenue/OP lowered from 255000/48000 to 250000/46500.",
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "386f5a7113bb2512d8eea9bcf3abc005359cfa470bb38b30383962f2e746f9c6",
-            "source_id": "140120260202544766",
-            "text_path": "text/140120260202544766.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/c1c26eb8/c0b1/4005/bca3/e1dcedab6ee9/140120260202544766.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 90000,
-          "annual_ordinary_profit": 90000,
-          "annual_parent_net_profit": 58000,
-          "annual_revenue": 500000,
-          "as_of": "2026-05-11",
-          "issuer_fy_start_year": 2026,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "d739979faaa1009b22ce6105e74922b3389dd4c7e05ebfe77cac6568aa1efd89",
-            "source_id": "140120260505517291",
-            "text_path": "text/140120260505517291.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/e3777744/eb13/41f0/8a69/68edaa9e6228/140120260505517291.pdf"
-          }
-        },
-        {
-          "annual_operating_profit": 127000,
-          "annual_ordinary_profit": 127000,
-          "annual_parent_net_profit": 84000,
-          "annual_revenue": 550000,
-          "as_of": "2026-08-04",
-          "issuer_fy_start_year": 2026,
-          "note": null,
-          "source": {
-            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text",
-            "pdf_page": 1,
-            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
-            "source_id": "140120260803507041",
-            "text_path": "text/140120260803507041.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf"
-          }
-        }
-      ],
       "as_of": "2026-09-24",
       "current": {
-        "FY_current": {
-          "operating_profit": 127000,
-          "ordinary_profit": 127000,
-          "parent_net_profit": 84000,
-          "revenue": 550000
-        },
-        "FY_initial": {
-          "operating_profit": 90000,
-          "ordinary_profit": 90000,
-          "parent_net_profit": 58000,
-          "revenue": 500000
-        },
-        "H1_current": {
-          "operating_profit": 54500,
-          "ordinary_profit": 54000,
-          "parent_net_profit": 34000,
-          "revenue": 253500
-        },
+        "as_of": "2026-08-04",
+        "issuer_fy_start_year": 2026,
+        "fy_end": "2027-03-31",
+        "unit": "JPY million",
+        "initial_disclosed": "2026-05-11",
         "H1_initial": {
+          "revenue": 230000,
           "operating_profit": 38000,
           "ordinary_profit": 37500,
-          "parent_net_profit": 23000,
-          "revenue": 230000
+          "parent_net_profit": 23000
         },
-        "as_of": "2026-08-04",
-        "capex_FY_current": {
-          "ceramics": 2000,
-          "electronics": 200000,
-          "other": 8000,
-          "total": 210000
+        "H1_current": {
+          "revenue": 253500,
+          "operating_profit": 54500,
+          "ordinary_profit": 54000,
+          "parent_net_profit": 34000
         },
-        "depreciation_amortization_FY_current": 81000,
-        "electronic_OP_bridge": {
-          "ASP_product_mix": 26500,
-          "FX": 2000,
-          "initial": 75000,
-          "productivity_improvement_JP_original": 3500,
-          "revised": 110000,
-          "volume": 3000
+        "FY_initial": {
+          "revenue": 500000,
+          "operating_profit": 90000,
+          "ordinary_profit": 90000,
+          "parent_net_profit": 58000
         },
-        "evidence": [
-          {
-            "note": "full/H1 four-metric revision table",
-            "pdf_page": 1,
-            "sha256": "ea2835b1b02c69ed9647e85db128bd394bb5a8b5e435774265421d2821bfd069",
-            "source_id": "gyousekishuusei2026Q1",
-            "text_path": "text/gyousekishuusei2026Q1.txt",
-            "url": "https://www.ibiden.com/ir/items/gyousekishuusei2026Q1.pdf"
-          },
-          {
-            "note": "Japanese original revision table",
-            "pdf_page": 1,
-            "sha256": "031f2cf70f6e722d055c1dfeb07770ead5f01288a54cce9b4de1abaf843db0c2",
-            "source_id": "140120260803507042",
-            "text_path": "text/140120260803507042.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/fe65e483/646a/4d19/aded/df116cbc0009/140120260803507042.pdf"
-          },
-          {
-            "note": "visually verified H1 segment bars and FX table; graphic values absent from pdftotext",
-            "pdf_page": 3,
-            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
-            "source_id": "en_kessannsetsumei2026Q1",
-            "text_path": "text/en_kessannsetsumei2026Q1.txt",
-            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf"
-          },
-          {
-            "note": "visually verified FY segment bars and FX table",
-            "pdf_page": 4,
-            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
-            "source_id": "en_kessannsetsumei2026Q1",
-            "text_path": "text/en_kessannsetsumei2026Q1.txt",
-            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf"
-          },
-          {
-            "note": "Japanese OP bridge: +35 億円 生産性改善; English translation label inconsistent",
-            "pdf_page": 5,
-            "sha256": "a6495354c3a3773697fc7f804ec98627fbb78f0e7ca870933c9bf06b7e7a6f94",
-            "source_id": "kessannsetsumei2026Q1",
-            "text_path": "text/kessannsetsumei2026Q1.txt",
-            "url": "https://www.ibiden.co.jp/ir/items/kessannsetsumei2026Q1.pdf"
-          },
-          {
-            "note": "annual capex, D\u0026A, current actuals and segment forecast table",
-            "pdf_page": 1,
-            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
-            "source_id": "140120260803507041",
-            "text_path": "text/140120260803507041.txt",
-            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf"
-          }
+        "FY_current": {
+          "revenue": 550000,
+          "operating_profit": 127000,
+          "ordinary_profit": 127000,
+          "parent_net_profit": 84000
+        },
+        "segments_H1_initial": {
+          "electronics": [
+            150000,
+            33000
+          ],
+          "ceramics": [
+            38000,
+            2500
+          ],
+          "other": [
+            42000,
+            2500
+          ]
+        },
+        "segments_H1_current": {
+          "electronics": [
+            168000,
+            47500
+          ],
+          "ceramics": [
+            43000,
+            3500
+          ],
+          "other": [
+            42500,
+            3500
+          ]
+        },
+        "segments_FY_initial": {
+          "electronics": [
+            330000,
+            75000
+          ],
+          "ceramics": [
+            80000,
+            6000
+          ],
+          "other": [
+            90000,
+            9000
+          ]
+        },
+        "segments_FY_current": {
+          "electronics": [
+            375000,
+            110000
+          ],
+          "ceramics": [
+            84000,
+            6500
+          ],
+          "other": [
+            91000,
+            10500
+          ]
+        },
+        "segment_pair_order": [
+          "revenue",
+          "segment_profit"
         ],
         "fx_jpy_per_usd_eur": {
-          "FY_current": [
-            152,
-            181
+          "Q1_actual": [
+            158,
+            183
           ],
-          "FY_initial": [
+          "H1_initial": [
             150,
             180
           ],
@@ -10634,118 +10528,224 @@ window.CMPD={
             154,
             182
           ],
-          "H1_initial": [
+          "FY_initial": [
             150,
             180
           ],
-          "Q1_actual": [
-            158,
-            183
+          "FY_current": [
+            152,
+            181
           ]
         },
-        "fy_end": "2027-03-31",
-        "initial_disclosed": "2026-05-11",
-        "issuer_fy_start_year": 2026,
-        "segment_pair_order": [
-          "revenue",
-          "segment_profit"
-        ],
-        "segments_FY_current": {
-          "ceramics": [
-            84000,
-            6500
-          ],
-          "electronics": [
-            375000,
-            110000
-          ],
-          "other": [
-            91000,
-            10500
-          ]
+        "capex_FY_current": {
+          "total": 210000,
+          "electronics": 200000,
+          "ceramics": 2000,
+          "other": 8000
         },
-        "segments_FY_initial": {
-          "ceramics": [
-            80000,
-            6000
-          ],
-          "electronics": [
-            330000,
-            75000
-          ],
-          "other": [
-            90000,
-            9000
-          ]
+        "depreciation_amortization_FY_current": 81000,
+        "electronic_OP_bridge": {
+          "initial": 75000,
+          "ASP_product_mix": 26500,
+          "volume": 3000,
+          "FX": 2000,
+          "productivity_improvement_JP_original": 3500,
+          "revised": 110000
         },
-        "segments_H1_current": {
-          "ceramics": [
-            43000,
-            3500
-          ],
-          "electronics": [
-            168000,
-            47500
-          ],
-          "other": [
-            42500,
-            3500
-          ]
-        },
-        "segments_H1_initial": {
-          "ceramics": [
-            38000,
-            2500
-          ],
-          "electronics": [
-            150000,
-            33000
-          ],
-          "other": [
-            42000,
-            2500
-          ]
-        },
-        "unit": "JPY million"
+        "evidence": [
+          {
+            "source_id": "gyousekishuusei2026Q1",
+            "url": "https://www.ibiden.com/ir/items/gyousekishuusei2026Q1.pdf",
+            "pdf_page": 1,
+            "text_path": "text/gyousekishuusei2026Q1.txt",
+            "sha256": "ea2835b1b02c69ed9647e85db128bd394bb5a8b5e435774265421d2821bfd069",
+            "note": "full/H1 four-metric revision table"
+          },
+          {
+            "source_id": "140120260803507042",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/fe65e483/646a/4d19/aded/df116cbc0009/140120260803507042.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260803507042.txt",
+            "sha256": "031f2cf70f6e722d055c1dfeb07770ead5f01288a54cce9b4de1abaf843db0c2",
+            "note": "Japanese original revision table"
+          },
+          {
+            "source_id": "en_kessannsetsumei2026Q1",
+            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf",
+            "pdf_page": 3,
+            "text_path": "text/en_kessannsetsumei2026Q1.txt",
+            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
+            "note": "visually verified H1 segment bars and FX table; graphic values absent from pdftotext"
+          },
+          {
+            "source_id": "en_kessannsetsumei2026Q1",
+            "url": "https://www.ibiden.com/ir/items/en_kessannsetsumei2026Q1.pdf",
+            "pdf_page": 4,
+            "text_path": "text/en_kessannsetsumei2026Q1.txt",
+            "sha256": "179c089d54dbda376ebcdccd06ce0d950afb0f4135a568f036e95c95038942cd",
+            "note": "visually verified FY segment bars and FX table"
+          },
+          {
+            "source_id": "kessannsetsumei2026Q1",
+            "url": "https://www.ibiden.co.jp/ir/items/kessannsetsumei2026Q1.pdf",
+            "pdf_page": 5,
+            "text_path": "text/kessannsetsumei2026Q1.txt",
+            "sha256": "a6495354c3a3773697fc7f804ec98627fbb78f0e7ca870933c9bf06b7e7a6f94",
+            "note": "Japanese OP bridge: +35 億円 生産性改善; English translation label inconsistent"
+          },
+          {
+            "source_id": "140120260803507041",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260803507041.txt",
+            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
+            "note": "annual capex, D\u0026A, current actuals and segment forecast table"
+          }
+        ]
       },
       "derived_guidance_remainders": {
-        "H2": {
-          "electronics_revenue": 207000,
-          "electronics_segment_profit": 62500,
-          "operating_profit": 72500,
-          "period_end": "2027-03-31",
-          "period_start": "2026-10-01",
-          "revenue": 296500
-        },
-        "Q2": {
-          "electronics_revenue": 90478,
-          "electronics_segment_profit": 26125,
-          "operating_profit": 27620,
-          "period_end": "2026-09-30",
-          "period_start": "2026-07-01",
-          "revenue": 130281
-        },
-        "operands": "Q2=current H1 guidance minus official Q1 actual; H2=current FY guidance minus current H1 guidance. No distribution of H2 into Q3/Q4 inferred.",
         "status": "arithmetic_only_not_new_company_standalone_guidance_or_model_forecast",
-        "unit": "JPY million"
+        "unit": "JPY million",
+        "Q2": {
+          "period_start": "2026-07-01",
+          "period_end": "2026-09-30",
+          "revenue": 130281,
+          "operating_profit": 27620,
+          "electronics_revenue": 90478,
+          "electronics_segment_profit": 26125
+        },
+        "H2": {
+          "period_start": "2026-10-01",
+          "period_end": "2027-03-31",
+          "revenue": 296500,
+          "operating_profit": 72500,
+          "electronics_revenue": 207000,
+          "electronics_segment_profit": 62500
+        },
+        "operands": "Q2=current H1 guidance minus official Q1 actual; H2=current FY guidance minus current H1 guidance. No distribution of H2 into Q3/Q4 inferred."
       },
+      "annual_guidance_vintages": [
+        {
+          "as_of": "2025-05-08",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 410000,
+          "annual_operating_profit": 48000,
+          "annual_ordinary_profit": 44000,
+          "annual_parent_net_profit": 28000,
+          "source": {
+            "source_id": "140120250425524332",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/315b0004/b736/4525/b647/1b24f18960a5/140120250425524332.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120250425524332.txt",
+            "sha256": "5da560cfc0354f21355a7ee0d2751906802852f97ba91ae7b3687906d0c01420",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2025-08-01",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 415000,
+          "annual_operating_profit": 55000,
+          "annual_ordinary_profit": 51000,
+          "annual_parent_net_profit": 34000,
+          "source": {
+            "source_id": "140120250731525400",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/0ba60856/1fcc/4768/98d7/78f23a52fb86/140120250731525400.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120250731525400.txt",
+            "sha256": "c204d0f08ee7a135a06d307fa2c0820f40c9bd72fabc2842579f378561958ed7",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2025-10-30",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 420000,
+          "annual_operating_profit": 61000,
+          "annual_ordinary_profit": 57000,
+          "annual_parent_net_profit": 37000,
+          "source": {
+            "source_id": "140120251029581128",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/27ce3efe/c3e6/4f8d/82ba/57462a9dc9e1/140120251029581128.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120251029581128.txt",
+            "sha256": "c24bd5958fd4e7cbbba17ad7c685d4fd0784b278d00b7a764fab14306c9970f8",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2026-02-03",
+          "issuer_fy_start_year": 2025,
+          "annual_revenue": 420000,
+          "annual_operating_profit": 61000,
+          "annual_ordinary_profit": 57000,
+          "annual_parent_net_profit": 37000,
+          "source": {
+            "source_id": "140120260202544766",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/c1c26eb8/c0b1/4005/bca3/e1dcedab6ee9/140120260202544766.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260202544766.txt",
+            "sha256": "386f5a7113bb2512d8eea9bcf3abc005359cfa470bb38b30383962f2e746f9c6",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": "2026-02-03 consolidated full-year guidance unchanged, although Electronics revenue/OP lowered from 255000/48000 to 250000/46500."
+        },
+        {
+          "as_of": "2026-05-11",
+          "issuer_fy_start_year": 2026,
+          "annual_revenue": 500000,
+          "annual_operating_profit": 90000,
+          "annual_ordinary_profit": 90000,
+          "annual_parent_net_profit": 58000,
+          "source": {
+            "source_id": "140120260505517291",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/e3777744/eb13/41f0/8a69/68edaa9e6228/140120260505517291.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260505517291.txt",
+            "sha256": "d739979faaa1009b22ce6105e74922b3389dd4c7e05ebfe77cac6568aa1efd89",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        },
+        {
+          "as_of": "2026-08-04",
+          "issuer_fy_start_year": 2026,
+          "annual_revenue": 550000,
+          "annual_operating_profit": 127000,
+          "annual_ordinary_profit": 127000,
+          "annual_parent_net_profit": 84000,
+          "source": {
+            "source_id": "140120260803507041",
+            "url": "https://contents.xj-storage.jp/xcontents/AS00538/797efe71/f97b/43d5/ace7/3a4295e47d28/140120260803507041.pdf",
+            "pdf_page": 1,
+            "text_path": "text/140120260803507041.txt",
+            "sha256": "29f0682c76cde06f7668daa0e4614edb29ee99b652c9a3712d2c301f40bebf72",
+            "note": "current/next full-year forecast column; prior/current actual columns retained in primary text"
+          },
+          "note": null
+        }
+      ],
       "next_reporting_period": {
-        "checked_on": "2026-09-24",
+        "issuer_fy_start_year": 2026,
+        "fiscal_quarter": 2,
+        "standalone_start": "2026-07-01",
+        "standalone_end": "2026-09-30",
+        "reporting_cumulative_start": "2026-04-01",
+        "reporting_cumulative_end": "2026-09-30",
+        "japanese_label": "2027年3月期 第2四半期（中間期）",
         "earnings_date": null,
         "earnings_date_status": "TBD",
         "evidence_urls": [
           "https://www.ibiden.com/ir/calendar/",
           "https://www.ibiden.co.jp/ir/calendar/"
         ],
-        "fiscal_quarter": 2,
-        "issuer_fy_start_year": 2026,
-        "japanese_label": "2027年3月期 第2四半期（中間期）",
-        "note": "Both official calendars list latest Q1 results August 4, 2026; no exact next interim announcement date found. Aug 5 is the presentation event, not earnings release date.",
-        "reporting_cumulative_end": "2026-09-30",
-        "reporting_cumulative_start": "2026-04-01",
-        "standalone_end": "2026-09-30",
-        "standalone_start": "2026-07-01"
-      }
+        "checked_on": "2026-09-24",
+        "note": "Both official calendars list latest Q1 results August 4, 2026; no exact next interim announcement date found. Aug 5 is the presentation event, not earnings release date."
+      },
+      "FX_sensitivity": "No explicit per-1-yen forward sensitivity found in the reviewed current/prior Q\u0026A and presentations. Disclosed +2000m FX bridge is a historical forecast revision attribution, not a general elasticity."
     },
     "proxy_coverage": null,
     "currency": "JPY",
@@ -11041,8 +11041,8 @@ window.CMPD={
         "Q2_arithmetic": {
           "period_start": "2026-07-01",
           "period_end": "2026-09-30",
-          "revenue": 130281,
-          "operating_profit": 27620,
+          "revenue": 130281.0,
+          "operating_profit": 27620.0,
           "electronics_revenue": 90478,
           "electronics_segment_profit": 26125
         },
@@ -11319,8 +11319,8 @@ window.CMPD={
               "operating_profit": 55608.44708274219
             },
             "guide_implied_Q2_non_electronics": {
-              "revenue": 39803,
-              "operating_profit": 1495
+              "revenue": 39803.0,
+              "operating_profit": 1495.0
             },
             "history_segment_Q2_non_electronics": {
               "revenue": 45915.9457379404,

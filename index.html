@@ -1790,7 +1790,470 @@ function renderRackV2(){
  document.getElementById('rkCsv').onclick=()=>scDownload([['company','ticker','scope','period','sales_NTD_thousand','3m_yoy','acceleration_pp','issues','source'],...cs.map(c=>[c.id,c.ticker,c.scope,c.monthly?.period,c.monthly?.value,c.monthly?.yoy_3m,c.monthly?.acceleration_pp,c.issues.join(' / '),c.ir])],'rack-observatory.csv');
 }
 
+/* Shared tone/reaction renderer. Chart.js is optional; the evidence table is not. */
+(function (root) {
+  'use strict';
+  if (root.ToneReactionUI) return; // Builders may inline this module more than once.
+  const keys = ['actual_tone', 'predicted_tone', 'open_reaction', 'close_reaction'];
+  const labels = ['회사 상대 실제 가이던스·콜 톤 (회고)', '회사 상대 사전 예상 톤 (동결·점선)',
+    '첫 정규장 시가 반응 (IV·시총 조건)', '같은 정규장 종가 반응 (IV·시총 조건)'];
+  const colors = ['#59d0a8', '#c69bff', '#59a9ff', '#f6b854'];
+  const shapes = ['circle', 'triangle', 'rectRot', 'rect'];
+  const live = new Map();
+  let serial = 0, observer;
+  const text = value => value == null ? '—' : String(value).slice(0, 16000);
+  const list = value => Array.isArray(value) ? value : [];
+  const number = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const displayNumber = value => number(value) == null ? '—' : Number(value.toFixed(2)).toLocaleString('ko-KR');
+  const grade = value => Number.isInteger(value) && value >= 1 && value <= 5 ? value : null;
+  const core = ['demand', 'execution', 'management_qa'];
+  const dimensionNames = {demand: '수요', execution: '실행', management_qa: '경영진 Q&A', numeric_guidance: '숫자 가이던스'};
+  const reasonNames = {incomplete_core_dimensions: '수요·실행·경영진 Q&A 근거가 모두 갖춰지지 않음',
+    insufficient_current_company_sample: '현재 회사별 비교 표본 부족', insufficient_company_history: '회사 과거 표본 부족',
+    evidence_availability_unknown: '당시 출처 이용 가능 시각 미확인', tone_availability_unknown: '톤 근거 시점 미확인',
+    actual_review_not_available_as_of: '기준 시점에 확인된 실제 검토 없음', review_not_available_as_of: '검토 시각이 평가 기준 이후',
+    missing_iv: '발표 전 내재변동성 없음', missing_market_cap: '발표 전 시가총액 없음',
+    missing_market: '시장 반응 근거 없음', exact_release_time_required: '정확한 실적 발표 시각 필요',
+    insufficient_market_peers: '시장 반응 비교 표본 부족', missing_market_sources: '시장 출처 부족',
+    numeric_guidance_not_assessed: '숫자 가이던스 비교 미평가', outcome_not_available_as_of: '평가 기준 이후 확인된 가격',
+    current_row_missing: '현재 척도의 해당 사건 근거 없음', series_input_missing: '해당 선의 입력 없음',
+    predicted_event_has_no_observed_reaction: '예상 사건의 실제 주가 반응 없음',
+    predicted_tone_input_missing: '발표 전 동결된 예상 톤 없음', no_events: '사건 입력 없음'};
+  const reasons = value => list(value).map(v => reasonNames[v] ? reasonNames[v] + ' (' + v + ')' : text(v)).join(' · ') || '—';
+  const stateName = value => ({held: '보류', provisional_retrospective: '잠정 회고척도',
+    provisional_descriptive: '잠정 상대척도', established_descriptive: '상대척도'})[value] || text(value || 'held');
+  const signed = value => Number.isInteger(value) && value >= -2 && value <= 2 ? (value > 0 ? '+' : '') + value : '미평가';
+  const human = value => text(value).replace(/\b(numeric_guidance|management_qa|execution|demand):/g, (_, k) => dimensionNames[k] + ':');
+  const currentScale = data => data && data.descriptive_current_scale && typeof data.descriptive_current_scale === 'object' &&
+    !Array.isArray(data.descriptive_current_scale) ? data.descriptive_current_scale : null;
+  const modeFor = (data, request) => currentScale(data) && (typeof request === 'string' ? request : request && request.mode) !== 'strict' ? 'current' : 'strict';
+  const activeLabels = mode => labels.map((v, i) => i === 0 && mode === 'current' ? '현재 회사상대 실제 톤 (잠정·3요소)' : v);
+  function currentRow(data, id) {
+    return list((currentScale(data) || {}).events).find(e => e && e.event_id === id && e.status === 'actual') ||
+      {event_id: id, status: 'actual', scale_status: 'held', missing_reasons: ['current_row_missing']};
+  }
+  function dimensionsLine(row, isCurrent) {
+    const dims = row.dimensions || {};
+    const numerical = isCurrent ? row.numeric_guidance || {} : {rating: dims.numeric_guidance};
+    return core.map(k => dimensionNames[k] + ' ' + signed(dims[k])).join(' / ') + ' · 원시 평가 −2~+2' +
+      ' · 숫자 가이던스 ' + signed(numerical.rating) + (isCurrent ? ' (별도·3요소 척도 제외)' : '');
+  }
+
+  function safeURL(value) {
+    if (typeof value !== 'string' || value.length > 2048 || /[\s\\\x00-\x1f]/.test(value)) return null;
+    try {
+      const u = new URL(value), rawPath = value.match(/^https?:\/\/[^/?#]+([^?#]*)/i);
+      if (!/^https?:$/.test(u.protocol) || u.username || u.password || u.hash || u.port) return null;
+      const h = u.hostname.toLowerCase();
+      if (!h.includes('.') || /(?:\.local|\.internal|\.localhost)$/.test(h) || /[:\[\]]/.test(h) || /^[\d.]+$/.test(h)) return null;
+      if (!h.split('.').every(s => /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/.test(s))) return null;
+      if (u.search) {
+        if (u.protocol !== 'https:' || !rawPath || rawPath[1] !== u.pathname || value.includes('#')) return null;
+        const rawParts = u.search.slice(1).split('&');
+        if (rawParts.some(p => !p || !p.includes('='))) return null;
+        const pairs = Array.from(u.searchParams.entries()), params = Object.fromEntries(pairs);
+        if (new Set(pairs.map(p => p[0])).size !== pairs.length) return null;
+        const yahoo = h === 'query1.finance.yahoo.com' && /^\/v8\/finance\/chart\/[A-Za-z0-9][A-Za-z0-9.-]{0,31}$/.test(u.pathname) &&
+          !u.pathname.includes('..') && pairs.length === 3 && ['2y', '10y'].includes(params.range) && params.interval === '1d' && params.events === 'div,splits';
+        const xj = h === 'www.xj-storage.jp' && u.pathname === '/public-list/GetList.aspx' && pairs.length === 4 &&
+          /^AS[0-9]{5}$/.test(params.company || '') && params.scheme === '2' && params.len === '10000' && params.output === 'json';
+        const ifis = h === 'kabuyoho.jp' && u.pathname === '/sp/reportAnalyst' && pairs.length === 1 && params.bcode === '4062';
+        return yahoo || xj || ifis ? value : null;
+      }
+      return u.href;
+    } catch (_) { return null; }
+  }
+  function el(tag, value, parent) {
+    const node = document.createElement(tag);
+    if (value != null) node.textContent = text(value);
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+  function styles() {
+    if (document.getElementById('tone-reaction-style')) return;
+    const node = el('style'); node.id = 'tone-reaction-style';
+    node.textContent = '.tr-card{padding:16px;margin:14px 0;border:1px solid var(--line,#354052);border-radius:10px;color:var(--ink,#dce3f0);background:var(--card,transparent);font:13px/1.6 system-ui,sans-serif}.tr-card{min-width:0;overflow-wrap:anywhere}.tr-card h3{margin:0 0 8px}.tr-card p{margin:6px 0}.tr-chart{height:310px;position:relative}.tr-scroll{overflow:auto;max-height:620px}.tr-card table{border-collapse:collapse;width:100%;min-width:780px;font-size:12px}.tr-card td,.tr-card th{border:1px solid var(--line,#354052);padding:7px;vertical-align:top;text-align:left}.tr-card caption{text-align:left;font-weight:600;padding:6px}.tr-card a{color:var(--blue,#59a9ff);overflow-wrap:anywhere}.tr-card pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:900px}.tr-card summary{cursor:pointer}.tr-card small{display:block}.tr-state{font-weight:600}.tr-card details{margin:5px 0}.tr-mode{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}.tr-mode select{font:inherit;padding:6px;border-radius:6px;background:var(--card,#17202c);color:inherit;border:1px solid var(--line,#354052)}.tr-mode-note{padding:10px;border-left:3px solid #59d0a8}.tr-evidence{min-width:280px}.tr-evidence p{margin:5px 0}.tr-numeric{font-weight:600}';
+    document.head.appendChild(node);
+  }
+  function records(data) {
+    const found = new Map();
+    list(data.events).forEach(e => {
+      if (e && typeof e.event_id === 'string' && ['actual', 'predicted'].includes(e.status)) {
+        found.set(e.event_id + '|' + e.status, e);
+      }
+    });
+    return found;
+  }
+  function axis(data) {
+    return list(data.event_order).map(id => {
+      const first = keys.map(key => list((data.series || {})[key]).find(p => p.event_id === id)).find(Boolean);
+      return {id, date: first && first.date};
+    });
+  }
+  function point(data, key, id, mode) {
+    const series = mode === 'current' && key === 'actual_tone' ? (currentScale(data) || {}).series : (data.series || {})[key];
+    return list(series).find(p => p && p.event_id === id) ||
+      {value: null, missing_reasons: ['series_input_missing']};
+  }
+  function rowFor(event, key) {
+    if (!event) return {};
+    return key.endsWith('_tone') ? (event.tone || {}) : ((event.reaction || {})[key.split('_')[0]] || {});
+  }
+  function reference(row, data, isCurrent) {
+    if (isCurrent) {
+      const scale = currentScale(data) || {};
+      return '현재 회사표본 n=' + text(number(scale.n) || 0) + ' / 최소 ' + text(scale.minimum_n) +
+        ' · ' + stateName(row.scale_status || scale.scale_status) + ' · 기준 UTC ' + text(scale.as_of);
+    }
+    const ref = row.reference || {};
+    return '척도 ' + stateName(row.scale_status) + ' · 과거 n=' + text(ref.n || 0) +
+      ' / 회사=' + text(ref.company_n || 0) + ' / 자사=' + text(ref.own_company_n || 0) +
+      ' · 기준 ' + text(ref.cutoff) + ' (' + text(ref.cutoff_mode) + ')';
+  }
+  function tooltipLines(data, key, id, mode) {
+    const isCurrent = mode === 'current' && key === 'actual_tone';
+    const status = key === 'predicted_tone' ? 'predicted' : 'actual';
+    const event = isCurrent ? currentRow(data, id) : records(data).get(id + '|' + status);
+    const row = isCurrent ? event : rowFor(event, key);
+    const lines = [reference(row, data, isCurrent), '보류 사유: ' + reasons(point(data, key, id, mode).missing_reasons)];
+    if (key.endsWith('_tone')) {
+      lines.push(dimensionsLine(row, isCurrent));
+      lines.push((isCurrent ? '동일 가중 3요소 평균: ' : '원시 평균: ') + displayNumber(row.aggregate));
+      if (row.rationale) lines.push('평가 근거: ' + human(row.rationale));
+      if (event) lines.push(isCurrent ? '현재 검토 UTC: ' + text(row.reviewed_at) : '예측 동결: ' + text(event.prediction_as_of));
+    } else {
+      lines.push('원시 수익률: ' + displayNumber(row.raw_return_pct) + '% · 콜 전후: ' + callPhase(row.call_phase));
+      lines.push('IV 정규화: ' + text(row.normalization) + ' · 발표 전 시총: ' + text((row.market_cap || {}).value));
+    }
+    list(event && event.sources).forEach(source => {
+      const url = source.verified === true && safeURL(source.url);
+      if (url) lines.push('출처 ' + text(source.source_id) + ': ' + url + ' · ' + text(source.locator));
+    });
+    return lines;
+  }
+  function callPhase(value) {
+    return ({before_call_end: '콜 종료 전', after_call_end: '콜 종료 후', unknown: '종료 시각 미확인'})[value] || '미확인';
+  }
+  function configuration(data, requestedMode) {
+    const mode = modeFor(data, requestedMode), names = activeLabels(mode);
+    let ordered = axis(data);
+    // Hide only leading all-null categories. Evidence tables retain every event;
+    // interior gaps remain null and never get interpolated.
+    const first = ordered.findIndex(r => keys.some(k => grade(point(data, k, r.id, mode).value) != null));
+    if (first > 0) ordered = ordered.slice(first);
+    const datasets = keys.map((key, i) => ({type: 'line', label: names[i],
+      data: ordered.map(row => grade(point(data, key, row.id, mode).value)),
+      borderColor: colors[i], backgroundColor: colors[i], borderWidth: 2,
+      borderDash: i === 1 ? [8, 5] : [], pointStyle: shapes[i], pointRadius: 4,
+      pointHoverRadius: 6, pointHitRadius: 8, fill: false, tension: 0, spanGaps: false}));
+    const chartLabels = ordered.map(row => text(row.date)), f = (data.model || {}).forecast || {};
+    if (mode === 'current' && f.status === 'conditional_uncalibrated' && grade(f.estimate_grade) != null) {
+      chartLabels.push('다음 실적 (일정 TBD)');
+      datasets.forEach(d => d.data.push(null));
+      const values = ordered.map(() => null), last = ordered.length - 1;
+      if (last >= 0) values[last] = grade(point(data, 'actual_tone', ordered[last].id, mode).value);
+      values.push(grade(f.estimate_grade));
+      datasets.push({label: '다음 톤 조건부 예상 · 미보정', data: values,
+        borderColor: '#ea8acb', backgroundColor: '#ea8acb', borderDash: [3, 5],
+        pointStyle: 'star', pointRadius: 7, borderWidth: 2, spanGaps: false, tension: 0, fill: false});
+      ['하단', '상단'].forEach((label, i) => datasets.push({label: '시나리오 ' + label + ' · 확률 아님',
+        data: ordered.map(() => null).concat([grade(list(f.range_grade)[i])]),
+        borderColor: '#8291aa', backgroundColor: '#8291aa', pointStyle: 'dash', pointRadius: 8,
+        spanGaps: false, tension: 0, fill: false}));
+    }
+    return {type: 'line', data: {labels: chartLabels, datasets},
+      options: {responsive: true, maintainAspectRatio: false, animation: false,
+      spanGaps: false, interaction: {mode: 'index', intersect: false},
+      scales: {x: {ticks: {maxTicksLimit: 12}}, y: {type: 'linear', min: 1, max: 5,
+        ticks: {stepSize: 1, precision: 0, callback: v => grade(v) == null ? '' : String(v)},
+        title: {display: true, text: '서열 등급 1–5 · 톤과 반응의 경제 단위는 다름'}}},
+      plugins: {legend: {labels: {usePointStyle: true}}, tooltip: {callbacks: {
+        label: c => datasets[c.datasetIndex].label + ': ' + text(grade(c.parsed.y)),
+        afterLabel: c => c.datasetIndex < 4 && ordered[c.dataIndex] ?
+          tooltipLines(data, keys[c.datasetIndex], ordered[c.dataIndex].id, mode) :
+          ['현재 근거로 계산한 조건부 시나리오 · 발표 전 동결 예측 아님', '미보정 · 확률 및 확신도 없음']
+      }}}
+    }};
+  }
+  function sourceDetails(parent, event, isCurrent) {
+    const section = el('section', null, parent); section.className = 'tr-evidence';
+    const row = isCurrent ? event : event.tone || {};
+    el('strong', isCurrent ? '현재 회고 검토 근거' : event.status === 'predicted' ? '발표 전 동결 예측 근거' : '당시 이용가능 근거', section);
+    el('p', dimensionsLine(row, isCurrent), section);
+    if (row.rationale) el('p', human(row.rationale), section);
+    else el('p', '이 모드에서 공개 가능한 평가 근거 없음 · 보류', section);
+    el('small', '검토 UTC ' + text(row.reviewed_at) + ' · 증거 확인 날짜 ' + text(event.evidence_available_date) +
+      ' · 원문 최초 게시 시점과 구분', section);
+    if (isCurrent) el('small', '원문 공개 시각이 미확인이어도 현재 검토로 읽을 수 있습니다. 당시 이용 가능했다고 소급하지 않습니다.', section);
+    const details = el('details', null, section);
+    el('summary', '출처·원문 위치 ' + list(event.sources).length + '건', details);
+    sourceList(details, event.sources);
+    if (!list(event.sources).length) el('p', '이 모드에서 공개 가능한 검증 출처 없음', details);
+    const debug = el('details', null, section); el('summary', '기술 정보 (JSON)', debug);
+    const body = {event_id: event.event_id, fiscal_period: event.fiscal_period, version: event.version,
+      release_at: event.release_at, call_end_at: event.call_end_at, available_at: event.available_at,
+      evidence_available_date: event.evidence_available_date, prediction_as_of: event.prediction_as_of,
+      tone: isCurrent ? {grade: row.grade, aggregate: row.aggregate, dimensions: row.dimensions,
+        numeric_guidance: row.numeric_guidance, scale_status: row.scale_status, missing_reasons: row.missing_reasons} : event.tone,
+      reaction: event.reaction, source_counts: event.source_counts};
+    el('pre', null, debug).textContent = JSON.stringify(body, null, 2);
+  }
+  function sourceList(parent, items) {
+    const sources = el('ul', null, parent);
+    list(items).forEach(source => {
+      const item = el('li', null, sources), url = source.verified === true && safeURL(source.url);
+      if (url) {
+        const a = el('a', source.source_id, item);
+        a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      } else el('span', text(source.source_id) + ' · 출처 링크 보류', item);
+      el('small', sourceKind(source.kind) + ' · 게시 ' + text(source.published_at || source.published_date || '미확인') +
+        ' · 확인된 이용 가능 시각 ' + text(source.available_at || '미확인'), item);
+      el('small', source.locator || '원문 위치 미확인', item);
+      if (source.sha256) el('small', 'SHA-256 (해시 대상은 원문 위치 설명 참조): ' + text(source.sha256), item);
+      // Never display or copy source.excerpt into the human view or debug output.
+    });
+  }
+  function sourceKind(kind) {
+    return ({third_party_transcript: '제3자 전사문 · 음성 미검증', official_issuer_hosted_transcript: '회사 호스팅 전사문 · 음성 미검증',
+      official_earnings_release: '공식 실적 발표문', official_earnings_presentation: '공식 실적 자료',
+      official_qa_summary: '공식 Q&A 요약', official_post_results_management_qa_summary: '공식 경영진 Q&A 요약',
+      official_management_qa_summary: '공식 경영진 Q&A 요약'})[kind] || text(kind);
+  }
+  const modelLabel = v => ({unknown: '판정 유보', unclassified: '미분류', conservative: '보수적', aggressive: '공격적', mild: '온건',
+    conditional_uncalibrated: '조건부 예상 · 미보정', pending: '근거 수집 중', review_required: '원천 변경 · 재검토 필요',
+    below_actual: '실제보다 낮은 가이드', above_actual: '실제보다 높은 가이드', electronics_segment: '전자 부문',
+    revenue: '매출', operating_profit: '영업이익', initial_next_fy: '연초 가이드', current_fy: '당해연도 가이드',
+    uncalibrated: '확률 보정 없음'})[v] || text(v);
+  function modelConfiguration(data) { return configuration(data, 'current'); }
+  function modelPanel(host, data) {
+    const m = data.model;
+    if (!m || typeof m !== 'object') return null;
+    const box = el('section', null, host); box.className = 'tr-model';
+    el('h4', '가이드 성향 · 다음 발표 연구 시나리오', box);
+    const p = m.profile || {}, f = m.forecast || {}, pos = m.position || {}, bt = m.backtest || {};
+    const pct = x => number(x) == null ? '—' : displayNumber(x * 100) + '%';
+    el('p', '회사 전체 가이드 성향: ' + modelLabel(p.company_style) + ' · 커뮤니케이션 스타일: ' + modelLabel(p.communication_style) +
+      ' · 독립 FY ' + text(p.independent_fy_n) + '개 / 비교값 ' + text(p.metric_pair_n) + '개', box);
+    el('p', '보수=동일 범위 실제보다 낮은 가이드, 공격=높은 가이드, 온건=작고 지속적인 편향. 사업의 강세·약세와 별개이며 세그먼트 결과를 연결 전체로 일반화하지 않습니다.', box);
+    const profileDetails = el('details', null, box); el('summary', '회사 성향의 지표별 근거', profileDetails);
+    const profileScroll = el('div', null, profileDetails); profileScroll.className = 'tr-scroll';
+    const profileTable = el('table', null, profileScroll);
+    el('caption', '지표·범위·발표 단계별 회고 가이드 오차', profileTable);
+    const ph = el('tr', null, el('thead', null, profileTable));
+    ['범위 / 지표 / 단계', '독립 FY', '중앙값 actual/guide−1', 'MAD', '성향 / 관측방향'].forEach(v => el('th', v, ph).setAttribute('scope','col'));
+    const pb = el('tbody', null, profileTable);
+    list(p.groups).forEach(g => {
+      const row = el('tr', null, pb);
+      [modelLabel(g.scope) + ' / ' + modelLabel(g.metric) + ' / ' + modelLabel(g.stage), g.independent_fy_n,
+        pct(g.median_residual), pct(g.mad), modelLabel(g.classification) + ' / ' + modelLabel(g.descriptive_direction)].forEach(v => el('td', v, row));
+    });
+    list(p.comparability_notes).forEach(note => el('small', note, box));
+    el('p', '다음 실적 (일정 TBD) · ' + modelLabel(f.status) + ' · 현재 척도 예상 ' + text(grade(f.estimate_grade)) +
+      ' / 범위 ' + list(f.range_grade).map(text).join('–') + ' · 근거 콜 n=' + text(f.sample_n) +
+      ' · 확률·확신도 미보정 (' + modelLabel(f.calibration) + ') · 기준 ' + text(f.as_of), box);
+    el('p', '절대 톤 평균(-2..2): ' + displayNumber(f.signed_estimate) + ' · last-tone ' +
+      displayNumber((f.baselines || {}).last_tone) + ' · 평균 수축 ' + displayNumber((f.baselines || {}).mean_shrinkage), box);
+    el('p', '별 표식의 짧은 점선은 현재 조건부 시나리오입니다. 과거 동결 예측·검증된 확률이 아니며 실제 발표 날짜를 생성하지 않습니다.', box);
+    list(f.assumptions).forEach(a => el('small', a, box));
+    list(f.scenario_variants).forEach(s => el('small', text(s.name) + ': 조건부 톤 ' + displayNumber(s.signed_estimate) +
+      ' / 현재 등급 ' + text(s.grade) + ' · 확률 없음', box));
+    const price = m.price_context || {};
+    el('p', '가격 기준 세션 ' + text(price.session_date) + ' (' + text(price.timezone) + ') · 수집 ' + text(price.as_of) +
+      ' · 종가 ' + displayNumber(price.close) + ' ' + text(price.currency) + ' · 20/60세션 모멘텀 ' + pct(price.momentum20) + ' / ' + pct(price.momentum60) +
+      ' · RV20/RV60 ' + pct(price.rv20) + ' / ' + pct(price.rv60) + ' · RV는 IV가 아닙니다.', box);
+    if (price.basis_note) el('small', price.basis_note, box);
+    el('small', reasons(price.missing_reasons), box);
+    const fin = m.financial_context || {}, q2 = fin.Q2 || {};
+    el('p', '현재 조건부 Q2 매출/OP ' + displayNumber((q2.point || {}).revenue) + ' / ' + displayNumber((q2.point || {}).operating_profit) +
+      ' ' + text(fin.unit) + ' · H1 모델/공식 가이드 차이 ' + pct((fin.H1_model_vs_official_guide || {}).revenue) + ' / ' +
+      pct((fin.H1_model_vs_official_guide || {}).operating_profit) + ' · 분기 Street 없음', box);
+    el('small', 'Q2 매출 범위 ' + list((q2.range || {}).revenue).map(displayNumber).join('–') +
+      ' · OP 범위 ' + list((q2.range || {}).operating_profit).map(displayNumber).join('–') + ' · 미보정 민감도', box);
+    list(fin.scenarios).forEach(s => el('small', '연간 조건부 ' + text(s.name) + ' · 매출/OP ' +
+      displayNumber((s.FY || {}).revenue) + ' / ' + displayNumber((s.FY || {}).operating_profit) + ' ' + text(fin.unit) + ' · 확률 없음', box));
+    list(fin.street).forEach(s => {
+      const row = el('p', text(s.provider) + ' · 원자료 기준 ' + text(s.source_asof) + ' · 수집 ' + text(s.retrieved_at) +
+        ' · ' + text(s.period_type) + ' ' + text(s.period_end) + ' 매출/OP/순익 ' + displayNumber(s.revenue) + ' / ' +
+        displayNumber(s.operating_income) + ' / ' + displayNumber(s.net_income) + ' ' + text(s.currency) + ' ' + text(s.unit), box);
+      const gaps = s.annual_street_vs_official_guide || {};
+      el('small', '동일 연간 공식 가이드 대비 매출/OP/순익 ' + pct(gaps.revenue) + ' / ' + pct(gaps.operating_income) + ' / ' + pct(gaps.net_income), row);
+      const url = safeURL((s.source || {}).url);
+      if (url) { const a = el('a', '출처', row); a.href = url; a.rel = 'noopener noreferrer'; a.target = '_blank'; }
+    });
+    el('small', '연간 Street의 제공처·기준일은 개별 유지합니다. 분기 재무 시나리오와 비교하거나 12개월 목표가를 이벤트 수익률로 쓰지 않습니다.', box);
+    el('p', '연구 결정 ' + text(pos.decision) + ' · NAV 비중 ' + pct(pos.size_nav) +
+      ' · 사건당 스트레스 위험예산 ' + pct(pos.risk_budget_nav) + ' · 실제 OOS 적격 ' + text(bt.eligible_oos_n) +
+      ' / 거래 ' + text(bt.trades) + ' · 승률 ' + pct(pos.win_probability), box);
+    el('small', '갭·비용·차입·노출 한도와 품질 조정을 적용합니다. 0.5%는 보장 최대손실이 아니며 숏 손실은 추정을 넘을 수 있습니다.', box);
+    el('p', '반응등급: ' + text((m.reaction_forecast || {}).status) + ' · ' + reasons((m.reaction_forecast || {}).missing_reasons), box);
+    el('p', '진단: ' + reasons([].concat(list(m.diagnostics), list(f.missing_reasons), list(pos.missing_reasons))), box);
+    const details = el('details', null, box); el('summary', '표본 제외·시점·출처', details);
+    el('p', '실제 사건 ' + text(bt.input_event_n) + ' · 확인된 종가수익 ' + text(bt.observed_raw_close_return_n) +
+      ' · 타깃 가용 ' + text(bt.target_eligible_n) + ' · 사전 특징 적격 ' + text(bt.feature_eligible_n), details);
+    list(p.groups).forEach(g => el('small', text(g.metric) + ' / ' + text(g.stage) + ' · 중앙값 구간 ' +
+      list(g.median_interval).map(pct).join('–') + ' · 실제 구간 coverage ' + pct(g.interval_coverage) +
+      ' · 허용오차 2/5/10% 분류 ' + Object.values(g.threshold_sensitivity || {}).map(text).join(' / '), details));
+    Object.entries(bt.exclusion_counts || {}).forEach(([code, n]) => el('small', text(code) + ': ' + text(n), details));
+    list(m.sources).forEach(s => {
+      const row = el('p', text(s.id) + ' · 원자료 ' + text(s.source_asof) + ' · 수집 ' + text(s.retrieved_at) +
+        ' · 관측 ' + text(s.observed_at) + ' · 검토 ' + text(s.reviewed_at), details), url = safeURL(s.url);
+      if (url) { const a = el('a', '출처', row); a.href = url; a.rel = 'noopener noreferrer'; a.target = '_blank'; }
+    });
+    return null;
+  }
+
+  function cleanup() {
+    for (const [host, state] of live) if (!host.isConnected) destroy(host);
+  }
+  function destroy(host) {
+    const state = live.get(host);
+    if (state && state.chart) state.chart.destroy();
+    if (state && state.modelChart) state.modelChart.destroy();
+    live.delete(host);
+  }
+  function destroyWithin(parent) {
+    for (const host of live.keys()) if (host === parent || parent.contains(host)) destroy(host);
+  }
+  function activate(parent) {
+    cleanup();
+    for (const [host, state] of live) {
+      if (host !== parent && !parent.contains(host)) continue;
+      if (state.chart) { state.chart.resize(); if (state.modelChart) state.modelChart.resize(); continue; }
+      if (typeof root.Chart !== 'function') {
+        state.chartStatus.textContent = '차트 라이브러리 미확보 · 아래 표에서 원시값과 결측 사유 확인';
+        continue;
+      }
+      try {
+        const old = root.Chart.getChart && root.Chart.getChart(state.canvas);
+        if (old) old.destroy();
+        state.chart = new root.Chart(state.canvas, configuration(state.data, state.mode));
+        if (state.modelCanvas) state.modelChart = new root.Chart(state.modelCanvas, modelConfiguration(state.data));
+        state.chartStatus.textContent = '';
+      } catch (_) {
+        state.chartStatus.textContent = '차트 렌더 오류 · 아래 근거표는 계속 이용 가능';
+      }
+    }
+  }
+  function render(host, input, options) {
+    if (!host) return;
+    cleanup(); destroy(host); styles();
+    const data = input && typeof input === 'object' ? input :
+      {status: 'pending', missing_reasons: ['company_payload_missing']};
+    const mode = modeFor(data, options), scale = currentScale(data), names = activeLabels(mode);
+    host.replaceChildren(); host.classList.add('tr-card');
+    const title = el('h3', text(data.name || data.ticker || '기업') + ' · 가이던스·콜 톤과 실적 발표 반응', host);
+    title.id = 'tr-title-' + (++serial); host.setAttribute('aria-labelledby', title.id);
+    if (scale) {
+      const controls = el('div', null, host); controls.className = 'tr-mode';
+      const label = el('label', '실제 톤 기준', controls), select = el('select', null, controls);
+      select.id = 'tr-mode-' + serial; label.setAttribute('for', select.id); select.setAttribute('aria-label', '실제 톤 기준 선택');
+      [['current', '현재 표본 기준 회사상대 톤'], ['strict', '당시 이용가능 근거']].forEach(([value, name]) => {
+        const option = el('option', name, select); option.value = value; option.selected = value === mode;
+      });
+      select.value = mode;
+      select.onchange = () => render(host, data, Object.assign({}, options || {}, {mode: select.value, defer: false}));
+    }
+    const notice = el('p', mode === 'current' ?
+      '현재 표본 기준 회사상대 톤 · 잠정 회고척도. 수요·실행·경영진 Q&A 3요소를 각각 1/3의 고정 가중치로 평가합니다. ' +
+      '숫자 가이던스는 별도 표시하며 이 척도에 넣지 않습니다. 현재와 후속 발표를 포함한 분포이므로 새 자료가 추가되면 과거 등급도 바뀔 수 있습니다. ' +
+      '원문 공개 시각 미확인을 과거 이용 가능성으로 소급하지 않습니다.' :
+      '당시 이용가능 근거: 출처·검토 시점을 검증한 회사 과거 완전 표본만 사용합니다. 당시 이용 가능성을 확인하지 못한 실제 톤은 보류합니다.', host);
+    notice.className = 'tr-mode-note';
+    el('p', '삼각형 점선은 발표 전 동결된 예측입니다. 현재 척도의 별 표식 점선은 다음 발표의 조건부 연구 예상입니다. 톤과 주가 반응은 서로 다른 경제 단위의 서열값이며, ' +
+      '1–5등급의 간격은 같지 않습니다. 인과관계·수익 예측·검증된 확률이 아닙니다.', host);
+    el('p', '반응은 같은 발표 전 종가를 기준으로 첫 정규장 시가·종가를 구분합니다. 발표 전 개별종목 IV와 과거 시총 및 충분한 비교 표본이 필요합니다. ' +
+      'IV/√252는 분산된 일간 변동 척도이며 순수 실적 이벤트 기대변동이 아닙니다. 3등급은 과거 적격 표본의 작은 반응 구간입니다(Q20). 결측은 선을 잇지 않습니다.', host);
+    const stateLabel = {pending: '보류 / 수집·표본 부족', error: '입력 오류 / 근거 확인 필요', partial: '일부 등급 이용 가능', ready: '등급 이용 가능'};
+    const status = el('p', (mode === 'current' ? stateName(scale.scale_status) + ' · 현재 회사표본 n=' + text(number(scale.n) || 0) + ' / 최소 ' + text(scale.minimum_n) : (stateLabel[data.status] || '상태 미확보')) + ' · 평가 기준 UTC ' + text(data.as_of) +
+      ' · 사건 ' + axis(data).length + '건 · ' + reasons(mode === 'current' ? scale.missing_reasons : data.missing_reasons), host);
+    status.className = 'tr-state'; status.setAttribute('role', 'status');
+    list(data.diagnostics).forEach(d => el('p', '진단: ' + text(d.code) +
+      (d.missing_reasons ? ' · ' + reasons(d.missing_reasons) : ''), host));
+    const box = el('div', null, host); box.className = 'tr-chart';
+    const canvas = el('canvas', null, box); canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', '표식 있는 선: 실제 톤, 발표 전 동결 예상, 시가·종가 반응. 현재 척도에서는 다음 발표 조건부 예상과 범위도 겹쳐 표시합니다. 원시값과 결측은 아래 표 참조.');
+    const chartStatus = el('p', null, host); chartStatus.setAttribute('role', 'status');
+    const modelCanvas = modelPanel(host, data);
+    const evidenceDetails = el('details', null, host); el('summary', '전체 발표 이력·원시값·출처', evidenceDetails);
+    const scroll = el('div', null, evidenceDetails); scroll.className = 'tr-scroll';
+    const table = el('table', null, scroll);
+    table.id = 'tr-table-' + serial; canvas.setAttribute('aria-describedby', table.id);
+    el('caption', '등급·원시값·출처 / 공통 사건 순서 · 현재 평가 기준의 이력 (선택 문서 당시 예측 아님)', table);
+    const head = el('tr', null, el('thead', null, table));
+    ['발표일 / 사건', ...names, '평가 근거 · 출처'].forEach(label => {
+      el('th', label, head).setAttribute('scope', 'col');
+    });
+    const body = el('tbody', null, table), events = records(data), ordered = axis(data);
+    ordered.forEach(({id, date}) => {
+      const row = el('tr', null, body);
+      el('th', text(date) + ' / ' + text(id), row).setAttribute('scope', 'row');
+      keys.forEach(key => {
+        const isCurrent = mode === 'current' && key === 'actual_tone';
+        const p = point(data, key, id, mode), cell = el('td', text(grade(p.value)), row);
+        if (p.value != null && grade(p.value) == null) el('small', 'invalid_grade', cell);
+        el('small', reasons(p.missing_reasons), cell);
+        const event = events.get(id + '|' + (key === 'predicted_tone' ? 'predicted' : 'actual'));
+        const raw = isCurrent ? currentRow(data, id) : rowFor(event, key);
+        el('small', reference(raw, data, isCurrent), cell);
+        if (key.endsWith('_reaction')) el('small', '원시 ' + displayNumber(raw.raw_return_pct) +
+          '% · ' + callPhase(raw.call_phase), cell);
+        else {
+          el('small', dimensionsLine(raw, isCurrent), cell);
+          el('small', (isCurrent ? '동일 가중 3요소 평균 ' : '원시 평균 ') + displayNumber(raw.aggregate), cell);
+          if (isCurrent) el('small', '숫자 가이던스 근거: ' + reasons((raw.numeric_guidance || {}).missing_reasons), cell);
+        }
+      });
+      const detail = el('td', null, row);
+      ['actual', 'predicted'].forEach(status => {
+        const isCurrent = mode === 'current' && status === 'actual';
+        const event = isCurrent ? currentRow(data, id) : events.get(id + '|' + status);
+        if (event && (!isCurrent || list(scale.events).some(e => e.event_id === id))) sourceDetails(detail, event, isCurrent);
+      });
+      if (mode === 'current') {
+        const observed = events.get(id + '|actual'), reaction = observed && observed.reaction || {};
+        const ids = new Set(['open', 'close'].flatMap(k => list((reaction[k] || {}).source_ids)));
+        const marketSources = list(observed && observed.sources).filter(s => ids.has(s.source_id) || s.kind === 'official_event_context');
+        if (marketSources.length) {
+          const marketDetails = el('details', null, detail);
+          el('summary', '시가·종가 반응 원문 출처 ' + marketSources.length + '건', marketDetails);
+          sourceList(marketDetails, marketSources);
+        }
+      }
+    });
+    if (!ordered.length) el('td', '사건 입력 없음 · 0이나 중립 등급으로 대체하지 않습니다.', el('tr', null, body)).colSpan = 6;
+    const state = {data, mode, canvas, chartStatus, chart: null, modelCanvas, modelChart: null}; live.set(host, state);
+    if (!observer && typeof root.MutationObserver === 'function') {
+      observer = new root.MutationObserver(cleanup);
+      observer.observe(document.body, {childList: true, subtree: true});
+    }
+    if (!(options && options.defer)) activate(host);
+    return state;
+  }
+  function mount(parent, data, options) {
+    let host = Array.from(parent.children).find(child => child.classList.contains('tr-card'));
+    if (!host) host = el('section', null, parent);
+    return render(host, data, options);
+  }
+  function installComposite(data, context) {
+    Object.entries(data.tone_reactions || {}).forEach(([id, company]) => {
+      let panel = document.getElementById('p' + id);
+      if (!panel) {
+        const tab = el('button', id, context.tabs); tab.className = 'tab';
+        tab.onclick = () => context.selectTab(id, true); context.tabEls[id] = tab;
+        panel = el('div', null, context.panels); panel.id = 'p' + id; panel.className = 'panel';
+      }
+      mount(panel, company, {defer: true});
+    });
+  }
+  root.ToneReactionUI = {render, mount, activate, destroy, destroyWithin, cleanup,
+    installComposite, configuration, modelConfiguration, safeURL};
+})(typeof window === 'undefined' ? globalThis : window);
+
+let pvRenderEpoch=0;
 function renderKpi(){
+  const toneEpoch=++pvRenderEpoch;
+  const oldTone=document.getElementById('pvToneReaction');
+  if(oldTone) ToneReactionUI.destroyWithin(oldTone);
   kDestroy(); const K=window.KPID||{};
   document.getElementById('catRow').style.display='none';
   document.getElementById('cnt').innerHTML='';
@@ -1799,7 +2262,7 @@ function renderKpi(){
   let html='';
   const PC=(K.pcard&&K.pcard.companies)?K.pcard:null;
   const KR=(K.krtech&&K.krtech.cats)?K.krtech:null;
-  const PV=(K.preview&&K.preview.companies&&Object.keys(K.preview.companies).length)?K.preview:null;
+  const PV=(K.preview&&((K.preview.companies&&Object.keys(K.preview.companies).length)||K.preview.tone_reaction_status==='error'))?K.preview:null;
   // 산업 칩 네비게이션 (메인 대시 카테고리 칩과 동일 문법)
   const KC=ST.kcat||'all';
   const _hubD=K.hubs||{}, _idxD=K.index||{};
@@ -2286,8 +2749,9 @@ function renderKpi(){
     const PVCOL=['#4ea1ff','#59d0a8','#ffbe2e','#ff7ab8','#b48cff','#4dd0e1','#ff9e64','#9ccc65'];
     const PVREGS=[['all','전체'],['JP','🇯🇵 일본'],['US','🇺🇸 미국'],['KR','🇰🇷 한국'],['TW','🇹🇼 대만'],['ETC','🌐 기타']];
     const PVPAGE=120;                                           // 카드 1회 렌더 상한(+더 보기)
-    const pvE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const pvE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const pvT=s=>pvE(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+    (PV.tone_reaction_diagnostics||[]).forEach(d=>{html+='<p class="panel">공통 톤·반응 입력 진단: '+pvE(d.code)+'</p>';});
     const pvPlain=s=>String(s==null?'':s).replace(/\*\*/g,'');
     const pvCol=c=>c==='매수'?'#59d0a8':(c==='매도'?'#ff6b7d':'#8a93a3');
     const pvPct=(x,d)=>x==null?'—':((+x>0?'+':'')+(+x).toFixed(d==null?1:d)+'%');
@@ -2307,13 +2771,13 @@ function renderKpi(){
         latest:{preview:l[0]||null,review:l[1]||null},
         q:h[0],type:(h[1]==='r'?'review':'preview'),call:h[2],made_on:h[3],
         base:h[4],unit:h[5],upside:h[6],priced:h[7],one_liner:h[8]};};
-    const pvFile=tk=>'data_preview/'+encodeURIComponent(String(tk).replace(/:/g,'_'))+'.json';
+    const pvFile=tk=>'data_preview/'+encodeURIComponent((PVCOS[tk]||{}).u||(String(tk).replace(/:/g,'_')+'.json'))+'?v='+encodeURIComponent((PVCOS[tk]||{}).s||PV.asof||'');
     const pvHot=tk=>ST.tab==='kpi'&&ST.view==='overview'&&(ST.kcat||'all')==='preview'&&ST.pvco===tk;
-    const pvLoad=tk=>{let e=PVCACHE.get(tk); if(e) return e;
-      e={st:'load'}; PVCACHE.set(tk,e);
+    const pvLoad=tk=>{const version=pvFile(tk);let e=PVCACHE.get(tk); if(e&&e.version===version) return e;
+      e={st:'load',version}; PVCACHE.set(tk,e);
       fetch(pvFile(tk)).then(r=>{if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})
-        .then(j=>{PVCACHE.set(tk,{st:'ok',d:j}); if(pvHot(tk)) renderKpi();})
-        .catch(err=>{PVCACHE.set(tk,{st:'err',msg:String((err&&err.message)||err)}); if(pvHot(tk)) renderKpi();});
+        .then(j=>{if(PVCACHE.get(tk)!==e)return;PVCACHE.set(tk,{st:'ok',d:j,version}); if(pvHot(tk)) renderKpi();})
+        .catch(err=>{if(PVCACHE.get(tk)!==e)return;PVCACHE.set(tk,{st:'err',msg:String((err&&err.message)||err),version}); if(pvHot(tk)) renderKpi();});
       return e;};
     // --- 리전 칩 · 검색 · 카드 그리드 (인덱스만으로 즉시 렌더, fetch 없음) ---
     const pvReg=ST.pvreg||'all', pvQ=String(ST.pvq||'').trim().toLowerCase();
@@ -2352,6 +2816,7 @@ function renderKpi(){
     let PVD=null, pvChN=[];
     const pvSel=(ST.pvco&&PVCOS[ST.pvco])?ST.pvco:null;
     const pvEnt=pvSel?pvLoad(pvSel):null;
+    if(pvSel) html+='<section id="pvToneReaction"></section>';
     if(!pvSel){
       html+=`<div class="panel" style="padding:12px 14px;margin-bottom:12px;font-size:11.5px;color:var(--dim)">👆 기업 카드를 클릭하면 그 기업의 문서 전문(판정·전략·프록시·차트·MD 원문)을 <b style="color:var(--ink);font-family:var(--mono)">data_preview/&lt;티커&gt;.json</b> 에서 불러옵니다 — 인덱스에는 카드 요약만 담겨 있습니다.</div>`;
     } else if(pvEnt.st==='err'){
@@ -2364,8 +2829,12 @@ function renderKpi(){
       const sc=pvCo(pvSel)||{};
       html+=`<div class="panel" style="margin-bottom:12px;padding:11px 14px;font-size:11.5px;color:var(--dim)">⏳ <b style="color:var(--ink)">${pvE(sc.name)}</b> 문서 불러오는 중… <span style="font-family:var(--mono);font-size:10px">${pvE(pvFile(pvSel))}</span></div>`;
     } else {
+      const archiveStart=html;
+      try {
       const PVC=pvEnt.d||{};
       const docs=PVC.docs||{}, arc=PVC.archive||[];
+      if(!arc.length) html+='<p class="panel">아카이브 문서 없음 · 공통 사건/수집 상태는 위에서 확인할 수 있습니다.</p>';
+      (PVC.archive_diagnostics||[]).forEach(reason=>{html+='<p class="panel">아카이브 진단: '+pvE(reason)+'</p>';});
       const sel=String(ST.pvdoc||'').split('|');
       let dk=(sel[0]===ST.pvco&&docs[sel[1]])?sel[1]:(PVC.head_key||((arc[0]||{}).q+'_'+(arc[0]||{}).type));
       if(!docs[dk]) dk=Object.keys(docs)[0];
@@ -2411,7 +2880,7 @@ function renderKpi(){
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${tile('예측 base',pvN(F.base)+' <span style="font-size:9.5px;color:var(--dim)">'+pvE(F.unit||'')+'</span>','bear '+pvN(F.bear)+' / bull '+pvN(F.bull)+(pb.base!=null?' · P(base) '+Math.round(pb.base*100)+'%':''),'#4ea1ff')}
           ${tile('컨센 갭',CS.gap_pct!=null?pvPct(CS.gap_pct):'—',csSub,CS.gap_pct>0?'#59d0a8':(CS.gap_pct<0?'#ff6b7d':'var(--dim)'))}
-          ${tile('가격 비교값',PI.pct_est!=null?PI.pct_est+'%':'—','문서 원문 정의 참조','#ffbe2e')}
+          ${tile('가격 비교값',PI.pct_est!=null?pvE(PI.pct_est)+'%':'—','문서 원문 정의 참조','#ffbe2e')}
           ${tile('base 변화율(문서 기준)',pvPct(UP.base_pct),'bull '+pvPct(UP.bull_pct)+' · down '+pvPct(UP.downside_pct),UP.base_pct>0?'#59d0a8':'#ff6b7d')}
         </div>
         ${F.metric?`<div style="font-size:10.5px;color:var(--dim);margin-top:8px">예측 대상 <b style="color:var(--ink)">${pvE(F.metric)}</b>${F.method?' · '+pvE(pvCut(F.method,230)):''}</div>`:''}
@@ -2483,8 +2952,16 @@ function renderKpi(){
           <pre style="white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:10.5px;line-height:1.65;color:var(--ink);margin:10px 0 0;max-height:640px;overflow:auto">${pvE(D.md)}</pre></details>`;
       }
       if(D.disclaimer) html+=`<div class="panel" style="padding:9px 14px;margin-bottom:12px;font-size:10.5px;color:var(--dim)">${pvE(D.disclaimer)}</div>`;
+      } catch (_) {
+        PVD=null; pvChN=[];
+        html=archiveStart+'<p class="panel" role="status">아카이브 문서 표시 오류 · archive_document_render_error · 공통 톤·반응 근거는 별도 표시됩니다.</p>';
+      }
     }
     setTimeout(()=>{
+      if(toneEpoch!==pvRenderEpoch||(pvSel&&!pvHot(pvSel))) return;
+      if(pvSel) ToneReactionUI.render(document.getElementById('pvToneReaction'),
+        pvEnt.st==='ok' ? (pvEnt.d||{}).tone_reaction : {ticker:pvSel,status:pvEnt.st==='err'?'error':'pending',
+          missing_reasons:[pvEnt.st==='err'?'company_shard_load_failed':'company_shard_loading']});
       document.querySelectorAll('[data-pvreg]').forEach(el=>el.onclick=()=>{ST.pvreg=el.getAttribute('data-pvreg');ST.pvmax=PVPAGE;renderKpi();window.scrollTo(0,0);});
       document.querySelectorAll('[data-pvmore]').forEach(el=>el.onclick=()=>{ST.pvmax=(ST.pvmax||PVPAGE)+PVPAGE;renderKpi();});
       document.querySelectorAll('[data-pvco]').forEach(el=>el.onclick=()=>{ST.pvco=el.getAttribute('data-pvco');ST.pvdoc=null;pvLoad(ST.pvco);renderKpi();window.scrollTo(0,0);});
