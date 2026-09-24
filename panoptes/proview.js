@@ -7,22 +7,6 @@ window.PV = (function () {
   const UP = '#ff5d6c', DN = '#4ea1ff', FLAT = '#8a93a3';          // 국내 관례: 상승 빨강·하락 파랑
   const cc = v => v > 0 ? UP : v < 0 ? DN : FLAT;
   const sign = v => (v > 0 ? '+' : '') + v;
-  function marketState(x, prediction = false) {
-    const status = x && x.status;
-    const time = x && (prediction ? x.last_success_at : x.observed_at);
-    const stamp = typeof time === 'string' ? Date.parse(time) : NaN;
-    const age = Date.now() - stamp;
-    // Collection success is separate from the underlying market observation.
-    const usable = ['ok', 'fresh'].includes(status) && Number.isFinite(stamp) && age >= -300000 && age <= 7 * 864e5;
-    return {usable, label: usable ? '' : status === 'unavailable' ? '자료 없음' : status === 'stale' || Number.isFinite(stamp) && age > 7 * 864e5 ? '이전 관측' : '최신성 미확인',
-      detail: (prediction ? '수집 확인: ' : '시세 관측: ') + (time || '미확인')};
-  }
-  function marketBadge(x, prediction = false) {
-    const state = marketState(x, prediction);
-    return `<small class="market-state" title="${esc(state.detail)}" style="color:var(--dim);font-size:10px">${esc(state.label || state.detail)}</small>`;
-  }
-  const marketColor = x => marketState(x).usable ? cc(x.chg1d) : FLAT;
-
   const fmt = (v, dp) => v == null ? '—' : Number(v).toLocaleString('en-US', {minimumFractionDigits: dp ?? 2, maximumFractionDigits: dp ?? 2});
   const ago = ts => { const m = Math.round((Date.now()/1000 - ts) / 60);
     return m < 1 ? '방금' : m < 60 ? m + '분 전' : m < 1440 ? Math.round(m/60) + '시간 전' : Math.round(m/1440) + '일 전'; };
@@ -55,7 +39,7 @@ window.PV = (function () {
   function renderTicker() {
     const bar = $('tickerbar'); if (!bar) return;
     const seq = tickerItems().map(x =>
-      `<span class="tk" onclick="switchTab('sig')"><b>${esc(x.name)}</b> ${fmt(x.price, x.dp)} ${marketBadge(x)} <i style="color:${marketColor(x)};font-style:normal">${x.chg1d==null?'—':sign(x.chg1d)+'%'}</i></span>`
+      `<span class="tk" onclick="switchTab('sig')"><b>${esc(x.name)}</b> ${fmt(x.price, x.dp)} <i style="color:${cc(x.chg1d)};font-style:normal">${x.chg1d==null?'—':sign(x.chg1d)+'%'}</i></span>`
     ).join('<span class="tksep">·</span>');
     bar.innerHTML = `<div class="tkwrap">${seq}<span class="tksep">·</span>${seq}<span class="tksep">·</span></div>`;
     bar.hidden = false;
@@ -199,11 +183,11 @@ window.PV = (function () {
     const out = [];
     if (MK) {
       const g = MK.groups || {};
-      const all = [...(g.indices || []), ...(g.fx || []), ...(g.commod || []), ...(g.rates || [])].filter(x => marketState(x).usable && typeof x.chg1d === 'number' && Number.isFinite(x.chg1d));
+      const all = [...(g.indices || []), ...(g.fx || []), ...(g.commod || []), ...(g.rates || [])].filter(x => x.chg1d != null);
       const movers = all.slice().sort((a, b) => Math.abs(b.chg1d) - Math.abs(a.chg1d)).slice(0, 3);
       if (movers.length) out.push('시장: ' + movers.map(x => `${x.name} ${sign(x.chg1d)}%`).join(', ') + '.');
       const krw = (g.fx || []).find(x => x.name === 'USD/KRW');
-      if (krw && marketState(krw).usable) out.push(`원달러 ${fmt(krw.price, 1)}원.`);
+      if (krw) out.push(`원달러 ${fmt(krw.price, 1)}원.`);
     }
     const evs = (window.EVENTS || []);
     const now = Date.now();
@@ -219,8 +203,8 @@ window.PV = (function () {
       if (v) out.push(`보도 최다 토픽: ${v.topic}, 24시간 ${v.n24}건.`);
     }
     if (MK && (MK.predict || []).length) {
-      const p = MK.predict.find(x => marketState(x, true).usable);
-      if (p) out.push(`예측시장: "${p.q}" 확률 ${p.yes}%${p.chg ? ` (${sign(p.chg)}%p)` : ''}.`);
+      const p = MK.predict[0];
+      out.push(`예측시장: "${p.q}" 확률 ${p.yes}%${p.chg ? ` (${sign(p.chg)}%p)` : ''}.`);
     }
     return out.length ? out : ['데이터 수집 대기 중입니다.'];
   }
@@ -244,10 +228,10 @@ window.PV = (function () {
     const rows = (MK && MK.watch || []).map(x => {
       const hid = off.has(x.symbol);
       return `<div class="wrow${hid ? ' woff' : ''}" data-sym="${esc(x.symbol)}">
-        <span class="wnm">${esc(x.name)} ${marketBadge(x)}</span>
-        ${spark(x.spark && x.spark.slice(-40), marketColor(x))}
+        <span class="wnm">${esc(x.name)}</span>
+        ${spark(x.spark && x.spark.slice(-40), cc(x.chg1d))}
         <span class="wpx">${fmt(x.price, /\.(KS|KQ)$/.test(x.symbol) ? 0 : 2)}</span>
-        <span class="wch" style="color:${marketColor(x)}">${x.chg1d==null?'—':sign(x.chg1d)+'%'}</span>
+        <span class="wch" style="color:${cc(x.chg1d)}">${x.chg1d==null?'—':sign(x.chg1d)+'%'}</span>
       </div>`;
     }).join('');
     return `<div class="sigw" id="sw-watch"><div class="sigh"><b>⭐ 관심종목</b>
@@ -280,15 +264,15 @@ window.PV = (function () {
   function wMkt() {
     const g = MK && MK.groups || {};
     const col = (title, arr) => `<div class="mkcol"><div class="mkh">${title}</div>` +
-      (arr || []).map(x => `<div class="mkrow"><span>${esc(x.name)} ${marketBadge(x)}</span><b>${fmt(x.price, x.dp)}</b>
-        <i style="color:${marketColor(x)}">${x.chg1d==null?'—':sign(x.chg1d)+'%'}</i></div>`).join('') + '</div>';
+      (arr || []).map(x => `<div class="mkrow"><span>${esc(x.name)}</span><b>${fmt(x.price, x.dp)}</b>
+        <i style="color:${cc(x.chg1d)}">${x.chg1d==null?'—':sign(x.chg1d)+'%'}</i></div>`).join('') + '</div>';
     const preds = (MK && MK.predict || []).slice(0, 8).map(p =>
       `<a class="pdrow" href="${esc(p.url)}" target="_blank" rel="noopener">
-        <span class="pdq">${esc(p.q)} ${marketBadge(p, true)}</span>
+        <span class="pdq">${esc(p.q)}</span>
         <span class="pdbar"><i style="width:${Math.min(100, p.yes)}%"></i></span>
-        <b>${p.yes}%</b><i class="pdchg" style="color:${marketState(p, true).usable ? cc(p.chg || 0) : FLAT}">${p.chg==null?'':sign(p.chg)+'p'}</i></a>`).join('');
+        <b>${p.yes}%</b><i class="pdchg" style="color:${cc(p.chg || 0)}">${p.chg==null?'':sign(p.chg)+'p'}</i></a>`).join('');
     return `<div class="sigw wide" id="sw-mkt"><div class="sigh"><b>📈 시장·예측</b>
-      <span class="sigts">수집 시도 ${esc((MK && MK.updated || '').slice(5, 16).replace('T', ' '))}</span></div>
+      <span class="sigts">${esc((MK && MK.updated || '').slice(5, 16).replace('T', ' '))}</span></div>
       <div class="mkgrid">${col('지수', g.indices)}${col('환율·금리', [...(g.fx||[]), ...(g.rates||[])])}${col('원자재·크립토', [...(g.commod||[]), ...(g.crypto||[])])}</div>
       <div class="mkh" style="margin-top:12px">🎲 예측시장 (${esc((MK && MK.predict && MK.predict[0] || {}).src || '—')})</div>
       <div>${preds || '<p class="hint">예측시장 데이터 대기 중</p>'}</div></div>`;
@@ -355,7 +339,7 @@ window.PV = (function () {
     const body = WIDGETS.filter(([k]) => on[k]).map(([k]) => { try { return R[k](); } catch (e) { console.warn('widget', k, e); return ''; } }).join('');
     box.innerHTML = `<div class="sightop"><h2>📡 MY SIGNALS</h2>
         <button class="ttsbtn" onclick="PV.speakBriefing()">🔊 브리핑 듣기</button>
-        <span class="sigts">뉴스 ${esc((NW && NW.updated || '—').slice(5, 16).replace('T', ' '))} · 시세 수집 시도 ${esc((MK && MK.updated || '—').slice(5, 16).replace('T', ' '))}</span></div>
+        <span class="sigts">뉴스 ${esc((NW && NW.updated || '—').slice(5, 16).replace('T', ' '))} · 시세 ${esc((MK && MK.updated || '—').slice(5, 16).replace('T', ' '))}</span></div>
       <div class="wchips">${chips}</div>
       <div class="siggrid">${body || '<p class="hint">모든 위젯이 꺼져 있습니다. 위 칩을 눌러 켜세요.</p>'}</div>
       <p class="hint" style="margin-top:14px">위젯 구성은 이 브라우저에 저장됩니다 · 열람 이력 기반 자동 활성화 없음 (직접 선택)</p>`;
