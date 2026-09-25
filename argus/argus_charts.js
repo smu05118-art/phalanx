@@ -118,16 +118,24 @@
     '.ag-lgd{display:flex;gap:5px 12px;flex-wrap:wrap;margin-top:8px}',
     '.ag-lgd span{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:' + DIM + '}',
     '.ag-lgd i{width:9px;height:9px;border-radius:3px;flex:0 0 auto}',
-    /* 태양광 플로우 */
-    '.ag-flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}',
-    '.ag-stage{flex:1 1 170px;background:var(--panel2,#0d131c);border:1px solid var(--line,#1f2937);border-radius:12px;padding:11px 13px;min-width:150px}',
-    '.ag-stage .sn{font-size:10px;color:' + ACC + ';font-weight:800;letter-spacing:.09em}',
-    '.ag-stage .pn{font-size:11.5px;font-weight:700;margin-top:2px;line-height:1.3}',
-    '.ag-stage .pv{font-family:' + MONO + ';font-size:17px;font-weight:800;margin-top:5px}',
-    '.ag-stage .pu{font-size:9.5px;color:' + DIM + ';font-family:' + MONO + '}',
-    '.ag-stage .pm{font-family:' + MONO + ';font-size:10.5px;margin-top:3px}',
-    '.ag-arrow{flex:0 0 26px;display:flex;align-items:center;justify-content:center;color:' + DIM + ';font-size:15px}',
-    '@media(max-width:700px){.ag-flow{flex-direction:column}.ag-arrow{transform:rotate(90deg);flex-basis:20px}}',
+    /* 태양광: 공정별 중국 / 미국 가격. 좁은 화면에서도 국가 열 순서를 유지한다. */
+    '.ag-solar-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}',
+    '.ag-solar-country{padding:14px 17px;border-top:2px solid ' + ACC + ';background:var(--panel2,#0d131c);border-radius:4px 4px 12px 12px}',
+    '.ag-solar-country.us{border-color:#83aaff}.ag-solar-country strong{font-size:17px}.ag-solar-country small{display:block;color:' + DIM + ';font-size:11px;margin-top:3px}',
+    '.ag-solar-step{display:flex;align-items:center;gap:9px;margin:18px 0 9px;font-size:12px;font-weight:750}',
+    '.ag-solar-step span{font-family:' + MONO + ';color:' + DIM + ';font-size:10px}.ag-solar-step:after{content:"";height:1px;flex:1;background:var(--line,#1f2937)}',
+    '.ag-solar-quote{min-width:0;padding:16px 18px;border:1px solid var(--line,#1f2937);border-radius:12px;background:var(--panel2,#0d131c);transition:border-color .16s}',
+    '.ag-solar-quote:focus-within{border-color:' + ACC + '}.ag-solar-quote a{color:' + ACC + ';text-underline-offset:3px}',
+    '.ag-solar-quote select{display:block;width:100%;min-width:0;max-width:100%;padding:8px 24px 8px 9px;color:var(--ink,#e6edf3);background:var(--panel,#111721);border:1px solid var(--line,#1f2937);border-radius:7px;font-size:12px;font-weight:650}',
+    '.ag-solar-quote select:focus-visible{outline:2px solid ' + ACC + ';outline-offset:3px}',
+    '.ag-solar-price{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin:10px 0 6px;font-family:' + MONO + '}',
+    '.ag-solar-price strong{font-size:28px;letter-spacing:-.04em;font-weight:750}.ag-solar-price small{font-size:11px;color:' + DIM + '}',
+    '.ag-solar-basis{font-size:11px;line-height:1.6;color:' + DIM + ';overflow-wrap:anywhere}',
+    '.ag-solar-change{font-size:11px;margin-top:8px}.ag-solar-trend{margin:10px 0}.ag-solar-trend svg{max-width:100%;height:auto}',
+    '.ag-solar-missing{display:flex;flex-direction:column;justify-content:center;border-style:dashed;background:transparent;color:' + DIM + ';gap:8px}',
+    '.ag-solar-missing strong{font-size:13px;font-weight:600;color:var(--ink,#e6edf3)}.ag-solar-missing .ag-solar-dash{font-size:25px;line-height:1}',
+    '@media(max-width:600px){.ag-solar-pair{gap:8px}.ag-solar-country{padding:11px}.ag-solar-country strong{font-size:15px}.ag-solar-country small{font-size:10px}.ag-solar-quote{padding:12px 10px}.ag-solar-quote select{font-size:11px;padding-left:6px}.ag-solar-price{gap:4px}.ag-solar-price strong{font-size:23px}.ag-solar-price small{font-size:10px}.ag-solar-basis{font-size:10.5px}.ag-solar-step{margin-top:14px}.ag-solar-missing strong{font-size:12px}}',
+    '@media(prefers-reduced-motion:reduce){.ag-solar-quote{transition:none}}',
     '.ag-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}',
     '@media(max-width:980px){.ag-grid2{grid-template-columns:1fr}}',
     /* 유가 KPI */
@@ -788,6 +796,81 @@
       }
       draw();
     }
+    function renderSolarCountries(host, chunk) {
+      var byId = {};
+      (chunk.series || []).forEach(function (r) { byId[r.sid] = r; });
+      // Explicit market membership only: USD, non-China and China-export do not mean US.
+      // Each choice keeps its own observations, currency, product and delivery basis.
+      var steps = [
+        {key:'poly', name:'폴리실리콘', cn:[
+          ['sol_il_poly_mono_cny','Mono · InfoLink'],
+          ['sol_il_poly_granular_cny','Granular · InfoLink'],
+          ['sol_폴리실리콘_중국','중국 · 기존 USD 지표']
+        ], us:[], missing:'미국산 평균가격 비공개', note:'InfoLink 미국산 가격은 유료 영역입니다.'},
+        {key:'wafer', name:'웨이퍼', cn:[
+          ['sol_il_wafer_n_183_cny','N형 182–183.75mm'],
+          ['sol_il_wafer_n_182x210_cny','N형 182×210mm'],
+          ['sol_il_wafer_n_210_cny','N형 210mm']
+        ], us:[], missing:'미국향 공개 가격 미확인', note:'지역이 특정되지 않은 달러 견적은 미국 가격으로 표시하지 않습니다.'},
+        {key:'cell', name:'셀', cn:[
+          ['sol_il_cell_topcon_183_cny','TOPCon 182–183.75mm'],
+          ['sol_il_cell_topcon_182x210_cny','TOPCon 182×210mm'],
+          ['sol_il_cell_topcon_210_cny','TOPCon 210mm'],
+          ['sol_pvi_cell_china_perc','중국 PERC · PVInsights']
+        ], us:[], missing:'미국향 공개 가격 미확인', note:'중국 수출 견적과 미국향 제품 가격은 구분합니다.'},
+        {key:'module', name:'모듈', cn:[
+          ['sol_il_module_topcon_cny','TOPCon · 전체 평균'],
+          ['sol_il_module_cn_topcon_ground_cny','TOPCon · 지상형'],
+          ['sol_il_module_cn_topcon_distributed_cny','TOPCon · 분산형'],
+          ['sol_il_module_bc_cny','BC · 전체 평균'],
+          ['sol_il_module_hjt_cny','HJT · 전체 평균'],
+          ['sol_pvi_module_china','중국 PERC · PVInsights'],
+          ['sol_모듈가_중국','중국 · 기존 USD 지표']
+        ], us:[
+          ['sol_il_module_us_topcon_ddp_usd','TOPCon · 미국 조립 · DDP'],
+          ['sol_il_module_us_sea_topcon_fob_usd','TOPCon · 동남아산 미국향 · FOB'],
+          ['sol_모듈가_미국','미국 · 기존 USD 지표']
+        ], missing:'미국 모듈 가격 미확인', note:'연결된 가격 데이터가 없습니다.'}
+      ];
+      function available(step, market) {
+        return step[market].filter(function (entry) { var r = byId[entry[0]]; return r && fin(r.last); });
+      }
+      function quote(r) {
+        var il = r.publisher === 'InfoLink', q = r.quote || {};
+        var values = (il ? (r.quote_values || []) : (r.v || [])).slice(-104), count = values.filter(fin).length;
+        var basis = il ? (r.basis_note || '').split(' · InfoLink')[0] : (r.basis_note || '기존 원장 지표 · 제품 규격과 출처는 가격 기준에서 확인');
+        var label = il ? 'InfoLink · 주간 평균' : r.sid.indexOf('sol_pvi_') === 0 ? 'PVInsights · 현물 평균' : '기존 원장 가격';
+        var period = il ? '관측 ' + (q.period_start || r.last_date) + ' ~ ' + (q.period_end || r.last_date) : '관측 ' + (r.last_date || '미확인');
+        return '<div data-solar-price-sid="' + esc(r.sid) + '"><div class="ag-solar-basis" style="margin-top:8px">' + esc(r.name.replace(' · InfoLink','').replace(' · PVInsights','')) + '</div><div class="ag-solar-price"><strong>' + fmt(r.last) + '</strong><small>' + esc(r.unit) + '</small></div>' +
+          '<div class="ag-solar-basis">' + esc(label) + ' · ' + esc(period) + '</div>' +
+          '<div class="ag-solar-basis">' + esc(basis) + '</div>' +
+          (r.freshness && r.freshness !== 'fresh' ? '<div class="ag-solar-basis">관측 지연 · 과거 가격</div>' : '') +
+          '<div class="ag-solar-change">WoW ' + (il ? (fin(q.change_pct) ? fmtPct(q.change_pct) : '미공표') : fmtPct(r.m1)) +
+          (!il && fin(r.m4) ? ' · 4W ' + fmtPct(r.m4) : '') + '</div>' +
+          (count > 1 ? '<div class="ag-solar-trend">' + spark(values, 210, 34, ACC) + '</div>' : '<div class="ag-solar-basis" style="margin-top:8px">추세는 관측 2회부터 표시됩니다.</div>') +
+          '<div class="ag-solar-basis" style="margin-top:8px"><a href="connections.html#' + encodeURIComponent(r.sid) + '">가격 기준·원문 ↗</a></div></div>';
+      }
+      function card(step, market) {
+        var options = available(step, market), country = market === 'cn' ? '중국' : '미국';
+        if (!options.length) return '<article class="ag-solar-quote ag-solar-missing" data-solar-market="' + market + '" aria-label="' + country + ' ' + step.name + '">' +
+          '<span class="ag-solar-dash" aria-hidden="true">—</span><strong>' + (market === 'us' ? step.missing : '연결된 중국 가격 없음') + '</strong>' +
+          '<p class="ag-solar-basis">' + (market === 'us' ? step.note : '공개 관측값이 확인되면 표시합니다.') + '</p>' +
+          (market === 'us' && step.key === 'poly' ? '<a class="ag-solar-basis" href="https://www.infolink-group.com/spot-price/" target="_blank" rel="noopener">원문 공개 범위 ↗</a>' : '') + '</article>';
+        return '<article class="ag-solar-quote" data-solar-market="' + market + '" aria-label="' + country + ' ' + step.name + '">' +
+          '<select data-solar-choice aria-label="' + country + ' ' + step.name + ' 가격 기준">' + options.map(function (entry) {
+            return '<option value="' + esc(entry[0]) + '">' + esc(entry[1]) + '</option>';
+          }).join('') + '</select><div data-solar-quote-body aria-live="polite">' + quote(byId[options[0][0]]) + '</div></article>';
+      }
+      host.innerHTML = '<div class="ag-solar-pair"><div class="ag-solar-country"><strong>중국</strong><small>CHINA · 내수·위안화 견적</small></div>' +
+        '<div class="ag-solar-country us"><strong>미국</strong><small>UNITED STATES · 미국 시장</small></div></div>' +
+        steps.map(function (step, i) {
+          return '<div class="ag-solar-step"><span>' + (i ? '↓ ' : '') + '0' + (i + 1) + '</span>' + step.name + '</div>' +
+            '<div class="ag-solar-pair" data-solar-step="' + step.key + '">' + card(step,'cn') + card(step,'us') + '</div>';
+        }).join('') + '<p class="ag-meta" style="margin-top:12px">규격·통화·인도조건이 다른 가격은 별도 지표입니다. 위안화는 CNY로 표시하며, 달러로 환산하거나 가격 차이를 계산하지 않습니다.</p>';
+      host.querySelectorAll('[data-solar-choice]').forEach(function (select) {
+        select.onchange = function () { var r = byId[select.value]; if (r) select.parentElement.querySelector('[data-solar-quote-body]').innerHTML = quote(r); };
+      });
+    }
     function renderSolar(chunk) {
       var ss = chunk.series || [];
       if (!ss.length) { body('solar').innerHTML = '<div class="ag-empty">태양광 데이터 없음</div>'; return; }
@@ -795,23 +878,13 @@
       var mains = ORDER.map(function (o) {
         return (ss.filter(function (r) { return r.stage === o[0] && r.main; })[0]) || null;
       });
-      var flow = '<div class="ag-flow">' + ORDER.map(function (o, i) {
-        var r = mains[i];
-        var cell = r ? '<div class="ag-stage"><div class="sn">' + o[1].toUpperCase() + '</div><div class="pn">' + esc(r.name) + '</div>' +
-          '<div class="pv" style="color:' + posColor(r.pos) + '">' + fmt(r.last) + ' <span class="pu">' + esc(r.unit || '') + '</span></div>' +
-          '<div class="ag-meta">관측 ' + esc(r.last_date || '미확인') + ' · <a href="connections.html#' + encodeURIComponent(r.sid) + '">가격 기준·원문</a></div><div class="pm">WoW ' + fmtPct(r.m1) + ' · 4W ' + fmtPct(r.m4) + (fin(r.pos) ? ' · pos <b style="color:' + posColor(r.pos) + '">' + r.pos.toFixed(0) + '</b>' : '') + '</div>' +
-          '<div style="margin-top:6px">' + spark((r.v || []).slice(-104).filter(function (_, j) { return true; }), 150, 30, posColor(r.pos)) + '</div>' +
-          '<div class="ag-hbadges" style="margin-top:6px">' + huntBadges(r.hunt) + '</div></div>'
-          : '<div class="ag-stage"><div class="sn">' + o[1] + '</div><div class="ag-empty">—</div></div>';
-        return cell + (i < ORDER.length - 1 ? '<div class="ag-arrow">➜</div>' : '');
-      }).join('') + '</div>';
       var mainRows = mains.filter(Boolean).map(function (r, i) {
         return { name: r.name, v: r.v, col: PAL[i], hunt: r.hunt };
       });
       var modRows = ss.filter(function (r) { return r.stage === 'module' && r.unit === 'USD/W'; }).slice(0, 6).map(function (r, i) {
         return { name: r.name, v: r.v, col: PAL[(i + 4) % PAL.length], hunt: r.hunt };
       });
-      body('solar').innerHTML = '<p class="ag-meta">공개 현물과 원장 가격은 규격·지역에 따라 다릅니다. <a href="connections.html#sol_pvi_module_182_perc">전체 태양광 연결·신규 현물 보기 →</a></p>' + flow + '<div data-us-solar></div><div data-infolink></div>' +
+      body('solar').innerHTML = '<p class="ag-meta" style="margin-bottom:12px">공정을 따라 중국과 미국 가격을 나란히 확인하세요. 카드에서 제품·가격 기준을 바꿀 수 있습니다. <a href="connections.html#sol_pvi_module_182_perc">전체 태양광 현물 →</a></p><div data-solar-countries></div><div data-us-solar></div><div data-infolink></div>' +
         '<div class="ag-grid2" style="margin-top:12px">' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">단계별 가격 지수 (5년, 시작=100)</div>' +
         chart(chunk.axis, mainRows, { h: 200, idx: true, title: '태양광 단계별 가격 지수' }) +
@@ -819,6 +892,7 @@
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">모듈 가격 (USD/W)</div>' +
         chart(chunk.axis, modRows, { h: 200, unit: 'USD/W', title: '태양광 모듈 가격' }) +
         '<div class="ag-lgd">' + modRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div></div>';
+      renderSolarCountries(body('solar').querySelector('[data-solar-countries]'), chunk);
       renderUSSolar(body('solar').querySelector('[data-us-solar]'), chunk);
       renderInfoLink(body('solar').querySelector('[data-infolink]'), chunk);
       bindHover(body('solar'));
