@@ -123,8 +123,9 @@ safe('tabs',function(){
   });
   Object.keys(known).forEach(function(id){                              /* 빌더가 새로 추가한 미지의 탭 보존 */
     h+='<span class="tab'+(ST.tab===id?' on':'')+'" data-tab="'+id+'">'+esc(known[id])+'</span>'; });
+  h+='<a href="stockmap/" class="tab stockmap-link" title="종목·무역품목·PPI·엑셀 판본 대조">종목×무역 ↗</a>';
   tb.innerHTML=h;
-  tb.querySelectorAll('.tab').forEach(function(t){ t.onclick=function(){
+  tb.querySelectorAll('.tab[data-tab]').forEach(function(t){ t.onclick=function(){
     if(window.__phxCancelSearch) window.__phxCancelSearch();
     ST.tab=t.dataset.tab; ST.view='overview'; ST.company=null; ST.q=''; ST._ovScroll=0;
     var q=document.getElementById('q'); if(q) q.value=''; render(); window.scrollTo(0,0); }; });
