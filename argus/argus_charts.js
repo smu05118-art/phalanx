@@ -136,7 +136,10 @@
     '.ag-oilk .l{font-size:10.5px;color:' + DIM + ';font-weight:650}',
     '.ag-oilk .v{font-family:' + MONO + ';font-size:16px;font-weight:800;margin-top:2px}',
     '.ag-oilk .w{font-family:' + MONO + ';font-size:10.5px;margin-top:1px}',
-    '.ag-foot{font-size:10.5px;color:' + DIM + ';line-height:1.7;border-top:1px solid var(--line,#1f2937);padding-top:12px}'
+    '.ag-foot{font-size:10.5px;color:' + DIM + ';line-height:1.7;border-top:1px solid var(--line,#1f2937);padding-top:12px}',
+    '[data-infolink] .ag-chip[aria-pressed=true]{border-color:' + ACC + ';color:' + ACC + ';background:rgba(43,192,212,.08)}',
+    '[data-infolink] a{color:' + ACC + '}[data-infolink] select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px}',
+    '[data-infolink] tbody th{text-transform:none;letter-spacing:normal}',
   ].join('');
 
   function ensureCss(doc) {
@@ -267,9 +270,9 @@
       g += '<line x1="' + PL + '" y1="' + y(0).toFixed(1) + '" x2="' + (W - PR) + '" y2="' + y(0).toFixed(1) + '" stroke="' + DIM + '" stroke-width="0.7" stroke-opacity="0.55"/>';
     }
     var xl = '';
-    for (var xi = 0; xi < 5; xi++) {
+    for (var xi = 0; xi < (n === 1 ? 1 : 5); xi++) {
       var idx = Math.round((n - 1) * xi / 4);
-      var anchor = xi === 0 ? 'start' : (xi === 4 ? 'end' : 'middle');
+      var anchor = n === 1 ? 'middle' : (xi === 0 ? 'start' : (xi === 4 ? 'end' : 'middle'));
       xl += '<text x="' + x(idx).toFixed(1) + '" y="' + (H - 5) + '" font-size="9.5" fill="' + DIM + '" text-anchor="' + anchor + '" font-family="ui-monospace,Menlo,monospace">' + esc(String(ds[idx]).slice(2, 7)) + '</text>';
     }
     var paths = '', marks = '';
@@ -288,6 +291,9 @@
         marks += '<circle cx="' + x(li).toFixed(1) + '" cy="' + y(r.v[li]).toFixed(1) + '" r="5.5" fill="none" stroke="' + hc + '" stroke-width="2"/>' +
           '<circle cx="' + x(li).toFixed(1) + '" cy="' + y(r.v[li]).toFixed(1) + '" r="2" fill="' + hc + '"/>';
       }
+    });
+    if (o.points) view.forEach(function (r) {
+      r.v.forEach(function (v, i) { if (fin(v)) marks += '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3.5" fill="' + r.col + '"/>'; });
     });
     var id = 'ag' + (++chSeq);
     var latest = view.map(function (r) {
@@ -459,7 +465,7 @@
       sec('health', '🩺 데이터 건강상태', 'stale 및 표본 부족 시리즈는 별도 확인') +
       sec('board', '🏔 체인 스코어보드', '게이지 = 사이클 위치 percentile(전 이력) · 셀 = 모멘텀 중앙값 %') +
       sec('spread', '📉 스프레드 차트', '주간 5년 · 마커 = 현재 사냥 시그널', chips()) +
-      sec('solar', '☀️ 태양광 밸류체인', '폴리 → 웨이퍼 → 셀 → 모듈 · PVInsights 주간') +
+      sec('solar', '☀️ 태양광 밸류체인', '폴리 → 웨이퍼 → 셀 → 모듈 · PVInsights · InfoLink 주간 평균') +
       sec('oil', '🛢 유가 데크', 'petronet 일간 → 주간 다운샘플 · 스프레드 = 제품-두바이', oilChips()) +
       footer() + '</div>';
 
@@ -665,6 +671,58 @@
     }
 
     /* ── ④ 태양광 ── */
+    function renderInfoLink(host, chunk) {
+      var all = (chunk.series || []).filter(function (r) { return r.publisher === 'InfoLink'; });
+      if (!all.length) return;
+      var stage = 'all', currency = 'all', selected = all[0].sid;
+      function detail(r) {
+        var q = r.quote || {}, vals = r.quote_values || r.v || [], first = vals.findIndex(fin), last = -1;
+        vals.forEach(function (v, i) { if (fin(v)) last = i; });
+        var dates = (r.quote_dates || chunk.axis).slice(Math.max(0, first), last + 1), values = vals.slice(Math.max(0, first), last + 1);
+        var count = values.filter(fin).length;
+        return '<div class="ag-card" data-il-detail style="margin:12px 0;scroll-margin-top:110px" aria-live="polite"><b>' + esc(r.name) + '</b>' +
+          '<div class="ag-meta" style="margin:5px 0">' + esc(r.basis_note || '') + '</div>' +
+          '<div style="font-size:23px;font-weight:750">' + fmt(r.last) + ' <small style="font-size:12px">' + esc(r.unit) + ' · Average</small></div>' +
+          '<p class="ag-meta">관측기간 ' + esc(q.period_start || r.last_date) + ' ~ ' + esc(q.period_end || r.last_date) +
+          ' · ' + esc(r.freshness === 'fresh' ? '최신 주간 관측' : '관측 지연 · 과거 가격') +
+          ' · 전주 대비(원문) ' + (fin(q.change_pct) ? fmtPct(q.change_pct) : '미공표') +
+          (fin(q.change_value) ? ' / ' + (q.change_value > 0 ? '+' : '') + fmt(q.change_value) + ' ' + esc(r.unit) : '') + '</p>' +
+          chart(dates, [{ name: r.name, v: values, col: ACC, hunt: [] }], { h: 150, unit: r.unit, points: true, title: 'InfoLink 실제 평균가격 관측' }) +
+          '<p class="ag-meta">' + count + '회 관측' + (count < 2 ? ' · 첫 관측입니다. 다음 공표부터 추세가 쌓입니다.' : ' · 비어 있는 주간은 연결하지 않습니다.') + '</p>' +
+          '<p class="ag-meta"><a href="https://www.infolink-group.com/spot-price/" target="_blank" rel="noopener">InfoLink 원문 ↗</a> · <a href="connections.html#' + encodeURIComponent(r.sid) + '">가격 기준·관측 이력</a></p>' +
+          '<div class="ag-meta">관련 지표 (별도 기준) ' + (r.related_sids || []).map(function (sid) {
+            var other = (chunk.series || []).find(function (x) { return x.sid === sid; });
+            return '<a href="connections.html#' + encodeURIComponent(sid) + '">' + esc(other ? other.name : sid) + ' ↗</a>';
+          }).join(' · ') + '</div></div>';
+      }
+      function draw(focusKey) {
+        var rows = all.filter(function (r) { return (stage === 'all' || r.stage === stage) && (currency === 'all' || (r.unit || '').split('/')[0] === currency); });
+        var chosen = rows.find(function (r) { return r.sid === selected; }) || rows[0];
+        if (chosen) selected = chosen.sid;
+        host.innerHTML = '<div class="ag-sech" style="margin-top:22px"><h3>InfoLink · Spot Average</h3><span class="hint">공개 평균가격 ' + all.length + '개</span></div>' +
+          '<p class="ag-meta">주간 공표 · DoD 미제공. 전주 대비는 원문 Change를 표시하며, —는 미공표입니다. RMB는 CNY로 표기합니다.</p>' +
+          '<div role="group" aria-label="InfoLink 공정 필터" style="display:flex;gap:5px;flex-wrap:wrap">' +
+          [['all','전체'],['poly','폴리실리콘'],['wafer','웨이퍼'],['cell','셀'],['module','모듈']].map(function (x) {
+            return '<button type="button" class="ag-chip" data-il-stage="' + x[0] + '" aria-pressed="' + (stage === x[0]) + '">' + x[1] + '</button>';
+          }).join('') + '<label style="margin-left:auto;font-size:12px">통화 <select data-il-currency aria-label="InfoLink 통화">' +
+          [['all','전체'],['USD','USD'],['CNY','CNY (RMB)']].map(function (x) { return '<option value="' + x[0] + '"' + (currency === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></label></div>' +
+          (chosen ? detail(chosen) : '<p class="ag-empty">해당 조건의 공개 가격이 없습니다.</p>') +
+          '<div class="ag-scroll" style="max-height:420px"><table class="ag-tbl"><caption>평균가격 ' + rows.length + '개 · 품목을 누르면 관측 이력과 관련 지표가 열립니다.</caption><thead><tr><th scope="col" class="l">품목 / 가격 기준</th><th scope="col">Average</th><th scope="col">단위</th><th scope="col">WoW(원문)</th><th scope="col">관측일</th></tr></thead><tbody>' + rows.map(function (r) {
+            var q = r.quote || {};
+            return '<tr><th scope="row" class="l"><button type="button" class="ag-chip" data-il-sid="' + esc(r.sid) + '" aria-pressed="' + (selected === r.sid) + '" style="text-align:left;white-space:normal;max-width:410px">' + esc(r.name.replace(' · InfoLink','')) + '</button><div class="ag-meta" style="white-space:normal;max-width:410px">' + esc((r.basis_note || '').split(' · InfoLink')[0]) + '</div></th><td>' + fmt(r.last) + '</td><td>' + esc(r.unit) + '</td><td>' + fmtPct(q.change_pct) + '</td><td>' + esc(r.last_date) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+        host.querySelectorAll('[data-il-stage]').forEach(function (b) { b.onclick = function () { stage = b.dataset.ilStage; draw('stage:' + stage); }; });
+        host.querySelector('[data-il-currency]').onchange = function (e) { currency = e.target.value; draw('currency'); };
+        host.querySelectorAll('[data-il-sid]').forEach(function (b) { b.onclick = function () { selected = b.dataset.ilSid; var scroll = host.querySelector('.ag-scroll').scrollTop; draw('sid:' + selected); host.querySelector('.ag-scroll').scrollTop = scroll; host.querySelector('[data-il-detail]').scrollIntoView({block:'nearest',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); }; });
+        bindHover(host);
+        if (focusKey) {
+          var button = focusKey === 'currency' ? host.querySelector('[data-il-currency]') :
+            Array.from(host.querySelectorAll(focusKey.indexOf('stage:') === 0 ? '[data-il-stage]' : '[data-il-sid]')).find(function (b) { return (b.dataset.ilStage || b.dataset.ilSid) === focusKey.slice(focusKey.indexOf(':') + 1); });
+          if (button) button.focus({preventScroll:true});
+        }
+      }
+      draw();
+    }
     function renderSolar(chunk) {
       var ss = chunk.series || [];
       if (!ss.length) { body('solar').innerHTML = '<div class="ag-empty">태양광 데이터 없음</div>'; return; }
@@ -688,7 +746,7 @@
       var modRows = ss.filter(function (r) { return r.stage === 'module' && r.unit === 'USD/W'; }).slice(0, 6).map(function (r, i) {
         return { name: r.name, v: r.v, col: PAL[(i + 4) % PAL.length], hunt: r.hunt };
       });
-      body('solar').innerHTML = '<p class="ag-meta">공개 현물과 원장 가격은 규격·지역에 따라 다릅니다. <a href="connections.html#sol_pvi_module_182_perc">전체 태양광 연결·신규 현물 보기 →</a></p>' + flow +
+      body('solar').innerHTML = '<p class="ag-meta">공개 현물과 원장 가격은 규격·지역에 따라 다릅니다. <a href="connections.html#sol_pvi_module_182_perc">전체 태양광 연결·신규 현물 보기 →</a></p>' + flow + '<div data-infolink></div>' +
         '<div class="ag-grid2" style="margin-top:12px">' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">단계별 가격 지수 (5년, 시작=100)</div>' +
         chart(chunk.axis, mainRows, { h: 200, idx: true, title: '태양광 단계별 가격 지수' }) +
@@ -696,6 +754,7 @@
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">모듈 가격 (USD/W)</div>' +
         chart(chunk.axis, modRows, { h: 200, unit: 'USD/W', title: '태양광 모듈 가격' }) +
         '<div class="ag-lgd">' + modRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div></div>';
+      renderInfoLink(body('solar').querySelector('[data-infolink]'), chunk);
       bindHover(body('solar'));
     }
     function rSolar() {
