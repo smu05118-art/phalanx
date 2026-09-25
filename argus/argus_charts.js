@@ -239,7 +239,7 @@
     o = o || {};
     var from = o.from || 0;
     var ds = dates.slice(from);
-    var W = 900, H = o.h || 170, PL = 8, PR = 54, PT = 10, PB = 20;
+    var W = o.w || 900, H = o.h || 170, PL = 8, PR = 54, PT = 10, PB = 20;
     var n = ds.length;
     if (!n || !rows.length) return '<div class="ag-empty">데이터 없음</div>';
     var view = rows.map(function (r) {
@@ -399,7 +399,7 @@
       }
       var rows = (source[kind] && source[kind].series || []).filter(function (r) { return Array.isArray(r.v); });
       var axisKey = kind === 'solar' ? 'sol' : 'oil';
-      return rows.length ? { kind: kind, key: key, axis: (source.axes || {})[axisKey] || [], series: rows } : null;
+      return rows.length ? { kind: kind, key: key, axis: (source.axes || {})[axisKey] || [], series: rows, price_references: (source[kind] || {}).price_references || [] } : null;
     }
     function finishChunk(ref, chunk, error, source) {
       if (chunk) chunkCache[ref] = chunk;
@@ -465,7 +465,7 @@
       sec('health', '🩺 데이터 건강상태', 'stale 및 표본 부족 시리즈는 별도 확인') +
       sec('board', '🏔 체인 스코어보드', '게이지 = 사이클 위치 percentile(전 이력) · 셀 = 모멘텀 중앙값 %') +
       sec('spread', '📉 스프레드 차트', '주간 5년 · 마커 = 현재 사냥 시그널', chips()) +
-      sec('solar', '☀️ 태양광 밸류체인', '폴리 → 웨이퍼 → 셀 → 모듈 · PVInsights · InfoLink 주간 평균') +
+      sec('solar', '☀️ 태양광 밸류체인', '폴리 → 모듈 · 미국 설치·건설·가격 · PVInsights · InfoLink') +
       sec('oil', '🛢 유가 데크', 'petronet 일간 → 주간 다운샘플 · 스프레드 = 제품-두바이', oilChips()) +
       footer() + '</div>';
 
@@ -723,6 +723,71 @@
       }
       draw();
     }
+    function renderUSSolar(host, chunk) {
+      var displayNames = {
+        sol_us_eia_capacity_utility:'미국 대규모 태양광 설비용량',
+        sol_us_eia_capacity_small:'미국 소규모 태양광 설비용량',
+        sol_us_eia_capacity_total:'미국 태양광 설비용량 · 전체',
+        sol_us_eia_net_change_utility:'미국 태양광 월별 설비 순증 · 대규모',
+        sol_us_eia_net_change_small:'미국 태양광 월별 설비 순증 · 소규모',
+        sol_us_eia_net_change_total:'미국 태양광 월별 설비 순증 · 전체',
+        sol_us_eia_module_avg:'미국 모듈 평균 출하가격 · 과거 자료',
+        sol_us_eia_module_shipments:'미국 모듈 출하량 · 과거 자료',
+        sol_us_eia_module_value:'미국 모듈 출하금액 · 과거 자료',
+        sol_us_eia_operating_ytd:'미국 태양광 당해 가동 개시 설비 · 현재 명부'
+      };
+      var all = (chunk.series || []).filter(function (r) { return r.us_solar; }).map(function (r) {
+        return Object.assign({}, r, {name:displayNames[r.sid] || r.name});
+      });
+      if (!all.length) return;
+      var group = 'installation', selected = 'sol_us_eia_net_change_total';
+      var groupOf = function (r) { return /pipeline_|operating_ytd/.test(r.sid) ? 'pipeline' : /module_/.test(r.sid) ? 'price' : 'installation'; };
+      var labels = {installation:'설치 흐름',pipeline:'건설·계획',price:'가격·공급'};
+      var notes = {
+        installation:'월별 순증은 EIA 순하계 설비용량의 전월 차이입니다. 신규 설치뿐 아니라 폐쇄·정정의 영향도 포함하며, 소규모 설비는 EIA 추정치입니다.',
+        pipeline:'계획과 건설 진행 물량은 향후 설치를 살펴보는 선행 지표입니다. 준공을 보장하지 않으며 지표끼리 중복됩니다. 서로 더하지 않습니다.',
+        price:'EIA 평균 출하가격은 출하금액과 물량에 기반한 과거 가격입니다. 발행이 중단되어 현재 현물가로 사용할 수 없습니다. 최신 공개 견적은 아래에 별도 표시합니다.'
+      };
+      function draw(focus) {
+        var rows = all.filter(function (r) { return groupOf(r) === group; });
+        var chosen = rows.find(function (r) { return r.sid === selected; }) || rows[0];
+        if (!chosen) return;
+        selected = chosen.sid;
+        var count = (chosen.native_values || []).filter(fin).length;
+        var dates = chosen.native_dates || [], vals = chosen.native_values || [];
+        var month = chosen.last_date ? chosen.last_date.slice(0,7) : '미확인';
+        var ref = (chunk.price_references || []).map(function (r) {
+          var value = r.quote_type === 'range' ? fmt(r.low) + '–' + fmt(r.high) : fmt(r.value);
+          return '<article class="ag-card"><div class="ag-meta">Anza · ' + (r.quote_type === 'median' ? '중앙값' : '견적 범위') + '</div><b>' + esc(r.name) + '</b>' +
+            '<div style="font-size:24px;font-weight:750;margin:8px 0">' + value + ' <small style="font-size:12px">' + esc(r.unit) + '</small></div><p class="ag-meta">' + esc(r.basis_note) + '</p>' +
+            '<p class="ag-meta">발표 ' + esc(r.published_on) + ' · 관측일 미공표 · <a href="' + esc(r.source_url) + '" target="_blank" rel="noopener">발행사 원문 ↗</a></p></article>';
+        }).join('');
+        host.innerHTML = '<section class="ag-card" style="margin-top:22px" aria-label="미국 태양광 데이터"><div class="ag-sech"><h3>미국 태양광</h3><span class="hint">설비 · 공급 · 가격</span></div>' +
+          '<div role="group" aria-label="미국 태양광 분류" style="display:flex;gap:6px;flex-wrap:wrap">' + Object.keys(labels).map(function (key) {
+            return '<button type="button" class="ag-chip" data-us-group="' + key + '" aria-pressed="' + (key === group) + '"' + (key === group ? ' style="color:' + ACC + ';border-color:' + ACC + '"' : '') + '>' + labels[key] + '</button>';
+          }).join('') + '</div><p class="ag-meta" style="max-width:940px;line-height:1.7">' + notes[group] + '</p>' +
+          '<label style="display:block;font-size:12px;margin:12px 0">지표 <select data-us-select aria-label="미국 태양광 지표" style="max-width:100%;background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">' + rows.map(function (r) {
+            return '<option value="' + esc(r.sid) + '"' + (r.sid === selected ? ' selected' : '') + '>' + esc(r.name) + '</option>';
+          }).join('') + '</select></label>' +
+          '<div data-us-detail aria-live="polite"><div class="ag-meta">' + esc(chosen.publisher || 'EIA') + ' · ' + esc(month) + ' 기준' + (chosen.source_status === 'suspended' ? ' · 발행 중단 / 과거 자료' : ' · 월별 공표') + '</div>' +
+          '<h4 style="font-size:15px;margin:8px 0">' + esc(chosen.name) + '</h4><div style="font-size:28px;font-weight:750;margin-bottom:8px">' + fmt(chosen.last) + ' <small style="font-size:12px;font-weight:500">' + esc(chosen.unit) + '</small></div>' +
+          chart(dates, [{name:chosen.name,v:vals,col:ACC,hunt:[]}], {w:Math.max(300,Math.min(900,host.clientWidth-36)),h:210,unit:chosen.unit,points:true,title:chosen.name}) +
+          '<div class="ag-meta">' + count + '개월 관측 · 공표 ' + esc(chosen.release_date || '원문 참조') + (count < 3 ? ' · 관측 이력이 짧아 추세·예측을 산출하지 않습니다.' : ' · 결측 월은 연결하지 않습니다.') + '</div>' +
+          '<p class="ag-meta" style="line-height:1.7">' + esc(chosen.basis_note || '') + '</p><div class="ag-meta"><a href="' + esc(chosen.source_url || 'https://www.eia.gov/') + '" target="_blank" rel="noopener">EIA 원문 ↗</a> · <a href="connections.html#' + encodeURIComponent(chosen.sid) + '">관측 이력·기준 ↗</a></div></div>' +
+          (group === 'price' && ref ? '<h4 style="margin:22px 0 10px">공개 견적 참고 · 평균가격과 별도</h4><div class="ag-grid2">' + ref + '</div>' : '') +
+          '<details style="margin-top:16px"><summary style="cursor:pointer;font-size:12px">' + labels[group] + ' 지표 ' + rows.length + '개 한눈에 보기</summary><div class="ag-scroll"><table class="ag-tbl"><thead><tr><th class="l" scope="col">지표</th><th scope="col">최신값</th><th scope="col">단위</th><th scope="col">기준 월</th></tr></thead><tbody>' + rows.map(function (r) {
+            return '<tr><th class="l" scope="row">' + esc(r.name) + '</th><td>' + fmt(r.last) + '</td><td>' + esc(r.unit) + '</td><td>' + esc((r.last_date || '').slice(0,7)) + '</td></tr>';
+          }).join('') + '</tbody></table></div></details><p class="ag-meta" style="margin-top:16px">원문 기준을 보존한 참고지표 · 종합 점수·설치량 예측에는 반영하지 않습니다.</p></section>';
+        host.querySelectorAll('[data-us-group]').forEach(function (button) { button.onclick = function () { group = button.dataset.usGroup; selected = group === 'installation' ? 'sol_us_eia_net_change_total' : group === 'pipeline' ? 'sol_us_eia_pipeline_construction' : 'sol_us_eia_module_avg'; draw('group'); }; });
+        host.querySelector('[data-us-select]').onchange = function (event) { selected = event.target.value; draw('select'); };
+        bindHover(host);
+        if (focus) {
+          var control = focus === 'select' ? host.querySelector('[data-us-select]') : Array.from(host.querySelectorAll('[data-us-group]')).find(function (b) { return b.dataset.usGroup === group; });
+          if (control) control.focus({preventScroll:true});
+        }
+      }
+      draw();
+    }
     function renderSolar(chunk) {
       var ss = chunk.series || [];
       if (!ss.length) { body('solar').innerHTML = '<div class="ag-empty">태양광 데이터 없음</div>'; return; }
@@ -746,7 +811,7 @@
       var modRows = ss.filter(function (r) { return r.stage === 'module' && r.unit === 'USD/W'; }).slice(0, 6).map(function (r, i) {
         return { name: r.name, v: r.v, col: PAL[(i + 4) % PAL.length], hunt: r.hunt };
       });
-      body('solar').innerHTML = '<p class="ag-meta">공개 현물과 원장 가격은 규격·지역에 따라 다릅니다. <a href="connections.html#sol_pvi_module_182_perc">전체 태양광 연결·신규 현물 보기 →</a></p>' + flow + '<div data-infolink></div>' +
+      body('solar').innerHTML = '<p class="ag-meta">공개 현물과 원장 가격은 규격·지역에 따라 다릅니다. <a href="connections.html#sol_pvi_module_182_perc">전체 태양광 연결·신규 현물 보기 →</a></p>' + flow + '<div data-us-solar></div><div data-infolink></div>' +
         '<div class="ag-grid2" style="margin-top:12px">' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">단계별 가격 지수 (5년, 시작=100)</div>' +
         chart(chunk.axis, mainRows, { h: 200, idx: true, title: '태양광 단계별 가격 지수' }) +
@@ -754,6 +819,7 @@
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">모듈 가격 (USD/W)</div>' +
         chart(chunk.axis, modRows, { h: 200, unit: 'USD/W', title: '태양광 모듈 가격' }) +
         '<div class="ag-lgd">' + modRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div></div>';
+      renderUSSolar(body('solar').querySelector('[data-us-solar]'), chunk);
       renderInfoLink(body('solar').querySelector('[data-infolink]'), chunk);
       bindHover(body('solar'));
     }
