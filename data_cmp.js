@@ -258,29 +258,29 @@ window.CMPD={
   },
   "SCREEN": {
     "report_d": "2026-10-30",
-    "fq": "FY27 Q2 (7~9월)",
+    "fq": "FQ2'27 (7~9월)",
     "verdict": "가이던스 하회 신호",
     "vcolor": "#e2574f",
     "est": "1,468.89 억엔",
     "range": "",
-    "cons": null,
+    "cons": "1,695.25 억엔",
     "rho": 0.653,
     "state": "완전"
   },
   "HOYA": {
     "report_d": "2026-10-30",
-    "fq": "FY27 Q2 (7~9월)",
+    "fq": "FQ2'27 (7~9월)",
     "verdict": "Beat (상단 초과)",
     "vcolor": "#2fae66",
     "est": "2,683.94 억엔",
     "range": "",
-    "cons": null,
+    "cons": "2,544.77 억엔",
     "rho": 0.236,
     "state": "완전"
   },
   "LASERTEC": {
     "report_d": "2026-10-30",
-    "fq": "FY27 Q1 (7~9월)",
+    "fq": "FQ1'27 (7~9월)",
     "verdict": "부합권",
     "vcolor": "#c9a24a",
     "est": "1,016.81 억엔",
@@ -319,23 +319,23 @@ window.CMPD={
   },
   "MITSUIKZ2": {
     "report_d": "2026-11-10",
-    "fq": "FY27 Q2 (7~9월)",
-    "verdict": "부합권",
-    "vcolor": "#c9a24a",
+    "fq": "FQ2'27 (7~9월)",
+    "verdict": "Beat (상단 초과)",
+    "vcolor": "#2fae66",
     "est": "2,248.48 억엔",
     "range": "",
-    "cons": null,
+    "cons": "2,144.5 억엔",
     "rho": 0.797,
     "state": "완전"
   },
   "FURUKAWA2": {
     "report_d": "2026-11-09",
-    "fq": "FY27 Q2 (7~9월)",
+    "fq": "FQ2'27 (7~9월)",
     "verdict": "Beat (상단 초과)",
     "vcolor": "#2fae66",
     "est": "3,664.34 억엔",
     "range": "",
-    "cons": null,
+    "cons": "3,628.3 억엔",
     "rho": 0.663,
     "state": "완전"
   },
@@ -712,7 +712,7 @@ window.CMPD={
     }
   },
   "HONHAI": {
-    "report_d": "",
+    "report_d": "2026-11-12",
     "fq": "Q3'26 (7~9월)",
     "verdict": "부합권",
     "vcolor": "#c9a24a",
@@ -1237,8 +1237,8 @@ window.CMPD={
     }
   },
   "CATL": {
-    "report_d": "",
-    "fq": "진행 분기",
+    "report_d": "2026-10-31",
+    "fq": "Q3'26 (7~9월)",
     "verdict": "부합권",
     "vcolor": "#c9a24a",
     "est": "25.13 B USD",
@@ -1259,8 +1259,8 @@ window.CMPD={
     "state": "대기"
   },
   "CANADIAN": {
-    "report_d": "",
-    "fq": "진행 분기",
+    "report_d": "2026-10-31",
+    "fq": "Q3'26 (7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
@@ -1270,8 +1270,8 @@ window.CMPD={
     "state": "대기"
   },
   "LONGI": {
-    "report_d": "",
-    "fq": "진행 분기",
+    "report_d": "2026-10-31",
+    "fq": "Q3'26 (7~9월)",
     "verdict": "부합권",
     "vcolor": "#c9a24a",
     "est": "1.82 B USD",
@@ -1281,8 +1281,8 @@ window.CMPD={
     "state": "외삽 참고"
   },
   "SUNGROW": {
-    "report_d": "",
-    "fq": "진행 분기",
+    "report_d": "2026-10-31",
+    "fq": "Q3'26 (7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
@@ -1292,8 +1292,8 @@ window.CMPD={
     "state": "대기"
   },
   "DEYE": {
-    "report_d": "",
-    "fq": "진행 분기",
+    "report_d": "2026-10-31",
+    "fq": "Q3'26 (7~9월)",
     "verdict": "부합권",
     "vcolor": "#c9a24a",
     "est": "0.8 B USD",
@@ -1303,8 +1303,8 @@ window.CMPD={
     "state": "완전"
   },
   "HANGKE": {
-    "report_d": "",
-    "fq": "진행 분기",
+    "report_d": "2026-10-31",
+    "fq": "Q3'26 (7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
