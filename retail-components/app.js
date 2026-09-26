@@ -7,7 +7,7 @@
   const fmt = (value, digits = 2) => finite(value) ? value.toLocaleString('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '—';
   const pct = (value, digits = 2) => finite(value) ? `${fmt(value * 100, digits)}%` : '미확보';
   const money = (value) => finite(value) && value > 0 ? `${value.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원` : '미확보';
-  const signed = (value) => finite(value) ? `${value > 0 ? '+' : ''}${fmt(value)}%` : '전일 실측 대기';
+  const signed = (value) => finite(value) ? `${value > 0 ? '+' : ''}${fmt(value)}%` : '변동률 미산출';
   const movement = (value) => finite(value) ? value > 0 ? 'up' : value < 0 ? 'down' : 'flat' : 'muted';
   const setText = (id, value) => { $(id).textContent = value ?? '—'; };
   const strings = (value) => Array.isArray(value) ? value.map(readable) : value == null || value === '' ? [] : [readable(value)];
@@ -140,7 +140,7 @@
     $('index-cards').innerHTML = state.data.indices.map((index, ordinal) => {
       const dod = indexDod(index);
       const started = arr(index.series).filter((point) => finite(point.value)).length === 1;
-      return `<button type="button" class="index-card" style="--card-accent:${colors[index.id] || 'var(--accent)'}" data-index="${ordinal}" aria-pressed="false" aria-controls="index-detail"><span class="card-top"><span class="card-label">${escape(labels[index.id] || index.id)}</span><span class="card-arrow" aria-hidden="true">↗</span></span><span class="card-title">${escape(index.name)}</span><span class="card-value">${fmt(index.value)}<span class="unit">pt</span></span><span class="card-change ${movement(dod)}">${finite(dod) ? `${signed(dod)} · 전일 대비` : started ? '누적 시작 · 전일 실측 대기' : '전일 실측 대기'}</span><span class="mini-chart" id="spark-${ordinal}" aria-hidden="true"></span><span class="card-footer"><span>${escape(index.as_of || '관측 대기')}</span><span>${escape(index.coverage_count ?? 0)} / ${escape(index.basket_count ?? 0)}개 · ${pct(index.coverage_weight, 1)}</span></span></button>`;
+      return `<button type="button" class="index-card" style="--card-accent:${colors[index.id] || 'var(--accent)'}" data-index="${ordinal}" aria-pressed="false" aria-controls="index-detail"><span class="card-top"><span class="card-label">${escape(labels[index.id] || index.id)}</span><span class="card-arrow" aria-hidden="true">↗</span></span><span class="card-title">${escape(index.name)}</span><span class="card-value">${fmt(index.value)}<span class="unit">pt</span></span><span class="card-change ${movement(dod)}">${finite(dod) ? `${signed(dod)} · 전일 대비` : !complete(index, index.basket_count) ? '당일 가격 미확보' : started ? '누적 시작 · 전일 실측 대기' : '전일 실측 대기'}</span><span class="mini-chart" id="spark-${ordinal}" aria-hidden="true"></span><span class="card-footer"><span>${escape(index.as_of || '관측 대기')}</span><span>${escape(index.coverage_count ?? 0)} / ${escape(index.basket_count ?? 0)}개 · ${pct(index.coverage_weight, 1)}</span></span></button>`;
     }).join('');
     state.data.indices.forEach((index, ordinal) => chart($(`spark-${ordinal}`), index.series, { miniature: true, color: colors[index.id] || 'var(--accent)' }));
     $('index-cards').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
