@@ -1063,42 +1063,116 @@ safe('range-center',function(){
    빌더 계약(맥스튜디오 작업):
      · company.topc = {idx, grouped?, top:[{name,share}]}  ← coTopC 결과 사전계산
      · manifest region.cfile = "data_jp_country.js"        ← {country,country_i}를 PSHC[reg]로
-   이 모듈은 3가지 상태 모두에서 동작한다:
-     (a) 빌더 미적용(현재) — 전부 폴백, 동작 변화 없음
-     (b) 1단계(추가만)     — topc 사용, 국가 큐브는 메인 샤드에 아직 있어 지연로드 불필요
-     (c) 2단계(country 제거) — 국가뷰 진입 시에만 cfile 지연 로드
+     · manifest region.cdir  = "data_jp_country/"          ← core_set별 샤드 디렉토리
+       manifest region.csets = ["probe_core", …]           ← 있는 세트 목록(없는 세트 404 방지)
+       샤드 생성 참조 구현: tools/split_country_sets.py
+   이 모듈은 4가지 상태 모두에서 동작한다:
+     (a) 빌더 미적용 — 전부 폴백, 동작 변화 없음
+     (b) 1단계(추가만)     — topc 사용, 국가 큐브는 메인 샤드에 있어 지연로드 불필요
+     (c) 2단계(cfile)      — 국가뷰 진입 시 리전 큐브를 통째로 지연 로드
+     (d) 3단계(cdir, 권장) — 국가뷰 진입 시 "현재 세트 하나"만 지연 로드
+   (d)가 가능한 근거: 소비 지점 countrySrc()가 언제나 setKey() 하나만 본다
+   (index.html `(P.country||{})[sk]`). P.country 전체를 훑는 코드는 없다.
+   실측 data_jp_country.js 8.92MB → 세트 142개, 최대 335KB · 중앙값 54KB.
    ============================================================ */
 safe('country-lazy',function(){
-  var _cLoaded={}, _cQueue={};
+  var MAXSETS=12;                       /* 세트당 수십 KB — 12개 유지해도 1MB 미만 */
+  var _cLoaded={}, _cQueue={};          /* (c) 리전 단위 상태 */
+  var _sQueue={}, _sTried={}, _lru=[];  /* (d) 세트 단위 상태 — 보유 여부는 P.country가 단일 진실 */
+  var _own={}, _owner={};               /* _owner[key]=reg — 리전 간 core_set 이름이 겹친다 */
+
+  function curSet(){ try{ return setKey()||null; }catch(e){ return null; } }
+  function cdirOf(r){ var d=r&&r.cdir; return d?String(d).replace(/\/?$/,'/'):null; }
+  function skey(reg,sk){ return reg+'\u0000'+sk; }
+  function hasSet(r,sk){                /* csets를 주면 그걸 믿고, 없으면 있다고 보고 시도 */
+    if(!sk) return false;
+    var cs=r&&r.csets; if(!cs||!cs.length) return true;
+    return cs.indexOf(sk)>=0;
+  }
+
   function mergeCountry(reg){                       /* PSHC → P 로 병합하면 기존 코드가 그대로 동작 */
     var c=window.PSHC&&window.PSHC[reg]; if(!c) return false;
     if(c.country)   P.country  =Object.assign(P.country  ||{}, c.country);
     if(c.country_i) P.country_i=Object.assign(P.country_i||{}, c.country_i);
     _cLoaded[reg]=true; return true;
   }
+  function mergeSet(reg,sk){                        /* (d) 세트 하나만 옮긴다 */
+    var c=window.PSHC&&window.PSHC[reg]; if(!c) return false;
+    var hit=false;
+    if(c.country&&c.country[sk]){
+      (P.country||(P.country={}))[sk]=c.country[sk]; _owner['c:'+sk]=reg; hit=true; }
+    if(c.country_i&&c.country_i[sk]){
+      (P.country_i||(P.country_i={}))[sk]=c.country_i[sk]; _owner['i:'+sk]=reg; hit=true; }
+    if(hit) touch(reg,sk);
+    return hit;
+  }
+  function touch(reg,sk){
+    var k=skey(reg,sk), i=_lru.indexOf(k); if(i>=0) _lru.splice(i,1);
+    _lru.push(k); trimSets();
+  }
+  function trimSets(){ safe('set-evict',function(){   /* 오래된 세트부터 놓아준다 */
+    while(_lru.length>MAXSETS){
+      var k=_lru.shift(), p=k.split('\u0000'), reg=p[0], sk=p[1];
+      if(_owner['c:'+sk]===reg&&P.country)   delete P.country[sk];   /* 다른 리전이 다시 소유했으면 둔다 */
+      if(_owner['i:'+sk]===reg&&P.country_i) delete P.country_i[sk];
+      var c=window.PSHC&&window.PSHC[reg];
+      if(c){ if(c.country) delete c.country[sk]; if(c.country_i) delete c.country_i[sk]; }
+      delete _sTried[k];                            /* 다시 필요해지면 받아올 수 있게 */
+    }
+  }); }
+
   function haveCountry(){                           /* 현재 선택 세트의 국가 큐브가 메모리에 있나 */
     var sk=null; try{ sk=setKey(); }catch(e){ return true; }   /* 판단 불가 → 통과(폴백) */
     if(!sk) return true;
     return !!((P.country||{})[sk]||(P.country_i||{})[sk]);
   }
+  function pending(){                               /* 지금 받아올 게 남아 있나 */
+    var r=regionObj(), dir=cdirOf(r);
+    if(dir){ var sk=curSet();
+      return !!sk&&hasSet(r,sk)&&!_sTried[skey(ST.region,sk)]; }
+    return !!(r&&r.cfile)&&!_cLoaded[ST.region];
+  }
+  function waiting(){
+    var m=document.getElementById('main');
+    if(m) m.innerHTML='<div class="load-msg">⏳ 국가별 데이터 불러오는 중…</div>';
+  }
+  function inject(src,done){
+    var sc=document.createElement('script'); sc.src=src;
+    sc.onload=sc.onerror=done; document.head.appendChild(sc);
+  }
+
+  function loadSet(reg,sk,dir,cb){
+    var k=skey(reg,sk);
+    if(_sQueue[k]){ _sQueue[k].push(cb); return; }
+    _sQueue[k]=[cb]; _sTried[k]=true;               /* 404여도 렌더마다 재시도하지 않는다 */
+    waiting();
+    inject(dir+encodeURIComponent(sk)+'.js',function(){
+      mergeSet(reg,sk);
+      var q=_sQueue[k]||[]; _sQueue[k]=null; q.forEach(function(f){ safe('country-cb',f); });
+    });
+  }
   function loadCountry(cb){
-    var reg=ST.region, r=regionObj();
-    if(_cLoaded[reg]||mergeCountry(reg)) return cb();
+    var reg=ST.region, r=regionObj(), dir=cdirOf(r);
+    if(dir){                                        /* (d) 세트 단위 */
+      var sk=curSet();
+      if(!sk||!hasSet(r,sk)) return cb();           /* 이 세트는 국가 큐브가 아예 없다 */
+      if(mergeSet(reg,sk)) return cb();             /* 이미 PSHC에 와 있음 */
+      if(_sTried[skey(reg,sk)]) return cb();        /* 받아봤는데 없었다 — 폴백 렌더 */
+      return loadSet(reg,sk,dir,cb);
+    }
+    if(_cLoaded[reg]||mergeCountry(reg)) return cb();   /* (c) 리전 단위 */
     if(!r.cfile) return cb();                       /* 빌더 미적용 — 메인 샤드에 이미 있음 */
     if(_cQueue[reg]){ _cQueue[reg].push(cb); return; }
     _cQueue[reg]=[cb];
-    var m=document.getElementById('main');
-    if(m) m.innerHTML='<div class="load-msg">⏳ 국가별 데이터 불러오는 중…</div>';
-    var sc=document.createElement('script'); sc.src=r.cfile;
-    sc.onload=sc.onerror=function(){ mergeCountry(reg); markOwned(reg); evictOthers(reg);
-      var q=_cQueue[reg]||[]; _cQueue[reg]=null; q.forEach(function(f){ safe('country-cb',f); }); };
-    document.head.appendChild(sc);
+    waiting();
+    inject(r.cfile,function(){ mergeCountry(reg); markOwned(reg); evictOthers(reg);
+      var q=_cQueue[reg]||[]; _cQueue[reg]=null; q.forEach(function(f){ safe('country-cb',f); }); });
   }
 
   /* R2-29: 리전 전환 시 이전 리전의 국가 큐브를 축출한다(해제 경로가 아예 없었다).
      단 메인 샤드에 country가 남아 있는 동안(빌더 2단계 전)은 축출해도 재수신 비용만
-     커지므로, cfile로 다시 받을 수 있는 리전만 대상으로 한다. */
-  var _own={}, _owner={};                 /* _owner[key]=reg — 리전 간 core_set 이름이 겹친다 */
+     커지므로, cfile로 다시 받을 수 있는 리전만 대상으로 한다.
+     (d) cdir 리전은 이 경로를 타지 않는다 — 위 trimSets()의 LRU가 대신 처리한다. */
   function markOwned(reg){
     var c=(window.PSHC&&window.PSHC[reg])||{};
     var ck=Object.keys(c.country||{}), ik=Object.keys(c.country_i||{});
@@ -1138,13 +1212,18 @@ safe('country-lazy',function(){
   function wrapNeedsCountry(name, needs){
     var orig=window[name]; if(typeof orig!=='function') return;
     window[name]=function(){
-      if(needs()&&!haveCountry()&&regionObj().cfile&&!_cLoaded[ST.region])
+      if(needs()&&!haveCountry()&&pending())
         return loadCountry(function(){ orig(); });
       return orig();
     };
   }
   wrapNeedsCountry('renderCountry', function(){ return true; });
   wrapNeedsCountry('renderDetail',  function(){ return !!ST.split; });
+
+  window.__PHX_COUNTRY_LAZY__={          /* tools/tests 계약 테스트용 훅 */
+    loadCountry:loadCountry, haveCountry:haveCountry, pending:pending,
+    mergeSet:mergeSet, trimSets:trimSets, state:function(){ return {lru:_lru.slice(), tried:_sTried}; }
+  };
 });
 
 /* ============================================================
