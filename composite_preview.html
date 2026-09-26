@@ -328,6 +328,175 @@ function renderGridPreview(c, panel, env) {
 }
 if (typeof module !== 'undefined') module.exports = {renderGridPreview};
 
+/* 전력기기 피어 앙상블 패널 — ensemble grid-composite 투영본(phalanx-grid-ensemble-proj/1) 전용.
+ *
+ * 원천은 smu05118-art/ensemble 의 grid/composite/out/composite.json 이고, 이 파일은 그 투영본을
+ * 화면으로만 옮긴다. **여기서 등급·나우캐스트를 계산하지 않는다** — 계산하면 원천 판정과 갈린다.
+ *
+ * fail-closed: 투영본은 `nowcast.published === true` 가 아닌 기업의 예측 수치를 아예 담지 않는다.
+ * 따라서 이 화면이 실수로 미승인 수치를 노출할 방법이 없다. 보류 기업은 사유만 적는다.
+ * 그 계약을 깨지 않으려면 pred_yoy 를 다른 필드에서 유추해 채우지 말라.
+ *
+ * 매출 방향 진단이며 투자 신호가 아니다.
+ */
+function geEsc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function geNum(x,d){return typeof x==='number'&&Number.isFinite(x)?x.toLocaleString('en-US',{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d}):'–';}
+function gePct(x,d){return typeof x==='number'&&Number.isFinite(x)?(x>0?'+':'')+(x*100).toFixed(d==null?1:d)+'%':'–';}
+function geLink(url,label){
+ // 투영본이 비-http 스킴을 들고 오면 링크로 만들지 않는다(원천이 바뀌어도 화면이 안전해야 한다).
+ try{const u=new URL(String(url));if(u.protocol!=='https:'&&u.protocol!=='http:')return geEsc(label);
+  return '<a href="'+geEsc(u.href)+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">'+geEsc(label)+' ↗</a>';}
+ catch(err){return geEsc(label);}
+}
+const GE_GRADE_COL={A:'#2fae66',B:'#5aa9ff',C:'#c9a24a',F:'#6b7280',N:'#6b7280'};
+const GE_GRADE_NOTE={A:'기준모형 대비 뚜렷한 개선',B:'개선 확인',C:'개선 10% 미만 — 참고등급',
+ F:'기준모형을 못 넘음',N:'표본·타깃 부족으로 미평가'};
+const GE_STATUS_KO={ok:'정상',short_history:'이력 짧음',no_target:'타깃 미확보'};
+const GE_TIER_KO={anchor:'앵커',core:'핵심',ext:'확장',private:'비상장'};
+
+function geGradeBadge(g){
+ const key=g||'N';
+ const col=GE_GRADE_COL[key]||'#6b7280';
+ const txt=g||'미판정';
+ const tip=g?(GE_GRADE_NOTE[g]||''):'원천이 등급을 내리지 않음(평가 표본 부족 등)';
+ return '<span title="'+geEsc(tip)+'" style="display:inline-block;min-width:22px;text-align:center;font-weight:800;'
+  +'font-size:11px;color:'+col+';border:1px solid '+col+';border-radius:4px;padding:1px 6px">'+geEsc(txt)+'</span>';
+}
+
+function geProxyCell(list,kind){
+ if(!Array.isArray(list)||!list.length)
+  return '<span style="color:var(--sub)">'+(kind==='lead'?'선행 프록시 없음':'동행 프록시 없음')+'</span>';
+ return list.map(e=>{
+  // 라벨을 해소하지 못한 프록시는 조용히 비우지 않는다 — id 를 보여주고 미해소임을 밝힌다.
+  if(e.label_missing||!e.label_ko)
+   return '<div style="color:var(--gold)">⚠ '+geEsc(e.id||'(id 없음)')+' <span style="font-size:10.5px">라벨 미해소</span></div>';
+  return '<div>'+geEsc(e.label_ko)+'</div>';
+ }).join('');
+}
+
+function geNowcastCell(n){
+ if(!n) return '<span style="color:var(--sub)">–</span>';
+ if(n.published!==true){
+  // 보류 — 사유만. 수치는 투영본에 아예 없다.
+  const rs=Array.isArray(n.reasons)&&n.reasons.length?n.reasons:(n.grade_only?['나우캐스트 등급 '+n.grade_only]:[]);
+  const body=rs.length?rs.map(r=>'<div>· '+geEsc(r)+'</div>').join('')
+   :'<div>· '+geEsc(n.withheld||'원천이 공개 조건 미충족으로 판정')+'</div>';
+  return '<div style="color:var(--sub);font-size:11.5px"><b style="color:var(--gold)">보류</b>'+body+'</div>';
+ }
+ const iv=Array.isArray(n.interval_yoy)&&n.interval_yoy.length===2?n.interval_yoy:null;
+ return '<div><b style="color:var(--green);font-size:13px">'+gePct(n.pred_yoy)+'</b>'
+  +' <span style="font-size:10.5px;color:var(--sub)">YoY'+(n.target_m?' · '+geEsc(n.target_m):'')+'</span></div>'
+  +(iv?'<div style="font-size:11px;color:var(--sub)">80% '+gePct(iv[0])+' ~ '+gePct(iv[1])+'</div>':'')
+  +(n.grade?'<div style="font-size:10.5px;color:var(--sub)">나우캐스트 등급 '+geEsc(n.grade)+'</div>':'');
+}
+
+function geAnchorValidity(G){
+ const av=G.anchor_validity;
+ if(!av) return '<div class="notes">대리 타당성 통계 미확보 — 원천에 anchor_validity 가 없다.</div>';
+ const tot=av.yoy_revenue_total||{},exp=av.yoy_revenue_export||{},fx=av.implied_krw_per_usd||null;
+ const parts=[];
+ if(typeof tot.r==='number') parts.push('대리(안산 HS8504 수출) vs 공식 매출 YoY 상관 <b>r='+geNum(tot.r,2)+'</b>(쌍 '+geEsc(tot.n)+'개)');
+ else parts.push('공식 매출 YoY 상관 <b>미산출</b>'+(tot.n!=null?'(쌍 '+geEsc(tot.n)+'개)':''));
+ if(typeof exp.r==='number') parts.push('수출 매출 기준 r='+geNum(exp.r,2)+'(쌍 '+geEsc(exp.n)+'개)');
+ else if(exp.n!=null) parts.push('수출 매출 기준은 쌍 '+geEsc(exp.n)+'개로 상관 미산출');
+ if(fx) parts.push('내포 환산배수 <b>'+geNum(fx.min,0)+'~'+geNum(fx.max,0)+' KRW/USD</b>('+geEsc(fx.n)+'분기)');
+ return '<div class="notes" style="margin-top:6px">'+parts.join(' · ')
+  +' — 내포배수가 실제 환율대를 크게 벗어나는 분기가 있어 <b>수준(level)이 아니라 방향</b>만 읽을 대리 지표다.</div>';
+}
+
+function renderGridEnsemble(G,p){
+ if(!G||G.schema!=='phalanx-grid-ensemble-proj/1'){
+  // 스키마가 다르면 아무 것도 그리지 않고 그 사실을 적는다(모양을 추측해 그리면 틀린 수치가 나온다).
+  p.innerHTML='<div class="card"><h3>⚡ 전력기기 피어 앙상블</h3><div class="notes warn">'
+   +'투영본 스키마 불일치 — 기대 phalanx-grid-ensemble-proj/1, 실제 '+geEsc(G&&G.schema)+'. 렌더를 중단했다.</div></div>';
+  return;
+ }
+ const S=G.source||{},T=G.totals||{},peers=Array.isArray(G.peers)?G.peers:[];
+ const anchors=peers.filter(x=>x.is_anchor),rest=peers.filter(x=>!x.is_anchor);
+ const gr=T.grades||{};
+ const gradeLine=['A','B','C','F','N'].filter(k=>gr[k]).map(k=>geGradeBadge(k)+' '+gr[k]+'사').join(' · ')
+  +(gr['미판정']?' · '+geGradeBadge(null)+' '+gr['미판정']+'사':'');
+ const attrib='ensemble grid-composite · 커밋 <b>'+geEsc(S.commit_short||'')+'</b> · asof '+geEsc(G.asof||'')
+  +' · 원천 '+geEsc((S.src_bytes/1e6).toFixed(2))+'MB → 투영본만 임베드';
+
+ const row=x=>{
+  const t=x.target||{},c=x.composite||{},s=x.summary||{};
+  return '<tr'+(x.is_anchor?' style="background:#5aa9ff0d"':'')+'>'
+   +'<td><b>'+geEsc(x.id)+'</b>'+(x.is_anchor?' <span style="font-size:10px;color:var(--blue)">앵커</span>':'')
+    +'<div style="font-size:11px;color:var(--sub)">'+geEsc(x.name)+'</div>'
+    +'<div style="font-size:10.5px;color:var(--sub)">'+geEsc(x.ticker||'')+' · '+geEsc(x.region||'')
+    +' · '+geEsc(GE_TIER_KO[x.tier]||x.tier||'')+(x.listed===false?' · 비상장':'')+'</div></td>'
+   +'<td style="text-align:center">'+geGradeBadge(c.grade)
+    +(typeof c.rel_mae_best==='number'?'<div style="font-size:10.5px;color:var(--sub)">rel MAE '+geNum(c.rel_mae_best,2)
+      +(c.n_oos!=null?' · OOS '+geEsc(c.n_oos):'')+'</div>':'')
+    +(c.grade_reason?'<div style="font-size:10.5px;color:var(--sub)">'+geEsc(c.grade_reason)+'</div>':'')
+    +'</td>'
+   +'<td class="ge-wrap">'+geEsc(t.label_ko||t.name||'–')
+    +'<div style="font-size:10.5px;color:var(--sub)">'+geEsc(x.currency||'')
+    +(t.n_yoy!=null?' · YoY 표본 '+geEsc(t.n_yoy):'')
+    +' · '+geEsc(GE_STATUS_KO[x.status]||x.status||'')+'</div></td>'
+   +'<td class="ge-wrap" style="font-size:11.5px">'
+    +'<div style="color:var(--sub);font-size:10.5px">선행 '+geEsc(s.n_lead==null?'–':s.n_lead)
+     +'(검증 '+geEsc(s.n_validated_lead==null?'–':s.n_validated_lead)+')</div>'+geProxyCell(s.top_lead,'lead')
+    +'<div style="color:var(--sub);font-size:10.5px;margin-top:4px">동행 '+geEsc(s.n_coincident==null?'–':s.n_coincident)+'</div>'
+    +geProxyCell(s.top_coincident,'coin')+'</td>'
+   +'<td>'+geNowcastCell(x.nowcast)+'</td></tr>';
+ };
+
+ p.innerHTML='<style>'
+  +'#pGRIDENS td{vertical-align:top}#pGRIDENS .ge-wrap{white-space:normal;min-width:190px}'
+  +'#pGRIDENS .ge-tbl{overflow-x:auto}#pGRIDENS .ge-tbl table{min-width:880px}'
+  +'@media(max-width:820px){#pGRIDENS .ge-wrap{min-width:150px}}'
+  +'</style>'
+ +'<div class="card"><h3>⚡ 전력기기 피어 앙상블 — 무역·물가 프록시 기반 매출 방향 진단</h3>'
+  +'<div style="font-size:12.5px">피어 <b>'+geEsc(T.peers)+'</b>사 · 등급 '+gradeLine+'</div>'
+  +'<div class="chips">'
+   +'<div class="chip"><div class="l">선행 프록시(합)</div><div class="v">'+geEsc(T.n_lead)+'</div>'
+    +'<div class="s">검증 통과 <b class="warn">'+geEsc(T.n_validated_lead)+'</b>개</div></div>'
+   +'<div class="chip"><div class="l">동행 프록시(합)</div><div class="v">'+geEsc(T.n_coincident)+'</div>'
+    +'<div class="s">지연 '+geEsc(T.n_lag)+'개</div></div>'
+   +'<div class="chip"><div class="l">나우캐스트 공개</div><div class="v">'
+    +geEsc((T.nowcast_published||[]).length)+'</div><div class="s">'
+    +geEsc((T.nowcast_published||[]).join(', ')||'없음')+'</div></div>'
+   +'<div class="chip"><div class="l">후보 카탈로그</div><div class="v">'+geEsc(G.catalog_size)+'</div>'
+    +'<div class="s">기업별 최대 '+geEsc((G.params||{}).max_candidates)+'개 심사</div></div>'
+  +'</div>'
+  +'<div class="notes warn">⚠ <b>'+geEsc(G.disclaimer||'매출 방향 진단 · 투자 신호 아님')+'.</b> '
+   +'선행 프록시 '+geEsc(T.n_lead)+'개 중 사전검증을 통과한 것은 <b>'+geEsc(T.n_validated_lead)+'개</b>다. '
+   +'등급 C 는 기준모형 대비 개선 10% 미만이라 참고등급이며, 수치를 매매 신호로 읽지 말 것.</div>'
+  +'<div class="notes" style="margin-top:6px">출처: '+attrib+' · '
+   +geLink(S.page_url,'ensemble grid 컴포짓 페이지')
+   +' <span class="warn">('+geEsc(S.page_note||'머지 후 공개')+')</span></div>'
+ +'</div>'
+
+ +'<div class="card"><h3>앵커 — 산일전기(062040 KS)와 출하 대리 지표</h3>'
+  +'<div class="ge-tbl"><table><tr><th>기업</th><th style="text-align:center">등급</th><th>타깃</th>'
+   +'<th>최강 선행·동행 프록시</th><th>나우캐스트</th></tr>'
+   +(anchors.length?anchors.map(row).join(''):'<tr><td colspan="5">앵커 행 없음</td></tr>')+'</table></div>'
+  +geAnchorValidity(G)
+  +(anchors.map(a=>a.note).filter(Boolean).map(n=>'<div class="notes">· '+geEsc(n)+'</div>').join(''))
+ +'</div>'
+
+ +'<div class="card"><h3>피어 '+geEsc(rest.length)+'사 — 등급 · 타깃 · 최강 프록시 · 나우캐스트</h3>'
+  +'<div class="ge-tbl"><table><tr><th>기업</th><th style="text-align:center">등급</th><th>타깃</th>'
+   +'<th>최강 선행·동행 프록시</th><th>나우캐스트</th></tr>'
+   +rest.map(row).join('')+'</table></div>'
+  +'<div class="notes" style="margin-top:6px">나우캐스트는 원천이 <b>등급 A·B</b> 로 판정한 기업만 수치를 공개한다. '
+   +'보류 기업은 이 투영본에 예측값 자체가 담기지 않으므로 화면이 노출할 수 없다.</div>'
+ +'</div>'
+
+ +'<div class="card"><h3>피어 선정 규칙과 파라미터</h3>'
+  +'<div class="notes">'+geEsc(G.selection_rule||'–')+'</div>'
+  +'<div class="notes" style="margin-top:6px">파라미터: '
+   +Object.keys(G.params||{}).map(k=>geEsc(k)+'='+geEsc(JSON.stringify(G.params[k]))).join(' · ')+'</div>'
+  +'<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--sub);font-size:12px">'
+   +'앵커 vs 피어 지수 순환 상관(원천 peer_cycle)</summary>'
+   +'<div class="notes" style="margin-top:4px;word-break:break-all">'+geEsc(G.peer_cycle_note||'–')+'</div></details>'
+  +'<div class="notes" style="margin-top:6px">원천 파일 '+geEsc(S.path||'')+' · sha256 '
+   +geEsc(String(S.src_sha256||'').slice(0,16))+'…</div>'
+ +'</div>';
+}
+
 /* Shared, dependency-free evidence panels for Rack and Ensemble. */
 const SC_KIND={direct:'공시·실측',proxy:'대체 관측',qualitative:'회사 설명',forecast:'전망·계획',diagnostic:'통계 대조'};
 const SC_STATE={actual:'관측',stale:'오래됨',future:'향후 기간',forecast:'계획',missing:'미확보'};
@@ -189511,7 +189680,7 @@ null
 "aliases": [
 "DELL US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -189543,7 +189712,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -189585,7 +189754,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "DELL",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -189720,7 +189889,7 @@ null
 "aliases": [
 "JBL US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "company_specific_complete_historical_tone_sample_not_assembled",
@@ -189783,7 +189952,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -189825,7 +189994,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "JBL",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -189960,7 +190129,7 @@ null
 "aliases": [
 "LITE US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -189992,7 +190161,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -190034,7 +190203,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "LITE",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -190169,7 +190338,7 @@ null
 "aliases": [
 "CRDO US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -190201,7 +190370,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -190243,7 +190412,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "CRDO",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -190378,7 +190547,7 @@ null
 "aliases": [
 "6855 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -190410,7 +190579,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -190452,7 +190621,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "JEM",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -190587,7 +190756,7 @@ null
 "aliases": [
 "HPE US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -190619,7 +190788,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -190661,7 +190830,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "HPE",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -190796,7 +190965,7 @@ null
 "aliases": [
 "SMCI US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -190828,7 +190997,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -190870,7 +191039,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "SMCI",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -191005,7 +191174,7 @@ null
 "aliases": [
 "CLS US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -191037,7 +191206,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -191079,7 +191248,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "CLS",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -191214,7 +191383,7 @@ null
 "aliases": [
 "6871 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -191246,7 +191415,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -191288,7 +191457,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "MJC",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -191423,7 +191592,7 @@ null
 "aliases": [
 "6191 TT"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -191455,7 +191624,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -191497,7 +191666,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "GBM",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -191632,7 +191801,7 @@ null
 "aliases": [
 "6857 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -191664,7 +191833,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -191706,7 +191875,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "ADTEST",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -191841,7 +192010,7 @@ null
 "aliases": [
 "6146 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -191873,7 +192042,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -191915,7 +192084,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "DISCO",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -192050,7 +192219,7 @@ null
 "aliases": [
 "7735 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -192082,7 +192251,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -192124,7 +192293,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "SCREEN",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -192259,7 +192428,7 @@ null
 "aliases": [
 "7741 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -192291,7 +192460,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -192333,7 +192502,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "HOYA",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -192468,7 +192637,7 @@ null
 "aliases": [
 "6920 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -192500,7 +192669,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -192542,7 +192711,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "LASERTEC",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -192677,7 +192846,7 @@ null
 "aliases": [
 "6981 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -192709,7 +192878,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -192751,7 +192920,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "MURATA",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -192886,7 +193055,7 @@ null
 "aliases": [
 "5706 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -192918,7 +193087,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -192960,7 +193129,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "MITSUIKZ2",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -193095,7 +193264,7 @@ null
 "aliases": [
 "5801 JP"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -193127,7 +193296,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -193169,7 +193338,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "FURUKAWA2",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -193304,7 +193473,7 @@ null
 "aliases": [
 "FN US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -193336,7 +193505,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -193378,7 +193547,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "FN",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -193513,7 +193682,7 @@ null
 "aliases": [
 "COHR US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -193545,7 +193714,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -193587,7 +193756,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "COHR",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -193722,7 +193891,7 @@ null
 "aliases": [
 "2382 TT"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -193754,7 +193923,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -193796,7 +193965,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "QUANTA",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -193931,7 +194100,7 @@ null
 "aliases": [
 "6669 TT"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -193963,7 +194132,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -194005,7 +194174,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "WIWYNN",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -194140,7 +194309,7 @@ null
 "aliases": [
 "2317 TT"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -194172,7 +194341,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -194214,7 +194383,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "HONHAI",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -194349,7 +194518,7 @@ null
 "aliases": [
 "2356 TT"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -194381,7 +194550,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -194423,7 +194592,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "INVENTEC",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -194558,7 +194727,7 @@ null
 "aliases": [
 "2376 TT"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -194590,7 +194759,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -194632,7 +194801,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "GIGABYTE",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -194767,7 +194936,7 @@ null
 "aliases": [
 "300750 CH"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -194799,7 +194968,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -194841,7 +195010,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "CATL",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -194976,7 +195145,7 @@ null
 "aliases": [
 "688223 CH"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -195008,7 +195177,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -195050,7 +195219,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "JINKO",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -195185,7 +195354,7 @@ null
 "aliases": [
 "688472 CH"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -195217,7 +195386,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -195259,7 +195428,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "CANADIAN",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -195394,7 +195563,7 @@ null
 "aliases": [
 "601012 CH"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -195426,7 +195595,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -195468,7 +195637,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "LONGI",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -195603,7 +195772,7 @@ null
 "aliases": [
 "300274 CH"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -195635,7 +195804,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -195677,7 +195846,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "SUNGROW",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -195812,7 +195981,7 @@ null
 "aliases": [
 "605117 CH"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -195844,7 +196013,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -195886,7 +196055,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "DEYE",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -196021,7 +196190,7 @@ null
 "aliases": [
 "688006 CH"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -196053,7 +196222,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -196095,7 +196264,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "HANGKE",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -196230,7 +196399,7 @@ null
 "aliases": [
 "SANM US"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "all_grades_held"
@@ -196594,7 +196763,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -196781,7 +196950,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "SANM",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "research",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": "85a0c3a04a90291638f709d40e0700b60453b6a26e22ab0fa414dcf188ac6419",
@@ -196806,7 +196975,7 @@ null
 "status": "conditional_uncalibrated",
 "event_date": null,
 "category": "\ub2e4\uc74c \uc2e4\uc801 (\uc77c\uc815 TBD)",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "estimate_grade": null,
 "range_grade": null,
 "signed_estimate": 1.0,
@@ -197035,7 +197204,7 @@ null
 "ticker": "FPS",
 "name": "Forgent Power Solutions, Inc.",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "all_grades_held"
@@ -197403,7 +197572,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -197499,7 +197668,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "FPS",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "research",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": "313d2172efac533b6dd454461a33ac9d494e86743b318e0fb998ac65dafae314",
@@ -197524,7 +197693,7 @@ null
 "status": "pending",
 "event_date": null,
 "category": "\ub2e4\uc74c \uc2e4\uc801 (\uc77c\uc815 TBD)",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "estimate_grade": null,
 "range_grade": null,
 "signed_estimate": null,
@@ -197734,7 +197903,7 @@ null
 "aliases": [
 "HPS.A"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "all_grades_held"
@@ -198116,7 +198285,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -198212,7 +198381,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "HPSA",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "research",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": "de9d9421605c43da63a4f46b1627d90e09a5f29a857b6d41c49fc4f3d1d4949d",
@@ -198237,7 +198406,7 @@ null
 "status": "pending",
 "event_date": null,
 "category": "\ub2e4\uc74c \uc2e4\uc801 (\uc77c\uc815 TBD)",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "estimate_grade": null,
 "range_grade": null,
 "signed_estimate": null,
@@ -198448,7 +198617,7 @@ null
 "ticker": "POWL",
 "name": "Powell Industries, Inc.",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "all_grades_held"
@@ -198817,7 +198986,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -198913,7 +199082,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "POWL",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "research",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": "bdd2cdf0ded37ad2d365db85b316119f3533300354d73d6bbe8655df437996bc",
@@ -198938,7 +199107,7 @@ null
 "status": "pending",
 "event_date": null,
 "category": "\ub2e4\uc74c \uc2e4\uc801 (\uc77c\uc815 TBD)",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "estimate_grade": null,
 "range_grade": null,
 "signed_estimate": null,
@@ -199155,7 +199324,7 @@ null
 "ticker": "DY",
 "name": "Dycom Industries, Inc.",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "all_grades_held"
@@ -199873,7 +200042,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -200271,7 +200440,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "DY",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "research",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": "cc5f077498530165e081dda127435daa9b803cf8d13b3c4b93d81472aa50003a",
@@ -200296,7 +200465,7 @@ null
 "status": "conditional_uncalibrated",
 "event_date": null,
 "category": "\ub2e4\uc74c \uc2e4\uc801 (\uc77c\uc815 TBD)",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "estimate_grade": null,
 "range_grade": null,
 "signed_estimate": 1.1111111111111112,
@@ -200575,7 +200744,7 @@ null
 "ticker": "ETN",
 "name": "Eaton Corporation plc",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "all_grades_held"
@@ -200948,7 +201117,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -201044,7 +201213,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "ETN",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "research",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": "a9ca71bb5897eca7d8f125184452d7b798d789d76a51c49bb855c5e0882cc42e",
@@ -201069,7 +201238,7 @@ null
 "status": "pending",
 "event_date": null,
 "category": "\ub2e4\uc74c \uc2e4\uc801 (\uc77c\uc815 TBD)",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "estimate_grade": null,
 "range_grade": null,
 "signed_estimate": null,
@@ -201287,7 +201456,7 @@ null
 "4062",
 "4062.T"
 ],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "all_grades_held"
@@ -209113,7 +209282,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -211106,7 +211275,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "IBIDEN",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "research",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": "f6bd7290022459234b2629aefe0482dc24ec5823029dd727ee49f26e82e9e739",
@@ -211925,7 +212094,7 @@ null
 "status": "conditional_uncalibrated",
 "event_date": null,
 "category": "\ub2e4\uc74c \uc2e4\uc801 (\uc77c\uc815 TBD)",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "estimate_grade": 5,
 "range_grade": [
 2,
@@ -213384,7 +213553,7 @@ null
 "ticker": "3231.TW",
 "name": "Wistron",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -213416,7 +213585,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -213458,7 +213627,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "3231.TW",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -213591,7 +213760,7 @@ null
 "ticker": "MITAC",
 "name": "MITAC",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -213623,7 +213792,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -213665,7 +213834,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "MITAC",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -213798,7 +213967,7 @@ null
 "ticker": "ASUS",
 "name": "ASUS",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -213830,7 +213999,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -213872,7 +214041,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "ASUS",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -214005,7 +214174,7 @@ null
 "ticker": "ASROCK",
 "name": "ASROCK",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -214037,7 +214206,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -214079,7 +214248,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "ASROCK",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -214212,7 +214381,7 @@ null
 "ticker": "2059.TW",
 "name": "King Slide",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -214244,7 +214413,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -214286,7 +214455,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "2059.TW",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -214419,7 +214588,7 @@ null
 "ticker": "0992.HK",
 "name": "Lenovo ISG (\uc870\ub9bd\uad6d \ud504\ub85d\uc2dc)",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -214451,7 +214620,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -214493,7 +214662,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "0992.HK",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -214626,7 +214795,7 @@ null
 "ticker": "SEMCO",
 "name": "SEMCO",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -214658,7 +214827,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -214700,7 +214869,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "SEMCO",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -214833,7 +215002,7 @@ null
 "ticker": "2327.TW",
 "name": "Yageo",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -214865,7 +215034,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -214907,7 +215076,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "2327.TW",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -215040,7 +215209,7 @@ null
 "ticker": "6762.T",
 "name": "TDK",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -215072,7 +215241,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -215114,7 +215283,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "6762.T",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -215247,7 +215416,7 @@ null
 "ticker": "6976.T",
 "name": "6976.T",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -215279,7 +215448,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -215321,7 +215490,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "6976.T",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -215454,7 +215623,7 @@ null
 "ticker": "2492.TW",
 "name": "Walsin",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -215486,7 +215655,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -215528,7 +215697,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "2492.TW",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -215661,7 +215830,7 @@ null
 "ticker": "SAMWHA",
 "name": "SAMWHA",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -215693,7 +215862,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -215735,7 +215904,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "SAMWHA",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -215868,7 +216037,7 @@ null
 "ticker": "PDC",
 "name": "PDC",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -215900,7 +216069,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -215942,7 +216111,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "PDC",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -216075,7 +216244,7 @@ null
 "ticker": "6996.T",
 "name": "Nichicon (\uc138\uad00\uc2dd\ubcc4)",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -216107,7 +216276,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -216149,7 +216318,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "6996.T",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -216282,7 +216451,7 @@ null
 "ticker": "LELON",
 "name": "LELON",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -216314,7 +216483,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -216356,7 +216525,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "LELON",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -216489,7 +216658,7 @@ null
 "ticker": "3026.TW",
 "name": "Holy Stone",
 "aliases": [],
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "missing_reasons": [
 "no_events"
@@ -216521,7 +216690,7 @@ null
 "mode": "descriptive_current_scale",
 "method": "company-current-core-midrank-v1",
 "rubric_version": "guidance-call-v1",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "as_of_date": "2026-09-26",
 "label": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4",
 "notice": "\ud604\uc7ac \ud45c\ubcf8 \uae30\uc900 \ud68c\uc0ac\uc0c1\ub300 \ud1a4 \u00b7 \uc7a0\uc815 \ud68c\uace0\ucc99\ub3c4. \ud6c4\uc18d \ubc1c\ud45c\ub97c \ud3ec\ud568\ud55c \ud604\uc7ac \ubd84\ud3ec\ub85c \uacfc\uac70 \ubc1c\uc5b8\uc744 \uc7ac\ud3c9\uac00\ud588\uc2b5\ub2c8\ub2e4. \ub2f9\uc2dc \uc774\uc6a9\uac00\ub2a5\uc131\uc740 \ud655\uc778\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \uc0c8 \uc790\ub8cc\uac00 \ucd94\uac00\ub418\uba74 \uacfc\uac70 \ub4f1\uae09\ub3c4 \ubc14\ub014 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
@@ -216563,7 +216732,7 @@ null
 "model": {
 "schema_version": "tone-reaction-research-v1",
 "ticker": "3026.TW",
-"as_of": "2026-09-26T06:34:46.534421Z",
+"as_of": "2026-09-26T14:13:58.462348Z",
 "status": "pending",
 "policy_version": "tone-reaction-research-v1-review-20260924",
 "input_hash": null,
@@ -216691,6 +216860,9 @@ null
 }
 }
 };
+// 전력기기 피어 앙상블 투영본. DATA 와 섞지 않는다 — 원천 레포·커밋·스키마가 다르고,
+// 이 문서의 기업 판정 로직(verdict·forecast_gate)이 이 데이터에 적용되면 안 된다.
+const GRID_ENS={"schema":"phalanx-grid-ensemble-proj/1","source":{"repo":"smu05118-art/ensemble","commit":"3e36480b5edbcfb38c5a0ed28a89c55d8d5f17ce","commit_short":"3e36480","path":"grid/composite/out/composite.json","raw_url":"https://raw.githubusercontent.com/smu05118-art/ensemble/3e36480b5edbcfb38c5a0ed28a89c55d8d5f17ce/grid/composite/out/composite.json","page_url":"https://smu05118-art.github.io/ensemble/grid/composite.html","page_note":"ensemble main \uba38\uc9c0 \ud6c4 \uacf5\uac1c","src_schema":"grid-composite-out/1","src_bytes":3039157,"src_sha256":"d34206beaabdd676d886a4abb24817cd0544ee80aa545d829cff1bb90eb96d23"},"asof":"2026-09-25","anchor":"SANIL","anchor_validity":{"yoy_revenue_export":{"n":4,"r":null},"yoy_revenue_total":{"n":10,"r":0.799},"implied_krw_per_usd":{"min":1395.3,"max":2103.3,"n":22}},"catalog_size":798,"selection_rule":"chains/grid_data.json \uc5d0\uc11c KGRID_062040(\uc0b0\uc77c\uc804\uae30)\uc744 korean_peers \ub85c \uac00\ub9ac\ud0a4\ub294 \ud574\uc678 \ub178\ub4dc \uc804\ubd80 + \uc0ac\uc6a9\uc790\uac00 \uc9c0\uc815\ud55c ABB + \ub300\ud615 T\u0026D \ubcc0\uc555\uae30 OEM(Siemens Energy\u00b7GE Vernova\u00b7Hitachi Energy\u00b7Hubbell\u00b7TBEA\u00b7Chung-Hsin) + \ud314\ub791\ud06c\uc2a4 \ucef4\ud3ec\uc9d3 grid \uce74\ub4dc(FPS\u00b7POWL) + \uad6d\ub0b4 \ud53c\uc5b4 6\uc0ac. DY(\ud1b5\uc2e0 \uc2dc\uacf5)\ub294 \uc7a5\ube44 \uc81c\uc870\uc0ac\uac00 \uc544\ub2c8\uc5b4\uc11c \uc81c\uc678.","params":{"fdr_q":0.1,"lags":[-2,-1,0,1,2,3,4],"lead_lags":[0,1,2,3,4],"lead_margin":0.05,"max_candidates":28,"min_oos":8,"min_train":8,"pw_min_n":12,"recent_oos":12,"screen_t":1.0},"peer_cycle_note":"{\"anchor_vs_index\": [{\"k\": -2, \"n\": 12, \"p\": 0.3066, \"r\": 0.322}, {\"k\": -1, \"n\": 12, \"p\": 0.7017, \"r\": 0.124}, {\"k\": 0, \"n\": 12, \"p\": 0.2068, \"r\": 0.393}, {\"k\": 1, \"n\": 11, \"p\": null, \"r\": null}, {\"k\": 2, \"n\": 10, \"p\": null, \"r\": null}, {\"k\": 3, \"n\": 9, \"p\": null, \"r\": null}, {\"k\": 4, \"n\": 8, \"p\": \u2026","totals":{"peers":52,"grades":{"\ubbf8\ud310\uc815":11,"B":1,"C":12,"F":25,"N":3},"n_lead":7,"n_coincident":57,"n_lag":5,"n_validated_lead":0,"nowcast_published":["CGPOWER"]},"disclaimer":"\ub9e4\ucd9c \ubc29\ud5a5 \uc9c4\ub2e8 \u00b7 \ud22c\uc790 \uc2e0\ud638 \uc544\ub2d8","peers":[{"id":"SANIL","name":"\uc0b0\uc77c\uc804\uae30","ticker":"062040 KS","region":"Korea","status":"short_history","listed":true,"tier":"anchor","currency":"KRW","is_anchor":true,"target":{"name":"revenue_total","label_ko":"\ub9e4\ucd9c\uc561(2023 \uc5f0\uacb0 \uacc4\uc18d\uc601\uc5c5 \u00b7 2024 \ubcc4\ub3c4(\uc885\uc18d\uae30\uc5c5 \uc5c6\uc74c) \u00b7 2025~ \uc5f0\uacb0)","scope":"consolidated","segment_name":null,"n_yoy":9,"lag_unit":"Q","freq":"Q"},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":28,"n_tested":0,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uc575\ucee4. \uc720\uc785\u00b7\ubab0\ub4dc\u00b7\uc8fc\uc0c1\u00b7\ud328\ub4dc\ubcc0\uc555\uae30, \ub9e4\ucd9c \ub300\ubd80\ubd84 \ubbf8\uad6d \uc218\ucd9c(\uc804\ub825\uccad\u00b7\uc778\ubc84\ud130\uc0ac\u00b7EPC)","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"SANIL_PROXY","name":"\uc0b0\uc77c\uc804\uae30 \ucd9c\ud558 \ub300\ub9ac \u00b7 \uc548\uc0b0 \ubcc0\uc555\uae30 \uc218\ucd9c","ticker":"062040 KS","region":"Korea","status":"short_history","listed":true,"tier":"anchor","currency":"USD","is_anchor":true,"target":{"name":"revenue_total","label_ko":"\uc548\uc0b0\uc2dc HS850421\u00b7850422 \uc218\ucd9c(\uc0b0\uc77c\uc804\uae30 \ucd9c\ud558 \ub300\ub9ac \u00b7 \uacf5\uc2dd \ub9e4\ucd9c \uc544\ub2d8, 2022-07~)","scope":"proxy_target","segment_name":null,"n_yoy":12,"lag_unit":"Q","freq":"Q"},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":18,"n_tested":0,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uc0b0\uc77c\uc804\uae30 \uc0c1\uc7a5 \uc804 \ubd84\uae30 \uc2e4\uc801\uc774 \uc5c6\uc5b4 \uacf5\uc7a5 \uc18c\uc7ac\uc9c0(\uc548\uc0b0\uc2dc) \uc720\uc785\uc2dd \ubc30\uc804\ubcc0\uc555\uae30 \uc218\ucd9c\uc744 \ub300\ub9ac \ud0c0\uae43\uc73c\ub85c \uc4f4\ub2e4.","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"SU","name":"Schneider Electric","ticker":"SU FP","region":"Europe","status":"ok","listed":true,"tier":"core","currency":"EUR","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"Energy Management \ub9e4\ucd9c","scope":"segment","segment_name":"Energy Management (reported as a business from Q1 2018; = Medium Voltage + Low Voltage + Secure Power until 2018, single business from 2019)","n_yoy":22,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"B","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.84\ubc30 \u00b7 DM p=0.123(\uc720\uc758 \uc544\ub2d8)","rel_mae_best":0.8431,"n_oos":14,"nowcast_grade":"F"},"summary":{"n_candidates":28,"n_tested":26,"n_lead":0,"n_coincident":9,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[{"id":"eurostat_turnover_C27_EU27_2020","label_ko":"EU27 \uc804\uae30\uc7a5\ube44(C27) \uc21c\ub9e4\ucd9c\uc561 \uc9c0\uc218(\uba85\ubaa9, \ub2ec\ub825\uc870\uc815)"},{"id":"fred_A35SNO","label_ko":"\ubbf8\uad6d \uc81c\uc870\uc5c5 \uc2e0\uaddc\uc218\uc8fc: \uc804\uae30\uc7a5\ube44\u00b7\uac00\uc804\u00b7\ubd80\ud488(M3 35S) \u00b7 \uacc4\uc808\uc870\uc815"}]},"note":"Energy Management \ub9e4\ucd9c(\ubd84\uae30 \ub9e4\ucd9c \uacf5\uc2dc)","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"ABB","name":"ABB","ticker":"ABBN SW","region":"Europe","status":"ok","listed":true,"tier":"core","currency":"USD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"Electrification \uc0ac\uc5c5\ubd80 \ub9e4\ucd9c","scope":"segment","segment_name":"Electrification Products (2016Q1\u20132019Q1) \u2192 Electrification (2019Q2\u2013)","n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.99\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.986,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":28,"n_tested":28,"n_lead":0,"n_coincident":2,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[{"id":"us_imp_853710_p0","label_ko":"\ubbf8\uad6d \uc218\uc785 HS853710(\ubc30\uc804\u00b7\uc81c\uc5b4\ubc18 \u22641,000V(\uc800\uc555)) \u00b7 \uc138\uacc4"},{"id":"eurostat_turnover_C27_EU27_2020","label_ko":"EU27 \uc804\uae30\uc7a5\ube44(C27) \uc21c\ub9e4\ucd9c\uc561 \uc9c0\uc218(\uba85\ubaa9, \ub2ec\ub825\uc870\uc815)"}]},"note":"Electrification \uc138\uadf8\uba3c\ud2b8 + \uc5f0\uacb0","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)","\ucd5c\uadfc/\ub300\uc0c1 \uae30\uac04 \uad6c\uc870 \ubcc0\ud654: segment_reorg 2025-10-08"]}},{"id":"CGPOWER","name":"CG Power \u0026 Industrial Solutions","ticker":"CGPOWER IN","region":"India","status":"ok","listed":true,"tier":"core","currency":"INR","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"Power Systems \ubd80\ubb38 \ub9e4\ucd9c(\uc5f0\uacb0)","scope":"segment","segment_name":"Power Systems","n_yoy":28,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.90\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.9005,"n_oos":20,"nowcast_grade":"A"},"summary":{"n_candidates":19,"n_tested":15,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"Power Systems \uc138\uadf8\uba3c\ud2b8","nowcast":{"published":true,"target_m":"2026-09","status":"complete","pred_yoy":0.244,"interval_yoy":[0.0588,0.4291],"halfwidth_80":0.1851,"grade":"A"}},{"id":"HMM","name":"Hammond Manufacturing","ticker":"HMM.A CN","region":"North America","status":"ok","listed":true,"tier":"ext","currency":"CAD","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \ub9e4\ucd9c(Net product sales)","scope":"consolidated","segment_name":null,"n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.00\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.9999,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":28,"n_tested":26,"n_lead":0,"n_coincident":3,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[{"id":"fred_A35SNO","label_ko":"\ubbf8\uad6d \uc81c\uc870\uc5c5 \uc2e0\uaddc\uc218\uc8fc: \uc804\uae30\uc7a5\ube44\u00b7\uac00\uc804\u00b7\ubd80\ud488(M3 35S) \u00b7 \uacc4\uc808\uc870\uc815"},{"id":"fred_A35SVS","label_ko":"\ubbf8\uad6d \uc81c\uc870\uc5c5 \ucd9c\ud558: \uc804\uae30\uc7a5\ube44\u00b7\uac00\uc804\u00b7\ubd80\ud488(M3 35S) \u00b7 \uacc4\uc808\uc870\uc815"}]},"note":"\uc804\uc790\ubd80\ud488\u00b7\uc18c\ud615 \ubcc0\uc555\uae30\u00b7\uc678\ud568; \uc5f0\uad00 \uc57d\ud568(hypothesis)","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"HPSA","name":"Hammond Power Solutions","ticker":"HPS.A CN","region":"North America","status":"ok","listed":true,"tier":"core","currency":"CAD","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \ub9e4\ucd9c","scope":"consolidated","segment_name":null,"n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.95\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.954,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":28,"n_tested":26,"n_lead":2,"n_coincident":7,"n_lag":1,"n_validated_lead":0,"top_lead":[{"id":"ca_exp_850434_p842","label_ko":"\uce90\ub098\ub2e4 \uc218\ucd9c HS850434(\uae30\ud0c0(\uac74\uc2dd\u00b7\ubab0\ub4dc \ub4f1) \ubcc0\uc555\uae30 \u003e500kVA) \u2192 \ubbf8\uad6d"},{"id":"us_imp_850434_p124","label_ko":"\ubbf8\uad6d \uc218\uc785 HS850434(\uae30\ud0c0(\uac74\uc2dd\u00b7\ubab0\ub4dc \ub4f1) \ubcc0\uc555\uae30 \u003e500kVA) \u00b7 \uce90\ub098\ub2e4\ubc1c"}],"top_coincident":[{"id":"us_imp_8504dry_p484","label_ko":"\ubbf8\uad6d \uc218\uc785 HS850433+850434(\uae30\ud0c0(\uac74\uc2dd\u00b7\ubab0\ub4dc \ub4f1) \ubcc0\uc555\uae30 \u003e16kVA \ud569\uacc4(850433+850434)) \u00b7 \uba55\uc2dc\ucf54\ubc1c"},{"id":"fred_PCU335311335311","label_ko":"\ubbf8\uad6d PPI \uc0b0\uc5c5: \uc804\ub825\u00b7\ud2b9\uc218 \ubcc0\uc555\uae30 \uc81c\uc870\uc5c5(NAICS 335311)"}]},"note":"\uac74\uc2dd \ubcc0\uc555\uae30; seed=phalanx. \uce90\ub098\ub2e4\u00b7\ubbf8\uad6d\u00b7\uba55\uc2dc\ucf54\u00b7\uc778\ub3c4 \uacf5\uc7a5","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)","\ucd5c\uadfc/\ub300\uc0c1 \uae30\uac04 \uad6c\uc870 \ubcc0\ud654: acquisition 2026-06-29"]}},{"id":"HUBB","name":"Hubbell","ticker":"HUBB US","region":"North America","status":"ok","listed":true,"tier":"core","currency":"USD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"Utility Solutions \uc138\uadf8\uba3c\ud2b8 \ub9e4\ucd9c(2019\ub144\uae4c\uc9c0 Power \uc138\uadf8\uba3c\ud2b8)","scope":"segment","segment_name":"Utility Solutions (named \"Power\" segment through FY2019; renamed Q1 2020 with identical scope)","n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.96\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.9621,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":28,"n_tested":26,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"Utility Solutions \uc138\uadf8\uba3c\ud2b8(\ubc30\uc804 T\u0026D \ubd80\ud488)","nowcast":{"published":false,"target_m":"2026-09","status":"no_member","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ud604\uc7ac \ub300\uc0c1 \uae30\uac04\uc5d0 \ucc3d\uc774 \uc644\uacb0\ub41c \uc120\ubcc4 \ud504\ub85d\uc2dc \uc5c6\uc74c"]}},{"id":"KODT","name":"KON\u010cAR D\u0026ST","ticker":"KODT ZSE","region":"Europe","status":"ok","listed":true,"tier":"core","currency":"EUR","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \ub9e4\ucd9c(Grupa KON\u010cAR \u2013 D\u0026ST, \ubcc0\uc555\uae30 \uc804\uc5c5)","scope":"consolidated","segment_name":null,"n_yoy":33,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.98\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.9832,"n_oos":25,"nowcast_grade":"C"},"summary":{"n_candidates":28,"n_tested":26,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\ubc30\uc804\u00b7\ud2b9\uc218 \ubcc0\uc555\uae30 \uc804\ubb38(\ud06c\ub85c\uc544\ud2f0\uc544)","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 C \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)","\ucd5c\uadfc/\ub300\uc0c1 \uae30\uac04 \uad6c\uc870 \ubcc0\ud654: acquisition 2025-12-31"]}},{"id":"LSE","name":"LS ELECTRIC","ticker":"010120 KS","region":"Korea","status":"ok","listed":true,"tier":"core","currency":"KRW","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\uc804\ub825\ubd80\ubb38 \ub9e4\ucd9c(\uc870\uc815 \uc804)","scope":"segment","segment_name":"\uc804\ub825\ubd80\ubb38 \ub9e4\ucd9c\uc561(\uc5f0\uacb0\uc870\uc815\u00b7\ubd80\ubb38\uac04 \uc81c\uac70 \uc804 \ucd1d\uc561; \uc800\uc555\u00b7\uace0\uc555\uae30\uae30, \ubc30\uc804\ubc18, GIS, \ubcc0\uc555\uae30, HVDC \ub4f1)","n_yoy":38,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.98\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.9799,"n_oos":30,"nowcast_grade":"F"},"summary":{"n_candidates":25,"n_tested":24,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"DART; \uc804\ub825 \ubd80\ubb38","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"LR","name":"Legrand","ticker":"LR FP","region":"Europe","status":"ok","listed":true,"tier":"ext","currency":"EUR","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \ub9e4\ucd9c(Net sales)","scope":"consolidated","segment_name":null,"n_yoy":39,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.90\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.9046,"n_oos":31,"nowcast_grade":"F"},"summary":{"n_candidates":28,"n_tested":28,"n_lead":2,"n_coincident":12,"n_lag":0,"n_validated_lead":0,"top_lead":[{"id":"de_exp_850423_p842","label_ko":"\ub3c5\uc77c \uc218\ucd9c HS850423(\uc720\uc785\uc2dd \ubcc0\uc555\uae30 \u003e10,000kVA \u00b7 \ub300\ud615 \uc804\ub825\uc6a9) \u2192 \ubbf8\uad6d"},{"id":"de_exp_850423_p0","label_ko":"\ub3c5\uc77c \uc218\ucd9c HS850423(\uc720\uc785\uc2dd \ubcc0\uc555\uae30 \u003e10,000kVA \u00b7 \ub300\ud615 \uc804\ub825\uc6a9) \u2192 \uc138\uacc4"}],"top_coincident":[{"id":"fred_A35SNO","label_ko":"\ubbf8\uad6d \uc81c\uc870\uc5c5 \uc2e0\uaddc\uc218\uc8fc: \uc804\uae30\uc7a5\ube44\u00b7\uac00\uc804\u00b7\ubd80\ud488(M3 35S) \u00b7 \uacc4\uc808\uc870\uc815"},{"id":"eurostat_turnover_C27_EU27_2020","label_ko":"EU27 \uc804\uae30\uc7a5\ube44(C27) \uc21c\ub9e4\ucd9c\uc561 \uc9c0\uc218(\uba85\ubaa9, \ub2ec\ub825\uc870\uc815)"}]},"note":"\uc5f0\uacb0 \ub9e4\ucd9c(\ubd84\uae30); \ubcc0\uc555\uae30 \ube44\uc911 \uc791\uc74c","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)","\ucd5c\uadfc/\ub300\uc0c1 \uae30\uac04 \uad6c\uc870 \ubcc0\ud654: acquisition 2025-10-02"]}},{"id":"VOLTAMP","name":"Voltamp Transformers","ticker":"VOLTAMP IN","region":"India","status":"ok","listed":true,"tier":"core","currency":"INR","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\ubcc4\ub3c4 \ub9e4\ucd9c(\ub2e8\uc77c \ubd80\ubb38: \ubcc0\uc555\uae30)","scope":"standalone","segment_name":null,"n_yoy":38,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.94\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.9375,"n_oos":30,"nowcast_grade":"F"},"summary":{"n_candidates":19,"n_tested":14,"n_lead":0,"n_coincident":5,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[{"id":"fred_A35SNO","label_ko":"\ubbf8\uad6d \uc81c\uc870\uc5c5 \uc2e0\uaddc\uc218\uc8fc: \uc804\uae30\uc7a5\ube44\u00b7\uac00\uc804\u00b7\ubd80\ud488(M3 35S) \u00b7 \uacc4\uc808\uc870\uc815"},{"id":"in_exp_850423_p0","label_ko":"\uc778\ub3c4 \uc218\ucd9c HS850423(\uc720\uc785\uc2dd \ubcc0\uc555\uae30 \u003e10,000kVA \u00b7 \ub300\ud615 \uc804\ub825\uc6a9) \u2192 \uc138\uacc4"}]},"nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"WEG","name":"WEG","ticker":"WEGE3 BZ","region":"Latin America and Middle East","status":"ok","listed":true,"tier":"core","currency":"BRL","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"GTD(\ubc1c\uc804\u00b7\uc1a1\ubc30\uc804) \uc0ac\uc5c5\ubd80 \uc21c\ub9e4\ucd9c \u2014 \ub0b4\uc218+\uc218\ucd9c","scope":"segment","segment_name":"Gera\u00e7\u00e3o, Transmiss\u00e3o e Distribui\u00e7\u00e3o de Energia (GTD) business area \u2014 ROL Mercado Interno + Mercado Externo (transformers, substations, generators, wind/solar/T\u0026D)","n_yoy":25,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.90\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.903,"n_oos":17,"nowcast_grade":"C"},"summary":{"n_candidates":26,"n_tested":18,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"GTD(\ubc1c\uc804\u00b7\uc1a1\ubc30\uc804) \uc0ac\uc5c5 + \uc5f0\uacb0","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 C \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"JERYONG","name":"\uc81c\ub8e1\uc804\uae30","ticker":"033100 KS","region":"Korea","status":"ok","listed":true,"tier":"core","currency":"KRW","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\ub9e4\ucd9c\uc561(\ubcc4\ub3c4 \u2014 \uc885\uc18d\uae30\uc5c5 \uc5c6\uc74c, \uc5f0\uacb0\uc7ac\ubb34\uc81c\ud45c \ubbf8\uc791\uc131)","scope":"standalone","segment_name":null,"n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.93\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.9273,"n_oos":34,"nowcast_grade":"A"},"summary":{"n_candidates":26,"n_tested":23,"n_lead":0,"n_coincident":1,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[{"id":"us_imp_850421_p410","label_ko":"\ubbf8\uad6d \uc218\uc785 HS850421(\uc561\uccb4\uc720\uc804\uccb4(\uc720\uc785\uc2dd) \ubcc0\uc555\uae30 \u2264650kVA \u00b7 \ubc30\uc804\uc6a9) \u00b7 \ud55c\uad6d\ubc1c"}]},"note":"DART; \ubc30\uc804 \ubcc0\uc555\uae30\u00b7\ub300\ubbf8 \uc218\ucd9c","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ucd5c\uadfc 12\uac1c OOS \ubd84\uae30\uc5d0\uc11c \uc9c1\uc804YoY \ub300\ube44 \uc6b0\uc704 \uc5c6\uc74c(\uc0c1\ub300 MAE 1.01) \u2014 \uc548\uc815\uc131 \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \uacf5\uac1c \ubcf4\ub958"]}},{"id":"HYOSUNG_HI","name":"\ud6a8\uc131\uc911\uacf5\uc5c5","ticker":"298040 KS","region":"Korea","status":"ok","listed":true,"tier":"core","currency":"KRW","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\uc911\uacf5\uc5c5 \ubd80\ubb38 \ub9e4\ucd9c(\uc678\ubd80)","scope":"segment","segment_name":"\uc911\uacf5\uc5c5 \ubd80\ubb38 \uc678\ubd80\ub9e4\ucd9c\uc561(\ubd80\ubb38\uac04 \ub0b4\ubd80\ub9e4\ucd9c \uc81c\uac70 \ud6c4; \ubcc0\uc555\uae30\u00b7\ucc28\ub2e8\uae30\u00b7\uc804\ub3d9\uae30\u00b7ESS \ub4f1 \uc804\ub825\uae30\uae30)","n_yoy":28,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"C","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 0.92\ubc30(\uac1c\uc120 10% \ubbf8\ub9cc)","rel_mae_best":0.922,"n_oos":20,"nowcast_grade":"C"},"summary":{"n_candidates":23,"n_tested":22,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"DART; \uc911\uacf5\uc5c5 \ubd80\ubb38","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 C \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"ALLIS","name":"Allis Electric \u4e9e\u529b\u96fb\u6a5f","ticker":"1514 TT","region":"Taiwan","status":"ok","listed":true,"tier":"core","currency":"TWD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\ubcc0\uc555\uae30 \ubd80\ubb38 \uc678\ubd80\ub9e4\ucd9c(\uace0\uc800\uc555 \ubcc0\uc555\uae30 \uc0dd\uc0b0\u00b7\ud310\ub9e4)","scope":"segment","segment_name":"\u8b8a\u58d3\u5668\u90e8\u9580 / Transformer segment","n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.03\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.0333,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":16,"n_tested":14,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uc6d4\ub9e4\ucd9c MOPS","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"BBL","name":"Bharat Bijlee","ticker":"BBL IN","region":"India","status":"ok","listed":true,"tier":"ext","currency":"INR","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"Power Systems \uc138\uadf8\uba3c\ud2b8 \ub9e4\ucd9c(\ubcc0\uc555\uae30\u00b7\ubcc0\uc804 EPC\u00b7\uc720\uc9c0\ubcf4\uc218)","scope":"segment","segment_name":"Power Systems (Transformers, Turnkey Projects for electrical sub-stations and Maintenance Products)","n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.11\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.1104,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":19,"n_tested":14,"n_lead":0,"n_coincident":4,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[{"id":"india_iip_capgoods","label_ko":"\uc778\ub3c4 IIP \uc6a9\ub3c4\ubcc4 \uc790\ubcf8\uc7ac \u00b7 \uc6d0\uacc4\uc5f4 (2011-12=100)"},{"id":"eurostat_ip_C271_EU27_2020","label_ko":"EU27 \uc804\ub3d9\uae30\u00b7\ubc1c\uc804\uae30\u00b7\ubcc0\uc555\uae30\u00b7\ubc30\uc804\uc81c\uc5b4\uae30\uae30(C271) \uc0b0\uc5c5\uc0dd\uc0b0(\ub2ec\ub825\uc870\uc815)"}]},"note":"Power Systems \uc138\uadf8\uba3c\ud2b8(\ubcc0\uc555\uae30)","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"CHINAXD","name":"China XD Electric \u4e2d\u56fd\u897f\u7535","ticker":"601179 CH","region":"China","status":"ok","listed":true,"tier":"core","currency":"CNY","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \uc601\uc5c5\uc218\uc775(\u8425\u4e1a\u6536\u5165, \uc601\uc5c5\ucd1d\uc218\uc775 \uc544\ub2d8)","scope":"consolidated","segment_name":null,"n_yoy":32,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.09\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.0889,"n_oos":24,"nowcast_grade":"F"},"summary":{"n_candidates":18,"n_tested":17,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\ubd84\uae30 \ub204\uacc4\u2192\ucc28\ubd84","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"CHUNGHSIN","name":"Chung-Hsin Electric \u4e2d\u8208\u96fb\u5de5","ticker":"1513 TT","region":"Taiwan","status":"ok","listed":true,"tier":"core","currency":"TWD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\uc804\ub825(\u96fb\u6a5f\u96fb\u529b\u2192\u96fb\u529b) \ubd80\ubb38 \uc678\ubd80\ub9e4\ucd9c \u2014 GIS\u00b7\uac1c\ud3d0\uc124\ube44 \uc81c\uc870, \ubcc0\uc804\uc18c \ud134\ud0a4","scope":"segment","segment_name":"\u96fb\u6a5f\u96fb\u529b\u696d\u52d9(~2020Q3) \u2192 \u96fb\u529b\u90e8\u9580 / Electricity power segment(2020Q4~)","n_yoy":24,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.21\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.2102,"n_oos":16,"nowcast_grade":"F"},"summary":{"n_candidates":16,"n_tested":13,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uc6d4\ub9e4\ucd9c MOPS","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"DAIHEN","name":"Daihen","ticker":"6622 JP","region":"Japan","status":"ok","listed":true,"tier":"core","currency":"JPY","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\uc804\ub825\uae30\uae30\uc0ac\uc5c5\u2192\uc5d0\ub108\uc9c0\ub9e4\ub2c8\uc9c0\uba3c\ud2b8 \uc678\ubd80\uace0\uac1d \ub9e4\ucd9c","scope":"segment","segment_name":"\u96fb\u529b\u6a5f\u5668\u4e8b\u696d [FY2016\u2013FY2022] \u2192 \u30a8\u30cd\u30eb\u30ae\u30fc\u30de\u30cd\u30b8\u30e1\u30f3\u30c8 (Energy Management) [FY2023\u2013]; external sales","n_yoy":40,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.02\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.021,"n_oos":32,"nowcast_grade":"C"},"summary":{"n_candidates":22,"n_tested":21,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uc804\ub825\uae30\uae30(\ubcc0\uc555\uae30) \uc138\uadf8\uba3c\ud2b8","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 C \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"ETN","name":"Eaton","ticker":"ETN US","region":"North America","status":"ok","listed":true,"tier":"core","currency":"USD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"Electrical Americas \uc138\uadf8\uba3c\ud2b8 \ub9e4\ucd9c","scope":"segment","segment_name":"Electrical Americas","n_yoy":30,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.06\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.0564,"n_oos":22,"nowcast_grade":"F"},"summary":{"n_candidates":28,"n_tested":26,"n_lead":0,"n_coincident":11,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[{"id":"fred_A35SNO","label_ko":"\ubbf8\uad6d \uc81c\uc870\uc5c5 \uc2e0\uaddc\uc218\uc8fc: \uc804\uae30\uc7a5\ube44\u00b7\uac00\uc804\u00b7\ubd80\ud488(M3 35S) \u00b7 \uacc4\uc808\uc870\uc815"},{"id":"de_exp_853710_p0","label_ko":"\ub3c5\uc77c \uc218\ucd9c HS853710(\ubc30\uc804\u00b7\uc81c\uc5b4\ubc18 \u22641,000V(\uc800\uc555)) \u2192 \uc138\uacc4"}]},"note":"seed=phalanx \uc5f0\uacb0; Electrical Americas \uc138\uadf8\uba3c\ud2b8 \ucd94\uac00 \ud544\uc694","nowcast":{"published":false,"target_m":"2026-09","status":"no_member","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ud604\uc7ac \ub300\uc0c1 \uae30\uac04\uc5d0 \ucc3d\uc774 \uc644\uacb0\ub41c \uc120\ubcc4 \ud504\ub85d\uc2dc \uc5c6\uc74c"]}},{"id":"SWDY","name":"Elsewedy Electric","ticker":"SWDY EY","region":"Latin America and Middle East","status":"ok","listed":true,"tier":"ext","currency":"EGP","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\ubcc0\uc555\uae30 \uc138\uadf8\uba3c\ud2b8 \ub9e4\ucd9c(\ub0b4\ubd80\uac70\ub798 \ud6c4) \u2014 2025Q1\ubd80\ud130 'Electrical Products(\ubcc0\uc555\uae30\u00b7\ubc84\uc2a4\uc6e8\uc774\u00b7\ubaa8\uc158\u00b7e-\ubaa8\ube4c\ub9ac\ud2f0)'\ub85c \uc7ac\ud3b8","scope":"segment","segment_name":"Transformers segment, revenues after intercompany sales (FY2016Q1\u2013FY2024Q4); Electrical Products = Transformers + Busway + Motion + E-mobility, after intercompany (FY2025Q1+, with company-recast prior-year comparatives). See segment_basis on each point.","n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.17\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.1671,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":22,"n_tested":16,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\ucf00\uc774\ube14\u00b7\ubcc0\uc555\uae30 \ubcf5\ud569","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ucd5c\uadfc \ube44\uad50\uac12\uc774 \ucd5c\ucd08 \uacf5\uc2dc\uc640 2% \ub118\uac8c \ub2ec\ub77c(\uc7ac\uc791\uc131) \ub808\ubca8 \ud658\uc0b0\uc744 \uc0dd\ub7b5","\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"FORTUNE","name":"Fortune Electric \u83ef\u57ce","ticker":"1519 TT","region":"Taiwan","status":"ok","listed":true,"tier":"core","currency":"TWD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\u6a5f\u96fb\u90e8\u9580 \ub9e4\ucd9c(\ubcc0\uc555\uae30\u00b7\ubc30\uc804\ubc18\u00b7\uac1c\ud3d0\u00b7\ubcc0\uc804\uc124\ube44)","scope":"segment","segment_name":"\u6a5f\u96fb\u90e8\u9580 / Electrical department","n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.14\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.1384,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":18,"n_tested":16,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uc6d4\ub9e4\ucd9c MOPS; \ub300\ubbf8 \ubcc0\uc555\uae30 \uc218\ucd9c","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"HDHE","name":"HD\ud604\ub300\uc77c\ub809\ud2b8\ub9ad","ticker":"267260 KS","region":"Korea","status":"ok","listed":true,"tier":"core","currency":"KRW","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \ub9e4\ucd9c(\ub9e4\ucd9c\uc561)","scope":"consolidated","segment_name":null,"n_yoy":33,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.25\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.2529,"n_oos":25,"nowcast_grade":"F"},"summary":{"n_candidates":22,"n_tested":22,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"DART; \uc804\ub825\uae30\uae30 \ubd80\ubb38","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"POWERINDIA","name":"Hitachi Energy India","ticker":"POWERINDIA IN","region":"India","status":"ok","listed":true,"tier":"core","currency":"INR","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\ub9e4\ucd9c(\uc601\uc5c5\uc218\uc775, Total revenue from operations)","scope":"company (standalone = entire company; single reportable segment Power Grids)","segment_name":null,"n_yoy":25,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.03\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.0253,"n_oos":17,"nowcast_grade":"C"},"summary":{"n_candidates":22,"n_tested":16,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 C \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"INDOTECH","name":"Indo Tech Transformers","ticker":"INDOTECH IN","region":"India","status":"ok","listed":true,"tier":"core","currency":"INR","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\ubcc4\ub3c4 \ub9e4\ucd9c(\ub2e8\uc77c \ubd80\ubb38: \ubcc0\uc555\uae30)","scope":"standalone","segment_name":null,"n_yoy":37,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.38\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.3793,"n_oos":29,"nowcast_grade":"F"},"summary":{"n_candidates":18,"n_tested":14,"n_lead":1,"n_coincident":0,"n_lag":4,"n_validated_lead":0,"top_lead":[{"id":"in_exp_850422_p0","label_ko":"\uc778\ub3c4 \uc218\ucd9c HS850422(\uc720\uc785\uc2dd \ubcc0\uc555\uae30 650~10,000kVA) \u2192 \uc138\uacc4"}],"top_coincident":[]},"nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"JINPAN","name":"Jinpan Technology \u91d1\u76d8\u79d1\u6280","ticker":"688676 CH","region":"China","status":"ok","listed":true,"tier":"core","currency":"CNY","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \uc601\uc5c5\uc218\uc775(\u8425\u4e1a\u6536\u5165)","scope":"consolidated","segment_name":null,"n_yoy":22,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.19\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.1879,"n_oos":14,"nowcast_grade":"F"},"summary":{"n_candidates":20,"n_tested":18,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uac74\uc2dd \ubcc0\uc555\uae30; \ubd84\uae30 \ub204\uacc4\u2192\ucc28\ubd84","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"POWL","name":"Powell Industries","ticker":"POWL US","region":"North America","status":"ok","listed":true,"tier":"core","currency":"USD","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \ub9e4\ucd9c","scope":"consolidated","segment_name":null,"n_yoy":43,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.12\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.1168,"n_oos":35,"nowcast_grade":"F"},"summary":{"n_candidates":27,"n_tested":25,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"seed=phalanx; \ubc30\uc804\ubc18\u00b7E-house","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)","\ucd5c\uadfc/\ub300\uc0c1 \uae30\uac04 \uad6c\uc870 \ubcc0\ud654: acquisition 2025-08-15"]}},{"id":"SCHNEIDER_IN","name":"Schneider Electric Infrastructure","ticker":"SCHNEIDER IN","region":"India","status":"ok","listed":true,"tier":"core","currency":"INR","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\ub9e4\ucd9c(Revenue from operations; IGAAP\uae30 = Total income from operations (net))","scope":"company (standalone; single reportable segment: products and systems for electricity distribution)","segment_name":null,"n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.06\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.0635,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":20,"n_tested":15,"n_lead":0,"n_coincident":3,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[{"id":"fred_A35SNO","label_ko":"\ubbf8\uad6d \uc81c\uc870\uc5c5 \uc2e0\uaddc\uc218\uc8fc: \uc804\uae30\uc7a5\ube44\u00b7\uac00\uc804\u00b7\ubd80\ud488(M3 35S) \u00b7 \uacc4\uc808\uc870\uc815"},{"id":"india_iip_capgoods","label_ko":"\uc778\ub3c4 IIP \uc6a9\ub3c4\ubcc4 \uc790\ubcf8\uc7ac \u00b7 \uc6d0\uacc4\uc5f4 (2011-12=100)"}]},"nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"SHIHLIN","name":"Shihlin Electric \u58eb\u6797\u96fb\u6a5f","ticker":"1503 TT","region":"Taiwan","status":"ok","listed":true,"tier":"core","currency":"TWD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\u96fb\u529b\u914d\u96fb \ubd80\ubb38(\uc911\uc804: \ubcc0\uc555\uae30\u00b7\ubc30\uc804\ubc18\u00b7GIS\u00b7\uac1c\ud3d0\uae30) \uc678\ubd80\ub9e4\ucd9c","scope":"segment","segment_name":"Electric distribution segment (\u96fb\u529b\u914d\u96fb\u90e8\u9580)","n_yoy":26,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.45\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.4528,"n_oos":18,"nowcast_grade":"F"},"summary":{"n_candidates":17,"n_tested":14,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uc6d4\ub9e4\ucd9c MOPS","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"SHILCHAR","name":"Shilchar Technologies","ticker":"SHILCTECH IN","region":"India","status":"ok","listed":true,"tier":"core","currency":"INR","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\ubcc4\ub3c4 \ub9e4\ucd9c(\ub2e8\uc77c \ubd80\ubb38: \ubcc0\uc555\uae30\u00b7\ubd80\ud488)","scope":"standalone","segment_name":null,"n_yoy":36,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.28\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.2848,"n_oos":28,"nowcast_grade":"F"},"summary":{"n_candidates":20,"n_tested":15,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uc218\ucd9c \ube44\uc911 \ud07c(\ubbf8\uad6d)","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"SIEYUAN","name":"Sieyuan Electric \u601d\u6e90\u7535\u6c14","ticker":"002028 CH","region":"China","status":"ok","listed":true,"tier":"core","currency":"CNY","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \uc601\uc5c5\uc218\uc775(\u8425\u4e1a\u6536\u5165)","scope":"consolidated","segment_name":null,"n_yoy":44,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.39\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.3857,"n_oos":36,"nowcast_grade":"F"},"summary":{"n_candidates":18,"n_tested":17,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\ubd84\uae30 \ub204\uacc4\u2192\ucc28\ubd84","nowcast":{"published":false,"target_m":"2026-09","status":"no_member","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ud604\uc7ac \ub300\uc0c1 \uae30\uac04\uc5d0 \ucc3d\uc774 \uc644\uacb0\ub41c \uc120\ubcc4 \ud504\ub85d\uc2dc \uc5c6\uc74c"]}},{"id":"TBEA","name":"TBEA \u7279\u53d8\u7535\u5de5","ticker":"600089 CH","region":"China","status":"ok","listed":true,"tier":"core","currency":"CNY","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\ubcc0\uc555\uae30 \uc81c\ud488(\u53d8\u538b\u5668\u4ea7\u54c1 \u2192 2024FY\ubd80\ud130 \u7535\u6c14\u8bbe\u5907\u4ea7\u54c1) \uc8fc\uc601\uc5c5\ub9e4\ucd9c \u2014 \ubc18\uae30","scope":"segment","segment_name":"\u53d8\u538b\u5668\u4ea7\u54c1 (transformer products; renamed \u7535\u6c14\u8bbe\u5907\u4ea7\u54c1 'electrical-equipment products' from the FY2024 annual report \u2014 same base: FY2024 +20.98% vs FY2023 \u53d8\u538b\u5668\u4ea7\u54c1 18,484.73, 2025H1 +29.66% vs 2024H1 \u53d8\u538b\u5668\u4ea7\u54c1 10,308.61). Main-business revenue by product.","n_yoy":20,"lag_unit":"H","freq":"H"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.17\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.1658,"n_oos":12,"nowcast_grade":"F"},"summary":{"n_candidates":18,"n_tested":16,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\ubcc0\uc555\uae30 \ucd5c\ub300; \ud3f4\ub9ac\uc2e4\ub9ac\ucf58 \ud63c\uc7ac","nowcast":{"published":false,"target_m":"2026-12","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ucd5c\uadfc \ube44\uad50\uac12\uc774 \ucd5c\ucd08 \uacf5\uc2dc\uc640 2% \ub118\uac8c \ub2ec\ub77c(\uc7ac\uc791\uc131) \ub808\ubca8 \ud658\uc0b0\uc744 \uc0dd\ub7b5","\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"TECO","name":"TECO \u6771\u5143","ticker":"1504 TT","region":"Taiwan","status":"ok","listed":true,"tier":"ext","currency":"TWD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"IE(\u667a\u6167\u80fd\u6e90) \ubd80\ubb38 \uc678\ubd80\ub9e4\ucd9c \u2014 \uc804\uae30\uc124\ube44 \uc81c\uc870\u00b7\ud310\ub9e4 + \uad50\ud1b5\u00b7\uc804\ub825 \uacf5\uc0ac","scope":"segment","segment_name":"Intelligence Energy Business Group (IE)","n_yoy":18,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.03\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.0252,"n_oos":10,"nowcast_grade":"F"},"summary":{"n_candidates":16,"n_tested":12,"n_lead":1,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[{"id":"moea_pvi_28","label_ko":"\ub300\ub9cc \uc81c\uc870\uc5c5 \uc0dd\uc0b0\uc561\uc9c0\uc218 28 \uc804\ub825\uc124\ube44\u00b7\uc7a5\ube44 \uc81c\uc870\uc5c5 \u00b7 \uc6d0\uacc4\uc5f4 (2021=100)"}],"top_coincident":[]},"note":"\uc6d4\ub9e4\ucd9c MOPS; \ubaa8\ud130 \uc911\uc2ec","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ucd5c\uadfc \ube44\uad50\uac12\uc774 \ucd5c\ucd08 \uacf5\uc2dc\uc640 2% \ub118\uac8c \ub2ec\ub77c(\uc7ac\uc791\uc131) \ub808\ubca8 \ud658\uc0b0\uc744 \uc0dd\ub7b5","\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"TAKAOKA","name":"Takaoka Toko","ticker":"6617 JP","region":"Japan","status":"ok","listed":true,"tier":"core","currency":"JPY","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\uc804\ub825\uae30\uae30\uc0ac\uc5c5(\u96fb\u529b\u6a5f\u5668\u4e8b\u696d) \uc678\ubd80\uace0\uac1d \ub9e4\ucd9c","scope":"segment","segment_name":"\u96fb\u529b\u6a5f\u5668\u4e8b\u696d (Power Equipment) \u2014 external sales (\u5916\u90e8\u9867\u5ba2\u3078\u306e\u58f2\u4e0a\u9ad8)","n_yoy":41,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.42\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.4174,"n_oos":33,"nowcast_grade":"F"},"summary":{"n_candidates":21,"n_tested":20,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\ubc30\uc804 \ubcc0\uc555\uae30\u00b7\uacc4\ub7c9","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"TATUNG","name":"Tatung \u5927\u540c","ticker":"2371 TT","region":"Taiwan","status":"ok","listed":true,"tier":"ext","currency":"TWD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\uc804\ub825\u00b7\uc5d0\ub108\uc9c0 \ubd80\ubb38 \uc678\ubd80\ub9e4\ucd9c(\u91cd\u96fb \ubcc0\uc555\uae30\u00b7GIS\u00b7\ubc30\uc804\ubc18 + \ubaa8\ud130\u00b7\ud0dc\uc591\uad11\u00b7\uc2a4\ub9c8\ud2b8\ubbf8\ud130\u00b7\uc804\uc120)","scope":"segment","segment_name":"Machinery, energy and system \u2192 Electric power and new energy \u2192 Electric power, system integration and new energy","n_yoy":22,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.19\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.194,"n_oos":14,"nowcast_grade":"F"},"summary":{"n_candidates":16,"n_tested":12,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\uc6d4\ub9e4\ucd9c MOPS; \ubcf5\ud569\uae30\uc5c5","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"TARIL","name":"Transformers \u0026 Rectifiers India","ticker":"TARIL IN","region":"India","status":"ok","listed":true,"tier":"core","currency":"INR","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \ub9e4\ucd9c(\ub2e8\uc77c \ubd80\ubb38: \ubcc0\uc555\uae30)","scope":"consolidated","segment_name":null,"n_yoy":28,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.22\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.2188,"n_oos":20,"nowcast_grade":"F"},"summary":{"n_candidates":18,"n_tested":14,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"XJ","name":"XJ Electric \u8bb8\u7ee7\u7535\u6c14","ticker":"000400 CH","region":"China","status":"ok","listed":true,"tier":"ext","currency":"CNY","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \uc601\uc5c5\uc218\uc775(\u8425\u4e1a\u6536\u5165)","scope":"consolidated","segment_name":null,"n_yoy":33,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.48\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.4808,"n_oos":25,"nowcast_grade":"F"},"summary":{"n_candidates":18,"n_tested":17,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\ubd84\uae30 \ub204\uacc4\u2192\ucc28\ubd84","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"SUNDO","name":"\uc120\ub3c4\uc804\uae30","ticker":"007610 KS","region":"Korea","status":"ok","listed":true,"tier":"ext","currency":"KRW","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \ub9e4\ucd9c(\ub9e4\ucd9c\uc561)","scope":"consolidated","segment_name":null,"n_yoy":41,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.17\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.1697,"n_oos":33,"nowcast_grade":"F"},"summary":{"n_candidates":19,"n_tested":19,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"DART; \ubc30\uc804\ubc18","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"ILJIN","name":"\uc77c\uc9c4\uc804\uae30","ticker":"103590 KS","region":"Korea","status":"ok","listed":true,"tier":"core","currency":"KRW","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\uc804\ub825\uc2dc\uc2a4\ud15c(\uc911\uc804\uae30) \ubd80\ubb38 \ub9e4\ucd9c","scope":"segment","segment_name":"\uc804\ub825\uc2dc\uc2a4\ud15c \ubd80\ubb38 \ub9e4\ucd9c(\ubcc0\uc555\uae30\u00b7GIS\u00b7\ucc28\ub2e8\uae30 \ub4f1 \uc911\uc804\uae30; 2025\ub144\uae4c\uc9c0 \ubd80\ubb38\uac04 \uc81c\uac70 \uc804 \ucd1d\uc561, 2026\ub144\ubd80\ud130 \ubd80\ubb38\uac04 \uc81c\uac70 \ud6c4 \uae08\uc561\u00b72025 \ube44\uad50\uc5f4 \uc7ac\uc791\uc131)","n_yoy":42,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"F","grade_reason":"\ucd5c\uc120 \uae30\uc900\ubaa8\ud615 \ub300\ube44 MAE 1.11\ubc30(\uac1c\uc120 \uc5c6\uc74c)","rel_mae_best":1.1087,"n_oos":34,"nowcast_grade":"F"},"summary":{"n_candidates":22,"n_tested":22,"n_lead":1,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[{"id":"us_imp_850422_p410","label_ko":"\ubbf8\uad6d \uc218\uc785 HS850422(\uc720\uc785\uc2dd \ubcc0\uc555\uae30 650~10,000kVA) \u00b7 \ud55c\uad6d\ubc1c"}],"top_coincident":[]},"note":"DART; \uc911\uc804\uae30(\ubcc0\uc555\uae30)","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ucd5c\uadfc \ube44\uad50\uac12\uc774 \ucd5c\ucd08 \uacf5\uc2dc\uc640 2% \ub118\uac8c \ub2ec\ub77c(\uc7ac\uc791\uc131) \ub808\ubca8 \ud658\uc0b0\uc744 \uc0dd\ub7b5","\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 F \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)","\ucd5c\uadfc/\ub300\uc0c1 \uae30\uac04 \uad6c\uc870 \ubcc0\ud654: restatement 2026-01-01"]}},{"id":"HITACHI_ENERGY","name":"Hitachi Energy (Hitachi Ltd \uc138\uadf8\uba3c\ud2b8)","ticker":"6501 JP","region":"Europe","status":"ok","listed":true,"tier":"core","currency":"JPY","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\ud788\ud0c0\uce58\uc5d0\ub108\uc9c0(\uad6c ABB \ud30c\uc6cc\uadf8\ub9ac\ub4dc) \ub9e4\ucd9c \u2014 FY2025\ubd80\ud130 Power Grid(s) BU(\ud788\ud0c0\uce58\uc5d0\ub108\uc9c0 \ud3ec\ud568)","scope":"segment","segment_name":"Hitachi ABB Power Grids \u2192 Hitachi Energy (Standalone) [FY2020Q2\u2013FY2024Q4]; Power Grid(s) BU incl. Hitachi Energy, Energy sector [FY2025Q1\u2013]","n_yoy":16,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"N","grade_reason":"\ud504\ub85d\uc2dc\uac00 \uc2e4\uc81c\ub85c \uc4f0\uc778 OOS \ubd84\uae30 6\uac1c \u003c 8","rel_mae_best":1.4267,"n_oos":8,"nowcast_grade":"N"},"summary":{"n_candidates":28,"n_tested":24,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"Hitachi \ubd84\uae30 \uacb0\uc0b0\uc758 Hitachi Energy \ub9e4\ucd9c","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 N \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"KOEI","name":"KON\u010cAR","ticker":"KOEI CZ(ZSE)","region":"Europe","status":"ok","listed":true,"tier":"core","currency":"EUR","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"\uc1a1\ubc30\uc804(T\u0026D) \uc138\uadf8\uba3c\ud2b8 \ub9e4\ucd9c \u2014 \ubcc0\uc555\uae30\u00b7\uacc4\uae30\uc6a9\ubcc0\uc555\uae30\u00b7\uac1c\ud3d0\uc7a5\uce58\u00b7\uc1a1\uc804\uc120\ub85c(Dalekovod) \ud3ec\ud568, \ub0b4\ubd80\uac70\ub798 \uc81c\uac70 \uc804","scope":"segment","segment_name":"Prijenos i distribucija elektri\u010dne energije (Power transmission \u0026 distribution; IFRS 8, gross of intersegment eliminations): power/distribution/special/instrument transformers, transformer tanks, MV/LV switchgear, substations, transmission lines (Dalekovod from Apr-2022)","n_yoy":16,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"N","grade_reason":"\ud504\ub85d\uc2dc\uac00 \uc2e4\uc81c\ub85c \uc4f0\uc778 OOS \ubd84\uae30 5\uac1c \u003c 8","rel_mae_best":1.365,"n_oos":8,"nowcast_grade":"N"},"summary":{"n_candidates":28,"n_tested":20,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\ud06c\ub85c\uc544\ud2f0\uc544; \ubcc0\uc555\uae30 \uc790\ud68c\uc0ac \ud3ec\ud568 \uadf8\ub8f9","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 N \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)","\ucd5c\uadfc/\ub300\uc0c1 \uae30\uac04 \uad6c\uc870 \ubcc0\ud654: acquisition 2025-08-01"]}},{"id":"ENR","name":"Siemens Energy","ticker":"ENR GR","region":"Europe","status":"ok","listed":true,"tier":"core","currency":"EUR","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"Grid Technologies \ub9e4\ucd9c","scope":"segment","segment_name":"Grid Technologies (segment reported from FY2023; FY2022 quarters = recast comparatives)","n_yoy":15,"lag_unit":"Q","freq":"Q"},"composite":{"grade":"N","grade_reason":"\ud504\ub85d\uc2dc\uac00 \uc2e4\uc81c\ub85c \uc4f0\uc778 OOS \ubd84\uae30 6\uac1c \u003c 8","rel_mae_best":1.4139,"n_oos":7,"nowcast_grade":"N"},"summary":{"n_candidates":28,"n_tested":21,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"Grid Technologies \uc138\uadf8\uba3c\ud2b8(\ubcc0\uc555\uae30 \ud3ec\ud568) \u2014 \ud68c\uacc4\uc5f0\ub3c4 10~9\uc6d4","nowcast":{"published":false,"target_m":"2026-09","status":"complete","withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815","reasons":["\ub098\uc6b0\uce90\uc2a4\ud2b8 \uc559\uc0c1\ube14 \ub4f1\uae09 N \u2014 \uc218\uce58 \uacf5\uac1c \ubcf4\ub958(A\u00b7B \ub9cc \uacf5\uac1c)"]}},{"id":"BAHRA","name":"Bahra Electric","ticker":null,"region":"Latin America and Middle East","status":"no_target","listed":false,"tier":"private","currency":null,"is_anchor":false,"target":{"name":null,"label_ko":null,"scope":null,"segment_name":null,"n_yoy":null,"lag_unit":null,"freq":null},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":null,"n_tested":null,"n_lead":null,"n_coincident":null,"n_lag":null,"n_validated_lead":null,"top_lead":[],"top_coincident":[]},"note":"\ube44\uc0c1\uc7a5 \u2014 \ud504\ub85c\ud544\ub9cc","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"ERMCO","name":"ERMCO","ticker":null,"region":"North America","status":"no_target","listed":false,"tier":"private","currency":null,"is_anchor":false,"target":{"name":null,"label_ko":null,"scope":null,"segment_name":null,"n_yoy":null,"lag_unit":null,"freq":null},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":null,"n_tested":null,"n_lead":null,"n_coincident":null,"n_lag":null,"n_validated_lead":null,"top_lead":[],"top_coincident":[]},"note":"\ube44\uc0c1\uc7a5(Arkansas Electric Cooperatives) \u2014 \ud504\ub85c\ud544\u00b7\uacbd\ub85c \ud504\ub85d\uc2dc\ub9cc","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"FPS","name":"Forgent Power Solutions","ticker":"FPS US","region":"North America","status":"short_history","listed":true,"tier":"core","currency":"USD","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \ub9e4\ucd9c","scope":"consolidated","segment_name":null,"n_yoy":4,"lag_unit":"Q","freq":"Q"},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":28,"n_tested":0,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"seed=phalanx; \ubc30\uc804 \uc7a5\ube44\u00b7\ubcc0\uc555\uae30(2025 \uc0c1\uc7a5)","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"GEV","name":"GE Vernova","ticker":"GEV US","region":"North America","status":"short_history","listed":true,"tier":"core","currency":"USD","is_anchor":false,"target":{"name":"revenue_segment","label_ko":"Electrification \uc138\uadf8\uba3c\ud2b8 \ub9e4\ucd9c","scope":"segment","segment_name":"Electrification (Power Transmission incl. Prolec GE from 2026-02-02, Grid Systems Integration, Power Conversion \u0026 Storage, Grid Automation \u0026 Software; pre-2026 business units: Grid Solutions, Power Conversion, Solar \u0026 Storage Solutions, Electrification Software)","n_yoy":10,"lag_unit":"Q","freq":"Q"},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":28,"n_tested":0,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"Electrification \uc138\uadf8\uba3c\ud2b8(Grid Solutions\u00b7Prolec GE \ubcc0\uc555\uae30)","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"HOWARD","name":"Howard Industries (Power Solutions)","ticker":null,"region":"North America","status":"no_target","listed":false,"tier":"private","currency":null,"is_anchor":false,"target":{"name":null,"label_ko":null,"scope":null,"segment_name":null,"n_yoy":null,"lag_unit":null,"freq":null},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":null,"n_tested":null,"n_lead":null,"n_coincident":null,"n_lag":null,"n_validated_lead":null,"top_lead":[],"top_coincident":[]},"note":"\ube44\uc0c1\uc7a5 \u2014 \ud504\ub85c\ud544\u00b7\uacbd\ub85c \ud504\ub85d\uc2dc\ub9cc","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"RSGN","name":"R\u0026S Group","ticker":"RSGN SW","region":"Europe","status":"short_history","listed":true,"tier":"core","currency":"CHF","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\uc5f0\uacb0 \uc21c\ub9e4\ucd9c(\ubc18\uae30) \u2014 \ubcc0\uc555\uae30 \uc804\uc5c5","scope":"consolidated","segment_name":null,"n_yoy":5,"lag_unit":"H","freq":"H"},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":28,"n_tested":0,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"\ubcc0\uc555\uae30(\uc2a4\uc704\uc2a4\u00b7\ud3f4\ub780\ub4dc \ub4f1); \ubc18\uae30 \uacf5\uc2dc","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"SGB_SMIT","name":"SGB-SMIT Group","ticker":null,"region":"Europe","status":"no_target","listed":false,"tier":"private","currency":null,"is_anchor":false,"target":{"name":null,"label_ko":null,"scope":null,"segment_name":null,"n_yoy":null,"lag_unit":null,"freq":null},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":null,"n_tested":null,"n_lead":null,"n_coincident":null,"n_lag":null,"n_validated_lead":null,"top_lead":[],"top_coincident":[]},"note":"\ube44\uc0c1\uc7a5 \u2014 \ud504\ub85c\ud544\u00b7\uacbd\ub85c \ud504\ub85d\uc2dc\ub9cc","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"DACHI","name":"Shandong Dachi","ticker":"?","region":"China","status":"no_target","listed":false,"tier":"ext","currency":"CNY","is_anchor":false,"target":{"name":null,"label_ko":null,"scope":null,"segment_name":null,"n_yoy":null,"lag_unit":null,"freq":null},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":null,"n_tested":null,"n_lead":null,"n_coincident":null,"n_lag":null,"n_validated_lead":null,"top_lead":[],"top_coincident":[]},"note":"\uc0c1\uc7a5 \uc5ec\ubd80 \ud655\uc778 \ud544\uc694","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}},{"id":"ENRIN","name":"Siemens Energy India","ticker":"ENRIN IN","region":"India","status":"short_history","listed":true,"tier":"ext","currency":"INR","is_anchor":false,"target":{"name":"revenue_total","label_ko":"\ub9e4\ucd9c(Revenue from operations)","scope":"company (standalone)","segment_name":null,"n_yoy":5,"lag_unit":"Q","freq":"Q"},"composite":{"grade":null,"grade_reason":null,"rel_mae_best":null,"n_oos":null,"nowcast_grade":null},"summary":{"n_candidates":19,"n_tested":0,"n_lead":0,"n_coincident":0,"n_lag":0,"n_validated_lead":0,"top_lead":[],"top_coincident":[]},"note":"2025 \ubd84\ud560 \uc0c1\uc7a5 \u2014 \uc774\ub825 \uc9e7\uc74c","nowcast":{"published":false,"target_m":null,"status":null,"withheld":"nowcast.published != true \u2014 \uc6d0\ucc9c\uc774 \uacf5\uac1c \uc870\uac74 \ubbf8\ucda9\uc871\uc73c\ub85c \ud310\uc815"}}]};
 const F=(v,d)=>v==null?'–':(v/d.div).toLocaleString('en-US',{maximumFractionDigits:d.div>=1e9?2:0});
 const P=v=>v==null?'–':(v>0?'+':'')+v.toFixed(1)+'%';
 const HAS=typeof Chart!=='undefined';
@@ -216757,6 +216929,22 @@ function selectTab(key,push){
  <div class="card notes">판정 배지는 잔차보정 점추정 vs 가이던스·컨센 기준. ρ<0.5는 참고등급으로 읽을 것(SMCI·JEM 등 — 프록시 커버리지 한계가 노트에 명시됨).</div>
  ${paperCard()}`;
  panels.appendChild(p);
+})();
+// ⚡ 전력기기 피어 앙상블 탭 — 기업 탭이 아니라 별도 데이터셋(ensemble grid-composite 투영본)이다.
+// 종합 바로 뒤에 둔다: 기업 탭 31개 뒤로 밀면 첫 화면에서 보이지 않는다.
+// 키를 tabEls 에 등록하므로 #c=GRIDENS 해시 라우팅이 기존 기업 탭과 같은 경로로 동작한다.
+(function(){
+ if(!GRID_ENS) return;  // 투영본이 없으면 탭 자체를 만들지 않는다(빈 탭을 남기지 않는다)
+ const KEY='GRIDENS';
+ const t=document.createElement('div');t.className='tab';t.textContent='⚡ 전력기기 피어 앙상블';
+ t.onclick=()=>selectTab(KEY,true);
+ tabEls[KEY]=t;tabs.appendChild(t);
+ const p=document.createElement('div');p.className='panel';p.id='p'+KEY;
+ panels.appendChild(p);
+ try{renderGridEnsemble(GRID_ENS,p);}
+ catch(err){console.error('grid-ensemble',err);
+  p.innerHTML='<div class="card"><h3>⚡ 전력기기 피어 앙상블</h3>'
+   +'<div class="notes warn">렌더 실패 — 콘솔을 확인하라. 부분 렌더로 잘못된 수치를 남기지 않는다.</div></div>';}
 })();
 DATA.companies.forEach((c,i)=>{
  const t=document.createElement('div');t.className='tab';t.textContent=c.id;
