@@ -88,7 +88,7 @@ window.CMPD={
     "vcolor": "#e2574f",
     "est": "0.97 B USD",
     "range": "",
-    "cons": "1.25 B USD",
+    "cons": null,
     "rho": 0.984,
     "state": "부분분기"
   },
@@ -105,7 +105,7 @@ window.CMPD={
   },
   "JEM": {
     "report_d": "",
-    "fq": "진행 분기",
+    "fq": "FY3/27 Q2 (7~9월; 2026-Q3)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
@@ -115,13 +115,13 @@ window.CMPD={
     "state": "대기"
   },
   "HPE": {
-    "report_d": "2026-12-03",
+    "report_d": "",
     "fq": "FQ4'26 (8~10월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
     "range": "",
-    "cons": "14.35 B USD",
+    "cons": null,
     "rho": 0.937,
     "state": "대기",
     "observatory": {
@@ -149,7 +149,7 @@ window.CMPD={
     "vcolor": "#8a93a6",
     "est": null,
     "range": "",
-    "cons": "14.9 B USD",
+    "cons": null,
     "rho": 0.248,
     "state": "대기",
     "observatory": {
@@ -199,8 +199,8 @@ window.CMPD={
     }
   },
   "MJC": {
-    "report_d": "2026-11-11",
-    "fq": "FY26 Q3 (7~9월)",
+    "report_d": "",
+    "fq": "2026年12月期 第3四半期 (2026년 7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
@@ -210,7 +210,7 @@ window.CMPD={
     "state": "대기"
   },
   "GBM": {
-    "report_d": "2026-11-16",
+    "report_d": "",
     "fq": "Q3'26 (7~9월)",
     "verdict": "예측 보류 · 관측 진단",
     "vcolor": "#8a93a6",
@@ -236,7 +236,7 @@ window.CMPD={
   },
   "ADTEST": {
     "report_d": "2026-10-28",
-    "fq": "FY27 Q2 (7~9월)",
+    "fq": "2027年3月期 第2四半期 (2026년 7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
@@ -247,7 +247,7 @@ window.CMPD={
   },
   "DISCO": {
     "report_d": "2026-10-22",
-    "fq": "FY27 Q2 (7~9월)",
+    "fq": "2027年3月期 第2四半期 (2026년 7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
@@ -291,7 +291,7 @@ window.CMPD={
   },
   "MURATA": {
     "report_d": "2026-10-30",
-    "fq": "FY27 Q2 (7~9월)",
+    "fq": "2027年3月期 第2四半期 (2026년 7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
@@ -346,7 +346,7 @@ window.CMPD={
     "vcolor": "#c9a24a",
     "est": "1.38 B USD",
     "range": "",
-    "cons": "1.4 B USD",
+    "cons": null,
     "rho": 0.888,
     "state": "부분분기"
   },
@@ -357,7 +357,7 @@ window.CMPD={
     "vcolor": "#e2574f",
     "est": "1.79 B USD",
     "range": "",
-    "cons": "2.3 B USD",
+    "cons": null,
     "rho": 0.551,
     "state": "완전"
   },
@@ -1237,7 +1237,7 @@ window.CMPD={
     }
   },
   "CATL": {
-    "report_d": "2026-10-31",
+    "report_d": "",
     "fq": "Q3'26 (7~9월)",
     "verdict": "부합권",
     "vcolor": "#c9a24a",
@@ -1248,8 +1248,8 @@ window.CMPD={
     "state": "완전"
   },
   "JINKO": {
-    "report_d": "",
-    "fq": "진행 분기",
+    "report_d": "2026-10-31",
+    "fq": "Q3'26 (7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
     "est": null,
@@ -1259,7 +1259,7 @@ window.CMPD={
     "state": "대기"
   },
   "CANADIAN": {
-    "report_d": "2026-10-31",
+    "report_d": "2026-10-30",
     "fq": "Q3'26 (7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
@@ -1292,7 +1292,7 @@ window.CMPD={
     "state": "대기"
   },
   "DEYE": {
-    "report_d": "2026-10-31",
+    "report_d": "2026-10-30",
     "fq": "Q3'26 (7~9월)",
     "verdict": "부합권",
     "vcolor": "#c9a24a",
@@ -1303,7 +1303,7 @@ window.CMPD={
     "state": "완전"
   },
   "HANGKE": {
-    "report_d": "2026-10-31",
+    "report_d": "2026-10-30",
     "fq": "Q3'26 (7~9월)",
     "verdict": "대기",
     "vcolor": "#8a93a6",
@@ -6580,7 +6580,7 @@ window.CMPD={
   },
   "IBIDEN": {
     "report_d": "",
-    "fq": "FY2026 Q2 (2027-03 결산)",
+    "fq": "FY2026 Q2 (2026년 7~9월; 2027-03 결산)",
     "verdict": "예측 보류 · 관측 진단",
     "vcolor": "#8a93a6",
     "est": null,
@@ -9454,7 +9454,7 @@ window.CMPD={
   },
   "4062.T": {
     "report_d": "",
-    "fq": "FY2026 Q2 (2027-03 결산)",
+    "fq": "FY2026 Q2 (2026년 7~9월; 2027-03 결산)",
     "verdict": "예측 보류 · 관측 진단",
     "vcolor": "#8a93a6",
     "est": null,
@@ -10410,7 +10410,7 @@ window.CMPD={
   },
   "4062": {
     "report_d": "",
-    "fq": "FY2026 Q2 (2027-03 결산)",
+    "fq": "FY2026 Q2 (2026년 7~9월; 2027-03 결산)",
     "verdict": "예측 보류 · 관측 진단",
     "vcolor": "#8a93a6",
     "est": null,
