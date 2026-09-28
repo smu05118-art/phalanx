@@ -221,6 +221,36 @@ def _nature_ko(nid):
 _FC = {"panel": None, "src": None, "mod": None, "tried": False}
 
 
+
+# 수주 상세(간트·분기 전환·발주처) — 스튜디오 Claude(fable/ultracode) 산출 `kaero_orders_views.py`.
+_OV = {"mod": None, "con": None, "tried": False}
+
+
+def _orders_section(stock):
+    if not _OV["tried"]:
+        _OV["tried"] = True
+        try:
+            import kaero_orders_views as _ov
+            _OV["mod"] = _ov
+            with open(os.path.join(ASSETS, "contracts.json"), encoding="utf-8") as f:
+                d = json.load(f)
+            rows = d.get("rows") if isinstance(d, dict) else d
+            _OV["con"] = list(rows.values()) if isinstance(rows, dict) else (rows or [])
+        except Exception as e:
+            sys.stderr.write("[warn] 수주 상세 비활성: %s\n" % e)
+    if not _OV["mod"] or _OV["con"] is None:
+        return ""
+    ent = (_FC.get("src") or {}).get(stock) if "_FC" in globals() else None
+    if ent is None:
+        ent = {"stock": stock, "co": None, "name": None}
+    try:
+        f = (_FC.get("panel") or {}).get(stock) if "_FC" in globals() else None
+        rows = [r for r in _OV["con"] if r.get("stock") in (None, stock)]
+        return _OV["mod"].render_orders_section(ent, rows, f) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 수주 상세 렌더 실패: %s\n" % (stock, e))
+        return ""
+
 def _forecast_section(stock):
     import gzip
     if not _FC["tried"]:
@@ -509,7 +539,7 @@ def company_html(s, data):
        ledger_table(s["ledger"], tid="lg%s" % s["stock"]),
        cur_html(s), seg_html, cust_html, parts_html, con_html,
        " ".join("<p>%s</p>" % n for n in notes),
-       json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"])
+       json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"]) + _orders_section(rec["stock"])
     tags = (rec["stock"], rec["market"], ROLE_KO.get(rec["role"], rec["role"]), rec["industry"])
     dart = DART % ((latest or {}).get("rcp") or "")
     return page("%s — 우주항공 수주" % rec["name"], body, depth=1, h1=rec["name"], tags=tags,

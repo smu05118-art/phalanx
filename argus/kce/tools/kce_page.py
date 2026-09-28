@@ -127,6 +127,31 @@ def _panel_entry(D):
             "grain": D.get("grain"), "declared": D.get("declared"), "summary": D.get("summary"),
             "site_total": tot, "sites": sites}
 
+
+# 수주 상세(간트·분기 전환·발주처) — 스튜디오 Claude(fable/ultracode) 산출 `kce_orders_views.py`.
+# 건설은 계약 공시가 아니라 II-4 **현장 원장**이 원천이라 렌더러의 contracts_from_panel 로 정규화해 넘긴다.
+_OV = {"mod": None, "tried": False}
+
+
+def _orders_section(D):
+    if not _OV["tried"]:
+        _OV["tried"] = True
+        try:
+            import kce_orders_views as _ov
+            _OV["mod"] = _ov
+        except Exception as e:
+            sys.stderr.write("[warn] 수주 상세 비활성: %s\n" % e)
+    if not _OV["mod"]:
+        return ""
+    ent = _panel_entry(D)
+    try:
+        rows = _OV["mod"].contracts_from_panel(ent)
+        f = (_FC.get("panel") or {}).get(D["stock"]) if _FC.get("panel") else None
+        return _OV["mod"].render_orders_section(ent, rows, f) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 수주 상세 렌더 실패: %s\n" % (D.get("stock"), e))
+        return ""
+
 def _forecast_section(stock, D=None):
     if not _FC["tried"]:
         _FC["tried"] = True
@@ -332,7 +357,7 @@ def company_html(D, out_dir=None):
 <script>{js}</script>
 </body></html>""".format(
         css=CSS+kce_detail_ui.CSS, js=COMPANY_JS+kce_detail_ui.JS,
-        detail_html=kce_detail_ui.HTML, forecast_html=_forecast_section(D["stock"], D), data=json_for_html(D),
+        detail_html=kce_detail_ui.HTML, forecast_html=_forecast_section(D["stock"], D) + _orders_section(D), data=json_for_html(D),
         nm=E(D["co"]), stock=E(D["stock"]), market=E(D["market"]),
         kind=KIND, unit=UNIT, grainnote=grainnote,
         detailnav=_detail_nav(out_dir, D["stock"]) if out_dir else "",
