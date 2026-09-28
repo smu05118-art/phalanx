@@ -229,7 +229,11 @@ if(_t==='light')document.documentElement.dataset.theme='light';}catch(e){}</scri
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="ui/patch.css">
-<style>/* Scoped report explorer. Auto theme inherits either Phalanx or chain tokens. */
+<style>.ent-root{--ent-bg:var(--s1,#151b25);--ent-panel:var(--s2,#1d2633);--ent-border:var(--bd,#334052);--ent-text:var(--tx,#edf2f8);--ent-muted:var(--dim,#9baabc);--ent-accent:#b38cff;color:var(--ent-text);font-family:Inter,"IBM Plex Sans KR",system-ui,sans-serif;line-height:1.6;text-align:left}.ent-root *{box-sizing:border-box}.ent-root button,.ent-root input,.ent-root select{font:inherit;color:inherit}.ent-root button,.ent-root select,.ent-root input{border:1px solid var(--ent-border);background:var(--ent-bg);border-radius:8px;padding:8px 11px}.ent-root button{cursor:pointer}.ent-root button:hover,.ent-root a:hover{filter:brightness(1.15)}.ent-root :focus-visible{outline:2px solid var(--ent-accent);outline-offset:3px}.ent-root a{color:var(--ent-accent);text-decoration:none}.ent-root .selected{border-color:var(--ent-accent);background:color-mix(in srgb,var(--ent-accent) 16%,var(--ent-bg));color:var(--ent-text)}.ent-header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:10px 0 22px}.ent-eyebrow{font-size:11px;letter-spacing:.14em;color:var(--ent-accent);font-weight:750}.ent-header h2{font-size:30px;letter-spacing:-.04em;margin:5px 0}.ent-header p{color:var(--ent-muted);margin:0;font-size:14px}.ent-download{padding:10px 16px;border:1px solid var(--ent-accent);border-radius:9px;white-space:nowrap;font-size:13px;font-weight:700}.ent-coverage{padding:16px 20px;border:1px solid var(--ent-border);border-left:3px solid var(--ent-accent);border-radius:10px;background:var(--ent-bg);font-size:12px;margin-bottom:16px}.ent-coverage>div{display:flex;flex-wrap:wrap;gap:7px 22px}.ent-coverage b{color:var(--ent-muted);margin-right:6px;font-weight:500}.ent-coverage p{margin:8px 0}.ent-coverage small{color:var(--ent-muted);font-size:11px}.ent-crumb{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:16px 0}.ent-crumb button{padding:4px 8px;border:0;color:var(--ent-accent);background:none;font-size:12px}.ent-crumb>span{color:var(--ent-muted)}.ent-hierarchy{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:23px}.ent-hierarchy section{background:var(--ent-bg);border:1px solid var(--ent-border);border-radius:12px;padding:15px;min-width:0}.ent-level{display:flex;align-items:center;gap:8px;margin-bottom:11px}.ent-level>span{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:var(--ent-panel);color:var(--ent-accent);border-radius:50%;font-size:11px}.ent-level h3{font-size:14px;margin:0;letter-spacing:-.02em}.ent-level small{margin-left:auto;color:var(--ent-muted)}.ent-hierarchy select{width:100%;font-size:12px;max-width:100%}.ent-options{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;align-content:flex-start;max-height:142px;overflow:auto}.ent-options button{font-size:11px;padding:5px 8px;max-width:100%;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}.ent-options small{font-size:11px;color:var(--ent-muted);padding:4px}.ent-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0 16px}.ent-toolbar>div{display:flex;gap:6px;margin-right:auto}.ent-toolbar button,.ent-toolbar select,.ent-toolbar input{font-size:12px}.ent-toolbar select{max-width:250px}.ent-search{display:flex;gap:6px}.ent-search input{width:220px}.ent-table-wrap{border:1px solid var(--ent-border);border-radius:12px;overflow-x:auto;background:var(--ent-bg)}.ent-root table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}.ent-root th{background:var(--ent-panel);color:var(--ent-muted);font-size:11px;font-weight:600;padding:12px;text-align:left;border-bottom:1px solid var(--ent-border)}.ent-root td{padding:12px;vertical-align:top;border-bottom:1px solid var(--ent-border)}.ent-root tr:last-child td{border-bottom:0}.ent-root td:nth-child(3){white-space:normal;min-width:180px;max-width:400px}.ent-root td:last-child{max-width:220px;white-space:normal;word-break:break-word}.ent-root .num{text-align:right;font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}.ent-root details{margin-top:5px;color:var(--ent-muted);font-size:11px}.ent-root summary{cursor:pointer}.ent-root details p{white-space:pre-wrap;max-width:340px;overflow-wrap:anywhere}.ent-status{font-size:10px;padding:3px 7px;border-radius:5px;background:var(--ent-panel);color:var(--ent-muted)}.ent-more{display:block;margin:16px auto;font-size:12px!important}.ent-empty{padding:55px 24px;border:1px dashed var(--ent-border);border-radius:12px;text-align:center;color:var(--ent-muted);font-size:14px;background:var(--ent-bg)}.ent-timeline{display:grid;gap:10px}.ent-timeline article{display:grid;grid-template-columns:110px 1fr;gap:20px;padding:19px 20px;border:1px solid var(--ent-border);border-radius:11px;background:var(--ent-bg)}.ent-timeline time{font:12px ui-monospace,monospace;color:var(--ent-muted);padding-top:3px}.ent-timeline h3{font-size:14px;margin:0 0 6px}.ent-timeline p{font-size:13px;margin:4px 0 9px;white-space:pre-wrap}.ent-timeline small{color:var(--ent-muted);font-size:11px}.ent-note{font-size:11px;color:var(--ent-muted);margin:20px 0 10px}.ent-chart{background:var(--ent-bg);border:1px solid var(--ent-border);border-radius:12px;padding:18px;margin-bottom:16px}.ent-chart h3{margin:0;font-size:14px}.ent-chart small{color:var(--ent-muted);font-size:11px}.ent-chart svg{display:block;width:100%;height:auto;max-height:180px;margin-top:10px;overflow:visible}.ent-chart polyline{fill:none;stroke:var(--ent-accent);stroke-width:2}.ent-chart circle{fill:var(--ent-accent)}.ent-axis{stroke:var(--ent-border)}.ent-chart-range{display:flex;justify-content:space-between;font:11px ui-monospace,monospace;color:var(--ent-muted)}.ent-sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}html[data-theme=light] .ent-root{--ent-bg:var(--s1,#fff);--ent-panel:var(--s2,#f0f3f8);--ent-border:var(--bd,#d3dce8);--ent-text:var(--tx,#1c293b);--ent-muted:var(--dim,#5c6b7f);--ent-accent:#7242bb}@media(max-width:980px){.ent-hierarchy{grid-template-columns:repeat(2,minmax(0,1fr))}.ent-options{max-height:94px}.ent-toolbar{align-items:stretch}.ent-toolbar>div{width:100%}.ent-search{flex:1}.ent-search label{flex:1}.ent-search input{width:100%}}@media(max-width:540px){.ent-header{align-items:flex-start;flex-direction:column;gap:12px}.ent-header h2{font-size:25px}.ent-header p{font-size:12px}.ent-hierarchy{gap:8px}.ent-hierarchy section{padding:10px}.ent-level{gap:5px}.ent-level h3{font-size:12px}.ent-hierarchy select{padding:8px 5px;font-size:11px}.ent-options{max-height:78px}.ent-coverage{padding:13px}.ent-coverage>div{gap:5px 12px}.ent-timeline article{grid-template-columns:1fr;gap:5px;padding:14px}.ent-toolbar>label,.ent-toolbar>label select{width:100%;max-width:none}.ent-search{width:100%}.ent-table-wrap{max-width:calc(100vw - 32px)}}
+.ent-role,.ent-estimate,.ent-warning{display:block;font:10px system-ui;margin-top:4px}.ent-role{color:var(--ent-muted)}.ent-estimate{color:#c7a5f8}.ent-warning{color:#ffb66e}.ent-conflict td{background:rgba(245,155,55,.045)}.ent-root td>small{font-size:10px;color:var(--ent-muted)}
+.ent-detail{border:1px solid var(--ent-border);border-radius:10px;background:var(--ent-bg);padding:14px 18px;margin:-7px 0 20px}.ent-detail h3{margin:0;font-size:15px}.ent-detail p{font-size:12px;color:var(--ent-muted);margin:6px 0}.ent-detail small{font:12px ui-monospace,monospace;color:var(--ent-muted)}.ent-entity-links{font-size:11px;margin-top:8px}
+</style><style>.ct-view{color:var(--ink,#e6edf3);background:var(--panel,#111721);border:1px solid var(--line,#314154);border-radius:12px;padding:clamp(12px,2vw,24px);margin:16px 0;font:14px/1.6 system-ui,sans-serif;overflow-wrap:anywhere}.ct-view *{box-sizing:border-box}.ct-view h2,.ct-view h3{margin:0 0 10px}.ct-view a{color:var(--accent,#79b6ff)}.ct-view button,.ct-view input,.ct-view select{font:inherit;color:inherit;background:var(--bg,#0a0e14);border:1px solid var(--line,#53657a);border-radius:6px;padding:8px;min-height:42px}.ct-view button{cursor:pointer}.ct-view :focus-visible{outline:3px solid #57cbe5;outline-offset:2px}.ct-filters,.ct-summary,.ct-links{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.ct-filters label{display:flex;flex-direction:column;gap:4px;flex:1 1 140px;min-width:0}.ct-filters input,.ct-filters select{width:100%}.ct-summary>div{border:1px solid var(--line,#314154);padding:10px;flex:1 1 145px;border-radius:8px}.ct-summary strong{display:block;font-size:20px}.ct-note{color:var(--dim,#afbac8)}.ct-warning{border-left:3px solid #dcab61;padding-left:12px}.ct-grid{display:grid;grid-template-columns:minmax(230px,1fr) minmax(0,2fr);gap:18px}.ct-scroll{overflow:auto;max-height:470px}.ct-view table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}.ct-view th,.ct-view td{border-bottom:1px solid var(--line,#314154);text-align:left;padding:8px;vertical-align:top}.ct-view th{position:sticky;top:0;background:var(--panel,#111721)}.ct-series{display:block;width:100%;text-align:left;margin-bottom:7px}.ct-series[aria-pressed=true]{border-color:#57cbe5}.ct-chart{width:100%;height:auto;min-height:160px}.ct-chart text{fill:currentColor;font-size:12px}.ct-chart line{stroke:var(--line,#53657a)}.ct-chart circle{fill:#57cbe5}.ct-view details{border-top:1px solid var(--line,#314154);padding:12px 0}.ct-view summary{cursor:pointer;min-height:40px}.ct-context{margin:12px 24px;max-width:100%;overflow:auto}.ct-context>summary{padding:12px;cursor:pointer}.ct-pane{max-height:65vh;overflow:auto}.ct-count{white-space:nowrap}.ct-view [role=alert]{color:#f6bc91}@media(max-width:720px){.ct-grid{grid-template-columns:1fr}.ct-filters label{flex-basis:44%}.ct-context{margin:8px}.ct-scroll{max-height:350px}.ct-view td,.ct-view th{padding:6px}.ct-pane{max-height:70vh}}
+</style><style>/* Scoped report explorer. Auto theme inherits either Phalanx or chain tokens. */
 .lux-grailed{--lg-bg:var(--s1,var(--panel,#101820));--lg-raised:var(--s2,var(--panel2,#18232a));--lg-ink:var(--tx,var(--ink,#e6edf3));--lg-dim:var(--dim,#9caab6);--lg-border:var(--bd,#35434a);--lg-accent:#7bd3b5;--lg-warn:#f5bb82;color:var(--lg-ink);background:var(--lg-bg);border:1px solid var(--lg-border);border-radius:14px;padding:26px;margin:16px 0;font:13px/1.65 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;min-width:0;max-width:100%;isolation:isolate}
 .lux-grailed[data-theme=light],:root[data-theme=light] .lux-grailed[data-theme=auto]{--lg-bg:#fff;--lg-raised:#f3f6f2;--lg-ink:#23362f;--lg-dim:#536a60;--lg-border:#d3dfd7;--lg-accent:#216348;--lg-warn:#975528;color-scheme:light}
 .lux-grailed[data-theme=dark]{--lg-bg:#101820;--lg-raised:#18232a;--lg-ink:#e6edf3;--lg-dim:#9caab6;--lg-border:#35434a;--lg-accent:#7bd3b5;--lg-warn:#f5bb82;color-scheme:dark}
@@ -321,8 +325,10 @@ if(c)c.addEventListener('click',function(){o.style.display='none';});})();
     <span class="tab" data-tab="mlcc">🔵 MLCC</span>
     <span class="tab" data-tab="dc">⚡ DC</span>
     <span class="tab" data-tab="game">🎮 Game</span>
+    <span class="tab" data-tab="ent">🎤 엔터</span>
     <span class="tab" data-tab="app">👕 의류</span>
     <span class="tab" data-tab="plat">🌐 Platform</span>
+    <span class="tab" data-tab="ct">소비 관측</span>
   </div>
   <div class="tab-sub" data-group="map">
     <span class="tab" data-tab="tech">🗺 Tech Map</span>
@@ -345,7 +351,7 @@ if(c)c.addEventListener('click',function(){o.style.display='none';});})();
 /* 탭 5그룹 표시 로직 — 라우팅(ST.tab)·클릭 핸들러는 기존 그대로, 그룹 행 노출만 제어 */
 (function(){
   var GRP={dash:'core',nowcast:'core',ecal:'core',
-    lux:'sector',mem:'sector',rack:'sector',mlcc:'sector',dc:'sector',game:'sector',app:'sector',plat:'sector',
+    lux:'sector',mem:'sector',rack:'sector',mlcc:'sector',dc:'sector',game:'sector',ent:'sector',app:'sector',plat:'sector',ct:'sector',
     tech:'map',bio:'map',tmap:'map',
     ppi:'macro',comm:'macro',ai:'macro',kpi:'macro',ins:'macro',
     ops:'util',watch:'util'};
@@ -402,6 +408,9 @@ if(c)c.addEventListener('click',function(){o.style.display='none';});})();
 <script src="viz_contract.js"></script>
 <script src="viz_series.js"></script>
 <script src="viz_scale.js"></script>
+<script src="consumer_tracking.js"></script>
+<script src="entertainment/entertainment.js"></script>
+<script src="panoptes/research_desk.js" defer></script>
 <script src="manifest.js"></script>
 <script src="search_index.js"></script>
 <script>
@@ -662,7 +671,7 @@ function savePrefs(){ try{ localStorage.setItem(PKEY,JSON.stringify({region:ST.r
 
 // ---------- URL deep-link (shareable state via location.hash + back-button) ----------
 let _lastNav=null;
-function navSig(){ return [ST.region,ST.tab,ST.view,ST.cat,ST.company,ST.port,ST.tab==='lux'?[ST.luxview,ST.luxbrand,ST.luxticker,ST.luxcompany].join(':'):ST.tab==='app'?[ST.aview,ST.apKr,ST.apBrand,ST.apPeriod,ST.apMetric].join(':'):''].join('|'); }
+function navSig(){ return [ST.region,ST.tab,ST.view,ST.cat,ST.company,ST.port,ST.tab==='lux'?[ST.luxview,ST.luxbrand,ST.luxticker,ST.luxcompany].join(':'):ST.tab==='app'?[ST.aview,ST.apKr,ST.apBrand,ST.apPeriod,ST.apMetric].join(':'):ST.tab==='ent'?JSON.stringify(ST.ent||{}):''].join('|'); }
 function writeHash(){
   const p=[], add=(k,v)=>{ if(v!=null&&v!=='') p.push(k+'='+encodeURIComponent(v)); };
   add('r',ST.region);
@@ -678,6 +687,8 @@ function writeHash(){
     add('luxticker',ST.luxticker);add('luxcompany',ST.luxcompany);
   }
   if(ST.tab==='app'){add('av',ST.aview||'chain');add('ak',ST.apKr);add('ab',ST.apBrand);add('aq',ST.apPeriod);add('am',ST.apMetric);}
+  if(ST.tab==='ct' && window.PHXConsumer){const cp=PHXConsumer.writeFilters(new URLSearchParams(),ST.ct);cp.forEach((v,k)=>add(k,v));}
+  if(ST.tab==='ent' && window.PHXEntertainment){const ep=PHXEntertainment.writeFilters(new URLSearchParams(),ST.ent);ep.forEach((v,k)=>add(k,v));}
   if(ST.tab==='dc'){                                   // ⚡ DC 탭 서브상태(뷰·국가필터·프로젝트·에너지원·트리노드)
     if(ST.dcv&&ST.dcv!=='map') add('dcv',ST.dcv);
     if(['map','global'].includes(ST.dcv)&&ST.dcCountry) add('dcco',ST.dcCountry);
@@ -725,6 +736,8 @@ function applyHash(){
     ST.apKr=/^\d{6}$/.test(q.ak||'')?q.ak:'';ST.apBrand=/^[A-Za-z0-9.^_-]{1,30}$/.test(q.ab||'')?q.ab:'';
     ST.apPeriod=/^\d{4}-\d{2}$/.test(q.aq||'')?q.aq:'';ST.apMetric=['products','geography','customers','named_customer_sales','timeline'].includes(q.am)?q.am:'customers';
   }
+  if(ST.tab==='ct' && window.PHXConsumer) ST.ct=PHXConsumer.readFilters(new URLSearchParams(raw));
+  if(ST.tab==='ent' && window.PHXEntertainment) ST.ent=PHXEntertainment.readFilters(new URLSearchParams(raw));
   if(q.tab==='game'&&q.gco){ ST.gview='co_'+q.gco; }
   if(q.tab==='game'&&q.gview){ ST.gview=q.gview; }
   if(q.tab==='dc'){                                    // ⚡ DC 탭 — 탭 + 뷰·필터·선택 복원
@@ -1308,8 +1321,10 @@ function buildCurRow(){ const row=document.getElementById('curRow'); if(!row) re
     row.insertBefore(el,anchor); });
 }
 function render(){
+  if(window.PHXEntertainment) PHXEntertainment.cancel(document.getElementById('main'));
+  if(window.PHXConsumer) PHXConsumer.cancel(document.getElementById('main'));
   destroyAll();
-  document.getElementById('curRow').style.display=ST.tab==='mlcc'?'none':'';
+  document.getElementById('curRow').style.display=['mlcc','ct','ent'].includes(ST.tab)?'none':'';
   applyRegion();
   savePrefs();
   writeHash();
@@ -1330,6 +1345,23 @@ function render(){
   if(ST.view==='country'){ tabs.style.display='none'; return renderCountry(); }
   tabs.style.display='flex';
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===ST.tab));
+  if(ST.tab==='ent'){
+    document.getElementById('catRow').style.display='none';
+    document.getElementById('regionRow').style.display='none';
+    document.getElementById('crumb').textContent='엔터 · 상장사 → 레이블 → 아티스트 → 앨범';
+    document.getElementById('sub').textContent='RENOVA 출처 아카이브 · 원기간·원단위 · 수치별 검증 상태';
+    document.getElementById('cnt').textContent='';
+    document.getElementById('foot').textContent='원문 출처·아카이브 범위·수치 검증 상태를 함께 확인하세요.';
+    return window.PHXEntertainment ? PHXEntertainment.mount(document.getElementById('main'),{data:window.PHX_ENT_DATA,base:new URL('./',location.href),filters:ST.ent,onChange:f=>{ST.ent=f;writeHash();}}) : (document.getElementById('main').textContent='엔터 화면을 불러오지 못했습니다.');
+  }
+  if(ST.tab==='ct'){
+    document.getElementById('catRow').style.display='none';
+    document.getElementById('crumb').textContent='소비 관측 · 기업/가격/거시 근거';
+    document.getElementById('sub').textContent='원기간·원단위 · 측정 범위와 방법론 범위 구분';
+    document.getElementById('cnt').textContent='';
+    document.getElementById('foot').textContent='원기간·원단위 유지 · 공개 권한과 정의를 충족한 관측만 표시 · 예측 반영 보류';
+    return window.PHXConsumer ? PHXConsumer.mount(document.getElementById('main'),{base:new URL('./',location.href),filters:ST.ct,onChange:f=>{ST.ct=f;writeHash();}}) : (document.getElementById('main').textContent='소비 관측 화면을 불러오지 못했습니다.');
+  }
   if(ST.tab==='watch') return renderWatch();
   if(ST.tab==='nowcast') return renderNowcastRank();
   if(ST.tab==='lux') return loadLux(renderLux);
@@ -6004,6 +6036,7 @@ function renderDetail(){
     `<span class="cl" data-go="ov">${regionObj().sector}</span><span class="sep">›</span>`+
     `<span class="cl" data-go="cat">${catLabel(co.category)}</span><span class="sep">›</span>`+
     `<span>${co.subcategory}</span><span class="sep">›</span><b>${co.name}</b>`+
+    `<a href="#tab=ct" style="margin-left:12px">소비 관측·정의 확인</a>`+
     `<span style="flex:1"></span><span class="back" data-go="ov">← 개요로</span>`;
   document.querySelectorAll('#crumb [data-go]').forEach(e=>e.onclick=()=>{ if(e.dataset.go==='cat'){ST.cat=co.category;} ST.tab='dash'; ST.view='overview';ST.company=null;render();window.scrollTo(0,0); });
   // detail controls injected into cnt area
@@ -7099,7 +7132,7 @@ const FOOT_APP=
  `<b>의류 밸류체인.</b> 대만 MOPS 월매출 / 일본 월차공시 / 글로벌 브랜드의 분기·반기 실적 / 한국 DART 품목·매출 지역·주요 고객 공시를 연결합니다. 한국 고객 자료는 공시 기간·연결 범위·익명 여부를 유지하며, 생산국가와 판매국가를 구분합니다.
   대만 ODM은 매월 10일 전월 매출을 공시하므로 분기 공시만 하는 글로벌 브랜드보다 <b>1~2개월 선행</b>. 대만 프록시 카드의 고객 비중 %는 공시·리서치 기반 추정이며, 한국 공시의 실측 고객 비중과 구분합니다.
   대만 월매출 프록시의 YoY는 <b>3개월 합</b> 기준입니다. 글로벌 실적은 각 공시 주기 기준입니다. 일본 월차는 회사별 원계열이 기존점 지수(前年同月=100) 또는 실액(百万円)으로 섞여 있으나 YoY는 동일하게 성립. Not investment advice.`;
-function setFoot(tab){ const el=document.getElementById('foot'); if(!el)return; el.innerHTML=tab==='mlcc'?'<b>MLCC 관측.</b> 공시 범위·기간·원문·실적/전망을 구분합니다. 수주·가동률·매출과 HS853224 금액/중량 지표의 교차 확인이며 가격 상승이나 주가 수익률 예측이 아닙니다. 결측·계열 중복·오래된 데이터는 판정에서 제외합니다.':(tab==='game')?FOOT_GAME:(tab==='app'?FOOT_APP:FOOT_CUSTOMS); }
+function setFoot(tab){ const el=document.getElementById('foot'); if(!el)return; if(tab==='ct'){el.textContent='원기간·원단위 유지 · 공개 권한과 정의를 충족한 관측만 표시 · 예측 반영 보류';return;} el.innerHTML=tab==='mlcc'?'<b>MLCC 관측.</b> 공시 범위·기간·원문·실적/전망을 구분합니다. 수주·가동률·매출과 HS853224 금액/중량 지표의 교차 확인이며 가격 상승이나 주가 수익률 예측이 아닙니다. 결측·계열 중복·오래된 데이터는 판정에서 제외합니다.':(tab==='game')?FOOT_GAME:(tab==='app'?FOOT_APP:FOOT_CUSTOMS); }
 setFoot(ST.tab);
 
 function renderHsInfo(){ const el=document.getElementById('hsinfo'); if(!el)return;

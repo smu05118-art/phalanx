@@ -317,6 +317,20 @@ td.note{color:var(--dim);font-size:11.5px;max-width:520px}
 .work-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.work-item{border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--s1);min-width:0}.work-item h4{margin:6px 0;overflow-wrap:anywhere}.work-item small{color:var(--dim)}.work-item .badge{margin-right:8px}.work-empty{color:var(--dim);padding:25px 0}.work-note{color:var(--dim);font-size:12px;margin-top:14px}
 @media(max-width:850px){.work-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.work-map{grid-template-columns:1fr}.work-family svg{max-width:440px}}
 @media(max-width:520px){.work-list{grid-template-columns:1fr}.work-head h2{font-size:22px}.work-kpi{padding:10px}.work-kpi b{font-size:26px}.work-guard{gap:8px}.work-health{font-size:13px}}
+.registry-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:18px 0}
+.registry-toolbar label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--dim)}
+.registry-toolbar input,.registry-toolbar select{padding:9px 12px;border:1px solid var(--bd);border-radius:9px;background:var(--s1);color:var(--tx);font:inherit;min-width:145px;max-width:100%}
+.registry-toolbar input{width:320px}.registry-card{overflow-wrap:anywhere}
+.registry-card h3{margin:6px 0 12px}.registry-card dl{display:grid;grid-template-columns:82px minmax(0,1fr);gap:7px;font-size:12px;margin:0}
+.registry-card dt{color:var(--dim)}.registry-card dd{margin:0}.registry-card code{font-family:var(--mono);font-size:11px}
+.registry-card details{margin-top:14px;border-top:1px solid var(--bd);padding-top:10px;font-size:12px}
+.registry-card summary{cursor:pointer}.registry-card ul{padding-left:18px;line-height:1.7}
+.registry-hosts{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.registry-hosts span{padding:6px 10px;border:1px solid var(--bd);border-radius:8px;font-size:12px;overflow-wrap:anywhere}
+.registry-duplicates{font-size:12px;color:var(--dim);line-height:1.7;margin:10px 0 20px;overflow-wrap:anywhere}
+.archive-panel{margin:24px 0 30px;padding:18px;border:1px solid var(--bd);border-radius:var(--r);background:var(--s2)}
+.archive-panel h3{margin:0 0 8px;font-size:20px}.archive-panel>.work-note{margin:8px 0 16px}
+.archive-panel .registry-card h3{font-size:16px}.archive-summary{margin-bottom:12px;color:var(--dim);font-size:12px}
+@media(max-width:520px){.registry-toolbar label,.registry-toolbar input{width:100%}.registry-card dl{grid-template-columns:68px minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -367,6 +381,7 @@ td.note{color:var(--dim);font-size:11.5px;max-width:520px}
     <button data-view="feed" aria-selected="false">활동</button>
     <button data-view="inc" aria-selected="false">인시던트 <span class="count" id="cInc"></span></button>
     <button data-view="sec" aria-selected="false">금고 <span class="count" id="cSec"></span></button>
+    <button data-view="registry" aria-selected="false">API 대장 <span class="count" id="cRegistry"></span></button>
   </nav>
 
   <main>
@@ -400,6 +415,34 @@ td.note{color:var(--dim);font-size:11.5px;max-width:520px}
     <section id="view-feed" hidden><div class="feed" id="feedList"></div></section>
 
     <section id="view-inc" hidden><div class="inc-list" id="incList"></div></section>
+
+    <section id="view-registry" hidden>
+      <div class="work-head"><div><h2>API · 계정 · 사용처</h2><p>Studio · Mini의 OpenClaw, Codex, Claude와 프로젝트 연결</p></div><div><button class="icon-btn" id="registryVault">기존 금고 열기</button> <button class="icon-btn" id="registryRefresh">대장 새로고침 ↻</button></div></div>
+      <div id="registryHealth" class="work-health" role="status" aria-live="polite"></div>
+      <p class="work-note">설정과 기존 목록에서 확인한 연결·참조 항목입니다. 항목 수는 실제 키·계정 수와 다릅니다. 인증 성공과 실제 사용 여부는 각각 별도 확인이 필요합니다. 키 원문은 기존 인증 저장소와 금고에 보관됩니다.</p>
+      <div id="registryControls" hidden>
+        <div class="registry-toolbar">
+          <label>서비스·계정·사용처 검색<input id="registryQ" type="search" placeholder="예: OpenAI, Claude, 수집기 경로" spellcheck="false"></label>
+          <label>기기<select id="registryHost"><option value="">전체 기기</option></select></label>
+          <label>사용 프로그램<select id="registryRuntime"><option value="">전체 프로그램</option></select></label>
+        </div>
+        <div id="registryHosts" class="registry-hosts"></div>
+        <div id="registryDuplicates" class="registry-duplicates"></div>
+      </div>
+      <section id="archivePanel" class="archive-panel" hidden aria-labelledby="archiveTitle">
+        <h3 id="archiveTitle">과거 입력 · 암호화 보관</h3>
+        <p class="work-note">두 Mac의 로컬 사용자 메시지와 현재 인증 참조에서 찾은 항목입니다. 클라우드·계정 서버의 대화는 조사하지 않았습니다. 암호화 원본을 보존하며 로컬 금고 등록·동기화 상태는 아래에 표시합니다. 내용 식별됨 ≠ 인증 성공.</p>
+        <div id="archiveHealth" class="work-health" role="status" aria-live="polite"></div>
+        <div id="archiveCoverage" class="registry-hosts"></div>
+        <div id="captureHealth" class="registry-hosts" aria-live="polite"></div>
+        <div id="localVaultHealth" class="registry-hosts" aria-live="polite"></div>
+        <div id="archiveSummary" class="archive-summary"></div>
+        <label class="work-note"><input type="checkbox" id="archiveShowExcluded" onchange="renderArchive()"> 문맥 검토에서 제외한 항목도 표시</label>
+        <div id="archiveList" class="work-list"></div>
+      </section>
+      <h3>현재 연결·참조 목록</h3>
+      <div id="registryList" class="work-list"></div>
+    </section>
 
     <section id="view-sec" hidden>
       <!-- 금고는 포털 로그인과 **별도 암호**로 잠근다. 관제면을 보는 것과
@@ -448,9 +491,10 @@ const KEYSTORE='pnpt.k', THEME='pnpt.theme', PINS='pnpt.pins', VAULT='vault.json
 const SECSTORE='pnpt.sec.v1';   // 금고 암호문. 이 브라우저 밖으로 나가지 않는다.
 const b64d=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const b64e=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
-let DATA=null, IDX=null, RAWKEY=null, SEC=null, SECKEY=null, SECSALT=null, secTouch=0, secEdit=null, view=location.hash==='#tasks'?'tasks':'sites', palIdx=0, palRows=[];
+let DATA=null, IDX=null, RAWKEY=null, SEC=null, SECKEY=null, SECSALT=null, secTouch=0, secEdit=null, view=['#apis','#registry'].includes(location.hash)?'registry':(location.hash==='#tasks'?'tasks':'sites'), palIdx=0, palRows=[];
 const LOCAL_LIVE=!!document.querySelector('meta[name="panopticon-live"][content="same-origin"]')&&['127.0.0.1','localhost'].includes(location.hostname);
 let WORK=null, workNetwork='waiting', workChecked=null, workBusy=false, workFamily='all';
+let REGISTRY=null, registryNetwork='waiting', registryBusy=false, registryChecked=null;
 
 /* ── 테마 ───────────────────────────────────────────── */
 const setTheme=t=>{document.documentElement.dataset.theme=t;try{localStorage.setItem(THEME,t)}catch(e){}};
@@ -748,13 +792,145 @@ async function refreshWork(){
 function setView(v){
   view=v;
   $$('#navTabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.view===v)));
-  ['sites','fleet','feed','inc','tasks','sec'].forEach(k=>{$('#view-'+k).hidden=(k!==v)});
+  ['sites','fleet','feed','inc','tasks','sec','registry'].forEach(k=>{$('#view-'+k).hidden=(k!==v)});
   if(v==='fleet') renderFleet(); if(v==='feed') renderFeed(); if(v==='inc') renderInc();
   if(v==='tasks')renderWork();
+  if(v==='registry'){renderRegistry();if(LOCAL_LIVE&&!registryChecked)refreshRegistry();}
   if(v==='sec'){ if(SECKEY){ secTouch=Date.now(); secRender(); } else { secPrompt(); setTimeout(()=>$('#secPw').focus(),40); } }
-  try{history.replaceState(null,'',v==='tasks'?'#tasks':location.pathname+location.search)}catch(e){}
+  try{history.replaceState(null,'',v==='registry'?'#apis':(v==='tasks'?'#tasks':location.pathname+location.search))}catch(e){}
 }
 
+/* Private registry metadata is fetched only from the local encrypted endpoint.
+   Never add registry records to the public Pages vault or browser storage. */
+function registryLabel(value){
+  return ({fresh:'최근 수집',stale:'수집 지연',partial:'일부 확인',missing:'없음',unresolved:'참조 미해결',invalid:'읽기 실패',ok:'수집 완료',failed:'수집 실패',unavailable:'접속 불가',error:'수집 오류',unknown:'미확인',configured:'설정됨',present:'설정됨',reference:'참조 설정',reference_only:'참조만 발견',api_key:'API 키',oauth:'OAuth',credential:'인증정보',none:'인증정보 없음',oauth_token:'OAuth 토큰',chatgpt:'ChatGPT 로그인',cli_login:'CLI 로그인',token:'토큰',password:'비밀번호'})[value]||value||'미확인';
+}
+function registryFilters(){
+  for(const [selector,field,label] of [['#registryHost','host','전체 기기'],['#registryRuntime','runtime','전체 프로그램']]){
+    const el=$(selector), selected=el.value;
+    const archiveValues=(REGISTRY?.archive?.records||[]).flatMap(r=>r[field==='host'?'hosts':'runtimes']||[]);
+    const choices=[...new Set([...(REGISTRY?.records||[]).map(r=>r[field]),...archiveValues].filter(Boolean))].sort();
+    el.innerHTML=`<option value="">${label}</option>`+choices.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    if(choices.includes(selected))el.value=selected;
+  }
+}
+function renderRegistry(){
+  const health=$('#registryHealth'), list=$('#registryList'), controls=$('#registryControls');
+  $('#registryRefresh').hidden=!LOCAL_LIVE;
+  renderArchive();
+  if(!LOCAL_LIVE){
+    health.textContent='API 대장은 각 Mac의 로컬 판옵티콘에서 조회합니다. 이 공개 페이지에는 계정·기기·사용처 대장 데이터를 싣지 않습니다.';
+    controls.hidden=true;list.innerHTML='<div class="work-empty">로컬 주소: <code>http://127.0.0.1:8766/panopticon/#apis</code><br>OpenClaw에서도 “API 대장을 보여줘”로 조회할 수 있습니다.</div>';return;
+  }
+  const status=REGISTRY?.status, records=REGISTRY?.records||[];
+  const stamp=REGISTRY?.generated_at||'';
+  let note=registryNetwork==='failed'?'대장 새로고침 실패. 마지막 조회 내용이 아래에 남아 있을 수 있습니다. 로컬 서비스와 동기화 상태를 확인하세요.':
+    !REGISTRY?(registryBusy?'대장을 읽는 중…':'아직 대장을 조회하지 않았습니다.'):
+    status==='missing'?'동기화된 대장이 없습니다. Studio의 수집·동기화가 완료되면 표시됩니다.':
+    status==='invalid'?'대장 파일을 읽을 수 없거나 형식이 맞지 않습니다. 현재 목록을 확인할 수 없습니다.':
+    status==='stale'?'대장 수집이 24시간 넘게 지연됐습니다. 아래 내용은 마지막 수집 결과입니다.':
+    status==='partial'?'일부 항목을 읽지 못했습니다. 아래에는 확인 가능한 항목만 표시됩니다.':
+    `연결·참조 항목 ${records.length}건 · 서비스 ${REGISTRY?.summary?.services||0}개 · 같은 인증정보 ${REGISTRY?.duplicates?.length||0}그룹`;
+  health.className='work-health'+(status==='fresh'&&registryNetwork==='ok'?' fresh':'');
+  health.innerHTML=`<strong>${esc(note)}</strong>${stamp?`<small>대장 생성 ${esc(stamp)}${registryChecked?' · 최근 조회 '+esc(new Date(registryChecked).toLocaleString()):''}</small>`:''}`;
+  $('#registryRefresh').disabled=registryBusy;
+  $('#cRegistry').textContent=records.length||'';
+  controls.hidden=!REGISTRY||(['missing','invalid'].includes(status)&&!REGISTRY?.archive?.records?.length);
+  $('#registryHosts').innerHTML=(REGISTRY?.hosts||[]).map(h=>`<span>${esc(h.host)} · ${esc(registryLabel(h.status))} · ${esc(registryLabel(h.freshness))}${h.observed_at?' · '+esc(h.observed_at):''}${h.coverage?.errors?' · 오류 '+esc(h.coverage.errors)+'건':''}${h.coverage?.warnings?' · 미확인 '+esc(h.coverage.warnings)+'건':''}</span>`).join('');
+  const byId=new Map(records.map(r=>[r.id,r])), groups=REGISTRY?.duplicates||[];
+  const groupById=new Map();groups.forEach((g,i)=>g.record_ids.forEach(id=>groupById.set(id,{number:i+1,historical:g.evidence_state!=='observed_match'})));
+  $('#registryDuplicates').innerHTML=groups.length?'<strong>같은 인증정보가 관측된 사용처</strong><br>'+groups.map((g,i)=>`그룹 ${i+1}${g.evidence_state!=='observed_match'?' · 과거 관측 포함':''}: `+g.record_ids.map(id=>{const r=byId.get(id);return r?`${esc(r.service)} · ${esc(r.host)} / ${esc(r.runtime)}`:'';}).filter(Boolean).join(' ↔ ')).join('<br>'):'동일 인증정보 그룹이 확인되지 않았습니다. 서로 다른 키가 같은 계정 한도를 공유하는지는 별도 확인이 필요합니다.';
+  const accountGroups=REGISTRY?.shared_accounts||[];
+  if(accountGroups.length)$('#registryDuplicates').innerHTML+='<br><strong>같은 계정 식별정보</strong><br>'+accountGroups.map((g,i)=>`계정 그룹 ${i+1}${g.evidence_state!=='observed_match'?' · 과거 관측 포함':''}: `+g.record_ids.map(id=>{const r=byId.get(id);return r?`${esc(r.service)} · ${esc(r.host)} / ${esc(r.runtime)}`:'';}).filter(Boolean).join(' ↔ ')).join('<br>')+'<br>동일 계정의 과금·한도 공유 여부는 공급자 정책과 프로젝트 설정에서 별도 확인해야 합니다.';
+  const q=$('#registryQ').value.trim().toLowerCase(), host=$('#registryHost').value, runtime=$('#registryRuntime').value;
+  const rows=records.filter(r=>(!host||r.host===host)&&(!runtime||r.runtime===runtime)&&(!q||[r.service,r.host,r.runtime,r.credential_name,r.account_alias,r.source_path,r.secret_ref,...(r.consumers||[]).map(c=>c.path+' '+c.runtime+' '+c.evidence)].join(' ').toLowerCase().includes(q)));
+  list.innerHTML=rows.length?rows.map(r=>`<article class="work-item registry-card">
+    <small>${esc(r.host)} / ${esc(r.runtime)} · ${esc(registryLabel(r.auth_type))}${groupById.has(r.id)?' · 같은 인증정보 그룹 '+groupById.get(r.id).number+(groupById.get(r.id).historical?' (과거 관측 포함)':''):''}</small>
+    <h3>${esc(r.service||'서비스 미확인')}</h3>
+    <dl><dt>계정 별칭</dt><dd>${esc(r.account_alias||'미확인')}</dd>
+      <dt>설정 이름</dt><dd><code>${esc(r.credential_name||'—')}</code></dd>
+      <dt>구성</dt><dd>${esc(registryLabel(r.configuration_status))}</dd>
+      <dt>인증 / 사용</dt><dd>인증 미검증 / 실제 사용 미확인</dd>
+      <dt>저장 참조</dt><dd><code>${esc(r.secret_ref||r.source_path||'—')}</code></dd>
+      <dt>확인 시각</dt><dd>${esc(r.observed_at||'미확인')}</dd></dl>
+    <details><summary>연결된 사용처 ${(r.consumers||[]).length}곳</summary><ul>${(r.consumers||[]).map(c=>`<li><code>${esc(c.path)}</code> · ${esc(c.runtime)}<br>${esc(c.evidence)}</li>`).join('')||'<li>사용처 연결 미확인</li>'}</ul></details>
+    </article>`).join(''):`<div class="work-empty">${records.length?'검색 조건에 맞는 연결이 없습니다.':(status==='fresh'?'확인된 설정이 없습니다.':'표시할 연결이 없습니다.')}</div>`;
+}
+function renderLocalVault(vault, refreshFailed=false){
+  const element=$('#localVaultHealth');
+  if(!LOCAL_LIVE){element.innerHTML='';return;}
+  const states={ok:'확인됨',degraded:'점검 필요 · 마지막 확인 결과',unavailable:'상태 미확인',not_initialized:'등록 준비 중'};
+  const state=['ok','degraded','unavailable','not_initialized'].includes(vault?.status)?vault.status:'unavailable';
+  const count=value=>Number.isSafeInteger(value)&&value>=0?value:0;
+  const known=state!=='unavailable', entries=count(vault?.entries), review=vault?.by_review_status||{}, kind=vault?.by_kind||{};
+  const synced=state==='ok'&&vault?.synced===true&&!refreshFailed;
+  element.innerHTML=`<strong>로컬 암호화 금고 · ${known?entries+'건':'항목 수 미확인'}</strong><span>${refreshFailed?'새로고침 실패 · 마지막 조회 결과':states[state]} · ${synced?'두 Mac 암호문 동기화 확인':'두 Mac 동기화 확인 대기'}</span>${known?`<span>내용 식별 ${count(review.identified)}건 · 검토 필요 ${count(review.needs_review)}건 · 제외 보존 ${count(review.excluded)}건<br>API 키 ${count(kind.api_key)}건 · 웹 로그인 ${count(kind.login)}건 · 계정 정보 ${count(kind.account)}건</span>`:''}${count(vault?.missing_or_changed_entries)||count(vault?.missing_or_changed_sources)?`<span>확인 필요: 항목 ${count(vault?.missing_or_changed_entries)}건 · 원본 ${count(vault?.missing_or_changed_sources)}건</span>`:''}<small>${vault?.updated_at?'상태 확인 '+esc(vault.updated_at)+' · ':''}원문은 Mac 앱에서 기기 인증 후 확인합니다. 인증 성공 여부는 별도입니다.</small><a class="icon-btn" href="panopticon-vault://open">로컬 금고 앱 열기 ↗</a>`;
+}
+function renderArchive(){
+  const panel=$('#archivePanel'), health=$('#archiveHealth'), list=$('#archiveList');
+  panel.hidden=!LOCAL_LIVE;
+  if(!LOCAL_LIVE){list.innerHTML='';$('#archiveCoverage').innerHTML='';$('#archiveSummary').textContent='';$('#captureHealth').innerHTML='';$('#localVaultHealth').innerHTML='';return;}
+  const archive=REGISTRY?.archive, status=archive?.status||'missing', rows=archive?.records||[];
+  const capture=REGISTRY?.capture, captureHosts=capture?.hosts||{};
+  $('#captureHealth').innerHTML=`<strong>새 입력 자동 수집 · 로컬 암호화 보관</strong><small>${capture?.status==='fresh'?'수집 상태 갱신됨':(capture?.status==='stale'?'수집 상태 갱신 지연':'수집 상태 미확인')} · 브라우저 로그인과 OpenClaw 직접 입력은 아직 미지원</small>`+['studio','mini'].map(host=>{
+    const c=captureHosts[host];if(!c)return `<span>${host} · 수집기 미확인</span>`;
+    const events=Number(c.totals?.events||0), candidates=Number(c.totals?.encrypted_candidates||0), failed=Number(c.totals?.failed_events||0);
+    const setup={registered:'등록됨 · 실제 발화 확인 필요',trust_required:'Codex /hooks 신뢰 등록 필요',missing:'미등록',unknown:'설정 미확인'};
+    return `<span>${host} · ${esc(c.status)} · 입력 이벤트 ${events}회 · 암호화 후보 ${candidates}회 · 실패 ${failed}회<br>${['codex','claude'].map(r=>esc(r)+' '+esc(setup[c.setup?.[r]]||setup.unknown)+(c.by_runtime?.[r]?.last_event_at?' · 마지막 이벤트 '+esc(c.by_runtime[r].last_event_at):'')).join('<br>')}</span>`;
+  }).join('');
+  renderLocalVault(capture?.local_vault,registryNetwork==='failed');
+  let message=!archive?'보관 대기 목록을 아직 확인하지 못했습니다.':
+    status==='missing'?'암호화 보관 대기 목록이 아직 동기화되지 않았습니다.':
+    status==='invalid'?'보관 대기 목록을 읽을 수 없거나 형식이 맞지 않습니다. 원문 자료는 열지 않았습니다.':
+    status==='stale'?'보관 대기 목록 갱신이 24시간 넘게 지연됐습니다. 마지막 확인 결과를 표시합니다.':
+    status==='partial'?'일부 항목 또는 조사 기록을 확인하지 못했습니다. 확인 가능한 보관 대기 항목만 표시합니다.':
+    `과거 입력 암호화 원본 ${rows.length}건 · 검토 결과와 원본 보존`;
+  if(registryNetwork==='failed')message='목록 새로고침 실패. 아래는 마지막 조회 결과일 수 있습니다. '+message;
+  health.className='work-health';
+  health.innerHTML=`<strong>${esc(message)}</strong><small>원문 확인은 로컬 금고 앱에서${archive?.generated_at?' · 목록 작성 '+esc(archive.generated_at):''}</small>`;
+  const coverage=archive?.coverage||{};
+  const scanLabels={ok:'조사 완료',partial:'일부 누락',failed:'조사 실패',running:'조사 진행 중',unknown:'조사 상태 미확인'};
+  $('#archiveCoverage').innerHTML=['studio','mini'].map(host=>{
+    const c=coverage[host];if(!c)return `<span>${host} · 조사 범위 미확인</span>`;
+    return `<span>${host} · ${esc(scanLabels[c.scan_status]||scanLabels.unknown)} · 파일 ${esc(c.files_scanned??'미확인')}개 · 사용자 메시지 ${esc(c.user_messages??'미확인')}개${c.errors?' · 읽기 오류 '+esc(c.errors)+'건':''}${c.parse_errors?' · 해석 오류 '+esc(c.parse_errors)+'건':''}${c.unresolved_paste_placeholders?' · 붙여넣기 원문 누락 '+esc(c.unresolved_paste_placeholders)+'건':''}${c.oversized_lines?' · 크기 제한 줄 '+esc(c.oversized_lines)+'건':''}${c.utf8_errors?' · 문자 해석 오류 '+esc(c.utf8_errors)+'건':''}${c.changed_files?' · 조사 중 변경 파일 '+esc(c.changed_files)+'개':''}${c.scan_finished_at?' · 조사 '+esc(c.scan_finished_at):' · 완료 시각 미확인'}</span>`;
+  }).join('');
+  const q=$('#registryQ').value.trim().toLowerCase(), host=$('#registryHost').value, runtime=$('#registryRuntime').value;
+  const showExcluded=$('#archiveShowExcluded').checked, excluded=rows.filter(r=>r.review_status==='excluded').length;
+  const filtered=rows.filter(r=>(showExcluded||r.review_status!=='excluded')&&(!host||(r.hosts||[]).includes(host))&&(!runtime||(r.runtimes||[]).includes(runtime))&&(!q||[r.service,r.account_alias,r.kind,...(r.hosts||[]),...(r.runtimes||[])].join(' ').toLowerCase().includes(q)));
+  $('#archiveSummary').textContent=`표시 ${filtered.length}건 · 후보 ${rows.length-excluded}건 · 문맥 검토 제외 ${excluded}건 · 제외된 항목도 암호화 원본은 보존합니다. 내용 식별은 인증 성공을 뜻하지 않습니다.`;
+  const kinds={api_key:'API 키',login:'웹 로그인',account:'계정 정보'};
+  const reasons={natural_language_password_false_match:'설명 문장을 암호로 잘못 탐지',code_fragment_not_secret:'코드 조각을 키로 잘못 탐지',insufficient_identity_evidence:'실제 자격증명인지 확인할 근거 부족',standalone_value_identity_unresolved:'단독 문자열의 서비스·용도 확인 필요',example_or_reference_ambiguous:'예시 또는 참조 값일 가능성'};
+  list.innerHTML=filtered.length?filtered.map(r=>`<article class="work-item registry-card">
+    <small>${esc(kinds[r.kind]||'항목')} · 암호화 보관 · ${r.review_status==='identified'?'내용 식별됨':(r.review_status==='excluded'?'문맥 검토에서 제외':'검토 필요')}</small>
+    <h3>${esc(r.service||'서비스 미확인')}</h3>
+    ${r.review_reason?`<p class="work-note">${esc(reasons[r.review_reason]||'문맥 확인 필요')}</p>`:''}
+    <dl><dt>계정 별칭</dt><dd>${esc(r.account_alias||'해당 없음 / 미확인')}</dd>
+      <dt>발견 기기</dt><dd>${esc((r.hosts||[]).join(' · '))}</dd>
+      <dt>입력 프로그램</dt><dd>${esc((r.runtimes||[]).join(' · '))}</dd>
+      <dt>발견 횟수</dt><dd>${esc(r.occurrences)}회</dd>
+      <dt>최초 관측</dt><dd>${esc(r.first_observed_at||'미확인')}</dd>
+      <dt>마지막 관측</dt><dd>${esc(r.last_observed_at||'미확인')}</dd>
+      <dt>원문 보관</dt><dd>로컬 암호화 원본 · 앱에서 확인</dd></dl></article>`).join(''):`<div class="work-empty">${rows.length?'검색 조건에 맞는 보관 대기 항목이 없습니다.':(['invalid','missing'].includes(status)?'표시할 수 있는 보관 대기 목록이 없습니다.':'이 목록에서 확인된 보관 대기 항목이 없습니다.')}</div>`;
+}
+async function refreshRegistry(){
+  if(!LOCAL_LIVE||!RAWKEY||registryBusy)return;
+  const key=RAWKEY;registryBusy=true;renderRegistry();
+  try{
+    const r=await fetch('/api/api-registry?t='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});
+    if(!r.ok)throw new Error('registry unavailable');
+    const payload=await openVault(key,await r.json());
+    if(RAWKEY!==key)return;
+    const next=payload.api_registry;
+    if(!next||next.schema_version!==1||!Array.isArray(next.records)||!Array.isArray(next.hosts)||!Array.isArray(next.duplicates))throw new Error('invalid registry');
+    REGISTRY=next;registryNetwork='ok';registryChecked=Date.now();registryFilters();
+  }catch(e){registryNetwork='failed';}finally{registryBusy=false;if(DATA)renderRegistry();}
+}
+$('#registryRefresh').addEventListener('click',refreshRegistry);
+$('#registryVault').addEventListener('click',()=>setView('sec'));
+$('#registryQ').addEventListener('input',renderRegistry);
+$('#registryHost').addEventListener('change',renderRegistry);
+$('#registryRuntime').addEventListener('change',renderRegistry);
+setInterval(()=>{if(LOCAL_LIVE&&view==='registry'&&RAWKEY)refreshRegistry();},60000);
 
 /* ── 금고 ───────────────────────────────────────────────
    설계 근거 — 이 사이트는 **공개** GitHub Pages 다. 자격증명은 암호화하더라도

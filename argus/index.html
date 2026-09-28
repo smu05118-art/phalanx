@@ -28,6 +28,8 @@
   .boot{color:var(--dim);font-size:13px;padding:40px 0;text-align:center}
   @media(max-width:760px){header .disc{margin-left:0}}
 </style>
+<link rel="stylesheet" href="../consumer_tracking.css">
+<script src="../consumer_tracking.js"></script>
 </head>
 <body>
 <a href="connections.html" style="display:block;padding:12px 24px;text-align:right;color:#79b6ff">데이터 연결 · 관측일 · 원문 ↗</a>
@@ -48,6 +50,8 @@
   <span class="disc">참고용 · 투자조언 아님</span>
 </header>
 <main id="argusRoot" tabindex="-1" aria-busy="true"><div class="boot" role="status">요약 데이터 로딩…</div></main>
+<details class="ct-context" id="consumerCost"><summary>소비재 가격·원가 이력과 공개 범위</summary><div id="consumerCostPanel"></div></details>
+<script>document.getElementById("consumerCost").addEventListener("toggle",function(){if(this.open&&!this.dataset.loaded){this.dataset.loaded="1";if(window.PHXConsumer)PHXConsumer.mount(document.getElementById("consumerCostPanel"),{base:new URL("../",location.href),filters:{metric:"CM_PRICE"}});else document.getElementById("consumerCostPanel").textContent="소비 관측 화면을 불러오지 못했습니다.";}});</script>
 <noscript><div class="boot">ARGUS 차트와 표를 보려면 JavaScript를 활성화해야 합니다.</div></noscript>
 <script src="data/argus_data.js"></script>
 <script src="argus_charts.js"></script>

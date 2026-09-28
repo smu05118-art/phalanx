@@ -149,6 +149,13 @@
     '[data-infolink] .ag-chip[aria-pressed=true]{border-color:' + ACC + ';color:' + ACC + ';background:rgba(43,192,212,.08)}',
     '[data-infolink] a{color:' + ACC + '}[data-infolink] select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px}',
     '[data-infolink] tbody th{text-transform:none;letter-spacing:normal}',
+    '.ag-research-meta{font-size:12px;color:#9db3c4;margin-bottom:12px}',
+    '.ag-research-controls{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}.ag-research-controls label{display:flex;flex-direction:column;gap:6px;font-size:12px;flex:1;min-width:160px}',
+    '.ag-research-controls input,.ag-research-controls select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #3b5665;border-radius:8px;color:#e6edf3;background:#111721;font:inherit}.ag-research-controls input:focus-visible,.ag-research-controls select:focus-visible{outline:3px solid #2bc0d4;outline-offset:2px}',
+    '.ag-research-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:12px}.ag-research-metric h4,.ag-research-company h4{font-size:15px;margin:8px 0}.ag-research-metric p,.ag-research-company p{font-size:12px;line-height:1.7;overflow-wrap:anywhere;margin:8px 0}',
+    '.ag-research-status{font-size:11px;color:#add8d2}.ag-research-value{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin:12px 0}.ag-research-value small{font-size:11px;font-weight:500}.ag-research-metric dl{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;margin:12px 0}.ag-research-metric dt{color:#8a93a3}.ag-research-metric dd{margin:4px 0}',
+    '.ag-research-company{margin-bottom:12px}.ag-research-company h5{font-size:13px;margin:16px 0 8px}.ag-research-company ul,.ag-research-company ol,.ag-research-reviews ul{padding-left:20px;font-size:12px;line-height:1.8}.ag-research-company li{margin:10px 0}.ag-research-notice{padding:12px;background:#24322f;border:1px solid #536159;border-radius:8px}.ag-research-company details{padding:12px;border:1px solid #3b5665;border-radius:8px;margin-top:14px}.ag-research-company summary,.ag-research-reviews summary{cursor:pointer;font-size:13px}.ag-research-reviews p{font-size:12px;line-height:1.7;margin-top:10px}',
+    '.ag-research-metric a,.ag-research-company a{color:#7bd6d0;font-size:12px;text-underline-offset:3px}',
   ].join('');
 
   function ensureCss(doc) {
@@ -383,6 +390,180 @@
     });
   }
 
+  /* ── CL prince·철강 공개 연구: 점수·기존 시계열과 별도 ── */
+  var RESEARCH_HOSTS = ['bakerhughesrigcount.gcs-web.com','rigcount.bakerhughes.com','content.govdelivery.com','dart.fss.or.kr','ir.tenaris.com','prestonpipe.com','primaryvision.co','www.argusmedia.com','www.balticexchange.com','www.cftc.gov','www.cmegroup.com','www.dallasfed.org','www.eia.gov','www.federalreserve.gov','www.opec.org','www.spglobal.com','www.trade.gov'];
+  function researchURL(value) {
+    try {
+      if (typeof value !== 'string' || /[\x00-\x20\x7f\\]/.test(value)) return null;
+      var u = new URL(value);
+      if (u.protocol !== 'https:' || RESEARCH_HOSTS.indexOf(u.hostname) < 0 || u.username || u.password || u.hash || (u.port && u.port !== '443')) return null;
+      var allowed = u.hostname === 'dart.fss.or.kr' ? ['rcpNo','dcmNo','eleId','offset','length','dtd'] : u.hostname === 'www.eia.gov' ? ['id'] : [];
+      var bad = false; u.searchParams.forEach(function (val, key) { if (allowed.indexOf(key) < 0 || !(key === 'dtd' ? /^dart[0-9]+\.xsd$/ : /^[0-9]+$/).test(val)) bad = true; });
+      return bad ? null : u.href;
+    } catch (_) { return null; }
+  }
+  function researchLink(value) {
+    var href = researchURL(value);
+    return href ? '<a href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">공식 원문 ↗</a>' : '<span class="ag-meta">원문 링크 미확인</span>';
+  }
+  function researchDate(value) {
+    if (!value) return '미확인';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.slice(2).replace(/-/g, '');
+    if (/^\d{4}-\d{2}$/.test(value)) return value.slice(2).replace('-', '');
+    if (/^\d{4}-?Q[1-4]$/.test(value)) return value.replace('-Q','Q').slice(2);
+    if (/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+      var d = new Date(value);
+      if (Number.isFinite(d.getTime())) return new Intl.DateTimeFormat('sv-SE', { timeZone:'Asia/Seoul', year:'2-digit', month:'2-digit', day:'2-digit' }).format(d).replace(/-/g,'');
+    }
+    return String(value);
+  }
+  function researchPeriodEnd(value) {
+    if (typeof value !== 'string') return NaN;
+    if (/^\d{4}$/.test(value)) return Date.UTC(Number(value), 11, 31, 23, 59, 59, 999);
+    if (/^\d{4}-?Q[1-4]$/.test(value)) return Date.UTC(Number(value.slice(0,4)), Number(value.slice(-1))*3, 0, 23, 59, 59, 999);
+    if (/^\d{4}-\d{2}$/.test(value)) return Date.UTC(Number(value.slice(0,4)), Number(value.slice(5)), 0, 23, 59, 59, 999);
+    return Date.parse(value.length === 10 ? value + 'T23:59:59.999Z' : value);
+  }
+  function researchLatest(rows, id) {
+    return rows.filter(function (r) { return r.metricId === id; }).slice().sort(function (a,b) {
+      return researchPeriodEnd(b.period) - researchPeriodEnd(a.period) || Date.parse(b.sourcePublishedAt || '') - Date.parse(a.sourcePublishedAt || '') || Date.parse(b.collectedAt || '') - Date.parse(a.collectedAt || '');
+    })[0];
+  }
+  function researchState(metric, row, now) {
+    var labels = { VERIFIED:'공식 원문 대조', PROVIDER_ESTIMATE:'기관 추정', FORECAST:'전망', MISSING:'미확인', CONFLICT:'원문 충돌 · 확인 필요', WITHDRAWN:'철회된 자료' };
+    var usable = row && ['VERIFIED','PROVIDER_ESTIMATE','FORECAST'].indexOf(row.status) >= 0 && typeof row.value === 'number' && Number.isFinite(row.value);
+    var out = { value:usable ? row.value : null, label:row ? (labels[row.status] || '미확인') : '미수집', freshness:'발행 시각 미확인' };
+    if (!row) return out;
+    var end = researchPeriodEnd(row.period);
+    var limit = metric.observationLagDays == null ? metric.freshnessHours / 24 : metric.observationLagDays;
+    if (Number.isFinite(end) && end - now > 86400000) out.freshness = '미래 기간 · 확인 필요';
+    else if (Number.isFinite(end) && now - end > limit * 86400000) out.freshness = '관측 기간이 오래된 자료';
+    else if (typeof row.sourcePublishedAt === 'string' && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(row.sourcePublishedAt)) {
+      var elapsed = now - Date.parse(row.sourcePublishedAt);
+      out.freshness = elapsed < 0 ? '공표일 확인 필요' : elapsed > metric.freshnessHours * 3600000 ? '원천 갱신 확인 필요' : '관측 기간·발행 시각 확인';
+    }
+    return out;
+  }
+  function researchNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) ? new Intl.NumberFormat('ko-KR',{maximumFractionDigits:3}).format(value) : '미확인';
+  }
+  function researchMetric(metric, observations, now) {
+    var row = researchLatest(observations, metric.id), state = researchState(metric, row, now);
+    return '<article class="ag-card ag-research-metric"><div class="ag-research-status">' + esc(state.label) + ' · ' + esc(metric.frequency) + '</div><h4>' + esc(metric.label) + '</h4>' +
+      '<div class="ag-research-value">' + esc(researchNumber(state.value)) + (state.value !== null ? ' <small>' + esc(metric.unit) + '</small>' : '') + '</div>' +
+      '<p>' + esc(metric.definition) + '</p><dl><div><dt>관측 기간</dt><dd>' + esc(researchDate(row && row.period)) + '</dd></div><div><dt>공표일</dt><dd>' + esc(researchDate(row && row.sourcePublishedAt)) + '</dd></div><div><dt>수집일</dt><dd>' + esc(researchDate(row && row.collectedAt)) + '</dd></div></dl>' +
+      '<p class="ag-meta">원래 기간: ' + esc(row ? row.period : '미확인') + ' · ' + esc(state.freshness) + '</p>' + researchLink(row && row.sourceUrl || metric.sourceUrl) + '</article>';
+  }
+  function researchCompany(company) {
+    if (!company) return '<p class="ag-empty">등록된 회사 자료가 없습니다.</p>';
+    var html = '<div class="ag-card ag-research-company"><h4>' + esc(company.name) + (company.ticker ? ' · ' + esc(company.ticker) : '') + '</h4>' + researchLink(company.sourceUrl);
+    if (company.driverMechanism.length) html += '<h5>지표가 실적으로 이어지는 경로</h5><ol>' + company.driverMechanism.map(function (v) { return '<li>' + esc(v) + '</li>'; }).join('') + '</ol>';
+    if (company.scopeNote) html += '<h5>연결 범위와 지분법</h5><p>' + esc(company.scopeNote) + '</p>';
+    if (company.uncertainties.length) html += '<h5>해석 전에 확인할 점</h5><ul>' + company.uncertainties.map(function (v) { return '<li>' + esc(v) + '</li>'; }).join('') + '</ul>';
+    html += '<p class="ag-research-notice"><b>비교 가능한 기준값 확인 대기</b><br>같은 기간·제품·외부판매 범위의 물량·매출·원가를 맞춰야 합니다. 기준값은 미확인이며 회사 이익 전망을 표시하지 않습니다.</p>';
+    if (company.publicEvidence.length) html += '<details><summary>확인한 공시 자료 ' + company.publicEvidence.length + '건</summary><p>공시에 적힌 Q2·H1 기간과 단위를 그대로 보존했습니다. 제품별 계산의 기준값으로 자동 사용하지 않습니다.</p><ul>' + company.publicEvidence.map(function (r) { return '<li><strong>' + esc(r.label) + '</strong> · ' + esc(r.periodLabel) + '<br><b>' + esc(researchNumber(r.value)) + ' ' + esc(r.unit) + '</b><p>' + esc(r.scopeNote) + '</p>' + researchLink(r.sourceUrl) + '</li>'; }).join('') + '</ul></details>';
+    return html + '</div>';
+  }
+  function mountResearch(host, data, kind) {
+    if (!data) { host.innerHTML = '<div class="ag-empty">공개 연구 스냅샷을 아직 연결하지 않았습니다.</div>'; return; }
+    var state = { query:'', filter:'all', companyId:data.companies[0] && data.companies[0].id };
+    var scope = '<div class="ag-research-meta">연구 자료 기준 ' + esc(researchDate(data.asOf)) + ' · 공개 출처별 값·기간·추정 여부를 구분합니다.</div>';
+    if (kind === 'prince') {
+      scope += '<div class="ag-card ag-research-company"><h4>CL prince · 원문 자료 대기</h4><p>관측한 채널 게시물 0건 · 전체 이력 미검증</p><p>원문 확인 전에는 CL prince의 고유 발언·전략·포지션을 생성하지 않습니다. 아래 수치는 각 기관의 자료이며 CL prince의 주장으로 해석하지 마세요.</p></div>';
+      scope += '<details class="ag-card ag-research-reviews"><summary>분석 구조 검토 상태</summary><p>모델의 검토 완료는 실제 원자료 검증이나 실행 승인을 뜻하지 않습니다. 이후 추가한 공개자료는 별도로 대조했습니다.</p><ul>' + data.reviews.map(function (r) {
+        var system = {OPTIO:'옵티오',CENTURION:'센츄리온',CLAUDE_FABLE_ULTRA:'Claude'}[r.system] || '검토';
+        var label = {MODEL_PROPOSED_UNVERIFIED:'검토 완료 · 추가 정보 필요',QUEUED:'검토 대기',RUNNING:'검토 중',FAILED:'검토 실패',UNKNOWN:'상태 미확인'}[r.status] || '상태 미확인';
+        return '<li>' + esc(system) + ' · ' + esc(label) + (r.reviewedAt ? ' · ' + esc(researchDate(r.reviewedAt)) : '') + '</li>';
+      }).join('') + '</ul></details>';
+    }
+    scope += '<div class="ag-research-controls">' + (kind === 'steel' ? '<label>분석할 회사<select data-research-company>' + data.companies.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>'; }).join('') + '</select></label>' : '') +
+      '<label>지표 검색<input type="search" data-research-query placeholder="리그, DUC, OCTG 등"></label><label>자료 구분<select data-research-filter><option value="all">모든 자료</option><option value="verified">원문 대조</option><option value="estimate">추정·전망</option><option value="missing">미확인</option></select></label></div><div data-research-context></div><p data-research-count class="ag-meta" aria-live="polite"></p><div class="ag-research-grid" data-research-metrics></div>';
+    host.innerHTML = scope;
+    function update() {
+      var co = data.companies.find(function (c) { return c.id === state.companyId; });
+      var now = Date.now();
+      var metrics = data.metrics.filter(function (m) {
+        var belongs = kind === 'prince' ? !m.companyId : co && (m.companyId ? m.companyId === co.id : co.drivers.indexOf(m.id) >= 0 || m.driverLinks.some(function (id) { return id === co.id || co.drivers.indexOf(id) >= 0; }));
+        if (!belongs || (state.query && [m.label,m.definition,m.unit].join(' ').toLowerCase().indexOf(state.query.toLowerCase()) < 0)) return false;
+        var row = researchLatest(data.observations,m.id), s = researchState(m,row,now);
+        return state.filter === 'all' || state.filter === 'verified' && row && row.status === 'VERIFIED' && s.value !== null || state.filter === 'estimate' && row && ['PROVIDER_ESTIMATE','FORECAST'].indexOf(row.status) >= 0 && s.value !== null || state.filter === 'missing' && s.value === null;
+      });
+      host.querySelector('[data-research-context]').innerHTML = kind === 'steel' ? researchCompany(co) : '';
+      host.querySelector('[data-research-count]').textContent = (kind === 'steel' && co ? co.name + '와 연결된 지표 ' : '공개 원유·리그·강관 지표 ') + metrics.length + '개';
+      host.querySelector('[data-research-metrics]').innerHTML = metrics.length ? metrics.map(function (m) { return researchMetric(m,data.observations,now); }).join('') : '<p class="ag-empty">조건에 맞는 지표가 없습니다.</p>';
+    }
+    host.querySelector('[data-research-query]').addEventListener('input',function (e) { state.query=e.target.value; update(); });
+    host.querySelector('[data-research-filter]').addEventListener('change',function (e) { state.filter=e.target.value; update(); });
+    var picker = host.querySelector('[data-research-company]');
+    if (picker) picker.addEventListener('change',function (e) { state.companyId=e.target.value; update(); });
+    update();
+  }
+
+  // Each lazy section settles after its DOM is complete, including error views.
+  function researchLazySection(win, target, host, render) {
+    var observer = null, started = false, finish;
+    var ready = new Promise(function (resolve) { finish = resolve; });
+    function start() {
+      if (started) return ready;
+      started = true;
+      if (observer) observer.disconnect();
+      try { render(finish); }
+      catch (_) {
+        host.innerHTML = '<div class="ag-empty" role="alert">자료를 표시하지 못했습니다. 페이지를 새로고침해 주세요.</div>';
+        finish();
+      }
+      return ready;
+    }
+    if (!win.IntersectionObserver) start();
+    else {
+      host.innerHTML = '<div class="ag-load" role="status">화면에 가까워지면 시계열을 불러옵니다.</div>';
+      observer = new win.IntersectionObserver(function (entries) {
+        if (entries.some(function (entry) { return entry.isIntersecting; })) start();
+      }, { rootMargin: '240px' });
+      observer.observe(target);
+    }
+    return { start: start, ready: ready };
+  }
+  function bindResearchNavigation(W, win, initialSpreadReady, sections) {
+    var navigation = 0;
+    function isResearch(href) { return href === '#ag-prince' || href === '#ag-steel'; }
+    function navigate(href, link, updateHistory) {
+      var current = ++navigation;
+      if (W.isConnected === false) return;
+      if (updateHistory && win.location.hash !== href) win.history.pushState(null, '', href);
+      if (link) link.setAttribute('aria-busy', 'true');
+      var waits = [initialSpreadReady, sections.solar.start(), sections.oil.start(), sections.prince.start()];
+      if (href === '#ag-steel') waits.push(sections.steel.start());
+      Promise.all(waits).then(function () {
+        win.requestAnimationFrame(function () {
+          win.requestAnimationFrame(function () {
+            if (link) link.removeAttribute('aria-busy');
+            if (current !== navigation || W.isConnected === false || win.location.hash !== href) return;
+            var target = W.querySelector(href);
+            if (!target) return;
+            target.scrollIntoView({ block: 'start', behavior: 'auto' });
+            var heading = target.querySelector('h3');
+            if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
+          });
+        });
+      });
+    }
+    W.addEventListener('click', function (ev) {
+      var link = ev.target.closest('.ag-nav a');
+      if (!link || !W.contains(link) || ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+      var href = link.getAttribute('href');
+      if (!isResearch(href)) { navigation++; return; }
+      ev.preventDefault();
+      navigate(href, link, true);
+    });
+    win.addEventListener('hashchange', function () {
+      var href = win.location.hash;
+      if (isResearch(href)) navigate(href, null, false);
+      else navigation++;
+    });
+    if (isResearch(win.location.hash)) navigate(win.location.hash, null, false);
+  }
+
   /* ───────── 메인 ───────── */
   window.renderARGUS = function (el, data) {
     ensureCss(el.ownerDocument);
@@ -476,6 +657,8 @@
       sec('spread', '📉 스프레드 차트', '주간 5년 · 마커 = 현재 사냥 시그널', chips()) +
       sec('solar', '☀️ 태양광 밸류체인', '폴리 → 모듈 · 미국 설치·건설·가격 · PVInsights · InfoLink') +
       sec('oil', '🛢 유가 데크', 'petronet 일간 → 주간 다운샘플 · 스프레드 = 제품-두바이', oilChips()) +
+      sec('prince', 'CL prince', '원문 대기 상태와 공개 원유·강관 지표') +
+      sec('steel', '철강 프로젝트', '회사별 공시·사업 연결·추정의 빈칸') +
       footer() + '</div>';
 
     var W = el.querySelector('.ag-wrap');
@@ -492,7 +675,7 @@
         ' · 참고용, 투자조언 아님</div></div>';
     }
     function nav() {
-      var items = [['hunt', '🎯 시그널'], ['health', '🩺 건강상태'], ['board', '🏔 스코어보드'], ['spread', '📉 스프레드'], ['solar', '☀️ 태양광'], ['oil', '🛢 유가']];
+      var items = [['hunt', '🎯 시그널'], ['health', '🩺 건강상태'], ['board', '🏔 스코어보드'], ['spread', '📉 스프레드'], ['solar', '☀️ 태양광'], ['oil', '🛢 유가'], ['prince', 'CL prince'], ['steel', '철강 프로젝트']];
       return '<div class="ag-nav">' + items.map(function (it) { return '<a href="#ag-' + it[0] + '">' + it[1] + '</a>'; }).join('') + '</div>';
     }
     function kpis() {
@@ -660,12 +843,13 @@
         ST.spLimit = mb.dataset.act === 'spmore' ? 999 : 24; renderSpreadPanel(panel, chunk);
       };
     }
-    function rSpread() {
+    function rSpread(onReady) {
+      var done = typeof onReady === 'function' ? onReady : function () {};
       var host = body('spread');
       Object.keys(spreadPanels).forEach(function (cat) {
         spreadPanels[cat].hidden = cat !== ST.cat;
       });
-      if (spreadPanels[ST.cat]) return;
+      if (spreadPanels[ST.cat]) { done(); return; }
       var panel = doc.createElement('div');
       panel.dataset.categoryPanel = ST.cat || '';
       panel.innerHTML = '<div class="ag-load" role="status">선택 카테고리 시계열 로딩…</div>';
@@ -673,9 +857,9 @@
       loadChunk('spread', ST.cat, function (chunk, error, source) {
         panel.dataset.payloadSource = source || 'error';
         if (error || !chunk) {
-          panel.innerHTML = '<div class="ag-empty" role="alert">시계열 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+          panel.innerHTML = '<div class="ag-empty" role="alert">시계열 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; done(); return;
         }
-        renderSpreadPanel(panel, chunk);
+        try { renderSpreadPanel(panel, chunk); } finally { done(); }
       });
     }
 
@@ -934,14 +1118,15 @@
       renderInfoLink(body('solar').querySelector('[data-infolink]'), chunk);
       bindHover(body('solar'));
     }
-    function rSolar() {
+    function rSolar(onReady) {
+      var done = typeof onReady === 'function' ? onReady : function () {};
       body('solar').innerHTML = '<div class="ag-load" role="status">태양광 시계열 로딩…</div>';
       loadChunk('solar', 'solar', function (chunk, error, source) {
         body('solar').dataset.payloadSource = source || 'error';
         if (error || !chunk) {
-          body('solar').innerHTML = '<div class="ag-empty" role="alert">태양광 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+          body('solar').innerHTML = '<div class="ag-empty" role="alert">태양광 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; done(); return;
         }
-        renderSolar(chunk);
+        try { renderSolar(chunk); } finally { done(); }
       });
     }
 
@@ -976,15 +1161,16 @@
         '<div class="ag-lgd">' + crackRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div></div>';
       bindHover(body('oil'));
     }
-    function rOil() {
-      if (oilChunk) { renderOil(oilChunk); return; }
+    function rOil(onReady) {
+      var done = typeof onReady === 'function' ? onReady : function () {};
+      if (oilChunk) { try { renderOil(oilChunk); } finally { done(); } return; }
       body('oil').innerHTML = '<div class="ag-load" role="status">유가 시계열 로딩…</div>';
       loadChunk('oil', 'oil', function (chunk, error, source) {
         body('oil').dataset.payloadSource = source || 'error';
         if (error || !chunk) {
-          body('oil').innerHTML = '<div class="ag-empty" role="alert">유가 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+          body('oil').innerHTML = '<div class="ag-empty" role="alert">유가 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; done(); return;
         }
-        oilChunk = chunk; renderOil(chunk);
+        oilChunk = chunk; try { renderOil(chunk); } finally { done(); }
       });
     }
 
@@ -1004,19 +1190,16 @@
       else if (key === 'oilRange') rOil();
     });
 
+    var lazySections = {};
     function lazySection(id, render) {
-      if (!win.IntersectionObserver) { render(); return; }
-      body(id).innerHTML = '<div class="ag-load" role="status">화면에 가까워지면 시계열을 불러옵니다.</div>';
-      var target = W.querySelector('#ag-' + id);
-      var observer = new win.IntersectionObserver(function (entries) {
-        if (entries.some(function (entry) { return entry.isIntersecting; })) {
-          observer.disconnect(); render();
-        }
-      }, { rootMargin: '240px' });
-      observer.observe(target);
+      lazySections[id] = researchLazySection(win, W.querySelector('#ag-' + id), body(id), render);
     }
 
-    rHunt(); rHealth(); rBoard(); rSpread();
+    rHunt(); rHealth(); rBoard();
+    var initialSpreadReady = new Promise(function (done) { rSpread(done); });
     lazySection('solar', rSolar); lazySection('oil', rOil);
+    lazySection('prince', function (done) { mountResearch(body('prince'), data.research, 'prince'); done(); });
+    lazySection('steel', function (done) { mountResearch(body('steel'), data.research, 'steel'); done(); });
+    bindResearchNavigation(W, win, initialSpreadReady, lazySections);
   };
 })();
