@@ -100,6 +100,7 @@ var TAB_DEFS=[
  ['소비',[
    ['lux','럭셔리','글로벌 럭셔리 실적·프록시'],
    ['game','게임','게임사 대체데이터 나우캐스트'],
+   ['ent','엔터','상장사 → 레이블 → 아티스트 → 앨범 · RENOVA 아카이브'],
    ['app','의류','브랜드×ODM 의류 밸류체인 (대만 월매출이 1~2개월 선행)'],
    ['plat','플랫폼','플랫폼 기업 지표']]],
  ['매크로·도구',[
@@ -482,6 +483,7 @@ safe('renderwrap',function(){
         if(cb&&on) cb.innerHTML='<b>'+esc(on.textContent.trim())+'</b>'; } });
     safe('sub',function(){
       var r=regionObj(), el=document.getElementById('sub'); if(!el) return;
+      if(ST.tab==='ent'){ el.textContent='RENOVA 출처 아카이브 · 원기간·원단위 · 수치별 검증 상태'; el.title='현재 지역의 관세 통계와 별도의 엔터 자료'; return; }
       var lp=lastPubYM();
       el.textContent='월간 · '+(lp?subYM(MONTHS[0])+' – '+subYM(lp):'데이터 로딩 중')+' · '+(r.source_short||SRC_SHORT[r.id]||stripTags(r.source||M.source||''));
       el.title=stripTags(r.source||'');
