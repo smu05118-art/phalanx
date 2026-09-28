@@ -499,6 +499,71 @@
     update();
   }
 
+  // Each lazy section settles after its DOM is complete, including error views.
+  function researchLazySection(win, target, host, render) {
+    var observer = null, started = false, finish;
+    var ready = new Promise(function (resolve) { finish = resolve; });
+    function start() {
+      if (started) return ready;
+      started = true;
+      if (observer) observer.disconnect();
+      try { render(finish); }
+      catch (_) {
+        host.innerHTML = '<div class="ag-empty" role="alert">자료를 표시하지 못했습니다. 페이지를 새로고침해 주세요.</div>';
+        finish();
+      }
+      return ready;
+    }
+    if (!win.IntersectionObserver) start();
+    else {
+      host.innerHTML = '<div class="ag-load" role="status">화면에 가까워지면 시계열을 불러옵니다.</div>';
+      observer = new win.IntersectionObserver(function (entries) {
+        if (entries.some(function (entry) { return entry.isIntersecting; })) start();
+      }, { rootMargin: '240px' });
+      observer.observe(target);
+    }
+    return { start: start, ready: ready };
+  }
+  function bindResearchNavigation(W, win, initialSpreadReady, sections) {
+    var navigation = 0;
+    function isResearch(href) { return href === '#ag-prince' || href === '#ag-steel'; }
+    function navigate(href, link, updateHistory) {
+      var current = ++navigation;
+      if (W.isConnected === false) return;
+      if (updateHistory && win.location.hash !== href) win.history.pushState(null, '', href);
+      if (link) link.setAttribute('aria-busy', 'true');
+      var waits = [initialSpreadReady, sections.solar.start(), sections.oil.start(), sections.prince.start()];
+      if (href === '#ag-steel') waits.push(sections.steel.start());
+      Promise.all(waits).then(function () {
+        win.requestAnimationFrame(function () {
+          win.requestAnimationFrame(function () {
+            if (link) link.removeAttribute('aria-busy');
+            if (current !== navigation || W.isConnected === false || win.location.hash !== href) return;
+            var target = W.querySelector(href);
+            if (!target) return;
+            target.scrollIntoView({ block: 'start', behavior: 'auto' });
+            var heading = target.querySelector('h3');
+            if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
+          });
+        });
+      });
+    }
+    W.addEventListener('click', function (ev) {
+      var link = ev.target.closest('.ag-nav a');
+      if (!link || !W.contains(link) || ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+      var href = link.getAttribute('href');
+      if (!isResearch(href)) { navigation++; return; }
+      ev.preventDefault();
+      navigate(href, link, true);
+    });
+    win.addEventListener('hashchange', function () {
+      var href = win.location.hash;
+      if (isResearch(href)) navigate(href, null, false);
+      else navigation++;
+    });
+    if (isResearch(win.location.hash)) navigate(win.location.hash, null, false);
+  }
+
   /* ───────── 메인 ───────── */
   window.renderARGUS = function (el, data) {
     ensureCss(el.ownerDocument);
@@ -778,12 +843,13 @@
         ST.spLimit = mb.dataset.act === 'spmore' ? 999 : 24; renderSpreadPanel(panel, chunk);
       };
     }
-    function rSpread() {
+    function rSpread(onReady) {
+      var done = typeof onReady === 'function' ? onReady : function () {};
       var host = body('spread');
       Object.keys(spreadPanels).forEach(function (cat) {
         spreadPanels[cat].hidden = cat !== ST.cat;
       });
-      if (spreadPanels[ST.cat]) return;
+      if (spreadPanels[ST.cat]) { done(); return; }
       var panel = doc.createElement('div');
       panel.dataset.categoryPanel = ST.cat || '';
       panel.innerHTML = '<div class="ag-load" role="status">선택 카테고리 시계열 로딩…</div>';
@@ -791,9 +857,9 @@
       loadChunk('spread', ST.cat, function (chunk, error, source) {
         panel.dataset.payloadSource = source || 'error';
         if (error || !chunk) {
-          panel.innerHTML = '<div class="ag-empty" role="alert">시계열 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+          panel.innerHTML = '<div class="ag-empty" role="alert">시계열 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; done(); return;
         }
-        renderSpreadPanel(panel, chunk);
+        try { renderSpreadPanel(panel, chunk); } finally { done(); }
       });
     }
 
@@ -1052,14 +1118,15 @@
       renderInfoLink(body('solar').querySelector('[data-infolink]'), chunk);
       bindHover(body('solar'));
     }
-    function rSolar() {
+    function rSolar(onReady) {
+      var done = typeof onReady === 'function' ? onReady : function () {};
       body('solar').innerHTML = '<div class="ag-load" role="status">태양광 시계열 로딩…</div>';
       loadChunk('solar', 'solar', function (chunk, error, source) {
         body('solar').dataset.payloadSource = source || 'error';
         if (error || !chunk) {
-          body('solar').innerHTML = '<div class="ag-empty" role="alert">태양광 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+          body('solar').innerHTML = '<div class="ag-empty" role="alert">태양광 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; done(); return;
         }
-        renderSolar(chunk);
+        try { renderSolar(chunk); } finally { done(); }
       });
     }
 
@@ -1094,15 +1161,16 @@
         '<div class="ag-lgd">' + crackRows.map(function (r) { return '<span><i style="background:' + r.col + '"></i>' + esc(r.name) + '</span>'; }).join('') + '</div></div></div>';
       bindHover(body('oil'));
     }
-    function rOil() {
-      if (oilChunk) { renderOil(oilChunk); return; }
+    function rOil(onReady) {
+      var done = typeof onReady === 'function' ? onReady : function () {};
+      if (oilChunk) { try { renderOil(oilChunk); } finally { done(); } return; }
       body('oil').innerHTML = '<div class="ag-load" role="status">유가 시계열 로딩…</div>';
       loadChunk('oil', 'oil', function (chunk, error, source) {
         body('oil').dataset.payloadSource = source || 'error';
         if (error || !chunk) {
-          body('oil').innerHTML = '<div class="ag-empty" role="alert">유가 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; return;
+          body('oil').innerHTML = '<div class="ag-empty" role="alert">유가 chunk와 단일 파일 폴백을 모두 불러오지 못했습니다.</div>'; done(); return;
         }
-        oilChunk = chunk; renderOil(chunk);
+        oilChunk = chunk; try { renderOil(chunk); } finally { done(); }
       });
     }
 
@@ -1122,21 +1190,16 @@
       else if (key === 'oilRange') rOil();
     });
 
+    var lazySections = {};
     function lazySection(id, render) {
-      if (!win.IntersectionObserver) { render(); return; }
-      body(id).innerHTML = '<div class="ag-load" role="status">화면에 가까워지면 시계열을 불러옵니다.</div>';
-      var target = W.querySelector('#ag-' + id);
-      var observer = new win.IntersectionObserver(function (entries) {
-        if (entries.some(function (entry) { return entry.isIntersecting; })) {
-          observer.disconnect(); render();
-        }
-      }, { rootMargin: '240px' });
-      observer.observe(target);
+      lazySections[id] = researchLazySection(win, W.querySelector('#ag-' + id), body(id), render);
     }
 
-    rHunt(); rHealth(); rBoard(); rSpread();
+    rHunt(); rHealth(); rBoard();
+    var initialSpreadReady = new Promise(function (done) { rSpread(done); });
     lazySection('solar', rSolar); lazySection('oil', rOil);
-    lazySection('prince', function () { mountResearch(body('prince'), data.research, 'prince'); });
-    lazySection('steel', function () { mountResearch(body('steel'), data.research, 'steel'); });
+    lazySection('prince', function (done) { mountResearch(body('prince'), data.research, 'prince'); done(); });
+    lazySection('steel', function (done) { mountResearch(body('steel'), data.research, 'steel'); done(); });
+    bindResearchNavigation(W, win, initialSpreadReady, lazySections);
   };
 })();
