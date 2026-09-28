@@ -686,6 +686,10 @@ function switchTab(tab,nav){
     const selected=t.dataset.tab===tab;
     t.classList.toggle('on',selected); t.setAttribute('aria-selected',String(selected)); t.tabIndex=selected?0:-1;
   });
+  const consumerPanel=document.getElementById('consumerMacro');
+  if(consumerPanel){consumerPanel.hidden=!(tab==='liq'||tab==='fed');
+    consumerPanel.ontoggle=function(){if(this.open&&!this.dataset.loaded){this.dataset.loaded='1';if(window.PHXConsumer)PHXConsumer.mount(document.getElementById('consumerMacroPanel'),{base:new URL('../',location.href),filters:{metric:'CM_MACRO'}});else document.getElementById('consumerMacroPanel').textContent='소비 관측 화면을 불러오지 못했습니다.';}};
+  }
   const isMap=tab==='map';
   document.getElementById('mapview').hidden=!isMap;
   document.getElementById('sigview').hidden=(tab!=='sig');
