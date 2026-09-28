@@ -162,6 +162,39 @@ def _chip(label, color=None, n=None, href=None, on=False):
 _FC = {"panel": None, "src": None, "mod": None, "tried": False}
 
 
+
+# 수주 상세(간트·분기 전환·발주처) — 스튜디오 Claude(fable/ultracode) 산출 `kship_orders_views.py`.
+# 렌더러가 던지면 섹션을 만들지 않는다. 계약 원장이 없으면 자기 사유를 스스로 적는다.
+_OV = {"mod": None, "con": None, "tried": False}
+
+
+def _orders_section(stock):
+    if not _OV["tried"]:
+        _OV["tried"] = True
+        try:
+            import kship_orders_views as _ov
+            _OV["mod"] = _ov
+            import json as _json
+            with open(os.path.join(ASSETS, "contracts.json"), encoding="utf-8") as f:
+                d = _json.load(f)
+            rows = d.get("rows") if isinstance(d, dict) else d
+            _OV["con"] = list(rows.values()) if isinstance(rows, dict) else (rows or [])
+        except Exception as e:
+            sys.stderr.write("[warn] 수주 상세 비활성: %s\n" % e)
+    if not _OV["mod"] or _OV["con"] is None:
+        return ""
+    ent = (_FC.get("src") or {}).get(stock) if "_FC" in globals() else None
+    if ent is None:
+        ent = {"stock": stock, "co": None, "name": None}
+    try:
+        f = (_FC.get("panel") or {}).get(stock) if "_FC" in globals() else None
+        # 렌더러에 따라 다른 종목 행이 섞이면 거부한다(knuke) — 항상 회사 행만 넘긴다.
+        rows = [r for r in _OV["con"] if r.get("stock") in (None, stock)]
+        return _OV["mod"].render_orders_section(ent, rows, f) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 수주 상세 렌더 실패: %s\n" % (stock, e))
+        return ""
+
 def _forecast_section(stock):
     import gzip
     if not _FC["tried"]:
@@ -392,7 +425,7 @@ def yard_html(s, data):
 </script>
 <script>%s</script>
 """ % ("".join(kpi), other_note, type_table, tl, roll_table, rev_html, fx_html, ser_html, len(s["contracts"]), con_table, sup_html,
-       json_for_html(chart), json.dumps(seg_colors), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"])
+       json_for_html(chart), json.dumps(seg_colors), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"]) + _orders_section(rec["stock"])
     return page("%s 조선 수주" % rec["name"], body, depth=1, h1="%s" % rec["name"],
                 tags=(rec["stock"], rec["market"], rec["industry"]),
                 nav=(("허브", "../index.html"), ("인포그래픽", "../parts.html"), ("커버리지", "../coverage.html"), ("DART 원문 ↗", dart)),

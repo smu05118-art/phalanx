@@ -201,6 +201,39 @@ def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel
 _FC = {"panel": None, "src": None, "mod": None, "tried": False}
 
 
+
+# 수주 상세(간트·분기 전환·발주처) — 스튜디오 Claude(fable/ultracode) 산출 `kdef_orders_views.py`.
+# 렌더러가 던지면 섹션을 만들지 않는다. 계약 원장이 없으면 자기 사유를 스스로 적는다.
+_OV = {"mod": None, "con": None, "tried": False}
+
+
+def _orders_section(stock):
+    if not _OV["tried"]:
+        _OV["tried"] = True
+        try:
+            import kdef_orders_views as _ov
+            _OV["mod"] = _ov
+            import json as _json
+            with open(os.path.join(ASSETS, "contracts.json"), encoding="utf-8") as f:
+                d = _json.load(f)
+            rows = d.get("rows") if isinstance(d, dict) else d
+            _OV["con"] = list(rows.values()) if isinstance(rows, dict) else (rows or [])
+        except Exception as e:
+            sys.stderr.write("[warn] 수주 상세 비활성: %s\n" % e)
+    if not _OV["mod"] or _OV["con"] is None:
+        return ""
+    ent = (_FC.get("src") or {}).get(stock) if "_FC" in globals() else None
+    if ent is None:
+        ent = {"stock": stock, "co": None, "name": None}
+    try:
+        f = (_FC.get("panel") or {}).get(stock) if "_FC" in globals() else None
+        # 렌더러에 따라 다른 종목 행이 섞이면 거부한다(knuke) — 항상 회사 행만 넘긴다.
+        rows = [r for r in _OV["con"] if r.get("stock") in (None, stock)]
+        return _OV["mod"].render_orders_section(ent, rows, f) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 수주 상세 렌더 실패: %s\n" % (stock, e))
+        return ""
+
 def _forecast_section(stock):
     import gzip
     if not _FC["tried"]:
@@ -428,7 +461,7 @@ def company_html(s, data):
        contracts_table(s["contracts"], data, tid="ct%s" % s["stock"]),
        parts_html, rel_html,
        " ".join("<p>%s</p>" % n for n in notes),
-       json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(s["stock"])
+       json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(s["stock"]) + _orders_section(s["stock"])
     tags = (rec["stock"], rec["market"], ROLE_KO.get(rec["role"], rec["role"]), rec["industry"])
     dart = DART % (latest.get("rcp") if latest and latest.get("rcp") else "")
     return page("%s — 방산 수주" % rec["name"], body, depth=1, h1=rec["name"], tags=tags,
