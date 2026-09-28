@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>종목과 무역 · Phalanx</title><link rel="stylesheet" href="style.css"><script defer src="page-data.js"></script><script defer src="ppi-data-00.js"></script>
+<script defer src="ppi-data-01.js"></script>
+<script defer src="ppi-data-02.js"></script>
+<script defer src="ppi-data-03.js"></script>
+<script defer src="ppi-data-04.js"></script>
+<script defer src="ppi-data-05.js"></script>
+<script defer src="ppi-data-06.js"></script>
+<script defer src="ppi-data-07.js"></script>
+<script defer src="ppi-data-08.js"></script>
+<script defer src="ppi-data-09.js"></script>
+<script defer src="ppi-data-10.js"></script>
+<script defer src="ppi-data-11.js"></script>
+<script defer src="ppi-data-12.js"></script>
+<script defer src="ppi-data-13.js"></script>
+<script defer src="ppi-data-14.js"></script>
+<script defer src="ppi-data-15.js"></script>
+<script defer src="ppi-data-16.js"></script>
+<script defer src="ppi-data-17.js"></script>
+<script defer src="ppi-data-18.js"></script>
+<script defer src="ppi-data-19.js"></script>
+<script defer src="ppi-data-20.js"></script>
+<script defer src="ppi-data-21.js"></script>
+<script defer src="ppi-data-22.js"></script>
+<script defer src="ppi-data-23.js"></script>
+<script defer src="ppi-data-24.js"></script>
+<script defer src="ppi-data-25.js"></script>
+<script defer src="ppi-data-26.js"></script>
+<script defer src="ppi-data-27.js"></script>
+<script defer src="ppi-data-28.js"></script>
+<script defer src="ppi-data-29.js"></script>
+<script defer src="ppi-data-30.js"></script>
+<script defer src="ppi-data-31.js"></script>
+<script defer src="ppi-data-32.js"></script>
+<script defer src="ppi-data-33.js"></script>
+<script defer src="ppi-data-34.js"></script>
+<script defer src="ppi-data-35.js"></script>
+<script defer src="ppi-data-36.js"></script>
+<script defer src="app.js"></script></head>
+<body><a class="skip" href="#main">본문으로</a><header><a href="../index.html">← Phalanx</a><div><p class="eyebrow">TRADE OBSERVATORY</p><h1>종목과 무역</h1><p>연결을 탐색하고, 근거를 확인하세요.</p></div><button id="theme-toggle" type="button">테마 전환</button></header>
+<nav aria-label="화면"><button data-view="stocks">종목 탐색</button><button data-view="ppi">생산자물가 PPI</button><button data-view="compare">시계열 비교</button><button data-view="workbook">엑셀 원문</button><button data-view="sources">수집·출처</button></nav>
+<main id="main"><p class="notice">참조 수치는 제3자 스냅샷입니다. 무역액은 기업 매출이 아니며 원문 검증상태는 자체 검증을 뜻하지 않습니다.</p><p id="dataset-meta"></p><p id="message" role="status" aria-live="polite"></p>
+<section id="filters" aria-label="탐색 조건"><label>검색<input id="search" data-filter="search" type="search" placeholder="종목·기업·제품·HS"></label><div id="select-filters" class="filter-grid"></div><div class="toolbar"><label><input type="checkbox" data-filter="primary"> 대표 품목만</label><label><input type="checkbox" data-filter="favorites"> 관심 항목만</label><button id="reset-filters">조건 초기화</button><button id="export-csv">필터 결과 CSV</button></div><div class="toolbar"><label>조건 이름<input id="preset-name" maxlength="80"></label><button id="save-preset">조건 저장</button><label>저장한 조건<select id="presets"><option value="">선택</option></select></label><button id="load-preset">불러오기</button><button id="delete-preset">삭제</button></div></section>
+<section id="stocks-view"><div class="toolbar"><h2>종목 탐색</h2><label>표시<select data-filter="layout"><option value="cards">카드</option><option value="table">표</option><option value="companies">회사 목록</option></select></label></div><p id="result-count" role="status"></p><div id="stock-results"></div></section>
+<section id="ppi-view" hidden><h2>생산자물가 PPI</h2><div class="toolbar"><label>검색<input id="ppi-search" type="search"></label><label>국가<select id="ppi-country"></select></label><label>분류<select id="ppi-category"></select></label><label>정렬<select id="ppi-sort"><option value="name">이름</option><option value="last_month">최근 월</option><option value="yoy">YoY</option><option value="mom">MoM</option><option value="qoq">QoQ</option></select></label></div><div id="ppi-results" class="cards"></div></section>
+<section id="compare-view" hidden><h2>시계열 비교 <span id="compare-count"></span></h2><p>최대 4개. 각 항목의 ID·국가·방향·HS·자료 종류를 유지합니다. 공통 첫 유효월을 100으로 맞추며, 0인 기준값과 결측은 보간하지 않습니다.</p><label>자료 종류<select id="compare-kind"><option value="db">HS6 월별 DB (최대 36개월)</option><option value="spark">원문 요약 (최대 12개월)</option></select></label><div id="compare-results"></div></section>
+<section id="sources-view" hidden><h2>수집 현황과 방법론</h2><p>기존 HS 일치는 카탈로그 구조상 일치이며 국가·방향·기업 연결의 검증이 아닙니다. share는 원문 정의 미확인 값으로 기업 매출 비중으로 해석하지 않습니다. 시가총액 및 상관값도 스냅샷이며 가격 갱신·예측을 제공하지 않습니다.</p><p>TW / Comtrade reporter 490: Other Asia nes. 대만 세관 직접 자료로 표시하지 않습니다.</p><div id="source-results"></div></section>
+<section id="workbook-view" hidden><h2>첨부 엑셀 원문 · 2026-09-18</h2><p>전체 열과 573행을 보존했습니다. 웹 판본과 유일하게 대응되지 않는 행은 자동 연결을 보류합니다.</p><div class="toolbar"><label>원문 검색<input id="workbook-search" type="search"></label><label><input id="workbook-unmatched" type="checkbox"> 연결 보류 행만</label><button id="workbook-csv">원문 CSV</button></div><p id="workbook-count"></p><div id="workbook-results"></div><div class="toolbar"><button id="workbook-prev">이전</button><button id="workbook-next">다음</button></div></section></main><dialog id="detail-dialog" aria-labelledby="detail-title"><div class="toolbar"><h2 id="detail-title"></h2><button id="close-dialog" autofocus>닫기</button></div><div id="detail-body"></div></dialog><footer>Phalanx · 관측과 해석 사이에 근거를 둡니다.</footer></body></html>
