@@ -11,6 +11,9 @@ HD한국조선해양은 '기타 금융업'이다.
   ① 업종  — '선박 및 보트 건조업' 전 종목
   ② 제품  — KIND 주요제품 문구에 선박·조선·해양·선용·marine 등 해상 어휘가 있는 종목
   ③ 지정  — 업종·제품 문구 모두에 안 걸리지만 실질이 조선 공급망인 종목(사유 필수)
+  ④ 탐색  — kship_scan 이 정기보고서 본문으로 승격한 종목(assets/universe_probe.json 의 promoted).
+           이미 universe.json 에 있는 '탐색' 행은 probe 가 **명시적으로 rejected(ok=True)** 하지 않는 한
+           유지한다 — probe 에 판정이 없다는 것(후보 풀에서 빠짐·fetch 실패)은 강등 근거가 아니다.
 여기까지는 후보다. **납품 관계는 프로브(kship_probe)가 DART 원문의 주요 매출처·사업의
 내용을 열어 확인**하고, 확인되지 않은 후보는 '미확인'으로 남긴다 — 이름으로 배제하지 않는다.
 
@@ -95,22 +98,44 @@ def role_of(rec, seed_role=None):
     return "equip"
 
 
-def _probe_promoted():
-    """kship_scan.py 가 정기보고서 본문으로 찾아 승격한 종목 — assets/universe_probe.json (없으면 빈 사전)."""
+def _probe():
+    """kship_scan.py 의 탐색 결과 전체 — assets/universe_probe.json (없거나 깨졌으면 빈 사전)."""
     try:
-        return load_asset("universe_probe.json").get("promoted") or {}
+        d = load_asset("universe_probe.json")
+        return d if isinstance(d, dict) else {}
     except Exception:
         return {}
 
 
-def select(recs):
+def _probe_promoted():
+    """kship_scan.py 가 정기보고서 본문으로 찾아 승격한 종목 — probe 의 promoted (없으면 빈 사전)."""
+    return _probe().get("promoted") or {}
+
+
+def probe_demoted(probe):
+    """probe 가 **명시적으로** 강등한 종목 — 본문을 읽고(ok=True) 규칙에 못 미친 rejected 만.
+    ok=False(II 절 못 읽음)·failed 는 판정이 아니라 미확인이다."""
+    return {r["stock"] for r in (probe.get("rejected") or []) if r.get("ok", True)}
+
+
+def _prev_explored():
+    """현재 universe.json 의 '탐색' 행 {stock: row} — probe 에 판정이 없으면 그대로 이어 간다."""
+    return {r["stock"]: r for r in load() if r.get("source") == "탐색"}
+
+
+def select(recs, probe=None, prev_explored=None):
+    """probe·prev_explored 는 테스트 주입용(None 이면 assets 에서 읽는다)."""
     picked = []
     seen = set()
-    probe = _probe_promoted()
+    probe = _probe() if probe is None else probe
+    promoted = probe.get("promoted") or {}
+    demoted = probe_demoted(probe)
+    prev = _prev_explored() if prev_explored is None else prev_explored
+    kept = []
     for r in recs:
         src = None
         seed = SEED.get(r["stock"])
-        pr = probe.get(r["stock"])
+        pr = promoted.get(r["stock"])
         if r["industry"] == YARD_INDUSTRY:
             src = "업종"
         elif seed:
@@ -119,6 +144,13 @@ def select(recs):
             src = "제품"
         elif pr:
             src = "탐색"                      # ④ 본문 탐색 — 근거 문장은 pr["reason"]
+        elif r["stock"] in prev and r["stock"] not in demoted:
+            # ④' 기존 '탐색' 행인데 이번 probe 에 판정이 없다(후보 풀에서 빠졌거나 fetch 실패) — 유지.
+            #    강등은 probe 의 명시적 rejected(ok=True)만. 2026-09-12 스캔이 promoted 를 {} 로 덮어 16행이
+            #    지워진 회귀의 두 번째 방어선이다(첫째는 kship_scan.carry_forward).
+            src = "탐색"
+            pr = {"role": prev[r["stock"]].get("role"), "reason": prev[r["stock"]].get("reason") or ""}
+            kept.append(r["stock"])
         if not src:
             continue
         d = dict(r)
@@ -133,6 +165,14 @@ def select(recs):
     if missing:
         # 지정 종목이 KIND에 없으면 상장폐지·합병이다. 조용히 빼지 말고 알린다.
         sys.stderr.write("[warn] 지정 종목이 상장법인목록에 없음(상장폐지·합병?): %s\n" % missing)
+    gone = sorted(set(prev) - seen - demoted)
+    if gone:
+        sys.stderr.write("[warn] 기존 '탐색' 종목이 상장법인목록에 없음(상장폐지·합병?): %s\n" % gone)
+    dropped = sorted(set(prev) & demoted)
+    if dropped:
+        sys.stderr.write("[info] '탐색' 행 강등 — probe 가 본문을 읽고 규칙 미달로 제외: %s\n" % dropped)
+    if kept:
+        sys.stderr.write("[info] '탐색' 행 %d개 유지 — probe 에 판정 없음(후보 풀 제외·미확인): %s\n" % (len(kept), kept))
     if len(picked) < MIN_UNIVERSE:
         raise RuntimeError("모집단이 %d개뿐 — KIND 응답이 깨졌거나 업종명 체계가 바뀌었다" % len(picked))
     picked.sort(key=lambda r: ({"yard": 0, "holding": 1, "engine": 2, "equip": 3, "steel": 4}[r["role"]],

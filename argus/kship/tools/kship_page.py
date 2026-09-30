@@ -217,6 +217,28 @@ def _forecast_section(stock):
         sys.stderr.write("[warn] %s 추정 섹션 렌더 실패: %s\n" % (stock, e))
         return ""
 
+
+# 실적 모델 섹션(`kship_model_section.py` + `assets/models/<stock>.json`). 모델 json 이 없는 회사는
+# **섹션을 만들지 않는다**(빈 표로 흉내 내지 않음). 렌더러가 던지면 경고 후 빈 문자열(기존 패턴).
+_MD = {"mod": None, "tried": False}
+
+
+def _model_section(stock):
+    if not _MD["tried"]:
+        _MD["tried"] = True
+        try:
+            import kship_model_section as _ms
+            _MD["mod"] = _ms
+        except Exception as e:
+            sys.stderr.write("[warn] 실적 모델 섹션 비활성: %s\n" % e)
+    if not _MD["mod"]:
+        return ""
+    try:
+        return _MD["mod"].section_for_stock(stock) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 실적 모델 섹션 렌더 실패: %s\n" % (stock, e))
+        return ""
+
 def yard_html(s, data):
     tm = type_meta(data["types"])
     rec, roll = s["rec"], s["roll"]
@@ -425,7 +447,7 @@ def yard_html(s, data):
 </script>
 <script>%s</script>
 """ % ("".join(kpi), other_note, type_table, tl, roll_table, rev_html, fx_html, ser_html, len(s["contracts"]), con_table, sup_html,
-       json_for_html(chart), json.dumps(seg_colors), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"]) + _orders_section(rec["stock"])
+       json_for_html(chart), json.dumps(seg_colors), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"]) + _orders_section(rec["stock"]) + _model_section(rec["stock"])
     return page("%s 조선 수주" % rec["name"], body, depth=1, h1="%s" % rec["name"],
                 tags=(rec["stock"], rec["market"], rec["industry"]),
                 nav=(("허브", "../index.html"), ("인포그래픽", "../parts.html"), ("커버리지", "../coverage.html"), ("DART 원문 ↗", dart)),
@@ -457,13 +479,14 @@ def hub_html(data, summaries):
     cats = collections.Counter(c["cat"].split(".")[0] for co in sup for c in co["cats"] if c["cat"] != "UNCL")
     groups = {g["id"]: g for g in data["tax"]["groups"]}
     gchips = "".join(_chip(groups[g]["ko"], None, n, href="parts.html#" + g) for g, n in cats.most_common(13) if g in groups)
+    mchip = '<div class="chips" style="margin-top:12px"><a class="chip" href="models.html">📈 실적 모델 <span class="n">FY2026E~28E 섹터 표 · 회사 페이지 하단 모델 섹션</span></a></div>' if os.path.isfile(os.path.join(KSHIP, "models.html")) else ""
     body = """
 <div class="kpi">
  <div><b>%d</b><span>조선사(정기보고서 롤포워드 수록)</span></div>
  <div><b>%d</b><span>척당 계약 공시(2024~) · %s척</span></div>
  <div><b>%d</b><span>기자재사 · 조선사 언급 확인 %d</span></div>
  <div><b>%d</b><span>부품 소분류(인포그래픽 영역 %d)</span></div>
-</div>
+</div>%s
 <h2 class="sec">조선사<span>수주잔고 순 · 선종 칩은 척당 계약 상위 3종(척)</span></h2>
 <div class="cards">%s</div>
 <h2 class="sec">기자재 — 부품별 진입<span>선박 단면 인포그래픽에서 부품을 누르면 담당 회사로</span></h2>
@@ -472,7 +495,7 @@ def hub_html(data, summaries):
  <a class="cardlink" href="coverage.html"><div class="t"><b>커버리지</b></div><p>모집단 %d종목의 역할(조선사·지주·엔진·기자재·강재)과 수록 상태, 어떤 근거로 들어왔는지.</p><div class="go">커버리지 →</div></a>
 </div>
 """ % (len(summaries), len(data["contracts"]), fmt_n(sum(c["ships"] or 0 for c in data["contracts"] if c["type"] not in (None, "OTHER"))),
-       len(sup), n_conf, len(data["tax"]["cats"]), len(data["svg"]["regions"]), "".join(cards), gchips, len(data["uni"]))
+       len(sup), n_conf, len(data["tax"]["cats"]), len(data["svg"]["regions"]), mchip, "".join(cards), gchips, len(data["uni"]))
     return page("한국조선 — 수주·선표·환헤지·기자재", body, depth=0, h1="⚓ 한국조선",
                 nav=(("← ARGUS", "../index.html"), ("🏗 한국건설", "../kce/index.html")),
                 lead="국내 상장 조선사의 수주를 산업 특성대로 읽습니다 — 선종·척수·인도시점(척당 계약 공시), 부문 롤포워드와 매출인식(정기보고서), 환노출·통화선도 헤지(파생금융상품 주석), 반복건조 추정. 기자재사는 부품 분류로 조선사와 연결합니다.")

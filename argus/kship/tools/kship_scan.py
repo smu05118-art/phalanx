@@ -9,6 +9,11 @@
      조선사 언급(mentions)을 센다. DART 는 프로세스 하나로 순차.
   3) 승격(fail-closed): 조선사 언급 합 ≥ 2 **또는** 조선 낱말 ≥ 8. 근거를 문장으로 남긴다.
      나머지는 '검토·제외'로 남겨 커버리지 페이지에 보인다(근거 없이 이름으로 넣지 않는다).
+  4) 이월: 직전 스캔의 승격분은 **이번 스캔이 명시적으로 강등하지 않는 한 유지**한다. 승격된 종목은
+     universe.json 에 '탐색' 행으로 들어가므로 다음 스캔의 후보 풀(모집단 제외)에서 빠진다 — 그때
+     promoted 를 빈 사전으로 덮어쓰면 kship_universe --write 가 '탐색' 행을 지운다(2026-09-12 실사고:
+     pool 230→214, 승격 16 → 0, 모집단 57→41). 강등은 재판정(--rejudge)이나 fetch 성공 뒤 규칙 미달일
+     때만이고, fetch 실패·빈 본문은 failed 에 남기고 직전 증거를 그대로 둔다(`carried_from` 에 증거의 스캔일).
 
     python3 kship_scan.py --scan [--quarter 2026Q2]     # → assets/universe_probe.json
 그 뒤 kship_universe.py --write 가 universe_probe.json 의 승격분을 '탐색' 출처로 모집단에 넣는다.
@@ -51,6 +56,35 @@ def judge(row):
     return hits >= PROMOTE_HITS or (ment >= PROMOTE_MENTIONS and hits >= PROMOTE_HITS_WITH_MENTIONS)
 
 
+def _prev_probe():
+    """직전 탐색 결과(assets/universe_probe.json). 없거나 깨졌으면 빈 사전 — 이월할 것이 없다."""
+    try:
+        d = load_asset("universe_probe.json")
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def carry_forward(prev_promoted, promoted, rejected, prev_scanned=""):
+    """직전 승격분 이월 — 순수 함수(DART 없이 검증한다).
+
+    이번 스캔이 **fetch 성공 뒤 규칙 미달로 명시적으로 제외한**(rejected 이면서 ok=True) 종목만 강등한다.
+    후보 풀에서 빠진 종목(이미 모집단)·fetch 실패·빈 본문(ok=False) 종목은 직전 증거 그대로 promoted 에
+    남고, 증거가 어느 스캔의 것인지 `carried_from` 으로 적는다(이미 이월된 행은 원래 스캔일을 지킨다).
+    반환: (promoted 사전 — 종목코드 순, 이월한 종목코드 목록)."""
+    demoted = {r["stock"] for r in rejected if r.get("ok", True)}
+    out = dict(promoted)
+    carried = []
+    for st, row in prev_promoted.items():
+        if st in out or st in demoted:
+            continue
+        r = dict(row)
+        r.setdefault("carried_from", prev_scanned)
+        out[st] = r
+        carried.append(st)
+    return dict(sorted(out.items())), sorted(carried)
+
+
 def pool(recs, universe):
     uni = {r["stock"] for r in universe}
     out = []
@@ -75,8 +109,10 @@ def role_for(r, d):
 def scan(quarter, log=sys.stderr):
     recs = parse_kind(_get(KIND_URL))
     universe = load_asset("universe.json")["rows"]
+    prev = _prev_probe()
+    prev_promoted = prev.get("promoted") or {}
     cands = pool(recs, universe)
-    log.write("후보 %d사 (모집단 %d 제외)\n" % (len(cands), len(universe)))
+    log.write("후보 %d사 (모집단 %d 제외) · 직전 승격 %d 이월 대상\n" % (len(cands), len(universe), len(prev_promoted)))
     promoted, rejected, failed = {}, [], []
     for i, r in enumerate(cands, 1):
         try:
@@ -91,6 +127,11 @@ def scan(quarter, log=sys.stderr):
         row = {"stock": r["stock"], "name": r["name"], "industry": r["industry"], "product": r["product"], "ok": bool(d.get("ok")),
                "hits": hits, "terms": d.get("marine_terms", {}), "mentions": ment, "rcp": d.get("rcp"), "note": d.get("note", ""),
                "title": d.get("title", "")}
+        if not row["ok"] and r["stock"] in prev_promoted:
+            # 직전 승격 종목의 본문을 이번에 못 읽었다 — 강등 근거가 아니다. failed 에 남기고 직전 증거를 이월한다.
+            failed.append({"stock": r["stock"], "name": r["name"], "err": row["note"] or "II 절 빈 본문", "carried": True})
+            log.write("%3d/%d %s %-14s 본문 없음 — 직전 승격 유지\n" % (i, len(cands), r["stock"], r["name"][:14]))
+            continue
         ok = judge(row)
         if ok:
             reason = "탐색 — %s 본문: 조선 낱말 %d회(%s)%s%s" % (
@@ -102,10 +143,11 @@ def scan(quarter, log=sys.stderr):
             rejected.append(row)
         log.write("%3d/%d %s %-14s hits=%-3d ment=%s %s\n" % (i, len(cands), r["stock"], r["name"][:14], hits, ment or "-", "승격" if ok else ""))
         log.flush()
+    promoted, carried = carry_forward(prev_promoted, promoted, rejected, prev.get("scanned", ""))
     out = {"quarter": quarter, "scanned": time.strftime("%Y-%m-%d"), "pool": len(cands), "rule": RULE,
-           "promoted": promoted, "rejected": sorted(rejected, key=lambda x: -x["hits"]), "failed": failed}
+           "promoted": promoted, "carried": carried, "rejected": sorted(rejected, key=lambda x: -x["hits"]), "failed": failed}
     write_asset("universe_probe.json", out)
-    log.write("승격 %d · 제외 %d · 실패 %d → assets/universe_probe.json\n" % (len(promoted), len(rejected), len(failed)))
+    log.write("승격 %d(이월 %d) · 제외 %d · 실패 %d → assets/universe_probe.json\n" % (len(promoted), len(carried), len(rejected), len(failed)))
     return out
 
 
@@ -128,7 +170,8 @@ def rejudge(log=sys.stderr):
             promoted[row["stock"]] = dict(row, role=role_for(row, {"marine_terms": row.get("terms", {})}), reason=_reason(row))
         else:
             rejected.append(row)
-    d.update({"rule": RULE, "promoted": promoted, "rejected": sorted(rejected, key=lambda x: -x["hits"]),
+    d.update({"rule": RULE, "promoted": dict(sorted(promoted.items())), "rejected": sorted(rejected, key=lambda x: -x["hits"]),
+              "carried": sorted(st for st, r in promoted.items() if r.get("carried_from")),
               "rejudged": time.strftime("%Y-%m-%d")})
     write_asset("universe_probe.json", d)
     log.write("재판정: 승격 %d · 제외 %d\n" % (len(promoted), len(rejected)))

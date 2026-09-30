@@ -1,0 +1,898 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""kship_model_section — 실적 모델(assets/models/<stock>.json)을 회사 페이지 섹션과 허브 표로 그린다.
+
+  render_model_section(entry, model, fin=None, price=None, sls=None) -> html
+      <section class="card"> 묶음 8개: ① KPI 스트립(FY2026E~28E 매출·OP·OPM·EPS + 현재 PER/PBR)
+      ② 분기 손익표(최근 8A + 10E, 추정 칸 음영·근거 툴팁, 억원) ③ 사업부 매출·OPM 차트
+      ④ 조선사만: 선표 매출인식(백만$→헤지 원화)·수주업황 코호트 비중 차트 ⑤ 가정 패널(환율·헤지·OPM·세율·판관비율)
+      ⑥ 밸류에이션 스트립(PER/PBR 밴드·적정가치 구간 — 모델 산출값, 목표주가·추천 아님)
+      ⑦ xlsx 다운로드(models/<stock>_model.xlsx, 없으면 '준비 중') ⑧ 각주(출처·한계·백테스트)
+  section_for_stock(stock) -> html | ""   회사 페이지 훅(kship_page/kship_parts 의 _model_section)이 부른다.
+                                          모델 json 이 없으면 빈 문자열 — 빈 칸으로 흉내 내지 않는다.
+  build_models_hub(models_dir) -> html    argus/kship/models.html — 56사 표(역할·FY2026E~28E·PER/PBR·status), 정렬·검색.
+
+원칙: 추정 칸은 항상 `kind:"estimate"` 를 화면(음영·E 표기)과 툴팁(basis)으로 드러낸다. 출처 없는 숫자를 만들지
+않는다 — 모델이 주지 않은 값은 '—'. 스크립트 안전: 임베드 JSON 은 json_for_html 로만 넣고, 차트 변수는 IIFE 안에만
+둔다(회사 페이지의 DATA/SEGC 전역과 충돌 금지). Chart.js 는 페이지에 이미 있으면 그대로 쓰고, 기자재 페이지처럼
+없으면 vendor/chart.umd.min.js 를 한 번만 지연 로드한다. 다크 모드는 page() 셸의 CSS 변수(--pn·--tx2·--ln…)를 쓴다.
+
+    python3 kship_model_section.py --hub                                  # models.html
+    python3 kship_model_section.py --render 010140 --model tests/fixtures/model_mock_010140.json \
+                                   --sls tests/fixtures/model_mock_sls_010140.json --out /tmp/x.html
+    python3 kship_model_section.py --check /tmp/x.html                    # 태그 균형 검사
+"""
+import argparse
+import collections
+import json
+import math
+import os
+import re
+import sys
+from html.parser import HTMLParser
+
+from kship_lib import (ASSETS, CHART_DEFAULTS_JS, E, KSHIP, TABLE_JS, atomic_write, json_for_html, page)
+
+MODELS_DIR = os.path.join(ASSETS, "models")      # L4 산출(json)
+SLS_DIR = os.path.join(ASSETS, "sls")            # L3 산출
+FIN_DIR = os.path.join(ASSETS, "fin")            # L1 산출
+PRICES_PATH = os.path.join(ASSETS, "prices.json")  # L2 산출
+XLSX_DIR = os.path.join(KSHIP, "models")         # L5 산출(xlsx) — 링크만 건다
+
+FY_EST = ("2026", "2027", "2028")
+N_ACTUAL, N_EST = 8, 10
+ROLE_KO = {"yard": "조선사", "holding": "지주", "engine": "엔진", "equip": "기자재", "steel": "강재"}
+STATUS_KO = {"full": "완성", "partial": "부분", "no_fin": "재무 없음"}
+SEG_COLORS = ["#3987e5", "#199e70", "#9085e9", "#c98500", "#d55181", "#008300"]
+COHORT_ORDER = ["①적자", "②BEP", "③중마진", "④호황", "⑤초호황"]
+COHORT_COLORS = {"①적자": "#e66767", "②BEP": "#9085e9", "③중마진": "#3987e5", "④호황": "#199e70", "⑤초호황": "#c98500"}
+DISCLAIMER = "모델 산출값 — 목표주가·추천 아님"
+AIK_CREDIT = "aikstockdata.com(금융위 확정종가 T+1) — 출처표기·비영리 이용"
+# 매출 드라이버(kship_model.py STRATEGIES 의 type) → 화면 표기. 폴백은 폴백이라고 적는다(고객 연동으로 오해 금지).
+DRIVER_KO = {
+    "trend_seasonal": "추세+계절성 폴백",
+    "customer_yard_revenue_weighted": "고객 조선사 매출 연동",
+    "sls_marine_plus_uncovered_backlog_runoff": "선표(SLS)+미커버 잔고 소진",
+    "subsidiary_yard_scaled": "종속 조선사 비율 합산",
+    "subsidiary_models": "종속사 모델 합산",
+    "median_flat": "최근 4분기 중위 유지",
+    "residual": "연결−별도−종속사 잔차",
+}
+
+# 섹션 전용 스타일. 공용 kship.css 는 건드리지 않고 .kmodel 로 범위를 묶는다(회사 페이지 표 규칙과 충돌 금지).
+SECTION_CSS = """
+.kmodel th.l,.kmodel td.l{text-align:left}
+.kmodel table.pnl th.rowh{text-align:left;position:sticky;left:0;z-index:2;background:var(--pn,#171a21);color:var(--tx,#e6e8ec);font-weight:500;font-size:12px}
+.kmodel table.pnl td.est,.kmodel table.pnl th.est{background:rgba(251,191,36,.07);color:var(--tx2,#98a1b0)}
+.kmodel table.pnl td.est{border-bottom-style:dashed}
+.kmodel table.pnl tr.grp td{text-align:left;color:var(--tx3,#5d6675);font-size:10.5px;background:var(--pn2,#1e222b);padding:7px 9px 4px}
+.kmodel table.pnl tr.derived td,.kmodel table.pnl tr.derived th{color:var(--tx2,#98a1b0);font-style:italic}
+.kmodel .assum{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.kmodel .assum>div{background:var(--pn2,#1e222b);border:1px solid var(--ln,#2a2f3a);border-radius:var(--r2,7px);padding:9px 11px;font-size:12px;min-width:0}
+.kmodel .assum b{display:block;font-size:14px;font-variant-numeric:tabular-nums;font-weight:600;overflow-wrap:anywhere}
+.kmodel .assum span{display:block;font-size:10.5px;color:var(--tx3,#5d6675);margin-top:3px}
+.kmodel .assum i{font-style:normal;font-size:11px;color:var(--tx2,#98a1b0);font-variant-numeric:tabular-nums}
+.kmodel .band{position:relative;height:10px;border-radius:5px;background:var(--pn3,#242935);margin:14px 0 6px}
+.kmodel .band i{position:absolute;top:0;bottom:0;background:rgba(96,165,250,.35);border-radius:5px}
+.kmodel .band b{position:absolute;top:-4px;width:2px;height:18px;background:var(--wn,#fbbf24)}
+.kmodel .band em{position:absolute;top:-4px;width:2px;height:18px;background:var(--up,#4ade80)}
+.kmodel .bandlbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--tx3,#5d6675)}
+.kmodel .disclaim{display:inline-block;font-weight:700;color:var(--wn,#fbbf24);border:1px solid rgba(251,191,36,.35);border-radius:6px;padding:3px 9px;margin:6px 0 2px}
+.kmodel .fn{font-size:11px;color:var(--tx2,#98a1b0);line-height:1.8}
+.kmodel .fn li{margin-left:16px}
+.kmodel .kpi .est b{color:var(--tx,#e6e8ec)}
+.kmodel .kpi .est{border-style:dashed}
+.kmodel .dl{display:inline-flex;align-items:center;gap:8px;font-size:12px;border:1px solid var(--ln,#2a2f3a);border-radius:8px;padding:7px 12px;background:var(--pn2,#1e222b)}
+.kmodel .dl.off{color:var(--tx3,#5d6675);border-style:dashed}
+"""
+
+
+# ── 숫자 표기(모델 단위는 억원·원·배·%) ─────────────────────────
+
+def _num(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+_NEG_ZERO = re.compile(r"^-(0(?:\.0+)?)(%|배)?$")
+
+
+def _nz(s):
+    """반올림 잔재 '-0.0'·'-0'·'-0.0%' 는 부호를 뗀다 — 화면에서 음수로 읽히지 않게(값 자체는 바꾸지 않는다)."""
+    return _NEG_ZERO.sub(lambda m: m.group(1) + (m.group(2) or ""), s)
+
+
+def fmt_a(v):
+    """억원. 절대값 10 미만은 소수 1자리, 그 밖은 정수 콤마. 음수는 '-1,234'."""
+    if not _num(v):
+        return "—"
+    return _nz(format(v, ",.1f") if abs(v) < 10 else format(round(v), ",d"))
+
+
+def fmt_won(v):
+    if not _num(v):
+        return "—"
+    return _nz(format(round(v), ",d"))
+
+
+def fmt_pct(v, d=1):
+    return _nz(("%%.%df%%%%" % d) % (v * 100)) if _num(v) else "—"
+
+
+def fmt_pct100(v, d=1):
+    """이미 % 단위인 값(백테스트 WAPE 등)."""
+    return _nz(("%%.%df%%%%" % d) % v) if _num(v) else "—"
+
+
+def fmt_x(v):
+    return _nz("%.1f배" % v) if _num(v) else "—"
+
+
+def fmt_rate(v):
+    return _nz(format(v, ",.1f")) if _num(v) else "—"
+
+
+def driver_label(t):
+    """드라이버 type → 한글 표기(모르는 type 은 그대로)."""
+    return DRIVER_KO.get(t) or (t or "—")
+
+
+def model_driver(model):
+    """(type, basis). type 은 L4 최상위 driver_type, 없으면 첫 사업부 driver.type. basis 는 매출액 행 첫 추정 칸의 근거."""
+    t = model.get("driver_type")
+    if not t:
+        t = next((s["driver"].get("type") for s in (model.get("segments") or []) if isinstance(s.get("driver"), dict) and s["driver"].get("type")), None)
+    _, est = window_quarters(model)
+    c = cell(row_map(model).get("매출액"), est[0]) if est else None
+    return t, ((c or {}).get("basis") or None)
+
+
+def _ratio(a, b):
+    return (a / b) if (_num(a) and _num(b) and b) else None
+
+
+def _is_est(kind):
+    return kind in ("estimate", "mixed")
+
+
+# ── 모델 접근자 ─────────────────────────────────────────────
+
+def row_map(model):
+    return {r["key"]: r for r in model.get("rows", [])}
+
+
+def cell(row, q, kind="q"):
+    """row[kind][q] → dict | None. 값이 숫자가 아니면 None(0 으로 바꾸지 않는다)."""
+    if not row:
+        return None
+    c = (row.get(kind) or {}).get(q)
+    return c if isinstance(c, dict) and _num(c.get("v")) else None
+
+
+def window_quarters(model):
+    """최근 8A + 10E. 모델의 periods.quarters 와 last_actual 로 자른다."""
+    qs = list((model.get("periods") or {}).get("quarters") or [])
+    la = (model.get("periods") or {}).get("last_actual") or model.get("origin")
+    act = [q for q in qs if la and q <= la]
+    est = [q for q in qs if not la or q > la]
+    return act[-N_ACTUAL:], est[:N_EST]
+
+
+def model_summary(model):
+    """허브 표·KPI 스트립 공용: FY별 매출/OP/OPM/EPS/PER/PBR + 현재 PER/PBR + status."""
+    rm = row_map(model)
+    out = {"fy": {}, "per_now": (model.get("valuation") or {}).get("per_now"),
+           "pbr_now": (model.get("valuation") or {}).get("pbr_now"),
+           "status": (model.get("quality") or {}).get("status") or model.get("status")}
+    for y in ("2025",) + FY_EST:
+        rev, op, eps = cell(rm.get("매출액"), y, "a"), cell(rm.get("영업이익"), y, "a"), cell(rm.get("EPS"), y, "a")
+        per, pbr = cell(rm.get("PER"), y, "a"), cell(rm.get("PBR"), y, "a")
+        out["fy"][y] = {"rev": rev["v"] if rev else None, "op": op["v"] if op else None,
+                        "opm": _ratio(op["v"] if op else None, rev["v"] if rev else None),
+                        "eps": eps["v"] if eps else None, "per": per["v"] if per else None, "pbr": pbr["v"] if pbr else None,
+                        "kind": (rev or op or eps or {}).get("kind")}
+    if not out["status"]:
+        q = model.get("quality") or {}
+        n = q.get("fin_quarters")
+        out["status"] = "no_fin" if n == 0 else ("partial" if (q.get("missing") or not q.get("identities_ok", True)) else "full")
+    return out
+
+
+# ── ① KPI 스트립 ────────────────────────────────────────────
+
+def _kpi_strip(model, price):
+    s = model_summary(model)
+    tiles = []
+    for y in FY_EST:
+        f = s["fy"][y]
+        tiles.append('<div class="est"><b>%s<small>억</small></b><span>FY%sE 매출 · %s</span>'
+                     '<i>OP %s억 · OPM %s · EPS %s원</i></div>'
+                     % (fmt_a(f["rev"]), E(y), "추정" if _is_est(f["kind"]) or f["kind"] is None else "실적",
+                        fmt_a(f["op"]), fmt_pct(f["opm"]), fmt_won(f["eps"])))
+    v = model.get("valuation") or {}
+    close = (v.get("price") or {}).get("close")
+    as_of = (v.get("price") or {}).get("as_of") or ""
+    ttm = ""
+    if isinstance(price, dict) and (_num(price.get("pe_ttm")) or _num(price.get("pb"))):
+        ttm = "TTM %s / %s(aikstockdata)" % (fmt_x(price.get("pe_ttm")), fmt_x(price.get("pb")))
+    tiles.append('<div><b>%s</b><span>현재 PER(12M fwd EPS %s원)</span><i>%s</i></div>'
+                 % (fmt_x(s["per_now"]), fmt_won(v.get("eps_fwd12m")), E(ttm) if ttm else "종가 %s원 · %s" % (fmt_won(close), E(as_of))))
+    tiles.append('<div><b>%s</b><span>현재 PBR(최근 BPS %s원)</span><i>%s</i></div>'
+                 % (fmt_x(s["pbr_now"]), fmt_won(v.get("bps_latest")), "종가 %s원 · %s" % (fmt_won(close), E(as_of))))
+    return ('<section class="card"><h2>실적 모델 KPI <em>FY2026E~28E · 억원 · 점선 칸은 추정 · 기준 %s · %s</em></h2>'
+            '<div class="kpi">%s</div></section>' % (E(model.get("origin") or "—"), E(DISCLAIMER), "".join(tiles)))
+
+
+# ── ② 분기 손익표 ───────────────────────────────────────────
+
+PNL_ORDER = ["매출액", "매출원가", "매출총이익", "판관비", "영업이익", "OPM", "EBITDA", "금융손익", "세전이익", "법인세비용",
+             "당기순이익", "지배주주순이익", "EPS", "BPS"]
+
+
+def _derived_opm_row(rm):
+    rev, op = rm.get("매출액"), rm.get("영업이익")
+    if not rev or not op:
+        return None
+    q = {}
+    for k in (rev.get("q") or {}):
+        a, b = cell(rev, k), cell(op, k)
+        if a and b and a["v"]:
+            kind = "estimate" if _is_est(a["kind"]) or _is_est(b["kind"]) else "actual"
+            q[k] = {"v": b["v"] / a["v"], "kind": kind, "basis": "영업이익 ÷ 매출액(파생)", "src": "derived"}
+    return {"key": "OPM", "label": "영업이익률", "group": "손익", "unit": "%", "q": q, "a": {}, "_derived": True}
+
+
+def _pnl_table(model):
+    rm = row_map(model)
+    act, est = window_quarters(model)
+    cols = act + est
+    if "OPM" not in rm:
+        d = _derived_opm_row(rm)
+        if d:
+            rm["OPM"] = d
+    # 손익 → 사업부 → 주당 순. 모델 순서를 유지하되 손익은 PNL_ORDER 로 정렬한다.
+    groups = collections.OrderedDict()
+    for key in PNL_ORDER:
+        if key in rm:
+            groups.setdefault(rm[key].get("group") or "손익", []).append(rm[key])
+    for r in model.get("rows", []):
+        if r["key"] in PNL_ORDER or r["key"] in ("PER", "PBR"):
+            continue
+        groups.setdefault(r.get("group") or "기타", []).append(r)
+    head = ['<th class="l rowh">항목</th><th class="l">단위</th>']
+    for q in cols:
+        e = q in est
+        head.append('<th%s>%s<br>%s</th>' % (' class="est"' if e else "", E(q), "E" if e else "A"))
+    body = []
+    for g, rows in groups.items():
+        body.append('<tr class="grp"><td colspan="%d">%s</td></tr>' % (len(cols) + 2, E(g)))
+        for r in rows:
+            unit = r.get("unit") or ""
+            tds = []
+            for q in cols:
+                c = cell(r, q)
+                if not c:
+                    tds.append('<td class="mut%s">—</td>' % (" est" if q in est else ""))
+                    continue
+                e = _is_est(c.get("kind"))
+                v = fmt_pct(c["v"]) if unit == "%" else (fmt_won(c["v"]) if unit in ("원",) else fmt_a(c["v"]))
+                tip = ("추정 · " + (c.get("basis") or "basis 미기재")) if e else ("실적 · " + (c.get("src") or "출처 미기재"))
+                tds.append('<td%s title="%s">%s</td>' % (' class="est"' if e else "", E(tip), v))
+            body.append('<tr%s><th class="rowh" scope="row">%s</th><td class="l mut">%s</td>%s</tr>'
+                        % (' class="derived"' if r.get("_derived") else "", E(r.get("label") or r["key"]), E(unit), "".join(tds)))
+    return ('<section class="card"><h2>분기 손익 <em>최근 %d분기 실적(A) + %d분기 추정(E) · 억원(EPS·BPS 원) · 추정 칸은 음영, 칸에 마우스를 올리면 근거</em></h2>'
+            '<div class="wrap"><table class="pnl"><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div></section>'
+            % (len(act), len(est), "".join(head), "".join(body)))
+
+
+# ── 차트 공용(지연 로드) ────────────────────────────────────
+
+def _chart_script(uid, payload, draw_js, depth):
+    """Chart.js 가 이미 있으면 바로, 없으면 vendor 를 한 번 지연 로드한 뒤 그린다. 전역을 만들지 않는다."""
+    src = "../" * depth + "vendor/chart.umd.min.js"
+    return ('<script>(function(){var D=%s;var SRC=%s;'
+            'function defaults(){%s}'
+            'function rgba(h,a){var n=parseInt(h.slice(1),16);return "rgba("+(n>>16&255)+","+(n>>8&255)+","+(n&255)+","+a+")";}'
+            'function draw(){%s}'
+            'function go(){try{defaults();draw();}catch(e){if(window.console)console.warn("%s",e);}}'
+            'if(window.Chart){go();}else{var s=document.createElement("script");s.src=SRC;s.onload=go;document.head.appendChild(s);}'
+            '})();</script>' % (json_for_html(payload), json.dumps(src), CHART_DEFAULTS_JS, draw_js, uid))
+
+
+# ── ③ 사업부 매출·OPM 차트 ─────────────────────────────────
+
+def _segment_chart(model, uid, depth):
+    rm = row_map(model)
+    act, est = window_quarters(model)
+    cols = act + est
+    segs = []
+    for i, s in enumerate(model.get("segments") or []):
+        rev, op = rm.get("매출" + s["key"]), rm.get("OP" + s["key"])
+        if not rev:
+            continue
+        r = [cell(rev, q) for q in cols]
+        o = [cell(op, q) for q in cols]
+        segs.append({"label": s.get("label") or s["key"], "color": SEG_COLORS[i % len(SEG_COLORS)],
+                     "rev": [round(c["v"]) if c else None for c in r],
+                     "opm": [round(_ratio(b["v"], a["v"]) * 100, 2) if (a and b and a["v"]) else None for a, b in zip(r, o)]})
+    dtype, dbasis = model_driver(model)
+    fallback = False
+    if not segs:
+        # 부문 분리가 없는 회사(기자재 대부분) — 연결 매출·OPM 한 계열로 그린다. 빈 카드보다 낫고, 드라이버(폴백 여부)를 여기서 밝힌다.
+        rev, op = rm.get("매출액"), rm.get("영업이익")
+        if not rev:
+            return ""
+        r = [cell(rev, q) for q in cols]
+        o = [cell(op, q) for q in cols]
+        segs.append({"label": "연결 매출", "color": SEG_COLORS[0],
+                     "rev": [round(c["v"]) if c else None for c in r],
+                     "opm": [round(_ratio(b["v"], a["v"]) * 100, 2) if (a and b and a["v"]) else None for a, b in zip(r, o)]})
+        fallback = True
+    payload = {"labels": cols, "est": [q in est for q in cols], "segs": segs}
+    draw = (
+        'var el=document.getElementById("%s");if(!el)return;'
+        'var ds=[];D.segs.forEach(function(s){ds.push({type:"bar",label:s.label+" 매출(억)",stack:"rev",yAxisID:"y",data:s.rev,'
+        'backgroundColor:D.est.map(function(e){return rgba(s.color,e?0.45:0.9)})});});'
+        'D.segs.forEach(function(s){ds.push({type:"line",label:s.label+" OPM(%%)",yAxisID:"y2",data:s.opm,borderColor:s.color,'
+        'pointRadius:2,segment:{borderDash:function(c){return D.est[c.p1DataIndex]?[4,3]:undefined}}});});'
+        'new Chart(el,{data:{labels:D.labels.map(function(q,i){return q+(D.est[i]?"E":"")}),datasets:ds},'
+        'options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:function(v){return v.toLocaleString()}}},'
+        'y2:{position:"right",grid:{drawOnChartArea:false},ticks:{callback:function(v){return v+"%%"}}}},'
+        'plugins:{tooltip:{callbacks:{label:function(c){return c.dataset.label+": "+(c.parsed.y==null?"—":c.parsed.y.toLocaleString())+(D.est[c.dataIndex]?" (추정)":"")}}}}}});'
+        % (uid + "-seg"))
+    drivers = '<li><b>매출 드라이버</b> — %s%s</li>' % (E(driver_label(dtype)), (" · " + E(dbasis)) if dbasis else "")
+    drivers += "".join('<li><b>%s</b> — %s</li>' % (E(s.get("label") or s["key"]), E(_driver_text(s.get("driver") or {})))
+                       for s in model.get("segments") or [])
+    if fallback:
+        title = ('매출·영업이익률 <em>부문 분리 없음(연결 한 계열) · 막대 = 매출(억, 추정 구간은 옅게) · 선 = OPM(%%, 추정 구간은 점선) · 드라이버 %s</em>'
+                 % E(driver_label(dtype)))
+    else:
+        title = '사업부 매출·영업이익률 <em>막대 = 부문 매출(억, 추정 구간은 옅게) · 선 = 부문 OPM(%, 추정 구간은 점선)</em>'
+    return ('<section class="card"><h2>%s</h2>'
+            '<div class="chart tall"><canvas id="%s"></canvas></div><ul class="fn" style="margin-top:8px">%s</ul>%s</section>'
+            % (title, uid + "-seg", drivers, _chart_script(uid + "-seg", payload, draw, depth)))
+
+
+def _driver_text(d):
+    t = d.get("type") or "—"
+    parts = [("%s(%s)" % (driver_label(t), t)) if t in DRIVER_KO else t]
+    if d.get("weights"):
+        parts.append("고객 비중 " + ", ".join("%s %s" % (k, fmt_pct(v, 0)) for k, v in sorted(d["weights"].items())))
+    if d.get("lag_q") is not None:
+        parts.append("시차 %s분기" % d["lag_q"])
+    if _num(d.get("ratio_used")):
+        parts.append("비례계수 %.4f" % d["ratio_used"])
+    if _num(d.get("reconcile_ratio")):
+        parts.append("화해 비율 %.2f" % d["reconcile_ratio"])
+    if d.get("basis"):
+        parts.append(d["basis"])
+    return " · ".join(parts)
+
+
+# ── ④ 조선사: 선표 매출인식·코호트 비중 ─────────────────────
+
+def _sls_charts(model, sls, uid, depth):
+    if (model.get("role") or "") not in ("yard", "holding"):
+        return ""
+    if not isinstance(sls, dict) or not sls.get("by_quarter"):
+        return ('<section class="card"><h2>선표 매출인식 <em>척당 계약 → 분기 인도 매출(백만$) → 헤지 적용 원화</em></h2>'
+                '<p class="mut">선표 데이터(assets/sls/%s.json)가 아직 없습니다 — 계약 원장 기반 스케줄이 생성되면 여기 그려집니다.</p></section>'
+                % E(model.get("stock") or ""))
+    bq = sls["by_quarter"]
+    qs = sorted(bq)
+    # 모델 지평(최근 8A ~ 10E)에 맞춰 자른다 — 선표 원장은 2030 이후까지 뻗지만 손익표와 같은 축이어야 읽힌다.
+    act, est = window_quarters(model)
+    if act or est:
+        lo, hi = (act or est)[0], (est or act)[-1]
+        qs = [q for q in qs if lo <= q <= hi] or qs
+    la = (model.get("periods") or {}).get("last_actual") or sls.get("origin")
+    est = [(bq[q].get("kind") == "estimate") if bq[q].get("kind") else (bool(la) and q > la) for q in qs]
+    usd = [bq[q].get("usd_m") if _num(bq[q].get("usd_m")) else None for q in qs]
+    krw = [round(bq[q]["hedged_krw_m"] / 100) if _num(bq[q].get("hedged_krw_m")) else None for q in qs]
+    rate = [bq[q].get("applied_rate") if _num(bq[q].get("applied_rate")) else None for q in qs]
+    cohorts = []
+    for c in COHORT_ORDER:
+        vals = []
+        for q in qs:
+            bc = bq[q].get("by_cohort") or {}
+            tot = sum(v for v in bc.values() if _num(v))
+            vals.append(round(bc[c] / tot * 100, 1) if (_num(bc.get(c)) and tot) else None)
+        if any(v is not None for v in vals):
+            cohorts.append({"label": c, "color": COHORT_COLORS[c], "share": vals})
+    topm = sls.get("target_opm") or {}
+    opm = [round(topm[q]["opm"] * 100, 2) if (q in topm and _num(topm[q].get("opm"))) else None for q in qs]
+    payload = {"labels": qs, "est": est, "usd": usd, "krw": krw, "rate": rate, "cohorts": cohorts, "opm": opm}
+    draw = (
+        'var a=document.getElementById("%s"),b=document.getElementById("%s");'
+        'if(a){new Chart(a,{data:{labels:D.labels.map(function(q,i){return q+(D.est[i]?"E":"")}),datasets:['
+        '{type:"bar",label:"선표 매출(백만$)",yAxisID:"y",data:D.usd,backgroundColor:D.est.map(function(e){return rgba("#3987e5",e?0.45:0.9)})},'
+        '{type:"line",label:"헤지 적용 원화(억)",yAxisID:"y2",data:D.krw,borderColor:"#c98500",pointRadius:2,segment:{borderDash:function(c){return D.est[c.p1DataIndex]?[4,3]:undefined}}}]},'
+        'options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:function(v){return v.toLocaleString()}}},y2:{position:"right",grid:{drawOnChartArea:false},ticks:{callback:function(v){return v.toLocaleString()}}}},'
+        'plugins:{tooltip:{callbacks:{afterBody:function(items){var i=items[0].dataIndex;return "적용환율 "+(D.rate[i]==null?"—":D.rate[i].toLocaleString())+(D.est[i]?" (추정)":"")}}}}}});}'
+        'if(b){var ds=D.cohorts.map(function(c){return {type:"bar",label:c.label,stack:"c",yAxisID:"y",data:c.share,backgroundColor:D.est.map(function(e){return rgba(c.color,e?0.45:0.9)})}});'
+        'ds.push({type:"line",label:"타겟 OPM(%%)",yAxisID:"y2",data:D.opm,borderColor:"#e6e8ec",pointRadius:2,segment:{borderDash:function(c){return D.est[c.p1DataIndex]?[4,3]:undefined}}});'
+        'new Chart(b,{data:{labels:D.labels.map(function(q,i){return q+(D.est[i]?"E":"")}),datasets:ds},'
+        'options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,max:100,ticks:{callback:function(v){return v+"%%"}}},y2:{position:"right",grid:{drawOnChartArea:false},ticks:{callback:function(v){return v+"%%"}}}},'
+        'plugins:{tooltip:{callbacks:{label:function(c){return c.dataset.label+": "+(c.parsed.y==null?"—":c.parsed.y)+"%%"}}}}}});}'
+        % (uid + "-sls", uid + "-coh"))
+    first_est = next((q for q, e in zip(qs, est) if e), None)
+    h = bq.get(first_est) or {}
+    rec = sls.get("reconcile") or {}
+    rec_last = rec[sorted(rec)[-1]] if rec else None
+    note = ('<p class="fn" style="margin-top:8px">헤지 %s(헤지환율 %s) + 미헤지 %s(가정 현물 %s) → 적용환율 %s(%s). '
+            '화해 비율 %s — %s 코호트 표(가정): ①적자 −5%% ②BEP 0%% ③중마진 5%% ④호황 10%% ⑤초호황 15%%.</p>'
+            % (fmt_pct(h.get("hedge_ratio"), 0), fmt_rate(h.get("hedge_rate")),
+               fmt_pct((1 - h["hedge_ratio"]) if _num(h.get("hedge_ratio")) else None, 0), fmt_rate(h.get("spot_assumed")),
+               fmt_rate(h.get("applied_rate")), E(first_est or "—"),
+               ("%.2f" % rec_last["ratio"]) if (rec_last and _num(rec_last.get("ratio"))) else "—",
+               E((rec_last or {}).get("note") or "화해 기록 없음") + "."))
+    return ('<section class="card"><h2>선표 매출인식 · 수주업황 코호트 <em>척당 계약 → 분기 인도 매출(백만$) → 헤지 적용 원화 · 코호트 비중(%%) → 타겟 OPM</em></h2>'
+            '<div class="grid2"><div class="chart"><canvas id="%s"></canvas></div><div class="chart"><canvas id="%s"></canvas></div></div>%s%s</section>'
+            % (uid + "-sls", uid + "-coh", note, _chart_script(uid + "-sls", payload, draw, depth)))
+
+
+# ── ⑤ 가정 패널 ─────────────────────────────────────────────
+
+def _assumptions_panel(model, sls):
+    a = model.get("assumptions") or {}
+    _, est = window_quarters(model)
+    pill = '<span class="pill est">가정</span>'
+    items = []
+
+    def item(title, value, sub=""):
+        items.append('<div><b>%s%s</b><span>%s</span>%s</div>' % (value, pill, E(title), ('<i>%s</i>' % sub) if sub else ""))
+
+    dtype, dbasis = model_driver(model)
+    item("매출 드라이버(추정 구간)", E(driver_label(dtype)), E(dbasis or dtype or "모델에 드라이버 기재 없음"))
+    fx = (a.get("fx") or {}).get("USDKRW_avg") or {}
+    fx_e = [(q, fx[q]) for q in est if _num(fx.get(q))][:4]
+    if fx_e:
+        item("환율 원/달러 평균(다음 4분기)", fmt_rate(fx_e[0][1]),
+             " · ".join("%s %s" % (E(q), fmt_rate(v)) for q, v in fx_e) + (" · " + E((a.get("fx") or {}).get("basis")) if (a.get("fx") or {}).get("basis") else ""))
+    else:
+        item("환율 원/달러 평균", "—", "모델에 환율 가정 없음")
+    hd = a.get("hedge")
+    if not isinstance(hd, dict) and isinstance(sls, dict) and sls.get("by_quarter"):
+        q0 = next((q for q in sorted(sls["by_quarter"]) if q in est), None)
+        h = (sls["by_quarter"].get(q0) or {}) if q0 else {}
+        hd = {"ratio": h.get("hedge_ratio"), "rate": h.get("hedge_rate"), "basis": "sls %s" % q0} if h else None
+    if isinstance(hd, dict):
+        item("환헤지 비율 · 헤지환율", "%s · %s" % (fmt_pct(hd.get("ratio"), 0), fmt_rate(hd.get("rate"))), E(hd.get("basis") or ""))
+    for s in model.get("segments") or []:
+        op = s.get("opm_path") or {}
+        ks = [q for q in est if _num(op.get(q))]
+        if ks:
+            item("타겟 OPM · %s" % (s.get("label") or s["key"]), fmt_pct(op[ks[0]]),
+                 "%s %s → %s %s" % (E(ks[0]), fmt_pct(op[ks[0]]), E(ks[-1]), fmt_pct(op[ks[-1]])))
+    item("법인세율", fmt_pct(a.get("tax_rate")), "3년 유효세율 5~27% 클립")
+    item("판관비율", fmt_pct(a.get("sga_ratio")), "최근 4분기 중위")
+    if _num(a.get("interest_rate_debt")) or _num(a.get("interest_rate_asset")):
+        item("이자율 차입 · 이자발생자산", "%s · %s" % (fmt_pct(a.get("interest_rate_debt")), fmt_pct(a.get("interest_rate_asset"))), "평균 잔액 × 실측 이자율")
+    if _num(a.get("minority_share")):
+        item("비지배주주 비중", fmt_pct(a.get("minority_share")), "실측 평균")
+    if _num(a.get("payout")):
+        item("배당성향", fmt_pct(a.get("payout"), 0), "자본 롤(+NI −배당)")
+    fxp = model.get("fx_pnl") or {}
+    if _num(fxp.get("net_usd_exposure_m")):
+        item("외화 순노출(백만$)", format(round(fxp["net_usd_exposure_m"]), ",d"), E(fxp.get("method") or ""))
+    one = [o for o in (a.get("one_offs") or []) if isinstance(o, dict)]
+    if one:
+        item("알려진 일회성 %d건" % len(one), fmt_a(sum(o.get("amt") or 0 for o in one)) + "억",
+             " · ".join("%s %s억 %s" % (E(o.get("q") or ""), fmt_a(o.get("amt")), E((o.get("note") or "")[:40])) for o in one[:4]))
+    cons = model.get("consolidation") or {}
+    subs = cons.get("subsidiaries") or []
+    if subs:
+        item("연결 방식 · 종속사 %d" % len(subs), E(cons.get("method") or "—"), " · ".join(_sub_text(s) for s in subs))
+    mods = ""
+    for m in model.get("modules") or []:
+        rws = []
+        for r in m.get("rows") or []:
+            qv = [(q, c) for q, c in sorted((r.get("q") or {}).items()) if isinstance(c, dict) and _num(c.get("v"))][:6]
+            rws.append('<tr><th class="l" scope="row">%s</th><td class="l mut">%s</td><td class="l">%s</td></tr>'
+                       % (E(r.get("label") or r.get("key") or ""), E(r.get("unit") or ""),
+                          " · ".join('<span%s title="%s">%s %s</span>' % (' class="est"' if _is_est(c.get("kind")) else "", E(c.get("basis") or c.get("src") or ""), E(q), fmt_a(c["v"])) for q, c in qv) or "—"))
+        mods += ('<h3 style="font-size:12px;color:var(--tx2);margin:12px 0 6px">회사 특유 모듈 · %s%s</h3>'
+                 '<div class="wrap"><table><tbody>%s</tbody></table></div>' % (E(m.get("label") or m.get("key") or ""), pill, "".join(rws)))
+    return ('<section class="card"><h2>가정 <em>값은 전부 모델 가정 — 실적이 아니다 · 바꾸려면 xlsx 의 가정 셀</em></h2><div class="assum">%s</div>%s</section>'
+            % ("".join(items), mods))
+
+
+def _sub_text(s):
+    """종속사 한 줄: 이름(종목코드 지분%) — 종목코드·지분이 둘 다 없으면(비상장) 빈 괄호를 만들지 않고 note 를 쓴다."""
+    name = E(s.get("name") or s.get("stock") or "")
+    inner = " ".join(x for x in (E(s.get("stock") or ""), fmt_pct(s.get("stake"), 0) if _num(s.get("stake")) else "") if x)
+    if inner:
+        return "%s(%s)" % (name, inner)
+    return name + ((" — " + E(s["note"])) if s.get("note") else "")
+
+
+# ── ⑥ 밸류에이션 스트립 ─────────────────────────────────────
+
+def _valuation_strip(model, price):
+    v = model.get("valuation") or {}
+    close = (v.get("price") or {}).get("close")
+    as_of = (v.get("price") or {}).get("as_of") or ""
+    band = v.get("per_band") or {}
+    fv = v.get("fair_value_per") or {}
+    fvp = v.get("fair_value_pbr")
+    tiles = [
+        '<div><b>%s</b><span>PER 밴드 lo/mid/hi</span><i>%s · %s · %s · %s</i></div>' % (
+            fmt_x(band.get("mid")), fmt_x(band.get("lo")), fmt_x(band.get("mid")), fmt_x(band.get("hi")), E(band.get("basis") or "근거 미기재")),
+        '<div><b>%s ~ %s</b><span>PER 기준 적정가치 구간(원)</span><i>mid %s · 12M fwd EPS %s원</i></div>' % (
+            fmt_won(fv.get("lo")), fmt_won(fv.get("hi")), fmt_won(fv.get("mid")), fmt_won(v.get("eps_fwd12m"))),
+        '<div><b>%s</b><span>PBR 기준 적정가치(원) = ROE/COE × BPS</span><i>ROE %s · COE %s · 적정 PBR %s</i></div>' % (
+            fmt_won(fvp), fmt_pct(v.get("roe_fwd")), fmt_pct(v.get("coe")), fmt_x(v.get("fair_pbr"))),
+        '<div><b>%s / %s</b><span>현재 PER / PBR(종가 %s원 · %s)</span><i>EV/EBITDA %s</i></div>' % (
+            fmt_x(v.get("per_now")), fmt_x(v.get("pbr_now")), fmt_won(close), E(as_of), fmt_x(v.get("ev_ebitda"))),
+    ]
+    bandh = ""
+    pts = [x for x in (fv.get("lo"), fv.get("hi"), fvp, close) if _num(x)]
+    if pts and _num(fv.get("lo")) and _num(fv.get("hi")) and fv["hi"] > fv["lo"]:
+        lo, hi = min(pts) * 0.9, max(pts) * 1.1
+        pos = lambda x: max(0.0, min(100.0, (x - lo) / (hi - lo) * 100))
+        bandh = ('<div class="band"><i style="left:%.1f%%;width:%.1f%%" title="PER 밴드 적정가치 %s~%s원"></i>%s%s</div>'
+                 '<div class="bandlbl"><span>%s원</span><span>파랑 구간 = PER 밴드 · 노란 선 = 종가 %s원%s</span><span>%s원</span></div>'
+                 % (pos(fv["lo"]), pos(fv["hi"]) - pos(fv["lo"]), fmt_won(fv["lo"]), fmt_won(fv["hi"]),
+                    ('<b style="left:%.1f%%" title="종가 %s원"></b>' % (pos(close), fmt_won(close))) if _num(close) else "",
+                    ('<em style="left:%.1f%%" title="PBR 기준 적정가치 %s원"></em>' % (pos(fvp), fmt_won(fvp))) if _num(fvp) else "",
+                    fmt_won(lo), fmt_won(close), (" · 초록 선 = PBR 기준 %s원" % fmt_won(fvp)) if _num(fvp) else "", fmt_won(hi)))
+    src = ""
+    if isinstance(price, dict):
+        src = '<p class="fn">시세 대조: aikstockdata 종가 %s원(%s) · TTM PER %s · PBR %s — %s</p>' % (
+            fmt_won(price.get("close")), E(price.get("as_of") or ""), fmt_x(price.get("pe_ttm")), fmt_x(price.get("pb")), E(AIK_CREDIT))
+    return ('<section class="card"><h2>밸류에이션 <em>PER 밴드 × 12M fwd EPS · PBR = ROE/COE × BPS · 배 표기</em></h2>'
+            '<span class="disclaim">%s</span><div class="kpi" style="margin-top:8px">%s</div>%s%s</section>'
+            % (E(v.get("note") or DISCLAIMER), "".join(tiles), bandh, src))
+
+
+# ── ⑦ 다운로드 ⑧ 각주 ──────────────────────────────────────
+
+def _download(model, depth):
+    stock = model.get("stock") or ""
+    fn = "%s_model.xlsx" % stock
+    path = os.path.join(XLSX_DIR, fn)
+    if os.path.isfile(path):
+        kb = os.path.getsize(path) / 1024
+        return ('<section class="card"><h2>모델 파일 <em>변수·BS연결·BS별도·subQ·분기·연간예상·TP·외화 시트 · 가정 셀을 바꾸면 재계산</em></h2>'
+                '<a class="dl" href="%smodels/%s" download>⬇ %s <span class="mut">%.0f KB</span></a></section>'
+                % ("../" * depth, E(fn), E(fn), kb))
+    return ('<section class="card"><h2>모델 파일 <em>xlsx</em></h2><span class="dl off">%s — 준비 중</span></section>' % E(fn))
+
+
+def _footnotes(model, fin, price, sls):
+    q = model.get("quality") or {}
+    bt = model.get("backtest") or {}
+    lim = list(q.get("warnings") or [])
+    if isinstance(sls, dict):
+        lim += [w for w in (sls.get("warnings") or []) if w not in lim]
+    if q.get("missing"):
+        lim.append("누락 분기: " + ", ".join(str(x) for x in q["missing"]))
+    if q.get("identities_ok") is False:
+        lim.append("항등식 불일치 있음(모델 quality.identities_ok=false)")
+    fin_txt = "DART 정기보고서(연결·별도 재무제표, 주식의 총수, 배당) — 분기 %s" % (
+        ("%d개" % len(fin["quarters"])) if isinstance(fin, dict) and isinstance(fin.get("quarters"), list) else fmt_won(q.get("fin_quarters")))
+    if isinstance(fin, dict) and fin.get("collected_at"):
+        fin_txt += " · 수집 %s" % E(str(fin["collected_at"]))
+    price_txt = E((price or {}).get("source") if isinstance(price, dict) and price.get("source") else AIK_CREDIT)
+    bt_txt = ("freeze %s · %s분기 앞 · n=%s · 매출 WAPE %s · OP WAPE %s%s" % (
+        E(str(bt.get("freeze") or "—")), E(str(bt.get("horizon") or "—")), E(str(bt.get("n") or "—")),
+        fmt_pct100(bt.get("revenue_wape_pct")), fmt_pct100(bt.get("op_wape_pct")),
+        (" — " + E(bt["note"])) if bt.get("note") else "")) if bt else "백테스트 기록 없음"
+    return ('<section class="card"><h2>각주 <em>출처 · 한계 · 백테스트</em></h2><ul class="fn">'
+            '<li>출처: 재무 %s · 시세 %s · 환율 ECB(api.frankfurter.app, 네이버 대조) · 계약 원장 KIND 단일판매ㆍ공급계약체결 · 부문 롤포워드 정기보고서.</li>'
+            '<li>단위: 표·차트 억원(백만원÷100), EPS·BPS 원, 달러 백만$. 손익은 3개월분(Q4 = 연간 − 3Q 누적). 기준 %s · 생성 %s.</li>'
+            '<li>추정 규칙: 추정 칸은 음영·E 표기, 툴팁에 근거(basis). 가정은 가정 패널에 값과 함께 적었다. 출처 없는 숫자는 없다 — 모델이 주지 않은 값은 —.</li>'
+            '<li>한계: %s</li><li>백테스트: %s</li><li><b>%s</b></li></ul></section>'
+            % (fin_txt, price_txt, E(model.get("origin") or "—"), E(str(model.get("built_at") or "—")),
+               " · ".join(E(str(x)) for x in lim) if lim else "기재 없음", bt_txt, E(DISCLAIMER)))
+
+
+# ── 조립 ────────────────────────────────────────────────────
+
+def render_model_section(entry, model, fin=None, price=None, sls=None, depth=1):
+    """회사 페이지에 붙일 실적 모델 섹션. entry.stock 과 model.stock 이 다르면 거부한다(다른 회사 값이 섞이는 사고 방지)."""
+    stock = (entry or {}).get("stock")
+    if not isinstance(stock, str) or not re.fullmatch(r"\d{6}", stock):
+        raise ValueError("invalid stock identifier")
+    if not isinstance(model, dict) or model.get("stock") != stock:
+        raise ValueError("company_identity_conflict")
+    if isinstance(sls, dict) and sls.get("stock") not in (None, stock):
+        raise ValueError("sls_identity_conflict")
+    name = (entry or {}).get("name") or model.get("name") or stock
+    uid = "kship-model-" + stock
+    s = model_summary(model)
+    dtype, _ = model_driver(model)
+    parts = [
+        '<div id="%s" class="kmodel" data-model-status="%s" data-model-origin="%s" data-model-driver="%s"><style>%s</style>'
+        % (uid, E(str(s["status"] or "")), E(model.get("origin") or ""), E(dtype or ""), SECTION_CSS),
+        '<h2 class="sec">%s · 실적 모델<span>%s · 기준 %s · 드라이버 %s · %s</span></h2>'
+        % (E(name), E(ROLE_KO.get(model.get("role"), model.get("role") or "—")), E(model.get("origin") or "—"),
+           E(driver_label(dtype)), E(DISCLAIMER)),
+        _kpi_strip(model, price),
+        _pnl_table(model),
+        _segment_chart(model, uid, depth),
+        _sls_charts(model, sls, uid, depth),
+        _assumptions_panel(model, sls),
+        _valuation_strip(model, price),
+        _download(model, depth),
+        _footnotes(model, fin, price, sls),
+        "</div>",
+    ]
+    return "".join(parts)
+
+
+def _load_json(path):
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_model(stock, models_dir=None):
+    return _load_json(os.path.join(models_dir or MODELS_DIR, "%s.json" % stock))
+
+
+def _entry_for(stock, model):
+    try:
+        from kship_universe import load as load_universe
+        for r in load_universe():
+            if r.get("stock") == stock:
+                return {"stock": stock, "name": r.get("name"), "role": r.get("role")}
+    except Exception:
+        pass
+    return {"stock": stock, "name": model.get("name"), "role": model.get("role")}
+
+
+def section_for_stock(stock, depth=1):
+    """훅 진입점. 모델 json 이 없으면 "" — 섹션을 만들지 않는다."""
+    model = load_model(stock)
+    if not model:
+        return ""
+    fin = _load_json(os.path.join(FIN_DIR, "%s.json" % stock))
+    prices = _load_json(PRICES_PATH) or {}
+    price = (prices.get("rows") or {}).get(stock) if isinstance(prices, dict) else None
+    if isinstance(price, dict) and not price.get("source") and prices.get("source"):
+        price = dict(price, source=prices["source"])
+    sls = _load_json(os.path.join(SLS_DIR, "%s.json" % stock))
+    return render_model_section(_entry_for(stock, model), model, fin=fin, price=price, sls=sls, depth=depth)
+
+
+# ── 태그 균형 검사(간단 파서) ────────────────────────────────
+
+_VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+
+
+class _Balance(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stack, self.problems = [], []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in _VOID:
+            self.stack.append(tag)
+
+    def handle_startendtag(self, tag, attrs):
+        pass
+
+    def handle_endtag(self, tag):
+        if tag in _VOID:
+            return
+        if not self.stack:
+            self.problems.append("닫는 태그만 있음: </%s>" % tag)
+            return
+        if self.stack[-1] == tag:
+            self.stack.pop()
+            return
+        if tag in self.stack:
+            while self.stack and self.stack[-1] != tag:
+                self.problems.append("안 닫힘: <%s> (</%s> 만남)" % (self.stack.pop(), tag))
+            self.stack.pop()
+        else:
+            self.problems.append("짝 없는 닫는 태그: </%s>" % tag)
+
+
+def check_tag_balance(html_text):
+    """열고 닫힘이 맞지 않는 태그 목록(빈 리스트면 통과). <script>/<style> 안은 HTMLParser 가 CDATA 로 다룬다."""
+    p = _Balance()
+    p.feed(html_text)
+    p.close()
+    return p.problems + ["안 닫힘(끝): <%s>" % t for t in p.stack]
+
+
+# ── 허브 models.html ─────────────────────────────────────────
+
+RENDER_CHECK_MARK = "실적 모델(렌더 확인)"     # --render 출력의 <title>/<h1> 표식 — 회사 페이지가 아니다
+
+
+def _is_company_page(path):
+    """<stock>/index.html 이 진짜 회사 페이지인지. --render 확인 출력(제목에 '렌더 확인')은 회사 페이지로 치지 않는다."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            head = f.read(4000)
+    except OSError:
+        return False
+    return RENDER_CHECK_MARK not in head
+
+
+def _is_company_folder_target(path):
+    """--out 이 argus/kship/<6자리>/index.html 을 가리키면 True — 회사 페이지 자리에 렌더 확인 출력을 쓰지 않는다."""
+    ap = os.path.abspath(path)
+    return bool(re.fullmatch(r"\d{6}", os.path.basename(os.path.dirname(ap)))) and os.path.basename(ap) == "index.html" \
+        and os.path.dirname(os.path.dirname(ap)) == os.path.abspath(KSHIP)
+
+
+def population():
+    """56사 = universe.json(41) ∪ suppliers.json ∪ 회사 폴더(승격분은 페이지 <h1> 에서 이름). 정렬은 종목코드."""
+    rows = collections.OrderedDict()
+    try:
+        from kship_universe import load as load_universe
+        for r in load_universe():
+            rows[r["stock"]] = {"stock": r["stock"], "name": r.get("name"), "role": r.get("role")}
+    except Exception:
+        pass
+    sup = _load_json(os.path.join(ASSETS, "suppliers.json")) or {}
+    for c in sup.get("cos") or []:
+        rows.setdefault(c["stock"], {"stock": c["stock"], "name": c.get("nm"), "role": c.get("role")})
+        if not rows[c["stock"]].get("role") and c.get("role"):
+            rows[c["stock"]]["role"] = c["role"]
+    for d in sorted(os.listdir(KSHIP)):
+        if not re.fullmatch(r"\d{6}", d) or not _is_company_page(os.path.join(KSHIP, d, "index.html")):
+            continue
+        if d not in rows:
+            name = None
+            try:
+                with open(os.path.join(KSHIP, d, "index.html"), encoding="utf-8") as f:
+                    m = re.search(r"<h1>([^<]{1,60})</h1>", f.read(8000))
+                name = m.group(1).strip() if m else None
+            except OSError:
+                pass
+            rows[d] = {"stock": d, "name": name or d, "role": None}
+        rows[d]["has_page"] = True
+    for r in rows.values():
+        r.setdefault("has_page", _is_company_page(os.path.join(KSHIP, r["stock"], "index.html")))
+    return sorted(rows.values(), key=lambda r: r["stock"])
+
+
+def _page_has_section(stock):
+    """회사 페이지 index.html 에 이 회사의 모델 섹션(id=kship-model-<stock>)이 실제로 있는지."""
+    try:
+        with open(os.path.join(KSHIP, stock, "index.html"), encoding="utf-8") as f:
+            return ('id="kship-model-%s"' % stock) in f.read()
+    except OSError:
+        return False
+
+
+def _summary_status(summary, stock):
+    """L4 summary.json 의 status 를 관대하게 읽는다(dict 키 또는 rows 리스트)."""
+    if not isinstance(summary, dict):
+        return None
+    x = summary.get(stock) or (summary.get("rows") or {}).get(stock) if isinstance(summary.get("rows"), dict) else summary.get(stock)
+    if x is None and isinstance(summary.get("rows"), list):
+        x = next((r for r in summary["rows"] if isinstance(r, dict) and r.get("stock") == stock), None)
+    if x is None and isinstance(summary.get("companies"), list):
+        x = next((r for r in summary["companies"] if isinstance(r, dict) and r.get("stock") == stock), None)
+    return x.get("status") if isinstance(x, dict) else None
+
+
+def build_models_hub(models_dir=None, write=True):
+    models_dir = models_dir or MODELS_DIR
+    pop = population()
+    summary = _load_json(os.path.join(models_dir, "summary.json"))
+    built, latest_built, origins = 0, "", collections.Counter()
+    status_n = collections.Counter()
+    trs = []
+    for r in pop:
+        st = r["stock"]
+        model = load_model(st, models_dir)
+        role = (model or {}).get("role") or r.get("role")
+        name = r.get("name") or (model or {}).get("name") or st
+        # 앵커는 회사 페이지에 섹션이 실제로 있을 때만 — 빌더가 아직 다시 그리지 않은 페이지(승격분 등)로는 앵커 없이 보낸다
+        has_sec = r.get("has_page") and _page_has_section(st)
+        link = ('<a href="%s/index.html%s">%s</a>' % (E(st), ("#kship-model-" + E(st)) if has_sec else "", E(name))) if r.get("has_page") else E(name)
+        xlsx = os.path.isfile(os.path.join(XLSX_DIR, "%s_model.xlsx" % st))
+        xl = ('<a href="models/%s_model.xlsx" download>xlsx</a>' % E(st)) if xlsx else '<span class="mut">—</span>'
+        if not model:
+            status_n["none"] += 1
+            trs.append('<tr><td class="l">%s</td><td class="mut">%s</td><td class="l">%s</td>%s<td class="l"><b class="tx3">모델 없음</b></td><td>%s</td></tr>'
+                       % (link, E(st), E(ROLE_KO.get(role, role or "—")), '<td class="mut">—</td>' * 15, xl))
+            continue
+        built += 1
+        if r.get("has_page") and not has_sec:
+            status_n["nosec"] += 1
+            link += ' <span class="mut" title="회사 페이지 빌더(kship_page/kship_parts)가 이 회사를 다시 그리지 않아 섹션이 아직 없음">섹션 없음</span>'
+        s = model_summary(model)
+        status = _summary_status(summary, st) or s["status"] or "—"
+        status_n[status] += 1
+        latest_built = max(latest_built, str(model.get("built_at") or ""))
+        origins[model.get("origin") or "—"] += 1
+        dtype, _ = model_driver(model)
+        cells = ['<td class="l" title="%s">%s</td>' % (E(dtype or ""), E(driver_label(dtype)))]
+        for y in FY_EST:
+            f = s["fy"][y]
+            cells += ['<td class="est" data-v="%s">%s</td>' % (f["rev"] if _num(f["rev"]) else "", fmt_a(f["rev"])),
+                      '<td class="est" data-v="%s">%s</td>' % (f["op"] if _num(f["op"]) else "", fmt_a(f["op"])),
+                      '<td class="est" data-v="%s">%s</td>' % (round(f["opm"] * 100, 2) if _num(f["opm"]) else "", fmt_pct(f["opm"])),
+                      '<td class="est" data-v="%s">%s</td>' % (f["eps"] if _num(f["eps"]) else "", fmt_won(f["eps"]))]
+        cells += ['<td data-v="%s">%s</td>' % (s["per_now"] if _num(s["per_now"]) else "", fmt_x(s["per_now"])),
+                  '<td data-v="%s">%s</td>' % (s["pbr_now"] if _num(s["pbr_now"]) else "", fmt_x(s["pbr_now"]))]
+        cls = {"full": "up", "partial": "wn", "no_fin": "dn"}.get(status, "tx3")
+        trs.append('<tr><td class="l">%s</td><td class="mut">%s</td><td class="l">%s</td>%s<td class="l"><b class="%s">%s</b></td><td>%s</td></tr>'
+                   % (link, E(st), E(ROLE_KO.get(role, role or "—")), "".join(cells), cls, E(STATUS_KO.get(status, status)), xl))
+    # 머리글은 **한 행** — 공용 TABLE_JS 는 thead th 의 평면 순번을 본문 열 번호로 쓰므로 rowspan/colspan 2행 머리글이면 정렬 열이 어긋난다.
+    head = ('<tr><th class="l">회사</th><th>종목코드</th><th class="l">역할</th><th class="l">드라이버</th>'
+            + "".join('<th class="est">FY%sE<br>매출(억)</th><th class="est">FY%sE<br>OP(억)</th><th class="est">FY%sE<br>OPM</th><th class="est">FY%sE<br>EPS(원)</th>'
+                      % ((y[2:],) * 4) for y in FY_EST)
+            + '<th>PER<br>현재</th><th>PBR<br>현재</th><th class="l">상태</th><th>xlsx</th></tr>')
+    origin_txt = ", ".join("%s %d" % (E(k), v) for k, v in sorted(origins.items())) or "—"
+    body = """
+<div class="kmodel"><style>%s</style>
+<div class="kpi">
+ <div><b>%d<small>/ %d</small></b><span>모델 생성 · 모집단</span></div>
+ <div><b>%d</b><span>완성(full) · 부분 %d · 재무 없음 %d · 페이지 섹션 없음 %d</span></div>
+ <div><b>%s</b><span>기준 분기</span></div>
+ <div><b>%s</b><span>최근 생성</span></div>
+</div>
+<section class="card"><h2>실적 모델 — 섹터 표 <em>FY2026E~28E 매출·OP·OPM·EPS(전부 추정, 음영) · 현재 PER/PBR · 억원 · 머리글을 누르면 정렬</em>
+<span class="right"><input data-filter="#mtab" placeholder="회사·종목코드 검색" aria-label="회사 검색" style="background:var(--pn2);border:1px solid var(--ln);border-radius:6px;color:var(--tx);font:12px var(--sans);padding:4px 9px"></span></h2>
+<span class="disclaim">%s</span>
+<div class="wrap tall"><table id="mtab" class="pnl" data-sortable><thead>%s</thead><tbody>%s</tbody></table></div>
+</section>
+<div class="note info">모델은 회사 페이지 하단 「실적 모델」 섹션에 분기 손익표·사업부 차트·가정·밸류에이션으로 펼쳐집니다. 출처 DART 정기보고서 · %s · 환율 ECB(api.frankfurter.app). 모델 없음은 아직 재무 수집·모델 생성이 닿지 않은 회사입니다 — 빈 칸으로 흉내 내지 않습니다.</div>
+</div>
+<script>%s</script>
+""" % (SECTION_CSS, built, len(pop), status_n.get("full", 0), status_n.get("partial", 0), status_n.get("no_fin", 0), status_n.get("nosec", 0),
+       origin_txt, E(latest_built or "—"), E(DISCLAIMER), head, "".join(trs), E(AIK_CREDIT), TABLE_JS)
+    html = page("한국조선 실적 모델 — %d사 FY2026E~28E" % len(pop), body, depth=0, h1="📈 실적 모델",
+                nav=(("허브", "index.html"), ("커버리지", "coverage.html"), ("← ARGUS", "../index.html")),
+                crumbs=(("ARGUS", "../index.html"), ("한국조선", "index.html"), ("실적 모델", None)),
+                lead="조선사·지주·엔진·기자재·강재 모집단 전부에 같은 구조의 분기 실적 모델(subQ 방식)을 적용한 결과표입니다. 값은 전부 모델 추정이며 목표주가·추천이 아닙니다. 회사 이름을 누르면 회사 페이지의 모델 섹션으로 갑니다.")
+    if write:
+        atomic_write(os.path.join(KSHIP, "models.html"), html)
+    return html
+
+
+def main():
+    ap = argparse.ArgumentParser(description="실적 모델 섹션 렌더러 · models.html 빌더")
+    ap.add_argument("--hub", action="store_true", help="argus/kship/models.html 생성")
+    ap.add_argument("--models-dir", default=None, help="모델 json 디렉터리(기본 assets/models)")
+    ap.add_argument("--render", metavar="STOCK", help="한 회사 섹션을 렌더해 --out 에 쓴다(page 셸 포함)")
+    ap.add_argument("--model", help="--render 용 모델 json 경로(기본 assets/models/<stock>.json)")
+    ap.add_argument("--sls", help="--render 용 sls json 경로(선택)")
+    ap.add_argument("--out", help="--render 출력 파일")
+    ap.add_argument("--check", metavar="HTML", help="HTML 파일 태그 균형 검사")
+    a = ap.parse_args()
+    rc = 0
+    if a.check:
+        with open(a.check, encoding="utf-8") as f:
+            probs = check_tag_balance(f.read())
+        print("%s: %s" % (a.check, "태그 균형 OK" if not probs else "문제 %d건" % len(probs)))
+        for p in probs[:20]:
+            print("  -", p)
+        rc |= 1 if probs else 0
+    if a.render:
+        if a.out and _is_company_folder_target(a.out):
+            # 회사 페이지는 kship_page/kship_parts 가 만든다 — 렌더 확인 출력을 그 자리에 쓰면 가짜 회사 페이지가 생기고 허브가 링크한다
+            print("거부: --out 이 회사 페이지 자리(%s)입니다. 렌더 확인 출력은 /tmp 등 다른 곳에 쓰세요." % a.out)
+            return 2
+        model = _load_json(a.model) if a.model else load_model(a.render, a.models_dir)
+        if not model:
+            print("모델 없음: %s" % a.render)
+            return 2
+        sls = _load_json(a.sls) if a.sls else _load_json(os.path.join(SLS_DIR, "%s.json" % a.render))
+        frag = render_model_section({"stock": a.render, "name": model.get("name"), "role": model.get("role")}, model, sls=sls, depth=1)
+        html = page("%s %s" % (model.get("name"), RENDER_CHECK_MARK), frag, depth=1, scripts=("../vendor/chart.umd.min.js",))
+        probs = check_tag_balance(html)
+        if a.out:
+            atomic_write(a.out, html)
+        print("%s %s: %d bytes · 섹션 %d · 태그 균형 %s" % (a.render, model.get("name"), len(html), frag.count('<section class="card">'),
+                                                      "OK" if not probs else "문제 %d건" % len(probs)))
+        rc |= 1 if probs else 0
+    if a.hub:
+        html = build_models_hub(a.models_dir)
+        probs = check_tag_balance(html)
+        print("models.html: %d chars · 행 %d · 태그 균형 %s" % (len(html), html.count("<tr>") - 1, "OK" if not probs else "문제 %d건" % len(probs)))
+        rc |= 1 if probs else 0
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main())

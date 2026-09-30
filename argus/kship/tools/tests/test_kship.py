@@ -5,6 +5,8 @@
 실행: cd argus/kship/tools && python3 -m unittest discover -s tests
 원문 픽스처: HD현대중공업 2026 반기 수주상황(부문 롤포워드)·척당 계약 공시(LPGC 4척).
 """
+import contextlib
+import io
 import json
 import os
 import re
@@ -21,6 +23,7 @@ from kship_parse import parse_orders, unit_of, is_total   # noqa: E402
 from kship_contracts import parse_contract, ship_type_of  # noqa: E402
 from kship_yards import parse_orders_table, parse_revenue_table  # noqa: E402
 from kship_suppliers import classify_product              # noqa: E402
+import kship_universe as U                                # noqa: E402
 
 
 def _fx(name):
@@ -197,6 +200,53 @@ class TestPageShell(unittest.TestCase):
     def test_json_for_html_escapes_script_close(self):
         s = L.json_for_html({"nm": "악성</script><img>"})
         self.assertNotIn("</script>", s)
+
+
+class TestUniverseExplored(unittest.TestCase):
+    """모집단 ④ 탐색 행 — probe 에 판정이 없으면 유지, 강등은 probe 의 명시적 rejected(ok=True)만.
+    2026-09-12 스캔이 promoted 를 {} 로 덮어 '탐색' 16행이 지워진 회귀(57→41)의 두 번째 방어선."""
+
+    NANO = {"stock": "187790", "name": "나노", "market": "KOSDAQ", "industry": "기초 화학물질 제조업", "product": "SCR촉매", "listed": ""}
+    PREV = {"187790": {"stock": "187790", "source": "탐색", "role": "equip",
+                       "reason": "탐색 — 정기보고서 본문: 조선 낱말 10회(선박 10) · 나노 — 선박용 SCR 탈질촉매"}}
+
+    def _recs(self):
+        # MIN_UNIVERSE(20) 을 넘기려고 조선업 업종 20행을 깐다 — 나노는 업종·제품·지정 어느 경로에도 걸리지 않는다.
+        yards = [{"stock": "%06d" % i, "name": "조선%d" % i, "market": "KOSPI", "industry": U.YARD_INDUSTRY,
+                  "product": "선박건조", "listed": ""} for i in range(1, 21)]
+        return yards + [dict(self.NANO)]
+
+    def _select(self, probe, prev):
+        with contextlib.redirect_stderr(io.StringIO()):
+            return U.select(self._recs(), probe=probe, prev_explored=prev)
+
+    def test_kept_without_probe_verdict(self):
+        picked = self._select({"promoted": {}, "rejected": [], "failed": []}, self.PREV)
+        row = next(r for r in picked if r["stock"] == "187790")
+        self.assertEqual(row["source"], "탐색")
+        self.assertEqual(row["role"], "equip")
+        self.assertEqual(row["reason"], self.PREV["187790"]["reason"])
+
+    def test_kept_when_probe_failed_or_unread(self):
+        probe = {"promoted": {}, "failed": [{"stock": "187790", "err": "timed out"}],
+                 "rejected": [{"stock": "187790", "ok": False, "hits": 0, "note": "II 절을 찾지 못함"}]}
+        self.assertIn("187790", [r["stock"] for r in self._select(probe, self.PREV)])
+
+    def test_demoted_only_by_explicit_rejected(self):
+        probe = {"promoted": {}, "rejected": [{"stock": "187790", "ok": True, "hits": 1, "mentions": {}}], "failed": []}
+        self.assertNotIn("187790", [r["stock"] for r in self._select(probe, self.PREV)])
+
+    def test_fresh_promotion_wins_over_prev_row(self):
+        probe = {"promoted": {"187790": {"role": "engine", "reason": "탐색 — 새 증거"}}, "rejected": [], "failed": []}
+        row = next(r for r in self._select(probe, self.PREV) if r["stock"] == "187790")
+        self.assertEqual((row["source"], row["role"], row["reason"]), ("탐색", "engine", "탐색 — 새 증거"))
+
+    def test_not_selected_without_prev_or_probe(self):
+        self.assertNotIn("187790", [r["stock"] for r in self._select({}, {})])
+
+    def test_probe_demoted_reads_only_ok_rows(self):
+        probe = {"rejected": [{"stock": "A", "ok": True}, {"stock": "B", "ok": False}, {"stock": "C"}]}
+        self.assertEqual(U.probe_demoted(probe), {"A", "C"})          # ok 키가 없는 옛 행은 본문을 읽은 판정으로 본다
 
 
 if __name__ == "__main__":

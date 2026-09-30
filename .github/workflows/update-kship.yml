@@ -4,6 +4,13 @@
 # 건너뛰므로 평시 비용은 검색 몇 건이다. 수집기는 **하나씩** 돌린다 — DART는 병렬 프로세스가
 # 동시에 두드리면 IP 단위로 연결을 끊는다(RemoteDisconnected, 30~60분).
 # argus/index.html의 진입 링크는 로컬 크론이 매일 지우므로 여기서 재주입한다(kce와 같은 발상).
+#
+# 2026-09-30 실적 모델(argus/kship/MODEL.md §8) 단계를 붙였다:
+#   재무제표(DART — 같은 job 안에서 다른 수집기 뒤에 순차, 프로세스 하나) → 환율·시세(키 없음)
+#   → 선표·모델·xlsx(월요일 · 재무 변경 · 수동 입력 때만) → 페이지·모델 허브.
+# 재무 원문 HTML 캐시(tools/assets/fin_cache/, 57사 128MB 실측)는 git 에 넣지 않고 actions/cache 로만
+# 이어간다 — 캐시가 비면(첫 실행·7일 미사용 만료) 57사 × 20분기를 다시 받느라 ≈ 60분이 든다(timeout 180).
+# fin json 은 캐시 파일 목록이 바뀐 날만 다시 만들어 `collected_at` 만 바뀌는 커밋을 막는다.
 name: update-kship
 on:
   schedule:
@@ -11,8 +18,13 @@ on:
   workflow_dispatch:
     inputs:
       quarter:
-        description: "정기보고서 분기 강제(예: 2026Q3) — 비우면 최신 분기"
+        description: "정기보고서 분기 강제(예: 2026Q3) — 비우면 최신 분기(재무제표는 분기말+50일·사업보고서+95일 규칙)"
         required: false
+      models:
+        description: "실적 모델(선표·모델·xlsx)을 이번 실행에서 재생성 — 비우면 월요일·재무 변경 시에만"
+        required: false
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -24,7 +36,7 @@ env:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180         # 재무 캐시가 비어 있을 때(첫 실행·만료) 57사 수집 ≈ 60분 + 나머지
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,11 +44,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install openpyxl (xlsx 생성기·패치 도구·테스트)
+        run: python3 -m pip install --quiet --disable-pip-version-check openpyxl==3.1.5
       - name: Tests (before)
         run: |
           cd argus/kship/tools && python3 -m unittest discover -s tests -p 'test_*.py'
           cd ../../kce/tools && python3 -m unittest discover -s tests -p 'test_*.py'
-      - name: Collect and build
+
+      # 재무 원문 캐시 — 가장 최근에 저장된 항목을 복원한다(키는 실행마다 새로 만들고 prefix 로 찾는다).
+      - name: Restore DART financial statement cache
+        id: fincache
+        uses: actions/cache/restore@v4
+        with:
+          path: argus/kship/tools/assets/fin_cache
+          key: kship-fin-cache-${{ github.run_id }}
+          restore-keys: |
+            kship-fin-cache-
+
+      - name: Collect and build (계약·정기보고서·기자재)
         id: build
         continue-on-error: true
         env:
@@ -57,28 +82,216 @@ jobs:
           python3 kship_suppliers.py --collect "${Q[@]}"
           python3 kship_suppliers.py --build
           python3 build_dicts.py
-          python3 kship_page.py --all
+
+      # 재무제표 — 위 수집기가 끝난 뒤 같은 job 에서 순차로. kship_fin 자체가 단일 프로세스 락(.collect.lock)을 건다.
+      - name: Financial statements (DART, 순차 한 프로세스)
+        id: fin
+        continue-on-error: true
+        env:
+          QUARTER_INPUT: ${{ github.event.inputs.quarter }}
+        shell: bash
+        working-directory: argus/kship/tools
+        run: |
+          set -o pipefail
+          # 기대 최신 분기: 분기·반기보고서는 분기말 +45일, 사업보고서는 +90일 안팎에 접수 → 여유 50/95일.
+          # (kship_fin.py 의 기본 마지막 분기는 상수라 여기서 날짜로 정한다.)
+          Q1="$(python3 - <<'PY'
+          import datetime, os
+          d = datetime.date.fromisoformat(os.environ["TODAY"]) if os.environ.get("TODAY") else datetime.date.today()
+          y, q = d.year, (d.month - 1) // 3 + 1
+          while True:
+              q -= 1
+              if q == 0:
+                  y, q = y - 1, 4
+              m = q * 3
+              end = datetime.date(y + (m == 12), m % 12 + 1, 1) - datetime.timedelta(days=1)
+              if end + datetime.timedelta(days=95 if q == 4 else 50) <= d:
+                  print("%dQ%d" % (y, q)); break
+          PY
+          )"
+          if [ -n "${QUARTER_INPUT:-}" ]; then
+            if ! printf '%s' "$QUARTER_INPUT" | grep -Eq '^[0-9]{4}Q[1-4]$'; then echo "::error::quarter 형식"; exit 2; fi
+            Q1="$QUARTER_INPUT"
+          fi
+          echo "재무제표 대상 분기 2021Q4..$Q1"
+          # '보고서 없음' 으로 확정된 최신 2분기 meta 는 지워 다시 찾는다(늦은 접수 대비). 그 외 캐시는 체크포인트.
+          python3 - "$Q1" <<'PY'
+          import glob, json, os, sys
+          q1 = sys.argv[1]; y, q = int(q1[:4]), int(q1[5])
+          prev = "%dQ%d" % ((y, q - 1) if q > 1 else (y - 1, 4))
+          n = 0
+          for qq in (q1, prev):
+              for p in glob.glob("assets/fin_cache/*/%s_meta.json" % qq):
+                  try:
+                      m = json.load(open(p, encoding="utf-8"))
+                  except Exception:
+                      continue
+                  if m.get("rcp") is None:
+                      os.remove(p); n += 1
+          print("재탐색할 '보고서 없음' meta: %d" % n)
+          PY
+          listing() { find assets/fin_cache -type f -not -name '.collect.lock' 2>/dev/null | LC_ALL=C sort | sha256sum | cut -c1-16; }
+          BEFORE="$(listing)"
+          python3 kship_fin.py --collect --all --quarters "2021Q4..$Q1"
+          AFTER="$(listing)"
+          if [ "$BEFORE" != "$AFTER" ] || [ ! -f assets/fin/010140.json ]; then
+            echo "캐시 변경($BEFORE → $AFTER) — fin json 재생성"
+            python3 kship_fin.py --build --all --quarters "2021Q4..$Q1"
+            echo "fin_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "캐시 변경 없음 — fin json 유지"
+            echo "fin_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "fin json $(ls assets/fin 2>/dev/null | wc -l)개 · FAIL $(grep -c FAIL assets/fin_collect.log 2>/dev/null || echo 0)건"
+          tail -3 assets/fin_collect.log || true
+
+      # 캐시가 바뀌었거나(새 보고서) 단계가 중간에 끊겼을 때(출력 없음) 저장한다 — 진행분을 다음 실행이 이어받는다.
+      - name: Save DART financial statement cache
+        if: always() && steps.fin.outcome != 'skipped' && steps.fin.outputs.fin_changed != 'false'
+        uses: actions/cache/save@v4
+        with:
+          path: argus/kship/tools/assets/fin_cache
+          key: kship-fin-cache-${{ github.run_id }}
+
+      - name: FX and prices (ECB · aikstockdata, 키 없음)
+        id: market
+        continue-on-error: true
+        shell: bash
+        working-directory: argus/kship/tools
+        run: |
+          set -o pipefail
+          python3 kship_fx.py
+          python3 kship_price.py
+          # 러너에는 토스 일봉 모듈이 없어 history_quarterly(분기 기말/고/저/평균 — PER 밴드·xlsx 종가 4행)가 비는데,
+          # 그대로 커밋하면 맥미니 로컬 실행과 날마다 뒤집힌다. 직전 커밋의 이력을 이어 붙이고 carried_from 을 남긴다.
+          python3 - <<'PY'
+          import json, subprocess
+          path = "assets/prices.json"
+          try:
+              prev = json.loads(subprocess.run(["git", "show", "HEAD:argus/kship/tools/assets/prices.json"],
+                                               check=True, capture_output=True, text=True).stdout)
+          except Exception as e:
+              print("직전 prices.json 없음 — 이력 이어붙임 생략:", e); raise SystemExit(0)
+          cur = json.load(open(path, encoding="utf-8"))
+          n = 0
+          for code, row in cur.get("rows", {}).items():
+              if row.get("history_quarterly") or "error" in row:
+                  continue
+              old = (prev.get("rows") or {}).get(code) or {}
+              if not old.get("history_quarterly"):
+                  continue
+              row["history_quarterly"] = old["history_quarterly"]
+              meta = dict(old.get("history_meta") or {})
+              meta["carried_from"] = meta.get("carried_from") or prev.get("as_of")
+              row["history_meta"] = meta
+              n += 1
+          if n:
+              h = cur.setdefault("history", {})
+              h["carried_n"] = n
+              h["carried_note"] = "러너에 토스 일봉이 없어 직전 커밋(%s 기준)의 history_quarterly 를 이어 붙였다 — history_meta.carried_from 참조" % prev.get("as_of")
+              with open(path, "w", encoding="utf-8") as f:
+                  json.dump(cur, f, ensure_ascii=False, indent=1)
+                  f.write("\n")
+          print("history 이어붙임: %d 종목" % n)
+          PY
+
+      # 모델은 매일 다시 만들면 json ≈ 4.4MB + xlsx ≈ 3.5MB 가 날마다 git 이력에 쌓인다(.git 이미 350MB).
+      # 시세·환율은 매일, 모델은 월요일 · 재무 변경 · 수동 입력 때만. 페이지의 시세 대조 줄은 prices.json 을 직접 읽어 매일 새롭다.
+      - name: Decide whether to rebuild models
+        id: gate
+        shell: bash
+        env:
+          MODELS_INPUT: ${{ github.event.inputs.models }}
+          FIN_CHANGED: ${{ steps.fin.outputs.fin_changed }}
+        run: |
+          DOW="$(date -u +%u)"     # 01:40 UTC = 10:40 KST 같은 날, 월요일 = 1
+          WHY=""
+          [ "${MODELS_INPUT:-}" = "true" ] && WHY="수동 입력"
+          [ "${FIN_CHANGED:-}" = "true" ] && WHY="${WHY:+$WHY·}재무 변경"
+          [ "$DOW" = "1" ] && WHY="${WHY:+$WHY·}월요일"
+          [ -f argus/kship/tools/assets/models/summary.json ] || WHY="${WHY:+$WHY·}summary.json 없음"
+          if [ -n "$WHY" ]; then
+            { echo "models=true"; echo "why=$WHY"; } >> "$GITHUB_OUTPUT"
+          else
+            { echo "models=false"; echo "why=평일·변경 없음"; } >> "$GITHUB_OUTPUT"
+          fi
+          echo "모델 재생성: ${WHY:-안 함(평일·변경 없음)}"
+
+      - name: SLS · models · xlsx
+        id: models
+        if: steps.gate.outputs.models == 'true'
+        continue-on-error: true
+        shell: bash
+        working-directory: argus/kship/tools
+        run: |
+          set -o pipefail
+          python3 kship_sls.py --all --report          # 계약 원장·yards_cache·fx.json → assets/sls/ (네트워크 없음)
+          python3 kship_model.py --build --all --xlsx  # fin·fx·prices·sls → assets/models/ + ../models/<stock>_model.xlsx
+
+      - name: Pages (조선사·기자재·모델 허브·진입 링크)
+        id: pages
+        continue-on-error: true
+        shell: bash
+        working-directory: argus/kship/tools
+        run: |
+          set -o pipefail
+          python3 kship_page.py --all                  # 훅이 assets/models/<stock>.json 이 있는 회사에만 「실적 모델」 섹션을 붙인다
           python3 kship_parts.py --all
+          python3 kship_model_section.py --hub         # models.html
           python3 inject_link.py --apply
+
       - name: Tests (after)
         run: |
           cd argus/kship/tools && python3 -m unittest discover -s tests -p 'test_*.py'
           git diff --check || true
+
       - name: Commit
         shell: bash
+        env:
+          MODELS: ${{ steps.gate.outputs.models }}
         run: |
           git config user.name "kship-bot"
           git config user.email "kship-bot@users.noreply.github.com"
-          git reset -q -- '*.pyc' '**/__pycache__/**' 2>/dev/null || true
-          if [ -z "$(git status --porcelain -- argus/kship argus/index.html)" ]; then
+          # 원문 HTML 캐시(fin_cache 128MB)·수집 로그는 커밋하지 않는다 — 캐시는 actions/cache 로만 이어간다.
+          git add -- argus/kship argus/index.html \
+            ':(exclude)argus/kship/tools/assets/fin_cache' \
+            ':(exclude)argus/kship/tools/assets/fin_collect.log' \
+            ':(exclude,glob)**/__pycache__/**' ':(exclude,glob)**/*.pyc'
+          if git diff --cached --quiet; then
             echo "변경 없음"; exit 0
           fi
-          git add -- argus/kship argus/index.html
-          git commit -m "kship: 자동 갱신 $(date -u +%Y-%m-%d) (계약·정기보고서·기자재·진입 링크)"
+          git diff --cached --stat | tail -3
+          PARTS="계약·정기보고서·기자재·재무·환율·시세"
+          [ "${MODELS:-}" = "true" ] && PARTS="$PARTS·모델"
+          git commit -m "kship: 자동 갱신 $(date -u +%Y-%m-%d) ($PARTS·진입 링크)"
           git pull --rebase origin main
           git push origin HEAD:main
-      - name: Fail if build errored
-        if: always() && steps.build.outcome == 'failure'
+
+      - name: Report
+        if: always()
+        shell: bash
         run: |
-          echo "::error::수집·생성 단계 실패 — 성공한 산출물은 커밋됐다. 로그를 확인하라"
+          SUMMARY="$(python3 - <<'PY'
+          import json
+          try:
+              s = json.load(open("argus/kship/tools/assets/models/summary.json", encoding="utf-8"))
+              print("built %s · %s" % (s.get("built_at"), s.get("counts")))
+          except Exception as e:
+              print("summary.json 없음: %s" % e)
+          PY
+          )"
+          {
+            echo "### 한국조선 갱신 결과 $(date -u +%Y-%m-%d)"
+            echo "- 계약·정기보고서·기자재: ${{ steps.build.outcome }}"
+            echo "- 재무제표(DART): ${{ steps.fin.outcome }} · fin 변경 ${{ steps.fin.outputs.fin_changed || '-' }} · fin json $(ls argus/kship/tools/assets/fin 2>/dev/null | wc -l)개"
+            echo "- 환율·시세: ${{ steps.market.outcome }}"
+            echo "- 모델: ${{ steps.models.outcome }} (${{ steps.gate.outputs.why || '-' }}) — $SUMMARY"
+            echo "- 페이지·허브: ${{ steps.pages.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 일부 단계가 실패해도 성공한 산출물은 위에서 이미 커밋된다. 실패가 하나라도 있으면 job 을 실패로 표시해 알림이 가게 한다.
+      - name: Fail if any step errored
+        if: always() && (steps.build.outcome == 'failure' || steps.fin.outcome == 'failure' || steps.market.outcome == 'failure' || steps.models.outcome == 'failure' || steps.pages.outcome == 'failure')
+        run: |
+          echo "::error::수집·생성 단계 실패 — build=${{ steps.build.outcome }} fin=${{ steps.fin.outcome }} market=${{ steps.market.outcome }} models=${{ steps.models.outcome }} pages=${{ steps.pages.outcome }} (성공한 산출물은 커밋됐다. 로그를 확인하라)"
           exit 1

@@ -1,0 +1,1598 @@
+{
+ "stock": "439260",
+ "name": "대한조선",
+ "origin": "2026Q2",
+ "unit": "USD_million | KRW_million",
+ "curve": "linear_progress",
+ "built_at": "2026-09-30",
+ "counts": {
+  "contracts": 16,
+  "counted": 16,
+  "shared_excluded": 0,
+  "skipped": 0,
+  "end_estimated": 0,
+  "estimated_series": 13,
+  "schedule_quarters": 18,
+  "forecast_window": {
+   "from": "2026Q3",
+   "to": "2028Q4",
+   "quarters": 10,
+   "usd_m": 1907.587,
+   "hedged_krw_m": 2709911.6
+  }
+ },
+ "fx": {
+  "source_counts": {
+   "fx.json quarters": 16
+  },
+  "fx_json": true,
+  "const": 1350.0,
+  "spot_policy": "건조시점 환율 = fx.json quarters/forward, 없으면 상수(가정)"
+ },
+ "hedge": {
+  "quarter": "2026Q2",
+  "usd_sell_m": null,
+  "backlog_krw_m": 2366510,
+  "hedge_rate": null,
+  "hedge_ratio_implied_spot": null,
+  "implied_spot_rate": null,
+  "implied_basis": null,
+  "hedge_ratio": 0.7,
+  "hedge_ratio_raw": null,
+  "kind": "estimate",
+  "basis": "통화선도 공시 없음 → 레퍼런스 SLS 시트의 HEDGE 70% 가정. hedge_rate 는 계약별 수주시점 환율로 대체"
+ },
+ "cohort_method": "척당 금액 = amt_usd_m ÷ ships. (1) 연도 시장 수준: 선종별로 표본 2건 이상인 연도의 척당 중위를 그 선종의 첫 연도 중위로 나눈 비율의 선종 간 중위 = year_index(각 선종의 첫 표본 연도 = 1.0 이라 여러 연도가 1.0 일 수 있다). year_index <0.90 → ②, 0.90~1.10 → ③, 1.10~1.25 → ④, ≥1.25 → ⑤ 가 연도 기본등급. (2) 셀 위치: 같은 선종·같은 수주연도(표본 2건 이상) 중위 대비 <0.90 → −1, >1.10 → +1 (표본 부족이면 선종 전체 중위 ÷ year_index 로 대체). 1~5 로 자름. 외부 신조선가 지수 없음 — 원장(2024~ 공시) 안의 상대 등급이며 2021 이후 절대 호황 수준은 반영하지 못한다. 척수 없는 계약(공사·해양 EPC 등)은 등급 없음.",
+ "cohort_opm_table": {
+  "①적자": -0.05,
+  "②BEP": 0.0,
+  "③중마진": 0.05,
+  "④호황": 0.1,
+  "⑤초호황": 0.15
+ },
+ "year_index": {
+  "2021": 1.0,
+  "2023": 1.0,
+  "2024": 1.0,
+  "2025": 1.0056,
+  "2026": 0.9299
+ },
+ "contracts": [
+  {
+   "rcp": "20250922800050",
+   "stock": "439260",
+   "name": "원유운반선(157,200 DWT) 4척",
+   "type": "VLCC",
+   "ships": 4,
+   "amt_krw_m": 475300.0,
+   "fx_at_sign": 1386.95,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 342.694,
+   "signed": "2025-09-19",
+   "year": 2025,
+   "start": "2025-09-19",
+   "end": "2028-09-30",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "유럽 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2025Q3": 3.711,
+    "2025Q4": 28.455,
+    "2026Q1": 27.836,
+    "2026Q2": 28.145,
+    "2026Q3": 28.455,
+    "2026Q4": 28.455,
+    "2027Q1": 27.836,
+    "2027Q2": 28.145,
+    "2027Q3": 28.455,
+    "2027Q4": 28.455,
+    "2028Q1": 28.145,
+    "2028Q2": 28.145,
+    "2028Q3": 28.456
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 85.67,
+    "ref_usd_m": 89.85,
+    "ref_kind": "type_year_median",
+    "cell_n": 16,
+    "rel": 0.953,
+    "year_index": 1.0056
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.2572,
+   "remaining_usd_m_at_origin": 254.546,
+   "counted": true
+  },
+  {
+   "rcp": "20250922800051",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 2척",
+   "type": "VLCC",
+   "ships": 2,
+   "amt_krw_m": 239500.0,
+   "fx_at_sign": 1386.95,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 172.681,
+   "signed": "2025-09-19",
+   "year": 2025,
+   "start": "2025-09-19",
+   "end": "2027-09-30",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "오세아니아 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2025Q3": 2.793,
+    "2025Q4": 21.411,
+    "2026Q1": 20.945,
+    "2026Q2": 21.178,
+    "2026Q3": 21.411,
+    "2026Q4": 21.411,
+    "2027Q1": 20.945,
+    "2027Q2": 21.178,
+    "2027Q3": 21.409
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 86.34,
+    "ref_usd_m": 89.85,
+    "ref_kind": "type_year_median",
+    "cell_n": 16,
+    "rel": 0.961,
+    "year_index": 1.0056
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.3841,
+   "remaining_usd_m_at_origin": 106.355,
+   "counted": true
+  },
+  {
+   "rcp": "20250930800053",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 1척",
+   "type": "VLCC",
+   "ships": 1,
+   "amt_krw_m": 122300.0,
+   "fx_at_sign": 1386.95,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 88.179,
+   "signed": "2025-09-29",
+   "year": 2025,
+   "start": "2025-09-29",
+   "end": "2027-06-30",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "오세아니아 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2025Q3": 0.276,
+    "2025Q4": 12.676,
+    "2026Q1": 12.4,
+    "2026Q2": 12.538,
+    "2026Q3": 12.676,
+    "2026Q4": 12.676,
+    "2027Q1": 12.4,
+    "2027Q2": 12.537
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 88.18,
+    "ref_usd_m": 89.85,
+    "ref_kind": "type_year_median",
+    "cell_n": 16,
+    "rel": 0.981,
+    "year_index": 1.0056
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.4297,
+   "remaining_usd_m_at_origin": 50.29,
+   "counted": true
+  },
+  {
+   "rcp": "20251001800065",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 1척",
+   "type": "VLCC",
+   "ships": 1,
+   "amt_krw_m": 119200.0,
+   "fx_at_sign": 1386.95,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 85.944,
+   "signed": "2025-09-30",
+   "year": 2025,
+   "start": "2025-09-30",
+   "end": "2027-10-31",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "오세아니아 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2025Q3": 0.113,
+    "2025Q4": 10.376,
+    "2026Q1": 10.151,
+    "2026Q2": 10.264,
+    "2026Q3": 10.376,
+    "2026Q4": 10.376,
+    "2027Q1": 10.151,
+    "2027Q2": 10.264,
+    "2027Q3": 10.376,
+    "2027Q4": 3.497
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 85.94,
+    "ref_usd_m": 89.85,
+    "ref_kind": "type_year_median",
+    "cell_n": 16,
+    "rel": 0.957,
+    "year_index": 1.0056
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.3596,
+   "remaining_usd_m_at_origin": 55.04,
+   "counted": true
+  },
+  {
+   "rcp": "20251015800073",
+   "stock": "439260",
+   "name": "컨테이너선 2척",
+   "type": "CONT",
+   "ships": 2,
+   "amt_krw_m": 329800.0,
+   "fx_at_sign": 1449.19,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 227.575,
+   "signed": "2025-10-14",
+   "year": 2025,
+   "start": "2025-10-14",
+   "end": "2028-06-30",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "파나마 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": false,
+   "schedule": {
+    "2025Q4": 18.142,
+    "2026Q1": 20.668,
+    "2026Q2": 20.897,
+    "2026Q3": 21.127,
+    "2026Q4": 21.127,
+    "2027Q1": 20.668,
+    "2027Q2": 20.897,
+    "2027Q3": 21.127,
+    "2027Q4": 21.127,
+    "2028Q1": 20.897,
+    "2028Q2": 20.898
+   },
+   "curve": "linear_progress",
+   "cohort": "②BEP",
+   "cohort_detail": {
+    "cohort": "②BEP",
+    "per_ship_usd_m": 113.79,
+    "ref_usd_m": 184.45,
+    "ref_kind": "type_year_median",
+    "cell_n": 13,
+    "rel": 0.617,
+    "year_index": 1.0056
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.2624,
+   "remaining_usd_m_at_origin": 167.868,
+   "counted": true
+  },
+  {
+   "rcp": "20251118800028",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 1척",
+   "type": "VLCC",
+   "ships": 1,
+   "amt_krw_m": 127400.0,
+   "fx_at_sign": 1449.19,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 87.911,
+   "signed": "2025-11-17",
+   "year": 2025,
+   "start": "2025-11-17",
+   "end": "2027-12-31",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "오세아니아 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2025Q4": 5.105,
+    "2026Q1": 10.209,
+    "2026Q2": 10.322,
+    "2026Q3": 10.436,
+    "2026Q4": 10.436,
+    "2027Q1": 10.209,
+    "2027Q2": 10.322,
+    "2027Q3": 10.436,
+    "2027Q4": 10.436
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 87.91,
+    "ref_usd_m": 89.85,
+    "ref_kind": "type_year_median",
+    "cell_n": 16,
+    "rel": 0.978,
+    "year_index": 1.0056
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.2916,
+   "remaining_usd_m_at_origin": 62.275,
+   "counted": true
+  },
+  {
+   "rcp": "20260114800029",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 2척",
+   "type": "VLCC",
+   "ships": 2,
+   "amt_krw_m": 251800.0,
+   "fx_at_sign": 1466.12,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 171.746,
+   "signed": "2026-01-13",
+   "year": 2026,
+   "start": "2026-01-13",
+   "end": "2028-11-30",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "버뮤다 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": false,
+   "schedule": {
+    "2026Q1": 12.722,
+    "2026Q2": 14.842,
+    "2026Q3": 15.005,
+    "2026Q4": 15.005,
+    "2027Q1": 14.679,
+    "2027Q2": 14.842,
+    "2027Q3": 15.005,
+    "2027Q4": 15.005,
+    "2028Q1": 14.842,
+    "2028Q2": 14.842,
+    "2028Q3": 15.005,
+    "2028Q4": 9.952
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 85.87,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 0.912,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.1605,
+   "remaining_usd_m_at_origin": 144.182,
+   "counted": true
+  },
+  {
+   "rcp": "20260115800029",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 2척",
+   "type": "VLCC",
+   "ships": 2,
+   "amt_krw_m": 253900.0,
+   "fx_at_sign": 1466.12,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 173.178,
+   "signed": "2026-01-14",
+   "year": 2026,
+   "start": "2026-01-14",
+   "end": "2029-04-30",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "아프리카 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2026Q1": 11.085,
+    "2026Q2": 13.1,
+    "2026Q3": 13.244,
+    "2026Q4": 13.244,
+    "2027Q1": 12.956,
+    "2027Q2": 13.1,
+    "2027Q3": 13.244,
+    "2027Q4": 13.244,
+    "2028Q1": 13.1,
+    "2028Q2": 13.1,
+    "2028Q3": 13.244,
+    "2028Q4": 13.244,
+    "2029Q1": 12.956,
+    "2029Q2": 4.317
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 86.59,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 0.92,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.1397,
+   "remaining_usd_m_at_origin": 148.994,
+   "counted": true
+  },
+  {
+   "rcp": "20260129800084",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 2척",
+   "type": "VLCC",
+   "ships": 2,
+   "amt_krw_m": 254100.0,
+   "fx_at_sign": 1466.12,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 173.315,
+   "signed": "2026-01-28",
+   "year": 2026,
+   "start": "2026-01-28",
+   "end": "2029-05-31",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "오세아니아 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2026Q1": 8.95,
+    "2026Q2": 12.928,
+    "2026Q3": 13.07,
+    "2026Q4": 13.07,
+    "2027Q1": 12.786,
+    "2027Q2": 12.928,
+    "2027Q3": 13.07,
+    "2027Q4": 13.07,
+    "2028Q1": 12.928,
+    "2028Q2": 12.928,
+    "2028Q3": 13.07,
+    "2028Q4": 13.07,
+    "2029Q1": 12.786,
+    "2029Q2": 8.661
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 86.66,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 0.921,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.1262,
+   "remaining_usd_m_at_origin": 151.438,
+   "counted": true
+  },
+  {
+   "rcp": "20260209800078",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 2척",
+   "type": "VLCC",
+   "ships": 2,
+   "amt_krw_m": 259700.0,
+   "fx_at_sign": 1466.12,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 177.134,
+   "signed": "2026-02-06",
+   "year": 2026,
+   "start": "2026-02-06",
+   "end": "2028-12-31",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "오세아니아 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2026Q1": 9.024,
+    "2026Q2": 15.207,
+    "2026Q3": 15.374,
+    "2026Q4": 15.374,
+    "2027Q1": 15.04,
+    "2027Q2": 15.207,
+    "2027Q3": 15.374,
+    "2027Q4": 15.374,
+    "2028Q1": 15.207,
+    "2028Q2": 15.207,
+    "2028Q3": 15.374,
+    "2028Q4": 15.372
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 88.57,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 0.941,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.1368,
+   "remaining_usd_m_at_origin": 152.903,
+   "counted": true
+  },
+  {
+   "rcp": "20260317800064",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 1척",
+   "type": "VLCC",
+   "ships": 1,
+   "amt_krw_m": 133300.0,
+   "fx_at_sign": 1466.12,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 90.92,
+   "signed": "2026-03-16",
+   "year": 2026,
+   "start": "2026-03-16",
+   "end": "2029-10-10",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "오세아니아 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2026Q1": 1.115,
+    "2026Q2": 6.34,
+    "2026Q3": 6.41,
+    "2026Q4": 6.41,
+    "2027Q1": 6.27,
+    "2027Q2": 6.34,
+    "2027Q3": 6.41,
+    "2027Q4": 6.41,
+    "2028Q1": 6.34,
+    "2028Q2": 6.34,
+    "2028Q3": 6.41,
+    "2028Q4": 6.41,
+    "2029Q1": 6.27,
+    "2029Q2": 6.34,
+    "2029Q3": 6.41,
+    "2029Q4": 0.695
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 90.92,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 0.966,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.082,
+   "remaining_usd_m_at_origin": 83.465,
+   "counted": true
+  },
+  {
+   "rcp": "20260323800069",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 1척",
+   "type": "VLCC",
+   "ships": 1,
+   "amt_krw_m": 133800.0,
+   "fx_at_sign": 1466.12,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 91.261,
+   "signed": "2026-03-20",
+   "year": 2026,
+   "start": "2026-03-20",
+   "end": "2029-06-30",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "아프리카 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2026Q1": 0.913,
+    "2026Q2": 6.926,
+    "2026Q3": 7.003,
+    "2026Q4": 7.003,
+    "2027Q1": 6.85,
+    "2027Q2": 6.926,
+    "2027Q3": 7.003,
+    "2027Q4": 7.003,
+    "2028Q1": 6.926,
+    "2028Q2": 6.926,
+    "2028Q3": 7.003,
+    "2028Q4": 7.003,
+    "2029Q1": 6.85,
+    "2029Q2": 6.926
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 91.26,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 0.969,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.0859,
+   "remaining_usd_m_at_origin": 83.421,
+   "counted": true
+  },
+  {
+   "rcp": "20260331800063",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 2척",
+   "type": "VLCC",
+   "ships": 2,
+   "amt_krw_m": 276000.0,
+   "fx_at_sign": 1466.12,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 188.252,
+   "signed": "2026-03-30",
+   "year": 2026,
+   "start": "2026-03-30",
+   "end": "2029-09-30",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "오세아니아 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2026Q1": 0.294,
+    "2026Q2": 13.373,
+    "2026Q3": 13.52,
+    "2026Q4": 13.52,
+    "2027Q1": 13.226,
+    "2027Q2": 13.373,
+    "2027Q3": 13.52,
+    "2027Q4": 13.52,
+    "2028Q1": 13.373,
+    "2028Q2": 13.373,
+    "2028Q3": 13.52,
+    "2028Q4": 13.52,
+    "2029Q1": 13.226,
+    "2029Q2": 13.373,
+    "2029Q3": 13.521
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 94.13,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 1.0,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.0726,
+   "remaining_usd_m_at_origin": 174.585,
+   "counted": true
+  },
+  {
+   "rcp": "20260416800003",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 1척",
+   "type": "VLCC",
+   "ships": 1,
+   "amt_krw_m": 132900.0,
+   "fx_at_sign": 1501.75,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 88.497,
+   "signed": "2026-04-14",
+   "year": 2026,
+   "start": "2026-04-14",
+   "end": "2029-07-31",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "아프리카 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2026Q2": 5.728,
+    "2026Q3": 6.757,
+    "2026Q4": 6.757,
+    "2027Q1": 6.61,
+    "2027Q2": 6.683,
+    "2027Q3": 6.757,
+    "2027Q4": 6.757,
+    "2028Q1": 6.683,
+    "2028Q2": 6.683,
+    "2028Q3": 6.757,
+    "2028Q4": 6.757,
+    "2029Q1": 6.61,
+    "2029Q2": 6.683,
+    "2029Q3": 2.275
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 88.5,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 0.94,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.0647,
+   "remaining_usd_m_at_origin": 82.769,
+   "counted": true
+  },
+  {
+   "rcp": "20260601800013",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 2척",
+   "type": "VLCC",
+   "ships": 2,
+   "amt_krw_m": 282800.0,
+   "fx_at_sign": 1501.75,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 188.314,
+   "signed": "2026-05-29",
+   "year": 2026,
+   "start": "2026-05-29",
+   "end": "2028-12-31",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "오세아니아 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": true,
+   "schedule": {
+    "2026Q2": 6.555,
+    "2026Q3": 18.275,
+    "2026Q4": 18.275,
+    "2027Q1": 17.878,
+    "2027Q2": 18.077,
+    "2027Q3": 18.275,
+    "2027Q4": 18.275,
+    "2028Q1": 18.077,
+    "2028Q2": 18.077,
+    "2028Q3": 18.275,
+    "2028Q4": 18.275
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 94.16,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 1.0,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.0348,
+   "remaining_usd_m_at_origin": 181.759,
+   "counted": true
+  },
+  {
+   "rcp": "20260727800063",
+   "stock": "439260",
+   "name": "원유운반선(157,000 DWT) 2척",
+   "type": "VLCC",
+   "ships": 2,
+   "amt_krw_m": 271300.0,
+   "fx_at_sign": 1419.72,
+   "fx_source": "fx.json quarters",
+   "amt_usd_m": 191.094,
+   "signed": "2026-07-24",
+   "year": 2026,
+   "start": "2026-07-24",
+   "end": "2029-12-31",
+   "end_estimated": false,
+   "party_anon": true,
+   "party": "유럽 지역 선주",
+   "option_hint": false,
+   "corrected": false,
+   "supersedes": null,
+   "estimated_series": false,
+   "schedule": {
+    "2026Q3": 10.49,
+    "2026Q4": 13.986,
+    "2027Q1": 13.682,
+    "2027Q2": 13.834,
+    "2027Q3": 13.986,
+    "2027Q4": 13.986,
+    "2028Q1": 13.834,
+    "2028Q2": 13.834,
+    "2028Q3": 13.986,
+    "2028Q4": 13.986,
+    "2029Q1": 13.682,
+    "2029Q2": 13.834,
+    "2029Q3": 13.986,
+    "2029Q4": 13.988
+   },
+   "curve": "linear_progress",
+   "cohort": "③중마진",
+   "cohort_detail": {
+    "cohort": "③중마진",
+    "per_ship_usd_m": 95.55,
+    "ref_usd_m": 94.14,
+    "ref_kind": "type_year_median",
+    "cell_n": 22,
+    "rel": 1.015,
+    "year_index": 0.9299
+   },
+   "cohort_basis": "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유",
+   "progress_at_origin": 0.0,
+   "remaining_usd_m_at_origin": 191.094,
+   "counted": true
+  }
+ ],
+ "by_quarter": {
+  "2025Q3": {
+   "usd_m": 6.893,
+   "marine_usd_m": 6.893,
+   "by_type": {
+    "VLCC": 6.893
+   },
+   "by_cohort": {
+    "③중마진": 6.893
+   },
+   "hedged_krw_m": 9559.6,
+   "marine_hedged_krw_m": 9559.6,
+   "applied_rate": 1386.95,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1386.95,
+   "spot_assumed": 1386.95,
+   "spot_source": "fx.json quarters",
+   "n_active": 4,
+   "kind": "estimate",
+   "past": true,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.05,
+   "graded_share": 1.0
+  },
+  "2025Q4": {
+   "usd_m": 96.164,
+   "marine_usd_m": 96.164,
+   "by_type": {
+    "CONT": 18.142,
+    "VLCC": 78.022
+   },
+   "by_cohort": {
+    "②BEP": 18.142,
+    "③중마진": 78.022
+   },
+   "hedged_krw_m": 136182.6,
+   "marine_hedged_krw_m": 136182.6,
+   "applied_rate": 1416.15,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1402.0,
+   "spot_assumed": 1449.19,
+   "spot_source": "fx.json quarters",
+   "n_active": 6,
+   "kind": "estimate",
+   "past": true,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0406,
+   "graded_share": 1.0
+  },
+  "2026Q1": {
+   "usd_m": 146.311,
+   "marine_usd_m": 146.311,
+   "by_type": {
+    "CONT": 20.668,
+    "VLCC": 125.644
+   },
+   "by_cohort": {
+    "②BEP": 20.668,
+    "③중마진": 125.644
+   },
+   "hedged_krw_m": 210190.8,
+   "marine_hedged_krw_m": 210190.8,
+   "applied_rate": 1436.6,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1423.95,
+   "spot_assumed": 1466.12,
+   "spot_source": "fx.json quarters",
+   "n_active": 13,
+   "kind": "estimate",
+   "past": true,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0429,
+   "graded_share": 1.0
+  },
+  "2026Q2": {
+   "usd_m": 198.344,
+   "marine_usd_m": 198.344,
+   "by_type": {
+    "CONT": 20.897,
+    "VLCC": 177.447
+   },
+   "by_cohort": {
+    "②BEP": 20.897,
+    "③중마진": 177.447
+   },
+   "hedged_krw_m": 288856.2,
+   "marine_hedged_krw_m": 288856.2,
+   "applied_rate": 1456.34,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1436.87,
+   "spot_assumed": 1501.75,
+   "spot_source": "fx.json quarters",
+   "n_active": 15,
+   "kind": "estimate",
+   "past": true,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0447,
+   "graded_share": 1.0
+  },
+  "2026Q3": {
+   "usd_m": 223.627,
+   "marine_usd_m": 223.627,
+   "by_type": {
+    "CONT": 21.127,
+    "VLCC": 202.5
+   },
+   "by_cohort": {
+    "②BEP": 21.127,
+    "③중마진": 202.5
+   },
+   "hedged_krw_m": 320619.5,
+   "marine_hedged_krw_m": 320619.5,
+   "applied_rate": 1433.73,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1439.73,
+   "spot_assumed": 1419.72,
+   "spot_source": "fx.json quarters",
+   "n_active": 16,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0453,
+   "graded_share": 1.0
+  },
+  "2026Q4": {
+   "usd_m": 227.123,
+   "marine_usd_m": 227.123,
+   "by_type": {
+    "CONT": 21.127,
+    "VLCC": 205.996
+   },
+   "by_cohort": {
+    "②BEP": 21.127,
+    "③중마진": 205.996
+   },
+   "hedged_krw_m": 321062.1,
+   "marine_hedged_krw_m": 321062.1,
+   "applied_rate": 1413.6,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1439.42,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json forward",
+   "n_active": 16,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0453,
+   "graded_share": 1.0
+  },
+  "2027Q1": {
+   "usd_m": 222.186,
+   "marine_usd_m": 222.186,
+   "by_type": {
+    "CONT": 20.668,
+    "VLCC": 201.518
+   },
+   "by_cohort": {
+    "②BEP": 20.668,
+    "③중마진": 201.518
+   },
+   "hedged_krw_m": 314082.5,
+   "marine_hedged_krw_m": 314082.5,
+   "applied_rate": 1413.6,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1439.42,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json forward",
+   "n_active": 16,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0453,
+   "graded_share": 1.0
+  },
+  "2027Q2": {
+   "usd_m": 224.655,
+   "marine_usd_m": 224.655,
+   "by_type": {
+    "CONT": 20.897,
+    "VLCC": 203.757
+   },
+   "by_cohort": {
+    "②BEP": 20.897,
+    "③중마진": 203.757
+   },
+   "hedged_krw_m": 317572.3,
+   "marine_hedged_krw_m": 317572.3,
+   "applied_rate": 1413.6,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1439.42,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json forward",
+   "n_active": 16,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0453,
+   "graded_share": 1.0
+  },
+  "2027Q3": {
+   "usd_m": 214.448,
+   "marine_usd_m": 214.448,
+   "by_type": {
+    "CONT": 21.127,
+    "VLCC": 193.321
+   },
+   "by_cohort": {
+    "②BEP": 21.127,
+    "③중마진": 193.321
+   },
+   "hedged_krw_m": 303609.2,
+   "marine_hedged_krw_m": 303609.2,
+   "applied_rate": 1415.77,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1442.52,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json forward",
+   "n_active": 15,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0451,
+   "graded_share": 1.0
+  },
+  "2027Q4": {
+   "usd_m": 186.157,
+   "marine_usd_m": 186.157,
+   "by_type": {
+    "CONT": 21.127,
+    "VLCC": 165.03
+   },
+   "by_cohort": {
+    "②BEP": 21.127,
+    "③중마진": 165.03
+   },
+   "hedged_krw_m": 264656.6,
+   "marine_hedged_krw_m": 264656.6,
+   "applied_rate": 1421.68,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1450.97,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json forward",
+   "n_active": 14,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0443,
+   "graded_share": 1.0
+  },
+  "2028Q1": {
+   "usd_m": 170.353,
+   "marine_usd_m": 170.353,
+   "by_type": {
+    "CONT": 20.897,
+    "VLCC": 149.455
+   },
+   "by_cohort": {
+    "②BEP": 20.897,
+    "③중마진": 149.455
+   },
+   "hedged_krw_m": 242355.7,
+   "marine_hedged_krw_m": 242355.7,
+   "applied_rate": 1422.67,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1452.37,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json forward",
+   "n_active": 12,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0439,
+   "graded_share": 1.0
+  },
+  "2028Q2": {
+   "usd_m": 170.353,
+   "marine_usd_m": 170.353,
+   "by_type": {
+    "CONT": 20.897,
+    "VLCC": 149.455
+   },
+   "by_cohort": {
+    "②BEP": 20.897,
+    "③중마진": 149.455
+   },
+   "hedged_krw_m": 242355.7,
+   "marine_hedged_krw_m": 242355.7,
+   "applied_rate": 1422.67,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1452.37,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json forward",
+   "n_active": 12,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.0439,
+   "graded_share": 1.0
+  },
+  "2028Q3": {
+   "usd_m": 151.098,
+   "marine_usd_m": 151.098,
+   "by_type": {
+    "VLCC": 151.098
+   },
+   "by_cohort": {
+    "③중마진": 151.098
+   },
+   "hedged_krw_m": 215009.2,
+   "marine_hedged_krw_m": 215009.2,
+   "applied_rate": 1422.98,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1452.82,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json forward",
+   "n_active": 11,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.05,
+   "graded_share": 1.0
+  },
+  "2028Q4": {
+   "usd_m": 117.587,
+   "marine_usd_m": 117.587,
+   "by_type": {
+    "VLCC": 117.587
+   },
+   "by_cohort": {
+    "③중마진": 117.587
+   },
+   "hedged_krw_m": 168588.8,
+   "marine_hedged_krw_m": 168588.8,
+   "applied_rate": 1433.74,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1468.19,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json forward",
+   "n_active": 10,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.05,
+   "graded_share": 1.0
+  },
+  "2029Q1": {
+   "usd_m": 72.38,
+   "marine_usd_m": 72.38,
+   "by_type": {
+    "VLCC": 72.38
+   },
+   "by_cohort": {
+    "③중마진": 72.38
+   },
+   "hedged_krw_m": 103390.0,
+   "marine_hedged_krw_m": 103390.0,
+   "applied_rate": 1428.43,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1460.6,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json daily_last(flat)",
+   "n_active": 7,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.05,
+   "graded_share": 1.0
+  },
+  "2029Q2": {
+   "usd_m": 60.141,
+   "marine_usd_m": 60.141,
+   "by_type": {
+    "VLCC": 60.141
+   },
+   "by_cohort": {
+    "③중마진": 60.141
+   },
+   "hedged_krw_m": 85857.2,
+   "marine_hedged_krw_m": 85857.2,
+   "applied_rate": 1427.59,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1459.41,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json daily_last(flat)",
+   "n_active": 7,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.05,
+   "graded_share": 1.0
+  },
+  "2029Q3": {
+   "usd_m": 36.193,
+   "marine_usd_m": 36.193,
+   "by_type": {
+    "VLCC": 36.193
+   },
+   "by_cohort": {
+    "③중마진": 36.193
+   },
+   "hedged_krw_m": 51440.9,
+   "marine_hedged_krw_m": 51440.9,
+   "applied_rate": 1421.31,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1450.43,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json daily_last(flat)",
+   "n_active": 4,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.05,
+   "graded_share": 1.0
+  },
+  "2029Q4": {
+   "usd_m": 14.683,
+   "marine_usd_m": 14.683,
+   "by_type": {
+    "VLCC": 14.683
+   },
+   "by_cohort": {
+    "③중마진": 14.683
+   },
+   "hedged_krw_m": 20575.9,
+   "marine_hedged_krw_m": 20575.9,
+   "applied_rate": 1401.35,
+   "hedge_ratio": 0.7,
+   "hedge_rate": 1421.92,
+   "spot_assumed": 1353.36,
+   "spot_source": "fx.json daily_last(flat)",
+   "n_active": 2,
+   "kind": "estimate",
+   "past": false,
+   "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
+   "target_opm": 0.05,
+   "graded_share": 1.0
+  }
+ },
+ "by_year": {
+  "2025": {
+   "usd_m": 103.057,
+   "marine_usd_m": 103.057,
+   "hedged_krw_m": 145742.2,
+   "marine_hedged_krw_m": 145742.2,
+   "by_type": {
+    "CONT": 18.142,
+    "VLCC": 84.915
+   },
+   "by_cohort": {
+    "②BEP": 18.142,
+    "③중마진": 84.915
+   },
+   "quarters": 2
+  },
+  "2026": {
+   "usd_m": 795.405,
+   "marine_usd_m": 795.405,
+   "hedged_krw_m": 1140728.6,
+   "marine_hedged_krw_m": 1140728.6,
+   "by_type": {
+    "CONT": 83.819,
+    "VLCC": 711.587
+   },
+   "by_cohort": {
+    "②BEP": 83.819,
+    "③중마진": 711.587
+   },
+   "quarters": 4
+  },
+  "2027": {
+   "usd_m": 847.446,
+   "marine_usd_m": 847.446,
+   "hedged_krw_m": 1199920.6,
+   "marine_hedged_krw_m": 1199920.6,
+   "by_type": {
+    "CONT": 83.819,
+    "VLCC": 763.626
+   },
+   "by_cohort": {
+    "②BEP": 83.819,
+    "③중마진": 763.626
+   },
+   "quarters": 4
+  },
+  "2028": {
+   "usd_m": 609.391,
+   "marine_usd_m": 609.391,
+   "hedged_krw_m": 868309.4,
+   "marine_hedged_krw_m": 868309.4,
+   "by_type": {
+    "CONT": 41.794,
+    "VLCC": 567.595
+   },
+   "by_cohort": {
+    "②BEP": 41.794,
+    "③중마진": 567.595
+   },
+   "quarters": 4
+  },
+  "2029": {
+   "usd_m": 183.397,
+   "marine_usd_m": 183.397,
+   "hedged_krw_m": 261264.0,
+   "marine_hedged_krw_m": 261264.0,
+   "by_type": {
+    "VLCC": 183.397
+   },
+   "by_cohort": {
+    "③중마진": 183.397
+   },
+   "quarters": 4
+  }
+ },
+ "reconcile": {
+  "2025Q3": {
+   "sls_krw_m": 9559.6,
+   "reported_segment_rev_m": 272035.0,
+   "reported_source": "delivered_ytd",
+   "segments": [
+    "선박"
+   ],
+   "consolidated_rev_m": 273973.27,
+   "exceeds_consolidated_pct": null,
+   "ratio": 0.0351,
+   "issue": null,
+   "note": "공시된 척당 계약(2024~)만 → 그 전 수주 물량·계약 미공시·반복건조·기타매출은 잔차"
+  },
+  "2025Q4": {
+   "sls_krw_m": 136182.6,
+   "reported_segment_rev_m": 348149.0,
+   "reported_source": "delivered_ytd",
+   "segments": [
+    "선박"
+   ],
+   "consolidated_rev_m": 350405.47,
+   "exceeds_consolidated_pct": null,
+   "ratio": 0.3912,
+   "issue": null,
+   "note": "공시된 척당 계약(2024~)만 → 그 전 수주 물량·계약 미공시·반복건조·기타매출은 잔차"
+  },
+  "2026Q1": {
+   "sls_krw_m": 210190.8,
+   "reported_segment_rev_m": 306216.0,
+   "reported_source": "delivered_ytd",
+   "segments": [
+    "선박"
+   ],
+   "consolidated_rev_m": 308271.46,
+   "exceeds_consolidated_pct": null,
+   "ratio": 0.6864,
+   "issue": null,
+   "note": "공시된 척당 계약(2024~)만 → 그 전 수주 물량·계약 미공시·반복건조·기타매출은 잔차"
+  },
+  "2026Q2": {
+   "sls_krw_m": 288856.2,
+   "reported_segment_rev_m": 351402.0,
+   "reported_source": "delivered_ytd",
+   "segments": [
+    "선박"
+   ],
+   "consolidated_rev_m": 354435.07,
+   "exceeds_consolidated_pct": null,
+   "ratio": 0.822,
+   "issue": null,
+   "note": "공시된 척당 계약(2024~)만 → 그 전 수주 물량·계약 미공시·반복건조·기타매출은 잔차"
+  }
+ },
+ "reconcile_summary": {
+  "definition": "ratio = SLS 해양 원화(헤지 적용) ÷ 정기보고서 해양 부문 매출 3개월분. scale_to_reported = 1/ratio (모델: 매출조선 = SLS 원화 × scale)",
+  "quarters_used": [
+   "2025Q3",
+   "2025Q4",
+   "2026Q1",
+   "2026Q2"
+  ],
+  "median_ratio_4q": 0.5388,
+  "median_scale_to_reported_4q": 1.856,
+  "backlog_coverage_at_origin": 1.1638,
+  "backlog_coverage_basis": "2026Q2 분기말까지 수주된 해양 계약의 원장 원화 금액 × 미진행 비율 ÷ 정기보고서 2026Q2 해양 부문 기말잔고 원화 (환산 없음)",
+  "backlog_coverage_all_segments": 1.1638,
+  "remaining_usd_m_at_origin": 1899.89,
+  "remaining_marine_usd_m_at_origin": 1899.89,
+  "remaining_krw_m_at_origin": 2754075.1,
+  "remaining_marine_krw_m_at_origin": 2754075.1,
+  "reported_backlog_krw_m": 2366510,
+  "reported_marine_backlog_krw_m": 2366510,
+  "reported_backlog_segments": [
+   "선박"
+  ],
+  "ledger_vs_reported_new": {
+   "quarter": "2026Q2",
+   "ledger_new_krw_m": 1978300.0,
+   "reported_new_krw_m": 1300999,
+   "ratio": 1.5206,
+   "basis": "2026-01-01~2026-06-30 수주 해양 계약의 원장 원화 공시금액 ÷ 정기보고서 2026Q2 해양 부문 신규증감(연초 누계, 환율효과 포함)"
+  },
+  "warning": "원장은 2024~ 공시분 — 과거 분기 ratio 는 그 전 수주 물량이 빠져 낮다. 미래 구간 배율은 backlog_coverage 쪽이 덜 편향된다."
+ },
+ "target_opm": {
+  "2025Q3": {
+   "opm": 0.05,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2025Q4": {
+   "opm": 0.0406,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2026Q1": {
+   "opm": 0.0429,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2026Q2": {
+   "opm": 0.0447,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2026Q3": {
+   "opm": 0.0453,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2026Q4": {
+   "opm": 0.0453,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2027Q1": {
+   "opm": 0.0453,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2027Q2": {
+   "opm": 0.0453,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2027Q3": {
+   "opm": 0.0451,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2027Q4": {
+   "opm": 0.0443,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2028Q1": {
+   "opm": 0.0439,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2028Q2": {
+   "opm": 0.0439,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2028Q3": {
+   "opm": 0.05,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2028Q4": {
+   "opm": 0.05,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2029Q1": {
+   "opm": 0.05,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2029Q2": {
+   "opm": 0.05,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2029Q3": {
+   "opm": 0.05,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  },
+  "2029Q4": {
+   "opm": 0.05,
+   "graded_share": 1.0,
+   "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+  }
+ },
+ "calibration": {
+  "calibrated_shift": 0.2246,
+  "actual_opm": {
+   "2025Q2": 0.211,
+   "2025Q3": 0.2427,
+   "2025Q4": 0.2721,
+   "2026Q1": 0.2681,
+   "2026Q2": 0.2687
+  },
+  "basis": "실측 OPM(fin cons.is 영업이익/매출액, 회사 전체 — 부문 아님) − 타겟 OPM, 최근 4분기 중위",
+  "quarters_used": [
+   "2025Q3",
+   "2025Q4",
+   "2026Q1",
+   "2026Q2"
+  ]
+ },
+ "skipped": [],
+ "warnings": [
+  "종료일 = 마지막 호선 인도 예정; 진행률 매출 분기는 계약기간 안에 선형 배분(가정)",
+  "헤지비율 0.7 은 가정(통화선도 공시 없음 → 레퍼런스 SLS 시트의 HEDGE 70% 가정. hedge_rate 는 계약별 수주시점 환율로 대체)",
+  "코호트는 원장 내부 상대 등급(신조선가 지수 없음): 2025~ 수주 물량(백만$) 판정 ②BEP 9%, ③중마진 91% — 최다 ③중마진. 레퍼런스 HD현대미포 SLS 는 2025~ 물량을 100% ⑤초호황으로 두어 방향이 다르다(2021 이후 절대 호황 수준 미반영). 타겟 OPM 은 회사 calibrated_shift 로 실측 OPM 에 맞추고, 외부 지수 도입은 사용자 결정",
+  "원장 잔여(27541억) > 공시 해양 기말잔고(23665억), 커버리지 1.16 — 선형 진행 가정이 실제 진행보다 느리거나 공시 잔고 범위(환율·취소·범위)가 다르다. 모델은 배율 1 을 상한으로 볼 것",
+  "원장 신규 19783억 vs 수주표 신규증감 13010억(2026Q2 연초 누계) — 비율 1.52: 두 공시의 계약 인식 기준(발효·선수금·환율·범위)이 다르다. backlog_coverage 해석 시 참고(reconcile_summary.ledger_vs_reported_new)"
+ ],
+ "dropped_superseded": []
+}

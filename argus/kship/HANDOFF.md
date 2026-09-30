@@ -6,7 +6,7 @@
 
 ```bash
 cd argus/kship/tools
-python3 kship_universe.py --write          # KIND → 모집단 41종목 (조선사 5·지주 1·엔진 4·기자재 29·강재 2)
+python3 kship_universe.py --write          # KIND → 모집단(2026-09-30: 57종목 = 조선사 5·지주 1·엔진 5·기자재 41·강재 5; '탐색' 승격은 universe_probe 에서 이월 — 아래 9/30 절)
 python3 kship_contracts.py --collect       # 척당 계약 공시 캐시(assets/contracts/) — 있는 건 건너뜀
 python3 kship_contracts.py --build         # → assets/contracts.json
 python3 kship_yards.py --collect           # 조선사 정기보고서 최신 분기(롤포워드·매출·환노출·헤지)
@@ -62,3 +62,44 @@ DART는 병렬 프로세스 2~3개가 동시에 두드리면 IP 단위로 연결
   산출이 없거나 회사가 빠지면 **섹션을 만들지 않는다**. 렌더러 파일명에 탭 접두가 붙은 이유는 그 파일 머리에 적었다.
 - 추정에는 시나리오 3종·잔고분/신규분 분해·민감도 구간이 붙고 `calibrated=false` 로 표기된다 —
   통계적 신뢰구간이 아니며, 회계 매출이 아니라 수주원장 기준 대용치다.
+
+## 2026-09-30 실적 모델 — 레퍼런스 subQ 3개 → 57사 (MODEL_SPEC.md · MODEL.md)
+
+사용자 애널리스트 모델(세진·삼성중·HD현대미포 `subQ` xlsx, 사유 파일 → `~/phalanx/jem_data/kship_models/reference/` 로컬 전용)을 레퍼런스로
+분기 실적 모델 시스템을 8레인으로 만들었다. 설계 계약은 [MODEL_SPEC.md](MODEL_SPEC.md)(스키마·FnGuide 계정명 73·레인 소유), 만들어진 것·가정·한계·재현은 [MODEL.md](MODEL.md).
+
+**파이프라인(순서가 계약이다)**: ① `kship_fin.py --collect --build --all`(DART, **단일 프로세스**, 캐시 체크포인트 `assets/fin_cache/`, 57사 × 20분기 ≈ 60분)
+→ ② `kship_fx.py` · `kship_price.py`(ECB·aik, 키 없음) → ③ `kship_sls.py --all`(계약 원장 → 선표 → 헤지 원화 → 코호트 OPM) → ④ `kship_model.py --build --all --xlsx`
+(→ `assets/models/<stock>.json` + `summary.json` + `models/<stock>_model.xlsx`) → ⑤ `kship_xlsx_patch.py --all --verify`(레퍼런스 원본 제자리 패치, 로컬 전용)
+→ ⑥ `kship_page.py --all && kship_parts.py --all && kship_model_section.py --hub`(훅이 모델 있는 회사에만 섹션을 붙인다). 전체 명령은 MODEL.md §7.
+
+**2026-09-30 21:50 KST 상태(실측 — 2차 검증·수정 뒤)**
+- fin: 58 json(57 + HD현대미포), 파서 수리 후 21:18 `--build --all` 재빌드(캐시만; DART 접촉은 삼미금속 사유 확정용 A001 검색 1회). 로그 FAIL 0, 캐시 128MB(58 폴더, `.gitignore` 로 제외). 골든 5사 **5,156/5,661 = 91.1%**(삼성重 93.1 · 미포 94.9 · 세진 82.2 · 일승 91.7 · 동방선기 91.6). 항등식 1% 초과 불일치 0건(1차 40+건 — 비용 괄호(음수) 표기 9사·91표가 주범). issues: borrowings_face_label 551 · no_cons_statements 179 · sga_absorbed_op_lines 162 · shares_omitted_quarterly 138 · no_report 103 · tax_sign_flipped 93 · expense_sign_negative 91 · duplicate_label 83 · no_prior_ytd(_cf) 3/4; shares_table_not_found 55 → 0(KCC 등 열 머리 수리). 분기 19 미만 10사 사유 확정(MODEL.md §5-1).
+  재확인: `ls assets/fin | wc -l`(58) · `grep -c " FAIL " assets/fin_collect.log`(0) · `$PY kship_fin.py --golden --stocks 075580,010140,010620,333430,099410`.
+- fx 87분기(16:21 산출 그대로; forward 무한루프 가드만 코드 수정) · prices 57/57(21:10, `--no-history` 이어붙임, `naver_check` 57종목 중 49 상이·최대 3.45%) · sls 6사(21:08, `calibrated_shift` 채워짐) · **models 58행 full 29 · partial 29 · no_fin 0**(21:47; 드라이버 고객연동 29 · 추세 23 · 선표 5 · 지주 1; 항등식 major 0사) · xlsx 58개(5.5MB) · **테스트 245 OK**(skipped 1, 26.8s).
+- 모집단 회귀 복구(21:35~21:39): 9/12 주간 스캔이 승격 16사를 지워 universe 41 이었던 것을 `kship_scan.carry_forward` + `kship_universe.py --write` 2차 방어선으로 57 복구 → `suppliers.json` 재빌드 → 기자재 페이지 51장 재생성. 섹션이 붙은 페이지 40 → **57장**(조선사 5·지주 1·엔진 5·기자재 41·강재 5). 원인·규칙은 MODEL.md §6-16.
+- 레퍼런스 패치본 3개(21:06, `--overwrite-placeholders --fx-actuals`): 세진 `_2026Q2`(BS 4시트 3,757셀, 자리표시자 교체 0) · 삼성重 `_2026Q2`(2,232셀, 가이던스 11셀 교체: 4Q23 매출액 8,009,400 → 8,009,429.91 등) · 미포 `_2025Q3`(395셀, 1Q25 잠정 9셀 교체; 2025Q4~ 합병으로 보고서 없음) + `변수` 환율 112·112·24셀 실측 교체. 검증 ①~⑤ ok(수식 수 60,271 = 60,271 · 91,976 → 91,970(−6 자리표시자) · 88,706 → 88,703(−3)). 종가 셀은 9/28 20,100(prices 21:10 재실행 전) — 다시 돌리면 19,330(9/29).
+- **페이지·허브는 모델 재빌드(21:47) 전 산출**(21:28~21:39): 57장 중 28장·허브 21행이 이전 모델 값(KCC FY2026E 매출 66,191 vs 모델 77,851억). 아래 재개 ⑥ 이 필요하다.
+
+**재개 — 이 순서로(네트워크 불필요, 1~2분)**
+```bash
+cd argus/kship/tools && PY=~/Library/phalanx_venv/bin/python
+$PY kship_sls.py --all --report                               # (선택) fin 21:18 재빌드와 바이트 정합 — 캘리브레이션 값은 같을 것으로 보이나 미확인
+$PY kship_model.py --build --all --xlsx --today 2026-09-30    # sls 를 다시 돌렸을 때만
+$PY kship_page.py --all && $PY kship_parts.py --all && $PY kship_model_section.py --hub   # **필수** — 28장·허브 21행 stale
+$PY -m unittest discover -s tests -p 'test_*.py'              # 245 OK 확인
+$PY kship_model_section.py --check ../002380/index.html
+```
+확인: KCC 페이지 KPI 의 FY2026E 매출이 `assets/models/002380.json` 의 77,851억과 같아야 한다.
+
+**커밋 전 확인**: 루트 `.gitignore` 에 `argus/*/tools/assets/fin_cache/` · `fin_collect.log` · `**/.collect.lock` 을 추가했다(9/30 20:48 — 결정 ⓕ 해소). 커밋 대상 신규: tools/kship_{fin,fx,price,sls,model,model_xlsx,xlsx_patch,model_section}.py, tests 7종 + fixtures/fin·model_mock*, assets/{fin(58),fx.json,fx_daily_cache.json,prices.json,sls,models}, models/*.xlsx(58, 5.5MB), models.html, MODEL_SPEC.md, MODEL.md, UPDATE.md; 수정: kship_scan.py·kship_universe.py(이월)·universe.json·universe_probe.json·suppliers.json·unclassified.csv·kship_page.py·kship_parts.py·tests/test_kship{,_scan}.py·회사 페이지 57장·index/parts/coverage.html·이 문서·README·.gitignore·update-kship.yml. 레퍼런스 원본·패치본(`~/phalanx/jem_data/kship_models/reference/`)은 레포 밖.
+
+**DART 주의(재확인)**: fin 수집도 `kce_fetch._pace` 0.7s 파일락을 타지만 **프로세스는 하나**여야 한다 — 백그라운드 fin 이 도는 동안 `kship_contracts/yards/suppliers --collect` 를 띄우지 마라. `assets/fin_cache/.collect.lock` 이 단일 프로세스 락이다. 2차 검증은 DART 를 1회(삼미금속 A001 검색)만 두드렸다.
+
+**2차 검증이 고친 것(코드 — 파일 머리말·산출물로 확인, 상세 MODEL.md §10)**: fin 파서 비용 음수 표기 정규화·귀속 블록 오매핑·중단영업 Q4·판관비 흡수·주식수 열 머리 / fx forward 무한루프 가드 / prices 네이버 대조·이력 창 분기 정렬·이어붙임 / sls 캘리브레이션 실측 / model 고객 연동 격자 탐색(시차·창·변환)·지주 실측 비율·별도 보충·일회성 탐지 / xlsx 생성 결정론(스탬프·zip 시각 고정) / 패치 `--overwrite-placeholders`·`--fx-actuals`·검증 ④ 강화 / 섹션 허브 테스트(td/th) / 스캔 이월.
+
+**오너 결정 대기**: ⓐ 3개월 열 vs FnGuide 누적차분 정본(`ytd_diff==3m` 34건 전부 후속 보고서의 전기 재작성) ⓑ 레퍼런스 가이던스 셀 덮어쓰기 · ⓒ 변수 환율 실적 분기 교체 — 둘 다 **플래그로 구현돼 현재 패치본에 적용됨**(원문은 보고 `replaced[].was`·`fx.replaced[]` 에 보존, `_orig.xlsx` 무손상) → 그대로 둘지 플래그 없이 다시 만들지 ⓓ 2028 신규수주 반영 ⓔ 코호트 외부 신조선가 지수 ⓖ 모델 재생성 주기(워크플로 기본: 월요일 + fin 변경 + 수동) ⓗ 골든 잔여 8.9%(주석 재분류) 파싱 착수 ⓘ 격자 탐색 다중비교 보정(현재 경고만).
+
+## 2026-09-30 22:20 마감 (오너)
+
+위 '재개' 블록은 실행 완료 — 시세 재수집(토스 이력 포함) → sls → model(--xlsx) → 레퍼런스 패치(`--overwrite-placeholders --fx-actuals`) → 페이지·허브 → 테스트 245 OK. 결정 3건(정규장 종가 정본 · 고객 연동 유의성 조건 · PER 밴드 캡)과 최종 수치는 MODEL.md §11. `argus/kship/009540/` 는 만들지 않는다(삭제). 커밋 대상에서 009540/ 을 빼고 읽어라. 다음 분기(2026Q3 보고서, 11월 중순~)엔 `kship_fin.py --collect --build --all --quarters 2021Q4..2026Q3` 부터.

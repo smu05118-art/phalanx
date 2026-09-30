@@ -174,6 +174,28 @@ def parts_html(data):
                 lead="선박을 부품 영역으로 나누고, 각 영역에 그 부품을 만드는 국내 상장 기자재사와 납품 조선사를 연결했습니다. 선종을 고르면 관련도가 영역 농도로 표시됩니다.")
 
 
+# 실적 모델 섹션(`kship_model_section.py` + `assets/models/<stock>.json`) — kship_page.py 와 같은 가드.
+# 모델 json 이 없는 회사는 섹션을 만들지 않고, 렌더러가 던지면 경고 후 빈 문자열.
+_MD = {"mod": None, "tried": False}
+
+
+def _model_section(stock):
+    if not _MD["tried"]:
+        _MD["tried"] = True
+        try:
+            import kship_model_section as _ms
+            _MD["mod"] = _ms
+        except Exception as e:
+            sys.stderr.write("[warn] 실적 모델 섹션 비활성: %s\n" % e)
+    if not _MD["mod"]:
+        return ""
+    try:
+        return _MD["mod"].section_for_stock(stock) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 실적 모델 섹션 렌더 실패: %s\n" % (stock, e))
+        return ""
+
+
 def supplier_html(co, data):
     tax = {c["id"]: c for c in data["tax"]["cats"]}
     groups = {g["id"]: g["ko"] for g in data["tax"]["groups"]}
@@ -213,7 +235,7 @@ def supplier_html(co, data):
        ('<p class="mut" style="font-size:11.5px;margin-top:8px">분류하지 못한 제품 표기 %d건 — 키워드 사전을 넓히거나 assets/parts_override.csv 로 지정하면 반영됩니다.</p><div class="wrap"><table><tbody>%s</tbody></table></div>' % (len(uncl), urows)) if uncl else "",
        ('<div class="wrap"><table data-sortable><thead><tr><th class="l">조선사</th><th class="l">근거</th><th>언급</th><th>비중</th></tr></thead><tbody>%s</tbody></table></div>' % yrows) if yards else '<p class="mut">원문에서 조선사 이름을 찾지 못했습니다 — 납품 관계를 주장하지 않습니다.</p>',
        ('<div class="wrap"><table><thead><tr><th class="l">소분류</th><th class="l">회사</th></tr></thead><tbody>%s</tbody></table></div>' % prow) if prow else '<p class="mut">없음</p>',
-       E(co["prod_raw"]), (" · 지정 사유: " + E(co["reason"])) if co.get("reason") else "", TABLE_JS)
+       E(co["prod_raw"]), (" · 지정 사유: " + E(co["reason"])) if co.get("reason") else "", TABLE_JS) + _model_section(co["stock"])
     return page("%s — 조선기자재" % co["nm"], body, depth=1, h1=co["nm"], tags=(co["stock"], co["mkt"], co["ind"]),
                 nav=(("인포그래픽", "../parts.html"), ("허브", "../index.html"), ("DART 원문 ↗", dart)),
                 crumbs=(("ARGUS", "../../index.html"), ("한국조선", "../index.html"), (co["nm"], None)))

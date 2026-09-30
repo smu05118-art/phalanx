@@ -1,0 +1,4027 @@
+{
+ "built_at": "2026-09-30",
+ "origin": "2026Q2",
+ "n": 58,
+ "counts": {
+  "full": 27,
+  "partial": 31,
+  "no_fin": 0
+ },
+ "unit": "KRW_100M(억원) · EPS/BPS/DPS 원 · PER/PBR 배",
+ "note": "모델 산출값 — 목표주가·추천 아님",
+ "rows": [
+  {
+   "stock": "002220",
+   "name": "한일철강",
+   "role": "steel",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 1964.04,
+     "op": 31.79,
+     "opm": 0.0162,
+     "ni_ctrl": -5.54,
+     "eps": -23.2,
+     "bps": 6789.2,
+     "per": null,
+     "pbr": 0.75,
+     "dps": 30.0
+    },
+    "2026E": {
+     "rev": 2297.88,
+     "op": 39.19,
+     "opm": 0.0171,
+     "ni_ctrl": -21.65,
+     "eps": -91.2,
+     "bps": 6707.6,
+     "per": null,
+     "pbr": 0.41,
+     "dps": 30.0
+    },
+    "2027E": {
+     "rev": 2473.98,
+     "op": 13.96,
+     "opm": 0.0056,
+     "ni_ctrl": -48.73,
+     "eps": -205.3,
+     "bps": 6472.4,
+     "per": null,
+     "pbr": 0.42,
+     "dps": 30.0
+    },
+    "2028E": {
+     "rev": 2569.48,
+     "op": 14.5,
+     "opm": 0.0056,
+     "ni_ctrl": -48.19,
+     "eps": -203.0,
+     "bps": 6239.4,
+     "per": null,
+     "pbr": 0.44,
+     "dps": 30.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 0.4,
+   "backtest": {
+    "revenue_wape_pct": 20.5,
+    "op_wape_pct": 88.9,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 3
+  },
+  {
+   "stock": "002380",
+   "name": "케이씨씨",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 4,
+    "transform": "ma4",
+    "window_q": 12,
+    "corr": 0.6306,
+    "n": 12
+   },
+   "fy": {
+    "2025A": {
+     "rev": 64838.2,
+     "op": 4276.16,
+     "opm": 0.066,
+     "ni_ctrl": 15384.96,
+     "eps": 209200.5,
+     "bps": 1063952.1,
+     "per": 2.01,
+     "pbr": 0.39,
+     "dps": 15000.0
+    },
+    "2026E": {
+     "rev": 77851.39,
+     "op": 5130.93,
+     "opm": 0.0659,
+     "ni_ctrl": 32273.53,
+     "eps": 438846.6,
+     "bps": 1521311.3,
+     "per": 1.08,
+     "pbr": 0.31,
+     "dps": 15000.0
+    },
+    "2027E": {
+     "rev": 117921.22,
+     "op": 8021.25,
+     "opm": 0.068,
+     "ni_ctrl": 4967.47,
+     "eps": 67546.2,
+     "bps": 1573857.6,
+     "per": 7.0,
+     "pbr": 0.3,
+     "dps": 15000.0
+    },
+    "2028E": {
+     "rev": 135201.25,
+     "op": 9196.68,
+     "opm": 0.068,
+     "ni_ctrl": 5843.13,
+     "eps": 79453.3,
+     "bps": 1638310.9,
+     "per": 5.95,
+     "pbr": 0.29,
+     "dps": 15000.0
+    }
+   },
+   "per_now": 8.75,
+   "pbr_now": 0.32,
+   "backtest": {
+    "revenue_wape_pct": 32.2,
+    "op_wape_pct": 43.9,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "009540",
+   "name": "HD한국조선해양",
+   "role": "holding",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "subsidiary_yard_scaled",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 299332.16,
+     "op": 39044.89,
+     "opm": 0.1304,
+     "ni_ctrl": 21684.12,
+     "eps": 30664.3,
+     "bps": 187883.0,
+     "per": 13.29,
+     "pbr": 2.17,
+     "dps": 12300.0
+    },
+    "2026E": {
+     "rev": 356867.46,
+     "op": 56744.44,
+     "opm": 0.159,
+     "ni_ctrl": 38467.46,
+     "eps": 54398.2,
+     "bps": 233967.5,
+     "per": 5.94,
+     "pbr": 1.38,
+     "dps": 12300.0
+    },
+    "2027E": {
+     "rev": 364962.61,
+     "op": 51548.21,
+     "opm": 0.1412,
+     "ni_ctrl": 33595.87,
+     "eps": 47509.0,
+     "bps": 269176.5,
+     "per": 6.8,
+     "pbr": 1.2,
+     "dps": 12300.0
+    },
+    "2028E": {
+     "rev": 346344.25,
+     "op": 49907.14,
+     "opm": 0.1441,
+     "ni_ctrl": 33153.45,
+     "eps": 46883.4,
+     "bps": 303760.0,
+     "per": 6.89,
+     "pbr": 1.06,
+     "dps": 12300.0
+    }
+   },
+   "per_now": 6.7,
+   "pbr_now": 1.54,
+   "backtest": {
+    "revenue_wape_pct": 9.8,
+    "op_wape_pct": 34.4,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "010140",
+   "name": "삼성중공업",
+   "role": "yard",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "sls_marine_plus_uncovered_backlog_runoff",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 106500.11,
+     "op": 8622.1,
+     "opm": 0.081,
+     "ni_ctrl": 5455.4,
+     "eps": 638.8,
+     "bps": 4858.0,
+     "per": 37.88,
+     "pbr": 4.98,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 129892.4,
+     "op": 12838.0,
+     "opm": 0.0988,
+     "ni_ctrl": 9619.17,
+     "eps": 1126.3,
+     "bps": 6331.6,
+     "per": 17.31,
+     "pbr": 3.08,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 135095.81,
+     "op": 13570.42,
+     "opm": 0.1005,
+     "ni_ctrl": 12699.3,
+     "eps": 1487.0,
+     "bps": 7818.6,
+     "per": 13.11,
+     "pbr": 2.49,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 113141.46,
+     "op": 11412.03,
+     "opm": 0.1009,
+     "ni_ctrl": 10794.13,
+     "eps": 1263.9,
+     "bps": 9082.5,
+     "per": 15.43,
+     "pbr": 2.15,
+     "dps": 0.0
+    }
+   },
+   "per_now": 13.07,
+   "pbr_now": 3.49,
+   "backtest": {
+    "revenue_wape_pct": 6.5,
+    "op_wape_pct": 13.2,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 4
+  },
+  {
+   "stock": "010620",
+   "name": "HD현대미포",
+   "role": "yard",
+   "status": "partial",
+   "last_actual": "2025Q3",
+   "fin_quarters": 16,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2024A": {
+     "rev": 46300.49,
+     "op": 885.27,
+     "opm": 0.0191,
+     "ni_ctrl": 1055.3,
+     "eps": 2645.9,
+     "bps": 51352.7,
+     "per": null,
+     "pbr": null,
+     "dps": 710.0
+    },
+    "2025E": {
+     "rev": 54159.41,
+     "op": 4144.42,
+     "opm": 0.0765,
+     "ni_ctrl": 2973.72,
+     "eps": 7455.8,
+     "bps": 58898.7,
+     "per": null,
+     "pbr": null,
+     "dps": 710.0
+    },
+    "2026E": {
+     "rev": 62970.75,
+     "op": 2067.66,
+     "opm": 0.0328,
+     "ni_ctrl": 1715.6,
+     "eps": 4301.5,
+     "bps": 62490.2,
+     "per": null,
+     "pbr": null,
+     "dps": 710.0
+    },
+    "2027E": {
+     "rev": 68147.39,
+     "op": 2237.63,
+     "opm": 0.0328,
+     "ni_ctrl": 1881.36,
+     "eps": 4717.0,
+     "bps": 66497.2,
+     "per": null,
+     "pbr": null,
+     "dps": 710.0
+    },
+    "2028E": {
+     "rev": 70963.75,
+     "op": 2330.1,
+     "opm": 0.0328,
+     "ni_ctrl": 1989.38,
+     "eps": 4987.8,
+     "bps": 70775.1,
+     "per": null,
+     "pbr": null,
+     "dps": 710.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": null,
+   "backtest": {
+    "revenue_wape_pct": 3.5,
+    "op_wape_pct": 85.0,
+    "n": 1
+   },
+   "identities_ok": true,
+   "warnings_n": 3
+  },
+  {
+   "stock": "011700",
+   "name": "한신기계공업",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 527.19,
+     "op": -14.77,
+     "opm": -0.028,
+     "ni_ctrl": -4.49,
+     "eps": -13.8,
+     "bps": 2702.8,
+     "per": null,
+     "pbr": 1.13,
+     "dps": 20.0
+    },
+    "2026E": {
+     "rev": 461.38,
+     "op": -14.15,
+     "opm": -0.0307,
+     "ni_ctrl": -0.64,
+     "eps": -2.0,
+     "bps": 2678.1,
+     "per": null,
+     "pbr": 0.9,
+     "dps": 20.0
+    },
+    "2027E": {
+     "rev": 393.97,
+     "op": -15.09,
+     "opm": -0.0383,
+     "ni_ctrl": -11.09,
+     "eps": -34.3,
+     "bps": 2623.8,
+     "per": null,
+     "pbr": 0.91,
+     "dps": 20.0
+    },
+    "2028E": {
+     "rev": 365.75,
+     "op": -14.0,
+     "opm": -0.0383,
+     "ni_ctrl": -10.6,
+     "eps": -32.8,
+     "bps": 2571.1,
+     "per": null,
+     "pbr": 0.93,
+     "dps": 20.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 0.89,
+   "backtest": {
+    "revenue_wape_pct": 39.9,
+    "op_wape_pct": 99.1,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "012160",
+   "name": "영흥",
+   "role": "steel",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 4334.84,
+     "op": -131.69,
+     "opm": -0.0304,
+     "ni_ctrl": -523.29,
+     "eps": -767.8,
+     "bps": 1993.6,
+     "per": null,
+     "pbr": 1.23,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 3884.95,
+     "op": -25.47,
+     "opm": -0.0066,
+     "ni_ctrl": -76.63,
+     "eps": -496.4,
+     "bps": 9299.7,
+     "per": null,
+     "pbr": 0.22,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 3584.88,
+     "op": -63.49,
+     "opm": -0.0177,
+     "ni_ctrl": -143.73,
+     "eps": -1026.0,
+     "bps": 8273.7,
+     "per": null,
+     "pbr": 0.25,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 3447.7,
+     "op": -61.06,
+     "opm": -0.0177,
+     "ni_ctrl": -155.04,
+     "eps": -1106.7,
+     "bps": 7166.9,
+     "per": null,
+     "pbr": 0.29,
+     "dps": 0.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 0.21,
+   "backtest": {
+    "revenue_wape_pct": 2.5,
+    "op_wape_pct": 86.5,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 3
+  },
+  {
+   "stock": "012210",
+   "name": "삼미금속",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 8,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": null,
+     "op": null,
+     "opm": null,
+     "ni_ctrl": null,
+     "eps": null,
+     "bps": 4177.7,
+     "per": null,
+     "pbr": 2.54,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 740.79,
+     "op": 72.09,
+     "opm": 0.0973,
+     "ni_ctrl": 55.8,
+     "eps": 244.1,
+     "bps": 4689.6,
+     "per": 47.4,
+     "pbr": 2.47,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 740.79,
+     "op": 66.22,
+     "opm": 0.0894,
+     "ni_ctrl": 67.31,
+     "eps": 292.0,
+     "bps": 4981.6,
+     "per": 39.62,
+     "pbr": 2.32,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 740.79,
+     "op": 66.22,
+     "opm": 0.0894,
+     "ni_ctrl": 67.99,
+     "eps": 295.0,
+     "bps": 5276.6,
+     "per": 39.22,
+     "pbr": 2.19,
+     "dps": 0.0
+    }
+   },
+   "per_now": 39.81,
+   "pbr_now": 2.54,
+   "backtest": {
+    "revenue_wape_pct": 10.5,
+    "op_wape_pct": 36.8,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 4
+  },
+  {
+   "stock": "013030",
+   "name": "하이록코리아",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 2145.65,
+     "op": 589.11,
+     "opm": 0.2746,
+     "ni_ctrl": 502.9,
+     "eps": 4234.7,
+     "bps": 38609.2,
+     "per": 7.26,
+     "pbr": 0.8,
+     "dps": 1350.0
+    },
+    "2026E": {
+     "rev": 2395.17,
+     "op": 678.92,
+     "opm": 0.2835,
+     "ni_ctrl": 586.89,
+     "eps": 4987.1,
+     "bps": 42479.3,
+     "per": 7.37,
+     "pbr": 0.87,
+     "dps": 1350.0
+    },
+    "2027E": {
+     "rev": 2631.97,
+     "op": 734.88,
+     "opm": 0.2792,
+     "ni_ctrl": 606.72,
+     "eps": 5155.7,
+     "bps": 46284.9,
+     "per": 7.13,
+     "pbr": 0.79,
+     "dps": 1350.0
+    },
+    "2028E": {
+     "rev": 2763.42,
+     "op": 771.59,
+     "opm": 0.2792,
+     "ni_ctrl": 644.2,
+     "eps": 5474.1,
+     "bps": 50409.0,
+     "per": 6.71,
+     "pbr": 0.73,
+     "dps": 1350.0
+    }
+   },
+   "per_now": 7.4,
+   "pbr_now": 0.92,
+   "backtest": {
+    "revenue_wape_pct": 7.8,
+    "op_wape_pct": 0.8,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "014280",
+   "name": "금강공업",
+   "role": "steel",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 8021.56,
+     "op": 104.98,
+     "opm": 0.0131,
+     "ni_ctrl": -446.97,
+     "eps": -1604.0,
+     "bps": 12706.5,
+     "per": null,
+     "pbr": 0.48,
+     "dps": 120.0
+    },
+    "2026E": {
+     "rev": 8210.98,
+     "op": 418.13,
+     "opm": 0.0509,
+     "ni_ctrl": 227.44,
+     "eps": 802.9,
+     "bps": 13342.6,
+     "per": 5.9,
+     "pbr": 0.36,
+     "dps": 120.0
+    },
+    "2027E": {
+     "rev": 8256.63,
+     "op": 221.05,
+     "opm": 0.0268,
+     "ni_ctrl": 31.26,
+     "eps": 110.3,
+     "bps": 13332.9,
+     "per": 42.97,
+     "pbr": 0.36,
+     "dps": 120.0
+    },
+    "2028E": {
+     "rev": 8279.6,
+     "op": 221.66,
+     "opm": 0.0268,
+     "ni_ctrl": 31.66,
+     "eps": 111.8,
+     "bps": 13324.6,
+     "per": 42.4,
+     "pbr": 0.36,
+     "dps": 120.0
+    }
+   },
+   "per_now": 43.33,
+   "pbr_now": 0.36,
+   "backtest": {
+    "revenue_wape_pct": 7.1,
+    "op_wape_pct": 99.1,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "014620",
+   "name": "성광벤드",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 2456.7,
+     "op": 419.56,
+     "opm": 0.1708,
+     "ni_ctrl": 344.32,
+     "eps": 1296.5,
+     "bps": 20691.1,
+     "per": 19.86,
+     "pbr": 1.24,
+     "dps": 200.0
+    },
+    "2026E": {
+     "rev": 2590.53,
+     "op": 386.22,
+     "opm": 0.1491,
+     "ni_ctrl": 364.15,
+     "eps": 1371.1,
+     "bps": 21856.2,
+     "per": 22.35,
+     "pbr": 1.4,
+     "dps": 200.0
+    },
+    "2027E": {
+     "rev": 2774.52,
+     "op": 450.48,
+     "opm": 0.1624,
+     "ni_ctrl": 384.68,
+     "eps": 1448.5,
+     "bps": 23104.8,
+     "per": 21.16,
+     "pbr": 1.33,
+     "dps": 200.0
+    },
+    "2028E": {
+     "rev": 2873.8,
+     "op": 466.59,
+     "opm": 0.1624,
+     "ni_ctrl": 409.55,
+     "eps": 1542.1,
+     "bps": 24446.9,
+     "per": 19.88,
+     "pbr": 1.25,
+     "dps": 200.0
+    }
+   },
+   "per_now": 21.96,
+   "pbr_now": 1.45,
+   "backtest": {
+    "revenue_wape_pct": 16.1,
+    "op_wape_pct": 25.2,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "014940",
+   "name": "오리엔탈정공",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 19,
+    "corr": 0.9509,
+    "n": 16
+   },
+   "fy": {
+    "2025A": {
+     "rev": 2072.56,
+     "op": 242.79,
+     "opm": 0.1171,
+     "ni_ctrl": 217.2,
+     "eps": 476.9,
+     "bps": 2752.1,
+     "per": 16.17,
+     "pbr": 2.8,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 2552.36,
+     "op": 350.72,
+     "opm": 0.1374,
+     "ni_ctrl": 271.23,
+     "eps": 595.6,
+     "bps": 3366.0,
+     "per": 7.37,
+     "pbr": 1.3,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 2815.61,
+     "op": 369.82,
+     "opm": 0.1313,
+     "ni_ctrl": 315.14,
+     "eps": 691.9,
+     "bps": 4057.9,
+     "per": 6.34,
+     "pbr": 1.08,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 2654.74,
+     "op": 348.7,
+     "opm": 0.1313,
+     "ni_ctrl": 319.92,
+     "eps": 702.5,
+     "bps": 4760.3,
+     "per": 6.25,
+     "pbr": 0.92,
+     "dps": 0.0
+    }
+   },
+   "per_now": 6.69,
+   "pbr_now": 1.44,
+   "backtest": {
+    "revenue_wape_pct": 8.6,
+    "op_wape_pct": 29.9,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "017960",
+   "name": "한국카본",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 1,
+    "transform": "ma4",
+    "window_q": 19,
+    "corr": 0.9724,
+    "n": 15
+   },
+   "fy": {
+    "2025A": {
+     "rev": 9088.1,
+     "op": 1309.51,
+     "opm": 0.1441,
+     "ni_ctrl": 1017.44,
+     "eps": 2030.3,
+     "bps": 11518.7,
+     "per": 14.58,
+     "pbr": 2.57,
+     "dps": 320.0
+    },
+    "2026E": {
+     "rev": 10570.15,
+     "op": 1743.2,
+     "opm": 0.1649,
+     "ni_ctrl": 1130.01,
+     "eps": 2194.5,
+     "bps": 14211.0,
+     "per": 9.06,
+     "pbr": 1.4,
+     "dps": 320.0
+    },
+    "2027E": {
+     "rev": 12637.64,
+     "op": 1739.87,
+     "opm": 0.1377,
+     "ni_ctrl": 1284.12,
+     "eps": 2484.9,
+     "bps": 16375.9,
+     "per": 8.0,
+     "pbr": 1.21,
+     "dps": 320.0
+    },
+    "2028E": {
+     "rev": 11861.58,
+     "op": 1633.04,
+     "opm": 0.1377,
+     "ni_ctrl": 1213.18,
+     "eps": 2347.6,
+     "bps": 18403.6,
+     "per": 8.47,
+     "pbr": 1.08,
+     "dps": 320.0
+    }
+   },
+   "per_now": 8.47,
+   "pbr_now": 1.53,
+   "backtest": {
+    "revenue_wape_pct": 11.1,
+    "op_wape_pct": 63.7,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "023160",
+   "name": "태광",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 2969.66,
+     "op": 387.35,
+     "opm": 0.1304,
+     "ni_ctrl": 638.74,
+     "eps": 2469.2,
+     "bps": 24145.5,
+     "per": 8.79,
+     "pbr": 0.9,
+     "dps": 535.0
+    },
+    "2026E": {
+     "rev": 3682.11,
+     "op": 409.18,
+     "opm": 0.1111,
+     "ni_ctrl": 1050.71,
+     "eps": 4083.5,
+     "bps": 28256.7,
+     "per": 6.72,
+     "pbr": 0.97,
+     "dps": 535.0
+    },
+    "2027E": {
+     "rev": 4344.47,
+     "op": 523.35,
+     "opm": 0.1205,
+     "ni_ctrl": 416.16,
+     "eps": 1620.3,
+     "bps": 29342.0,
+     "per": 16.94,
+     "pbr": 0.94,
+     "dps": 535.0
+    },
+    "2028E": {
+     "rev": 4742.22,
+     "op": 571.25,
+     "opm": 0.1205,
+     "ni_ctrl": 459.52,
+     "eps": 1789.2,
+     "bps": 30596.1,
+     "per": 15.34,
+     "pbr": 0.9,
+     "dps": 535.0
+    }
+   },
+   "per_now": 18.05,
+   "pbr_now": 1.0,
+   "backtest": {
+    "revenue_wape_pct": 26.1,
+    "op_wape_pct": 27.8,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 3
+  },
+  {
+   "stock": "025550",
+   "name": "한국선재",
+   "role": "steel",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 1,
+    "transform": "level",
+    "window_q": 8,
+    "corr": 0.8959,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 2194.0,
+     "op": 81.75,
+     "opm": 0.0373,
+     "ni_ctrl": 3.27,
+     "eps": 13.6,
+     "bps": 5127.0,
+     "per": 248.53,
+     "pbr": 0.66,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 3084.85,
+     "op": 236.8,
+     "opm": 0.0768,
+     "ni_ctrl": 28.16,
+     "eps": 116.8,
+     "bps": 5786.0,
+     "per": 19.56,
+     "pbr": 0.39,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 3446.17,
+     "op": 127.12,
+     "opm": 0.0369,
+     "ni_ctrl": 39.04,
+     "eps": 161.7,
+     "bps": 5947.7,
+     "per": 14.13,
+     "pbr": 0.38,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 3304.43,
+     "op": 121.89,
+     "opm": 0.0369,
+     "ni_ctrl": 38.08,
+     "eps": 157.7,
+     "bps": 6105.4,
+     "per": 14.49,
+     "pbr": 0.37,
+     "dps": 0.0
+    }
+   },
+   "per_now": 14.23,
+   "pbr_now": 0.4,
+   "backtest": {
+    "revenue_wape_pct": 16.4,
+    "op_wape_pct": 90.2,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 0
+  },
+  {
+   "stock": "025890",
+   "name": "한국주강",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 398.73,
+     "op": -1.77,
+     "opm": -0.0044,
+     "ni_ctrl": -2.92,
+     "eps": -26.2,
+     "bps": 2986.3,
+     "per": null,
+     "pbr": 0.6,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 360.95,
+     "op": 3.3,
+     "opm": 0.0091,
+     "ni_ctrl": 2.58,
+     "eps": 23.1,
+     "bps": 3011.0,
+     "per": 114.72,
+     "pbr": 0.88,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 322.43,
+     "op": 2.35,
+     "opm": 0.0073,
+     "ni_ctrl": 2.24,
+     "eps": 20.2,
+     "bps": 3031.2,
+     "per": 131.19,
+     "pbr": 0.87,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 305.44,
+     "op": 2.23,
+     "opm": 0.0073,
+     "ni_ctrl": 2.14,
+     "eps": 19.2,
+     "bps": 3050.3,
+     "per": 138.02,
+     "pbr": 0.87,
+     "dps": 0.0
+    }
+   },
+   "per_now": 126.79,
+   "pbr_now": 0.88,
+   "backtest": {
+    "revenue_wape_pct": 16.0,
+    "op_wape_pct": 180.2,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "033500",
+   "name": "동성화인텍",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 19,
+    "corr": 0.9694,
+    "n": 16
+   },
+   "fy": {
+    "2025A": {
+     "rev": 7421.85,
+     "op": 725.58,
+     "opm": 0.0978,
+     "ni_ctrl": 558.84,
+     "eps": 1867.0,
+     "bps": 8649.1,
+     "per": 13.5,
+     "pbr": 2.91,
+     "dps": 400.0
+    },
+    "2026E": {
+     "rev": 8618.2,
+     "op": 1072.74,
+     "opm": 0.1245,
+     "ni_ctrl": 833.02,
+     "eps": 2782.4,
+     "bps": 11028.0,
+     "per": 5.61,
+     "pbr": 1.42,
+     "dps": 400.0
+    },
+    "2027E": {
+     "rev": 9582.23,
+     "op": 1053.69,
+     "opm": 0.11,
+     "ni_ctrl": 819.62,
+     "eps": 2737.4,
+     "bps": 13365.4,
+     "per": 5.71,
+     "pbr": 1.17,
+     "dps": 400.0
+    },
+    "2028E": {
+     "rev": 9023.92,
+     "op": 992.31,
+     "opm": 0.11,
+     "ni_ctrl": 784.72,
+     "eps": 2620.9,
+     "bps": 15586.2,
+     "per": 5.96,
+     "pbr": 1.0,
+     "dps": 400.0
+    }
+   },
+   "per_now": 5.88,
+   "pbr_now": 1.61,
+   "backtest": {
+    "revenue_wape_pct": 15.6,
+    "op_wape_pct": 35.5,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "034020",
+   "name": "두산에너빌리티",
+   "role": "engine",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 170578.76,
+     "op": 7627.12,
+     "opm": 0.0447,
+     "ni_ctrl": 847.62,
+     "eps": 132.3,
+     "bps": null,
+     "per": 572.94,
+     "pbr": null,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 184896.38,
+     "op": 9984.1,
+     "opm": 0.054,
+     "ni_ctrl": 2548.74,
+     "eps": 398.8,
+     "bps": null,
+     "per": 201.86,
+     "pbr": null,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 196895.64,
+     "op": 9336.17,
+     "opm": 0.0474,
+     "ni_ctrl": 2049.29,
+     "eps": 320.6,
+     "bps": null,
+     "per": 251.09,
+     "pbr": null,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 203328.68,
+     "op": 9641.21,
+     "opm": 0.0474,
+     "ni_ctrl": 2173.37,
+     "eps": 340.1,
+     "bps": null,
+     "per": 236.7,
+     "pbr": null,
+     "dps": 0.0
+    }
+   },
+   "per_now": 260.52,
+   "pbr_now": null,
+   "backtest": {
+    "revenue_wape_pct": 13.1,
+    "op_wape_pct": 20.0,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "042660",
+   "name": "한화오션",
+   "role": "yard",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "sls_marine_plus_uncovered_backlog_runoff",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 127835.12,
+     "op": 11675.9,
+     "opm": 0.0913,
+     "ni_ctrl": 12458.39,
+     "eps": 4066.1,
+     "bps": 20138.1,
+     "per": 27.96,
+     "pbr": 5.65,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 169950.99,
+     "op": 20872.23,
+     "opm": 0.1228,
+     "ni_ctrl": 20096.97,
+     "eps": 6559.8,
+     "bps": 27224.8,
+     "per": 12.06,
+     "pbr": 2.91,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 163255.71,
+     "op": 17482.83,
+     "opm": 0.1071,
+     "ni_ctrl": 16198.22,
+     "eps": 5287.4,
+     "bps": 32512.2,
+     "per": 14.96,
+     "pbr": 2.43,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 92481.31,
+     "op": 10091.93,
+     "opm": 0.1091,
+     "ni_ctrl": 9838.87,
+     "eps": 3211.5,
+     "bps": 35723.7,
+     "per": 24.63,
+     "pbr": 2.21,
+     "dps": 0.0
+    }
+   },
+   "per_now": 14.96,
+   "pbr_now": 3.22,
+   "backtest": {
+    "revenue_wape_pct": 17.8,
+    "op_wape_pct": 51.0,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 15
+  },
+  {
+   "stock": "054180",
+   "name": "메디콕스",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 19,
+    "corr": 0.7498,
+    "n": 16
+   },
+   "fy": {
+    "2025A": {
+     "rev": 281.61,
+     "op": -57.47,
+     "opm": -0.2041,
+     "ni_ctrl": -118.96,
+     "eps": -1038.1,
+     "bps": 8536.9,
+     "per": null,
+     "pbr": 0.27,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 313.28,
+     "op": -56.95,
+     "opm": -0.1818,
+     "ni_ctrl": -62.66,
+     "eps": -1135.4,
+     "bps": 7407.5,
+     "per": null,
+     "pbr": 0.31,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 386.86,
+     "op": -73.97,
+     "opm": -0.1912,
+     "ni_ctrl": -76.76,
+     "eps": -1390.9,
+     "bps": 6016.6,
+     "per": null,
+     "pbr": 0.38,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 372.94,
+     "op": -71.31,
+     "opm": -0.1912,
+     "ni_ctrl": -75.82,
+     "eps": -1373.8,
+     "bps": 4642.8,
+     "per": null,
+     "pbr": 0.49,
+     "dps": 0.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 0.28,
+   "backtest": {
+    "revenue_wape_pct": 20.0,
+    "op_wape_pct": 43.6,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "054540",
+   "name": "삼영엠텍",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 1,
+    "transform": "level",
+    "window_q": 8,
+    "corr": 0.9289,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 1184.63,
+     "op": 102.19,
+     "opm": 0.0863,
+     "ni_ctrl": 128.96,
+     "eps": 1032.4,
+     "bps": 6538.0,
+     "per": 13.32,
+     "pbr": 2.1,
+     "dps": 165.0
+    },
+    "2026E": {
+     "rev": 4394.11,
+     "op": 245.93,
+     "opm": 0.056,
+     "ni_ctrl": 236.95,
+     "eps": 1822.7,
+     "bps": 8342.4,
+     "per": 3.62,
+     "pbr": 0.79,
+     "dps": 165.0
+    },
+    "2027E": {
+     "rev": 3576.71,
+     "op": 319.24,
+     "opm": 0.0893,
+     "ni_ctrl": 289.64,
+     "eps": 2228.0,
+     "bps": 10405.5,
+     "per": 2.96,
+     "pbr": 0.63,
+     "dps": 165.0
+    },
+    "2028E": {
+     "rev": 3429.59,
+     "op": 306.12,
+     "opm": 0.0893,
+     "ni_ctrl": 285.54,
+     "eps": 2196.5,
+     "bps": 12437.0,
+     "per": 3.0,
+     "pbr": 0.53,
+     "dps": 165.0
+    }
+   },
+   "per_now": 3.0,
+   "pbr_now": 0.91,
+   "backtest": {
+    "revenue_wape_pct": 62.3,
+    "op_wape_pct": 35.9,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "059270",
+   "name": "해성에어로보틱스",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 2,
+    "transform": "ma4",
+    "window_q": 19,
+    "corr": 0.768,
+    "n": 14
+   },
+   "fy": {
+    "2025A": {
+     "rev": 150.79,
+     "op": -6.21,
+     "opm": -0.0412,
+     "ni_ctrl": 1.48,
+     "eps": 13.3,
+     "bps": 3550.7,
+     "per": 715.79,
+     "pbr": 2.68,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 178.04,
+     "op": -16.88,
+     "opm": -0.0948,
+     "ni_ctrl": 6.34,
+     "eps": 56.8,
+     "bps": 3608.9,
+     "per": 91.9,
+     "pbr": 1.45,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 280.31,
+     "op": -16.22,
+     "opm": -0.0579,
+     "ni_ctrl": -10.7,
+     "eps": -95.8,
+     "bps": 3513.0,
+     "per": null,
+     "pbr": 1.49,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 283.26,
+     "op": -16.39,
+     "opm": -0.0579,
+     "ni_ctrl": -11.15,
+     "eps": -99.8,
+     "bps": 3413.2,
+     "per": null,
+     "pbr": 1.53,
+     "dps": 0.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 1.43,
+   "backtest": {
+    "revenue_wape_pct": 14.0,
+    "op_wape_pct": 60.1,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "064820",
+   "name": "케이프",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.9408,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 5797.74,
+     "op": 499.63,
+     "opm": 0.0862,
+     "ni_ctrl": 594.09,
+     "eps": 1929.7,
+     "bps": 9767.5,
+     "per": 5.16,
+     "pbr": 1.02,
+     "dps": 700.0
+    },
+    "2026E": {
+     "rev": 7385.71,
+     "op": 585.3,
+     "opm": 0.0792,
+     "ni_ctrl": 557.75,
+     "eps": 1807.4,
+     "bps": 11179.3,
+     "per": 4.17,
+     "pbr": 0.67,
+     "dps": 700.0
+    },
+    "2027E": {
+     "rev": 8658.75,
+     "op": 611.97,
+     "opm": 0.0707,
+     "ni_ctrl": 831.76,
+     "eps": 2695.3,
+     "bps": 13174.6,
+     "per": 2.79,
+     "pbr": 0.57,
+     "dps": 700.0
+    },
+    "2028E": {
+     "rev": 8356.5,
+     "op": 590.6,
+     "opm": 0.0707,
+     "ni_ctrl": 876.82,
+     "eps": 2841.3,
+     "bps": 15315.8,
+     "per": 2.65,
+     "pbr": 0.49,
+     "dps": 700.0
+    }
+   },
+   "per_now": 2.94,
+   "pbr_now": 0.75,
+   "backtest": {
+    "revenue_wape_pct": 11.9,
+    "op_wape_pct": 94.5,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "065570",
+   "name": "삼영이엔씨",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 332.61,
+     "op": -1.94,
+     "opm": -0.0058,
+     "ni_ctrl": 8.41,
+     "eps": 52.6,
+     "bps": 1125.2,
+     "per": 14.52,
+     "pbr": 0.68,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 305.66,
+     "op": -5.88,
+     "opm": -0.0192,
+     "ni_ctrl": -52.51,
+     "eps": -326.2,
+     "bps": 798.8,
+     "per": null,
+     "pbr": 0.96,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 294.68,
+     "op": -17.27,
+     "opm": -0.0586,
+     "ni_ctrl": -27.26,
+     "eps": -169.4,
+     "bps": 629.4,
+     "per": null,
+     "pbr": 1.21,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 289.42,
+     "op": -16.95,
+     "opm": -0.0586,
+     "ni_ctrl": -27.79,
+     "eps": -172.7,
+     "bps": 456.7,
+     "per": null,
+     "pbr": 1.67,
+     "dps": 0.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 0.85,
+   "backtest": {
+    "revenue_wape_pct": 25.7,
+    "op_wape_pct": 341.0,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "065710",
+   "name": "서호전기",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 4,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.9203,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 1166.26,
+     "op": 253.25,
+     "opm": 0.2171,
+     "ni_ctrl": 207.34,
+     "eps": 4588.1,
+     "bps": 18120.4,
+     "per": 11.09,
+     "pbr": 2.81,
+     "dps": 6000.0
+    },
+    "2026E": {
+     "rev": 1025.99,
+     "op": 220.07,
+     "opm": 0.2145,
+     "ni_ctrl": 190.54,
+     "eps": 3785.4,
+     "bps": 22758.7,
+     "per": 11.89,
+     "pbr": 1.98,
+     "dps": 6000.0
+    },
+    "2027E": {
+     "rev": 1195.66,
+     "op": 221.53,
+     "opm": 0.1853,
+     "ni_ctrl": 198.92,
+     "eps": 3951.9,
+     "bps": 20710.6,
+     "per": 11.39,
+     "pbr": 2.17,
+     "dps": 6000.0
+    },
+    "2028E": {
+     "rev": 1328.13,
+     "op": 246.09,
+     "opm": 0.1853,
+     "ni_ctrl": 216.06,
+     "eps": 4292.5,
+     "bps": 19003.1,
+     "per": 10.48,
+     "pbr": 2.37,
+     "dps": 6000.0
+    }
+   },
+   "per_now": 12.25,
+   "pbr_now": 2.14,
+   "backtest": {
+    "revenue_wape_pct": 58.0,
+    "op_wape_pct": 35.0,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 0
+  },
+  {
+   "stock": "071970",
+   "name": "HD현대마린엔진",
+   "role": "engine",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.9964,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 4023.97,
+     "op": 759.11,
+     "opm": 0.1886,
+     "ni_ctrl": 1651.01,
+     "eps": 4867.2,
+     "bps": 14413.1,
+     "per": 18.41,
+     "pbr": 6.22,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 5477.27,
+     "op": 1156.16,
+     "opm": 0.2111,
+     "ni_ctrl": 1163.86,
+     "eps": 3431.1,
+     "bps": 17051.4,
+     "per": 13.87,
+     "pbr": 2.79,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 5346.56,
+     "op": 967.24,
+     "opm": 0.1809,
+     "ni_ctrl": 1095.54,
+     "eps": 3229.7,
+     "bps": 20281.0,
+     "per": 14.74,
+     "pbr": 2.35,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 5115.01,
+     "op": 925.34,
+     "opm": 0.1809,
+     "ni_ctrl": 1101.43,
+     "eps": 3247.0,
+     "bps": 23528.0,
+     "per": 14.66,
+     "pbr": 2.02,
+     "dps": 0.0
+    }
+   },
+   "per_now": 15.38,
+   "pbr_now": 3.09,
+   "backtest": {
+    "revenue_wape_pct": 25.2,
+    "op_wape_pct": 66.4,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "073010",
+   "name": "케이에스피",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 955.32,
+     "op": 115.4,
+     "opm": 0.1208,
+     "ni_ctrl": 65.59,
+     "eps": 163.7,
+     "bps": 2073.9,
+     "per": 25.66,
+     "pbr": 2.03,
+     "dps": 20.0
+    },
+    "2026E": {
+     "rev": 1165.35,
+     "op": 163.29,
+     "opm": 0.1401,
+     "ni_ctrl": 131.33,
+     "eps": 327.8,
+     "bps": 2381.8,
+     "per": 9.93,
+     "pbr": 1.37,
+     "dps": 20.0
+    },
+    "2027E": {
+     "rev": 1338.51,
+     "op": 178.16,
+     "opm": 0.1331,
+     "ni_ctrl": 171.97,
+     "eps": 429.2,
+     "bps": 2791.0,
+     "per": 7.58,
+     "pbr": 1.17,
+     "dps": 20.0
+    },
+    "2028E": {
+     "rev": 1439.4,
+     "op": 191.58,
+     "opm": 0.1331,
+     "ni_ctrl": 186.18,
+     "eps": 464.7,
+     "bps": 3235.6,
+     "per": 7.0,
+     "pbr": 1.01,
+     "dps": 20.0
+    }
+   },
+   "per_now": 7.97,
+   "pbr_now": 1.49,
+   "backtest": {
+    "revenue_wape_pct": 13.0,
+    "op_wape_pct": 18.7,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 3
+  },
+  {
+   "stock": "075580",
+   "name": "세진중공업",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "ref_base",
+    "lag_q": 1,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.9111,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 4026.86,
+     "op": 733.89,
+     "opm": 0.1822,
+     "ni_ctrl": 506.82,
+     "eps": 891.5,
+     "bps": 4018.9,
+     "per": 19.52,
+     "pbr": 4.33,
+     "dps": 225.0
+    },
+    "2026E": {
+     "rev": 4134.53,
+     "op": 732.26,
+     "opm": 0.1771,
+     "ni_ctrl": 557.78,
+     "eps": 981.2,
+     "bps": 4763.8,
+     "per": 9.89,
+     "pbr": 2.04,
+     "dps": 225.0
+    },
+    "2027E": {
+     "rev": 4871.51,
+     "op": 820.99,
+     "opm": 0.1685,
+     "ni_ctrl": 535.44,
+     "eps": 941.9,
+     "bps": 5480.7,
+     "per": 10.3,
+     "pbr": 1.77,
+     "dps": 225.0
+    },
+    "2028E": {
+     "rev": 4739.31,
+     "op": 798.72,
+     "opm": 0.1685,
+     "ni_ctrl": 531.49,
+     "eps": 935.0,
+     "bps": 6190.6,
+     "per": 10.37,
+     "pbr": 1.57,
+     "dps": 225.0
+    }
+   },
+   "per_now": 10.98,
+   "pbr_now": 2.24,
+   "backtest": {
+    "revenue_wape_pct": 11.7,
+    "op_wape_pct": 52.6,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "077970",
+   "name": "STX엔진",
+   "role": "engine",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 3,
+    "transform": "ma4",
+    "window_q": 19,
+    "corr": 0.9869,
+    "n": 13
+   },
+   "fy": {
+    "2025A": {
+     "rev": 7893.42,
+     "op": 695.94,
+     "opm": 0.0882,
+     "ni_ctrl": 689.49,
+     "eps": 1913.6,
+     "bps": 8544.6,
+     "per": 17.77,
+     "pbr": 3.98,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 9483.42,
+     "op": 897.02,
+     "opm": 0.0946,
+     "ni_ctrl": 790.69,
+     "eps": 1969.8,
+     "bps": 10542.9,
+     "per": 10.94,
+     "pbr": 2.04,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 12141.88,
+     "op": 1049.81,
+     "opm": 0.0865,
+     "ni_ctrl": 916.36,
+     "eps": 2283.0,
+     "bps": 12825.9,
+     "per": 9.44,
+     "pbr": 1.68,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 12306.92,
+     "op": 1064.07,
+     "opm": 0.0865,
+     "ni_ctrl": 948.45,
+     "eps": 2363.0,
+     "bps": 15188.9,
+     "per": 9.12,
+     "pbr": 1.42,
+     "dps": 0.0
+    }
+   },
+   "per_now": 11.17,
+   "pbr_now": 2.26,
+   "backtest": {
+    "revenue_wape_pct": 20.9,
+    "op_wape_pct": 48.8,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "079430",
+   "name": "현대리바트",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": {
+    "adopted": false,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 1,
+    "transform": "yoy",
+    "window_q": 8,
+    "corr": 0.5292,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 15462.06,
+     "op": 157.18,
+     "opm": 0.0102,
+     "ni_ctrl": 74.06,
+     "eps": 368.3,
+     "bps": 20784.9,
+     "per": 18.71,
+     "pbr": 0.33,
+     "dps": 130.0
+    },
+    "2026E": {
+     "rev": 13100.71,
+     "op": 134.0,
+     "opm": 0.0102,
+     "ni_ctrl": 106.58,
+     "eps": 529.9,
+     "bps": 21176.7,
+     "per": 10.95,
+     "pbr": 0.27,
+     "dps": 130.0
+    },
+    "2027E": {
+     "rev": 11384.75,
+     "op": 132.99,
+     "opm": 0.0117,
+     "ni_ctrl": 104.27,
+     "eps": 518.5,
+     "bps": 21565.1,
+     "per": 11.19,
+     "pbr": 0.27,
+     "dps": 130.0
+    },
+    "2028E": {
+     "rev": 10650.59,
+     "op": 124.42,
+     "opm": 0.0117,
+     "ni_ctrl": 98.56,
+     "eps": 490.0,
+     "bps": 21925.1,
+     "per": 11.84,
+     "pbr": 0.26,
+     "dps": 130.0
+    }
+   },
+   "per_now": 10.79,
+   "pbr_now": 0.28,
+   "backtest": {
+    "revenue_wape_pct": 46.6,
+    "op_wape_pct": 149.1,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "082740",
+   "name": "한화엔진",
+   "role": "engine",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 2,
+    "transform": "ma4",
+    "window_q": 19,
+    "corr": 0.9951,
+    "n": 14
+   },
+   "fy": {
+    "2025A": {
+     "rev": 13710.57,
+     "op": 1300.66,
+     "opm": 0.0949,
+     "ni_ctrl": 1737.53,
+     "eps": 2082.7,
+     "bps": 6665.9,
+     "per": 20.62,
+     "pbr": 6.44,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 15317.39,
+     "op": 1621.07,
+     "opm": 0.1058,
+     "ni_ctrl": 1612.48,
+     "eps": 1932.8,
+     "bps": 8689.7,
+     "per": 24.27,
+     "pbr": 5.4,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 18791.88,
+     "op": 1660.08,
+     "opm": 0.0883,
+     "ni_ctrl": 1742.34,
+     "eps": 2088.4,
+     "bps": 10778.2,
+     "per": 22.46,
+     "pbr": 4.35,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 18331.96,
+     "op": 1619.46,
+     "opm": 0.0883,
+     "ni_ctrl": 1770.15,
+     "eps": 2121.9,
+     "bps": 12900.0,
+     "per": 22.1,
+     "pbr": 3.64,
+     "dps": 0.0
+    }
+   },
+   "per_now": 24.94,
+   "pbr_now": 6.02,
+   "backtest": {
+    "revenue_wape_pct": 9.7,
+    "op_wape_pct": 44.3,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "085310",
+   "name": "엔케이",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 4,
+    "transform": "ma4",
+    "window_q": 12,
+    "corr": 0.9606,
+    "n": 12
+   },
+   "fy": {
+    "2025A": {
+     "rev": 1301.03,
+     "op": -6.47,
+     "opm": -0.005,
+     "ni_ctrl": -41.38,
+     "eps": -59.7,
+     "bps": 2337.3,
+     "per": null,
+     "pbr": 4.99,
+     "dps": 10.0
+    },
+    "2026E": {
+     "rev": 1481.68,
+     "op": 25.61,
+     "opm": 0.0173,
+     "ni_ctrl": 64.46,
+     "eps": 565.6,
+     "bps": 24279.8,
+     "per": 15.45,
+     "pbr": 0.36,
+     "dps": 10.0
+    },
+    "2027E": {
+     "rev": 1735.26,
+     "op": -24.41,
+     "opm": -0.0141,
+     "ni_ctrl": -0.89,
+     "eps": -12.8,
+     "bps": 24257.0,
+     "per": null,
+     "pbr": 0.36,
+     "dps": 10.0
+    },
+    "2028E": {
+     "rev": 1907.44,
+     "op": -26.83,
+     "opm": -0.0141,
+     "ni_ctrl": -3.33,
+     "eps": -47.9,
+     "bps": 24199.0,
+     "per": null,
+     "pbr": 0.36,
+     "dps": 10.0
+    }
+   },
+   "per_now": 430.54,
+   "pbr_now": 0.36,
+   "backtest": {
+    "revenue_wape_pct": 8.3,
+    "op_wape_pct": 129.2,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "086670",
+   "name": "비엠티",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 1,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.9062,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 1469.92,
+     "op": 153.14,
+     "opm": 0.1042,
+     "ni_ctrl": 190.1,
+     "eps": 1997.4,
+     "bps": 15049.4,
+     "per": 5.83,
+     "pbr": 0.77,
+     "dps": 600.0
+    },
+    "2026E": {
+     "rev": 1758.52,
+     "op": 155.31,
+     "opm": 0.0883,
+     "ni_ctrl": 149.3,
+     "eps": 1504.1,
+     "bps": 15957.0,
+     "per": 12.98,
+     "pbr": 1.22,
+     "dps": 600.0
+    },
+    "2027E": {
+     "rev": 2091.75,
+     "op": 170.36,
+     "opm": 0.0814,
+     "ni_ctrl": 146.25,
+     "eps": 1473.4,
+     "bps": 16830.4,
+     "per": 13.26,
+     "pbr": 1.16,
+     "dps": 600.0
+    },
+    "2028E": {
+     "rev": 1992.02,
+     "op": 162.24,
+     "opm": 0.0814,
+     "ni_ctrl": 141.33,
+     "eps": 1424.0,
+     "bps": 17654.4,
+     "per": 13.71,
+     "pbr": 1.11,
+     "dps": 600.0
+    }
+   },
+   "per_now": 13.98,
+   "pbr_now": 1.28,
+   "backtest": {
+    "revenue_wape_pct": 11.6,
+    "op_wape_pct": 52.5,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "092460",
+   "name": "한라IMS",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 1334.77,
+     "op": 222.73,
+     "opm": 0.1669,
+     "ni_ctrl": 254.9,
+     "eps": 1500.3,
+     "bps": 11612.8,
+     "per": 11.33,
+     "pbr": 1.46,
+     "dps": 620.0
+    },
+    "2026E": {
+     "rev": 1750.44,
+     "op": 297.3,
+     "opm": 0.1698,
+     "ni_ctrl": 279.76,
+     "eps": 1635.0,
+     "bps": 12674.0,
+     "per": 10.24,
+     "pbr": 1.32,
+     "dps": 620.0
+    },
+    "2027E": {
+     "rev": 2140.17,
+     "op": 346.18,
+     "opm": 0.1618,
+     "ni_ctrl": 304.88,
+     "eps": 1781.9,
+     "bps": 13835.9,
+     "per": 9.39,
+     "pbr": 1.21,
+     "dps": 620.0
+    },
+    "2028E": {
+     "rev": 2383.41,
+     "op": 385.52,
+     "opm": 0.1618,
+     "ni_ctrl": 348.28,
+     "eps": 2035.5,
+     "bps": 15251.5,
+     "per": 8.22,
+     "pbr": 1.1,
+     "dps": 620.0
+    }
+   },
+   "per_now": 10.18,
+   "pbr_now": 1.4,
+   "backtest": {
+    "revenue_wape_pct": 9.6,
+    "op_wape_pct": 13.8,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "096350",
+   "name": "대창솔루션",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.8257,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 598.78,
+     "op": -1.44,
+     "opm": -0.0024,
+     "ni_ctrl": -65.44,
+     "eps": -45.5,
+     "bps": 872.2,
+     "per": null,
+     "pbr": 2.68,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 851.73,
+     "op": 14.01,
+     "opm": 0.0164,
+     "ni_ctrl": 7.09,
+     "eps": 19.8,
+     "bps": 886.2,
+     "per": 94.85,
+     "pbr": 2.12,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 912.24,
+     "op": 1.12,
+     "opm": 0.0012,
+     "ni_ctrl": 3.21,
+     "eps": 8.9,
+     "bps": 895.2,
+     "per": 211.01,
+     "pbr": 2.1,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 859.57,
+     "op": 1.05,
+     "opm": 0.0012,
+     "ni_ctrl": 3.22,
+     "eps": 8.9,
+     "bps": 904.1,
+     "per": 211.01,
+     "pbr": 2.08,
+     "dps": 0.0
+    }
+   },
+   "per_now": 211.01,
+   "pbr_now": 2.13,
+   "backtest": {
+    "revenue_wape_pct": 37.4,
+    "op_wape_pct": 99.6,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "097230",
+   "name": "HJ중공업",
+   "role": "yard",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "sls_marine_plus_uncovered_backlog_runoff",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 19997.05,
+     "op": 670.74,
+     "opm": 0.0335,
+     "ni_ctrl": 514.34,
+     "eps": 572.3,
+     "bps": 7416.5,
+     "per": 36.78,
+     "pbr": 2.84,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 25134.64,
+     "op": 2017.69,
+     "opm": 0.0803,
+     "ni_ctrl": 1805.08,
+     "eps": 1999.2,
+     "bps": 9363.5,
+     "per": 7.28,
+     "pbr": 1.55,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 21882.64,
+     "op": 1994.63,
+     "opm": 0.0912,
+     "ni_ctrl": 1644.08,
+     "eps": 1820.8,
+     "bps": 11184.4,
+     "per": 7.99,
+     "pbr": 1.3,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 16346.81,
+     "op": 1485.01,
+     "opm": 0.0908,
+     "ni_ctrl": 1194.33,
+     "eps": 1322.8,
+     "bps": 12507.1,
+     "per": 11.0,
+     "pbr": 1.16,
+     "dps": 0.0
+    }
+   },
+   "per_now": 6.87,
+   "pbr_now": 1.74,
+   "backtest": {
+    "revenue_wape_pct": 19.4,
+    "op_wape_pct": 100.0,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 3
+  },
+  {
+   "stock": "099410",
+   "name": "동방선기",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "ref_base",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 12,
+    "corr": 0.985,
+    "n": 12
+   },
+   "fy": {
+    "2025A": {
+     "rev": 418.8,
+     "op": 92.9,
+     "opm": 0.2218,
+     "ni_ctrl": 79.49,
+     "eps": 570.0,
+     "bps": 3573.7,
+     "per": 7.91,
+     "pbr": 1.26,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 468.58,
+     "op": 100.98,
+     "opm": 0.2155,
+     "ni_ctrl": 87.7,
+     "eps": 628.8,
+     "bps": 4206.5,
+     "per": 4.9,
+     "pbr": 0.73,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 478.45,
+     "op": 85.34,
+     "opm": 0.1784,
+     "ni_ctrl": 83.72,
+     "eps": 600.3,
+     "bps": 4806.8,
+     "per": 5.13,
+     "pbr": 0.64,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 460.47,
+     "op": 82.14,
+     "opm": 0.1784,
+     "ni_ctrl": 81.54,
+     "eps": 584.7,
+     "bps": 5391.5,
+     "per": 5.27,
+     "pbr": 0.57,
+     "dps": 0.0
+    }
+   },
+   "per_now": 5.28,
+   "pbr_now": 0.79,
+   "backtest": {
+    "revenue_wape_pct": 14.2,
+    "op_wape_pct": 75.4,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 0
+  },
+  {
+   "stock": "100090",
+   "name": "SK오션플랜트",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 9653.89,
+     "op": 595.1,
+     "opm": 0.0616,
+     "ni_ctrl": 377.97,
+     "eps": 614.0,
+     "bps": 13037.3,
+     "per": 32.98,
+     "pbr": 1.55,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 7871.18,
+     "op": 675.76,
+     "opm": 0.0859,
+     "ni_ctrl": 460.74,
+     "eps": 737.4,
+     "bps": 13774.9,
+     "per": 15.66,
+     "pbr": 0.84,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 7560.65,
+     "op": 536.69,
+     "opm": 0.071,
+     "ni_ctrl": 383.77,
+     "eps": 614.3,
+     "bps": 14389.2,
+     "per": 18.8,
+     "pbr": 0.8,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 7412.25,
+     "op": 526.14,
+     "opm": 0.071,
+     "ni_ctrl": 387.66,
+     "eps": 620.6,
+     "bps": 15009.7,
+     "per": 18.61,
+     "pbr": 0.77,
+     "dps": 0.0
+    }
+   },
+   "per_now": 18.76,
+   "pbr_now": 0.86,
+   "backtest": {
+    "revenue_wape_pct": 37.4,
+    "op_wape_pct": 12.8,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "100660",
+   "name": "서암기계공업",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.923,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 465.02,
+     "op": 0.44,
+     "opm": 0.0009,
+     "ni_ctrl": 11.91,
+     "eps": 94.5,
+     "bps": 5313.0,
+     "per": 47.51,
+     "pbr": 0.85,
+     "dps": 10.0
+    },
+    "2026E": {
+     "rev": 568.79,
+     "op": 2.52,
+     "opm": 0.0044,
+     "ni_ctrl": 10.51,
+     "eps": 83.4,
+     "bps": 5433.1,
+     "per": 36.93,
+     "pbr": 0.57,
+     "dps": 10.0
+    },
+    "2027E": {
+     "rev": 678.17,
+     "op": -7.16,
+     "opm": -0.0106,
+     "ni_ctrl": 1.62,
+     "eps": 12.9,
+     "bps": 5435.9,
+     "per": 238.76,
+     "pbr": 0.57,
+     "dps": 10.0
+    },
+    "2028E": {
+     "rev": 653.99,
+     "op": -6.91,
+     "opm": -0.0106,
+     "ni_ctrl": 1.86,
+     "eps": 14.8,
+     "bps": 5440.8,
+     "per": 208.11,
+     "pbr": 0.57,
+     "dps": 10.0
+    }
+   },
+   "per_now": 221.58,
+   "pbr_now": 0.57,
+   "backtest": {
+    "revenue_wape_pct": 17.8,
+    "op_wape_pct": 150.6,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "101000",
+   "name": "KS인더스트리",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": {
+    "adopted": false,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 3,
+    "transform": "level",
+    "window_q": 8,
+    "corr": 0.4532,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 394.47,
+     "op": -46.2,
+     "opm": -0.1171,
+     "ni_ctrl": -72.56,
+     "eps": -217.4,
+     "bps": 1047.1,
+     "per": null,
+     "pbr": 1.73,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 417.1,
+     "op": -39.08,
+     "opm": -0.0937,
+     "ni_ctrl": -29.44,
+     "eps": -74.3,
+     "bps": 1013.0,
+     "per": null,
+     "pbr": 1.63,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 459.2,
+     "op": -48.52,
+     "opm": -0.1057,
+     "ni_ctrl": -91.73,
+     "eps": -231.5,
+     "bps": 781.4,
+     "per": null,
+     "pbr": 2.11,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 482.61,
+     "op": -51.01,
+     "opm": -0.1057,
+     "ni_ctrl": -95.12,
+     "eps": -240.0,
+     "bps": 541.4,
+     "per": null,
+     "pbr": 3.05,
+     "dps": 0.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 1.47,
+   "backtest": {
+    "revenue_wape_pct": 38.4,
+    "op_wape_pct": 77.8,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 3
+  },
+  {
+   "stock": "101930",
+   "name": "인화정공",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 2,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.8806,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 1079.58,
+     "op": 155.34,
+     "opm": 0.1439,
+     "ni_ctrl": 255.67,
+     "eps": 2769.0,
+     "bps": 36971.5,
+     "per": 3.34,
+     "pbr": 0.25,
+     "dps": 750.0
+    },
+    "2026E": {
+     "rev": 1206.4,
+     "op": 187.66,
+     "opm": 0.1556,
+     "ni_ctrl": 298.26,
+     "eps": 1243.4,
+     "bps": 8075.3,
+     "per": 4.95,
+     "pbr": 0.76,
+     "dps": 750.0
+    },
+    "2027E": {
+     "rev": 1701.18,
+     "op": 256.45,
+     "opm": 0.1507,
+     "ni_ctrl": 328.4,
+     "eps": 718.7,
+     "bps": 8044.0,
+     "per": 8.57,
+     "pbr": 0.77,
+     "dps": 750.0
+    },
+    "2028E": {
+     "rev": 1727.6,
+     "op": 260.42,
+     "opm": 0.1507,
+     "ni_ctrl": 330.96,
+     "eps": 724.3,
+     "bps": 8018.3,
+     "per": 8.5,
+     "pbr": 0.77,
+     "dps": 750.0
+    }
+   },
+   "per_now": 9.11,
+   "pbr_now": 0.79,
+   "backtest": {
+    "revenue_wape_pct": 16.1,
+    "op_wape_pct": 51.5,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 0
+  },
+  {
+   "stock": "103230",
+   "name": "에스앤더블류",
+   "role": "engine",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 2,
+    "transform": "ma4",
+    "window_q": 19,
+    "corr": 0.8881,
+    "n": 14
+   },
+   "fy": {
+    "2025A": {
+     "rev": 488.05,
+     "op": 9.02,
+     "opm": 0.0185,
+     "ni_ctrl": 36.31,
+     "eps": 504.3,
+     "bps": 7427.6,
+     "per": 8.25,
+     "pbr": 0.56,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 596.72,
+     "op": 17.61,
+     "opm": 0.0295,
+     "ni_ctrl": 19.12,
+     "eps": 265.6,
+     "bps": 7716.8,
+     "per": 7.39,
+     "pbr": 0.25,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 850.8,
+     "op": 24.94,
+     "opm": 0.0293,
+     "ni_ctrl": 24.45,
+     "eps": 339.5,
+     "bps": 8056.3,
+     "per": 5.78,
+     "pbr": 0.24,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 859.15,
+     "op": 25.2,
+     "opm": 0.0293,
+     "ni_ctrl": 25.05,
+     "eps": 347.9,
+     "bps": 8404.2,
+     "per": 5.65,
+     "pbr": 0.23,
+     "dps": 0.0
+    }
+   },
+   "per_now": 6.47,
+   "pbr_now": 0.26,
+   "backtest": {
+    "revenue_wape_pct": 18.5,
+    "op_wape_pct": 205.4,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "108380",
+   "name": "대양전기공업",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 2300.95,
+     "op": 270.6,
+     "opm": 0.1176,
+     "ni_ctrl": 247.89,
+     "eps": 2679.5,
+     "bps": 29042.3,
+     "per": 10.34,
+     "pbr": 0.95,
+     "dps": 200.0
+    },
+    "2026E": {
+     "rev": 2523.09,
+     "op": 287.4,
+     "opm": 0.1139,
+     "ni_ctrl": 283.99,
+     "eps": 3058.2,
+     "bps": 31349.1,
+     "per": 5.95,
+     "pbr": 0.58,
+     "dps": 200.0
+    },
+    "2027E": {
+     "rev": 2720.22,
+     "op": 310.54,
+     "opm": 0.1142,
+     "ni_ctrl": 288.42,
+     "eps": 3103.9,
+     "bps": 34252.9,
+     "per": 5.86,
+     "pbr": 0.53,
+     "dps": 200.0
+    },
+    "2028E": {
+     "rev": 2827.35,
+     "op": 322.78,
+     "opm": 0.1142,
+     "ni_ctrl": 311.22,
+     "eps": 3349.2,
+     "bps": 37402.1,
+     "per": 5.43,
+     "pbr": 0.49,
+     "dps": 200.0
+    }
+   },
+   "per_now": 6.13,
+   "pbr_now": 0.61,
+   "backtest": {
+    "revenue_wape_pct": 17.9,
+    "op_wape_pct": 43.3,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "133820",
+   "name": "화인베스틸",
+   "role": "steel",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 4,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.9915,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 1861.72,
+     "op": -16.7,
+     "opm": -0.009,
+     "ni_ctrl": -51.14,
+     "eps": -157.1,
+     "bps": 1356.2,
+     "per": null,
+     "pbr": 1.21,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 2019.86,
+     "op": 40.35,
+     "opm": 0.02,
+     "ni_ctrl": 13.55,
+     "eps": 36.5,
+     "bps": 1386.8,
+     "per": 26.99,
+     "pbr": 0.71,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 2334.98,
+     "op": 31.14,
+     "opm": 0.0133,
+     "ni_ctrl": 24.41,
+     "eps": 65.7,
+     "bps": 1452.6,
+     "per": 14.99,
+     "pbr": 0.68,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 2569.29,
+     "op": 34.26,
+     "opm": 0.0133,
+     "ni_ctrl": 26.87,
+     "eps": 72.4,
+     "bps": 1525.0,
+     "per": 13.6,
+     "pbr": 0.65,
+     "dps": 0.0
+    }
+   },
+   "per_now": 16.72,
+   "pbr_now": 0.73,
+   "backtest": {
+    "revenue_wape_pct": 17.2,
+    "op_wape_pct": 622.3,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "136150",
+   "name": "원일티엔아이",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 5,
+   "driver": "trend_seasonal",
+   "link": {
+    "adopted": false,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 2,
+    "transform": "level",
+    "window_q": 8,
+    "corr": 0.8748,
+    "n": 5
+   },
+   "fy": {
+    "2025A": {
+     "rev": null,
+     "op": null,
+     "opm": null,
+     "ni_ctrl": null,
+     "eps": null,
+     "bps": 5852.8,
+     "per": null,
+     "pbr": 3.14,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 298.51,
+     "op": -46.53,
+     "opm": -0.1559,
+     "ni_ctrl": -34.67,
+     "eps": -420.7,
+     "bps": 5440.6,
+     "per": null,
+     "pbr": 1.49,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 298.51,
+     "op": -59.7,
+     "opm": -0.2,
+     "ni_ctrl": -58.73,
+     "eps": -712.6,
+     "bps": 4728.0,
+     "per": null,
+     "pbr": 1.71,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 298.51,
+     "op": -59.7,
+     "opm": -0.2,
+     "ni_ctrl": -59.52,
+     "eps": -722.3,
+     "bps": 4005.7,
+     "per": null,
+     "pbr": 2.02,
+     "dps": 0.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 1.39,
+   "backtest": {
+    "revenue_wape_pct": 44.7,
+    "op_wape_pct": 116.1,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "155660",
+   "name": "DSR",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 3023.91,
+     "op": 192.92,
+     "opm": 0.0638,
+     "ni_ctrl": 149.62,
+     "eps": 935.0,
+     "bps": 15283.8,
+     "per": 4.18,
+     "pbr": 0.26,
+     "dps": 250.0
+    },
+    "2026E": {
+     "rev": 3206.86,
+     "op": 195.48,
+     "opm": 0.061,
+     "ni_ctrl": 295.22,
+     "eps": 1845.1,
+     "bps": 17077.9,
+     "per": 2.33,
+     "pbr": 0.25,
+     "dps": 250.0
+    },
+    "2027E": {
+     "rev": 3279.2,
+     "op": 184.8,
+     "opm": 0.0564,
+     "ni_ctrl": 187.67,
+     "eps": 1172.9,
+     "bps": 18000.8,
+     "per": 3.66,
+     "pbr": 0.24,
+     "dps": 250.0
+    },
+    "2028E": {
+     "rev": 3316.29,
+     "op": 186.89,
+     "opm": 0.0564,
+     "ni_ctrl": 197.4,
+     "eps": 1233.9,
+     "bps": 18984.6,
+     "per": 3.48,
+     "pbr": 0.23,
+     "dps": 250.0
+    }
+   },
+   "per_now": 3.76,
+   "pbr_now": 0.26,
+   "backtest": {
+    "revenue_wape_pct": 8.4,
+    "op_wape_pct": 19.4,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "187790",
+   "name": "나노",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 856.76,
+     "op": 55.27,
+     "opm": 0.0645,
+     "ni_ctrl": 48.52,
+     "eps": 158.3,
+     "bps": 1392.5,
+     "per": 21.98,
+     "pbr": 2.5,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 1056.98,
+     "op": 1.32,
+     "opm": 0.0012,
+     "ni_ctrl": -16.42,
+     "eps": -53.5,
+     "bps": 1307.6,
+     "per": null,
+     "pbr": 2.27,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 1215.07,
+     "op": 7.74,
+     "opm": 0.0064,
+     "ni_ctrl": -21.89,
+     "eps": -71.3,
+     "bps": 1236.3,
+     "per": null,
+     "pbr": 2.4,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 1307.41,
+     "op": 8.33,
+     "opm": 0.0064,
+     "ni_ctrl": -21.68,
+     "eps": -70.7,
+     "bps": 1165.5,
+     "per": null,
+     "pbr": 2.55,
+     "dps": 0.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 2.21,
+   "backtest": {
+    "revenue_wape_pct": 29.5,
+    "op_wape_pct": 91.0,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 3
+  },
+  {
+   "stock": "189300",
+   "name": "인텔리안테크",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 3196.27,
+     "op": 119.53,
+     "opm": 0.0374,
+     "ni_ctrl": 74.64,
+     "eps": 749.7,
+     "bps": 26100.7,
+     "per": 79.5,
+     "pbr": 2.28,
+     "dps": 200.0
+    },
+    "2026E": {
+     "rev": 4465.32,
+     "op": 123.9,
+     "opm": 0.0277,
+     "ni_ctrl": 200.61,
+     "eps": 1963.8,
+     "bps": 28161.9,
+     "per": 34.17,
+     "pbr": 2.38,
+     "dps": 200.0
+    },
+    "2027E": {
+     "rev": 5718.59,
+     "op": 93.67,
+     "opm": 0.0164,
+     "ni_ctrl": 37.47,
+     "eps": 366.5,
+     "bps": 28328.4,
+     "per": 183.08,
+     "pbr": 2.37,
+     "dps": 200.0
+    },
+    "2028E": {
+     "rev": 6542.99,
+     "op": 107.17,
+     "opm": 0.0164,
+     "ni_ctrl": 50.01,
+     "eps": 489.2,
+     "bps": 28617.6,
+     "per": 137.16,
+     "pbr": 2.34,
+     "dps": 200.0
+    }
+   },
+   "per_now": 239.05,
+   "pbr_now": 2.4,
+   "backtest": {
+    "revenue_wape_pct": 32.8,
+    "op_wape_pct": 137.5,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "217590",
+   "name": "티엠씨",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 4,
+   "driver": "trend_seasonal",
+   "link": {
+    "adopted": false,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 1,
+    "transform": "level",
+    "window_q": 8,
+    "corr": 0.915,
+    "n": 4
+   },
+   "fy": {
+    "2025A": {
+     "rev": null,
+     "op": null,
+     "opm": null,
+     "ni_ctrl": null,
+     "eps": null,
+     "bps": 4646.7,
+     "per": null,
+     "pbr": 3.26,
+     "dps": 50.0
+    },
+    "2026E": {
+     "rev": 3559.45,
+     "op": 41.07,
+     "opm": 0.0115,
+     "ni_ctrl": 53.44,
+     "eps": 224.2,
+     "bps": 4831.9,
+     "per": 62.0,
+     "pbr": 2.88,
+     "dps": 50.0
+    },
+    "2027E": {
+     "rev": 3559.45,
+     "op": 40.93,
+     "opm": 0.0115,
+     "ni_ctrl": 39.79,
+     "eps": 166.9,
+     "bps": 4948.9,
+     "per": 83.28,
+     "pbr": 2.81,
+     "dps": 50.0
+    },
+    "2028E": {
+     "rev": 3559.45,
+     "op": 40.93,
+     "opm": 0.0115,
+     "ni_ctrl": 43.53,
+     "eps": 182.7,
+     "bps": 5081.5,
+     "per": 76.08,
+     "pbr": 2.74,
+     "dps": 50.0
+    }
+   },
+   "per_now": 86.98,
+   "pbr_now": 2.92,
+   "backtest": {
+    "revenue_wape_pct": null,
+    "op_wape_pct": null,
+    "n": 0
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "272210",
+   "name": "한화시스템",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 36641.52,
+     "op": 1198.98,
+     "opm": 0.0327,
+     "ni_ctrl": 2422.32,
+     "eps": 1295.4,
+     "bps": 25932.6,
+     "per": 41.99,
+     "pbr": 2.1,
+     "dps": 500.0
+    },
+    "2026E": {
+     "rev": 49313.96,
+     "op": 2730.96,
+     "opm": 0.0554,
+     "ni_ctrl": 1524.64,
+     "eps": 815.3,
+     "bps": 24776.7,
+     "per": 88.43,
+     "pbr": 2.91,
+     "dps": 500.0
+    },
+    "2027E": {
+     "rev": 61760.15,
+     "op": 2776.26,
+     "opm": 0.045,
+     "ni_ctrl": 2903.3,
+     "eps": 1552.6,
+     "bps": 25829.3,
+     "per": 46.44,
+     "pbr": 2.79,
+     "dps": 500.0
+    },
+    "2028E": {
+     "rev": 69747.24,
+     "op": 3135.3,
+     "opm": 0.045,
+     "ni_ctrl": 3280.0,
+     "eps": 1754.0,
+     "bps": 27083.4,
+     "per": 41.11,
+     "pbr": 2.66,
+     "dps": 500.0
+    }
+   },
+   "per_now": 50.77,
+   "pbr_now": 3.0,
+   "backtest": {
+    "revenue_wape_pct": 15.6,
+    "op_wape_pct": 93.1,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "329180",
+   "name": "HD현대중공업",
+   "role": "yard",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "sls_marine_plus_uncovered_backlog_runoff",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 175806.33,
+     "op": 20375.1,
+     "opm": 0.1159,
+     "ni_ctrl": 14154.84,
+     "eps": 15095.7,
+     "bps": 89024.8,
+     "per": 34.05,
+     "pbr": 5.77,
+     "dps": 5661.0
+    },
+    "2026E": {
+     "rev": 254552.28,
+     "op": 36224.05,
+     "opm": 0.1423,
+     "ni_ctrl": 29195.99,
+     "eps": 27823.7,
+     "bps": 113086.9,
+     "per": 15.47,
+     "pbr": 3.81,
+     "dps": 5661.0
+    },
+    "2027E": {
+     "rev": 258876.2,
+     "op": 32268.14,
+     "opm": 0.1246,
+     "ni_ctrl": 25580.4,
+     "eps": 24377.9,
+     "bps": 131803.8,
+     "per": 17.66,
+     "pbr": 3.27,
+     "dps": 5661.0
+    },
+    "2028E": {
+     "rev": 245669.77,
+     "op": 31323.27,
+     "opm": 0.1275,
+     "ni_ctrl": 25181.38,
+     "eps": 23997.6,
+     "bps": 150140.4,
+     "per": 17.94,
+     "pbr": 2.87,
+     "dps": 5661.0
+    }
+   },
+   "per_now": 17.27,
+   "pbr_now": 4.28,
+   "backtest": {
+    "revenue_wape_pct": 24.0,
+    "op_wape_pct": 44.4,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "333430",
+   "name": "일승",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 19,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "ref_base",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.8428,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 506.75,
+     "op": 108.63,
+     "opm": 0.2144,
+     "ni_ctrl": 74.53,
+     "eps": 242.9,
+     "bps": 1494.0,
+     "per": 24.54,
+     "pbr": 3.99,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 625.25,
+     "op": 149.31,
+     "opm": 0.2388,
+     "ni_ctrl": 109.48,
+     "eps": 356.8,
+     "bps": 1845.3,
+     "per": 10.26,
+     "pbr": 1.98,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 661.24,
+     "op": 129.36,
+     "opm": 0.1956,
+     "ni_ctrl": 76.48,
+     "eps": 249.2,
+     "bps": 2094.6,
+     "per": 14.69,
+     "pbr": 1.75,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 636.8,
+     "op": 124.59,
+     "opm": 0.1957,
+     "ni_ctrl": 75.01,
+     "eps": 244.5,
+     "bps": 2339.1,
+     "per": 14.97,
+     "pbr": 1.56,
+     "dps": 0.0
+    }
+   },
+   "per_now": 15.12,
+   "pbr_now": 2.13,
+   "backtest": {
+    "revenue_wape_pct": 11.1,
+    "op_wape_pct": 63.9,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "382900",
+   "name": "범한퓨얼셀",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 17,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 433.61,
+     "op": 8.57,
+     "opm": 0.0198,
+     "ni_ctrl": 15.91,
+     "eps": 185.3,
+     "bps": 18794.7,
+     "per": 141.39,
+     "pbr": 1.39,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 562.2,
+     "op": -49.05,
+     "opm": -0.0872,
+     "ni_ctrl": -43.99,
+     "eps": -512.6,
+     "bps": 18282.2,
+     "per": null,
+     "pbr": 1.29,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 676.73,
+     "op": 9.61,
+     "opm": 0.0142,
+     "ni_ctrl": 21.46,
+     "eps": 250.2,
+     "bps": 18532.3,
+     "per": 94.52,
+     "pbr": 1.28,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 747.09,
+     "op": 10.62,
+     "opm": 0.0142,
+     "ni_ctrl": 23.23,
+     "eps": 270.7,
+     "bps": 18803.0,
+     "per": 87.37,
+     "pbr": 1.26,
+     "dps": 0.0
+    }
+   },
+   "per_now": 99.16,
+   "pbr_now": 1.3,
+   "backtest": {
+    "revenue_wape_pct": 51.1,
+    "op_wape_pct": 104.4,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  },
+  {
+   "stock": "439260",
+   "name": "대한조선",
+   "role": "yard",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 5,
+   "driver": "sls_marine_plus_uncovered_backlog_runoff",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": null,
+     "op": null,
+     "opm": null,
+     "ni_ctrl": null,
+     "eps": null,
+     "bps": 28354.2,
+     "per": null,
+     "pbr": 2.36,
+     "dps": 250.0
+    },
+    "2026E": {
+     "rev": 13086.99,
+     "op": 3522.44,
+     "opm": 0.2692,
+     "ni_ctrl": 2953.31,
+     "eps": 7730.7,
+     "bps": 35130.5,
+     "per": 5.83,
+     "pbr": 1.28,
+     "dps": 250.0
+    },
+    "2027E": {
+     "rev": 12085.44,
+     "op": 3258.63,
+     "opm": 0.2696,
+     "ni_ctrl": 2628.33,
+     "eps": 6900.5,
+     "bps": 41781.0,
+     "per": 6.53,
+     "pbr": 1.08,
+     "dps": 250.0
+    },
+    "2028E": {
+     "rev": 8769.34,
+     "op": 2378.25,
+     "opm": 0.2712,
+     "ni_ctrl": 1979.79,
+     "eps": 5197.9,
+     "bps": 46728.8,
+     "per": 8.67,
+     "pbr": 0.96,
+     "dps": 250.0
+    }
+   },
+   "per_now": 6.2,
+   "pbr_now": 1.43,
+   "backtest": {
+    "revenue_wape_pct": 11.4,
+    "op_wape_pct": 26.4,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 3
+  },
+  {
+   "stock": "443060",
+   "name": "HD현대마린솔루션",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 9,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 0,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.9895,
+    "n": 6
+   },
+   "fy": {
+    "2025A": {
+     "rev": 19827.01,
+     "op": 3501.41,
+     "opm": 0.1766,
+     "ni_ctrl": 2695.71,
+     "eps": 6013.2,
+     "bps": 18396.2,
+     "per": 32.1,
+     "pbr": 10.49,
+     "dps": 3950.0
+    },
+    "2026E": {
+     "rev": 23761.21,
+     "op": 4024.58,
+     "opm": 0.1694,
+     "ni_ctrl": 3505.34,
+     "eps": 7818.8,
+     "bps": 23676.6,
+     "per": 30.25,
+     "pbr": 9.99,
+     "dps": 3950.0
+    },
+    "2027E": {
+     "rev": 24633.58,
+     "op": 4265.42,
+     "opm": 0.1732,
+     "ni_ctrl": 3453.5,
+     "eps": 7702.9,
+     "bps": 27429.5,
+     "per": 30.7,
+     "pbr": 8.62,
+     "dps": 3950.0
+    },
+    "2028E": {
+     "rev": 23748.79,
+     "op": 4112.22,
+     "opm": 0.1732,
+     "ni_ctrl": 3373.08,
+     "eps": 7523.6,
+     "bps": 31003.1,
+     "per": 31.43,
+     "pbr": 7.63,
+     "dps": 3950.0
+    }
+   },
+   "per_now": 31.52,
+   "pbr_now": 11.89,
+   "backtest": {
+    "revenue_wape_pct": 5.9,
+    "op_wape_pct": 3.8,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "452280",
+   "name": "한선엔지니어링",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 11,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": 632.16,
+     "op": 97.51,
+     "opm": 0.1542,
+     "ni_ctrl": 89.36,
+     "eps": 517.6,
+     "bps": 3956.7,
+     "per": 16.5,
+     "pbr": 2.16,
+     "dps": 0.0
+    },
+    "2026E": {
+     "rev": 979.35,
+     "op": 199.42,
+     "opm": 0.2036,
+     "ni_ctrl": 27.98,
+     "eps": 145.4,
+     "bps": 5184.3,
+     "per": 86.66,
+     "pbr": 2.43,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 1339.25,
+     "op": 209.84,
+     "opm": 0.1567,
+     "ni_ctrl": 154.84,
+     "eps": 804.5,
+     "bps": 5988.7,
+     "per": 15.66,
+     "pbr": 2.1,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 1592.96,
+     "op": 249.61,
+     "opm": 0.1567,
+     "ni_ctrl": 188.0,
+     "eps": 976.7,
+     "bps": 6965.5,
+     "per": 12.9,
+     "pbr": 1.81,
+     "dps": 0.0
+    }
+   },
+   "per_now": 17.54,
+   "pbr_now": 2.58,
+   "backtest": {
+    "revenue_wape_pct": 35.3,
+    "op_wape_pct": 65.0,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "460930",
+   "name": "현대힘스",
+   "role": "equip",
+   "status": "full",
+   "last_actual": "2026Q2",
+   "fin_quarters": 11,
+   "driver": "customer_yard_revenue_weighted",
+   "link": {
+    "adopted": true,
+    "weights_key": "suppliers_mentions",
+    "lag_q": 4,
+    "transform": "ma4",
+    "window_q": 8,
+    "corr": 0.977,
+    "n": 8
+   },
+   "fy": {
+    "2025A": {
+     "rev": 2482.04,
+     "op": 287.64,
+     "opm": 0.1159,
+     "ni_ctrl": 213.98,
+     "eps": 603.2,
+     "bps": 7121.8,
+     "per": 29.33,
+     "pbr": 2.48,
+     "dps": 130.0
+    },
+    "2026E": {
+     "rev": 2842.14,
+     "op": 380.46,
+     "opm": 0.1339,
+     "ni_ctrl": 297.51,
+     "eps": 837.8,
+     "bps": 7828.5,
+     "per": 15.08,
+     "pbr": 1.61,
+     "dps": 130.0
+    },
+    "2027E": {
+     "rev": 3282.04,
+     "op": 387.42,
+     "opm": 0.118,
+     "ni_ctrl": 326.41,
+     "eps": 919.2,
+     "bps": 8617.7,
+     "per": 13.74,
+     "pbr": 1.47,
+     "dps": 130.0
+    },
+    "2028E": {
+     "rev": 3593.23,
+     "op": 424.16,
+     "opm": 0.118,
+     "ni_ctrl": 361.58,
+     "eps": 1018.3,
+     "bps": 9506.0,
+     "per": 12.4,
+     "pbr": 1.33,
+     "dps": 130.0
+    }
+   },
+   "per_now": 14.98,
+   "pbr_now": 1.7,
+   "backtest": {
+    "revenue_wape_pct": 1.5,
+    "op_wape_pct": 19.3,
+    "n": 4
+   },
+   "identities_ok": true,
+   "warnings_n": 1
+  },
+  {
+   "stock": "487400",
+   "name": "케이앤에스아이앤씨",
+   "role": "equip",
+   "status": "partial",
+   "last_actual": "2026Q2",
+   "fin_quarters": 1,
+   "driver": "trend_seasonal",
+   "link": null,
+   "fy": {
+    "2025A": {
+     "rev": null,
+     "op": null,
+     "opm": null,
+     "ni_ctrl": null,
+     "eps": null,
+     "bps": null,
+     "per": null,
+     "pbr": null,
+     "dps": null
+    },
+    "2026E": {
+     "rev": null,
+     "op": null,
+     "opm": null,
+     "ni_ctrl": null,
+     "eps": null,
+     "bps": 1101.2,
+     "per": null,
+     "pbr": 6.08,
+     "dps": 0.0
+    },
+    "2027E": {
+     "rev": 151.8,
+     "op": -30.36,
+     "opm": -0.2,
+     "ni_ctrl": -33.04,
+     "eps": -424.0,
+     "bps": 677.2,
+     "per": null,
+     "pbr": 9.89,
+     "dps": 0.0
+    },
+    "2028E": {
+     "rev": 151.8,
+     "op": -30.36,
+     "opm": -0.2,
+     "ni_ctrl": -33.04,
+     "eps": -424.0,
+     "bps": 253.3,
+     "per": null,
+     "pbr": 26.45,
+     "dps": 0.0
+    }
+   },
+   "per_now": null,
+   "pbr_now": 5.1,
+   "backtest": {
+    "revenue_wape_pct": null,
+    "op_wape_pct": null,
+    "n": 0
+   },
+   "identities_ok": true,
+   "warnings_n": 2
+  }
+ ]
+}
