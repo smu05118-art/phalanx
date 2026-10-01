@@ -68,8 +68,8 @@ window.CMPD={
       "ticker": "JBL",
       "name": "자빌",
       "axes": 3,
-      "model_gate": "기존 모델 · 재무 입력 대사 필요",
-      "issues": 1,
+      "model_gate": "관측 전용 · 예측 보류",
+      "issues": 0,
       "monthly_period": null,
       "monthly_yoy_3m": null,
       "monthly_model": {
