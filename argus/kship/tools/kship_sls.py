@@ -26,6 +26,9 @@
            (backlog_coverage_at_origin > 1 — 대한조선 2026Q2 1.164) 그 계약들의 origin 이후 분기 매출을 1/coverage 배로 줄인다
            (backlog_cap). origin 뒤 수주분(그 잔고에 없다)·비해양(OTHER)·과거 분기는 그대로. 원값은 by_quarter[q].backlog_cap.*_raw ·
            by_year[y].*_raw · counts.forecast_window.*_raw 에 보존하고 파일 최상위 backlog_cap_applied 로 표시한다.
+  체결시점 by_quarter[q].marine_hedged_krw_m 를 origin 분기말까지 체결분(_signed_by_origin) 과 그 뒤 체결분(_post_origin) 으로도
+           나눠 적는다(합 = marine_hedged_krw_m, 1자리 반올림 차). 모델은 신규수주(forecast_panel)를 더할 때 앞쪽만 '기존' 으로 쓴다
+           (T6 D1 — origin 이후 공시 수주의 이중계산 방지). 최상위 post_origin 에 건수·금액·창 합계·rcp 목록.
   화해     분기 SLS 원화(해양 계약만) ÷ 정기보고서 부문 매출 3개월분(누계 차분; Q1 = 누계, Q4 = 연간 − 3Q 누계).
            매출표가 없는 회사는 기납품 누계 차분(HD현대重·대한조선·한화오션 방식), HJ 는 프로젝트 누계라 같은 해 차분만.
   타겟OPM  코호트 표(①−5% ②0 ③5 ④10 ⑤15 — 가정) × 매출 비중. 회사 실측 OPM 이 있으면(assets/fin) shift 를 잰다.
@@ -700,8 +703,11 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
         return {"usd_m": 0.0, "marine_usd_m": 0.0, "by_type": collections.defaultdict(float),
                 "by_cohort": collections.defaultdict(float), "by_cohort_alt": collections.defaultdict(float),
                 "hedged_krw_m": 0.0, "marine_hedged_krw_m": 0.0, "_rate_w": 0.0, "_hrate_w": 0.0, "n_active": 0,
+                "marine_hedged_krw_m_signed_by_origin": 0.0, "marine_hedged_krw_m_post_origin": 0.0,
                 "_raw": {"usd_m": 0.0, "marine_usd_m": 0.0, "hedged_krw_m": 0.0, "marine_hedged_krw_m": 0.0}}
     by_q = collections.defaultdict(_bucket)
+    # origin 이후 체결(counted·해양) 계약 — 모델이 신규수주(forecast_panel)와 겹치지 않게 '기존' 에서 뺄 수 있도록 따로 센다(T6 D1)
+    post_origin = {"n": 0, "amt_krw_m": 0.0, "amt_usd_m": 0.0, "rcps": []}
     for c in mine:
         if not c.get("counted"):
             continue
@@ -709,6 +715,12 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
         marine = c["type"] != "OTHER"
         capped = bool(cap_applied and marine and c["signed_by_origin"])
         c["backlog_cap_applied"] = capped
+        split_key = "marine_hedged_krw_m_signed_by_origin" if c["signed_by_origin"] else "marine_hedged_krw_m_post_origin"
+        if marine and not c["signed_by_origin"]:
+            post_origin["n"] += 1
+            post_origin["amt_krw_m"] += c["amt_krw_m"] or 0.0
+            post_origin["amt_usd_m"] += c["amt_usd_m"] or 0.0
+            post_origin["rcps"].append(c["rcp"])
         for q, usd in scheds[c["rcp"]].items():
             sp, _ = spot(q)
             applied = hr * hedge_rate_c + (1.0 - hr) * sp
@@ -727,6 +739,7 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
             if marine:
                 b["marine_usd_m"] += u
                 b["marine_hedged_krw_m"] += u * applied
+                b[split_key] += u * applied
                 b["_raw"]["marine_usd_m"] += usd
                 b["_raw"]["marine_hedged_krw_m"] += usd * applied
     by_quarter = collections.OrderedDict()
@@ -742,6 +755,9 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
             ("by_cohort", collections.OrderedDict((k, round(v, 3)) for k, v in sorted(b["by_cohort"].items()))),
             ("by_cohort_alt", collections.OrderedDict((k, round(v, 3)) for k, v in sorted(b["by_cohort_alt"].items()))),
             ("hedged_krw_m", round(b["hedged_krw_m"], 1)), ("marine_hedged_krw_m", round(b["marine_hedged_krw_m"], 1)),
+            # marine_hedged_krw_m = origin 분기말까지 체결분 + origin 이후 체결분(캡은 앞쪽에만) — 모델은 신규수주 패널과 겹치지 않게 앞쪽만 '기존' 으로 쓴다
+            ("marine_hedged_krw_m_signed_by_origin", round(b["marine_hedged_krw_m_signed_by_origin"], 1)),
+            ("marine_hedged_krw_m_post_origin", round(b["marine_hedged_krw_m_post_origin"], 1)),
             ("applied_rate", round(b["_rate_w"] / b["usd_m"], 2) if b["usd_m"] else None),
             ("hedge_ratio", hr), ("hedge_rate", round(b["_hrate_w"] / b["usd_m"], 2) if b["usd_m"] else None),
             ("spot_assumed", round(sp, 2)), ("spot_source", sp_src), ("n_active", b["n_active"]),
@@ -860,6 +876,14 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
         ("basis", "MODEL_SPEC §5-2 — 원장 잔여 원화(수주시점 금액 × 미진행 비율) > 공시 해양 기말잔고이면 배율 1/coverage 로 줄인다"
                   "(선형 진행 가정이 실제보다 느리거나 공시 잔고 범위·환율이 다른 경우). 원값은 by_quarter[q].backlog_cap.*_raw · by_year[y].*_raw · "
                   "counts.forecast_window.*_raw 에 보존. future_sls_vs_backlog 는 SLS 원화(건조시점 환율) 기준이라 캡 뒤에도 1 을 넘을 수 있다")])
+    # origin 이후 체결 해양 계약 요약(T6 D1) — by_quarter[q].marine_hedged_krw_m_post_origin 의 출처. 모델이 '신규수주' 와의 겹침을 수치로 적는다
+    post_block = collections.OrderedDict([
+        ("n", post_origin["n"]), ("amt_krw_m", round(post_origin["amt_krw_m"], 1)), ("amt_usd_m", round(post_origin["amt_usd_m"], 3)),
+        ("window_marine_hedged_krw_m", round(sum(by_q[q]["marine_hedged_krw_m_post_origin"] for q in total_window), 1)),
+        ("future_marine_hedged_krw_m", round(sum(by_q[q]["marine_hedged_krw_m_post_origin"] for q in future_qs), 1)),
+        ("rcps", post_origin["rcps"]),
+        ("basis", "origin(%s) 분기말 뒤에 체결(signed, 없으면 start)된 counted 해양 계약 — 잔고 캡 대상 아님. "
+                  "by_quarter[q].marine_hedged_krw_m = _signed_by_origin + _post_origin" % origin)])
 
     # 타겟 OPM(기본 모드) + 대안 모드, 캘리브레이션도 각각(실측 OPM 은 assets/fin 이 있어야 — 없으면 null)
     target_opm, target_opm_alt = collections.OrderedDict(), collections.OrderedDict()
@@ -964,7 +988,7 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
         ("cohort_method", COHORT_METHOD),
         ("cohort_method_by_mode", collections.OrderedDict([("reference_anchor", COHORT_REFERENCE_METHOD), ("ledger_relative", COHORT_METHOD)])),
         ("cohort_opm_table", COHORT_OPM), ("year_index", year_index),
-        ("backlog_cap_applied", cap_applied), ("backlog_cap", backlog_cap),
+        ("backlog_cap_applied", cap_applied), ("backlog_cap", backlog_cap), ("post_origin", post_block),
         ("contracts", mine), ("by_quarter", by_quarter), ("by_year", by_year),
         ("reconcile", reconcile), ("reconcile_summary", reconcile_summary),
         ("target_opm", target_opm), ("target_opm_alt", target_opm_alt),

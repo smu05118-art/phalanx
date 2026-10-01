@@ -4,6 +4,7 @@
 
 실행: cd argus/kship/tools && python3 -m unittest tests.test_kship_sls
 합성 원장으로 규칙을 검사하고, 실제 assets 가 있으면 산출물 불변식(스케줄 합 = 계약금액, 공유 계약 미합산)도 본다.
+T6 D1: by_quarter[q].marine_hedged_krw_m_signed_by_origin / _post_origin 분해(합 = marine_hedged_krw_m) · post_origin 요약 블록.
 """
 import collections
 import datetime
@@ -522,6 +523,31 @@ class TestReferenceAnchorAndCap(unittest.TestCase):
         self.assertIsNone(o2["reconcile_summary"]["backlog_coverage_at_origin"])
         self.assertFalse(o2["backlog_cap_applied"])
 
+    def test_post_origin_split_keys(self):
+        # T6 D1: marine_hedged_krw_m = origin 분기말까지 체결분(캡 적용) + origin 이후 체결분(N3, 캡 없음). 비해양(W1)은 어느 쪽에도 없다. 기존 키는 그대로
+        rows = self._cap_rows()
+        seg = {"seg": "선박", "total": False, "opening": 1, "new": 1, "delivered": 1}
+        for closing in (300000, 30000000):                                                       # 캡 적용 / 미적용 둘 다
+            yards = self._yards("439260", [dict(seg, closing=closing)])
+            cons = S.prepare_contracts(rows, yards, None, 1000.0)
+            cm, yi = S.cohorts(cons)
+            o = S.build("439260", cons, cm, yi, yards, None, "linear", 1000.0, "2026Q2")
+            by = {c["rcp"]: c for c in o["contracts"]}
+            for q, b in o["by_quarter"].items():
+                self.assertAlmostEqual(b["marine_hedged_krw_m_signed_by_origin"] + b["marine_hedged_krw_m_post_origin"], b["marine_hedged_krw_m"], delta=0.11)
+                self.assertAlmostEqual(b["marine_hedged_krw_m_post_origin"], by["N3"]["schedule"].get(q, 0.0) * 1000.0, delta=5.0)   # applied 1000; 마지막 분기 round_schedule 잔차 ≤ 0.005$
+                if q <= "2026Q2":
+                    self.assertEqual(b["marine_hedged_krw_m_post_origin"], 0.0)
+            po = o["post_origin"]
+            self.assertEqual((po["n"], po["amt_krw_m"], po["rcps"]), (1, 250000.0, ["N3"]))
+            self.assertAlmostEqual(po["future_marine_hedged_krw_m"],
+                                   sum(b["marine_hedged_krw_m_post_origin"] for q, b in o["by_quarter"].items() if q > "2026Q2"), delta=1.0)
+            self.assertIn("marine_hedged_krw_m", o["by_quarter"]["2027Q1"])                       # 기존 키 불변
+            if o["backlog_cap_applied"]:
+                b = o["by_quarter"]["2027Q1"]
+                f = o["backlog_cap"]["factor"]
+                self.assertAlmostEqual(b["marine_hedged_krw_m_signed_by_origin"], (by["P1"]["schedule"]["2027Q1"] + by["P2"]["schedule"]["2027Q1"]) * f * 1000.0, delta=1.0)
+
     def test_summary_carries_mode_and_cap(self):
         rows = self._cap_rows()
         yards = self._yards("439260", [{"seg": "선박", "total": False, "opening": 1, "new": 1, "delivered": 1, "closing": 300000}])
@@ -577,6 +603,13 @@ class TestRealAssets(unittest.TestCase):
                 self.assertEqual(b["kind"], "estimate")
             w = o["counts"]["forecast_window"]
             self.assertEqual((w["from"], w["to"]), ("2026Q3", "2028Q4"))
+            # T6 D1: 체결시점 분해 합 = marine_hedged_krw_m, origin 이전 분기엔 origin 이후 체결분 없음
+            for q, b in o["by_quarter"].items():
+                self.assertAlmostEqual(b["marine_hedged_krw_m_signed_by_origin"] + b["marine_hedged_krw_m_post_origin"], b["marine_hedged_krw_m"], delta=0.11)
+                if q <= o["origin"]:
+                    self.assertEqual(b["marine_hedged_krw_m_post_origin"], 0.0)
+            n_post = sum(1 for c in o["contracts"] if c.get("counted") and c["type"] != "OTHER" and not c["signed_by_origin"])
+            self.assertEqual(o["post_origin"]["n"], n_post)
         self.assertTrue(all(o["counts"]["counted"] > 0 for o in self.outs.values()))
 
     def test_real_files_state_limits(self):

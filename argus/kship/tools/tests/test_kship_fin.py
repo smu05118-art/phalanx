@@ -4,7 +4,8 @@
 
 실행: cd argus/kship/tools && ~/Library/phalanx_venv/bin/python -m unittest tests.test_kship_fin -v
 픽스처: tests/fixtures/fin/ — 삼성중공업 2026Q2(연결·별도·주식)·2025Q4(연결·별도·배당), 세진중공업 2026Q2, 한라IMS 2026Q2,
-주석 하위 노드 7개(삼성重·세진 금융수익/차입금/기타수익, 한라IMS 차입금 — 2026Q2 반기보고서 실측).
+주석 하위 노드 7개(삼성重·세진 금융수익/차입금/기타수익, 한라IMS 차입금 — 2026Q2 반기보고서 실측),
+주석 부모 절 2개(한일철강 002220 2023Q4 `3. 연결재무제표 주석`·`5. 재무제표 주석` — hanil_2023Q4_note_parent_{cons,sep}.html).
 """
 import os
 import sys
@@ -826,3 +827,278 @@ class TestNotes(unittest.TestCase):
         self.assertIn("note_missing:fin", codes)
         self.assertIn("note_missing:other", codes)
         self.assertEqual(hl["cons"]["src_notes"], {})
+
+
+class TestNoteParent(unittest.TestCase):
+    """주석 부모 절 폴백 — 하위 노드가 없는 보고서(999 중 786)의 `3. 연결재무제표 주석` 한 덩어리를 블록으로 잘라 같은 파서에 넘긴다.
+    픽스처: 한일철강(002220) 2023Q4 사업보고서 `3. 연결재무제표 주석`(356KB)·`5. 재무제표 주석`(341KB) — DART 뷰어 실물."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cons_html = _fx("hanil_2023Q4_note_parent_cons.html")
+        cls.sep_html = _fx("hanil_2023Q4_note_parent_sep.html")
+        cls.cons = F.parse_note_parent(cls.cons_html)
+        cls.sep = F.parse_note_parent(cls.sep_html)
+
+    # ── 블록 분할 ──
+    def test_split_blocks_hanil(self):
+        bl = F.split_note_blocks(self.cons_html)
+        self.assertEqual(len(bl), 39)                                                           # 1. 연결회사의 개요 … 39. 우발채무 및 약정사항
+        self.assertEqual([b["no"] for b in bl], [str(i) for i in range(1, 40)])
+        by = {b["no"]: b["title"] for b in bl}
+        self.assertEqual(by["22"], "차입금")
+        self.assertEqual(by["32"], "금융수익 및 금융비용")
+        self.assertEqual(by["33"], "기타수익 및 기타비용")
+        self.assertEqual(by["7"], "범주별 금융상품")
+        self.assertNotIn("3.15", by)                                                            # 회계정책 소절은 블록이 아니다
+        self.assertTrue(bl[31]["html"].lstrip().startswith("32. 금융수익"))
+        self.assertNotIn("33. 기타수익", bl[31]["html"])                                          # 다음 머리 직전까지만
+        self.assertEqual(len(F.split_note_blocks(self.sep_html)), 39)
+        self.assertEqual((self.cons["mode"], self.cons["blocks"]), ("heading", 39))
+
+    def test_split_joins_span_split_heading(self):
+        """삼성重 2021Q4 처럼 머리가 `<SPAN>21. 차</SPAN><SPAN>입금</SPAN>` 으로 쪼개져 있어도 한 줄로 읽는다."""
+        html = ("<P>1. 일반사항</P><P>2. 회계정책</P><P>3.9 차입원가</P>"
+                "<P><SPAN>3. 차</SPAN><SPAN></SPAN><SPAN>입금</SPAN><SPAN>&nbsp;및 사채</SPAN><BR/></P><P>본문</P>"
+                "<P>4. 금융수익과 원가</P>")
+        bl = F.split_note_blocks(html)
+        self.assertEqual([(b["no"], b["title"]) for b in bl],
+                         [("1", "일반사항"), ("2", "회계정책"), ("3", "차입금 및 사채"), ("4", "금융수익과 원가")])
+
+    # ── 블록 선택·매핑(한일철강 실측 값) ──
+    def test_picked_blocks_hanil(self):
+        self.assertEqual(self.cons["picked"], {"fin": ["32. 금융수익 및 금융비용"], "borrowings": ["22. 차입금"],
+                                               "other": ["33. 기타수익 및 기타비용"]})
+        self.assertEqual(self.sep["picked"], self.cons["picked"])
+        # `7. 범주별 금융상품` 에도 `이자수익(비용)` 줄이 있지만 금융수익 블록이 이기고(순위), 그 줄은 정확히 `이자수익` 이 아니다
+
+    def test_fin_values_hanil_cons(self):
+        f = self.cons["notes"]["fin"]
+        self.assertFalse(f["unit_assumed"])
+        c = f["acc"]["cur_full"]                                                                # 사업보고서 — 당기/전기 열(단위 : 원)
+        self.assertEqual(c["이자수익"], 805.72)                                                   # 805,716,022 원
+        self.assertEqual(c["이자비용"], 6047.39)                                                  # 6,047,387,835 원
+        self.assertEqual(c["외환차익"], 24.25)
+        self.assertEqual(c["외화환산손실"], 469.03)
+        self.assertEqual(c["금융수익합계"], 2143.14)                                               # '금융수익 계'
+        self.assertEqual(c["금융비용합계"], 6607.44)
+        self.assertEqual(f["acc"]["prev_full"]["이자수익"], 591.48)
+        self.assertEqual(f["acc"]["prev_full"]["외환차익"], -174.56)                               # 원문 (174,557,787) 그대로
+        self.assertGreaterEqual(len([k for k in c if k in F.NOTE_FIN_ACCTS]), 6)
+        self.assertNotIn("파생상품손실", c)                                                       # '통화스왑평가손실' 은 raw 로
+        self.assertIn("통화스왑평가손실", [l for l, _ in f["raw"]])
+
+    def test_borrowings_values_hanil(self):
+        b = self.cons["notes"]["borrowings"]["acc"]
+        # (1) 단기차입금 은행별 표 마지막 `합 계` 79,006,063,600 / (2) 장기차입금 표 `유동성 장기부채 대체 (20,494,000,000)`
+        self.assertEqual(b["cur_full"], {"단기차입금": 79006.06, "유동성장기부채": 20494.0})
+        self.assertEqual(b["prev_full"], {"단기차입금": 93382.91, "장기차입금": 16494.0})        # 전기말 `장기차입금 잔 액`
+        # (3) 상환계획 합계 99,500,063,600 = 단기 + 유동성 — 분해가 원문과 맞는다
+        self.assertAlmostEqual(b["cur_full"]["단기차입금"] + b["cur_full"]["유동성장기부채"], 99500.06, places=2)
+        s = self.sep["notes"]["borrowings"]["acc"]["cur_full"]                                   # 별도는 단기표 마지막 줄이 `소 계`
+        self.assertEqual(s, {"단기차입금": 77559.34, "유동성장기부채": 20494.0})
+
+    def test_sep_and_other_hanil(self):
+        c = self.sep["notes"]["fin"]["acc"]["cur_full"]
+        self.assertEqual((c["이자수익"], c["배당금수익"], c["이자비용"]), (800.44, 60.92, 5926.64))
+        o = self.cons["notes"]["other"]["acc"]["cur_full"]
+        self.assertEqual(o, {"기타수익합계": 2875.29, "기타비용합계": 1998.05})
+
+    # ── 안전장치 ──
+    @staticmethod
+    def _doc(*blocks):
+        tbl = ("<TABLE><THEAD><TR><TH>구분</TH><TH>당기</TH><TH>전기</TH></TR></THEAD><TBODY>%s</TBODY></TABLE>")
+        out = []
+        for head, rows in blocks:
+            body = "".join("<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD></TR>" % r for r in rows)
+            out.append("<P>%s</P><P>(단위 : 백만원)</P>%s" % (head, tbl % body if rows else ""))
+        return "".join(out)
+
+    def test_title_priority_and_row_check(self):
+        html = self._doc(("1. 일반사항", []),
+                         ("2. 금융상품 공정가치", [("이자수익", "99,999", "99,999")]),             # 순위 2 — 더 좋은 블록이 있으면 안 쓴다
+                         ("3. 금융손익", [("이자수익", "50,000", "40,000"), ("이자비용", "70,000", "60,000")]),
+                         ("4. 금융수익과 금융원가", [("배당금수익", "5,000", "4,000")]),           # 순위 0 이지만 이자 줄 없음 → 탈락
+                         ("5. 차입금", [("은행 A", "10,000", "10,000")]),                          # 차입 줄 없음 → 탈락
+                         ("6. 기타수익과 기타비용", [("기타수익 합계", "3,000", "2,000")]))
+        r = F.parse_note_parent(html)
+        self.assertEqual(r["picked"]["fin"], ["3. 금융손익"])
+        self.assertEqual(r["notes"]["fin"]["acc"]["cur_full"], {"이자수익": 50000.0, "이자비용": 70000.0})
+        self.assertNotIn("borrowings", r["notes"])
+        self.assertEqual(r["picked"]["other"], ["6. 기타수익과 기타비용"])
+
+    def test_two_fin_blocks_merged_without_double_count(self):
+        html = self._doc(("1. 일반사항", []), ("2. 금융수익", [("이자수익", "50,000", "40,000")]),
+                         ("3. 금융원가", [("이자비용", "70,000", "60,000"), ("이자수익", "1,000", "1,000")]), ("4. 법인세", []))
+        r = F.parse_note_parent(html)
+        self.assertEqual(r["picked"]["fin"], ["2. 금융수익", "3. 금융원가"])                      # fin 은 ≤2 블록
+        self.assertEqual(r["notes"]["fin"]["acc"]["cur_full"], {"이자수익": 50000.0, "이자비용": 70000.0})   # 먼저 나온 값이 이긴다
+
+    def test_instruments_block_grid_rejected(self):
+        """세진 2022Q4 `5. 범주별 금융상품` 처럼 범주별 열 그리드(첫 열만 읽힌다)·음수 비용이면 금융상품 블록을 fin 으로 쓰지 않는다."""
+        grid = ("<P>1. 일반사항</P><P>2. 회사 개요</P><P>3. 범주별 금융상품</P><P>당기 (단위: 천원)</P>"
+                "<TABLE><THEAD><TR><TH>구 분</TH><TH>상각후원가 측정 금융자산</TH><TH>FVOCI 금융자산</TH><TH>합 계</TH></TR></THEAD>"
+                "<TBODY><TR><TD>이자수익</TD><TD>836,826</TD><TD>442,734</TD><TD>1,279,560</TD></TR>"
+                "<TR><TD>이자비용</TD><TD>(9,397,278)</TD><TD>-</TD><TD>(9,397,278)</TD></TR></TBODY></TABLE><P>4. 법인세</P>")
+        self.assertNotIn("fin", F.parse_note_parent(grid)["notes"])
+        single = self._doc(("1. 일반사항", []), ("2. 회사 개요", []),
+                           ("3. 범주별 금융상품", [("이자수익", "27,000", "18,900"), ("이자비용", "159,700", "111,700")]), ("4. 법인세", []))
+        r = F.parse_note_parent(single)                                                         # 기간별 열 하나·양수 비용이면 마지막 수단으로 쓴다
+        self.assertEqual(r["picked"]["fin"], ["3. 범주별 금융상품"])
+        self.assertEqual(r["notes"]["fin"]["acc"]["cur_full"]["이자수익"], 27000.0)
+
+    def test_caption_mode_when_no_headings(self):
+        html = ("<P>당기 금융수익과 금융비용의 내역 (단위 : 백만원)</P><TABLE><THEAD><TR><TH>구분</TH><TH>당기</TH><TH>전기</TH></TR></THEAD>"
+                "<TBODY><TR><TD>이자수익</TD><TD>12,000</TD><TD>10,000</TD></TR><TR><TD>이자비용</TD><TD>30,000</TD><TD>20,000</TD></TR></TBODY></TABLE>"
+                "<P>단기차입금 내역 (단위 : 백만원)</P><TABLE><THEAD><TR><TH>구분</TH><TH>당기말</TH><TH>전기말</TH></TR></THEAD>"
+                "<TBODY><TR><TD>단기차입금</TD><TD>100,000</TD><TD>90,000</TD></TR></TBODY></TABLE>")
+        r = F.parse_note_parent(html)
+        self.assertEqual((r["mode"], r["blocks"]), ("caption", 2))
+        self.assertEqual(r["notes"]["fin"]["acc"]["cur_full"], {"이자수익": 12000.0, "이자비용": 30000.0})
+        self.assertEqual(r["notes"]["borrowings"]["acc"]["cur_full"], {"단기차입금": 100000.0})
+        self.assertNotIn("other", r["notes"])
+
+    def test_empty_parent(self):
+        r = F.parse_note_parent("<P class='section-2'>3. 연결재무제표 주석</P><P>-</P>")          # 연결이 없는 회사의 빈 절(161건)
+        self.assertEqual((r["blocks"], r["notes"]), (0, {}))
+
+    def test_mark_parent_src(self):
+        src = {"이자수익": "note:fin(3m)", "단기차입금": "note:borrowings(split of face 단기금융부채)", "x": "face"}
+        F._mark_parent_src(src)
+        self.assertEqual(src, {"이자수익": "note_parent:fin(3m)", "단기차입금": "note_parent:borrowings(split of face 단기금융부채)", "x": "face"})
+
+
+class TestNoteParentCollect(unittest.TestCase):
+    """--collect-notes --notes-parent-fallback — 네트워크(toc·fetch_section)는 가짜로 바꾸고 임시 fin_cache 에서 돈다."""
+
+    PARENT = {"text": "3. 연결재무제표 주석", "offset": "100", "length": "1000"}
+    PARENT_SEP = {"text": "5. 재무제표 주석", "offset": "2000", "length": "1000"}
+    SUB = {"text": "18. 금융수익과 금융원가 (연결)", "offset": "500", "length": "50"}
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.saved = {k: getattr(F, k) for k in ("ASSETS", "FIN_CACHE", "LOG_PATH", "toc", "fetch_section")}
+        F.ASSETS, F.FIN_CACHE, F.LOG_PATH = self.tmp, os.path.join(self.tmp, "fin_cache"), os.path.join(self.tmp, "log")
+        self.calls = []
+        self.nodes = [self.PARENT, self.PARENT_SEP]
+        self.bodies = {"3. 연결재무제표 주석": _fx("hanil_2023Q4_note_parent_cons.html"),
+                       "5. 재무제표 주석": _fx("hanil_2023Q4_note_parent_sep.html"),
+                       "18. 금융수익과 금융원가 (연결)": _fx("shi_2026Q2_note_fin.html")}
+        F.toc = lambda rcp: (self.calls.append(("toc", rcp)), self.nodes)[1]
+        F.fetch_section = lambda n: (self.calls.append(("fetch", n["text"])), self.bodies[n["text"]])[1]
+
+    def tearDown(self):
+        import shutil
+        for k, v in self.saved.items():
+            setattr(F, k, v)
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _meta(self, notes=None, cons_html="<table><tr><td>연결 재무상태표</td></tr></table>"):
+        d = os.path.join(F.FIN_CACHE, "002220")
+        os.makedirs(d, exist_ok=True)
+        meta = {"stock": "002220", "quarter": "2023Q4", "rcp": "20240319000754", "kind": "A001",
+                "sections": {"cons": {"path": "fin_cache/002220/2023Q4_cons.html"}, "sep": {"path": "fin_cache/002220/2023Q4_sep.html"}}}
+        if notes is not None:
+            meta["notes"] = notes
+        with open(os.path.join(d, "2023Q4_meta.json"), "w", encoding="utf-8") as f:
+            F.json.dump(meta, f, ensure_ascii=False)
+        with open(os.path.join(d, "2023Q4_cons.html"), "w", encoding="utf-8") as f:
+            f.write(cons_html)
+
+    def _read(self):
+        return F._read_meta("002220", "2023Q4")
+
+    def test_subnodes_present_no_fallback(self):
+        self.nodes = [self.PARENT, self.SUB, self.PARENT_SEP]
+        self._meta()
+        nt = F.collect_notes_quarter("002220", "한일철강", "2023Q4", parent_fallback=True)
+        self.assertEqual(list(nt["items"]), ["fin"])
+        self.assertNotIn("parent", nt)                                                          # 하위 노드가 있으면 폴백을 타지 않는다
+        self.assertEqual(self.calls, [("toc", "20240319000754"), ("fetch", "18. 금융수익과 금융원가 (연결)")])
+        self.assertFalse(os.path.exists(F.note_parent_cache_path("002220", "2023Q4", "cons")))
+
+    def test_flag_off_keeps_old_behavior(self):
+        self._meta()
+        nt = F.collect_notes_quarter("002220", "한일철강", "2023Q4")
+        self.assertEqual((nt["note"], nt.get("parent")), ("no_note_subnodes", None))
+        self.assertEqual(self.calls, [("toc", "20240319000754")])
+
+    def test_fresh_quarter_parent_one_fetch(self):
+        self._meta()
+        nt = F.collect_notes_quarter("002220", "한일철강", "2023Q4", parent_fallback=True)
+        self.assertEqual(nt["note"], "no_note_subnodes")
+        self.assertEqual((nt["parent"]["scope"], nt["parent"]["cached"], nt["parent"]["note"]),
+                         ("cons", "fin_cache/002220/2023Q4_note_parent_cons.html", ""))
+        self.assertEqual(self.calls, [("toc", "20240319000754"), ("fetch", "3. 연결재무제표 주석")])   # 목차 재사용 + 부모 1요청
+        self.assertEqual(self._read()["notes"]["parent"]["scope"], "cons")                       # 체크포인트
+
+    def test_checkpointed_no_subnodes_then_cache_reuse(self):
+        self._meta(notes={"scope": None, "items": {}, "note": "no_note_subnodes", "collected_at": "2026-10-01"})
+        nt = F.collect_notes_quarter("002220", "한일철강", "2023Q4", parent_fallback=True)
+        self.assertEqual(nt["parent"]["scope"], "cons")
+        self.assertEqual(self.calls, [("toc", "20240319000754"), ("fetch", "3. 연결재무제표 주석")])
+        self.calls.clear()
+        nt2 = F.collect_notes_quarter("002220", "한일철강", "2023Q4", parent_fallback=True)       # 두 번째: 체크포인트 — 요청 0
+        self.assertEqual((self.calls, nt2["parent"]["cached"]), ([], nt["parent"]["cached"]))
+        # meta 의 parent 를 지워도(캐시 파일만 있는 상태 — 2026-10-02 prefetch 786) 요청 없이 재사용
+        m = self._read()
+        del m["notes"]["parent"]
+        with open(F.cache_paths("002220", "2023Q4")["meta"], "w", encoding="utf-8") as f:
+            F.json.dump(m, f, ensure_ascii=False)
+        nt3 = F.collect_notes_quarter("002220", "한일철강", "2023Q4", parent_fallback=True)
+        self.assertEqual((self.calls, nt3["parent"]["cached"]), ([], "fin_cache/002220/2023Q4_note_parent_cons.html"))
+
+    def test_empty_cons_goes_to_sep(self):
+        """연결 재무제표 절이 비어 있으면(연결 해당없음) 별도 주석. 연결 주석을 받았는데 빈 절이어도 별도로 넘어간다."""
+        self._meta(notes={"scope": None, "items": {}, "note": "no_note_subnodes"}, cons_html="<p>-</p>")
+        nt = F.collect_notes_quarter("002220", "x", "2023Q4", parent_fallback=True)
+        self.assertEqual(nt["parent"]["scope"], "sep")
+        self.assertEqual(self.calls, [("toc", "20240319000754"), ("fetch", "5. 재무제표 주석")])
+        self.calls.clear()
+        os.remove(F.note_parent_cache_path("002220", "2023Q4", "sep"))
+        self._meta(notes={"scope": None, "items": {}, "note": "no_note_subnodes"})              # 연결 절은 있는데
+        self.bodies["3. 연결재무제표 주석"] = "<P>3. 연결재무제표 주석</P><P>-</P>"               # 연결 주석이 빈 절
+        nt = F.collect_notes_quarter("002220", "x", "2023Q4", parent_fallback=True)
+        self.assertEqual(nt["parent"]["scope"], "sep")
+        self.assertEqual(self.calls, [("toc", "20240319000754"), ("fetch", "3. 연결재무제표 주석"), ("fetch", "5. 재무제표 주석")])
+
+    def test_no_parent_node(self):
+        self.nodes = []
+        self._meta(notes={"scope": None, "items": {}, "note": "no_note_subnodes"})
+        nt = F.collect_notes_quarter("002220", "x", "2023Q4", parent_fallback=True)
+        self.assertEqual((nt["parent"]["scope"], nt["parent"]["note"]), (None, "no_parent_node"))
+
+    def test_build_uses_parent(self):
+        """build: 부모 절 주석이 face 에 없는 계정만 채우고 출처를 note_parent: 로 적는다. 못 찾은 키는 note_parent_missing."""
+        face = """<p>2-1. 연결 재무상태표</p>
+<table><tr><td>연결 재무상태표</td></tr><tr><td>제 67 기 2023.12.31 현재</td></tr><tr><td>(단위 : 백만원)</td></tr></table>
+<table><thead><tr><th></th><th>제 67 기</th><th>제 66 기</th></tr></thead>
+<tr><td>유동자산</td><td>300,000</td><td>300,000</td></tr><tr><td>자산총계</td><td>400,000</td><td>400,000</td></tr>
+<tr><td>부채총계</td><td>150,000</td><td>150,000</td></tr><tr><td>자본총계</td><td>250,000</td><td>250,000</td></tr></table>
+<table><tr><td>연결 손익계산서</td></tr><tr><td>제 67 기 2023.01.01 부터 2023.12.31 까지</td></tr><tr><td>(단위 : 백만원)</td></tr></table>
+<table><thead><tr><th></th><th>제 67 기</th><th>제 66 기</th></tr></thead>
+<tr><td>매출액</td><td>200,000</td><td>210,000</td></tr><tr><td>영업이익</td><td>5,000</td><td>6,000</td></tr>
+<tr><td>금융수익</td><td>2,143</td><td>548</td></tr><tr><td>금융비용</td><td>6,607</td><td>6,767</td></tr>
+<tr><td>당기순이익</td><td>1,000</td><td>2,000</td></tr></table>"""
+        self._meta(notes={"scope": None, "items": {}, "note": "no_note_subnodes",
+                          "parent": {"scope": "cons", "cached": "fin_cache/002220/2023Q4_note_parent_cons.html", "note": ""}},
+                   cons_html=face)
+        html = self.bodies["3. 연결재무제표 주석"].replace("33. 기타수익 및 기타비용", "33. 기타 손익 내역")   # other 를 일부러 못 찾게
+        with open(F.note_parent_cache_path("002220", "2023Q4", "cons"), "w", encoding="utf-8") as f:
+            f.write(html)
+        fin = F.build_company("002220", ["2023Q4"], "한일철강", golden={})
+        c = fin["cons"]
+        self.assertEqual(c["is_ytd"]["2023Q4"]["이자수익"], 805.72)                               # face 에 없던 계정 — 연간 열(cur_full)
+        self.assertEqual(c["is_ytd"]["2023Q4"]["금융수익"], 2143.0)                               # face 값은 그대로
+        b = c["bs"]["2023Q4"]
+        self.assertEqual((b["단기차입금"], b["유동성장기부채"], b["총차입금"]), (79006.06, 20494.0, 99500.06))   # 재합성
+        self.assertNotIn("장기차입금", b)                                                         # 주석 당기말 `-` — 없는 숫자를 만들지 않는다
+        self.assertEqual(c["src_notes"]["2023Q4"]["단기차입금"], "note_parent:borrowings")
+        self.assertTrue(all(v.startswith("note_parent:") for v in c["src_notes"]["2023Q4"].values()))
+        self.assertEqual(c["notes"]["fin"]["2023Q4"]["ytd"]["이자수익"], 805.72)
+        self.assertEqual(c["notes"]["borrowings"]["2023Q4"]["단기차입금"], 79006.06)
+        codes = [i["code"] for i in fin["issues"] if i["quarter"] == "2023Q4"]
+        self.assertIn("note_parent_missing:other", codes)
+        self.assertNotIn("notes_no_subnodes", codes)
+        self.assertEqual(fin["reports"]["2023Q4"]["notes"]["parent"]["picked"]["fin"], ["32. 금융수익 및 금융비용"])

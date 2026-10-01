@@ -19,8 +19,10 @@
             (전년동기 × (1+g), g 감쇠). 후보표·유의 임계·과적합 경고는 driver.grid 에 남긴다. 격자 다중비교는 통계 보정 대신 이 OOS 규칙으로 막는다. 세진(075580)은 레퍼런스 `연간예상` 의 weighted(미포 0.9·현중 0.2 계열) 가중치를 후보로 넣고
             종속사 일승·동방선기 모델로 연결을 재구성하며, 풍력/플랜트·LPG·LNG-Fuel 은 modules(레퍼런스 가정, 합산 안 함)로 둔다.
             HD현대미포(010620)는 2025Q4 HD현대重 합병으로 fin 이 끊겨 체인링크로 잇고 그 규칙을 driver.merger_rule 에 적는다.
-  공통      판관비율(4분기 중위) · 이자손익(평균 잔액 × CF 실측 이자율) · 환관련손익(공시 외화 순노출 × Δ기말환율, 없으면 0 표기) ·
-            법인세율(12분기 유효세율 5~27% 클립) · 비지배 비중(8분기 실측) · 자본 롤(+NI −배당) · EPS/BPS · PER/PBR(과거 밴드) ·
+  공통      판관비율(4분기 중위) · 이자손익(평균 잔액 × 실측 이자율 — 주석 이자수익/비용 4분기 이상이면 그것, 아니면 CF) ·
+            금융손익 세부(이자·외환·파생·기타금융 잔차 — 주석 계정이 있는 분기만 실적; 추정 외환·파생 0, 기타금융 4분기 중위) ·
+            환관련손익(공시 외화 순노출 × Δ기말환율, 없으면 0 표기) ·
+            법인세율(12분기 유효세율이 5~27% 안이면 그것, 밖·음수면 8분기 양(+)세전 분기 중위, 없으면 22% — 클립 안 함) · 비지배 비중(8분기 실측) · 자본 롤(+NI −배당) · EPS/BPS · PER/PBR(과거 밴드) ·
             백테스트(freeze 2025Q2, 4분기 WAPE — 고객·선표도 freeze 시점 정보로 다시 만들고, 실측(kind actual) 분기만 짝을 짓는다).
   보충·표기  연결 손익이 없는 분기는 별도로 보충(quality.sep_filled, 셀 src 표기) · 부문 없는 회사는 '전사' 세그먼트에 드라이버를 남긴다 ·
             비영업손익 급등 분기는 assumptions.one_offs_detected + 경고('일회성 의심', 숫자는 바꾸지 않음).
@@ -56,6 +58,7 @@ BACKTEST_H = 4
 COE = 0.09                            # 레퍼런스 TP_BPS 의 COE
 SECTOR_PER_BAND = (10.0, 15.0, 20.0)  # 레퍼런스 TP_PE PB 예시 밴드(과거 밴드가 없을 때)
 TAX_CLIP, TAX_DEFAULT = (0.05, 0.27), 0.22
+TAX_FALLBACK_Q = 8                    # 유효세율이 음수·클립 밖이면 최근 8분기 중 세전이익 > 0 인 분기의 (법인세/세전) 중위(T6 D2)
 GROWTH_CLIP = (-0.30, 0.50)
 OPM_CLIP = (-0.20, 0.40)
 CORR_MIN = 0.30                       # 고객 연동 회귀를 채택하는 최소 상관
@@ -103,6 +106,11 @@ ROW_DEFS = [
     ("영업이익", "영업이익", "손익", "억원", ("is", "영업이익")),
     ("OPM", "영업이익률", "손익", "%", None),
     ("금융손익", "금융손익(이자·환 포함)", "손익", "억원", ("is", "금융손익")),
+    # 금융손익 세부(T4): 주석(notes.fin → is) 계정이 있는 분기만 실적. 이자+외환+파생+기타금융 = 금융손익(잔차 정의)
+    ("이자손익", "이자손익(이자수익 − 이자비용)", "손익", "억원", None),
+    ("외환손익", "외환손익(실적만; 추정 환효과는 환관련손익)", "손익", "억원", None),
+    ("파생상품손익", "파생상품손익", "손익", "억원", None),
+    ("기타금융손익", "기타금융손익(금융손익 잔차)", "손익", "억원", None),
     ("기타영업외손익", "기타영업외손익", "손익", "억원", ("is", "기타영업외손익")),
     ("지분법손익", "지분법손익", "손익", "억원", ("is", "종속기업,공동지배기업및관계기업관련손익")),
     ("환관련손익", "환관련손익(모델 추정분)", "손익", "억원", None),
@@ -134,13 +142,23 @@ ROW_META = {k: (label, group, unit) for k, label, group, unit, _ in ROW_DEFS}
 SRC_DEF = {k: src for k, _, _, _, src in ROW_DEFS if src}          # 행 key → (fin kind, 계정명)
 ONE_OFF_MIN_RATIO = 4.0               # 비영업손익 |x| 가 12분기 중위의 4배 이상이고 …
 ONE_OFF_TTM_OP_SHARE = 0.5            # … 최근 4분기 |영업이익| 합의 절반 이상이면 '일회성 의심' 표시(숫자는 바꾸지 않음)
-FLOW_KEYS = {"매출액", "매출원가", "매출총이익", "판관비", "기타영업손익", "영업이익", "금융손익", "기타영업외손익", "지분법손익",
+FLOW_KEYS = {"매출액", "매출원가", "매출총이익", "판관비", "기타영업손익", "영업이익", "금융손익", "이자손익", "외환손익", "파생상품손익", "기타금융손익",
+             "기타영업외손익", "지분법손익",
              "환관련손익", "세전이익", "법인세비용", "당기순이익", "지배주주순이익", "중단사업이익", "감가상각비", "EBITDA", "CAPEX", "영업활동현금흐름", "EPS", "DPS"}
 STOCK_KEYS = {"자산총계", "부채총계", "자본총계", "지배주주지분", "총차입금", "순차입금", "이자발생자산", "현금및현금성자산", "주식수", "BPS"}
 VIEW_KEYS = ["매출액", "매출원가", "매출총이익", "판관비", "영업이익", "OPM", "금융손익", "기타영업외손익", "세전이익", "법인세비용",
              "당기순이익", "지배주주순이익", "EPS", "BPS", "DPS", "PER", "PBR", "자산총계", "부채총계", "자본총계", "지배주주지분", "총차입금", "순차입금"]
 REPORT_KEYS = ["매출액", "영업이익", "OPM", "지배주주순이익", "EPS", "BPS", "DPS", "PER", "PBR"]
 NOTE_NO_TP = "모델 산출값 — 목표주가·추천 아님"
+# 금융손익 세부(T4): 행 key → ((fin is 계정명, 부호), …). 계정 하나라도 없으면 그 분기 그 행은 None(0 으로 채우지 않음)
+FIN_DETAIL = [
+    ("이자손익", (("이자수익", 1), ("이자비용", -1))),
+    ("외환손익", (("외환차익", 1), ("외환차손", -1), ("외화환산이익", 1), ("외화환산손실", -1))),
+    ("파생상품손익", (("파생상품이익", 1), ("파생상품손실", -1))),
+]
+RATE_NOTES_MIN_Q = 4                  # 주석 이자수익/이자비용이 최근 4분기(잔액 짝) 이상 있으면 CF 대신 그 연율
+FIN_OTHER_MIN_Q = 4                   # 기타금융손익 중위에 필요한 잔차 분기 수
+FIN_OTHER_CAP = 0.5                   # |기타금융 중위| > |이자손익 추정| × 0.5 면 추정 0 + 경고
 
 
 # ── 작은 도구 ─────────────────────────────────────────────────
@@ -221,13 +239,19 @@ def pearson(xs, ys):
     return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / math.sqrt(sxx * syy)
 
 
-def wape(pairs):
-    """Σ|pred−act| / Σ|act| × 100. pairs = [(pred, act)]."""
+def wape_raw(pairs):
+    """Σ|pred−act| / Σ|act| × 100 (반올림 전 — 규칙 비교용). pairs = [(pred, act)]."""
     pairs = [(p, a) for p, a in pairs if _num(p) and _num(a)]
     den = sum(abs(a) for _, a in pairs)
     if not pairs or den == 0:
         return None
-    return round(sum(abs(p - a) for p, a in pairs) / den * 100, 1)
+    return sum(abs(p - a) for p, a in pairs) / den * 100
+
+
+def wape(pairs):
+    """Σ|pred−act| / Σ|act| × 100, 표시용 1자리 반올림. 임계 비교는 wape_raw 로(T6 D5a)."""
+    w = wape_raw(pairs)
+    return None if w is None else round(w, 1)
 
 
 # ── fin 접근자(백만원 → 억원) ──────────────────────────────────
@@ -507,6 +531,14 @@ def _panel_new_orders(stock, ctx, fq):
             out["covered"] = sorted(d)
             out["uncovered"] = [q for q in fq if q not in d]
     out["available"] = bool(out["covered"])
+    # 패널 신규수주의 정의(T6 D1) — 공시 계약을 개별로 반영하는지 판단하는 근거(assumptions·제외 건수·분기 신규수주 금액)
+    base = scn.get(PANEL_BASE) or {}
+    asm = base.get("assumptions") or {}
+    out["definition"] = {k: asm.get(k) for k in ("order_basis", "new_order_arrival", "progress_curve", "calibrated") if k in asm}
+    out["new_orders_by_q"] = {row["quarter"]: row["new_orders"] / UNIT_DIV for row in base.get("quarterly") or []
+                              if row.get("quarter") in fq and _num(row.get("new_orders"))}
+    exc = ((c.get("industry_axes") or {}).get("schedule_exclusions")) or c.get("industry_axes_schedule_exclusions") or {}   # 패널 원본 · 발췌(평탄화) 둘 다
+    out["not_known_at_origin"] = exc.get("not_known_at_origin") if _num(exc.get("not_known_at_origin")) else None
     if not out["available"]:
         out["note"] = "forecast_panel %s status %s(%s) — new_order_revenue 값 없음" % (stock, out["status"], ", ".join(out["reason_codes"]) or "-")
         return out
@@ -542,6 +574,64 @@ def _sls_r3_info(sls):
             "target_opm_alt_available": bool(alt_vals), "target_opm_alt_median": r4(med(alt_vals)) if alt_vals else None}
 
 
+def _sls_post_origin(sls, fq):
+    """선표 해양 원화를 origin 분기말까지 체결분과 그 뒤 체결분으로 나눈다(T6 D1). 반환 dict(억원):
+    existing {q} · post {q} · n · amt(공시 원화 합) · by_sign_q {체결 분기: 억원} · rcps · source.
+    sls(T6 이후)의 by_quarter[q].marine_hedged_krw_m_signed_by_origin/_post_origin 이 있으면 그 값, 없으면(구버전 sls) contracts 의
+    schedule(백만$) × (hedge_ratio × (hedge_rate 또는 수주시점 환율) + (1 − hedge_ratio) × spot_assumed) 로 다시 잰다 — origin 이후 계약은
+    잔고 캡 대상이 아니므로 kship_sls 집계식과 같다(스케줄 3자리 반올림 차만)."""
+    bq = sls.get("by_quarter") or {}
+    oend = q_end_date(sls["origin"]) if sls.get("origin") else None
+    hedge = sls.get("hedge") or {}
+    out = {"existing": {}, "post": {}, "n": 0, "amt": 0.0, "by_sign_q": collections.defaultdict(float), "rcps": [], "source": None}
+    posts = []
+    for c in sls.get("contracts") or []:
+        if not c.get("counted", True) or c.get("type") == "OTHER":
+            continue
+        sbo = c.get("signed_by_origin")
+        try:
+            d = datetime.date.fromisoformat(c.get("signed") or c.get("start"))
+        except (TypeError, ValueError):
+            d = None
+        if sbo is None:
+            if d is None or oend is None:
+                continue
+            sbo = d <= oend
+        if sbo:
+            continue
+        posts.append(c)
+        out["n"] += 1
+        out["amt"] += (c.get("amt_krw_m") or 0.0) / UNIT_DIV
+        if d is not None:
+            out["by_sign_q"]["%dQ%d" % (d.year, (d.month - 1) // 3 + 1)] += (c.get("amt_krw_m") or 0.0) / UNIT_DIV
+        out["rcps"].append(c.get("rcp"))
+    keyed = any("marine_hedged_krw_m_post_origin" in (bq.get(q) or {}) for q in fq)
+    for q in fq:
+        b = bq.get(q) or {}
+        tot = (b.get("marine_hedged_krw_m") or 0.0) / UNIT_DIV
+        if keyed:
+            post = (b.get("marine_hedged_krw_m_post_origin") or 0.0) / UNIT_DIV
+            ex = b.get("marine_hedged_krw_m_signed_by_origin")
+            ex = ex / UNIT_DIV if _num(ex) else tot - post
+        else:
+            hr = b.get("hedge_ratio") if _num(b.get("hedge_ratio")) else (hedge.get("hedge_ratio") if _num(hedge.get("hedge_ratio")) else 0.7)
+            sp = b.get("spot_assumed") if _num(b.get("spot_assumed")) else b.get("applied_rate")
+            post = 0.0
+            for c in posts:
+                usd = (c.get("schedule") or {}).get(q)
+                if not _num(usd) or not _num(sp):
+                    continue
+                hrate = hedge.get("hedge_rate") or c.get("fx_at_sign") or sp
+                post += usd * (hr * hrate + (1.0 - hr) * sp) / UNIT_DIV
+            post = min(post, tot)
+            ex = tot - post
+        out["post"][q], out["existing"][q] = post, ex
+    out["source"] = ("sls.by_quarter.marine_hedged_krw_m_signed_by_origin/_post_origin" if keyed
+                     else "sls.contracts 재계산(구버전 sls — schedule × 헤지 적용 환율)")
+    out["by_sign_q"] = dict(sorted(out["by_sign_q"].items()))
+    return out
+
+
 def _yard_backlog_at(stock, q, seg_names):
     """yards_cache/<stock>/<q>.json 의 수주잔고(closing) — 해양 부문명이 맞으면 그 합, 아니면 합계행."""
     d = load_optional(os.path.join(YARDS_CACHE, stock, q + ".json"))
@@ -555,12 +645,14 @@ def _yard_backlog_at(stock, q, seg_names):
     return tot[0] if tot else None
 
 
-def _sls_frozen(sls, freeze):
+def _sls_frozen(sls, freeze, share_out=None):
     """freeze 분기말까지 체결된 해양 계약만으로 SLS 를 다시 만든다(백테스트용). 원화 = 계약금액(수주시점) × 진행 비율(환산 없음).
-    반환 (krw_by_q {q: 억원}, remaining_krw_after_freeze 억원, target_opm {q: opm})."""
+    반환 (krw_by_q {q: 억원}, remaining_krw_after_freeze 억원, target_opm {q: opm}). target_opm 은 등급 있는 계약만으로 가중하고
+    (sls._target_opm 과 같은 정의 — T6 D3 전에는 등급 없는 계약을 OPM 0 으로 셌다), share_out(dict) 을 주면 등급 있는 비중 {q: 0~1} 을 채운다."""
     fdate = q_end_date(freeze)
     tab = sls.get("cohort_opm_table") or {}
     krw, remain, wsum, wopm = collections.defaultdict(float), 0.0, collections.defaultdict(float), collections.defaultdict(float)
+    wgr = collections.defaultdict(float)
     for c in sls.get("contracts") or []:
         if not c.get("counted", True) or c.get("type") == "OTHER" or not c.get("schedule") or not _num(c.get("amt_krw_m")):
             continue
@@ -580,8 +672,12 @@ def _sls_frozen(sls, freeze):
             if q > freeze:
                 remain += v
             wsum[q] += v
-            wopm[q] += v * (tab.get(c.get("cohort")) or 0.0)
-    topm = {q: (wopm[q] / wsum[q]) for q in wsum if wsum[q] > 0}
+            if _num(tab.get(c.get("cohort"))):
+                wgr[q] += v
+                wopm[q] += v * tab[c["cohort"]]
+    topm = {q: (wopm[q] / wgr[q]) for q in wgr if wgr[q] > 0}
+    if share_out is not None:
+        share_out.update({q: wgr[q] / wsum[q] for q in topm if wsum[q] > 0})
     return dict(krw), remain, topm
 
 
@@ -604,8 +700,15 @@ def strat_yard(stock, S, fq, ctx, origin):
         if seg_act[q] > S["매출액"][q] * 1.001:
             p["warnings"].append("%s 조선 부문 매출(%.0f억) > 연결 매출(%.0f억) — 부문표/파서 문제(yards 레인 확인)" % (q, seg_act[q], S["매출액"][q]))
     other_act = {q: max(S["매출액"][q] - seg_act[q], 0.0) for q in seg_act}
+    # 신규수주 매출(결정 ⓓ): forecast_panel base 시나리오의 new_order_revenue 를 매출조선·매출액에 포함. 보수/낙관은 scenarios 블록에만(합산 안 함).
+    # 백테스트 동결(freeze)에서는 패널을 쓰지 않는다 — 패널(origin 2026Q2)은 동결 이후 정보라 누출이고, 동결 창(2025Q3~2026Q2)을 덮지도 않는다.
+    # 패널 여부를 '기존' SLS 정의보다 먼저 정한다 — 패널 신규를 더하면 origin 이후 공시 수주는 기존에서 뺀다(T6 D1, 아래).
+    no = None if freeze else _panel_new_orders(stock, ctx, fq)
+    use_panel = bool(no and no["available"])
+    post = None
+    share = {}
     if freeze:
-        krw, remaining, topm = _sls_frozen(sls, la)
+        krw, remaining, topm = _sls_frozen(sls, la, share_out=share)
         sls_hist = {q: krw.get(q, 0.0) for q in seg_act}
         backlog = _yard_backlog_at(stock, la, seg_names)
         uncovered = max((backlog / UNIT_DIV - remaining), 0.0) if _num(backlog) else None
@@ -617,9 +720,19 @@ def strat_yard(stock, S, fq, ctx, origin):
         rs = sls.get("reconcile_summary") or {}
         rep_bl, rem = rs.get("reported_marine_backlog_krw_m"), rs.get("remaining_marine_krw_m_at_origin")
         uncovered = max((rep_bl - rem) / UNIT_DIV, 0.0) if (_num(rep_bl) and _num(rem)) else None
-        sls_fwd = {q: ((bq.get(q) or {}).get("marine_hedged_krw_m") or 0.0) / UNIT_DIV for q in fq}
-        topm = {q: t.get("opm") for q, t in (sls.get("target_opm") or {}).items() if _num(t.get("opm"))}
-        src_note = "sls.by_quarter.marine_hedged_krw_m(헤지 %.0f%% 적용)" % (((bq.get(fq[0]) or {}).get("hedge_ratio") or 0.7) * 100)
+        hr_txt = "헤지 %.0f%% 적용" % (((bq.get(fq[0]) or {}).get("hedge_ratio") or 0.7) * 100)
+        post = _sls_post_origin(sls, fq)
+        if use_panel and post["n"]:
+            # T6 D1: origin 이후 체결 계약은 패널 신규(origin 이후 수주의 매출)에 포함된 것으로 본다 → '기존' 은 origin 분기말까지 체결분만.
+            # 백테스트 _sls_frozen(체결일 ≤ 동결 분기말)과 같은 규칙. 패널이 없으면(한화오션·HJ) 공시 수주가 유일한 신규 정보라 그대로 둔다.
+            sls_fwd = dict(post["existing"])
+            src_note = "sls.by_quarter.marine_hedged_krw_m_signed_by_origin(%s; origin %s 이후 체결 %d건 제외 — 패널 신규에 포함)" % (hr_txt, sls.get("origin"), post["n"])
+        else:
+            sls_fwd = {q: ((bq.get(q) or {}).get("marine_hedged_krw_m") or 0.0) / UNIT_DIV for q in fq}
+            src_note = "sls.by_quarter.marine_hedged_krw_m(%s)" % hr_txt
+        tq = sls.get("target_opm") or {}
+        topm = {q: t.get("opm") for q, t in tq.items() if _num(t.get("opm"))}
+        share = {q: (tq[q]["graded_share"] if _num(tq[q].get("graded_share")) else 1.0) for q in topm}
     ks = last_n(seg_act, 4)
     if len(ks) < 2 or uncovered is None:
         return strat_trend(stock, S, fq, ctx, origin, reason="부문 매출 실적 %d분기·잔고 %s" % (len(ks), "없음" if uncovered is None else "있음"))
@@ -633,15 +746,41 @@ def strat_yard(stock, S, fq, ctx, origin):
         exist_est[q] = sls_fwd[q] + r
         seg_est[q] = (exist_est[q], "SLS 해양 원화 %.0f억(%s) + 원장 밖 잔고 소진 %.0f억(최근 %d분기 '부문매출−SLS' 중위 %.0f억/분기, 잔여 %.0f억)"
                       % (sls_fwd[q], src_note, r, len(ks), runoff_rate, remaining_u))
-    # 신규수주 매출(결정 ⓓ): forecast_panel base 시나리오의 new_order_revenue 를 매출조선·매출액에 포함. 보수/낙관은 scenarios 블록에만(합산 안 함).
-    # 백테스트 동결(freeze)에서는 패널을 쓰지 않는다 — 패널(origin 2026Q2)은 동결 이후 정보라 누출이고, 동결 창(2025Q3~2026Q2)을 덮지도 않는다.
-    no = None if freeze else _panel_new_orders(stock, ctx, fq)
     new_base = {}
-    if no and no["available"]:
+    if use_panel:
         new_base = no["by_scenario"][PANEL_BASE]
         for q in fq:
             n = new_base.get(q, 0.0)
             seg_est[q] = (exist_est[q] + n, seg_est[q][1] + " + 신규수주 매출 %.0f억(%s)" % (n, no["basis"]))
+    # T6 D1: 기존에서 뺀 origin 이후 공시 수주 — 건수·금액·추정 창 SLS 를 수치로(basis·경고·driver)
+    post_excl = None
+    if new_base and post and post["n"]:
+        fy_ex = collections.OrderedDict()
+        for q in fq:
+            fy_ex[q[:4]] = fy_ex.get(q[:4], 0.0) + post["post"][q]
+        fy_new = collections.OrderedDict()
+        for q in fq:
+            fy_new[q[:4]] = fy_new.get(q[:4], 0.0) + new_base.get(q, 0.0)
+        cmp_q = [(q, v, no["new_orders_by_q"].get(q)) for q, v in post["by_sign_q"].items() if q in no["new_orders_by_q"]]
+        dfn = no.get("definition") or {}
+        unc = ("패널 new_order_revenue 정의 불확실 — order_basis=%s(경험적 순보충 분위의 통계 흐름, 공시 계약을 개별 반영하지 않음) · "
+               "new_order_arrival=%s · progress_curve=%s%s%s. 공시 수주의 인식 시점·진행률(선형, 체결 분기부터)은 패널 가정과 다르다(calibrated=false) — "
+               "FY 제외 SLS vs 패널 base 신규 매출: %s"
+               % (dfn.get("order_basis") or "—", dfn.get("new_order_arrival") or "—", dfn.get("progress_curve") or "—",
+                  ("; 패널 기존잔고는 origin 이후 공시 %d건을 제외(industry_axes.schedule_exclusions.not_known_at_origin)" % no["not_known_at_origin"])
+                  if no.get("not_known_at_origin") is not None else "",
+                  "".join("; %s 공시 수주 %s억 vs 패널 base 신규수주 %s억(%.0f%%)" % (q, format(round(v), ",d"), format(round(pn), ",d"), v / pn * 100)
+                          for q, v, pn in cmp_q if pn),
+                  " · ".join("%s %s억 vs %s억" % (y, format(round(fy_ex[y]), ",d"), format(round(fy_new.get(y, 0.0)), ",d")) for y in fy_ex)))
+        post_excl = {"n": post["n"], "amt_krw_eok": r2(post["amt"]), "by_sign_quarter": {q: r2(v) for q, v in post["by_sign_q"].items()},
+                     "sls_excluded_by_fy": {y: r2(v) for y, v in fy_ex.items()}, "panel_new_revenue_by_fy": {y: r2(v) for y, v in fy_new.items()},
+                     "sls_excluded_by_q": {q: r2(post["post"][q]) for q in fq}, "rcps": post["rcps"], "source": post["source"],
+                     "definition_uncertainty": unc,
+                     "note": "origin 이후 공시 수주 %d건 %s억은 패널 신규에 포함된 것으로 보아 기존 SLS 에서 제외 — 추정 창 SLS −%s억(%s)"
+                             % (post["n"], format(round(post["amt"]), ",d"), format(round(sum(fy_ex.values())), ",d"),
+                                " · ".join("%s %s억" % (y, format(round(v), ",d")) for y, v in fy_ex.items()))}
+        for q in fq:
+            seg_est[q] = (seg_est[q][0], seg_est[q][1] + " · origin 이후 공시 수주 SLS %.0f억 제외(패널 신규에 포함으로 봄)" % post["post"][q])
     r3 = _sls_r3_info(sls)
     # 기타 부문(총매출 − 조선): 부문표 차분 잡음(반기 누계 정정 등)이 커서 추세 대신 최근 4분기 중위 유지
     oth_med = med([other_act[q] for q in ks]) or 0.0
@@ -649,28 +788,59 @@ def strat_yard(stock, S, fq, ctx, origin):
     oth_basis = {q: "기타 부문(연결 − 조선 부문) 최근 %d분기 중위 %.0f억 유지" % (len(ks), oth_med) for q in fq}
     # OPM: 코호트 타겟 + 회사 캘리브레이션(최근 4분기 실측 OPM − 타겟 중위). 부문 OP 미공시 → 두 부문 같은 OPM.
     opm_act = opm_series(S["매출액"], S["영업이익"])
-    diffs = [opm_act[q] - topm[q] for q in last_n(opm_act, 4) if q in topm]
+    # T6 D3: 코호트 타겟은 '등급 있는 계약' 만으로 가중된다(sls._target_opm). 등급 없는 매출 비중(1 − graded_share)은 최근 4분기 실측 OPM
+    # 중위로 채워 타겟 경로를 만든다 — 등급 비중이 바뀌는 만큼만 경로가 움직이고, 그 밖의 값은 그대로(가중 보완만).
+    ka = last_n(opm_act, 4)
+    opm_med4 = med([opm_act[q] for q in ka])
+    fill = opm_med4 if opm_med4 is not None else 0.0
+    teff = {q: share.get(q, 1.0) * t + (1.0 - share.get(q, 1.0)) * fill for q, t in topm.items()}
+    diffs = [opm_act[q] - teff[q] for q in ka if q in teff]
     shift = med(diffs) if diffs else None
     if shift is None:
         shift = 0.0
         p["warnings"].append("SLS 타겟 OPM 과 겹치는 실측 분기 없음 → 캘리브레이션 0")
-    last_t = topm.get(max(topm)) if topm else 0.0
-    opm_path = {}
+    last_q = max(teff) if teff else None
+    opm_path, tpath = {}, {}
     for q in fq:
-        t = topm.get(q, last_t) or 0.0
+        tq_ = q if q in teff else last_q
+        t = teff[tq_] if tq_ else 0.0
+        tpath[q] = t
         opm_path[q] = clip(t + shift, *OPM_CLIP)
-        p["opm"][q] = (opm_path[q], "SLS 코호트 타겟 %.1f%%(%s) + 회사 캘리브레이션 %+.1f%%p(최근 %d분기 실측−타겟 중위)%s"
-                       % (t * 100, r3["cohort_text"], shift * 100, len(diffs), " — 신규수주 매출에도 같은 타겟" if new_base else ""))
+    # 코호트 경로 소멸 감지: 원 타겟(등급 있는 계약만)이 sls 전 분기 같은 값(또는 없음)이면 코호트가 경로를 만들지 못한다 → OPM 은 사실상
+    # 실측 중위 고정이고, 남는 움직임은 등급 없는 비중 채움에서만 나온다(삼성重 reference_anchor 2022Q1~2030Q3 전부 15%)
+    no_path = len({round(v, 4) for v in topm.values()}) <= 1
+    path_txt = ("코호트 경로 없음 → 실측 중위 고정(원 타겟 %s; 경로 변화는 등급 없는 비중의 실측 중위 %.1f%% 채움에서만, 추정 구간 타겟 %.2f%%→%.2f%%)"
+                % (("전 분기 %.1f%% 상수(%s)" % (next(iter(topm.values())) * 100, r3["cohort_text"])) if topm else "없음",
+                   fill * 100, tpath[fq[0]] * 100, tpath[fq[-1]] * 100)) if no_path else ""
+    for q in fq:
+        g = share.get(q if q in teff else last_q, 1.0) if teff else 1.0
+        p["opm"][q] = (opm_path[q], "SLS 코호트 타겟 %.1f%%(%s; 등급 비중 %.0f%% × 코호트 %.1f%% + 등급없음 %.0f%% × 최근 %d분기 실측 OPM 중위 %.1f%%) "
+                                    "+ 회사 캘리브레이션 %+.1f%%p(최근 %d분기 실측−타겟 중위)%s%s"
+                       % (tpath[q] * 100, r3["cohort_text"], g * 100, (topm.get(q if q in topm else last_q) or 0.0) * 100, (1 - g) * 100, len(ka), fill * 100,
+                          shift * 100, len(diffs), " — 신규수주 매출에도 같은 타겟" if new_base else "", (" — " + path_txt) if path_txt else ""))
+    if path_txt:
+        p["warnings"].append("OPM 경로: " + path_txt)
     rev = {}
     for q in fq:
         rev[q] = (seg_est[q][0] + oth_rev[q], "매출조선 + 매출기타")
     p["rev"] = rev
     rs = sls.get("reconcile_summary") or {}
+    # T6 D10: 잔고 캡이 적용된 sls 에서는 1/backlog_coverage 가 캡 배율 그 자체 — '대안 배율' 로 보이면 이중 곱셈으로 오독된다 → null + 문구
+    cov = rs.get("backlog_coverage_at_origin")
+    capped = r3["backlog_cap_applied"] is True          # 정보 없음(구버전 sls)은 캡 미적용으로 본다 — 그때 1/coverage 는 진짜 대안 배율
     p["driver"] = {"type": "sls_marine_plus_uncovered_backlog_runoff", "sls_source": src_note,
                    "uncovered_backlog_at_origin": r2(uncovered), "runoff_per_q": r2(runoff_rate), "runoff_quarters_used": ks,
-                   "reconcile_ratio": rs.get("median_ratio_4q"), "backlog_coverage_at_origin": rs.get("backlog_coverage_at_origin"),
+                   "reconcile_ratio": rs.get("median_ratio_4q"), "backlog_coverage_at_origin": cov,
                    "scale_alternatives": {"1/median_ratio_4q": r4(1 / rs["median_ratio_4q"]) if _num(rs.get("median_ratio_4q")) and rs["median_ratio_4q"] > 0 else None,
-                                          "1/backlog_coverage": r4(1 / rs["backlog_coverage_at_origin"]) if _num(rs.get("backlog_coverage_at_origin")) and rs["backlog_coverage_at_origin"] > 0 else None},
+                                          "1/backlog_coverage": None if capped else (r4(1 / cov) if _num(cov) and cov > 0 else None)},
+                   "scale_alternatives_note": ("1/backlog_coverage = null — sls 가 이미 1/coverage 캡(%s)을 적용했다(backlog_cap). 추가 배율 아님, 곱하지 말 것"
+                                               % (("× %.4f" % (1 / cov)) if _num(cov) and cov > 0 else r3["cap_text"])) if capped
+                                              else "표시만 — 모델은 어느 배율도 곱하지 않는다(공시 잔고 상한 소진 방식)",
+                   "post_origin_excluded": post_excl,
+                   "target_path": {"cohort_raw": {q: r4(topm[q]) for q in fq if q in topm}, "graded_share": {q: r4(share[q]) for q in fq if q in share},
+                                   "fill_opm_median_4q": r4(fill), "fill_quarters": ka, "target_effective": {q: r4(v) for q, v in tpath.items()},
+                                   "cohort_path_absent": no_path,
+                                   "basis": "타겟 = 등급 비중 × 코호트 타겟 + (1 − 등급 비중) × 최근 4분기 실측 OPM 중위(T6 D3)" + ((" — " + path_txt) if path_txt else "")},
                    "calibrated_shift": r4(shift), "lag_q": 0,
                    # 결정 ⓓ·ⓔ(2026-09-30): 신규수주 포함 여부·출처, sls R3 의 코호트 모드·잔고 캡(없으면 '정보 없음')
                    "new_orders_included": bool(new_base),
@@ -678,6 +848,9 @@ def strat_yard(stock, S, fq, ctx, origin):
                                    "panel_status": no["status"], "panel_reason_codes": no["reason_codes"], "panel_origin": no["panel_origin"],
                                    "covered_quarters": no["covered"], "uncovered_quarters_zero": no["uncovered"],
                                    "base_total_fq": r2(sum(new_base.values())),
+                                   "panel_definition": no.get("definition") or {},
+                                   "existing_definition": ("origin 분기말까지 체결 계약(sls signed_by_origin) + 원장 밖 잔고 소진 — origin 이후 공시 수주 %d건은 패널 신규에 포함으로 보아 제외" % post_excl["n"])
+                                                          if post_excl else "선표 전체(origin 이후 체결 공시 수주 없음) + 원장 밖 잔고 소진",
                                    "note": "패널 new_order_revenue 는 미보정 book-value proxy(value_semantics) — 보수/낙관은 scenarios 블록에만, 행에는 base 만"}
                                   if new_base else
                                   {"source": "forecast_panel.json.gz", "calibrated": False, "panel_status": (no or {}).get("status"),
@@ -687,7 +860,7 @@ def strat_yard(stock, S, fq, ctx, origin):
                    "target_opm_alt_median": r3["target_opm_alt_median"],
                    "basis": "공시 해양 잔고(%s억) 를 상한으로 원장 밖 잔고를 최근 속도로 소진 — 화해 배율(1/ratio) 곱셈은 원장 커버리지 상승을 성장으로 오독하므로 쓰지 않음 · 신규수주: %s · %s · %s"
                             % (format(round((rs.get("reported_marine_backlog_krw_m") or 0) / UNIT_DIV), ",d"),
-                               ("forecast_panel %s 포함(미보정)" % PANEL_BASE) if new_base else ("미포함(%s)" % ("백테스트 동결" if freeze else (no or {}).get("note") or "패널 없음")),
+                               ("forecast_panel %s 포함(미보정)%s" % (PANEL_BASE, ("; " + post_excl["note"]) if post_excl else "")) if new_base else ("미포함(%s)" % ("백테스트 동결" if freeze else (no or {}).get("note") or "패널 없음")),
                                r3["cap_text"], r3["cohort_text"])}
     seg_label = "조선·해양(%s)" % "·".join(seg_names) if seg_names else "조선·해양"
     seg_rows = {"매출조선": {}, "OP조선": {}, "매출기타": {}, "OP기타": {}}
@@ -708,8 +881,9 @@ def strat_yard(stock, S, fq, ctx, origin):
         # origin 이 속한 회계연도의 실적 분기는 정의상 0(origin 이후 수주분) — FY 합계가 'partial' 로 비지 않게 채운다
         for q in S["매출액"]:
             if q_year(q) == q_year(la) and q <= la:
-                seg_rows["매출조선신규"][q] = act(0.0, "origin %s 이전 실적 분기 — origin 이후 신규수주 매출은 정의상 0" % la)
-                seg_rows["OP조선신규"][q] = act(0.0, "origin %s 이전 실적 분기 — 정의상 0" % la)
+                # T6 D8: fin 값이 아니므로 actual 이 아니다(actual = fin 그대로 규약) → estimate + '정의상 0'
+                seg_rows["매출조선신규"][q] = est(0.0, "정의상 0 — origin %s 이전 실적 분기, origin 이후 신규수주 매출(fin 값 아님)" % la)
+                seg_rows["OP조선신규"][q] = est(0.0, "정의상 0 — origin %s 이전 실적 분기(fin 값 아님)" % la)
     p["segments"] = [
         {"key": "조선", "label": seg_label, "driver": p["driver"], "opm_path": {q: r4(v) for q, v in opm_path.items()}},
         {"key": "기타", "label": "기타 부문(총매출 − 조선)", "driver": {"type": "median_flat", "basis": "연결 매출 − 조선 부문 실적의 최근 4분기 중위 유지"},
@@ -722,18 +896,26 @@ def strat_yard(stock, S, fq, ctx, origin):
         p["scenarios_new"] = no["by_scenario"]
         p["scenarios_meta"] = {"source": "forecast_panel.json.gz scenarios.{conservative,base,optimistic}.quarterly[].new_order_revenue (KRW_million → 억원 ÷100)",
                                "panel_status": no["status"], "panel_reason_codes": no["reason_codes"], "panel_origin": no["panel_origin"], "calibrated": False,
-                               "in_rows": PANEL_BASE, "existing_revenue": "SLS 해양 원화 + 원장 밖 잔고 소진 + 기타 부문(신규수주 제외)"}
+                               "in_rows": PANEL_BASE,
+                               "existing_revenue": "SLS 해양 원화(origin %s 분기말까지 체결분%s) + 원장 밖 잔고 소진 + 기타 부문(신규수주 제외)"
+                                                   % (sls.get("origin") or la, (" — origin 이후 공시 수주 %d건 제외, 패널 신규에 포함으로 봄" % post_excl["n"]) if post_excl else ""),
+                               "post_origin_excluded": post_excl}
     pm = _panel_module(stock, ctx, fq, included=bool(new_base))
     if pm:
         p["modules"].append(pm)
     if new_base:
         p["warnings"].append("추정 매출조선 = %s 기준 잔고 소진분 + forecast_panel %s 신규수주 매출(미보정 book-value proxy, status %s; FY합 %s억) — 보수/낙관은 scenarios 블록(합산 안 함)"
                              % (la, PANEL_BASE, no["status"], format(round(sum(new_base.values())), ",d")))
+        if post_excl:
+            p["warnings"].append(post_excl["note"] + " · " + post_excl["definition_uncertainty"])
     elif freeze:
         p["warnings"].append("백테스트 동결 — 신규수주 매출 미포함(패널은 동결 이후 정보)")
     else:
         p["warnings"].append("추정 매출은 %s 기준 잔고 소진분만 — 신규수주 매출 미포함(%s; 2028 감소는 이 한계). forecast_panel 모듈 참고"
                              % (la, (no or {}).get("note") or "패널 없음"))
+        if post and post["n"]:
+            p["warnings"].append("패널 신규 없음 → origin 이후 공시 수주 %d건 %s억은 선표(SLS)에 그대로 둠(유일한 신규수주 정보 — 제외하지 않음)"
+                                 % (post["n"], format(round(post["amt"]), ",d")))
     if r3["backlog_cap_applied"]:
         p["warnings"].append("SLS %s — 원장 잔여가 공시 잔고를 넘어 R3 가 줄인 값(sls.backlog_cap_applied)" % r3["cap_text"])
     return p
@@ -1029,42 +1211,73 @@ def _link_forecast(best, X, y_series, fq, share_info):
     return out
 
 
-def _link_oos(y_series, cands, ctx, la):
-    """고객 연동 OOS 선택(결정 ⓘ): 마지막 실적(la) 4분기 전에 동결하고, 동결 데이터만으로 (a) 격자 최선 연동 (b) 추세+계절성 을 만들어
-    동결 이후 4분기 실측 매출과 WAPE 로 비교한다. 고객 지수는 동결 고객 모델(ctx.model(code, freeze)) 이고 조합 선택도 동결 데이터로 다시 하므로
-    미래 정보 누출이 없다(현재 모델 la=2026Q2 → 동결 2025Q2 = 백테스트 동결; 백테스트용 동결 모델 la=2025Q2 안에서는 2024Q2).
-    반환 {freeze, horizon, n, wape_link, wape_trend, adopted, link_at_freeze, detail, rule, note}. 비교 불가(실적 부족)면 adopted True + note."""
+def _link_oos(y_series, cands, ctx, la, adopted=None):
+    """고객 연동 OOS 선택(결정 ⓘ): 마지막 실적(la) 4분기 전에 동결하고, 동결 데이터만으로 (a) 연동 (b) 추세+계절성 을 만들어
+    동결 이후 4분기 실측 매출과 WAPE 로 비교한다. 고객 지수는 동결 고객 모델(ctx.model(code, freeze)) 이다.
+    T6 D5: (b) adopted(현재 채택 조합 — wkey·lag·transform·window)를 주면 **그 조합**을 동결 데이터로 재적합(비례계수·계절비중 다시 추정)해 시험하고,
+    동결 시점에 격자를 다시 고른 결과는 link_at_freeze 에 참고로만 둔다(adopted 를 안 주면 예전처럼 재선택 조합을 시험).
+    (a) 비교는 반올림 전 WAPE(wape_*_raw)로, 표시는 1자리. (c) 비교 불가(실적 부족·조합 재적합 불가·WAPE 계산 불가)면 adopted = "undetermined"
+    — 채택은 유의성 조건만으로 하되 decision·note 에 남긴다.
+    누출: fin·고객 모델·시세는 동결되지만 가중치 후보(suppliers.json 언급 비중)·선표 원장의 최신 금액·정정은 현재 지식이다(백테스트 frozen_inputs 와 같음).
+    반환 {freeze, horizon, n, wape_link, wape_trend, wape_link_raw, wape_trend_raw, adopted(True|False|"undetermined"), decision, tested,
+    link_tested, link_at_freeze, detail, rule, note}."""
     fz = q_add(la, -BACKTEST_H)
     fq_bt = [q_add(fz, i) for i in range(1, BACKTEST_H + 1)]
     y_frozen = {q: v for q, v in y_series.items() if q <= fz}
     actual = {q: y_series[q] for q in fq_bt if q in y_series}
-    out = {"freeze": fz, "horizon": BACKTEST_H, "n": len(actual), "wape_link": None, "wape_trend": None, "adopted": True, "link_at_freeze": None,
-           "rule": "동결 %s 이후 %d분기 매출 WAPE: 연동 ≤ 추세 × %.2f 이면 채택, 아니면 추세+계절성 폴백(격자 다중비교 방어 — 통계 보정 대신)" % (fz, BACKTEST_H, OOS_WORSE_TOL)}
+    out = {"freeze": fz, "horizon": BACKTEST_H, "n": len(actual), "wape_link": None, "wape_trend": None, "wape_link_raw": None, "wape_trend_raw": None,
+           "adopted": "undetermined", "decision": "undetermined", "tested": "adopted_combo" if adopted else "reselected_at_freeze",
+           "link_tested": None, "link_at_freeze": None,
+           "rule": "동결 %s 이후 %d분기 매출 WAPE(반올림 전): 연동 ≤ 추세 × %.2f 이면 채택, 아니면 추세+계절성 폴백(격자 다중비교 방어 — 통계 보정 대신). "
+                   "시험 대상 = %s; 비교 불가면 undetermined(유의성만으로 채택)"
+                   % (fz, BACKTEST_H, OOS_WORSE_TOL, "현재 채택 조합을 동결 데이터로 재적합" if adopted else "동결 시점 재선택 조합")}
     if len(y_frozen) < 8 or not actual:
-        out["note"] = "동결 %s 이전 실적 %d분기(<8) 또는 이후 실측 0분기 → OOS 비교 불가, 유의성 조건만으로 채택" % (fz, len(y_frozen))
+        out["note"] = "동결 %s 이전 실적 %d분기(<8) 또는 이후 실측 %d분기 → OOS 비교 불가(undetermined), 유의성 조건만으로 채택" % (fz, len(y_frozen), len(actual))
         return out
     tr, _, _ = trend_seasonal(y_frozen, fq_bt)
-    out["wape_trend"] = wape([(tr[q], actual[q]) for q in actual])
+    wt = wape_raw([(tr[q], actual[q]) for q in actual])
+    out["wape_trend_raw"], out["wape_trend"] = r4(wt), (round(wt, 1) if wt is not None else None)
     rows, per_cand = _link_grid(y_frozen, cands, ctx, fz, fq_bt)
+
+    def _pred(r):
+        pc = per_cand[r["wkey"]]
+        shifted = {q_add(q, r["lag"]): v for q, v in pc["idx0"].items()}
+        X = _transform(shifted, r["transform"])
+        share = _seasonal_share(y_frozen) if r["transform"] == "ma4" else None
+        return _link_forecast(r, X, y_frozen, fq_bt, share)
+
+    def _short(r, note):
+        return {"wkey": r["wkey"], "lag_q": r["lag"], "transform": r["transform"], "window_q": r["window"], "n": r["n"],
+                "corr": r["corr"], "coef": r["coef"], "significant_p05_uncorrected": _link_significance(r)["significant_p05_uncorrected"], "note": note}
     best = _grid_pick(rows, [c[0] for c in cands])
-    if best is None:
-        out["note"] = "동결 시점 고객 연동 조합 없음(고객 모델·짝 부족) → 연동 WAPE 없음, 유의성 조건만으로 채택"
-        out["detail"] = [{"q": q, "actual": r2(actual[q]), "link": None, "trend": r2(tr[q])} for q in actual]
-        return out
-    pc = per_cand[best["wkey"]]
-    shifted = {q_add(q, best["lag"]): v for q, v in pc["idx0"].items()}
-    X = _transform(shifted, best["transform"])
-    share = _seasonal_share(y_frozen) if best["transform"] == "ma4" else None
-    pred = _link_forecast(best, X, y_frozen, fq_bt, share)
-    out["wape_link"] = wape([(pred[q][0], actual[q]) for q in actual if q in pred])
-    out["link_at_freeze"] = {"wkey": best["wkey"], "lag_q": best["lag"], "transform": best["transform"], "window_q": best["window"], "n": best["n"],
-                             "corr": best["corr"], "coef": best["coef"], "significant_p05_uncorrected": _link_significance(best)["significant_p05_uncorrected"],
-                             "note": "동결 데이터로 다시 고른 격자 최선 조합(유의성 무관하게 연동 방법 자체를 시험)"}
-    out["detail"] = [{"q": q, "actual": r2(actual[q]), "link": r2(pred[q][0]) if q in pred else None, "trend": r2(tr[q])} for q in actual]
-    if out["wape_link"] is not None and out["wape_trend"] is not None:
-        out["adopted"] = out["wape_link"] <= out["wape_trend"] * OOS_WORSE_TOL
+    pred_re = _pred(best) if best else {}
+    if best:
+        w_re = wape_raw([(pred_re[q][0], actual[q]) for q in actual if q in pred_re])
+        out["link_at_freeze"] = dict(_short(best, "동결 데이터로 다시 고른 격자 최선 조합 — %s" % ("참고(판정은 현재 채택 조합)" if adopted else "이 조합으로 판정")),
+                                     wape=(round(w_re, 1) if w_re is not None else None), wape_raw=r4(w_re))
+    if adopted:
+        hit = next((r for r in rows if (r["wkey"], r["lag"], r["transform"], r["window"]) == (adopted["wkey"], adopted["lag"], adopted["transform"], adopted["window"])
+                    and r["covers_fq"] and r["coef"] is not None), None)
+        tested, pred = hit, (_pred(hit) if hit else {})
+        if hit:
+            out["link_tested"] = _short(hit, "현재 채택 조합(%s·시차 %d·%s·창 %d)을 동결 %s 데이터로 재적합" % (hit["wkey"], hit["lag"], LINK_TRANSFORM_KO[hit["transform"]], hit["window"], fz))
     else:
-        out["note"] = "WAPE 계산 불가(실측 합 0 등) → 유의성 조건만으로 채택"
+        tested, pred = best, pred_re
+        if best:
+            out["link_tested"] = out["link_at_freeze"]
+    out["detail"] = [{"q": q, "actual": r2(actual[q]), "link": r2(pred[q][0]) if q in pred else None,
+                      "link_reselected": r2(pred_re[q][0]) if q in pred_re else None, "trend": r2(tr[q])} for q in actual]
+    if tested is None:
+        out["note"] = ("현재 채택 조합(%s·시차 %d·%s·창 %d)을 동결 데이터로 재적합할 수 없음(짝·고객 모델 부족)" % (adopted["wkey"], adopted["lag"], adopted["transform"], adopted["window"])
+                       if adopted else "동결 시점 고객 연동 조합 없음(고객 모델·짝 부족)") + " → 연동 WAPE 없음, undetermined(유의성 조건만으로 채택)"
+        return out
+    wl = wape_raw([(pred[q][0], actual[q]) for q in actual if q in pred])
+    out["wape_link_raw"], out["wape_link"] = r4(wl), (round(wl, 1) if wl is not None else None)
+    if wl is not None and wt is not None:
+        out["adopted"] = wl <= wt * OOS_WORSE_TOL
+        out["decision"] = "adopted" if out["adopted"] else "rejected"
+    else:
+        out["note"] = "WAPE 계산 불가(실측 합 0 등) → undetermined(유의성 조건만으로 채택)"
     return out
 
 
@@ -1114,7 +1327,7 @@ def _supplier_link(stock, S, fq, ctx, origin, y_series):
               ("상관 %.2f 가 단일 검정 5%% 임계 r %.2f 미달(n=%d)" % (best["corr"], sig["r_crit_p05_two_sided"] or 0.0, best["n"])) if not sig["significant_p05_uncorrected"] else \
               ("짝 n=%d < %d" % (best["n"], LINK_MIN_N))
         p = fb("고객 연동 격자 %s (%s·시차 %d·%s·창 %d)" % (why, best["wkey"], best["lag"], LINK_TRANSFORM_KO[best["transform"]], best["window"]))
-        oos_skip = {"adopted": False, "wape_link": None, "wape_trend": None, "note": "유의성 조건 미달 → OOS 비교 전 기각"}
+        oos_skip = {"adopted": False, "decision": "rejected", "wape_link": None, "wape_trend": None, "note": "유의성 조건 미달 → OOS 비교 전 기각"}
         p["driver"]["customer_link_rejected"] = dict(rejected_base, grid=grid, significance=sig, selection_oos=oos_skip,
                                                      rejected_by=("corr" if best["corr"] < CORR_MIN else ("significance" if not sig["significant_p05_uncorrected"] else "n")),
                                                      merger_rule=[m["rule"] for m in det.get("mergers") or []], customer_sources=det.get("sources") or {})
@@ -1122,8 +1335,8 @@ def _supplier_link(stock, S, fq, ctx, origin, y_series):
         return p
     # OOS 선택(결정 ⓘ, 2026-09-30): 유의해도 동결 백테스트(la−4분기 동결, 4분기 매출 WAPE)에서 추세+계절성보다 OOS_WORSE_TOL 넘게 나쁘면 채택하지 않는다.
     # 격자 후보 45~180 개 중 최대 상관은 위로 치우친다(다중비교) — Bonferroni 류 보정 대신 이 OOS 규칙을 방어로 삼는다(스펙 5-3).
-    oos = _link_oos(y_series, cands, ctx, S["last_actual"])
-    if not oos["adopted"]:
+    oos = _link_oos(y_series, cands, ctx, S["last_actual"], adopted=best)
+    if oos["adopted"] is False:
         p = fb("고객 연동 OOS 기각 — 동결 %s 이후 %d분기 매출 WAPE 연동 %.1f%% > 추세 %.1f%% × %.2f (%s·시차 %d·%s·창 %d, r=%.2f 유의)"
                % (oos["freeze"], oos["n"], oos["wape_link"], oos["wape_trend"], OOS_WORSE_TOL, best["wkey"], best["lag"], LINK_TRANSFORM_KO[best["transform"]], best["window"], best["corr"]))
         p["driver"]["customer_link_rejected"] = dict(rejected_base, grid=grid, significance=sig, selection_oos=oos, rejected_by="oos",
@@ -1148,6 +1361,8 @@ def _supplier_link(stock, S, fq, ctx, origin, y_series):
                    "seasonal_share": ({str(k): r4(v) for k, v in share_info[0].items()} if share_info else None),
                    "seasonal_basis": (share_info[1] if share_info else None),
                    "significance": _link_significance(best), "selection_oos": oos, "grid": grid,
+                   "adoption_basis": ("유의성 + OOS(현재 조합 재적합 WAPE 연동 %.2f ≤ 추세 %.2f × %.2f)" % (oos["wape_link_raw"], oos["wape_trend_raw"], OOS_WORSE_TOL))
+                                     if oos["adopted"] is True else "유의성만 — OOS undetermined(%s)" % (oos.get("note") or "비교 불가"),
                    "customer_sources": det.get("sources") or {}, "merger_rule": [m["rule"] for m in det.get("mergers") or []],
                    "new_orders_included": None,
                    "new_orders": {"via": "customer_models", "customers": {c: s.get("new_orders_included") for c, s in sorted((det.get("sources") or {}).items())},
@@ -1172,6 +1387,10 @@ def _sejin_wrap(p, S, fq, ctx, origin, opm_cons):
     resid = {q: S["매출액"][q] - sep_rev[q] - sub_rev.get(q, 0.0) for q in S["매출액"] if q in sep_rev}
     rk = last_n(resid, 4)
     resid_med = med([resid[q] for q in rk]) or 0.0
+    # T6 D4: 잔차(내부거래·베트남)는 종속사 매출과 함께 커진다(2025Q3~26Q2 잔차/종속사 −0.61·−0.71·−0.57·−0.64) — 절대값 상수 대신
+    # 최근 4분기 '잔차 ÷ 종속사 매출' 중위 × 종속사 추정 매출. 종속사 매출이 없는 분기만 남으면 예전대로 절대값 중위.
+    rq = [q for q in rk if sub_rev.get(q)]
+    resid_ratio = med([resid[q] / sub_rev[q] for q in rq]) if rq else None
     sep_opm = clip(med([sep_op[q] / sep_rev[q] for q in last_n(sep_rev, 8) if q in sep_op and sep_rev[q]]) or 0.0, *OPM_CLIP)
     rows = {"매출조선기자재": {}, "OP조선기자재": {}, "매출종속사": {}, "OP종속사": {}, "매출연결조정": {}, "OP연결조정": {}}
     for q in sep_rev:
@@ -1201,9 +1420,15 @@ def _sejin_wrap(p, S, fq, ctx, origin, opm_cons):
         rows["OP조선기자재"][q] = est(sep_est[q] * sep_opm, "별도 매출 × 별도 OPM 8분기 중위 %.1f%%" % (sep_opm * 100))
         rows["매출종속사"][q] = est(sub_rev.get(q, 0.0), "일승·동방선기 모델 매출 합")
         rows["OP종속사"][q] = est(sub_op.get(q, 0.0), "일승·동방선기 모델 영업이익 합")
-        rows["매출연결조정"][q] = est(resid_med, "최근 %d분기 잔차 중위(내부거래·베트남)" % len(rk))
-        tot = sep_est[q] + sub_rev.get(q, 0.0) + resid_med
-        p["rev"][q] = (tot, "별도(조선기자재) %.0f + 종속사 %.0f + 연결조정 %.0f" % (sep_est[q], sub_rev.get(q, 0.0), resid_med))
+        if resid_ratio is not None and sub_rev.get(q):
+            adj = resid_ratio * sub_rev[q]
+            adj_b = "종속사 매출 %.0f억 × 잔차/종속사 매출 최근 %d분기(%s~%s) 중위 %.4f(내부거래·베트남)" % (sub_rev[q], len(rq), rq[0], rq[-1], resid_ratio)
+        else:
+            adj = resid_med
+            adj_b = "최근 %d분기 잔차 중위(내부거래·베트남; 종속사 매출 없음 → 절대값)" % len(rk)
+        rows["매출연결조정"][q] = est(adj, adj_b)
+        tot = sep_est[q] + sub_rev.get(q, 0.0) + adj
+        p["rev"][q] = (tot, "별도(조선기자재) %.0f + 종속사 %.0f + 연결조정 %.0f" % (sep_est[q], sub_rev.get(q, 0.0), adj))
         op_tot = tot * opm_cons
         rows["OP연결조정"][q] = est(op_tot - sep_est[q] * sep_opm - sub_op.get(q, 0.0), "연결 OP − 별도 OP − 종속사 OP(잔차)")
     opm_path = {q: r4(sep_opm) for q in fq}
@@ -1211,7 +1436,11 @@ def _sejin_wrap(p, S, fq, ctx, origin, opm_cons):
         {"key": "조선기자재", "label": "조선기자재(별도 매출 — 풍력·플랜트 부문 미분리)", "driver": dict(p["driver"], target="별도 매출"), "opm_path": opm_path},
         {"key": "종속사", "label": "종속사 일승·동방선기", "driver": {"type": "subsidiary_models", "basis": "각 회사 모델(assets/models) 합산"},
          "opm_path": {q: r4(sub_op.get(q, 0.0) / sub_rev[q]) if sub_rev.get(q) else None for q in fq}},
-        {"key": "연결조정", "label": "연결조정(세진베트남·내부거래 잔차)", "driver": {"type": "residual", "basis": "연결 − 별도 − 종속사 최근 4분기 중위"},
+        {"key": "연결조정", "label": "연결조정(세진베트남·내부거래 잔차)",
+         "driver": {"type": "residual_ratio_to_subsidiaries" if resid_ratio is not None else "residual",
+                    "ratio_to_sub_rev": r4(resid_ratio), "ratio_quarters": rq, "abs_median": r2(resid_med),
+                    "basis": ("(연결 − 별도 − 종속사) ÷ 종속사 매출 최근 %d분기 중위 × 종속사 추정 매출(T6 D4)" % len(rq)) if resid_ratio is not None
+                             else "연결 − 별도 − 종속사 최근 4분기 중위"},
          "opm_path": {}},
     ]
     p["extra_rows"] = rows
@@ -1279,8 +1508,45 @@ def _actual_series(fin):
     S["비지배순이익"] = nci
     S["이자수취"] = fin.series("cf", "이자수취(CF)")
     S["이자지급"] = fin.series("cf", "이자지급(CF)")
+    S["이자수익"] = fin.series("is", "이자수익")
+    S["이자비용"] = fin.series("is", "이자비용")
+    detail, S["_detail_src"], S["_detail_flips"] = _fin_detail(fin, S["금융손익"])
+    S.update(detail)
     S["last_actual"] = fin.last
     return S
+
+
+def _fin_detail(fin, fin_pl):
+    """금융손익 세부 실적(T4) → ({행 key: {q: 억원}}, {행 key: {q: src}}). 주석 계정(is 의 이자수익·외환차익 …)이 모두 있는 분기만 값.
+    기타금융손익 = 금융손익 − 이자 − 외환 − 파생 (2자리 반올림 값끼리 빼서 네 행 합 = 금융손익 셀이 정확히 맞게) — 셋 중 하나라도 없으면 None."""
+    out = {k: {} for k, _ in FIN_DETAIL}
+    out["기타금융손익"] = {}
+    srcs = {k: {} for k in out}
+    # 비용 계정 부호: 대부분 양수(크기)로 저장되지만 회사 단위로 비용을 음수로 저장한 fin 이 있다(케이씨씨·한화시스템 2026-10 — 4개 비용 계정 전 분기 음수).
+    # 0 아닌 분기의 과반이 음수인 비용 계정은 −1 을 곱해 크기로 바꾼다. 몇 분기만 음수인 것(Q4·누적 차분의 환입)은 그대로 둔다.
+    flips = []
+    for _, terms in FIN_DETAIL:
+        for acct, sg in terms:
+            vs = [v for v in (fin.val("is", q, acct) for q in fin.quarters) if v]
+            if sg < 0 and vs and sum(1 for v in vs if v < 0) * 2 > len(vs):
+                flips.append(acct)
+    for q in fin.quarters:
+        sc = fin.scope_of(q)
+        note = " (연결 손익 없는 분기 → 별도 보충)" if q in fin._sep_fill else ""
+        for key, terms in FIN_DETAIL:
+            vals = [fin.val("is", q, acct) for acct, _ in terms]
+            if any(v is None for v in vals):
+                continue
+            vals = [-v if acct in flips else v for (acct, _), v in zip(terms, vals)]
+            out[key][q] = r2(sum(sg * v for (_, sg), v in zip(terms, vals)))
+            expr = ""
+            for i, (acct, sg) in enumerate(terms):
+                expr += ("" if i == 0 else (" + " if sg > 0 else " − ")) + "fin.%s.is.%s" % (sc, acct) + ("(음수 저장 → 부호 반전)" if acct in flips else "")
+            srcs[key][q] = expr + note
+        if q in fin_pl and all(q in out[k] for k, _ in FIN_DETAIL):
+            out["기타금융손익"][q] = r2(r2(fin_pl[q]) - sum(out[k][q] for k, _ in FIN_DETAIL))
+            srcs["기타금융손익"][q] = "fin.%s.is.금융손익 − 이자손익 − 외환손익 − 파생상품손익(잔차)%s" % (sc, note)
+    return out, srcs, flips
 
 
 def _detect_one_offs(S, all_q):
@@ -1323,6 +1589,25 @@ def _fx_exposure_usd_m(stock, q, ctx):
     return None
 
 
+def _tax_rate(pretax, tax, k12, sum_pt, sum_tax):
+    """추정 법인세율(T6 D2). 반환 (rate, basis, path).
+    ① 최근 12분기 유효세율(Σ법인세/Σ세전)이 TAX_CLIP(5~27%) 안이면 그대로 — path 'eff12'
+    ② 음수·클립 밖·세전 합 ≤ 0 이면 클립하지 않고(이연법인세 인식 등으로 음의 세율이 하한 5% 로 잘려 EPS 를 부풀렸다 — 삼성重 −65.5%)
+       최근 8분기 중 세전 > 0 인 분기의 (법인세/세전) 중위 — 그 중위가 TAX_CLIP 안일 때만 — path 'median_pos8'
+    ③ 그것도 없거나 범위 밖이면 TAX_DEFAULT(법정세율 근사 22%) — path 'default'."""
+    eff = (sum_tax / sum_pt) if (sum_pt > 0 and k12) else None
+    if eff is not None and TAX_CLIP[0] <= eff <= TAX_CLIP[1]:
+        return eff, "최근 %d분기 유효세율 %.1f%%(5~27%% 안 — 그대로)" % (len(k12), eff * 100), "eff12"
+    why = ("최근 %d분기 유효세율 %.1f%% 가 5~27%% 밖" % (len(k12), eff * 100)) if eff is not None else "최근 %d분기 세전 합 ≤ 0" % len(k12)
+    k8 = [q for q in last_n(pretax, TAX_FALLBACK_Q) if pretax[q] > 0 and q in tax]
+    rates = [tax[q] / pretax[q] for q in k8]
+    m = med(rates)
+    if m is not None and TAX_CLIP[0] <= m <= TAX_CLIP[1]:
+        return m, "%s → 클립 대신 최근 %d분기 중 세전 > 0 인 %d분기(%s~%s)의 법인세/세전 중위 %.1f%%" % (why, TAX_FALLBACK_Q, len(k8), k8[0], k8[-1], m * 100), "median_pos8"
+    why2 = ("; 세전 > 0 분기 중위 %.1f%% 도 5~27%% 밖" % (m * 100)) if m is not None else "; 최근 %d분기에 세전 > 0 분기 없음" % TAX_FALLBACK_Q
+    return TAX_DEFAULT, "%s%s → 법정세율 근사 %.0f%% 가정" % (why, why2, TAX_DEFAULT * 100), "default"
+
+
 def build_model(stock, ctx, origin=None, freeze=False):
     """모델 json(스펙 2-5). origin 을 주면 그 분기까지의 fin 만 쓴다(백테스트·고객 모델 동결)."""
     raw = ctx.fin(stock)
@@ -1347,6 +1632,8 @@ def build_model(stock, ctx, origin=None, freeze=False):
     role_eff = role if role in STRATEGIES else "equip"
     if role not in STRATEGIES:
         warnings.append("역할 미지정(universe·suppliers 에 없음) → equip 규칙 적용")
+    if S["_detail_flips"]:
+        warnings.append("fin 주석 비용 계정을 음수로 저장(0 아닌 분기 과반) → 금융손익 세부 계산에서 부호 반전: %s — kship_fin 부호 규약 확인 필요" % ", ".join(S["_detail_flips"]))
     if S["_derived"].get("지배주주순이익"):
         warnings.append("지배주주순이익 face 누락 분기는 당기순이익 − 비지배 로 파생: %s" % ", ".join(S["_derived"]["지배주주순이익"]))
     plan = STRATEGIES[role_eff](stock, S, fq, ctx, origin)
@@ -1385,6 +1672,9 @@ def build_model(stock, ctx, origin=None, freeze=False):
             kind_, acct = SRC_DEF[key]
             for q, v in S[key].items():
                 rows[key][q] = act(v, fin.src(kind_, acct, q=q))
+    for key, srcs in S["_detail_src"].items():          # 금융손익 세부(주석 계정 파생 실적)
+        for q, v in S[key].items():
+            rows[key][q] = act(v, srcs[q])
     # 파생 실적: OPM · EBITDA · 주식수 · EPS · BPS · DPS  (fin 주식수 없으면 prices 폴백 — 아래 shares 결정과 같은 값)
     shares_fb = None
     if not fin.last_shares()[0] and not freeze:
@@ -1428,24 +1718,32 @@ def build_model(stock, ctx, origin=None, freeze=False):
     k12 = last_n(S["세전이익"], 12)
     sum_pt = sum(S["세전이익"][q] for q in k12)
     sum_tax = sum(S["법인세비용"].get(q, 0.0) for q in k12)
-    if sum_pt > 0 and k12:
-        tax_rate, tax_basis = clip(sum_tax / sum_pt, *TAX_CLIP), "최근 %d분기 유효세율 %.1f%% → 5~27%% 클립" % (len(k12), sum_tax / sum_pt * 100)
-    else:
-        tax_rate, tax_basis = TAX_DEFAULT, "세전 합 ≤ 0 → 법정세율 근사 22% 가정"
+    tax_rate, tax_basis, tax_path = _tax_rate(S["세전이익"], S["법인세비용"], k12, sum_pt, sum_tax)
     k8 = last_n(S["당기순이익"], 8)
     ni8 = sum(S["당기순이익"][q] for q in k8)
     nci8 = sum(S["비지배순이익"].get(q, 0.0) for q in k8)
     minority = clip(nci8 / ni8, 0.0, 0.6) if (ni8 > 0 and S["비지배순이익"]) else 0.0
-    # 이자율(CF 실측): Σ이자수취/평균 이자발생자산, Σ|이자지급|/평균 총차입금
-    def _rate(flow, bal):
+    # 이자율: 주석 이자수익/이자비용(is)이 최근 4분기 이상이면 그것 ÷ 평균 잔액, 아니면 CF 실측(Σ이자수취/평균 이자발생자산, Σ|이자지급|/평균 총차입금)
+    def _rate(flow, bal, min_n=2):
         ks = [q for q in last_n(flow, 4) if q in bal]
-        if len(ks) < 2:
-            return None
+        if len(ks) < min_n:
+            return None, ks
         avg = sum(bal[q] for q in ks) / len(ks)
-        return (sum(abs(flow[q]) for q in ks) / avg * 4 / len(ks)) if avg > 0 else None
-    r_asset = _rate(S["이자수취"], S["이자발생자산"])
-    r_debt = _rate(S["이자지급"], S["총차입금"])
+        return ((sum(abs(flow[q]) for q in ks) / avg * 4 / len(ks)) if avg > 0 else None), ks
+
+    def _pick_rate(note_flow, note_ko, cf_flow, cf_ko, bal, bal_ko):
+        r, ks = _rate(note_flow, bal, RATE_NOTES_MIN_Q)
+        if r is not None:
+            return r, "주석 %s ÷ 평균 %s(%s~%s)" % (note_ko, bal_ko, ks[0], ks[-1])
+        r, ks = _rate(cf_flow, bal)
+        why = "주석 %s %d분기 < %d" % (note_ko, len([q for q in note_flow if q in bal]), RATE_NOTES_MIN_Q)
+        return r, ("CF %s ÷ 평균 %s(%s~%s; %s)" % (cf_ko, bal_ko, ks[0], ks[-1], why) if r is not None else None)
+    r_asset, r_asset_src = _pick_rate(S["이자수익"], "이자수익", S["이자수취"], "이자수취", S["이자발생자산"], "이자발생자산")
+    r_debt, r_debt_src = _pick_rate(S["이자비용"], "이자비용", S["이자지급"], "이자지급", S["총차입금"], "총차입금")
     fin_med = med([S["금융손익"][q] for q in last_n(S["금융손익"], 4)])
+    # 기타금융손익(잔차) 추정: 최근 4분기 중위 — |중위| 가 첫 추정 분기 이자손익의 50% 를 넘으면 0 + 경고(평가손익·재분류가 섞인 잔차를 이어 붙이지 않음)
+    oth_ks = last_n(S["기타금융손익"], FIN_OTHER_MIN_Q)
+    oth_med = med([S["기타금융손익"][q] for q in oth_ks]) if len(oth_ks) >= FIN_OTHER_MIN_Q else None
     eq_med = med([S["지분법손익"][q] for q in last_n(S["지분법손익"], 4)]) if S["지분법손익"] else None
     shares, shares_q = fin.last_shares()
     shares_src = "fin.shares.common_outstanding(%s)" % shares_q
@@ -1497,6 +1795,16 @@ def build_model(stock, ctx, origin=None, freeze=False):
     liab_t, debt_t = S["부채총계"].get(la), S["총차입금"].get(la)
     nd_t, ia_t = S["순차입금"].get(la), S["이자발생자산"].get(la)
     ia_prev, debt_prev = ia_t, debt_t
+    has_rate = r_asset is not None or r_debt is not None
+    oth_v, oth_b = 0.0, "잔차 실측 %d분기 < %d → 0" % (len(S["기타금융손익"]), FIN_OTHER_MIN_Q)
+    if has_rate and oth_med is not None:
+        int0 = ((ia_t or 0.0) * (r_asset or 0.0) - (debt_t or 0.0) * (r_debt or 0.0)) / 4
+        if abs(oth_med) > FIN_OTHER_CAP * abs(int0):
+            oth_b = "최근 %d분기 중위 %+.2f억이 이자손익 추정 %+.2f억의 %d%% 초과 → 0(경고)" % (len(oth_ks), oth_med, int0, FIN_OTHER_CAP * 100)
+            warnings.append("기타금융손익(금융손익 − 이자 − 외환 − 파생 잔차) 최근 %d분기 중위 %+.1f억이 이자손익 추정 %+.1f억의 %d%% 초과 → 추정 0 — 평가손익·재분류 여부는 주석 확인"
+                            % (len(oth_ks), oth_med, int0, FIN_OTHER_CAP * 100))
+        else:
+            oth_v, oth_b = oth_med, "최근 %d분기(%s~%s) 잔차 중위" % (len(oth_ks), oth_ks[0], oth_ks[-1])
     for q in fq:
         if q not in plan["rev"]:
             continue
@@ -1515,13 +1823,23 @@ def build_model(stock, ctx, origin=None, freeze=False):
         rows["매출총이익"][q] = est(gp, "영업이익 + 판관비 − 기타영업손익(항등식)")
         rows["매출원가"][q] = est(rev - gp, "매출액 − 매출총이익(항등식)")
         # 영업외
-        if r_asset is not None or r_debt is not None:
+        if has_rate:
             ia_avg = ia_prev if ia_prev is not None else 0.0
-            fin_v = (ia_avg * (r_asset or 0.0) - (debt_prev or 0.0) * (r_debt or 0.0)) / 4
-            fin_b = "이자손익 = 이자발생자산 %.0f억 × %.2f%% − 총차입금 %.0f억 × %.2f%% (연율, CF 실측) ÷ 4; 환·평가손익 0 가정" % (
-                ia_avg, (r_asset or 0.0) * 100, debt_prev or 0.0, (r_debt or 0.0) * 100)
+            int_v = (ia_avg * (r_asset or 0.0) - (debt_prev or 0.0) * (r_debt or 0.0)) / 4
+            int_b = "이자발생자산 %.0f억 × %.2f%%(%s) − 총차입금 %.0f억 × %.2f%%(%s) (연율) ÷ 4" % (
+                ia_avg, (r_asset or 0.0) * 100, r_asset_src or "없음", debt_prev or 0.0, (r_debt or 0.0) * 100, r_debt_src or "없음")
+            rows["이자손익"][q] = est(int_v, int_b)
+            if S["외환손익"]:
+                rows["외환손익"][q] = est(0.0, "외환차손익·외화환산손익 0 가정 — 추정 구간 환율 효과는 조선사 환관련손익 행(공시 노출 × Δ기말환율)에만 둔다(이중 계상 방지)")
+            if S["파생상품손익"]:
+                rows["파생상품손익"][q] = est(0.0, "파생상품 평가·거래손익 0 가정")
+            if S["기타금융손익"]:
+                rows["기타금융손익"][q] = est(oth_v, oth_b)
+            fin_v = int_v + oth_v          # 반올림 전 합 — 셀 반올림 차 ≤0.01억(허용 0.05), 주석 없는 회사는 기존 값과 바이트 동일
+            fin_b = "이자손익 + 외환손익 0 + 파생상품손익 0 + 기타금융손익 %+.2f억(%s) (항등식); 이자손익 = %s; 환율 효과는 환관련손익 행 별도" % (
+                oth_v, oth_b, int_b)
         else:
-            fin_v, fin_b = (fin_med or 0.0), "이자 CF 없음 → 최근 4분기 금융손익 중위 유지"
+            fin_v, fin_b = (fin_med or 0.0), "이자 주석·CF 없음 → 최근 4분기 금융손익 중위 유지"
         rows["금융손익"][q] = est(fin_v, fin_b)
         rows["기타영업외손익"][q] = est(0.0, "일회성 미가정 → 0")
         eqm = 0.0
@@ -1530,7 +1848,7 @@ def build_model(stock, ctx, origin=None, freeze=False):
             rows["지분법손익"][q] = est(eqm, "최근 4분기 중위")
         fxv = fx_by_q.get(q, 0.0) if fx_by_q else 0.0
         if fx_by_q:
-            rows["환관련손익"][q] = est(fxv, "외화 순노출 %.0f백만$ × Δ기말 원/달러(%s)" % (exposure, fx_assump["basis"]))
+            rows["환관련손익"][q] = est(fxv, "외화 순노출 %.0f백만$ × Δ기말 원/달러(%s) — 실적 외환손익(금융손익 안)과 별개, 추정 외환손익은 0" % (exposure, fx_assump["basis"]))
         pretax = op + fin_v + 0.0 + eqm + fxv
         tax = max(pretax, 0.0) * tax_rate
         ni = pretax - tax
@@ -1570,6 +1888,22 @@ def build_model(stock, ctx, origin=None, freeze=False):
             ia_t = ia_t + (ni - div)
             rows["이자발생자산"][q] = est(ia_t, "전분기 + (순이익 − 배당) — 순차입금 롤과 같은 가정")
             ia_prev = ia_t
+    # T6 D6: 추정 금융손익(이자 + 기타금융, 외환·파생 0 가정)이 최근 4분기 실적 중위와 크게 다르면(|차| > 50%) 단절을 수치로 경고 — 값은 바꾸지 않는다.
+    # T4 세부 행(이자·외환·파생·기타금융)은 그대로 두고, 그 합인 금융손익 행만 실적 중위와 비교한다.
+    fin_gap = None
+    fin_ks = last_n(S["금융손익"], 4)
+    fin_est = [(q, rows["금융손익"][q]["v"]) for q in fq if q in rows["금융손익"] and _num(rows["금융손익"][q].get("v"))]
+    if fin_med is not None and fin_est and abs(fin_med) > 0:
+        q0, v0 = fin_est[0]
+        gap = v0 - fin_med
+        fin_gap = {"actual_median_4q": r2(fin_med), "actual_quarters": fin_ks, "actual_values": {q: r2(S["금융손익"][q]) for q in fin_ks},
+                   "first_estimate_q": q0, "first_estimate": r2(v0), "diff": r2(gap), "diff_pct": r2(gap / abs(fin_med) * 100),
+                   "flagged": abs(gap) > 0.5 * abs(fin_med),
+                   "basis": "추정 금융손익(첫 추정 분기) − 최근 %d분기 실적 중위; |차| > 실적 중위의 50%% 면 경고(값 불변)" % len(fin_ks)}
+        if fin_gap["flagged"]:
+            warnings.append("금융손익 실적→추정 단절: 최근 %d분기 실적 %s(중위 %+.0f억) → 추정 %s %+.0f억(차 %+.0f억, %+.0f%%) — 추정은 이자손익 + 기타금융 중위, "
+                            "외환·파생 평가손익 0 가정(환율 효과는 환관련손익 행). 값은 바꾸지 않음 — 지배NI·EPS 해석 시 참고"
+                            % (len(fin_ks), "/".join("%+.0f" % S["금융손익"][q] for q in fin_ks), fin_med, q0, v0, gap, gap / abs(fin_med) * 100))
     for key, cells in plan.get("extra_rows", {}).items():
         rows[key] = cells
     # 사업부 행 라벨은 이 모델의 세그먼트 라벨로 — 모듈 전역 ROW_META 를 고치면 한 프로세스에서 먼저 만든 회사의 라벨(삼성重 '조선해양')이
@@ -1676,7 +2010,7 @@ def build_model(stock, ctx, origin=None, freeze=False):
             boos = bdrv.get("selection_oos")
             backtest.update({"revenue_wape_pct": wape([(p[1], p[2]) for p in pairs]), "op_wape_pct": wape([(p[3], p[4]) for p in pairs]), "n": len(pairs),
                              "driver_at_freeze": bdrv.get("type") or bm.get("driver_type"),
-                             "selection_oos_at_freeze": ({k: boos.get(k) for k in ("freeze", "n", "wape_link", "wape_trend", "adopted", "note") if k in boos} if boos else None),
+                             "selection_oos_at_freeze": ({k: boos.get(k) for k in ("freeze", "n", "wape_link", "wape_trend", "adopted", "decision", "note") if k in boos} if boos else None),
                              "frozen_inputs": "fin(연결/별도)·고객 조선사 모델·지주 자회사 모델은 %s 까지의 분기만; 선표는 체결일 ≤ %s 말일 계약(원장 최신 금액·코호트 등급, 환산 없음); "
                                               "잔고는 yards_cache %s; 시세·환율 forward·prices·forecast_panel 신규수주 미사용. 고객 가중치(suppliers.json 언급 비중)와 합병 체인링크는 현재 지식; "
                                               "고객 연동 채택은 동결 모델 안에서도 자기 la−4분기 OOS 규칙(selection_oos_at_freeze)" % (FREEZE_Q, FREEZE_Q, FREEZE_Q),
@@ -1689,9 +2023,11 @@ def build_model(stock, ctx, origin=None, freeze=False):
     # ── 요약·품질 ──
     n_est_rev = sum(1 for q in fq if q in rm["매출액"]["q"])
     stale = (not freeze) and la < _latest_complete_quarter(ctx, la)
+    # T6 D7: status 는 데이터 완전성(fin 분기·항등식·추정 분기 수·별도 보충·최신 분기)으로만 — 드라이버 폴백은 driver_fallback 으로 따로
     status = "full"
-    if plan["fallback"] or len(fin.quarters) < 8 or not identities_ok or n_est_rev < FWD_MIN or fin.sep_fill:
+    if len(fin.quarters) < 8 or not identities_ok or n_est_rev < FWD_MIN or fin.sep_fill:
         status = "partial"
+    driver_fallback = _driver_fallback(plan)
     if stale:
         status = "partial"
         if stock in MERGERS:
@@ -1705,14 +2041,17 @@ def build_model(stock, ctx, origin=None, freeze=False):
     model = collections.OrderedDict([
         ("stock", stock), ("name", name), ("role", role_eff), ("origin", la), ("unit", "KRW_100M(억원)"), ("built_at", ctx.today),
         ("status", status),
+        ("driver_fallback", driver_fallback),
         ("periods", {"quarters": quarters, "annual": annual_years, "last_actual": la}),
         ("rows", out_rows),
         ("segments", plan["segments"]),
         ("driver_type", plan["driver"].get("type")),
         ("assumptions", {"fx": fx_assump, "hedge": _hedge_assump(ctx.sls(stock)) if stock in YARDS else None,
                          "sls": ({k: v for k, v in _sls_r3_info(ctx.sls(stock)).items() if k != "backlog_cap_raw"} if (stock in YARDS and ctx.sls(stock)) else None),
-                         "tax_rate": r4(tax_rate), "tax_basis": tax_basis, "sga_ratio": r4(sga_ratio),
-                         "interest_rate_debt": r4(r_debt), "interest_rate_asset": r4(r_asset), "minority_share": r4(minority),
+                         "tax_rate": r4(tax_rate), "tax_basis": tax_basis, "tax_path": tax_path, "sga_ratio": r4(sga_ratio),
+                         "fin_pl_gap": fin_gap,
+                         "interest_rate_debt": r4(r_debt), "interest_rate_asset": r4(r_asset),
+                         "interest_rate_source": {"asset": r_asset_src, "debt": r_debt_src}, "minority_share": r4(minority),
                          "payout": payout, "dps_assumed": last_dps, "opm_source": plan["driver"].get("type"), "one_offs": [],
                          "one_offs_note": "fin face 에서 일회성 분리 불가(주석 미파싱) → 가정 없음; 레퍼런스 일회성 표는 사례",
                          "one_offs_detected": one_offs_detected}),
@@ -1730,15 +2069,27 @@ def build_model(stock, ctx, origin=None, freeze=False):
     return model
 
 
+DRIVER_FALLBACKS = ("corr", "significance", "n", "oos", "no_link", "none")
+
+
+def _driver_fallback(plan):
+    """드라이버 폴백 사유(T6 D7): 고객 연동 기각 사유(corr|significance|n|oos) · 그 밖의 추세 폴백(no_link — 고객 연결·선표·자회사 없음 등) · none."""
+    if not plan.get("fallback"):
+        return "none"
+    rb = ((plan.get("driver") or {}).get("customer_link_rejected") or {}).get("rejected_by")
+    return rb if rb in DRIVER_FALLBACKS else "no_link"
+
+
 def _build_scenarios(rows, plan, fq, la):
     """시나리오 블록(결정 ⓓ): plan.scenarios_new = {scn: {q: 신규수주 매출 억원}}(base 포함). 각 시나리오 매출 = 행 매출액(base 포함) − base 신규 + 그 시나리오 신규,
-    영업이익 = 매출 × 행 OPM(타겟 경로; 신규분에도 같은 타겟). existing_only 는 신규 0. FY 는 실적 분기(actual) + 추정 분기 합 — 4분기가 다 있어야 값.
+    영업이익 = 행 영업이익 + (시나리오 신규 − base 신규) × 반올림 전 OPM(plan.opm — 타겟 경로; 신규분에도 같은 타겟). existing_only 는 신규 0. FY 는 실적 분기(actual) + 추정 분기 합 — 4분기가 다 있어야 값.
     행(rows)에는 base 만 들어 있고 보수/낙관은 여기에만 있다(합산 안 함)."""
     new = plan["scenarios_new"]
     base_new = new.get(PANEL_BASE) or {}
     rev_q = {q: rows["매출액"][q]["v"] for q in fq if q in rows["매출액"] and _num(rows["매출액"][q].get("v"))}
     op_q = {q: rows["영업이익"][q]["v"] for q in fq if q in rows["영업이익"] and _num(rows["영업이익"][q].get("v"))}
-    opm_q = {q: rows["OPM"][q]["v"] for q in fq if q in rows["OPM"] and _num(rows["OPM"][q].get("v"))}
+    # T6 D9: 시나리오 OP 델타는 반올림 전 OPM(plan.opm) — 행 OPM 셀(4자리 반올림)을 쓰면 보수·낙관 OP 가 약 2억 어긋난다
+    opm_q = {q: plan["opm"][q][0] for q in fq if q in plan.get("opm", {}) and _num(plan["opm"][q][0])}
     years = [y for y in sorted({q_year(q) for q in fq} | {q_year(la)}) if y <= FY_LAST]
     out = collections.OrderedDict()
     out["meta"] = dict(plan.get("scenarios_meta") or {}, unit="KRW_100M(억원)", fiscal_years=[str(y) for y in years],
@@ -1778,10 +2129,28 @@ def _build_scenarios(rows, plan, fq, la):
     return out
 
 
+REPORT_LAG_DAYS = {1: 45, 2: 45, 3: 45, 4: 90}   # 분기·반기보고서 45일, 사업보고서 90일(자본시장법 제출기한) — 그 전엔 '미수집'이 아니다
+
+
 def _latest_complete_quarter(ctx, default):
-    """fx.json 의 마지막 완결 분기 — '오늘 기준 최신 분기' 대용(네트워크 없음)."""
-    qs = [q for q, d in (ctx.fx.get("quarters") or {}).items() if not d.get("partial")]
-    return max(qs) if qs else default
+    """정기보고서가 **제출기한을 지나** 나와 있어야 할 최신 분기 — fx.json 의 완결 분기 중 분기말 + 제출기한(45/90일)이 기준일을 넘지 않은 것.
+
+    2026-10-02 기준이면 2026Q3 는 분기가 끝났어도 보고서 기한(11/14)이 안 됐으니 2026Q2 가 답이다. 전에는 '달력상 끝난 분기'를 썼고
+    10/1 이후 58사 전부가 '최신 보고서 미수집' partial 로 바뀌었다(T6 통합 때 발견)."""
+    today = getattr(ctx, "today", None)
+    try:
+        tday = datetime.date.fromisoformat(str(today)[:10]) if today else datetime.date.today()
+    except ValueError:
+        tday = datetime.date.today()
+    best = None
+    for q, d in (ctx.fx.get("quarters") or {}).items():
+        if d.get("partial"):
+            continue
+        y, n = int(q[:4]), int(q[5])
+        qend = datetime.date(y + (n == 4), 1 if n == 4 else n * 3 + 1, 1) - datetime.timedelta(days=1)
+        if qend + datetime.timedelta(days=REPORT_LAG_DAYS[n]) <= tday and (best is None or q > best):
+            best = q
+    return best or default
 
 
 def _hedge_assump(sls):
@@ -1939,7 +2308,8 @@ def summary_row(model):
 
     def _oos(d):
         o = d.get("selection_oos") or {}
-        return {"wape_link": o.get("wape_link"), "wape_trend": o.get("wape_trend"), "oos_adopted": o.get("adopted"), "oos_freeze": o.get("freeze"), "oos_n": o.get("n")}
+        return {"wape_link": o.get("wape_link"), "wape_trend": o.get("wape_trend"), "oos_adopted": o.get("adopted"), "oos_decision": o.get("decision"),
+                "oos_freeze": o.get("freeze"), "oos_n": o.get("n")}
     if seg0.get("type") == "customer_yard_revenue_weighted":
         link = dict({"adopted": True, "rejected_by": None, "weights_key": seg0.get("weights_key"), "lag_q": seg0.get("lag_q"), "transform": seg0.get("transform"),
                      "window_q": seg0.get("window_q"), "corr": seg0.get("corr"), "n": seg0.get("n")}, **_oos(seg0))
@@ -1957,7 +2327,8 @@ def summary_row(model):
                 scen["%sE" % y] = {k: {"rev": ((sc.get(k) or {}).get("annual") or {}).get(y, {}).get("rev"),
                                        "op": ((sc.get(k) or {}).get("annual") or {}).get(y, {}).get("op")} for k in ["existing_only"] + list(PANEL_SCENARIOS)}
     return {"stock": model["stock"], "name": model.get("name"), "role": model.get("role"), "status": model.get("status"),
-            "last_actual": la, "fin_quarters": (model.get("quality") or {}).get("fin_quarters"), "driver": model.get("driver_type"), "link": link,
+            "last_actual": la, "fin_quarters": (model.get("quality") or {}).get("fin_quarters"), "driver": model.get("driver_type"),
+            "driver_fallback": model.get("driver_fallback"), "link": link,
             "fy": fy, "per_now": (model.get("valuation") or {}).get("per_now"), "pbr_now": (model.get("valuation") or {}).get("pbr_now"),
             "new_orders_included": model.get("new_orders_included"), "scenarios": scen,
             "backtest": {"revenue_wape_pct": bt.get("revenue_wape_pct"), "op_wape_pct": bt.get("op_wape_pct"), "n": bt.get("n"),

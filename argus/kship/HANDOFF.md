@@ -103,3 +103,52 @@ $PY kship_model_section.py --check ../002380/index.html
 ## 2026-09-30 22:20 마감 (오너)
 
 위 '재개' 블록은 실행 완료 — 시세 재수집(토스 이력 포함) → sls → model(--xlsx) → 레퍼런스 패치(`--overwrite-placeholders --fx-actuals`) → 페이지·허브 → 테스트 245 OK. 결정 3건(정규장 종가 정본 · 고객 연동 유의성 조건 · PER 밴드 캡)과 최종 수치는 MODEL.md §11. `argus/kship/009540/` 는 만들지 않는다(삭제). 커밋 대상에서 009540/ 을 빼고 읽어라. 다음 분기(2026Q3 보고서, 11월 중순~)엔 `kship_fin.py --collect --build --all --quarters 2021Q4..2026Q3` 부터.
+
+## 2026-10-02 마감 (라운드 3·4 — 남은 결정 실행 · 주석 부모 절 폴백 · 결함 D1~D10)
+
+상세는 MODEL.md §12(결정·근거·영향 표, 결함→조치→영향 표, 재현, 한계). 여기에는 다시 시작하는 데 필요한 것만 적는다.
+라운드 3(지시서 기재: 2026-10-01, 커밋 `be8e1c63` — 이 문서의 입력 파일로는 확인 못 함)은 MODEL_SPEC §5 계약대로 ⓐⓓⓔⓗⓘ 를 실행했다.
+라운드 4(2026-10-02)는 스튜디오 큐가 `external_session_busy` 로 3시간 열리지 않아 **맥미니 헤드리스 Opus 5.5** 로 돌렸다. 스튜디오 큐에 같은 작업 6건이 남아 있다(취소 CLI 없음) — 열리면 중복 실행이 되지 않게 먼저 확인한다.
+
+**지금 상태(파일 실측)**
+- fin: 부모 절 주석 786분기 수집 완료(실패 0, 오너 실행). `fin_cache` 333MB(git 밖). 이자수익 638/946분기 · 51/58사 채움. 골든 5사 **5,378/5,900 = 91.2%**(세진 82.6 · 삼성重 93.4 · 미포 94.7 · 일승 91.7 · 동방선기 90.2; 9/30 5,156/5,661 = 91.1%).
+- models: `summary.json` built 2026-10-02 · 58행 **full 48 · partial 10 · no_fin 0**(status 는 이제 데이터 완전성만 — D7). 드라이버 추세 36 · 고객 연동 16 · 선표 5 · 지주 1. `driver_fallback` none 22 · no_link 23 · oos 9 · significance 4. identities_ok 58/58. 백테스트 중위(n=56) 매출 15.8% · OP 59.25%.
+- 조선사 FY2026E / 2027E / 2028E 매출(억원): 삼성重 127,235 / 155,098 / 192,093(EPS 1,031.3 / 1,560.4 / 1,975.9원) · HD현대重 253,983 / 298,688 / 372,841 · 한화오션 169,965 / 163,334 / 92,554(패널 없음) · HJ 25,135 / 21,886 / 16,350(패널 없음) · 대한조선 11,970 / 13,295 / 17,837 · 지주 356,065 / 421,089 / 525,629. 모델 산출값이며 추천이 아니다.
+- 코드: T1(`kship_fin.py` 부모 절 폴백) · T4(`kship_model.py` 영업외 세부 행) · T6(`kship_model.py`·`kship_sls.py` D1~D10)를 오너가 정본에 올렸다. 오너는 그 위에 status 최신 완결 분기 판정(제출기한 45/90일)과 렌더러 `PNL_ORDER`(외환손익·기타금융손익)를 고쳤다. `update-kship.yml` 에 주석 단계를 추가했다(**러너 미실행**).
+
+**재개 — 이 순서로**
+```bash
+cd argus/kship/tools && PY=~/Library/phalanx_venv/bin/python
+/Users/kioxia/.local/bin/phx-agent track preflight --host mini --cwd "$PWD" --owner <내 세션 ID>    # 스튜디오 큐 잔여 6건·다른 세션 먼저 확인
+$PY -m unittest discover -s tests -p 'test_*.py'          # 오너 메모 "전체 통과" — 건수를 이번에 기록할 것
+$PY kship_fin.py --build --all --golden                   # TOTAL ALL 5378/5900 = 91.2% 재현 확인(캐시만, DART 무접촉)
+$PY kship_sls.py --all --report                           # (권고) 레포 sls 가 구버전 — post_origin 키가 생긴다. 모델은 재계산 경로로 읽고 있었다(분기 차 ≤ 1.6억)
+$PY kship_model.py --build --all --xlsx --today 2026-10-02
+$PY kship_xlsx_patch.py --all --verify --overwrite-placeholders --fx-actuals --is-convention 3m --today 2026-10-02   # 로컬 전용, 레포 밖
+$PY kship_page.py --all && $PY kship_parts.py --all && $PY kship_model_section.py --hub
+```
+확인할 것: summary `counts` 가 full 48 · partial 10 그대로인지(sls 재생성 뒤 바뀌면 원인 기록). 새 행 4개(이자·외환·파생·기타금융손익)가 생성 xlsx 에서 어떻게 나오는지 — 레인이 확인하지 않았다. 10-02 에 ⑤ 패치본을 다시 만들었는지는 기록이 없다(미확인).
+
+**커밋 전 확인**
+- `git status --ignored` 로 `!! assets/fin_cache/` 확인. 주석 캐시(`*_note_*.html`, `*_note_parent_*.html`)가 커밋 대상에 섞이지 않아야 한다(333MB).
+- 커밋 대상(라운드 3·4): tools/kship_fin.py · kship_sls.py · kship_model.py · kship_xlsx_patch.py · kship_model_section.py, tests(test_kship_fin 71 · test_kship_model · test_kship_sls) + `tests/fixtures/fin/hanil_2023Q4_note_parent_{cons,sep}.html`, assets/fin(58) · sls · models, models/*.xlsx, 회사 페이지·models.html, MODEL.md · MODEL_SPEC.md · HANDOFF.md · UPDATE.md · README.md, `.github/workflows/update-kship.yml`. 레인 작업 디렉터리(`output/_run/`, `t6pkg/`)는 옮기지 않는다.
+- 테스트 한 건 주의: T6 스냅숏 B 에서 `test_real_sejin_2026q2_detail` 이 실패했다(레포 fin 이 05:01 다시 쓰여 세진 주석이 1 → 9분기. 수정 전 코드에서도 같음). 오너 통합 뒤 통과로 기록됐지만 어떻게 해소됐는지는 기록이 없다 — 커밋 전에 그 테스트를 한 번 단독으로 돌린다.
+- `argus/kship/009540/` 는 여전히 만들지 않는다.
+
+**오너 결정 기록**
+- 확정(라운드 3·4): ⓐ 모델 `is` · 패치 운영 `--is-convention 3m`(누적차분은 재작성 분기에 음수 매출 — 일승 2024Q2 −100.58억) · ⓓ 신규수주 base 포함, 보수/낙관은 시나리오(한화·HJ 는 패널 값 없음 → 공시 수주만) · ⓔ 코호트 `reference_anchor` 기본 · `ledger_relative` 대안, 대한조선 잔고 캡 0.8593 · ⓗ 주석 하위 노드(999분기 중 786 하위 노드 없음) → 부모 절 폴백 · ⓘ OOS 선택 규칙(`WAPE_link > WAPE_trend × 1.10` 이면 미채택; 라운드 3 채택 18 · 기각 7 · 유의성 기각 4 → 라운드 4 채택 16(판정 불가 2 포함) · OOS 기각 9 · 유의성 기각 4).
+- 대기(MODEL.md §12-8): ① D1 공시 수주와 패널 신규의 인식 시점 불일치 ② D2 이월결손 회사 세율(한화·HJ 실제 약 1% vs 22%) ③ D3 보완 폭(삼성重 2028E OP +2,829억) ④ D5(c) 판정 불가 = 연동 채택 유지 여부 ⑤ D7 화면 라벨·`driver_fallback` 표시 ⑥ 레포 sls 재생성 시점 ⑦ 주석 이자비용 연율 클립(009540 debt 13.1%) ⑧ 별도 주석 추가 수집(약 625요청) ⓖ 모델 재생성 주기(워크플로: 월요일 + 재무·주석 변경 + 수동).
+- 알려진 결함(미수정): kship_fin 의 KCC·한화시스템 비용 계정 음수 저장(모델이 반전으로 우회) · 한화오션 `총차입금` 공백(2024Q3 → 2026Q2) · KCC FY2026E 지배NI 31,166억(2026Q2 금융손익 3.6조 일회성).
+
+**다음 분기(2026Q3 보고서, 분기말 +45일 = 11월 중순~)**
+```bash
+$PY kship_fin.py --collect --build --all --quarters 2021Q4..2026Q3          # DART 단일 프로세스
+$PY kship_fin.py --collect-notes --all --notes-parent-fallback              # 같은 프로세스 규칙, 새 분기만 요청
+$PY kship_fin.py --build --all --golden
+$PY kship_fx.py && $PY kship_price.py
+$PY kship_sls.py --all --report && $PY kship_model.py --build --all --xlsx --today <실행일>
+$PY kship_page.py --all && $PY kship_parts.py --all && $PY kship_model_section.py --hub
+```
+origin 이 2026Q3 으로 넘어가면 forecast_panel(T+1~T+10)과 정렬이 맞는지 먼저 본다 — 패널 산출이 2026Q2 origin 그대로면 신규수주 행의 시점이 한 분기 어긋난다(미확인 — 확인 전에는 결과를 읽지 않는다). 워크플로가 같은 일을 매일 10:40 KST 에 하지만, 러너 첫 실행은 주석 캐시가 없어 오래 걸린다(단계 제한 75분, 체크포인트로 이어감).
+
+참고용 · 투자조언 아님.

@@ -7,6 +7,9 @@
 실제 assets(fin/010140·075580)가 있으면 산출물 불변식(2026Q2 실적 = fin, 추정 10분기+연간 3년, EPS 규모, 결정론)도 본다.
 라운드 3(스펙 5-3): forecast_panel 신규수주(매출조선신규 행·base 합산·보수/낙관 scenarios) · sls cohort_mode/backlog_cap_applied 읽기 ·
 고객 연동 OOS 선택(동결 la−4분기, WAPE_link ≤ WAPE_trend × 1.10) · 동결 전 합병은 체인링크 없이.
+T4: 금융손익 세부(이자·외환·파생·기타금융 잔차) 행 · 주석 이자수익/비용 실측 연율(4분기 미만이면 CF 폴백) · None 전파.
+T6(T3 적대 검토 D1~D10): origin 이후 공시 수주의 신규수주 이중계산 제외 · 음(−)세율 폴백 · 등급 없는 비중 실측 중위 채움 · 세진 연결조정 비율 ·
+OOS 반올림 전 비교·현재 조합 시험·undetermined · 금융손익 단절 경고 · status/driver_fallback 분리 · 정의상 0 = estimate · 시나리오 OPM 원값 · 캡 배율 null.
 """
 import json
 import os
@@ -235,9 +238,12 @@ class TestBuildSynthetic(unittest.TestCase):
         self.assertTrue(any("aikstockdata" in w for w in m2["quality"]["warnings"]))
 
     def test_tax_clip_high(self):
+        # T6 D2: 클립 밖(45%)은 클립하지 않는다 → 세전 > 0 분기 중위(45%)도 5~27% 밖 → 법정세율 근사 22%
         ctx = FakeCtx(fins={"999999": synth_fin(tax=0.45)}, roles={"999999": "equip"})
         m = M.build_model("999999", ctx)
-        self.assertAlmostEqual(m["assumptions"]["tax_rate"], 0.27)
+        self.assertAlmostEqual(m["assumptions"]["tax_rate"], M.TAX_DEFAULT)
+        self.assertEqual(m["assumptions"]["tax_path"], "default")
+        self.assertIn("5~27% 밖", m["assumptions"]["tax_basis"])
 
     def test_determinism(self):
         m2 = M.build_model("999999", FakeCtx(fins={"999999": synth_fin()}, roles={"999999": "equip"},
@@ -309,7 +315,10 @@ class TestSupplierLink(unittest.TestCase):
         ctx = FakeCtx(fins={"111111": synth_fin("111111")}, roles={"111111": "equip"})
         m = M.build_model("111111", ctx)
         self.assertEqual(m["driver_type"], "trend_seasonal")
-        self.assertEqual(m["status"], "partial")
+        # T6 D7: status 는 데이터 완전성만 — 폴백은 driver_fallback
+        self.assertEqual(m["status"], "full")
+        self.assertEqual(m["driver_fallback"], "no_link")
+        self.assertEqual(M.summary_row(m)["driver_fallback"], "no_link")
         self.assertTrue(any("폴백" in w for w in m["quality"]["warnings"]))
 
 
@@ -689,7 +698,13 @@ def synth_panel(stock="010140", fq=None, base_per_q=200.0, scale=(0.5, 1.0, 1.5)
         sc[name] = {"quarterly": [{"quarter": q, "horizon": i + 1, "value": None if none else 1_000_000.0, "existing_backlog_revenue": None,
                                    "new_order_revenue": None if none else base_per_q * (i + 1) * k} for i, q in enumerate(fq)],
                     "annual": []}
-    return {"stock": stock, "company_name": "합성", "status": "partial", "reason_codes": ["book_value_only"], "origin": "2026Q2", "scenarios": sc}
+    for name in sc:
+        sc[name]["assumptions"] = {"order_basis": "positive_part_of_empirical_net_replenishment", "new_order_arrival": "quarter_end; first_recognition_next_quarter",
+                                   "progress_curve": "R1_smoothstep_unfitted", "calibrated": False}
+        for row in sc[name]["quarterly"]:
+            row["new_orders"] = None if none else 50_000.0
+    return {"stock": stock, "company_name": "합성", "status": "partial", "reason_codes": ["book_value_only"], "origin": "2026Q2", "scenarios": sc,
+            "industry_axes": {"schedule_exclusions": {"not_known_at_origin": 3}}}
 
 
 class TestYardNewOrders(unittest.TestCase):
@@ -727,11 +742,15 @@ class TestYardNewOrders(unittest.TestCase):
             self.assertAlmostEqual(r1["OP조선신규"]["q"][q]["v"], new * r1["OPM"]["q"][q]["v"], places=1)
             self.assertIn("신규수주", r1["매출조선"]["q"][q]["basis"])
             self.assertIn("신규수주", r1["OPM"]["q"][q]["basis"])
-        # origin 회계연도의 실적 분기는 정의상 0 → FY2026 합계가 partial 이 아니다
-        self.assertEqual(r1["매출조선신규"]["q"]["2026Q1"]["v"], 0.0)
-        self.assertEqual(r1["매출조선신규"]["q"]["2026Q1"]["kind"], "actual")
+        # origin 회계연도의 실적 분기는 정의상 0 → FY2026 합계가 partial 이 아니다. T6 D8: fin 값이 아니므로 kind estimate + basis '정의상 0'
+        for k in ("매출조선신규", "OP조선신규"):
+            for q in ("2026Q1", "2026Q2"):
+                c = r1[k]["q"][q]
+                self.assertEqual((c["v"], c["kind"]), (0.0, "estimate"), (k, q))
+                self.assertIn("정의상 0", c["basis"])
+                self.assertNotIn("src", c)
         self.assertAlmostEqual(r1["매출조선신규"]["a"]["2026"]["v"], (200.0 + 400.0) / 100, places=2)
-        self.assertEqual(r1["매출조선신규"]["a"]["2026"]["kind"], "mixed")
+        self.assertEqual(r1["매출조선신규"]["a"]["2026"]["kind"], "estimate")
         # 시나리오 블록: base = 행과 동일, existing_only = 패널 없는 모델, 보수 < base < 낙관, OP 는 행 OP ± 델타 × OPM
         sc = m1["scenarios"]
         self.assertEqual(sc["meta"]["in_rows"], "base")
@@ -925,14 +944,26 @@ class TestLinkOOS(unittest.TestCase):
         self.assertGreater(oos["wape_link"], oos["wape_trend"] * M.OOS_WORSE_TOL)
         self.assertIn("OOS 기각", d["basis"])
         self.assertIn("WAPE 연동", d["basis"])
+        # T6 D7: status 는 데이터 완전성만(이 합성 fin 은 매출만 덮어써 실적 항등식이 깨진다 → partial), 기각 사유는 driver_fallback
+        self.assertFalse(m["quality"]["identities_ok"])
         self.assertEqual(m["status"], "partial")
+        self.assertEqual(m["driver_fallback"], "oos")
+        # T6 D5(b): 시험한 것은 현재 채택 후보 조합(현재 데이터 격자 최선)을 동결 데이터로 재적합한 것 — 재선택 조합은 참고
+        self.assertEqual(oos["tested"], "adopted_combo")
+        lt = oos["link_tested"]
+        self.assertEqual((lt["wkey"], lt["lag_q"], lt["transform"], lt["window_q"]), (rj["weights_key"], rj["lag_q"], rj["transform"], rj["window_q"]))
+        self.assertIn("참고", oos["link_at_freeze"]["note"])
+        self.assertEqual(oos["decision"], "rejected")
         s = M.summary_row(m)["link"]
         self.assertFalse(s["adopted"])
         self.assertEqual(s["rejected_by"], "oos")
         self.assertEqual(s["wape_trend"], oos["wape_trend"])
-        # 동결 모델도 같은 규칙(2024Q2 동결)으로 기각 → 백테스트 드라이버는 추세
-        self.assertEqual(m["backtest"]["driver_at_freeze"], "trend_seasonal")
-        self.assertFalse(m["backtest"]["selection_oos_at_freeze"]["adopted"])
+        # 동결 모델(la 2025Q2)의 채택 후보(4Q합·시차 4·창 8)는 2024Q2 동결 데이터로 재적합할 짝이 모자라다 → undetermined → 유의성만으로 채택(T6 D5c).
+        # 재선택 조합(참고)은 연동이 추세보다 나쁘다는 것을 보여 주지만 판정에 쓰지 않는다 — 오너 결정 사항으로 NOTES_T6 에 기록
+        bo = m["backtest"]["selection_oos_at_freeze"]
+        self.assertEqual((bo["adopted"], bo["decision"]), ("undetermined", "undetermined"))
+        self.assertIn("재적합할 수 없음", bo["note"])
+        self.assertEqual(m["backtest"]["driver_at_freeze"], "customer_yard_revenue_weighted")
 
     def test_significance_rejection_skips_oos(self):
         ctx, _ = self._ctx(0.03, lambda i, q, x: 10_000.0 + 3_000.0 * (1 if i % 2 else -1))
@@ -944,12 +975,13 @@ class TestLinkOOS(unittest.TestCase):
         self.assertIn("OOS 비교 전 기각", rj["selection_oos"]["note"])
 
     def test_link_oos_insufficient_history(self):
-        # 동결 이전 실적 < 8분기면 비교 불가 → adopted True + note
+        # 동결 이전 실적 < 8분기면 비교 불가 → T6 D5(c): adopted 대신 'undetermined'(유의성만으로 채택) + note
         y = {q: 100.0 * (1.02 ** i) for i, q in enumerate(M.q_range("2024Q1", "2026Q2"))}
         ctx, _ = self._ctx(0.03, lambda i, q, x: 15_000.0)
         cands = M._customer_weight_candidates("222222", ctx)
         oos = M._link_oos(y, cands, ctx, "2026Q2")
-        self.assertTrue(oos["adopted"])
+        self.assertEqual(oos["adopted"], "undetermined")
+        self.assertEqual(oos["decision"], "undetermined")
         self.assertIsNone(oos["wape_link"])
         self.assertIn("비교 불가", oos["note"])
         self.assertEqual(oos["freeze"], "2025Q2")
@@ -1120,13 +1152,15 @@ class TestRealAssets(unittest.TestCase):
             if d.get("type") == "customer_yard_revenue_weighted":
                 n_link += 1
                 o = d["selection_oos"]
-                self.assertTrue(o["adopted"])
-                if o["wape_link"] is not None and o["wape_trend"] is not None:
-                    self.assertLessEqual(o["wape_link"], o["wape_trend"] * M.OOS_WORSE_TOL)
+                self.assertIn(o["adopted"], (True, "undetermined"))
+                if o["adopted"] is True:
+                    self.assertLessEqual(o["wape_link_raw"], o["wape_trend_raw"] * M.OOS_WORSE_TOL)       # 반올림 전 비교(T6 D5a)
+                    self.assertEqual(o["tested"], "adopted_combo")
             elif (d.get("customer_link_rejected") or {}).get("rejected_by") == "oos":
                 n_oos += 1
                 o = d["customer_link_rejected"]["selection_oos"]
-                self.assertGreater(o["wape_link"], o["wape_trend"] * M.OOS_WORSE_TOL)
+                self.assertGreater(o["wape_link_raw"], o["wape_trend_raw"] * M.OOS_WORSE_TOL)
+                self.assertEqual(mm["driver_fallback"], "oos")
                 self.assertEqual(mm["driver_type"], "trend_seasonal")
         self.assertGreater(n_link, 0)
 
@@ -1149,5 +1183,415 @@ class TestRealAssets(unittest.TestCase):
             self.assertIn("2025Q4", rm["매출조선기자재"]["q"]["2026Q3"]["basis"])
 
 
+# ── 금융손익 세부(T4): 주석 이자·외환·파생 → 행 · 실측 연율 ──
+
+NOTE_ACCTS = {"이자수익": 500.0, "이자비용": 1500.0, "외환차익": 300.0, "외환차손": 100.0, "외화환산이익": 50.0, "외화환산손실": 150.0,
+              "파생상품이익": 20.0, "파생상품손실": 70.0}      # 백만원 — 이자 −10억, 외환 +1억, 파생 −0.5억, 금융손익 −5억 → 잔차 +4.5억
+
+
+def synth_fin_notes(note_qs=None, drop=None, fin_pl=None, **kw):
+    """synth_fin + note_qs 분기의 cons/sep is 에 주석 계정. drop = {q: [계정]} 은 그 분기에서 뺀다. fin_pl 을 주면 금융손익 덮어쓰기(세전은 그대로)."""
+    fin = synth_fin(**kw)
+    note_qs = M.q_range("2025Q1", "2026Q2") if note_qs is None else note_qs
+    for q in note_qs:
+        for sc in ("cons", "sep"):
+            d = {k: v for k, v in NOTE_ACCTS.items() if k not in (drop or {}).get(q, [])}
+            fin[sc]["is"][q].update(d)
+            if fin_pl is not None:
+                fin[sc]["is"][q]["금융손익"] = fin_pl
+    return fin
+
+
+class TestFinDetail(unittest.TestCase):
+    def build(self, fin):
+        return M.build_model("999999", FakeCtx(fins={"999999": fin}, roles={"999999": "equip"}))
+
+    def test_four_rows_sum_to_fin_pl(self):
+        m = self.build(synth_fin_notes())
+        rm = rows_of(m)
+        parts = ("이자손익", "외환손익", "파생상품손익", "기타금융손익")
+        for q in M.q_range("2025Q1", "2026Q2"):
+            cells = [rm[k]["q"][q] for k in parts]
+            self.assertTrue(all(c["kind"] == "actual" for c in cells), q)
+            self.assertLessEqual(abs(sum(c["v"] for c in cells) - rm["금융손익"]["q"][q]["v"]), 0.05, q)
+        q = "2026Q2"
+        self.assertAlmostEqual(rm["이자손익"]["q"][q]["v"], -10.0)
+        self.assertAlmostEqual(rm["외환손익"]["q"][q]["v"], 1.0)
+        self.assertAlmostEqual(rm["파생상품손익"]["q"][q]["v"], -0.5)
+        self.assertAlmostEqual(rm["기타금융손익"]["q"][q]["v"], 4.5)
+        self.assertEqual(rm["이자손익"]["q"][q]["src"], "fin.cons.is.이자수익 − fin.cons.is.이자비용")
+        self.assertIn("fin.cons.is.외화환산손실", rm["외환손익"]["q"][q]["src"])
+        self.assertIn("잔차", rm["기타금융손익"]["q"][q]["src"])
+        # 추정 구간: 금융손익 = 이자(추) + 외환 0 + 파생 0 + 기타금융 중위, 세전 사슬 그대로
+        for q in M.q_range("2026Q3", "2028Q4"):
+            cells = [rm[k]["q"][q] for k in parts]
+            self.assertTrue(all(c["kind"] == "estimate" and c.get("basis") for c in cells), q)
+            self.assertEqual(rm["외환손익"]["q"][q]["v"], 0.0)
+            self.assertEqual(rm["파생상품손익"]["q"][q]["v"], 0.0)
+            self.assertAlmostEqual(rm["기타금융손익"]["q"][q]["v"], 4.5)
+            self.assertLessEqual(abs(sum(c["v"] for c in cells) - rm["금융손익"]["q"][q]["v"]), 0.05, q)
+        self.assertIn("환관련손익", rm["외환손익"]["q"]["2026Q3"]["basis"])
+        self.assertTrue(m["quality"]["identities_ok"], m["quality"]["identity_mismatches"])
+        # 주석 없는 분기(2023Q1~2024Q4)는 세부 행이 비어 있다(0 을 넣지 않음)
+        self.assertNotIn("2024Q4", rm["이자손익"]["q"])
+        self.assertNotIn("2024Q4", rm["기타금융손익"]["q"])
+
+    def test_none_propagates(self):
+        m = self.build(synth_fin_notes(drop={"2026Q1": ["외화환산손실"], "2025Q4": ["파생상품이익"]}))
+        rm = rows_of(m)
+        self.assertNotIn("2026Q1", rm["외환손익"]["q"])
+        self.assertNotIn("2026Q1", rm["기타금융손익"]["q"])
+        self.assertIn("2026Q1", rm["이자손익"]["q"])
+        self.assertIn("2026Q1", rm["파생상품손익"]["q"])
+        self.assertNotIn("2025Q4", rm["파생상품손익"]["q"])
+        self.assertNotIn("2025Q4", rm["기타금융손익"]["q"])
+        self.assertIn("2025Q4", rm["외환손익"]["q"])
+        # 주석이 전혀 없는 회사: 세부 실적 행 없음, 이자손익 추정만(CF 연율), 금융손익 = 이자손익(추) (기존과 같은 값)
+        m0 = self.build(synth_fin())
+        rm0 = rows_of(m0)
+        for k in ("외환손익", "파생상품손익", "기타금융손익"):
+            self.assertNotIn(k, rm0)
+        self.assertTrue(all(c["kind"] == "estimate" for c in rm0["이자손익"]["q"].values()))
+        q = "2026Q3"
+        self.assertAlmostEqual(rm0["금융손익"]["q"][q]["v"], rm0["이자손익"]["q"][q]["v"], places=2)
+        self.assertAlmostEqual(rm0["이자손익"]["q"][q]["v"], (1000 * 0.03 - 1200 * 0.04) / 4, places=2)   # CF 이자수취 750·이자지급 1200 백만원/분기
+
+    def test_rate_from_notes_or_cf_fallback(self):
+        m = self.build(synth_fin_notes())                                     # 주석 6분기 → 주석 연율
+        a = m["assumptions"]
+        self.assertAlmostEqual(a["interest_rate_asset"], 0.02, places=4)     # 5억×4 ÷ 1000억
+        self.assertAlmostEqual(a["interest_rate_debt"], 0.05, places=4)      # 15억×4 ÷ 1200억
+        self.assertTrue(a["interest_rate_source"]["asset"].startswith("주석 이자수익"))
+        self.assertTrue(a["interest_rate_source"]["debt"].startswith("주석 이자비용"))
+        c = rows_of(m)["이자손익"]["q"]["2026Q3"]
+        self.assertAlmostEqual(c["v"], (1000 * 0.02 - 1200 * 0.05) / 4, places=2)
+        self.assertIn("주석 이자수익", c["basis"])
+        m3 = self.build(synth_fin_notes(note_qs=M.q_range("2026Q1", "2026Q2") + ["2025Q4"]))   # 3분기 → CF 폴백
+        a3 = m3["assumptions"]
+        self.assertAlmostEqual(a3["interest_rate_asset"], 0.03, places=4)
+        self.assertAlmostEqual(a3["interest_rate_debt"], 0.04, places=4)
+        self.assertTrue(a3["interest_rate_source"]["asset"].startswith("CF 이자수취"))
+        self.assertIn("< 4", a3["interest_rate_source"]["debt"])
+        self.assertIn("CF 이자지급", rows_of(m3)["이자손익"]["q"]["2026Q3"]["basis"])
+        # 잔차 3분기 < 4 → 기타금융 추정 0
+        self.assertEqual(rows_of(m3)["기타금융손익"]["q"]["2026Q3"]["v"], 0.0)
+
+    def test_other_fin_cap_warns(self):
+        m = self.build(synth_fin_notes(fin_pl=2000.0))                       # 잔차 +29.5억 ≫ |이자손익 추정 −10억| × 50%
+        rm = rows_of(m)
+        self.assertAlmostEqual(rm["기타금융손익"]["q"]["2026Q2"]["v"], 29.5)
+        c = rm["기타금융손익"]["q"]["2026Q3"]
+        self.assertEqual(c["v"], 0.0)
+        self.assertIn("경고", c["basis"])
+        self.assertTrue(any("기타금융손익" in w for w in m["quality"]["warnings"]))
+        self.assertAlmostEqual(rm["금융손익"]["q"]["2026Q3"]["v"], rm["이자손익"]["q"]["2026Q3"]["v"], places=2)
+
+    def test_negative_stored_expense_flipped(self):
+        """비용 계정을 회사 단위로 음수 저장한 fin(케이씨씨·한화시스템 형태) → 부호 반전 + 경고. 몇 분기만 음수인 것은 그대로."""
+        fin = synth_fin_notes()
+        for q in M.q_range("2025Q1", "2026Q2"):
+            for sc in ("cons", "sep"):
+                for k in ("이자비용", "외환차손", "외화환산손실", "파생상품손실"):
+                    fin[sc]["is"][q][k] = -NOTE_ACCTS[k]
+        fin["cons"]["is"]["2026Q2"]["외화환산이익"] = -50.0                  # 수익 계정 음수 1분기(차분 환입) — 반전 대상 아님
+        m = self.build(fin)
+        rm = rows_of(m)
+        self.assertAlmostEqual(rm["이자손익"]["q"]["2026Q1"]["v"], -10.0)
+        self.assertAlmostEqual(rm["외환손익"]["q"]["2026Q1"]["v"], 1.0)
+        self.assertAlmostEqual(rm["파생상품손익"]["q"]["2026Q1"]["v"], -0.5)
+        self.assertAlmostEqual(rm["외환손익"]["q"]["2026Q2"]["v"], 0.0)       # 3 − 1 − 0.5 − 1.5
+        self.assertIn("부호 반전", rm["이자손익"]["q"]["2026Q1"]["src"])
+        self.assertTrue(any("부호 반전" in w and "이자비용" in w for w in m["quality"]["warnings"]))
+        self.assertFalse(any("부호 반전" in w for w in self.build(synth_fin_notes())["quality"]["warnings"]))
+
+    @unittest.skipUnless(os.path.isfile(REAL_SEJIN), "assets/fin/075580.json 없음")
+    def test_real_sejin_2026q2_detail(self):
+        """세진 fin(2026-10 주석 수집본) 2026Q2: 이자수익 731.79 · 이자비용 2,239.90 · 외환차익 507.94 · 외환차손 16.19 ·
+        외화환산이익 1,238.84 · 외화환산손실 14.61 백만원, 파생상품 계정 없음, 금융손익 6,121.02 — 주석 있는 분기는 2026Q2 하나."""
+        with open(REAL_SEJIN, encoding="utf-8") as f:
+            raw = json.load(f)
+        m = M.build_model("075580", FakeCtx(fins={"075580": raw}, roles={"075580": "equip"}))
+        rm = rows_of(m)
+        q = "2026Q2"
+        self.assertEqual(rm["이자손익"]["q"][q], {"v": -15.08, "kind": "actual", "src": "fin.cons.is.이자수익 − fin.cons.is.이자비용"})
+        self.assertEqual(rm["외환손익"]["q"][q]["v"], 17.16)
+        self.assertEqual(rm["금융손익"]["q"][q]["v"], 61.21)
+        self.assertNotIn("파생상품손익", rm)                                  # 파생 계정 None → 행 없음
+        self.assertNotIn("기타금융손익", rm)                                  # 잔차도 None
+        # 주석 수집 범위에 따라 실적 분기 수가 달라진다(하위 노드만 → 1분기, 부모절 폴백 뒤 → 9분기) — 2026Q2 가 들어 있고,
+        # 실적으로 찍힌 분기는 전부 fin 에 이자수익·이자비용이 있는 분기여야 한다(데이터 표류에 흔들리지 않는 단언).
+        actual_qs = sorted(k for k, c in rm["이자손익"]["q"].items() if c["kind"] == "actual")
+        self.assertIn(q, actual_qs)
+        fin_is = raw["cons"]["is"]
+        for k in actual_qs:
+            self.assertIsNotNone(fin_is[k].get("이자수익"), k); self.assertIsNotNone(fin_is[k].get("이자비용"), k)
+        n_note = sum(1 for k, v in fin_is.items() if v.get("이자수익") is not None)
+        src = m["assumptions"]["interest_rate_source"]["asset"]
+        if n_note >= 4:                                                    # 주석 실측 4분기 이상 → 주석 연율
+            self.assertFalse(src.startswith("CF 이자수취"), src)
+        else:                                                              # 그 미만 → CF 폴백
+            self.assertTrue(src.startswith("CF 이자수취"), src)
+
+
+def synth_sls_post(keyed=True):
+    """synth_sls + origin(2026Q2) 이후 체결 계약 c3(2026-08-01, LNGC, 2026Q3~2027Q4 분기 20백만$, 수주시점 1,400원 — 원화 1,680억).
+    keyed=True 면 by_quarter 에 T6 키(_signed_by_origin/_post_origin), False 면 구버전 sls(키 없음 → contracts 재계산)."""
+    s = synth_sls()
+    c3 = {"rcp": "c", "type": "LNGC", "ships": 2, "amt_krw_m": 168_000.0, "amt_usd_m": 120.0, "signed": "2026-08-01", "start": "2026-08-01", "end": "2027-12-31",
+          "cohort": "⑤초호황", "counted": True, "signed_by_origin": False, "fx_at_sign": 1400.0, "schedule": {q: 20.0 for q in M.q_range("2026Q3", "2027Q4")}}
+    for c in s["contracts"]:
+        c["signed_by_origin"] = True
+    s["contracts"].append(c3)
+    for q, b in s["by_quarter"].items():
+        add = c3["schedule"].get(q, 0.0)
+        b["spot_assumed"] = 1400.0
+        if keyed:
+            b["marine_hedged_krw_m_signed_by_origin"] = b["marine_hedged_krw_m"]
+            b["marine_hedged_krw_m_post_origin"] = add * 1400
+        for k in ("usd_m", "marine_usd_m"):
+            b[k] += add
+        for k in ("hedged_krw_m", "marine_hedged_krw_m"):
+            b[k] += add * 1400
+    return s
+
+
+class TestT6Fixes(unittest.TestCase):
+    """T6 — T3 적대 검토 결함 D1~D10 회귀 테스트(합성 데이터)."""
+
+    def _yard(self, sls, panel=None):
+        fin = synth_fin("010140", "삼성", quarters=M.q_range("2023Q1", "2026Q2"), rev0=200_000.0, g_q=0.0)
+        ctx = FakeCtx(fins={"010140": fin}, slss={"010140": sls}, roles={"010140": "yard"})
+        if panel:
+            ctx.panel = {"010140": panel}
+        return M.build_model("010140", ctx)
+
+    # D1 ── origin 이후 공시 수주는 패널 신규와 겹치므로 '기존' SLS 에서 뺀다
+    def test_d1_post_origin_excluded_when_panel_included(self):
+        ref = self._yard(synth_sls(), synth_panel())                 # c3 없는 선표 + 패널
+        rr = rows_of(ref)
+        for keyed in (True, False):
+            m = self._yard(synth_sls_post(keyed), synth_panel())
+            rm, d = rows_of(m), m["segments"][0]["driver"]
+            for q in M.q_range("2026Q3", "2028Q4"):
+                self.assertAlmostEqual(rm["매출조선"]["q"][q]["v"], rr["매출조선"]["q"][q]["v"], places=1, msg=(keyed, q))     # c3 SLS 가 다시 더해지지 않는다
+                self.assertAlmostEqual(rm["매출조선신규"]["q"][q]["v"], rr["매출조선신규"]["q"][q]["v"], places=2)
+            px = d["post_origin_excluded"]
+            self.assertEqual((px["n"], px["amt_krw_eok"], px["rcps"]), (1, 1680.0, ["c"]))
+            self.assertAlmostEqual(px["sls_excluded_by_fy"]["2026"], 2 * 20 * 1400 / 100, places=1)
+            self.assertAlmostEqual(px["sls_excluded_by_fy"]["2027"], 4 * 20 * 1400 / 100, places=1)
+            self.assertIn("origin 이후 공시 수주 1건 1,680억은 패널 신규에 포함된 것으로 보아 기존 SLS 에서 제외", px["note"])
+            self.assertIn("정의 불확실", px["definition_uncertainty"])
+            self.assertIn("origin 이후 공시 3건을 제외", px["definition_uncertainty"])                 # 패널 industry_axes.schedule_exclusions
+            self.assertIn("2026Q3 공시 수주 1,680억 vs 패널 base 신규수주", px["definition_uncertainty"])
+            self.assertTrue(any(px["note"] in w and "정의 불확실" in w for w in m["quality"]["warnings"]))
+            self.assertIn("기존 SLS 에서 제외", d["basis"])
+            self.assertIn("공시 수주 SLS 280억 제외", rm["매출조선"]["q"]["2027Q1"]["basis"])
+            self.assertIn("signed_by_origin", d["sls_source"])
+            self.assertEqual(px["source"].startswith("sls.by_quarter"), keyed)
+            # existing_only 도 같은 정의(origin 분기말까지 체결분) — c3 없는 선표의 existing_only 와 같다
+            for y in ("2026", "2027", "2028"):
+                self.assertAlmostEqual(m["scenarios"]["existing_only"]["annual"][y]["rev"], ref["scenarios"]["existing_only"]["annual"][y]["rev"], places=1)
+            self.assertIn("origin 이후 공시 수주 1건 제외", m["scenarios"]["meta"]["existing_revenue"])
+
+    def test_d1_post_origin_kept_without_panel(self):
+        ref, m = self._yard(synth_sls()), self._yard(synth_sls_post())
+        rr, rm = rows_of(ref), rows_of(m)
+        self.assertAlmostEqual(rm["매출조선"]["q"]["2027Q1"]["v"] - rr["매출조선"]["q"]["2027Q1"]["v"], 20 * 1400 / 100, places=1)
+        self.assertIsNone(m["segments"][0]["driver"]["post_origin_excluded"])
+        self.assertTrue(any("패널 신규 없음 → origin 이후 공시 수주 1건 1,680억은 선표(SLS)에 그대로 둠" in w for w in m["quality"]["warnings"]))
+
+    def test_d1_split_helper_keyed_vs_legacy_agree(self):
+        fq = M.q_range("2026Q3", "2028Q4")
+        a, b = M._sls_post_origin(synth_sls_post(True), fq), M._sls_post_origin(synth_sls_post(False), fq)
+        for q in fq:
+            self.assertAlmostEqual(a["post"][q], b["post"][q], places=6)
+            self.assertAlmostEqual(a["existing"][q] + a["post"][q], (synth_sls_post()["by_quarter"][q]["marine_hedged_krw_m"]) / 100, places=6)
+        self.assertEqual(dict(a["by_sign_q"]), {"2026Q3": 1680.0})
+
+    # D2 ── 음(−)·클립 밖 유효세율은 클립하지 않고 8분기 양(+)세전 분기 중위 → 없으면 22%
+    def test_d2_negative_effective_tax_falls_back_to_positive_median(self):
+        fin = synth_fin(tax=0.24)
+        qs = fin["quarters"]
+        for q in qs[-8:-5]:                                          # 최근 8분기 중 3분기: 이연법인세 환입처럼 법인세 = −3 × 세전 → 12분기 합 음수
+            for sc in ("cons", "sep"):
+                fin[sc]["is"][q]["법인세비용"] = -3.0 * fin[sc]["is"][q]["법인세비용차감전계속사업이익"]
+        m = M.build_model("999999", FakeCtx(fins={"999999": fin}, roles={"999999": "equip"}))
+        a = m["assumptions"]
+        self.assertAlmostEqual(a["tax_rate"], 0.24, places=4)
+        self.assertEqual(a["tax_path"], "median_pos8")
+        self.assertIn("클립 대신", a["tax_basis"])
+        self.assertIn("5~27% 밖", a["tax_basis"])
+        rm = rows_of(m)
+        q = "2027Q1"
+        self.assertAlmostEqual(rm["법인세비용"]["q"][q]["v"], rm["세전이익"]["q"][q]["v"] * 0.24, places=1)
+        # 세전이 전부 음수 → 양(+) 분기 없음 → 22%
+        fin2 = synth_fin()
+        for q in fin2["quarters"]:
+            for sc in ("cons", "sep"):
+                fin2[sc]["is"][q]["법인세비용차감전계속사업이익"] = -1000.0
+                fin2[sc]["is"][q]["법인세비용"] = 100.0
+        a2 = M.build_model("999999", FakeCtx(fins={"999999": fin2}, roles={"999999": "equip"}))["assumptions"]
+        self.assertEqual((a2["tax_rate"], a2["tax_path"]), (M.TAX_DEFAULT, "default"))
+        self.assertIn("세전 > 0 분기 없음", a2["tax_basis"])
+        # 정상 범위(22%)는 그대로
+        self.assertEqual(M.build_model("999999", FakeCtx(fins={"999999": synth_fin()}, roles={"999999": "equip"}))["assumptions"]["tax_path"], "eff12")
+
+    # D3 ── 등급 없는 비중을 실측 OPM 중위로 채워 타겟 가중, 코호트 경로 소멸 경고
+    def test_d3_ungraded_share_filled_with_actual_median(self):
+        s = synth_sls()
+        for q, t in s["target_opm"].items():
+            t["opm"], t["graded_share"] = 0.15, (0.5 if q <= "2026Q2" else 1.0)
+        m = self._yard(s)
+        rm, d = rows_of(m), m["segments"][0]["driver"]
+        # 실측 OPM 20%: 과거 타겟 = 0.5×15% + 0.5×20% = 17.5% → 캘리브레이션 +2.5%p, 미래 타겟 15% → 17.5%
+        self.assertAlmostEqual(d["calibrated_shift"], 0.025, places=4)
+        self.assertAlmostEqual(rm["OPM"]["q"]["2027Q1"]["v"], 0.175, places=4)
+        tp = d["target_path"]
+        self.assertTrue(tp["cohort_path_absent"])
+        self.assertAlmostEqual(tp["fill_opm_median_4q"], 0.20, places=4)
+        self.assertIn("코호트 경로 없음 → 실측 중위 고정", rm["OPM"]["q"]["2027Q1"]["basis"])
+        self.assertTrue(any("코호트 경로 없음 → 실측 중위 고정" in w for w in m["quality"]["warnings"]))
+        # 타겟이 분기마다 다르면(코호트 경로 있음) 경고 없음, 등급 100% 면 예전 식 그대로(타겟 + 실측−타겟)
+        s2 = synth_sls()
+        for q, t in s2["target_opm"].items():
+            t["opm"], t["graded_share"] = (0.10 if q <= "2026Q2" else 0.15), 1.0
+        m2 = self._yard(s2)
+        self.assertAlmostEqual(rows_of(m2)["OPM"]["q"]["2027Q1"]["v"], 0.25, places=4)
+        self.assertFalse(m2["segments"][0]["driver"]["target_path"]["cohort_path_absent"])
+        self.assertFalse(any("코호트 경로 없음" in w for w in m2["quality"]["warnings"]))
+
+    # D4 ── 세진 연결조정 = 종속사 매출 × 잔차 비율(최근 4분기 중위)
+    def test_d4_sejin_adjustment_scales_with_subsidiaries(self):
+        ctx = sejin_ctx(vary=True)
+        qs = M.q_range("2022Q1", "2026Q2")
+        for c, n in M.SEJIN_SUBS:
+            ctx._fin[c] = synth_fin(c, n, quarters=qs, rev0=10_000.0, g_q=0.04)                 # 종속사 성장
+        sj = ctx._fin["075580"]
+        for q in qs:
+            sub = sum(ctx._fin[c]["cons"]["is"][q]["매출액(수익)"] for c, _ in M.SEJIN_SUBS)
+            sj["cons"]["is"][q]["매출액(수익)"] = sj["sep"]["is"][q]["매출액(수익)"] + 0.4 * sub     # 잔차 = −0.6 × 종속사
+        m = M.build_model("075580", ctx)
+        rm = rows_of(m)
+        fq = [q for q in m["periods"]["quarters"] if q > "2026Q2"]
+        for q in fq:
+            self.assertAlmostEqual(rm["매출연결조정"]["q"][q]["v"], -0.6 * rm["매출종속사"]["q"][q]["v"], delta=0.02)
+            self.assertIn("잔차/종속사 매출", rm["매출연결조정"]["q"][q]["basis"])
+        self.assertLess(rm["매출연결조정"]["q"][fq[-1]]["v"], rm["매출연결조정"]["q"][fq[0]]["v"])          # 상수가 아니다
+        drv = next(sg for sg in m["segments"] if sg["key"] == "연결조정")["driver"]
+        self.assertEqual(drv["type"], "residual_ratio_to_subsidiaries")
+        self.assertAlmostEqual(drv["ratio_to_sub_rev"], -0.6, places=4)
+
+    # D5 ── (a) 반올림 전 비교 (b) 현재 채택 조합 시험 (c) undetermined
+    def test_d5a_oos_compares_unrounded(self):
+        t = TestLinkOOS()
+        ctx, _ = t._ctx(0.03, lambda i, q, x: 0.05 * x[t.QS[max(i - 2, 0)]], noisy=True)
+        y = {q: ctx._fin["222222"]["cons"]["is"][q]["매출액(수익)"] / 100 for q in t.QS}
+        cands = M._customer_weight_candidates("222222", ctx)
+        from unittest import mock
+        # 추세 11.94 · 연동 13.06: 반올림 뒤(13.1 > 11.9×1.1=13.09)면 기각이던 경계 — 반올림 전(13.06 ≤ 13.134)으로 채택
+        with mock.patch.object(M, "wape_raw", side_effect=[11.94, 13.06, 13.06]):
+            o = M._link_oos(y, cands, ctx, "2026Q2")
+        self.assertIs(o["adopted"], True)
+        self.assertEqual((o["wape_link"], o["wape_trend"]), (13.1, 11.9))
+        self.assertGreater(o["wape_link"], o["wape_trend"] * M.OOS_WORSE_TOL)                       # 표시값만 보면 기각처럼 보인다
+        self.assertEqual((o["wape_link_raw"], o["wape_trend_raw"]), (13.06, 11.94))
+        self.assertEqual(M.wape([(110, 100), (90, 100)]), 10.0)
+        self.assertAlmostEqual(M.wape_raw([(113.06, 100)]), 13.06, places=9)
+
+    def test_d5b_adopted_combo_is_tested_and_c_undetermined(self):
+        t = TestLinkOOS()
+        ctx, _ = t._ctx(0.03, lambda i, q, x: 0.05 * x[t.QS[max(i - 2, 0)]], noisy=True)
+        m = M.build_model("222222", ctx)
+        d = m["segments"][0]["driver"]
+        o = d["selection_oos"]
+        self.assertEqual(o["tested"], "adopted_combo")
+        lt = o["link_tested"]
+        self.assertEqual((lt["wkey"], lt["lag_q"], lt["transform"], lt["window_q"]), (d["weights_key"], d["lag_q"], d["transform"], d["window_q"]))
+        self.assertIn("재적합", lt["note"])
+        self.assertIn("참고", o["link_at_freeze"]["note"])
+        self.assertTrue(all("link_reselected" in r for r in o["detail"]))
+        self.assertIn("유의성 + OOS", d["adoption_basis"])
+        # 채택 조합을 동결 데이터로 재적합할 수 없으면 undetermined
+        cands = M._customer_weight_candidates("222222", ctx)
+        y = {q: ctx._fin["222222"]["cons"]["is"][q]["매출액(수익)"] / 100 for q in t.QS}
+        o2 = M._link_oos(y, cands, ctx, "2026Q2", adopted={"wkey": "없는후보", "lag": 1, "transform": "level", "window": 8})
+        self.assertEqual((o2["adopted"], o2["decision"]), ("undetermined", "undetermined"))
+        self.assertIn("재적합할 수 없음", o2["note"])
+        self.assertIsNotNone(o2["link_at_freeze"])                                                   # 재선택 결과는 참고로 남는다
+
+    # D6 ── 금융손익 실적→추정 단절 경고(값 불변)
+    def test_d6_fin_pl_gap_warning_value_unchanged(self):
+        base = M.build_model("999999", FakeCtx(fins={"999999": synth_fin()}, roles={"999999": "equip"}))
+        fin = synth_fin()
+        for q in fin["quarters"]:
+            for sc in ("cons", "sep"):
+                fin[sc]["is"][q]["금융손익"] = -5000.0                                               # 실적 −50억/분기(평가손실 등)
+        m = M.build_model("999999", FakeCtx(fins={"999999": fin}, roles={"999999": "equip"}))
+        g = m["assumptions"]["fin_pl_gap"]
+        self.assertTrue(g["flagged"])
+        self.assertEqual(g["actual_median_4q"], -50.0)
+        self.assertTrue(any("금융손익 실적→추정 단절" in w and "중위 -50억" in w for w in m["quality"]["warnings"]))
+        self.assertEqual(rows_of(m)["금융손익"]["q"]["2026Q3"]["v"], rows_of(base)["금융손익"]["q"]["2026Q3"]["v"])     # 값은 바꾸지 않는다
+        self.assertFalse(base["assumptions"]["fin_pl_gap"]["flagged"])                               # 실적 −5억 vs 추정 −4.5억 → 경고 없음
+        self.assertFalse(any("금융손익 실적→추정 단절" in w for w in base["quality"]["warnings"]))
+
+    # D7 ── status 는 데이터 완전성만, driver_fallback 별도
+    def test_d7_status_data_only_and_driver_fallback(self):
+        m = M.build_model("999999", FakeCtx(fins={"999999": synth_fin()}, roles={"999999": "equip"}))
+        self.assertEqual((m["status"], m["driver_fallback"]), ("full", "no_link"))
+        short = M.build_model("999999", FakeCtx(fins={"999999": synth_fin(quarters=M.q_range("2025Q1", "2026Q2"))}, roles={"999999": "equip"}))
+        self.assertEqual(short["status"], "partial")                                                  # fin 6분기 < 8
+        y = self._yard(synth_sls())
+        self.assertEqual(y["driver_fallback"], "none")
+        self.assertEqual(M.summary_row(y)["driver_fallback"], "none")
+        self.assertEqual(set(M.DRIVER_FALLBACKS), {"corr", "significance", "n", "oos", "no_link", "none"})
+        self.assertEqual(M._driver_fallback({"fallback": True, "driver": {"customer_link_rejected": {"rejected_by": "significance"}}}), "significance")
+
+    # D9 ── 시나리오 OP 델타는 반올림 전 OPM
+    def test_d9_scenario_op_uses_unrounded_opm(self):
+        fq = ["2026Q3"]
+        rows = {"매출액": {"2026Q3": {"v": 1000.0, "kind": "estimate"}}, "영업이익": {"2026Q3": {"v": 97.36, "kind": "estimate"}},
+                "OPM": {"2026Q3": {"v": 0.0974, "kind": "estimate"}}}
+        plan = {"opm": {"2026Q3": (0.097355, "")}, "scenarios_new": {"conservative": {"2026Q3": 0.0}, "base": {"2026Q3": 100.0}, "optimistic": {"2026Q3": 10_100.0}}}
+        sc = M._build_scenarios(rows, plan, fq, "2026Q2")
+        self.assertEqual(sc["optimistic"]["quarterly"]["2026Q3"]["op"], round(97.36 + 10_000.0 * 0.097355, 2))      # 1,070.91 (r4 OPM 이면 1,071.36)
+        self.assertEqual(sc["base"]["quarterly"]["2026Q3"]["op"], 97.36)
+
+    # D10 ── 캡 적용 sls 에서 1/backlog_coverage 는 null + 문구
+    def test_d10_scale_alternative_null_when_capped(self):
+        s = synth_sls()
+        s["reconcile_summary"]["backlog_coverage_at_origin"] = 1.164
+        s["backlog_cap_applied"] = True
+        d = self._yard(s)["segments"][0]["driver"]
+        self.assertIsNone(d["scale_alternatives"]["1/backlog_coverage"])
+        self.assertIn("곱하지 말 것", d["scale_alternatives_note"])
+        self.assertIn("0.8591", d["scale_alternatives_note"])
+        d0 = self._yard(synth_sls())["segments"][0]["driver"]
+        self.assertEqual(d0["scale_alternatives"]["1/backlog_coverage"], 2.0)                         # 캡 없음(커버리지 0.5) → 표시값 그대로
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLatestCompleteQuarter(unittest.TestCase):
+    """최신 '완결' 분기는 달력이 아니라 정기보고서 제출기한(분기·반기 45일, 사업보고서 90일)으로 판정한다."""
+
+    def _ctx(self, today):
+        class C:  # noqa: D401 — 최소 컨텍스트
+            pass
+        c = C(); c.today = today
+        c.fx = {"quarters": {q: {} for q in ("2025Q4", "2026Q1", "2026Q2", "2026Q3")}}
+        c.fx["quarters"]["2026Q3"] = {"partial": False}
+        return c
+
+    def test_quarter_end_passed_but_deadline_not(self):
+        self.assertEqual(M._latest_complete_quarter(self._ctx("2026-10-02"), "x"), "2026Q2")   # 2026Q3 보고서 기한 11/14
+        self.assertEqual(M._latest_complete_quarter(self._ctx("2026-11-14"), "x"), "2026Q3")
+        self.assertEqual(M._latest_complete_quarter(self._ctx("2026-11-13"), "x"), "2026Q2")
+
+    def test_annual_report_90_days(self):
+        c = self._ctx("2026-03-30"); c.fx["quarters"]["2025Q3"] = {}
+        self.assertEqual(M._latest_complete_quarter(c, "x"), "2025Q3")          # 2025Q4 사업보고서 기한 3/31 → 3/30 엔 아직
+        c = self._ctx("2026-03-31"); c.fx["quarters"]["2025Q3"] = {}
+        self.assertEqual(M._latest_complete_quarter(c, "x"), "2025Q4")
