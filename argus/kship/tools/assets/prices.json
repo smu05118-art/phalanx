@@ -1,5 +1,5 @@
 {
- "as_of": "2026-09-30",
+ "as_of": "2026-10-01",
  "source": "aikstockdata.com(금융위 확정종가 T+1) — 출처표기·비영리",
  "citation": "자료: 한국주식데이터(aikstockdata.com) — 원천: 금융감독원 DART · 금융위원회 공공데이터포털",
  "license": {
@@ -39,19 +39,21 @@
    "aik": 5600,
    "naver_close": 5800
   },
-  "note": "aik `close` 는 금융위 T+1 확정 종가로 표기되지만 네이버·토스의 정규장 종가와 다를 수 있다(2026-09-30 검증: 시가·고가·저가·거래량은 같고 종가만 48/57 상이, 최대 4.4%). 2026-09-30 부터 close 는 네이버 정규장 종가(close_source), aik 원값은 aik_close — 차이는 여기 기록."
+  "note": "aik `close` 는 금융위 T+1 확정 종가로 표기되지만 네이버·토스의 정규장 종가와 다를 수 있다(2026-09-30 검증: 시가·고가·저가·거래량은 같고 종가만 48/57 상이, 최대 4.4%). 어느 쪽이 '확정'인지는 이 파일이 판정하지 않는다 — 2026-09-30 부터 close 는 네이버 정규장 종가(close_source), aik 원값은 aik_close — 차이는 여기 기록."
  },
  "history": {
-  "attempted": true,
-  "available_n": 57,
+  "attempted": false,
+  "available_n": 0,
   "failed_n": 0,
-  "reason": null,
-  "source": "~/phalanx/toss_api.py candles_history (토큰 캐시 존재 여부만 확인)",
+  "reason": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+  "source": null,
   "years": 5,
   "pages": 7,
-  "window_from": "2021-07-01",
+  "window_from": "2021-10-01",
   "truncated_grace_days": 10,
-  "note": "history_quarterly 는 토스 일봉(adjusted=true 수정주가) 집계, 창은 5년 전이 속한 분기의 첫날부터(분기 경계 정렬). 같은 날 토스 종가와 aik close 가 수십 원~수 % 다를 수 있다(history_meta.close_check 에 기록) — 검증(2026-09-30)에서 토스 종가는 네이버 정규장 종가와 같았고 어긋난 쪽은 aik 였다. 이력은 밴드(고/저/평균)용, 스칼라 종가 계약은 close(aik) 다."
+  "note": "history_quarterly 는 토스 일봉(adjusted=true 수정주가) 집계, 창은 5년 전이 속한 분기의 첫날부터(분기 경계 정렬). 같은 날 토스 종가와 aik close 가 수십 원~수 % 다를 수 있다(history_meta.close_check 에 기록) — 검증(2026-09-30)에서 토스 종가는 네이버 정규장 종가와 같았고 어긋난 쪽은 aik 였다. 이력은 밴드(고/저/평균)용, 스칼라 종가 계약은 close(aik) 다.",
+  "carried_n": 57,
+  "carried_note": "토스 일봉을 새로 받지 못해 기존 prices.json(2026-09-30 기준)의 history_quarterly 를 이어 붙였다 — history_meta.carried_from 참조"
  },
  "rows": {
   "002220": {
@@ -99,6 +101,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/002220",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 2730,
+    "naver_close": 2720,
+    "diff_pct": 0.368
+   },
+   "aik_close": 2730,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 72884065800,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 3310,
@@ -300,17 +312,10 @@
      "aik": 2730,
      "toss": 2720,
      "diff_pct": -0.366
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 2730,
-    "naver_close": 2720,
-    "diff_pct": 0.368
-   },
-   "aik_close": 2730,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 72884065800
+   "history_carried": true
   },
   "002380": {
    "name": "KCC",
@@ -357,6 +362,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/002380",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 471500,
+    "naver_close": 473000,
+    "diff_pct": -0.317
+   },
+   "aik_close": 471500,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 4051550464000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 416000,
@@ -558,17 +573,10 @@
      "aik": 471500,
      "toss": 473000,
      "diff_pct": 0.318
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 471500,
-    "naver_close": 473000,
-    "diff_pct": -0.317
-   },
-   "aik_close": 471500,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 4051550464000
+   "history_carried": true
   },
   "009540": {
    "name": "HD한국조선해양",
@@ -615,6 +623,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/009540",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 323500,
+    "naver_close": 323000,
+    "diff_pct": 0.155
+   },
+   "aik_close": 323500,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 22895103026000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 102000,
@@ -816,17 +834,10 @@
      "aik": 323500,
      "toss": 323000,
      "diff_pct": -0.155
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 323500,
-    "naver_close": 323000,
-    "diff_pct": 0.155
-   },
-   "aik_close": 323500,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 22895103026000
+   "history_carried": true
   },
   "010140": {
    "name": "삼성중공업",
@@ -873,6 +884,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/010140",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 19330,
+    "naver_close": 19500,
+    "diff_pct": -0.872
+   },
+   "aik_close": 19330,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 17010400000000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 6200,
@@ -1074,17 +1095,10 @@
      "aik": 19330,
      "toss": 19500,
      "diff_pct": 0.879
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 19330,
-    "naver_close": 19500,
-    "diff_pct": -0.872
-   },
-   "aik_close": 19330,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 17010400000000
+   "history_carried": true
   },
   "011700": {
    "name": "한신기계",
@@ -1131,6 +1145,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/011700",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 2400,
+    "naver_close": 2400,
+    "diff_pct": 0.0
+   },
+   "aik_close": 2400,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 77870762400,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 3215,
@@ -1332,17 +1356,10 @@
      "aik": 2400,
      "toss": 2400,
      "diff_pct": 0.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 2400,
-    "naver_close": 2400,
-    "diff_pct": 0.0
-   },
-   "aik_close": 2400,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 77870762400
+   "history_carried": true
   },
   "012160": {
    "name": "영흥",
@@ -1389,6 +1406,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/012160",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 2025,
+    "naver_close": 2055,
+    "diff_pct": -1.46
+   },
+   "aik_close": 2025,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 31631923575,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 5600,
@@ -1590,17 +1617,10 @@
      "aik": 2025,
      "toss": 2055,
      "diff_pct": 1.481
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 2025,
-    "naver_close": 2055,
-    "diff_pct": -1.46
-   },
-   "aik_close": 2025,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 31631923575
+   "history_carried": true
   },
   "012210": {
    "name": "삼미금속",
@@ -1647,6 +1667,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/012210",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 11480,
+    "naver_close": 11570,
+    "diff_pct": -0.778
+   },
+   "aik_close": 11480,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 264632126920,
    "history_quarterly": {
     "2025Q4": {
      "close_end": 10630,
@@ -1697,17 +1727,10 @@
      "aik": 11480,
      "toss": 11570,
      "diff_pct": 0.784
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 11480,
-    "naver_close": 11570,
-    "diff_pct": -0.778
-   },
-   "aik_close": 11480,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 264632126920
+   "history_carried": true
   },
   "013030": {
    "name": "하이록코리아",
@@ -1754,6 +1777,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/013030",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 36500,
+    "naver_close": 36750,
+    "diff_pct": -0.68
+   },
+   "aik_close": 36500,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 429537256000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 18200,
@@ -1955,17 +1988,10 @@
      "aik": 36500,
      "toss": 36750,
      "diff_pct": 0.685
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 36500,
-    "naver_close": 36750,
-    "diff_pct": -0.68
-   },
-   "aik_close": 36500,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 429537256000
+   "history_carried": true
   },
   "014280": {
    "name": "금강공업",
@@ -2012,6 +2038,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/014280",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 4735,
+    "naver_close": 4740,
+    "diff_pct": -0.105
+   },
+   "aik_close": 4735,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 138874505395,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 8070,
@@ -2213,17 +2249,10 @@
      "aik": 4735,
      "toss": 4740,
      "diff_pct": 0.106
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 4735,
-    "naver_close": 4740,
-    "diff_pct": -0.105
-   },
-   "aik_close": 4735,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 138874505395
+   "history_carried": true
   },
   "014620": {
    "name": "성광벤드",
@@ -2270,6 +2299,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/014620",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 30600,
+    "naver_close": 30650,
+    "diff_pct": -0.163
+   },
+   "aik_close": 30600,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 812655338400,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 8550,
@@ -2471,17 +2510,10 @@
      "aik": 30600,
      "toss": 30650,
      "diff_pct": 0.163
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 30600,
-    "naver_close": 30650,
-    "diff_pct": -0.163
-   },
-   "aik_close": 30600,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 812655338400
+   "history_carried": true
   },
   "014940": {
    "name": "오리엔탈정공",
@@ -2528,6 +2560,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/014940",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 4380,
+    "naver_close": 4390,
+    "diff_pct": -0.228
+   },
+   "aik_close": 4380,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 199612635180,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 4305,
@@ -2729,17 +2771,10 @@
      "aik": 4380,
      "toss": 4390,
      "diff_pct": 0.228
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 4380,
-    "naver_close": 4390,
-    "diff_pct": -0.228
-   },
-   "aik_close": 4380,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 199612635180
+   "history_carried": true
   },
   "017960": {
    "name": "한국카본",
@@ -2786,6 +2821,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/017960",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 19860,
+    "naver_close": 19880,
+    "diff_pct": -0.101
+   },
+   "aik_close": 19860,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 1026295011960,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 11850,
@@ -2987,17 +3032,10 @@
      "aik": 19860,
      "toss": 19890,
      "diff_pct": 0.151
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 19860,
-    "naver_close": 19880,
-    "diff_pct": -0.101
-   },
-   "aik_close": 19860,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 1026295011960
+   "history_carried": true
   },
   "023160": {
    "name": "태광",
@@ -3044,6 +3082,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/023160",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 27400,
+    "naver_close": 27450,
+    "diff_pct": -0.182
+   },
+   "aik_close": 27400,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 708762430800,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 11450,
@@ -3245,17 +3293,10 @@
      "aik": 27400,
      "toss": 27400,
      "diff_pct": 0.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 27400,
-    "naver_close": 27450,
-    "diff_pct": -0.182
-   },
-   "aik_close": 27400,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 708762430800
+   "history_carried": true
   },
   "025550": {
    "name": "한국선재",
@@ -3302,6 +3343,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/025550",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 2275,
+    "naver_close": 2285,
+    "diff_pct": -0.438
+   },
+   "aik_close": 2275,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 58044359100,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 10800,
@@ -3503,17 +3554,10 @@
      "aik": 2275,
      "toss": 2285,
      "diff_pct": 0.44
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 2275,
-    "naver_close": 2285,
-    "diff_pct": -0.438
-   },
-   "aik_close": 2275,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 58044359100
+   "history_carried": true
   },
   "025890": {
    "name": "한국주강",
@@ -3560,6 +3604,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/025890",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 2650,
+    "naver_close": 2650,
+    "diff_pct": 0.0
+   },
+   "aik_close": 2650,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 29533232400,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 3575,
@@ -3761,17 +3815,10 @@
      "aik": 2650,
      "toss": 2650,
      "diff_pct": 0.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 2650,
-    "naver_close": 2650,
-    "diff_pct": 0.0
-   },
-   "aik_close": 2650,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 29533232400
+   "history_carried": true
   },
   "033500": {
    "name": "동성화인텍",
@@ -3818,6 +3865,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/033500",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 15650,
+    "naver_close": 15620,
+    "diff_pct": 0.192
+   },
+   "aik_close": 15650,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 469335581100,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 12000,
@@ -4019,17 +4076,10 @@
      "aik": 15650,
      "toss": 15630,
      "diff_pct": -0.128
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 15650,
-    "naver_close": 15620,
-    "diff_pct": 0.192
-   },
-   "aik_close": 15650,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 469335581100
+   "history_carried": true
   },
   "034020": {
    "name": "두산에너빌리티",
@@ -4076,6 +4126,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/034020",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 79700,
+    "naver_close": 80500,
+    "diff_pct": -0.994
+   },
+   "aik_close": 79700,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 51052723336200,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 19835,
@@ -4277,17 +4337,10 @@
      "aik": 79700,
      "toss": 80500,
      "diff_pct": 1.004
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 79700,
-    "naver_close": 80500,
-    "diff_pct": -0.994
-   },
-   "aik_close": 79700,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 51052723336200
+   "history_carried": true
   },
   "042660": {
    "name": "한화오션",
@@ -4334,6 +4387,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/042660",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 78600,
+    "naver_close": 79100,
+    "diff_pct": -0.632
+   },
+   "aik_close": 78600,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 24084092768400,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 23898,
@@ -4535,17 +4598,10 @@
      "aik": 78600,
      "toss": 79200,
      "diff_pct": 0.763
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 78600,
-    "naver_close": 79100,
-    "diff_pct": -0.632
-   },
-   "aik_close": 78600,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 24084092768400
+   "history_carried": true
   },
   "054180": {
    "name": "메디콕스",
@@ -4592,6 +4648,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/054180",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 2295,
+    "naver_close": 2295,
+    "diff_pct": 0.0
+   },
+   "aik_close": 2295,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 12686716395,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 88023,
@@ -4793,17 +4859,10 @@
      "aik": 2295,
      "toss": 2295,
      "diff_pct": 0.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 2295,
-    "naver_close": 2295,
-    "diff_pct": 0.0
-   },
-   "aik_close": 2295,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 12686716395
+   "history_carried": true
   },
   "054540": {
    "name": "삼영엠텍",
@@ -4850,6 +4909,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/054540",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 6550,
+    "naver_close": 6600,
+    "diff_pct": -0.758
+   },
+   "aik_close": 6550,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 85150000000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 5030,
@@ -5051,17 +5120,10 @@
      "aik": 6550,
      "toss": 6600,
      "diff_pct": 0.763
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 6550,
-    "naver_close": 6600,
-    "diff_pct": -0.758
-   },
-   "aik_close": 6550,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 85150000000
+   "history_carried": true
   },
   "059270": {
    "name": "해성에어로보틱스",
@@ -5108,6 +5170,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/059270",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 5200,
+    "naver_close": 5220,
+    "diff_pct": -0.383
+   },
+   "aik_close": 5200,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 58059554800,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 11425,
@@ -5309,17 +5381,10 @@
      "aik": 5200,
      "toss": 5220,
      "diff_pct": 0.385
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 5200,
-    "naver_close": 5220,
-    "diff_pct": -0.383
-   },
-   "aik_close": 5200,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 58059554800
+   "history_carried": true
   },
   "064820": {
    "name": "케이프",
@@ -5366,6 +5431,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/064820",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 7500,
+    "naver_close": 7530,
+    "diff_pct": -0.398
+   },
+   "aik_close": 7500,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 231451612500,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 4575,
@@ -5567,17 +5642,10 @@
      "aik": 7500,
      "toss": 7530,
      "diff_pct": 0.4
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 7500,
-    "naver_close": 7530,
-    "diff_pct": -0.398
-   },
-   "aik_close": 7500,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 231451612500
+   "history_carried": true
   },
   "065570": {
    "name": "삼영이엔씨",
@@ -5624,6 +5692,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/065570",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 764,
+    "naver_close": 764,
+    "diff_pct": 0.0
+   },
+   "aik_close": 764,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 12295692232,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 8410,
@@ -5825,17 +5903,10 @@
      "aik": 764,
      "toss": 764,
      "diff_pct": 0.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 764,
-    "naver_close": 764,
-    "diff_pct": 0.0
-   },
-   "aik_close": 764,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 12295692232
+   "history_carried": true
   },
   "065710": {
    "name": "서호전기",
@@ -5882,6 +5953,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/065710",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 44800,
+    "naver_close": 45000,
+    "diff_pct": -0.444
+   },
+   "aik_close": 44800,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 230720000000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 21000,
@@ -6083,17 +6164,10 @@
      "aik": 44800,
      "toss": 45000,
      "diff_pct": 0.446
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 44800,
-    "naver_close": 45000,
-    "diff_pct": -0.444
-   },
-   "aik_close": 44800,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 230720000000
+   "history_carried": true
   },
   "071970": {
    "name": "HD현대마린엔진",
@@ -6140,6 +6214,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/071970",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 47200,
+    "naver_close": 47600,
+    "diff_pct": -0.84
+   },
+   "aik_close": 47200,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 1601094564000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 5200,
@@ -6341,17 +6425,10 @@
      "aik": 47200,
      "toss": 47600,
      "diff_pct": 0.847
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 47200,
-    "naver_close": 47600,
-    "diff_pct": -0.84
-   },
-   "aik_close": 47200,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 1601094564000
+   "history_carried": true
   },
   "073010": {
    "name": "케이에스피",
@@ -6398,6 +6475,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/073010",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 3260,
+    "naver_close": 3255,
+    "diff_pct": 0.154
+   },
+   "aik_close": 3260,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 131023475000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 2079,
@@ -6599,17 +6686,10 @@
      "aik": 3260,
      "toss": 3255,
      "diff_pct": -0.153
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 3260,
-    "naver_close": 3255,
-    "diff_pct": 0.154
-   },
-   "aik_close": 3260,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 131023475000
+   "history_carried": true
   },
   "075580": {
    "name": "세진중공업",
@@ -6656,6 +6736,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/075580",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 9600,
+    "naver_close": 9700,
+    "diff_pct": -1.031
+   },
+   "aik_close": 9600,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 545754777600,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 6030,
@@ -6857,17 +6947,10 @@
      "aik": 9600,
      "toss": 9700,
      "diff_pct": 1.042
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 9600,
-    "naver_close": 9700,
-    "diff_pct": -1.031
-   },
-   "aik_close": 9600,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 545754777600
+   "history_carried": true
   },
   "077970": {
    "name": "STX엔진",
@@ -6914,6 +6997,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/077970",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 21350,
+    "naver_close": 21550,
+    "diff_pct": -0.928
+   },
+   "aik_close": 21350,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 857161145050,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 10300,
@@ -7115,17 +7208,10 @@
      "aik": 21350,
      "toss": 21550,
      "diff_pct": 0.937
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 21350,
-    "naver_close": 21550,
-    "diff_pct": -0.928
-   },
-   "aik_close": 21350,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 857161145050
+   "history_carried": true
   },
   "079430": {
    "name": "현대리바트",
@@ -7172,6 +7258,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/079430",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 5600,
+    "naver_close": 5800,
+    "diff_pct": -3.448
+   },
+   "aik_close": 5600,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 112639531200,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 17200,
@@ -7373,17 +7469,10 @@
      "aik": 5600,
      "toss": 5800,
      "diff_pct": 3.571
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 5600,
-    "naver_close": 5800,
-    "diff_pct": -3.448
-   },
-   "aik_close": 5600,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 112639531200
+   "history_carried": true
   },
   "082740": {
    "name": "한화엔진",
@@ -7430,6 +7519,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/082740",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 46550,
+    "naver_close": 46900,
+    "diff_pct": -0.746
+   },
+   "aik_close": 46550,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 3884464460100,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 6252,
@@ -7631,17 +7730,10 @@
      "aik": 46550,
      "toss": 46900,
      "diff_pct": 0.752
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 46550,
-    "naver_close": 46900,
-    "diff_pct": -0.746
-   },
-   "aik_close": 46550,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 3884464460100
+   "history_carried": true
   },
   "085310": {
    "name": "엔케이",
@@ -7688,6 +7780,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/085310",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 8790,
+    "naver_close": 8740,
+    "diff_pct": 0.572
+   },
+   "aik_close": 8790,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 65204870460,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 11700,
@@ -7889,17 +7991,10 @@
      "aik": 8790,
      "toss": 8740,
      "diff_pct": -0.569
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 8790,
-    "naver_close": 8740,
-    "diff_pct": 0.572
-   },
-   "aik_close": 8790,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 65204870460
+   "history_carried": true
   },
   "086670": {
    "name": "비엠티",
@@ -7946,6 +8041,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/086670",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 19390,
+    "naver_close": 19530,
+    "diff_pct": -0.717
+   },
+   "aik_close": 19390,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 192462910150,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 11350,
@@ -8147,17 +8252,10 @@
      "aik": 19390,
      "toss": 19530,
      "diff_pct": 0.722
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 19390,
-    "naver_close": 19530,
-    "diff_pct": -0.717
-   },
-   "aik_close": 19390,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 192462910150
+   "history_carried": true
   },
   "092460": {
    "name": "한라IMS",
@@ -8204,6 +8302,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/092460",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 16590,
+    "naver_close": 16740,
+    "diff_pct": -0.896
+   },
+   "aik_close": 16590,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 283849591200,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 5950,
@@ -8405,17 +8513,10 @@
      "aik": 16590,
      "toss": 16740,
      "diff_pct": 0.904
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 16590,
-    "naver_close": 16740,
-    "diff_pct": -0.896
-   },
-   "aik_close": 16590,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 283849591200
+   "history_carried": true
   },
   "096350": {
    "name": "대창솔루션",
@@ -8462,6 +8563,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/096350",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 1843,
+    "naver_close": 1878,
+    "diff_pct": -1.864
+   },
+   "aik_close": 1843,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 67923326366,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 2885,
@@ -8663,17 +8774,10 @@
      "aik": 1843,
      "toss": 1878,
      "diff_pct": 1.899
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 1843,
-    "naver_close": 1878,
-    "diff_pct": -1.864
-   },
-   "aik_close": 1843,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 67923326366
+   "history_carried": true
   },
   "097230": {
    "name": "HJ중공업",
@@ -8720,6 +8824,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/097230",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 14550,
+    "naver_close": 14550,
+    "diff_pct": 0.0
+   },
+   "aik_close": 14550,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 1313797255200,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 10000,
@@ -8921,17 +9035,10 @@
      "aik": 14550,
      "toss": 14550,
      "diff_pct": 0.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 14550,
-    "naver_close": 14550,
-    "diff_pct": 0.0
-   },
-   "aik_close": 14550,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 1313797255200
+   "history_carried": true
   },
   "099410": {
    "name": "동방선기",
@@ -8978,6 +9085,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/099410",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 3065,
+    "naver_close": 3080,
+    "diff_pct": -0.487
+   },
+   "aik_close": 3065,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 42910000000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 3800,
@@ -9179,17 +9296,10 @@
      "aik": 3065,
      "toss": 3080,
      "diff_pct": 0.489
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 3065,
-    "naver_close": 3080,
-    "diff_pct": -0.487
-   },
-   "aik_close": 3065,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 42910000000
+   "history_carried": true
   },
   "100090": {
    "name": "SK오션플랜트",
@@ -9236,6 +9346,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/100090",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 11540,
+    "naver_close": 11550,
+    "diff_pct": -0.087
+   },
+   "aik_close": 11540,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 720997608660,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 22050,
@@ -9437,17 +9557,10 @@
      "aik": 11540,
      "toss": 11550,
      "diff_pct": 0.087
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 11540,
-    "naver_close": 11550,
-    "diff_pct": -0.087
-   },
-   "aik_close": 11540,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 720997608660
+   "history_carried": true
   },
   "100660": {
    "name": "서암기계공업",
@@ -9494,6 +9607,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/100660",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 3100,
+    "naver_close": 3080,
+    "diff_pct": 0.649
+   },
+   "aik_close": 3100,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 39060000000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 6410,
@@ -9695,17 +9818,10 @@
      "aik": 3100,
      "toss": 3080,
      "diff_pct": -0.645
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 3100,
-    "naver_close": 3080,
-    "diff_pct": 0.649
-   },
-   "aik_close": 3100,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 39060000000
+   "history_carried": true
   },
   "101000": {
    "name": "KS인더스트리",
@@ -9752,6 +9868,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/101000",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 1650,
+    "naver_close": 1650,
+    "diff_pct": 0.0
+   },
+   "aik_close": 1650,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 16352303550,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 12250,
@@ -9953,17 +10079,10 @@
      "aik": 1650,
      "toss": 1650,
      "diff_pct": 0.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 1650,
-    "naver_close": 1650,
-    "diff_pct": 0.0
-   },
-   "aik_close": 1650,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 16352303550
+   "history_carried": true
   },
   "101930": {
    "name": "인화정공",
@@ -10010,6 +10129,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/101930",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 6130,
+    "naver_close": 6160,
+    "diff_pct": -0.487
+   },
+   "aik_close": 6130,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 280108333230,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 2250,
@@ -10211,17 +10340,10 @@
      "aik": 6130,
      "toss": 6160,
      "diff_pct": 0.489
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 6130,
-    "naver_close": 6160,
-    "diff_pct": -0.487
-   },
-   "aik_close": 6130,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 280108333230
+   "history_carried": true
   },
   "103230": {
    "name": "에스앤더블류",
@@ -10268,6 +10390,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/103230",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 1964,
+    "naver_close": 1964,
+    "diff_pct": 0.0
+   },
+   "aik_close": 1964,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 14140800000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 4300,
@@ -10469,17 +10601,10 @@
      "aik": 1964,
      "toss": 1964,
      "diff_pct": 0.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 1964,
-    "naver_close": 1964,
-    "diff_pct": 0.0
-   },
-   "aik_close": 1964,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 14140800000
+   "history_carried": true
   },
   "108380": {
    "name": "대양전기공업",
@@ -10526,6 +10651,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/108380",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 18180,
+    "naver_close": 18200,
+    "diff_pct": -0.11
+   },
+   "aik_close": 18180,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 173934113940,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 17000,
@@ -10727,17 +10862,10 @@
      "aik": 18180,
      "toss": 18200,
      "diff_pct": 0.11
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 18180,
-    "naver_close": 18200,
-    "diff_pct": -0.11
-   },
-   "aik_close": 18180,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 173934113940
+   "history_carried": true
   },
   "133820": {
    "name": "화인베스틸",
@@ -10784,6 +10912,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/133820",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 960,
+    "naver_close": 985,
+    "diff_pct": -2.538
+   },
+   "aik_close": 960,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 35629921920,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 3080,
@@ -10985,17 +11123,10 @@
      "aik": 960,
      "toss": 985,
      "diff_pct": 2.604
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 960,
-    "naver_close": 985,
-    "diff_pct": -2.538
-   },
-   "aik_close": 960,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 35629921920
+   "history_carried": true
   },
   "136150": {
    "name": "원일티엔아이",
@@ -11042,6 +11173,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/136150",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 8000,
+    "naver_close": 8080,
+    "diff_pct": -0.99
+   },
+   "aik_close": 8000,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 67048240000,
    "history_quarterly": {
     "2025Q2": {
      "close_end": 29650,
@@ -11110,17 +11251,10 @@
      "aik": 8000,
      "toss": 8080,
      "diff_pct": 1.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 8000,
-    "naver_close": 8080,
-    "diff_pct": -0.99
-   },
-   "aik_close": 8000,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 67048240000
+   "history_carried": true
   },
   "155660": {
    "name": "DSR",
@@ -11167,6 +11301,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/155660",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 4265,
+    "naver_close": 4295,
+    "diff_pct": -0.698
+   },
+   "aik_close": 4265,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 68240000000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 10850,
@@ -11368,17 +11512,10 @@
      "aik": 4265,
      "toss": 4295,
      "diff_pct": 0.703
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 4265,
-    "naver_close": 4295,
-    "diff_pct": -0.698
-   },
-   "aik_close": 4265,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 68240000000
+   "history_carried": true
   },
   "187790": {
    "name": "나노",
@@ -11425,6 +11562,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/187790",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 2950,
+    "naver_close": 2970,
+    "diff_pct": -0.673
+   },
+   "aik_close": 2950,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 90980448500,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 2365,
@@ -11626,17 +11773,10 @@
      "aik": 2950,
      "toss": 2970,
      "diff_pct": 0.678
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 2950,
-    "naver_close": 2970,
-    "diff_pct": -0.673
-   },
-   "aik_close": 2950,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 90980448500
+   "history_carried": true
   },
   "189300": {
    "name": "인텔리안테크",
@@ -11683,6 +11823,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/189300",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 67000,
+    "naver_close": 67100,
+    "diff_pct": -0.149
+   },
+   "aik_close": 67000,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 719412299000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 69897,
@@ -11884,17 +12034,10 @@
      "aik": 67000,
      "toss": 67400,
      "diff_pct": 0.597
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 67000,
-    "naver_close": 67100,
-    "diff_pct": -0.149
-   },
-   "aik_close": 67000,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 719412299000
+   "history_carried": true
   },
   "217590": {
    "name": "티엠씨",
@@ -11941,6 +12084,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/217590",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 13810,
+    "naver_close": 13900,
+    "diff_pct": -0.647
+   },
+   "aik_close": 13810,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 332741247250,
    "history_quarterly": {
     "2025Q4": {
      "close_end": 15130,
@@ -11991,17 +12144,10 @@
      "aik": 13810,
      "toss": 13900,
      "diff_pct": 0.652
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 13810,
-    "naver_close": 13900,
-    "diff_pct": -0.647
-   },
-   "aik_close": 13810,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 332741247250
+   "history_carried": true
   },
   "272210": {
    "name": "한화시스템",
@@ -12048,6 +12194,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/272210",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 71900,
+    "naver_close": 72100,
+    "diff_pct": -0.277
+   },
+   "aik_close": 71900,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 13583304069100,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 17500,
@@ -12249,17 +12405,10 @@
      "aik": 71900,
      "toss": 72200,
      "diff_pct": 0.417
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 71900,
-    "naver_close": 72100,
-    "diff_pct": -0.277
-   },
-   "aik_close": 71900,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 13583304069100
+   "history_carried": true
   },
   "329180": {
    "name": "HD현대중공업",
@@ -12306,6 +12455,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/329180",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 429000,
+    "naver_close": 430500,
+    "diff_pct": -0.348
+   },
+   "aik_close": 429000,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 45028365525000,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 115500,
@@ -12509,17 +12668,10 @@
      "aik": 429000,
      "toss": 430500,
      "diff_pct": 0.35
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 429000,
-    "naver_close": 430500,
-    "diff_pct": -0.348
-   },
-   "aik_close": 429000,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 45028365525000
+   "history_carried": true
   },
   "333430": {
    "name": "일승",
@@ -12566,6 +12718,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/333430",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 3640,
+    "naver_close": 3660,
+    "diff_pct": -0.546
+   },
+   "aik_close": 3640,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 111845359080,
    "history_quarterly": {
     "2021Q3": {
      "close_end": 2900,
@@ -12767,17 +12929,10 @@
      "aik": 3640,
      "toss": 3660,
      "diff_pct": 0.549
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 3640,
-    "naver_close": 3660,
-    "diff_pct": -0.546
-   },
-   "aik_close": 3640,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 111845359080
+   "history_carried": true
   },
   "382900": {
    "name": "범한퓨얼셀",
@@ -12824,6 +12979,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/382900",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 22900,
+    "naver_close": 23650,
+    "diff_pct": -3.171
+   },
+   "aik_close": 22900,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 200626900000,
    "history_quarterly": {
     "2022Q2": {
      "close_end": 35250,
@@ -13000,17 +13165,10 @@
      "aik": 22900,
      "toss": 23650,
      "diff_pct": 3.275
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 22900,
-    "naver_close": 23650,
-    "diff_pct": -3.171
-   },
-   "aik_close": 22900,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 200626900000
+   "history_carried": true
   },
   "439260": {
    "name": "대한조선",
@@ -13057,6 +13215,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/439260",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 45000,
+    "naver_close": 45050,
+    "diff_pct": -0.111
+   },
+   "aik_close": 45000,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 1713992850000,
    "history_quarterly": {
     "2025Q3": {
      "close_end": 80900,
@@ -13116,17 +13284,10 @@
      "aik": 45000,
      "toss": 45000,
      "diff_pct": 0.0
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 45000,
-    "naver_close": 45050,
-    "diff_pct": -0.111
-   },
-   "aik_close": 45000,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 1713992850000
+   "history_carried": true
   },
   "443060": {
    "name": "HD현대마린솔루션",
@@ -13173,6 +13334,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/443060",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 237500,
+    "naver_close": 236500,
+    "diff_pct": 0.423
+   },
+   "aik_close": 237500,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 10647946750000,
    "history_quarterly": {
     "2024Q2": {
      "close_end": 130000,
@@ -13277,17 +13448,10 @@
      "aik": 237500,
      "toss": 236500,
      "diff_pct": -0.421
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 237500,
-    "naver_close": 236500,
-    "diff_pct": 0.423
-   },
-   "aik_close": 237500,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 10647946750000
+   "history_carried": true
   },
   "452280": {
    "name": "한선엔지니어링",
@@ -13334,6 +13498,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/452280",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 12430,
+    "naver_close": 12600,
+    "diff_pct": -1.349
+   },
+   "aik_close": 12430,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 239248538100,
    "history_quarterly": {
     "2023Q4": {
      "close_end": 9280,
@@ -13456,17 +13630,10 @@
      "aik": 12430,
      "toss": 12600,
      "diff_pct": 1.368
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 12430,
-    "naver_close": 12600,
-    "diff_pct": -1.349
-   },
-   "aik_close": 12430,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 239248538100
+   "history_carried": true
   },
   "460930": {
    "name": "현대힘스",
@@ -13513,6 +13680,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/460930",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 12630,
+    "naver_close": 12630,
+    "diff_pct": 0.0
+   },
+   "aik_close": 12630,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 448499774730,
    "history_quarterly": {
     "2024Q1": {
      "close_end": 17890,
@@ -13626,17 +13803,10 @@
      "aik": 12630,
      "toss": 12600,
      "diff_pct": -0.238
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 12630,
-    "naver_close": 12630,
-    "diff_pct": 0.0
-   },
-   "aik_close": 12630,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 448499774730
+   "history_carried": true
   },
   "487400": {
    "name": "케이앤에스아이앤씨",
@@ -13683,6 +13853,16 @@
    "snapshot_id": "20260930-181234",
    "generated_kst": "2026-09-30 18:12",
    "page_url": "https://aikstockdata.com/s/487400",
+   "history_error": "toss_api.py 없음(/home/runner/phalanx/toss_api.py)",
+   "naver_check": {
+    "date": "20260929",
+    "aik": 6600,
+    "naver_close": 6700,
+    "diff_pct": -1.493
+   },
+   "aik_close": 6600,
+   "close_source": "naver_regular_close",
+   "market_cap_krw_aik": 67721821200,
    "history_quarterly": {
     "2026Q3": {
      "close_end": 6510,
@@ -13706,17 +13886,10 @@
      "aik": 6600,
      "toss": 6700,
      "diff_pct": 1.515
-    }
+    },
+    "carried_from": "2026-09-30"
    },
-   "naver_check": {
-    "date": "20260929",
-    "aik": 6600,
-    "naver_close": 6700,
-    "diff_pct": -1.493
-   },
-   "aik_close": 6600,
-   "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 67721821200
+   "history_carried": true
   }
  }
 }

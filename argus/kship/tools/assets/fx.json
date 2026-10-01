@@ -1,6 +1,6 @@
 {
  "source": "ECB via api.frankfurter.app; Naver marketindex cross-check",
- "as_of": "2026-09-30",
+ "as_of": "2026-10-01",
  "unit": {
   "USDKRW": "원/달러",
   "JPY100KRW": "원/100엔 (=100×KRW/JPY)",
@@ -19,13 +19,13 @@
  },
  "method": "ECB 14:15 CET 참조환율(USD 기준) → 일별 교차환율 → 분기/연간 산술평균·마지막 영업일 기말. avg 는 비율의 일별 평균(평균의 비율 아님). 소수 2자리.",
  "daily_last": {
-  "date": "2026-09-29",
-  "USDKRW": 1353.36,
-  "JPY100KRW": 861.35,
-  "EURKRW": 1536.74,
-  "CNYKRW": 201.89
+  "date": "2026-09-30",
+  "USDKRW": 1355.4,
+  "JPY100KRW": 863.31,
+  "EURKRW": 1539.06,
+  "CNYKRW": 202.16
  },
- "daily_cache": "tools/assets/fx_daily_cache.json (5566일, 2005-01-03~2026-09-29)",
+ "daily_cache": "tools/assets/fx_daily_cache.json (5567일, 2005-01-03~2026-09-30)",
  "quarters": {
   "2005Q1": {
    "USDKRW_avg": 1022.53,
@@ -1146,142 +1146,130 @@
    "partial": false
   },
   "2026Q3": {
-   "USDKRW_avg": 1419.72,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 890.83,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1633.4,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 210.55,
-   "CNYKRW_end": 201.89,
-   "days": 65,
-   "end_date": "2026-09-29",
-   "partial": true
+   "USDKRW_avg": 1418.75,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 890.41,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1631.97,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 210.43,
+   "CNYKRW_end": 202.16,
+   "days": 66,
+   "end_date": "2026-09-30",
+   "partial": false
   }
  },
  "forward": {
   "method": "flat_last_end",
-  "flat_value_date": "2026-09-29",
+  "flat_value_date": "2026-09-30",
   "note": "가정 — 마지막 ECB 관측치를 2028Q4 까지 평평하게 둔다. 선도환율·컨센서스 아님.",
-  "2026Q3": {
-   "kind": "estimate",
-   "USDKRW_avg": 1419.72,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 890.83,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1633.4,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 210.55,
-   "CNYKRW_end": 201.89,
-   "basis": "분기누적 실측 평균(65일, ~2026-09-29) + 기말은 마지막 관측치"
-  },
   "2026Q4": {
    "kind": "estimate",
-   "USDKRW_avg": 1353.36,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 861.35,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1536.74,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 201.89,
-   "CNYKRW_end": 201.89,
-   "basis": "마지막 관측치 2026-09-29 flat"
+   "USDKRW_avg": 1355.4,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 863.31,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1539.06,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 202.16,
+   "CNYKRW_end": 202.16,
+   "basis": "마지막 관측치 2026-09-30 flat"
   },
   "2027Q1": {
    "kind": "estimate",
-   "USDKRW_avg": 1353.36,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 861.35,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1536.74,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 201.89,
-   "CNYKRW_end": 201.89,
-   "basis": "마지막 관측치 2026-09-29 flat"
+   "USDKRW_avg": 1355.4,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 863.31,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1539.06,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 202.16,
+   "CNYKRW_end": 202.16,
+   "basis": "마지막 관측치 2026-09-30 flat"
   },
   "2027Q2": {
    "kind": "estimate",
-   "USDKRW_avg": 1353.36,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 861.35,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1536.74,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 201.89,
-   "CNYKRW_end": 201.89,
-   "basis": "마지막 관측치 2026-09-29 flat"
+   "USDKRW_avg": 1355.4,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 863.31,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1539.06,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 202.16,
+   "CNYKRW_end": 202.16,
+   "basis": "마지막 관측치 2026-09-30 flat"
   },
   "2027Q3": {
    "kind": "estimate",
-   "USDKRW_avg": 1353.36,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 861.35,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1536.74,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 201.89,
-   "CNYKRW_end": 201.89,
-   "basis": "마지막 관측치 2026-09-29 flat"
+   "USDKRW_avg": 1355.4,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 863.31,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1539.06,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 202.16,
+   "CNYKRW_end": 202.16,
+   "basis": "마지막 관측치 2026-09-30 flat"
   },
   "2027Q4": {
    "kind": "estimate",
-   "USDKRW_avg": 1353.36,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 861.35,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1536.74,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 201.89,
-   "CNYKRW_end": 201.89,
-   "basis": "마지막 관측치 2026-09-29 flat"
+   "USDKRW_avg": 1355.4,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 863.31,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1539.06,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 202.16,
+   "CNYKRW_end": 202.16,
+   "basis": "마지막 관측치 2026-09-30 flat"
   },
   "2028Q1": {
    "kind": "estimate",
-   "USDKRW_avg": 1353.36,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 861.35,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1536.74,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 201.89,
-   "CNYKRW_end": 201.89,
-   "basis": "마지막 관측치 2026-09-29 flat"
+   "USDKRW_avg": 1355.4,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 863.31,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1539.06,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 202.16,
+   "CNYKRW_end": 202.16,
+   "basis": "마지막 관측치 2026-09-30 flat"
   },
   "2028Q2": {
    "kind": "estimate",
-   "USDKRW_avg": 1353.36,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 861.35,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1536.74,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 201.89,
-   "CNYKRW_end": 201.89,
-   "basis": "마지막 관측치 2026-09-29 flat"
+   "USDKRW_avg": 1355.4,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 863.31,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1539.06,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 202.16,
+   "CNYKRW_end": 202.16,
+   "basis": "마지막 관측치 2026-09-30 flat"
   },
   "2028Q3": {
    "kind": "estimate",
-   "USDKRW_avg": 1353.36,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 861.35,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1536.74,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 201.89,
-   "CNYKRW_end": 201.89,
-   "basis": "마지막 관측치 2026-09-29 flat"
+   "USDKRW_avg": 1355.4,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 863.31,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1539.06,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 202.16,
+   "CNYKRW_end": 202.16,
+   "basis": "마지막 관측치 2026-09-30 flat"
   },
   "2028Q4": {
    "kind": "estimate",
-   "USDKRW_avg": 1353.36,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 861.35,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1536.74,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 201.89,
-   "CNYKRW_end": 201.89,
-   "basis": "마지막 관측치 2026-09-29 flat"
+   "USDKRW_avg": 1355.4,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 863.31,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1539.06,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 202.16,
+   "CNYKRW_end": 202.16,
+   "basis": "마지막 관측치 2026-09-30 flat"
   }
  },
  "annual": {
@@ -1559,16 +1547,16 @@
    "partial": false
   },
   "2026": {
-   "USDKRW_avg": 1461.87,
-   "USDKRW_end": 1353.36,
-   "JPY100KRW_avg": 922.02,
-   "JPY100KRW_end": 861.35,
-   "EURKRW_avg": 1697.39,
-   "EURKRW_end": 1536.74,
-   "CNYKRW_avg": 214.29,
-   "CNYKRW_end": 201.89,
-   "days": 190,
-   "end_date": "2026-09-29",
+   "USDKRW_avg": 1461.31,
+   "USDKRW_end": 1355.4,
+   "JPY100KRW_avg": 921.71,
+   "JPY100KRW_end": 863.31,
+   "EURKRW_avg": 1696.56,
+   "EURKRW_end": 1539.06,
+   "CNYKRW_avg": 214.23,
+   "CNYKRW_end": 202.16,
+   "days": 191,
+   "end_date": "2026-09-30",
    "partial": true
   }
  },
@@ -1589,16 +1577,16 @@
  "naver_check": {
   "source": "api.stock.naver.com marketindex FX_USDKRW (서울외환시장 종가)",
   "window": [
-   "2026-04-06",
-   "2026-09-30"
+   "2026-04-07",
+   "2026-10-01"
   ],
   "naver_last": {
-   "date": "2026-09-30",
-   "USDKRW": 1352.4
+   "date": "2026-10-01",
+   "USDKRW": 1362.2
   },
   "ecb_last": {
-   "date": "2026-09-29",
-   "USDKRW": 1353.36
+   "date": "2026-09-30",
+   "USDKRW": 1355.4
   },
   "quarter_ends": [
    {
@@ -1611,18 +1599,18 @@
    },
    {
     "quarter": "2026Q3",
-    "date": "2026-09-29",
-    "ecb_end": 1353.36,
-    "naver_close": 1353.5,
-    "diff_pct": -0.01,
-    "partial": true
+    "date": "2026-09-30",
+    "ecb_end": 1355.4,
+    "naver_close": 1358.0,
+    "diff_pct": -0.191,
+    "partial": false
    }
   ],
   "latest_common": {
-   "date": "2026-09-29",
-   "ecb": 1353.36,
-   "naver": 1353.5,
-   "diff_pct": -0.01
+   "date": "2026-09-30",
+   "ecb": 1355.4,
+   "naver": 1358.0,
+   "diff_pct": -0.191
   }
  },
  "note": "레퍼런스 `변수` 시트는 서울외환시장 종가(2005Q1 원/달러 평균 1022.84·기말 1015.45)이고 이 파일은 ECB 참조환율이라 2005Q1 평균 -0.31원·기말 +0.05원 차이가 난다. 값을 맞추지 않고 차이만 기록한다. 원/100엔·원/유로·원/위안은 ECB USD 기준 교차환율.",
