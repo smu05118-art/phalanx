@@ -760,6 +760,50 @@ function applyHash(){
 
 // ---------- 🤝 하이퍼스케일러 CAPEX — AI 수요 스트립 (mem/rack/ai/dc 4탭 동일, 수치는 capex_common 단일 테이블) ----------
 function capexGo(t){ ST.tab=t; render(); window.scrollTo(0,0); }
+// 값이 스칼라가 아닐 때도 읽히게 만든다. 객체가 템플릿에 그대로 들어가 기본 문자열화되는 사고를 막는 공용 경로다.
+//  - {value: x, ...}  → x            (수치 + 메타가 함께 오는 모양: KPI baseline.bb 등)
+//  - {DRAM:'a',NAND:'b'} → 'DRAM a · NAND b'   (부문별 값이 함께 오는 모양: 삼성 bit_qoq 등)
+//  - 배열 → 스칼라 원소를 ' · ' 로, 아니면 각 원소를 재귀 처리
+// 깊이 제한을 두고 더 못 펼치면 빈 문자열을 준다 — 틀린 글자를 화면에 쓰는 것보다 비우는 게 낫다.
+function richText(v,depth){
+  depth=depth||0;
+  if(v==null) return '';
+  if(typeof v==='string') return v;
+  if(typeof v==='number'||typeof v==='boolean') return String(v);
+  if(depth>=3) return '';
+  if(Array.isArray(v)) return v.map(x=>richText(x,depth+1)).filter(Boolean).join(' · ');
+  if(typeof v==='object'){
+    if(v.value!==undefined) return richText(v.value,depth+1);
+    const parts=[];
+    for(const k in v){
+      if(!Object.prototype.hasOwnProperty.call(v,k)) continue;
+      if(k==='basis'||k==='note'||k==='src'||k==='source') continue;   // 설명 필드는 본문에 섞지 않는다
+      const t=richText(v[k],depth+1);
+      if(t) parts.push(k+' '+t);
+    }
+    return parts.join(' · ');
+  }
+  return '';
+}
+// 숫자를 기대하는 자리: 스칼라/{value}/배열 어디에 들어 있든 첫 유한수를 꺼낸다. 없으면 null.
+function richNum(v,depth){
+  depth=depth||0;
+  if(typeof v==='number'&&isFinite(v)) return v;
+  if(v==null||depth>=3) return null;
+  if(Array.isArray(v)){
+    for(const x of v){ const n=richNum(x,depth+1); if(n!=null) return n; }
+    return null;
+  }
+  if(typeof v==='object'){
+    if(v.value!==undefined){ const n=richNum(v.value,depth+1); if(n!=null) return n; }
+    if(v.baseline!==undefined){ const n=richNum(v.baseline,depth+1); if(n!=null) return n; }
+    for(const k in v){
+      if(!Object.prototype.hasOwnProperty.call(v,k)) continue;
+      const n=richNum(v[k],depth+1); if(n!=null) return n;
+    }
+  }
+  return null;
+}
 function capexStrip(CX,cur){
   if(!CX||!CX.strip||CX.strip.t4_busd==null) return '';
   const s=CX.strip, MONO='ui-monospace,SFMono-Regular,Menlo,monospace';
@@ -3057,7 +3101,11 @@ function renderKpi(){
       const cos=D.companies||{};
       const th=(T.threshold||{}).industry, thPer=(T.threshold||{}).per_co||{};
       const bl=T.baseline;
-      const blNum=(typeof bl==='number')?bl:(Array.isArray(bl)?(bl.find(b=>typeof b.baseline==='number')||{}).baseline:(bl&&bl.bb)!=null?bl.bb:null);
+      // baseline 모양이 3가지다: 숫자 | [{baseline:n,…}] | {bb:{value:n,…}, …}.
+      // 종전엔 bb 가 객체인 경우(probecard)를 그대로 템플릿에 넣어 기본 문자열화가 화면에 찍혔다.
+      const blNum=(typeof bl==='number')?bl
+        :(Array.isArray(bl)?richNum(bl.find(b=>richNum(b&&b.baseline)!=null))
+        :(bl&&bl.bb!=null)?richNum(bl.bb):null);
       // 회사별 kpi 시계열 수집
       const rows=[]; const series=[];
       Object.entries(cos).forEach(([tk,v],i)=>{
@@ -3789,7 +3837,7 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
     const g=d.guidance||{};
     return `<div class="bcard" style="margin-bottom:14px"><div class="bn">${NM[tk]||d.name} <span class="bt">${tk}</span></div>
       ${segs}
-      ${g.period?`<div class="est">가이던스 <b>${g.period}</b>: ${g.rev_yoy_pct!=null?('매출YoY '+(g.rev_yoy_pct>=0?'+':'')+g.rev_yoy_pct+'%'):''} ${(g.bit_qoq||'')} <span style="color:#8a90a8">${(g.note||'').slice(0,90)}</span></div>`:''}
+      ${g.period?`<div class="est">가이던스 <b>${g.period}</b>: ${g.rev_yoy_pct!=null?('매출YoY '+(g.rev_yoy_pct>=0?'+':'')+g.rev_yoy_pct+'%'):''} ${richText(g.bit_qoq)} <span style="color:#8a90a8">${richText(g.note).slice(0,90)}</span></div>`:''}
     </div>`;}).join('');
   // DDR5 스팟 (일간)
   const dd=M.ddr5||{}; const ds=dd.series||{}; const dk=Object.keys(ds).sort();
