@@ -5,9 +5,14 @@
   render_model_section(entry, model, fin=None, price=None, sls=None) -> html
       <section class="card"> 묶음 8개: ① KPI 스트립(FY2026E~28E 매출·OP·OPM·EPS + 현재 PER/PBR)
       ② 분기 손익표(최근 8A + 10E, 추정 칸 음영·근거 툴팁, 억원) ③ 사업부 매출·OPM 차트
-      ④ 조선사만: 선표 매출인식(백만$→헤지 원화)·수주업황 코호트 비중 차트 ⑤ 가정 패널(환율·헤지·OPM·세율·판관비율)
+      ④ 조선사만: 선표 매출인식(백만$→헤지 원화)·수주업황 코호트 비중 차트(코호트 모드·잔고 캡 표기)
+      ④' 신규수주 시나리오 카드(model.scenarios 가 있을 때만): FY2026E~28E 기존잔고만/보수/기준/낙관 매출·OP 막대+표
+      ⑤ 가정 패널(환율·헤지·OPM·세율·판관비율 + 신규수주·코호트 모드·잔고 캡·드라이버 OOS 선택)
       ⑥ 밸류에이션 스트립(PER/PBR 밴드·적정가치 구간 — 모델 산출값, 목표주가·추천 아님)
-      ⑦ xlsx 다운로드(models/<stock>_model.xlsx, 없으면 '준비 중') ⑧ 각주(출처·한계·백테스트)
+      ⑦ xlsx 다운로드(models/<stock>_model.xlsx, 없으면 '준비 중') ⑧ 각주(출처·한계·백테스트·신규수주 메타·OOS 규칙)
+  라운드 3(MODEL_SPEC §5-5): 손익표에 `매출조선신규`·`OP조선신규` 를 들여쓴 하위 행으로, 영업외 세부(이자·환·파생·기타·지분법·중단)는
+  값이 있을 때만; 섹션 머리·KPI 에 '신규수주 포함(forecast_panel base, 미보정)' 라벨; 드라이버 표기에 OOS 선택 결과
+  (`WAPE 연동 x% vs 추세 y%` → 채택/폴백); 허브 표에 신규수주 열.
   section_for_stock(stock) -> html | ""   회사 페이지 훅(kship_page/kship_parts 의 _model_section)이 부른다.
                                           모델 json 이 없으면 빈 문자열 — 빈 칸으로 흉내 내지 않는다.
   build_models_hub(models_dir) -> html    argus/kship/models.html — 56사 표(역할·FY2026E~28E·PER/PBR·status), 정렬·검색.
@@ -58,6 +63,17 @@ DRIVER_KO = {
     "median_flat": "최근 4분기 중위 유지",
     "residual": "연결−별도−종속사 잔차",
 }
+# 라운드 3(MODEL_SPEC §5-5) 라벨 — 값이 아니라 표기. 신규수주는 forecast_panel base 를 행에 더한 것이며 보정된 수주 예측이 아니다.
+NEW_ORDERS_LABEL = "신규수주 포함(forecast_panel base, 미보정)"
+NEW_ORDERS_EXCL_LABEL = "신규수주 미포함(2026Q2 잔고 소진분만)"
+COHORT_MODE_KO = {"reference_anchor": "레퍼런스 앵커(수주연도→등급)", "ledger_relative": "원장 상대등급"}
+SCENARIO_KO = collections.OrderedDict([("existing_only", "기존 잔고만"), ("conservative", "보수"), ("base", "기준(base)"), ("optimistic", "낙관")])
+SCENARIO_COLORS = {"existing_only": "#5d6675", "conservative": "#9085e9", "base": "#3987e5", "optimistic": "#199e70"}
+# 영업외 세부 행 — 값(|v| ≥ 0.05억)이 한 칸이라도 있을 때만 손익표에 그린다(전부 0 인 '환관련손익(모델 추정분)' 로 표를 늘리지 않는다).
+NONOP_DETAIL = ("이자손익", "환관련손익", "파생상품손익", "기타영업외손익", "지분법손익", "중단사업이익")
+SUB_ROWS = set(NONOP_DETAIL) | {"매출조선신규", "OP조선신규"}          # 들여쓴 하위 행
+ROW_LABEL_KO = {"매출조선신규": "└ 신규수주 매출(forecast_panel base · 매출조선에 포함)",
+                "OP조선신규": "└ 신규수주 OP(매출조선신규 × 타겟 OPM · OP조선에 포함)"}
 
 # 섹션 전용 스타일. 공용 kship.css 는 건드리지 않고 .kmodel 로 범위를 묶는다(회사 페이지 표 규칙과 충돌 금지).
 SECTION_CSS = """
@@ -84,6 +100,11 @@ SECTION_CSS = """
 .kmodel .kpi .est{border-style:dashed}
 .kmodel .dl{display:inline-flex;align-items:center;gap:8px;font-size:12px;border:1px solid var(--ln,#2a2f3a);border-radius:8px;padding:7px 12px;background:var(--pn2,#1e222b)}
 .kmodel .dl.off{color:var(--tx3,#5d6675);border-style:dashed}
+.kmodel table.pnl tr.sub th.rowh{padding-left:18px;color:var(--tx2,#98a1b0);font-weight:400}
+.kmodel .tag{display:inline-block;font-size:10.5px;font-weight:600;color:var(--wn,#fbbf24);border:1px dashed rgba(251,191,36,.45);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle;letter-spacing:0}
+.kmodel .tag.off{color:var(--tx3,#5d6675);border-color:var(--ln,#2a2f3a)}
+.kmodel table.scn tr.base td,.kmodel table.scn tr.base th{background:rgba(57,135,229,.08)}
+.kmodel table.scn th.rowh{white-space:nowrap}
 """
 
 
@@ -150,6 +171,112 @@ def _ratio(a, b):
     return (a / b) if (_num(a) and _num(b) and b) else None
 
 
+def _first_driver_with(model, *keys):
+    """segments[].driver 중 keys 가 하나라도 있는 첫 dict(없으면 {})."""
+    for s in model.get("segments") or []:
+        d = s.get("driver")
+        if isinstance(d, dict) and any(k in d for k in keys):
+            return d
+    return {}
+
+
+def new_orders_state(model):
+    """(state, label, detail). state: included | excluded | n/a.
+    조선사·지주만 뜻이 있다(기자재는 고객 모델을 통해 간접 반영 → n/a, 라벨 없음). 라벨은 NEW_ORDERS_LABEL — 미보정임을 항상 적는다."""
+    inc = model.get("new_orders_included")
+    no = model.get("new_orders") if isinstance(model.get("new_orders"), dict) else {}
+    if not no:
+        no = _first_driver_with(model, "new_orders").get("new_orders") or {}
+    if inc is True:
+        det = []
+        if no.get("via"):
+            det.append("종속 %s 모델 경유" % no["via"])
+        if no.get("scenario_in_rows"):
+            det.append("행 반영 %s" % no["scenario_in_rows"])
+        if no.get("panel_status"):
+            det.append("패널 status %s" % no["panel_status"])
+        if no.get("panel_reason_codes"):
+            det.append(", ".join(str(x) for x in no["panel_reason_codes"]))
+        if _num(no.get("base_total_fq")):
+            det.append("FY합 %s억" % fmt_a(no["base_total_fq"]))
+        if no.get("calibrated") is False:
+            det.append("calibrated=false")
+        return "included", NEW_ORDERS_LABEL, " · ".join(det) or (no.get("note") or "")
+    if inc is False:
+        return "excluded", NEW_ORDERS_EXCL_LABEL, (no.get("note") or "forecast_panel 값 없음")
+    return "n/a", "", ""
+
+
+def oos_text(d, short=False):
+    """driver.selection_oos(결정 ⓘ) → 'OOS 동결 2025Q2 · 4분기 · WAPE 연동 12.0% vs 추세 12.3% → 연동 채택'. 기록이 없으면 ""."""
+    o = (d or {}).get("selection_oos")
+    if not isinstance(o, dict):
+        return ""
+    if not (_num(o.get("wape_link")) or _num(o.get("wape_trend"))):
+        # WAPE 미산출(동결 전 실적 부족 → 유의성만으로 채택, 또는 유의성 미달로 OOS 전 기각) — 빈 판정 대신 기록의 note 를 그대로
+        return ("OOS 비교 불가 — " + E(str(o["note"]))) if o.get("note") else ""
+    core = "WAPE 연동 %s vs 추세 %s" % (fmt_pct100(o.get("wape_link")), fmt_pct100(o.get("wape_trend")))
+    verdict = "연동 채택" if o.get("adopted") else "추세 폴백(연동 미채택)"
+    if short:
+        return "%s → %s" % (core, verdict)
+    return "OOS 동결 %s · %s분기 · %s → %s" % (E(str(o.get("freeze") or "—")), E(str(o.get("n") or o.get("horizon") or "—")), core, verdict)
+
+
+def model_oos(model, short=False):
+    """첫 사업부 드라이버의 OOS 선택 결과(없으면 "")."""
+    return oos_text(_first_driver_with(model, "selection_oos"), short=short)
+
+
+def sls_mode_info(model, sls):
+    """코호트 모드(결정 ⓔ)·잔고 캡 — sls 가 정본, 없으면 모델 driver 에 복사된 sls_cohort_mode·backlog_cap_applied."""
+    d = _first_driver_with(model, "sls_cohort_mode", "backlog_cap_applied", "target_opm_alt_median")
+    s = sls if isinstance(sls, dict) else {}
+    cap = s.get("backlog_cap") if isinstance(s.get("backlog_cap"), dict) else {}
+    if "applied" in cap:
+        applied = cap.get("applied")
+    elif "backlog_cap_applied" in s:
+        applied = s.get("backlog_cap_applied")
+    else:
+        applied = d.get("backlog_cap_applied")
+    return {"mode": s.get("cohort_mode") or d.get("sls_cohort_mode"), "alt": s.get("cohort_mode_alt"),
+            "cap_applied": applied if isinstance(applied, bool) else None, "cap": cap,
+            "calibrated_shift": (s.get("calibration") or {}).get("calibrated_shift", d.get("calibrated_shift")),
+            "calibrated_shift_alt": (s.get("calibration_alt") or {}).get("calibrated_shift"),
+            "target_opm_alt_median": d.get("target_opm_alt_median")}
+
+
+def _shift_txt(v):
+    return ("%+.1f%%p" % (v * 100)) if _num(v) else "—"
+
+
+def cohort_mode_text(info):
+    """'reference_anchor(레퍼런스 앵커(수주연도→등급)) 기본 · 대안 ledger_relative(원장 상대등급) · 캘리브레이션 shift 기본 −5.3%p / 대안 +3.6%p'."""
+    if not info.get("mode"):
+        return ""
+    parts = ["%s(%s) 기본" % (info["mode"], COHORT_MODE_KO.get(info["mode"], "모드 설명 없음"))]
+    if info.get("alt"):
+        alt = "대안 %s(%s)" % (info["alt"], COHORT_MODE_KO.get(info["alt"], "모드 설명 없음"))
+        if _num(info.get("target_opm_alt_median")):
+            alt += " 타겟 OPM 중위 %s" % fmt_pct(info["target_opm_alt_median"])
+        parts.append(alt)
+    if _num(info.get("calibrated_shift")) or _num(info.get("calibrated_shift_alt")):
+        parts.append("캘리브레이션 shift 기본 %s / 대안 %s" % (_shift_txt(info.get("calibrated_shift")), _shift_txt(info.get("calibrated_shift_alt"))))
+    return " · ".join(parts)
+
+
+def backlog_cap_text(info):
+    """잔고 캡(§5-2): '적용 ×0.859(원장 잔여/공시 해양 잔고 1.16 → 1.00 · 원값 보존)' | '미적용(원장 잔여/공시 해양 잔고 0.62)' | ''."""
+    ap = info.get("cap_applied")
+    if ap is None:
+        return ""
+    cap = info.get("cap") or {}
+    cov = cap.get("coverage_at_origin")
+    if ap:
+        return "적용 ×%s(원장 잔여/공시 해양 잔고 %s → 1.00 · 원값 *_raw 보존)" % (
+            ("%.3f" % cap["factor"]) if _num(cap.get("factor")) else "—", ("%.2f" % cov) if _num(cov) else "—")
+    return "미적용" + ((" (원장 잔여/공시 해양 잔고 %.2f)" % cov) if _num(cov) else "")
+
+
 def _is_est(kind):
     return kind in ("estimate", "mixed")
 
@@ -194,6 +321,15 @@ def model_summary(model):
         q = model.get("quality") or {}
         n = q.get("fin_quarters")
         out["status"] = "no_fin" if n == 0 else ("partial" if (q.get("missing") or not q.get("identities_ok", True)) else "full")
+    out["new_orders"] = new_orders_state(model)[0]
+    # 시나리오 FY 매출 범위(보수·낙관) — 허브 표 툴팁용. base 는 행과 같으므로 rev 그대로.
+    sc = model.get("scenarios") if isinstance(model.get("scenarios"), dict) else {}
+    out["scn"] = {}
+    for y in FY_EST:
+        lo = ((sc.get("conservative") or {}).get("annual") or {}).get(y) or {}
+        hi = ((sc.get("optimistic") or {}).get("annual") or {}).get(y) or {}
+        if _num(lo.get("rev")) or _num(hi.get("rev")):
+            out["scn"][y] = {"cons": lo.get("rev"), "opt": hi.get("rev")}
     return out
 
 
@@ -218,14 +354,17 @@ def _kpi_strip(model, price):
                  % (fmt_x(s["per_now"]), fmt_won(v.get("eps_fwd12m")), E(ttm) if ttm else "종가 %s원 · %s" % (fmt_won(close), E(as_of))))
     tiles.append('<div><b>%s</b><span>현재 PBR(최근 BPS %s원)</span><i>%s</i></div>'
                  % (fmt_x(s["pbr_now"]), fmt_won(v.get("bps_latest")), "종가 %s원 · %s" % (fmt_won(close), E(as_of))))
-    return ('<section class="card"><h2>실적 모델 KPI <em>FY2026E~28E · 억원 · 점선 칸은 추정 · 기준 %s · %s</em></h2>'
-            '<div class="kpi">%s</div></section>' % (E(model.get("origin") or "—"), E(DISCLAIMER), "".join(tiles)))
+    state, no_label, no_detail = new_orders_state(model)
+    tag = ('<span class="tag%s" title="%s">%s</span>' % ("" if state == "included" else " off", E(no_detail), E(no_label))) if no_label else ""
+    return ('<section class="card"><h2>실적 모델 KPI <em>FY2026E~28E · 억원 · 점선 칸은 추정 · 기준 %s · %s</em>%s</h2>'
+            '<div class="kpi">%s</div></section>' % (E(model.get("origin") or "—"), E(DISCLAIMER), tag, "".join(tiles)))
 
 
 # ── ② 분기 손익표 ───────────────────────────────────────────
 
-PNL_ORDER = ["매출액", "매출원가", "매출총이익", "판관비", "영업이익", "OPM", "EBITDA", "금융손익", "세전이익", "법인세비용",
-             "당기순이익", "지배주주순이익", "EPS", "BPS"]
+# 손익 행 순서. 영업외 세부(NONOP_DETAIL)는 금융손익 뒤·세전이익 앞에 두고, 값이 있을 때만 그린다.
+PNL_ORDER = ["매출액", "매출원가", "매출총이익", "판관비", "영업이익", "OPM", "EBITDA", "금융손익", "이자손익", "환관련손익", "파생상품손익",
+             "기타영업외손익", "지분법손익", "세전이익", "법인세비용", "당기순이익", "중단사업이익", "지배주주순이익", "EPS", "BPS"]
 
 
 def _derived_opm_row(rm):
@@ -266,6 +405,9 @@ def _pnl_table(model):
     for g, rows in groups.items():
         body.append('<tr class="grp"><td colspan="%d">%s</td></tr>' % (len(cols) + 2, E(g)))
         for r in rows:
+            key = r["key"]
+            if key in NONOP_DETAIL and not any(abs(c["v"]) >= 0.05 for c in (cell(r, q) for q in cols) if c):
+                continue          # 영업외 세부 행은 값이 있을 때만 — 전부 0·빈 칸이면 표를 늘리지 않는다
             unit = r.get("unit") or ""
             tds = []
             for q in cols:
@@ -277,8 +419,11 @@ def _pnl_table(model):
                 v = fmt_pct(c["v"]) if unit == "%" else (fmt_won(c["v"]) if unit in ("원",) else fmt_a(c["v"]))
                 tip = ("추정 · " + (c.get("basis") or "basis 미기재")) if e else ("실적 · " + (c.get("src") or "출처 미기재"))
                 tds.append('<td%s title="%s">%s</td>' % (' class="est"' if e else "", E(tip), v))
-            body.append('<tr%s><th class="rowh" scope="row">%s</th><td class="l mut">%s</td>%s</tr>'
-                        % (' class="derived"' if r.get("_derived") else "", E(r.get("label") or r["key"]), E(unit), "".join(tds)))
+            cls = " ".join(x for x in ("derived" if r.get("_derived") else "", "sub" if key in SUB_ROWS else "") if x)
+            full = r.get("label") or key
+            label = ROW_LABEL_KO.get(key) or full
+            body.append('<tr%s><th class="rowh" scope="row"%s>%s</th><td class="l mut">%s</td>%s</tr>'
+                        % ((' class="%s"' % cls) if cls else "", (' title="%s"' % E(full)) if label != full else "", E(label), E(unit), "".join(tds)))
     return ('<section class="card"><h2>분기 손익 <em>최근 %d분기 실적(A) + %d분기 추정(E) · 억원(EPS·BPS 원) · 추정 칸은 음영, 칸에 마우스를 올리면 근거</em></h2>'
             '<div class="wrap"><table class="pnl"><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div></section>'
             % (len(act), len(est), "".join(head), "".join(body)))
@@ -339,7 +484,8 @@ def _segment_chart(model, uid, depth):
         'y2:{position:"right",grid:{drawOnChartArea:false},ticks:{callback:function(v){return v+"%%"}}}},'
         'plugins:{tooltip:{callbacks:{label:function(c){return c.dataset.label+": "+(c.parsed.y==null?"—":c.parsed.y.toLocaleString())+(D.est[c.dataIndex]?" (추정)":"")}}}}}});'
         % (uid + "-seg"))
-    drivers = '<li><b>매출 드라이버</b> — %s%s</li>' % (E(driver_label(dtype)), (" · " + E(dbasis)) if dbasis else "")
+    oos = model_oos(model)
+    drivers = '<li><b>매출 드라이버</b> — %s%s%s</li>' % (E(driver_label(dtype)), (" · " + oos) if oos else "", (" · " + E(dbasis)) if dbasis else "")
     drivers += "".join('<li><b>%s</b> — %s</li>' % (E(s.get("label") or s["key"]), E(_driver_text(s.get("driver") or {})))
                        for s in model.get("segments") or [])
     if fallback:
@@ -363,6 +509,9 @@ def _driver_text(d):
         parts.append("비례계수 %.4f" % d["ratio_used"])
     if _num(d.get("reconcile_ratio")):
         parts.append("화해 비율 %.2f" % d["reconcile_ratio"])
+    oos = oos_text(d, short=True)
+    if oos:
+        parts.append("OOS " + oos)
     if d.get("basis"):
         parts.append(d["basis"])
     return " · ".join(parts)
@@ -400,7 +549,19 @@ def _sls_charts(model, sls, uid, depth):
             cohorts.append({"label": c, "color": COHORT_COLORS[c], "share": vals})
     topm = sls.get("target_opm") or {}
     opm = [round(topm[q]["opm"] * 100, 2) if (q in topm and _num(topm[q].get("opm"))) else None for q in qs]
-    payload = {"labels": qs, "est": est, "usd": usd, "krw": krw, "rate": rate, "cohorts": cohorts, "opm": opm}
+    info = sls_mode_info(model, sls)
+    # 대안 코호트 모드(§5-2 결정 ⓔ): 타겟 OPM 을 회색 점선으로 함께, 코호트 비중은 툴팁에 글로
+    talt = sls.get("target_opm_alt") or {}
+    opm_alt = [round(talt[q]["opm"] * 100, 2) if (q in talt and _num(talt[q].get("opm"))) else None for q in qs]
+    alt_mix = []
+    for q in qs:
+        bc = bq[q].get("by_cohort_alt") or {}
+        tot = sum(v for v in bc.values() if _num(v))
+        alt_mix.append(" · ".join("%s %d%%" % (c, round(bc[c] / tot * 100)) for c in COHORT_ORDER if _num(bc.get(c)) and tot) if tot else "")
+    has_alt = any(v is not None for v in opm_alt)
+    payload = {"labels": qs, "est": est, "usd": usd, "krw": krw, "rate": rate, "cohorts": cohorts, "opm": opm,
+               "opm_alt": opm_alt if has_alt else None, "alt_label": "타겟 OPM 대안 %s(%%)" % (info.get("alt") or "—"),
+               "alt_mix": alt_mix if has_alt else None, "mode": info.get("mode") or ""}
     draw = (
         'var a=document.getElementById("%s"),b=document.getElementById("%s");'
         'if(a){new Chart(a,{data:{labels:D.labels.map(function(q,i){return q+(D.est[i]?"E":"")}),datasets:['
@@ -409,10 +570,12 @@ def _sls_charts(model, sls, uid, depth):
         'options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:function(v){return v.toLocaleString()}}},y2:{position:"right",grid:{drawOnChartArea:false},ticks:{callback:function(v){return v.toLocaleString()}}}},'
         'plugins:{tooltip:{callbacks:{afterBody:function(items){var i=items[0].dataIndex;return "적용환율 "+(D.rate[i]==null?"—":D.rate[i].toLocaleString())+(D.est[i]?" (추정)":"")}}}}}});}'
         'if(b){var ds=D.cohorts.map(function(c){return {type:"bar",label:c.label,stack:"c",yAxisID:"y",data:c.share,backgroundColor:D.est.map(function(e){return rgba(c.color,e?0.45:0.9)})}});'
-        'ds.push({type:"line",label:"타겟 OPM(%%)",yAxisID:"y2",data:D.opm,borderColor:"#e6e8ec",pointRadius:2,segment:{borderDash:function(c){return D.est[c.p1DataIndex]?[4,3]:undefined}}});'
+        'ds.push({type:"line",label:"타겟 OPM(%%)"+(D.mode?" · "+D.mode:""),yAxisID:"y2",data:D.opm,borderColor:"#e6e8ec",pointRadius:2,segment:{borderDash:function(c){return D.est[c.p1DataIndex]?[4,3]:undefined}}});'
+        'if(D.opm_alt){ds.push({type:"line",label:D.alt_label,yAxisID:"y2",data:D.opm_alt,borderColor:"#98a1b0",borderDash:[2,3],pointRadius:0,borderWidth:1.5});}'
         'new Chart(b,{data:{labels:D.labels.map(function(q,i){return q+(D.est[i]?"E":"")}),datasets:ds},'
         'options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,max:100,ticks:{callback:function(v){return v+"%%"}}},y2:{position:"right",grid:{drawOnChartArea:false},ticks:{callback:function(v){return v+"%%"}}}},'
-        'plugins:{tooltip:{callbacks:{label:function(c){return c.dataset.label+": "+(c.parsed.y==null?"—":c.parsed.y)+"%%"}}}}}});}'
+        'plugins:{tooltip:{callbacks:{label:function(c){return c.dataset.label+": "+(c.parsed.y==null?"—":c.parsed.y)+"%%"},'
+        'afterBody:function(items){if(!D.alt_mix)return;var t=D.alt_mix[items[0].dataIndex];return t?"대안 모드 비중: "+t:undefined}}}}}});}'
         % (uid + "-sls", uid + "-coh"))
     first_est = next((q for q, e in zip(qs, est) if e), None)
     h = bq.get(first_est) or {}
@@ -425,9 +588,78 @@ def _sls_charts(model, sls, uid, depth):
                fmt_rate(h.get("applied_rate")), E(first_est or "—"),
                ("%.2f" % rec_last["ratio"]) if (rec_last and _num(rec_last.get("ratio"))) else "—",
                E((rec_last or {}).get("note") or "화해 기록 없음") + "."))
-    return ('<section class="card"><h2>선표 매출인식 · 수주업황 코호트 <em>척당 계약 → 분기 인도 매출(백만$) → 헤지 적용 원화 · 코호트 비중(%%) → 타겟 OPM</em></h2>'
+    # 코호트 모드·잔고 캡(라운드 3) — sls 에 기록이 있을 때만 적는다(모의·구버전 sls 는 문장 없음)
+    mode_txt, cap_txt = cohort_mode_text(info), backlog_cap_text(info)
+    if mode_txt or cap_txt:
+        note += ('<p class="fn" style="margin-top:4px">%s%s</p>' % (
+            ('<b>코호트 모드</b> %s. ' % E(mode_txt)) if mode_txt else "",
+            ('<b>선표 잔고 캡</b> %s.' % E(cap_txt)) if cap_txt else ""))
+    return ('<section class="card"><h2>선표 매출인식 · 수주업황 코호트 <em>척당 계약 → 분기 인도 매출(백만$) → 헤지 적용 원화 · 코호트 비중(%%) → 타겟 OPM%s</em></h2>'
             '<div class="grid2"><div class="chart"><canvas id="%s"></canvas></div><div class="chart"><canvas id="%s"></canvas></div></div>%s%s</section>'
-            % (uid + "-sls", uid + "-coh", note, _chart_script(uid + "-sls", payload, draw, depth)))
+            % ((" · 코호트 모드 " + E(info["mode"])) if info.get("mode") else "", uid + "-sls", uid + "-coh", note, _chart_script(uid + "-sls", payload, draw, depth)))
+
+
+# ── ④' 신규수주 시나리오(결정 ⓓ) ────────────────────────────────
+
+def _scenario_card(model, uid, depth):
+    """model.scenarios {meta, existing_only, conservative, base, optimistic} → FY 매출 막대 + 매출·OP·신규매출 표.
+    base 만 손익표 행에 반영돼 있고 보수/낙관은 합산하지 않는다 — 카드 제목·각주에 그대로 적는다. 블록이 없으면 카드 없음."""
+    sc = model.get("scenarios")
+    if not isinstance(sc, dict):
+        return ""
+    meta = sc.get("meta") if isinstance(sc.get("meta"), dict) else {}
+    cases = [c for c in (meta.get("cases") or list(SCENARIO_KO)) if isinstance(sc.get(c), dict) and isinstance(sc[c].get("annual"), dict)]
+    years = [y for y in (meta.get("fiscal_years") or FY_EST) if any(y in sc[c]["annual"] for c in cases)]
+    if not cases or not years:
+        return ""
+    state, no_label, no_detail = new_orders_state(model)
+    tag = ('<span class="tag%s" title="%s">%s</span>' % ("" if state == "included" else " off", E(no_detail), E(no_label))) if no_label else ""
+    head = ['<th class="l rowh">시나리오</th>'] + ["".join('<th class="est">FY%sE<br>%s</th>' % (E(y[2:]), t) for t in ("매출(억)", "OP(억)", "신규 매출(억)")) for y in years]
+    trs, series = [], []
+    for c in cases:
+        ann = sc[c]["annual"]
+        in_rows = bool(sc[c].get("in_rows")) or c == meta.get("in_rows")
+        name = SCENARIO_KO.get(c, c) + ('<span class="pill">손익표 반영</span>' if in_rows else "")
+        tds = []
+        for y in years:
+            a = ann.get(y) or {}
+            for k in ("rev", "op", "new_order_revenue"):
+                v = a.get(k)
+                tds.append('<td class="est%s" title="%s">%s</td>' % ("" if _num(v) else " mut", E("%s · %s · kind %s" % (SCENARIO_KO.get(c, c), y, a.get("kind") or "estimate")), fmt_a(v)))
+        trs.append('<tr%s><th class="rowh" scope="row">%s</th>%s</tr>' % (' class="base"' if in_rows else "", name, "".join(tds)))
+        series.append({"key": c, "label": SCENARIO_KO.get(c, c), "color": SCENARIO_COLORS.get(c, SEG_COLORS[len(series) % len(SEG_COLORS)]),
+                       "rev": [round(ann[y]["rev"]) if (y in ann and _num(ann[y].get("rev"))) else None for y in years],
+                       "op": [round(ann[y]["op"]) if (y in ann and _num(ann[y].get("op"))) else None for y in years],
+                       "nw": [round(ann[y]["new_order_revenue"]) if (y in ann and _num(ann[y].get("new_order_revenue"))) else None for y in years]})
+    payload = {"years": ["FY%sE" % y for y in years], "cases": series}
+    draw = (
+        'var el=document.getElementById("%s");if(!el)return;'
+        'var ds=D.cases.map(function(c){var b=(c.key==="base");return {type:"bar",label:c.label,data:c.rev,backgroundColor:rgba(c.color,b?0.9:0.55),borderColor:c.color,borderWidth:b?1.5:0}});'
+        'new Chart(el,{data:{labels:D.years,datasets:ds},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:function(v){return v.toLocaleString()}}}},'
+        'plugins:{tooltip:{callbacks:{label:function(c){var k=D.cases[c.datasetIndex],i=c.dataIndex;'
+        'return k.label+" 매출 "+(c.parsed.y==null?"—":c.parsed.y.toLocaleString())+"억 · OP "+(k.op[i]==null?"—":k.op[i].toLocaleString())+"억 · 신규수주 매출 "+(k.nw[i]==null?"—":k.nw[i].toLocaleString())+"억"}}}}}});'
+        % (uid + "-scn"))
+    last = years[-1]
+    lo = ((sc.get("conservative") or {}).get("annual") or {}).get(last) or {}
+    hi = ((sc.get("optimistic") or {}).get("annual") or {}).get(last) or {}
+    rng = (" · FY%sE 매출 보수 %s ~ 낙관 %s억" % (E(last), fmt_a(lo.get("rev")), fmt_a(hi.get("rev")))) if (_num(lo.get("rev")) and _num(hi.get("rev"))) else ""
+    fn = []
+    if meta.get("existing_revenue"):
+        fn.append("기존 매출 = %s" % E(meta["existing_revenue"]))
+    if meta.get("source"):
+        fn.append("신규수주 매출 출처 %s" % E(meta["source"]))
+    if meta.get("panel_status") or meta.get("panel_reason_codes"):
+        fn.append("패널 status %s%s" % (E(str(meta.get("panel_status") or "—")), (" (%s)" % E(", ".join(str(x) for x in meta["panel_reason_codes"]))) if meta.get("panel_reason_codes") else ""))
+    if meta.get("calibrated") is False:
+        fn.append("calibrated=false — 장부가 대용치(book-value proxy), 보정된 수주 예측이 아님")
+    if meta.get("note"):
+        fn.append(E(meta["note"]))
+    return ('<section class="card"><h2>신규수주 시나리오 <em>FY 매출·영업이익(억, 전부 추정) · 기존(선표+잔고 소진+기타) + forecast_panel 신규수주 매출 · '
+            '기준(base)만 손익표 행에 반영 · 보수/낙관은 합산 안 함%s</em>%s</h2>'
+            '<div class="grid2"><div class="chart"><canvas id="%s"></canvas></div>'
+            '<div class="wrap"><table class="pnl scn"><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div></div>'
+            '<p class="fn" style="margin-top:8px">%s</p>%s</section>'
+            % (rng, tag, uid + "-scn", "".join(head), "".join(trs), " · ".join(fn) or "메타 없음", _chart_script(uid + "-scn", payload, draw, depth)))
 
 
 # ── ⑤ 가정 패널 ─────────────────────────────────────────────
@@ -442,7 +674,11 @@ def _assumptions_panel(model, sls):
         items.append('<div><b>%s%s</b><span>%s</span>%s</div>' % (value, pill, E(title), ('<i>%s</i>' % sub) if sub else ""))
 
     dtype, dbasis = model_driver(model)
-    item("매출 드라이버(추정 구간)", E(driver_label(dtype)), E(dbasis or dtype or "모델에 드라이버 기재 없음"))
+    oos = model_oos(model)
+    item("매출 드라이버(추정 구간)", E(driver_label(dtype)), ((oos + " · ") if oos else "") + E(dbasis or dtype or "모델에 드라이버 기재 없음"))
+    state, no_label, no_detail = new_orders_state(model)
+    if state != "n/a":
+        item("신규수주(origin 이후 수주분)", "포함(base)" if state == "included" else "미포함", E((no_label + " · " + no_detail) if no_detail else no_label))
     fx = (a.get("fx") or {}).get("USDKRW_avg") or {}
     fx_e = [(q, fx[q]) for q in est if _num(fx.get(q))][:4]
     if fx_e:
@@ -457,6 +693,11 @@ def _assumptions_panel(model, sls):
         hd = {"ratio": h.get("hedge_ratio"), "rate": h.get("hedge_rate"), "basis": "sls %s" % q0} if h else None
     if isinstance(hd, dict):
         item("환헤지 비율 · 헤지환율", "%s · %s" % (fmt_pct(hd.get("ratio"), 0), fmt_rate(hd.get("rate"))), E(hd.get("basis") or ""))
+    info = sls_mode_info(model, sls)
+    if info.get("mode"):
+        item("코호트 모드(타겟 OPM 판정)", E(info["mode"]), E(cohort_mode_text(info)))
+    if info.get("cap_applied") is not None:
+        item("선표 잔고 캡", "적용" if info["cap_applied"] else "미적용", E(backlog_cap_text(info)))
     for s in model.get("segments") or []:
         op = s.get("opm_path") or {}
         ks = [q for q in est if _num(op.get(q))]
@@ -577,12 +818,19 @@ def _footnotes(model, fin, price, sls):
         E(str(bt.get("freeze") or "—")), E(str(bt.get("horizon") or "—")), E(str(bt.get("n") or "—")),
         fmt_pct100(bt.get("revenue_wape_pct")), fmt_pct100(bt.get("op_wape_pct")),
         (" — " + E(bt["note"])) if bt.get("note") else "")) if bt else "백테스트 기록 없음"
+    extra = ""
+    state, no_label, no_detail = new_orders_state(model)
+    if state != "n/a":
+        extra += '<li>신규수주: %s%s</li>' % (E(no_label), (" — " + E(no_detail)) if no_detail else "")
+    o = _first_driver_with(model, "selection_oos").get("selection_oos")
+    if isinstance(o, dict) and o.get("rule"):
+        extra += '<li>드라이버 선택(OOS): %s — %s</li>' % (model_oos(model), E(str(o["rule"])))
     return ('<section class="card"><h2>각주 <em>출처 · 한계 · 백테스트</em></h2><ul class="fn">'
             '<li>출처: 재무 %s · 시세 %s · 환율 ECB(api.frankfurter.app, 네이버 대조) · 계약 원장 KIND 단일판매ㆍ공급계약체결 · 부문 롤포워드 정기보고서.</li>'
             '<li>단위: 표·차트 억원(백만원÷100), EPS·BPS 원, 달러 백만$. 손익은 3개월분(Q4 = 연간 − 3Q 누적). 기준 %s · 생성 %s.</li>'
             '<li>추정 규칙: 추정 칸은 음영·E 표기, 툴팁에 근거(basis). 가정은 가정 패널에 값과 함께 적었다. 출처 없는 숫자는 없다 — 모델이 주지 않은 값은 —.</li>'
-            '<li>한계: %s</li><li>백테스트: %s</li><li><b>%s</b></li></ul></section>'
-            % (fin_txt, price_txt, E(model.get("origin") or "—"), E(str(model.get("built_at") or "—")),
+            '%s<li>한계: %s</li><li>백테스트: %s</li><li><b>%s</b></li></ul></section>'
+            % (fin_txt, price_txt, E(model.get("origin") or "—"), E(str(model.get("built_at") or "—")), extra,
                " · ".join(E(str(x)) for x in lim) if lim else "기재 없음", bt_txt, E(DISCLAIMER)))
 
 
@@ -601,16 +849,23 @@ def render_model_section(entry, model, fin=None, price=None, sls=None, depth=1):
     uid = "kship-model-" + stock
     s = model_summary(model)
     dtype, _ = model_driver(model)
+    state, no_label, no_detail = new_orders_state(model)
+    info = sls_mode_info(model, sls)
+    oos = model_oos(model, short=True)
+    tag = ('<span class="tag%s" title="%s">%s</span>' % ("" if state == "included" else " off", E(no_detail), E(no_label))) if no_label else ""
     parts = [
-        '<div id="%s" class="kmodel" data-model-status="%s" data-model-origin="%s" data-model-driver="%s"><style>%s</style>'
-        % (uid, E(str(s["status"] or "")), E(model.get("origin") or ""), E(dtype or ""), SECTION_CSS),
-        '<h2 class="sec">%s · 실적 모델<span>%s · 기준 %s · 드라이버 %s · %s</span></h2>'
-        % (E(name), E(ROLE_KO.get(model.get("role"), model.get("role") or "—")), E(model.get("origin") or "—"),
-           E(driver_label(dtype)), E(DISCLAIMER)),
+        '<div id="%s" class="kmodel" data-model-status="%s" data-model-origin="%s" data-model-driver="%s" data-model-new-orders="%s"'
+        ' data-model-cohort-mode="%s" data-model-backlog-cap="%s"><style>%s</style>'
+        % (uid, E(str(s["status"] or "")), E(model.get("origin") or ""), E(dtype or ""), state, E(info.get("mode") or ""),
+           "" if info.get("cap_applied") is None else ("applied" if info["cap_applied"] else "not_applied"), SECTION_CSS),
+        '<h2 class="sec">%s · 실적 모델%s<span>%s · 기준 %s · 드라이버 %s%s · %s</span></h2>'
+        % (E(name), tag, E(ROLE_KO.get(model.get("role"), model.get("role") or "—")), E(model.get("origin") or "—"),
+           E(driver_label(dtype)), (" (%s)" % oos) if oos else "", E(DISCLAIMER)),
         _kpi_strip(model, price),
         _pnl_table(model),
         _segment_chart(model, uid, depth),
         _sls_charts(model, sls, uid, depth),
+        _scenario_card(model, uid, depth),
         _assumptions_panel(model, sls),
         _valuation_strip(model, price),
         _download(model, depth),
@@ -779,6 +1034,7 @@ def build_models_hub(models_dir=None, write=True):
     summary = _load_json(os.path.join(models_dir, "summary.json"))
     built, latest_built, origins = 0, "", collections.Counter()
     status_n = collections.Counter()
+    no_n = collections.Counter()          # 신규수주 포함/미포함 회사 수
     trs = []
     for r in pop:
         st = r["stock"]
@@ -793,7 +1049,7 @@ def build_models_hub(models_dir=None, write=True):
         if not model:
             status_n["none"] += 1
             trs.append('<tr><td class="l">%s</td><td class="mut">%s</td><td class="l">%s</td>%s<td class="l"><b class="tx3">모델 없음</b></td><td>%s</td></tr>'
-                       % (link, E(st), E(ROLE_KO.get(role, role or "—")), '<td class="mut">—</td>' * 15, xl))
+                       % (link, E(st), E(ROLE_KO.get(role, role or "—")), '<td class="mut">—</td>' * 16, xl))
             continue
         built += 1
         if r.get("has_page") and not has_sec:
@@ -805,10 +1061,20 @@ def build_models_hub(models_dir=None, write=True):
         latest_built = max(latest_built, str(model.get("built_at") or ""))
         origins[model.get("origin") or "—"] += 1
         dtype, _ = model_driver(model)
-        cells = ['<td class="l" title="%s">%s</td>' % (E(dtype or ""), E(driver_label(dtype)))]
+        oos = model_oos(model, short=True)
+        cells = ['<td class="l" title="%s">%s%s</td>' % (E(dtype or ""), E(driver_label(dtype)), (' <span class="mut">%s</span>' % oos) if oos else "")]
+        # 신규수주 열(결정 ⓓ): 조선사·지주만 포함/미포함, 기자재는 고객 모델 경유라 —. FY 매출이 base 신규수주를 품고 있는지 표에서 바로 보이게.
+        no_state, no_label, no_detail = new_orders_state(model)
+        no_n[no_state] += 1
+        cells.append('<td class="l" data-v="%s" title="%s">%s</td>' % (
+            {"included": 2, "excluded": 1}.get(no_state, 0), E((no_label + " · " + no_detail) if no_detail else no_label),
+            {"included": '<b class="wn">포함</b>', "excluded": '<span class="mut">미포함</span>'}.get(no_state, '<span class="mut">—</span>')))
         for y in FY_EST:
             f = s["fy"][y]
-            cells += ['<td class="est" data-v="%s">%s</td>' % (f["rev"] if _num(f["rev"]) else "", fmt_a(f["rev"])),
+            rng = s["scn"].get(y)
+            cells += ['<td class="est" data-v="%s"%s>%s</td>' % (f["rev"] if _num(f["rev"]) else "",
+                                                             (' title="%s"' % E("신규수주 시나리오 보수 %s ~ 낙관 %s억(base 는 표 값)" % (fmt_a(rng["cons"]), fmt_a(rng["opt"])))) if rng else "",
+                                                             fmt_a(f["rev"])),
                       '<td class="est" data-v="%s">%s</td>' % (f["op"] if _num(f["op"]) else "", fmt_a(f["op"])),
                       '<td class="est" data-v="%s">%s</td>' % (round(f["opm"] * 100, 2) if _num(f["opm"]) else "", fmt_pct(f["opm"])),
                       '<td class="est" data-v="%s">%s</td>' % (f["eps"] if _num(f["eps"]) else "", fmt_won(f["eps"]))]
@@ -818,7 +1084,7 @@ def build_models_hub(models_dir=None, write=True):
         trs.append('<tr><td class="l">%s</td><td class="mut">%s</td><td class="l">%s</td>%s<td class="l"><b class="%s">%s</b></td><td>%s</td></tr>'
                    % (link, E(st), E(ROLE_KO.get(role, role or "—")), "".join(cells), cls, E(STATUS_KO.get(status, status)), xl))
     # 머리글은 **한 행** — 공용 TABLE_JS 는 thead th 의 평면 순번을 본문 열 번호로 쓰므로 rowspan/colspan 2행 머리글이면 정렬 열이 어긋난다.
-    head = ('<tr><th class="l">회사</th><th>종목코드</th><th class="l">역할</th><th class="l">드라이버</th>'
+    head = ('<tr><th class="l">회사</th><th>종목코드</th><th class="l">역할</th><th class="l">드라이버</th><th class="l">신규<br>수주</th>'
             + "".join('<th class="est">FY%sE<br>매출(억)</th><th class="est">FY%sE<br>OP(억)</th><th class="est">FY%sE<br>OPM</th><th class="est">FY%sE<br>EPS(원)</th>'
                       % ((y[2:],) * 4) for y in FY_EST)
             + '<th>PER<br>현재</th><th>PBR<br>현재</th><th class="l">상태</th><th>xlsx</th></tr>')
@@ -828,10 +1094,11 @@ def build_models_hub(models_dir=None, write=True):
 <div class="kpi">
  <div><b>%d<small>/ %d</small></b><span>모델 생성 · 모집단</span></div>
  <div><b>%d</b><span>완성(full) · 부분 %d · 재무 없음 %d · 페이지 섹션 없음 %d</span></div>
+ <div><b>%d<small>/ %d</small></b><span>신규수주 포함 · 미포함(조선사·지주, forecast_panel base 미보정)</span></div>
  <div><b>%s</b><span>기준 분기</span></div>
  <div><b>%s</b><span>최근 생성</span></div>
 </div>
-<section class="card"><h2>실적 모델 — 섹터 표 <em>FY2026E~28E 매출·OP·OPM·EPS(전부 추정, 음영) · 현재 PER/PBR · 억원 · 머리글을 누르면 정렬</em>
+<section class="card"><h2>실적 모델 — 섹터 표 <em>FY2026E~28E 매출·OP·OPM·EPS(전부 추정, 음영) · 현재 PER/PBR · 억원 · 머리글을 누르면 정렬 · 신규수주 '포함' 행의 FY 매출은 forecast_panel base(미보정)를 품음 — 매출 칸 툴팁에 보수~낙관</em>
 <span class="right"><input data-filter="#mtab" placeholder="회사·종목코드 검색" aria-label="회사 검색" style="background:var(--pn2);border:1px solid var(--ln);border-radius:6px;color:var(--tx);font:12px var(--sans);padding:4px 9px"></span></h2>
 <span class="disclaim">%s</span>
 <div class="wrap tall"><table id="mtab" class="pnl" data-sortable><thead>%s</thead><tbody>%s</tbody></table></div>
@@ -840,6 +1107,7 @@ def build_models_hub(models_dir=None, write=True):
 </div>
 <script>%s</script>
 """ % (SECTION_CSS, built, len(pop), status_n.get("full", 0), status_n.get("partial", 0), status_n.get("no_fin", 0), status_n.get("nosec", 0),
+       no_n.get("included", 0), no_n.get("excluded", 0),
        origin_txt, E(latest_built or "—"), E(DISCLAIMER), head, "".join(trs), E(AIK_CREDIT), TABLE_JS)
     html = page("한국조선 실적 모델 — %d사 FY2026E~28E" % len(pop), body, depth=0, h1="📈 실적 모델",
                 nav=(("허브", "index.html"), ("커버리지", "coverage.html"), ("← ARGUS", "../index.html")),

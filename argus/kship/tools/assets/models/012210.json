@@ -4,7 +4,7 @@
  "role": "equip",
  "origin": "2026Q2",
  "unit": "KRW_100M(억원)",
- "built_at": "2026-09-30",
+ "built_at": "2026-10-02",
  "status": "partial",
  "periods": {
   "quarters": [
@@ -3312,6 +3312,7 @@
    "basis": "가정 — 마지막 ECB 관측치를 2028Q4 까지 평평하게 둔다. 선도환율·컨센서스 아님."
   },
   "hedge": null,
+  "sls": null,
   "tax_rate": 0.05,
   "tax_basis": "최근 6분기 유효세율 -102.9% → 5~27% 클립",
   "sga_ratio": 0.062,
@@ -3385,6 +3386,9 @@
   "subsidiaries": []
  },
  "modules": [],
+ "new_orders_included": null,
+ "new_orders": null,
+ "scenarios": null,
  "backtest": {
   "freeze": "2025Q2",
   "horizon": 4,
@@ -3393,7 +3397,8 @@
   "n": 4,
   "note": "단일 회사 4분기 — 통계 아님",
   "driver_at_freeze": "trend_seasonal",
-  "frozen_inputs": "fin(연결/별도)·고객 조선사 모델·지주 자회사 모델은 2025Q2 까지의 분기만; 선표는 체결일 ≤ 2025Q2 말일 계약(원장 최신 금액·코호트 등급, 환산 없음); 잔고는 yards_cache 2025Q2; 시세·환율 forward·prices 미사용. 고객 가중치(suppliers.json 언급 비중)와 합병 체인링크는 현재 지식",
+  "selection_oos_at_freeze": null,
+  "frozen_inputs": "fin(연결/별도)·고객 조선사 모델·지주 자회사 모델은 2025Q2 까지의 분기만; 선표는 체결일 ≤ 2025Q2 말일 계약(원장 최신 금액·코호트 등급, 환산 없음); 잔고는 yards_cache 2025Q2; 시세·환율 forward·prices·forecast_panel 신규수주 미사용. 고객 가중치(suppliers.json 언급 비중)와 합병 체인링크는 현재 지식; 고객 연동 채택은 동결 모델 안에서도 자기 la−4분기 OOS 규칙(selection_oos_at_freeze)",
   "detail": [
    {
     "q": "2025Q3",

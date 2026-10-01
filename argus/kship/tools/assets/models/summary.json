@@ -1,10 +1,10 @@
 {
- "built_at": "2026-09-30",
+ "built_at": "2026-10-02",
  "origin": "2026Q2",
  "n": 58,
  "counts": {
-  "full": 27,
-  "partial": 31,
+  "full": 20,
+  "partial": 38,
   "no_fin": 0
  },
  "unit": "KRW_100M(억원) · EPS/BPS/DPS 원 · PER/PBR 배",
@@ -67,10 +67,13 @@
    },
    "per_now": null,
    "pbr_now": 0.4,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 20.5,
     "op_wape_pct": 88.9,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 3
@@ -79,18 +82,24 @@
    "stock": "002380",
    "name": "케이씨씨",
    "role": "equip",
-   "status": "full",
+   "status": "partial",
    "last_actual": "2026Q2",
    "fin_quarters": 19,
-   "driver": "customer_yard_revenue_weighted",
+   "driver": "trend_seasonal",
    "link": {
-    "adopted": true,
+    "adopted": false,
+    "rejected_by": "oos",
     "weights_key": "suppliers_mentions",
     "lag_q": 4,
     "transform": "ma4",
     "window_q": 12,
     "corr": 0.6306,
-    "n": 12
+    "n": 12,
+    "wape_link": 32.2,
+    "wape_trend": 3.6,
+    "oos_adopted": false,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -105,48 +114,51 @@
      "dps": 15000.0
     },
     "2026E": {
-     "rev": 77851.39,
-     "op": 5130.93,
-     "opm": 0.0659,
-     "ni_ctrl": 32273.53,
-     "eps": 438846.6,
-     "bps": 1521311.3,
-     "per": 1.08,
+     "rev": 66191.09,
+     "op": 4337.78,
+     "opm": 0.0655,
+     "ni_ctrl": 31694.29,
+     "eps": 430970.3,
+     "bps": 1513434.9,
+     "per": 1.1,
      "pbr": 0.31,
      "dps": 15000.0
     },
     "2027E": {
-     "rev": 117921.13,
-     "op": 8021.24,
+     "rev": 66308.72,
+     "op": 4510.46,
      "opm": 0.068,
-     "ni_ctrl": 4967.46,
-     "eps": 67546.2,
-     "bps": 1573857.5,
-     "per": 7.0,
-     "pbr": 0.3,
+     "ni_ctrl": 2399.06,
+     "eps": 32621.9,
+     "bps": 1531056.7,
+     "per": 14.5,
+     "pbr": 0.31,
      "dps": 15000.0
     },
     "2028E": {
-     "rev": 135514.05,
-     "op": 9217.96,
+     "rev": 66367.62,
+     "op": 4514.47,
      "opm": 0.068,
-     "ni_ctrl": 5858.68,
-     "eps": 79664.7,
-     "bps": 1638522.3,
-     "per": 5.94,
-     "pbr": 0.29,
+     "ni_ctrl": 2407.25,
+     "eps": 32733.1,
+     "bps": 1548789.6,
+     "per": 14.45,
+     "pbr": 0.31,
      "dps": 15000.0
     }
    },
-   "per_now": 8.75,
+   "per_now": 14.53,
    "pbr_now": 0.32,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
-    "revenue_wape_pct": 32.2,
-    "op_wape_pct": 43.9,
-    "n": 4
+    "revenue_wape_pct": 3.6,
+    "op_wape_pct": 21.4,
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
-   "warnings_n": 1
+   "warnings_n": 2
   },
   {
    "stock": "009540",
@@ -170,45 +182,103 @@
      "dps": 12300.0
     },
     "2026E": {
-     "rev": 356866.69,
-     "op": 56744.32,
-     "opm": 0.159,
-     "ni_ctrl": 38467.38,
-     "eps": 54398.1,
-     "bps": 233967.4,
-     "per": 5.94,
-     "pbr": 1.38,
+     "rev": 358261.4,
+     "op": 59308.2,
+     "opm": 0.1655,
+     "ni_ctrl": 40031.99,
+     "eps": 56610.6,
+     "bps": 236179.9,
+     "per": 5.71,
+     "pbr": 1.37,
      "dps": 12300.0
     },
     "2027E": {
-     "rev": 366061.93,
-     "op": 51859.84,
-     "opm": 0.1417,
-     "ni_ctrl": 33787.62,
-     "eps": 47780.3,
-     "bps": 269447.6,
-     "per": 6.76,
-     "pbr": 1.2,
+     "rev": 426674.36,
+     "op": 66639.1,
+     "opm": 0.1562,
+     "ni_ctrl": 42870.43,
+     "eps": 60624.6,
+     "bps": 284504.5,
+     "per": 5.33,
+     "pbr": 1.14,
      "dps": 12300.0
     },
     "2028E": {
-     "rev": 346233.21,
-     "op": 49891.15,
-     "opm": 0.1441,
-     "ni_ctrl": 33147.66,
-     "eps": 46875.2,
-     "bps": 304022.8,
-     "per": 6.89,
-     "pbr": 1.06,
+     "rev": 531238.93,
+     "op": 82970.23,
+     "opm": 0.1562,
+     "ni_ctrl": 53654.09,
+     "eps": 75874.1,
+     "bps": 348078.6,
+     "per": 4.26,
+     "pbr": 0.93,
      "dps": 12300.0
     }
    },
-   "per_now": 6.66,
+   "per_now": 5.87,
    "pbr_now": 1.54,
+   "new_orders_included": true,
+   "scenarios": {
+    "2026E": {
+     "existing_only": {
+      "rev": 356866.69,
+      "op": 59090.35
+     },
+     "conservative": {
+      "rev": 357870.66,
+      "op": 59247.17
+     },
+     "base": {
+      "rev": 358261.4,
+      "op": 59308.2
+     },
+     "optimistic": {
+      "rev": 359016.32,
+      "op": 59426.12
+     }
+    },
+    "2027E": {
+     "existing_only": {
+      "rev": 366061.94,
+      "op": 57171.45
+     },
+     "conservative": {
+      "rev": 409690.53,
+      "op": 63986.23
+     },
+     "base": {
+      "rev": 426674.36,
+      "op": 66639.1
+     },
+     "optimistic": {
+      "rev": 459502.08,
+      "op": 71766.78
+     }
+    },
+    "2028E": {
+     "existing_only": {
+      "rev": 346233.21,
+      "op": 54072.33
+     },
+     "conservative": {
+      "rev": 479384.32,
+      "op": 74870.54
+     },
+     "base": {
+      "rev": 531238.93,
+      "op": 82970.23
+     },
+     "optimistic": {
+      "rev": 631560.84,
+      "op": 98640.52
+     }
+    }
+   },
    "backtest": {
     "revenue_wape_pct": 9.8,
-    "op_wape_pct": 34.5,
-    "n": 4
+    "op_wape_pct": 40.8,
+    "n": 4,
+    "driver_at_freeze": "subsidiary_yard_scaled"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -235,45 +305,103 @@
      "dps": 0.0
     },
     "2026E": {
-     "rev": 130120.58,
-     "op": 12853.81,
-     "opm": 0.0988,
-     "ni_ctrl": 9634.2,
-     "eps": 1128.1,
-     "bps": 6333.3,
-     "per": 17.29,
+     "rev": 130808.47,
+     "op": 12745.54,
+     "opm": 0.0974,
+     "ni_ctrl": 9531.07,
+     "eps": 1116.0,
+     "bps": 6321.3,
+     "per": 17.47,
      "pbr": 3.08,
      "dps": 0.0
     },
     "2027E": {
-     "rev": 135981.55,
-     "op": 13635.63,
-     "opm": 0.1003,
-     "ni_ctrl": 12761.71,
-     "eps": 1494.4,
-     "bps": 7827.6,
-     "per": 13.05,
-     "pbr": 2.49,
+     "rev": 165107.37,
+     "op": 16074.04,
+     "opm": 0.0974,
+     "ni_ctrl": 15082.93,
+     "eps": 1766.0,
+     "bps": 8087.3,
+     "per": 11.04,
+     "pbr": 2.41,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 114029.61,
-     "op": 11476.26,
-     "opm": 0.1006,
-     "ni_ctrl": 10856.37,
-     "eps": 1271.1,
-     "bps": 9098.8,
-     "per": 15.34,
-     "pbr": 2.14,
+     "rev": 202118.0,
+     "op": 19677.22,
+     "opm": 0.0974,
+     "ni_ctrl": 18704.35,
+     "eps": 2190.1,
+     "bps": 10277.5,
+     "per": 8.9,
+     "pbr": 1.9,
      "dps": 0.0
     }
    },
-   "per_now": 13.02,
+   "per_now": 12.57,
    "pbr_now": 3.49,
+   "new_orders_included": true,
+   "scenarios": {
+    "2026E": {
+     "existing_only": {
+      "rev": 130120.58,
+      "op": 12678.54
+     },
+     "conservative": {
+      "rev": 130459.12,
+      "op": 12711.51
+     },
+     "base": {
+      "rev": 130808.47,
+      "op": 12745.54
+     },
+     "optimistic": {
+      "rev": 131226.76,
+      "op": 12786.28
+     }
+    },
+    "2027E": {
+     "existing_only": {
+      "rev": 135981.55,
+      "op": 13237.18
+     },
+     "conservative": {
+      "rev": 150655.53,
+      "op": 14666.43
+     },
+     "base": {
+      "rev": 165107.37,
+      "op": 16074.04
+     },
+     "optimistic": {
+      "rev": 180124.94,
+      "op": 17536.76
+     }
+    },
+    "2028E": {
+     "existing_only": {
+      "rev": 114029.62,
+      "op": 11097.42
+     },
+     "conservative": {
+      "rev": 159381.14,
+      "op": 15514.64
+     },
+     "base": {
+      "rev": 202118.0,
+      "op": 19677.22
+     },
+     "optimistic": {
+      "rev": 239839.79,
+      "op": 23351.32
+     }
+    }
+   },
    "backtest": {
     "revenue_wape_pct": 6.5,
-    "op_wape_pct": 13.2,
-    "n": 4
+    "op_wape_pct": 39.7,
+    "n": 4,
+    "driver_at_freeze": "sls_marine_plus_uncovered_backlog_runoff"
    },
    "identities_ok": true,
    "warnings_n": 4
@@ -346,10 +474,13 @@
    },
    "per_now": null,
    "pbr_now": null,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 3.5,
     "op_wape_pct": 85.0,
-    "n": 1
+    "n": 1,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 3
@@ -411,10 +542,13 @@
    },
    "per_now": null,
    "pbr_now": 0.89,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 39.9,
     "op_wape_pct": 99.1,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -476,10 +610,13 @@
    },
    "per_now": null,
    "pbr_now": 0.21,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 2.5,
     "op_wape_pct": 86.5,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 3
@@ -541,10 +678,13 @@
    },
    "per_now": 39.81,
    "pbr_now": 2.54,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 10.5,
     "op_wape_pct": 36.8,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 4
@@ -606,10 +746,13 @@
    },
    "per_now": 7.4,
    "pbr_now": 0.92,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 7.8,
     "op_wape_pct": 0.8,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -641,7 +784,7 @@
      "opm": 0.0509,
      "ni_ctrl": 227.44,
      "eps": 802.9,
-     "bps": 13342.6,
+     "bps": 13342.5,
      "per": 5.9,
      "pbr": 0.36,
      "dps": 120.0
@@ -650,7 +793,7 @@
      "rev": 8256.63,
      "op": 221.05,
      "opm": 0.0268,
-     "ni_ctrl": 31.26,
+     "ni_ctrl": 31.25,
      "eps": 110.3,
      "bps": 13332.9,
      "per": 42.97,
@@ -661,7 +804,7 @@
      "rev": 8279.6,
      "op": 221.66,
      "opm": 0.0268,
-     "ni_ctrl": 31.66,
+     "ni_ctrl": 31.65,
      "eps": 111.8,
      "bps": 13324.6,
      "per": 42.4,
@@ -671,10 +814,13 @@
    },
    "per_now": 43.33,
    "pbr_now": 0.36,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 7.1,
     "op_wape_pct": 99.1,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -736,10 +882,13 @@
    },
    "per_now": 21.96,
    "pbr_now": 1.45,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 16.1,
     "op_wape_pct": 25.2,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -754,12 +903,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 19,
     "corr": 0.9509,
-    "n": 16
+    "n": 16,
+    "wape_link": 8.6,
+    "wape_trend": 12.6,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -774,45 +929,48 @@
      "dps": 0.0
     },
     "2026E": {
-     "rev": 2552.44,
-     "op": 350.73,
+     "rev": 2554.68,
+     "op": 351.03,
      "opm": 0.1374,
-     "ni_ctrl": 271.24,
-     "eps": 595.6,
-     "bps": 3366.1,
-     "per": 7.37,
+     "ni_ctrl": 271.48,
+     "eps": 596.1,
+     "bps": 3366.6,
+     "per": 7.36,
      "pbr": 1.3,
      "dps": 0.0
     },
     "2027E": {
-     "rev": 2822.29,
-     "op": 370.69,
+     "rev": 3045.6,
+     "op": 400.02,
      "opm": 0.1313,
-     "ni_ctrl": 315.85,
-     "eps": 693.4,
-     "bps": 4059.5,
-     "per": 6.33,
-     "pbr": 1.08,
+     "ni_ctrl": 339.73,
+     "eps": 746.0,
+     "bps": 4112.5,
+     "per": 5.88,
+     "pbr": 1.07,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 2656.93,
-     "op": 348.98,
+     "rev": 3663.39,
+     "op": 481.17,
      "opm": 0.1313,
-     "ni_ctrl": 320.21,
-     "eps": 702.9,
-     "bps": 4762.5,
-     "per": 6.25,
-     "pbr": 0.92,
+     "ni_ctrl": 430.29,
+     "eps": 944.8,
+     "bps": 5057.2,
+     "per": 4.65,
+     "pbr": 0.87,
      "dps": 0.0
     }
    },
-   "per_now": 6.69,
+   "per_now": 6.58,
    "pbr_now": 1.44,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 8.6,
     "op_wape_pct": 29.9,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -827,12 +985,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 1,
     "transform": "ma4",
     "window_q": 19,
     "corr": 0.9724,
-    "n": 15
+    "n": 15,
+    "wape_link": 11.1,
+    "wape_trend": 11.0,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -858,34 +1022,37 @@
      "dps": 320.0
     },
     "2027E": {
-     "rev": 12660.18,
-     "op": 1742.98,
+     "rev": 13101.58,
+     "op": 1803.74,
      "opm": 0.1377,
-     "ni_ctrl": 1286.39,
-     "eps": 2489.3,
-     "bps": 16380.3,
-     "per": 7.99,
+     "ni_ctrl": 1330.78,
+     "eps": 2575.2,
+     "bps": 16466.2,
+     "per": 7.72,
      "pbr": 1.21,
      "dps": 320.0
     },
     "2028E": {
-     "rev": 11888.63,
-     "op": 1636.76,
+     "rev": 14800.44,
+     "op": 2037.63,
      "opm": 0.1377,
-     "ni_ctrl": 1215.92,
-     "eps": 2353.0,
-     "bps": 18413.3,
-     "per": 8.45,
-     "pbr": 1.08,
+     "ni_ctrl": 1509.33,
+     "eps": 2920.8,
+     "bps": 19067.0,
+     "per": 6.81,
+     "pbr": 1.04,
      "dps": 320.0
     }
    },
-   "per_now": 8.47,
+   "per_now": 8.43,
    "pbr_now": 1.53,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 11.1,
     "op_wape_pct": 63.7,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -947,10 +1114,13 @@
    },
    "per_now": 18.05,
    "pbr_now": 1.0,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 26.1,
     "op_wape_pct": 27.8,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 3
@@ -965,12 +1135,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 1,
     "transform": "level",
     "window_q": 8,
     "corr": 0.8959,
-    "n": 8
+    "n": 8,
+    "wape_link": 14.8,
+    "wape_trend": 16.4,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -996,34 +1172,37 @@
      "dps": 0.0
     },
     "2027E": {
-     "rev": 3456.73,
-     "op": 127.51,
+     "rev": 3791.81,
+     "op": 139.86,
      "opm": 0.0369,
-     "ni_ctrl": 39.16,
-     "eps": 162.2,
-     "bps": 5948.2,
-     "per": 14.09,
+     "ni_ctrl": 42.77,
+     "eps": 177.2,
+     "bps": 5963.1,
+     "per": 12.9,
      "pbr": 0.38,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 3303.39,
-     "op": 121.85,
+     "rev": 4748.05,
+     "op": 175.13,
      "opm": 0.0369,
-     "ni_ctrl": 38.06,
-     "eps": 157.7,
-     "bps": 6105.8,
-     "per": 14.49,
+     "ni_ctrl": 53.76,
+     "eps": 222.6,
+     "bps": 6185.8,
+     "per": 10.27,
      "pbr": 0.37,
      "dps": 0.0
     }
    },
-   "per_now": 14.23,
+   "per_now": 13.98,
    "pbr_now": 0.4,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 16.4,
     "op_wape_pct": 90.2,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 0
@@ -1085,10 +1264,13 @@
    },
    "per_now": 126.79,
    "pbr_now": 0.88,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 16.0,
     "op_wape_pct": 180.2,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -1103,12 +1285,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 19,
     "corr": 0.9694,
-    "n": 16
+    "n": 16,
+    "wape_link": 15.6,
+    "wape_trend": 21.1,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -1123,45 +1311,48 @@
      "dps": 400.0
     },
     "2026E": {
-     "rev": 8619.16,
-     "op": 1072.84,
+     "rev": 8629.23,
+     "op": 1073.95,
      "opm": 0.1245,
-     "ni_ctrl": 833.1,
-     "eps": 2782.6,
-     "bps": 11028.2,
+     "ni_ctrl": 833.94,
+     "eps": 2785.4,
+     "bps": 11031.0,
      "per": 5.61,
      "pbr": 1.42,
      "dps": 400.0
     },
     "2027E": {
-     "rev": 9610.01,
-     "op": 1056.75,
+     "rev": 10438.52,
+     "op": 1147.85,
      "opm": 0.11,
-     "ni_ctrl": 821.94,
-     "eps": 2745.3,
-     "bps": 13373.4,
-     "per": 5.69,
-     "pbr": 1.17,
+     "ni_ctrl": 891.36,
+     "eps": 2977.1,
+     "bps": 13608.1,
+     "per": 5.25,
+     "pbr": 1.15,
      "dps": 400.0
     },
     "2028E": {
-     "rev": 9040.64,
-     "op": 994.14,
+     "rev": 12739.28,
+     "op": 1400.86,
      "opm": 0.11,
-     "ni_ctrl": 786.18,
-     "eps": 2625.7,
-     "bps": 15599.1,
-     "per": 5.95,
-     "pbr": 1.0,
+     "ni_ctrl": 1097.82,
+     "eps": 3666.6,
+     "bps": 16874.7,
+     "per": 4.26,
+     "pbr": 0.93,
      "dps": 400.0
     }
    },
-   "per_now": 5.88,
+   "per_now": 5.77,
    "pbr_now": 1.61,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 15.6,
     "op_wape_pct": 35.5,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -1223,10 +1414,13 @@
    },
    "per_now": 260.52,
    "pbr_now": null,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 13.1,
     "op_wape_pct": 20.0,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -1254,44 +1448,47 @@
     },
     "2026E": {
      "rev": 169950.99,
-     "op": 20872.23,
-     "opm": 0.1228,
-     "ni_ctrl": 20096.97,
-     "eps": 6559.8,
-     "bps": 27224.8,
-     "per": 12.06,
-     "pbr": 2.91,
+     "op": 21768.76,
+     "opm": 0.1281,
+     "ni_ctrl": 20953.43,
+     "eps": 6839.3,
+     "bps": 27504.4,
+     "per": 11.57,
+     "pbr": 2.88,
      "dps": 0.0
     },
     "2027E": {
      "rev": 163255.71,
-     "op": 17482.83,
-     "opm": 0.1071,
-     "ni_ctrl": 16198.22,
-     "eps": 5287.4,
-     "bps": 32512.2,
-     "per": 14.96,
-     "pbr": 2.43,
+     "op": 19902.86,
+     "opm": 0.1219,
+     "ni_ctrl": 18573.13,
+     "eps": 6062.5,
+     "bps": 33566.9,
+     "per": 13.05,
+     "pbr": 2.36,
      "dps": 0.0
     },
     "2028E": {
      "rev": 92481.31,
-     "op": 10091.93,
-     "opm": 0.1091,
-     "ni_ctrl": 9838.87,
-     "eps": 3211.5,
-     "bps": 35723.7,
-     "per": 24.63,
-     "pbr": 2.21,
+     "op": 11295.5,
+     "opm": 0.1221,
+     "ni_ctrl": 11154.86,
+     "eps": 3641.1,
+     "bps": 37208.1,
+     "per": 21.72,
+     "pbr": 2.13,
      "dps": 0.0
     }
    },
-   "per_now": 14.96,
+   "per_now": 13.31,
    "pbr_now": 3.22,
+   "new_orders_included": false,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 17.8,
-    "op_wape_pct": 51.0,
-    "n": 4
+    "op_wape_pct": 51.1,
+    "n": 4,
+    "driver_at_freeze": "sls_marine_plus_uncovered_backlog_runoff"
    },
    "identities_ok": true,
    "warnings_n": 15
@@ -1300,18 +1497,24 @@
    "stock": "054180",
    "name": "메디콕스",
    "role": "equip",
-   "status": "full",
+   "status": "partial",
    "last_actual": "2026Q2",
    "fin_quarters": 19,
-   "driver": "customer_yard_revenue_weighted",
+   "driver": "trend_seasonal",
    "link": {
-    "adopted": true,
+    "adopted": false,
+    "rejected_by": "oos",
     "weights_key": "suppliers_mentions",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 19,
     "corr": 0.7498,
-    "n": 16
+    "n": 16,
+    "wape_link": 32.3,
+    "wape_trend": 20.9,
+    "oos_adopted": false,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -1326,48 +1529,51 @@
      "dps": 0.0
     },
     "2026E": {
-     "rev": 313.28,
-     "op": -56.95,
-     "opm": -0.1818,
-     "ni_ctrl": -62.66,
-     "eps": -1135.4,
-     "bps": 7407.6,
+     "rev": 247.06,
+     "op": -44.28,
+     "opm": -0.1792,
+     "ni_ctrl": -49.97,
+     "eps": -905.5,
+     "bps": 7637.6,
      "per": null,
-     "pbr": 0.31,
+     "pbr": 0.3,
      "dps": 0.0
     },
     "2027E": {
-     "rev": 387.77,
-     "op": -74.14,
+     "rev": 223.31,
+     "op": -42.7,
      "opm": -0.1912,
-     "ni_ctrl": -76.93,
-     "eps": -1394.2,
-     "bps": 6013.4,
+     "ni_ctrl": -44.95,
+     "eps": -814.5,
+     "bps": 6823.1,
      "per": null,
-     "pbr": 0.38,
+     "pbr": 0.34,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 373.11,
-     "op": -71.34,
+     "rev": 212.7,
+     "op": -40.67,
      "opm": -0.1912,
-     "ni_ctrl": -75.85,
-     "eps": -1374.4,
-     "bps": 4639.0,
+     "ni_ctrl": -43.91,
+     "eps": -795.7,
+     "bps": 6027.3,
      "per": null,
-     "pbr": 0.49,
+     "pbr": 0.38,
      "dps": 0.0
     }
    },
    "per_now": null,
    "pbr_now": 0.28,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
-    "revenue_wape_pct": 20.0,
-    "op_wape_pct": 43.6,
-    "n": 4
+    "revenue_wape_pct": 32.3,
+    "op_wape_pct": 58.4,
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
-   "warnings_n": 1
+   "warnings_n": 2
   },
   {
    "stock": "054540",
@@ -1379,12 +1585,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 1,
     "transform": "level",
     "window_q": 8,
     "corr": 0.9289,
-    "n": 8
+    "n": 8,
+    "wape_link": 62.3,
+    "wape_trend": 64.6,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -1410,34 +1622,37 @@
      "dps": 165.0
     },
     "2027E": {
-     "rev": 3587.65,
-     "op": 320.21,
+     "rev": 3935.44,
+     "op": 351.26,
      "opm": 0.0893,
-     "ni_ctrl": 290.46,
-     "eps": 2234.3,
-     "bps": 10411.7,
-     "per": 2.95,
-     "pbr": 0.63,
+     "ni_ctrl": 316.33,
+     "eps": 2433.2,
+     "bps": 10610.6,
+     "per": 2.71,
+     "pbr": 0.62,
      "dps": 165.0
     },
     "2028E": {
-     "rev": 3428.51,
-     "op": 306.01,
+     "rev": 4927.91,
+     "op": 439.86,
      "opm": 0.0893,
-     "ni_ctrl": 285.48,
-     "eps": 2196.1,
-     "bps": 12442.8,
-     "per": 3.01,
-     "pbr": 0.53,
+     "ni_ctrl": 398.01,
+     "eps": 3061.6,
+     "bps": 13507.2,
+     "per": 2.16,
+     "pbr": 0.49,
      "dps": 165.0
     }
    },
-   "per_now": 3.0,
+   "per_now": 2.95,
    "pbr_now": 0.91,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 62.3,
     "op_wape_pct": 35.9,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -1452,12 +1667,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 2,
     "transform": "ma4",
     "window_q": 19,
     "corr": 0.768,
-    "n": 14
+    "n": 14,
+    "wape_link": 11.1,
+    "wape_trend": 14.0,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -1483,34 +1704,37 @@
      "dps": 0.0
     },
     "2027E": {
-     "rev": 280.54,
-     "op": -16.23,
+     "rev": 285.55,
+     "op": -16.52,
      "opm": -0.0579,
-     "ni_ctrl": -10.71,
-     "eps": -95.9,
-     "bps": 3512.9,
+     "ni_ctrl": -11.0,
+     "eps": -98.6,
+     "bps": 3510.3,
      "per": null,
      "pbr": 1.49,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 283.89,
-     "op": -16.44,
+     "rev": 344.3,
+     "op": -19.92,
      "opm": -0.0579,
-     "ni_ctrl": -11.18,
-     "eps": -100.1,
-     "bps": 3412.8,
+     "ni_ctrl": -14.71,
+     "eps": -131.7,
+     "bps": 3378.6,
      "per": null,
-     "pbr": 1.53,
+     "pbr": 1.55,
      "dps": 0.0
     }
    },
    "per_now": null,
    "pbr_now": 1.43,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 14.0,
     "op_wape_pct": 60.1,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -1519,18 +1743,24 @@
    "stock": "064820",
    "name": "케이프",
    "role": "equip",
-   "status": "full",
+   "status": "partial",
    "last_actual": "2026Q2",
    "fin_quarters": 19,
-   "driver": "customer_yard_revenue_weighted",
+   "driver": "trend_seasonal",
    "link": {
-    "adopted": true,
+    "adopted": false,
+    "rejected_by": "oos",
     "weights_key": "suppliers_mentions",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.9408,
-    "n": 8
+    "n": 8,
+    "wape_link": 13.1,
+    "wape_trend": 11.9,
+    "oos_adopted": false,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -1545,48 +1775,51 @@
      "dps": 700.0
     },
     "2026E": {
-     "rev": 7385.7,
-     "op": 585.29,
-     "opm": 0.0792,
-     "ni_ctrl": 557.75,
-     "eps": 1807.4,
-     "bps": 11179.3,
-     "per": 4.17,
-     "pbr": 0.67,
+     "rev": 6901.02,
+     "op": 551.05,
+     "opm": 0.0799,
+     "ni_ctrl": -2644.47,
+     "eps": -8569.2,
+     "bps": 802.8,
+     "per": null,
+     "pbr": 9.38,
      "dps": 700.0
     },
     "2027E": {
-     "rev": 8677.68,
-     "op": 613.29,
+     "rev": 7797.51,
+     "op": 551.09,
      "opm": 0.0707,
-     "ni_ctrl": 832.94,
-     "eps": 2699.0,
-     "bps": 13178.4,
-     "per": 2.79,
-     "pbr": 0.57,
+     "ni_ctrl": -6082.28,
+     "eps": -19709.1,
+     "bps": -19606.4,
+     "per": null,
+     "pbr": null,
      "dps": 700.0
     },
     "2028E": {
-     "rev": 8361.85,
-     "op": 590.97,
+     "rev": 8310.4,
+     "op": 587.34,
      "opm": 0.0707,
-     "ni_ctrl": 877.29,
-     "eps": 2842.8,
-     "bps": 15321.1,
-     "per": 2.65,
-     "pbr": 0.49,
+     "ni_ctrl": -6741.04,
+     "eps": -21843.8,
+     "bps": -42150.2,
+     "per": null,
+     "pbr": null,
      "dps": 700.0
     }
    },
-   "per_now": 2.94,
+   "per_now": null,
    "pbr_now": 0.75,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 11.9,
     "op_wape_pct": 94.5,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
-   "warnings_n": 1
+   "warnings_n": 2
   },
   {
    "stock": "065570",
@@ -1645,10 +1878,13 @@
    },
    "per_now": null,
    "pbr_now": 0.85,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 25.7,
     "op_wape_pct": 341.0,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -1663,12 +1899,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 4,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.9203,
-    "n": 8
+    "n": 8,
+    "wape_link": 11.5,
+    "wape_trend": 58.0,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -1694,34 +1936,37 @@
      "dps": 6000.0
     },
     "2027E": {
-     "rev": 1195.92,
-     "op": 221.58,
+     "rev": 1197.28,
+     "op": 221.84,
      "opm": 0.1853,
-     "ni_ctrl": 198.96,
-     "eps": 3952.7,
-     "bps": 20711.4,
-     "per": 11.38,
+     "ni_ctrl": 199.16,
+     "eps": 3956.7,
+     "bps": 20715.4,
+     "per": 11.37,
      "pbr": 2.17,
      "dps": 6000.0
     },
     "2028E": {
-     "rev": 1333.23,
-     "op": 247.03,
+     "rev": 1456.13,
+     "op": 269.79,
      "opm": 0.1853,
-     "ni_ctrl": 216.84,
-     "eps": 4307.6,
-     "bps": 19019.1,
-     "per": 10.45,
-     "pbr": 2.37,
+     "ni_ctrl": 235.2,
+     "eps": 4672.7,
+     "bps": 19388.1,
+     "per": 9.63,
+     "pbr": 2.32,
      "dps": 6000.0
     }
    },
    "per_now": 12.25,
    "pbr_now": 2.14,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 58.0,
     "op_wape_pct": 35.0,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 0
@@ -1730,18 +1975,24 @@
    "stock": "071970",
    "name": "HD현대마린엔진",
    "role": "engine",
-   "status": "full",
+   "status": "partial",
    "last_actual": "2026Q2",
    "fin_quarters": 19,
-   "driver": "customer_yard_revenue_weighted",
+   "driver": "trend_seasonal",
    "link": {
-    "adopted": true,
+    "adopted": false,
+    "rejected_by": "oos",
     "weights_key": "suppliers_mentions",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.9964,
-    "n": 8
+    "n": 8,
+    "wape_link": 25.2,
+    "wape_trend": 12.9,
+    "oos_adopted": false,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -1756,48 +2007,51 @@
      "dps": 0.0
     },
     "2026E": {
-     "rev": 5477.48,
-     "op": 1156.2,
-     "opm": 0.2111,
-     "ni_ctrl": 1163.9,
-     "eps": 3431.2,
-     "bps": 17051.5,
-     "per": 13.87,
-     "pbr": 2.79,
+     "rev": 5632.04,
+     "op": 1184.16,
+     "opm": 0.2103,
+     "ni_ctrl": 1190.74,
+     "eps": 3510.3,
+     "bps": 17130.6,
+     "per": 13.56,
+     "pbr": 2.78,
      "dps": 0.0
     },
     "2027E": {
-     "rev": 5361.59,
-     "op": 969.96,
+     "rev": 7158.38,
+     "op": 1295.0,
      "opm": 0.1809,
-     "ni_ctrl": 1098.15,
-     "eps": 3237.3,
-     "bps": 20288.8,
-     "per": 14.7,
-     "pbr": 2.35,
+     "ni_ctrl": 1414.81,
+     "eps": 4170.9,
+     "bps": 21301.4,
+     "per": 11.41,
+     "pbr": 2.23,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 5118.97,
-     "op": 926.06,
+     "rev": 8152.36,
+     "op": 1474.83,
      "opm": 0.1809,
-     "ni_ctrl": 1102.24,
-     "eps": 3249.4,
-     "bps": 23538.2,
-     "per": 14.65,
-     "pbr": 2.02,
+     "ni_ctrl": 1648.43,
+     "eps": 4859.5,
+     "bps": 26161.0,
+     "per": 9.8,
+     "pbr": 1.82,
      "dps": 0.0
     }
    },
-   "per_now": 15.37,
+   "per_now": 12.5,
    "pbr_now": 3.09,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 25.2,
     "op_wape_pct": 66.4,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
-   "warnings_n": 2
+   "warnings_n": 3
   },
   {
    "stock": "073010",
@@ -1856,10 +2110,13 @@
    },
    "per_now": 7.97,
    "pbr_now": 1.49,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 13.0,
     "op_wape_pct": 18.7,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 3
@@ -1874,12 +2131,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "ref_base",
     "lag_q": 1,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.9111,
-    "n": 8
+    "n": 8,
+    "wape_link": 12.0,
+    "wape_trend": 12.3,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -1894,45 +2157,48 @@
      "dps": 225.0
     },
     "2026E": {
-     "rev": 4134.53,
-     "op": 732.26,
+     "rev": 4135.9,
+     "op": 732.49,
      "opm": 0.1771,
-     "ni_ctrl": 557.78,
-     "eps": 981.2,
-     "bps": 4763.8,
-     "per": 9.89,
+     "ni_ctrl": 557.94,
+     "eps": 981.5,
+     "bps": 4764.1,
+     "per": 9.88,
      "pbr": 2.04,
      "dps": 225.0
     },
     "2027E": {
-     "rev": 4881.27,
-     "op": 822.63,
+     "rev": 5182.86,
+     "op": 873.47,
      "opm": 0.1685,
-     "ni_ctrl": 536.55,
-     "eps": 943.8,
-     "bps": 5482.6,
-     "per": 10.28,
-     "pbr": 1.77,
+     "ni_ctrl": 570.45,
+     "eps": 1003.5,
+     "bps": 5542.5,
+     "per": 9.67,
+     "pbr": 1.75,
      "dps": 225.0
     },
     "2028E": {
-     "rev": 4745.38,
-     "op": 799.72,
+     "rev": 6503.12,
+     "op": 1095.96,
      "opm": 0.1685,
-     "ni_ctrl": 532.22,
-     "eps": 936.2,
-     "bps": 6193.8,
-     "per": 10.36,
-     "pbr": 1.57,
+     "ni_ctrl": 731.27,
+     "eps": 1286.3,
+     "bps": 6603.8,
+     "per": 7.54,
+     "pbr": 1.47,
      "dps": 225.0
     }
    },
-   "per_now": 10.97,
+   "per_now": 10.87,
    "pbr_now": 2.24,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 11.7,
     "op_wape_pct": 52.6,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -1941,18 +2207,24 @@
    "stock": "077970",
    "name": "STX엔진",
    "role": "engine",
-   "status": "full",
+   "status": "partial",
    "last_actual": "2026Q2",
    "fin_quarters": 19,
-   "driver": "customer_yard_revenue_weighted",
+   "driver": "trend_seasonal",
    "link": {
-    "adopted": true,
+    "adopted": false,
+    "rejected_by": "oos",
     "weights_key": "suppliers_mentions",
     "lag_q": 3,
     "transform": "ma4",
     "window_q": 19,
     "corr": 0.9869,
-    "n": 13
+    "n": 13,
+    "wape_link": 20.9,
+    "wape_trend": 12.0,
+    "oos_adopted": false,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -1967,48 +2239,51 @@
      "dps": 0.0
     },
     "2026E": {
-     "rev": 9483.42,
-     "op": 897.02,
-     "opm": 0.0946,
-     "ni_ctrl": 790.69,
-     "eps": 1969.8,
-     "bps": 10542.9,
-     "per": 10.94,
-     "pbr": 2.04,
+     "rev": 8808.08,
+     "op": 838.63,
+     "opm": 0.0952,
+     "ni_ctrl": 735.12,
+     "eps": 1831.4,
+     "bps": 10404.5,
+     "per": 11.77,
+     "pbr": 2.07,
      "dps": 0.0
     },
     "2027E": {
-     "rev": 12150.05,
-     "op": 1050.51,
+     "rev": 9428.98,
+     "op": 815.24,
      "opm": 0.0865,
-     "ni_ctrl": 917.03,
-     "eps": 2284.7,
-     "bps": 12827.6,
-     "per": 9.43,
-     "pbr": 1.68,
+     "ni_ctrl": 691.65,
+     "eps": 1723.2,
+     "bps": 12127.7,
+     "per": 12.51,
+     "pbr": 1.78,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 12341.93,
-     "op": 1067.1,
+     "rev": 9763.88,
+     "op": 844.2,
      "opm": 0.0865,
-     "ni_ctrl": 951.37,
-     "eps": 2370.2,
-     "bps": 15197.8,
-     "per": 9.09,
-     "pbr": 1.42,
+     "ni_ctrl": 733.06,
+     "eps": 1826.2,
+     "bps": 13954.0,
+     "per": 11.8,
+     "pbr": 1.54,
      "dps": 0.0
     }
    },
-   "per_now": 11.17,
+   "per_now": 12.99,
    "pbr_now": 2.26,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
-    "revenue_wape_pct": 20.9,
-    "op_wape_pct": 48.8,
-    "n": 4
+    "revenue_wape_pct": 12.0,
+    "op_wape_pct": 47.1,
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
-   "warnings_n": 1
+   "warnings_n": 2
   },
   {
    "stock": "079430",
@@ -2020,12 +2295,18 @@
    "driver": "trend_seasonal",
    "link": {
     "adopted": false,
+    "rejected_by": "significance",
     "weights_key": "suppliers_mentions",
     "lag_q": 1,
     "transform": "yoy",
     "window_q": 8,
     "corr": 0.5292,
-    "n": 8
+    "n": 8,
+    "wape_link": null,
+    "wape_trend": null,
+    "oos_adopted": false,
+    "oos_freeze": null,
+    "oos_n": null
    },
    "fy": {
     "2025A": {
@@ -2075,10 +2356,13 @@
    },
    "per_now": 10.79,
    "pbr_now": 0.28,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
-    "revenue_wape_pct": 46.6,
-    "op_wape_pct": 149.1,
-    "n": 4
+    "revenue_wape_pct": 53.5,
+    "op_wape_pct": 159.0,
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -2093,12 +2377,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 2,
     "transform": "ma4",
     "window_q": 19,
     "corr": 0.9951,
-    "n": 14
+    "n": 14,
+    "wape_link": 9.7,
+    "wape_trend": 22.9,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -2124,34 +2414,37 @@
      "dps": 0.0
     },
     "2027E": {
-     "rev": 18818.98,
-     "op": 1662.46,
+     "rev": 19080.06,
+     "op": 1685.53,
      "opm": 0.0883,
-     "ni_ctrl": 1744.63,
-     "eps": 2091.3,
-     "bps": 10780.9,
-     "per": 22.43,
-     "pbr": 4.35,
+     "ni_ctrl": 1766.61,
+     "eps": 2117.6,
+     "bps": 10807.3,
+     "per": 22.15,
+     "pbr": 4.34,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 18400.31,
-     "op": 1625.48,
+     "rev": 21312.48,
+     "op": 1882.75,
      "opm": 0.0883,
-     "ni_ctrl": 1776.05,
-     "eps": 2128.8,
-     "bps": 12909.8,
-     "per": 22.03,
-     "pbr": 3.63,
+     "ni_ctrl": 2023.49,
+     "eps": 2425.5,
+     "bps": 13232.8,
+     "per": 19.34,
+     "pbr": 3.54,
      "dps": 0.0
     }
    },
-   "per_now": 24.93,
+   "per_now": 24.92,
    "pbr_now": 6.02,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 9.7,
     "op_wape_pct": 44.3,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -2160,18 +2453,24 @@
    "stock": "085310",
    "name": "엔케이",
    "role": "equip",
-   "status": "full",
+   "status": "partial",
    "last_actual": "2026Q2",
    "fin_quarters": 19,
-   "driver": "customer_yard_revenue_weighted",
+   "driver": "trend_seasonal",
    "link": {
-    "adopted": true,
+    "adopted": false,
+    "rejected_by": "oos",
     "weights_key": "suppliers_mentions",
     "lag_q": 4,
     "transform": "ma4",
     "window_q": 12,
     "corr": 0.9606,
-    "n": 12
+    "n": 12,
+    "wape_link": 8.3,
+    "wape_trend": 6.6,
+    "oos_adopted": false,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -2186,65 +2485,74 @@
      "dps": 10.0
     },
     "2026E": {
-     "rev": 1481.68,
-     "op": 25.61,
-     "opm": 0.0173,
-     "ni_ctrl": 64.46,
-     "eps": 565.6,
-     "bps": 24279.8,
-     "per": 15.45,
+     "rev": 1697.62,
+     "op": 22.57,
+     "opm": 0.0133,
+     "ni_ctrl": 61.47,
+     "eps": 522.4,
+     "bps": 24236.6,
+     "per": 16.73,
      "pbr": 0.36,
      "dps": 10.0
     },
     "2027E": {
-     "rev": 1735.53,
-     "op": -24.42,
+     "rev": 2058.07,
+     "op": -28.94,
      "opm": -0.0141,
-     "ni_ctrl": -0.89,
-     "eps": -12.9,
-     "bps": 24256.9,
+     "ni_ctrl": -5.47,
+     "eps": -78.8,
+     "bps": 24147.8,
      "per": null,
      "pbr": 0.36,
      "dps": 10.0
     },
     "2028E": {
-     "rev": 1912.44,
-     "op": -26.89,
+     "rev": 2281.22,
+     "op": -32.08,
      "opm": -0.0141,
-     "ni_ctrl": -3.4,
-     "eps": -49.0,
-     "bps": 24198.0,
+     "ni_ctrl": -8.85,
+     "eps": -127.3,
+     "bps": 24010.5,
      "per": null,
      "pbr": 0.36,
      "dps": 10.0
     }
    },
-   "per_now": 430.54,
+   "per_now": null,
    "pbr_now": 0.36,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 8.3,
     "op_wape_pct": 129.2,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
-   "warnings_n": 1
+   "warnings_n": 2
   },
   {
    "stock": "086670",
    "name": "비엠티",
    "role": "equip",
-   "status": "full",
+   "status": "partial",
    "last_actual": "2026Q2",
    "fin_quarters": 19,
-   "driver": "customer_yard_revenue_weighted",
+   "driver": "trend_seasonal",
    "link": {
-    "adopted": true,
+    "adopted": false,
+    "rejected_by": "oos",
     "weights_key": "suppliers_mentions",
     "lag_q": 1,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.9062,
-    "n": 8
+    "n": 8,
+    "wape_link": 14.7,
+    "wape_trend": 11.6,
+    "oos_adopted": false,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -2259,48 +2567,51 @@
      "dps": 600.0
     },
     "2026E": {
-     "rev": 1758.52,
-     "op": 155.31,
-     "opm": 0.0883,
-     "ni_ctrl": 149.3,
-     "eps": 1504.1,
-     "bps": 15957.0,
-     "per": 12.98,
-     "pbr": 1.22,
+     "rev": 1605.05,
+     "op": 142.82,
+     "opm": 0.089,
+     "ni_ctrl": 138.96,
+     "eps": 1399.9,
+     "bps": 15852.8,
+     "per": 13.95,
+     "pbr": 1.23,
      "dps": 600.0
     },
     "2027E": {
-     "rev": 2095.19,
-     "op": 170.64,
+     "rev": 1693.91,
+     "op": 137.96,
      "opm": 0.0814,
-     "ni_ctrl": 146.48,
-     "eps": 1475.7,
-     "bps": 16832.8,
-     "per": 13.23,
-     "pbr": 1.16,
+     "ni_ctrl": 119.04,
+     "eps": 1199.2,
+     "bps": 16452.1,
+     "per": 16.29,
+     "pbr": 1.19,
      "dps": 600.0
     },
     "2028E": {
-     "rev": 1996.21,
-     "op": 162.57,
+     "rev": 1741.06,
+     "op": 141.8,
      "opm": 0.0814,
-     "ni_ctrl": 141.63,
-     "eps": 1426.9,
-     "bps": 17659.6,
-     "per": 13.69,
-     "pbr": 1.11,
+     "ni_ctrl": 123.49,
+     "eps": 1244.2,
+     "bps": 17096.3,
+     "per": 15.7,
+     "pbr": 1.14,
      "dps": 600.0
     }
    },
-   "per_now": 13.97,
+   "per_now": 16.63,
    "pbr_now": 1.28,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 11.6,
     "op_wape_pct": 52.5,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
-   "warnings_n": 1
+   "warnings_n": 2
   },
   {
    "stock": "092460",
@@ -2359,10 +2670,13 @@
    },
    "per_now": 10.18,
    "pbr_now": 1.4,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 9.6,
     "op_wape_pct": 13.8,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -2377,12 +2691,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.8257,
-    "n": 8
+    "n": 8,
+    "wape_link": 26.5,
+    "wape_trend": 37.4,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -2397,10 +2717,10 @@
      "dps": 0.0
     },
     "2026E": {
-     "rev": 851.87,
+     "rev": 852.94,
      "op": 14.01,
      "opm": 0.0164,
-     "ni_ctrl": 7.09,
+     "ni_ctrl": 7.1,
      "eps": 19.8,
      "bps": 886.2,
      "per": 94.85,
@@ -2408,34 +2728,37 @@
      "dps": 0.0
     },
     "2027E": {
-     "rev": 915.3,
-     "op": 1.13,
+     "rev": 1001.25,
+     "op": 1.22,
      "opm": 0.0012,
-     "ni_ctrl": 3.23,
-     "eps": 8.9,
-     "bps": 895.2,
-     "per": 211.01,
+     "ni_ctrl": 3.32,
+     "eps": 9.1,
+     "bps": 895.4,
+     "per": 206.37,
      "pbr": 2.1,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 861.89,
-     "op": 1.05,
+     "rev": 1242.58,
+     "op": 1.51,
      "opm": 0.0012,
-     "ni_ctrl": 3.22,
-     "eps": 8.9,
-     "bps": 904.2,
-     "per": 211.01,
-     "pbr": 2.08,
+     "ni_ctrl": 3.59,
+     "eps": 10.0,
+     "bps": 905.4,
+     "per": 187.8,
+     "pbr": 2.07,
      "dps": 0.0
     }
    },
    "per_now": 211.01,
    "pbr_now": 2.13,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 37.4,
     "op_wape_pct": 99.6,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -2463,44 +2786,47 @@
     },
     "2026E": {
      "rev": 25134.64,
-     "op": 2017.69,
-     "opm": 0.0803,
-     "ni_ctrl": 1805.08,
-     "eps": 1999.2,
-     "bps": 9363.5,
-     "per": 7.28,
-     "pbr": 1.55,
+     "op": 1890.33,
+     "opm": 0.0752,
+     "ni_ctrl": 1683.77,
+     "eps": 1864.9,
+     "bps": 9229.1,
+     "per": 7.8,
+     "pbr": 1.58,
      "dps": 0.0
     },
     "2027E": {
      "rev": 21882.64,
-     "op": 1994.63,
-     "opm": 0.0912,
-     "ni_ctrl": 1644.08,
-     "eps": 1820.8,
-     "bps": 11184.4,
-     "per": 7.99,
-     "pbr": 1.3,
+     "op": 1754.59,
+     "opm": 0.0802,
+     "ni_ctrl": 1410.72,
+     "eps": 1562.4,
+     "bps": 10791.5,
+     "per": 9.31,
+     "pbr": 1.35,
      "dps": 0.0
     },
     "2028E": {
      "rev": 16346.81,
-     "op": 1485.01,
-     "opm": 0.0908,
-     "ni_ctrl": 1194.33,
-     "eps": 1322.8,
-     "bps": 12507.1,
-     "per": 11.0,
-     "pbr": 1.16,
+     "op": 1310.71,
+     "opm": 0.0802,
+     "ni_ctrl": 1018.43,
+     "eps": 1128.0,
+     "bps": 11919.5,
+     "per": 12.9,
+     "pbr": 1.22,
      "dps": 0.0
     }
    },
-   "per_now": 6.87,
+   "per_now": 7.94,
    "pbr_now": 1.74,
+   "new_orders_included": false,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 19.4,
     "op_wape_pct": 100.0,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "sls_marine_plus_uncovered_backlog_runoff"
    },
    "identities_ok": true,
    "warnings_n": 3
@@ -2515,12 +2841,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "ref_base",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 12,
     "corr": 0.985,
-    "n": 12
+    "n": 12,
+    "wape_link": 14.2,
+    "wape_trend": 28.2,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -2535,45 +2867,48 @@
      "dps": 0.0
     },
     "2026E": {
-     "rev": 468.58,
-     "op": 100.98,
-     "opm": 0.2155,
-     "ni_ctrl": 87.7,
-     "eps": 628.8,
-     "bps": 4206.5,
-     "per": 4.9,
+     "rev": 469.17,
+     "op": 101.08,
+     "opm": 0.2154,
+     "ni_ctrl": 87.8,
+     "eps": 629.5,
+     "bps": 4207.3,
+     "per": 4.89,
      "pbr": 0.73,
      "dps": 0.0
     },
     "2027E": {
-     "rev": 479.62,
-     "op": 85.56,
+     "rev": 523.6,
+     "op": 93.39,
      "opm": 0.1784,
-     "ni_ctrl": 83.92,
-     "eps": 601.7,
-     "bps": 4808.3,
-     "per": 5.12,
-     "pbr": 0.64,
+     "ni_ctrl": 91.39,
+     "eps": 655.2,
+     "bps": 4862.5,
+     "per": 4.7,
+     "pbr": 0.63,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 460.64,
-     "op": 82.17,
+     "rev": 647.91,
+     "op": 115.57,
      "opm": 0.1784,
-     "ni_ctrl": 81.56,
-     "eps": 584.9,
-     "bps": 5393.2,
-     "per": 5.27,
-     "pbr": 0.57,
+     "ni_ctrl": 113.48,
+     "eps": 813.6,
+     "bps": 5676.1,
+     "per": 3.79,
+     "pbr": 0.54,
      "dps": 0.0
     }
    },
-   "per_now": 5.28,
+   "per_now": 5.2,
    "pbr_now": 0.79,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 14.2,
     "op_wape_pct": 75.4,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 0
@@ -2635,10 +2970,13 @@
    },
    "per_now": 18.76,
    "pbr_now": 0.86,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 37.4,
     "op_wape_pct": 12.8,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -2653,12 +2991,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.923,
-    "n": 8
+    "n": 8,
+    "wape_link": 19.0,
+    "wape_trend": 17.8,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -2673,45 +3017,48 @@
      "dps": 10.0
     },
     "2026E": {
-     "rev": 568.79,
-     "op": 2.52,
+     "rev": 569.43,
+     "op": 2.51,
      "opm": 0.0044,
-     "ni_ctrl": 10.51,
-     "eps": 83.4,
-     "bps": 5433.1,
-     "per": 36.93,
+     "ni_ctrl": 10.5,
+     "eps": 83.3,
+     "bps": 5433.0,
+     "per": 36.97,
      "pbr": 0.57,
      "dps": 10.0
     },
     "2027E": {
-     "rev": 679.75,
-     "op": -7.19,
-     "opm": -0.0106,
-     "ni_ctrl": 1.6,
-     "eps": 12.7,
-     "bps": 5435.8,
-     "per": 242.52,
+     "rev": 735.57,
+     "op": -7.76,
+     "opm": -0.0105,
+     "ni_ctrl": 1.1,
+     "eps": 8.8,
+     "bps": 5431.8,
+     "per": 350.0,
      "pbr": 0.57,
      "dps": 10.0
     },
     "2028E": {
-     "rev": 654.31,
-     "op": -6.91,
+     "rev": 908.99,
+     "op": -9.6,
      "opm": -0.0106,
-     "ni_ctrl": 1.86,
-     "eps": 14.7,
-     "bps": 5440.6,
-     "per": 209.52,
+     "ni_ctrl": -0.59,
+     "eps": -4.7,
+     "bps": 5417.1,
+     "per": null,
      "pbr": 0.57,
      "dps": 10.0
     }
    },
-   "per_now": 223.19,
+   "per_now": 236.92,
    "pbr_now": 0.57,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 17.8,
     "op_wape_pct": 150.6,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -2726,12 +3073,18 @@
    "driver": "trend_seasonal",
    "link": {
     "adopted": false,
+    "rejected_by": "significance",
     "weights_key": "suppliers_mentions",
     "lag_q": 3,
     "transform": "level",
     "window_q": 8,
     "corr": 0.4532,
-    "n": 8
+    "n": 8,
+    "wape_link": null,
+    "wape_trend": null,
+    "oos_adopted": false,
+    "oos_freeze": null,
+    "oos_n": null
    },
    "fy": {
     "2025A": {
@@ -2781,10 +3134,13 @@
    },
    "per_now": null,
    "pbr_now": 1.47,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 38.4,
     "op_wape_pct": 77.8,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 3
@@ -2799,12 +3155,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 2,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.8806,
-    "n": 8
+    "n": 8,
+    "wape_link": 8.3,
+    "wape_trend": 16.1,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -2830,34 +3192,37 @@
      "dps": 750.0
     },
     "2027E": {
-     "rev": 1702.2,
-     "op": 256.6,
+     "rev": 1728.05,
+     "op": 260.49,
      "opm": 0.1507,
-     "ni_ctrl": 328.52,
-     "eps": 719.0,
-     "bps": 8044.3,
-     "per": 8.57,
+     "ni_ctrl": 331.58,
+     "eps": 725.7,
+     "bps": 8051.0,
+     "per": 8.49,
      "pbr": 0.77,
      "dps": 750.0
     },
     "2028E": {
-     "rev": 1731.75,
-     "op": 261.05,
+     "rev": 2079.7,
+     "op": 313.5,
      "opm": 0.1507,
-     "ni_ctrl": 331.45,
-     "eps": 725.4,
-     "bps": 8019.6,
-     "per": 8.49,
-     "pbr": 0.77,
+     "ni_ctrl": 373.17,
+     "eps": 816.7,
+     "bps": 8117.6,
+     "per": 7.54,
+     "pbr": 0.76,
      "dps": 750.0
     }
    },
-   "per_now": 9.11,
+   "per_now": 9.1,
    "pbr_now": 0.79,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 16.1,
     "op_wape_pct": 51.5,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 0
@@ -2872,12 +3237,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 2,
     "transform": "ma4",
     "window_q": 19,
     "corr": 0.8881,
-    "n": 14
+    "n": 14,
+    "wape_link": 18.5,
+    "wape_trend": 18.8,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -2903,34 +3274,37 @@
      "dps": 0.0
     },
     "2027E": {
-     "rev": 851.77,
-     "op": 24.97,
+     "rev": 868.57,
+     "op": 25.47,
      "opm": 0.0293,
-     "ni_ctrl": 24.47,
-     "eps": 339.9,
-     "bps": 8056.7,
-     "per": 5.78,
+     "ni_ctrl": 24.94,
+     "eps": 346.3,
+     "bps": 8063.2,
+     "per": 5.67,
      "pbr": 0.24,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 861.54,
-     "op": 25.26,
+     "rev": 1055.22,
+     "op": 30.94,
      "opm": 0.0293,
-     "ni_ctrl": 25.12,
-     "eps": 348.9,
-     "bps": 8405.5,
-     "per": 5.63,
+     "ni_ctrl": 30.54,
+     "eps": 424.2,
+     "bps": 8487.4,
+     "per": 4.63,
      "pbr": 0.23,
      "dps": 0.0
     }
    },
    "per_now": 6.46,
    "pbr_now": 0.26,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 18.5,
     "op_wape_pct": 205.4,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -2992,10 +3366,13 @@
    },
    "per_now": 6.13,
    "pbr_now": 0.61,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 17.9,
     "op_wape_pct": 43.3,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -3010,12 +3387,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 4,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.9915,
-    "n": 8
+    "n": 8,
+    "wape_link": 17.2,
+    "wape_trend": 16.0,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -3041,34 +3424,37 @@
      "dps": 0.0
     },
     "2027E": {
-     "rev": 2334.98,
-     "op": 31.14,
+     "rev": 2337.12,
+     "op": 31.17,
      "opm": 0.0133,
-     "ni_ctrl": 24.41,
-     "eps": 65.7,
-     "bps": 1452.6,
-     "per": 14.99,
+     "ni_ctrl": 24.44,
+     "eps": 65.8,
+     "bps": 1452.7,
+     "per": 14.97,
      "pbr": 0.68,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 2574.26,
-     "op": 34.33,
+     "rev": 2754.41,
+     "op": 36.73,
      "opm": 0.0133,
-     "ni_ctrl": 26.92,
-     "eps": 72.6,
-     "bps": 1525.2,
-     "per": 13.57,
-     "pbr": 0.65,
+     "ni_ctrl": 28.8,
+     "eps": 77.6,
+     "bps": 1530.3,
+     "per": 12.69,
+     "pbr": 0.64,
      "dps": 0.0
     }
    },
    "per_now": 16.72,
    "pbr_now": 0.73,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 17.2,
     "op_wape_pct": 622.3,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -3083,12 +3469,18 @@
    "driver": "trend_seasonal",
    "link": {
     "adopted": false,
+    "rejected_by": "significance",
     "weights_key": "suppliers_mentions",
     "lag_q": 2,
     "transform": "level",
     "window_q": 8,
     "corr": 0.8748,
-    "n": 5
+    "n": 5,
+    "wape_link": null,
+    "wape_trend": null,
+    "oos_adopted": false,
+    "oos_freeze": null,
+    "oos_n": null
    },
    "fy": {
     "2025A": {
@@ -3138,10 +3530,13 @@
    },
    "per_now": null,
    "pbr_now": 1.39,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 44.7,
     "op_wape_pct": 116.1,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -3203,10 +3598,13 @@
    },
    "per_now": 3.76,
    "pbr_now": 0.26,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 8.4,
     "op_wape_pct": 19.4,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -3268,10 +3666,13 @@
    },
    "per_now": null,
    "pbr_now": 2.21,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 29.5,
     "op_wape_pct": 91.0,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 3
@@ -3333,10 +3734,13 @@
    },
    "per_now": 239.05,
    "pbr_now": 2.4,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 32.8,
     "op_wape_pct": 137.5,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -3351,12 +3755,18 @@
    "driver": "trend_seasonal",
    "link": {
     "adopted": false,
+    "rejected_by": "significance",
     "weights_key": "suppliers_mentions",
     "lag_q": 1,
     "transform": "level",
     "window_q": 8,
     "corr": 0.915,
-    "n": 4
+    "n": 4,
+    "wape_link": null,
+    "wape_trend": null,
+    "oos_adopted": false,
+    "oos_freeze": null,
+    "oos_n": null
    },
    "fy": {
     "2025A": {
@@ -3406,10 +3816,13 @@
    },
    "per_now": 86.98,
    "pbr_now": 2.92,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": null,
     "op_wape_pct": null,
-    "n": 0
+    "n": 0,
+    "driver_at_freeze": null
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -3471,10 +3884,13 @@
    },
    "per_now": 50.77,
    "pbr_now": 3.0,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 15.6,
     "op_wape_pct": 93.1,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -3501,45 +3917,103 @@
      "dps": 5661.0
     },
     "2026E": {
-     "rev": 254551.73,
-     "op": 36223.97,
-     "opm": 0.1423,
-     "ni_ctrl": 29195.93,
-     "eps": 27823.5,
-     "bps": 113086.8,
-     "per": 15.47,
-     "pbr": 3.81,
+     "rev": 255541.03,
+     "op": 38026.17,
+     "opm": 0.1488,
+     "ni_ctrl": 30559.18,
+     "eps": 29122.7,
+     "bps": 114386.0,
+     "per": 14.78,
+     "pbr": 3.76,
      "dps": 5661.0
     },
     "2027E": {
-     "rev": 259655.97,
-     "op": 32476.25,
-     "opm": 0.1251,
-     "ni_ctrl": 25738.83,
-     "eps": 24528.9,
-     "bps": 131954.7,
-     "per": 17.55,
-     "pbr": 3.26,
+     "rev": 302649.73,
+     "op": 42246.01,
+     "opm": 0.1396,
+     "ni_ctrl": 33171.25,
+     "eps": 31611.9,
+     "bps": 140336.9,
+     "per": 13.62,
+     "pbr": 3.07,
      "dps": 5661.0
     },
     "2028E": {
-     "rev": 245591.01,
-     "op": 31313.23,
-     "opm": 0.1275,
-     "ni_ctrl": 25176.32,
-     "eps": 23992.9,
-     "bps": 150286.5,
-     "per": 17.94,
-     "pbr": 2.86,
+     "rev": 376819.73,
+     "op": 52599.18,
+     "opm": 0.1396,
+     "ni_ctrl": 41481.16,
+     "eps": 39531.2,
+     "bps": 174207.1,
+     "per": 10.89,
+     "pbr": 2.47,
      "dps": 5661.0
     }
    },
-   "per_now": 17.17,
+   "per_now": 14.94,
    "pbr_now": 4.28,
+   "new_orders_included": true,
+   "scenarios": {
+    "2026E": {
+     "existing_only": {
+      "rev": 254551.73,
+      "op": 37888.06
+     },
+     "conservative": {
+      "rev": 255263.86,
+      "op": 37987.48
+     },
+     "base": {
+      "rev": 255541.03,
+      "op": 38026.17
+     },
+     "optimistic": {
+      "rev": 256076.51,
+      "op": 38100.92
+     }
+    },
+    "2027E": {
+     "existing_only": {
+      "rev": 259655.97,
+      "op": 36244.08
+     },
+     "conservative": {
+      "rev": 290602.71,
+      "op": 40564.25
+     },
+     "base": {
+      "rev": 302649.73,
+      "op": 42246.01
+     },
+     "optimistic": {
+      "rev": 325935.16,
+      "op": 45496.65
+     }
+    },
+    "2028E": {
+     "existing_only": {
+      "rev": 245591.01,
+      "op": 34279.66
+     },
+     "conservative": {
+      "rev": 340038.1,
+      "op": 47464.47
+     },
+     "base": {
+      "rev": 376819.73,
+      "op": 52599.18
+     },
+     "optimistic": {
+      "rev": 447980.33,
+      "op": 62533.2
+     }
+    }
+   },
    "backtest": {
     "revenue_wape_pct": 24.0,
-    "op_wape_pct": 44.5,
-    "n": 4
+    "op_wape_pct": 50.3,
+    "n": 4,
+    "driver_at_freeze": "sls_marine_plus_uncovered_backlog_runoff"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -3554,12 +4028,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "ref_base",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.8428,
-    "n": 8
+    "n": 8,
+    "wape_link": 11.1,
+    "wape_trend": 16.0,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -3574,45 +4054,48 @@
      "dps": 0.0
     },
     "2026E": {
-     "rev": 625.25,
-     "op": 149.31,
+     "rev": 626.03,
+     "op": 149.47,
      "opm": 0.2388,
-     "ni_ctrl": 109.48,
-     "eps": 356.8,
-     "bps": 1845.3,
-     "per": 10.26,
+     "ni_ctrl": 109.56,
+     "eps": 357.1,
+     "bps": 1845.6,
+     "per": 10.25,
      "pbr": 1.98,
      "dps": 0.0
     },
     "2027E": {
-     "rev": 662.81,
-     "op": 129.67,
+     "rev": 721.74,
+     "op": 141.2,
      "opm": 0.1956,
-     "ni_ctrl": 76.65,
-     "eps": 249.8,
-     "bps": 2095.1,
-     "per": 14.65,
-     "pbr": 1.75,
+     "ni_ctrl": 82.91,
+     "eps": 270.3,
+     "bps": 2115.8,
+     "per": 13.54,
+     "pbr": 1.73,
      "dps": 0.0
     },
     "2028E": {
-     "rev": 637.07,
-     "op": 124.63,
+     "rev": 892.52,
+     "op": 174.62,
      "opm": 0.1956,
-     "ni_ctrl": 75.05,
-     "eps": 244.5,
-     "bps": 2339.7,
-     "per": 14.97,
-     "pbr": 1.56,
+     "ni_ctrl": 102.35,
+     "eps": 333.6,
+     "bps": 2449.4,
+     "per": 10.97,
+     "pbr": 1.49,
      "dps": 0.0
     }
    },
-   "per_now": 15.11,
+   "per_now": 14.88,
    "pbr_now": 2.13,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 11.1,
     "op_wape_pct": 63.9,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -3674,10 +4157,13 @@
    },
    "per_now": 99.16,
    "pbr_now": 1.3,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 51.1,
     "op_wape_pct": 104.4,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 2
@@ -3704,48 +4190,106 @@
      "dps": 250.0
     },
     "2026E": {
-     "rev": 13086.99,
-     "op": 3522.44,
-     "opm": 0.2692,
-     "ni_ctrl": 2953.31,
-     "eps": 7730.7,
-     "bps": 35130.5,
-     "per": 5.83,
-     "pbr": 1.28,
+     "rev": 12314.11,
+     "op": 3305.3,
+     "opm": 0.2684,
+     "ni_ctrl": 2785.29,
+     "eps": 7289.5,
+     "bps": 34689.3,
+     "per": 6.18,
+     "pbr": 1.3,
      "dps": 250.0
     },
     "2027E": {
-     "rev": 12085.44,
-     "op": 3258.63,
-     "opm": 0.2696,
-     "ni_ctrl": 2628.33,
-     "eps": 6900.5,
-     "bps": 41781.0,
-     "per": 6.53,
-     "pbr": 1.08,
+     "rev": 14067.09,
+     "op": 3775.65,
+     "opm": 0.2684,
+     "ni_ctrl": 3025.87,
+     "eps": 7944.4,
+     "bps": 42383.6,
+     "per": 5.67,
+     "pbr": 1.06,
      "dps": 250.0
     },
     "2028E": {
-     "rev": 8769.34,
-     "op": 2378.25,
-     "opm": 0.2712,
-     "ni_ctrl": 1979.79,
-     "eps": 5197.9,
-     "bps": 46728.8,
-     "per": 8.67,
-     "pbr": 0.96,
+     "rev": 18613.29,
+     "op": 4995.87,
+     "opm": 0.2684,
+     "ni_ctrl": 4013.49,
+     "eps": 10537.1,
+     "bps": 52670.8,
+     "per": 4.28,
+     "pbr": 0.86,
      "dps": 250.0
     }
    },
-   "per_now": 6.2,
+   "per_now": 6.56,
    "pbr_now": 1.43,
+   "new_orders_included": true,
+   "scenarios": {
+    "2026E": {
+     "existing_only": {
+      "rev": 12232.5,
+      "op": 3283.4
+     },
+     "conservative": {
+      "rev": 12277.39,
+      "op": 3295.44
+     },
+     "base": {
+      "rev": 12314.11,
+      "op": 3305.3
+     },
+     "optimistic": {
+      "rev": 12365.01,
+      "op": 3318.96
+     }
+    },
+    "2027E": {
+     "existing_only": {
+      "rev": 10506.17,
+      "op": 2819.89
+     },
+     "conservative": {
+      "rev": 12464.97,
+      "op": 3345.64
+     },
+     "base": {
+      "rev": 14067.09,
+      "op": 3775.65
+     },
+     "optimistic": {
+      "rev": 16287.99,
+      "op": 4371.73
+     }
+    },
+    "2028E": {
+     "existing_only": {
+      "rev": 7657.01,
+      "op": 2055.21
+     },
+     "conservative": {
+      "rev": 13683.89,
+      "op": 3672.82
+     },
+     "base": {
+      "rev": 18613.29,
+      "op": 4995.87
+     },
+     "optimistic": {
+      "rev": 25446.54,
+      "op": 6829.91
+     }
+    }
+   },
    "backtest": {
     "revenue_wape_pct": 11.4,
     "op_wape_pct": 26.4,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
-   "warnings_n": 3
+   "warnings_n": 4
   },
   {
    "stock": "443060",
@@ -3757,12 +4301,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 0,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.9895,
-    "n": 6
+    "n": 6,
+    "wape_link": null,
+    "wape_trend": null,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -3777,45 +4327,48 @@
      "dps": 3950.0
     },
     "2026E": {
-     "rev": 23761.2,
-     "op": 4024.58,
+     "rev": 23785.53,
+     "op": 4028.79,
      "opm": 0.1694,
-     "ni_ctrl": 3505.33,
-     "eps": 7818.8,
-     "bps": 23676.6,
-     "per": 30.25,
+     "ni_ctrl": 3508.58,
+     "eps": 7826.0,
+     "bps": 23683.8,
+     "per": 30.22,
      "pbr": 9.99,
      "dps": 3950.0
     },
     "2027E": {
-     "rev": 24690.51,
-     "op": 4275.28,
+     "rev": 26755.71,
+     "op": 4632.89,
      "opm": 0.1732,
-     "ni_ctrl": 3461.12,
-     "eps": 7720.0,
-     "bps": 27446.6,
-     "per": 30.63,
-     "pbr": 8.62,
+     "ni_ctrl": 3737.69,
+     "eps": 8336.8,
+     "bps": 28070.7,
+     "per": 28.37,
+     "pbr": 8.43,
      "dps": 3950.0
     },
     "2028E": {
-     "rev": 23760.77,
-     "op": 4114.29,
+     "rev": 33068.18,
+     "op": 5725.92,
      "opm": 0.1732,
-     "ni_ctrl": 3374.89,
-     "eps": 7527.5,
-     "bps": 31024.2,
-     "per": 31.42,
-     "pbr": 7.62,
+     "ni_ctrl": 4630.47,
+     "eps": 10328.2,
+     "bps": 34448.8,
+     "per": 22.9,
+     "pbr": 6.87,
      "dps": 3950.0
     }
    },
-   "per_now": 31.5,
+   "per_now": 31.0,
    "pbr_now": 11.89,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 5.9,
     "op_wape_pct": 3.8,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -3877,10 +4430,13 @@
    },
    "per_now": 17.54,
    "pbr_now": 2.58,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 35.3,
     "op_wape_pct": 65.0,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "trend_seasonal"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -3895,12 +4451,18 @@
    "driver": "customer_yard_revenue_weighted",
    "link": {
     "adopted": true,
+    "rejected_by": null,
     "weights_key": "suppliers_mentions",
     "lag_q": 4,
     "transform": "ma4",
     "window_q": 8,
     "corr": 0.977,
-    "n": 8
+    "n": 8,
+    "wape_link": null,
+    "wape_trend": null,
+    "oos_adopted": true,
+    "oos_freeze": "2025Q2",
+    "oos_n": 4
    },
    "fy": {
     "2025A": {
@@ -3926,34 +4488,37 @@
      "dps": 130.0
     },
     "2027E": {
-     "rev": 3282.04,
-     "op": 387.42,
+     "rev": 3285.6,
+     "op": 387.84,
      "opm": 0.118,
-     "ni_ctrl": 326.41,
-     "eps": 919.2,
-     "bps": 8617.7,
-     "per": 13.74,
+     "ni_ctrl": 326.75,
+     "eps": 920.2,
+     "bps": 8618.7,
+     "per": 13.73,
      "pbr": 1.47,
      "dps": 130.0
     },
     "2028E": {
-     "rev": 3601.58,
-     "op": 425.14,
+     "rev": 3900.77,
+     "op": 460.45,
      "opm": 0.118,
-     "ni_ctrl": 362.39,
-     "eps": 1020.5,
-     "bps": 9508.2,
-     "per": 12.38,
-     "pbr": 1.33,
+     "ni_ctrl": 391.08,
+     "eps": 1101.2,
+     "bps": 9590.0,
+     "per": 11.47,
+     "pbr": 1.32,
      "dps": 130.0
     }
    },
    "per_now": 14.98,
    "pbr_now": 1.7,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": 1.5,
     "op_wape_pct": 19.3,
-    "n": 4
+    "n": 4,
+    "driver_at_freeze": "customer_yard_revenue_weighted"
    },
    "identities_ok": true,
    "warnings_n": 1
@@ -4015,10 +4580,13 @@
    },
    "per_now": null,
    "pbr_now": 5.1,
+   "new_orders_included": null,
+   "scenarios": null,
    "backtest": {
     "revenue_wape_pct": null,
     "op_wape_pct": null,
-    "n": 0
+    "n": 0,
+    "driver_at_freeze": null
    },
    "identities_ok": true,
    "warnings_n": 2

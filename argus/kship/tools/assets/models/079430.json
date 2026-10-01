@@ -4,7 +4,7 @@
  "role": "equip",
  "origin": "2026Q2",
  "unit": "KRW_100M(억원)",
- "built_at": "2026-09-30",
+ "built_at": "2026-10-02",
  "status": "partial",
  "periods": {
   "quarters": [
@@ -5355,6 +5355,13 @@
       "significant_p05_uncorrected": false,
       "note": "단일 검정 기준 임계 r(df=n−2, 양측 5%) — 격자 후보 수만큼 보정하면 임계는 더 높다"
      },
+     "selection_oos": {
+      "adopted": false,
+      "wape_link": null,
+      "wape_trend": null,
+      "note": "유의성 조건 미달 → OOS 비교 전 기각"
+     },
+     "rejected_by": "significance",
      "merger_rule": [
       "010620(HD현대미포) fin 은 2025Q3 까지(2025Q4 329180 에 흡수합병, 이후 보고서 없음) → 2025Q4 부터 010620 비중 0.333 은 329180(HD현대중공업) 모델 매출 × 체인링크 k=0.333 로 대체(k = 합병 전 4분기 [w·010620 + w·329180 매출] ÷ 두 회사 매출 합). 미래 고객 매출은 assets/models/329180.json 추정(kind estimate) 을 쓴다"
      ],
@@ -5364,23 +5371,32 @@
        "model": "assets/models/009540.json",
        "last_actual": "2026Q2",
        "estimates_from": "2026Q3",
-       "driver": "subsidiary_yard_scaled"
+       "driver": "subsidiary_yard_scaled",
+       "new_orders_included": true
       },
       "010620": {
        "name": "HD현대미포",
        "model": "assets/models/010620.json",
        "last_actual": "2025Q3",
        "estimates_from": "2025Q4",
-       "driver": "trend_seasonal"
+       "driver": "trend_seasonal",
+       "new_orders_included": null
       },
       "329180": {
        "name": "HD현대중공업",
        "model": "assets/models/329180.json",
        "last_actual": "2026Q2",
        "estimates_from": "2026Q3",
-       "driver": "sls_marine_plus_uncovered_backlog_runoff"
+       "driver": "sls_marine_plus_uncovered_backlog_runoff",
+       "new_orders_included": true
       }
      }
+    },
+    "selection_oos": {
+     "adopted": false,
+     "wape_link": null,
+     "wape_trend": null,
+     "note": "유의성 조건 미달 → OOS 비교 전 기각"
     }
    },
    "opm_path": {
@@ -5427,6 +5443,7 @@
    "basis": "가정 — 마지막 ECB 관측치를 2028Q4 까지 평평하게 둔다. 선도환율·컨센서스 아님."
   },
   "hedge": null,
+  "sls": null,
   "tax_rate": 0.27,
   "tax_basis": "최근 12분기 유효세율 177.6% → 5~27% 클립",
   "sga_ratio": 0.1637,
@@ -5495,15 +5512,25 @@
   "subsidiaries": []
  },
  "modules": [],
+ "new_orders_included": null,
+ "new_orders": null,
+ "scenarios": null,
  "backtest": {
   "freeze": "2025Q2",
   "horizon": 4,
-  "revenue_wape_pct": 46.6,
-  "op_wape_pct": 149.1,
+  "revenue_wape_pct": 53.5,
+  "op_wape_pct": 159.0,
   "n": 4,
   "note": "단일 회사 4분기 — 통계 아님",
   "driver_at_freeze": "customer_yard_revenue_weighted",
-  "frozen_inputs": "fin(연결/별도)·고객 조선사 모델·지주 자회사 모델은 2025Q2 까지의 분기만; 선표는 체결일 ≤ 2025Q2 말일 계약(원장 최신 금액·코호트 등급, 환산 없음); 잔고는 yards_cache 2025Q2; 시세·환율 forward·prices 미사용. 고객 가중치(suppliers.json 언급 비중)와 합병 체인링크는 현재 지식",
+  "selection_oos_at_freeze": {
+   "freeze": "2024Q2",
+   "n": 4,
+   "wape_link": 18.3,
+   "wape_trend": 25.5,
+   "adopted": true
+  },
+  "frozen_inputs": "fin(연결/별도)·고객 조선사 모델·지주 자회사 모델은 2025Q2 까지의 분기만; 선표는 체결일 ≤ 2025Q2 말일 계약(원장 최신 금액·코호트 등급, 환산 없음); 잔고는 yards_cache 2025Q2; 시세·환율 forward·prices·forecast_panel 신규수주 미사용. 고객 가중치(suppliers.json 언급 비중)와 합병 체인링크는 현재 지식; 고객 연동 채택은 동결 모델 안에서도 자기 la−4분기 OOS 규칙(selection_oos_at_freeze)",
   "detail": [
    {
     "q": "2025Q3",
@@ -5514,23 +5541,23 @@
    },
    {
     "q": "2025Q4",
-    "rev_pred": 5294.1,
+    "rev_pred": 5473.11,
     "rev_act": 3579.2,
-    "op_pred": 68.46,
+    "op_pred": 70.77,
     "op_act": -26.11
    },
    {
     "q": "2026Q1",
-    "rev_pred": 5224.68,
+    "rev_pred": 5550.01,
     "rev_act": 3559.35,
-    "op_pred": 67.56,
+    "op_pred": 71.77,
     "op_act": 10.53
    },
    {
     "q": "2026Q2",
-    "rev_pred": 5143.13,
+    "rev_pred": 5627.6,
     "rev_act": 3731.33,
-    "op_pred": 66.51,
+    "op_pred": 72.77,
     "op_act": 55.59
    }
   ]

@@ -17,8 +17,12 @@ fin json(kship_fin.py 산출, 백만원) 값을 셀로 끼워 넣는다.
 - 문자열 라벨('2023.12A', 'UPDATE: 26-09-30', '종가(09월 30일)')은 sharedStrings 끝에 추가한다.
 - 셀 스타일(s)은 같은 행의 직전 셀 것을 복사한다. 비어 있던 자리 셀(`<c r="CS5" s="77"/>`)은
   그 셀의 s 를 그대로 쓴다.
+- IS 분기 값은 **`is_ytd_diff` 우선**(FnGuide 관행 = 누적 차분: Q1=누적, Qn=누적−전누적, Q4=연간−3Q누적;
+  MODEL_SPEC 5-4·결정 ⓐ). 그 계정·분기에 `is_ytd_diff` 가 없으면 `is`(보고서 3개월 열 — 주석으로 채운 이자수익 등은
+  3개월 값만 있어 자동으로 이 길을 탄다). `--is-convention 3m` 이면 예전처럼 항상 `is`. 둘이 1백만원 초과로 다른
+  셀(후속 보고서의 전기 재작성)은 `sheets[].restated_cells[]`(is·ytd_diff·diff) 에, 적용 관행은 `is_convention` 에 남긴다.
 - 연간 열(YYYY.12A): BS 는 Q4 시점값, IS 는 `is_ytd[Q4]`(없으면 4분기 합), CF 는 `cf_ytd[Q4]`
-  (없으면 4분기 합), 주식수·배당은 Q4 값.
+  (없으면 4분기 합), 주식수·배당은 Q4 값. 관행과 무관.
 - workbook.xml `<calcPr … fullCalcOnLoad="1"/>` — 열 때 전체 재계산(subQ 의 VLOOKUP 이 새 열을 읽는다).
 - 옵트인 두 가지(기본 꺼짐):
   · `--overwrite-placeholders` — 새 기간 열에 애널리스트가 미발표 분기용으로 넣어 둔 가이던스·잠정치 셀(삼성重 4Q23
@@ -43,6 +47,7 @@ fin json(kship_fin.py 산출, 백만원) 값을 셀로 끼워 넣는다.
   ~/Library/phalanx_venv/bin/python kship_xlsx_patch.py --stock 010140 --verify
   ~/Library/phalanx_venv/bin/python kship_xlsx_patch.py --all --verify --report assets/xlsx_patch_report.json
   ~/Library/phalanx_venv/bin/python kship_xlsx_patch.py --all --verify --overwrite-placeholders --fx-actuals --today 2026-09-30
+  ~/Library/phalanx_venv/bin/python kship_xlsx_patch.py --all --verify --is-convention 3m   # 예전 방식(항상 3개월 열)
 표준 라이브러리 + openpyxl(검증 전용) 만 쓴다. 네트워크 없음.
 """
 import argparse
@@ -83,6 +88,10 @@ SHARE_MAP = {"기말발행주식수(백만주)": "issued", "보통주기말발�
 MCAP_MAP = {"보통주시가총액(기말, 십억원)": "close_end", "보통주시가총액(최고, 십억원)": "high",
             "보통주시가총액(최저, 십억원)": "low", "보통주시가총액(평균, 십억원)": "avg"}
 DPS_ACCT = "수정DPS(보통주, 기말현금)"
+# IS 분기 값 관행 — "ytd_diff": fin.is_ytd_diff 우선(FnGuide 누적차분), "3m": 항상 fin.is(보고서 3개월 열).
+IS_CONVENTIONS = ("ytd_diff", "3m")
+IS_CONVENTION_DEFAULT = "ytd_diff"
+RESTATED_TOL = 1.0          # 백만원 — is 와 is_ytd_diff 가 이보다 크게 다르면 재작성 셀(kship_fin 의 restated 문턱과 같다)
 
 NS_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 CELL_RE = re.compile(r'<c r="([A-Z]+)(\d+)"((?:\s+[\w:]+="[^"]*")*)\s*(?:/>|>(.*?)</c>)', re.S)
@@ -547,15 +556,23 @@ def _sum4(tbl, y, acct):
     return round(sum(vals), 6)
 
 
-def value_for(fin, scope, acct, p, prices=None):
+def value_for(fin, scope, acct, p, prices=None, is_convention=IS_CONVENTION_DEFAULT):
     """fin json → 계정 acct 의 기간 p 값(백만원 등 FnGuide 단위). 없으면 (None, None).
 
-    반환 (값, 출처표) — 출처표: 'bs'|'is'|'cf'|'is_ytd'|'cf_ytd'|'is_sum4'|'cf_sum4'|'shares'|'dividend'|'mcap'.
+    반환 (값, 출처표) — 출처표: 'bs'|'is_ytd_diff'|'is'|'cf'|'is_ytd'|'cf_ytd'|'is_sum4'|'cf_sum4'|'shares'|'dividend'|'mcap'.
+    is_convention: "ytd_diff"(기본) 이면 분기 IS 는 `is_ytd_diff[q][acct]` 를 먼저 보고 없으면 `is`; "3m" 이면 항상 `is`.
+    연간(YYYY.12A)은 관행과 무관하게 `is_ytd[Q4]`(없으면 `is` 4분기 합).
     """
+    if is_convention not in IS_CONVENTIONS:
+        raise ValueError("is_convention 은 %s 중 하나: %r" % ("|".join(IS_CONVENTIONS), is_convention))
     sect = fin.get(scope) or {}
     if p[0] == "Q":
         qk = period_key(p)
         for tbl in ("bs", "is", "cf"):
+            if tbl == "is" and is_convention == "ytd_diff":
+                v = _num(((sect.get("is_ytd_diff") or {}).get(qk) or {}).get(acct))
+                if v is not None:
+                    return v, "is_ytd_diff"
             v = _num(((sect.get(tbl) or {}).get(qk) or {}).get(acct))
             if v is not None:
                 return v, tbl
@@ -652,19 +669,24 @@ class Workbook:
         os.replace(tmp, out_path)
 
 
-def patch_bs_sheet(wb, sheet, fin, scope, target_q, stamp, prices=None, overwrite=False):
+def patch_bs_sheet(wb, sheet, fin, scope, target_q, stamp, prices=None, overwrite=False,
+                   is_convention=IS_CONVENTION_DEFAULT):
     """BS 시트 하나: 행4 라벨 + 계정 행 값 + 행3 스탬프. 보고 dict 반환.
 
     overwrite=True(--overwrite-placeholders): 새 기간 열에 이미 값이 있는 셀 — 애널리스트가 미발표 분기에
     넣어 둔 가이던스·잠정치(삼성重 4Q23 `CT69-SUM(CP69:CR69)`, 미포 1Q25 잠정 1,183,800 등) — 를 fin 실적으로
     바꾸고 replaced 에 원문을 남긴다. 공유수식 그룹은 전 셀이 함께 바뀔 때만(make_overwrite_ok).
+    is_convention(value_for 참조): 분기 IS 를 `is_ytd_diff` 로 채운 셀 중 `is`(3개월 열) 와 RESTATED_TOL 초과로 다른
+    것은 restated_cells 에 {cell, acct, period, is, ytd_diff, diff} 로 남긴다 — 실제로 쓴 셀만(충돌로 보존된 셀 제외).
     """
     xml = wb.sheet_xml(sheet)
     sst = wb.sst
     rep = {"sheet": sheet, "member": wb.sheets[sheet], "stock": fin.get("stock"), "scope": scope,
            "new_periods": [], "columns": {}, "cells_value": 0, "cells_label": 0, "cells_stamp": 0,
            "cells_blank": 0, "written": [], "conflicts": [], "replaced": [], "missing_accounts": [],
-           "missing_quarters": [], "unmatched_fin_keys": [], "sources": {}}
+           "missing_quarters": [], "unmatched_fin_keys": [], "sources": {},
+           "is_convention": is_convention, "is_ytd_diff_available": bool((fin.get(scope) or {}).get("is_ytd_diff")),
+           "restated_cells": []}
     last, last_col = last_period(xml, sst)
     if last is None:
         rep["error"] = "행4 기간 라벨을 못 읽음"
@@ -708,19 +730,26 @@ def patch_bs_sheet(wb, sheet, fin, scope, target_q, stamp, prices=None, overwrit
     # 계정 행 값 — 1차: 쓸 값을 전부 모은다(덮어쓰기 판정에 전체 집합이 필요), 2차: 행별 재조립.
     seen_accts = set()
     plan = []                                   # (row, name, writes)
+    restated = []                               # is_ytd_diff 로 채웠는데 is(3개월 열) 와 다른 셀 — 쓴 뒤 written 으로 거른다
+    is_3m = (fin.get(scope) or {}).get("is") or {}
     for r, code, name in account_rows(xml, sst):
         if name.strip() == "":
             continue
         seen_accts.add(name)
         writes, any_val = {}, False
         for p, col in cols:
-            v, src = value_for(fin, scope, name, p, prices)
+            v, src = value_for(fin, scope, name, p, prices, is_convention)
             if v is None:
                 rep["cells_blank"] += 1
                 continue
             writes[col] = (v, False)
             any_val = True
             rep["sources"][src] = rep["sources"].get(src, 0) + 1
+            if src == "is_ytd_diff":
+                v3 = _num((is_3m.get(period_key(p)) or {}).get(name))
+                if v3 is not None and abs(v - v3) > RESTATED_TOL:
+                    restated.append({"cell": "%s%d" % (col, r), "acct": name, "period": period_key(p),
+                                     "is": v3, "ytd_diff": v, "diff": round(v - v3, 2)})
         if not any_val:
             rep["missing_accounts"].append(name)
             continue
@@ -737,6 +766,8 @@ def patch_bs_sheet(wb, sheet, fin, scope, target_q, stamp, prices=None, overwrit
         for _, raw in repl:                      # 문자열 셀을 숫자로 바꿨으면 sst 참조 카운트도 맞춘다
             if re.search(r'\st="s"', raw):
                 sst.release()
+    written_set = set(rep["written"])
+    rep["restated_cells"] = [c for c in restated if c["cell"] in written_set]
     # fin 에 있는데 시트에 행이 없는 계정(참고)
     sect = fin.get(scope) or {}
     fin_keys = set()
@@ -974,15 +1005,17 @@ def load_json(path):
 
 
 def patch_file(stock, fins, target_q, today, out_path=None, fx=None, prices=None, ref_dir=REF_DIR,
-               overwrite=False, fx_actuals=False):
+               overwrite=False, fx_actuals=False, is_convention=IS_CONVENTION_DEFAULT):
     """레퍼런스 한 파일 패치. fins: {종목: fin json}. 패치한 시트가 없으면 출력하지 않는다.
 
-    overwrite=--overwrite-placeholders, fx_actuals=--fx-actuals(`변수` 환율 실측 교체 범위 = BS 새 기간의 합집합).
+    overwrite=--overwrite-placeholders, fx_actuals=--fx-actuals(`변수` 환율 실측 교체 범위 = BS 새 기간의 합집합),
+    is_convention=--is-convention(분기 IS 값 관행, value_for 참조).
     """
     spec = FILES[stock]
     orig = os.path.join(ref_dir, "%s_%s_subQ_orig.xlsx" % (spec["name"], stock))
     out_path = out_path or os.path.join(ref_dir, "%s_%s_subQ_%s.xlsx" % (spec["name"], stock, target_q))
     rep = {"stock": stock, "name": spec["name"], "orig": orig, "out": out_path, "target": target_q,
+           "is_convention": is_convention,
            "sheets": [], "skipped_sheets": [], "fx": None, "price": None, "calcPr_changed": False,
            "sst_added": [], "written": False}
     if not os.path.exists(orig):
@@ -1001,7 +1034,8 @@ def patch_file(stock, fins, target_q, today, out_path=None, fx=None, prices=None
         if not (fin.get(scope) or {}):
             rep["skipped_sheets"].append({"sheet": sheet, "why": "fin.%s 비어 있음(%s)" % (scope, st)})
             continue
-        rep["sheets"].append(patch_bs_sheet(wb, sheet, fin, scope, target_q, stamp, prices, overwrite=overwrite))
+        rep["sheets"].append(patch_bs_sheet(wb, sheet, fin, scope, target_q, stamp, prices, overwrite=overwrite,
+                                            is_convention=is_convention))
     if not [s for s in rep["sheets"] if not s.get("error")]:
         rep["error"] = "패치한 시트 없음 — 출력하지 않음"
         return rep
@@ -1252,7 +1286,8 @@ def verify_chain(orig, out_path, fins, rep, acct="매출액(수익)"):
         conflict_cells = {c["cell"] for c in srep.get("conflicts", [])}
         for pk in srep["new_periods"]:
             p = ("A", int(pk[:-1])) if pk.endswith("A") else ("Q",) + q_parse(pk)
-            expect, src = value_for(fin, srep["scope"], acct, p)
+            expect, src = value_for(fin, srep["scope"], acct, p,
+                                    is_convention=srep.get("is_convention", IS_CONVENTION_DEFAULT))
             col_letter = srep["columns"][pk]
             if expect is None or ("%s%d" % (col_letter, acct_row)) in conflict_cells:
                 continue
@@ -1317,6 +1352,14 @@ def summarize(rep):
                         s["new_periods"][0] if s["new_periods"] else "-", s["new_periods"][-1] if s["new_periods"] else "-",
                         s["cells_value"], s["cells_label"], s["cells_stamp"], s["cells_blank"], len(s["conflicts"]),
                         len(s.get("replaced", [])), len(s["missing_accounts"]), len(s["missing_quarters"])))
+        srcs = s.get("sources") or {}
+        lines.append("    IS 관행 %s(%s): 출처 is_ytd_diff %d·is %d·bs %d·cf %d · 재작성 셀 %d"
+                     % (s.get("is_convention"), "fin.is_ytd_diff 있음" if s.get("is_ytd_diff_available") else "fin.is_ytd_diff 없음 → is",
+                        srcs.get("is_ytd_diff", 0), srcs.get("is", 0), srcs.get("bs", 0), srcs.get("cf", 0), len(s.get("restated_cells", []))))
+        for c in s.get("restated_cells", [])[:6]:
+            lines.append("    ≠ %s %s %s: is %s → ytd_diff %s (차 %s)" % (c["cell"], c["acct"], c["period"], c["is"], c["ytd_diff"], c["diff"]))
+        if len(s.get("restated_cells", [])) > 6:
+            lines.append("    ≠ … 외 %d셀" % (len(s["restated_cells"]) - 6))
         for c in s.get("replaced", []):
             lines.append("    ↻ %s %s: %s → %s" % (c["cell"], c["acct"], re.sub(r"<[^>]+>", " ", c["was"]).strip()[:70], c["now"]))
     for s in rep.get("skipped_sheets", []):
@@ -1370,6 +1413,8 @@ def main(argv=None):
                     help="새 기간 열에 애널리스트가 넣어 둔 가이던스·잠정치 셀을 fin 실적으로 바꾼다(원문은 보고에 남김)")
     ap.add_argument("--fx-actuals", action="store_true",
                     help="`변수` 환율 8행의 새 기간 열(BS 와 동일)에 남은 가정을 fx.json 실측으로 바꾼다(partial 분기는 보존, 전후는 보고에)")
+    ap.add_argument("--is-convention", choices=IS_CONVENTIONS, default=IS_CONVENTION_DEFAULT,
+                    help="분기 IS 값: ytd_diff=fin.is_ytd_diff 우선(FnGuide 누적차분, 기본) · 3m=항상 fin.is(보고서 3개월 열)")
     a = ap.parse_args(argv)
     stocks = list(FILES) if a.all else (a.stock or [])
     if not stocks:
@@ -1396,7 +1441,7 @@ def main(argv=None):
             print(summarize(reports[-1]))
             continue
         rep = patch_file(stock, fins, target, a.today, out_path=a.out, fx=fx, prices=prices, ref_dir=a.ref_dir,
-                         overwrite=a.overwrite_placeholders, fx_actuals=a.fx_actuals)
+                         overwrite=a.overwrite_placeholders, fx_actuals=a.fx_actuals, is_convention=a.is_convention)
         if a.verify and rep.get("written"):
             verify_all(rep, fins)
         rep["fx_available"] = fx is not None

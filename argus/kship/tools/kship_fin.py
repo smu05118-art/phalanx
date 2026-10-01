@@ -7,6 +7,11 @@
   · `4. 재무제표`     — 별도(연결이 없는 회사는 `2. 재무제표` 하나만)
   · `주식의 총수 등`   — 발행·자기·유통주식수(보통주/우선주/합계)
   · `배당에 관한 사항` — 주당 현금배당금·배당성향(사업보고서만)
+  · 주석 **하위 노드**(§5-1, `<quarter>_note_{fin|borrowings|other}.html`) — `3. 연결재무제표 주석` 아래 `금융수익과 금융원가`·
+    `차입금 및 사채`·`기타수익과 비용` 노드만(회사·분기당 목차 1 + 표 ≤4 요청; 주석 절 전체는 받지 않는다). 매핑된 계정
+    (이자수익·이자비용·외환차익·외환차손·외화환산이익·외화환산손실·파생상품이익·파생상품손실·배당금수익 / 단기차입금·유동성장기부채·
+    장기차입금·사채)은 **face 에 없을 때만** is/bs 에 올리고 `src_notes[q]` 에 출처를 적는다. face 가 '단기금융부채' 한 줄로 뭉친 회사
+    (세진)는 주석 분해 합이 덩어리와 맞을 때만 갈라 넣는다. 원 표는 `notes.{fin,borrowings,other}[q]` 에 남긴다(raw 포함).
 
 표 식별은 **표 제목**으로 한다 — DART XBRL 뷰어는 재무제표마다 `연결 재무상태표 / 제 53 기 반기말 … /
 (단위 : 원)` 네 줄짜리 캡션 표를 먼저 두고 바로 뒤에 데이터 표를 둔다. 캡션에서 종류와 단위를 읽고 그
@@ -19,7 +24,8 @@
 
 분기화: Q1~Q3 손익은 3개월 열, Q4 는 사업보고서 연간 − 그 해 3Q 누적(3Q 누적이 없으면 다음 해 3Q 보고서의
 전기 누적 열) — `derivation` 에 어느 길로 왔는지 적는다. 현금흐름은 누적→차분. 누적 정합(is_ytd 차분 == is)과
-자산=부채+자본 항등식을 `checks` 에 남긴다.
+자산=부채+자본 항등식을 `checks` 에 남긴다. FnGuide 방식 누적차분은 `is_ytd_diff` 로 **항상 병기**하고, `is` 와 1백만원 초과로
+다른 계정은 `restated[q]` 에 {is, ytd_diff, diff} 로 남긴다(§5-1 결정 ⓐ — 모델은 `is`, 레퍼런스 xlsx 패치는 `is_ytd_diff`).
 
 부호·구조 정규화(2026-09-30 검증에서 추가): ① face 가 비용을 괄호(음수)로 찍는 표(성광벤드 FY2024~ 등 9사)는 비용 계정을
 양수로 뒤집는다(`issues.expense_sign_negative`) — 안 하면 매출−원가≠GP 이고 Q4 = 연간(−) − 9M(+) 로 두 배 어긋난다.
@@ -33,6 +39,7 @@ DART 는 **프로세스 하나**만 두드린다(kce_fetch._pace 파일락). 수
     python3 kship_fin.py --collect --build --all         # 모집단 전체(백그라운드 1개로)
     python3 kship_fin.py --build --stocks 010140         # 캐시만으로 assets/fin/<stock>.json
     python3 kship_fin.py --golden [--stocks ...]         # 레퍼런스 xlsx FnGuide 값과 대조
+    python3 kship_fin.py --collect-notes --all           # 주석 하위 노드 캐시(백그라운드 1개, 체크포인트) → 완주 후 --build --all --golden
 """
 import argparse
 import datetime
@@ -355,6 +362,7 @@ SYNTH_BASIS = {
     "비유동자산": "자산총계 − 유동자산 (face 에 없을 때)",
     "유동부채": "부채총계 − 비유동부채 (face 에 없을 때)",
     "비유동부채": "부채총계 − 유동부채 (face 에 없을 때)",
+    "is_ytd_diff": "FnGuide 방식 누적차분 — Q1 = 누적, Qn = 누적 − 직전 누적, Q4 = 연간 − 3Q 누적. `is`(보고서 3개월 열)와 1백만원 초과로 다른 계정은 restated[q] (모델은 is, 레퍼런스 xlsx 패치는 is_ytd_diff)",
 }
 
 
@@ -912,6 +920,320 @@ def parse_dividend(html):
     return None
 
 
+# ── 주석 표 파서(MODEL_SPEC §5-1) ─────────────────────────────────────────────
+# 회사마다 형식이 다르다(2026Q2 실측):
+#   · 삼성重 `18. 금융수익과 금융원가` — 캡션 표(`금융수익과 금융원가 / 당반기 / (단위 : 천원)`) 뒤 데이터 표, 머리
+#     `장부금액 공시금액 3개월 | 누적`, 행 라벨 이자수익·외환차익·파생상품평가이익·파생상품거래이익·금융수익 합계…; 전반기 블록이 뒤따른다
+#   · 세진 `29. 금융수익과 금융비용` — 라벨 열이 둘(구분·항목: `금융수익 | 이자수익`), 항목에 `(금융수익)`·`(금융원가)` 꼬리,
+#     구분 합계 줄(`금융수익 | 금융수익`)과 순액 줄(`금융수익(비용)`)이 섞여 있다
+#   · 차입금: 한라IMS 는 `단기차입금/유동성장기차입금/장기차입금` 세 줄, 세진은 은행별 열 그리드 + `합계` 열에 XBRL 표준 라벨
+#     (`유동 차입금(사채 포함)`·`비유동차입금(사채 포함)의 유동성 대체 부분`·`비유동 차입금(사채 포함)의 비유동성 부분`), 삼성重은
+#     기초·차입·상환·기말 증감표만(분해 없음 → raw 에만 남고 face 를 건드리지 않는다)
+# 표 제목·행 라벨 정규식으로 잡고, 못 잡은 줄은 raw 로 남긴다. 기간(당/전)은 머리 열에 있으면 그것, 없으면 캡션(lead 끝)에서.
+_NOTE_SFX = re.compile(r"\((금융수익|금융원가|금융비용|기타수익|기타비용|영업외수익|영업외비용|금융|기타)\)$")
+_NOTE_PERIOD = re.compile(r"(당|전전|전)\s*(반|분)?\s*기(말)?")
+_NOTE_LABEL_HDR = re.compile(r"^(구분|계정과목|과목|항목|내역|종류|계정|구성내역)?$")
+_NOTE_SKIP_ROW = re.compile(r"이자율|만기|기술$|성격|명칭$|비고")
+_NOTE_NET = re.compile(r"금융수익\((비용|원가)\)|순금융|금융손익|순기타손익|기타손익|순액|기타수익\(비용\)")
+NOTE_SUM_KEYS = {"파생상품이익", "파생상품손실"}                  # 평가+거래 두 줄을 더한다 — 나머지는 표 안 첫 줄이 이긴다
+NOTE_MAPS = {
+    "fin": [
+        (r"^이자수익$", "이자수익"), (r"^배당금수익$", "배당금수익"),
+        (r"^외환차익$", "외환차익"), (r"^외화환산이익$", "외화환산이익"),
+        (r"^(파생(금융)?상품(평가|거래)?이익|파생상품평가및거래이익|파생상품관련이익)$", "파생상품이익"),
+        (r"^이자비용$", "이자비용"),
+        (r"^외환차손$", "외환차손"), (r"^외화환산손실$", "외화환산손실"),
+        (r"^(파생(금융)?상품(평가|거래)?손실|파생상품평가및거래손실|파생상품관련손실)$", "파생상품손실"),
+        (r"^금융수익(합계|계|소계)?$", "금융수익합계"),
+        (r"^금융(원가|비용)(합계|계|소계)?$", "금융비용합계"),
+    ],
+    "other": [
+        (r"^외환차익$", "외환차익"), (r"^외화환산이익$", "외화환산이익"),
+        (r"^(파생(금융)?상품(평가|거래)?이익|파생상품평가및거래이익)$", "파생상품이익"),
+        (r"^외환차손$", "외환차손"), (r"^외화환산손실$", "외화환산손실"),
+        (r"^(파생(금융)?상품(평가|거래)?손실|파생상품평가및거래손실)$", "파생상품손실"),
+        (r"^기타(영업외)?수익(합계|계|소계)?$", "기타수익합계"),
+        (r"^기타(영업외)?비용(합계|계|소계)?$", "기타비용합계"),
+    ],
+    "borrowings": [
+        (r"^(단기차입금|유동차입금(\(사채포함\))?|단기차입부채|유동차입부채)$", "단기차입금"),
+        (r"^(유동성장기차입금|유동성장기부채|비유동차입금(\(사채포함\))?의유동성대체부분|유동성사채|유동성장기차입금및사채|유동성장기차입부채)$", "유동성장기부채"),
+        (r"^(장기차입금|비유동차입금(\(사채포함\))?의비유동성부분|비유동차입금|장기차입부채|비유동차입부채)$", "장기차입금"),
+        (r"^(사채|비유동사채|장기사채|전환사채|신주인수권부사채|교환사채)$", "사채"),
+        (r"^(단기사채|전자단기사채)$", "단기사채"),
+        (r"^(유동|단기)리스부채$", "리스부채(유동)"), (r"^(비유동|장기)리스부채$", "리스부채(비유동)"),
+    ],
+}
+_NOTE_MAPS_C = {k: [(re.compile(rx), acct) for rx, acct in v] for k, v in NOTE_MAPS.items()}
+NOTE_TOTAL_KEYS = {"금융수익합계", "금융비용합계", "기타수익합계", "기타비용합계", "순액"}
+# is/bs 로 올릴 수 있는 계정(face 에 없을 때만) — MODEL_SPEC §5-1
+NOTE_PROMOTE_IS = ("이자수익", "배당금수익", "이자비용", "외환차익", "외환차손", "외화환산이익", "외화환산손실", "파생상품이익", "파생상품손실")
+NOTE_PROMOTE_BS = ("단기차입금", "유동성장기부채", "장기차입금", "사채")
+
+
+def norm_note_label(s):
+    """주석 행 라벨 정규화 — norm_label 뒤 `(금융수익)`·`(금융원가)`·`(기타비용)` 같은 구분 꼬리를 뗀다(세진)."""
+    return _NOTE_SFX.sub("", norm_label(s))
+
+
+def _period_of(text):
+    """'당반기·당분기·당기(말)' → cur, '전반기·전기(말)' → prev, '전전기' → prev2 — 마지막 등장을 쓴다(캡션 끝이 표에 가장 가깝다)."""
+    last = None
+    for m in _NOTE_PERIOD.finditer(unicodedata.normalize("NFKC", text or "")):
+        last = m
+    if not last:
+        return None
+    return {"당": "cur", "전": "prev", "전전": "prev2"}[last.group(1)]
+
+
+def tag_note_cols(cols, lead, prefer_total=False):
+    """주석 표 머리 → (라벨 열 수, [(열 index, 태그)]). 태그 cur_q/cur_ytd/cur_full/prev_…: 기간은 머리 열에 있으면 그것, 없으면
+    캡션(lead 끝 60자)에서; 3개월/누적 표기가 없으면 _full(분기보고서면 누적, 사업보고서면 연간 — 호출측이 face 태그에 맞춘다).
+    prefer_total(차입금 그리드): 같은 기간의 열이 여럿이면 머리에 '합계' 가 든 마지막 열만 남긴다(세진 은행별 열)."""
+    ncols = [re.sub(r"\s+", " ", unicodedata.normalize("NFKC", c or "")).strip() for c in cols]
+    nlab = 0
+    while nlab < len(ncols) and _NOTE_LABEL_HDR.match(ncols[nlab].replace(" ", "")):
+        nlab += 1
+    nlab = max(1, nlab)
+    lead_p = _period_of((lead or "")[-60:])
+    tags = []
+    for i in range(nlab, len(ncols)):
+        c = ncols[i]
+        p = _period_of(c) or lead_p
+        if p is None:
+            continue
+        sfx = "_q" if "3개월" in c else ("_ytd" if "누적" in c else "_full")
+        tags.append((i, p + sfx))
+    if prefer_total and tags:
+        by = {}
+        for i, tg in tags:
+            by.setdefault(tg, []).append(i)
+        picked = []
+        for tg, idxs in by.items():
+            tot = [i for i in idxs if "합계" in ncols[i]]
+            picked.append(((tot or idxs)[-1], tg))
+        tags = sorted(picked)
+    return nlab, tags
+
+
+def _map_note_label(key, raw_label):
+    nl0 = re.sub(r"\s+", "", unicodedata.normalize("NFKC", raw_label or ""))
+    if key in ("fin", "other") and _NOTE_NET.search(nl0):
+        return "순액"                                     # '금융수익(비용)'·'순기타손익' — 합계와 섞이면 안 된다
+    nl = norm_note_label(raw_label)
+    for rx, acct in _NOTE_MAPS_C[key]:
+        if rx.match(nl):
+            return acct
+    return None
+
+
+def parse_note_section(html, key):
+    """주석 절 HTML → {'found', 'acc': {태그: {계정: 백만원}}, 'raw': [[라벨, {태그: 값}], …], 'unit_assumed'}.
+    key: fin / other / borrowings (NOTE_MAPS). 표 안에서는 NOTE_SUM_KEYS 만 더하고 나머지는 첫 줄이 이긴다;
+    표 사이에서는 (태그, 계정) 첫 표가 이긴다(범주별 손익표처럼 같은 라벨이 다른 표에 다시 나와도 두 배로 세지 않는다)."""
+    out = {"found": False, "acc": {}, "raw": [], "unit_assumed": False}
+    last_mul = None
+    for t in parse_tables(html):
+        if _is_caption(t):
+            m = unit_mul_of(" ".join(c for r in t["rows"] for c in r)) or unit_mul_of(t.get("lead"))
+            if m:
+                last_mul = m
+            continue
+        cols, rows = _split_hdr(t)
+        if not cols:
+            continue
+        nlab, tags = tag_note_cols(cols, t.get("lead"), prefer_total=(key == "borrowings"))
+        if not tags:
+            continue
+        mul = unit_mul_of(t.get("lead")) or unit_mul_of(" ".join(cols)) or last_mul
+        if mul is None:
+            out["unit_assumed"] = True
+            mul = 1e-6
+        last_mul = mul
+        tacc = {}
+        for r in rows:
+            labs = [c.strip() for c in r[:nlab]]
+            item = next((l for l in reversed(labs) if l), "")
+            if not item or _NOTE_SKIP_ROW.search(re.sub(r"\s+", "", item)):
+                continue
+            vals = {}
+            for i, tg in tags:
+                if i < len(r):
+                    v = to_million(r[i], mul)
+                    if v is not None:
+                        vals.setdefault(tg, v)
+            if not vals:
+                continue
+            out["found"] = True
+            acct = _map_note_label(key, item)
+            if acct is None:
+                if len(out["raw"]) < 60:
+                    out["raw"].append([item, vals])
+                continue
+            for tg, v in vals.items():
+                if key == "borrowings":
+                    v = abs(v)                              # 세진: 장기표의 '유동성 대체 부분' 이 (85,480,000) 차감 표기
+                d = tacc.setdefault(tg, {})
+                if acct in NOTE_SUM_KEYS and acct in d:
+                    d[acct] = round(d[acct] + v, 2)
+                else:
+                    d.setdefault(acct, v)
+        for tg, d in tacc.items():
+            dst = out["acc"].setdefault(tg, {})
+            for acct, v in d.items():
+                dst.setdefault(acct, v)
+    return out
+
+
+def merge_note_parts(parts):
+    """같은 키의 주석이 둘로 갈린 경우(fin·fin2) 합친다 — (태그, 계정) 첫 것이 이기고 raw 는 이어 붙인다."""
+    out = {"found": False, "acc": {}, "raw": [], "unit_assumed": False}
+    for p in parts:
+        if not p:
+            continue
+        out["found"] = out["found"] or p["found"]
+        out["unit_assumed"] = out["unit_assumed"] or p["unit_assumed"]
+        out["raw"].extend(p["raw"])
+        for tg, d in p["acc"].items():
+            dst = out["acc"].setdefault(tg, {})
+            for acct, v in d.items():
+                dst.setdefault(acct, v)
+    return out
+
+
+def _face_tag_for(note_tag, face_tags):
+    """주석 태그를 face 손익 태그에 맞춘다 — 주석 `cur_full`(3개월/누적 표기 없음)은 분기보고서면 face `cur_ytd`, 사업보고서면 `cur_full`."""
+    if note_tag in face_tags:
+        return note_tag
+    base, sfx = note_tag.rsplit("_", 1)
+    if sfx == "full" and base + "_ytd" in face_tags:
+        return base + "_ytd"
+    if sfx == "ytd" and base + "_full" in face_tags:
+        return base + "_full"
+    return None
+
+
+def inject_note_is(p, note, src):
+    """금융수익 주석의 계정을 face 손익 태그 dict 에 **face 에 없을 때만** 넣고 합성 계정을 다시 만든다.
+    face 에 없는 태그는 만들지 않는다(3개월 열이 없는 회사에 주석만으로 3m_column 을 만들면 안 된다).
+    3개월 열(cur_q)로 들어간 계정만 여기서 src 에 적는다 — 누적으로만 온 계정의 3개월 값은 분기화 뒤 finalize_notes 가
+    is_ytd_diff 에서 채우며 그때 `note:fin(ytd_diff)` 로 적는다."""
+    isd = p.get("is") or {}
+    if not isd or not note or not note.get("acc"):
+        return
+    for ntag, d in note["acc"].items():
+        ftag = _face_tag_for(ntag, isd)
+        if not ftag:
+            continue
+        tgt = isd[ftag]
+        added = False
+        for acct in NOTE_PROMOTE_IS:
+            if d.get(acct) is not None and tgt.get(acct) is None:
+                tgt[acct] = d[acct]
+                added = True
+                if ftag == "cur_q":
+                    src.setdefault(acct, "note:fin(3m)")
+        if added:
+            synth_is(tgt)                                  # 이자손익 등 재합성(idempotent)
+
+
+def inject_note_bs(b, note, src, issues, quarter, scope):
+    """차입금 주석 → face BS(cur). ① face 에 없는 계정(단기차입금·유동성장기부채·장기차입금·사채)은 그대로 채운다.
+    ② face 가 '단기금융부채'·'장기금융부채' 한 줄로 뭉친 회사(세진·미포 — `단기금융부채(face)` 키)는 주석 분해(단기차입금+유동성장기부채
+    (+단기사채) / 장기차입금+사채)의 합이 그 덩어리와 맞을 때(±max(3백만원, 0.5%))만 갈라 넣고 (face) 키를 지운다 —
+    안 맞으면(리스부채가 섞인 회사 등) 손대지 않고 `borrowings_note_unreconciled`. 분해가 없는 주석(삼성重 증감표)은 아무것도 안 한다."""
+    if not b or not note:
+        return
+    acc = note.get("acc") or {}
+    d = acc.get("cur_full") or acc.get("cur_ytd") or {}
+    if not d:
+        return
+    blocked = set()                                        # 못 가른 덩어리의 구성 계정 — 따로 채우면 덩어리와 이중계산이다
+    for lump, parts in (("단기금융부채(face)", ("단기차입금", "유동성장기부채", "단기사채")),
+                        ("장기금융부채(face)", ("장기차입금", "사채"))):
+        face_v = b.get(lump)
+        if face_v is None:
+            continue
+        have = {k: d[k] for k in parts if d.get(k) is not None}
+        if not have:
+            blocked.update(parts)
+            continue
+        tot = round(sum(have.values()), 2)
+        if abs(tot - face_v) <= max(3.0, abs(face_v) * 0.005):
+            main = parts[0]                                # 덩어리가 들어가 있던 계정(단기차입금/장기차입금)에서 덩어리를 빼고 분해를 더한다
+            b[main] = round((b.get(main) or 0.0) - face_v, 2)
+            for k, v in have.items():
+                b[k] = round((b.get(k) or 0.0) + v, 2)
+                src[k] = "note:borrowings(split of face %s)" % lump[:-6]
+            if abs(b[main]) < 0.01:
+                b[main] = 0.0
+            del b[lump]
+        else:
+            blocked.update(parts)
+            issues.append({"quarter": quarter, "scope": scope, "code": "borrowings_note_unreconciled",
+                           "detail": "%s %s vs 주석 분해 합 %s %s — 차이 %s, face 그대로" % (lump, face_v, tot, have, round(tot - face_v, 2))})
+    for acct in NOTE_PROMOTE_BS:
+        if acct in blocked:
+            continue
+        if d.get(acct) is not None and b.get(acct) is None:
+            b[acct] = d[acct]
+            src[acct] = "note:borrowings"
+
+
+NOTE_FIN_ACCTS = ("이자수익", "배당금수익", "외환차익", "외화환산이익", "파생상품이익", "이자비용", "외환차손", "외화환산손실", "파생상품손실")
+NOTE_BS_ACCTS = ("단기차입금", "유동성장기부채", "장기차입금", "사채", "단기사채", "리스부채(유동)", "리스부채(비유동)")
+
+
+def finalize_notes(sc, notes_raw, src_notes, scope):
+    """분기화 뒤 — `notes.{fin,borrowings,other}[q]`(MODEL_SPEC §5-1 모양) 를 만들고, 주석에서만 온 손익 계정의 3개월 값이
+    face 3개월 열에 없으면 누적차분(is_ytd_diff)에서 `is` 로 채운다(`src_notes[q][계정] = note:fin(ytd_diff)`).
+    fin/other 항목 값은 3개월(3개월 열 → 없으면 누적차분 → 없으면 null), `ytd` 에 누적(연간) 원값, `raw` 에 매핑 안 된 줄."""
+    notes = {"fin": {}, "borrowings": {}, "other": {}}
+    for q, parts in sorted(notes_raw.items()):
+        src = src_notes.setdefault(q, {})
+        i3, yd = sc["is"].get(q), sc["is_ytd_diff"].get(q)
+        for key in ("fin", "other"):
+            n = parts.get(key)
+            if not n or not n.get("found"):
+                continue
+            acc = n["acc"]
+            cur_q = acc.get("cur_q") or {}
+            cur_y = acc.get("cur_ytd") or acc.get("cur_full") or {}
+            entry = {}
+            for acct in NOTE_FIN_ACCTS:
+                v = cur_q.get(acct)
+                if v is None and key == "fin" and yd and acct in cur_y:
+                    v = yd.get(acct)                       # 3개월 열이 없으면 누적차분
+                entry[acct] = v
+            entry["ytd"] = {k: v for k, v in cur_y.items() if k not in NOTE_TOTAL_KEYS}
+            entry["totals"] = {k: v for k, v in cur_y.items() if k in NOTE_TOTAL_KEYS}
+            entry["basis"] = "3m_column" if cur_q else ("ytd_diff" if yd else "ytd_only")
+            entry["raw"] = [[lab, vals.get("cur_q"), vals.get("cur_ytd", vals.get("cur_full"))] for lab, vals in n["raw"]]
+            if n.get("unit_assumed"):
+                entry["unit_assumed"] = True
+            notes[key][q] = entry
+            if key == "fin" and i3 is not None and yd:
+                filled = False
+                for acct in NOTE_PROMOTE_IS:
+                    if i3.get(acct) is None and yd.get(acct) is not None and acct in cur_y:
+                        i3[acct] = yd[acct]
+                        src[acct] = "note:fin(ytd_diff)"
+                        filled = True
+                if filled:
+                    synth_is(i3)
+        n = parts.get("borrowings")
+        if n and n.get("found"):
+            acc = n["acc"]
+            cur = acc.get("cur_full") or acc.get("cur_ytd") or {}
+            entry = {k: cur.get(k) for k in NOTE_BS_ACCTS}
+            entry["raw"] = [[lab, vals.get("cur_full", vals.get("cur_ytd"))] for lab, vals in n["raw"]]
+            if n.get("unit_assumed"):
+                entry["unit_assumed"] = True
+            notes["borrowings"][q] = entry
+    sc["notes"] = notes
+    sc["src_notes"] = {q: s for q, s in sorted(src_notes.items()) if s}
+
+
 # ── 모집단·이름 ─────────────────────────────────────────────────────────────
 _TITLE = re.compile(r"<title>([^<]*)</title>", re.I)
 
@@ -1084,6 +1406,115 @@ def collect_company(stock, name, quarters, force=False):
     return out
 
 
+# ── 주석 수집(MODEL_SPEC §5-1 — 선택이던 것을 착수) ─────────────────────────────
+# DART 목차는 주석을 `3. 연결재무제표 주석` 부모 아래 `18. 금융수익과 금융원가 (연결)`·`12. 차입금 및 사채 (연결)`·
+# `17. 기타수익과 비용 (연결)` 처럼 **주석 번호별 하위 노드**로 나눈다(삼성重·세진·한라IMS 2026Q2 실측). 부모 절 전체(1.6MB)는
+# 받지 않고 이 하위 노드만 골라 받는다 — 회사·분기당 목차 1 + 표 ≤4 요청. 하위 노드가 없는 회사(주석이 한 덩어리)나
+# 해당 주석이 없는 회사(한라IMS 는 금융수익 주석이 없다)는 그 키를 비우고 build 가 issues 로 남긴다.
+NOTE_KEYS = ("fin", "borrowings", "other")
+NOTE_RX = {
+    "fin": re.compile(r"금융수익|금융원가|금융비용|금융손익"),
+    "borrowings": re.compile(r"차입금|차입부채|사채"),
+    "other": re.compile(r"기타수익|기타비용|기타영업외"),
+}
+NOTE_MAX_PER = {"fin": 2, "borrowings": 1, "other": 1}      # 금융수익·금융원가를 두 주석으로 가르는 회사가 있어 fin 만 2
+NOTE_MAX_REQ = 4
+_NOTES_PARENT = {"cons": re.compile(r"연결\s*재무제표\s*주석"),
+                 "sep": re.compile(r"^(?!.*연결).*재무제표\s*주석")}
+
+
+def find_note_nodes(nodes, scope):
+    """목차 → 주석 부모(`n. 연결재무제표 주석` / `n. 재무제표 주석`)의 하위 노드(offset 이 부모 범위 안) 중 NOTE_RX 에 맞는 것.
+    반환 {"fin": [node, ...], "borrowings": [node], "other": [node]} — 부모가 없거나 하위 노드가 없으면 {}.
+    차입금 후보가 여럿이면(전환사채 주석이 따로 있는 회사) '차입' 이 들어간 제목을 앞에 둔다."""
+    parent = None
+    for n in nodes:
+        if _NOTES_PARENT[scope].search(unicodedata.normalize("NFKC", n.get("text", ""))):
+            parent = n
+            break
+    if not parent:
+        return {}
+    try:
+        po, pl = int(parent.get("offset") or 0), int(parent.get("length") or 0)
+    except ValueError:
+        return {}
+    cands = {k: [] for k in NOTE_KEYS}
+    for n in nodes:
+        if n is parent:
+            continue
+        try:
+            o = int(n.get("offset") or -1)
+        except ValueError:
+            continue
+        if not (po <= o < po + pl):
+            continue
+        t = unicodedata.normalize("NFKC", n.get("text", ""))
+        for key in NOTE_KEYS:
+            if NOTE_RX[key].search(t):
+                cands[key].append(n)
+                break
+    cands["borrowings"].sort(key=lambda n: 0 if "차입" in unicodedata.normalize("NFKC", n.get("text", "")) else 1)
+    out = {k: v[:NOTE_MAX_PER[k]] for k, v in cands.items() if v}
+    return out
+
+
+def note_cache_path(stock, quarter, key):
+    return os.path.join(FIN_CACHE, stock, "%s_note_%s.html" % (quarter, key))
+
+
+def collect_notes_quarter(stock, name, quarter, force=False):
+    """한 회사·한 분기 주석 표 수집 — meta 의 rcp 로 목차를 받아(1요청) 하위 노드 ≤NOTE_MAX_REQ 개를 캐시한다.
+    `meta["notes"]` 가 있으면 체크포인트(건너뜀; 하위 노드가 없었다는 결과도 확정이다 — --force 로만 다시).
+    연결 절이 있으면 연결 주석, 없거나 연결 주석에 하위 노드가 없으면 별도 주석. 캐시 `fin_cache/<stock>/<q>_note_<key>.html`."""
+    meta = _read_meta(stock, quarter)
+    if not meta or not meta.get("rcp"):
+        return None                                        # 정기보고서 자체가 없는 분기
+    if meta.get("notes") is not None and not force:
+        _log("%s %s %s rcp=%s notes skip(cached) %s" % (stock, name, quarter, meta["rcp"],
+                                                        ",".join(meta["notes"].get("items", {})) or meta["notes"].get("note")))
+        return meta["notes"]
+    nodes = toc(meta["rcp"])
+    scopes = ["cons", "sep"] if "cons" in meta.get("sections", {}) else ["sep"]
+    found, scope = {}, None
+    for sc in scopes:
+        found = find_note_nodes(nodes, sc)
+        if found:
+            scope = sc
+            break
+    items, nreq = {}, 0
+    for key in NOTE_KEYS:
+        for i, n in enumerate(found.get(key, [])):
+            if nreq >= NOTE_MAX_REQ:
+                break
+            k = key if i == 0 else "%s%d" % (key, i + 1)
+            path = note_cache_path(stock, quarter, k)
+            if os.path.exists(path) and not force:
+                items[k] = {"text": n.get("text"), "path": os.path.relpath(path, ASSETS)}
+                continue
+            html = fetch_section(n)
+            nreq += 1
+            atomic_write(path, html)
+            items[k] = {"text": n.get("text"), "path": os.path.relpath(path, ASSETS), "bytes": len(html)}
+    meta["notes"] = {"scope": scope, "items": items, "note": "" if found else "no_note_subnodes",
+                     "collected_at": today()}
+    atomic_write(cache_paths(stock, quarter)["meta"], json.dumps(meta, ensure_ascii=False, indent=1) + "\n")
+    _log("%s %s %s rcp=%s notes %s req=%d %s" % (stock, name, quarter, meta["rcp"], scope or "-", nreq,
+                                                 ",".join(items) or meta["notes"]["note"]))
+    return meta["notes"]
+
+
+def collect_notes_company(stock, name, quarters, force=False):
+    """회사 하나의 주석 수집 — 분기별 collect_notes_quarter(보조 분기는 필요 없다). 실패는 그 분기만 로그로 남기고 계속."""
+    out = []
+    for q in quarters:
+        try:
+            out.append(collect_notes_quarter(stock, name, q, force))
+        except Exception as e:                          # 네트워크 — 이 분기만 건너뛴다
+            _log("%s %s %s notes FAIL %s: %s" % (stock, name, q, type(e).__name__, e))
+            out.append({"error": str(e)})
+    return out
+
+
 class _SingleProcess:
     """수집기는 한 번에 하나 — 락을 못 잡으면 바로 물러난다(DART IP 차단 예방)."""
 
@@ -1133,9 +1564,12 @@ def _scope_quarterize(scope, per_q, quarters):
     · 손익 3개월: 3개월 열 → 없으면 (Q1) 누적 → (Q2·Q3) 누적 − 직전 분기 누적 → (Q4) 연간 − 3Q 누적
     · 3Q 누적이 없으면 다음 해 3Q 보고서의 **전기 누적** 열로 대신한다(2021Q4 가 이 길로 온다)
     · 현금흐름은 항상 누적 → 차분
+    · `is_ytd_diff`(FnGuide 방식 누적차분 — Q1 = 누적, Qn = 누적 − 직전 누적, Q4 = 연간 − 3Q 누적)는 3개월 열이 있어도
+      **항상 병기**한다. 둘이 1백만원 초과로 다른 계정은 `restated[q][계정] = {is, ytd_diff, diff}` — 후속 보고서가 전기를
+      재작성한 흔적이다(MODEL_SPEC §5-1 결정 ⓐ: 모델은 `is`, 레퍼런스 xlsx 패치는 `is_ytd_diff`).
     """
-    bs, is3, isy, cf3, cfy = {}, {}, {}, {}, {}
-    deriv, checks, issues = {}, [], []
+    bs, is3, isy, isyd, cf3, cfy = {}, {}, {}, {}, {}, {}
+    deriv, checks, issues, restated = {}, [], [], {}
     ytd_is, ytd_cf = {}, {}                   # (q) → 누적 dict — 당기 열
     ytd_is_prev, ytd_cf_prev = {}, {}         # (q) → 누적 dict — 다음 해 보고서의 전기 열
     for q in quarters:
@@ -1168,44 +1602,56 @@ def _scope_quarterize(scope, per_q, quarters):
         # ── 손익 ──
         if q in ytd_is:
             isy[q] = ytd_is[q]
+        # FnGuide 방식 누적차분 — 3개월 열이 있든 없든 한 번 만든다(is_ytd_diff). 3개월 열이 없으면 이것이 곧 `is`.
+        ydiff, how = None, None
+        if q in ytd_is:
+            pq = _q_prev(q)
+            if n == 1:
+                ydiff, how = dict(ytd_is[q]), "ytd_as_3m(Q1)"
+            else:
+                if n == 4:
+                    base = ytd_is.get(pq)
+                    how = "annual_minus_9M"
+                    if not base:
+                        base = ytd_is_prev.get(pq)
+                        how = "annual_minus_9M(prior_year_col_of_%dQ3)" % (int(q[:4]) + 1)
+                else:
+                    base = ytd_is.get(pq) or ytd_is_prev.get(pq)
+                    how = "ytd_minus_prev_ytd"
+                if base:
+                    dif = _diff_map(ytd_is[q], base)
+                    if ytd_is[q].get("중단사업이익") is not None and base.get("중단사업이익") is None:
+                        # 중단영업이 연간(사업보고서)에서 처음 분류된 경우(한화시스템·인화정공·영흥·HD현대마린엔진·금강공업 실측) —
+                        # 9M 에 그 줄이 없으면 0 이지 '모름' 이 아니다. 빼먹으면 Q4 순이익 ≠ 계속 + 중단 이 된다.
+                        dif["중단사업이익"] = ytd_is[q]["중단사업이익"]
+                        how += "+disc_ops_annual_only"
+                    ydiff = synth_is(dif)
+            if ydiff is not None:
+                isyd[q] = ydiff
         if isd.get("cur_q"):
             is3[q] = isd["cur_q"]
             d["is"] = "3m_column"
-            if n > 1 and q in ytd_is:
-                pq = _q_prev(q)
-                base = ytd_is.get(pq) or ytd_is_prev.get(pq)
-                if base:
-                    dif = _diff_map(ytd_is[q], base)
-                    for k in ("매출액(수익)", "영업이익", "당기순이익"):
-                        if k in dif and k in is3[q]:
-                            checks.append({"quarter": q, "scope": scope, "rule": "ytd_diff==3m:%s" % k,
-                                           "ok": abs(dif[k] - is3[q][k]) <= 1.0, "diff": round(dif[k] - is3[q][k], 2)})
-        elif n == 1 and q in ytd_is:
-            is3[q] = dict(ytd_is[q])
-            d["is"] = "ytd_as_3m(Q1)"
+            if ydiff is not None and n > 1:
+                for k in ("매출액(수익)", "영업이익", "당기순이익"):
+                    if k in ydiff and k in is3[q]:
+                        checks.append({"quarter": q, "scope": scope, "rule": "ytd_diff==3m:%s" % k,
+                                       "ok": abs(ydiff[k] - is3[q][k]) <= 1.0, "diff": round(ydiff[k] - is3[q][k], 2)})
+                # 전 계정 대조 — 1백만원 초과 차이는 후속 보고서의 전기 재작성(재분류·정정)이다. 어느 쪽도 버리지 않는다.
+                rs = {}
+                for k, v in ydiff.items():
+                    ov = is3[q].get(k)
+                    if v is None or ov is None:
+                        continue
+                    if abs(v - ov) > 1.0:
+                        rs[k] = {"is": ov, "ytd_diff": v, "diff": round(v - ov, 2)}
+                if rs:
+                    restated[q] = rs
+        elif ydiff is not None:
+            is3[q] = dict(ydiff)
+            d["is"] = how
         elif q in ytd_is:
-            pq = _q_prev(q)
-            if n == 4:
-                base = ytd_is.get(pq)
-                how = "annual_minus_9M"
-                if not base:
-                    base = ytd_is_prev.get(pq)
-                    how = "annual_minus_9M(prior_year_col_of_%dQ3)" % (int(q[:4]) + 1)
-            else:
-                base = ytd_is.get(pq) or ytd_is_prev.get(pq)
-                how = "ytd_minus_prev_ytd"
-            if base:
-                dif = _diff_map(ytd_is[q], base)
-                if ytd_is[q].get("중단사업이익") is not None and base.get("중단사업이익") is None:
-                    # 중단영업이 연간(사업보고서)에서 처음 분류된 경우(한화시스템·인화정공·영흥·HD현대마린엔진·금강공업 실측) —
-                    # 9M 에 그 줄이 없으면 0 이지 '모름' 이 아니다. 빼먹으면 Q4 순이익 ≠ 계속 + 중단 이 된다.
-                    dif["중단사업이익"] = ytd_is[q]["중단사업이익"]
-                    how += "+disc_ops_annual_only"
-                is3[q] = synth_is(dif)
-                d["is"] = how
-            else:
-                issues.append({"quarter": q, "scope": scope, "code": "no_prior_ytd",
-                               "detail": "3개월 손익 도출용 직전 누적(%s) 없음" % pq})
+            issues.append({"quarter": q, "scope": scope, "code": "no_prior_ytd",
+                           "detail": "3개월 손익 도출용 직전 누적(%s) 없음" % _q_prev(q)})
         # ── 현금흐름 ──
         if q in ytd_cf:
             cfy[q] = ytd_cf[q]
@@ -1248,7 +1694,7 @@ def _scope_quarterize(scope, per_q, quarters):
             checks.append({"quarter": q, "scope": scope, "rule": "assets=liab+equity", "ok": abs(diff) <= 1.0, "diff": diff})
         if p.get("unit_assumed"):
             issues.append({"quarter": q, "scope": scope, "code": "unit_assumed", "detail": "단위 캡션 없음 — 원 가정"})
-    return {"bs": bs, "is": is3, "is_ytd": isy, "cf": cf3, "cf_ytd": cfy,
+    return {"bs": bs, "is": is3, "is_ytd": isy, "is_ytd_diff": isyd, "restated": restated, "cf": cf3, "cf_ytd": cfy,
             "derivation": deriv, "checks": checks, "issues": issues}
 
 
@@ -1261,6 +1707,7 @@ def build_company(stock, quarters=None, name=None, golden=None):
     reports, per = {}, {"cons": {}, "sep": {}}
     shares, dividend, issues, raw = {}, {}, [], {"cons": {}, "sep": {}}
     eps = {"cons": {}, "sep": {}}
+    notes_raw, src_notes = {"cons": {}, "sep": {}}, {"cons": {}, "sep": {}}      # 주석(§5-1): q → {key: parse_note_section 결과}
     for q in sorted(set(quarters) | set(helpers)):
         is_helper = q not in quarters
         meta = _read_meta(stock, q)
@@ -1302,6 +1749,36 @@ def build_company(stock, quarters=None, name=None, golden=None):
                 issues.append({"quarter": q, "scope": scope, "code": fl[0], "detail": fl[1]})
         if is_helper:
             continue
+        nt = meta.get("notes")
+        if nt is not None:                                    # 주석 수집이 끝난 분기만 — 안 받은 분기는 조용히(issues 소음 방지)
+            nsc = nt.get("scope")
+            if not nt.get("items"):
+                issues.append({"quarter": q, "code": "notes_no_subnodes", "detail": "목차에 주석 하위 노드 없음(주석이 한 덩어리) — 금융수익 세부·차입금 분해 없음"})
+            elif nsc not in per or q not in per[nsc]:
+                issues.append({"quarter": q, "scope": nsc, "code": "notes_scope_missing", "detail": "주석은 %s 인데 그 재무제표가 없음" % nsc})
+            else:
+                parsed = {}
+                for key, item in nt["items"].items():
+                    path = os.path.join(ASSETS, item.get("path") or "")
+                    if not item.get("path") or not os.path.exists(path):
+                        continue
+                    with open(path, encoding="utf-8", errors="replace") as f:
+                        parsed.setdefault(key.rstrip("0123456789"), []).append(parse_note_section(f.read(), key.rstrip("0123456789")))
+                merged = {key: merge_note_parts(v) for key, v in parsed.items()}
+                for key in NOTE_KEYS:
+                    if key not in merged:
+                        issues.append({"quarter": q, "scope": nsc, "code": "note_missing:%s" % key,
+                                       "detail": "목차에 해당 주석 없음 — %s" % {"fin": "이자수익·외환차익 등 세부 null", "borrowings": "차입금 분해 없음", "other": "기타수익 세부 없음"}[key]})
+                    elif not merged[key]["acc"]:
+                        issues.append({"quarter": q, "scope": nsc, "code": "note_unmapped:%s" % key,
+                                       "detail": "주석 표는 받았으나 매핑된 계정 없음 — raw %d줄" % len(merged[key]["raw"])})
+                notes_raw[nsc][q] = merged
+                src = src_notes[nsc].setdefault(q, {})
+                if merged.get("fin"):
+                    inject_note_is(per[nsc][q], merged["fin"], src)
+                if merged.get("borrowings"):
+                    inject_note_bs(per[nsc][q].get("bs", {}).get("cur"), merged["borrowings"], src, issues, q, nsc)
+                rep["notes"] = {"scope": nsc, "items": {k: v.get("path") for k, v in nt["items"].items()}}
         if "shares" in rep["sections"]:
             with open(paths["shares"], encoding="utf-8", errors="replace") as f:
                 sh_html = f.read()
@@ -1335,8 +1812,10 @@ def build_company(stock, quarters=None, name=None, golden=None):
         for q, b in keep(r["bs"]).items():
             synth_bs(b, issues, q, scope)                                    # face 차입금 라벨 등 합성 issue
         out[scope] = {"bs": keep(r["bs"]), "is": keep(r["is"]), "is_ytd": keep(r["is_ytd"]),
+                      "is_ytd_diff": keep(r["is_ytd_diff"]), "restated": keep(r["restated"]),
                       "cf": keep(r["cf"]), "cf_ytd": keep(r["cf_ytd"]),
                       "eps_reported": eps[scope], "raw_labels": raw[scope]}
+        finalize_notes(out[scope], notes_raw[scope], src_notes[scope], scope)
         checks.extend(c for c in r["checks"] if c["quarter"] in qs)
         issues.extend(i for i in r["issues"] if i["quarter"] in qs)
         for q, d in keep(r["derivation"]).items():
@@ -1479,6 +1958,8 @@ def _parse_quarters(spec):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--collect", action="store_true", help="DART 에서 절 HTML 캐시(체크포인트, 단일 프로세스)")
+    ap.add_argument("--collect-notes", action="store_true",
+                    help="주석 하위 노드(금융수익·차입금·기타수익) 캐시 — 회사·분기당 목차 1 + 표 ≤4 요청, 체크포인트, 단일 프로세스")
     ap.add_argument("--build", action="store_true", help="캐시 → assets/fin/<stock>.json")
     ap.add_argument("--golden", action="store_true", help="fin json 을 golden_fnguide.json 과 대조하고 표로 출력")
     ap.add_argument("--stocks", help="쉼표 구분 종목코드(기본: 레퍼런스 3사 + 세진 종속 2사)")
@@ -1494,15 +1975,22 @@ def main(argv=None):
         stocks = [s.strip() for s in a.stocks.split(",") if s.strip()]
     else:
         stocks = ["075580", "010140", "010620", "333430", "099410"]
-    if a.collect:
+    if a.collect or a.collect_notes:
         with _SingleProcess():
             for st in stocks:
                 name = names.get(st, st)
-                _log("%s %s collect start quarters=%s..%s" % (st, name, quarters[0], quarters[-1]))
-                res = collect_company(st, name, quarters, a.force)
-                ok = sum(1 for r in res if r.get("rcp") and not r.get("error"))
-                _log("%s %s collect done ok=%d/%d" % (st, name, ok, len(res)))
-                print("%s %-12s 수집 %d/%d 분기" % (st, name, ok, len(res)))
+                if a.collect:
+                    _log("%s %s collect start quarters=%s..%s" % (st, name, quarters[0], quarters[-1]))
+                    res = collect_company(st, name, quarters, a.force)
+                    ok = sum(1 for r in res if r.get("rcp") and not r.get("error"))
+                    _log("%s %s collect done ok=%d/%d" % (st, name, ok, len(res)))
+                    print("%s %-12s 수집 %d/%d 분기" % (st, name, ok, len(res)))
+                if a.collect_notes:
+                    _log("%s %s collect-notes start quarters=%s..%s" % (st, name, quarters[0], quarters[-1]))
+                    res = collect_notes_company(st, name, quarters, a.force)
+                    ok = sum(1 for r in res if r and r.get("items"))
+                    _log("%s %s collect-notes done ok=%d/%d" % (st, name, ok, len(res)))
+                    print("%s %-12s 주석 %d/%d 분기" % (st, name, ok, len(res)))
                 if a.build:
                     fin = build_company(st, quarters, name)
                     write_fin(fin)

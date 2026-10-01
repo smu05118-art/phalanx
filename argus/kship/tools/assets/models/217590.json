@@ -4,7 +4,7 @@
  "role": "equip",
  "origin": "2026Q2",
  "unit": "KRW_100M(억원)",
- "built_at": "2026-09-30",
+ "built_at": "2026-10-02",
  "status": "partial",
  "periods": {
   "quarters": [
@@ -2993,6 +2993,13 @@
       "significant_p05_uncorrected": false,
       "note": "단일 검정 기준 임계 r(df=n−2, 양측 5%) — 격자 후보 수만큼 보정하면 임계는 더 높다"
      },
+     "selection_oos": {
+      "adopted": false,
+      "wape_link": null,
+      "wape_trend": null,
+      "note": "유의성 조건 미달 → OOS 비교 전 기각"
+     },
+     "rejected_by": "significance",
      "merger_rule": [],
      "customer_sources": {
       "009540": {
@@ -3000,23 +3007,32 @@
        "model": "assets/models/009540.json",
        "last_actual": "2026Q2",
        "estimates_from": "2026Q3",
-       "driver": "subsidiary_yard_scaled"
+       "driver": "subsidiary_yard_scaled",
+       "new_orders_included": true
       },
       "010140": {
        "name": "삼성중공업",
        "model": "assets/models/010140.json",
        "last_actual": "2026Q2",
        "estimates_from": "2026Q3",
-       "driver": "sls_marine_plus_uncovered_backlog_runoff"
+       "driver": "sls_marine_plus_uncovered_backlog_runoff",
+       "new_orders_included": true
       },
       "042660": {
        "name": "한화오션",
        "model": "assets/models/042660.json",
        "last_actual": "2026Q2",
        "estimates_from": "2026Q3",
-       "driver": "sls_marine_plus_uncovered_backlog_runoff"
+       "driver": "sls_marine_plus_uncovered_backlog_runoff",
+       "new_orders_included": false
       }
      }
+    },
+    "selection_oos": {
+     "adopted": false,
+     "wape_link": null,
+     "wape_trend": null,
+     "note": "유의성 조건 미달 → OOS 비교 전 기각"
     }
    },
    "opm_path": {
@@ -3063,6 +3079,7 @@
    "basis": "가정 — 마지막 ECB 관측치를 2028Q4 까지 평평하게 둔다. 선도환율·컨센서스 아님."
   },
   "hedge": null,
+  "sls": null,
   "tax_rate": 0.27,
   "tax_basis": "최근 4분기 유효세율 43.0% → 5~27% 클립",
   "sga_ratio": 0.0639,
@@ -3124,6 +3141,9 @@
   "subsidiaries": []
  },
  "modules": [],
+ "new_orders_included": null,
+ "new_orders": null,
+ "scenarios": null,
  "backtest": {
   "freeze": "2025Q2",
   "horizon": 4,

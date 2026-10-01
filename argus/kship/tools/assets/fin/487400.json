@@ -2,7 +2,7 @@
  "stock": "487400",
  "name": "케이앤에스아이앤씨",
  "unit": "KRW_million",
- "collected_at": "2026-09-30",
+ "collected_at": "2026-10-02",
  "quarters": [
   "2026Q2"
  ],
@@ -24,10 +24,18 @@
   "bs": {},
   "is": {},
   "is_ytd": {},
+  "is_ytd_diff": {},
+  "restated": {},
   "cf": {},
   "cf_ytd": {},
   "eps_reported": {},
-  "raw_labels": {}
+  "raw_labels": {},
+  "notes": {
+   "fin": {},
+   "borrowings": {},
+   "other": {}
+  },
+  "src_notes": {}
  },
  "sep": {
   "bs": {
@@ -107,6 +115,8 @@
     "계속사업이익": -2542.74
    }
   },
+  "is_ytd_diff": {},
+  "restated": {},
   "cf": {},
   "cf_ytd": {
    "2026Q2": {
@@ -211,7 +221,13 @@
      ]
     ]
    }
-  }
+  },
+  "notes": {
+   "fin": {},
+   "borrowings": {},
+   "other": {}
+  },
+  "src_notes": {}
  },
  "shares": {
   "2026Q2": {
@@ -260,7 +276,8 @@
   "유동자산": "자산총계 − 비유동자산 (face 에 없을 때)",
   "비유동자산": "자산총계 − 유동자산 (face 에 없을 때)",
   "유동부채": "부채총계 − 비유동부채 (face 에 없을 때)",
-  "비유동부채": "부채총계 − 유동부채 (face 에 없을 때)"
+  "비유동부채": "부채총계 − 유동부채 (face 에 없을 때)",
+  "is_ytd_diff": "FnGuide 방식 누적차분 — Q1 = 누적, Qn = 누적 − 직전 누적, Q4 = 연간 − 3Q 누적. `is`(보고서 3개월 열)와 1백만원 초과로 다른 계정은 restated[q] (모델은 is, 레퍼런스 xlsx 패치는 is_ytd_diff)"
  },
  "issues": [
   {
@@ -358,6 +375,11 @@
    "scope": "cons",
    "code": "no_cons_statements",
    "detail": "절은 있으나 재무상태표 표 없음(연결 해당없음 등)"
+  },
+  {
+   "quarter": "2026Q2",
+   "code": "notes_no_subnodes",
+   "detail": "목차에 주석 하위 노드 없음(주석이 한 덩어리) — 금융수익 세부·차입금 분해 없음"
   },
   {
    "quarter": "2026Q2",

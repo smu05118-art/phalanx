@@ -197,3 +197,29 @@
 
 ### 4-4. 공통 밸류에이션(`TP_PE PB`·`TP_EBITDA`·`TP_BPS`·`RIM`)
 - PER: 적정 PER(과거 밴드 10/15/20 배 예시) × FWD EPS(2개년 가중 Weight) → ROUND(-2/-3). PBR: 적정 PBR = ROE/COE(COE = ROE/PBR 역산, 고·평·저 밴드), 주당 적정가치 = BPS × 적정PBR. EV/EBITDA: 영업가치 = EBITDA(FWD 2Y 평균) × 배수 − 순차입금 → 주당. 상승여력 = 적정/종가 − 1. 우리는 세 방식을 모두 계산해 **구간(lo/mid/hi)** 으로 보이고 단일 목표주가는 내지 않는다.
+
+---
+
+## 5. 라운드 3 — 남은 결정 실행 계약 (2026-09-30 22:40, 오너 결정 반영)
+
+사용자 지시 "남은거 진행해줘". §11(MODEL.md)의 미결 5건을 아래 규칙으로 닫는다. 파일 소유는 라운드 1·2 와 같다.
+
+### 5-1. fin — `kship_fin.py` (R1)
+- **누적차분 병기**: `cons/sep.is_ytd_diff[q]` = FnGuide 방식(Q1 = is_ytd[Q1], Qn = is_ytd[Qn] − is_ytd[Qn−1], Q4 = 연간 − is_ytd[Q3]). `is`(보고서 3개월 열)는 그대로 정본. 둘이 1백만원 초과로 다르면 `restated[q] = {계정: {is, ytd_diff, diff}}` 로 기록(후속 보고서의 전기 재작성). 결정 ⓐ: **모델은 `is`, 레퍼런스 xlsx 패치는 `is_ytd_diff`**(FnGuide 열과 같은 관행).
+- **주석 파싱(선택 → 이번에 착수)**: 목차 하위 노드 제목으로 주석 표를 골라 받는다(회사·분기당 최대 4요청, 전체 HTML 절은 받지 않는다): `금융수익|금융원가|금융비용|금융손익` → `notes.fin[q]` {이자수익, 배당금수익, 외환차익, 외화환산이익, 파생상품이익(평가+거래), 이자비용, 외환차손, 외화환산손실, 파생상품손실, raw}; `차입금|사채` → `notes.borrowings[q]` {단기차입금, 유동성장기부채, 장기차입금, 사채, 리스부채(유동/비유동), raw}; `기타수익|기타비용|기타영업외` → `notes.other[q]`. 매핑된 값은 **face 에 없을 때만** `is`/`bs` 의 FnGuide 계정명(이자수익·이자비용·외환차익·외환차손·외화환산이익·외화환산손실·파생상품이익·파생상품손실·단기차입금·유동성장기부채·장기차입금·사채)으로 올리고 `src_notes[q]` 에 계정별 출처를 남긴다. 총차입금·순차입금·이자손익 재합성. 캐시 `fin_cache/<stock>/<q>_note_<key>.html`. 수집 CLI `--collect-notes [--all]` — **단일 프로세스 백그라운드**(≈58사×19분기×≤4요청, 0.7s 게이트 → 1시간 남짓), 체크포인트, 로그 `assets/fin_collect.log`. 완주 후 `--build --all --golden` 으로 골든 %(특히 삼성重 이자수익·외환차익, 세진 단기차입금/유동성장기부채 분해) 전후를 보고.
+
+### 5-2. sls — `kship_sls.py` (R3, 결정 ⓔ)
+- `cohort_mode` 두 가지를 **모두** 계산해 저장: `reference_anchor`(기본) — 수주연도 → 등급 표 `COHORT_BY_ORDER_YEAR`(레퍼런스 미포 SLS 의 매출연도별 코호트 비중을 2~3년 건조기간으로 수주연도에 되돌린 것: ≤2020 ③중마진, 2021 ④호황, 2022 이후 ⑤초호황; 근거 문장·출처 '사용자 레퍼런스 모델(클락슨 기반 판정)' 명시, 외부 지수 파일 `assets/newbuild_index.json` 이 있으면 그것을 우선) / `ledger_relative`(현재 방식) → `cohort_alt`. `by_quarter[q].by_cohort`·`target_opm` 은 기본 모드, `by_cohort_alt`·`target_opm_alt` 에 다른 모드. 캘리브레이션 `calibrated_shift` 는 기본 모드 기준으로 다시 잰다(타겟이 15% 근처로 올라가므로 shift 는 음수가 될 수 있다 — 그대로 보고).
+- **잔고 캡**: origin 이후 SLS 미래 원화 합이 공시 해양 기말잔고를 넘으면(대한조선 1.164) 배율 1/coverage 로 줄이고 `backlog_cap_applied`, 원값 보존.
+
+### 5-3. model — `kship_model.py` (R2)
+- **신규수주 반영(결정 ⓓ)**: 조선사 5사는 `forecast_panel.json.gz` 의 `scenarios.{conservative,base,optimistic}.quarterly[].new_order_revenue`(KRW_million → 억원 ÷100)를 **`매출조선신규` 행**으로 추가하고 기본 시나리오(base)를 `매출조선`·`매출액` 합계에 **포함**한다(`driver.new_orders_included: true`, basis 에 panel 시나리오·`calibrated=false` 명시). 보수/낙관은 `scenarios.conservative/optimistic` 블록에 매출액·영업이익 FY2026E~2028E 로 따로(합산 안 함). OPM 은 신규분에도 같은 타겟 적용. 패널이 없는 조선사(HJ·대한이 패널에 없으면)는 기존대로 + 경고. 지주는 종속사 합산으로 자동 반영, 기자재는 고객 모델을 통해 자동 반영.
+- **드라이버 OOS 선택(결정 ⓘ)**: 고객 연동 후보가 유의성 조건을 통과해도 **동결 백테스트(freeze 2025Q2, 4분기 매출 WAPE)에서 추세+계절성 폴백보다 나빠지면(WAPE_link > WAPE_trend × 1.10) 채택하지 않는다**. `driver.selection_oos = {wape_link, wape_trend, adopted}`. 격자 통계 보정은 하지 않고 이 OOS 규칙을 다중비교 방어로 삼는다(문서화).
+- sls 의 `backlog_cap_applied`·`cohort_mode` 를 읽어 basis 에 적는다. fin 에 주석 기반 이자·환·파생 행이 생기면(5-1) 영업외 행은 자동으로 그 값을 쓴다(키 동일).
+- summary.json 에 `new_orders_included`, `scenarios`(FY2026E~28E 매출 보수/기준/낙관) 추가.
+
+### 5-4. xlsx 패치 — `kship_xlsx_patch.py` (R4)
+- IS 분기 값은 `is_ytd_diff` 가 있으면 그것(FnGuide 관행), 없으면 `is`. 보고에 `is_convention` 과 `restated_cells`(둘이 다른 셀 목록·차이) 기록. 주석으로 채워진 계정(이자수익 등)은 계정명이 같으니 자동으로 들어간다 — 채움 계정 수 전후를 보고.
+
+### 5-5. 섹션 — `kship_model_section.py` (R5)
+- 조선사: `매출조선신규` 행·시나리오 밴드(보수/낙관 FY 막대 또는 표) · "신규수주 포함(forecast_panel base, 미보정)" 라벨 · `cohort_mode` 표기 · 잔고 캡 표기. 손익표에 이자손익·환관련손익 등 영업외 세부 행이 값이 있으면 표시. 드라이버 라벨에 OOS 선택 결과(`WAPE 연동 x% vs 추세 y%`).

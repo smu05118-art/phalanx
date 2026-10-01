@@ -15,8 +15,17 @@
            hedge_ratio 는 최신 분기 통화선도 매도 명목액(usd_sell_m) ÷ (기말 수주잔고 원화 ÷ 평균약정환율) 로
            회사별 실측(kship_page.yard_summary 방식). 약정환율이 공시에 없으면 계산하지 않고 0.7 가정으로 표기한다.
            hedge_rate 는 회사 평균약정환율, 없으면 계약별 수주시점 환율(헤지는 보통 수주 무렵에 건다 — 가정).
-  코호트   같은 선종·같은 수주연도 안에서 척당 금액(amt_usd_m/ships)의 중위 대비 위치 + 그 연도의 시장 수준
-           (원장 안 선종별 연도 중위의 추세만 — 외부 신조선가 지수 없음) → ①~⑤. 기준 문장은 cohort_method 에.
+  코호트   두 모드를 **모두** 계산해 저장한다(MODEL_SPEC §5-2, 결정 ⓔ). 기본 reference_anchor: 수주연도 → 등급 표
+           COHORT_BY_ORDER_YEAR(레퍼런스 HD현대미포 SLS 의 매출연도별 코호트 비중을 건조기간 2~3년으로 수주연도에 되돌린 것:
+           ≤2020 ③중마진 · 2021 ④호황 · 2022~ ⑤초호황; 출처 사용자 레퍼런스 모델, 클락슨 기반 판정). 외부 지수 파일
+           assets/newbuild_index.json 이 있으면 그것을 우선한다(형식은 아래, 현재 없음). 대안 ledger_relative: 같은 선종·
+           같은 수주연도 안에서 척당 금액(amt_usd_m/ships)의 중위 대비 위치 + 그 연도의 시장 수준(원장 안 추세만) → ①~⑤.
+           기본 모드는 cohort/by_cohort/target_opm/calibration, 다른 모드는 cohort_alt/by_cohort_alt/target_opm_alt/calibration_alt.
+           파일 최상위 cohort_mode·cohort_table·cohort_source 에 모드·표·출처를 적는다. --cohort-mode 로 기본을 바꿀 수 있다.
+  잔고캡   origin 분기말까지 수주된 해양 계약의 원장 잔여 원화(수주시점 금액 × 미진행 비율)가 공시 해양 기말잔고를 넘으면
+           (backlog_coverage_at_origin > 1 — 대한조선 2026Q2 1.164) 그 계약들의 origin 이후 분기 매출을 1/coverage 배로 줄인다
+           (backlog_cap). origin 뒤 수주분(그 잔고에 없다)·비해양(OTHER)·과거 분기는 그대로. 원값은 by_quarter[q].backlog_cap.*_raw ·
+           by_year[y].*_raw · counts.forecast_window.*_raw 에 보존하고 파일 최상위 backlog_cap_applied 로 표시한다.
   화해     분기 SLS 원화(해양 계약만) ÷ 정기보고서 부문 매출 3개월분(누계 차분; Q1 = 누계, Q4 = 연간 − 3Q 누계).
            매출표가 없는 회사는 기납품 누계 차분(HD현대重·대한조선·한화오션 방식), HJ 는 프로젝트 누계라 같은 해 차분만.
   타겟OPM  코호트 표(①−5% ②0 ③5 ④10 ⑤15 — 가정) × 매출 비중. 회사 실측 OPM 이 있으면(assets/fin) shift 를 잰다.
@@ -26,7 +35,14 @@
 HD한국조선해양(009540)이 「자회사의 주요경영사항」으로 낸 계약 중 HD현대重(329180) 자체 공시와 같은 계약은
 (선종·척수·금액·수주일)로 짝을 찾아 두 쪽에 shared_with 를 적고, 지주 파일의 합계에서는 뺀다(합산 금지).
 
-    python3 kship_sls.py --all [--curve linear|s_curve] [--spot 1350] [--report]
+assets/newbuild_index.json (선택 — 있으면 reference_anchor 의 표보다 우선; 2026-09-30 현재 없음, 형식만 정의):
+    {"source": "예: Clarksons Newbuilding Price Index 연평균", "as_of": "YYYY-MM-DD", "unit": "index",
+     "by_year": {"2020": 127.0, "2021": 153.6, "2022": 162.0},                       # 수주연도 → 지수
+     "grades": [[0, "①적자"], [110, "②BEP"], [125, "③중마진"], [145, "④호황"], [160, "⑤초호황"]],   # [지수 하한, 등급] 오름차순
+     "cohort_by_year": {"2021": "④호황"}}                                             # (선택) 연도 직접 지정 — by_year×grades 보다 우선
+    지수에 없는 연도는 COHORT_BY_ORDER_YEAR 표로 돌아가고 계약의 cohort_detail.rule 에 그렇게 적는다.
+
+    python3 kship_sls.py --all [--curve linear|s_curve] [--spot 1350] [--cohort-mode reference_anchor|ledger_relative] [--report]
     python3 kship_sls.py --stock 010140 --report
 """
 import argparse
@@ -59,6 +75,26 @@ COHORT_METHOD = ("척당 금액 = amt_usd_m ÷ ships. (1) 연도 시장 수준: 
                  "(2) 셀 위치: 같은 선종·같은 수주연도(표본 2건 이상) 중위 대비 <0.90 → −1, >1.10 → +1 (표본 부족이면 "
                  "선종 전체 중위 ÷ year_index 로 대체). 1~5 로 자름. 외부 신조선가 지수 없음 — 원장(2024~ 공시) 안의 "
                  "상대 등급이며 2021 이후 절대 호황 수준은 반영하지 못한다. 척수 없는 계약(공사·해양 EPC 등)은 등급 없음.")
+# ── 코호트 모드(§5-2) ── 기본 reference_anchor, 대안 ledger_relative(위 COHORT_METHOD). 둘 다 계산해 저장한다.
+COHORT_MODES = ("reference_anchor", "ledger_relative")
+COHORT_MODE_DEFAULT = "reference_anchor"
+# 레퍼런스(HD현대미포 subQ 'SLS' 시트) 매출연도별 코호트 비중(백만$) — 사용자 레퍼런스 모델, 클락슨 선표 기반 판정. 표는 그대로 파일에 싣는다.
+COHORT_REFERENCE_MIX_USD_M = collections.OrderedDict([
+    ("2024", collections.OrderedDict([("⑤초호황", 1647), ("④호황", 1305), ("③중마진", 485), ("①적자", 157), ("②BEP", 8)])),
+    ("2025", collections.OrderedDict([("⑤초호황", 3018), ("④호황", 78), ("②BEP", 84)])),
+    ("2026", collections.OrderedDict([("⑤초호황", 6522), ("②BEP", 270)])),
+    ("2027", collections.OrderedDict([("⑤초호황", 5857)]))])
+# 수주연도 → 등급 (하한 연도, 상한 연도, 등급; None = 열림). 매출연도를 건조기간 2~3년만큼 되돌린 것:
+# 2024 매출(수주 2021~22 인도분) ⑤ 46%·④ 36%·③ 13% → 2022 수주 ⑤·2021 수주 ④·그 전(저가 수주 잔량) ③; 2025~27 매출(수주 2022~25) ⑤ 95~100%.
+COHORT_BY_ORDER_YEAR = ((None, 2020, "③중마진"), (2021, 2021, "④호황"), (2022, None, "⑤초호황"))
+COHORT_BUILD_LAG_YEARS = "2~3"
+COHORT_SOURCE = ("사용자 레퍼런스 모델(HD현대미포 subQ 'SLS' 시트, 클락슨 선표 기반 코호트 판정)의 매출연도별 코호트 비중(백만$)을 "
+                 "건조기간 2~3년으로 수주연도에 되돌린 표(가정). 외부 신조선가 지수 미보유 — assets/newbuild_index.json 이 있으면 그것을 우선")
+COHORT_REFERENCE_METHOD = ("수주연도만으로 등급: ≤2020 ③중마진, 2021 ④호황, 2022 이후 ⑤초호황(COHORT_BY_ORDER_YEAR). 근거: 레퍼런스 미포 SLS 매출연도별 "
+                           "코호트(백만$) 2024 ⑤1,647·④1,305·③485·①157·②8 / 2025 ⑤3,018·④78·②84 / 2026 ⑤6,522·②270 / 2027 ⑤5,857 을 건조 2~3년 "
+                           "되돌림. 대상은 ledger_relative 와 같이 선종·척수 있는 신조 계약(공사·EPC·방산 체계개발 등 척수 없는 계약은 등급 없음). "
+                           "assets/newbuild_index.json 이 있으면 그 지수(by_year × grades, cohort_by_year 직접 지정 우선)가 표보다 우선.")
+NEWBUILD_INDEX = os.path.join(ASSETS, "newbuild_index.json")
 # 정기보고서 II-4 기납품 열의 성격(kship_forecast.load_reports 와 같은 판정): HJ·삼성重 은 프로젝트 누계(같은 해 차분만),
 # 나머지는 연초 누계(YTD). 삼성重 은 매출표가 있어 기납품을 쓰지 않는다.
 DELIVERED_STYLE = {"097230": "project_cumulative", "010140": "project_cumulative"}
@@ -435,6 +471,96 @@ def cohorts(contracts):
     return out, year_index
 
 
+def load_newbuild_index(path=NEWBUILD_INDEX):
+    """assets/newbuild_index.json(선택; 형식은 모듈 docstring). 없거나 by_year·cohort_by_year 가 모두 없으면 None — 표로 간다."""
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            x = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(x, dict) or not (x.get("by_year") or x.get("cohort_by_year")):
+        return None
+    return x
+
+
+def cohort_by_order_year(year, index=None):
+    """수주연도 → (등급, 규칙 문장). index(newbuild_index.json 내용)가 있으면 우선: cohort_by_year 직접 지정 > by_year 지수 × grades 문턱.
+    지수에 없는 연도·지수 없음 → COHORT_BY_ORDER_YEAR 표. 연도 없음 → (None, '연도 없음')."""
+    if year is None:
+        return None, "연도 없음"
+    if index:
+        direct = (index.get("cohort_by_year") or {}).get(str(year))
+        if direct in COHORT_OPM:
+            return direct, "newbuild_index.cohort_by_year %s" % year
+        v = (index.get("by_year") or {}).get(str(year))
+        grades = index.get("grades") or []
+        if v is not None and grades:
+            label = None
+            for g in sorted(grades, key=lambda g: float(g[0])):
+                if float(v) >= float(g[0]) and g[1] in COHORT_OPM:
+                    label = g[1]
+            if label:
+                return label, "newbuild_index.by_year %s=%g × grades" % (year, float(v))
+    for lo, hi, label in COHORT_BY_ORDER_YEAR:
+        if (lo is None or year >= lo) and (hi is None or year <= hi):
+            return label, "COHORT_BY_ORDER_YEAR %s~%s → %s" % (lo if lo is not None else "", hi if hi is not None else "", label)
+    return None, "표 밖"
+
+
+def cohorts_reference(contracts, index=None):
+    """reference_anchor 모드: 수주연도만으로 ①~⑤(표 COHORT_BY_ORDER_YEAR, 지수 파일 있으면 우선). 대상은 cohorts()(ledger_relative)와
+    **같은 집합** — 선종·척수·금액·연도 있는 신조 계약, 지주의 공유 계약(shared_owner) 제외. 공사·EPC·방산 체계개발 등 척수 없는 계약은
+    신조선가 코호트가 아니라 등급 없음. 반환 {rcp: {...}}."""
+    out = {}
+    for c in contracts:
+        if (c.get("type") in (None, "OTHER") or not c.get("ships") or not c.get("amt_usd_m") or not c.get("year")
+                or c.get("shared_owner")):
+            continue
+        label, rule = cohort_by_order_year(c["year"], index)
+        if label:
+            out[c["rcp"]] = {"cohort": label, "order_year": c["year"], "rule": rule,
+                             "source": "assets/newbuild_index.json" if rule.startswith("newbuild_index") else "reference_anchor(사용자 레퍼런스 모델, 클락슨 기반 판정)"}
+    return out
+
+
+def cohort_table(index=None):
+    """파일 최상위 cohort_table — 수주연도 표·레퍼런스 매출연도 비중(백만$ 와 비중)·OPM 표·지수 파일 유무. 전부 가정(kind estimate)."""
+    share = collections.OrderedDict()
+    for y, mix in COHORT_REFERENCE_MIX_USD_M.items():
+        tot = float(sum(mix.values()))
+        share[y] = collections.OrderedDict((k, round(v / tot, 3)) for k, v in mix.items())
+    return collections.OrderedDict([
+        ("kind", "estimate"),
+        ("by_order_year", [collections.OrderedDict([("from", lo), ("to", hi), ("cohort", lab)]) for lo, hi, lab in COHORT_BY_ORDER_YEAR]),
+        ("build_lag_years", COHORT_BUILD_LAG_YEARS),
+        ("reference_revenue_year_mix_usd_m", COHORT_REFERENCE_MIX_USD_M),
+        ("reference_revenue_year_share", share),
+        ("opm_table", COHORT_OPM),
+        ("newbuild_index", collections.OrderedDict([("path", "assets/newbuild_index.json"), ("present", bool(index)),
+                                                    ("source", (index or {}).get("source")), ("as_of", (index or {}).get("as_of"))])),
+        ("basis", "레퍼런스 매출연도 코호트 비중을 건조기간 2~3년으로 수주연도에 되돌림 — 2024 매출(수주 2021~22) ⑤ 46%·④ 36%·③ 13% → 2022 수주 ⑤·"
+                  "2021 수주 ④·그 전 ③(저가 수주 잔량); 2025~27 매출(수주 2022~25) ⑤ 95~100%. 가정이며 외부 신조선가 지수 미보유")])
+
+
+def _target_opm(mix, usd_m):
+    """코호트별 매출$ 믹스 → (타겟 OPM, 등급 있는 비중). '등급없음' 은 분모에서 뺀다."""
+    graded = {k: v for k, v in mix.items() if k in COHORT_OPM}
+    gsum = sum(graded.values())
+    return (round(sum(v * COHORT_OPM[k] for k, v in graded.items()) / gsum, 4) if gsum else None,
+            round(gsum / usd_m, 4) if usd_m else None)
+
+
+def _cohort_basis(mode, detail):
+    if not detail:
+        return "척수 없음 또는 금액·연도 없음 → 등급 없음"
+    if mode == "ledger_relative":
+        return "amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유"
+    return "수주연도 %s → %s (%s; 출처 %s — 레퍼런스 매출연도 코호트를 건조 2~3년 되돌림)" % (
+        detail.get("order_year"), detail.get("cohort"), detail.get("rule"), detail.get("source"))
+
+
 # ── 회사별 조립 ─────────────────────────────────────────────
 
 def _duration_medians(rows):
@@ -488,8 +614,15 @@ def prepare_contracts(rows, yards, fx, const):
     return out
 
 
-def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, origin):
-    """한 회사의 sls json 을 만든다. contracts 는 prepare_contracts 결과 전체(모든 회사)."""
+def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, origin, mode=COHORT_MODE_DEFAULT, newbuild_index=None):
+    """한 회사의 sls json 을 만든다. contracts 는 prepare_contracts 결과 전체(모든 회사).
+    cohort_map/year_index 는 ledger_relative 등급(cohorts()), reference_anchor 등급은 여기서 표(또는 newbuild_index)로 매긴다.
+    mode 가 기본 모드(cohort·by_cohort·target_opm·calibration), 다른 모드는 *_alt 에 함께 저장한다(§5-2).
+    잔고 캡(§5-2): 집계 전에 origin 커버리지를 재야 하므로 계약 루프를 두 번 돈다(스케줄·진행률 → 커버리지 → 집계)."""
+    if mode not in COHORT_MODES:
+        raise ValueError("cohort_mode %r — %s 중 하나" % (mode, "|".join(COHORT_MODES)))
+    alt_mode = [m for m in COHORT_MODES if m != mode][0]
+    maps = {"reference_anchor": cohorts_reference(contracts, newbuild_index), "ledger_relative": cohort_map}
     yq = yards.get(stock) or {}
     mine = [dict(c) for c in contracts if c["stock"] == stock]
     hedge = hedge_params(stock, yq, fx=fx)
@@ -501,23 +634,34 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
             fx_cache[q] = fx_quarter(fx, q, const)
         return fx_cache[q]
 
-    by_q = collections.defaultdict(lambda: {"usd_m": 0.0, "marine_usd_m": 0.0, "by_type": collections.defaultdict(float),
-                                            "by_cohort": collections.defaultdict(float), "hedged_krw_m": 0.0,
-                                            "marine_hedged_krw_m": 0.0, "_rate_w": 0.0, "_hrate_w": 0.0, "n_active": 0})
+    _, origin_end = q_bounds(origin)
+
+    def _signed_by_origin(c):
+        d = _date(c.get("signed")) or _date(c.get("start"))
+        return d is not None and d <= origin_end
+
+    # 1) 계약별 스케줄·코호트(두 모드)·origin 진행률
+    scheds = {}
     warnings, skipped = [], []
     n_counted, n_shared_excluded = 0, 0
     for c in mine:
         s, e = _date(c["start"]), _date(c["end"])
         sched = schedule(s, e, c["amt_usd_m"], curve)
+        scheds[c["rcp"]] = sched
         c["schedule"] = round_schedule(sched, c["amt_usd_m"])
         c["curve"] = "linear_progress" if curve == "linear" else "s_curve"
-        info = cohort_map.get(c["rcp"])
-        c["cohort"] = info["cohort"] if info else None
-        c["cohort_detail"] = info
-        c["cohort_basis"] = ("amt_per_ship vs type-year median (contracts.json) × year_index; 신조선가 지수 미보유"
-                             if info else "척수 없음 또는 금액·연도 없음 → 등급 없음")
+        pri, alt = maps[mode].get(c["rcp"]), maps[alt_mode].get(c["rcp"])
+        c["cohort"] = pri["cohort"] if pri else None
+        c["cohort_mode"] = mode
+        c["cohort_detail"] = pri
+        c["cohort_basis"] = _cohort_basis(mode, pri)
+        c["cohort_alt"] = alt["cohort"] if alt else None
+        c["cohort_alt_mode"] = alt_mode
+        c["cohort_alt_detail"] = alt
         c["progress_at_origin"] = round(sum(v for q, v in sched.items() if q <= origin) / c["amt_usd_m"], 4) if sched and c["amt_usd_m"] else None
         c["remaining_usd_m_at_origin"] = round(sum(v for q, v in sched.items() if q > origin), 3) if sched else None
+        c["signed_by_origin"] = _signed_by_origin(c)
+        c["backlog_cap_applied"] = False
         if not sched:
             skipped.append({"rcp": c["rcp"], "why": "금액 없음" if not c["amt_usd_m"] else "기간 없음"})
             continue
@@ -527,60 +671,118 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
             continue
         c["counted"] = True
         n_counted += 1
+
+    # 2) 잔고 커버리지 → 캡 배율(§5-2). origin 분기말까지 수주된 계약의 잔여 스케줄(해양) vs 그 분기 정기보고서 해양 부문 기말잔고.
+    #    origin 뒤에 수주한 계약은 그 잔고에 없으므로 뺀다(대한조선 2026Q3 수주분이 2026Q2 잔고를 넘게 만들었다).
+    latest_q = sorted(yq)[-1] if yq else None
+    pred = _marine_pred(stock)
+    segs = [r for r in ((yq[latest_q].get("orders") or {}).get("rows") or []) if not r.get("total")] if latest_q else []
+    marine_vals = [r["closing"] for r in segs if pred(_norm_seg(r.get("seg"))) and r.get("closing") is not None]
+    marine_closing = sum(marine_vals) if marine_vals else None
+    closing = closing_total(yq[latest_q]) if latest_q else None
+    reported_segs = [_norm_seg(r.get("seg")) for r in segs]
+
+    def _remaining_krw(c):
+        # 원장 원화 금액 × 미진행 비율 — 달러 왕복 환산(수주시점 환율 → 건조시점 spot)을 피해 공시 잔고와 같은 원화 장부 기준
+        return (c["amt_krw_m"] or 0) * (1.0 - (c["progress_at_origin"] or 0))
+    cands = [c for c in mine if c.get("counted") and c["signed_by_origin"]]
+    remaining_marine_usd = sum(c["remaining_usd_m_at_origin"] or 0 for c in cands if c["type"] != "OTHER")
+    remaining_all_usd = sum(c["remaining_usd_m_at_origin"] or 0 for c in cands)
+    remaining_marine_krw = sum(_remaining_krw(c) for c in cands if c["type"] != "OTHER")
+    remaining_all_krw = sum(_remaining_krw(c) for c in cands)
+    backlog_cov = (remaining_marine_krw / marine_closing) if marine_closing else None
+    backlog_cov_all = (remaining_all_krw / closing) if closing else None
+    cap_factor = (1.0 / backlog_cov) if (backlog_cov is not None and backlog_cov > 1.0) else 1.0
+    cap_applied = cap_factor < 1.0
+
+    # 3) 분기 집계 — 캡은 (counted · 해양 · origin 분기말까지 수주) 계약의 origin 이후 분기에만. 원값은 _raw 에 같이 쌓는다.
+    def _bucket():
+        return {"usd_m": 0.0, "marine_usd_m": 0.0, "by_type": collections.defaultdict(float),
+                "by_cohort": collections.defaultdict(float), "by_cohort_alt": collections.defaultdict(float),
+                "hedged_krw_m": 0.0, "marine_hedged_krw_m": 0.0, "_rate_w": 0.0, "_hrate_w": 0.0, "n_active": 0,
+                "_raw": {"usd_m": 0.0, "marine_usd_m": 0.0, "hedged_krw_m": 0.0, "marine_hedged_krw_m": 0.0}}
+    by_q = collections.defaultdict(_bucket)
+    for c in mine:
+        if not c.get("counted"):
+            continue
         hedge_rate_c = hedge["hedge_rate"] or c["fx_at_sign"]
         marine = c["type"] != "OTHER"
-        for q, usd in sched.items():
+        capped = bool(cap_applied and marine and c["signed_by_origin"])
+        c["backlog_cap_applied"] = capped
+        for q, usd in scheds[c["rcp"]].items():
             sp, _ = spot(q)
             applied = hr * hedge_rate_c + (1.0 - hr) * sp
+            u = usd * cap_factor if (capped and q > origin) else usd
             b = by_q[q]
-            b["usd_m"] += usd
-            b["by_type"][c["type"]] += usd
-            b["by_cohort"][c["cohort"] or "등급없음"] += usd
-            b["hedged_krw_m"] += usd * applied
-            b["_rate_w"] += usd * applied
-            b["_hrate_w"] += usd * hedge_rate_c
+            b["usd_m"] += u
+            b["by_type"][c["type"]] += u
+            b["by_cohort"][c["cohort"] or "등급없음"] += u
+            b["by_cohort_alt"][c["cohort_alt"] or "등급없음"] += u
+            b["hedged_krw_m"] += u * applied
+            b["_rate_w"] += u * applied
+            b["_hrate_w"] += u * hedge_rate_c
             b["n_active"] += 1
+            b["_raw"]["usd_m"] += usd
+            b["_raw"]["hedged_krw_m"] += usd * applied
             if marine:
-                b["marine_usd_m"] += usd
-                b["marine_hedged_krw_m"] += usd * applied
+                b["marine_usd_m"] += u
+                b["marine_hedged_krw_m"] += u * applied
+                b["_raw"]["marine_usd_m"] += usd
+                b["_raw"]["marine_hedged_krw_m"] += usd * applied
     by_quarter = collections.OrderedDict()
     for q in sorted(by_q):
         b = by_q[q]
         sp, sp_src = spot(q)
-        graded = {k: v for k, v in b["by_cohort"].items() if k in COHORT_OPM}
-        gsum = sum(graded.values())
-        by_quarter[q] = {
-            "usd_m": round(b["usd_m"], 3), "marine_usd_m": round(b["marine_usd_m"], 3),
-            "by_type": collections.OrderedDict((k, round(v, 3)) for k, v in sorted(b["by_type"].items())),
-            "by_cohort": collections.OrderedDict((k, round(v, 3)) for k, v in sorted(b["by_cohort"].items())),
-            "hedged_krw_m": round(b["hedged_krw_m"], 1), "marine_hedged_krw_m": round(b["marine_hedged_krw_m"], 1),
-            "applied_rate": round(b["_rate_w"] / b["usd_m"], 2) if b["usd_m"] else None,
-            "hedge_ratio": hr, "hedge_rate": round(b["_hrate_w"] / b["usd_m"], 2) if b["usd_m"] else None,
-            "spot_assumed": round(sp, 2), "spot_source": sp_src, "n_active": b["n_active"],
-            "kind": "estimate", "past": q <= origin,
-            "basis": "공시 계약기간 안 %s 배분 × 헤지 적용 환율" % ("선형 진행률" if curve == "linear" else "S-커브 진행률"),
-            "target_opm": round(sum(v * COHORT_OPM[k] for k, v in graded.items()) / gsum, 4) if gsum else None,
-            "graded_share": round(gsum / b["usd_m"], 4) if b["usd_m"] else None}
+        topm, gshare = _target_opm(b["by_cohort"], b["usd_m"])
+        topm_alt, gshare_alt = _target_opm(b["by_cohort_alt"], b["usd_m"])
+        cap_here = cap_applied and q > origin
+        row = collections.OrderedDict([
+            ("usd_m", round(b["usd_m"], 3)), ("marine_usd_m", round(b["marine_usd_m"], 3)),
+            ("by_type", collections.OrderedDict((k, round(v, 3)) for k, v in sorted(b["by_type"].items()))),
+            ("by_cohort", collections.OrderedDict((k, round(v, 3)) for k, v in sorted(b["by_cohort"].items()))),
+            ("by_cohort_alt", collections.OrderedDict((k, round(v, 3)) for k, v in sorted(b["by_cohort_alt"].items()))),
+            ("hedged_krw_m", round(b["hedged_krw_m"], 1)), ("marine_hedged_krw_m", round(b["marine_hedged_krw_m"], 1)),
+            ("applied_rate", round(b["_rate_w"] / b["usd_m"], 2) if b["usd_m"] else None),
+            ("hedge_ratio", hr), ("hedge_rate", round(b["_hrate_w"] / b["usd_m"], 2) if b["usd_m"] else None),
+            ("spot_assumed", round(sp, 2)), ("spot_source", sp_src), ("n_active", b["n_active"]),
+            ("kind", "estimate"), ("past", q <= origin),
+            ("basis", "공시 계약기간 안 %s 배분 × 헤지 적용 환율%s" % ("선형 진행률" if curve == "linear" else "S-커브 진행률",
+                                                          (" × 잔고 캡 %.4f(backlog_cap — origin 전 수주 해양분만)" % cap_factor) if cap_here else "")),
+            ("target_opm", topm), ("graded_share", gshare),
+            ("target_opm_alt", topm_alt), ("graded_share_alt", gshare_alt)])
+        if cap_here:
+            row["backlog_cap"] = collections.OrderedDict([
+                ("factor", round(cap_factor, 6)), ("usd_m_raw", round(b["_raw"]["usd_m"], 3)), ("marine_usd_m_raw", round(b["_raw"]["marine_usd_m"], 3)),
+                ("hedged_krw_m_raw", round(b["_raw"]["hedged_krw_m"], 1)), ("marine_hedged_krw_m_raw", round(b["_raw"]["marine_hedged_krw_m"], 1))])
+        by_quarter[q] = row
     by_year = collections.OrderedDict()
     for q, b in by_quarter.items():
         y = by_year.setdefault(q[:4], {"usd_m": 0.0, "marine_usd_m": 0.0, "hedged_krw_m": 0.0, "marine_hedged_krw_m": 0.0,
-                                       "by_type": collections.defaultdict(float), "by_cohort": collections.defaultdict(float), "quarters": 0})
+                                       "hedged_krw_m_raw": 0.0, "marine_hedged_krw_m_raw": 0.0,
+                                       "by_type": collections.defaultdict(float), "by_cohort": collections.defaultdict(float),
+                                       "by_cohort_alt": collections.defaultdict(float), "quarters": 0})
         for k in ("usd_m", "marine_usd_m", "hedged_krw_m", "marine_hedged_krw_m"):
             y[k] += b[k]
+        raw = b.get("backlog_cap") or {}
+        y["hedged_krw_m_raw"] += raw.get("hedged_krw_m_raw", b["hedged_krw_m"])
+        y["marine_hedged_krw_m_raw"] += raw.get("marine_hedged_krw_m_raw", b["marine_hedged_krw_m"])
         for k, v in b["by_type"].items():
             y["by_type"][k] += v
         for k, v in b["by_cohort"].items():
             y["by_cohort"][k] += v
+        for k, v in b["by_cohort_alt"].items():
+            y["by_cohort_alt"][k] += v
         y["quarters"] += 1
     for y in by_year.values():
         for k in ("usd_m", "marine_usd_m"):
             y[k] = round(y[k], 3)
-        for k in ("hedged_krw_m", "marine_hedged_krw_m"):
+        for k in ("hedged_krw_m", "marine_hedged_krw_m", "hedged_krw_m_raw", "marine_hedged_krw_m_raw"):
             y[k] = round(y[k], 1)
         y["by_type"] = collections.OrderedDict((k, round(v, 3)) for k, v in sorted(y["by_type"].items()))
         y["by_cohort"] = collections.OrderedDict((k, round(v, 3)) for k, v in sorted(y["by_cohort"].items()))
+        y["by_cohort_alt"] = collections.OrderedDict((k, round(v, 3)) for k, v in sorted(y["by_cohort_alt"].items()))
 
-    # 화해: 분기 SLS 원화(해양) vs 정기보고서 부문 매출 3개월분
+    # 화해: 분기 SLS 원화(해양) vs 정기보고서 부문 매출 3개월분 — 과거 분기(≤ origin)는 캡의 영향을 받지 않는다
     reported = reported_marine_3m(stock, yq)
     fin_is = _fin_is(stock)
     reconcile = collections.OrderedDict()
@@ -604,18 +806,6 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
                         "note": "공시된 척당 계약(2024~)만 → 그 전 수주 물량·계약 미공시·반복건조·기타매출은 잔차"}
     used = [q for q in sorted(reconcile) if reconcile[q]["ratio"] is not None][-4:]
     med = _median([reconcile[q]["ratio"] for q in used]) if used else None
-    # 잔고 커버리지: origin 분기말까지 수주된 계약의 잔여 스케줄(해양) vs 그 분기 정기보고서 해양 부문 기말잔고.
-    # origin 뒤에 수주한 계약은 그 잔고에 없으므로 뺀다(대한조선 2026Q3 수주분이 2026Q2 잔고를 넘게 만들었다).
-    latest_q = sorted(yq)[-1] if yq else None
-    _, origin_end = q_bounds(origin)
-    pred = _marine_pred(stock)
-    marine_closing = None
-    if latest_q:
-        segs = [r for r in ((yq[latest_q].get("orders") or {}).get("rows") or []) if not r.get("total")]
-        vals = [r["closing"] for r in segs if pred(_norm_seg(r.get("seg"))) and r.get("closing") is not None]
-        marine_closing = sum(vals) if vals else None
-    closing = closing_total(yq[latest_q]) if latest_q else None
-    reported_segs = [_norm_seg(r.get("seg")) for r in segs] if latest_q else []
     # 원장 신규 vs 수주표 신규증감(연초 누계, 해양 부문): 두 공시의 계약 인식 기준(발효·선수금·환율·범위)이 같은지 보는 진단.
     # 대한조선은 원장 2025H2 1.41조 vs 수주표 FY2025 신규 0.69조 — 커버리지 > 1 의 배경이 여기 있다.
     ledger_vs_new = None
@@ -632,42 +822,59 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
                              "ratio": round(led_new / sum(new_vals), 4),
                              "basis": "%s~%s 수주 해양 계약의 원장 원화 공시금액 ÷ 정기보고서 %s 해양 부문 신규증감(연초 누계, 환율효과 포함)"
                                       % (y0.isoformat(), lq_end.isoformat(), latest_q)}
-
-    def _signed_by_origin(c):
-        d = _date(c.get("signed")) or _date(c.get("start"))
-        return d is not None and d <= origin_end
-    def _remaining_krw(c):
-        # 원장 원화 금액 × 미진행 비율 — 달러 왕복 환산(수주시점 환율 → 건조시점 spot)을 피해 공시 잔고와 같은 원화 장부 기준
-        return (c["amt_krw_m"] or 0) * (1.0 - (c["progress_at_origin"] or 0))
-    cands = [c for c in mine if c.get("counted") and _signed_by_origin(c)]
-    remaining_marine_usd = sum(c["remaining_usd_m_at_origin"] or 0 for c in cands if c["type"] != "OTHER")
-    remaining_all_usd = sum(c["remaining_usd_m_at_origin"] or 0 for c in cands)
-    remaining_marine_krw = sum(_remaining_krw(c) for c in cands if c["type"] != "OTHER")
-    remaining_all_krw = sum(_remaining_krw(c) for c in cands)
-    backlog_cov = (remaining_marine_krw / marine_closing) if marine_closing else None
-    backlog_cov_all = (remaining_all_krw / closing) if closing else None
     reconcile_summary = {
         "definition": "ratio = SLS 해양 원화(헤지 적용) ÷ 정기보고서 해양 부문 매출 3개월분. scale_to_reported = 1/ratio (모델: 매출조선 = SLS 원화 × scale)",
         "quarters_used": used, "median_ratio_4q": round(med, 4) if med else None,
         "median_scale_to_reported_4q": round(1.0 / med, 4) if med else None,
         "backlog_coverage_at_origin": round(backlog_cov, 4) if backlog_cov is not None else None,
-        "backlog_coverage_basis": "%s 분기말까지 수주된 해양 계약의 원장 원화 금액 × 미진행 비율 ÷ 정기보고서 %s 해양 부문 기말잔고 원화 (환산 없음)" % (origin, latest_q or "—"),
+        "backlog_coverage_basis": "%s 분기말까지 수주된 해양 계약의 원장 원화 금액 × 미진행 비율 ÷ 정기보고서 %s 해양 부문 기말잔고 원화 (환산 없음, 캡 전 원값)" % (origin, latest_q or "—"),
+        "backlog_coverage_after_cap": round(backlog_cov * cap_factor, 4) if backlog_cov is not None else None,
+        "backlog_cap_applied": cap_applied,
         "backlog_coverage_all_segments": round(backlog_cov_all, 4) if backlog_cov_all is not None else None,
         "remaining_usd_m_at_origin": round(remaining_all_usd, 3), "remaining_marine_usd_m_at_origin": round(remaining_marine_usd, 3),
         "remaining_krw_m_at_origin": round(remaining_all_krw, 1), "remaining_marine_krw_m_at_origin": round(remaining_marine_krw, 1),
         "reported_backlog_krw_m": closing, "reported_marine_backlog_krw_m": marine_closing,
         "reported_backlog_segments": reported_segs, "ledger_vs_reported_new": ledger_vs_new,
-        "warning": "원장은 2024~ 공시분 — 과거 분기 ratio 는 그 전 수주 물량이 빠져 낮다. 미래 구간 배율은 backlog_coverage 쪽이 덜 편향된다."}
+        "warning": "원장은 2024~ 공시분 — 과거 분기 ratio 는 그 전 수주 물량이 빠져 낮다. 미래 구간 배율은 backlog_coverage 쪽이 덜 편향된다. "
+                   "커버리지 > 1 이면 이 파일이 이미 1/coverage 캡을 적용했다(backlog_cap) — 모델은 배율을 겹쳐 곱하지 말 것"}
 
-    # 타겟 OPM + 캘리브레이션 자리(실측 OPM 은 assets/fin 이 있어야 — 없으면 null)
-    target_opm = collections.OrderedDict()
+    # 잔고 캡 블록(§5-2) — 적용 여부·배율·전후 합계. 캡 뒤에도 SLS 원화 합이 잔고를 넘을 수 있다(수주시점 환율 → 건조시점 환율 환산 차이) — 숨기지 않는다
+    total_window = [q for q in q_range(*FORECAST_WINDOW) if q in by_quarter]
+    future_qs = [q for q in by_quarter if q > origin]
+    fut_raw = sum(by_q[q]["_raw"]["marine_hedged_krw_m"] for q in future_qs)
+    fut_capped = sum(by_q[q]["marine_hedged_krw_m"] for q in future_qs)
+    win_raw = sum(by_q[q]["_raw"]["hedged_krw_m"] for q in total_window)
+    win_capped = sum(by_q[q]["hedged_krw_m"] for q in total_window)
+    backlog_cap = collections.OrderedDict([
+        ("applied", cap_applied), ("kind", "estimate"),
+        ("coverage_at_origin", round(backlog_cov, 4) if backlog_cov is not None else None),
+        ("factor", round(cap_factor, 6)),
+        ("scope", "origin(%s) 분기말까지 수주된 해양 계약(counted)의 origin 이후 분기 — origin 뒤 수주분·비해양(OTHER)·과거 분기는 그대로" % origin),
+        ("reported_marine_backlog_krw_m", marine_closing),
+        ("remaining_marine_krw_m_at_origin_raw", round(remaining_marine_krw, 1)),
+        ("remaining_marine_krw_m_at_origin_capped", round(remaining_marine_krw * cap_factor, 1)),
+        ("future_marine_hedged_krw_m_raw", round(fut_raw, 1)), ("future_marine_hedged_krw_m", round(fut_capped, 1)),
+        ("future_sls_vs_backlog_raw", round(fut_raw / marine_closing, 4) if marine_closing else None),
+        ("future_sls_vs_backlog", round(fut_capped / marine_closing, 4) if marine_closing else None),
+        ("window_hedged_krw_m_raw", round(win_raw, 1)), ("window_hedged_krw_m", round(win_capped, 1)),
+        ("basis", "MODEL_SPEC §5-2 — 원장 잔여 원화(수주시점 금액 × 미진행 비율) > 공시 해양 기말잔고이면 배율 1/coverage 로 줄인다"
+                  "(선형 진행 가정이 실제보다 느리거나 공시 잔고 범위·환율이 다른 경우). 원값은 by_quarter[q].backlog_cap.*_raw · by_year[y].*_raw · "
+                  "counts.forecast_window.*_raw 에 보존. future_sls_vs_backlog 는 SLS 원화(건조시점 환율) 기준이라 캡 뒤에도 1 을 넘을 수 있다")])
+
+    # 타겟 OPM(기본 모드) + 대안 모드, 캘리브레이션도 각각(실측 OPM 은 assets/fin 이 있어야 — 없으면 null)
+    target_opm, target_opm_alt = collections.OrderedDict(), collections.OrderedDict()
     for q, b in by_quarter.items():
         if b["target_opm"] is not None:
-            target_opm[q] = {"opm": b["target_opm"], "graded_share": b["graded_share"],
-                             "basis": "cohort mix × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"}
+            target_opm[q] = {"opm": b["target_opm"], "graded_share": b["graded_share"], "mode": mode,
+                             "basis": "cohort mix(%s) × cohort OPM table (assumption: ①−5%% ②0 ③5 ④10 ⑤15)" % mode}
+        if b["target_opm_alt"] is not None:
+            target_opm_alt[q] = {"opm": b["target_opm_alt"], "graded_share": b["graded_share_alt"], "mode": alt_mode,
+                                 "basis": "cohort mix(%s) × cohort OPM table (assumption: ①−5%% ②0 ③5 ④10 ⑤15)" % alt_mode}
     calib = calibration(stock, target_opm, origin, fin_is)
+    calib["mode"] = mode
+    calib_alt = calibration(stock, target_opm_alt, origin, fin_is)
+    calib_alt["mode"] = alt_mode
 
-    total_window = [q for q in q_range(*FORECAST_WINDOW) if q in by_quarter]
     warnings.append("종료일 = 마지막 호선 인도 예정; 진행률 매출 분기는 계약기간 안에 선형 배분(가정)")
     if stock == HOLDING:
         warnings.append("HD한국조선해양과 HD현대重 동일 계약 %d건 — shared_owner=329180 로 표시하고 이 파일의 합계에서 제외(합산 금지)" % n_shared_excluded)
@@ -681,21 +888,28 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
             warnings.append("공시 통화선도 매도 명목액 %.0f백만$ 을 현물(%s 기말 %.2f원)로 잔고 대비 환산하면 %.2f — 가정 %.2f 과 %+.2f 차이. "
                             "약정환율 미공시라 적용하지 않음(참고치 hedge.hedge_ratio_implied_spot; 채택은 사용자 결정)"
                             % (hedge["usd_sell_m"], hedge["quarter"], hedge["implied_spot_rate"], imp, hr, imp - hr))
-    # 코호트 방향 — 레퍼런스(HD현대미포 SLS 시트: 2025~ 물량 100% ⑤초호황)와 견줘 원장 내부 상대 등급의 한계를 적는다
-    recent = collections.Counter()
+    # 코호트 — 기본 모드와 대안 모드의 2025~ 수주 판정을 나란히 적는다(레퍼런스 HD현대미포 SLS 는 2025~ 물량 100% ⑤초호황)
+    recent, recent_alt = collections.Counter(), collections.Counter()
     for c in mine:
-        if c.get("counted") and c.get("cohort") and c.get("year") and c["year"] >= 2025:
-            recent[c["cohort"]] += c["amt_usd_m"] or 0
-    tot_recent = sum(recent.values())
-    if tot_recent:
-        top = max(sorted(recent.items()), key=lambda kv: kv[1])[0]
-        mix = ", ".join("%s %.0f%%" % (k, 100 * v / tot_recent) for k, v in sorted(recent.items()))
-        warnings.append("코호트는 원장 내부 상대 등급(신조선가 지수 없음): 2025~ 수주 물량(백만$) 판정 %s — 최다 %s. 레퍼런스 HD현대미포 SLS 는 "
-                        "2025~ 물량을 100%% ⑤초호황으로 두어 방향이 다르다(2021 이후 절대 호황 수준 미반영). 타겟 OPM 은 회사 calibrated_shift 로 "
-                        "실측 OPM 에 맞추고, 외부 지수 도입은 사용자 결정" % (mix, top))
+        if c.get("counted") and c.get("year") and c["year"] >= 2025:
+            if c.get("cohort"):
+                recent[c["cohort"]] += c["amt_usd_m"] or 0
+            if c.get("cohort_alt"):
+                recent_alt[c["cohort_alt"]] += c["amt_usd_m"] or 0
+
+    def _mix(cnt):
+        tot = sum(cnt.values())
+        return ", ".join("%s %.0f%%" % (k, 100 * v / tot) for k, v in sorted(cnt.items())) if tot else "—"
+    ledger_mix = recent_alt if mode == "reference_anchor" else recent
+    if sum(recent.values()) or sum(recent_alt.values()):
+        warnings.append("코호트 기본 모드 %s: 2025~ 수주 물량(백만$) 판정 %s. reference_anchor 는 수주연도 → 등급(≤2020 ③중마진 · 2021 ④호황 · 2022~ ⑤초호황; "
+                        "출처 사용자 레퍼런스 모델 HD현대미포 SLS 의 클락슨 기반 판정을 건조기간 2~3년으로 되돌린 표 — 외부 신조선가 지수 미보유%s). "
+                        "ledger_relative 는 원장 내부 상대 등급(2025~ 판정 %s; 2021 이후 절대 호황 수준 미반영). 대안 모드는 by_cohort_alt·target_opm_alt·"
+                        "calibration_alt 에 함께 저장. 타겟 OPM 은 기본 모드 기준이며 calibrated_shift(실측 − 타겟)로 실측 OPM 에 맞춘다 — 음수일 수 있다"
+                        % (mode, _mix(recent), " — assets/newbuild_index.json 우선 적용" if newbuild_index else "", _mix(ledger_mix)))
     else:
-        warnings.append("코호트는 원장 내부 상대 등급(신조선가 지수 없음) — 2025~ 등급 있는 수주 없음. 레퍼런스 HD현대미포 SLS(2025~ 100% ⑤초호황)와 "
-                        "직접 비교 불가; 2021 이후 절대 호황 수준 미반영")
+        warnings.append("코호트 기본 모드 %s — 2025~ 등급 있는 수주 없음. 레퍼런스 HD현대미포 SLS(2025~ 100%% ⑤초호황)와 직접 비교 불가; "
+                        "ledger_relative 는 원장 내부 상대 등급(신조선가 지수 없음, 2021 이후 절대 호황 수준 미반영)" % mode)
     if not fx:
         warnings.append("assets/fx.json 없음 — 수주시점·건조시점 환율은 공시 고시환율/약정환율/상수 %g 로 대체(fx_source 참조)" % const)
     if skipped:
@@ -707,8 +921,9 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
         warnings.append("정기보고서 부문 매출(3개월분)을 만들 수 없어 화해 없음")
     if backlog_cov is not None and backlog_cov > 1.0:
         warnings.append("원장 잔여(%.0f억) > 공시 해양 기말잔고(%.0f억), 커버리지 %.2f — 선형 진행 가정이 실제 진행보다 느리거나 "
-                        "공시 잔고 범위(환율·취소·범위)가 다르다. 모델은 배율 1 을 상한으로 볼 것"
-                        % (remaining_marine_krw / 100, marine_closing / 100, backlog_cov))
+                        "공시 잔고 범위(환율·취소·범위)가 다르다. origin 이후 해양 매출(origin 전 수주분)을 1/coverage = %.4f 배로 줄였다"
+                        "(backlog_cap, 원값 *_raw 보존). 모델은 배율 1 을 상한으로 볼 것 — 추가 배율 금지"
+                        % (remaining_marine_krw / 100, marine_closing / 100, backlog_cov, cap_factor))
     if backlog_cov_all is not None and backlog_cov_all > 1.0 and (backlog_cov is None or backlog_cov <= 1.0):
         warnings.append("비해양(OTHER: 공사·플랜트 등) 포함 원장 잔여 %.0f억 > 정기보고서 수주표 기말잔고 %.0f억(전부문 커버리지 %.2f) — "
                         "수주표는 조선 부문 범위(%s)만 담아 비교 범위가 다르다. backlog_coverage_all_segments 는 배율로 쓰지 말 것"
@@ -724,6 +939,10 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
                         % (ledger_vs_new["ledger_new_krw_m"] / 100, ledger_vs_new["reported_new_krw_m"] / 100, ledger_vs_new["quarter"], ledger_vs_new["ratio"]))
 
     fx_sources = collections.Counter(c["fx_source"] for c in mine)
+    cohort_source = COHORT_SOURCE
+    if newbuild_index:
+        cohort_source = "assets/newbuild_index.json(%s, as_of %s) 우선 적용 — 지수에 없는 연도는 표: %s" % (
+            newbuild_index.get("source") or "출처 미기재", newbuild_index.get("as_of") or "—", COHORT_SOURCE)
     return collections.OrderedDict([
         ("stock", stock), ("name", NAMES.get(stock, stock)), ("origin", origin),
         ("unit", "USD_million | KRW_million"), ("curve", "linear_progress" if curve == "linear" else "s_curve"),
@@ -734,16 +953,23 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
                     "schedule_quarters": len(by_quarter),
                     "forecast_window": {"from": FORECAST_WINDOW[0], "to": FORECAST_WINDOW[1], "quarters": len(total_window),
                                         "usd_m": round(sum(by_quarter[q]["usd_m"] for q in total_window), 3),
-                                        "hedged_krw_m": round(sum(by_quarter[q]["hedged_krw_m"] for q in total_window), 1)}}),
+                                        "hedged_krw_m": round(win_capped, 1),
+                                        "usd_m_raw": round(sum(by_q[q]["_raw"]["usd_m"] for q in total_window), 3),
+                                        "hedged_krw_m_raw": round(win_raw, 1)}}),
         ("fx", {"source_counts": collections.OrderedDict(sorted(fx_sources.items())), "fx_json": bool(fx), "const": const,
                 "spot_policy": "건조시점 환율 = fx.json quarters/forward, 없으면 상수(가정)"}),
         ("hedge", hedge),
-        ("cohort_method", COHORT_METHOD), ("cohort_opm_table", COHORT_OPM), ("year_index", year_index),
+        ("cohort_mode", mode), ("cohort_mode_alt", alt_mode),
+        ("cohort_table", cohort_table(newbuild_index)), ("cohort_source", cohort_source),
+        ("cohort_method", COHORT_METHOD),
+        ("cohort_method_by_mode", collections.OrderedDict([("reference_anchor", COHORT_REFERENCE_METHOD), ("ledger_relative", COHORT_METHOD)])),
+        ("cohort_opm_table", COHORT_OPM), ("year_index", year_index),
+        ("backlog_cap_applied", cap_applied), ("backlog_cap", backlog_cap),
         ("contracts", mine), ("by_quarter", by_quarter), ("by_year", by_year),
         ("reconcile", reconcile), ("reconcile_summary", reconcile_summary),
-        ("target_opm", target_opm), ("calibration", calib),
+        ("target_opm", target_opm), ("target_opm_alt", target_opm_alt),
+        ("calibration", calib), ("calibration_alt", calib_alt),
         ("skipped", skipped), ("warnings", warnings)])
-
 
 def _fin_is(stock):
     """assets/fin/<stock>.json 의 손익(3개월분, 백만원) — 연결 우선, 없으면 별도. 파일이 없거나 못 읽으면 None."""
@@ -785,18 +1011,19 @@ def calibration(stock, target_opm, origin, is_=None):
 
 # ── 실행 ────────────────────────────────────────────────────
 
-def run(stocks, curve="linear", const=FX_CONST, origin=None, write=True):
+def run(stocks, curve="linear", const=FX_CONST, origin=None, write=True, mode=COHORT_MODE_DEFAULT):
     ledger = load_asset("contracts.json")["rows"]
     rows, dropped = apply_supersedes([dict(r) for r in ledger])
     pairs = mark_shared(rows)
     yards = load_yards()
     fx = load_fx()
+    index = load_newbuild_index()
     origin = origin or max((max(qs) for qs in yards.values() if qs), default="2026Q2")
     contracts = prepare_contracts(rows, yards, fx, const)
     cohort_map, year_index = cohorts(contracts)
     outs = {}
     for stock in stocks:
-        o = build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, origin)
+        o = build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, origin, mode=mode, newbuild_index=index)
         o["dropped_superseded"] = dropped
         if stock in (HOLDING, HOLDING_SHARES_WITH):
             o["shared_pairs"] = [{"holding_rcp": a, "yard_rcp": b} for a, b in pairs]
@@ -805,37 +1032,61 @@ def run(stocks, curve="linear", const=FX_CONST, origin=None, write=True):
             os.makedirs(SLS_DIR, exist_ok=True)
             write_asset(os.path.join("sls", "%s.json" % stock), o)
     if write:
-        write_asset(os.path.join("sls", "summary.json"), summary(outs, origin, curve, const, dropped, pairs))
+        write_asset(os.path.join("sls", "summary.json"), summary(outs, origin, curve, const, dropped, pairs, mode=mode, newbuild_index=bool(index)))
     return outs
 
 
-def summary(outs, origin, curve, const, dropped, pairs):
+def summary(outs, origin, curve, const, dropped, pairs, mode=COHORT_MODE_DEFAULT, newbuild_index=False):
+    next_q = FORECAST_WINDOW[0]
     rows = []
     for stock in sorted(outs):
         o = outs[stock]
-        rs = o["reconcile_summary"]
+        rs, cap = o["reconcile_summary"], o["backlog_cap"]
         rows.append(collections.OrderedDict([
             ("stock", stock), ("name", o["name"]), ("contracts", o["counts"]["contracts"]), ("counted", o["counts"]["counted"]),
             ("shared_excluded", o["counts"]["shared_excluded"]), ("schedule_quarters", o["counts"]["schedule_quarters"]),
             ("window_usd_m", o["counts"]["forecast_window"]["usd_m"]), ("window_hedged_krw_m", o["counts"]["forecast_window"]["hedged_krw_m"]),
+            ("window_hedged_krw_m_raw", o["counts"]["forecast_window"]["hedged_krw_m_raw"]),
             ("median_ratio_4q", rs["median_ratio_4q"]), ("backlog_coverage_at_origin", rs["backlog_coverage_at_origin"]),
+            ("backlog_cap_applied", cap["applied"]), ("backlog_cap_factor", cap["factor"]),
             ("hedge_ratio", o["hedge"]["hedge_ratio"]), ("hedge_kind", o["hedge"]["kind"]),
-            ("calibrated_shift", o["calibration"]["calibrated_shift"])]))
+            ("cohort_mode", o["cohort_mode"]),
+            ("target_opm_next_q", (o["target_opm"].get(next_q) or {}).get("opm")),
+            ("target_opm_alt_next_q", (o["target_opm_alt"].get(next_q) or {}).get("opm")),
+            ("calibrated_shift", o["calibration"]["calibrated_shift"]),
+            ("calibrated_shift_alt", o["calibration_alt"]["calibrated_shift"])]))
+    alt_mode = [m for m in COHORT_MODES if m != mode][0]
     return collections.OrderedDict([("origin", origin), ("curve", curve), ("fx_const", const), ("window", list(FORECAST_WINDOW)),
+                                    ("next_q", next_q), ("cohort_mode", mode), ("cohort_mode_alt", alt_mode),
+                                    ("newbuild_index_present", newbuild_index),
                                     ("dropped_superseded", dropped), ("shared_pairs_n", len(pairs)), ("rows", rows)])
 
 
 def report(outs):
-    print("%-7s %-10s %4s %4s %4s %5s %12s %14s %8s %8s %6s" % ("stock", "name", "n", "cnt", "shr", "nQ", "26Q3-28Q4 M$", "원화(백만)", "ratio4q", "bklgcov", "hedge"))
+    nq = FORECAST_WINDOW[0]
+
+    def pct(v):
+        return ("%.2f%%" % (v * 100)) if v is not None else "—"
+    print("%-7s %-10s %4s %4s %4s %5s %12s %14s %8s %8s %6s | %s tOPM %8s %8s  shift %8s %8s  cap" % (
+        "stock", "name", "n", "cnt", "shr", "nQ", "%s-%s M$" % (nq[2:], FORECAST_WINDOW[1][2:]), "원화(백만)", "ratio4q", "bklgcov", "hedge",
+        nq, "기본", "대안", "기본", "대안"))
     for stock in sorted(outs):
         o = outs[stock]
-        w, rs = o["counts"]["forecast_window"], o["reconcile_summary"]
-        print("%-7s %-10s %4d %4d %4d %5d %12.1f %14.0f %8s %8s %6s" % (
+        w, rs, cap = o["counts"]["forecast_window"], o["reconcile_summary"], o["backlog_cap"]
+        print("%-7s %-10s %4d %4d %4d %5d %12.1f %14.0f %8s %8s %6s | %s      %8s %8s        %8s %8s  %s" % (
             stock, o["name"], o["counts"]["contracts"], o["counts"]["counted"], o["counts"]["shared_excluded"],
             o["counts"]["schedule_quarters"], w["usd_m"], w["hedged_krw_m"],
             ("%.3f" % rs["median_ratio_4q"]) if rs["median_ratio_4q"] is not None else "—",
             ("%.3f" % rs["backlog_coverage_at_origin"]) if rs["backlog_coverage_at_origin"] is not None else "—",
-            "%.2f%s" % (o["hedge"]["hedge_ratio"], "m" if o["hedge"]["kind"] == "measured" else "e")))
+            "%.2f%s" % (o["hedge"]["hedge_ratio"], "m" if o["hedge"]["kind"] == "measured" else "e"),
+            o["cohort_mode"][:3], pct((o["target_opm"].get(nq) or {}).get("opm")), pct((o["target_opm_alt"].get(nq) or {}).get("opm")),
+            pct(o["calibration"]["calibrated_shift"]), pct(o["calibration_alt"]["calibrated_shift"]),
+            ("%.4f" % cap["factor"]) if cap["applied"] else "—"))
+        if cap["applied"]:
+            print("    잔고 캡: 커버리지 %.4f → 배율 %.4f · 창 원화 %.0f → %.0f 백만원 · origin 이후 해양 원화 %.0f → %.0f (공시 해양 잔고 %.0f; SLS/잔고 %.3f → %.3f)"
+                  % (cap["coverage_at_origin"], cap["factor"], cap["window_hedged_krw_m_raw"], cap["window_hedged_krw_m"],
+                     cap["future_marine_hedged_krw_m_raw"], cap["future_marine_hedged_krw_m"], cap["reported_marine_backlog_krw_m"] or 0,
+                     cap["future_sls_vs_backlog_raw"] or 0, cap["future_sls_vs_backlog"] or 0))
         for q in sorted(o["reconcile"]):
             r = o["reconcile"][q]
             print("    %s sls %10.0f  reported %10.0f  ratio %s  (%s)" % (q, r["sls_krw_m"], r["reported_segment_rev_m"],
@@ -849,13 +1100,15 @@ def main(argv=None):
     ap.add_argument("--curve", choices=("linear", "s_curve"), default="linear")
     ap.add_argument("--spot", type=float, default=FX_CONST, help="fx.json 이 없을 때 쓰는 원/달러 상수")
     ap.add_argument("--origin", default=None, help="기준 분기(기본: yards_cache 최신)")
+    ap.add_argument("--cohort-mode", choices=COHORT_MODES, default=COHORT_MODE_DEFAULT,
+                    help="기본 코호트 모드(§5-2). 다른 모드는 항상 *_alt 에 함께 저장된다")
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--dry-run", action="store_true", help="파일을 쓰지 않는다")
     a = ap.parse_args(argv)
     stocks = a.stock or (YARDS + [HOLDING] if a.all else [])
     if not stocks:
         ap.error("--all 또는 --stock")
-    outs = run(stocks, curve=a.curve, const=a.spot, origin=a.origin, write=not a.dry_run)
+    outs = run(stocks, curve=a.curve, const=a.spot, origin=a.origin, write=not a.dry_run, mode=a.cohort_mode)
     if a.report:
         report(outs)
     return 0

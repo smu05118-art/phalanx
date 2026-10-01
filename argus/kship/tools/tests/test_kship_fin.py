@@ -3,7 +3,8 @@
 """kship_fin 계약 테스트 — 네트워크 없이 픽스처 4세트로 파서·분기화·주식수·배당을 검증한다.
 
 실행: cd argus/kship/tools && ~/Library/phalanx_venv/bin/python -m unittest tests.test_kship_fin -v
-픽스처: tests/fixtures/fin/ — 삼성중공업 2026Q2(연결·별도·주식)·2025Q4(연결·별도·배당), 세진중공업 2026Q2, 한라IMS 2026Q2.
+픽스처: tests/fixtures/fin/ — 삼성중공업 2026Q2(연결·별도·주식)·2025Q4(연결·별도·배당), 세진중공업 2026Q2, 한라IMS 2026Q2,
+주석 하위 노드 7개(삼성重·세진 금융수익/차입금/기타수익, 한라IMS 차입금 — 2026Q2 반기보고서 실측).
 """
 import os
 import sys
@@ -559,3 +560,269 @@ class TestAttributionWithoutHeaderAndOpZone(unittest.TestCase):
         self.assertEqual(len(r), 1)
         self.assertAlmostEqual(a["cur_q"]["판관비"], 17697.52 + 3364.55, places=2)
         self.assertAlmostEqual(a["cur_q"]["매출총이익"] - a["cur_q"]["판관비"], a["cur_q"]["영업이익"], places=1)
+
+
+class TestYtdDiffRestated(unittest.TestCase):
+    """누적차분 병기(MODEL_SPEC §5-1) — 3개월 열이 있는 분기도 FnGuide 방식 `is_ytd_diff` 를 함께 두고,
+    1백만원 초과로 다른 계정은 `restated` 에 {is, ytd_diff, diff} 로 남긴다. `is` 는 그대로 정본."""
+
+    @staticmethod
+    def _per(q1_ytd, q2_q, q2_ytd):
+        mk = lambda q, y: {"found": ["is"], "bs": {}, "cf": {}, "unit_assumed": False,          # noqa: E731
+                           "is": {"cur_q": dict(q), "cur_ytd": dict(y)}}
+        return {"2025Q1": mk(q1_ytd, q1_ytd), "2025Q2": mk(q2_q, q2_ytd)}
+
+    def test_ytd_diff_matches_3m_no_restated(self):
+        per = self._per({"매출액(수익)": 100.0, "영업이익": 10.0, "당기순이익": 8.0},
+                        {"매출액(수익)": 120.0, "영업이익": 12.0, "당기순이익": 9.0},
+                        {"매출액(수익)": 220.0, "영업이익": 22.0, "당기순이익": 17.0})
+        r = F._scope_quarterize("cons", per, ["2025Q1", "2025Q2"])
+        self.assertEqual(r["is_ytd_diff"]["2025Q1"]["매출액(수익)"], 100.0)          # Q1 = 누적
+        self.assertEqual(r["is_ytd_diff"]["2025Q2"]["매출액(수익)"], 120.0)          # Q2 = 누적 − 1Q 누적
+        self.assertEqual(r["is"]["2025Q2"]["매출액(수익)"], 120.0)                   # 3개월 열이 정본
+        self.assertEqual(r["derivation"]["2025Q2"]["is"], "3m_column")
+        self.assertEqual(r["restated"], {})
+        ck = [c for c in r["checks"] if c["rule"].startswith("ytd_diff==3m")]
+        self.assertEqual(len(ck), 3)
+        self.assertTrue(all(c["ok"] for c in ck))
+
+    def test_restated_when_prior_period_rewritten(self):
+        """2Q 보고서가 1Q 를 재작성한 경우: 2Q 3개월 열 110 vs 누적차분 220 − 100 = 120 → restated 에 10 차이가 남는다."""
+        per = self._per({"매출액(수익)": 100.0, "영업이익": 10.0, "당기순이익": 8.0, "판관비": 5.0},
+                        {"매출액(수익)": 110.0, "영업이익": 12.0, "당기순이익": 9.0, "판관비": 6.0},
+                        {"매출액(수익)": 220.0, "영업이익": 22.0, "당기순이익": 17.0, "판관비": 11.0})
+        r = F._scope_quarterize("cons", per, ["2025Q1", "2025Q2"])
+        self.assertEqual(r["is"]["2025Q2"]["매출액(수익)"], 110.0)                   # is 는 손대지 않는다
+        self.assertEqual(r["is_ytd_diff"]["2025Q2"]["매출액(수익)"], 120.0)
+        rs = r["restated"]["2025Q2"]
+        self.assertEqual(rs["매출액(수익)"], {"is": 110.0, "ytd_diff": 120.0, "diff": 10.0})
+        self.assertNotIn("영업이익", rs)                                            # 12 == 12
+        self.assertNotIn("판관비", rs)                                              # 6 == 6
+        bad = [c for c in r["checks"] if c["rule"] == "ytd_diff==3m:매출액(수익)"]
+        self.assertEqual(len(bad), 1)
+        self.assertFalse(bad[0]["ok"])
+        self.assertEqual(bad[0]["diff"], 10.0)
+
+    def test_derived_quarters_identical_to_ytd_diff(self):
+        """3개월 열이 없는 분기(Q1·Q4)는 is 가 곧 누적차분이라 둘이 같고 restated 는 비어 있다."""
+        cons = F.parse_fin_section(_fx("shi_2025Q4_cons.html"))
+        q4_true = {"매출액(수익)": 2713600.0, "영업이익": 250000.0, "당기순이익": 200000.0}
+        ytd9 = {k: round(cons["is"]["cur_full"][k] - q4_true[k], 2) for k in q4_true}
+        q3 = {"found": ["is"], "bs": {}, "cf": {}, "unit_assumed": False, "is": {"cur_ytd": ytd9}}   # 3개월 열 없음
+        r = F._scope_quarterize("cons", {"2025Q3": q3, "2025Q4": cons}, ["2025Q3", "2025Q4"])
+        self.assertEqual(r["derivation"]["2025Q4"]["is"], "annual_minus_9M")
+        self.assertEqual(r["is"]["2025Q4"], r["is_ytd_diff"]["2025Q4"])
+        self.assertIsNot(r["is"]["2025Q4"], r["is_ytd_diff"]["2025Q4"])            # 복사본 — 한쪽을 고쳐도 다른 쪽이 안 변한다
+        for k, v in q4_true.items():
+            self.assertAlmostEqual(r["is_ytd_diff"]["2025Q4"][k], v, places=1)
+        self.assertEqual(r["restated"], {})
+        self.assertIn("is_ytd_diff", F.SYNTH_BASIS)
+
+
+class TestNotes(unittest.TestCase):
+    """주석 파싱(MODEL_SPEC §5-1) — 목차 하위 노드 선택, 세 회사 세 형식의 표 파싱, face 에 없을 때만 올리는 규칙, 덩어리 분해."""
+
+    @staticmethod
+    def _nodes():
+        # 삼성重 2026Q2 목차의 골격(offset 은 실측) — 주석 부모 범위 안의 하위 노드만 골라야 한다
+        mk = lambda t, off, ln: {"text": t, "offset": str(off), "length": str(ln), "eleId": "x", "dcmNo": "d", "rcpNo": "r"}   # noqa: E731
+        return [mk("III. 재무에 관한 사항", 238399, 3760961),
+                mk("2. 연결재무제표", 262439, 181158), mk("2-2. 연결 손익계산서", 310603, 25950),
+                mk("3. 연결재무제표 주석", 443601, 1657664),
+                mk("6. 범주별 금융상품 (연결)", 746694, 163450), mk("8. 파생금융상품 (연결)", 966851, 472685),
+                mk("12. 차입금 및 사채 (연결)", 1603316, 11922), mk("17. 기타수익과 비용 (연결)", 1790277, 36908),
+                mk("18. 금융수익과 금융원가 (연결)", 1827185, 33597),
+                mk("4. 재무제표", 2101269, 131165),
+                mk("5. 재무제표 주석", 2232438, 1641277),
+                mk("12. 차입금 및 사채", 3317497, 11840), mk("17. 기타수익과 비용", 3511823, 36632), mk("18. 금융수익과 금융원가", 3548455, 30581),
+                mk("7. 증권의 발행을 통한 자금조달에 관한 사항", 3874514, 51552)]
+
+    def test_find_note_nodes_by_parent_range(self):
+        f = F.find_note_nodes(self._nodes(), "cons")
+        self.assertEqual([n["text"] for n in f["fin"]], ["18. 금융수익과 금융원가 (연결)"])
+        self.assertEqual([n["text"] for n in f["borrowings"]], ["12. 차입금 및 사채 (연결)"])
+        self.assertEqual([n["text"] for n in f["other"]], ["17. 기타수익과 비용 (연결)"])
+        s = F.find_note_nodes(self._nodes(), "sep")
+        self.assertEqual([n["text"] for n in s["fin"]], ["18. 금융수익과 금융원가"])          # 별도 주석은 (연결) 꼬리 없는 쪽
+        self.assertEqual(sum(len(v) for v in f.values()), 3)
+        self.assertLessEqual(sum(len(v) for v in f.values()), F.NOTE_MAX_REQ)
+
+    def test_find_note_nodes_absent(self):
+        nodes = [n for n in self._nodes() if "주석" not in n["text"]]
+        self.assertEqual(F.find_note_nodes(nodes, "cons"), {})                                  # 부모 없음
+        only_parent = [n for n in self._nodes() if n["text"].startswith("3. 연결재무제표 주석")]
+        self.assertEqual(F.find_note_nodes(only_parent, "cons"), {})                            # 하위 노드 없음(주석 한 덩어리)
+
+    def test_tag_note_cols(self):
+        nlab, tags = F.tag_note_cols(["", "장부금액 공시금액 3개월", "장부금액 공시금액 누적"], "… 금융수익과 금융원가 당반기 (단위 : 천원)")
+        self.assertEqual((nlab, tags), (1, [(1, "cur_q"), (2, "cur_ytd")]))
+        nlab, tags = F.tag_note_cols(["", "", "장부금액 공시금액 3개월", "장부금액 공시금액 누적"], "전반기 (단위 : 천원)")
+        self.assertEqual((nlab, tags), (2, [(2, "prev_q"), (3, "prev_ytd")]))
+        nlab, tags = F.tag_note_cols(["구분", "당반기", "전반기"], "")                              # 기간이 머리에 있는 옛 형식
+        self.assertEqual((nlab, tags), (1, [(1, "cur_full"), (2, "prev_full")]))
+        nlab, tags = F.tag_note_cols(["", "차입금 명칭 A 합계", "차입금 명칭 B 합계", "차입금 명칭 합계"], "당반기말 (단위 : 천원)", prefer_total=True)
+        self.assertEqual(tags, [(3, "cur_full")])                                                # 그리드는 마지막 '합계' 열만
+        self.assertIsNone(F.tag_note_cols(["", "공시금액"], "")[1] or None)                        # 기간을 어디서도 못 읽으면 태그 없음
+
+    def test_parse_fin_note_shi(self):
+        r = F.parse_note_section(_fx("shi_2026Q2_note_fin.html"), "fin")
+        self.assertTrue(r["found"])
+        self.assertFalse(r["unit_assumed"])
+        q = r["acc"]["cur_q"]
+        self.assertAlmostEqual(q["이자수익"], 10573.07, places=2)                                  # 10,573,070 천원
+        self.assertAlmostEqual(q["파생상품이익"], 50010.49 + 54756.97, places=1)                   # 평가 + 거래
+        self.assertAlmostEqual(q["파생상품손실"], 120079.99 + 2898.3, places=1)
+        self.assertAlmostEqual(q["금융수익합계"], 123413.3, places=2)
+        self.assertAlmostEqual(r["acc"]["cur_ytd"]["이자수익"], 18195.78, places=2)
+        self.assertAlmostEqual(r["acc"]["prev_ytd"]["이자비용"], 80134.03, places=2)
+        self.assertIn("지급보증료", [l for l, _ in r["raw"]])                                       # 매핑 안 된 줄은 raw
+
+    def test_parse_fin_note_sejin_two_label_columns(self):
+        r = F.parse_note_section(_fx("sejin_2026Q2_note_fin.html"), "fin")
+        q = r["acc"]["cur_q"]
+        self.assertAlmostEqual(q["이자수익"], 731.79, places=2)
+        self.assertAlmostEqual(q["배당금수익"], 340.68, places=2)                                  # '배당금수익(금융수익)' 꼬리 제거
+        self.assertAlmostEqual(q["외화환산손실"], 14.61, places=2)                                 # '(금융원가)' 꼬리
+        self.assertAlmostEqual(q["금융수익합계"], 8207.5, places=2)                                # 구분 합계 줄(금융수익 | 금융수익)
+        self.assertAlmostEqual(q["순액"], 6121.03, places=2)                                     # '금융수익(비용)' 은 합계와 섞이지 않는다
+        self.assertNotIn("파생상품이익", q)
+        self.assertIn("당기손익인식금융자산처분이익(금융수익)", [l for l, _ in r["raw"]])
+
+    def test_parse_other_note(self):
+        r = F.parse_note_section(_fx("shi_2026Q2_note_other.html"), "other")
+        self.assertAlmostEqual(r["acc"]["cur_q"]["외환차익"], 70096.42, places=2)
+        self.assertAlmostEqual(r["acc"]["cur_ytd"]["기타수익합계"], 2349676.86, places=1)
+        self.assertIn("확정계약평가이익", [l for l, _ in r["raw"]])
+        s = F.parse_note_section(_fx("sejin_2026Q2_note_other.html"), "other")
+        self.assertAlmostEqual(s["acc"]["cur_q"]["기타수익합계"], 487.29, places=2)
+        self.assertAlmostEqual(s["acc"]["cur_q"]["순액"], 381.7, places=2)                        # face '기타손익' 381.7 과 같다
+
+    def test_parse_borrowings_three_shapes(self):
+        h = F.parse_note_section(_fx("hanla_2026Q2_note_borrowings.html"), "borrowings")        # 구성내역 세 줄(단위 원)
+        self.assertEqual(h["acc"]["cur_full"], {"단기차입금": 768.22, "유동성장기부채": 10000.0, "장기차입금": 46333.33})
+        self.assertEqual(h["acc"]["prev_full"]["장기차입금"], 702.5)
+        self.assertIn("장기차입금(유동성포함)", [l for l, _ in h["raw"]])                            # 총액 줄은 매핑하지 않는다
+        s = F.parse_note_section(_fx("sejin_2026Q2_note_borrowings.html"), "borrowings")        # 은행별 그리드 + XBRL 표준 라벨
+        self.assertEqual(s["acc"]["cur_full"], {"단기차입금": 45801.0, "유동성장기부채": 85480.0, "장기차입금": 119500.0})
+        self.assertEqual(s["acc"]["prev_full"]["유동성장기부채"], 79580.0)                          # 장기표의 (79,580,000) 차감 표기 → 절대값
+        shi = F.parse_note_section(_fx("shi_2026Q2_note_borrowings.html"), "borrowings")        # 증감표만 — 분해 없음
+        self.assertTrue(shi["found"])
+        self.assertEqual(shi["acc"], {})
+        self.assertIn("기말", [l for l, _ in shi["raw"]])
+
+    def test_inject_is_only_when_face_lacks(self):
+        p = F.parse_fin_section(_fx("shi_2026Q2_cons.html"))
+        note = F.parse_note_section(_fx("shi_2026Q2_note_fin.html"), "fin")
+        face_fin_income = p["is"]["cur_q"]["금융수익"]
+        self.assertIsNone(p["is"]["cur_q"].get("이자수익"))
+        src = {}
+        F.inject_note_is(p, note, src)
+        q = p["is"]["cur_q"]
+        self.assertAlmostEqual(q["이자수익"], 10573.07, places=2)
+        self.assertAlmostEqual(q["이자손익"], 10573.07 - 15343.95, places=1)                      # 재합성
+        self.assertEqual(q["금융수익"], face_fin_income)                                          # face 값은 건드리지 않는다
+        self.assertEqual(src["이자수익"], "note:fin(3m)")
+        self.assertAlmostEqual(p["is"]["prev_ytd"]["이자비용"], 80134.03, places=2)                # 전기 누적도 채운다(Q4 폴백용)
+        self.assertNotIn("금융수익합계", q)                                                        # 합계 줄은 올리지 않는다
+
+    def test_inject_is_does_not_create_tags(self):
+        p = {"is": {"cur_ytd": {"매출액(수익)": 10.0}}}                                             # 3개월 열이 없는 face
+        note = {"acc": {"cur_q": {"이자수익": 1.0}, "cur_ytd": {"이자수익": 2.0}, "cur_full": {"이자수익": 9.0}}}
+        src = {}
+        F.inject_note_is(p, note, src)
+        self.assertEqual(sorted(p["is"]), ["cur_ytd"])                                            # cur_q 를 만들지 않는다
+        self.assertEqual(p["is"]["cur_ytd"]["이자수익"], 2.0)
+        self.assertEqual(src, {})                                                                 # 3개월 출처가 아니므로 finalize 가 적는다
+        p2 = {"is": {"cur_full": {"매출액(수익)": 10.0}}}                                           # 사업보고서 face 에 주석 cur_ytd → cur_full
+        F.inject_note_is(p2, {"acc": {"cur_ytd": {"이자수익": 3.0}}}, {})
+        self.assertEqual(p2["is"]["cur_full"]["이자수익"], 3.0)
+
+    def test_inject_bs_splits_face_lump(self):
+        p = F.parse_fin_section(_fx("sejin_2026Q2_cons.html"))
+        b = p["bs"]["cur"]
+        self.assertEqual((b["단기차입금"], b["단기금융부채(face)"], b.get("유동성장기부채")), (131281.0, 131281.0, None))
+        note = F.parse_note_section(_fx("sejin_2026Q2_note_borrowings.html"), "borrowings")
+        src, issues = {}, []
+        F.inject_note_bs(b, note, src, issues, "2026Q2", "cons")
+        F.synth_bs(b)
+        self.assertEqual((b["단기차입금"], b["유동성장기부채"], b["장기차입금"]), (45801.0, 85480.0, 119500.0))
+        self.assertNotIn("단기금융부채(face)", b)
+        self.assertNotIn("장기금융부채(face)", b)
+        self.assertEqual(b["총차입금"], 250781.0)                                                   # 분해 전과 같다
+        self.assertEqual(src["유동성장기부채"], "note:borrowings(split of face 단기금융부채)")
+        self.assertEqual(issues, [])
+
+    def test_inject_bs_unreconciled_leaves_face(self):
+        b = {"단기차입금": 100.0, "단기금융부채(face)": 100.0, "장기차입금": 50.0}
+        note = {"acc": {"cur_full": {"단기차입금": 40.0, "유동성장기부채": 50.0, "사채": 7.0}}}       # 40+50 ≠ 100 (리스부채가 섞인 덩어리)
+        src, issues = {}, []
+        F.inject_note_bs(b, note, src, issues, "2025Q4", "cons")
+        self.assertEqual((b["단기차입금"], b["단기금융부채(face)"]), (100.0, 100.0))
+        self.assertNotIn("유동성장기부채", b)                                                      # 덩어리를 못 갈랐으면 부분도 넣지 않는다
+        self.assertEqual(b["사채"], 7.0)                                                          # face 에 없는 계정은 채운다
+        self.assertEqual(src, {"사채": "note:borrowings"})
+        self.assertEqual([i["code"] for i in issues], ["borrowings_note_unreconciled"])
+
+    def test_inject_bs_no_op_when_face_has_split(self):
+        p = F.parse_fin_section(_fx("hanla_2026Q2_cons.html"))
+        b = dict(p["bs"]["cur"])
+        note = F.parse_note_section(_fx("hanla_2026Q2_note_borrowings.html"), "borrowings")
+        src, issues = {}, []
+        F.inject_note_bs(b, note, src, issues, "2026Q2", "cons")
+        self.assertEqual(b, p["bs"]["cur"])
+        self.assertEqual((src, issues), ({}, []))
+
+    def test_finalize_fills_3m_from_ytd_diff(self):
+        """face 에 3개월 열이 없고 주석도 누적만 있으면 3개월 이자수익 = 누적차분(is_ytd_diff) 으로 is 에 채우고 src 에 적는다."""
+        q1 = {"found": ["is"], "bs": {}, "cf": {}, "unit_assumed": False, "is": {"cur_ytd": {"매출액(수익)": 100.0, "금융수익": 5.0}}}
+        q2 = {"found": ["is"], "bs": {}, "cf": {}, "unit_assumed": False, "is": {"cur_ytd": {"매출액(수익)": 220.0, "금융수익": 12.0}}}
+        n1 = {"found": True, "acc": {"cur_ytd": {"이자수익": 3.0, "금융수익합계": 5.0}}, "raw": [], "unit_assumed": False}
+        n2 = {"found": True, "acc": {"cur_ytd": {"이자수익": 8.0, "금융수익합계": 12.0}}, "raw": [["지급보증료", {"cur_ytd": 0.5}]], "unit_assumed": False}
+        src = {"2025Q1": {}, "2025Q2": {}}
+        F.inject_note_is(q1, n1, src["2025Q1"])
+        F.inject_note_is(q2, n2, src["2025Q2"])
+        r = F._scope_quarterize("cons", {"2025Q1": q1, "2025Q2": q2}, ["2025Q1", "2025Q2"])
+        sc = {"is": r["is"], "is_ytd_diff": r["is_ytd_diff"], "bs": r["bs"]}
+        self.assertEqual(r["is"]["2025Q2"]["이자수익"], 5.0)                                        # 8 − 3, 도출 경로라 이미 있다
+        F.finalize_notes(sc, {"2025Q1": {"fin": n1}, "2025Q2": {"fin": n2}}, src, "cons")
+        self.assertEqual(sc["notes"]["fin"]["2025Q2"]["이자수익"], 5.0)
+        self.assertEqual(sc["notes"]["fin"]["2025Q2"]["basis"], "ytd_diff")
+        self.assertEqual(sc["notes"]["fin"]["2025Q2"]["ytd"], {"이자수익": 8.0})
+        self.assertEqual(sc["notes"]["fin"]["2025Q2"]["totals"], {"금융수익합계": 12.0})
+        self.assertEqual(sc["notes"]["fin"]["2025Q2"]["raw"], [["지급보증료", None, 0.5]])
+        # face 3개월 열은 있는데(다른 계정만) 주석은 누적만 — is 에 없던 이자수익을 누적차분으로 채운다
+        q2b = {"found": ["is"], "bs": {}, "cf": {}, "unit_assumed": False,
+               "is": {"cur_q": {"매출액(수익)": 120.0, "금융수익": 7.0}, "cur_ytd": {"매출액(수익)": 220.0, "금융수익": 12.0}}}
+        src2 = {"2025Q1": {}, "2025Q2": {}}
+        F.inject_note_is(q1, n1, src2["2025Q1"])
+        F.inject_note_is(q2b, n2, src2["2025Q2"])
+        r2 = F._scope_quarterize("cons", {"2025Q1": q1, "2025Q2": q2b}, ["2025Q1", "2025Q2"])
+        self.assertIsNone(r2["is"]["2025Q2"].get("이자수익"))
+        sc2 = {"is": r2["is"], "is_ytd_diff": r2["is_ytd_diff"], "bs": r2["bs"]}
+        F.finalize_notes(sc2, {"2025Q1": {"fin": n1}, "2025Q2": {"fin": n2}}, src2, "cons")
+        self.assertEqual(sc2["is"]["2025Q2"]["이자수익"], 5.0)
+        self.assertEqual(sc2["src_notes"]["2025Q2"]["이자수익"], "note:fin(ytd_diff)")
+        self.assertEqual(sc2["notes"]["fin"]["2025Q2"]["basis"], "ytd_diff")                     # basis 는 주석 값의 경로 — 표에 3개월 열이 없었다
+
+    def test_build_company_with_notes_cache(self):
+        """캐시(2026Q2 주석 포함)로 build — is/bs 에 주석 계정이 올라오고 notes/src_notes 가 스키마대로 생긴다."""
+        fin = F.build_company("010140", ["2026Q2"], "삼성중공업", golden={})
+        c = fin["cons"]
+        self.assertAlmostEqual(c["is"]["2026Q2"]["이자수익"], 10573.07, places=2)
+        self.assertEqual(c["src_notes"]["2026Q2"]["이자수익"], "note:fin(3m)")
+        self.assertEqual(c["notes"]["fin"]["2026Q2"]["basis"], "3m_column")
+        self.assertEqual(c["notes"]["borrowings"]["2026Q2"]["단기차입금"], None)                   # 증감표만 — face 그대로
+        self.assertIn("note_unmapped:borrowings", [i["code"] for i in fin["issues"]])
+        self.assertEqual(fin["reports"]["2026Q2"]["notes"]["scope"], "cons")
+        self.assertEqual(sorted(fin["reports"]["2026Q2"]["notes"]["items"]), ["borrowings", "fin", "other"])
+        sj = F.build_company("075580", ["2026Q2"], "세진중공업", golden={})
+        b = sj["cons"]["bs"]["2026Q2"]
+        self.assertEqual((b["단기차입금"], b["유동성장기부채"], b["장기차입금"], b["총차입금"]), (45801.0, 85480.0, 119500.0, 250781.0))
+        self.assertNotIn("단기금융부채(face)", b)
+        self.assertEqual(sj["cons"]["is"]["2026Q2"]["배당금수익"], 340.68)
+        self.assertEqual(sj["sep"]["bs"]["2026Q2"]["단기금융부채(face)"], 74070.0)                 # 별도 주석은 안 받았다 — 그대로
+        hl = F.build_company("092460", ["2026Q2"], "한라IMS", golden={})
+        codes = [i["code"] for i in hl["issues"] if i["quarter"] == "2026Q2"]
+        self.assertIn("note_missing:fin", codes)
+        self.assertIn("note_missing:other", codes)
+        self.assertEqual(hl["cons"]["src_notes"], {})

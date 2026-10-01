@@ -4,7 +4,7 @@
  "role": "equip",
  "origin": "2026Q2",
  "unit": "KRW_100M(억원)",
- "built_at": "2026-09-30",
+ "built_at": "2026-10-02",
  "status": "partial",
  "periods": {
   "quarters": [
@@ -5737,6 +5737,13 @@
       "significant_p05_uncorrected": false,
       "note": "단일 검정 기준 임계 r(df=n−2, 양측 5%) — 격자 후보 수만큼 보정하면 임계는 더 높다"
      },
+     "selection_oos": {
+      "adopted": false,
+      "wape_link": null,
+      "wape_trend": null,
+      "note": "유의성 조건 미달 → OOS 비교 전 기각"
+     },
+     "rejected_by": "significance",
      "merger_rule": [],
      "customer_sources": {
       "010140": {
@@ -5744,16 +5751,24 @@
        "model": "assets/models/010140.json",
        "last_actual": "2026Q2",
        "estimates_from": "2026Q3",
-       "driver": "sls_marine_plus_uncovered_backlog_runoff"
+       "driver": "sls_marine_plus_uncovered_backlog_runoff",
+       "new_orders_included": true
       },
       "329180": {
        "name": "HD현대중공업",
        "model": "assets/models/329180.json",
        "last_actual": "2026Q2",
        "estimates_from": "2026Q3",
-       "driver": "sls_marine_plus_uncovered_backlog_runoff"
+       "driver": "sls_marine_plus_uncovered_backlog_runoff",
+       "new_orders_included": true
       }
      }
+    },
+    "selection_oos": {
+     "adopted": false,
+     "wape_link": null,
+     "wape_trend": null,
+     "note": "유의성 조건 미달 → OOS 비교 전 기각"
     }
    },
    "opm_path": {
@@ -5800,6 +5815,7 @@
    "basis": "가정 — 마지막 ECB 관측치를 2028Q4 까지 평평하게 둔다. 선도환율·컨센서스 아님."
   },
   "hedge": null,
+  "sls": null,
   "tax_rate": 0.22,
   "tax_basis": "세전 합 ≤ 0 → 법정세율 근사 22% 가정",
   "sga_ratio": 0.2496,
@@ -5873,6 +5889,9 @@
   "subsidiaries": []
  },
  "modules": [],
+ "new_orders_included": null,
+ "new_orders": null,
+ "scenarios": null,
  "backtest": {
   "freeze": "2025Q2",
   "horizon": 4,
@@ -5881,7 +5900,13 @@
   "n": 4,
   "note": "단일 회사 4분기 — 통계 아님",
   "driver_at_freeze": "trend_seasonal",
-  "frozen_inputs": "fin(연결/별도)·고객 조선사 모델·지주 자회사 모델은 2025Q2 까지의 분기만; 선표는 체결일 ≤ 2025Q2 말일 계약(원장 최신 금액·코호트 등급, 환산 없음); 잔고는 yards_cache 2025Q2; 시세·환율 forward·prices 미사용. 고객 가중치(suppliers.json 언급 비중)와 합병 체인링크는 현재 지식",
+  "selection_oos_at_freeze": {
+   "wape_link": null,
+   "wape_trend": null,
+   "adopted": false,
+   "note": "유의성 조건 미달 → OOS 비교 전 기각"
+  },
+  "frozen_inputs": "fin(연결/별도)·고객 조선사 모델·지주 자회사 모델은 2025Q2 까지의 분기만; 선표는 체결일 ≤ 2025Q2 말일 계약(원장 최신 금액·코호트 등급, 환산 없음); 잔고는 yards_cache 2025Q2; 시세·환율 forward·prices·forecast_panel 신규수주 미사용. 고객 가중치(suppliers.json 언급 비중)와 합병 체인링크는 현재 지식; 고객 연동 채택은 동결 모델 안에서도 자기 la−4분기 OOS 규칙(selection_oos_at_freeze)",
   "detail": [
    {
     "q": "2025Q3",

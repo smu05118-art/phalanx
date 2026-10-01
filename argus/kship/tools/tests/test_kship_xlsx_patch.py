@@ -9,7 +9,9 @@
 - 표본 fin: tests/fixtures/fin/fin_sample_010140.json (삼성중공업 2026Q2·2025Q4, 픽스처 HTML 에서 손으로 옮김).
 - 세진·미포는 합성 fin(값은 의미 없음) 으로 4시트 매핑·충돌 보존·/U 나눗셈 경로만 확인한다.
 """
+import contextlib
 import copy
+import io
 import json
 import os
 import re
@@ -176,6 +178,27 @@ class TestValueRules(unittest.TestCase):
         self.assertEqual(P.value_for(self.fin, "cons", "보통주시가총액(기말, 십억원)", ("Q", 2026, 2)), (None, None))
         prices = {"rows": {"010140": {"history_quarterly": {"2026Q2": {"close_end": 23450}}}}}
         self.assertEqual(P.value_for(self.fin, "cons", "보통주시가총액(기말, 십억원)", ("Q", 2026, 2), prices), (20636.0, "mcap"))
+
+    def test_is_convention(self):
+        """분기 IS: is_ytd_diff 우선(FnGuide 누적차분, MODEL_SPEC 5-4) → 그 계정·분기에 없으면 is → '3m' 은 항상 is.
+        BS·연간(is_ytd[Q4]) 은 관행과 무관."""
+        fin = {"cons": {"bs": {"2026Q2": {"자산총계": 10.0}},
+                        "is": {"2026Q2": {"매출액(수익)": 100.0, "이자수익": 7.0}, "2026Q1": {"매출액(수익)": 90.0}},
+                        "is_ytd_diff": {"2026Q2": {"매출액(수익)": 103.0, "이자수익": None}},
+                        "is_ytd": {"2025Q4": {"매출액(수익)": 400.0}}}}
+        q2 = ("Q", 2026, 2)
+        self.assertEqual(P.IS_CONVENTION_DEFAULT, "ytd_diff")
+        self.assertEqual(P.value_for(fin, "cons", "매출액(수익)", q2), (103.0, "is_ytd_diff"))
+        self.assertEqual(P.value_for(fin, "cons", "이자수익", q2), (7.0, "is"))                # 주석 채움 계정 — 3개월 값만 있다
+        self.assertEqual(P.value_for(fin, "cons", "매출액(수익)", ("Q", 2026, 1)), (90.0, "is"))  # 그 분기엔 is_ytd_diff 없음
+        self.assertEqual(P.value_for(fin, "cons", "자산총계", q2), (10.0, "bs"))
+        self.assertEqual(P.value_for(fin, "cons", "매출액(수익)", q2, is_convention="3m"), (100.0, "is"))
+        self.assertEqual(P.value_for(fin, "cons", "매출액(수익)", ("A", 2025)), (400.0, "is_ytd"))
+        self.assertEqual(P.value_for(fin, "cons", "매출액(수익)", ("A", 2025), is_convention="3m"), (400.0, "is_ytd"))
+        with self.assertRaises(ValueError):
+            P.value_for(fin, "cons", "매출액(수익)", q2, is_convention="ytd")
+        # 표본 fin(is_ytd_diff 없음) 은 기본 관행에서도 is 로 떨어진다(R1 --build 전 fin 과 호환)
+        self.assertEqual(P.value_for(self.fin, "cons", "매출액(수익)", q2), (3230712.01, "is"))
 
 
 @unittest.skipUnless(_has("010140") and os.path.exists(SAMPLE), "삼성중공업 원본 또는 표본 fin 없음")
@@ -578,6 +601,108 @@ class FxActualsSamsungTest(unittest.TestCase):
         rep = P.patch_file("010140", self.fins, "2026Q2", "2026-09-30", out_path=out, fx=self.fx)
         self.assertEqual((rep["fx"]["replaced"], rep["fx"]["filled"]), ([], 0))
         self.assertGreater(rep["fx"]["kept"], 800)
+
+
+@unittest.skipUnless(_has("010140") and os.path.exists(SAMPLE), "삼성중공업 원본 또는 표본 fin 없음")
+class TestIsConventionSamsung(unittest.TestCase):
+    """표본 fin 에 2026Q2 is_ytd_diff 를 합성해 넣고(매출액 +5.0 = 재작성, 별도 +0.5 = 문턱 이내, 영업이익은 빼서 is 폴백)
+    기본 관행(patch_file) 과 3m 관행(CLI --is-convention·--report) 두 번 패치 — 값·restated_cells·⑤사슬·보고 필드."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp(prefix="kship_xlsx_")
+        with open(SAMPLE, encoding="utf-8") as f:
+            fin = json.load(f)
+        cls.is_cons = fin["cons"]["is"]["2026Q2"]["매출액(수익)"]           # 3230712.01
+        cls.is_sep = fin["sep"]["is"]["2026Q2"]["매출액(수익)"]             # 3224937.5
+        cls.op_cons = fin["cons"]["is"]["2026Q2"]["영업이익"]
+        cons_d = copy.deepcopy(fin["cons"]["is"]["2026Q2"])
+        cons_d["매출액(수익)"] = round(cls.is_cons + 5.0, 2)                # 1백만원 초과 → 재작성 셀
+        cons_d.pop("영업이익")                                              # 누적차분에 없는 계정 → is 폴백
+        sep_d = copy.deepcopy(fin["sep"]["is"]["2026Q2"])
+        sep_d["매출액(수익)"] = round(cls.is_sep + 0.5, 2)                  # 문턱(RESTATED_TOL=1.0) 이내 → 재작성 아님
+        fin["cons"]["is_ytd_diff"] = {"2026Q2": cons_d}
+        fin["sep"]["is_ytd_diff"] = {"2026Q2": sep_d}
+        cls.fin, cls.fins = fin, {"010140": fin}
+        cls.out = os.path.join(cls.tmp, "shi_ytd_diff.xlsx")
+        cls.rep = P.patch_file("010140", cls.fins, "2026Q2", "2026-09-30", out_path=cls.out)
+        cls.ver = P.verify_all(cls.rep, cls.fins)
+        # 3m 관행은 CLI 경로로(--is-convention → patch_file → 보고 JSON)
+        cls.fin_path = os.path.join(cls.tmp, "fin_010140.json")
+        with open(cls.fin_path, "w", encoding="utf-8") as f:
+            json.dump(fin, f, ensure_ascii=False)
+        cls.out3 = os.path.join(cls.tmp, "shi_3m.xlsx")
+        cls.report3 = os.path.join(cls.tmp, "report_3m.json")
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            cls.rc3 = P.main(["--stock", "010140", "--fin", "010140=" + cls.fin_path,
+                              "--fx", os.path.join(cls.tmp, "no_fx.json"), "--prices", os.path.join(cls.tmp, "no_prices.json"),
+                              "--out", cls.out3, "--verify", "--is-convention", "3m", "--today", "2026-09-30", "--report", cls.report3])
+        cls.stdout3 = buf.getvalue()
+        with open(cls.report3, encoding="utf-8") as f:
+            cls.rep3 = json.load(f)[0]
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    @staticmethod
+    def _row(ws, acct):
+        return next(r for r in range(5, ws.max_row + 1) if ws.cell(r, 3).value == acct)
+
+    def test_default_uses_ytd_diff_and_falls_back(self):
+        self.assertTrue(self.rep["written"], self.rep.get("error"))
+        self.assertEqual(self.rep["is_convention"], "ytd_diff")
+        sheets = {s["sheet"]: s for s in self.rep["sheets"]}
+        for s in sheets.values():
+            self.assertEqual(s["is_convention"], "ytd_diff")
+            self.assertTrue(s["is_ytd_diff_available"])
+            self.assertGreater(s["sources"]["is_ytd_diff"], 5)
+        self.assertEqual(sheets["BS연결"]["sources"]["is"], 1)             # 영업이익만 폴백(표본 is 는 2026Q2 한 분기)
+        self.assertNotIn("is", sheets["BS별도"]["sources"])                # 별도는 전 계정이 누적차분에 있다
+        op = P.load_openpyxl()
+        wb = op.load_workbook(self.out, data_only=True, keep_links=False)
+        ws = wb["BS연결"]
+        self.assertEqual(ws["DF69"].value, round(self.is_cons + 5.0, 2))                   # 매출액 = 누적차분 값
+        self.assertEqual(ws.cell(self._row(ws, "영업이익"), P.col_idx("DF")).value, self.op_cons)   # 폴백 = 3개월 열
+        wss = wb["BS별도"]
+        self.assertEqual(wss.cell(self._row(wss, "매출액(수익)"), P.col_idx("DF")).value, round(self.is_sep + 0.5, 2))
+
+    def test_restated_cells(self):
+        sheets = {s["sheet"]: s for s in self.rep["sheets"]}
+        self.assertEqual(sheets["BS연결"]["restated_cells"],
+                         [{"cell": "DF69", "acct": "매출액(수익)", "period": "2026Q2",
+                           "is": self.is_cons, "ytd_diff": round(self.is_cons + 5.0, 2), "diff": 5.0}])
+        self.assertEqual(sheets["BS별도"]["restated_cells"], [])           # 0.5 는 문턱 이내
+        self.assertIn("DF69", sheets["BS연결"]["written"])
+
+    def test_verify_chain_uses_same_convention(self):
+        v = self.ver
+        self.assertTrue(v["all_ok"], (v["4_unchanged"]["problems"], v["5_chain"]["problems"]))
+        got = {(r["table"], c["period"]): c for r in v["5_chain"]["rows"] for c in r["checks"]}
+        self.assertEqual(got[("BS연결", "2026Q2")]["value_bs"], round(self.is_cons + 5.0, 2))
+        self.assertEqual(got[("BS연결", "2026Q2")]["src"], "is_ytd_diff")
+        self.assertEqual(got[("BS별도", "2026Q2")]["src"], "is_ytd_diff")
+        self.assertEqual(got[("BS연결", "2025A")]["src"], "is_ytd")           # 연간은 관행 무관
+        # 보고 문장에 관행·재작성 셀이 찍힌다
+        text = P.summarize(self.rep)
+        self.assertIn("IS 관행 ytd_diff(fin.is_ytd_diff 있음)", text)
+        self.assertIn("재작성 셀 1", text)
+        self.assertIn("≠ DF69 매출액(수익) 2026Q2", text)
+
+    def test_3m_via_cli(self):
+        self.assertEqual(self.rc3, 0, self.stdout3)
+        self.assertEqual(self.rep3["is_convention"], "3m")
+        self.assertTrue(self.rep3["verify"]["all_ok"])
+        for s in self.rep3["sheets"]:
+            self.assertEqual(s["is_convention"], "3m")
+            self.assertNotIn("is_ytd_diff", s["sources"])
+            self.assertEqual(s["restated_cells"], [])
+        got = {(r["table"], c["period"]): c for r in self.rep3["verify"]["5_chain"]["rows"] for c in r["checks"]}
+        self.assertEqual(got[("BS연결", "2026Q2")]["src"], "is")
+        op = P.load_openpyxl()
+        ws = op.load_workbook(self.out3, data_only=True, keep_links=False)["BS연결"]
+        self.assertEqual(ws["DF69"].value, self.is_cons)
+        self.assertIn("IS 관행 3m", self.stdout3)
 
 
 if __name__ == "__main__":

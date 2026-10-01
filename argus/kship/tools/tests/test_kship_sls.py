@@ -8,6 +8,7 @@
 import collections
 import datetime
 import os
+import statistics
 import sys
 import unittest
 
@@ -309,6 +310,235 @@ class TestDiagnostics(unittest.TestCase):
         self.assertIn("회사 전체 — 부문 아님", o["calibration"]["basis"])
 
 
+class TestReferenceAnchorAndCap(unittest.TestCase):
+    """MODEL_SPEC §5-2 — 코호트 기본 reference_anchor(수주연도 표), 대안 ledger_relative(*_alt), 잔고 캡 1/coverage."""
+
+    @staticmethod
+    def _yards(stock, rows, q="2026Q2"):
+        return {stock: {q: {"quarter": q, "ok": True, "revenue": None, "hedge": {}, "orders": {"cur": "KRW", "rows": rows}}}}
+
+    @staticmethod
+    def _mixed_rows():
+        # 2021 수주 1건(④) + 2025 수주 3건(⑤; 원장 상대등급은 ②·③·④) + 공사 1건(등급 없음)
+        return [_row("O1", "010140", "LNGC", 1, 300000.0, "2021-06-01", end="2026-09-30"),
+                _row("C0", "010140", "LNGC", 1, 300000.0, "2025-01-01", end="2027-12-31"),
+                _row("C1", "010140", "LNGC", 1, 340000.0, "2025-02-01", end="2027-12-31"),
+                _row("C2", "010140", "LNGC", 1, 420000.0, "2025-03-01", end="2027-12-31"),
+                _row("W1", "010140", "OTHER", None, 100000.0, "2025-04-01", end="2027-12-31")]
+
+    def test_cohort_by_order_year_table(self):
+        self.assertEqual([S.cohort_by_order_year(y)[0] for y in (2018, 2020, 2021, 2022, 2026)],
+                         ["③중마진", "③중마진", "④호황", "⑤초호황", "⑤초호황"])
+        self.assertEqual(S.cohort_by_order_year(None), (None, "연도 없음"))
+        self.assertIn("COHORT_BY_ORDER_YEAR", S.cohort_by_order_year(2021)[1])
+        # 레퍼런스 매출연도 표(백만$)와 되돌림 근거가 파일 표에 그대로 실린다 — 전부 가정
+        t = S.cohort_table()
+        self.assertEqual(t["kind"], "estimate")
+        self.assertEqual(t["reference_revenue_year_mix_usd_m"]["2024"]["⑤초호황"], 1647)
+        self.assertEqual(dict(t["reference_revenue_year_mix_usd_m"]["2027"]), {"⑤초호황": 5857})
+        self.assertAlmostEqual(t["reference_revenue_year_share"]["2025"]["⑤초호황"], 3018 / 3180, places=3)
+        self.assertEqual([dict(x) for x in t["by_order_year"]],
+                         [{"from": None, "to": 2020, "cohort": "③중마진"}, {"from": 2021, "to": 2021, "cohort": "④호황"}, {"from": 2022, "to": None, "cohort": "⑤초호황"}])
+        self.assertFalse(t["newbuild_index"]["present"])
+        self.assertEqual(t["opm_table"], S.COHORT_OPM)
+
+    def test_newbuild_index_takes_priority_with_table_fallback(self):
+        idx = {"source": "test index", "as_of": "2026-09-30", "by_year": {"2021": 120.0, "2025": 170.0},
+               "grades": [[160, "⑤초호황"], [0, "①적자"], [110, "②BEP"], [125, "③중마진"], [145, "④호황"]],   # 순서 무관
+               "cohort_by_year": {"2025": "④호황"}}
+        self.assertEqual(S.cohort_by_order_year(2021, idx), ("②BEP", "newbuild_index.by_year 2021=120 × grades"))
+        self.assertEqual(S.cohort_by_order_year(2025, idx)[0], "④호황")          # 직접 지정이 지수보다 우선
+        self.assertEqual(S.cohort_by_order_year(2026, idx)[0], "⑤초호황")        # 지수에 없는 연도 → 표
+        self.assertIn("COHORT_BY_ORDER_YEAR", S.cohort_by_order_year(2026, idx)[1])
+        self.assertIsNone(S.load_newbuild_index(os.path.join(HERE, "no_such_newbuild_index.json")))
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "newbuild_index.json")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write('{"source": "x"}')                                          # by_year·cohort_by_year 없음 → 무시
+            self.assertIsNone(S.load_newbuild_index(p))
+            with open(p, "w", encoding="utf-8") as f:
+                f.write('{"source": "x", "cohort_by_year": {"2021": "④호황"}}')
+            self.assertEqual(S.load_newbuild_index(p)["source"], "x")
+        # build 에 지수를 주면 cohort_source·cohort_table·계약 근거에 지수 우선이 적힌다
+        cons = S.prepare_contracts(self._mixed_rows(), {}, None, 1000.0)
+        cm, yi = S.cohorts(cons)
+        o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", newbuild_index=idx)
+        by = {c["rcp"]: c for c in o["contracts"]}
+        self.assertEqual(by["O1"]["cohort"], "②BEP")                                  # 2021 지수 120 → ②
+        self.assertEqual(by["C0"]["cohort"], "④호황")                                  # 2025 직접 지정
+        self.assertEqual(by["C0"]["cohort_detail"]["source"], "assets/newbuild_index.json")
+        self.assertTrue(o["cohort_table"]["newbuild_index"]["present"])
+        self.assertIn("newbuild_index.json", o["cohort_source"])
+        self.assertTrue(any("newbuild_index.json 우선 적용" in w for w in o["warnings"]))
+
+    def test_reference_anchor_default_and_ledger_alt(self):
+        cons = S.prepare_contracts(self._mixed_rows(), {}, None, 1000.0)
+        cm, yi = S.cohorts(cons)
+        o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")
+        self.assertEqual((o["cohort_mode"], o["cohort_mode_alt"]), ("reference_anchor", "ledger_relative"))
+        by = {c["rcp"]: c for c in o["contracts"]}
+        self.assertEqual(by["O1"]["cohort"], "④호황")                                   # 2021 수주
+        self.assertEqual([by[r]["cohort"] for r in ("C0", "C1", "C2")], ["⑤초호황"] * 3)   # 2025 수주
+        self.assertEqual((by["C0"]["cohort_alt"], by["C1"]["cohort_alt"], by["C2"]["cohort_alt"]), ("②BEP", "③중마진", "④호황"))
+        self.assertEqual((by["W1"]["cohort"], by["W1"]["cohort_alt"]), (None, None))     # 공사 — 두 모드 다 등급 없음
+        self.assertIn("레퍼런스", by["C0"]["cohort_basis"])
+        self.assertEqual(by["C0"]["cohort_detail"]["order_year"], 2025)
+        q = o["by_quarter"]["2027Q1"]                                                    # O1 은 2026Q3 인도 → 2025 수주 3건 + 공사
+        sch = {r: by[r]["schedule"]["2027Q1"] for r in ("C0", "C1", "C2", "W1")}          # 분기 믹스는 계약기간 비례(시작일이 다르다)
+        self.assertAlmostEqual(q["target_opm"], 0.15, places=6)
+        self.assertAlmostEqual(q["target_opm_alt"], (0.0 * sch["C0"] + 0.05 * sch["C1"] + 0.10 * sch["C2"]) / (sch["C0"] + sch["C1"] + sch["C2"]), places=4)
+        self.assertAlmostEqual(sum(q["by_cohort_alt"].values()), q["usd_m"], places=2)
+        self.assertAlmostEqual(q["by_cohort"]["⑤초호황"], sum(v for k, v in q["by_cohort_alt"].items() if k != "등급없음"), places=2)
+        self.assertAlmostEqual(q["by_cohort"]["등급없음"], sch["W1"], places=2)
+        self.assertEqual(q["graded_share"], q["graded_share_alt"])                       # 등급 대상은 같다
+        self.assertAlmostEqual(o["by_quarter"]["2026Q3"]["by_cohort"]["④호황"], by["O1"]["schedule"]["2026Q3"], delta=0.05)   # 마지막 분기 반올림 잔차
+        self.assertEqual((o["target_opm"]["2027Q1"]["mode"], o["target_opm_alt"]["2027Q1"]["mode"]), ("reference_anchor", "ledger_relative"))
+        self.assertEqual((o["calibration"]["mode"], o["calibration_alt"]["mode"]), ("reference_anchor", "ledger_relative"))
+        self.assertIn("클락슨", o["cohort_source"])
+        self.assertEqual(o["cohort_table"]["kind"], "estimate")
+        self.assertAlmostEqual(o["by_year"]["2027"]["by_cohort_alt"]["④호황"],
+                               sum(v for k, v in by["C2"]["schedule"].items() if k.startswith("2027")), delta=0.05)   # 인도 분기 반올림 잔차
+        self.assertFalse(o["backlog_cap_applied"])
+        w = [x for x in o["warnings"] if "코호트 기본 모드" in x]
+        self.assertEqual(len(w), 1)
+        self.assertIn("⑤초호황 100%", w[0])                                             # 기본 모드 2025~ 판정
+        self.assertIn("상대 등급", w[0])
+
+    def test_cohort_mode_switch_swaps_primary_and_alt(self):
+        cons = S.prepare_contracts(self._mixed_rows(), {}, None, 1000.0)
+        cm, yi = S.cohorts(cons)
+        o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")
+        o2 = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", mode="ledger_relative")
+        self.assertEqual((o2["cohort_mode"], o2["cohort_mode_alt"]), ("ledger_relative", "reference_anchor"))
+        by2 = {c["rcp"]: c for c in o2["contracts"]}
+        self.assertEqual((by2["C0"]["cohort"], by2["C0"]["cohort_alt"]), ("②BEP", "⑤초호황"))
+        for q in o["by_quarter"]:
+            self.assertEqual(o2["by_quarter"][q]["target_opm"], o["by_quarter"][q]["target_opm_alt"])
+            self.assertEqual(o2["by_quarter"][q]["by_cohort"], o["by_quarter"][q]["by_cohort_alt"])
+            self.assertEqual(o2["by_quarter"][q]["usd_m"], o["by_quarter"][q]["usd_m"])
+        self.assertEqual(o2["target_opm"]["2027Q1"]["mode"], "ledger_relative")
+        with self.assertRaises(ValueError):
+            S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", mode="bogus")
+
+    def test_calibration_measured_against_primary_mode(self):
+        rows = [_row("C0", "010140", "LNGC", 1, 300000.0, "2025-01-01", end="2027-12-31"),
+                _row("C1", "010140", "LNGC", 1, 340000.0, "2025-02-01", end="2027-12-31"),
+                _row("C2", "010140", "LNGC", 1, 420000.0, "2025-03-01", end="2027-12-31")]
+        cons = S.prepare_contracts(rows, {}, None, 1000.0)
+        cm, yi = S.cohorts(cons)
+        real = S._fin_is
+        try:
+            S._fin_is = lambda stock: {"2026Q1": {"매출액(수익)": 1000.0, "영업이익": 100.0}, "2026Q2": {"매출액(수익)": 1000.0, "영업이익": 100.0}}
+            o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")
+        finally:
+            S._fin_is = real
+        alt_t = statistics.median(o["target_opm_alt"][q]["opm"] for q in ("2026Q1", "2026Q2"))
+        self.assertAlmostEqual(o["calibration"]["calibrated_shift"], 0.10 - 0.15, places=4)          # 기본 모드: 타겟 15% → 음수 shift
+        self.assertAlmostEqual(o["calibration_alt"]["calibrated_shift"], 0.10 - alt_t, places=4)
+        self.assertLess(alt_t, 0.10)                                                                # 원장 상대등급 ②·③·④ 믹스
+        self.assertEqual(o["calibration"]["quarters_used"], ["2026Q1", "2026Q2"])
+        self.assertIn("회사 전체 — 부문 아님", o["calibration"]["basis"])
+        self.assertTrue(any("음수일 수 있다" in w for w in o["warnings"]))
+
+    def _cap_rows(self):
+        return [_row("P1", "439260", "VLCC", 2, 250000.0, "2025-09-19", end="2028-09-30"),      # origin 전 수주 → 캡 대상
+                _row("P2", "439260", "VLCC", 2, 250000.0, "2026-01-13", end="2028-11-30"),
+                _row("N3", "439260", "VLCC", 2, 250000.0, "2026-07-24", end="2029-12-31"),      # origin 뒤 수주 → 그 잔고에 없다, 캡 안 함
+                _row("W1", "439260", "OTHER", None, 100000.0, "2026-01-01", end="2028-12-31")]   # 비해양 → 캡 안 함
+
+    def test_backlog_cap_scales_only_pre_origin_marine_future(self):
+        rows = self._cap_rows()
+        seg = {"seg": "선박", "total": False, "opening": 1, "new": 1, "delivered": 1}
+        yards = self._yards("439260", [dict(seg, closing=300000)])
+        yards0 = self._yards("439260", [dict(seg, closing=30000000)])                          # 커버리지 ≪ 1 → 캡 없음(원값 대조용)
+        cons = S.prepare_contracts(rows, yards, None, 1000.0)
+        cm, yi = S.cohorts(cons)
+        o = S.build("439260", cons, cm, yi, yards, None, "linear", 1000.0, "2026Q2")
+        o0 = S.build("439260", cons, cm, yi, yards0, None, "linear", 1000.0, "2026Q2")
+        rs, cap = o["reconcile_summary"], o["backlog_cap"]
+        cov = rs["backlog_coverage_at_origin"]
+        self.assertGreater(cov, 1.0)
+        self.assertTrue(o["backlog_cap_applied"] and cap["applied"])
+        self.assertAlmostEqual(cap["factor"], 1.0 / cov, places=4)
+        self.assertAlmostEqual(rs["backlog_coverage_after_cap"], 1.0, places=3)
+        self.assertEqual(cap["kind"], "estimate")
+        self.assertAlmostEqual(cap["remaining_marine_krw_m_at_origin_capped"], cap["reported_marine_backlog_krw_m"], delta=1.0)
+        by = {c["rcp"]: c for c in o["contracts"]}
+        self.assertEqual([by[r]["backlog_cap_applied"] for r in ("P1", "P2", "N3", "W1")], [True, True, False, False])
+        self.assertEqual(by["N3"]["signed_by_origin"], False)
+        # 과거 분기(≤ origin)와 계약별 스케줄은 그대로
+        for q in o["by_quarter"]:
+            if q <= "2026Q2":
+                self.assertNotIn("backlog_cap", o["by_quarter"][q])
+                self.assertEqual(o["by_quarter"][q]["usd_m"], o0["by_quarter"][q]["usd_m"])
+        self.assertEqual(by["P1"]["schedule"], {c["rcp"]: c for c in o0["contracts"]}["P1"]["schedule"])
+        # 미래 분기: (P1+P2) × 배율 + N3 + W1 원값
+        q, f = "2027Q1", cap["factor"]
+        b, b0 = o["by_quarter"][q], o0["by_quarter"][q]
+        sch = {r: by[r]["schedule"][q] for r in ("P1", "P2", "N3", "W1")}
+        self.assertAlmostEqual(b["usd_m"], (sch["P1"] + sch["P2"]) * f + sch["N3"] + sch["W1"], places=2)
+        self.assertAlmostEqual(b["backlog_cap"]["usd_m_raw"], b0["usd_m"], places=2)
+        self.assertAlmostEqual(b["backlog_cap"]["hedged_krw_m_raw"], b0["hedged_krw_m"], places=0)
+        self.assertAlmostEqual(b["by_type"]["OTHER"], sch["W1"], places=2)
+        self.assertAlmostEqual(sum(b["by_type"].values()), b["usd_m"], places=2)
+        self.assertAlmostEqual(sum(b["by_cohort"].values()), b["usd_m"], places=2)
+        self.assertAlmostEqual(sum(b["by_cohort_alt"].values()), b["usd_m"], places=2)
+        self.assertAlmostEqual(b["hedged_krw_m"], b["usd_m"] * 1000.0, delta=2.0)               # 상수 1000 = 헤지·spot → applied 1000
+        self.assertAlmostEqual(b["marine_usd_m"], b["usd_m"] - sch["W1"], places=2)
+        self.assertIn("backlog_cap", b["basis"])
+        self.assertEqual(b["kind"], "estimate")
+        # 창·연도 합계는 캡 값, 원값은 *_raw
+        w = o["counts"]["forecast_window"]
+        self.assertGreater(w["hedged_krw_m_raw"], w["hedged_krw_m"])
+        self.assertAlmostEqual(w["hedged_krw_m_raw"], o0["counts"]["forecast_window"]["hedged_krw_m"], places=0)
+        self.assertEqual(w["hedged_krw_m_raw"], cap["window_hedged_krw_m_raw"])
+        y = o["by_year"]["2027"]
+        self.assertGreater(y["hedged_krw_m_raw"], y["hedged_krw_m"])
+        self.assertAlmostEqual(y["marine_hedged_krw_m_raw"], o0["by_year"]["2027"]["marine_hedged_krw_m"], places=0)
+        self.assertLess(cap["future_marine_hedged_krw_m"], cap["future_marine_hedged_krw_m_raw"])
+        self.assertTrue(any("1/coverage" in x and "배율 1 을 상한" in x for x in o["warnings"]))
+        self.assertIn("겹쳐 곱하지 말 것", rs["warning"])
+
+    def test_backlog_cap_not_applied_when_coverage_under_one(self):
+        rows = self._cap_rows()
+        yards = self._yards("439260", [{"seg": "선박", "total": False, "opening": 1, "new": 1, "delivered": 1, "closing": 30000000}])
+        cons = S.prepare_contracts(rows, yards, None, 1000.0)
+        cm, yi = S.cohorts(cons)
+        o = S.build("439260", cons, cm, yi, yards, None, "linear", 1000.0, "2026Q2")
+        rs, cap = o["reconcile_summary"], o["backlog_cap"]
+        self.assertLess(rs["backlog_coverage_at_origin"], 1.0)
+        self.assertEqual(rs["backlog_coverage_after_cap"], rs["backlog_coverage_at_origin"])
+        self.assertFalse(o["backlog_cap_applied"] or cap["applied"])
+        self.assertEqual(cap["factor"], 1.0)
+        self.assertFalse(any("backlog_cap" in b for b in o["by_quarter"].values()))
+        self.assertFalse(any(c["backlog_cap_applied"] for c in o["contracts"]))
+        w = o["counts"]["forecast_window"]
+        self.assertEqual((w["hedged_krw_m_raw"], w["usd_m_raw"]), (w["hedged_krw_m"], w["usd_m"]))
+        self.assertEqual(cap["future_marine_hedged_krw_m_raw"], cap["future_marine_hedged_krw_m"])
+        self.assertFalse(any("1/coverage" in x for x in o["warnings"]))
+        # 잔고 없음(지주처럼 marine_closing None) → 커버리지 None, 캡 없음
+        o2 = S.build("439260", cons, cm, yi, {}, None, "linear", 1000.0, "2026Q2")
+        self.assertIsNone(o2["reconcile_summary"]["backlog_coverage_at_origin"])
+        self.assertFalse(o2["backlog_cap_applied"])
+
+    def test_summary_carries_mode_and_cap(self):
+        rows = self._cap_rows()
+        yards = self._yards("439260", [{"seg": "선박", "total": False, "opening": 1, "new": 1, "delivered": 1, "closing": 300000}])
+        cons = S.prepare_contracts(rows, yards, None, 1000.0)
+        cm, yi = S.cohorts(cons)
+        outs = {"439260": S.build("439260", cons, cm, yi, yards, None, "linear", 1000.0, "2026Q2")}
+        s = S.summary(outs, "2026Q2", "linear", 1000.0, [], [])
+        self.assertEqual((s["cohort_mode"], s["cohort_mode_alt"], s["next_q"]), ("reference_anchor", "ledger_relative", "2026Q3"))
+        r = s["rows"][0]
+        self.assertTrue(r["backlog_cap_applied"])
+        self.assertLess(r["backlog_cap_factor"], 1.0)
+        self.assertGreater(r["window_hedged_krw_m_raw"], r["window_hedged_krw_m"])
+        self.assertAlmostEqual(r["target_opm_next_q"], 0.15, places=6)
+        self.assertLess(r["target_opm_alt_next_q"], 0.15)
+        self.assertIn("calibrated_shift_alt", r)
+
+
 @unittest.skipUnless(os.path.exists(os.path.join(S.ASSETS, "contracts.json")) and os.path.isdir(S.YARDS_CACHE),
                      "실제 assets 없음")
 class TestRealAssets(unittest.TestCase):
@@ -343,6 +573,7 @@ class TestRealAssets(unittest.TestCase):
             for q, b in o["by_quarter"].items():
                 self.assertAlmostEqual(sum(b["by_type"].values()), b["usd_m"], places=2)
                 self.assertAlmostEqual(sum(b["by_cohort"].values()), b["usd_m"], places=2)
+                self.assertAlmostEqual(sum(b["by_cohort_alt"].values()), b["usd_m"], places=2)
                 self.assertEqual(b["kind"], "estimate")
             w = o["counts"]["forecast_window"]
             self.assertEqual((w["from"], w["to"]), ("2026Q3", "2028Q4"))
@@ -372,6 +603,50 @@ class TestRealAssets(unittest.TestCase):
         h = self.outs["042660"]["hedge"]
         if h["kind"] == "measured" and h["quarter"] == "2026Q2":
             self.assertAlmostEqual(h["hedge_ratio"], 3850.75 / (33008410 / 1472.04), places=4)
+
+    def test_real_reference_anchor_default_and_backlog_cap(self):
+        """§5-2: 기본 모드 reference_anchor·대안 ledger_relative 둘 다 저장, 커버리지 > 1 인 회사만 캡(2026Q2 기준 대한조선 1.164)."""
+        for o in self.outs.values():
+            self.assertEqual((o["cohort_mode"], o["cohort_mode_alt"]), ("reference_anchor", "ledger_relative"), o["stock"])
+            self.assertEqual(o["cohort_table"]["kind"], "estimate")
+            self.assertIn("클락슨", o["cohort_source"])
+            self.assertEqual(o["calibration"]["mode"], "reference_anchor")
+            self.assertEqual(o["calibration_alt"]["mode"], "ledger_relative")
+            self.assertEqual(o["backlog_cap"]["kind"], "estimate")
+            for c in o["contracts"]:
+                if c.get("cohort"):
+                    self.assertEqual(c["cohort"], S.cohort_by_order_year(c["year"])[0], c["rcp"])       # 수주연도 표 그대로
+                    self.assertIsNotNone(c["cohort_alt"], c["rcp"])                                     # 대상 집합은 두 모드가 같다
+                else:
+                    self.assertIsNone(c["cohort_alt"], c["rcp"])
+            for q, b in o["by_quarter"].items():
+                if q > o["origin"] and b["target_opm"] is not None:
+                    self.assertGreaterEqual(b["target_opm"], 0.05)                                       # ≤2020 ③ 이 하한
+                    self.assertLessEqual(b["target_opm"], 0.15)
+            rs, cap = o["reconcile_summary"], o["backlog_cap"]
+            cov = rs.get("backlog_coverage_at_origin")
+            if cov is not None and cov > 1.0:
+                self.assertTrue(o["backlog_cap_applied"], o["stock"])
+                self.assertAlmostEqual(cap["factor"], 1.0 / cov, places=4)
+                self.assertAlmostEqual(rs["backlog_coverage_after_cap"], 1.0, places=3)
+                self.assertLess(o["counts"]["forecast_window"]["hedged_krw_m"], o["counts"]["forecast_window"]["hedged_krw_m_raw"])
+                self.assertTrue(any("1/coverage" in w and "배율 1 을 상한" in w for w in o["warnings"]), o["stock"])
+                for q, b in o["by_quarter"].items():
+                    self.assertEqual("backlog_cap" in b, q > o["origin"], (o["stock"], q))
+            else:
+                self.assertFalse(o["backlog_cap_applied"], o["stock"])
+                self.assertEqual(cap["factor"], 1.0)
+                self.assertEqual(o["counts"]["forecast_window"]["hedged_krw_m"], o["counts"]["forecast_window"]["hedged_krw_m_raw"])
+                # 캡이 없으면 분기 합 = counted 계약 금액 합(달러) — 캡이 있으면 원값(_raw)이 그 역할
+                self.assertAlmostEqual(sum(b["usd_m"] for b in o["by_quarter"].values()),
+                                       sum(c["amt_usd_m"] for c in o["contracts"] if c.get("counted")), delta=0.5, msg=o["stock"])
+        d = self.outs["439260"]
+        if d["origin"] == "2026Q2" and (d["reconcile_summary"]["backlog_coverage_at_origin"] or 0) > 1.0:
+            self.assertTrue(d["backlog_cap_applied"])
+        s = S.summary(self.outs, "2026Q2", "linear", 1350.0, [], [])
+        self.assertEqual(s["cohort_mode"], "reference_anchor")
+        self.assertEqual({r["stock"] for r in s["rows"] if r["backlog_cap_applied"]},
+                         {o["stock"] for o in self.outs.values() if o["backlog_cap_applied"]})
 
 
 if __name__ == "__main__":
