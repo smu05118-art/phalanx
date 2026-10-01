@@ -3848,6 +3848,74 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   const hbmQs=((hbm.find(p=>p.yoy)||{}).yoy||[]).slice(-6).map(([d])=>`<th>${d.replace('20','')}</th>`).join('');
   const hbmBox=hbm.length?`<p style="font-size:13px;font-weight:700;margin:22px 0 4px">HBM 적층체인 피어보드 <span style="color:#8a90a8;font-weight:500;font-size:11px">박형화(AIM)→TC본딩(한미)→몰딩(TOWA) + TB/DB피어(SUSS)·소재(TOK) · 분기매출 YoY</span></p>
     <div class="lxt"><table><thead><tr><th>기업</th>${hbmQs}<th>최신</th></tr></thead><tbody>${hbmRows}</tbody></table></div>`:'';
+  // ── 증권사 산업모델 (IB) — 하우스 간 컨센서스 + 원본 블록 ──────────────────
+  // 정본 jem_data/memory/ib_models.json (mem_ib_models_ingest.py). 값은 워크북 전사 그대로이고
+  // 단위 정규화·점유율 유도만 인제스트가 계산한다(series.basis 에 'computed' 로 표기).
+  const IB=M.ib||{}; const IBB=IB.blocks||[]; const IBP=(IB.consensus||{}).panels||{};
+  const HN=IB.houses||{};
+  function ibFmt(v,unit){ if(v==null) return '—';
+    if(unit==='frac') return (v*100).toFixed(1)+'%';
+    if(typeof v!=='number') return String(v);
+    const a=Math.abs(v);
+    return a>=1000?Math.round(v).toLocaleString():a>=100?v.toFixed(0):a>=10?v.toFixed(1):v.toFixed(2);}
+  function ibPanelTable(p){ if(!p||!p.series||!p.series.length) return '';
+    const ps=(p.periods||[]).filter(k=>k.indexOf('-')<0);
+    if(!ps.length) return '';
+    const head=ps.map(k=>`<th>${k.replace('20','')}</th>`).join('');
+    const rows=p.series.map(e=>{
+      const cells=ps.map(k=>{const v=e.values[k];
+        return `<td class="mono">${ibFmt(v,p.unit)}</td>`;}).join('');
+      const dv=(e.basis||'').indexOf('computed')===0;
+      return `<tr><td style="white-space:nowrap"><b>${HN[e.house]||e.house}</b>
+        <div class="bt">${e.label}${dv?' · 유도':''}${e.unit_note?' · '+e.unit_note:''}</div></td>${cells}</tr>`;}).join('');
+    const sp=ps.map(k=>{const d=(p.spread||{})[k];
+      return `<td class="mono" style="font-size:10px;color:#8a90a8">${d?ibFmt(d.min,p.unit)+'~'+ibFmt(d.max,p.unit):'—'}</td>`;}).join('');
+    return `<div class="lxt"><table><thead><tr><th>하우스</th>${head}</tr></thead><tbody>${rows}
+      <tr style="border-top:1px solid var(--line,#233038)"><td class="bt">범위(min~max)</td>${sp}</tr></tbody></table></div>
+      ${p.note?`<p class="bt" style="margin-top:4px">${p.note}</p>`:''}`;}
+  const IBSEL=[['hbm_demand_bn_gbit','HBM 수요'],['hbm_supply_bn_gbit','HBM 공급'],
+    ['hbm_sufficiency','HBM 수급비'],['dram_sufficiency','DRAM 수급비'],
+    ['hbm_asp_usd_per_gbit','HBM ASP'],['dram_blended_asp_usd_per_gbit','DRAM ASP'],
+    ['dram_wafer_capacity_kwpm','DRAM 캐파'],['hbm_wafer_capacity_kwpm','HBM 캐파'],
+    ['nand_wafer_capacity_kwpm','NAND 캐파'],['hbm_revenue_usd_bn','HBM 매출'],
+    ['dram_revenue_usd_bn','DRAM 매출'],['hbm_share_of_dram_bits','HBM 비트비중'],
+    ['hbm_share_of_dram_revenue','HBM 매출비중']].filter(x=>IBP[x[0]]);
+  const ibTabs=IBSEL.map((x,i)=>`<span class="ltab ibp${i===0?' on':''}" data-ibp="${x[0]}">${x[1]}</span>`).join('');
+  const ibFirst=IBSEL.length?ibPanelTable(IBP[IBSEL[0][0]]):'';
+  // 벤더 점유율 (하우스 × 벤더)
+  function ibVendor(groupKey,title){ const g=IBP[groupKey]; if(!g) return '';
+    const vs=Object.keys(g).filter(v=>g[v]&&g[v].series&&g[v].series.length);
+    if(!vs.length) return '';
+    return `<p class="bt" style="margin:12px 0 4px">${title}</p>`+vs.map(v=>{
+      const p=g[v]; const ps=(p.periods||[]).filter(k=>k.indexOf('-')<0);
+      const cells=ps.map(k=>{const d=(p.spread||{})[k];
+        return `<td class="mono">${d?ibFmt(d.median,p.unit):'—'}<div class="bt" style="font-size:9px">${d&&d.n>1?ibFmt(d.min,p.unit)+'~'+ibFmt(d.max,p.unit):''}</div></td>`;}).join('');
+      return `<div class="lxt" style="margin-bottom:6px"><table><thead><tr><th style="min-width:92px">${v}</th>${ps.map(k=>`<th>${k.replace('20','')}</th>`).join('')}</tr></thead>
+        <tbody><tr><td class="bt">중앙값 · 범위</td>${cells}</tr></tbody></table></div>`;}).join('');}
+  // 원본 블록 인덱스
+  const ibByHouse={}; IBB.forEach(b=>{(ibByHouse[b.house]=ibByHouse[b.house]||[]).push(b);});
+  const ibIndex=Object.keys(ibByHouse).map(h=>{
+    const items=ibByHouse[h].map(b=>`<span class="ltab" style="cursor:pointer" data-ibb="${b.id}">${b.figure?b.figure+' · ':''}${(b.title||b.id).slice(0,38)}</span>`).join('');
+    return `<div style="margin-bottom:8px"><b style="font-size:12px;color:#2bc0d4">${HN[h]||h}</b>
+      <span class="bt"> ${ibByHouse[h].length}블록</span><div style="margin-top:3px">${items}</div></div>`;}).join('');
+  const ibChecks=IBB.reduce((a,b)=>a+(b.checks||[]).length,0);
+  const ibSrc=IB.source||{};
+  const ibDisc=IBB.flatMap(b=>((b.extra||{}).source_discrepancies)||[]);
+  const ibBox=IBB.length?`<p style="font-size:13px;font-weight:700;margin:22px 0 4px">증권사 산업모델 — 하우스 비교
+    <span style="color:#8a90a8;font-weight:500;font-size:11px">${Object.keys(ibByHouse).length}개 하우스 · ${IBB.length}블록 · 재계산 검증 ${ibChecks}건 · ${ibSrc.file||''}</span></p>
+    <p class="bt" style="margin:0 0 7px">같은 지표를 하우스별로 같은 단위에 맞춰 놓았다. 수요·공급 정의가 하우스마다 달라(탑재량 합산 / 최종소비 / 출하) 행의 설명을 함께 본다. '유도'는 표의 두 행을 나눈 값이다.</p>
+    <div style="margin-bottom:8px">${ibTabs}</div>
+    <div id="ibpanel">${ibFirst}</div>
+    ${ibVendor('hbm_vendor_share','HBM 벤더 점유율 — 하우스 중앙값과 범위')}
+    ${ibVendor('dram_vendor_wafer_share','DRAM 벤더 점유율 — 하우스 중앙값과 범위')}
+    ${ibDisc.length?`<div class="est" style="background:rgba(224,102,102,.10);margin-top:10px"><b>원본 전사 불일치 ${ibDisc.length}건</b>
+      ${ibDisc.map(x=>`<div style="margin-top:4px">${x.figure} ${x.cell}: 워크북 <b>${x.workbook_value}</b> · 다른 칸들이 함의 <b>${x.implied_by_other_cells}</b><div class="bt">${(x.evidence||[]).join(' / ')}</div></div>`).join('')}
+      <div class="bt" style="margin-top:4px">데이터는 고치지 않았다 — 워크북 쪽을 고쳐야 한다.</div></div>`:''}
+    ${(IB.withheld&&IB.withheld.n_blocks)?`<p class="bt" style="margin:10px 0 0">공개본에서 ${IB.withheld.n_blocks}개 블록을 뺐습니다 — ${Object.values(IB.withheld.houses||{}).concat([...new Set(Object.values(IB.withheld.blocks||{}).filter(v=>v.indexOf('고지')<0))]).join(' · ')}. 수치 표와 컨센서스는 그대로입니다.</p>`:''}
+    <p style="font-size:12px;font-weight:700;margin:16px 0 5px">원본 블록 (${IBB.length})</p>
+    <div class="bcard">${ibIndex}</div>
+    <div id="ibblock" style="margin-top:8px"></div>`:'';
+
   // AI 모델 가격 (api.chat 일간) — 입력/출력 분리, 회사=색
   const AIP=(M.aip||{}).models||{};
   const AIC={'OpenAI':'#10a37f','Anthropic':'#d97757','Google':'#4285f4','Alibaba':'#ff6a00','Meta':'#0866ff','DeepSeek':'#5b8def','Mistral':'#ff7000','xAI':'#e6e6e6','Amazon':'#ff9900','Microsoft':'#7fba00'};
@@ -3899,10 +3967,51 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   ${capBox}
   ${diBox}
   ${hbmBox}
+  ${ibBox}
   ${aipBox}
   <p style="font-size:13px;font-weight:700;margin:16px 0 6px">연관 데이터 (${(M.related||[]).length})</p><div>${rel}</div>`;
+  main.querySelectorAll('[data-ibp]').forEach(e=>e.onclick=()=>{
+    main.querySelectorAll('.ibp').forEach(x=>x.classList.remove('on'));
+    e.classList.add('on');
+    document.getElementById('ibpanel').innerHTML=ibPanelTable(IBP[e.dataset.ibp]);});
+  main.querySelectorAll('[data-ibb]').forEach(e=>e.onclick=()=>{
+    const b=IBB.find(x=>x.id===e.dataset.ibb); if(!b) return;
+    document.getElementById('ibblock').innerHTML=ibBlockView(b);
+    document.getElementById('ibblock').scrollIntoView({behavior:'smooth',block:'nearest'});});
   main.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>{const[rg,id]=e.dataset.go.split('|');ST.region=rg;loadRegion(rg,()=>{ST.tab='dash';ST.company=id;ST.view='detail';render();window.scrollTo(0,0);});});
 }
+function ibBlockView(b){
+  const unit=b.unit_name||b.unit;
+  const pk=(b.periods||[]).map(p=>typeof p==='string'?p:(p.raw||p.key));
+  const bad=(b.checks||[]).filter(c=>!c.ok).length;
+  const basisL={transcribed:'수치 라벨 전사',chart_read_approx:'차트 높이 판독(근사)',text:'텍스트',derived_in_workbook:'워크북 수식'};
+  let body='';
+  if(b.dims&&b.dims[0]==='record'&&Array.isArray(b.rows)){
+    const rs=b.rows.slice(0,60);
+    const cols=[...new Set(rs.flatMap(r=>Object.keys(r)))].filter(k=>{
+      const v=rs[0][k]; return typeof v!=='object'||v===null;}).slice(0,9);
+    body=`<div class="lxt"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>
+      ${rs.map(r=>`<tr>${cols.map(c=>`<td class="${typeof r[c]==='number'?'mono':''}" style="font-size:10.5px">${r[c]==null?'—':String(r[c]).slice(0,60)}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></div>${b.rows.length>60?`<p class="bt">상위 60행만 표시 (전체 ${b.rows.length})</p>`:''}`;
+  } else if(b.rows&&typeof b.rows==='object'){
+    const ru=(b.extra||{}).row_units||{};
+    const keys=Object.keys(b.rows);
+    const fmt=(v,u)=>v==null?'—':(u==='frac'?(v*100).toFixed(1)+'%':(typeof v==='number'?(Math.abs(v)>=1000?Math.round(v).toLocaleString():Math.abs(v)>=10?v.toFixed(1):v.toFixed(3)):String(v)));
+    const tot=b.total;
+    body=`<div class="lxt"><table><thead><tr><th>행</th>${pk.map(k=>`<th>${String(k).replace('20','')}</th>`).join('')}</tr></thead><tbody>
+      ${keys.map(k=>`<tr><td style="font-size:10.5px;white-space:nowrap">${((b.extra||{}).row_labels||{})[k]||k}${ru[k]?`<span class="bt"> ${ru[k]}</span>`:''}</td>
+        ${(b.rows[k]||[]).map(v=>`<td class="mono" style="font-size:10.5px">${fmt(v,ru[k]||b.unit)}</td>`).join('')}</tr>`).join('')}
+      ${Array.isArray(tot)?`<tr style="border-top:1px solid var(--line,#233038)"><td><b>합계</b></td>${tot.map(v=>`<td class="mono" style="font-weight:700">${fmt(v,b.unit)}</td>`).join('')}</tr>`:''}
+      </tbody></table></div>`;
+  }
+  const der=b.derived&&Object.keys(b.derived).length?`<p class="bt" style="margin-top:5px">파생행: ${Object.keys(b.derived).join(', ')}</p>`:'';
+  return `<div class="bcard" style="border-top:2px solid #2bc0d4">
+    <div class="bn">${b.title||b.id} <span class="bt">${b.house_name||b.house}${b.figure?' · '+b.figure:''}</span></div>
+    <div class="bt" style="margin:3px 0 7px">단위 ${unit} · 근거 ${basisL[b.basis]||b.basis}${b.as_of?' · 기준 '+b.as_of:''}
+      · 검증 ${(b.checks||[]).length}건${bad?` <span style="color:#e06666">실패 ${bad}</span>`:' 통과'}</div>
+    ${body}${der}
+    ${(b.notes||[]).filter(Boolean).map(n=>`<p class="bt" style="margin-top:5px">${n}</p>`).join('')}
+    ${b.source_note?`<p class="bt" style="margin-top:4px">${b.source_note}</p>`:''}</div>`;}
 // ================= 💎 Luxury 탭 =================
 let _luxLoaded=false;
 // ===== 👕 의류 탭 — 브랜드 × ODM 밸류체인 통합뷰 (TWC·TWX 월매출 / JPC 월차 / LUX 분기 / US BOL) =====
