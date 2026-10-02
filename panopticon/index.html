@@ -331,6 +331,20 @@ td.note{color:var(--dim);font-size:11.5px;max-width:520px}
 .archive-panel h3{margin:0 0 8px;font-size:20px}.archive-panel>.work-note{margin:8px 0 16px}
 .archive-panel .registry-card h3{font-size:16px}.archive-summary{margin-bottom:12px;color:var(--dim);font-size:12px}
 @media(max-width:520px){.registry-toolbar label,.registry-toolbar input{width:100%}.registry-card dl{grid-template-columns:68px minmax(0,1fr)}}
+
+/* catalyst-ui-health: scoped, wrapping cards; existing shell styles unchanged. */
+#catalystHealth{margin-top:24px;padding:16px;border:1px solid var(--bd);border-radius:12px;overflow-wrap:anywhere;min-width:0}
+#catalystHealth h2{font-size:18px}#catalystHealth h4{margin:0 0 10px}
+#catalystHealth .rd-research-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#catalystHealth .rd-research-card{min-width:0;padding:12px;border:1px solid var(--bd);border-radius:8px}
+#catalystHealth .rd-facts{display:grid;grid-template-columns:minmax(85px,.65fr) minmax(0,1.35fr);gap:5px 10px;font-size:12px}
+#catalystHealth dt{color:var(--dim)}#catalystHealth dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+#catalystHealth details{margin-top:12px}#catalystHealth summary{cursor:pointer;padding:6px 0}
+#catalystHealth a{color:var(--a1);overflow-wrap:anywhere}#catalystHealth ul{padding-left:20px}
+#catalystHealth .rd-warning{color:var(--a4)}#catalystHealth .rd-muted{color:var(--dim);font-size:12px}
+#catalystHealth :focus-visible{outline:2px solid var(--a1);outline-offset:3px}
+@media(max-width:600px){#catalystHealth{padding:12px}#catalystHealth .rd-research-grid{grid-template-columns:minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){#catalystHealth *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -395,7 +409,9 @@ td.note{color:var(--dim);font-size:11.5px;max-width:520px}
       <div id="workList" class="work-list"></div>
       <p class="work-note">진행 수는 함대 큐의 실행 기록입니다. 실제 모델 진척과 완료·검증·배포는 별도 확인합니다. 가져온 대화 수와 파일 예약은 실행 수에 포함하지 않습니다. 기존 수동 CLI·예약 실행은 이 감시 범위 밖입니다.</p>
     </section>
-    <section id="view-sites"><div class="grid" id="siteGrid"></div></section>
+    <section id="view-sites"><div class="grid" id="siteGrid"></div>
+      <section id="catalystHealth" aria-label="조사 후보 출처 상태"></section>
+    </section>
 
     <section id="view-fleet" hidden>
       <div class="toolbar">
@@ -739,11 +755,73 @@ function renderFeed(){
   ).join('');
 }
 function renderFoot(){
+  renderCatalystHealth();
   $('#foot').innerHTML=[
     `빌드 ${esc(DATA.built)}`, `워치독 ${esc(DATA.ops_generated||'—')}`,
     `HEAD ${esc(DATA.head)}`, `사이트 ${DATA.sites.length} · 잡 ${DATA.jobs.length}`
   ].map(s=>`<span>${s}</span>`).join('');
 }
+/* catalyst-ui-health-presenter BEGIN */
+const renderCatalystHealth=(()=>{
+  function object(v){return v!==null && typeof v==='object' && !Array.isArray(v);}
+  function textValue(v){return typeof v==='string' && v.length<=40000;}
+  function nonempty(v){return textValue(v) && v.trim().length>0;}
+  function list(v,check){return Array.isArray(v) && v.length<=10000 && v.every(check);}
+  function texts(v){return list(v,textValue);}
+  function hash(v){return typeof v==='string' && /^[a-f0-9]{64}$/.test(v);}
+  function ref(v,kind){return typeof v==='string' && new RegExp('^'+(kind||'[a-z_]+')+':[a-f0-9]{64}@[1-9][0-9]*$').test(v);}
+  function utc(v){return typeof v==='string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/.test(v) && dateOnly(v.slice(0,10)) && Number(v.slice(11,13))<24 && Number(v.slice(14,16))<60 && Number(v.slice(17,19))<60 && Number.isFinite(Date.parse(v));}
+  function dateOnly(v){return typeof v==='string' && /^\d{4}-\d\d-\d\d$/.test(v) && !isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10)===v;}
+  function nullable(v,check){return v===null||check(v);}
+  function count(v){return Number.isSafeInteger(v)&&v>=0;}
+  function httpsURL(v){try{if(!nonempty(v)||/[\x00-\x20\x7f\\]/.test(v))return null;var u=new URL(v);return u.protocol==='https:'&&!u.username&&!u.password?u.href:null;}catch(_){return null;}}
+  function history(v){return object(v)&&count(v.sequence)&&hash(v.sha256);}
+  function bindings(v){return object(v)&&history(v.core_history)&&history(v.discovery_history)&&hash(v.config_sha256)&&hash(v.company_review_sha256)&&v.integration_version==='catalyst-ops/1.0'&&v.company_adapter_version==='company-adapter/1.0'&&nullable(v.latest_core_run_ref,function(r){return ref(r,'run');})&&nullable(v.latest_discovery_run_ref,function(r){return ref(r,'discovery_run');});}
+  function sourceHealth(s){return object(s)&&['anza','hanwha','oci_ko','oci_en','whitehouse'].includes(s.source_id)&&textValue(s.url)&&['unchecked','degraded','stale','archival_reference','partial','checked_bounded'].includes(s.status)&&['last_good_capture_at','next_check_at','last_checked_at','oldest_unreviewed_at'].every(function(k){return nullable(s[k],utc);})&&count(s.pending_review_count)&&typeof s.live_endpoint_verified==='boolean'&&s.complete_history_scanned===false&&s.delivery_status==='disabled'&&s.latency_status==='unknown'&&s.issue_to_discovery_latency_seconds===null&&nullable(s.last_attempt_ref,function(x){return ref(x);})&&list(s.failed_or_incomplete_attempts,function(x){return ref(x);})&&(s.frontier===null||(object(s.frontier)&&s.frontier.source_id===s.source_id&&typeof s.frontier.baseline==='boolean'&&typeof s.frontier.reached_prior_frontier==='boolean'&&texts(s.frontier.checked_pages)&&texts(s.frontier.unvisited_urls)&&texts(s.frontier.gaps)));}
+  function healthShape(h){return object(h)&&h.schema_version==='catalyst-source-health/1.0'&&['actual_utc','injected_test_clock'].includes(h.clock_basis)&&['requires_attention','bounded_evidence_only'].includes(h.operational_status)&&list(h.sources,sourceHealth)&&new Set(h.sources.map(function(s){return s.source_id;})).size===h.sources.length&&['review_count','candidate_count','verified_core_card_count','displayable_core_card_count','temporary_file_count','pending_review_count'].every(function(k){return count(h[k]);})&&history(h.history_receipt)&&nullable(h.oldest_unreviewed_at,utc)&&typeof h.production_history==='boolean'&&h.complete_history_scanned===false&&h.forecast_status==='held'&&h.market_priced_in==='unknown'&&list(h.incomplete_runs,function(x){return ref(x);})&&list(h.retained_errors,function(x){return object(x)&&ref(x.attempt_ref)&&textValue(x.url)&&nonempty(x.error_code);});}
+  var REASONS={snapshot_expired:'스냅샷 만료',source_or_history_requires_attention:'출처·기록 확인 필요',company_reference_records_incomplete:'회사 참조 기록 불완전',runtime_unavailable_or_invalid:'런타임 자료 확인 불가',source_check_failed_or_stale:'원문 확인 실패 또는 오래된 확인',core_review_required:'원문 변경 · 재검토 필요',core_stale:'핵심 근거 확인기한 경과',core_invalidated:'핵심 근거 무효화',core_or_discovery_validation_held:'영속 기록 검증 보류',persisted_current_reference_unavailable:'연결된 원문·영속 참조 없음',reviewed_document_version_changed:'검토된 문서 버전 변경',fetch_failed:'원문 가져오기 실패'};
+  function reasonLabel(s){return Object.hasOwn(REASONS,s)?REASONS[s]+' ('+s+')':s;}
+  function node(doc,tag,text,cls){var n=doc.createElement(tag);if(text!==undefined)n.textContent=String(text);if(cls)n.className=cls;return n;}
+  function add(parent,tag,text,cls){var n=node(parent.ownerDocument,tag,text,cls);parent.appendChild(n);return n;}
+  function pairs(parent,rows){var dl=add(parent,'dl',undefined,'rd-facts');rows.forEach(function(r){add(dl,'dt',r[0]);add(dl,'dd',r[1]===null?'미확인':r[1]);});return dl;}
+  function bullets(parent,items){var ul=add(parent,'ul');items.forEach(function(x){add(ul,'li',x);});}
+  function disclosure(parent,title){var d=add(parent,'details');add(d,'summary',title);return d;}
+  function external(parent,url,label){var safe=httpsURL(url);if(!safe){add(parent,'span',(label||url)+' · 안전한 HTTPS 주소 미확인');return;}var a=add(parent,'a',label||url);a.href=safe;a.target='_blank';a.rel='noopener noreferrer';}
+  function renderSourceHealth(parent,h){
+    add(parent,'p','출처별 검토 대기는 문서 URL 수이며, 전체 검토 대기에는 버전·실패·핵심 검토 항목이 포함됩니다.','rd-muted');
+    pairs(parent,[['전체 검토 대기',h.pending_review_count],['가장 오래된 미검토 최초 관측 UTC',h.oldest_unreviewed_at],['발행→발견 지연','미확인 · 발행 버전 시각 없음'],['알림 전달','비활성'],['전체 과거 기록','조사 범위 밖']]);
+    var grid=add(parent,'div',undefined,'rd-research-grid');
+    var labels={unchecked:'미확인',degraded:'원문 확인 실패',stale:'확인기한 경과',archival_reference:'보관 자료 참조',partial:'일부만 확인',checked_bounded:'제한 범위 확인'};
+    h.sources.forEach(function(s){var a=add(grid,'article',undefined,'rd-research-card');add(a,'h4',s.source_id+' · '+labels[s.status]);pairs(a,[['마지막 시도 UTC',s.last_checked_at],['마지막 정상 수집 UTC',s.last_good_capture_at],['다음 확인 UTC',s.next_check_at],['검토 대기 URL',s.pending_review_count],['가장 오래된 미검토 최초 관측 UTC',s.oldest_unreviewed_at],['실시간 원문 확인',s.live_endpoint_verified?'이 실행에서 확인':'확인하지 않음']]);
+      var more=disclosure(a,'수집 범위·실패 기록');external(more,s.url);pairs(more,[['마지막 시도',s.last_attempt_ref]]);bullets(more,s.failed_or_incomplete_attempts);if(s.frontier){pairs(more,[['발견 기준',s.frontier.baseline?'첫 기준선 · 신규 발행 아님':'이전 탐색 이후'],['이전 경계 도달',s.frontier.reached_prior_frontier?'예':'아니오']]);bullets(more,s.frontier.gaps);add(more,'p','확인한 페이지');s.frontier.checked_pages.forEach(function(u){external(add(more,'p'),u);});add(more,'p','미방문 페이지');s.frontier.unvisited_urls.forEach(function(u){external(add(more,'p'),u);});}
+    });
+    h.retained_errors.forEach(function(e){var p=add(parent,'p',undefined,'rd-warning');add(p,'span',reasonLabel(e.error_code)+' · '+e.attempt_ref+' · ');external(p,e.url);});
+    if(h.incomplete_runs.length){add(parent,'p','미완료 수집 실행','rd-warning');bullets(parent,h.incomplete_runs);}
+  }
+
+/* catalyst-ui-health: additive presentation of the existing ops payload. */
+function catalystHealthClock(){return {basis:'actual_utc',now:Date.now()};}
+let catalystHealthExpiry=null;
+function renderCatalystHealth(connectionFailed=false){
+  clearTimeout(catalystHealthExpiry);
+  const box=$('#catalystHealth');if(!box)return;box.replaceChildren();
+  add(box,'h2','조사 후보 · 출처 상태');
+  const e=DATA&&DATA.catalyst,clock=catalystHealthClock();
+  if(connectionFailed||!object(e)||e.schema_version!=='catalyst-ops-ui/1.0'||!hash(e.projection_id)||!['available','partial','held'].includes(e.status)||e.clock_basis!==clock.basis||!texts(e.reason_codes)||!utc(e.valid_until)||Date.parse(e.valid_until)<=clock.now||!bindings(e.bindings)||!healthShape(e.health)||e.health.clock_basis!==clock.basis){
+    add(box,'p',connectionFailed?'스냅샷 연결 실패 · 출처 상태 표시 보류':'자료 누락·형식 오류·시계 불일치 또는 유효기간 경과 · 출처 상태 표시 보류');return;
+  }
+  add(box,'p',e.status==='held'?'현재 주장 보류':'제한된 출처 확인 · 수치 전망 보류');
+  add(box,'p','발행→발견 지연 미확인 · 알림 비활성. 보관 자료는 실시간 원문 확인 성공을 뜻하지 않습니다.');
+  pairs(box,[['표시 유효기한 UTC',e.valid_until],['스냅샷 SHA',e.projection_id]]);
+  bullets(box,e.reason_codes.map(reasonLabel));renderSourceHealth(box,e.health);
+  add(box,'p','정적 스냅샷은 새 배포 또는 유효기한 전까지 이후 원문 실패를 알 수 없습니다.','rd-muted');
+  catalystHealthExpiry=setTimeout(()=>renderCatalystHealth(),Math.min(2147483647,Math.max(1,Date.parse(e.valid_until)-clock.now+1)));
+}
+
+return renderCatalystHealth;
+})();
+/* catalyst-ui-health-presenter END */
+
 /* ── 작업 인포그래픽: 로컬 15초 관측 / Pages 배포 시점 스냅샷 ── */
 const WORK_LABEL={running:'진행 기록',queued:'대기',succeeded:'실행 완료',needs_review:'확인 필요',failed:'실패',cancelled:'취소'};
 const WORK_COLOR={running:'var(--a2)',queued:'var(--a4)',succeeded:'var(--a1)',needs_review:'var(--a5)',failed:'var(--a3)',cancelled:'var(--dim)'};
@@ -1224,7 +1302,7 @@ setInterval(async()=>{
   try{ const v=await fetchVault(); const d=await openVault(RAWKEY,v);
        DATA=d; renderChips(); renderSites(); renderFoot();
        if(view==='fleet') renderFleet(); if(view==='feed') renderFeed();
-       if(view==='inc') renderInc();if(!LOCAL_LIVE){WORK=d.work_status;workNetwork='ok';workChecked=Date.now();}renderWork(); }catch(e){if(!LOCAL_LIVE){workNetwork='failed';renderWork();}}
+       if(view==='inc') renderInc();if(!LOCAL_LIVE){WORK=d.work_status;workNetwork='ok';workChecked=Date.now();}renderWork(); }catch(e){renderCatalystHealth(true);if(!LOCAL_LIVE){workNetwork='failed';renderWork();}}
 },300000);
 setInterval(()=>{if(LOCAL_LIVE)refreshWork();},15000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&LOCAL_LIVE)refreshWork();});
