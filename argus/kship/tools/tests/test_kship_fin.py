@@ -807,6 +807,30 @@ class TestNotes(unittest.TestCase):
 
     def test_build_company_with_notes_cache(self):
         """캐시(2026Q2 주석 포함)로 build — is/bs 에 주석 계정이 올라오고 notes/src_notes 가 스키마대로 생긴다."""
+        import json
+        import shutil
+        import tempfile
+        from unittest import mock
+
+        assets = self.enterContext(tempfile.TemporaryDirectory())
+        self.enterContext(mock.patch.multiple(F, ASSETS=assets, FIN_CACHE=os.path.join(assets, "fin_cache")))
+        # 추적된 원문 픽스처를 임시 캐시에 복사한다. meta 는 테스트용 경로 인덱스다.
+        for stock, prefix, note_keys in (("010140", "shi", ("fin", "borrowings", "other")),
+                                         ("075580", "sejin", ("fin", "borrowings", "other")),
+                                         ("092460", "hanla", ("borrowings",))):
+            paths = F.cache_paths(stock, "2026Q2")
+            os.makedirs(os.path.dirname(paths["meta"]))
+            meta = {"rcp": "fixture", "sections": {}, "notes": {"scope": "cons", "items": {}}}
+            for scope in ("cons", "sep"):
+                shutil.copyfile(os.path.join(FIX, "%s_2026Q2_%s.html" % (prefix, scope)), paths[scope])
+                meta["sections"][scope] = {"path": os.path.relpath(paths[scope], assets)}
+            for key in note_keys:
+                path = F.note_cache_path(stock, "2026Q2", key)
+                shutil.copyfile(os.path.join(FIX, "%s_2026Q2_note_%s.html" % (prefix, key)), path)
+                meta["notes"]["items"][key] = {"path": os.path.relpath(path, assets)}
+            with open(paths["meta"], "w", encoding="utf-8") as f:
+                json.dump(meta, f)
+
         fin = F.build_company("010140", ["2026Q2"], "삼성중공업", golden={})
         c = fin["cons"]
         self.assertAlmostEqual(c["is"]["2026Q2"]["이자수익"], 10573.07, places=2)
