@@ -19,7 +19,7 @@
 - [x] 원문 HTML을 `assets/_raw/probe_html/` 로 옮기고 `.gitignore`(감독 메모 반영)
 - [x] `scout_score.py --write` → `argus/_specs/scout_evidence.json` (+ `--md` 로 보고서 표 생성)
 - [x] `argus/_specs/scout_report.md` — 섹터 표 · 상위 3개 탭 스펙 초안 · '만들지 말 것' 목록
-- [x] `/tmp/scout.done`
+- [x] `[private local path]`
 
 **웨이브 SCOUT 종료.** 결론: 1 원자력·발전기자재(82.0) · 2 전력기기·전력망(63.8) ·
 3 우주·항공부품(63.8). 보정 섹터 건설 95.0 · 조선 90.0 이 상단에 와 눈금은 맞았다.

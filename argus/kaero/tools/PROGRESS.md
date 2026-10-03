@@ -21,7 +21,7 @@
 - [x] `tools/tests` **50건 통과**(픽스처는 DART 원문 절)
 - [x] `site.json` · `.github/workflows/update-kaero.yml` · `vendor/`
       (`_config.yml` 은 **건드리지 않는다** — 감독 메모 2. `argus/*/tools/` glob 이 덮는다)
-- [x] README.md · LOGIC.md · HANDOFF.md · `/tmp/kaero.done`
+- [x] README.md · LOGIC.md · HANDOFF.md · 비공개 임시 완료 표식
 
 ## 남은 일 (HANDOFF ③ 에 자세히)
 

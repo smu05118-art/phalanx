@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """kship_xlsx_patch 계약 테스트 — 레퍼런스 subQ xlsx 제자리 패치(MODEL_SPEC 2-6).
 
-실행: cd argus/kship/tools && ~/Library/phalanx_venv/bin/python -m unittest tests.test_kship_xlsx_patch -v
+실행: cd argus/kship/tools && python3 -m unittest tests.test_kship_xlsx_patch -v
 - 순수 함수(기간 순서·라벨·sharedStrings·행 재조립·fin 값 규칙)는 픽스처 없이 돈다.
-- 실제 원본(`~/phalanx/jem_data/kship_models/reference/*_orig.xlsx`, 사용자 사유 파일)이 있을 때만
+- 실제 원본(`KSHIP_REFERENCE_DIR/*_orig.xlsx`, 사용자 사유 파일)이 있을 때만
   통합 테스트가 돈다. 출력은 항상 임시 폴더 — 레퍼런스 폴더에 쓰지 않는다.
 - 표본 fin: tests/fixtures/fin/fin_sample_010140.json (삼성중공업 2026Q2·2025Q4, 픽스처 HTML 에서 손으로 옮김).
 - 세진·미포는 합성 fin(값은 의미 없음) 으로 4시트 매핑·충돌 보존·/U 나눗셈 경로만 확인한다.

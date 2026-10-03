@@ -381,7 +381,7 @@ class Builder:
             ("· BS 시트에 값이 없는 기간의 VLOOKUP 은 0 으로 보일 수 있다(엑셀 VLOOKUP 빈 셀 규칙). fin(L1) 수집 후 재생성", None),
             ("", None),
             ("출처: DART 정기보고서(연결/별도 재무제표), FnGuide 계정명 규약, ECB 환율(api.frankfurter.app), aikstockdata.com(금융위 확정종가 T+1, 출처표기·비영리)", None),
-            ("재현: cd argus/kship/tools && ~/Library/phalanx_venv/bin/python kship_model_xlsx.py --model assets/models/%s.json --verify   "
+            ("재현: cd argus/kship/tools && python3 kship_model_xlsx.py --model assets/models/%s.json --verify   "
              "(모델 json 부터: kship_model.py --build --all --xlsx · xlsx 58사 일괄: kship_model_xlsx.py --all --verify)" % m.get("stock", "<stock>"), None),
             ("한계: 모델 quality.warnings — " + " / ".join((m.get("quality") or {}).get("warnings") or ["(없음)"]), None),
             ("백테스트: " + json.dumps(m.get("backtest") or {}, ensure_ascii=False), None),

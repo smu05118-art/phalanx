@@ -40,7 +40,7 @@ push를 감지해 `tools/inject_ui_patch.py`로 재주입한다(멱등 — 훅�
 - **Action run이 빨간불로 실패하는 경우**: 재주입 run 도중 다른 push(크론)가 끼어 rebase 충돌이 난 것 —
   충돌을 일으킨 push가 새 run을 큐잉하므로 **자동 복구된다. 조치 불필요.**
 - **크론 push 실패 시**: 로컬 크론 스크립트에 `git pull --rebase origin main`이 push 앞에 있는지 확인
-  (레포 미러 `phalanx_update.sh`에는 2026-08-26 추가됨 — **맥스튜디오의 실제 launchd 스크립트에도 같은 줄이 필요**).
+  (현재 운영은 정본의 공통 배포 헬퍼가 해당 자산을 명시적으로 소유·검증한다.)
 - 크론 push 직후 1~2분은 Pages가 훅 없는 구 UI를 서빙할 수 있다(깨짐 아님 — Action 재주입 후 새 UI 복귀).
 - 렌더러 미구현 탭(현재 ecal·tmap·ppi — 빌더에서 loadEcal/renderEcal 등 유실)은 patch.js가 자동으로 숨긴다.
   빌더가 렌더러를 복원하면 탭도 자동 재노출.

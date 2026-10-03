@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """kship_fin 계약 테스트 — 네트워크 없이 픽스처 4세트로 파서·분기화·주식수·배당을 검증한다.
 
-실행: cd argus/kship/tools && ~/Library/phalanx_venv/bin/python -m unittest tests.test_kship_fin -v
+실행: cd argus/kship/tools && python3 -m unittest tests.test_kship_fin -v
 픽스처: tests/fixtures/fin/ — 삼성중공업 2026Q2(연결·별도·주식)·2025Q4(연결·별도·배당), 세진중공업 2026Q2, 한라IMS 2026Q2,
 주석 하위 노드 7개(삼성重·세진 금융수익/차입금/기타수익, 한라IMS 차입금 — 2026Q2 반기보고서 실측),
 주석 부모 절 2개(한일철강 002220 2023Q4 `3. 연결재무제표 주석`·`5. 재무제표 주석` — hanil_2023Q4_note_parent_{cons,sep}.html).

@@ -8,7 +8,7 @@
 종목마다 0.5초 간격으로 읽고, 실패한 종목은 rows 에 `error` 로 남긴다(전체를 실패시키지 않는다).
 
 `history_quarterly`(분기 기말/고/저/평균 종가 — subQ 의 PER 4종·TP 밴드용)는 **시도만** 한다:
-~/phalanx/toss_api.py 의 candles_history 가 있고 토큰 캐시 파일(~/phalanx/jem_data/.toss_token.json)이
+`PHALANX_ROOT/toss_api.py` 의 candles_history 가 있고 비공개 토큰 캐시 파일이
 **존재하는지만** 확인해 import 해서 5년(분기 경계에 맞춘 창) 일봉을 집계한다. 비밀 파일은 열지도 출력하지도 않는다.
 안 되면 `history_unavailable: true` 와 `history_error` 를 남기고, 기존 prices.json 에 이력이 있으면
 그 행의 `history_quarterly` 를 이어 붙인다(`history_meta.carried_from`, --no-carry 로 끔) — 러너(토스 없음)와
@@ -46,7 +46,9 @@ NAVER_LOOKBACK_DAYS = 14                              # 기준일 앞 2주(연�
 OUT = "prices.json"
 HOLDING = "009540"                                    # 폴더 없는 지주 — 스펙 1 모집단 규약
 UA = "phalanx-argus-kship/0.1 (non-commercial, source attribution)"
-TOSS_DIR = os.path.expanduser("~/phalanx")
+TOSS_DIR = os.environ.get(
+    "PHALANX_ROOT", str(pathlib.Path(__file__).resolve().parents[3])
+)
 TOSS_TOKEN = os.path.join(TOSS_DIR, "jem_data", ".toss_token.json")
 HISTORY_YEARS = 5
 HISTORY_PAGES = 7                                     # 200봉 × 7 ≈ 5.6년 거래일
@@ -214,9 +216,9 @@ def toss_module():
     돌려주는 것: (module 또는 None, 불가 사유)."""
     mod_path = os.path.join(TOSS_DIR, "toss_api.py")
     if not os.path.exists(mod_path):
-        return None, "toss_api.py 없음(%s)" % mod_path
+        return None, "toss_api.py 없음"
     if not os.path.exists(TOSS_TOKEN):
-        return None, "토큰 캐시 파일 없음(%s) — 인증된 적 없음" % TOSS_TOKEN
+        return None, "토큰 캐시 파일 없음 — 인증된 적 없음"
     if TOSS_DIR not in sys.path:
         sys.path.insert(0, TOSS_DIR)
     try:
@@ -225,7 +227,7 @@ def toss_module():
         return None, "toss_api import 실패: %s" % e
     if not hasattr(toss_api, "candles_history"):
         return None, "toss_api.candles_history 없음"
-    # toss_api.TOKEN_CACHE 는 **상대경로**(jem_data/.toss_token.json) — cwd 가 ~/phalanx 가 아니면
+    # toss_api.TOKEN_CACHE 는 **상대경로**(jem_data/.toss_token.json) — cwd 가 PHALANX_ROOT 가 아니면
     # 토큰 캐시를 못 찾고 새 토큰을 받아 **이 레포 안에** 캐시 파일을 만든다. 절대경로로 바꿔 둔다.
     toss_api.TOKEN_CACHE = pathlib.Path(TOSS_TOKEN)
     return toss_api, None
@@ -383,7 +385,7 @@ def collect(codes, meta, today, with_history=True, sleep=0.5, pages=HISTORY_PAGE
         "roster_n": len(codes), "ok_n": len(ok), "error_n": len(err), "errors": err,
         "naver_check": naver_summary(rows) if naver else {"skipped": True},
         "history": {"attempted": toss is not None, "available_n": hist_ok, "failed_n": hist_fail,
-                    "reason": why, "source": "~/phalanx/toss_api.py candles_history (토큰 캐시 존재 여부만 확인)" if toss is not None else None,
+                    "reason": why, "source": "toss_api.py candles_history (비공개 토큰 캐시 존재 여부만 확인)" if toss is not None else None,
                     "years": HISTORY_YEARS, "pages": pages,
                     "window_from": history_since(today), "truncated_grace_days": TRUNCATED_GRACE_DAYS,
                     "note": "history_quarterly 는 토스 일봉(adjusted=true 수정주가) 집계, 창은 5년 전이 속한 분기의 첫날부터(분기 경계 정렬). "

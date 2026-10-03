@@ -59,7 +59,7 @@ cd ../../.. && git add -A -- argus/kship argus/index.html && git commit -m "kshi
 ## 맥스튜디오 클로드에 그대로 붙여 넣을 프롬프트
 
 ```
-/Users/…/phalanx 레포에서 git pull 뒤 argus/kship/KICKOFF.md 를 읽고 그 순서대로 남은 과정을 끝내 줘.
+[private local path] 레포에서 git pull 뒤 argus/kship/KICKOFF.md 를 읽고 그 순서대로 남은 과정을 끝내 줘.
 규칙: DART 수집은 이 머신에서 프로세스 하나만(레인 A→B→C 순서로 하나씩). 수집이 아닌 일(테스트·사전·페이지·문서·검증 6항목)은
 에이전트를 최대한 병렬로 띄워도 된다. 수집이 끝날 때마다 빌드→페이지 재생성→커밋→push 하고, 마지막에 KICKOFF '확인할 것' 6항목을
 검증 에이전트들로 병렬 점검해서 결과를 HANDOFF.md '지금 상태'에 적고 push 해 줘. API 키는 필요 없고, 받아서도 안 된다.

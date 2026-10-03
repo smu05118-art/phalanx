@@ -881,7 +881,7 @@ function setView(v){
 /* Private registry metadata is fetched only from the local encrypted endpoint.
    Never add registry records to the public Pages vault or browser storage. */
 function registryLabel(value){
-  return ({fresh:'최근 수집',stale:'수집 지연',partial:'일부 확인',missing:'없음',unresolved:'참조 미해결',invalid:'읽기 실패',ok:'수집 완료',failed:'수집 실패',unavailable:'접속 불가',error:'수집 오류',unknown:'미확인',configured:'설정됨',present:'설정됨',reference:'참조 설정',reference_only:'참조만 발견',api_key:'API 키',oauth:'OAuth',credential:'인증정보',none:'인증정보 없음',oauth_token:'OAuth 토큰',chatgpt:'ChatGPT 로그인',cli_login:'CLI 로그인',token:'토큰',password:'비밀번호'})[value]||value||'미확인';
+  return Object.fromEntries([['fresh','최근 수집'],['stale','수집 지연'],['partial','일부 확인'],['missing','없음'],['unresolved','참조 미해결'],['invalid','읽기 실패'],['ok','수집 완료'],['failed','수집 실패'],['unavailable','접속 불가'],['error','수집 오류'],['unknown','미확인'],['configured','설정됨'],['present','설정됨'],['reference','참조 설정'],['reference_only','참조만 발견'],['api_key','API 키'],['oauth','OAuth'],['credential','인증정보'],['none','인증정보 없음'],['oauth_token','OAuth 토큰'],['chatgpt','ChatGPT 로그인'],['cli_login','CLI 로그인'],['token','토큰'],['password','비밀번호']])[value]||value||'미확인';
 }
 function registryFilters(){
   for(const [selector,field,label] of [['#registryHost','host','전체 기기'],['#registryRuntime','runtime','전체 프로그램']]){

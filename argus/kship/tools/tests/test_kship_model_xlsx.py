@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """kship_model_xlsx 계약 테스트 — 표본 모델 json(fixtures/model_sample.json) → xlsx → 재오픈 검증.
 
-실행: cd argus/kship/tools && ~/Library/phalanx_venv/bin/python -m unittest tests.test_kship_model_xlsx -v
+실행: cd argus/kship/tools && python3 -m unittest tests.test_kship_model_xlsx -v
 확인하는 것: 시트 목록·헤더 규약(행1 '4Q21'/2021 숫자, 행4 '2021.12'/'2021.12A', E열 시작)·이름정의·
 확정 행 VLOOKUP 수식과 파이썬 VLOOKUP 흉내(2026Q2 매출액 = BS연결 값/100)·추정 행 가정 셀 참조와 재계산 일치·
 추정 열 연노랑·경계 굵은 테두리·메모(basis)·파일 크기.

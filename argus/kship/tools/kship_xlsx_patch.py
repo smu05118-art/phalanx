@@ -3,7 +3,7 @@
 """kship_xlsx_patch — 레퍼런스 subQ 모델(xlsx)의 '박힌' FnGuide 시트를 제자리 패치.
 
 세진중공업·삼성중공업·HD현대미포의 애널리스트 모델 원본(`*_subQ_orig.xlsx`, 사용자 사유 파일,
-`~/phalanx/jem_data/kship_models/reference/`)은 도형·스파크라인·차트 때문에 openpyxl 로 열어
+비공개 `KSHIP_REFERENCE_DIR`)은 도형·스파크라인·차트 때문에 openpyxl 로 열어
 저장하면 깨진다. 그래서 **쓰기는 zipfile + XML 문자열 수준**에서만 한다 — 원본 zip 멤버를 바이트
 그대로 옮기고, BS 시트(`BS연결`/`BS별도`/세진의 `BS일승(별도)`·`BS동방선기(별도)`)의 새 기간 열에
 fin json(kship_fin.py 산출, 백만원) 값을 셀로 끼워 넣는다.
@@ -44,10 +44,10 @@ fin json(kship_fin.py 산출, 백만원) 값을 셀로 끼워 넣는다.
  `VLOOKUP($D, BS연결, MATCH(SUBQH, BS연결H, 0), 0)` 사슬을 파이썬으로 흉내내어 새 분기 값 == fin.
 
 실행:
-  ~/Library/phalanx_venv/bin/python kship_xlsx_patch.py --stock 010140 --verify
-  ~/Library/phalanx_venv/bin/python kship_xlsx_patch.py --all --verify --report assets/xlsx_patch_report.json
-  ~/Library/phalanx_venv/bin/python kship_xlsx_patch.py --all --verify --overwrite-placeholders --fx-actuals --today 2026-09-30
-  ~/Library/phalanx_venv/bin/python kship_xlsx_patch.py --all --verify --is-convention 3m   # 예전 방식(항상 3개월 열)
+  python3 kship_xlsx_patch.py --stock 010140 --verify
+  python3 kship_xlsx_patch.py --all --verify --report assets/xlsx_patch_report.json
+  python3 kship_xlsx_patch.py --all --verify --overwrite-placeholders --fx-actuals --today 2026-09-30
+  python3 kship_xlsx_patch.py --all --verify --is-convention 3m   # 예전 방식(항상 3개월 열)
 표준 라이브러리 + openpyxl(검증 전용) 만 쓴다. 네트워크 없음.
 """
 import argparse
@@ -62,7 +62,11 @@ from xml.sax.saxutils import escape, unescape
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "assets")
 FIN_DIR = os.path.join(ASSETS, "fin")
-REF_DIR = os.path.expanduser("~/phalanx/jem_data/kship_models/reference")
+PHALANX_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REF_DIR = os.environ.get(
+    "KSHIP_REFERENCE_DIR",
+    os.path.join(PHALANX_ROOT, "jem_data", "kship_models", "reference"),
+)
 
 # 레퍼런스 파일 → 패치 대상 시트(시트명 → (종목, 범위)). 시트명은 workbook.xml 로 파일을 찾는다.
 FILES = {

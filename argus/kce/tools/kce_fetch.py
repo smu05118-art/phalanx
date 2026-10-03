@@ -9,7 +9,7 @@
 
 규약: stdlib 전용 · https·호스트 allowlist 강제 · 응답 크기 상한 · fail-closed.
 사용례:
-  python3 kce_fetch.py --co sct --quarter 2026Q2 --out /tmp/kce_raw
+  python3 kce_fetch.py --co sct --quarter 2026Q2 --out ./kce-preview
 """
 import argparse
 import json

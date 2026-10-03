@@ -6,7 +6,7 @@
 아래 숫자는 전부 2026-09-30 **21:50 KST 시점** 산출 파일을 열어 읽은 값이다(레인 보고 문구가 아니다) — 1차 구축(17:45) 뒤 2차 검증·수정(20:40~21:50, §10)이 fin 파서·모델 엔진·패치 도구를 고치고 fin(21:18)·sls(21:08)·prices(21:10)·models/xlsx(21:47)를 재생성했다. 회사 페이지·허브(21:28~21:39)는 그보다 앞서 빌드돼 §7 ⑥ 재실행이 남아 있다.
 **2026-10-02 추가**: 라운드 3·4(남은 결정 ⓐⓓⓔⓗⓘ 실행 · 주석 부모 절 폴백 · 영업외 세부 행 · 적대 검토 결함 D1~D10 수정)는 **§12** 에 따로 적었다. §5·§6·§7·§8 에는 ▶ 10-02 / → 10-02 표시로 갱신분만 덧붙였다. 9/30 기록은 지우지 않았다.
 
-- 레퍼런스 원본은 사용자 사유 파일 — `~/phalanx/jem_data/kship_models/reference/`(맥미니 로컬)에만 있고 레포에 없다.
+- 레퍼런스 원본은 사용자 사유 파일 — `[private local path]`(맥미니 로컬)에만 있고 레포에 없다.
 - 우리 산출(json·xlsx·html)은 DART 공개 자료 + 우리 추정이라 레포(`argus/kship/`)에 실린다.
 - **모델 산출값은 목표주가·추천이 아니다.** 추정 셀은 전부 `kind:"estimate"` + `basis` 를 갖고 화면에 '추정' 음영으로 보인다.
 
@@ -34,7 +34,7 @@
 |---|---|---|
 | 재무제표(연결/별도 BS·IS·CF), 주식의 총수, 배당 | DART 뷰어 3단계 — `argus/kce/tools/kce_fetch.py` `search_reports → pick_report → toc → fetch_section` | **프로세스 하나만**, 요청 간격 0.7s 파일락(`kce_fetch._pace`). 병렬이면 IP 차단 30~60분. 원문 HTML 은 `tools/assets/fin_cache/<stock>/<quarter>_{cons,sep,shares,div}.html` + `_meta.json` 에 캐시(체크포인트, **레포에 커밋하지 않음**) |
 | 시세·시총·발행주식수·PER/PBR(TTM) | `https://aikstockdata.com/data/public/s/<code>.json` — 금융위 확정 종가 T+1 | 라이선스 `aiksd-public-1.1`: **출처 표기 · 비영리 인용·이용 · 상업적 재배포 불허**. 응답의 `license`·`citation` 을 `prices.json` 에 그대로 보존하고 페이지 각주가 인용한다. 인용 문구: "자료: 한국주식데이터(aikstockdata.com) — 원천: 금융감독원 DART · 금융위원회 공공데이터포털" |
-| 분기 종가 밴드(기말/고/저/평균) | `~/phalanx/toss_api.py candles_history` (토스 일봉, 수정주가) — **맥미니 로컬에서만**, 토큰 캐시 파일 존재만 확인 | 없으면 `history_unavailable:true`. 같은 날 종가가 금융위 확정 종가와 수십 원 다를 수 있어(`close_check`) 밴드용으로만 쓰고 정본은 aik `close` |
+| 분기 종가 밴드(기말/고/저/평균) | `[private local path] candles_history` (토스 일봉, 수정주가) — **맥미니 로컬에서만**, 토큰 캐시 파일 존재만 확인 | 없으면 `history_unavailable:true`. 같은 날 종가가 금융위 확정 종가와 수십 원 다를 수 있어(`close_check`) 밴드용으로만 쓰고 정본은 aik `close` |
 | 환율 일별 → 분기 평균/기말 | ECB 참조환율 `api.frankfurter.app`(2005~), 최신 대조 `api.stock.naver.com marketindex` | 교차환율은 **일별로 먼저** 만들고 평균(비율의 평균). 레퍼런스 `변수` 는 서울외환시장 종가라 2005Q1 원/달러 평균 −0.31원·기말 +0.05원 차이 — 맞추지 않고 기록만 |
 | 척당 계약(선종·척수·금액·기간) | `tools/assets/contracts.json` (KIND 단일판매ㆍ공급계약체결) | 종료일 = 마지막 호선 인도. HD한국조선해양↔HD현대重 21건 동일 계약(합산 금지) |
 | 부문 수주 롤포워드·부문 매출·환노출·헤지 | `tools/assets/yards_cache/<stock>/<quarter>.json` | 조선사 5 × 19분기 |
@@ -217,7 +217,7 @@ DART 를 두드리는 것은 ①만이고 **프로세스 하나로만** 돌린�
 
 ```bash
 cd argus/kship/tools
-PY=~/Library/phalanx_venv/bin/python          # 3.14 + openpyxl 3.1.5, 그 외 표준 라이브러리만
+PY=[private local path]          # 3.14 + openpyxl 3.1.5, 그 외 표준 라이브러리만
 
 # ① 재무제표 — DART 단일 프로세스. 57사 × 20분기(보조 2021Q3 포함) ≈ 회사당 65초 → 첫 수집 ≈ 60분.
 #    캐시(assets/fin_cache/)가 있으면 검색만 하고 건너뛴다. 백그라운드로 두고 진행을 본다.
@@ -228,13 +228,13 @@ $PY kship_fin.py --golden --stocks 075580,010140,010620,333430,099410   # 골든
 
 # ①′ 주석(10-02~) — ① 이 끝난 뒤 같은 단일 프로세스 규칙으로(.collect.lock 공유). 하위 노드 → 없으면 부모 절 1개.
 #    캐시·체크포인트가 있으면 요청 0. 부모 절 786분기 실측 ≈ 200MB(fin_cache 전체 333MB, git 밖). 끝나면 fin json 재빌드.
-nohup $PY kship_fin.py --collect-notes --all --notes-parent-fallback >> /tmp/kship_notes_parent.out 2>&1 &
+nohup $PY kship_fin.py --collect-notes --all --notes-parent-fallback >> [private local path] 2>&1 &
 grep "notes parent" assets/fin_collect.log | tail -3
 $PY kship_fin.py --build --all --golden                          # 10-02 기대: TOTAL ALL 5378/5900 = 91.2%
 
 # ② 환율·시세 (키 없음)
 $PY kship_fx.py                       # ECB → assets/fx.json + fx_daily_cache.json, 네이버 대조. --offline 이면 캐시로만
-$PY kship_price.py                    # aik → assets/prices.json (토스 이력은 ~/phalanx/toss_api.py 가 있을 때만)
+$PY kship_price.py                    # aik → assets/prices.json (토스 이력은 [private local path] 가 있을 때만)
 
 # ③ 선표 (contracts.json · yards_cache · fx.json → assets/sls/)
 #    코호트는 reference_anchor(기본) 와 ledger_relative(→ *_alt) 를 둘 다 저장한다. `--cohort-mode` 는 CLI 인자인지 미확인(§12-7).
@@ -249,7 +249,7 @@ $PY kship_model.py --report 010140 075580
 #    빼면 이전 동작(보존 + conflicts 보고). 현재 패치본 3개는 둘을 켜고 만든 것(§5-6). 미포는 fin 마지막 분기라 _2025Q3.
 #    10-02 운영 플래그에 --is-convention 3m 추가(결정 ⓐ — IS 셀은 3개월 열. 누적차분은 재작성 분기에 음수 매출, 일승 2024Q2 −100.58억).
 #    워크플로에는 넣지 않는다(사용자 사유 파일, 레포 밖).
-$PY kship_xlsx_patch.py --all --verify --overwrite-placeholders --fx-actuals --is-convention 3m --today 2026-10-02 --report /tmp/xlsx_patch_report.json
+$PY kship_xlsx_patch.py --all --verify --overwrite-placeholders --fx-actuals --is-convention 3m --today 2026-10-02 --report [private local path]
 
 # ⑥ 페이지 — 훅이 assets/models 가 있는 회사에만 섹션을 붙인다. **④ 뒤에 반드시** 다시 돈다(페이지가 모델 값을 임베드).
 #    모집단이 바뀌었으면(kship_scan.py --scan|--rejudge → kship_universe.py --write → kship_suppliers.py --build) 그 뒤에.
@@ -257,7 +257,7 @@ $PY kship_page.py --all && $PY kship_parts.py --all && $PY kship_model_section.p
 
 # 검증
 $PY -m unittest discover -s tests -p 'test_*.py'
-$PY kship_model_xlsx.py --model assets/models/010140.json --out /tmp/010140_check.xlsx --verify
+$PY kship_model_xlsx.py --model assets/models/010140.json --out [private local path] --verify
 $PY kship_model_section.py --check ../010140/index.html
 ```
 
@@ -305,7 +305,7 @@ argus/kship/
     kship_scan.py / kship_universe.py   모집단 ④ 본문 탐색(carry_forward 이월) · universe.json 쓰기(2차 방어선)
     tests/test_kship_scan.py             이월·강등 규칙 13건(DART 없이)
 (레포 루트) .gitignore       argus/*/tools/assets/fin_cache/ · fin_collect.log · **/.collect.lock — 9/30 20:48 추가(원문 캐시 128MB·로그·락은 커밋 안 함)
-~/phalanx/jem_data/kship_models/reference/   레퍼런스 원본(*_subQ_orig.xlsx) + 패치본(*_subQ_2026Q2.xlsx) — 레포 밖
+[private local path]   레퍼런스 원본(*_subQ_orig.xlsx) + 패치본(*_subQ_2026Q2.xlsx) — 레포 밖
 ```
 
 ## 10. 2차 검증·수정 기록 (2026-09-30 20:40~21:50 KST — 실측)
@@ -450,10 +450,10 @@ T3 판정 중 고치지 않은 것: 3a 미래정보 누출 2건(suppliers 가중
 ### 12-7. 재현
 
 ```bash
-cd argus/kship/tools && PY=~/Library/phalanx_venv/bin/python
+cd argus/kship/tools && PY=[private local path]
 # ① 재무제표(기존) → ①′ 주석 — DART 단일 프로세스, 캐시가 있으면 요청 0
 $PY kship_fin.py --collect --build --all
-nohup $PY kship_fin.py --collect-notes --all --notes-parent-fallback > /tmp/kship_notes_parent.out 2>&1 &
+nohup $PY kship_fin.py --collect-notes --all --notes-parent-fallback > [private local path] 2>&1 &
 grep "notes parent" assets/fin_collect.log | tail                         # req=0(재사용) / req=2(별도) 확인
 $PY kship_fin.py --build --all --golden                                   # TOTAL ALL 5378/5900 = 91.2% 기대(10-02)
 # ③ 선표 — 코호트 기본 reference_anchor 와 대안 ledger_relative 를 둘 다 저장한다(스펙 §5-2)

@@ -5,7 +5,7 @@
 ② 그 세 파일에 **박힌 데이터(BS연결/BS별도 FnGuide 계정, 환율, 종가)를 2026Q2까지 최신화**하고, ARGUS 조선 탭의 데이터(수주·선표·헤지·재무)가 모델에 흘러들도록 조직한다.
 ③ 나머지 조선사·기자재·엔진·강재 **56사 전부**에 같은 모델링 시스템을 만들어 회사 페이지에 임베딩한다.
 
-레퍼런스 원본은 사용자 사유 파일이라 **공개 레포에 넣지 않는다** — `~/phalanx/jem_data/kship_models/reference/` (맥미니 로컬)에만 둔다.
+레퍼런스 원본은 사용자 사유 파일이라 **공개 레포에 넣지 않는다** — `[private local path]` (맥미니 로컬)에만 둔다.
 우리가 생성한 모델(xlsx·json·html)은 DART 공개 자료 + 우리 추정이므로 레포(`argus/kship/`)에 실린다.
 
 ---
@@ -106,7 +106,7 @@
   "financials_ref":{"period":"2026H1","revenue":..,"operating_income":..,"net_income":..},
   "history_quarterly":{"2024Q3":{"close_end":..,"high":..,"low":..,"avg":..}}}}}
 ```
-`history_quarterly` 는 선택(로컬 `~/phalanx/toss_api.py candles_history` 가 인증돼 있으면; 워커는 비밀값을 읽거나 출력하지 않고 함수만 호출. 없으면 `history_unavailable:true`).
+`history_quarterly` 는 선택(로컬 `[private local path] candles_history` 가 인증돼 있으면; 워커는 비밀값을 읽거나 출력하지 않고 함수만 호출. 없으면 `history_unavailable:true`).
 
 ### 2-4. `tools/assets/sls/<stock>.json` (kship_sls.py, 조선사 5 + 지주 1)
 ```json
@@ -147,7 +147,7 @@
 
 ### 2-6. xlsx
 - `argus/kship/models/<stock>_model.xlsx` (kship_model_xlsx.py): 시트 `변수`·`BS연결`·`BS별도`·`subQ`·`SLS`(조선사)·`분기`·`연간예상`·`TP`·`외화`·`README`. **레퍼런스와 같은 헤더 규약**(행1 `1Q05…`, 행4 `YYYY.MM`, 열 E 부터, 연간 열 4분기 뒤, 이름정의 `SUBQH` `BS연결H`…). subQ 확정 행은 진짜 `VLOOKUP` 수식, 추정 행은 가정 셀 참조 수식(사용자가 가정 바꾸면 재계산). 2021Q4~2028 범위(레퍼런스는 2005~ — 우리는 fin 이 있는 구간만).
-- `~/phalanx/jem_data/kship_models/reference/<이름>_<stock>_subQ_2026Q2.xlsx` (kship_xlsx_patch.py): **원본을 zip/XML 수준에서 그대로 두고** 셀만 채운다 — `BS연결`/`BS별도`(세진은 `BS일승(별도)`·`BS동방선기(별도)` 도, 각각 333430·099410 fin) 행4 기간 라벨 추가(`2023.12`, `2023.12A`…`2026.06`), 계정 행 값(백만원, 코드→계정명 매핑, 없는 계정은 비움), 행3 `UPDATE: 26-09-30`, `변수` 환율 6행 새 분기, `분기!C2`·`TP_PE PB!B1` 종가·날짜, `workbook.xml` `<calcPr fullCalcOnLoad="1">`. 공유문자열(`t="s"`)이 필요한 라벨은 sharedStrings 에 추가. 도형·차트·수식·스타일은 바이트 그대로. 검증: 재오픈(openpyxl, 도형 우회) → 수식 개수 원본과 동일, 패치 셀 개수·목록 리포트, 겹치는 기존 셀 무변경, subQ 의 `VLOOKUP` 사슬을 파이썬으로 흉내내어 2026Q2 `매출액(수익)` 이 fin 값과 같은지 확인(LibreOffice 없음).
+- `[private local path]<이름>_<stock>_subQ_2026Q2.xlsx` (kship_xlsx_patch.py): **원본을 zip/XML 수준에서 그대로 두고** 셀만 채운다 — `BS연결`/`BS별도`(세진은 `BS일승(별도)`·`BS동방선기(별도)` 도, 각각 333430·099410 fin) 행4 기간 라벨 추가(`2023.12`, `2023.12A`…`2026.06`), 계정 행 값(백만원, 코드→계정명 매핑, 없는 계정은 비움), 행3 `UPDATE: 26-09-30`, `변수` 환율 6행 새 분기, `분기!C2`·`TP_PE PB!B1` 종가·날짜, `workbook.xml` `<calcPr fullCalcOnLoad="1">`. 공유문자열(`t="s"`)이 필요한 라벨은 sharedStrings 에 추가. 도형·차트·수식·스타일은 바이트 그대로. 검증: 재오픈(openpyxl, 도형 우회) → 수식 개수 원본과 동일, 패치 셀 개수·목록 리포트, 겹치는 기존 셀 무변경, subQ 의 `VLOOKUP` 사슬을 파이썬으로 흉내내어 2026Q2 `매출액(수익)` 이 fin 값과 같은지 확인(LibreOffice 없음).
 
 ### 2-7. 페이지
 - `kship_model_section.py` `render_model_section(entry, model, fin, price, sls=None) -> html`: (1) KPI 스트립 FY2026E~28E 매출/OP/OPM/EPS + 현재 PER/PBR (2) 분기 손익표 최근 8A+10E(추정 음영, 근거 툴팁) (3) 사업부 매출·OPM 차트 (4) 조선사: 선표 매출인식(백만$→원화)·코호트 비중 차트 (5) 가정 패널(환율·헤지·OPM·세율·판관비율) (6) 밸류에이션 스트립(PER/PBR 밴드·적정가치 구간, "모델 산출값·추천 아님") (7) 다운로드 `models/<stock>_model.xlsx` (8) 각주: 출처(DART·aikstockdata·ECB)·한계·백테스트. 회사 페이지: `kship_page.py`(조선사) `kship_parts.py`(기자재) 에 `_model_section(stock)` 가드 삽입(모델 없으면 섹션 없음). 허브: `argus/kship/models.html` 섹터 표(정렬·검색) + `index.html` 칩 링크.
@@ -167,7 +167,7 @@
 | L7 section | `tools/kship_model_section.py`, `kship_page.py`/`kship_parts.py` 의 `_model_section` 훅(그 두 파일은 L7 만 수정), `models.html` 빌더, `index.html` 칩 | 모의 모델로 렌더, 실제 모델로 재렌더; HTML 유효; 다크 대응(기존 page() 셸) |
 | L8 docs | `MODEL.md`, `UPDATE.md` 항목, `HANDOFF.md` 절, `README.md`, `.github/workflows/update-kship.yml` 단계 추가 | 재현 명령 순서·DART 단일 프로세스 명시 |
 
-공통 규칙: 파이썬은 `~/Library/phalanx_venv/bin/python`(3.14, openpyxl 3.1.5) — 표준 라이브러리 + openpyxl 만. `kce_fetch` 는 `sys.path` 에 `argus/kce/tools` 추가해 import(`kship_lib` 참고). 추정치는 항상 `kind:"estimate"` 와 `basis` 를 갖고 화면에 '추정'을 표시한다. 숫자는 출처 없이 만들지 않는다 — 가정이면 가정이라고 적는다. 검증 통과 문구가 아니라 **실제 실행 결과**(명령·출력)로 보고한다.
+공통 규칙: 파이썬은 `[private local path]`(3.14, openpyxl 3.1.5) — 표준 라이브러리 + openpyxl 만. `kce_fetch` 는 `sys.path` 에 `argus/kce/tools` 추가해 import(`kship_lib` 참고). 추정치는 항상 `kind:"estimate"` 와 `basis` 를 갖고 화면에 '추정'을 표시한다. 숫자는 출처 없이 만들지 않는다 — 가정이면 가정이라고 적는다. 검증 통과 문구가 아니라 **실제 실행 결과**(명령·출력)로 보고한다.
 
 ---
 

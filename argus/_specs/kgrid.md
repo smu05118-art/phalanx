@@ -4,7 +4,7 @@
 
 ## 실행 규약 (웨이브 에이전트용 — 러너가 이 파일을 통째로 읽힌다)
 
-- 작업 디렉터리는 **이 클론 하나뿐**이다. `~/phalanx`(운영)과 `~/phalanx-llm-work` 는 **절대 건드리지 마라**.
+- 작업 디렉터리는 **이 클론 하나뿐**이다. `[private local path]`(운영)과 `[private local path]` 는 **절대 건드리지 마라**.
 - **`git push` 금지** — 이 머신엔 자격증명이 없다. 대신 **자주 로컬 커밋**하라(맥미니가 가져가 푸시한다).
   커밋에는 네 산출 경로만 담는다. 메시지는 한국어, 끝에 `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 - **체크포인트**: 진행 상황을 `<산출 디렉터리>/tools/PROGRESS.md` 에 계속 갱신하라(단계·완료·남은 일·다음 명령).
@@ -16,7 +16,7 @@
 - 가설을 코드로 굳히기 전에 **실제 DART 원문 2~3건을 직접 열어 확인**하라. 이 문서의 산업 특성도 원문에서
   확인되면 쓰고, 아니면 "원문에서 확인 못 함"이라 적고 다른 축을 찾아라.
 - 사람에게 묻지 말고 원문 근거로 판단하고, 근거를 문서에 남겨라.
-- **완전히 끝났을 때만** `/tmp/kgrid.done` 에 한 줄 요약을 써라(아직 남았으면 쓰지 마라).
+- **완전히 끝났을 때만** `[private local path]` 에 한 줄 요약을 써라(아직 남았으면 쓰지 마라).
 
 먼저 `argus/_specs/COMMON.md` 를 읽어라. 그다음 이 문서의 축으로 만든다.
 **전수**다 — 체계업체(한화에어로스페이스·LIG넥스원·현대로템·KAI·한화시스템·한화오션 함정 등)뿐 아니라
@@ -82,4 +82,4 @@
 ## 마무리
 
 `site.json` 은 `{"label": "⚡ 한국전력기기", "order": 60}` (허브·회사 페이지가 생긴 뒤에 추가).
-`.github/workflows/update-kgrid.yml` 은 `concurrency: group: kship-dart`. 끝나면 `/tmp/kgrid.done` 에 한 줄 요약.
+`.github/workflows/update-kgrid.yml` 은 `concurrency: group: kship-dart`. 끝나면 `[private local path]` 에 한 줄 요약.

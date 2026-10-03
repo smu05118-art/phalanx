@@ -24,8 +24,8 @@
 
     python3 kship_model_section.py --hub                                  # models.html
     python3 kship_model_section.py --render 010140 --model tests/fixtures/model_mock_010140.json \
-                                   --sls tests/fixtures/model_mock_sls_010140.json --out /tmp/x.html
-    python3 kship_model_section.py --check /tmp/x.html                    # 태그 균형 검사
+                                   --sls tests/fixtures/model_mock_sls_010140.json --out ./model-section-preview.html
+    python3 kship_model_section.py --check ./model-section-preview.html  # 태그 균형 검사
 """
 import argparse
 import collections

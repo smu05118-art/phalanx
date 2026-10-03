@@ -65,7 +65,7 @@ DART는 병렬 프로세스 2~3개가 동시에 두드리면 IP 단위로 연결
 
 ## 2026-09-30 실적 모델 — 레퍼런스 subQ 3개 → 57사 (MODEL_SPEC.md · MODEL.md)
 
-사용자 애널리스트 모델(세진·삼성중·HD현대미포 `subQ` xlsx, 사유 파일 → `~/phalanx/jem_data/kship_models/reference/` 로컬 전용)을 레퍼런스로
+사용자 애널리스트 모델(세진·삼성중·HD현대미포 `subQ` xlsx, 사유 파일 → `[private local path]` 로컬 전용)을 레퍼런스로
 분기 실적 모델 시스템을 8레인으로 만들었다. 설계 계약은 [MODEL_SPEC.md](MODEL_SPEC.md)(스키마·FnGuide 계정명 73·레인 소유), 만들어진 것·가정·한계·재현은 [MODEL.md](MODEL.md).
 
 **파이프라인(순서가 계약이다)**: ① `kship_fin.py --collect --build --all`(DART, **단일 프로세스**, 캐시 체크포인트 `assets/fin_cache/`, 57사 × 20분기 ≈ 60분)
@@ -83,7 +83,7 @@ DART는 병렬 프로세스 2~3개가 동시에 두드리면 IP 단위로 연결
 
 **재개 — 이 순서로(네트워크 불필요, 1~2분)**
 ```bash
-cd argus/kship/tools && PY=~/Library/phalanx_venv/bin/python
+cd argus/kship/tools && PY=[private local path]
 $PY kship_sls.py --all --report                               # (선택) fin 21:18 재빌드와 바이트 정합 — 캘리브레이션 값은 같을 것으로 보이나 미확인
 $PY kship_model.py --build --all --xlsx --today 2026-09-30    # sls 를 다시 돌렸을 때만
 $PY kship_page.py --all && $PY kship_parts.py --all && $PY kship_model_section.py --hub   # **필수** — 28장·허브 21행 stale
@@ -92,7 +92,7 @@ $PY kship_model_section.py --check ../002380/index.html
 ```
 확인: KCC 페이지 KPI 의 FY2026E 매출이 `assets/models/002380.json` 의 77,851억과 같아야 한다.
 
-**커밋 전 확인**: 루트 `.gitignore` 에 `argus/*/tools/assets/fin_cache/` · `fin_collect.log` · `**/.collect.lock` 을 추가했다(9/30 20:48 — 결정 ⓕ 해소). 커밋 대상 신규: tools/kship_{fin,fx,price,sls,model,model_xlsx,xlsx_patch,model_section}.py, tests 7종 + fixtures/fin·model_mock*, assets/{fin(58),fx.json,fx_daily_cache.json,prices.json,sls,models}, models/*.xlsx(58, 5.5MB), models.html, MODEL_SPEC.md, MODEL.md, UPDATE.md; 수정: kship_scan.py·kship_universe.py(이월)·universe.json·universe_probe.json·suppliers.json·unclassified.csv·kship_page.py·kship_parts.py·tests/test_kship{,_scan}.py·회사 페이지 57장·index/parts/coverage.html·이 문서·README·.gitignore·update-kship.yml. 레퍼런스 원본·패치본(`~/phalanx/jem_data/kship_models/reference/`)은 레포 밖.
+**커밋 전 확인**: 루트 `.gitignore` 에 `argus/*/tools/assets/fin_cache/` · `fin_collect.log` · `**/.collect.lock` 을 추가했다(9/30 20:48 — 결정 ⓕ 해소). 커밋 대상 신규: tools/kship_{fin,fx,price,sls,model,model_xlsx,xlsx_patch,model_section}.py, tests 7종 + fixtures/fin·model_mock*, assets/{fin(58),fx.json,fx_daily_cache.json,prices.json,sls,models}, models/*.xlsx(58, 5.5MB), models.html, MODEL_SPEC.md, MODEL.md, UPDATE.md; 수정: kship_scan.py·kship_universe.py(이월)·universe.json·universe_probe.json·suppliers.json·unclassified.csv·kship_page.py·kship_parts.py·tests/test_kship{,_scan}.py·회사 페이지 57장·index/parts/coverage.html·이 문서·README·.gitignore·update-kship.yml. 레퍼런스 원본·패치본(`[private local path]`)은 레포 밖.
 
 **DART 주의(재확인)**: fin 수집도 `kce_fetch._pace` 0.7s 파일락을 타지만 **프로세스는 하나**여야 한다 — 백그라운드 fin 이 도는 동안 `kship_contracts/yards/suppliers --collect` 를 띄우지 마라. `assets/fin_cache/.collect.lock` 이 단일 프로세스 락이다. 2차 검증은 DART 를 1회(삼미금속 A001 검색)만 두드렸다.
 
@@ -118,8 +118,8 @@ $PY kship_model_section.py --check ../002380/index.html
 
 **재개 — 이 순서로**
 ```bash
-cd argus/kship/tools && PY=~/Library/phalanx_venv/bin/python
-/Users/kioxia/.local/bin/phx-agent track preflight --host mini --cwd "$PWD" --owner <내 세션 ID>    # 스튜디오 큐 잔여 6건·다른 세션 먼저 확인
+cd argus/kship/tools && PY=[private local path]
+[private local path] track preflight --host mini --cwd "$PWD" --owner <내 세션 ID>    # 스튜디오 큐 잔여 6건·다른 세션 먼저 확인
 $PY -m unittest discover -s tests -p 'test_*.py'          # 오너 메모 "전체 통과" — 건수를 이번에 기록할 것
 $PY kship_fin.py --build --all --golden                   # TOTAL ALL 5378/5900 = 91.2% 재현 확인(캐시만, DART 무접촉)
 $PY kship_sls.py --all --report                           # (권고) 레포 sls 가 구버전 — post_origin 키가 생긴다. 모델은 재계산 경로로 읽고 있었다(분기 차 ≤ 1.6억)

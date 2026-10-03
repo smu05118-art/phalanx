@@ -321,7 +321,7 @@ class TestHub(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
         self.assertTrue(M._is_company_folder_target(os.path.join(M.KSHIP, "009540", "index.html")))
         self.assertTrue(M._is_company_folder_target(os.path.join(TOOLS, "..", "010140", "index.html")))
-        self.assertFalse(M._is_company_folder_target("/tmp/009540_check.html"))
+        self.assertFalse(M._is_company_folder_target(os.path.join(tempfile.gettempdir(), "009540_check.html")))
         self.assertFalse(M._is_company_folder_target(os.path.join(M.KSHIP, "models.html")))
         # 실제 레포에 렌더 확인 출력이 회사 폴더로 남아 있으면 모집단이 페이지로 세지 않아야 한다
         for r in M.population():
