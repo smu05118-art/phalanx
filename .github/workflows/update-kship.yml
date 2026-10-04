@@ -137,6 +137,8 @@ jobs:
                       os.remove(p); n += 1
           print("재탐색할 '보고서 없음' meta: %d" % n)
           PY
+          # Cache restore can miss on first run; mkdir errors must still fail the step.
+          mkdir -p assets/fin_cache
           listing() { find assets/fin_cache -type f -not -name '.collect.lock' 2>/dev/null | LC_ALL=C sort | sha256sum | cut -c1-16; }
           BEFORE="$(listing)"
           python3 kship_fin.py --collect --all --quarters "2021Q4..$Q1"
@@ -166,6 +168,8 @@ jobs:
         working-directory: argus/kship/tools
         run: |
           set -o pipefail
+          # Cache restore can miss on first run; mkdir errors must still fail the step.
+          mkdir -p assets/fin_cache
           listing() { find assets/fin_cache -type f -not -name '.collect.lock' 2>/dev/null | LC_ALL=C sort | sha256sum | cut -c1-16; }
           BEFORE="$(listing)"
           python3 kship_fin.py --collect-notes --all --notes-parent-fallback
