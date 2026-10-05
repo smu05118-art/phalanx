@@ -30,13 +30,18 @@ def idx_cat2co(data):
     out = collections.defaultdict(list)
     for co in data["suppliers"].get("cos", []):
         yards = [y["yard"] for y in co.get("yards", [])]
+        # 패널의 '고객·납품처' 줄 — 근거 등급을 함께 보인다(parts-explorer.js 는 custs 가 있으면 yards 대신 쓴다).
+        # text·kind 등급만 '추정' — 주요고객 주석(ifrs8)·특수관계자 매출(related)은 원문 금액·이름이 있다.
+        custs = [{"nm": YARD_LABEL.get(y["yard"], y["yard"]), "basis": BASIS_KO.get(y.get("basis") or "", y.get("basis") or ""),
+                  "est": (y.get("basis") or "text") in ("text", "kind")} for y in co.get("yards", [])[:4]]
         for c in co["cats"]:
             if c["cat"] == "UNCL":
                 continue
             if any(x["stock"] == co["stock"] for x in out[c["cat"]]):
                 continue
             out[c["cat"]].append({"stock": co["stock"], "nm": co["nm"], "prod": c["prod"][:40], "share": c.get("share"),
-                                  "est": c.get("est", False), "basis": c.get("basis", ""), "yards": yards[:4], "confirmed": co.get("confirmed", False)})
+                                  "est": c.get("est", False), "basis": c.get("basis", ""), "yards": yards[:4], "custs": custs,
+                                  "confirmed": co.get("confirmed", False)})
     return out
 
 
@@ -101,7 +106,7 @@ def parts_html(data):
  </div>
 </section>
 <section class="card"><h2>대분류로 진입 <em>분산 시스템(전장·배관·도장·안전)은 특정 위치가 없어 여기서 들어갑니다 · 숫자는 연결된 회사 수</em></h2><div class="chips" id="groups">%s</div></section>
-<div class="note info">부품 분류는 정기보고서 「주요 제품」·KIND 주요제품 문구의 키워드 규칙이고, 납품 조선사는 사업의 내용 본문에서 이름이 언급된 것을 근거로 합니다(주요고객 비중이 적힌 경우만 %%). 근거가 약한 항목은 <span class="pill est">추정</span>으로 표시합니다. 선종별 관련도 등급 C는 업계 통념에 기댄 추정입니다.</div>
+<div class="note info">부품 분류는 정기보고서 「주요 제품」·KIND 주요제품 문구의 키워드 규칙이고, 납품 조선사는 사업의 내용 본문의 이름 언급 또는 재무제표 주석(주요 고객·특수관계자 거래)을 근거로 하며 등급을 함께 표시합니다(비중은 원문에 적힌 경우만 %%). 근거가 약한 항목은 <span class="pill est">추정</span>으로 표시합니다. 선종별 관련도 등급 C는 업계 통념에 기댄 추정입니다.</div>
 <link rel="stylesheet" href="../ui/parts-explorer.css?v=2">
 <script src="../ui/parts-explorer.js?v=2"></script>
 <script>const P=%s; PartsExplorer.setup(P);</script>
@@ -196,6 +201,22 @@ def _model_section(stock):
         return ""
 
 
+def _yard_row(y):
+    """납품 조선사 표의 한 행 — 조선사(페이지 링크) · 근거 등급 · II 절 언급 횟수 · 비중(추정이면 ≈) · 근거 문장은 title 로."""
+    label = E(YARD_LABEL.get(y["yard"], y["yard"]))
+    cell = ('<a href="../%s/index.html">%s</a>' % (E(y["yard"]), label)) if y["yard"] in YARD_PAGE else label
+    share = "—"
+    if y.get("share") is not None:
+        fmt = "%.2f%%" if y["share"] < 0.1 else "%.1f%%"
+        share = ("≈" if y.get("share_est") else "") + fmt % y["share"]
+    ev = " / ".join(("[%s%s] %s" % (BASIS_KO.get(e.get("basis", ""), e.get("basis", "")), (" " + e["q"]) if e.get("q") else "", e.get("note", "")))
+                    for e in (y.get("evidence") or []))[:600]
+    return "<tr%s><td class=\"l\">%s</td><td class=\"l\">%s%s</td><td>%s</td><td>%s</td></tr>" % (
+        (' title="%s"' % E(ev)) if ev else "", cell, E(BASIS_KO.get(y.get("basis") or "", y.get("basis") or "")),
+        ' <span class="pill est">추정</span>' if (y.get("basis") or "text") in ("text", "kind") else "",
+        (str(y["mentions"]) + "회") if y.get("mentions") else "—", share)
+
+
 def supplier_html(co, data):
     tax = {c["id"]: c for c in data["tax"]["cats"]}
     groups = {g["id"]: g["ko"] for g in data["tax"]["groups"]}
@@ -205,16 +226,14 @@ def supplier_html(co, data):
     yards = co.get("yards", [])
     dart = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=%s" % co["rcp"] if co.get("rcp") else "https://dart.fss.or.kr"
     kpi = ['<div><b>%d</b><span>부품 소분류(분류됨) · 미분류 %d</span></div>' % (len({c["cat"] for c in cats}), len(uncl)),
-           '<div><b>%d</b><span>납품 조선사(원문 언급)</span></div>' % len(yards),
+           '<div><b>%d</b><span>납품 조선사(원문 근거%s)</span></div>' % (len(yards), (" · 최고 등급 " + BASIS_KO.get(co["link_basis"], co["link_basis"])) if co.get("link_basis") else ""),
            '<div><b>%s</b><span>원문</span><i class="mut">%s</i></div>' % (E(co.get("quarter") or "미수집"), "정기보고서 II 절" if co.get("seen") else "KIND 문구만 — DART 원문 확인 대기")]
     rows = "".join("<tr><td class=\"l\"><b>%s</b><span class=\"mut\" style=\"font-size:10.5px;margin-left:6px\">%s</span></td><td class=\"l\">%s</td><td>%s</td><td class=\"l\">%s%s</td></tr>" % (
         E(tax[c["cat"]]["ko"]) if c["cat"] in tax else E(c["cat"]), E(groups.get(c["cat"].split(".")[0], "")), E(c["prod"][:80]),
         ("%.1f%%" % c["share"]) if c.get("share") is not None else "—", E(BASIS_KO.get(c.get("basis", ""), c.get("basis", ""))),
         ' <span class="pill est">추정</span>' if c.get("est") else "") for c in cats)
     urows = "".join("<tr><td class=\"l mut\">%s</td></tr>" % E(c["prod"][:90]) for c in uncl)
-    yrows = "".join("<tr><td class=\"l\">%s</td><td class=\"l\">%s</td><td>%s</td><td>%s</td></tr>" % (
-        ('<a href="../%s/index.html">%s</a>' % (E(y["yard"]), E(YARD_LABEL.get(y["yard"], y["yard"])))) if y["yard"] in YARD_PAGE else E(YARD_LABEL.get(y["yard"], y["yard"])),
-        E(BASIS_KO.get(y.get("basis", ""), y.get("basis", ""))), (str(y["mentions"]) + "회") if y.get("mentions") else "—", ("%.1f%%" % y["share"]) if y.get("share") else "—") for y in yards)
+    yrows = "".join(_yard_row(y) for y in yards)
     peers = collections.OrderedDict()
     for c in cats:
         for o in idx.get(c["cat"], []):
@@ -226,7 +245,7 @@ def supplier_html(co, data):
 <section class="card"><h2>부품 분류 <em>정기보고서 「주요 제품」·KIND 주요제품 문구 → 키워드 규칙 · 매출비중은 원문에 있을 때만</em></h2>
 <div class="wrap"><table data-sortable><thead><tr><th class="l">소분류</th><th class="l">원문 제품 표기</th><th>매출비중</th><th class="l">근거</th></tr></thead><tbody>%s</tbody></table></div>
 %s</section>
-<section class="card"><h2>납품 조선사 <em>사업의 내용 본문에서 조선사 이름이 언급된 횟수 · 비중은 원문에 적힌 경우만</em></h2>
+<section class="card"><h2>납품 조선사 <em>근거 등급: 주요고객 주석 › 계약 공시 › 특수관계자 매출 › 본문 언급 · 비중은 원문에 적힌 경우만(≈ 는 특수관계자 매출 ÷ 누적매출 추정) · 행에 마우스를 올리면 근거 문장</em></h2>
 %s</section>
 <section class="card"><h2>같은 부품을 만드는 다른 상장사</h2>%s</section>
 <div class="note info">KIND 주요제품: %s%s</div>
@@ -244,10 +263,14 @@ def supplier_html(co, data):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--parts-only", action="store_true", help="parts.html 만 다시 만든다(회사 페이지는 건드리지 않음 — 다른 레인이 읽는 중일 때)")
     a = ap.parse_args()
     from kship_page import load_all
     data = load_all()
     atomic_write(os.path.join(KSHIP, "parts.html"), parts_html(data))
+    if a.parts_only:
+        print("parts.html")
+        return 0
     n = 0
     for co in data["suppliers"].get("cos", []):
         d = os.path.join(KSHIP, co["stock"])

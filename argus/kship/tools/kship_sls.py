@@ -32,6 +32,14 @@
   화해     분기 SLS 원화(해양 계약만) ÷ 정기보고서 부문 매출 3개월분(누계 차분; Q1 = 누계, Q4 = 연간 − 3Q 누계).
            매출표가 없는 회사는 기납품 누계 차분(HD현대重·대한조선·한화오션 방식), HJ 는 프로젝트 누계라 같은 해 차분만.
   타겟OPM  코호트 표(①−5% ②0 ③5 ④10 ⑤15 — 가정) × 매출 비중. 회사 실측 OPM 이 있으면(assets/fin) shift 를 잰다.
+  OPM표    기본은 위 가정 표(assumed). --opm-table reference_calibrated 면 레퍼런스 HD현대미포 SLS 'ⓞ OPM 잡기' 블록(코호트×선종 셀마다
+           애널리스트가 둔 OPM)을 코호트별로 매출가중한 유효 OPM(2023~27 창: ①−1.1% ②1.0 ③4.3 ④5.4 ⑤10.8)으로 타겟을 만든다.
+           어느 표를 썼든 두 표·근거·연도별 괴리(가정 표는 레퍼런스 2024~26 보다 +3.8~5.1%p 높다)는 cohort_opm_calibration 에 항상 적는다.
+  헤지참고 약정환율 미공시 회사(0.7 가정)는 공시 통화선도 매도 명목액(usd_sell_m)을 두 가지로 잔고 대비 환산한 참고치를 hedge 에 둔다 —
+           ÷ (기말잔고 ÷ 기말 현물) = hedge_ratio_implied_spot, ÷ (기말잔고 ÷ 수주시점 평균환율) = hedge_ratio_implied_sign_rate
+           (평균환율 = origin 분기말까지 체결된 counted 계약의 원화 합 ÷ 달러 합). 적용값은 아니다. 레퍼런스 SLS 시트의 HEDGE 행은
+           미포 0.65 · 삼성重 1.00 (2008~2027 전 연도 상수) 이고 0.7 은 그 범위 안에 둔 가정이다(--hedge-default 로 바꿀 수 있다).
+  재현     built_at 은 --today 로 고정할 수 있다(같은 입력 → 같은 바이트). spot_source·fx_source 는 fx.json 의 부분 분기(partial)를 표시한다.
 
 한계를 숨기지 않는다: 원장은 2024~ 공시분이라 그 전에 수주한 물량(2024~26 매출의 대부분)이 없다 — 화해 ratio 는
 낮고 시간이 갈수록 오른다. 절대 신조선가 수준(2021 이후 호황)은 원장 안에서 알 수 없어 코호트는 상대 등급이다.
@@ -46,6 +54,7 @@ assets/newbuild_index.json (선택 — 있으면 reference_anchor 의 표보다 
     지수에 없는 연도는 COHORT_BY_ORDER_YEAR 표로 돌아가고 계약의 cohort_detail.rule 에 그렇게 적는다.
 
     python3 kship_sls.py --all [--curve linear|s_curve] [--spot 1350] [--cohort-mode reference_anchor|ledger_relative] [--report]
+                         [--opm-table assumed|reference_calibrated] [--hedge-default 0.7] [--today YYYY-MM-DD]
     python3 kship_sls.py --stock 010140 --report
 """
 import argparse
@@ -72,6 +81,29 @@ HEDGE_RATIO_DEFAULT = 0.7
 FORECAST_WINDOW = ("2026Q3", "2028Q4")
 COHORT_LABELS = {1: "①적자", 2: "②BEP", 3: "③중마진", 4: "④호황", 5: "⑤초호황"}
 COHORT_OPM = {"①적자": -0.05, "②BEP": 0.0, "③중마진": 0.05, "④호황": 0.10, "⑤초호황": 0.15}
+# ── 레퍼런스 실측값(2026-10-05 두 원본 xlsx 의 SLS 시트를 읽어 확인) ──
+# HEDGE 행: 미포 `SLS`!E56:X56 = 0.65, 삼성重 `SLS`!E47:X47 = 1.0 — 2008~2027 전 연도 같은 상수. 우리 0.7 은 두 값 사이에 둔 가정이며 레퍼런스 값이 아니다.
+REFERENCE_HEDGE = collections.OrderedDict([("HD현대미포 010620 SLS!HEDGE", 0.65), ("삼성중공업 010140 SLS!HEDGE", 1.0)])
+# 코호트 OPM 표 선택(⑦): assumed = 위 COHORT_OPM, reference_calibrated = 레퍼런스 미포 SLS 의 코호트별 유효 OPM(아래). 기본은 assumed —
+# 하류(kship_model `_sls_frozen`, 섹션 각주의 표 문구)가 가정 표를 전제하므로 바꾸는 것은 오너 결정. 어느 쪽이든 두 표를 파일에 같이 적는다.
+OPM_TABLES = ("assumed", "reference_calibrated")
+OPM_TABLE_DEFAULT = "assumed"
+COHORT_CALIB_WINDOW = (2023, 2027)          # 레퍼런스에서 유효 OPM 을 모을 연도 — 우리 예측창(2026Q3~2028Q4)과 겹치는 레퍼런스 기간(2023~24 는 레퍼런스의 확정·잠정 연도)
+# 레퍼런스 HD현대미포 subQ `SLS` 시트 'ⓞ OPM 잡기' 블록(행 79~129, 미포 울산 별도; AC 열 = 코호트 머리, AD 열 = 셀 OPM, AE..DF = 1Q08~4Q27 분기 매출 백만$)을
+# 코호트×매출연도로 모은 유효 OPM(= Σ 셀매출×셀OPM ÷ Σ 셀매출)과 그 매출(백만$). 비나신 블록(행 131~)은 제외 — 시트의 SLSOPM미포별도(행 3)와 같은 범위.
+# 검산: 2Q26 전체 가중 0.10290 = 행 3 `미포_OPM` 2Q26 셀값 0.102897 (2026-10-05 openpyxl data_only 로 읽음). 소수 4자리·1자리로 반올림해 실었다.
+COHORT_REFERENCE_EFFECTIVE_OPM = collections.OrderedDict([
+    ("①적자", collections.OrderedDict([(2022, (-0.0178, 774.2)), (2023, (-0.0112, 281.8)), (2024, (-0.0100, 157.2))])),
+    ("②BEP", collections.OrderedDict([(2022, (0.0100, 199.0)), (2023, (0.0100, 82.4)), (2024, (0.0100, 4.1)), (2025, (0.0100, 84.0)), (2026, (0.0100, 269.8))])),
+    ("③중마진", collections.OrderedDict([(2022, (0.0500, 960.2)), (2023, (0.0477, 1147.9)), (2024, (0.0305, 485.0))])),
+    ("④호황", collections.OrderedDict([(2022, (0.0527, 81.9)), (2023, (0.0567, 660.1)), (2024, (0.0524, 1023.5)), (2025, (0.0500, 54.7))])),
+    ("⑤초호황", collections.OrderedDict([(2022, (0.0675, 11.1)), (2023, (0.0902, 85.7)), (2024, (0.0826, 1314.1)), (2025, (0.1110, 2195.8)),
+                                      (2026, (0.1108, 5785.4)), (2027, (0.1106, 4813.1))]))])
+# 같은 시트 행 3 `SLSOPM미포별도`(미포_OPM) 분기값의 연 단순평균(0 인 미작성 분기 제외; 2027 은 1Q·2Q 만 0.1092) — 위 블록을 분기 가중한 결과와 같은 것
+REF_MIPO_SLS_OPM_BY_YEAR = collections.OrderedDict([(2022, 0.0198), (2023, 0.0437), (2024, 0.0589), (2025, 0.1069), (2026, 0.1057), (2027, 0.1092)])
+# 같은 시트 행 2 `실제 OPM` 은 1Q08~4Q13 만 값이 있다(그 시기 ④⑤ 노출 ≈ 0) — ④⑤ 캘리브레이션에 쓸 수 없어 범위만 적는다
+REF_MIPO_ACTUAL_OPM_ROW = {"label": "SLS 행 2 '실제 OPM'", "coverage": "1Q08~4Q13", "usable": False,
+                           "why": "2014 이후 비어 있고 2008~13 매출의 ④⑤ 비중이 0~5% 라 ④⑤ OPM 을 식별할 수 없다"}
 COHORT_METHOD = ("척당 금액 = amt_usd_m ÷ ships. (1) 연도 시장 수준: 선종별로 표본 2건 이상인 연도의 척당 중위를 "
                  "그 선종의 첫 연도 중위로 나눈 비율의 선종 간 중위 = year_index(각 선종의 첫 표본 연도 = 1.0 이라 여러 연도가 1.0 일 수 있다). "
                  "year_index <0.90 → ②, 0.90~1.10 → ③, 1.10~1.25 → ④, ≥1.25 → ⑤ 가 연도 기본등급. "
@@ -242,9 +274,11 @@ def fx_quarter(fx, q, const):
     const=None 이면 상수 폴백 없이 (None, None) — fx_at_sign 이 다음 우선순위(약정환율·상수)로 넘어가게 한다
     (전에는 '%g' % None 으로 죽었다: fx.json 에 없는 분기에 수주한 계약 하나가 빌드 전체를 멈춘다)."""
     if fx:
-        v = ((fx.get("quarters") or {}).get(q) or {}).get("USDKRW_avg")
+        qd = (fx.get("quarters") or {}).get(q) or {}
+        v = qd.get("USDKRW_avg")
         if v:
-            return float(v), "fx.json quarters"
+            # 진행 중인 분기는 fx.json 이 partial 로 표시한다(며칠치 평균) — 어느 값을 썼는지 읽는 쪽이 알 수 있게 출처에 남긴다
+            return float(v), ("fx.json quarters(partial %sd)" % qd.get("days", "?")) if qd.get("partial") else "fx.json quarters"
         v = ((fx.get("forward") or {}).get(q) or {}).get("USDKRW_avg")
         if v:
             return float(v), "fx.json forward"
@@ -323,16 +357,21 @@ def closing_total(snapshot):
 
 
 def hedge_params(stock, yq, default_ratio=HEDGE_RATIO_DEFAULT, fx=None):
-    """헤지비율 실측: 최신 분기 usd_sell_m ÷ (기말잔고 원화 ÷ 평균약정환율). 약정환율이 없으면 가정 0.7.
+    """헤지비율 실측: 최신 분기 usd_sell_m ÷ (기말잔고 원화 ÷ 평균약정환율). 약정환율이 없으면 가정 default_ratio(0.7).
     약정환율이 없어도 명목액이 공시돼 있으면 fx.json 기말 현물로 환산한 참고치를 hedge_ratio_implied_spot 에 둔다
-    (적용값은 아니다 — 삼성重 은 이 참고치가 1.0 안팎, HD현대重 은 0.45 안팎으로 0.7 가정과 다르다는 것을 숨기지 않기 위해)."""
+    (적용값은 아니다 — 삼성重 은 이 참고치가 1.0 안팎, HD현대重 은 0.45 안팎으로 0.7 가정과 다르다는 것을 숨기지 않기 위해).
+    수주시점 평균환율로 환산한 둘째 참고치(hedge_ratio_implied_sign_rate)는 계약이 필요해 build() 가 채운다.
+    0.7 의 출처: 레퍼런스 SLS 시트 HEDGE 행은 미포 0.65 · 삼성重 1.00 (REFERENCE_HEDGE) — 0.7 은 그 사이에 둔 **가정**이지 레퍼런스 값이 아니다."""
     qs = sorted(yq)
     latest = yq[qs[-1]] if qs else None
     hedge = (latest or {}).get("hedge") or {}
     usd_sell, rate = hedge.get("usd_sell_m"), hedge.get("avg_rate")
     closing = closing_total(latest)
     base = {"quarter": qs[-1] if qs else None, "usd_sell_m": usd_sell, "backlog_krw_m": closing, "hedge_rate": rate,
-            "hedge_ratio_implied_spot": None, "implied_spot_rate": None, "implied_basis": None}
+            "hedge_ratio_implied_spot": None, "implied_spot_rate": None, "implied_basis": None,
+            "hedge_ratio_implied_sign_rate": None, "implied_sign_rate": None, "implied_sign_n": None, "implied_sign_basis": None,
+            "reference_hedge": collections.OrderedDict(REFERENCE_HEDGE),
+            "reference_hedge_note": "레퍼런스 두 원본의 SLS!HEDGE 행(2008~2027 전 연도 상수) 실측값. 가정 %.2f 은 레퍼런스 값이 아니라 그 범위 안의 설정값(--hedge-default)" % default_ratio}
     if usd_sell and rate and closing:
         raw = usd_sell / (closing / rate)
         base.update(hedge_ratio=round(min(max(raw, 0.0), 1.0), 4), hedge_ratio_raw=round(raw, 4), kind="measured",
@@ -340,7 +379,8 @@ def hedge_params(stock, yq, default_ratio=HEDGE_RATIO_DEFAULT, fx=None):
     else:
         why = "약정환율 미공시" if usd_sell else "통화선도 공시 없음"
         base.update(hedge_ratio=default_ratio, hedge_ratio_raw=None, kind="estimate",
-                    basis="%s → 레퍼런스 SLS 시트의 HEDGE 70%% 가정. hedge_rate 는 계약별 수주시점 환율로 대체" % why)
+                    basis="%s → HEDGE %.0f%% 가정(레퍼런스 SLS 시트 HEDGE 행은 미포 65%%·삼성重 100%% — 그 사이에 둔 설정값). hedge_rate 는 계약별 수주시점 환율로 대체"
+                          % (why, default_ratio * 100))
         if usd_sell and closing and qs:
             spot_end, spot_src = fx_quarter_end(fx, qs[-1])
             if spot_end:
@@ -348,6 +388,25 @@ def hedge_params(stock, yq, default_ratio=HEDGE_RATIO_DEFAULT, fx=None):
                             implied_basis=("usd_sell_m ÷ (기말 수주잔고 원화 ÷ %s 기말 원/달러 %.2f, %s) — 약정환율이 아닌 현물 환산 "
                                            "참고치(kind estimate). 적용 hedge_ratio 는 %.2f 가정 그대로" % (qs[-1], spot_end, spot_src, default_ratio)))
     return base
+
+
+def hedge_implied_sign_rate(hedge, cands):
+    """⑦ 둘째 참고치: usd_sell_m ÷ (기말 수주잔고 원화 ÷ 수주시점 평균환율). 평균환율 = origin 분기말까지 체결된 counted 계약(cands)의
+    원화 합 ÷ 달러 합(금액가중 조화평균 — 잔고가 장부에 실린 환율에 가장 가깝다). 약정환율 공시가 없는 회사(kind estimate)에서만 채우고
+    적용값(hedge_ratio)은 바꾸지 않는다. 계약·명목액·잔고 중 하나라도 없으면 그대로 둔다. hedge 를 제자리에서 고치고 돌려준다."""
+    if hedge.get("kind") != "estimate" or not hedge.get("usd_sell_m") or not hedge.get("backlog_krw_m"):
+        return hedge
+    krw = sum((c.get("amt_krw_m") or 0.0) for c in cands)
+    usd = sum((c.get("amt_usd_m") or 0.0) for c in cands)
+    if not usd or not krw:
+        return hedge
+    rate = krw / usd
+    hedge["implied_sign_rate"] = round(rate, 2)
+    hedge["implied_sign_n"] = len(cands)
+    hedge["hedge_ratio_implied_sign_rate"] = round(hedge["usd_sell_m"] / (hedge["backlog_krw_m"] / rate), 4)
+    hedge["implied_sign_basis"] = ("usd_sell_m ÷ (기말 수주잔고 원화 ÷ 수주시점 평균환율 %.2f = origin 까지 체결 counted 계약 %d건의 원화 합 ÷ 달러 합) — "
+                                   "잔고가 장부에 실린 환율 기준의 참고치(kind estimate). 적용 hedge_ratio 는 %.2f 가정 그대로" % (rate, len(cands), hedge["hedge_ratio"]))
+    return hedge
 
 
 def _norm_seg(s):
@@ -528,8 +587,8 @@ def cohorts_reference(contracts, index=None):
     return out
 
 
-def cohort_table(index=None):
-    """파일 최상위 cohort_table — 수주연도 표·레퍼런스 매출연도 비중(백만$ 와 비중)·OPM 표·지수 파일 유무. 전부 가정(kind estimate)."""
+def cohort_table(index=None, opm_table=COHORT_OPM):
+    """파일 최상위 cohort_table — 수주연도 표·레퍼런스 매출연도 비중(백만$ 와 비중)·OPM 표(실제 적용 표)·지수 파일 유무. 전부 가정(kind estimate)."""
     share = collections.OrderedDict()
     for y, mix in COHORT_REFERENCE_MIX_USD_M.items():
         tot = float(sum(mix.values()))
@@ -540,19 +599,88 @@ def cohort_table(index=None):
         ("build_lag_years", COHORT_BUILD_LAG_YEARS),
         ("reference_revenue_year_mix_usd_m", COHORT_REFERENCE_MIX_USD_M),
         ("reference_revenue_year_share", share),
-        ("opm_table", COHORT_OPM),
+        ("opm_table", opm_table),
         ("newbuild_index", collections.OrderedDict([("path", "assets/newbuild_index.json"), ("present", bool(index)),
                                                     ("source", (index or {}).get("source")), ("as_of", (index or {}).get("as_of"))])),
         ("basis", "레퍼런스 매출연도 코호트 비중을 건조기간 2~3년으로 수주연도에 되돌림 — 2024 매출(수주 2021~22) ⑤ 46%·④ 36%·③ 13% → 2022 수주 ⑤·"
                   "2021 수주 ④·그 전 ③(저가 수주 잔량); 2025~27 매출(수주 2022~25) ⑤ 95~100%. 가정이며 외부 신조선가 지수 미보유")])
 
 
-def _target_opm(mix, usd_m):
-    """코호트별 매출$ 믹스 → (타겟 OPM, 등급 있는 비중). '등급없음' 은 분모에서 뺀다."""
-    graded = {k: v for k, v in mix.items() if k in COHORT_OPM}
+def _target_opm(mix, usd_m, table=COHORT_OPM):
+    """코호트별 매출$ 믹스 → (타겟 OPM, 등급 있는 비중). '등급없음' 은 분모에서 뺀다. table 은 적용 OPM 표(가정 또는 레퍼런스 캘리브레이션)."""
+    graded = {k: v for k, v in mix.items() if k in table}
     gsum = sum(graded.values())
-    return (round(sum(v * COHORT_OPM[k] for k, v in graded.items()) / gsum, 4) if gsum else None,
+    return (round(sum(v * table[k] for k, v in graded.items()) / gsum, 4) if gsum else None,
             round(gsum / usd_m, 4) if usd_m else None)
+
+
+def _opm_table_text(table):
+    return " ".join("%s%s%%" % (k[0], ("%+.1f" % (table[k] * 100)).rstrip("0").rstrip(".").replace("+", "") if table[k] != 0 else "0")
+                    for k in COHORT_LABELS.values() if k in table)
+
+
+def cohort_opm_calibration(window=COHORT_CALIB_WINDOW, fin_is=None):
+    """⑦ 코호트 ①~⑤ OPM 표를 레퍼런스 HD현대미포 SLS 로 캘리브레이션한다. 반환 (표, 근거 블록).
+    표 = COHORT_REFERENCE_EFFECTIVE_OPM(레퍼런스 'ⓞ OPM 잡기' 셀 OPM 을 코호트×연도로 매출가중한 유효 OPM)을 window 연도 안에서 다시 매출가중한 값.
+    블록에는 두 표, 연도별 괴리(레퍼런스 셀 가중 vs 가정 표 vs 캘리브레이션 표), 레퍼런스 SLS OPM 행, 미포 실측 OPM(assets/fin/010620.json 이 있으면)
+    대조, '실제 OPM' 행이 못 쓰이는 이유를 적는다. 전부 kind estimate — 레퍼런스 모델 안의 가정을 모은 것이고 실측이 아니다."""
+    lo, hi = window
+    table = collections.OrderedDict()
+    used = collections.OrderedDict()
+    for coh in COHORT_LABELS.values():
+        items = [(y, o, r) for y, (o, r) in COHORT_REFERENCE_EFFECTIVE_OPM.get(coh, {}).items() if lo <= y <= hi and r]
+        den = sum(r for _, _, r in items)
+        table[coh] = round(sum(o * r for _, o, r in items) / den, 4) if den else COHORT_OPM[coh]
+        used[coh] = {"years": [y for y, _, _ in items], "usd_m": round(den, 1), "fallback_assumed": not den}
+    years = sorted({y for m in COHORT_REFERENCE_EFFECTIVE_OPM.values() for y in m})
+    by_year = collections.OrderedDict()
+    for y in years:
+        cells = [(coh, o, r) for coh, m in COHORT_REFERENCE_EFFECTIVE_OPM.items() for yy, (o, r) in m.items() if yy == y and r]
+        den = sum(r for _, _, r in cells)
+        if not den:
+            continue
+        ref = sum(o * r for _, o, r in cells) / den
+        asm = sum(COHORT_OPM[c] * r for c, _, r in cells) / den
+        cal = sum(table[c] * r for c, _, r in cells) / den
+        by_year[str(y)] = collections.OrderedDict([
+            ("usd_m", round(den, 1)), ("reference_cells", round(ref, 4)), ("reference_sls_row", REF_MIPO_SLS_OPM_BY_YEAR.get(y)),
+            ("assumed_table", round(asm, 4)), ("calibrated_table", round(cal, 4)),
+            ("gap_assumed_minus_reference", round(asm - ref, 4)), ("gap_calibrated_minus_reference", round(cal - ref, 4)),
+            ("share", collections.OrderedDict((c, round(r / den, 4)) for c, _, r in cells))])
+    actual = collections.OrderedDict()
+    is_ = fin_is if fin_is is not None else _fin_is("010620")
+    if is_:
+        agg = collections.defaultdict(lambda: [0.0, 0.0, 0])
+        for q in sorted(is_):
+            rev, op = is_[q].get("매출액(수익)"), is_[q].get("영업이익")
+            if rev and op is not None:
+                a = agg[q[:4]]
+                a[0] += rev
+                a[1] += op
+                a[2] += 1
+        for y, (rev, op, n) in sorted(agg.items()):
+            if y in by_year and n:
+                actual[y] = collections.OrderedDict([("opm", round(op / rev, 4)), ("quarters", n),
+                                                     ("reference_sls_minus_actual", round(by_year[y]["reference_cells"] - op / rev, 4))])
+    block = collections.OrderedDict([
+        ("kind", "estimate"),
+        ("source", "사용자 레퍼런스 모델 HD현대미포 010620 subQ `SLS` 시트 'ⓞ OPM 잡기' 블록(행 79~129, 미포 울산 별도 — AC 코호트 머리 · AD 셀 OPM · AE..DF 분기 매출 백만$). "
+                   "셀 OPM 은 애널리스트가 둔 가정이고 실측이 아니다. 비나신 블록(행 131~)은 제외"),
+        ("method", "코호트별 유효 OPM = Σ 셀매출×셀OPM ÷ Σ 셀매출 (연도별) → window 연도 안에서 다시 매출가중. 검산: 2Q26 전체 가중 0.10290 = 시트 행 3 `미포_OPM` 2Q26 셀값"),
+        ("window", {"from": lo, "to": hi, "why": "우리 예측창 2026Q3~2028Q4 와 겹치는 레퍼런스 기간(2023~24 는 레퍼런스의 확정·잠정 연도)"}),
+        ("table_assumed", collections.OrderedDict((k, COHORT_OPM[k]) for k in COHORT_LABELS.values())),
+        ("table_reference_calibrated", table),
+        ("table_used_years", used),
+        ("reference_effective_opm_by_cohort_year", collections.OrderedDict(
+            (coh, collections.OrderedDict((str(y), {"opm": o, "usd_m": r}) for y, (o, r) in m.items())) for coh, m in COHORT_REFERENCE_EFFECTIVE_OPM.items())),
+        ("by_year", by_year),
+        ("reference_sls_opm_row", {"label": "SLS 행 3 `SLSOPM미포별도`(미포_OPM) 연 단순평균", "values": collections.OrderedDict((str(y), v) for y, v in REF_MIPO_SLS_OPM_BY_YEAR.items())}),
+        ("reference_actual_opm_row", REF_MIPO_ACTUAL_OPM_ROW),
+        ("actual_opm_fin_010620_by_year", actual),
+        ("limits", ["레퍼런스 코호트 OPM 은 시대 의존 — 같은 ④호황 셀이 2016~20 매출에는 13~15%, 2022~25 매출에는 5% 안팎이라 단일 표는 단순화다",
+                    "레퍼런스 SLS OPM 자체가 미포 실측(fin 연결)보다 높다(actual_opm_fin_010620_by_year.reference_sls_minus_actual) — 회사 실측과의 차는 calibration.calibrated_shift 가 담당",
+                    "표를 바꿔도 등급(수주연도 → ①~⑤)은 그대로이므로 2022 이후 수주만 있는 회사의 타겟은 ⑤ 값(가정 15%% ↔ 캘리브레이션 %.1f%%) 상수가 된다" % (table["⑤초호황"] * 100)])])
+    return table, block
 
 
 def _cohort_basis(mode, detail):
@@ -617,18 +745,25 @@ def prepare_contracts(rows, yards, fx, const):
     return out
 
 
-def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, origin, mode=COHORT_MODE_DEFAULT, newbuild_index=None):
+def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, origin, mode=COHORT_MODE_DEFAULT, newbuild_index=None,
+          opm_table=OPM_TABLE_DEFAULT, hedge_default=HEDGE_RATIO_DEFAULT, today=None):
     """한 회사의 sls json 을 만든다. contracts 는 prepare_contracts 결과 전체(모든 회사).
     cohort_map/year_index 는 ledger_relative 등급(cohorts()), reference_anchor 등급은 여기서 표(또는 newbuild_index)로 매긴다.
     mode 가 기본 모드(cohort·by_cohort·target_opm·calibration), 다른 모드는 *_alt 에 함께 저장한다(§5-2).
-    잔고 캡(§5-2): 집계 전에 origin 커버리지를 재야 하므로 계약 루프를 두 번 돈다(스케줄·진행률 → 커버리지 → 집계)."""
+    opm_table 은 타겟 OPM 에 쓰는 표(assumed | reference_calibrated — ⑦), hedge_default 는 약정환율 미공시 회사의 헤지비율 가정,
+    today 는 built_at(없으면 실행일). 잔고 캡(§5-2): 집계 전에 origin 커버리지를 재야 하므로 계약 루프를 두 번 돈다(스케줄·진행률 → 커버리지 → 집계)."""
     if mode not in COHORT_MODES:
         raise ValueError("cohort_mode %r — %s 중 하나" % (mode, "|".join(COHORT_MODES)))
+    if opm_table not in OPM_TABLES:
+        raise ValueError("opm_table %r — %s 중 하나" % (opm_table, "|".join(OPM_TABLES)))
     alt_mode = [m for m in COHORT_MODES if m != mode][0]
     maps = {"reference_anchor": cohorts_reference(contracts, newbuild_index), "ledger_relative": cohort_map}
+    calib_table, calib_block = cohort_opm_calibration()
+    table = COHORT_OPM if opm_table == "assumed" else calib_table
+    table_text = "%s(%s — %s)" % (opm_table, _opm_table_text(table), "가정" if opm_table == "assumed" else "레퍼런스 미포 SLS 셀 OPM 매출가중")
     yq = yards.get(stock) or {}
     mine = [dict(c) for c in contracts if c["stock"] == stock]
-    hedge = hedge_params(stock, yq, fx=fx)
+    hedge = hedge_params(stock, yq, default_ratio=hedge_default, fx=fx)
     hr = hedge["hedge_ratio"]
     fx_cache = {}
 
@@ -689,6 +824,7 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
         # 원장 원화 금액 × 미진행 비율 — 달러 왕복 환산(수주시점 환율 → 건조시점 spot)을 피해 공시 잔고와 같은 원화 장부 기준
         return (c["amt_krw_m"] or 0) * (1.0 - (c["progress_at_origin"] or 0))
     cands = [c for c in mine if c.get("counted") and c["signed_by_origin"]]
+    hedge_implied_sign_rate(hedge, cands)          # ⑦ 둘째 참고치 — 적용값은 바꾸지 않는다
     remaining_marine_usd = sum(c["remaining_usd_m_at_origin"] or 0 for c in cands if c["type"] != "OTHER")
     remaining_all_usd = sum(c["remaining_usd_m_at_origin"] or 0 for c in cands)
     remaining_marine_krw = sum(_remaining_krw(c) for c in cands if c["type"] != "OTHER")
@@ -746,8 +882,8 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
     for q in sorted(by_q):
         b = by_q[q]
         sp, sp_src = spot(q)
-        topm, gshare = _target_opm(b["by_cohort"], b["usd_m"])
-        topm_alt, gshare_alt = _target_opm(b["by_cohort_alt"], b["usd_m"])
+        topm, gshare = _target_opm(b["by_cohort"], b["usd_m"], table)
+        topm_alt, gshare_alt = _target_opm(b["by_cohort_alt"], b["usd_m"], table)
         cap_here = cap_applied and q > origin
         row = collections.OrderedDict([
             ("usd_m", round(b["usd_m"], 3)), ("marine_usd_m", round(b["marine_usd_m"], 3)),
@@ -890,14 +1026,29 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
     for q, b in by_quarter.items():
         if b["target_opm"] is not None:
             target_opm[q] = {"opm": b["target_opm"], "graded_share": b["graded_share"], "mode": mode,
-                             "basis": "cohort mix(%s) × cohort OPM table (assumption: ①−5%% ②0 ③5 ④10 ⑤15)" % mode}
+                             "basis": "cohort mix(%s) × cohort OPM table %s" % (mode, table_text)}
         if b["target_opm_alt"] is not None:
             target_opm_alt[q] = {"opm": b["target_opm_alt"], "graded_share": b["graded_share_alt"], "mode": alt_mode,
-                                 "basis": "cohort mix(%s) × cohort OPM table (assumption: ①−5%% ②0 ③5 ④10 ⑤15)" % alt_mode}
+                                 "basis": "cohort mix(%s) × cohort OPM table %s" % (alt_mode, table_text)}
     calib = calibration(stock, target_opm, origin, fin_is)
     calib["mode"] = mode
     calib_alt = calibration(stock, target_opm_alt, origin, fin_is)
     calib_alt["mode"] = alt_mode
+    # ⑦ 이 파일의 타겟이 두 표에서 어떻게 다른지 — 다음 분기와 예측창 평균(기본 모드 믹스 기준). 적용 표는 opm_table 하나뿐이다
+    next_q = FORECAST_WINDOW[0]
+
+    def _targets(tbl):
+        return {q: _target_opm(by_q[q]["by_cohort"], by_q[q]["usd_m"], tbl)[0] for q in by_quarter}
+    t_asm, t_cal = _targets(COHORT_OPM), _targets(calib_table)
+    win_qs = [q for q in total_window if t_asm.get(q) is not None]
+    calib_block["this_file"] = collections.OrderedDict([
+        ("applied_table", opm_table), ("cohort_mode", mode),
+        ("target_opm_next_q", {"assumed": t_asm.get(next_q), "reference_calibrated": t_cal.get(next_q)}),
+        ("target_opm_window_mean", {"assumed": round(_median([t_asm[q] for q in win_qs]), 4) if win_qs else None,
+                                    "reference_calibrated": round(_median([t_cal[q] for q in win_qs]), 4) if win_qs else None,
+                                    "stat": "median over %d quarters %s~%s" % (len(win_qs), FORECAST_WINDOW[0], FORECAST_WINDOW[1])}),
+        ("note", "target_opm·target_opm_alt·calibration 은 applied_table 로 계산했다. 다른 표로 바꾸면 calibrated_shift(실측 − 타겟)가 그만큼 반대로 움직여 "
+                 "실측 OPM 수준은 같고 타겟의 해석(가정 15% vs 레퍼런스 유효 10.8%)만 달라진다")])
 
     warnings.append("종료일 = 마지막 호선 인도 예정; 진행률 매출 분기는 계약기간 안에 선형 배분(가정)")
     if stock == HOLDING:
@@ -906,12 +1057,22 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
         n_sh = sum(1 for c in mine if c.get("shared_with"))
         warnings.append("HD한국조선해양(009540) 공시와 동일 계약 %d건(shared_with) — 두 파일을 합산하지 말 것" % n_sh)
     if hedge["kind"] == "estimate":
-        warnings.append("헤지비율 0.7 은 가정(%s)" % hedge["basis"])
-        imp = hedge.get("hedge_ratio_implied_spot")
-        if imp is not None and abs(imp - hr) > 0.15:
-            warnings.append("공시 통화선도 매도 명목액 %.0f백만$ 을 현물(%s 기말 %.2f원)로 잔고 대비 환산하면 %.2f — 가정 %.2f 과 %+.2f 차이. "
-                            "약정환율 미공시라 적용하지 않음(참고치 hedge.hedge_ratio_implied_spot; 채택은 사용자 결정)"
-                            % (hedge["usd_sell_m"], hedge["quarter"], hedge["implied_spot_rate"], imp, hr, imp - hr))
+        warnings.append("헤지비율 %g 은 가정(%s)" % (hr, hedge["basis"]))
+        imp, imp2 = hedge.get("hedge_ratio_implied_spot"), hedge.get("hedge_ratio_implied_sign_rate")
+        if (imp is not None and abs(imp - hr) > 0.15) or (imp2 is not None and abs(imp2 - hr) > 0.15):
+            warnings.append("공시 통화선도 매도 명목액 %.0f백만$ 을 잔고 대비 환산하면 현물(%s 기말 %.2f원) 기준 %s · 수주시점 평균환율(%s원, 계약 %s건) 기준 %s — "
+                            "가정 %.2f 과 다르다. 약정환율 미공시라 적용하지 않음(참고치 hedge.hedge_ratio_implied_spot·hedge_ratio_implied_sign_rate; 채택은 사용자 결정)"
+                            % (hedge["usd_sell_m"], hedge["quarter"], hedge.get("implied_spot_rate") or 0.0,
+                               ("%.2f(%+.2f)" % (imp, imp - hr)) if imp is not None else "—",
+                               ("%.2f" % hedge["implied_sign_rate"]) if hedge.get("implied_sign_rate") else "—", hedge.get("implied_sign_n") or 0,
+                               ("%.2f(%+.2f)" % (imp2, imp2 - hr)) if imp2 is not None else "—", hr))
+    tf = calib_block["this_file"]
+    warnings.append("코호트 OPM 표 %s 적용. 레퍼런스 미포 SLS 셀 OPM 을 %d~%d 매출가중한 유효 표는 %s(가정 표 %s 는 레퍼런스 2024~26 보다 +3.8~5.1%%p 높다 — "
+                    "cohort_opm_calibration.by_year). 다음 분기 %s 타겟: 가정 %s vs 캘리브레이션 %s. 바꾸려면 --opm-table reference_calibrated(오너 결정 — "
+                    "하류 섹션 각주·모델 백테스트가 cohort_opm_table 을 읽는다)"
+                    % (opm_table, COHORT_CALIB_WINDOW[0], COHORT_CALIB_WINDOW[1], _opm_table_text(calib_table), _opm_table_text(COHORT_OPM), next_q,
+                       ("%.2f%%" % (tf["target_opm_next_q"]["assumed"] * 100)) if tf["target_opm_next_q"]["assumed"] is not None else "—",
+                       ("%.2f%%" % (tf["target_opm_next_q"]["reference_calibrated"] * 100)) if tf["target_opm_next_q"]["reference_calibrated"] is not None else "—"))
     # 코호트 — 기본 모드와 대안 모드의 2025~ 수주 판정을 나란히 적는다(레퍼런스 HD현대미포 SLS 는 2025~ 물량 100% ⑤초호황)
     recent, recent_alt = collections.Counter(), collections.Counter()
     for c in mine:
@@ -970,7 +1131,7 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
     return collections.OrderedDict([
         ("stock", stock), ("name", NAMES.get(stock, stock)), ("origin", origin),
         ("unit", "USD_million | KRW_million"), ("curve", "linear_progress" if curve == "linear" else "s_curve"),
-        ("built_at", datetime.date.today().isoformat()),
+        ("built_at", today or datetime.date.today().isoformat()),
         ("counts", {"contracts": len(mine), "counted": n_counted, "shared_excluded": n_shared_excluded,
                     "skipped": len(skipped), "end_estimated": n_end_est,
                     "estimated_series": sum(1 for c in mine if c["estimated_series"]),
@@ -984,10 +1145,15 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
                 "spot_policy": "건조시점 환율 = fx.json quarters/forward, 없으면 상수(가정)"}),
         ("hedge", hedge),
         ("cohort_mode", mode), ("cohort_mode_alt", alt_mode),
-        ("cohort_table", cohort_table(newbuild_index)), ("cohort_source", cohort_source),
+        ("cohort_table", cohort_table(newbuild_index, table)), ("cohort_source", cohort_source),
         ("cohort_method", COHORT_METHOD),
         ("cohort_method_by_mode", collections.OrderedDict([("reference_anchor", COHORT_REFERENCE_METHOD), ("ledger_relative", COHORT_METHOD)])),
-        ("cohort_opm_table", COHORT_OPM), ("year_index", year_index),
+        # cohort_opm_table = 타겟에 실제로 쓴 표(하류 kship_model._sls_frozen 이 읽는다). 가정 표와 레퍼런스 캘리브레이션 근거는 그 옆에
+        ("cohort_opm_table", collections.OrderedDict((k, table[k]) for k in COHORT_LABELS.values())),
+        ("cohort_opm_table_source", opm_table),
+        ("cohort_opm_table_assumed", collections.OrderedDict((k, COHORT_OPM[k]) for k in COHORT_LABELS.values())),
+        ("cohort_opm_calibration", calib_block),
+        ("year_index", year_index),
         ("backlog_cap_applied", cap_applied), ("backlog_cap", backlog_cap), ("post_origin", post_block),
         ("contracts", mine), ("by_quarter", by_quarter), ("by_year", by_year),
         ("reconcile", reconcile), ("reconcile_summary", reconcile_summary),
@@ -1035,7 +1201,8 @@ def calibration(stock, target_opm, origin, is_=None):
 
 # ── 실행 ────────────────────────────────────────────────────
 
-def run(stocks, curve="linear", const=FX_CONST, origin=None, write=True, mode=COHORT_MODE_DEFAULT):
+def run(stocks, curve="linear", const=FX_CONST, origin=None, write=True, mode=COHORT_MODE_DEFAULT,
+        opm_table=OPM_TABLE_DEFAULT, hedge_default=HEDGE_RATIO_DEFAULT, today=None):
     ledger = load_asset("contracts.json")["rows"]
     rows, dropped = apply_supersedes([dict(r) for r in ledger])
     pairs = mark_shared(rows)
@@ -1047,7 +1214,8 @@ def run(stocks, curve="linear", const=FX_CONST, origin=None, write=True, mode=CO
     cohort_map, year_index = cohorts(contracts)
     outs = {}
     for stock in stocks:
-        o = build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, origin, mode=mode, newbuild_index=index)
+        o = build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, origin, mode=mode, newbuild_index=index,
+                  opm_table=opm_table, hedge_default=hedge_default, today=today)
         o["dropped_superseded"] = dropped
         if stock in (HOLDING, HOLDING_SHARES_WITH):
             o["shared_pairs"] = [{"holding_rcp": a, "yard_rcp": b} for a, b in pairs]
@@ -1056,16 +1224,19 @@ def run(stocks, curve="linear", const=FX_CONST, origin=None, write=True, mode=CO
             os.makedirs(SLS_DIR, exist_ok=True)
             write_asset(os.path.join("sls", "%s.json" % stock), o)
     if write:
-        write_asset(os.path.join("sls", "summary.json"), summary(outs, origin, curve, const, dropped, pairs, mode=mode, newbuild_index=bool(index)))
+        write_asset(os.path.join("sls", "summary.json"), summary(outs, origin, curve, const, dropped, pairs, mode=mode, newbuild_index=bool(index),
+                                                                 opm_table=opm_table, hedge_default=hedge_default, today=today))
     return outs
 
 
-def summary(outs, origin, curve, const, dropped, pairs, mode=COHORT_MODE_DEFAULT, newbuild_index=False):
+def summary(outs, origin, curve, const, dropped, pairs, mode=COHORT_MODE_DEFAULT, newbuild_index=False,
+            opm_table=OPM_TABLE_DEFAULT, hedge_default=HEDGE_RATIO_DEFAULT, today=None):
     next_q = FORECAST_WINDOW[0]
     rows = []
     for stock in sorted(outs):
         o = outs[stock]
-        rs, cap = o["reconcile_summary"], o["backlog_cap"]
+        rs, cap, h = o["reconcile_summary"], o["backlog_cap"], o["hedge"]
+        tf = (o.get("cohort_opm_calibration") or {}).get("this_file") or {}
         rows.append(collections.OrderedDict([
             ("stock", stock), ("name", o["name"]), ("contracts", o["counts"]["contracts"]), ("counted", o["counts"]["counted"]),
             ("shared_excluded", o["counts"]["shared_excluded"]), ("schedule_quarters", o["counts"]["schedule_quarters"]),
@@ -1073,15 +1244,19 @@ def summary(outs, origin, curve, const, dropped, pairs, mode=COHORT_MODE_DEFAULT
             ("window_hedged_krw_m_raw", o["counts"]["forecast_window"]["hedged_krw_m_raw"]),
             ("median_ratio_4q", rs["median_ratio_4q"]), ("backlog_coverage_at_origin", rs["backlog_coverage_at_origin"]),
             ("backlog_cap_applied", cap["applied"]), ("backlog_cap_factor", cap["factor"]),
-            ("hedge_ratio", o["hedge"]["hedge_ratio"]), ("hedge_kind", o["hedge"]["kind"]),
-            ("cohort_mode", o["cohort_mode"]),
+            ("hedge_ratio", h["hedge_ratio"]), ("hedge_kind", h["kind"]),
+            ("hedge_ratio_implied_spot", h.get("hedge_ratio_implied_spot")), ("hedge_ratio_implied_sign_rate", h.get("hedge_ratio_implied_sign_rate")),
+            ("cohort_mode", o["cohort_mode"]), ("opm_table", o.get("cohort_opm_table_source", "assumed")),
             ("target_opm_next_q", (o["target_opm"].get(next_q) or {}).get("opm")),
             ("target_opm_alt_next_q", (o["target_opm_alt"].get(next_q) or {}).get("opm")),
+            ("target_opm_next_q_by_table", tf.get("target_opm_next_q")),
             ("calibrated_shift", o["calibration"]["calibrated_shift"]),
             ("calibrated_shift_alt", o["calibration_alt"]["calibrated_shift"])]))
     alt_mode = [m for m in COHORT_MODES if m != mode][0]
     return collections.OrderedDict([("origin", origin), ("curve", curve), ("fx_const", const), ("window", list(FORECAST_WINDOW)),
                                     ("next_q", next_q), ("cohort_mode", mode), ("cohort_mode_alt", alt_mode),
+                                    ("opm_table", opm_table), ("hedge_ratio_default", hedge_default),
+                                    ("built_at", today or datetime.date.today().isoformat()),
                                     ("newbuild_index_present", newbuild_index),
                                     ("dropped_superseded", dropped), ("shared_pairs_n", len(pairs)), ("rows", rows)])
 
@@ -1111,6 +1286,13 @@ def report(outs):
                   % (cap["coverage_at_origin"], cap["factor"], cap["window_hedged_krw_m_raw"], cap["window_hedged_krw_m"],
                      cap["future_marine_hedged_krw_m_raw"], cap["future_marine_hedged_krw_m"], cap["reported_marine_backlog_krw_m"] or 0,
                      cap["future_sls_vs_backlog_raw"] or 0, cap["future_sls_vs_backlog"] or 0))
+        h, tf = o["hedge"], (o.get("cohort_opm_calibration") or {}).get("this_file") or {}
+        if h["kind"] == "estimate" and (h.get("hedge_ratio_implied_spot") is not None or h.get("hedge_ratio_implied_sign_rate") is not None):
+            print("    헤지 참고치(적용 아님): 명목 %.0f백만$ ÷ 잔고 — 현물 기준 %s · 수주시점 평균환율(%s원) 기준 %s; 레퍼런스 HEDGE 미포 0.65 · 삼성重 1.00"
+                  % (h["usd_sell_m"] or 0, pct(h.get("hedge_ratio_implied_spot")), ("%.2f" % h["implied_sign_rate"]) if h.get("implied_sign_rate") else "—",
+                     pct(h.get("hedge_ratio_implied_sign_rate"))))
+        tq = tf.get("target_opm_next_q") or {}
+        print("    코호트 OPM 표 %s — %s 타겟 가정 %s vs 레퍼런스 캘리브레이션 %s" % (o.get("cohort_opm_table_source"), nq, pct(tq.get("assumed")), pct(tq.get("reference_calibrated"))))
         for q in sorted(o["reconcile"]):
             r = o["reconcile"][q]
             print("    %s sls %10.0f  reported %10.0f  ratio %s  (%s)" % (q, r["sls_krw_m"], r["reported_segment_rev_m"],
@@ -1126,13 +1308,23 @@ def main(argv=None):
     ap.add_argument("--origin", default=None, help="기준 분기(기본: yards_cache 최신)")
     ap.add_argument("--cohort-mode", choices=COHORT_MODES, default=COHORT_MODE_DEFAULT,
                     help="기본 코호트 모드(§5-2). 다른 모드는 항상 *_alt 에 함께 저장된다")
+    ap.add_argument("--opm-table", choices=OPM_TABLES, default=OPM_TABLE_DEFAULT,
+                    help="타겟 OPM 표(⑦): assumed = ①−5%% ②0 ③5 ④10 ⑤15 가정, reference_calibrated = 레퍼런스 미포 SLS 셀 OPM 매출가중(①−1.1 ②1.0 ③4.3 ④5.4 ⑤10.8). 두 표는 항상 함께 저장")
+    ap.add_argument("--hedge-default", type=float, default=HEDGE_RATIO_DEFAULT,
+                    help="약정환율 미공시 회사의 헤지비율 가정(기본 0.7; 레퍼런스 SLS HEDGE 행은 미포 0.65 · 삼성重 1.00)")
+    ap.add_argument("--today", default=None, help="built_at 고정(YYYY-MM-DD) — 같은 입력이면 바이트 동일")
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--dry-run", action="store_true", help="파일을 쓰지 않는다")
     a = ap.parse_args(argv)
+    if a.today and not _date(a.today):
+        ap.error("--today 는 YYYY-MM-DD")
+    if not (0.0 <= a.hedge_default <= 1.0):
+        ap.error("--hedge-default 는 0~1")
     stocks = a.stock or (YARDS + [HOLDING] if a.all else [])
     if not stocks:
         ap.error("--all 또는 --stock")
-    outs = run(stocks, curve=a.curve, const=a.spot, origin=a.origin, write=not a.dry_run, mode=a.cohort_mode)
+    outs = run(stocks, curve=a.curve, const=a.spot, origin=a.origin, write=not a.dry_run, mode=a.cohort_mode,
+               opm_table=a.opm_table, hedge_default=a.hedge_default, today=a.today)
     if a.report:
         report(outs)
     return 0

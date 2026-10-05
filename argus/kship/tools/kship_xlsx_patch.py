@@ -36,19 +36,36 @@ fin json(kship_fin.py 산출, 백만원) 값을 셀로 끼워 넣는다.
     행은 건너뛰고 보고한다. 교체 전후는 `fx.replaced[]`(was_value→now·scale) 에 남는다.
 - 미포 출력이 `_2025Q3` 인 이유: HD현대미포는 2025Q4 부터 HD현대重에 합병돼 보고서가 없다(fin.quarters 마지막 =
   2025Q3). target 기본값이 fin 의 마지막 분기라 파일명도 2025Q3 이다(세진·삼성重은 2026Q2).
+- calcChain.xml(세 원본 모두 있음 — 항목 수 == 수식 셀 수): `--overwrite-placeholders` 로 수식 자리표시자를 상수로 바꾼 셀의
+  항목을 함께 뺀다(`calc_chain.pruned`). 수식이 없는 셀을 가리키는 항목이 남으면 Excel 이 "복구된 레코드: /xl/calcChain.xml"
+  대화상자를 띄운다(ECMA-376 18.6.2 — 항목은 수식 셀만). 새로 쓴 수식 셀(--extend-formulas)은 항목이 없어도 된다(열 때 재구성).
+- `--extend-formulas [plain|all]`(기본 꺼짐, 값 생략 = all) — subQ 의 새 기간 열에서 **비어 있는** 셀을 같은 행의 소스 셀
+  수식으로 채운다(사용자가 끌어 채우던 것). 소스 = 목표와 같은 분기 위치(1Q~4Q·연간)의 가장 최근 실적 열(3Q23 이 마지막이면
+  4Q23←4Q22·2023←2022·1Q24←1Q23 …; 열 차이는 5의 배수라 1Q 열의 '직전 열=연간' 구조·연간 열의 SUM 범위가 유지된다).
+  상대참조는 openpyxl Translator(토크나이저)로 열 차이만큼 치환하고 `$` 고정·이름정의(BS연결·SUBQH·U)·문자열은 그대로 —
+  VLOOKUP 확정 행은 텍스트가 같다. `plain` 은 소스가 단순 `<f>` 인 셀만, `all` 은 공유수식 셀도 **앵커 텍스트를 앵커 기준으로
+  치환한 단순 수식**으로 쓴다(그룹 자체는 손대지 않음 — 새 셀은 그룹 밖). 상수·배열수식·빈 소스·값이 있는 목표 셀은 건너뛴다.
+  새 셀은 `<f>` 만(캐시값 없음, fullCalcOnLoad 로 계산). 보고: `extend`(연장 수·plain/shared·행 수·건너뜀·수식 목록).
+- REF_DIR 기본값: `<레포>/jem_data/kship_models/reference` 가 없으면 `~/phalanx/jem_data/kship_models/reference`
+  (레포 밖 작업 트리에서도 통합 테스트가 조용히 건너뛰지 않게). `KSHIP_REFERENCE_DIR` 가 항상 우선.
 
 검증(`--verify`, tests/test_kship_xlsx_patch.py 가 같은 함수를 부른다):
  ① 패치본 zip 무결(testzip) ② openpyxl(도형 우회) 재오픈 → 시트 수·수식 셀 개수 원본과 동일(교체한 수식
  자리표시자 수만큼 감소 허용) ③ 패치 셀 목록·개수 ④ 원본 셀 전부 동일(허용 예외만 다름 — 교체 셀은 반드시 새
  기간 열 안이어야 하며 보고의 replaced 목록을 그대로 믿지 않는다) ⑤ subQ `매출액(수익)` 확정 행의
- `VLOOKUP($D, BS연결, MATCH(SUBQH, BS연결H, 0), 0)` 사슬을 파이썬으로 흉내내어 새 분기 값 == fin.
+ `VLOOKUP($D, BS연결, MATCH(SUBQH, BS연결H, 0), 0)` 사슬을 파이썬으로 흉내내어 새 분기 값 == fin
+ ⑥ calcChain.xml 전 항목이 패치본의 수식 셀을 가리킨다(고아 항목 0, 줄어든 수 == 교체한 자리표시자 수)
+ ⑦ --extend-formulas 를 켰으면: 쓴 셀이 재오픈 시 전부 수식이고 텍스트가 보고와 같다 · 수식 수 증가분 == 연장 수(②) ·
+ `VLOOKUP($D,<BS표>,MATCH(<헤더>,<BS표>H,0),0)[/U]` 모양 셀은 사슬 흉내 값(패치된 BS 셀 ÷ U) == fin ÷ U.
 
 실행:
   python3 kship_xlsx_patch.py --stock 010140 --verify
   python3 kship_xlsx_patch.py --all --verify --report assets/xlsx_patch_report.json
   python3 kship_xlsx_patch.py --all --verify --overwrite-placeholders --fx-actuals --today 2026-09-30
   python3 kship_xlsx_patch.py --all --verify --is-convention 3m   # 예전 방식(항상 3개월 열)
-표준 라이브러리 + openpyxl(검증 전용) 만 쓴다. 네트워크 없음.
+  python3 kship_xlsx_patch.py --stock 010140 --verify --overwrite-placeholders --fx-actuals --is-convention 3m \
+      --extend-formulas --out /tmp/shi_ext.xlsx                       # subQ 수식 연장(opt-in)
+표준 라이브러리 + openpyxl(검증·--extend-formulas 의 수식 치환) 만 쓴다. 네트워크 없음.
 """
 import argparse
 import datetime
@@ -63,10 +80,23 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "assets")
 FIN_DIR = os.path.join(ASSETS, "fin")
 PHALANX_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-REF_DIR = os.environ.get(
-    "KSHIP_REFERENCE_DIR",
-    os.path.join(PHALANX_ROOT, "jem_data", "kship_models", "reference"),
-)
+REF_DIR_CANDIDATES = (os.path.join(PHALANX_ROOT, "jem_data", "kship_models", "reference"),
+                      os.path.expanduser("~/phalanx/jem_data/kship_models/reference"))
+
+
+def default_ref_dir(candidates=REF_DIR_CANDIDATES):
+    """레퍼런스 폴더 기본값 — 후보 중 처음 존재하는 것, 없으면 첫 후보(레포 기준). 환경변수가 있으면 그것."""
+    env = os.environ.get("KSHIP_REFERENCE_DIR")
+    if env:
+        return env
+    for c in candidates:
+        if os.path.isdir(c):
+            return c
+    return candidates[0]
+
+
+REF_DIR = default_ref_dir()
+CALC_CHAIN = "xl/calcChain.xml"
 
 # 레퍼런스 파일 → 패치 대상 시트(시트명 → (종목, 범위)). 시트명은 workbook.xml 로 파일을 찾는다.
 FILES = {
@@ -308,9 +338,25 @@ def parse_cells(inner):
     return cells
 
 
+class Formula:
+    """수식 셀 값 표식 — rebuild_row 의 writes 값으로 주면 `<f>…</f>` 셀(캐시값 없음)이 된다(--extend-formulas)."""
+    __slots__ = ("text",)
+
+    def __init__(self, text):
+        self.text = text
+
+    def __repr__(self):
+        return "Formula(%r)" % (self.text,)
+
+    def __eq__(self, other):
+        return isinstance(other, Formula) and other.text == self.text
+
+
 def cell_xml(col, r, s, value, is_sst=False):
-    """숫자 또는 sharedStrings 인덱스 셀."""
+    """숫자 · sharedStrings 인덱스 · 수식(Formula) 셀."""
     sa = ' s="%s"' % s if s is not None else ""
+    if isinstance(value, Formula):
+        return '<c r="%s%d"%s><f>%s</f></c>' % (col, r, sa, escape(value.text))
     if is_sst:
         return '<c r="%s%d"%s t="s"><v>%d</v></c>' % (col, r, sa, value)
     return '<c r="%s%d"%s><v>%s</v></c>' % (col, r, sa, fmt_num(value))
@@ -653,6 +699,28 @@ class Workbook:
             new = tag[:-2] + ' fullCalcOnLoad="1"/>'
         self.wb_xml = self.wb_xml[:m.start()] + new + self.wb_xml[m.end():]
         return True
+
+    def prune_calc_chain(self, removed_by_sheet):
+        """수식 → 상수로 바뀐 셀({시트명: set(ref)})을 calcChain.xml 에서 뺀다(없으면 no-op). 보고 dict."""
+        sids = sheet_ids(self.wb_xml)
+        removed = {}
+        for sheet, cells in removed_by_sheet.items():
+            if cells and sheet in sids:
+                removed.setdefault(sids[sheet], set()).update(cells)
+        rep = {"present": CALC_CHAIN in self.data, "entries": 0,
+               "requested": sum(len(v) for v in removed.values()), "pruned": [], "missing": []}
+        if not rep["present"] or not removed:
+            return rep
+        xml = self.data[CALC_CHAIN].decode("utf-8")
+        rep["entries"] = len(re.findall(r"<c\s", xml))
+        new, pruned = prune_calc_chain(xml, removed)
+        name_of = {v: k for k, v in sids.items()}
+        rep["pruned"] = ["%s!%s" % (name_of.get(i, i), r) for i, r in pruned]
+        done = {(i, r) for i, r in pruned}
+        rep["missing"] = ["%s!%s" % (name_of.get(i, i), r) for i, cells in removed.items() for r in sorted(cells) if (i, r) not in done]
+        if pruned:
+            self.modified[CALC_CHAIN] = new
+        return rep
 
     def write(self, out_path):
         assert os.path.abspath(out_path) != os.path.abspath(self.path), "원본 덮어쓰기 금지"
@@ -1001,6 +1069,202 @@ def patch_price(wb, price_row, as_of):
     return rep
 
 
+# ── 수식 연장(--extend-formulas) ──────────────────────────
+
+UNESCAPE_MAP = {"&quot;": '"', "&apos;": "'"}
+EXTEND_MODES = ("plain", "all")
+EXTEND_SHEET = "subQ"
+
+
+def f_text(body):
+    """셀 내부 XML 의 `<f …>텍스트</f>` → 수식 문자열(XML 이스케이프 해제). 자기닫힘(`<f t="shared" si="3"/>`)·없음이면 None."""
+    m = re.search(r"<f\b[^>]*>(.*?)</f>", body or "", re.S)
+    return unescape(m.group(1), UNESCAPE_MAP) if m else None
+
+
+def translate_formula(text, origin, dest):
+    """수식 text(origin 셀 기준) 를 dest 셀로 옮길 때의 상대참조 치환 — Excel 채우기(끌기)와 같다.
+
+    openpyxl 의 Translator(토크나이저 기반) 를 쓴다: A1 참조·범위·시트 한정 참조만 열/행 차이만큼 옮기고 `$` 고정 참조·
+    이름정의(BS연결·SUBQH·U…)·문자열·함수명(LOG10)은 건드리지 않는다. 치환 실패(열 < A 등)는 ValueError.
+    """
+    from openpyxl.formula.translate import Translator
+    try:
+        out = Translator("=" + text, origin=origin).translate_formula(dest)
+    except Exception as e:                                # TranslatorError·TokenizerError 등
+        raise ValueError("수식 치환 실패 %s→%s (%s): %s" % (origin, dest, e.__class__.__name__, e))
+    return out[1:] if out.startswith("=") else out
+
+
+def source_period(p, last):
+    """연장 소스 기간 — 목표 p 와 같은 분기 위치(1Q~4Q·연간)의 가장 최근 실적 기간(BS 마지막 실적 last 이하).
+
+    같은 위치에서 가져와야 1Q 열(직전 열이 연간)·연간 열(SUM 범위) 의 상대참조 구조가 유지된다(열 차이는 항상 5의 배수).
+    last=('Q',2023,3): 4Q→2022Q4 · 연간→2022 · 1Q~3Q→2023 / last=('A',2024): 연간→2024 · nQ→2024Qn.
+    """
+    if last[0] == "A":
+        ly, ln = last[1], 4
+    else:
+        ly, ln = last[1], last[2]
+    if p[0] == "A":
+        return ("A", ly if last[0] == "A" else ly - 1)
+    return ("Q", ly if p[2] <= ln else ly - 1, p[2])
+
+
+def shared_anchors(xml):
+    """{si: (앵커 셀 ref, 수식 텍스트)} — 공유수식 그룹의 앵커(ref 있는 `t="shared"`)."""
+    out = {}
+    for m in CELL_RE.finditer(xml):
+        body = m.group(4) or ""
+        if "<f" not in body:
+            continue
+        at = f_attrs(body)
+        if at and at.get("t") == "shared" and at.get("ref") and "si" in at:
+            out[at["si"]] = (m.group(1) + m.group(2), f_text(body) or "")
+    return out
+
+
+def extend_formulas(wb, last, periods, mode="all", sheet=EXTEND_SHEET, header_row=1):
+    """`sheet`(subQ) 의 새 기간 열에서 **비어 있는** 셀을 같은 행 소스 셀의 수식으로 채운다 — 사용자가 끌어 채우던 것.
+
+    소스 = 목표와 같은 분기 위치의 가장 최근 실적 열(source_period). 소스가 단순 `<f>` 면 그 텍스트를, 공유수식(앵커/의존)
+    이면 앵커 텍스트를 앵커 기준으로(mode="all" 일 때만; "plain" 이면 건너뜀) 목표 셀로 치환해 `<f>` 로 쓴다(캐시값 없음).
+    상수·배열수식·빈 소스는 건너뛴다. 값이 있는 목표 셀은 바꾸지 않는다(kept_nonempty). 공유수식 그룹은 손대지 않는다.
+    periods: BS 새 기간(('Q',y,n)|('A',y)) 목록, last: BS 마지막 실적 기간.
+    """
+    if mode not in EXTEND_MODES:
+        raise ValueError("extend mode 는 %s 중 하나: %r" % ("|".join(EXTEND_MODES), mode))
+    rep = {"sheet": sheet, "member": None, "mode": mode, "header_row": header_row, "last_actual": period_key(last),
+           "columns": {}, "sources": {}, "extended": 0, "extended_plain": 0, "extended_shared": 0, "rows": 0,
+           "kept_nonempty": 0, "skipped_const": 0, "skipped_array": 0, "skipped_shared": 0, "no_source": 0,
+           "errors": [], "written": [], "cells": []}
+    if sheet not in wb.sheets:
+        rep["error"] = "시트 없음"
+        return rep
+    rep["member"] = wb.sheets[sheet]
+    xml = wb.sheet_xml(sheet)
+    hdr = header_columns(xml, wb.sst, header_row)
+    pairs = []
+    for p in periods:
+        sp = source_period(p, last)
+        tcol, scol = hdr.get(row1_label(p)), hdr.get(row1_label(sp))
+        if tcol is None or scol is None:
+            rep["errors"].append("행%d 라벨 없음: 목표 %r→%s · 소스 %r→%s" % (header_row, row1_label(p), tcol, row1_label(sp), scol))
+            continue
+        pairs.append((p, tcol, scol))
+        rep["columns"][period_key(p)] = tcol
+        rep["sources"][period_key(p)] = "%s@%s" % (period_key(sp), scol)
+    if not pairs:
+        rep["error"] = "연장할 기간 열 없음"
+        return rep
+    anchors = shared_anchors(xml) if mode == "all" else {}
+    plan = []
+    for m in re.finditer(r'<row r="(\d+)"(?:\s[^>]*)?>(.*?)</row>', xml, re.S):
+        r = int(m.group(1))
+        if r <= header_row:
+            continue
+        cells = {c["col"]: c for c in parse_cells(m.group(2))}
+        writes = {}
+        for p, tcol, scol in pairs:
+            t = cells.get(tcol)
+            if t and t["has_value"]:
+                rep["kept_nonempty"] += 1
+                continue
+            src = cells.get(scol)
+            if not src or not src["has_value"]:
+                rep["no_source"] += 1
+                continue
+            if "<f" not in src["inner"]:
+                rep["skipped_const"] += 1
+                continue
+            at = f_attrs(src["inner"]) or {}
+            if at.get("t") in ("array", "dataTable"):
+                rep["skipped_array"] += 1
+                continue
+            if at.get("t") == "shared":
+                if mode != "all" or at.get("si") not in anchors:
+                    rep["skipped_shared"] += 1
+                    continue
+                origin, text, kind = anchors[at["si"]][0], anchors[at["si"]][1], "shared"
+            else:
+                origin, text, kind = "%s%d" % (scol, r), f_text(src["inner"]), "plain"
+            if not text:
+                rep["skipped_const"] += 1
+                continue
+            dest = "%s%d" % (tcol, r)
+            try:
+                new = translate_formula(text, origin, dest)
+            except ValueError as e:
+                rep["errors"].append(str(e))
+                continue
+            writes[tcol] = (Formula(new), False)
+            rep["cells"].append({"cell": dest, "period": period_key(p), "source": "%s%d" % (scol, r), "kind": kind, "formula": new})
+            rep["extended_plain" if kind == "plain" else "extended_shared"] += 1
+        if writes:
+            plan.append((r, writes))
+    for r, writes in plan:
+        xml, w, conf, _ = rebuild_row(xml, r, writes)
+        rep["extended"] += len(w)
+        rep["written"] += ["%s%d" % (c, r) for c, _ in w]
+        rep["rows"] += 1
+    wb.set_sheet(sheet, xml)
+    return rep
+
+
+# ── calcChain ────────────────────────────────────────────
+
+def sheet_ids(wb_xml):
+    """시트명 → sheetId(calcChain 항목의 `i` 가 가리키는 값; 시트 순번이 아니다 — 세진 BS연결 = 20)."""
+    out = {}
+    for m in re.finditer(r"<sheet\s([^>]*)/>", wb_xml):
+        nm = re.search(r'name="([^"]*)"', m.group(1))
+        sid = re.search(r'sheetId="(\d+)"', m.group(1))
+        if nm and sid:
+            out[unescape(nm.group(1))] = sid.group(1)
+    return out
+
+
+def calc_chain_entries(cc_xml):
+    """[(sheetId, ref, attrs)] — `i` 생략 항목은 직전 항목의 sheetId 를 따른다(ECMA-376 18.6.2)."""
+    out, cur = [], None
+    for m in re.finditer(r"<c\s+([^>]*?)/>", cc_xml):
+        attrs = dict(re.findall(r'(\w+)="([^"]*)"', m.group(1)))
+        cur = attrs.get("i", cur)
+        out.append((cur, attrs.get("r"), attrs))
+    return out
+
+
+def prune_calc_chain(cc_xml, removed):
+    """calcChain.xml 에서 수식이 사라진 셀의 항목을 뺀다. removed = {sheetId: set(ref)}. 반환 (새 xml, [(sheetId, ref)]).
+
+    항목 `<c r="CS69" i="13" l="1"/>` 의 `i` 는 생략되면 직전 항목을 따르고 `l`(새 의존 수준 시작)은 수준 첫 셀의 표식이라,
+    지운 항목이 명시한 `i`·`l` 은 바로 다음 항목이 생략했을 때 넘겨준다. 나머지 바이트는 그대로.
+    """
+    out, pruned, pos, cur, carry = [], [], 0, None, {}
+    for m in re.finditer(r"<c\s+([^>]*?)/>", cc_xml):
+        attrs = dict(re.findall(r'(\w+)="([^"]*)"', m.group(1)))
+        cur = attrs.get("i", cur)
+        out.append(cc_xml[pos:m.start()])
+        pos = m.end()
+        if cur is not None and attrs.get("r") in removed.get(cur, ()):
+            pruned.append((cur, attrs.get("r")))
+            for k in ("i", "l"):
+                if k in attrs:
+                    carry[k] = attrs[k]
+            continue
+        if carry:
+            for k, v in carry.items():
+                attrs.setdefault(k, v)
+            carry = {}
+            order = ["r", "i", "l", "s", "a", "t"]
+            keys = [k for k in order if k in attrs] + [k for k in attrs if k not in order]
+            out.append("<c " + " ".join('%s="%s"' % (k, attrs[k]) for k in keys) + "/>")
+            continue
+        out.append(m.group(0))
+    out.append(cc_xml[pos:])
+    return "".join(out), pruned
+
+
 def load_json(path):
     if not path or not os.path.exists(path):
         return None
@@ -1008,20 +1272,22 @@ def load_json(path):
         return json.load(f)
 
 
-def patch_file(stock, fins, target_q, today, out_path=None, fx=None, prices=None, ref_dir=REF_DIR,
-               overwrite=False, fx_actuals=False, is_convention=IS_CONVENTION_DEFAULT):
+def patch_file(stock, fins, target_q, today, out_path=None, fx=None, prices=None, ref_dir=None,
+               overwrite=False, fx_actuals=False, is_convention=IS_CONVENTION_DEFAULT, extend=None):
     """레퍼런스 한 파일 패치. fins: {종목: fin json}. 패치한 시트가 없으면 출력하지 않는다.
 
     overwrite=--overwrite-placeholders, fx_actuals=--fx-actuals(`변수` 환율 실측 교체 범위 = BS 새 기간의 합집합),
-    is_convention=--is-convention(분기 IS 값 관행, value_for 참조).
+    is_convention=--is-convention(분기 IS 값 관행, value_for 참조), extend=--extend-formulas(None|"plain"|"all" —
+    subQ 빈 새 기간 셀 수식 연장, extend_formulas 참조). 수식 자리표시자를 상수로 바꾼 셀은 calcChain.xml 에서도 뺀다.
     """
+    ref_dir = ref_dir or REF_DIR
     spec = FILES[stock]
     orig = os.path.join(ref_dir, "%s_%s_subQ_orig.xlsx" % (spec["name"], stock))
     out_path = out_path or os.path.join(ref_dir, "%s_%s_subQ_%s.xlsx" % (spec["name"], stock, target_q))
     rep = {"stock": stock, "name": spec["name"], "orig": orig, "out": out_path, "target": target_q,
-           "is_convention": is_convention,
-           "sheets": [], "skipped_sheets": [], "fx": None, "price": None, "calcPr_changed": False,
-           "sst_added": [], "written": False}
+           "is_convention": is_convention, "extend_mode": extend,
+           "sheets": [], "skipped_sheets": [], "fx": None, "price": None, "extend": None, "calc_chain": None,
+           "calcPr_changed": False, "sst_added": [], "written": False}
     if not os.path.exists(orig):
         rep["error"] = "원본 없음: %s" % orig
         return rep
@@ -1057,6 +1323,22 @@ def patch_file(stock, fins, target_q, today, out_path=None, fx=None, prices=None
             rep["price"] = patch_price(wb, row, row.get("as_of") or prices.get("as_of") or today)
         else:
             rep["price"] = {"error": "prices.rows 에 %s 없음" % stock}
+    if extend:
+        first = next(s for s in rep["sheets"] if not s.get("error"))        # BS연결 — subQ 가 끌어오는 표
+        last = ("A", int(first["last_actual"][:-1])) if first["last_actual"].endswith("A") else ("Q",) + q_parse(first["last_actual"])
+        periods = [("A", int(pk[:-1])) if pk.endswith("A") else ("Q",) + q_parse(pk) for pk in first["new_periods"]]
+        rep["extend"] = extend_formulas(wb, last, periods, mode=extend)
+    # 수식 자리표시자 → 상수 로 바뀐 셀은 calcChain 항목도 뺀다(남으면 Excel 복구 대화상자)
+    removed = {}
+    for s_ in rep["sheets"]:
+        cells = {c["cell"] for c in s_.get("replaced", []) if "<f" in c.get("was", "")}
+        if cells:
+            removed.setdefault(s_["sheet"], set()).update(cells)
+    if rep.get("fx"):
+        cells = {c["cell"] for c in rep["fx"].get("replaced", []) if "<f" in c.get("was", "")}
+        if cells:
+            removed.setdefault(rep["fx"]["sheet"], set()).update(cells)
+    rep["calc_chain"] = wb.prune_calc_chain(removed)
     rep["calcPr_changed"] = wb.set_calc_full()
     rep["sst_added"] = list(wb.sst.added)
     wb.write(out_path)
@@ -1100,6 +1382,7 @@ def verify_reopen(orig, out_path, rep=None):
 
     --overwrite-placeholders 로 수식 자리표시자를 값으로 바꾼 시트는 그 개수만큼 수식이 줄어드는 것이
     정상이다 — rep.sheets[].replaced 의 `was` 에 `<f` 가 든 셀 수를 시트별 허용 감소분으로 뺀다.
+    --extend-formulas 로 subQ 에 쓴 수식 수(rep.extend.extended)만큼은 그 시트에서 늘어나야 한다(정확히 그만큼).
     """
     op = load_openpyxl()
     names_o, f_o = _formula_counts(op, orig)
@@ -1109,10 +1392,14 @@ def verify_reopen(orig, out_path, rep=None):
         n = sum(1 for c in s.get("replaced", []) if "<f" in c.get("was", ""))
         if n:
             allowed_drop[s["sheet"]] = allowed_drop.get(s["sheet"], 0) + n
-    expected = {k: v - allowed_drop.get(k, 0) for k, v in f_o.items()}
+    allowed_add = {}
+    ext = (rep or {}).get("extend")
+    if ext and not ext.get("error") and ext.get("extended"):
+        allowed_add[ext["sheet"]] = ext["extended"]
+    expected = {k: v - allowed_drop.get(k, 0) + allowed_add.get(k, 0) for k, v in f_o.items()}
     return {"ok": names_o == names_p and expected == f_p, "sheets_orig": len(names_o), "sheets_patched": len(names_p),
             "formula_cells_orig": sum(f_o.values()), "formula_cells_patched": sum(f_p.values()),
-            "formula_placeholders_replaced": sum(allowed_drop.values()),
+            "formula_placeholders_replaced": sum(allowed_drop.values()), "formula_cells_extended": sum(allowed_add.values()),
             "diff": {k: (expected.get(k), f_p.get(k)) for k in set(expected) | set(f_p) if expected.get(k) != f_p.get(k)}}
 
 
@@ -1166,6 +1453,24 @@ def verify_unchanged(orig, out_path, rep):
             if sb[:len(sa)] != sa:
                 res["ok"] = False
                 res["problems"].append("sharedStrings 기존 항목이 바뀜")
+            continue
+        if name == CALC_CHAIN:
+            # 수식 자리표시자 → 상수 셀의 항목만 빠질 수 있다(⑥ 이 고아 항목 0 을 따로 본다). 추가·그 밖의 제거는 문제.
+            ea = {(i, r) for i, r, _ in calc_chain_entries(a.decode("utf-8"))}
+            eb = {(i, r) for i, r, _ in calc_chain_entries(b.decode("utf-8"))}
+            sids = sheet_ids(wb_xml)
+            allowed = set()
+            for s in rep.get("sheets", []) + ([fxr] if fxr.get("member") else []):
+                for c in s.get("replaced", []):
+                    if "<f" in c.get("was", "") and s["sheet"] in sids:
+                        allowed.add((sids[s["sheet"]], c["cell"]))
+            if eb - ea:
+                res["ok"] = False
+                res["problems"].append("calcChain 항목 추가 %s" % sorted(eb - ea)[:5])
+            if (ea - eb) - allowed:
+                res["ok"] = False
+                res["problems"].append("calcChain 허용 밖 항목 제거 %s" % sorted((ea - eb) - allowed)[:5])
+            res["calc_chain_pruned"] = len(ea - eb)
             continue
         if not name.startswith("xl/worksheets/sheet"):
             res["ok"] = False
@@ -1320,8 +1625,155 @@ def verify_chain(orig, out_path, fins, rep, acct="매출액(수익)"):
     return res
 
 
-def verify_all(rep, fins):
-    """검증 5항을 모아 rep['verify'] 에 넣는다."""
+def _formula_cells_by_member(z, member):
+    """zip 멤버(시트 XML)에서 `<f` 가 있는 셀 ref 집합."""
+    return {m.group(1) + m.group(2) for m in CELL_RE.finditer(z.read(member).decode("utf-8")) if "<f" in (m.group(4) or "")}
+
+
+def verify_calc_chain(orig, out_path, rep=None):
+    """⑥ calcChain.xml 의 모든 항목이 패치본에서 실제 수식 셀을 가리킨다(고아 항목 0). calcChain 이 없는 파일은 ok.
+
+    원본 대비 줄어든 항목 수 == 교체한 수식 자리표시자 수(rep.sheets/fx 의 replaced 중 `<f`). 보고의 pruned 를 믿지 않고
+    패치본 시트 XML 을 직접 읽어 판정한다 — --overwrite-placeholders 가 자리표시자를 상수로 바꾼 뒤 항목이 남아 있으면 Excel 이
+    "복구된 레코드: /xl/calcChain.xml" 을 띄우므로 이 검사는 그 결함을 바로 잡는다.
+    """
+    zp = zipfile.ZipFile(out_path)
+    res = {"ok": True, "present": CALC_CHAIN in zp.namelist(), "entries_orig": 0, "entries_patched": 0,
+           "expected_drop": 0, "stale": [], "problems": []}
+    if not res["present"]:
+        return res
+    wb_xml = zp.read("xl/workbook.xml").decode("utf-8")
+    sheets = sheet_paths(wb_xml, zp.read("xl/_rels/workbook.xml.rels").decode("utf-8"))
+    member_by_sid = {sid: sheets[name] for name, sid in sheet_ids(wb_xml).items() if name in sheets}
+    fcells = {}
+    for sid, ref, _ in calc_chain_entries(zp.read(CALC_CHAIN).decode("utf-8")):
+        res["entries_patched"] += 1
+        if sid not in fcells:
+            fcells[sid] = _formula_cells_by_member(zp, member_by_sid[sid]) if sid in member_by_sid else set()
+        if ref not in fcells[sid]:
+            res["stale"].append("%s!%s" % (sid, ref))
+    zo = zipfile.ZipFile(orig)
+    if CALC_CHAIN in zo.namelist():
+        res["entries_orig"] = len(calc_chain_entries(zo.read(CALC_CHAIN).decode("utf-8")))
+    for s in (rep or {}).get("sheets", []) + [x for x in [(rep or {}).get("fx")] if x]:
+        res["expected_drop"] += sum(1 for c in s.get("replaced", []) if "<f" in c.get("was", ""))
+    if res["stale"]:
+        res["ok"] = False
+        res["problems"].append("수식 없는 셀을 가리키는 calcChain 항목 %d: %s" % (len(res["stale"]), res["stale"][:6]))
+    if res["entries_orig"] - res["entries_patched"] != res["expected_drop"]:
+        res["ok"] = False
+        res["problems"].append("calcChain 항목 감소 %d ≠ 교체한 수식 자리표시자 %d"
+                               % (res["entries_orig"] - res["entries_patched"], res["expected_drop"]))
+    return res
+
+
+VLOOKUP_RE = re.compile(r"VLOOKUP\(\$D(\d+),(\w+),MATCH\((\w+),(\w+),0\),0\)(?:/(\w+))?")
+
+
+def _divisor(names, div):
+    """VLOOKUP 뒤 `/U`·`/10` 의 나눗수 — 이름정의(U=100) 또는 숫자 리터럴. 못 풀면 None."""
+    if not div:
+        return 1.0
+    try:
+        return float(div)
+    except ValueError:
+        pass
+    try:
+        return float(names.get(div))
+    except (TypeError, ValueError):
+        return None
+
+
+def verify_extend(orig, out_path, fins, rep, prices=None):
+    """⑦ --extend-formulas 로 쓴 셀: (a) 재오픈 시 전부 수식이고 텍스트가 보고와 같다 (b) 순수 `VLOOKUP($D,<BS표>,MATCH(<헤더>,
+    <BS표>H,0),0)[/U]` 모양은 사슬을 흉내내어 값(패치된 BS 셀 ÷ U) == fin ÷ U(시가총액 행은 prices 로 — 패치와 같은 입력).
+    그 밖의 모양(REF-REF 등)은 not_checkable. BS 셀이 비어 있고 fin 도 없는 계정(unresolved) 은 세지 않는다(Excel 은 0)."""
+    ext = rep.get("extend") or {}
+    res = {"ok": True, "cells": ext.get("extended", 0), "formula_ok": 0, "formula_bad": [], "checked": 0, "matched": 0,
+           "mismatch": [], "unresolved": 0, "not_checkable": 0, "problems": []}
+    if not ext or ext.get("error") or not ext.get("cells"):
+        res["ok"] = not ext or not ext.get("error")
+        if ext.get("error"):
+            res["problems"].append(ext["error"])
+        return res
+    op = load_openpyxl()
+    wbf = op.load_workbook(out_path, data_only=False, keep_links=False)
+    wbv = op.load_workbook(out_path, data_only=True, keep_links=False)
+    with zipfile.ZipFile(orig) as z:
+        names = defined_names(z.read("xl/workbook.xml").decode("utf-8"))
+    ws, wsv = wbf[ext["sheet"]], wbv[ext["sheet"]]
+    hrow = ext.get("header_row", 1)
+    sub_labels = {}
+    for c in range(1, wsv.max_column + 1):
+        lv = wsv.cell(hrow, c).value
+        if lv is not None:
+            sub_labels[c] = str(int(lv)) if isinstance(lv, (int, float)) and float(lv).is_integer() else str(lv)
+    targets = {s["sheet"]: s for s in rep.get("sheets", []) if not s.get("error")}
+    bs_cache = {}
+
+    def bs_info(sheet):
+        if sheet not in bs_cache:
+            bsv = wbv[sheet]
+            labels, rows = {}, {}
+            for c in range(3, bsv.max_column + 1):
+                lv = bsv.cell(1, c).value
+                if lv is not None:
+                    labels.setdefault(str(int(lv)) if isinstance(lv, (int, float)) and float(lv).is_integer() else str(lv), c)
+            for r in range(1, bsv.max_row + 1):
+                nm = bsv.cell(r, 3).value
+                if isinstance(nm, str):
+                    rows.setdefault(nm, r)
+            bs_cache[sheet] = (bsv, labels, rows)
+        return bs_cache[sheet]
+    for c in ext["cells"]:
+        col, r = re.match(r"([A-Z]+)(\d+)", c["cell"]).groups()
+        r = int(r)
+        got_f = ws.cell(r, col_idx(col)).value
+        if got_f != "=" + c["formula"]:
+            res["formula_bad"].append({"cell": c["cell"], "expected": c["formula"], "got": got_f})
+            continue
+        res["formula_ok"] += 1
+        m = VLOOKUP_RE.fullmatch(c["formula"].replace(" ", ""))
+        if not m or int(m.group(1)) != r:
+            res["not_checkable"] += 1
+            continue
+        tbl, div = m.group(2), _divisor(names, m.group(5))
+        sp = split_ref(names.get(tbl) or "")
+        bs_sheet = sp[0] if sp else None
+        if bs_sheet not in targets or div is None:
+            res["not_checkable"] += 1
+            continue
+        srep = targets[bs_sheet]
+        acct = wsv.cell(r, 4).value
+        lab = sub_labels.get(col_idx(col))
+        bsv, labels, rows = bs_info(bs_sheet)
+        if not isinstance(acct, str) or lab not in labels or acct not in rows:
+            res["unresolved"] += 1
+            continue
+        got = bsv.cell(rows[acct], labels[lab]).value
+        p = ("A", int(c["period"][:-1])) if c["period"].endswith("A") else ("Q",) + q_parse(c["period"])
+        expect, src = value_for(fins.get(srep["stock"]) or {}, srep["scope"], acct, p, prices,
+                                is_convention=srep.get("is_convention", IS_CONVENTION_DEFAULT))
+        if expect is None and got is None:
+            res["unresolved"] += 1
+            continue
+        res["checked"] += 1
+        if got is not None and expect is not None and abs(float(got) / div - expect / div) < 1e-6:
+            res["matched"] += 1
+        else:
+            res["mismatch"].append({"cell": c["cell"], "acct": acct, "period": c["period"], "bs": "%s!%s%d" % (bs_sheet, col_letters(labels[lab]), rows[acct]),
+                                    "value_bs": got, "expected_fin": expect, "src": src})
+    if res["formula_bad"]:
+        res["ok"] = False
+        res["problems"].append("재오픈 수식 불일치 %d: %s" % (len(res["formula_bad"]), res["formula_bad"][:3]))
+    if res["mismatch"]:
+        res["ok"] = False
+        res["problems"].append("사슬 흉내 값 ≠ fin %d: %s" % (len(res["mismatch"]), res["mismatch"][:3]))
+    return res
+
+
+def verify_all(rep, fins, prices=None):
+    """검증 ①~⑥(+⑦ 연장 시)을 모아 rep['verify'] 에 넣는다. prices 는 ⑦ 의 시가총액 행 기대값에만 쓴다."""
     orig, out = rep["orig"], rep["out"]
     v = {"1_zip": verify_zip(out), "2_reopen": verify_reopen(orig, out, rep)}
     cells = []
@@ -1331,10 +1783,17 @@ def verify_all(rep, fins):
         cells += ["변수!%s" % c for c in rep["fx"].get("written", [])]
     if rep.get("price"):
         cells += rep["price"].get("written", [])
+    if rep.get("extend") and not rep["extend"].get("error"):
+        cells += ["%s!%s" % (rep["extend"]["sheet"], c) for c in rep["extend"].get("written", [])]
     v["3_patched_cells"] = {"count": len(cells), "sample": cells[:12] + (["…"] if len(cells) > 12 else [])}
     v["4_unchanged"] = verify_unchanged(orig, out, rep)
     v["5_chain"] = verify_chain(orig, out, fins, rep)
-    v["all_ok"] = all(v[k]["ok"] for k in ("1_zip", "2_reopen", "4_unchanged", "5_chain"))
+    v["6_calc_chain"] = verify_calc_chain(orig, out, rep)
+    keys = ["1_zip", "2_reopen", "4_unchanged", "5_chain", "6_calc_chain"]
+    if rep.get("extend") is not None:
+        v["7_extend"] = verify_extend(orig, out, fins, rep, prices)
+        keys.append("7_extend")
+    v["all_ok"] = all(v[k]["ok"] for k in keys)
     rep["verify"] = v
     return v
 
@@ -1386,16 +1845,43 @@ def summarize(rep):
     if rep.get("price"):
         p = rep["price"]
         lines.append("  종가: %s" % (p.get("error") or "%s → %s (%s)" % (p.get("written"), p.get("close"), p.get("as_of"))))
+    if rep.get("extend"):
+        e = rep["extend"]
+        if e.get("error"):
+            lines.append("  수식 연장(%s): 오류 %s" % (e.get("mode"), e["error"]))
+        else:
+            lines.append("  수식 연장 %s(%s, 마지막실적 %s): %d셀(단순 %d·공유앵커 %d) %d행 | 값 있는 목표 보존 %d·상수 소스 %d·배열 %d·공유 건너뜀 %d·치환 오류 %d"
+                         % (e["sheet"], e["mode"], e["last_actual"], e["extended"], e["extended_plain"], e["extended_shared"], e["rows"],
+                            e["kept_nonempty"], e["skipped_const"], e["skipped_array"], e["skipped_shared"], len(e["errors"])))
+            lines.append("    소스: " + " ".join("%s←%s" % (k, v) for k, v in list(e["sources"].items())[:5]) + (" …" if len(e["sources"]) > 5 else ""))
+            for c in e["cells"][:3]:
+                lines.append("    + %s(%s) ← %s: %s" % (c["cell"], c["kind"], c["source"], c["formula"][:70]))
+            for er in e["errors"][:3]:
+                lines.append("    ! " + er)
+    if rep.get("calc_chain") and rep["calc_chain"].get("present"):
+        cc = rep["calc_chain"]
+        lines.append("  calcChain: 항목 %d · 수식→상수 교체 셀 항목 제거 %d%s" % (cc["entries"], len(cc["pruned"]),
+                     (" · 못 찾음 %s" % cc["missing"]) if cc.get("missing") else ""))
     if rep.get("verify"):
         v = rep["verify"]
-        lines.append("  검증: ①zip %s ②재오픈 %s(시트 %d/%d·수식 %d/%d) ③패치셀 %d ④무변경 %s(교체허용 %d·빈자리 %d·추가 %d) ⑤사슬 %s(%d건) → %s"
+        lines.append("  검증: ①zip %s ②재오픈 %s(시트 %d/%d·수식 %d/%d%s) ③패치셀 %d ④무변경 %s(교체허용 %d·빈자리 %d·추가 %d) ⑤사슬 %s(%d건) ⑥calcChain %s(항목 %d→%d·고아 %d)%s → %s"
                      % ("OK" if v["1_zip"]["ok"] else "FAIL", "OK" if v["2_reopen"]["ok"] else "FAIL",
                         v["2_reopen"]["sheets_orig"], v["2_reopen"]["sheets_patched"], v["2_reopen"]["formula_cells_orig"], v["2_reopen"]["formula_cells_patched"],
+                        (" 연장 +%d" % v["2_reopen"]["formula_cells_extended"]) if v["2_reopen"].get("formula_cells_extended") else "",
                         v["3_patched_cells"]["count"], "OK" if v["4_unchanged"]["ok"] else "FAIL",
                         len(v["4_unchanged"]["changed_existing_cells"]), v["4_unchanged"]["replaced_empty_cells"], v["4_unchanged"]["added_cells"],
-                        "OK" if v["5_chain"]["ok"] else "FAIL", v["5_chain"]["checked"], "ALL OK" if v["all_ok"] else "FAIL"))
-        for p in v["4_unchanged"]["problems"][:5] + v["5_chain"]["problems"][:5]:
-            lines.append("    ! " + p)
+                        "OK" if v["5_chain"]["ok"] else "FAIL", v["5_chain"]["checked"],
+                        ("OK" if v["6_calc_chain"]["ok"] else "FAIL") if v["6_calc_chain"]["present"] else "없음",
+                        v["6_calc_chain"]["entries_orig"], v["6_calc_chain"]["entries_patched"], len(v["6_calc_chain"]["stale"]),
+                        (" ⑦연장 %s(수식 %d·사슬 %d/%d 일치·미검증 %d·미해결 %d)" % ("OK" if v["7_extend"]["ok"] else "FAIL", v["7_extend"]["formula_ok"],
+                                                                     v["7_extend"]["matched"], v["7_extend"]["checked"], v["7_extend"]["not_checkable"], v["7_extend"]["unresolved"]))
+                        if "7_extend" in v else "",
+                        "ALL OK" if v["all_ok"] else "FAIL"))
+        probs = v["4_unchanged"]["problems"][:5] + v["5_chain"]["problems"][:5] + v["6_calc_chain"]["problems"][:3]
+        if "7_extend" in v:
+            probs += v["7_extend"]["problems"][:3]
+        for p in probs:
+            lines.append("    ! " + str(p))
     return "\n".join(lines)
 
 
@@ -1419,6 +1905,8 @@ def main(argv=None):
                     help="`변수` 환율 8행의 새 기간 열(BS 와 동일)에 남은 가정을 fx.json 실측으로 바꾼다(partial 분기는 보존, 전후는 보고에)")
     ap.add_argument("--is-convention", choices=IS_CONVENTIONS, default=IS_CONVENTION_DEFAULT,
                     help="분기 IS 값: ytd_diff=fin.is_ytd_diff 우선(FnGuide 누적차분, 기본) · 3m=항상 fin.is(보고서 3개월 열)")
+    ap.add_argument("--extend-formulas", nargs="?", const="all", choices=EXTEND_MODES, default=None,
+                    help="subQ 새 기간 열의 빈 셀을 같은 분기위치 최근 실적 열 수식으로 채운다(상대참조 치환). plain=단순 수식 소스만 · all(기본)=공유수식 앵커 텍스트도")
     a = ap.parse_args(argv)
     stocks = list(FILES) if a.all else (a.stock or [])
     if not stocks:
@@ -1445,9 +1933,10 @@ def main(argv=None):
             print(summarize(reports[-1]))
             continue
         rep = patch_file(stock, fins, target, a.today, out_path=a.out, fx=fx, prices=prices, ref_dir=a.ref_dir,
-                         overwrite=a.overwrite_placeholders, fx_actuals=a.fx_actuals, is_convention=a.is_convention)
+                         overwrite=a.overwrite_placeholders, fx_actuals=a.fx_actuals, is_convention=a.is_convention,
+                         extend=a.extend_formulas)
         if a.verify and rep.get("written"):
-            verify_all(rep, fins)
+            verify_all(rep, fins, prices)
         rep["fx_available"] = fx is not None
         rep["prices_available"] = prices is not None
         reports.append(rep)

@@ -249,5 +249,210 @@ class TestUniverseExplored(unittest.TestCase):
         self.assertEqual(U.probe_demoted(probe), {"A", "C"})          # ok 키가 없는 옛 행은 본문을 읽은 판정으로 본다
 
 
+
+import tempfile                                            # noqa: E402
+import kship_suppliers as SUP                              # noqa: E402
+
+
+class TestYardNames(unittest.TestCase):
+    """영문 약칭의 단어 경계 — 'SHI' 가 HANSHIN·SHIPYARD 에, 'HHI' 가 HHIC 에 걸려 가짜 언급을 만들던 회귀(2026-10-05 주석 캐시 실측:
+    한신기계 종속기업 'HANSHIN JAPAN' 이 삼성重 언급으로 셌다)."""
+
+    def test_abbreviations_need_word_boundary(self):
+        self.assertEqual(SUP.find_yard_mentions("HANSHIN JAPAN SHIPYARD SHIPBUILDING HHIC"), {})
+        self.assertEqual(SUP.find_yard_mentions("삼성중공업(SHI) 및 HD현대중공업(HHI), DSME"), {"010140": 2, "329180": 2, "042660": 1})
+        # 조선과 무관한 HD현대 계열·지주는 그룹(모호) 언급으로 세지 않는다
+        self.assertEqual(SUP.find_yard_mentions("HD현대오일뱅크·HD현대사이트솔루션·HD현대㈜ 와 HD현대 그룹"), {"KSOE_GRP": 1})
+
+    def test_major_customer_sentence_normalizes_party(self):
+        cs = SUP.parse_major_customers("<p>당사 매출기준으로 현대중공업 41.6%, 해외 SHIPYARD 30%</p>")
+        self.assertEqual([(c["yard"], c["share"]) for c in cs], [("329180", 41.6)])
+
+
+class TestParseProducts(unittest.TestCase):
+    STD = """<p>가. 주요 제품 등의 현황</p><p>(단위 : 백만원, %)</p>
+<table><thead><tr><th>사업부문</th><th>매출유형</th><th>품 목</th><th>구체적용도</th><th>매출액</th><th>비율</th></tr></thead>
+<tbody><tr><td>조선기자재</td><td>제품</td><td>Deck House</td><td>거주구</td><td>120,000</td><td>60.0</td></tr>
+<tr><td>조선기자재</td><td>제품</td><td>LPG Tank</td><td>화물창</td><td>80,000</td><td>40.0</td></tr>
+<tr><td colspan=4>합 계</td><td>200,000</td><td>100.0</td></tr></tbody></table>"""
+
+    def test_picks_item_column_over_sales_type(self):
+        rows = SUP.parse_products(self.STD)
+        self.assertEqual([(r["prod"], r["share"], r["amt"], r.get("seg")) for r in rows],
+                         [("Deck House", 60.0, 120000.0, "조선기자재"), ("LPG Tank", 40.0, 80000.0, "조선기자재")])
+
+    def test_generic_values_column_is_skipped(self):
+        # 한선엔지니어링 꼴: '구분' 열이 앞에 있고 값은 제품/상품뿐 — 다음 후보('품목')로 넘어가야 '제품'×9 가 되지 않는다
+        html = """<table><tr><th>구분</th><th>품목</th><th>매출액</th><th>비중</th></tr>
+<tr><td>제품</td><td>계장용 피팅</td><td>19,641</td><td>42.67</td></tr><tr><td>제품</td><td>밸브</td><td>8,843</td><td>19.21</td></tr>
+<tr><td>상품</td><td>모듈</td><td>1,735</td><td>3.77</td></tr></table>"""
+        self.assertEqual([r["prod"] for r in SUP.parse_products(html)], ["계장용 피팅", "밸브", "모듈"])
+
+    def test_td_header_with_period_columns(self):
+        # <td> 머리행 + 기간 열(제41기 반기) — kce_parse 가 머리로 보지 않아 30사 products 가 비던 꼴. 합계 행으로 비중을 만든다(추정).
+        html = """<p>(단위 : 백만원)</p><table><tr><td>품목</td><td>제41기 반기</td><td>제40기</td></tr>
+<tr><td>보냉재</td><td>900</td><td>800</td></tr><tr><td>가스</td><td>100</td><td>120</td></tr><tr><td>합계</td><td>1,000</td><td>920</td></tr></table>"""
+        rows = SUP.parse_products(html)
+        self.assertEqual([(r["prod"], r["amt"], r["share"], r.get("share_est")) for r in rows],
+                         [("보냉재", 900.0, 90.0, True), ("가스", 100.0, 10.0, True)])
+        html2 = """<table><tr><td>사업부문</td><td>매출유형</td><td>품 목</td><td>2026년 반기</td><td>2025년</td></tr>
+<tr><td>조선</td><td>제품</td><td>보냉재</td><td>1,000</td><td>900</td></tr></table>"""
+        self.assertEqual([(r["prod"], r["amt"], r.get("seg")) for r in SUP.parse_products(html2)], [("보냉재", 1000.0, "조선")])
+        # 머리처럼 보이지 않는 표(첫 행에 숫자)는 그대로 버린다 — 품목 낱말 없는 표도
+        self.assertEqual(SUP.parse_products("<table><tr><td>보냉재</td><td>1,000</td></tr></table>"), [])
+
+
+class TestParseProductsFixture(unittest.TestCase):
+    """동성화인텍 2026 반기 「2. 주요 제품 및 서비스」 원문(DART 2026-10-05 2요청 진단, rcp 20260814002437) — 2026Q2 캐시 51사 중 30사의
+    products 가 빈 원인 그대로: <td> 머리행 '사업부문 | 매출 유형 | 품 목 | 구체적 용도 | 주요상표등 | 매출액 (비율)' 과 결합 셀
+    '376,610(95.7%)'. 뒤따르는 '나. 가격변동추이' 표(품목 × 제42기 반기, 단위 원)는 매출이 아니라 건너뛰어야 한다."""
+
+    def test_real_section_parses_sales_not_prices(self):
+        rows = SUP.parse_products(_fx("suppliers_products_033500_2026Q2.html"))
+        self.assertEqual([(r["prod"], r["amt"], r["share"], r.get("seg"), r.get("use")) for r in rows],
+                         [("R-PUF 외", 376610.0, 95.7, "PU 단열재 사 업 부 문", "초저온보냉재 가정/산업/건축 단열재"),
+                          ("HCFC-22 외", 17053.0, 4.3, "가 스 사 업 부 문", "냉매가스")])
+        self.assertNotIn("초저온보냉재", [r["prod"] for r in rows])                 # 가격표 행이 섞이지 않는다
+        self.assertEqual(SUP._amt_share("376,610(95.7%)"), (376610, 95.7))
+        self.assertEqual(SUP._amt_share("376,610"), (None, None))
+
+    def test_fixture_rows_classify_to_lng_insulation(self):
+        rec = {"stock": "033500", "name": "동성화인텍", "market": "KOSDAQ", "industry": "기초 화학물질 제조업", "product": "PU단열재", "role": "equip",
+               "source": "지정", "reason": ""}
+        d = {"ok": True, "marine_ctx": True, "products": SUP.parse_products(_fx("suppliers_products_033500_2026Q2.html")), "mentions": {}, "customers": []}
+        co, uncl, _ = SUP.build_company(rec, d, {}, None)
+        self.assertEqual([(c["cat"], c["share"]) for c in co["cats"] if c["cat"] != "UNCL"], [("CARGO.LNG", 95.7)])
+        self.assertEqual(uncl, [("033500", "동성화인텍", "HCFC-22 외")])              # 냉매는 조선 부품이 아니다 — 정직한 미분류
+
+
+class TestSuppliersBuild(unittest.TestCase):
+    REC = {"stock": "999999", "name": "테스트기자재", "market": "KOSDAQ", "industry": "일반 목적용 기계 제조업",
+           "product": "선박용 밸브", "role": "equip", "source": "지정", "reason": "테스트기자재 — 선박용 밸브"}
+
+    def test_skip_reason(self):
+        for s in ("제 품", "상품", "기타 계", "기 타 주)", "-", "내부거래", "연결조정", "합계", "기 타 매 출"):
+            self.assertEqual(SUP.skip_reason(s), "구분", s)
+        self.assertEqual(SUP.skip_reason("스크랩, 고철등 판매外"), "부산물")
+        self.assertIsNone(SUP.skip_reason("선박용 밸브"))
+        self.assertIsNone(SUP.skip_reason("기타제품(선박용)"))
+
+    def test_build_company_merges_yards_and_dedupes(self):
+        d = {"ok": True, "marine_ctx": True, "rcp": "r1", "quarter": "2026Q2",
+             "products": [{"prod": "선박용 밸브", "share": 60.0, "amt": None, "cur": "KRW"},
+                          {"prod": "제품 계", "share": 100.0, "amt": None, "cur": "KRW"},
+                          {"prod": "스크랩 판매", "share": 1.0, "amt": None, "cur": "KRW"},
+                          {"prod": "WZ3300PTA 외", "share": 2.0, "amt": None, "cur": "KRW"},
+                          {"prod": "WZ3300PTA 외", "share": 0.5, "amt": None, "cur": "KRW"}],
+             "mentions": {"329180": 2, "010140": 1},
+             "customers": [{"party": "매출기준으로 현대중공업", "share": 41.6, "basis": "text"}]}      # 옛 캐시 — yard 키 없음
+        notes = {"q": "2025Q3", "ifrs8": [{"yard": "010140", "evidence": "주요고객 … 삼성중공업(주) 등"}],
+                 "related": [{"yard": "042660", "sales_m": 1234.0, "share_est": 3.21, "evidence": "특수관계자 거래 매출 1,234,000"}]}
+        co, uncl, skipped = SUP.build_company(self.REC, d, {}, notes)
+        self.assertEqual(skipped, 2)                                                   # '제품 계'·'스크랩 판매'
+        self.assertEqual(uncl, [("999999", "테스트기자재", "WZ3300PTA 외")])             # 되풀이 행은 한 번만
+        self.assertEqual(sum(1 for c in co["cats"] if c["cat"] == "UNCL"), 1)
+        self.assertEqual([y["yard"] for y in co["yards"]], ["010140", "042660", "329180"])   # 등급순 ifrs8 > related > text
+        ys = {y["yard"]: y for y in co["yards"]}
+        self.assertEqual((ys["329180"]["basis"], ys["329180"]["mentions"], ys["329180"]["share"], ys["329180"]["share_est"]), ("text", 2, 41.6, False))
+        self.assertEqual((ys["010140"]["basis"], ys["010140"]["mentions"]), ("ifrs8", 1))
+        self.assertEqual((ys["042660"]["basis"], ys["042660"]["share"], ys["042660"]["share_est"]), ("related", 3.21, True))
+        self.assertEqual((co["link_basis"], co["confirmed"], co["notes_q"]), ("ifrs8", True, "2025Q3"))
+        self.assertTrue(all(y["yard"].isdigit() or y["yard"] in ("HSHI", "KSOE_GRP") for y in co["yards"]))   # 문장 조각이 yard 가 되지 않는다
+
+    def test_related_share_beats_sentence_share(self):
+        # 현대힘스 실측: 문장 조각 95% 는 두 조선사 합산 — 조선사별 금액이 있는 특수관계자 표의 추정이 앞선다
+        d = {"ok": True, "marine_ctx": True, "products": [], "mentions": {"329180": 12},
+             "customers": [{"party": "일고객은 HD현대중공업", "yard": "329180", "share": 95.0, "basis": "text"}]}
+        notes = {"q": "2025Q3", "ifrs8": [{"yard": "329180", "evidence": "단일고객은 HD현대중공업㈜"}],
+                 "related": [{"yard": "329180", "sales_m": 74429.447, "share_est": 41.06, "evidence": "특수관계자 거래 매출 74,429,447"}]}
+        co, _, _ = SUP.build_company(dict(self.REC, reason=""), d, {}, notes)
+        y = co["yards"][0]
+        self.assertEqual((y["yard"], y["basis"], y["share"], y["share_est"], y["mentions"]), ("329180", "ifrs8", 41.06, True, 12))
+        self.assertEqual([e["basis"] for e in y["evidence"]], ["ifrs8", "related", "text"])
+
+    def test_override_is_manual_basis(self):
+        d = {"ok": True, "marine_ctx": True, "products": [{"prod": "기계품", "share": 50.0, "amt": None, "cur": "KRW"}], "mentions": {}, "customers": []}
+        co, uncl, _ = SUP.build_company(dict(self.REC, reason=""), d, {("999999", "기계품"): "DECK.CRANE"}, None)
+        self.assertEqual([(c["cat"], c["basis"], c["est"]) for c in co["cats"]], [("DECK.CRANE", "manual", False)])
+        self.assertEqual((uncl, co["yards"], co["confirmed"], co["link_basis"]), ([], [], False, None))
+
+    def test_segment_fallback_marks_estimate(self):
+        d = {"ok": True, "marine_ctx": True, "products": [{"prod": "EH2350PTA-2260 외", "share": 1.7, "amt": None, "cur": "KRW", "seg": "도료"}],
+             "mentions": {}, "customers": []}
+        co, uncl, _ = SUP.build_company(dict(self.REC, reason=""), d, {}, None)
+        self.assertEqual([(c["cat"], c["prod"], c["est"], c["basis"]) for c in co["cats"]], [("COAT.PAINT", "도료 › EH2350PTA-2260 외", True, "report")])
+        self.assertEqual(uncl, [])
+
+    def test_latest_cache_ignores_notes_json(self):
+        with tempfile.TemporaryDirectory() as td:
+            for name, body in (("2026Q1.json", {"q": 1}), ("2026Q2.json", {"q": 2}), ("notes.json", {"q": "n"})):
+                with open(os.path.join(td, name), "w", encoding="utf-8") as f:
+                    json.dump(body, f)
+            self.assertEqual(SUP._latest_cache(td), {"q": 2})                  # sorted()[-1] 이면 notes.json 이 잡혔다
+            self.assertEqual(SUP._notes_cache(td), {"q": "n"})
+        self.assertIsNone(SUP._latest_cache(os.path.join(tempfile.gettempdir(), "kship-no-such-dir")))
+
+
+class TestNotesCustomers(unittest.TestCase):
+    """주석 캐시에서 고객 재탐색 — 이름이 적힌 주요 고객·특수관계자 매출만 연결하고, 담보·관계기업 지분·종속기업 요약표 같은
+    문맥의 조선사 이름은 연결하지 않는다(문장·표는 2026-10-05 fin_cache 실측 원문을 줄인 것)."""
+
+    SENT = ("<p>연결회사의 거래처 중 당분기 매출액의 10% 이상을 차지하는 단일고객은 HD현대중공업㈜ 및 HD현대삼호㈜이며, 해당 거래처에 대한 "
+            "매출액은 각각 74,429백만원, 100,074백만원입니다(주석 24 참조). 18. 판매비와관리비 — 삼성중공업 관련 비용은 없습니다.</p>")
+    SEG = ("<p>주요고객의 내역은 다음과 같습니다.</p><table><tr><th>구 분</th><th>재화(또는 용역)</th><th>주요고객</th></tr>"
+           "<tr><td>보냉재사업부문</td><td>보냉재 등</td><td>현대중공업 등</td></tr><tr><td>가스사업부문</td><td>가스 등</td><td>-</td></tr></table>")
+    NEG = ("<p>상기 본사건물 및 부동산은 고성 사업장 건설 관련한 삼성중공업의 공사대금에 대하여 담보로 제공되었습니다.</p>"
+           "<table><tr><th>회사명</th><th>소재지</th><th>업종</th><th>지분율</th></tr><tr><td>한화오션 주식회사</td><td>대한민국</td><td>강선 건조업</td><td>12.04%</td></tr></table>"
+           "<p>(3) 당반기 중 연결회사 매출액의 10% 이상을 차지하는 외부 고객은 없습니다. 주요 고객은 A사 572,853천원입니다.</p>"
+           "<p>(*) 내부거래 제거 전 재무제표입니다. (단위:천원)</p><table><tr><th>회사명</th><th>자산</th><th>매출액</th></tr><tr><td>HANSHIN JAPAN</td><td>19,548</td><td>-</td></tr></table>")
+    REL = ("<p>(2) 특수관계자와의 거래 — 당분기 (단위:천원)</p><table><tr><th>구 분</th><th>매출 등 매출</th><th>매출 등 기타수익</th><th>매입 등 원재료매입</th></tr>"
+           "<tr><td>HD한국조선해양㈜</td><td>-</td><td>-</td><td>384,781</td></tr><tr><td>HD현대중공업㈜</td><td>74,429,447</td><td>-</td><td>76,653</td></tr>"
+           "<tr><td>HD현대삼호㈜</td><td>100,074,346</td><td>-</td><td>35,278</td></tr></table>"
+           "<p>2) 전분기 (단위:천원)</p><table><tr><th>구 분</th><th>매출 등 매출</th></tr><tr><td>HD현대중공업㈜</td><td>74,150,422</td></tr></table>"
+           "<p>채권ㆍ채무 (단위:천원)</p><table><tr><th>구 분</th><th>채권 등 매출채권</th></tr><tr><td>HD현대미포㈜</td><td>15,841</td></tr></table>")
+
+    def test_named_major_customer_sentence(self):
+        out = SUP.extract_notes_customers(self.SENT)
+        self.assertEqual(sorted(x["yard"] for x in out["ifrs8"]), ["329180", "HSHI"])      # 문장은 '…입니다.' 에서 끝난다 — 뒤의 삼성중공업은 아니다
+        self.assertEqual(out["related"], [])
+        self.assertIn("HD현대중공업㈜", out["ifrs8"][0]["evidence"])
+
+    def test_segment_table_with_major_customer_column(self):
+        out = SUP.extract_notes_customers(self.SEG)
+        self.assertEqual([x["yard"] for x in out["ifrs8"]], ["329180"])
+        self.assertIn("보냉재사업부문", out["ifrs8"][0]["evidence"])
+
+    def test_non_customer_contexts_are_not_links(self):
+        self.assertEqual(SUP.extract_notes_customers(self.NEG), {"ifrs8": [], "related": []})
+
+    def test_related_party_sales_with_units_and_share(self):
+        out = SUP.extract_notes_customers(self.REL, rev_m=181262.2)
+        rel = {x["yard"]: x for x in out["related"]}
+        self.assertEqual(sorted(rel), ["329180", "HSHI"])                      # '-' 매출(지주)·채권 표·전분기 표는 제외
+        self.assertEqual(rel["329180"]["sales_m"], 74429.447)                    # 천원 → 백만원
+        self.assertEqual((rel["329180"]["share_est"], rel["HSHI"]["share_est"]), (41.06, 55.21))
+        self.assertEqual(out["ifrs8"], [])
+        # 분모가 없으면 비중 추정도 없다 — 금액만
+        self.assertNotIn("share_est", SUP.extract_notes_customers(self.REL)["related"][0])
+
+
+class TestClassifyAdditions(unittest.TestCase):
+    """2026-10-05 사전 보강 — 미분류 110행 실측에서 규칙으로 닫은 것들. 문맥 규칙은 유지된다."""
+
+    def test_new_keywords(self):
+        self.assertEqual(classify_product("단조", True), ["HULL.CAST"])
+        self.assertEqual(classify_product("단조", False), ["UNCL"])                            # 문맥 없는 단조는 육상일 수 있다
+        self.assertEqual(classify_product("A/F7950-REDBROWN,EX4413-L300(II) 외", True), ["COAT.PAINT"])
+        self.assertEqual(classify_product("선박선 사업부문", False), ["ELEC.CABLE"])
+        self.assertEqual(classify_product("기자재 판매 및 수리", True), ["SVC.INSPECT"])
+        self.assertEqual(classify_product("선박 수리조선소(Ship Repair)", False), ["SVC.LABOR"])    # 수리조선은 그대로 SVC.LABOR
+
+    def test_override_file_schema(self):
+        # note 열이 있어도 (stock, prod_text) → cat 으로 읽힌다
+        ovr = SUP._overrides()
+        self.assertEqual(ovr.get(("014940", "기계품")), "DECK.CRANE")
+        self.assertEqual(ovr.get(("014940", "구조물")), "ACCOM.DECKHOUSE")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -14,7 +14,9 @@
     (세진)는 주석 분해 합이 덩어리와 맞을 때만 갈라 넣는다. 원 표는 `notes.{fin,borrowings,other}[q]` 에 남긴다(raw 포함).
   · 주석 **부모 절 폴백**(`--notes-parent-fallback`, `<quarter>_note_parent_{cons|sep}.html`) — 하위 노드가 없는 보고서는
     `3. 연결재무제표 주석` 절 하나를 받아 번호 머리(`32. 금융수익 및 금융비용`)로 블록을 자르고 같은 규칙으로 고른 블록만 파싱한다.
-    출처는 `note_parent:fin(3m)`·`note_parent:borrowings` 처럼 접두로 구분한다.
+    출처는 `note_parent:fin(3m)`·`note_parent:borrowings` 처럼 접두로 구분한다. 10-05 보강: `영업외손익` 블록의 소절 분할(동성화인텍),
+    `기타이익 및 기타손실` 제목, 캡션에만 계정명이 있는 차입처별 표(서호전기·오리엔탈정공·비엠티), `당1분기` 머리, 이자율 열 제외, 캡션이 가리키는
+    `계`·`합계` 줄의 합계 계정(하이록코리아 등 374분기 → notes.*.totals), 유동성 대체가 장기·사채 표에 나뉜 분해(HD현대重·지주).
 
 표 식별은 **표 제목**으로 한다 — DART XBRL 뷰어는 재무제표마다 `연결 재무상태표 / 제 53 기 반기말 … /
 (단위 : 원)` 네 줄짜리 캡션 표를 먼저 두고 바로 뒤에 데이터 표를 둔다. 캡션에서 종류와 단위를 읽고 그
@@ -30,8 +32,12 @@
 자산=부채+자본 항등식을 `checks` 에 남긴다. FnGuide 방식 누적차분은 `is_ytd_diff` 로 **항상 병기**하고, `is` 와 1백만원 초과로
 다른 계정은 `restated[q]` 에 {is, ytd_diff, diff} 로 남긴다(§5-1 결정 ⓐ — 모델은 `is`, 레퍼런스 xlsx 패치는 `is_ytd_diff`).
 
-부호·구조 정규화(2026-09-30 검증에서 추가): ① face 가 비용을 괄호(음수)로 찍는 표(성광벤드 FY2024~ 등 9사)는 비용 계정을
+부호·구조 정규화(2026-09-30 검증에서 추가, 10-05 보강): ① face 가 비용을 괄호(음수)로 찍는 표(성광벤드 FY2024~ 등 9사)는 비용 계정을
 양수로 뒤집는다(`issues.expense_sign_negative`) — 안 하면 매출−원가≠GP 이고 Q4 = 연간(−) − 9M(+) 로 두 배 어긋난다.
+①′ 영업비용은 양수인데 영업외 비용(금융비용·기타비용)만 괄호인 face(케이씨씨 전 분기·일승 2021 사업보고서·삼미금속 별도)는 그 그룹만
+뒤집는다(`expense_sign_negative_nonop`, 순액 줄이 있으면 수익+비용(−)=순액 확인). 주석 표가 비용을 괄호로 찍으면(케이씨씨·한화시스템·
+케이에스피 요약표) 표 단위로 뒤집어 넣는다(`note_expense_sign_negative`) — **저장 규약: 비용 계정은 양수**. 누적차분·Q4 도출로 생기는
+음수(외화환산손실 환입 등)는 진짜 값이라 그대로 둔다.
 ② '…의 귀속' 블록의 계속·중단영업이익(지배주주분)은 총액으로 쓰지 않고, 총액 줄이 없으면 당기순이익 − 중단사업이익.
 ③ 중단영업이 연간에만 있으면 Q4 중단사업이익 = 연간값(9M 은 0). ④ 매출총이익~영업이익 사이의 매핑 안 된 영업비용 줄
 (물류비·대손상각비)은 잔차가 그 줄들로 설명될 때만 판관비에 더한다(`issues.sga_absorbed_op_lines`, FnGuide 판관비 = GP − OP).
@@ -166,7 +172,8 @@ ACCOUNT_MAP = [
     ("bs", "ca", r"^현금및현금성자산$", ["현금및현금성자산"], {}),
     ("bs", "ca", r"^(단기금융상품|유동금융상품|단기금융자산|단기예금|정기예금)$", ["단기금융상품", "단기금융자산"], {}),
     ("bs", "ca", r"^(유동|단기)?(당기손익|기타포괄손익)-?공정가치(측정)?금융자산$", ["단기투자자산(공정가치)"], {}),
-    ("bs", "ca", r"^(유동|단기)?당기손익인식금융자산$", ["단기투자자산(공정가치)"], {}),
+    ("bs", "ca", r"^(유동|단기)?당기손익인식(-?공정가치측정)?금융자산(,의무적으로측정된공정가치)?(합계)?$", ["단기투자자산(공정가치)"], {}),
+    ("bs", "ca", r"^당기손익-?공정가치측정금융자산\((유동|채무증권)\)$", ["단기투자자산(공정가치)"], {}),
     ("bs", "ca", r"^(유동|단기)?(매도가능금융자산|단기투자자산|단기투자증권)$", ["단기투자자산(공정가치)"], {}),
     ("bs", "ca", r"^(유동|단기)?(상각후원가(측정)?금융자산|만기보유금융자산)$", ["단기금융자산"], {}),
     ("bs", "ca", r"^(유동)?파생(금융)?(상품)?자산$", ["유동파생상품자산", "단기금융자산"], {}),
@@ -192,7 +199,8 @@ ACCOUNT_MAP = [
     ("bs", "nca", r"^투자부동산$", ["투자부동산"], {}),
     ("bs", "nca", r"^(장기금융자산|장기금융상품|장기투자자산|장기투자증권|비유동금융자산|장기예금)$", ["장기금융자산", "투자자산"], {}),
     ("bs", "nca", r"^(비유동|장기)?(당기손익|기타포괄손익)-?공정가치(측정)?금융자산$", ["장기금융자산", "투자자산"], {}),
-    ("bs", "nca", r"^(비유동|장기)?당기손익인식금융자산$", ["장기금융자산", "투자자산"], {}),
+    ("bs", "nca", r"^(비유동|장기)?당기손익인식(-?공정가치측정)?금융자산(,의무적으로측정된공정가치)?(합계)?$", ["장기금융자산", "투자자산"], {}),
+    ("bs", "nca", r"^당기손익-?공정가치측정금융자산\(비유동\)$", ["장기금융자산", "투자자산"], {}),
     ("bs", "nca", r"^(비유동|장기)?(상각후원가(측정)?금융자산|매도가능금융자산|만기보유금융자산)$", ["장기금융자산", "투자자산"], {}),
     ("bs", "nca", r"^기타(비유동|장기)금융자산$", ["장기금융자산", "투자자산"], {}),
     ("bs", "nca", r"^(비유동|장기)?파생(금융)?(상품)?자산$", ["비유동파생상품자산", "투자자산"], {}),
@@ -208,13 +216,21 @@ ACCOUNT_MAP = [
     # face 라벨 '단기금융부채'는 차입금이다(세진·미포) — FnGuide 는 이를 단기차입금(+유동성장기부채, 주석으로 분해)에 둔다.
     # FnGuide 의 '단기금융부채' 는 파생상품부채+확정계약부채+리스부채+기타금융부채(차입 제외) — 삼성重 2023.09 골든과 1원 단위로 맞는다.
     ("bs", "cl", r"^단기차입금$", ["단기차입금"], {}),
-    ("bs", "cl", r"^(단기사채|유동성사채|단기전자단기사채|전자단기사채)$", ["단기사채"], {}),
-    ("bs", "cl", r"^(유동성장기부채|유동성장기차입금|유동장기부채|유동성장기차입부채|유동성장기금융부채|유동성사채및장기차입금|유동성장기차입금및사채|유동사채및차입금|유동성전환사채|유동성신주인수권부사채|유동성장기차입금및사채)$", ["유동성장기부채"], {}),
-    ("bs", "cl", r"^(단기금융부채|유동금융부채|유동차입금|유동성차입금|차입금|단기차입부채)$", ["단기차입금", "단기금융부채(face)"], {}),
-    ("bs", "cl", r"^(유동|단기)?파생(금융)?(상품)?부채$", ["단기파생상품부채", "단기금융부채"], {}),
+    ("bs", "cl", r"^(단기사채|단기전자단기사채|전자단기사채)$", ["단기사채"], {}),
+    # FnGuide 단기사채 = 전단채·CP 만(골든 5사 전 기간 0). 유동성 사채(만기 1년 내 사채·전환사채)는 유동성장기부채다 — 유동부채 구역의 `사채`·
+    # `전환사채`(HJ중공업·영흥·한화오션·동성화인텍)도 같은 뜻이다. 10-05: '유동성사채' 를 단기사채에서 여기로 옮겼다(케이씨씨 1.31조).
+    ("bs", "cl", r"^(유동성장기부채|유동성장기차입금|유동장기부채|유동성장기차입부채|유동성장기금융부채|유동성사채및장기차입금|유동성장기차입금및사채|유동사채및차입금|유동성전환사채|유동성신주인수권부사채|유동성장기차입금및사채"
+                 r"|유동성사채|유동성장기사채|유동성회사채|유동성교환사채|유동장기차입금|사채|회사채|전환사채|유동전환사채|교환사채|신주인수권부사채|비유동차입금(\(사채포함\))?의유동성대체부분|장기차입금(\(사채포함\))?의유동성대체부분"
+                 r"|(유동사채및비유동사채|단기사채및장기사채)의유동성대체부분)$", ["유동성장기부채"], {}),
+    # 차입금 묶음 라벨 — 단기차입금(+유동성장기부채·단기사채)이 한 줄. K-IFRS 표준 라벨(`유동 차입금(사채 포함)`·`유동 차입금 및 비유동차입금(사채 포함)의
+    # 유동성 대체 부분 합계`·`유동성 금융기관 차입금(사채 제외)` — DSR·SK오션플랜트·삼영엠텍·엔케이·비엠티·한일철강 2025~)과 한화 류 `유동차입금및사채`.
+    ("bs", "cl", r"^(단기금융부채|유동금융부채|유동차입금(\(사채포함\))?|유동성차입금|차입금(\(사채포함\))?|차입금및사채|사채및차입금|유동차입금및(유동)?사채|단기차입부채|차입부채|유동성금융기관차입금(\(사채제외\))?"
+                 r"|유동차입금및비유동차입금(\(사채포함\))?의유동성대체부분(합계)?|유동금융기관차입금및비유동금융기관차입금(\(사채제외\))?의유동성대체부분(합계)?"
+                 r"|단기차입금및장기차입금(\(사채포함\))?의유동성대체부분(합계)?)$", ["단기차입금", "단기금융부채(face)"], {}),
+    ("bs", "cl", r"^(유동|단기)?파생(금융)?(상품)?(금융)?부채$", ["단기파생상품부채", "단기금융부채"], {}),
     ("bs", "cl", r"^(유동)?확정계약부채$", ["단기파생상품부채", "단기금융부채"], {}),
     ("bs", "cl", r"^기타(유동)?금융부채$", ["기타유동금융부채", "단기금융부채"], {}),
-    ("bs", "cl", r"^(유동)?당기손익인식금융부채$", ["기타유동금융부채", "단기금융부채"], {}),
+    ("bs", "cl", r"^((유동)?당기손익인식(지정)?금융부채|(유동)?당기손익-?공정가치(측정)?(지정)?금융부채(\(유동\))?|최초인식시점또는그이후에지정된유동당기손익인식금융부채)$", ["기타유동금융부채", "단기금융부채"], {}),
     ("bs", "cl", r"^(유동|단기)?리스부채$", ["유동리스부채", "리스부채", "단기금융부채"], {}),
     ("bs", "cl", r"^(매입채무|매입채무및기타(유동)?채무|매입채무및기타지급채무|매입채무및기타유동채무|외상매입금|지급어음)$", ["매입채무및기타채무"], {}),
     ("bs", "cl", r"^(미지급금|미지급비용|(유동)?기타채무|기타(유동)?지급채무|기타유동채무|미지급금및기타채무|미지급배당금|예수금|유동성장기미지급금)$", ["매입채무및기타채무"], {}),
@@ -226,13 +242,15 @@ ACCOUNT_MAP = [
     ("bs", "cl", r"^((당기|유동)?법인세부채|미지급법인세|당기법인세부채)$", ["당기법인세부채(미지급법인세)"], {}),
     ("bs", "cl", r"^(매각예정(비유동)?자산(집단)?에?(직접)?관련된부채|매각예정처분자산집단(에포함된)?부채|매각예정(으로)?분류된처분자산집단에포함된부채)$", ["매각예정부채"], {}),
     # ── 비유동부채 ──────────────────────────────────────────
-    ("bs", "ncl", r"^(사채|장기사채|전환사채|신주인수권부사채|교환사채|비유동사채)$", ["사채"], {}),
-    ("bs", "ncl", r"^(장기차입금|비유동차입금|장기차입부채)$", ["장기차입금"], {}),
-    ("bs", "ncl", r"^(장기금융부채|비유동금융부채)$", ["장기차입금", "장기금융부채(face)"], {}),
-    ("bs", "ncl", r"^(비유동|장기)?파생(금융)?(상품)?부채$", ["장기파생상품부채", "장기금융부채"], {}),
+    ("bs", "ncl", r"^(사채|장기사채|회사채|전환사채|장기전환사채|비유동전환사채|전환사채,?총액|전환사채장부금액|신주인수권부사채(,?총액)?|교환사채|비유동사채)$", ["사채"], {}),
+    ("bs", "ncl", r"^(장기차입금|비유동차입금|비유동성차입금|장기차입부채|비유동성금융기관차입금(\(사채제외\))?|비유동금융기관차입금(\(사채제외\))?의비유동성(대체)?부분)$", ["장기차입금"], {}),
+    # 장기 묶음 라벨 — 장기차입금+사채가 한 줄(`장기차입금(사채 포함), 총액`·`비유동차입금(사채 포함)의 비유동성 부분`·한화 류 `비유동차입금및사채`)
+    ("bs", "ncl", r"^(장기금융부채|비유동금융부채|차입금(\(사채포함\))?|차입부채|장기차입금(\(사채포함\))?,?총액|장기차입금\(사채포함\)|(비유동|장기)차입금(\(사채포함\))?의비유동성부분"
+                  r"|비유동차입금및(비유동)?사채|장기차입금및사채|사채및차입금|차입금및사채)$", ["장기차입금", "장기금융부채(face)"], {}),
+    ("bs", "ncl", r"^((비유동|장기)?파생(금융)?(상품)?(금융)?부채|파생금융부채\(비유동\))$", ["장기파생상품부채", "장기금융부채"], {}),
     ("bs", "ncl", r"^(비유동)?확정계약부채$", ["장기파생상품부채", "장기금융부채"], {}),
-    ("bs", "ncl", r"^기타(비유동|장기)금융부채$", ["기타비유동금융부채", "장기금융부채"], {}),
-    ("bs", "ncl", r"^(비유동)?당기손익인식금융부채$", ["기타비유동금융부채", "장기금융부채"], {}),
+    ("bs", "ncl", r"^(기타(비유동|장기)?금융부채|장기기타금융부채)$", ["기타비유동금융부채", "장기금융부채"], {}),   # 비유동 구역의 `기타금융부채`(대양전기·대창솔루션·동성화인텍 등 162분기) 도
+    ("bs", "ncl", r"^((비유동)?당기손익인식(지정)?금융부채|(비유동)?당기손익-?공정가치측정(지정)?금융부채(\(비유동\))?)$", ["기타비유동금융부채", "장기금융부채"], {}),
     ("bs", "ncl", r"^(비유동|장기)리스부채$", ["비유동리스부채", "리스부채", "장기금융부채"], {}),
     ("bs", "ncl", r"^(장기매입채무및기타(비유동)?채무|장기매입채무|장기미지급금|장기미지급비용|기타비유동채무|비유동기타채무|장기기타채무|비유동매입채무및기타채무|장기매입채무및기타채무)$", ["장기매입채무및기타채무"], {}),
     ("bs", "ncl", r"^((순)?확정급여(채무|부채)|퇴직급여(채무|부채)|(비유동)?종업원급여(충당)?부채|장기종업원급여(충당)?부채|기타장기종업원급여부채|순확정급여부채)$", ["확정급여부채"], {}),
@@ -264,7 +282,8 @@ ACCOUNT_MAP = [
     ("is", None, r"^(기타영업손익)$", ["기타영업손익"], {}),
     ("is", None, r"^(기타수익|기타이익|기타영업외수익|영업외수익|기타영업외이익)$", ["기타영업외수익"], {}),
     ("is", None, r"^(기타비용|기타손실|기타영업외비용|영업외비용|기타영업외손실)$", ["기타영업외비용"], {}),
-    ("is", None, r"^(기타손익|기타영업외손익|영업외손익|기타이익\(손실\)|기타순손익)$", ["기타영업외손익"], {}),
+    ("is", None, r"^(기타손익|기타영업외손익|기타이익\(손실\)|기타순손익)$", ["기타영업외손익"], {}),
+    ("is", None, r"^영업외손익$", ["영업외손익"], {}),      # 금융+기타 총액(삼미금속·한화엔진 별도) — 기타영업외손익이 아니다, synth_is 가 가른다
     ("is", None, r"^(금융수익|금융이익|이자수익등금융수익)$", ["금융수익"], {}),
     ("is", None, r"^(금융원가|금융비용|금융손실)$", ["금융비용"], {}),
     ("is", None, r"^(금융손익|순금융손익|순금융수익|순금융비용|순금융원가|금융수익\(비용\))$", ["금융손익"], {}),
@@ -349,17 +368,17 @@ CF_ABS_KEYS = {"유형자산의증가", "유형자산의감소", "무형자산�
 
 # 합성 계정 정의(화면·문서에 그대로 보인다)
 SYNTH_BASIS = {
-    "총차입금": "단기차입금+단기사채+유동성장기부채+장기차입금+사채 (face 라벨 '단기/장기금융부채' 는 차입금으로 보아 단기/장기차입금에 넣음 — issues 표기; 리스부채는 별도 키)",
+    "총차입금": "단기차입금+단기사채+유동성장기부채+장기차입금+사채 (face 라벨 '단기/장기금융부채'·K-IFRS 표준 묶음 라벨 '유동 차입금(사채 포함)'·'장기차입금(사채 포함), 총액' 등은 차입금 덩어리로 보아 단기/장기차입금에 넣음 — issues borrowings_face_label; 주석 분해 시 face 총액 보존(잔차는 유동성장기부채·사채에 흡수, borrowings_note_residual); 유동부채 구역의 사채·전환사채·유동성사채는 유동성장기부채(FnGuide: 단기사채는 전단채·CP만); 리스부채는 별도 키)",
     "순차입금": "총차입금 − 현금및현금성자산 − 단기금융자산",
     "이자발생자산": "현금및현금성자산 + 단기금융자산 + 장기금융자산",
     "금융손익": "금융수익 − 금융비용 (face 에 있으면 그 값)",
     "이자손익": "이자수익 − 이자비용 (둘 다 face 에 있을 때만)",
-    "기타영업외손익": "기타영업외수익 − 기타영업외비용 (face 에 있으면 그 값)",
+    "기타영업외손익": "기타영업외수익 − 기타영업외비용 (face 에 있으면 그 값; face 가 `영업외손익` 총액만 주면 총액 − 금융손익; face `기타영업외손익` 줄이 기타수익·비용과 별도 항목이면(동성화인텍 — 세전 대조로 확인) 수익 − 비용 + 그 줄, 원 줄은 `기타영업외손익(face)`)",
     "기타영업손익": "기타영업수익 − 기타영업비용",
     "매출총이익": "매출액(수익) − 매출원가 (face 에 없을 때)",
     "판관비": "face 판관비 + 매출총이익~영업이익 사이의 매핑 안 된 영업비용 줄(물류비·대손상각비 — 잔차가 그 줄 합과 맞을 때만; issues.sga_absorbed_op_lines)",
     "계속사업이익": "face 총액 줄; 없으면 당기순이익 − 중단사업이익(귀속 블록의 지배주주분 계속영업이익은 쓰지 않음)",
-    "매출원가·판관비·기타영업외비용·금융비용·법인세비용 부호": "face 가 비용을 괄호(음수)로 찍는 표는 양수로 정규화(issues.expense_sign_negative) — 비용은 항상 양수",
+    "매출원가·판관비·기타영업외비용·금융비용·법인세비용 부호": "face 가 비용을 괄호(음수)로 찍는 표는 양수로 정규화(issues.expense_sign_negative; 영업외 그룹만 괄호면 expense_sign_negative_nonop; 주석 표는 note_expense_sign_negative) — 저장 규약: 비용은 양수. 누적차분·Q4 도출의 음수(환입)는 그대로",
     "지배주주지분": "비지배지분 라인이 없으면 자본총계",
     "(지배주주지분)당기순이익": "비지배 라인이 없으면 당기순이익",
     "CAPEX": "유형자산의증가 + 무형자산의증가 (현금흐름표 취득액, 절대값)",
@@ -413,17 +432,21 @@ def _is_caption(t):
 
 
 def _split_hdr(t):
-    """cols 가 비어 있으면(THEAD 없는 옛 문서) 머리행을 rows 앞에서 떼어 평탄화한다."""
+    """cols 가 비어 있으면(THEAD 없는 옛 문서) 머리행을 rows 앞에서 떼어 평탄화한다. 머리는 숫자 없는 앞줄(≤3줄)이고 기간 힌트가 그중
+    한 줄에만 있어도 된다 — 비엠티 차입금 표는 1행 `구 분|차입처|연 이자|금 액|금 액`, 2행 `…|당기말|전기말` 로 힌트가 둘째 줄에만 있다.
+    힌트 있는 마지막 줄까지만 머리다(힌트 머리 뒤의 글자 줄은 구분 머리줄이라 데이터에 남긴다)."""
     cols, rows = t["cols"], t["rows"]
     if cols:
         return cols, rows
     nh = 0
     while nh < min(3, len(rows)):
         r = rows[nh]
-        if all(num_of(c) is None or len(c) <= 4 for c in r[1:]) and any(_HDR_HINT.search(c) for c in r):
+        if all(num_of(c) is None or len(c) <= 4 for c in r[1:]):
             nh += 1
         else:
             break
+    hinted = [i for i in range(nh) if any(_HDR_HINT.search(c) for c in rows[i])]
+    nh = hinted[-1] + 1 if hinted else 0
     if nh == 0:
         return [], rows
     width = max(len(r) for r in rows[:nh])
@@ -592,6 +615,12 @@ def map_statement(stmt, table):
             if stmt == "is" and op_zone:
                 op_raw.append([label] + list(vals))   # 매출총이익~영업이익 사이의 매핑 안 된 줄(금강공업 '물류비', 영흥 '대손상각비')
             continue
+        if stmt == "is" and set(hit[0]) & {"기타영업외수익", "기타영업외비용", "기타영업외손익"} and ri + 1 < len(table["rows"]):
+            nxt = table["rows"][ri + 1]
+            nh = _entries_for("is", None, norm_label(nxt[0] if nxt else ""))
+            if nh and "종속기업,공동지배기업및관계기업관련손익" in nh[0] and list(nxt[1:]) == list(vals):
+                raw.append([label, vals[0] if vals else None])
+                continue                              # 케이씨씨 `기타이익` 머리줄 — 바로 아래 `지분법손익` 과 같은 값인 그룹 머리, 기타영업외수익이 아니다
         if stmt == "is" and "매출총이익" in hit[0]:
             op_zone = True                            # 매출총이익 줄 이후 ~ 영업이익 줄 이전 = 영업비용 구간
         targets, opt = hit
@@ -693,20 +722,85 @@ def synth_bs(a, issues=None, quarter=None, scope=None):
     return a
 
 
-def normalize_expense_signs(a):
-    """비용 음수 표기(괄호) 관행 정규화 — 매출액 > 0 이고 매출원가 < 0(원가가 없으면 판관비 < 0)이면 EXPENSE_KEYS 부호를 뒤집는다.
-    표(열) 단위로 판정한다 — 같은 회사라도 분기보고서는 양수·사업보고서는 음수인 경우(현대리바트 2025)가 있다. 뒤집었으면 True."""
+# 영업외 비용 그룹 — (비용 총액, 수익 총액, 순액, 세부 비용 계정). 영업비용은 양수로 두고 영업외 비용만 괄호(음수)로 찍는 face 가 있다
+# (케이씨씨 전 분기: `금융수익 3,764,283 + 금융비용 (127,884) = 금융손익 3,636,399` · 일승 2021 사업보고서 · 삼미금속 별도 · 대양전기공업).
+NONOP_EXPENSE_GROUPS = (
+    ("금융비용", "금융수익", "금융손익", ("이자비용", "외환차손", "외화환산손실", "파생상품손실")),
+    ("기타영업외비용", "기타영업외수익", "기타영업외손익", ()),
+    ("기타영업비용", "기타영업수익", "기타영업손익", ()),
+)
+
+
+def normalize_expense_signs(a, nonop=True):
+    """비용 음수 표기(괄호) 관행 정규화 — 한 열(태그) dict 단위. 표 전체는 normalize_expense_signs_table 이 누적 열로 관행을 정한다.
+    반환 "all" · "nonop" · ""(거짓). nonop=False 면 ① 만 본다.
+    ① 매출액 > 0 이고 매출원가 < 0(원가가 없으면 판관비 < 0)이면 EXPENSE_KEYS 전부를 뒤집는다 → "all".
+    ② 영업비용은 양수인데 금융비용·기타영업외비용·기타영업비용 총액이 음수인 그룹(NONOP_EXPENSE_GROUPS)은 총액과 음수인 세부 계정만
+       뒤집는다 → "nonop". 순액 줄이 있으면 '수익 + 비용(−) = 순액' 일 때만 — '수익 − 비용 = 순액' 이 맞으면 진짜 음수 비용(환입)이라
+       건드리지 않는다(순액 줄이 있으면 수익이 음수여도 — 케이씨씨 2024Q3 3개월 금융수익 −25,469 — 항등식으로 가른다). 진짜 음수 판관비
+       (화인베스틸 2024 — 환입이 판관비를 넘음)는 ①② 어디에도 걸리지 않는다. 법인세비용은 여기서 보지 않는다(synth_is 의 항등식이 가른다)."""
     rev = a.get("매출액(수익)")
-    if rev is None or rev <= 0:
-        return False
     cogs, sga = a.get("매출원가"), a.get("판관비")
-    neg = (cogs is not None and cogs < 0) or (cogs is None and sga is not None and sga < 0)
-    if not neg:
+    if rev is not None and rev > 0 and ((cogs is not None and cogs < 0) or (cogs is None and sga is not None and sga < 0)):
+        for k in EXPENSE_KEYS:
+            if a.get(k) is not None:
+                a[k] = round(-a[k], 2)
+        return "all"
+    if not nonop:
+        return ""
+    flipped = False
+    for exp, inc, net, subs in NONOP_EXPENSE_GROUPS:
+        if _nonop_group_negative(a, exp, inc, net):
+            _flip_group(a, exp, subs)
+            flipped = True
+    return "nonop" if flipped else ""
+
+
+def _nonop_group_negative(a, exp, inc, net):
+    """한 열에서 영업외 비용 그룹이 괄호(음수) 관행인가 — True / False(양수이거나 진짜 음수) / None(비용 총액 없음)."""
+    e, i, n = a.get(exp), a.get(inc), a.get(net)
+    if e is None:
+        return None
+    if e >= 0:
         return False
-    for k in EXPENSE_KEYS:
-        if a.get(k) is not None:
-            a[k] = round(-a[k], 2)
+    if n is not None and i is not None:
+        return abs(i + e - n) <= 1.0 and abs(i - e - n) > 1.0   # 수익 + 비용(−) = 순액 일 때만 — 수익 − 비용 = 순액 이 맞으면 진짜 음수(환입)
+    if i is not None and i < 0:
+        return False                                      # 순액 줄이 없고 수익도 음수(3개월 열 평가이익 환입 — 케이씨씨 2024Q3)면 보류
     return True
+
+
+def _flip_group(a, exp, subs, force=False):
+    """그룹 총액과 세부 비용 계정 부호 반전 — force 면 양수(관행 표 안의 환입 = 진짜 음수)도 뒤집는다."""
+    if a.get(exp) is not None:
+        a[exp] = round(-a[exp], 2)
+    for k in subs:
+        if a.get(k) is not None and (force or a[k] < 0):
+            a[k] = round(-a[k], 2)
+
+
+def normalize_expense_signs_table(acc):
+    """표(모든 태그 열) 단위 부호 정규화 → {태그: "all"|"nonop"|""}. ① 열마다 매출원가 규칙. ② 영업외 그룹의 관행은 **누적·연간 열**
+    (cur_ytd·cur_full, 없으면 prev_*)로 정하고 모든 열에 적용한다 — 3개월 열의 음수 비용은 환입일 수 있어서(동방선기 2023Q3 별도 기타비용
+    (2,860) · 삼성重 2024Q3 기타비용 (692,131) · 태광 2023Q3 이자비용 (20,448)) 그 열만 보고는 가를 수 없다. 누적 열이 관행이면 3개월 열의
+    양수 비용(환입)도 뒤집어 음수로 둔다(그것이 그 열의 진짜 값). 누적 열에 그 계정이 없으면 열별 판정으로 돌아간다."""
+    modes = {tg: normalize_expense_signs(a, nonop=False) for tg, a in acc.items()}
+    cum = [tg for tg in ("cur_ytd", "cur_full") if tg in acc] or [tg for tg in ("prev_ytd", "prev_full") if tg in acc]
+    for exp, inc, net, subs in NONOP_EXPENSE_GROUPS:
+        verdict = None
+        for tg in cum:
+            if modes[tg] == "all":
+                continue
+            v = _nonop_group_negative(acc[tg], exp, inc, net)
+            if v is not None:
+                verdict = v if verdict is None else (verdict and v)
+        for tg, a in acc.items():
+            if modes[tg] == "all" or a.get(exp) is None:
+                continue
+            if verdict if verdict is not None else _nonop_group_negative(a, exp, inc, net):
+                _flip_group(a, exp, subs, force=verdict is not None)
+                modes[tg] = "nonop"
+    return modes
 
 
 def synth_is(a, flags=None):
@@ -726,10 +820,25 @@ def synth_is(a, flags=None):
         a["매출총이익"] = _sub(a["매출액(수익)"], a["매출원가"])
     if "금융손익" not in a and (a.get("금융수익") is not None or a.get("금융비용") is not None):
         a["금융손익"] = round((a.get("금융수익") or 0) - (a.get("금융비용") or 0), 2)
+    oi, oe, oth = a.get("기타영업외수익"), a.get("기타영업외비용"), a.get("기타영업외손익")
+    if None not in (oi, oe, oth) and "기타영업외손익(face)" not in a and abs(oi - oe - oth) > 1.0:
+        # 동성화인텍 — face 가 기타이익·기타손실과 **별도로** `기타영업외손익` 줄(파생·기타 순액)을 둔다. 세전 − 영업이익 − 금융손익 − 지분법 과
+        # (수익 − 비용 + 그 줄)이 맞을 때만(19/19 분기 실측) FnGuide 뜻의 기타영업외손익 = 수익 − 비용 + 그 줄 로 두고 원 줄은 (face) 키에 남긴다.
+        pre, op, fp = a.get("법인세비용차감전계속사업이익"), a.get("영업이익"), a.get("금융손익")
+        if None not in (pre, op, fp):
+            tie = pre - op - fp - (a.get("종속기업,공동지배기업및관계기업관련손익") or 0)
+            alt = round(oi - oe + oth, 2)
+            if abs(tie - alt) <= max(1.0, abs(tie) * 0.01):
+                a["기타영업외손익(face)"] = oth
+                a["기타영업외손익"] = alt
+                if flags is not None:
+                    flags.append(("other_nonop_face_separate_line", "face `기타영업외손익` %s 은 기타수익·비용과 별도 항목 — 수익 − 비용 + 그 줄 = %s (세전 대조 %s)" % (oth, alt, round(tie, 2))))
     if "이자손익" not in a and a.get("이자수익") is not None and a.get("이자비용") is not None:
         a["이자손익"] = _sub(a["이자수익"], a["이자비용"])
     if "기타영업외손익" not in a and (a.get("기타영업외수익") is not None or a.get("기타영업외비용") is not None):
         a["기타영업외손익"] = round((a.get("기타영업외수익") or 0) - (a.get("기타영업외비용") or 0), 2)
+    if "기타영업외손익" not in a and a.get("영업외손익") is not None:
+        a["기타영업외손익"] = _sub(a["영업외손익"], a["금융손익"]) if a.get("금융손익") is not None else a["영업외손익"]   # 총액 − 금융손익
     if "기타영업손익" not in a and (a.get("기타영업수익") is not None or a.get("기타영업비용") is not None):
         a["기타영업손익"] = round((a.get("기타영업수익") or 0) - (a.get("기타영업비용") or 0), 2)
     if "(지배주주지분)당기순이익" not in a and a.get("당기순이익") is not None and "(비지배주주지분)당기순이익" not in a:
@@ -754,10 +863,14 @@ def parse_fin_section(html):
     if is_src:
         acc, raw, eps, _, op_raw = map_statement("is", is_src)
         flags = []
-        flipped = [tg for tg, v in acc.items() if normalize_expense_signs(v)]     # synth 보다 먼저 — 합성 계정이 부호를 물려받는다
-        if any(tg.startswith("cur") for tg in flipped):
-            flags.append(("expense_sign_negative", "face 가 비용을 괄호(음수)로 표기 — %s 를 양수로 뒤집음(열 %s)"
-                          % ("·".join(k for k in EXPENSE_KEYS if any(k in acc[tg] for tg in flipped)), ",".join(flipped))))
+        modes = normalize_expense_signs_table(acc)                                # synth 보다 먼저 — 합성 계정이 부호를 물려받는다
+        nonop_keys = tuple(g[0] for g in NONOP_EXPENSE_GROUPS) + NONOP_EXPENSE_GROUPS[0][3]
+        for mode, code, what, keys in (("all", "expense_sign_negative", "비용", EXPENSE_KEYS),
+                                       ("nonop", "expense_sign_negative_nonop", "영업외 비용(금융비용·기타비용)", nonop_keys)):
+            flipped = [tg for tg, m in modes.items() if m == mode]
+            if any(tg.startswith("cur") for tg in flipped):
+                flags.append((code, "face 가 %s을 괄호(음수)로 표기 — %s 를 양수로 뒤집음(열 %s)"
+                              % (what, "·".join(k for k in keys if any(k in acc[tg] for tg in flipped)), ",".join(flipped))))
         for tg, resid, labels in absorb_op_zone(acc, is_src["tags"], op_raw):
             if tg.startswith("cur"):
                 flags.append(("sga_absorbed_op_lines", "판관비 += %s (매출총이익−판관비−영업이익 잔차 = 영업비용 구간 줄 %s, 열 %s)"
@@ -936,7 +1049,8 @@ def parse_dividend(html):
 #     기초·차입·상환·기말 증감표만(분해 없음 → raw 에만 남고 face 를 건드리지 않는다)
 # 표 제목·행 라벨 정규식으로 잡고, 못 잡은 줄은 raw 로 남긴다. 기간(당/전)은 머리 열에 있으면 그것, 없으면 캡션(lead 끝)에서.
 _NOTE_SFX = re.compile(r"\((금융수익|금융원가|금융비용|기타수익|기타비용|영업외수익|영업외비용|금융|기타)\)$")
-_NOTE_PERIOD = re.compile(r"(당|전전|전)\s*(반|분)?\s*기(말)?")
+_NOTE_PERIOD = re.compile(r"(당|전전|전)\s*\d?\s*(반|분)?\s*기(말)?")        # `당1분기`·`전3분기`(한국주강·대양전기공업) 도 기간이다
+_NOTE_SKIP_COL = re.compile(r"이자율|금리|만기|비고|차입처|발행일|상환일|차입일|조건|통화|보증")   # 금액이 아닌 열 머리(서호전기 `연이자율(%) 당기말`)
 _NOTE_LABEL_HDR = re.compile(r"^(구분|계정과목|과목|항목|내역|종류|계정|구성내역)?$")
 _NOTE_SKIP_ROW = re.compile(r"이자율|만기|기술$|성격|명칭$|비고")
 _NOTE_NET = re.compile(r"금융수익\((비용|원가)\)|순금융|금융손익|순기타손익|기타손익|순액|기타수익\(비용\)")
@@ -961,10 +1075,10 @@ NOTE_MAPS = {
         (r"^기타(영업외)?비용(합계|계|소계)?$", "기타비용합계"),
     ],
     "borrowings": [
-        (r"^(단기차입금(소계|합계)?|유동차입금(\(사채포함\))?|단기차입부채|유동차입부채)$", "단기차입금"),   # 세진 `단기차입금 소 계`
+        (r"^(단기차입금(소계|합계|계)?|유동차입금(\(사채포함\))?|단기차입부채|유동차입부채)$", "단기차입금"),   # 세진 `단기차입금 소 계`·한신 `단기차입금계`
         (r"^(유동성장기차입금|유동성장기부채|비유동차입금(\(사채포함\))?의유동성대체부분|유동성사채|유동성장기차입금및사채|유동성장기차입부채"
-         r"|유동성장기(부채|차입금)대체|유동성대체(액)?|유동성장기차입금(소계|합계))$", "유동성장기부채"),     # 한일철강 장기차입금 표 `유동성 장기부채 대체 (20,494,000,000)`
-        (r"^(장기차입금|비유동차입금(\(사채포함\))?의비유동성부분|비유동차입금|장기차입부채|비유동차입부채|장기차입금잔액)$", "장기차입금"),
+         r"|유동성장기(부채|차입금)대체|(차감[:：]?)?유동성대체(액|분)?|유동성장기차입금(소계|합계|계))$", "유동성장기부채"),     # 한일철강 `유동성 장기부채 대체 (20,494,000,000)`·영흥 `차감: 유동성 대체`
+        (r"^(장기차입금(소계|합계|계|잔액)?|비유동차입금(\(사채포함\))?의비유동성부분|비유동차입금|장기차입부채|비유동차입부채)$", "장기차입금"),
         (r"^(사채|비유동사채|장기사채|전환사채|신주인수권부사채|교환사채)$", "사채"),
         (r"^(단기사채|전자단기사채)$", "단기사채"),
         (r"^(유동|단기)리스부채$", "리스부채(유동)"), (r"^(비유동|장기)리스부채$", "리스부채(비유동)"),
@@ -980,6 +1094,60 @@ NOTE_PROMOTE_BS = ("단기차입금", "유동성장기부채", "장기차입금"
 def norm_note_label(s):
     """주석 행 라벨 정규화 — norm_label 뒤 `(금융수익)`·`(금융원가)`·`(기타비용)` 같은 구분 꼬리를 뗀다(세진)."""
     return _NOTE_SFX.sub("", norm_label(s))
+
+
+# 주석 표 앞 글(`(1) 당기와 전기의 기타수익의 내역은 …`)이 수익·비용 중 하나만 가리키면 그 표의 `계`·`합 계`·`소 계` 줄은 그 합계다(하이록코리아·
+# 서호전기·한국주강·태광 — 합계 줄 라벨에 계정명이 없어 raw 로만 남던 374분기). 한 표에 `기타수익:`·`기타비용:` 구분 머리줄이 있으면(비엠티)
+# 뒤따르는 합계 줄의 주인은 그 머리줄이다.
+_NOTE_SUBJ_TOTAL = {"fin": ((re.compile(r"금융수익"), "금융수익합계"), (re.compile(r"금융(원가|비용)"), "금융비용합계")),
+                    "other": ((re.compile(r"기타(영업외)?(수익|이익)"), "기타수익합계"), (re.compile(r"기타(영업외)?(비용|손실)"), "기타비용합계"))}
+_NOTE_SECTION_ROW = re.compile(r"^(금융수익|금융원가|금융비용|기타(영업외)?(수익|이익|비용|손실))[:：]?$")
+
+
+def _table_subject_total(key, lead):
+    """표 앞 글의 마지막 문장이 수익·비용 중 **하나만** 가리키면 그 합계 계정명(`금융수익합계`…) — 둘 다(`금융수익 및 금융원가의 내역`)면 None."""
+    tail = re.sub(r"\s+", "", unicodedata.normalize("NFKC", re.split(r"\(\d+\)|[①-⑳]|\d{1,2}\.\d{1,2}", lead or "")[-1]))
+    hits = [tot for rx, tot in _NOTE_SUBJ_TOTAL.get(key, ()) if rx.search(tail)]
+    return hits[0] if len(hits) == 1 else None
+
+
+# 주석 표의 비용 줄을 괄호(음수)로 찍는 회사 — 케이씨씨·한화시스템(하위 노드 주석 `이자비용 (75,403,960)`·`금융비용 합계 (483,754,600)`),
+# 케이에스피 요약표(`이자비용 (349,170) / 순금융수익(비용) (289,317)`). 표·태그 열 단위로 **비용 계정이 모두 음수이고 수익 계정은 음수가
+# 아닐 때만** 뒤집는다. 비용 하나만 음수인 열은 이자비용·합계 줄일 때만(이자비용은 음수일 수 없다) — `외화환산손실 (25,394)` 하나만 음수인
+# 3개월 열(SK오션플랜트 2022Q2: 1분기 손실의 환입, 누적은 5,827)은 진짜 음수라 그대로 둔다.
+NOTE_EXPENSE_KEYS = {"fin": ("이자비용", "외환차손", "외화환산손실", "파생상품손실", "금융비용합계"),
+                     "other": ("외환차손", "외화환산손실", "파생상품손실", "기타비용합계")}
+NOTE_INCOME_KEYS = {"fin": ("이자수익", "배당금수익", "외환차익", "외화환산이익", "파생상품이익", "금융수익합계"),
+                    "other": ("외환차익", "외화환산이익", "파생상품이익", "기타수익합계")}
+_NOTE_SURE_EXPENSE = {"이자비용", "금융비용합계", "기타비용합계"}
+
+
+def normalize_note_expense_signs(key, tacc):
+    """한 표의 {태그: {계정: 값}} — 표가 비용을 괄호(음수)로 찍는 관행이면 **모든 열의** 비용 계정 부호를 뒤집고 True(저장 규약: 비용은 양수).
+    관행은 **누적·연간 열**(`_ytd`·`_full`)로 정한다 — 3개월 열의 음수(태광 2023Q3 이자비용 (20,448)·외화환산손실 (173,542), 한신 2024Q3 금융비용
+    (113,273): 환입)는 진짜 값이라 그 열만 보고 가를 수 없다. 누적 열에 이자비용·비용 합계(음수일 수 없는 계정)가 있으면 그 부호가 곧 관행이고,
+    없으면 누적 열의 비용이 모두 음수이고 수익은 음수가 없을 때만. 누적 열이 없는 표(3개월만)는 같은 규칙을 그 열에 쓰되 비용 둘 이상이어야 한다.
+    관행 표에서 양수로 찍힌 비용(한화시스템 2026Q2 3개월 외화환산손실 +5,118 = 상반기 손실의 환입)은 뒤집혀 음수가 된다."""
+    if key not in NOTE_EXPENSE_KEYS or not tacc:
+        return False
+    cum = {tg: d for tg, d in tacc.items() if tg.endswith(("_ytd", "_full"))}
+    base = cum or tacc
+    exp = [(k, d[k]) for d in base.values() for k in NOTE_EXPENSE_KEYS[key] if d.get(k) is not None and d[k] != 0]
+    if not exp:
+        return False
+    sure = [v for k, v in exp if k in _NOTE_SURE_EXPENSE]
+    if sure:
+        neg = all(v < 0 for v in sure)
+    else:
+        neg = (all(v < 0 for _, v in exp) and (cum or len(exp) >= 2)
+               and not any((d.get(k) or 0) < 0 for d in base.values() for k in NOTE_INCOME_KEYS[key]))
+    if not neg:
+        return False
+    for d in tacc.values():
+        for k in NOTE_EXPENSE_KEYS[key]:
+            if d.get(k) is not None:
+                d[k] = round(-d[k], 2)
+    return True
 
 
 def _period_of(text):
@@ -1005,6 +1173,8 @@ def tag_note_cols(cols, lead, prefer_total=False):
     tags = []
     for i in range(nlab, len(ncols)):
         c = ncols[i]
+        if _NOTE_SKIP_COL.search(c.replace(" ", "")):
+            continue
         p = _period_of(c) or lead_p
         if p is None:
             continue
@@ -1037,8 +1207,9 @@ def parse_note_section(html, key):
     """주석 절 HTML → {'found', 'acc': {태그: {계정: 백만원}}, 'raw': [[라벨, {태그: 값}], …], 'unit_assumed'}.
     key: fin / other / borrowings (NOTE_MAPS). 표 안에서는 NOTE_SUM_KEYS 만 더하고 나머지는 첫 줄이 이긴다;
     표 사이에서는 (태그, 계정) 첫 표가 이긴다(범주별 손익표처럼 같은 라벨이 다른 표에 다시 나와도 두 배로 세지 않는다)."""
-    out = {"found": False, "acc": {}, "raw": [], "unit_assumed": False}
+    out = {"found": False, "acc": {}, "raw": [], "unit_assumed": False, "expense_sign_flipped": 0}
     last_mul = None
+    liq_seen = {}
     for t in parse_tables(html):
         if _is_caption(t):
             m = unit_mul_of(" ".join(c for r in t["rows"] for c in r)) or unit_mul_of(t.get("lead"))
@@ -1056,12 +1227,15 @@ def parse_note_section(html, key):
             out["unit_assumed"] = True
             mul = 1e-6
         last_mul = mul
+        subj_total = _table_subject_total(key, t.get("lead")) if key in ("fin", "other") else None
+        section_total = None
         tacc = {}
         for r in rows:
             labs = [c.strip() for c in r[:nlab]]
             item = next((l for l in reversed(labs) if l), "")
             if not item or _NOTE_SKIP_ROW.search(re.sub(r"\s+", "", item)):
                 continue
+            nitem = re.sub(r"\s+", "", unicodedata.normalize("NFKC", item))
             vals = {}
             for i, tg in tags:
                 if i < len(r):
@@ -1069,9 +1243,13 @@ def parse_note_section(html, key):
                     if v is not None:
                         vals.setdefault(tg, v)
             if not vals:
+                if key in ("fin", "other") and _NOTE_SECTION_ROW.match(nitem):
+                    section_total = next((tot for rx, tot in _NOTE_SUBJ_TOTAL[key] if rx.search(nitem)), None)   # `기타수익:` 구분 머리줄 — 뒤따르는 합계 줄의 주인
                 continue
             out["found"] = True
             acct = _map_note_label(key, item)
+            if acct is None and key in ("fin", "other") and _TOTAL_ROW.match(nitem):
+                acct, section_total = section_total or subj_total, None       # `계`·`합 계` 줄 — 구분 머리 또는 캡션이 가리키는 합계 계정
             if acct is None:
                 if len(out["raw"]) < 60:
                     out["raw"].append([item, vals])
@@ -1084,21 +1262,32 @@ def parse_note_section(html, key):
                     d[acct] = round(d[acct] + v, 2)
                 else:
                     d.setdefault(acct, v)
+        if normalize_note_expense_signs(key, tacc):
+            out["expense_sign_flipped"] += 1
         for tg, d in tacc.items():
             dst = out["acc"].setdefault(tg, {})
             for acct, v in d.items():
+                if key == "borrowings" and acct == "유동성장기부채" and acct in dst:
+                    # 유동성 대체는 장기차입금 표·사채 표에 나뉘어 있다(HD현대重: 579,275 + 유동성사채 265,970). 같은 금액이 두 표에 다시
+                    # 나오는 것(단기 표에 더해진 줄 = 장기 표에서 뺀 줄)은 한 번만, 다른 금액만 더한다. 틀리면 face 덩어리 대조에서 걸러진다.
+                    seen = liq_seen.setdefault(tg, [dst[acct]])
+                    if all(abs(v - x) > 0.5 for x in seen):
+                        seen.append(v)
+                        dst[acct] = round(dst[acct] + v, 2)
+                    continue
                 dst.setdefault(acct, v)
     return out
 
 
 def merge_note_parts(parts):
     """같은 키의 주석이 둘로 갈린 경우(fin·fin2) 합친다 — (태그, 계정) 첫 것이 이기고 raw 는 이어 붙인다."""
-    out = {"found": False, "acc": {}, "raw": [], "unit_assumed": False}
+    out = {"found": False, "acc": {}, "raw": [], "unit_assumed": False, "expense_sign_flipped": 0}
     for p in parts:
         if not p:
             continue
         out["found"] = out["found"] or p["found"]
         out["unit_assumed"] = out["unit_assumed"] or p["unit_assumed"]
+        out["expense_sign_flipped"] += p.get("expense_sign_flipped", 0)
         out["raw"].extend(p["raw"])
         for tg, d in p["acc"].items():
             dst = out["acc"].setdefault(tg, {})
@@ -1167,6 +1356,13 @@ def inject_note_bs(b, note, src, issues, quarter, scope):
         tot = round(sum(have.values()), 2)
         if abs(tot - face_v) <= max(3.0, abs(face_v) * 0.005):
             main = parts[0]                                # 덩어리가 들어가 있던 계정(단기차입금/장기차입금)에서 덩어리를 빼고 분해를 더한다
+            resid = round(face_v - tot, 2)
+            if abs(resid) > 0.5:
+                # face 총액이 정본 — 잔차(사채할인발행차금 등)는 마지막 구성 계정(유동성장기부채·사채, 없으면 덩어리 계정)에 흡수해 총차입금을 지킨다
+                sink = next((k for k in reversed(parts) if k in have), main)
+                have[sink] = round(have[sink] + resid, 2)
+                issues.append({"quarter": quarter, "scope": scope, "code": "borrowings_note_residual",
+                               "detail": "%s %s vs 주석 분해 합 %s — 잔차 %s 를 %s 에 흡수(face 총액 보존)" % (lump, face_v, tot, resid, sink)})
             b[main] = round((b.get(main) or 0.0) - face_v, 2)
             for k, v in have.items():
                 b[k] = round((b.get(k) or 0.0) + v, 2)
@@ -1181,6 +1377,8 @@ def inject_note_bs(b, note, src, issues, quarter, scope):
     for acct in NOTE_PROMOTE_BS:
         if acct in blocked:
             continue
+        if acct == "유동성장기부채" and b.get("단기사채") is not None:
+            continue                                       # face 가 유동성 사채를 단기사채로 보이면 주석 `유동성 대체` 와 같은 돈이다 — 승격하면 이중계산(HD현대마린엔진 2022)
         if d.get(acct) is not None and b.get(acct) is None:
             b[acct] = d[acct]
             src[acct] = "note:borrowings"
@@ -1262,7 +1460,9 @@ _PARENT_FIN_STRICT = re.compile(r"^이자(수익|비용)$")
 _TABLE_SPAN = re.compile(r"<table\b.*?</table\s*>", re.I | re.S)
 _TEXT_NODE = re.compile(r">([^<]+)<")
 _LINE_END = re.compile(r"<\s*(br|/p|p|table|/td|td|/div|div|/tr|tr)\b", re.I)          # 머리 줄이 끝나는 블록 경계
-_CAP_ACCT = re.compile(r"단기차입금|장기차입금|(?<![가-힣])사채|유동성")
+_CAP_ACCT = re.compile(r"단기차입금|장기차입금|사채|유동성")
+_CAP_SUBJECT = re.compile(r"현재(.{1,60}?)(의|에대한)?(내역|내용|구성내역|구성|상세내역|상세|현황|명세)")
+_CAP_LIQ = re.compile(r"^유동성(장기)?(차입금|부채|차입부채|사채및차입금|차입금및사채)")
 _TOTAL_ROW = re.compile(r"^(합계|계|총계|소계)$")
 
 
@@ -1296,7 +1496,8 @@ def split_note_blocks(html):
         out = []
         for i, (pos, no, title) in enumerate(heads):
             end = heads[i + 1][0] if i + 1 < len(heads) else len(html)
-            out.append({"no": no, "title": title, "html": html[pos:end]})
+            blk = {"no": no, "title": title, "html": html[pos:end]}
+            out.extend(_split_combined_block(blk) or [blk])
         return out
     out, prev = [], 0
     for a, b in spans:
@@ -1304,6 +1505,34 @@ def split_note_blocks(html):
         out.append({"no": None, "title": gap[-120:], "html": html[prev:b]})
         prev = b
     return out
+
+
+_COMBINED_NONOP = re.compile(r"^영업외\s*(손익|수익|비용)")
+_BOTH_NONOP = re.compile(r"영업외\s*(손익|수익|비용)")
+
+
+def _split_combined_block(blk):
+    """`29. 영업외손익` 한 블록에 `29.1 금융수익 및 금융원가`·`29.2 기타수익 및 기타비용` 소절이 함께 들어 있으면(동성화인텍) 소절 머리로 다시
+    잘라 소절 제목이 fin/other 판정을 받게 한다. 소절 머리(표 밖 `N.M 제목`)가 2개 미만이면 None(그대로)."""
+    if not blk["no"] or not _COMBINED_NONOP.search(unicodedata.normalize("NFKC", blk["title"])):
+        return None
+    html = blk["html"]
+    rx = re.compile(r"^%s\.(\d{1,2})\s*([^\d\s].{0,58})" % re.escape(blk["no"]))
+    spans = [(m.start(), m.end()) for m in _TABLE_SPAN.finditer(html)]
+    subs, si = [], 0
+    for m in _TEXT_NODE.finditer(html):
+        pos = m.start(1)
+        while si < len(spans) and spans[si][1] <= pos:
+            si += 1
+        if si < len(spans) and spans[si][0] <= pos:
+            continue
+        h = rx.match(_plain(m.group(1)))
+        if h:
+            subs.append((pos, "%s.%s" % (blk["no"], h.group(1)), h.group(2).strip()))
+    if len(subs) < 2:
+        return None
+    return [{"no": no, "title": title, "html": html[pos:(subs[i + 1][0] if i + 1 < len(subs) else len(html))]}
+            for i, (pos, no, title) in enumerate(subs)]
 
 
 def _block_labels(html):
@@ -1316,6 +1545,11 @@ def _block_labels(html):
                 if c and num_of(c) is None:
                     labs.append(re.sub(r"\s+", "", unicodedata.normalize("NFKC", c)))
     return labs
+
+
+def _block_caption_text(html):
+    """블록 표들의 앞 글(lead)을 이어 붙인 것 — 공백 제거·NFKC. 계정명이 표 안이 아니라 캡션에만 있는 차입금 표를 받아들일 때 쓴다."""
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", " ".join(t.get("lead") or "" for t in parse_tables(html))))
 
 
 def _instruments_block_ok(html):
@@ -1348,6 +1582,8 @@ def _instruments_block_ok(html):
 def _parent_rank(key, title):
     """블록 제목 → 이 키 후보 순위(작을수록 우선) 또는 None. 키 판정 순서는 find_note_nodes 와 같다(fin → borrowings → other)."""
     t = unicodedata.normalize("NFKC", title or "")
+    if key == "other" and _BOTH_NONOP.search(t) and NOTE_RX["fin"].search(t):
+        return 1                                           # `영업외손익 및 금융손익`(삼영엠텍 분기) — 금융·기타가 한 블록, other 도 여기서 읽는다
     for k in NOTE_KEYS:
         if NOTE_RX[k].search(t):
             if k != key:
@@ -1364,12 +1600,22 @@ def _parent_rank(key, title):
     return None
 
 
+def _caption_subject(lead):
+    """표 앞 글(마지막 `(n)`·① 뒤)에서 '… 현재 X 의 내역' 의 X — 없으면 꼬리 전체(공백 제거·NFKC). `현재사채의내역`(HD현대重) 처럼 '현재' 바로
+    뒤에 계정이 붙어도 X 로 잡힌다(이전 정규식은 한글 뒤의 `사채` 를 전환사채 류로 보고 버렸다)."""
+    tail = re.sub(r"\s+", "", unicodedata.normalize("NFKC", re.split(r"\(\d+\)|[①-⑳]", lead or "")[-1]))
+    m = _CAP_SUBJECT.search(tail)
+    return m.group(1) if m else tail
+
+
 def _borrowings_caption_totals(html):
-    """차입금 블록 보충 — 표 앞 글(마지막 `(n)` 뒤)이 단기차입금·장기차입금·사채 중 **하나만** 가리키고(유동성 언급 없음) 표 마지막
-    줄이 `합계`(별도는 `소 계`)면 그 합계를 그 계정으로 본다. 단기차입금: 표 안에 매핑되는 줄이 하나도 없을 때만(한일철강 은행별 표).
-    장기차입금·사채: 그 계정 줄은 없고 합계 앞에 `유동성 대체` 줄이 있을 때만 — 대체 뒤 합계가 비유동분이다(세진 `소계 191,745 /
-    유동성 대체 (91,817) / 합계 99,928`; 한일철강 장기표는 마지막 줄이 `장기차입금 잔액` 이라 줄 매핑으로 잡힌다).
-    중간 `소계` 는 보지 않는다(유동성 대체 전 금액). 반환 모양은 parse_note_section 과 같다."""
+    """차입금 블록 보충 — 표 앞 글이 단기차입금·장기차입금·사채·유동성차입금 중 **하나만** 가리키는 표의 합계(`합계`·`소계`, 별도는 `소 계`)를
+    그 계정으로 본다. 반환 모양은 parse_note_section 과 같다. 규칙:
+    · 단기차입금: 표 안에 매핑 줄이 없을 때(한일철강·비엠티 은행별 표). 단기 표가 `소계 + 유동성장기차입금 = 합계` 로 유동성 대체를 더해
+      놓았으면(HD현대重) 합계 − 유동성 줄 = 단기차입금(소계 줄과 맞을 때만). 합계 줄이 없고 데이터 줄 하나뿐이면(서호전기 최대주주 차입) 그 줄.
+    · 유동성장기부채: `(2) 유동성차입금의 내역`(오리엔탈정공) — 합계 또는 단일 줄.
+    · 장기차입금·사채: 그 계정 줄은 없고 합계 앞에 `유동성 대체` 줄이 있을 때만 — 대체 뒤 합계가 비유동분이다(세진 `소계 191,745 / 유동성 대체
+      (91,817) / 합계 99,928`; HD현대重 사채 `소계 803,070 / 유동성사채 (265,970) / 합계 536,291`). 중간 `소계` 는 보지 않는다."""
     out = {"found": False, "acc": {}, "raw": [], "unit_assumed": False}
     last_mul = None
     for t in parse_tables(html):
@@ -1378,31 +1624,61 @@ def _borrowings_caption_totals(html):
             last_mul = unit_mul_of(" ".join(c for r in t["rows"] for c in r)) or unit_mul_of(lead) or last_mul
             continue
         cols, rows = _split_hdr(t)
-        if not cols:
+        if not cols or not rows:
             continue
         nlab, tags = tag_note_cols(cols, lead, prefer_total=True)
         mul = unit_mul_of(lead) or unit_mul_of(" ".join(cols)) or last_mul
         last_mul = mul or last_mul
-        tail = re.sub(r"\s+", "", unicodedata.normalize("NFKC", re.split(r"\(\d+\)|[①-⑳]", lead)[-1]))
-        accts = set(_CAP_ACCT.findall(tail))
-        if not tags or len(accts) != 1 or "유동성" in accts:
+        subj = _caption_subject(lead)
+        accts = set(_CAP_ACCT.findall(subj))
+        if not tags or len(accts) != 1:
             continue
-        acct = {"단기차입금": "단기차입금", "장기차입금": "장기차입금", "사채": "사채"}[accts.pop()]
+        a0 = accts.pop()
+        if a0 == "유동성":
+            if not _CAP_LIQ.match(subj):
+                continue
+            acct = "유동성장기부채"
+        elif a0 == "사채" and re.search(r"단기사채|전단채", subj):
+            continue
+        else:
+            acct = a0
         items = [next((c.strip() for c in reversed(r[:nlab]) if c.strip()), "") for r in rows]
+        nitems = [re.sub(r"\s+", "", it) for it in items]
         mapped = [_map_note_label("borrowings", it) if it else None for it in items]
-        if not rows or not _TOTAL_ROW.match(re.sub(r"\s+", "", items[-1])):
-            continue                                       # 표 마지막 줄이 합계(별도는 `소 계`)일 때만
         if acct in mapped:
             continue                                       # 그 계정 줄이 표 안에 따로 있다(세진 `단기차입금 소계`) — 합계를 또 쓰면 이중계산
-        if acct == "단기차입금" and (any(mapped) or any("유동성" in c for r in rows for c in r)):
-            continue                                       # 단기 표에 다른 계정 줄·유동성분(세진 2022Q1 내역 `유동성장기차입금`)이 섞이면 합계는 단기차입금이 아니다
-        if acct != "단기차입금" and "유동성장기부채" not in mapped[:-1]:
-            continue                                       # 장기차입금·사채 합계는 `유동성 대체` 를 뺀 뒤일 때만(아니면 유동성분이 섞인 총액)
+        total_last = bool(_TOTAL_ROW.match(nitems[-1]))
+        numeric = [k for k, r in enumerate(rows) if any(i < len(r) and to_million(r[i], 1.0) is not None for i, _ in tags)]
+        single = len(numeric) == 1 and not any(mapped) and not total_last
+        liq_rows = []
+        if acct == "단기차입금":
+            if any(m not in (None, "유동성장기부채") for m in mapped[:-1]):
+                continue
+            liq_rows = [k for k, m in enumerate(mapped[:-1]) if m == "유동성장기부채"]
+            if not liq_rows and any("유동성" in c for r in rows for c in r):
+                continue                                   # 매핑 안 된 유동성 글자 셀(세진 2022Q1 내역) — 합계가 단기차입금이 아닐 수 있다
+            if not total_last and not single:
+                continue
+        elif acct == "유동성장기부채":
+            if not total_last and not single:
+                continue
+        elif not total_last or "유동성장기부채" not in mapped[:-1]:
+            continue
+        src = rows[-1] if total_last else rows[numeric[0]]
         for i, tg in tags:
-            v = to_million(rows[-1][i], mul or 1e-6) if i < len(rows[-1]) else None
-            if v is not None:
-                out["acc"].setdefault(tg, {}).setdefault(acct, abs(v))
-                out["found"] = True
+            v = to_million(src[i], mul or 1e-6) if i < len(src) else None
+            if v is None:
+                continue
+            v = abs(v)
+            if liq_rows:
+                sub = [to_million(rows[k][i], mul or 1e-6) for k in liq_rows if i < len(rows[k])]
+                v = round(v - sum(abs(x) for x in sub if x is not None), 2)
+                subt = [to_million(rows[k][i], mul or 1e-6) for k in range(len(rows) - 1) if nitems[k] == "소계" and i < len(rows[k])]
+                subt = [abs(x) for x in subt if x is not None]
+                if subt and abs(subt[-1] - v) > max(3.0, v * 0.005):
+                    continue                               # 소계 줄과 안 맞으면 쓰지 않는다
+            out["acc"].setdefault(tg, {}).setdefault(acct, v)
+            out["found"] = True
         if mul is None:
             out["unit_assumed"] = True
     return out
@@ -1431,6 +1707,8 @@ def parse_note_parent(html):
                     ok = any(re.search(r"단기차입금|장기차입금", l) for l in labs)    # `유동성` 만으로는 안 된다(유동성 리스부채)
                 else:
                     ok = any(rx.search(l) for l in labs)
+                    if not ok and key == "borrowings":
+                        ok = bool(_CAP_ACCT.search(_block_caption_text(b["html"])))   # 차입처별 표 — 계정명이 표 앞 글에만 있다(서호전기·오리엔탈정공)
                 if not ok:
                     continue
             best = r
@@ -1635,7 +1913,7 @@ NOTE_KEYS = ("fin", "borrowings", "other")
 NOTE_RX = {
     "fin": re.compile(r"금융수익|금융원가|금융비용|금융손익"),
     "borrowings": re.compile(r"차입금|차입부채|사채"),
-    "other": re.compile(r"기타수익|기타비용|기타영업외"),
+    "other": re.compile(r"기타수익|기타비용|기타영업외|기타손익|기타이익|기타손실|영업외수익|영업외비용"),   # `기타이익 및 기타손실`(삼영이엔씨)·`기타손익`(한국주강)·`영업외수익 및 영업외비용`(삼영엠텍)
 }
 NOTE_MAX_PER = {"fin": 2, "borrowings": 1, "other": 1}      # 금융수익·금융원가를 두 주석으로 가르는 회사가 있어 fin 만 2
 NOTE_MAX_REQ = 4
@@ -1844,6 +2122,23 @@ def _diff_map(a, b):
     return out
 
 
+def _op_identity(a):
+    gp, sga, op = a.get("매출총이익"), a.get("판관비"), a.get("영업이익")
+    if None in (gp, sga, op):
+        return None
+    return round(gp - sga + (a.get("기타영업손익") or 0) - op, 2)
+
+
+# 손익 항등식 — checks 의 rule 이름. 매출총이익·금융손익·기타영업외손익은 face 에 있으면 그 값이라 face 가 어긋난 분기(한신기계 2023Q3
+# `순금융수익` 1,454 ≠ 금융수익 1,359 − 금융원가 944)가 여기서 ok:false 로 남는다 — 값은 고치지 않는다(face 자체 오류는 기록만).
+_IS_RULES = (
+    ("rev-cogs=gp", lambda a: _sub(_sub(a.get("매출액(수익)"), a.get("매출원가")), a.get("매출총이익"))),
+    ("gp-sga+oth=op", _op_identity),
+    ("fin=fi-fe", lambda a: _sub(_sub(a.get("금융수익"), a.get("금융비용")), a.get("금융손익"))),
+    ("oth=oi-oe", lambda a: _sub(_sub(a.get("기타영업외수익"), a.get("기타영업외비용")), _sub(a.get("기타영업외손익"), a.get("기타영업외손익(face)") or 0.0))),
+)
+
+
 def _scope_quarterize(scope, per_q, quarters):
     """per_q[q] = parse_fin_section 결과. → bs/is/is_ytd/cf/cf_ytd/derivation/checks/issues.
 
@@ -1974,6 +2269,11 @@ def _scope_quarterize(scope, per_q, quarters):
             if ni is not None:
                 dd = round(i3["법인세비용차감전계속사업이익"] - i3["법인세비용"] - ni, 2)
                 checks.append({"quarter": q, "scope": scope, "rule": "pretax-tax=ni", "ok": abs(dd) <= 1.0, "diff": dd})
+        if i3:
+            for rule, fn in _IS_RULES:                     # 손익 항등식(구성 계정이 다 있을 때만) — 비용 부호 규약 위반이 여기서 드러난다
+                dd = fn(i3)
+                if dd is not None:
+                    checks.append({"quarter": q, "scope": scope, "rule": rule, "ok": abs(dd) <= 1.0, "diff": dd})
         b = bs.get(q)
         if b and b.get("자산총계") is not None and b.get("부채총계") is not None and b.get("자본총계") is not None:
             diff = round(b["자산총계"] - b["부채총계"] - b["자본총계"], 2)
@@ -1982,6 +2282,21 @@ def _scope_quarterize(scope, per_q, quarters):
             issues.append({"quarter": q, "scope": scope, "code": "unit_assumed", "detail": "단위 캡션 없음 — 원 가정"})
     return {"bs": bs, "is": is3, "is_ytd": isy, "is_ytd_diff": isyd, "restated": restated, "cf": cf3, "cf_ytd": cfy,
             "derivation": deriv, "checks": checks, "issues": issues}
+
+
+def _face_has_borrowings(p):
+    """face BS(당기)에 차입금 계정이 하나라도 있는가 — 없으면 차입금 주석이 없는 것이 정상이라 missing 이 아니라 na 로 적는다."""
+    b = (p.get("bs") or {}).get("cur") or {}
+    return any((b.get(k) or 0) != 0 for k in ("단기차입금", "유동성장기부채", "장기차입금", "사채", "단기사채", "단기금융부채(face)", "장기금융부채(face)"))
+
+
+def _note_sign_issues(merged, issues, q, scope):
+    """주석 표가 비용을 괄호(음수)로 찍어 뒤집은 분기 — issues 에 남긴다(값은 이미 양수)."""
+    for key in ("fin", "other"):
+        n = (merged.get(key) or {}).get("expense_sign_flipped")
+        if n:
+            issues.append({"quarter": q, "scope": scope, "code": "note_expense_sign_negative",
+                           "detail": "%s 주석 표 %d개가 비용을 괄호(음수)로 표기 — 양수로 뒤집어 넣음(저장 규약: 비용은 양수)" % (key, n)})
 
 
 def build_company(stock, quarters=None, name=None, golden=None):
@@ -2049,11 +2364,16 @@ def build_company(stock, quarters=None, name=None, golden=None):
                 merged = pr["notes"]
                 for key in NOTE_KEYS:
                     if key not in merged:
+                        if key == "borrowings" and not _face_has_borrowings(per[nsc][q]):
+                            issues.append({"quarter": q, "scope": nsc, "code": "note_parent_na:borrowings",
+                                           "detail": "face 에 차입금 계정이 없음 — 차입금 주석이 없는 것이 정상(하이록코리아·대양전기공업)"})
+                            continue
                         issues.append({"quarter": q, "scope": nsc, "code": "note_parent_missing:%s" % key,
                                        "detail": "부모 주석 절(%s 블록 %d개)에서 %s 블록을 못 찾음" % (pr["mode"], pr["blocks"], key)})
                     elif not merged[key]["acc"]:
                         issues.append({"quarter": q, "scope": nsc, "code": "note_unmapped:%s" % key,
                                        "detail": "부모 절 블록 %s 은 골랐으나 매핑된 계정 없음 — raw %d줄" % (" / ".join(pr["picked"][key]), len(merged[key]["raw"]))})
+                _note_sign_issues(merged, issues, q, nsc)
                 notes_raw[nsc][q] = merged
                 parent_qs[nsc].add(q)
                 src = src_notes[nsc].setdefault(q, {})
@@ -2081,11 +2401,16 @@ def build_company(stock, quarters=None, name=None, golden=None):
                 merged = {key: merge_note_parts(v) for key, v in parsed.items()}
                 for key in NOTE_KEYS:
                     if key not in merged:
+                        if key == "borrowings" and not _face_has_borrowings(per[nsc][q]):
+                            issues.append({"quarter": q, "scope": nsc, "code": "note_na:borrowings",
+                                           "detail": "face 에 차입금 계정이 없음 — 차입금 주석이 없는 것이 정상"})
+                            continue
                         issues.append({"quarter": q, "scope": nsc, "code": "note_missing:%s" % key,
                                        "detail": "목차에 해당 주석 없음 — %s" % {"fin": "이자수익·외환차익 등 세부 null", "borrowings": "차입금 분해 없음", "other": "기타수익 세부 없음"}[key]})
                     elif not merged[key]["acc"]:
                         issues.append({"quarter": q, "scope": nsc, "code": "note_unmapped:%s" % key,
                                        "detail": "주석 표는 받았으나 매핑된 계정 없음 — raw %d줄" % len(merged[key]["raw"])})
+                _note_sign_issues(merged, issues, q, nsc)
                 notes_raw[nsc][q] = merged
                 src = src_notes[nsc].setdefault(q, {})
                 if merged.get("fin"):

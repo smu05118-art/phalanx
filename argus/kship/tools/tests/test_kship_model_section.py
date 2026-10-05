@@ -540,7 +540,7 @@ class TestHubRound3(unittest.TestCase):
         self.assertIn('<b class="wn">포함</b>', yard_tr)
         self.assertIn('title="신규수주 시나리오 보수 138,000 ~ 낙관 198,000억(base 는 표 값)"', yard_tr)
         equip_tr = next(r for r in rows if "075580" in r)
-        self.assertIn('<td class="l" data-v="0" title=""><span class="mut">—</span></td>', equip_tr)
+        self.assertIn('<td class="l" data-v="0"><span class="mut">—</span></td>', equip_tr)        # n/a 는 빈 title 속성을 만들지 않는다
         self.assertIn('>고객 조선사 매출 연동 <span class="mut">WAPE 연동 12.0% vs 추세 12.3% → 연동 채택</span></td>', equip_tr)
         self.assertIn("<b>1<small>/ 0</small></b><span>신규수주 포함 · 미포함", h)
         self.assertIn("신규수주 '포함' 행의 FY 매출은 forecast_panel base(미보정)를 품음", h)
@@ -574,6 +574,223 @@ class TestRealAssetsRound3(unittest.TestCase):
         if M.model_oos(model):
             self.assertIn("WAPE 연동 ", h)
             self.assertIn("<li>드라이버 선택(OOS): ", h)
+
+
+# ── 5차(V7, T6 D7) — status/driver_fallback 분리 표기 · 상단 '모델 상태' 한 줄 · 허브 폴백 열·각주·모집단 외 · 모바일 CSS ─────────
+
+def _rejected_oos():
+    return {"rejected_by": "oos", "corr": 0.9111, "n": 8, "significance": {"r_crit_p05_two_sided": 0.7067},
+            "selection_oos": {"freeze": "2025Q2", "n": 4, "wape_link": 17.6, "wape_trend": 12.3, "adopted": False}}
+
+
+class TestDriverFallbackLabel(unittest.TestCase):
+    """driver_fallback(corr|significance|n|oos|no_link|none)은 status 와 따로 — 섹션 머리·상태 줄·data 속성. 필드가 없으면 추정하지 않는다."""
+    def _equip(self, code=None, rejected=None):
+        m = _fx("model_mock_075580.json")
+        if code is not None:
+            m["driver_fallback"] = code
+        if rejected is not None:
+            m["segments"][0]["driver"]["customer_link_rejected"] = rejected
+        return m
+
+    def test_info_vocabulary(self):
+        self.assertEqual(M.driver_fallback_info(self._equip()), (None, "", ""))                       # 필드 없음 → 표기 없음
+        self.assertEqual(M.driver_fallback_info(self._equip("bogus")), (None, "", ""))                # 모르는 코드 → 표기 없음
+        self.assertEqual(M.driver_fallback_info(self._equip("none"))[:2], ("none", "폴백 없음"))
+        code, lab, det = M.driver_fallback_info(self._equip("oos", _rejected_oos()))
+        self.assertEqual((code, lab), ("oos", "OOS 기각 → 추세 폴백"))
+        for s in ("상관 0.91", "n=8", "WAPE 연동 17.6% vs 추세 12.3% → 추세 폴백(연동 미채택)", "× 1.10"):
+            self.assertIn(s, det)
+        code, lab, det = M.driver_fallback_info(self._equip("significance", {"rejected_by": "significance", "corr": 0.8748, "n": 5,
+                                                                              "significance": {"r_crit_p05_two_sided": 0.8783}}))
+        self.assertEqual(lab, "유의성 미달 → 추세 폴백")
+        self.assertIn("상관 0.87 (임계 r 0.88) · n=5", det)
+        # 최상위 필드가 없어도 customer_link_rejected.rejected_by 는 모델이 적은 명시적 증거 → 그걸로 판정
+        self.assertEqual(M.driver_fallback_info(self._equip(None, {"rejected_by": "n", "n": 3}))[0], "n")
+        code, lab, det = M.driver_fallback_info(self._equip("no_link"))
+        self.assertEqual(lab, "고객 연결 없음 → 추세 폴백")
+        self.assertIn("추세+계절성", det)
+        self.assertEqual(list(M.DRIVER_FALLBACK_KO), ["none", "oos", "significance", "n", "corr", "no_link"])  # kship_model.DRIVER_FALLBACKS 와 같은 집합
+
+    def test_header_status_line_and_attr(self):
+        e = {"stock": "075580", "name": "세진중공업", "role": "equip"}
+        h = M.render_model_section(e, self._equip("oos", _rejected_oos()))
+        self.assertIn('data-model-driver-fallback="oos"', h)
+        self.assertIn(" · 폴백 사유 oos(OOS 기각 → 추세 폴백) · ", h)                                      # 섹션 머리
+        self.assertIn("드라이버 폴백 oos — OOS 기각 → 추세 폴백</span></p>", h)                              # 상태 줄
+        self.assertIn('title="%s"' % M.E(M.driver_fallback_info(self._equip("oos", _rejected_oos()))[2]), h)  # 상세는 툴팁
+        self.assertLess(h.index('<p class="status">'), h.index("<h2>실적 모델 KPI"))                       # KPI 바로 위
+        self.assertGreater(h.index('<p class="status">'), h.index('<h2class="sec">'.replace("<h2c", "<h2 c")))
+        self.assertEqual(M.check_tag_balance(h), [])
+        h2 = M.render_model_section(e, self._equip("none"))
+        self.assertIn(" · 폴백 없음 · ", h2)
+        self.assertIn('data-model-driver-fallback="none"', h2)
+        self.assertIn("드라이버 폴백 none — 폴백 없음", h2)
+        h3 = M.render_model_section(e, self._equip())
+        self.assertIn('data-model-driver-fallback=""', h3)
+        self.assertNotIn("폴백 사유", h3)
+        self.assertNotIn("드라이버 폴백 ", h3)
+
+
+class TestStatusLine(unittest.TestCase):
+    """상단 한 줄: full 은 데이터 완전 사실, partial 은 quality 로 되짚은 사유(못 되짚으면 '미기재' — 지어내지 않는다)."""
+    def test_full_and_partial_reasons(self):
+        m = _fx("model_mock_075580.json")
+        m["status"] = "full"
+        m["quality"] = dict(m.get("quality") or {}, status="full", fin_quarters=19, identities_ok=True, sep_filled=[], missing=[], warnings=[])
+        h = M.status_line(m)
+        self.assertIn('<b class="up" title="%s">모델 상태 완성(full)</b>' % M.E(M.STATUS_RULE), h)
+        self.assertIn("데이터 완전 — fin 19분기 · 항등식 OK · 최신 분기 %s" % m["periods"]["last_actual"], h)
+        self.assertEqual(M.status_reasons(m), [])
+        m["status"] = "partial"
+        m["quality"].update(status="partial", fin_quarters=5, sep_filled=["2022Q1", "2021Q4", "2022Q2"],
+                            warnings=["마지막 fin 분기 2025Q3 < 최신 완결 분기 2026Q2 — 최신 보고서 미수집(no_report) 상태의 모델", "무관한 경고"])
+        rs = M.status_reasons(m)
+        self.assertEqual(rs[0], "fin 5분기(< 8)")
+        self.assertIn("별도 보충 3분기(2021Q4~2022Q2)", rs)
+        self.assertTrue(any("최신 완결 분기" in r for r in rs))
+        self.assertFalse(any("무관한 경고" in r for r in rs))
+        h = M.status_line(m)
+        self.assertIn('<b class="wn" title=', h)
+        self.assertIn("모델 상태 부분(partial)</b>사유: fin 5분기(&lt; 8) · 별도 보충 3분기(2021Q4~2022Q2) · 마지막 fin 분기 2025Q3 &lt; 최신 완결 분기", h)
+        m["quality"].update(identities_ok=False, missing=["BPS", "EPS"])
+        rs = M.status_reasons(m)
+        self.assertIn("항등식 불일치", rs)
+        self.assertIn("누락 2건: BPS, EPS", rs)
+        # 추정 매출 분기가 10 미만이면 그것도 사유
+        rev = next(r for r in m["rows"] if r["key"] == "매출액")
+        for q in [q for q in m["periods"]["quarters"] if q > m["periods"]["last_actual"]][-3:]:
+            rev["q"].pop(q, None)
+        self.assertIn("추정 매출 7분기(< 10)", M.status_reasons(m))
+        # 사유를 되짚을 수 없는 partial → '미기재'
+        m2 = _fx("model_mock_075580.json")
+        m2["status"] = "partial"
+        m2["quality"] = dict(m2.get("quality") or {}, status="partial", fin_quarters=19, identities_ok=True, sep_filled=[], missing=[], warnings=[])
+        self.assertEqual(M.status_reasons(m2), [])
+        self.assertIn("모델 상태 부분(partial)</b>사유: 미기재 — quality.warnings 참조", M.status_line(m2))
+        self.assertEqual(M.check_tag_balance(M.render_model_section({"stock": "075580", "name": "세진중공업", "role": "equip"}, m2)), [])
+
+
+class TestHubV7(unittest.TestCase):
+    def _hub(self, extra=None):
+        yard, _ = _yard_r3(_fx("model_mock_010140.json"), _fx("model_mock_sls_010140.json"))
+        yard["driver_fallback"] = "none"
+        equip = _fx("model_mock_075580.json")
+        equip["driver_fallback"] = "oos"
+        equip["segments"][0]["driver"]["customer_link_rejected"] = _rejected_oos()
+        equip["status"] = "partial"
+        equip["quality"] = dict(equip.get("quality") or {}, status="partial", fin_quarters=5)
+        tmp = tempfile.mkdtemp(prefix="kmodels_")
+        try:
+            for m in [yard, equip] + (extra or []):
+                with open(os.path.join(tmp, "%s.json" % m["stock"]), "w", encoding="utf-8") as f:
+                    json.dump(m, f, ensure_ascii=False)
+            return M.build_models_hub(tmp, write=False)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_fallback_column_status_title_footnote(self):
+        h = self._hub()
+        self.assertEqual(M.check_tag_balance(h), [])
+        thead = h[h.index("<thead>"):h.index("</thead>")]
+        self.assertIn('<th class="l">드라이버</th><th class="l">폴백<br>사유</th><th class="l">신규<br>수주</th>', thead)
+        n_th = len(re.findall(r"<th[\s>]", thead))
+        rows = re.findall(r"<tr>(.*?)</tr>", h[h.index("<tbody>"):h.index("</tbody>")], re.S)
+        self.assertEqual(len(rows), len(M.population()))
+        for r in rows:                                                          # 모델 있음·없음 행 모두 열 수 == 머리글 th 수
+            self.assertEqual(len(re.findall(r"<td[\s>]", r)), n_th, r[:120])
+        yard_tr = next(r for r in rows if "010140" in r)
+        equip_tr = next(r for r in rows if "075580" in r)
+        self.assertIn('<td class="l" data-v="none" title="%s"><span class="mut">none · 폴백 없음</span></td>' % M.E(M.DRIVER_FALLBACK_DESC["none"]), yard_tr)
+        self.assertIn('<td class="l" data-v="oos" title="', equip_tr)
+        self.assertIn('<b class="wn">oos</b> · OOS 기각 → 추세 폴백</td>', equip_tr)
+        self.assertIn("WAPE 연동 17.6% vs 추세 12.3%", equip_tr)                                       # 툴팁에 수치
+        self.assertIn('<b class="wn" title="%s — 사유: fin 5분기(&lt; 8)">부분</b>' % M.E(M.STATUS_RULE), equip_tr)   # 상태 칸 툴팁에 사유
+        self.assertIn('<b class="up" title="%s">완성</b>' % M.E(M.STATUS_RULE), yard_tr)
+        none_tr = next(r for r in rows if "모델 없음" in r)
+        self.assertIn('<td class="mut">—</td>' * (n_th - 5), none_tr)
+        self.assertIn("<b>1<small>/ 1</small></b><span>드라이버 폴백 없음(none) · 폴백 — oos 1</span>", h)   # KPI 타일
+        self.assertIn("status 는 데이터 완전성(T6 D7)", h)
+        self.assertIn("<h2>각주 <em>마지막 갱신 · 출처 · 단위 · 면책 — 고정</em></h2>", h)
+        self.assertIn("<li>마지막 갱신: 모델 생성 %s(summary.json built_at — · 기준 분기 —)" % M.E(str(_fx("model_mock_010140.json")["built_at"])), h)   # 임시 디렉터리엔 summary 없음 → —
+        self.assertIn("시계를 읽지 않는다", h)
+        self.assertIn("<li>출처: 재무 DART 정기보고서", h)
+        self.assertIn("이 표는 억원(백만원÷100)", h)
+        self.assertIn("none=폴백 없음 · oos=OOS 기각 → 추세 폴백", h)
+        self.assertIn("<li><b>%s</b> — 컨센서스·목표주가가 아니며" % M.DISCLAIMER, h)
+        self.assertLess(h.index('<div class="note info">'), h.index("<h2>각주 <em>마지막 갱신"))      # 각주는 표·안내 뒤, 스크립트 앞
+        self.assertLess(h.index("<h2>각주 <em>마지막 갱신"), h.index("<script>"))
+        self.assertNotIn('title=""', h)
+
+    def test_model_outside_population_listed(self):
+        m = _fx("model_mock_075580.json")
+        m["stock"], m["name"], m["driver_fallback"] = "999999", "모집단외테스트", "no_link"
+        h = self._hub([m])
+        rows = re.findall(r"<tr>(.*?)</tr>", h[h.index("<tbody>"):h.index("</tbody>")], re.S)
+        self.assertEqual(len(rows), len(M.population()) + 1)
+        tr = next((r for r in rows if "999999" in r), None)
+        self.assertIsNotNone(tr)
+        self.assertTrue(tr.startswith('<td class="l">모집단외테스트 <span class="mut" title="'), tr[:120])
+        self.assertIn(">모집단 외</span></td>", tr)
+        self.assertNotIn('href="999999/index.html', tr)                                              # 회사 페이지 없음 → 링크 없음
+        self.assertIn('data-v="no_link"', tr)
+        self.assertIn("(모집단 외 1 포함 — 피합병 참고용)", h)
+        self.assertIn("<title>한국조선 실적 모델 — %d사 FY2026E~28E</title>" % (len(M.population()) + 1), h)
+        self.assertEqual(M.check_tag_balance(h), [])
+
+    def test_peek_and_dir_helpers(self):
+        tmp = tempfile.mkdtemp(prefix="kpeek_")
+        try:
+            with open(os.path.join(tmp, "010140.json"), "w", encoding="utf-8") as f:
+                f.write('{\n "stock": "010140",\n "collected_at": "2026-10-02",\n "quarters": []}')
+            with open(os.path.join(tmp, "summary.json"), "w", encoding="utf-8") as f:
+                f.write("{}")
+            self.assertEqual(M._peek_json_key(os.path.join(tmp, "010140.json"), "collected_at"), "2026-10-02")
+            self.assertIsNone(M._peek_json_key(os.path.join(tmp, "010140.json"), "nope"))
+            self.assertIsNone(M._peek_json_key(os.path.join(tmp, "missing.json"), "collected_at"))
+            self.assertEqual(M._models_in_dir(tmp), ["010140"])                                     # summary.json 은 종목이 아니다
+            self.assertEqual(M._models_in_dir(os.path.join(tmp, "none")), [])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestMobileCss(unittest.TestCase):
+    """360px: grid2 카드가 360px 고정 최소폭으로 본문을 밀어내지 않게 min(360px,100%) · 표는 .wrap 안에서 가로 스크롤."""
+    def test_rules_present(self):
+        css = M.SECTION_CSS
+        self.assertIn(".kmodel .grid2{grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr))}", css)
+        self.assertIn(".kmodel .grid2>*{min-width:0}", css)
+        self.assertIn(".kmodel .wrap{overflow-x:auto;max-width:100%", css)
+        # 띄어쓰기 없는 긴 토큰(드라이버 type 'sls_marine_plus_uncovered_backlog_runoff', 파일명, URL)이 각주·가정 칸 밖으로 새지 않게
+        self.assertIn(".kmodel .fn,.kmodel .assum>div,.kmodel h2 em,.kmodel .bandlbl span{overflow-wrap:anywhere}", css)
+        self.assertIn("@media(max-width:480px)", css)
+        self.assertIn(".kmodel .status{", css)
+
+
+class TestRealAssetsAll(unittest.TestCase):
+    """assets/models 전부(있으면): 태그 균형 · 상태 줄 · 폴백 라벨이 모델 필드와 일치 · 화면 텍스트에 -0/None/nan 누출 없음. 값은 검사하지 않는다(다른 레인 소유)."""
+    def test_every_model_renders(self):
+        stocks = M._models_in_dir(M.MODELS_DIR)
+        if not stocks:
+            self.skipTest("assets/models 없음")
+        neg0 = re.compile(r">\s*-0(?:\.0+)?(?:%|배|원|억|%p)?\s*<")
+        for st in stocks:
+            model = M.load_model(st)
+            sls = M._load_json(os.path.join(M.SLS_DIR, "%s.json" % st))
+            h = M.render_model_section({"stock": st, "name": model.get("name"), "role": model.get("role")}, model, sls=sls)
+            self.assertEqual(M.check_tag_balance(h), [], st)
+            self.assertIn('<p class="status"><b class="', h, st)
+            code = model.get("driver_fallback")
+            if code in M.DRIVER_FALLBACK_KO:
+                self.assertIn('data-model-driver-fallback="%s"' % code, h, st)
+                self.assertIn("폴백 없음" if code == "none" else "폴백 사유 %s(" % code, h, st)
+            if model.get("status") == "partial":
+                self.assertIn("모델 상태 부분(partial)</b>사유: ", h, st)
+                self.assertNotIn("사유: 미기재", h, st)                                              # 실물 partial 10사는 전부 되짚힌다
+            text = re.sub(r"<script>.*?</script>", "", h, flags=re.S)
+            self.assertIsNone(neg0.search(text), st)
+            for bad in (">None<", ">nan<", ">NaN<", ">null<", ">undefined<", "title=\"\""):
+                self.assertNotIn(bad, text, st)
 
 
 if __name__ == "__main__":

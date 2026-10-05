@@ -2,7 +2,7 @@
  "stock": "439260",
  "name": "대한조선",
  "unit": "KRW_million",
- "collected_at": "2026-10-02",
+ "collected_at": "2026-10-05",
  "quarters": [
   "2025Q2",
   "2025Q3",
@@ -135,7 +135,8 @@
     "유동부채": 630345.17,
     "매입채무및기타채무": 103892.27,
     "단기차입금": 187365.85,
-    "단기사채": 40989.41,
+    "단기사채": 20989.41,
+    "유동성장기부채": 20000.0,
     "계약부채": 280517.02,
     "단기충당부채": 2975.68,
     "당기법인세부채(미지급법인세)": 0.0,
@@ -1718,14 +1719,6 @@
       [
        "명목금액",
        null
-      ],
-      [
-       "명목금액",
-       7000.0
-      ],
-      [
-       "명목금액",
-       null
       ]
      ]
     },
@@ -1745,10 +1738,6 @@
       [
        "명목금액",
        null
-      ],
-      [
-       "명목금액",
-       null
       ]
      ]
     },
@@ -1761,10 +1750,6 @@
      "리스부채(유동)": null,
      "리스부채(비유동)": null,
      "raw": [
-      [
-       "명목금액",
-       null
-      ],
       [
        "명목금액",
        null
@@ -2597,7 +2582,8 @@
     "유동부채": 630274.7,
     "매입채무및기타채무": 103834.76,
     "단기차입금": 187365.85,
-    "단기사채": 40989.41,
+    "단기사채": 20989.41,
+    "유동성장기부채": 20000.0,
     "계약부채": 280517.02,
     "단기충당부채": 2975.68,
     "기타유동부채": 804.11,
@@ -3976,6 +3962,34 @@
   {
    "quarter": "2025Q2",
    "scope": "cons",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": -0.01
+  },
+  {
+   "quarter": "2025Q2",
+   "scope": "cons",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": -0.0
+  },
+  {
+   "quarter": "2025Q2",
+   "scope": "cons",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q2",
+   "scope": "cons",
+   "rule": "oth=oi-oe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q2",
+   "scope": "cons",
    "rule": "assets=liab+equity",
    "ok": true,
    "diff": 0.0
@@ -4011,6 +4025,34 @@
   {
    "quarter": "2025Q3",
    "scope": "cons",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q3",
+   "scope": "cons",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q3",
+   "scope": "cons",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q3",
+   "scope": "cons",
+   "rule": "oth=oi-oe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q3",
+   "scope": "cons",
    "rule": "assets=liab+equity",
    "ok": true,
    "diff": -0.01
@@ -4025,6 +4067,34 @@
   {
    "quarter": "2025Q4",
    "scope": "cons",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": 0.01
+  },
+  {
+   "quarter": "2025Q4",
+   "scope": "cons",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": -0.01
+  },
+  {
+   "quarter": "2025Q4",
+   "scope": "cons",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q4",
+   "scope": "cons",
+   "rule": "oth=oi-oe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q4",
+   "scope": "cons",
    "rule": "assets=liab+equity",
    "ok": true,
    "diff": -0.0
@@ -4033,6 +4103,34 @@
    "quarter": "2026Q1",
    "scope": "cons",
    "rule": "pretax-tax=ni",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q1",
+   "scope": "cons",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q1",
+   "scope": "cons",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q1",
+   "scope": "cons",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q1",
+   "scope": "cons",
+   "rule": "oth=oi-oe",
    "ok": true,
    "diff": 0.0
   },
@@ -4081,6 +4179,34 @@
   {
    "quarter": "2026Q2",
    "scope": "cons",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q2",
+   "scope": "cons",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": -0.01
+  },
+  {
+   "quarter": "2026Q2",
+   "scope": "cons",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q2",
+   "scope": "cons",
+   "rule": "oth=oi-oe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q2",
+   "scope": "cons",
    "rule": "assets=liab+equity",
    "ok": true,
    "diff": 0.0
@@ -4110,6 +4236,34 @@
    "quarter": "2025Q2",
    "scope": "sep",
    "rule": "pretax-tax=ni",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q2",
+   "scope": "sep",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q2",
+   "scope": "sep",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": -0.0
+  },
+  {
+   "quarter": "2025Q2",
+   "scope": "sep",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q2",
+   "scope": "sep",
+   "rule": "oth=oi-oe",
    "ok": true,
    "diff": 0.0
   },
@@ -4151,6 +4305,34 @@
   {
    "quarter": "2025Q3",
    "scope": "sep",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": 0.01
+  },
+  {
+   "quarter": "2025Q3",
+   "scope": "sep",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": -0.01
+  },
+  {
+   "quarter": "2025Q3",
+   "scope": "sep",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q3",
+   "scope": "sep",
+   "rule": "oth=oi-oe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q3",
+   "scope": "sep",
    "rule": "assets=liab+equity",
    "ok": true,
    "diff": -0.01
@@ -4165,6 +4347,34 @@
   {
    "quarter": "2025Q4",
    "scope": "sep",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q4",
+   "scope": "sep",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q4",
+   "scope": "sep",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q4",
+   "scope": "sep",
+   "rule": "oth=oi-oe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2025Q4",
+   "scope": "sep",
    "rule": "assets=liab+equity",
    "ok": true,
    "diff": 0.0
@@ -4173,6 +4383,34 @@
    "quarter": "2026Q1",
    "scope": "sep",
    "rule": "pretax-tax=ni",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q1",
+   "scope": "sep",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q1",
+   "scope": "sep",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q1",
+   "scope": "sep",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q1",
+   "scope": "sep",
+   "rule": "oth=oi-oe",
    "ok": true,
    "diff": 0.0
   },
@@ -4214,23 +4452,51 @@
   {
    "quarter": "2026Q2",
    "scope": "sep",
+   "rule": "rev-cogs=gp",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q2",
+   "scope": "sep",
+   "rule": "gp-sga+oth=op",
+   "ok": true,
+   "diff": -0.0
+  },
+  {
+   "quarter": "2026Q2",
+   "scope": "sep",
+   "rule": "fin=fi-fe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q2",
+   "scope": "sep",
+   "rule": "oth=oi-oe",
+   "ok": true,
+   "diff": 0.0
+  },
+  {
+   "quarter": "2026Q2",
+   "scope": "sep",
    "rule": "assets=liab+equity",
    "ok": true,
    "diff": 0.0
   }
  ],
  "synth_basis": {
-  "총차입금": "단기차입금+단기사채+유동성장기부채+장기차입금+사채 (face 라벨 '단기/장기금융부채' 는 차입금으로 보아 단기/장기차입금에 넣음 — issues 표기; 리스부채는 별도 키)",
+  "총차입금": "단기차입금+단기사채+유동성장기부채+장기차입금+사채 (face 라벨 '단기/장기금융부채'·K-IFRS 표준 묶음 라벨 '유동 차입금(사채 포함)'·'장기차입금(사채 포함), 총액' 등은 차입금 덩어리로 보아 단기/장기차입금에 넣음 — issues borrowings_face_label; 주석 분해 시 face 총액 보존(잔차는 유동성장기부채·사채에 흡수, borrowings_note_residual); 유동부채 구역의 사채·전환사채·유동성사채는 유동성장기부채(FnGuide: 단기사채는 전단채·CP만); 리스부채는 별도 키)",
   "순차입금": "총차입금 − 현금및현금성자산 − 단기금융자산",
   "이자발생자산": "현금및현금성자산 + 단기금융자산 + 장기금융자산",
   "금융손익": "금융수익 − 금융비용 (face 에 있으면 그 값)",
   "이자손익": "이자수익 − 이자비용 (둘 다 face 에 있을 때만)",
-  "기타영업외손익": "기타영업외수익 − 기타영업외비용 (face 에 있으면 그 값)",
+  "기타영업외손익": "기타영업외수익 − 기타영업외비용 (face 에 있으면 그 값; face 가 `영업외손익` 총액만 주면 총액 − 금융손익; face `기타영업외손익` 줄이 기타수익·비용과 별도 항목이면(동성화인텍 — 세전 대조로 확인) 수익 − 비용 + 그 줄, 원 줄은 `기타영업외손익(face)`)",
   "기타영업손익": "기타영업수익 − 기타영업비용",
   "매출총이익": "매출액(수익) − 매출원가 (face 에 없을 때)",
   "판관비": "face 판관비 + 매출총이익~영업이익 사이의 매핑 안 된 영업비용 줄(물류비·대손상각비 — 잔차가 그 줄 합과 맞을 때만; issues.sga_absorbed_op_lines)",
   "계속사업이익": "face 총액 줄; 없으면 당기순이익 − 중단사업이익(귀속 블록의 지배주주분 계속영업이익은 쓰지 않음)",
-  "매출원가·판관비·기타영업외비용·금융비용·법인세비용 부호": "face 가 비용을 괄호(음수)로 찍는 표는 양수로 정규화(issues.expense_sign_negative) — 비용은 항상 양수",
+  "매출원가·판관비·기타영업외비용·금융비용·법인세비용 부호": "face 가 비용을 괄호(음수)로 찍는 표는 양수로 정규화(issues.expense_sign_negative; 영업외 그룹만 괄호면 expense_sign_negative_nonop; 주석 표는 note_expense_sign_negative) — 저장 규약: 비용은 양수. 누적차분·Q4 도출의 음수(환입)는 그대로",
   "지배주주지분": "비지배지분 라인이 없으면 자본총계",
   "(지배주주지분)당기순이익": "비지배 라인이 없으면 당기순이익",
   "CAPEX": "유형자산의증가 + 무형자산의증가 (현금흐름표 취득액, 절대값)",
@@ -4315,31 +4581,31 @@
    "quarter": "2025Q2",
    "scope": "cons",
    "code": "note_unmapped:borrowings",
-   "detail": "주석 표는 받았으나 매핑된 계정 없음 — raw 4줄"
+   "detail": "주석 표는 받았으나 매핑된 계정 없음 — raw 2줄"
   },
   {
    "quarter": "2025Q3",
    "scope": "cons",
    "code": "note_unmapped:borrowings",
-   "detail": "주석 표는 받았으나 매핑된 계정 없음 — raw 3줄"
+   "detail": "주석 표는 받았으나 매핑된 계정 없음 — raw 2줄"
   },
   {
    "quarter": "2025Q4",
    "scope": "cons",
    "code": "note_unmapped:borrowings",
-   "detail": "주석 표는 받았으나 매핑된 계정 없음 — raw 2줄"
+   "detail": "주석 표는 받았으나 매핑된 계정 없음 — raw 1줄"
   },
   {
    "quarter": "2026Q1",
    "scope": "cons",
-   "code": "note_missing:borrowings",
-   "detail": "목차에 해당 주석 없음 — 차입금 분해 없음"
+   "code": "note_na:borrowings",
+   "detail": "face 에 차입금 계정이 없음 — 차입금 주석이 없는 것이 정상"
   },
   {
    "quarter": "2026Q2",
    "scope": "cons",
-   "code": "note_missing:borrowings",
-   "detail": "목차에 해당 주석 없음 — 차입금 분해 없음"
+   "code": "note_na:borrowings",
+   "detail": "face 에 차입금 계정이 없음 — 차입금 주석이 없는 것이 정상"
   }
  ]
 }

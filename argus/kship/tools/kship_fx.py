@@ -92,8 +92,14 @@ def load_cache():
     return load_asset(CACHE)
 
 
+MIN_DAYS_FULL_YEAR = 200                               # ECB 영업일은 연 ≈255일 — 이보다 적게 오면 완결 구간으로 적지 않는다
+
+
 def update_cache(cache, today, log=print):
-    """지난 연도는 완결 구간이 캐시에 있으면 건너뛰고, 올해는 마지막 캐시일부터 today 까지만 받는다."""
+    """지난 연도는 완결 구간이 캐시에 있으면 건너뛰고, 올해는 마지막 캐시일부터 today 까지만 받는다.
+
+    지난 연도 응답이 비거나 짧으면(HTTP 200 에 rates 없음·일부만) `ranges` 에 완결로 적지 않는다 — 적어 두면 그 해 ~250일이
+    영구히 빠진 채 다시 받지 않게 된다(분기 평균이 조용히 틀어짐). 받은 날은 그대로 캐시에 넣고 다음 실행이 다시 시도한다."""
     done = {(r[0], r[1]) for r in cache["ranges"]}
     days = cache["days"]
     for y in range(FIRST_YEAR, today.year + 1):
@@ -110,7 +116,10 @@ def update_cache(cache, today, log=print):
         got = fetch_range(start, end)
         days.update(got)
         if y < today.year:
-            cache["ranges"].append([start, end, today.isoformat()])
+            if len(got) >= MIN_DAYS_FULL_YEAR:
+                cache["ranges"].append([start, end, today.isoformat()])
+            else:
+                log("  !! %s..%s 응답 %d일 < %d — 완결 구간으로 기록하지 않음(다음 실행에 재요청)" % (start, end, len(got), MIN_DAYS_FULL_YEAR))
         log("  %s..%s  %d일" % (start, end, len(got)))
         time.sleep(0.3)
     cache["ranges"] = sorted({tuple(r[:2]): r for r in cache["ranges"]}.values())
@@ -285,8 +294,7 @@ def build(cache, today, naver=None):
     quarters = quarterize(days, today)
     annual = annualize(days, today)
     last_d = max(days)
-    daily_last = dict(cross(days[last_d]), date=last_d)
-    daily_last = {"date": last_d, **{p: round(daily_last[p], 2) for p in PAIRS}}
+    daily_last = {"date": last_d, **{p: round(v, 2) for p, v in cross(days[last_d]).items()}}
     ref = reference_check(quarters)
     fx = {
         "source": "ECB via api.frankfurter.app; Naver marketindex cross-check",

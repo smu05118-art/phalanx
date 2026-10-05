@@ -1,11 +1,22 @@
 name: scan-kship (모집단 확장 탐색, 주 1회)
 
 # 기자재 어휘에 걸리는 상장사 ~230곳의 정기보고서 본문을 읽어 조선 공급망 여부를 판정한다(약 1시간).
-# 승격분은 assets/universe_probe.json 에 남고, 다음 update-kship 이 '탐색' 출처로 모집단에 넣는다.
+# 승격분은 assets/universe_probe.json 에 남고 — 직전 승격은 kship_scan.carry_forward 가 이월한다(2026-09-12 회귀 재발 방지, MODEL.md §6-16) —
+# kship_universe.py --write 가 '탐색' 출처로 모집단에 넣는다. 새 회사의 재무·모델은 다음 update-kship 이 받는다.
+# 2026-10-05 V9(MODEL.md §13):
+#   ① tests 가 openpyxl 을 모듈 수준에서 import 하므로(9/30 test_kship_model_xlsx.py) 설치 단계를 넣었다 — 설치 없이는 unittest 가 ImportError 로
+#      실패해 커밋까지 못 간다(10-04 일요일 스캔 커밋이 없다 — 러너 로그는 보지 않았고 git 이력으로 추정).
+#   ② 정기보고서 분기를 update-kship 과 같은 규칙(분기말 +50일 · 사업보고서 +95일)으로 계산해 --quarter 로 넘긴다(kship_scan.py 기본값은 2026Q2 상수).
+#      보고서가 아직 없는 회사는 fetch 실패 = failed 보존 → 직전 승격 그대로(carry_forward).
+#   ③ python 3.11 · PYTHONDONTWRITEBYTECODE · 명시 pathspec add(fin_cache·로그·pyc 제외) 로 update-kship 과 맞췄다.
 on:
   schedule:
     - cron: "0 17 * * 6"        # 매주 일요일 02:00 KST
   workflow_dispatch:
+    inputs:
+      quarter:
+        description: "정기보고서 분기 강제(예: 2026Q3) — 비우면 분기말+50일·사업보고서+95일 규칙"
+        required: false
 
 permissions:
   contents: write
@@ -15,6 +26,9 @@ concurrency:
   queue: max  # Preserve every waiting industry refresh (up to 100).
   cancel-in-progress: false
 
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
 jobs:
   scan:
     runs-on: ubuntu-latest
@@ -23,26 +37,63 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
+      - name: Install openpyxl (tests 가 모듈 수준에서 import)
+        run: python3 -m pip install --quiet --disable-pip-version-check openpyxl==3.1.5
       - name: 탐색
-        working-directory: argus/kship/tools
-        run: python3 kship_scan.py --scan
-      - name: 모집단 재생성 · 기자재 빌드 · 페이지
+        shell: bash
+        env:
+          QUARTER_INPUT: ${{ github.event.inputs.quarter }}
         working-directory: argus/kship/tools
         run: |
+          set -o pipefail
+          # 기대 최신 분기 — update-kship.yml 재무제표 단계와 같은 규칙(tools/run_all.sh --print-quarter 와도 같다).
+          Q1="$(python3 - <<'PY'
+          import datetime, os
+          d = datetime.date.fromisoformat(os.environ["TODAY"]) if os.environ.get("TODAY") else datetime.date.today()
+          y, q = d.year, (d.month - 1) // 3 + 1
+          while True:
+              q -= 1
+              if q == 0:
+                  y, q = y - 1, 4
+              m = q * 3
+              end = datetime.date(y + (m == 12), m % 12 + 1, 1) - datetime.timedelta(days=1)
+              if end + datetime.timedelta(days=95 if q == 4 else 50) <= d:
+                  print("%dQ%d" % (y, q)); break
+          PY
+          )"
+          if [ -n "${QUARTER_INPUT:-}" ]; then
+            if ! printf '%s' "$QUARTER_INPUT" | grep -Eq '^[0-9]{4}Q[1-4]$'; then echo "::error::quarter 형식"; exit 2; fi
+            Q1="$QUARTER_INPUT"
+          fi
+          echo "탐색 분기 $Q1 (직전 승격은 carry_forward 로 이월 · 강등은 본문을 읽고도 기준 미달일 때만)"
+          python3 kship_scan.py --scan --quarter "$Q1"
+      - name: 모집단 재생성 · 기자재 빌드 · 페이지
+        shell: bash
+        working-directory: argus/kship/tools
+        run: |
+          set -o pipefail
           python3 kship_universe.py --write
           python3 kship_suppliers.py --collect
           python3 kship_suppliers.py --build
           python3 build_dicts.py
-          python3 -m unittest discover -s tests
+          python3 -m unittest discover -s tests -p 'test_*.py'
           python3 kship_page.py --all
           python3 kship_parts.py --all
       - name: 커밋
+        shell: bash
         run: |
           git config user.name "kship-bot"
           git config user.email "kship-bot@users.noreply.github.com"
-          git add -A -- argus/kship
-          git diff --cached --quiet && echo "변경 없음" && exit 0
-          git commit -m "kship: 모집단 탐색 $(date -u +%Y-%m-%d)"
+          # 원문 캐시·수집 로그·바이트코드는 커밋하지 않는다(update-kship 과 같은 pathspec).
+          git add -- argus/kship \
+            ':(exclude)argus/kship/tools/assets/fin_cache' \
+            ':(exclude)argus/kship/tools/assets/fin_collect.log' \
+            ':(exclude,glob)**/__pycache__/**' ':(exclude,glob)**/*.pyc'
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git diff --cached --stat | tail -3
+          # 메시지에 탐색 결과 수치(universe_probe.json 실측)를 적는다 — 모집단 행 수가 줄면 바로 의심할 수 있게.
+          PROBE="$(python3 -c "import json;d=json.load(open('argus/kship/tools/assets/universe_probe.json'));print('승격 %d·이월 %d·제외 %d·실패 %d' % (len(d.get('promoted') or {}), len(d.get('carried') or []), len(d.get('rejected') or []), len(d.get('failed') or [])))" 2>/dev/null || echo '-')"
+          git commit -m "kship: 모집단 탐색 $(date -u +%Y-%m-%d) ($PROBE)"
           git pull --rebase origin main
-          git push origin main
+          git push origin HEAD:main

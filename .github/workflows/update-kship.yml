@@ -17,6 +17,10 @@
 #   맥미니 로컬 주석 캐시(fin_cache 333MB)는 actions/cache 에 없으므로 러너 첫 실행은 주석을 처음부터 받는다
 #   (부모 절만 최악 786 × 2 요청 — T1 보고). 체크포인트라 시간 제한에 걸려도 다음 실행이 이어받는다.
 #   레퍼런스 xlsx 패치(kship_xlsx_patch.py, 사용자 사유 파일)는 레포 밖이라 여기서 돌리지 않는다.
+# 2026-10-04 89f95231: 캐시 복원이 비면(첫 실행) assets/fin_cache 가 없어 listing() 이 죽고 재무·주석 단계가 수집 전에 실패했다 —
+#   10-01·10-03·10-04 kship-bot 커밋에 fin 변경이 없던 원인. 두 단계 앞에 mkdir -p 를 넣었다.
+# 2026-10-05 V9(MODEL.md §13): 재무제표 단계에 단계 제한 90분(없으면 job 취소 → 캐시 저장이 안 된다), job 제한 180 → 240(90 + 75 + 나머지),
+#   커밋 메시지는 단계 outcome(✗·생략·변경)으로. 로컬 재현은 tools/run_all.sh(같은 분기 규칙·같은 순서, 네트워크 단계는 플래그).
 name: update-kship
 on:
   schedule:
@@ -42,7 +46,7 @@ env:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 180         # 재무 캐시가 비어 있을 때(첫 실행·만료) 57사 수집 ≈ 60분 + 나머지
+    timeout-minutes: 240         # 재무(단계 제한 90) + 주석(75) + 나머지. 캐시가 비어 있을 때(첫 실행·만료) 57사 수집 ≈ 60분
     steps:
       - uses: actions/checkout@v4
         with:
@@ -93,6 +97,7 @@ jobs:
       - name: Financial statements (DART, 순차 한 프로세스)
         id: fin
         continue-on-error: true
+        timeout-minutes: 90        # 첫 실행 ≈ 60분. 단계 제한이면 outcome=failure 로 이어가 캐시를 저장하고 다음 실행이 체크포인트에서 받는다(job 취소와 다르다)
         env:
           QUARTER_INPUT: ${{ github.event.inputs.quarter }}
         shell: bash
@@ -249,12 +254,13 @@ jobs:
           NOTES_CHANGED: ${{ steps.notes.outputs.notes_changed }}
         run: |
           DOW="$(date -u +%u)"     # 01:40 UTC = 10:40 KST 같은 날, 월요일 = 1
+          # ${WHY} 로 묶는다 — bash 3.2(맥 기본)는 "$WHY·" 처럼 변수 바로 뒤의 멀티바이트 글자를 변수 이름에 붙여 읽어 값을 비운다(러너 bash 5 는 무관, 로컬 흉내용).
           WHY=""
           [ "${MODELS_INPUT:-}" = "true" ] && WHY="수동 입력"
-          [ "${FIN_CHANGED:-}" = "true" ] && WHY="${WHY:+$WHY·}재무 변경"
-          [ "${NOTES_CHANGED:-}" = "true" ] && WHY="${WHY:+$WHY·}주석 변경"
-          [ "$DOW" = "1" ] && WHY="${WHY:+$WHY·}월요일"
-          [ -f argus/kship/tools/assets/models/summary.json ] || WHY="${WHY:+$WHY·}summary.json 없음"
+          [ "${FIN_CHANGED:-}" = "true" ] && WHY="${WHY:+${WHY}·}재무 변경"
+          [ "${NOTES_CHANGED:-}" = "true" ] && WHY="${WHY:+${WHY}·}주석 변경"
+          [ "$DOW" = "1" ] && WHY="${WHY:+${WHY}·}월요일"
+          [ -f argus/kship/tools/assets/models/summary.json ] || WHY="${WHY:+${WHY}·}summary.json 없음"
           if [ -n "$WHY" ]; then
             { echo "models=true"; echo "why=$WHY"; } >> "$GITHUB_OUTPUT"
           else
@@ -294,6 +300,14 @@ jobs:
         shell: bash
         env:
           MODELS: ${{ steps.gate.outputs.models }}
+          O_BUILD: ${{ steps.build.outcome }}
+          O_FIN: ${{ steps.fin.outcome }}
+          O_NOTES: ${{ steps.notes.outcome }}
+          O_MARKET: ${{ steps.market.outcome }}
+          O_MODELS: ${{ steps.models.outcome }}
+          O_PAGES: ${{ steps.pages.outcome }}
+          FIN_CHANGED: ${{ steps.fin.outputs.fin_changed }}
+          NOTES_CHANGED: ${{ steps.notes.outputs.notes_changed }}
         run: |
           git config user.name "kship-bot"
           git config user.email "kship-bot@users.noreply.github.com"
@@ -306,9 +320,14 @@ jobs:
             echo "변경 없음"; exit 0
           fi
           git diff --cached --stat | tail -3
-          PARTS="계약·정기보고서·기자재·재무·환율·시세"
-          [ "${MODELS:-}" = "true" ] && PARTS="$PARTS·모델"
-          git commit -m "kship: 자동 갱신 $(date -u +%Y-%m-%d) ($PARTS·진입 링크)"
+          # 커밋 메시지는 단계 outcome 을 적는다(성공 문구가 아니다): 실패 ✗ · 생략 (생략) · 캐시 변경 (변경).
+          part() { case "$2" in success) printf '%s' "$1" ;; skipped) printf '%s(생략)' "$1" ;; *) printf '%s✗' "$1" ;; esac; }
+          FINTAG=""; [ "${FIN_CHANGED:-}" = "true" ] && FINTAG="(변경)"
+          NOTESTAG=""; [ "${NOTES_CHANGED:-}" = "true" ] && NOTESTAG="(변경)"
+          PARTS="$(part 계약·정기보고서·기자재 "$O_BUILD")·$(part 재무 "$O_FIN")${FINTAG}·$(part 주석 "$O_NOTES")${NOTESTAG}·$(part 환율·시세 "$O_MARKET")"
+          [ "${MODELS:-}" = "true" ] && PARTS="${PARTS}·$(part 모델 "$O_MODELS")"
+          PARTS="${PARTS}·$(part 페이지 "$O_PAGES")"
+          git commit -m "kship: 자동 갱신 $(date -u +%Y-%m-%d) (${PARTS}·진입 링크)"
           git pull --rebase origin main
           git push origin HEAD:main
 

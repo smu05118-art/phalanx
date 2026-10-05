@@ -4,7 +4,7 @@
  "origin": "2026Q2",
  "unit": "USD_million | KRW_million",
  "curve": "linear_progress",
- "built_at": "2026-10-02",
+ "built_at": "2026-10-05",
  "counts": {
   "contracts": 42,
   "counted": 20,
@@ -18,9 +18,9 @@
    "to": "2028Q4",
    "quarters": 10,
    "usd_m": 5348.578,
-   "hedged_krw_m": 7636115.9,
+   "hedged_krw_m": 7626960.2,
    "usd_m_raw": 5348.579,
-   "hedged_krw_m_raw": 7636115.9
+   "hedged_krw_m_raw": 7626960.2
   }
  },
  "fx": {
@@ -40,10 +40,19 @@
   "hedge_ratio_implied_spot": null,
   "implied_spot_rate": null,
   "implied_basis": null,
+  "hedge_ratio_implied_sign_rate": null,
+  "implied_sign_rate": null,
+  "implied_sign_n": null,
+  "implied_sign_basis": null,
+  "reference_hedge": {
+   "HD현대미포 010620 SLS!HEDGE": 0.65,
+   "삼성중공업 010140 SLS!HEDGE": 1.0
+  },
+  "reference_hedge_note": "레퍼런스 두 원본의 SLS!HEDGE 행(2008~2027 전 연도 상수) 실측값. 가정 0.70 은 레퍼런스 값이 아니라 그 범위 안의 설정값(--hedge-default)",
   "hedge_ratio": 0.7,
   "hedge_ratio_raw": null,
   "kind": "estimate",
-  "basis": "통화선도 공시 없음 → 레퍼런스 SLS 시트의 HEDGE 70% 가정. hedge_rate 는 계약별 수주시점 환율로 대체"
+  "basis": "통화선도 공시 없음 → HEDGE 70% 가정(레퍼런스 SLS 시트 HEDGE 행은 미포 65%·삼성重 100% — 그 사이에 둔 설정값). hedge_rate 는 계약별 수주시점 환율로 대체"
  },
  "cohort_mode": "reference_anchor",
  "cohort_mode_alt": "ledger_relative",
@@ -137,6 +146,329 @@
   "④호황": 0.1,
   "⑤초호황": 0.15
  },
+ "cohort_opm_table_source": "assumed",
+ "cohort_opm_table_assumed": {
+  "①적자": -0.05,
+  "②BEP": 0.0,
+  "③중마진": 0.05,
+  "④호황": 0.1,
+  "⑤초호황": 0.15
+ },
+ "cohort_opm_calibration": {
+  "kind": "estimate",
+  "source": "사용자 레퍼런스 모델 HD현대미포 010620 subQ `SLS` 시트 'ⓞ OPM 잡기' 블록(행 79~129, 미포 울산 별도 — AC 코호트 머리 · AD 셀 OPM · AE..DF 분기 매출 백만$). 셀 OPM 은 애널리스트가 둔 가정이고 실측이 아니다. 비나신 블록(행 131~)은 제외",
+  "method": "코호트별 유효 OPM = Σ 셀매출×셀OPM ÷ Σ 셀매출 (연도별) → window 연도 안에서 다시 매출가중. 검산: 2Q26 전체 가중 0.10290 = 시트 행 3 `미포_OPM` 2Q26 셀값",
+  "window": {
+   "from": 2023,
+   "to": 2027,
+   "why": "우리 예측창 2026Q3~2028Q4 와 겹치는 레퍼런스 기간(2023~24 는 레퍼런스의 확정·잠정 연도)"
+  },
+  "table_assumed": {
+   "①적자": -0.05,
+   "②BEP": 0.0,
+   "③중마진": 0.05,
+   "④호황": 0.1,
+   "⑤초호황": 0.15
+  },
+  "table_reference_calibrated": {
+   "①적자": -0.0108,
+   "②BEP": 0.01,
+   "③중마진": 0.0426,
+   "④호황": 0.054,
+   "⑤초호황": 0.108
+  },
+  "table_used_years": {
+   "①적자": {
+    "years": [
+     2023,
+     2024
+    ],
+    "usd_m": 439.0,
+    "fallback_assumed": false
+   },
+   "②BEP": {
+    "years": [
+     2023,
+     2024,
+     2025,
+     2026
+    ],
+    "usd_m": 440.3,
+    "fallback_assumed": false
+   },
+   "③중마진": {
+    "years": [
+     2023,
+     2024
+    ],
+    "usd_m": 1632.9,
+    "fallback_assumed": false
+   },
+   "④호황": {
+    "years": [
+     2023,
+     2024,
+     2025
+    ],
+    "usd_m": 1738.3,
+    "fallback_assumed": false
+   },
+   "⑤초호황": {
+    "years": [
+     2023,
+     2024,
+     2025,
+     2026,
+     2027
+    ],
+    "usd_m": 14194.1,
+    "fallback_assumed": false
+   }
+  },
+  "reference_effective_opm_by_cohort_year": {
+   "①적자": {
+    "2022": {
+     "opm": -0.0178,
+     "usd_m": 774.2
+    },
+    "2023": {
+     "opm": -0.0112,
+     "usd_m": 281.8
+    },
+    "2024": {
+     "opm": -0.01,
+     "usd_m": 157.2
+    }
+   },
+   "②BEP": {
+    "2022": {
+     "opm": 0.01,
+     "usd_m": 199.0
+    },
+    "2023": {
+     "opm": 0.01,
+     "usd_m": 82.4
+    },
+    "2024": {
+     "opm": 0.01,
+     "usd_m": 4.1
+    },
+    "2025": {
+     "opm": 0.01,
+     "usd_m": 84.0
+    },
+    "2026": {
+     "opm": 0.01,
+     "usd_m": 269.8
+    }
+   },
+   "③중마진": {
+    "2022": {
+     "opm": 0.05,
+     "usd_m": 960.2
+    },
+    "2023": {
+     "opm": 0.0477,
+     "usd_m": 1147.9
+    },
+    "2024": {
+     "opm": 0.0305,
+     "usd_m": 485.0
+    }
+   },
+   "④호황": {
+    "2022": {
+     "opm": 0.0527,
+     "usd_m": 81.9
+    },
+    "2023": {
+     "opm": 0.0567,
+     "usd_m": 660.1
+    },
+    "2024": {
+     "opm": 0.0524,
+     "usd_m": 1023.5
+    },
+    "2025": {
+     "opm": 0.05,
+     "usd_m": 54.7
+    }
+   },
+   "⑤초호황": {
+    "2022": {
+     "opm": 0.0675,
+     "usd_m": 11.1
+    },
+    "2023": {
+     "opm": 0.0902,
+     "usd_m": 85.7
+    },
+    "2024": {
+     "opm": 0.0826,
+     "usd_m": 1314.1
+    },
+    "2025": {
+     "opm": 0.111,
+     "usd_m": 2195.8
+    },
+    "2026": {
+     "opm": 0.1108,
+     "usd_m": 5785.4
+    },
+    "2027": {
+     "opm": 0.1106,
+     "usd_m": 4813.1
+    }
+   }
+  },
+  "by_year": {
+   "2022": {
+    "usd_m": 2026.4,
+    "reference_cells": 0.0204,
+    "reference_sls_row": 0.0198,
+    "assumed_table": 0.0095,
+    "calibrated_table": 0.0198,
+    "gap_assumed_minus_reference": -0.0109,
+    "gap_calibrated_minus_reference": -0.0006,
+    "share": {
+     "①적자": 0.3821,
+     "②BEP": 0.0982,
+     "③중마진": 0.4738,
+     "④호황": 0.0404,
+     "⑤초호황": 0.0055
+    }
+   },
+   "2023": {
+    "usd_m": 2257.9,
+    "reference_cells": 0.0432,
+    "reference_sls_row": 0.0437,
+    "assumed_table": 0.0541,
+    "calibrated_table": 0.0406,
+    "gap_assumed_minus_reference": 0.0109,
+    "gap_calibrated_minus_reference": -0.0027,
+    "share": {
+     "①적자": 0.1248,
+     "②BEP": 0.0365,
+     "③중마진": 0.5084,
+     "④호황": 0.2924,
+     "⑤초호황": 0.038
+    }
+   },
+   "2024": {
+    "usd_m": 2983.9,
+    "reference_cells": 0.0588,
+    "reference_sls_row": 0.0589,
+    "assumed_table": 0.1059,
+    "calibrated_table": 0.0725,
+    "gap_assumed_minus_reference": 0.0471,
+    "gap_calibrated_minus_reference": 0.0137,
+    "share": {
+     "①적자": 0.0527,
+     "②BEP": 0.0014,
+     "③중마진": 0.1625,
+     "④호황": 0.343,
+     "⑤초호황": 0.4404
+    }
+   },
+   "2025": {
+    "usd_m": 2334.5,
+    "reference_cells": 0.1059,
+    "reference_sls_row": 0.1069,
+    "assumed_table": 0.1434,
+    "calibrated_table": 0.1032,
+    "gap_assumed_minus_reference": 0.0375,
+    "gap_calibrated_minus_reference": -0.0027,
+    "share": {
+     "②BEP": 0.036,
+     "④호황": 0.0234,
+     "⑤초호황": 0.9406
+    }
+   },
+   "2026": {
+    "usd_m": 6055.2,
+    "reference_cells": 0.1063,
+    "reference_sls_row": 0.1057,
+    "assumed_table": 0.1433,
+    "calibrated_table": 0.1036,
+    "gap_assumed_minus_reference": 0.037,
+    "gap_calibrated_minus_reference": -0.0027,
+    "share": {
+     "②BEP": 0.0446,
+     "⑤초호황": 0.9554
+    }
+   },
+   "2027": {
+    "usd_m": 4813.1,
+    "reference_cells": 0.1106,
+    "reference_sls_row": 0.1092,
+    "assumed_table": 0.15,
+    "calibrated_table": 0.108,
+    "gap_assumed_minus_reference": 0.0394,
+    "gap_calibrated_minus_reference": -0.0026,
+    "share": {
+     "⑤초호황": 1.0
+    }
+   }
+  },
+  "reference_sls_opm_row": {
+   "label": "SLS 행 3 `SLSOPM미포별도`(미포_OPM) 연 단순평균",
+   "values": {
+    "2022": 0.0198,
+    "2023": 0.0437,
+    "2024": 0.0589,
+    "2025": 0.1069,
+    "2026": 0.1057,
+    "2027": 0.1092
+   }
+  },
+  "reference_actual_opm_row": {
+   "label": "SLS 행 2 '실제 OPM'",
+   "coverage": "1Q08~4Q13",
+   "usable": false,
+   "why": "2014 이후 비어 있고 2008~13 매출의 ④⑤ 비중이 0~5% 라 ④⑤ OPM 을 식별할 수 없다"
+  },
+  "actual_opm_fin_010620_by_year": {
+   "2022": {
+    "opm": -0.0293,
+    "quarters": 4,
+    "reference_sls_minus_actual": 0.0497
+   },
+   "2023": {
+    "opm": -0.0379,
+    "quarters": 4,
+    "reference_sls_minus_actual": 0.0811
+   },
+   "2024": {
+    "opm": 0.0191,
+    "quarters": 4,
+    "reference_sls_minus_actual": 0.0397
+   },
+   "2025": {
+    "opm": 0.0965,
+    "quarters": 3,
+    "reference_sls_minus_actual": 0.0094
+   }
+  },
+  "limits": [
+   "레퍼런스 코호트 OPM 은 시대 의존 — 같은 ④호황 셀이 2016~20 매출에는 13~15%, 2022~25 매출에는 5% 안팎이라 단일 표는 단순화다",
+   "레퍼런스 SLS OPM 자체가 미포 실측(fin 연결)보다 높다(actual_opm_fin_010620_by_year.reference_sls_minus_actual) — 회사 실측과의 차는 calibration.calibrated_shift 가 담당",
+   "표를 바꿔도 등급(수주연도 → ①~⑤)은 그대로이므로 2022 이후 수주만 있는 회사의 타겟은 ⑤ 값(가정 15% ↔ 캘리브레이션 10.8%) 상수가 된다"
+  ],
+  "this_file": {
+   "applied_table": "assumed",
+   "cohort_mode": "reference_anchor",
+   "target_opm_next_q": {
+    "assumed": 0.15,
+    "reference_calibrated": 0.108
+   },
+   "target_opm_window_mean": {
+    "assumed": 0.15,
+    "reference_calibrated": 0.108,
+    "stat": "median over 10 quarters 2026Q3~2028Q4"
+   },
+   "note": "target_opm·target_opm_alt·calibration 은 applied_table 로 계산했다. 다른 표로 바꾸면 calibrated_shift(실측 − 타겟)가 그만큼 반대로 움직여 실측 OPM 수준은 같고 타겟의 해석(가정 15% vs 레퍼런스 유효 10.8%)만 달라진다"
+  }
+ },
  "year_index": {
   "2021": 1.0,
   "2023": 1.0,
@@ -154,20 +486,20 @@
   "reported_marine_backlog_krw_m": null,
   "remaining_marine_krw_m_at_origin_raw": 8468891.4,
   "remaining_marine_krw_m_at_origin_capped": 8468891.4,
-  "future_marine_hedged_krw_m_raw": 8829288.4,
-  "future_marine_hedged_krw_m": 8829288.4,
+  "future_marine_hedged_krw_m_raw": 8818328.6,
+  "future_marine_hedged_krw_m": 8818328.6,
   "future_sls_vs_backlog_raw": null,
   "future_sls_vs_backlog": null,
-  "window_hedged_krw_m_raw": 7636115.9,
-  "window_hedged_krw_m": 7636115.9,
+  "window_hedged_krw_m_raw": 7626960.2,
+  "window_hedged_krw_m": 7626960.2,
   "basis": "MODEL_SPEC §5-2 — 원장 잔여 원화(수주시점 금액 × 미진행 비율) > 공시 해양 기말잔고이면 배율 1/coverage 로 줄인다(선형 진행 가정이 실제보다 느리거나 공시 잔고 범위·환율이 다른 경우). 원값은 by_quarter[q].backlog_cap.*_raw · by_year[y].*_raw · counts.forecast_window.*_raw 에 보존. future_sls_vs_backlog 는 SLS 원화(건조시점 환율) 기준이라 캡 뒤에도 1 을 넘을 수 있다"
  },
  "post_origin": {
   "n": 1,
   "amt_krw_m": 545600.0,
   "amt_usd_m": 384.564,
-  "window_marine_hedged_krw_m": 343388.7,
-  "future_marine_hedged_krw_m": 538718.1,
+  "window_marine_hedged_krw_m": 342961.8,
+  "future_marine_hedged_krw_m": 537993.2,
   "rcps": [
    "20260713800202"
   ],
@@ -944,10 +1276,10 @@
    "cohort_alt_detail": {
     "cohort": "③중마진",
     "per_ship_usd_m": 243.84,
-    "ref_usd_m": 251.39,
+    "ref_usd_m": 251.0,
     "ref_kind": "type_year_median",
-    "cell_n": 24,
-    "rel": 0.97,
+    "cell_n": 25,
+    "rel": 0.971,
     "year_index": 0.9281
    },
    "progress_at_origin": 0.1721,
@@ -1526,10 +1858,10 @@
    "cohort_alt_detail": {
     "cohort": "③중마진",
     "per_ship_usd_m": 256.43,
-    "ref_usd_m": 251.39,
+    "ref_usd_m": 251.0,
     "ref_kind": "type_year_median",
-    "cell_n": 24,
-    "rel": 1.02,
+    "cell_n": 25,
+    "rel": 1.022,
     "year_index": 0.9281
    },
    "progress_at_origin": 0.0669,
@@ -1931,10 +2263,10 @@
    "cohort_alt_detail": {
     "cohort": "③중마진",
     "per_ship_usd_m": 249.21,
-    "ref_usd_m": 251.39,
+    "ref_usd_m": 251.0,
     "ref_kind": "type_year_median",
-    "cell_n": 24,
-    "rel": 0.991,
+    "cell_n": 25,
+    "rel": 0.993,
     "year_index": 0.9281
    },
    "progress_at_origin": 0.0428,
@@ -3635,15 +3967,15 @@
     "④호황": 60.404,
     "등급없음": 12.06
    },
-   "hedged_krw_m": 792193.3,
-   "marine_hedged_krw_m": 777497.0,
-   "marine_hedged_krw_m_signed_by_origin": 742670.8,
-   "marine_hedged_krw_m_post_origin": 34826.2,
-   "applied_rate": 1423.39,
+   "hedged_krw_m": 792089.8,
+   "marine_hedged_krw_m": 777395.7,
+   "marine_hedged_krw_m_signed_by_origin": 742574.1,
+   "marine_hedged_krw_m_post_origin": 34821.5,
+   "applied_rate": 1423.2,
    "hedge_ratio": 0.7,
    "hedge_rate": 1452.53,
-   "spot_assumed": 1355.4,
-   "spot_source": "fx.json forward",
+   "spot_assumed": 1354.78,
+   "spot_source": "fx.json quarters(partial 2d)",
    "n_active": 18,
    "kind": "estimate",
    "past": false,
@@ -3673,14 +4005,14 @@
     "④호황": 59.091,
     "등급없음": 11.798
    },
-   "hedged_krw_m": 774971.7,
-   "marine_hedged_krw_m": 760594.9,
-   "marine_hedged_krw_m_signed_by_origin": 726525.8,
-   "marine_hedged_krw_m_post_origin": 34069.1,
-   "applied_rate": 1423.39,
+   "hedged_krw_m": 773808.8,
+   "marine_hedged_krw_m": 759457.1,
+   "marine_hedged_krw_m_signed_by_origin": 725440.0,
+   "marine_hedged_krw_m_post_origin": 34017.1,
+   "applied_rate": 1421.25,
    "hedge_ratio": 0.7,
    "hedge_rate": 1452.53,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json forward",
    "n_active": 18,
    "kind": "estimate",
@@ -3711,14 +4043,14 @@
     "④호황": 59.748,
     "등급없음": 11.929
    },
-   "hedged_krw_m": 783582.5,
-   "marine_hedged_krw_m": 769045.9,
-   "marine_hedged_krw_m_signed_by_origin": 734598.3,
-   "marine_hedged_krw_m_post_origin": 34447.6,
-   "applied_rate": 1423.39,
+   "hedged_krw_m": 782406.6,
+   "marine_hedged_krw_m": 767895.5,
+   "marine_hedged_krw_m_signed_by_origin": 733500.5,
+   "marine_hedged_krw_m_post_origin": 34395.1,
+   "applied_rate": 1421.25,
    "hedge_ratio": 0.7,
    "hedge_rate": 1452.53,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json forward",
    "n_active": 18,
    "kind": "estimate",
@@ -3749,14 +4081,14 @@
     "④호황": 60.404,
     "등급없음": 8.128
    },
-   "hedged_krw_m": 787401.0,
-   "marine_hedged_krw_m": 777497.0,
-   "marine_hedged_krw_m_signed_by_origin": 742670.8,
-   "marine_hedged_krw_m_post_origin": 34826.2,
-   "applied_rate": 1424.85,
+   "hedged_krw_m": 786220.6,
+   "marine_hedged_krw_m": 776333.9,
+   "marine_hedged_krw_m_signed_by_origin": 741560.9,
+   "marine_hedged_krw_m_post_origin": 34773.0,
+   "applied_rate": 1422.71,
    "hedge_ratio": 0.7,
    "hedge_rate": 1454.61,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json forward",
    "n_active": 18,
    "kind": "estimate",
@@ -3784,14 +4116,14 @@
     "③중마진": 443.138,
     "④호황": 60.404
    },
-   "hedged_krw_m": 777497.0,
-   "marine_hedged_krw_m": 777497.0,
-   "marine_hedged_krw_m_signed_by_origin": 742670.8,
-   "marine_hedged_krw_m_post_origin": 34826.2,
-   "applied_rate": 1427.92,
+   "hedged_krw_m": 776333.9,
+   "marine_hedged_krw_m": 776333.9,
+   "marine_hedged_krw_m_signed_by_origin": 741560.9,
+   "marine_hedged_krw_m_post_origin": 34773.0,
+   "applied_rate": 1425.79,
    "hedge_ratio": 0.7,
    "hedge_rate": 1459.01,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json forward",
    "n_active": 17,
    "kind": "estimate",
@@ -3819,14 +4151,14 @@
     "③중마진": 438.321,
     "④호황": 59.748
    },
-   "hedged_krw_m": 769045.9,
-   "marine_hedged_krw_m": 769045.9,
-   "marine_hedged_krw_m_signed_by_origin": 734598.3,
-   "marine_hedged_krw_m_post_origin": 34447.6,
-   "applied_rate": 1427.92,
+   "hedged_krw_m": 767895.5,
+   "marine_hedged_krw_m": 767895.5,
+   "marine_hedged_krw_m_signed_by_origin": 733500.5,
+   "marine_hedged_krw_m_post_origin": 34395.1,
+   "applied_rate": 1425.79,
    "hedge_ratio": 0.7,
    "hedge_rate": 1459.01,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json forward",
    "n_active": 17,
    "kind": "estimate",
@@ -3854,14 +4186,14 @@
     "③중마진": 434.177,
     "④호황": 59.748
    },
-   "hedged_krw_m": 763107.5,
-   "marine_hedged_krw_m": 763107.5,
-   "marine_hedged_krw_m_signed_by_origin": 728659.9,
-   "marine_hedged_krw_m_post_origin": 34447.6,
-   "applied_rate": 1427.89,
+   "hedged_krw_m": 761966.0,
+   "marine_hedged_krw_m": 761966.0,
+   "marine_hedged_krw_m_signed_by_origin": 727570.9,
+   "marine_hedged_krw_m_post_origin": 34395.1,
+   "applied_rate": 1425.75,
    "hedge_ratio": 0.7,
    "hedge_rate": 1458.95,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json forward",
    "n_active": 17,
    "kind": "estimate",
@@ -3889,14 +4221,14 @@
     "③중마진": 405.023,
     "④호황": 60.404
    },
-   "hedged_krw_m": 722881.8,
-   "marine_hedged_krw_m": 722881.8,
-   "marine_hedged_krw_m_signed_by_origin": 688055.7,
-   "marine_hedged_krw_m_post_origin": 34826.2,
-   "applied_rate": 1427.55,
+   "hedged_krw_m": 721800.2,
+   "marine_hedged_krw_m": 721800.2,
+   "marine_hedged_krw_m_signed_by_origin": 687027.2,
+   "marine_hedged_krw_m_post_origin": 34773.0,
+   "applied_rate": 1425.41,
    "hedge_ratio": 0.7,
    "hedge_rate": 1458.47,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json forward",
    "n_active": 15,
    "kind": "estimate",
@@ -3924,14 +4256,14 @@
     "③중마진": 383.332,
     "④호황": 60.404
    },
-   "hedged_krw_m": 666117.6,
-   "marine_hedged_krw_m": 666117.6,
-   "marine_hedged_krw_m_signed_by_origin": 631291.5,
-   "marine_hedged_krw_m_post_origin": 34826.2,
-   "applied_rate": 1428.09,
+   "hedged_krw_m": 665121.3,
+   "marine_hedged_krw_m": 665121.3,
+   "marine_hedged_krw_m_signed_by_origin": 630348.3,
+   "marine_hedged_krw_m_post_origin": 34773.0,
+   "applied_rate": 1425.96,
    "hedge_ratio": 0.7,
    "hedge_rate": 1459.25,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json forward",
    "n_active": 15,
    "kind": "estimate",
@@ -3958,14 +4290,14 @@
     "③중마진": 290.821,
     "④호황": 59.091
    },
-   "hedged_krw_m": 502269.8,
-   "marine_hedged_krw_m": 502269.8,
-   "marine_hedged_krw_m_signed_by_origin": 468200.7,
-   "marine_hedged_krw_m_post_origin": 34069.1,
-   "applied_rate": 1435.42,
+   "hedged_krw_m": 501522.4,
+   "marine_hedged_krw_m": 501522.4,
+   "marine_hedged_krw_m_signed_by_origin": 467505.3,
+   "marine_hedged_krw_m_post_origin": 34017.1,
+   "applied_rate": 1433.28,
    "hedge_ratio": 0.7,
    "hedge_rate": 1469.71,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 11,
    "kind": "estimate",
@@ -3992,14 +4324,14 @@
     "③중마진": 184.5,
     "④호황": 59.748
    },
-   "hedged_krw_m": 352150.7,
-   "marine_hedged_krw_m": 352150.7,
-   "marine_hedged_krw_m_signed_by_origin": 317703.1,
-   "marine_hedged_krw_m_post_origin": 34447.6,
-   "applied_rate": 1441.78,
+   "hedged_krw_m": 351629.0,
+   "marine_hedged_krw_m": 351629.0,
+   "marine_hedged_krw_m_signed_by_origin": 317234.0,
+   "marine_hedged_krw_m_post_origin": 34395.1,
+   "applied_rate": 1439.64,
    "hedge_ratio": 0.7,
    "hedge_rate": 1478.79,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 9,
    "kind": "estimate",
@@ -4025,14 +4357,14 @@
     "③중마진": 113.955,
     "④호황": 41.87
    },
-   "hedged_krw_m": 225098.1,
-   "marine_hedged_krw_m": 225098.1,
-   "marine_hedged_krw_m_signed_by_origin": 190271.9,
-   "marine_hedged_krw_m_post_origin": 34826.2,
-   "applied_rate": 1444.56,
+   "hedged_krw_m": 224765.3,
+   "marine_hedged_krw_m": 224765.3,
+   "marine_hedged_krw_m_signed_by_origin": 189992.2,
+   "marine_hedged_krw_m_post_origin": 34773.0,
+   "applied_rate": 1442.42,
    "hedge_ratio": 0.7,
    "hedge_rate": 1482.77,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 6,
    "kind": "estimate",
@@ -4056,14 +4388,14 @@
     "③중마진": 61.808,
     "④호황": 24.88
    },
-   "hedged_krw_m": 124932.9,
-   "marine_hedged_krw_m": 124932.9,
-   "marine_hedged_krw_m_signed_by_origin": 90106.7,
-   "marine_hedged_krw_m_post_origin": 34826.2,
-   "applied_rate": 1441.17,
+   "hedged_krw_m": 124747.7,
+   "marine_hedged_krw_m": 124747.7,
+   "marine_hedged_krw_m_signed_by_origin": 89974.7,
+   "marine_hedged_krw_m_post_origin": 34773.0,
+   "applied_rate": 1439.03,
    "hedge_ratio": 0.7,
    "hedge_rate": 1477.93,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 3,
    "kind": "estimate",
@@ -4086,14 +4418,14 @@
    "by_cohort_alt": {
     "④호황": 24.339
    },
-   "hedged_krw_m": 34069.1,
-   "marine_hedged_krw_m": 34069.1,
+   "hedged_krw_m": 34017.1,
+   "marine_hedged_krw_m": 34017.1,
    "marine_hedged_krw_m_signed_by_origin": 0.0,
-   "marine_hedged_krw_m_post_origin": 34069.1,
-   "applied_rate": 1399.74,
+   "marine_hedged_krw_m_post_origin": 34017.1,
+   "applied_rate": 1397.61,
    "hedge_ratio": 0.7,
    "hedge_rate": 1418.75,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 1,
    "kind": "estimate",
@@ -4116,14 +4448,14 @@
    "by_cohort_alt": {
     "④호황": 16.497
    },
-   "hedged_krw_m": 23091.3,
-   "marine_hedged_krw_m": 23091.3,
+   "hedged_krw_m": 23056.0,
+   "marine_hedged_krw_m": 23056.0,
    "marine_hedged_krw_m_signed_by_origin": 0.0,
-   "marine_hedged_krw_m_post_origin": 23091.3,
-   "applied_rate": 1399.74,
+   "marine_hedged_krw_m_post_origin": 23056.0,
+   "applied_rate": 1397.61,
    "hedge_ratio": 0.7,
    "hedge_rate": 1418.75,
-   "spot_assumed": 1355.4,
+   "spot_assumed": 1348.28,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 1,
    "kind": "estimate",
@@ -4286,10 +4618,10 @@
   "2026": {
    "usd_m": 1877.0,
    "marine_usd_m": 1829.151,
-   "hedged_krw_m": 2705039.6,
-   "marine_hedged_krw_m": 2645588.5,
-   "hedged_krw_m_raw": 2705039.6,
-   "marine_hedged_krw_m_raw": 2645588.5,
+   "hedged_krw_m": 2704936.1,
+   "marine_hedged_krw_m": 2645487.2,
+   "hedged_krw_m_raw": 2704936.1,
+   "marine_hedged_krw_m_raw": 2645487.2,
    "by_type": {
     "CONT": 483.808,
     "LNGC": 596.264,
@@ -4312,10 +4644,10 @@
   "2027": {
    "usd_m": 2192.077,
    "marine_usd_m": 2160.222,
-   "hedged_krw_m": 3123452.2,
-   "marine_hedged_krw_m": 3084634.8,
-   "hedged_krw_m_raw": 3123452.2,
-   "marine_hedged_krw_m_raw": 3084634.8,
+   "hedged_krw_m": 3118769.9,
+   "marine_hedged_krw_m": 3080020.4,
+   "hedged_krw_m_raw": 3118769.9,
+   "marine_hedged_krw_m_raw": 3080020.4,
    "by_type": {
     "CONT": 483.808,
     "LNGC": 698.863,
@@ -4338,10 +4670,10 @@
   "2028": {
    "usd_m": 2045.825,
    "marine_usd_m": 2045.825,
-   "hedged_krw_m": 2921152.8,
-   "marine_hedged_krw_m": 2921152.8,
-   "hedged_krw_m_raw": 2921152.8,
-   "marine_hedged_krw_m_raw": 2921152.8,
+   "hedged_krw_m": 2916783.0,
+   "marine_hedged_krw_m": 2916783.0,
+   "hedged_krw_m_raw": 2916783.0,
+   "marine_hedged_krw_m_raw": 2916783.0,
    "by_type": {
     "CONT": 466.884,
     "LNGC": 649.966,
@@ -4361,10 +4693,10 @@
   "2029": {
    "usd_m": 836.674,
    "marine_usd_m": 836.674,
-   "hedged_krw_m": 1204451.5,
-   "marine_hedged_krw_m": 1204451.5,
-   "hedged_krw_m_raw": 1204451.5,
-   "marine_hedged_krw_m_raw": 1204451.5,
+   "hedged_krw_m": 1202664.4,
+   "marine_hedged_krw_m": 1202664.4,
+   "hedged_krw_m_raw": 1202664.4,
+   "marine_hedged_krw_m_raw": 1202664.4,
    "by_type": {
     "CONT": 105.644,
     "LNGC": 215.598,
@@ -4383,10 +4715,10 @@
   "2030": {
    "usd_m": 40.836,
    "marine_usd_m": 40.836,
-   "hedged_krw_m": 57160.4,
-   "marine_hedged_krw_m": 57160.4,
-   "hedged_krw_m_raw": 57160.4,
-   "marine_hedged_krw_m_raw": 57160.4,
+   "hedged_krw_m": 57073.1,
+   "marine_hedged_krw_m": 57073.1,
+   "hedged_krw_m_raw": 57073.1,
+   "marine_hedged_krw_m_raw": 57073.1,
    "by_type": {
     "VLGC": 40.836
    },
@@ -4425,223 +4757,223 @@
    "opm": 0.1,
    "graded_share": 0.8634,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2021Q3": {
    "opm": 0.1,
    "graded_share": 0.8551,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2021Q4": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2022Q1": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2022Q2": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2022Q3": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2022Q4": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2023Q1": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2023Q2": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2023Q3": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2023Q4": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2024Q1": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2024Q2": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2024Q3": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2024Q4": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2025Q1": {
    "opm": 0.1,
    "graded_share": 0.7499,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2025Q2": {
    "opm": 0.12,
    "graded_share": 0.3053,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2025Q3": {
    "opm": 0.15,
    "graded_share": 0.7619,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2025Q4": {
    "opm": 0.15,
    "graded_share": 0.886,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2026Q1": {
    "opm": 0.15,
    "graded_share": 0.9615,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2026Q2": {
    "opm": 0.15,
    "graded_share": 0.9741,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2026Q3": {
    "opm": 0.15,
    "graded_share": 0.9782,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2026Q4": {
    "opm": 0.15,
    "graded_share": 0.9783,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2027Q1": {
    "opm": 0.15,
    "graded_share": 0.9783,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2027Q2": {
    "opm": 0.15,
    "graded_share": 0.9783,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2027Q3": {
    "opm": 0.15,
    "graded_share": 0.9853,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2027Q4": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2028Q1": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2028Q2": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2028Q3": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2028Q4": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2029Q1": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2029Q2": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2029Q3": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2029Q4": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2030Q1": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2030Q2": {
    "opm": 0.15,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   }
  },
  "target_opm_alt": {
@@ -4649,223 +4981,223 @@
    "opm": 0.0,
    "graded_share": 0.8634,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2021Q3": {
    "opm": 0.0,
    "graded_share": 0.8551,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2021Q4": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2022Q1": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2022Q2": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2022Q3": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2022Q4": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2023Q1": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2023Q2": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2023Q3": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2023Q4": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2024Q1": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2024Q2": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2024Q3": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2024Q4": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2025Q1": {
    "opm": 0.0,
    "graded_share": 0.7499,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2025Q2": {
    "opm": 0.02,
    "graded_share": 0.3053,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2025Q3": {
    "opm": 0.05,
    "graded_share": 0.7619,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2025Q4": {
    "opm": 0.054,
    "graded_share": 0.886,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2026Q1": {
    "opm": 0.0491,
    "graded_share": 0.9615,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2026Q2": {
    "opm": 0.0494,
    "graded_share": 0.9741,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2026Q3": {
    "opm": 0.0516,
    "graded_share": 0.9782,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2026Q4": {
    "opm": 0.0518,
    "graded_share": 0.9783,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2027Q1": {
    "opm": 0.0518,
    "graded_share": 0.9783,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2027Q2": {
    "opm": 0.0518,
    "graded_share": 0.9783,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2027Q3": {
    "opm": 0.0518,
    "graded_share": 0.9853,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2027Q4": {
    "opm": 0.0518,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2028Q1": {
    "opm": 0.0518,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2028Q2": {
    "opm": 0.0518,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2028Q3": {
    "opm": 0.0519,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2028Q4": {
    "opm": 0.054,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2029Q1": {
    "opm": 0.0584,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2029Q2": {
    "opm": 0.0622,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2029Q3": {
    "opm": 0.0634,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2029Q4": {
    "opm": 0.0644,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2030Q1": {
    "opm": 0.1,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   },
   "2030Q2": {
    "opm": 0.1,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table (assumption: ①−5% ②0 ③5 ④10 ⑤15)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
   }
  },
  "calibration": {
@@ -4936,7 +5268,8 @@
  "warnings": [
   "종료일 = 마지막 호선 인도 예정; 진행률 매출 분기는 계약기간 안에 선형 배분(가정)",
   "HD한국조선해양과 HD현대重 동일 계약 22건 — shared_owner=329180 로 표시하고 이 파일의 합계에서 제외(합산 금지)",
-  "헤지비율 0.7 은 가정(통화선도 공시 없음 → 레퍼런스 SLS 시트의 HEDGE 70% 가정. hedge_rate 는 계약별 수주시점 환율로 대체)",
+  "헤지비율 0.7 은 가정(통화선도 공시 없음 → HEDGE 70% 가정(레퍼런스 SLS 시트 HEDGE 행은 미포 65%·삼성重 100% — 그 사이에 둔 설정값). hedge_rate 는 계약별 수주시점 환율로 대체)",
+  "코호트 OPM 표 assumed 적용. 레퍼런스 미포 SLS 셀 OPM 을 2023~2027 매출가중한 유효 표는 ①-1.1% ②1% ③4.3% ④5.4% ⑤10.8%(가정 표 ①-5% ②0% ③5% ④10% ⑤15% 는 레퍼런스 2024~26 보다 +3.8~5.1%p 높다 — cohort_opm_calibration.by_year). 다음 분기 2026Q3 타겟: 가정 15.00% vs 캘리브레이션 10.80%. 바꾸려면 --opm-table reference_calibrated(오너 결정 — 하류 섹션 각주·모델 백테스트가 cohort_opm_table 을 읽는다)",
   "코호트 기본 모드 reference_anchor: 2025~ 수주 물량(백만$) 판정 ⑤초호황 100%. reference_anchor 는 수주연도 → 등급(≤2020 ③중마진 · 2021 ④호황 · 2022~ ⑤초호황; 출처 사용자 레퍼런스 모델 HD현대미포 SLS 의 클락슨 기반 판정을 건조기간 2~3년으로 되돌린 표 — 외부 신조선가 지수 미보유). ledger_relative 는 원장 내부 상대 등급(2025~ 판정 ②BEP 7%, ③중마진 80%, ④호황 13%; 2021 이후 절대 호황 수준 미반영). 대안 모드는 by_cohort_alt·target_opm_alt·calibration_alt 에 함께 저장. 타겟 OPM 은 기본 모드 기준이며 calibrated_shift(실측 − 타겟)로 실측 OPM 에 맞춘다 — 음수일 수 있다",
   "종료일 '-' 1건은 같은 선종 계약기간 중위로 종료 추정(end_estimated)",
   "정기보고서 부문 매출(3개월분)을 만들 수 없어 화해 없음"

@@ -1126,3 +1126,342 @@ class TestNoteParentCollect(unittest.TestCase):
         self.assertIn("note_parent_missing:other", codes)
         self.assertNotIn("notes_no_subnodes", codes)
         self.assertEqual(fin["reports"]["2023Q4"]["notes"]["parent"]["picked"]["fin"], ["32. 금융수익 및 금융비용"])
+
+
+# ── 2026-10-05 V1 검증 레인 — 비용 부호 규약(face 영업외 그룹·주석 표)·IS 항등식 checks·주석 파서 보강·표준 차입금 라벨 ──
+class TestExpenseSignTable(unittest.TestCase):
+    """비용 부호 규약 '비용은 양수' — 관행 판정은 누적·연간 열로, 적용은 표의 모든 열에."""
+
+    def _is(self, rows, unit="천원"):
+        head = ("<table><tr><td>연결 포괄손익계산서</td></tr><tr><td>(단위 : %s)</td></tr></table>"
+                "<table><thead><tr><th></th><th>제 67 기 3분기 3개월</th><th>제 67 기 3분기 누적</th><th>제 66 기 3분기 3개월</th><th>제 66 기 3분기 누적</th></tr></thead>" % unit)
+        body = "".join("<tr><td>%s</td>%s</tr>" % (r[0], "".join("<td>%s</td>" % c for c in r[1:])) for r in rows)
+        return head + body + "</table>"
+
+    KCC = [("매출액", "1,000,000", "1,900,000", "900,000", "1,800,000"), ("매출원가", "600,000", "1,100,000", "500,000", "1,000,000"),
+           ("매출총이익", "400,000", "800,000", "400,000", "800,000"), ("판매비와관리비", "300,000", "560,000", "300,000", "560,000"),
+           ("영업이익", "100,000", "240,000", "100,000", "240,000"),
+           ("기타영업외손익", "(11,000)", "(20,000)", "(5,000)", "(9,000)"), ("기타이익", "14,000", "30,000", "10,000", "20,000"), ("기타손실", "(25,000)", "(50,000)", "(15,000)", "(29,000)"),
+           ("순금융손익", "36,000", "70,000", "30,000", "60,000"), ("금융수익", "50,000", "100,000", "40,000", "80,000"), ("금융원가", "(14,000)", "(30,000)", "(10,000)", "(20,000)"),
+           ("법인세비용차감전순이익(손실)", "125,000", "290,000", "125,000", "291,000"), ("법인세비용(수익)", "25,000", "58,000", "25,000", "58,000"),
+           ("분기순손익", "100,000", "232,000", "100,000", "233,000")]
+
+    def test_nonop_group_negative_convention_flipped(self):
+        """케이씨씨 — 영업비용은 양수, 금융원가·기타손실만 괄호(금융수익 + 금융원가(−) = 순금융손익). 그룹만 뒤집고 순액은 그대로."""
+        p = F.parse_fin_section(self._is(self.KCC))
+        q, y = p["is"]["cur_q"], p["is"]["cur_ytd"]
+        self.assertEqual((q["금융비용"], q["기타영업외비용"], q["금융손익"], q["기타영업외손익"]), (14.0, 25.0, 36.0, -11.0))
+        self.assertEqual((y["금융비용"], y["기타영업외비용"]), (30.0, 50.0))
+        self.assertEqual((q["매출원가"], q["판관비"], q["법인세비용"]), (600.0, 300.0, 25.0))                  # 영업비용·법인세는 건드리지 않는다
+        self.assertAlmostEqual(q["금융수익"] - q["금융비용"], q["금융손익"], places=2)
+        self.assertAlmostEqual(q["기타영업외수익"] - q["기타영업외비용"], q["기타영업외손익"], places=2)
+        self.assertEqual([f[0] for f in p["flags"]], ["expense_sign_negative_nonop"])
+        r = F._scope_quarterize("cons", {"2024Q3": p}, ["2024Q3"])
+        fin_chk = [c for c in r["checks"] if c["rule"] in ("fin=fi-fe", "oth=oi-oe", "rev-cogs=gp", "gp-sga+oth=op")]
+        self.assertEqual(len(fin_chk), 4)
+        self.assertTrue(all(c["ok"] for c in fin_chk), fin_chk)
+
+    def test_negative_income_column_decided_by_identity(self):
+        """케이씨씨 2024Q3 — 3개월 금융수익이 음수(평가이익 환입)여도 순액 항등식(수익 + 비용(−) = 순액)으로 관행을 가른다."""
+        rows = [r for r in self.KCC if r[0] not in ("순금융손익", "금융수익", "금융원가")]
+        rows += [("순금융손익", "(139,000)", "186,000", "(9,000)", "(2,000)"), ("금융수익", "(25,000)", "566,000", "108,000", "518,000"), ("금융원가", "(114,000)", "(380,000)", "(117,000)", "(520,000)")]
+        q = F.parse_fin_section(self._is(rows))["is"]["cur_q"]
+        self.assertEqual((q["금융수익"], q["금융비용"], q["금융손익"]), (-25.0, 114.0, -139.0))
+        self.assertAlmostEqual(q["금융수익"] - q["금융비용"], q["금융손익"], places=2)
+
+    def test_genuine_negative_3m_kept_when_cumulative_positive(self):
+        """동방선기 2023Q3 별도 — 누적 기타비용은 양수(관행 아님), 3개월 열의 기타비용 (2,860)은 환입이라 그대로 두고 기타영업외손익 = 5.88 + 2.86 = 8.74(FnGuide 값)."""
+        rows = [("매출액", "30,000", "90,000", "28,000", "85,000"), ("매출원가", "20,000", "60,000", "19,000", "58,000"), ("매출총이익", "10,000", "30,000", "9,000", "27,000"),
+                ("영업이익", "3,000", "9,000", "2,500", "8,000"), ("기타수익", "5,880", "12,000", "1,000", "3,000"), ("기타비용", "(2,860)", "4,000", "900", "2,000"),
+                ("금융수익", "500", "1,500", "400", "1,200"), ("금융원가", "300", "900", "200", "600")]
+        p = F.parse_fin_section(self._is(rows))
+        q, y = p["is"]["cur_q"], p["is"]["cur_ytd"]
+        self.assertEqual((q["기타영업외비용"], y["기타영업외비용"]), (-2.86, 4.0))
+        self.assertAlmostEqual(q["기타영업외손익"], 8.74, places=2)
+        self.assertEqual(p["flags"], [])
+
+    def test_convention_forces_3m_reversal_negative(self):
+        """누적 열이 관행(금융원가 (30,000))이면 3개월 열의 양수 금융원가 4,000(환입)도 뒤집혀 −4 가 된다 — 금융수익 − 금융비용 = 순액이 맞아야 한다."""
+        rows = [("매출액", "1,000", "2,000", "900", "1,800"), ("매출원가", "600", "1,100", "500", "1,000"), ("영업이익", "100", "240", "100", "240"),
+                ("순금융손익", "54,000", "70,000", "30,000", "60,000"), ("금융수익", "50,000", "100,000", "40,000", "80,000"), ("금융원가", "4,000", "(30,000)", "(10,000)", "(20,000)")]
+        p = F.parse_fin_section(self._is(rows))
+        q, y = p["is"]["cur_q"], p["is"]["cur_ytd"]
+        self.assertEqual((y["금융비용"], q["금융비용"]), (30.0, -4.0))
+        self.assertAlmostEqual(q["금융수익"] - q["금융비용"], q["금융손익"], places=2)
+        self.assertEqual(F.normalize_expense_signs_table({"cur_q": {"매출액(수익)": 10.0, "금융비용": -3.0, "금융수익": 5.0}}), {"cur_q": "nonop"})
+        self.assertEqual(F.normalize_expense_signs_table({"cur_q": {"매출액(수익)": 10.0, "금융비용": -3.0, "금융수익": 5.0}, "cur_ytd": {"금융비용": 9.0, "금융수익": 15.0}}), {"cur_q": "", "cur_ytd": ""})
+
+    def test_nonop_total_label_split_from_other(self):
+        """삼미금속 별도 — `영업외손익`(금융+기타 총액)은 기타영업외손익이 아니다. 기타수익/비용이 있으면 그 차, 없으면 총액 − 금융손익."""
+        self.assertEqual(F._entries_for("is", None, F.norm_label("영업외손익"))[0], ["영업외손익"])
+        a = F.synth_is({"금융수익": 15.78, "금융비용": 642.14, "기타영업외수익": 52.51, "기타영업외비용": 222.31, "영업외손익": -796.16})
+        self.assertAlmostEqual(a["기타영업외손익"], 52.51 - 222.31, places=2)
+        self.assertEqual(a["영업외손익"], -796.16)
+        b = F.synth_is({"금융수익": 10.0, "금융비용": 3.0, "영업외손익": 8.0})
+        self.assertAlmostEqual(b["기타영업외손익"], 1.0, places=2)
+        c = F.synth_is({"영업외손익": 8.0})
+        self.assertEqual(c["기타영업외손익"], 8.0)
+        rows = [("매출액", "22,566", "40,236", "20,000", "39,000"), ("매출원가", "19,127", "34,866", "17,000", "33,000"), ("영업이익", "1,000", "2,000", "900", "1,800"),
+                ("금융수익", "16", "32", "2", "4"), ("금융원가", "(642)", "(1,379)", "(770)", "(1,582)"), ("기타수익", "53", "144", "774", "1,030"), ("기타비용", "(222)", "(283)", "(35)", "(110)"),
+                ("영업외손익", "(795)", "(1,486)", "(29)", "(658)")]
+        q = F.parse_fin_section(self._is(rows, "백만원"))["is"]["cur_q"]
+        self.assertEqual((q["금융비용"], q["기타영업외비용"]), (642.0, 222.0))                       # 순액이 총액이라 항등식이 아니라 부호(수익 양수)로 가른다
+        self.assertAlmostEqual(q["기타영업외손익"], 53.0 - 222.0, places=2)
+
+    def test_face_other_nonop_separate_line(self):
+        """동성화인텍 2022Q1 — face `기타영업외손익` 554.75 는 기타이익 2,561.09·기타손실 1,869.01 과 별도 항목. 세전 대조가 맞으면 수익 − 비용 + 그 줄."""
+        rows = [("매출액", "30,000", "30,000", "28,000", "28,000"), ("매출원가", "25,000", "25,000", "24,000", "24,000"), ("영업이익(손실)", "1,304", "1,304", "1,000", "1,000"),
+                ("금융수익", "34", "34", "30", "30"), ("금융원가", "396", "396", "300", "300"), ("기타이익", "2,561", "2,561", "2,000", "2,000"), ("기타손실", "1,869", "1,869", "1,500", "1,500"),
+                ("기타영업외손익", "555", "555", "100", "100"), ("법인세비용차감전순이익(손실)", "2,189", "2,189", "1,330", "1,330")]
+        p = F.parse_fin_section(self._is(rows, "백만원"))
+        q = p["is"]["cur_q"]
+        self.assertEqual((q["기타영업외손익"], q["기타영업외손익(face)"]), (1247.0, 555.0))
+        self.assertIn("other_nonop_face_separate_line", [f[0] for f in p["flags"]])
+        r = F._scope_quarterize("cons", {"2022Q1": p}, ["2022Q1"])
+        self.assertTrue(all(c["ok"] for c in r["checks"] if c["rule"] == "oth=oi-oe"))
+        a = dict(q)
+        F.synth_is(a)                                                                                   # 다시 돌려도 두 번 더하지 않는다
+        self.assertEqual(a["기타영업외손익"], 1247.0)
+        rows2 = [r_ for r_ in rows if r_[0] != "법인세비용차감전순이익(손실)"] + [("법인세비용차감전순이익(손실)", "1,634", "1,634", "1,230", "1,230")]
+        q2 = F.parse_fin_section(self._is(rows2, "백만원"))["is"]["cur_q"]
+        self.assertEqual(q2["기타영업외손익"], 555.0)                                                     # 세전 대조가 안 맞으면 face 값 그대로(checks 에 남는다)
+        self.assertNotIn("기타영업외손익(face)", q2)
+
+    def test_kcc_equity_method_header_row_skipped(self):
+        """케이씨씨 2023Q3 — `기타이익` 머리줄 바로 아래 `지분법손익` 이 같은 값이면 그룹 머리다. 두 번째 `기타이익` 이 기타영업외수익."""
+        rows = [("매출액", "1,552,725", "4,706,012", "1,400,000", "4,500,000"), ("매출원가", "1,223,040", "3,716,456", "1,100,000", "3,600,000"), ("영업이익", "88,430", "300,000", "80,000", "290,000"),
+                ("기타이익", "(14,494)", "(33,798)", "(49)", "21,420"), ("지분법손익", "(14,494)", "(33,798)", "(49)", "21,420"),
+                ("기타영업외손익", "408", "(7,125)", "(2,537)", "(16,434)"), ("기타이익", "10,562", "56,100", "13,187", "48,066"), ("기타손실", "(10,154)", "(63,225)", "(15,725)", "(64,500)")]
+        p = F.parse_fin_section(self._is(rows, "백만원"))
+        q = p["is"]["cur_q"]
+        self.assertEqual((q["기타영업외수익"], q["기타영업외비용"], q["기타영업외손익"]), (10562.0, 10154.0, 408.0))
+        self.assertEqual(q["종속기업,공동지배기업및관계기업관련손익"], -14494.0)
+        self.assertIn(["기타이익", -14494.0], p["raw_labels"]["is"])
+
+
+class TestNoteExpenseSign(unittest.TestCase):
+    """주석 표의 비용 괄호 표기 — 누적 열로 관행을 정하고 모든 열에 적용. 진짜 음수(환입)는 남긴다."""
+
+    def _tbl(self, rows, hdr=("구 분", "당반기 3개월", "당반기 누적", "전반기 3개월", "전반기 누적"), lead="금융수익과 금융원가의 내역은 다음과 같습니다. (단위 : 천원)"):
+        head = "<p>%s</p><table><thead><tr>%s</tr></thead><tbody>" % (lead, "".join("<th>%s</th>" % h for h in hdr))
+        return head + "".join("<tr>%s</tr>" % "".join("<td>%s</td>" % c for c in r) for r in rows) + "</tbody></table>"
+
+    def test_kcc_hanwha_note_flipped_all_columns(self):
+        """한화시스템 2026Q2 하위 노드 주석 — 누적 열이 전부 괄호(이자비용 (57,623,651)·금융비용 합계 (68,353,632)); 3개월 외화환산손실 +5,117,789 은 환입이라 뒤집혀 음수."""
+        rows = [("금융수익 합계", "26,151,868", "62,336,254", "20,000,000", "50,000,000"), ("이자수익", "16,873,657", "21,729,178", "15,000,000", "30,000,000"),
+                ("외화환산이익", "7,454,208", "23,436,566", "1,000,000", "2,000,000"),
+                ("금융원가 합계", "(43,068,358)", "(68,353,632)", "(30,000,000)", "(60,000,000)"), ("이자비용", "(40,154,429)", "(57,623,651)", "(29,000,000)", "(58,000,000)"),
+                ("외환차손", "(8,031,718)", "(10,121,491)", "(500,000)", "(1,000,000)"), ("외화환산손실", "5,117,789", "(608,490)", "(500,000)", "(1,000,000)"),
+                ("금융수익(비용)", "(16,916,490)", "(6,017,378)", "(10,000,000)", "(10,000,000)")]
+        n = F.parse_note_section(self._tbl(rows), "fin")
+        self.assertEqual(n["expense_sign_flipped"], 1)
+        q, y = n["acc"]["cur_q"], n["acc"]["cur_ytd"]
+        self.assertEqual((q["이자비용"], q["외환차손"], q["외화환산손실"]), (40154.43, 8031.72, -5117.79))
+        self.assertEqual((y["이자비용"], y["외화환산손실"], y["금융비용합계"]), (57623.65, 608.49, 68353.63))
+        self.assertEqual((y["이자수익"], y["순액"]), (21729.18, -6017.38))                             # 수익·순액은 그대로
+
+    def test_positive_convention_with_3m_reversals_untouched(self):
+        """태광 2023Q3 — 누적 열은 양수(관행 아님). 3개월 이자비용 (20,448)·외화환산손실 (173,542) 는 환입이라 음수로 남는다."""
+        rows = [("이 자 비 용", "(20,448)", "452,796", "163,920", "509,158"), ("외 환 차 손", "695,134", "2,015,681", "195,321", "424,904"),
+                ("외 화 환 산 손 실", "(173,542)", "118,832", "(87,036)", "221,866"), ("합 계", "558,535", "3,036,412", "2,561,969", "4,790,264")]
+        n = F.parse_note_section(self._tbl(rows, lead="(2) 당분기와 전분기 중 금융비용의 내역은 다음과 같습니다. (단위: 천원)"), "fin")
+        self.assertEqual(n["expense_sign_flipped"], 0)
+        self.assertEqual((n["acc"]["cur_q"]["이자비용"], n["acc"]["cur_ytd"]["이자비용"], n["acc"]["cur_q"]["외화환산손실"]), (-20.45, 452.8, -173.54))
+        self.assertEqual(n["acc"]["cur_ytd"]["금융비용합계"], 3036.41)                                     # 캡션 '금융비용의 내역' + `합 계` 줄 = 금융비용합계
+
+    def test_summary_table_single_expense_sure_key(self):
+        """케이에스피 요약표 — 비용 줄이 이자비용 하나뿐이어도 누적 열 이자비용이 (721,629) 면 관행이다."""
+        rows = [("금융수익", "금융수익", "금융수익", "금융수익", "금융수익"), ("이자수익", "59,853", "98,364", "36,546", "51,312"),
+                ("금융원가", "금융원가", "금융원가", "금융원가", "금융원가"), ("이자비용", "(349,170)", "(721,629)", "(332,152)", "(643,900)"),
+                ("순금융수익(비용)", "(289,317)", "(623,265)", "(295,606)", "(592,588)")]
+        n = F.parse_note_section(self._tbl(rows), "fin")
+        self.assertEqual((n["acc"]["cur_q"]["이자비용"], n["acc"]["cur_ytd"]["이자비용"], n["acc"]["cur_ytd"]["순액"]), (349.17, 721.63, -623.26))
+        merged = {"fin": n, "other": {"expense_sign_flipped": 0}}
+        issues = []
+        F._note_sign_issues(merged, issues, "2025Q2", "cons")
+        self.assertEqual([i["code"] for i in issues], ["note_expense_sign_negative"])
+
+    def test_sk_single_negative_without_cumulative_evidence_kept(self):
+        d = {"cur_q": {"이자수익": 363.74, "이자비용": 5301.02, "외화환산손실": -25.39}}
+        self.assertFalse(F.normalize_note_expense_signs("fin", d))
+        self.assertEqual(d["cur_q"]["외화환산손실"], -25.39)
+
+
+class TestNoteParserUpgrades(unittest.TestCase):
+    """주석 파서 보강 — 머리행 다중행·`당1분기`·이자율 열·라벨 변형·캡션 합계·소절 분할·제목 변형·구분 머리줄 합계·유동성 분산 합산."""
+
+    def test_split_hdr_two_header_rows_hint_in_second(self):
+        """비엠티 차입금 표 — THEAD 없이 1행 `구 분|차입처|연 이자|금 액|금 액`, 2행 `…|당기말|전기말`."""
+        t = {"cols": [], "rows": [["구 분", "차입처", "2021.12.31현재연 이자", "금 액", "금 액"], ["구 분", "차입처", "2021.12.31현재연 이자", "당기말", "전기말"],
+                                  ["무역어음대출", "KEB하나은행", "2.32", "3,000,000", "3,000,000"], ["합 계", "합 계", "합 계", "40,900,000", "38,400,000"]]}
+        cols, rows = F._split_hdr(t)
+        self.assertEqual(cols, ["구 분", "차입처", "2021.12.31현재연 이자", "금 액 당기말", "금 액 전기말"])
+        self.assertEqual(len(rows), 2)
+        t2 = {"cols": [], "rows": [["구 분", "당기말", "전기말"], ["기타수익:", "", ""], ["잡이익", "1,000", "900"]]}
+        self.assertEqual(F._split_hdr(t2), (["구 분", "당기말", "전기말"], [["기타수익:", "", ""], ["잡이익", "1,000", "900"]]))   # 힌트 뒤 글자 줄은 데이터
+
+    def test_period_with_digit_and_skip_columns(self):
+        self.assertEqual((F._period_of("당1분기"), F._period_of("전3분기"), F._period_of("당분기말"), F._period_of("전전기")), ("cur", "prev", "cur", "prev2"))
+        nlab, tags = F.tag_note_cols(["차입처", "종류", "연이자율(%) 당기말", "연이자율(%) 전기말", "금액 당기말", "금액 전기말"], "15. 차입금 당기말과 전기말 현재 단기차입금의 내역은 다음과 같습니다.", prefer_total=True)
+        self.assertEqual(tags, [(4, "cur_full"), (5, "prev_full")])                                        # 이자율 열은 금액이 아니다
+        nlab, tags = F.tag_note_cols(["구 분", "차입처", "연이자율", "금 액 당1분기", "금 액 전기"], "", prefer_total=True)
+        self.assertEqual(tags, [(3, "cur_full"), (4, "prev_full")])
+
+    def test_borrowings_label_variants(self):
+        self.assertEqual(F._map_note_label("borrowings", "단기차입금계"), "단기차입금")
+        self.assertEqual(F._map_note_label("borrowings", "장기차입금계"), "장기차입금")
+        self.assertEqual(F._map_note_label("borrowings", "차감: 유동성 대체"), "유동성장기부채")
+        self.assertEqual(F._map_note_label("borrowings", "유동성대체분"), "유동성장기부채")
+        self.assertEqual(F._caption_subject("(3) 당기말과 전기말 현재 사채의 내역은 다음과 같습니다. (단위:백만원)"), "사채")
+        self.assertEqual(F._caption_subject("15. 차입금당기말과 전기말 현재 단기차입금의 내역은 다음과 같습니다. (단위 : 원)"), "단기차입금")
+
+    HHI = ("<P>1. 일반사항</P><P>2. 회계정책</P><P>3. 차입금과 사채</P>"
+           "<P>(1) 당기말과 전기말 현재 단기차입금의 내역은 다음과 같습니다. (단위:백만원)</P>"
+           "<TABLE><THEAD><TR><TH>구 분</TH><TH>차입처</TH><TH>이자율</TH><TH>당기</TH><TH>전기</TH></TR></THEAD><TBODY>"
+           "<TR><TD>외화일반대출</TD><TD>FDH</TD><TD>2.50%</TD><TD>12,775</TD><TD>9,673</TD></TR>"
+           "<TR><TD>Usance L/C</TD><TD>기업은행 외</TD><TD>0.25%</TD><TD>648,763</TD><TD>450,626</TD></TR>"
+           "<TR><TD>소 계</TD><TD>소 계</TD><TD>소 계</TD><TD>661,538</TD><TD>460,299</TD></TR>"
+           "<TR><TD>유동성장기차입금</TD><TD>유동성장기차입금</TD><TD>유동성장기차입금</TD><TD>579,275</TD><TD>1,635,549</TD></TR>"
+           "<TR><TD>합 계</TD><TD>합 계</TD><TD>합 계</TD><TD>1,240,813</TD><TD>2,095,848</TD></TR></TBODY></TABLE>"
+           "<P>(2) 당기말과 전기말 현재 장기차입금의 내역은 다음과 같습니다. (단위:백만원)</P>"
+           "<TABLE><THEAD><TR><TH>구 분</TH><TH>차입처</TH><TH>이자율</TH><TH>당기</TH><TH>전기</TH></TR></THEAD><TBODY>"
+           "<TR><TD>원화일반대출</TD><TD>산업은행 외</TD><TD>2.33%</TD><TD>2,001,975</TD><TD>3,422,735</TD></TR>"
+           "<TR><TD>소 계</TD><TD>소 계</TD><TD>소 계</TD><TD>2,001,975</TD><TD>3,422,735</TD></TR>"
+           "<TR><TD>유동성장기차입금</TD><TD>유동성장기차입금</TD><TD>유동성장기차입금</TD><TD>(579,275)</TD><TD>(1,635,549)</TD></TR>"
+           "<TR><TD>합 계</TD><TD>합 계</TD><TD>합 계</TD><TD>1,422,700</TD><TD>1,787,186</TD></TR></TBODY></TABLE>"
+           "<P>(3) 당기말과 전기말 현재 사채의 내역은 다음과 같습니다. (단위:백만원)</P>"
+           "<TABLE><THEAD><TR><TH>종 목</TH><TH>발행일</TH><TH>만기일</TH><TH>이자율</TH><TH>당기</TH><TH>전기</TH><TH>보증여부(*)</TH></TR></THEAD><TBODY>"
+           "<TR><TD>제3회</TD><TD>2019-05-29</TD><TD>2022-02-28</TD><TD>3.75%</TD><TD>100,000</TD><TD>100,000</TD><TD>무보증 사채</TD></TR>"
+           "<TR><TD>제4-2회</TD><TD>2021-03-05</TD><TD>2024-03-05</TD><TD>2.50%</TD><TD>703,070</TD><TD>152,320</TD><TD>무보증 사채</TD></TR>"
+           "<TR><TD>소 계</TD><TD>소 계</TD><TD>소 계</TD><TD>소 계</TD><TD>803,070</TD><TD>252,320</TD><TD></TD></TR>"
+           "<TR><TD>사채할인발행차금</TD><TD>사채할인발행차금</TD><TD>사채할인발행차금</TD><TD>사채할인발행차금</TD><TD>(823)</TD><TD>(163)</TD><TD></TD></TR>"
+           "<TR><TD>유동성사채</TD><TD>유동성사채</TD><TD>유동성사채</TD><TD>유동성사채</TD><TD>(265,970)</TD><TD>(110,000)</TD><TD></TD></TR>"
+           "<TR><TD>유동성사채할인발행차금</TD><TD>유동성사채할인발행차금</TD><TD>유동성사채할인발행차금</TD><TD>유동성사채할인발행차금</TD><TD>14</TD><TD>75</TD><TD></TD></TR>"
+           "<TR><TD>합 계</TD><TD>합 계</TD><TD>합 계</TD><TD>합 계</TD><TD>536,291</TD><TD>142,232</TD><TD></TD></TR></TBODY></TABLE>"
+           "<P>4. 충당부채</P>")
+
+    def test_hhi_borrowings_split_three_tables(self):
+        """HD현대重 2021Q4 `21. 차입금과 사채` — 단기 표는 소계 + 유동성 = 합계(단기차입금 = 합계 − 유동성 줄), 사채 캡션 `현재 사채의 내역`,
+        유동성 대체가 장기 표(579,275)와 사채 표(265,970)에 나뉘어 있어 다른 금액만 더한다(같은 579,275 는 한 번)."""
+        r = F.parse_note_parent(self.HHI)
+        self.assertEqual(r["picked"]["borrowings"], ["3. 차입금과 사채"])
+        acc = r["notes"]["borrowings"]["acc"]["cur_full"]
+        self.assertEqual(acc, {"유동성장기부채": 845245.0, "단기차입금": 661538.0, "장기차입금": 1422700.0, "사채": 536291.0})
+        self.assertEqual(r["notes"]["borrowings"]["acc"]["prev_full"]["단기차입금"], 460299.0)
+        b = {"단기차입금": 1506767.83, "단기금융부채(face)": 1506767.83, "장기차입금": 1958992.31, "장기금융부채(face)": 1958992.31, "현금및현금성자산": 100.0}
+        src, issues = {}, []
+        F.inject_note_bs(b, r["notes"]["borrowings"], src, issues, "2021Q4", "cons")
+        self.assertNotIn("단기금융부채(face)", b)
+        self.assertNotIn("장기금융부채(face)", b)
+        self.assertEqual((b["단기차입금"], b["장기차입금"]), (661538.0, 1422700.0))
+        self.assertAlmostEqual(b["유동성장기부채"], 845245.0 + (1506767.83 - 1506783.0), places=2)         # 잔차 −15.17 흡수
+        self.assertAlmostEqual(b["사채"], 536291.0 + (1958992.31 - 1958991.0), places=2)
+        F.synth_bs(b)
+        self.assertAlmostEqual(b["총차입금"], 1506767.83 + 1958992.31, places=2)                          # face 총액 보존
+        self.assertEqual(sorted(i["code"] for i in issues), ["borrowings_note_residual", "borrowings_note_residual"])
+        self.assertEqual(src["사채"], "note:borrowings(split of face 장기금융부채)")
+
+    def test_caption_only_lender_table_accepted(self):
+        """서호전기·오리엔탈정공 — 차입처별 표에 계정명이 없고(표 앞 글에만) 합계 줄도 없다 → 데이터 줄 하나를 그 계정으로. `(2) 유동성차입금` 캡션도 읽는다."""
+        html = ("<P>1. 일반사항</P><P>2. 회계정책</P><P>3. 차입금</P><P>당기말과 전기말 현재 단기차입금의 내역은 다음과 같습니다. (단위 : 원)</P>"
+                "<TABLE><THEAD><TR><TH>차입처</TH><TH>종류</TH><TH>연이자율(%) 당기말</TH><TH>연이자율(%) 전기말</TH><TH>금액 당기말</TH><TH>금액 전기말</TH></TR></THEAD>"
+                "<TBODY><TR><TD>최대주주</TD><TD>운전자금</TD><TD>1.00</TD><TD>-</TD><TD>373,784,193</TD><TD>-</TD></TR></TBODY></TABLE>"
+                "<P>(2) 유동성차입금당기말과 전기말 현재 유동성차입금의 내역은 다음과 같습니다. (단위: 천원)</P>"
+                "<TABLE><THEAD><TR><TH>차입처</TH><TH>차입종별</TH><TH>이자율(%)</TH><TH>당기말</TH><TH>전기말</TH></TR></THEAD>"
+                "<TBODY><TR><TD>BNK경남은행</TD><TD>운영자금등</TD><TD>3.45</TD><TD>1,632,152</TD><TD>-</TD></TR></TBODY></TABLE><P>4. 충당부채</P>")
+        r = F.parse_note_parent(html)
+        self.assertEqual(r["picked"]["borrowings"], ["3. 차입금"])
+        self.assertEqual(r["notes"]["borrowings"]["acc"]["cur_full"], {"단기차입금": 373.78, "유동성장기부채": 1632.15})
+
+    def test_combined_nonop_block_split_into_subsections(self):
+        """동성화인텍 `29. 영업외손익` — 소절 29.1 금융수익 및 금융원가 / 29.2 기타수익 및 기타비용 으로 다시 잘라 fin·other 둘 다 읽는다."""
+        tbl = lambda rows: ("<TABLE><THEAD><TR><TH>구 분</TH><TH>당기</TH><TH>전기</TH></TR></THEAD><TBODY>%s</TBODY></TABLE>"
+                            % "".join("<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD></TR>" % r for r in rows))
+        html = ("<P>1. 일반사항</P><P>2. 회계정책</P><P>3. 영업외손익</P><P>3.1 금융수익 및 금융원가</P><P>(1) 당기와 전기 중 금융수익의 내역은 다음과 같습니다. (단위: 원)</P>"
+                + tbl([("이자수익", "63,652,025", "157,340,683"), ("합 계", "63,652,025", "157,340,683")])
+                + "<P>(2) 당기와 전기 중 금융원가의 내역은 다음과 같습니다. (단위: 원)</P>"
+                + tbl([("이자비용", "3,067,219,491", "4,959,638,669"), ("합 계", "3,067,219,491", "4,959,638,669")])
+                + "<P>3.2 기타수익 및 기타비용</P><P>(1) 당기와 전기 중 기타수익의 내역은 다음과 같습니다. (단위: 원)</P>"
+                + tbl([("외환차익", "4,773,467,367", "4,345,802,683"), ("잡이익", "1,000,000", "2,000,000"), ("합 계", "4,774,467,367", "4,347,802,683")])
+                + "<P>4. 법인세비용</P>")
+        blocks = F.split_note_blocks(html)
+        self.assertEqual([b["no"] for b in blocks], ["1", "2", "3.1", "3.2", "4"])
+        r = F.parse_note_parent(html)
+        self.assertEqual(r["picked"]["fin"], ["3.1. 금융수익 및 금융원가"])
+        self.assertEqual(r["picked"]["other"], ["3.2. 기타수익 및 기타비용"])
+        self.assertEqual(r["notes"]["fin"]["acc"]["cur_full"], {"이자수익": 63.65, "금융수익합계": 63.65, "이자비용": 3067.22, "금융비용합계": 3067.22})
+        self.assertEqual(r["notes"]["other"]["acc"]["cur_full"], {"외환차익": 4773.47, "기타수익합계": 4774.47})
+
+    def test_other_title_variants_and_both_nonop(self):
+        self.assertTrue(F.NOTE_RX["other"].search("27. 기타이익 및 기타손실"))
+        self.assertTrue(F.NOTE_RX["other"].search("25. 영업외수익 및 영업외비용"))
+        self.assertTrue(F.NOTE_RX["other"].search("28. 기타손익"))
+        self.assertFalse(F.NOTE_RX["other"].search("22. 기타포괄손익누계액"))
+        self.assertEqual(F._parent_rank("other", "20. 영업외손익 및 금융손익"), 1)                      # 금융·기타가 한 블록 — other 도 읽는다
+        self.assertEqual(F._parent_rank("fin", "20. 영업외손익 및 금융손익"), 1)
+        self.assertIsNone(F._parent_rank("other", "28. 금융수익과 금융비용"))
+
+    def test_caption_and_section_totals(self):
+        """하이록코리아 `(1) 당기와 전기의 기타수익의 내역` + `계` 줄 → 기타수익합계; 비엠티 한 표 안 `기타수익:`·`기타비용:` 구분 머리줄 → 각 합계."""
+        tbl = lambda lead, rows: ("<P>%s</P><TABLE><THEAD><TR><TH>구 분</TH><TH>당 기</TH><TH>전 기</TH></TR></THEAD><TBODY>%s</TBODY></TABLE>"
+                                  % (lead, "".join("<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD></TR>" % r for r in rows)))
+        n = F.parse_note_section(tbl("기타수익과 기타비용 (1) 당기와 전기의 기타수익의 내역은 다음과 같습니다 (단위: 천원)",
+                                     [("유형자산처분이익", "96,721", "36,370"), ("잡 이 익", "572,479", "67,559"), ("계", "877,741", "595,327")])
+                                 + tbl("(2) 당기와 전기의 기타비용의 내역은 다음과 같습니다. (단위: 천원)",
+                                       [("유형자산처분손실", "27,389", "22,013"), ("잡 손 실", "95,353", "435,590"), ("계", "191,067", "4,021,685")]), "other")
+        self.assertEqual(n["acc"]["cur_full"], {"기타수익합계": 877.74, "기타비용합계": 191.07})
+        n2 = F.parse_note_section(tbl("27. 기타수익 및 기타비용 (단위: 천원)",
+                                      [("기타수익:", "기타수익:", "기타수익:"), ("유형자산처분이익", "6,543", "6,336"), ("잡이익", "218,653", "123,183"), ("소 계", "225,196", "129,519"),
+                                       ("기타비용:", "기타비용:", "기타비용:"), ("기부금", "7,200", "28,800"), ("소 계", "7,200", "28,800")]), "other")
+        self.assertEqual(n2["acc"]["cur_full"], {"기타수익합계": 225.2, "기타비용합계": 7.2})
+        self.assertIsNone(F._table_subject_total("fin", "(1) 금융수익 및 금융원가의 내역은 다음과 같습니다."))     # 둘 다 가리키면 합계를 붙이지 않는다
+
+    def test_face_has_borrowings_gate(self):
+        self.assertFalse(F._face_has_borrowings({"bs": {"cur": {"자산총계": 1.0, "매입채무및기타채무": 5.0}}}))
+        self.assertTrue(F._face_has_borrowings({"bs": {"cur": {"단기금융부채(face)": 3.0}}}))
+        self.assertFalse(F._face_has_borrowings({"bs": {"cur": {"사채": 0.0}}}))
+
+
+class TestFaceBorrowingLabels(unittest.TestCase):
+    """face BS 의 K-IFRS 표준·묶음 라벨(10-05 전수 스캔: 유동 차입금(사채 포함) 124분기·장기차입금(사채 포함), 총액 103·비유동 기타금융부채 162 …)과
+    유동성 사채의 FnGuide 분류(유동성장기부채; 단기사채는 전단채·CP만 — 골든 5사 전 기간 0)."""
+
+    def test_standard_labels_mapped(self):
+        E = lambda sec, lab: (F._entries_for("bs", sec, F.norm_label(lab)) or [None])[0]
+        lump_s, lump_l = ["단기차입금", "단기금융부채(face)"], ["장기차입금", "장기금융부채(face)"]
+        self.assertEqual(E("cl", "유동 차입금(사채 포함)"), lump_s)
+        self.assertEqual(E("cl", "유동 차입금 및 비유동차입금(사채 포함)의 유동성 대체 부분 합계 (주5,7,22)"), lump_s)
+        self.assertEqual(E("cl", "유동성 금융기관 차입금(사채 제외)"), lump_s)
+        self.assertEqual(E("cl", "차입금 및 사채"), lump_s)
+        self.assertEqual(E("cl", "차입부채"), lump_s)
+        self.assertEqual(E("cl", "비유동차입금의 유동성 대체 부분"), ["유동성장기부채"])
+        self.assertEqual(E("cl", "유동성사채"), ["유동성장기부채"])
+        self.assertEqual(E("cl", "사채"), ["유동성장기부채"])
+        self.assertEqual(E("cl", "전환사채"), ["유동성장기부채"])
+        self.assertEqual(E("cl", "전자단기사채"), ["단기사채"])
+        self.assertEqual(E("ncl", "장기차입금(사채 포함), 총액"), lump_l)
+        self.assertEqual(E("ncl", "비유동차입금(사채 포함)의 비유동성 부분 (주5,7,22)"), lump_l)
+        self.assertEqual(E("ncl", "장기차입금 및 사채"), lump_l)
+        self.assertEqual(E("ncl", "비유동성 금융기관 차입금(사채 제외)"), ["장기차입금"])
+        self.assertEqual(E("ncl", "전환사채, 총액"), ["사채"])
+        self.assertEqual(E("ncl", "기타금융부채"), ["기타비유동금융부채", "장기금융부채"])
+        self.assertEqual(E("cl", "기타금융부채"), ["기타유동금융부채", "단기금융부채"])
+        self.assertEqual(E("cl", "당기손익-공정가치측정금융부채"), ["기타유동금융부채", "단기금융부채"])
+
+    def test_kcc_style_face_total_debt(self):
+        """케이씨씨 2026Q2 face — 유동성장기차입금 + 유동성사채 = 유동성장기부채, 총차입금 5.27조. 주석 `유동성 대체` 는 face 에 있으니 올리지 않는다."""
+        html = """<table><tr><td>연결 재무상태표</td></tr><tr><td>(단위 : 백만원)</td></tr></table>
+<table><thead><tr><th></th><th>제 68 기 반기말</th><th>제 67 기말</th></tr></thead>
+<tr><td>유동부채</td><td>5,000,000</td><td>4,000,000</td></tr>
+<tr><td>단기차입금</td><td>872,951</td><td>758,686</td></tr><tr><td>유동성장기차입금</td><td>644,880</td><td>-</td></tr><tr><td>유동성사채</td><td>1,396,988</td><td>1,313,396</td></tr>
+<tr><td>비유동부채</td><td>3,000,000</td><td>3,500,000</td></tr>
+<tr><td>장기차입금</td><td>199,507</td><td>840,861</td></tr><tr><td>비유동사채</td><td>2,151,185</td><td>2,097,836</td></tr>
+<tr><td>부채총계</td><td>8,000,000</td><td>7,500,000</td></tr><tr><td>자본총계</td><td>2,000,000</td><td>2,000,000</td></tr><tr><td>자산총계</td><td>10,000,000</td><td>9,500,000</td></tr></table>"""
+        b = F.parse_fin_section(html)["bs"]["cur"]
+        self.assertEqual((b["단기차입금"], b["유동성장기부채"], b["장기차입금"], b["사채"]), (872951.0, 2041868.0, 199507.0, 2151185.0))
+        self.assertNotIn("단기사채", b)
+        self.assertEqual(b["총차입금"], 872951.0 + 2041868.0 + 199507.0 + 2151185.0)
+        face = {"단기차입금": 77714.96, "단기사채": 38000.0}                                               # 승격 가드 — face 가 유동성 사채를 단기사채로 보이는 옛 fin 모양
+        F.inject_note_bs(face, {"acc": {"cur_full": {"유동성장기부채": 38000.0, "장기차입금": 5.0}}}, {}, [], "2022Q2", "cons")
+        self.assertNotIn("유동성장기부채", face)
+        self.assertEqual(face["장기차입금"], 5.0)

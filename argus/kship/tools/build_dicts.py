@@ -28,6 +28,9 @@ GROUPS = [
 ]
 
 # (id, ko, en, prio, ctx, kw, neg, regions)
+# 2026-10-05 보강(미분류 110행 실측): HULL.CAST '단조'(금강공업 '단조' 행 — 문맥 필요) · COAT.PAINT 'A/F'(anti-fouling,
+#  KCC 선박용 방오도료 코드 A/F7830·A/F7950) · ELEC.CABLE '선박선'(티엠씨 '선박선 사업부문' = 선박용 전선) ·
+#  SVC.INSPECT '수리'(KS인더스트리 '기자재 판매 및 수리'; '수리조선' 은 SVC.LABOR 몫이라 부정 키워드로 뺀다).
 #  prio 높을수록 먼저 매칭(특수 키워드가 일반 키워드를 이긴다). ctx=True 는 문맥(선박/조선/해양)
 #  이 함께 있어야 채택 — 육상·자동차·플랜트와 겹치는 낱말.
 CATS = [
@@ -38,7 +41,7 @@ CATS = [
      ["후판", "조선용후판", "형강", "선박용강재", "앵글", "벌브플랫", "강판", "부등변앵글", "조선용형강", "선재"],
      [], ["R_HULL_SIDE"]),
     ("HULL.CAST", "주단강(선미재·러더혼)", "Castings & forgings", 55, True,
-     ["선미재", "스턴프레임", "러더혼", "주강품", "단조품", "주단강", "선박용주물", "형단조", "주강", "주물", "자유형단조", "구조용특수장치", "엔진구조재", "MBS"], ["자동차"], ["R_STERN_RUDDER"]),
+     ["선미재", "스턴프레임", "러더혼", "주강품", "단조품", "주단강", "선박용주물", "형단조", "주강", "주물", "자유형단조", "구조용특수장치", "엔진구조재", "MBS", "단조"], ["자동차"], ["R_STERN_RUDDER"]),
     ("HULL.OUTFIT", "선체의장", "Hull outfitting", 40, True,
      ["그레이팅", "핸드레일", "맨홀", "선체의장", "의장품", "사다리", "래더"], [], ["R_MAIN_DECK"]),
     ("PROP.MAIN", "주기관", "Main engine", 80, False,
@@ -101,7 +104,7 @@ CATS = [
     ("PIPE.SCRUBBER", "스크러버·SCR·EGR", "Exhaust cleaning", 86, True,
      ["스크러버", "탈황", "SOx", "SCR", "탈질", "EGCS", "EGR", "배기가스정화", "탈황장치"], ["반도체", "백연"], ["R_FUNNEL"]),
     ("ELEC.CABLE", "선박용케이블", "Marine cables", 82, False,
-     ["선박용케이블", "선박전선", "케이블트레이", "관통부", "MCT", "해양용케이블", "선용케이블"], ["해저케이블", "통신케이블", "교량용케이블", "타이케이블"], ["R_CABLE_RUN"]),
+     ["선박용케이블", "선박전선", "케이블트레이", "관통부", "MCT", "해양용케이블", "선용케이블", "선박선"], ["해저케이블", "통신케이블", "교량용케이블", "타이케이블"], ["R_CABLE_RUN"]),
     ("ELEC.SWBD", "배전반·변압기·전기추진", "Switchboards & electric propulsion", 70, True,
      ["배전반", "배전판", "스위치보드", "분전반", "제어반", "MCC", "변압기", "정류기", "전동기", "인버터", "전력변환", "전기추진", "배터리시스템", "ESS", "선박용전기", "연료전지"], [], ["R_AUX", "R_CABLE_RUN"]),
     ("ELEC.LIGHT", "조명·항해등", "Lighting", 65, True, ["조명", "등기구", "항해등", "탐조등", "LED", "해상용조명"], [], ["R_DECKHOUSE"]),
@@ -118,7 +121,7 @@ CATS = [
      ["소화", "소화장치", "고정식소화", "CO2", "워터미스트", "스프링클러", "화재탐지", "화재경보", "소화설비", "firefighting", "drypowder", "소화기"], ["소화기계"], ["R_LIFEBOAT", "R_DECK_CARGO"]),
     ("SAFE.LIFE", "구명정·대빗", "Life-saving", 78, True, ["구명정", "구명뗏목", "구명벌", "대빗", "구명동의", "구명설비", "탈출"], [], ["R_LIFEBOAT"]),
     ("SAFE.ENV", "오수처리·소각기·가스탐지", "Environmental", 60, True, ["오수처리", "소각기", "폐기물", "가스탐지", "가스검지", "환경장비", "가스감지"], [], ["R_AUX"]),
-    ("COAT.PAINT", "선박용도료", "Marine coatings", 72, True, ["선박용도료", "방오도료", "방식도료", "도료", "페인트", "에폭시", "방오"], [], ["R_WATERLINE", "R_HULL_SIDE"]),
+    ("COAT.PAINT", "선박용도료", "Marine coatings", 72, True, ["선박용도료", "방오도료", "방식도료", "도료", "페인트", "에폭시", "방오", "A/F", "antifouling"], [], ["R_WATERLINE", "R_HULL_SIDE"]),
     ("COAT.WORK", "도장공사·족장·음극방식", "Coating works", 62, True, ["도장공사", "블라스팅", "족장", "발판", "표면처리", "희생양극", "음극방식", "ICCP", "도장", "가설재", "비계"], [], ["R_HULL_SIDE"]),
     ("COAT.INSUL", "일반 단열·보온", "General insulation", 55, True, ["단열재", "보온재", "방열", "단열"], ["보냉재", "LNG"], ["R_DECKHOUSE"]),
     ("OFFSH.TOPSIDE", "탑사이드모듈", "Topside modules", 80, False,
@@ -126,7 +129,7 @@ CATS = [
     ("OFFSH.MOORING", "터렛·계류시스템", "Turret & mooring", 80, False, ["터렛", "계류시스템", "계류체인", "무어링시스템"], [], ["R_TURRET"]),
     ("OFFSH.SUBSEA", "라이저·해저구조", "Risers & subsea", 80, False, ["라이저", "해저구조물", "서브시", "해저"], ["해저케이블"], ["R_TURRET"]),
     ("SVC.DESIGN", "선박설계", "Ship design", 50, True, ["선박설계", "기본설계", "상세설계", "생산설계", "엔지니어링", "설계"], [], []),
-    ("SVC.INSPECT", "검사·시운전·유지보수(AM)", "Inspection & trials", 50, True, ["비파괴검사", "시운전", "모형시험", "검사", "선급", "Retrofit", "레트로핏", "개조", "AfterMarket", "AM솔루션", "유지보수", "선박정비", "AM(AfterMarket)"], [], []),
+    ("SVC.INSPECT", "검사·시운전·유지보수(AM)", "Inspection & trials", 50, True, ["비파괴검사", "시운전", "모형시험", "검사", "선급", "Retrofit", "레트로핏", "개조", "AfterMarket", "AM솔루션", "유지보수", "선박정비", "AM(AfterMarket)", "수리"], ["수리조선"], []),
     ("SVC.LABOR", "사내협력·임가공", "Subcontract labour", 45, True, ["사내협력", "임가공", "블록가공", "의장공사", "용접", "수리조선"], [], []),
 ]
 

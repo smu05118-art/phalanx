@@ -184,5 +184,45 @@ class TestScanWiring(unittest.TestCase):
         self.assertEqual(out["carried"], [])
 
 
+
+class TestRejudge(unittest.TestCase):
+    """--rejudge: 기준을 바꿔도 DART 없이 지난 증거로 다시 판정한다 — 이월 표식(carried_from)과 carried 목록이 보존돼야 하고,
+    증거가 기준에 못 미치면 이월 행도 제외로 간다(이월은 판정 면제가 아니다)."""
+
+    def _probe(self):
+        return {"quarter": "2026Q2", "scanned": "2026-09-26", "pool": 214, "rule": "old",
+                "promoted": {"187790": dict(_PREV["187790"], carried_from="2026-09-11"),
+                             "065710": dict(_PREV["065710"])},
+                "rejected": [{"stock": "105740", "name": "디케이락", "industry": "일반 목적용 기계 제조업", "product": "피팅",
+                              "ok": True, "hits": 4, "terms": {"선박": 4}, "mentions": {"329180": 1}, "note": ""}],
+                "failed": []}
+
+    def _run(self, probe):
+        saved = {}
+        with mock.patch.object(S, "load_asset", return_value=probe), \
+                mock.patch.object(S, "write_asset", side_effect=lambda n, d: saved.__setitem__(n, d)):
+            out = S.rejudge(log=io.StringIO())
+        self.assertIs(saved["universe_probe.json"], out)
+        return out
+
+    def test_keeps_carried_marker_and_rule(self):
+        out = self._run(self._probe())
+        self.assertEqual(sorted(out["promoted"]), ["065710", "187790"])
+        self.assertEqual(out["promoted"]["187790"]["carried_from"], "2026-09-11")
+        self.assertNotIn("carried_from", out["promoted"]["065710"])
+        self.assertEqual(out["carried"], ["187790"])
+        self.assertEqual(out["rule"], S.RULE)
+        self.assertEqual([r["stock"] for r in out["rejected"]], ["105740"])
+        self.assertEqual(out["scanned"], "2026-09-26")                       # 재판정은 스캔이 아니다 — 스캔일은 그대로
+
+    def test_carried_row_below_rule_is_rejected(self):
+        probe = self._probe()
+        probe["promoted"]["187790"]["hits"] = 2                                # 증거가 기준(낱말 6)에 못 미친다
+        out = self._run(probe)
+        self.assertNotIn("187790", out["promoted"])
+        self.assertIn("187790", [r["stock"] for r in out["rejected"]])
+        self.assertEqual(out["carried"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

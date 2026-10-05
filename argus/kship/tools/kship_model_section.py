@@ -13,6 +13,10 @@
   라운드 3(MODEL_SPEC §5-5): 손익표에 `매출조선신규`·`OP조선신규` 를 들여쓴 하위 행으로, 영업외 세부(이자·환·파생·기타·지분법·중단)는
   값이 있을 때만; 섹션 머리·KPI 에 '신규수주 포함(forecast_panel base, 미보정)' 라벨; 드라이버 표기에 OOS 선택 결과
   (`WAPE 연동 x% vs 추세 y%` → 채택/폴백); 허브 표에 신규수주 열.
+  5차(V7, T6 D7): status(데이터 완전성)와 driver_fallback(드라이버 폴백 사유 corr|significance|n|oos|no_link|none)을 섞지 않고 따로 —
+  섹션 머리·KPI 위 '모델 상태' 한 줄(partial 사유는 quality 필드로 되짚는다. 모델이 사유를 따로 적지 않으므로)·허브 '폴백 사유' 열·KPI 타일;
+  허브 고정 각주(마지막 갱신은 입력 파일의 기록만 — 시계를 읽지 않는다 · 출처 · 단위 · 면책); 모집단 밖 모델(피합병 010620)도 허브 표에
+  '모집단 외' 로 올린다(빠뜨리지 않음); 모바일(360px) — .grid2 는 min(360px,100%) · .wrap 가로 스크롤.
   section_for_stock(stock) -> html | ""   회사 페이지 훅(kship_page/kship_parts 의 _model_section)이 부른다.
                                           모델 json 이 없으면 빈 문자열 — 빈 칸으로 흉내 내지 않는다.
   build_models_hub(models_dir) -> html    argus/kship/models.html — 56사 표(역할·FY2026E~28E·PER/PBR·status), 정렬·검색.
@@ -74,6 +78,21 @@ NONOP_DETAIL = ("이자손익", "외환손익", "파생상품손익", "기타금
 SUB_ROWS = set(NONOP_DETAIL) | {"매출조선신규", "OP조선신규"}          # 들여쓴 하위 행
 ROW_LABEL_KO = {"매출조선신규": "└ 신규수주 매출(forecast_panel base · 매출조선에 포함)",
                 "OP조선신규": "└ 신규수주 OP(매출조선신규 × 타겟 OPM · OP조선에 포함)"}
+# T6 D7 — `status` 는 데이터 완전성, 드라이버 폴백 사유는 `driver_fallback`(kship_model.py DRIVER_FALLBACKS). 둘을 한 칸에 섞어 읽히지 않게 따로 표기한다.
+# 코드는 모델 값 그대로(정렬·grep 용), 뜻은 한글. 뜻 문장은 kship_model.py 의 채택 조건(CORR_MIN 0.30 · 단일 검정 5% · LINK_MIN_N 4 · OOS ×1.10)을 옮긴 것.
+DRIVER_FALLBACK_KO = collections.OrderedDict([
+    ("none", "폴백 없음"), ("oos", "OOS 기각 → 추세 폴백"), ("significance", "유의성 미달 → 추세 폴백"),
+    ("n", "표본 부족 → 추세 폴백"), ("corr", "상관 미달 → 추세 폴백"), ("no_link", "고객 연결 없음 → 추세 폴백")])
+DRIVER_FALLBACK_DESC = {
+    "none": "계획한 드라이버(고객 연동·선표·종속사 합산)를 그대로 채택 — 폴백 아님",
+    "oos": "고객 연동 후보가 유의성은 통과했지만 동결 백테스트(freeze 2025Q2 · 4분기 매출 WAPE)에서 추세+계절성 × 1.10 보다 나빠 기각(결정 ⓘ)",
+    "significance": "고객 연동 후보의 상관이 단일 검정 5% 임계 r(df=n−2) 미달",
+    "n": "고객 연동 회귀 짝 수 n 이 최소치 4 미달",
+    "corr": "고객 연동 후보의 최대 상관이 0.30 미달",
+    "no_link": "고객 조선사 연결(suppliers.json)·선표·종속사가 없어 매출 추세+계절성으로 추정",
+}
+STATUS_RULE = "status 는 데이터 완전성만 — fin ≥ 8분기 · 항등식 · 추정 ≥ 10분기 · 별도 보충 없음 · 최신 완결 분기(T6 D7). 드라이버 폴백은 driver_fallback 으로 따로"
+FIN_MIN_Q, FWD_MIN_Q = 8, 10          # kship_model.py 의 status 판정 임계(fin 분기 · 추정 분기) — 사유를 되짚을 때만 쓴다
 
 # 섹션 전용 스타일. 공용 kship.css 는 건드리지 않고 .kmodel 로 범위를 묶는다(회사 페이지 표 규칙과 충돌 금지).
 SECTION_CSS = """
@@ -105,6 +124,13 @@ SECTION_CSS = """
 .kmodel .tag.off{color:var(--tx3,#5d6675);border-color:var(--ln,#2a2f3a)}
 .kmodel table.scn tr.base td,.kmodel table.scn tr.base th{background:rgba(57,135,229,.08)}
 .kmodel table.scn th.rowh{white-space:nowrap}
+.kmodel .status{font-size:11.5px;color:var(--tx2,#98a1b0);margin:-4px 0 12px;line-height:1.7;overflow-wrap:anywhere}
+.kmodel .status b{font-weight:600;margin-right:6px}
+.kmodel .grid2{grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr))}
+.kmodel .grid2>*{min-width:0}
+.kmodel .wrap{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+.kmodel .fn,.kmodel .assum>div,.kmodel h2 em,.kmodel .bandlbl span{overflow-wrap:anywhere}
+@media(max-width:480px){.kmodel section.card{padding:12px 11px}.kmodel .assum{grid-template-columns:1fr}.kmodel .kpi{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}}
 """
 
 
@@ -225,6 +251,81 @@ def oos_text(d, short=False):
 def model_oos(model, short=False):
     """첫 사업부 드라이버의 OOS 선택 결과(없으면 "")."""
     return oos_text(_first_driver_with(model, "selection_oos"), short=short)
+
+
+def driver_fallback_info(model):
+    """(code, 한글 뜻, 상세) — T6 D7 `driver_fallback`. 상세는 기각 블록(customer_link_rejected)의 상관·n·WAPE 를 붙인다.
+    필드가 없거나 모르는 코드면(구버전·모의 모델) customer_link_rejected.rejected_by 라는 명시적 증거로만 판정하고, 그것도 없으면 (None, "", "") —
+    드라이버 type 에서 사유를 추정하지 않는다(추세 폴백이라도 '왜' 는 모델만 안다)."""
+    code = model.get("driver_fallback")
+    rj = _first_driver_with(model, "customer_link_rejected").get("customer_link_rejected")
+    rj = rj if isinstance(rj, dict) else {}
+    if code not in DRIVER_FALLBACK_KO:
+        code = rj.get("rejected_by") if rj.get("rejected_by") in DRIVER_FALLBACK_KO else None
+    if not code:
+        return None, "", ""
+    det = [DRIVER_FALLBACK_DESC[code]]
+    if code in ("corr", "significance", "n", "oos") and rj:
+        if _num(rj.get("corr")):
+            rc = (rj.get("significance") or {}).get("r_crit_p05_two_sided") if isinstance(rj.get("significance"), dict) else None
+            det.append("상관 %.2f" % rj["corr"] + ((" (임계 r %.2f)" % rc) if (code == "significance" and _num(rc)) else ""))
+        if _num(rj.get("n")):
+            det.append("n=%d" % rj["n"])
+        o = oos_text(rj, short=True)
+        if o:
+            det.append(o)
+        if rj.get("note"):
+            det.append(str(rj["note"]))
+    elif code == "no_link":
+        d = _first_driver_with(model, "type")
+        if d.get("basis"):
+            det.append(str(d["basis"]))
+    return code, DRIVER_FALLBACK_KO[code], " · ".join(det)
+
+
+def status_reasons(model):
+    """partial 사유 — kship_model.py 의 status 규칙(T6 D7)을 quality 필드로 되짚는다(모델은 사유를 따로 적지 않는다).
+    fin < 8분기 · 항등식 불일치 · 추정 매출 < 10분기 · 별도 보충(sep_filled) · 누락 · 최신 완결 분기 미수집/합병 경고. 전부 통과면 []."""
+    q = model.get("quality") or {}
+    rs = []
+    n = q.get("fin_quarters")
+    if _num(n) and n < FIN_MIN_Q:
+        rs.append("fin %d분기(< %d)" % (n, FIN_MIN_Q))
+    if q.get("identities_ok") is False:
+        rs.append("항등식 불일치")
+    la = (model.get("periods") or {}).get("last_actual") or model.get("origin")
+    rev = row_map(model).get("매출액")
+    if rev and la:
+        n_est = sum(1 for k in ((model.get("periods") or {}).get("quarters") or []) if k > la and cell(rev, k))
+        if n_est < FWD_MIN_Q:
+            rs.append("추정 매출 %d분기(< %d)" % (n_est, FWD_MIN_Q))
+    sf = sorted(str(x) for x in (q.get("sep_filled") or []))
+    if sf:
+        rs.append("별도 보충 %d분기(%s~%s)" % (len(sf), sf[0], sf[-1]))
+    if q.get("missing"):
+        rs.append("누락 %d건: %s" % (len(q["missing"]), ", ".join(str(x) for x in q["missing"][:4])))
+    rs += [str(w) for w in (q.get("warnings") or []) if ("최신 완결 분기" in str(w) or "합병" in str(w))]
+    return rs
+
+
+def status_line(model):
+    """섹션 상단 한 줄 — 모델 상태 full/partial 과 그 사유(데이터 완전성), 그리고 드라이버 폴백(별도). 사유를 되짚을 수 없으면 '미기재' 라고 쓴다."""
+    s = model_summary(model)
+    st = s["status"] or "—"
+    q = model.get("quality") or {}
+    la = (model.get("periods") or {}).get("last_actual") or model.get("origin") or "—"
+    cls = {"full": "up", "partial": "wn", "no_fin": "dn"}.get(st, "tx3")
+    if st == "partial":
+        why = "사유: " + " · ".join(E(x) for x in (status_reasons(model) or ["미기재 — quality.warnings 참조"]))
+    elif st == "full":
+        fq, idok = q.get("fin_quarters"), q.get("identities_ok")
+        why = "데이터 완전 — fin %s분기 · 항등식 %s · 최신 분기 %s" % (("%d" % fq) if _num(fq) else "—",
+                                                               "OK" if idok else ("미검사" if idok is None else "불일치"), E(str(la)))
+    else:
+        why = E(" · ".join(str(w) for w in (q.get("warnings") or [])[:2]) or "재무 없음")
+    code, lab, det = driver_fallback_info(model)
+    fb = (' · <span title="%s">드라이버 폴백 %s — %s</span>' % (E(det), E(code), E(lab))) if code else ""
+    return '<p class="status"><b class="%s" title="%s">모델 상태 %s(%s)</b>%s%s</p>' % (cls, E(STATUS_RULE), E(STATUS_KO.get(st, st)), E(st), why, fb)
 
 
 def sls_mode_info(model, sls):
@@ -854,14 +955,18 @@ def render_model_section(entry, model, fin=None, price=None, sls=None, depth=1):
     info = sls_mode_info(model, sls)
     oos = model_oos(model, short=True)
     tag = ('<span class="tag%s" title="%s">%s</span>' % ("" if state == "included" else " off", E(no_detail), E(no_label))) if no_label else ""
+    # T6 D7: 드라이버 폴백 사유는 status 와 따로 — 머리에는 코드(뜻), 상세(상관·n·WAPE)는 상태 줄 툴팁
+    fb_code, fb_label, _ = driver_fallback_info(model)
+    fb_txt = "" if not fb_code else (" · 폴백 없음" if fb_code == "none" else " · 폴백 사유 %s(%s)" % (E(fb_code), E(fb_label)))
     parts = [
-        '<div id="%s" class="kmodel" data-model-status="%s" data-model-origin="%s" data-model-driver="%s" data-model-new-orders="%s"'
-        ' data-model-cohort-mode="%s" data-model-backlog-cap="%s"><style>%s</style>'
-        % (uid, E(str(s["status"] or "")), E(model.get("origin") or ""), E(dtype or ""), state, E(info.get("mode") or ""),
+        '<div id="%s" class="kmodel" data-model-status="%s" data-model-origin="%s" data-model-driver="%s" data-model-driver-fallback="%s"'
+        ' data-model-new-orders="%s" data-model-cohort-mode="%s" data-model-backlog-cap="%s"><style>%s</style>'
+        % (uid, E(str(s["status"] or "")), E(model.get("origin") or ""), E(dtype or ""), E(fb_code or ""), state, E(info.get("mode") or ""),
            "" if info.get("cap_applied") is None else ("applied" if info["cap_applied"] else "not_applied"), SECTION_CSS),
-        '<h2 class="sec">%s · 실적 모델%s<span>%s · 기준 %s · 드라이버 %s%s · %s</span></h2>'
+        '<h2 class="sec">%s · 실적 모델%s<span>%s · 기준 %s · 드라이버 %s%s%s · %s</span></h2>'
         % (E(name), tag, E(ROLE_KO.get(model.get("role"), model.get("role") or "—")), E(model.get("origin") or "—"),
-           E(driver_label(dtype)), (" (%s)" % oos) if oos else "", E(DISCLAIMER)),
+           E(driver_label(dtype)), (" (%s)" % oos) if oos else "", fb_txt, E(DISCLAIMER)),
+        status_line(model),
         _kpi_strip(model, price),
         _pnl_table(model),
         _segment_chart(model, uid, depth),
@@ -1029,30 +1134,95 @@ def _summary_status(summary, stock):
     return x.get("status") if isinstance(x, dict) else None
 
 
+def _peek_json_key(path, key, nbytes=4096):
+    """큰 json(fin 수백 KB)의 머리만 읽어 최상위 문자열 키 하나를 꺼낸다 — 허브 각주의 수집 시각용. 전체 파싱은 하지 않는다."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            head = f.read(nbytes)
+    except OSError:
+        return None
+    m = re.search(r'"%s"\s*:\s*"([^"]*)"' % re.escape(key), head)
+    return m.group(1) if m else None
+
+
+def _models_in_dir(models_dir):
+    """<6자리>.json 종목 목록(정렬). summary.json 등은 제외."""
+    try:
+        names = os.listdir(models_dir)
+    except OSError:
+        return []
+    return sorted(n[:6] for n in names if re.fullmatch(r"\d{6}\.json", n))
+
+
+def _hub_footnote(models_dir, stocks, latest_built):
+    """허브 고정 각주 — 마지막 갱신(입력 파일의 기록만, 시계를 읽지 않는다) · 출처 · 단위 · status/폴백 구분 · 추천 아님."""
+    summary = _load_json(os.path.join(models_dir, "summary.json")) or {}
+    prices = _load_json(PRICES_PATH) or {}
+    fx = _load_json(os.path.join(ASSETS, "fx.json")) or {}
+    fin_at, sls_at = set(), set()
+    for st in stocks:
+        v = _peek_json_key(os.path.join(FIN_DIR, "%s.json" % st), "collected_at")
+        if v:
+            fin_at.add(v)
+        s = _load_json(os.path.join(SLS_DIR, "%s.json" % st)) if os.path.isfile(os.path.join(SLS_DIR, "%s.json" % st)) else None
+        v = (s or {}).get("built_at") or (s or {}).get("as_of")
+        if v:
+            sls_at.add(str(v))
+
+    def rng(xs):
+        xs = sorted(xs)
+        return "—" if not xs else (E(xs[0]) if xs[0] == xs[-1] else "%s~%s" % (E(xs[0]), E(xs[-1])))
+
+    return ('<section class="card"><h2>각주 <em>마지막 갱신 · 출처 · 단위 · 면책 — 고정</em></h2><ul class="fn">'
+            '<li>마지막 갱신: 모델 생성 %s(summary.json built_at %s · 기준 분기 %s) · 재무(fin) 수집 %s · 시세 as_of %s · 환율 as_of %s · 선표(sls) %s. '
+            '이 페이지는 모델 json 에서 그대로 만들어지며 시계를 읽지 않는다 — 갱신 시각은 입력 파일의 기록이다.</li>'
+            '<li>출처: 재무 DART 정기보고서(연결·별도 재무제표·주석, 키 없는 공개 열람) · 시세 %s · 환율 ECB(api.frankfurter.app, 네이버 대조) · '
+            '계약 원장 KIND 단일판매ㆍ공급계약체결 · 신규수주 forecast_panel base(calibrated=false, 미보정).</li>'
+            '<li>단위: 이 표는 억원(백만원÷100) · EPS 원 · PER/PBR 배. 페이지 꼬리의 공용 각주(백만원·백만달러)는 사이트 공통 문구다.</li>'
+            '<li>상태·폴백: %s. \'폴백 사유\' 열은 driver_fallback — %s.</li>'
+            '<li><b>%s</b> — 컨센서스·목표주가가 아니며 투자 판단의 근거로 쓰지 말 것. 참고용 · 투자조언 아님.</li></ul></section>'
+            % (E(latest_built or "—"), E(str(summary.get("built_at") or "—")), E(str(summary.get("origin") or "—")), rng(fin_at),
+               E(str(prices.get("as_of") or "—")), E(str(fx.get("as_of") or "—")), rng(sls_at),
+               E(AIK_CREDIT), E(STATUS_RULE), " · ".join("%s=%s" % (k, E(v)) for k, v in DRIVER_FALLBACK_KO.items()), E(DISCLAIMER)))
+
+
 def build_models_hub(models_dir=None, write=True):
     models_dir = models_dir or MODELS_DIR
     pop = population()
+    pop_stocks = {r["stock"] for r in pop}
+    # 모집단 밖 모델(universe·suppliers·회사 폴더 어디에도 없는 회사 — 피합병 HD현대미포 010620 같은 참고용 모델)도 표에 올린다. 빠뜨리면
+    # 허브 '모델 생성 57' 과 summary.json 58행이 어긋난다. 종목코드 순으로 섞고 '모집단 외' 라고 적는다.
+    outside = [{"stock": st, "name": None, "role": None, "has_page": False, "outside": True} for st in _models_in_dir(models_dir) if st not in pop_stocks]
     summary = _load_json(os.path.join(models_dir, "summary.json"))
     built, latest_built, origins = 0, "", collections.Counter()
     status_n = collections.Counter()
     no_n = collections.Counter()          # 신규수주 포함/미포함 회사 수
+    fb_n = collections.Counter()          # 드라이버 폴백 사유(T6 D7) 회사 수
+    n_out = 0
+    with_model = []
     trs = []
-    for r in pop:
+    for r in sorted(pop + outside, key=lambda x: x["stock"]):
         st = r["stock"]
         model = load_model(st, models_dir)
+        if r.get("outside") and not model:
+            continue
         role = (model or {}).get("role") or r.get("role")
         name = r.get("name") or (model or {}).get("name") or st
         # 앵커는 회사 페이지에 섹션이 실제로 있을 때만 — 빌더가 아직 다시 그리지 않은 페이지(승격분 등)로는 앵커 없이 보낸다
         has_sec = r.get("has_page") and _page_has_section(st)
         link = ('<a href="%s/index.html%s">%s</a>' % (E(st), ("#kship-model-" + E(st)) if has_sec else "", E(name))) if r.get("has_page") else E(name)
+        if r.get("outside"):
+            n_out += 1
+            link += ' <span class="mut" title="universe·suppliers·회사 폴더 어디에도 없는 회사 — 피합병 등 참고용 모델(회사 페이지·시세 없음)">모집단 외</span>'
         xlsx = os.path.isfile(os.path.join(XLSX_DIR, "%s_model.xlsx" % st))
         xl = ('<a href="models/%s_model.xlsx" download>xlsx</a>' % E(st)) if xlsx else '<span class="mut">—</span>'
         if not model:
             status_n["none"] += 1
             trs.append('<tr><td class="l">%s</td><td class="mut">%s</td><td class="l">%s</td>%s<td class="l"><b class="tx3">모델 없음</b></td><td>%s</td></tr>'
-                       % (link, E(st), E(ROLE_KO.get(role, role or "—")), '<td class="mut">—</td>' * 16, xl))
+                       % (link, E(st), E(ROLE_KO.get(role, role or "—")), '<td class="mut">—</td>' * 17, xl))
             continue
         built += 1
+        with_model.append(st)
         if r.get("has_page") and not has_sec:
             status_n["nosec"] += 1
             link += ' <span class="mut" title="회사 페이지 빌더(kship_page/kship_parts)가 이 회사를 다시 그리지 않아 섹션이 아직 없음">섹션 없음</span>'
@@ -1064,11 +1234,22 @@ def build_models_hub(models_dir=None, write=True):
         dtype, _ = model_driver(model)
         oos = model_oos(model, short=True)
         cells = ['<td class="l" title="%s">%s%s</td>' % (E(dtype or ""), E(driver_label(dtype)), (' <span class="mut">%s</span>' % oos) if oos else "")]
+        # 폴백 사유 열(T6 D7) — status 와 분리. 코드(driver_fallback 값 그대로) + 뜻, 툴팁에 상관·n·WAPE. 없으면 '—'(구버전 모델).
+        fb_code, fb_label, fb_det = driver_fallback_info(model)
+        fb_n[fb_code or "—"] += 1
+        if fb_code == "none":
+            fb_html = '<span class="mut">%s · %s</span>' % (E(fb_code), E(fb_label))
+        elif fb_code:
+            fb_html = '<b class="wn">%s</b> · %s' % (E(fb_code), E(fb_label))
+        else:
+            fb_html = '<span class="mut">—</span>'
+        cells.append('<td class="l" data-v="%s" title="%s">%s</td>' % (E(fb_code or ""), E(fb_det or "driver_fallback 미기재(구버전 모델)"), fb_html))
         # 신규수주 열(결정 ⓓ): 조선사·지주만 포함/미포함, 기자재는 고객 모델 경유라 —. FY 매출이 base 신규수주를 품고 있는지 표에서 바로 보이게.
         no_state, no_label, no_detail = new_orders_state(model)
         no_n[no_state] += 1
-        cells.append('<td class="l" data-v="%s" title="%s">%s</td>' % (
-            {"included": 2, "excluded": 1}.get(no_state, 0), E((no_label + " · " + no_detail) if no_detail else no_label),
+        no_title = (no_label + " · " + no_detail) if no_detail else no_label
+        cells.append('<td class="l" data-v="%s"%s>%s</td>' % (
+            {"included": 2, "excluded": 1}.get(no_state, 0), (' title="%s"' % E(no_title)) if no_title else "",
             {"included": '<b class="wn">포함</b>', "excluded": '<span class="mut">미포함</span>'}.get(no_state, '<span class="mut">—</span>')))
         for y in FY_EST:
             f = s["fy"][y]
@@ -1082,35 +1263,48 @@ def build_models_hub(models_dir=None, write=True):
         cells += ['<td data-v="%s">%s</td>' % (s["per_now"] if _num(s["per_now"]) else "", fmt_x(s["per_now"])),
                   '<td data-v="%s">%s</td>' % (s["pbr_now"] if _num(s["pbr_now"]) else "", fmt_x(s["pbr_now"]))]
         cls = {"full": "up", "partial": "wn", "no_fin": "dn"}.get(status, "tx3")
-        trs.append('<tr><td class="l">%s</td><td class="mut">%s</td><td class="l">%s</td>%s<td class="l"><b class="%s">%s</b></td><td>%s</td></tr>'
-                   % (link, E(st), E(ROLE_KO.get(role, role or "—")), "".join(cells), cls, E(STATUS_KO.get(status, status)), xl))
+        # 상태 칸 툴팁: 규칙 + partial 사유(되짚은 것). 사유를 못 되짚으면 '미기재' — 지어내지 않는다.
+        st_title = STATUS_RULE
+        if status == "partial":
+            st_title += " — 사유: " + (" · ".join(status_reasons(model)) or "미기재(quality.warnings 참조)")
+        trs.append('<tr><td class="l">%s</td><td class="mut">%s</td><td class="l">%s</td>%s<td class="l"><b class="%s" title="%s">%s</b></td><td>%s</td></tr>'
+                   % (link, E(st), E(ROLE_KO.get(role, role or "—")), "".join(cells), cls, E(st_title), E(STATUS_KO.get(status, status)), xl))
     # 머리글은 **한 행** — 공용 TABLE_JS 는 thead th 의 평면 순번을 본문 열 번호로 쓰므로 rowspan/colspan 2행 머리글이면 정렬 열이 어긋난다.
-    head = ('<tr><th class="l">회사</th><th>종목코드</th><th class="l">역할</th><th class="l">드라이버</th><th class="l">신규<br>수주</th>'
+    head = ('<tr><th class="l">회사</th><th>종목코드</th><th class="l">역할</th><th class="l">드라이버</th><th class="l">폴백<br>사유</th><th class="l">신규<br>수주</th>'
             + "".join('<th class="est">FY%sE<br>매출(억)</th><th class="est">FY%sE<br>OP(억)</th><th class="est">FY%sE<br>OPM</th><th class="est">FY%sE<br>EPS(원)</th>'
                       % ((y[2:],) * 4) for y in FY_EST)
             + '<th>PER<br>현재</th><th>PBR<br>현재</th><th class="l">상태</th><th>xlsx</th></tr>')
     origin_txt = ", ".join("%s %d" % (E(k), v) for k, v in sorted(origins.items())) or "—"
+    fb_parts = ["%s %d" % (k, fb_n[k]) for k in DRIVER_FALLBACK_KO if k != "none" and fb_n[k]]
+    if fb_n["—"]:
+        fb_parts.append("미기재 %d" % fb_n["—"])
+    fb_txt = " · ".join(fb_parts) or "없음"
     body = """
 <div class="kmodel"><style>%s</style>
 <div class="kpi">
- <div><b>%d<small>/ %d</small></b><span>모델 생성 · 모집단</span></div>
- <div><b>%d</b><span>완성(full) · 부분 %d · 재무 없음 %d · 페이지 섹션 없음 %d</span></div>
+ <div><b>%d<small>/ %d</small></b><span>모델 생성 · 모집단%s</span></div>
+ <div><b>%d</b><span>완성(full) · 부분 %d · 재무 없음 %d · 페이지 섹션 없음 %d — status 는 데이터 완전성(T6 D7)</span></div>
+ <div><b>%d<small>/ %d</small></b><span>드라이버 폴백 없음(none) · 폴백 — %s</span></div>
  <div><b>%d<small>/ %d</small></b><span>신규수주 포함 · 미포함(조선사·지주, forecast_panel base 미보정)</span></div>
  <div><b>%s</b><span>기준 분기</span></div>
  <div><b>%s</b><span>최근 생성</span></div>
 </div>
-<section class="card"><h2>실적 모델 — 섹터 표 <em>FY2026E~28E 매출·OP·OPM·EPS(전부 추정, 음영) · 현재 PER/PBR · 억원 · 머리글을 누르면 정렬 · 신규수주 '포함' 행의 FY 매출은 forecast_panel base(미보정)를 품음 — 매출 칸 툴팁에 보수~낙관</em>
+<section class="card"><h2>실적 모델 — 섹터 표 <em>FY2026E~28E 매출·OP·OPM·EPS(전부 추정, 음영) · 현재 PER/PBR · 억원 · 머리글을 누르면 정렬 · 신규수주 '포함' 행의 FY 매출은 forecast_panel base(미보정)를 품음 — 매출 칸 툴팁에 보수~낙관 · '폴백 사유' 는 driver_fallback(status 와 별개), 상태 칸 툴팁에 partial 사유</em>
 <span class="right"><input data-filter="#mtab" placeholder="회사·종목코드 검색" aria-label="회사 검색" style="background:var(--pn2);border:1px solid var(--ln);border-radius:6px;color:var(--tx);font:12px var(--sans);padding:4px 9px"></span></h2>
 <span class="disclaim">%s</span>
 <div class="wrap tall"><table id="mtab" class="pnl" data-sortable><thead>%s</thead><tbody>%s</tbody></table></div>
 </section>
 <div class="note info">모델은 회사 페이지 하단 「실적 모델」 섹션에 분기 손익표·사업부 차트·가정·밸류에이션으로 펼쳐집니다. 출처 DART 정기보고서 · %s · 환율 ECB(api.frankfurter.app). 모델 없음은 아직 재무 수집·모델 생성이 닿지 않은 회사입니다 — 빈 칸으로 흉내 내지 않습니다.</div>
+%s
 </div>
 <script>%s</script>
-""" % (SECTION_CSS, built, len(pop), status_n.get("full", 0), status_n.get("partial", 0), status_n.get("no_fin", 0), status_n.get("nosec", 0),
+""" % (SECTION_CSS, built, len(pop), (" (모집단 외 %d 포함 — 피합병 참고용)" % n_out) if n_out else "",
+       status_n.get("full", 0), status_n.get("partial", 0), status_n.get("no_fin", 0), status_n.get("nosec", 0),
+       fb_n.get("none", 0), built - fb_n.get("none", 0), fb_txt,
        no_n.get("included", 0), no_n.get("excluded", 0),
-       origin_txt, E(latest_built or "—"), E(DISCLAIMER), head, "".join(trs), E(AIK_CREDIT), TABLE_JS)
-    html = page("한국조선 실적 모델 — %d사 FY2026E~28E" % len(pop), body, depth=0, h1="📈 실적 모델",
+       origin_txt, E(latest_built or "—"), E(DISCLAIMER), head, "".join(trs), E(AIK_CREDIT),
+       _hub_footnote(models_dir, with_model, latest_built), TABLE_JS)
+    html = page("한국조선 실적 모델 — %d사 FY2026E~28E" % len(trs), body, depth=0, h1="📈 실적 모델",
                 nav=(("허브", "index.html"), ("커버리지", "coverage.html"), ("← ARGUS", "../index.html")),
                 crumbs=(("ARGUS", "../index.html"), ("한국조선", "index.html"), ("실적 모델", None)),
                 lead="조선사·지주·엔진·기자재·강재 모집단 전부에 같은 구조의 분기 실적 모델(subQ 방식)을 적용한 결과표입니다. 값은 전부 모델 추정이며 목표주가·추천이 아닙니다. 회사 이름을 누르면 회사 페이지의 모델 섹션으로 갑니다.")

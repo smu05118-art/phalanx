@@ -69,7 +69,7 @@
 - **T4 영업외 세부 행**(`kship_model.py`): `이자손익`·`외환손익`·`파생상품손익`·`기타금융손익` 행을 넣었다. 이자율은 주석이 4분기 이상이면 주석 연율, 아니면 CF 를 쓴다(자산 쪽 주석 20 · CF 36 · 없음 2). KCC·한화시스템은 비용 계정 음수 저장이라 부호를 반전한다(kship_fin 쪽 원인은 미수정). 57사 스윕에서 네 행 항등식 위반 0, 테스트 61 OK.
 - **오너 수정**: status '최신 완결 분기'를 제출기한(45/90일) 기준으로 바꿨다(10/1 이후 58사 전부 partial 로 바뀌던 결함). 렌더러 `PNL_ORDER` 에 외환손익·기타금융손익을 추가했다. 통합 뒤 `unittest discover` 는 "전체 통과"로 기록됐고 건수는 기록이 없다.
 - **결과(summary built 2026-10-02)**: models 58 **full 48 · partial 10**. 드라이버 추세 36 · 연동 16 · 선표 5 · 지주 1. `driver_fallback` none 22 · no_link 23 · oos 9 · significance 4. 백테스트 중위 매출 15.8% · OP 59.25%. 삼성重 FY2026E / 27E / 28E 매출 127,235 / 155,098 / 192,093억, EPS 1,031.3 / 1,560.4 / 1,975.9원. 모델 산출값이며 추천이 아니다.
-- **워크플로** `update-kship.yml`: 재무제표 단계 뒤에 `kship_fin.py --collect-notes --all --notes-parent-fallback` 단계를 넣었다. DART 순차 한 프로세스, continue-on-error, 캐시 재사용, 캐시 목록이 바뀌면 fin 재빌드, 모델 게이트에 '주석 변경'을 추가했다. 레퍼런스 패치는 레포 밖이라 넣지 않았다. **러너에서는 아직 돌리지 않았다**(YAML 구문만 확인).
+- **워크플로** `update-kship.yml`: 재무제표 단계 뒤에 `kship_fin.py --collect-notes --all --notes-parent-fallback` 단계를 넣었다. DART 순차 한 프로세스, continue-on-error, 캐시 재사용, 캐시 목록이 바뀌면 fin 재빌드, 모델 게이트에 '주석 변경'을 추가했다. 레퍼런스 패치는 레포 밖이라 넣지 않았다. ~~러너에서는 아직 돌리지 않았다~~ → 10-05 정정: 러너는 10-01·03·04 에 돌았으나(kship-bot 커밋) 캐시 복원이 비어 `assets/fin_cache` 가 없으면 listing 이 죽어 재무·주석 단계가 수집 전에 실패했다(10-04 89f95231 `mkdir -p` 수정). 아래 10-05 절.
 - **남은 결정**(오너, MODEL.md §12-8):
   - D1 인식 시점
   - 이월결손 회사 세율
@@ -80,3 +80,24 @@
   - 주석 이자비용 연율 클립
   - 별도 주석 추가 수집(약 625요청)
   - ⓖ 재생성 주기
+
+## 2026-10-05 V9 — 문서·워크플로 검증·업그레이드 (MODEL.md §13)
+
+레인은 문서 5개·워크플로 2개만 소유하고 산출물은 재생성하지 않았다(DART 접촉 0). 기준은 main 816207cb(10-02 빌드); 같은 날 다른 레인이 모델·sls·fx·prices·페이지를 재생성했다.
+- **수치 재확인**: MODEL.md §5·§12 의 summary(58행 48/10/0 · 드라이버·폴백·OOS 판정·경고 190·백테스트 중위 15.8/59.25)·§12-5 FY 표·시나리오·sls `post_origin`·대한조선 캡·fin 골든 5,378/5,900 은 산출 파일과 일치. 고친 것 — 테스트 건수(245/기록 없음 → **343 OK, skipped 24**; 3.9 프록시로 342 OK + `enterContext` 1건 = 러너 3.11 하한) · `--cohort-mode` 는 CLI 인자(확인) · "레포 sls 구버전" 은 10-02 에 이미 해소 · "러너 미실행" 은 틀림(위) · 이자수익 "638/946분기" 는 어느 정의로도 재현 안 됨(cons.is 575/828 · cons∪sep 675/997 · 52사 병기) · `fin_cache` 333 → 373.5MB 실측 · fx 88분기(2026Q3 완결 1,418.75/1,355.40) · prices 러너 10-04 산출(토스 이력 이어붙임 작동).
+- **두 외부 커밋**: bb1a70ca — 주석 테스트가 운영 캐시를 읽던 것을 임시 폴더로 격리(`enterContext` 3.11+). 89f95231 — 재무·주석 단계 앞 `mkdir -p assets/fin_cache`(첫 실행에서 listing 이 죽던 원인). 수정 뒤 첫 러너 실행은 10-05 10:40 KST(월요일 → 모델 게이트도 켜짐).
+- **update-kship.yml 로컬 흉내**: run 블록 13개 `bash -n` · 히어독 compile · 16개 CLI `--help` · 플래그 계약 · 재무/주석/환율/게이트/모델/페이지 스텝을 가짜 python3·date 로 실행해 GITHUB_OUTPUT 흐름 확인(`tests/test_run_all.py`). 고친 것: 재무 단계 제한 90분 + job 240(제한이 없으면 job 취소 시 캐시 저장이 보장되지 않음) · 커밋 메시지를 단계 outcome(✗·생략·변경)으로 · 게이트 `"$WHY·"` → `"${WHY}·"`(맥 bash 3.2 가 변수 바로 뒤 멀티바이트 글자를 변수 이름에 붙여 읽어 값을 비우는 실측 함정; 러너 bash 5 무관).
+- **scan-kship.yml**: `carry_forward` 와는 맞지만 워크플로 자체 결함 3건 — openpyxl 미설치(9/30 이후 unittest ImportError → 커밋 불가 추정, 10-04 일요일 커밋 없음) · `kship_scan.py --quarter` 기본 2026Q2 상수 → update-kship 과 같은 날짜 규칙으로 계산해 전달 · `git add -A` → 명시 pathspec. 3.11 · `PYTHONDONTWRITEBYTECODE` · 메시지에 승격·이월·제외·실패 수.
+- **업그레이드**: `tools/run_all.sh`(오프라인 기본 · `--collect/--fin/--notes/--market/--net/--patch` · `--today/--quarter/--only/--skip/--dry-run/--print-quarter`, bash 3.2 호환) · `tests/test_run_all.py` 21건 · HANDOFF 2026Q3 체크리스트 11항 · MODEL_SPEC §2-8 실측 키 보강.
+- **소유 밖 결함(미수정)**: `kship_scan.py:main` `--quarter` 상수 · `test_kship_model.TestRealAssets.test_real_backtest_actual_only_sep_fill_one_off`(작업 트리 재생성 뒤 FAIL — 운영 산출 의존) · `test_kship_xlsx_patch.ExtendFormulas*` 4건(타 레인 진행 중) · `.collect.lock` 잔존(flock 이라 무해).
+
+## 2026-10-05 전수 검증 — 10레인 검증·수정 + 통합 재생성 (MODEL.md §14)
+
+사용자 지시 "전부 … 검증 싹다 돌리고 미진한 부분 업그레이드". 레인 10개가 소유 파일을 검증·수정했고 통합 레인이 전 테스트 → 전 파이프라인 재생성 → 수치·문서 → 변경 범위를 실행했다(DART 접촉 0 · 커밋 없음). 숫자는 전부 통합 세션의 명령 출력이다.
+- **테스트**: 작업 트리 1차 488건 · FAIL 1(현대힘스 드라이버 가중치 저장값 합 1.0001 — V8 의 suppliers.json 변경이 드러낸 4자리 반올림 표시 결함) → `kship_model.r4_weights`(원값 합 1 이면 잔차를 최대 가중치에 얹어 저장값 합도 1, 계산은 원값) + 회귀 테스트 1 → **489 OK(skipped 2, 130.7s)**. HEAD 343 → 489(fin 93 · model 83 · xlsx_patch 66 · section 50 · sls 42 · kship 40 · model_xlsx 33 · fx 27 · run_all 21 · pipeline_e2e 19 · scan 15).
+- **fin(V1)**: 비용 부호 규약 '양수' 통일(face 영업외 괄호 관행을 누적·연간 열로 판정 · 주석 표 단위) → KCC 2026Q2 이자손익 +85,134 → **−65,673.91백만**(10-02 모델이 반전으로 우회하던 결함의 원인 해소), 금융손익 항등식 실패 41 → 2(한신기계 원문 모순). 주석 부모 절 파서 9종 보강(`note_parent_missing` 514 → 263 · `note_unmapped` 560 → 196), 차입금 표준/묶음 라벨 15종 → 33사 총차입금 430셀, **한화오션 총차입금 1~2 → 19/19분기**. checks 에 손익 항등식 4규칙 상주. 골든 **5,378/5,900 = 91.2% 불변** · 재빌드 58/58 바이트 동일.
+- **시세·환율(V2)**: 토스 이력을 버리고 네이버 일봉 5년(한 요청, 57/57 48.9초)으로 — 토스는 2025-03 NXT 편입 뒤 KRX+NXT 합산이라 종가·거래량이 다르고 거래정지일을 거래일로 넣었다. as_of 를 네이버 최신 거래일로 전진(aik 는 주말 미갱신으로 10/1 에 멈춤 → 57종목 10/2, 티엠씨 상한가 14,220 → 18,440). `close_rule` 5항을 prices.json 안에 명문화. fx 88분기 · 2026Q3 완결 1,418.75 / 1,355.40 · forward 9분기.
+- **sls(V3)**: 레퍼런스 HEDGE 실측(미포 0.65 · 삼성重 1.00 — 우리 0.7 은 가정) · 코호트 유효 OPM 표 `--opm-table reference_calibrated`(2026Q3 10.8% — 병기만, 기본 assumed 15%) · 헤지 참고치 · fx 부분 분기 표시. **모델·xlsx·섹션(V4·V5·V7)**: 조정EPS 행 · BS 롤 · 시나리오 시트(조선사 4사) · 영업외 세부 행 수식화 · driver_fallback 라벨 · partial 사유 줄 · 모바일 CSS. **패치(V6)**: calcChain 검증 ⑥ · `--extend-formulas` 옵트인(미사용). **모집단·기자재(V8)**: 주석 주요고객·특수관계자 매출로 고객 재탐색(51사 notes.json, 링크 69 → 73 · share 2 → 11) · 영문 약칭 오탐 수리 · 사전 보강(미분류 111 → 51행). **재현성(V10)**: `selfcheck_models.py`(20 그룹 486,140건 교차 대조) · `test_pipeline_e2e.py` 19.
+- **통합 재생성(10:35~10:38)**: fin `--build --all`(27.4s) → `--golden` → sls(0.13s) → model+xlsx `--today 2026-10-05`(11.4s) → 패치 3파일 ALL OK(19.6s, 교체 0/11/9 · 환율 112/112/24 · 종가 10/2) → 페이지 56장·허브 58행 → selfcheck 17.0s. **summary full 48 · partial 10 · no_fin 0 그대로**, 드라이버 추세 36 → 34 · 연동 16 → 18(한라IMS·한화시스템 → 한화오션, V8 링크), 경고 191 → 183, 백테스트 중위 15.8 / 59.25 불변. **한화오션 FY2026E EPS 6,295.5 → 6,083.1원**(총차입금이 채워져 debt 연율 3.57% → 이자손익 추정 +271 → −267억). 삼성重 FY2026E 127,233 / 13,190 / 1,031.5 · FY2028E 192,004(base). KCC 423,780원은 3.6조 일회성 그대로.
+- **selfcheck 가 잡은 결함 1종(미수정, 모델 레인)**: 지배주주순이익 face 누락 분기를 당기순이익 − 비지배로 파생하면서 셀 `src` 를 face 로 표기(19셀, 값은 일치). 그 외 남은 결함: `_fin_detail` 부호 반전 휴리스틱이 환입 3사에서 오반전 · `_suppliers_weights` 가 share 0.0 을 mentions 로 떨어뜨리고 %와 건수를 섞음 · 신규 연동 2사의 표본(창 8 이동평균) · 유통주식수 기준일 차이 2사 · 원문 한계(한신기계 순금융수익 모순 등). 전부 MODEL.md §14-6.
+- **10-05 14시 마감(오너)**: selfcheck 가 잡은 모델 결함 1종(파생 지배NI src 표기 19셀) 수정 + 사문 부호 반전 휴리스틱 제거 + 공급사 가중치 비중/건수 혼합 수정 → `selfcheck_models.py` consistency 0 · freshness 0, 테스트 489 OK(skipped 2), summary full 48 · partial 10.

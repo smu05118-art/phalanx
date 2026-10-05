@@ -565,6 +565,174 @@ class TestReferenceAnchorAndCap(unittest.TestCase):
         self.assertIn("calibrated_shift_alt", r)
 
 
+class TestUpgradesR5(unittest.TestCase):
+    """5차(2026-10-05, V3 sls 검증) — fx 부분 분기 표시 · 헤지 참고치(수주시점 평균환율) · 레퍼런스 HEDGE 실측값(미포 0.65 · 삼성重 1.00) ·
+    코호트 OPM 표 캘리브레이션(--opm-table) · built_at 고정(--today)."""
+
+    def test_fx_quarter_marks_partial(self):
+        fx = {"quarters": {"2026Q3": {"USDKRW_avg": 1400.0}, "2026Q4": {"USDKRW_avg": 1354.78, "partial": True, "days": 2}},
+              "forward": {"2027Q1": {"USDKRW_avg": 1348.28}}, "daily_last": {"USDKRW": 1348.28}}
+        self.assertEqual(S.fx_quarter(fx, "2026Q3", 1350.0), (1400.0, "fx.json quarters"))
+        self.assertEqual(S.fx_quarter(fx, "2026Q4", 1350.0), (1354.78, "fx.json quarters(partial 2d)"))
+        self.assertEqual(S.fx_quarter(fx, "2027Q1", 1350.0), (1348.28, "fx.json forward"))
+        self.assertEqual(S.fx_quarter(fx, "2030Q1", 1350.0), (1348.28, "fx.json daily_last(flat)"))
+        # 수주시점 환율 출처에도 그대로 남는다(2026-10-02 체결 LNGC 2척이 2026Q4 이틀 평균을 쓴다는 것이 보이게)
+        self.assertEqual(S.fx_at_sign(_row("P1", "010140", signed="2026-10-02"), fx, {}, 1350.0), (1354.78, "fx.json quarters(partial 2d)"))
+
+    def test_hedge_reference_values_and_default_override(self):
+        snap = {"quarter": "2026Q2", "orders": {"rows": [{"seg": "조선해양", "total": False, "closing": 20000000}]},
+                "hedge": {"usd_sell_m": 10000.0, "avg_rate": None}}
+        h = S.hedge_params("010140", {"2026Q2": snap})
+        self.assertEqual(dict(h["reference_hedge"]), {"HD현대미포 010620 SLS!HEDGE": 0.65, "삼성중공업 010140 SLS!HEDGE": 1.0})
+        self.assertIn("미포 65%", h["basis"])
+        self.assertIn("삼성重 100%", h["basis"])
+        self.assertNotIn("레퍼런스 SLS 시트의 HEDGE 70%", h["basis"])            # 전 문구 — 레퍼런스 어디에도 70% 는 없다(실측 2026-10-05)
+        h2 = S.hedge_params("010140", {"2026Q2": snap}, default_ratio=0.65)
+        self.assertEqual((h2["kind"], h2["hedge_ratio"]), ("estimate", 0.65))
+        self.assertIn("HEDGE 65% 가정", h2["basis"])
+        # build 에 hedge_default 를 주면 적용환율이 그 비율로 섞인다
+        rows = [_row("A1", "010140", "LNGC", 2, 1400000.0, "2025-03-01", end="2025-06-30")]
+        yards = {"010140": {"2025Q1": {"quarter": "2025Q1", "ok": True, "revenue": None, "hedge": {},
+                                       "orders": {"cur": "KRW", "rows": [{"seg": "조선해양", "total": False, "closing": 1400000}]}}}}
+        cons = S.prepare_contracts(rows, yards, None, 1400.0)                    # 수주시점 환율 = 상수 1400
+        cm, yi = S.cohorts(cons)
+        o = S.build("010140", cons, cm, yi, yards, None, "linear", 1300.0, "2025Q1", hedge_default=1.0)
+        for b in o["by_quarter"].values():
+            self.assertEqual(b["hedge_ratio"], 1.0)
+            self.assertAlmostEqual(b["applied_rate"], 1400.0, places=1)         # 100% 헤지 → spot 1300 은 섞이지 않는다
+        self.assertTrue(any("헤지비율 1 은 가정" in w for w in o["warnings"]))
+
+    def test_hedge_implied_sign_rate_reference(self):
+        # 수주시점 환율 1000(상수) 계약 1,400,000백만원 → 평균환율 1000 · 잔고 14,000,000백만원 = 14,000백만$ · 명목 7,000 → 0.50
+        rows = [_row("A1", "010140", "LNGC", 2, 1400000.0, "2025-03-01", end="2027-06-30"),
+                _row("N1", "010140", "LNGC", 1, 700000.0, "2026-08-01", end="2028-06-30")]       # origin 뒤 체결 → 평균환율·잔고 대상 아님
+        yards = {"010140": {"2026Q2": {"quarter": "2026Q2", "ok": True, "revenue": None,
+                                       "hedge": {"usd_sell_m": 7000.0, "avg_rate": None},
+                                       "orders": {"cur": "KRW", "rows": [{"seg": "조선해양", "total": False, "closing": 14000000}]}}}}
+        fx = {"quarters": {"2026Q2": {"USDKRW_avg": 1400.0, "USDKRW_end": 1400.0}}}            # 체결 분기는 없다 → 상수 1000
+        cons = S.prepare_contracts(rows, yards, fx, 1000.0)
+        cm, yi = S.cohorts(cons)
+        o = S.build("010140", cons, cm, yi, yards, fx, "linear", 1000.0, "2026Q2")
+        h = o["hedge"]
+        self.assertEqual(h["kind"], "estimate")
+        self.assertEqual(h["implied_sign_n"], 1)                                                 # A1 만(origin 분기말까지 체결)
+        self.assertEqual(h["implied_sign_rate"], 1000.0)
+        self.assertAlmostEqual(h["hedge_ratio_implied_sign_rate"], 7000.0 / (14000000 / 1000.0), places=4)   # 0.50
+        self.assertAlmostEqual(h["hedge_ratio_implied_spot"], 7000.0 / (14000000 / 1400.0), places=4)        # 0.70 — 현물 기준은 가정과 같다
+        self.assertIn("수주시점 평균환율", h["implied_sign_basis"])
+        self.assertEqual(h["hedge_ratio"], 0.7)                                                               # 적용값 불변
+        w = [x for x in o["warnings"] if "hedge_ratio_implied_sign_rate" in x]
+        self.assertEqual(len(w), 1)                                              # 현물 기준 0.70 이지만 평균환율 기준 0.50 이 0.15 넘게 달라 경고
+        self.assertIn("적용하지 않음", w[0])
+        self.assertIn("1000.00원", w[0])
+        # 실측(약정환율 공시) 회사·잔고 없는 회사는 비운다
+        yards_m = {"010140": {"2026Q2": dict(yards["010140"]["2026Q2"], hedge={"usd_sell_m": 7000.0, "avg_rate": 1000.0})}}
+        om = S.build("010140", cons, cm, yi, yards_m, fx, "linear", 1000.0, "2026Q2")
+        self.assertEqual(om["hedge"]["kind"], "measured")
+        self.assertIsNone(om["hedge"]["hedge_ratio_implied_sign_rate"])
+        self.assertIsNone(S.build("010140", cons, cm, yi, {}, fx, "linear", 1000.0, "2026Q2")["hedge"]["hedge_ratio_implied_sign_rate"])
+
+    def test_cohort_opm_calibration_table_and_block(self):
+        table, block = S.cohort_opm_calibration(fin_is={})                      # fin 없음 → 실측 대조 비움
+        self.assertEqual(list(table), ["①적자", "②BEP", "③중마진", "④호황", "⑤초호황"])
+        # ⑤ = (85.7×0.0902 + 1314.1×0.0826 + 2195.8×0.111 + 5785.4×0.1108 + 4813.1×0.1106) ÷ 14194.1
+        self.assertAlmostEqual(table["⑤초호황"], 0.1080, places=3)
+        self.assertAlmostEqual(table["④호황"], 0.0540, places=3)
+        self.assertAlmostEqual(table["③중마진"], 0.0426, places=3)
+        self.assertAlmostEqual(table["②BEP"], 0.0100, places=4)
+        self.assertAlmostEqual(table["①적자"], -0.0108, places=3)
+        vals = [table[k] for k in table]
+        self.assertEqual(vals, sorted(vals))                                     # 단조 ① < ② < ③ < ④ < ⑤
+        self.assertEqual(block["kind"], "estimate")
+        self.assertEqual(block["table_assumed"]["⑤초호황"], 0.15)
+        self.assertEqual(block["table_reference_calibrated"], table)
+        y26 = block["by_year"]["2026"]
+        self.assertAlmostEqual(y26["reference_cells"], 0.1063, places=3)        # (269.8×0.01 + 5785.4×0.1108) ÷ 6055.2
+        self.assertAlmostEqual(y26["assumed_table"], 0.1433, places=3)          # (269.8×0 + 5785.4×0.15) ÷ 6055.2
+        self.assertEqual(y26["reference_sls_row"], 0.1057)
+        self.assertGreater(y26["gap_assumed_minus_reference"], 0.035)
+        self.assertLess(abs(y26["gap_calibrated_minus_reference"]), 0.005)
+        self.assertFalse(block["reference_actual_opm_row"]["usable"])
+        self.assertEqual(block["actual_opm_fin_010620_by_year"], {})
+        # 실측 대조: fin 흉내 — 2024 두 분기 OPM 2% → reference_sls_minus_actual = 레퍼런스 셀 가중 − 실측
+        fin = {"2024Q1": {"매출액(수익)": 1000.0, "영업이익": 20.0}, "2024Q2": {"매출액(수익)": 1000.0, "영업이익": 20.0}}
+        _, b2 = S.cohort_opm_calibration(fin_is=fin)
+        a = b2["actual_opm_fin_010620_by_year"]["2024"]
+        self.assertEqual((a["opm"], a["quarters"]), (0.02, 2))
+        self.assertAlmostEqual(a["reference_sls_minus_actual"], b2["by_year"]["2024"]["reference_cells"] - 0.02, places=4)
+        # 창을 바꾸면 표가 바뀐다(2025~27 → ⑤ 11.1% 안팎); 자료 없는 코호트는 가정 표로 돌아가고 표시한다
+        t2, b3 = S.cohort_opm_calibration(window=(2025, 2027), fin_is={})
+        self.assertAlmostEqual(t2["⑤초호황"], 0.1108, places=3)
+        self.assertEqual(t2["③중마진"], 0.05)
+        self.assertTrue(b3["table_used_years"]["③중마진"]["fallback_assumed"])
+        self.assertFalse(block["table_used_years"]["③중마진"]["fallback_assumed"])
+
+    def test_opm_table_switch_changes_targets_and_shift(self):
+        rows = [_row("C0", "010140", "LNGC", 1, 300000.0, "2025-01-01", end="2027-12-31"),
+                _row("C1", "010140", "LNGC", 1, 340000.0, "2025-02-01", end="2027-12-31")]
+        cons = S.prepare_contracts(rows, {}, None, 1000.0)
+        cm, yi = S.cohorts(cons)
+        real = S._fin_is
+        try:
+            S._fin_is = lambda stock: {"2026Q1": {"매출액(수익)": 1000.0, "영업이익": 100.0}, "2026Q2": {"매출액(수익)": 1000.0, "영업이익": 100.0}}
+            o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")
+            oc = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", opm_table="reference_calibrated")
+        finally:
+            S._fin_is = real
+        self.assertEqual((o["cohort_opm_table_source"], oc["cohort_opm_table_source"]), ("assumed", "reference_calibrated"))
+        self.assertEqual(o["cohort_opm_table"], o["cohort_opm_table_assumed"])
+        self.assertEqual(oc["cohort_opm_table"], o["cohort_opm_calibration"]["table_reference_calibrated"])
+        self.assertEqual(oc["cohort_opm_table_assumed"], o["cohort_opm_table"])
+        self.assertEqual(o["cohort_table"]["opm_table"], S.COHORT_OPM)
+        self.assertEqual(oc["cohort_table"]["opm_table"], oc["cohort_opm_table"])
+        cal5 = oc["cohort_opm_table"]["⑤초호황"]
+        for q in o["by_quarter"]:                                                # 2025 수주 2건 = 전부 ⑤ → 타겟 = 표의 ⑤ 값
+            self.assertAlmostEqual(o["by_quarter"][q]["target_opm"], 0.15, places=6)
+            self.assertAlmostEqual(oc["by_quarter"][q]["target_opm"], cal5, places=6)
+            self.assertEqual(o["by_quarter"][q]["usd_m"], oc["by_quarter"][q]["usd_m"])            # 매출·환산은 표와 무관
+            self.assertEqual(o["by_quarter"][q]["hedged_krw_m"], oc["by_quarter"][q]["hedged_krw_m"])
+        self.assertIn("assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)", o["target_opm"]["2026Q3"]["basis"])
+        self.assertIn("reference_calibrated(", oc["target_opm"]["2026Q3"]["basis"])
+        # calibrated_shift(실측 − 타겟)는 표 차이만큼 반대로 움직인다 — 실측 수준은 같다
+        self.assertAlmostEqual(o["calibration"]["calibrated_shift"], 0.10 - 0.15, places=4)
+        self.assertAlmostEqual(oc["calibration"]["calibrated_shift"], 0.10 - cal5, places=4)
+        tf = o["cohort_opm_calibration"]["this_file"]
+        self.assertEqual(tf["applied_table"], "assumed")
+        self.assertAlmostEqual(tf["target_opm_next_q"]["assumed"], 0.15, places=6)
+        self.assertAlmostEqual(tf["target_opm_next_q"]["reference_calibrated"], cal5, places=6)
+        self.assertEqual(oc["cohort_opm_calibration"]["this_file"]["applied_table"], "reference_calibrated")
+        self.assertTrue(any("코호트 OPM 표 assumed 적용" in w and "--opm-table reference_calibrated" in w for w in o["warnings"]))
+        # 대안 모드(ledger_relative) 타겟도 같은 표로 계산된다
+        q = "2027Q1"
+        by = {c["rcp"]: c for c in oc["contracts"]}
+        a, b = by["C0"]["schedule"][q], by["C1"]["schedule"][q]
+        t = oc["cohort_opm_table"]
+        self.assertAlmostEqual(oc["by_quarter"][q]["target_opm_alt"], (t[by["C0"]["cohort_alt"]] * a + t[by["C1"]["cohort_alt"]] * b) / (a + b), places=4)
+        with self.assertRaises(ValueError):
+            S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", opm_table="bogus")
+
+    def test_built_at_today_summary_fields_and_cli_guards(self):
+        rows = [_row("C0", "010140", "LNGC", 1, 300000.0, "2025-01-01", end="2027-12-31")]
+        cons = S.prepare_contracts(rows, {}, None, 1000.0)
+        cm, yi = S.cohorts(cons)
+        o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", today="2026-10-05")
+        self.assertEqual(o["built_at"], "2026-10-05")
+        self.assertEqual(S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")["built_at"], datetime.date.today().isoformat())
+        s = S.summary({"010140": o}, "2026Q2", "linear", 1350.0, [], [], today="2026-10-05", opm_table="assumed", hedge_default=0.7)
+        self.assertEqual((s["built_at"], s["opm_table"], s["hedge_ratio_default"]), ("2026-10-05", "assumed", 0.7))
+        r = s["rows"][0]
+        self.assertEqual(r["opm_table"], "assumed")
+        self.assertAlmostEqual(r["target_opm_next_q_by_table"]["assumed"], 0.15, places=6)
+        self.assertAlmostEqual(r["target_opm_next_q_by_table"]["reference_calibrated"], o["cohort_opm_table_assumed"]["⑤초호황"] - 0.042, places=2)
+        self.assertIn("hedge_ratio_implied_sign_rate", r)
+        self.assertIn("hedge_ratio_implied_spot", r)
+        for bad in (["--stock", "010140", "--dry-run", "--today", "2026/10/05"],
+                    ["--stock", "010140", "--dry-run", "--hedge-default", "1.5"],
+                    ["--stock", "010140", "--dry-run", "--opm-table", "bogus"]):
+            with self.assertRaises(SystemExit):                                   # argparse 가 run() 전에 멈춘다 — assets 불필요
+                S.main(bad)
+
+
 @unittest.skipUnless(os.path.exists(os.path.join(S.ASSETS, "contracts.json")) and os.path.isdir(S.YARDS_CACHE),
                      "실제 assets 없음")
 class TestRealAssets(unittest.TestCase):
@@ -680,6 +848,49 @@ class TestRealAssets(unittest.TestCase):
         self.assertEqual(s["cohort_mode"], "reference_anchor")
         self.assertEqual({r["stock"] for r in s["rows"] if r["backlog_cap_applied"]},
                          {o["stock"] for o in self.outs.values() if o["backlog_cap_applied"]})
+
+    def test_ledger_rcps_all_scheduled_and_r5_keys(self):
+        """⑥ 원장(contracts.json, 정정 정리 뒤)의 모든 rcp 가 그 회사 파일에 있고(봇이 뒤에 추가한 계약 포함) 금액 있는 counted 계약은 스케줄이 있다.
+        5차 키(cohort_opm_table_source·cohort_opm_calibration·hedge 참고치·reference_hedge)가 전 파일에 있다."""
+        ledger, _ = S.apply_supersedes([dict(r) for r in S.load_asset("contracts.json")["rows"]])
+        for o in self.outs.values():
+            want = sorted(r["rcp"] for r in ledger if r["stock"] == o["stock"])
+            self.assertEqual(sorted(c["rcp"] for c in o["contracts"]), want, o["stock"])
+            for c in o["contracts"]:
+                if c.get("counted") and c["amt_usd_m"] and c["start"] and c["end"]:
+                    self.assertTrue(c["schedule"], c["rcp"])
+            self.assertEqual(o["cohort_opm_table_source"], "assumed")
+            self.assertEqual(o["cohort_opm_table"], o["cohort_opm_table_assumed"])
+            cb = o["cohort_opm_calibration"]
+            self.assertEqual(cb["this_file"]["applied_table"], "assumed")
+            self.assertAlmostEqual(cb["table_reference_calibrated"]["⑤초호황"], 0.108, places=3)
+            h = o["hedge"]
+            self.assertEqual(h["reference_hedge"]["삼성중공업 010140 SLS!HEDGE"], 1.0)
+            if h["kind"] == "estimate" and h.get("usd_sell_m") and h.get("backlog_krw_m"):
+                self.assertIsNotNone(h["hedge_ratio_implied_sign_rate"], o["stock"])
+                self.assertGreater(h["implied_sign_n"], 0, o["stock"])
+            else:
+                self.assertIsNone(h["hedge_ratio_implied_sign_rate"], o["stock"])
+            self.assertTrue(any("코호트 OPM 표 assumed 적용" in w for w in o["warnings"]), o["stock"])
+
+    def test_opm_table_switch_real_and_determinism(self):
+        """--opm-table reference_calibrated 는 타겟·shift 만 바꾸고 매출·환산은 그대로. 같은 입력·today 면 두 번 빌드가 같은 JSON(바이트 결정론)."""
+        import json
+        outs2 = S.run(S.YARDS + [S.HOLDING], write=False, opm_table="reference_calibrated", today="2026-10-05")
+        for stock, o in self.outs.items():
+            oc = outs2[stock]
+            self.assertEqual(oc["cohort_opm_table_source"], "reference_calibrated")
+            self.assertEqual(oc["cohort_opm_table"], o["cohort_opm_calibration"]["table_reference_calibrated"])
+            for q, b in o["by_quarter"].items():
+                self.assertEqual(oc["by_quarter"][q]["hedged_krw_m"], b["hedged_krw_m"], (stock, q))
+                if b["target_opm"] is not None:                                   # reference_anchor 등급(③④⑤)은 전부 캘리브레이션 표가 낮다
+                    self.assertLess(oc["by_quarter"][q]["target_opm"], b["target_opm"], (stock, q))
+        a = S.run(S.YARDS + [S.HOLDING], write=False, today="2026-10-05")
+        b = S.run(S.YARDS + [S.HOLDING], write=False, today="2026-10-05")
+        for stock in a:
+            self.assertEqual(json.dumps(a[stock], ensure_ascii=False), json.dumps(b[stock], ensure_ascii=False), stock)
+        self.assertEqual(json.dumps(S.summary(a, "2026Q2", "linear", 1350.0, [], [], today="2026-10-05"), ensure_ascii=False),
+                         json.dumps(S.summary(b, "2026Q2", "linear", 1350.0, [], [], today="2026-10-05"), ensure_ascii=False))
 
 
 if __name__ == "__main__":

@@ -10,6 +10,8 @@
 T4: 금융손익 세부(이자·외환·파생·기타금융 잔차) 행 · 주석 이자수익/비용 실측 연율(4분기 미만이면 CF 폴백) · None 전파.
 T6(T3 적대 검토 D1~D10): origin 이후 공시 수주의 신규수주 이중계산 제외 · 음(−)세율 폴백 · 등급 없는 비중 실측 중위 채움 · 세진 연결조정 비율 ·
 OOS 반올림 전 비교·현재 조합 시험·undetermined · 금융손익 단절 경고 · status/driver_fallback 분리 · 정의상 0 = estimate · 시나리오 OPM 원값 · 캡 배율 null.
+V4(2026-10-05 검증 레인): 조정EPS 행(일회성 의심 회사만) · 음수 부문 매출 분기 제외 · FCF 근사(NI + 감가 − CAPEX) BS 롤 · status_rule/status_reasons ·
+동결 모델이 동결 이후 fin 에 둔감한지(누출 프로브) · 실제 자산(KCC 2026Q2 조정EPS · HJ重 2022Q4).
 """
 import json
 import os
@@ -123,6 +125,24 @@ class TestHelpers(unittest.TestCase):
         self.assertIsNone(M.pearson([1, 1, 1], [1, 2, 3]))
         self.assertEqual(M.clip(0.9, 0.05, 0.27), 0.27)
         self.assertIsNone(M.clip(None, 0, 1))
+
+    def test_r4_weights_sum_exactly_one(self):
+        # 2026-10-05 통합 회귀: suppliers.json ifrs8 비중(현대힘스 HSHI 55.21 + 329180 41.06 + 010620 0.22, 009540 share 0.0 → mentions 1)
+        # 원값 합 1.0 이지만 원소별 4자리 반올림 합이 1.0001 — 저장값은 잔차를 최대 가중치에 얹어 정확히 1 이어야 한다
+        raw = {"009540": 0.5765719560980613, "010620": 0.0022566417068417273, "329180": 0.4211714021950969}
+        self.assertAlmostEqual(sum(raw.values()), 1.0, places=12)
+        self.assertEqual(round(sum(round(v, 4) for v in raw.values()), 4), 1.0001)
+        w = M.r4_weights(raw)
+        self.assertAlmostEqual(sum(w.values()), 1.0, places=9)
+        self.assertEqual(w, {"009540": 0.5765, "010620": 0.0023, "329180": 0.4212})
+        for k in raw:                                                   # 원값과 1e-4 안
+            self.assertLess(abs(w[k] - raw[k]), 1e-4 + 1e-12)
+        # 잔차가 없는 경우·합이 1 이 아닌 dict(정규화 전)·빈 dict 는 원소별 반올림 그대로
+        self.assertEqual(M.r4_weights({"a": 0.5, "b": 0.25, "c": 0.25}), {"a": 0.5, "b": 0.25, "c": 0.25})
+        self.assertEqual(M.r4_weights({"a": 12.0, "b": 9.0}), {"a": 12.0, "b": 9.0})
+        self.assertEqual(M.r4_weights({}), {})
+        # 결정론: 같은 값이면 키 순으로 큰 쪽에 얹는다
+        self.assertEqual(M.r4_weights({"x": 1 / 3, "y": 1 / 3, "z": 1 / 3}), {"x": 0.3333, "y": 0.3333, "z": 0.3334})
 
 
 class TestFin(unittest.TestCase):
@@ -1286,23 +1306,21 @@ class TestFinDetail(unittest.TestCase):
         self.assertTrue(any("기타금융손익" in w for w in m["quality"]["warnings"]))
         self.assertAlmostEqual(rm["금융손익"]["q"]["2026Q3"]["v"], rm["이자손익"]["q"]["2026Q3"]["v"], places=2)
 
-    def test_negative_stored_expense_flipped(self):
-        """비용 계정을 회사 단위로 음수 저장한 fin(케이씨씨·한화시스템 형태) → 부호 반전 + 경고. 몇 분기만 음수인 것은 그대로."""
+    def test_negative_stored_expense_not_flipped(self):
+        """2026-10-05: kship_fin 이 비용을 양수로 통일해 저장하므로 모델은 더 이상 '과반 음수 → 반전' 휴리스틱을 쓰지 않는다.
+        음수로 든 비용 계정은 환입(크기가 음수인 비용)으로 그대로 더한다 — 이자손익 = 이자수익 − (−이자비용) = 이자수익 + 이자비용."""
         fin = synth_fin_notes()
         for q in M.q_range("2025Q1", "2026Q2"):
             for sc in ("cons", "sep"):
                 for k in ("이자비용", "외환차손", "외화환산손실", "파생상품손실"):
                     fin[sc]["is"][q][k] = -NOTE_ACCTS[k]
-        fin["cons"]["is"]["2026Q2"]["외화환산이익"] = -50.0                  # 수익 계정 음수 1분기(차분 환입) — 반전 대상 아님
         m = self.build(fin)
         rm = rows_of(m)
-        self.assertAlmostEqual(rm["이자손익"]["q"]["2026Q1"]["v"], -10.0)
-        self.assertAlmostEqual(rm["외환손익"]["q"]["2026Q1"]["v"], 1.0)
-        self.assertAlmostEqual(rm["파생상품손익"]["q"]["2026Q1"]["v"], -0.5)
-        self.assertAlmostEqual(rm["외환손익"]["q"]["2026Q2"]["v"], 0.0)       # 3 − 1 − 0.5 − 1.5
-        self.assertIn("부호 반전", rm["이자손익"]["q"]["2026Q1"]["src"])
-        self.assertTrue(any("부호 반전" in w and "이자비용" in w for w in m["quality"]["warnings"]))
-        self.assertFalse(any("부호 반전" in w for w in self.build(synth_fin_notes())["quality"]["warnings"]))
+        q = "2026Q1"
+        exp = (NOTE_ACCTS["이자수익"] + NOTE_ACCTS["이자비용"]) / 100.0
+        self.assertAlmostEqual(rm["이자손익"]["q"][q]["v"], round(exp, 2))
+        self.assertNotIn("부호 반전", rm["이자손익"]["q"][q]["src"])
+        self.assertFalse(any("부호 반전" in w for w in m["quality"]["warnings"]))
 
     @unittest.skipUnless(os.path.isfile(REAL_SEJIN), "assets/fin/075580.json 없음")
     def test_real_sejin_2026q2_detail(self):
@@ -1568,6 +1586,230 @@ class TestT6Fixes(unittest.TestCase):
         self.assertIn("0.8591", d["scale_alternatives_note"])
         d0 = self._yard(synth_sls())["segments"][0]["driver"]
         self.assertEqual(d0["scale_alternatives"]["1/backlog_coverage"], 2.0)                         # 캡 없음(커버리지 0.5) → 표시값 그대로
+
+
+def _spike_quarter(fin, q, amt_m, tax=0.22, minority=0.1):
+    """합성 fin 의 한 분기 기타영업외손익에 amt_m(백만원)을 더하고 세전→법인세→NI→지배/비지배 사슬을 같은 비율로 맞춘다(항등식 유지)."""
+    for sc in ("cons", "sep"):
+        r = fin[sc]["is"].get(q)
+        if not r:
+            continue
+        r["기타영업외손익"] += amt_m
+        r["법인세비용차감전계속사업이익"] += amt_m
+        r["법인세비용"] += amt_m * tax
+        ni = amt_m * (1 - tax)
+        r["당기순이익"] += ni
+        r["(지배주주지분)당기순이익"] += ni * (1 - minority)
+        r["(비지배주주지분)당기순이익"] += ni * minority
+    return fin
+
+
+class TestV4Verifier(unittest.TestCase):
+    """V4(2026-10-05) 검증 레인 — 조정EPS 행 · 음수 부문 매출 제외 · FCF 근사 BS 롤 · status 사유 · 동결 누출 프로브."""
+
+    QS = M.q_range("2023Q1", "2026Q2")
+
+    def _equip(self, fin):
+        return M.build_model(fin["stock"], FakeCtx(fins={fin["stock"]: fin}, roles={fin["stock"]: "equip"}))
+
+    # ── 조정EPS: 일회성 의심 분기만 세후·지배 비중으로 차감, 다른 분기는 EPS 그대로, 의심 없는 회사는 행 없음 ──
+    def test_adjusted_eps_row_only_for_one_off_companies(self):
+        base = self._equip(synth_fin(quarters=self.QS))
+        self.assertNotIn("조정EPS", rows_of(base))
+        self.assertEqual(base["assumptions"]["one_offs_detected"], [])
+        self.assertIsNone(M.summary_row(base)["fy"]["2026E"]["eps_adj"])
+        self.assertEqual(M.summary_row(base)["one_offs_n"], 0)
+        fin = _spike_quarter(synth_fin(quarters=self.QS), "2026Q2", 200_000.0)          # 비영업손익 +2,000억(영업이익 ~300억의 7배)
+        m = self._equip(fin)
+        rm = rows_of(m)
+        offs = m["assumptions"]["one_offs_detected"]
+        self.assertEqual([o["q"] for o in offs], ["2026Q2"])
+        o = offs[0]
+        q = "2026Q2"
+        is_ = fin["cons"]["is"][q]
+        nonop = (is_["법인세비용차감전계속사업이익"] - is_["영업이익"]) / 100
+        self.assertAlmostEqual(o["nonop"], nonop, places=1)
+        self.assertAlmostEqual(o["baseline_nonop_12q"], -4.0, places=2)                   # 다른 분기 비영업손익 = −500 + 100 = −400 백만원
+        self.assertAlmostEqual(o["excess_nonop"], nonop + 4.0, places=1)
+        self.assertAlmostEqual(o["tax_rate_applied"], 0.22, places=3)                      # 분기 유효세율 = 합성 22%
+        self.assertIn("분기 유효세율", o["tax_rate_source"])
+        self.assertAlmostEqual(o["ctrl_share_applied"], 0.9, places=3)                     # 그 분기 지배NI/NI
+        ctrl = is_["(지배주주지분)당기순이익"] / 100
+        ctrl_adj = ctrl - (nonop + 4.0) * 0.78 * 0.9
+        self.assertAlmostEqual(o["ni_ctrl_adj"], ctrl_adj, places=1)
+        eps_adj = round(ctrl_adj * 1e8 / SHARES, 1)
+        self.assertAlmostEqual(o["eps_adj"], eps_adj, places=0)
+        self.assertEqual(rm["조정EPS"]["q"][q]["kind"], "estimate")
+        self.assertAlmostEqual(rm["조정EPS"]["q"][q]["v"], eps_adj, places=0)
+        self.assertIn("12분기 기준선", rm["조정EPS"]["q"][q]["basis"])
+        self.assertLess(rm["조정EPS"]["q"][q]["v"], rm["EPS"]["q"][q]["v"] * 0.5)
+        self.assertEqual(rm["EPS"]["q"][q]["v"], o["eps_reported"])                        # 보고 EPS 행은 불변
+        for k in ("2026Q1", "2025Q4"):                                                     # 다른 실적 분기 = EPS, actual
+            self.assertEqual((rm["조정EPS"]["q"][k]["v"], rm["조정EPS"]["q"][k]["kind"]), (rm["EPS"]["q"][k]["v"], "actual"))
+        for k in ("2026Q3", "2027Q4"):                                                     # 추정 구간 = EPS 복사
+            self.assertEqual((rm["조정EPS"]["q"][k]["v"], rm["조정EPS"]["q"][k]["kind"]), (rm["EPS"]["q"][k]["v"], "estimate"))
+        self.assertEqual(rm["조정EPS"]["a"]["2026"]["kind"], "mixed")
+        self.assertAlmostEqual(rm["조정EPS"]["a"]["2026"]["v"], rm["EPS"]["a"]["2026"]["v"] - rm["EPS"]["q"][q]["v"] + eps_adj, places=0)
+        sr = M.summary_row(m)
+        self.assertAlmostEqual(sr["fy"]["2026E"]["eps_adj"], rm["조정EPS"]["a"]["2026"]["v"], places=1)
+        self.assertEqual(sr["one_offs_n"], 1)
+        self.assertTrue(any("조정EPS" in w and "보고 EPS" in w for w in m["quality"]["warnings"]))
+        self.assertIn("조정EPS", [r[0] for r in m["views"]["보고서로"]])
+        self.assertTrue(m["quality"]["identities_ok"], m["quality"]["identity_mismatches"])
+        # 분기 유효세율이 범위 밖(세전 ≤ 0)이면 모델 세율로
+        fin2 = _spike_quarter(synth_fin(quarters=self.QS), "2026Q2", 200_000.0)
+        for sc in ("cons", "sep"):
+            r = fin2[sc]["is"]["2026Q2"]
+            r["법인세비용"] = -r["법인세비용"]                                                 # 법인세 환입 → 유효세율 음수
+        m2 = self._equip(fin2)
+        o2 = m2["assumptions"]["one_offs_detected"][0]
+        self.assertIn("모델 세율", o2["tax_rate_source"])
+        self.assertAlmostEqual(o2["tax_rate_applied"], m2["assumptions"]["tax_rate"], places=4)
+
+    # ── 음수 부문 매출 분기(부문표 누계 정정 차분)는 실적 셀·소진 창에서 제외 ──
+    def test_negative_segment_quarter_dropped(self):
+        fin = synth_fin("010140", "삼성", quarters=self.QS, rev0=200_000.0, g_q=0.0)
+        sls = synth_sls()
+        sls["reconcile"]["2026Q1"]["reported_segment_rev_m"] = -841_100.0                 # HJ重 2022Q4 류
+        m = M.build_model("010140", FakeCtx(fins={"010140": fin}, slss={"010140": sls}, roles={"010140": "yard"}))
+        rm, d = rows_of(m), m["segments"][0]["driver"]
+        self.assertNotIn("2026Q1", rm["매출조선"]["q"])
+        self.assertNotIn("2026Q1", rm["매출기타"]["q"])
+        self.assertIn("2025Q4", rm["매출조선"]["q"])
+        self.assertEqual(d["segment_actual_dropped"]["quarters"], ["2026Q1"])
+        self.assertEqual(d["segment_actual_dropped"]["values_eok"], {"2026Q1": -8411.0})
+        self.assertEqual(d["runoff_quarters_used"], ["2025Q2", "2025Q3", "2025Q4", "2026Q2"])  # 창이 음수 분기를 건너뛴다
+        self.assertTrue(any("조선 부문 매출 음수 분기 1개 제외" in w and "2026Q1 -8411억" in w for w in m["quality"]["warnings"]))
+        ref = M.build_model("010140", FakeCtx(fins={"010140": fin}, slss={"010140": synth_sls()}, roles={"010140": "yard"}))
+        self.assertIsNone(ref["segments"][0]["driver"]["segment_actual_dropped"])
+        self.assertFalse(any("음수 분기" in w for w in ref["quality"]["warnings"]))
+        # 음수 분기가 창 밖(2024Q1 — 합성 fin 매출은 2023Q1~ 이지만 sls reconcile 은 2024Q1~)이어도 실적 셀에서는 빠진다
+        self.assertFalse(any(c["v"] < 0 for c in rm["매출조선"]["q"].values()))
+
+    # ── BS 롤: FCF 근사 = NI + 감가 − CAPEX(둘 다 있을 때) · 없으면 NI(CAPEX≈감가 가정) ──
+    def test_bs_roll_fcf_proxy(self):
+        fin = synth_fin(quarters=self.QS)                                                  # CF: CAPEX 3,000 백만원 = 30억/분기, 감가상각비 없음
+        m = self._equip(fin)
+        rm, br = rows_of(m), m["assumptions"]["bs_roll"]
+        self.assertFalse(br["fcf_full"])
+        self.assertAlmostEqual(br["capex_avg"], 30.0, places=2)
+        self.assertIsNone(br["da_avg"])
+        self.assertIn("CAPEX≈감가 가정", br["fcf_proxy"])
+        self.assertEqual(rm["CAPEX"]["q"]["2026Q3"]["v"], 30.0)
+        self.assertIn("미반영", rm["CAPEX"]["q"]["2026Q3"]["basis"])
+        la = "2026Q2"
+        ni_q3 = rm["당기순이익"]["q"]["2026Q3"]["v"]
+        self.assertAlmostEqual(rm["순차입금"]["q"]["2026Q3"]["v"], rm["순차입금"]["q"][la]["v"] - ni_q3, places=1)          # Q3 배당 0
+        self.assertAlmostEqual(rm["이자발생자산"]["q"]["2026Q3"]["v"], rm["이자발생자산"]["q"][la]["v"] + ni_q3, places=1)
+        self.assertNotIn("EBITDA", rm)
+        self.assertFalse(m["quality"]["ebitda"]["available"])
+        # 감가상각비(5,000 백만원 = 50억/분기)를 CF 에 넣으면 FCF = NI + 50 − 30
+        fin2 = synth_fin(quarters=self.QS)
+        for sc in ("cons", "sep"):
+            for q in self.QS:
+                fin2[sc]["cf"][q]["감가상각비"] = 5_000.0
+        m2 = self._equip(fin2)
+        rm2, br2 = rows_of(m2), m2["assumptions"]["bs_roll"]
+        self.assertTrue(br2["fcf_full"])
+        self.assertAlmostEqual(br2["da_avg"], 50.0, places=2)
+        self.assertIn("감가상각비 50억 − CAPEX 30억", br2["fcf_proxy"])
+        ni2 = rm2["당기순이익"]["q"]["2026Q3"]["v"]
+        self.assertAlmostEqual(rm2["순차입금"]["q"]["2026Q3"]["v"], rm2["순차입금"]["q"][la]["v"] - (ni2 + 50.0 - 30.0), places=1)
+        self.assertAlmostEqual(rm2["EBITDA"]["q"]["2026Q3"]["v"], rm2["영업이익"]["q"]["2026Q3"]["v"] + 50.0, places=1)
+        self.assertIn("반영(FCF 근사)", rm2["CAPEX"]["q"]["2026Q3"]["basis"])
+        self.assertTrue(m2["quality"]["ebitda"]["available"])
+        self.assertIn("fin.cons.cf.감가상각비", m2["quality"]["ebitda"]["source"])
+        # Q2 배당(DPS 100원 × 1,000만주 = 10억)은 두 롤 모두에서 빠진다
+        div = 100 * SHARES / 1e8
+        ni_q2 = rm2["당기순이익"]["q"]["2027Q2"]["v"]
+        self.assertAlmostEqual(rm2["순차입금"]["q"]["2027Q2"]["v"], rm2["순차입금"]["q"]["2027Q1"]["v"] - (ni_q2 - div + 20.0), places=1)
+        self.assertAlmostEqual(rm2["자본총계"]["q"]["2027Q2"]["v"], rm2["자본총계"]["q"]["2027Q1"]["v"] + ni_q2 - div, places=1)
+        self.assertTrue(m2["quality"]["identities_ok"])
+
+    # ── status 규칙 문서화: full 은 사유 없음, partial 은 어긋난 조건이 status_reasons 에 ──
+    def test_status_rule_and_reasons(self):
+        m = self._equip(synth_fin(quarters=self.QS))
+        self.assertEqual((m["status"], m["quality"]["status_reasons"]), ("full", []))
+        self.assertEqual(m["quality"]["status_rule"], M.STATUS_RULE)
+        self.assertIn("full = fin 분기 ≥ 8", M.STATUS_RULE)
+        self.assertIn("driver_fallback", M.STATUS_RULE)
+        short = self._equip(synth_fin(quarters=M.q_range("2025Q2", "2026Q2")))
+        self.assertEqual(short["status"], "partial")
+        self.assertEqual(short["quality"]["status_reasons"], ["fin 분기 5 < 8"])
+        self.assertEqual(M.summary_row(short)["status_reasons"], ["fin 분기 5 < 8"])
+        # 연결 손익 공백 분기(별도 보충) → partial 사유
+        fin = synth_fin(quarters=self.QS)
+        del fin["cons"]["is"]["2026Q1"]
+        sf = self._equip(fin)
+        self.assertEqual(sf["status"], "partial")
+        self.assertEqual(sf["quality"]["status_reasons"], ["연결 손익 공백 1분기 → 별도 보충"])
+        # 드라이버 폴백은 status 에 영향 없음(D7)
+        self.assertEqual((m["driver_fallback"], m["status"]), ("no_link", "full"))
+
+    # ── 동결 모델은 동결 이후 fin 에 둔감(백테스트 누출 프로브) ──
+    def test_frozen_model_insensitive_to_post_freeze_fin(self):
+        a = synth_fin(quarters=self.QS)
+        b = json.loads(json.dumps(a))
+        for sc in ("cons", "sep"):
+            for q in self.QS:
+                if q > M.FREEZE_Q:
+                    for k in b[sc]["is"][q]:
+                        b[sc]["is"][q][k] *= 10.0                                          # 동결 뒤 분기만 10배
+                    for k in b[sc]["bs"][q]:
+                        b[sc]["bs"][q][k] *= 10.0
+        ctx_a = FakeCtx(fins={"999999": a}, roles={"999999": "equip"})
+        ctx_b = FakeCtx(fins={"999999": b}, roles={"999999": "equip"})
+        fa, fb = ctx_a.model("999999", origin=M.FREEZE_Q), ctx_b.model("999999", origin=M.FREEZE_Q)
+        self.assertEqual(json.dumps(fa["rows"], sort_keys=True), json.dumps(fb["rows"], sort_keys=True))
+        self.assertEqual(json.dumps(fa["assumptions"], sort_keys=True), json.dumps(fb["assumptions"], sort_keys=True))
+        self.assertEqual(fa["periods"]["last_actual"], M.FREEZE_Q)
+        self.assertIsNone(fa["valuation"])
+        self.assertFalse(fa.get("new_orders_included"))
+        # 전체 모델의 백테스트는 당연히 달라진다(동결 뒤 실적이 다르니) — 프로브가 공허하지 않음을 확인
+        ma, mb = ctx_a.model("999999"), ctx_b.model("999999")
+        self.assertNotEqual(ma["backtest"]["revenue_wape_pct"], mb["backtest"]["revenue_wape_pct"])
+        self.assertEqual(ma["backtest"]["n"], 4)
+
+
+@unittest.skipUnless(os.path.exists(os.path.join(M.FIN_DIR, "002380.json")) and os.path.exists(os.path.join(M.SLS_DIR, "097230.json")),
+                     "실제 assets(fin/002380·sls/097230) 없음")
+class TestV4RealAssets(unittest.TestCase):
+    """실제 자산 — KCC 2026Q2 처분이익 류 일회성의 조정EPS · HJ重 2022Q4 음수 부문 매출 제외 · bs_roll/status 필드."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.ctx = M.Ctx(today="2026-10-05")
+
+    def test_kcc_adjusted_eps(self):
+        m = self.ctx.model("002380")
+        offs = m["assumptions"]["one_offs_detected"]
+        if not any(o["q"] == "2026Q2" for o in offs):
+            self.skipTest("KCC 2026Q2 가 일회성 창(최근 4분기) 밖으로 나감")
+        rm = rows_of(m)
+        o = next(o for o in offs if o["q"] == "2026Q2")
+        self.assertGreater(o["nonop"], 30_000)                                             # 비영업손익 3.6조
+        self.assertGreater(rm["EPS"]["q"]["2026Q2"]["v"], 300_000)
+        self.assertLess(rm["조정EPS"]["q"]["2026Q2"]["v"], 50_000)
+        self.assertLess(rm["조정EPS"]["a"]["2026"]["v"], rm["EPS"]["a"]["2026"]["v"] * 0.25)
+        self.assertEqual(M.summary_row(m)["fy"]["2026E"]["eps_adj"], rm["조정EPS"]["a"]["2026"]["v"])
+        self.assertTrue(any("조정EPS" in w for w in m["quality"]["warnings"]))
+
+    def test_hj_negative_segment_dropped_and_fields(self):
+        m = self.ctx.model("097230")
+        rm = rows_of(m)
+        if m["driver_type"] != "sls_marine_plus_uncovered_backlog_runoff":
+            self.skipTest("HJ重 선표 드라이버 아님")
+        self.assertFalse(any(c["kind"] == "actual" and c["v"] < 0 for c in rm["매출조선"]["q"].values()))
+        d = m["segments"][0]["driver"]
+        if d.get("segment_actual_dropped"):
+            self.assertIn("2022Q4", d["segment_actual_dropped"]["quarters"])
+        for st in ("097230", "010140"):
+            mm = self.ctx.model(st)
+            self.assertIn("bs_roll", mm["assumptions"])
+            self.assertIn("status_rule", mm["quality"])
+            self.assertIsInstance(mm["quality"]["status_reasons"], list)
+            self.assertIn("ebitda", mm["quality"])
+
 
 
 if __name__ == "__main__":
