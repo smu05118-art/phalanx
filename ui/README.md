@@ -58,3 +58,9 @@ push를 감지해 `tools/inject_ui_patch.py`로 재주입한다(멱등 — 훅�
 
 - `last_pub`(리전별 실제 마지막 공표월)만 미주입 — 프론트가 revenue/detail 스캔으로 정확히 계산 중이라
   실익이 작음. 빌더에서 주입하면 patch.js가 자동으로 그 값을 우선 사용한다(lastPubYM 참고).
+
+## AI·클라우드 관측실 (2026-09-10)
+
+`renderAI2`는 `ui/cloud_signals.js`를 지연 로드해 업체별 원장·앙상블·연동 점검을 제공한다.
+기존 차트는 같은 탭의 `기존 차트`로 유지한다. 주소의 `cloud`와 `cloudView` 쿼리로 업체/화면을 공유하며
+기존 해시 라우팅은 유지한다. 계산·입력 계약·갱신은 [cloud_signals 문서](../tools/cloud_signals/README.md)에 있다.

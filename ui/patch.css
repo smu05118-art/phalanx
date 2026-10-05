@@ -325,3 +325,70 @@ header{border-bottom:1px solid var(--bd);margin-bottom:10px;padding-bottom:10px;
   .app{padding:8px 10px 60px;}
   .ch-main{height:180px;} .ch-yr{height:150px;}
 }
+
+/* AI 클라우드 원장 — 기존 팔랑크스 테마와 격리된 작업 화면. */
+.phx-cloud{color:var(--fg,#dde5ed);font:16px/1.6 'IBM Plex Sans KR',sans-serif;max-width:1600px;margin:auto}
+.phx-cloud *{box-sizing:border-box}
+.phx-cloud h1{font-size:1.7rem;margin:0;font-weight:650}
+.phx-cloud h2{font-size:1.4rem;margin:.3rem 0}
+.phx-cloud h3{font-size:1rem;margin:.5rem 0;font-weight:600}
+.phx-cloud p{margin:.4rem 0 .7rem}
+.phx-cloud button,.phx-cloud input,.phx-cloud select{font:inherit;font-size:.875rem;border:1px solid var(--line,#2a3744);border-radius:6px;color:inherit;background:var(--panel,#131b24);padding:.5rem .75rem;min-height:40px}
+.phx-cloud button{cursor:pointer}
+.phx-cloud button:hover{border-color:var(--fg,#dde5ed)}
+.phx-cloud :focus-visible{outline:2px solid #4ea1ff;outline-offset:3px}
+.phx-cloud a{color:var(--link,#59aafa);overflow-wrap:anywhere}
+.phx-cloud small,.cs-meta,.cs-muted{color:var(--dim,#9ba9b8);font-size:.8125rem}
+.cs-heading,.cs-company{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.cs-heading{margin:1.3rem 0}
+.cs-kicker{font-size:.75rem;color:var(--dim,#9ba9b8);letter-spacing:.09em}
+.cs-nav{display:flex;flex-wrap:wrap;gap:.5rem;border-bottom:1px solid var(--line,#2a3744);padding-bottom:.8rem}
+.phx-cloud .cs-nav .active{background:var(--fg,#dde5ed);color:var(--panel,#131b24);border-color:var(--fg,#dde5ed)}
+.cs-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:1.25rem;align-items:start}
+.cs-providers{display:flex;flex-direction:column;gap:.35rem;max-height:80vh;overflow:auto;position:sticky;top:1rem;padding-right:.5rem}
+.phx-cloud .cs-provider{text-align:left;padding:.7rem .8rem;background:transparent;border-color:transparent;flex-shrink:0}
+.cs-provider b,.cs-provider span{display:block}
+.cs-provider span{font-size:.75rem;color:var(--dim,#9ba9b8);margin-top:.3rem}
+.phx-cloud .cs-provider.active{border-color:#439ef2;background:var(--panel,#131b24);box-shadow:inset 3px 0 #439ef2}
+.cs-detail{min-width:0}
+.cs-panel{border:1px solid var(--line,#2a3744);border-radius:8px;background:var(--panel,#131b24);padding:1.1rem;margin-bottom:1rem}
+.cs-score{border-left:1px solid var(--line,#2a3744);padding-left:1.3rem;display:flex;flex-direction:column;min-width:150px}
+.cs-score>span{font-size:.875rem;color:var(--dim,#9ba9b8)}
+.cs-score strong{font:600 2.3rem/1.2 'IBM Plex Mono',monospace}
+.cs-axes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.5rem;margin-bottom:1rem}
+.cs-axes>div{padding:.7rem;border-top:2px solid var(--line,#2a3744);background:var(--panel,#131b24);border-radius:3px;display:flex;flex-direction:column;gap:.4rem;font-size:.875rem}
+.cs-axes b{font-size:.875rem}
+.cs-note{border-left:3px solid #e6aa43;padding:.7rem 1rem;font-size:.875rem;background:var(--panel,#131b24);margin-bottom:1rem}
+.cs-toolbar{display:flex;align-items:end;gap:.65rem;flex-wrap:wrap;margin:1rem 0}
+.cs-toolbar label{display:flex;flex-direction:column;gap:.3rem;font-size:.875rem}
+.cs-search{flex:1;min-width:170px}
+.cs-toolbar select,.cs-toolbar input{width:100%}
+.cs-count{font-size:.8125rem;color:var(--dim,#9ba9b8);margin:.7rem 0}
+.cs-ledger{border-top:1px solid var(--line,#2a3744)}
+.cs-record{padding:1.1rem 1.2rem;border:1px solid var(--line,#2a3744);border-top:0;background:var(--panel,#131b24)}
+.cs-record h3{font-size:1.05rem}
+.cs-value{font:500 1.35rem/1.5 'IBM Plex Mono',monospace;margin:.35rem 0}
+.cs-record p{font-size:.875rem}
+.cs-badge{display:inline-block;border:1px solid var(--line,#415060);color:var(--dim,#a3b2c0);font-size:.75rem;padding:.1rem .5rem;border-radius:4px;vertical-align:middle}
+.cs-badge.checked{color:var(--fg,#dde5ed);border-color:#418bd0}
+.cs-record details{margin-top:.7rem;font-size:.8125rem;color:var(--dim,#9ba9b8)}
+.phx-cloud summary{cursor:pointer;font-size:.875rem}
+.cs-record dl{display:grid;grid-template-columns:110px minmax(0,1fr);gap:.4rem .8rem}
+.cs-record dd{margin:0;overflow-wrap:anywhere}
+.cs-more{width:100%;margin:1rem 0}
+.cs-links{display:flex;flex-wrap:wrap;gap:1rem;font-size:.875rem}
+.cs-project{display:flex;justify-content:space-between;gap:.5rem;padding:.55rem 0;border-top:1px solid var(--line,#2a3744);font-size:.875rem;text-decoration:none}
+.cs-project span{color:var(--dim,#9ba9b8);white-space:nowrap}
+.cs-empty{padding:2rem 1rem;color:var(--dim,#9ba9b8)}
+.cs-table-wrap{overflow-x:auto}
+.phx-cloud table{border-collapse:collapse;width:100%;font-size:.875rem}
+.phx-cloud th,.phx-cloud td{text-align:left;padding:.8rem .6rem;border-bottom:1px solid var(--line,#2a3744);white-space:nowrap}
+.phx-cloud td small{display:block}
+.phx-cloud .cs-text-button{background:transparent;border:0;padding:0;min-height:40px;text-align:left;color:var(--link,#59aafa)}
+.phx-cloud .up{color:var(--nc-good,#48c991)}
+.phx-cloud .down{color:var(--nc-red,#ef858b)}
+.cs-integration{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.cs-integration .cs-panel{margin:0}
+.cs-integration+.cs-panel{margin-top:1rem}
+@media(max-width:800px){.cs-layout{grid-template-columns:1fr}.cs-providers{position:static;max-height:230px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:0}.cs-axes{grid-template-columns:repeat(3,minmax(0,1fr))}.cs-integration{grid-template-columns:1fr}.cs-record{padding:1rem}.cs-heading{align-items:start}.cs-heading h1{font-size:1.45rem}}
+@media(max-width:440px){.cs-axes{grid-template-columns:repeat(2,minmax(0,1fr))}.cs-score{border-left:0;padding-left:0}.cs-record dl{grid-template-columns:1fr}.cs-record dd{padding-bottom:.4rem}.cs-nav button{flex:1 1 40%}}
