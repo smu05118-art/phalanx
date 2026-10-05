@@ -219,12 +219,14 @@ class TestWorkflowStatic(unittest.TestCase):
         self.assertGreaterEqual(job, tf + tn + 30, "job %d < fin %d + notes %d + 30" % (job, tf, tn))
         self.assertIn("continue-on-error: true", fin); self.assertIn("continue-on-error: true", notes)
 
-    def test_update_workflow_cache_save_condition_and_commit_excludes(self):
+    def test_update_workflow_cache_save_condition_and_commit_scope(self):
         text = read(UPDATE_YML)
         self.assertIn("steps.fin.outputs.fin_changed != 'false' || steps.notes.outputs.notes_changed != 'false'", text)
-        self.assertIn("':(exclude)argus/kship/tools/assets/fin_cache'", text)
         self.assertIn("mkdir -p assets/fin_cache", text)                       # 89f95231 — 첫 실행(캐시 없음) 에서 listing 이 죽지 않게
-        self.assertNotIn("git add -A", text)
+        self.assertIn("git add -A -- argus/kship argus/index.html", text)       # ignore 대상 경로를 명시하지 않고 범위 내 삭제까지 stage
+        ignore = read(os.path.join(REPO, ".gitignore"))
+        self.assertIn("argus/*/tools/assets/fin_cache/", ignore)
+        self.assertIn("argus/*/tools/assets/fin_collect.log", ignore)
 
     def test_scan_workflow_installs_openpyxl_and_passes_quarter(self):
         text = read(SCAN_YML)

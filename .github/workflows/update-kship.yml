@@ -312,10 +312,7 @@ jobs:
           git config user.name "kship-bot"
           git config user.email "kship-bot@users.noreply.github.com"
           # 원문 HTML 캐시(fin_cache 128MB)·수집 로그는 커밋하지 않는다 — 캐시는 actions/cache 로만 이어간다.
-          git add -- argus/kship argus/index.html \
-            ':(exclude)argus/kship/tools/assets/fin_cache' \
-            ':(exclude)argus/kship/tools/assets/fin_collect.log' \
-            ':(exclude,glob)**/__pycache__/**' ':(exclude,glob)**/*.pyc'
+          git add -A -- argus/kship argus/index.html
           if git diff --cached --quiet; then
             echo "변경 없음"; exit 0
           fi
