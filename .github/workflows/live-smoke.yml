@@ -1,0 +1,53 @@
+name: live-smoke
+
+# 배포 후 라이브 스모크 — 배포된 Pages를 Playwright로 열어 전 탭·전 리전에서
+# [object Object]·스크립트 예외·탭 이탈을 검사한다 (tools/live_smoke.mjs).
+# 빌더(맥스튜디오)에 의존성을 추가하지 않는다. 실패 시 레포 소유자에게 Actions 실패 메일이 간다.
+
+on:
+  workflow_run:
+    workflows: [pages-build-deployment]   # GitHub Pages 기본 배포 워크플로
+    types: [completed]
+  schedule:
+    - cron: '30 0 * * *'                  # 매일 09:30 KST — 크론 재생성 이후 안전망
+  workflow_dispatch:
+    inputs:
+      url:
+        description: '검사할 URL (비우면 라이브 Pages)'
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-smoke
+  cancel-in-progress: true                # 연속 배포 시 마지막 것만 검사
+
+jobs:
+  smoke:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/live_smoke.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Playwright 설치
+        run: |
+          npm i --no-save --no-audit --no-fund playwright@1
+          npx playwright install --with-deps chromium
+      - name: 스모크 실행
+        env:
+          SMOKE_URL: ${{ inputs.url }}
+        run: node tools/live_smoke.mjs
+      - name: 결과 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-smoke
+          path: smoke-out/
+          retention-days: 14
