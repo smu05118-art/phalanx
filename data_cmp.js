@@ -3754,6 +3754,25 @@ window.CMPD={
       "reason": "출처·유효기간 검증 실패: identity/period/shape/source/basis/guidance contract changed"
     }
   },
+  "LEVI": {
+    "report_d": "2026-10-07",
+    "fq": "FY2026 Q3",
+    "verdict": "예측 보류 · 관측 진단",
+    "vcolor": "#8a93a6",
+    "est": null,
+    "range": "",
+    "cons": null,
+    "rho": null,
+    "state": "예측 보류",
+    "forecast_gate": {
+      "enabled": false,
+      "reason": "LEVI numerical forecasts remain held pending point-in-time inputs and independent model review. Registry or cached enabled flags do not authorize release.",
+      "policy": "levi-observed-only-v1"
+    },
+    "target_period_end": null,
+    "official_guidance": null,
+    "proxy_coverage": null
+  },
   "WISTRON": {
     "report_d": "",
     "fq": "",
