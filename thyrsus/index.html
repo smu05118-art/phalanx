@@ -1112,11 +1112,11 @@ const SV_CHARS=[
  ability:'게임 중 1회, 낮에 사회자에게 예/아니오 질문 1개를 한다.',
  warn:['답은 예/아니오/고개젓기(무응답) — 성실하게.','중독이면 거짓 답 가능.'],remind:['소진 표시'],
  dayNotice:'🎨 화가: 1회성 예/아니오 질문 대기 중일 수 있음.'},
-{id:'juggler',ko:'곡예사',en:'Juggler',type:'townsfolk',edition:'sv',first:false,other:true,conditional:'첫 낮 추측 후',
+{id:'juggler',ko:'저글러',en:'Juggler',type:'townsfolk',edition:'sv',first:false,other:true,conditional:'첫 낮 추측 후',
  ability:'첫 낮에 공개적으로 최대 5명의 캐릭터를 추측한다. 그 밤에 맞춘 수를 알게 된다.',
- guideOther:['(곡예사가 추측한 그날 밤에만) 낮 추측 중 정답 수를 손가락으로.'],
+ guideOther:['(저글러가 추측한 그날 밤에만) 낮 추측 중 정답 수를 손가락으로.'],
  warn:['추측 내용을 반드시 기록해 둘 것.','중독/보르톡스 거짓 수 가능.'],remind:['첫 낮 추측 기록'],
- dayNotice:'🤹 곡예사: 첫 낮 공개 추측(최대 5명) 기록했는가?'},
+ dayNotice:'🤹 저글러: 첫 낮 공개 추측(최대 5명) 기록했는가?'},
 {id:'sage',ko:'현자',en:'Sage',type:'townsfolk',edition:'sv',first:false,other:true,conditional:'악마에게 사망 시',
  ability:'악마에게 죽으면 깨어나 2명을 듣게 되고, 그중 1명이 악마다.',
  guideOther:['악마 살해 직후 깨워 [악마 포함 2명]을 가리켜 준다.'],
@@ -4556,7 +4556,7 @@ function renderStep(st,i,doneMap){
     if(st.id==='demoninfo'){
       const inPlay=new Set(S.players.map(p=>p.charId));
       /* 블러프는 '이 시트에 있으면서 판에 없는 선한 캐릭터'다(공식 Demon Info). CHARACTERS 전체를
-         훑으면 에디션을 가리지 않아 TB 판에서 곡예사(SV 저글러)를 블러프로 추천하는 등 시트 밖
+         훑으면 에디션을 가리지 않아 TB 판에서 저글러(SV)를 블러프로 추천하는 등 시트 밖
          캐릭터가 섞인다. editionChars() 로 지금 이 판의 캐릭터 풀만 본다 — 빌더로 실험 캐릭터를
          담은 시트라면 그 실험 캐릭터도 정당한 블러프이므로 edition:'exp' 예외는 더는 필요 없다. */
       const safeBluffs=editionChars().filter(c=>(c.type==='townsfolk'||c.type==='outsider') && !inPlay.has(c.id) && c.id!==S.drunkMaskChar).map(c=>c.ko);
@@ -6029,7 +6029,11 @@ function buildChecklist(){
   const items=[]; /* keySrc 는 '신원', src 는 '화면에 보이는 이름'이다. 내장 캐릭터는 한국어 이름이
      유일해서 둘이 같아도 됐지만, 커스텀은 같은 이름이 여럿일 수 있다 —
      이름으로 키를 만들면 두 캐릭터가 체크박스 하나를 공유한다. */
-  const add=(group,src,txt,keySrc)=>items.push({group,src,txt,key:group+'|'+(keySrc||src)+'|'+txt});
+  /* keyTxt — 문구가 동적인 항목은 **키를 고정 문자열로** 찍는다.
+     키가 표시 문구에서 나오므로 산문을 다듬기만 해도 진행 중인 판의 S.checks 체크 표시가
+     고아가 된다(라운드 47 의 성자 문구 수정이 실제로 그랬다). 형식 3단은 건드리지 않는다 —
+     건드리면 모든 키가 한꺼번에 끊긴다. */
+  const add=(group,src,txt,keySrc,keyTxt)=>items.push({group,src,txt,key:group+'|'+(keySrc||src)+'|'+(keyTxt||txt)});
   const inPlay=id=>S.players.some(p=>p.charId===id);
   // 셋업
   if(inPlay('baron')) add('셋업','남작','구성 변경 적용 확인: 마을 주민 −2 / 외지인 +2');
@@ -6050,8 +6054,11 @@ function buildChecklist(){
   if(inPlay('drunk')) add('매일 밤','주정뱅이','위장 캐릭터 순서에 깨워 일관된 거짓 정보 — 지난 밤에 준 정보 메모 확인');
   // 낮·투표
   if(inPlay('virgin')) add('낮·투표','성결자','최초 지명 시 발동 판정 — 지명자가 주민인지, 성결자가 중독인지');
-  /* 공식 "your team" — 지는 팀은 좌석 진영이다. 좌석이 악하면 그 사실을 함께 적는다. */
-  if(inPlay('saint')) add('낮·투표','성자',`처형 확정 전 중독 여부 확인 — 정상이면 ${seatTeamKo(S.players.find(x=>x.charId==='saint')).own} 패배`);
+  /* 공식 "your team" — 지는 팀은 좌석 진영이다. 좌석이 악하면 그 사실을 함께 적는다.
+     키는 **라운드 47 이전 문자열로 고정**한다: ① 진행 중인 판의 체크 표시를 되살리고
+     ② 좌석 진영이 뒤집혀도('선한 팀'↔'악한 팀') 같은 항목이 키 둘로 갈리지 않는다. */
+  if(inPlay('saint')) add('낮·투표','성자',`처형 확정 전 중독 여부 확인 — 정상이면 ${seatTeamKo(S.players.find(x=>x.charId==='saint')).own} 패배`,
+    null, '처형 확정 전 중독 여부 확인 — 정상이면 선 패배');
   if(inPlay('butler')) add('낮·투표','집사','주인이 거수/찬성했는지 매 투표 확인');
   if(inPlay('slayer')) add('낮·투표','처단자','공개 지목 시 즉시 판정 — 오작동/은둔자 등록 재량, 성공·실패 무관 소진');
   if(inPlay('mayor')) add('낮·투표','시장','생존 3명이 되면: 처형 없이 낮 종료 = 선 승리(오작동 확인)');
@@ -7300,7 +7307,7 @@ mathematician:{howto:[
  '하루 동안 "능력이 규칙대로 작동하지 않은" 플레이어를 그때그때 카운트 — 중독·취함으로 거짓 정보를 준 경우가 대표.',
  '집계 기준(등록 재량 포함 여부 등)을 첫날 정해 게임 내내 유지.',
  '공식 절차는 **토큰 세기가 아니라 그때그때 표시하기**다 — 오작동이 생길 때마다 그리모어에 표시를 남기고, 수학자에게 그 수를 보여준 뒤 표시를 모두 지운다.',
- '**중독·취함 그 자체는 집계 대상이 아니다**(공식: "does not detect drunkenness or poisoning itself"). 취한 곡예사가 우연히 정확한 정보를 받았다면 세지 않는다 — 공식이 직접 드는 미집계 예시다.'],
+ '**중독·취함 그 자체는 집계 대상이 아니다**(공식: "does not detect drunkenness or poisoning itself"). 취한 저글러가 우연히 정확한 정보를 받았다면 세지 않는다 — 공식이 직접 드는 미집계 예시다.'],
 examples:[
  '중독된 꿈꾸는 자가 거짓 쌍을 받은 날, 수학자에게 "1"을 알려줬다. 수학자가 공개하자 마을은 "어젯밤 누군가의 정보 하나는 가짜"라며 전날 공개된 정보들을 재검증했다.']},
 flowergirl:{howto:[
@@ -7340,11 +7347,11 @@ examples:[
  '화가가 "생존자 중에 마귀할멈이 있습니까?"라고 물어 "예"를 받았다. 마을은 밤마다 캐릭터가 바뀔 수 있다는 공포 속에 매일의 처형 대상을 신중히 골랐다.']},
 juggler:{howto:[
  '첫 낮의 공개 추측(최대 5개)을 반드시 기록 — 누구를 어떤 캐릭터로 지목했는지까지.',
- '기준은 게임의 둘째 밤이 아니라 **그 플레이어가 곡예사로 맞은 첫 낮**이다 — 그 낮에 추측했으면 **그날 밤**에 정답 수를 손가락으로 알려준다.',
- '처음부터 곡예사였다면 결과는 둘째 밤이다. 하지만 마귀할멈·세레노버스 등으로 도중에 곡예사가 됐다면 그 뒤 첫 낮과 그날 밤이 기준이다(공식 예시: 넷째 밤에 곡예사가 되면 다음 낮에 추측).',
+ '기준은 게임의 둘째 밤이 아니라 **그 플레이어가 저글러로 맞은 첫 낮**이다 — 그 낮에 추측했으면 **그날 밤**에 정답 수를 손가락으로 알려준다.',
+ '처음부터 저글러였다면 결과는 둘째 밤이다. 하지만 마귀할멈·세레노버스 등으로 도중에 저글러가 됐다면 그 뒤 첫 낮과 그날 밤이 기준이다(공식 예시: 넷째 밤에 저글러가 되면 다음 낮에 추측).',
  '결과를 준 뒤로는 깨우지 않는다 — 추측한 그 밤 한 번뿐이다.'],
 examples:[
- '곡예사가 첫 낮에 5명을 추측하고 둘째 밤 "3"을 받았다. 다섯 추측 중 셋이 맞다는 조합 정보에 마을 전체가 경우의 수 퍼즐에 뛰어들었고, 악 팀은 자신이 포함된 추측을 필사적으로 부정했다.']},
+ '저글러가 첫 낮에 5명을 추측하고 둘째 밤 "3"을 받았다. 다섯 추측 중 셋이 맞다는 조합 정보에 마을 전체가 경우의 수 퍼즐에 뛰어들었고, 악 팀은 자신이 포함된 추측을 필사적으로 부정했다.']},
 sage:{howto:[
  '악마의 살해로 죽는 순간에만 발동 — 살해 판정 직후 깨워 2명(그중 1명이 악마)을 가리켜 준다.',
  '나머지 1명의 선택이 재량 포인트 — 이미 의심받는 선 플레이어를 섞으면 혼선이 커진다.'],
@@ -7364,7 +7371,7 @@ barber:{howto:[
  '이발사가 죽은 밤 악마를 깨워 스왑 여부와 대상 2명을 받는다 — 스왑 시 두 사람을 각각 깨워 새 캐릭터를 안내.',
  '선택하는 악마 자신은 교환 대상이 될 수 있다 — 금지되는 것은 다른 악마 플레이어다. 스왑 후 그리모어·밤 순서 전면 갱신.'],
 examples:[
- '이발사가 처형된 밤, 악마는 예언자와 곡예사의 캐릭터를 맞바꿨다. 다음 밤부터 서로의 능력으로 깨어나게 되자 두 사람의 과거 정보 공개가 모순처럼 보였고, 마을은 둘 다 의심했다.']},
+ '이발사가 처형된 밤, 악마는 예언자와 저글러의 캐릭터를 맞바꿨다. 다음 밤부터 서로의 능력으로 깨어나게 되자 두 사람의 과거 정보 공개가 모순처럼 보였고, 마을은 둘 다 의심했다.']},
 klutz:{howto:[
  '사망 공표 직후 공개 지목을 진행시킬 것 — 잊기 쉬운 발동이다.',
  '지목이 악이면 즉시 선 패배 선언, 선이면 게임 계속(그 대상이 죽지는 않는다).'],
@@ -8322,7 +8329,7 @@ Object.assign(WIZ_SUGGEST,{
   /* ── 참값 계산기 추가분 ──
      여기 없던 정보 씬은 사회자가 매번 그리모어를 손으로 세야 했다. 계산 결과는 '제안'일 뿐
      자동 입력이 아니다 — 오작동·보르톡스 국면에서는 거짓이 정답이므로 사회자가 그대로 뒤집는다.
-     앱이 볼 수 없는 값(곡예사의 첫 낮 추측)은 지어내지 않고 '?' 와 확인 절차를 돌려준다. */
+     앱이 볼 수 없는 값(저글러의 첫 낮 추측)은 지어내지 않고 '?' 와 확인 절차를 돌려준다. */
 
   /* 객실 청소부: "고른 2명 중 오늘 밤 자기 능력으로 깨어난 수"(official/roles181.json: chambermaid).
      nightSteps() 가 이미 이 밤의 실제 기상 목록이다. 하수인·악마 정보 단계는 '자기 능력으로'가
@@ -8414,9 +8421,9 @@ Object.assign(WIZ_SUGGEST,{
       note:`낮 ${day} 지명 ${noms.length}건 기준${legionHit?` — 군단(${legionHit})의 지명을 하수인 지명으로 세었다(공식: 군단은 하수인으로도 등록된다)`:''} — 첩자·은둔자의 등록은 사회자 재량이라 자동 반영하지 않았다 — ${infoConstraintNote()}`};
   },
 
-  /* 곡예사: 첫 낮의 공개 추측은 앱 어디에도 기록되지 않는다 — 참값을 지어내지 않는다. */
+  /* 저글러: 첫 낮의 공개 추측은 앱 어디에도 기록되지 않는다 — 참값을 지어내지 않는다. */
   jugglerCorrect(){
-    return {v:'?', note:'곡예사의 첫 낮 추측은 앱에 기록되지 않는다 — 사회자 메모의 추측 목록과 그리모어를 대조해 맞힌 수를 직접 셀 것'};
+    return {v:'?', note:'저글러의 첫 낮 추측은 앱에 기록되지 않는다 — 사회자 메모의 추측 목록과 그리모어를 대조해 맞힌 수를 직접 셀 것'};
   },
 });
 
@@ -8590,7 +8597,7 @@ oracle:{other:[
   {t:'show-number',suggest:'oracleDeadEvil',caption:'죽은 플레이어 중 악한 수'},
   {t:'sleep'}]},
 juggler:{other:[
-  {t:'note',text:'두 번째 밤에만, 그리고 곡예사가 첫 낮에 공개 추측(최대 5명)을 했을 때만 진행합니다. 기록해 둔 추측 내용을 먼저 확인하세요.'},
+  {t:'note',text:'두 번째 밤에만, 그리고 저글러가 첫 낮에 공개 추측(최대 5명)을 했을 때만 진행합니다. 기록해 둔 추측 내용을 먼저 확인하세요.'},
   {t:'wake'},
   {t:'show-number',suggest:'jugglerCorrect',caption:'첫 낮 추측 중 맞힌 수'},
   {t:'sleep'}]},
@@ -8651,7 +8658,7 @@ JINXES.push(
  {a:'boffin',b:'politician',rule:'악마는 정치인 능력을 받을 수 없다.',confidence:'high'},
  {a:'boffin',b:'villageidiot',rule:'여분 토큰이 있을 때에 한해, 괴짜 과학자는 악마에게 마을 바보 능력을 줄 수 있다.',confidence:'high'},
  {a:'cannibal',b:'butler',rule:'식인종이 집사 능력을 얻으면, 자신이 무엇을 얻었는지 알게 된다.',confidence:'high'},
- {a:'cannibal',b:'juggler',rule:'곡예사가 첫 낮에 추측을 마친 뒤 처형으로 죽으면, 그날 밤 살아있는 식인종이 적중 수를 대신 듣는다.',confidence:'high'},
+ {a:'cannibal',b:'juggler',rule:'저글러가 첫 낮에 추측을 마친 뒤 처형으로 죽으면, 그날 밤 살아있는 식인종이 적중 수를 대신 듣는다.',confidence:'high'},
  {a:'cannibal',b:'poppygrower',rule:'식인종이 양귀비 재배자를 먹은 뒤 죽거나 그 능력을 잃으면, 그 밤에 악마와 하수인들이 서로를 알게 된다.',confidence:'check'},  /* §7.2(b) 미대조 */
  {a:'cerenovus',b:'goblin',rule:'세레노버스는 대상에게 자신이 고블린이라고 믿는 광증을 걸 수 있다.',confidence:'high'},
  {a:'godfather',b:'heretic',rule:'두 캐릭터 중 하나만 인플레이가 될 수 있다.',confidence:'high'},
@@ -10217,10 +10224,12 @@ function showCharInfo(cid){
     document.querySelectorAll('#pane-sheet .sheetrow').forEach(row=>{
       if(row.querySelector('.infobtn')) return;
       const nameEl=row.querySelector('.sname'); if(!nameEl) return;
-      /* 한국어 이름은 표시용이지 고유 키가 아니다 — acrobat(실험)과 juggler(SV)가 둘 다 '곡예사'라
-         이름 역조회는 CHARACTERS 배열에서 먼저 나오는 acrobat 을 돌려준다. SV 시트의 곡예사 (i)를
-         누르면 실험 캐릭터 규칙이 뜨던 자리다. 행이 실은 data-cid 를 우선하고, 없으면 종전대로
-         이름으로 찾는다(황혼·새벽·정보 단계처럼 캐릭터가 아닌 행은 그대로 걸러진다). */
+      /* 한국어 이름은 표시용이지 고유 키가 아니다. acrobat(실험)·juggler(SV)가 둘 다 '곡예사'여서
+         SV 시트의 (i)를 누르면 실험 캐릭터 규칙이 뜨던 자리다 — 라운드 48 에서 juggler 를
+         '저글러' 로 옮겨 **중복 자체는 끊겼다**. 그래도 data-cid 우선은 남긴다: 이름은
+         여전히 고유 키가 아니고(커스텀 캐릭터는 같은 ko 를 자유롭게 쓴다) 이 가드가
+         그 경우까지 덮는다. 없으면 종전대로 이름으로 찾는다(황혼·새벽·정보 단계처럼
+         캐릭터가 아닌 행은 그대로 걸러진다). */
       const ko=nameEl.textContent.trim();
       const cidEl=row.querySelector('[data-cid]');
       const c=(cidEl && charOf(cidEl.getAttribute('data-cid'))) || allChars().find(x=>x.ko===ko);
