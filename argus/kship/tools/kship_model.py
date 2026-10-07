@@ -7,7 +7,8 @@
 
   yard      매출조선 = SLS 해양 원화(assets/sls, 헤지 적용) + 원장 밖 잔고 소진분 + 신규수주 매출(결정 ⓓ, 2026-09-30: forecast_panel base
             시나리오의 new_order_revenue — 미보정 book-value proxy, `매출조선신규` 행으로 따로 보이고 매출조선·매출액에 포함; 보수/낙관은
-            scenarios 블록에만, 합산 안 함; 패널에 값이 없는 조선사(한화오션·HJ)는 잔고 소진분만 + 경고). 원장(2024~ 척당 계약 공시)은 공시 잔고의
+            scenarios 블록에만, 합산 안 함; 한화오션·HJ 는 패널이 전범위 new_order_revenue 를 비워(데이터 충분성) 같은 엔진의
+            covered_scope_new_revenue(모델 대상 부문만) 로 폴백 — 저신뢰 표기·공시 체결 속도 대조는 driver.new_orders). 원장(2024~ 척당 계약 공시)은 공시 잔고의
             일부만 덮으므로 (공시 해양 잔고 − 원장 잔여) 를 최근 4분기 '원장 밖 매출'(부문 매출 − SLS) 중위 속도로 소진시킨다.
             공시 잔고를 상한으로 삼아 SLS 모양 증폭(화해 배율 1/ratio 4.8배 같은 것)을 피한다 — 배율 대안값은 driver 에 같이 적는다.
             OPM = SLS 타겟(코호트 표) + 회사 캘리브레이션(최근 4분기 실측 OPM − 타겟 중위); 신규분에도 같은 타겟. 기타 부문 = 총매출 − 조선 부문 추세.
@@ -84,6 +85,7 @@ PER_BAND_CAP = (5.0, 30.0)     # 과거 PER 밴드 상·하한 캡(2026-09-30) �
 OOS_WORSE_TOL = 1.10           # 고객 연동 OOS 채택(결정 ⓘ, 2026-09-30): 동결 4분기 매출 WAPE_link ≤ WAPE_trend × 1.10 이어야 채택
 PANEL_SCENARIOS = ("conservative", "base", "optimistic")
 PANEL_BASE = "base"            # 매출조선·매출액에 합산하는 forecast_panel 시나리오(결정 ⓓ) — 보수/낙관은 scenarios 블록에만
+PANEL_REV_KEYS = ("new_order_revenue", "covered_scope_new_revenue")   # 우선 전범위, 없으면 모델 대상 부문만(한화오션·HJ — 2026-10-08 결정)
 
 YARDS = ["010140", "042660", "329180", "439260", "097230"]
 HOLDING, HOLDING_CORE = "009540", "329180"
@@ -511,41 +513,63 @@ def strat_trend(stock, S, fq, ctx, origin, reason="고객 연결 없음", series
     return p
 
 
-def _panel_module(stock, ctx, fq, included=False):
+def _panel_module(stock, ctx, fq, included=False, rev_key="new_order_revenue"):
     """forecast_panel(기존 Y+2 수주 추정) 을 참고 모듈로 — 패널의 총매출 추정은 우리 매출 모델을 대체하지 않는다(스펙 1).
-    included=True 면 new_order_revenue(base) 가 `매출조선신규` 행으로 모델에 들어갔다는 뜻(라벨만 바뀐다)."""
+    included=True 면 신규수주 매출(base) 이 `매출조선신규` 행으로 모델에 들어갔다는 뜻(라벨만 바뀐다). rev_key 는 그 행의 패널 필드
+    (한화오션·HJ 는 covered_scope_new_revenue — 모델 대상 부문만)."""
     c = ctx.panel.get(stock)
     if not c or not (c.get("scenarios") or {}).get("base"):
         return None
     rows = []
+    rev_tag = "" if rev_key == PANEL_REV_KEYS[0] else "(모델 대상 부문만·폴백·저신뢰)"
     for key, label in (("value", "forecast_panel 매출 추정(base, 참고·합산 안 함)"), ("new_orders", "forecast_panel 신규수주(base)"),
-                       ("new_order_revenue", "forecast_panel 신규수주 매출(base) — 매출조선신규 행에 반영됨" if included
-                        else "forecast_panel 신규수주 매출(base, 참고·합산 안 함)")):
+                       (rev_key, "forecast_panel 신규수주 매출%s(base) — 매출조선신규 행에 반영됨" % rev_tag if included
+                        else "forecast_panel 신규수주 매출%s(base, 참고·합산 안 함)" % rev_tag)):
         cells = {}
         for row in c["scenarios"]["base"].get("quarterly") or []:
             q = row.get("quarter")
             if q in fq and _num(row.get(key)):
                 cells[q] = est(row[key] / UNIT_DIV, "forecast_panel.json.gz base 시나리오(status %s) — 참고" % c.get("status"))
         if cells:
-            rows.append({"key": "panel_" + key, "label": label, "unit": "억원", "q": cells})
+            rows.append({"key": "panel_" + ("new_order_revenue" if key == rev_key else key), "label": label, "unit": "억원", "q": cells})
     return {"key": "forecast_panel", "label": "기존 Y+2 수주 추정(forecast_panel) — 나란히 표시", "rows": rows} if rows else None
 
 
+def _panel_rev_key(c, fq):
+    """base 시나리오에서 fq 안에 숫자가 있는 첫 신규 매출 필드. 전범위 new_order_revenue 가 우선이고, 패널이 데이터 충분성 때문에 그것을 비운
+    회사(한화오션·HJ)는 같은 엔진·같은 R1 인식·같은 시나리오 정의의 covered_scope_new_revenue(모델 대상 부문만) 로 폴백한다. 없으면 None."""
+    rows = (((c.get("scenarios") or {}).get(PANEL_BASE) or {}).get("quarterly")) or []
+    for key in PANEL_REV_KEYS:
+        if any(row.get("quarter") in fq and _num(row.get(key)) for row in rows):
+            return key
+    return None
+
+
 def _panel_new_orders(stock, ctx, fq):
-    """forecast_panel.json.gz 의 시나리오별 신규수주 매출(new_order_revenue, KRW_million → 억원 ÷100). 반환 dict:
-    available(base 가 fq 안에 숫자를 하나라도 갖는가) · by_scenario {scn: {q: 억원}}(패널이 안 덮는 분기는 0) · status·reason_codes ·
-    covered/uncovered 분기 · basis(셀 basis 문구) · note. 패널이 없거나 값이 전부 None(한화오션·HJ) 이면 available False."""
+    """forecast_panel.json.gz 의 시나리오별 신규수주 매출(new_order_revenue, 없으면 covered_scope_new_revenue; KRW_million → 억원 ÷100). 반환 dict:
+    available(base 가 fq 안에 숫자를 하나라도 갖는가) · source_field · fallback(covered_scope 폴백 여부) · by_scenario {scn: {q: 억원}}(패널이 안 덮는 분기는 0) ·
+    status·reason_codes · coverage(모델 대상·제외 부문, 잔고 억원) · covered/uncovered 분기 · basis(셀 basis 문구) · note. 패널이 없거나 두 필드 다
+    비면 available False."""
     c = ctx.panel.get(stock)
     out = {"available": False, "by_scenario": {}, "status": (c or {}).get("status"), "reason_codes": (c or {}).get("reason_codes") or [],
-           "panel_origin": (c or {}).get("origin"), "covered": [], "uncovered": list(fq), "basis": "", "note": ""}
+           "panel_origin": (c or {}).get("origin"), "covered": [], "uncovered": list(fq), "basis": "", "note": "",
+           "source_field": PANEL_REV_KEYS[0], "fallback": False, "coverage": None}
     if not c:
         out["note"] = "forecast_panel 에 %s 없음" % stock
         return out
     scn = c.get("scenarios") or {}
+    key = _panel_rev_key(c, fq)
+    if key:
+        out["source_field"], out["fallback"] = key, key != PANEL_REV_KEYS[0]
+    cov = c.get("coverage") or {}
+    if cov:
+        out["coverage"] = {"modeled_segments": cov.get("modeled_segments"), "excluded_segments": cov.get("excluded_segments"),
+                           "reported_backlog_eok": r2(cov["reported_backlog"] / UNIT_DIV) if _num(cov.get("reported_backlog")) else None,
+                           "modeled_backlog_eok": r2(cov["modeled_backlog"] / UNIT_DIV) if _num(cov.get("modeled_backlog")) else None}
     for name in PANEL_SCENARIOS:
         d = {}
         for row in (scn.get(name) or {}).get("quarterly") or []:
-            q, v = row.get("quarter"), row.get("new_order_revenue")
+            q, v = row.get("quarter"), row.get(out["source_field"])
             if q in fq and _num(v):
                 d[q] = v / UNIT_DIV
         out["by_scenario"][name] = {q: d.get(q, 0.0) for q in fq}
@@ -562,11 +586,62 @@ def _panel_new_orders(stock, ctx, fq):
     exc = ((c.get("industry_axes") or {}).get("schedule_exclusions")) or c.get("industry_axes_schedule_exclusions") or {}   # 패널 원본 · 발췌(평탄화) 둘 다
     out["not_known_at_origin"] = exc.get("not_known_at_origin") if _num(exc.get("not_known_at_origin")) else None
     if not out["available"]:
-        out["note"] = "forecast_panel %s status %s(%s) — new_order_revenue 값 없음" % (stock, out["status"], ", ".join(out["reason_codes"]) or "-")
+        out["note"] = "forecast_panel %s status %s(%s) — %s 값 없음" % (stock, out["status"], ", ".join(out["reason_codes"]) or "-", " · ".join(PANEL_REV_KEYS))
         return out
-    out["basis"] = "forecast_panel.json.gz scenarios.%s new_order_revenue(KRW_million÷100), status %s, calibrated=false, book-value proxy%s" % (
-        PANEL_BASE, out["status"], ("; 패널 미커버 분기 0: " + ", ".join(out["uncovered"])) if out["uncovered"] else "")
+    cv = out["coverage"] or {}
+    out["basis"] = "forecast_panel.json.gz scenarios.%s %s(KRW_million÷100), status %s, calibrated=false, book-value proxy%s%s" % (
+        PANEL_BASE, out["source_field"], out["status"], ("; 패널 미커버 분기 0: " + ", ".join(out["uncovered"])) if out["uncovered"] else "",
+        ("; ※폴백 — 패널이 전범위 new_order_revenue 를 비워(%s) 모델 대상 부문(%s%s)만 덮는 covered_scope_new_revenue 사용 · 저신뢰"
+         % (", ".join(out["reason_codes"]) or "-", "·".join(cv.get("modeled_segments") or []) or "—",
+            (", 제외 " + "·".join(cv["excluded_segments"])) if cv.get("excluded_segments") else "")) if out["fallback"] else "")
     return out
+
+
+def _post_origin_panel_fraction(post, no):
+    """origin 이후 공시 수주 중 패널 신규수주 흐름이 담았다고 볼 수 있는 비율(0~1, T6 D1 의 '패널 신규에 포함' 가정을 패널 규모로 한정).
+    체결 분기마다 min(1, 패널 base 그 분기 신규수주 ÷ 그 분기 공시 수주) — 패널이 공시 체결 속도보다 훨씬 작으면(HJ重 패널 110억/분기 vs 공시 6,790억)
+    공시 수주를 통째로 빼면 실제 수주가 사라진다. 패널이 공시 수주 이상이면 1(기존 규칙 그대로 — 삼성重·HD현대重·대한조선은 전부 1).
+    날짜 없는 공시 수주는 1 로 본다(기존 규칙). 반환 (비율, {체결 분기: 비율})."""
+    amts, tot = post["by_sign_q"], post["amt"]
+    if tot <= 0:
+        return 1.0, {}
+    pn = no.get("new_orders_by_q") or {}
+    by = {sq: (min(1.0, pn[sq] / a) if (sq in pn and a > 0) else 0.0) for sq, a in amts.items()}
+    undated = max(tot - sum(amts.values()), 0.0)
+    if undated <= 1e-9 and all(v >= 1.0 for v in by.values()):
+        return 1.0, by
+    return (sum(by[sq] * amts[sq] for sq in amts) + undated) / tot, by
+
+
+def _ledger_signing_crosscheck(sls, no, n_quarters=8):
+    """공시 계약 원장의 체결 분기별 금액(해양·counted·origin 분기말까지, 억원) 과 패널 base 신규수주를 나란히 — 패널 신규수주가 공시 체결 속도와
+    얼마나 떨어져 있는지(폴백 저신뢰 근거). 원장은 공시 대상 계약만이라 전체 수주의 하한 성격이다."""
+    origin = sls.get("origin")
+    if not origin:
+        return None
+    oend = q_end_date(origin)
+    by = collections.defaultdict(float)
+    for c in sls.get("contracts") or []:
+        if not c.get("counted", True) or c.get("type") == "OTHER" or not _num(c.get("amt_krw_m")):
+            continue
+        try:
+            d = datetime.date.fromisoformat(c.get("signed") or c.get("start"))
+        except (TypeError, ValueError):
+            continue
+        if d <= oend:
+            by["%dQ%d" % (d.year, (d.month - 1) // 3 + 1)] += c["amt_krw_m"] / UNIT_DIV
+    qs = q_range(q_add(origin, 1 - n_quarters), origin)
+    first = next((i for i, q in enumerate(qs) if by.get(q, 0.0) > 0), None)
+    if first:                                   # 원장 첫 체결 분기 앞의 0 은 '수주 없음' 이 아니라 원장이 닿지 않는 구간 — 평균을 깎지 않게 뺀다
+        qs = qs[first:]
+    vals = [by.get(q, 0.0) for q in qs]
+    pn = [v for v in (no.get("new_orders_by_q") or {}).values() if _num(v)]
+    led_mean = sum(vals) / len(vals)
+    pn_mean = sum(pn) / len(pn) if pn else None
+    return {"quarters": qs, "ledger_signed_by_q_eok": {q: r2(by.get(q, 0.0)) for q in qs}, "ledger_mean_per_q_eok": r2(led_mean),
+            "ledger_median_per_q_eok": r2(med(vals)), "panel_base_new_orders_mean_per_q_eok": r2(pn_mean) if pn_mean is not None else None,
+            "panel_to_ledger_ratio": r4(pn_mean / led_mean) if (pn_mean is not None and led_mean > 0) else None,
+            "note": "공시 계약 원장(대형 단일 계약만 — 하한, 첫 체결 분기부터 최대 8분기) 체결 평균 대비 패널 base 신규수주 평균. 비율 <0.5 이면 패널이 공시 체결 속도를 못 따라간 것(과소), >1.5 이면 순보충(FX 취소 미분리) 기반이라 상향 편향 가능"}
 
 
 def _sls_r3_info(sls):
@@ -736,6 +811,7 @@ def strat_yard(stock, S, fq, ctx, origin):
     no = None if freeze else _panel_new_orders(stock, ctx, fq)
     use_panel = bool(no and no["available"])
     post = None
+    post_frac, post_frac_by_sq = 1.0, {}
     share = {}
     if freeze:
         krw, remaining, topm = _sls_frozen(sls, la, share_out=share)
@@ -754,9 +830,12 @@ def strat_yard(stock, S, fq, ctx, origin):
         post = _sls_post_origin(sls, fq)
         if use_panel and post["n"]:
             # T6 D1: origin 이후 체결 계약은 패널 신규(origin 이후 수주의 매출)에 포함된 것으로 본다 → '기존' 은 origin 분기말까지 체결분만.
-            # 백테스트 _sls_frozen(체결일 ≤ 동결 분기말)과 같은 규칙. 패널이 없으면(한화오션·HJ) 공시 수주가 유일한 신규 정보라 그대로 둔다.
-            sls_fwd = dict(post["existing"])
-            src_note = "sls.by_quarter.marine_hedged_krw_m_signed_by_origin(%s; origin %s 이후 체결 %d건 제외 — 패널 신규에 포함)" % (hr_txt, sls.get("origin"), post["n"])
+            # 백테스트 _sls_frozen(체결일 ≤ 동결 분기말)과 같은 규칙. 패널이 없으면 공시 수주가 유일한 신규 정보라 그대로 둔다.
+            # 단 패널이 담는 몫은 체결 분기별 패널 신규수주 규모까지만(post_frac) — 패널이 공시 체결 속도보다 작은 한화오션·HJ 에서 실제 수주가 사라지지 않게.
+            post_frac, post_frac_by_sq = _post_origin_panel_fraction(post, no)
+            sls_fwd = {q: post["existing"][q] + post["post"][q] * (1.0 - post_frac) for q in fq}
+            src_note = ("sls.by_quarter.marine_hedged_krw_m_signed_by_origin(%s; origin %s 이후 체결 %d건 %s — 패널 신규에 포함)"
+                        % (hr_txt, sls.get("origin"), post["n"], "제외" if post_frac >= 1.0 else "중 패널 신규수주 규모만큼(%.0f%%) 제외" % (post_frac * 100)))
         else:
             sls_fwd = {q: ((bq.get(q) or {}).get("marine_hedged_krw_m") or 0.0) / UNIT_DIV for q in fq}
             src_note = "sls.by_quarter.marine_hedged_krw_m(%s)" % hr_txt
@@ -787,7 +866,7 @@ def strat_yard(stock, S, fq, ctx, origin):
     if new_base and post and post["n"]:
         fy_ex = collections.OrderedDict()
         for q in fq:
-            fy_ex[q[:4]] = fy_ex.get(q[:4], 0.0) + post["post"][q]
+            fy_ex[q[:4]] = fy_ex.get(q[:4], 0.0) + post["post"][q] * post_frac
         fy_new = collections.OrderedDict()
         for q in fq:
             fy_new[q[:4]] = fy_new.get(q[:4], 0.0) + new_base.get(q, 0.0)
@@ -803,15 +882,40 @@ def strat_yard(stock, S, fq, ctx, origin):
                           for q, v, pn in cmp_q if pn),
                   " · ".join("%s %s억 vs %s억" % (y, format(round(fy_ex[y]), ",d"), format(round(fy_new.get(y, 0.0)), ",d")) for y in fy_ex)))
         post_excl = {"n": post["n"], "amt_krw_eok": r2(post["amt"]), "by_sign_quarter": {q: r2(v) for q, v in post["by_sign_q"].items()},
+                     "included_fraction": r4(post_frac), "included_fraction_by_sign_quarter": {q: r4(v) for q, v in post_frac_by_sq.items()},
                      "sls_excluded_by_fy": {y: r2(v) for y, v in fy_ex.items()}, "panel_new_revenue_by_fy": {y: r2(v) for y, v in fy_new.items()},
-                     "sls_excluded_by_q": {q: r2(post["post"][q]) for q in fq}, "rcps": post["rcps"], "source": post["source"],
+                     "sls_excluded_by_q": {q: r2(post["post"][q] * post_frac) for q in fq}, "rcps": post["rcps"], "source": post["source"],
                      "definition_uncertainty": unc,
-                     "note": "origin 이후 공시 수주 %d건 %s억은 패널 신규에 포함된 것으로 보아 기존 SLS 에서 제외 — 추정 창 SLS −%s억(%s)"
-                             % (post["n"], format(round(post["amt"]), ",d"), format(round(sum(fy_ex.values())), ",d"),
-                                " · ".join("%s %s억" % (y, format(round(v), ",d")) for y, v in fy_ex.items()))}
+                     "note": ("origin 이후 공시 수주 %d건 %s억은 패널 신규에 포함된 것으로 보아 기존 SLS 에서 제외" % (post["n"], format(round(post["amt"]), ",d"))
+                              if post_frac >= 1.0 else
+                              "origin 이후 공시 수주 %d건 %s억 중 패널 신규수주 규모(체결 분기별 한도)만큼 %.0f%% 만 기존 SLS 에서 제외 — 나머지 %.0f%% 는 선표에 유지(패널이 공시 체결 속도보다 작음: %s)"
+                              % (post["n"], format(round(post["amt"]), ",d"), post_frac * 100, (1 - post_frac) * 100,
+                                 " · ".join("%s 패널 %s억 vs 공시 %s억" % (sq, format(round(no["new_orders_by_q"].get(sq, 0.0)), ",d"), format(round(a), ",d"))
+                                            for sq, a in post["by_sign_q"].items())))
+                             + " — 추정 창 SLS −%s억(%s)" % (format(round(sum(fy_ex.values())), ",d"), " · ".join("%s %s억" % (y, format(round(v), ",d")) for y, v in fy_ex.items()))}
         for q in fq:
-            seg_est[q] = (seg_est[q][0], seg_est[q][1] + " · origin 이후 공시 수주 SLS %.0f억 제외(패널 신규에 포함으로 봄)" % post["post"][q])
+            seg_est[q] = (seg_est[q][0], seg_est[q][1] + (" · origin 이후 공시 수주 SLS %.0f억 제외(패널 신규에 포함으로 봄)" % (post["post"][q] * post_frac) if post_frac >= 1.0 else
+                                                          " · origin 이후 공시 수주 SLS %.0f억 중 %.0f억 제외(패널 신규수주 규모만큼, %.0f%%)" % (post["post"][q], post["post"][q] * post_frac, post_frac * 100)))
     r3 = _sls_r3_info(sls)
+    led_cc = _ledger_signing_crosscheck(sls, no) if (new_base and no["fallback"]) else None
+    fb_note = ""
+    if new_base and no["fallback"]:
+        cv = no.get("coverage") or {}
+        ratio = (led_cc or {}).get("panel_to_ledger_ratio")
+        if ratio is None:
+            cmp_txt = "공시 체결 속도와 대조 불가"
+        else:
+            verdict = ("신규 매출 과소 가능 — 낙관 시나리오가 더 가깝다" if ratio < 0.5 else
+                       "대체로 같은 규모" if ratio <= 1.5 else
+                       "원장은 대형 단일 계약만 잡은 하한이라 초과만으로 과대 단정은 못 하나, 패널은 FX 취소를 못 가른 순보충 기반이라 상향 편향 가능 — 보수 시나리오 병행 확인")
+            cmp_txt = ("패널 신규수주는 공시 체결 속도 대비 %.0f%% 수준(분기 평균 %s억 vs 공시 체결 %s억 — %s)"
+                       % (ratio * 100, format(round(led_cc["panel_base_new_orders_mean_per_q_eok"]), ",d"), format(round(led_cc["ledger_mean_per_q_eok"]), ",d"), verdict))
+        fb_note = ("폴백(저신뢰): 패널이 전범위 new_order_revenue 를 비웠다(%s) → 같은 엔진·같은 R1 인식·같은 시나리오 정의의 covered_scope_new_revenue 사용. "
+                   "모델 대상 부문 %s%s만 덮고%s, %s"
+                   % (", ".join(no["reason_codes"]) or "-", "·".join(cv.get("modeled_segments") or []) or "—",
+                      (" (제외 %s)" % "·".join(cv["excluded_segments"])) if cv.get("excluded_segments") else "",
+                      (" 제외 부문(%s)의 신규분은 반영되지 않는다" % "·".join(cv["excluded_segments"])) if cv.get("excluded_segments") else "",
+                      cmp_txt))
     # 기타 부문(총매출 − 조선): 부문표 차분 잡음(반기 누계 정정 등)이 커서 추세 대신 최근 4분기 중위 유지
     oth_med = med([other_act[q] for q in ks]) or 0.0
     oth_rev = {q: oth_med for q in fq}
@@ -881,9 +985,16 @@ def strat_yard(stock, S, fq, ctx, origin):
                                    "covered_quarters": no["covered"], "uncovered_quarters_zero": no["uncovered"],
                                    "base_total_fq": r2(sum(new_base.values())),
                                    "panel_definition": no.get("definition") or {},
-                                   "existing_definition": ("origin 분기말까지 체결 계약(sls signed_by_origin) + 원장 밖 잔고 소진 — origin 이후 공시 수주 %d건은 패널 신규에 포함으로 보아 제외" % post_excl["n"])
+                                   "existing_definition": (("origin 분기말까지 체결 계약(sls signed_by_origin) + 원장 밖 잔고 소진 — origin 이후 공시 수주 %d건은 패널 신규에 포함으로 보아 제외" % post_excl["n"])
+                                                           if post_excl["included_fraction"] >= 1.0 else
+                                                           ("origin 분기말까지 체결 계약(sls signed_by_origin) + 원장 밖 잔고 소진 + origin 이후 공시 수주 %d건 중 패널 신규수주 규모를 넘는 %.0f%%"
+                                                            % (post_excl["n"], (1 - post_excl["included_fraction"]) * 100)))
                                                           if post_excl else "선표 전체(origin 이후 체결 공시 수주 없음) + 원장 밖 잔고 소진",
-                                   "note": "패널 new_order_revenue 는 미보정 book-value proxy(value_semantics) — 보수/낙관은 scenarios 블록에만, 행에는 base 만"}
+                                   "source_field": no["source_field"], "fallback": no["fallback"],
+                                   "confidence": "low" if no["fallback"] else "panel_default",
+                                   "panel_scope": no.get("coverage"), "ledger_crosscheck": led_cc, "fallback_note": fb_note or None,
+                                   "note": "패널 %s 는 미보정 book-value proxy(value_semantics) — 보수/낙관은 scenarios 블록에만, 행에는 base 만%s"
+                                           % (no["source_field"], (" · " + fb_note) if fb_note else "")}
                                   if new_base else
                                   {"source": "forecast_panel.json.gz", "calibrated": False, "panel_status": (no or {}).get("status"),
                                    "panel_reason_codes": (no or {}).get("reason_codes"),
@@ -892,7 +1003,7 @@ def strat_yard(stock, S, fq, ctx, origin):
                    "target_opm_alt_median": r3["target_opm_alt_median"],
                    "basis": "공시 해양 잔고(%s억) 를 상한으로 원장 밖 잔고를 최근 속도로 소진 — 화해 배율(1/ratio) 곱셈은 원장 커버리지 상승을 성장으로 오독하므로 쓰지 않음 · 신규수주: %s · %s · %s"
                             % (format(round((rs.get("reported_marine_backlog_krw_m") or 0) / UNIT_DIV), ",d"),
-                               ("forecast_panel %s 포함(미보정)%s" % (PANEL_BASE, ("; " + post_excl["note"]) if post_excl else "")) if new_base else ("미포함(%s)" % ("백테스트 동결" if freeze else (no or {}).get("note") or "패널 없음")),
+                               ("forecast_panel %s %s 포함(미보정)%s%s" % (PANEL_BASE, no["source_field"], ("; " + fb_note) if fb_note else "", ("; " + post_excl["note"]) if post_excl else "")) if new_base else ("미포함(%s)" % ("백테스트 동결" if freeze else (no or {}).get("note") or "패널 없음")),
                                r3["cap_text"], r3["cohort_text"])}
     seg_label = "조선·해양(%s)" % "·".join(seg_names) if seg_names else "조선·해양"
     seg_rows = {"매출조선": {}, "OP조선": {}, "매출기타": {}, "OP기타": {}}
@@ -926,18 +1037,23 @@ def strat_yard(stock, S, fq, ctx, origin):
         p["row_labels"] = {"매출조선신규": ("매출 %s 신규수주(forecast_panel base — 매출조선에 포함)" % seg_label, "사업부", "억원"),
                            "OP조선신규": ("OP %s 신규수주(매출조선신규 × OPM — OP조선에 포함)" % seg_label, "사업부", "억원")}
         p["scenarios_new"] = no["by_scenario"]
-        p["scenarios_meta"] = {"source": "forecast_panel.json.gz scenarios.{conservative,base,optimistic}.quarterly[].new_order_revenue (KRW_million → 억원 ÷100)",
+        p["scenarios_meta"] = {"source": "forecast_panel.json.gz scenarios.{conservative,base,optimistic}.quarterly[].%s (KRW_million → 억원 ÷100)" % no["source_field"],
+                               "source_field": no["source_field"], "fallback": no["fallback"], "confidence": "low" if no["fallback"] else "panel_default",
+                               "fallback_note": fb_note or None, "panel_scope": no.get("coverage"), "ledger_crosscheck": led_cc,
                                "panel_status": no["status"], "panel_reason_codes": no["reason_codes"], "panel_origin": no["panel_origin"], "calibrated": False,
                                "in_rows": PANEL_BASE,
                                "existing_revenue": "SLS 해양 원화(origin %s 분기말까지 체결분%s) + 원장 밖 잔고 소진 + 기타 부문(신규수주 제외)"
-                                                   % (sls.get("origin") or la, (" — origin 이후 공시 수주 %d건 제외, 패널 신규에 포함으로 봄" % post_excl["n"]) if post_excl else ""),
+                                                   % (sls.get("origin") or la, ((" — origin 이후 공시 수주 %d건 제외, 패널 신규에 포함으로 봄" % post_excl["n"]) if post_excl["included_fraction"] >= 1.0 else
+                                                                                 (" — origin 이후 공시 수주 %d건 중 %.0f%% 제외(패널 신규수주 규모만큼), 나머지 선표 유지" % (post_excl["n"], post_excl["included_fraction"] * 100))) if post_excl else ""),
                                "post_origin_excluded": post_excl}
-    pm = _panel_module(stock, ctx, fq, included=bool(new_base))
+    pm = _panel_module(stock, ctx, fq, included=bool(new_base), rev_key=(no or {}).get("source_field") or PANEL_REV_KEYS[0])
     if pm:
         p["modules"].append(pm)
     if new_base:
-        p["warnings"].append("추정 매출조선 = %s 기준 잔고 소진분 + forecast_panel %s 신규수주 매출(미보정 book-value proxy, status %s; FY합 %s억) — 보수/낙관은 scenarios 블록(합산 안 함)"
-                             % (la, PANEL_BASE, no["status"], format(round(sum(new_base.values())), ",d")))
+        p["warnings"].append("추정 매출조선 = %s 기준 잔고 소진분 + forecast_panel %s 신규수주 매출(%s, 미보정 book-value proxy, status %s; FY합 %s억) — 보수/낙관은 scenarios 블록(합산 안 함)"
+                             % (la, PANEL_BASE, no["source_field"], no["status"], format(round(sum(new_base.values())), ",d")))
+        if fb_note:
+            p["warnings"].append("신규수주 " + fb_note)
         if post_excl:
             p["warnings"].append(post_excl["note"] + " · " + post_excl["definition_uncertainty"])
     elif freeze:

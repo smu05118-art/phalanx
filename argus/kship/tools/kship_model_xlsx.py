@@ -52,7 +52,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook.defined_name import DefinedName
 
-from kship_lib import ASSETS, KSHIP
+from kship_lib import ASSETS, KSHIP, opm_table_text
 
 MODELS_DIR = os.path.join(ASSETS, "models")
 FIN_DIR = os.path.join(ASSETS, "fin")
@@ -1407,7 +1407,7 @@ class Builder:
         g = self._sls_geometry()
         byq, byy, cols = s.get("by_quarter") or {}, s.get("by_year") or {}, g["cols"]
         self._header(ws, "이름: SLS_H · 선표 매출인식(백만$) — sls json origin %s" % s.get("origin", ""), cols=cols)
-        ws.cell(2, 1, "코호트 표(가정): ①적자 −5% ②BEP 0% ③중마진 5% ④호황 10% ⑤초호황 15% — 회사별 캘리브레이션은 target_opm.basis 참조 · "
+        ws.cell(2, 1, opm_table_text(s) + " — 회사별 캘리브레이션은 target_opm.basis 참조 · "
                       + "코호트 모드 %s(대안 %s) · 잔고 캡 %s" % (s.get("cohort_mode"), s.get("cohort_mode_alt"),
                                                         ("적용 × %.4f" % (s.get("backlog_cap") or {}).get("factor", 1.0)) if s.get("backlog_cap_applied") else "미적용")).font = F_NOTE
         topm = s.get("target_opm") or {}
@@ -1553,8 +1553,9 @@ class Builder:
         years = [str(y) for y in (meta.get("fiscal_years") or sorted({q[:4] for q in fq}))]
         cols = build_columns(fq, years)
         self._header(ws, "신규수주 시나리오(억원) — subQ 기준값 ± (시나리오 신규 − base 신규) × OPM", cols=cols)
-        ws.cell(2, 1, "출처: %s · calibrated=%s · 행(subQ)에 포함된 시나리오: %s. 보수/낙관/기존만 은 합산하지 않는다. 모델 산출값 — 목표주가·추천 아님" % (
-            meta.get("source") or "forecast_panel", meta.get("calibrated"), meta.get("in_rows") or "base")).font = F_NOTE
+        ws.cell(2, 1, "출처: %s · calibrated=%s · 행(subQ)에 포함된 시나리오: %s. 보수/낙관/기존만 은 합산하지 않는다. 모델 산출값 — 목표주가·추천 아님%s" % (
+            meta.get("source") or "forecast_panel", meta.get("calibrated"), meta.get("in_rows") or "base",
+            (" · ※ " + str(meta.get("fallback_note") or "covered_scope_new_revenue 폴백(저신뢰)")) if meta.get("fallback") else "")).font = F_NOTE
         ws.cell(3, 1, str(meta.get("note") or "")).font = F_NOTE
         new_key = next((k for k in self.rows_by_key if k.startswith("매출") and k.endswith("신규")), None)
         r_rev, r_op = self.subq_row.get("매출액"), self.subq_row.get("영업이익")
@@ -1599,7 +1600,7 @@ class Builder:
                         if nv is not None:
                             cell_new.value = nv
                             cell_new.fill = FILL_INPUT
-                            cell_new.comment = Comment("forecast_panel %s new_order_revenue(억원) — %s" % (case, meta.get("source") or ""), "kship")
+                            cell_new.comment = Comment("forecast_panel %s %s(억원)%s — %s" % (case, meta.get("source_field") or "new_order_revenue", " · 폴백·저신뢰" if meta.get("fallback") else "", meta.get("source") or ""), "kship")
                     if q not in qd:
                         continue
                     bn = "%s%d" % (L, base_new_row if base_new_row else rn)

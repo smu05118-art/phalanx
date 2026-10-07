@@ -1062,6 +1062,31 @@ class ExtendFormulasSamsungTest(unittest.TestCase):
         self.assertIn("수식 연장 subQ(plain", buf.getvalue())
         self.assertIn("⑦연장 OK", buf.getvalue())
 
+    def _cli_extend(self, tag, *flags):
+        fin_path = os.path.join(self.tmp, "fin_010140.json")
+        if not os.path.exists(fin_path):
+            with open(fin_path, "w", encoding="utf-8") as f:
+                json.dump(self.fin, f, ensure_ascii=False)
+        out, report = os.path.join(self.tmp, "cli_%s.xlsx" % tag), os.path.join(self.tmp, "cli_%s.json" % tag)
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            rc = P.main(["--stock", "010140", "--fin", "010140=" + fin_path, "--fx", os.path.join(self.tmp, "no_fx.json"),
+                         "--prices", os.path.join(self.tmp, "no_prices.json"), "--out", out, "--today", "2026-10-05", "--report", report, *flags])
+        self.assertEqual(rc, 0, buf.getvalue())
+        with open(report, encoding="utf-8") as f:
+            return json.load(f)[0]
+
+    def test_cli_extend_default_all_off_disables_bare_flag_all(self):
+        """2026-10-08 오너 결정 — 운영 실행(CLI)은 --extend-formulas 를 안 줘도 all, `off` 가 끈다. API patch_file(extend=None) 기본은 꺼짐(위 test_default_off_and_plain_cli)."""
+        self.assertEqual((P.EXTEND_CLI_DEFAULT, "off" in P.EXTEND_CLI_MODES), ("all", True))
+        rep = self._cli_extend("default")
+        self.assertEqual(rep["extend_mode"], "all")
+        self.assertEqual((rep["extend"]["extended"], rep["extend"]["extended_shared"]), (668, 287))
+        rep = self._cli_extend("bare", "--extend-formulas")
+        self.assertEqual((rep["extend_mode"], rep["extend"]["extended"]), ("all", 668))
+        rep = self._cli_extend("off", "--extend-formulas", "off")
+        self.assertIsNone(rep["extend"])
+        self.assertIsNone(rep["extend_mode"])
+
 
 if __name__ == "__main__":
     unittest.main()

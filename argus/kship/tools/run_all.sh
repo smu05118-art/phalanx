@@ -188,7 +188,8 @@ if enabled model; then
   end_stage
 fi
 
-# ── patch: ⑤ 레퍼런스 원본 패치 — 로컬 전용(레포 밖 사유 파일). 운영 플래그 = MODEL.md §12-7. 폴더가 없으면 건너뛴다 ──
+# ── patch: ⑤ 레퍼런스 원본 패치 — 로컬 전용(레포 밖 사유 파일). 운영 플래그 = MODEL.md §12-7. 폴더가 없으면 건너뛴다.
+#    --extend-formulas 는 2026-10-08 부터 CLI 기본 all(끄려면 --extend-formulas off) — 여기서 따로 주지 않는다 ──
 if enabled patch; then
   begin patch
   REF_ARGS=""

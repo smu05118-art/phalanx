@@ -8,6 +8,7 @@ T6 D1: by_quarter[q].marine_hedged_krw_m_signed_by_origin / _post_origin 분해(
 """
 import collections
 import datetime
+import json
 import os
 import statistics
 import sys
@@ -378,6 +379,8 @@ class TestReferenceAnchorAndCap(unittest.TestCase):
         cm, yi = S.cohorts(cons)
         o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")
         self.assertEqual((o["cohort_mode"], o["cohort_mode_alt"]), ("reference_anchor", "ledger_relative"))
+        self.assertEqual(o["cohort_opm_table_source"], "reference_calibrated")            # 2026-10-08 오너 결정: 기본 표 = 레퍼런스 실측 캘리브레이션
+        t = o["cohort_opm_table"]
         by = {c["rcp"]: c for c in o["contracts"]}
         self.assertEqual(by["O1"]["cohort"], "④호황")                                   # 2021 수주
         self.assertEqual([by[r]["cohort"] for r in ("C0", "C1", "C2")], ["⑤초호황"] * 3)   # 2025 수주
@@ -387,8 +390,8 @@ class TestReferenceAnchorAndCap(unittest.TestCase):
         self.assertEqual(by["C0"]["cohort_detail"]["order_year"], 2025)
         q = o["by_quarter"]["2027Q1"]                                                    # O1 은 2026Q3 인도 → 2025 수주 3건 + 공사
         sch = {r: by[r]["schedule"]["2027Q1"] for r in ("C0", "C1", "C2", "W1")}          # 분기 믹스는 계약기간 비례(시작일이 다르다)
-        self.assertAlmostEqual(q["target_opm"], 0.15, places=6)
-        self.assertAlmostEqual(q["target_opm_alt"], (0.0 * sch["C0"] + 0.05 * sch["C1"] + 0.10 * sch["C2"]) / (sch["C0"] + sch["C1"] + sch["C2"]), places=4)
+        self.assertAlmostEqual(q["target_opm"], t["⑤초호황"], places=6)
+        self.assertAlmostEqual(q["target_opm_alt"], (t["②BEP"] * sch["C0"] + t["③중마진"] * sch["C1"] + t["④호황"] * sch["C2"]) / (sch["C0"] + sch["C1"] + sch["C2"]), places=4)
         self.assertAlmostEqual(sum(q["by_cohort_alt"].values()), q["usd_m"], places=2)
         self.assertAlmostEqual(q["by_cohort"]["⑤초호황"], sum(v for k, v in q["by_cohort_alt"].items() if k != "등급없음"), places=2)
         self.assertAlmostEqual(q["by_cohort"]["등급없음"], sch["W1"], places=2)
@@ -435,9 +438,9 @@ class TestReferenceAnchorAndCap(unittest.TestCase):
         finally:
             S._fin_is = real
         alt_t = statistics.median(o["target_opm_alt"][q]["opm"] for q in ("2026Q1", "2026Q2"))
-        self.assertAlmostEqual(o["calibration"]["calibrated_shift"], 0.10 - 0.15, places=4)          # 기본 모드: 타겟 15% → 음수 shift
+        self.assertAlmostEqual(o["calibration"]["calibrated_shift"], 0.10 - o["cohort_opm_table"]["⑤초호황"], places=4)   # 기본 모드: 타겟 ⑤ 표 값 → 실측과의 차
         self.assertAlmostEqual(o["calibration_alt"]["calibrated_shift"], 0.10 - alt_t, places=4)
-        self.assertLess(alt_t, 0.10)                                                                # 원장 상대등급 ②·③·④ 믹스
+        self.assertLess(alt_t, 0.10)                                                                # 원장 상대등급 ②·③·④ 믹스(캘리브레이션 표 1.0~5.4%)
         self.assertEqual(o["calibration"]["quarters_used"], ["2026Q1", "2026Q2"])
         self.assertIn("회사 전체 — 부문 아님", o["calibration"]["basis"])
         self.assertTrue(any("음수일 수 있다" in w for w in o["warnings"]))
@@ -560,8 +563,8 @@ class TestReferenceAnchorAndCap(unittest.TestCase):
         self.assertTrue(r["backlog_cap_applied"])
         self.assertLess(r["backlog_cap_factor"], 1.0)
         self.assertGreater(r["window_hedged_krw_m_raw"], r["window_hedged_krw_m"])
-        self.assertAlmostEqual(r["target_opm_next_q"], 0.15, places=6)
-        self.assertLess(r["target_opm_alt_next_q"], 0.15)
+        self.assertAlmostEqual(r["target_opm_next_q"], outs["439260"]["cohort_opm_table"]["⑤초호황"], places=6)
+        self.assertLess(r["target_opm_alt_next_q"], r["target_opm_next_q"])
         self.assertIn("calibrated_shift_alt", r)
 
 
@@ -675,10 +678,13 @@ class TestUpgradesR5(unittest.TestCase):
         real = S._fin_is
         try:
             S._fin_is = lambda stock: {"2026Q1": {"매출액(수익)": 1000.0, "영업이익": 100.0}, "2026Q2": {"매출액(수익)": 1000.0, "영업이익": 100.0}}
-            o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")
-            oc = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", opm_table="reference_calibrated")
+            o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", opm_table="assumed")
+            oc = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")                     # 기본 = reference_calibrated
+            oc2 = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", opm_table="reference_calibrated")
         finally:
             S._fin_is = real
+        self.assertEqual(S.OPM_TABLE_DEFAULT, "reference_calibrated")
+        self.assertEqual(json.dumps(oc, ensure_ascii=False, sort_keys=True), json.dumps(oc2, ensure_ascii=False, sort_keys=True))   # 기본값 == 명시값
         self.assertEqual((o["cohort_opm_table_source"], oc["cohort_opm_table_source"]), ("assumed", "reference_calibrated"))
         self.assertEqual(o["cohort_opm_table"], o["cohort_opm_table_assumed"])
         self.assertEqual(oc["cohort_opm_table"], o["cohort_opm_calibration"]["table_reference_calibrated"])
@@ -702,6 +708,7 @@ class TestUpgradesR5(unittest.TestCase):
         self.assertAlmostEqual(tf["target_opm_next_q"]["reference_calibrated"], cal5, places=6)
         self.assertEqual(oc["cohort_opm_calibration"]["this_file"]["applied_table"], "reference_calibrated")
         self.assertTrue(any("코호트 OPM 표 assumed 적용" in w and "--opm-table reference_calibrated" in w for w in o["warnings"]))
+        self.assertTrue(any("코호트 OPM 표 reference_calibrated 적용" in w and "--opm-table assumed" in w for w in oc["warnings"]))
         # 대안 모드(ledger_relative) 타겟도 같은 표로 계산된다
         q = "2027Q1"
         by = {c["rcp"]: c for c in oc["contracts"]}
@@ -718,10 +725,10 @@ class TestUpgradesR5(unittest.TestCase):
         o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", today="2026-10-05")
         self.assertEqual(o["built_at"], "2026-10-05")
         self.assertEqual(S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")["built_at"], datetime.date.today().isoformat())
-        s = S.summary({"010140": o}, "2026Q2", "linear", 1350.0, [], [], today="2026-10-05", opm_table="assumed", hedge_default=0.7)
-        self.assertEqual((s["built_at"], s["opm_table"], s["hedge_ratio_default"]), ("2026-10-05", "assumed", 0.7))
+        s = S.summary({"010140": o}, "2026Q2", "linear", 1350.0, [], [], today="2026-10-05", hedge_default=0.7)
+        self.assertEqual((s["built_at"], s["opm_table"], s["hedge_ratio_default"]), ("2026-10-05", "reference_calibrated", 0.7))
         r = s["rows"][0]
-        self.assertEqual(r["opm_table"], "assumed")
+        self.assertEqual(r["opm_table"], "reference_calibrated")
         self.assertAlmostEqual(r["target_opm_next_q_by_table"]["assumed"], 0.15, places=6)
         self.assertAlmostEqual(r["target_opm_next_q_by_table"]["reference_calibrated"], o["cohort_opm_table_assumed"]["⑤초호황"] - 0.042, places=2)
         self.assertIn("hedge_ratio_implied_sign_rate", r)
@@ -859,10 +866,11 @@ class TestRealAssets(unittest.TestCase):
             for c in o["contracts"]:
                 if c.get("counted") and c["amt_usd_m"] and c["start"] and c["end"]:
                     self.assertTrue(c["schedule"], c["rcp"])
-            self.assertEqual(o["cohort_opm_table_source"], "assumed")
-            self.assertEqual(o["cohort_opm_table"], o["cohort_opm_table_assumed"])
+            self.assertEqual(o["cohort_opm_table_source"], "reference_calibrated")
             cb = o["cohort_opm_calibration"]
-            self.assertEqual(cb["this_file"]["applied_table"], "assumed")
+            self.assertEqual(o["cohort_opm_table"], cb["table_reference_calibrated"])
+            self.assertEqual(o["cohort_opm_table_assumed"], {k: S.COHORT_OPM[k] for k in S.COHORT_LABELS.values()})
+            self.assertEqual(cb["this_file"]["applied_table"], "reference_calibrated")
             self.assertAlmostEqual(cb["table_reference_calibrated"]["⑤초호황"], 0.108, places=3)
             h = o["hedge"]
             self.assertEqual(h["reference_hedge"]["삼성중공업 010140 SLS!HEDGE"], 1.0)
@@ -871,20 +879,19 @@ class TestRealAssets(unittest.TestCase):
                 self.assertGreater(h["implied_sign_n"], 0, o["stock"])
             else:
                 self.assertIsNone(h["hedge_ratio_implied_sign_rate"], o["stock"])
-            self.assertTrue(any("코호트 OPM 표 assumed 적용" in w for w in o["warnings"]), o["stock"])
+            self.assertTrue(any("코호트 OPM 표 reference_calibrated 적용" in w and "--opm-table assumed" in w for w in o["warnings"]), o["stock"])
 
     def test_opm_table_switch_real_and_determinism(self):
-        """--opm-table reference_calibrated 는 타겟·shift 만 바꾸고 매출·환산은 그대로. 같은 입력·today 면 두 번 빌드가 같은 JSON(바이트 결정론)."""
-        import json
-        outs2 = S.run(S.YARDS + [S.HOLDING], write=False, opm_table="reference_calibrated", today="2026-10-05")
+        """--opm-table assumed(이전 기본) 는 타겟·shift 만 바꾸고 매출·환산은 그대로. 같은 입력·today 면 두 번 빌드가 같은 JSON(바이트 결정론)."""
+        outs2 = S.run(S.YARDS + [S.HOLDING], write=False, opm_table="assumed", today="2026-10-05")
         for stock, o in self.outs.items():
-            oc = outs2[stock]
-            self.assertEqual(oc["cohort_opm_table_source"], "reference_calibrated")
-            self.assertEqual(oc["cohort_opm_table"], o["cohort_opm_calibration"]["table_reference_calibrated"])
+            oa = outs2[stock]
+            self.assertEqual(oa["cohort_opm_table_source"], "assumed")
+            self.assertEqual(oa["cohort_opm_table"], oa["cohort_opm_table_assumed"])
             for q, b in o["by_quarter"].items():
-                self.assertEqual(oc["by_quarter"][q]["hedged_krw_m"], b["hedged_krw_m"], (stock, q))
-                if b["target_opm"] is not None:                                   # reference_anchor 등급(③④⑤)은 전부 캘리브레이션 표가 낮다
-                    self.assertLess(oc["by_quarter"][q]["target_opm"], b["target_opm"], (stock, q))
+                self.assertEqual(oa["by_quarter"][q]["hedged_krw_m"], b["hedged_krw_m"], (stock, q))
+                if b["target_opm"] is not None:                                   # reference_anchor 등급(③④⑤)은 전부 캘리브레이션 표가 가정 표보다 낮다
+                    self.assertGreater(oa["by_quarter"][q]["target_opm"], b["target_opm"], (stock, q))
         a = S.run(S.YARDS + [S.HOLDING], write=False, today="2026-10-05")
         b = S.run(S.YARDS + [S.HOLDING], write=False, today="2026-10-05")
         for stock in a:

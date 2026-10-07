@@ -31,9 +31,9 @@
            (T6 D1 — origin 이후 공시 수주의 이중계산 방지). 최상위 post_origin 에 건수·금액·창 합계·rcp 목록.
   화해     분기 SLS 원화(해양 계약만) ÷ 정기보고서 부문 매출 3개월분(누계 차분; Q1 = 누계, Q4 = 연간 − 3Q 누계).
            매출표가 없는 회사는 기납품 누계 차분(HD현대重·대한조선·한화오션 방식), HJ 는 프로젝트 누계라 같은 해 차분만.
-  타겟OPM  코호트 표(①−5% ②0 ③5 ④10 ⑤15 — 가정) × 매출 비중. 회사 실측 OPM 이 있으면(assets/fin) shift 를 잰다.
-  OPM표    기본은 위 가정 표(assumed). --opm-table reference_calibrated 면 레퍼런스 HD현대미포 SLS 'ⓞ OPM 잡기' 블록(코호트×선종 셀마다
-           애널리스트가 둔 OPM)을 코호트별로 매출가중한 유효 OPM(2023~27 창: ①−1.1% ②1.0 ③4.3 ④5.4 ⑤10.8)으로 타겟을 만든다.
+  타겟OPM  코호트 표 × 매출 비중(기본 표 = 레퍼런스 캘리브레이션 ①−1.1% ②1.0 ③4.3 ④5.4 ⑤10.8). 회사 실측 OPM 이 있으면(assets/fin) shift 를 잰다.
+  OPM표    기본은 reference_calibrated(2026-10-08 오너 결정): 레퍼런스 HD현대미포 SLS 'ⓞ OPM 잡기' 블록(코호트×선종 셀마다 애널리스트가 둔 OPM)을
+           코호트별로 매출가중한 유효 OPM(2023~27 창)으로 타겟을 만든다. --opm-table assumed 면 이전 가정 표(①−5% ②0 ③5 ④10 ⑤15)로 돌아간다.
            어느 표를 썼든 두 표·근거·연도별 괴리(가정 표는 레퍼런스 2024~26 보다 +3.8~5.1%p 높다)는 cohort_opm_calibration 에 항상 적는다.
   헤지참고 약정환율 미공시 회사(0.7 가정)는 공시 통화선도 매도 명목액(usd_sell_m)을 두 가지로 잔고 대비 환산한 참고치를 hedge 에 둔다 —
            ÷ (기말잔고 ÷ 기말 현물) = hedge_ratio_implied_spot, ÷ (기말잔고 ÷ 수주시점 평균환율) = hedge_ratio_implied_sign_rate
@@ -54,7 +54,7 @@ assets/newbuild_index.json (선택 — 있으면 reference_anchor 의 표보다 
     지수에 없는 연도는 COHORT_BY_ORDER_YEAR 표로 돌아가고 계약의 cohort_detail.rule 에 그렇게 적는다.
 
     python3 kship_sls.py --all [--curve linear|s_curve] [--spot 1350] [--cohort-mode reference_anchor|ledger_relative] [--report]
-                         [--opm-table assumed|reference_calibrated] [--hedge-default 0.7] [--today YYYY-MM-DD]
+                         [--opm-table reference_calibrated|assumed] [--hedge-default 0.7] [--today YYYY-MM-DD]
     python3 kship_sls.py --stock 010140 --report
 """
 import argparse
@@ -84,10 +84,11 @@ COHORT_OPM = {"①적자": -0.05, "②BEP": 0.0, "③중마진": 0.05, "④호�
 # ── 레퍼런스 실측값(2026-10-05 두 원본 xlsx 의 SLS 시트를 읽어 확인) ──
 # HEDGE 행: 미포 `SLS`!E56:X56 = 0.65, 삼성重 `SLS`!E47:X47 = 1.0 — 2008~2027 전 연도 같은 상수. 우리 0.7 은 두 값 사이에 둔 가정이며 레퍼런스 값이 아니다.
 REFERENCE_HEDGE = collections.OrderedDict([("HD현대미포 010620 SLS!HEDGE", 0.65), ("삼성중공업 010140 SLS!HEDGE", 1.0)])
-# 코호트 OPM 표 선택(⑦): assumed = 위 COHORT_OPM, reference_calibrated = 레퍼런스 미포 SLS 의 코호트별 유효 OPM(아래). 기본은 assumed —
-# 하류(kship_model `_sls_frozen`, 섹션 각주의 표 문구)가 가정 표를 전제하므로 바꾸는 것은 오너 결정. 어느 쪽이든 두 표를 파일에 같이 적는다.
-OPM_TABLES = ("assumed", "reference_calibrated")
-OPM_TABLE_DEFAULT = "assumed"
+# 코호트 OPM 표 선택(⑦): assumed = 위 COHORT_OPM, reference_calibrated = 레퍼런스 미포 SLS 의 코호트별 유효 OPM(아래). 기본은 reference_calibrated —
+# 2026-10-08 오너 결정(가정 표가 레퍼런스 실측보다 2024~26 에 +3.8~5.1%p 높았다). 하류(kship_model `_sls_frozen`·섹션/xlsx 각주)는 파일의 cohort_opm_table 을 읽는다.
+# 어느 쪽이든 두 표를 파일에 같이 적는다.
+OPM_TABLES = ("reference_calibrated", "assumed")
+OPM_TABLE_DEFAULT = "reference_calibrated"
 COHORT_CALIB_WINDOW = (2023, 2027)          # 레퍼런스에서 유효 OPM 을 모을 연도 — 우리 예측창(2026Q3~2028Q4)과 겹치는 레퍼런스 기간(2023~24 는 레퍼런스의 확정·잠정 연도)
 # 레퍼런스 HD현대미포 subQ `SLS` 시트 'ⓞ OPM 잡기' 블록(행 79~129, 미포 울산 별도; AC 열 = 코호트 머리, AD 열 = 셀 OPM, AE..DF = 1Q08~4Q27 분기 매출 백만$)을
 # 코호트×매출연도로 모은 유효 OPM(= Σ 셀매출×셀OPM ÷ Σ 셀매출)과 그 매출(백만$). 비나신 블록(행 131~)은 제외 — 시트의 SLSOPM미포별도(행 3)와 같은 범위.
@@ -1067,12 +1068,13 @@ def build(stock, contracts, cohort_map, year_index, yards, fx, curve, const, ori
                                ("%.2f" % hedge["implied_sign_rate"]) if hedge.get("implied_sign_rate") else "—", hedge.get("implied_sign_n") or 0,
                                ("%.2f(%+.2f)" % (imp2, imp2 - hr)) if imp2 is not None else "—", hr))
     tf = calib_block["this_file"]
-    warnings.append("코호트 OPM 표 %s 적용. 레퍼런스 미포 SLS 셀 OPM 을 %d~%d 매출가중한 유효 표는 %s(가정 표 %s 는 레퍼런스 2024~26 보다 +3.8~5.1%%p 높다 — "
-                    "cohort_opm_calibration.by_year). 다음 분기 %s 타겟: 가정 %s vs 캘리브레이션 %s. 바꾸려면 --opm-table reference_calibrated(오너 결정 — "
-                    "하류 섹션 각주·모델 백테스트가 cohort_opm_table 을 읽는다)"
+    warnings.append("코호트 OPM 표 %s 적용. 레퍼런스 미포 SLS 셀 OPM 을 %d~%d 매출가중한 유효 표는 %s(이전 가정 표 %s 는 레퍼런스 2024~26 보다 +3.8~5.1%%p 높다 — "
+                    "cohort_opm_calibration.by_year). 다음 분기 %s 타겟: 가정 %s vs 캘리브레이션 %s. 다른 표는 --opm-table %s "
+                    "(하류 섹션 각주·모델 백테스트가 cohort_opm_table 을 읽는다)"
                     % (opm_table, COHORT_CALIB_WINDOW[0], COHORT_CALIB_WINDOW[1], _opm_table_text(calib_table), _opm_table_text(COHORT_OPM), next_q,
                        ("%.2f%%" % (tf["target_opm_next_q"]["assumed"] * 100)) if tf["target_opm_next_q"]["assumed"] is not None else "—",
-                       ("%.2f%%" % (tf["target_opm_next_q"]["reference_calibrated"] * 100)) if tf["target_opm_next_q"]["reference_calibrated"] is not None else "—"))
+                       ("%.2f%%" % (tf["target_opm_next_q"]["reference_calibrated"] * 100)) if tf["target_opm_next_q"]["reference_calibrated"] is not None else "—",
+                       "reference_calibrated" if opm_table == "assumed" else "assumed"))
     # 코호트 — 기본 모드와 대안 모드의 2025~ 수주 판정을 나란히 적는다(레퍼런스 HD현대미포 SLS 는 2025~ 물량 100% ⑤초호황)
     recent, recent_alt = collections.Counter(), collections.Counter()
     for c in mine:
@@ -1309,7 +1311,7 @@ def main(argv=None):
     ap.add_argument("--cohort-mode", choices=COHORT_MODES, default=COHORT_MODE_DEFAULT,
                     help="기본 코호트 모드(§5-2). 다른 모드는 항상 *_alt 에 함께 저장된다")
     ap.add_argument("--opm-table", choices=OPM_TABLES, default=OPM_TABLE_DEFAULT,
-                    help="타겟 OPM 표(⑦): assumed = ①−5%% ②0 ③5 ④10 ⑤15 가정, reference_calibrated = 레퍼런스 미포 SLS 셀 OPM 매출가중(①−1.1 ②1.0 ③4.3 ④5.4 ⑤10.8). 두 표는 항상 함께 저장")
+                    help="타겟 OPM 표(⑦): reference_calibrated(기본) = 레퍼런스 미포 SLS 셀 OPM 매출가중(①−1.1 ②1.0 ③4.3 ④5.4 ⑤10.8), assumed = ①−5%% ②0 ③5 ④10 ⑤15 가정. 두 표는 항상 함께 저장")
     ap.add_argument("--hedge-default", type=float, default=HEDGE_RATIO_DEFAULT,
                     help="약정환율 미공시 회사의 헤지비율 가정(기본 0.7; 레퍼런스 SLS HEDGE 행은 미포 0.65 · 삼성重 1.00)")
     ap.add_argument("--today", default=None, help="built_at 고정(YYYY-MM-DD) — 같은 입력이면 바이트 동일")

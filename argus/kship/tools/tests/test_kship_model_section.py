@@ -475,6 +475,53 @@ class TestRenderYardRound3(unittest.TestCase):
         self.assertEqual(M.model_summary(_fx("model_mock_075580.json"))["new_orders"], "n/a")
         self.assertEqual(M.model_summary(_fx("model_mock_075580.json"))["scn"], {})
 
+class TestRenderFallbackNewOrders(unittest.TestCase):
+    """한화오션·HJ — 패널이 전범위 new_order_revenue 를 비워 covered_scope_new_revenue 로 폴백한 모델: 라벨·허브 칸에 폴백·저신뢰가 보이고 일반 라벨은 안 나온다."""
+
+    NOTE = "폴백(저신뢰): 패널이 전범위 new_order_revenue 를 비웠다 → 모델 대상 부문 상선·기타만 덮는다 — 신규 매출 과소 가능 — 낙관 시나리오가 더 가깝다"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.model, cls.sls = _yard_r3(_fx("model_mock_010140.json"), _fx("model_mock_sls_010140.json"))
+        no = cls.model["new_orders"]
+        no.update({"source_field": "covered_scope_new_revenue", "fallback": True, "confidence": "low", "fallback_note": cls.NOTE})
+        cls.entry = {"stock": "010140", "name": "삼성중공업", "role": "yard"}
+        cls.html = M.render_model_section(cls.entry, cls.model, sls=cls.sls)
+
+    def test_state_and_label(self):
+        st, lab, det = M.new_orders_state(self.model)
+        self.assertEqual((st, lab), ("included", M.NEW_ORDERS_FALLBACK_LABEL))
+        self.assertNotEqual(M.NEW_ORDERS_FALLBACK_LABEL, M.NEW_ORDERS_LABEL)
+        self.assertIn("저신뢰", M.NEW_ORDERS_FALLBACK_LABEL)
+        self.assertIn("폴백 covered_scope_new_revenue(전범위 new_order_revenue 없음)", det)
+        self.assertIn(self.NOTE, det)
+        self.assertIn("calibrated=false", det)
+        plain = json.loads(json.dumps(self.model))
+        plain["new_orders"].update({"fallback": False})
+        self.assertEqual(M.new_orders_state(plain)[:2], ("included", M.NEW_ORDERS_LABEL))             # 전범위 필드면 일반 라벨
+        self.assertNotIn("폴백", M.new_orders_state(plain)[2])
+
+    def test_rendered_labels(self):
+        h = self.html
+        self.assertEqual(M.check_tag_balance(h), [])
+        self.assertGreaterEqual(h.count(M.NEW_ORDERS_FALLBACK_LABEL), 3)                              # 섹션 머리 · KPI · 시나리오 카드
+        self.assertNotIn(M.NEW_ORDERS_LABEL, h)
+        self.assertIn(self.NOTE.split(" — ")[0], h)
+
+    def test_hub_cell_shows_fallback(self):
+        yard = self.model
+        tmp = tempfile.mkdtemp(prefix="kmodels_")
+        try:
+            with open(os.path.join(tmp, "010140.json"), "w", encoding="utf-8") as f:
+                json.dump(yard, f, ensure_ascii=False)
+            h = M.build_models_hub(tmp, write=False)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        tr = next(r for r in re.findall(r"<tr>(.*?)</tr>", h[h.index("<tbody>"):h.index("</tbody>")], re.S) if "010140" in r)
+        self.assertIn('<b class="wn">포함</b><span class="mut"> 폴백</span>', tr)
+        self.assertIn(M.NEW_ORDERS_FALLBACK_LABEL, tr)
+        self.assertEqual(M.check_tag_balance(h), [])
+
 
 class TestOOSLabel(unittest.TestCase):
     """드라이버 라벨의 OOS 선택 결과(결정 ⓘ): `WAPE 연동 x% vs 추세 y%` + 채택/폴백."""

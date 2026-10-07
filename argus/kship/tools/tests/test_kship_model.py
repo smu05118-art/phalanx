@@ -709,22 +709,30 @@ class TestLinkGrid(unittest.TestCase):
         self.assertEqual(a, b)
 
 
-def synth_panel(stock="010140", fq=None, base_per_q=200.0, scale=(0.5, 1.0, 1.5), none=False):
+def synth_panel(stock="010140", fq=None, base_per_q=200.0, scale=(0.5, 1.0, 1.5), none=False, rev_field="new_order_revenue", new_orders=50_000.0):
     """forecast_panel companies[] 한 회사(스펙 5-3 이 읽는 부분만): scenarios.{conservative,base,optimistic}.quarterly[].new_order_revenue(KRW_million).
-    분기별 base = base_per_q × (i+1) 백만원 → 보수/낙관은 scale 배. none=True 면 한화오션·HJ 처럼 값이 전부 None."""
+    분기별 base = base_per_q × (i+1) 백만원 → 보수/낙관은 scale 배. none=True 면 값이 전부 None(필드 둘 다).
+    rev_field="covered_scope_new_revenue" 면 한화오션·HJ 처럼 전범위 new_order_revenue 는 None 이고 모델 대상 부문만의 covered_scope_new_revenue 가 값을 가진다.
+    new_orders = 분기 신규수주(KRW_million, base 만 의미 — 공시 체결 대비 비율·post-origin 제외 비율의 근거)."""
     fq = fq or M.q_range("2026Q3", "2028Q4")
     sc = {}
     for name, k in zip(M.PANEL_SCENARIOS, scale):
-        sc[name] = {"quarterly": [{"quarter": q, "horizon": i + 1, "value": None if none else 1_000_000.0, "existing_backlog_revenue": None,
-                                   "new_order_revenue": None if none else base_per_q * (i + 1) * k} for i, q in enumerate(fq)],
-                    "annual": []}
-    for name in sc:
-        sc[name]["assumptions"] = {"order_basis": "positive_part_of_empirical_net_replenishment", "new_order_arrival": "quarter_end; first_recognition_next_quarter",
-                                   "progress_curve": "R1_smoothstep_unfitted", "calibrated": False}
-        for row in sc[name]["quarterly"]:
-            row["new_orders"] = None if none else 50_000.0
-    return {"stock": stock, "company_name": "합성", "status": "partial", "reason_codes": ["book_value_only"], "origin": "2026Q2", "scenarios": sc,
-            "industry_axes": {"schedule_exclusions": {"not_known_at_origin": 3}}}
+        rows = []
+        for i, q in enumerate(fq):
+            v = None if none else base_per_q * (i + 1) * k
+            rows.append({"quarter": q, "horizon": i + 1, "value": None if none else 1_000_000.0, "existing_backlog_revenue": None,
+                         "new_order_revenue": v if rev_field == "new_order_revenue" else None,
+                         "covered_scope_new_revenue": v if rev_field == "covered_scope_new_revenue" else None,
+                         "new_orders": None if none else new_orders})
+        sc[name] = {"quarterly": rows, "annual": [],
+                    "assumptions": {"order_basis": "positive_part_of_empirical_net_replenishment", "new_order_arrival": "quarter_end; first_recognition_next_quarter",
+                                    "progress_curve": "R1_smoothstep_unfitted", "calibrated": False}}
+    out = {"stock": stock, "company_name": "합성", "status": "partial", "reason_codes": ["book_value_only"], "origin": "2026Q2", "scenarios": sc,
+           "industry_axes": {"schedule_exclusions": {"not_known_at_origin": 3}}}
+    if rev_field != "new_order_revenue":
+        out["status"], out["reason_codes"] = "insufficient_data", ["segment_gap"]
+        out["coverage"] = {"modeled_segments": ["상선"], "excluded_segments": ["특수선"], "reported_backlog": 900_000.0, "modeled_backlog": 600_000.0}
+    return out
 
 
 class TestYardNewOrders(unittest.TestCase):
@@ -813,10 +821,67 @@ class TestYardNewOrders(unittest.TestCase):
         self.assertNotIn("매출조선신규", rows_of(m1))
         self.assertIsNone(m1["scenarios"])
         self.assertEqual(rows_of(m1)["매출액"]["a"]["2028"]["v"], rows_of(m0)["매출액"]["a"]["2028"]["v"])
-        self.assertTrue(any("신규수주 매출 미포함" in w and "new_order_revenue 값 없음" in w for w in m1["quality"]["warnings"]))
+        self.assertTrue(any("신규수주 매출 미포함" in w and "covered_scope_new_revenue 값 없음" in w for w in m1["quality"]["warnings"]))
         self.assertIn("미포함", m1["segments"][0]["driver"]["basis"])
         self.assertTrue(any("신규수주 매출 미포함" in w and "forecast_panel 에 010140 없음" in w for w in m0["quality"]["warnings"]))
         self.assertEqual(m0["driver_type"], "sls_marine_plus_uncovered_backlog_runoff")
+
+    def test_covered_scope_fallback_included_and_flagged(self):
+        """한화오션·HJ 형 패널(전범위 new_order_revenue None, covered_scope_new_revenue 있음) → 같은 행·같은 시나리오로 포함하되 폴백·저신뢰로 표기."""
+        m0, mf, _ = self._pair(synth_panel(rev_field="covered_scope_new_revenue"))
+        _, mn, _ = self._pair(synth_panel())                                      # 같은 숫자를 new_order_revenue 로 준 기준
+        self.assertTrue(mf["new_orders_included"])
+        self.assertIn("매출조선신규", rows_of(mf))
+        for y in ("2026", "2027", "2028"):                                         # 필드만 다르고 값·인식은 같다
+            self.assertAlmostEqual(rows_of(mf)["매출액"]["a"][y]["v"], rows_of(mn)["매출액"]["a"][y]["v"], places=6)
+        self.assertGreater(rows_of(mf)["매출액"]["a"]["2028"]["v"], rows_of(m0)["매출액"]["a"]["2028"]["v"])
+        no = mf["segments"][0]["driver"]["new_orders"]
+        self.assertEqual((no["source_field"], no["fallback"], no["confidence"]), ("covered_scope_new_revenue", True, "low"))
+        self.assertEqual(no["panel_scope"]["modeled_segments"], ["상선"])
+        self.assertEqual(no["panel_scope"]["excluded_segments"], ["특수선"])
+        self.assertEqual(no["panel_scope"]["modeled_backlog_eok"], 6000.0)
+        self.assertIn("특수선", no["fallback_note"])
+        self.assertIn("제외 부문(특수선)의 신규분은 반영되지 않는다", no["fallback_note"])
+        meta = mf["scenarios"]["meta"]
+        self.assertEqual((meta["source_field"], meta["fallback"], meta["confidence"]), ("covered_scope_new_revenue", True, "low"))
+        self.assertTrue(any(w.startswith("신규수주 폴백(저신뢰)") for w in mf["quality"]["warnings"]))
+        self.assertIn("covered_scope_new_revenue", mf["segments"][0]["driver"]["basis"])
+        # 전범위 필드가 있으면 그것을 쓰고 폴백이 아니다
+        nn = mn["segments"][0]["driver"]["new_orders"]
+        self.assertEqual((nn["source_field"], nn["fallback"], nn["confidence"]), ("new_order_revenue", False, "panel_default"))
+        self.assertIsNone(nn["fallback_note"])
+        self.assertIsNone(nn["ledger_crosscheck"])
+        # 폴백 라벨: 패널 모듈 행에도 '모델 대상 부문만·폴백·저신뢰'
+        pm = next(mod for mod in mf["modules"] if mod["key"] == "forecast_panel")
+        self.assertTrue(any("폴백·저신뢰" in r["label"] for r in pm["rows"] if r["key"] == "panel_new_order_revenue"))
+
+    def test_fallback_verdict_follows_ledger_ratio(self):
+        """폴백 문구는 패널 ÷ 공시 체결 비율로 갈린다: <0.5 과소 가능(낙관이 더 가깝다) · 0.5~1.5 대체로 같은 규모 · >1.5 상향 편향 가능."""
+        cases = ((10_000.0, 0.2, "신규 매출 과소 가능 — 낙관 시나리오가 더 가깝다"), (50_000.0, 1.0, "대체로 같은 규모"), (200_000.0, 4.0, "상향 편향 가능"))
+        for mn_orders, ratio, text in cases:
+            _, m, _ = self._pair(synth_panel(rev_field="covered_scope_new_revenue", new_orders=mn_orders))
+            no = m["segments"][0]["driver"]["new_orders"]
+            cc = no["ledger_crosscheck"]
+            self.assertAlmostEqual(cc["panel_to_ledger_ratio"], ratio, places=3, msg=mn_orders)
+            self.assertIn(text, no["fallback_note"], msg=mn_orders)
+            if ratio >= 0.5:
+                self.assertNotIn("과소 가능", no["fallback_note"])
+            self.assertIn("%.0f%%" % (ratio * 100), no["fallback_note"])
+
+    def test_ledger_crosscheck_trims_leading_zero_quarters(self):
+        """원장 첫 체결 분기 앞의 0 은 수주 없음이 아니라 원장이 닿지 않는 구간 → 평균에서 뺀다. synth_sls 체결: 2024Q2 4,000억(창 밖)·2025Q3 2,000억."""
+        sls = synth_sls()
+        no = {"new_orders_by_q": {"2026Q3": 250.0, "2026Q4": 250.0}}
+        cc = M._ledger_signing_crosscheck(sls, no)
+        self.assertEqual(cc["quarters"], M.q_range("2025Q3", "2026Q2"))           # 8분기 창이 2024Q3 부터지만 첫 체결 분기(2025Q3)부터
+        self.assertEqual(cc["ledger_signed_by_q_eok"]["2025Q3"], 2000.0)
+        self.assertEqual(cc["ledger_mean_per_q_eok"], 500.0)                        # 2,000 ÷ 4분기 (트림 없으면 2,000 ÷ 8 = 250)
+        self.assertEqual(cc["panel_base_new_orders_mean_per_q_eok"], 250.0)
+        self.assertEqual(cc["panel_to_ledger_ratio"], 0.5)
+        # 패널 신규수주 값이 없거나 원장이 비면 비율 None(대조 불가)
+        self.assertIsNone(M._ledger_signing_crosscheck(sls, {})["panel_to_ledger_ratio"])
+        self.assertIsNone(M._ledger_signing_crosscheck({"origin": "2026Q2", "contracts": []}, no)["panel_to_ledger_ratio"])
+        self.assertIsNone(M._ledger_signing_crosscheck({"contracts": []}, no))     # origin 없음
 
     def test_panel_new_orders_helper(self):
         ctx = FakeCtx()
@@ -1385,10 +1450,11 @@ class TestT6Fixes(unittest.TestCase):
 
     # D1 ── origin 이후 공시 수주는 패널 신규와 겹치므로 '기존' SLS 에서 뺀다
     def test_d1_post_origin_excluded_when_panel_included(self):
-        ref = self._yard(synth_sls(), synth_panel())                 # c3 없는 선표 + 패널
+        big = dict(new_orders=500_000.0)                             # 패널 분기 신규수주 5,000억 ≥ 공시 체결 1,680억 → 제외 비율 1(기존 규칙 그대로)
+        ref = self._yard(synth_sls(), synth_panel(**big))            # c3 없는 선표 + 패널
         rr = rows_of(ref)
         for keyed in (True, False):
-            m = self._yard(synth_sls_post(keyed), synth_panel())
+            m = self._yard(synth_sls_post(keyed), synth_panel(**big))
             rm, d = rows_of(m), m["segments"][0]["driver"]
             for q in M.q_range("2026Q3", "2028Q4"):
                 self.assertAlmostEqual(rm["매출조선"]["q"][q]["v"], rr["매출조선"]["q"][q]["v"], places=1, msg=(keyed, q))     # c3 SLS 가 다시 더해지지 않는다
@@ -1417,6 +1483,31 @@ class TestT6Fixes(unittest.TestCase):
         self.assertAlmostEqual(rm["매출조선"]["q"]["2027Q1"]["v"] - rr["매출조선"]["q"]["2027Q1"]["v"], 20 * 1400 / 100, places=1)
         self.assertIsNone(m["segments"][0]["driver"]["post_origin_excluded"])
         self.assertTrue(any("패널 신규 없음 → origin 이후 공시 수주 1건 1,680억은 선표(SLS)에 그대로 둠" in w for w in m["quality"]["warnings"]))
+
+    def test_d1_post_origin_fraction_scales_with_panel_size(self):
+        """패널 분기 신규수주가 공시 체결보다 작으면 공시 수주를 통째로 빼지 않는다 — 제외 비율 = min(1, 패널 ÷ 공시), 나머지는 SLS 에 둔다."""
+        ref = rows_of(self._yard(synth_sls(), synth_panel(new_orders=500_000.0)))
+        for new_orders, frac in ((50_000.0, 500.0 / 1680.0), (500_000.0, 1.0)):    # 패널 500억 vs 공시 1,680억 / 5,000억 ≥ 1,680억
+            m = self._yard(synth_sls_post(), synth_panel(new_orders=new_orders))
+            rm, px = rows_of(m), m["segments"][0]["driver"]["post_origin_excluded"]
+            self.assertAlmostEqual(px["included_fraction"], frac, places=3)
+            kept = rm["매출조선"]["q"]["2027Q1"]["v"] - ref["매출조선"]["q"]["2027Q1"]["v"]
+            self.assertAlmostEqual(kept, 20 * 1400 / 100 * (1.0 - frac), places=1)  # 2027Q1 공시 SLS 280억 × (1 − 제외 비율) 만 남는다
+        m = self._yard(synth_sls_post(), synth_panel(new_orders=50_000.0))
+        self.assertIn("중", m["segments"][0]["driver"]["post_origin_excluded"]["note"])
+        self.assertTrue(any("규모만큼" in rm_["basis"] for rm_ in [rows_of(m)["매출조선"]["q"]["2027Q1"]]))
+
+    def test_post_origin_panel_fraction_helper(self):
+        post = {"by_sign_q": {"2026Q3": 1000.0, "2026Q4": 400.0}, "amt": 1400.0}
+        self.assertEqual(M._post_origin_panel_fraction(post, {"new_orders_by_q": {"2026Q3": 2000.0, "2026Q4": 400.0}}), (1.0, {"2026Q3": 1.0, "2026Q4": 1.0}))
+        f, by = M._post_origin_panel_fraction(post, {"new_orders_by_q": {"2026Q3": 500.0, "2026Q4": 400.0}})
+        self.assertEqual(by, {"2026Q3": 0.5, "2026Q4": 1.0})
+        self.assertAlmostEqual(f, (500.0 + 400.0) / 1400.0, places=9)
+        f0, by0 = M._post_origin_panel_fraction(post, {"new_orders_by_q": {}})        # 패널이 그 분기 신규수주를 안 주면 제외 0
+        self.assertEqual((f0, by0), (0.0, {"2026Q3": 0.0, "2026Q4": 0.0}))
+        fu, _ = M._post_origin_panel_fraction({"by_sign_q": {"2026Q3": 1000.0}, "amt": 1500.0}, {"new_orders_by_q": {"2026Q3": 1000.0}})   # 날짜 없는 500억은 1 로 본다
+        self.assertAlmostEqual(fu, 1.0, places=9)
+        self.assertEqual(M._post_origin_panel_fraction({"by_sign_q": {}, "amt": 0.0}, {}), (1.0, {}))
 
     def test_d1_split_helper_keyed_vs_legacy_agree(self):
         fq = M.q_range("2026Q3", "2028Q4")

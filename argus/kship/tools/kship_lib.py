@@ -64,6 +64,23 @@ def slot_color(slot):
 
 # ── 숫자 표기 ───────────────────────────────────────────────
 
+COHORT_OPM_ORDER = ("①적자", "②BEP", "③중마진", "④호황", "⑤초호황")
+COHORT_OPM_ASSUMED_FALLBACK = {"①적자": -0.05, "②BEP": 0.0, "③중마진": 0.05, "④호황": 0.10, "⑤초호황": 0.15}
+
+
+def opm_table_text(sls):
+    """sls json 이 실제로 쓴 코호트 OPM 표를 문장으로(섹션·xlsx 각주 공용). 표·출처 키가 없는 구버전 sls 는 이전 가정 표."""
+    sls = sls or {}
+    tab = sls.get("cohort_opm_table") or COHORT_OPM_ASSUMED_FALLBACK
+    src = sls.get("cohort_opm_table_source") or "assumed"
+    parts = []
+    for k in COHORT_OPM_ORDER:
+        v = tab.get(k)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            parts.append("%s %s%%" % (k, ("%.1f" % (v * 100)).rstrip("0").rstrip(".").replace("-", "\u2212")))
+    return "코호트 표(%s): %s" % ("레퍼런스 실측 캘리브레이션" if src == "reference_calibrated" else "가정", " ".join(parts))
+
+
 def fmt_eok(v):
     """백만원 → 억원 문자열."""
     if v is None:

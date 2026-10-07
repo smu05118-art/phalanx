@@ -40,7 +40,7 @@ import re
 import sys
 from html.parser import HTMLParser
 
-from kship_lib import (ASSETS, CHART_DEFAULTS_JS, E, KSHIP, TABLE_JS, atomic_write, json_for_html, page)
+from kship_lib import (ASSETS, CHART_DEFAULTS_JS, E, KSHIP, TABLE_JS, atomic_write, json_for_html, opm_table_text, page)
 
 MODELS_DIR = os.path.join(ASSETS, "models")      # L4 산출(json)
 SLS_DIR = os.path.join(ASSETS, "sls")            # L3 산출
@@ -69,6 +69,7 @@ DRIVER_KO = {
 }
 # 라운드 3(MODEL_SPEC §5-5) 라벨 — 값이 아니라 표기. 신규수주는 forecast_panel base 를 행에 더한 것이며 보정된 수주 예측이 아니다.
 NEW_ORDERS_LABEL = "신규수주 포함(forecast_panel base, 미보정)"
+NEW_ORDERS_FALLBACK_LABEL = "신규수주 포함(forecast_panel covered_scope 폴백, 미보정·저신뢰)"
 NEW_ORDERS_EXCL_LABEL = "신규수주 미포함(2026Q2 잔고 소진분만)"
 COHORT_MODE_KO = {"reference_anchor": "레퍼런스 앵커(수주연도→등급)", "ledger_relative": "원장 상대등급"}
 SCENARIO_KO = collections.OrderedDict([("existing_only", "기존 잔고만"), ("conservative", "보수"), ("base", "기준(base)"), ("optimistic", "낙관")])
@@ -215,6 +216,9 @@ def new_orders_state(model):
         no = _first_driver_with(model, "new_orders").get("new_orders") or {}
     if inc is True:
         det = []
+        fb = bool(no.get("fallback"))
+        if fb:
+            det.append("폴백 %s(전범위 new_order_revenue 없음)" % (no.get("source_field") or "covered_scope_new_revenue"))
         if no.get("via"):
             det.append("종속 %s 모델 경유" % no["via"])
         if no.get("scenario_in_rows"):
@@ -227,7 +231,9 @@ def new_orders_state(model):
             det.append("FY합 %s억" % fmt_a(no["base_total_fq"]))
         if no.get("calibrated") is False:
             det.append("calibrated=false")
-        return "included", NEW_ORDERS_LABEL, " · ".join(det) or (no.get("note") or "")
+        if fb and no.get("fallback_note"):
+            det.append(str(no["fallback_note"]))
+        return "included", (NEW_ORDERS_FALLBACK_LABEL if fb else NEW_ORDERS_LABEL), " · ".join(det) or (no.get("note") or "")
     if inc is False:
         return "excluded", NEW_ORDERS_EXCL_LABEL, (no.get("note") or "forecast_panel 값 없음")
     return "n/a", "", ""
@@ -684,12 +690,12 @@ def _sls_charts(model, sls, uid, depth):
     rec = sls.get("reconcile") or {}
     rec_last = rec[sorted(rec)[-1]] if rec else None
     note = ('<p class="fn" style="margin-top:8px">헤지 %s(헤지환율 %s) + 미헤지 %s(가정 현물 %s) → 적용환율 %s(%s). '
-            '화해 비율 %s — %s 코호트 표(가정): ①적자 −5%% ②BEP 0%% ③중마진 5%% ④호황 10%% ⑤초호황 15%%.</p>'
+            '화해 비율 %s — %s %s.</p>'
             % (fmt_pct(h.get("hedge_ratio"), 0), fmt_rate(h.get("hedge_rate")),
                fmt_pct((1 - h["hedge_ratio"]) if _num(h.get("hedge_ratio")) else None, 0), fmt_rate(h.get("spot_assumed")),
                fmt_rate(h.get("applied_rate")), E(first_est or "—"),
                ("%.2f" % rec_last["ratio"]) if (rec_last and _num(rec_last.get("ratio"))) else "—",
-               E((rec_last or {}).get("note") or "화해 기록 없음") + "."))
+               E((rec_last or {}).get("note") or "화해 기록 없음") + ".", E(opm_table_text(sls))))
     # 코호트 모드·잔고 캡(라운드 3) — sls 에 기록이 있을 때만 적는다(모의·구버전 sls 는 문장 없음)
     mode_txt, cap_txt = cohort_mode_text(info), backlog_cap_text(info)
     if mode_txt or cap_txt:
@@ -1250,7 +1256,8 @@ def build_models_hub(models_dir=None, write=True):
         no_title = (no_label + " · " + no_detail) if no_detail else no_label
         cells.append('<td class="l" data-v="%s"%s>%s</td>' % (
             {"included": 2, "excluded": 1}.get(no_state, 0), (' title="%s"' % E(no_title)) if no_title else "",
-            {"included": '<b class="wn">포함</b>', "excluded": '<span class="mut">미포함</span>'}.get(no_state, '<span class="mut">—</span>')))
+            {"included": '<b class="wn">포함</b>' + ('<span class="mut"> 폴백</span>' if no_label == NEW_ORDERS_FALLBACK_LABEL else ""),
+             "excluded": '<span class="mut">미포함</span>'}.get(no_state, '<span class="mut">—</span>')))
         for y in FY_EST:
             f = s["fy"][y]
             rng = s["scn"].get(y)

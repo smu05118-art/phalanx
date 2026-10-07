@@ -4,7 +4,7 @@
  "origin": "2026Q2",
  "unit": "USD_million | KRW_million",
  "curve": "linear_progress",
- "built_at": "2026-10-07",
+ "built_at": "2026-10-08",
  "counts": {
   "contracts": 16,
   "counted": 16,
@@ -118,11 +118,11 @@
    }
   },
   "opm_table": {
-   "①적자": -0.05,
-   "②BEP": 0.0,
-   "③중마진": 0.05,
-   "④호황": 0.1,
-   "⑤초호황": 0.15
+   "①적자": -0.0108,
+   "②BEP": 0.01,
+   "③중마진": 0.0426,
+   "④호황": 0.054,
+   "⑤초호황": 0.108
   },
   "newbuild_index": {
    "path": "assets/newbuild_index.json",
@@ -139,13 +139,13 @@
   "ledger_relative": "척당 금액 = amt_usd_m ÷ ships. (1) 연도 시장 수준: 선종별로 표본 2건 이상인 연도의 척당 중위를 그 선종의 첫 연도 중위로 나눈 비율의 선종 간 중위 = year_index(각 선종의 첫 표본 연도 = 1.0 이라 여러 연도가 1.0 일 수 있다). year_index <0.90 → ②, 0.90~1.10 → ③, 1.10~1.25 → ④, ≥1.25 → ⑤ 가 연도 기본등급. (2) 셀 위치: 같은 선종·같은 수주연도(표본 2건 이상) 중위 대비 <0.90 → −1, >1.10 → +1 (표본 부족이면 선종 전체 중위 ÷ year_index 로 대체). 1~5 로 자름. 외부 신조선가 지수 없음 — 원장(2024~ 공시) 안의 상대 등급이며 2021 이후 절대 호황 수준은 반영하지 못한다. 척수 없는 계약(공사·해양 EPC 등)은 등급 없음."
  },
  "cohort_opm_table": {
-  "①적자": -0.05,
-  "②BEP": 0.0,
-  "③중마진": 0.05,
-  "④호황": 0.1,
-  "⑤초호황": 0.15
+  "①적자": -0.0108,
+  "②BEP": 0.01,
+  "③중마진": 0.0426,
+  "④호황": 0.054,
+  "⑤초호황": 0.108
  },
- "cohort_opm_table_source": "assumed",
+ "cohort_opm_table_source": "reference_calibrated",
  "cohort_opm_table_assumed": {
   "①적자": -0.05,
   "②BEP": 0.0,
@@ -454,7 +454,7 @@
    "표를 바꿔도 등급(수주연도 → ①~⑤)은 그대로이므로 2022 이후 수주만 있는 회사의 타겟은 ⑤ 값(가정 15% ↔ 캘리브레이션 10.8%) 상수가 된다"
   ],
   "this_file": {
-   "applied_table": "assumed",
+   "applied_table": "reference_calibrated",
    "cohort_mode": "reference_anchor",
    "target_opm_next_q": {
     "assumed": 0.15,
@@ -1528,9 +1528,9 @@
    "kind": "estimate",
    "past": true,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.05,
+   "target_opm_alt": 0.0426,
    "graded_share_alt": 1.0
   },
   "2025Q4": {
@@ -1560,9 +1560,9 @@
    "kind": "estimate",
    "past": true,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0406,
+   "target_opm_alt": 0.0364,
    "graded_share_alt": 1.0
   },
   "2026Q1": {
@@ -1592,9 +1592,9 @@
    "kind": "estimate",
    "past": true,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0429,
+   "target_opm_alt": 0.038,
    "graded_share_alt": 1.0
   },
   "2026Q2": {
@@ -1624,9 +1624,9 @@
    "kind": "estimate",
    "past": true,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0447,
+   "target_opm_alt": 0.0392,
    "graded_share_alt": 1.0
   },
   "2026Q3": {
@@ -1656,9 +1656,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0453,
+   "target_opm_alt": 0.0395,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -1695,9 +1695,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0454,
+   "target_opm_alt": 0.0396,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -1734,9 +1734,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0454,
+   "target_opm_alt": 0.0396,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -1773,9 +1773,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0454,
+   "target_opm_alt": 0.0396,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -1812,9 +1812,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0451,
+   "target_opm_alt": 0.0394,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -1851,9 +1851,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0444,
+   "target_opm_alt": 0.0389,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -1890,9 +1890,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0439,
+   "target_opm_alt": 0.0387,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -1929,9 +1929,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.0439,
+   "target_opm_alt": 0.0387,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -1966,9 +1966,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.05,
+   "target_opm_alt": 0.0426,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -2003,9 +2003,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.05,
+   "target_opm_alt": 0.0426,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -2040,9 +2040,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.05,
+   "target_opm_alt": 0.0426,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -2077,9 +2077,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.05,
+   "target_opm_alt": 0.0426,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -2114,9 +2114,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.05,
+   "target_opm_alt": 0.0426,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -2151,9 +2151,9 @@
    "kind": "estimate",
    "past": false,
    "basis": "공시 계약기간 안 선형 진행률 배분 × 헤지 적용 환율 × 잔고 캡 0.8593(backlog_cap — origin 전 수주 해양분만)",
-   "target_opm": 0.15,
+   "target_opm": 0.108,
    "graded_share": 1.0,
-   "target_opm_alt": 0.05,
+   "target_opm_alt": 0.0426,
    "graded_share_alt": 1.0,
    "backlog_cap": {
     "factor": 0.859276,
@@ -2353,226 +2353,226 @@
  },
  "target_opm": {
   "2025Q3": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2025Q4": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2026Q1": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2026Q2": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2026Q3": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2026Q4": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2027Q1": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2027Q2": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2027Q3": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2027Q4": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2028Q1": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2028Q2": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2028Q3": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2028Q4": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2029Q1": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2029Q2": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2029Q3": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2029Q4": {
-   "opm": 0.15,
+   "opm": 0.108,
    "graded_share": 1.0,
    "mode": "reference_anchor",
-   "basis": "cohort mix(reference_anchor) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(reference_anchor) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   }
  },
  "target_opm_alt": {
   "2025Q3": {
-   "opm": 0.05,
+   "opm": 0.0426,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2025Q4": {
-   "opm": 0.0406,
+   "opm": 0.0364,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2026Q1": {
-   "opm": 0.0429,
+   "opm": 0.038,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2026Q2": {
-   "opm": 0.0447,
+   "opm": 0.0392,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2026Q3": {
-   "opm": 0.0453,
+   "opm": 0.0395,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2026Q4": {
-   "opm": 0.0454,
+   "opm": 0.0396,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2027Q1": {
-   "opm": 0.0454,
+   "opm": 0.0396,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2027Q2": {
-   "opm": 0.0454,
+   "opm": 0.0396,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2027Q3": {
-   "opm": 0.0451,
+   "opm": 0.0394,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2027Q4": {
-   "opm": 0.0444,
+   "opm": 0.0389,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2028Q1": {
-   "opm": 0.0439,
+   "opm": 0.0387,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2028Q2": {
-   "opm": 0.0439,
+   "opm": 0.0387,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2028Q3": {
-   "opm": 0.05,
+   "opm": 0.0426,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2028Q4": {
-   "opm": 0.05,
+   "opm": 0.0426,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2029Q1": {
-   "opm": 0.05,
+   "opm": 0.0426,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2029Q2": {
-   "opm": 0.05,
+   "opm": 0.0426,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2029Q3": {
-   "opm": 0.05,
+   "opm": 0.0426,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   },
   "2029Q4": {
-   "opm": 0.05,
+   "opm": 0.0426,
    "graded_share": 1.0,
    "mode": "ledger_relative",
-   "basis": "cohort mix(ledger_relative) × cohort OPM table assumed(①-5% ②0% ③5% ④10% ⑤15% — 가정)"
+   "basis": "cohort mix(ledger_relative) × cohort OPM table reference_calibrated(①-1.1% ②1% ③4.3% ④5.4% ⑤10.8% — 레퍼런스 미포 SLS 셀 OPM 매출가중)"
   }
  },
  "calibration": {
-  "calibrated_shift": 0.1184,
+  "calibrated_shift": 0.1604,
   "actual_opm": {
    "2025Q2": 0.211,
    "2025Q3": 0.2427,
@@ -2590,7 +2590,7 @@
   "mode": "reference_anchor"
  },
  "calibration_alt": {
-  "calibrated_shift": 0.2246,
+  "calibrated_shift": 0.2298,
   "actual_opm": {
    "2025Q2": 0.211,
    "2025Q3": 0.2427,
@@ -2611,7 +2611,7 @@
  "warnings": [
   "종료일 = 마지막 호선 인도 예정; 진행률 매출 분기는 계약기간 안에 선형 배분(가정)",
   "헤지비율 0.7 은 가정(통화선도 공시 없음 → HEDGE 70% 가정(레퍼런스 SLS 시트 HEDGE 행은 미포 65%·삼성重 100% — 그 사이에 둔 설정값). hedge_rate 는 계약별 수주시점 환율로 대체)",
-  "코호트 OPM 표 assumed 적용. 레퍼런스 미포 SLS 셀 OPM 을 2023~2027 매출가중한 유효 표는 ①-1.1% ②1% ③4.3% ④5.4% ⑤10.8%(가정 표 ①-5% ②0% ③5% ④10% ⑤15% 는 레퍼런스 2024~26 보다 +3.8~5.1%p 높다 — cohort_opm_calibration.by_year). 다음 분기 2026Q3 타겟: 가정 15.00% vs 캘리브레이션 10.80%. 바꾸려면 --opm-table reference_calibrated(오너 결정 — 하류 섹션 각주·모델 백테스트가 cohort_opm_table 을 읽는다)",
+  "코호트 OPM 표 reference_calibrated 적용. 레퍼런스 미포 SLS 셀 OPM 을 2023~2027 매출가중한 유효 표는 ①-1.1% ②1% ③4.3% ④5.4% ⑤10.8%(이전 가정 표 ①-5% ②0% ③5% ④10% ⑤15% 는 레퍼런스 2024~26 보다 +3.8~5.1%p 높다 — cohort_opm_calibration.by_year). 다음 분기 2026Q3 타겟: 가정 15.00% vs 캘리브레이션 10.80%. 다른 표는 --opm-table assumed (하류 섹션 각주·모델 백테스트가 cohort_opm_table 을 읽는다)",
   "코호트 기본 모드 reference_anchor: 2025~ 수주 물량(백만$) 판정 ⑤초호황 100%. reference_anchor 는 수주연도 → 등급(≤2020 ③중마진 · 2021 ④호황 · 2022~ ⑤초호황; 출처 사용자 레퍼런스 모델 HD현대미포 SLS 의 클락슨 기반 판정을 건조기간 2~3년으로 되돌린 표 — 외부 신조선가 지수 미보유). ledger_relative 는 원장 내부 상대 등급(2025~ 판정 ②BEP 9%, ③중마진 91%; 2021 이후 절대 호황 수준 미반영). 대안 모드는 by_cohort_alt·target_opm_alt·calibration_alt 에 함께 저장. 타겟 OPM 은 기본 모드 기준이며 calibrated_shift(실측 − 타겟)로 실측 OPM 에 맞춘다 — 음수일 수 있다",
   "원장 잔여(27541억) > 공시 해양 기말잔고(23665억), 커버리지 1.16 — 선형 진행 가정이 실제 진행보다 느리거나 공시 잔고 범위(환율·취소·범위)가 다르다. origin 이후 해양 매출(origin 전 수주분)을 1/coverage = 0.8593 배로 줄였다(backlog_cap, 원값 *_raw 보존). 모델은 배율 1 을 상한으로 볼 것 — 추가 배율 금지",
   "원장 신규 19783억 vs 수주표 신규증감 13010억(2026Q2 연초 누계) — 비율 1.52: 두 공시의 계약 인식 기준(발효·선수금·환율·범위)이 다르다. backlog_coverage 해석 시 참고(reconcile_summary.ledger_vs_reported_new)"

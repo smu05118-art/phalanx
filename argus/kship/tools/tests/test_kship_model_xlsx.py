@@ -606,35 +606,42 @@ class TestYoyFallbackAndZeroBase(unittest.TestCase):
         self.assertIsNone(X.implied_param({"key": "x", "q": {"2026Q2": {"v": 0.0}, "2026Q3": {"v": 5.0}}}, "2026Q3", {"type": "qoq"}, {}, lay))
 
 
+def _scenario_model(meta_extra=None):
+    """표본 모델에 매출조선신규 행과 4개 시나리오(기존만·보수·기준·낙관)를 붙인다. meta_extra 는 scenarios.meta 에 덮어쓸 필드."""
+    m = _load_sample()
+    rows = {x["key"]: x for x in m["rows"]}
+    qs = m["periods"]["quarters"]
+    la = m["periods"]["last_actual"]
+    fq = [q for q in qs if q > la]
+    new_base = {q: round(50.0 * (i + 1), 2) for i, q in enumerate(fq)}
+    m["rows"].insert([x["key"] for x in m["rows"]].index("OP조선") + 1,
+                     {"key": "매출조선신규", "label": "매출 조선 신규", "group": "사업부", "unit": "억원",
+                      "q": {q: {"v": new_base[q], "kind": "estimate", "basis": "panel"} for q in fq}})
+    opm = {q: rows["영업이익"]["q"][q]["v"] / rows["매출액"]["q"][q]["v"] for q in fq}
+    sc = {"meta": {"source": "test", "calibrated": False, "in_rows": "base", "fiscal_years": ["2026", "2027", "2028"], "note": "t"}}
+    sc["meta"].update(meta_extra or {})
+    for case, mult in (("existing_only", 0.0), ("conservative", 0.5), ("base", 1.0), ("optimistic", 1.5)):
+        qd = {}
+        for q in fq:
+            ns = new_base[q] * mult
+            qd[q] = {"rev": round(rows["매출액"]["q"][q]["v"] - new_base[q] + ns, 2), "op": round(rows["영업이익"]["q"][q]["v"] + (ns - new_base[q]) * opm[q], 2),
+                     "new_order_revenue": round(ns, 2), "kind": "estimate"}
+        ann = {}
+        for y in ("2026", "2027", "2028"):
+            ks = ["%sQ%d" % (y, k) for k in range(1, 5)]
+            rv = sum(qd[k]["rev"] if k in qd else rows["매출액"]["q"][k]["v"] for k in ks)
+            op = sum(qd[k]["op"] if k in qd else rows["영업이익"]["q"][k]["v"] for k in ks)
+            ann[y] = {"rev": round(rv, 2), "op": round(op, 2)}
+        sc[case] = {"in_rows": case == "base", "quarterly": qd, "annual": ann}
+    m["scenarios"] = sc
+    return m, fq
+
+
 class TestScenarioSheet(unittest.TestCase):
     """시나리오 시트 — 모델 scenarios(보수/기준/낙관/기존만) 가 수식으로 들어가고 base 는 subQ 와 같다."""
 
     def test_scenarios_sheet(self):
-        m = _load_sample()
-        rows = {x["key"]: x for x in m["rows"]}
-        qs = m["periods"]["quarters"]
-        la = m["periods"]["last_actual"]
-        fq = [q for q in qs if q > la]
-        new_base = {q: round(50.0 * (i + 1), 2) for i, q in enumerate(fq)}
-        m["rows"].insert([x["key"] for x in m["rows"]].index("OP조선") + 1,
-                         {"key": "매출조선신규", "label": "매출 조선 신규", "group": "사업부", "unit": "억원",
-                          "q": {q: {"v": new_base[q], "kind": "estimate", "basis": "panel"} for q in fq}})
-        opm = {q: rows["영업이익"]["q"][q]["v"] / rows["매출액"]["q"][q]["v"] for q in fq}
-        sc = {"meta": {"source": "test", "calibrated": False, "in_rows": "base", "fiscal_years": ["2026", "2027", "2028"], "note": "t"}}
-        for case, mult in (("existing_only", 0.0), ("conservative", 0.5), ("base", 1.0), ("optimistic", 1.5)):
-            qd = {}
-            for q in fq:
-                ns = new_base[q] * mult
-                qd[q] = {"rev": round(rows["매출액"]["q"][q]["v"] - new_base[q] + ns, 2), "op": round(rows["영업이익"]["q"][q]["v"] + (ns - new_base[q]) * opm[q], 2),
-                         "new_order_revenue": round(ns, 2), "kind": "estimate"}
-            ann = {}
-            for y in ("2026", "2027", "2028"):
-                ks = ["%sQ%d" % (y, k) for k in range(1, 5)]
-                rv = sum(qd[k]["rev"] if k in qd else rows["매출액"]["q"][k]["v"] for k in ks)
-                op = sum(qd[k]["op"] if k in qd else rows["영업이익"]["q"][k]["v"] for k in ks)
-                ann[y] = {"rev": round(rv, 2), "op": round(op, 2)}
-            sc[case] = {"in_rows": case == "base", "quarterly": qd, "annual": ann}
-        m["scenarios"] = sc
+        m, fq = _scenario_model()
         b = X.Builder(m)
         wb = b.build()
         self.assertIn("시나리오", wb.sheetnames)
@@ -663,6 +670,28 @@ class TestScenarioSheet(unittest.TestCase):
             self.assertAlmostEqual(em.value("시나리오", "E%d" % r_base), em.value("subQ", "%s%d" % (lay.letter("2026Q3"), b.subq_row["매출액"])), places=6)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_scenarios_sheet_marks_fallback_low_confidence(self):
+        """covered_scope 폴백(한화오션·HJ)이면 시나리오 시트 2행에 폴백 문구, 신규수주 셀 메모에 source_field·폴백·저신뢰."""
+        note = "폴백(저신뢰): 패널이 전범위 new_order_revenue 를 비웠다 → covered_scope_new_revenue 사용"
+        for extra, fb in (({"source_field": "covered_scope_new_revenue", "fallback": True, "confidence": "low", "fallback_note": note}, True),
+                          ({"source_field": "new_order_revenue", "fallback": False, "confidence": "panel_default"}, False)):
+            m, fq = _scenario_model(extra)
+            b = X.Builder(m)
+            wb = b.build()
+            ws = wb["시나리오"]
+            self.assertEqual("※ " + note in str(ws.cell(2, 1).value), fb)
+            self.assertEqual("covered_scope_new_revenue 폴백" in str(ws.cell(2, 1).value), False)       # fallback_note 가 있으면 일반 문구를 대신한다
+            rows_s = {ws.cell(r, 1).value: r for r in range(X.DATA_ROW, ws.max_row + 1) if ws.cell(r, 1).value}
+            comments = [ws.cell(rows_s["scn:%s:신규수주매출" % c], 5).comment for c in ("conservative", "optimistic")]
+            texts = [c.text for c in comments if c is not None]
+            self.assertTrue(texts)
+            for t in texts:
+                self.assertIn(extra["source_field"], t)
+                self.assertEqual("폴백·저신뢰" in t, fb)
+        m, _ = _scenario_model({"source_field": "covered_scope_new_revenue", "fallback": True})     # fallback_note 없으면 기본 문구
+        self.assertIn("※ covered_scope_new_revenue 폴백(저신뢰)", str(X.Builder(m).build()["시나리오"].cell(2, 1).value))
+
 
 
 @unittest.skipUnless(os.path.exists(REAL_MODEL) and os.path.exists(REAL_SLS) and os.path.exists(os.path.join(X.ASSETS, "fx.json")),

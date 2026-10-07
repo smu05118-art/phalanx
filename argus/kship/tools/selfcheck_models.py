@@ -21,7 +21,7 @@
   prices↔model   valuation.price(종가·as_of) = prices.json, per_now/pbr_now/적정가치 재계산(내부 정합).
   fx↔model       assumptions.fx 추정 분기 = fx.json(quarters 완결 > forward).
   contracts↔sls  sls 계약 rcp 집합 = contracts.json(건너뛴 건·대체된 건 포함) — 원장이 sls 보다 새로우면 여기서 드러난다.
-  panel↔model    매출조선신규 = forecast_panel base new_order_revenue ÷ 100.
+  panel↔model    매출조선신규 = forecast_panel base new_order_revenue(전범위 비면 covered_scope_new_revenue 폴백 — model.new_orders.source_field) ÷ 100.
 
 종류(kind): consistency — 같은 세대의 산출물끼리는 항상 맞아야 한다(실패 = 결함 또는 일부만 재생성한 stale) ·
             freshness — 입력(prices·fx·contracts·panel)이 산출물보다 새로울 수 있다(일일 갱신은 시세·환율·계약만 받고 모델은 주 1회 —
@@ -597,17 +597,24 @@ def check_sls_model(rep, tree, stocks):
             continue
         for q in fq:
             b = bq.get(q) or {}
+            f_tol = 0.0
             ex = b.get("marine_hedged_krw_m_signed_by_origin") if inc else b.get("marine_hedged_krw_m")
             if ex is None:
                 ex = b.get("marine_hedged_krw_m") or 0.0
+            elif inc:
+                # 패널이 담지 못하는 몫((1 − included_fraction))의 origin 이후 공시 수주는 선표로 유지
+                f = (drv.get("post_origin_excluded") or {}).get("included_fraction")
+                ex += (b.get("marine_hedged_krw_m_post_origin") or 0.0) * (1.0 - (f if _num(f) else 1.0))
+                f_tol = (b.get("marine_hedged_krw_m_post_origin") or 0.0) / UNIT_DIV * 0.00006      # included_fraction 은 4자리 반올림
             r = min(rate, remaining)
             remaining -= r
             new = cell_v(rm, "매출조선신규", q) or 0.0
+            tol = 0.06 + (f_tol if inc else 0.0)
             exp = ex / UNIT_DIV + r + new
             v = cell_v(rm, "매출조선", q)
             if v is None:
                 c.fail("%s %s 매출조선 추정 셀 없음" % (st, q))
-            elif not close(v, exp, 0.06):
+            elif not close(v, exp, tol):
                 c.fail("%s %s 매출조선 %s ≠ SLS %.2f + 소진 %.2f + 신규 %.2f = %.2f" % (st, q, v, ex / UNIT_DIV, r, new, exp))
             else:
                 c.ok()
@@ -1321,7 +1328,8 @@ def check_inputs(rep, tree, stocks):
         # panel ↔ 매출조선신규
         if m.get("new_orders_included") and m.get("role") == "yard":
             base = ((tree.panel.get(st) or {}).get("scenarios") or {}).get("base") or {}
-            pq = {x.get("quarter"): x.get("new_order_revenue") for x in base.get("quarterly") or []}
+            fld = (m.get("new_orders") or {}).get("source_field") or "new_order_revenue"
+            pq = {x.get("quarter"): x.get(fld) for x in base.get("quarterly") or []}
             for q in _fq(m):
                 v = cell_v(rm, "매출조선신규", q)
                 exp = pq.get(q)

@@ -104,7 +104,7 @@ contracts.json · yards_cache ───────┘                          
 | 헤지비율 | 0.7 (한화오션만 실측 0.1717) | 레퍼런스 SLS 시트 HEDGE 70% / 한화 2026Q2 위험관리 절 약정환율 | `sls/<stock>.json` `hedge` |
 | 헤지환율 | 계약별 수주시점 환율(약정환율 미공시 시) | fx.json 분기 평균 | `sls` `contracts[].fx_at_sign` |
 | 선표 곡선 | linear (계약기간 균등) | 진행률 공시 없음 | `sls` `curve` |
-| 코호트 OPM | ①−5% ②0 ③5 ④10 ⑤15 | 레퍼런스 코호트 구조에 대입한 가정 | `sls` `cohort_opm_table` |
+| 코호트 OPM | **①−1.08% ②1.0 ③4.26 ④5.4 ⑤10.8**(`reference_calibrated`, 2026-10-08 기본 — 레퍼런스 미포 SLS 'ⓞ OPM 잡기' 셀의 매출가중 유효 OPM). 이전 가정 표 ①−5 ②0 ③5 ④10 ⑤15 는 `--opm-table assumed` | 레퍼런스 실측 캘리브레이션(2024~26 에 가정 표가 +3.8~5.1%p 높았다) | `sls` `cohort_opm_table` · `cohort_opm_table_source` · `cohort_opm_table_assumed` · `cohort_opm_calibration` |
 | 코호트 판정 | 원장 내부 상대(year_index 2024 1.0 · 2025 1.0056 · 2026 0.9299) | 신조선가 지수 미보유 | `sls` `year_index` |
 | 환율 forward | flat_last_end — 1,353.36원 (2026-09-29) 을 2028Q4 까지 | ECB 마지막 관측 | `fx.json` `forward` |
 | 법인세율 | 최근 12분기 유효세율을 5~27% 클립 (삼성重 5%·세진 19.1%) | 레퍼런스 r291 | 모델 `assumptions.tax_rate/tax_basis` |
@@ -193,7 +193,7 @@ contracts.json · yards_cache ───────┘                          
 
 1. **진행률 vs 인도**: SLS 는 계약기간 선형 배분 모형이지 회계 진행률 매출이 아니다. 과거 분기도 `kind:estimate` 로 둔다. 원장이 2024~ 공시분이라 화해 ratio(한화 0.21·HD현대重 0.24)가 낮고, 미래 배율은 잔고 커버리지를 쓴다.
 2. **코호트는 가정**이다 — OPM 표도, 등급 판정(원장 내부 상대지수)도. 2021 이후 절대 신조선가 호황을 반영하지 못한다. 외부 지수 도입은 사용자 결정.
-3. **2028 매출은 2026Q2 잔고 소진분만**(신규 수주 미포함). 삼성重 FY2028E 113,141억 감소는 이 한계다. forecast_panel 신규수주 시나리오는 모듈로 나란히 둘 뿐이다. → **10-02(결정 ⓓ)**: 패널이 있는 조선사(삼성重·HD현대重·대한조선, 지주는 종속사 경유)는 base 신규수주를 매출에 포함한다(삼성重 FY2028E 192,093억). 패널이 없는 **한화오션·HJ 에는 이 한계가 그대로 남는다**(FY2028E 92,554 · 16,350억). 패널은 `calibrated=false` 통계 흐름이고, 공시 수주와 인식 시점이 어긋난다(§12-8 ①).
+3. **2028 매출은 2026Q2 잔고 소진분만**(신규 수주 미포함). 삼성重 FY2028E 113,141억 감소는 이 한계다. forecast_panel 신규수주 시나리오는 모듈로 나란히 둘 뿐이다. → **10-02(결정 ⓓ)**: 패널이 있는 조선사(삼성重·HD현대重·대한조선, 지주는 종속사 경유)는 base 신규수주를 매출에 포함한다(삼성重 FY2028E 192,093억). 패널이 없는 **한화오션·HJ 에는 이 한계가 그대로 남는다**(FY2028E 92,554 · 16,350억 — ▶ 2026-10-08: 두 회사는 패널 `covered_scope_new_revenue` 폴백으로 신규수주를 넣었다, §15). 패널은 `calibrated=false` 통계 흐름이고, 공시 수주와 인식 시점이 어긋난다(§12-8 ①).
 4. **밸류에이션은 추천이 아니다.** PER 밴드는 대부분 sector_default(10/15/20배)이고, 삼성重 과거 밴드 원값은 43.5~79.1배(턴어라운드 왜곡).
 5. **감가상각비·이자수익/비용·외환차손익·파생손익이 face 에 없는 회사가 대부분**(삼성重·미포 전 분기 null) → EBITDA·EV/EBITDA null, 이자율은 CF 이자수취/지급으로 대체, 일회성 분리 없음(`one_offs` 항상 []). 주석 파서가 후속이다. → **10-02**: 주석(하위 노드 + 부모 절 폴백)으로 이자수익이 638/946분기 · 51/58사 채워졌다. 모델은 주석 이자수익/이자비용이 4분기 이상이면 주석 연율을 쓰고(자산 쪽 주석 20사 · CF 36사 · 없음 2사, T4 스윕), 영업외 세부 행 4개(이자·외환·파생·기타금융)를 낸다. 감가상각비는 여전히 대부분 없어 EBITDA 는 그대로다. 연결이 있는 회사의 **별도** 주석은 받지 않았다.
    → **10-05(V1)**: 주석 부모 절 파서 보강(THEAD 없는 2행 머리 · 차입처별 표 캡션 · `당1분기` · 소절 분할 · HD현대重 사채 캡션) 뒤 이자수익은 cons∪sep **716/999분기 · 53사**(10-02 V9 셈 675/997 · 52사). `note_parent_missing` 514 → 263(차입금 없는 회사 101분기는 `note_parent_na`/`note_na` 로 분리) · `note_unmapped` 560 → 196. 하이록·엔케이·에스앤더블류·서호전기 분기보고서는 금융·기타 주석 자체가 없다(진음성).
@@ -388,7 +388,7 @@ argus/kship/
 | 결정 | 실행한 것 | 근거 | 영향(수치) |
 |---|---|---|---|
 | ⓐ 3개월 열 vs 누적차분 | fin 은 `is`(보고서 3개월 열)가 정본이고, `is_ytd_diff`(FnGuide 방식)를 병기한다. 둘이 1백만원 넘게 다르면 `restated[q]` 에 기록한다. **모델은 `is`.** 레퍼런스 패치는 스펙상 `is_ytd_diff` 였지만 운영은 **`--is-convention 3m`** 으로 되돌렸다 | 누적차분은 재작성 분기에 음수 매출을 만든다 — 일승 2024Q2 −100.58억(오너 메모). §6-7 의 `ytd_diff==3m` 실패 34건이 전부 후속 보고서의 전기 재작성이다 | 모델 수치는 바뀌지 않는다. 패치본 IS 셀은 3개월 열 기준이다. `restated_cells` 건수는 입력에 없어 미확인 |
-| ⓓ 2028 신규수주 | `forecast_panel` base 의 `new_order_revenue` 를 `매출조선신규` 행으로 만들어 매출에 **포함**한다. 보수·낙관은 `scenarios` 에 따로 둔다(합산 안 함). 라운드 4 D1: 패널 base 가 있으면 origin 이후 공시 계약은 기존 SLS 에서 뺀다 | 사용자 지시 "남은거 진행해줘" → 스펙 §5-3. 패널은 `calibrated=false` 라 basis 에 적는다 | summary `new_orders_included` true 4행(삼성重·HD현대重·대한조선·지주), false 2행(한화오션·HJ — **패널 값 없음**. 공시 수주만 SLS 에 남는다: 한화 6건 44,707억 · HJ 1건 6,790억). 삼성重 2028E 매출: existing_only 104,004 · 보수 149,356 · **base 192,093** · 낙관 229,814억 |
+| ⓓ 2028 신규수주 | `forecast_panel` base 의 `new_order_revenue` 를 `매출조선신규` 행으로 만들어 매출에 **포함**한다. 보수·낙관은 `scenarios` 에 따로 둔다(합산 안 함). 라운드 4 D1: 패널 base 가 있으면 origin 이후 공시 계약은 기존 SLS 에서 뺀다 | 사용자 지시 "남은거 진행해줘" → 스펙 §5-3. 패널은 `calibrated=false` 라 basis 에 적는다 | summary `new_orders_included` true 4행(삼성重·HD현대重·대한조선·지주), false 2행(한화오션·HJ — **패널 값 없음**. 공시 수주만 SLS 에 남는다: 한화 6건 44,707억 · HJ 1건 6,790억 · ▶ 2026-10-08: 두 행도 폴백으로 true, §15). 삼성重 2028E 매출: existing_only 104,004 · 보수 149,356 · **base 192,093** · 낙관 229,814억 |
 | ⓔ 코호트 판정 | `reference_anchor`(기본 — 수주연도 → 등급: ≤2020 ③ · 2021 ④ · 2022~ ⑤)와 `ledger_relative`(이전 방식 → `*_alt`)를 **둘 다** 계산해 저장한다. 잔고 캡: origin 이후 SLS 가 공시 해양 잔고를 넘으면 1/coverage 배율 | 신조선가 외부 지수가 없다. 레퍼런스 미포 SLS 의 코호트 비중을 수주연도로 되돌린 표를 쓴다(`assets/newbuild_index.json` 이 있으면 우선) | 2026Q3 타겟 OPM 기본/대안 · shift 기본/대안: 삼성重 15.00/6.42% · −5.26/+3.59%p, 한화오션 14.76/6.48% · −2.79/+4.39, HD현대重 15.00/6.32% · −1.04/+6.41, HJ 15.00/4.65% · −6.98/+4.32, 대한조선 15.00/4.53% · +11.84/+22.46. **대한조선 잔고 캡**: 커버리지 1.1638 → 배율 **0.8593**, 창 원화 2,710,915 → 2,356,182 백만원(공시 해양 잔고 2,366,510) |
 | ⓗ 주석 파싱 | 라운드 3: 목차 하위 노드 제목으로 주석 표를 받았다(`--collect-notes`). 라운드 4 T1: 하위 노드가 없는 분기는 **부모 주석 절 1개**를 받아 블록으로 나눠 읽는다(`--notes-parent-fallback`) | 수집 대상 **999분기 중 786분기에 하위 노드가 없었다**(`no_note_subnodes`). 하위 노드로 읽힌 분기는 213분기다 | 골든 5사 5,156/5,661(91.1%, 9/30) → **5,378/5,900(91.2%)**. 이자수익 638/946분기 · 51/58사 채움(오너 재빌드). §12-2 |
 | ⓘ 격자 다중비교 | 통계 보정 대신 **OOS 선택 규칙**을 쓴다. 유의성을 통과한 연동 후보도 동결 백테스트(freeze 2025Q2, 4분기 매출 WAPE)에서 `WAPE_link > WAPE_trend × 1.10` 이면 채택하지 않는다 | 스펙 §5-3. 격자 후보 수가 많아(세진 180개) 표본 안 상관은 부풀 수 있다 | 라운드 3: 판정 29사 → 채택 18 · OOS 기각 7 · 유의성 기각 4(지시서 수치. 입력에서 직접 확인한 것은 OOS 기각 7(T3 3c)과 유의성 기각 4(§11)이고, 18 = 29 − 7 − 4). **라운드 4(D5 수정 뒤, summary 10-02)**: 연동 채택 16(OOS 채택 14 + 판정 불가 2) · OOS 기각 9 · 유의성 기각 4 |
@@ -461,7 +461,7 @@ T3 판정 중 고치지 않은 것: 3a 미래정보 누출 2건(suppliers 가중
   | HD한국조선해양 009540 | full · 포함(종속사 경유) | 299,332 / 39,045 / 30,664.3 | 356,065 / 58,894 / 55,233.5 | 421,089 / 65,573 / 57,680.7 | 525,629 / 81,794 / 72,867.6 | 6.19 · 1.54 |
   | HD현대미포 010620 | partial · — | — (last_actual 2025Q3) | 62,971 / 2,068 / 4,301.2 | 68,147 / 2,238 / 4,716.5 | 70,964 / 2,330 / 4,987.2 | — |
 
-  패널이 없는 한화오션·HJ 의 2028E 매출 감소(92,554 · 16,350)는 2026Q2 잔고 + 공시 수주 소진분만 담았기 때문이다(§6-3 한계가 이 두 회사에 남는다).
+  패널이 없는 한화오션·HJ 의 2028E 매출 감소(92,554 · 16,350)는 2026Q2 잔고 + 공시 수주 소진분만 담았기 때문이다(§6-3 한계가 이 두 회사에 남는다 — ▶ 2026-10-08 폴백 적용, §15).
 - **시나리오 FY2028E 매출(억원)** — existing_only / 보수 / base / 낙관: 삼성重 104,004 / 149,356 / 192,093 / 229,814 · HD현대重 241,612 / 336,059 / 372,841 / 444,001 · 대한조선 6,881 / 12,908 / 17,837 / 24,671 · 지주 340,623 / 473,774 / 525,629 / 625,951. 매출에 들어가는 것은 base 하나뿐이다.
 - §11 대비 눈에 띄는 변화(원인): 삼성重 FY2026E EPS 1,126 → 1,031.3원(D2 세율 · D1 · D3) · 세진 FY2026E 4,135 / 732 / 981 → 3,961 / 703 / 937.0(D5 → OOS 기각, 추세) · KCC FY2026E 매출 77,851(§5-4) → 66,191억(OOS 기각 — 연동 WAPE 32.2 vs 추세 3.6). KCC FY2026E 지배NI 31,166억 · EPS 423,780원은 2026Q2 금융손익 3.6조 일회성(T4)이 그대로 들어간 값이다 — 읽지 말 것. 케이프 FY2026E 지배NI 315.61억 · EPS 1,022.7원(T6 하네스에서는 −2,613억이었다. 바뀐 원인은 입력으로 미확인).
 
@@ -581,10 +581,10 @@ git log --author=kship-bot --format='%h %ci %s' -5   # 러너 커밋 — 메시�
 |---|---|---|---|
 | **V1 fin** `kship_fin.py` · `test_kship_fin.py` · `assets/fin/` | 비용 부호 규약 '비용은 양수' 통일(`normalize_expense_signs_table` · `normalize_note_expense_signs` · `영업외손익` 키 · KCC `기타이익` 머리줄) · 주석 부모 절 파서 보강 9종 · 차입금 표준/묶음 라벨 15종 + 유동부채 구역 사채 → 유동성장기부채 · checks 손익 항등식 4규칙 · issues 세분화(note_parent_na · borrowings_note_residual …) · 테스트 71 → 93 | 재빌드 58/58 바이트 동일 · 골든 5,378/5,900 = 91.2% 동일 · KCC 2026Q2 이자손익 −65,673.91백만 · 한화오션 총차입금 19/19 · `fin=fi-fe` 실패 2(원문 모순) · `oth=oi-oe` 0 | **PASS_WITH_ISSUES**(보고와 일치; 잔여 = 원문 한계 §14-6) |
 | **V2 fx+price** `kship_fx.py` · `kship_price.py` · `fx.json` · `prices.json` | 토스 이력 → 네이버 일봉 5년(한 요청) · as_of 를 네이버 최신 거래일로 전진 · 무거래 자리표시 행 제외 · `close_rule` 명문화 · fx 2026Q3 완결·forward 9분기 · 테스트 18 → 27 | 57/57 · as_of 20261002 × 57 · naver_check 1% 초과 6(최대 3.304%) · 이력 57/57 네이버 · fx 88분기 2026Q3 1,418.75 / 1,355.40 · 모델 PER 밴드 hist 복원 | **PASS_WITH_ISSUES**(토스 이력 결손 항목은 ok:false 로 적고 네이버로 교체) |
-| **V3 sls** `kship_sls.py` · `test_kship_sls.py` · `assets/sls/` | fx 부분 분기 표시 · 헤지 참고치(`hedge_ratio_implied_spot/_sign_rate`) · 레퍼런스 HEDGE 실측(미포 0.65 · 삼성重 1.00 — 우리 0.7 은 가정) · 코호트 OPM 표 `--opm-table {assumed,reference_calibrated}`(기본 assumed, 레퍼런스 미포 SLS 'ⓞ OPM 잡기' 블록에서 유효 OPM 표를 읽어 `target_opm_next_q_by_table` 에 병기 — 2026Q3 15.00% vs 10.80%) · `--today` · 테스트 34 → 42 | 재빌드 0.13s · 6사 · 삼성重 53(50) · 창 원화 21,782,061백만원 · 대한조선 캡 0.859276 · sls 내부 항등식 317/317 · sls↔model 508/508 | **PASS**(기본값 불변 — 표 교체는 오너 결정) |
+| **V3 sls** `kship_sls.py` · `test_kship_sls.py` · `assets/sls/` | fx 부분 분기 표시 · 헤지 참고치(`hedge_ratio_implied_spot/_sign_rate`) · 레퍼런스 HEDGE 실측(미포 0.65 · 삼성重 1.00 — 우리 0.7 은 가정) · 코호트 OPM 표 `--opm-table {assumed,reference_calibrated}`(라운드 5 기본 assumed → **▶ 2026-10-08 기본 reference_calibrated**, 레퍼런스 미포 SLS 'ⓞ OPM 잡기' 블록에서 유효 OPM 표를 읽어 `target_opm_next_q_by_table` 에 병기 — 2026Q3 15.00% vs 10.80%) · `--today` · 테스트 34 → 42 | 재빌드 0.13s · 6사 · 삼성重 53(50) · 창 원화 21,782,061백만원 · 대한조선 캡 0.859276 · sls 내부 항등식 317/317 · sls↔model 508/508 | **PASS**(라운드 5 시점 기본값 불변 — 표 교체는 오너 결정 → 2026-10-08 오너가 `reference_calibrated` 를 기본으로 정했다, §15) |
 | **V4 model** `kship_model.py` · `test_kship_model.py` · `assets/models/` | 조정EPS 행(KCC 2026Q2 처분이익 류 일회성 제외) · 음수 부문 매출 제외(HJ 2022Q4) · FCF 근사 BS 롤(`assumptions.bs_roll`, EBITDA 는 CF 감가 있는 12/58 만) · status 사유 · 동결 누출 프로브 · 테스트 61 → 82 | identities_ok 58/58 · summary 3,074/3,074 · **FAIL 1**(가중치 저장값 합 1.0001 — V8 의 suppliers.json 변경이 드러낸 표시 결함, §14-4 에서 통합이 수정 + 테스트 1) | **PASS_AFTER_FIX** |
 | **V5 xlsx 생성** `kship_model_xlsx.py` · `test_kship_model_xlsx.py` | T4 영업외 4행·EBITDA·OPM·PER/PBR·신규수주 행을 수식으로 · `시나리오` 시트(조선사 4사: 보수/기준/낙관/기존만 = subQ ± (시나리오 신규 − base) × OPM) · YoY 폴백(전년동기 없으면 QoQ) · 실데이터 연결 검증(환율 forward → SLS 건조시점 환율 → 매출조선 → 매출액) · 테스트 19 → 33 | 58개 재생성(11.4s 모델 포함) · model↔xlsx 376,664 + 에뮬레이터 17,923 검사 실패 0 · 시트 11(조선사)/9 · 010620 은 입력 불변이라 바이트 동일 | **PASS** |
-| **V6 xlsx 패치** `kship_xlsx_patch.py` · `test_kship_xlsx_patch.py` | 검증 ⑥ calcChain(수식 → 상수 교체 셀의 항목 제거 · 고아 0) · `--extend-formulas [plain\|all]`(subQ 새 기간 열 빈 셀을 최근 실적 열 수식으로 — **옵트인, 운영 플래그에 없음**) · 테스트 50 → 66 | 3파일 ALL OK(19.6s): 세진 패치셀 4,065 · 교체 0 · 환율 112 · 종가 10,010(10/2) / 삼성重 2,472 · 교체 11 · 112 · 19,920 · 수식 91,976 → 91,970 / 미포 449 · 교체 9 · 24 · 종가 없음 · 88,706 → 88,703. IS 관행 3m · 재작성 셀 0 · `*_orig` 9/30 16:02 그대로 | **PASS** |
+| **V6 xlsx 패치** `kship_xlsx_patch.py` · `test_kship_xlsx_patch.py` | 검증 ⑥ calcChain(수식 → 상수 교체 셀의 항목 제거 · 고아 0) · `--extend-formulas [plain\|all]`(subQ 새 기간 열 빈 셀을 최근 실적 열 수식으로 — 라운드 5 옵트인 → **▶ 2026-10-08 CLI 기본 `all`**, §15) · 테스트 50 → 66 | 3파일 ALL OK(19.6s): 세진 패치셀 4,065 · 교체 0 · 환율 112 · 종가 10,010(10/2) / 삼성重 2,472 · 교체 11 · 112 · 19,920 · 수식 91,976 → 91,970 / 미포 449 · 교체 9 · 24 · 종가 없음 · 88,706 → 88,703. IS 관행 3m · 재작성 셀 0 · `*_orig` 9/30 16:02 그대로 | **PASS** |
 | **V7 섹션** `kship_model_section.py` · `test_kship_model_section.py` | driver_fallback 라벨(섹션 머리·상태 줄·data 속성 — 필드 없으면 추정하지 않음) · partial 사유 줄(quality 로 되짚고 못 되짚으면 '미기재') · 허브 폴백 열 · 모바일 360px CSS · 전 모델 렌더 테스트(-0/None/nan 누출 0) · 테스트 42 → 50 | 섹션 56/56장 · 허브 58행(모집단 57 + 010620, 머리 '모델 생성 58 / 모집단 57' 표기) · model↔page 32,818 + 마크업 168 + 허브 1,106 검사 실패 0 · KCC 페이지 '폴백 사유 oos(WAPE 연동 32.2% vs 추세 3.6%)' 노출 | **PASS** |
 | **V8 모집단·기자재** `kship_suppliers.py` · `kship_parts.py` · `build_dicts.py` · `kship_scan.py` 테스트 · `suppliers.json` · 사전 | 주석 캐시에서 고객 재탐색(이름이 적힌 주요 고객·특수관계자 매출만 — `assets/suppliers_cache/<stock>/notes.json` 51사, basis ifrs8/related) · 영문 약칭 단어 경계('SHI' 가 HANSHIN JAPAN 에 걸려 삼성重 언급을 만들던 오탐) · 사전 보강(미분류 111 → 51행, `parts_override` +2) · `--rejudge` 이월 표식 보존 · 테스트 kship 21 → 40 · scan 13 → 15 | suppliers 연결 26 → 28사 · 링크 69 → 73(ifrs8 6 · related 8 · text 59) · `share` 2 → 11 · 집합 검사 57/57 | **PASS_WITH_ISSUES** — 하류 효과 2건: 가중치 저장값 반올림 회귀(수정) · 한라IMS·한화시스템 신규 연동(§14-6 ④) |
 | **V9 문서·워크플로** 문서 5 · `update-kship.yml` · `scan-kship.yml` · `run_all.sh` · `test_run_all.py` | §13 — 수치 재확인 · 러너 제한 90/240 · 커밋 메시지 outcome · bash 3.2 `${WHY}·` · scan openpyxl·분기 규칙·pathspec · run_all 한 줄 재현 · 테스트 21 | `run_all.sh --only check` 실행 OK(아래 ②) · 21 OK · 이 절은 V9 §13 뒤에 §14 로 붙였다(번호를 바꾸지 않음 — HANDOFF·UPDATE·README 가 §13 을 가리킨다) | **PASS** |
@@ -612,7 +612,7 @@ $PY -m unittest discover -s tests -p 'test_*.py'        # 10:4x → Ran 489 test
 
 ### 14-3. 최종 수치 — `summary.json`(built 2026-10-05) · 골든 · sls · 시세
 
-- **모델 58행 full 48 · partial 10 · no_fin 0** · 드라이버 추세 34 · 고객 연동 18 · 선표 5 · 지주 1 · `driver_fallback` none 24 · no_link 21 · oos 9 · significance 4 · OOS adopted 16 · rejected 13 · undetermined 2 · 경고 183 · identities_ok 58/58 · last_actual 2026Q2 57 · 2025Q3 1 · `new_orders_included` true 4(삼성重·HD현대重·대한조선·지주) · false 2(한화오션·HJ — 패널 없음). 백테스트(freeze 2025Q2, n=56) 매출 WAPE 중위 **15.8%** · OP **59.25%**(§5-5 ▶ 10-05).
+- **모델 58행 full 48 · partial 10 · no_fin 0** · 드라이버 추세 34 · 고객 연동 18 · 선표 5 · 지주 1 · `driver_fallback` none 24 · no_link 21 · oos 9 · significance 4 · OOS adopted 16 · rejected 13 · undetermined 2 · 경고 183 · identities_ok 58/58 · last_actual 2026Q2 57 · 2025Q3 1 · `new_orders_included` true 4(삼성重·HD현대重·대한조선·지주) · false 2(한화오션·HJ — 패널 없음 → ▶ 2026-10-08 폴백으로 true, §15). 백테스트(freeze 2025Q2, n=56) 매출 WAPE 중위 **15.8%** · OP **59.25%**(§5-5 ▶ 10-05).
 - **조선사·지주 FY(억원, EPS 원 — 모델 산출, 컨센서스·추천 아님; 괄호는 10-02 값과 다른 곳)**:
 
   | 회사 | status · 신규수주 | FY2025A 매출 / OP / EPS | FY2026E | FY2027E | FY2028E | PER · PBR(now, 10/2 종가) |
@@ -629,7 +629,7 @@ $PY -m unittest discover -s tests -p 'test_*.py'        # 10:4x → Ran 489 test
 - **시나리오 FY2028E 매출(억원)** existing_only / 보수 / base / 낙관: 삼성重 103,916 / 149,267 / 192,004 / 229,726 · HD현대重 241,515 / 335,962 / 372,744 / 443,905 · 대한조선 6,871 / 12,898 / 17,827 / 24,660 · 지주 340,487 / 473,638 / 525,493 / 625,815. 매출에 들어가는 것은 base 하나다.
 - 기자재 예: 세진 FY2026E 3,961 / 703 / 937.0(추세 — OOS 기각 유지) · 한화엔진 15,317 / 1,621 / 1,761.2 · 현대힘스 2,844 / 381 / 827.2(연동 — 가중치 009540 0.5765 · 329180 0.4212 · 010620 0.0023, §14-4) · KCC 66,191 / 4,338 / 423,780.6(2026Q2 금융손익 3.6조 일회성 그대로 — 읽지 말 것; V4 의 조정EPS 행이 이를 제외한 값을 따로 둔다).
 - **fin**: 58 json · `collected_at` 2026-10-05 · 골든 5,378/5,900 = 91.2% · 999분기 · 주식수 이월(estimate) 138 · 이자수익 cons∪sep 716/999분기 · 53사 · issues 상위 `borrowings_face_label` 683 · `note_parent_missing` 263 · `borrowings_note_unreconciled` 236 · `note_unmapped` 196 · `no_cons_statements` 179 · `sga_absorbed_op_lines` 162 · `shares_omitted_quarterly` 138 · `no_report` 103 · `tax_sign_flipped` 93 · `note_expense_sign_negative` 91 · `expense_sign_negative` 91 · `duplicate_label` 83 · `note_parent_na` 80 · `other_nonop_face_separate_line` 66 · `expense_sign_negative_nonop` 56 · `borrowings_note_residual` 44 · `note_missing` 42 · `note_na` 21. checks 는 §5-1 ▶ 10-05.
-- **sls**(built 2026-10-05, origin 2026Q2, cohort reference_anchor / alt ledger_relative, `opm_table` assumed): 삼성重 53(50) 창 15,348.0백만$ → 21,782,061백만원(`post_origin` 7건 — 10-05 계약 공시 1건 추가) · 한화오션 34(34) 10,379.8 → 14,285,692 · HD현대重 43(43) 14,321.4 → 20,418,045 · 대한조선 16(16) 1,658.3 → 2,353,437(캡 0.859276, 커버리지 1.1638) · HJ 45(45) 2,194.4 → 3,075,808 · 지주 42(20, 공유 22 제외) 5,348.6 → 7,626,960. 10-02 대비 창 원화가 수십 억 움직인 것은 fx 2026Q3 완결(1,418.75)이 미헤지분 현물에 들어간 결과다. 타겟 OPM 2026Q3 기본/대안: 15.00/6.42 · 14.76/6.48 · 15.00/6.32 · 15.00/4.53 · 15.00/4.65 · 15.00/5.16%, shift −5.26/+3.59 · −2.79/+4.39 · −1.04/+6.41 · +11.84/+22.46 · −6.98/+4.32 · +0.28/+10.32%p. 레퍼런스 캘리브레이션 표(`reference_calibrated`)면 2026Q3 타겟은 10.8%(한화 10.54) — 병기만, 미적용. 헤지 참고치: 삼성重 명목/잔고 현물 기준 113.2% · HD현대重 46.3%(적용 아님).
+- **sls**(built 2026-10-05, origin 2026Q2, cohort reference_anchor / alt ledger_relative, `opm_table` assumed): 삼성重 53(50) 창 15,348.0백만$ → 21,782,061백만원(`post_origin` 7건 — 10-05 계약 공시 1건 추가) · 한화오션 34(34) 10,379.8 → 14,285,692 · HD현대重 43(43) 14,321.4 → 20,418,045 · 대한조선 16(16) 1,658.3 → 2,353,437(캡 0.859276, 커버리지 1.1638) · HJ 45(45) 2,194.4 → 3,075,808 · 지주 42(20, 공유 22 제외) 5,348.6 → 7,626,960. 10-02 대비 창 원화가 수십 억 움직인 것은 fx 2026Q3 완결(1,418.75)이 미헤지분 현물에 들어간 결과다. (라운드 5 `assumed` 기준 — 현재 기본 표는 §15) 타겟 OPM 2026Q3 기본/대안: 15.00/6.42 · 14.76/6.48 · 15.00/6.32 · 15.00/4.53 · 15.00/4.65 · 15.00/5.16%, shift −5.26/+3.59 · −2.79/+4.39 · −1.04/+6.41 · +11.84/+22.46 · −6.98/+4.32 · +0.28/+10.32%p. 레퍼런스 캘리브레이션 표(`reference_calibrated`)면 2026Q3 타겟은 10.8%(한화 10.54) — 라운드 5 당시 병기만, 2026-10-08 기본으로 적용(§15). 헤지 참고치: 삼성重 명목/잔고 현물 기준 113.2% · HD현대重 46.3%(적용 아님).
 - **fx·prices**: §5-3 ▶ 10-05 통합. **레퍼런스 패치본 3개**: §14-1 V6 행.
 - **selfcheck**(V10): 20 그룹 486,140건 · consistency 실패 19(한 그룹, §14-6 ①) · freshness 0. **테스트** 489 OK(skipped 2 — 섹션 '섹션 없는 회사 페이지가 없음' · e2e 커밋 재현성은 `KSHIP_E2E_GIT=1` 일 때만).
 
@@ -654,7 +654,7 @@ $PY -m unittest discover -s tests -p 'test_*.py'        # 10:4x → Ran 489 test
 4. **신규 연동 2사(한라IMS 092460 · 한화시스템 272210 → 한화오션 100%)** — V8 링크(092460 ifrs8 share None · 272210 related share 0.03)로 생긴 후보가 시차 4 · 4분기 이동평균 · 창 8 · n 8 에서 r 0.996/0.983, OOS 7.1 vs 9.6 / 8.1 vs 15.6 으로 채택됐다. 이동평균 8점은 독립 표본 둘 남짓이고 한화시스템 매출(방산·ICT)의 한화오션 비중 0.03% 가 '고객 연동' 의 뜻을 갖는지 의심스럽다 — 기자재 레인이 `related` 링크의 연동 후보 자격을 정하는 것이 맞다(값: 한화시스템 FY2026E 매출 추세 → 연동으로 바뀜, summary 비교).
 5. `tools/assets/prices.json` ↔ fin 유통주식수 기준일 차이(V1): KS인더스트리 101000 fin 6/30 40,373,209 vs aik 10/1 9,910,487 · 케이앤에스아이앤씨 487400 7,788,882 vs 10,260,882 — 분기말 뒤 병합/증자로 보임, 모델 EPS 분모 선택 확인 요(V2·V4).
 6. fin 원문 한계(수리 불가, 기록만 — V1): 한신기계 2023Q3 face 순금융수익 1,454.23 ≠ 1,359.13 − 943.62(`fin=fi-fe` 2) · 한국주강 2023Q2 sep −2.05 · HD현대마린엔진 2025Q3 sep BS −73 · 2025 사업보고서~ XBRL 격자형 주석(비엠티·한일철강 차입처별 열)은 열 단위 파싱 불가 · 서호전기 범주별 금융상품 순손익표 미파싱 · 하이록·엔케이·에스앤더블류 분기보고서는 금융·기타 주석 자체 없음(`note_parent_missing` 의 대부분). 세진 사채 15,000 분해 unreconciled 는 §12-2 그대로.
-7. 그대로인 것: 주석 이자비용 연율 클립 없음(§12-8 ⑦) · 한화오션·HJ 패널 없음(2028E 감소) · 외환차손익이 기타영업외 안인 회사의 `기타금융손익` 잔차 · 합성 테스트 2건의 `yards_cache` 암묵 의존 · `kship_scan.py --quarter` 상수(§13-6) · `.collect.lock` 잔존(flock 이라 무해) · V6 `--extend-formulas` 는 운영 플래그 밖(미사용) · V3 `reference_calibrated` 표 미적용(오너 결정).
+7. 그대로인 것: 주석 이자비용 연율 클립 없음(§12-8 ⑦) · 한화오션·HJ 패널 없음(2028E 감소 → ▶ 2026-10-08 폴백, §15) · 외환차손익이 기타영업외 안인 회사의 `기타금융손익` 잔차 · 합성 테스트 2건의 `yards_cache` 암묵 의존 · `kship_scan.py --quarter` 상수(§13-6) · `.collect.lock` 잔존(flock 이라 무해) · V6 `--extend-formulas` 는 운영 플래그 밖(미사용 → ▶ 2026-10-08 CLI 기본 `all`) · V3 `reference_calibrated` 표 미적용(오너 결정 → ▶ 2026-10-08 기본으로 적용).
 8. 통합 레인이 돌리지 않은 것: DART 실수집(캐시만) · 러너 10-05 10:40 첫 실행 결과 확인 · Excel 실개봉 · 레인 보고 V3~V8·V10 원문 대조(입력 잘림).
 
 ### 14-7. 재확인 명령
@@ -667,5 +667,59 @@ cd argus/kship/tools
 ~/Library/phalanx_venv/bin/python -c "import json;m=json.load(open('assets/models/460930.json'));w=m['segments'][0]['driver']['weights'];print(w,sum(w.values()))"   # 합 1.0
 git status --short | grep -v fin_cache | wc -l   # 10-05 통합 시점 332(수정 276 · 신규 56) — §14-2 뒤 docs 4개 포함
 ```
+
+## 15. 라운드 6 — 오너 결정 3건 실행 (2026-10-08, 실측)
+
+사용자 지시: "결정 남은 것: 코호트 OPM 을 레퍼런스 실측 캘리브레이션(10.8%)으로 바꿀지 · 패치본 subQ 수식 자동 연장을 기본으로 켤지 · 한화오션·HJ 는 패널 신규수주가 없어 2028E 가 여전히 잔고 소진분만입니다. / 응 그렇게 진행해줘". 세 건을 모두 실행했다.
+
+### 15-1. 판정표
+
+| 결정 | 변경 | 검증 | 판정 |
+|---|---|---|---|
+| ① 코호트 OPM 기본 표 → `reference_calibrated` | `kship_sls.py` `OPM_TABLES=("reference_calibrated","assumed")` · `OPM_TABLE_DEFAULT="reference_calibrated"`. 표 ①−1.08 ②1.0 ③4.26 ④5.4 ⑤10.8%(레퍼런스 미포 SLS 'ⓞ OPM 잡기'). `--opm-table assumed` 로 이전 표 복원. sls json 에 `cohort_opm_table_source` · `cohort_opm_table_assumed` · `cohort_opm_calibration` 저장, 각주는 `kship_lib.opm_table_text` 가 파일의 표를 읽어 쓴다 | `tests/test_kship_sls.py` 42 OK · sls 6사 재빌드 · selfcheck sls↔model 정합 | **PASS** |
+| ② `--extend-formulas` 운영 기본 `all` | `kship_xlsx_patch.py` `EXTEND_CLI_MODES` · `EXTEND_CLI_DEFAULT="all"`. 플래그를 생략하면 `all`, 값 없는 `--extend-formulas` 도 `all`, `--extend-formulas off` 가 끈다. API `patch_file(extend=None)` 의 기본은 꺼짐 그대로 | `TestExtendFormulasSamsung` 5 OK(CLI 기본 `all`·`off`·bare 신규 1건, 삼성重 연장 668 = 단순 381 + 공유앵커 287) · 패치본 3종 2026-10-08 00:44 재생성(`*_orig` MD5 불변) | **PASS** |
+| ③ 한화오션·HJ 신규수주 | `kship_model.py` `PANEL_REV_KEYS=("new_order_revenue","covered_scope_new_revenue")` · `_panel_rev_key` · `_post_origin_panel_fraction` · `_ledger_signing_crosscheck`. 패널이 `new_order_revenue` 를 안 주면 `covered_scope_new_revenue`(모델 대상 부문만)로 폴백 — 같은 R1 인식·같은 3 시나리오, `confidence: low` | `tests/test_kship_model.py` 88 OK(폴백 5건 추가) · section 3 · xlsx 시나리오 시트 1 · selfcheck | **PASS**(HJ 는 효과 미미 — 15-3) |
+| 전체 | 전체 스위트 `unittest discover -s tests` **494 OK(skipped 2)**(라운드 5 489 → +5) · `selfcheck_models.py` consistency 0 · freshness 0 | | **PASS** |
+
+### 15-2. 폴백의 설계
+
+- **패널 원천**: `forecast_panel.json.gz` `scenarios.{conservative,base,optimistic}.quarterly[]` 의 `new_order_revenue`(KRW_million → 억원 ÷100). 한화·HJ 는 이 값이 None 이다. 같은 패널의 `covered_scope_new_revenue` 는 모델 대상 부문만 센 값이라 그 값을 쓰고 `source_field=covered_scope_new_revenue` · `fallback=true` · `confidence=low` 로 표기한다. 적용 범위: 한화 상선·기타(EP 및 특수선 제외, 보고 잔고 330,084억 중 267,338억) · HJ 특수선·상선(수리 제외, 19,043억 중 18,417억).
+- **T6 D1 과 잔고 캡**: 패널 신규를 포함하면 origin 이후 공시 계약이 이중 계산되지 않도록 기존 SLS 에서 뺀다. 폴백 회사는 패널이 공시 체결보다 작아서 전부 빼면 신규가 사라진다 — 분기별 포함비율 `min(1, 패널 base 신규 ÷ 공시 체결)` 만큼만 뺀다(`_post_origin_panel_fraction`, `sls_fwd = existing + post × (1 − post_frac)`). 삼성重·HD현대重·대한조선은 정확히 1.0 이라 변화 없음(no-op). 한화 0.715 · HJ 0.0162 — `scenarios.meta.post_origin_excluded.included_fraction` 에 저장.
+- **원장 교차 점검**: `_ledger_signing_crosscheck(sls, no, n_quarters=8)` 이 패널 base 신규수주 평균을 공시 계약 원장 체결 평균(대형 단일 계약만이라 하한)과 비교해 `ledger_crosscheck.panel_to_ledger_ratio` 와 문장을 남긴다(첫 체결 분기부터 최대 8분기). 비율 <0.5 "신규 매출 과소 가능 — 낙관 시나리오가 더 가깝다" · 0.5~1.5 "대체로 같은 규모" · >1.5 "…상향 편향 가능 — 보수 시나리오 병행 확인".
+- **표기**: 섹션 신규수주 행 · 시나리오 카드 · hub 표에 '폴백·저신뢰', xlsx 시나리오 시트 2행 폴백 주석. `summary.json` `new_orders_included` 는 한화·HJ 도 true.
+
+### 15-3. 실측 — FY2026E~2028E 매출/영업이익(억원, base)
+
+| 회사 | 2026E | 2027E | 2028E | 2028E 보수 ~ 낙관 | 비고 |
+|---|---|---|---|---|---|
+| 한화오션 | 167,314 / 21,378 | 177,774 / 21,464 | **160,250 / 19,363** (92,030 / 11,233) | 99,901 ~ 184,771 | 패널/원장 0.8376 · 포함비율 0.715 |
+| HJ중공업 | 25,124 / 2,045 | 21,954 / 2,150 | **16,656 / 1,663** (16,331 / 1,798) | 16,554 ~ **25,347** | 패널/원장 **0.0302** · 포함비율 0.0162 |
+| 삼성重 | 127,202 / 12,531 | 154,813 / 15,435 | 191,886 / **19,185** (OP 21,508) | 149,149 ~ 229,607 | 매출 불변 · OP −10.8%(코호트 OPM 표) |
+| HD현대重 | 253,950 / 37,958 | 298,412 / 42,072 | 372,615 / 52,657 | 335,834 ~ 443,776 | OP +1.7% |
+| 대한조선 | 11,966 / 3,212 | 13,261 / 3,559 | 17,814 / 4,781 | 12,884 ~ 24,647 | 불변(코호트 OPM 영향 없음) |
+
+괄호는 라운드 6 이전(10-05 커밋) 값 — 한화·HJ 의 영업이익 변화에는 신규수주 효과와 코호트 OPM 표 교체(가정 15% → 10.8%)가 섞여 있다(HJ 는 매출 +2% 인데 OP −7.5% 인 이유). HD현대미포는 표 영향 없음(레퍼런스 구조 그대로).
+
+### 15-4. 읽는 법 · 한계
+
+1. **한화는 효과가 크다**: 2028E 매출 +74%, 패널 신규가 공시 체결 속도의 약 84% 라 규모가 합리적이다. 다만 EP 및 특수선은 패널이 안 닿는다(제외 범위). 패널은 `calibrated=false`(장부가 프록시)라 정확도 보증이 아니다.
+2. **HJ 는 거의 그대로다**(2028E +2%): 패널 base 가 분기 110억으로, 공시 계약 원장 3,640억/분기의 3% 에 불과하다. 폴백이 걸렸지만 의미 있는 신규수주가 안 들어간다. 라벨은 '저신뢰'·"낙관 시나리오가 더 가깝다"(낙관 2028E 25,347억). HJ 에 공시 체결 속도(원장)를 신규수주 입력으로 쓸지는 **오너 결정 대기**(새 가정이 되므로 자동 적용하지 않았다).
+3. **삼성重 2028E OP −10.8%**: 가정 표 ⑤초호황 15% → 캘리브레이션 10.8%. 레퍼런스 실측이 가정 표보다 2024~26 에 3.8~5.1%p 낮았다. 매출은 같다.
+4. **단기(2026E)는 오히려 약간 낮아진다**(한화 169,896 → 167,314억 −1.5% · HJ 25,133 → 25,124억): origin 이후 공시 계약을 패널 신규(다음 분기부터 smoothstep 인식)로 일부 대체하기 때문이다(§12-8 ① D1 시점 불일치와 같은 구조). 2027E 는 한화 +9%·HJ +0.4%.
+5. 폴백은 `new_order_revenue` 가 None 일 때만 작동한다. 다음 패널 갱신에서 값이 채워지면 자동으로 정식 경로로 돌아간다.
+
+### 15-5. 재현
+
+```bash
+cd argus/kship/tools
+~/Library/phalanx_venv/bin/python kship_sls.py --all                      # 기본 reference_calibrated (이전 표는 --opm-table assumed)
+~/Library/phalanx_venv/bin/python kship_model.py --build --all --xlsx --today 2026-10-05
+~/Library/phalanx_venv/bin/python kship_xlsx_patch.py --all --verify --overwrite-placeholders --fx-actuals --is-convention 3m   # --extend-formulas 기본 all
+~/Library/phalanx_venv/bin/python kship_page.py --all && ~/Library/phalanx_venv/bin/python kship_parts.py --all && ~/Library/phalanx_venv/bin/python kship_model_section.py --hub
+~/Library/phalanx_venv/bin/python selfcheck_models.py --max-detail 3      # consistency 0 · freshness 0
+~/Library/phalanx_venv/bin/python -m unittest discover -s tests            # 494 OK(skipped 2)
+```
+
+▶ 남은 결정: ① HJ 신규수주에 공시 체결 속도(원장) 입력 여부 · ② 골든 잔여 8.8%(FnGuide 자본 재분류) · ③ KCC 일회성 조정EPS 병기.
 
 참고용 · 투자조언 아님.

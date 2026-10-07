@@ -39,7 +39,7 @@ fin json(kship_fin.py 산출, 백만원) 값을 셀로 끼워 넣는다.
 - calcChain.xml(세 원본 모두 있음 — 항목 수 == 수식 셀 수): `--overwrite-placeholders` 로 수식 자리표시자를 상수로 바꾼 셀의
   항목을 함께 뺀다(`calc_chain.pruned`). 수식이 없는 셀을 가리키는 항목이 남으면 Excel 이 "복구된 레코드: /xl/calcChain.xml"
   대화상자를 띄운다(ECMA-376 18.6.2 — 항목은 수식 셀만). 새로 쓴 수식 셀(--extend-formulas)은 항목이 없어도 된다(열 때 재구성).
-- `--extend-formulas [plain|all]`(기본 꺼짐, 값 생략 = all) — subQ 의 새 기간 열에서 **비어 있는** 셀을 같은 행의 소스 셀
+- `--extend-formulas [plain|all|off]`(CLI 기본 켜짐 = all — 2026-10-08 오너 결정, `off` 로 끈다; `patch_file(extend=None)` API 기본은 꺼짐) — subQ 의 새 기간 열에서 **비어 있는** 셀을 같은 행의 소스 셀
   수식으로 채운다(사용자가 끌어 채우던 것). 소스 = 목표와 같은 분기 위치(1Q~4Q·연간)의 가장 최근 실적 열(3Q23 이 마지막이면
   4Q23←4Q22·2023←2022·1Q24←1Q23 …; 열 차이는 5의 배수라 1Q 열의 '직전 열=연간' 구조·연간 열의 SUM 범위가 유지된다).
   상대참조는 openpyxl Translator(토크나이저)로 열 차이만큼 치환하고 `$` 고정·이름정의(BS연결·SUBQH·U)·문자열은 그대로 —
@@ -64,7 +64,7 @@ fin json(kship_fin.py 산출, 백만원) 값을 셀로 끼워 넣는다.
   python3 kship_xlsx_patch.py --all --verify --overwrite-placeholders --fx-actuals --today 2026-09-30
   python3 kship_xlsx_patch.py --all --verify --is-convention 3m   # 예전 방식(항상 3개월 열)
   python3 kship_xlsx_patch.py --stock 010140 --verify --overwrite-placeholders --fx-actuals --is-convention 3m \
-      --extend-formulas --out /tmp/shi_ext.xlsx                       # subQ 수식 연장(opt-in)
+      --extend-formulas off --out /tmp/shi_plain.xlsx                 # 수식 연장 끄기(기본은 켜짐)
 표준 라이브러리 + openpyxl(검증·--extend-formulas 의 수식 치환) 만 쓴다. 네트워크 없음.
 """
 import argparse
@@ -1073,6 +1073,8 @@ def patch_price(wb, price_row, as_of):
 
 UNESCAPE_MAP = {"&quot;": '"', "&apos;": "'"}
 EXTEND_MODES = ("plain", "all")
+EXTEND_CLI_MODES = EXTEND_MODES + ("off",)
+EXTEND_CLI_DEFAULT = "all"          # 2026-10-08 오너 결정 — 운영 실행(CLI)은 수식 연장 켬. patch_file(extend=None) 의 API 기본은 꺼짐 그대로
 EXTEND_SHEET = "subQ"
 
 
@@ -1905,8 +1907,9 @@ def main(argv=None):
                     help="`변수` 환율 8행의 새 기간 열(BS 와 동일)에 남은 가정을 fx.json 실측으로 바꾼다(partial 분기는 보존, 전후는 보고에)")
     ap.add_argument("--is-convention", choices=IS_CONVENTIONS, default=IS_CONVENTION_DEFAULT,
                     help="분기 IS 값: ytd_diff=fin.is_ytd_diff 우선(FnGuide 누적차분, 기본) · 3m=항상 fin.is(보고서 3개월 열)")
-    ap.add_argument("--extend-formulas", nargs="?", const="all", choices=EXTEND_MODES, default=None,
-                    help="subQ 새 기간 열의 빈 셀을 같은 분기위치 최근 실적 열 수식으로 채운다(상대참조 치환). plain=단순 수식 소스만 · all(기본)=공유수식 앵커 텍스트도")
+    ap.add_argument("--extend-formulas", nargs="?", const="all", choices=EXTEND_CLI_MODES, default=EXTEND_CLI_DEFAULT,
+                    help="subQ 새 기간 열의 빈 셀을 같은 분기위치 최근 실적 열 수식으로 채운다(상대참조 치환; 기본 켜짐 = all). "
+                         "plain=단순 수식 소스만 · all=공유수식 앵커 텍스트도 · off=끄기(예전 동작)")
     a = ap.parse_args(argv)
     stocks = list(FILES) if a.all else (a.stock or [])
     if not stocks:
@@ -1934,7 +1937,7 @@ def main(argv=None):
             continue
         rep = patch_file(stock, fins, target, a.today, out_path=a.out, fx=fx, prices=prices, ref_dir=a.ref_dir,
                          overwrite=a.overwrite_placeholders, fx_actuals=a.fx_actuals, is_convention=a.is_convention,
-                         extend=a.extend_formulas)
+                         extend=None if a.extend_formulas == "off" else a.extend_formulas)
         if a.verify and rep.get("written"):
             verify_all(rep, fins, prices)
         rep["fx_available"] = fx is not None
