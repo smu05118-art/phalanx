@@ -6243,6 +6243,11 @@ function loadDCGrid(cb){ if(window.DCGRID) return cb();
   const sc=document.createElement('script'); sc.src='data_dc_grid.js';
   sc.onload=cb; sc.onerror=()=>{window.DCGRID={_err:1};cb();};
   document.head.appendChild(sc); }
+// data_dc_meta.js(window.DCMETA) — 📑 뷰 진입 시에만 lazy. 브로커 수치 없음(주장 방향·상태, 감사 검출 수만)
+function loadDCMeta(cb){ if(window.DCMETA) return cb();
+  const sc=document.createElement('script'); sc.src='data_dc_meta.js';
+  sc.onload=cb; sc.onerror=()=>{window.DCMETA={_err:1};cb();};
+  document.head.appendChild(sc); }
 function loadDCProj(cb){ if(window.DCPROJ) return cb();
   const sc=document.createElement('script'); sc.src='data_dc_proj.js';
   sc.onload=cb; sc.onerror=()=>{window.DCPROJ={};cb();};
@@ -6413,7 +6418,7 @@ function renderDC(){
   if(!D.projects){ main.innerHTML='<div class="empty-msg">⚡ DC 공급망 허브 데이터 준비 중…</div>'; return; }
   if(ST.dcProj&&!window.DCPROJ) return loadDCProj(renderDC);
   const views=[['map','🗺 프로젝트 맵·테이블'],['global','🌏 비북미 글로벌 DC'],['energy','🔌 에너지원 미래 시계열'],['tam','🌲 탑다운 TAM 트리'],
-    ['grid','🔋 발전설비 순증(EIA-860M)']];
+    ['grid','🔋 발전설비 순증(EIA-860M)'],['claims','📑 브로커 주장·감사']];
   main.innerHTML=DCSTYLE+'<div class="dcnav">'+views.map(v=>
     '<span class="dcv'+(ST.dcv===v[0]?' on':'')+'" data-dcv="'+v[0]+'">'+v[1]+'</span>').join('')+'</div>'
     +capexStrip(D.capex_common,'dc')+'<div id="dcBody"></div>';
@@ -6428,8 +6433,41 @@ function renderDC(){
   else if(ST.dcv==='grid'){                            // 별도 lazy 샤드(data_dc_grid.js)
     if(window.DCGRID) dcViewGrid(body,window.DCGRID);
     else{ body.innerHTML='<div class="load-msg">🔋 EIA-860M 발전설비 순증 로딩…</div>'; loadDCGrid(()=>renderDC()); } }
+  else if(ST.dcv==='claims'){                          // 별도 lazy 샤드(data_dc_meta.js)
+    if(window.DCMETA) dcViewMeta(body,window.DCMETA);
+    else{ body.innerHTML='<div class="load-msg">📑 브로커 주장·감사 로딩…</div>'; loadDCMeta(()=>renderDC()); } }
   else dcViewMap(body,D);
   writeHash();
+}
+
+// ---------- 뷰 📑: 브로커 주장 원장 · 밸류에이션 감사 (메타만 — 값 없음) ----------
+function dcViewMeta(el,M){
+  if(!M||M._err){ el.innerHTML='<div class="empty-msg">📑 주장 원장·감사 메타가 아직 없습니다.</div>'; return; }
+  const E=dcEsc, chip=(k,v)=>'<span style="display:inline-block;margin:2px 6px 2px 0;padding:1px 8px;border:1px solid var(--line,#333);border-radius:10px;font-size:11px">'+E(k)+' <b>'+E(v)+'</b></span>';
+  let h='<div class="panel" style="padding:10px 14px;font-size:11px;color:var(--dim)">'+E(M.note||'')+'</div>';
+  const C=M.claims;
+  if(C&&C.rows&&C.rows.length){
+    h+='<div class="panel" style="padding:12px 14px"><b>주장 원장</b> · '+C.rows.length+'건<div style="margin:6px 0">'+
+      Object.entries(C.by_house||{}).map(([k,v])=>chip(k,v)).join('')+' '+Object.entries(C.by_status||{}).map(([k,v])=>chip(k,v)).join('')+'</div>'+
+      '<div style="overflow-x:auto"><table class="dct" style="width:100%;font-size:11px;border-collapse:collapse"><tr><th align=left>하우스</th><th align=left>주장(방향만)</th><th>방향</th><th>쪽</th><th>상태</th><th>판정</th></tr>'+
+      C.rows.map(r=>'<tr><td>'+E(r.house)+'</td><td>'+E(r.statement)+'</td><td align=center>'+E(r.direction||'')+'</td><td align=center>'+E(r.pages||'')+'</td><td align=center>'+E(r.status||'')+'</td><td align=center>'+E(r.verdict||'—')+'</td></tr>').join('')+
+      '</table></div></div>';
+  } else h+='<div class="panel" style="padding:12px 14px">주장 원장: 아직 인제스트된 워크북이 없습니다.</div>';
+  const DCm=M.dc;
+  if(DCm){
+    h+='<div class="panel" style="padding:12px 14px"><b>브로커 모델 정본화</b> · 블록 '+E(DCm.blocks)+' · 원본 '+E(DCm.source&&DCm.source.sha8)+
+      '<div style="margin:6px 0">항등식 '+Object.entries(DCm.identities||{}).map(([k,v])=>chip(k,v)).join('')+(DCm.identities_not_implemented?chip('미구현',DCm.identities_not_implemented):'')+'</div>'+
+      '<div style="font-size:11px">'+(DCm.documents||[]).map(d=>E(d.house)+' · '+E(d.doc_date||'')+' · '+E(d.file||d.doc_id)).join('<br>')+'</div></div>';
+  }
+  const A=M.audit;
+  if(A&&A.audits&&A.audits.length){
+    h+='<div class="panel" style="padding:12px 14px"><b>밸류에이션 워크북 감사</b> — 규칙별 검출 수(셀 값·수식은 로컬에만)'+
+      A.audits.map(a=>'<div style="margin-top:8px"><b>'+E(a.label)+'</b> <span style="color:var(--dim);font-size:10px">'+E(a.audited_at||'')+' · '+E(a.sha8||'')+'</span><div>'+
+        chip('위반',a.totals.violation)+chip('경고',a.totals.warning)+chip('표시',a.totals.info)+'</div><div style="font-size:11px;margin-top:4px">'+
+        Object.entries(a.counts||{}).filter(([k,v])=>(v.violation||0)+(v.warning||0)+(v.info||0)>0).map(([k,v])=>chip(k,(v.violation||0)+'/'+(v.warning||0)+'/'+(v.info||0))).join('')+
+        '</div></div>').join('')+'<div style="font-size:10px;color:var(--dim);margin-top:6px">숫자 = 위반/경고/표시</div></div>';
+  }
+  el.innerHTML=h;
 }
 
 // ---------- 뷰 1: 프로젝트 맵 + 정렬 테이블 + 프로젝트 카드 ----------
