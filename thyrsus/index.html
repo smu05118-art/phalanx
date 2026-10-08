@@ -9535,6 +9535,9 @@ function startRevealWiz(){
 #wizfoot{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
 #wizfoot button{white-space:nowrap;word-break:keep-all;flex:0 0 auto;min-height:44px}
 #wizfoot button.hofoot{flex:1 1 auto;min-width:0}
+#wizfoot:has(.hofoot){flex-wrap:wrap;overflow-x:visible}
+#wizfoot button.hofoot{flex:1 1 calc(50% - 8px);white-space:normal;overflow-wrap:anywhere}
+#wizfoot button.hofoot.primary{flex-basis:100%}
 .hoBtn{white-space:nowrap}
 /* 탭으로 넘어갈 수 있는 씬에는 커서와 미세한 반응을 준다 — 어두운 방에서 버튼을 겨눌 필요가 없다 */
 #wizbody.tappable{cursor:pointer}
@@ -10093,7 +10096,20 @@ function handoffSkip(key){
   key=key||(handoff&&handoff.storeAs); if(!key) return;
   wiz.vars[key]=[]; wiz.skipped=wiz.skipped||{}; wiz.skipped[key]=true;
   log(`${wizTitle()}: 이번 턴 능력 미사용(선택 안 함)${proxy?' — 사회자 대리 접수':''}`);
-  handoff=null; clearHandoffDraft(); save(); wizNext();
+  handoff=null; clearHandoffDraft(); save();
+  /* 대리 입력(기기가 사회자 손에 있다)이면 종전대로 곧바로 다음 씬으로 간다.
+     기기 전달 화면에서 눌렀다면 다음 씬은 사회자 전용 정보(wizWarnBar 오작동 경고 ·
+     사회자 전용 note · WIZ_SUGGEST 정답 제안)인데 기기는 아직 플레이어 손에 있다.
+     endHandoff·handoffAbort·useSTInput 세 경로는 모두 반환 확인 한 장을 끼우는데
+     같은 푸터의 '선택 안 함'만 빠져 있었다 — 암살자·재봉사가 실제로 그 경로다
+     (재봉사는 skip 직후 멈추는 note 씬이 그 좌석의 중독·취함·거짓 의무 판정을 띄운다). */
+  if(proxy){ wizNext(); return; }
+  $('#wizhead').innerHTML=`<span class="wtitle">📱 기기를 이야기꾼에게 돌려주세요</span>`;
+  $('#wizbody').innerHTML=`<div style="text-align:center"><div class="wiz-bigtoken">🙅</div>
+    <div class="wiz-bigname">이번 턴에는 쓰지 않습니다</div>
+    <div class="wiz-caption" style="margin-top:6px">다음 화면부터는 사회자 전용 정보가 표시됩니다.</div></div>`;
+  $('#wizbody').onclick=null;
+  $('#wizfoot').innerHTML=`<button class="hofoot primary" onclick="wizNext()">🧑\u200d⚖️ 이야기꾼이 받았습니다 — 계속</button>`;
 }
 document.addEventListener('click', e=>{
   const b=e.target.closest && e.target.closest('[data-hopick]');
@@ -10232,6 +10248,22 @@ function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
           sk.onclick=()=>handoffSkip(sc.storeAs);
           foot.insertBefore(sk, prim||null);
         }
+      }
+    }
+    /* optional 은 지금까지 pick-player 경로에서만 읽혀(renderHandoff · 위 블록), 같은 플래그를
+       단 pick-character 씬 네 건(궁정대신 2 · 철학자 2)에는 '선택 안 함'을 기록할 수단이 아예
+       없었다 — 미발동을 접수해도 wiz.skipped 에 남지 않아 뒤의 effect 씬이 그대로 떠
+       '대상이 선택되지 않았습니다'로 사회자에게 대상을 강요했다(wizSceneSkipped 주석이 겨눈
+       바로 그 상태). 캐릭터 지목은 기기 전달 대상이 아니므로(handoffScene 은 pick-player 만
+       본다) 📱 전달 버튼과 cap 잠금은 붙이지 않고 **기록 경로만** 같게 맞춘다 —
+       handoffSkip(key) 는 handoff 가 없으면 스스로 '사회자 대리 접수'로 남긴다. */
+    if(sc && sc.t==='pick-character' && sc.optional){
+      const foot=$('#wizfoot');
+      if(foot && !foot.querySelector('.hoSkipBtn')){
+        const sk=document.createElement('button');
+        sk.className='hoSkipBtn'; sk.textContent='이번 턴에 선택 안 함';
+        sk.onclick=()=>handoffSkip(sc.storeAs);
+        foot.insertBefore(sk, foot.querySelector('button.primary')||null);
       }
     }
   };
@@ -16513,4 +16545,3 @@ try{
 }catch(e){ console.warn('[builder] 초기 렌더 실패', e); }
 })();
 </script>
-
