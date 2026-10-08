@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>한국화학 — 스프레드 원장·산식·사이클</title>
+<link rel="stylesheet" href="assets/kchem.css">
+</head>
+<body>
+<header class="top"><div class="hd"><h1>🧪 한국화학</h1><span class="sp"><a href="../index.html">← ARGUS</a><a href="spreads.html">표</a><a href="matrix.html">매트릭스</a><a href="chains.html">밸류체인</a><a href="coverage.html">커버리지</a></span></div></header>
+<main><p class="lead">ARGUS 원장의 석유화학 스프레드 209개를 산식·지역·신선도 축으로 다시 조립합니다. 계수는 역산 추정, 원장 값은 불가침, wj-stock 등 비공개 자료는 입력이 아닙니다.</p><div class="notice"><div class="sym">⛔</div><div><p><b>원장 정지 6주</b> — 화학 스프레드 원장(Weekly xlsm)의 마지막 관측은 2026-08-24, ARGUS 평가일은 2026-10-05 입니다. 아래 주간 스프레드는 전부 이 날짜에 멈춰 있으며(살아 있는 스프레드 0), 값은 그대로 보이되 신선도 배지가 <span class="fr stale">오래됨</span>/<span class="fr dead">장기 미갱신</span> 으로 표시됩니다. 살아 있는 화학 입력은 中 선물(일간)·PPI(월)뿐입니다.</p></div></div><div class="kpi"><div><b>242</b><span>화학 시리즈(청크 13 카테고리) · 스프레드 209</span></div><div><b>183<small>/209</small></b><span>산식 역산 재현(최소제곱, |잔차|≤1.5)</span></div><div><b>0</b><span>살아 있는 스프레드 — 오래됨 195 · 장기 미갱신 14</span></div><div><b>6주</b><span>원장 정지(마지막 2026-08-24)</span></div><div><b>47</b><span>파생 스프레드(공개 관행 계수·추정)</span></div><div><b>6</b><span>결함 의심·산식 변경·원료 불일치 플래그</span></div></div><h2 class="sec">카테고리<span>청크 13 + 파생 · 누르면 표에서 필터</span></h2><div class="catchips"><a href="spreads.html#cat=나프타"><b>나프타</b>7</a><a href="spreads.html#cat=기초유분"><b>기초유분</b>9</a><a href="spreads.html#cat=올레핀"><b>올레핀</b>24</a><a href="spreads.html#cat=아로마틱"><b>아로마틱</b>59</a><a href="spreads.html#cat=염소체인"><b>염소체인</b>17</a><a href="spreads.html#cat=초산체인"><b>초산체인</b>6</a><a href="spreads.html#cat=우레탄"><b>우레탄</b>11</a><a href="spreads.html#cat=화섬"><b>화섬</b>17</a><a href="spreads.html#cat=솔벤트"><b>솔벤트</b>15</a><a href="spreads.html#cat=폴리머"><b>폴리머</b>61</a><a href="spreads.html#cat=아크릴"><b>아크릴</b>5</a><a href="spreads.html#cat=고무"><b>고무</b>8</a><a href="spreads.html#cat=화학PPI"><b>화학PPI</b>3</a><a href="spreads.html#cat=파생"><b>파생</b>47</a></div><div class="cards"><a class="cardlink" href="spreads.html"><div class="t"><b>📋 스프레드 표</b></div><p>289행 정렬·검색. 산식(역산 k·참조 지역)·사이클 위치·4주 변화·신선도·中선물 참고·종목.</p><div class="go">표 →</div></a><a class="cardlink" href="matrix.html"><div class="t"><b>🧮 제품 × 지역 매트릭스</b></div><p>같은 제품의 지역별 스프레드를 한 줄에. 셀을 누르면 6선 비교 차트.</p><div class="go">매트릭스 →</div></a><a class="cardlink" href="chains.html"><div class="t"><b>🔗 밸류체인</b></div><p>레지스트리의 원료→제품 관계로 자동 생성한 다이어그램. 노드를 누르면 스프레드·종목.</p><div class="go">밸류체인 →</div></a><a class="cardlink" href="coverage.html"><div class="t"><b>🧾 커버리지</b></div><p>모집단 전수 242 — 미재현 26 · 체인 미배정 37 · 결함 의심 · 축 잘림 자동 소스.</p><div class="go">커버리지 →</div></a></div><h2 class="sec">체인<span>허브(argus_data.chains) 값을 읽기 전용으로 표시 · 종목은 체인 단위 참고 라벨</span></h2><div class="cards"><div class="cardlink" style="cursor:default"><div class="t"><b>정유·정제마진</b><span class="code">refining</span></div><p class="mut">허브 체인 사이클 위치(자동 프록시 10개 기준 — 원장 스프레드는 집계에 들어가지 않음) · 이 탭의 스프레드 7개</p><div class="stat"><div><b>98</b><span>체인 pos</span></div><div><b>22.9</b><span>1W %</span></div><div><b>16.9</b><span>4W %</span></div><div><b>11.0</b><span>13W %</span></div></div><div style="margin-top:8px"><span class="stocks"><a class="" href="010950/index.html" title="정제마진·PX 직결">S-Oil</a><a class="" href="096770/index.html" title="정유+화학(SK지오센트릭)">SK이노베이션</a><a class="" href="078930/index.html" title="GS칼텍스 지분 50%">GS</a></span></div></div><div class="cardlink" style="cursor:default"><div class="t"><b>NCC·올레핀</b><span class="code">ncc</span></div><p class="mut">허브 체인 사이클 위치(자동 프록시 9개 기준 — 원장 스프레드는 집계에 들어가지 않음) · 이 탭의 스프레드 88개</p><div class="stat"><div><b>97</b><span>체인 pos</span></div><div><b>−0.2</b><span>1W %</span></div><div><b>3.7</b><span>4W %</span></div><div><b>28.4</b><span>13W %</span></div></div><div style="margin-top:8px"><span class="stocks"><a class="" href="011170/index.html" title="에틸렌 국내 최대, 범용 체인">롯데케미칼</a><a class="" href="006650/index.html" title="순수 NCC — 스프레드 감도 최고">대한유화</a><a class="" href="051910/index.html" title="NCC+다운스트림(석화 부문)">LG화학</a></span></div></div><div class="cardlink" style="cursor:default"><div class="t"><b>아로마틱(BTX·PX)</b><span class="code">aromatics</span></div><p class="mut">허브 체인 사이클 위치(자동 프록시 8개 기준 — 원장 스프레드는 집계에 들어가지 않음) · 이 탭의 스프레드 57개</p><div class="stat"><div><b>94</b><span>체인 pos</span></div><div><b>−0.6</b><span>1W %</span></div><div><b>4.4</b><span>4W %</span></div><div><b>26.2</b><span>13W %</span></div></div><div style="margin-top:8px"><span class="stocks"><a class="" href="010950/index.html" title="PX 대형 생산">S-Oil</a><a class="" href="011170/index.html" title="PX·벤젠">롯데케미칼</a><a class="" href="298000/index.html" title="PP/테레프탈산 체인">효성화학</a></span></div></div><div class="cardlink" style="cursor:default"><div class="t"><b>부타디엔·합성고무</b><span class="code">butadiene</span></div><p class="mut">허브 체인 사이클 위치(자동 프록시 2개 기준 — 원장 스프레드는 집계에 들어가지 않음) · 이 탭의 스프레드 16개</p><div class="stat"><div><b>90</b><span>체인 pos</span></div><div><b>—</b><span>1W %</span></div><div><b>—</b><span>4W %</span></div><div><b>—</b><span>13W %</span></div></div><div style="margin-top:8px"><span class="stocks"><a class="" href="011780/index.html" title="BD→SBR/NBR 최대 감도">금호석유</a></span></div></div><div class="cardlink" style="cursor:default"><div class="t"><b>PVC 체인(EDC·VCM)</b><span class="code">vinyls</span></div><p class="mut">허브 체인 사이클 위치(자동 프록시 5개 기준 — 원장 스프레드는 집계에 들어가지 않음) · 이 탭의 스프레드 18개</p><div class="stat"><div><b>9</b><span>체인 pos</span></div><div><b>0.2</b><span>1W %</span></div><div><b>−6.7</b><span>4W %</span></div><div><b>−4.3</b><span>13W %</span></div></div><div style="margin-top:8px"><span class="stocks"><a class="" href="009830/index.html" title="PVC·가성소다">한화솔루션</a><a class="" href="051910/index.html" title="PVC 병산">LG화학</a></span></div></div><div class="cardlink" style="cursor:default"><div class="t"><b>우레탄(MDI·TDI·PO)</b><span class="code">urethane</span></div><p class="mut">허브 체인 사이클 위치(자동 프록시 0개 기준 — 원장 스프레드는 집계에 들어가지 않음) · 이 탭의 스프레드 11개</p><div class="stat"><div><b>—</b><span>체인 pos</span></div><div><b>—</b><span>1W %</span></div><div><b>—</b><span>4W %</span></div><div><b>—</b><span>13W %</span></div></div><div style="margin-top:8px"><span class="stocks"><a class="" href="069260/index.html" title="DNT/MNB — TDI 원료 독점 공급">휴켐스</a><a class="" href="025000/index.html" title="PPG(PO 다운스트림)">KPX케미칼</a></span></div></div><div class="cardlink" style="cursor:default"><div class="t"><b>솔벤트·페놀 체인</b><span class="code">solvents</span></div><p class="mut">허브 체인 사이클 위치(자동 프록시 4개 기준 — 원장 스프레드는 집계에 들어가지 않음) · 이 탭의 스프레드 12개</p><div class="stat"><div><b>85</b><span>체인 pos</span></div><div><b>2.2</b><span>1W %</span></div><div><b>7.5</b><span>4W %</span></div><div><b>20.5</b><span>13W %</span></div></div><div style="margin-top:8px"><span class="stocks"><a class="" href="011780/index.html" title="금호피앤비(페놀·아세톤·BPA) 연결">금호석유</a><a class="" href="051910/index.html" title="아세톤·BPA">LG화학</a></span></div></div></div><section class="card"><h2>이 탭이 하는 일과 하지 않는 일</h2><ul class="note"><li>원장 스프레드의 산식은 데이터에 없다. 이름(<code>제품-원료 스프레드(지역)</code>)과 주간 관측으로 <b>계수를 역산</b>해 병기한다 — 전부 추정이며 원장 수식을 본 것이 아니다.</li><li>원장 값은 수정하지 않는다. 결함으로 보이는 것(BR−BD 결측 0 계산, 산식 변경, 이름과 다른 원료)은 배지로만 표시한다.</li><li>中 선물·PPI 는 기준(통화·세금·스팟/선물)이 달라 같은 산식에 넣지 않는다 — 방향 참고 열.</li><li>파생 스프레드(PE/PP/PX−납사 통합, 카프로락탐−벤젠, PVC−0.5에틸렌)는 공개 관행 계수로 이 탭이 계산한 것이다(원장에 없음).</li><li>wj-stock 등 회원 전용 화면의 값·산식은 쓰지 않는다. 입력 fingerprint <code>56020a04c72438f6</code>.</li></ul></section><script src="data/kchem_data.js"></script><script>
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+</script><script>
+(function(){
+  var D=window.KCHEM; if(!D){return;}
+  function el(t,a){var e=document.createElementNS('http://www.w3.org/2000/svg',t);for(var k in a){e.setAttribute(k,a[k]);}return e;}
+  function fin(v){return typeof v==='number'&&isFinite(v);}
+  function fmt(v){if(!fin(v))return '—';var a=Math.abs(v);var s=a>=1000?Math.round(v).toLocaleString('en-US'):(a>=100?v.toFixed(0):v.toFixed(1));return s.replace('-','−');}
+  function series(sid){var s=D.series[sid];if(!s)return null;var ax=s.axis?D.axes[s.axis]:D.axes.wk;return {axis:ax,v:s.v,unit:s.unit,name:s.name};}
+  function extent(vs){var lo=Infinity,hi=-Infinity;vs.forEach(function(v){if(fin(v)){if(v<lo)lo=v;if(v>hi)hi=v;}});if(lo===Infinity){lo=0;hi=1;}if(hi===lo){hi=lo+1;}return [lo,hi];}
+  /* 스파크라인: <svg class="spk" data-sid> 를 채운다. 끝점 강조·0선 */
+  function spark(svg){
+    var s=series(svg.dataset.sid); if(!s){svg.remove();return;}
+    var W=120,H=28,p=2; svg.setAttribute('viewBox','0 0 '+W+' '+H); svg.setAttribute('preserveAspectRatio','none');
+    var vs=s.v, n=vs.length, ex=extent(vs), lo=ex[0], hi=ex[1];
+    var x=function(i){return p+(W-2*p)*i/Math.max(1,n-1);}, y=function(v){return H-p-(H-2*p)*(v-lo)/(hi-lo);};
+    if(lo<0&&hi>0){svg.appendChild(el('line',{x1:0,x2:W,y1:y(0),y2:y(0),'class':'zero'}));}
+    var d='',last=null,li=-1; for(var i=0;i<n;i++){if(!fin(vs[i]))continue;d+=(d?'L':'M')+x(i).toFixed(1)+' '+y(vs[i]).toFixed(1);last=vs[i];li=i;}
+    if(!d){return;} svg.appendChild(el('path',{d:d,'class':'ln'}));
+    if(li>=0){svg.appendChild(el('circle',{cx:x(li).toFixed(1),cy:y(last).toFixed(1),r:2,'class':'end'}));}
+  }
+  /* 다중 선 차트: container.dataset.sids = 'sid1,sid2,...' */
+  var COLORS=['#3987e5','#d95926','#199e70','#c98500','#d55181','#9085e9','#e66767','#008300'];
+  function chart(box){
+    var sids=(box.dataset.sids||'').split(',').filter(Boolean); box.textContent='';
+    var W=Math.max(320,box.clientWidth||640),H=240,L=56,R=12,T=14,B=28;
+    var svg=el('svg',{viewBox:'0 0 '+W+' '+H,'class':'kchart',role:'img'}); box.appendChild(svg);
+    var rows=[],allv=[],axis=null;
+    sids.forEach(function(sid,i){var s=series(sid);if(!s)return;axis=axis||s.axis;rows.push({sid:sid,s:s,c:COLORS[i%COLORS.length]});s.v.forEach(function(v){if(fin(v))allv.push(v);});});
+    if(!rows.length){box.textContent='데이터 없음';return;}
+    var ex=extent(allv),lo=ex[0],hi=ex[1],pad=(hi-lo)*0.06;lo-=pad;hi+=pad; var n=axis.length;
+    var x=function(i){return L+(W-L-R)*i/Math.max(1,n-1);}, y=function(v){return T+(H-T-B)*(1-(v-lo)/(hi-lo));};
+    var ticks=5; for(var t=0;t<=ticks;t++){var v=lo+(hi-lo)*t/ticks;svg.appendChild(el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),'class':'grid'}));var tx=el('text',{x:L-6,y:y(v)+3.5,'class':'tk','text-anchor':'end'});tx.textContent=fmt(v);svg.appendChild(tx);}
+    if(lo<0&&hi>0){svg.appendChild(el('line',{x1:L,x2:W-R,y1:y(0),y2:y(0),'class':'zero'}));}
+    var step=Math.max(1,Math.floor(n/6)); for(var i=0;i<n;i+=step){var tt=el('text',{x:x(i),y:H-8,'class':'tk','text-anchor':'middle'});tt.textContent=axis[i].slice(0,7);svg.appendChild(tt);}
+    rows.forEach(function(r){var d='';for(var i=0;i<n;i++){var v=r.s.v[i];if(!fin(v)){continue;}d+=(d?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1);}
+      if(d){svg.appendChild(el('path',{d:d,'class':'ln',stroke:r.c}));}});
+    var cursor=el('line',{x1:0,x2:0,y1:T,y2:H-B,'class':'cur'});cursor.setAttribute('visibility','hidden');svg.appendChild(cursor);
+    var lg=document.createElement('div');lg.className='legend';rows.forEach(function(r){var i=document.createElement('i');i.style.background=r.c;var sp=document.createElement('span');sp.appendChild(i);sp.appendChild(document.createTextNode(' '+r.s.name));lg.appendChild(sp);});box.appendChild(lg);
+    svg.addEventListener('mousemove',function(ev){var rect=svg.getBoundingClientRect();var px=(ev.clientX-rect.left)*W/rect.width;var i=Math.round((px-L)/(W-L-R)*(n-1));if(i<0||i>=n){return;}
+      cursor.setAttribute('x1',x(i));cursor.setAttribute('x2',x(i));cursor.setAttribute('visibility','visible');
+      var lines=[{label:axis[i],value:''}];rows.forEach(function(r){lines.push({label:r.s.name,value:fmt(r.s.v[i])+(r.s.unit?' '+r.s.unit:''),color:r.c});});
+      if(window.KSTIP){window.KSTIP.show(ev.clientX,ev.clientY,lines);}});
+    svg.addEventListener('mouseleave',function(){cursor.setAttribute('visibility','hidden');if(window.KSTIP){window.KSTIP.hide();}});
+  }
+  function boot(){document.querySelectorAll('svg.spk[data-sid]').forEach(spark);document.querySelectorAll('.kchart-box[data-sids]').forEach(chart);}
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',boot);}else{boot();}
+  window.KCHEMUI={chart:chart,spark:spark,series:series,fmt:fmt};
+})();
+</script></main>
+<footer>출처 ARGUS 원장(Weekly xlsm — Platts류 유료 스팟, 2026-08-24 주차 이후 미갱신)·페트로넷 일간·中 선물(quheqihuo) — 빌더 산출물(argus/data)을 읽기 전용으로 재조립. 단위 USD/MT. 계수는 전부 역산 추정. 참고용 · 투자조언 아님.</footer>
+</body></html>
