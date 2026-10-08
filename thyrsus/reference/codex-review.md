@@ -3454,3 +3454,1214 @@ sv 7인(좌석0 오라클 · **좌석1 노 다시의 최근접 주민 이웃** �
 `poison_duration` 은 후보에서 **대화상자가 아예 열리지 않아** 예외(`Missing DOM target:
 [data-td="c:perm"]`)가 나고, 나머지 셋(`grim_status`·`info_vortox`·`info_step_skip`)은
 **중독 툴팁 문자열 한 줄**만 갈린다.
+
+---
+
+## Codex 교차 검증 4차 — 라운드 50 빌드 전수 재검토 (2026-10-08, 맥스튜디오 발진 · 맥미니 실행)
+
+### 실행 정보
+
+- **요청**: `MACMINI-CODEX.md` 방법 A 프롬프트가 그대로 재전송됐다. 프롬프트가 가리키는 `claude/trouble-brewing-script-1sv6lg` 는 **2026-09-01 PR #6 으로 이미 머지된 옛 브랜치**(72종 · 5,201행 · 이모지 아이콘)다. 그 뒤 라운드 50(PR #75, 2026-10-08)까지 main 에서만 진행됐으므로 **검토 대상은 main `37d1cb7c` 의 `thyrsus/index.html`**(16,516행 · 1,499,666바이트 · md5 `ba41c1819f6f61e11a429e2ae1164b8d`)로 잡았다. Pages 배포본(`https://smu05118-art.github.io/phalanx/thyrsus/index.html`)과 md5 가 같다. 옛 브랜치는 `~/phalanx/thyrsus-tb-wt` 에 체크아웃만 해 두었고 검토하지 않았다.
+- **실행 호스트**: 맥스튜디오의 Codex 는 2026-10-06 부터 **API 키 모드**이고 과금 한도가 소진돼 어떤 모델도 `Quota exceeded` 로 즉시 종료된다(gpt-5.5 low 로 1토큰 프로브까지 실패). 맥미니 Codex 는 ChatGPT 인증(codex-cli 0.154.0, 주간 잔여 86%)이라 **격리 작업 공간을 맥미니 `~/codex-handoffs/thyrsus-xcheck-20261008/` 로 보내 거기서 실행**했다. 작업 공간 = `thyrsus/index.html` 사본 + `codex-review.md` + 리뷰 패킷 + `thyrsus_sim` 사본(`sim/`) + `work/`. `--sandbox workspace-write`(저장소·정본 사본 밖은 읽기 전용) · 네트워크 on(공식 위키 대조용) · `notify=[]`.
+- **1차 세션** `01a11af6-d5ee-7241-aedf-7b2c91aad95c` — `gpt-6-astra` · reasoning `ultra` · 19:02→19:14 · 203,134 토큰. 루트가 하위 검증자 셋(`rules_death` · `night_status` · `vote_safety`)에 위임했다. 영역 5 에서 **실행 재현 4건**을 확정해 `report.md` 에 즉시 적은 뒤, 영역 6(XSS) 재현 스크립트를 실행하는 순간 **OpenAI 콘텐츠 필터("flagged for possible cybersecurity risk")로 세션이 끊겼다.** 최종 메시지는 없고 확정분·하위 레인 원자료(`work/`)가 남았다. 지시서에 "확정될 때마다 바로 적어라" 를 넣어 둔 덕에 살아남았다.
+- **2차 세션** `01a11b09-e57b-7b40-9778-af90f0c5de99` — 같은 설정. 영역 1·2·3·4·7 (XSS 완전 제외, 영역 5 중복 금지). 결과는 아래 "2차 원문".
+- **격리 무결성**: 종료 후 `thyrsus/index.html` md5 불변, 보호 파일 38개 해시 불변(`work/protected-hashes-before.json` 대조), `sim/` 드리프트 0.
+- **기준선** (맥스튜디오, 맥미니 최신 하네스로 재실행): 규칙 **88/0** · 종료 **31/0** · 시나리오 220 실패 0 · 퍼저 400 위반 0(avgLog 25.8) · 커스텀 90 위반 0 · DOM 골든 PASS(픽스처 26 · 프레임 83 · 대조군 32/32) · 래퍼 48 불일치 0. Codex 도 같은 기준선을 독립 실행해 같은 값을 얻었다.
+- **부수 발견**: 맥스튜디오의 `~/phalanx/thyrsus_sim` 사본은 09-12 상태였다(규칙 80케이스 중 **1 실패** = 낡은 테스트가 라운드 47~50 변경을 모르는 것). 검증 팜 README 절차대로 맥미니 최신본을 rsync 해 맞췄다(31파일). Codex 작업 공간의 `sim/` 도 1차 도중(19:08) 같은 본으로 갱신했다.
+
+### 요약 — Claude 재검증 후 확정 (심각도순)
+
+레인 산출은 그대로 쓰지 않았다. 4건은 맥스튜디오에서 같은 재현 스크립트를 **독립 재실행**했고, 전부 공식 원문(`roles181.json`)과 위키 Summary/How to Run/Examples 를 직접 열어 대조했다. 1차 하위 레인이 돌려 놓고 보고서에 담지 못한 프로브(`night_status_*`·`vote_safety_*`·`root_xss_repro`)는 내가 해석해 5~9 로 확정했다. 세 렌즈(원문 해석 · 재현 진위와 UI 도달 가능성 · 이미 고쳐졌거나 기각됐는가)를 전부 통과한 것만 올린다.
+
+| # | 심각도 | 영역 | 결함 | 위치 (`thyrsus/index.html`) | 근거·재현 | 출처 |
+|---|---|---|---|---|---|---|
+| 1 | **Critical** | 5 | 팡 구가 **이미 죽은 외지인**을 지목하면 점프가 일어나 죽은 좌석이 새 팡 구(악)가 되고 원래 팡 구가 죽으며 "마지막 악마 사망 → 선 승리"를 제안한다 | `doFangGuAttack` 5196~5218 (`isOut` 분기에 생존 검사 없음) · 위저드 픽 씬 `filter:'any'` 8614("사망자 가능") | 위키 Fang Gu: "If the Fang Gu attacks an Outsider but that Outsider does not die, that Outsider does not become an evil Fang Gu and the Fang Gu does not die." 앱 자신의 주석도 "실제로 죽였을 때만". 실행 재현(Studio 재실행 동일) | Codex 1차 #1 |
+| 2 | **Critical** | 5 | 이발사(또는 마귀할멈) 교환으로 **선한 진영이 사악한 쌍둥이 캐릭터를 든 좌석**을 처형해도 악 승리가 나오지 않는다 — `thyExecPrompts` 가 `p!==et` 로 본인을 질문에서 빼고 `evalWinEvent` 가 `charId==='eviltwin'` 이면 무조건 `null` | `thyExecPrompts` 2104~2106 · `evalWinEvent` 10742~10746 | `roles181.json:1511` "If the good player is executed, evil wins." 위키 How to Run: "If a good-aligned Twin is executed, the evil team wins." Examples: "The Pit-Hag turns a good player into the Evil Twin, who remains good. The group executes the good-aligned Evil Twin. Evil wins." 실행 재현. 도달 조건: 진영 보존 교환(이발사·마귀할멈)이 선행 | Codex 1차 #2 |
+| 3 | **High** | 5 | 비고르모르티스가 죽인 **마녀의 저주가 사망 정리에서 지워지고**, 이후 죽은 마녀가 새로 건 저주도 `newNomination` 이 `p.alive` 마녀만 찾아 불발 | `reconcileDeath` 3028(무조건 `clearEffectsFromChar`) → `doStepKill` 5255~5258(그 뒤에야 `vigorAbility` 부여) · `newNomination` 5435(`abilityActor` 미사용) · 안내 13454·13540 도 같은 필터 | `roles181.json:1795` "Minions you kill keep their ability". 위키 Vigormortis Examples 첫 줄: "The Vigormortis kills the Witch. The player that the Witch cursed tonight remains cursed. The next day, when the cursed player nominates, they die." 실행 재현 | Codex 1차 #3 |
+| 4 | High (Claude: Medium 권고) | 5 | `doStepKill` 의 `if(!t.alive) return` 이 **죽은 척 좀버얼**(실제 생존)을 사망자로 취급해 암살자 관통이 표에 닿기도 전에 막힌다 | `doStepKill` 5229 | `roles181.json:1776` "The 1st time you die, you live but register as dead." · `:1385` 암살자 "they die, even if for some reason they could not." 위키 Zombuul: "The second time the Zombuul dies, they die for real and good wins." 실행 재현. 같은 파일의 래퍼(12750)는 **공격자** 쪽에서 `zombuul&&fakedead` 를 생존으로 인정하므로 내부 모순. Medium 권고 사유: 아군(암살자·대부)이 자기 악마를 죽이는 경로라 실전 도달성이 낮다 — 단 메모리의 미결 "암살자가 좀버얼 **첫** 사망을 관통하는가" 와는 다른 건(이건 **두 번째** 사망) | Codex 1차 #4 |
+| 5 | **High** | 3·5 | **구마사제가 푸카를 막은 밤에도 전날 희생자는 죽어야 하는데** 앱은 푸카 단계를 통째로 건너뛰어 지연 사망이 일어나지 않고, 새벽 요약이 "푸카 단계를 건너뛰면 사망도 함께 미뤄집니다"(13483)라고 **틀린 규칙을 명시**한다 | `stepSkipReason` 4471(구마사제 봉인) → `doPukkaPick` 4840 안의 지연 사망이 호출되지 않음 · 새벽 요약 13477~13483 | 위키 Pukka Examples: "The Pukka poisons the Sailor. The next night, the Exorcist chooses the Pukka to not wake tonight. **The Sailor dies**, but the Pukka does not wake to attack tonight." 위키 Exorcist: "Any other Demon abilities still function—such as … the Pukka killing a player they attacked on a previous night". 프로브 `night_status_repro.js#exorcist_pukka`: `victimAlive:true, statuses:[poison 푸카], pending:p2`(Studio 재실행 동일). 오작동(취함·중독)한 푸카면 안 죽는 것이 맞고(위키 Pukka 5번째 불릿) 앱도 그건 맞게 처리한다 — **봉인 ≠ 오작동** | Claude (1차 `night_status` 프로브 해석) |
+| 6 | **High** | 6 | 셋업 2단계 "시작 전 사회자 결정"의 위장 선택지 셋(주정뱅이 위장 · 미치광이가 믿을 악마 · 꼭두각시가 믿을 캐릭터)이 **커스텀 캐릭터 표시명 `c.ko` 를 `esc()` 없이** `<option>` 에 넣는다. 가져온 스크립트 JSON 의 `ko` 에 마크업이 들어 있으면 그대로 DOM 에 삽입된다(저장형 DOM 인젝션; 바로 옆 3637 의 캐릭터 선택은 `esc(c.id)`/`esc(c.ko)` 를 쓴다) | 3681 · 3684 · 3687 (`${c.ko}` · `${c.id}`) | `editionChars()`(1197행) 는 `c.custom` 을 포함, `importScript()` 는 `id` 만 안전 재발급하고 `ko` 는 400자 자르기뿐. 1차 루트의 `root_xss_repro.cjs`(jsdom): 미치광이·꼭두각시 마스크 모두 `injectedNode:true`(삽입된 노드가 DOM 에 존재; jsdom 은 인라인 핸들러를 실행하지 않아 `executedMarker:null`, 브라우저는 실행한다). 전제: 신뢰할 수 없는 스크립트 파일 가져오기. 2026-09-01 2차 #4/F 가 커스텀 `id` 경로를 막았지만 위장 선택지는 그 뒤 추가돼 빠졌다 | Claude (1차 루트 프로브 해석) |
+| 7 | Medium | 3 | **같은 key 의 상태가 이미 있으면 더 긴 효과가 조용히 사라진다.** `doCourtierDrunk` 는 `hasStatus(p,'drunkS')` 면 건너뛰어 선원·여관 주인·건달의 '다음 황혼까지' 취함 위에 궁정대신의 3밤+3낮이 얹히지 않는다 → 다음 황혼에 악마가 멀쩡해진다. `doPukkaPick` 도 `hasStatus(t,'poison')` 면 토큰을 안 놓아 독살범의 하루짜리 독 위에 푸카의 상시 독이 얹히지 않는다 → 밤 시작에 독살범 독이 빠지면 푸카 희생자가 **무독 상태로 밤 능력·사망 판정**을 받는다 | `doCourtierDrunk` 4950 · `doPukkaPick` 4849 | 위키 Courtier How to Run: "the player of the chosen character becomes drunk for three nights and three days". 위키 Pukka: "Players that the Pukka kills are still poisoned at their time of death." 프로브 `sailor_courtier_collision`: 적용 토큰 선원 1개뿐 → 밤 3 `demonCanAct:true`. `poisoner_pukka_collision`: 밤 3 시작 `beforeKill:[]`. 전제: 같은 밤 같은 대상에 두 출처 | Claude (1차 `night_status` 프로브 해석) |
+| 8 | Medium | 3 | **궁정대신이 중독·취함이 되면 그가 건 취함은 멈춰야**(건강해지면 남은 기간 재개) 하는데 토큰이 그대로 남아 악마가 계속 오작동으로 판정된다 | `drunkS` 토큰은 `source:'궁정대신'` 문자열만 있고 출처 오작동을 보지 않음(`isMalfunctioning`) | 위키 Courtier: "If the Courtier made a character drunk, but the Courtier becomes drunk or poisoned, the player they made drunk becomes sober again. If the Courtier becomes sober and healthy again before the three nights and three days have ended, that player becomes drunk yet again." 프로브 `courtier_source_poison`: 궁정대신 중독 후 `demonCanAct:false`. 출처 **사망**은 `clearEffectsFromChar` 가 처리하지만 출처 **오작동**은 아무도 안 본다 | Claude (1차 프로브 해석) |
+| 9 | Medium (아티팩트 런타임 한정) | 7 | **클라우드 저장본을 다시 열면 인앱 대화상자 버튼(확인·취소·선택지·Esc·Enter)이 전부 무반응.** `thyDialogEl()` 은 `#thydlg` 를 **새로 만들 때만** 리스너를 붙이는데, `cloudBuildDoc()` 이 기존 `#thydlg` 를 저장본에 그대로 직렬화해 복원 문서에서는 이미 있는 요소를 찾아 리스너 없이 쓴다. 복원을 묻는 "☁ 클라우드 저장본" 대화상자 자체도 확인할 수 없다 | `thyDialogEl` 1981~1986 · `cloudBuildDoc` 8151~8166(`#toast` 는 제거하면서 `#thydlg` 는 남김) | 프로브 `vote_safety_cloud.cjs`: 저장본에서 `[data-td="ok"]` 클릭 → `players:0, open:true`(무반응), 직접 `thyDialogAnswer('ok')` → `players:7`(작동); 취소 버튼도 무반응(Studio 재실행 동일). 2026-09-01 2차 #13 이 `#winask/#gameover` 를 정리했지만 `#thydlg` 는 09-09 네이티브 대화상자 전환 때 생겨 정리 목록에 안 들어갔다. `cloudNS=await claude.use('artifact')` 라 Pages 배포본에서는 도달 불가 | Claude (1차 `vote_safety` 프로브 해석) |
+
+### 검토했지만 결함 없음 (Claude 확인분)
+
+- **영역 2 밤 순서**: 1차 `night_status_order.js` 가 `EDITIONS.{tb,bmr,sv}.{first,other}` 를 `nightsheet.json` 과 대조 — 셋 다 `matches:true`, 비공식 항목 0. (주정뱅이 위장 단계 프로브는 bmr 판에 tb 점쟁이를 섞은 교차 에디션 설정이라 순서 차이가 실제 결함인지 확정하지 않았다 — 2차 원문 참조.)
+- **영역 4 투표 경계**: 거수 0 → `handsFail` · 전원 기권 → `yesFail` · 사망 투표 토큰은 찬성/반대에서 소진되고 기권으로 바꾸면 복원 · 지명 취소 시 복원 · 밴시 사망 후 지명 버튼 없음. 밴시 '지명당 2표·하루 2회 지명·토큰 불필요'(위키 Banshee Summary)는 **BACKLOG A70 미반영** 그대로다 — 새 결함이 아니라 기존 큐.
+- **영역 7 구버전 저장본**: 필드 누락 저장본을 부팅하면 `deadVote:true · statuses:[] · notes:'' · alignment:null · diedAt:null · schema:2` 로 보충되고, `resetGameState('keep')` 은 customs·myScripts·roster·history·theme·recentScripts 를 남기고 players·noms·events·handoffDraft 를 비운다.
+- **영역 5 대조군**: 악마의 변호사로 살아남은 선한 쌍둥이 처형 → 악 승리 제안 정상(`CONTROL_PROTECTED_GOOD_TWIN`). 좀버얼 첫 처형 → `fakedead` 만 부여, 선 승리 선언 없음.
+
+### 1차 기각 후보 (Codex 자기 반박)
+
+- "보호로 살아남은 선한 쌍둥이의 처형이 악 승리를 내지 않는다" — 실행 결과 악 승리가 제안돼 기각. 옛 주석만으로 결함을 만들 수 없다.
+- A05·A07·A09·A10·A13 — 라운드 18 기각 사유를 읽고 재제안하지 않음.
+
+### 확신 없음 / 해석 메모
+
+- 1차 `rules_death` 레인: `DEATH_TRIGGER_STEPS.sage:'night'` 가 암살자에게 죽은 현자도 밤 목록에 올릴 수 있는데 현자 위저드 첫 문장은 '악마에게 죽었을 때만' — 자동 목록과 안내의 불일치 후보(미확정). `protect-token` 수정자가 보호 토큰을 `find` 로 하나만 보는 순서 의존 후보(미확정).
+- 1차 해석 메모: 패킷은 '찬성률 최고자 처형'이라 썼지만 라운드 21 은 '찬성 **표수**' 로 확정했다 — 패킷이 낡은 것이지 결함이 아니다.
+- 상태 수명주기 7·8 은 공식 원문이 명확하지만 **두 출처가 겹치는 상황**이 전제라, 수정 시 `thyDrunkPolicy`/`thyPoisonPolicy`(라운드 50) 의 출처별 정책 모델에 '더 긴 만료가 이긴다' 또는 '출처별 토큰 공존'을 어느 쪽으로 넣을지 설계 결정이 먼저다.
+
+### 실행 명령 (재현)
+
+```sh
+# 맥미니 작업 공간(격리 사본): ~/codex-handoffs/thyrsus-xcheck-20261008
+# 맥스튜디오 사본(산출물·스크립트만): ~/phalanx/thyrsus_sim/lanes/xcheck-20261008  — sim 은 ~/phalanx/thyrsus_sim(라운드 50 하네스로 갱신됨)
+cd <작업공간>/work && node rules_death_repro.js          # 1~4 (FANG_GU_DEAD_OUTSIDER · VIGORMORTIS_ERASES_CURSE · GOOD_EVIL_TWIN_EXECUTION · ASSASSIN_CANNOT_KILL_FAKEDEAD)
+cd <작업공간> && node work/night_status_repro.js         # 5·7·8 (exorcist_pukka · sailor_courtier_collision · poisoner_pukka_collision · courtier_source_poison)
+cd <작업공간> && node work/vote_safety_cloud.cjs         # 9 (D·G 무반응, E 직접 콜백 작동)
+cd <작업공간> && node work/vote_safety_vote.cjs          # 영역 4 경계 · 밴시
+cd <작업공간> && node work/vote_safety_persistence.cjs   # 영역 7 구버전 부팅
+```
+
+### 2차 세션 22건 — Claude 재검증 판정
+
+2차 보고(`report2.md`, 아래 원문)의 22건을 같은 세 렌즈로 봤다. 재현 스크립트 11개(`work2/*.cjs`)는 **전부 맥스튜디오에서 재실행해 맥미니와 같은 결과**를 얻었다(시드 7 고정분은 `updatedAt` 타임스탬프만 다름). 설명문 지적은 인용된 행이 현재 빌드에 실제로 있는지 확인하고, 공식 위키 Summary/How to Run/Examples 를 직접 열어 대조했다. 위 요약표와 겹치는 5건은 중복 집계하지 않는다.
+
+| 2차 # | Codex 심각도 | 판정 | 근거 요약 |
+|---|---|---|---|
+| 1 사이코패스 설명문 | High | ✔ 확정 | 위키 How to Run: "If the Psychopath draws or wins, they live" · 상대는 **지명자**(자기 지명일 때만 사회자). 앱 `warn`(766) "비기면 다시 한다", `howto`(7508) "사회자와 가위바위보" 둘 다 틀림. 라운드 18 A07 기각은 **엔진에 무승부 경로가 없다**는 것이었고 이건 설명문 — 재제안 아님. 덧붙여 `thyExecPrompts` 의 질문 "가위바위보에서 이겼습니까?" 도 비김을 담지 못한다(A07 의 뿌리) |
+| 2 시장 설명문 | High | ✔ 확정 (A58 잔존) | 능력문·엔진은 라운드 47(PR #71)에서 좌석 진영으로 고쳤는데 `warn`(645)·`howto`(7153) 가 "즉시 선 승리" 로 남음. 위키: "In other editions, an evil Mayor means 'evil wins' instead." |
+| 3 성자 설명문 | High | ✔ 확정 | `howto`(7173) "처형이 확정되는 순간 즉시 게임 종료" — 위키 Examples: 희생양이 대신 죽으면 "The game continues, because the Saint did not die." 엔진은 `!p.alive` 게이트가 있어 맞고 설명문만 틀림 |
+| 4 리치 예시 | High | ✔ 확정 | 예시(7511)가 숙주 사망 뒤 하루를 더 진행 — 위키: "If the player that the Lleech chose dies, the Lleech dies as well." 같은 모달의 능력문과 내부 모순 |
+| 5 열기구 조종사 예시 | High | ✔ 확정 | "유형이 매일 달라야 하므로 그중 하나는 반드시 악마" · "외지인이 전부 죽어 유형 하나가 사라졌다"(7566) — 공식은 **직전 밤과만** 다르면 되고 "The shown player can be alive or dead." |
+| 6 토르 설명문 | High | ✔ 확정 | `guideFirst`(885) "밤 능력 절차는 사회자가 대행", `warn`(887) "악마의 살해 지목도 사회자 대행 재량" — 위키 Tor: "Character abilities work as normal. Players are woken and prompted to use their ability if needed." 같은 캐릭터의 `howto`(7554)는 맞게 적혀 있어 내부 모순 |
+| 7 좀버얼 설명문 | High | ✔ 확정 | `howto`(7309) "낮 처형·밤 사망을 합쳐 하루 사망 유무" — 위키 How to Run 은 **낮** 사망만 DIED TODAY 로 표시("Each day, if a player dies") |
+| 8 릴 몬스타 첫밤 정보 단계 | High | ✔ 확정 (A61 계열 잔존) | 위키 How to Run: "On the first night, skip the MINION INFO and DEMON INFO steps." 라운드 49 가 `INFO_SKIP_IDS=['tor','poppygrower']` 만 넣음. 릴 몬스타는 좌석이 아니라 **판 단위 상태**가 필요하다는 2차의 지적이 맞다 |
+| 9 상태 중복 가드 | High | = 요약표 7 | 동일 건. 2차는 궁정대신 단독 대조군(밤 3 에도 만료 밤 5 토큰 유지)과 독살범 없는 푸카 대조군(`foolAlive:false`)까지 돌려 더 단단하다 |
+| 10 궁정대신 출처 오작동 | High | = 요약표 8 | 동일 건. 2차는 샤발로스 위저드로 실제 공격까지 태워 피해자 생존을 확인 |
+| 11 궁정대신 동명 전원 취함 | High | ✔ 확정 | `doCourtierDrunk`(4945~4950) 가 `playersByChar` 전원에 부여 — 위키 How to Run: "In other editions, there can be multiple copies of the same character in play. The Courtier only makes one of them drunk." 마을 바보 복수 좌석은 공식 셋업 |
+| 12 구마된 푸카 | High | = 요약표 5 | 동일 건. 2차도 "기존 채택 잔존(3차 #5)" 으로 분류 |
+| 13 밴시 | High | ✔ 기존 큐 A70 재확인 | 지명 차단·토큰 소진·1표까지 범위 확인. 새 건 아님 — A70 반영 때 세 축을 함께 |
+| 14 군인·수도사 vs 푸카 신규 중독 | High | ⚠ **A13 기각 번복 후보** | 라운드 18 은 "'safe from the Demon' 을 모든 효과 면역으로 읽은 것이 틀렸다 — 중독을 거는 악마가 넷" 으로 기각했다. 그런데 위키 Soldier·Monk How to Run 에 **"In other editions … also protected from all other harmful effects of the Demon's ability, such as poisoning or turning … evil"** 이 명문으로 있다(내가 직접 열어 확인). 중독 악마가 존재한다는 사실은 이 문장을 반박하지 못한다. `doPukkaPick`(4849~4850) 은 보호를 보지 않고 독을 놓는다. **사용자 결정 사항** — 번복하면 푸카 외 중독·전향 악마(노 다시 상시 중독·리치 첫밤 중독·카잘리/팡 구 전향 등) 전수 재검토가 따라온다 |
+| 15 꼭두각시 설명문 | Medium | ✔ 확정 (A39 잔존) | `howto`(7494) "정보는 전부 거짓으로 준다" — 위키: "may get false information", 주정뱅이와 같은 재량 |
+| 16 사냥꾼 설명문 | Medium | ✔ 확정 | `howto`(7531) "사냥꾼이 있으면 아가씨도 들어가며 그만큼 주민을 하나 줄인다" — 위키: "If a Damsel is already in play, the Huntsman doesn't add a second Damsel." |
+| 17 마을 바보 설명문 | Medium | ✔ 확정 (내부 모순) | `remind`(6987)·`howto`(7492) "게임 내내 바뀌지 않는다" vs 앱 자신의 징크스 DB(8802) "마귀할멈이 마을 바보를 하나 더 만들면 취한 마을 바보가 바뀔 수 있다"(공식 jinxes.json 과 일치) |
+| 18 저글러 밤 안내 | Medium | ✔ 확정 (A35 잔존) | `NIGHT_FLOW.juggler` note(8666) 가 "게임 둘째 밤" 으로 제한 — A35(PR #55)는 능력문을 "그 플레이어가 저글러로 맞은 첫 낮" 으로 고쳤고 위키 예시는 4일째 밤 전환 사례 |
+| 19 곡예사 예시 순번 | Medium | △ 확정(경미) | `howto`(7460) "곡예사보다 뒤 순번인 독살범", 예시 "뒤 순번의 궁정대신" — 공식 밤 순서는 poisoner → courtier → … → acrobat 이라 **앞** 순번. 위키 예시는 뒤 순번인 푸카를 쓴다. 규칙 원리(그 밤에 취하면 죽는다)는 맞고 순번 서술만 틀려 Low~Medium |
+| 20 클라우드 대화상자 | Medium | = 요약표 9 | 동일 건. 2차는 `dialogCount:1` 로 중복 DOM 이 아님을 확인 |
+| 21 클라우드 복원 제안 누락 | Medium | ✔ 확정 (아티팩트 한정) | `cloudBuildDoc` 이 `#cloudstate` 를 body **끝**에 붙이는데 `cloudTryRestore()` 는 8211 행 인라인 스크립트에서 파싱 중 1회만 호출 → 저장본을 열면 노드가 아직 없어 복원을 묻지 않는다. 프로브 B `players:0, open:false`, 지연 호출 C 에서만 창이 뜸 |
+| 22 클라우드 위저드 셸 삭제 | Medium | ✔ 확정 (아티팩트 한정) | 8157~8158 이 `#wizard.innerHTML=''` 로 정적 자식 `#wizhead/#wizbody/#wizfoot`(525~528) 까지 지움 → 저장본에서 `startWiz` 시 `renderWiz`(7787) 가 `null.innerHTML` 로 예외. 20·21·22 를 합치면 **클라우드 이어하기는 현재 저장본에서 통째로 안 된다** |
+
+**합계**: 1차 4건 + Claude 해석 5건 + 2차 신규 17건(1~8·11·14~19·21·22) = **고유 확정 26건**(그중 A70 재확인 1건, A13 번복 후보 1건 포함). 2차가 대조한 캐릭터는 31종(`work2/prose-agent-coverage.md` 에 id 목록) — **181종 전수가 아니다.** 2차가 "확신 없음" 으로 남긴 설명문 후보 8종(은자·카잘리·티폰의 군주·데우스 엑스 피아스코·과부·소환사·자안·릴 몬스타 보모 자격)은 세 렌즈를 못 거쳐 확정하지 않았다.
+
+### 이 라운드가 다시 보여준 것
+
+- **설명문이 엔진보다 늦다.** 라운드 47(시장·성자 진영)·36(A39 재량)·34(A35 첫 낮)·49(A61 정보 생략)가 고친 원리가 `warn`/`howto`/`NIGHT_FLOW` note/예시에 그대로 남아 있었다(2차 #2·#3·#15·#18·#8). 원리를 고칠 때 **같은 캐릭터의 모든 문장**(ability·warn·howto·examples·night note·징크스)을 함께 훑는 체크리스트가 없다.
+- **상태 토큰의 '중복 금지'가 규칙을 삼킨다.** 2026-09-01 의 "중독 중복" 수리가 key 단위 가드로 들어가면서 출처·기간이 다른 효과가 공존할 수 없게 됐다(요약표 7·8, 2차 #9~#11). 라운드 50 의 `thyPoisonPolicy` 가 출처별 정책을 열었으니 이제 **토큰의 신원을 (key, 출처)** 로 바꿀 때다.
+- **격리 복사본에 검증기를 통째로 넣으면 Codex 가 재현을 돌린다.** 1·2차 모두 하네스를 실제로 실행해 "코드 경로 기준" 지적이 하나도 없었다. 반대로 Codex 가 XSS 재현 스크립트를 실행하는 순간 OpenAI 필터가 세션을 끊는다 — **영역 6 은 Codex 에 맡기지 말고 지시서에서 빼라.**
+- **맥스튜디오의 Codex 는 지금 API 키(과금 소진)** 다. 티르소스 Codex 는 맥미니(ChatGPT 인증)에서 돌린다. 검증 팜 `thyrsus_sim` 사본도 09-12 에 멈춰 있었다 — 라운드마다 rsync 를 잊지 말 것.
+
+### Codex 2차 원문 — `report2.md` (verbatim)
+
+#### Thyrsus 독립 교차 검증 보고서 — 2차
+
+##### 1. 실행 정보
+
+**확정 기록 22건: High 14건, Medium 8건.** 영역 1 설명문 12건, 영역 2 단계 구성 1건, 영역 3 상태 수명주기 4건, 영역 4 투표 1건, 영역 5 신규 판정 1건, 영역 7 지속성 3건이다. 기존 채택 사항의 잔존·기존 미해결 재확인을 포함하므로 모두 최초 발견이라는 뜻은 아니다. 1차 영역 5 확정 4건은 재계상하지 않았다. 요약 JSON은 [work2/findings.json](/Users/kioxia/codex-handoffs/thyrsus-xcheck-20261008/work2/findings.json)에 저장했다.
+
+- 검토일: 2026-10-08. 모델: GPT-6 계열 Codex, 독립 하위 검증자 3명과 통합 검토. 더 세부적인 모델 식별자는 확인하지 않았다.
+- 대상: `thyrsus/index.html`, 16,516행·1,499,666바이트·캐릭터 181종. 시작·종료 MD5 실측은 `ba41c1819f6f61e11a429e2ae1164b8d`. 커밋 `37d1cb7c`·Pages 일치는 요청자 제공 정보이며 원격 배포는 재검증하지 않았다.
+- `report.md`, 지정된 `work/` 원자료, 설계 기록의 기각 사유와 라운드 47~50, `sim/BACKLOG.md` C, 원래 리뷰 패킷을 읽고 이어서 검증했다. 새 하네스는 `sim/REFRESHED_20261008.txt`의 라운드 50본이다. 기존 기준선 로그의 규칙 88/0·종료 31/0·시나리오/퍼저/커스텀 실패 0을 확인했으며 재실행하지 않았다.
+- 네트워크: 공식 `wiki.bloodontheclocktower.com`의 Summary·How to Run·Examples와 필요한 징크스를 직접 조회했다. 로컬 공식 자료는 `roles181.json`, `nightsheet.json`, `jinxes.json`이다. 코드 주석만으로 규칙을 확정하지 않았다.
+- 진단만 수행했다. 대상 HTML·`sim/`·`report.md`·`work/`는 수정하지 않았다. 보호 대상 209개 파일의 전후 SHA-256 비교 결과 변경 0건이다(`work2/protected-before.json`, `work2/protected-after.json`). 영역 6은 완전히 제외했다.
+- tracker preflight/status는 `tracker.sqlite3: Operation not permitted`로 실패했다. 활성 작업·인계를 확인하지 못했으므로 정본 인계나 중앙 큐 제출 없이 이번 작업의 `work2/`·`report2.md`만 작성했다. `work2/ownership.json`은 산출물 담당 구분이며 중앙 task_claim 락이 아니다.
+
+주요 실행 명령은 다음과 같다. 출력은 같은 이름의 `.out.json` 또는 `.log`에 보존했다. 상태·순서 원본 프로브의 재실행 출력은 1차 출력과 바이트 단위로 일치했다.
+
+```sh
+node work2/prose-agent-repro.cjs
+node work2/prose-agent-clicks.cjs
+node work2/prose-root-repro.cjs
+THY_SIM_SEED=7 node work2/state_repro.cjs
+THY_SIM_SEED=7 node work2/state_extended.cjs
+THY_SIM_SEED=7 node work2/order_repro.cjs
+THY_SIM_SEED=7 node work2/order_extended.cjs
+THY_SIM_SEED=7 node work2/state_lilmonsta.cjs
+THY_SIM_SEED=7 node work2/prose-root-immunity.cjs
+node work2/vote_safety_vote.cjs
+node work2/persistence_legacy.cjs
+node work2/cloud_reopen.cjs
+node work2/cloud_controls.cjs
+```
+
+설명문의 `executed`는 실제 jsdom 모달·위저드에 문구가 표시됐다는 뜻이다. 사람에게 잘못 안내한 게임 결과까지 자동 재현했다는 뜻은 아니다. VM 효과 재현은 유효한 선택 변수를 넣고 실제 `wizEffect` 경로를 실행했다. 네이티브 대화상자는 금지하고 인앱 대화상자 또는 하네스의 동기 응답 훅을 사용했다. 제안 코드는 전부 **미적용**이며, 새 함수명이 있는 것은 설계 스케치다. 적용 시 판정표·순수 `when()`·`implemented:false` 계약을 유지해야 한다.
+
+##### 2. 요약 표
+
+| # | 심각도 | 영역 | 결함 한 줄 | 위치 | 재현 방식 |
+|---|---|---|---|---|---|
+| 1 | High | 1 | 사이코패스(psychopath): 무승부 재경기와 잘못된 상대를 지시 | `thyrsus/index.html:766` · `CHARACTERS.psychopath / WIKI_EXTRA.psychopath` | DOM 문구 표시 |
+| 2 | High | 1 | 시장(mayor): 수정된 능력문 아래에서 여전히 선 승리로 고정 안내 | `thyrsus/index.html:645` · `CHARACTERS.mayor.warn / WIKI_EXTRA.mayor.howto` | DOM 문구 표시 |
+| 3 | High | 1 | 성자(saint): 사망 여부를 빼고 처형 확정 즉시 종료를 지시 | `thyrsus/index.html:7173` · `WIKI_EXTRA.saint.howto` | DOM 문구 표시 |
+| 4 | High | 1 | 리치(lleech): 숙주가 죽은 뒤에도 리치를 다음 날 다시 죽여야 한다는 예시 | `thyrsus/index.html:7511` · `WIKI_EXTRA.lleech.examples` | DOM 문구 표시 |
+| 5 | High | 1 | 열기구 조종사(balloonist): 과거 4유형 일회씩 규칙처럼 예시를 가르침 | `thyrsus/index.html:7566` · `WIKI_EXTRA.balloonist` | DOM 문구 표시 |
+| 6 | High | 1 | 토르(tor): 플레이어의 밤 선택을 사회자가 대신 결정하도록 허용 | `thyrsus/index.html:885` · `CHARACTERS.tor` | DOM 문구 표시 |
+| 7 | High | 1 | 좀버얼의 밤 행동 조건에 밤 사망까지 합산하라는 오안내 | `thyrsus/index.html:7309` · `WIKI_EXTRA.zombuul` | DOM 문구 표시 |
+| 8 | High | 2 | 릴 몬스타(lilmonsta) 판에 생략해야 할 첫밤 정보·블러프 단계가 남음 | `thyrsus/index.html:7721` · `infoStepRuns / INFO_SKIP_IDS` | VM UI 함수 실행 |
+| 9 | High | 3 | 같은 상태 토큰이 있으면 궁정대신·푸카의 별도 지속효과가 버려짐 | `thyrsus/index.html:4950` · `doCourtierDrunk / doPukkaPick` | VM 효과 실행 |
+| 10 | High | 3 | 궁정대신이 중독돼도 그가 준 취함 효과가 멈추지 않음 | `thyrsus/index.html:2358` · `isMalfunctioning / doCourtierDrunk` | VM 효과 실행 |
+| 11 | High | 3 | 궁정대신이 복수 동명 캐릭터를 모두 취하게 함 | `thyrsus/index.html:4945` · `doCourtierDrunk` | VM 효과 실행 |
+| 12 | High | 3 | 구마된 푸카의 전일 피해 사망·독 해제 누락(기존 채택 잔존) | `thyrsus/index.html:4481` · `stepSkipReason / doPukkaPick` | VM 효과 실행 |
+| 13 | High | 4 | 발동한 밴시(banshee)의 지명·2표·사망토큰 면제가 없어 처형 결과와 자격이 틀림 | `thyrsus/index.html:5351` · `renderDay/newNomination/handEligible/castVote/VOTE_MODIFIERS` | DOM 실행 |
+| 14 | High | 5 | 군인·수도사 보호가 푸카의 신규 중독을 막지 못함 | `thyrsus/index.html:4849` · `doPukkaPick / soldier / monk` | VM 효과 실행 |
+| 15 | Medium | 1 | 꼭두각시(marionette): 임의 정보를 반드시 거짓으로 제한 | `thyrsus/index.html:7494` · `WIKI_EXTRA.marionette.howto` | DOM 문구 표시 |
+| 16 | Medium | 1 | 사냥꾼(huntsman): 아가씨가 이미 있어도 주민을 하나 더 줄이는 셋업 지시 | `thyrsus/index.html:7531` · `WIKI_EXTRA.huntsman.howto` | DOM 문구 표시 |
+| 17 | Medium | 1 | 마을 바보(villageidiot): 취함 대상을 게임 내내 고정해 공식 징크스를 부정 | `thyrsus/index.html:6987` · `WIKI_EXTRA.villageidiot` | DOM 문구 표시 |
+| 18 | Medium | 1 | 저글러 밤 안내가 중도 획득을 무시하고 게임 둘째 밤으로 제한 | `thyrsus/index.html:8666` · `NIGHT_FLOW.juggler / WIKI_EXTRA.juggler` | DOM 문구 표시 |
+| 19 | Medium | 1 | 곡예사 예시가 독살범·궁정대신을 실제보다 뒤 순번으로 설명 | `thyrsus/index.html:7460` · `WIKI_EXTRA.acrobat` | DOM 문구 표시 |
+| 20 | Medium | 7 | 클라우드 저장본의 기존 대화상자 노드에 이벤트가 연결되지 않아 확인·취소 무반응 | `thyrsus/index.html:1981` · `thyDialogEl/cloudBuildDoc` | DOM 실행 |
+| 21 | Medium | 7 | 클라우드 상태 파싱 전 즉시 복원 검사를 끝내 저장본 이어하기 제안이 누락 | `thyrsus/index.html:8165` · `cloudBuildDoc/cloudTryRestore` | DOM 실행 |
+| 22 | Medium | 7 | 클라우드 직렬화가 위저드 정적 자식 셸을 삭제해 밤 진행 버튼에서 예외 | `thyrsus/index.html:525` · `cloudBuildDoc/renderWiz` | DOM 실행 |
+
+##### 3. 항목별 상세
+
+###### #1 High — 사이코패스(psychopath): 무승부 재경기와 잘못된 상대를 지시
+
+**(1) 요약.** 비기면 살아남아야 하는 가위바위보를 재경기시키고, 일반 지명에서도 사회자를 상대하게 한다.
+
+**(2) 위치·핵심 코드.** `thyrsus/index.html:766`의 `warn`: “비기면 다시 한다.” `:7508`의 `howto`: “처형이 확정되면 사회자와 가위바위보를 한다. … 비기면 다시 낸다.” 능력문의 “져야만 죽는다”와도 모순이다.
+
+**(3) 재현.** `node work2/prose-root-repro.cjs`. 백과의 실제 `[data-wikichar="psychopath"]` 버튼을 클릭했다. 보이는 모달에 두 문장이 모두 실렸고 오류는 0이다. 물리적인 가위바위보를 앱이 자동 실행한다는 주장은 아니다.
+
+**(4) 기대·공식.** “If the Psychopath draws or wins, they live.” 일반 처형은 지명자와 대결하고 자기 지명일 때만 사회자와 대결한다. [Psychopath, How to Run](https://wiki.bloodontheclocktower.com/Psychopath)
+
+**(5) 제안 패치 — 미적용.** 두 산문을 같은 지침으로 교체한다.
+
+```js
+'처형 시 지명자와 가위바위보를 한다(자기 지명이면 사회자). 지면 죽고, 비기거나 이기면 살아남는다. 결과와 무관하게 그날 낮은 끝난다.'
+```
+
+**(6) 자기 반박·비고.** 라운드 18 A07의 기각 근거는 “비김 상태·입력 경로가 없음”이었다. 이번은 엔진 입력 결함이 아니라 실제 백과 버튼으로 노출되는 운영 지시다. 현재 두 문장과 공식 원문으로 그 기각 근거의 적용 범위를 반박한다.
+
+###### #2 High — 시장(mayor): 수정된 능력문 아래에서 여전히 선 승리로 고정 안내
+
+**(1) 요약.** 악한 시장도 가능한 공용 백과에서 승리 팀을 선으로 고정한다.
+
+**(2) 위치·핵심 코드.** `:643` 능력문은 “그 좌석이 속한 팀이 승리한다”인데 `:645`는 “즉시 선한 팀 승리”, `:7153`은 “즉시 선 승리 선언”이다.
+
+**(3) 재현.** `node work2/prose-root-repro.cjs`의 `mayor`. 백과 버튼으로 같은 모달 안의 상반된 문장을 실행 확인했다. 능력 엔진 자체의 승리 팀 오류로 재보고하지 않는다.
+
+**(4) 기대·공식.** “In other editions, an evil Mayor means “evil wins” instead.” 현재 시장의 팀이 승리해야 한다. [Mayor, How to Run](https://wiki.bloodontheclocktower.com/Mayor)
+
+**(5) 제안 패치 — 미적용.**
+
+```js
+'시장 능력이 작동하고 생존자가 정확히 3명이며 처형 없이 낮이 끝나면, 시장이 현재 속한 팀이 승리한다.'
+```
+
+**(6) 자기 반박·비고.** TB 안에서는 시장이 선하므로 맞지만 이 모달은 모든 대본에서 재사용된다. 라운드 47은 진영 중립화를 채택했으며 능력문·엔진을 고쳤다. 이번은 그 결정과 달리 남은 `warn/howto` 두 문장이다.
+
+###### #3 High — 성자(saint): 사망 여부를 빼고 처형 확정 즉시 종료를 지시
+
+**(1) 요약.** 보호로 살아남은 정상 성자까지 게임을 끝내라고 읽히는 지침이다.
+
+**(2) 위치·핵심 코드.** `:7173`: “정상 성자의 처형이 확정되는 순간 즉시 게임 종료 선언”. `:673` 능력문의 “처형으로 죽으면”과 다르다.
+
+**(3) 재현.** `node work2/prose-root-repro.cjs`의 `saint`. 백과 버튼으로 해당 문구와 사망 조건을 갖춘 능력문이 함께 렌더되는 것을 확인했다. 자동 승리 엔진이 잘못 종료했다는 재현은 아니다.
+
+**(4) 기대·공식.** “The game continues, because the Saint did not die.” 공식 예시는 희생양(scapegoat)이 대신 죽은 처형에서도 성자가 죽지 않았으므로 계속 진행한다. [Saint, Examples](https://wiki.bloodontheclocktower.com/Saint)
+
+**(5) 제안 패치 — 미적용.**
+
+```js
+'정상 성자가 처형으로 실제 사망했을 때 그 좌석의 팀이 패배한다. 처형만 확정되고 살아남았다면 이 조건으로 종료하지 않는다.'
+```
+
+**(6) 자기 반박·비고.** “정상”은 중독·취함 부재이지 외부 보호 부재가 아니다. 같은 파일의 악마의 변호사(devilsadvocate)는 처형 성립과 사망을 분리한다. 라운드 47의 진영 수정과 1차 사악한 쌍둥이(eviltwin) 결함 모두와 다른 설명문 잔존이다.
+
+###### #4 High — 리치(lleech): 숙주가 죽은 뒤에도 리치를 다음 날 다시 죽여야 한다는 예시
+
+1. **요약:** 숙주 사망으로 즉시 리치도 죽는데, 예시는 숙주 처형 뒤 하루를 더 진행하고 처단자(slayer)의 추가 살해로 게임을 끝낸다. 승리 시점을 잘못 가르친다.
+2. **위치·핵심:** `thyrsus/index.html:7511`, `WIKI_EXTRA.lleech.examples`: `숙주가 죽은 그 순간부터 리치는 죽을 수 있는 상태가 됐지만 ... 다음 날 처단자가 ... 게임이 끝났다.` 같은 모달의 능력문·warn은 숙주가 죽으면 리치도 죽는다고 하므로 내부 모순이다.
+3. **재현:** `node work2/prose-agent-repro.cjs`의 DOM 결과 `id=lleech`에서 해당 예시가 표시된다. 실제 수동 재현 조건은 정상 리치와 살아 있는 숙주가 있고, 주모자(mastermind) 등 예외 없이 숙주가 처형 사망한 경우다.
+4. **기대·공식:** 숙주와 리치가 함께 죽는다. 공식: “If the player that the Lleech chose dies, the Lleech dies as well.” [Lleech — Summary](https://wiki.bloodontheclocktower.com/Lleech). `sim/official/roles181.json:1871`도 `You die if & only if they are dead.`다.
+5. **제안 패치:**
+   ```js
+   // WIKI_EXTRA.lleech.examples 교체
+   '숙주인 초공감자가 처형되어 죽자 정상 작동 중인 리치도 함께 죽었고, 다른 승리 방해 조건이 없어 선한 팀이 승리했다.'
+   ```
+6. **자기 반박:** 술취한 리치·주모자 징크스라면 숙주와 즉사 연동이 달라질 수 있으나 예시에는 그런 조건이 없다. 정보 모달에서 실행 노출 확인. 라운드 50은 토큰 지속 선택지를 고쳤고 이 예시는 남아 있다. 1차 사망 엔진 4건과 중복되지 않는 설명문 결함이다.
+
+###### #5 High — 열기구 조종사(balloonist): 과거 4유형 일회씩 규칙처럼 예시를 가르침
+
+1. **요약:** 연속 네 밤에 얻은 네 명에 악마가 반드시 포함된다고 단정하고, 외지인이 죽으면 그 유형을 더 보여줄 수 없는 것처럼 설명한다. 현 능력문은 직전 밤과만 유형이 다르면 된다.
+2. **위치·핵심:** `thyrsus/index.html:7566`, `WIKI_EXTRA.balloonist`: `네 유형이 다 있어야 정보가 오래 이어지므로` / `유형이 매일 달라야 하므로 그중 하나는 반드시 악마였다` / `외지인이 전부 죽어 유형 하나가 사라졌다`. `:6976~6978`의 ability·guide는 직전 밤 기준으로 정확하다.
+3. **재현:** `node work2/prose-agent-repro.cjs`의 DOM 결과 `id=balloonist`가 세 문장을 모두 실제 모달에 표시한다. 반례: 주민 A → 외지인 B → 주민 C → 외지인 D는 인접한 밤마다 유형이 다르지만 악마가 하나도 없다. B가 죽어도 이후 표시 대상에서 사라지지 않는다.
+4. **기대·공식:** 공식 능력의 조건은 `than last night`(`sim/official/roles181.json:211`)뿐이다. 공식 Summary: “The shown player can be alive or dead.” [Balloonist](https://wiki.bloodontheclocktower.com/Balloonist). 같은 Summary는 매번 직전에 보인 사람과 유형이 달라야 한다고 한정한다.
+5. **제안 패치:**
+   ```js
+   // howto[0] 후반 및 examples 교체
+   '직전 밤과 유형만 다르면 되므로, 같은 유형을 여러 밤에 다시 보여줄 수 있다.'
+   '주민 A, 외지인 B, 주민 C, 외지인 D를 차례로 보여주었다. 네 명 안에 악마가 있다는 뜻은 아니다.'
+   '외지인 B가 죽은 뒤에도 B를 보여줄 수 있다. 사망으로 캐릭터 유형이 사라지지 않는다.'
+   ```
+6. **자기 반박:** 순서 예시가 우연히 네 유형이었다는 독해로도 `유형이 매일 달라야 하므로 ... 반드시`라는 인과 단정은 구제되지 않는다. 사망자 제외는 공식이 명시적으로 부정한다. DOM 실행 노출 확인. 라운드 47 셋업 +0/+1 수정과 별개로 백과 예시는 미수정이다.
+
+###### #6 High — 토르(tor): 플레이어의 밤 선택을 사회자가 대신 결정하도록 허용
+
+1. **요약:** 캐릭터·진영을 숨긴다는 이유로 플레이어의 정상 능력 선택을 사회자 재량으로 대행하게 한다. 공식은 선택 능력도 본인을 깨워 사용하게 한다.
+2. **위치·핵심:** `thyrsus/index.html:885`, `CHARACTERS.tor.guideFirst`: `밤 능력 절차는 사회자가 대행하거나`; `:887` warn: `악마의 살해 지목 등도 사회자 대행 재량이 필요.` 반면 `:7554` howto는 `밤에 능력이 발동하는 캐릭터는 그냥 깨워 정보를 준다`고 적는다.
+3. **재현:** `node work2/prose-agent-repro.cjs`의 DOM `id=tor`에서 guide와 warn이 표시된다. 토르를 활성화하고 정상 임프(imp)가 선택하는 밤에 이 설명을 따르면 사회자가 살해 대상을 정할 수 있게 된다.
+4. **기대·공식:** “Character abilities work as normal. Players are woken and prompted to use their ability if needed.” [Tor — Summary](https://wiki.bloodontheclocktower.com/Tor). 캐릭터를 알려주지 않되 플레이어에게 필요한 선택을 받아야 한다.
+5. **제안 패치:**
+   ```js
+   // guideFirst[1], warn[1] 교체
+   '밤 능력은 통상대로 작동한다. 필요한 플레이어를 깨워 캐릭터명을 밝히지 않고 능력 사용·지목을 요청한다.'
+   '악마도 살해 대상을 직접 고른다. 자기 캐릭터나 진영을 알려주지는 않는다.'
+   ```
+6. **자기 반박:** '대행'을 단순 UI 입력 대행으로 볼 수 있으나, 문장은 깨우는 경우와 대행을 선택지로 나누고 살해 지목을 명시한다. 일반 위저드 UI 대행 계약이 아니라 규칙 가이드의 내용이다. `prose-agent-clicks.cjs`의 실제 백과 버튼 클릭도 통과했다. A61/라운드49에서 고친 정보 단계 생략은 정상이며 그 지적을 반복하지 않는다.
+
+###### #7 High — 좀버얼의 밤 행동 조건에 밤 사망까지 합산하라는 오안내
+
+####### (1) 요약
+
+좀버얼(zombuul)의 밤 행동 조건에 전날 낮 사망뿐 아니라 밤 사망도 합산하라고 가르친다. 밤에만 누군가 죽고 낮에는 아무도 죽지 않은 경우에도 다음 공격을 생략하게 만드는 설명문 오류다.
+
+####### (2) 위치·핵심 코드
+
+`thyrsus/index.html:7309`, `WIKI_EXTRA.zombuul.howto[0]`:
+
+```js
+'"오늘 아무도 죽지 않은 날"만 밤에 깨운다 — 낮 처형·밤 사망을 합쳐 하루 사망 유무를 체크.'
+```
+
+####### (3) 재현 — 실행
+
+`node work2/prose-root-repro.cjs`에서 좀버얼의 백과 버튼을 실제 클릭했다. 위 문장이 표시됐고 DOM 오류는 없었다. 반례는 밤2에 사망자가 있고 낮2에는 사망자가 없는 판이다. 밤3에는 정상 좀버얼을 깨워야 하지만 ‘밤 사망도 합쳐’라는 지시를 따르면 생략한다. 엔진이 이 합산을 자동 수행한다는 주장은 아니다.
+
+####### (4) 기대 동작·공식
+
+“Each day, if a player dies, mark them with the DIED TODAY reminder.” 해당 표식이 있는지를 다음 밤에 검사한다. [Zombuul — How to Run](https://wiki.bloodontheclocktower.com/Zombuul). `sim/official/roles181.json`의 `zombuul.ability`도 조건을 `today`로 한정한다.
+
+####### (5) 제안 패치 — 미적용
+
+```js
+'직전 낮에 아무도 죽지 않았을 때만 밤에 깨운다. 밤 사망은 합산하지 않는다. 이미 죽은 좌석의 처형과 실제 낮 사망도 구별한다.'
+```
+
+####### (6) 비고·자기 반박
+
+‘하루’를 밤낮 전체로 번역했을 가능성은 있으나 공식 운영문은 `Each day` 표식으로 범위를 분리한다. 낮 중 땜장이(tinker) 사망도 세므로 처형 여부만 검사하자는 뜻은 아니다. 기존 죽은 척·생존 수·암살자 관통 지적과 다르며, 검토한 설계 기록에 밤 사망 합산을 승인한 결정은 없었다.
+
+###### #8 High — 릴 몬스타(lilmonsta) 판에 생략해야 할 첫밤 정보·블러프 단계가 남음
+
+####### (1) 요약
+
+릴 몬스타(lilmonsta)의 공식 운영 절차는 첫밤 하수인 정보·악마 정보를 모두 생략한다. 현재 앱의 `INFO_SKIP_IDS`는 토르(tor)·양귀비 재배자(poppygrower)만 포함하며, 릴 몬스타를 사용하는 판은 표준 두 단계가 실행 목록에 남는다. 악마 정보 위저드도 3개 블러프를 주라고 안내한다. 릴 몬스타 자신의 `guideFirst`와 `howto`에도 이 생략 지침이 없다.
+
+####### (2) 위치·핵심 코드
+
+`thyrsus/index.html:7721–7740` `INFO_SKIP_IDS`·`infoSkipHolders`·`infoStepRuns`, `900–905` `INFO_STEPS`, `784` 릴 몬스타 `guideFirst`, `7510` `howto`.
+
+```js
+const INFO_SKIP_IDS=['tor','poppygrower'];
+function infoStepRuns(id){
+  const st=INFO_STEPS[id]; if(!st) return true;
+  if(infoSkipHolders().length) return false;
+  if(typeof isFabledActive==='function' && isFabledActive('toymaker')) return true;
+  return S.players.length>=st.minPlayers;
+}
+```
+
+`INFO_STEPS.demoninfo.guide`는 사용되지 않은 선한 캐릭터 3개를 블러프로 보여주라고 명시한다. 릴 몬스타는 공식대로 좌석에 직접 배정하지 않으므로 단순한 `abilityActor('lilmonsta')` 검사로도 해결되지 않는다.
+
+####### (3) 재현 — 실행, UI 함수 도달
+
+```sh
+THY_SIM_SEED=7 node work2/state_lilmonsta.cjs > work2/state_lilmonsta.out.json
+```
+
+VM 하네스의 makeEl DOM 스텁에서 UI에 연결된 기존 함수로 판을 만들고 시작했다. 실제 브라우저 버튼 클릭 재현은 아니다. `window.thyBuilder.importJSON` → `thyBuilder.start` → 기본 7석에 `renamePlayer`·`setChar` → `advancePhase` → `startWiz('demoninfo')`.
+
+선택 시트의 유일한 악마는 릴 몬스타다. 좌석은 세탁부(washerwoman)·사서(librarian)·조사관(investigator)·요리사(chef)·군인(soldier)·독살범(poisoner)·첩자(spy)로, 공식 릴 몬스타 7인 구성인 주민5·하수인2다. 릴 몬스타는 앱 자체 `setupNote`가 안내하는 대로 좌석에 배정하지 않았다. 미사용 선한 캐릭터 3종도 시트에 넣었다.
+
+관측:
+
+```json
+{
+  "phase":{"kind":"night","n":1},
+  "minionInfo":true,
+  "demonInfo":true,
+  "runnable":["minioninfo","demoninfo","poisoner","washerwoman","librarian","investigator","chef","spy"],
+  "demonWizard":{"stepId":"demoninfo"}
+}
+```
+
+VM 하네스에서 생성된 악마 정보 위저드의 씬에는 `pick-character`, `n:3`, `label:'블러프로 줄 미사용 선 캐릭터 3개 선택'`과 `show-tokens` 씬이 있다. 테스트가 `S.phase`를 밤으로 강제한 것이 아니라 `advancePhase`로 setup→night1 전환했다. 네이티브 대화상자는 예외로 막았고 인앱 확인은 동기 테스트 훅으로 수락했다.
+
+추가 관측: `setupIssues()`는 이 합법 구성을 `권장 5/0/1/1, 현재 5/0/2/0`이라고 경고하지만 헤더 진행 함수는 첫밤을 허용했다. 이것은 별도 셋업 모델 후보이며 **이 문서에서 별도 결함으로 세지 않는다**. 재현이 막혀 있지는 않다는 근거다.
+
+####### (4) 기대 동작·공식
+
+“On the first night, skip the MINION INFO and DEMON INFO steps.” [Lil' Monsta, How to Run](https://wiki.bloodontheclocktower.com/Lil%27_Monsta) (직접 열람, oldid=3080, 페이지 수정 표시 2026-03-20).
+
+같은 페이지의 Fighting the Lil' Monsta는 릴 몬스타 판의 악 팀은 블러프를 받지 않는다고 설명한다. 첫밤에는 표준 두 정보를 생략하고 릴 몬스타의 하수인 합의 절차를 사용해야 한다.
+
+####### (5) 제안 패치 — 미적용
+
+릴 몬스타가 실제로 선택된 판이라는 상태와 보모 좌석을 명시적으로 관리하고, 그 상태를 정보 생략·밤 단계 생성·셋업 안내에 공유한다. 단순히 선택 시트에 포함됐다는 이유만으로 모든 릴 몬스타 포함 시트의 정보를 끄면 다른 악마를 선택한 판까지 망가뜨린다. `INFO_SKIP_IDS`에 id 하나만 추가해도 실제 좌석이 없는 릴 몬스타는 감지되지 않는다.
+
+```js
+// 상태 필드 이름은 제안이며 기존 코드에 적용하지 않았다.
+function infoStepRuns(id) {
+  if (isActiveLilMonstaGame()) return false;
+  // 기존 tor/poppygrower·toymaker·인원수 정책
+}
+```
+
+완전한 모델 도입 전에도 릴 몬스타 `guideFirst`·`howto` 첫 줄에 두 표준 정보 단계 생략과 블러프 없음 지침은 정확히 넣어야 한다.
+
+####### (6) 비고·세 렌즈 반박
+
+1. 원문: 해당 캐릭터의 How to Run이 두 단계 생략을 직접 정한다. 일반 밤 순서표의 `lilmonsta` 위치에서 추론한 결론이 아니다.
+2. 재현/UI: 가짜 악마 좌석을 심지 않았다. 내 스크립트 가져오기·시작·좌석 배정·첫밤 진행의 UI 함수 경로를 실행했고, 표준 악마 정보 위저드까지 열렸다. 릴 몬스타가 한 플레이어의 캐릭터가 아니라는 공식 규칙과 앱 `setupNote`를 지켰다. 앱의 미구현 경고가 있다 해도 위저드의 반대 지시가 정확해지지는 않는다. 이 재현에서는 릴 몬스타 좌석이 없어서 `unimplementedInPlay()` 경고에도 잡히지 않는다.
+3. 기수정/기각: 라운드49는 공식 로컬 데이터 `firstNightReminder`에 skip이 든 tor/poppygrower 두 종을 고쳤다. 릴 몬스타의 생략은 현재 위키 How to Run에 있으며 이 명단에 편입되지 않았다. `BACKLOG C`의 기각들과 무관하다. 기본 tb/bmr/sv 첫밤 배열의 **상대순서**가 공식과 일치한다는 검증과도 독립적이다. 이 건은 해당 판에서 단계가 **존재해야 하는가**의 오류다.
+
+###### #9 High — 같은 상태 토큰이 있으면 궁정대신·푸카의 별도 지속효과가 버려짐
+
+####### (1) 요약
+
+선원(sailor)이 이미 취하게 한 표적에 궁정대신(courtier)이 발동하면 3밤+3낮 효과가 저장되지 않는다. 독살범(poisoner)이 이미 중독시킨 어릿광대(fool)를 푸카(pukka)가 고르면 푸카의 지속 중독도 저장되지 않는다. 다음 황혼에 기존의 짧은 토큰만 만료되어 악마 행동·어릿광대 생존 판정이 잘못 바뀐다. 동일 원인의 두 실행 사례를 한 건으로 묶었다.
+
+####### (2) 위치·핵심 코드
+
+`thyrsus/index.html:4950` `doCourtierDrunk`, `4849–4850` `doPukkaPick`; 참고 `2420–2432` `addStatus`.
+
+```js
+holders.forEach(p=>{ if(!hasStatus(p,'drunkS')) addStatus(p,'drunkS','궁정대신',drunkExpiry('court')); });
+if(hasStatus(t,'poison')) toast(`${t.name}은(는) 이미 중독 상태 — 토큰을 중복 부여하지 않습니다.`,'warn');
+else addStatus(t,'poison','푸카',null);
+```
+
+`addStatus` 자체는 `{key,source,expiresAt}`를 배열에 추가하며 중복을 막지 않는다. 결함의 위치는 출처·만료를 구별하지 않는 호출부 `hasStatus`다. 궁정대신은 실제로 효과를 저장하지 않고도 다음 줄에서 3밤+3낮 부여 성공을 안내한다. 푸카는 경고를 보이지만 독 누락을 자동 보정하지 않는다.
+
+####### (3) 재현 — 실행
+
+`state_extended.out.json`의 `sailor_courtier_collision`: 밤2 선원이 샤발로스(shabaloth)를 취하게 하고 궁정대신도 샤발로스를 선택 → 저장된 토큰은 선원 출처, 만료 밤3 한 개뿐. 밤3 `statuses=[]`, `abilityActor('shabaloth').ok=true`. 같은 밤2 궁정대신만 발동한 대조군은 밤3에도 만료 밤5 토큰이 있고 `ok=false`.
+
+`poisoner_pukka_collision`: 밤2 독살범→어릿광대, 푸카→같은 어릿광대 → 밤3 시작 시 `statuses=[]`. 푸카가 다른 대상을 선택하면 이전 어릿광대가 `alive=true`, `spent` 생존 토큰을 받는다. 독살범 없는 대조군은 같은 푸카 흐름에서 `foolAlive=false`다.
+
+####### (4) 기대 동작·공식
+
+궁정대신 원문: “3 nights & 3 days” (`sim/official/roles181.json:565`). 이미 다른 효과로 취해 있다는 이유로 새 지속 기간을 버리는 예외는 없다. 푸카 원문: “The previously poisoned player dies then becomes healthy.” (`sim/official/roles181.json:1648`). 푸카 독은 사망 판정까지 활성 상태여야 하므로 정상 어릿광대의 생존 능력은 발동하지 않는다. [Pukka How to Run](https://wiki.bloodontheclocktower.com/Pukka)은 사망 시점에도 표적이 중독 상태임을 명시한다.
+
+####### (5) 제안 패치 — 미적용
+
+효과의 신원을 상태 종류가 아니라 출처별로 저장한다. 반복 클릭 방지는 `(key, sourcePid, sourceAbility)`로 하며, 서로 다른 출처를 합치거나 더 긴 만료로 덮지 않는다. 독살범이 죽어 독이 풀리는 경우에도 푸카 독이 남아야 하기 때문이다.
+
+```js
+// 구현 방향: 두 효과를 독립 레코드로 보관한다.
+addEffect(target, {key:'drunkS', sourcePid:courtier.id,
+  sourceAbility:'courtier', expiresAt:drunkExpiry('court')});
+addEffect(target, {key:'poison', sourcePid:pukka.id,
+  sourceAbility:'pukka', expiresAt:null});
+// 만료/출처 해제도 해당 효과 레코드만 제거한다.
+```
+
+####### (6) 비고·자기 반박
+
+- 원문: 선원/독살범의 단기 효과와 궁정대신/푸카의 별도 기간이 함께 적용되는 정상 상호작용이다.
+- 재현: 실제 공식 밤 순서상 선원은 궁정대신보다, 독살범은 푸카보다 앞이다. 효과를 거꾸로 호출해 만든 현상이 아니다. 각각 위저드의 유효 선택을 실행했고 무충돌 대조군은 기대대로 동작했다.
+- 이력: 라운드50은 수동 중독 입력에 상시 정책을 추가한 것이며 이 자동 호출부는 남아 있다. 기존 기각 목록 및 1차 영역5 네 건과 중복하지 않는다.
+
+###### #10 High — 궁정대신이 중독돼도 그가 준 취함 효과가 멈추지 않음
+
+####### (1) 요약
+
+궁정대신(courtier)의 능력이 중독으로 잠시 멈춰도 그가 취하게 한 샤발로스(shabaloth)는 계속 취해 있다고 판정한다. 공식은 이때 표적이 즉시 맑아지고, 궁정대신이 기간 안에 회복하면 다시 취하도록 명시한다.
+
+####### (2) 위치·핵심 코드
+
+`thyrsus/index.html:2358–2359` `isMalfunctioning`, `4950` `doCourtierDrunk`, `2436` `expireStatuses`.
+
+```js
+function isMalfunctioning(p){ if(p && p.charId==='beggar') return false;
+  return hasStatus(p,'poison') || hasStatus(p,'drunkS') || (p.charId==='drunk'); }
+```
+
+궁정대신 토큰은 출처 이름·고정 만료만 저장하고, 이 판정은 출처 좌석의 현재 작동 여부를 읽지 않는다. 중독 추가 래퍼(`9151–9154`)도 승리 조건 재평가만 한다.
+
+####### (3) 재현 — 실행
+
+`state_extended.out.json`의 `courtier_source_poison`/`courtier_source_poison_action`: 밤1 궁정대신이 샤발로스를 선택. 밤2 독살범(poisoner)이 궁정대신을 중독. `courtierMal=true`인데 샤발로스에 궁정대신 취함 토큰이 활성으로 남고 `demonCanAct=false`. 같은 밤 샤발로스 위저드로 주민을 공격해도 피해자가 살아남는다. 밤3 독살범 독이 만료된 뒤에는 궁정대신이 회복하고 표적이 계속 취한 상태인 것 자체는 정상이다. 빠진 것은 밤2의 효과 중단 구간이다.
+
+####### (4) 기대 동작·공식
+
+Courtier Summary는 출처가 중독·취함이 되면 “the player they made drunk becomes sober again.”이라고 명시한다. 같은 문단이 3밤+3낮 종료 전 출처 회복 시 다시 취함도 명시한다. [Courtier Summary](https://wiki.bloodontheclocktower.com/Courtier)
+
+Poisoner Summary도 “A poisoned player has no ability”라고 규정한다. 다만 이미 일어난 일회성 사건의 소급 취소를 주장하는 것이 아니다. 이 건은 Courtier 페이지가 직접 정한 지속효과의 중단·복구다. [Poisoner Summary](https://wiki.bloodontheclocktower.com/Poisoner)
+
+####### (5) 제안 패치 — 미적용
+
+궁정대신 효과 레코드에 출처 좌석·원래 만료를 저장하고, 기록 존재와 현재 활성 여부를 분리한다. 출처 오작동 때 레코드를 삭제하면 회복 시 복구할 수 없다.
+
+```js
+// 설계 스케치: 원래 종료 시각은 그대로 두고 effective 상태만 재평가.
+effect = {key:'drunkS', sourceAbility:'courtier', sourcePid,
+          targetPid, expiresAt:originalExpiry};
+effect.active = courtierEffectActive(effect, currentState);
+```
+
+`courtierEffectActive`는 출처의 생존·능력 보유·오작동과 만료를 평가한다. 실제 구현은 자기 자신을 취하게 한 사례와 순환 중독을 별도로 다뤄야 하며, `isMalfunctioning`을 무조건 재귀 호출하는 패치는 제안하지 않는다.
+
+####### (6) 비고·자기 반박
+
+- 원문: Courtier 전용 명문이 있어 일반적인 “중독이면 무능력”에서 임의 추론한 결론이 아니다.
+- 재현: 발동 때는 정상, 다음 밤에 출처가 중독되는 순서다. 처음부터 중독된 궁정대신의 불발 처리와 혼동하지 않았다. 실제 악마 효과 경로까지 실행했다.
+- 이력: 기존 기간 만료/출처 사망 정리 수정과 달리 살아 있는 출처의 일시 오작동 사례다. 기각 기록 및 1차 영역5 네 건과 중복하지 않는다.
+
+###### #11 High — 궁정대신이 복수 동명 캐릭터를 모두 취하게 함
+
+####### (1) 요약
+
+궁정대신(courtier)이 마을 바보(villageidiot)를 고르면 이미 영구 취한 한 명 외의 두 명 모두에게 새 취함을 준다. 공식은 복수 동명 중 오직 한 명만 궁정대신으로 취하게 한다.
+
+####### (2) 위치·핵심 코드
+
+`thyrsus/index.html:4945–4950` `doCourtierDrunk`.
+
+```js
+const holders=playersByChar(cid).filter(p=>p.alive);
+holders.forEach(p=>{ if(!hasStatus(p,'drunkS')) addStatus(p,'drunkS','궁정대신',drunkExpiry('court')); });
+```
+
+####### (3) 재현 — 실행
+
+`state_repro.out.json`의 `courtier_duplicate_characters`: 궁정대신·마을 바보 3석·푸카(pukka)·독살범(poisoner)·요리사(chef). 마을 바보 셋 중 하나는 원래 마을 바보 출처로 취해 있다. 궁정대신 위저드에서 `villageidiot`를 선택하면 나머지 두 석 모두 출처 `궁정대신`, 만료 밤4의 취함을 받는다. 즉 이미 취해 있던 한 명을 잘못 집계한 것이 아니라 새 궁정대신 효과가 두 건 생긴다.
+
+####### (4) 기대 동작·공식
+
+“The Courtier only makes one of them drunk.” [Courtier How to Run](https://wiki.bloodontheclocktower.com/Courtier). 같은 절은 다른 에디션에서 같은 캐릭터가 여럿 있을 때의 규칙이라고 명시한다. 사회자가 대상 한 명을 정해야 하며 전원 적용은 허용되지 않는다.
+
+####### (5) 제안 패치 — 미적용
+
+복수 보유자면 사회자 전용 선택으로 한 좌석을 확정한 뒤 기존 1회 소진·취함 적용을 완료한다. 플레이어에게 복수 보유 사실을 노출하거나 임의로 모든 좌석을 선택하지 않는다.
+
+```js
+if (holders.length === 1) applyCourtierEffect(holders[0]);
+else chooseCourtierRecipientForStoryteller(holders, applyCourtierEffect);
+```
+
+이는 설계 스케치이며 선택 취소와 재진입에 따른 소진 중복 방지도 함께 검토해야 한다. 선택한 좌석이 기존 출처로 이미 취한 경우에도 #9처럼 궁정대신 효과를 별도로 기록해야 한다.
+
+####### (6) 비고·자기 반박
+
+- 원문: How to Run이 바로 복수 동명을 다뤄 불확실한 징크스 해석이 아니다.
+- 재현: 마을 바보의 중복 캐릭터는 공식 셋업이다. `pick-character pool:'any'`는 해당 id를 허용하고 effect가 전원을 처리한다. 다른 출처의 취함 한 건과 이번에 새로 생긴 두 건을 분리했다.
+- 이력: 동명 표시 이름(저글러/곡예사) 수정은 서로 다른 id의 이름 충돌이다. 이 건은 같은 `villageidiot` id의 합법적인 복수 좌석으로, 라운드48과 다른 문제다.
+
+###### #12 High — 구마된 푸카의 전일 피해 사망·독 해제 누락(기존 채택 잔존)
+
+####### (1) 요약
+
+구마사제(exorcist)가 푸카(pukka)를 막으면 새 선택을 건너뛰는 것과 함께 전날 중독 대상의 사망·독 해제도 빠진다. 전날 어릿광대(fool)는 살아남고 푸카 독·대기 표적이 다음 낮에도 남는다. **새 발견으로 세면 안 되는 기존 채택 지적의 잔존**이다(`codex-review.md:556–559`).
+
+####### (2) 위치·핵심 코드
+
+`thyrsus/index.html:4481–4482` `stepSkipReason`, `4840–4876` `doPukkaPick`; 잘못된 안내 `13480–13483`.
+
+```js
+if(S.demonBlockedNight===S.phase.n && c?.type==='demon'
+   && holders.some(p=>p.id===S.demonBlockedPid)) return '📿 구마사제가 봉인 — 이번 밤 능력 사용 없음';
+```
+
+전일 표적의 사망·독 해제는 새 선택을 받는 `doPukkaPick` 안에만 있다. 상태 패널도 “푸카가 다음에 무는 시점”에 사망, “푸카 단계를 건너뛰면 사망도 함께 미뤄집니다”라고 안내해 잘못된 동작을 강화한다.
+
+####### (3) 재현 — 실행
+
+`state_repro.out.json`의 `exorcist_pukka`: 밤1 푸카가 어릿광대를 중독 → 밤2 구마사제가 푸카 선택 → `runnableNightSteps()`에서 푸카 제외, `stepSkipReason`은 봉인 안내 → 새벽 진행 후 낮2 `victimAlive=true`, 푸카 독 `expiresAt:null`, `S.pukkaVictimId='p2'`. 실행 경로에서 전일 피해를 해결할 다른 함수는 없다.
+
+####### (4) 기대 동작·공식
+
+Exorcist Summary: “Any other Demon abilities still function”이며 예시로 “the Pukka killing a player they attacked on a previous night”를 직접 든다. [Exorcist Summary](https://wiki.bloodontheclocktower.com/Exorcist)
+
+Pukka Examples의 구마 조합도 “The Pacifist dies, but the Pukka does not wake to attack tonight.”라고 명시한다. [Pukka Examples](https://wiki.bloodontheclocktower.com/Pukka). 따라서 새 표적은 없지만 전일 표적 사망은 해결되고 그 뒤 푸카 독이 해제돼야 한다.
+
+####### (5) 제안 패치 — 미적용
+
+전일 피해 해결을 신규 선택과 분리하고, 깨우지 않는 푸카 단계에서도 사회자 내부 처리로 한 번 실행한다. 죽이는 시점·출처는 기존 푸카 순서를 유지하고, “밤이 끝나면 아무 때나” 처리하지 않는다. 출처가 취함·중독된 경우의 보류는 구마와 구별한다.
+
+```js
+// 푸카의 공식 순서 위치에서 내부 처리. 새 지목은 구마 여부에 따라 생략한다.
+if (pukkaCanAct) {
+  if (!exorcisedTonight) chooseNewPukkaVictim();
+  resolvePendingPukkaDeath();
+}
+```
+
+이는 순서 설계 스케치다. 이전 표적과 새 표적을 분리한 상태값, 같은 밤 재실행 방지, 사망 전 독 유지와 사망 트리거 해결 뒤 독 회수, 같은 표적 재지목도 함께 고려해야 한다.
+
+####### (6) 비고·자기 반박
+
+- 원문: 구마는 독/능력 상실이 아니며, 두 관련 캐릭터의 공식 문서가 같은 예외를 명시한다.
+- 재현: 푸카와 구마사제를 실제 위저드 효과로 실행하고 큐 제외 및 다음 낮 상태까지 확인했다. 단순히 위저드를 임의로 닫아 만든 사례가 아니다.
+- 이력: 3차 리뷰 #5에서 이미 사망 함수 분리가 제안됐다. 악마 단계 차단은 구현되었으나 분리는 남아 있다. 라운드50의 수동 상시 중독 추가도 이를 해결하지 않는다. 1차 영역5 네 건과는 중복하지 않지만 “신규 결함”으로 세지 않는다.
+
+###### #13 High — 발동한 밴시(banshee)의 지명·2표·사망토큰 면제가 없어 처형 결과와 자격이 틀림
+
+(1) **요약.** 정상인 밴시를 임프(imp)가 밤 위저드로 죽여도 사망자로만 처리한다. 지명 버튼이 사라지고, 2표를 행사할 수 없으며, 첫 표에 사망 투표 토큰이 소진되어 다음 지명에서 아예 거수할 수 없다. 밴시가 2표를 행사하려는 상황을 표현할 수 없어, 다른 생존자의 1표와 합쳐 3표가 될 조합도 앱은 2표만 집계한다.
+
+(2) **위치·코드.** `thyrsus/index.html:5351`의 지명자 목록은 `alivePlayers()`만 순회; `:5412`의 `newNomination`은 사망한 지명자를 거부한다. `:5493` `handEligible`은 `p.alive || p.deadVote!==false || hands.includes(p.id)`만 본다. `:5612` `castVote`는 모든 사망자의 투표를 일반 유령표처럼 소진한다. `:2834` `VOTE_MODIFIERS`에는 집사(butler)·관료(bureaucrat)·도둑(thief)만 있고 밴시 가중/투표 수가 없다. `:2891` `voteWeightOf`는 1을 돌려준다. 앱 자신의 `:719` 능력문·remind는 사망자 제한 없이 매일 지명 2회/지명당 2표라고 한다.
+
+```js
+// handEligible:5493
+return S.players.filter(p=> p.alive || p.deadVote!==false || hands.includes(p.id));
+// castVote:5614-5616
+if((v==='yes'||v==='no') && !(prev==='yes'||prev==='no')){
+  if(p.deadVote===false){ /* 경고 후 반환 */ }
+  p.deadVote=false; if(!n.deadVoters.includes(p.id)) n.deadVoters.push(p.id);
+}
+```
+
+(3) **실행 재현.** `work2/vote_safety_vote.cjs`는 7인 판에 정상 밴시/임프를 넣고 임프 위저드의 effect 버튼을 누른다(대상·scene은 재현 스크립트가 설정). 밴시의 결과는 `alive:false`, `diedAt.cause:"임프의 공격"`, `nominationButton:false`. 생존자 6명의 문턱은 3. 밴시와 생존자 1명의 찬성 결과는 `yes:2,need:3,result:"yesFail",weight:1,deadVote:false`. 다음 지명의 `handEligible`에 밴시 `p0`이 없다. DOM 오류는 0. 로그: `work2/vote_safety_vote.log`.
+
+(4) **기대·공식.** `sim/official/roles181.json:824`: “vote twice per nomination” 위키 Summary: “they may vote for any nomination they wish and do not need a vote token to do so.” [Banshee](https://wiki.bloodontheclocktower.com/Banshee). 악마 사망으로 정상 발동한 밴시는 죽은 상태에서도 지명할 수 있고, 각 지명에서 0/1/2표를 선택할 수 있어야 한다. 2표 행사 의사를 담을 UI가 필요하며 무조건 두 배로 만드는 것만으로는 충분하지 않다.
+
+(5) **제안 패치 — 미적용.** 사망 직전 능력 유효성·악마 사망을 기록한 발동 플래그를 두고, 지명 자격/거수 자격/토큰 소비/찬성표 수를 함께 연결한다. `VOTE_MODIFIERS` 표와 집계 호출부가 같은 선택값을 읽게 한다.
+
+```js
+// 개념 제안. 사망 시 공식 발동 조건을 확인한 뒤 저장한 값이다.
+const isAwakenedBanshee = p => !!p && p.charId==='banshee' && p.bansheeAwakened;
+// 지명/거수 자격에 isAwakenedBanshee(p)를 포함한다.
+// castVote: 발동한 밴시의 선택은 0/1/2표로 저장하고 deadVote를 소비하지 않는다.
+// 표 집계와 미리보기는 같은 VOTE_MODIFIERS 항목에서 선택표 수를 읽는다.
+```
+
+(6) **자기 반박.** 공식 해석: 위키가 사망 후 지명·토큰 면제를 명시하므로 단순 가중 문제로 한정할 수 없다. UI 진위: 실제 임프 effect 버튼으로 죽인 뒤 정상 지명/투표 DOM 클릭으로 확인했다. 이미 수정됐는가: BACKLOG A70(`sim/BACKLOG.md:477`)는 **미수정**이며 이번 결과는 그 1표 결함의 독립 재확인이다. 같은 사망 상태에서 지명 차단·토큰 소진까지 범위를 확인했으므로 새로 발견한 별개 세 건으로 부풀리지 않는다. 라운드21 최고 찬성표수 하우스룰은 이 결함을 허용하지 않는다.
+
+###### #14 High — 군인·수도사 보호가 푸카의 신규 중독을 막지 못함
+
+####### (1) 요약
+
+정상 군인(soldier), 또는 정상 수도사(monk)가 보호한 좌석에도 푸카(pukka)의 **새 중독**이 적용된다. 군인은 다음 밤 실제로 죽는다. 기존 A13 기각을 현재 공식 How to Run의 명문과 새 실행으로 반박한 영역 5 추가 건이다.
+
+####### (2) 위치·핵심 코드
+
+`thyrsus/index.html:4849–4850` `doPukkaPick`은 표적의 악마 보호를 검사하지 않고 독을 준다.
+
+```js
+if(hasStatus(t,'poison')) toast(/* 기존 중독 안내 */);
+else addStatus(t,'poison','푸카',null);
+```
+
+군인·수도사의 `DEATH_MODIFIERS` 항목은 이후 사망 시점만 검사한다. 새 독 부여의 보호 판정이 빠져 군인은 그때 이미 오작동 상태가 된다.
+
+####### (3) 재현 — 실행
+
+`THY_SIM_SEED=7 node work2/prose-root-immunity.cjs`. 활성 커스텀 스크립트의 정상 7인(주민5·하수인1·악마1), 밤2에서 `startWiz → wizEffect`로 유효 선택을 실행했다. 군인은 시작 시 오작동이 아니지만 푸카 선택 뒤 상시 독을 받고, 밤3 푸카가 다른 대상을 고르면 `nextNightAlive=false`다. 별도 실행에서 수도사가 어릿광대(fool)를 보호한 직후 푸카가 고르면 `protect`와 푸카 `poison`이 공존하며 `targetMal=true`다. 독살범(poisoner)의 군인 중독, 중독된 수도사의 보호 불발은 대조군으로 정상 작동했다. 선택 변수는 fixture로 넣었으며 실제 선택 화면 전체를 클릭한 재현은 아니다.
+
+####### (4) 기대 동작·공식
+
+군인 How to Run은 다른 에디션에서 “all other harmful effects of the Demon's ability, such as poisoning”으로부터도 보호된다고 명시한다. [Soldier How to Run](https://wiki.bloodontheclocktower.com/Soldier)
+
+수도사 How to Run 역시 “all other harmful effects of the Demon's ability, such as poisoning”을 막는다고 명시한다. [Monk How to Run](https://wiki.bloodontheclocktower.com/Monk)
+
+따라서 이번처럼 처음부터 정상인 군인·이번 밤 정상 보호를 받은 좌석은 신규 푸카 독을 받지 않아야 한다. 하수인 독까지 막는다는 주장이 아니다.
+
+####### (5) 제안 패치 — 미적용
+
+사망표를 독 부여에 그대로 재사용하지 말고, 악마의 유해 효과 적용 전에 평가할 순수 판정표를 둔다. 현재 출처·오작동·보호를 검사하고 차단 근거를 남긴다.
+
+```js
+const verdict = resolveHarmfulEffect(target, {
+  sourceType:'demon', sourceCharId:'pukka', effect:'poison'
+});
+if (verdict.allowed) addPukkaPoisonEffect(target);
+```
+
+함수명은 설계 스케치다. 선택 기록과 이전 피해 처리까지 함께 건너뛰는 조기 반환은 피해야 한다.
+
+####### (6) 비고·자기 반박
+
+라운드18 A13(`codex-review.md:1530–1531`)은 ‘중독시키는 악마가 있다’는 이유로 면역 해석을 기각했다. 그 존재 사실은 군인·수도사의 명시적 예외를 반박하지 못한다. 이번 주장은 **모든 악마 효과**가 아니라 공식이 열거한 **유해 효과 중 신규 중독**으로 한정한다. Pukka 전략 절의 기본판 중심 요약보다 두 보호 캐릭터의 ‘다른 에디션’ 운영 조항이 직접적인 근거다. 자기 중독·기존 중독·역순 처리로 만든 현상이 아니며, 1차 영역 5 네 건과도 다르다.
+
+###### #15 Medium — 꼭두각시(marionette): 임의 정보를 반드시 거짓으로 제한
+
+1. **요약:** 정상 정보가 나올 수도 있는 가짜 능력을 `정보는 전부 거짓으로 준다`로 제한한다.
+2. **위치·핵심:** `thyrsus/index.html:7494`, `WIKI_EXTRA.marionette.howto[2]`: `... 굴리는 시늉을 하되 정보는 전부 거짓으로 준다.`
+3. **재현:** `node work2/prose-agent-repro.cjs`의 DOM `id=marionette`의 판정 팁에 그대로 나타난다. 예: 초공감자(empath)라고 믿는 꼭두각시의 실제 이웃 악 수가 1인 경우, 사회자가 1을 주어도 되지만 문구는 금지한다.
+4. **기대·공식:** 꼭두각시의 가짜 정보는 불신 가능한 정보이지 항상 거짓인 정보가 아니다. 공식: “They wake when their good character would wake, may get false information” [Marionette — How to Run](https://wiki.bloodontheclocktower.com/Marionette). Summary는 주정뱅이와 같다고 설명한다.
+5. **제안 패치:**
+   ```js
+   '믿는 캐릭터의 밤 순서에 맞춰 깨우고 능력 사용을 흉내 낸다. 정보는 사회자 재량이며 참·거짓 모두 가능하다.'
+   ```
+6. **자기 반박:** 전략 조언이 아니라 `전부`라는 무조건 지시다. `prose-agent-clicks.cjs`의 실제 백과 버튼 클릭도 통과했다. 라운드36 A39는 같은 원칙을 이미 채택했지만 이 캐릭터의 howto에는 남았다. 기각된 이슈가 아닌 기존 원칙의 미수정 잔존이다.
+
+###### #16 Medium — 사냥꾼(huntsman): 아가씨가 이미 있어도 주민을 하나 더 줄이는 셋업 지시
+
+1. **요약:** 아가씨(damsel)의 기존 편성 여부를 확인하지 않고 사냥꾼 때문에 반드시 주민을 하나 줄이라고 한다.
+2. **위치·핵심:** `thyrsus/index.html:7531`, `WIKI_EXTRA.huntsman.howto[0]`: `셋업에서 아가씨를 반드시 추가한다. 사냥꾼이 있으면 아가씨도 들어가며 그만큼 주민을 하나 줄인다.`
+3. **재현:** `node work2/prose-agent-repro.cjs`의 DOM `id=huntsman`의 판정 팁. 이미 기본 외지인 칸에 아가씨가 들어간 8인 편성에서 이 지시를 따르면 추가 주민 감소를 요구하게 된다.
+4. **기대·공식:** “If a Damsel is already in play, the Huntsman doesn’t add a second Damsel.” [Huntsman — Summary](https://wiki.bloodontheclocktower.com/Huntsman). How to Run도 아가씨가 아직 없을 때만 주민 토큰을 바꾼다. `[+the Damsel]`은 무조건 외지인 +1이 아니다.
+5. **제안 패치:**
+   ```js
+   '셋업에 아가씨가 없을 때만 주민 토큰 하나를 아가씨로 바꾼다. 이미 아가씨가 있으면 추가 교체하지 않는다.'
+   ```
+6. **자기 반박:** '반드시 함께 존재' 자체는 맞지만 뒤의 주민 감소까지 무조건 연결하는 것이 문제다. `prose-agent-clicks.cjs`의 실제 백과 버튼 클릭도 통과했다. 라운드47은 사냥꾼의 숫자 보정을 보류하도록 했으므로 이 문장은 앱이 자동으로 +1을 적용한다는 주장이 아니다. 수동 셋업 지시만 지적한다.
+
+###### #17 Medium — 마을 바보(villageidiot): 취함 대상을 게임 내내 고정해 공식 징크스를 부정
+
+1. **요약:** 마귀할멈(pithag)이 추가 마을 바보를 만들면 취한 대상이 바뀔 수 있는데 `게임 내내 ... 바뀌지 않는다`고 단정한다.
+2. **위치·핵심:** `thyrsus/index.html:6987` remind: `... 게임 내내 바뀌지 않는다`; `:7492` howto: `취함 표식은 게임 내내 고정이며 다른 사람에게 옮겨 가지 않는다.` 같은 파일 `:8802`의 징크스는 `그럴 경우 취한 마을 바보가 누구인지 바뀔 수 있다`고 정확히 적는다.
+3. **재현:** `node work2/prose-agent-repro.cjs`의 DOM `id=villageidiot`에서 두 고정 지시가 표시된다. 추가 생성 가능한 토큰이 있는 마귀할멈·마을 바보 대본에서 징크스 카드와 충돌한다.
+4. **기대·공식:** “If there is a spare token, the Pit-Hag can create an extra Village Idiot. If so, the drunk Village Idiot might change.” [Village Idiot — Related Jinxes](https://wiki.bloodontheclocktower.com/Village_Idiot).
+5. **제안 패치:**
+   ```js
+   '셋업에서 취한 마을 바보를 기록한다. 일반적으로 유지되지만 마귀할멈이 추가 마을 바보를 만드는 공식 징크스에서는 취한 대상이 바뀔 수 있다.'
+   ```
+6. **자기 반박:** 보통 판에서 고정은 맞으나 `게임 내내`는 공식 예외와 충돌한다. 정보 모달 및 같은 파일의 징크스 확인. 기존 기각 기록에 이 문장 지적은 없으며 범용 상태 엔진의 자동 이동 구현을 요구하는 지적도 아니다.
+
+###### #18 Medium — 저글러 밤 안내가 중도 획득을 무시하고 게임 둘째 밤으로 제한
+
+1. **요약:** 마귀할멈(pithag)으로 넷째 밤 저글러가 된 플레이어는 다음 낮 추측 후 다섯째 밤 정보를 받아야 한다. 백과는 맞게 설명하지만 밤 위저드는 `두 번째 밤에만` 진행하라고 지시한다. 같은 howto는 세레노버스(cerenovus)의 광기를 캐릭터 변경처럼 예시한다.
+2. **위치·핵심:** `thyrsus/index.html:8666`, `NIGHT_FLOW.juggler.other[0]`: `두 번째 밤에만, 그리고 저글러가 첫 낮에 공개 추측(최대 5명)을 했을 때만 진행합니다.` 반면 `:7388`은 `기준은 게임의 둘째 밤이 아니라 ... 그 플레이어가 저글러로 맞은 첫 낮`이다. `:7389`의 `마귀할멈·세레노버스 등으로 도중에 저글러가 됐다면`도 틀렸다. 세레노버스의 능력(`:1153`)은 해당 캐릭터라는 광기를 요구할 뿐 캐릭터를 바꾸지 않는다.
+3. **재현:** `node work2/prose-agent-clicks.cjs`는 밤 5에 저글러가 있는 SV 판을 시드하고 실제 `startWiz('juggler')` 버튼을 클릭했다. `wizard={night:5,visible:true,text:"... 두 번째 밤에만 ..."}`. 중도 변환 자체를 이 프로브로 실행한 것은 아니며 공식 중도 변환 사례에서 적용할 안내의 실제 표시를 확인한 것이다. 백과 버튼의 모달에도 세레노버스 문장이 표시된다.
+4. **기대·공식:** 해당 플레이어의 첫 낮 추측을 그날 밤 처리한다. 공식 예시: “During the fourth night, the Savant gets turned into the Juggler. The next day, the new Juggler guesses” [Juggler — Examples](https://wiki.bloodontheclocktower.com/Juggler). 능력문도 `your 1st day`(`sim/official/roles181.json:696`)다. 세레노버스 능력은 `they are “mad” they are this character tomorrow`(`sim/official/roles181.json:1336`)이며 실제 변환이 아니다.
+5. **제안 패치(미적용):**
+   ```js
+   // NIGHT_FLOW.juggler.other[0].text
+   '그 플레이어가 저글러로 맞은 첫 낮에 공개 추측을 했다면 그날 밤 진행합니다. 기록해 둔 추측 내용을 먼저 확인하세요.'
+   // WIKI_EXTRA.juggler.howto[2]
+   '마귀할멈 등으로 실제로 저글러가 되었다면 그 뒤 첫 낮과 그날 밤이 기준이다. 세레노버스의 광기만으로는 저글러 능력이 생기지 않는다.'
+   ```
+6. **자기 반박:** 일반 시작 저글러에게 둘째 밤 안내는 맞지만, 같은 앱 howto와 공식은 중도 획득을 명시한다. 실제 밤 5 버튼 노출 확인. 라운드34 A35가 이미 채택한 원칙의 **밤 단계 안내 미수정 잔존**이며 라운드48은 이름만 변경했다. 기존 판정 엔진 4건과 무관하다.
+
+###### #19 Medium — 곡예사 예시가 독살범·궁정대신을 실제보다 뒤 순번으로 설명
+
+1. **요약:** 곡예사 이후 대상이 중독되면 죽는다는 원칙은 맞지만 독살범(poisoner)·궁정대신(courtier)을 뒤 순번으로 제시한다. 둘은 공식상 곡예사보다 앞이다. 문장대로 진행하면 이미 걸려 있어야 할 취함·중독을 뒤로 미룬다.
+2. **위치·핵심:** `thyrsus/index.html:7460`, `WIKI_EXTRA.acrobat.howto[0]`: `곡예사보다 뒤 순번인 독살범`; `examples[0]`: `그 시점의 B는 멀쩡했지만 뒤 순번의 궁정대신이 ... B가 취했고`. 같은 앱의 공식 밤 순서와 충돌한다.
+3. **재현:** `node work2/prose-agent-clicks.cjs`에서 실제 곡예사 백과 모달에 두 문장이 표시된다. 정적 공식 순서 `sim/official/nightsheet.json:101~106`은 `poisoner → courtier → innkeeper → wizard → gambler → acrobat`이며, 늦게 작동하는 올바른 중독 예로는 그 뒤의 푸카(pukka, `:126`)가 있다. 이 프로브는 잘못된 순서로 능력을 실행한 것이 아니라 사회자 지침의 DOM 노출과 공식 순서 불일치를 확인한다.
+4. **기대·공식:** 순서를 바꾸지 말고, 뒤의 푸카가 중독시키는 사례로 바꾼다. 공식 예시: “The Acrobat chooses the Preacher. Later that night, the Pukka poisons the Preacher.” [Acrobat — Examples](https://wiki.bloodontheclocktower.com/Acrobat). Summary의 나중 중독 원칙과 공식 밤 순서를 함께 충족한다.
+5. **제안 패치(미적용):**
+   ```js
+   // WIKI_EXTRA.acrobat.howto[0]의 예시 부분
+   '곡예사보다 뒤 순번인 푸카가 그 대상을 중독시켜도 곡예사가 죽는다.'
+   // examples[0]의 원인
+   '곡예사가 정상인 B를 선택한 뒤, 그 밤 푸카가 B를 중독시켜 곡예사도 죽었다.'
+   ```
+6. **자기 반박:** 임의의 자작 순서를 상정하면 가능한 서술이나 앱은 공식 캐릭터 설명으로 제시하며 홈브루 조건이 없다. 정보 모달 버튼으로 노출 확인. 공식 밤 순서 배열 자체의 결함이라고 보고하지 않는다. 라운드48은 곡예사·저글러 이름 중복을 해소한 것이며 해당 순서 오류를 승인하거나 기각하지 않았다.
+
+###### #20 Medium — 클라우드 저장본의 기존 대화상자 노드에 이벤트가 연결되지 않아 확인·취소 무반응
+
+(1) **요약.** 인앱 대화상자를 한 번이라도 사용한 뒤 `cloudBuildDoc`으로 저장하면 빈 `#thydlg`가 직렬화된다. 재부팅 후 `thyDialogEl`은 기존 노드를 곧장 반환하여 클릭/키보드 리스너를 설치하지 않는다. 확인·취소·Escape 모두 무반응이고 직접 콜백만 작동한다.
+
+(2) **위치·코드.** `thyrsus/index.html:1981-2007` `thyDialogEl`; `:8151-8159` `cloudBuildDoc`의 삭제/비우기 목록에 `thydlg`가 없다.
+
+```js
+function thyDialogEl(){
+  let el=document.getElementById('thydlg');
+  if(el) return el;
+  el=document.createElement('div'); el.id='thydlg'; el.hidden=true;
+  document.body.appendChild(el);
+  el.addEventListener('click', /* 응답 핸들러 */);
+  el.addEventListener('keydown', /* 응답 핸들러 */);
+  return el;
+}
+```
+
+(3) **실행 재현.** `node work2/cloud_reopen.cjs` A는 원본에서 실제 중독 지속 선택 버튼이 정상 작동한 대조군. 저장 HTML 재부팅 후 C로 지연 복원창을 진단상 열고 D에서 실제 확인 버튼을 클릭하면 `players:0,open:true`; E에서 `thyDialogAnswer('ok')`를 직접 호출하면 `players:7,open:false`. F/G의 정상 설정→전체 초기화→취소 버튼도 `open:true`로 멈춘다. `cloud_controls.out.json`은 `dialogCount:1`로 **중복 DOM이 아님**을 확인한다. Escape도 불발. 기존 노드를 제거한 진단 대조군에서는 새 대화상자를 만들고 실제 취소를 클릭하면 `dialogOpen:false`. 원본/재부팅 DOM 오류 0(리스너가 아예 없어 조용히 실패).
+
+(4) **기대·계약.** 공식 게임 규칙 문제가 아니라 앱 계약 위반이다. `cloudSave:8173`은 다른 기기에서 이어하기가 제안된다고 표시하고, `thyConfirm` 응답으로 복원/초기화 등 작업을 수행한다. 저장본의 정상 UI로 확인·취소를 수행할 수 있어야 한다.
+
+(5) **제안 패치 — 미적용.** serializer에서 런타임 전용 `thydlg`를 제거하고, 이미 발행된 저장본도 읽을 수 있도록 `thyDialogEl`을 기존 노드에도 한 번 이벤트를 연결하는 구조로 바꾼다. 바인딩 여부는 HTML에 직렬화되지 않는 WeakSet/expando로 기록한다.
+
+```js
+// cloudBuildDoc: 복제본 정리
+body.querySelector('#thydlg')?.remove();
+// thyDialogEl: if(el) return el 조기 반환 대신
+// 기존/신규 노드 모두에 bindDialogOnce(el)를 적용한다.
+// bindDialogOnce는 현재 문서의 WeakSet으로 중복 바인딩을 방지한다.
+```
+
+(6) **자기 반박·범위.** 직접 콜백만 호출한 가짜 재현이 아니다. 결함은 실제 DOM 클릭/keydown에서 확인했고 콜백은 원인 분리용 대조군이다. `#thydlg`는 하나뿐이므로 중복 id 문제가 아니다. 기존 4차 클라우드 정리는 `winask/gameover/wizard/pmodal`만 다뤘고 이 노드는 남는다. 발행 버튼은 `claude.use('artifact')`가 성공한 환경에만 활성화되고 Pages에서는 비활성화된다(`:8143-8147`, `:8205-8206`). 실제 서비스 발행은 하지 않았으므로 artifact runtime 자체의 동작까지 실증했다고 말하지 않는다. 저장 HTML 자체의 재부팅 결함으로 Medium.
+
+###### #21 Medium — 클라우드 상태 파싱 전 즉시 복원 검사를 끝내 저장본 이어하기 제안이 누락
+
+(1) **요약.** `cloudBuildDoc`은 `#cloudstate`를 body 끝(실행 스크립트들 뒤)에 붙인다. `cloudTryRestore()`는 HTML 중간 인라인 스크립트에서 즉시 한 번만 실행하므로 아직 없는 노드를 보고 반환한다. 나중에 상태 JSON이 파싱돼도 재시도가 없다.
+
+(2) **위치·코드.** `thyrsus/index.html:8165` `body.appendChild(st)`; `:8182-8183` 조기 반환; `:8211` 즉시 호출. 이 파일의 `cloudTryRestore` 호출은 :8211 하나뿐이다.
+
+```js
+// cloudBuildDoc
+body.appendChild(st);
+// cloudTryRestore
+const el=document.getElementById('cloudstate');
+if(!el) return;
+// 인라인 스크립트 말미
+cloudTryRestore();
+```
+
+(3) **실행 재현.** `cloud_controls.cjs`는 대화상자를 한 번도 만들지 않은 원본에서 7인 밤 상태를 저장한다. 저장 HTML `boot` 결과 `players:0,cloudPlayers:7,dialogOpen:false,dialogCount:0,errors:[]`. 문서 파싱 뒤 같은 `cloudTryRestore()`를 진단상 호출하면 창이 뜨고, 실제 확인 클릭으로 7인이 복원된다. 따라서 데이터 손실/파싱 오류/대화상자 리스너 결함 없이도 재현되는 독립 문제다.
+
+(4) **기대·계약.** `cloudSave:8173` “다른 기기에서 이 아티팩트를 열면 이어하기가 제안됩니다.” 상태가 있는 새 문서는 파싱 완료 후 로컬 상태와 비교하여 복원 여부를 물어야 한다.
+
+(5) **제안 패치 — 미적용.** 모든 스크립트·상태 블록이 준비된 뒤 1회 실행한다.
+
+```js
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',cloudTryRestore,{once:true});
+}else{
+  cloudTryRestore();
+}
+```
+
+(6) **자기 반박·범위.** 새 기기처럼 빈 localStorage로 열었고 저장 JSON에는 7인이 그대로 있다. 지연 호출+UI 확인 대조군은 본체 복원 기능이 정상임을 보여준다. 기존 설계 기록에 이 파싱 순서를 수용/기각한 결정은 없다. artifact 발행 기능 한정이며 실제 원격 발행은 미검증. #20과 함께 고쳐야 기존 저장본까지 UI로 복원할 수 있다.
+
+###### #22 Medium — 클라우드 직렬화가 위저드 정적 자식 셸을 삭제해 밤 진행 버튼에서 예외
+
+(1) **요약.** `cloudBuildDoc`이 동적 오버레이를 비우며 `#wizard.innerHTML=''`까지 실행한다. 이 컨테이너 안에는 런타임이 재생성하지 않는 필수 정적 노드 `#wizhead/#wizbody/#wizfoot`가 있다. 저장본에서 정상 밤 위저드 버튼을 누르면 예외로 멈춘다.
+
+(2) **위치·코드.** 정적 구조는 `thyrsus/index.html:525-528`. 삭제는 `:8157-8158`; 실패는 `:7787` `renderWiz`.
+
+```js
+['pmodal','winask','gameover','wizard'].forEach(id=>{
+  const el=body.querySelector('#'+id); if(el){ el.hidden=true; el.innerHTML=''; }
+});
+// renderWiz:7787
+$('#wizhead').innerHTML=/* 제목·단계 */;
+```
+
+(3) **실행 재현.** `cloud_controls.cjs` 원본의 실제 임프(imp) `startWiz` 버튼은 정상. 같은 원본의 저장본은 `wizard:true,wizhead:false,wizbody:false,wizfoot:false`. 대화상자 사용 전 저장본으로 대화상자 결함(#20)을 배제하고, 파싱 후 복원+실제 확인 클릭으로 자동 복원 누락(#21)을 우회해 7인 밤을 복원한 뒤 같은 임프 위저드 버튼을 누르면 `Uncaught [TypeError: Cannot set properties of null (setting 'innerHTML')]`. 해당 오류는 `cloud_controls.out.json`의 `saved_wizard_after_restoration.errors`에 보존했다.
+
+(4) **기대·계약.** 클라우드 발행 설명 자체가 정적 셸+상태 JSON을 약속한다(`:8136-8140`). 동적 위저드 내용만 지우고 자식 셸은 보존해야 같은 `startWiz → renderWiz` 흐름으로 진행할 수 있다.
+
+(5) **제안 패치 — 미적용.** `CLOUD_DYNAMIC_IDS`는 이미 `wizhead/wizbody/wizfoot`의 내용만 비운다. 부모는 숨기는 기존 :8155를 유지하고 부모 전체 비우기 목록에서 제외한다.
+
+```js
+['pmodal','winask','gameover'].forEach(id=>{
+  const el=body.querySelector('#'+id);
+  if(el){el.hidden=true;el.innerHTML='';}
+});
+// #wizard는 hidden=true만 적용; 세 자식의 정적 구조는 유지한다.
+```
+
+(6) **자기 반박·범위.** 버튼은 정상 밤 탭의 실제 UI이며 삭제된 노드를 수동으로 재구축하지 않았다. 대화상자·자동 복원의 별도 문제(#20·#21)가 이 실패를 대신 설명하지 못하도록 정상 복원 대조군으로 분리했다. 기존 4차 수정에서 오버레이 정리를 수용했지만 정적 자식 삭제는 그 목표에 반한다. artifact 발행 한정으로 Medium; Pages 원본의 위저드는 정상이다.
+
+##### 4. 해석 메모
+
+- 라운드21의 현재 하우스룰은 최고 찬성 **표수**다. 오래된 패킷의 ‘찬성률’과 다르다는 이유로 현재 집계를 결함 처리하지 않았다. 공식의 일반적인 1회 지명 제한과 앱의 재지명 하우스룰도 섞지 않았다.
+- 투표 정정·지명 취소는 현재 기록을 수정하는 동작이다. 사망자 표를 기권으로 정정하거나 지명을 취소하면 그 기록이 사용한 토큰을 돌려준다. “한 번 클릭했으므로 영원히 소진”이라는 별도 불변 계약은 확인되지 않았다.
+- #12는 과거 채택 지적의 잔존, #13은 BACKLOG A70의 독립 재확인과 자격·토큰 검증 확장이다. #15·#18은 이미 채택한 원칙의 다른 문구에 남은 오류다. #1·#14는 과거 기각 이유를 이번의 실제 문구·명시적 공식 원문으로 반박했다.
+- 첩자(spy)의 “밤 마지막” 안내는 현재 모달에도 남아 있다(`:688`, `sim/BACKLOG.md:489` A71). 공식 커스텀 순서에서 그 뒤에 오거(ogre) 등이 있으므로 기존 미해결 사항으로 유지한다. 여기서 별도 최초 발견 건으로 재계상하지 않았다.
+- 티폰의 군주(lordoftyphon)의 A60은 첫밤 변환 안내 누락으로 한정해야 한다. 현행 공식은 **변환 뒤 통상 정보 단계**를 수행하므로, 백로그의 “통상 정보 자체가 공식에 없다”는 해석은 현재 원문과 맞지 않는다. [Lord of Typhon — How to Run](https://wiki.bloodontheclocktower.com/Lord_of_Typhon)
+- 양귀비 재배자(poppygrower)는 기본 규칙과 선택 규칙을 구분했다. 취함·중독·역할 이탈 때도 상견례하는 방식은 현행 위키가 따로 허용하는 optional rule이며, 기본 규칙에 자동 혼합하지 않았다. [Poppy Grower — How to Run](https://wiki.bloodontheclocktower.com/Poppy_Grower)
+- #20~#22는 `claude.use('artifact')`가 있는 환경의 발행 기능에서 생성한 HTML 문제다. 일반 Pages에서는 발행 버튼이 비활성화되므로 Medium으로 분류했다. 실제 원격 artifact 발행 성공·실제 모바일 터치까지 검증한 것은 아니다.
+
+##### 5. 검토했지만 결함 없음
+
+###### 영역 1 — 대조 범위와 통과한 부분
+
+**문구를 대조한 고유 캐릭터는 54종**이다. 181종 전수 완료가 아니다. 아래 목록에는 확정 결함과 부분검토 캐릭터도 포함하며, 목록에 있다는 사실을 모든 상호작용의 합격으로 해석하면 안 된다.
+
+우선순위 **31종**은 각 `ability/warn/guide*/remind/setupNote`, `WIKI_EXTRA.howto/examples`, 존재하는 밤 note를 읽고 로컬 공식 능력 및 해당 위키 절과 대조했다. 실제 백과 버튼 클릭 31회 모두 모달이 표시됐고 오류는 0이었다.
+
+현상금 사냥꾼(`bountyhunter`), 열기구 조종사(`balloonist`), 마을 바보(`villageidiot`), 사냥꾼(`huntsman`), 성가대 소년(`choirboy`), 무신론자(`atheist`), 은자(`hermit`), 주정뱅이(`drunk`), 대부(`godfather`), 자안(`xaan`), 꼭두각시(`marionette`), 소환사(`summoner`), 남작(`baron`), 릴 몬스타(`lilmonsta`), 카잘리(`kazali`), 비고르모르티스(`vigormortis`), 군단(`legion`), 팡 구(`fanggu`), 티폰의 군주(`lordoftyphon`), 데우스 엑스 피아스코(`deusexfiasco`), 파수꾼(`sentinel`), 밀주업자(`bootlegger`), 정원사(`gardener`), 교황(`pope`), 토르(`tor`), 저글러(`juggler`), 곡예사(`acrobat`), 양귀비 재배자(`poppygrower`), 노 다시(`nodashii`), 리치(`lleech`), 과부(`widow`).
+
+판정표 관련 추가 **24종**은 로컬 공식 능력과 위 필드·백과 문구를 대조하고, 의문이 생긴 규칙은 위키로 확인했다. 주정뱅이(drunk) 한 종이 앞 목록과 중복된다. 이 묶음 전원의 모든 위키·징크스를 전수 검사했다는 뜻은 아니다. 그중 8종의 백과 버튼을 직접 클릭했다.
+
+점쟁이(`fortuneteller`), 수도사(`monk`), 군인(`soldier`), 시장(`mayor`), 집사(`butler`), 주정뱅이(`drunk`), 은둔자(`recluse`), 성자(`saint`), 첩자(`spy`), 재상(`vizier`), 사이코패스(`psychopath`), 폭풍잡이(`stormcatcher`), 선원(`sailor`), 여관 주인(`innkeeper`), 찻집 여인(`tealady`), 평화주의자(`pacifist`), 어릿광대(`fool`), 악마의 변호사(`devilsadvocate`), 암살자(`assassin`), 좀버얼(`zombuul`), 보르톡스(`vortox`), 관료(`bureaucrat`), 도둑(`thief`), 일탈자(`deviant`).
+
+새 결함을 확정하지 않은 주요 대조 범위는 다음과 같다.
+
+- 주정뱅이(drunk)의 참·거짓 모두 가능한 정보, 팡 구(fanggu)의 보호 시 점프 비소모라는 **설명**, 대부(godfather)의 외지인 ±1과 낮 외지인 사망 조건은 해당 공식 문구와 맞았다. 팡 구의 1차 엔진 결함은 별개다.
+- 성가대 소년(choirboy)의 악마에 의한 왕(king) 사망 조건, 남작(baron)·파수꾼(sentinel)의 구성 보정, 무신론자(atheist)의 기본 승리 조건, 밀주업자(bootlegger)의 자작 규칙 공개 안내는 검토한 문구에서 새 확정 결함이 없었다.
+- 집사(butler)의 주인 투표 조건, 악마의 변호사(devilsadvocate)의 처형 성립과 사망 분리, 관료(bureaucrat)·도둑(thief)의 가중 능력문은 로컬 공식과 맞았다. 여행자 가중의 모든 조합을 이번에 새로 실행한 것은 아니다.
+- 토르(tor)·양귀비 재배자(poppygrower)의 기존 첫밤 정보 생략 명단은 반영돼 있다. 토르의 별도 대행 문구 오류는 #6, 릴 몬스타(lilmonsta)의 명단 밖 누락은 #8이다.
+
+###### 영역 2 — 상대순서
+
+`work/night_status_order.out.json` 전체를 재실행했다. TB·BMR·SV(공식 SnV)의 첫밤/이후밤 여섯 배열 모두 `matches:true`, `nonofficial:[]`였다. 내장 비전설 캐릭터 전부를 활성 커스텀 시트에 넣어 세 기반 에디션의 정렬도 기계 대조했다. 첫밤 71단계·이후밤 94단계 모두 공식 상대순서와 같고 역전·비공식 항목은 0이었다. 이는 순서 알고리즘 검사이며 그 인원으로 실제 게임을 진행했다는 뜻은 아니다. 단계의 생략 여부(#8), 안내문(#18·#19), 위장 상태의 도달성은 별개다.
+
+###### 영역 3 — 대조군
+
+궁정대신(courtier) 단독 효과는 밤2 발동 후 밤3에도 남고 밤5 만료로 기록됐다. 푸카(pukka) 단독 중독의 어릿광대(fool)는 다음 피해 해결 때 사망했다. 즉 #9는 모든 지속 처리의 실패가 아니라 다른 출처 토큰과 겹칠 때 생기는 누락이다. 선원(sailor)·궁정대신 및 구마사제(exorcist)·푸카 사례는 대부 보정이 없는 합법 BMR 7인 구성에서도 같은 실패를 재확인했다.
+
+###### 영역 4 — 일반 투표 경계
+
+- 0명 거수는 `handsFail`로 마감되어 찬반 단계로 넘어가지 않았다.
+- 전원 기권은 `yes:0, need:3, ratio:0, result:'yesFail'`; 사망 토큰은 소모되지 않았다.
+- 사망자의 찬성→반대 정정은 토큰 하나만 사용했다. 기권 정정·표 해제는 복원, 재투표는 재소모, 지명 취소는 해당 토큰 복원과 기록 삭제로 일관됐다.
+- 최고 찬성표수 판정은 현재 하우스룰과 일치했다. 밴시(banshee) 예외 누락은 #13이다.
+
+###### 영역 5 — 범위 제한
+
+새 실행은 #14와 그 대조군에 집중했다. 독살범(poisoner)은 군인(soldier)을 정상적으로 중독시켰고, 중독된 수도사(monk)의 보호는 불발했다. 1차의 팡 구(fanggu), 사악한 쌍둥이(eviltwin), 비고르모르티스(vigormortis)·마녀(witch), 암살자(assassin)·좀버얼(zombuul) 네 건은 중복 제외했다. 기존 기준선 통과를 이번에 발견한 설명문·조합의 무결성 증명으로 사용하지 않았다.
+
+###### 영역 7 — 구버전 저장과 초기화
+
+누락 필드가 있는 구버전 2인 저장본은 오류 없이 부팅했다. 플레이어의 `deadVote:true`, `statuses:[]`, `notes:''`, `alignment:null`, `diedAt:null`, 지명의 `hands:[]`, `stage:1`, `votes:{}`, `closed:false`, `deadVoters:[]`가 보충됐다. `schema:2`, `handoffDraft:null`, `myScripts:[]`, 여행자 대상 필드도 정상화됐다.
+
+자산 유지 초기화는 커스텀 캐릭터·내 스크립트·등록부·기록·테마·최근 스크립트를 보존하고 현재 플레이어·지명·이벤트·진행 초안·대기 승리를 비웠다. 이 프로브에서 일반 localStorage 부팅·마이그레이션 결함은 추가 확인되지 않았다.
+
+##### 6. 기각한 후보
+
+- “중복을 제거하는 함수는 `addStatus`다” — 실제 함수는 push한다. 출처를 무시하는 호출부 가드로 원인을 정정했다(#9).
+- “클라우드 대화상자는 중복 DOM 때문에 안 눌린다” — 재부팅 후 `dialogCount:1`이다. 이벤트 재연결 누락으로 원인을 정정했다(#20).
+- “밤 순서의 nonofficial 항목이 남아 있다” — 기본 여섯 결과는 모두 빈 배열이었다.
+- “노 다시(nodashii)의 사망 때 재계산 안내는 사망자를 건너뛴다는 뜻이다” — 재계산과 제외는 다르며 같은 warn은 생사 무관이라고 명시한다.
+- “은자(hermit)가 주정뱅이(drunk) 능력을 가지면 다른 외지인 능력도 모두 꺼져야 한다” — 공식은 다른 외지인 능력의 정상 작동을 명시한다. [Hermit — Summary](https://wiki.bloodontheclocktower.com/Hermit)
+- “교황(pope)의 두 사람 예시는 중복 인원 상한 2명이다” — 예시가 상한을 규정하지 않는다. 정원사(gardener)의 숙련도에 따른 배정 조언도 규칙 위반으로 확정하지 않았다.
+- “일탈자(deviant)의 ‘여행자도 처형될 수 있다’는 전면 오류다” — 일반 지명 처형과 능력 처형 예외를 구분해야 한다. 희생양(scapegoat)은 명시적 예외이며 세레노버스(cerenovus)의 일반 대상 규정에서도 능력 처형 가능성을 읽을 수 있다. 후자는 여행자 직접 예시가 아닌 추론이므로, 문장만으로 일반 지명 허용을 단정하지 않았다. [Scapegoat — How to Run](https://wiki.bloodontheclocktower.com/Scapegoat), [Cerenovus — How to Run](https://wiki.bloodontheclocktower.com/Cerenovus)
+- “0표·전원 기권이면 사망 토큰이 소모된다” — 실제 결과에서 소모되지 않았다. 지명 취소 때 복원된다는 사실도 별도 정책 위반 근거 없이 결함으로 만들지 않았다.
+
+##### 7. 확신 없음
+
+- **주정뱅이(drunk) 위장 순서:** BMR 기반에서 점쟁이(fortuneteller) 위장을 직접 시드하면 객실 청소부(chambermaid) 뒤에 붙어 공식 순서와 다르다. 그러나 `renderSetup:3681`은 위장 후보를 현재 기반 에디션으로 제한한다. 수용되는 저장 상태의 불일치는 재현했지만 정상 신규 UI 생성 경로가 미확정이므로 결함 표에서 제외했다.
+- **추가 설명문 후보:** 은자(hermit)의 사서에게 집사로 보이는 예시, 카잘리(kazali)의 이미 악한 좌석 선택 제한, 티폰의 군주(lordoftyphon)의 ‘정중앙’·인원 예시, 데우스 엑스 피아스코(deusexfiasco)의 교정 내용 공개, 과부(widow)의 자기 중독 뒤 통보, 소환사(summoner)의 다른 사인까지 포함하는 듯한 밤 사망 문구, 자안(xaan)의 기회 소진 재량, 릴 몬스타(lilmonsta)의 보모 자격 문구는 세 렌즈 검증을 완료하지 않았다. 확정 결함으로 세지 않았다.
+- **운영 검증 한계:** 실제 artifact 서비스 재발행·다른 기기 복원, 모바일 터치, Pages 원격 해시 재확인은 수행하지 않았다. 이번 실행은 원본 HTML의 VM/jsdom 및 저장 산출 HTML 재부팅이다.
+
+필요한 후속은 확정 항목의 수정과 같은 재현 사례의 회귀 검증이다. 상태 효과는 출처별 보관·활성 여부 모델을 먼저 정한 뒤 #9~#12를 함께 고치고, 클라우드는 #20~#22를 각각 독립 대조군으로 확인해야 한다. 설명문은 능력문·백과·밤 안내를 함께 수정해야 내부 모순이 남지 않는다. **패치는 요청 범위 밖이므로 적용하지 않았고 새 작업도 등록하지 않았다.** 보류 후보는 추가 근거 없이 수정 대상으로 확정하지 않는다.
+
+<oai-mem-citation>
+<citation_entries>
+MEMORY.md:1667-1668|note=[single HTML runtime and wrapper audit context]
+</citation_entries>
+<rollout_ids>
+</rollout_ids>
+</oai-mem-citation>
+
+### Codex 1차 원문 — `report.md` (verbatim, 콘텐츠 필터 중단 시점까지의 확정분)
+
+#### Thyrsus 독립 교차 검증 보고서
+
+##### 1. 실행 정보
+
+- 검토일: 2026-10-08. 모델: GPT-6 계열 Codex(현재 세션).
+- 대상: `thyrsus/index.html`, 16,516행, 1,499,666바이트. 직접 확인한 MD5: `ba41c1819f6f61e11a429e2ae1164b8d`. main `37d1cb7c` 및 Pages와의 일치는 요청자가 제공한 식별 정보이며 이번 검사에서는 원격 배포를 다시 조회하지 않았다.
+- 범위: 진단만. 아래 패치는 제안이며 적용하지 않았다. 재현 파일과 결과는 `work/`에 저장했다.
+- 환경: 실제 실행 Node `v24.19.0`(요청에 적힌 v26과 다름), 제공된 `sim/` 하네스와 jsdom 사용.
+- 설계 기록을 먼저 읽고 라운드 47~50, BACKLOG의 보류·기각 사유, 원래 리뷰 패킷을 현재 코드와 대조했다.
+- 네트워크: 공식 위키 열람 가능. 공식 로컬 JSON과 위키 본문을 대조했다.
+- tracker preflight: 지정 owner로 실행했으나 `tracker.sqlite3: Operation not permitted`. 활성 외부 작업을 확인할 수 없었다. 보호 파일을 편집하지 않고 이 격리 디렉터리의 보고서·재현 산출물만 작성했다.
+
+기준선 명령은 `sim/`에서 실행했다. `--out ../work/...`는 기본 결과 파일이 `sim/`에 쓰이지 않도록 추가했다.
+
+| 명령 | 실제 결과 |
+|---|---|
+| `node rules_check.js ../thyrsus/index.html` | 88케이스, 실패 0. 동적 래핑 감사 경고 별도 출력 |
+| `node endflow_check.js ../thyrsus/index.html` | 31케이스, 실패 0 |
+| `node scenario_run.js ../thyrsus/index.html --dummies 220 --out ../work/baseline-scenarios.json` | 더미 220, 실패 런 0, 스킵 `{}` |
+| `node fuzz.js ../thyrsus/index.html --games 400 --out ../work/baseline-fuzz.json` | 위반 0, avgLog 25.8, 종료 400 |
+| `node custom_game_fuzz.js ../thyrsus/index.html --games 90 --out ../work/baseline-custom.json` | 위반 0, 종료 90 |
+| `node work/rules_death_repro.js` | 아래 사망·승리 결함 실행 재현. 루트 검토자가 재실행했고 네이티브 대화상자는 예외 처리 |
+
+현재는 확정분을 즉시 보존하는 중간 보고서다. 남은 검토·무결성 확인 결과를 계속 추가한다.
+
+##### 2. 요약 표
+
+| # | 심각도 | 영역 | 결함 한 줄 | 위치 | 재현 방식 |
+|---|---|---|---|---|---|
+| 1 | Critical | 5 | 팡 구(fanggu)가 이미 죽은 외부인에게 점프해 원래 악마를 죽이고 선 승리를 제안 | `thyrsus/index.html:5196`, `doFangGuAttack` | 실행 |
+| 2 | Critical | 5 | 선한 사악한 쌍둥이(eviltwin) 본인의 처형에서 악 승리를 누락 | `thyrsus/index.html:10742`, `evalWinEvent` | 실행 |
+| 3 | High | 5 | 비고르모르티스(vigormortis)가 죽인 마녀(witch)의 저주가 삭제되고 이후 저주도 불발 | `thyrsus/index.html:3028`, `reconcileDeath`; `:5255`, `doStepKill`; `:5435`, `newNomination` | 실행 |
+| 4 | High | 5 | 암살자(assassin)가 죽은 척하는 좀버얼(zombuul)을 죽일 수 없음 | `thyrsus/index.html:5229`, `doStepKill` | 실행 |
+
+##### 3. 항목별 상세
+
+###### #1 Critical — 팡 구(fanggu)의 사망한 외부인 점프
+
+**결함·위치.** `doFangGuAttack`은 보호 여부를 검사하지만 실제 생존 여부를 검사하지 않고 외부인 타입만 보고 점프한다.
+
+```js
+// thyrsus/index.html:5212-5218
+if(isOut && !S.fangGuJumped && !(fg && hasStatus(fg,'spent'))){
+  S.fangGuJumped=true;
+  // ...
+  t.charId='fanggu'; t.alignment='evil';
+  // ...
+  if(fg) killPlayer(fg,'팡 구 점프 — 기존 팡 구 사망',{skipSuccession:true});
+}
+```
+
+**실행 재현.** `node work/rules_death_repro.js`의 `FANG_GU_DEAD_OUTSIDER`. 전날 처형된 사랑꾼(sweetheart)을 둘째 밤 팡 구 위저드에서 선택한다. 실제 `startWiz → wizTogglePick → wizNext → wizEffect` 경로이며 picker에서 선택 가능함을 검사했다. 결과: `selectable:true, oldAlive:false, targetAlive:false, targetChar:"fanggu", jumped:true, pending.team:"good"`. 죽은 대상은 살아나지 않고 원래 악마만 죽는다.
+
+**기대·근거.** 공식 능력은 “The 1st Outsider this kills”이다(`sim/official/roles181.json:1842`). 이미 죽은 사람은 이번 공격으로 죽은 외부인이 아니다. 위키도 “The first time a Fang Gu attacks and kills an Outsider”라고 전제한다. [Fang Gu, Summary](https://wiki.bloodontheclocktower.com/Fang_Gu)
+
+**제안 패치 — 미적용.** 죽은 대상을 고르는 것 자체는 허용하고 효과를 내지 않아야 한다. 실제 생존 판정을 공통화한 뒤 점프 진입 전에 검사한다.
+
+```js
+const actuallyAlive = p => !!p && (p.alive || hasStatus(p, 'fakedead'));
+// doFangGuAttack: 대상 조회 직후, 점프 판정보다 앞
+if (!actuallyAlive(t)) {
+  log('팡 구 공격: 이미 사망한 대상 — 효과 없음');
+  save(); renderAll(); return;
+}
+```
+
+**자기 반박·비고.** 기존 감사의 보호된 외부인 점프 수정과 다른 누락이다. 보호 분기는 현재 작동하나 사망 좌석은 그 분기에 걸리지 않는다. 정상 위저드가 사망 좌석을 선택지에 포함하므로 판정 함수만 직접 호출한 인위적 상태가 아니다.
+
+###### #2 Critical — 선한 사악한 쌍둥이(eviltwin) 본인의 처형
+
+**결함·위치.** `thyExecPrompts:2109`는 `p!==et`로 본인을 질문에서 제외하고, `evalWinEvent:10742`는 캐릭터 id가 `eviltwin`이면 진영과 무관하게 반환한다.
+
+```js
+if(et && p!==et && !isEvil(p) && !isMalfunctioning(et)) /* 질문 */;
+if(p && p.charId==='eviltwin')
+  return null; // 사악한 쌍둥이 본인 처형은 종료 아님
+```
+
+**실행 재현.** 같은 재현 명령의 `GOOD_EVIL_TWIN_EXECUTION`. 이발사(barber) 사망 후 실제 교환 위저드로 악한 사악한 쌍둥이와 선한 시계공(clockmaker)의 캐릭터를 교환한다. 앱이 진영을 유지하여 `newTwinChar:"eviltwin", newTwinAlignment:"good"`이 된다. 이 좌석을 `executeNominee('n1')`로 처형하면 `executed:"p2", alive:false, pending:null`이다. 지명 기록만 통과 상태로 준비했으며 처형 처리는 앱 함수로 실행했다.
+
+**기대·근거.** “If the good player is executed, evil wins.”(`sim/official/roles181.json:1511`). 캐릭터 이름의 ‘사악한’과 현재 진영은 별개다. 공식 예시: “The group executes the good-aligned Evil Twin. Evil wins.” [Evil Twin, Examples](https://wiki.bloodontheclocktower.com/Evil_Twin)
+
+**제안 패치 — 미적용.** 처형 전 능력 작동 여부와 쌍둥이 관계를 저장하고, 역할 보유자 본인이 선한 경우도 승리 조건에 포함한다. 처형 후 `abilityActs(p)`를 검사하면 이미 사망하여 오판하므로 사전 스냅샷을 사용한다.
+
+```js
+// 처형 직전 수집하여 evalWinEvent 컨텍스트로 전달
+ctx.goodTwinExecuted = !isEvil(p) && (
+  (p.charId === 'eviltwin' && abilityActs(p)) ||
+  confirmedGoodTwinWithActiveHolder
+);
+// 처형 성립 후: charId==='eviltwin' 조기 반환을 제거
+if (ctx.goodTwinExecuted) return evilTwinExecutionWin(p);
+```
+
+**자기 반박·비고.** 이발사로 도달 가능한 진영 조합을 사용했다. 성자(saint)의 좌석 진영 수정과 라운드 47의 문구 보완으로 이 분기까지 고쳐지지는 않았다. 보호로 선한 쌍둥이가 살아남는 별도 대조군은 현재 악 승리를 올바르게 제안했다.
+
+###### #3 High — 비고르모르티스(vigormortis)의 마녀(witch) 능력 유지가 단절됨
+
+**결함·위치.** 사망 처리의 `reconcileDeath:3028`은 모든 출처 효과를 무조건 정리한다. `doStepKill:5255-5258`은 그 뒤에야 `vigorAbility`를 부여한다. 또한 `newNomination:5435`는 마녀를 `p.alive`로만 찾는다.
+
+```js
+function reconcileDeath(p){
+  clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`);
+  // ...
+}
+resolveNightDeath(t, killerKo2+'의 공격', kctx);
+if(kid==='vigormortis' && !t.alive && charOf(t.charId)?.type==='minion'){
+  if(!hasStatus(t,'vigorAbility')) addStatus(t,'vigorAbility','비고르모르티스',null);
+}
+```
+
+**실행 재현.** 같은 명령의 `VIGORMORTIS_ERASES_CURSE`. 마녀 위저드로 저주를 건 뒤 비고르모르티스 위저드로 그 마녀를 죽인다. `before.curse:true`였으나 `witchAlive:false, keepsAbility:true, abilityActs:true, curse:false`가 된다. 로그에 `저주 해제 — 출처 사망(마녀)`가 남는다. 다음 밤 죽은 마녀의 위저드로 다시 저주를 건 뒤 낮에 대상이 지명하면 `cursed:true, nominatorAlive:true, nominationCreated:true`로 살아남는다.
+
+**기대·근거.** “Minions you kill keep their ability”(`sim/official/roles181.json:1795`). 더 직접적인 공식 예시: “The player that the Witch cursed tonight remains cursed.” [Vigormortis, Examples](https://wiki.bloodontheclocktower.com/Vigormortis)
+
+**제안 패치 — 미적용.** 사망 성공과 능력 유지 여부를 같은 처리에서 확정하고 출처 정리에 전달한다. 이후 마녀 조회는 살아 있음 대신 능력 작동 계약을 사용한다.
+
+```js
+// 사망 성공 직후, reconcileDeath 이전에 확정
+if (deathSucceeded && kctx.sourceCharId === 'vigormortis' && targetIsMinion) {
+  ensureVigorAbility(target, sourcePid);
+}
+// reconcileDeath: 실제로 능력을 잃은 출처만 효과 제거
+if (!abilityActs(p)) clearEffectsFromChar(p.charId, reason);
+// 지명 시 마녀 발동 검사
+const witch = abilityActor('witch');
+if (witch.ok && hasStatus(nominator, 'curse')) { /* 기존 인원 조건·사망 처리 */ }
+```
+
+**자기 반박·비고.** 능력 유지 토큰과 `abilityActs` 자체는 정상이다. 문제는 앞선 정리와 이후 호출자가 계약을 우회한다는 점이다. 보호로 죽지 않은 하수인에게 토큰을 주거나 출처를 잃은 효과까지 보존하지 않도록 패치는 사망 성공·출처 유효성을 함께 검사해야 한다.
+
+###### #4 High — 암살자(assassin)가 죽은 척하는 좀버얼(zombuul)을 처치하지 못함
+
+**결함·위치.** `doStepKill:5229`가 실제 생사와 표시 생사를 혼동한다.
+
+```js
+if(!t.alive){
+  toast('이미 죽은 대상입니다 — 같은 사람을 두 번 지목할 수 없습니다. 다른 대상을 고르세요.','warn');
+  return;
+}
+```
+
+**실행 재현.** 같은 명령의 `ASSASSIN_CANNOT_KILL_FAKEDEAD`. 첫 사망 후 상태(`alive:false`, `fakedead`)의 좀버얼을 밤 암살자 위저드에서 선택한다. `selectable:true`지만 결과는 `alive:false, fakedead:true, abilityActs:true`이고 사망 로그도 생기지 않는다.
+
+**기대·근거.** 좀버얼: “The 1st time you die, you live but register as dead.”(`sim/official/roles181.json:1776`). 암살자: “they die, even if for some reason they could not.”(`sim/official/roles181.json:1385`). 죽은 것으로 등록될 뿐 실제 생존한 좀버얼은 다시 죽일 수 있다.
+
+**제안 패치 — 미적용.** #1의 실제 생존 헬퍼를 써서 죽은 척 좌석은 공통 사망 판정으로 내려보낸다.
+
+```js
+// doStepKill
+if (!actuallyAlive(t)) {
+  log('이미 사망한 대상 선택 — 효과 없음');
+  save(); renderAll(); return;
+}
+// fakedead 대상은 기존 resolveDeath/resolveNightDeath/killPlayer로 계속 진행
+```
+
+**자기 반박·비고.** 라운드 18의 좀버얼 낮 지명 자격 수정과 다른 밤 경로다. 같은 가드는 다른 `doStepKill` 사용자에도 영향을 줄 수 있으나 여기서는 실행 확인한 암살자를 지적으로 확정한다.
+
+##### 4. 해석 메모
+
+- 투표 사양 충돌: 이번 요청은 하루 최고 ‘찬성률’을 기준으로 지정했지만, 설계 기록 라운드 21은 최고 ‘찬성 표수’를 의도한 것으로 기록하고 과거 찬성률 설명을 수정했다. 현재 코드의 표수 비교를 과거에 기각된 새 결함으로 재포장하지 않는다. 과반의 `floor(n/2)+1` 해석과 현재 `ceil(n/2)` 역시 기존 설계·이번 요청의 기준을 구분해 검토한다.
+
+##### 5. 검토했지만 결함 없음
+
+- 기준선 다섯 묶음은 실패/위반 0이었다. 이는 아래에 추가한 반례가 없다는 뜻이 아니며 각 묶음의 실제 검사 범위로 한정한다.
+- 영역 5: 보호된 선한 쌍둥이 처형 대조군은 사망 여부와 별개로 악 승리를 올바르게 제안했다.
+
+##### 6. 기각한 후보
+
+- ‘보호로 살아남은 선한 쌍둥이의 처형이 악 승리를 내지 않는다’: 실행 결과 악 승리가 제안되어 기각. 오래된 주석만으로 결함을 만들 수 없다.
+
+##### 7. 확신 없음
+
+- 나머지 영역의 진행 중 검토 결과와 최종 무결성 검사를 추가할 예정이다. 현재 문서는 확정분 보존용이다.
+
+
+### Codex 1차 하위 레인 원문 — `work/rules_death_findings.md` (verbatim)
+
+#### 영역 1·5 교차검증 결과
+
+검토자: GPT-6 계열 Codex 하위 검증자 `rules_death`. 정본 및 sim 파일 수정 없음. 네트워크 가능: 공식 위키 Fang Gu, Vigormortis, Zombuul, Evil Twin, Saint, Sage를 직접 열어 대조함. 읽은 과거 기록에서 기각 항목과 아래 지적을 대조함.
+
+실행 명령: `node work/rules_death_repro.js` → 종료 코드 0. 결과 원문은 `work/rules_death_repro.out`. 이 스크립트는 sim/harness.js의 VM을 재사용하며 `startWiz` → `wizTogglePick` → `wizNext` → `wizEffect`로 밤 능력을 실행한다. 모든 지목이 `wizPlayers`의 실제 후보인지 검사한다. 처형은 `executeNominee`를 사용한다. 네이티브 confirm/prompt/alert는 예외를 던진다. 투표가 끝난 지명 레코드는 테스트 fixture로 준비하며 집계 로직 자체는 이 검증 대상이 아니다.
+
+##### RD1 — Critical / 영역 5: 팡 구(fanggu)가 이미 죽은 외지인을 새 팡 구로 만들고 자신을 죽인다
+
+**위치:** `thyrsus/index.html:5196` `doFangGuAttack`, 핵심 5207~5218. 위저드 8612~8616은 `filter:'any'`이며 ‘사망자 가능’이라고 명시한다.
+
+```js
+const isOut = charOf(t.charId)?.type==='outsider';
+if(isOut && !S.fangGuJumped && !(fg && hasStatus(fg,'spent'))){
+  S.fangGuJumped=true;
+  t.charId='fanggu'; t.alignment='evil';
+  if(fg) killPlayer(fg,'팡 구 점프 — 기존 팡 구 사망',{skipSuccession:true});
+}
+```
+
+**재현:** 정상 팡 구와 전날 이미 죽은 사랑꾼(sweetheart)이 있는 7인 판. 밤 2 팡 구 위저드에서 죽은 사랑꾼을 지목한다. 실제 선택 가능하며 결과는 `oldAlive:false,targetAlive:false,targetChar:"fanggu",jumped:true,pending.team:"good"`. 죽은 좌석은 계속 죽어 있고 유일한 살아 있는 악마가 없어졌다고 선 승리를 제안한다.
+
+**기대/공식:** “The 1st Outsider this kills becomes an evil Fang Gu & you die instead.” (`sim/official/roles181.json:1842`). 죽은 사람을 선택할 수 있지만 이미 죽은 외지인을 새로 죽일 수 없으므로 점프·기존 팡 구 사망·승리 제안이 모두 없어야 한다. [Fang Gu 공식 위키](https://wiki.bloodontheclocktower.com/Fang_Gu)의 Summary도 죽지 않은 외지인을 공격하면 변환과 기존 팡 구 사망이 없다고 명시한다.
+
+**제안 패치(미적용):** 기존 보호 판정 앞에서 사망 외지인 지목을 무효 처리한다. 좀버얼과 같은 일반 실제 생존 helper를 만들 경우 해당 예외를 보존해야 한다. 외지인에 한정한 최소 예시는 다음과 같다.
+
+```js
+const isOut = charOf(t.charId)?.type === 'outsider';
+if (isOut && !t.alive) {
+  log(`팡 구 공격 → ${t.name}: 이미 사망, 점프 없음`);
+  save(); renderAll(); return;
+}
+// 이후 보호 판정과 기존 점프 분기
+```
+
+**자기 반박:** 공식은 ‘지목’이 아니라 ‘kills’; 죽은 대상 지목은 UI가 명시적으로 허용한다. 기존 3차 #7(`codex-review.md:570~577`) 및 수정 기록 790은 보호된 외지인 사례를 다루며 이 분기의 `alive` 누락은 남았다. BACKLOG A29는 문구의 ‘지목→살해’ 수정이다. 기각 항목 재제안이 아니다.
+
+##### RD2 — High / 영역 5: 비고르모르티스(vigormortis)가 죽인 마녀(witch)의 저주가 지워지고 이후 저주도 발동하지 않는다
+
+**위치:** `thyrsus/index.html:3028` `reconcileDeath`, 3072 `killPlayer`, 5255~5258 `doStepKill`, 5435 `newNomination`. 안내에도 같은 생존 필터가 남음(13454, 13540).
+
+```js
+function reconcileDeath(p){
+  clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`);
+}
+// doStepKill: 사망/정리 후 뒤늦게 유지 토큰 부여
+resolveNightDeath(t, killerKo2+'의 공격', kctx);
+if(kid==='vigormortis' && !t.alive && charOf(t.charId)?.type==='minion'){
+  if(!hasStatus(t,'vigorAbility')) addStatus(t,'vigorAbility','비고르모르티스',null);
+}
+// newNomination
+const witch=S.players.find(p=>p.alive&&p.charId==='witch');
+```
+
+**재현:** 밤 2 마녀 위저드로 p2를 저주하고, 비고르모르티스 위저드로 마녀를 죽인다. `before.curse:true` → `witchAlive:false,keepsAbility:true,abilityActs:true,curse:false`. 밤 3 죽은 마녀의 위저드로 p2를 다시 저주한 뒤 낮 3 p2가 지명하면 `cursed:true,nominatorAlive:true,nominationCreated:true`. 살아 있는 비고르모르티스가 정상 작동하고 충분한 생존자가 있는데 마녀의 사망 효과가 빠진다.
+
+**기대/공식:** “Minions you kill keep their ability & poison 1 Townsfolk neighbor.” (`sim/official/roles181.json:1795`). 공식 위키는 바로 이 예를 든다: “The player that the Witch cursed tonight remains cursed.” ([Vigormortis Examples](https://wiki.bloodontheclocktower.com/Vigormortis)). 기존 저주는 유지되고, 다음 밤 새로 건 저주도 다음 낮 지명 때 정상 발동해야 한다.
+
+**제안 패치(미적용):** 확정 사망 전에 비고르모르티스에 의한 능력 유지 컨텍스트를 전달하고, 사망 정리에서 이를 반영한다. 아래는 변경 의도를 나타내는 핵심 코드이며 killPlayer·reconcileDeath 인자 전달과 실패한 살해의 롤백을 함께 구현해야 한다.
+
+```js
+// doStepKill -> resolveNightDeath -> killPlayer에 동일 컨텍스트 전달
+kctx.retainMinionAbility = kid === 'vigormortis'
+  && charOf(t.charId)?.type === 'minion';
+
+// killPlayer: 사망이 실제 확정된 뒤, reconcileDeath 전에 적용
+if (opts.retainMinionAbility && !hasStatus(p, 'vigorAbility'))
+  addStatus(p, 'vigorAbility', '비고르모르티스', null);
+
+function reconcileDeath(p) {
+  if (!abilityActs(p)) clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`);
+  noticeLleechHostDeath(p);
+}
+
+// newNomination 및 같은 안내 필터
+const wa = abilityActor('witch');
+if (wa.ok && alivePlayers().length >= 4) {
+  // 기존 저주 발동 대화 및 사망 판정
+}
+```
+
+**비고/이력:** 완전히 새 발견으로 세면 안 된다. `codex-review.md:121~126`의 1차 #7은 ‘마녀 판정도 살아 있는 마녀만 찾습니다’라고 이미 채택했다. 지금 밤 깨움과 `abilityActs`에는 유지 예외가 들어갔지만 마녀 지명 분기와 사망 정리는 여전히 누락되어 있다. 기존 채택 항목의 미완결 수정/현재 잔존이며 기각 재제안이 아니다. 위 코드의 `abilityActs` 일반화 범위는 죽음 발동 역할을 포함하므로 출처별 유지 정책을 좁혀 구현해도 된다.
+
+##### RD3 — High / 영역 5: 암살자(assassin) 밤 위저드가 죽은 척 좀버얼(zombuul)을 죽이지 못한다
+
+**위치:** `thyrsus/index.html:5229` `doStepKill`. 암살자 위저드 8325~8330은 사망 좌석을 후보에 넣고 이 함수를 호출한다.
+
+```js
+if(!t.alive){
+  toast('이미 죽은 대상입니다 — 같은 사람을 두 번 지목할 수 없습니다. 다른 대상을 고르세요.','warn');
+  return;
+}
+```
+
+**재현:** 좀버얼·암살자가 있는 7인 판에서 낮 1 `executeNominee`로 좀버얼을 처형해 실제 앱이 죽은 척 상태를 만든다. 밤 2 암살자 위저드에서 그 좌석을 선택하고 판정을 실행한다. `selectable:true,alive:false,fakedead:true,abilityActs:true`이며 로그에는 첫 처형 외의 사망이 추가되지 않는다. 암살자의 관통 DEATH_MODIFIERS에 도착하기 전에 위 한 줄이 반환한다.
+
+**기대/공식:** 좀버얼: “The 1st time you die, you live but register as dead.” (`sim/official/roles181.json:1776`). 암살자: “Once per game, at night*, choose a player: they die, even if for some reason they could not.” (`sim/official/roles181.json:1385`). 실제로 살아 있는 좀버얼은 두 번째 사망으로 죽고 `fakedead`가 해제되어야 한다.
+
+**제안 패치(미적용):** 능력이 작동하는지를 실제 생존 대용으로 사용하면 안 된다(비고르가 죽인 하수인은 능력만 있는 시체). 실제 생존 helper를 별도로 쓰고 기존 관통 표에 넘긴다.
+
+```js
+function isActuallyAlive(p) {
+  return !!p && (p.alive ||
+    (p.charId === 'zombuul' && hasStatus(p, 'fakedead')));
+}
+// doStepKill
+if (!isActuallyAlive(t)) {
+  toast('이미 죽은 대상입니다.', 'warn');
+  return;
+}
+```
+
+**자기 반박:** UI가 죽은 척 좀버얼을 직접 선택 가능하다. 상태도 수동 토큰 seed가 아니라 전날 실제 처형에서 생성했다. C05 수정 기록(`codex-review.md:1546~1552`)은 낮 지명/처형 네 곳을 `nomineeEligible`로 고쳤지만 밤 살해의 별도 게이트는 남았다. 암살자 공식 관통과 실제 생존 규정으로 확정되며 일반 사망자의 재처형 정책과 무관하다.
+
+##### RD4 — Critical / 영역 5: 선한 사악한 쌍둥이(eviltwin) 본인을 처형해도 악 승리가 발생하지 않는다
+
+**위치:** `thyrsus/index.html:2104~2106` `thyExecPrompts`, 10742~10746 `evalWinEvent`.
+
+```js
+if(et && p!==et && !isEvil(p) && !isMalfunctioning(et))
+  qs.push({key:'twin', ...});
+// evalWinEvent
+if(p && p.charId==='eviltwin')
+  return null; // 사악한 쌍둥이 본인 처형은 종료 아님
+```
+
+**재현:** 비고르모르티스·사악한 쌍둥이·시계공(clockmaker)·죽은 이발사(barber)가 있는 판. 밤 2 이발사 위저드에서 악한 사악한 쌍둥이 좌석 p1과 선한 시계공 좌석 p2를 교환한다. 앱이 `p2.charId:"eviltwin",p2.alignment:"good"`를 만든다. 낮 2 p2의 가결 지명을 `executeNominee('n1')`로 처형하면 `executed:"p2",alive:false,pending:null`. 악 승리 제안이 없다.
+
+**기대/공식:** “If the good player is executed, evil wins.” (`sim/official/roles181.json:1511`). ‘good’은 능력 이름이 아니라 좌석 진영이다. 공식 예시는 정확히 이 상황이다: “The group executes the good-aligned Evil Twin. Evil wins.” ([Evil Twin Examples](https://wiki.bloodontheclocktower.com/Evil_Twin)). 실제로 죽었는지와 무관하게 정상 작동하는 선한 Evil Twin의 처형은 악 승리다.
+
+**제안 패치(미적용):** 처형 전 작동 상태/선한 역할 보유자 여부를 스냅샷하고 동일한 승리 통로에 전달한다. 죽은 뒤 `abilityActor`를 새로 호출하면 원래 작동하던 능력을 놓치므로 시점이 중요하다.
+
+```js
+// 처형 확정 전에 저장, 투표 처형·성결자 처형 공유 컨텍스트에 전달
+const executedGoodEvilTwin = p.charId === 'eviltwin'
+  && !isEvil(p) && abilityActs(p) && !isMalfunctioning(p);
+
+// evalWinEvent('execute', ctx)
+if (ctx.executedGoodEvilTwin) return {
+  team: 'evil',
+  reason: `선한 사악한 쌍둥이(${p.name})가 처형되었습니다.`,
+  rule: '선한 쌍둥이가 처형되면 악한 팀이 승리합니다.'
+};
+if (p && p.charId === 'eviltwin') return null;
+```
+
+**자기 반박:** 선한 하수인 역할은 앱 이발사 위저드가 직접 만드는 합법 상태다. 원문 예시가 있으므로 해석 메모가 아니다. 라운드 17·47에서 성자·고블린·시장의 좌석 진영을 교정한 이력이 있으나 이 명시적 self 제외는 남았다. 기각 항목에 해당하지 않는다.
+
+##### 검토했지만 결함 없음 / 기각 후보
+
+- 보호된 선한 쌍둥이(상대 역할 보유자)를 처형해 살아남았을 때 악 승리가 누락된다는 후보는 기각. 실제 `CONTROL_PROTECTED_GOOD_TWIN` 출력은 `alive:true,pending.team:"evil"`; 옛 주석은 틀리지만 현재 wrapper가 이미 처형 사건을 전달한다.
+- 밤 살해 fail-closed 게이트는 `abilityActor`의 보유자 부재/사망/오작동 반환과 wizEffect 경로를 대조했다. 비고르모르티스 능력 유지 예외 자체는 `abilityActs:true`가 되어 죽은 마녀 위저드를 열고 저주를 새로 놓을 수 있다. RD2는 그 뒤 지명 판정의 별도 생존 필터 문제다.
+- 암살자 관통 표는 `block` 및 `kill` 두 단계에 있고 구조화된 `bypass`를 전달한다. RD3는 표 우선순위가 아니라 표 이전 입력 게이트의 결함이다.
+- 좀버얼 첫 사망은 실제 처형 경로에서 `fakedead`만 추가하고 선 승리를 선언하지 않음을 확인했다. 두 번째 낮 처형 자격 수정은 C05 기록과 현 코드가 일치한다.
+- 어릿광대(fool) 첫 생존은 강제 발동, 암살자 관통은 예외이고 중독·취함 guard가 표에 있다. 이 부분에서 새 확정 결함 없음.
+- A05(여관 주인 resolution-time 모델), A07(사이코패스 무승부 UI 상태 없음), A09(집사 위키 원문 오인용), A10(교수 1회 사용 되돌림 근거 부재), A13(군인·수도사 전체 악마 효과 주장)은 기존 기각 사유를 읽고 재제안하지 않았다.
+
+##### 해석 메모 / 확신 없음
+
+- `DEATH_TRIGGER_STEPS.sage:'night'`는 암살자에게 죽은 현자(sage)도 밤 목록에 올릴 수 있다. 다만 현자 위저드 첫 문장은 ‘오늘 밤 악마에게 죽었을 때만’이라고 정확히 제한하므로, 지금은 자동 목록과 안내의 불일치 후보이며 추가 결함으로 확정하지 않았다.
+- `protect-token` 수정자는 보호 토큰을 `find`로 하나만 확인한다. 수도사 토큰이 먼저, 여관 주인 토큰이 나중이면 비악마 밤 살해에서 뒤 토큰이 무시될 수 있다. 정상 밤 순서는 여관 주인→수도사라 일반 경로의 순서 조건을 실행 확인하지 못했다. 미확정 후보로만 남긴다.
+- 중독/능력 상실된 비고르모르티스가 나중에 정상화될 때 기존 죽은 하수인의 능력 복구·이웃 독 재평가는 이번 4건의 실행 범위 밖이다.
+
