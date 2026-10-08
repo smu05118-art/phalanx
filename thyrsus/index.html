@@ -738,7 +738,7 @@ const CHARACTERS = [
      건강한 좌석에게 거짓 정체를 심을 재량이 되는 것이 아니다.
      같은 앱의 백과는 이미 "대상을 아예 깨우지 않는다"로 맞게 적고 있었다(내부 모순). */
  warn:['야경꾼이 중독·취함이면 **대상을 아예 깨우지 않는다** — 대상은 아무것도 알지 못한다. 엉뚱한 사람을 야경꾼이라 가리키지 않는다(공식 예시).','악한 플레이어에게 쓰면 정체만 노출된다 — 선택은 본인 몫.'],remind:['사용 여부(게임당 1회)를 표시하라.']},
-{id:'poppygrower',ko:'양귀비 재배자',en:'Poppy Grower',type:'townsfolk',edition:'exp',first:true,other:true,conditional:'사망 시',ability:'하수인과 악마는 서로를 모른 채 시작한다. 양귀비 재배자가 죽으면 그날 밤 서로를 알게 된다.',guideFirst:['하수인 정보 단계와 악마 정보 단계에서 서로를 가리켜 주지 않는다.','악마 블러프 3개는 평소대로 보여준다.'],guideOther:['양귀비 재배자가 죽었다면 그 밤: 하수인들과 악마를 깨워 서로를 알려준다.'],warn:['처형으로 죽어도 그날 밤 상견례를 진행한다.','악 팀이 서로 모르는 동안 하수인 능력의 대상 지정 등이 꼬일 수 있다 — 재량 처리.','양귀비 재배자가 중독·취함 상태로 시작하면 악 팀이 평소처럼 서로를 알게 해도 된다.'],remind:['사망한 밤의 상견례를 잊지 마라 — 놓치면 악 팀이 계속 서로를 모른다.']},
+{id:'poppygrower',ko:'양귀비 재배자',en:'Poppy Grower',type:'townsfolk',edition:'exp',first:true,other:true,conditional:'사망 시',ability:'하수인과 악마는 서로를 모른 채 시작한다. 양귀비 재배자가 죽으면 그날 밤 서로를 알게 된다.',guideFirst:['하수인 정보 단계와 악마 정보 단계를 건너뛴다 — 서로를 가리켜 주는 절차 자체를 진행하지 않는다.','악마만 따로 깨운다.','게임에 없는 선한 캐릭터 토큰 3개를 블러프로 보여주고 재운다.'],guideOther:['양귀비 재배자가 죽었다면 그 밤: 하수인들과 악마를 깨워 서로를 알려준다.'],warn:['처형으로 죽어도 그날 밤 상견례를 진행한다.','악 팀이 서로 모르는 동안 하수인 능력의 대상 지정 등이 꼬일 수 있다 — 재량 처리.','양귀비 재배자가 중독·취함 상태로 시작하면 악 팀이 평소처럼 서로를 알게 해도 된다.'],remind:['사망한 밤의 상견례를 잊지 마라 — 놓치면 악 팀이 계속 서로를 모른다.']},
 {id:'preacher',ko:'설교자',en:'Preacher',type:'townsfolk',edition:'exp',first:true,other:true,ability:'매일 밤 1명을 선택한다. 선택된 하수인은 설교받았음을 알게 되고 능력을 잃는다.',guideFirst:['설교자를 깨운다.','1명을 지목하게 한다.','설교자를 재운다.','지목이 하수인이면: 그 하수인을 깨워 설교받았음을 알린다.'],guideOther:['설교자를 깨운다.','1명을 지목하게 한다.','설교자를 재운다.','지목이 하수인이면: 그 하수인을 깨워 설교받았음을 알린다.'],warn:['설교받은 하수인은 설교자가 멀쩡한 한 계속 능력이 없다.','설교자가 죽거나 중독·취함이 되면 하수인들의 능력이 돌아온다.','설교자가 중독·취함 상태에서 지목한 하수인은 능력을 잃지 않는다(알림 여부는 재량).'],remind:['설교받은 하수인 전원에게 표시 토큰을 붙여라.']},
 {id:'princess',ko:'공주',en:'Princess',type:'townsfolk',edition:'exp',first:false,other:true,ability:'공주의 첫째 날에 공주가 지명한 플레이어가 처형됐다면, 그날 밤 악마는 아무도 죽이지 못한다.',guideFirst:[],guideOther:[],warn:['공주 본인의 지명이 실제 처형으로 이어져야 발동한다.','막는 것은 악마의 킬뿐 — 다른 원인의 밤 사망은 그대로 진행된다.','공주가 중독·취함이면 악마 킬이 정상 진행된다.'],remind:['첫째 날 공주의 지명·처형 여부를 기록하라.','발동한 밤에도 악마는 평소처럼 깨워 지목시키되 사망 처리만 하지 않는다.']},
 {id:'snitch',ko:'밀고자',en:'Snitch',type:'outsider',edition:'exp',first:true,other:false, ability:'각 하수인은 첫날 밤 블러프(게임에 없는 캐릭터) 3개를 받는다.', guideFirst:['하수인 정보 시점에 각 하수인을 차례로 깨운다 — 밀고자 본인은 깨우지 않는다.','하수인마다 게임에 없는 캐릭터 3개를 보여준다 — 하수인끼리 같아도, 악마 블러프와 겹쳐도 된다(재량).'], guideOther:[], warn:['밀고자가 중독/술취함이면: 블러프를 주지 않거나, 게임에 있는 캐릭터를 섞은 거짓 블러프를 줘도 된다.','악마 블러프와의 조합을 미리 설계하면 악 팀의 거짓말이 매끄러워진다 — 균형 재량.'], remind:['첫날 밤 이후 발동 없음.']},
@@ -882,7 +882,7 @@ const CHARACTERS = [
 {id:'tor',ko:'토르',en:'Tor',type:'fabled',edition:'loric',first:true,other:true,setupChar:true,
  ability:'플레이어들은 자신의 캐릭터와 진영을 모른 채 시작한다. 죽을 때 자신의 캐릭터와 진영을 알게 된다.',
  setupNote:'인원 구성은 통상대로 하되 캐릭터 토큰을 나눠주지 않는다 — 배정은 그리모어에만 기록하고 플레이어에게 비공개.',
- guideFirst:['밤 능력 절차를 사회자가 대행하거나, 깨우더라도 캐릭터명을 말하지 않고 행동만 지시해 정체가 드러나지 않게 진행.'],
+ guideFirst:['하수인 정보 단계와 악마 정보 단계를 건너뛴다 — 아무도 자기 캐릭터·진영을 모르므로 블러프도 주지 않는다.','밤 능력 절차는 사회자가 대행하거나, 깨우더라도 캐릭터명을 말하지 않고 행동만 지시해 정체가 드러나지 않게 진행.'],
  guideOther:['동일 — 매 밤 같은 방식으로 진행.'],
  warn:['깨우는 행위 자체가 힌트가 된다 — 전원 기상, 무작위 추가 기상 등 위장 수단을 준비.','악 플레이어도 자신이 악인지 모른다 — 악마의 살해 지목 등도 사회자 대행 재량이 필요.','운영 난도가 매우 높음 — 반드시 공식 위키를 확인하고 절차를 설계할 것.'],
  remind:['사망자에게 자기 캐릭터·진영 공개']},
@@ -1649,6 +1649,11 @@ function migrateState(raw){
   st.myScripts=st.myScripts.filter(s=>{ if(seenMs.has(s.id)) return false; seenMs.add(s.id); return true; });
   /* 사라진 스크립트를 가리키는 활성 지정은 끊는다 — 유령 id 는 캐릭터 풀을 통째로 비운다 */
   if(typeof st.myScriptActive!=='string' || !st.myScripts.some(s=>s.id===st.myScriptActive)) st.myScriptActive=null;
+  /* 에디션도 같은 규칙으로 클램프한다. 이 함수가 myScriptActive 는 검증하면서 edition 은
+     전혀 검증하지 않아, EDITIONS 에 없는 값(구버전·손상 저장본)이 그대로 살아남았다.
+     nightSteps() 는 그 경우를 폴백으로 넘기지만 renderSheet 는 ed.first 에서 던진다 —
+     원천에서 막는 쪽이 맞다. */
+  if(typeof st.edition!=='string' || !EDITIONS[st.edition]) st.edition='tb';
   /* SABER 원장 정규화 — 레코드 계약(SABER.EV)에 맞지 않는 항목은 버린다.
      원장이 커지면 localStorage 를 삼키므로 상한 초과분은 오래된 쪽부터 잘라낸다. */
   st.events=st.events.filter(e=>e&&typeof e==='object'&&typeof e.t==='string'&&SABER.EV[e.t])
@@ -4088,18 +4093,25 @@ function nightRow(edMeta,id,i,isFirstNight=true){
   const c=charOf(id); if(!c) return '';
   const inPlay=S.players.some(p=>p.charId===id);
   // 이후 밤 시트에서는 guideOther 우선, 첫날 밤 시트에서는 기존 규칙 유지
+  /* 아래 시트 행이 보여주는 가이드 **첫 줄**도 산문이다 — `esc` 로 그리면 `**강조**` 가
+     별표째 보인다(장의사·푸카·팡 구·공작부인 네 곳이 실제로 그랬다). 같은 가이드를 밤
+     위저드는 이미 `escEm` 으로 그려서 두 화면이 같은 문자열을 다르게 보여주고 있었다.
+     PR #54 가 escEm 을 12곳에 끼울 때 빠진 자리다. 설명을 템플릿 리터럴 안에 HTML 주석으로
+     두면 **행마다 한 벌씩 DOM 에 실린다** — 골든 스냅샷이 그것을 잡았다. */
   const g = !isFirstNight ? (c.guideOther||c.guideFirst||[])
     : ((edMeta && c.guideOther && !c.first)? c.guideOther : (c.guideFirst||c.guideOther||[]));
   /* data-cid = 이 행의 캐릭터 고유 키. (i) 버튼 주입기가 이름 역조회 대신 이걸 읽는다 */
   return `<div class="sheetrow" style="${S.players.length&&!inPlay?'opacity:.45':''}">
     <div class="ctoken ${c.type}" data-cid="${esc(c.id)}">${glyph(c.id)}</div>
     <div><span class="sname">${esc(c.ko)}</span><span class="sen">${esc(c.en||'')}</span>${c.conditional?` <span class="pill warn">${esc(c.conditional)}</span>`:''}
-    <div class="sab hint">${esc((g[0]||'').replace(/\.$/,''))}</div></div></div>`;
+    <div class="sab hint">${escEm((g[0]||'').replace(/\.$/,''))}</div></div></div>`;
 }
 function renderSheet(){
   const el=$('#pane-sheet');
   const meta=SCRIPTS_META.find(s=>s.id===sheetEd)||SCRIPTS_META[0];
-  const ed=EDITIONS[sheetEd];
+  /* nightSteps() 가 이미 굳혀 둔 것과 같은 가드 — 순서표를 못 찾는 것은 폴백으로 넘길
+     일이지 시트 탭이 통째로 죽을 일이 아니다. 형제 함수 중 하나만 지키고 있었다. */
+  const ed=EDITIONS[sheetEd]||EDITIONS.tb;
   /* sheetCharList 는 그 에디션의 여행자도 함께 돌려준다 — 키가 없는 counts['traveler']++ 는
      undefined++ 라 NaN 이 되고, 아래 렌더가 4유형만 돌아 여행자가 시트에서 통째로 사라졌다.
      집계 키를 캐릭터 유형에서 유도한다. */
@@ -7671,15 +7683,43 @@ function wizCharPool(pool){
    기본 문턱은 7인이지만 장난감 장인이 그것을 없앤다 — 공식 toymaker firstNightReminder:
    "Resolve Minion Info and Demon Info, even though there are fewer than 7 players."
    게이트가 진행·시트·미리보기·라벨·체크리스트 다섯 곳이라 한 술어를 공유한다. */
+/* 공식 원문이 하수인·악마 정보 단계를 **건너뛰라고** 지시하는 캐릭터.
+   roles181.json 의 firstNightReminder 문자 그대로:
+     tor          "Skip Minion Info and Demon Info."
+     poppygrower  "Skip Minion Info and Demon Info. Wake the Demon. Show the
+                   *THESE CHARACTERS ARE NOT IN PLAY* token. Show 3 not-in-play good character tokens."
+   장난감 장인은 **반대 방향**이다 — "Resolve Minion Info and Demon Info, even though there
+   are fewer than 7 players." 인원수 제한만 면제한다. 건너뛰기는 단계를 **없애는** 것이고
+   면제는 세는 기준을 **푸는** 것이라, 둘이 함께 있으면 건너뛰기가 앞선다 — 일어나지 않은
+   단계를 '진행'할 수는 없다. (공식 원문은 이 조합을 직접 가르지 않는다.) */
+const INFO_SKIP_IDS=['tor','poppygrower'];
+/* 좌석과 전설 두 출처를 다 본다 — 양귀비 재배자는 주민(좌석), 토르는 전설(S.fabled)이다.
+   라운드 47 의 setupModHeld 와 같은 부류다.
+   좌석 캐릭터는 abilityActor() 로 본다: 오작동하는 양귀비 재배자는 능력이 없으므로
+   건너뛰지 않는다(공식 기준 — 악 팀은 평소대로 서로를 안다). 전설에는 그 축이 없다. */
+function infoSkipHolders(){
+  return INFO_SKIP_IDS.filter(id=>{
+    const c=(typeof charOf==='function')? charOf(id) : null;
+    if(c && c.type==='fabled') return (typeof isFabledActive==='function') && isFabledActive(id);
+    if(typeof abilityActor==='function'){ try{ return !!abilityActor(id).ok; }catch(e){} }
+    return (S.players||[]).some(p=>p && p.charId===id);
+  });
+}
 function infoStepRuns(id){
   const st=INFO_STEPS[id]; if(!st) return true;
+  /* 건너뛰기가 인원수 면제보다 앞선다 — 위 주석의 근거 */
+  if(infoSkipHolders().length) return false;
   if(typeof isFabledActive==='function' && isFabledActive('toymaker')) return true;
   return S.players.length>=st.minPlayers;
 }
 /* 시트의 첫밤 탭은 **에디션 참조표**라 인원수로 거르지 않고 늘 전부 보여준다.
    그래서 라벨은 지금 판의 상태를 따라가면 안 된다 — 다른 에디션 시트를 열어 봐도
    현재 게임의 전설이 라벨에 새어 나온다. 언제나 참인 한 문장으로 둔다. */
-function infoStepNote(){ return '7인 이상 · 장난감 장인이면 인원수 무관'; }
+function infoStepNote(){
+  const sk=(typeof infoSkipHolders==='function')? infoSkipHolders() : [];
+  if(sk.length) return sk.map(id=>((typeof charOf==='function' && charOf(id)) || {}).ko || id).join('·')+' — 공식: 이 단계를 건너뛴다';
+  return '7인 이상 · 장난감 장인이면 인원수 무관';
+}
 
 /* 등록상 하수인인가 — 실제 타입과 '등록되는 타입'을 가른다.
    공식 Legion: "You register as a Minion too." · 위키: "Each Legion registers as a Minion as
