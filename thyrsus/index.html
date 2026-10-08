@@ -908,7 +908,7 @@ const OTHER_NIGHT_ORDER = ['bureaucrat','thief','poisoner','monk','scarletwoman'
 
 /* ══════════════════ 상태 토큰 정의 ══════════════════ */
 const STATUS_DEFS = {
-  poison:  {ko:'중독', icon:'☠', cls:'poison',  desc:'능력 오작동: 정보는 거짓 가능, 발동형은 불발. 오늘 밤+내일 낮, 내일 황혼에 자동 해제.'},
+  poison:  {ko:'중독', icon:'☠', cls:'poison',  desc:'능력 오작동: 정보는 거짓 가능, 발동형은 불발. 출처별 만료: 독살범=오늘 밤+내일 낮(내일 황혼 해제), 노 다시·비고르모르티스·리치 숙주·과부·푸카·뱀 조련사 스왑=상시(수동 해제까지).'},
   drunkS:  {ko:'술취함', icon:'🍺', cls:'drunkT', desc:'취함 — 능력 오작동. 출처별 만료: 선원·여관 주인·건달·음유시인=다음 황혼, 궁정대신=3밤+3낮, 주정뱅이·사랑꾼·뱀 조련사 스왑=영구.'},
   protect: {ko:'보호', icon:'🛡', cls:'protect', desc:'보호 토큰. 범위는 출처로 갈린다(DEATH_MODIFIERS protect-token 과 같은 기준) — 수도사 출처면 오늘 밤 악마의 공격만, 여관 주인·사회자 수동 출처면 오늘 밤 모든 밤 사망을 막는다. 처형은 어느 쪽도 막지 않는다. 새벽에 자동 해제.'},
   herring: {ko:'붉은 청어', icon:'🎗', cls:'herring', desc:'점쟁이에게 악마처럼 감지된다(영구).'},
@@ -1953,6 +1953,26 @@ const THY_DRUNK_CHOICES=[
   {id:'court', label:'궁정대신 (3밤 + 3낮)', sub:'궁정대신의 취함'},
   {id:'perm',  label:'영구',              sub:'주정뱅이 · 사랑에 빠진 사람 등'},
 ];
+/* 공식은 중독의 지속을 출처별로 다르게 쓴다 — roles181.json 문자 그대로:
+     poisoner    "they are poisoned tonight and tomorrow day."              ← 유한
+     nodashii    "Your 2 Townsfolk neighbors are poisoned."                 ← 상시
+     vigormortis "Minions you kill keep their ability & poison 1 Townsfolk neighbor."  ← 상시
+     lleech      "You start by choosing a player: they are poisoned."        ← 상시
+     widow       "On your 1st night, … choose a player: they are poisoned."  ← 상시
+   취함에는 이 선택이 있었는데(THY_DRUNK_CHOICES) 중독에는 없어서 사회자 수동 경로가
+   **항상 유한**으로 박았다. 그래서 공식상 계속 중독인 주민 이웃이 다음 밤 시작
+   expireStatuses() 에서 조용히 멀쩡해졌고, 정보 판정이 arbitrary → true 로 뒤집혔다.
+   상시 중독 넷(노 다시·비고르모르티스·리치 숙주·과부)에는 자동 경로가 아예 없다.
+   **기본값은 유한을 앞에 둔다** — 지금 동작이 그것이고, 기본을 조용히 바꾸면 독살범을
+   손으로 놓던 판이 달라진다. */
+const THY_POISON_CHOICES=[
+  {id:'night', label:'오늘 밤 + 내일 낮',   sub:'독살범 — 내일 황혼에 자동 해제'},
+  {id:'perm',  label:'상시(수동 해제까지)', sub:'노 다시 · 비고르모르티스 · 리치 숙주 · 과부 · 뱀 조련사 스왑'},
+];
+function thyPoisonPolicy(id, nightExp){
+  if(id==='perm') return {exp:null, src:'상시 중독(수동 해제까지)'};
+  return {exp:{kind:'night', n:nightExp}, src:'사회자 수동(오늘 밤+내일 낮)'};
+}
 function thyDrunkPolicy(id){
   if(id==='court') return {exp:drunkExpiry('court'), src:'궁정대신(3밤+3낮)'};
   if(id==='perm')  return {exp:null, src:'영구'};
@@ -4282,7 +4302,13 @@ function addStatusUI(pid,key){
      범위(밤 1 + 낮 1)를 살아야 하므로 만료를 밤 2로 민다.
      낮 만료(protect)는 setup 에서도 {day,1} 이라 이미 밤 1을 덮으므로 그대로 둔다. */
   const nightExp = (ph.kind==='setup')? 2 : ph.n+1;
-  if(key==='poison'){ exp={kind:'night', n:nightExp}; }
+  if(key==='poison'){                                   // 중독도 출처별 만료가 다르다 — 정책 선택
+    thyChoose('중독 지속을 고르세요 — 출처마다 다릅니다.', THY_POISON_CHOICES, id=>{
+      if(id===null) return;
+      const d=thyPoisonPolicy(id, nightExp); addStatus(p,key,d.src,d.exp); save(); renderAll();
+    }, {title:'중독 지속', syncPromptMap:{'1':'night','2':'perm'}});
+    return;
+  }
   if(key==='protect'){ exp = ph.kind==='night'? {kind:'day', n:ph.n} : {kind:'day', n:ph.n+1}; }  // 낮 부여분은 다음 낮 시작에 해제(그 사이 밤 동안 유효)
   if(key==='master'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='master')); exp={kind:'night', n:nightExp}; }
   if(key==='drunkS'){                                   // 취함은 출처별 만료가 다르다 — 정책 선택
@@ -9435,7 +9461,14 @@ function togglePStatus(pid,key){
     /* addStatusUI 와 같은 이유 — 준비(setup)의 ph.n===0 을 그대로 쓰면 만료가 {night,1} 이라
        밤 1 시작 순간 풀린다. 준비에 놓은 토큰도 밤 1 + 낮 1 을 살도록 밤 2로 민다. */
     const nightExp = (ph.kind==='setup')? 2 : ph.n+1;
-    if(key==='poison') exp={kind:'night', n:nightExp};
+    /* 중독도 취함과 같이 정책을 고른다 — 아래 drunkS 분기와 같은 꼴이다 */
+    if(key==='poison'){
+      thyChoose('중독 지속을 고르세요 — 출처마다 다릅니다.', THY_POISON_CHOICES, id=>{
+        if(id===null){ openPlayerModal(pid); return; }
+        const d=thyPoisonPolicy(id, nightExp); addStatus(p,key,d.src,d.exp); save(); openPlayerModal(pid);
+      }, {title:'중독 지속', syncPromptMap:{'1':'night','2':'perm'}});
+      return;
+    }
     if(key==='protect') exp = ph.kind==='night'? {kind:'day', n:ph.n} : {kind:'day', n:ph.n+1};
     if(key==='master'||key==='curse'||key==='mad'){ S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!==key)); exp={kind:'night', n:nightExp}; }
     let src='사회자 수동';

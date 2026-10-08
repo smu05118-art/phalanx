@@ -3383,3 +3383,74 @@ JSON) ed.first 에서 TypeError 가 나 밤 탭 전체가 죽는다. 순서표�
 것뿐이다 — 별표→`<b>` 셋(장의사·푸카·팡 구) · `exp` 시트가 예외→정상 하나 ·
 밤 단계가 8→6·7→5 로 줄어든 둘 · 중독된 양귀비 재배자는 **단계가 그대로 돌고 문구만**
 바뀐 하나.
+
+## 라운드 50 — 중독에 '상시' 가 없어 공식상 계속 중독인 좌석이 멀쩡해졌다 · PR #75
+
+라운드 47 큐의 A65. 가이드 문구 계열(A60·A62·A64)보다 판정에 직접 닿아 먼저 집었다.
+
+### 공식은 지속을 출처별로 다르게 쓴다
+
+`roles181.json` 문자 그대로:
+
+```
+poisoner    "Each night, choose a player: they are poisoned tonight and tomorrow day."   ← 유한
+nodashii    "Your 2 Townsfolk neighbors are poisoned."                                   ← 상시
+vigormortis "Minions you kill keep their ability & poison 1 Townsfolk neighbor."          ← 상시
+lleech      "You start by choosing a player: they are poisoned."                          ← 상시
+widow       "On your 1st night, … choose a player: they are poisoned."                     ← 상시
+```
+
+취함에는 이 선택이 **있었다** — `THY_DRUNK_CHOICES`(다음 황혼 / 궁정대신 3밤+3낮 / 영구).
+중독에는 없어서 사회자 수동 경로(`addStatusUI`·`togglePStatus`)가 **항상 유한**으로 박았다.
+자동 경로는 독살범 유한·푸카 상시·뱀 조련사 스왑 상시로 갈려 있는데, **상시 중독 넷
+(노 다시·비고르모르티스·리치 숙주·과부)에는 자동 경로가 아예 없다** — 사회자가 손으로
+놓아야 하고, 손으로 놓으면 반드시 유한이 된다.
+
+### 실측 — 정보 판정이 뒤집힌다
+
+sv 7인(좌석0 오라클 · **좌석1 노 다시의 최근접 주민 이웃** · 좌석6 노 다시), 밤2 에 ☠ 수동 부여:
+
+```
+밤2  statuses=[{poison, expiresAt:{night,3}}] · isMalfunctioning=true  · 정보판정 arbitrary
+밤3  statuses=[]                              · isMalfunctioning=false · 정보판정 **true**
+```
+
+공식상 계속 중독인 좌석에 대해 앱이 밤3부터 **"참 정보를 주세요"** 라고 안내한다 —
+누가 무엇을 아는가가 달라진다. 수학자의 오작동 후보에서도 함께 빠져 숫자 후보가 줄어든다.
+
+### 앱 자신은 이미 '상시' 라고 적고 있었다 — 열두 번째 내부 모순
+
+```
+노 다시 밤 단계 note     : "…양옆의 최근접 주민 이웃 2명은 상시 중독입니다…"
+노 다시 howto            : "…좌석표에서 확인해 상시 중독 — 외지인은 건너뛴다."
+비고르모르티스 guideOther : "…인접 주민 1명 ☠영구."
+```
+
+안내문은 상시를 지시하는데 토큰은 유한으로 박혔다. 매번 같은 모양이다 — 엔진이나 상태
+계약이 한쪽만 따라가지 못한 자리를 **앱의 다른 문장이 먼저 알고 있었다.**
+
+### 고친 방향 — 취함과 같은 모양으로
+
+`THY_POISON_CHOICES` + `thyPoisonPolicy(id, nightExp)` 를 `thyDrunkPolicy` 바로 옆에 두고,
+수동 경로 둘이 같은 창구를 쓰게 했다. 선택한 정책은 토큰의 `source` 에 남아 그리모어에서
+읽힌다(`상시 중독(수동 해제까지)` / `사회자 수동(오늘 밤+내일 낮)`).
+
+**기본값은 유한을 앞에 뒀다.** 지금 동작이 그것이고, 기본을 조용히 바꾸면 독살범을 손으로
+놓던 사회자의 판이 달라진다. 상시는 둘째 선택지로 **도달 가능하게만** 만들었다 —
+결함은 '기본이 틀렸다' 가 아니라 '**선택지가 아예 없었다**' 였다.
+
+`STATUS_DEFS.poison.desc` 도 고쳤다. 한 정책을 단정하던 문장("오늘 밤+내일 낮, 내일 황혼에
+자동 해제")이 `drunkS` 처럼 출처별로 적는다.
+
+### 게이트
+
+`grim_status` 픽스처는 중독 토큰을 `S` 에 직접 심어서(UI 우회) 지속 정책을 전혀 건드리지
+않는다. 새 픽스처 `poison_duration`(5프레임)은 `addStatusUI` → **인앱 선택 대화상자 →
+버튼 클릭** → 밤 넘기기까지 사용자 경로를 그대로 탄다. 선택지 버튼의 `data-td` 는
+`c:<id>` 로 접두사가 붙는다(실측으로 확인하고 셀렉터를 맞췄다 — 라운드 47·49 에서
+두 번 헛디딘 자리다). 픽스처 25→**26** · 프레임 78→**83** · 대조군 30→**32**.
+
+수정본을 기준으로 수정 전 빌드를 후보로 걸면 달라진 픽스처는 넷이고 전부 의도한 것뿐이다:
+`poison_duration` 은 후보에서 **대화상자가 아예 열리지 않아** 예외(`Missing DOM target:
+[data-td="c:perm"]`)가 나고, 나머지 셋(`grim_status`·`info_vortox`·`info_step_skip`)은
+**중독 툴팁 문자열 한 줄**만 갈린다.
