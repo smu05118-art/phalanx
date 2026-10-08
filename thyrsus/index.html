@@ -1796,14 +1796,15 @@ function migrateState(raw){
      blank() 에도 같은 필드가 있다 — 한쪽만 고치면 스키마가 갈라진다. */
   {
     const _hd=st.handoffDraft;
-    const _hids=new Set(st.players.map(p=>p.id));
+    const _hids=new Set(_hd?.kind==='character'? allChars().map(c=>c.id) : st.players.map(p=>p.id));
     st.handoffDraft=(_hd && typeof _hd==='object' && !Array.isArray(_hd)
         && typeof _hd.key==='string' && /^[A-Za-z0-9_]{1,32}$/.test(_hd.key)
         && Array.isArray(_hd.ids) && _hd.ids.length && _hd.ids.every(id=>_hids.has(id)))
-      ? {step:String(_hd.step||''),
+      ? {step:String(_hd.step||''), kind:_hd.kind==='character'?'character':'player',
          idx:(typeof _hd.idx==='number' && isFinite(_hd.idx) && _hd.idx>=0)? _hd.idx : 0,
          key:_hd.key,
          ids:_hd.ids.slice(0,20),
+         picks:Array.isArray(_hd.picks)?_hd.picks.slice(0,30).filter(p=>p && Number.isInteger(p.idx) && Array.isArray(p.ids)).map(p=>({idx:p.idx,ids:p.ids.filter(id=>typeof id==='string').slice(0,20)})):[],
          night:(typeof _hd.night==='number' && isFinite(_hd.night))? _hd.night : -1}
       : null;
   }
@@ -7624,7 +7625,17 @@ function startWiz(stepId){
      조용히 넣으면 사회자가 남의 지목을 본인 것으로 오해하므로 반드시 알린다. */
   try{
     const d=S.handoffDraft;
-    if(d && d.step===String(stepId) && d.night===((S.phase&&S.phase.n)||0) && d.ids.length){
+    const ds=d && wiz.scenes[d.idx];
+    if(d && S.phase.kind==='night' && d.step===String(stepId) && d.night===((S.phase&&S.phase.n)||0) && d.ids.length
+        && handoffScene(ds) && ds.storeAs===d.key && (d.kind||'player')===(ds.t==='pick-character'?'character':'player')){
+      /* 연속 선택(도박사·세레노버스·마귀할멈)의 앞선 플레이어 선택도 함께 복구한다.
+         저장된 임의 키를 신뢰하지 않고 현재 씬 선언과 현재 후보에 다시 대조한다. */
+      for(const p of (d.picks||[])){
+        const ps=wiz.scenes[p.idx];
+        if(p.idx<0 || p.idx>d.idx || !handoffScene(ps)) continue;
+        const candidates=ps.t==='pick-character'?handoffCharacterPool(ps):wizPlayers(ps.filter||'alive');
+        wiz.vars[ps.storeAs]=[...new Set(p.ids)].filter(id=>candidates.some(c=>c.id===id)).slice(0,ps.n||1);
+      }
       wiz.vars[d.key]=d.ids.slice();
       if(d.idx>=0 && d.idx<wiz.scenes.length) wiz.idx=d.idx;
       toast('중단된 기기 전달 선택을 복구했습니다 — 맞는지 확인하세요.','warn');
@@ -7805,7 +7816,7 @@ function renderWiz(){
     const sel=wiz.vars[sc.storeAs]||[];
     const n=sc.n||1;
     html=`${wizWarnBar()}<div class="wiz-caption">${esc(sc.label)} (${sel.length}/${n})</div>
-    <div class="wiz-grid">${wizCharPool(sc.pool).map(c=>`<div class="wiz-pickbtn ${sel.includes(c.id)?'sel':''}" onclick="wizTogglePick('${sc.storeAs}',${n},'${c.id}')"><span class="pt">${glyph(c.id)}</span>${esc(c.ko)}</div>`).join('')}</div>`;
+    <div class="wiz-grid">${(sc.who==='player'?handoffCharacterPool(sc):wizCharPool(sc.pool)).map(c=>`<div class="wiz-pickbtn ${sel.includes(c.id)?'sel':''}" onclick="wizTogglePick('${sc.storeAs}',${n},'${c.id}')"><span class="pt">${glyph(c.id)}</span>${esc(c.ko)}</div>`).join('')}</div>`;
   }
   else if(sc.t==='reveal-char'){
     const c=charOf(sc.char);
@@ -8230,17 +8241,17 @@ sailor:{first:[
   {t:'sleep'}]},
 courtier:{first:[
   {t:'wake'},
-  {t:'note',text:'궁정대신에게 발동 여부를 손짓으로 확인하세요(게임 중 단 1회). 발동하지 않으면 하단 "다음" 버튼으로 지목·판정 화면을 건너뛰고 재우세요.'},
-  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(플레이어 아님)',storeAs:'tok',optional:true},
+  {t:'note',text:'궁정대신에게 기기를 전달하세요(게임 중 단 1회). 플레이어가 캐릭터를 고르거나 "이번 턴에 선택 안 함"을 누릅니다.'},
+  {t:'pick-character',who:'player',pool:'any',label:'취하게 할 캐릭터를 선택하세요',storeAs:'tok',optional:true},
   {t:'effect',fn:'doCourtierDrunk',from:'tok'},
-  {t:'note',text:'보유자에게 🍺토큰(3밤+3낮, 만료 밤 시작 시 자동 해제)과 ✔소진이 자동 기록됩니다. 게임에 없는 캐릭터였다면 아무 일 없이 능력만 소진됩니다.'},
+  {t:'note',from:'tok',text:'보유자에게 🍺토큰(3밤+3낮, 만료 밤 시작 시 자동 해제)과 ✔소진이 자동 기록됩니다. 게임에 없는 캐릭터였다면 아무 일 없이 능력만 소진됩니다.'},
   {t:'sleep'}],
  other:[
   {t:'wake'},
-  {t:'note',text:'아직 능력을 쓰지 않았다면 발동 여부만 확인하세요. 발동 시 다음 화면에서 캐릭터를 고르고 판정을 실행하며, 미발동이면 "다음"으로 건너뛰어 재웁니다. 이미 소진했다면 깨울 필요가 없습니다.'},
-  {t:'pick-character',pool:'any',label:'궁정대신이 지목한 캐릭터(발동 시에만)',storeAs:'tok',optional:true},
+  {t:'note',text:'아직 능력을 쓰지 않았다면 기기를 전달해 직접 선택하게 하세요. 미발동은 "이번 턴에 선택 안 함"으로 접수합니다. 이미 소진했다면 깨울 필요가 없습니다.'},
+  {t:'pick-character',who:'player',pool:'any',label:'취하게 할 캐릭터를 선택하세요',storeAs:'tok',optional:true},
   {t:'effect',fn:'doCourtierDrunk',from:'tok'},
-  {t:'note',text:'발동했다면 보유자에게 🍺(3밤+3낮)과 ✔소진이 자동 기록됩니다. 없는 캐릭터면 소진만 됩니다.'},
+  {t:'note',from:'tok',text:'발동했다면 보유자에게 🍺(3밤+3낮)과 ✔소진이 자동 기록됩니다. 없는 캐릭터면 소진만 됩니다.'},
   {t:'sleep'}]},
 innkeeper:{other:[
   {t:'wake'},
@@ -8253,7 +8264,7 @@ innkeeper:{other:[
 gambler:{other:[
   {t:'wake'},
   {t:'pick-player',n:1,who:'player',label:'도박사가 지목한 플레이어(사망자 가능)',filter:'any',storeAs:'tgt'},
-  {t:'pick-character',pool:'any',label:'도박사가 추측한 캐릭터',storeAs:'guess'},
+  {t:'pick-character',who:'player',pool:'any',label:'선택한 플레이어의 캐릭터를 추측하세요',storeAs:'guess'},
   {t:'note',text:'추측이 맞으면 아무 일도 없습니다 — 아래 판정을 건너뛰고 다음으로. 틀렸다면 다음 화면에서 도박사 본인을 선택해 사망 판정을 실행하세요(도박사가 중독이면 자동 불발).'},
   {t:'pick-player',n:1,who:'st',label:'오답일 때만: 도박사 본인을 탭(정답이면 선택 없이 다음)',filter:'alive',storeAs:'self'},
   {t:'effect',fn:'doStepKill',from:'self'},
@@ -8497,15 +8508,15 @@ Object.assign(WIZ_SUGGEST,{
 Object.assign(NIGHT_FLOW,{
 philosopher:{first:[
   {t:'wake',text:'발동할지 물어보세요 — 1회성이므로 미발동이면 그대로 재웁니다.'},
-  {t:'note',text:'발동하지 않으면 "완료"로 닫고 재우세요. 발동하면 다음 화면에서 철학자가 고른 캐릭터를 선택합니다.'},
-  {t:'pick-character',pool:'good-characters',label:'철학자가 선택한 선한 캐릭터',storeAs:'gain',optional:true},
-  {t:'note',text:'철학자는 지금부터 그 능력을 가집니다. ① 같은 캐릭터가 게임에 있으면 그 원 보유자에게 🍺영구 취함 토큰 ② 이후 밤에는 획득 캐릭터의 순서 위치에서 철학자를 깨우세요(밤 순서 수동 관리) ③ 획득 내용을 그리모어 메모에 기록.'},
+  {t:'note',text:'철학자에게 기기를 전달하세요. 플레이어가 캐릭터를 고르거나 "이번 턴에 선택 안 함"을 누릅니다.'},
+  {t:'pick-character',who:'player',pool:'good-characters',label:'능력을 얻을 선한 캐릭터를 선택하세요',storeAs:'gain',optional:true},
+  {t:'note',from:'gain',text:'철학자는 지금부터 그 능력을 가집니다. ① 같은 캐릭터가 게임에 있으면 그 원 보유자에게 🍺영구 취함 토큰 ② 이후 밤에는 획득 캐릭터의 순서 위치에서 철학자를 깨우세요(밤 순서 수동 관리) ③ 획득 내용을 그리모어 메모에 기록.'},
   {t:'sleep'}],
  other:[
   {t:'note',text:'아직 미발동이라면 깨워 발동 의사만 확인하세요(발동 시 첫날 밤과 동일하게 캐릭터 선택). 이미 발동했다면 이 단계가 아니라 획득한 캐릭터의 밤 순서에서 그 능력으로 진행합니다.'},
   {t:'wake',text:'발동 의사 확인용 — 미발동 유지 시 바로 재우세요.'},
-  {t:'pick-character',pool:'good-characters',label:'(발동하는 경우만) 선택한 선한 캐릭터',storeAs:'gain',optional:true},
-  {t:'note',text:'발동했다면: 원 보유자 🍺영구 취함 + 이후 밤 순서 수동 관리 + 그리모어 메모.'},
+  {t:'pick-character',who:'player',pool:'good-characters',label:'능력을 얻을 선한 캐릭터를 선택하세요',storeAs:'gain',optional:true},
+  {t:'note',from:'gain',text:'발동했다면: 원 보유자 🍺영구 취함 + 이후 밤 순서 수동 관리 + 그리모어 메모.'},
   {t:'sleep'}]},
 snakecharmer:{first:[
   {t:'wake'},
@@ -8540,8 +8551,8 @@ witch:{first:[
 cerenovus:{first:[
   {t:'wake'},
   {t:'pick-player',n:1,who:'player',label:'광기에 빠뜨릴 대상(사망자 포함)',filter:'any',storeAs:'tgt'},
-  {t:'pick-character',pool:'cerenovus-mad',label:'광기로 강요할 캐릭터(주민 또는 외지인 — 고블린 징크스가 성립한 판이면 고블린도)',storeAs:'madchar'},
-  {t:'note',text:'🧞 세레노버스↔고블린 징크스: 이 판에 고블린이 함께 있으면 대상에게 "자신이 고블린이다"라는 광기를 걸 수 있습니다. 고블린은 선한 캐릭터가 아니지만 이 징크스가 성립할 때만 예외로 선택지에 나타납니다.'},
+  {t:'pick-character',who:'player',pool:'cerenovus-mad',label:'대상에게 광기로 강요할 캐릭터를 선택하세요',storeAs:'madchar'},
+  {t:'note',text:'🧞 세레노버스↔고블린: 고블린 선택지는 공개 시트에 따라 표시됩니다. 실제 배역 배정은 선택지로 드러내지 않습니다. 고블린을 선택했다면 사회자가 징크스 적용 여부를 확인하세요.'},
   {t:'effect',fn:'doMad',from:'tgt'},
   {t:'note',text:'대상을 깨워 "내일 하루, 자신이 그 캐릭터라고 미친 듯이 주장해야 한다"고 알려주세요. 광기 캐릭터가 무엇인지 반드시 그리모어 메모에 적어 두세요 — 위반 시 재량 처형 가능(경고성 관용도 가능).'},
   {t:'sleep'}],
@@ -8554,8 +8565,8 @@ cerenovus:{first:[
  other:[
   {t:'wake'},
   {t:'pick-player',n:1,who:'player',label:'오늘 밤의 새 광기 대상(사망자 포함)',filter:'any',storeAs:'tgt'},
-  {t:'pick-character',pool:'cerenovus-mad',label:'광기로 강요할 캐릭터(주민 또는 외지인 — 고블린 징크스가 성립한 판이면 고블린도)',storeAs:'madchar'},
-  {t:'note',text:'🧞 세레노버스↔고블린 징크스: 이 판에 고블린이 함께 있으면 대상에게 "자신이 고블린이다"라는 광기를 걸 수 있습니다. 고블린은 선한 캐릭터가 아니지만 이 징크스가 성립할 때만 예외로 선택지에 나타납니다.'},
+  {t:'pick-character',who:'player',pool:'cerenovus-mad',label:'대상에게 광기로 강요할 캐릭터를 선택하세요',storeAs:'madchar'},
+  {t:'note',text:'🧞 세레노버스↔고블린: 고블린 선택지는 공개 시트에 따라 표시됩니다. 실제 배역 배정은 선택지로 드러내지 않습니다. 고블린을 선택했다면 사회자가 징크스 적용 여부를 확인하세요.'},
   {t:'effect',fn:'doMad',from:'tgt'},
   {t:'note',text:'대상을 깨워 광기 내용을 알려주고, 광기 캐릭터를 그리모어 메모에 갱신하세요.'},
   {t:'sleep'}]},
@@ -8606,7 +8617,7 @@ mathematician:{first:[
 pithag:{other:[
   {t:'wake'},
   {t:'pick-player',n:1,who:'player',label:'마귀할멈이 지목한 대상(사망자 가능)',filter:'any',storeAs:'tgt'},
-  {t:'pick-character',pool:'any',label:'마귀할멈이 지정한 캐릭터',storeAs:'newchar'},
+  {t:'pick-character',who:'player',pool:'any',label:'대상을 바꿀 캐릭터를 선택하세요',storeAs:'newchar'},
   {t:'note',text:'지정 캐릭터가 이미 게임에 있으면 아무 일도 없습니다(불발). 게임에 없는 캐릭터라면: ① 대상을 깨워 새 캐릭터 토큰을 보여주고 ② 그리모어에서 캐릭터를 교체 ③ 밤 순서를 재계산하세요. 새 악마를 만들었다면 오늘 밤 누가 죽는지는 전적으로 사회자 재량입니다(기존 악마를 죽게 할 수도 있음).'},
   {t:'sleep'}]},
 fanggu:{other:[
@@ -10045,20 +10056,34 @@ function endGameManual(){ endGameManually(); }   // 레거시 진입점 — 인�
 let handoff=null;
 function startHandoff(storeAs,n,filter,label){
   const holder=wiz&&wiz.holder;
-  const list=wizPlayers(filter||'alive');
+  const sc=wiz.scenes[wiz.idx];
+  const kind=sc.t==='pick-character'?'character':'player';
+  const list=kind==='character'? handoffCharacterPool(sc) : wizPlayers(filter||'alive');
   const start=holder? S.players.indexOf(holder) : 0;
-  const ordered=list.slice().sort((a,b)=>{
+  const ordered=kind==='character'? list : list.slice().sort((a,b)=>{
     const ia=(S.players.indexOf(a)-start+S.players.length)%S.players.length;
     const ib=(S.players.indexOf(b)-start+S.players.length)%S.players.length;
     return ia-ib;
   });
-  handoff={storeAs,n,ordered,holder,label};
+  n=n||1;
+  wiz.vars[storeAs]=[...new Set(wiz.vars[storeAs]||[])].filter(id=>ordered.some(p=>p.id===id)).slice(0,n);
+  handoff={storeAs,n,ordered,holder,label,kind};
   renderHandoff();
+}
+/* 플레이어에게는 공개 시트의 선택지만 보여준다. 실제 배역 배정·오작동·활성 징크스로
+   후보를 줄이면 선택지 자체가 정답을 누설한다. 사회자용 wizCharPool 은 그대로 둔다. */
+function handoffCharacterPool(sc){
+  const all=editionChars().filter(c=>!c.custom&&c.type!=='traveler'&&c.type!=='fabled');
+  if(sc.pool==='any') return all;
+  if(sc.pool==='good-characters') return all.filter(c=>c.type==='townsfolk'||c.type==='outsider');
+  if(sc.pool==='cerenovus-mad') return all.filter(c=>c.type==='townsfolk'||c.type==='outsider'||c.id==='goblin');
+  return []; // 사회자 전용/알 수 없는 풀은 공개하지 않는다
 }
 function renderHandoff(){
   const sel=(wiz.vars[handoff.storeAs]||[]);
   const sc=wiz.scenes[wiz.idx];
   const optional=!!(sc&&sc.optional);
+  const chars=handoff.kind==='character';
   /* 후보가 n명보다 적으면 sel.length>=handoff.n 이 영영 참이 안 돼 '이야기꾼에게 전달'이
      사유 없이 잠긴다 — 교수(filter:'dead')인데 사망자가 아직 0명, 객실 청소부(n:2)인데
      자신 제외 생존자가 1명인 경우가 그렇다. 유일한 탈출구가 '사회자가 대신 입력'이라는
@@ -10070,8 +10095,9 @@ function renderHandoff(){
     `<span class="wstep num">${sel.length}/${handoff.n}</span>`;
   $('#wizbody').innerHTML=`
     <div class="wiz-caption">${esc(handoff.label||'대상을 선택하세요')}</div>
-    ${short?`<div class="wiz-warnbar">⚠ 고를 수 있는 사람이 ${handoff.ordered.length}명뿐입니다 — ${handoff.n}명을 채울 수 없으니 고를 수 있는 만큼만 고르고 돌려주세요.</div>`:''}
+    ${short?`<div class="wiz-warnbar">⚠ 고를 수 있는 ${chars?'캐릭터':'사람'}이 ${handoff.ordered.length}${chars?'개':'명'}뿐입니다 — 고를 수 있는 만큼만 고르고 돌려주세요.</div>`:''}
     <div class="handoff-list">${handoff.ordered.map(p=>{
+      if(chars) return `<button type="button" class="handoff-btn ${sel.includes(p.id)?'sel':''}" data-hopick="${esc(p.id)}" aria-pressed="${sel.includes(p.id)}"><span class="hname">${esc(p.ko)}</span></button>`;
       const me=p===handoff.holder;
       return `<div class="handoff-btn ${me?'me':''} ${sel.includes(p.id)?'sel':''} ${p.alive?'':'dead'}" data-hopick="${esc(p.id)}">
         <span class="hnum num">${S.players.indexOf(p)+1}</span>
@@ -10116,6 +10142,7 @@ document.addEventListener('click', e=>{
   if(b && handoff) handoffPick(b.getAttribute('data-hopick'));
 });
 function handoffPick(pid){
+  if(!wiz || !handoff || !handoff.ordered.some(p=>p.id===pid)) return;
   const arr=wiz.vars[handoff.storeAs]=wiz.vars[handoff.storeAs]||[];
   const i=arr.indexOf(pid);
   if(i>=0) arr.splice(i,1); else { if(arr.length>=handoff.n) arr.shift(); arr.push(pid); }
@@ -10123,7 +10150,8 @@ function handoffPick(pid){
      잠기거나 브라우저가 탭을 회수할 때 그 밤의 지목이 통째로, 화면에 흔적도 없이 사라진다.
      복구는 startWiz 가 같은 밤·같은 단계일 때만 하고, 반드시 사회자에게 알린다. */
   try{
-    S.handoffDraft={step:String(wiz.stepId), idx:wiz.idx, key:handoff.storeAs,
+    S.handoffDraft={step:String(wiz.stepId), idx:wiz.idx, key:handoff.storeAs, kind:handoff.kind,
+                    picks:wiz.scenes.slice(0,wiz.idx+1).flatMap((sc,idx)=>handoffScene(sc)?[{idx,ids:(wiz.vars[sc.storeAs]||[]).slice()}]:[]),
                     ids:arr.slice(), night:(S.phase&&S.phase.n)||0};
     save();
   }catch(e){ console.warn('[thyrsus] 기기 전달 스냅샷 저장 실패', e); }
@@ -10133,6 +10161,7 @@ function handoffPick(pid){
    renderWiz() 를 그대로 부르면 같은 씬이라 다시 기기 전달 화면으로 되돌아간다. */
 function endHandoff(){
   if(!handoff || !wiz) return;
+  if((wiz.vars[handoff.storeAs]||[]).length<Math.min(handoff.n,handoff.ordered.length)) return;
   /* 후보 부족(cap<n)으로 아무도 고르지 못한 채 돌려준 경우도 '선택 안 함'으로 남긴다 —
      그래야 뒤의 판정·정보 씬이 wiz.skipped 로 건너뛰어져 빈 대상을 강요하지 않는다.
      반대로 이전 버튼으로 돌아와 다시 고른 경우엔 그 표시를 지워야 뒤 씬이 되살아난다. */
@@ -10154,7 +10183,7 @@ function endHandoff(){
    기기를 플레이어에게 넘겨 본인이 직접 고르는 것이 기본 흐름이다.
    사회자 대리 입력은 예외(stHandoffOverride)로만 허용한다. */
 let stHandoffOverride=null;   // 사회자 대리 입력 예외 — '위저드식별자#씬인덱스' 키 1개
-function handoffScene(sc){ return sc && sc.t==='pick-player' && sc.who==='player'; }
+function handoffScene(sc){ return sc && (sc.t==='pick-player'||sc.t==='pick-character') && sc.who==='player'; }
 /* 씬 인덱스만 저장하면 다른 캐릭터의 위저드라도 인덱스가 같으면 예외가 그대로 이어진다
    (독살범 1번 씬에서 "사회자가 대신 입력" → 다음 위저드의 1번 씬도 기기 전달이 생략됨).
    위저드 식별자(stepId · 커스텀은 __custom)와 씬 인덱스를 함께 묶어 현재 씬에만 걸리게 한다.
@@ -10225,7 +10254,7 @@ function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
       return;
     }
     _rw();
-    if(sc && sc.t==='pick-player' && sc.who==='player'){
+    if(handoffScene(sc)){
       const foot=$('#wizfoot');
       if(foot && !foot.querySelector('.hoBtn')){
         const b=document.createElement('button');
@@ -10240,7 +10269,7 @@ function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
          핸들러는 인라인 onclick 보간 대신 프로퍼티로 붙인다(저장형 XSS 이력). */
       if(foot){
         const prim=foot.querySelector('button.primary');
-        const cap=Math.min(sc.n||1, wizPlayers(sc.filter||'alive').length);
+        const cap=Math.min(sc.n||1, sc.t==='pick-character'?handoffCharacterPool(sc).length:wizPlayers(sc.filter||'alive').length);
         if(prim && (wiz.vars[sc.storeAs]||[]).length<cap) prim.disabled=true;
         if(sc.optional && !foot.querySelector('.hoSkipBtn')){
           const sk=document.createElement('button');
@@ -10248,22 +10277,6 @@ function backToPlayer(){ stHandoffOverride=null; renderWiz(); }
           sk.onclick=()=>handoffSkip(sc.storeAs);
           foot.insertBefore(sk, prim||null);
         }
-      }
-    }
-    /* optional 은 지금까지 pick-player 경로에서만 읽혀(renderHandoff · 위 블록), 같은 플래그를
-       단 pick-character 씬 네 건(궁정대신 2 · 철학자 2)에는 '선택 안 함'을 기록할 수단이 아예
-       없었다 — 미발동을 접수해도 wiz.skipped 에 남지 않아 뒤의 effect 씬이 그대로 떠
-       '대상이 선택되지 않았습니다'로 사회자에게 대상을 강요했다(wizSceneSkipped 주석이 겨눈
-       바로 그 상태). 캐릭터 지목은 기기 전달 대상이 아니므로(handoffScene 은 pick-player 만
-       본다) 📱 전달 버튼과 cap 잠금은 붙이지 않고 **기록 경로만** 같게 맞춘다 —
-       handoffSkip(key) 는 handoff 가 없으면 스스로 '사회자 대리 접수'로 남긴다. */
-    if(sc && sc.t==='pick-character' && sc.optional){
-      const foot=$('#wizfoot');
-      if(foot && !foot.querySelector('.hoSkipBtn')){
-        const sk=document.createElement('button');
-        sk.className='hoSkipBtn'; sk.textContent='이번 턴에 선택 안 함';
-        sk.onclick=()=>handoffSkip(sc.storeAs);
-        foot.insertBefore(sk, foot.querySelector('button.primary')||null);
       }
     }
   };
@@ -10644,7 +10657,7 @@ function wizRandomFill(){
   const sc=wiz.scenes[wiz.idx]; if(!sc) return;
   const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
   if(sc.t==='pick-character'){
-    const pool=wizCharPool(sc.pool); if(!pool.length) return;
+    const pool=sc.who==='player'?handoffCharacterPool(sc):wizCharPool(sc.pool); if(!pool.length) return;
     const n=sc.n||1, out=[]; const bag=pool.slice();
     while(out.length<n && bag.length) out.push(bag.splice(Math.floor(Math.random()*bag.length),1)[0].id);
     wiz.vars[sc.storeAs]=out;
