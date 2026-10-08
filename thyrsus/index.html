@@ -920,6 +920,7 @@ const STATUS_DEFS = {
   mad:{ko:'광기', icon:'🌀', cls:'drunkT', desc:'세레노버스의 광기. 지정된 캐릭터인 척해야 하며, 위반 시 재량 처형 가능.'},
   fakedead:{ko:'죽은 척', icon:'🪦', cls:'custom', desc:'좀버얼의 첫 사망 — 겉으로는 죽었지만 실제로는 생존. 계속 밤에 깨울 것. 두 번째 사망이 진짜.'},
   spent:{ko:'소진', icon:'✔', cls:'custom', desc:'1회성 능력이 사용/소진되었다.'},
+  bansheeAbility:{ko:'밴시 발동', icon:'🗯', cls:'custom', desc:'악마에게 죽어 능력이 발동한 밴시 — 공식: "From now on, you may nominate twice per day and vote twice per nomination." 죽어서도 지명할 수 있고, 지명마다 2표를 행사하며, 사망 투표 토큰에 묶이지 않는다. 사망 시 중독·취함이었다면 부여되지 않는다.'},
   vigorAbility:{ko:'능력 유지', icon:'🧟', cls:'custom', desc:'비고르모르티스가 죽인 하수인 — 죽어도 능력이 계속 작동한다(비고르모르티스가 살아있고 정상인 동안). 밤에 계속 깨울 것.'},
   execProtect:{ko:'처형 보호', icon:'⚖️', cls:'protect', desc:'악마의 변호사의 변호. 내일 처형돼도 죽지 않는다(처형 자체는 성립·소모). 다음 황혼에 자동 해제.'},
   /* 폭풍잡이가 공표한 캐릭터에게 놓는 영구 토큰. 만료 규칙이 없다(expiresAt=null) — 그 캐릭터가
@@ -2368,6 +2369,13 @@ function isMalfunctioning(p){ if(p && p.charId==='beggar') return false;
    [실패 방향을 뒤집는다] 좌석을 못 찾으면 이제 '작동하지 않음'이다(fail-closed).
    그래서 '죽었지만 능력을 유지하는 좌석'을 여기서 함께 인정해야 한다 — 그 목록은 밤 순서
    (nightSteps 의 anyAlive 분기)가 이미 쥐고 있는 것과 같은 둘이다. 한쪽만 늘리면 어긋난다. */
+/* 밴시가 발동했는가 — 공식: "If the Demon kills you, … From now on, you may nominate twice
+   per day and vote twice per nomination." 투표 무게·지명 게이트·사망 투표 토큰 셋이 이 창구
+   하나를 읽는다. 셋 중 하나만 고치면 "지명당 2표"가 둘째 지명부터 성립하지 않는다.
+   토큰은 killPlayer 가 사망 시점에 찍는다 — '죽을 때 오작동이었는가' 는 그때만 알 수 있다. */
+function bansheeActive(p){
+  return !!(p && p.charId==='banshee' && !p.alive && hasStatus(p,'bansheeAbility'));
+}
 function abilityActs(p){
   if(!p) return false;
   if(p.alive) return true;
@@ -2853,6 +2861,11 @@ const VOTE_MODIFIERS = [
    when:(t,c)=> !!(c.travel && c.travel.bu && c.travel.bu.id===t.id),
    reason:(t)=> `관료가 지목 — ${t.name}의 표는 3표`},
 
+  {id:'banshee-x2', ko:'밴시 — 지명당 2표', precedence:51, stage:'weight', effect:'weight', factor:2,
+   official:'Banshee: "If the Demon kills you, all players learn this. From now on, you may nominate twice per day and vote twice per nomination." (official/roles181.json) — 악마의 살해로 발동한 밴시만 해당한다(발동은 killPlayer 가 bansheeAbility 토큰으로 남긴다). 관료와 겹치면 3×2=6 인데, 이 조합은 공식 원문이 따로 가르지 않는다 — 표의 기존 관용(관료×3 뒤 도둑이 부호를 뒤집는다)과 같은 곱셈으로 둔다. 도둑(precedence 52)이 뒤에 와야 부호 뒤집기가 마지막이다.',
+   when:(t,c)=> bansheeActive(t),
+   reason:(t)=> `밴시(${t.name}) 발동 — 지명당 2표`},
+
   {id:'thief-negate', ko:'도둑 — 지목한 표는 음수', precedence:52, stage:'weight', effect:'weight',
    factor:(w)=> -w,
    official:'Thief: "Each night, choose a player (not yourself): their vote counts negatively tomorrow." (official/roles181.json) — 관료와 겹치면 3×(−1)=−3 이다. 그래서 이 항목은 앞 무게를 뒤집는 함수형 계수를 쓴다.',
@@ -3068,8 +3081,18 @@ function killPlayer(p, cause, opts){
   }
   /* srcType 을 함께 남긴다 — 밴시처럼 '무엇에 죽었나'가 조건인 역할이 사인 문자열을
      되짚지 않아도 되게 한다. 옛 저장본에는 없으므로 읽는 쪽이 없을 때를 견뎌야 한다. */
+  /* 오작동 여부는 **죽기 전에** 읽어 둔다 — 아래 reconcileDeath 가 지속효과를 정리한다. */
+  const _malAtDeath = isMalfunctioning(p);
   p.alive=false; p.diedAt={kind:S.phase.kind, n:S.phase.n, cause:cause||'', srcType:dctx.sourceType||null};
   log(`💀 ${p.name}(${charName(p)}) 사망 — ${cause}`);
+  /* 밴시 — 공식: "If the Demon kills you, all players learn this. From now on, you may nominate
+     twice per day and vote twice per nomination." 악마의 살해일 때만, 그리고 그 순간 오작동이
+     아니었을 때만 발동한다(앱 warn: "죽을 때 중독·취함 상태였다면 발동하지 않는다").
+     데몬 살해 경로가 여럿이라 호출부마다 붙이지 않고 사인을 아는 이 한 곳에 둔다. */
+  if(p.charId==='banshee' && dctx.sourceType==='demon' && !_malAtDeath && !hasStatus(p,'bansheeAbility')){
+    addStatus(p,'bansheeAbility','악마의 살해로 발동',null);
+    log('🗯 밴시 발동 — 전원에게 공표하라. 이후 죽은 밴시는 매일 지명 2회·지명당 2표(사망 투표 토큰 무관).');
+  }
   reconcileDeath(p);   // 출처 사망 → 그의 독·보호·저주·광기 등 지속효과 즉시 정리
   /* 달의 자손: 공개 지목은 '사망을 안 때'다 — 낮 사망이면 지금, 밤 사망이면 새벽(advancePhase)에 받는다.
      판정은 저장된 스냅샷으로 밤 단계에서만 한다(지목 시점과 판정 시점의 분리). */
@@ -5410,7 +5433,9 @@ function newNomination(){
   const _tp=playerOf(tor), _np=playerOf(nee);
   if(!_tp||!_np){ toast('지명자/피지명자 좌석을 찾을 수 없습니다.','warn');
     if(typeof nomPick!=='undefined'){ nomPick.tor=null; nomPick.nee=null; } renderAll(); return; }
-  if(!_tp.alive){ toast(`${_tp.name}은(는) 사망했습니다 — 죽은 플레이어는 지명할 수 없습니다.`,'warn');
+  /* 발동한 밴시는 예외다 — 공식 "you may nominate twice per day" 이고, 밴시의 능력은
+     정의상 죽은 뒤에만 존재한다. 이 블록이 막으면 능력이 통째로 차단된다. */
+  if(!_tp.alive && !bansheeActive(_tp)){ toast(`${_tp.name}은(는) 사망했습니다 — 죽은 플레이어는 지명할 수 없습니다.`,'warn');
     if(typeof nomPick!=='undefined') nomPick.tor=null; renderAll(); return; }
   if(!canBeNominated(_np)){ toast(`${_np.name}은(는) 이미 사망했습니다 — 죽은 플레이어는 지명당할 수 없습니다.`,'warn');
     if(typeof nomPick!=='undefined') nomPick.nee=null; renderAll(); return; }
@@ -5613,9 +5638,16 @@ function castVote(nid,pid,v){
   if(!p.alive){
     if(prev===v){ delete n.votes[pid]; if(v!=='abs'){ p.deadVote=true; n.deadVoters=n.deadVoters.filter(x=>x!==p.id); log(`${p.name} 사망 투표 취소 — 토큰 복원`);} save(); renderAll(); return; }
     if((v==='yes'||v==='no') && !(prev==='yes'||prev==='no')){
+      /* 발동한 밴시는 토큰에 묶이지 않는다 — 공식의 "per nomination" 은 되풀이되는 단위이고,
+         1회 토큰으로 묶으면 둘째 지명부터 "지명당 2표"가 성립하지 않는다. 앱 자신의 remind 도
+         "사망자 투표 제한 없이 매일 지명 2회·지명당 2표" 라고 적는다. */
+      if(bansheeActive(p)){
+        log(`🗯 ${p.name}(밴시 발동) 사망 투표 참여(${v==='yes'?'찬성':'반대'}) — 토큰 소진 없음, 2표로 집계`);
+      } else {
       if(p.deadVote===false){ toast(`${p.name}은(는) 이미 투표 토큰을 소진했습니다.`,'warn'); return; }
       p.deadVote=false; if(!n.deadVoters.includes(p.id)) n.deadVoters.push(p.id);
       log(`👻 ${p.name} 사망 투표 참여(${v==='yes'?'찬성':'반대'}) — 토큰 자동 소진`);
+      }
     }
     if((prev==='yes'||prev==='no') && v==='abs'){ p.deadVote=true; n.deadVoters=n.deadVoters.filter(x=>x!==p.id); log(`${p.name} 기권으로 변경 — 토큰 복원`); }
     n.votes[pid]=v; save(); renderAll(); return;
@@ -11473,7 +11505,10 @@ function quickToggleDeath(pid){
   function weightOf(c,pid){ return voteWeightOf(playerOf(pid), c); }
   function adjOf(nom){
     const c=ctxOf(); const rows=[]; const seen={}; let delta=0;
-    [c.bu,c.th].forEach(p=>{
+    /* 여행자 둘(관료·도둑)만 순회하면 발동한 밴시의 2표가 화면에 안 보인다 — 집계 분자는
+       voteWeightOf 로 이미 2가 되는데 카드에는 행이 없어, 사회자가 숫자의 출처를 못 찾는다. */
+    const _bs=S.players.filter(q=>bansheeActive(q));
+    [c.bu,c.th].concat(_bs).forEach(p=>{
       if(!p || seen[p.id]) return;
       seen[p.id]=1;
       const w=weightOf(c,p.id);
