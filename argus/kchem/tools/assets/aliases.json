@@ -1,0 +1,64 @@
+{
+ "version": 1,
+ "note": "한국화학(kchem) 수기 사전. 스프레드 이름의 한글 토큰 → ARGUS 가격 시리즈(p_) 이름 토큰, 참조 지역 규칙, 체인 추정, 中선물 프록시, 파생 스프레드 정의. 값은 전부 '추정' 등급이며 원장 xlsm 수식을 본 것이 아니다(LOGIC.md §2).",
+ "chem_categories": ["나프타", "기초유분", "올레핀", "아로마틱", "염소체인", "초산체인", "우레탄", "화섬", "솔벤트", "폴리머", "아크릴", "고무", "화학PPI"],
+ "product_alias": {
+  "에틸렌": "Ethylene", "프로필렌": "Propylene", "BD": "Butadiene", "Crude C4": "Crude C4",
+  "벤젠": "Benzene", "톨루엔": "Toluene", "자일렌(솔벤트)": "Xylene(솔벤트)", "자일렌(이성체)": "Xylene(이성질체)",
+  "납사": "Naphtha", "SM": "SM", "PX": "PX", "OX": "OX", "페놀": "Phenol", "BPA": "BPA", "PA": "PA",
+  "EDC": "EDC", "VCM": "VCM", "VAM": "VAM", "PO": "PO", "MDI(Polymeric)": "MDI(폴리메릭)", "MDI(Pure)": "MDI(퓨어)",
+  "TDI": "TDI", "PG": "PG", "PPG": "PPG", "PU": "PU", "EO": "EO", "AN": "AN", "MEG": "MEG",
+  "카프로락탐": "Caprolactam", "TPA": "TPA", "아세톤": "Acetone", "IPA": "IPA", "에틸아세테이트": "Ethyl Acetate",
+  "HDPE(Injection)": "HDPE(사출)", "HDPE(Film)": "HDPE(필름)", "LDPE": "LDPE", "LLDPE": "LLDPE",
+  "PP(Homo)": "PP(호모)", "PP(Film)": "PP(필름)", "PVC": "PVC", "PS(GP)": "PS(GP)", "PS(HI)": "PS(HI)",
+  "EPS(GS)": "EPS(GS)", "EPS(난연)": "EPS(난연)", "ABS": "ABS", "PET(Bottle)": "PET(Bottle)", "PC": "PC",
+  "MMA": "MMA", "부틸아크릴레이트": "Butyl Acrylate", "아크릴산": "Acrylic Acid", "초산": "Acetic Acid",
+  "NB라텍스": "NB Latex", "SB라텍스": "SB Latex", "S-SBR": "S-SBR", "SBR": "SBR", "SBS": "SBS", "NDBR": "NDBR",
+  "BR": "BR", "NBR": "NBR", "메탄올": "메탄올", "MTBE": "MTBE", "가성소다": "가성소다", "PTMEG": "PTMEG"
+ },
+ "feed_alias": {
+  "납사": ["Naphtha"], "에틸렌": ["Ethylene"], "프로필렌": ["Propylene"], "BD": ["Butadiene"],
+  "벤젠": ["Benzene"], "톨루엔": ["Toluene"], "자일렌": ["Xylene(솔벤트)", "Xylene(이성질체)"],
+  "SM": ["SM"], "PX": ["PX"], "OX": ["OX"], "EDC": ["EDC"], "VCM": ["VCM"], "EO": ["EO"], "PO": ["PO"],
+  "PPG": ["PPG"], "MDI": ["MDI(퓨어)", "MDI(폴리메릭)"], "TPA": ["TPA"], "BPA": ["BPA"], "페놀": ["Phenol"],
+  "아세톤": ["Acetone"], "초산": ["Acetic Acid"], "AN": ["AN"],
+  "Dubai": ["sid:sp_dubai_유가"]
+ },
+ "region_alias": {"중국 Huadong": "중국(Huadong)", "중국 Huanan": "중국(Huanan)"},
+ "ref_region_order": ["$same", "일본", "한국", "동북아", "중국", "중국(Huadong)", "중국(Huanan)", "대만", "동남아", "미국", "유럽", "싱가포르", "인도"],
+ "composite_extra_feeds": {"ABS": ["AN"], "SBR": ["SM"], "S-SBR": ["SM"], "SBS": ["SM"], "SB라텍스": ["SM"], "NBR": ["AN"], "NB라텍스": ["AN"]},
+ "composite_extra_note": "이름에 없는 원료를 더해야 재현되는 복합 산식 후보(공개 관행 SBR−0.71BD−0.23SM, ABS−SM−BD−AN). 더한 원료는 flags=composite_extra_feed 로 남긴다.",
+ "probe_feeds": [
+  {"token": "납사", "name": "Naphtha", "regions": ["일본"]},
+  {"token": "에틸렌", "name": "Ethylene", "regions": ["$same", "한국"]},
+  {"token": "프로필렌", "name": "Propylene", "regions": ["$same", "한국"]},
+  {"token": "벤젠", "name": "Benzene", "regions": ["$same", "한국"]},
+  {"token": "SM", "name": "SM", "regions": ["$same", "한국"]},
+  {"token": "에탄", "name": "Ethane", "regions": ["미국"]}
+ ],
+ "chain_est": {
+  "AN": "ncc", "EO": "ncc", "MEG": "ncc", "TPA": "aromatics", "카프로락탐": "aromatics", "PTMEG": null,
+  "VAM": "ncc", "MMA": "solvents", "부틸아크릴레이트": "ncc", "아크릴산": "ncc",
+  "메탄올": null, "MTBE": "ncc", "가성소다": "vinyls"
+ },
+ "stage_roots": {"sp_dubai_유가": 0, "Naphtha": 1, "메탄올": 1, "MTBE": 2, "가성소다": 2, "PTMEG": 4, "Acetic Acid": 3, "Acetone": 3},
+ "cnfut": {
+  "벤젠": "cf_benzene", "PX": "cf_paraxylene", "SM": "cf_styrene", "MEG": "cf_monoethylene_glycol", "TPA": "cf_pta",
+  "PET(Bottle)": "cf_pet_bottle_chip", "PVC": "cf_pvc", "PP(Homo)": "cf_polypropylene", "PP(Film)": "cf_polypropylene",
+  "LLDPE": "cf_polyethylene", "LDPE": "cf_polyethylene", "HDPE(Injection)": "cf_polyethylene", "HDPE(Film)": "cf_polyethylene",
+  "프로필렌": "cf_propylene", "메탄올": "cf_methanol", "가성소다": "cf_caustic_soda",
+  "BR": "cf_synthetic_rubber", "NDBR": "cf_synthetic_rubber"
+ },
+ "cnfut_note": "quheqihuo/jijinhao 中 선물 주력(CNY/t, 증치세 포함 내수). 원장(USD/MT 스팟)과 기준이 달라 같은 산식에 넣지 않는다 — 방향 참고만. cf_polyethylene(塑料)는 LLDPE 계약이라 HDPE/LDPE 에는 근사다.",
+ "derived": [
+  {"id": "pe_hdpe_inj_naphtha", "label": "HDPE(Injection)-납사 통합", "product": "HDPE(사출)", "feeds": [{"name": "Naphtha", "region": "일본", "k": 1.0}], "regions": ["한국", "대만", "일본", "동남아", "미국", "유럽"], "layer": "integrated", "source": "공개 관행 HDPE−Naphtha 1:1 (L4:72, 추정)"},
+  {"id": "pe_hdpe_film_naphtha", "label": "HDPE(Film)-납사 통합", "product": "HDPE(필름)", "feeds": [{"name": "Naphtha", "region": "일본", "k": 1.0}], "regions": ["한국", "대만", "일본", "동남아", "미국", "유럽"], "layer": "integrated", "source": "공개 관행 HDPE−Naphtha 1:1 (L4:72, 추정)"},
+  {"id": "pe_ldpe_naphtha", "label": "LDPE-납사 통합", "product": "LDPE", "feeds": [{"name": "Naphtha", "region": "일본", "k": 1.0}], "regions": ["한국", "대만", "일본", "동남아", "미국", "유럽"], "layer": "integrated", "source": "공개 관행 PE−Naphtha 1:1 (L4:72, 추정)"},
+  {"id": "pe_lldpe_naphtha", "label": "LLDPE-납사 통합", "product": "LLDPE", "feeds": [{"name": "Naphtha", "region": "일본", "k": 1.0}], "regions": ["한국", "대만", "일본", "동남아", "미국", "유럽"], "layer": "integrated", "source": "공개 관행 PE−Naphtha 1:1 (L4:72, 추정)"},
+  {"id": "pp_homo_naphtha", "label": "PP(Homo)-납사 통합", "product": "PP(호모)", "feeds": [{"name": "Naphtha", "region": "일본", "k": 1.0}], "regions": ["한국", "대만", "일본", "동남아", "미국", "유럽"], "layer": "integrated", "source": "공개 관행 PP−Naphtha 1:1 (L4:72, 추정)"},
+  {"id": "pp_film_naphtha", "label": "PP(Film)-납사 통합", "product": "PP(필름)", "feeds": [{"name": "Naphtha", "region": "일본", "k": 1.0}], "regions": ["한국", "대만", "일본", "동남아"], "layer": "integrated", "source": "공개 관행 PP−Naphtha 1:1 (L4:72, 추정)"},
+  {"id": "px_naphtha", "label": "PX-납사 직접", "product": "PX", "feeds": [{"name": "Naphtha", "region": "일본", "k": 1.0}], "regions": ["한국", "대만", "일본", "동남아", "미국", "유럽"], "layer": "integrated", "source": "공개 관행 PX−나프타 1:1 (L4:84, 추정; 1.25 계수형은 미채택)"},
+  {"id": "cpl_benzene", "label": "카프로락탐-벤젠", "product": "Caprolactam", "feeds": [{"name": "Benzene", "region": "한국", "k": 1.0}], "regions": ["중국"], "layer": "step", "source": "공개 관행 카프로락탐−벤젠 1:1 (L4:102, 추정); 벤젠 중국 시리즈가 없어 한국 벤젠 참조"},
+  {"id": "pvc_ethylene", "label": "PVC-0.5에틸렌", "product": "PVC", "feeds": [{"name": "Ethylene", "region": "$same", "k": 0.5}], "regions": ["한국", "대만", "일본", "동남아", "미국", "유럽"], "layer": "integrated", "source": "공개 관행 PVC−0.5에틸렌 (L4:82, 추정)"}
+ ]
+}

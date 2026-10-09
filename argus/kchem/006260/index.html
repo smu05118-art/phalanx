@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LS — 화학 스프레드 역참조</title>
+<link rel="stylesheet" href="../assets/kchem.css">
+</head>
+<body>
+<header class="top"><div class="hd"><h1>LS</h1><span class="tag">006260</span><span class="sp"><a href="../index.html">← 한국화학</a><a href="../spreads.html">표</a><a href="../matrix.html">매트릭스</a></span></div><div class="crumb"><a href="../index.html">한국화학</a> › <span>LS</span></div></header>
+<main><p class="lead">이 종목이 매핑된 체인(금속(LME 비철))의 스프레드 0개.</p><div class="notice"><div class="sym">⛔</div><div><p><b>원장 정지 6주</b> — 화학 스프레드 원장(Weekly xlsm)의 마지막 관측은 2026-08-24, ARGUS 평가일은 2026-10-05 입니다. 아래 주간 스프레드는 전부 이 날짜에 멈춰 있으며(살아 있는 스프레드 0), 값은 그대로 보이되 신선도 배지가 <span class="fr stale">오래됨</span>/<span class="fr dead">장기 미갱신</span> 으로 표시됩니다. 살아 있는 화학 입력은 中 선물(일간)·PPI(월)뿐입니다.</p></div></div><div class="notice info"><div class="sym">ℹ</div><div><p>종목 연결은 ARGUS 허브의 <b>체인 단위 참고 라벨</b>입니다(스프레드별 감도·매출 비중 아님). 금속(LME 비철): LS MnM(동제련) 100% 자회사</p></div></div><div class="wrap tall"><table data-sortable><thead><tr><th class="l">체인</th><th class="l">카테고리</th><th class="l">스프레드 · 산식</th><th>최신</th><th class="l">관측일</th><th>사이클 위치</th><th>5년 추이</th><th class="l">신선도·플래그</th></tr></thead><tbody></tbody></table></div><script src="../data/kchem_data.js"></script><script>
+(function(){
+  function num(s){var v=parseFloat(String(s).replace(/[^\d.\-]/g,''));return isNaN(v)?null:v;}
+  document.querySelectorAll('table[data-sortable]').forEach(function(tb){
+    var ths=tb.querySelectorAll('thead th'); var body=tb.tBodies[0]; if(!body) return;
+    ths.forEach(function(th,i){
+      th.classList.add('sort');
+      th.addEventListener('click',function(){
+        var dir=th.dataset.dir==='asc'?'desc':'asc'; ths.forEach(function(t){delete t.dataset.dir}); th.dataset.dir=dir;
+        var rows=Array.prototype.slice.call(body.rows);
+        rows.sort(function(a,b){
+          var x=a.cells[i]?a.cells[i].dataset.v!==undefined?a.cells[i].dataset.v:a.cells[i].textContent:'';
+          var y=b.cells[i]?b.cells[i].dataset.v!==undefined?b.cells[i].dataset.v:b.cells[i].textContent:'';
+          var nx=num(x),ny=num(y);
+          if(nx!==null&&ny!==null){ if(nx===ny) return 0; return (nx<ny?-1:1)*(dir==='asc'?1:-1); }
+          if(x===y) return 0; return (x<y?-1:1)*(dir==='asc'?1:-1);
+        });
+        rows.forEach(function(r){body.appendChild(r)});
+      });
+    });
+  });
+  document.querySelectorAll('input[data-filter]').forEach(function(inp){
+    var tb=document.querySelector(inp.dataset.filter); if(!tb) return;
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){ r.hidden=q&&r.textContent.toLowerCase().indexOf(q)<0; });
+    });
+  });
+  var tip=document.createElement('div'); tip.className='tip'; tip.hidden=true; document.body.appendChild(tip);
+  window.KSTIP={show:function(x,y,lines){ tip.textContent=''; lines.forEach(function(l){ var d=document.createElement('div'); d.className='row';
+      if(l.color){var k=document.createElement('span');k.className='k';k.style.background=l.color;d.appendChild(k);}
+      var a=document.createElement('span'); a.textContent=l.label; var b=document.createElement('span'); b.textContent=l.value;
+      if(l.strong){var s=document.createElement('b');s.textContent=l.value;b.textContent='';b.appendChild(s);} d.appendChild(a); d.appendChild(b); tip.appendChild(d); });
+      tip.hidden=false; var w=tip.offsetWidth,h=tip.offsetHeight; var px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; },
+    hide:function(){tip.hidden=true;}};
+})();
+</script><script>
+(function(){
+  var D=window.KCHEM; if(!D){return;}
+  function el(t,a){var e=document.createElementNS('http://www.w3.org/2000/svg',t);for(var k in a){e.setAttribute(k,a[k]);}return e;}
+  function fin(v){return typeof v==='number'&&isFinite(v);}
+  function fmt(v){if(!fin(v))return '—';var a=Math.abs(v);var s=a>=1000?Math.round(v).toLocaleString('en-US'):(a>=100?v.toFixed(0):v.toFixed(1));return s.replace('-','−');}
+  function series(sid){var s=D.series[sid];if(!s)return null;var ax=s.axis?D.axes[s.axis]:D.axes.wk;return {axis:ax,v:s.v,unit:s.unit,name:s.name};}
+  function extent(vs){var lo=Infinity,hi=-Infinity;vs.forEach(function(v){if(fin(v)){if(v<lo)lo=v;if(v>hi)hi=v;}});if(lo===Infinity){lo=0;hi=1;}if(hi===lo){hi=lo+1;}return [lo,hi];}
+  /* 스파크라인: <svg class="spk" data-sid> 를 채운다. 끝점 강조·0선 */
+  function spark(svg){
+    var s=series(svg.dataset.sid); if(!s){svg.remove();return;}
+    var W=120,H=28,p=2; svg.setAttribute('viewBox','0 0 '+W+' '+H); svg.setAttribute('preserveAspectRatio','none');
+    var vs=s.v, n=vs.length, ex=extent(vs), lo=ex[0], hi=ex[1];
+    var x=function(i){return p+(W-2*p)*i/Math.max(1,n-1);}, y=function(v){return H-p-(H-2*p)*(v-lo)/(hi-lo);};
+    if(lo<0&&hi>0){svg.appendChild(el('line',{x1:0,x2:W,y1:y(0),y2:y(0),'class':'zero'}));}
+    var d='',last=null,li=-1; for(var i=0;i<n;i++){if(!fin(vs[i]))continue;d+=(d?'L':'M')+x(i).toFixed(1)+' '+y(vs[i]).toFixed(1);last=vs[i];li=i;}
+    if(!d){return;} svg.appendChild(el('path',{d:d,'class':'ln'}));
+    if(li>=0){svg.appendChild(el('circle',{cx:x(li).toFixed(1),cy:y(last).toFixed(1),r:2,'class':'end'}));}
+  }
+  /* 다중 선 차트: container.dataset.sids = 'sid1,sid2,...' */
+  var COLORS=['#3987e5','#d95926','#199e70','#c98500','#d55181','#9085e9','#e66767','#008300'];
+  function chart(box){
+    var sids=(box.dataset.sids||'').split(',').filter(Boolean); box.textContent='';
+    var W=Math.max(320,box.clientWidth||640),H=240,L=56,R=12,T=14,B=28;
+    var svg=el('svg',{viewBox:'0 0 '+W+' '+H,'class':'kchart',role:'img'}); box.appendChild(svg);
+    var rows=[],allv=[],axis=null;
+    sids.forEach(function(sid,i){var s=series(sid);if(!s)return;axis=axis||s.axis;rows.push({sid:sid,s:s,c:COLORS[i%COLORS.length]});s.v.forEach(function(v){if(fin(v))allv.push(v);});});
+    if(!rows.length){box.textContent='데이터 없음';return;}
+    var ex=extent(allv),lo=ex[0],hi=ex[1],pad=(hi-lo)*0.06;lo-=pad;hi+=pad; var n=axis.length;
+    var x=function(i){return L+(W-L-R)*i/Math.max(1,n-1);}, y=function(v){return T+(H-T-B)*(1-(v-lo)/(hi-lo));};
+    var ticks=5; for(var t=0;t<=ticks;t++){var v=lo+(hi-lo)*t/ticks;svg.appendChild(el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),'class':'grid'}));var tx=el('text',{x:L-6,y:y(v)+3.5,'class':'tk','text-anchor':'end'});tx.textContent=fmt(v);svg.appendChild(tx);}
+    if(lo<0&&hi>0){svg.appendChild(el('line',{x1:L,x2:W-R,y1:y(0),y2:y(0),'class':'zero'}));}
+    var step=Math.max(1,Math.floor(n/6)); for(var i=0;i<n;i+=step){var tt=el('text',{x:x(i),y:H-8,'class':'tk','text-anchor':'middle'});tt.textContent=axis[i].slice(0,7);svg.appendChild(tt);}
+    rows.forEach(function(r){var d='';for(var i=0;i<n;i++){var v=r.s.v[i];if(!fin(v)){continue;}d+=(d?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1);}
+      if(d){svg.appendChild(el('path',{d:d,'class':'ln',stroke:r.c}));}});
+    var cursor=el('line',{x1:0,x2:0,y1:T,y2:H-B,'class':'cur'});cursor.setAttribute('visibility','hidden');svg.appendChild(cursor);
+    var lg=document.createElement('div');lg.className='legend';rows.forEach(function(r){var i=document.createElement('i');i.style.background=r.c;var sp=document.createElement('span');sp.appendChild(i);sp.appendChild(document.createTextNode(' '+r.s.name));lg.appendChild(sp);});box.appendChild(lg);
+    svg.addEventListener('mousemove',function(ev){var rect=svg.getBoundingClientRect();var px=(ev.clientX-rect.left)*W/rect.width;var i=Math.round((px-L)/(W-L-R)*(n-1));if(i<0||i>=n){return;}
+      cursor.setAttribute('x1',x(i));cursor.setAttribute('x2',x(i));cursor.setAttribute('visibility','visible');
+      var lines=[{label:axis[i],value:''}];rows.forEach(function(r){lines.push({label:r.s.name,value:fmt(r.s.v[i])+(r.s.unit?' '+r.s.unit:''),color:r.c});});
+      if(window.KSTIP){window.KSTIP.show(ev.clientX,ev.clientY,lines);}});
+    svg.addEventListener('mouseleave',function(){cursor.setAttribute('visibility','hidden');if(window.KSTIP){window.KSTIP.hide();}});
+  }
+  function boot(){document.querySelectorAll('svg.spk[data-sid]').forEach(spark);document.querySelectorAll('.kchart-box[data-sids]').forEach(chart);}
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',boot);}else{boot();}
+  window.KCHEMUI={chart:chart,spark:spark,series:series,fmt:fmt};
+})();
+</script></main>
+<footer>출처 ARGUS 원장(Weekly xlsm — Platts류 유료 스팟, 2026-08-24 주차 이후 미갱신)·페트로넷 일간·中 선물(quheqihuo) — 빌더 산출물(argus/data)을 읽기 전용으로 재조립. 단위 USD/MT. 계수는 전부 역산 추정. 참고용 · 투자조언 아님.</footer>
+</body></html>
