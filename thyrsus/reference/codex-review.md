@@ -4923,3 +4923,129 @@ p.charId=cc.newChar;
 - **E07·E08 은 설계 결정 선행** — 상태 토큰의 신원을 `key` 에서 `(key, 출처)` 로 바꾸는 쪽이 보고서 권고다.
 - 외부 보고서의 확정 26건은 **181종 전수가 아니다**(2차가 대조한 것은 31종). "확신 없음" 으로 남은 설명문
   후보 8종은 확정되지 않았다.
+
+## 라운드 53 — 설명문이 맞고 엔진이 틀렸다 · 그리고 그 반대 · PR #83
+
+외부 교차검증의 High 2건(E03·E05)을 받았다. 둘 다 자체 재현되고 적대적 3렌즈가 **한 건도 반박하지
+못했다**(0/3 · 0/3). 그런데 이 라운드의 수확은 그 둘이 아니라, **반박 렌즈가 내 수정의 미완성을 두 건
+잡아냈다**는 것과 **같은 결함이 캐릭터 셋에 걸쳐 있었다**는 것이다.
+
+### E03 — 평소 패턴이 거꾸로였다: 설명문 셋이 맞고 엔진만 틀렸다
+
+공식 Vigormortis: "Each night*, choose a player: they die. **Minions you kill keep their ability** &
+poison 1 Townsfolk neighbor. [-1 Outsider]" 위키 Examples 첫 줄이 정확히 이 경우다: "The Vigormortis
+kills the Witch. The player that the Witch cursed tonight remains cursed. The next day, when the
+cursed player nominates, they die."
+
+이 앱은 이 규칙을 **이미 세 곳에 맞게 적어 두고 있었다**:
+
+| 표면 | 문구 |
+|---|---|
+| 밤 순서 노트 | "그 하수인의 능력은 죽어서도 계속 작동 — 밤에도 계속 깨우세요(**마녀 등**)" |
+| 앱 자신의 예시문 | "비고르모르티스가 자기 하수인인 마녀를 죽였다 … **저주는 매일 밤 계속 갱신됐고**" |
+| `doStepKill` 토스트 | "🧟 …(하수인)의 능력은 죽어서도 계속 작동합니다 — 밤에 계속 깨우세요." |
+
+**엔진만 그 사실을 몰랐다.** 순서가 뒤집혀 있었다 — `doStepKill` 이 `vigorAbility` 토큰을
+`resolveNightDeath` **뒤에** 붙였고, 그 사이의 `reconcileDeath` 가 '출처 사망'으로 그 하수인이 건
+지속효과를 먼저 걷어 갔다. 측정 로그가 그대로 보여준다: `캐: 🧹저주 해제 — 출처 사망(마녀)`.
+
+그리고 `newNomination` 의 저주 게이트는 `p.alive` 마녀만 찾았다. 같은 상태에서 두 조회가 정반대를
+답한다 — `S.players.find(p=>p.alive&&p.charId==='witch')` → `null`, `abilityActor('witch')` →
+`{ok:true, actor:'p1'}`. **앱 안에 '죽어도 능력이 작동하는가' 창구가 이미 있었고 저주만 그것을 보지
+않았다.**
+
+사인을 아는 유일한 자리가 `killPlayer` 다(라운드 51 이 밴시를 그 자리에 둔 것과 같은 이유). 토큰을
+`reconcileDeath` **앞에서** 세우고, `reconcileDeath` 가 그 사실을 읽게 했다.
+
+```js
+function keepsAbilityAfterDeath(p, dctx){
+  if(!p || charOf(p.charId)?.type!=='minion') return false;
+  if(((dctx&&dctx.sourceCharId)||null)!=='vigormortis') return false;
+  const vg=S.players.find(q=>q.alive && q.charId==='vigormortis');
+  return !!(vg && !isMalfunctioning(vg));
+}
+```
+
+**마녀 전용이 아니다.** 적대적 반박의 재현이 같은 뿌리 확장을 측정했다 — 비고르모르티스가 죽인
+**독살범의 독**과 **세레노버스의 광기**도 똑같이 벗겨지고 있었다. 창구가 `type==='minion'` 으로
+일반화돼 있어 셋 다 한 번에 고쳐졌고, 회귀 케이스에 셋을 고정했다. 공식 위키 Summary 도 셋을 함께
+든다: "The Witch, Cerenovus, and Pit-Hag still act each night."
+
+### E05 — 앱이 한 규칙에 대해 스스로 두 번 어긋나 있었다
+
+공식 위키 Exorcist: "Any other Demon abilities still function—such as the Zombuul staying alive if
+killed, **the Pukka killing a player they attacked on a previous night**, or the Shabaloth
+regurgitating a player." 위키 Pukka Examples: "The Pukka poisons the Pacifist. The next night, the
+Exorcist chooses the Pukka to not wake tonight. **The Pacifist dies**, but the Pukka does not wake to
+attack tonight."
+
+봉인된 악마는 밤 단계가 통째로 건너뛰어져 `doPukkaPick` 이 호출되지 않았다 — 지연 사망이 사라졌다.
+그런데 같은 앱에서:
+
+- `doExorcist` 의 토스트는 **이미 약속하고 있었다**: "(푸카의 이전 공격에 의한 사망은 그대로 해결)"
+- 리마인더 배너는 **정반대를 적었다**: "푸카 단계를 건너뛰면 사망도 함께 미뤄집니다."
+
+토스트가 맞고 배너가 틀렸다. 지연 사망과 독 회수를 `resolvePukkaPending()` 한 창구로 모아 정상 지목과
+봉인 두 경로가 같은 판정을 쓰게 하고, 봉인 시점에 그 창구를 밟는다. **봉인 ≠ 오작동** — 오작동한
+푸카면 지연 사망도 없는 것이 맞고 그건 앱이 이미 맞게 처리하고 있었다.
+
+### 반박 렌즈가 내 수정의 미완성을 둘 잡았다
+
+적대적 반박은 '결함이 진짜인가'를 묻게 돼 있는데, 그 과정에서 **내가 만들 뻔한 모순**을 지적했다.
+이것이 이 라운드에서 가장 값있는 산출이다.
+
+1. **저주 조건을 보는 자리가 셋이었다.** 엔진만 `abilityActor('witch')` 로 고치면 안내 두 곳
+   (리마인더 카드 · 지명 경고)이 여전히 `!w.alive` 로 "마녀 사망 → 불발" 을 단언한다 — 비고르모르티스가
+   죽인 마녀에서 **화면과 엔진이 정반대**를 말하게 된다. 반박자가 실측 토스트까지 떠서 보여줬다.
+   `witchCurseState()` 창구로 세 자리를 합쳤다(공식 생존 3인 조건도 한 곳에만 적는다).
+2. **봉인 경로가 이벤트 원장을 우회했다.** 새 사망 경로를 만들면서 `EV.attack` 발행이 빠져
+   `ST_BAL`·사망 지표가 조용히 어긋날 상태였다. 기존 `doExorcist` 래퍼에 합쳐 발행한다.
+
+### 거울상 — 엔진을 고치자 설명문 다섯 표면이 틀려졌다
+
+E03 이 '설명문이 맞고 엔진이 틀림' 이었다면 E05 는 그 반대다. 엔진이 공식대로 동작하게 되자
+"악마 단계를 **통째로** 건너뛴다" 가 적힌 다섯 표면이 **앱이 사회자에게 엔진이 수행하는 사망을
+건너뛰라고 지시**하는 상태가 됐다 — `ability`(인쇄 시트에도 찍힌다) · `guideOther` · `howto` ·
+`NIGHT_FLOW` 노트 · 수동 화면 힌트, 그리고 봉인 단계 라벨까지. 공식은 **깨우는 것만** 막는다.
+
+덤으로 `warn` 이 "좀버얼이 지목되면 … '죽은 척' 상태 유지에 영향" 이라고 적고 있었다 — 공식이
+**영향 없음으로 명시한 바로 그 능력**이다("the Zombuul staying alive if killed").
+
+### 인용 정정
+
+위키 푸카 예시의 인물은 '**선원**' 이 아니라 '**평화주의자**' 다. 외부 보고서(PR #77)의 인용이 틀렸고
+내가 검증 없이 그대로 옮겼다 — 적대적 반박 렌즈 둘이 독립으로 잡았다. 규칙 내용은 같지만 인용은 제품
+주석과 테스트에 남으므로 고쳤다. **외부 보고서의 인용도 원문과 대조할 것.**
+
+### 게이트가 내 실수를 네 번 잡았다
+
+1. **패치 가드가 거짓 일치** — 가드 문자열이 파일 꼬리와 우연히 일치해 독 회수 블록이 창구와 inline
+   두 벌로 남았다(무해하지만 '한 규칙 두 벌'이 이 프로젝트의 결함 유형 그 자체다).
+2. **원문 단정이 이 커밋 자신의 설명 주석에 걸렸다.** 옛 틀린 문구를 주석에 인용해 뒀더니 `w_src()`
+   단정이 그 주석을 잡았다 — **원문 단정은 '표시 문자열의 형태'로 좁혀야 한다**(주석의 인용은
+   쌍따옴표·마침표 없음이라 걸리지 않는다). 새 함정이다.
+3. **래퍼 감사가 중복 래퍼를 잡았다** — `doExorcist` 에 이미 `EV.pick` 래퍼가 있었는데 두 번째를
+   추가해 `기준선 1 · 실측 2` 가 떴다. 기존 래퍼에 합쳤다.
+4. **창구화가 내가 같은 라운드에 만든 대조군 앵커를 끊었다** — `Control anchor must match once`.
+   라운드 52 와 같은 자리의 교훈이고, 이번엔 내 수정이 내 대조군을 끊었다.
+
+대조군 전제도 하나 틀렸다 — "오작동한 비고르모르티스가 죽이지만 능력 유지는 없다" 로 썼는데, 오작동하면
+`abilityActor` 게이트에서 **애초에 죽이지 못한다**. 실제 동작으로 바꾸고, 방어 분기는 `killPlayer` 를
+직접 불러 따로 겨눴다.
+
+### 검증
+
+규칙 **97 케이스**(+4, 수정 전 빌드에서 29개 단정 실패) · 종료 31 · 핸드오프 PASS · 더미 2000 ·
+퍼저 6000 · 커스텀 1200 · DOM 골든 **픽스처 32 · 프레임 111 · 대조군 48/48** · 래퍼 48 ·
+돌연변이 46종 검출 42 · 미검출 0 · 체크리스트 고아 0. 스위트 전 검사 종료코드 0.
+
+DOM 골든 대조군 5개가 **첫 시도에 전부 울렸다** — 라운드 52 가 배운 셋(픽스처가 코드 경로를 밟는가 ·
+`S` 밖 모듈 전역 · 이미 그려진 패널)을 적용한 결과다.
+
+### 남은 한계
+
+- 설명문 전수 훑기(구마사제·푸카 20표면 · 비고르모르티스·마녀 26표면)가 찾은 **나머지 13건은 백로그
+  G 절**로 넘겼다. 이번 라운드가 반영한 것은 '방금 고친 판정과 정면으로 어긋나는 것'뿐이다.
+- `resolvePukkaPending` 의 사망 분기는 종전대로 `prev.alive` 를 본다. 라운드 52 가 만든
+  `reallyAlive` 창구(죽은 척 좀버얼)를 쓰는 것이 일관되지만, 그것은 동작 변경이라 별도 근거·테스트가
+  필요하다 — G 절에 남겼다.

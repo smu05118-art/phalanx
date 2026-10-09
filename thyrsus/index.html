@@ -949,9 +949,9 @@ const BMR_CHARS=[
  guideFirst:['2명 지목받고 그중 오늘 밤 깨어난(깨어날) 수를 손가락으로 알려준다.'],guideOther:['동일 진행 — 이번 밤 실제 기상 여부 기준.'],
  warn:['"능력으로 깨어남"만 계산 — 광인·정보 전달용 기상 등 판정 애매하면 일관성 유지.','중독/취함이면 거짓 수 가능.'],remind:[]},
 {id:'exorcist',ko:'구마사제',en:'Exorcist',type:'townsfolk',edition:'bmr',first:false,other:true,
- ability:'매일 밤(첫날 제외) 전날과 다른 1명을 지목한다. 악마라면 악마는 깨어나 구마사제를 확인하고, 그 밤 악마 능력으로 활동하지 못한다.',
- guideOther:['1명 지목받는다(전날과 달라야 함).','악마면: 악마를 깨워 구마사제를 가리켜 보여주고, 이번 밤 악마 살해 단계를 건너뛴다.'],
- warn:['구마사제가 중독이면 효과 없음 — 악마는 평소대로 활동.','좀버얼이 지목되면 그 밤 살해 불가로 "죽은 척" 상태 유지에 영향.'],remind:['어제 지목자 기록']},
+ ability:'매일 밤(첫날 제외) 전날과 다른 1명을 지목한다. 악마라면 악마는 깨어나 구마사제를 확인하고, 그 밤 공격 대상을 고르지 못한다. 그 밖의 악마 능력은 그대로 작동한다.',
+ guideOther:['1명 지목받는다(전날과 달라야 함).','악마면: 악마를 깨워 구마사제를 가리켜 보여주고, 이번 밤 **새 공격 대상 지목만** 건너뛴다 — 그 밖의 악마 능력은 그대로다(좀버얼의 죽은 척·푸카의 전날 희생자 사망·샤발로스의 소생).'],
+ warn:['구마사제가 중독이면 효과 없음 — 악마는 평소대로 활동.','좀버얼이 지목돼도 "죽은 척"(첫 사망 생존)은 **영향받지 않는다** — 공식이 명시적으로 그대로 작동한다고 못 박은 쪽이다. 막히는 것은 그 밤의 새 공격뿐.'],remind:['어제 지목자 기록']},
 {id:'innkeeper',ko:'여관 주인',en:'Innkeeper',type:'townsfolk',edition:'bmr',first:false,other:true,
  ability:'매일 밤(첫날 제외) 2명을 지목한다. 그들은 오늘 밤 죽지 않지만, 그중 1명은 다음 황혼까지 취한다(사회자 선택).',
  guideOther:['2명 지목받아 🛡보호 2개, 그중 1명에게 🍺취함 토큰.'],
@@ -3050,8 +3050,28 @@ function clearEffectsFromChar(charId, why){
 }
 /* 죽은 플레이어가 지속효과 출처 캐릭터면 그 출처의 상태를 전원에게서 정리한다.
    리치 숙주 사망 알림도 여기 붙인다 — 사망이 확정된 모든 경로가 지나는 한 곳이다. */
+/* ══ '죽어도 능력을 유지하는가' 의 단일 창구 ═══════════════════════════════
+   공식 Vigormortis: "Minions you kill keep their ability."
+   [무엇이 문제였나] 앱은 `abilityActs` 로 '죽어도 능력이 작동한다'를 **이미 알고 있었다**
+   (vigorAbility 토큰을 읽는다). 그런데 그 토큰은 doStepKill 이 resolveNightDeath **뒤에**
+   붙였고, 그 사이의 reconcileDeath 가 '출처 사망'으로 그 하수인이 건 지속효과를 먼저
+   걷어 갔다 — 순서가 뒤집혀 있었다. 위키 Vigormortis Examples 첫 줄이 정확히 그 경우다:
+   "The Vigormortis kills the Witch. The player that the Witch cursed tonight remains cursed.
+   The next day, when the cursed player nominates, they die."
+   사인(dctx)을 아는 유일한 자리가 killPlayer 다 — 밴시를 그 자리에 둔 것과 같은 이유다. */
+function keepsAbilityAfterDeath(p, dctx){
+  if(!p || charOf(p.charId)?.type!=='minion') return false;
+  if(((dctx&&dctx.sourceCharId)||null)!=='vigormortis') return false;
+  const vg=S.players.find(q=>q.alive && q.charId==='vigormortis');
+  return !!(vg && !isMalfunctioning(vg));
+}
 function reconcileDeath(p){
-  clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`);
+  /* 능력을 유지하는 좌석은 **그가 출처인 지속효과도** 유지한다. 능력만 남기고 저주·중독을
+     걷으면 "능력은 작동하는데 그 능력의 결과물은 사라진" 상태가 된다. */
+  if(hasStatus(p,'vigorAbility'))
+    log(`${p.name}: 능력 유지 — 그가 출처인 지속효과를 정리하지 않습니다(비고르모르티스).`);
+  else
+    clearEffectsFromChar(p.charId, `출처 사망(${charName(p)})`);
   try{ noticeLleechHostDeath(p); }catch(e){ console.warn('[lleech] host', e); }
 }
 function killPlayer(p, cause, opts){
@@ -3103,6 +3123,13 @@ function killPlayer(p, cause, opts){
   if(p.charId==='banshee' && dctx.sourceType==='demon' && !_malAtDeath && !hasStatus(p,'bansheeAbility')){
     addStatus(p,'bansheeAbility','악마의 살해로 발동',null);
     log('🗯 밴시 발동 — 전원에게 공표하라. 이후 죽은 밴시는 매일 지명 2회·지명당 2표(사망 투표 토큰 무관).');
+  }
+  /* 비고르모르티스가 죽인 하수인은 죽어도 능력이 작동한다 — 그 사실을 **reconcileDeath 보다
+     먼저** 세워야 그가 건 지속효과가 '출처 사망'으로 걷히지 않는다. 종전에는 doStepKill 이
+     resolveNightDeath 뒤에 붙여 이미 늦었다(그 토스트는 UI 안내로 그 자리에 남는다). */
+  if(keepsAbilityAfterDeath(p, dctx) && !hasStatus(p,'vigorAbility')){
+    addStatus(p,'vigorAbility','비고르모르티스',null);
+    log(`🧟 ${p.name}(${charName(p)}) — 비고르모르티스가 죽인 하수인: 죽어서도 능력이 계속 작동합니다.`);
   }
   reconcileDeath(p);   // 출처 사망 → 그의 독·보호·저주·광기 등 지속효과 즉시 정리
   /* 달의 자손: 공개 지목은 '사망을 안 때'다 — 낮 사망이면 지금, 밤 사망이면 새벽(advancePhase)에 받는다.
@@ -4514,7 +4541,7 @@ function stepSkipReason(st){
   if(c && c.type==='fabled') return null;
   // 구마사제가 이번 밤 봉인한 악마는 단계 자체를 건너뛴다
   if(S.demonBlockedNight===S.phase.n && c?.type==='demon'
-     && holders.some(p=>p.id===S.demonBlockedPid)) return '📿 구마사제가 봉인 — 이번 밤 능력 사용 없음';
+     && holders.some(p=>p.id===S.demonBlockedPid)) return '📿 구마사제가 봉인 — 새 공격 대상 지목 없음(그 밖의 악마 능력은 그대로)';
   const trig=DEATH_TRIGGER_STEPS[st.id];
   if(trig){
     const h=holders[0];
@@ -4733,7 +4760,7 @@ function stepWidget(st,c){
     return `<h3>📿 구마사제 대상 기록</h3>`
       +(prev?`<div class="alertbox">📿 어제 대상: <b>${esc(prev.name)}</b> — 오늘은 다른 사람을 지목해야 합니다.</div>`:'')
       +(cur?`<div class="alertbox blue">오늘 대상 기록됨: <b>${esc(cur.name)}</b></div>`:'')
-      +`<p class="hint">악마를 지목했으면 악마를 깨워 구마사제를 보여주고, 이번 밤 악마 살해 단계를 건너뛰세요.</p>`
+      +`<p class="hint">악마를 지목했으면 악마를 깨워 구마사제를 보여주고, 이번 밤 <b>새 공격 대상 지목만</b> 건너뛰세요 — 그 밖의 악마 능력은 그대로입니다(푸카라면 전날 희생자는 그대로 죽습니다).</p>`
       +selPlayers('doExorcist', p=>p.alive, '구마사제가 지목한 대상');
   }
   if(SPENT_ONCE.includes(st.id) && !(c&&c.killer)) return `<h3>✔ 1회성 능력 추적</h3>`+spentWidget(st.id);
@@ -4794,6 +4821,16 @@ function doExorcist(pid){
     else {
       S.demonBlockedNight=S.phase.n; S.demonBlockedPid=t.id;   // 밤 큐에서 이 악마의 단계를 실제로 건너뛴다
       log(`📿 구마 성공 — 밤 ${S.phase.n} 동안 ${t.name}(${charName(t)})의 능력 단계를 건너뜁니다`);
+      /* 봉인 ≠ 오작동 — 푸카의 '전날 희생자 사망'은 그대로 일어난다(위키 Exorcist/Pukka).
+         단계가 건너뛰어져 doPukkaPick 이 호출되지 않으므로 여기서 같은 창구를 밟는다.
+         새로 무는 일은 없으므로 대기 희생자도 남지 않는다. 푸카 좌석 자신이 오작동이면
+         공식대로 아무 일도 일어나지 않는다. */
+      if(t.charId==='pukka' && S.pukkaVictimId && !isMalfunctioning(t)){
+        if(resolvePukkaPending(null)){
+          S.pukkaVictimId=null;
+          log('🐍 봉인된 푸카 — 전날 희생자의 지연 사망은 그대로 해결(새로 무는 일은 없음)');
+        }
+      }
       toast('😈 악마를 지목했습니다 — 악마를 깨워 구마사제를 보여주세요. 이번 밤 이 악마의 단계는 밤 순서에서 자동으로 건너뜁니다(푸카의 이전 공격에 의한 사망은 그대로 해결).','warn');
     }
   } else {
@@ -4872,6 +4909,47 @@ function doPoison(pid){ if(!pid)return; const p=playerOf(pid); const _po=ability
 /* 푸카는 독살범과 수명주기가 다르다 — doPoison 재사용이 결함이었다.
    공식: 밤마다 1명을 물면 즉시 중독, '이전에 문 사람'이 그때 죽으면서 건강해진다.
    푸카가 오작동이면 새 중독도 지연 사망도 없다. 페이즈 기반 expiresAt 을 쓰면 안 된다. */
+/* ══ 푸카의 지연 사망·독 회수 단일 창구 ══════════════════════════════════
+   공식 Pukka: "Each night, choose a player: they are poisoned. The previously poisoned player
+   dies then becomes healthy."
+   [무엇이 문제였나] 구마사제가 봉인한 악마는 **밤 단계 자체가 건너뛰어져** doPukkaPick 이
+   호출되지 않아 전날 희생자의 지연 사망이 사라졌다. 공식은 정반대다 — 위키 Exorcist:
+   "Any other Demon abilities still function—such as … the Pukka killing a player they attacked
+   on a previous night." 위키 Pukka Examples: "The Pukka poisons the Sailor. The next night, the
+   Exorcist chooses the Pukka to not wake tonight. **The Pacifist dies**, but the Pukka does not
+   wake to attack tonight."
+   (인용 정정: 외부 보고서는 이 예시의 인물을 '선원'으로 적었는데 위키 원문은 '평화주의자'다 —
+    적대적 반박 렌즈 둘이 독립으로 잡았다. 규칙 내용은 같다.)
+   그리고 앱은 이 규칙에 대해 **스스로 두 번 어긋나 있었다**: doExorcist 의 토스트는 이미
+   "(푸카의 이전 공격에 의한 사망은 그대로 해결)" 이라고 약속하는데 구현이 없었고, 새벽 요약은
+   "푸카 단계를 건너뛰면 사망도 함께 미뤄집니다" 라고 정반대를 적었다.
+   **봉인 ≠ 오작동** — 오작동(중독·취함)한 푸카면 지연 사망도 없는 것이 맞고 그건 앱이 이미
+   맞게 처리한다(doPukkaPick 의 abilityActor 게이트).
+   두 경로(정상 지목 · 봉인)가 같은 판정을 쓰도록 한 창구에 모은다.
+   [반환] 지연 사망 판정을 실제로 밟았는가 — 호출부가 S.pukkaVictimId 를 어떻게 둘지 가른다. */
+function resolvePukkaPending(newTarget){
+  const prev=S.pukkaVictimId? playerOf(S.pukkaVictimId): null;
+  if(!prev || (newTarget && prev===newTarget)) return false;
+  if(prev.alive){
+    /* 공식: '죽고 나서 건강해진다'. 사망 판정이 끝날 때까지 독을 유지해야
+       어릿광대 1회 생존이 막히고 까마귀지기·현자가 거짓 정보를 받을 수 있다(중독 = 임의 정보). */
+    const blk=resolveDeath(prev,{sourceType:'demon', sourceCharId:'pukka', cause:'푸카의 독'}).reason;
+    if(blk){
+      toast(`${prev.name}: ${blk} — 푸카의 독으로 죽지 않았습니다. 독은 이제 풀립니다.`,'ok');
+      log(`푸카의 독 → ${prev.name} 사망 불발(${blk})`);
+    } else {
+      log(`🐍 푸카의 독 발현 — ${prev.name} 사망`);
+      resolveNightDeath(prev, '푸카의 독');
+    }
+  }
+  /* 공식 Pukka: "they die & the previously poisoned player becomes healthy" — 이전 희생자의
+     독은 생사와 무관하게 풀린다. 사망 분기 '안'에만 두면 이미 죽어 있던 희생자(전날 처형 등)의
+     '푸카' 토큰이 시체에 영구히 남는다. expiresAt 이 null 이라 expireStatuses() 도 걷지 못해
+     유일한 회수 경로가 여기다. 사망 판정 '뒤'라는 위치는 그대로다. */
+  const i=(prev.statuses||[]).findIndex(s=>s.key==='poison' && s.source==='푸카');
+  if(i>=0){ prev.statuses.splice(i,1); log(`푸카의 독 해제 — ${prev.name}`); }
+  return true;
+}
 function doPukkaPick(pid){
   if(!pid)return; const t=playerOf(pid);
   const _pk=abilityActor('pukka');
@@ -4883,30 +4961,10 @@ function doPukkaPick(pid){
   }
   if(hasStatus(t,'poison')) toast(`${t.name}은(는) 이미 중독 상태 — 토큰을 중복 부여하지 않습니다.`,'warn');
   else addStatus(t,'poison','푸카',null);          // 만료 없음 — 다음 지목 때 해제된다
-  if(prev && prev!==t && prev.alive){
-    // 공식: '죽고 나서 건강해진다'. 사망 판정이 끝날 때까지 독을 유지해야
-    // 어릿광대 1회 생존이 막히고 까마귀지기·현자가 거짓 정보를 받을 수 있다(중독 = 임의 정보).
-    const blk=resolveDeath(prev,{sourceType:'demon', sourceCharId:'pukka', cause:'푸카의 독'}).reason;
-    if(blk){
-      toast(`${prev.name}: ${blk} — 푸카의 독으로 죽지 않았습니다. 독은 이제 풀립니다.`,'ok');
-      log(`푸카의 독 → ${prev.name} 사망 불발(${blk})`);
-    } else {
-      log(`🐍 푸카의 독 발현 — ${prev.name} 사망`);
-      resolveNightDeath(prev, '푸카의 독');
-    }
-  } else if(prev && prev===t){
+  if(prev && prev===t){
     toast('이전에 문 대상을 다시 물었습니다 — 규칙상 처리(사망 여부)를 직접 판단하세요.','warn');
-  }
-  /* 공식 Pukka: "they die & the previously poisoned player becomes healthy" — 이전 희생자의
-     독은 생사와 무관하게 풀린다. 회수를 위 사망 분기(prev.alive) 안에만 두면, 이미 죽어 있던
-     희생자(전날 처형 등)의 '푸카' 토큰이 시체에 영구히 남는다. expiresAt 이 null 이라
-     expireStatuses() 도 걷지 못해 유일한 회수 경로가 여기다. 시체의 중독은 얼뜨기·달의 자손처럼
-     '죽은 뒤' 판정하는 규칙을 계속 무효화한다.
-     분기 '밖'이자 사망 판정 '뒤'라는 위치는 그대로다 — 그래야 어릿광대 1회 생존과
-     까마귀지기·현자의 거짓 정보(중독 = 임의 정보)가 판정 시점에 보존된다. */
-  if(prev && prev!==t){
-    const i=(prev.statuses||[]).findIndex(s=>s.key==='poison' && s.source==='푸카');
-    if(i>=0){ prev.statuses.splice(i,1); log(`푸카의 독 해제 — ${prev.name}`); }
+  } else {
+    resolvePukkaPending(t);
   }
   S.pukkaVictimId=t.id;
   save(); renderAll();
@@ -5222,6 +5280,28 @@ function resolveMoonchildChoice(){
   doStepKill(t.id, 'moonchild');
   return true;
 }
+/* ══ 마녀의 저주가 지금 발동하는가 — 단일 창구 ═════════════════════════════
+   같은 판정을 보는 자리가 셋이다: 지명 게이트(newNomination) · 리마인더 카드 · 지명 경고.
+   [무엇이 문제였나] 엔진을 `abilityActor('witch')` 로 고치면(비고르모르티스가 죽인 마녀도
+   능력이 작동한다) 안내 두 곳은 여전히 `!w.alive` 로 "마녀 사망 → 불발" 을 단언한다 —
+   화면과 엔진이 정반대를 말하게 된다. 이 프로젝트에서 열네 번째 반복되는 모양이라
+   수정과 같은 커밋에서 세 자리를 한 창구로 모은다.
+   공식 생존 3인 조건(마녀는 생존 3인이 되면 능력을 잃는다)도 여기 한 번만 적는다. */
+function witchCurseState(){
+  const a=abilityActor('witch');
+  if(!a.ok){
+    /* abilityActor 는 '행동 가능한' 좌석만 돌려주므로 죽은 마녀에서는 actor 가 null 이다 —
+       '좌석이 아예 없다'와 '좌석은 있는데 못 쓴다'를 가르려면 좌석을 따로 봐야 한다.
+       이 원시 조회는 **이 창구 안에만** 있어야 한다(밖에 두면 안내가 엔진과 어긋난다). */
+    const seat = a.actor || S.players.find(q=>q.charId==='witch') || null;
+    const why = !seat ? '마녀 없음'
+              : !abilityActs(seat) ? '마녀 사망'
+              : '마녀 중독/취함';
+    return {live:false, why};
+  }
+  if(alivePlayers().length<=3) return {live:false, why:`생존 ${alivePlayers().length}명(3인 이하)`};
+  return {live:true, why:''};
+}
 function doCurse(pid){ if(!pid)return; S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='curse'));
   const p=playerOf(pid); addStatus(p,'curse','마녀',{kind:'night', n:S.phase.n+1}); save(); renderAll(); }
 function doMad(pid){ if(!pid)return; S.players.forEach(q=>q.statuses=(q.statuses||[]).filter(s=>s.key!=='mad'));
@@ -5304,7 +5384,7 @@ function doStepKill(pid, killerId){ if(!pid)return; const t=playerOf(pid);
   resolveNightDeath(t, killerKo2+'의 공격', kctx);
   // 비고르모르티스가 하수인을 죽였다면: 죽어도 능력 유지(영구 토큰) + 주민 이웃 1명 중독 안내
   if(kid==='vigormortis' && !t.alive && charOf(t.charId)?.type==='minion'){
-    if(!hasStatus(t,'vigorAbility')) addStatus(t,'vigorAbility','비고르모르티스',null);
+    /* 토큰 부여는 killPlayer 로 옮겼다(reconcileDeath 보다 먼저여야 한다) — 여기는 사회자 안내만 */
     toast(`🧟 ${t.name}(하수인)의 능력은 죽어서도 계속 작동합니다 — 밤에 계속 깨우세요. 그 하수인의 최근접 주민 이웃 1명(방향은 사회자 선택, 외지인·하수인은 건너뜀)에게 ☠영구 중독 토큰을 부여하세요. 비고르모르티스가 죽거나 오작동하면 능력 유지·이웃 중독을 재평가(해제)합니다.`,'warn');
   }
   save(); renderAll(); }
@@ -5483,10 +5563,14 @@ function newNomination(){
   log(`지명: ${playerOf(tor).name} → ${playerOf(nee).name}`);
   const torP0=playerOf(tor);
   if(hasStatus(torP0,'curse')){
-    const witch=S.players.find(p=>p.alive&&p.charId==='witch');
-    if(witch && !isMalfunctioning(witch) && alivePlayers().length>=4){
+    /* 공식 Vigormortis 로 능력을 유지한 **죽은 마녀**의 저주도 발동한다. `p.alive` 로 찾으면
+       그 경우가 통째로 빠진다 — 앱에 이미 '죽어도 능력이 작동하는가' 창구(abilityActor →
+       abilityActs)가 있고 그것이 vigorAbility 를 읽는다. 오작동 게이트도 그 창구가 겸한다.
+       생존 4인 조건은 공식이다(마녀는 생존 3인이 되면 능력을 잃는다) — 그대로 둔다. */
+    const _cs=witchCurseState();
+    if(_cs.live){
       thyConfirm(`🧹 마녀의 저주 발동! 지명자 ${torP0.name}은(는) 저주받은 상태입니다.\n즉시 사망 처리할까요? (지명 절차는 그대로 진행됩니다)`, ok=>{ if(ok){ resolveDayAbilityDeath(torP0,'witch','마녀의 저주 — 지명 즉시 사망'); save(); renderAll(); } }, {title:'🧹 마녀의 저주', ok:'즉시 사망 처리', cancel:'사망 없음', danger:true});
-    } else { toast('저주 토큰이 있으나 마녀가 죽었거나 오작동, 또는 생존 3인 — 저주 불발.','warn'); }
+    } else { toast(`저주 토큰이 있으나 발동하지 않습니다 — ${_cs.why}.`,'warn'); }
   }
   // 성결자 체크
   const neeP=playerOf(nee), torP=playerOf(tor);
@@ -7272,7 +7356,7 @@ chambermaid:{howto:[
 examples:[
  '객실 청소부가 조용한 두 명을 찍어 "1"을 받았다. 한 명은 매일 깨는 독살범류 하수인이었고, 이후 청소부는 밤 순서 추리로 그 후보를 좁혀 갔다.']},
 exorcist:{howto:[
- '지목이 악마와 일치하면 악마를 깨워 구마사제를 가리켜 보여주고, 그 밤 악마의 살해 단계를 통째로 건너뛴다.',
+ '지목이 악마와 일치하면 악마를 깨워 구마사제를 가리켜 보여주고, 그 밤 **새 공격 대상 지목**을 건너뛴다. 공식은 깨우는 것만 막는다 — **그 밖의 악마 능력은 그대로 작동한다**: 좀버얼은 죽어도 죽은 척으로 버티고, **푸카의 전날 희생자는 그대로 죽으며**(앱이 자동 처리), 샤발로스는 소생을 쓸 수 있다.',
  '이 과정에서 악마는 구마사제가 누군지 알게 된다 — 다음 밤 최우선 표적이 될 수 있음을 염두에.'],
 examples:[
  '구마사제가 좀버얼을 정확히 지목했다. 그 밤 좀버얼은 활동하지 못해 사망 없는 아침이 밝았고, 다음 밤 좀버얼은 즉시 구마사제를 죽였다 — 마을은 "누군가 악마를 하루 봉인했었다"는 단서를 얻었다.']},
@@ -8354,7 +8438,7 @@ exorcist:{other:[
   {t:'note',text:'전날 지목한 사람과 반드시 다른 대상이어야 합니다 — 판정 함수가 같은 대상을 자동으로 막아줍니다.'},
   {t:'pick-player',n:1,who:'player',label:'구마사제가 지목한 대상(사망자·죽은 척 좀버얼 포함)',filter:'any',storeAs:'tgt'},
   {t:'effect',fn:'doExorcist',from:'tgt'},
-  {t:'note',text:'대상이 악마였다면(판정 알림 참조): 악마를 깨워 구마사제가 누구인지 가리켜 보여주고, 이번 밤 악마의 살해 단계를 통째로 건너뛰세요. 구마사제가 중독이면 효과가 없어 악마는 평소대로 활동합니다.'},
+  {t:'note',text:'대상이 악마였다면(판정 알림 참조): 악마를 깨워 구마사제가 누구인지 가리켜 보여주고, 이번 밤 **새 공격 대상 지목만** 건너뛰세요 — 공식은 깨우는 것만 막습니다. 그 밖의 악마 능력은 그대로입니다: 푸카라면 **전날 희생자는 그대로 죽습니다**(앱이 봉인 시점에 자동 처리하고 로그에 남깁니다). 구마사제가 중독이면 효과가 없어 악마는 평소대로 활동합니다.'},
   {t:'sleep'}]},
 zombuul:{other:[
   {t:'note',text:'오늘 아무도 죽지 않았을 때만 좀버얼을 깨웁니다. "죽은 척" 상태의 좀버얼도 계속 깨워야 합니다. 사망자가 있었던 날 밤이면 여기서 닫으세요.'},
@@ -12900,12 +12984,25 @@ function buildMatchRecord(winner, pgid){
     if(t) emitEv('poison', psn? psn.id : null, pid, {src:'독살범', key:'poison', mal:psn? isMalfunctioning(psn) : false});
   };
 
-  // pick — 구마사제·악마의 변호사의 밤 지목 [EV.pick]
+  /* pick — 구마사제·악마의 변호사의 밤 지목 [EV.pick]
+     + attack — 구마사제가 봉인한 푸카의 지연 사망 [EV.attack]
+     봉인 경로는 doPukkaPick 을 거치지 않으므로 위의 푸카 래퍼가 그 사망을 못 본다. 사망은
+     일어나는데 원장에만 안 남으면 ST_BAL·사망 지표가 조용히 어긋난다 — 같은 모양으로 발행한다.
+     래퍼를 새로 더하지 않고 이 하나에 합친다(doExorcist 의 래퍼 수 기준선은 1 이다). */
   const _ex=doExorcist;
   doExorcist=function(pid){
+    const t=playerOf(pid);
+    const before=S.pukkaVictimId;
+    const prev=before? playerOf(before) : null;
+    const pk=S.players.find(q=>(q.alive || (q.charId==='zombuul'&&hasStatus(q,'fakedead'))) && q.charId==='pukka');
+    const mal=pk? isMalfunctioning(pk) : false;
+    /* blocked 는 원본 호출 '전에' 재야 한다 — 보호 판정이 사망으로 소모되기 전 상태다. */
+    const prevBlk=(prev && prev.alive && !mal)? preBlock(prev,'demon',false) : null;
     _ex(pid);
     if(pid && playerOf(pid))
       emitEv('pick', S.players.find(q=>q.alive&&q.charId==='exorcist')?.id||null, pid, {step:'exorcist', targets:[pid]});
+    if(prev && before && S.pukkaVictimId===null && t && t.charId==='pukka')
+      emitEv('attack', pk? pk.id : null, prev.id, {killer:'pukka', blocked:prevBlk, sealed:true});
   };
   const _da=doDevilsAdvocate;
   doDevilsAdvocate=function(pid){
@@ -13574,11 +13671,10 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
     /* ③ 저주(마녀) — 지명하면 즉시 사망 */
     const cursed=S.players.filter(p=>hasStatus(p,'curse'));
     if(cursed.length){
-      const w=S.players.find(q=>q.charId==='witch');
       const names=cursed.map(p=>esc(p.name)).join(', ');
-      const why = (!w||!w.alive) ? '마녀 사망'
-                : isMalfunctioning(w) ? '마녀 중독/취함'
-                : (alivePlayers().length<=3) ? `생존 ${alivePlayers().length}명(3인 이하)` : '';
+      /* 엔진과 같은 창구를 본다 — `!w.alive` 로 재면 비고르모르티스가 죽인 마녀에서
+         "마녀 사망 → 불발" 이라고 단언하는데 엔진은 저주를 발동시킨다. */
+      const why = witchCurseState().why;
       out.push({tone:why?'':'red', icon:'🧹', head:`저주 — ${names}`, body:
         why ? `현재 저주는 <b>불발</b>입니다(${esc(why)}) — 지명해도 죽지 않습니다. 토큰은 남기되 발동시키지 마세요.`
             : `<b>${names}</b>이(가) <b>지명하는 즉시 사망</b>합니다. 지명자를 접수하기 전에 반드시 확인하세요(지명 절차 자체는 그대로 진행).`});
@@ -13605,7 +13701,7 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
       if(v) de.push(`🐍 <b>푸카의 독</b>: ${esc(v.name)} — <b>푸카가 다음에 무는 시점</b>에 사망합니다(페이즈 만료가 아님). `
         +((pk&&(!pk.alive||isMalfunctioning(pk)))
           ? '<mark>푸카가 사망/오작동 — 지연 사망이 일어나지 않습니다.</mark>'
-          : '푸카 단계를 건너뛰면 사망도 함께 미뤄집니다.'));
+          : '구마사제가 푸카를 봉인해도 <b>이 사망은 그대로 일어납니다</b>(공식: 봉인 ≠ 오작동) — 새로 무는 일만 없습니다.'));
     }
     const TIMED=['poison','drunkS','protect','execProtect'];
     S.players.forEach(p=>(p.statuses||[]).forEach(s=>{
@@ -13661,8 +13757,7 @@ window.thyRoute={of:thyRouteOf, url:thyRouteUrl, apply:thyRouteApply, write:thyR
       if(k==='tor' && typeof nomPick!=='undefined' && nomPick.tor===pid){
         const p=playerOf(pid), msg=[];
         if(p && hasStatus(p,'curse')){
-          const w=S.players.find(q=>q.charId==='witch');
-          const off = !w || !w.alive || isMalfunctioning(w) || alivePlayers().length<=3;
+          const off = !witchCurseState().live;   // 엔진·리마인더와 같은 창구
           msg.push(off? `🧹 ${p.name}은(는) 저주받았지만 지금은 불발 조건 — 지명해도 죽지 않습니다.`
                       : `🧹 경고: ${p.name}은(는) 마녀의 저주 상태 — 지명을 개시하면 즉시 사망합니다.`);
         }
