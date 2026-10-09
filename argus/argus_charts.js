@@ -57,6 +57,8 @@
     '.ag-stocks{display:flex;gap:4px;flex-wrap:wrap;margin-top:9px}',
     '.ag-stk{font-size:10px;color:' + DIM + ';border:1px solid var(--line,#1f2937);border-radius:999px;padding:2px 8px;cursor:default}',
     '.ag-stk b{color:var(--ink,#e6edf3);font-weight:650}',
+    '.ag-stks{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}',
+    '.ag-m4{font-size:11px}',
     '.ag-members{margin-top:9px;border-top:1px solid rgba(31,41,55,.65);padding-top:7px}',
     '.ag-members summary{cursor:pointer;color:' + DIM + ';font-size:10.5px;border-radius:4px}',
     '.ag-member{display:grid;grid-template-columns:minmax(100px,1fr) auto;gap:3px 8px;padding:6px 0;border-bottom:1px solid rgba(31,41,55,.4);font-size:10px;color:' + DIM + '}',
@@ -819,6 +821,11 @@
 
     /* ── ③ 스프레드 차트 ── */
     var spreadPanels = {};
+    // 한국화학(argus/kchem) 탭이 다루는 청크 카테고리 — 카드에서 산식·지역 표로 딥링크한다.
+    var KCHEM_CATS = ['나프타', '기초유분', '올레핀', '아로마틱', '염소체인', '초산체인', '우레탄', '화섬', '솔벤트', '폴리머', '아크릴', '고무', '화학PPI'];
+    // 스프레드 행에는 종목이 없다 — 체인 카드(data.chains[].stocks)를 체인 id 로 조인한다.
+    var chainStocks = {};
+    data.chains.forEach(function (c) { chainStocks[c.id] = c.stocks || []; });
     function renderSpreadPanel(panel, chunk) {
       var rows = (chunk.series || []).slice().sort(function (a, b) {
         var ha = a.hunt && a.hunt.length ? 1 : 0, hb = b.hunt && b.hunt.length ? 1 : 0;
@@ -831,8 +838,10 @@
         return '<div class="ag-ccard"><div class="h"><span class="t">' + esc(r.name) + '</span><span class="u">' + esc(r.unit || '') + '</span>' +
           (fin(r.pos) ? '<span class="ag-badge" style="color:' + posColor(r.pos) + ';border:1px solid ' + posColor(r.pos) + '">pos ' + r.pos.toFixed(0) + '</span>' : '') +
           huntBadges(r.hunt) +
-          '<span class="lv">' + fmt(r.last) + ' <span style="font-weight:500;color:' + DIM + '">' + (fin(r.m4) ? '' : '') + '</span></span></div>' +
-          '<div class="ag-meta">관측 ' + esc(r.last_date || '미확인') + ' · ' + esc(r.freshness || '') + ' · <a href="connections.html#' + encodeURIComponent(r.sid) + '">갱신 경로·원문</a></div>' +
+          '<span class="lv">' + fmt(r.last) + (fin(r.m4) ? ' <span class="ag-m4" title="4주 변화">' + fmtPct(r.m4) + '</span>' : '') + '</span></div>' +
+          '<div class="ag-meta">관측 ' + esc(r.last_date || '미확인') + ' · ' + esc(r.freshness || '') + ' · <a href="connections.html#' + encodeURIComponent(r.sid) + '">갱신 경로·원문</a>' +
+          (KCHEM_CATS.indexOf(r.cat) >= 0 ? ' · <a href="kchem/spreads.html#cat=' + encodeURIComponent(r.cat) + '">산식·지역 표</a>' : '') + '</div>' +
+          (r.chain && chainStocks[r.chain] && chainStocks[r.chain].length ? '<div class="ag-stks" title="체인 단위 참고 종목">' + stockChips(chainStocks[r.chain]) + '</div>' : '') +
           chart(chunk.axis, [{ name: r.name, v: r.v, col: col, hunt: r.hunt }], { h: 150, unit: r.unit, title: r.name }) + '</div>';
       }).join('') + '</div>' +
         (rows.length > ST.spLimit ? '<div class="ag-more"><button type="button" class="ag-chip" data-act="spmore">▼ ' + (rows.length - ST.spLimit) + '개 더 보기</button></div>' :
