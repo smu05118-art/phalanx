@@ -715,7 +715,7 @@ const CHARACTERS = [
 {id:'alchemist',ko:'연금술사',en:'Alchemist',type:'townsfolk',edition:'exp',first:true,other:false,ability:'하수인 능력 하나를 가지고 시작한다. 그 능력을 사용할 때 사회자가 다른 선택을 하도록 유도할 수 있다.',guideFirst:['연금술사를 깨운다.','그가 가진 하수인 캐릭터 토큰을 보여준다.','그 능력이 첫날 밤 능력이면 이어서 진행한다.','연금술사를 재운다.'],guideOther:[],warn:['어떤 하수인 능력을 줄지는 사회자가 고른다 — **보통은 게임에 없는 하수인**이지만, 공식은 인플레이 하수인 능력을 **중복해도 된다**고 명시한다. 권장이지 금지가 아니다.','연금술사는 선한 주민 — 악 팀은 그를 모르고 그도 악 팀을 모른다.','중독·취함이면 그 하수인 능력도 오작동한다.'],remind:['얻은 능력이 밤 능력이면 해당 하수인의 밤 순서에 깨워 진행하라.','능력 사용 내역을 별도로 기록하라.']},
 {id:'alsaahir',ko:'알사히르',en:'Alsaahir',type:'townsfolk',edition:'exp',first:false,other:false,dayAbility:true,ability:'매일 낮, 공개적으로 어느 플레이어들이 하수인이고 누가 악마인지 추측해 전부 맞히면 선한 팀이 승리한다.',guideFirst:[],guideOther:[],warn:['추측은 공개 선언이어야 하며 하수인 전원과 악마를 모두 정확히 맞혀야 한다.','알사히르가 취함·중독이면 정답이어도 승리가 발동하지 않는다.'],remind:['하루 1회 기준으로 운영하고, 오늘 선언이 있었는지 기록하라.']},
 {id:'amnesiac',ko:'기억상실자',en:'Amnesiac',type:'townsfolk',edition:'exp',first:true,other:true,ability:'자신의 능력이 무엇인지 모른다. 매일 낮 사회자에게 비공개로 능력을 추측하면 얼마나 정확한지 듣는다.',guideFirst:['사회자가 설계한 능력이 첫날 밤에 작동하면 깨워서 진행한다.'],guideOther:['설계한 능력이 밤 능력이면 해당 순서에 깨워 진행한다.'],warn:['능력은 사회자가 미리 자유 설계 — 지나치게 강하거나 약하지 않게.','추측 정확도 답변은 차갑다·미지근하다·뜨겁다 같은 단계 표현이 운영하기 쉽다.'],remind:['설계한 능력 전문을 반드시 적어 두라.','중독·취함이면 능력이 오작동하고 추측 답변도 부정확해질 수 있다.']},
-{id:'atheist',ko:'무신론자',en:'Atheist',type:'townsfolk',edition:'exp',first:false,other:false,setupChar:true,ability:'사회자는 게임 규칙을 깰 수 있다. **사회자가 처형되면** 무신론자가 죽어 있어도 선한 팀이 승리한다. 구성 변경: 악한 캐릭터 없음.',setupNote:'셋업 시 악한 캐릭터가 전혀 없다 — 전원 선. 사회자가 악의 존재를 연기한다.',guideFirst:[],guideOther:[],warn:['악마가 없으므로 가짜 밤 사망·거짓 정보로 평범한 게임처럼 연출한다.','규칙 파괴는 무신론자가 게임에 있을 때만 허용된다.','사회자 측이 이기는 길은 마을이 사회자를 처형하지 못한 채 통상 패배 조건에 이르게 하는 것.'],remind:['승리 조건은 **사회자**가 처형되는 것이다 — 무신론자 좌석을 처형해도 아무 일도 없다. 마을이 사회자를 지명할 수 있게 허용할 것.']},
+{id:'atheist',ko:'무신론자',en:'Atheist',type:'townsfolk',edition:'exp',first:false,other:false,setupChar:true,ability:'사회자는 게임 규칙을 깰 수 있다. 사회자가 처형되면 무신론자가 죽어 있어도 선한 팀이 승리한다. 구성 변경: 악한 캐릭터 없음.',setupNote:'셋업 시 악한 캐릭터가 전혀 없다 — 전원 선. 사회자가 악의 존재를 연기한다.',guideFirst:[],guideOther:[],warn:['악마가 없으므로 가짜 밤 사망·거짓 정보로 평범한 게임처럼 연출한다.','규칙 파괴는 무신론자가 게임에 있을 때만 허용된다.','사회자 측이 이기는 길은 마을이 사회자를 처형하지 못한 채 통상 패배 조건에 이르게 하는 것.'],remind:['승리 조건은 **사회자**가 처형되는 것이다 — 무신론자 좌석을 처형해도 아무 일도 없다. 마을이 사회자를 지명할 수 있게 허용할 것.']},
 {id:'banshee',ko:'밴시',en:'Banshee',type:'townsfolk',edition:'exp',first:false,other:true,conditional:'악마에게 사망 시',ability:'악마가 밴시를 죽이면 전원이 그 사실을 알게 된다. 그 후 밴시는 매일 지명을 2회 할 수 있고, 지명마다 2표를 행사할 수 있다.',guideFirst:[],guideOther:[],warn:['공표하는 것은 밴시가 죽었다는 사실뿐 — 어느 플레이어인지는 밝히지 않는다.','악마의 킬로 죽었을 때만 발동 — 처형이나 다른 원인의 사망은 해당 없음.','죽을 때 중독·취함 상태였다면 발동하지 않는다(공표도 없다).'],remind:['발동 후 죽은 밴시는 사망자 투표 제한 없이 매일 지명 2회·지명당 2표 — 낮 진행 시 잊지 마라.','아침 사망 공표 때 밴시 발동 문구를 함께 선언하라.']},
 {id:'bountyhunter',ko:'현상금 사냥꾼',en:'Bounty Hunter',type:'townsfolk',edition:'exp',first:true,other:true,setupChar:true,ability:'첫날 밤 악한 플레이어 1명을 알게 된다. 그가 죽으면 그날 밤 새 악한 플레이어를 알게 된다. 구성 변경: 주민 1명이 악 성향이다.',setupNote:'셋업 시 주민 1명이 악 성향으로 시작한다(캐릭터·능력은 그대로, 성향만 악).',guideFirst:['악 성향이 된 주민을 깨워 악임을 알린다.','현상금 사냥꾼을 깨운다.','악한 플레이어 1명을 가리킨다.','현상금 사냥꾼을 재운다.'],guideOther:['추적 중인 악 플레이어가 죽었다면: 현상금 사냥꾼을 깨워 다른 악한 플레이어 1명을 가리킨다.'],warn:['악이 된 주민은 악마·하수인 정보를 받지 않는다 — 자신이 악이라는 사실만 안다.','첩자 등록 재량에 따라 가리킬 대상이 달라질 수 있다.','중독·취함이면 선한 플레이어를 가리켜도 된다.'],remind:['현재 추적 중인 대상을 표시해 두고, 그가 죽는 밤에 갱신하라.']},
 {id:'cannibal',ko:'식인종',en:'Cannibal',type:'townsfolk',edition:'exp',first:false,other:false,conditional:'처형 사망 시',ability:'가장 최근에 처형으로 죽은 사람의 능력을 가진다. 그가 악이었다면 다음에 선한 사람이 처형으로 죽을 때까지 식인종은 중독된다.',guideFirst:[],guideOther:[],warn:['얻은 능력은 본인에게 알려주지 않는다 — 능력이 작동하는 듯한 연출로 스스로 추리하게 하라.','악인을 먹어 중독된 동안에도 능력을 가진 척 거짓 정보를 줄 수 있다.','새 처형 사망이 나오면 이전 능력은 사라지고 교체된다.','1회용 능력은 식인종이 새로 얻을 때마다 다시 1회 쓸 수 있다.'],remind:['현재 보유 능력과 중독 여부를 기록하라.','얻은 능력이 밤 능력이면 그 캐릭터의 밤 순서에 식인종을 깨워라.']},
@@ -811,7 +811,7 @@ const CHARACTERS = [
     죽음을 택했지만 보호·소생으로 살아 있는 좌석이 있으면 그 좌석도 '살아 있음'에 든다.
     그리고 지목된 3명이 누구인지는 **지목 시점에** 전원이 알게 된다(새벽이 아니다). 새벽에
     공지하는 것은 '셋 중 누가 살고 누가 죽었는가'다. */
- ability:'매일 밤(첫날 제외) 3명을 지목할 수 있으며, 누가 지목됐는지는 그 자리에서 모든 플레이어가 알게 된다. 지목된 각자는 은밀히 삶 또는 죽음을 선택한다. 죽음을 택하면 죽고, 그러고도 **셋이 모두 살아 있으면** 셋 다 죽는다.',
+ ability:'매일 밤(첫날 제외) 3명을 지목할 수 있으며, 누가 지목됐는지는 그 자리에서 모든 플레이어가 알게 된다. 지목된 각자는 은밀히 삶 또는 죽음을 선택한다. 죽음을 택하면 죽고, 그러고도 셋이 모두 살아 있으면 셋 다 죽는다.',
  guideOther:['알하디키아를 깨워 3명을 지목받는다(1·2·3 순서 기록) — 지목하지 않는 선택도 가능.','**지목된 3명이 누구인지 그 자리에서 전원에게 알린다.**','지목된 플레이어를 순서대로 1명씩 깨워 선택을 받는다: 살 것인가, 죽을 것인가(엄지 위/아래 손짓 권장).','죽음을 택한 자는 즉시 사망 처리. 그러고도 **셋이 모두 살아 있으면**(죽음을 택했지만 보호·소생으로 살아남은 경우 포함) 셋 다 사망.','다음 새벽, 1·2·3 중 누가 살고 누가 죽었는지 공지한다.'],
  warn:['같은 플레이어 중복 지목·죽은 플레이어 지목 등 변칙 판정은 공식 위키 확인 권장.','선택을 물을 때 다른 플레이어가 알 수 없게 진행할 것.','중독/취함이면 아무도 죽지 않지만 절차는 그대로 연출할 수 있다.'],
  remind:['지목 즉시 3인 공개 · 새벽에는 생사 공지']},
@@ -1037,7 +1037,7 @@ const BMR_CHARS=[
     죽으면 악 승리'로 한쪽만 적어, 악한 좌석이 처형되는 경우가 빠졌다.
     ③ warn 의 "밤엔 아무도 죽지 않는다"는 공식에 없다 — 악마가 죽었으니 악마의 킬이 없을 뿐,
     암살자 등 다른 원인의 밤 사망은 그대로 일어난다. */
- ability:'악마가 처형으로 죽어도 게임이 하루 더 이어진다. 그 다음 낮에 누군가 처형되면 **그 사람이 속한 팀**이 패배한다(처형으로 죽지 않아도 성립).',
+ ability:'악마가 처형으로 죽어도 게임이 하루 더 이어진다. 그 다음 낮에 누군가 처형되면 그 사람이 속한 팀이 패배한다(처형으로 죽지 않아도 성립).',
  warn:['악마 처형 시 태연하게 하루 더 진행 — 악마가 죽었으므로 악마의 밤 살해만 없다. 암살자 등 다른 원인의 밤 사망은 그대로 일어난다.','연장된 낮에 **처형이 성립하면** 그 처형된 사람의 팀이 패배한다 — 보호로 살아남아도 성립한다.','연장된 낮에 아무도 처형되지 않으면 공식 문구가 다루지 않는다 — 공식 위키를 확인해 판정할 것.','주모자 중독 시 발동 없음 = 악마 사망 즉시 선 승리.'],remind:['악마 처형일 표시'],
  dayNotice:'🧠 주모자: 악마가 처형돼도 게임은 하루 연장 — 종료 선언 전 반드시 확인!'},
 /* 악마 */
@@ -1061,7 +1061,7 @@ const BMR_CHARS=[
     [무엇이 틀렸나] 소생 대상을 '전날 자신이 **죽인**' 사람으로 좁혔다. 공식은 '전날 **지목한**'
     사람 중 지금 죽어 있는 사람이다 — 지목은 됐지만 보호로 살아남았다가 다른 원인으로 죽은
     좌석도 대상이다. 지목 기록과 살해 기록은 다르므로 좁히면 대상이 사라진다. */
- ability:'매일 밤(첫날 제외) 2명을 지목해 죽인다. **전날 밤 자신이 지목했던** 사람 중 지금 죽어 있는 1명을 되살릴 수 있다(사회자 재량).',
+ ability:'매일 밤(첫날 제외) 2명을 지목해 죽인다. 전날 밤 자신이 지목했던 사람 중 지금 죽어 있는 1명을 되살릴 수 있다(사회자 재량).',
  guideOther:['2명 지목받아 각각 살해 판정.','재량: **전날 지목한** 2명 중 지금 죽어 있는 1명을 소생 가능(게 토해내기) — 자신이 죽인 사람이 아니어도 된다.'],
  warn:['소생 재량은 균형 도구 — 남발 금지.','보호(여관 주인 등)와 각각 판정.','소생 후보는 **전날 지목한** 사람이다 — 보호로 살아남았다가 나중에 다른 원인으로 죽은 좌석도 포함된다.'],remind:['전날 지목한 2명을 기록(죽었는지와 무관하게)']},
 {id:'po',ko:'포',en:'Po',type:'demon',edition:'bmr',first:false,other:true,killer:true,
@@ -1164,7 +1164,7 @@ const SV_CHARS=[
 /* 공식: "The 1st Outsider **this kills** becomes an evil Fang Gu & you die instead."
     [무엇이 틀렸나] '처음 **지목하면**'으로 적었다. 조건은 **실제로 죽였을 때**다 —
     보호로 살아남으면 점프도 일어나지 않는다(엔진은 이미 그렇게 동작하는데 문구만 낡아 있었다). */
- ability:'매일 밤(첫날 제외) 1명을 지목해 죽인다. **처음으로 외지인을 죽이게 되면** 그 외지인이 죽는 대신 악한 팡 구가 되고, 기존 팡 구가 죽는다(1회). 구성 변경: 외지인 +1.',
+ ability:'매일 밤(첫날 제외) 1명을 지목해 죽인다. 처음으로 외지인을 죽이게 되면 그 외지인이 죽는 대신 악한 팡 구가 되고, 기존 팡 구가 죽는다(1회). 구성 변경: 외지인 +1.',
  setupNote:'셋업 시 외지인 +1 (주민 −1).',
  guideOther:['1명 지목 — **그 외지인이 실제로 죽게 되는** 최초의 경우에만 점프: 대상이 새 팡 구(악 전향), 기존 팡 구 사망 처리.'],
  warn:['점프는 게임당 1회.','**보호(수도사·여관 주인 등)로 그 외지인이 죽지 않으면 점프도 일어나지 않고 1회 기회도 소모되지 않는다** — 조건은 지목이 아니라 살해다.','점프 후 선한 팀에게는 그냥 밤 사망 1명으로 보인다.'],remind:['점프 사용 여부 표시']},
@@ -2108,7 +2108,11 @@ function thyExecPrompts(p, akey, retry){
 
   if(!pre && p){
     const qs=[];
-    if(et && p!==et && !isEvil(p) && !isMalfunctioning(et))
+    /* 쌍둥이 쌍은 공식적으로 '반대 진영' 한 쌍이다. 그래서 사악한 쌍둥이 좌석이 **선하면**
+       그 쌍의 선한 쪽은 그 좌석 자신이고, 다른 선한 좌석은 선한 쌍둥이일 수 없다 — 그 경우
+       이 질문은 사회자를 오도한다. 그 좌석 자신의 처형은 진영이 이미 확정돼 있어 물을 것이
+       없고 승리 엔진이 바로 판정한다(evalWinEvent 'execute'). */
+    if(et && p!==et && isEvil(et) && !isEvil(p) && !isMalfunctioning(et))
       qs.push({key:'twin', message:`👥 사악한 쌍둥이가 게임에 있습니다.\n${p.name}이(가) 선한 쌍둥이입니까?`, ok:'예 → 처형 시 악한 팀 승리', cancel:'아니오'});
     if(p.charId==='saint' && !isMalfunctioning(p))
       qs.push({key:'saint', message:`🚨 ${p.name}은(는) 성자이며 오작동 상태가 아닙니다!\n처형을 확정하면 ${seatTeamKo(p).own}이 패배합니다. 진행할까요?`, ok:'처형 확정', cancel:'취소', danger:true});
@@ -2272,10 +2276,17 @@ function drunkMaskSeat(stepId){
    네 자리가 이 함수 하나만 보게 한다. 한 곳만 풀면 지명은 되는데 처형이 막히는 반쪽이 된다.
    진짜로 죽어 있는 평범한 좌석까지 열 것인지는 공식 원문(캐릭터 능력 코퍼스)으로 결론이
    나지 않아 열지 않는다 — 근거가 직접 있는 좀버얼만 연다. */
-function nomineeEligible(){
-  return S.players.filter(p=> p.alive || (p.charId==='zombuul' && hasStatus(p,'fakedead')));
+/* ══ '실제로 살아 있는가' 의 단일 창구 ═══════════════════════════════════
+   겉보기 alive 와 실제 생존이 갈리는 좌석이 하나 있다 — 좀버얼의 첫 사망은
+   공식 "The 1st time you die, you live but register as dead." 이므로 alive=false
+   이면서 살아 있다. 이 술어가 파일 안에 여덟 벌 복제돼 있었고 resolveExecution
+   안에는 지역 const 로 또 한 벌 있었다. 한 좌석만 빠뜨리면 '죽은 척'이 어떤
+   판정에서는 산 사람, 어떤 판정에서는 죽은 사람이 되는 내부 모순이 생긴다. */
+function reallyAlive(p){
+  return !!p && (p.alive || (p.charId==='zombuul' && hasStatus(p,'fakedead')));
 }
-function canBeNominated(p){ return !!p && (p.alive || (p.charId==='zombuul' && hasStatus(p,'fakedead'))); }
+function nomineeEligible(){ return S.players.filter(reallyAlive); }
+function canBeNominated(p){ return reallyAlive(p); }
 /* 진영은 캐릭터에서 '유도'하면 이발사 교환·건달·팡 구에서 오염된다.
    p.alignment 가 명시돼 있으면 그것이 우선, 없으면 캐릭터 타입에서 유도한다. */
 /* ══ '그 좌석의 팀' 문구의 단일 창구 ════════════════════════════════════
@@ -5221,6 +5232,20 @@ function doFangGuAttack(pid){
   if(!pid)return; const t=playerOf(pid);
   const _fg=abilityActor('fanggu');
   if(!_fg.ok){ toast('팡 구가 능력을 쓸 수 없는 상태 — 오늘 밤 살해 불발.','warn'); log(`팡 구 불발(${_fg.why}): ${t.name} 살해 불발`); save(); renderAll(); return; }
+  /* 공식: "The 1st Outsider **this kills** becomes an evil Fang Gu & you die instead."
+     위키 Fang Gu: "If the Fang Gu attacks an Outsider but that Outsider does not die, that
+     Outsider does not become an evil Fang Gu and the Fang Gu does not die."
+     [무엇이 문제였나] 픽 씬이 사망자 지목을 허용하는데(공식대로다) isOut 분기에 생존 검사가
+     없어서, 이미 죽은 외지인을 지목하면 점프가 일어났다 — 죽은 좌석이 새 팡 구(악)가 되고
+     원래 팡 구가 죽어 **살아 있는 악마가 사라진다**. 거기서 "마지막 악마 사망 → 선 승리"가
+     제안됐다. 아래 blk 분기가 이미 "죽이지 못했으므로 점프도 일어나지 않습니다"를 알고 있었다 —
+     '죽지 않았다'의 또 다른 경우를 그 분기가 담지 못했을 뿐이다.
+     겉보기 alive 가 아니라 실제 생존 축으로 잰다 — 죽은 척 좀버얼은 지목 대상으로서 살아 있다. */
+  if(!reallyAlive(t)){
+    toast(`${t.name}은(는) 이미 사망했습니다 — 죽이지 못했으므로 점프도 일어나지 않습니다. 오늘 밤 팡 구의 살해는 아무 효과가 없습니다.`,'warn');
+    log(`팡 구 공격 → ${t.name}은(는) 이미 사망 — 아무 효과 없음(점프 없음, 1회 소진도 아님)`);
+    save(); renderAll(); return;
+  }
   const dr=resolveDeath(t,{sourceType:'demon', sourceCharId:'fanggu', cause:'팡 구의 공격'},['block','substitute']);
   const blk=dr.reason;
   if(blk){
@@ -5728,8 +5753,7 @@ function cancelNom(nid){
 function resolveExecution(p, cause){
   /* '죽었는가'를 겉보기 alive 로만 재면 좀버얼의 두 번째 사망을 놓친다 — 그 좌석은 첫 사망
      때 이미 alive=false 이므로 before/after 가 둘 다 false 다. 실제 생존 축으로 잰다. */
-  const _reallyAlive=q=> !!q && (q.alive || (q.charId==='zombuul' && hasStatus(q,'fakedead')));
-  const before=_reallyAlive(p);
+  const before=reallyAlive(p);
   S.executedToday=`${p.name} (${charName(p)})`; S.executedTodayPid=p.id; S.executedDiedToday=null;
   /* 기본은 '지명 투표가 낳은 처형이 아님'이다. 지명 경로(executeNominee)만 직후에 발생원을 남긴다 —
      성결자 발동·능력 처형은 여기서 지워진 상태 그대로 간다. */
@@ -5741,7 +5765,7 @@ function resolveExecution(p, cause){
     save(); renderAll(); return false;
   }
   killPlayer(p, cause);
-  const died = before && !_reallyAlive(p);          // 어릿광대 1회 생존·좀버얼 죽은 척으로 버틴 경우 제외
+  const died = before && !reallyAlive(p);           // 어릿광대 1회 생존·좀버얼 죽은 척으로 버틴 경우 제외
   S.executedDiedToday = died? `${p.name} (${charName(p)})` : null;
   if(!died) toast(`⚔ ${p.name} 처형 — 그러나 죽지 않았습니다. 오늘의 처형은 사용되었고, 장의사에게는 아무 캐릭터도 보여주지 마세요.`,'warn');
   else toast(`${p.name} 처형. 오늘 밤 장의사에게 보여줄 캐릭터: ${charName(p)} (첩자/은둔자/주정뱅이면 등록 재량)`,'ok');
@@ -9072,6 +9096,16 @@ function ccApply(clearStatuses){
     const nc=charOf(cc.newChar); if(!nc) return;
     const oldKo=charName(p);
     if(clearStatuses) clearOf(p, p.charId);   // charId 변경 전 = 옛 캐릭터 기준
+    /* 공식: 캐릭터가 바뀌어도 진영은 바뀌지 않는다 — 능력이 그렇게 말할 때만 바뀐다
+       (뱀 조련사가 그 예외이고 아래 교환 분기에서 명시적으로 교환한다).
+       위키 Evil Twin Examples 가 이 규칙을 직접 적어 둔다: "The Pit-Hag turns a good player
+       into the Evil Twin, **who remains good**."
+       [무엇이 문제였나] 바로 위 applySwapAlignment 의 주석이 '같은 규칙이 세 곳에 따로
+       적혀 있다'고 경고하는데, 고쳐진 것은 ccApply 의 **교환** 분기뿐이었다. 이 '변경'
+       분기는 진영을 손대지 않아서, alignment 가 아직 고정되지 않은 좌석은 isEvil() 이
+       charId 에서 진영을 유도한다 — 마귀할멈이 선한 주민을 하수인 캐릭터로 바꾸면 그
+       좌석이 조용히 악으로 뒤집혔다(승리 판정·정보 능력·투표가 모두 갈린다). */
+    pinAlignment(p);                          // charId 변경 '전'에 — isEvil 은 charId 에서 유도한다
     p.charId=cc.newChar;
     log(`🔁 캐릭터 변경 (${reasonKo}): ${p.name} — ${oldKo} → ${nc.ko}`);
     toast(`${p.name}의 캐릭터를 ${nc.ko}(으)로 변경했습니다.`,'ok');
@@ -10816,8 +10850,19 @@ function evalWinEvent(kind, ctx){
               /* rule 은 평문이다 — 승리 화면이 esc(reason) 으로 그려서 별표가 그대로 보인다. */
               rule:`성자: 처형으로 죽으면 그 좌석이 속한 팀이 패배합니다 — 지금은 ${ev?'악한':'선한'} 팀이 패배합니다. (중독·취함 상태였다면 발동하지 않습니다)`};
     }
-    if(p && p.charId==='eviltwin')
-      return null; // 사악한 쌍둥이 본인 처형은 종료 아님
+    /* 공식(roles181 eviltwin): "If the good player is executed, evil wins."
+       위키 Examples: "The Pit-Hag turns a good player into the Evil Twin, who remains good.
+       The group executes the good-aligned Evil Twin. Evil wins."
+       [무엇이 문제였나] 이 자리는 charId 만 보고 무조건 null 을 돌려줬다. 진영 보존 교환
+       (이발사·마귀할멈)으로 **선한 좌석이 사악한 쌍둥이 캐릭터를 들 수 있고**, 그때 그 좌석이
+       바로 쌍둥이 쌍의 '선한 플레이어'다 — 처형되면 악이 이긴다. 성자와 같은 어법이다:
+       기준은 캐릭터의 기본 색이 아니라 지금 그 좌석의 진영이다(seatTeamKo 와 같은 전제). */
+    if(p && p.charId==='eviltwin'){
+      if(!isEvil(p) && !isMalfunctioning(p))
+        return {team:'evil', reason:`선한 쌍둥이(${p.name} · 사악한 쌍둥이 캐릭터를 든 선한 좌석)가 처형되었습니다.`,
+                rule:'사악한 쌍둥이: 선한 쌍둥이가 처형되면 악한 팀이 승리합니다 — 진영 보존 교환으로 선한 좌석이 이 캐릭터를 들면 그 좌석이 선한 쌍둥이입니다. (중독·취함 상태였다면 발동하지 않습니다)'};
+      return null; // 악한 좌석의 사악한 쌍둥이 본인 처형은 종료 아님
+    }
     const et=S.players.find(x=>x.charId==='eviltwin' && x.alive);
     if(et && p && ctx.isGoodTwin)
       return {team:'evil', reason:`선한 쌍둥이(${p.name})가 처형되었습니다.`, rule:'사악한 쌍둥이: 선한 쌍둥이가 처형되면 악한 팀이 승리합니다.'};
@@ -13995,7 +14040,7 @@ const ST_SHEET_NOTES={
    {tag:'종료',t:'보르톡스 판은 낮을 닫기 전에 처형 여부를 확인한다',
     d:'보르톡스가 있는 판에서 처형 없이 낮이 끝나면 그 즉시 악이 이긴다. 낮을 마무리할 때마다 오늘 처형이 있었는지 확인해라 — 놓치면 게임이 조용히 잘못된 상태로 계속 흘러간다.'},
    {tag:'셋업',t:'팡 구는 외지인 +1, 점프는 게임당 한 번',
-    d:'팡 구가 뽑히면 외지인을 하나 늘려 배분한다. 팡 구가 외지인을 처음 지목하면 그 외지인이 새 팡 구가 되고 원래 팡 구가 죽는데, 선한 팀에게는 평범한 밤 사망 하나로만 보인다. 점프를 썼는지 반드시 표시해둬라.'},
+    d:'팡 구가 뽑히면 외지인을 하나 늘려 배분한다. 팡 구가 외지인을 처음 죽이면 그 외지인이 새 팡 구가 되고 원래 팡 구가 죽는데, 선한 팀에게는 평범한 밤 사망 하나로만 보인다. 조건은 지목이 아니라 살해다 — 보호로 죽지 않거나 이미 죽어 있는 외지인을 지목하면 점프도 1회 소모도 없다. 점프를 썼는지 반드시 표시해둬라.'},
    {tag:'상호작용',t:'죽었는데도 계속 굴러가는 상태가 있다',
     d:'비고르모르티스에게 죽은 하수인은 죽은 뒤에도 능력이 작동하므로 밤 순서에서 빼면 안 된다. 노 다시의 주민 이웃 중독은 생사와 무관하게 유지되며 캐릭터 구성이 바뀔 때만 다시 계산한다. 사망 표시와 함께 능력이 멈췄는지 여부를 따로 적어라.'}
   ]}
