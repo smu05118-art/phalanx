@@ -27,7 +27,7 @@
 
 ## ③ 남은 일 · 운영자 확인 항목
 
-1. **`_config.yml`** — `argus/*/tools/` glob 이 이미 있어 `argus/kchem/tools/` 는 배포에서 빠진다. COMMON.md §3 은 "줄을 추가하라"지만 파일 주석("이 블록은 건드리지 마라")에 따라 **수정하지 않았다**. 둘 중 어느 쪽이 정본인지 확인.
+1. **`_config.yml`** — 해결(2026-10-09, Mini). `argus/*/tools/` glob 은 GitHub Pages(Jekyll 3)에서 **동작하지 않는다**: glob 으로만 덮인 `argus/ui/tools/*` 3개가 라이브에서 200, 명시 줄이 있는 `argus/kce/tools/*` 는 404. 그래서 COMMON.md §3 대로 `argus/kchem/tools/` 명시 줄을 다른 탭 줄 뒤에 추가했다(남의 줄은 건드리지 않음). `argus/ui/tools/` 노출은 별건.
 2. **`site.json` 라벨·순서** — `🧪 한국화학` / 80. 라벨 문구는 운영자 확인.
 3. **원장 결함 보고(수정은 Mini 작업, 이 탭은 표시만)** — BR−BD(한국): BR 가격 2026-04-06 정지 후 스프레드가 −BD 로 계산됨 · PX−자일렌(대만): 2025-12-29 부터 PX − Naphtha 일본(다른 5지역은 −1.25×자일렌) · 에틸렌−납사(미국): 2026-01-12 부터 Ethylene − Ethane · MEG−EO(대만): 2024-11-11 산식 변경 · 2026-08-10 주 다수 시리즈 단주 이상치.
 4. **원장 재가동** — 수동 Weekly xlsm 드롭(`~/phalanx/jem_data/argus/inbox/` + `argus_run.sh`)이 2026-08-24 주차 이후 없다. 재가동되면 이 탭은 다음 빌드에 자동 반영된다(코드 변경 불필요).
