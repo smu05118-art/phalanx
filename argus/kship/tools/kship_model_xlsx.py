@@ -108,6 +108,11 @@ FX_ROWS = [("USDKRW_avg", " 원/달러(평균)"), ("USDKRW_end", " 원/달러(�
 PRICE_ROWS = [("close_end", "종가(기말)"), ("high", "종가(최고)"), ("low", "종가(최저)"), ("avg", "종가(평균)")]
 SCN_CASES = ("existing_only", "conservative", "base", "optimistic")
 SCN_LABEL = {"existing_only": "기존 잔고만(신규수주 0)", "conservative": "보수", "base": "기준(base — subQ 행에 포함)", "optimistic": "낙관"}
+# 매출<seg>신규 변수 라벨 — scenarios.meta 분기(2026-10-09 검증 수정): source_field 'ledger_signing_rate' > post_origin_mode 'net_panel' > 'panel'(exclude_sls·메타 없음)
+NEW_ORDERS_LABEL_KO = {"ledger_signing_rate": "공시 계약 원장 체결 속도 폴백 신규수주 매출", "net_panel": "forecast_panel base · 공시 상계 신규수주 매출",
+                       "panel": "forecast_panel base 신규수주 매출"}
+# README 신규수주 줄 — origin 이후 공시 계약 처리 문구(post_origin_mode)
+NEW_ORDERS_POST_KO = {"net_panel": "공시 계약은 체결 분기별로 패널 신규수주와 상계(SLS 일정 유지)", "panel": "통계 흐름, 공시 계약 개별 반영 아님"}
 
 # ── 스타일 ───────────────────────────────────────────────────
 F_BOLD = Font(bold=True)
@@ -279,8 +284,15 @@ def _consistent(by, target, expr, tol=TOL_EOK):
     return True
 
 
-def plan_drivers(rows):
-    """행마다 추정 수식 종류를 정한다. 반환 {key: {"type", ...}}.
+def new_orders_wording(meta):
+    """scenarios.meta → (라벨 키, 공시 처리 키). source_field 'ledger_signing_rate' 가 post_origin_mode 보다 우선, 메타 없으면 ('panel', 'panel')."""
+    meta = meta or {}
+    post = "net_panel" if meta.get("post_origin_mode") == "net_panel" else "panel"
+    return ("ledger_signing_rate" if meta.get("source_field") == "ledger_signing_rate" else post), post
+
+
+def plan_drivers(rows, scn_meta=None):
+    """행마다 추정 수식 종류를 정한다. 반환 {key: {"type", ...}}. scn_meta = 모델 scenarios.meta(매출<seg>신규 라벨 분기용).
     identity(다른 subQ 행 합·차) · divide(비율) · per_share · valuation(종가/TTM EPS·종가/BPS) · tax(MAX(세전,0)×세율) ·
     interest(전분기 잔액 × 이자율) · ratio_parent(부모 마진 공유) 은 가정 셀이 없고, yoy·qoq·ratio·abs·roll 은 `변수` 드라이버 행을 하나씩 가진다.
     세그먼트가 둘 이상이고 합이 맞으면 매출액·영업이익은 세그먼트 합(레퍼런스 사업부 빌드업), 단일 '전사' 세그먼트면 전사 = 매출액.
@@ -333,6 +345,9 @@ def plan_drivers(rows):
             d = {"type": "ratio", "base": "당기순이익", "label": "지배주주 비중(/당기순이익)"}
         elif k == "EPS" and has("지배주주순이익") and has("주식수"):
             d = {"type": "per_share", "num": "지배주주순이익", "den": "주식수", "note": "EPS = 지배주주순이익(억원)×100 / 유통주식수(백만주)"}
+        elif k == "조정EPS" and has("EPS"):
+            # 추정 구간은 일회성을 가정하지 않으므로 = EPS. 실적 의심 분기만 _subq_quarter 가 세후 차감 산식 셀로 쓴다(변수 드라이버 행 없음).
+            d = {"type": "identity", "expr": [("+", "EPS")], "note": "조정EPS = EPS(추정 구간은 일회성 미가정) — 실적 의심 분기만 세후 차감 산식 셀"}
         elif k == "BPS" and has("지배주주지분") and has("주식수"):
             d = {"type": "per_share", "num": "지배주주지분", "den": "주식수", "note": "BPS = 지배주주지분(억원)×100 / 유통주식수(백만주)"}
         elif k == "PER" and has("EPS"):
@@ -348,7 +363,7 @@ def plan_drivers(rows):
         elif k == "자산총계" and has("부채총계") and has("자본총계"):
             d = {"type": "identity", "expr": [("+", "부채총계"), ("+", "자본총계")], "note": "자산총계 = 부채총계 + 자본총계"}
         elif k.startswith("매출") and k.endswith("신규"):
-            d = {"type": "abs", "label": "%s (forecast_panel base 신규수주 매출, 억원 — 가정)" % k}
+            d = {"type": "abs", "label": "%s (%s, 억원 — 가정)" % (k, NEW_ORDERS_LABEL_KO[new_orders_wording(scn_meta)[0]])}
         elif k.startswith("OP") and k.endswith("신규") and has("매출" + k[2:]):
             d = {"type": "ratio_parent", "base": "매출" + k[2:], "parent": "OP" + k[2:-2], "note": "%s = 매출%s × %s 마진(같은 타겟 OPM)" % (k, k[2:], "OP" + k[2:-2])}
         elif k in segs:
@@ -404,6 +419,23 @@ def implied_param(row, q, drv, rows_by_key, lay, base_of=None):
     return None
 
 
+def pct_r4(v):
+    """r4 저장 비율을 소수 손실 없이(0.0045 → 0.45% · 0.22 → 22%) — 회사 페이지(kship_model_section.fmt_pct_r4)와 같은 자릿수라 페이지↔xlsx 표기가 맞는다."""
+    return ("%.2f" % (v * 100)).rstrip("0").rstrip(".") + "%"
+
+
+def tax_schedule_text(asm):
+    """assumptions.tax_schedule 요약 — (시작 세율, terminal 세율, 구간 문구). 예: ('0.68%', '22%', '2026Q4 까지 유지 → 2027Q1~2028Q4 선형 램프').
+    terminal 은 tax_rate_terminal, 없으면 스케줄 마지막 값; 구간은 tax_carryforward(hold_until·ramp_from·ramp_to), 없으면 스케줄 첫~끝 분기."""
+    sched = asm.get("tax_schedule") or {}
+    ks = sorted(sched)
+    cf = asm.get("tax_carryforward") or {}
+    term = asm.get("tax_rate_terminal") if isinstance(asm.get("tax_rate_terminal"), (int, float)) else sched[ks[-1]]
+    ramp = "%s~%s" % ((cf.get("ramp_from"), cf.get("ramp_to")) if cf.get("ramp_from") and cf.get("ramp_to") else (ks[0], ks[-1]))
+    hold = ("%s 까지 유지 → " % cf["hold_until"]) if cf.get("hold_until") else ""
+    return pct_r4(sched[ks[0]]), pct_r4(term), hold + ramp + " 선형 램프"
+
+
 def _fit_two(pts):
     """z = a·x − b·y 의 최소자승 (x, y). pts = [(a, b, z)]. b 가 전부 0 이면 y = 0. 특이하면 None."""
     saa = sum(a * a for a, _, _ in pts)
@@ -433,7 +465,7 @@ class Builder:
         self.lay = Layout(model)
         self.rows = list(model["rows"])
         self.rows_by_key = {r["key"]: r for r in self.rows}
-        self.plan = plan_drivers(self.rows)
+        self.plan = plan_drivers(self.rows, (model.get("scenarios") or {}).get("meta"))
         self.subq_row = {}       # key → subQ 행 번호
         self.drv_row = {}        # key → 변수 드라이버 행 번호
         self.scalar_row = {}     # 스칼라 가정 이름 → 변수 행 번호
@@ -541,14 +573,22 @@ class Builder:
     def _resolve_links(self):
         lay, asm, v = self.lay, (self.m.get("assumptions") or {}), self._v
         fq = lay.est_quarters
-        # 세율 — 법인세 = MAX(세전,0) × 세율 을 추정 전 분기에서 맞추는 세율 하나(Σ법인세 / Σmax(세전,0))가 있으면 연결
+        # 세율 — 법인세 = MAX(세전,0) × 세율 을 추정 전 분기에서 맞추는 세율 하나(Σ법인세 / Σmax(세전,0))가 있으면 연결.
+        # assumptions.tax_schedule(이월결손 램프 — 분기별 세율)이 있으면 스칼라 대신 분기별 드라이버 셀(2026-10-09 검증 수정: 사유 문구·민감도 누락)
         d = self.plan.get("법인세비용")
         if d and d["type"] == "tax":
+            sched = asm.get("tax_schedule") if isinstance(asm.get("tax_schedule"), dict) else {}
             pts = [(max(v("세전이익", q), 0.0), v("법인세비용", q)) for q in fq if v("세전이익", q) is not None and v("법인세비용", q) is not None]
             sp = sum(a for a, _ in pts)
             rate = (sum(b for _, b in pts) / sp) if sp > 0 else None
             err = max(abs(a * rate - b) for a, b in pts) if rate is not None else None
-            if rate is not None and err <= TOL_EOK:
+            if sched:
+                s0, st, _ = tax_schedule_text(asm)
+                d["schedule"] = sched
+                d["label"] = "법인세율(/세전) — 법인세 = MAX(세전,0) × 분기별 세율(이월결손 램프, assumptions.tax_schedule)"
+                self.links["세율"] = {"linked": False, "schedule": True, "n": len(pts), "max_err": err,
+                                    "reason": "이월결손 램프(assumptions.tax_schedule, %s→%s) — 분기별 세율 드라이버 행 사용" % (s0, st)}
+            elif rate is not None and err <= TOL_EOK:
                 self.fit["세율"] = rate
                 d["scalar"] = "세율"
                 self.links["세율"] = {"linked": True, "fit": rate, "model_assumption": asm.get("tax_rate"), "n": len(pts), "max_err": err}
@@ -747,6 +787,16 @@ class Builder:
             return ("%%.%df%%%%" % d) % (x * 100) if isinstance(x, (int, float)) else "—"
         linked = [k for k, v in links.items() if v.get("linked")]
         unlinked = ["%s(%s)" % (k, v.get("reason") or "") for k, v in links.items() if not v.get("linked")]
+        tl = links.get("세율") or {}
+        if tl.get("linked"):
+            tax_txt = "· 세율 %s — 법인세 = MAX(세전,0) × 세율, 추정 전 분기 연결(Σ법인세/Σmax(세전,0) 역산, 재현 오차 ≤ 0.05억). 모델 가정 %s · 근거: %s" % (
+                pct(fit.get("세율")), pct(asm.get("tax_rate")), asm.get("tax_basis") or "")
+        elif tl.get("schedule"):
+            s0, st, span = tax_schedule_text(asm)
+            tax_txt = "· 세율 %s → %s(terminal, %s) — 이월결손 램프(assumptions.tax_schedule): 변수 drv:법인세비용 추정 분기 셀이 분기별 세율(3절 '세율' 스칼라 연결 안 됨 — 그 값은 시작 세율) · 근거: %s" % (
+                s0, st, span, asm.get("tax_basis") or "")
+        else:
+            tax_txt = "· 세율 %s — 연결 안 됨(%s) — 드라이버 행 분기별 역산값 사용" % (pct(fit.get("세율", asm.get("tax_rate"))), tl.get("reason", ""))
         lines = [
             ("%s(%s) 실적 모델 — ARGUS 한국조선" % (m.get("name", ""), m.get("stock", "")), F_BOLD),
             ("기준 분기 %s · 마지막 실적 %s · 생성 %s" % (m.get("origin", ""), m["periods"]["last_actual"], m.get("built_at", "")), None),
@@ -755,7 +805,8 @@ class Builder:
             ("시트", F_BOLD),
             ("변수      가정 시계열. 환율 8행(ECB via frankfurter — L2 fx.json; 추정 분기 = 노란 가정), 추정 드라이버(노란 셀 = 모델값에서 역산한 가정, 바꾸면 재계산; 연녹 셀 = 3절 스칼라 참조 수식), 3절 스칼라 가정(세율·판관비율·지배주주비중·이자율·종가·PER 밴드·COE·외화 순노출·헤지비율)", None),
             ("BS연결/BS별도  FnGuide 계정명 × 기간 값 덤프(백만원). 행1 분기라벨, 행4 YYYY.MM / YYYY.12A. 이름정의 BS연결H·BS연결(계정명 C열부터)", None),
-            ("subQ      분기 서브모델(억원 = 백만원/100). 확정 행: =IFERROR(VLOOKUP($D행,BS연결,MATCH(E$1,BS연결H,0),0)/100,\"\")  추정 행: 변수 시트 가정 셀 참조 수식. 외환손익·파생상품손익은 BS 계정 합·차, 기타금융손익은 잔차, OPM·EPS·BPS·PER·PBR 은 파생 수식", None),
+            ("subQ      분기 서브모델(억원 = 백만원/100). 확정 행: =IFERROR(VLOOKUP($D행,BS연결,MATCH(E$1,BS연결H,0),0)/100,\"\")  추정 행: 변수 시트 가정 셀 참조 수식. 외환손익·파생상품손익은 BS 계정 합·차, 기타금융손익은 잔차, OPM·EPS·BPS·PER·PBR 은 파생 수식"
+             + (", 조정EPS 는 EPS 참조(일회성 의심 분기만 산식 셀)" if "조정EPS" in self.rows_by_key else ""), None),
             ("SLS       선표(조선사만, sls json 있을 때): 요약 행(sls 저장값) + 계약별 스케줄(백만$) × (헤지비율 × 헤지환율 + (1−헤지비율) × 건조시점 환율[변수 원/달러(평균)]) → 원화 수식 블록 → 합계 행이 subQ 매출조선에 연결", None),
             ("시나리오   신규수주 보수/기준/낙관(forecast_panel 패널, 모델에 scenarios 가 있을 때만): 매출액·영업이익 = subQ 기준값 ± (시나리오 신규 − base 신규) × OPM. base 만 subQ 행에 포함, 나머지는 합산 안 함", None),
             ("분기/연간예상  subQ 를 이름(A열 key)으로 VLOOKUP 한 보고서 표(억원)", None),
@@ -769,7 +820,7 @@ class Builder:
             ("· BS 시트에 값이 없거나 모델값과 다른(비용 부호 반전 등) 기간의 확정 셀은 모델값 직접 + 메모. fin(L1) 수집 후 재생성", None),
             ("", None),
             ("가정 요약 — 변수 시트 3절 노란 셀을 바꾸면 subQ·분기·연간예상·TP·시나리오가 재계산된다(연결된 항목만)", F_BOLD),
-            ("· 세율 %s — %s" % (pct(fit.get("세율", asm.get("tax_rate"))), ("법인세 = MAX(세전,0) × 세율, 추정 전 분기 연결(Σ법인세/Σmax(세전,0) 역산, 재현 오차 ≤ 0.05억). 모델 가정 %s · 근거: %s" % (pct(asm.get("tax_rate")), asm.get("tax_basis") or "")) if links.get("세율", {}).get("linked") else "연결 안 됨(%s) — 드라이버 행 분기별 역산값 사용" % links.get("세율", {}).get("reason", "")), None),
+            (tax_txt, None),
             ("· 판관비율 %s — %s" % (pct(fit.get("판관비율", asm.get("sga_ratio"))), "판관비 = 매출액 × 판관비율, 추정 전 분기 연결" if links.get("판관비율", {}).get("linked") else "연결 안 됨(%s)" % links.get("판관비율", {}).get("reason", "")), None),
             ("· 지배주주 비중 %s — %s" % (pct(fit.get("지배주주비중"), 1), "지배주주순이익 = 당기순이익 × 비중, 추정 전 분기 연결" if links.get("지배주주비중", {}).get("linked") else "연결 안 됨(%s)" % links.get("지배주주비중", {}).get("reason", "")), None),
             ("· 이자율 자산 %s / 부채 %s — %s" % (pct(fit.get("이자율_자산")), pct(fit.get("이자율_부채")), ("이자손익 = (전분기 이자발생자산 × 자산이자율 − 전분기 총차입금 × 부채이자율)/4, 최소자승 역산(모델 assumptions %s 는 4자리 반올림이라 그대로 쓰면 ±1억 어긋남) · 출처: %s" % (links["이자율"].get("model_assumption"), json.dumps(asm.get("interest_rate_source") or {}, ensure_ascii=False))) if links.get("이자율", {}).get("linked") else "연결 안 됨(%s)" % links.get("이자율", {}).get("reason", "")), None),
@@ -779,6 +830,12 @@ class Builder:
                 else ("환관련손익 행 없음(%s)" % ((self.m.get("fx_pnl") or {}).get("note") or "외화 순노출 미공시") if "환관련손익" not in self.rows_by_key
                       else "환관련손익 연결 안 됨: %s" % links.get("환관련손익", {}).get("reason", ""))), None),
         ]
+        if "조정EPS" in self.rows_by_key:
+            det = [o for o in (asm.get("one_offs_detected") or []) if isinstance(o, dict)]
+            won = lambda x: format(round(x), ",d") if isinstance(x, (int, float)) else "—"     # noqa: E731
+            lines.append(("· 조정EPS(일회성 의심 %d분기: %s) — 의심 분기 = 지배NI − (비영업손익 − 12분기 기준선) × (1 − 세율) × 지배 비중 ÷ 유통주식수(subQ 수식+메모, 세후 초과·지배 비중은 모델 상수), "
+                          "다른 분기 = EPS. 보고 EPS 행·TP 12M fwd EPS(추정 분기만) 는 불변. 일회성 여부·세효과는 주석 미확인(모델 추정)" % (
+                              len(det), ", ".join("%s 보고 %s→조정 %s원" % (o.get("q"), won(o.get("eps_reported")), won(o.get("eps_adj"))) for o in det) or "없음"), None))
         if self.sls:
             lk = links.get("선표") or {}
             hedge = (self.sls.get("hedge") or {})
@@ -790,8 +847,10 @@ class Builder:
                 if lk.get("linked") else "subQ 매출조선은 SLS 에 연결되지 않음(%s)" % lk.get("reason", "sls 없음")), None))
         if self.m.get("scenarios"):
             no = self.m.get("new_orders") or {}
-            lines.append(("· 신규수주 — forecast_panel %s 시나리오를 매출조선신규 행에 포함(calibrated=%s, status %s — 통계 흐름, 공시 계약 개별 반영 아님). 보수/낙관/기존만 은 시나리오 시트에만(합산 안 함)" % (
-                no.get("scenario_in_rows", "base"), no.get("calibrated"), no.get("panel_status")), None))
+            src_key, post_key = new_orders_wording(self.m["scenarios"].get("meta"))
+            lines.append(("· 신규수주 — %s %s 시나리오를 매출조선신규 행에 포함(calibrated=%s, status %s — %s). 보수/낙관/기존만 은 시나리오 시트에만(합산 안 함)" % (
+                "공시 계약 원장 체결 속도 폴백(저신뢰)" if src_key == "ledger_signing_rate" else "forecast_panel",
+                no.get("scenario_in_rows", "base"), no.get("calibrated"), no.get("panel_status"), NEW_ORDERS_POST_KO[post_key]), None))
         elif self.m.get("new_orders_included") is False:
             lines.append(("· 신규수주 — 패널 값 없음 → 2026Q2 잔고 + 공시 수주 소진분만(2028 감소는 이 한계)", None))
         lines += [
@@ -889,6 +948,10 @@ class Builder:
             if L.get("linked"):
                 return "연결 — %s(역산, 재현 오차 ≤ %.2f억%s)" % (formula_txt, TOL_EOK, (" · 모델 assumptions %s" % model_v) if model_v is not None else "")
             return "참고(연결 안 됨: %s) — 모델 assumptions 값" % (L.get("reason") or "해당 없음")
+        tax_note = lk("세율", "법인세 = MAX(세전,0) × 세율", asm.get("tax_rate"))
+        if (links.get("세율") or {}).get("schedule"):
+            s0, st, span = tax_schedule_text(asm)
+            tax_note += "(시작 %s → terminal %s, %s — 분기별 값은 2절 drv:법인세비용 행)" % (s0, st, span)
         scalars = [
             ("종가", price.get("close"), "원 — %s" % (price.get("source") or price.get("src") or "prices.json"), NF_INT),
             ("기준일", price.get("as_of"), "종가 기준일", None),
@@ -897,7 +960,7 @@ class Builder:
             ("PER_mid", band.get("mid"), "PER 밴드 중단(배)", NF_1),
             ("PER_hi", band.get("hi"), "PER 밴드 상단(배)", NF_1),
             ("EPS_Y1가중", 0.5, "12M fwd EPS = FY(last_actual연도)E × w + FY+1E × (1−w) — 기준 분기 2Q 이면 0.5(가정)", NF_PCT),
-            ("세율", fit.get("세율", asm.get("tax_rate")), lk("세율", "법인세 = MAX(세전,0) × 세율", asm.get("tax_rate")) + (" · " + str(asm.get("tax_basis") or "")), NF_PCT2),
+            ("세율", fit.get("세율", asm.get("tax_rate")), tax_note + (" · " + str(asm.get("tax_basis") or "")), NF_PCT2),
             ("판관비율", fit.get("판관비율", asm.get("sga_ratio")), lk("판관비율", "판관비 = 매출액 × 판관비율", asm.get("sga_ratio")), NF_PCT2),
             ("지배주주비중", fit.get("지배주주비중", (1 - asm["minority_share"]) if isinstance(asm.get("minority_share"), (int, float)) else None),
              lk("지배주주비중", "지배주주순이익 = 당기순이익 × 비중"), NF_PCT2),
@@ -982,15 +1045,20 @@ class Builder:
                         continue
                     if d["type"] == "yoy":
                         p, _, mode = self._yoy_param(row, q)
+                    elif d["type"] == "tax" and q in (d.get("schedule") or {}) and val_of(row, q) is not None and not ((val_of(self.rows_by_key[d["base"]], q) or 0.0) > 0):
+                        p, mode = d["schedule"][q], "schedule"        # 세전 ≤ 0 분기 — 법인세 0 이라 역산 불가, 모델 가정값 그대로
                     else:
                         p, mode = implied_param(row, q, d, self.rows_by_key, lay, self._sheet_base), d["type"]
                     if p is None:
                         continue
                     cell.value = round(p, 9)
                     cell.fill = FILL_INPUT
-                    cell.comment = Comment("모델값 역산(implied): %s\n%s" % (
+                    cell.comment = Comment("모델값 역산(implied): %s%s\n%s" % (
                         {"yoy": "v / 전년동기 − 1", "qoq_fallback": "v / 전분기 − 1 (전년동기 없음 → 전분기 대비)", "qoq": "v / 전분기 − 1",
-                         "ratio": "v / %s" % d.get("base"), "tax": "v / %s" % d.get("base"), "abs": "모델 v 그대로"}[mode],
+                         "ratio": "v / %s" % d.get("base"), "tax": "v / %s" % d.get("base"), "abs": "모델 v 그대로",
+                         "schedule": "모델 assumptions.tax_schedule(세전 ≤ 0 분기 — 법인세 0 이라 역산 불가)"}[mode],
+                        # 이월결손 램프 분기 — 모델은 r4 반올림 전 세율로 계산하므로 역산값(v/세전)과 assumptions.tax_schedule(r4)이 5e-5 안에서 어긋난다
+                        (" · 모델 가정 tax_schedule %s(r4)" % d["schedule"][q]) if (mode == "tax" and q in (d.get("schedule") or {})) else "",
                         cell_of(row, q).get("basis") or ""), "kship")
                     continue
                 # 실적(또는 연간) 열 — subQ 실현값
@@ -1270,7 +1338,11 @@ class Builder:
                     cell.comment = Comment("실측(%s — 모델값 직접) — %s" % (
                         ("%s 시트에 %s %s 값 없음" % (sheet, acct, qdate(q))) if acct else "계정 매핑 없음(파생·부문·시세 행)", mc.get("src") or ""), "kship")
             else:
-                if v is not None:
+                adj = self._adj_eps_one_off(q, L) if row["key"] == "조정EPS" else None
+                if adj:
+                    cell.value, cell.fill = adj[0], FILL_EST
+                    cell.comment = Comment(adj[1], "kship")
+                elif v is not None:
                     cell.value = v
                     cell.fill = FILL_EST
                     cell.comment = Comment("추정(실적 구간 갭필): " + str(mc.get("basis") or ""), "kship")
@@ -1286,11 +1358,37 @@ class Builder:
             cell.value = v
             cell.comment = Comment("추정(가정 셀 참조 불가 — 기준값 없음, 모델값 직접): " + str(mc.get("basis") or ""), "kship")
 
+    def _adj_eps_one_off(self, q, L):
+        """조정EPS 의심 분기 셀 — (수식, 메모) | None. '=(지배NI 셀 − 세후 초과 × 지배 비중)×100/주식수 셀'. 세후 초과(excess_after_tax)·지배 비중(ctrl_share_applied)은
+        모델 one_offs_detected 상수(세전·법인세 셀 비율로 다시 쓰면 Q4=연간−9M 분기·세율 폴백 회사에서 재현이 깨진다 — 10사 전수 최대 |차| 0.12원, 2026-10-08)."""
+        o = next((x for x in (self.m.get("assumptions") or {}).get("one_offs_detected") or [] if isinstance(x, dict) and x.get("q") == q), None)
+        if not o or not all(isinstance(o.get(k), (int, float)) for k in ("excess_after_tax", "ctrl_share_applied")) \
+                or not all(k in self.subq_row for k in ("지배주주순이익", "주식수")):
+            return None
+
+        def won(x):
+            return format(round(x), ",d") if isinstance(x, (int, float)) else "—"
+
+        def eok(x):
+            return format(x, ",.0f") if isinstance(x, (int, float)) else "—"
+        f = '=IFERROR((%s%d-(%s)*(%s))*100/%s%d,"")' % (L, self.subq_row["지배주주순이익"], repr(o["excess_after_tax"]), repr(o["ctrl_share_applied"]), L, self.subq_row["주식수"])
+        tax = o.get("tax_rate_applied")
+        note = ("조정EPS 산식(모델 추정, 일회성 여부·세효과 주석 미확인): 지배NI − 초과 비영업손익 %s억 × (1 − 세율 %s [%s]) × 지배 비중 %.4f [%s] = %s억 ÷ 유통주식수 · "
+                "초과 = 비영업손익 %s억 − 12분기 기준선 %s억 · 보고 EPS %s원(EPS 행 불변) · 상수 %s·%s 는 모델 one_offs_detected 값(세전·법인세 셀을 바꿔도 재계산되지 않음)"
+                % (eok(o.get("excess_nonop")), ("%.1f%%" % (tax * 100)) if isinstance(tax, (int, float)) else "—", o.get("tax_rate_source") or "", o["ctrl_share_applied"],
+                   o.get("ctrl_share_source") or "", eok(o.get("ni_ctrl_adj")), eok(o.get("nonop")), eok(o.get("baseline_nonop_12q")), won(o.get("eps_reported")),
+                   repr(o["excess_after_tax"]), repr(o["ctrl_share_applied"])))
+        return f, note
+
     def _derived_actual(self, row, q, L):
-        """실적 구간 파생 행 수식 — EPS·BPS(per_share), OPM(divide), 기타금융손익(잔차 항등식), PER·PBR(분기 평균 종가 / TTM EPS·BPS)."""
+        """실적 구간 파생 행 수식 — EPS·BPS(per_share), OPM(divide), 기타금융손익(잔차 항등식), PER·PBR(분기 평균 종가 / TTM EPS·BPS), 조정EPS(= EPS 참조, 비의심 분기)."""
         key, drv, v = row["key"], self.plan[row["key"]], val_of(row, q)
         if v is None:
             return None
+        if key == "조정EPS" and drv["type"] == "identity" and str(cell_of(row, q).get("src") or "").startswith("= EPS"):
+            e = self._v("EPS", q)
+            if e is not None and abs(e - v) <= 0.5:
+                return self._identity_formula(drv, L)
         if drv["type"] == "per_share":
             return '=IFERROR(%s%d*100/%s%d,"")' % (L, self.subq_row[drv["num"]], L, self.subq_row[drv["den"]])
         if drv["type"] == "divide" and self._v(drv["num"], q) is not None and self._v(drv["den"], q):
@@ -1600,7 +1698,8 @@ class Builder:
                         if nv is not None:
                             cell_new.value = nv
                             cell_new.fill = FILL_INPUT
-                            cell_new.comment = Comment("forecast_panel %s %s(억원)%s — %s" % (case, meta.get("source_field") or "new_order_revenue", " · 폴백·저신뢰" if meta.get("fallback") else "", meta.get("source") or ""), "kship")
+                            cell_new.comment = Comment("%s %s %s(억원)%s — %s" % ("공시 계약 원장 체결 속도" if new_orders_wording(meta)[0] == "ledger_signing_rate" else "forecast_panel", case,
+                                                                              meta.get("source_field") or "new_order_revenue", " · 폴백·저신뢰" if meta.get("fallback") else "", meta.get("source") or ""), "kship")
                     if q not in qd:
                         continue
                     bn = "%s%d" % (L, base_new_row if base_new_row else rn)
@@ -2352,12 +2451,13 @@ def verify(path, model, keys=("매출액", "영업이익", "지배주주순이�
     rep["sensitivity"] = _sensitivity(wb, model, lay, subq_row, em)
     rep["size_ok"] = rep["size_bytes"] <= SIZE_LIMIT
     rep["ok"] = (all(c.get("ok") for c in rep["checks"]) and not est["mismatch"] and not act["mismatch"]
-                 and not (rep.get("scenarios") or {}).get("mismatch") and all(p["ok"] for p in rep["sensitivity"]) and rep["size_ok"])
+                 and not (rep.get("scenarios") or {}).get("mismatch") and all(p.get("ok") for p in rep["sensitivity"] if not p.get("skipped")) and rep["size_ok"])
     return rep
 
 
 def _sensitivity(wb, model, lay, subq_row, em):
-    """세율·OPM·환율(평균→선표, 기말→환관련)·이자율·신규수주 가정 셀을 바꾼 뒤 종속 셀 변화량이 기대값과 맞는지. 각 항목 {name, changed, target, before, after, expected_delta, ok}."""
+    """세율·OPM·환율(평균→선표, 기말→환관련)·이자율·신규수주 가정 셀을 바꾼 뒤 종속 셀 변화량이 기대값과 맞는지. 각 항목 {name, changed, target, before, after, expected_delta, ok}.
+    프로브를 돌릴 수 없는 항목은 조용히 빼지 않고 {name, skipped: True, why} 로 남긴다(ok 집계에서 제외)."""
     out = []
     vs = wb["변수"]
     vrow = _find_rows(vs)
@@ -2391,15 +2491,26 @@ def _sensitivity(wb, model, lay, subq_row, em):
             ok = ok and all(c["moved"] for c in rec["chain"])
             rec["ok"] = ok
         out.append(rec)
-    # ① 세율 +1%p → 법인세(T+1) Δ = MAX(세전,0) × 0.01 ; 당기순이익·EPS 도 움직여야 한다
-    if "sc:세율" in vrow and "drv:법인세비용" in vrow and "법인세비용" in subq_row and "세전이익" in subq_row:
-        dcell = vs["%s%d" % (L1, vrow["drv:법인세비용"])].value
-        if _is_formula(dcell) and "$D$%d" % vrow["sc:세율"] in dcell:
-            pt = num("subQ", "%s%d" % (L1, subq_row["세전이익"]))
+    # ① 세율 +1%p → 법인세 Δ = MAX(세전,0) × 0.01 ; 당기순이익·EPS 도 움직여야 한다. 첫 양(+)세전 추정 분기에서, 3절 '세율' 스칼라가 연결돼 있으면 그 D 셀,
+    #    아니면(이월결손 램프 tax_schedule·단일 세율 재현 불가) 그 분기 드라이버 셀을 바꾼다 — 세율 민감도를 조용히 빼지 않는다(2026-10-09 검증 수정)
+    if "drv:법인세비용" in vrow and "법인세비용" in subq_row and "세전이익" in subq_row:
+        qt = next((q for q in fq if (num("subQ", "%s%d" % (lay.letter(q), subq_row["세전이익"])) or 0.0) > 0), None)
+        Lt = lay.letter(qt or q1)
+        dco = "%s%d" % (Lt, vrow["drv:법인세비용"])
+        dcell = vs[dco].value
+        tax_f = ws_val(wb, "subQ", "%s%d" % (Lt, subq_row["법인세비용"]))
+        pt = num("subQ", "%s%d" % (Lt, subq_row["세전이익"])) or 0.0
+        target = ("subQ", "%s%d" % (Lt, subq_row["법인세비용"]))
+        chain = [("subQ", "%s%d" % (Lt, subq_row[k])) for k in ("당기순이익", "EPS") if k in subq_row]
+        if qt is None:
+            out.append({"name": "세율 +1%p → 법인세비용", "skipped": True, "why": "추정 전 분기 세전 ≤ 0 — 법인세 0 이라 세율 변화가 전파되지 않음"})
+        elif "sc:세율" in vrow and _is_formula(dcell) and "$D$%d" % vrow["sc:세율"] in dcell:
             cur = _num_or_none(vs["D%d" % vrow["sc:세율"]].value) or 0.0
-            chain = [("subQ", "%s%d" % (L1, subq_row[k])) for k in ("당기순이익", "EPS") if k in subq_row]
-            add("세율 +1%p → 법인세비용", {("변수", "D%d" % vrow["sc:세율"]): cur + 0.01}, ("subQ", "%s%d" % (L1, subq_row["법인세비용"])),
-                max(pt or 0.0, 0.0) * 0.01, extra_targets=chain)
+            add("세율 +1%p → 법인세비용", {("변수", "D%d" % vrow["sc:세율"]): cur + 0.01}, target, max(pt, 0.0) * 0.01, extra_targets=chain)
+        elif _num_or_none(dcell) is not None and _is_formula(tax_f) and "변수!%s" % dco in tax_f:
+            add("세율 %s 드라이버 셀 +1%%p → 법인세비용" % qt, {("변수", dco): dcell + 0.01}, target, (max(pt, 0.0) if "MAX(" in tax_f else pt) * 0.01, extra_targets=chain)
+        else:
+            out.append({"name": "세율 +1%p → 법인세비용", "skipped": True, "why": "변수 %s 가 숫자도 스칼라 참조도 아님(%r) 또는 subQ 법인세 셀이 그 드라이버를 참조하지 않음" % (dco, dcell)})
     # ② OPM +1%p → 영업이익(T+1) Δ = 기준 매출 × 0.01 ; 세전·지배NI·EPS 연쇄
     for drv, base in (("drv:영업이익", "매출액"), ("drv:OP조선", "매출조선"), ("drv:OP조선기자재", "매출조선기자재"), ("drv:OP전사", "매출전사")):
         if drv in vrow and base in subq_row and "영업이익" in subq_row and _num_or_none(vs["%s%d" % (L1, vrow[drv])].value) is not None:
@@ -2508,7 +2619,8 @@ def _compact(rep):
             "est": "%s/%s" % (est.get("match"), est.get("rows")), "est_value_cells": (v.get("links") or {}).get("value_cells"),
             "actual_formula": "%s/%s" % (act.get("match"), act.get("formula_cells")),
             "scenario": ("%s/%s" % (sc.get("match"), sc.get("cells"))) if sc else "-",
-            "sensitivity": "%d/%d" % (sum(1 for p in sens if p.get("ok")), len(sens)), "ok": v.get("ok"), "error": rep.get("error")}
+            "sensitivity": "%d/%d" % (sum(1 for p in sens if p.get("ok")), sum(1 for p in sens if not p.get("skipped")))
+            + ((" +%d skipped" % sum(1 for p in sens if p.get("skipped"))) if any(p.get("skipped") for p in sens) else ""), "ok": v.get("ok"), "error": rep.get("error")}
 
 
 def main(argv=None):
@@ -2547,7 +2659,9 @@ def main(argv=None):
             tot.update(est_match=sum((r["verify"]["estimate_recalc"]["match"]) for r in reps), est_rows=sum((r["verify"]["estimate_recalc"]["rows"]) for r in reps),
                        est_value_cells=sum(r["verify"]["links"]["value_cells"] for r in reps),
                        actual_formula_match=sum(r["verify"]["actual_recalc"]["match"] for r in reps), actual_formula_cells=sum(r["verify"]["actual_recalc"]["formula_cells"] for r in reps),
-                       sensitivity_ok=sum(sum(1 for p in r["verify"]["sensitivity"] if p.get("ok")) for r in reps), sensitivity_n=sum(len(r["verify"]["sensitivity"]) for r in reps),
+                       sensitivity_ok=sum(sum(1 for p in r["verify"]["sensitivity"] if p.get("ok")) for r in reps),
+                       sensitivity_n=sum(sum(1 for p in r["verify"]["sensitivity"] if not p.get("skipped")) for r in reps),
+                       sensitivity_skipped=sum(sum(1 for p in r["verify"]["sensitivity"] if p.get("skipped")) for r in reps),
                        scenario_match=sum((r["verify"].get("scenarios") or {}).get("match", 0) for r in reps), scenario_cells=sum((r["verify"].get("scenarios") or {}).get("cells", 0) for r in reps),
                        linked=dict(sorted(((k, sum(1 for r in reps if (r["links"].get(k) or {}).get("linked"))) for k in {kk for r in reps for kk in r["links"]}))))
         print("TOTAL " + json.dumps(tot, ensure_ascii=False))

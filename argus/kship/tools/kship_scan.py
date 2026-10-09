@@ -15,7 +15,7 @@
      pool 230→214, 승격 16 → 0, 모집단 57→41). 강등은 재판정(--rejudge)이나 fetch 성공 뒤 규칙 미달일
      때만이고, fetch 실패·빈 본문은 failed 에 남기고 직전 증거를 그대로 둔다(`carried_from` 에 증거의 스캔일).
 
-    python3 kship_scan.py --scan [--quarter 2026Q2]     # → assets/universe_probe.json
+    python3 kship_scan.py --scan [--quarter YYYYQn]     # → assets/universe_probe.json (기본 latest_quarter(): 분기말 +50일·사업보고서 +95일)
 그 뒤 kship_universe.py --write 가 universe_probe.json 의 승격분을 '탐색' 출처로 모집단에 넣는다.
 """
 import argparse
@@ -24,7 +24,7 @@ import re
 import sys
 import time
 
-from kship_lib import load_asset, write_asset
+from kship_lib import latest_quarter, load_asset, write_asset
 from kship_universe import _get, KIND_URL, parse_kind, _NOT_SUPPLY
 import kship_suppliers as sup
 
@@ -184,10 +184,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scan", action="store_true")
     ap.add_argument("--rejudge", action="store_true")
-    ap.add_argument("--quarter", default="2026Q2")
+    ap.add_argument("--quarter", default=None,
+                    help="정기보고서 분기(기본: 분기말 +50일·사업보고서 +95일 규칙의 최신 분기 — kship_lib.latest_quarter; 재현엔 명시 권장)")
     a = ap.parse_args()
     if a.scan:
-        scan(a.quarter)
+        scan(a.quarter or latest_quarter())      # kship_suppliers/kship_yards 와 같은 기본값 규칙(2026-10-08 오너 결정)
     if a.rejudge:
         rejudge()
 

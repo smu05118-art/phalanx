@@ -4,7 +4,7 @@
  "role": "equip",
  "origin": "2026Q2",
  "unit": "KRW_100M(억원)",
- "built_at": "2026-10-08",
+ "built_at": "2026-10-09",
  "status": "full",
  "driver_fallback": "oos",
  "periods": {
@@ -6918,9 +6918,26 @@
      "corr": 0.6306,
      "b": 0.5183,
      "n": 12,
+     "n_eff": 9,
      "lag_q": 4,
      "transform": "ma4",
      "window_q": 12,
+     "eligibility": {
+      "eligible": true,
+      "rule": "related 만이면 Σshare ≥ 5.0% · ifrs8/contract/text(basis 없음 포함) 있으면 통과 · 가중치는 바꾸지 않음",
+      "related_share_sum": null,
+      "bases": [
+       "text"
+      ],
+      "yards": [
+       {
+        "yard": "329180",
+        "basis": "text",
+        "share": null
+       }
+      ],
+      "reason": "근거 등급 text 있음 → 자격 통과"
+     },
      "grid": {
       "lags": [
        0,
@@ -6957,6 +6974,7 @@
         "transform": "ma4",
         "window_q": 12,
         "n": 12,
+        "n_eff": 9,
         "corr": 0.6306,
         "coef": 0.5183,
         "covers_fq": true
@@ -6967,6 +6985,7 @@
         "transform": "ma4",
         "window_q": 19,
         "n": 12,
+        "n_eff": 9,
         "corr": 0.6306,
         "coef": 0.5183,
         "covers_fq": true
@@ -6977,6 +6996,7 @@
         "transform": "ma4",
         "window_q": 12,
         "n": 12,
+        "n_eff": 9,
         "corr": 0.6305,
         "coef": 0.4939,
         "covers_fq": true
@@ -6987,6 +7007,7 @@
         "transform": "ma4",
         "window_q": 12,
         "n": 12,
+        "n_eff": 9,
         "corr": 0.6288,
         "coef": 0.4688,
         "covers_fq": true
@@ -6997,6 +7018,7 @@
         "transform": "level",
         "window_q": 8,
         "n": 8,
+        "n_eff": 8,
         "corr": 0.5983,
         "coef": 0.4045,
         "covers_fq": true
@@ -7007,6 +7029,7 @@
         "transform": "ma4",
         "window_q": 12,
         "n": 12,
+        "n_eff": 9,
         "corr": 0.5903,
         "coef": 0.4405,
         "covers_fq": true
@@ -7017,6 +7040,7 @@
         "transform": "yoy",
         "window_q": 8,
         "n": 8,
+        "n_eff": 8,
         "corr": 0.5572,
         "coef": 0.0722,
         "covers_fq": true
@@ -7027,6 +7051,7 @@
         "transform": "level",
         "window_q": 12,
         "n": 12,
+        "n_eff": 12,
         "corr": 0.5494,
         "coef": 0.434,
         "covers_fq": true
@@ -7037,6 +7062,7 @@
         "transform": "ma4",
         "window_q": 19,
         "n": 13,
+        "n_eff": 10,
         "corr": 0.5474,
         "coef": 0.503,
         "covers_fq": true
@@ -7047,6 +7073,7 @@
         "transform": "ma4",
         "window_q": 12,
         "n": 12,
+        "n_eff": 9,
         "corr": 0.5392,
         "coef": 0.4104,
         "covers_fq": true
@@ -7057,6 +7084,7 @@
         "transform": "level",
         "window_q": 19,
         "n": 15,
+        "n_eff": 15,
         "corr": 0.5111,
         "coef": 0.5103,
         "covers_fq": true
@@ -7067,6 +7095,7 @@
         "transform": "level",
         "window_q": 8,
         "n": 8,
+        "n_eff": 8,
         "corr": 0.509,
         "coef": 0.3683,
         "covers_fq": true
@@ -7079,6 +7108,7 @@
         "transform": "ma4",
         "window_q": 12,
         "n": 12,
+        "n_eff": 9,
         "corr": 0.6306,
         "coef": 0.5183,
         "covers_fq": true
@@ -7089,6 +7119,7 @@
         "transform": "level",
         "window_q": 8,
         "n": 8,
+        "n_eff": 8,
         "corr": 0.5983,
         "coef": 0.4045,
         "covers_fq": true
@@ -7099,6 +7130,7 @@
         "transform": "yoy",
         "window_q": 8,
         "n": 8,
+        "n_eff": 8,
         "corr": 0.5572,
         "coef": 0.0722,
         "covers_fq": true
@@ -7111,6 +7143,7 @@
         "transform": "ma4",
         "window_q": 12,
         "n": 12,
+        "n_eff": 9,
         "corr": 0.6306,
         "coef": 0.5183,
         "covers_fq": true
@@ -7343,12 +7376,16 @@
         0.5183
        ]
       },
-      "overfit_note": "후보 45개 중 최대 상관을 골랐다(다중비교 보정 없음) · 표본 12분기 · 4분기 이동합은 평활로 상관이 부풀고 공통 추세를 잡기 쉽다 — 과적합 경고"
+      "overfit_note": "후보 45개 중 최대 상관을 골랐다(다중비교 보정 없음) · 표본 12분기 · 4분기 이동합은 평활로 상관이 부풀고 공통 추세를 잡기 쉽다 — 과적합 경고 · 4분기 이동합 유효 표본 n_eff = n − 3(채택 조합 9)"
      },
      "significance": {
       "r_crit_p05_two_sided": 0.576,
+      "n_eff": 9,
+      "r_crit_p05_neff": 0.6664,
+      "significant_p05_neff": false,
       "significant_p05_uncorrected": true,
-      "note": "단일 검정 기준 임계 r(df=n−2, 양측 5%) — 격자 후보 수만큼 보정하면 임계는 더 높다"
+      "gate": "n",
+      "note": "단일 검정 기준 임계 r(df=n−2, 양측 5%) — 격자 후보 수만큼 보정하면 임계는 더 높다 · 4분기 이동합 유효 표본 n_eff=n−3 기준 임계는 r_crit_p05_neff(기록만, 게이트는 gate)"
      },
      "selection_oos": {
       "freeze": "2025Q2",
@@ -7546,6 +7583,16 @@
   "tax_rate": 0.22,
   "tax_basis": "최근 12분기 유효세율 29.8% 가 5~27% 밖; 세전 > 0 분기 중위 31.2% 도 5~27% 밖 → 법정세율 근사 22% 가정",
   "tax_path": "default",
+  "tax_rate_terminal": null,
+  "tax_schedule": null,
+  "tax_carryforward": null,
+  "nol_evidence": {
+   "dta_eok": 202.22,
+   "dtl_eok": 23843.19,
+   "retained_earnings_eok": 98578.05,
+   "nol_cap_eok": 919.18,
+   "note": "참고용 — 인식된 DTA 의 이용은 법인세비용을 올리므로 저세율 지속 상한으로 쓰지 않음(삼성重 선례); 주석 이월결손금 표 미파싱"
+  },
   "sga_ratio": 0.1887,
   "fin_pl_gap": {
    "actual_median_4q": 6126.52,
@@ -7574,6 +7621,36 @@
    "asset": "주석 이자수익 ÷ 평균 이자발생자산(2025Q3~2026Q2)",
    "debt": "주석 이자비용 ÷ 평균 총차입금(2025Q3~2026Q2)"
   },
+  "interest_rate_check": {
+   "asset": {
+    "note": 0.0043,
+    "cf": 0.0055,
+    "ratio": 0.78,
+    "note_last_q": "2026Q2",
+    "cf_window": {
+     "first": "2025Q3",
+     "last": "2026Q2",
+     "age_q": 0
+    },
+    "action": "note",
+    "reason": null
+   },
+   "debt": {
+    "note": 0.0635,
+    "cf": 0.0363,
+    "ratio": 1.75,
+    "note_last_q": "2026Q2",
+    "cf_window": {
+     "first": "2025Q3",
+     "last": "2026Q2",
+     "age_q": 0
+    },
+    "action": "note",
+    "reason": null
+   },
+   "rule": "주석/CF > 2.0 이면 경고; stale(주석 마지막 분기 ≠ 마지막 실적) 또는 주석 > 20% 이면 CF 연율로 클립 — CF 창(cf_window)이 주석 창 이상으로 최신일 때만, 더 오래되면 상한 초과만 상한으로 클립·그 외 주석 유지(CF 없으면 상한)"
+  },
+  "fx_in_other_nonop": null,
   "minority_share": 0.0,
   "payout": 0.0717,
   "dps_assumed": 15000,
@@ -7617,7 +7694,17 @@
     "eps_reported": 386060.8,
     "eps_adj": 10346.6
    }
-  ]
+  ],
+  "shares": {
+   "latest": 7354171,
+   "latest_q": "2026Q2",
+   "latest_src": "fin.shares.common_outstanding(2026Q2)",
+   "events": [],
+   "post_event": null,
+   "restated_quarters": [],
+   "dps_restated": null,
+   "rule": "실적 분기 주식수·EPS/BPS/DPS 는 당시 주식수 × 이후 병합·분할·무상증자 비율 누적곱(IAS 33.64 비교표시, 네이버 수정주가 이력과 정합; 셀 kind estimate); 추정 분기·PER/PBR now·EV 는 사건 반영 최신 유통주식수(aik 상장주식수 = 발행주식수 − 자기주식); 증자·IPO·소각은 환산 없이 최신 주식수만. prices.history_quarterly 가 수정주가(close_rule)인 동안만 옳다"
+  }
  },
  "fx_pnl": {
   "net_usd_exposure_m": null,
@@ -7679,47 +7766,48 @@
  "backtest": {
   "freeze": "2025Q2",
   "horizon": 4,
-  "revenue_wape_pct": 3.6,
-  "op_wape_pct": 21.4,
+  "revenue_wape_pct": 32.2,
+  "op_wape_pct": 43.9,
   "n": 4,
   "note": "단일 회사 4분기 — 통계 아님",
-  "driver_at_freeze": "trend_seasonal",
+  "driver_at_freeze": "customer_yard_revenue_weighted",
   "selection_oos_at_freeze": {
    "freeze": "2024Q2",
    "n": 4,
-   "wape_link": 22.5,
+   "wape_link": null,
    "wape_trend": 3.9,
-   "adopted": false,
-   "decision": "rejected"
+   "adopted": "undetermined",
+   "decision": "undetermined",
+   "note": "현재 채택 조합(suppliers_mentions·시차 4·ma4·창 8)을 동결 데이터로 재적합할 수 없음(짝·고객 모델 부족) → 연동 WAPE 없음, undetermined(유의성 조건만으로 채택)"
   },
   "frozen_inputs": "fin(연결/별도)·고객 조선사 모델·지주 자회사 모델은 2025Q2 까지의 분기만; 선표는 체결일 ≤ 2025Q2 말일 계약(원장 최신 금액·코호트 등급, 환산 없음); 잔고는 yards_cache 2025Q2; 시세·환율 forward·prices·forecast_panel 신규수주 미사용. 고객 가중치(suppliers.json 언급 비중)와 합병 체인링크는 현재 지식; 고객 연동 채택은 동결 모델 안에서도 자기 la−4분기 OOS 규칙(selection_oos_at_freeze)",
   "detail": [
    {
     "q": "2025Q3",
-    "rev_pred": 16578.27,
+    "rev_pred": 20450.78,
     "rev_act": 16228.33,
-    "op_pred": 1094.05,
+    "op_pred": 1349.61,
     "op_act": 1172.64
    },
    {
     "q": "2025Q4",
-    "rev_pred": 16814.11,
+    "rev_pred": 21141.06,
     "rev_act": 15564.18,
-    "op_pred": 1109.62,
+    "op_pred": 1395.17,
     "op_act": 665.27
    },
    {
     "q": "2026Q1",
-    "rev_pred": 16224.2,
+    "rev_pred": 21947.17,
     "rev_act": 16264.0,
-    "op_pred": 1070.69,
+    "op_pred": 1448.37,
     "op_act": 881.28
    },
    {
     "q": "2026Q2",
-    "rev_pred": 17299.1,
+    "rev_pred": 23848.0,
     "rev_act": 18060.19,
-    "op_pred": 1141.62,
+    "op_pred": 1573.81,
     "op_act": 1288.84
    }
   ]

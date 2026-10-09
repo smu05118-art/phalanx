@@ -4,7 +4,7 @@
  "role": "steel",
  "origin": "2026Q2",
  "unit": "KRW_100M(억원)",
- "built_at": "2026-10-08",
+ "built_at": "2026-10-09",
  "status": "full",
  "driver_fallback": "no_link",
  "periods": {
@@ -3721,32 +3721,32 @@
      "src": "fin.cons.bs.총차입금"
     },
     "2022Q2": {
-     "v": 4266.77,
+     "v": 4066.77,
      "kind": "actual",
      "src": "fin.cons.bs.총차입금"
     },
     "2022Q3": {
-     "v": 4967.52,
+     "v": 4767.52,
      "kind": "actual",
      "src": "fin.cons.bs.총차입금"
     },
     "2022Q4": {
-     "v": 5226.03,
+     "v": 4626.03,
      "kind": "actual",
      "src": "fin.cons.bs.총차입금"
     },
     "2023Q1": {
-     "v": 5468.54,
+     "v": 4868.54,
      "kind": "actual",
      "src": "fin.cons.bs.총차입금"
     },
     "2023Q2": {
-     "v": 5447.86,
+     "v": 4847.86,
      "kind": "actual",
      "src": "fin.cons.bs.총차입금"
     },
     "2023Q3": {
-     "v": 5348.87,
+     "v": 4748.87,
      "kind": "actual",
      "src": "fin.cons.bs.총차입금"
     },
@@ -3756,17 +3756,17 @@
      "src": "fin.cons.bs.총차입금"
     },
     "2024Q1": {
-     "v": 5230.45,
+     "v": 4830.45,
      "kind": "actual",
      "src": "fin.cons.bs.총차입금"
     },
     "2024Q2": {
-     "v": 5622.99,
+     "v": 5022.99,
      "kind": "actual",
      "src": "fin.cons.bs.총차입금"
     },
     "2024Q3": {
-     "v": 5338.58,
+     "v": 5138.58,
      "kind": "actual",
      "src": "fin.cons.bs.총차입금"
     },
@@ -3862,7 +3862,7 @@
      "kind": "actual"
     },
     "2022": {
-     "v": 5226.03,
+     "v": 4626.03,
      "kind": "actual"
     },
     "2023": {
@@ -3908,32 +3908,32 @@
      "src": "fin.cons.bs.순차입금"
     },
     "2022Q2": {
-     "v": 3271.31,
+     "v": 3071.31,
      "kind": "actual",
      "src": "fin.cons.bs.순차입금"
     },
     "2022Q3": {
-     "v": 3962.54,
+     "v": 3762.54,
      "kind": "actual",
      "src": "fin.cons.bs.순차입금"
     },
     "2022Q4": {
-     "v": 4324.63,
+     "v": 3724.63,
      "kind": "actual",
      "src": "fin.cons.bs.순차입금"
     },
     "2023Q1": {
-     "v": 4495.88,
+     "v": 3895.88,
      "kind": "actual",
      "src": "fin.cons.bs.순차입금"
     },
     "2023Q2": {
-     "v": 4350.48,
+     "v": 3750.48,
      "kind": "actual",
      "src": "fin.cons.bs.순차입금"
     },
     "2023Q3": {
-     "v": 4371.17,
+     "v": 3771.17,
      "kind": "actual",
      "src": "fin.cons.bs.순차입금"
     },
@@ -3943,17 +3943,17 @@
      "src": "fin.cons.bs.순차입금"
     },
     "2024Q1": {
-     "v": 4159.72,
+     "v": 3759.72,
      "kind": "actual",
      "src": "fin.cons.bs.순차입금"
     },
     "2024Q2": {
-     "v": 4833.42,
+     "v": 4233.42,
      "kind": "actual",
      "src": "fin.cons.bs.순차입금"
     },
     "2024Q3": {
-     "v": 4427.9,
+     "v": 4227.9,
      "kind": "actual",
      "src": "fin.cons.bs.순차입금"
     },
@@ -4049,7 +4049,7 @@
      "kind": "actual"
     },
     "2022": {
-     "v": 4324.63,
+     "v": 3724.63,
      "kind": "actual"
     },
     "2023": {
@@ -6292,6 +6292,16 @@
   "tax_rate": 0.2404,
   "tax_basis": "최근 12분기 유효세율 28.1% 가 5~27% 밖 → 클립 대신 최근 8분기 중 세전 > 0 인 5분기(2024Q3~2026Q2)의 법인세/세전 중위 24.0%",
   "tax_path": "median_pos8",
+  "tax_rate_terminal": null,
+  "tax_schedule": null,
+  "tax_carryforward": null,
+  "nol_evidence": {
+   "dta_eok": 6.55,
+   "dtl_eok": 317.21,
+   "retained_earnings_eok": 2988.51,
+   "nol_cap_eok": 29.79,
+   "note": "참고용 — 인식된 DTA 의 이용은 법인세비용을 올리므로 저세율 지속 상한으로 쓰지 않음(삼성重 선례); 주석 이월결손금 표 미파싱"
+  },
   "sga_ratio": 0.134,
   "fin_pl_gap": {
    "actual_median_4q": -50.82,
@@ -6320,6 +6330,36 @@
    "asset": "CF 이자수취 ÷ 평균 이자발생자산(2025Q3~2026Q2; 주석 이자수익 0분기 < 4)",
    "debt": "CF 이자지급 ÷ 평균 총차입금(2025Q3~2026Q2; 주석 이자비용 0분기 < 4)"
   },
+  "interest_rate_check": {
+   "asset": {
+    "note": null,
+    "cf": 0.0247,
+    "ratio": null,
+    "note_last_q": null,
+    "cf_window": {
+     "first": "2025Q3",
+     "last": "2026Q2",
+     "age_q": 0
+    },
+    "action": "cf",
+    "reason": null
+   },
+   "debt": {
+    "note": null,
+    "cf": 0.04,
+    "ratio": null,
+    "note_last_q": null,
+    "cf_window": {
+     "first": "2025Q3",
+     "last": "2026Q2",
+     "age_q": 0
+    },
+    "action": "cf",
+    "reason": null
+   },
+   "rule": "주석/CF > 2.0 이면 경고; stale(주석 마지막 분기 ≠ 마지막 실적) 또는 주석 > 20% 이면 CF 연율로 클립 — CF 창(cf_window)이 주석 창 이상으로 최신일 때만, 더 오래되면 상한 초과만 상한으로 클립·그 외 주석 유지(CF 없으면 상한)"
+  },
+  "fx_in_other_nonop": null,
   "minority_share": 0.0,
   "payout": null,
   "dps_assumed": 120,
@@ -6363,7 +6403,17 @@
     "eps_reported": -1094.5,
     "eps_adj": -338.5
    }
-  ]
+  ],
+  "shares": {
+   "latest": 28329357,
+   "latest_q": "2026Q2",
+   "latest_src": "fin.shares.common_outstanding(2026Q2)",
+   "events": [],
+   "post_event": null,
+   "restated_quarters": [],
+   "dps_restated": null,
+   "rule": "실적 분기 주식수·EPS/BPS/DPS 는 당시 주식수 × 이후 병합·분할·무상증자 비율 누적곱(IAS 33.64 비교표시, 네이버 수정주가 이력과 정합; 셀 kind estimate); 추정 분기·PER/PBR now·EV 는 사건 반영 최신 유통주식수(aik 상장주식수 = 발행주식수 − 자기주식); 증자·IPO·소각은 환산 없이 최신 주식수만. prices.history_quarterly 가 수정주가(close_rule)인 동안만 옳다"
+  }
  },
  "fx_pnl": {
   "net_usd_exposure_m": null,
@@ -6929,7 +6979,7 @@
    ],
    [
     "총차입금",
-    5338.58,
+    5138.58,
     5023.28,
     5604.06,
     5730.97,
@@ -6950,7 +7000,7 @@
    ],
    [
     "순차입금",
-    4427.9,
+    4227.9,
     4148.72,
     4392.77,
     4582.09,
@@ -7193,7 +7243,7 @@
    ],
    [
     "총차입금",
-    5226.03,
+    4626.03,
     5253.21,
     5023.28,
     5187.91,
@@ -7203,7 +7253,7 @@
    ],
    [
     "순차입금",
-    4324.63,
+    3724.63,
     4232.06,
     4148.72,
     4115.7,

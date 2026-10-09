@@ -17,6 +17,11 @@
   섹션 머리·KPI 위 '모델 상태' 한 줄(partial 사유는 quality 필드로 되짚는다. 모델이 사유를 따로 적지 않으므로)·허브 '폴백 사유' 열·KPI 타일;
   허브 고정 각주(마지막 갱신은 입력 파일의 기록만 — 시계를 읽지 않는다 · 출처 · 단위 · 면책); 모집단 밖 모델(피합병 010620)도 허브 표에
   '모집단 외' 로 올린다(빠뜨리지 않음); 모바일(360px) — .grid2 는 min(360px,100%) · .wrap 가로 스크롤.
+  라운드 7 (p): 조정EPS 행(kship_model.py one_offs_detected 회사만)이 있으면 KPI 'EPS x원 (조정 y원)'·허브 EPS 칸 data-adj+괄호(연도별 임계 이상 다를 때만),
+  손익표에 EPS 바로 아래 들여쓴 하위 행, KPI PER 타일에 '모델 TTM PER a (조정 b)'(종가 ÷ Σ 마지막 4실적분기 — 외부 aik TTM 과 따로), 가정 패널에 의심 분기 항목.
+  보고 EPS 가 1차 값(data-v·정렬·summary.fy.eps 불변) — '실적은 실적'. 'PER 현재' 는 12M fwd(추정 분기만)라 값 불변, 툴팁만.
+  라운드 7 수정(2026-10-09): 손익표 하위 행 라벨은 모델 라벨(net_panel·원장 폴백 문구 포함) + '└ ' 접두 — 고정 문구로 덮지 않는다; 가정 패널 '법인세율' 은
+  tax_path 분기(이월결손 램프는 '유지값 → 22%' + 유지/램프 분기, 툴팁에 tax_schedule); 허브 폴백 툴팁은 eligibility 의 Σshare 문장을 붙인다.
   section_for_stock(stock) -> html | ""   회사 페이지 훅(kship_page/kship_parts 의 _model_section)이 부른다.
                                           모델 json 이 없으면 빈 문자열 — 빈 칸으로 흉내 내지 않는다.
   build_models_hub(models_dir) -> html    argus/kship/models.html — 56사 표(역할·FY2026E~28E·PER/PBR·status), 정렬·검색.
@@ -70,26 +75,41 @@ DRIVER_KO = {
 # 라운드 3(MODEL_SPEC §5-5) 라벨 — 값이 아니라 표기. 신규수주는 forecast_panel base 를 행에 더한 것이며 보정된 수주 예측이 아니다.
 NEW_ORDERS_LABEL = "신규수주 포함(forecast_panel base, 미보정)"
 NEW_ORDERS_FALLBACK_LABEL = "신규수주 포함(forecast_panel covered_scope 폴백, 미보정·저신뢰)"
+# 라운드 7(2026-10-08): 폴백 사슬 3단 — 패널 신규수주가 공시 체결 속도의 50% 미만이면 공시 계약 원장 체결 분기 min/median/max 를 신규수주로(HJ重).
+NEW_ORDERS_LEDGER_LABEL = "신규수주 포함(공시 계약 원장 체결 속도 폴백, 미보정·저신뢰)"
 NEW_ORDERS_EXCL_LABEL = "신규수주 미포함(2026Q2 잔고 소진분만)"
 COHORT_MODE_KO = {"reference_anchor": "레퍼런스 앵커(수주연도→등급)", "ledger_relative": "원장 상대등급"}
 SCENARIO_KO = collections.OrderedDict([("existing_only", "기존 잔고만"), ("conservative", "보수"), ("base", "기준(base)"), ("optimistic", "낙관")])
 SCENARIO_COLORS = {"existing_only": "#5d6675", "conservative": "#9085e9", "base": "#3987e5", "optimistic": "#199e70"}
 # 영업외 세부 행 — 값(|v| ≥ 0.05억)이 한 칸이라도 있을 때만 손익표에 그린다(전부 0 인 '환관련손익(모델 추정분)' 로 표를 늘리지 않는다).
 NONOP_DETAIL = ("이자손익", "외환손익", "파생상품손익", "기타금융손익", "환관련손익", "기타영업외손익", "지분법손익", "중단사업이익")
-SUB_ROWS = set(NONOP_DETAIL) | {"매출조선신규", "OP조선신규"}          # 들여쓴 하위 행
-ROW_LABEL_KO = {"매출조선신규": "└ 신규수주 매출(forecast_panel base · 매출조선에 포함)",
-                "OP조선신규": "└ 신규수주 OP(매출조선신규 × 타겟 OPM · OP조선에 포함)"}
+SUB_ROWS = set(NONOP_DETAIL) | {"매출조선신규", "OP조선신규", "조정EPS"}          # 들여쓴 하위 행
+SUB_PREFIX = "└ "                     # 신규수주·조정EPS 하위 행 머리 — 라벨 앞에만 붙인다(라벨 본문은 모델 것)
+# 모델이 label 을 비웠을 때만 쓰는 짧은 표기(접두 없음). 라운드 7(2026-10-09 검증 수정): 모델 라벨이 우선 — net_panel(공시 상계)·ledger_signing_rate(원장 체결 속도)
+# 문구는 kship_model.py row_labels 가 적으므로 고정 문구로 덮으면 페이지가 폴백 사슬을 숨긴다.
+ROW_LABEL_KO = {"매출조선신규": "신규수주 매출(매출조선에 포함)",
+                "OP조선신규": "신규수주 OP(매출조선신규 × 타겟 OPM · OP조선에 포함)",
+                "조정EPS": "조정 EPS(일회성 의심 분기 세후 차감 · 모델 추정)"}
+# 세율 경로(kship_model.py _tax_rate ①eff12 ②median_pos8 ③default · _tax_carryforward carryforward_ramp) → 가정 패널 설명. 값·분기표는 모델 필드만 읽는다
+# (2026-10-09 검증 수정 — '3년 유효세율 5~27% 클립' 고정 문구가 이월결손 램프 회사의 각주와 모순). 모르는 경로는 tax_basis 문장 그대로.
+TAX_PATH_KO = {"eff12": "최근 12분기 유효세율(5~27% 안)", "median_pos8": "최근 8분기 양(+)세전 분기 중위",
+               "default": "법정세율 근사 22%(유효세율 범위 밖)", "carryforward_ramp": "이월결손 경로"}
+# 조정EPS 병기 임계(원). 조정EPS 행(kship_model.py one_offs_detected 가 있는 회사만) 자체가 게이트라 스위치는 없고, 연도·분기별로 보고 EPS 와
+# 이 이상 다를 때만 괄호를 그린다(같은 값 두 번 쓰기 금지 · selfcheck_models 가 같은 값으로 쌍방 검사). 2026-10-08 오너 결정.
+ADJ_EPS_MIN_DIFF_WON = 0.05
 # T6 D7 — `status` 는 데이터 완전성, 드라이버 폴백 사유는 `driver_fallback`(kship_model.py DRIVER_FALLBACKS). 둘을 한 칸에 섞어 읽히지 않게 따로 표기한다.
 # 코드는 모델 값 그대로(정렬·grep 용), 뜻은 한글. 뜻 문장은 kship_model.py 의 채택 조건(CORR_MIN 0.30 · 단일 검정 5% · LINK_MIN_N 4 · OOS ×1.10)을 옮긴 것.
 DRIVER_FALLBACK_KO = collections.OrderedDict([
     ("none", "폴백 없음"), ("oos", "OOS 기각 → 추세 폴백"), ("significance", "유의성 미달 → 추세 폴백"),
-    ("n", "표본 부족 → 추세 폴백"), ("corr", "상관 미달 → 추세 폴백"), ("no_link", "고객 연결 없음 → 추세 폴백")])
+    ("n", "표본 부족 → 추세 폴백"), ("corr", "상관 미달 → 추세 폴백"), ("eligibility", "연동 자격 미달 → 추세 폴백"),
+    ("no_link", "고객 연결 없음 → 추세 폴백")])
 DRIVER_FALLBACK_DESC = {
     "none": "계획한 드라이버(고객 연동·선표·종속사 합산)를 그대로 채택 — 폴백 아님",
     "oos": "고객 연동 후보가 유의성은 통과했지만 동결 백테스트(freeze 2025Q2 · 4분기 매출 WAPE)에서 추세+계절성 × 1.10 보다 나빠 기각(결정 ⓘ)",
     "significance": "고객 연동 후보의 상관이 단일 검정 5% 임계 r(df=n−2) 미달",
     "n": "고객 연동 회귀 짝 수 n 이 최소치 4 미달",
     "corr": "고객 연동 후보의 최대 상관이 0.30 미달",
+    "eligibility": "고객 링크가 특수관계자 매출(related) 만이고 비중 합이 5% 미달 — 격자·OOS 전에 후보 자격에서 기각(라운드 7 L5)",
     "no_link": "고객 조선사 연결(suppliers.json)·선표·종속사가 없어 매출 추세+계절성으로 추정",
 }
 STATUS_RULE = "status 는 데이터 완전성만 — fin ≥ 8분기 · 항등식 · 추정 ≥ 10분기 · 별도 보충 없음 · 최신 완결 분기(T6 D7). 드라이버 폴백은 driver_fallback 으로 따로"
@@ -166,6 +186,11 @@ def fmt_pct(v, d=1):
     return _nz(("%%.%df%%%%" % d) % (v * 100)) if _num(v) else "—"
 
 
+def fmt_pct_r4(v):
+    """r4 저장 비율을 소수 손실 없이(0.0045 → 0.45% · 0.22 → 22%). basis 문장은 미반올림 값을 %.1f 로 적어 1자리로 다시 반올림하면 0.4/0.5 처럼 어긋난다."""
+    return _nz(("%.2f" % (v * 100)).rstrip("0").rstrip(".") + "%") if _num(v) else "—"
+
+
 def fmt_pct100(v, d=1):
     """이미 % 단위인 값(백테스트 WAPE 등)."""
     return _nz(("%%.%df%%%%" % d) % v) if _num(v) else "—"
@@ -217,7 +242,13 @@ def new_orders_state(model):
     if inc is True:
         det = []
         fb = bool(no.get("fallback"))
-        if fb:
+        ledger = no.get("source_field") == "ledger_signing_rate"
+        if ledger:
+            lr = no.get("ledger_rate") if isinstance(no.get("ledger_rate"), dict) else {}
+            ratio = lr.get("panel_to_ledger_ratio") if _num(lr.get("panel_to_ledger_ratio")) else (no.get("ledger_crosscheck") or {}).get("panel_to_ledger_ratio")
+            det.append("폴백 ledger_signing_rate(패널 신규수주가 공시 체결 속도의 %s%s)"
+                       % (("%.0f%%" % (ratio * 100)) if _num(ratio) else "—", (" · 원장 표본 %s분기" % lr["n_quarters_used"]) if _num(lr.get("n_quarters_used")) else ""))
+        elif fb:
             det.append("폴백 %s(전범위 new_order_revenue 없음)" % (no.get("source_field") or "covered_scope_new_revenue"))
         if no.get("via"):
             det.append("종속 %s 모델 경유" % no["via"])
@@ -233,7 +264,7 @@ def new_orders_state(model):
             det.append("calibrated=false")
         if fb and no.get("fallback_note"):
             det.append(str(no["fallback_note"]))
-        return "included", (NEW_ORDERS_FALLBACK_LABEL if fb else NEW_ORDERS_LABEL), " · ".join(det) or (no.get("note") or "")
+        return "included", (NEW_ORDERS_LEDGER_LABEL if ledger else NEW_ORDERS_FALLBACK_LABEL if fb else NEW_ORDERS_LABEL), " · ".join(det) or (no.get("note") or "")
     if inc is False:
         return "excluded", NEW_ORDERS_EXCL_LABEL, (no.get("note") or "forecast_panel 값 없음")
     return "n/a", "", ""
@@ -282,6 +313,10 @@ def driver_fallback_info(model):
             det.append(o)
         if rj.get("note"):
             det.append(str(rj["note"]))
+    elif code == "eligibility":
+        el = rj.get("eligibility") if isinstance(rj.get("eligibility"), dict) else {}
+        if el.get("reason"):
+            det.append(str(el["reason"]))
     elif code == "no_link":
         d = _first_driver_with(model, "type")
         if d.get("basis"):
@@ -411,18 +446,43 @@ def window_quarters(model):
     return act[-N_ACTUAL:], est[:N_EST]
 
 
+def adj_differs(eps, eps_adj):
+    """조정EPS 를 병기할 분기/연도인가 — 둘 다 숫자이고 차이가 ADJ_EPS_MIN_DIFF_WON 을 넘을 때만(같은 값을 두 번 쓰지 않는다)."""
+    return bool(_num(eps) and _num(eps_adj) and abs(eps_adj - eps) > ADJ_EPS_MIN_DIFF_WON)
+
+
+def ttm_per(model):
+    """모델 TTM PER(보고·조정) — 마지막 4실적분기 Σ EPS·Σ 조정EPS 로 종가(valuation.price.close)를 나눈다.
+    조정EPS 행이 없거나 4분기 셀이 모자라면 None. Σ ≤ 0 또는 종가 없음이면 per 는 None('—' — valuation.per_now 가 None 일 때와 같은 표기).
+    외부 TTM(prices.json pe_ttm, aik 순이익 기준)과 출처를 섞지 않도록 따로 적는 값이다."""
+    rm = row_map(model)
+    if "조정EPS" not in rm or "EPS" not in rm:
+        return None
+    qs = list((model.get("periods") or {}).get("quarters") or [])
+    la = (model.get("periods") or {}).get("last_actual") or model.get("origin")
+    last4 = [q for q in qs if la and q <= la][-4:]
+    cells = [(cell(rm["EPS"], q), cell(rm["조정EPS"], q)) for q in last4]
+    if len(last4) < 4 or any(a is None or b is None for a, b in cells):
+        return None
+    eps_ttm, adj_ttm = sum(a["v"] for a, _ in cells), sum(b["v"] for _, b in cells)
+    close = ((model.get("valuation") or {}).get("price") or {}).get("close")
+    per = lambda s: (close / s) if (_num(close) and s > 0) else None     # noqa: E731
+    return {"eps_ttm": eps_ttm, "eps_ttm_adj": adj_ttm, "per_ttm": per(eps_ttm), "per_ttm_adj": per(adj_ttm), "quarters": last4}
+
+
 def model_summary(model):
-    """허브 표·KPI 스트립 공용: FY별 매출/OP/OPM/EPS/PER/PBR + 현재 PER/PBR + status."""
+    """허브 표·KPI 스트립 공용: FY별 매출/OP/OPM/EPS(+조정EPS)/PER/PBR + 현재 PER/PBR + status."""
     rm = row_map(model)
     out = {"fy": {}, "per_now": (model.get("valuation") or {}).get("per_now"),
            "pbr_now": (model.get("valuation") or {}).get("pbr_now"),
            "status": (model.get("quality") or {}).get("status") or model.get("status")}
     for y in ("2025",) + FY_EST:
         rev, op, eps = cell(rm.get("매출액"), y, "a"), cell(rm.get("영업이익"), y, "a"), cell(rm.get("EPS"), y, "a")
-        per, pbr = cell(rm.get("PER"), y, "a"), cell(rm.get("PBR"), y, "a")
+        per, pbr, adj = cell(rm.get("PER"), y, "a"), cell(rm.get("PBR"), y, "a"), cell(rm.get("조정EPS"), y, "a")
         out["fy"][y] = {"rev": rev["v"] if rev else None, "op": op["v"] if op else None,
                         "opm": _ratio(op["v"] if op else None, rev["v"] if rev else None),
-                        "eps": eps["v"] if eps else None, "per": per["v"] if per else None, "pbr": pbr["v"] if pbr else None,
+                        "eps": eps["v"] if eps else None, "eps_adj": adj["v"] if adj else None,
+                        "per": per["v"] if per else None, "pbr": pbr["v"] if pbr else None,
                         "kind": (rev or op or eps or {}).get("kind")}
     if not out["status"]:
         q = model.get("quality") or {}
@@ -447,18 +507,27 @@ def _kpi_strip(model, price):
     tiles = []
     for y in FY_EST:
         f = s["fy"][y]
+        # 조정EPS 병기 — 보고 EPS 가 1차 값, 조정은 괄호(일회성 의심 분기 세후 차감 · 모델 추정). 같은 값이면 괄호 없음.
+        adj = (" (조정 %s원)" % fmt_won(f["eps_adj"])) if adj_differs(f["eps"], f["eps_adj"]) else ""
         tiles.append('<div class="est"><b>%s<small>억</small></b><span>FY%sE 매출 · %s</span>'
-                     '<i>OP %s억 · OPM %s · EPS %s원</i></div>'
+                     '<i>OP %s억 · OPM %s · EPS %s원%s</i></div>'
                      % (fmt_a(f["rev"]), E(y), "추정" if _is_est(f["kind"]) or f["kind"] is None else "실적",
-                        fmt_a(f["op"]), fmt_pct(f["opm"]), fmt_won(f["eps"])))
+                        fmt_a(f["op"]), fmt_pct(f["opm"]), fmt_won(f["eps"]), adj))
     v = model.get("valuation") or {}
     close = (v.get("price") or {}).get("close")
     as_of = (v.get("price") or {}).get("as_of") or ""
     ttm = ""
     if isinstance(price, dict) and (_num(price.get("pe_ttm")) or _num(price.get("pb"))):
         ttm = "TTM %s / %s(aikstockdata)" % (fmt_x(price.get("pe_ttm")), fmt_x(price.get("pb")))
-    tiles.append('<div><b>%s</b><span>현재 PER(12M fwd EPS %s원)</span><i>%s</i></div>'
-                 % (fmt_x(s["per_now"]), fmt_won(v.get("eps_fwd12m")), E(ttm) if ttm else "종가 %s원 · %s" % (fmt_won(close), E(as_of))))
+    sub = E(ttm) if ttm else "종가 %s원 · %s" % (fmt_won(close), E(as_of))
+    tp, per_title = ttm_per(model), ""
+    if tp:
+        # 모델 TTM PER(종가 ÷ Σ 마지막 4실적분기 EPS) — 외부 aik TTM(순이익 기준) 옆에 출처를 섞지 않고 따로. 조정은 Σ 가 다를 때만 괄호.
+        sub += " · 모델 TTM PER %s%s" % (fmt_x(tp["per_ttm"]), (" (조정 %s)" % fmt_x(tp["per_ttm_adj"])) if adj_differs(tp["eps_ttm"], tp["eps_ttm_adj"]) else "")
+        per_title = ' title="%s"' % E("모델 TTM PER = 종가 %s원 ÷ Σ EPS(%s~%s) %s원 · 조정 Σ %s원(일회성 의심 분기 세후 차감 · 모델 추정) · Σ ≤ 0 이면 — · aik TTM 은 외부값(기준 다름)"
+                                      % (fmt_won(close), tp["quarters"][0], tp["quarters"][-1], fmt_won(tp["eps_ttm"]), fmt_won(tp["eps_ttm_adj"])))
+    tiles.append('<div%s><b>%s</b><span>현재 PER(12M fwd EPS %s원)</span><i>%s</i></div>'
+                 % (per_title, fmt_x(s["per_now"]), fmt_won(v.get("eps_fwd12m")), sub))
     tiles.append('<div><b>%s</b><span>현재 PBR(최근 BPS %s원)</span><i>%s</i></div>'
                  % (fmt_x(s["pbr_now"]), fmt_won(v.get("bps_latest")), "종가 %s원 · %s" % (fmt_won(close), E(as_of))))
     state, no_label, no_detail = new_orders_state(model)
@@ -472,7 +541,7 @@ def _kpi_strip(model, price):
 # 손익 행 순서. 영업외 세부(NONOP_DETAIL)는 금융손익 뒤·세전이익 앞에 두고, 값이 있을 때만 그린다.
 # 금융손익 아래 세부 4행(이자·외환·파생·기타금융 — T4, 합 = 금융손익)은 실적 분기만 값이 있고, 환관련손익(조선사 공시 노출 × Δ환율 추정)과는 별개다.
 PNL_ORDER = ["매출액", "매출원가", "매출총이익", "판관비", "영업이익", "OPM", "EBITDA", "금융손익", "이자손익", "외환손익", "파생상품손익", "기타금융손익",
-             "환관련손익", "기타영업외손익", "지분법손익", "세전이익", "법인세비용", "당기순이익", "중단사업이익", "지배주주순이익", "EPS", "BPS"]
+             "환관련손익", "기타영업외손익", "지분법손익", "세전이익", "법인세비용", "당기순이익", "중단사업이익", "지배주주순이익", "EPS", "조정EPS", "BPS"]
 
 
 def _derived_opm_row(rm):
@@ -529,7 +598,7 @@ def _pnl_table(model):
                 tds.append('<td%s title="%s">%s</td>' % (' class="est"' if e else "", E(tip), v))
             cls = " ".join(x for x in ("derived" if r.get("_derived") else "", "sub" if key in SUB_ROWS else "") if x)
             full = r.get("label") or key
-            label = ROW_LABEL_KO.get(key) or full
+            label = (SUB_PREFIX + (r.get("label") or ROW_LABEL_KO[key])) if key in ROW_LABEL_KO else full
             body.append('<tr%s><th class="rowh" scope="row"%s>%s</th><td class="l mut">%s</td>%s</tr>'
                         % ((' class="%s"' % cls) if cls else "", (' title="%s"' % E(full)) if label != full else "", E(label), E(unit), "".join(tds)))
     return ('<section class="card"><h2>분기 손익 <em>최근 %d분기 실적(A) + %d분기 추정(E) · 억원(EPS·BPS 원) · 추정 칸은 음영, 칸에 마우스를 올리면 근거</em></h2>'
@@ -778,8 +847,8 @@ def _assumptions_panel(model, sls):
     pill = '<span class="pill est">가정</span>'
     items = []
 
-    def item(title, value, sub=""):
-        items.append('<div><b>%s%s</b><span>%s</span>%s</div>' % (value, pill, E(title), ('<i>%s</i>' % sub) if sub else ""))
+    def item(title, value, sub="", tip=""):
+        items.append('<div%s><b>%s%s</b><span>%s</span>%s</div>' % ((' title="%s"' % E(tip)) if tip else "", value, pill, E(title), ('<i>%s</i>' % sub) if sub else ""))
 
     dtype, dbasis = model_driver(model)
     oos = model_oos(model)
@@ -812,7 +881,7 @@ def _assumptions_panel(model, sls):
         if ks:
             item("타겟 OPM · %s" % (s.get("label") or s["key"]), fmt_pct(op[ks[0]]),
                  "%s %s → %s %s" % (E(ks[0]), fmt_pct(op[ks[0]]), E(ks[-1]), fmt_pct(op[ks[-1]])))
-    item("법인세율", fmt_pct(a.get("tax_rate")), "3년 유효세율 5~27% 클립")
+    item("법인세율", *tax_item(a))
     item("판관비율", fmt_pct(a.get("sga_ratio")), "최근 4분기 중위")
     if _num(a.get("interest_rate_debt")) or _num(a.get("interest_rate_asset")):
         item("이자율 차입 · 이자발생자산", "%s · %s" % (fmt_pct(a.get("interest_rate_debt")), fmt_pct(a.get("interest_rate_asset"))), "평균 잔액 × 실측 이자율")
@@ -827,6 +896,15 @@ def _assumptions_panel(model, sls):
     if one:
         item("알려진 일회성 %d건" % len(one), fmt_a(sum(o.get("amt") or 0 for o in one)) + "억",
              " · ".join("%s %s억 %s" % (E(o.get("q") or ""), fmt_a(o.get("amt")), E((o.get("note") or "")[:40])) for o in one[:4]))
+    # 모델이 face 만으로 탐지한 일회성 의심 분기(kship_model.py one_offs_detected) — 조정EPS 행의 근거. 주석 미확인이라 '의심'·'모델 추정' 을 뗄 수 없다.
+    det = [o for o in (a.get("one_offs_detected") or []) if isinstance(o, dict) and _num(o.get("eps_adj"))]
+    if det:
+        item("일회성 의심 %d분기(모델 탐지 — 주석 미확인)" % len(det),
+             " · ".join("%s 비영업손익 %s억" % (E(o.get("q") or ""), fmt_a(o.get("nonop"))) for o in det[:4]),
+             " · ".join("%s 조정EPS %s원(보고 %s원) — 초과 %s억 × (1 − %s) × 지배 %s = 세후 %s억 차감" % (
+                 E(o.get("q") or ""), fmt_won(o.get("eps_adj")), fmt_won(o.get("eps_reported")), fmt_a(o.get("excess_nonop")),
+                 fmt_pct(o.get("tax_rate_applied")), ("%.2f" % o["ctrl_share_applied"]) if _num(o.get("ctrl_share_applied")) else "—",
+                 fmt_a(o.get("excess_after_tax"))) for o in det[:4]))
     cons = model.get("consolidation") or {}
     subs = cons.get("subsidiaries") or []
     if subs:
@@ -843,6 +921,22 @@ def _assumptions_panel(model, sls):
                  '<div class="wrap"><table><tbody>%s</tbody></table></div>' % (E(m.get("label") or m.get("key") or ""), pill, "".join(rws)))
     return ('<section class="card"><h2>가정 <em>값은 전부 모델 가정 — 실적이 아니다 · 바꾸려면 xlsx 의 가정 셀</em></h2><div class="assum">%s</div>%s</section>'
             % ("".join(items), mods))
+
+
+def tax_item(a):
+    """가정 패널 '법인세율' (값, 설명, 툴팁) — assumptions.tax_path 로 분기. carryforward_ramp 는 '유지값 → 종착값' 과 유지/램프 분기(tax_carryforward),
+    툴팁에 tax_basis + tax_schedule 분기별. 값 자릿수는 r4 저장값 그대로(fmt_pct_r4) — basis 의 %.1f 와 다시 반올림해 어긋나지 않게. 나머지 경로는 1자리(basis 와 같다)."""
+    path = a.get("tax_path")
+    basis = a.get("tax_basis") or ""
+    if path == "carryforward_ramp":
+        cf = a.get("tax_carryforward") if isinstance(a.get("tax_carryforward"), dict) else {}
+        ramp = ("%s~%s 선형 램프" % (E(str(cf["ramp_from"])), E(str(cf["ramp_to"])))) if (cf.get("ramp_from") and cf.get("ramp_to")) else "램프 분기 없음(추정 전 구간 유지)"
+        hold = ("%s 까지 유지, " % E(str(cf["hold_until"]))) if cf.get("hold_until") else "유지 없이 "
+        sched = a.get("tax_schedule") if isinstance(a.get("tax_schedule"), dict) else {}
+        by_q = " · ".join("%s %s" % (q, fmt_pct_r4(sched[q])) for q in sorted(sched) if _num(sched.get(q)))
+        tip = " · ".join(x for x in (basis, ("분기별: " + by_q) if by_q else "") if x)
+        return "%s → %s" % (fmt_pct_r4(a.get("tax_rate")), fmt_pct_r4(a.get("tax_rate_terminal"))), "%s — %s%s" % (TAX_PATH_KO[path], hold, ramp), tip
+    return fmt_pct(a.get("tax_rate")), (TAX_PATH_KO.get(path) or E(basis or "세율 경로 미기재")), basis
 
 
 def _sub_text(s):
@@ -1256,7 +1350,7 @@ def build_models_hub(models_dir=None, write=True):
         no_title = (no_label + " · " + no_detail) if no_detail else no_label
         cells.append('<td class="l" data-v="%s"%s>%s</td>' % (
             {"included": 2, "excluded": 1}.get(no_state, 0), (' title="%s"' % E(no_title)) if no_title else "",
-            {"included": '<b class="wn">포함</b>' + ('<span class="mut"> 폴백</span>' if no_label == NEW_ORDERS_FALLBACK_LABEL else ""),
+            {"included": '<b class="wn">포함</b>' + ('<span class="mut"> 폴백</span>' if no_label in (NEW_ORDERS_FALLBACK_LABEL, NEW_ORDERS_LEDGER_LABEL) else ""),
              "excluded": '<span class="mut">미포함</span>'}.get(no_state, '<span class="mut">—</span>')))
         for y in FY_EST:
             f = s["fy"][y]
@@ -1266,8 +1360,15 @@ def build_models_hub(models_dir=None, write=True):
                                                              fmt_a(f["rev"])),
                       '<td class="est" data-v="%s">%s</td>' % (f["op"] if _num(f["op"]) else "", fmt_a(f["op"])),
                       '<td class="est" data-v="%s">%s</td>' % (round(f["opm"] * 100, 2) if _num(f["opm"]) else "", fmt_pct(f["opm"])),
-                      '<td class="est" data-v="%s">%s</td>' % (f["eps"] if _num(f["eps"]) else "", fmt_won(f["eps"]))]
-        cells += ['<td data-v="%s">%s</td>' % (s["per_now"] if _num(s["per_now"]) else "", fmt_x(s["per_now"])),
+                      # EPS 칸: data-v·본문 1차 값은 보고 EPS(정렬·selfcheck 불변). 조정EPS 가 임계 이상 다르면 data-adj + 괄호 2차 값.
+                      '<td class="est" data-v="%s"%s>%s%s</td>' % (
+                          f["eps"] if _num(f["eps"]) else "",
+                          (' data-adj="%s" title="%s"' % (f["eps_adj"], E("조정 EPS %s원 — 일회성 의심 분기 세후 차감(모델 추정) · 정렬·검사는 보고 EPS(data-v)" % fmt_won(f["eps_adj"])))) if adj_differs(f["eps"], f["eps_adj"]) else "",
+                          fmt_won(f["eps"]), (' <span class="mut">(조정 %s)</span>' % fmt_won(f["eps_adj"])) if adj_differs(f["eps"], f["eps_adj"]) else "")]
+        # 'PER 현재' = 종가 ÷ 12M fwd EPS(추정 분기만) — 실적 분기의 일회성 의심분이 들어가지 않으므로 값은 그대로, 뜻만 툴팁에.
+        fq = (model.get("valuation") or {}).get("eps_fwd_quarters") or []
+        per_title = (' title="%s"' % E("종가 ÷ 12M fwd EPS(%s~%s, 추정 분기만)%s" % (fq[0], fq[-1], " — 일회성 의심 분기 미포함(조정 불필요)" if "조정EPS" in row_map(model) else ""))) if fq else ""
+        cells += ['<td data-v="%s"%s>%s</td>' % (s["per_now"] if _num(s["per_now"]) else "", per_title, fmt_x(s["per_now"])),
                   '<td data-v="%s">%s</td>' % (s["pbr_now"] if _num(s["pbr_now"]) else "", fmt_x(s["pbr_now"]))]
         cls = {"full": "up", "partial": "wn", "no_fin": "dn"}.get(status, "tx3")
         # 상태 칸 툴팁: 규칙 + partial 사유(되짚은 것). 사유를 못 되짚으면 '미기재' — 지어내지 않는다.
@@ -1296,7 +1397,7 @@ def build_models_hub(models_dir=None, write=True):
  <div><b>%s</b><span>기준 분기</span></div>
  <div><b>%s</b><span>최근 생성</span></div>
 </div>
-<section class="card"><h2>실적 모델 — 섹터 표 <em>FY2026E~28E 매출·OP·OPM·EPS(전부 추정, 음영) · 현재 PER/PBR · 억원 · 머리글을 누르면 정렬 · 신규수주 '포함' 행의 FY 매출은 forecast_panel base(미보정)를 품음 — 매출 칸 툴팁에 보수~낙관 · '폴백 사유' 는 driver_fallback(status 와 별개), 상태 칸 툴팁에 partial 사유</em>
+<section class="card"><h2>실적 모델 — 섹터 표 <em>FY2026E~28E 매출·OP·OPM·EPS(전부 추정, 음영) · 현재 PER/PBR · 억원 · 머리글을 누르면 정렬 · 신규수주 '포함' 행의 FY 매출은 forecast_panel base(미보정)를 품음 — 매출 칸 툴팁에 보수~낙관 · '폴백 사유' 는 driver_fallback(status 와 별개), 상태 칸 툴팁에 partial 사유 · EPS 칸의 '(조정 …)' 은 조정EPS 행이 있는 회사만(일회성 의심 분기 세후 차감 · 모델 추정 · 정렬은 보고 EPS)</em>
 <span class="right"><input data-filter="#mtab" placeholder="회사·종목코드 검색" aria-label="회사 검색" style="background:var(--pn2);border:1px solid var(--ln);border-radius:6px;color:var(--tx);font:12px var(--sans);padding:4px 9px"></span></h2>
 <span class="disclaim">%s</span>
 <div class="wrap tall"><table id="mtab" class="pnl" data-sortable><thead>%s</thead><tbody>%s</tbody></table></div>

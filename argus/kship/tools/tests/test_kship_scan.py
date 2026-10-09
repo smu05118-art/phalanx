@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """kship_scan — 후보 풀·승격 규칙은 순수 함수라 DART 없이 검증한다."""
+import datetime
 import io
 import os
 import sys
@@ -222,6 +223,31 @@ class TestRejudge(unittest.TestCase):
         self.assertNotIn("187790", out["promoted"])
         self.assertIn("187790", [r["stock"] for r in out["rejected"]])
         self.assertEqual(out["carried"], [])
+
+
+class TestDefaultQuarter(unittest.TestCase):
+    """--quarter 기본값은 상수가 아니라 kship_lib.latest_quarter()(분기말 +50일·사업보고서 +95일) — kship_suppliers/kship_yards 와 같은 규칙.
+    CI(scan-kship.yml)는 항상 --quarter 를 넘기므로 기본값은 단독 실행에서만 쓰인다."""
+
+    def test_scan_without_quarter_uses_latest_quarter(self):
+        with mock.patch.object(S, "latest_quarter", return_value="2026Q3") as lq, mock.patch.object(S, "scan") as scan, \
+                mock.patch.object(sys, "argv", ["kship_scan.py", "--scan"]):
+            S.main()
+        lq.assert_called_once_with()
+        scan.assert_called_once_with("2026Q3")
+
+    def test_explicit_quarter_passes_through(self):
+        with mock.patch.object(S, "latest_quarter") as lq, mock.patch.object(S, "scan") as scan, \
+                mock.patch.object(sys, "argv", ["kship_scan.py", "--scan", "--quarter", "2025Q4"]):
+            S.main()
+        lq.assert_not_called()
+        scan.assert_called_once_with("2025Q4")
+
+    def test_latest_quarter_rule_boundaries(self):
+        # run_all.sh --print-quarter · scan-kship.yml 히어독과 같은 값: Q1~Q3 는 분기말 +50일, Q4 는 +95일부터 '최신'
+        for today, want in (("2026-10-08", "2026Q2"), ("2026-11-18", "2026Q2"), ("2026-11-19", "2026Q3"),
+                            ("2027-04-04", "2026Q3"), ("2027-04-05", "2026Q4")):
+            self.assertEqual(S.latest_quarter(datetime.date.fromisoformat(today)), want, today)
 
 
 if __name__ == "__main__":

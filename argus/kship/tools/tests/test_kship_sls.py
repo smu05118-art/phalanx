@@ -13,6 +13,7 @@ import os
 import statistics
 import sys
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
@@ -31,7 +32,17 @@ def _row(rcp, stock, typ="LNGC", ships=2, amt=700000.0, signed="2025-03-01", sta
             "note": note, "option_hint": False, "party_anon": True, "supersedes": supersedes}
 
 
-class TestSchedule(unittest.TestCase):
+class NoFinAssets:
+    """합성 테스트는 assets/fin/*.json 을 읽지 않는다(§14-6 ⑦, 2026-10-08) — S._fin_is(회사·레퍼런스 010620 모두)를 None 으로.
+    build()·calibration()·cohort_opm_calibration() 이 모두 이 함수로 fin 을 읽는다. 실자산은 TestRealAssets 만."""
+
+    def setUp(self):
+        p = mock.patch.object(S, "_fin_is", lambda stock: None)
+        p.start()
+        self.addCleanup(p.stop)
+
+
+class TestSchedule(NoFinAssets, unittest.TestCase):
     def test_linear_sum_equals_amount_and_inclusive_bounds(self):
         s = S.schedule(D(2025, 3, 1), D(2028, 6, 30), 1000.0)
         self.assertEqual(list(s)[0], "2025Q1")
@@ -61,7 +72,7 @@ class TestSchedule(unittest.TestCase):
         self.assertEqual(len(r), len(raw))
 
 
-class TestLedgerRules(unittest.TestCase):
+class TestLedgerRules(NoFinAssets, unittest.TestCase):
     def test_supersedes_drops_original_when_present(self):
         rows = [_row("A1", "010140", amt=700000.0), _row("A2", "010140", amt=720000.0, supersedes="A1"),
                 _row("B1", "010140", amt=100000.0, supersedes="ZZ")]          # 원본이 이미 없는 정정
@@ -125,7 +136,7 @@ class TestLedgerRules(unittest.TestCase):
         self.assertEqual(e3["end"], "2027-02-28")            # 2025-03-01 + 730일
 
 
-class TestReported3M(unittest.TestCase):
+class TestReported3M(NoFinAssets, unittest.TestCase):
     def _snap(self, q, ytd, prev_years=(9310000, 7433900)):
         return {"quarter": q, "ok": True, "orders": {"cur": "KRW", "rows": []},
                 "revenue": {"cur": "KRW", "period_cols": ["당기", "전기", "전전기"],
@@ -167,7 +178,7 @@ class TestReported3M(unittest.TestCase):
         self.assertEqual(r2["2026Q2"]["source"], "delivered_project_cumulative")
 
 
-class TestCohortAndHedge(unittest.TestCase):
+class TestCohortAndHedge(NoFinAssets, unittest.TestCase):
     def test_cohort_relative_position(self):
         rows = [_row("C%d" % i, "010140", "LNGC", 1, a, "2025-0%d-01" % (i % 9 + 1)) for i, a in
                 enumerate([300000.0, 330000.0, 340000.0, 350000.0, 420000.0])]
@@ -206,7 +217,7 @@ class TestCohortAndHedge(unittest.TestCase):
             self.assertAlmostEqual(b["hedged_krw_m"], b["usd_m"] * 1350.0, delta=1.0)   # usd_m 3자리 반올림 × 환율
 
 
-class TestDiagnostics(unittest.TestCase):
+class TestDiagnostics(NoFinAssets, unittest.TestCase):
     """검증자 추가 — 적용값은 바꾸지 않고 한계를 파일에 적는 진단들."""
 
     @staticmethod
@@ -297,12 +308,8 @@ class TestDiagnostics(unittest.TestCase):
         yards = {"010140": {"2025Q1": snap("2025Q1", 1000.0), "2025Q2": snap("2025Q2", 2500.0)}}
         cons = S.prepare_contracts(rows, yards, None, 1350.0)
         cm, yi = S.cohorts(cons)
-        real = S._fin_is
-        try:
-            S._fin_is = lambda stock: {"2025Q1": {"매출액(수익)": 1200.0, "영업이익": 60.0}, "2025Q2": {"매출액(수익)": 1400.0, "영업이익": 70.0}}
+        with mock.patch.object(S, "_fin_is", lambda stock: {"2025Q1": {"매출액(수익)": 1200.0, "영업이익": 60.0}, "2025Q2": {"매출액(수익)": 1400.0, "영업이익": 70.0}}):
             o = S.build("010140", cons, cm, yi, yards, None, "linear", 1350.0, "2025Q2")
-        finally:
-            S._fin_is = real
         r1, r2 = o["reconcile"]["2025Q1"], o["reconcile"]["2025Q2"]
         self.assertEqual((r1["consolidated_rev_m"], r1["exceeds_consolidated_pct"]), (1200.0, None))       # 1000 ≤ 1200
         self.assertEqual(r2["consolidated_rev_m"], 1400.0)
@@ -311,8 +318,17 @@ class TestDiagnostics(unittest.TestCase):
         self.assertTrue(any("부문 매출 3개월분 > 연결 매출" in w and "2025Q2" in w for w in o["warnings"]))
         self.assertIn("회사 전체 — 부문 아님", o["calibration"]["basis"])
 
+    def test_no_fin_assets_in_synthetic_build(self):
+        # NoFinAssets 가 걸린 합성 build — 회사(010140)·레퍼런스(010620) fin 을 읽지 않았다는 증명: 캘리브레이션 보류 · 미포 실측 대조 빈 사전
+        rows = [_row("C1", "010140", "LNGC", 1, 340000.0, "2025-02-01", end="2027-12-31")]
+        cons = S.prepare_contracts(rows, {}, None, 1000.0)
+        o = S.build("010140", cons, *S.cohorts(cons), {}, None, "linear", 1350.0, "2026Q2")
+        self.assertIsNone(o["calibration"]["calibrated_shift"])
+        self.assertTrue(o["calibration"]["basis"].startswith("fin 미수집"), o["calibration"]["basis"])
+        self.assertEqual(o["cohort_opm_calibration"]["actual_opm_fin_010620_by_year"], {})
 
-class TestReferenceAnchorAndCap(unittest.TestCase):
+
+class TestReferenceAnchorAndCap(NoFinAssets, unittest.TestCase):
     """MODEL_SPEC §5-2 — 코호트 기본 reference_anchor(수주연도 표), 대안 ledger_relative(*_alt), 잔고 캡 1/coverage."""
 
     @staticmethod
@@ -431,12 +447,8 @@ class TestReferenceAnchorAndCap(unittest.TestCase):
                 _row("C2", "010140", "LNGC", 1, 420000.0, "2025-03-01", end="2027-12-31")]
         cons = S.prepare_contracts(rows, {}, None, 1000.0)
         cm, yi = S.cohorts(cons)
-        real = S._fin_is
-        try:
-            S._fin_is = lambda stock: {"2026Q1": {"매출액(수익)": 1000.0, "영업이익": 100.0}, "2026Q2": {"매출액(수익)": 1000.0, "영업이익": 100.0}}
+        with mock.patch.object(S, "_fin_is", lambda stock: {"2026Q1": {"매출액(수익)": 1000.0, "영업이익": 100.0}, "2026Q2": {"매출액(수익)": 1000.0, "영업이익": 100.0}}):
             o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")
-        finally:
-            S._fin_is = real
         alt_t = statistics.median(o["target_opm_alt"][q]["opm"] for q in ("2026Q1", "2026Q2"))
         self.assertAlmostEqual(o["calibration"]["calibrated_shift"], 0.10 - o["cohort_opm_table"]["⑤초호황"], places=4)   # 기본 모드: 타겟 ⑤ 표 값 → 실측과의 차
         self.assertAlmostEqual(o["calibration_alt"]["calibrated_shift"], 0.10 - alt_t, places=4)
@@ -568,7 +580,7 @@ class TestReferenceAnchorAndCap(unittest.TestCase):
         self.assertIn("calibrated_shift_alt", r)
 
 
-class TestUpgradesR5(unittest.TestCase):
+class TestUpgradesR5(NoFinAssets, unittest.TestCase):
     """5차(2026-10-05, V3 sls 검증) — fx 부분 분기 표시 · 헤지 참고치(수주시점 평균환율) · 레퍼런스 HEDGE 실측값(미포 0.65 · 삼성重 1.00) ·
     코호트 OPM 표 캘리브레이션(--opm-table) · built_at 고정(--today)."""
 
@@ -675,14 +687,10 @@ class TestUpgradesR5(unittest.TestCase):
                 _row("C1", "010140", "LNGC", 1, 340000.0, "2025-02-01", end="2027-12-31")]
         cons = S.prepare_contracts(rows, {}, None, 1000.0)
         cm, yi = S.cohorts(cons)
-        real = S._fin_is
-        try:
-            S._fin_is = lambda stock: {"2026Q1": {"매출액(수익)": 1000.0, "영업이익": 100.0}, "2026Q2": {"매출액(수익)": 1000.0, "영업이익": 100.0}}
+        with mock.patch.object(S, "_fin_is", lambda stock: {"2026Q1": {"매출액(수익)": 1000.0, "영업이익": 100.0}, "2026Q2": {"매출액(수익)": 1000.0, "영업이익": 100.0}}):
             o = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", opm_table="assumed")
             oc = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2")                     # 기본 = reference_calibrated
             oc2 = S.build("010140", cons, cm, yi, {}, None, "linear", 1350.0, "2026Q2", opm_table="reference_calibrated")
-        finally:
-            S._fin_is = real
         self.assertEqual(S.OPM_TABLE_DEFAULT, "reference_calibrated")
         self.assertEqual(json.dumps(oc, ensure_ascii=False, sort_keys=True), json.dumps(oc2, ensure_ascii=False, sort_keys=True))   # 기본값 == 명시값
         self.assertEqual((o["cohort_opm_table_source"], oc["cohort_opm_table_source"]), ("assumed", "reference_calibrated"))

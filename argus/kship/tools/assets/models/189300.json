@@ -4,7 +4,7 @@
  "role": "equip",
  "origin": "2026Q2",
  "unit": "KRW_100M(억원)",
- "built_at": "2026-10-08",
+ "built_at": "2026-10-09",
  "status": "full",
  "driver_fallback": "no_link",
  "periods": {
@@ -5501,6 +5501,16 @@
   "tax_rate": 0.0922,
   "tax_basis": "최근 12분기 유효세율 9.2%(5~27% 안 — 그대로)",
   "tax_path": "eff12",
+  "tax_rate_terminal": null,
+  "tax_schedule": null,
+  "tax_carryforward": null,
+  "nol_evidence": {
+   "dta_eok": 142.84,
+   "dtl_eok": 2.16,
+   "retained_earnings_eok": 791.74,
+   "nol_cap_eok": 649.28,
+   "note": "참고용 — 인식된 DTA 의 이용은 법인세비용을 올리므로 저세율 지속 상한으로 쓰지 않음(삼성重 선례); 주석 이월결손금 표 미파싱"
+  },
   "sga_ratio": 0.3533,
   "fin_pl_gap": {
    "actual_median_4q": 0.77,
@@ -5529,6 +5539,36 @@
    "asset": "주석 이자수익 ÷ 평균 이자발생자산(2025Q2~2026Q2)",
    "debt": "주석 이자비용 ÷ 평균 총차입금(2025Q2~2026Q2)"
   },
+  "interest_rate_check": {
+   "asset": {
+    "note": 0.0126,
+    "cf": 0.0138,
+    "ratio": 0.91,
+    "note_last_q": "2026Q2",
+    "cf_window": {
+     "first": "2025Q3",
+     "last": "2026Q2",
+     "age_q": 0
+    },
+    "action": "note",
+    "reason": null
+   },
+   "debt": {
+    "note": 0.0433,
+    "cf": 0.0388,
+    "ratio": 1.11,
+    "note_last_q": "2026Q2",
+    "cf_window": {
+     "first": "2025Q3",
+     "last": "2026Q2",
+     "age_q": 0
+    },
+    "action": "note",
+    "reason": null
+   },
+   "rule": "주석/CF > 2.0 이면 경고; stale(주석 마지막 분기 ≠ 마지막 실적) 또는 주석 > 20% 이면 CF 연율로 클립 — CF 창(cf_window)이 주석 창 이상으로 최신일 때만, 더 오래되면 상한 초과만 상한으로 클립·그 외 주석 유지(CF 없으면 상한)"
+  },
+  "fx_in_other_nonop": null,
   "minority_share": 0.0,
   "payout": 0.2739,
   "dps_assumed": 200,
@@ -5550,7 +5590,17 @@
    "note": "운전자본(선수금·매출채권) 변동은 모델에 없다 — 조선사 선수금 사이클은 반영 안 됨"
   },
   "one_offs_note": "fin face 에서 일회성 분리 불가(주석 미파싱) → 가정 없음; 레퍼런스 일회성 표는 사례",
-  "one_offs_detected": []
+  "one_offs_detected": [],
+  "shares": {
+   "latest": 10221254,
+   "latest_q": "2026Q2",
+   "latest_src": "fin.shares.common_outstanding(2026Q2)",
+   "events": [],
+   "post_event": null,
+   "restated_quarters": [],
+   "dps_restated": null,
+   "rule": "실적 분기 주식수·EPS/BPS/DPS 는 당시 주식수 × 이후 병합·분할·무상증자 비율 누적곱(IAS 33.64 비교표시, 네이버 수정주가 이력과 정합; 셀 kind estimate); 추정 분기·PER/PBR now·EV 는 사건 반영 최신 유통주식수(aik 상장주식수 = 발행주식수 − 자기주식); 증자·IPO·소각은 환산 없이 최신 주식수만. prices.history_quarterly 가 수정주가(close_rule)인 동안만 옳다"
+  }
  },
  "fx_pnl": {
   "net_usd_exposure_m": null,

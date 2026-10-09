@@ -750,5 +750,468 @@ class TestRealModelLinks(unittest.TestCase):
         self.assertTrue(all(c["moved"] for c in fxp["chain"]))      # 매출액·영업이익 연쇄
 
 
+# ── 라운드 7 (p) — 조정EPS 행: 추정 = EPS 참조(identity, 변수 드라이버 행 없음), 의심 분기 = 세후 차감 산식 셀 ──────────────
+
+def _adjusted_eps_model(q="2026Q2", excess_after_tax=1000.0, ctrl_share=1.0):
+    """표본 모델에 kship_model.py 라운드 6 꼴의 조정EPS 행·assumptions.one_offs_detected 를 얹는다. 의심 분기 eps_adj = (지배NI − 세후 초과 × 지배 비중)×100/주식수(1자리)."""
+    m = _load_sample()
+    rows = {x["key"]: x for x in m["rows"]}
+    eps, la = rows["EPS"], m["periods"]["last_actual"]
+    ni, sh = rows["지배주주순이익"]["q"][q]["v"], rows["주식수"]["q"][q]["v"]
+    eps_adj = round((ni - excess_after_tax * ctrl_share) * 100 / sh, 1)
+    row = {"key": "조정EPS", "label": "조정 EPS(일회성 의심 분기의 초과 비영업손익 세후 차감 — 모델 추정)", "group": "주당", "unit": "원", "q": {}, "a": {}}
+    for qq, c in eps["q"].items():
+        if qq == q:
+            row["q"][qq] = {"v": eps_adj, "kind": "estimate", "basis": "지배NI %s억 − 세후 초과 %s억 × 지배 비중 %.2f ÷ 유통주식수 — 모의" % (ni, excess_after_tax, ctrl_share)}
+        elif qq <= la:
+            row["q"][qq] = {"v": c["v"], "kind": "actual", "src": "= EPS(일회성 의심 없음)"}
+        else:
+            row["q"][qq] = {"v": c["v"], "kind": "estimate", "basis": "= EPS(추정 구간은 일회성 미가정)"}
+    for y, c in (eps.get("a") or {}).items():
+        row["a"][y] = dict(c, v=(round(c["v"] - eps["q"][q]["v"] + eps_adj, 1) if (y == q[:4] and isinstance(c.get("v"), (int, float))) else c.get("v")))
+    m["rows"].insert(m["rows"].index(eps) + 1, row)
+    for v in (m.get("views") or {}).values():                       # 표본의 보고서 뷰는 키 목록 — 실물(kship_model.py)처럼 EPS 뒤에 조정EPS
+        if isinstance(v, list) and v and isinstance(v[0], list) and "EPS" in v[0]:
+            v[0].insert(v[0].index("EPS") + 1, "조정EPS")
+    m["assumptions"]["one_offs_detected"] = [{
+        "q": q, "nonop": 1500.0, "op": 300.0, "excess_nonop": 1282.05, "baseline_nonop_12q": 217.95, "tax_rate_applied": 0.22, "tax_rate_source": "분기 유효세율(모의)",
+        "ctrl_share_applied": ctrl_share, "ctrl_share_source": "그 분기 지배NI/NI", "excess_after_tax": excess_after_tax, "ni_ctrl_adj": round(ni - excess_after_tax * ctrl_share, 2),
+        "eps_reported": eps["q"][q]["v"], "eps_adj": eps_adj, "note": "모의 일회성"}]
+    return m, eps_adj
+
+
+class TestAdjustedEpsRow(unittest.TestCase):
+    """합성(표본 + 조정EPS 행): plan identity · 변수 drv 행 없음 · 추정/비의심 셀 '=EPS 셀' · 의심 셀 산식+FILL_EST+메모 · verify 0 mismatch · README 산식 줄 · VLOOKUP 키 1개."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.model, cls.eps_adj = _adjusted_eps_model()
+        cls.tmp = tempfile.mkdtemp(prefix="kship_xlsx_adj_")
+        cls.out = os.path.join(cls.tmp, "adj.xlsx")
+        cls.b = X.Builder(cls.model, fin=None)
+        cls.wb_built = cls.b.build()
+        X.save_atomic(cls.wb_built, cls.out)
+        cls.rep = X.verify(cls.out, cls.model)
+        cls.wb = load_workbook(cls.out)
+        cls.lay = X.Layout(cls.model)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_plan_identity_and_no_driver_row(self):
+        d = self.b.plan["조정EPS"]
+        self.assertEqual((d["type"], d["expr"]), ("identity", [("+", "EPS")]))
+        self.assertIn("일회성", d["note"])
+        vs = self.wb["변수"]
+        keys = [vs.cell(r, 1).value for r in range(X.DATA_ROW, vs.max_row + 1)]
+        self.assertNotIn("drv:조정EPS", keys)
+        self.assertIn("drv:매출액", keys)
+
+    def test_cells(self):
+        ws = self.wb["subQ"]
+        r, r_eps, r_ni, r_sh = _row_of(ws, "조정EPS"), _row_of(ws, "EPS"), _row_of(ws, "지배주주순이익"), _row_of(ws, "주식수")
+        lay = self.lay
+        for q in lay.est_quarters[:3]:                                                   # 추정 구간 = EPS 셀 참조
+            L = lay.letter(q)
+            self.assertEqual(ws["%s%d" % (L, r)].value, '=IFERROR(%s%d,"")' % (L, r_eps))
+        Lp = lay.letter("2026Q1")                                                        # 비의심 실적 분기도 = EPS 셀(값 직접 아님)
+        self.assertEqual(ws["%s%d" % (Lp, r)].value, '=IFERROR(%s%d,"")' % (Lp, r_eps))
+        self.assertNotEqual(ws["%s%d" % (Lp, r)].fill.fgColor.rgb[-6:], "FFF9DB")
+        Lq = lay.letter("2026Q2")                                                        # 의심 분기 = 산식 셀
+        c = ws["%s%d" % (Lq, r)]
+        self.assertTrue(c.value.startswith('=IFERROR((%s%d-(' % (Lq, r_ni)), c.value)
+        self.assertTrue(c.value.endswith('*100/%s%d,"")' % (Lq, r_sh)), c.value)
+        self.assertEqual(c.value, '=IFERROR((%s%d-(1000.0)*(1.0))*100/%s%d,"")' % (Lq, r_ni, Lq, r_sh))
+        self.assertEqual(c.fill.fgColor.rgb[-6:], "FFF9DB")
+        for needle in ("12분기 기준선", "보고 EPS", "재계산되지 않음", "조정EPS 산식(모델 추정", "1000.0·1.0"):
+            self.assertIn(needle, c.comment.text)
+        em = X.Emulator(self.wb)
+        self.assertAlmostEqual(em.value("subQ", "%s%d" % (Lq, r)), self.eps_adj, delta=X.tol_for("조정EPS", "원", self.eps_adj))
+        self.assertAlmostEqual(em.value("subQ", "%s%d" % (Lq, r)), (2243.33 - 1000.0) * 100 / 854.15, places=6)
+        self.assertEqual(ws["%s%d" % (Lq, r_eps)].value, '=IFERROR(%s%d*100/%s%d,"")' % (Lq, r_ni, Lq, r_sh))   # 보고 EPS 행은 그대로
+
+    def test_verify_readme_and_views(self):
+        self.assertEqual(self.rep["estimate_recalc"]["mismatch"], [])
+        self.assertEqual(self.rep["actual_recalc"]["mismatch"], [])
+        self.assertNotIn("조정EPS", self.rep["links"]["value_keys"])
+        txt = "\n".join(str(c.value) for row in self.wb["README"].iter_rows() for c in row if c.value is not None)
+        self.assertIn("· 조정EPS(일회성 의심 1분기: 2026Q2 보고 263→조정 %s원)" % format(round(self.eps_adj), ",d"), txt)
+        self.assertIn("조정EPS 는 EPS 참조(일회성 의심 분기만 산식 셀)", txt)
+        for name in ("분기", "연간예상"):
+            ws = self.wb[name]
+            self.assertEqual(sum(1 for r in range(X.DATA_ROW, ws.max_row + 1) if ws.cell(r, 1).value == "조정EPS"), 1, name)
+
+    def test_without_one_off_constants_falls_back_to_value(self):
+        m, eps_adj = _adjusted_eps_model()
+        del m["assumptions"]["one_offs_detected"][0]["excess_after_tax"]
+        wb = X.Builder(m, fin=None).build()
+        ws = wb["subQ"]
+        c = ws["%s%d" % (X.Layout(m).letter("2026Q2"), _row_of(ws, "조정EPS"))]
+        self.assertEqual(c.value, eps_adj)                                              # 상수 없음 → 기존 값 직접 경로(메모 '갭필')
+        self.assertIn("추정(실적 구간 갭필)", c.comment.text)
+
+
+REAL_ADJ = os.path.join(X.MODELS_DIR, "002380.json")
+
+
+@unittest.skipUnless(os.path.exists(REAL_ADJ) and os.path.exists(os.path.join(X.FIN_DIR, "002380.json")) and os.path.exists(os.path.join(X.ASSETS, "prices.json")),
+                     "실데이터(assets/models/002380.json·fin·prices) 없음")
+class TestRealAdjustedEps(unittest.TestCase):
+    """실데이터(케이씨씨 002380 — 2026Q2 일회성 의심): build_one → tmp, verify ok, 의심 분기 수식 셀 에뮬레이트 ≈ one_offs_detected.eps_adj, 다음 분기 '=EPS 셀'. 운영 xlsx 는 쓰지 않는다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.model = X.load_json(REAL_ADJ)
+        det = (cls.model.get("assumptions") or {}).get("one_offs_detected") or []
+        if not det or "조정EPS" not in {r["key"] for r in cls.model["rows"]}:
+            raise unittest.SkipTest("002380 모델에 조정EPS 행/one_offs_detected 없음")
+        cls.det = det
+        cls.tmp = tempfile.mkdtemp(prefix="kship_xlsx_real_adj_")
+        cls.out = os.path.join(cls.tmp, "002380_model.xlsx")
+        cls.rep = X.build_one(REAL_ADJ, out_path=cls.out, do_verify=True)
+        cls.wb = load_workbook(cls.out)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_verify_and_cells(self):
+        v = self.rep["verify"]
+        self.assertTrue(v["ok"], {k: v[k] for k in ("estimate_recalc", "actual_recalc") if k in v})
+        self.assertEqual(v["actual_recalc"]["mismatch"], [])
+        self.assertEqual(v["estimate_recalc"]["mismatch"], [])
+        ws, lay = self.wb["subQ"], X.Layout(self.model)
+        r, r_eps = _row_of(ws, "조정EPS"), _row_of(ws, "EPS")
+        em = X.Emulator(self.wb)
+        for o in self.det:
+            L = lay.letter(o["q"])
+            c = ws["%s%d" % (L, r)]
+            self.assertTrue(str(c.value).startswith('=IFERROR((%s%d-(' % (L, _row_of(ws, "지배주주순이익"))), c.value)
+            self.assertAlmostEqual(em.value("subQ", "%s%d" % (L, r)), o["eps_adj"], delta=X.tol_for("조정EPS", "원", o["eps_adj"]))
+            self.assertIn("재계산되지 않음", c.comment.text)
+        q1 = lay.est_quarters[0]
+        self.assertEqual(ws["%s%d" % (lay.letter(q1), r)].value, '=IFERROR(%s%d,"")' % (lay.letter(q1), r_eps))
+        vs = self.wb["변수"]
+        self.assertNotIn("drv:조정EPS", [vs.cell(rr, 1).value for rr in range(X.DATA_ROW, vs.max_row + 1)])
+
+
+# ── 라운드 7 수정 레인 xlsx_links — 이월결손 램프(assumptions.tax_schedule) 세율 링크·드라이버 셀·민감도 ① · 신규수주 문구(scenarios.meta) ──────────────
+
+TAX_LOW, TAX_TERMINAL = 0.0068, 0.22          # 합성 이월결손 램프 — 한화오션 042660 과 같은 시작·종착 세율
+
+
+def _tax_schedule_model(nonop_override=None):
+    """표본 모델에 kship_model.py 라운드 7 L2 꼴의 이월결손 램프(carryforward_ramp)를 얹는다 — origin 연도 분기는 저세율 유지, 이후 8분기 선형 램프 → 22%(r4).
+    추정 분기 법인세 = round(max(세전,0) × r4 세율, 2) 로 다시 계산하고 당기순이익·지배주주순이익(×1.005)·EPS·자본총계/지배주주지분 롤·자산총계·BPS·순차입금(−NI×50%)·연간을 따라 고친다.
+    nonop_override = {q: 기타영업외손익} — 세전 ≤ 0 분기를 만들 때(세전 항등식도 다시 계산). 반환 (모델, r4 스케줄)."""
+    m = _load_sample()
+    rows = {x["key"]: x for x in m["rows"]}
+    la = m["periods"]["last_actual"]
+    fq = [q for q in m["periods"]["quarters"] if q > la]
+    hold = [q for q in fq if q[:4] == la[:4]]
+    ramp = [q for q in fq if q[:4] > la[:4]]
+    sched = {q: TAX_LOW for q in hold}
+    sched.update({q: round(TAX_LOW + (TAX_TERMINAL - TAX_LOW) * (i + 1) / len(ramp), 4) for i, q in enumerate(ramp)})
+    stage = {q: ("유지" if q in hold else "램프 %d/%d" % (ramp.index(q) + 1, len(ramp))) for q in fq}
+    m["assumptions"].update({
+        "tax_rate": TAX_LOW, "tax_rate_terminal": TAX_TERMINAL, "tax_path": "carryforward_ramp", "tax_schedule": sched,
+        "tax_basis": "최근 8분기 중 세전 > 0 인 7분기(2024Q4~2026Q2) 법인세/세전 중위 0.7%·최근 4분기 중위 -1.2% 가 모두 5% 미만 → 이월결손 공제 중으로 보고 0.7% 를 {} 까지 유지, {}~{} 선형 램프로 법정세율 근사 22% 수렴 — 모의".format(hold[-1], ramp[0], ramp[-1]),
+        "tax_carryforward": {"median_pos8": TAX_LOW, "median_recent4": -0.0121, "n_pos8": 7, "quarters": ["2024Q4", "2025Q1", "2025Q2", "2025Q3", "2025Q4", "2026Q1", "2026Q2"],
+                             "hold_until": hold[-1], "ramp_from": ramp[0], "ramp_to": ramp[-1]}})
+
+    def v(k, q):
+        return rows[k]["q"][q]["v"]
+
+    def put(k, q, x, basis=None):
+        rows[k]["q"][q]["v"] = x
+        if basis:
+            rows[k]["q"][q]["basis"] = basis
+    prev = la
+    for q in fq:
+        if nonop_override and q in nonop_override:
+            put("기타영업외손익", q, nonop_override[q], "모의: 일회성 비영업손실(세전 ≤ 0 분기)")
+            put("세전이익", q, round(v("영업이익", q) + v("금융손익", q) + v("기타영업외손익", q), 2))
+        pt = v("세전이익", q)
+        put("법인세비용", q, round(max(pt, 0.0) * sched[q], 2), "max(세전, 0) × 세율 %.1f%%(이월결손 경로 %s — 모의)" % (sched[q] * 100, stage[q]))
+        put("당기순이익", q, round(pt - v("법인세비용", q), 2))
+        put("지배주주순이익", q, round(v("당기순이익", q) * 1.005, 2))
+        put("EPS", q, round(v("지배주주순이익", q) * 100 / v("주식수", q), 2))
+        put("자본총계", q, round(v("자본총계", prev) + v("당기순이익", q), 2))
+        put("지배주주지분", q, round(v("지배주주지분", prev) + v("지배주주순이익", q), 2))
+        put("자산총계", q, round(v("부채총계", q) + v("자본총계", q), 2))
+        put("BPS", q, round(v("지배주주지분", q) * 100 / v("주식수", q), 2))
+        put("순차입금", q, round(v("순차입금", prev) - v("당기순이익", q) * 0.5, 2))
+        prev = q
+    for y in sorted({q[:4] for q in fq}):                                             # 연간: 흐름 = 분기 합, 잔액 = Q4
+        qs = [q for q in m["periods"]["quarters"] if q[:4] == y]
+        for k in ("기타영업외손익", "세전이익", "법인세비용", "당기순이익", "지배주주순이익", "EPS"):
+            rows[k]["a"][y]["v"] = round(sum(v(k, q) for q in qs), 2)
+        for k in ("자본총계", "지배주주지분", "자산총계", "BPS", "순차입금"):
+            rows[k]["a"][y]["v"] = v(k, qs[-1])
+    return m, sched
+
+
+def _readme_text(wb):
+    return "\n".join(str(c.value) for row in wb["README"].iter_rows() for c in row if c.value is not None)
+
+
+class TestWordingHelpers(unittest.TestCase):
+    """순수 함수 — scenarios.meta → 신규수주 문구 키, tax_schedule 요약(회사 페이지 fmt_pct_r4 와 같은 자릿수)."""
+
+    def test_new_orders_wording(self):
+        self.assertEqual(X.new_orders_wording(None), ("panel", "panel"))
+        self.assertEqual(X.new_orders_wording({"source_field": "new_order_revenue"}), ("panel", "panel"))
+        self.assertEqual(X.new_orders_wording({"source_field": "covered_scope_new_revenue", "post_origin_mode": "net_panel"}), ("net_panel", "net_panel"))
+        self.assertEqual(X.new_orders_wording({"source_field": "ledger_signing_rate", "post_origin_mode": "net_panel"}), ("ledger_signing_rate", "net_panel"))
+        self.assertEqual(X.new_orders_wording({"source_field": "ledger_signing_rate"}), ("ledger_signing_rate", "panel"))     # 원장 폴백이 상계 모드보다 우선
+        self.assertEqual(set(X.NEW_ORDERS_LABEL_KO), {"ledger_signing_rate", "net_panel", "panel"})
+        self.assertEqual(set(X.NEW_ORDERS_POST_KO), {"net_panel", "panel"})
+
+    def test_pct_r4_and_tax_schedule_text(self):
+        self.assertEqual([X.pct_r4(x) for x in (0.0045, 0.0068, 0.22, 0.1134, 0.0)], ["0.45%", "0.68%", "22%", "11.34%", "0%"])
+        asm = {"tax_schedule": {"2026Q3": 0.0068, "2026Q4": 0.0068, "2027Q1": 0.0334, "2028Q4": 0.22}, "tax_rate_terminal": 0.22,
+               "tax_carryforward": {"hold_until": "2026Q4", "ramp_from": "2027Q1", "ramp_to": "2028Q4"}}
+        self.assertEqual(X.tax_schedule_text(asm), ("0.68%", "22%", "2026Q4 까지 유지 → 2027Q1~2028Q4 선형 램프"))
+        self.assertEqual(X.tax_schedule_text({"tax_schedule": {"2026Q3": 0.0045, "2028Q4": 0.2}}), ("0.45%", "20%", "2026Q3~2028Q4 선형 램프"))   # terminal·구간 없으면 스케줄 끝값·첫~끝
+
+
+class TestTaxScheduleLinks(unittest.TestCase):
+    """합성(표본 + 이월결손 램프): '세율' 스칼라 연결 해제 + tax_schedule 사유 · 드라이버 셀 = 분기별 세율(역산, r4 스케줄과 0.01억 반올림 안) · 법인세 = MAX(세전,0)×드라이버 ·
+    민감도 ① 은 첫 추정 분기 드라이버 셀 프로브 · README/3절 '세율' 에 terminal·램프 구간 병기 · verify ok."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.model, cls.sched = _tax_schedule_model()
+        cls.rows = {r["key"]: r for r in cls.model["rows"]}
+        cls.tmp = tempfile.mkdtemp(prefix="kship_xlsx_tax_")
+        cls.out = os.path.join(cls.tmp, "tax.xlsx")
+        cls.b = X.Builder(cls.model, fin=None)
+        X.save_atomic(cls.b.build(), cls.out)
+        cls.rep = X.verify(cls.out, cls.model)
+        cls.wb = load_workbook(cls.out)
+        cls.lay = X.Layout(cls.model)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_links_reason_names_schedule_not_guess(self):
+        lk = self.b.links["세율"]
+        self.assertFalse(lk["linked"])
+        self.assertTrue(lk["schedule"])
+        self.assertEqual(lk["reason"], "이월결손 램프(assumptions.tax_schedule, 0.68%→22%) — 분기별 세율 드라이버 행 사용")
+        self.assertNotIn("지주 자회사 합산", lk["reason"])
+        self.assertEqual(lk["n"], len(self.lay.est_quarters))
+        self.assertGreater(lk["max_err"], X.TOL_EOK)                                     # 단일 세율로는 재현 불가 — 그래도 사유는 스케줄
+        self.assertNotIn("세율", self.b.fit)
+        d = self.b.plan["법인세비용"]
+        self.assertEqual((d["type"], d.get("scalar"), d["schedule"]), ("tax", None, self.sched))
+        for k in ("판관비율", "지배주주비중"):                                           # 다른 스칼라 연결은 그대로
+            self.assertTrue(self.b.links[k]["linked"], k)
+
+    def test_driver_cells_follow_schedule(self):
+        vr, ws = self.wb["변수"], self.wb["subQ"]
+        drv, sc = _row_of(vr, "drv:법인세비용"), _row_of(vr, "sc:세율")
+        r_tax, r_pt = _row_of(ws, "법인세비용"), _row_of(ws, "세전이익")
+        self.assertEqual(vr.cell(drv, 2).value, "tax")
+        self.assertIn("분기별 세율(이월결손 램프, assumptions.tax_schedule)", vr.cell(drv, 3).value)
+        for q in self.lay.est_quarters:
+            L = self.lay.letter(q)
+            c = vr["%s%d" % (L, drv)]
+            self.assertIsInstance(c.value, float, (q, c.value))                           # =$D$n 스칼라 참조가 아니라 분기별 숫자
+            pt = self.rows["세전이익"]["q"][q]["v"]
+            self.assertLessEqual(abs(c.value - self.sched[q]), 0.005 / pt + 1e-9, (q, c.value, self.sched[q]))   # 법인세 0.01억 반올림만큼만 어긋난다
+            self.assertEqual(c.fill.fgColor.rgb[-6:], "FFF2AB")
+            self.assertIn("모델 가정 tax_schedule %s(r4)" % self.sched[q], c.comment.text)
+            self.assertEqual(ws["%s%d" % (L, r_tax)].value, '=IFERROR(MAX(%s%d,0)*변수!%s%d,"")' % (L, r_pt, L, drv))
+        self.assertAlmostEqual(vr["D%d" % sc].value, TAX_LOW, places=6)                 # 3절 '세율' 은 참고(시작 세율), 수식이 참조하지 않는다
+        note = vr.cell(sc, 5).value
+        self.assertTrue(note.startswith("참고(연결 안 됨: 이월결손 램프(assumptions.tax_schedule, 0.68%→22%) — 분기별 세율 드라이버 행 사용) — 모델 assumptions 값(시작 0.68% → terminal 22%, "
+                                        "2026Q4 까지 유지 → 2027Q1~2028Q4 선형 램프 — 분기별 값은 2절 drv:법인세비용 행)"), note)
+        self.assertNotIn("=$D$%d" % sc, [str(vr["%s%d" % (self.lay.letter(q), drv)].value) for q in self.lay.est_quarters])
+
+    def test_sensitivity_probes_driver_cell(self):
+        names = {p["name"]: p for p in self.rep["sensitivity"]}
+        self.assertNotIn("세율 +1%p → 법인세비용", names)                                  # 스칼라 프로브 대신
+        p = names["세율 2026Q3 드라이버 셀 +1%p → 법인세비용"]
+        self.assertTrue(p["ok"], p)
+        L = self.lay.letter("2026Q3")
+        self.assertEqual(p["changed"], ["변수!%s%d" % (L, _row_of(self.wb["변수"], "drv:법인세비용"))])
+        self.assertAlmostEqual(p["expected_delta"], self.rows["세전이익"]["q"]["2026Q3"]["v"] * 0.01, places=6)
+        self.assertAlmostEqual(p["delta"], p["expected_delta"], delta=X.TOL_EOK)
+        self.assertEqual([c["cell"].split("!")[0] for c in p["chain"]], ["subQ", "subQ"])
+        self.assertTrue(all(c["moved"] for c in p["chain"]))                               # 당기순이익·EPS 연쇄
+        self.assertEqual([x for x in self.rep["sensitivity"] if x.get("skipped")], [])
+        self.assertEqual(self.rep["estimate_recalc"]["mismatch"], [])
+        self.assertEqual(self.rep["actual_recalc"]["mismatch"], [])
+        self.assertEqual(self.rep["links"]["value_cells"], 0, self.rep["links"]["value_keys"])
+        self.assertTrue(self.rep["ok"], {k: self.rep[k] for k in ("checks", "estimate_recalc", "sensitivity")})
+        compact = X._compact({"out": self.out, "size_bytes": self.rep["size_bytes"], "links": self.b.links, "verify": self.rep})
+        self.assertEqual(compact["links"]["세율"], "n")
+        self.assertEqual(compact["sensitivity"], "%d/%d" % (len(self.rep["sensitivity"]), len(self.rep["sensitivity"])))
+
+    def test_readme_wording(self):
+        txt = _readme_text(self.wb)
+        self.assertIn("· 세율 0.68% → 22%(terminal, 2026Q4 까지 유지 → 2027Q1~2028Q4 선형 램프) — 이월결손 램프(assumptions.tax_schedule): 변수 drv:법인세비용 추정 분기 셀이 분기별 세율", txt)
+        self.assertIn("· 근거: " + self.model["assumptions"]["tax_basis"], txt)
+        self.assertIn("연결된 가정: 판관비율, 지배주주비중", txt)
+        self.assertIn("세율(이월결손 램프(assumptions.tax_schedule, 0.68%→22%) — 분기별 세율 드라이버 행 사용)", txt)
+        for bad in ("· 세율 22.00%", "· 세율 0.68% —", "지주 자회사 합산", "22.00%"):
+            self.assertNotIn(bad, txt)
+
+    def test_nonpositive_pretax_quarter_uses_schedule_value_and_probe_moves_on(self):
+        """세전 ≤ 0 분기는 법인세 0 → 역산 불가 → 드라이버 셀 = tax_schedule 값(메모), 민감도 ① 은 다음 양(+)세전 분기 드라이버 셀로."""
+        m, sched = _tax_schedule_model(nonop_override={"2026Q3": -3000.0})
+        rows = {r["key"]: r for r in m["rows"]}
+        self.assertLess(rows["세전이익"]["q"]["2026Q3"]["v"], 0)
+        self.assertEqual(rows["법인세비용"]["q"]["2026Q3"]["v"], 0.0)
+        tmp = tempfile.mkdtemp(prefix="kship_xlsx_tax_neg_")
+        try:
+            out = os.path.join(tmp, "neg.xlsx")
+            b = X.Builder(m, fin=None)
+            X.save_atomic(b.build(), out)
+            rep = X.verify(out, m)
+            wb, lay = load_workbook(out), X.Layout(m)
+            vr = wb["변수"]
+            drv = _row_of(vr, "drv:법인세비용")
+            c = vr["%s%d" % (lay.letter("2026Q3"), drv)]
+            self.assertEqual(c.value, sched["2026Q3"])
+            self.assertIn("모델 assumptions.tax_schedule(세전 ≤ 0 분기 — 법인세 0 이라 역산 불가)", c.comment.text)
+            self.assertAlmostEqual(vr["%s%d" % (lay.letter("2026Q4"), drv)].value, sched["2026Q4"], places=5)
+            names = {p["name"]: p for p in rep["sensitivity"]}
+            p = names["세율 2026Q4 드라이버 셀 +1%p → 법인세비용"]
+            self.assertTrue(p["ok"], p)
+            self.assertAlmostEqual(p["expected_delta"], rows["세전이익"]["q"]["2026Q4"]["v"] * 0.01, places=6)
+            self.assertEqual([x for x in rep["sensitivity"] if x.get("skipped")], [])
+            self.assertEqual(rep["estimate_recalc"]["mismatch"], [])
+            self.assertTrue(rep["ok"])
+            self.assertTrue(b.links["세율"]["schedule"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_all_nonpositive_pretax_marks_probe_skipped(self):
+        """추정 전 분기 세전 ≤ 0 이면 세율 프로브를 조용히 빼지 않고 skipped 항목으로 남기고(ok 집계 제외) --all 요약에 '+1 skipped'."""
+        fq = [q for q in self.model["periods"]["quarters"] if q > self.model["periods"]["last_actual"]]
+        m, sched = _tax_schedule_model(nonop_override={q: -5000.0 for q in fq})
+        tmp = tempfile.mkdtemp(prefix="kship_xlsx_tax_skip_")
+        try:
+            out = os.path.join(tmp, "skip.xlsx")
+            b = X.Builder(m, fin=None)
+            X.save_atomic(b.build(), out)
+            rep = X.verify(out, m)
+            sk = [p for p in rep["sensitivity"] if p.get("skipped")]
+            self.assertEqual([p["name"] for p in sk], ["세율 +1%p → 법인세비용"])
+            self.assertIn("추정 전 분기 세전 ≤ 0", sk[0]["why"])
+            self.assertNotIn("ok", sk[0])
+            self.assertEqual(rep["estimate_recalc"]["mismatch"], [])
+            self.assertTrue(rep["ok"], [p for p in rep["sensitivity"] if not p.get("ok")])
+            self.assertEqual(b.links["세율"], {"linked": False, "schedule": True, "n": len(fq), "max_err": None,
+                                                "reason": "이월결손 램프(assumptions.tax_schedule, 0.68%→22%) — 분기별 세율 드라이버 행 사용"})
+            vr = load_workbook(out)["변수"]
+            drv = _row_of(vr, "drv:법인세비용")
+            self.assertEqual([vr["%s%d" % (X.Layout(m).letter(q), drv)].value for q in fq], [sched[q] for q in fq])   # 전부 스케줄 값
+            compact = X._compact({"out": out, "size_bytes": rep["size_bytes"], "links": b.links, "verify": rep})
+            n_ok = sum(1 for p in rep["sensitivity"] if p.get("ok"))
+            self.assertEqual(compact["sensitivity"], "%d/%d +1 skipped" % (n_ok, len(rep["sensitivity"]) - 1))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestNewOrdersWording(unittest.TestCase):
+    """합성 시나리오 모델: 변수 매출조선신규 라벨·README 신규수주 줄·시나리오 셀 메모가 scenarios.meta(source_field·post_origin_mode)를 따른다."""
+
+    def test_label_readme_and_comment_follow_meta(self):
+        cases = ((None, "forecast_panel", "forecast_panel base 신규수주 매출", "통계 흐름, 공시 계약 개별 반영 아님"),
+                 ({"source_field": "covered_scope_new_revenue", "post_origin_mode": "net_panel", "fallback": True}, "forecast_panel",
+                  "forecast_panel base · 공시 상계 신규수주 매출", "공시 계약은 체결 분기별로 패널 신규수주와 상계(SLS 일정 유지)"),
+                 ({"source_field": "ledger_signing_rate", "post_origin_mode": "net_panel", "fallback": True}, "공시 계약 원장 체결 속도 폴백(저신뢰)",
+                  "공시 계약 원장 체결 속도 폴백 신규수주 매출", "공시 계약은 체결 분기별로 패널 신규수주와 상계(SLS 일정 유지)"))
+        for extra, src_txt, label, post in cases:
+            m, fq = _scenario_model(extra)
+            m["new_orders"] = {"scenario_in_rows": "base", "calibrated": False, "panel_status": "partial"}
+            b = X.Builder(m)
+            wb = b.build()
+            vr = wb["변수"]
+            self.assertEqual(vr.cell(_row_of(vr, "drv:매출조선신규"), 3).value, "매출조선신규 (%s, 억원 — 가정)" % label, extra)
+            txt = _readme_text(wb)
+            self.assertIn("· 신규수주 — %s base 시나리오를 매출조선신규 행에 포함(calibrated=False, status partial — %s). 보수/낙관/기존만 은 시나리오 시트에만(합산 안 함)" % (src_txt, post), txt)
+            self.assertEqual("공시 계약 개별 반영 아님" in txt, extra is None, extra)
+            ws = wb["시나리오"]
+            rows_s = {ws.cell(r, 1).value: r for r in range(X.DATA_ROW, ws.max_row + 1) if ws.cell(r, 1).value}
+            cm = ws.cell(rows_s["scn:conservative:신규수주매출"], 5).comment.text
+            self.assertTrue(cm.startswith(("공시 계약 원장 체결 속도 conservative " if extra and extra["source_field"] == "ledger_signing_rate" else "forecast_panel conservative ")), cm)
+            self.assertEqual(" · 폴백·저신뢰" in cm, bool(extra and extra.get("fallback")))
+
+
+REAL_CF = os.path.join(X.MODELS_DIR, "042660.json")
+REAL_LEDGER = os.path.join(X.MODELS_DIR, "097230.json")
+
+
+@unittest.skipUnless(os.path.exists(REAL_CF) and os.path.exists(REAL_LEDGER) and os.path.exists(os.path.join(X.ASSETS, "prices.json")),
+                     "실데이터(assets/models/042660.json·097230.json·prices) 없음")
+class TestRealTaxScheduleAndLedgerWording(unittest.TestCase):
+    """실데이터(한화오션 042660 — carryforward_ramp · HJ중공업 097230 — 원장 체결 속도 폴백): build_one → tmp(do_verify), verify ok, 세율 링크 사유 = tax_schedule,
+    드라이버 셀 ≈ tax_schedule(r4 5e-5 + 0.01억 반올림 안), 세율 드라이버 프로브 ok, 신규수주 문구 = scenarios.meta. 운영 xlsx 는 쓰지 않고 수치는 고정하지 않는다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp(prefix="kship_xlsx_real_tax_")
+        cls.reps, cls.models, cls.wbs = {}, {}, {}
+        for p in (REAL_CF, REAL_LEDGER):
+            m = X.load_json(p)
+            if not isinstance((m.get("assumptions") or {}).get("tax_schedule"), dict):
+                raise unittest.SkipTest("%s 모델에 tax_schedule 없음" % m["stock"])
+            out = os.path.join(cls.tmp, "%s_model.xlsx" % m["stock"])
+            cls.reps[m["stock"]] = X.build_one(p, out_path=out, do_verify=True)
+            cls.models[m["stock"]] = m
+            cls.wbs[m["stock"]] = load_workbook(out)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_tax_schedule_links_and_probe(self):
+        for stock, rep in self.reps.items():
+            m, wb, lay = self.models[stock], self.wbs[stock], X.Layout(self.models[stock])
+            asm, rows = m["assumptions"], {r["key"]: r for r in m["rows"]}
+            v = rep["verify"]
+            self.assertTrue(v["ok"], (stock, {k: v[k] for k in ("estimate_recalc", "actual_recalc") if k in v}, [p for p in v["sensitivity"] if not p.get("ok")]))
+            s0, st, _ = X.tax_schedule_text(asm)
+            lk = rep["links"]["세율"]
+            self.assertEqual((lk["linked"], lk["schedule"]), (False, True), stock)
+            self.assertEqual(lk["reason"], "이월결손 램프(assumptions.tax_schedule, %s→%s) — 분기별 세율 드라이버 행 사용" % (s0, st))
+            self.assertEqual(st, X.pct_r4(asm["tax_rate_terminal"]))
+            vr = wb["변수"]
+            drv = _row_of(vr, "drv:법인세비용")
+            for q in lay.est_quarters:
+                pt = rows["세전이익"]["q"][q]["v"]
+                c = vr["%s%d" % (lay.letter(q), drv)]
+                self.assertIsInstance(c.value, float, (stock, q, c.value))
+                tol = 5e-5 + (0.005 / pt if pt > 0 else 0.0)                               # r4 스케줄 반올림 + 법인세 0.01억 반올림
+                self.assertLessEqual(abs(c.value - asm["tax_schedule"][q]), tol, (stock, q, c.value, asm["tax_schedule"][q]))
+            probes = [p for p in v["sensitivity"] if p["name"].startswith("세율 ")]
+            self.assertEqual(len(probes), 1, [p["name"] for p in v["sensitivity"]])
+            self.assertIn("드라이버 셀 +1%p", probes[0]["name"])
+            self.assertTrue(probes[0]["ok"], probes[0])
+            self.assertTrue(all(c["moved"] for c in probes[0]["chain"]))
+            txt = _readme_text(wb)
+            self.assertIn("→ %s(terminal, " % st, txt)
+            self.assertIn("이월결손 램프(assumptions.tax_schedule)", txt)
+            self.assertNotIn("지주 자회사 합산", txt)                                        # 옛 추측 사유 — 백테스트 문구의 '지주 자회사 모델' 은 무관
+
+    def test_new_orders_wording_follows_meta(self):
+        for stock, wb in self.wbs.items():
+            meta = (self.models[stock].get("scenarios") or {}).get("meta") or {}
+            src_key, post_key = X.new_orders_wording(meta)
+            vr = wb["변수"]
+            self.assertEqual(vr.cell(_row_of(vr, "drv:매출조선신규"), 3).value, "매출조선신규 (%s, 억원 — 가정)" % X.NEW_ORDERS_LABEL_KO[src_key], stock)
+            txt = _readme_text(wb)
+            self.assertIn(" — %s). 보수/낙관/기존만 은 시나리오 시트에만" % X.NEW_ORDERS_POST_KO[post_key], txt)
+            self.assertEqual("공시 계약 원장 체결 속도 폴백(저신뢰) base 시나리오" in txt, src_key == "ledger_signing_rate", stock)
+        self.assertEqual(X.new_orders_wording(self.models["097230"]["scenarios"]["meta"])[0], "ledger_signing_rate")     # HJ = 원장 폴백(2026-10-09 모델)
+
+
+
 if __name__ == "__main__":
     unittest.main()

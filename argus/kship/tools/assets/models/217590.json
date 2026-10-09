@@ -4,7 +4,7 @@
  "role": "equip",
  "origin": "2026Q2",
  "unit": "KRW_100M(억원)",
- "built_at": "2026-10-08",
+ "built_at": "2026-10-09",
  "status": "partial",
  "driver_fallback": "significance",
  "periods": {
@@ -3148,7 +3148,7 @@
     "type": "trend_seasonal",
     "growth_yoy": 0.0,
     "opm_hist_median": 0.0115,
-    "basis": "고객 연동 격자 상관 0.92 가 단일 검정 5% 임계 r 0.95 미달(n=4) (suppliers_mentions·시차 1·수준·창 8) → 매출 추세+계절성",
+    "basis": "고객 연동 격자 상관 0.92 가 단일 검정 5% 임계 r 0.95 미달(n=4, n_eff=4) (suppliers_mentions·시차 1·수준·창 8) → 매출 추세+계절성",
     "customer_link_rejected": {
      "weights": {
       "009540": 0.3333,
@@ -3159,9 +3159,36 @@
      "corr": 0.915,
      "b": 0.0194,
      "n": 4,
+     "n_eff": 4,
      "lag_q": 1,
      "transform": "level",
      "window_q": 8,
+     "eligibility": {
+      "eligible": true,
+      "rule": "related 만이면 Σshare ≥ 5.0% · ifrs8/contract/text(basis 없음 포함) 있으면 통과 · 가중치는 바꾸지 않음",
+      "related_share_sum": null,
+      "bases": [
+       "text"
+      ],
+      "yards": [
+       {
+        "yard": "010140",
+        "basis": "text",
+        "share": null
+       },
+       {
+        "yard": "042660",
+        "basis": "text",
+        "share": null
+       },
+       {
+        "yard": "009540",
+        "basis": "text",
+        "share": null
+       }
+      ],
+      "reason": "근거 등급 text 있음 → 자격 통과"
+     },
      "grid": {
       "lags": [
        0,
@@ -3200,6 +3227,7 @@
         "transform": "level",
         "window_q": 8,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.915,
         "coef": 0.0194,
         "covers_fq": true
@@ -3210,6 +3238,7 @@
         "transform": "level",
         "window_q": 12,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.915,
         "coef": 0.0194,
         "covers_fq": true
@@ -3220,6 +3249,7 @@
         "transform": "level",
         "window_q": 19,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.915,
         "coef": 0.0194,
         "covers_fq": true
@@ -3230,6 +3260,7 @@
         "transform": "level",
         "window_q": 8,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.8406,
         "coef": 0.018,
         "covers_fq": true
@@ -3240,6 +3271,7 @@
         "transform": "level",
         "window_q": 12,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.8406,
         "coef": 0.018,
         "covers_fq": true
@@ -3250,6 +3282,7 @@
         "transform": "level",
         "window_q": 19,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.8406,
         "coef": 0.018,
         "covers_fq": true
@@ -3260,6 +3293,7 @@
         "transform": "level",
         "window_q": 8,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.7393,
         "coef": 0.0201,
         "covers_fq": true
@@ -3270,6 +3304,7 @@
         "transform": "level",
         "window_q": 12,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.7393,
         "coef": 0.0201,
         "covers_fq": true
@@ -3280,6 +3315,7 @@
         "transform": "level",
         "window_q": 19,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.7393,
         "coef": 0.0201,
         "covers_fq": true
@@ -3290,6 +3326,7 @@
         "transform": "level",
         "window_q": 8,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.7005,
         "coef": 0.0205,
         "covers_fq": true
@@ -3300,6 +3337,7 @@
         "transform": "level",
         "window_q": 12,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.7005,
         "coef": 0.0205,
         "covers_fq": true
@@ -3310,6 +3348,7 @@
         "transform": "level",
         "window_q": 19,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.7005,
         "coef": 0.0205,
         "covers_fq": true
@@ -3322,6 +3361,7 @@
         "transform": "level",
         "window_q": 8,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.915,
         "coef": 0.0194,
         "covers_fq": true
@@ -3334,6 +3374,7 @@
         "transform": "level",
         "window_q": 8,
         "n": 4,
+        "n_eff": 4,
         "corr": 0.915,
         "coef": 0.0194,
         "covers_fq": true
@@ -3416,12 +3457,16 @@
         0.0213
        ]
       },
-      "overfit_note": "후보 15개 중 최대 상관을 골랐다(다중비교 보정 없음) · 표본 4분기 · 4분기 이동합은 평활로 상관이 부풀고 공통 추세를 잡기 쉽다 — 과적합 경고"
+      "overfit_note": "후보 15개 중 최대 상관을 골랐다(다중비교 보정 없음) · 표본 4분기 · 4분기 이동합은 평활로 상관이 부풀고 공통 추세를 잡기 쉽다 — 과적합 경고 · 4분기 이동합 유효 표본 n_eff = n − 3(채택 조합 4)"
      },
      "significance": {
       "r_crit_p05_two_sided": 0.95,
+      "n_eff": 4,
+      "r_crit_p05_neff": 0.95,
+      "significant_p05_neff": false,
       "significant_p05_uncorrected": false,
-      "note": "단일 검정 기준 임계 r(df=n−2, 양측 5%) — 격자 후보 수만큼 보정하면 임계는 더 높다"
+      "gate": "n",
+      "note": "단일 검정 기준 임계 r(df=n−2, 양측 5%) — 격자 후보 수만큼 보정하면 임계는 더 높다 · 4분기 이동합 유효 표본 n_eff=n−3 기준 임계는 r_crit_p05_neff(기록만, 게이트는 gate)"
      },
      "selection_oos": {
       "adopted": false,
@@ -3515,6 +3560,16 @@
   "tax_rate": 0.22,
   "tax_basis": "최근 4분기 유효세율 43.0% 가 5~27% 밖; 세전 > 0 분기 중위 34.7% 도 5~27% 밖 → 법정세율 근사 22% 가정",
   "tax_path": "default",
+  "tax_rate_terminal": null,
+  "tax_schedule": null,
+  "tax_carryforward": null,
+  "nol_evidence": {
+   "dta_eok": 10.53,
+   "dtl_eok": null,
+   "retained_earnings_eok": 493.96,
+   "nol_cap_eok": 47.86,
+   "note": "참고용 — 인식된 DTA 의 이용은 법인세비용을 올리므로 저세율 지속 상한으로 쓰지 않음(삼성重 선례); 주석 이월결손금 표 미파싱"
+  },
   "sga_ratio": 0.0639,
   "fin_pl_gap": {
    "actual_median_4q": 5.21,
@@ -3543,6 +3598,32 @@
    "asset": "CF 이자수취 ÷ 평균 이자발생자산(2025Q3~2026Q2; 주석 이자수익 3분기 < 4)",
    "debt": null
   },
+  "interest_rate_check": {
+   "asset": {
+    "note": null,
+    "cf": 0.1751,
+    "ratio": null,
+    "note_last_q": "2026Q2",
+    "cf_window": {
+     "first": "2025Q3",
+     "last": "2026Q2",
+     "age_q": 0
+    },
+    "action": "cf",
+    "reason": null
+   },
+   "debt": {
+    "note": null,
+    "cf": null,
+    "ratio": null,
+    "note_last_q": "2026Q2",
+    "cf_window": null,
+    "action": null,
+    "reason": null
+   },
+   "rule": "주석/CF > 2.0 이면 경고; stale(주석 마지막 분기 ≠ 마지막 실적) 또는 주석 > 20% 이면 CF 연율로 클립 — CF 창(cf_window)이 주석 창 이상으로 최신일 때만, 더 오래되면 상한 초과만 상한으로 클립·그 외 주석 유지(CF 없으면 상한)"
+  },
+  "fx_in_other_nonop": null,
   "minority_share": 0.0,
   "payout": null,
   "dps_assumed": 50,
@@ -3564,7 +3645,17 @@
    "note": "운전자본(선수금·매출채권) 변동은 모델에 없다 — 조선사 선수금 사이클은 반영 안 됨"
   },
   "one_offs_note": "fin face 에서 일회성 분리 불가(주석 미파싱) → 가정 없음; 레퍼런스 일회성 표는 사례",
-  "one_offs_detected": []
+  "one_offs_detected": [],
+  "shares": {
+   "latest": 23831940,
+   "latest_q": "2026Q2",
+   "latest_src": "fin.shares.common_outstanding(2026Q2)",
+   "events": [],
+   "post_event": null,
+   "restated_quarters": [],
+   "dps_restated": null,
+   "rule": "실적 분기 주식수·EPS/BPS/DPS 는 당시 주식수 × 이후 병합·분할·무상증자 비율 누적곱(IAS 33.64 비교표시, 네이버 수정주가 이력과 정합; 셀 kind estimate); 추정 분기·PER/PBR now·EV 는 사건 반영 최신 유통주식수(aik 상장주식수 = 발행주식수 − 자기주식); 증자·IPO·소각은 환산 없이 최신 주식수만. prices.history_quarterly 가 수정주가(close_rule)인 동안만 옳다"
+  }
  },
  "fx_pnl": {
   "net_usd_exposure_m": null,
@@ -4294,7 +4385,7 @@
   },
   "identity_mismatches": [],
   "warnings": [
-   "매출 드라이버 폴백(고객 연동 격자 상관 0.92 가 단일 검정 5% 임계 r 0.95 미달(n=4) (suppliers_mentions·시차 1·수준·창 8)): 전년동기 × (1+g) 추세",
+   "매출 드라이버 폴백(고객 연동 격자 상관 0.92 가 단일 검정 5% 임계 r 0.95 미달(n=4, n_eff=4) (suppliers_mentions·시차 1·수준·창 8)): 전년동기 × (1+g) 추세",
    "감가상각비가 face·CF 에 없음(주석 미파싱) → EBITDA·EV/EBITDA 미산출",
    "금융손익 실적→추정 단절: 최근 4분기 실적 +1/-2/+10/+9(중위 +5억) → 추정 2026Q3 +2억(차 -3억, -57%) — 추정은 이자손익 + 기타금융 중위, 외환·파생 평가손익 0 가정(환율 효과는 환관련손익 행). 값은 바꾸지 않음 — 지배NI·EPS 해석 시 참고"
   ],

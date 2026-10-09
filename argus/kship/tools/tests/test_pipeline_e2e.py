@@ -7,7 +7,7 @@
       KSHIP_E2E_GIT=1      커밋 산출 재현 검사(summary.json 을 마지막으로 바꾼 커밋 트리를 꺼내 다시 만들어 바이트 비교, git 필요)
 
 세 겹으로 본다.
-  ① 검사기(selfcheck_models) 단위 — src 문법 파서·숫자 역파싱·스코프 규칙·보고 종류(consistency/freshness)·오류 주입(검사기가 공허하지 않음).
+  ① 검사기(selfcheck_models) 단위 — src 문법 파서·숫자 역파싱·스코프 규칙·보고 종류(consistency/freshness)·매출조선신규 재계산(원장 창·전환 조건·horizon 가드)·오류 주입(검사기가 공허하지 않음).
   ② 오프라인 재생성 — argus/kship(fin_cache 제외)+argus/kce/tools 를 임시 디렉터리에 두 벌 복사해 sls→model+xlsx→page→parts→hub 를
      죽은 프록시(네트워크 시도 즉시 실패) 아래 돌린다. 두 벌이 바이트까지 같아야 하고(sls 의 built_at 만 날짜), 재생성 트리는 교차 정합 실패 0
      (다른 레인의 알려진 결함 KNOWN_DEFECTS 패턴만 허용 — 패턴 밖은 실패) · 신선도 실패 0 이어야 한다. 그 뒤 사본에 오류를 주입해 검사기가
@@ -280,6 +280,125 @@ class TestSrcEval(unittest.TestCase):
         self.assertAlmostEqual(ev.eval("sls.reconcile.reported_segment_rev_m ← yards_cache 부문표(3개월분)", self.Q)[0], 555.555)
 
 
+def _panel_c(N_by_scn, K, quarters, pfld="covered_scope_new_revenue", excluded=("EP및특수선",), drop=()):
+    """합성 forecast_panel 회사 — N(KRW_million, 시나리오별 상수 또는 분기 목록) · 누적 인식 K(h)(매출 = N × K, 시나리오 공통 커널) · horizon = 1.. · coverage.excluded_segments."""
+    sc = {}
+    for scn, n in N_by_scn.items():
+        rows = []
+        for i, q in enumerate(quarters):
+            if q in drop:
+                continue
+            nv = n[i] if isinstance(n, (list, tuple)) else n
+            rows.append({"quarter": q, "horizon": i + 1, "new_orders": nv, pfld: nv * K[i]})
+        sc[scn] = {"quarterly": rows}
+    return {"stock": "000001", "origin": "2026Q2", "scenarios": sc, "coverage": {"excluded_segments": list(excluded)}}
+
+
+def _sls_c(origin="2026Q2", ledger=(), post=(), T_lens=()):
+    """합성 sls — ledger: (체결일, 억원, type) origin 까지 체결 · post: (체결일, 억원, type) origin 이후 체결. 일정 길이는 T_lens 순서대로 돌려 붙인다."""
+    cs = []
+    for i, (d, eok, t) in enumerate(list(ledger) + list(post)):
+        n = T_lens[i % len(T_lens)] if T_lens else 0
+        cs.append({"rcp": "r%d" % i, "type": t, "counted": True, "signed": d, "amt_krw_m": eok * 100.0, "schedule": {"q%d" % j: 1.0 for j in range(n)}})
+    cs.append({"rcp": "other", "type": "OTHER", "counted": True, "signed": "2026-08-20", "amt_krw_m": 99999.0, "schedule": {"a": 1.0}})   # OTHER 는 어디에도 안 든다
+    return {"origin": origin, "contracts": cs}
+
+
+class TestPanelNewOrdersExpected(unittest.TestCase):
+    """selfcheck panel_new_orders_expected — 모델 자기신고(ledger_rate.levels·source_field·kernel_mode)를 읽지 않고 패널·sls 에서 다시 센다(2026-10-09)."""
+    Q = ["2026Q3", "2026Q4", "2027Q1", "2027Q2"]
+    K = [0.0, 0.2, 0.5, 0.9]                                 # 누적 인식 → 역산 커널 k = {0:0, 1:0.2, 2:0.3, 3:0.4}
+    POST = [("2026-08-01", 400.0, "CONT"), ("2026-09-01", 300.0, "NAVAL")]     # 상계 D — NAVAL 은 폴백 회사(EP및특수선 제외)면 범위 밖
+
+    def _panel_mode(self, excluded=("EP및특수선",)):
+        panel = _panel_c({"conservative": 80000.0, "base": 100000.0, "optimistic": 120000.0}, self.K, self.Q, excluded=excluded)
+        sls = _sls_c(ledger=[("2026-05-01", 1500.0, "CONT")], post=self.POST, T_lens=(10,))      # 창 [2026Q2 1,500] → 비율 1,000/1,500 ≥ 0.5 · 체결 > 0 1분기 → 전환 없음
+        no = {"panel_field": "covered_scope_new_revenue", "source_field": "covered_scope_new_revenue", "kernel_mode": "backsolved"}
+        return panel, sls, no
+
+    def test_panel_mode_netting_excludes_out_of_scope_type(self):
+        panel, sls, no = self._panel_mode()
+        exp, tol, note, fails = SC.panel_new_orders_expected(panel, sls, no, "net_panel", self.Q)
+        self.assertEqual(fails, [])
+        self.assertEqual([round(exp[q], 6) for q in self.Q], [0.0, 120.0, 380.0, 740.0])          # net(2026Q3) = 1,000 − 400(NAVAL 300 제외)
+        self.assertIn("NAVAL", note)
+        panel2, _, _ = self._panel_mode(excluded=())                                                # 제외 부문 없으면 NAVAL 도 상계 → net 300
+        exp2 = SC.panel_new_orders_expected(panel2, sls, no, "net_panel", self.Q)[0]
+        self.assertEqual([round(exp2[q], 6) for q in self.Q], [0.0, 60.0, 290.0, 620.0])
+        exp3 = SC.panel_new_orders_expected(panel, sls, no, "exclude_sls", self.Q)[0]              # exclude_sls 는 D = 0
+        self.assertEqual([round(exp3[q], 6) for q in self.Q], [0.0, 200.0, 500.0, 900.0])
+        self.assertLess(tol, 0.02)
+
+    def test_panel_mode_flags_self_reported_switch_and_field(self):
+        panel, sls, no = self._panel_mode()
+        no2 = dict(no, source_field="ledger_signing_rate", panel_field="new_order_revenue", kernel_mode="aggregate_ratio",
+                   ledger_rate={"levels": {"conservative": 1500.0, "base": 1500.0, "optimistic": 1500.0}})
+        exp, _, _, fails = SC.panel_new_orders_expected(panel, sls, no2, "net_panel", self.Q)
+        self.assertIsNotNone(exp)                                                                   # None 반환 금지 — 재계산값으로 간다
+        self.assertTrue(any(f.startswith("source_field 'ledger_signing_rate' ≠ 전환 조건 재계산") for f in fails), fails)
+        self.assertTrue(any(f.startswith("panel_field 'new_order_revenue' ≠ 패널 재판정 'covered_scope_new_revenue'") for f in fails), fails)
+        self.assertTrue(any(f.startswith("kernel_mode 'aggregate_ratio' ≠ 재계산 'backsolved'") for f in fails), fails)
+
+    def _ledger_mode(self, opt_N=500000.0, cons_N=(7900.0,) * 4):
+        # 패널 base N 110억(상수) · 원장 창 2025Q4~2026Q2 [3,000 · 2,000 · 4,000](NAVAL 500 제외) → 비율 110/3,000 = 0.0367 → 전환. 낙관 패널 N 5,000억 > max 4,000 → 하한
+        panel = _panel_c({"conservative": list(cons_N), "base": 11000.0, "optimistic": opt_N}, self.K, self.Q)
+        sls = _sls_c(ledger=[("2025-11-15", 3000.0, "CONT"), ("2025-12-20", 500.0, "NAVAL"), ("2026-02-10", 2000.0, "LNGC"), ("2026-05-05", 4000.0, "CONT")],
+                     post=self.POST, T_lens=(10, 8, 12, 14, 6, 9))                                 # 일정 길이 10·8·12·14·6·9 → 중위 9.5 → T 10
+        no = {"panel_field": "covered_scope_new_revenue", "source_field": "ledger_signing_rate", "kernel_mode": "backsolved",
+              "ledger_rate": {"levels": {"conservative": 2000.0, "base": 3000.0, "optimistic": 5000.0}, "window_quarters": ["2025Q4", "2026Q1", "2026Q2"],
+                              "n_quarters_used": 3, "panel_to_ledger_ratio": 0.0367, "curve": "panel_kernel", "alt_linear_T": 10}}
+        return panel, sls, no
+
+    def test_ledger_mode_recomputes_levels_from_contracts(self):
+        panel, sls, no = self._ledger_mode()
+        exp, _, note, fails = SC.panel_new_orders_expected(panel, sls, no, "net_panel", self.Q)
+        self.assertEqual(fails, [])
+        self.assertEqual([round(exp[q], 6) for q in self.Q], [0.0, 520.0, 1380.0, 2540.0])       # N 3,000 · net(2026Q3) 2,600 · 커널 0/0.2/0.3/0.4
+        self.assertIn("N 3,000억", note)
+        # 자기신고 변조 — 수준·창·비율·T 모두 FAIL 로 드러나고 N 은 재계산값(exp 불변)
+        bad = json.loads(json.dumps(no))
+        bad["ledger_rate"]["levels"]["base"] = 3100.0
+        bad["ledger_rate"]["window_quarters"] = ["2026Q1", "2026Q2"]
+        bad["ledger_rate"]["panel_to_ledger_ratio"] = 0.05
+        bad["ledger_rate"]["alt_linear_T"] = 12
+        exp2, _, _, fails2 = SC.panel_new_orders_expected(panel, sls, bad, "net_panel", self.Q)
+        self.assertEqual(exp2, exp)
+        heads = [f.split(" ")[0] for f in fails2]
+        self.assertEqual(heads, ["ledger_rate.levels.base", "ledger_rate", "ledger_rate.panel_to_ledger_ratio", "ledger_rate"], fails2)
+        self.assertIn("3100.0 ≠ 원장 재계산 3000.00(median", fails2[0])
+        # 패널 모드라고 자기신고하면 전환 조건 재계산이 잡는다
+        pan = dict(no, source_field="covered_scope_new_revenue", ledger_rate=None)
+        exp3, _, _, fails3 = SC.panel_new_orders_expected(panel, sls, pan, "net_panel", self.Q)
+        self.assertEqual([round(exp3[q], 6) for q in self.Q], [0.0, 0.0, 22.0, 55.0])              # 패널 N 110 − 400 → 0 · 110 × 커널
+        self.assertEqual(len(fails3), 1)
+        self.assertIn("source_field 'covered_scope_new_revenue' ≠ 전환 조건 재계산(패널/원장 비율 0.0367 · 체결 > 0 3분기 · 창 2025Q4~2026Q2(3분기) · curve panel_kernel → ledger_signing_rate)", fails3[0])
+
+    def test_ledger_mode_linear_curve_when_a_scenario_kernel_is_not_backsolvable(self):
+        panel, sls, no = self._ledger_mode(cons_N=(7900.0, 7900.0, 8000.0, 7900.0))               # 보수 N 비상수 → 세 커널 중 하나 결손 → 선형 T=10
+        no["kernel_mode"], no["ledger_rate"]["curve"] = "linear_ledger_median", "linear_ledger_median"
+        exp, _, _, fails = SC.panel_new_orders_expected(panel, sls, no, "net_panel", self.Q)
+        self.assertEqual(fails, [])
+        self.assertEqual([round(exp[q], 6) for q in self.Q], [0.0, 260.0, 560.0, 860.0])         # (2,600 · 3,000 · 3,000)/10 누적
+        no["ledger_rate"]["alt_linear_T"] = 12
+        fails2 = SC.panel_new_orders_expected(panel, sls, no, "net_panel", self.Q)[3]
+        self.assertEqual(len(fails2), 1)
+        self.assertIn("curve/alt_linear_T linear_ledger_median/12 ≠ 재계산 linear_ledger_median/10(계약 일정 길이 6건 중위)", fails2[0])
+
+    def test_horizon_gap_skips_without_keyerror(self):
+        panel, sls, no = self._panel_mode()
+        gap = _panel_c({"conservative": 80000.0, "base": 100000.0, "optimistic": 120000.0}, self.K, self.Q, drop=("2027Q1",))
+        exp, tol, note, fails = SC.panel_new_orders_expected(gap, sls, no, "net_panel", self.Q)
+        self.assertEqual((exp, tol), (None, None))
+        self.assertIn("패널 horizon 결손 2027Q1", note)
+        self.assertIn("재계산 생략", note)
+        self.assertEqual(fails, ["kernel_mode 'backsolved' ≠ 재계산 'aggregate_ratio'"])        # 모델이 집계 비율 근사라고 적었어야 한다
+        for r in gap["scenarios"]["base"]["quarterly"]:                                             # horizon 오프셋(2..)도 역산 불가
+            r["horizon"] += 1
+        exp2, _, note2, _ = SC.panel_new_orders_expected(gap, sls, dict(no, kernel_mode="aggregate_ratio"), "net_panel", self.Q)
+        self.assertIsNone(exp2)
+        self.assertIn("재계산 생략", note2)
+
+
 class TestReport(unittest.TestCase):
     def test_kinds_and_exit_semantics(self):
         rep = SC.Report()
@@ -409,7 +528,7 @@ class TestRegenerationE2E(unittest.TestCase):
         lp = os.path.join(root, "tools", "assets", "sls", "%s.json" % st)
         sls = SC._load(lp)
         fq = [q for q in m["periods"]["quarters"] if q > la][0]
-        sls["by_quarter"][fq]["marine_hedged_krw_m_signed_by_origin"] += 1000.0   # (d) sls ≠ 모델 매출조선 · 내부 항등식
+        sls["by_quarter"][fq]["marine_hedged_krw_m"] += 1000.0   # (d) sls ≠ 모델 매출조선(net_panel 모드는 모델이 marine 전체를 읽음) · 내부 항등식(marine ≠ signed_by_origin + post_origin)
         with open(lp, "w", encoding="utf-8") as f:
             json.dump(sls, f, ensure_ascii=False, indent=1)
         pp = os.path.join(root, "tools", "assets", "prices.json")
@@ -424,6 +543,41 @@ class TestRegenerationE2E(unittest.TestCase):
         self.assertNotEqual(h, h2, "페이지 KPI 타일을 못 찾음 — 주입 실패")
         with open(pg, "w", encoding="utf-8") as f:
             f.write(h2)
+        # (f) 조정EPS 병기(라운드 7) — 사본 2 에서 KPI '(조정 …원)' 괄호가 있는 회사를 고른다(KCC 002380 우선). 페이지 괄호 삭제 → page, 허브 data-adj 변조 → hub
+        adj = {}
+        for d in sorted(os.listdir(root)):
+            if re.fullmatch(r"\d{6}", d) and os.path.isfile(os.path.join(root, d, "index.html")):
+                ys = [y for _, y, _, _, _, _, a in SC.KPI_TILE_RE.findall(SC._section_html(SC._read(os.path.join(root, d, "index.html")), d) or "") if a]
+                if ys:
+                    adj[d] = ys[0]
+        self.assertTrue(adj, "사본 2 에 조정EPS 병기 회사가 없음 — 주입 불가")
+        st2 = "002380" if "002380" in adj else sorted(adj)[0]
+        pg2 = os.path.join(root, st2, "index.html")
+        h = SC._read(pg2)
+        h2 = re.sub(r"(· EPS [^<(]+?원) \(조정 [^<)]+?원\)(</i>)", r"\1\2", h, count=1)
+        self.assertNotEqual(h, h2, "%s 페이지 KPI 조정EPS 괄호를 못 찾음 — 주입 실패" % st2)
+        with open(pg2, "w", encoding="utf-8") as f:
+            f.write(h2)
+        hp = os.path.join(root, "models.html")
+        hh = SC._read(hp)
+
+        def _tamper_adj(mt):
+            tr = mt.group(0)
+            if st2 in tr and 'data-adj="' in tr:
+                return re.sub(r'data-adj="(-?[\d.]+)"', lambda a: 'data-adj="%s"' % (float(a.group(1)) + 1.0), tr, count=1)
+            return tr
+        hh2 = re.sub(r"<tr>.*?</tr>", _tamper_adj, hh, flags=re.S)
+        self.assertNotEqual(hh, hh2, "%s 허브 행 data-adj 를 못 찾음 — 주입 실패" % st2)
+        with open(hp, "w", encoding="utf-8") as f:
+            f.write(hh2)
+        # (g) HJ重 모델의 원장 수준 자기신고(new_orders.ledger_rate.levels.base) 변조 → panel_model(검사기가 sls.contracts 로 수준을 다시 센다 — 2026-10-09)
+        hj = "097230"
+        mp2 = os.path.join(root, "tools", "assets", "models", "%s.json" % hj)
+        m2 = SC._load(mp2)
+        self.assertEqual((m2.get("new_orders") or {}).get("source_field"), "ledger_signing_rate", "HJ 가 ledger_signing_rate 모드가 아님 — 주입 전제 깨짐")
+        m2["new_orders"]["ledger_rate"]["levels"]["base"] += 100.0
+        with open(mp2, "w", encoding="utf-8") as f:
+            json.dump(m2, f, ensure_ascii=False, indent=1)
         rep = SC.run(root, xlsx=True, emulate=False)
         fails = {c.key: c.fails for c in rep.checks.values()}
 
@@ -439,6 +593,10 @@ class TestRegenerationE2E(unittest.TestCase):
         self.assertTrue(has("sls_model", st, fq, "매출조선"), fails.get("sls_model", [])[:3])
         self.assertTrue(has("sls_internal", st, fq), fails.get("sls_internal", [])[:3])
         self.assertTrue(has("prices_model", st), fails.get("prices_model", [])[:3])
+        self.assertTrue(has("page", st2, "KPI FY%sE EPS조정" % adj[st2]), fails.get("page", [])[:3])
+        self.assertTrue(has("hub", st2, "EPS data-adj"), fails.get("hub", [])[:3])
+        self.assertTrue(has("panel_model", hj, "ledger_rate.levels.base"), fails.get("panel_model", [])[:3])
+        self.assertFalse(has("panel_model", hj, "매출조선신규"), fails.get("panel_model", [])[:3])         # N 은 재계산값 — 행 자체는 여전히 맞다
 
 
 # ── ③ 커밋 산출 재현(옵트인) ────────────────────────────────

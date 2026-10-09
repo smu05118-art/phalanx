@@ -16,15 +16,18 @@
                  추정 열은 kship_model_xlsx.verify 의 수식 에뮬레이터(레인 코드 재사용, 표기)로 재계산, 문서 속성 날짜 = built_at.
   model↔page     회사 페이지 섹션(id=kship-model-<stock>) data-* 속성·KPI 타일(FY26E~28E 매출/OP/OPM/EPS, PER/PBR/종가)·분기 손익표
                  전 셀을 **정규식으로 숫자만 뽑아** 모델과 대조(렌더러 포매터를 import 하지 않음), xlsx 다운로드 KB = 실제 파일 크기.
-  summary↔hub    models.html 행 수·종목 집합 = 모집단, 각 행의 data-v(FY 매출/OP/OPM/EPS·PER·PBR)·상태 라벨·신규수주 = summary.
+                 조정EPS 병기(라운드 7): KPI 'EPS x원 (조정 y원)' 괄호와 PER 타일 '모델 TTM PER a (조정 b)' 는 쌍방 — 모델이 다르면 있어야, 같으면 없어야.
+  summary↔hub    models.html 행 수·종목 집합 = 모집단, 각 행의 data-v(FY 매출/OP/OPM/EPS·PER·PBR)·data-adj(조정EPS)·상태 라벨·신규수주 = summary.
   집합           universe(57) ↔ 회사 폴더(56 = universe − 지주) ↔ 페이지(섹션 유무) ↔ models/fin/xlsx(58 = universe ∪ fin 전용 010620) ↔ sls(6) ↔ prices.
   prices↔model   valuation.price(종가·as_of) = prices.json, per_now/pbr_now/적정가치 재계산(내부 정합).
   fx↔model       assumptions.fx 추정 분기 = fx.json(quarters 완결 > forward).
   contracts↔sls  sls 계약 rcp 집합 = contracts.json(건너뛴 건·대체된 건 포함) — 원장이 sls 보다 새로우면 여기서 드러난다.
-  panel↔model    매출조선신규 = forecast_panel base new_order_revenue(전범위 비면 covered_scope_new_revenue 폴백 — model.new_orders.source_field) ÷ 100.
+  panel↔model    매출조선신규(base) = 패널 역산 커널 × (N_s − 공시 상계 D_s)⁺ 재계산 — 패널 필드·커널·N 은 forecast_panel 에서, 원장 창(ledger_signing_rate 수준·
+                 전환 조건)·상계 D·선형 T 는 sls.contracts 에서 다시 센다(모델 자기신고를 읽지 않음 — 2026-10-09). 모델 panel_field·kernel_mode·source_field·
+                 ledger_rate 블록이 재계산과 다르면 실패. 패널·sls 는 모델과 같은 세대(run_all sls → model)라 consistency.
 
 종류(kind): consistency — 같은 세대의 산출물끼리는 항상 맞아야 한다(실패 = 결함 또는 일부만 재생성한 stale) ·
-            freshness — 입력(prices·fx·contracts·panel)이 산출물보다 새로울 수 있다(일일 갱신은 시세·환율·계약만 받고 모델은 주 1회 —
+            freshness — 입력(prices·fx·contracts)이 산출물보다 새로울 수 있다(일일 갱신은 시세·환율·계약만 받고 모델은 주 1회 —
             MODEL.md §8). 기본 종료 코드는 consistency 실패만 본다(--strict 면 freshness 도).
 
     python3 selfcheck_models.py                       # 레포 산출물 전수(58사) — 표 + 실패 상세
@@ -41,6 +44,7 @@ import json
 import math
 import os
 import re
+import statistics
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -62,10 +66,26 @@ HOLDING, HOLDING_CORE = "009540", "329180"
 SEJIN_SUBS = ("333430", "099410")
 FY_EST = ("2026", "2027", "2028")
 STATUS_KO = {"full": "완성", "partial": "부분", "no_fin": "재무 없음"}
+# 조정EPS 병기 임계(원) — kship_model_section.ADJ_EPS_MIN_DIFF_WON 과 같은 값(렌더러를 import 하지 않는 원칙이라 값을 옮겨 적는다, 2026-10-08).
+ADJ_EPS_MIN_DIFF_WON = 0.05
+# 회사 페이지 KPI 타일·PER 타일 정규식(모듈 상수 — 테스트가 import). 그룹 7(조정 EPS)·TTM 괄호는 선택이라 병기 없는 페이지도 매치한다.
+KPI_TILE_RE = re.compile(r"<b>([^<]*)<small>억</small></b>\s*<span>FY(\d{4})E 매출 · (추정|실적)</span>\s*<i>OP ([^<·]+)억 · OPM ([^<·]+) · EPS ([^<(]+?)원(?: \(조정 ([^<)]+?)원\))?</i>")
+TTM_MODEL_RE = re.compile(r"모델 TTM PER ([^ ·(]+)(?: \(조정 ([^)]+)\))?")
 # 문서화된 집합 예외: 지주는 폴더를 만들지 않는다(MODEL.md §11) · HD현대미포는 합병 소멸로 universe 밖, fin 만 있어 모델은 만든다(kship_model Ctx.population)
 ALLOW_NO_FOLDER = {"009540"}
 ALLOW_FIN_ONLY = {"010620"}
 MINUS = "−"          # U+2212 — 모델 src 의 뺄셈 기호(하이픈 아님)
+# kship_model 라운드 7 L1 상수의 거울(레인 코드를 import 하지 않는 원칙 — 2026-10-09 검증 수정: 모델 자기신고 대신 패널·sls 에서 다시 센다)
+PANEL_REV_KEYS = ("new_order_revenue", "covered_scope_new_revenue")   # 패널 신규 매출 필드 사슬 — 전범위 → 모델 대상 부문(폴백)
+PANEL_SCENARIOS = ("conservative", "base", "optimistic")
+PANEL_N_CONST_TOL = 1e-6                     # 패널 new_orders 가 전 분기 상수일 때만 커널 역산
+LEDGER_RATE_MAX_PANEL_RATIO = 0.5            # 패널 base 평균 ÷ 원장 체결 평균 < 0.5 이면 원장 체결 속도(ledger_signing_rate)로 전환
+LEDGER_RATE_MIN_QUARTERS = 2                 # 원장 창 안 체결 > 0 분기 하한
+LEDGER_RATE_WINDOW_QUARTERS = 8              # 원장 창 길이(origin 까지; 첫 체결 분기 앞 0 트림) — kship_model _ledger_signing_crosscheck n_quarters
+LEDGER_RATE_LEVELS = {"conservative": "min", "base": "median", "optimistic": "max"}   # 체결 > 0 분기 통계 → 시나리오 수준(패널 그 시나리오 N 하한)
+LEDGER_RATE_FALLBACK_ONLY = True             # covered_scope 폴백 회사만 전환
+LEDGER_RATE_CURVE = "panel_kernel"           # 세 시나리오 커널이 다 역산되면 패널 커널, 아니면 선형(다음 분기부터 T = 원장 계약 일정 길이 중위)
+SEGMENT_TYPE_EXCLUDE = {"EP및특수선": ("NAVAL",)}   # 폴백 회사의 패널 범위 밖 선종(coverage.excluded_segments → SLS type) — 원장 창·상계 D 제외
 
 
 def _num(v):
@@ -96,6 +116,19 @@ def q_add(q, n):
     y, k = int(q[:4]), int(q[5])
     i = y * 4 + (k - 1) + n
     return "%dQ%d" % (i // 4, i % 4 + 1)
+
+
+def q_range(q0, q1):
+    """q0..q1(포함) 분기 목록."""
+    out, q = [], q0
+    while q <= q1:
+        out.append(q)
+        q = q_add(q, 1)
+    return out
+
+
+def med(xs):
+    return statistics.median(xs) if xs else None
 
 
 def qlabel_to_q(label):
@@ -589,8 +622,16 @@ def check_sls_model(rep, tree, stocks):
                     c.ok()
                 else:
                     c.fail("%s %s 매출조선(실적) %s ≠ sls.reconcile %.2f" % (st, q, v, r["reported_segment_rev_m"] / UNIT_DIV))
-        # 추정: 매출조선 = SLS(signed_by_origin | marine) + 잔고 소진 + 신규
+        # 추정: 매출조선 = SLS + 잔고 소진 + 신규. SLS 몫은 모드(라운드 7)로 갈린다 — net_panel: marine 전체(공시 계약 전부 유지, 상계는 신규 행에서) ·
+        # exclude_sls: signed_by_origin + post_origin × (1 − included_fraction)
         inc = bool(m.get("new_orders_included"))
+        px = drv.get("post_origin_excluded") or {}
+        mode = px.get("mode") or ((m.get("scenarios") or {}).get("meta") or {}).get("post_origin_mode") or "exclude_sls"
+        if inc and px and mode == "net_panel":
+            if px.get("included_fraction") == 0.0:
+                c.ok()
+            else:
+                c.fail("%s net_panel 인데 post_origin_excluded.included_fraction %r ≠ 0.0" % (st, px.get("included_fraction")))
         rate, remaining = drv.get("runoff_per_q"), drv.get("uncovered_backlog_at_origin")
         if not (_num(rate) and _num(remaining)):
             c.fail("%s driver.runoff_per_q/uncovered_backlog_at_origin 없음" % st)
@@ -601,9 +642,11 @@ def check_sls_model(rep, tree, stocks):
             ex = b.get("marine_hedged_krw_m_signed_by_origin") if inc else b.get("marine_hedged_krw_m")
             if ex is None:
                 ex = b.get("marine_hedged_krw_m") or 0.0
+            elif inc and mode == "net_panel":
+                ex = b["marine_hedged_krw_m"] if _num(b.get("marine_hedged_krw_m")) else ex + (b.get("marine_hedged_krw_m_post_origin") or 0.0)
             elif inc:
                 # 패널이 담지 못하는 몫((1 − included_fraction))의 origin 이후 공시 수주는 선표로 유지
-                f = (drv.get("post_origin_excluded") or {}).get("included_fraction")
+                f = px.get("included_fraction")
                 ex += (b.get("marine_hedged_krw_m_post_origin") or 0.0) * (1.0 - (f if _num(f) else 1.0))
                 f_tol = (b.get("marine_hedged_krw_m_post_origin") or 0.0) / UNIT_DIV * 0.00006      # included_fraction 은 4자리 반올림
             r = min(rate, remaining)
@@ -740,7 +783,7 @@ def check_summary(rep, tree, stocks):
             for tag, f in (r.get("fy") or {}).items():
                 y = tag[:4]
                 for k, key in (("rev", "매출액"), ("op", "영업이익"), ("opm", "OPM"), ("ni_ctrl", "지배주주순이익"), ("eps", "EPS"),
-                               ("bps", "BPS"), ("per", "PER"), ("pbr", "PBR"), ("dps", "DPS")):
+                               ("bps", "BPS"), ("per", "PER"), ("pbr", "PBR"), ("dps", "DPS"), ("eps_adj", "조정EPS")):
                     mv = cell_v(rm, key, y, "a")
                     if f.get(k) != mv:
                         c.fail("%s fy.%s.%s %r ≠ 모델 %s.a[%s] %r" % (st, tag, k, f.get(k), key, y, mv))
@@ -908,6 +951,22 @@ def check_xlsx(rep, tree, stocks, emulate=True):
 
 # ── ⑤ model↔page ───────────────────────────────────────────
 
+def model_ttm_per(m, rm):
+    """렌더러(kship_model_section.ttm_per)와 같은 규칙의 독립 재계산 — 조정EPS 행이 있고 마지막 4실적분기 EPS·조정EPS 셀이 전부 있을 때
+    {per, per_adj, show_adj, eps_ttm, eps_ttm_adj}, 아니면 None. per = 종가 ÷ Σ(Σ > 0 일 때, 아니면 None → 화면 '—'), show_adj = |Σ조정 − Σ| > 임계."""
+    if "조정EPS" not in rm or "EPS" not in rm:
+        return None
+    la = (m.get("periods") or {}).get("last_actual") or ""
+    qs = [q for q in (m.get("periods") or {}).get("quarters") or [] if q <= la][-4:]
+    e4, a4 = [cell_v(rm, "EPS", q) for q in qs], [cell_v(rm, "조정EPS", q) for q in qs]
+    if len(qs) < 4 or any(x is None for x in e4 + a4):
+        return None
+    se, sa = sum(e4), sum(a4)
+    close_v = ((m.get("valuation") or {}).get("price") or {}).get("close")
+    per = lambda s: (close_v / s) if (_num(close_v) and s > 0) else None     # noqa: E731
+    return {"per": per(se), "per_adj": per(sa), "show_adj": abs(sa - se) > ADJ_EPS_MIN_DIFF_WON, "eps_ttm": se, "eps_ttm_adj": sa}
+
+
 def _section_html(page, stock):
     i = page.find('id="kship-model-%s"' % stock)
     if i < 0:
@@ -946,16 +1005,20 @@ def check_pages(rep, tree, stocks):
             else:
                 c.ok()
         # KPI 타일
-        tiles = re.findall(r"<b>([^<]*)<small>억</small></b>\s*<span>FY(\d{4})E 매출 · (추정|실적)</span>\s*<i>OP ([^<·]+)억 · OPM ([^<·]+) · EPS ([^<]+?)원</i>", sec)
+        tiles = KPI_TILE_RE.findall(sec)
         if len(tiles) != 3:
             cm.fail("%s KPI 타일 %d개 인식(기대 3)" % (st, len(tiles)))
         else:
             cm.ok()
-            for rev_s, y, _, op_s, opm_s, eps_s in tiles:
+            for rev_s, y, _, op_s, opm_s, eps_s, adj_s in tiles:
                 rev, op, eps = cell_v(rm, "매출액", y, "a"), cell_v(rm, "영업이익", y, "a"), cell_v(rm, "EPS", y, "a")
                 opm = (op / rev) if (rev and op is not None) else None
+                # 조정EPS 괄호는 쌍방: 모델 조정EPS 가 보고 EPS 와 임계 이상 다르면 화면에 있어야 하고, 같거나 행이 없으면 없어야 한다
+                adj = cell_v(rm, "조정EPS", y, "a")
+                exp_adj = adj if (adj is not None and eps is not None and abs(adj - eps) > ADJ_EPS_MIN_DIFF_WON) else None
                 for nm, shown, exp, tol in (("매출", rev_s, rev, tol_a(rev) if rev is not None else 0), ("OP", op_s, op, tol_a(op) if op is not None else 0),
-                                            ("OPM%", opm_s, (opm * 100) if opm is not None else None, 0.05 + 1e-9), ("EPS", eps_s, eps, 0.5 + 1e-9)):
+                                            ("OPM%", opm_s, (opm * 100) if opm is not None else None, 0.05 + 1e-9), ("EPS", eps_s, eps, 0.5 + 1e-9),
+                                            ("EPS조정", adj_s or None, exp_adj, 0.5 + 1e-9)):
                     got = parse_num(shown)
                     if (got is None) != (exp is None) or (exp is not None and abs(got - exp) > tol):
                         c.fail("%s KPI FY%sE %s 화면 %r ≠ 모델 %s" % (st, y, nm, shown, exp))
@@ -979,6 +1042,26 @@ def check_pages(rep, tree, stocks):
                     c.ok()
             if (mpbr.group(4) or "").strip() != str((val.get("price") or {}).get("as_of") or ""):
                 c.fail("%s KPI 종가 as_of 화면 %r ≠ 모델 %r" % (st, mpbr.group(4), (val.get("price") or {}).get("as_of")))
+            # 모델 TTM PER(조정EPS 행이 있는 회사만) — rows 로 독립 재계산한 값과 쌍방 대조. 행이 없는 회사에 표기가 있으면 실패.
+            mt_model = TTM_MODEL_RE.search(mper.group(3))
+            tp = model_ttm_per(m, rm)
+            if tp is None:
+                if mt_model:
+                    c.fail("%s KPI PER 타일에 '모델 TTM PER' 표기 %r 인데 모델에 조정EPS 행/4실적분기 셀 없음" % (st, mt_model.group(0)))
+                else:
+                    c.ok()
+            elif not mt_model:
+                c.fail("%s KPI PER 타일에 '모델 TTM PER' 표기 없음(모델에 조정EPS 행 있음 — 기대 보고 %s / 조정 %s)" % (st, tp["per"], tp["per_adj"]))
+            else:
+                exp_adj = tp["per_adj"] if tp["show_adj"] else None
+                if not tp["show_adj"] and mt_model.group(2) is not None:
+                    c.fail("%s KPI 모델 TTM PER 조정 괄호 %r 인데 Σ조정EPS = ΣEPS" % (st, mt_model.group(2)))
+                for nm, shown, exp in (("모델 TTM PER", mt_model.group(1), tp["per"]), ("모델 TTM PER 조정", mt_model.group(2), exp_adj)):
+                    got = parse_num(shown)
+                    if (got is None) != (exp is None) or (exp is not None and abs(got - exp) > 0.05 + 1e-9):
+                        c.fail("%s KPI %s 화면 %r ≠ 재계산 %s(Σ EPS %s · Σ 조정 %s)" % (st, nm, shown, exp, tp["eps_ttm"], tp["eps_ttm_adj"]))
+                    else:
+                        c.ok()
             # TTM 표기 ↔ prices.json(페이지 생성 시점의 prices)
             pr = (tree.prices.get("rows") or {}).get(st) or {}
             mt = re.search(r"TTM ([^ /]+) / ([^(]+)\(aikstockdata\)", mper.group(3))
@@ -1134,6 +1217,15 @@ def check_hub(rep, tree):
                     c.fail("%s FY%sE %s data-v %r ≠ summary %s" % (st, y, nm, shown, exp))
                 else:
                     c.ok()
+            # EPS 칸 data-adj(조정EPS) — summary fy.eps_adj 가 보고 EPS 와 임계 이상 다를 때만 있어야 한다(쌍방). data-v 는 보고 EPS 그대로.
+            ea = f.get("eps_adj")
+            exp_adj = ea if (_num(ea) and _num(eps) and abs(ea - eps) > ADJ_EPS_MIN_DIFF_WON) else None
+            adj_shown = td_attr(tds[col["FY%sE EPS(원)" % y[2:]]], "data-adj")
+            got = parse_num(adj_shown)
+            if (got is None) != (exp_adj is None) or (exp_adj is not None and abs(got - exp_adj) > 1e-6):
+                c.fail("%s FY%sE EPS data-adj %r ≠ summary eps_adj %s(보고 %s)" % (st, y, adj_shown, exp_adj, eps))
+            else:
+                c.ok()
         for nm, exp in (("PER 현재", r.get("per_now")), ("PBR 현재", r.get("pbr_now"))):
             shown = td_attr(tds[col[nm]], "data-v")
             got = parse_num(shown)
@@ -1239,12 +1331,152 @@ def check_sets(rep, tree):
 
 # ── ⑧ prices↔model · ⑨ fx↔model · ⑩ contracts↔sls · ⑪ panel↔model ───────────
 
+def _q_end_date(q):
+    y, k = int(q[:4]), int(q[5])
+    return datetime.date(y + (1 if k == 4 else 0), (3 * k) % 12 + 1, 1) - datetime.timedelta(days=1)
+
+
+def _sign_q(d):
+    return "%dQ%d" % (d.year, (d.month - 1) // 3 + 1)
+
+
+def _sls_by_sign_quarter(sls, exclude_types=()):
+    """sls.contracts(counted·type≠OTHER) 를 체결 분기별 억원으로 한 번 순회 — kship_model _ledger_signing_crosscheck(origin 분기말까지 체결 = 원장 창 입력)과
+    _sls_post_origin(그 뒤 체결 = 상계 D; signed_by_origin 이 있으면 그 값, 없으면 체결일 ≤ origin 분기말)의 거울. exclude_types(SEGMENT_TYPE_EXCLUDE 선종)는
+    둘 다에서 빠지고(SLS 일정은 모델도 유지), 날짜 없는 계약은 D 에 들지 않는다(상계 불가). 반환 (signed {q}, post {q}, 일정 길이 목록 — T 중위용, 선종 제외 없음)."""
+    oend = _q_end_date(sls["origin"]) if sls.get("origin") else None
+    signed, post, lens = collections.defaultdict(float), collections.defaultdict(float), []
+    for c in sls.get("contracts") or []:
+        if not c.get("counted", True) or c.get("type") == "OTHER":
+            continue
+        if c.get("schedule"):
+            lens.append(len(c["schedule"]))
+        if c.get("type") in exclude_types:
+            continue
+        try:
+            d = datetime.date.fromisoformat(c.get("signed") or c.get("start"))
+        except (TypeError, ValueError):
+            d = None
+        if d is not None and oend is not None and d <= oend and _num(c.get("amt_krw_m")):
+            signed[_sign_q(d)] += c["amt_krw_m"] / UNIT_DIV
+        sbo = c.get("signed_by_origin")
+        if sbo is None:
+            if d is None or oend is None:
+                continue
+            sbo = d <= oend
+        if not sbo and d is not None:
+            post[_sign_q(d)] += (c.get("amt_krw_m") or 0.0) / UNIT_DIV
+    return signed, post, lens
+
+
+def _panel_cohort(panel_c, scn, pfld):
+    """패널 한 시나리오의 코호트 입력(kship_model._panel_kernel 거울, 억원): horizon · N · 역산 커널 k. N 이 전 분기 상수이고 horizon 이 1..H 연속·전 horizon 에
+    매출 행이 있을 때만 K(h) = rev(h)/N, k(lag) = K(lag+1) − K(lag)(K(0)=0; lag 0..H−1) — 아니면 k None(모델은 집계 비율 근사). gap = 결손 분기(라벨 사이 빈 분기·매출 없는 분기)."""
+    rows = sorted([r for r in ((panel_c.get("scenarios") or {}).get(scn) or {}).get("quarterly") or [] if r.get("quarter")], key=lambda r: r["quarter"])
+    hz = {r["quarter"]: int(r["horizon"]) if _num(r.get("horizon")) else i + 1 for i, r in enumerate(rows)}
+    N = {r["quarter"]: r["new_orders"] / UNIT_DIV for r in rows if _num(r.get("new_orders"))}
+    rev = {r["quarter"]: r[pfld] / UNIT_DIV for r in rows if _num(r.get(pfld))}
+    ns = list(N.values())
+    gap = ([q for q in q_range(rows[0]["quarter"], rows[-1]["quarter"]) if q not in hz] if rows else []) + [q for q in hz if q not in rev]
+    contiguous = sorted(hz.values()) == list(range(1, len(hz) + 1)) and not gap
+    k = None
+    if ns and max(ns) > 0 and (max(ns) - min(ns)) / max(ns) < PANEL_N_CONST_TOL and set(N) == set(hz) and contiguous:
+        K = {hz[q]: rev[q] / ns[0] for q in hz}
+        K[0] = 0.0
+        k = {lag: K[lag + 1] - K[lag] for lag in range(0, max(K))}
+    return {"horizon": hz, "N_by_q": N, "k": k, "contiguous": contiguous, "gap": gap}
+
+
+def panel_new_orders_expected(panel_c, sls, no, mode, fq):
+    """매출조선신규(base) 독립 재계산(라운드 7 L1 · 2026-10-09 검증 수정: 모델 자기신고를 읽지 않는다) — kship_model 을 import 하지 않고 같은 식을 옮겨 적는다.
+    패널 필드(전범위 → covered_scope 폴백)·시나리오별 역산 커널·패널 N 은 forecast_panel 에서, 원장 창(origin 분기말까지 체결 8분기, 첫 체결 분기 앞 0 트림,
+    체결 > 0 분기만 min/median/max, 패널 그 시나리오 N 하한)·전환 조건(패널 base 평균 ÷ 원장 평균 < LEDGER_RATE_MAX_PANEL_RATIO ∧ 체결 > 0 ≥ LEDGER_RATE_MIN_QUARTERS
+    ∧ 폴백)·상계 D(origin 이후 체결, 체결 분기별; net_panel 만, exclude_sls 는 D=0)·선형 대안 T(계약 일정 길이 중위)는 sls.contracts 에서 다시 센다. 폴백 회사의
+    패널 범위 밖 선종(SEGMENT_TYPE_EXCLUDE)은 원장 창·D 에서 뺀다. 모델의 panel_field·kernel_mode·source_field·ledger_rate(levels·창·n·비율·curve·T)가 재계산과
+    다르면 fails 에 적고 N 은 재계산값으로 간다(None 반환 금지). exp(q) = Σ_s max(0, N_s − D_s) k(h_q − h_s).
+    반환 (exp {q}, tol, note, fails) — 커널 역산 불가(N 비상수·horizon 결손)면 (None, None, note, fails)."""
+    fails = []
+    if not panel_c:
+        return None, None, "forecast_panel 에 없음 — 재계산 생략", fails
+    base_rows = ((panel_c.get("scenarios") or {}).get("base") or {}).get("quarterly") or []
+    pfld = next((key for key in PANEL_REV_KEYS if any(r.get("quarter") in fq and _num(r.get(key)) for r in base_rows)), None)
+    if not pfld:
+        return None, None, "패널 base 에 %s 값 없음 — 재계산 생략" % " · ".join(PANEL_REV_KEYS), fails
+    if no.get("panel_field") != pfld:
+        fails.append("panel_field %r ≠ 패널 재판정 %r" % (no.get("panel_field"), pfld))
+    fallback = pfld != PANEL_REV_KEYS[0]
+    segs = (((panel_c.get("coverage") or {}).get("excluded_segments")) or []) if fallback else []
+    ex_types = tuple(t for sg in segs for t in SEGMENT_TYPE_EXCLUDE.get(sg, ()))
+    co = {scn: _panel_cohort(panel_c, scn, pfld) for scn in PANEL_SCENARIOS}
+    base = co["base"]
+    hz, N, k = base["horizon"], dict(base["N_by_q"]), base["k"]
+    origin = (sls or {}).get("origin")
+    signed, D, lens = _sls_by_sign_quarter(sls, ex_types) if origin else ({}, {}, [])
+    if mode != "net_panel":
+        D = {}
+    # 원장 체결 속도(ledger_signing_rate) — 창·수준·전환 조건을 sls.contracts 로 다시 세고 모델 source_field·ledger_rate 와 대조(폴백 회사만, LEDGER_RATE_FALLBACK_ONLY)
+    ledger = no.get("source_field") == "ledger_signing_rate"
+    lr = no.get("ledger_rate") if isinstance(no.get("ledger_rate"), dict) else {}
+    T = int(round(med(lens))) if lens else None
+    curve = "panel_kernel" if (LEDGER_RATE_CURVE == "panel_kernel" and all(co[s]["k"] for s in PANEL_SCENARIOS)) else "linear_ledger_median"
+    want, levels, cond = False, None, "원장 창 없음(sls origin 없음 또는 폴백 아님)"
+    if origin and (fallback or not LEDGER_RATE_FALLBACK_ONLY):
+        qs = q_range(q_add(origin, 1 - LEDGER_RATE_WINDOW_QUARTERS), origin)
+        first = next((i for i, q in enumerate(qs) if signed.get(q, 0.0) > 0), None)
+        if first:                                   # 첫 체결 분기 앞의 0 은 원장이 닿지 않는 구간 — 트림(모델과 같은 규칙)
+            qs = qs[first:]
+        vals = [signed.get(q, 0.0) for q in qs]
+        pos = [v for v in vals if v > 0]
+        pn = [N[q] for q in fq if q in N]
+        led_mean = sum(vals) / len(vals)
+        ratio = (sum(pn) / len(pn) / led_mean) if (pn and led_mean > 0) else None
+        want = ratio is not None and ratio < LEDGER_RATE_MAX_PANEL_RATIO and len(pos) >= LEDGER_RATE_MIN_QUARTERS and (curve == "panel_kernel" or bool(T))
+        cond = "패널/원장 비율 %s · 체결 > 0 %d분기 · 창 %s~%s(%d분기) · curve %s" % (
+            ("%.4f" % ratio) if ratio is not None else "없음", len(pos), qs[0], qs[-1], len(qs), curve)
+        if ledger and pos:
+            stat = {"min": min(pos), "median": med(pos), "max": max(pos)}
+            floor = {s: max(co[s]["N_by_q"].values(), default=0.0) for s in PANEL_SCENARIOS}
+            levels = {s: max(stat[LEDGER_RATE_LEVELS[s]], floor[s]) for s in PANEL_SCENARIOS}
+            for s in PANEL_SCENARIOS:
+                if not close((lr.get("levels") or {}).get(s), levels[s], 0.0051):
+                    fails.append("ledger_rate.levels.%s %s ≠ 원장 재계산 %.2f(%s %s, 패널 하한 %.2f; 창 %s)" % (
+                        s, (lr.get("levels") or {}).get(s), levels[s], LEDGER_RATE_LEVELS[s], {q: round(v) for q, v in zip(qs, vals)}, floor[s], ", ".join(qs)))
+            if list(lr.get("window_quarters") or []) != qs or lr.get("n_quarters_used") != len(qs):
+                fails.append("ledger_rate 창 %s(n %s) ≠ 원장 재계산 %s(n %d)" % (lr.get("window_quarters"), lr.get("n_quarters_used"), qs, len(qs)))
+            if not close(lr.get("panel_to_ledger_ratio"), ratio, 0.00006):
+                fails.append("ledger_rate.panel_to_ledger_ratio %s ≠ 재계산 %s" % (lr.get("panel_to_ledger_ratio"), ("%.4f" % ratio) if ratio is not None else None))
+            if lr.get("curve") != curve or lr.get("alt_linear_T") != T:
+                fails.append("ledger_rate curve/alt_linear_T %s/%s ≠ 재계산 %s/%s(계약 일정 길이 %d건 중위)" % (lr.get("curve"), lr.get("alt_linear_T"), curve, T, len(lens)))
+    if ledger != want:
+        fails.append("source_field %r ≠ 전환 조건 재계산(%s → %s)" % (no.get("source_field"), cond, "ledger_signing_rate" if want else pfld))
+    kernel = "linear_ledger_median" if (want and curve == "linear_ledger_median") else ("backsolved" if k else "aggregate_ratio")
+    if no.get("kernel_mode") != kernel:
+        fails.append("kernel_mode %r ≠ 재계산 %r" % (no.get("kernel_mode"), kernel))
+    if ledger and levels is not None:
+        N = {q: levels["base"] for q in hz}
+        if curve == "linear_ledger_median":
+            k = {lag: 1.0 / T for lag in range(1, T + 1)}        # 선형 대안: 다음 분기부터(lag 0 없음) T 분기 균등
+    if k is None:
+        if not base["contiguous"]:
+            return None, None, "패널 horizon 결손 %s — 커널 역산 불가(모델은 집계 비율 근사) — 재계산 생략" % (
+                ", ".join(base["gap"]) or "horizon " + "·".join(str(h) for h in sorted(hz.values()))), fails
+        return None, None, "패널 base new_orders 가 상수가 아니라 커널 역산 불가(모델은 집계 비율 근사) — 재계산 생략", fails
+    net = {s: max(0.0, n - D.get(s, 0.0)) for s, n in N.items()}
+    exp = {}
+    for q in fq:
+        hq = hz.get(q)
+        exp[q] = sum(net[s] * k[hq - hz[s]] for s in N if 0 <= hq - hz[s] and (hq - hz[s]) in k) if hq is not None else 0.0
+    note = "커널 lag %d개 · N %s억 · D %s%s" % (len(k), format(round(N[next(iter(N))]), ",d") if N else "—",
+                                             {s: round(v) for s, v in sorted(D.items())} or "없음", (" · 범위 밖 제외 %s" % "·".join(ex_types)) if ex_types else "")
+    return exp, 0.0051 + sum(abs(v) for v in k.values()) * 0.005, note, fails
+
+
 def check_inputs(rep, tree, stocks):
     cp = rep.c("prices_model", "prices.json↔model.valuation.price(종가·as_of)", "freshness")
     cv = rep.c("valuation", "valuation 내부 재계산(per_now·pbr_now·적정가치·fwd EPS)")
     cf = rep.c("fx_model", "fx.json↔model.assumptions.fx(추정 분기)", "freshness")
     cc = rep.c("contracts_sls", "contracts.json↔sls 계약 집합", "freshness")
-    cn = rep.c("panel_model", "forecast_panel↔model 매출조선신규(base)", "freshness")
+    cn = rep.c("panel_model", "forecast_panel·sls 원장↔model 매출조선신규(base)·ledger_rate 재계산")
     prices = tree.prices.get("rows") or {}
     fx = tree.fx
     for st in stocks:
@@ -1325,20 +1557,25 @@ def check_inputs(rep, tree, stocks):
             d0 = (_seg_driver(m)[0].get("post_origin_excluded") or {})
             if po.get("n") is not None and d0 and d0.get("n") != po.get("n"):
                 cc.fail("%s origin 이후 계약 건수 모델 %s ≠ sls %s" % (st, d0.get("n"), po.get("n")))
-        # panel ↔ 매출조선신규
+        # panel ↔ 매출조선신규 — 라운드 7: 행은 공시 상계(net_panel)·원장 수준(ledger_signing_rate) 뒤 값이라 패널 원값 비교 대신 재계산식으로 본다
         if m.get("new_orders_included") and m.get("role") == "yard":
-            base = ((tree.panel.get(st) or {}).get("scenarios") or {}).get("base") or {}
-            fld = (m.get("new_orders") or {}).get("source_field") or "new_order_revenue"
-            pq = {x.get("quarter"): x.get(fld) for x in base.get("quarterly") or []}
-            for q in _fq(m):
-                v = cell_v(rm, "매출조선신규", q)
-                exp = pq.get(q)
-                if v is None or not _num(exp):
-                    continue
-                if not close(v, exp / UNIT_DIV, 0.0051):
-                    cn.fail("%s %s 매출조선신규 %s ≠ 패널 base %.2f" % (st, q, v, exp / UNIT_DIV))
-                else:
-                    cn.ok()
+            no = m.get("new_orders") if isinstance(m.get("new_orders"), dict) else {}
+            px = _seg_driver(m)[0].get("post_origin_excluded") or {}
+            mode = px.get("mode") or ((m.get("scenarios") or {}).get("meta") or {}).get("post_origin_mode") or "exclude_sls"
+            exp_q, tol, note, fails = panel_new_orders_expected(tree.panel.get(st), sls, no, mode, _fq(m))
+            for f in fails:
+                cn.fail("%s %s" % (st, f))
+            if exp_q is None:
+                cn.note("%s %s" % (st, note))
+            else:
+                for q in _fq(m):
+                    v = cell_v(rm, "매출조선신규", q)
+                    if v is None:
+                        continue
+                    if not close(v, exp_q[q], tol):
+                        cn.fail("%s %s 매출조선신규 %s ≠ 재계산 %.2f(%s · %s)" % (st, q, v, exp_q[q], mode, no.get("source_field")))
+                    else:
+                        cn.ok()
 
 
 # ── 실행 ────────────────────────────────────────────────────
