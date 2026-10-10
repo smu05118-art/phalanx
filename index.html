@@ -615,6 +615,10 @@ function ncFix(n){ // n: M.nowcast 엔트리 → {cyoy,predyoy,avail,partial,cor
   return res(out);
 }
 function ncBadge(co){ const n=nowcastOf(co); if(!n||co.is_hub) return '';
+  if(n.actionable!==true||n.rank_eligible!==true){
+    const why=(n.hold_reason||'검증 보류').replace(/[<>]/g,'');
+    return `<div title="${why}"><span class="chg" style="color:#8a90a8">검증 보류</span><span class="clab" style="color:#8a90a8">🔮 ${n.tgtq||'전망'} · 비실행 전망</span></div>`;
+  }
   const me=(M.nowcast||[]).find(x=>x.id===co.id);
   const fx=me?ncFix(me):{cyoy:null,predyoy:n.predyoy,avail:3,partial:false,corrected:false,checked:false};
   const pv=fx.predyoy!=null?fx.predyoy:n.predyoy; if(pv==null) return '';
