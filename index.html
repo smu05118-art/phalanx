@@ -4427,6 +4427,191 @@ function apparelBind(){
  bind('ap-csv','click',()=>{const c=apKrList().find(c=>c.code===ST.apKr),fs=c?.filings||[],f=fs.find(f=>f.period_end===ST.apPeriod)||fs.slice().sort((a,b)=>b.period_end.localeCompare(a.period_end))[0];if(!f)return;const rows=[['기업','종목코드','공시기간','축','표','행','값','출처']];for(const k of ['products','geography','customers','named_customer_sales','customers_ofs','geography_ofs','geography_business'])for(const t of f[k]||[])for(const [i,r] of (t.rows||[]).entries())rows.push([c.name,c.code,f.period_end,k,t.title,i+1,r.map(v=>typeof v==='object'?v.text:v).join(' | '),f.url]);const enc=v=>'"'+String(v??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(enc).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`apparel-${c.code}-${f.period_end}.csv`;a.click();URL.revokeObjectURL(url);});
 }
 
+/* Phalanx DC evidence views. Data normalization and differences belong to the builder. */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.PHXDCExtra = api;
+})(typeof window !== 'undefined' ? window : null, function () {
+  'use strict';
+  const STATES = [
+    {id:'announced',label:'발표',color:'#efb650'},
+    {id:'construction',label:'공사 중',color:'#64a8ff'},
+    {id:'operational',label:'가동 중',color:'#50cfad'},
+    {id:'delayed',label:'공사 지연',color:'#d88bd7'}
+  ];
+  const ATERIO_HOSTS=['www.aterio.io','aterio.io','knowledge.aterio.io','www.linkedin.com','ca.linkedin.com'];
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const finite = v => typeof v === 'number' && Number.isFinite(v);
+  function iso(v) {
+    if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+    const t = Date.parse(v+'T00:00:00Z');
+    return Number.isFinite(t) && new Date(t).toISOString().slice(0,10) === v ? v : null;
+  }
+  function sourceUrl(v, hosts) {
+    if (typeof v !== 'string') return null;
+    try {
+      const u = new URL(v);
+      if (u.protocol !== 'https:' || u.username || u.password || u.port || !u.hostname.includes('.')) return null;
+      if (hosts && hosts.length && !hosts.includes(u.hostname)) return null;
+      return u.href;
+    } catch (_) { return null; }
+  }
+  const num = (v, signed) => finite(v) ? (signed && v > 0 ? '+' : '') + v.toLocaleString('en-US',{maximumFractionDigits:3}) : '—';
+  const raw = v => finite(v) ? String(v) : '미확인';
+  const link = (url,label,hosts) => { const u=sourceUrl(url,hosts); return u ? '<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(label||'원문')+' ↗</a>' : '<span class="dcx-muted">원문 URL 미확인</span>'; };
+  const CSS = `<style>
+  .dcx{--dcx-bg:var(--s1,#111b2c);--dcx-line:var(--line,#27384e);color:var(--tx,#e8eef7);min-width:0;font:12px/1.6 system-ui,-apple-system,sans-serif;margin:14px 0;border:1px solid var(--dcx-line);border-radius:13px;background:var(--dcx-bg);padding:18px;box-sizing:border-box;overflow-wrap:anywhere}
+  .dcx *{box-sizing:border-box}.dcx h2,.dcx h3{margin:0;line-height:1.4}.dcx h2{font-size:19px}.dcx h3{font-size:15px}.dcx p{margin:6px 0}.dcx-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.dcx-eyebrow{letter-spacing:.11em;font:10px ui-monospace,monospace;color:var(--dim,#91a4bd);margin-bottom:5px}.dcx-muted{color:var(--dim,#9baac0)}.dcx-controls{display:flex;gap:4px;flex-wrap:wrap}.dcx button{font:inherit;color:inherit;background:var(--s2,#19283d);border:1px solid var(--dcx-line);padding:7px 11px;border-radius:7px;cursor:pointer}.dcx button[aria-pressed=true]{border-color:#64a8ff;background:color-mix(in srgb,#64a8ff 14%,var(--dcx-bg));color:var(--tx,#fff)}.dcx button:focus-visible,.dcx a:focus-visible,.dcx [tabindex]:focus-visible{outline:2px solid #64a8ff;outline-offset:3px}.dcx-legend{display:flex;gap:8px 18px;flex-wrap:wrap;margin:10px 0}.dcx-dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}.dcx-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:13px 0}.dcx-card{min-width:0;border:1px solid var(--dcx-line);border-radius:8px;padding:10px}.dcx-big{font:700 24px/1.5 ui-monospace,monospace}.dcx-big small{font:11px system-ui,sans-serif;color:var(--dim,#9baac0)}.dcx-chart{width:100%;min-width:0;margin-top:8px}.dcx-chart svg{display:block;width:100%;height:auto;overflow:visible}.dcx-chart text{fill:var(--dim,#9baac0);font:11px system-ui,sans-serif}.dcx-chart .dcx-grid{stroke:var(--dcx-line);stroke-width:1}.dcx-chart .dcx-zero{stroke:var(--dim,#9baac0);stroke-width:1.2}.dcx-chart rect:focus,.dcx-chart rect:hover{filter:brightness(1.2);stroke:var(--tx,#fff);stroke-width:1}.dcx-readout{min-height:24px;color:var(--dim,#9baac0);font-size:11px;margin:6px 0}.dcx-note{border-left:2px solid #64a8ff;padding-left:10px;color:var(--dim,#9baac0);margin-top:10px}.dcx a{color:var(--a,#83b9fa);text-underline-offset:3px}.dcx details{border-top:1px solid var(--dcx-line);margin-top:12px;padding-top:10px}.dcx summary{cursor:pointer;font-weight:650}.dcx-scroll{overflow-x:auto;max-width:100%;margin-top:10px;overscroll-behavior-x:contain}.dcx table{border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap;text-align:right}.dcx th,.dcx td{padding:8px 10px;border-bottom:1px solid var(--dcx-line);vertical-align:top}.dcx th:first-child,.dcx td:first-child{text-align:left}.dcx th{font-weight:600;color:var(--dim,#9baac0)}.dcx caption{text-align:left;padding-bottom:7px;color:var(--dim,#9baac0)}.dcx-text{white-space:normal;min-width:180px;max-width:360px;text-align:left}.dcx-badge{display:inline-block;border:1px solid var(--dcx-line);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--dim,#9baac0)}.dcx-ul{padding-left:20px;margin:6px 0}.dcx-tam-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.dcx-tam-list button{text-align:left;min-width:0;display:block}.dcx-tam-list small{display:block;font:10px ui-monospace,monospace;color:var(--dim,#9baac0)}.dcx-meta{display:flex;flex-wrap:wrap;gap:5px 16px;margin:6px 0;color:var(--dim,#9baac0);font-size:11px}
+  #dcNodePane{min-width:0;max-width:100%}.dcx-plots{display:grid;grid-template-columns:1fr;gap:14px}.dcx-plots.dcx-two{grid-template-columns:1fr 1fr}.dcx-plot{min-width:0}.dcx-plot h3{font-size:12px;font-weight:600}.dcx-plot h3 span{font-weight:400;color:var(--dim,#9baac0)}
+  @media(max-width:600px){.dcx{padding:13px;margin:10px 0}.dcx h2{font-size:17px}.dcx-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.dcx-big{font-size:21px}.dcx-tam-list{grid-template-columns:1fr}.dcx-chart text{font-size:10px}.dcx th,.dcx td{padding:7px}.dcx-controls button{min-height:36px}.dcx-plots.dcx-two{grid-template-columns:1fr}}
+  </style>`;
+
+  function prepareAterio(data) {
+    const d=data&&typeof data==='object'?data:{}, meta=d.meta||{}, issues=[];
+    if(meta.scope!=='US')return {meta,snapshots:[],issues:['unsupported_scope']};
+    const seen=new Set(), snapshots=[];
+    (Array.isArray(d.snapshots)?d.snapshots:[]).forEach((r,i)=>{
+      if (!r || !iso(r.as_of) || !/^\d{4}-(0[1-9]|1[0-2])$/.test(r.report_month||'')) {issues.push('invalid_snapshot_'+i);return;}
+      if (seen.has(r.as_of)) {issues.push('duplicate_as_of_'+r.as_of);return;}
+      seen.add(r.as_of);
+      const row={...r,stocks_gw:{},delta_gw:{}};
+      STATES.forEach(s=>{
+        row.stocks_gw[s.id]=finite((r.stocks_gw||{})[s.id])&&r.stocks_gw[s.id]>=0?r.stocks_gw[s.id]:null;
+        row.delta_gw[s.id]=finite((r.delta_gw||{})[s.id])?r.delta_gw[s.id]:null;
+      });
+      row.previous_as_of=iso(r.previous_as_of);
+      row.interval_days=finite(r.interval_days)&&r.interval_days>0?r.interval_days:null;
+      snapshots.push(row);
+    });
+    snapshots.sort((a,b)=>a.as_of.localeCompare(b.as_of));
+    return {meta,snapshots,issues};
+  }
+  function deltaReason(row,key) {
+    if (finite(row.delta_gw[key])) return '';
+    const reason=(row.delta_reason&&typeof row.delta_reason==='object'?row.delta_reason[key]:row.delta_reason)||'';
+    if (typeof reason==='string' && /baseline|first|no_previous/.test(reason)) return '비교 기준 없음';
+    if (typeof reason==='string' && /gap|nonconsecutive|missing/.test(reason)) return '연속 관측 없음';
+    if (!row.previous_as_of) return '비교 기준 없음';
+    return '순증 미산정';
+  }
+  function valueLabel(row,s,mode) {
+    const v=row[mode==='stock'?'stocks_gw':'delta_gw'][s.id];
+    return row.as_of+' · '+s.label+' · '+(finite(v)?raw(v)+' GW':mode==='stock'?'용량 미확인':deltaReason(row,s.id))+(mode==='net'&&row.previous_as_of?' · 비교 '+row.previous_as_of+' → '+row.as_of:'');
+  }
+  function chartSvg(rows,mode,width,selectedStates) {
+    const states=Array.isArray(selectedStates)&&selectedStates.length?selectedStates:STATES;
+    const w=Math.max(320,Math.min(1100,Number(width)||850)), h=270, l=44,r=10,t=22,b=39, pw=w-l-r,ph=h-t-b;
+    const key=mode==='stock'?'stocks_gw':'delta_gw',values=rows.flatMap(x=>states.map(s=>x[key][s.id])).filter(finite);
+    if (!rows.length || !values.length) return '<p class="dcx-muted">표시할 '+(mode==='stock'?'보유용량':'연속 관측 순증')+'이 없습니다. 원문 관측표를 확인하세요.</p>';
+    const min=Math.min(0,...values),max=Math.max(0,...values),span=max-min||1;
+    const rough=span/5,power=10**Math.floor(Math.log10(rough));
+    const tick=([1,2,2.5,5,10].find(n=>n*power>=rough)||10)*power;
+    const lo=Math.floor(min/tick)*tick,hi=Math.max(lo+tick,Math.ceil(max/tick)*tick),range=hi-lo;
+    const y=v=>t+(hi-v)/range*ph,zero=y(0), step=pw/rows.length,bw=Math.max(1,Math.min(24,step*.72/states.length));
+    let htm='<svg viewBox="0 0 '+w+' '+h+'" role="img" aria-label="미국 데이터센터 '+esc(states.map(s=>s.label).join('·'))+' '+(mode==='stock'?'보유용량':'용량 순증')+' 막대차트. 패널 내 공통 GW 축이며 다른 패널과 눈금이 다릅니다. 정확한 값은 원문 관측표 참조."><text x="'+l+'" y="12">GW · 패널 내 공통 축</text>';
+    for(let j=0;j<=Math.round(range/tick);j++) { const v=lo+tick*j, yy=y(v); htm+='<line class="dcx-grid" x1="'+l+'" x2="'+(w-r)+'" y1="'+yy+'" y2="'+yy+'"/><text text-anchor="end" x="'+(l-7)+'" y="'+(yy+4)+'">'+num(v)+'</text>'; }
+    htm+='<line class="dcx-zero" x1="'+l+'" x2="'+(w-r)+'" y1="'+zero+'" y2="'+zero+'"/>';
+    rows.forEach((row,i)=>{
+      const cx=l+step*(i+.5);
+      states.forEach((s,j)=>{
+        const v=row[key][s.id],x=cx+(j-(states.length-1)/2)*bw-bw*.42;
+        if(!finite(v)) {htm+='<text aria-label="'+esc(valueLabel(row,s,mode))+'" x="'+(x+bw*.42)+'" y="'+(h-b+13)+'" text-anchor="middle">·</text>';return;}
+        const yy=Math.min(zero,y(v)), hh=Math.abs(y(v)-zero),label=valueLabel(row,s,mode);
+        htm+='<rect tabindex="0" role="img" data-dcx-point="'+esc(label)+'" aria-label="'+esc(label)+'" x="'+x+'" y="'+(hh<1?zero-.5:yy)+'" width="'+(bw*.84)+'" height="'+Math.max(1,hh)+'" fill="'+s.color+'"><title>'+esc(label)+'</title></rect>';
+      });
+      const compact=w<600,lab=compact?row.report_month.slice(5)+'월':row.report_month;
+      htm+='<text x="'+cx+'" y="'+(h-9)+'" text-anchor="middle">'+esc(lab)+'</text>';
+    });
+    return htm+'</svg>';
+  }
+  function aterioTable(model) {
+    const hosts=ATERIO_HOSTS;
+    return '<details><summary>원문 관측값 · 순증 계산 구간 · 출처 '+model.snapshots.length+'건</summary><div class="dcx-scroll" tabindex="0" role="region" aria-label="Aterio 원문 관측표 가로 스크롤"><table><caption>원문 용량과 제공된 차분을 그대로 표시합니다. — 는 미확인·미산정이며 0과 다릅니다.</caption><thead><tr><th>관측 기준일</th><th>보고 월</th><th>발표일</th>'+STATES.map(s=>'<th>'+s.label+' GW<br>순증 GW</th>').join('')+'<th>직전 기준일 / 간격</th><th>출처</th></tr></thead><tbody>'+model.snapshots.map(row=>'<tr><td>'+esc(row.as_of)+'</td><td>'+esc(row.report_month)+'</td><td>'+esc(iso(row.published_at)||'미확인')+'</td>'+STATES.map(s=>'<td>'+raw(row.stocks_gw[s.id])+'<br><span class="dcx-muted">'+(finite(row.delta_gw[s.id])?num(row.delta_gw[s.id],true):esc(deltaReason(row,s.id)))+'</span></td>').join('')+'<td>'+esc(row.previous_as_of||'—')+' / '+(row.interval_days==null?'—':esc(row.interval_days)+'일')+'</td><td>'+link(row.source_url,'원문',hosts)+'</td></tr>').join('')+'</tbody></table></div></details>';
+  }
+  function aterioMarkup(data,mode,width) {
+    const m=prepareAterio(data),mt=m.meta,latest=m.snapshots[m.snapshots.length-1];
+    if(!latest) return CSS+'<section class="dcx"><h2>미국 데이터센터 상태별 용량</h2><p class="dcx-muted">검증된 관측 자료가 아직 없습니다.</p></section>';
+    mode=mode==='stock'?'stock':'net';
+    const start=typeof mt.default_start_month==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(mt.default_start_month)?mt.default_start_month:null;
+    let rows=m.snapshots;
+    if(mode==='net') {
+      const first=start?rows.findIndex(r=>r.report_month>=start):rows.findIndex(r=>STATES.some(s=>finite(r.delta_gw[s.id])));
+      rows=first>=0?rows.slice(first):[];
+    }
+    const checked=iso(mt.checked_at)||iso(String(mt.checked_at||'').slice(0,10));
+    let out=CSS+'<section class="dcx dcx-aterio" aria-label="Aterio 미국 데이터센터 용량"><div class="dcx-head"><div><div class="dcx-eyebrow">ATERIO · UNITED STATES</div><h2>미국 데이터센터 상태별 '+(mode==='stock'?'보유용량':'용량 순증')+'</h2><p class="dcx-muted">발표·건설 중·운영·지연의 '+(mode==='stock'?'관측 시점 용량':'직전 연속 관측 대비 변화')+'</p></div><div class="dcx-controls" role="group" aria-label="Aterio 표시 기준"><button type="button" data-dcx-mode="net" aria-pressed="'+(mode==='net')+'">순증</button><button type="button" data-dcx-mode="stock" aria-pressed="'+(mode==='stock')+'">보유용량</button></div></div><div class="dcx-meta"><span>최신 기준일 '+esc(latest.as_of)+'</span><span>원문 발표일 '+esc(iso(latest.published_at)||'미확인')+'</span><span>확인일 '+esc(checked||'미확인')+'</span><span>범위 미국 · 단위 GW</span></div>';
+    out+='<div class="dcx-cards">'+STATES.map(s=>{const v=latest[mode==='stock'?'stocks_gw':'delta_gw'][s.id];return '<div class="dcx-card"><span class="dcx-dot" style="background:'+s.color+'"></span>'+s.label+'<div class="dcx-big">'+num(v,mode==='net')+' <small>GW</small></div><div class="dcx-muted">'+(mode==='stock'?'관측 시점 용량':finite(v)?esc(latest.previous_as_of||'')+' 대비':esc(deltaReason(latest,s.id)))+'</div></div>';}).join('')+'</div><div class="dcx-plots '+(width>=700?'dcx-two':'')+'"><div class="dcx-plot"><h3>발표 <span>· 독립 GW 눈금</span></h3><div class="dcx-chart">'+chartSvg(rows,mode,width>=700?(width-20)/2:width,STATES.slice(0,1))+'</div></div><div class="dcx-plot"><h3>공사 중 · 가동 중 · 공사 지연 <span>· 독립 GW 눈금</span></h3><div class="dcx-chart">'+chartSvg(rows,mode,width>=700?(width-20)/2:width,STATES.slice(1))+'</div></div></div><p class="dcx-muted">두 패널은 GW 눈금이 다릅니다. 패널 사이의 막대 높이를 직접 비교하지 마세요.</p><div class="dcx-readout" aria-live="polite">막대에 마우스를 올리거나 키보드로 이동하면 정확한 값과 비교일을 볼 수 있습니다.</div><div class="dcx-legend">'+STATES.map(s=>'<span><i class="dcx-dot" style="background:'+s.color+'"></i>'+s.label+'</span>').join('')+'</div>';
+    out+='<p class="dcx-note">순증은 상태별 관측 용량의 차이입니다. 신규 프로젝트 수·준공량과 같지 않으며, 상태 이동과 조사 범위 변경이 반영될 수 있습니다. 결측 월을 보간하거나 0으로 채우지 않습니다.</p>';
+    if(mt.capacity_basis)out+='<p class="dcx-muted"><b>용량 기준</b> · '+esc(mt.capacity_basis)+'</p>';
+    if(mt.scope_note||mt.coverage_note)out+='<p class="dcx-muted">'+esc(mt.scope_note||mt.coverage_note)+'</p>';
+    if(mt.date_note)out+='<p class="dcx-muted">'+esc(mt.date_note)+'</p>';
+    (Array.isArray(mt.notes)?mt.notes:[]).forEach(n=>{out+='<p class="dcx-muted">'+esc(n)+'</p>';});
+    if(Array.isArray(mt.methodology_urls)&&mt.methodology_urls.length)out+='<p class="dcx-muted">방법론: '+mt.methodology_urls.map((u,i)=>link(u,'원문 '+(i+1),ATERIO_HOSTS)).join(' · ')+'</p>';
+    if(m.issues.length)out+='<p class="dcx-muted">일부 입력 관측은 형식·중복 검사로 제외되었습니다.</p>';
+    return out+aterioTable(m)+'</section>';
+  }
+  function mountAterio(el,data) {
+    if(!el)return;
+    let mode='net';
+    const render=()=>{
+      el.innerHTML=aterioMarkup(data,mode,Math.max(320,el.clientWidth-36));
+      el.querySelectorAll('[data-dcx-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.dcxMode;render();const next=el.querySelector('[data-dcx-mode="'+mode+'"]');if(next)next.focus();}));
+      el.querySelectorAll('[data-dcx-point]').forEach(p=>{
+        const show=()=>{const out=el.querySelector('.dcx-readout');if(out)out.textContent=p.dataset.dcxPoint;};
+        p.addEventListener('focus',show);p.addEventListener('pointerenter',show);
+      });
+    };
+    render();
+  }
+
+  const DISPOSITION={included:'기존 항목에 포함',included_in_parent:'기존 항목에 포함',included_unallocated:'상위 포함 · 분해 미확인',alternative:'대체 방식',alternative_unallocated:'대체 방식 · 배분 미확인',out_of_scope:'모델 범위 밖',unallocated:'금액 미배분',outside_capex_scope:'설비투자 범위 밖',not_observed_in_universe:'대상 내 미관측',conditional_estimate:'조건부 추정',scope_bound:'포함 범위 상한',hold:'근거 보완 필요',scenario:'조건부 추정',estimated:'조건부 추정'};
+  function nodeKind(n) {return n.disposition_label||DISPOSITION[n.disposition]||n.disposition||'미분류';}
+  function tamOverview(data) {
+    if(!data||!data.nodes)return '';
+    const rows=Object.entries(data.nodes),m=data.meta||{};
+    const estimates=rows.filter(([,n])=>n.scenario&&n.scenario.kind==='conditional_estimate').length;
+    const bounds=rows.filter(([,n])=>n.scenario&&n.scenario.kind==='scope_bound').length;
+    return CSS+'<section class="dcx dcx-tam" aria-label="TAM 미산정 항목 보완"><div class="dcx-eyebrow">TAM · SCOPE & SCENARIOS</div><h2>미산정 항목의 처리와 조건부 범위</h2><div class="dcx-meta"><span>검토 '+rows.length+'항목</span><span>조건부 추정 '+estimates+' · 포함 상한 '+bounds+' · 별도 수치 없음 '+(rows.length-estimates-bounds)+'</span><span>기준일 '+esc(m.as_of||'미확인')+'</span></div><p class="dcx-note">'+esc(m.aggregation_note||'기존 TAM 합계에는 가산하지 않습니다. 포함 항목·대체 방식·범위 밖 항목과 별도 조건부 추정을 구분합니다.')+'</p>'+(m.historical_basis_note?'<p class="dcx-muted">'+esc(m.historical_basis_note)+'</p>':'')+'<div class="dcx-tam-list">'+rows.map(([id,n])=>'<button type="button" data-dcx-node="'+esc(id)+'"><small>'+esc(id)+'</small>'+esc(n.label||id)+'<br><span class="dcx-badge">'+esc(nodeKind(n))+'</span></button>').join('')+'</div></section>';
+  }
+  function tamNode(data,id) {
+    const n=data&&data.nodes&&data.nodes[id];if(!n)return '';
+    const m=data.meta||{},s=n.scenario;
+    let out=CSS+'<section class="dcx dcx-tam-node" aria-label="TAM 항목 보완 근거"><div class="dcx-head"><h3>항목 보완 · '+esc(n.label||id)+'</h3><span class="dcx-badge">'+esc(nodeKind(n))+'</span></div><p>'+esc(n.note||'')+'</p><p class="dcx-note">'+esc(m.aggregation_note||'기존 TAM 합계에는 가산하지 않습니다.')+'</p>';
+    if(Array.isArray(n.included_in)&&n.included_in.length)out+='<p>포함·대조 항목: '+n.included_in.map(x=>'<button type="button" data-dcx-node="'+esc(x)+'">'+esc(x)+'</button>').join(' ')+'</p>';
+    if(s) {
+      const yrs=(Array.isArray(s.years)?s.years:Array.isArray(m.years)?m.years:[]).filter(y=>/^\d{4}$/.test(String(y))).map(String);
+      out+='<h3 style="margin-top:14px">'+(s.kind==='scope_bound'?'부모 항목 내 포함 가능 상한':'조건부 추정 시나리오')+'</h3><p class="dcx-muted">'+(s.kind==='scope_bound'?'시장 추정값이 아닙니다. 상한은 부모 항목에 포함된 금액이며 신규 가산액을 뜻하지 않습니다. 분리 가능한 하한·기준값은 미확인입니다.':'출처와 가정을 결합한 추정이며 실측 시장규모가 아닙니다.')+' 기준 추정이 없는 연도는 — 로 표시합니다.</p><div class="dcx-meta"><span>단위 '+esc(s.unit||m.unit||'미확인')+'</span><span>계수 근거일 '+esc(s.basis_date||'미확인')+'</span></div><div class="dcx-scroll" tabindex="0" role="region" aria-label="조건부 TAM 연도별 값"><table><thead><tr><th>시나리오</th>'+yrs.map(y=>'<th>'+y+'</th>').join('')+'</tr></thead><tbody>'+[['low','하한'],['base','기준'],['high','상한']].map(([key,label])=>'<tr><td>'+label+'</td>'+yrs.map(y=>'<td title="'+esc(finite((s[key]||{})[y])?raw(s[key][y]):'미산정')+'">'+num((s[key]||{})[y])+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+      if(s.formula)out+='<p><b>산식</b> · '+esc(s.formula)+'</p>';
+      if(Array.isArray(s.assumptions)&&s.assumptions.length)out+='<ul class="dcx-ul">'+s.assumptions.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>';
+    } else out+='<p class="dcx-muted">별도 수치 추정 없음 · 위 처리 이유를 유지합니다.</p>';
+    if(n.formula&&!s)out+='<p><b>산식 참고</b> · '+esc(n.formula)+'</p>';
+    if(Array.isArray(n.notes)&&n.notes.length)out+='<ul class="dcx-ul">'+n.notes.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>';
+    const q=n.quantity_context;
+    if(q&&q.values&&typeof q.values==='object') {
+      const yrs=Object.keys(q.values).filter(y=>/^\d{4}$/.test(y)).sort();
+      out+='<details><summary>별도 물량 참고 · '+esc(q.unit||'단위 미확인')+'</summary><p class="dcx-muted">'+esc(q.kind||'')+' · 금액 TAM이 아닙니다.</p><div class="dcx-scroll" tabindex="0" role="region" aria-label="금액과 분리한 참고 물량"><table><thead><tr><th>연도</th>'+yrs.map(y=>'<th>'+y+'</th>').join('')+'</tr></thead><tbody><tr><td>'+esc(q.unit||'물량')+'</td>'+yrs.map(y=>'<td>'+num(q.values[y])+'</td>').join('')+'</tr></tbody></table></div></details>';
+    }
+    if(Array.isArray(n.required_inputs)&&n.required_inputs.length)out+='<details open><summary>수치 추정에 더 필요한 근거</summary><ul class="dcx-ul">'+n.required_inputs.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>';
+    if(Array.isArray(n.sources)&&n.sources.length)out+='<details open><summary>판정·계수 출처 '+n.sources.length+'건</summary><ul class="dcx-ul">'+n.sources.map(x=>'<li>'+link(x.url,x.label||'원문')+(x.published_date?' <span class="dcx-muted">발표일 '+esc(x.published_date)+'</span>':' <span class="dcx-muted">발표일 미확인</span>')+(x.observation_period?'<div class="dcx-muted">자료 대상기간 · '+esc(x.observation_period)+'</div>':'')+(x.evidence?'<div class="dcx-muted">근거 요약 · '+esc(x.evidence)+'</div>':'')+'</li>').join('')+'</ul></details>';
+    return out+'</section>';
+  }
+  function bindTam(el,onSelect) {
+    if(el&&typeof onSelect==='function')el.querySelectorAll('[data-dcx-node]').forEach(b=>b.addEventListener('click',()=>{
+      onSelect(b.dataset.dcxNode);
+      if(typeof document!=='undefined') {
+        const pane=document.getElementById('dcNodePane');
+        if(pane){pane.style.scrollMarginTop='80px';pane.scrollIntoView({block:'start'});}
+      }
+    }));
+  }
+  function tamBadge(data,id) {
+    const n=data&&data.nodes&&data.nodes[id];
+    return n?'<em style="color:#64a8ff">'+esc(n.scenario?(n.scenario.kind==='scope_bound'?'범위':'추정'):'판정')+'</em>':'';
+  }
+  return {STATES,esc,iso,sourceUrl,prepareAterio,deltaReason,chartSvg,aterioMarkup,mountAterio,tamOverview,tamNode,tamBadge,bindTam};
+});
+
 // ===== 🎮 Game 탭 — 상장사 게임 나우캐스트 (Steam·PC방·메이플·모바일·DMM) =====
 let _gameLoaded=false; const GCH={};
 /* ==== ecal 탭 (2026-08-28 구현 — 호출부만 있고 미구현이던 탭, ui/patch.js가 자동 재노출) ==== */
@@ -6425,7 +6610,9 @@ function renderDC(){
     ['grid','🔋 발전설비 순증(EIA-860M)'],['claims','📑 브로커 주장·감사']];
   main.innerHTML=DCSTYLE+'<div class="dcnav">'+views.map(v=>
     '<span class="dcv'+(ST.dcv===v[0]?' on':'')+'" data-dcv="'+v[0]+'">'+v[1]+'</span>').join('')+'</div>'
+    +(ST.dcv==='map'&&D.aterio&&window.PHXDCExtra?'<div id="dcAterioHero"></div>':'')
     +capexStrip(D.capex_common,'dc')+'<div id="dcBody"></div>';
+  if(ST.dcv==='map'&&D.aterio&&window.PHXDCExtra) PHXDCExtra.mountAterio(document.getElementById('dcAterioHero'),D.aterio);
   main.querySelectorAll('.dcv').forEach(e=>e.onclick=()=>{ST.dcv=e.dataset.dcv;ST.dcCountry=null;ST.dcProj=null;renderDC();window.scrollTo(0,0);});
   const body=document.getElementById('dcBody');
   if(ST.dcv==='global'){
@@ -6762,7 +6949,7 @@ function dcViewTam(el,D){
   const roots=kids['_root']||[];
   if(!ST.dcNode||!tree.some(n=>n.part_id===ST.dcNode)) ST.dcNode=(roots[0]||{}).part_id||null;
   const badge=id=>parts[id]&&parts[id].tam&&YR.some(y=>parts[id].tam[y]!=null)?'<em style="color:#00e6b8">TAM</em>':
-    (noTam[id]?'<em style="color:#ff5c5c">미산정</em>':'');
+    ((window.PHXDCExtra&&PHXDCExtra.tamBadge(D.tam_completion,id))||(noTam[id]?'<em style="color:#ff5c5c">미산정</em>':''));
   let tv='';
   roots.forEach(r=>{ const open=ST.dcOpen[r.part_id]!==false;
     tv+='<div class="dcnd l1'+(ST.dcNode===r.part_id?' on':'')+'" data-dcn="'+r.part_id+'"><span data-dctog="'+r.part_id+'" style="cursor:pointer;opacity:.7">'+(open?'▾':'▸')+'</span> '+dcEsc(r.label)+badge(r.part_id)+'</div>';
@@ -6783,6 +6970,7 @@ function dcViewTam(el,D){
 
   let h='<p class="dch">🌲 탑다운 전수 부품 TAM <span style="color:var(--dim);font-size:11.5px;font-weight:500">'+tree.length+'노드 P1~P6 · TAM 산정 '+(M.nodes_with_tam||0)+'노드 · '+dcEsc(M.unit||'$B')+'</span></p>'+
     '<p class="dcs">'+dcEsc((M.universe||{})['정의']||'')+' <b>글로벌 전체 DC TAM 이 아닙니다.</b> 트리 노드를 클릭하면 TAM 시계열(회사별 스택)·계수·점유율 근거·<span style="color:#c45cff">phalanx_link 딥링크</span>가 열립니다. 미산정 노드는 그 사유를 그대로 표시합니다.</p>'+
+    (window.PHXDCExtra?PHXDCExtra.tamOverview(D.tam_completion):'')+
     '<div class="dcgrid two"><div class="dctree">'+tv+'</div><div id="dcNodePane"></div></div>'+
     '<div class="dcpan" style="margin-top:14px"><div class="sub-ttl" style="margin-bottom:8px">🎯 총량 앵커 대조 <span style="font-weight:400;color:var(--dim);font-size:10px">부품 TAM 합(대표총계) vs 앵커 B(epoch AI DC CAPEX 플로우, 동일 유니버스) · 게이트 ±20%</span></div>'+
       '<div class="dct"><table><thead><tr><th>연도</th><th>부품합(대표총계)</th><th>앵커 B</th><th>편차</th><th>판정</th></tr></thead><tbody>'+anchorRows+'</tbody></table></div>'+
@@ -6797,6 +6985,7 @@ function dcViewTam(el,D){
   el.querySelectorAll('[data-dctog]').forEach(e=>e.onclick=(ev)=>{ev.stopPropagation();
     const k=e.dataset.dctog; ST.dcOpen[k]=(ST.dcOpen[k]===false); renderDC();});
   el.querySelectorAll('[data-dcn]').forEach(e=>e.onclick=()=>{ST.dcNode=e.dataset.dcn;renderDC();});
+  if(window.PHXDCExtra) PHXDCExtra.bindTam(el,id=>{ST.dcNode=id;renderDC();});
   dcTamNode(document.getElementById('dcNodePane'),D,ST.dcNode,YR,kids,routes);
 }
 
@@ -6812,7 +7001,11 @@ function dcTamNode(el,D,pid,YR,kids,routes){
   const pl=dcLinkChips(node.phalanx_link||P.phalanx_link||[],routes);
   if(pl) h+='<div style="margin:6px 0 2px">'+pl+'</div>';
 
-  if(noTam[pid]) h+='<div class="dcwarn" style="margin-top:11px"><b>TAM 미산정</b> — '+dcEsc(noTam[pid])+'</div>';
+  const dcExtra=window.PHXDCExtra?PHXDCExtra.tamNode(D.tam_completion,pid):'';
+  if(dcExtra) h+=dcExtra;
+  if(P.basis_warning) h+='<div class="dcwarn">'+dcEsc(P.basis_warning)+'</div>';
+  if((P.excluded_company_metrics||[]).length) h+='<div class="dcwarn">'+P.excluded_company_metrics.map(x=>dcEsc(x.company)+' · 자료에 기록된 '+dcNum(x.value_pct,1)+'% ('+dcEsc(x.year)+') — '+dcEsc(x.reason)).join('<br>')+'</div>';
+  if(noTam[pid]) h+=dcExtra?'<details class="dcwarn" style="margin-top:11px"><summary>기존 미산정 사유 · 보존</summary>'+dcEsc(noTam[pid])+'</details>':'<div class="dcwarn" style="margin-top:11px"><b>TAM 미산정</b> — '+dcEsc(noTam[pid])+'</div>';
 
   if(hasTam){
     h+='<div class="dcch" style="height:240px;margin-top:12px"><canvas id="dcTamCh"></canvas></div>'+
@@ -6863,6 +7056,7 @@ function dcTamNode(el,D,pid,YR,kids,routes){
   h+='</div>';
   el.innerHTML=h;
   el.querySelectorAll('[data-dcn2]').forEach(e=>e.onclick=()=>{ST.dcNode=e.dataset.dcn2;renderDC();});
+  if(window.PHXDCExtra) PHXDCExtra.bindTam(el,id=>{ST.dcNode=id;renderDC();});
   dcBindPl(el,routes);
   const cv=document.getElementById('dcTamCh');
   if(cv&&window.Chart&&hasTam){
