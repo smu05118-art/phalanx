@@ -699,6 +699,8 @@ function switchTab(tab,nav){
   document.getElementById('humanview').hidden=(tab!=='human');
   document.getElementById('llmview').hidden=(tab!=='llm');
   document.getElementById('fedview').hidden=(tab!=='fed');
+  const jbPanel=document.getElementById('jbview');
+  if(jbPanel) jbPanel.hidden=(tab!=='jb');
   document.getElementById('headStat').style.display=isMap?'':'none';
   if(isMap && MAP){setTimeout(()=>MAP.resize(),50);}
   if(tab==='sig' && window.PV){ PV.loadSignals(); }
@@ -708,6 +710,7 @@ function switchTab(tab,nav){
   if(tab==='human'){ loadHuman(); }
   if(tab==='llm'){ loadLLM(); }
   if(tab==='fed'){ loadFed(); }
+  if(tab==='jb' && jbPanel && window.TraderJB){ TraderJB.mount(jbPanel); }
   routeWrite(tab,nav);
 }
 

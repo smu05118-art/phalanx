@@ -151,6 +151,7 @@
   @media(max-width:700px){#tickerbar .tkwrap{animation-duration:40s}.siggrid{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="../consumer_tracking.css">
+<link rel="stylesheet" href="trader_jb.css?v=20261011-1">
 <script src="../consumer_tracking.js"></script>
 </head>
 <body>
@@ -166,6 +167,7 @@
       <button type="button" class="ptab" data-tab="human" id="tab-human" role="tab" aria-controls="humanview" aria-selected="false" tabindex="-1">👥 인간지표</button>
       <button type="button" class="ptab" data-tab="llm" id="tab-llm" role="tab" aria-controls="llmview" aria-selected="false" tabindex="-1">🧠 LLM</button>
       <button type="button" class="ptab" data-tab="fed" id="tab-fed" role="tab" aria-controls="fedview" aria-selected="false" tabindex="-1">🏛 연준</button>
+      <button type="button" class="ptab" data-tab="jb" id="tab-jb" role="tab" aria-controls="jbview" aria-selected="false" tabindex="-1">Trader JB</button>
     </nav>
     <div class="stat" id="headStat"><b id="stEvents">0</b> events · <b id="stActive">0</b> shown · <span id="stUpdated">—</span></div>
   </header>
@@ -220,6 +222,7 @@
   <div id="humanview" hidden style="flex:1;overflow-y:auto;padding:24px clamp(16px,4vw,48px)"></div>
   <div id="llmview" hidden style="flex:1;overflow-y:auto;padding:24px clamp(16px,4vw,48px)"></div>
   <div id="fedview" hidden style="flex:1;overflow-y:auto;padding:24px clamp(16px,4vw,48px)"></div>
+  <div id="jbview" hidden role="tabpanel" aria-labelledby="tab-jb" style="flex:1;min-height:0;overflow:auto;background:#f5f8fc"></div>
 </div>
 <script src="proview.js"></script>
 <script src="tech_charts.js"></script>
@@ -229,7 +232,9 @@
 <script src="tga_target.js"></script>
 <script src="liq_charts.js"></script>
 <script src="fed.js?v=20260910-ui5"></script>
-<script src="app.js?v=20260911-hash1"></script>
+<script src="lib/chart.umd.min.js"></script>
+<script src="trader_jb.js?v=20261011-1"></script>
+<script src="app.js?v=20261011-jb1"></script>
 <script src="market_evidence.js?v=20260915-1"></script>
 <script src="research_desk.js?v=20260915-1"></script>
 </body>
