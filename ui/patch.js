@@ -1245,35 +1245,93 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   document.head.appendChild(s);
 })();
 
-// 나우캐스트 게이트 보류 안내 (2026-10-11) — 빌더의 nowcast_gate 가 예측을 보류하면 M.nowcast 가 비고,
-// 원본은 "데이터 준비중 (재무·세관 데이터 필요)" 라는 사실과 다른 문구를 띄운다(live-smoke tab:nowcast 실패).
-// 보류 상태일 때만 사유별 집계와 종목 목록으로 대체한다. 순위·예측값은 보이지 않는다
-// (alerts_source_contract.nowcast_display_gate: 보류 예측은 보일 수 있으나 순위·실행 목록에는 못 들어간다).
-// nowcast 가 1건이라도 있으면 원본 그대로.
+// 나우캐스트 공개 정책 화면 (2026-10-11) — nowcast_gate.policy 가 있으면 탭 전체를 이 화면으로 그린다.
+//   맨 위 고정: 면책 문구 · 실전 성적(사후 책임 원장) · 정책 버전/검토
+//   공개 순위: 기준 A~G 를 전부 통과한 종목만(M.nowcast, 빌더 정렬). 추정 포함 분기는 칩+툴팁(방법·복원오차).
+//   관찰 목록: 모델은 있지만 기준을 못 넘은 종목 — 순위 번호 없이 실패 기준명.
+// 정책 정보가 없으면(구형 빌드) 보류 안내만 대체하고, 데이터가 있으면 원본 렌더러를 그대로 쓴다.
 (function(){
   var orig=window.renderNowcastRank;
   if(typeof orig!=='function'||orig._gate) return;
   var sf=typeof safe==='function'?safe:function(n,f){ try{ return f(); }catch(e){ console.warn('[ui-patch]',n,e); } };
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function pct(v,d){ return v==null||!isFinite(v)?'—':((v>0?'+':'')+Number(v).toFixed(d==null?1:d)+'%'); }
+  function rate(v){ return v==null||!isFinite(v)?'—':Math.round(v*100)+'%'; }
+  var CONF={high:'높음',mid:'보통',low:'낮음'}, METH={yoy_pace:'YoY 페이스',seasonal_share:'계절 비중'};
+  var BASIS={disclosure:'공시',dominance:'지배 공급자',statistical:'표본외 통계'};
+  function chip(r){
+    if(!r||!r.imputed) return '';
+    var tip='세관 '+(r.avail|0)+'/3개월 공표 — 결측월 '+(r.imputed_months||[]).join(', ')+'을 '+(METH[r.impute_method]||r.impute_method||'?')
+      +' 방식으로 추정해 분기를 완성했습니다. 과거 분기 복원 오차(MAPE) '+(r.impute_mape==null?'—':(r.impute_mape*100).toFixed(1)+'%')
+      +'. 실측이 공표되면 다음 산출에서 교체되고, 추정 시점 예측도 원장에 남습니다.';
+    return ' <span class="phx-ncp-chip" title="'+esc(tip)+'">추정 포함 '+(r.avail|0)+'/3</span>';
+  }
+  function policyView(MM,g){
+    var main=document.getElementById('main'), P=g.policy||{}, T=g.track||{}, L=P.criteria_label||{};
+    var rows=g.rows||{}, rank=(MM.nowcast||[]);
+    var track=(T.resolved|0)?('실전 적중 <b>'+(T.hits|0)+'/'+(T.resolved|0)+'</b> ('+rate(T.hit_rate)+') — 공개 이후 실적 발표분 누적')
+      :'실전 적중 <b>아직 채점된 예측 없음</b> — 목표 분기 실적이 발표되면 예측 대비 실제가 원장에 쌓이고 여기 표시됩니다';
+    var head='<div class="phx-ncp-top">'
+      +'<div class="phx-ncp-disc">⚠ '+esc(P.disclaimer||'추정치이며 투자 권유가 아닙니다.')+'</div>'
+      +'<div class="phx-ncp-track">'+track+' · 최근 4회 중 2회 이하 적중 시 자동 강등</div>'
+      +'<div class="phx-ncp-meta">공개 정책 v'+esc(P.version)+' · 검토 '+esc(P.reviewed_by||'—')+' '+esc(P.reviewed_at||'')
+      +(g.switch&&g.switch.status!=='eligible'?' · <b>공개 스위치 닫힘</b>: '+esc(String(g.switch.reason||'').replace(/^nowcast forecast held:\s*/,'')):'')+'</div></div>';
+    var tbl;
+    if(rank.length){
+      tbl='<h3 class="phx-ncp-h">공개 순위 <span>'+rank.length+'종목 — 기준 '+esc(Object.keys(L).join('·'))+' 전부 통과</span></h3>'
+        +'<div class="phx-ncp-wrap"><table class="phx-ncp-tbl"><thead><tr><th>#</th><th>종목</th><th>예측 분기</th><th>예측 YoY</th>'
+        +'<th title="표본외 워크포워드: 예측 YoY 부호 = 실제 YoY 부호 비율 (현재와 같은 공표 상태로 재현)">표본외 적중</th>'
+        +'<th title="표본외 평균절대오차 대 지속성 기준선(직전 분기 YoY 유지)">MAE / 기준선</th>'
+        +'<th title="표본내 적합: r² · 상관">적합</th><th>매핑 확신도</th><th>선행</th></tr></thead><tbody>'
+        +rank.map(function(n,i){
+          var b=(n.map_basis||[]).map(function(k){return BASIS[k]||k;}).join('·');
+          return '<tr class="phx-ncp-r" data-id="'+esc(n.id)+'" data-reg="'+esc(n.reg||'JP')+'">'
+            +'<td>'+(i+1)+'</td><td><b>'+esc(n.name||n.id)+'</b><div class="phx-ncp-sub">'+esc(n.seg||'')+'</div></td>'
+            +'<td class="mono">'+esc(n.tgtq||'—')+'</td>'
+            +'<td class="mono"><b class="'+((n.predyoy||0)>=0?'up':'dn')+'">'+pct(n.predyoy)+'</b>'+chip(n)+'</td>'
+            +'<td class="mono">'+rate(n.oos_dir_hit)+' <span class="phx-ncp-sub">n='+(n.oos_n|0)+'</span></td>'
+            +'<td class="mono">'+(n.oos_mae==null?'—':Number(n.oos_mae).toFixed(1))+' / '+(n.oos_mae_base==null?'—':Number(n.oos_mae_base).toFixed(1))+'</td>'
+            +'<td class="mono">r² '+(n.r2==null?'—':Number(n.r2).toFixed(2))+' · ρ '+(n.corr==null?'—':Number(n.corr).toFixed(2))+'</td>'
+            +'<td>'+esc(CONF[n.map_conf]||n.map_conf||'—')+(b?'<div class="phx-ncp-sub">'+esc(b)+'</div>':'')+'</td>'
+            +'<td class="mono">'+(n.L>=1?('+'+(n.L|0)+'Q'):'동행')+'</td></tr>';
+        }).join('')+'</tbody></table></div>';
+    } else {
+      tbl='<h3 class="phx-ncp-h">공개 순위 <span>0종목</span></h3><p class="phx-ncp-empty">지금은 공개 기준을 모두 통과한 종목이 없습니다. 기준을 낮추지 않고 그대로 보여 드립니다.</p>';
+    }
+    var obs=Object.keys(rows).filter(function(id){ return !rows[id].rank_eligible; }).map(function(id){
+      var r=rows[id], c=r.criteria||{};
+      var fails=(r.failed||[]).map(function(k){
+        var note=c[k]&&c[k].note?c[k].note:''; return '<span class="phx-ncp-fail" title="'+esc(note)+'">'+esc(L[k]||k)+'</span>';
+      }).join(' ');
+      return '<li><b>'+esc(r.name||id)+'</b> <span class="phx-ncp-sub">'+esc(id)+'</span> · '+esc(r.tgtq||'')+' '+pct(r.predyoy)+chip(r)
+        +'<div class="phx-ncp-fails">관찰 — 미통과: '+(fails||'<span class="phx-ncp-fail">정책 미평가</span>')+'</div></li>';
+    }).join('');
+    main.innerHTML='<div class="phx-ncp">'+head+tbl
+      +'<h3 class="phx-ncp-h">관찰 목록 <span>'+Object.keys(rows).filter(function(id){return !rows[id].rank_eligible;}).length+'종목 — 순위 없음</span></h3>'
+      +'<ul class="phx-ncp-obs">'+obs+'</ul></div>';
+    main.querySelectorAll('tr.phx-ncp-r').forEach(function(tr){ tr.onclick=function(){ if(typeof ncGo==='function') ncGo(tr.dataset.id,tr.dataset.reg); }; });
+  }
+  function heldView(g){
+    var main=document.getElementById('main'), held=Array.isArray(g.held)?g.held:[], by={};
+    held.forEach(function(h){ var k=String((h&&h.reason)||'사유 미기재').replace(/^nowcast forecast held:\s*/,''); (by[k]=by[k]||[]).push(h&&h.id); });
+    var rows=Object.keys(by).map(function(k){
+      return '<li><b>'+by[k].length+'개</b> — '+esc(k)+'<div class="phx-ncg-ids">'+by[k].map(esc).join(' · ')+'</div></li>';
+    }).join('');
+    var body=held.length?'<ul>'+rows+'</ul>':'<p>'+esc(g.reason||'보류 사유가 제공되지 않았습니다.')+'</p>';
+    main.innerHTML='<div class="phx-ncg"><h3>나우캐스트 예측 보류 중</h3>'
+      +'<p>선행 지표 모델은 계산되지만, 공개 기준을 통과하지 못한 예측은 순위표에 넣지 않습니다. '
+      +'현재 공개 '+(g.eligible_count|0)+'개 · 보류 '+(held.length||(g.held_count==null?'?':(g.held_count|0)))+'개입니다.</p>'
+      +body+'<p class="phx-ncg-note">보류 사유가 해소되면 다음 빌드부터 순위표가 다시 표시됩니다.</p></div>';
+  }
   var w=function(){
     var MM=(typeof M!=='undefined'&&M)||{}, g=MM.nowcast_gate;
+    if(g&&g.policy&&g.rows) return sf('nowcast-policy',function(){ policyView(MM,g); });
     if((MM.nowcast||[]).length||!g||g.status!=='held') return orig.apply(this,arguments);
-    return sf('nowcast-gate',function(){
-      var main=document.getElementById('main'), held=Array.isArray(g.held)?g.held:[], by={};
-      held.forEach(function(h){ var k=String((h&&h.reason)||'사유 미기재').replace(/^nowcast forecast held:\s*/,''); (by[k]=by[k]||[]).push(h&&h.id); });
-      var rows=Object.keys(by).map(function(k){
-        return '<li><b>'+by[k].length+'개</b> — '+esc(k)+'<div class="phx-ncg-ids">'+by[k].map(esc).join(' · ')+'</div></li>';
-      }).join('');
-      var body=held.length?'<ul>'+rows+'</ul>':'<p>'+esc(g.reason||'보류 사유가 제공되지 않았습니다.')+'</p>';
-      main.innerHTML='<div class="phx-ncg">'
-        +'<h3>나우캐스트 예측 보류 중</h3>'
-        +'<p>선행 지표 모델은 계산되지만, 공개 기준(완결 분기 검증 · 검토된 공개 정책)을 통과하지 못한 예측은 순위표에 넣지 않습니다. '
-        +'현재 공개 '+(g.eligible_count|0)+'개 · 보류 '+(held.length||(g.held_count==null?'?':(g.held_count|0)))+'개입니다.</p>'
-        +body
-        +'<p class="phx-ncg-note">보류 사유가 해소되면 다음 빌드부터 순위표가 다시 표시됩니다.</p>'
-        +'</div>';
-    });
+    return sf('nowcast-gate',function(){ heldView(g); });
   };
   w._gate=true;
   window.renderNowcastRank=w;
+  // 패치가 첫 렌더 뒤에 로드되면(딥링크 #tab=nowcast) 면책 문구 없는 원본 화면이 남는다 — 그때는 즉시 다시 그린다.
+  try{ if(typeof ST!=='undefined'&&ST.tab==='nowcast'&&typeof M!=='undefined'&&M&&document.getElementById('main')) w(); }
+  catch(e){ console.warn('[ui-patch] nowcast rerender',e); }
 })();
