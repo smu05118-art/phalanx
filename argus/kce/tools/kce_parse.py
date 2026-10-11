@@ -121,6 +121,9 @@ def _expand_grid(grid):
 # 헤더 어휘(정규화 후) — th 태그가 없는 표의 머리행 감지용
 _UNIT_ONLY = re.compile(r"\(?\s*단위\s*[:：][^)]*\)?")
 _HDR_VOCAB = set(COL_ALIAS) | {"비고", "구분", "합계", "신고일자", "품목", "회사명"}
+# 둘째 머리행에만 오는 하위 어휘 — '기본도급액|금액', '미청구공사|총액·손상차손누계액', '수주총액|별도·연결'.
+_SUB_VOCAB = {"금액", "수량", "총액", "당기", "누적", "손상차손누계액", "대손충당금", "손실충당금",
+              "계약자산", "별도", "연결"}
 
 # 계룡건설 II-4는 공종 소제목('건축'·'토목')을 머리행 둘째 줄로 끼워 넣어 평탄화하면
 # '현장명 건축'·'총 도급금액 건축'이 된다(머리행 지도 2023Q4~ 22표). 접미를 벗겨 사전에 다시 묻는다.
@@ -142,7 +145,7 @@ def _looks_header(row):
     cells = [c[0] for c in row]
     if not cells or any(num_of(c) is not None for c in cells):
         return False
-    hits = sum(1 for c in cells if norm_col(c) in _HDR_VOCAB)
+    hits = sum(1 for c in cells if norm_col(c) in _HDR_VOCAB or norm_col(c) in _SUB_VOCAB)
     return hits >= max(2, len(cells) // 2)
 
 
@@ -174,6 +177,11 @@ def _split_header(mat):
         # DART 표 상당수가 th 없이 td 머리행 — 어휘로 감지(연속 최대 2행)
         while nh < min(2, len(mat)) and _looks_header(mat[nh]):
             nh += 1
+    elif nh < len(mat) and _looks_header(mat[nh]):
+        # th 머리행 아래에 td 로 이어지는 둘째 머리행 — 동부건설 III-8(기본도급액|금액, 미청구공사|총액·
+        # 손상차손누계액). th 만 세면 둘째 줄이 데이터로 떨어져 열 이름에 부모만 남고(미청구공사·공사미수금)
+        # ub·rc 가 사라져 표 전체가 미지 헤더가 된다(2026Q2 원문 실측). 어휘로 한 줄 더 본다.
+        nh += 1
     txt = [[c[0] for c in r] for r in mat[nh:]]
     spans = [[c[2] for c in r] for r in mat[nh:]]
     if nh == 0:

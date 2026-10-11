@@ -418,3 +418,50 @@ class TestHeaderMapDialects(unittest.TestCase):
         self.assertEqual(len(out["tables"]), 1)
         self.assertEqual(out["tables"][0]["rows"][0]["nm"], "I오피스텔 신축")
         self.assertEqual(out["tables"][0]["rows"][0]["bal"], 20000)
+
+
+class TestHeaderMapFixtures(unittest.TestCase):
+    """머리행 지도 대조에서 '다음 분기에 깨질' 것으로 판정된 세 회사의 2026Q2 원문(viewer.do 실수집).
+    II-4 는 임베드 DATA 의 2026Q2 실측 사업장(sFilled=None)과 이름+도급액이 전부 맞아야 한다."""
+
+    def _meas(self, co):
+        D = _data(co)
+        k = _k(D)
+        return {s["nm"]: s for s in D["sites"]
+                if s["s"]["amt"][k] is not None and (s.get("sFilled") or [None] * len(D["fqF"]))[k] is None}, k
+
+    def _ii4(self, co, name, want_tables):
+        out = parse_ii4(_fx(name))
+        self.assertEqual(out["unknown_headers"], [], co)
+        self.assertEqual([t["n"] for t in out["tables"]], want_tables, co)
+        meas, k = self._meas(co)
+        rows = [r for t in out["tables"] for r in t["rows"]]
+        hit = sum(1 for r in rows if r["nm"] in meas and meas[r["nm"]]["s"]["amt"][k] == r["amt"])
+        self.assertGreaterEqual(hit / len(meas), 0.98, "%s 실측 %d 중 %d 일치" % (co, len(meas), hit))
+
+    def _p8(self, co, name, want_bases, min_rows):
+        out = parse_p8(_fx(name))
+        self.assertEqual(out["unknown_headers"], [], co)
+        self.assertEqual([(t["basis"], t["n"]) for t in out["tables"]], want_bases, co)
+        rows = [r for t in out["tables"] for r in t["rows"]]
+        self.assertGreaterEqual(len(rows), min_rows)
+        self.assertTrue(all(r.get("amt") is not None and r.get("pr") is not None for r in rows), co)
+        self.assertTrue(any(r.get("ub") is not None for r in rows) and any(r.get("rc") is not None for r in rows), co)
+        p8names = {s["nm"] for s in _data(co)["sites"] if s.get("p8")}
+        self.assertGreaterEqual(sum(1 for r in rows if r.get("nm") in p8names) / len(rows), 0.6, co)
+        return out
+
+    def test_dongbu(self):
+        self._ii4("dbe", "dbe_ii4x_2026Q2.html", [102, 65])          # 도급액(당분기)·현장명
+        out = self._p8("dbe", "dbe_p8_2026Q2.html", [("별도", 49), ("연결", 45), (None, 7)], 100)
+        self.assertEqual(out["tables"][0]["cols"][:5],
+                         ["용역명", "발주처", "계약일", "준공일", "기본도급액 금액"])   # th+td 2단 머리행 평탄화
+
+    def test_kumho(self):
+        self._ii4("khe", "khe_ii4x_2026Q2.html", [147])
+        out = self._p8("khe", "khe_p8_2026Q2.html", [("연결", 32)], 32)
+        self.assertIn("계약금액", out["tables"][0]["cols"])                 # xi_amt → amt 승격으로 읽힌 표
+
+    def test_kyeryong(self):
+        self._ii4("kre", "kre_ii4_2026Q2.html", [133, 39])               # 공종 소제목 줄이 사업장으로 새지 않는다
+        self._p8("kre", "kre_p8_2026Q2.html", [("별도", 36), ("연결", 43)], 79)
