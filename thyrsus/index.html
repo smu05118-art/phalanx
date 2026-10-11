@@ -10902,6 +10902,65 @@ function scarletWomanBlocker(aliveN){
   if(!sw || isMalfunctioning(sw)) return null;
   return ((aliveN!==undefined? aliveN : aliveRegularPlayers().length) >= 5) ? sw : null;
 }
+/* ── 징크스 승리 보류 (승인된 결정 2026-10-08 #2) ──────────────────────
+   일반 규칙이 징크스와 반대되는 승패를 '자동 확정'하지 못하게 한다. 엔진은 이미
+   djWinTriggers() 로 조건 성립을 알고 있었지만 그 값을 보는 곳이 낮 탭 렌더와
+   thyDjinn 내보내기뿐이어서, 승리 확인 창은 징크스를 전혀 언급하지 않고 한 번
+   누르면 확정됐다(실측: leviathan+mayor 5일차 — 규칙은 악, 징크스는 선).
+
+   winBlockers() 에 넣지 않는 이유: 그 함수는 표시 목록이 아니라 게이트다
+   (`if(winBlockers().length) return;` 가 askWin({team:'good'}) 앞에 있다).
+   인자로 팀을 받지 않으므로 팀 의존 항목을 넣으면 정당한 '선 승리'까지 막는다.
+
+   현재 자동 판정 승리 징크스(DJ_CLASS 'A win day')는 전부 악마(leviathan·riot)와
+   선한 캐릭터의 쌍이고, 성립 시 모두 '선 승리'를 가리킨다(djWinTriggers 의 why).
+   그래서 충돌은 '일반 규칙이 악 승리를 가리킬 때'로 정의된다. state 'unknown' 도
+   포함한다 — djWinTriggers 가 그 경우를 "사회자 확인 필요"로 표시한다. */
+/* 트리거 함수는 뒤쪽 <script> 블록에 있다. 전역 export(thyDjinn.winTriggers)를 먼저
+   보고 맨이름을 폴백으로 둔다 — 블록이 분리된 환경(엔진 하네스)에서도 같게 동작한다. */
+function djWinTriggerList(){
+  const fn=(typeof thyDjinn==='object' && thyDjinn && typeof thyDjinn.winTriggers==='function')
+    ? thyDjinn.winTriggers
+    : (typeof djWinTriggers==='function') ? djWinTriggers : null;
+  if(!fn) return [];                           // 징크스 블록이 없어도 승리 판정을 막지 않는다
+  try{ return fn()||[]; }catch(err){ return []; }
+}
+function djWinConflicts(team){
+  if(team==='good') return [];                 // 징크스가 가리키는 쪽과 같다
+  return djWinTriggerList().filter(t=>t && (t.state==='hit' || t.state==='unknown'));
+}
+/* 사회자가 판정을 내린 뒤에는 더 묻지 않는다 — res.heretic 과 같은 단일 적용 가드. */
+function djWinHold(res){
+  return (res && !res.jinxAdjudicated)? djWinConflicts(res.team) : [];
+}
+function djWinConflictNames(list){
+  return (list||[]).map(t=>{
+    const ko=(typeof djCharKo==='function')? djCharKo : (x=>String(x));
+    return ko(t.demon)+'×'+ko(t.other);
+  }).join(' · ');
+}
+/* 사회자 판정만 기록·확정한다. 제안은 위에서 보여주되 자동 실행은 하지 않는다. */
+function djWinAdjudicate(mode){
+  const res=pendingWin;
+  if(!res) return;
+  const held=djWinHold(res);
+  if(!held.length) return;                     // 보류 상태가 아니면 이 버튼은 의미가 없다
+  const names=djWinConflictNames(held);
+  res.jinxAdjudicated=true;
+  if(mode==='apply'){
+    const was=res.team;
+    res.team='good';
+    res.reason=res.reason+' / 사회자 판정: 징크스 적용('+names+')';
+    res.rule='사회자가 징크스를 적용해 '+(was==='good'?'선':'악')+' → 선으로 판정했습니다. '+res.rule;
+    if(typeof log==='function') log('⚖ 징크스 판정 — 적용: '+names+' → 선한 팀');
+  }else{
+    res.reason=res.reason+' / 사회자 판정: 징크스 미적용('+names+')';
+    res.rule='사회자가 징크스를 적용하지 않기로 판정했습니다. '+res.rule;
+    if(typeof log==='function') log('⚖ 징크스 판정 — 미적용: '+names);
+  }
+  pendingWin=null;
+  askWin(res);                                 // 판정이 반영된 통상 확인 창으로 되돌린다
+}
 function winBlockers(){
   // 악마가 죽어도 선 승리를 막는 요소들
   const out=[];
@@ -11134,6 +11193,7 @@ function askWin(res){
   pendingWin=res;
   const el=$('#winask'); el.hidden=false;
   const blockers=winBlockers();
+  const held=djWinHold(res);                   // 비어 있지 않으면 통상 확정 버튼을 내보내지 않는다
   el.innerHTML=`<div class="wcard">
     <div class="wicon">${res.team==='good'?'🕊️':'😈'}</div>
     <div class="wteam ${res.team}">${res.team==='good'?'선한 팀의 승리입니다':'악한 팀의 승리입니다'}</div>
@@ -11141,8 +11201,11 @@ function askWin(res){
     <div class="wreason">${esc(res.reason)}</div>
     <div class="wrule">📖 ${esc(res.rule)}</div>
     ${blockers.length?`<div class="alertbox" style="text-align:left">확인할 것: ${blockers.map(b=>`<b>${esc(b.who)}</b>`).join(' · ')} — ${esc(blockers[0].why)}</div>`:''}
+    ${held.length?`<div class="alertbox" style="text-align:left">⚖ <b>징크스 판정이 필요합니다 — 승리를 보류했습니다.</b><br>${held.map(t=>`<b>${esc(djWinConflictNames([t]))}</b> · ${esc(t.state==='hit'?'조건 성립':'사회자 확인 필요')} — ${esc(t.why)}`).join('<br>')}<br>일반 규칙은 ${res.team==='good'?'선':'악'}한 팀을 가리키고, 이 징크스는 선한 팀을 가리킵니다. 적용 여부를 판정하세요.</div>`:''}
     <div class="bigactions">
-      <button class="gold" onclick="confirmWin(true)">✓ 게임 종료</button>
+      ${held.length?`<button class="gold" onclick="djWinAdjudicate('apply')">⚖ 징크스 적용 — 선한 팀 승리로 판정</button>
+      <button onclick="djWinAdjudicate('skip')">징크스 미적용 — ${res.team==='good'?'선':'악'}한 팀 승리로 판정</button>`
+      :`<button class="gold" onclick="confirmWin(true)">✓ 게임 종료</button>`}
       <button onclick="confirmWin(false)">아니오 — 계속 진행</button>
     </div></div>`;
 }
@@ -11162,6 +11225,12 @@ function confirmWin(yes){
   if(S.gameOver){ toast('이미 끝난 판입니다 — 낡은 승리 확인 창을 닫습니다.','warn'); return; }
   /* 종료 종류는 승리값이 가진다(res.endKind) — 전역에 남아 있던 값은 믿지 않는다(취소된 기권의 잔존).
      임의 종료는 이 함수를 지나지 않고 자기 경로에서 'manual' 을 찍는다. */
+  /* 보류된 승리는 여기서도 막는다 — 이 파일이 적어 둔 대로 오버레이가 포인터는 가려도
+     Tab/Enter 는 버튼에 닿는다. 사회자 판정 없이 확정되는 경로를 남기지 않는다. */
+  if(yes && djWinHold(res).length){
+    if(typeof toast==='function') toast('징크스 판정이 먼저 필요합니다 — 승리를 보류했습니다.','warn');
+    pendingWin=res; askWin(res); return;
+  }
   if(yes){ S.endKind=(res.endKind==='concede'||res.endKind==='fiddler')? res.endKind : 'win'; S.gameOver=true; save(); showGameOver(res.team, res.reason+' — '+res.rule); }
   else {
     S.endKind=null;                            // 열어 둔 승리 창을 '계속 진행'으로 닫은 경우
