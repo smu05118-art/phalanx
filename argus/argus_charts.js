@@ -103,6 +103,11 @@
     /* 플롯 공통 */
     '.ag-plot{position:relative}',
     '.ag-plot[tabindex]{border-radius:8px}',
+    '.ag-price-legends{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px;margin:12px 0 18px}',
+    '.ag-price-legend-item{min-width:0;border:1px solid var(--line,#263344);border-radius:9px;padding:10px 12px;font-size:12px;overflow-wrap:anywhere}',
+    '.ag-price-tip{min-height:42px;font-size:11px;line-height:1.65;color:var(--ink,#e6edf3);border-top:1px solid var(--line,#263344);padding:8px 0;overflow-wrap:anywhere}',
+    '.ag-price-source-table{font-size:12px;margin:14px 0}.ag-price-source-table summary{cursor:pointer}.ag-price-source-table caption{text-align:left;color:'+DIM+';padding:12px 0;font-size:11px;line-height:1.65}',
+    '.ag-price-source-table .ag-tbl td:nth-child(7){white-space:normal;min-width:240px;max-width:480px;font-family:inherit;line-height:1.65}',
     '.ag-plot svg{display:block;width:100%;height:auto;overflow:visible}',
     '.ag-tip{position:absolute;pointer-events:none;opacity:0;background:rgba(8,11,17,.94);border:1px solid var(--line,#1f2937);border-radius:8px;padding:6px 9px;font-family:' + MONO + ';font-size:10.5px;line-height:1.7;color:#e6edf3;white-space:nowrap;z-index:4;transition:opacity .1s;transform:translate(-50%,0)}',
     '.ag-plot.on .ag-tip{opacity:1}',
@@ -252,6 +257,148 @@
   var CH = new WeakMap();
   var PENDING = {};
   var chSeq = 0;
+  // This comparison has an elapsed-day axis. It must not share the indexed
+  // weekly chart axis or turn publication snapshots into assessment history.
+  function solarPriceDate(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    var ms = Date.parse(value + 'T00:00:00Z');
+    return Number.isFinite(ms) && new Date(ms).toISOString().slice(0,10) === value ? ms : null;
+  }
+  function solarPriceURL(value) {
+    try {
+      var url = new URL(value);
+      var hosts = ['eia.gov','www.eia.gov','www.opis.com','www.opisnet.com','opisnet.com',
+        'www.pv-magazine.com','pv-magazine.com','pv-magazine-usa.com','www.pv-magazine-usa.com',
+        'www.infolink-group.com','www.anzarenewables.com'];
+      return url.protocol === 'https:' && !url.username && !url.password && !url.port && !url.search && !url.hash && hosts.indexOf(url.hostname) >= 0 ? url.href : null;
+    } catch (_) { return null; }
+  }
+  function solarPriceModel(chosen, history) {
+    history = history || {};
+    var end = solarPriceDate(history.axis_end), asof = solarPriceDate(history.as_of);
+    if (end === null || asof === null || end > asof) return null;
+    var rows = [], colors = [ACC, '#f6c85f', '#b892ff', '#59d0a8', '#ff8a3d', '#ff8fbd', '#a8b4d8', '#c3d26c'];
+    var eia = {id:chosen.sid,name:'EIA · 모듈 평균 출하가격',publisher:'EIA',unit:chosen.unit,
+      basis_note:chosen.basis_note || '',date_basis:'monthly_shipment_average',frequency:'monthly',
+      max_gap_days:32,points:(chosen.native_dates || []).map(function (date,i) {
+        return {date:date,value:(chosen.native_values || [])[i],published_on:chosen.release_date,
+          source_url:chosen.source_url,note:'해당 월 출하 평균 · 월말은 월 표시용 날짜'};
+      })};
+    [eia].concat(Array.isArray(history.series) ? history.series : []).forEach(function (r) {
+      if (!r || ['USD/Wp','USD/W'].indexOf(r.unit) < 0 || !Array.isArray(r.points)) return;
+      var row = {id:r.id,name:r.name,publisher:r.publisher,unit:r.unit,basis_note:r.basis_note,
+        date_basis:r.date_basis,frequency:r.frequency,max_gap_days:r.max_gap_days,
+        color:colors[rows.length % colors.length],points:[],segments:[]};
+      var prev = null, segment = null;
+      r.points.slice().sort(function (a,b) { return String(a.date).localeCompare(String(b.date)); }).forEach(function (p) {
+        var ms = solarPriceDate(p.date);
+        if (ms === null || ms > end || !Number.isFinite(p.value) || p.value < 0) { prev = null; segment = null; return; }
+        var published = solarPriceDate(p.published_on);
+        if (published !== null && published > asof) { prev = null; segment = null; return; }
+        var point = {date:p.date,ms:ms,value:p.value,published_on:p.published_on || null,
+          source_url:solarPriceURL(p.source_url),note:p.note || '',row:row};
+        var months = prev ? (Number(p.date.slice(0,4))-Number(prev.date.slice(0,4)))*12 + Number(p.date.slice(5,7))-Number(prev.date.slice(5,7)) : null;
+        var gap = prev ? (ms-prev.ms)/86400000 : null;
+        var connect = prev && gap > 0 && row.date_basis !== 'publication_snapshot' &&
+          (row.frequency === 'monthly' ? months === 1 && gap <= 32 :
+            Number.isInteger(row.max_gap_days) && row.max_gap_days >= 1 && row.max_gap_days <= 45 &&
+            months >= 0 && months <= 1 && gap <= row.max_gap_days);
+        if (!connect) { segment = []; row.segments.push(segment); }
+        segment.push(point); row.points.push(point); prev = point;
+      });
+      if (row.points.length) rows.push(row);
+    });
+    var points = [];
+    rows.forEach(function (row) { points = points.concat(row.points); });
+    points.sort(function (a,b) { return a.ms-b.ms; });
+    if (!points.length) return null;
+    var dates = Array.from(new Set(points.map(function (p) { return p.date; }))).sort();
+    var assessments = points.filter(function (p) { return p.row.date_basis === 'assessment'; });
+    var lastAssessment = assessments.length ? assessments[assessments.length-1].date : null;
+    return {rows:rows,points:points,dates:dates,start:points[0].ms,end:end,axis_end:history.axis_end,
+      as_of:history.as_of,lastAssessment:lastAssessment,last:points[points.length-1].date,notice:history.notice || ''};
+  }
+  function solarPriceMarkup(model, width) {
+    var W = Math.max(290,Math.min(1000,width || 900)), H = 265, PL = 10, PR = 52, PT = 15, PB = 29;
+    var values = model.points.map(function (p) { return p.value; });
+    var lo = Math.min.apply(null,values), hi = Math.max.apply(null,values);
+    var pad = (hi-lo)*0.09 || hi*0.05 || 0.02; lo = Math.max(0,lo-pad); hi += pad;
+    var span = model.end-model.start || 86400000;
+    var x = function (ms) { return PL+(W-PL-PR)*(ms-model.start)/span; };
+    var y = function (v) { return PT+(H-PT-PB)*(1-(v-lo)/(hi-lo)); };
+    var grid = '', lines = '', marks = '', ticks = '';
+    for (var i=0;i<5;i++) {
+      var value = lo+(hi-lo)*i/4, gy = y(value);
+      grid += '<line x1="'+PL+'" y1="'+gy.toFixed(2)+'" x2="'+(W-PR)+'" y2="'+gy.toFixed(2)+'" stroke="#263344" stroke-dasharray="3 4"/>'+
+        '<text x="'+(W-PR+6)+'" y="'+(gy+3.5).toFixed(2)+'" font-size="10" fill="'+DIM+'">'+value.toFixed(2)+'</text>';
+      var date = new Date(model.start+(model.end-model.start)*i/4).toISOString().slice(0,7);
+      ticks += '<text x="'+(PL+(W-PL-PR)*i/4).toFixed(2)+'" y="'+(H-6)+'" text-anchor="'+(i===0?'start':i===4?'end':'middle')+'" font-size="10" fill="'+DIM+'">'+date+'</text>';
+    }
+    model.rows.forEach(function (row,index) {
+      row.segments.forEach(function (segment) {
+        if (segment.length < 2) return;
+        var d = segment.map(function (p,j) { return (j?'L':'M')+x(p.ms).toFixed(2)+' '+y(p.value).toFixed(2); }).join(' ');
+        lines += '<path data-price-series="'+esc(row.id)+'" d="'+d+'" fill="none" stroke="'+row.color+'" stroke-width="1.8"'+(index?' stroke-dasharray="'+(index%2?'6 3':'2 3')+'"':'')+'/>';
+      });
+      row.points.forEach(function (p) {
+        marks += '<circle data-price-date="'+p.date+'" data-price-series="'+esc(row.id)+'" cx="'+x(p.ms).toFixed(2)+'" cy="'+y(p.value).toFixed(2)+'" r="3" fill="'+(row.date_basis==='publication_snapshot'?'var(--panel,#111721)':row.color)+'" stroke="'+row.color+'" stroke-width="1.4"><title>'+esc(row.name+' · '+p.date+' · '+p.value+' '+row.unit)+'</title></circle>';
+      });
+    });
+    var label = '미국 모듈가격 · 출하평균 / 인도가 비교';
+    var currentMonth = model.axis_end.slice(0,7), latest = model.lastAssessment;
+    var current = latest && latest.slice(0,7) === currentMonth ? '마지막 가격 평가 '+latest :
+      Number(currentMonth.slice(5,7))+'월 확인값 없음'+(latest?' · 마지막 가격 평가 '+latest:'');
+    var caption = '표시 범위 '+new Date(model.start).toISOString().slice(0,10)+'–'+model.axis_end+' · 수집·검증 기준 '+model.as_of;
+    var legend = model.rows.map(function (row,index) {
+      var p = row.points[row.points.length-1];
+      return '<div class="ag-price-legend-item"><div><span aria-hidden="true" style="display:inline-block;width:20px;border-top:2px '+(index?'dashed':'solid')+' '+row.color+';margin-right:7px"></span><b>'+esc(row.name)+'</b></div><div class="ag-meta">'+esc(row.publisher || '')+' · '+
+        (row.date_basis==='publication_snapshot'?'발표 시점 참고값 · 관측일 미공표':row.date_basis==='monthly_shipment_average'?'월 출하 평균 · 발행 중단':'가격 평가일 기준')+'</div><div style="margin-top:5px"><b>'+p.value.toFixed(3)+'</b> <span class="ag-meta">'+esc(row.unit)+' · '+esc(row.date_basis==='monthly_shipment_average'?p.date.slice(0,7):p.date)+'</span></div><details style="margin-top:6px"><summary class="ag-meta" style="cursor:pointer">제품·가격 기준</summary><p class="ag-meta" style="margin:6px 0 0;line-height:1.65">'+esc(row.basis_note || '')+'</p></details></div>';
+    }).join('');
+    var table = model.points.slice().reverse().map(function (p) {
+      var kind = p.row.date_basis==='publication_snapshot'?'발표 시점 · 관측일 미공표':p.row.date_basis==='monthly_shipment_average'?'출하 월':'가격 평가일';
+      return '<tr><th scope="row" class="l">'+esc(p.row.name)+'</th><td>'+esc(p.row.date_basis==='monthly_shipment_average'?p.date.slice(0,7):p.date)+'</td><td class="l">'+kind+'</td><td>'+esc(String(p.value))+'</td><td>'+esc(p.row.unit)+'</td><td>'+esc(p.published_on || '미공표')+'</td><td class="l">'+esc(p.note)+'</td><td class="l">'+(p.source_url?'<a href="'+esc(p.source_url)+'" target="_blank" rel="noopener noreferrer">원문 ↗</a>':'원문 URL 미확인')+'</td></tr>';
+    }).join('');
+    return '<h4 style="font-size:16px;margin:8px 0">'+label+'</h4><p class="ag-meta" style="margin:0 0 12px;line-height:1.7">'+esc(caption)+'<br>'+esc(current)+'</p>'+
+      '<div class="ag-plot ag-price-timeplot" data-price-plot tabindex="0" role="group" aria-label="미국 모듈가격 차트. 좌우 화살표로 실제 자료 날짜를 탐색합니다."><svg role="img" aria-label="'+esc(label)+'" viewBox="0 0 '+W+' '+H+'" style="display:block;width:100%;height:265px"><title>'+label+'</title><desc>'+esc(caption)+' · 날짜 간 간격은 실제 일수에 비례합니다. 출처별 별도 계열이며 결측 기간은 연결하지 않습니다.</desc>'+grid+lines+marks+ticks+
+      '<line data-price-guide x1="0" y1="'+PT+'" x2="0" y2="'+(H-PB)+'" stroke="#e6edf3" stroke-opacity="0" stroke-dasharray="2 3"/></svg><div class="ag-price-tip" data-price-tip role="status" aria-live="polite">점에 마우스를 올리거나 차트에서 좌우 화살표를 누르면 원값과 기준일을 볼 수 있습니다.</div></div><div class="ag-price-legends">'+legend+'</div>'+
+      '<p class="ag-meta" style="line-height:1.75;margin:12px 0">출하 가중 평균, 특정 제품의 인도가 평가, 발표 시점 견적은 모집단·가격 조건이 다릅니다. 한 가격으로 합치거나 출처 사이의 증감률을 계산하지 않습니다. USD/W와 USD/Wp는 모듈 정격출력 1W당 달러로 함께 표시합니다. 월별 대표 평가값은 월평균이 아닙니다. 월 누락·연결 허용 간격 초과·출처 또는 기준 변경 구간은 연결하지 않습니다.</p>'+
+      (model.notice?'<p class="ag-meta" style="line-height:1.75">'+esc(model.notice)+'</p>':'')+
+      '<details class="ag-price-source-table"><summary>가격 원값·기준일·발표일·출처 '+model.points.length+'건</summary><div class="ag-scroll"><table class="ag-tbl"><caption>출처별 개별 자료. 월말 EIA 날짜는 월의 표시이며, 발표 시점 참고값은 관측일을 뜻하지 않습니다.</caption><thead><tr><th class="l">계열</th><th>기준일·월</th><th class="l">날짜 성격</th><th>가격 원값</th><th>단위</th><th>공표일</th><th class="l">자료 조건</th><th class="l">출처</th></tr></thead><tbody>'+table+'</tbody></table></div></details>';
+  }
+  function renderSolarPriceHistory(host, chosen, history) {
+    var model = solarPriceModel(chosen,history);
+    if (!model) { host.innerHTML = '<p class="ag-meta">비교 가격 자료를 확인할 수 없습니다. EIA 과거 원자료는 아래에서 확인할 수 있습니다.</p>'; return false; }
+    var width = Math.max(290,Math.min(1000,host.clientWidth || 900));
+    host.innerHTML = solarPriceMarkup(model,width);
+    var plot = host.querySelector('[data-price-plot]'), svg = plot.querySelector('svg');
+    var tip = plot.querySelector('[data-price-tip]'), guide = plot.querySelector('[data-price-guide]');
+    var index = model.dates.length-1, PL=10, PR=52;
+    function show(i) {
+      index = Math.max(0,Math.min(model.dates.length-1,i));
+      var date = model.dates[index], ms = solarPriceDate(date);
+      var x = PL+(width-PL-PR)*(ms-model.start)/(model.end-model.start || 86400000);
+      guide.setAttribute('x1',x); guide.setAttribute('x2',x); guide.setAttribute('stroke-opacity','0.6');
+      tip.innerHTML = '<b>'+esc(date)+'</b><br>'+model.points.filter(function (p) { return p.date===date; }).map(function (p) {
+        return '<span style="color:'+p.row.color+'">●</span> '+esc(p.row.name)+' <b>'+esc(String(p.value))+' '+esc(p.row.unit)+'</b> · '+
+          (p.row.date_basis==='publication_snapshot'?'발표 시점 · 관측일 미공표':p.row.date_basis==='monthly_shipment_average'?'해당 월 출하 평균':'가격 평가일')+
+          ' · 공표 '+esc(p.published_on || '미공표')+(p.note?'<br>'+esc(p.note):'');
+      }).join('<br>');
+    }
+    plot.addEventListener('pointermove',function (event) {
+      var bounds = svg.getBoundingClientRect();
+      var pos = (event.clientX-bounds.left)/bounds.width*width;
+      var ms = model.start+Math.max(0,Math.min(1,(pos-PL)/(width-PL-PR)))*(model.end-model.start);
+      var near=0, distance=Infinity;
+      model.dates.forEach(function (date,i) { var d=Math.abs(solarPriceDate(date)-ms); if(d<distance){distance=d;near=i;} });
+      show(near);
+    });
+    plot.addEventListener('focus',function () { show(index); });
+    plot.addEventListener('keydown',function (event) {
+      if (['ArrowLeft','ArrowRight','Home','End'].indexOf(event.key)<0) return;
+      event.preventDefault(); show(event.key==='Home'?0:event.key==='End'?model.dates.length-1:index+(event.key==='ArrowLeft'?-1:1));
+    });
+    return true;
+  }
   function chart(dates, rows, o) {
     // rows: [{name, v, col, hunt}], o: {h, unit, from, idx(100지수화), ymin0}
     o = o || {};
@@ -591,7 +738,7 @@
       }
       var rows = (source[kind] && source[kind].series || []).filter(function (r) { return Array.isArray(r.v); });
       var axisKey = kind === 'solar' ? 'sol' : 'oil';
-      return rows.length ? { kind: kind, key: key, axis: (source.axes || {})[axisKey] || [], series: rows, price_references: (source[kind] || {}).price_references || [], trade_proxies: (source[kind] || {}).trade_proxies || [] } : null;
+      return rows.length ? { kind: kind, key: key, axis: (source.axes || {})[axisKey] || [], series: rows, price_references: (source[kind] || {}).price_references || [], price_history: (source[kind] || {}).price_history || null, trade_proxies: (source[kind] || {}).trade_proxies || [] } : null;
     }
     function finishChunk(ref, chunk, error, source) {
       if (chunk) chunkCache[ref] = chunk;
@@ -942,13 +1089,16 @@
         return Object.assign({}, r, {name:displayNames[r.sid] || r.name});
       });
       if (!all.length) return;
+      var eiaPrice = all.find(function (r) { return r.sid === 'sol_us_eia_module_avg'; });
+      var priceComparison = !!(eiaPrice && solarPriceModel(eiaPrice,chunk.price_history));
       var group = 'installation', selected = 'sol_us_eia_net_change_total';
       var groupOf = function (r) { return /pipeline_|operating_ytd/.test(r.sid) ? 'pipeline' : /module_/.test(r.sid) ? 'price' : 'installation'; };
       var labels = {installation:'설치 흐름',pipeline:'건설·계획',price:'가격·공급'};
       var notes = {
         installation:'월별 순증은 EIA 순하계 설비용량의 전월 차이입니다. 신규 설치뿐 아니라 폐쇄·정정의 영향도 포함하며, 소규모 설비는 EIA 추정치입니다.',
         pipeline:'계획과 건설 진행 물량은 향후 설치를 살펴보는 선행 지표입니다. 준공을 보장하지 않으며 지표끼리 중복됩니다. 서로 더하지 않습니다.',
-        price:'EIA 평균 출하가격은 출하금액과 물량에 기반한 과거 가격입니다. 발행이 중단되어 현재 현물가로 사용할 수 없습니다. 최신 공개 견적은 아래에 별도 표시합니다.'
+        price:priceComparison ? 'EIA 출하 평균과 이후 확인한 모듈 인도가를 같은 시간축에서 비교합니다. 출처별 모집단·제품·가격 조건을 유지하며, 값이 확인되지 않은 기간은 비워 둡니다.' :
+          '비교 가격 이력 자료가 제공되지 않아 EIA 과거 출하 평균만 표시합니다. EIA 발행은 중단되었으며 현재 현물가로 사용할 수 없습니다. 공개 견적 참고값은 아래에 별도로 표시합니다.'
       };
       function draw(focus) {
         var rows = all.filter(function (r) { return groupOf(r) === group; });
@@ -958,6 +1108,7 @@
         var count = (chosen.native_values || []).filter(fin).length;
         var dates = chosen.native_dates || [], vals = chosen.native_values || [];
         var month = chosen.last_date ? chosen.last_date.slice(0,7) : '미확인';
+        var compare = chosen.sid === 'sol_us_eia_module_avg' && priceComparison;
         var ref = (chunk.price_references || []).map(function (r) {
           var value = r.quote_type === 'range' ? fmt(r.low) + '–' + fmt(r.high) : fmt(r.value);
           return '<article class="ag-card"><div class="ag-meta">Anza · ' + (r.quote_type === 'median' ? '중앙값' : '견적 범위') + '</div><b>' + esc(r.name) + '</b>' +
@@ -969,19 +1120,20 @@
             return '<button type="button" class="ag-chip" data-us-group="' + key + '" aria-pressed="' + (key === group) + '"' + (key === group ? ' style="color:' + ACC + ';border-color:' + ACC + '"' : '') + '>' + labels[key] + '</button>';
           }).join('') + '</div><p class="ag-meta" style="max-width:940px;line-height:1.7">' + notes[group] + '</p>' +
           '<label style="display:block;font-size:12px;margin:12px 0">지표 <select data-us-select aria-label="미국 태양광 지표" style="max-width:100%;background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:6px">' + rows.map(function (r) {
-            return '<option value="' + esc(r.sid) + '"' + (r.sid === selected ? ' selected' : '') + '>' + esc(r.name) + '</option>';
+            return '<option value="' + esc(r.sid) + '"' + (r.sid === selected ? ' selected' : '') + '>' + esc(r.sid === 'sol_us_eia_module_avg' && priceComparison ? '미국 모듈가격 · 출하평균 / 인도가 비교' : r.name) + '</option>';
           }).join('') + '</select></label>' +
-          '<div data-us-detail aria-live="polite"><div class="ag-meta">' + esc(chosen.publisher || 'EIA') + ' · ' + esc(month) + ' 기준' + (chosen.source_status === 'suspended' ? ' · 발행 중단 / 과거 자료' : ' · 월별 공표') + '</div>' +
+          (compare ? '<div data-us-price-history></div>' : '<div data-us-detail aria-live="polite"><div class="ag-meta">' + esc(chosen.publisher || 'EIA') + ' · ' + esc(month) + ' 기준' + (chosen.source_status === 'suspended' ? ' · 발행 중단 / 과거 자료' : ' · 월별 공표') + '</div>' +
           '<h4 style="font-size:15px;margin:8px 0">' + esc(chosen.name) + '</h4><div style="font-size:28px;font-weight:750;margin-bottom:8px">' + fmt(chosen.last) + ' <small style="font-size:12px;font-weight:500">' + esc(chosen.unit) + '</small></div>' +
           chart(dates, [{name:chosen.name,v:vals,col:ACC,hunt:[]}], {w:Math.max(300,Math.min(900,host.clientWidth-36)),h:210,unit:chosen.unit,points:true,title:chosen.name}) +
           '<div class="ag-meta">' + count + '개월 관측 · 공표 ' + esc(chosen.release_date || '원문 참조') + (count < 3 ? ' · 관측 이력이 짧아 추세·예측을 산출하지 않습니다.' : ' · 결측 월은 연결하지 않습니다.') + '</div>' +
-          '<p class="ag-meta" style="line-height:1.7">' + esc(chosen.basis_note || '') + '</p><div class="ag-meta"><a href="' + esc(chosen.source_url || 'https://www.eia.gov/') + '" target="_blank" rel="noopener">EIA 원문 ↗</a> · <a href="connections.html#' + encodeURIComponent(chosen.sid) + '">관측 이력·기준 ↗</a></div></div>' +
+          '<p class="ag-meta" style="line-height:1.7">' + esc(chosen.basis_note || '') + '</p><div class="ag-meta"><a href="' + esc(chosen.source_url || 'https://www.eia.gov/') + '" target="_blank" rel="noopener">EIA 원문 ↗</a> · <a href="connections.html#' + encodeURIComponent(chosen.sid) + '">관측 이력·기준 ↗</a></div></div>') +
           (group === 'price' && ref ? '<h4 style="margin:22px 0 10px">공개 견적 참고 · 평균가격과 별도</h4><div class="ag-grid2">' + ref + '</div>' : '') +
           '<details style="margin-top:16px"><summary style="cursor:pointer;font-size:12px">' + labels[group] + ' 지표 ' + rows.length + '개 한눈에 보기</summary><div class="ag-scroll"><table class="ag-tbl"><thead><tr><th class="l" scope="col">지표</th><th scope="col">최신값</th><th scope="col">단위</th><th scope="col">기준 월</th></tr></thead><tbody>' + rows.map(function (r) {
             return '<tr><th class="l" scope="row">' + esc(r.name) + '</th><td>' + fmt(r.last) + '</td><td>' + esc(r.unit) + '</td><td>' + esc((r.last_date || '').slice(0,7)) + '</td></tr>';
           }).join('') + '</tbody></table></div></details><p class="ag-meta" style="margin-top:16px">원문 기준을 보존한 참고지표 · 종합 점수·설치량 예측에는 반영하지 않습니다.</p></section>';
         host.querySelectorAll('[data-us-group]').forEach(function (button) { button.onclick = function () { group = button.dataset.usGroup; selected = group === 'installation' ? 'sol_us_eia_net_change_total' : group === 'pipeline' ? 'sol_us_eia_pipeline_construction' : 'sol_us_eia_module_avg'; draw('group'); }; });
         host.querySelector('[data-us-select]').onchange = function (event) { selected = event.target.value; draw('select'); };
+        if (compare) renderSolarPriceHistory(host.querySelector('[data-us-price-history]'),chosen,chunk.price_history);
         bindHover(host);
         if (focus) {
           var control = focus === 'select' ? host.querySelector('[data-us-select]') : Array.from(host.querySelectorAll('[data-us-group]')).find(function (b) { return b.dataset.usGroup === group; });
