@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="data:,">
+  <meta name="description" content="북미 태양광 발전기·시설·접속 신청·허가를 원천별로 탐색합니다. 관측일과 용량 기준, 공개 범위를 구분합니다.">
+  <title>북미 태양광 프로젝트 | Phalanx</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#explorer">명부로 건너뛰기</a>
+  <header class="topbar"><a class="brand" href="../">PHALANX <span>/ SOLAR</span></a><nav aria-label="관련 화면"><a href="../index.html#tab=dc">데이터센터</a><a href="../argus/#ag-solar">ARGUS 태양광</a></nav></header>
+  <main>
+    <section class="hero" aria-labelledby="page-title"><div><p class="eyebrow">NORTH AMERICA · SOURCE REGISTERS</p><h1 id="page-title">북미 태양광 프로젝트</h1><p class="lead">운영 설비에서 건설 계획, 계통접속 신청과 허가까지.<br>같은 사업의 서로 다른 기록을 원천별로 살펴봅니다.</p></div><div class="edition"><span>자료 묶음 기준</span><strong id="as-of">불러오는 중</strong><small>개별 기준일과 날짜 성격은 원천별로 다릅니다.</small></div></section>
+    <aside class="scope-note"><strong id="audience-label">공개용 원장 · 재공개 가능한 자료</strong><p id="audience-note">공개 제외 원천은 국가별 조사 범위에서 확인할 수 있습니다.</p><p>발전기·시설·계약·접속 신청·허가는 서로 다른 명부입니다. 같은 사업이 여러 원천에 등장할 수 있어 전체 용량을 합산하지 않습니다. 북미의 모든 설비·미공개 개발사업을 빠짐없이 확인했다는 의미는 아닙니다.</p></aside>
+    <section class="coverage-section" aria-labelledby="coverage-title"><div class="section-title"><h2 id="coverage-title">국가별 조사 범위</h2><span>기준일 · 원문 · 수록 단위</span></div><div id="coverage" class="coverage-grid" aria-live="polite"><p class="muted">원천 정보를 불러오고 있습니다.</p></div></section>
+    <section id="explorer" aria-labelledby="explorer-title"><div class="section-title"><div><p class="eyebrow">EXPLORE THE RECORDS</p><h2 id="explorer-title">프로젝트·발전기·허가 원장</h2></div><div class="downloads"><button id="export-csv" type="button" disabled>현재 결과 CSV ↓</button><a id="manifest-download" href="data.json" download="solar-na-data.json">원천·파일 목록 JSON ↓</a></div></div>
+      <form id="filters" class="filters" role="search" aria-label="명부 필터">
+        <label class="search-label">프로젝트·사업자·식별자<input id="search" type="search" placeholder="예: 프로젝트명, 사업자, Plant ID" autocomplete="off"></label>
+        <label>국가<select id="country"><option value="">전체 국가</option></select></label>
+        <label class="source-label">자료 원천<select id="source"><option value="">전체 원천</option></select></label>
+        <label>명부 범위<select id="scope"><option value="current">현재 명부</option><option value="all">과거 기록 포함</option><option value="historical">종료·취소·철회 등 과거 기록</option></select></label>
+        <label>상태<select id="status"><option value="">전체 상태</option></select></label>
+        <label>주·지역<select id="region"><option value="">전체 지역</option></select></label>
+        <label>최소 용량 (MW)<input id="min-mw" type="number" min="0" step="any" placeholder="제한 없음"></label>
+        <label>정렬<select id="sort"><option value="capacity_desc">용량 큰 순</option><option value="capacity_asc">용량 작은 순</option><option value="name">이름순</option><option value="date_asc">가동 관련일 빠른 순</option><option value="date_desc">가동 관련일 늦은 순</option><option value="source">원천·이름순</option></select></label>
+        <div class="filter-actions"><button id="reset" type="button">EIA 현재 명부</button><button id="all-sources" type="button">모든 원천 보기</button></div>
+      </form>
+      <p class="filter-note">용량 정렬·필터는 각 원문에 실린 MW를 사용합니다. AC·DC·기준 미공표 값의 직접 비교에 유의하세요. ‘현재 명부’에는 계획·신청·허가와 일시 정지 설비가 포함될 수 있습니다. LBNL Solar는 PV·태양열 미구분이며, GEM은 태양열도 별도 기술로 수록합니다.</p>
+      <details id="source-summary" class="map-panel source-summary" hidden><summary id="summary-title">선택 원천의 상태 소계</summary><div id="summary-body"></div></details>
+      <div class="results-heading"><p id="result-count" role="status" aria-live="polite">자료를 불러오는 중…</p><span id="type-summary"></span></div>
+      <details id="map-panel" class="map-panel"><summary>좌표가 공개된 기록의 위치 보기 <span id="map-count"></span></summary><div id="map"></div><p class="map-note">경위도 분포도 · 북미 범위 180°W–45°W / 5°N–85°N · 좌표 미공개 기록은 표시하지 않습니다. 원문 좌표는 근사 위치일 수 있으며 상세의 위치 정밀도를 확인하세요. 같은 위치의 여러 발전기·원천 기록은 겹칠 수 있습니다. 점을 선택하면 상세가 열립니다.</p></details>
+      <div id="load-error" class="empty" hidden></div>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="프로젝트 명부. 좁은 화면에서는 가로로 스크롤하세요."><table><thead><tr><th scope="col">프로젝트 / 기록</th><th scope="col">국가·지역</th><th scope="col">상태</th><th scope="col" class="num">용량 MW</th><th scope="col">가동 관련일</th><th scope="col">자료 원천·기준일</th></tr></thead><tbody id="records"><tr><td colspan="6" class="empty">원천 명부를 불러오고 있습니다.</td></tr></tbody></table></div>
+      <nav class="pagination" aria-label="명부 페이지"><button id="prev" type="button" disabled>← 이전</button><span id="page-label">100행씩 표시</span><button id="next" type="button" disabled>다음 →</button></nav>
+    </section>
+    <footer>허가·계약·접속 신청은 착공 또는 운영의 증거가 아닙니다. 사업자·EPC·PPA·기자재는 확인된 원문만 사용하고 미확인은 TBD로 남깁니다.</footer>
+  </main>
+  <dialog id="detail" aria-labelledby="detail-title"><div class="dialog-header"><div><p class="eyebrow" id="detail-kind"></p><h2 id="detail-title"></h2></div><button type="button" id="detail-close" aria-label="상세 닫기">닫기 ×</button></div><div id="detail-body"></div></dialog>
+</body>
+</html>

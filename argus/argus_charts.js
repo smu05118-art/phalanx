@@ -1114,7 +1114,7 @@
       var modRows = ss.filter(function (r) { return r.stage === 'module' && r.unit === 'USD/W'; }).slice(0, 6).map(function (r, i) {
         return { name: r.name, v: r.v, col: PAL[(i + 4) % PAL.length], hunt: r.hunt };
       });
-      body('solar').innerHTML = '<p class="ag-meta" style="margin-bottom:12px">공정을 따라 중국과 미국 가격을 나란히 확인하세요. 카드에서 제품·가격 기준을 바꿀 수 있습니다.' + ((chunk.trade_proxies || []).length ? ' 미국 무역 단가·금액은 별도 보조지표입니다.' : '') + ' <a href="connections.html#sol_pvi_module_182_perc">전체 태양광 현물 →</a></p><div data-solar-countries></div><div data-us-solar></div><div data-infolink></div>' +
+      body('solar').innerHTML = '<p class="ag-meta" style="margin-bottom:12px">공정을 따라 중국과 미국 가격을 나란히 확인하세요. 카드에서 제품·가격 기준을 바꿀 수 있습니다.' + ((chunk.trade_proxies || []).length ? ' 미국 무역 단가·금액은 별도 보조지표입니다.' : '') + ' <a href="connections.html#sol_pvi_module_182_perc">전체 태양광 현물 →</a> · <a href="../solar/">북미 태양광 프로젝트 원장 →</a></p><div data-solar-countries></div><div data-us-solar></div><div data-infolink></div>' +
         '<div class="ag-grid2" style="margin-top:12px">' +
         '<div class="ag-card"><div style="font-size:12px;font-weight:750;margin-bottom:6px">단계별 가격 지수 (5년, 시작=100)</div>' +
         chart(chunk.axis, mainRows, { h: 200, idx: true, title: '태양광 단계별 가격 지수' }) +
