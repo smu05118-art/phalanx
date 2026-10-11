@@ -318,3 +318,103 @@ class TestOrderTableVariants(unittest.TestCase):
                 "<tr><th>사업부문</th><th>매출유형</th><th>품목</th><th>제29기</th></tr>"
                 "<tr><td>인테리어</td><td>제품</td><td>건설공사</td><td>4,442</td></tr></table>")
         self.assertEqual(len(self._tab(html)["tables"]), 0)
+
+
+class TestHeaderMapDialects(unittest.TestCase):
+    """머리행 지도(headers.html) 17사 전수 대조(2026-10-11)에서 라이브 7사 밖 회사들의 방언.
+    원문 구조를 합성 표로 재현했다 — 실제 원문 픽스처는 DART 수집 후 추가한다."""
+
+    def test_aliases_from_header_map(self):
+        from kce_lib import COL_ALIAS
+        for raw, want in (("완공(예정)일", "ed"), ("완공종료일", "ed"), ("발주", "cl"), ("진행율", "pr"),
+                          ("용역명", "nm"), ("품목(공사명)", "nm"), ("기본도급액 금액", "amt"),
+                          ("완성공사액 금액", "cmp"), ("계약잔액 금액", "bal"),
+                          ("공사미수금 대손", "allw"), ("미청구공사 손상차손", "ubimp")):
+            self.assertEqual(COL_ALIAS.get(norm_col(raw)), want, raw)
+        self.assertEqual(norm_col("계약금액총액*2)"), "계약금액총액")      # 동부건설 XI-1 각주 표식
+        self.assertEqual(norm_col("공시일자*1)"), "공시일자")
+
+    def test_dongbu_p8_two_row_header(self):
+        """동부건설 III-8 — 기본도급액/완성공사액/계약잔액 아래 '금액' 둘째 머리행, 이름 열은 '용역명'."""
+        html = ("<p>(1) 연결 기준 (단위 : 백만원)</p><table>"
+                "<tr><th rowspan='2'>용역명</th><th rowspan='2'>발주처</th><th rowspan='2'>계약일</th>"
+                "<th rowspan='2'>준공일</th><th>기본도급액</th><th>완성공사액</th><th>계약잔액</th>"
+                "<th rowspan='2'>진행률</th><th rowspan='2'>미청구공사 총액</th>"
+                "<th rowspan='2'>미청구공사 손상 차손 누계액</th><th rowspan='2'>공사미수금 총액</th>"
+                "<th rowspan='2'>공사미수금 대손 충당금</th></tr>"
+                "<tr><th>금액</th><th>금액</th><th>금액</th></tr>"
+                "<tr><td>A아파트 신축</td><td>B조합</td><td>2024.01.01</td><td>2026.12.31</td>"
+                "<td>10,000</td><td>4,000</td><td>6,000</td><td>40.0</td><td>100</td><td>0</td>"
+                "<td>50</td><td>0</td></tr></table>")
+        out = parse_p8(html)
+        self.assertEqual(out["unknown_headers"], [])
+        self.assertEqual(len(out["tables"]), 1)
+        r = out["tables"][0]["rows"][0]
+        self.assertEqual((r["nm"], r["amt"], r["pr"], r["ub"], r["rc"]), ("A아파트 신축", 10000, 40.0, 100, 50))
+        self.assertEqual(out["tables"][0]["basis"], "연결")
+
+    def test_kumho_p8_meta_table_skipped_amount_table_read(self):
+        """금호건설 III-8 2021Q4~2025Q3 — 메타표(진행률·계약금액·공사기한)와 금액표('진행율')가 따로 있다."""
+        meta = ("<p>(1) 연결 기준</p><table>"
+                "<tr><td>구분</td><td>공사명</td><td>발주처</td><td>진행률</td><td>계약금액</td>"
+                "<td>계약일</td><td>공사기한</td></tr>"
+                "<tr><td>건축</td><td>C현장</td><td>D공사</td><td>55.0</td><td>20,000</td>"
+                "<td>2023.03.01</td><td>2027.02.28</td></tr>"
+                "<tr><td>토목</td><td>E현장</td><td>F시</td><td>12.0</td><td>30,000</td>"
+                "<td>2025.01.01</td><td>2028.12.31</td></tr>"
+                "<tr><td>건축</td><td>G현장</td><td>H조합</td><td>80.0</td><td>40,000</td>"
+                "<td>2022.01.01</td><td>2026.06.30</td></tr></table>")
+        amount = ("<table><tr><td>구분</td><td>공사명</td><td>발주처</td><td>진행율</td><td>계 약일</td>"
+                  "<td>완공 예정 일</td><td>기 본 도 급액</td><td>완성 공사액</td><td>계약잔액</td>"
+                  "<td>공사미수금 총액</td><td>공사미수금 대손 충당금</td><td>미청구공사 총액</td>"
+                  "<td>미청구공사 손상 차손 누계액</td></tr>"
+                  "<tr><td>건축</td><td>C현장</td><td>D공사</td><td>55.0</td><td>2023.03.01</td>"
+                  "<td>2027.02.28</td><td>20,000</td><td>11,000</td><td>9,000</td><td>300</td><td>0</td>"
+                  "<td>700</td><td>0</td></tr></table>")
+        out = parse_p8(meta + amount)
+        self.assertEqual(out["unknown_headers"], [], "메타표를 미지 헤더로 올리면 갱신이 멈춘다")
+        self.assertEqual(len(out["tables"]), 1)
+        r = out["tables"][0]["rows"][0]
+        self.assertEqual((r["nm"], r["amt"], r["pr"], r["ub"], r["rc"]), ("C현장", 20000, 55.0, 700, 300))
+
+    def test_kumho_p8_single_table_2025q4(self):
+        """금호건설 III-8 2025Q4~ — 표 하나에 계약금액(=수주총액)·진행률·미수금·미청구·초과청구공사."""
+        html = ("<p>(1) 연결 기준</p><table>"
+                "<tr><td>(단위: 백만원) 구분</td><td>(단위: 백만원) 공사명</td><td>(단위: 백만원) 발주처</td>"
+                "<td>(단위: 백만원) 진행률</td><td>(단위: 백만원) 계약금액</td><td>(단위: 백만원) 계약일</td>"
+                "<td>(단위: 백만원) 공사기한</td><td>(단위: 백만원) 공사미수금 총액</td>"
+                "<td>(단위: 백만원) 공사미수금 대손충당금</td><td>(단위: 백만원) 미청구공사 총액</td>"
+                "<td>(단위: 백만원) 미청구공사 대손충당금</td><td>(단위: 백만원) 초과청구공사</td></tr>"
+                "<tr><td>건축</td><td>C현장</td><td>D공사</td><td>61.5</td><td>20,000</td><td>2023.03.01</td>"
+                "<td>2027.02.28</td><td>250</td><td>0</td><td>640</td><td>0</td><td>90</td></tr></table>")
+        out = parse_p8(html)
+        self.assertEqual(out["unknown_headers"], [])
+        self.assertEqual(len(out["tables"]), 1)
+        r = out["tables"][0]["rows"][0]
+        self.assertEqual((r["nm"], r["amt"], r["pr"], r["ub"], r["rc"]), ("C현장", 20000, 61.5, 640, 250))
+
+    def test_kyeryong_ii4_section_rows(self):
+        """계룡건설 II-4 2023Q4~ — '건축'·'토목' 공종 소제목이 머리행 둘째 줄(또는 본문 줄)로 끼어든다."""
+        head = ("<p>가. 수주상황 (단위 : 백만원)</p><table>"
+                "<tr><th>현장명</th><th>착공일</th><th>완공예정일</th><th>총 도급금액</th>"
+                "<th>완성공사액</th><th>계약잔액</th></tr>")
+        site1 = ("<tr><td>I오피스텔 신축</td><td>2023.05.01</td><td>2026.04.30</td><td>50,000</td>"
+                 "<td>30,000</td><td>20,000</td></tr>")
+        site2 = ("<tr><td>J도로 확장</td><td>2024.02.01</td><td>2027.01.31</td><td>80,000</td>"
+                 "<td>8,000</td><td>72,000</td></tr>")
+        # (a) 소제목이 본문 줄로: 병합된 한 칸
+        out = parse_ii4(head + "<tr><td colspan='6'>건축</td></tr>" + site1
+                        + "<tr><td colspan='6'>토목</td></tr>" + site2 + "</table>")
+        self.assertEqual(out["unknown_headers"], [])
+        self.assertEqual(len(out["tables"]), 1)
+        self.assertEqual([r["nm"] for r in out["tables"][0]["rows"]], ["I오피스텔 신축", "J도로 확장"])
+        self.assertEqual(out["tables"][0]["rows"][0]["amt"], 50000)           # 총 도급금액 → amt
+        # (b) 소제목이 머리행 둘째 줄로: 평탄화하면 '현장명 건축' — 접미를 벗겨 읽는다
+        head2 = ("<p>가. 수주상황 (단위 : 백만원)</p><table>"
+                 "<tr><th>현장명</th><th>착공일</th><th>완공예정일</th><th>총 도급금액</th>"
+                 "<th>완성공사액</th><th>계약잔액</th></tr><tr><th colspan='6'>건축</th></tr>")
+        out = parse_ii4(head2 + site1 + "</table>")
+        self.assertEqual(out["unknown_headers"], [])
+        self.assertEqual(len(out["tables"]), 1)
+        self.assertEqual(out["tables"][0]["rows"][0]["nm"], "I오피스텔 신축")
+        self.assertEqual(out["tables"][0]["rows"][0]["bal"], 20000)

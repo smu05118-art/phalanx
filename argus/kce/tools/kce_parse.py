@@ -122,6 +122,20 @@ def _expand_grid(grid):
 _UNIT_ONLY = re.compile(r"\(?\s*단위\s*[:：][^)]*\)?")
 _HDR_VOCAB = set(COL_ALIAS) | {"비고", "구분", "합계", "신고일자", "품목", "회사명"}
 
+# 계룡건설 II-4는 공종 소제목('건축'·'토목')을 머리행 둘째 줄로 끼워 넣어 평탄화하면
+# '현장명 건축'·'총 도급금액 건축'이 된다(머리행 지도 2023Q4~ 22표). 접미를 벗겨 사전에 다시 묻는다.
+_SUFFIX_KIND = re.compile(r"^(.+?)-?(건축|토목|주택|플랜트|환경|기타)$")
+
+
+def _field_of(ncol):
+    f = COL_ALIAS.get(ncol)
+    if f:
+        return f
+    m = _SUFFIX_KIND.match(ncol)
+    if m and COL_ALIAS.get(m.group(1)):
+        return COL_ALIAS[m.group(1)]
+    return None
+
 
 def _looks_header(row):
     """행이 머리행처럼 보이는가: 셀 전부 비수치이고 절반 이상이 헤더 어휘."""
@@ -185,7 +199,7 @@ def parse_tables(html):
         mat = _expand_grid(t["grid"])
         cols, rows, spans, caption = _split_header(mat)
         ncols = [norm_col(c) for c in cols]
-        fields = [COL_ALIAS.get(c) for c in ncols]
+        fields = [_field_of(c) for c in ncols]
         lead = ((t["lead"] or "") + " " + caption).strip() if caption else t["lead"]
         out.append({"lead": lead, "cols": cols, "ncols": ncols,
                     "fields": fields, "rows": rows, "spans": spans,
@@ -303,6 +317,7 @@ _PREF = {
 
 # 그 줄 전체가 합계임을 알리는 라벨(정확히 이 글자일 때만).
 _SUM_LABEL = ("합계", "합 계", "총계", "소계", "계")
+_MONEY_ANY = ("amt", "cmp", "bal", "ub", "rc", "xi_amt")   # 이 중 하나는 있어야 사업장 줄이다
 
 
 def _merged_label(spans, ri, ni):
@@ -402,6 +417,13 @@ def _records(t, need):
         if not cont and (name in _SUM_LABEL or not name) \
                 and rec.get("cl", "") == "":
             continue
+        # 공종 소제목 줄('건축'·'토목') — 계룡건설 II-4가 표 안에 끼워 넣는다. 한 칸으로 병합돼
+        # 있으면(전개된 칸마다 같은 글자가 들어가 날짜 칸까지 '건축'이 된다) 금액이 하나도 없는 것으로,
+        # 병합이 아니면 이름 밖의 칸이 전부 빈 것으로 가려낸다. 사업장으로 세면 금액 없는 가짜 현장이 생긴다.
+        if not cont and name not in _SUM_LABEL and (
+                (merged and all(rec.get(f) is None for f in _MONEY_ANY))
+                or all(rec.get(f) in (None, "") for f in idx if f != "nm")):
+            continue
         recs.append(rec)
     return recs
 
@@ -467,14 +489,34 @@ def parse_ii4(html):
     return {"tables": picked, "unknown_headers": unknown}
 
 
+_P8_RECV_HINT = re.compile(r"미청구|계약자산|미수금|매출채권")
+
+
+def _promote(t, src, dst):
+    """표의 필드 매핑에서 src 를 dst 로 올린다(dst 가 이미 있으면 그대로). 원 표는 바꾸지 않는다."""
+    if dst in t["fields"] or src not in t["fields"]:
+        return t
+    t2 = dict(t)
+    t2["fields"] = [dst if f == src else f for f in t["fields"]]
+    return t2
+
+
 def parse_p8(html):
     """III-8 진행률적용 수주계약 절 → 연결/별도 표 목록.
     구분은 lead 문맥의 '연결'/'별도' 앵커(없으면 등장 순서: 연결→별도가 관례)."""
     tables = parse_tables(html)
     picked, unknown = [], []
     for t in tables:
+        # 금호건설 III-8은 수주총액을 '계약금액'으로 적는다 — XI-1 별칭(xi_amt)으로 먼저 잡히므로
+        # amt 열이 따로 없을 때만 amt 로 올린다.
+        t = _promote(t, "xi_amt", "amt")
         recs = _records(t, _P8_NEED)
         if recs is None:
+            got = {f for f in t["fields"] if f}
+            if {"amt", "pr"} <= got and not _P8_RECV_HINT.search(" ".join(t["cols"])):
+                # 금호건설형 메타표(구분·공사명·발주처·진행률·계약금액·계약일·공사기한) — 미청구·미수금
+                # 열 자체가 없다. 금액표는 같은 절에 따로 있으므로 미지 헤더가 아니라 그냥 지나간다.
+                continue
             if sum(1 for f in t["fields"] if f) >= 3 and len(t["rows"]) >= 3:
                 unknown.append({"cols": t["cols"], "n": len(t["rows"])})
             continue
