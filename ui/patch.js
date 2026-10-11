@@ -1260,6 +1260,8 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   function rate(v){ return v==null||!isFinite(v)?'—':Math.round(v*100)+'%'; }
   var CONF={high:'높음',mid:'보통',low:'낮음'}, METH={yoy_pace:'YoY 페이스',seasonal_share:'계절 비중'};
   var BASIS={disclosure:'공시',dominance:'지배 공급자',statistical:'표본외 통계'};
+  var DOWN={overseas_majority:'생산 과반 해외',hs_minority:'HS 안에서 소수'};
+  function downs(r){ var d=(r&&r.map_downgrades)||[]; return d.length?'<div class="phx-ncp-sub">강등: '+d.map(function(k){return esc(DOWN[k]||k);}).join('·')+'</div>':''; }
   function chip(r){
     if(!r||!r.imputed) return '';
     var tip='세관 '+(r.avail|0)+'/3개월 공표 — 결측월 '+(r.imputed_months||[]).join(', ')+'을 '+(METH[r.impute_method]||r.impute_method||'?')
@@ -1293,7 +1295,7 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
             +'<td class="mono">'+rate(n.oos_dir_hit)+' <span class="phx-ncp-sub">n='+(n.oos_n|0)+'</span></td>'
             +'<td class="mono">'+(n.oos_mae==null?'—':Number(n.oos_mae).toFixed(1))+' / '+(n.oos_mae_base==null?'—':Number(n.oos_mae_base).toFixed(1))+'</td>'
             +'<td class="mono">r² '+(n.r2==null?'—':Number(n.r2).toFixed(2))+' · ρ '+(n.corr==null?'—':Number(n.corr).toFixed(2))+'</td>'
-            +'<td>'+esc(CONF[n.map_conf]||n.map_conf||'—')+(b?'<div class="phx-ncp-sub">'+esc(b)+'</div>':'')+'</td>'
+            +'<td>'+esc(CONF[n.map_conf]||n.map_conf||'—')+(b?'<div class="phx-ncp-sub">'+esc(b)+'</div>':'')+downs(n)+'</td>'
             +'<td class="mono">'+(n.L>=1?('+'+(n.L|0)+'Q'):'동행')+'</td></tr>';
         }).join('')+'</tbody></table></div>';
     } else {
@@ -1305,11 +1307,14 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
         var note=c[k]&&c[k].note?c[k].note:''; return '<span class="phx-ncp-fail" title="'+esc(note)+'">'+esc(L[k]||k)+'</span>';
       }).join(' ');
       return '<li><b>'+esc(r.name||id)+'</b> <span class="phx-ncp-sub">'+esc(id)+'</span> · '+esc(r.tgtq||'')+' '+pct(r.predyoy)+chip(r)
-        +'<div class="phx-ncp-fails">관찰 — 미통과: '+(fails||'<span class="phx-ncp-fail">정책 미평가</span>')+'</div></li>';
+        +'<div class="phx-ncp-fails">관찰 — 미통과: '+(fails||'<span class="phx-ncp-fail">정책 미평가</span>')+'</div>'+downs(r)+'</li>';
     }).join('');
     main.innerHTML='<div class="phx-ncp">'+head+tbl
       +'<h3 class="phx-ncp-h">관찰 목록 <span>'+Object.keys(rows).filter(function(id){return !rows[id].rank_eligible;}).length+'종목 — 순위 없음</span></h3>'
-      +'<ul class="phx-ncp-obs">'+obs+'</ul></div>';
+      +'<ul class="phx-ncp-obs">'+obs+'</ul>'
+      +((g.excluded||[]).length?'<h3 class="phx-ncp-h">제외 <span>'+g.excluded.length+'종목 — 실적 공시 중단, 채점 불가</span></h3><ul class="phx-ncp-obs">'
+        +g.excluded.map(function(x){ return '<li><b>'+esc(x.name||x.id)+'</b> <span class="phx-ncp-sub">'+esc(x.id)+'</span><div class="phx-ncp-fails">'+esc(x.reason||'')+'</div></li>'; }).join('')+'</ul>':'')
+      +'</div>';
     main.querySelectorAll('tr.phx-ncp-r').forEach(function(tr){ tr.onclick=function(){ if(typeof ncGo==='function') ncGo(tr.dataset.id,tr.dataset.reg); }; });
   }
   function heldView(g){
