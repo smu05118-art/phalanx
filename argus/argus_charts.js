@@ -603,21 +603,21 @@
       '<p>' + esc(metric.definition) + '</p><dl><div><dt>관측 기간</dt><dd>' + esc(researchDate(row && row.period)) + '</dd></div><div><dt>공표일</dt><dd>' + esc(researchDate(row && row.sourcePublishedAt)) + '</dd></div><div><dt>수집일</dt><dd>' + esc(researchDate(row && row.collectedAt)) + '</dd></div></dl>' +
       '<p class="ag-meta">원래 기간: ' + esc(row ? row.period : '미확인') + ' · ' + esc(state.freshness) + '</p>' + researchLink(row && row.sourceUrl || metric.sourceUrl) + '</article>';
   }
-  function researchCompany(company) {
+  function researchCompany(company, scenarioAvailable) {
     if (!company) return '<p class="ag-empty">등록된 회사 자료가 없습니다.</p>';
     var html = '<div class="ag-card ag-research-company"><h4>' + esc(company.name) + (company.ticker ? ' · ' + esc(company.ticker) : '') + '</h4>' + researchLink(company.sourceUrl);
     if (company.driverMechanism.length) html += '<h5>지표가 실적으로 이어지는 경로</h5><ol>' + company.driverMechanism.map(function (v) { return '<li>' + esc(v) + '</li>'; }).join('') + '</ol>';
     if (company.scopeNote) html += '<h5>연결 범위와 지분법</h5><p>' + esc(company.scopeNote) + '</p>';
     if (company.uncertainties.length) html += '<h5>해석 전에 확인할 점</h5><ul>' + company.uncertainties.map(function (v) { return '<li>' + esc(v) + '</li>'; }).join('') + '</ul>';
-    html += '<p class="ag-research-notice"><b>비교 가능한 기준값 확인 대기</b><br>같은 기간·제품·외부판매 범위의 물량·매출·원가를 맞춰야 합니다. 기준값은 미확인이며 회사 이익 전망을 표시하지 않습니다.</p>';
+    html += scenarioAvailable ? '<p class="ag-research-notice"><b>공시 연결 카드 · 원자료 보관</b><br>위 분기 차트에서 공시와 환산 기준값, 조건부 추정을 구분했습니다. 이 보관 카드의 결측 상태는 당시 연구 범위를 나타냅니다.</p>' : '<p class="ag-research-notice"><b>비교 가능한 기준값 확인 대기</b><br>같은 기간·제품·외부판매 범위의 물량·매출·원가를 맞춰야 합니다. 기준값은 미확인이며 회사 이익 전망을 표시하지 않습니다.</p>';
     if (company.publicEvidence.length) html += '<details><summary>확인한 공시 자료 ' + company.publicEvidence.length + '건</summary><p>공시에 적힌 Q2·H1 기간과 단위를 그대로 보존했습니다. 제품별 계산의 기준값으로 자동 사용하지 않습니다.</p><ul>' + company.publicEvidence.map(function (r) { return '<li><strong>' + esc(r.label) + '</strong> · ' + esc(r.periodLabel) + '<br><b>' + esc(researchNumber(r.value)) + ' ' + esc(r.unit) + '</b><p>' + esc(r.scopeNote) + '</p>' + researchLink(r.sourceUrl) + '</li>'; }).join('') + '</ul></details>';
     return html + '</div>';
   }
-  function mountResearch(host, data, kind) {
+  function mountResearch(host, data, kind, scenarioAvailable) {
     if (!data) { host.innerHTML = '<div class="ag-empty">공개 연구 스냅샷을 아직 연결하지 않았습니다.</div>'; return; }
     var state = { query:'', filter:'all', companyId:data.companies[0] && data.companies[0].id };
     var scope = '<div class="ag-research-meta">연구 자료 기준 ' + esc(researchDate(data.asOf)) + ' · 공개 출처별 값·기간·추정 여부를 구분합니다.</div>';
-    if (kind === 'prince') {
+    if (kind === 'prince' && !scenarioAvailable) {
       scope += '<div class="ag-card ag-research-company"><h4>CL prince · 원문 자료 대기</h4><p>관측한 채널 게시물 0건 · 전체 이력 미검증</p><p>원문 확인 전에는 CL prince의 고유 발언·전략·포지션을 생성하지 않습니다. 아래 수치는 각 기관의 자료이며 CL prince의 주장으로 해석하지 마세요.</p></div>';
       scope += '<details class="ag-card ag-research-reviews"><summary>분석 구조 검토 상태</summary><p>모델의 검토 완료는 실제 원자료 검증이나 실행 승인을 뜻하지 않습니다. 이후 추가한 공개자료는 별도로 대조했습니다.</p><ul>' + data.reviews.map(function (r) {
         var system = {OPTIO:'옵티오',CENTURION:'센츄리온',CLAUDE_FABLE_ULTRA:'Claude'}[r.system] || '검토';
@@ -637,7 +637,7 @@
         var row = researchLatest(data.observations,m.id), s = researchState(m,row,now);
         return state.filter === 'all' || state.filter === 'verified' && row && row.status === 'VERIFIED' && s.value !== null || state.filter === 'estimate' && row && ['PROVIDER_ESTIMATE','FORECAST'].indexOf(row.status) >= 0 && s.value !== null || state.filter === 'missing' && s.value === null;
       });
-      host.querySelector('[data-research-context]').innerHTML = kind === 'steel' ? researchCompany(co) : '';
+      host.querySelector('[data-research-context]').innerHTML = kind === 'steel' ? researchCompany(co, scenarioAvailable) : '';
       host.querySelector('[data-research-count]').textContent = (kind === 'steel' && co ? co.name + '와 연결된 지표 ' : '공개 원유·리그·강관 지표 ') + metrics.length + '개';
       host.querySelector('[data-research-metrics]').innerHTML = metrics.length ? metrics.map(function (m) { return researchMetric(m,data.observations,now); }).join('') : '<p class="ag-empty">조건에 맞는 지표가 없습니다.</p>';
     }
@@ -806,8 +806,8 @@
       sec('spread', '📉 스프레드 차트', '주간 5년 · 마커 = 현재 사냥 시그널', chips()) +
       sec('solar', '☀️ 태양광 밸류체인', '폴리 → 모듈 · 미국 설치·건설·가격 · PVInsights · InfoLink') +
       sec('oil', '🛢 유가 데크', 'petronet 일간 → 주간 다운샘플 · 스프레드 = 제품-두바이', oilChips()) +
-      sec('prince', 'CL prince', '원문 대기 상태와 공개 원유·강관 지표') +
-      sec('steel', '철강 프로젝트', '회사별 공시·사업 연결·추정의 빈칸') +
+      sec('prince', 'CL prince', '과거 원문 관찰 틀 · 현재 시장 해석 · 확인 조건') +
+      sec('steel', '철강 프로젝트', '시장 변곡점 · CAPA · Q·P · 분기 손익 시나리오') +
       footer() + '</div>';
 
     var W = el.querySelector('.ag-wrap');
@@ -1359,8 +1359,24 @@
     rHunt(); rHealth(); rBoard();
     var initialSpreadReady = new Promise(function (done) { rSpread(done); });
     lazySection('solar', rSolar); lazySection('oil', rOil);
-    lazySection('prince', function (done) { mountResearch(body('prince'), data.research, 'prince'); done(); });
-    lazySection('steel', function (done) { mountResearch(body('steel'), data.research, 'steel'); done(); });
+    lazySection('prince', function (done) {
+      var h = body('prince'), steel = win.ARGUS_STEEL;
+      if (steel && win.PHXSteelUI) {
+        h.innerHTML = '<div data-steel-lens></div><details class="ag-card"><summary>이전 공개 연구 지표와 출처</summary><div data-steel-archive></div></details>';
+        win.PHXSteelUI.mountLens(h.querySelector('[data-steel-lens]'), steel.interpretation, steel.persona);
+        mountResearch(h.querySelector('[data-steel-archive]'), data.research, 'prince', true);
+      } else mountResearch(h, data.research, 'prince');
+      done();
+    });
+    lazySection('steel', function (done) {
+      var h = body('steel'), steel = win.ARGUS_STEEL;
+      if (steel && win.PHXSteelUI) {
+        h.innerHTML = '<div data-steel-dashboard></div><details class="ag-card"><summary>이전 회사별 공시 연결 카드와 지표 사전</summary><div data-steel-archive></div></details>';
+        win.PHXSteelUI.mount(h.querySelector('[data-steel-dashboard]'), steel);
+        mountResearch(h.querySelector('[data-steel-archive]'), data.research, 'steel', true);
+      } else mountResearch(h, data.research, 'steel');
+      done();
+    });
     bindResearchNavigation(W, win, initialSpreadReady, lazySections);
   };
 })();

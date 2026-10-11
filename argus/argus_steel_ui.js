@@ -1,0 +1,227 @@
+/* ARGUS steel observatory. Pure SVG; no network, storage or third-party dependencies.
+ * PHXSteelUI.mount(host, payload). Data validation and model calculation belong to the builder.
+ * Missing points stay missing. Source estimates are distinct from our conditional forecasts.
+ */
+(function (root, factory) {
+  'use strict';
+  var api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.PHXSteelUI = api;
+}(typeof window !== 'undefined' ? window : this, function () {
+  'use strict';
+  var DAY = 86400000;
+  var COLORS = ['#58aaff', '#64d6b0', '#f2c86b', '#c49aff', '#ee8b82', '#64ccd8'];
+  var HOSTS = ['www.eia.gov','eia.gov','api.eia.gov','fred.stlouisfed.org','www.stlouisfed.org',
+    'bakerhughesrigcount.gcs-web.com','rigcount.bakerhughes.com','www.bakerhughes.com',
+    'ir.tenaris.com','www.tenaris.com','dart.fss.or.kr','kind.krx.co.kr','www.nexteel.com',
+    'www.husteel.com','www.husteel.co.kr','www.seahsteel.co.kr','www.seahsteel.com',
+    'www.seahsteelholdings.com','www.seah.co.kr','www.spglobal.com','www.argusmedia.com',
+    'prestonpipe.com','www.prestonpipe.com','www.bls.gov','api.bls.gov',
+    'www.cmegroup.com','www.dallasfed.org','www.federalreserve.gov','www.trade.gov','www.aogr.com','www.sec.gov'];
+  var STATUS = {actual:'실측·공시',derived:'공시 기반 계산',estimate:'원기관 추정',provider_estimate:'원기관 추정',forecast:'조건부 추정',user_reported:'사용자 제시 · 미검증',missing:'미확인'};
+  var CSS = `
+  .ast-root{color:var(--ink,#e6edf3);font:13px/1.6 var(--sans,system-ui,sans-serif);min-width:0;margin-bottom:28px;--ast-line:#29394c;--ast-dim:#a2b2c4}
+  .ast-root *{box-sizing:border-box}.ast-root h3,.ast-root h4,.ast-root p{margin:0}.ast-root button,.ast-root select{font:inherit}
+  .ast-root a{color:#7dd9dd;text-underline-offset:3px;overflow-wrap:anywhere}.ast-root button:focus-visible,.ast-root select:focus-visible,.ast-root summary:focus-visible,.ast-root [tabindex]:focus-visible{outline:3px solid #64ccd8;outline-offset:3px}
+  .ast-hero{display:block;position:relative;top:auto;z-index:auto;padding:22px;border:1px solid #315166;border-radius:14px;background:linear-gradient(125deg,#142b35,#121c2a 70%);margin-bottom:20px}
+  .ast-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}.ast-kpi{padding:16px 18px;border:1px solid #365167;border-radius:10px;background:#132535;min-width:0}.ast-kpi-label{font-size:11px;color:#adc1d4}.ast-kpi-value{display:block;font:700 25px/1.4 ui-monospace,monospace;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin-top:5px}.ast-kpi small{color:#9bb3c9;font-size:10px}.ast-capacity{margin:12px 0}.ast-capacity-row{margin:12px 0}.ast-capacity-row div:first-child{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px}.ast-capacity-track{height:10px;background:#223144;border-radius:3px;overflow:hidden;margin-top:5px}.ast-capacity-track i{display:block;height:100%;border-radius:3px;background:#67aef2}.ast-capacity-track.q i{background:#64d6b0}
+  .ast-eyebrow{font-size:10px;letter-spacing:.12em;color:#7dd9dd;font-weight:700}.ast-hero h3{font-size:23px;letter-spacing:-.04em;margin:5px 0 10px}.ast-note{font-size:11px;color:var(--ast-dim);line-height:1.75;overflow-wrap:anywhere}
+  .ast-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0}.ast-toolbar h4{font-size:16px;flex:1}.ast-range{display:flex;gap:5px;flex-wrap:wrap}.ast-range button{cursor:pointer;border:1px solid var(--ast-line);border-radius:6px;color:var(--ast-dim);background:#101926;padding:5px 12px;font-size:11px}.ast-range button[aria-pressed=true]{border-color:#5a9db3;color:#b3edf1;background:#16313a}
+  .ast-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.ast-card{min-width:0;border:1px solid var(--ast-line);border-radius:12px;background:var(--panel,#111721);padding:17px}.ast-card h4{font-size:14px}.ast-card-head{display:flex;align-items:start;gap:10px;justify-content:space-between;margin-bottom:13px}.ast-card-no{color:#6a8ea6;font:11px ui-monospace,monospace;letter-spacing:.1em}
+  .ast-chart{min-width:0;margin-top:14px}.ast-chart-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:5px}.ast-chart-title{font-size:12px;font-weight:650}.ast-latest{font:600 15px ui-monospace,monospace;font-variant-numeric:tabular-nums}.ast-latest small{font:10px system-ui;color:var(--ast-dim);margin-left:5px}.ast-unit{color:var(--ast-dim);font-size:10px;margin-bottom:4px}
+  .ast-plot{position:relative;width:100%;min-width:0;border-radius:7px;touch-action:pan-y}.ast-plot svg{display:block;width:100%;height:auto;overflow:visible}.ast-plot line,.ast-plot path{vector-effect:non-scaling-stroke}.ast-plot .ast-hit{cursor:crosshair}.ast-tip{min-height:40px;font-size:11px;color:#c9d7e4;line-height:1.65;padding:7px 0 2px;overflow-wrap:anywhere}
+  .ast-legend{display:flex;gap:8px 15px;flex-wrap:wrap;color:var(--ast-dim);font-size:10px;margin:7px 0}.ast-legend span{display:inline-flex;align-items:center;gap:6px}.ast-swatch{width:21px;border-top:2px solid #78b9ee;display:inline-block}.ast-swatch.dashed{border-top-style:dashed}.ast-swatch.band{height:8px;border:0;background:rgba(120,185,238,.24)}.ast-swatch.point{width:6px;height:6px;border:1px solid #f2c86b;transform:rotate(45deg)}
+  .ast-empty{padding:22px 12px;border:1px dashed #324457;border-radius:8px;color:var(--ast-dim);font-size:12px;margin:12px 0}.ast-table-wrap{overflow:auto;max-height:310px;max-width:100%;margin-top:9px;overscroll-behavior:contain}.ast-root table{width:100%;min-width:600px;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}.ast-root th,.ast-root td{padding:8px 10px;border-bottom:1px solid #253243;text-align:right;white-space:nowrap}.ast-root thead th{position:sticky;top:0;background:#152130;color:#aec1d3;font-size:10px}.ast-root th:first-child,.ast-root td:first-child{text-align:left}.ast-root td.ast-text{white-space:normal;min-width:180px;max-width:400px;text-align:left;line-height:1.6}.ast-root caption{text-align:left;padding:6px 0;color:var(--ast-dim)}
+  .ast-root details{margin-top:12px;border-top:1px solid #253243;padding-top:10px}.ast-root summary{cursor:pointer;font-size:11px;color:#b2c4d4;max-width:100%;overflow-wrap:anywhere}.ast-root ul{padding-left:18px;margin:8px 0}.ast-root li{margin:5px 0;overflow-wrap:anywhere}.ast-company{scroll-margin-top:105px;margin-top:28px;padding-top:22px;border-top:1px solid #354355}.ast-company-select{display:flex;gap:8px;align-items:center;font-size:12px;min-width:0}.ast-company-select select{color:#e7eff7;background:#172432;border:1px solid #435a6f;border-radius:7px;padding:8px 28px 8px 10px;max-width:100%;min-width:0}.ast-company-intro{padding:14px 16px;background:#111f2b;border-left:3px solid #64ccd8;border-radius:6px;margin-bottom:14px}.ast-company-intro strong{font-size:16px}.ast-assumptions{margin-top:14px;padding:15px 18px;border:1px solid #344458;border-radius:10px;font-size:12px}.ast-insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:10px;margin:14px 0}.ast-insight{padding:14px 16px;background:#14212c;border-radius:9px;border-left:2px solid #4d91b0;min-width:0}.ast-insight strong{font-size:12px;display:block;margin-bottom:5px}.ast-source{padding:9px 0;border-bottom:1px solid #253243;overflow-wrap:anywhere}.ast-source small{display:block;color:var(--ast-dim);margin-top:3px}.ast-scope{color:#b9cddc;font-size:11px}.ast-model-tag{font-size:10px;color:#f2d799;border:1px solid #61593d;border-radius:4px;padding:2px 6px;white-space:nowrap}
+  @media(max-width:800px){.ast-kpi{padding:14px}.ast-kpi-value{font-size:20px}.ast-grid{grid-template-columns:minmax(0,1fr)}.ast-hero{padding:18px}.ast-hero h3{font-size:21px}.ast-card{padding:14px}.ast-toolbar{align-items:flex-start}.ast-company-select{width:100%;flex-wrap:wrap}.ast-company-select select{flex:1}.ast-latest{font-size:14px}.ast-tip{min-height:48px}}
+  `;
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function finite(v) { return typeof v === 'number' && Number.isFinite(v); }
+  function fmt(v) { return finite(v) ? v.toLocaleString('en-US',{maximumFractionDigits:Math.abs(v)<1?3:2}) : '—'; }
+  function displayScale(s){
+    var n=Math.max.apply(null,(s.points||[]).map(function(p){return Math.abs(finite(p.value)?p.value:finite(p.base)?p.base:0);}));
+    if(s.unit==='KRW'&&n>=1e8)return {divisor:1e8,unit:'억 원'};
+    if(s.unit==='USD'&&n>=1e6)return {divisor:1e6,unit:'백만 USD'};
+    if(s.unit==='KRW/t'&&n>=1e4)return {divisor:1e4,unit:'만원/톤'};
+    if(s.unit==='t'&&n>=1e3)return {divisor:1e3,unit:'천 톤'};
+    return {divisor:1,unit:s.unit||'단위 미확인'};
+  }
+  function safeURL(v) {
+    if (typeof v !== 'string' || /[\s\\\u0000-\u001f]/.test(v)) return null;
+    try { var u=new URL(v); if(u.protocol!=='https:' || u.username || u.password || u.hash || (u.port&&u.port!=='443') || HOSTS.indexOf(u.hostname)===-1) return null;
+      if(u.search && !((u.hostname==='dart.fss.or.kr' && Array.from(u.searchParams).every(function(kv){return /^(rcpNo|dcmNo|eleId|offset|length)$/.test(kv[0])&&/^\d+$/.test(kv[1])||kv[0]==='dtd'&&/^dart\d+\.xsd$/.test(kv[1]);})) || (u.hostname==='www.eia.gov'&&Array.from(u.searchParams).every(function(kv){return kv[0]==='id'&&/^\d+$/.test(kv[1]);})))) return null;
+      return u.href;
+    } catch (_) { return null; }
+  }
+  function link(v,label) { var u=safeURL(v); return u?'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(label||'원문')+'</a>':esc(label||'원문 URL 미확인'); }
+  function periodInfo(v) {
+    if(typeof v!=='string')return null;
+    var m=/^(\d{4})-?Q([1-4])$/.exec(v); if(m){var y=+m[1],q=+m[2];if(y<1900||y>2200)return null;return {time:Date.UTC(y,(q-1)*3,1),index:y*4+q-1,kind:'quarter',label:y+'Q'+q};}
+    m=/^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(v);if(!m)return null;
+    var yy=+m[1],mm=+m[2],dd=m[3]?+m[3]:1,t=Date.UTC(yy,mm-1,dd),d=new Date(t);
+    if(yy<1900||yy>2200||d.getUTCFullYear()!==yy||d.getUTCMonth()!==mm-1||d.getUTCDate()!==dd)return null;
+    return {time:t,index:yy*12+mm-1,kind:m[3]?'day':'month',label:v};
+  }
+  function normalizeSeries(s) {
+    s=s||{};var issues=[],seen=new Set();
+    var points=(Array.isArray(s.points)?s.points:[]).map(function(p,i){
+      var info=periodInfo(p.period||p.date);if(!info){issues.push('invalid_period:'+i);return null;}
+      var key=String(p.period||p.date);if(seen.has(key))issues.push('duplicate_period:'+key);seen.add(key);
+      var status=Object.prototype.hasOwnProperty.call(STATUS,p.status)?p.status:'missing';
+      var value=finite(p.value)?p.value:status==='forecast'&&finite(p.base)?p.base:null;
+      var low=finite(p.low)?p.low:null,high=finite(p.high)?p.high:null;
+      if(low!==null&&high!==null&&(low>high||(value!==null&&(value<low||value>high)))){issues.push('invalid_band:'+key);low=null;high=null;}
+      return Object.assign({},p,{period:key,time:info.time,periodInfo:info,value:value,low:low,high:high,status:status});
+    }).filter(Boolean).sort(function(a,b){return a.time-b.time;});
+    var collisions={};points.forEach(function(p){collisions[p.time]=(collisions[p.time]||0)+1;});
+    points.forEach(function(p){p.conflict=collisions[p.time]>1;});
+    return Object.assign({},s,{id:String(s.id||''),name:s.name||s.label||s.id||'지표',points:points,issues:issues});
+  }
+  function continuous(a,b,s) {
+    if(!a||!b||b.break_before===true||a.conflict||b.conflict||!finite(a.value)||!finite(b.value)||b.time<=a.time)return false;
+    var f=s.frequency||a.periodInfo.kind;
+    if(f==='quarterly'||f==='quarter')return a.periodInfo.kind==='quarter'&&b.periodInfo.kind==='quarter'&&b.periodInfo.index-a.periodInfo.index===1;
+    if(f==='monthly'||f==='month')return b.periodInfo.index-a.periodInfo.index===1;
+    if(f==='annual'||f==='yearly')return new Date(b.time).getUTCFullYear()-new Date(a.time).getUTCFullYear()===1;
+    var max=finite(s.max_gap_days)&&s.max_gap_days>0?s.max_gap_days:f==='weekly'||f==='week'?10:5;
+    return (b.time-a.time)/DAY<=max;
+  }
+  function statusClass(p){return p.status==='actual'?'actual':p.status==='forecast'?'forecast':p.status==='derived'?'derived':p.status==='estimate'||p.status==='provider_estimate'?'estimate':'point';}
+  function lineSegments(s) {
+    var out=[];
+    s.points.forEach(function(p,i){var a=s.points[i-1];if(!continuous(a,p,s))return;var ca=statusClass(a),cb=statusClass(p);
+      if(ca==='point'||cb==='point')return;
+      if(ca!==cb && !((ca==='actual'||ca==='derived')&&cb==='forecast'))return;
+      out.push({a:a,b:p,status:cb});
+    });return out;
+  }
+  function chartDomain(series, start, end) {
+    var ts=[];series.forEach(function(s){s.points.forEach(function(p){ts.push(p.time);});});
+    if(!ts.length)return null;
+    var lo=finite(start)?start:Math.min.apply(null,ts),hi=finite(end)?end:Math.max.apply(null,ts);
+    if(hi<=lo)hi=lo+30*DAY;
+    return [lo,hi];
+  }
+  function filterSeries(s,domain){return Object.assign({},s,{points:s.points.filter(function(p){return p.time>=domain[0]&&p.time<=domain[1];})});}
+  function ticks(domain,quarterly) {
+    var vals=[],lo=new Date(domain[0]),hi=new Date(domain[1]),span=(domain[1]-domain[0])/DAY;
+    var step=quarterly?(span>900?6:3):span>2600?24:span>1300?12:span>620?6:span>180?3:1;
+    var t=Date.UTC(lo.getUTCFullYear(),lo.getUTCMonth(),1);while(t<domain[0]){var d=new Date(t);t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1);}
+    while(t<=domain[1]){var dt=new Date(t),month=dt.getUTCMonth();if(month%step===0 || step>=12&&month===0&&dt.getUTCFullYear()%(step/12)===0)vals.push({time:t,label:quarterly?dt.getUTCFullYear()+'Q'+(Math.floor(month/3)+1):step>=12?String(dt.getUTCFullYear()):String(dt.getUTCFullYear()).slice(2)+'.'+String(month+1).padStart(2,'0')});t=Date.UTC(dt.getUTCFullYear(),month+1,1);}
+    if(vals.length>6)vals=vals.filter(function(_,i){return i%Math.ceil(vals.length/6)===0;});
+    if(!vals.length)vals=[{time:domain[0],label:new Date(domain[0]).toISOString().slice(0,7)},{time:domain[1],label:hi.toISOString().slice(0,7)}];
+    return vals;
+  }
+  function sourceMap(payload){var map={};[].concat(payload.sources||[],payload.market&&payload.market.sources||[]).forEach(function(s){if(s&&s.id)map[s.id]=s;});(payload.companies||[]).forEach(function(c){(c.sources||[]).forEach(function(s){if(s&&s.id)map[s.id]=s;});});return map;}
+  function sourceFor(p,s,sources){return sources[p.source_id]||sources[(s.source_ids||[])[0]]||{};}
+  function pointText(p,s) {
+    var parts=[p.period,s.name+': '+fmt(p.value)+' '+(s.unit||''),STATUS[p.status]||'미확인'];
+    if(p.status==='forecast')parts.push('하단 '+fmt(p.low)+' / 기준 '+fmt(p.value)+' / 상단 '+fmt(p.high));
+    if(p.published_at)parts.push('발표 '+p.published_at);
+    if(p.break_before===true)parts.push('비교 단절 · 이전 관측과 연결하지 않음');
+    if(p.note)parts.push(p.note);
+    return parts.join(' · ');
+  }
+  function valueTable(s,sources) {
+    return '<details class="ast-data"><summary>수치·기준·원문 '+s.points.length+'개 관측 펼치기</summary><div class="ast-table-wrap" tabindex="0" role="region" aria-label="'+esc(s.name)+' 수치 표"><table><caption>'+esc(s.name)+' · '+esc(s.unit||'단위 미확인')+' · 빈값 — · 추정 범위는 신뢰구간이 아닙니다.</caption><thead><tr><th scope="col">기간</th><th scope="col">값 / 기준</th><th scope="col">하단</th><th scope="col">상단</th><th scope="col">성격</th><th scope="col">발표일</th><th scope="col">근거</th></tr></thead><tbody>'+s.points.slice().reverse().map(function(p){var src=sourceFor(p,s,sources);return '<tr><th scope="row">'+esc(p.period)+'</th><td>'+esc(fmt(p.value))+'</td><td>'+esc(fmt(p.low))+'</td><td>'+esc(fmt(p.high))+'</td><td>'+esc(STATUS[p.status])+'</td><td>'+esc(p.published_at||src.published_at||src.published_date||'미확인')+'</td><td class="ast-text">'+link(p.source_url||src.url||src.source_url||s.source_url,src.name||src.label||p.source_id||'원문')+(p.note?'<br>'+esc(p.note):'')+'</td></tr>';}).join('')+'</tbody></table></div></details>';
+  }
+  function chart(s, opts, sources, registry) {
+    opts=opts||{};var domain=opts.domain||chartDomain([s]),ss=domain?filterSeries(s,domain):s;
+    var good=ss.points.filter(function(p){return finite(p.value);}),last=good[good.length-1],key=String(registry.length),color=opts.color||COLORS[0];
+    if(!domain||!good.length)return '<section class="ast-chart"><h4>'+esc(s.name)+'</h4><div class="ast-empty">선택 기간에 확인된 시계열이 없습니다. '+esc(s.note||s.limitation||'빈 기간은 보간하지 않습니다.')+'</div>'+valueTable(ss,sources)+'</section>';
+    var W=finite(opts.width)?Math.max(260,Math.min(800,opts.width)):560,H=190,L=56,R=26,T=18,B=34,values=[],scale=displayScale(ss);
+    good.forEach(function(p){values.push(p.value);if(p.status==='forecast'){if(finite(p.low))values.push(p.low);if(finite(p.high))values.push(p.high);}});
+    var zeroAxis=typeof opts.zeroAxis==='boolean'?opts.zeroAxis:s.zero_axis!==false;
+    var ymin=Math.min.apply(null,values),ymax=Math.max.apply(null,values);if(zeroAxis){ymin=Math.min(0,ymin);ymax=Math.max(0,ymax);}
+    var pad=(ymax-ymin)*.09||(Math.abs(ymax)*.1)||1;ymin=!zeroAxis||ymin<0?ymin-pad:ymin;ymax+=pad;
+    var x=function(t){return L+(t-domain[0])/(domain[1]-domain[0])*(W-L-R);},y=function(v){return T+(ymax-v)/(ymax-ymin)*(H-T-B);};
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" data-y-min="'+ymin+'" data-y-max="'+ymax+'" role="img" aria-label="'+esc(s.name+' · '+(s.unit||'')+' · '+ss.points[0].period+'부터 '+ss.points[ss.points.length-1].period)+'">';
+    for(var k=0;k<=4;k++){var val=ymin+(ymax-ymin)*k/4,yy=y(val);svg+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yy+'" y2="'+yy+'" stroke="#263749"/><text x="'+(L-8)+'" y="'+(yy+4)+'" text-anchor="end" fill="#a2b2c4" font-size="11">'+esc(fmt(val/scale.divisor))+'</text>';}
+    if(ymin<0&&ymax>0)svg+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0)+'" y2="'+y(0)+'" stroke="#71889d" stroke-dasharray="3 3"/>';
+    var xticks=ticks(domain,/quarter/.test(s.frequency||'')||ss.points.some(function(p){return p.periodInfo.kind==='quarter';}));if(W<380&&xticks.length>4)xticks=xticks.filter(function(_,i){return i%2===0;});
+    xticks.forEach(function(t){svg+='<text x="'+x(t.time)+'" y="'+(H-10)+'" text-anchor="middle" fill="#a2b2c4" font-size="11">'+esc(t.label)+'</text>';});
+    var forecast=good.filter(function(p){return p.status==='forecast';});
+    if(forecast.length){var fx=x(forecast[0].time);svg+='<rect x="'+fx+'" y="'+T+'" width="'+Math.max(0,W-R-fx)+'" height="'+(H-T-B)+'" fill="#6585b4" fill-opacity=".04"/><line x1="'+fx+'" x2="'+fx+'" y1="'+T+'" y2="'+(H-B)+'" stroke="#61778d" stroke-dasharray="3 4"/><text x="'+Math.min(fx+6,W-80)+'" y="'+(T+10)+'" fill="#c1cddc" font-size="10">조건부 추정</text>';}
+    lineSegments(ss).forEach(function(seg){var a=seg.a,b=seg.b;if(seg.status==='forecast'&&a.status==='forecast'&&[a.low,a.high,b.low,b.high].every(finite))svg+='<path class="ast-band" d="M'+x(a.time)+','+y(a.low)+' L'+x(b.time)+','+y(b.low)+' L'+x(b.time)+','+y(b.high)+' L'+x(a.time)+','+y(a.high)+' Z" fill="'+color+'" fill-opacity=".18" stroke="none"/>';});
+    // One path per contiguous run. Values are joined only when the source cadence permits it.
+    var runs=[];lineSegments(ss).forEach(function(seg){var prev=runs[runs.length-1];if(prev&&prev.status===seg.status&&prev.last===seg.a){prev.path+=' L'+x(seg.b.time)+','+y(seg.b.value);prev.last=seg.b;}else runs.push({status:seg.status,path:'M'+x(seg.a.time)+','+y(seg.a.value)+' L'+x(seg.b.time)+','+y(seg.b.value),last:seg.b});});
+    runs.forEach(function(r){svg+='<path data-line-status="'+r.status+'" d="'+r.path+'" stroke="'+color+'" stroke-width="2" fill="none"'+(r.status!=='actual'?' stroke-dasharray="'+(r.status==='forecast'?'6 4':'2 3')+'"':'')+'/>';});
+    good.forEach(function(p,i){if(good.length>90&&p.status!=='user_reported'&&i!==good.length-1)return;
+      var xx=x(p.time),yy=y(p.value);svg+=p.status==='user_reported'?'<path data-observation="user_reported" d="M'+xx+','+(yy-5)+' l5,5 -5,5 -5,-5 Z" fill="#111721" stroke="#f2c86b" stroke-width="1.5"><title>'+esc(pointText(p,s))+'</title></path>':'<circle data-observation="'+p.status+'" cx="'+xx+'" cy="'+yy+'" r="'+(p.status==='forecast'?3.2:2.5)+'" fill="'+(p.status==='actual'?color:'#111721')+'" stroke="'+color+'" stroke-width="1.6"><title>'+esc(pointText(p,s))+'</title></circle>';});
+    svg+='<line class="ast-cursor" x1="0" x2="0" y1="'+T+'" y2="'+(H-B)+'" stroke="#91adc5" stroke-dasharray="3 3" visibility="hidden"/><rect class="ast-hit" x="'+L+'" y="'+T+'" width="'+(W-L-R)+'" height="'+(H-T-B)+'" fill="transparent"/></svg>';
+    registry.push({series:ss,domain:domain,width:W,left:L,right:R,latest:pointText(last,s),sources:sources});
+    var kinds={};good.forEach(function(p){kinds[p.status]=true;});var legend='<div class="ast-legend">';
+    if(kinds.actual)legend+='<span><i class="ast-swatch" style="border-color:'+color+'"></i>실측·공시</span>';
+    if(kinds.derived)legend+='<span><i class="ast-swatch dashed" style="border-color:'+color+'"></i>공시 기반 계산</span>';
+    if(kinds.estimate||kinds.provider_estimate)legend+='<span><i class="ast-swatch dashed" style="border-color:'+color+'"></i>원기관 추정</span>';
+    if(kinds.forecast)legend+='<span><i class="ast-swatch dashed" style="border-color:'+color+'"></i>기준 추정</span><span><i class="ast-swatch band" style="background:'+color+'33"></i>하단–상단 가정 범위</span>';
+    if(kinds.user_reported)legend+='<span><i class="ast-swatch point"></i>사용자 제시 · 미검증</span>';
+    legend+='</div>';
+    var freq={daily:'일별',weekly:'주별',monthly:'월별',quarterly:'분기별',annual:'연간',selected_assessments:'선별 관측'};
+    return '<section class="ast-chart"><div class="ast-chart-head"><span class="ast-chart-title">'+esc(s.name)+'</span><span class="ast-latest" style="color:'+color+'">'+esc(fmt(last.value/scale.divisor))+'<small>'+esc(last.period)+'</small></span></div><div class="ast-unit">'+esc(scale.unit)+(s.frequency?' · '+esc(freq[s.frequency]||s.frequency):'')+(scale.divisor!==1?' · 표·툴팁은 원단위':'')+(!zeroAxis?' · 관측범위 확대축(0 시작 아님)':'')+'</div><div class="ast-plot" data-ast-chart="'+key+'" tabindex="0" role="group" aria-label="'+esc(s.name+' 시계열. 좌우 방향키로 관측 탐색')+'">'+svg+'</div>'+legend+'<div class="ast-tip" data-ast-tip="'+key+'">'+esc(pointText(last,s))+'</div><p class="ast-note">'+esc(s.basis||s.price_basis||'')+(s.note?' · '+esc(s.note):'')+'</p>'+valueTable(ss,sources)+'</section>';
+  }
+  function strings(items) { return (Array.isArray(items)?items:items?[items]:[]).map(function(v){if(typeof v==='string')return v;return v.text||v.note||v.summary||v.description||(v.label&&v.value!==undefined?v.label+': '+v.value:'');}).filter(Boolean); }
+  function list(items){var a=strings(items);return a.length?'<ul>'+a.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>':'';}
+  function sourceList(sources){return (sources||[]).map(function(s){return '<div class="ast-source">'+link(s.url||s.source_url,s.name||s.label||s.id||'원문')+'<small>'+esc(s.publisher||'')+(s.published_at||s.published_date?' · 발표 '+esc(s.published_at||s.published_date):'')+(s.observation_period?' · 관측기간 '+esc(s.observation_period):'')+(s.retrieved_at?' · 확인 '+esc(s.retrieved_at):'')+'</small>'+(s.note?'<p class="ast-note">'+esc(s.note)+'</p>':'')+'</div>';}).join('');}
+  function insights(items) { return (items||[]).filter(function(x){return typeof x==='string'||x.title||x.label||x.reading||x.text||x.note||x.summary||x.interpretation;}).map(function(x){if(typeof x==='string')return '<article class="ast-insight"><p>'+esc(x)+'</p></article>';return '<article class="ast-insight"><strong>'+esc(x.title||x.label||x.period||'관측 해석')+'</strong>'+(x.signal?'<p class="ast-note">관측 · '+esc(x.signal)+'</p>':'')+'<p class="ast-note">'+esc(x.reading||x.text||x.note||x.summary||x.interpretation||'')+'</p>'+(x.evidence?'<div class="ast-note">근거'+list(x.evidence)+'</div>':'')+(x.invalidation?'<p class="ast-note">다시 확인할 조건 · '+esc(x.invalidation)+'</p>':'')+(x.limitation?'<p class="ast-note">한계 · '+esc(x.limitation)+'</p>':'')+(x.source_url?'<p>'+link(x.source_url,'근거')+'</p>':'')+'</article>';}).join(''); }
+  function lensHTML(items,persona){persona=persona||{};return '<section class="ast-assumptions" data-ast-lens style="scroll-margin-top:105px"><strong>'+esc(persona.label||'관측에서 해석으로')+'</strong>'+(persona.basis?'<p class="ast-note">'+esc(persona.basis)+'</p>':'')+(persona.disclaimer?'<p class="ast-note">'+esc(persona.disclaimer)+'</p>':'')+'<div class="ast-insights">'+insights(items)+'</div></section>';}
+  function capacityHTML(co){
+    var c=co.capacity;if(!c||typeof c!=='object')return '';
+    var total=finite(c.annual_tonnes)?c.annual_tonnes:null,rows=Array.isArray(c.components)?c.components:[];
+    var q=finite(c.baseline_annualized_q_tonnes)?c.baseline_annualized_q_tonnes:null,max=Math.max(total||0,q||0);
+    var h='<div class="ast-assumptions"><strong>CAPA · '+(total!==null?esc(fmt(total))+' 톤/년':'제조능력 합계 미확인')+'</strong><p class="ast-note">'+esc(c.basis||'')+(c.as_of||c.period?' · 기준 '+esc(c.as_of||c.period):'')+'</p>';
+    if(max>0)h+='<div class="ast-capacity" role="img" aria-label="'+esc('연간 제조능력 '+fmt(total)+' 톤, 기준 분기 Q 연율 '+fmt(q)+' 톤')+'">'+[{label:'연간 제조능력',value:total,cls:''},{label:'기준 분기 Q × 4 · 연율',value:q,cls:' q'}].map(function(r){return '<div class="ast-capacity-row"><div><span>'+esc(r.label)+'</span><b>'+esc(fmt(r.value))+' 톤</b></div><div class="ast-capacity-track'+r.cls+'">'+(r.value!==null?'<i style="width:'+Math.max(0,r.value/max*100).toFixed(2)+'%"></i>':'')+'</div></div>';}).join('')+'</div>';
+    h+='<p class="ast-note">'+esc(c.comparison_note||'두 값의 제품·연결 범위를 확인해야 합니다. 연율 Q는 가동률을 의미하지 않습니다.')+'</p><p class="ast-note">설비능력 스냅샷입니다. 과거 CAPA 시계열이 없으면 같은 값을 이전 분기로 늘려 그리지 않습니다. 제조·열처리·후공정은 원문 범위대로 구분합니다.</p>';
+    if(rows.length)h+='<details><summary>CAPA 설비별 내역·범위</summary><div class="ast-table-wrap" tabindex="0" role="region" aria-label="CAPA 구성"><table><thead><tr><th>설비·범위</th><th>톤/년</th><th>성격</th><th>비고·근거</th></tr></thead><tbody>'+rows.map(function(r){return '<tr><th scope="row">'+esc(r.name||r.label||r.scope||r.id||'설비')+'</th><td>'+esc(fmt(finite(r.annual_tonnes)?r.annual_tonnes:r.value))+'</td><td>'+esc(r.kind||r.type||r.basis||'미확인')+'</td><td class="ast-text">'+esc(r.note||'')+(r.source_url?' · '+link(r.source_url,'원문'):'')+'</td></tr>';}).join('')+'</tbody></table></div></details>';
+    return h+list(c.notes||c.note||co.capacity_notes)+'</div>';
+  }
+  var PANELS=[{title:'유가와 미국 원유 리그',note:'가격과 가동 리그의 관측일을 같은 가로축으로 비교합니다. 선행·후행은 인과관계의 증명이 아닙니다.',ids:['wti_spot','us_oil_rigs']},{title:'천연가스와 미국 가스 리그',note:'Henry Hub 가격과 미국 가스 리그. 서로 다른 세로축 단위를 확인하세요.',ids:['henry_hub_spot','us_gas_rigs']},{title:'강관 가격과 원가 관련 지수',note:'OCTG와 HRC는 제품·인도조건·단위가 일치할 때만 차액을 비교할 수 있습니다. 강관·고철 PPI는 가격지수이며 USD/톤 또는 HRC 실가격을 대신하지 않습니다.',ids:['octg_p110_55_fob_user','hrc','hrc_spot','hrc_midwest','octg_hrc_spread','steel_scrap_ppi','steel_pipe_ppi']},{title:'미완결 유정과 시추·완결',note:'DUC는 잔량(stock), 신규 시추·완결은 기간 내 흐름(flow)입니다. 원기관 추정과 개정 가능성을 함께 확인하세요.',ids:['duc_stock','new_wells_drilled','new_wells_completed']}];
+  function marketHTML(payload,state,sources,registry) {
+    var market=payload.market||{},series=(market.series||[]).filter(function(s){return s.display_default!==false;}).map(normalizeSeries),whole=chartDomain(series),domain=whole;
+    if(whole&&state.years)domain=[Math.max(whole[0],Date.UTC(new Date(whole[1]).getUTCFullYear()-state.years,new Date(whole[1]).getUTCMonth(),new Date(whole[1]).getUTCDate())),whole[1]];
+    var used=new Set(),panels=PANELS.map(function(p){var rows=series.filter(function(s){return p.ids.indexOf(s.id)>=0;});rows.forEach(function(s){used.add(s.id);});return Object.assign({},p,{rows:rows});});
+    var extra=series.filter(function(s){return !used.has(s.id);});if(extra.length)panels.push({title:'추가 공개 시장 시계열',note:'원천의 단위와 범위를 유지합니다.',rows:extra});
+    return '<div class="ast-toolbar"><h4>01 · 시장의 순서와 변곡점</h4><div class="ast-range" aria-label="시장 차트 기간">'+[2,5,0].map(function(n){return '<button type="button" data-ast-years="'+n+'" aria-pressed="'+(state.years===n)+'">'+(n?n+'년':'전체')+'</button>';}).join('')+'</div></div><div class="ast-grid">'+panels.map(function(p,i){return '<article class="ast-card"><div class="ast-card-head"><h4>'+esc(p.title)+'</h4><span class="ast-card-no">'+String(i+1).padStart(2,'0')+'</span></div><p class="ast-note">'+esc(p.note)+'</p>'+(p.rows.length?p.rows.map(function(s,j){return chart(s,{domain:domain,width:state.chartWidth,zeroAxis:false,color:COLORS[j%COLORS.length]},sources,registry);}).join(''):'<div class="ast-empty">공개 시계열 확보 대기. 확인되지 않은 값을 채우지 않습니다.</div>')+'</article>';}).join('')+'</div><div class="ast-insights">'+insights(market.findings)+'</div>'+(strings(market.limitations).length?'<details><summary>시장 자료의 비교 한계</summary>'+list(market.limitations)+'</details>':'');
+  }
+  function companyHTML(payload,state,sources,registry) {
+    var cs=payload.companies||[],co=cs.find(function(c){return c.id===state.companyId;})||cs[0];
+    if(!co)return '<section class="ast-company"><h4>02 · 회사별 분기 전망</h4><div class="ast-empty">회사별 비교 가능한 실적·조건부 모델이 아직 제공되지 않았습니다.</div></section>';
+    var order=['revenue','operating_profit','q','p','utilization'];
+    var ss=(co.series||[]).map(normalizeSeries).sort(function(a,b){var ai=order.indexOf(a.id),bi=order.indexOf(b.id);return (ai<0?99:ai)-(bi<0?99:bi);}),domain=chartDomain(ss),notes=strings(co.limitations);
+    var html='<section class="ast-company"><div class="ast-toolbar"><h4>02 · 회사별 분기 경로</h4><label class="ast-company-select">회사 <select data-ast-company>'+cs.map(function(c){return '<option value="'+esc(c.id)+'"'+(c.id===co.id?' selected':'')+'>'+esc(c.name)+(c.ticker?' · '+esc(c.ticker):'')+'</option>';}).join('')+'</select></label><span class="ast-model-tag">조건부 추정 · 검증 전 가정</span></div><div class="ast-company-intro"><strong>'+esc(co.name)+'</strong><p class="ast-note">'+esc(co.scope||co.scope_note||co.basis||'')+'</p><p class="ast-note">실선: 공시 실적 · 점선: 조건부 기준 추정 · 음영: 하단–상단 가정 범위. 확률·신뢰구간 또는 증권사 컨센서스가 아닙니다.</p></div>';
+    html+='<div class="ast-kpis">'+ss.filter(function(s){return s.id==='revenue'||s.id==='operating_profit';}).map(function(s){var p=s.points.filter(function(p){return p.status==='forecast'&&finite(p.value);})[0],scale=displayScale(s);return '<div class="ast-kpi"><span class="ast-kpi-label">'+esc(s.name)+' · '+(p?esc(p.period):'미확인')+' 기준 추정</span><b class="ast-kpi-value">'+esc(fmt(p?p.value/scale.divisor:null))+'</b><small>'+esc(scale.unit)+(p?' · 하단 '+esc(fmt(p.low===null?null:p.low/scale.divisor))+' – 상단 '+esc(fmt(p.high===null?null:p.high/scale.divisor)):'')+'</small></div>';}).join('')+'</div>';
+    html+=capacityHTML(co);
+    html+='<div class="ast-grid">'+ss.map(function(s,i){return '<article class="ast-card">'+chart(s,{domain:domain,width:state.chartWidth,color:COLORS[i%COLORS.length]},sources,registry)+'</article>';}).join('')+'</div>';
+    if(!ss.length)html+='<div class="ast-empty">동일 범위의 분기 실적 또는 추정 기준값이 미확인입니다. 미확인 구간을 0으로 표시하지 않습니다.</div>';
+    if(co.wind_bridge&&Array.isArray(co.wind_bridge.points))html+='<article class="ast-card" style="margin-top:14px"><strong>Wind 추가 민감도 · 위 영업이익에 미포함</strong>'+chart(normalizeSeries(Object.assign({id:'wind_bridge',frequency:'quarterly'},co.wind_bridge)),{domain:domain,width:Math.min(800,state.chartWidth||560),color:COLORS[5]},sources,registry)+'<p class="ast-note">'+esc(co.wind_bridge.note||'별도 민감도이며 기존 영업이익에 합산하지 않습니다.')+'</p>'+list(co.wind_bridge.assumptions&&co.wind_bridge.assumptions.note)+'</article>';
+    html+='<div class="ast-assumptions"><strong>가정과 범위</strong>'+list(co.assumptions)+(co.formula?'<p class="ast-note">'+esc(co.formula)+'</p>':'')+(notes.length?list(notes):'')+'</div><div class="ast-insights">'+insights(co.findings||co.interpretation)+'</div>';
+    if(co.sources&&co.sources.length)html+='<details><summary>회사 공시·모델 근거 '+co.sources.length+'개</summary>'+sourceList(co.sources)+'</details>';
+    return html+'</section>';
+  }
+  function driversHTML(payload,state,sources,registry){var rows=(payload.driver_series||[]).map(normalizeSeries);if(!rows.length)return '';var domain=chartDomain(rows);return '<details><summary>분기 추정의 시장 입력·가정 '+rows.length+'개</summary><p class="ast-note">시장 실측에 가중치·기준값·전가율을 적용한 분석 가정입니다. 지수 경로와 회사별 적용 범위는 별도로 확인해야 합니다.</p><div class="ast-grid">'+rows.map(function(s,i){return '<article class="ast-card">'+chart(s,{domain:domain,width:state.chartWidth,color:COLORS[i%COLORS.length]},sources,registry)+'</article>';}).join('')+'</div></details>';}
+  function bindCharts(host,registry) {
+    host.querySelectorAll('[data-ast-chart]').forEach(function(el){var key=+el.dataset.astChart,r=registry[key],good=r.series.points.filter(function(p){return finite(p.value);}),at=good.length-1,tip=host.querySelector('[data-ast-tip="'+key+'"]'),cursor=el.querySelector('.ast-cursor');
+      function show(i){at=Math.max(0,Math.min(good.length-1,i));var p=good[at];tip.textContent=pointText(p,r.series);var x=r.left+(p.time-r.domain[0])/(r.domain[1]-r.domain[0])*(r.width-r.left-r.right);cursor.setAttribute('x1',x);cursor.setAttribute('x2',x);cursor.setAttribute('visibility','visible');}
+      el.addEventListener('pointermove',function(e){var box=el.getBoundingClientRect(),x=(e.clientX-box.left)/box.width*r.width,t=r.domain[0]+(x-r.left)/(r.width-r.left-r.right)*(r.domain[1]-r.domain[0]),lo=0,hi=good.length-1;while(lo<hi){var mid=Math.floor((lo+hi)/2);if(good[mid].time<t)lo=mid+1;else hi=mid;}var idx=lo;if(idx>0&&Math.abs(good[idx-1].time-t)<Math.abs(good[idx].time-t))idx--;show(idx);});
+      el.addEventListener('keydown',function(e){if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'||e.key==='End'){e.preventDefault();show(e.key==='Home'?0:e.key==='End'?good.length-1:at+(e.key==='ArrowLeft'?-1:1));}});
+      el.addEventListener('pointerleave',function(){cursor.setAttribute('visibility','hidden');});
+    });
+  }
+  function mount(host,payload) {
+    if(!host||!host.ownerDocument)return null;
+    var doc=host.ownerDocument;if(!doc.getElementById('ast-style')){var st=doc.createElement('style');st.id='ast-style';st.textContent=CSS;(doc.head||doc.documentElement).appendChild(st);}
+    if(typeof host._astCleanup==='function')host._astCleanup();
+    payload=payload||{};var state={years:5,companyId:(payload.companies||[])[0]&&payload.companies[0].id},sources=sourceMap(payload);
+    function measure(){var w=host.clientWidth||600;return Math.round(Math.max(260,Math.min(640,w<=800?w-30:(w-14)/2-36)));}
+    state.chartWidth=measure();
+    function render(){var registry=[];host.innerHTML='<div class="ast-root"><header class="ast-hero"><div class="ast-eyebrow">ARGUS / STEEL RESEARCH</div><h3>에너지 수요 → 강관 수익 경로</h3><p class="ast-scope">시장 관측과 회사 공시를 분리해 연결합니다. '+(payload.as_of?'자료 확인 '+esc(payload.as_of):'')+'</p><p class="ast-note">가격·리그·시추·완결의 시차를 살피고, CAPA·출하량(Q)·단가(P)가 매출과 이익에 미치는 조건을 비교하세요. 각 점의 관측일과 출처는 수치 표에 표시합니다.</p><div class="ast-range" style="margin-top:12px"><button type="button" data-ast-jump="company">회사별 분기 전망 ↓</button><button type="button" data-ast-jump="lens">변곡점 해석 ↓</button></div></header><div data-ast-market>'+marketHTML(payload,state,sources,registry)+'</div><div data-ast-company-panel>'+companyHTML(payload,state,sources,registry)+'</div>'+driversHTML(payload,state,sources,registry)+lensHTML(payload.interpretation,payload.persona)+'<details><summary>시장·공통 출처와 자료 범위</summary>'+sourceList([].concat(payload.sources||[],payload.market&&payload.market.sources||[]))+list(payload.limitations)+'</details></div>';bindCharts(host,registry);
+      host.querySelectorAll('[data-ast-jump]').forEach(function(btn){btn.addEventListener('click',function(){var target=btn.dataset.astJump==='company'?host.querySelector('.ast-company'):host.querySelector('[data-ast-lens]');if(target)target.scrollIntoView({block:'start'});});});
+      host.querySelectorAll('[data-ast-years]').forEach(function(btn){btn.addEventListener('click',function(){state.years=+btn.dataset.astYears;render();var active=host.querySelector('[data-ast-years="'+state.years+'"]');if(active)active.focus({preventScroll:true});});});
+      var select=host.querySelector('[data-ast-company]');if(select)select.addEventListener('change',function(){state.companyId=select.value;render();var next=host.querySelector('[data-ast-company]');if(next)next.focus({preventScroll:true});if(typeof host.dispatchEvent==='function'&&doc.defaultView)host.dispatchEvent(new doc.defaultView.CustomEvent('phx-steel-company',{bubbles:true,detail:{companyId:state.companyId}}));});
+    }
+    render();var observer=null;if(doc.defaultView&&doc.defaultView.ResizeObserver){observer=new doc.defaultView.ResizeObserver(function(){var w=measure();if(w!==state.chartWidth){state.chartWidth=w;render();}});observer.observe(host);}host._astCleanup=function(){if(observer)observer.disconnect();};
+    return {setCompany:function(id){if((payload.companies||[]).some(function(c){return c.id===id;})){state.companyId=id;render();}},getState:function(){return Object.assign({},state);},destroy:host._astCleanup};
+  }
+  function mountLens(host,items,persona){if(!host||!host.ownerDocument)return;var doc=host.ownerDocument;if(!doc.getElementById('ast-style')){var st=doc.createElement('style');st.id='ast-style';st.textContent=CSS;(doc.head||doc.documentElement).appendChild(st);}host.innerHTML='<div class="ast-root">'+lensHTML(items,persona)+'</div>';}
+  return {mount:mount,mountLens:mountLens,normalizeSeries:normalizeSeries,periodInfo:periodInfo,lineSegments:lineSegments,continuous:continuous,chartDomain:chartDomain,ticks:ticks,safeURL:safeURL,escape:esc,format:fmt,displayScale:displayScale,chart:chart,marketHTML:marketHTML,companyHTML:companyHTML,sourceList:sourceList,lensHTML:lensHTML,capacityHTML:capacityHTML,CSS:CSS};
+}));
