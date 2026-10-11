@@ -1244,3 +1244,36 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   s.src='panoptes/research_desk.js?v=20260915-1';
   document.head.appendChild(s);
 })();
+
+// 나우캐스트 게이트 보류 안내 (2026-10-11) — 빌더의 nowcast_gate 가 예측을 보류하면 M.nowcast 가 비고,
+// 원본은 "데이터 준비중 (재무·세관 데이터 필요)" 라는 사실과 다른 문구를 띄운다(live-smoke tab:nowcast 실패).
+// 보류 상태일 때만 사유별 집계와 종목 목록으로 대체한다. 순위·예측값은 보이지 않는다
+// (alerts_source_contract.nowcast_display_gate: 보류 예측은 보일 수 있으나 순위·실행 목록에는 못 들어간다).
+// nowcast 가 1건이라도 있으면 원본 그대로.
+(function(){
+  var orig=window.renderNowcastRank;
+  if(typeof orig!=='function'||orig._gate) return;
+  var sf=typeof safe==='function'?safe:function(n,f){ try{ return f(); }catch(e){ console.warn('[ui-patch]',n,e); } };
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var w=function(){
+    var MM=(typeof M!=='undefined'&&M)||{}, g=MM.nowcast_gate;
+    if((MM.nowcast||[]).length||!g||g.status!=='held') return orig.apply(this,arguments);
+    return sf('nowcast-gate',function(){
+      var main=document.getElementById('main'), held=Array.isArray(g.held)?g.held:[], by={};
+      held.forEach(function(h){ var k=String((h&&h.reason)||'사유 미기재').replace(/^nowcast forecast held:\s*/,''); (by[k]=by[k]||[]).push(h&&h.id); });
+      var rows=Object.keys(by).map(function(k){
+        return '<li><b>'+by[k].length+'개</b> — '+esc(k)+'<div class="phx-ncg-ids">'+by[k].map(esc).join(' · ')+'</div></li>';
+      }).join('');
+      var body=held.length?'<ul>'+rows+'</ul>':'<p>'+esc(g.reason||'보류 사유가 제공되지 않았습니다.')+'</p>';
+      main.innerHTML='<div class="phx-ncg">'
+        +'<h3>나우캐스트 예측 보류 중</h3>'
+        +'<p>선행 지표 모델은 계산되지만, 공개 기준(완결 분기 검증 · 검토된 공개 정책)을 통과하지 못한 예측은 순위표에 넣지 않습니다. '
+        +'현재 공개 '+(g.eligible_count|0)+'개 · 보류 '+(held.length||(g.held_count==null?'?':(g.held_count|0)))+'개입니다.</p>'
+        +body
+        +'<p class="phx-ncg-note">보류 사유가 해소되면 다음 빌드부터 순위표가 다시 표시됩니다.</p>'
+        +'</div>';
+    });
+  };
+  w._gate=true;
+  window.renderNowcastRank=w;
+})();
