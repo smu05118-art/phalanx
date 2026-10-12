@@ -380,6 +380,29 @@ def _keep(t):
     return bool(re.search(r"수주|매출|발주|거래처|매출처|고객|납기|잔고|잔액|계약", blob))
 
 
+HDR_ROOT = None          # 머리행 지도 엔진 root(기본 argus/) — 테스트가 임시 디렉터리로 바꾼다
+
+
+def _hdr_record(out, orders):
+    """머리행 지도(advisory, 2026-10-12) — 수주표 후보 전부와 채택 1장을 공용 엔진(argus/kce/tools/hdrmap.py)에
+    기록·커밋한다(tag ← shape). award 모양(발주처·사업명·계약기간)은 kdef 부품사 표에도 나와 지도에서 식별돼야 해
+    has_client·has_period 를 엔트리 모양(shape)에 덧붙인다: `award+발주처+기간`·`item+기간`. 엔진·어댑터 오류는
+    stderr·큐로만 남기고 수집은 멈추지 않는다(kce 정밀만 fail-closed)."""
+    try:
+        import hdrmap
+        best = out.get("orders") or {}
+        picks = [i for i, o in enumerate(orders) if best and (o["cols"], o.get("lead"), o["rows"])
+                 == (best.get("cols"), best.get("lead"), best.get("rows"))][:1]
+        tabs = [dict(o, tag=o.get("shape") or "",
+                     shape="%s%s%s" % (o.get("shape") or "", "+발주처" if o.get("has_client") else "",
+                                       "+기간" if o.get("has_period") else "")) for o in orders]
+        hdrmap.record("knuke", out["stock"], out["quarter"], "orders", tabs, picks,
+                      meta={"name": out.get("name"), "stock": out["stock"], "rcpNo": out.get("rcp")}, root=HDR_ROOT)
+        hdrmap.write("knuke", key=out["stock"], root=HDR_ROOT)
+    except Exception as e:                                       # noqa: BLE001 — advisory
+        sys.stderr.write("hdrmap knuke %s %s: %s: %s\n" % (out.get("stock"), out.get("quarter"), type(e).__name__, e))
+
+
 def collect_one(rec, quarter, force=False, log=sys.stderr):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
@@ -427,6 +450,7 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
     log.write("%s %s %s %s\n" % (st, quarter, "ok" if out["ok"] else "FAIL",
                                  (out["orders"] or {}).get("shape", "-")))
     log.flush()
+    _hdr_record(out, orders)
     return out
 
 

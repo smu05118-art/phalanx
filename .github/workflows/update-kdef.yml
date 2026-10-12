@@ -57,6 +57,9 @@ jobs:
           python3 kdef_reports.py --collect --n 8 --only "$PRIMES" "${Q[@]}"
           python3 kdef_reports.py --collect --n 2 --only "$REST" "${Q[@]}"
           python3 kdef_reports.py --build --n 8 "${Q[@]}"
+          # 머리행 지도 — 캐시 원문 표 재생(DART 0). 증분: 지도에 없는 (회사, 분기)만. 신규 편입 회사는
+          # kdef_universe --write 가 큐(new_company)에 올렸고 위 REST 수집이 그 회사를 받았다.
+          python3 kdef_headers.py --write
           python3 kdef_products.py --collect      # 「주요 제품」 절 — 없는 회사만 받는다
           python3 kdef_suppliers.py --build
           python3 kdef_page.py --all
@@ -65,6 +68,18 @@ jobs:
         run: |
           cd argus/kdef/tools && python3 -m unittest discover -s tests -p 'test_*.py'
           git diff --check || true
+      # 머리행 지도 수치 — 직전 커밋(HEAD) 대비. 사람이 봐야 하는 건(새 미지 열·회귀) Step Summary 와 커밋 메시지에
+      # 바로 보여야 한다(scan-kship 의 '산출물 실측 수치를 메시지에' 관례). 보고 파일은 커밋하지 않는다(RUNNER_TEMP).
+      - name: Header map summary
+        id: hdr
+        if: always()
+        shell: bash
+        working-directory: argus/kdef/tools
+        run: |
+          git show HEAD:argus/kdef/tools/assets/hdr_queue.json > "$RUNNER_TEMP/hdr_q0.json" 2>/dev/null || echo '[]' > "$RUNNER_TEMP/hdr_q0.json"
+          git show HEAD:argus/kdef/tools/assets/hdrmap.json > "$RUNNER_TEMP/hdr_m0.json" 2>/dev/null || echo '{}' > "$RUNNER_TEMP/hdr_m0.json"
+          python3 kdef_headers.py --summary --base-queue "$RUNNER_TEMP/hdr_q0.json" --base-map "$RUNNER_TEMP/hdr_m0.json" \
+            --line-out "$RUNNER_TEMP/hdr_line.txt" >> "$GITHUB_STEP_SUMMARY" || echo "::warning::머리행 요약 실패"
       - name: Commit
         shell: bash
         run: |
@@ -74,8 +89,9 @@ jobs:
           if [ -z "$(git status --porcelain -- argus/kdef)" ]; then
             echo "변경 없음"; exit 0
           fi
+          HDR="$(cat "$RUNNER_TEMP/hdr_line.txt" 2>/dev/null || true)"
           git add -- argus/kdef
-          git commit -m "kdef: 자동 갱신 $(date -u +%Y-%m-%d) (계약공시·정기보고서·부품 연결)"
+          git commit -m "kdef: 자동 갱신 $(date -u +%Y-%m-%d) (계약공시·정기보고서·부품 연결)${HDR}"
           git pull --rebase origin main
           git push origin HEAD:main
       - name: Fail if build errored
@@ -83,3 +99,14 @@ jobs:
         run: |
           echo "::error::수집·생성 단계 실패 — 성공한 산출물은 커밋됐다. 로그를 확인하라"
           exit 1
+      # 회귀만 빨강(설계 A·G) — 직전 분기에 채택 표가 있던 (회사, 역할)이 이번 분기에 채택 없이 미지로 바뀜,
+      # 체계업체 수주표 채택 소실. 신규사 open·B 항목 증가는 경고(요약)로만 남는다. 산출물은 위에서 이미 커밋됐다.
+      - name: Fail if header regression
+        if: always() && steps.build.outcome == 'success'
+        working-directory: argus/kdef/tools
+        run: |
+          if ! python3 kdef_headers.py --check > "$RUNNER_TEMP/hdr_check.json"; then
+            cat "$RUNNER_TEMP/hdr_check.json"
+            echo "::error::머리행 회귀 — 직전 분기에 읽히던 표가 이번 분기에 미지로 바뀌었다(argus/kdef/headers.html · assets/hdr_queue.json)"
+            exit 1
+          fi

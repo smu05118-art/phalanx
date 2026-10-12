@@ -1,0 +1,92 @@
+name: scan-kdef (방산 모집단 확장 탐색, 주 1회)
+
+# 한국방산(argus/kdef) 모집단 ④ 겹 — KIND 제품 문구가 방산을 말하지 않는 상장사(부품 어휘 후보 ~224사)의
+# 정기보고서 II절 본문을 읽어 방산 공급망 여부를 판정한다(kdef_scan.py, 규칙은 RULE). 2026-09-11 수동 실행 뒤
+# Action 이 없어 정체돼 있었다 — 신규 상장 부품사는 이 경로로만 들어온다(HANDOFF ④).
+#   · 승격분은 assets/universe_probe.json 에 남고, 직전 승격은 kdef_scan.carry_forward 가 이월한다
+#     (후보 풀이 이미 모집단인 회사를 빼므로 이월이 없으면 '탐색' 출처 회사가 매주 모집단에서 지워진다 — kship 2026-09-12 회귀).
+#   · kdef_universe.py --write 가 '탐색' 출처로 모집단에 넣고, 새 종목은 머리행 큐(assets/hdr_queue.json)에 new_company 로
+#     오른다. 새 회사의 정기보고서·머리행 지도는 다음 update-kdef(같은 날 11:20 KST)가 받는다.
+#   · 실행 날짜(scanned_at)는 산출에 넣지 않는다(매주 diff 노이즈). 판정 분기는 quarter 가 말한다.
+on:
+  schedule:
+    - cron: "0 20 * * 6"        # 매주 일요일 05:00 KST — scan-kship(일 02:00) 뒤, update-kdef(11:20) 앞
+  workflow_dispatch:
+    inputs:
+      quarter:
+        description: "정기보고서 분기 강제(예: 2026Q3) — 비우면 분기말+50일·사업보고서+95일 규칙"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kship-dart            # DART 탭 전부와 같은 그룹 — DART 는 IP 당 프로세스 하나
+  queue: max  # Preserve every waiting industry refresh (up to 100).
+  cancel-in-progress: false
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Tests (before)
+        run: cd argus/kdef/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: 탐색
+        shell: bash
+        env:
+          QUARTER_INPUT: ${{ github.event.inputs.quarter }}
+        working-directory: argus/kdef/tools
+        run: |
+          set -o pipefail
+          # 기대 최신 분기 — scan-kship.yml·update-kship.yml 과 같은 규칙(분기말 +50일, 사업보고서 +95일).
+          Q1="$(python3 - <<'PY'
+          import datetime, os
+          d = datetime.date.fromisoformat(os.environ["TODAY"]) if os.environ.get("TODAY") else datetime.date.today()
+          y, q = d.year, (d.month - 1) // 3 + 1
+          while True:
+              q -= 1
+              if q == 0:
+                  y, q = y - 1, 4
+              m = q * 3
+              end = datetime.date(y + (m == 12), m % 12 + 1, 1) - datetime.timedelta(days=1)
+              if end + datetime.timedelta(days=95 if q == 4 else 50) <= d:
+                  print("%dQ%d" % (y, q)); break
+          PY
+          )"
+          if [ -n "${QUARTER_INPUT:-}" ]; then
+            if ! printf '%s' "$QUARTER_INPUT" | grep -Eq '^[0-9]{4}Q[1-4]$'; then echo "::error::quarter 형식"; exit 2; fi
+            Q1="$QUARTER_INPUT"
+          fi
+          echo "탐색 분기 $Q1 (직전 승격은 carry_forward 로 이월 · 강등은 본문을 읽고도 기준 미달일 때만)"
+          python3 kdef_scan.py --scan --quarter "$Q1"
+      - name: 모집단 재생성
+        shell: bash
+        working-directory: argus/kdef/tools
+        run: |
+          set -o pipefail
+          python3 kdef_universe.py --write
+          python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: 커밋
+        shell: bash
+        run: |
+          git config user.name "kdef-bot"
+          git config user.email "kdef-bot@users.noreply.github.com"
+          for f in universe_probe.json universe.json hdr_queue.json; do
+            if [ -e "argus/kdef/tools/assets/$f" ]; then git add -- "argus/kdef/tools/assets/$f"; fi
+          done
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git diff --cached --stat | tail -3
+          # 메시지에 탐색 결과 수치(universe_probe.json 실측)와 신규 편입 종목을 적는다 — 모집단 행 수가 줄면 바로 의심할 수 있게.
+          PROBE="$(python3 -c "import json;d=json.load(open('argus/kdef/tools/assets/universe_probe.json'));print('승격 %d·이월 %d·제외 %d·실패 %d' % (len(d.get('promoted') or {}), len(d.get('carried') or []), len(d.get('rejected') or []), len(d.get('failed') or [])))" 2>/dev/null || echo '-')"
+          NEWCO="$(python3 -c "import json,subprocess;q0=json.loads(subprocess.run(['git','show','HEAD:argus/kdef/tools/assets/hdr_queue.json'],capture_output=True,text=True).stdout or '[]');ids={i['id'] for i in q0};q=json.load(open('argus/kdef/tools/assets/hdr_queue.json'));n=sorted({i.get('stock') or i['key'] for i in q if i['kind']=='new_company' and i['id'] not in ids});print(' · 신규 편입 %d(%s)' % (len(n), ','.join(n)) if n else '')" 2>/dev/null || true)"
+          git commit -m "kdef: 모집단 탐색 $(date -u +%Y-%m-%d) ($PROBE)${NEWCO}"
+          git pull --rebase origin main
+          git push origin HEAD:main

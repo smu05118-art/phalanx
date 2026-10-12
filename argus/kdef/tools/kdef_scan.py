@@ -17,11 +17,17 @@
 
     python3 kdef_scan.py --scan [--quarter 2026Q2] [--limit 80]   # → assets/universe_probe.json
 그 뒤 `kdef_universe.py --write` 가 승격분을 '탐색' 출처로 모집단에 넣는다.
+
+주 1회 자동(.github/workflows/scan-kdef.yml, 2026-10-12)이 되면서 두 가지를 바꿨다:
+  · `scanned_at`(실행 날짜)을 산출에서 뺐다 — 같은 결과가 매주 다른 바이트가 되면 diff 노이즈다(AGENTS.md
+    정규화 출력). 어느 분기 보고서로 판정했는지는 `quarter` 가 말한다.
+  · 직전 승격분 이월(carry_forward) — 후보 풀은 **이미 모집단인 회사를 뺀다**. 그래서 다시 돌리면 지난번에
+    '탐색'으로 들어온 27사가 풀에 없어 promoted 에서 빠지고, 다음 universe --write 가 그들을 모집단에서 지운다
+    (kship 2026-09-12 같은 회귀 — kship_scan.carry_forward). 본문을 읽고 규칙 미달로 제외한 회사만 강등한다.
 """
 import argparse
 import re
 import sys
-import time
 
 from kdef_lib import (KIND_URL, _get, fetch_section, find_sections, latest_quarter, load_asset,
                       parse_kind, pick_report, report_kind, report_window, search_reports, toc,
@@ -164,9 +170,37 @@ def probe_one(rec, quarter):
     return out
 
 
+def carry_forward(prev_promoted, promoted, rejected, prev_quarter=""):
+    """직전 승격분 이월 — 순수 함수(DART 없이 검증한다). kship_scan.carry_forward 와 같은 규칙.
+
+    이번 스캔이 **본문을 읽고 규칙 미달로 제외한**(rejected — 읽기 실패는 failed 로 간다) 종목만 강등한다.
+    후보 풀에서 빠진 종목(이미 모집단)·읽기 실패 종목은 직전 증거 그대로 promoted 에 남기고, 증거가 어느 분기
+    보고서의 것인지 `carried_from` 에 적는다(이미 이월된 행은 원래 분기를 지킨다 — 실행 날짜는 쓰지 않는다).
+    반환: (promoted 사전 — 종목코드 순, 이월한 종목코드 목록)."""
+    demoted = {r["stock"] for r in rejected or []}
+    out = dict(promoted)
+    carried = []
+    for st, row in (prev_promoted or {}).items():
+        if st in out or st in demoted:
+            continue
+        r = dict(row)
+        r.setdefault("carried_from", prev_quarter)
+        out[st] = r
+        carried.append(st)
+    return dict(sorted(out.items())), sorted(carried)
+
+
+def _prev_probe():
+    try:
+        return load_asset("universe_probe.json")
+    except Exception:
+        return {}
+
+
 def scan(quarter, limit=None, log=sys.stderr):
     recs = parse_kind(_get(KIND_URL))
     universe = load_universe()
+    prev = _prev_probe()
     cands = pool(recs, universe)
     if limit:
         cands = cands[:limit]
@@ -193,11 +227,12 @@ def scan(quarter, limit=None, log=sys.stderr):
         if i % 20 == 0:
             log.write("  … %d/%d (승격 %d)\n" % (i, len(cands), len(promoted)))
             log.flush()
+    # --limit(부분 스캔)도 이월한다 — 안 읽은 풀 뒤쪽의 직전 승격분을 비우면 다음 universe --write 가 지운다.
+    promoted, carried = carry_forward(prev.get("promoted") or {}, promoted, rejected, prev.get("quarter") or "")
     out = {"quarter": quarter, "rule": RULE, "n_cand": len(cands),
-           "promoted": promoted, "rejected": rejected, "failed": failed,
-           "scanned_at": time.strftime("%Y-%m-%d")}
+           "promoted": promoted, "carried": carried, "rejected": rejected, "failed": failed}
     write_asset("universe_probe.json", out)
-    log.write("승격 %d · 제외 %d · 실패 %d\n" % (len(promoted), len(rejected), len(failed)))
+    log.write("승격 %d(이월 %d) · 제외 %d · 실패 %d\n" % (len(promoted), len(carried), len(rejected), len(failed)))
     return out
 
 

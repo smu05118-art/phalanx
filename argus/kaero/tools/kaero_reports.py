@@ -705,6 +705,33 @@ def _tables_of(node):
     return _headered(_carry_units(parse_tables(fetch_section(node))))
 
 
+HDR_ROOT = None          # 머리행 지도 엔진 root(기본 argus/) — 테스트가 임시 디렉터리로 바꾼다
+
+
+def _hdr_record(out, orders, picked, rejected):
+    """머리행 지도(advisory, 2026-10-12) — 공용 엔진(argus/kce/tools/hdrmap.py)에 수주표를 기록·커밋한다.
+    이 탭은 **통화별로 한 장씩** 채택한다(group_orders) — picks 를 {통화: 번호} 로 넘기면 엔진이 채택 표마다 cur 를
+    적는다. 단위를 못 읽어 group_orders 가 뺀 표(rejected)는 pick False·reason unit_unknown 으로 남는다.
+    엔진·어댑터 오류는 stderr·큐로만 남기고 수집은 멈추지 않는다(kce 정밀만 fail-closed)."""
+    try:
+        import hdrmap
+        cands = [o for o in orders if o.get("unit_seen")]
+
+        def idx(b):
+            for i, o in enumerate(cands):
+                if (o["cols"], o.get("lead"), o["rows"]) == (b.get("cols"), b.get("lead"), b.get("rows")):
+                    return i
+            return None
+        picks = {cur: idx(b) for cur, b in picked.items() if idx(b) is not None}
+        hdrmap.record("kaero", out["stock"], out["quarter"], "orders",
+                      [dict(o, tag=o.get("shape") or "") for o in cands], picks,
+                      rejected=[dict(r, reason="unit_unknown") for r in rejected],
+                      meta={"name": out.get("name"), "stock": out["stock"], "rcpNo": out.get("rcp")}, root=HDR_ROOT)
+        hdrmap.write("kaero", key=out["stock"], root=HDR_ROOT)
+    except Exception as e:                                       # noqa: BLE001 — advisory
+        sys.stderr.write("hdrmap kaero %s %s: %s: %s\n" % (out.get("stock"), out.get("quarter"), type(e).__name__, e))
+
+
 def collect_one(rec, quarter, force=False, log=sys.stderr):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
@@ -769,6 +796,7 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
               % (st, quarter, "ok" if out["ok"] else "FAIL", ",".join(sorted(picked)) or "-",
                  (" detail=%s" % ",".join(sorted(dpicked))) if dpicked else ""))
     log.flush()
+    _hdr_record(out, orders, picked, rejected)
     return out
 
 

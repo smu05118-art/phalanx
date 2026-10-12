@@ -258,6 +258,32 @@ def parse_hedge_any(html, where):
     return out
 
 
+HDR_ROOT = None          # 머리행 지도 엔진 root(기본 argus/) — 테스트가 임시 디렉터리로 바꾼다
+# 수주표로 보이는 머리행(이 파서가 못 읽으면 미지로 큐에 올린다)
+_ORDERS_LIKE = re.compile(r"수주|잔고|잔량|기납품|인도")
+
+
+def _hdr_record(rec, out, tables, orders):
+    """머리행 지도(advisory, 2026-10-12) — 조선소 수주표 후보 전부(채택 = 행이 가장 많은 표)와, 수주표 낱말이
+    있는데 못 읽은 표(미지 → 큐 unknown)를 공용 엔진(argus/kce/tools/hdrmap.py)에 기록·커밋한다.
+    실패 분기는 캐시되지 않아 매일 다시 시도되는데 지금까지 머리행이 어디에도 남지 않았다 — 그래서 실패 return
+    **앞**에서도 부른다(미지 항목은 같은 id 라 매일 쌓이지 않는다). 수집은 어떤 경우에도 멈추지 않는다."""
+    try:
+        import hdrmap
+        best = out.get("orders") or {}
+        picks = [i for i, o in enumerate(orders) if best and (o["cols"], o.get("lead"), o["rows"])
+                 == (best.get("cols"), best.get("lead"), best.get("rows"))][:1]
+        ok_cols = {tuple(o["cols"]) for o in orders}
+        unknown = [{"cols": t["cols"], "n_rec": len(t["rows"]), "lead": (t.get("lead") or "")[-120:]}
+                   for t in tables if t["cols"] and tuple(t["cols"]) not in ok_cols
+                   and _ORDERS_LIKE.search(" ".join(t["cols"]))]
+        hdrmap.record("kship", rec["stock"], out["quarter"], "orders", orders, picks, unknown=unknown,
+                      meta={"name": rec.get("name"), "stock": rec["stock"], "rcpNo": out.get("rcp")}, root=HDR_ROOT)
+        hdrmap.write("kship", key=rec["stock"], root=HDR_ROOT)
+    except Exception as e:                                       # noqa: BLE001 — advisory
+        sys.stderr.write("hdrmap kship %s %s: %s: %s\n" % (rec.get("stock"), out.get("quarter"), type(e).__name__, e))
+
+
 def collect_one(rec, quarter, force=False):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
@@ -281,6 +307,7 @@ def collect_one(rec, quarter, force=False):
     revenue = [x for x in (parse_revenue_table(t) for t in tables if t["cols"]) if x]
     if not orders:
         out["note"] = "수주표 인식 실패 — 머리행: %s" % [t["cols"] for t in tables if t["cols"]][:3]
+        _hdr_record(rec, out, tables, orders)
         return out
     out["orders"] = max(orders, key=lambda o: len(o["rows"]))
     out["revenue"] = revenue[0] if revenue else None
@@ -301,6 +328,7 @@ def collect_one(rec, quarter, force=False):
     out["ok"] = True
     os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic_write(path, json.dumps(out, ensure_ascii=False, indent=1) + "\n")
+    _hdr_record(rec, out, tables, orders)
     return out
 
 
