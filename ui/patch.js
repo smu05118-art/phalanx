@@ -1347,7 +1347,8 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
    (2026-10-12 · research/mjc 신설. 페이지는 data_jp.js 등 크론 산출물을 런타임에 직접 읽음)
    ============================================================ */
 (function(){
-  var RESEARCH={ MJC:{href:'research/mjc/', label:'MJC 분기 나우캐스트 — 세관 OLS·잔차·시나리오·예측 채점 (자동 갱신)'} };
+  var RESEARCH={ MJC:{href:'research/mjc/', label:'MJC 분기 나우캐스트 — 세관 OLS·잔차·시나리오·예측 채점 (자동 갱신)'},
+                  JEM:{href:'research/jem/', label:'JEM 분기 나우캐스트 — 세관 1분기 선행 OLS·시나리오 (자동 갱신)'} };
   function addLink(){
     try{
       var cid=(typeof ST!=='undefined')?ST.company:null, R=cid&&RESEARCH[cid], main=document.getElementById('main');
