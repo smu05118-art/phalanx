@@ -87,6 +87,7 @@ function run(IN){
   if(IN.consensus) h+=kv('컨센 '+esc(IN.consensus.fy_label||('FY'+IN.consensus.fy))+' ('+esc(IN.consensus.date)+')', f1(IN.consensus.rev)+' / OP '+f1(IN.consensus.op));
   h+=kv('다음 실적 발표', esc(IN.earn_next||'—'));
   h+='</div></div>';
+  if(IN.consensus&&IN.consensus.note) h+='<p class="footnote">컨센서스 메모 ('+esc(IN.consensus.source||'')+' '+esc(IN.consensus.date||'')+'): '+esc(IN.consensus.note)+'</p>';
   if(IN.quality_note) h+='<div class="callout"><b>프록시 품질 주의</b> — '+esc(IN.quality_note)+' (현재 OLS r='+(Math.round(r*100)/100)+')</div>';
   if(gStale) h+='<div class="callout"><b>가이던스 갱신 필요</b> — 실적은 '+esc(lastQ)+'까지인데 inputs.json 가이던스 최신 공시일은 '+esc(lastGdate)+'입니다.</div>';
   targets.forEach(t=>{
