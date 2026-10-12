@@ -154,3 +154,112 @@ class TestXi1Apply(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestXi1Match(unittest.TestCase):
+    """정답지 = 라이브 7사 DATA 2026Q2 의 원본 연결(사람 판정 포함). 오매칭 0 이어야 데이터에 쓴다.
+
+    정답지 자체의 오류로 판단해 '오답'에서 뺀 2건(원본이 금액이 안 맞는 사업장에 붙였거나 신규로 뺀 건):
+      · DL이앤씨 `여수신기주공지역주택조합 신축사업` — 원본은 DLE-2-0303(완성공사액 83,522), 우리는 판매공급 누적
+        221,385 와 완성공사액이 **정확히 같은** DLE-2-0139(e편한세상 여수 글렌츠).
+      · 대우건설 `남양주왕숙 … 통합형 민간참여 공공주택건설사업` — 원본은 XI-1 전용 신규, 우리는 누적 21,722 가 정확히
+        같은 DWE-2-0249(왕숙푸르지오더퍼스트1단지)."""
+    KEY_ERRORS = {("dle", "여수신기주공지역주택조합 신축사업"), ("dwe", "남양주왕숙")}
+
+    def _eval(self, warm):
+        import copy
+        C = {"site": 0, "auto": 0, "wrong": 0, "new_auto": 0}
+        for co in LIVE:
+            D = extract_data(os.path.join(KCE, co, "index.html"))
+            k = D["fq"].index("2026Q2")
+            rows = _rows(co)
+            truth = {}
+            for i, r in enumerate(rows):
+                hit = [s for s in D["sites"] if s.get("xip") and r.get("amt") is not None
+                       and (s["xip"].get("amt") or [None] * 30)[k] == r.get("amt")
+                       and (s["xip"].get("supCum") or [None] * 30)[k] == r.get("supCum")]
+                if len(hit) != 1:
+                    hit = [s for s in D["sites"] if s.get("xip") and X.nkey(s["xip"].get("nm")) == X.nkey(r["nm"])
+                           and (s["xip"].get("amt") or [None] * 30)[k] is not None]
+                if len(hit) == 1:
+                    truth[i] = (hit[0]["id"], hit[0]["xip"].get("mt"))
+            D2 = copy.deepcopy(D)
+            for s in D2["sites"]:
+                if not warm:
+                    s.pop("xip", None)
+                    s.pop("xipFull", None)
+                elif s.get("xip"):
+                    for f in X.XIP_ARR:
+                        a = s["xip"].get(f)
+                        if isinstance(a, list):
+                            s["xip"][f] = [v if j < k else None for j, v in enumerate(a)]
+            m = X.match_rows(D2, k, rows)
+            for i, (site, mt, how, _g) in enumerate(m):
+                t = truth.get(i)
+                if t is None or not mt:
+                    continue
+                key_err = any(co == c and n in rows[i]["nm"] for c, n in self.KEY_ERRORS)
+                if t[1] == "XI-1 전용(신규)":
+                    C["new_auto"] += 1
+                    if site != t[0] and not key_err:
+                        C["wrong"] += 1
+                    continue
+                C["auto"] += 1
+                if site != t[0] and not key_err:
+                    C["wrong"] += 1
+            C["site"] += sum(1 for t in truth.values() if t[1] != "XI-1 전용(신규)")
+        return C
+
+    def test_warm_history_zero_wrong(self):
+        C = self._eval(True)
+        self.assertEqual(C["wrong"], 0, C)
+        self.assertGreaterEqual(C["auto"], 250, C)          # 실측 255/259
+
+    def test_cold_zero_wrong(self):
+        C = self._eval(False)
+        self.assertEqual(C["wrong"], 0, C)
+        self.assertGreaterEqual(C["auto"], 160, C)          # 이력 없는 첫 적재 — 실측 166/259, 나머지는 검토 목록
+
+    def test_reapply_reproduces_values(self):
+        """2026Q2 값을 지우고 다시 쓰면 매칭된 사업장의 xip 값이 원래와 같다."""
+        import copy
+        D = extract_data(os.path.join(KCE, "hec", "index.html"))
+        k = D["fq"].index("2026Q2")
+        D2 = copy.deepcopy(D)
+        for s in D2["sites"]:
+            if s.get("xip"):
+                for f in X.XIP_ARR:
+                    if isinstance(s["xip"].get(f), list):
+                        s["xip"][f][k] = None
+        rows = _rows("hec")
+        m = X.match_rows(D2, k, rows)
+        n = X.apply_data(D2, k, rows, m)
+        self.assertGreaterEqual(n, 45)
+        orig = {s["id"]: s for s in D["sites"]}
+        for s in D2["sites"]:
+            if s.get("xip") and s["xip"].get("amt") and s["xip"]["amt"][k] is not None:
+                self.assertEqual(s["xip"]["amt"][k], orig[s["id"]]["xip"]["amt"][k], s["id"])
+                self.assertEqual(s["xip"]["supCum"][k], orig[s["id"]]["xip"]["supCum"][k], s["id"])
+
+    def test_fill_overrides_and_review_file(self):
+        import copy
+        D = extract_data(os.path.join(KCE, "dle", "index.html"))
+        k = D["fq"].index("2026Q2")
+        D2 = copy.deepcopy(D)
+        for s in D2["sites"]:
+            s.pop("xip", None)
+            s.pop("xipFull", None)
+        rows = _rows("dle")
+        some = rows[0]["nm"]
+        m = X.match_rows(D2, k, rows, {X.nkey(some): "SKIP"})
+        self.assertIsNone(m[0][1])
+        site = D2["sites"][0]["id"]
+        m = X.match_rows(D2, k, rows, {X.nkey(some): site})
+        self.assertEqual(m[0][:2], (site, "매칭(수동보정)"))
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "r.csv")
+            n = X.write_review("dle", "2026Q2", rows, m, D2, path=p)
+            self.assertEqual(n, sum(1 for x in m if not x[1]))
+            n2 = X.write_review("dle", "2026Q2", rows, m, D2, path=p)       # 멱등: 같은 줄 교체
+            with open(p, encoding="utf-8") as f:
+                self.assertEqual(len(f.read().strip().splitlines()) - 1, n2)

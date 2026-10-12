@@ -110,6 +110,9 @@ def run(companies, apply=False, quarter=None, raw_dir=None):
                     "backfilled": len(rep.get("backfilled") or []),
                     "events": rep["events"],
                     "p8_unmatched": len(rep["p8_unmatched"]),
+                    # XI-1: 확정 매칭만 DATA.xip 에 쓰고 나머지는 tools/assets/xi1_review.csv(사람 판정 → xi1_fill.csv)
+                    "xi1": rep.get("xi1_status"), "xi1_matched": rep.get("xi1_matched", 0),
+                    "xi1_review": rep.get("xi1_review", 0),
                 })
             except Exception as e:
                 # 미지 머리행은 'headers' 단계로 가른다 — 원문은 아래 finally 가 지우지만 머리행·원문 행은

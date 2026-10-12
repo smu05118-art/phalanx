@@ -91,7 +91,9 @@ jobs:
           up = [u for u in r["updated"] if not u.get("dry_run")]
           print("updated=%d" % len(up))
           print("failed=%d" % len(r["failed"]))
-          print("summary=%s" % (", ".join("%s %s" % (u["co"], u["quarter"]) for u in up) or "(없음)"))
+          print("summary=%s" % (", ".join("%s %s%s" % (u["co"], u["quarter"],
+                ("(XI-1 확정 %d·검토 %d)" % (u.get("xi1_matched", 0), u.get("xi1_review", 0)) if u.get("xi1") == "ok" else ""))
+                for u in up) or "(없음)"))
           PY
 
       # ── 확장 커버리지(국내 상장 건설사 전체) ───────────────────────────

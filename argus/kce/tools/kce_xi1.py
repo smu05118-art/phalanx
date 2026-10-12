@@ -232,7 +232,7 @@ def write_cache(co, q, parsed, rcp=None, root=None):
 def apply(co, q, raw_dir, D, k, rep, hdr_root=None, queue=False, cache_root=None):
     """kce_build.update_quarter 의 XI-1 단계(fail-soft). 원문이 없으면 아무것도 적지 않는다(지도에 절 키 없음 =
     그 분기 기록 안 함). 표가 없으면 빈 목록('봤는데 표 없음'). 미지는 rep['xi1_status'] + 대기열 — 예외로
-    II-4/III-8 갱신을 막지 않는다. DATA(D)는 읽지도 쓰지도 않는다(최소 구현)."""
+    II-4/III-8 갱신을 막지 않는다. D 가 주어지면 확정 매칭만 DATA.xip 에 쓰고 나머지는 검토 목록(apply 때)."""
     path = os.path.join(raw_dir, "%s_xi1.html" % co)
     if not os.path.exists(path):
         rep["xi1_status"] = "absent"
@@ -257,4 +257,213 @@ def apply(co, q, raw_dir, D, k, rep, hdr_root=None, queue=False, cache_root=None
         rep["xi1_status"] = "ok" if parsed["tables"] else "no_table"
     if queue and parsed["tables"]:
         write_cache(co, q, parsed, root=cache_root)
+    if D is not None and parsed["tables"]:
+        rows = [r for t in parsed["tables"] for r in t["rows"]]
+        m = match_rows(D, k, rows, load_fill(co))
+        rep["xi1_matched"] = apply_data(D, k, rows, m)
+        rep["xi1_review"] = sum(1 for x in m if not x[1])
+        if queue:
+            write_review(co, q, rows, m, D)
     return parsed
+
+
+# ── DATA.xip 반영(2026-10-13) — 사업장 매칭 ─────────────────────────────────
+# 정답지: 라이브 7사 DATA 에 원본 사이트가 사람 판정까지 끝낸 2026Q2 연결 320건이 있다. 아래 규칙을 그 정답지로
+# 평가해 **오매칭 0** 일 때만 데이터에 쓴다(tests/test_xi1.py TestXi1Match).
+#   · 이력(warm): 직전 분기들의 XI-1 계약명(xip.nm·xipFull.계약명)과 정규화 이름이 같고 그 사업장이 유일 → 매칭.
+#     같은 계약이 분기마다 다시 실리는 표라 가장 강한 신호다(실측 255/259 자동, 오매칭 0).
+#   · 금액(cold): 판매공급 누적 = 그 분기 II-4 완성공사액(**±1백만원**, 실측 154/178 이 정확히 같다)인 사업장이 유일하고,
+#     이름이 조금이라도 닮았거나(바이그램 Jaccard ≥ 0.2) 계약금액이 도급액 ±15%(또는 부가세 1.1배) → 매칭.
+#     ±0.1% 로 느슨하게 두면 다른 계약이 우연히 걸린다(DL이앤씨 Gas Chemical ↔ 아크로 베스티뉴, 차이 0.07%).
+#   · 이름(cold): 정규화 이름이 사업장 이름·이름 이력·III-8 품목과 같거나(6자 이상) 포함 관계이고, 그중 금액(누적≈완성공사액
+#     ±1% 또는 계약금액≈도급액)이 맞는 후보가 하나 → 매칭.
+#   · 그 밖은 **데이터에 쓰지 않고** 검토 목록(tools/assets/xi1_review.csv)에 후보와 근거를 남긴다. 신규(-11-) 사업장은
+#     자동으로 만들지 않는다 — 이름이 다른 기존 사업장일 수 있다(원본도 '검토필요'·'수동보정'이 37%).
+#   · 사람 판정: tools/assets/xi1_fill.csv (co,xi_name,site_id) — site_id 가 SKIP 이면 쓰지 않음. 자동 판정보다 우선.
+# xifill{pend,chk} 는 원본 빌더의 xi1_fill 작업 카운터라 데이터로 재현되지 않는다(실측 34/51) — 건드리지 않는다.
+
+import csv
+
+_NOTE = re.compile(r"\(\*\d*\)|\*\d+\)?|\(주\d+\)")
+XIP_ARR = ("amt", "supCur", "supCum", "recvCur", "recvCum")
+FILL = os.path.join(HERE, "assets", "xi1_fill.csv")
+REVIEW = os.path.join(HERE, "assets", "xi1_review.csv")
+_REVIEW_COLS = ["co", "quarter", "xi_name", "amt", "supCum", "suggest_site", "suggest_name", "reason"]
+
+
+def nkey(s):
+    return re.sub(r"[\s()（）\[\]·ㆍ,.\-*'\"]", "", _NOTE.sub("", s or "")).lower()
+
+
+def _bigr(s):
+    s = nkey(s)
+    return {s[i:i + 2] for i in range(len(s) - 1)}
+
+
+def _sim(a, b):
+    A, B = _bigr(a), _bigr(b)
+    return len(A & B) / max(1, len(A | B))
+
+
+def _near(a, b, tol=0.01):
+    return a is not None and b is not None and b != 0 and abs(a - b) <= abs(b) * tol
+
+
+def _amt_ok(a, b):
+    if not a or not b:
+        return False
+    r = a / b
+    return abs(r - 1) <= 0.15 or abs(r - 1.1) <= 0.01
+
+
+def _at(arr, k):
+    return arr[k] if isinstance(arr, list) and k < len(arr) else None
+
+
+def _site_names(s):
+    out = [s.get("nm") or ""]
+    out += [n[1] for n in (s.get("names") or []) if isinstance(n, list) and len(n) > 1 and isinstance(n[1], str)]
+    pf = (s.get("p8Full") or {}).get("품목")
+    if isinstance(pf, list):
+        out += [x for x in pf if isinstance(x, str)]
+    return [x for x in out if x]
+
+
+def load_fill(co, path=None):
+    p = path or FILL
+    out = {}
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if (r.get("co") or "").strip() == co:
+                    out[nkey(r.get("xi_name"))] = (r.get("site_id") or "").strip()
+    return out
+
+
+def match_rows(D, k, rows, fill=None):
+    """XI-1 행 → [(site_id|None, mt|None, how, suggest_site)]. mt None = 데이터에 쓰지 않음(검토)."""
+    fill = fill or {}
+    sites = D["sites"]
+    sid = {s["id"]: s for s in sites}
+    idx, prev = {}, {}
+    for s in sites:
+        for n in _site_names(s):
+            idx.setdefault(nkey(n), set()).add(s["id"])
+        x = s.get("xip") or {}
+        names = [x.get("nm")] + [v for v in (((s.get("xipFull") or {}).get("계약명")) or [])[:k] if isinstance(v, str)]
+        for n in names:
+            if n:
+                prev.setdefault(nkey(n), set()).add(s["id"])
+    cmpk = {s["id"]: _at(s["s"].get("cmp"), k) for s in sites}
+    out = []
+    for r in rows:
+        key = nkey(r["nm"])
+        names = [r["nm"]] + list(r.get("nm_more") or [])
+        f = fill.get(key)
+        if f:
+            if f == "SKIP" or f not in sid:
+                out.append((None, None, "fill_skip", None))
+            else:
+                out.append((f, "매칭(수동보정)", "fill", f))
+            continue
+        if key in prev and len(prev[key]) == 1:
+            s = next(iter(prev[key]))
+            out.append((s, (sid[s].get("xip") or {}).get("mt") or "매칭", "prev_xi", s))
+            continue
+        sc = r.get("supCum")
+        mon = [s for s, c in cmpk.items() if sc and sc >= 100 and c and abs(sc - c) <= 1]
+        if len(mon) == 1:
+            s = mon[0]
+            simv = max(_sim(a, b) for a in names for b in (_site_names(sid[s]) or [""]))
+            if simv >= 0.2 or _amt_ok(r.get("amt"), _at(sid[s]["s"].get("amt"), k)):
+                out.append((s, "매칭", "money+" + ("name" if simv >= 0.2 else "amt"), s))
+            else:
+                out.append((None, None, "money_only", s))
+            continue
+        cands = set()
+        for n in names:
+            cands |= idx.get(nkey(n), set())
+        if not cands and len(key) >= 6:
+            cands = {s for kk, ss in idx.items() if len(kk) >= 6 and (kk in key or key in kk) for s in ss}
+        ok = [c for c in cands if _near(sc, cmpk[c]) or _amt_ok(r.get("amt"), _at(sid[c]["s"].get("amt"), k))]
+        if len(ok) == 1:
+            out.append((ok[0], "매칭", "name+money", ok[0]))
+        elif cands:
+            out.append((None, None, "name_ambiguous" if len(cands) > 1 else "name_no_money",
+                        sorted(cands)[0] if len(cands) == 1 else None))
+        else:
+            out.append((None, None, "no_candidate", None))
+    # 같은 사업장에 두 계약이 붙으면(묶음 계약·이름 충돌) 둘 다 검토로 — 한쪽 값으로 덮지 않는다.
+    cnt = {}
+    for s, mt, _h, _g in out:
+        if mt:
+            cnt[s] = cnt.get(s, 0) + 1
+    return [(None, None, "dup_site", s) if mt and cnt[s] > 1 else (s, mt, h, g) for s, mt, h, g in out]
+
+
+def _set_at(arr, k, n, v):
+    if not isinstance(arr, list):
+        arr = [None] * n
+    if len(arr) < n:
+        arr = arr + [None] * (n - len(arr))
+    arr[k] = v
+    return arr
+
+
+def apply_data(D, k, rows, matches):
+    """매칭된 행만 DATA 에 쓴다: xip 5배열[k]·cur·nm(비었을 때)·mt, xipFull[k], has[2]=1. 반환: 쓴 건수."""
+    n = len(D["fqF"])
+    sid = {s["id"]: s for s in D["sites"]}
+    wrote = 0
+    for r, (s_id, mt, _how, _g) in zip(rows, matches):
+        if not mt:
+            continue
+        s = sid[s_id]
+        x = s.setdefault("xip", {})
+        for f in XIP_ARR:
+            x[f] = _set_at(x.get(f), k, n, r.get(f))
+        if r.get("cur"):
+            x["cur"] = r["cur"]
+        else:
+            x.setdefault("cur", None)
+        if not x.get("nm"):
+            x["nm"] = r["nm"]
+        x["mt"] = mt
+        xf = s.setdefault("xipFull", {})
+        per = r.get("period") or ""
+        ds = re.findall(r"((?:19|20)\d{2})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})", per)
+        fmt = lambda t: "%s-%02d-%02d" % (t[0], int(t[1]), int(t[2]))
+        vals = {"계약명": r["nm"], "계약상대방": r.get("cl"),
+                "계약시작일": fmt(ds[0]) if ds else None, "계약종료일": fmt(ds[1]) if len(ds) > 1 else None,
+                "계약금액": r.get("amt") if r.get("amt") is not None else r.get("amt_raw")}
+        for key, v in vals.items():
+            xf[key] = _set_at(xf.get(key), k, n, v)
+        has = s.get("has") or [0, 0, 0]
+        has[2] = 1
+        s["has"] = has
+        wrote += 1
+    return wrote
+
+
+def write_review(co, q, rows, matches, D, path=None):
+    """검토 목록 CSV — 이 회사·분기 줄만 교체하고 나머지는 보존(정렬·시각 없음)."""
+    p = path or REVIEW
+    keep = []
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            keep = [r for r in csv.DictReader(f) if not (r["co"] == co and r["quarter"] == q)]
+    sid = {s["id"]: s for s in D["sites"]}
+    for r, (_s, mt, how, g) in zip(rows, matches):
+        if mt:
+            continue
+        keep.append({"co": co, "quarter": q, "xi_name": r["nm"], "amt": "" if r.get("amt") is None else r["amt"],
+                     "supCum": "" if r.get("supCum") is None else r["supCum"], "suggest_site": g or "",
+                     "suggest_name": (sid[g].get("nm") if g in sid else "") or "", "reason": how})
+    keep.sort(key=lambda r: (r["co"], r["quarter"], r["xi_name"]))
+    import io
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=_REVIEW_COLS, lineterminator="\n")
+    w.writeheader()
+    w.writerows(keep)
+    atomic_write(p, buf.getvalue())
+    return sum(1 for r in keep if r["co"] == co and r["quarter"] == q)
