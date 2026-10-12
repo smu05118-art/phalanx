@@ -20,6 +20,10 @@ env:
   # 러너에서 .pyc를 만들지 않는다 — 만들어지면 `git status --porcelain`이 그것까지
   # 변경으로 보고 매 실행마다 __pycache__를 커밋한다(#7·#8에서 실제로 발생).
   PYTHONDONTWRITEBYTECODE: "1"
+  # 머리행 지도 엔진(hdrmap)이 등급 A(벗김·정확일치 + 레코드 성립 + 수치 대조 셋 다)로 판정한 자동 별칭.
+  # kce_lib 이 **없는 키만** COL_ALIAS 에 더한다(손 사전 우선). kce_lib 을 공유하는 다른 탭 워크플로는
+  # 이 변수를 켜지 않으므로 영향이 없다. 오염되면 이 파일을 지우면 끝이다(설계 G).
+  KCE_ALIAS_AUTO: ${{ github.workspace }}/argus/kce/tools/assets/col_alias_auto.json
 
 concurrency:
   group: update-kce-${{ github.ref }}
@@ -42,6 +46,12 @@ jobs:
 
       - name: Test parser and builder contracts (before)
         run: python3 -m unittest discover -s argus/kce/tools/tests -p 'test_*.py' -v
+
+      # 실행 전 머리행 지도·대기열 사본 — 끝에서 '신규 편입·머리행 +n표·미지 열 open n(회귀 m)'을
+      # 계산하는 기준. RUNNER_TEMP 에만 둔다(커밋 안 됨).
+      - name: Snapshot header map
+        working-directory: argus/kce/tools
+        run: python3 hdrmap_onboard.py --tab kce --snapshot "$RUNNER_TEMP/hdr_before"
 
       - name: Detect and apply new quarterly reports
         id: watch
@@ -84,13 +94,6 @@ jobs:
           print("summary=%s" % (", ".join("%s %s" % (u["co"], u["quarter"]) for u in up) or "(없음)"))
           PY
 
-      - name: Validate contracts after update
-        if: steps.sum.outputs.updated != '0'
-        shell: bash
-        run: |
-          python3 -m unittest discover -s argus/kce/tools/tests -p 'test_*.py' -v
-          git diff --check
-
       # ── 확장 커버리지(국내 상장 건설사 전체) ───────────────────────────
       # 원본 7사와 파이프라인이 다르다: 모집단 확정 → 수록 가능 여부 관측 →
       # 신규사 분기 수집 → 페이지 생성. 새 분기가 없으면 수집 단계가 통째로
@@ -109,8 +112,18 @@ jobs:
           python3 kce_universe.py --write
           python3 kce_probe.py                     # 분기·산출물 경로 자동
           python3 kce_series.py --collect --new-only --sweeps 3
+          # 신규 편입사 머리행 온보딩(대기열 new_company → 최근 2분기 캐시 재생, 부족분만 ≤2분기 수집) +
+          # lite 지도 페이지. 경고 단계다 — 실패해도 상세·페이지 생성은 계속한다(흔적은 ::warning 과 로그).
+          python3 hdrmap_onboard.py --tab kce --fetch --render \
+            || echo "::warning::머리행 온보딩 실패 — Refresh coverage 로그 확인"
           python3 kce_detail.py --raw-dir "$RUNNER_TEMP/kce-detail-raw"
           python3 kce_page.py --all
+
+      - name: Summarize header map
+        id: hdr
+        if: always()
+        working-directory: argus/kce/tools
+        run: python3 hdrmap_onboard.py --tab kce --summary --before "$RUNNER_TEMP/hdr_before" --github-output "$GITHUB_OUTPUT"
 
       # argus/index.html은 로컬 argus_build.py가 매일 재생성하는 산출물이라 직접 넣은
       # 진입 링크가 크론 커밋에 덮인다(2026-09-04 실제 발생). ui-patch-inject와 같은
@@ -134,22 +147,35 @@ jobs:
             git status --porcelain -- argus/kce argus/index.html
           fi
 
+      # 계약 테스트는 **커버리지 단계 뒤** 커밋할 것이 있을 때 돈다 — 예전에는 정밀 갱신(updated≠0)일 때만
+      # 돌아서, 매일 바뀌는 lite 캐시·머리행 지도·대기열·페이지는 검증 없이 커밋됐다(설계 B5).
+      # 실패하면 아래 커밋 단계가 건너뛰어진다(기본 if: success()).
+      - name: Validate contracts after update
+        if: steps.changed.outputs.changed == 'true'
+        shell: bash
+        run: |
+          python3 -m unittest discover -s argus/kce/tools/tests -p 'test_*.py' -v
+          git diff --check
+
       - name: Commit updated quarter
         if: steps.changed.outputs.changed == 'true'
         shell: bash
         env:
           SUMMARY: ${{ steps.sum.outputs.summary }}
           UPDATED: ${{ steps.sum.outputs.updated }}
+          HDR_LINE: ${{ steps.hdr.outputs.hdr_line }}
         run: |
           git config user.name "phalanx-kce-bot"
           git config user.email "phalanx-kce-bot@users.noreply.github.com"
           git add -- argus/kce argus/index.html
           git reset -q -- ':(glob)**/__pycache__/**' 2>/dev/null || true
+          SUFFIX=""
+          if [ -n "${HDR_LINE}" ]; then SUFFIX=" · ${HDR_LINE}"; fi
           if [ "${UPDATED}" = "0" ]; then
             # 보고서 갱신 없음 — 진입 링크 복구나 corp_code 캐시 생성 등 부수 변경
-            git commit -m "kce: 자동 갱신 부수 변경 (진입 링크 재주입 / corp_code 캐시)"
+            git commit -m "kce: 자동 갱신 부수 변경 (진입 링크 재주입 / corp_code 캐시)${SUFFIX}"
           else
-            git commit -m "kce: DART 정기보고서 반영 — ${SUMMARY}"
+            git commit -m "kce: DART 정기보고서 반영 — ${SUMMARY}${SUFFIX}"
           fi
           git pull --rebase origin main
           git push origin "HEAD:${GITHUB_REF_NAME}"
@@ -157,9 +183,12 @@ jobs:
       - name: Report
         if: always()
         shell: bash
+        env:
+          HDR_LINE: ${{ steps.hdr.outputs.hdr_line }}
         run: |
           {
             echo "### 한국건설 갱신 결과"
+            echo "머리행 지도: ${HDR_LINE:-(요약 없음)} — 대기열 argus/kce/tools/assets/hdr_queue.json"
             echo '```json'
             cat "$RUNNER_TEMP/kce_watch.json" 2>/dev/null || echo "(리포트 없음)"
             echo '```'
@@ -168,10 +197,14 @@ jobs:
       # 일부 회사가 실패해도 성공한 회사는 위에서 이미 커밋된다.
       # 실패가 하나라도 있으면 여기서 job을 실패로 표시해 알림이 가게 한다.
       - name: Fail if any company errored
-        if: always() && (steps.sum.outputs.failed != '0' || steps.coverage.outcome == 'failure')
+        if: always() && (steps.sum.outputs.failed != '0' || steps.coverage.outcome == 'failure' || (steps.hdr.outputs.hdr_regressions || '0') != '0')
         run: |
           if [ "${{ steps.coverage.outcome }}" = "failure" ]; then
             echo "::error::커버리지 갱신 단계 실패 — universe/probe/series/page 로그 확인"
+          fi
+          # 머리행 회귀(직전 분기 읽히던 표가 이번 분기 미지로 바뀜)만 빨강 — 신규사·미지 열 증가는 경고(설계 A)
+          if [ "${{ steps.hdr.outputs.hdr_regressions || '0' }}" != "0" ]; then
+            echo "::error::머리행 회귀 ${{ steps.hdr.outputs.hdr_regressions }}건 — python3 argus/kce/tools/hdrmap.py --tab kce --check"
           fi
           if [ "${{ steps.sum.outputs.failed }}" != "0" ]; then
             echo "::error::일부 회사 갱신 실패 — Step Summary의 failed 항목을 확인하라"

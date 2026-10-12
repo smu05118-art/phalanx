@@ -79,7 +79,7 @@ class _TableParser(HTMLParser):
 
 
 def _expand_grid(grid):
-    """rowspan/colspan을 전개해 직사각 행렬 [[(text,is_th,colspan)]]로 변환.
+    """rowspan/colspan을 전개해 직사각 행렬 [[(text,is_th,colspan,from_rowspan)]]로 변환.
 
     전개하면서 **원 셀의 colspan을 셀마다 남긴다.** 전개가 끝나면
     `<TD colspan='5'>합 계</TD>`(라벨 구역 전체를 한 칸으로 묶은 줄)와 다섯 열에
@@ -87,6 +87,11 @@ def _expand_grid(grid):
     (_merged_label 참조). 값 자체는 예전과 똑같이 복제한다 — 복제를 멈추면
     합계 줄의 발주처가 빈칸이 되어 _records의 기존 배제 규칙에 걸려
     원문 총계가 통째로 사라진다.
+
+    넷째 값(from_rowspan)은 **위 줄의 rowspan 이 흘러내려 복제된 칸**인지 표시한다(원 셀은 False).
+    값 복제는 그대로 두고 출처만 남긴다 — XI-1 진행 현황(삼성E&A)은 한 계약을 두 줄
+    (당기/누적)로 rowspan 해 적어서, 복제된 칸과 원 칸을 가르지 못하면 계약 21줄이 19계약으로
+    합쳐지지 않는다(설계 C·U3). 기존 소비자는 [0]~[2] 만 읽으므로 동작은 같다.
     """
     out = []
     pending = {}  # col -> (text, is_th, colspan, 남은 행수)
@@ -95,20 +100,20 @@ def _expand_grid(grid):
         for txt, rs, cs, th in row:
             while col in pending:
                 t2, th2, cs2, left = pending[col]
-                cur.append((t2, th2, cs2))
+                cur.append((t2, th2, cs2, True))
                 if left > 1:
                     pending[col] = (t2, th2, cs2, left - 1)
                 else:
                     del pending[col]
                 col += 1
             for _ in range(cs):
-                cur.append((txt, th, cs))
+                cur.append((txt, th, cs, False))
                 if rs > 1:
                     pending[col] = (txt, th, cs, rs - 1)
                 col += 1
         while col in pending:
             t2, th2, cs2, left = pending[col]
-            cur.append((t2, th2, cs2))
+            cur.append((t2, th2, cs2, True))
             if left > 1:
                 pending[col] = (t2, th2, cs2, left - 1)
             else:
@@ -130,6 +135,15 @@ _SUB_VOCAB = {"금액", "수량", "총액", "당기", "누적", "손상차손누
 _SUFFIX_KIND = re.compile(r"^(.+?)-?(건축|토목|주택|플랜트|환경|기타)$")
 
 
+_KIND_ROW = re.compile(r"^-\s*(건축|토목|주택|플랜트|환경|기타)$")
+
+
+def _kind_row(row):
+    """'- 건축' 공종 소제목 줄인가 — 빈 칸을 뺀 글자가 전부 같은 '- 공종' 하나(병합 전개면 열마다 같은 글자)."""
+    vals = {c[0].strip() for c in row if c[0].strip()}
+    return len(vals) == 1 and bool(_KIND_ROW.match(next(iter(vals))))
+
+
 def _field_of(ncol):
     f = COL_ALIAS.get(ncol)
     if f:
@@ -140,19 +154,34 @@ def _field_of(ncol):
     return None
 
 
-def _looks_header(row):
-    """행이 머리행처럼 보이는가: 셀 전부 비수치이고 절반 이상이 헤더 어휘."""
+def _looks_header(row, vocab=None):
+    """행이 머리행처럼 보이는가: 셀 전부 비수치이고 절반 이상이 헤더 어휘.
+
+    vocab 을 주지 않으면 **호출 시점의** 모듈 전역 `_HDR_VOCAB` 을 읽는다 — kship_parse 가 그
+    집합을 제자리에서 넓혔다 되돌리는 방식(_ship_header_vocab)을 그대로 살린다. XI-1(kce_xi1)처럼
+    다른 어휘가 필요한 파서는 전역을 건드리지 말고 인자로 넘긴다(설계 C: XI 어휘는 지역)."""
     cells = [c[0] for c in row]
     if not cells or any(num_of(c) is not None for c in cells):
         return False
-    hits = sum(1 for c in cells if norm_col(c) in _HDR_VOCAB or norm_col(c) in _SUB_VOCAB)
+    v = _HDR_VOCAB if vocab is None else vocab
+    hits = sum(1 for c in cells if norm_col(c) in v or norm_col(c) in _SUB_VOCAB)
     return hits >= max(2, len(cells) // 2)
 
 
-def _split_header(mat):
-    """행렬 → (평탄화 헤더 목록, 데이터 행들, 데이터 행별 colspan).
+def _split_header(mat, max_rows=2, vocab=None, upstream=False):
+    """행렬 → (평탄화 헤더 목록, 데이터 행들, 데이터 행별 colspan, 캡션, 데이터 위 줄 수).
     헤더 = 선두의 th-포함 행 묶음(없으면 어휘 기반 감지). 다층이면 부모 프리픽스로 결합.
-    colspan은 데이터 행에서만 쓰므로 헤더 행 몫은 잘라내고 같은 길이로 돌려준다."""
+    colspan은 데이터 행에서만 쓰므로 헤더 행 몫은 잘라내고 같은 길이로 돌려준다.
+
+    max_rows: 어휘로 감지하는 머리행의 최대 줄 수(기본 2 — 종전 동작). th 머리행 아래에 이어 붙는
+    td 머리행은 max_rows-1 줄까지(기본 1줄 — 종전 동작). XI-1 진행 현황은 3~4단 머리행이라
+    kce_xi1 이 4 로 부른다. 다섯째 값 = 단위 캡션 줄 + 머리행 줄 수(원행수 n 을 만드는 재료).
+
+    upstream=True 는 **상류 headers.html 이 열 이름을 만든 방식**으로 평탄화한다 — 지도용 열 이름(cols_up)
+    전용이고, 파서가 레코드를 읽는 열 이름·데이터 행은 언제나 upstream=False 결과다(parse_tables 참조):
+      · th 로 된 단위 캡션 줄은 걷어내지 않고 머리행 첫 줄로 둔다 — 금호건설 III-8 은 상류 지도 27분기
+        전부 '(단위: 백만원) 구분'… 꼴이다. td 캡션 줄(KCC건설 상세표 `(단위:원)` × 7열)은 종전대로 걷는다.
+      · th 머리행 바로 밑 '- 건축' 공종 소제목 줄을 머리행 둘째 줄로(_kind_row)."""
     # 첫 행이 단위 캡션만 반복하는 표가 있다(KCC건설 상세표: `(단위:원)` × 7열).
     # 그 행을 머리행 후보로 보면 어휘 감지가 실패해 표 전체가 버려진다 — 캡션 행은 걷어낸다.
     skip = 0
@@ -166,7 +195,12 @@ def _split_header(mat):
     caption = ""
     if skip:
         caption = " ".join(dict.fromkeys(c[0].strip() for c in mat[0] if c[0].strip()))
-        mat = mat[skip:]
+        if upstream and all(any(c[1] for c in r) for r in mat[:skip]):
+            # th 캡션 줄은 머리행으로 남긴다(열 이름 '(단위: 백만원) 구분' — 상류 지도 관례). 캡션 글자는
+            # 위에서 그대로 lead 에 붙는다 — lead 가 같아야 unit_scale(lead 우선)이 종전과 같은 단위를 읽는다.
+            skip = 0
+        else:
+            mat = mat[skip:]
     nh = 0
     for r in mat:
         if any(c[1] for c in r):
@@ -174,18 +208,29 @@ def _split_header(mat):
         else:
             break
     if nh == 0:
-        # DART 표 상당수가 th 없이 td 머리행 — 어휘로 감지(연속 최대 2행)
-        while nh < min(2, len(mat)) and _looks_header(mat[nh]):
+        # DART 표 상당수가 th 없이 td 머리행 — 어휘로 감지(연속 최대 max_rows 행, 기본 2)
+        while nh < min(max_rows, len(mat)) and _looks_header(mat[nh], vocab):
             nh += 1
-    elif nh < len(mat) and _looks_header(mat[nh]):
+    else:
         # th 머리행 아래에 td 로 이어지는 둘째 머리행 — 동부건설 III-8(기본도급액|금액, 미청구공사|총액·
         # 손상차손누계액). th 만 세면 둘째 줄이 데이터로 떨어져 열 이름에 부모만 남고(미청구공사·공사미수금)
-        # ub·rc 가 사라져 표 전체가 미지 헤더가 된다(2026Q2 원문 실측). 어휘로 한 줄 더 본다.
-        nh += 1
+        # ub·rc 가 사라져 표 전체가 미지 헤더가 된다(2026Q2 원문 실측). 어휘로 한 줄 더 본다
+        # (기본 max_rows=2 → 정확히 한 줄 — 종전 동작).
+        extra = 0
+        while extra < max(1, max_rows - 1) and nh < len(mat) and _looks_header(mat[nh], vocab):
+            nh += 1
+            extra += 1
+        if upstream and nh < len(mat) and _kind_row(mat[nh]):
+            # th 머리행 바로 밑 '- 건축' 줄(계룡건설 II-4 2023Q4~)은 머리행 둘째 줄로 평탄화한다 —
+            # 상류 지도 D 가 그렇게 읽어 열 이름이 '현장명 - 건축'(병합 칸이면 여섯 열 전부 '… - 건축')이다.
+            # 데이터 줄로 두면 레코드는 같지만(공종 소제목 줄은 _records 가 어차피 거른다) 열 이름이 상류와
+            # 갈라져 지도가 매 분기 「바뀜」을 띄운다(2026Q2 원문 실측 — kre 137·44행 표 둘 다).
+            # 접미는 _SUFFIX_KIND 가 벗기므로 필드 매핑은 그대로다. 대시 꼴만 본다(본문 '건축' 줄 오인 방지).
+            nh += 1
     txt = [[c[0] for c in r] for r in mat[nh:]]
     spans = [[c[2] for c in r] for r in mat[nh:]]
     if nh == 0:
-        return [], txt, spans, caption
+        return [], txt, spans, caption, skip
     width = max(len(r) for r in mat[:nh])
     cols = []
     for j in range(width):
@@ -195,23 +240,43 @@ def _split_header(mat):
             if t and (not parts or parts[-1] != t):
                 parts.append(t)
         cols.append(" ".join(parts))
-    return cols, txt, spans, caption
+    return cols, txt, spans, caption, skip + nh
 
 
-def parse_tables(html):
-    """절 HTML → [{'lead','cols'(원문),'ncols'(정규화),'fields'(별칭 매핑),'rows'}]"""
+def parse_tables(html, max_header_rows=2, vocab=None, keep_rowspan=False, upstream_hdr=False):
+    """절 HTML → [{'lead','cols'(원문),'ncols'(정규화),'fields'(별칭 매핑),'rows','spans','inherited',
+    'hdr_rows','n_raw'(, 'cols_up', 'rspan')}]
+
+    hdr_rows = 데이터 위 줄 수(단위 캡션 줄 + 머리행 줄), n_raw = 표의 **원행수**(머리행 포함, 전개 후
+    행렬 줄 수). 상류 headers.html 의 n 이 이 값이다 — 2026Q2 픽스처 실측: 현대건설 II-4 [62,43,21,4]·
+    동부 ii4x [103,66]·동부 III-8 [51,47,9]·금호 III-8 35(캡션 1+머리행 2+데이터 32)·계룡 [137,44]가
+    전부 n_raw 와 같고, 레코드 수(합계·소계·공종 소제목 제외)와는 다르다. 지도 엔진은 n 을 추정하지
+    않으므로(hdrmap docstring) 호출측이 이 값을 그대로 실어 보낸다.
+
+    max_header_rows·vocab 은 머리행 감지 인자(_split_header) — 기본값이면 종전과 바이트 같은 결과다.
+    keep_rowspan=True 면 데이터 행별 'rspan'([bool] — 위 줄 rowspan 이 흘러내린 칸)을 함께 싣는다(XI-1).
+    upstream_hdr=True 면 'cols_up' — 상류 headers.html 관례로 평탄화한 열 이름(같은 열 수)을 **덧붙인다**.
+    cols·rows·레코드는 바뀌지 않는다: 그 관례를 cols 에 직접 적용하면 금호 III-8 열이 '(단위: 백만원) 계약금액'
+    이 되어 기존 계약(test_kumho)을 깨고, 계룡 '- 건축' 줄이 데이터에서 빠져 원행 구성이 달라진다. 지도에
+    적는 열 이름만 상류와 이어지면 된다(설계: 다분기 대조가 가짜 「바뀜」을 내지 않게)."""
     p = _TableParser()
     p.feed(html)
     out = []
     for t in p.tables:
         mat = _expand_grid(t["grid"])
-        cols, rows, spans, caption = _split_header(mat)
+        cols, rows, spans, caption, top = _split_header(mat, max_header_rows, vocab)
         ncols = [norm_col(c) for c in cols]
         fields = [_field_of(c) for c in ncols]
         lead = ((t["lead"] or "") + " " + caption).strip() if caption else t["lead"]
-        out.append({"lead": lead, "cols": cols, "ncols": ncols,
-                    "fields": fields, "rows": rows, "spans": spans,
-                    "inherited": False})
+        d = {"lead": lead, "cols": cols, "ncols": ncols,
+             "fields": fields, "rows": rows, "spans": spans,
+             "inherited": False, "hdr_rows": top, "n_raw": len(mat)}
+        if keep_rowspan:
+            d["rspan"] = [[bool(c[3]) for c in r] for r in mat[top:]]
+        if upstream_hdr:
+            up = _split_header(mat, max_header_rows, vocab, True)[0]
+            d["cols_up"] = up if len(up) == len(cols) else list(cols)   # 열 수가 갈리면 쓰지 않는다
+        out.append(d)
     # 머리행 계승: 헤더 없는 표가 직전 헤더 표와 열수가 같으면 연속 표로 간주
     # ('(2) 별도 기준'처럼 머리행을 반복하지 않는 DART 관행 흡수)
     last = None
@@ -223,6 +288,8 @@ def parse_tables(html):
             if w == len(last["cols"]):
                 t["cols"], t["ncols"] = last["cols"], last["ncols"]
                 t["fields"], t["inherited"] = last["fields"], True
+                if "cols_up" in last:
+                    t["cols_up"] = last["cols_up"]
     return out
 
 
@@ -304,6 +371,36 @@ def region_of(lead, cl):
         if c not in _CORP_PAREN:      # (주)·(유) 등 법인격 괄호는 국가가 아니다
             return "국내" if c == "한국" else "해외"
     return None
+
+
+# 관급/민간(·국내/해외) 꼬리 표지 — 머리행 지도 tag 의 원천. 상류 headers.html 은 GS건설·HDC현산
+# 표를 '[관급공사]'·'[민간공사]'·'[국내공사]'·'[해외공사]' 표지로 갈라 tag 를 달았는데(D 127표:
+# gse 89 + ipark 38), 우리 코드에는 관급/민간 판정이 아예 없었다(region_of 는 국내/해외만).
+# 표지는 lead 꼬리에 오므로 **마지막** 표지를 쓴다 — GS건설 lead 에는 본문 '[BTO/BTL]' 이 앞서 섞인다.
+# '[공공부문]' 은 관급과 같은 뜻이라 관급으로 접는다(상류 tag 어휘는 관급/민간/국내/해외 넷뿐).
+_SEC_TAG = re.compile(r"\[\s*(관급|민간|공공|해외|국내)\s*(?:공사|부문|사업)?\s*\]")
+# HDC현산 2021Q4 는 표지 대신 절 제목에 붙였다: '4. 수주상황_민간공사(상세)'.
+_SEC_TAG_TITLE = re.compile(r"_(관급|민간)공사")
+
+
+def sector_of(lead):
+    """표 앞 문맥 꼬리의 관급/민간/국내/해외 표지 → 그 낱말, 없으면 None.
+
+    region_of 와 같이 꼬리 200자만 본다(본문 서술 속 '해외' 오인 방지). 상류 지도 D 의
+    gse·ipark 127표 lead 로 전부 재현된다(tests.test_headers_render.test_sector_of_126_127)."""
+    tail = (lead or "")[-200:]
+    m = _SEC_TAG.findall(tail)
+    if m:
+        return "관급" if m[-1] == "공공" else m[-1]
+    m = _SEC_TAG_TITLE.findall(tail)
+    return m[-1] if m else None
+
+
+def lead_tail(lead, n=120):
+    """지도·대기열에 적는 표 앞 문맥 — 공백 뭉치를 한 칸으로 접은 **꼬리** n 자(상류 지도 D 의 lead 꼴).
+    원문 lead 는 줄바꿈·연속 공백이 섞여 같은 문맥이 분기마다 다른 글자로 적힌다. 판정(sector_of·_tag_ent)은
+    종전대로 원문 lead 로 한다 — 이 함수는 기록용이다."""
+    return re.sub(r"\s+", " ", lead or "").strip()[-n:]
 
 
 def _near_miss(t, need):
@@ -476,12 +573,38 @@ def _progress_records(t):
     return out or None
 
 
+def _hdr_meta(t, i):
+    """표 하나의 머리행 지도 재료 — 지도 엔진(hdrmap)의 entry 키 이름 그대로. 행은 호출측이 덧붙인다
+    (채택 표 = 레코드, 비채택 후보 = A/B 판정용 원문 행 — 어느 쪽도 지도에는 저장되지 않는다).
+
+    idx 는 절 안 표 순번(채택·비채택을 원문 순서로 다시 엮는 데 쓴다), n 은 **원행수**(n_raw)."""
+    return {"idx": i, "lead": t["lead"], "cols": t["cols"], "cols_up": t.get("cols_up") or t["cols"],
+            "ncols": t["ncols"], "fields": t["fields"],
+            "inherited": t["inherited"], "n": t["n_raw"], "hdr_rows": t["hdr_rows"]}
+
+
+def _core(t, need):
+    return need & {f for f in t["fields"] if f}
+
+
 def parse_ii4(html):
     """II-4 수주상황(또는 XII 상세표) 절 → 사업장 행 목록 + 진단.
-    복수 표(법인·관급/민간/해외 분할)를 전부 수집하며, 각 표의 lead를 tag로 보존."""
-    tables = parse_tables(html)
-    picked, unknown = [], []
-    for t in tables:
+    복수 표(법인·관급/민간/해외 분할)를 전부 수집하며, 각 표의 lead를 tag로 보존.
+
+    반환 {tables, unknown_headers, rejected}:
+      tables   채택 표 — 종전 키(lead·cols·n=레코드 수·rows)에 지도 재료(idx·ncols·fields·inherited·
+               n_raw=원행수·n_rec=레코드 수·hdr_rows)를 더했다. n 의 뜻(레코드 수)은 바꾸지 않는다 —
+               kce_build·kce_series·kce_probe 가 절 선택(행수 큰 쪽)과 등급에 n 을 합산한다.
+      unknown_headers  종전 그대로({cols, n}) — fail-closed 판정 대상.
+      rejected 채택되지 않은 **후보** 표 {idx, cols, ncols, fields, n(원행수), lead, inherited, reason,
+               rows·spans(A/B 판정 재료 — 지도에는 저장되지 않는다)}. reason: near_miss(=unknown_headers 와
+               같은 표) | no_core(핵심 필드 둘 이상이 걸렸지만 레코드가 서지 않음 — 행 부족 등).
+               핵심 필드가 하나 이하인 표(판매조직·수주전략·매출실적처럼 '구분' 하나만 걸리는 표)는 후보가
+               아니다 — 상류 지도 D 의 비채택 91표도 전부 핵심 4필드를 갖춘 표였다(2026Q2 스냅샷 실측).
+    각 항목의 cols_up = 상류 지도식 열 이름(지도 기록용 — parse_tables upstream_hdr)."""
+    tables = parse_tables(html, upstream_hdr=True)
+    picked, unknown, rejected = [], [], []
+    for i, t in enumerate(tables):
         recs = _records(t, _II4_NEED)
         if recs is None and re.search(r"수주", (t.get("lead") or "") + " ".join(t.get("cols") or [])):
             recs = _progress_records(t)    # 진행률형 — 수주 문맥에서만 시도한다(매출실적 표 오인 방지)
@@ -491,10 +614,19 @@ def parse_ii4(html):
             #  정상 갱신이 오탐으로 막힌다)
             if _near_miss(t, _II4_NEED):
                 unknown.append({"cols": t["cols"], "n": len(t["rows"])})
+                reason = "near_miss"
+            elif len(_core(t, _II4_NEED)) >= 2:
+                reason = "no_core"
+            else:
+                continue
+            r = _hdr_meta(t, i)
+            r.update(reason=reason, rows=t["rows"], spans=t["spans"])
+            rejected.append(r)
             continue
-        picked.append({"lead": t["lead"], "cols": t["cols"],
-                       "n": len(recs), "rows": recs})
-    return {"tables": picked, "unknown_headers": unknown}
+        d = _hdr_meta(t, i)
+        d.update(n=len(recs), rows=recs, n_raw=t["n_raw"], n_rec=len(recs))
+        picked.append(d)
+    return {"tables": picked, "unknown_headers": unknown, "rejected": rejected}
 
 
 _P8_RECV_HINT = re.compile(r"미청구|계약자산|미수금|매출채권")
@@ -511,10 +643,11 @@ def _promote(t, src, dst):
 
 def parse_p8(html):
     """III-8 진행률적용 수주계약 절 → 연결/별도 표 목록.
-    구분은 lead 문맥의 '연결'/'별도' 앵커(없으면 등장 순서: 연결→별도가 관례)."""
-    tables = parse_tables(html)
-    picked, unknown = [], []
-    for t in tables:
+    구분은 lead 문맥의 '연결'/'별도' 앵커(없으면 등장 순서: 연결→별도가 관례).
+    반환·후보(rejected)·머리행 평탄화 규약은 parse_ii4 와 같다(reason: meta_p8|near_miss|few_fields)."""
+    tables = parse_tables(html, upstream_hdr=True)
+    picked, unknown, rejected = [], [], []
+    for i, t in enumerate(tables):
         # 금호건설 III-8은 수주총액을 '계약금액'으로 적는다 — XI-1 별칭(xi_amt)으로 먼저 잡히므로
         # amt 열이 따로 없을 때만 amt 로 올린다.
         t = _promote(t, "xi_amt", "amt")
@@ -524,21 +657,30 @@ def parse_p8(html):
             if {"amt", "pr"} <= got and not _P8_RECV_HINT.search(" ".join(t["cols"])):
                 # 금호건설형 메타표(구분·공사명·발주처·진행률·계약금액·계약일·공사기한) — 미청구·미수금
                 # 열 자체가 없다. 금액표는 같은 절에 따로 있으므로 미지 헤더가 아니라 그냥 지나간다.
-                continue
-            if sum(1 for f in t["fields"] if f) >= 3 and len(t["rows"]) >= 3:
+                reason = "meta_p8"
+            elif sum(1 for f in t["fields"] if f) >= 3 and len(t["rows"]) >= 3:
                 unknown.append({"cols": t["cols"], "n": len(t["rows"])})
+                reason = "near_miss"
+            elif len(_core(t, _P8_NEED)) >= 2:
+                reason = "few_fields"          # 핵심 필드는 걸렸지만 필드<3 또는 행<3 — 조용히 지나가던 표
+            else:
+                continue                       # 대손충당금·공정가치 표 등 '구분' 하나만 걸리는 표 — 후보 아님
+            r = _hdr_meta(t, i)
+            r.update(reason=reason, rows=t["rows"], spans=t["spans"])
+            rejected.append(r)
             continue
         # III-8의 '계약상 완성기한'은 II-4에서 ed로 매핑되므로 여기서 p8_dl로 옮겨 받는다
         for rec in recs:
             if not rec.get("p8_dl") and rec.get("ed"):
                 rec["p8_dl"] = rec["ed"]
         lead = t["lead"]
-        picked.append({"basis": _basis_of(lead), "lead": lead, "cols": t["cols"],
-                       "n": len(recs), "rows": recs})
+        d = _hdr_meta(t, i)
+        d.update(basis=_basis_of(lead), n=len(recs), rows=recs, n_raw=t["n_raw"], n_rec=len(recs))
+        picked.append(d)
     # lead에서 구분을 못 읽은 표가 2개면 관례(연결 먼저)를 적용한다.
     # 표가 하나뿐일 때는 단정하지 않고 None으로 남긴다 — 회사마다 다르다
     # (HDC현산은 2023Q4부터 연결만 공시한다). 호출측이 직전 분기 연속성으로 판정한다.
     unlabeled = [t for t in picked if t["basis"] is None]
     if len(unlabeled) == 2:
         unlabeled[0]["basis"], unlabeled[1]["basis"] = "연결", "별도"
-    return {"tables": picked, "unknown_headers": unknown}
+    return {"tables": picked, "unknown_headers": unknown, "rejected": rejected}

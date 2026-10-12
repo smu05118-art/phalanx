@@ -422,40 +422,49 @@ def _blob_end(html, start):
     raise ValueError("괄호 불균형")
 
 
-def render_headers_html(path, co, quarter, headers):
-    """headers.html('파서 머리행 지도')에 이번 분기 머리행을 기록한다.
-
-    headers = kce_build 리포트의 rep['headers'] — {'ii4': [{cols,n,lead}], 'p8': [{cols,n,basis}]}.
-    이 페이지는 '표를 새로 찾는 게 아니라 파서의 탐색 로직을 그대로 태운' 회귀 감시 장치이므로,
-    우리 파서가 실제로 채택한 표를 그대로 남기는 것이 원 설계와 같은 의미를 갖는다.
-    """
+def _headers_D(path):
+    """headers.html 의 `const D` 블롭(dict). 파일이 없으면 None."""
     import json
+    import os
+    if not os.path.exists(path):
+        return None
     with open(path, encoding="utf-8") as f:
         h = f.read()
     m = _HDR_D.search(h)
     if not m:
         raise ValueError("headers.html 의 const D 를 찾지 못함")
     s = m.end()
-    e = _blob_end(h, s)
-    D = json.loads(h[s:e])
-    if co not in D:
-        raise ValueError("headers.html 에 없는 회사: %s" % co)
-    if quarter not in D[co]["fq"]:
-        D[co]["fq"].append(quarter)
-    for key, items in (("ii4", headers.get("ii4") or []),
-                       ("p8", headers.get("p8") or [])):
-        sec = D[co]["sections"].setdefault(key, {})
-        sec[quarter] = [{"tag": (it.get("basis") or ""), "cols": it["cols"],
-                         "n": it["n"], "lead": it.get("lead", ""), "pick": True}
-                        for it in items]
-    from kce_lib import json_for_html
-    return h[:s] + json_for_html(D) + h[e:]
+    return json.loads(h[s:_blob_end(h, s)])
 
 
-def update_headers(path, co, quarter, headers):
-    out = render_headers_html(path, co, quarter, headers)
-    atomic_write(path, out)
-    return len(out)
+def headers_ents(path, co):
+    """지도에 이미 적힌 그 회사 II-4 법인 표기 전부(정렬). kce_build._hdr_ent 가 summary.ents 밖의
+    종속법인 표기('DL USA'·'Daelim RUS' …)를 같은 글자로 다시 쓰게 하는 사전이다 — 표기가 바뀌면
+    대조 키(ent|tag#순번)가 달라져 매 분기 가짜 「바뀜」이 난다."""
+    D = _headers_D(path) or {}
+    secs = (D.get(co) or {}).get("sections") or {}
+    return sorted({it.get("ent") for items in (secs.get("ii4") or {}).values()
+                   for it in items if it.get("ent")})
+
+
+def render_headers_html(path, co, quarter, headers, root=None):
+    """headers.html('파서 머리행 지도')에 이번 분기 머리행을 기록한다 — 공용 엔진 hdrmap 어댑터.
+
+    headers = kce_build 리포트의 rep['headers'] — {'ii4': [{cols,n,n_rec,lead,ent,tag,pick,reason}],
+    'p8': [{cols,n,n_rec,lead,basis,tag,pick,reason}], (U3) 'xinb': [...]}.
+    하는 일은 hdrmap.record_kce(**스테이지**) + 그 회사 스테이지를 덧씌운 렌더뿐이다 — hdrmap.json·대기열은
+    건드리지 않고 텍스트만 돌려준다. 커밋(hdrmap.commit_kce)은 호출측이 네 파일 쓰기에 성공한 뒤에,
+    실패하면 hdrmap.discard 로 버린다(kce_build.update_quarter).
+
+    엔진의 hdrmap.render_headers_html 과 같은 일을 하되 **페이지 회사 + co 로 범위를 묶는다**(keys).
+    kce 지도(hdrmap.json)에는 lite 종목(키=종목코드, kce_series 가 기록)도 함께 들어가므로, 범위를 묶지
+    않으면 정밀 갱신 한 번에 lite 36사가 headers.html 의 D·ORDER 로 새어 들어간다. 신규 정밀사(co 가 D 에
+    없음)는 D 와 ORDER 끝(COMPANIES 순)에 추가된다 — 종전 구현은 ValueError 로 그 회사 갱신 전체를 멈췄다."""
+    import hdrmap
+    hdrmap.record_kce(co, quarter, headers, root=root, strict=True)
+    keys = set(_headers_D(path) or {}) | {co}
+    return hdrmap.render_headers("kce", out_html=path, root=root, write=False, strict=True,
+                                 stage={co}, keys=keys)
 
 
 def trace_matches(path, D):

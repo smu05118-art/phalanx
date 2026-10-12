@@ -27,7 +27,7 @@ import traceback
 from kce_lib import atomic_write, latest_quarter, report_kind
 from kce_fetch import (fetch_section, find_sections, parallel, pick_report,
                        search_reports, toc)
-from kce_parse import parse_ii4, parse_p8, parse_tables
+from kce_parse import lead_tail, parse_ii4, parse_p8, parse_tables
 from kce_universe import load as load_universe
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -134,12 +134,15 @@ def probe_one(rec, quarter, keep_dir=None):
             out["ii4_rows"] = n
             out["ii4_key"] = key
             out["unknown_headers"] = [u["cols"] for u in r["unknown_headers"]][:4]
+            # 대기열 재료(원문 머리행·행) — 산출 JSON 에는 싣지 않는다(main 이 꺼내 대기열에 올리고 지운다).
+            out["_unk"] = _unknown_items(r, "orders", rcp)
             out["sec_title"] = found[key].get("text", "")
             out["raw_tables"] = len(parse_tables(html))
             if "p8" in found:
                 try:
                     p = parse_p8(fetch_section(found["p8"]))
                     out["p8_rows"] = sum(t["n"] for t in p["tables"])
+                    out["_unk"] = out.get("_unk", []) + _unknown_items(p, "progress", rcp)
                 except Exception as e:
                     out["note"] = "p8 파싱 실패: %s" % e
             if out["ii4_rows"] > 0:
@@ -161,6 +164,31 @@ def probe_one(rec, quarter, keep_dir=None):
         out["note"] = "%s: %s" % (type(e).__name__, e)
         return out
 
+
+
+def _unknown_items(parsed, role, rcp):
+    """parse_ii4/parse_p8 결과의 근접 미지 표(near_miss = unknown_headers 와 같은 표) → 대기열 항목 재료."""
+    return [{"role": role, "cols_raw": list(x["cols"]), "ncols": list(x["ncols"]), "fields": list(x["fields"]),
+             "n": x["n"], "lead": lead_tail(x.get("lead")), "rcpNo": rcp, "rows": x.get("rows"),
+             "checks": {"spans": x.get("spans") or []}}
+            for x in parsed.get("rejected") or [] if x.get("reason") == "near_miss"]
+
+
+def enqueue_unknown(rows, root=None):
+    """관측 행들의 근접 미지 표를 머리행 대기열(kind unknown)에 올리고 행에서 재료(_unk)를 걷어낸다.
+
+    프로브는 lite 경로(fail-closed 아님 — 'agg' 등급으로 남을 뿐)라 지금까지 미지 머리행이 probe_<분기>.json 의
+    cols 앞 4개로만 남았다(2026Q2 실측 53사 중 1건 = 이화공영). 대기열에 올려야 사람이 고칠 거리로 보인다.
+    같은 (회사·역할·마스킹 머리행)은 엔진이 한 항목으로 합친다(멱등). 올린 항목 수를 돌려준다."""
+    import hdrmap
+    n = 0
+    for r in rows:
+        for it in r.pop("_unk", None) or []:
+            item = dict(it, kind="unknown", key=r.get("slug") or r["stock"], stock=r["stock"],
+                        name=r.get("name"), quarter=r.get("quarter"))
+            if hdrmap.enqueue("kce", item, root=root, strict=False) is not None:
+                n += 1
+    return n
 
 
 def reconcile_with_previous(rows, prev, err_max=0.3, drop_max=0.3):
@@ -258,6 +286,10 @@ def main():
     rows, ok = reconcile_with_previous(rows, prev)
     if not ok:
         return 1
+    # 관측을 쓰는 실행에서만 대기열에 올린다 — 쓰지 않는 실행(fail-closed)의 관측은 증거로도 쓰지 않는다.
+    nq = enqueue_unknown(rows)
+    if nq:
+        sys.stderr.write("[hdrmap] 근접 미지 머리행 %d표 → 대기열(hdr_queue.json)\n" % nq)
     by = {}
     for r in rows:
         by[r["tier"]] = by.get(r["tier"], 0) + 1

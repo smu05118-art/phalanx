@@ -432,8 +432,13 @@ def collect_one(stock, quarter, force=False):
                 # 겹치지 않는 표가 여러 개 오는데(HJ중공업 조선/건설, 계룡 지배/종속),
                 # 한 덩어리로 합치면 표마다 있는 `기타`·`합계` 행이 이름으로 병합돼
                 # 잔고가 어긋난다(한신공영 123%).
-                out["tables"] = [{"lead": (t.get("lead") or "")[-120:],
-                                  "rows": t["rows"]} for t in r["tables"]]
+                # 머리행도 함께 담는다(cols·원행수 n_raw) — lite 경로는 머리행을 어디에도 남기지 않아 지도·대조가
+                # 불가능했다. **전진 저장**이다: 이미 받은 855칸은 소급해 다시 받지 않는다(DART 부하·차단 위험) —
+                # 새로 받는 칸부터 쌓인다. build() 는 rows·lead 만 읽으므로 옛 캐시와 섞여도 같다.
+                out["tables"] = [{"lead": (t.get("lead") or "")[-120:], "rows": t["rows"],
+                                  "cols": t.get("cols_up") or t["cols"], "n_raw": t.get("n_raw")}
+                                 for t in r["tables"]]
+                out["unknown_headers"] = r["unknown_headers"]
                 out["rows"] = [x for t in r["tables"] for x in t["rows"]]
                 out["ok"] = True
                 break
@@ -448,6 +453,36 @@ def collect_one(stock, quarter, force=False):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         atomic_write(path, json.dumps(out, ensure_ascii=False) + "\n")
     return out
+
+
+def _hdr_key(rec):
+    """lite 종목의 지도 키 = 종목코드(모집단 slug 가 곧 종목코드). 정밀 17사는 None — 그쪽 지도는
+    kce_build 가 슬러그 키로 쓴다. 같은 회사를 두 키로 적으면 지도에 회사가 둘로 갈린다."""
+    if rec["stock"] in {v["stock"] for v in CORP.values() if v.get("stock")}:
+        return None
+    return rec.get("slug") or rec["stock"]
+
+
+def stage_headers(rec, quarter, res, root=None):
+    """수집 결과 한 칸 → 머리행 지도 스테이지(role orders, 전부 채택 표). 커밋은 호출측(collect 끝).
+    cols 가 없는 옛 캐시(전진 저장 이전)는 건너뛴다 — 열 이름 없이 적으면 지도가 '표 있음·열 없음'을 남긴다."""
+    import hdrmap
+    from kce_parse import lead_tail, region_of, sector_of
+    key = _hdr_key(rec)
+    if not key or not isinstance(res, dict) or not res.get("ok"):
+        return None
+    tabs = res.get("tables") or []
+    if not tabs or any("cols" not in t for t in tabs):
+        return None
+    tables = [{"cols": t["cols"], "n": t.get("n_raw"), "n_rec": len(t.get("rows") or []),
+               "lead": lead_tail(t.get("lead")), "rcpNo": res.get("rcpNo"),
+               "tag": sector_of(t.get("lead")) or region_of(t.get("lead"), None) or ""}
+              for t in tabs]
+    # unknown_headers 의 n 은 데이터 행수(머리행 제외)라 지도의 n(원행수)과 뜻이 다르다 — n_rec 자리에 둔다.
+    unknown = [{"cols": u["cols"], "n_rec": u.get("n"), "rcpNo": res.get("rcpNo")}
+               for u in res.get("unknown_headers") or []]
+    return hdrmap.record("kce", key, quarter, "orders", tables, range(len(tables)), unknown=unknown,
+                         meta={"name": rec.get("name"), "stock": rec["stock"]}, root=root)
 
 
 def _missing(recs, quarters):
@@ -503,7 +538,15 @@ def collect(recs, quarters, force=False, log=sys.stderr, sweeps=2):
 
     def one(item):
         rec, q = item
-        return collect_one(rec["stock"], q, force)
+        fresh = force or not os.path.exists(cache_path(rec["stock"], q))
+        res = collect_one(rec["stock"], q, force)
+        if fresh:                               # 이번에 새로 받은 칸만 지도에(소급 없음) — 커밋은 수집 끝에
+            try:
+                stage_headers(rec, q, res)
+            except Exception as e:              # 지도는 부가 기록 — 수집 결과를 잃지 않되 흔적은 남긴다
+                log.write("  [hdrmap] %s %s 머리행 스테이지 실패: %s: %s\n"
+                          % (rec["stock"], q, type(e).__name__, e))
+        return res
 
     def report(i, item, res):
         done[0] += 1
@@ -527,6 +570,10 @@ def collect(recs, quarters, force=False, log=sys.stderr, sweeps=2):
         parallel(todo, one, on_done=report)
         todo = _missing(recs, quarters)      # 남은 칸만 다시
         force = False                        # 스윕은 캐시된 성공을 다시 받지 않는다
+    # 머리행 지도 커밋 — 스테이지는 레인 스레드가 잠금 아래 쌓았다. 정밀 17사 키(슬러그)와 섞이지 않게
+    # lite 는 종목코드 키로만 적힌다(stage_headers). 실패는 엔진이 stderr + engine_error 로 남긴다.
+    import hdrmap
+    hdrmap.write("kce")
 
     for rec in recs:
         got = sum(1 for q in quarters

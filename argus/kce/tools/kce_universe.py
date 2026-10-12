@@ -133,6 +133,17 @@ def fetch(write=False):
     from kce_fetch import _get                       # 순환 임포트 회피(호출 시점 로드)
     recs = select(parse_kind(_get(KIND_URL)))
     if write:
+        # 온보딩(설계 B1): 저장 **직전** 직전 모집단과의 차집합을 머리행 대기열(new_company)에 올린다.
+        # 직전 파일이 없으면(첫 생성) 전원이 '신규'가 되므로 올리지 않는다. 엔진 오류는 삼키되 흔적을
+        # 남기고(stderr + engine_error) 모집단 저장은 계속한다 — 온보딩은 경고이지 게이트가 아니다.
+        prev = {r["stock"] for r in load()}
+        if prev:
+            import hdrmap
+            from kce_lib import latest_quarter
+            new = hdrmap.onboard("kce", prev, recs, q=latest_quarter()) or []
+            for r in new:
+                sys.stderr.write("[onboard] 신규 편입 %s %s → 머리행 대기열(new_company)\n"
+                                 % (r["stock"], r["name"]))
         os.makedirs(os.path.dirname(UNIVERSE), exist_ok=True)
         atomic_write(UNIVERSE, json.dumps(
             {"source": KIND_URL, "n": len(recs), "rows": recs},

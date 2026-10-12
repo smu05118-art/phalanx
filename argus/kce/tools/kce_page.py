@@ -495,7 +495,24 @@ TIER_LABEL = {
 }
 
 
-def coverage_html(recs, probe, built):
+def open_unknown_by_key(root=None):
+    """머리행 대기열(hdr_queue.json)의 open 미지 열(kind unknown) 수 — 지도 키(정밀=슬러그, lite=종목코드)별."""
+    import hdrmap
+    out = {}
+    for it in hdrmap.open_items("kce", root=root, kind="unknown"):
+        out[it["key"]] = out.get(it["key"], 0) + 1
+    return out
+
+
+def _unk_cell(n):
+    if n is None:
+        return "—"
+    return "<b class=\"wn\">%d</b>" % n if n else "0"
+
+
+def coverage_html(recs, probe, built, unknown=None):
+    """unknown = {지도 키: open 미지 열 항목 수}(open_unknown_by_key). None 이면 열을 '—'로 채운다 —
+    등급(수록/미수록)과 별개로 '파서가 아직 못 읽는 머리행이 대기 중인가'를 회사 줄에서 바로 보이게 한다."""
     rows = []
     order = {"corp": 0, "site": 1, "segment": 2, "agg": 3, "none": 4, "error": 5}
     corp_stocks = {v["stock"] for v in CORP.values() if v.get("stock")}
@@ -526,12 +543,13 @@ def coverage_html(recs, probe, built):
         rows.append(
             "<tr><td class=\"l\">%s</td><td class=\"mut\">%s</td><td class=\"l mut\">%s</td>"
             "<td class=\"l mut\">%s</td><td class=\"l\"><b class=\"%s\">%s</b></td>"
-            "<td class=\"l mut\">%s</td><td>%s</td><td>%s</td></tr>"
+            "<td class=\"l mut\">%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
             % (link, E(r["stock"]), E(r["market"]), E(r["industry"][:22]),
                cls, label, E(p.get("note") or why),
                (sum(1 for x in b["sites"] if not x.get("agg")) if b
                 else (p.get("ii4_rows") or "—")),
-               (b and len(b["fq"])) or "—"))
+               (b and len(b["fq"])) or "—",
+               _unk_cell(unknown.get(r["slug"], 0) if unknown is not None else None)))
     tally = {}
     for r in recs:
         t = probe.get(r["stock"], {}).get("tier", "error")
@@ -569,7 +587,7 @@ def coverage_html(recs, probe, built):
  <div class="wrap"><table>
   <thead><tr><th class="l">회사</th><th>종목코드</th><th class="l">시장</th>
    <th class="l">업종</th><th class="l">등급</th><th class="l">근거</th>
-   <th>현장·부문</th><th>분기</th></tr></thead>
+   <th>현장·부문</th><th>분기</th><th title="머리행 대기열(tools/assets/hdr_queue.json)의 미해결 미지 열 항목 수">미지 열</th></tr></thead>
   <tbody>{rows}</tbody></table></div>
 </section>
 <div class="note"><b>등급이 뜻하는 것</b> — <b>정밀</b>: 원본(encprojects) 복제본으로 II-4·III-8·XI-1
@@ -775,7 +793,7 @@ def main():
 
     if a.all:
         atomic_write(os.path.join(KCE, "coverage.html"),
-                     coverage_html(recs, probe, built))
+                     coverage_html(recs, probe, built, open_unknown_by_key()))
         print("coverage.html — %d종목" % len(recs))
         ip = os.path.join(KCE, "index.html")
         with open(ip, encoding="utf-8") as f:

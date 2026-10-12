@@ -177,6 +177,34 @@ COL_ALIAS = {
 }
 
 
+def _merge_auto(path):
+    """머리행 지도 엔진(hdrmap)이 등급 A 로 판정해 적은 자동 사전(col_alias_auto.json)을 COL_ALIAS 에 더한다.
+
+    **없는 키만** 더한다 — 손 사전이 언제나 이긴다(hdrmap.merge_auto 와 같은 규칙. kce_lib 은 hdrmap 을
+    import 할 수 없다 — hdrmap 이 kce_lib 을 import 하는 순환). path 가 비었거나 파일이 없으면 no-op.
+    호출은 모듈 적재 때 한 번, 경로는 환경변수 KCE_ALIAS_AUTO 로만 받는다: kce_lib 은 6탭이 공유하므로
+    켜는 쪽(update-kce.yml)만 영향을 받는다(설계 A·G — 오염되면 파일을 지우면 끝)."""
+    if not path or not os.path.exists(path):
+        return 0
+    with open(path, encoding="utf-8") as f:
+        auto = json.load(f)
+    n = 0
+    for ncol, v in sorted(auto.items()):
+        if ncol in COL_ALIAS:
+            continue
+        field = v.get("field") if isinstance(v, dict) else v
+        if field:
+            COL_ALIAS[ncol] = field
+            AUTO_ALIAS_KEYS.append(ncol)
+            n += 1
+    return n
+
+
+# 이번 프로세스에서 자동 사전이 더한 키 — 손 사전만으로 돌아야 하는 계약 테스트(파서 결과 고정값)가 걷어낼 수 있게.
+AUTO_ALIAS_KEYS = []
+_merge_auto(os.environ.get("KCE_ALIAS_AUTO"))
+
+
 def num_of(s):
     """공시 표 셀 → 숫자(백만원 단위 가정, 콤마·괄호음수·'-' 처리). 실패 시 None."""
     if s is None:
