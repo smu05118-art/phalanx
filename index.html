@@ -4172,7 +4172,7 @@ function aSer(id){ const c=aCo(id); if(!c) return null;
   const v=s&&s.exp&&s.exp.v; return (v&&v.some(x=>x))?v:null; }
 function aLast(v){ for(let i=v.length-1;i>=0;i--) if(v[i]) return i; return -1; }
 // n개월 합 YoY (%). n=1 당월, 3=3개월
-function aYoY(v,n){ const li=aLast(v); if(li<12+n) return null;
+function aYoY(v,n){ const li=aLast(v); if(li<11+n) return null;
   let a=0,b=0; for(let k=0;k<n;k++){ a+=v[li-k]||0; b+=v[li-k-12]||0; }
   return b?Math.round(1000*(a/b-1))/10:null; }
 // JPC의 revenue는 월차 레벨 시계열 — 단위가 회사별로 다르다(前年同月=100 앵커체인 지수 또는 百万円 실액).

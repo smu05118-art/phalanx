@@ -87,11 +87,11 @@
     const ids=new Set();d.series.forEach(s=>{if(!/^ct_[a-f0-9]{64}$/.test(s.series_id)||ids.has(s.series_id)||!Array.isArray(s.category_ids))throw Error('시리즈 식별 오류');ids.add(s.series_id);});
     const seen=new Set();d.observations.forEach(o=>{
       const k=[o.series_id,o.period_key,o.observation_slot_id||''].join('|');
-      if(!ids.has(o.series_id)||!date(o.period_start)||!date(o.period_end)||o.period_start>o.period_end||seen.has(k)||(!number(o.value)&&o.value!==null)||o.forecast_status!=='forecast_held')throw Error('관측 계약 오류');
+      if(!ids.has(o.series_id)||!date(o.period_start)||!date(o.period_end)||o.period_start>o.period_end||seen.has(k)||(!number(o.value)&&o.value!==null)||o.forecast_status!=='forecast_held'||o.available_at!==null||o.pit_eligible!==false)throw Error('관측 계약 오류');
       if(o.bounds && (o.value!==null||!number(o.bounds.lower)||(o.bounds.upper!==null&&(!number(o.bounds.upper)||o.bounds.upper<o.bounds.lower))))throw Error('구간 계약 오류');
       seen.add(k);
     });
-    const events=new Set();d.calendar.forEach(e=>{if(!/^ce_[a-f0-9]{64}$/.test(e.event_id)||events.has(e.event_id)||!date(e.date_start)||!date(e.date_end)||e.date_start>e.date_end||!['date','month'].includes(e.date_precision)||e.date_precision==='date'&&e.date_start!==e.date_end||typeof e.title!=='string'||!href(e.source_url)||!Array.isArray(e.category_ids)||e.status!=='scheduled_execution_unverified'||e.forecast_status!=='forecast_held')throw Error('일정 계약 오류');events.add(e.event_id);});
+    const events=new Set();d.calendar.forEach(e=>{if(!/^ce_[a-f0-9]{64}$/.test(e.event_id)||events.has(e.event_id)||!date(e.date_start)||!date(e.date_end)||e.date_start>e.date_end||!['date','month'].includes(e.date_precision)||e.date_precision==='date'&&e.date_start!==e.date_end||typeof e.title!=='string'||!href(e.source_url)||!Array.isArray(e.category_ids)||e.status!=='scheduled_execution_unverified'||e.forecast_status!=='forecast_held'||e.available_at!==null||e.pit_eligible!==false)throw Error('일정 계약 오류');events.add(e.event_id);});
     const c=a.row_binding_counts;if(c && (c.total_rows!==84||c.eligible_rows!==84-c.excluded||['exact','partial','context','excluded','held'].reduce((n,k)=>n+c[k],0)!==84))throw Error('원문 분모 계약 오류');
     const sm=new Map(d.series.map(s=>[s.series_id,s]));d.observations.forEach(o=>{const x=sm.get(o.series_id);if(o.unit!==x.unit||o.source_id!==x.source_id||o.metric_id!==x.metric_id||!href(o.source_url))throw Error('출처·단위 계약 오류');});
     if(a.observed_scope){
