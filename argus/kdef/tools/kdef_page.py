@@ -23,8 +23,9 @@ import os
 import re
 import sys
 
-from kdef_lib import (ASSETS, E, KDEF, CHART_DEFAULTS_JS, TABLE_JS, atomic_write, fmt_eok,
-                      fmt_x, json_for_html, load_asset, page, pct, slot_color)
+from kdef_lib import (ASSETS, E, KDEF, CHART_DEFAULTS_JS, PART_HEX, TABLE_JS, UNKNOWN_HEX,
+                      atomic_write, fmt_eok, fmt_n, fmt_x, is_total, json_for_html, load_asset,
+                      num_of, page, pct, slot_color)
 from kdef_universe import load as load_universe
 import kdef_contracts
 import kdef_reports
@@ -34,6 +35,317 @@ DART = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=%s"
 ROLE_KO = {"prime": "체계업체", "part": "부품", "material": "소재", "service": "용역", "holding": "지주"}
 PARTY_KO = {"GOV": "방위사업청·정부기관", "PRIME": "체계업체", "G2G": "해외 정부(G2G·FMS)",
             "FOREIGN": "해외 기업", "DOMESTIC": "국내 기업", "ANON": "익명", "UNKNOWN": "미상"}
+PARTY_ORDER = ["GOV", "PRIME", "G2G", "FOREIGN", "DOMESTIC", "ANON", "UNKNOWN"]
+EXPORT_KO = {"direct": "수출", "indirect": "간접수출"}
+EXPORT_BASIS_KO = {"party": "계약상대가 해외", "region": "공급지역이 해외", "name": "계약명에 '수출'(체계업체 경유)"}
+
+
+# ── 계약 한 건의 판정 보조 ──────────────────────────────────
+# 원장(contracts.json)의 필드만 읽는다 — 여기서 새로 추정하지 않는다. 사전·규칙은 kdef_contracts 에 있다.
+
+def is_termination(c):
+    """「단일판매ㆍ공급계약해지」 공시인가 — 계약이 아니라 계약의 소멸이므로 금액 집계에서 뺀다.
+
+    kdef_orders_views 는 해지 공시로 원본 계약까지 집계에서 빼지만(status terminated), 여기 KPI·허브는
+    원본은 그대로 두고 해지 공시 행만 뺀다 — 원본 매칭이 (계약명, 시작일) 휴리스틱이라 두 화면이
+    다른 숫자를 보일 수 있고, 그 사실은 각주에 적는다."""
+    return "해지" in (c.get("title") or "")
+
+
+def dom_key(c):
+    """계통 집계 키 — 계통 id, 없으면 'PART'(부품 이름만 적힌 계약) 또는 'UNKNOWN'.
+
+    계통 미상 198건 중 부품명만 적힌 건(`관성측정장치(IMU) 공급`)은 무기체계를 지어내지 않는 편이
+    맞다(HANDOFF ③). 다만 '미상'과 한 통에 넣으면 '왜 미상인지'가 사라져 따로 센다."""
+    if c.get("domain"):
+        return c["domain"]
+    return "PART" if c.get("domain_hint") == "PART" else "UNKNOWN"
+
+
+def export_split(rows):
+    """방산 계약의 판로 — 수출(직·간접)과 내수를 건수·금액(백만원)으로 가른다. 근거별 건수도 함께.
+
+    export 플래그는 kdef_contracts.export_of(상대 ∨ 공급지역 ∨ 체계업체 경유 간접수출)."""
+    out = {"n": 0, "amt": 0.0, "direct": 0, "indirect": 0, "domestic_n": 0, "domestic_amt": 0.0,
+           "basis": collections.Counter()}
+    for c in rows:
+        if c.get("export"):
+            out["n"] += 1
+            out["amt"] += (c["amt_krw_m"] or 0)
+            out[c.get("export_kind") or "direct"] += 1
+            out["basis"][c.get("export_basis") or "party"] += 1
+        else:
+            out["domestic_n"] += 1
+            out["domestic_amt"] += (c["amt_krw_m"] or 0)
+    return out
+
+
+# ── 유형 × 상대 매트릭스 ────────────────────────────────────
+
+def matrix(rows, data):
+    """계약유형(행) × 계약상대(열) 매트릭스. rows = 방산 계약(해지 공시 제외).
+
+    셀 = {n, amt(백만원), n_noamt}. 금액 미기재(공시유보) 건은 n 에만 들어가고 amt 는 0 — 합계가
+    원장 금액 합과 정확히 같아야 한다(tests.test_matrix_sum). 유형·상대 축의 순서는 사전 순서."""
+    cells = {}
+    for c in rows:
+        ct = c["ctype"] if c["ctype"] in data["ctypes"] else "UNKNOWN"
+        pk = c["party_kind"] if c["party_kind"] in PARTY_KO else "UNKNOWN"
+        cell = cells.setdefault((ct, pk), {"n": 0, "amt": 0.0, "n_noamt": 0})
+        cell["n"] += 1
+        if c["amt_krw_m"] is not None:
+            cell["amt"] += c["amt_krw_m"]
+        else:
+            cell["n_noamt"] += 1
+    ctypes = [t for t in data["ctype_order"] if any(k[0] == t for k in cells)]
+    parties = [p for p in PARTY_ORDER if any(k[1] == p for k in cells)]
+
+    def tot(keys):
+        sel = [cells[k] for k in keys]
+        return {"n": sum(x["n"] for x in sel), "amt": sum(x["amt"] for x in sel),
+                "n_noamt": sum(x["n_noamt"] for x in sel)}
+    row_tot = {t: tot([k for k in cells if k[0] == t]) for t in ctypes}
+    col_tot = {p: tot([k for k in cells if k[1] == p]) for p in parties}
+    return {"ctypes": ctypes, "parties": parties, "cells": cells, "row_tot": row_tot, "col_tot": col_tot,
+            "total": tot(list(cells))}
+
+
+def matrix_html(m, data, tid="mx"):
+    """매트릭스 표 — 셀은 금액(억)과 건수, 농도는 전체 금액 대비 비중. 숫자를 색으로 대신하지 않는다."""
+    if not m["cells"]:
+        return '<p class="mut">집계할 방산 계약이 없습니다.</p>'
+    peak = max((x["amt"] for x in m["cells"].values()), default=0) or 1
+    head = ("<tr><th class=\"l\">유형 ＼ 상대</th>%s<th>합계</th></tr>"
+            % "".join("<th>%s</th>" % E(PARTY_KO.get(p, p)) for p in m["parties"]))
+    body = []
+    for t in m["ctypes"]:
+        cm = ctype_meta(data, t)
+        tds = []
+        for p in m["parties"]:
+            x = m["cells"].get((t, p))
+            if not x:
+                tds.append('<td class="mut">—</td>')
+                continue
+            alpha = 0.06 + 0.5 * (x["amt"] / peak)
+            tds.append('<td style="background:rgba(57,135,229,%.2f)" title="%s × %s · %s억 · %d건%s">%s'
+                       '<span class="n">%d건%s</span></td>'
+                       % (alpha, E(cm["ko"]), E(PARTY_KO.get(p, p)), fmt_eok(x["amt"]), x["n"],
+                          (" · 금액 미기재 %d" % x["n_noamt"]) if x["n_noamt"] else "",
+                          fmt_eok(x["amt"]), x["n"],
+                          ("(유보 %d)" % x["n_noamt"]) if x["n_noamt"] else ""))
+        rt = m["row_tot"][t]
+        body.append('<tr><td class="l">%s%s</td>%s<td><b>%s</b><span class="n">%d건</span></td></tr>'
+                    % (_sw(cm["color"]), E(cm["ko"]), "".join(tds), fmt_eok(rt["amt"]), rt["n"]))
+    foot = ('<tr><th class="l">합계</th>%s<td><b>%s</b><span class="n">%d건</span></td></tr>'
+            % ("".join('<td>%s<span class="n">%d건</span></td>'
+                       % (fmt_eok(m["col_tot"][p]["amt"]), m["col_tot"][p]["n"]) for p in m["parties"]),
+               fmt_eok(m["total"]["amt"]), m["total"]["n"]))
+    return ('<div class="wrap"><table id="%s" class="mx"><thead>%s</thead><tbody>%s</tbody><tfoot>%s</tfoot></table></div>'
+            % (tid, head, "".join(body), foot))
+
+
+# ── II-4 납기 일정 ──────────────────────────────────────────
+# 정기보고서 수주표의 품목 행(reports.json segments)에 `납기` 열이 있는 회사(실측 19사)만 만든다.
+# 납기 표기는 회사마다 다르다 — `2027.12`·`2025-09-30`·`2023.01 ~ 2026.12`·`2025년~2027년`·`~2028년`·
+# `'25.1~6월`·`~28년`·`26.01.01~26.12.31`·`25-12-31`(아이쓰리시스템 YY-MM-DD, 2024Q3~2025Q1 63행).
+# 기간이면 **끝** 연도로 묶고, `400대`·`*`·`상세내역 참조`처럼 연도가 없으면 '미상'에 둔다(지어내지 않는다).
+# 2자리 연도는 `.`·`년`·`-`·`/` 가 뒤따를 때만 — MM·DD 토큰은 2015~2060 창에서 걸러진다.
+
+_YEAR4 = re.compile(r"(20\d{2})")
+_YEAR2 = re.compile(r"(?<![\d.])'?(\d{2})(?=[.년\-/])")
+
+
+def due_year(s):
+    """납기 문자열 → 끝 연도(int) 또는 None."""
+    t = (s or "").strip()
+    if not t:
+        return None
+    ys = [int(y) for y in _YEAR4.findall(t)]
+    if not ys:
+        ys = [2000 + int(y) for y in _YEAR2.findall(t)]
+    ys = [y for y in ys if 2015 <= y <= 2060]
+    return max(ys) if ys else None
+
+
+def due_schedule(comp, q):
+    """회사 × 분기 → 납기 연도별 {n, closing(백만원), items}. 납기가 적힌 품목 행이 없으면 None.
+
+    금액은 그 품목 행의 **수주잔고**(남은 일감)다 — 계약 공시 총액을 종료연도에 두는 orders_views 의
+    인도 일정과 다르다(그쪽은 기인식분 차감 없음). 단위를 못 읽은 분기(unit_note)는 건수만."""
+    v = (comp.get("quarters") or {}).get(q) or {}
+    segs = [s for s in v.get("segments") or [] if (s.get("due") or "").strip() not in ("", "-")]
+    if not segs:
+        return None
+    money = bool(v.get("unit_seen")) and not v.get("unit_note")
+    buckets = {}
+    for s in segs:
+        y = due_year(s["due"])
+        b = buckets.setdefault(y, {"n": 0, "closing": 0.0, "n_noamt": 0, "items": []})
+        b["n"] += 1
+        if money and s.get("closing") is not None:
+            b["closing"] += s["closing"]
+        else:
+            b["n_noamt"] += 1
+        b["items"].append(s)
+    years = sorted(y for y in buckets if y is not None)
+    return {"q": q, "n": len(segs), "money": money, "years": years, "buckets": buckets,
+            "unknown": buckets.get(None), "rcp": v.get("rcp")}
+
+
+def due_html(d):
+    rows = []
+    for y in d["years"] + ([None] if d["unknown"] else []):
+        b = d["buckets"][y]
+        names = [x["label"] for x in b["items"] if x.get("label")]
+        rows.append('<tr><td class="l">%s</td><td>%d</td><td data-v="%.0f">%s</td><td class="l mut">%s</td>'
+                    '<td class="l mut">%s</td></tr>'
+                    % (E(str(y)) if y else '<span class="mut">연도 미상</span>', b["n"], b["closing"],
+                       (fmt_eok(b["closing"]) if d["money"] and b["closing"] else "—")
+                       + ((' <span class="mut">(미기재 %d)</span>' % b["n_noamt"]) if d["money"] and b["n_noamt"] else ""),
+                       E(", ".join(dict.fromkeys(n[:28] for n in names))[:120]),
+                       E(" · ".join(dict.fromkeys(x["due"] for x in b["items"]))[:80])))
+    return ('<div class="wrap"><table data-sortable><thead><tr><th class="l">납기 연도</th><th>품목 행</th>'
+            '<th>수주잔고(억)</th><th class="l">품목(원문)</th><th class="l">납기 표기(원문)</th></tr></thead>'
+            '<tbody>%s</tbody></table></div>' % "".join(rows))
+
+
+# ── 수량 축 ────────────────────────────────────────────────
+# 표준양식 `품목|수주일자|납기|수주총액 수량·금액|기납품액 수량·금액|수주잔고 수량·금액`(실측 233파일)과
+# 풍산 `중량|금액`(M/T) 표는 **수량 열**을 함께 공시한다. kdef_reports.parse_orders_table 은 금액 열을
+# 우선해(`수주총액 수량|금액`) 수량을 버리므로, 여기서는 캐시(reports_cache)의 raw_tables 를 다시 읽어
+# 수량 열만 뽑는다 — 추가 수집 없음. 수량 단위는 캡션 `(단위 : M/T, 백만원)`·`(단위 : 천개, 백만원)`
+# 에서 금액 단위를 뺀 토큰이며, 없으면 '미표기'(지어내지 않는다). 금액과 섞어 더하지 않는다.
+# 머리행이 병합돼 `수주잔고 수량금액` 한 열이 된 표(대양전기공업 108380 2025Q1 — 값은 금액 293,773백만원)는
+# 수량 열이 아니다 — 열 이름에 `금액`이 함께 있으면 거른다(실측: 금액이 '미표기' 수량으로 실렸다).
+
+_QTY_COL = re.compile(r"수량|중량|판매량")
+_NUM_COL = re.compile(r"수량|중량|판매량|금액|진행률|계약자산|매출채권|계약부채|비율|비중")
+_MONEY_TOK = re.compile(r"원|KRW|USD|EUR|JPY|CNY|\$|달러|유로|엔|위안", re.I)
+_UNIT_CAP = re.compile(r"\(\s*단위\s*[:：]?\s*([^)]*)\)")
+_UNIT_LABEL = re.compile(r"^(?:수량|중량|금액)\s*[-:：]\s*")
+
+
+def _unit_tokens(cap):
+    """캡션 토큰 — `,`·`·`로 나누고, `/`는 한쪽이 금액 단위일 때만 나눈다(포메탈 `EA / 백만원`·`EA/백만원`·
+    `수량-EA/금액-백만원`은 가르고, 풍산 `M/T`는 한 단위로 둔다). `수량-`·`금액-` 꼬리표는 벗긴다."""
+    out = []
+    for x in re.split(r"[,·]", cap or ""):
+        x = x.strip()
+        if not x:
+            continue
+        parts = [p.strip() for p in x.split("/") if p.strip()]
+        if len(parts) > 1 and any(_MONEY_TOK.search(_UNIT_LABEL.sub("", p)) for p in parts):
+            out.extend(parts)
+        else:
+            out.append(x)
+    return [_UNIT_LABEL.sub("", t).strip() for t in out if _UNIT_LABEL.sub("", t).strip()]
+
+
+def qty_unit_of(lead, cols):
+    """캡션에서 수량 단위 토큰만 — `M/T, 백만원`→`M/T`, `천개, 백만원`→`천개`, `EA / 백만원`→`EA`, `백만원`→''."""
+    caps = _UNIT_CAP.findall((lead or "") + " " + " ".join(cols or []))
+    for cap in reversed(caps):
+        qty = [x for x in _unit_tokens(cap) if not _MONEY_TOK.search(x)]
+        if qty:
+            return qty[0]
+    return ""
+
+
+def parse_qty_table(t):
+    """raw_tables 의 표 한 장 → {unit, rows:[{label, gross, delivered, closing, due, total}]} 또는 None.
+
+    수량 열(수량·중량·판매량)이 수주총액/수주잔고 어느 쪽에도 없으면 None. 수량이 전부 `-`인 표
+    (한화 `상세내역 참조`)도 None — 수량 축은 숫자가 있는 회사에만 생긴다.
+    열 이름에 수량과 `금액`이 **함께** 있으면(병합 머리행 `수주잔고 수량금액`) 수량 열이 아니다."""
+    cols = [re.sub(r"[\s　]+", "", c or "") for c in t.get("cols") or []]
+
+    def col(key):
+        for i, c in enumerate(cols):
+            if key in c and _QTY_COL.search(c) and "금액" not in c:
+                return i
+        return None
+    i_gross = col("수주총액")
+    i_done = col("기납품")
+    i_close = None
+    for k in ("수주잔고", "수주잔량", "잔고", "잔액"):
+        i_close = col(k)
+        if i_close is not None:
+            break
+    if i_close is None and i_gross is None:
+        return None
+    i_due = next((i for i, c in enumerate(cols) if "납기" in c or "인도예정" in c), None)
+    i_date = next((i for i, c in enumerate(cols) if re.search(r"수주일|계약일", c)), None)
+    name_idx = [i for i, c in enumerate(cols) if not _NUM_COL.search(c) and i not in (i_due, i_date)
+                and "비고" not in c]
+    rows = []
+    for r in t.get("rows") or []:
+        labels = [r[i].strip() for i in name_idx if i < len(r) and r[i].strip()]
+        label = " · ".join(dict.fromkeys(labels))
+
+        def g(i):
+            return num_of(r[i]) if (i is not None and i < len(r)) else None
+        rec = {"label": label, "gross": g(i_gross), "delivered": g(i_done), "closing": g(i_close),
+               "due": (r[i_due].strip() if i_due is not None and i_due < len(r) else ""),
+               "total": is_total(label)}
+        if rec["gross"] is None and rec["closing"] is None:
+            continue
+        rows.append(rec)
+    if not rows:
+        return None
+    return {"unit": qty_unit_of(t.get("lead"), t.get("cols")), "rows": rows, "cols": t.get("cols") or [],
+            "lead": (t.get("lead") or "")[-120:]}
+
+
+def _qty_total(p, field):
+    tot = [r for r in p["rows"] if r["total"] and r.get(field) is not None]
+    if tot:
+        return tot[0][field]
+    vals = [r[field] for r in p["rows"] if not r["total"] and r.get(field) is not None]
+    return sum(vals) if vals else None
+
+
+def qty_series(stock, cache_dir=None):
+    """회사의 reports_cache 분기 파일을 읽어 분기별 수량 표를 고른다 → [{q, unit, gross, delivered, closing, n, rcp, rows}].
+
+    한 분기에 수량 표가 여럿이면(종속회사 표) 숫자 행이 가장 많은 표를 고른다. 캐시가 없으면 []."""
+    d = os.path.join(cache_dir or kdef_reports.CACHE, stock)
+    if not os.path.isdir(d):
+        return []
+    out = []
+    for f in sorted(os.listdir(d)):
+        if not f.endswith(".json"):
+            continue
+        with open(os.path.join(d, f), encoding="utf-8") as fh:
+            rec = json.load(fh)
+        cands = [p for p in (parse_qty_table(t) for t in rec.get("raw_tables") or []) if p]
+        if not cands:
+            continue
+        best = max(cands, key=lambda p: sum(1 for r in p["rows"] if r.get("closing") is not None))
+        out.append({"q": f[:-5], "unit": best["unit"], "gross": _qty_total(best, "gross"),
+                    "delivered": _qty_total(best, "delivered"), "closing": _qty_total(best, "closing"),
+                    "n": sum(1 for r in best["rows"] if not r["total"]), "rcp": rec.get("rcp"),
+                    "rows": best["rows"]})
+    return out
+
+
+def qty_html(series):
+    trend = "".join('<tr><td class="l">%s</td><td>%s</td><td>%s</td><td><b>%s</b></td><td class="l mut">%s</td>'
+                    '<td>%d</td><td class="l"><a href="%s" target="_blank" rel="noopener noreferrer">원문</a></td></tr>'
+                    % (E(s["q"]), fmt_n(s["gross"]), fmt_n(s["delivered"]), fmt_n(s["closing"]),
+                       E(s["unit"] or "미표기"), s["n"], E(DART % (s["rcp"] or "")))
+                    for s in series)
+    last = series[-1]
+    items = "".join('<tr><td class="l">%s</td><td>%s</td><td>%s</td><td><b>%s</b></td><td class="l mut">%s</td></tr>'
+                    % (E(r["label"][:60] or "(품목 미표기)"), fmt_n(r["gross"]), fmt_n(r["delivered"]),
+                       fmt_n(r["closing"]), E(r["due"]))
+                    for r in last["rows"] if not r["total"])
+    return ('<div class="wrap"><table><thead><tr><th class="l">분기</th><th>수주총액</th><th>기납품</th>'
+            '<th>수주잔고</th><th class="l">수량 단위(캡션)</th><th>품목 행</th><th class="l">출처</th></tr></thead>'
+            '<tbody>%s</tbody></table></div>'
+            '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px">%s 품목별 수량 %d행</summary>'
+            '<div class="wrap tall"><table data-sortable><thead><tr><th class="l">품목(원문)</th><th>수주총액</th>'
+            '<th>기납품</th><th>수주잔고</th><th class="l">납기(원문)</th></tr></thead><tbody>%s</tbody></table></div></details>'
+            % (trend, E(last["q"]), sum(1 for r in last["rows"] if not r["total"]), items))
 
 
 def load_all():
@@ -60,9 +372,12 @@ def load_all():
 
 
 def dom_meta(data, did):
+    """계통 id → 표시 메타. 'PART'·'UNKNOWN' 은 사전에 없는 집계용 가짜 id(dom_key 참조)."""
     d = data["doms"].get(did)
     if not d:
-        return {"id": "UNKNOWN", "ko": "미상", "color": "#5d6675"}
+        if did == "PART":
+            return {"id": "PART", "ko": "부품(계통 미상)", "color": PART_HEX}
+        return {"id": "UNKNOWN", "ko": "미상", "color": UNKNOWN_HEX}
     return {"id": d["id"], "ko": d["ko"], "color": slot_color(d["slot"])}
 
 
@@ -81,14 +396,17 @@ def summary(stock, data):
     qs = [q for q in sorted((comp.get("quarters") or {})) if comp["quarters"][q].get("ok")]
     latest = comp["quarters"][qs[-1]] if qs else None
     cons = [c for c in data["contracts"] if c["stock"] == stock]
-    defc = [c for c in cons if not c["civil"]]
+    # 해지 공시는 계약이 아니다 — 표에는 pill 로 보이되 건수·금액 집계에서 뺀다.
+    terms = [c for c in cons if is_termination(c)]
+    live = [c for c in cons if not is_termination(c)]
+    defc = [c for c in live if not c["civil"]]
     backlog = latest.get("backlog") if latest else None
     fy = latest.get("revenue_fy") if latest else None
     cov = (backlog / fy) if (backlog and fy) else None
     dom_amt = collections.Counter()
     dom_n = collections.Counter()
-    for c in cons:
-        did = c["domain"] or "UNKNOWN"
+    for c in live:
+        did = dom_key(c)
         dom_amt[did] += (c["amt_krw_m"] or 0)
         dom_n[did] += 1
     ct_amt = collections.Counter()
@@ -107,7 +425,9 @@ def summary(stock, data):
                 kids.add(ps)
     return {
         "stock": stock, "rec": rec, "comp": comp, "qs": qs, "latest_q": qs[-1] if qs else None,
-        "latest": latest, "contracts": cons, "def_contracts": defc,
+        "latest": latest, "contracts": cons, "live": live, "def_contracts": defc,
+        "civil_n": len(live) - len(defc), "terminations": terms,
+        "export": export_split(defc),
         "backlog": backlog, "backlog_def": latest.get("backlog_def") if latest else None,
         "fy": fy, "coverage": cov,
         "def_share": pct(latest.get("sales_def"), latest.get("sales_all")) if latest else None,
@@ -150,10 +470,19 @@ def _grade_pill(p):
 def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel="../"):
     tr = []
     for c in sorted(rows, key=lambda c: (c["signed"] or c["start"] or ""), reverse=True):
-        dm = dom_meta(data, c["domain"]) if c["domain"] else {"ko": "미상", "color": "#5d6675"}
+        dm = dom_meta(data, dom_key(c))
         cm = ctype_meta(data, c["ctype"])
         amt = c["amt_krw_m"]
         who = ""
+        # 해지 공시 — 계약이 아니라 소멸. 금액은 원문 주석에만 있어 집계에서 빠진다(summary 참조).
+        term = ' <span class="pill term" title="단일판매ㆍ공급계약해지 공시 — 건수·금액 집계에서 뺌">해지 공시</span>' \
+            if is_termination(c) else ""
+        # 판로 — 상대·공급지역·계약명(체계업체 경유)의 세 근거 중 어느 것으로 수출이 됐는지 툴팁에 적는다.
+        exp = ""
+        if c.get("export"):
+            exp = ' <span class="pill exp" title="%s">%s</span>' % (
+                E(EXPORT_BASIS_KO.get(c.get("export_basis"), "")),
+                E(EXPORT_KO.get(c.get("export_kind"), "수출")))
         if show_company:
             nm = (by_stock or {}).get(c["stock"], {}).get("name", c["stock"])
             who = '<td class="l"><a href="%s%s/index.html">%s</a></td>' % (rel, E(c["stock"]), E(nm))
@@ -176,10 +505,10 @@ def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel
             '<td class="l">%s<br><span class="mut">%s</span></td><td class="l mut">%s</td>'
             '<td class="l"><a href="%s" target="_blank" rel="noopener noreferrer">원문</a>%s</td></tr>'
             % (E(c["signed"] or c["start"] or "—"), who, _sw(dm["color"]), E(dm["ko"]),
-               E(cm["ko"]), nm,
+               E(cm["ko"]), nm + term,
                (amt or 0), fmt_eok(amt), (c["years"] if c["years"] is not None else -1),
                fmt_x(c["years"]) if c["years"] is not None else "—",
-               party, E(PARTY_KO.get(c["party_kind"], c["party_kind"]))
+               party + exp, E(PARTY_KO.get(c["party_kind"], c["party_kind"]))
                + ((" · " + E(c["region"])) if (c.get("region") or "").strip("- ") else ""),
                E((c["start"] or "—") + " ~ " + (c["end"] or "—")),
                E(DART % c["rcp"]),
@@ -289,9 +618,15 @@ def company_html(s, data):
         kpi.append('<div><b>%.0f<small>%%</small></b><span>수출 비중(내수/수출 표)</span></div>'
                    % s["exp_share"])
     kpi.append('<div><b>%d<small>건</small></b><span>방산 계약 공시 · %s억</span>'
-               '<i class="mut">민수 %d건은 따로 셈</i></div>'
-               % (len(s["def_contracts"]), fmt_eok(s["amt_total"]),
-                  len(s["contracts"]) - len(s["def_contracts"])))
+               '<i class="mut">민수 %d건은 따로 셈%s</i></div>'
+               % (len(s["def_contracts"]), fmt_eok(s["amt_total"]), s["civil_n"],
+                  (" · 해지 공시 %d건 제외" % len(s["terminations"])) if s["terminations"] else ""))
+    ex = s["export"]
+    if ex["n"]:
+        # 판로 재판정 — 상대(G2G·해외기업)만 보던 종전 기준에 공급지역·체계업체 경유(간접수출)를 더한 값.
+        kpi.append('<div><b>%d<small>건</small></b><span>수출 계약(판로) · %s억</span>'
+                   '<i class="mut">직수출 %d · 간접수출 %d(체계업체 경유)</i></div>'
+                   % (ex["n"], fmt_eok(ex["amt"]), ex["direct"], ex["indirect"]))
 
     # 잔고 롤포워드 표
     roll = []
@@ -337,10 +672,32 @@ def company_html(s, data):
                     '<th>금액(억)</th></tr></thead><tbody>%s</tbody></table></div></section>'
                     % (E(s["latest_q"] or ""), "".join(rows)))
 
-    # 계통·유형 구성
-    dom_rows = [(d, s["dom_amt"][d], s["dom_n"][d]) for d in data["dom_order"] + ["UNKNOWN"]
+    # 계통·유형 구성 — 계통 미상은 '부품(계통 미상)'과 '미상'으로 갈라 보인다.
+    dom_rows = [(d, s["dom_amt"][d], s["dom_n"][d]) for d in data["dom_order"] + ["PART", "UNKNOWN"]
                 if s["dom_n"].get(d)]
     ct_rows = [(c, s["ct_amt"][c], s["ct_n"][c]) for c in data["ctype_order"] if s["ct_n"].get(c)]
+
+    # II-4 납기 일정(정기보고서 품목 행의 납기 열) · 수량 축(raw_tables 의 수량·중량 열) — 있는 회사만.
+    due = due_schedule(s["comp"], s["latest_q"]) if s["latest_q"] else None
+    due_sec = ""
+    # 연도를 하나도 못 읽는 회사(한화에어로 — 납기 열이 전부 `상세내역 참조`)는 섹션을 만들지 않는다 —
+    # '연도 미상' 한 줄짜리 표는 정보가 아니다.
+    if due and due["years"]:
+        due_sec = ('<section class="card"><h2>II-4 납기 일정 <em>%s 수주표 품목 %d행의 납기 열 · 끝 연도로 묶음 · '
+                   '금액은 그 행의 수주잔고(억)%s</em></h2>%s'
+                   '<p class="mut" style="font-size:11.5px;margin-top:8px">납기 표기는 원문 그대로이며 기간(`2024.01 ~ 2027.12`)은 '
+                   '끝 연도에 둡니다. 연도를 읽을 수 없는 행(`상세내역 참조`·`400대`)은 "연도 미상"입니다. '
+                   '계약 공시 종료일로 만든 아래 「종료연도별 인도 일정」과는 원천이 다릅니다(이쪽은 잔고, 그쪽은 계약 총액).</p></section>'
+                   % (E(due["q"]), due["n"],
+                      "" if due["money"] else " — 단위를 못 읽어 건수만", due_html(due)))
+    qty = qty_series(s["stock"])
+    qty_sec = ""
+    if qty:
+        qty_sec = ('<section class="card"><h2>수량 축 <em>수주표의 수량·중량 열 · 금액과 섞지 않음 · 단위는 캡션 원문(%s)</em></h2>%s'
+                   '<p class="mut" style="font-size:11.5px;margin-top:8px">표준양식 수주표는 `수주총액 수량|금액`처럼 수량을 함께 '
+                   '공시합니다. 잔고 금액(위 KPI)은 금액 열에서, 이 표는 수량 열에서 읽었습니다. 단위가 캡션에 없으면 '
+                   '"미표기"로 두고 환산하지 않습니다.</p></section>'
+                   % (E(qty[-1]["unit"] or "미표기"), qty_html(qty)))
 
     # 납품 관계
     sup = s["sup"]
@@ -396,6 +753,14 @@ def company_html(s, data):
                      "내수 방산은 원가기반 계약이라 이익률이 규정으로 제한됩니다(수치는 공시되지 않습니다).")
     notes.append("방산 계약은 <b>진행기준</b> 수익인식이 많아 수주·인도·매출 시점이 다릅니다. "
                  "잔고 커버리지는 '몇 년치 일감'을 보는 값이지 연도별 매출 예측이 아닙니다.")
+    if s["export"]["n"]:
+        notes.append("수출 판정은 세 근거를 합친 것입니다 — 계약상대가 해외 정부·기업, 「판매ㆍ공급지역」이 해외, "
+                     "국내 체계업체 상대인데 계약명에 '수출'이 적힌 <b>간접수출</b>. 지역 열은 납품처 이름으로 오염돼 있어 "
+                     "국내 표기가 하나도 없을 때만 해외로 봅니다(모르면 내수).")
+    if s["terminations"]:
+        notes.append("「계약해지」 공시 %d건은 계약이 아니므로 위 건수·금액에서 뺐습니다(표에는 <b>해지 공시</b> 꼬리표). "
+                     "아래 수주 상세는 해지된 원본 계약까지 (계약명, 시작일)로 찾아 함께 빼므로 합계가 다를 수 있습니다."
+                     % len(s["terminations"]))
 
     chart = {
         "roll": [{"q": q, "backlog": s["comp"]["quarters"][q].get("backlog"),
@@ -423,6 +788,8 @@ def company_html(s, data):
  <section class="card"><h2>계약 상대 <em>방산은 상대가 공개입니다</em></h2>%s</section>
 </div>
 <section class="card"><h2>계약 공시 <em>단일판매ㆍ공급계약체결 · 방산 %d건 · 민수 %d건(계통 CIVIL 로 갈라 집계에서 뺐습니다)</em></h2>%s</section>
+%s
+%s
 %s
 %s
 <div class="note info">%s</div>
@@ -456,10 +823,9 @@ def company_html(s, data):
 })();
 </script>
 <script>%s</script>
-""" % ("".join(kpi), roll_html, seg_html, party_html(s), len(s["def_contracts"]),
-       len(s["contracts"]) - len(s["def_contracts"]),
+""" % ("".join(kpi), roll_html, seg_html, party_html(s), len(s["def_contracts"]), s["civil_n"],
        contracts_table(s["contracts"], data, tid="ct%s" % s["stock"]),
-       parts_html, rel_html,
+       due_sec, qty_sec, parts_html, rel_html,
        " ".join("<p>%s</p>" % n for n in notes),
        json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(s["stock"]) + _orders_section(s["stock"])
     tags = (rec["stock"], rec["market"], ROLE_KO.get(rec["role"], rec["role"]), rec["industry"])
@@ -477,17 +843,24 @@ def company_html(s, data):
 
 
 def party_html(s):
-    cnt = collections.Counter(c["party_kind"] for c in s["contracts"])
+    """계약 상대 갈래 표 + 판로(수출/내수) 한 줄. 해지 공시는 뺀다(live)."""
+    cnt = collections.Counter(c["party_kind"] for c in s["live"])
     amt = collections.Counter()
-    for c in s["contracts"]:
+    for c in s["live"]:
         amt[c["party_kind"]] += (c["amt_krw_m"] or 0)
     if not cnt:
         return '<p class="mut">계약 공시가 없습니다.</p>'
     rows = "".join('<tr><td class="l">%s</td><td>%d</td><td data-v="%.0f">%s</td></tr>'
                    % (E(PARTY_KO.get(k, k)), n, amt[k], fmt_eok(amt[k]))
                    for k, n in cnt.most_common())
+    ex = s["export"]
+    basis = " · ".join("%s %d" % (EXPORT_BASIS_KO.get(k, k), n) for k, n in ex["basis"].most_common())
+    route = ('<p style="font-size:12px;margin-top:10px"><b>판로(방산)</b> — 수출 %d건 %s억'
+             '<span class="mut">(직수출 %d · 간접수출 %d%s)</span> · 내수 %d건 %s억</p>'
+             % (ex["n"], fmt_eok(ex["amt"]), ex["direct"], ex["indirect"],
+                (" · 근거: " + basis) if basis else "", ex["domestic_n"], fmt_eok(ex["domestic_amt"])))
     return ('<div class="wrap"><table data-sortable><thead><tr><th class="l">상대</th><th>건수</th>'
-            '<th>금액(억)</th></tr></thead><tbody>%s</tbody></table></div>' % rows)
+            '<th>금액(억)</th></tr></thead><tbody>%s</tbody></table></div>%s' % (rows, route))
 
 
 def cat_ko(data, cid):
@@ -527,15 +900,23 @@ def hub_html(data, sums):
                         ("%.0f%%" % s["def_share"]) if s["def_share"] is not None else "—",
                         ("%.0f%%" % s["exp_share"]) if s["exp_share"] is not None else "—"))
     cons = data["contracts"]
-    defc = [c for c in cons if not c["civil"]]
+    live = [c for c in cons if not is_termination(c)]
+    terms = len(cons) - len(live)
+    defc = [c for c in live if not c["civil"]]
     dom_amt = collections.Counter()
     dom_n = collections.Counter()
     for c in defc:
-        did = c["domain"] or "UNKNOWN"
+        did = dom_key(c)
         dom_amt[did] += (c["amt_krw_m"] or 0)
         dom_n[did] += 1
+    # 계통 칩 — 사전 계통은 건수 순, 그 뒤에 '부품(계통 미상)'·'미상'을 붙여 미상의 크기를 숨기지 않는다.
     dchips = "".join(_chip(dom_meta(data, d)["ko"], dom_meta(data, d)["color"], n)
-                     for d, n in dom_n.most_common() if d != "UNKNOWN")
+                     for d, n in dom_n.most_common() if d not in ("UNKNOWN", "PART"))
+    dchips += "".join(_chip(dom_meta(data, d)["ko"], dom_meta(data, d)["color"], dom_n[d],
+                            title="%s억" % fmt_eok(dom_amt[d]))
+                      for d in ("PART", "UNKNOWN") if dom_n.get(d))
+    ex = export_split(defc)
+    mx = matrix(defc, data)
     big = sorted([c for c in defc if c["amt_krw_m"]], key=lambda c: -c["amt_krw_m"])[:25]
     names = {r["stock"]: r for r in data["uni"]}
     ncat = sum(1 for c in data["sup"].values() if c["cats"])
@@ -544,9 +925,10 @@ def hub_html(data, sums):
 <div class="kpi">
  <div class="hero"><b>%s<small>억</small></b><span>체계업체 %d사 수주잔고 합(최근 분기)</span>
   <i class="mut">%s</i></div>
- <div><b>%d</b><span>방산 계약 공시(2020~) · %s억</span><i class="mut">민수 %d건은 갈라 뒀습니다</i></div>
+ <div><b>%d</b><span>방산 계약 공시(2020~) · %s억</span><i class="mut">민수 %d건은 갈라 뒀습니다%s</i></div>
+ <div><b>%d</b><span>수출 계약(판로 재판정) · %s억</span><i class="mut">직수출 %d · 간접수출 %d — 상대·공급지역·계약명 세 근거</i></div>
  <div><b>%d</b><span>모집단 종목(네 겹 전수)</span><i class="mut">부품 분류 %d · 체계업체 연결 %d</i></div>
- <div><b>%d</b><span>계통(무기체계 계열)</span><i class="mut">계약명에서 판정</i></div>
+ <div><b>%d</b><span>계통(무기체계 계열)</span><i class="mut">계약명에서 판정 · 미상 %d건(부품명만 %d)</i></div>
 </div>
 <h2 class="sec">체계업체<span>수주잔고 순 · 칩은 계약 공시 상위 계통(건수)</span></h2>
 <div class="cards">%s</div>
@@ -557,6 +939,10 @@ def hub_html(data, sums):
  <section class="card"><h2>계약 유형별 금액 <em>이익 성격이 유형마다 다릅니다</em></h2>
   <div class="chart"><canvas id="cType"></canvas></div></section>
 </div>
+<section class="card"><h2>계약유형 × 계약상대 <em>방산 계약 %d건 · 억원(건수) · 유형은 계약명에서, 상대는 공시 상대에서 · 농도는 금액 비중</em></h2>%s
+ <p class="mut" style="font-size:11.5px;margin-top:8px">같은 유형이라도 상대가 방위사업청이면 원가기반(이익률 규정), 해외 정부(G2G)면
+  수출사업 이행계약입니다. 유형 낱말이 없는 G2G 계약(`잠수함 3척`)은 상대로 되짚어 '수출사업 이행'에 둡니다.
+  공시유보로 금액이 없는 건은 건수에만 들어갑니다. 해지 공시 %d건은 뺐습니다.</p></section>
 <section class="card"><h2>최근 대형 계약 <em>금액 상위 25건 · 계약상대가 공개인 것이 방산의 특징입니다</em></h2>%s</section>
 <h2 class="sec">더 보기<span>부품 인포그래픽과 모집단 근거</span></h2>
 <div class="cards">
@@ -587,15 +973,19 @@ def hub_html(data, sums):
 </script>
 <script>%s</script>
 """ % (fmt_eok(sum(s["backlog"] or 0 for s in top_primes)), len(top_primes), dupe_note,
-       len(defc), fmt_eok(sum(c["amt_krw_m"] or 0 for c in defc)), len(cons) - len(defc),
+       len(defc), fmt_eok(sum(c["amt_krw_m"] or 0 for c in defc)), len(live) - len(defc),
+       (" · 해지 공시 %d건 제외" % terms) if terms else "",
+       ex["n"], fmt_eok(ex["amt"]), ex["direct"], ex["indirect"],
        len(data["uni"]), ncat, nlink, len([d for d in data["dom_order"] if d != "CIVIL"]),
+       dom_n.get("UNKNOWN", 0) + dom_n.get("PART", 0), dom_n.get("PART", 0),
        "".join(cards), dchips,
+       len(defc), matrix_html(mx, data), terms,
        contracts_table(big, data, tid="cbig", show_company=True, by_stock=names, rel=""),
        len(data["uni"]),
        json_for_html({
            "doms": [{"ko": dom_meta(data, d)["ko"], "color": dom_meta(data, d)["color"],
                      "amt": dom_amt[d], "n": dom_n[d]}
-                    for d, _ in dom_amt.most_common() if d != "UNKNOWN"],
+                    for d, _ in dom_amt.most_common() if d not in ("UNKNOWN", "PART")],
            "ctypes": [{"ko": ctype_meta(data, c)["ko"], "color": ctype_meta(data, c)["color"],
                        "amt": sum(x["amt_krw_m"] or 0 for x in defc if x["ctype"] == c),
                        "n": sum(1 for x in defc if x["ctype"] == c)}

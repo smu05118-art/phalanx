@@ -1,0 +1,1146 @@
+{
+ "note": "실데이터(assets/contracts.json 710건, 2026-10-12 빌드)에서 얼린 대표 60행 — 입력은 공시의 체결계약명·계약상대·판매ㆍ공급지역 세 값만, want 는 kdef_contracts._fields_from_kv 의 판정. 검토 지적 사례(G2G 실행계약·PRIME 수출사업·MCS Plant·정부 끝 앵커)와 계통 10·유형 7+미상·상대 7갈래·수출 근거 3종을 덮는다. 기대값을 바꾸면 why 도 함께 고친다(판정 근거가 바뀐 것). rcp 는 DART 접수번호(출처).",
+ "n": 60,
+ "rows": [
+  {
+   "stock": "047810",
+   "rcp": "20260112800001",
+   "name": "폴란드 FA-50 항공기 공급 사업 실행계약",
+   "party": "폴란드 군비청(Skarb Panstwa-Agencja Uzbrojenia)",
+   "region": "폴란드",
+   "why": "G2G+실행계약 → SUPPLY 가 아니라 EXPORT_EXEC(4.21조)",
+   "want": {
+    "domain": "AIR",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20251223800540",
+   "name": "T-50 수출사업용 엔진",
+   "party": "한국항공우주산업㈜ (KOREA AEROSPACE INDUSTRIES, LTD.)",
+   "region": "대한민국",
+   "why": "PRIME 상대 → EXPORT_EXEC 금지(부품 공급), 판로는 간접수출",
+   "want": {
+    "domain": "AIR",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "PRIME",
+    "party_prime": "047810",
+    "export": true,
+    "export_kind": "indirect",
+    "export_basis": "name",
+    "civil": false
+   }
+  },
+  {
+   "stock": "321370",
+   "rcp": "20250224900094",
+   "name": "[수출] 사우디 MSAM-Ⅱ MFR 수출사업-주장비(개발 재료비)_배열안테나조립체 외 3건 계약",
+   "party": "한화시스템 주식회사",
+   "region": "-",
+   "why": "PRIME 상대 수출사업 → UNKNOWN",
+   "want": {
+    "domain": "MISSILE",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "PRIME",
+    "party_prime": "272210",
+    "export": true,
+    "export_kind": "indirect",
+    "export_basis": "name",
+    "civil": false
+   }
+  },
+  {
+   "stock": "437730",
+   "rcp": "20260707900453",
+   "name": "사우디 MSAM-II MFR 수출사업_주장비(개발 재료비)_안테나 받침대 유니트외 12건계약",
+   "party": "한화시스템(주)",
+   "region": "한화시스템 구미사업장",
+   "why": "PRIME 상대 수출사업 → UNKNOWN",
+   "want": {
+    "domain": "MISSILE",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "PRIME",
+    "party_prime": "272210",
+    "export": true,
+    "export_kind": "indirect",
+    "export_basis": "name",
+    "civil": false
+   }
+  },
+  {
+   "stock": "484870",
+   "rcp": "20250520800094",
+   "name": "인도 K9 자주포 2차 부품 수출사업",
+   "party": "Larsen & Toubro Limited (L&T)",
+   "region": "인도",
+   "why": "해외 체계업체(FOREIGN) 상대는 이름대로 EXPORT_EXEC",
+   "want": {
+    "domain": "GROUND",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "FOREIGN",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "042660",
+   "rcp": "20260528800927",
+   "name": "MCS Plant 구축 공사",
+   "party": "한화에어로스페이스(주)",
+   "region": "충청북도 보은군 내북면",
+   "why": "민수 단정 보류(_CIVIL_HOLD) → 계통 미상",
+   "want": {
+    "domain": null,
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "PRIME",
+    "party_prime": "012450",
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "272210",
+   "rcp": "20250331802829",
+   "name": "MCS Plant 지능화 물류 시스템 구축",
+   "party": "한화에어로스페이스(주)",
+   "region": "국내",
+   "why": "민수 단정 보류 → 계통 미상(`시스템 구축`도 건너뜀)",
+   "want": {
+    "domain": null,
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "PRIME",
+    "party_prime": "012450",
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "136150",
+   "rcp": "20260824900499",
+   "name": "광양 No.8 CGL 신설 (EP) H2 Plant",
+   "party": "(주)포스코이앤씨",
+   "region": "전남광주통합특별시 광양시",
+   "why": "`H2 Plant` 구절은 민수",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "DOMESTIC",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": true
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20251222800329",
+   "name": "[수정계약] 폴란드 K9 자주포 등 1차 실행계약",
+   "party": "폴란드 정부",
+   "region": "폴란드",
+   "why": "`폴란드 정부` → G2G(끝 앵커)",
+   "want": {
+    "domain": "GROUND",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20241223800707",
+   "name": "KUH 수출 사업",
+   "party": "이라크 정부",
+   "region": "이라크",
+   "why": "`이라크 정부` → G2G",
+   "want": {
+    "domain": "AIR",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "079550",
+   "rcp": "20260422800471",
+   "name": "말레이시아 向 함대공유도탄(해궁) 수출 사업",
+   "party": "말레이시아 정부",
+   "region": "말레이시아",
+   "why": "`말레이시아 정부` → G2G",
+   "want": {
+    "domain": "MISSILE",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "099320",
+   "rcp": "20230209901128",
+   "name": "The NeuSAR SYSTEM",
+   "party": "해외 정부기관",
+   "region": "해외",
+   "why": "`해외 정부기관` → G2G, 유형 낱말 없음 → EXPORT_EXEC",
+   "want": {
+    "domain": null,
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "099320",
+   "rcp": "20240924900071",
+   "name": "OOOO 시스템 공급",
+   "party": "해외 정부기관",
+   "region": "해외",
+   "why": "G2G 라도 EXPORT_EXEC 패턴이 없으면 SUPPLY",
+   "want": {
+    "domain": null,
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20251010800178",
+   "name": "유도무기류 공급계약",
+   "party": "중동지역국가 국방부",
+   "region": "중동지역국가",
+   "why": "`중동지역국가 국방부` G2G, SUPPLY",
+   "want": {
+    "domain": "MISSILE",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "042660",
+   "rcp": "20260331803529",
+   "name": "잠수함 3척",
+   "party": "인도네시아 국방부",
+   "region": "인도네시아 지역",
+   "why": "유형 낱말 없는 G2G → EXPORT_EXEC",
+   "want": {
+    "domain": "NAVAL",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20250604800028",
+   "name": "필리핀 FA-50 추가 사업",
+   "party": "필리핀 국방부(DND/AFP)",
+   "region": "필리핀",
+   "why": "유형 낱말 없는 G2G → EXPORT_EXEC",
+   "want": {
+    "domain": "AIR",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20251226800326",
+   "name": "필리핀 FA-50 성능개량 사업",
+   "party": "필리핀 국방부 (DND / AFP)",
+   "region": "필리핀",
+   "why": "G2G 라도 개량 낱말이 먼저",
+   "want": {
+    "domain": "AIR",
+    "domain_hint": null,
+    "ctype": "UPGRADE",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20260206800170",
+   "name": "필리핀 FA-50PH PBL 사업",
+   "party": "필리핀 국방부",
+   "region": "필리핀",
+   "why": "G2G 라도 PBL 이 먼저",
+   "want": {
+    "domain": "AIR",
+    "domain_hint": null,
+    "ctype": "PBL",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "064350",
+   "rcp": "20250804800039",
+   "name": "폴란드 K2전차사업 2차 이행계약",
+   "party": "폴란드 군비청(Agencja Uzbrojenia)",
+   "region": "폴란드",
+   "why": "이행계약 → EXPORT_EXEC",
+   "want": {
+    "domain": "GROUND",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20250724800230",
+   "name": "방산수출 이행약정서",
+   "party": "대한무역투자진흥공사(KOTRA)",
+   "region": "대한민국",
+   "why": "KOTRA(GOV) 이행약정 → EXPORT_EXEC, 내수",
+   "want": {
+    "domain": null,
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20260410800003",
+   "name": "방산수출 이행약정",
+   "party": "대한무역투자진흥공사(KOTRA)",
+   "region": "핀란드",
+   "why": "KOTRA(GOV) 이행약정, 공급지역 핀란드 → 직수출(지역)",
+   "want": {
+    "domain": null,
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "region",
+    "civil": false
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20260202800006",
+   "name": "천무 다연장로켓 수출사업",
+   "party": "노르웨이 국방물자청(NDMA)",
+   "region": "노르웨이",
+   "why": "노르웨이 국방물자청 → G2G",
+   "want": {
+    "domain": "MISSILE",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20260831800137",
+   "name": "스페인 K9 자주포 등 수출 실행계약 (Derivative Contract)",
+   "party": "INDRA SISTEMAS S.A.",
+   "region": "스페인",
+   "why": "FOREIGN + 실행계약 → EXPORT_EXEC",
+   "want": {
+    "domain": "GROUND",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "FOREIGN",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20250403800374",
+   "name": "인도 K9 자주포 2차 수출사업 (구성품 공급)",
+   "party": "Larsen & Toubro Limited (L&T)",
+   "region": "인도",
+   "why": "공급 낱말이 먼저 → SUPPLY",
+   "want": {
+    "domain": "GROUND",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "FOREIGN",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "003570",
+   "rcp": "20230926800096",
+   "name": "K9외 2종 수출사업 변속기조립체 물품구매계약",
+   "party": "한화에어로스페이스(주)(HANWHA AEROSPACE CO.,LTD)",
+   "region": "국내",
+   "why": "부품사 공급계약 → SUPPLY, 간접수출(이름)",
+   "want": {
+    "domain": "GROUND",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "PRIME",
+    "party_prime": "012450",
+    "export": true,
+    "export_kind": "indirect",
+    "export_basis": "name",
+    "civil": false
+   }
+  },
+  {
+   "stock": "079550",
+   "rcp": "20240920800002",
+   "name": "M-SAM(천궁-II) 수출 계약",
+   "party": "이라크 국방부",
+   "region": "이라크",
+   "why": "이라크 국방부 G2G, 수출 계약 → EXPORT_EXEC",
+   "want": {
+    "domain": "MISSILE",
+    "domain_hint": null,
+    "ctype": "EXPORT_EXEC",
+    "party_kind": "G2G",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "079550",
+   "rcp": "20251209800316",
+   "name": "군위성통신체계2(다대역 등) 외 17항목",
+   "party": "대한민국 방위사업청",
+   "region": "대한민국",
+   "why": "군위성 → C4I",
+   "want": {
+    "domain": "C4I",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "361390",
+   "rcp": "20220816901181",
+   "name": "군위성통신체계-II 몸체조립체 등 13종 양산 계약",
+   "party": "한화시스템 주식회사",
+   "region": "한화시스템 구미사업장(납품처)",
+   "why": "C4I·양산 → FOLLOW, 납품처 지역은 내수",
+   "want": {
+    "domain": "C4I",
+    "domain_hint": null,
+    "ctype": "FOLLOW",
+    "party_kind": "PRIME",
+    "party_prime": "272210",
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20251125800192",
+   "name": "425사업 SAR위성체",
+   "party": "국방과학연구소",
+   "region": "대한민국",
+   "why": "425사업(ISR prio 90)이 위성체(SPACE)를 이긴다",
+   "want": {
+    "domain": "ISR",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "099320",
+   "rcp": "20231006900254",
+   "name": "초소형위성체계 EO위성체",
+   "party": "국방과학연구소",
+   "region": "대한민국",
+   "why": "초소형위성체계 → ISR",
+   "want": {
+    "domain": "ISR",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "079550",
+   "rcp": "20260423800410",
+   "name": "천궁Ⅱ(철매-Ⅱ 성능개량) 유도탄 2차 양산",
+   "party": "대한민국 방위사업청",
+   "region": "대한민국",
+   "why": "천궁 → MISSILE, 성능개량 → UPGRADE",
+   "want": {
+    "domain": "MISSILE",
+    "domain_hint": null,
+    "ctype": "UPGRADE",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "005870",
+   "rcp": "20250227801177",
+   "name": "발전기세트(디젤엔진식)[TICN용]",
+   "party": "방위사업청",
+   "region": "국내",
+   "why": "민수 어휘지만 TICN용 → C4I",
+   "want": {
+    "domain": "C4I",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "005870",
+   "rcp": "20201228800199",
+   "name": "발전기세트(제어장치 포함)",
+   "party": "방위사업청",
+   "region": "국내",
+   "why": "방위사업청 발주 → 민수 아님, 부품(계통 미상)",
+   "want": {
+    "domain": null,
+    "domain_hint": "PART",
+    "ctype": "UNKNOWN",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "013810",
+   "rcp": "20230511900430",
+   "name": "해군함정용 조타기 공급",
+   "party": "현대중공업(주)",
+   "region": "국내",
+   "why": "해군 → NAVAL, 현대중공업(주) → DOMESTIC",
+   "want": {
+    "domain": "NAVAL",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "DOMESTIC",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20260514801290",
+   "name": "Single Aisle(SA) Wing 주요 구성품 추가 공급 계약",
+   "party": "해외 완제기 업체",
+   "region": "영국",
+   "why": "SA Wing → CIVIL, `해외 완제기 업체` → ANON 직수출",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "ANON",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": true
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20240415800153",
+   "name": "EVE-100 eVTOL 사업 Pylon 공급 계약",
+   "party": "EVE UAM, LLC社, EMBRAER S.A.社",
+   "region": "브라질",
+   "why": "eVTOL → CIVIL",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "FOREIGN",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": true
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20251223800006",
+   "name": "GE9X 신규 부품 및 LEAP 엔진 부품 생산계약 체결",
+   "party": "General Electric(GE)",
+   "region": "US, Cincinnati",
+   "why": "GE9X/LEAP → CIVIL",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "FOREIGN",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": true
+   }
+  },
+  {
+   "stock": "007120",
+   "rcp": "20230112800112",
+   "name": "기업은행 이자율 파생상품 운용시스템 재계약",
+   "party": "(주)아이비케이시스템",
+   "region": "대한민국",
+   "why": "은행 → CIVIL",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "DOMESTIC",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": true
+   }
+  },
+  {
+   "stock": "488900",
+   "rcp": "20260806900659",
+   "name": "한국형발사체 고도화(누리호) FM7,FM8,FM9, FM10,FM11 엔진 컴포넌트 제작",
+   "party": "한화에어로스페이스",
+   "region": "대한민국",
+   "why": "누리호 → SPACE",
+   "want": {
+    "domain": "SPACE",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "PRIME",
+    "party_prime": "012450",
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "488900",
+   "rcp": "20260915900430",
+   "name": "차세대발사체 메탄 엔진 연소시험설비 구축을 위한 실시설계 및 상세설계 용역",
+   "party": "한국항공우주연구원",
+   "region": "대한민국",
+   "why": "차세대발사체 → SPACE, 한국항공우주연구원 → GOV(KAI 아님)",
+   "want": {
+    "domain": "SPACE",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "079550",
+   "rcp": "20250430801123",
+   "name": "정지궤도 기상.우주기상 위성 시스템 및 본체개발",
+   "party": "한국기상산업기술원",
+   "region": "대한민국",
+   "why": "정지궤도 → SPACE",
+   "want": {
+    "domain": "SPACE",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "DOMESTIC",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "064350",
+   "rcp": "20251114801272",
+   "name": "터키 이스탄불 전동차 공급 사업",
+   "party": "터키 이스탄불 市 (Istanbul Metropolitan Municipality)",
+   "region": "터키 이스탄불",
+   "why": "전동차 → CIVIL, 한글 국호 외국 발주처 → FOREIGN",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "FOREIGN",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": true
+   }
+  },
+  {
+   "stock": "042660",
+   "rcp": "20260220801130",
+   "name": "LNG 운반선 1척",
+   "party": "유럽 지역 선주",
+   "region": "유럽 지역",
+   "why": "상선 → CIVIL, 익명 선주 → DOMESTIC 이지만 지역 유럽 → 직수출(지역)",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "DOMESTIC",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "region",
+    "civil": true
+   }
+  },
+  {
+   "stock": "077970",
+   "rcp": "20240223800212",
+   "name": "DIESEL GENERATOR ENGINE 공급계약",
+   "party": "한화오션(주) (Hanwha Ocean Co., Ltd.)",
+   "region": "대한민국",
+   "why": "선박엔진 → CIVIL, 한화오션 → PRIME",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "PRIME",
+    "party_prime": "042660",
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": true
+   }
+  },
+  {
+   "stock": "077970",
+   "rcp": "20251205800479",
+   "name": "디젤엔진 및 발전기세트 공급계약",
+   "party": "에이치디현대중공업(주) (HD HYUNDAI HEAVY INDUSTRIES CO.,LTD.)",
+   "region": "대한민국",
+   "why": "에이치디현대중공업(주) (HD HYUNDAI…) → DOMESTIC(영문 병기)",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "DOMESTIC",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": true
+   }
+  },
+  {
+   "stock": "003570",
+   "rcp": "20220707800107",
+   "name": "군수용 표준차량 부품 공급계약",
+   "party": "기아 주식회사(KIA CORPORATION)",
+   "region": "국내",
+   "why": "기아 주식회사(KIA CORPORATION) → DOMESTIC, 군수용 → GROUND",
+   "want": {
+    "domain": "GROUND",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "DOMESTIC",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "003570",
+   "rcp": "20220325800095",
+   "name": "81mm 박격포-Ⅱ 후속 양산사업",
+   "party": "현대위아(주) (HYUNDAI WIA CORP)",
+   "region": "국내",
+   "why": "현대위아(주) (HYUNDAI WIA CORP) → DOMESTIC, FIRE·FOLLOW",
+   "want": {
+    "domain": "FIRE",
+    "domain_hint": null,
+    "ctype": "FOLLOW",
+    "party_kind": "DOMESTIC",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20250821800313",
+   "name": "120밀리 자주박격포 후속양산",
+   "party": "방위사업청",
+   "region": "대한민국",
+   "why": "FIRE·FOLLOW·GOV",
+   "want": {
+    "domain": "FIRE",
+    "domain_hint": null,
+    "ctype": "FOLLOW",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20250716800365",
+   "name": "KT/A-1 항공기 수리부속 PBL 3차 사업",
+   "party": "대한민국 방위사업청",
+   "region": "대한민국",
+   "why": "SUPPORT·PBL",
+   "want": {
+    "domain": "SUPPORT",
+    "domain_hint": null,
+    "ctype": "PBL",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20240625800059",
+   "name": "KF-21 최초양산 항공기 계약",
+   "party": "대한민국 방위사업청",
+   "region": "대한민국",
+   "why": "AIR·FIRST",
+   "want": {
+    "domain": "AIR",
+    "domain_hint": null,
+    "ctype": "FIRST",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "047810",
+   "rcp": "20260630800769",
+   "name": "한국형전투기(KF-X) 체계개발사업 계약",
+   "party": "대한민국 방위사업청",
+   "region": "대한민국",
+   "why": "AIR·RND",
+   "want": {
+    "domain": "AIR",
+    "domain_hint": null,
+    "ctype": "RND",
+    "party_kind": "GOV",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "010820",
+   "rcp": "20200116800263",
+   "name": "대전차유도무기 3차사업 - 구동장치 외",
+   "party": "LIG넥스원",
+   "region": "대한민국",
+   "why": "N차 사업 → FOLLOW, LIG넥스원 → PRIME",
+   "want": {
+    "domain": "MISSILE",
+    "domain_hint": null,
+    "ctype": "FOLLOW",
+    "party_kind": "PRIME",
+    "party_prime": "079550",
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "484870",
+   "rcp": "20251201800534",
+   "name": "폴란드 EC2 K2GF 증폭기 外 물품공급계약",
+   "party": "현대로템주식회사",
+   "region": "폴란드",
+   "why": "K2GF → GROUND, 현대로템 PRIME + 지역 폴란드 → 간접수출(지역)",
+   "want": {
+    "domain": "GROUND",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "PRIME",
+    "party_prime": "064350",
+    "export": true,
+    "export_kind": "indirect",
+    "export_basis": "region",
+    "civil": false
+   }
+  },
+  {
+   "stock": "064350",
+   "rcp": "20240826800037",
+   "name": "미국 MBTA 전동차 사업 추가공급계약",
+   "party": "현대로템 미국법인",
+   "region": "미국",
+   "why": "현대로템 미국법인 → PRIME, 지역 미국 → 간접수출(지역)",
+   "want": {
+    "domain": "CIVIL",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "PRIME",
+    "party_prime": "064350",
+    "export": true,
+    "export_kind": "indirect",
+    "export_basis": "region",
+    "civil": true
+   }
+  },
+  {
+   "stock": "0015G0",
+   "rcp": "20260630901538",
+   "name": "ZnS(황화아연) 소재 부품",
+   "party": "방산 솔루션 공급 업체",
+   "region": "이스라엘",
+   "why": "부품(계통 미상), 지역 이스라엘 → 직수출(지역)",
+   "want": {
+    "domain": null,
+    "domain_hint": "PART",
+    "ctype": "UNKNOWN",
+    "party_kind": "DOMESTIC",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "region",
+    "civil": false
+   }
+  },
+  {
+   "stock": "0015G0",
+   "rcp": "20260806900123",
+   "name": "센서부 등 3종",
+   "party": "엘아이지디펜스앤에어로스페이스 주식회사",
+   "region": "대한민국",
+   "why": "엘아이지디펜스앤에어로스페이스 → PRIME(079550)",
+   "want": {
+    "domain": null,
+    "domain_hint": "PART",
+    "ctype": "UNKNOWN",
+    "party_kind": "PRIME",
+    "party_prime": "079550",
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "012450",
+   "rcp": "20251210800586",
+   "name": "-",
+   "party": "-",
+   "region": "-",
+   "why": "공시유보 — 전부 미상, 수출 아님",
+   "want": {
+    "domain": null,
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "UNKNOWN",
+    "party_prime": null,
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "214430",
+   "rcp": "20261001900495",
+   "name": "적외선 검출기 조립체",
+   "party": "해외 방산업체",
+   "region": "-",
+   "why": "적외선 → ISR, `해외 방산업체` → ANON 직수출",
+   "want": {
+    "domain": "ISR",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "ANON",
+    "party_prime": null,
+    "export": true,
+    "export_kind": "direct",
+    "export_basis": "party",
+    "civil": false
+   }
+  },
+  {
+   "stock": "003570",
+   "rcp": "20200311800456",
+   "name": "K56 변속기외 1종",
+   "party": "한화디펜스(주)",
+   "region": "국내",
+   "why": "K56 → GROUND, 한화디펜스(주) → PRIME(012450)",
+   "want": {
+    "domain": "GROUND",
+    "domain_hint": null,
+    "ctype": "UNKNOWN",
+    "party_kind": "PRIME",
+    "party_prime": "012450",
+    "export": false,
+    "export_kind": "",
+    "export_basis": "",
+    "civil": false
+   }
+  },
+  {
+   "stock": "368770",
+   "rcp": "20230717900169",
+   "name": "천궁2 수출용 관성측정기 소요자재 공급계약('26년 생산분)",
+   "party": "한화에어로스페이스(주)",
+   "region": "대한민국",
+   "why": "MISSILE·SUPPLY·PRIME, `수출용` → 간접수출(이름)",
+   "want": {
+    "domain": "MISSILE",
+    "domain_hint": null,
+    "ctype": "SUPPLY",
+    "party_kind": "PRIME",
+    "party_prime": "012450",
+    "export": true,
+    "export_kind": "indirect",
+    "export_basis": "name",
+    "civil": false
+   }
+  }
+ ]
+}

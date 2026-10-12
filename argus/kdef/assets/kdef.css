@@ -7,8 +7,8 @@
   --bg:#0f1116; --pn:#171a21; --pn2:#1e222b; --pn3:#242935; --ln:#2a2f3a; --ln2:#343a47;
   --tx:#e6e8ec; --tx2:#98a1b0; --tx3:#5d6675; --a:#60a5fa; --a2:#93c5fd;
   --up:#4ade80; --dn:#f87171; --wn:#fbbf24;
-  /* 선종 시리즈(고정 슬롯) */
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  /* 계통 시리즈(고정 슬롯) — kdef_lib.PALETTE 와 같은 값. --s9 는 우주(SPACE, 2026-10 신설) */
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s9:#22a7c4;
   /* 순차(파랑 램프) — 인포그래픽 농도·히트맵 */
   --q1:#0d366b; --q2:#184f95; --q3:#256abf; --q4:#3987e5; --q5:#6da7ec; --q6:#9ec5f4;
   --grid:#2a2f3a; --axis:#343a47;
@@ -102,6 +102,13 @@ tbody tr.sel{background:rgba(96,165,250,.08)}
 .bar{display:inline-block;height:5px;border-radius:3px;background:var(--a);vertical-align:middle;margin-right:6px}
 .pill{display:inline-block;font-size:10px;border:1px solid var(--ln);border-radius:999px;padding:0 7px;color:var(--tx2);line-height:16px;margin-left:4px}
 .pill.est{border-style:dashed;color:var(--tx3)}
+/* 판로·해지 표시 — 계약 공시 표의 작은 꼬리표. 색은 상태 색(--a 수출, --dn 해지)만 쓴다 */
+.pill.exp{border-color:var(--a);color:var(--a2)}
+.pill.term{border-color:var(--dn);color:var(--dn)}
+/* 유형×상대 매트릭스 — 셀 농도는 금액 비중(인라인 알파), 숫자는 항상 함께 적는다 */
+table.mx td{min-width:72px}
+table.mx td .n{display:block;font-size:10px;color:var(--tx3)}
+table.mx tfoot td,table.mx tfoot th{border-top:1px solid var(--ln2);font-weight:600}
 .basis{font-size:10px;color:var(--tx3);font-family:var(--mono)}
 
 /* ── 선표(인도 스케줄) 타임라인 ───────────────────── */

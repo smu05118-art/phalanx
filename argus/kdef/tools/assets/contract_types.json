@@ -1,5 +1,5 @@
 {
- "n": 6,
+ "n": 7,
  "types": [
   {
    "id": "UPGRADE",
@@ -33,15 +33,22 @@
    "id": "FOLLOW",
    "ko": "후속양산",
    "en": "Follow-on production",
-   "pattern": "후속\\s*양산|\\d+\\s*차\\s*양산|양산\\s*\\d+차|재양산|추가\\s*양산|양산",
+   "pattern": "후속\\s*양산|\\d+\\s*차\\s*양산|양산\\s*\\d+차|재양산|추가\\s*양산|양산|\\d+\\s*차\\s*사업",
    "slot": 2
   },
   {
    "id": "SUPPLY",
    "ko": "물품구매·납품",
    "en": "Supply",
-   "pattern": "물품\\s*구매|구매\\s*계약|납품|공급|판매\\s*계약|실행계약|조달",
+   "pattern": "물품\\s*구매|구매\\s*계약|납품|공급|판매\\s*계약|조달",
    "slot": 5
+  },
+  {
+   "id": "EXPORT_EXEC",
+   "ko": "수출사업 이행",
+   "en": "Export program execution",
+   "pattern": "수출\\s*사업|수출\\s*계약|실행\\s*계약|이행\\s*약정|이행\\s*계약",
+   "slot": 4
   }
  ]
 }

@@ -24,7 +24,7 @@ import os
 import re
 import sys
 
-from kdef_lib import ASSETS, load_asset, write_asset
+from kdef_lib import ASSETS, is_segment_label, load_asset, write_asset
 from kdef_universe import load as load_universe
 import kdef_contracts
 import kdef_products
@@ -142,6 +142,10 @@ def build(write=True):
             v = comp["quarters"][q]
             for cu in v.get("customers") or []:
                 nm = cu.get("name") or ""
+                # 거래처 이름 자리에 부문명(`방산`·`ICT`·`위성사업`)이 온 행은 근거가 아니다
+                # (한화시스템·쎄트렉아이 실측). 판정은 kdef_lib.is_segment_label 한 곳에 둔다.
+                if is_segment_label(nm):
+                    continue
                 for ps, pat in kdef_contracts.PRIME_NAMES.items():
                     if re.search(pat, nm, re.I):
                         add(ps, "customer", "%s 「%s」%s" % (
