@@ -44,23 +44,19 @@ window.CMPD={
     },
     "target_period_end": null,
     "official_guidance": {
-      "fiscal_label": "FY2026 Q4",
-      "published_at": "2026-06-17",
-      "revenue_usd_billion": [
-        9.2,
-        10.0
+      "target": "2026-11",
+      "fiscal_label": "FQ1'27",
+      "published_at": "2026-09-30",
+      "revenue_usd_million": [
+        10600,
+        11400
       ],
       "core_eps": [
         3.8,
         4.2
       ],
-      "core_operating_income_usd_million": [
-        589,
-        649
-      ],
-      "fy2026_revenue_usd_billion": 35.0,
-      "fy2026_core_eps": 12.7,
-      "source_id": "q3_release"
+      "annual_revenue_usd_million": 44500,
+      "source_id": "fy26_q4_release"
     },
     "proxy_coverage": null,
     "observatory": {
@@ -106,20 +102,13 @@ window.CMPD={
   "JEM": {
     "report_d": "",
     "fq": "FY3/27 Q2 (7~9월; 2026-Q3)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "가이던스 하회 신호",
+    "vcolor": "#e2574f",
+    "est": "95.73 억엔",
     "range": "",
     "cons": null,
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null
+    "rho": 0.538,
+    "state": "부분분기"
   },
   "HPE": {
     "report_d": "",
@@ -208,20 +197,13 @@ window.CMPD={
   "MJC": {
     "report_d": "",
     "fq": "2026年12月期 第3四半期 (2026년 7~9월)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "가이던스 하회 신호",
+    "vcolor": "#e2574f",
+    "est": "213.07 억엔",
     "range": "",
     "cons": null,
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null
+    "rho": 0.55,
+    "state": "부분분기"
   },
   "GBM": {
     "report_d": "",
@@ -235,7 +217,14 @@ window.CMPD={
     "state": "예측 보류",
     "forecast_gate": {
       "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
+      "reason": "2025-04-08 Lincstech 연결 편입으로 2025-06 분기 매출이 전분기의 1.87배(5,163,444→9,659,530천TWD) — 연결 범위 단절. 비교 가능 연결 후 분기 5개(2025Q2~2026Q2)뿐이고 YoY 회귀 표본 4분기가 +60~90% 점프로 오염됨. 2026-10-01 精星(8183) 합병으로 추가 단절 예정. 프록시 ρ는 연결 전 0.857, 전체 구간 0.32.",
+      "criteria": [
+        "Lincstech 연결(2025-04-08) 이후 비교 가능 분기 ≥12개 (2026-09-18 현재 5개: 2025Q2~2026Q2)",
+        "rolling-origin ≥4폴드에서 단순 베이스라인(전년동기 YoY·seasonal) 대비 OOS MAE 우위",
+        "精星 합병(2026-10-01) 연결 범위 변경을 재무 원장에 반영한 뒤 재검정",
+        "현재 분기 프록시 3/3개월 관측(estat_long 2026-07까지 → Q3'26 은 1/3개월)",
+        "수동 근거 검토 후 명시적 해제 — 달력 경과·상관 상승만으로는 해제하지 않음"
+      ]
     },
     "target_period_end": null,
     "official_guidance": null,
@@ -244,116 +233,74 @@ window.CMPD={
   "ADTEST": {
     "report_d": "2026-10-28",
     "fq": "2027年3月期 第2四半期 (2026년 7~9월)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "가이던스 하회 신호",
+    "vcolor": "#e2574f",
+    "est": "2,958.15 억엔",
     "range": "",
     "cons": null,
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null
+    "rho": 0.533,
+    "state": "부분분기"
   },
   "DISCO": {
     "report_d": "2026-10-22",
     "fq": "2027年3月期 第2四半期 (2026년 7~9월)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "가이던스 하회 신호",
+    "vcolor": "#e2574f",
+    "est": "1,389.65 억엔",
     "range": "",
     "cons": null,
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null
+    "rho": 0.459,
+    "state": "부분분기"
   },
   "SCREEN": {
     "report_d": "2026-10-30",
     "fq": "FQ2'27 (7~9월)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "가이던스 하회 신호",
+    "vcolor": "#e2574f",
+    "est": "1,468.89 억엔",
     "range": "",
     "cons": "1,695.25 억엔",
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null
+    "rho": 0.653,
+    "state": "완전"
   },
   "HOYA": {
     "report_d": "2026-10-30",
     "fq": "FQ2'27 (7~9월)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "Beat (상단 초과)",
+    "vcolor": "#2fae66",
+    "est": "2,683.94 억엔",
     "range": "",
     "cons": "2,544.77 억엔",
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null
+    "rho": 0.236,
+    "state": "완전"
   },
   "LASERTEC": {
     "report_d": "2026-10-30",
     "fq": "FQ1'27 (7~9월)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "부합권",
+    "vcolor": "#c9a24a",
+    "est": "1,016.81 억엔",
     "range": "",
     "cons": null,
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null
+    "rho": 0.652,
+    "state": "완전"
   },
   "MURATA": {
     "report_d": "2026-10-30",
     "fq": "2027年3月期 第2四半期 (2026년 7~9월)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "부합권",
+    "vcolor": "#c9a24a",
+    "est": "5,640.87 억엔",
     "range": "",
     "cons": null,
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null,
+    "rho": 0.673,
+    "state": "부분분기",
     "observatory": {
       "sector": "mlcc",
       "ticker": "6981.T",
       "name": "무라타 제작소",
       "axes": 6,
-      "model_gate": "관측 전용 · 예측 보류",
+      "model_gate": "기존 무역모델",
       "issues": 0,
       "monthly_period": null,
       "monthly_yoy_3m": null,
@@ -369,38 +316,24 @@ window.CMPD={
   "MITSUIKZ2": {
     "report_d": "2026-11-10",
     "fq": "FQ2'27 (7~9월)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "Beat (상단 초과)",
+    "vcolor": "#2fae66",
+    "est": "2,248.48 억엔",
     "range": "",
     "cons": "2,144.5 억엔",
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null
+    "rho": 0.797,
+    "state": "완전"
   },
   "FURUKAWA2": {
     "report_d": "2026-11-09",
     "fq": "FQ2'27 (7~9월)",
-    "verdict": "예측 보류 · 관측 진단",
-    "vcolor": "#8a93a6",
-    "est": null,
+    "verdict": "Beat (상단 초과)",
+    "vcolor": "#2fae66",
+    "est": "3,664.34 억엔",
     "range": "",
     "cons": "3,628.3 억엔",
-    "rho": null,
-    "state": "예측 보류",
-    "forecast_gate": {
-      "enabled": false,
-      "reason": "Lineage missing, stale, or requires adapter reconciliation."
-    },
-    "target_period_end": null,
-    "official_guidance": null,
-    "proxy_coverage": null
+    "rho": 0.663,
+    "state": "완전"
   },
   "FN": {
     "report_d": "2026-11-02",
