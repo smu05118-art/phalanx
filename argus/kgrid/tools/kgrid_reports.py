@@ -758,6 +758,27 @@ def _keep(t):
     return bool(re.search(r"수주|매출|거래처|매출처|고객|납기|잔고|잔액|지역", blob))
 
 
+HDR_ROOT = None          # 머리행 지도 엔진 root(기본 argus/) — 테스트가 임시 디렉터리로 바꾼다
+
+
+def _hdr_record(out, orders):
+    """머리행 지도(advisory, 2026-10-12) — 수주표 후보 전부와 채택 1장을 공용 엔진(argus/kce/tools/hdrmap.py)에
+    기록·커밋한다(ent ← entity_of 대괄호 라벨, tag ← shape). --reparse 가 매일 캐시 전부를 다시 읽으므로 과거 6분기
+    지도가 저절로 채워진다. 엔진은 내부 오류를 stderr·큐(engine_error)로 남기고 돌아오고, 여기서 나는 오류도
+    삼키되 stderr 에 남긴다 — 수집은 어떤 경우에도 멈추지 않는다(kce 정밀만 fail-closed)."""
+    try:
+        import hdrmap
+        best = out.get("orders") or {}
+        picks = [i for i, o in enumerate(orders) if best and (o["cols"], o.get("lead"), o["rows"])
+                 == (best.get("cols"), best.get("lead"), best.get("rows"))][:1]
+        hdrmap.record("kgrid", out["stock"], out["quarter"], "orders",
+                      [dict(o, tag=o.get("shape") or "", ent=o.get("entity") or "") for o in orders], picks,
+                      meta={"name": out.get("name"), "stock": out["stock"], "rcpNo": out.get("rcp")}, root=HDR_ROOT)
+        hdrmap.write("kgrid", key=out["stock"], root=HDR_ROOT)
+    except Exception as e:                                       # noqa: BLE001 — advisory
+        sys.stderr.write("hdrmap kgrid %s %s: %s: %s\n" % (out.get("stock"), out.get("quarter"), type(e).__name__, e))
+
+
 def collect_one(rec, quarter, force=False, log=sys.stderr, with_text=True):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
@@ -829,6 +850,7 @@ def collect_one(rec, quarter, force=False, log=sys.stderr, with_text=True):
                                     (out["orders"] or {}).get("shape", "-"),
                                     (out["orders"] or {}).get("cur", "-")))
     log.flush()
+    _hdr_record(out, orders)
     return out
 
 
@@ -869,6 +891,7 @@ def reparse_one(path, log=sys.stderr):
     d["reparsed"] = True
     d["ok"] = bool(d["orders"] or d["revenue"] or d["segment_sales"])
     atomic_write(path, json.dumps(d, ensure_ascii=False, indent=1) + "\n")
+    _hdr_record(d, orders)
     log.write("%s %s reparse %s %s\n" % (d.get("stock"), d.get("quarter"),
                                          "ok" if d["ok"] else "FAIL",
                                          (d["orders"] or {}).get("shape", "-")))

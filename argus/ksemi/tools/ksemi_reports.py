@@ -162,6 +162,35 @@ def _shrink_sales(s):
             "unit_seen": s["unit_seen"], "recon": s["recon"], "items": items[:40]}
 
 
+HDR_ROOT = None          # 머리행 지도 엔진 root(기본 argus/) — 테스트가 임시 디렉터리로 바꾼다
+
+
+def _hdr_stage(rec, q, rcp, o):
+    """머리행 지도(advisory, 2026-10-12) — 채택한 절의 수주표(P.orders 가 합산한 표 전부 = 채택)와 미지 머리행
+    (unknown_headers: 금액·기납품·잔고 중 2개 이상인데 필수 열이 빠진 표)을 공용 엔진(argus/kce/tools/hdrmap.py)
+    스테이지에 올린다. 미지는 엔진이 큐(unknown)에 올린다 — 이 탭은 지금껏 reports.json 에만 남겼다.
+    절 HTML 캐시를 매일 다시 읽으므로(--write) 과거 분기 지도도 저절로 채워진다. 수집은 멈추지 않는다."""
+    try:
+        import hdrmap
+        hdrmap.record("ksemi", rec["stock"], q, "orders",
+                      [dict(t, unit_seen=(t.get("unit") or {}).get("seen")) for t in o["tables"]],
+                      range(len(o["tables"])),
+                      # unknown 의 n 은 본문 행 수다(머리행 제외) — 엔진의 n(머리행 포함 원행수)이 아니라 n_rec 로 싣는다
+                      unknown=[dict(u, need=list(P._ORDER_NEED), n=None, n_rec=u.get("n"))
+                               for u in o["unknown_headers"]],
+                      meta={"name": rec.get("name"), "stock": rec["stock"], "rcpNo": rcp}, root=HDR_ROOT)
+    except Exception as e:                                       # noqa: BLE001 — advisory
+        sys.stderr.write("hdrmap ksemi %s %s: %s: %s\n" % (rec.get("stock"), q, type(e).__name__, e))
+
+
+def _hdr_commit(rec):
+    try:
+        import hdrmap
+        hdrmap.write("ksemi", key=rec["stock"], root=HDR_ROOT)
+    except Exception as e:                                       # noqa: BLE001 — advisory
+        sys.stderr.write("hdrmap ksemi %s: %s: %s\n" % (rec.get("stock"), type(e).__name__, e))
+
+
 def collect_one(rec, quarters, force=False, reparse=False, ix=None):
     """한 종목 수집. 예외를 밖으로 던지지 않고 `errors` 에 담는다."""
     out = {"stock": rec["stock"], "name": rec["name"], "market": rec["market"],
@@ -185,7 +214,7 @@ def collect_one(rec, quarters, force=False, reparse=False, ix=None):
             # 첫 후보(「4. 매출 및 수주상황」)가 표준이다. 수주표를 못 찾으면 다음
             # 후보(「수주상황」 단독 절·「매출실적」)까지 열어 본다 — 절 제목을
             # 회사가 쪼개 쓰는 경우가 있다.
-            best = None
+            best = best_o = None
             for j, node in enumerate(cands):
                 html, hit = _section_html(node, "ii4" if j == 0 else "ii4%d" % j,
                                           force=force and not reparse)
@@ -194,12 +223,13 @@ def collect_one(rec, quarters, force=False, reparse=False, ix=None):
                 cand = {"orders": _shrink_orders(o), "sales": _shrink_sales(s),
                         "node": node.get("text", "")}
                 if best is None:
-                    best = cand
+                    best, best_o = cand, o
                 if o["disclosed"]:
-                    best = cand
+                    best, best_o = cand, o
                     break
             qd.update(best)
             out["quarters"][q] = qd
+            _hdr_stage(rec, q, meta["rcpNo"], best_o)
         except Exception as e:                       # noqa: BLE001 — 종목별로 담는다
             out["errors"].append({"quarter": q, "error": "%s: %s"
                                   % (type(e).__name__, e)})
@@ -244,6 +274,7 @@ def collect_one(rec, quarters, force=False, reparse=False, ix=None):
             out["errors"].append({"quarter": q + "(annual)",
                                   "error": "%s: %s" % (type(e).__name__, e)})
     out["kpi"] = kpi(out)
+    _hdr_commit(rec)
     return out
 
 
@@ -359,6 +390,25 @@ def targets(only=None):
     return [r for r in rows if r["stock"] in keep]
 
 
+def _onboard(recs, prev_path=None, root=None):
+    """머리행 큐(advisory, 2026-10-12) — 직전 reports.json 에 없던 수집 대상을 new_company 로 올린다(설계 B-1).
+    이 탭은 모집단 전체가 아니라 targets()(지정 ∪ 탐색 편입)만 수집하므로 universe 가 아니라 직전 수집 결과와 비교한다.
+    같은 런의 collect_one 이 그 회사를 기록·커밋하면 엔진이 닫는다. 직전 결과가 없으면(첫 실행) 건너뛴다."""
+    try:
+        with open(prev_path or os.path.join(HERE, "assets", "reports.json"), encoding="utf-8") as f:
+            prev = {r["stock"] for r in json.load(f).get("rows") or []}
+    except Exception:                                            # noqa: BLE001
+        return []
+    if not prev:
+        return []
+    try:
+        import hdrmap
+        return hdrmap.onboard("ksemi", prev, [dict(r, key=r["stock"]) for r in recs], root=root) or []
+    except Exception as e:                                       # noqa: BLE001 — advisory
+        sys.stderr.write("[warn] 머리행 큐 신규 편입 기록 실패: %s: %s\n" % (type(e).__name__, e))
+        return []
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true")
@@ -378,6 +428,8 @@ def main():
     recs = targets(only)
     print("대상 %d종목 · %s~%s" % (len(recs), quarters[0], quarters[-1]),
           file=sys.stderr)
+    if a.write and not only:
+        _onboard(recs)
 
     ix = _load_index()
     rows, t0 = [], time.time()

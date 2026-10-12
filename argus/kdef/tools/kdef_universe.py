@@ -144,12 +144,31 @@ def select(recs):
     return picked
 
 
+def onboard(prev_rows, picked, root=None, log=sys.stderr):
+    """모집단 저장 직전 — 직전 universe.json 에 없던 종목을 머리행 큐(new_company)에 올린다(설계 B-1).
+    같은 런의 `kdef_reports --collect --n 2 --only REST` 가 그 회사를 받고, 기록·커밋되는 분기에 엔진이 닫는다.
+    직전 모집단이 비어 있으면(첫 생성·파일 유실) 올리지 않는다 — 72사 전부가 '신규'로 쏟아진다.
+    advisory: 큐를 못 써도 모집단 저장은 막지 않는다. 반환: 신규 종목 행."""
+    prev = {r["stock"] for r in prev_rows or []}
+    if not prev:
+        return []
+    try:
+        import hdrmap                       # kdef_lib 가 argus/kce/tools 를 sys.path 에 넣었다
+        return hdrmap.onboard("kdef", prev, picked, root=root) or []
+    except Exception as e:
+        log.write("[warn] 머리행 큐 신규 편입 기록 실패: %s: %s\n" % (type(e).__name__, e))
+        return []
+
+
 def fetch(write=False):
     recs = parse_kind(_get(KIND_URL))
     if len(recs) < MIN_ROWS:
         raise RuntimeError("KIND 목록이 %d행뿐" % len(recs))
     picked = select(recs)
     if write:
+        new = onboard(load(), picked)
+        if new:
+            sys.stderr.write("신규 편입 %d사: %s\n" % (len(new), ",".join(r["stock"] for r in new)))
         write_asset("universe.json", {"source": KIND_URL, "n": len(picked), "rows": picked})
     return picked
 

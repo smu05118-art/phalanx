@@ -180,12 +180,31 @@ def select(recs, probe=None, prev_explored=None):
     return picked
 
 
+def _onboard(prev_rows, picked, root=None):
+    """머리행 큐(advisory, 2026-10-12) — 직전 universe.json 에 없던 종목을 new_company 로 올린다(설계 B-1).
+    지도 키는 종목코드(kship 의 hdrmap 훅과 같다). 지도는 조선소(kship_yards)만 기록하므로 role=yard 만 올린다 —
+    기자재사를 올리면 기록될 일이 없어 영영 닫히지 않는다.
+    직전 모집단이 비면(첫 생성·파일 유실) 전부가 '신규'로 쏟아지므로 건너뛴다.
+    큐를 못 써도 모집단 저장은 막지 않는다."""
+    prev = {r["stock"] for r in prev_rows or []}
+    if not prev:
+        return []
+    try:
+        import hdrmap                       # *_lib 이 argus/kce/tools 를 sys.path 에 넣었다
+        yards = [dict(r, key=r["stock"]) for r in picked if r.get("role") == "yard"]
+        return hdrmap.onboard("kship", prev, yards, root=root) or []
+    except Exception as e:                  # noqa: BLE001 — advisory
+        sys.stderr.write("[warn] 머리행 큐 신규 편입 기록 실패: %s: %s\n" % (type(e).__name__, e))
+        return []
+
+
 def fetch(write=False):
     recs = parse_kind(_get(KIND_URL))
     if len(recs) < MIN_ROWS:
         raise RuntimeError("KIND 목록이 %d행뿐" % len(recs))
     picked = select(recs)
     if write:
+        _onboard(load(), picked)
         write_asset("universe.json", {"source": KIND_URL, "n": len(picked), "rows": picked})
     return picked
 
