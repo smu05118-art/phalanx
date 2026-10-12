@@ -536,6 +536,24 @@ _FC = {"panel": None, "src": None, "mod": None, "tried": False}
 _OV = {"mod": None, "con": None, "tried": False}
 
 
+def ledger_asof(rows):
+    """'진행중'을 가르는 기준일 — 실행 날짜가 아니라 **원장의 최신 공시 접수일**(rcpNo 앞 8자리).
+    date.today() 를 쓰면 데이터가 같아도 날마다 페이지가 바뀌어 봇 diff 가 커졌다(검토 R2-4). 원장이
+    비면 None(렌더러 기본값=오늘)으로 둔다."""
+    import datetime
+    best = None
+    for r in rows or []:
+        rc = str(r.get("rcp") or "")
+        if len(rc) >= 8 and rc[:8].isdigit():
+            try:
+                d = datetime.date(int(rc[:4]), int(rc[4:6]), int(rc[6:8]))
+            except ValueError:
+                continue
+            if best is None or d > best:
+                best = d
+    return best
+
+
 def _orders_section(stock):
     if not _OV["tried"]:
         _OV["tried"] = True
@@ -558,7 +576,7 @@ def _orders_section(stock):
         f = (_FC.get("panel") or {}).get(stock) if "_FC" in globals() else None
         # 렌더러에 따라 다른 종목 행이 섞이면 거부한다(knuke) — 항상 회사 행만 넘긴다.
         rows = [r for r in _OV["con"] if r.get("stock") in (None, stock)]
-        return _OV["mod"].render_orders_section(ent, rows, f) or ""
+        return _OV["mod"].render_orders_section(ent, rows, f, today=ledger_asof(_OV["con"])) or ""
     except Exception as e:
         sys.stderr.write("[warn] %s 수주 상세 렌더 실패: %s\n" % (stock, e))
         return ""

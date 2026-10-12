@@ -315,7 +315,7 @@ def _gantt_svg(rows, uid, today, money, title, t0, t1, desc_extra=''):
     if t0 <= today <= t1:
         xt = x(today)
         parts.append(f'<path data-part="today" d="M{xt:.1f},{TOP-4}V{H-BOT+4}" stroke="currentColor" stroke-dasharray="4 3" fill="none"/>'
-                     f'<text x="{xt:.1f}" y="{TOP-20}" text-anchor="middle" font-size="10" fill="currentColor">오늘 {today.isoformat()}</text>')
+                     f'<text x="{xt:.1f}" y="{TOP-20}" text-anchor="middle" font-size="10" fill="currentColor">기준일 {today.isoformat()}</text>')
     for i, r in enumerate(rows):
         y = TOP + ROW*i
         col = _domain_of(r)[1]

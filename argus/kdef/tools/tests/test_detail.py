@@ -121,6 +121,20 @@ class TestExport(unittest.TestCase):
         for p in ("우리 정부", "지방정부", "에드먼턴 시정부 (The City of Edmonton)",
                   "타이중시 정부 도시철도공정국(Rapid Transit System Bureau of Taichung City Government)"):
             self.assertNotEqual(KC.party_kind(p)[0], "G2G", p)
+        # 경계: `호주 정부`는 해외 정부(`주 정부` 지방정부 규칙에 걸리면 안 된다), `중앙정부`는 국내,
+        # 대문자 `GOVERNMENT OF INDIA`도 해외 정부.
+        self.assertEqual(KC.party_kind("호주 정부")[0], "G2G")
+        self.assertEqual(KC.party_kind("호주정부")[0], "G2G")
+        self.assertNotEqual(KC.party_kind("중앙정부")[0], "G2G")
+        self.assertEqual(KC.party_kind("GOVERNMENT OF INDIA")[0], "G2G")
+
+    def test_korean_name_with_english_paren_in_domestic_region(self):
+        """법인 접미 없는 한글 이름 + 괄호 영문 + 공급지역 국내 → 국내(수출 아님). 지역이 해외면 그대로."""
+        self.assertTrue(KC._ko_paren_domestic("현대중공업 (HYUNDAI HEAVY INDUSTRIES CO., LTD.)", "대한민국"))
+        self.assertTrue(KC._ko_paren_domestic("한국철도공사(KORAIL)", "대한민국"))
+        self.assertFalse(KC._ko_paren_domestic("한국철도공사(KORAIL)", ""))
+        self.assertFalse(KC._ko_paren_domestic("이집트 철도청(Egyptian National Railways)", "이집트"))
+        self.assertFalse(KC._ko_paren_domestic("Larsen & Toubro Limited (L&T)", "대한민국"))
 
     def test_party_domestic_corp_and_prime_aliases(self):
         """국내 법인 + 괄호 영문 병기는 FOREIGN 이 아니다. KARI≠KAI, LIG D&A·한화디펜스는 체계업체 별칭."""
@@ -530,3 +544,13 @@ class TestPaletteSync(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLedgerAsof(unittest.TestCase):
+    def test_asof_is_latest_filing_not_today(self):
+        """기준일은 원장 최신 접수일(rcpNo 앞 8자리) — 실행 날짜가 아니다."""
+        import datetime
+        import kdef_page as KP
+        rows = [{"rcp": "20260909800123"}, {"rcp": "20261012900456"}, {"rcp": "bad"}, {}]
+        self.assertEqual(KP.ledger_asof(rows), datetime.date(2026, 10, 12))
+        self.assertIsNone(KP.ledger_asof([]))

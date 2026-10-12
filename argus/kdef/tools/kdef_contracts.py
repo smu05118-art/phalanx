@@ -65,11 +65,11 @@ _DEF_BUYER = re.compile(r"방위사업청|국방과학연구소|국방기술진�
 # 발주)·`지방정부`는 국방 조달이 아니라 FOREIGN/DOMESTIC 으로 남긴다.
 _G2G = re.compile(r"국방부|국방물자청|국방조달|군비청|방위성|방위장비청|국방획득|국방부처|"
                   r"(?:해외|외국|국외)\s*정부(?:기관)?|[가-힣A-Za-z]{2,}\s*정부(?:기관)?\s*(?:\([^)]*\))?\s*$|"
-                  r"Government|"
+                  r"(?i:Government)|"
                   r"Ministry of Defen[cs]e|Ministry of National Defen[cs]e|Defence Ministry|"
                   r"Defen[cs]e Materiel|Armament Agency|Defen[cs]e Acquisition(?! Program Admin)")
-_G2G_CITY = re.compile(r"시\s*정부|주\s*정부|지방\s*정부|지자체|City|Municipal|시청|도청|군청")
-_KR = re.compile(r"대한민국|Republic of Korea|한국\s*정부|우리\s*정부|우리나라")
+_G2G_CITY = re.compile(r"시\s*정부|(?<!호)주\s*정부|지방\s*정부|지자체|City|Municipal|시청|도청|군청")
+_KR = re.compile(r"대한민국|Republic of Korea|한국\s*정부|우리\s*정부|우리나라|중앙\s*정부")
 # 익명 표기 — 실측 19건 중 1건(KAI `해외 완제기 업체`). 이름이 없으면 없다고 적는다.
 _ANON = re.compile(r"비공개|공시유보|유보|익명|영업비밀|소재\s*업체|소재\s*법인|"
                    r"해외\s*[^,()]{0,8}(?:업체|고객|법인|바이어)|국내\s*[^,()]{0,8}업체")
@@ -85,7 +85,7 @@ PRIME_NAMES = {
     # 한화디펜스(2022-11 한화에어로스페이스에 합병)·한화방산도 012450 — 합병 전 공시의 상대다(실측 K56·30mm).
     "012450": r"한화에어로스페이스|한화\s*에어로|Hanwha\s*Aerospace|한화디펜스|Hanwha\s*Defense|한화방산",
     # `한국항공우주연구원`(KARI, 정부출연연)은 KAI 가 아니다 — `한국항공우주` 부분일치가 연구원을 체계업체로
-    # 읽어 누리호·정지궤도 위성 계약(비츠로넥스텍·제노코)이 KAI 하도급으로 묶였다(실측 8건).
+    # 읽어 쎄트렉아이·AP위성·아이쓰리시스템·기가레인·비츠로넥스텍의 위성·발사체 계약이 KAI 하도급으로 묶였다(실측 12건).
     "047810": r"한국항공우주산업|한국항공우주(?!\s*연구원)|KAI\b|Korea Aerospace(?!\s*Research)",
     # LIG넥스원은 2026년 LIG디펜스앤에어로스페이스(LIG D&A)로 이름을 바꿨다 — 한글 풀이표기와 약칭도 받는다.
     "079550": r"LIG디펜스앤에어로스페이스|엘아이지디펜스앤에어로스페이스|LIG\s*D&A|LIG디앤에이|LIG넥스원|LIG\s*Nex1|엘아이지넥스원",
@@ -276,6 +276,20 @@ def region_is_foreign(region):
     return not _REGION_DOMESTIC.search(r)
 
 
+_HANGUL_HEAD = re.compile(r"^[가-힣]")
+
+
+def _ko_paren_domestic(party, region):
+    """`현대중공업 (HYUNDAI HEAVY INDUSTRIES CO., LTD.)`·`한국철도공사(KORAIL)` — 법인 접미 없이 한글 이름에
+    영문을 괄호로만 병기한 국내 상대. 공급지역이 **명시적으로 국내**일 때만 국내로 돌린다(실측 2건;
+    보잉·이집트 철도청 등 지역이 해외인 19건은 그대로 FOREIGN)."""
+    p = (party or "").strip()
+    if not _HANGUL_HEAD.search(p) or _LATIN.search(_PAREN.sub(" ", p)):
+        return False
+    r = (region or "").strip()
+    return bool(r) and not region_is_foreign(r)
+
+
 def export_of(party_kind, party, region, name):
     """→ (export: bool, kind: 'direct'|'indirect'|'', basis: 'party'|'region'|'name'|'')."""
     if party_kind in ("G2G", "FOREIGN"):
@@ -386,11 +400,13 @@ def _fields_from_kv(kv):
                     or _find(kv, "확정계약금액") or _find(kv, "계약금액") or "")
     party = _find(kv, "계약상대") or ""
     kind, prime = party_kind(party)
+    region = _find(kv, "판매", "지역") or _find(kv, "공급지역") or ""
+    if kind == "FOREIGN" and _ko_paren_domestic(party, region):
+        kind = "DOMESTIC"
     start = _date(_find(kv, "계약기간", "시작") or _find(kv, "시작일") or "")
     end = _date(_find(kv, "계약기간", "종료") or _find(kv, "종료일") or "")
     payterm = _find(kv, "대금지급") or ""
     dom = domain_of(name, party)
-    region = _find(kv, "판매", "지역") or _find(kv, "공급지역") or ""
     exp, exp_kind, exp_basis = export_of(kind, party, region, name)
     return {
         "name": name,
