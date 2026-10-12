@@ -1362,7 +1362,8 @@
     lazySection('prince', function (done) {
       var h = body('prince'), steel = win.ARGUS_STEEL;
       if (steel && win.PHXSteelUI) {
-        h.innerHTML = '<div data-steel-lens></div><details class="ag-card"><summary>이전 공개 연구 지표와 출처</summary><div data-steel-archive></div></details>';
+        h.innerHTML = '<div data-steel-price-reference></div><div data-steel-lens></div><details class="ag-card"><summary>이전 공개 연구 지표와 출처</summary><div data-steel-archive></div></details>';
+        h.querySelector('[data-steel-price-reference]').innerHTML = win.PHXSteelUI.priceReferenceHTML(steel, Math.min(760, Math.max(320, h.clientWidth || 640)));
         win.PHXSteelUI.mountLens(h.querySelector('[data-steel-lens]'), steel.interpretation, steel.persona);
         mountResearch(h.querySelector('[data-steel-archive]'), data.research, 'prince', true);
       } else mountResearch(h, data.research, 'prince');
