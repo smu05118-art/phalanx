@@ -20,17 +20,25 @@ prC/prCv 갱신, backtest·curve·headers 재생성(갱신 후 스테일 — 경
 """
 import argparse
 import datetime
+import importlib
+import importlib.util
 import json
 import os
 import re
 import sys
 
+import hdrmap
 import kce_render
 from kce_lib import CORP, atomic_write, extract_data, inject_data, norm_col, q_next
-from kce_parse import parse_ii4, parse_p8, region_of
+from kce_parse import lead_tail, parse_ii4, parse_p8, region_of, sector_of
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KCE = os.path.dirname(HERE)
+
+# XI-1 진행 현황(설계 C·U3) — kce_xi1 모듈이 들어오면 update_quarter 가 III-8 다음에 부른다. 없으면 건너뛴다.
+# find_spec 으로 '있는가'만 보고 import 는 그대로 한다 — 모듈 **안의** ImportError 를 '모듈 없음'으로 삼키면
+# XI-1 이 조용히 꺼진다(fail-closed 위반).
+_xi1 = importlib.import_module("kce_xi1") if importlib.util.find_spec("kce_xi1") else None
 with open(os.path.join(HERE, "assets", "curve_D.json"), encoding="utf-8") as _f:
     CURVE = json.load(_f)
 
@@ -167,6 +175,124 @@ def _tag_ent(lead, ents):
     tail = (lead or "")[-300:]
     hit = [e for e in ents if e and e in tail]
     return max(hit, key=len) if hit else None
+
+
+def _hdr_ent(lead, D, k, labels=()):
+    """머리행 지도(headers.html) 항목의 법인 — _apply_ii4 의 표 단위 귀속과 같은 규칙.
+
+    ① _tag_ent(lead, summary.ents) ② 그 법인이 이번 분기 비집계(src='')면 버린다 — _apply_ii4 가 그
+    표를 집계 대상 대표 법인으로 넘기는 것과 같다(계룡건설 [종속회사 현황]■ ㈜케이알산업 표: 상류 D 도
+    ent='계룡건설' 19건) ③ summary.ents 에 없는 법인 표기는 지도에 이미 적힌 표기(labels)와 _ent_key 로
+    대조한다 — DL이앤씨 해외 종속 5법인('● DL USA Inc.' → 'DL USA')은 summary.ents 에 없어 ①로는 전부
+    대표 법인이 되고 다분기 대조가 가짜 「바뀜」이 된다 ④ 못 찾으면 대표 법인(ents[0]).
+    상류 D 17사 ii4 636표 대조: ent 621 일치(불일치 15 = GS이니마 원문 표기 'GS Inima Environment' 13·
+    에스앤아이건설 1·자이씨앤에이 1 — 전부 2025Q1 이전 이력, tests.test_headers_render)."""
+    ents = D["summary"]["ents"]
+    e = _tag_ent(lead, ents)
+    live = _agg_ents(D, k)
+    if e and live and e not in live:
+        e = None
+    if not e and labels:
+        tk = _ent_key((lead or "")[-300:])
+        hit = [lb for lb in labels if _ent_key(lb) and _ent_key(lb) in tk]
+        if hit:
+            e = max(hit, key=lambda lb: len(_ent_key(lb)))
+    return e or (ents[0] if ents else "")
+
+
+def _tag_by_ent(D):
+    """법인별로 표를 쪼개 공시하는 회사인가 — 집계 대상이었던 적이 있는 법인이 둘 이상.
+    상류 D 실측: 현대건설·자이에스앤디·DL이앤씨는 ii4 항목 전부 tag==ent, GS건설은 관급/민간/국내/해외 표지가
+    tag 를 차지하고(표지 우선), 계룡건설(케이알산업은 늘 비집계)·나머지 단일 법인사는 tag ''."""
+    src = D["summary"].get("src") or {}
+    return sum(1 for e in D["summary"]["ents"]
+               if any(v not in ("", None) for v in (src.get(e) or []))) >= 2
+
+
+def _hdr_tag(lead, ent, by_ent):
+    """지도 tag — 꼬리 표지(관급/민간/국내/해외) > 국내/해외 > (법인 분할 회사면) 법인 > ''.
+    상류 D 636표 중 635 재현(불일치 1 = 자이씨앤에이 ent 오판이 tag 로 번진 1건)."""
+    return sector_of(lead) or region_of(lead, None) or (ent if by_ent else "")
+
+
+def _ii4_headers(D, k, cands, used, labels=()):
+    """rep['headers']['ii4'] — 두 절(본문 ii4·XII 상세표 ii4x)의 후보 표 전부를 **원문 순서**로.
+
+    원문 순서 = II. 사업의 내용(ii4) 다음 XII. 상세표(ii4x), 절 안에서는 표 순번(idx). 상류 D 가 그렇다 —
+    동부건설 2026Q2 는 [본문 '라-1.' 표(비채택), 상세표 건설부문 103행, 상세표 기타부문 66행]. 대조 키가
+    ent|tag#순번이라 순서가 어긋나면 분기마다 가짜 「바뀜」이 난다.
+      · 채택 절의 채택 표   pick True, reason picked
+      · 비채택 절의 채택 표 pick False, reason dup_section(행수 작은 쪽 절 — 같은 수주 표의 다른 판)
+      · 각 절의 비채택 후보 pick False, reason = 파서 사유(near_miss|no_core)
+    n = 머리행 포함 원행수(n_raw — 상류 D 의 n), n_rec = 레코드 수(채택 가능 표만).
+    cols = 상류 지도식 열 이름(cols_up — 금호 III-8 '(단위: 백만원) 구분'·계룡 '현장명 - 건축'), ncols·fields =
+    파서가 사전에 물은 정규화 열과 그 매핑(대조·A/B 판정은 이쪽 — 엔진이 마스킹 비교에 ncols 를 쓴다)."""
+    by_ent = _tag_by_ent(D)
+    out = []
+    for suf in ("ii4", "ii4x"):
+        c = next((x for x in cands if x[1] == suf), None)
+        if c is None:
+            continue
+        pr = c[2]
+        items = ([(t["idx"], t, True) for t in pr["tables"]]
+                 + [(r["idx"], r, False) for r in pr.get("rejected") or []])
+        for _i, t, ok in sorted(items, key=lambda x: x[0]):
+            pick = ok and suf == used
+            lead = t.get("lead") or ""
+            ent = _hdr_ent(lead, D, k, labels)
+            out.append({"cols": list(t.get("cols_up") or t["cols"]), "ncols": list(t["ncols"]),
+                        "fields": list(t["fields"]),
+                        "n": t["n_raw"] if ok else t["n"],
+                        "n_rec": t["n_rec"] if ok else None, "lead": lead_tail(lead),
+                        "ent": ent, "tag": _hdr_tag(lead, ent, by_ent), "pick": pick,
+                        "reason": "picked" if pick else ("dup_section" if ok else t["reason"]),
+                        "sec": suf})
+    return out
+
+
+def _p8_headers(pp):
+    """rep['headers']['p8'] — _apply_p8 **뒤에** 부른다(연속성 점수로 뒤집힌·정해진 최종 basis).
+    tag = 최종 basis. 비채택 후보(meta_p8 메타표·near_miss·few_fields)는 pick False·tag '' — 연결/별도
+    대조 키(|연결#n)에 끼면 채택 표 순번이 밀려 가짜 「바뀜」이 난다."""
+    items = ([(t["idx"], t, True) for t in pp["tables"]]
+             + [(r["idx"], r, False) for r in pp.get("rejected") or []])
+    out = []
+    for _i, t, ok in sorted(items, key=lambda x: x[0]):
+        lead = t.get("lead") or ""
+        basis = (t.get("basis") or "") if ok else ""
+        out.append({"cols": list(t.get("cols_up") or t["cols"]), "ncols": list(t["ncols"]),
+                    "fields": list(t["fields"]),
+                    "n": t["n_raw"] if ok else t["n"],
+                    "n_rec": t["n_rec"] if ok else None, "lead": lead_tail(lead),
+                    "basis": basis, "tag": basis, "pick": ok,
+                    "reason": "picked" if ok else t["reason"]})
+    return out
+
+
+def _enqueue_unknown(co, q, role, parsed, root):
+    """미지 머리행(near_miss) → 대기열(kind unknown). raise 직전에 부른다 — fail-closed 는 그대로 두고 증거만 남긴다.
+    원문 행(rows·spans)을 함께 넘겨 엔진이 '별칭을 고치면 레코드가 서는가'(A/B ②)를 실측하게 한다(저장은 안 됨)."""
+    for r in parsed.get("rejected") or []:
+        if r.get("reason") != "near_miss":
+            continue
+        hdrmap.enqueue("kce", {"kind": "unknown", "key": co, "role": role, "quarter": q,
+                               "cols_raw": list(r["cols"]), "ncols": list(r["ncols"]),
+                               "fields": list(r["fields"]), "n": r["n"], "lead": lead_tail(r.get("lead")),
+                               "name": CORP[co]["name"], "stock": CORP[co]["stock"],
+                               "rows": r.get("rows"), "checks": {"spans": r.get("spans") or []}},
+                       root=root, strict=True)
+
+
+def _unknown_fail(co, q, role, parsed, msg, record, root):
+    """미지 헤더 fail-closed: (apply 면) 큐에 올리고 → 그 회사 스테이지를 버리고 → UnknownHeaderError.
+    큐 기록이 실패해도 삼키지 않는다 — 같은 예외 종류로 사유를 붙여 올린다(kce_watch 가 stage='headers' 로 가른다)."""
+    hdrmap.discard("kce", co)
+    if record:
+        try:
+            _enqueue_unknown(co, q, role, parsed, root)
+        except Exception as e:
+            raise hdrmap.UnknownHeaderError("%s (대기열 기록 실패: %s: %s)" % (msg, type(e).__name__, e)) from e
+    raise hdrmap.UnknownHeaderError(msg)
 
 
 def _src_at(D, ent, k):
@@ -459,10 +585,20 @@ def _apply_p8(D, parsed, k, rep):
         # (HDC현산은 2023Q4부터 연결 표만 낸다 — '별도'로 단정하면 전량 오배정된다)
         tabs[0]["basis"] = ("연결" if score(tabs[0], "연결") >= score(tabs[0], "별도")
                             else "별도")
+    # 셋째 표부터는 위 짝 배정에 들지 않는다. lead 로 구분을 못 읽은 표는 지금까지 아래 루프의 기본값
+    # ('별도')으로 들어갔는데, 동부건설 2026Q2 셋째 표([기타부문 : 동부엔지니어링㈜] 9행)는 종속회사 표라
+    # 원본 DATA 가 6사업장 전부 p8['연결']에 둔다 — 재적재하면 '별도' 6칸이 새로 생겼다(상류 지도 D 도 '연결').
+    # 표가 하나일 때와 같은 직전 분기 연속성 규칙으로 정한다(동점이면 연결 — 같은 규칙).
+    for t in tabs[2:]:
+        if t["basis"] is None:
+            t["basis"] = "연결" if score(t, "연결") >= score(t, "별도") else "별도"
     sep_vals = {}
     used = set()                                # (site, basis) 중복 배정 방지
     for tab in sorted(tabs, key=lambda t: t["basis"] != "별도"):   # 별도 먼저
         basis = tab["basis"] or "별도"
+        # 실제로 쓴 구분을 표에 되적는다 — 머리행 지도(rep['headers']['p8'])는 이 **최종** basis 를 기록한다.
+        # 되적지 않으면 None 이 ''로 남아 지도가 '구분 없음'을 영구 기록한다(U2 이전 동작).
+        tab["basis"] = basis
         for rec in tab["rows"]:
             if rec.get("amt") is None or _is_agg(rec):
                 continue
@@ -773,13 +909,18 @@ def _validate(D):
     json.dumps(D)
 
 
-def update_quarter(co, q, raw_dir, apply=False, forecast=False):
+def update_quarter(co, q, raw_dir, apply=False, forecast=False, hdr_root=None):
+    """hdr_root: 머리행 지도·대기열의 argus/ 루트(기본: 이 레포 — 테스트·점검은 임시 루트를 준다).
+    대기열(미지 헤더 증거)은 apply 일 때만 쓴다 — dry-run 은 파일을 건드리지 않는다는 계약(§3.8). 단
+    hdr_root 를 명시하면(테스트) 그 루트에 쓴다."""
     path = os.path.join(KCE, co, "index.html")
     D = extract_data(path)
+    queue_on = bool(apply or hdr_root)
+    hdrmap.discard("kce", co)          # 같은 프로세스의 앞선 실패 시도가 남긴 스테이지가 이번 렌더에 섞이지 않게
     rep = {"co": co, "quarter": q, "events": 0, "p8_cells": 0, "fcst_cells": 0,
            "agg_rows": [], "created": [], "disappeared": [], "p8_unmatched": [],
-           # 이번 분기 파서가 실제로 채택한 표의 머리행 — headers.html('파서 머리행 지도')의
-           # 입력이자, 회사가 열 이름을 바꿨을 때의 감시 로그다(UPDATE.md §7).
+           # 이번 분기 파서가 본 후보 표의 머리행(채택·비채택) — headers.html('파서 머리행 지도')·
+           # hdrmap.json 의 입력이자, 회사가 열 이름을 바꿨을 때의 감시 로그다(UPDATE.md §7).
            "headers": {"ii4": [], "p8": []}}
     if q in D["fq"]:
         k = D["fq"].index(q)                      # 재적재(정정 반영)
@@ -804,17 +945,21 @@ def update_quarter(co, q, raw_dir, apply=False, forecast=False):
         raise RuntimeError("II-4 원문 파일이 없다: %s_{ii4x,ii4}.html" % co)
     cands.sort(key=lambda x: -x[0])
     nrows, used, parsed = cands[0]
-    # 채택된 쪽의 미지 헤더만 fail-closed 대상이다(다른 절의 무관한 표는 제외)
+    # 채택된 쪽의 미지 헤더만 fail-closed 대상이다(다른 절의 무관한 표는 제외).
+    # 갱신은 그대로 멈추고(raise), 멈추기 직전에 원문 머리행을 대기열에 남긴다 — 예전에는 kce_watch 가
+    # 임시 원문 디렉터리를 지워 Action 로그 한 줄 말고는 증거가 없었다.
     if parsed["unknown_headers"]:
-        raise RuntimeError("미지 헤더 — 파서 사전 갱신 필요(%s): %s"
-                           % (used, parsed["unknown_headers"][:2]))
+        _unknown_fail(co, q, "orders", parsed,
+                      "미지 헤더 — 파서 사전 갱신 필요(%s): %s" % (used, parsed["unknown_headers"][:2]),
+                      queue_on, hdr_root)
     if nrows == 0:
         raise RuntimeError(
             "II-4 표를 한 건도 파싱하지 못했다(%s). 절 선택 또는 열 별칭을 확인하라." % co)
     rep["ii4_source"] = used
-    rep["headers"]["ii4"] = [{"cols": t["cols"], "n": t["n"],
-                              "lead": (t["lead"] or "")[-120:]}
-                             for t in parsed["tables"]]
+    # 지도 ent 는 _apply_ii4 **전의** summary 로 판정한다(_apply_ii4 가 표 단위로 쓰는 것과 같은 상태).
+    labels = [lb for lb in kce_render.headers_ents(os.path.join(KCE, "headers.html"), co)
+              if lb not in D["summary"]["ents"]]
+    rep["headers"]["ii4"] = _ii4_headers(D, k, cands, used, labels)
     _apply_ii4(D, parsed, k, q, rep)
 
     p8_path = os.path.join(raw_dir, "%s_p8.html" % co)
@@ -822,11 +967,15 @@ def update_quarter(co, q, raw_dir, apply=False, forecast=False):
         with open(p8_path, encoding="utf-8") as f:
             pp = parse_p8(f.read())
         if pp["unknown_headers"]:
-            raise RuntimeError("III-8 미지 헤더: %s" % pp["unknown_headers"][:2])
-        rep["headers"]["p8"] = [{"cols": t["cols"], "n": t["n"],
-                                 "basis": t["basis"]} for t in pp["tables"]]
+            _unknown_fail(co, q, "progress", pp, "III-8 미지 헤더: %s" % pp["unknown_headers"][:2],
+                          queue_on, hdr_root)
         _apply_p8(D, pp, k, rep)
+        # 지도에는 _apply_p8 이 연속성 점수로 정한 **최종** 연결/별도를 적는다(조립을 apply 뒤로 옮긴 이유).
+        rep["headers"]["p8"] = _p8_headers(pp)
         _backfill_p8(D, k, rep)
+
+    if _xi1 is not None:      # XI-1(U3) — fail-soft: 미지는 rep['xi1_status']+대기열, 예외로 갱신을 막지 않는다
+        _xi1.apply(co, q, raw_dir, D, k, rep, hdr_root=hdr_root, queue=queue_on)
 
     # 붕괴 감시: 직전 분기 실측 사업장 중 이번에 사라진 비율이 임계치를 넘으면 중단한다.
     # 준공으로 빠지는 건 소수이고, 대량 소실은 표를 놓쳤다는 신호다(GS건설 99/90 사례).
@@ -858,17 +1007,26 @@ def update_quarter(co, q, raw_dir, apply=False, forecast=False):
         # 네 파일을 **전부 메모리에서 만들고 검증한 뒤** 한꺼번에 쓴다.
         # 파일별 atomic_write는 파일 하나의 원자성만 보장한다 — 중간에 렌더가 실패하면
         # index.html만 갱신된 반쪽 상태로 끝나고, 리포트에는 성공 표시조차 남지 않는다.
+        #
+        # 머리행 지도(hdrmap)는 엔진 계약대로 둘로 나눈다: 렌더는 그 회사 기록을 **스테이지**에만 올리고
+        # (hdrmap.json·대기열 무변화), 네 파일 쓰기가 전부 성공한 뒤에야 commit_kce 로 지도에 커밋한다.
+        # 어느 단계든 실패하면 스테이지를 버린다 — 실패한 분기가 지도에 영구 기록되면 다음 분기 대조가
+        # 그 오기록을 기준으로 삼는다(설계 G).
         co_dir = os.path.join(KCE, co)
-        pending = [(path, kce_render.replace_data(path, D)),
-                   (os.path.join(co_dir, "matrix.html"),
-                    kce_render.render_matrix_html(os.path.join(co_dir, "matrix.html"), D)),
-                   (os.path.join(co_dir, "trace.html"),
-                    kce_render.render_trace_html(os.path.join(co_dir, "trace.html"), D)),
-                   (os.path.join(KCE, "headers.html"),
-                    kce_render.render_headers_html(os.path.join(KCE, "headers.html"),
-                                                   co, q, rep["headers"]))]
-        for p, text in pending:
-            atomic_write(p, text)
+        hp = os.path.join(KCE, "headers.html")
+        try:
+            pending = [(path, kce_render.replace_data(path, D)),
+                       (os.path.join(co_dir, "matrix.html"),
+                        kce_render.render_matrix_html(os.path.join(co_dir, "matrix.html"), D)),
+                       (os.path.join(co_dir, "trace.html"),
+                        kce_render.render_trace_html(os.path.join(co_dir, "trace.html"), D)),
+                       (hp, kce_render.render_headers_html(hp, co, q, rep["headers"], root=hdr_root))]
+            for p, text in pending:
+                atomic_write(p, text)
+            hdrmap.commit_kce(co, root=hdr_root)
+        except BaseException:
+            hdrmap.discard("kce", co)
+            raise
         rep["applied"] = True
         rep["rerendered"] = ["matrix.html", "trace.html", "../headers.html"]
         # 나머지는 재생성기 미구현 — 갱신 후 옛 데이터로 남는다(UPDATE.md §7)

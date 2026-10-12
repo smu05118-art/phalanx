@@ -26,6 +26,7 @@ import traceback
 from kce_lib import CORP, extract_data, q_next, report_kind
 from kce_fetch import (api_key, api_reports, fetch_quarter, pick_report,
                        search_reports)
+import hdrmap
 import kce_build
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -111,9 +112,15 @@ def run(companies, apply=False, quarter=None, raw_dir=None):
                     "p8_unmatched": len(rep["p8_unmatched"]),
                 })
             except Exception as e:
-                out["failed"].append({"co": co, "quarter": q, "stage": "build",
-                                      "error": "%s: %s" % (type(e).__name__, e),
-                                      "trace": traceback.format_exc()[-800:]})
+                # 미지 머리행은 'headers' 단계로 가른다 — 원문은 아래 finally 가 지우지만 머리행·원문 행은
+                # kce_build 가 raise 직전에 대기열(hdr_queue.json)에 남겼다. 그 경로를 리포트에 싣는다.
+                hdr = isinstance(e, hdrmap.UnknownHeaderError)
+                item = {"co": co, "quarter": q, "stage": "headers" if hdr else "build",
+                        "error": "%s: %s" % (type(e).__name__, e),
+                        "trace": traceback.format_exc()[-800:]}
+                if hdr:
+                    item["queue"] = "argus/kce/tools/assets/hdr_queue.json"
+                out["failed"].append(item)
     finally:
         if made_tmp:
             shutil.rmtree(tmp, ignore_errors=True)
