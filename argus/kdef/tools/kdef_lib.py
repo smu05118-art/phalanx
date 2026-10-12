@@ -65,8 +65,10 @@ def has_asset(name):
 # ── 색 ─────────────────────────────────────────────────────
 # 계통(domain) 색은 슬롯에 **고정**한다(필터로 줄어도 재배색 금지). 조선 탭이 다크
 # 표면(#171a21)에서 검증한 8슬롯 팔레트를 그대로 쓴다.
-# 값은 kdef.css 의 --s1..--s8 과 **같아야 한다**(칩은 CSS 변수, 차트는 이 헥사를 쓴다 —
-# 두 벌이 어긋나면 같은 계통이 표와 차트에서 다른 색이 된다).
+# 값은 kdef.css 의 --s1..--s9 과 **같아야 한다**(칩은 CSS 변수, 차트는 이 헥사를 쓴다 —
+# 두 벌이 어긋나면 같은 계통이 표와 차트에서 다른 색이 된다). kdef_orders_views.DOMAINS 도
+# 같은 헥사를 들고 있다(그 모듈은 자립 렌더러라 import 하지 않는다) — tests/test_detail.py 가
+# 세 벌(PALETTE·kdef.css·orders_views)의 일치를 검사한다.
 PALETTE = [
     {"slot": 1, "hex": "#3987e5"},   # 지상
     {"slot": 2, "hex": "#d95926"},   # 해상
@@ -76,8 +78,14 @@ PALETTE = [
     {"slot": 6, "hex": "#008300"},   # 지휘통제통신
     {"slot": 7, "hex": "#9085e9"},   # 화력·탄약
     {"slot": 8, "hex": "#e66767"},   # 지원·정비
+    # 우주(SPACE, 2026-10 신설) — 청록. 이웃한 공중(초록)·지상(파랑)과 색상이 갈린다.
+    {"slot": 9, "hex": "#22a7c4"},
     {"slot": 0, "hex": "#5d6675"},   # 민수 — 회색(방산 축에서 빠진다는 뜻을 색으로도 보인다)
 ]
+# 계통을 못 읽었지만 **부품 이름**은 적힌 계약(`관성측정장치(IMU) 공급`) — 미상 가운데서도
+# '무기체계 이름이 없는 부품 계약'임을 따로 보인다. 계통 색이 아니라 밝은 회색.
+PART_HEX = "#8a93a3"
+UNKNOWN_HEX = "#5d6675"
 
 
 def slot_color(slot):
@@ -85,6 +93,29 @@ def slot_color(slot):
         if s["slot"] == slot:
             return s["hex"]
     raise KeyError(slot)
+
+
+# ── 주요 거래처 표의 부문명 행 ─────────────────────────────
+# II-4 「주요 매출처」가 거래처 이름 대신 **부문명**(한화시스템 `방산|ICT|신사업`, 쎄트렉아이
+# `위성사업`, 삼현 `기타 매출`)을 적는 회사가 있다. 부품사→체계업체 연결의 1등급 근거가
+# 부문명으로 오염되면 안 되므로 읽는 쪽 — **kdef_suppliers.build 의 customers 루프 한 곳** — 이
+# 이 판정으로 거른다(kdef_page 는 거래처 표를 그리지 않는다). 설계서 D절은 같은 거부를 파서
+# kdef_reports.parse_customers(U4)에도 두라고 했다 — 두 필터가 공존해도 무해하다(멱등, 부문명 행은
+# 어느 쪽에서든 빠진다).
+# `기타거래처`·`기타 매출처`(잔여 고객 묶음)는 거래처 축의 정보라 남긴다.
+# 한화오션은 거래처 이름 자리에 `10% 이상 차지하는 주요 고객수`(건수 행)를 적는다 — 이것도 거른다.
+import re as _re                                                             # noqa: E402
+
+_SEG_LABEL = _re.compile(r"^(방산|민수|ICT|IT|신사업|기타|합계|소계|상품|제품|용역|기타등|기타매출|"
+                         r"국내|해외|수출|내수)$|(부문|사업부|사업)$|고객수|거래처수|매출처수|^\d+%")
+
+
+def is_segment_label(name):
+    """거래처 이름이 실은 부문명인가 — 부문명이면 True(거래처 표에서 거른다)."""
+    n = _re.sub(r"[\s　]+", "", name or "")
+    if not n:
+        return True
+    return bool(_SEG_LABEL.search(n))
 
 
 # ── 숫자 표기 ───────────────────────────────────────────────
@@ -97,9 +128,11 @@ def fmt_eok(v):
 
 
 def fmt_n(v):
+    """수량 표기. num_of 가 float 로 돌려주므로 정수값이면 int 로 바꿔 쉼표 표기한다
+    (`format(1200.0, ",d")` 는 ValueError — 수량 축 페이지 생성에서 실측)."""
     if v is None:
         return "—"
-    return format(v, ",d") if float(v).is_integer() else format(v, ",.1f")
+    return format(int(v), ",d") if float(v).is_integer() else format(v, ",.1f")
 
 
 def fmt_x(v, digits=1):

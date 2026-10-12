@@ -11,6 +11,7 @@
   build_gantt(contracts, uid, today=None, money=True, stock=None, universe=None) -> dict
   build_schedule(contracts, uid, today=None, forecast_entry=None, money=True, quarters=None,
                  stock=None, universe=None) -> dict
+  build_schedule_by_year(contracts, uid, today=None, money=True, stock=None, universe=None, by='ctype') -> dict
   build_clients(contracts, uid, today=None, money=True, top_n=8, stock=None, universe=None) -> dict
   render_orders_section(panel_entry, contracts, forecast_entry=None, today=None, universe=None,
                         reported_backlog=None) -> str
@@ -29,23 +30,29 @@ MONEY_UNIT = 'KRW_million'
 QUARTERS = ['2026Q3', '2026Q4', '2027Q1', '2027Q2', '2027Q3', '2027Q4',
             '2028Q1', '2028Q2', '2028Q3', '2028Q4']
 
-# 방산 계통(domain) — 이 산업의 분류축. 색은 다크 배경에서 서로 구분되도록 고정 색을 쓴다.
+# 방산 계통(domain) — 이 산업의 분류축. 색은 kdef_lib.PALETTE(=kdef.css --s1..--s9)와 **같은 값**을
+# 들고 있다 — 이 모듈은 자립 렌더러라 import 하지 않지만, 두 벌이 어긋나면 같은 계통이 회사 페이지의
+# 차트와 간트에서 다른 색이 된다(2026-10 이전 실측). tests/test_detail.py 가 일치를 검사한다.
+# SPACE(우주)는 2026-10 신설 — 발사체·위성체(build_dicts.DOMAINS).
 DOMAINS = OrderedDict([
-    ('MISSILE', ('유도무기', '#d9534f')),
-    ('AIR', ('항공', '#4f8fd6')),
-    ('NAVAL', ('함정', '#2aa198')),
-    ('GROUND', ('지상', '#b58900')),
-    ('FIRE', ('화력·탄약', '#e07b2e')),
-    ('ISR', ('감시정찰', '#8e6bd0')),
-    ('C4I', ('지휘통신', '#3fa34d')),
-    ('SUPPORT', ('군수지원', '#9aa5b1')),
-    ('CIVIL', ('민수', '#5f6f7f')),
+    ('MISSILE', ('유도무기', '#c98500')),
+    ('AIR', ('항공', '#199e70')),
+    ('NAVAL', ('함정', '#d95926')),
+    ('GROUND', ('지상', '#3987e5')),
+    ('FIRE', ('화력·탄약', '#9085e9')),
+    ('ISR', ('감시정찰', '#d55181')),
+    ('C4I', ('지휘통신', '#008300')),
+    ('SUPPORT', ('군수지원', '#e66767')),
+    ('SPACE', ('우주', '#22a7c4')),
+    ('CIVIL', ('민수', '#5d6675')),
 ])
 UNCLASSIFIED = ('미분류', '#7d8491')
 CTYPES = {'UPGRADE': '성능개량', 'PBL': 'PBL', 'RND': '체계개발', 'FIRST': '최초양산',
-          'FOLLOW': '후속양산', 'SUPPLY': '물품구매·공급', 'UNKNOWN': '미상'}
+          'FOLLOW': '후속양산', 'EXPORT_EXEC': '수출사업 이행', 'SUPPLY': '물품구매·공급', 'UNKNOWN': '미상'}
+CTYPE_ORDER = ['RND', 'FIRST', 'FOLLOW', 'UPGRADE', 'PBL', 'EXPORT_EXEC', 'SUPPLY', 'UNKNOWN']
 PARTY_KINDS = {'GOV': '정부', 'PRIME': '체계업체', 'G2G': '해외정부', 'FOREIGN': '해외기업',
                'DOMESTIC': '국내기업', 'ANON': '익명', 'UNKNOWN': '미기재'}
+PARTY_ORDER = ['GOV', 'PRIME', 'G2G', 'FOREIGN', 'DOMESTIC', 'ANON', 'UNKNOWN']
 # 발주처 통합 표기. 입력이 지지하는 것만: LIG넥스원→LIG디펜스앤에어로스페이스(kdef_universe.json "구 LIG넥스원"),
 # 한화방산은 원문 표기 자체가 "한화에어로스페이스(주)와 합병"이라고 적는다.
 ALIASES = {'LIG넥스원': 'LIG디펜스앤에어로스페이스', 'LIG D&A': 'LIG디펜스앤에어로스페이스',
@@ -571,6 +578,70 @@ def build_schedule(contracts, uid, today=None, forecast_entry=None, money=True, 
             'forecast_quarters': fq, 'has_forecast': has_forecast, 'mismatches': mismatches, 'quarters': qs, 'rows': rows}
 
 
+# ---------------------------------------------------------------- 2b. 종료연도별 인도 일정(유형·상대 분해)
+def build_schedule_by_year(contracts, uid, today=None, money=True, stock=None, universe=None, by='ctype'):
+    """진행중(종료일 ≥ 기준일) 계약을 **종료 연도**로 묶고 계약유형(by='ctype') 또는 상대 갈래(by='party')로
+    쪼갠다. 분기 전환 스케줄(build_schedule)이 10분기 창에 계통색으로 쌓는 것과 달리, 창을 두지 않고
+    모든 진행중 계약을 담아 '몇 년치 일감이 어떤 유형·어떤 상대로 들어 있는가'를 보인다(실측: 진행중 349건
+    68.3조 — 2027 8.5·2028 12.5·2029 9.1·2033 12.8조). 종료일이 오늘 이전인 계약은 뺀다(인도 일정이 아니다).
+    금액은 공시 계약 총액이며 기인식분을 차감하지 않았다 — 잔고가 아니다."""
+    today = today or date.today()
+    rows = _ensure_norm(contracts, today, stock, universe)
+    open_rows = [r for r in rows if r['status'] == 'open']
+    key_of = (lambda r: r['ctype'] if r['ctype'] in CTYPES else 'UNKNOWN') if by == 'ctype' \
+        else (lambda r: r['party_kind'] if r['party_kind'] in PARTY_KINDS else 'UNKNOWN')
+    labels = CTYPES if by == 'ctype' else PARTY_KINDS
+    order = CTYPE_ORDER if by == 'ctype' else PARTY_ORDER
+    years = OrderedDict()
+    cols_used = OrderedDict()
+    for r in sorted(open_rows, key=lambda r: (r['end'], r['rcp'])):
+        y = str(r['end'].year)
+        b = years.setdefault(y, {'n': 0, 'sum': 0., 'n_noamt': 0, 'cells': OrderedDict()})
+        k = key_of(r)
+        c = b['cells'].setdefault(k, {'n': 0, 'sum': 0.})
+        b['n'] += 1
+        c['n'] += 1
+        if r['amt'] is not None:
+            b['sum'] += r['amt']
+            c['sum'] += r['amt']
+        else:
+            b['n_noamt'] += 1
+        cols_used[k] = True
+    cols = [k for k in order if k in cols_used] + [k for k in cols_used if k not in order]
+    total_n = sum(b['n'] for b in years.values())
+    total_sum = sum(b['sum'] for b in years.values())
+    title = '종료연도별 인도 일정 — ' + ('계약유형' if by == 'ctype' else '계약상대') + ' 분해'
+    parts = [f'<h4 id="{uid}-h">{esc(title)}</h4>']
+    if not years:
+        parts.append('<p>진행중(종료일이 기준일 이후) 계약 없음.</p>')
+        return {'html': ''.join(parts), 'years': years, 'cols': cols, 'total_n': 0, 'total_sum': 0., 'rows': open_rows}
+    hdr = ['종료 연도', '건수'] + [labels.get(k, k) for k in cols] + (['합계'] if money else [])
+    data = []
+    for y, b in years.items():
+        row = [y, b['n']]
+        for k in cols:
+            c = b['cells'].get(k)
+            if not c:
+                row.append('—')
+            elif money:
+                row.append(fmt0(c['sum']) + (f' ({c["n"]}건)' if c['n'] > 1 else ''))
+            else:
+                row.append(f'{c["n"]}건')
+        if money:
+            row.append(fmt0(b['sum']) + (f' · 미기재 {b["n_noamt"]}건' if b['n_noamt'] else ''))
+        data.append(row)
+    foot = ['합계', total_n] + [
+        (fmt0(sum(b['cells'].get(k, {}).get('sum', 0.) for b in years.values())) if money
+         else f'{sum(b["cells"].get(k, {}).get("n", 0) for b in years.values())}건') for k in cols]
+    if money:
+        foot.append(fmt0(total_sum))
+    data.append(foot)
+    parts.append(table(hdr, data, ('백만원 · 진행중 계약의 공시 총액을 종료 연도에 둠(기인식분 차감 없음, 잔고 아님)'
+                                   if money else '건수 · 금액 단위 미확인')))
+    return {'html': ''.join(parts), 'years': years, 'cols': cols, 'total_n': total_n, 'total_sum': total_sum,
+            'rows': open_rows}
+
+
 # ---------------------------------------------------------------- 3. 발주처별
 def _new_group(key, label):
     return {'key': key, 'label': label, 'kinds': [], 'n': 0, 'sum': 0., 'n_amt': 0, 'n_noamt': 0, 'n_open': 0,
@@ -761,6 +832,14 @@ def render_orders_section(panel_entry, contracts, forecast_entry=None, today=Non
             parts.append('<p>참고: 정기보고서 수주잔고는 단위 미확인 또는 외화라 싣지 않는다.</p>')
     parts.append(g['html'])
     parts.append(s['html'])
+    # 종료연도별 인도 일정 — 분기 전환 창(10분기) 밖까지 포함해 유형·상대로 쪼갠다(진행중 계약만).
+    yc = build_schedule_by_year(rows, uid + '-year-ctype', today, money, by='ctype')
+    yp = build_schedule_by_year(rows, uid + '-year-party', today, money, by='party')
+    parts.append(f'<h3 id="{uid}-year-h">종료연도별 인도 일정</h3>'
+                 f'<p>진행중 {yc["total_n"]}건을 공시 종료일의 연도로 묶었다. 분기 전환 스케줄의 창({QUARTERS[0]}~{QUARTERS[-1]}) '
+                 '밖에서 끝나는 장기 계약(폴란드 K2 2차 2033년 등)까지 담는다. 종료일은 공시된 계약기간의 끝이며 실제 인도 시점이 아니다.</p>')
+    parts.append(yc['html'])
+    parts.append(yp['html'])
     parts.append(c['html'])
     parts.append('<details><summary>이 조각의 규칙</summary><ul>'
                  '<li>상태: 종료일 ≥ 기준일이면 진행중, 아니면 종료 경과. 시작·종료일이 없거나 해석 불가·역전이면 기간 미상(막대·분기 제외, 발주처 집계 포함).</li>'
