@@ -2329,9 +2329,12 @@ function renderRackV2(){
     installComposite, configuration, modelConfiguration, safeURL};
 })(typeof window === 'undefined' ? globalThis : window);
 
-let pvRenderEpoch=0;
+// KPI 화면은 필터를 바꾸면 같은 canvas id로 즉시 다시 그린다. 이전 렌더의
+// setTimeout 콜백이 늦게 실행되면 새 canvas에 Chart를 중복 생성할 수 있으므로
+// 렌더 세대를 확인해 오래된 콜백을 폐기한다.
+let pvRenderEpoch=0, kpiRenderEpoch=0;
 function renderKpi(){
-  const toneEpoch=++pvRenderEpoch;
+  const toneEpoch=++pvRenderEpoch, kpiEpoch=++kpiRenderEpoch;
   const oldTone=document.getElementById('pvToneReaction');
   if(oldTone) ToneReactionUI.destroyWithin(oldTone);
   kDestroy(); const K=window.KPID||{};
@@ -2561,6 +2564,7 @@ function renderKpi(){
       }
     }
     setTimeout(()=>{
+      if(kpiEpoch!==kpiRenderEpoch) return;
       document.querySelectorAll('[data-pcco]').forEach(el=>el.onclick=()=>{ST.pcco=el.getAttribute('data-pcco');renderKpi();});
       document.querySelectorAll('[data-pcv]').forEach(el=>el.onclick=()=>{ST.pcview=el.getAttribute('data-pcv');renderKpi();});
       const f=document.getElementById('pcFin');
@@ -2750,6 +2754,7 @@ function renderKpi(){
       }
     }
     setTimeout(()=>{
+      if(kpiEpoch!==kpiRenderEpoch) return;
       document.querySelectorAll('[data-krcat]').forEach(el=>el.onclick=()=>{ST.krcat=el.getAttribute('data-krcat');ST.krco=null;renderKpi();window.scrollTo(0,0);});
       document.querySelectorAll('[data-krco]').forEach(el=>el.onclick=()=>{ST.krco=el.getAttribute('data-krco');renderKpi();});
       document.querySelectorAll('[data-krv]').forEach(el=>el.onclick=()=>{ST.krview=el.getAttribute('data-krv');renderKpi();});
@@ -3038,7 +3043,7 @@ function renderKpi(){
       }
     }
     setTimeout(()=>{
-      if(toneEpoch!==pvRenderEpoch||(pvSel&&!pvHot(pvSel))) return;
+      if(kpiEpoch!==kpiRenderEpoch||toneEpoch!==pvRenderEpoch||(pvSel&&!pvHot(pvSel))) return;
       if(pvSel) ToneReactionUI.render(document.getElementById('pvToneReaction'),
         pvEnt.st==='ok' ? (pvEnt.d||{}).tone_reaction : {ticker:pvSel,status:pvEnt.st==='err'?'error':'pending',
           missing_reasons:[pvEnt.st==='err'?'company_shard_load_failed':'company_shard_loading']});
@@ -3075,7 +3080,7 @@ function renderKpi(){
     },0);
   }
   if(K.mlcc?.hub&&(KC==='all'||KC==='mlcc')){
-    html+=mlccHubMarkup();setTimeout(bindMlccHub,0);
+    html+=mlccHubMarkup();setTimeout(()=>{if(kpiEpoch===kpiRenderEpoch)bindMlccHub();},0);
   }
   if(!K.mlcc?.hub&&(KC==='all'||KC==='mlcc')) html+=mlccHubMarkup();
   if(T&&FC&&(KC==='all'||KC==='tdk')){
@@ -3126,7 +3131,7 @@ function renderKpi(){
         <div class="co-cat">${kpiChips(meta.core_kpis)} ${th!=null?`· <b style="color:#ff4d5e">임계치 ${th}</b>`:''} ${blNum!=null?`· 기준선 ${blNum}`:''}</div></div></div>
         ${qs.length?`<div class="ch-wrap" style="height:280px"><canvas id="${cid}"></canvas></div>`:'<div style="font-size:11px;color:var(--dim);padding:6px 0">KPI 시계열 없음(커버리지 표 참조)</div>'}
         <div style="overflow-x:auto;margin-top:8px"><table class="tbl"><thead><tr><th>기업</th><th>보유 지표(분기수)</th><th>핵심 KPI 최신</th></tr></thead><tbody>${rows.join('')}</tbody></table></div></div>`;
-      if(qs.length) setTimeout(()=>{const el=document.getElementById(cid); if(!el)return;
+      if(qs.length) setTimeout(()=>{if(kpiEpoch!==kpiRenderEpoch)return;const el=document.getElementById(cid); if(!el)return;
         const ds=series.map(s=>({type:'line',label:s.name.slice(0,16),data:qs.map(q=>s.kp[q]!=null?+s.kp[q]:null),borderColor:s.col,borderWidth:1.8,pointRadius:1.5,tension:.2,spanGaps:true}));
         if(blNum!=null) ds.push(kHLine(qs,blNum,'#8a93a3',[4,4],'기준선'));
         if(th!=null) ds.push(kHLine(qs,th,'#ff4d5e',[7,4],'임계치 '+th));
@@ -3134,7 +3139,7 @@ function renderKpi(){
     });
   }
   document.getElementById('main').innerHTML=html||'<div class="panel" style="padding:24px">데이터 없음</div>';
-  setTimeout(()=>{document.querySelectorAll('[data-kcat]').forEach(el=>el.onclick=()=>{ST.kcat=el.getAttribute('data-kcat');renderKpi();window.scrollTo(0,0);});},0);
+  setTimeout(()=>{if(kpiEpoch!==kpiRenderEpoch)return;document.querySelectorAll('[data-kcat]').forEach(el=>el.onclick=()=>{ST.kcat=el.getAttribute('data-kcat');renderKpi();window.scrollTo(0,0);});},0);
 }
 let _platLoaded=false; const PCH={};
 const PST={src:'all',met:'',q:'',sel:[],base:'',focus:''};
