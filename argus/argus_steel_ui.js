@@ -18,7 +18,7 @@
     'www.seahsteelholdings.com','www.seah.co.kr','www.spglobal.com','www.argusmedia.com',
     'prestonpipe.com','www.prestonpipe.com','www.bls.gov','api.bls.gov',
     'www.cmegroup.com','www.dallasfed.org','www.federalreserve.gov','www.trade.gov','www.aogr.com','www.sec.gov','steelbenchmarker.com','www.steelbenchmarker.com','efracs.primaryvision.co','primaryvision.co','www.primaryvision.co'];
-  var STATUS = {actual:'실측·공시',derived:'공시 기반 계산',estimate:'원기관 추정',provider_estimate:'원기관 추정',forecast:'조건부 추정',user_reported:'사용자 제시 · 미검증',missing:'미확인'};
+  var STATUS = {actual:'실측·공시',derived:'공시 기반 계산',estimate:'추정',provider_estimate:'원기관 추정',forecast:'조건부 추정',user_reported:'사용자 제시 · 미검증',missing:'미확인'};
   var CSS = `
   .ast-root{color:var(--ink,#e6edf3);font:13px/1.6 var(--sans,system-ui,sans-serif);min-width:0;margin-bottom:28px;--ast-line:#29394c;--ast-dim:#a2b2c4}
   .ast-root *{box-sizing:border-box}.ast-root h3,.ast-root h4,.ast-root p{margin:0}.ast-root button,.ast-root select{font:inherit}
@@ -80,7 +80,7 @@
   function continuous(a,b,s) {
     if(!a||!b||s.connect===false||a.connect===false||b.connect===false||s.date_basis==='publication_snapshot'||a.date_basis==='publication_snapshot'||b.date_basis==='publication_snapshot'||s.frequency==='publication_snapshot'||b.break_before===true||a.conflict||b.conflict||!finite(a.value)||!finite(b.value)||b.time<=a.time)return false;
     var f=s.frequency||a.periodInfo.kind;
-    if(f==='quarterly'||f==='quarter')return a.periodInfo.kind==='quarter'&&b.periodInfo.kind==='quarter'&&b.periodInfo.index-a.periodInfo.index===1;
+    if(f==='quarterly'||f==='quarter'||f==='quarter_end')return a.periodInfo.kind==='quarter'&&b.periodInfo.kind==='quarter'&&b.periodInfo.index-a.periodInfo.index===1;
     if(f==='monthly'||f==='month')return b.periodInfo.index-a.periodInfo.index===1;
     if(f==='annual'||f==='yearly')return new Date(b.time).getUTCFullYear()-new Date(a.time).getUTCFullYear()===1;
     var max=finite(s.max_gap_days)&&s.max_gap_days>0?s.max_gap_days:f==='biweekly'?18:f==='weekly'||f==='week'?10:5;
@@ -91,8 +91,9 @@
     var out=[];
     s.points.forEach(function(p,i){var a=s.points[i-1];if(!continuous(a,p,s))return;var ca=statusClass(a),cb=statusClass(p);
       if(ca==='point'||cb==='point')return;
-      if(ca!==cb && !((ca==='actual'||ca==='derived')&&cb==='forecast'))return;
-      out.push({a:a,b:p,status:cb});
+      var factual=(ca==='actual'||ca==='derived')&&(cb==='actual'||cb==='derived');
+      if(ca!==cb && !factual && !((ca==='actual'||ca==='derived'||ca==='estimate')&&cb==='forecast'))return;
+      out.push({a:a,b:p,status:factual&&(ca==='derived'||cb==='derived')?'derived':cb});
     });return out;
   }
   function chartDomain(series, start, end) {
@@ -113,7 +114,7 @@
     return vals;
   }
   function sourceMap(payload){var map={};[].concat(payload.sources||[],payload.market&&payload.market.sources||[]).forEach(function(s){if(s&&s.id)map[s.id]=s;});(payload.companies||[]).forEach(function(c){(c.sources||[]).forEach(function(s){if(s&&s.id)map[s.id]=s;});});return map;}
-  function sourceFor(p,s,sources){return sources[p.source_id]||sources[(s.source_ids||[])[0]]||{};}
+  function sourceFor(p,s,sources){return sources[p.source_id]||sources[(p.source_ids||[])[0]]||sources[(s.source_ids||[])[0]]||{};}
   function pointText(p,s) {
     var parts=[p.period,s.name+': '+fmt(p.value)+' '+(s.unit||''),STATUS[p.status]||'미확인'];
     if(p.status==='forecast')parts.push('하단 '+fmt(p.low)+' / 기준 '+fmt(p.value)+' / 상단 '+fmt(p.high));
@@ -125,7 +126,7 @@
     return parts.join(' · ');
   }
   function valueTable(s,sources) {
-    return '<details class="ast-data"><summary>수치·기준·원문 '+s.points.length+'개 관측 펼치기</summary><div class="ast-table-wrap" tabindex="0" role="region" aria-label="'+esc(s.name)+' 수치 표"><table><caption>'+esc(s.name)+' · '+esc(s.unit||'단위 미확인')+' · 빈값 — · 추정 범위는 신뢰구간이 아닙니다.</caption><thead><tr><th scope="col">기간</th><th scope="col">값 / 기준</th><th scope="col">하단</th><th scope="col">상단</th><th scope="col">성격</th><th scope="col">발표일</th><th scope="col">근거</th></tr></thead><tbody>'+s.points.slice().reverse().map(function(p){var src=sourceFor(p,s,sources);return '<tr><th scope="row">'+esc(p.period)+'</th><td>'+esc(fmt(p.value))+'</td><td>'+esc(fmt(p.low))+'</td><td>'+esc(fmt(p.high))+'</td><td>'+esc(STATUS[p.status])+'</td><td>'+esc(p.published_at||src.published_at||src.published_date||'미확인')+'</td><td class="ast-text">'+link(p.source_url||src.url||src.source_url||s.source_url,src.name||src.label||p.source_id||'원문')+(p.note?'<br>'+esc(p.note):'')+'</td></tr>';}).join('')+'</tbody></table></div></details>';
+    return '<details class="ast-data"><summary>수치·기준·원문 '+s.points.length+'개 관측 펼치기</summary><div class="ast-table-wrap" tabindex="0" role="region" aria-label="'+esc(s.name)+' 수치 표"><table><caption>'+esc(s.name)+' · '+esc(s.unit||'단위 미확인')+' · 빈값 — · 추정 범위는 신뢰구간이 아닙니다.</caption><thead><tr><th scope="col">기간</th><th scope="col">값 / 기준</th><th scope="col">하단</th><th scope="col">상단</th><th scope="col">성격</th><th scope="col">발표일</th><th scope="col">근거</th></tr></thead><tbody>'+s.points.slice().reverse().map(function(p){var src=sourceFor(p,s,sources);return '<tr><th scope="row">'+esc(p.period)+'</th><td>'+esc(fmt(p.value))+'</td><td>'+esc(fmt(p.low))+'</td><td>'+esc(fmt(p.high))+'</td><td>'+esc(STATUS[p.status])+'</td><td>'+esc(p.published_at||src.published_at||src.published_date||'미확인')+'</td><td class="ast-text">'+((p.source_ids||[]).length?(p.source_ids||[]).map(function(id){var cited=sources[id]||{};return link(cited.url||cited.source_url,cited.name||cited.label||id);}).join('<br>'):link(p.source_url||src.url||src.source_url||s.source_url,src.name||src.label||p.source_id||'원문'))+(p.note?'<br>'+esc(p.note):'')+'</td></tr>';}).join('')+'</tbody></table></div></details>';
   }
   function chart(s, opts, sources, registry) {
     opts=opts||{};var domain=opts.domain||chartDomain([s]),ss=domain?filterSeries(s,domain):s;
@@ -154,14 +155,14 @@
     registry.push({series:ss,domain:domain,width:W,left:L,right:R,latest:pointText(last,s),sources:sources});
     var kinds={};good.forEach(function(p){kinds[p.status]=true;});var legend='<div class="ast-legend">';
     var pointOnly=s.connect===false||s.frequency==='publication_snapshot'||s.date_basis==='publication_snapshot';
-    if(pointOnly)legend+='<span><i class="ast-swatch point" style="border-color:'+color+';border-radius:50%;transform:none"></i>게시일 기준 관측 · 선 연결 없음</span>';
+    if(pointOnly)legend+='<span><i class="ast-swatch point" style="border-color:'+color+';border-radius:50%;transform:none"></i>'+(s.frequency==='publication_snapshot'||s.date_basis==='publication_snapshot'?'게시일 기준 관측':'기간별 관측')+' · 선 연결 없음</span>';
     if(kinds.actual&&!pointOnly)legend+='<span><i class="ast-swatch" style="border-color:'+color+'"></i>실측·공시</span>';
     if(kinds.derived)legend+='<span><i class="ast-swatch dashed" style="border-color:'+color+'"></i>공시 기반 계산</span>';
-    if((kinds.estimate||kinds.provider_estimate)&&!pointOnly)legend+='<span><i class="ast-swatch dashed" style="border-color:'+color+'"></i>원기관 추정</span>';
+    if((kinds.estimate||kinds.provider_estimate)&&!pointOnly)legend+='<span><i class="ast-swatch dashed" style="border-color:'+color+'"></i>'+(kinds.estimate?'추정':'원기관 추정')+'</span>';
     if(kinds.forecast)legend+='<span><i class="ast-swatch dashed" style="border-color:'+color+'"></i>기준 추정</span><span><i class="ast-swatch band" style="background:'+color+'33"></i>하단–상단 가정 범위</span>';
     if(kinds.user_reported)legend+='<span><i class="ast-swatch point"></i>사용자 제시 · 미검증</span>';
     legend+='</div>';
-    var freq={daily:'일별',weekly:'주별',biweekly:'격주 관측',publication_snapshot:'게시일 스냅샷',monthly:'월별',quarterly:'분기별',annual:'연간',selected_assessments:'선별 관측'};
+    var freq={daily:'일별',weekly:'주별',biweekly:'격주 관측',publication_snapshot:'게시일 스냅샷',reporting_period:'공시 누적기간',quarter_end:'분기말 잔액',monthly:'월별',quarterly:'분기별',annual:'연간',selected_assessments:'선별 관측'};
     return '<section class="ast-chart"><div class="ast-chart-head"><span class="ast-chart-title">'+esc(s.name)+'</span><span class="ast-latest" style="color:'+color+'">'+esc(fmt(last.value/scale.divisor))+'<small>'+esc(last.period)+'</small></span></div><div class="ast-unit">'+esc(scale.unit)+(s.frequency?' · '+esc(freq[s.frequency]||s.frequency):'')+(scale.divisor!==1?' · 표·툴팁은 원단위':'')+(!zeroAxis?' · 관측범위 확대축(0 시작 아님)':'')+'</div><div class="ast-plot" data-ast-chart="'+key+'" tabindex="0" role="group" aria-label="'+esc(s.name+' 시계열. 좌우 방향키로 관측 탐색')+'">'+svg+'</div>'+legend+'<div class="ast-tip" data-ast-tip="'+key+'">'+esc(pointText(last,s))+'</div><p class="ast-note">'+esc(s.basis||s.price_basis||'')+(s.note?' · '+esc(s.note):'')+'</p>'+valueTable(ss,sources)+'</section>';
   }
   function strings(items) { return (Array.isArray(items)?items:items?[items]:[]).map(function(v){if(typeof v==='string')return v;return v.text||v.note||v.summary||v.description||(v.label&&v.value!==undefined?v.label+': '+v.value:'');}).filter(Boolean); }
@@ -228,7 +229,40 @@
     return h+'<p class="ast-note">'+esc(s.note||'한 변수 변경 결과는 합산할 수 없으며 확률구간이 아닙니다.')+'</p><details><summary>민감도 수치·변경 조건 '+g.rows.length+'개</summary><div class="ast-table-wrap" tabindex="0" role="region" aria-label="민감도 표"><table><thead><tr><th>변경 변수</th><th>하단</th><th>기준</th><th>상단</th><th>조건</th></tr></thead><tbody>'+g.rows.map(function(r){return '<tr><th scope="row">'+esc(r.label)+'</th><td>'+esc(fmt(r.low))+'</td><td>'+esc(fmt(r.base))+'</td><td>'+esc(fmt(r.high))+'</td><td class="ast-text">'+esc(r.note||'')+'</td></tr>';}).join('')+'</tbody></table></div></details></article>';
   }
   function validationHTML(v){return v&&typeof v==='object'?'<aside class="ast-validation" data-ast-validation><strong>'+esc(v.title||'검증 범위')+'</strong><p class="ast-note">'+esc(v.text||'')+'</p></aside>':'';}
-  var PANELS=[{title:'유가와 미국 원유 리그',note:'가격과 가동 리그의 관측일을 같은 가로축으로 비교합니다. 선행·후행은 인과관계의 증명이 아닙니다.',ids:['wti_spot','us_oil_rigs']},{title:'천연가스와 미국 가스 리그',note:'Henry Hub 가격과 미국 가스 리그. 서로 다른 세로축 단위를 확인하세요.',ids:['henry_hub_spot','us_gas_rigs']},{title:'강관 가격과 원가 관련 지수',note:'OCTG와 HRC는 제품·인도조건·단위가 일치할 때만 차액을 비교할 수 있습니다. 강관·고철 PPI는 가격지수이며 USD/톤 또는 HRC 실가격을 대신하지 않습니다.',ids:['octg_p110_55_fob_user','hrc','hrc_spot','hrc_midwest','octg_hrc_spread','steel_scrap_ppi','steel_pipe_ppi']},{title:'열연·스크랩 원가 관측',note:'열연은 USD/net ton(미국 short ton), 스크랩은 USD/gross ton 기준입니다. 중량·품질·거래조건이 달라 직접 차감하거나 같은 값 축에 합치지 않습니다. 각 지표는 독립 세로축입니다.',ids:['steelbenchmarker_us_hrb_net_ton','steelbenchmarker_us_shredded_scrap','steelbenchmarker_us_busheling_scrap']},{title:'미완결 유정과 시추·완결·프랙',note:'DUC는 잔량(stock), 시추·완결은 기간 내 흐름(flow), Frac Spread는 가동 펌핑팀 지표입니다. 합산하지 않습니다. Frac 공개 뉴스는 집계 주말이 미확인이라 게시일 위치의 점만 표시합니다.',ids:['duc_stock','new_wells_drilled','new_wells_completed','us_frac_spread_public_news']}];
+
+  function evidenceHTML(co,state,sources,registry){
+    var ss=(co.operating_evidence||[]).map(normalizeSeries);
+    if(!ss.length)return '';
+    function cards(rows){return '<div class="ast-grid">'+rows.map(function(s,i){return '<article class="ast-card">'+chart(s,{domain:chartDomain([s]),width:state.chartWidth,color:COLORS[(i+1)%COLORS.length]},sources,registry)+'</article>';}).join('')+'</div>';}
+    var extra=ss.filter(function(s){return s.display_default===false;});
+    return '<section data-ast-operating-evidence><div class="ast-toolbar"><h4>공시로 확인한 생산·단가·재고</h4><span class="ast-model-tag">원표의 기간·범위 유지</span></div><p class="ast-note">생산량은 판매량과 다릅니다. 누적 평균단가는 해당 누적기간의 값이며, 분기 단가로 바꾸거나 전망선에 이어 붙이지 않습니다. 각 차트의 범위와 계산식을 확인하세요.</p>'+cards(ss.filter(function(s){return s.display_default!==false;}))+(extra.length?'<details><summary>내수·수출·해외법인 및 조건부 계산 '+extra.length+'개 펼치기</summary>'+cards(extra)+'</details>':'')+'</section>';
+  }
+  function evaluationHTML(v,state,sources,registry){
+    if(!v||v.status!=='descriptive_latest_vintage')return '';
+    var ms=v.metrics||[],ss=(v.series||[]).map(normalizeSeries);
+    var groups={};ss.forEach(function(s){var key=s.id.indexOf('_operating_profit_')>=0?'영업이익':'매출';(groups[key]||(groups[key]=[])).push(s);});
+    return '<section data-ast-evaluation><div class="ast-toolbar"><h4>'+esc(v.title||'단순 기준선과 과거 실적 비교')+'</h4></div><p class="ast-model-warning">'+esc(v.note||'현재 공시 빈티지로 재계산한 단순 기준선 오차입니다. 본 전망 모델의 예측 성과가 아닙니다.')+'</p><div class="ast-grid">'+Object.keys(groups).map(function(k){return comparisonHTML(k,groups[k],state);}).join('')+'</div><div class="ast-kpis">'+ms.map(function(m){return '<article class="ast-kpi"><span class="ast-kpi-label">'+esc(m.label)+'</span><b class="ast-kpi-value">'+esc(fmt(m.value))+' <small>'+esc(m.unit)+'</small></b><small>비교 '+esc(m.n)+'분기'+(m.period_start?' · '+esc(m.period_start)+'~'+esc(m.period_end):'')+'</small><p class="ast-note">'+esc(m.note||'')+'</p></article>';}).join('')+'</div>'+(ss.length?'<details><summary>기준선·실적 수치와 원문 '+ss.length+'개 계열</summary>'+ss.map(function(s){return valueTable(s,sources);}).join('')+'</details>':'')+'<div class="ast-insights">'+insights(v.gates||[])+'</div></section>';
+  }
+  function comparisonHTML(title,ss,state){
+    var domain=chartDomain(ss),values=[];ss.forEach(function(s){s.points.forEach(function(p){if(finite(p.value))values.push(p.value);});});
+    if(!domain||!values.length)return '';
+    var W=Math.max(260,Math.min(800,state.chartWidth||560)),H=220,L=58,R=22,T=20,B=34;
+    var lo=Math.min(0,Math.min.apply(null,values)),hi=Math.max(0,Math.max.apply(null,values));
+    var pad=(hi-lo)*.08||1;hi+=pad;if(lo<0)lo-=pad;
+    var x=function(t){return L+(t-domain[0])/(domain[1]-domain[0])*(W-L-R);};
+    var y=function(v){return T+(hi-v)/(hi-lo)*(H-T-B);};
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(title+' 실적과 두 단순 기준선 · '+ss[0].unit)+'">';
+    for(var i=0;i<=4;i++){var v=lo+(hi-lo)*i/4;svg+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#263749"/><text x="'+(L-8)+'" y="'+(y(v)+4)+'" text-anchor="end" fill="#a2b2c4" font-size="11">'+esc(fmt(v))+'</text>';}
+    var tx=ticks(domain,true);if(W<380&&tx.length>4)tx=tx.filter(function(_,i){return i%2===0;});
+    tx.forEach(function(t){svg+='<text x="'+x(t.time)+'" y="'+(H-10)+'" text-anchor="middle" fill="#a2b2c4" font-size="11">'+esc(t.label)+'</text>';});
+    ss.forEach(function(s,i){var color=COLORS[i%COLORS.length],actual=s.id.indexOf('_actual_')>=0;
+      lineSegments(s).forEach(function(seg){svg+='<path data-ast-comparison-line="'+esc(s.id)+'" d="M'+x(seg.a.time)+','+y(seg.a.value)+' L'+x(seg.b.time)+','+y(seg.b.value)+'" fill="none" stroke="'+color+'" stroke-width="2.2"'+(!actual?' stroke-dasharray="5 4"':'')+'/>';});
+      s.points.forEach(function(p){if(finite(p.value))svg+='<circle cx="'+x(p.time)+'" cy="'+y(p.value)+'" r="3" fill="'+(actual?color:'#111721')+'" stroke="'+color+'" stroke-width="1.5"><title>'+esc(pointText(p,s))+'</title></circle>';});
+    });
+    svg+='</svg>';
+    return '<article class="ast-card"><h4>'+esc(title)+' · 실적과 기준선</h4><div class="ast-unit">'+esc(ss[0].unit)+' · 동일 세로축</div>'+svg+'<div class="ast-legend">'+ss.map(function(s,i){return '<span><i class="ast-swatch '+(s.id.indexOf('_actual_')<0?'dashed':'')+'" style="border-color:'+COLORS[i%COLORS.length]+'"></i>'+esc(s.name)+'</span>';}).join('')+'</div><p class="ast-note">실선은 공시 기반 실적, 점선은 과거 단순 기준선입니다. 현재 전망 모델의 예측 성적이 아닙니다. 각 점에 마우스를 올리면 원값을 확인할 수 있습니다.</p></article>';
+  }
+  var PANELS=[{title:'탄소강관 가격 · 월간·분기 변화',note:'같은 BLS 지수의 수준·MoM·YoY·QoQ. 누락된 달과 미완성 분기는 계산에서 제외합니다. 2026-09-10 수정본이며 잠정치가 포함됩니다.',ids:['carbon_pipe_ppi','carbon_pipe_ppi_mom_pct','carbon_pipe_ppi_yoy_pct','carbon_pipe_ppi_qoq_pct']},{title:'유가와 미국 원유 리그',note:'가격과 가동 리그의 관측일을 같은 가로축으로 비교합니다. 선행·후행은 인과관계의 증명이 아닙니다.',ids:['wti_spot','us_oil_rigs']},{title:'천연가스와 미국 가스 리그',note:'Henry Hub 가격과 미국 가스 리그. 서로 다른 세로축 단위를 확인하세요.',ids:['henry_hub_spot','us_gas_rigs']},{title:'강관 가격과 원가 관련 지수',note:'OCTG와 HRC는 제품·인도조건·단위가 일치할 때만 차액을 비교할 수 있습니다. 강관·고철 PPI는 가격지수이며 USD/톤 또는 HRC 실가격을 대신하지 않습니다.',ids:['octg_p110_55_fob_user','hrc','hrc_spot','hrc_midwest','octg_hrc_spread','steel_scrap_ppi','steel_pipe_ppi']},{title:'열연·스크랩 원가 관측',note:'열연은 USD/net ton(미국 short ton), 스크랩은 USD/gross ton 기준입니다. 중량·품질·거래조건이 달라 직접 차감하거나 같은 값 축에 합치지 않습니다. 각 지표는 독립 세로축입니다.',ids:['steelbenchmarker_us_hrb_net_ton','steelbenchmarker_us_shredded_scrap','steelbenchmarker_us_busheling_scrap']},{title:'미완결 유정과 시추·완결·프랙',note:'DUC는 잔량(stock), 시추·완결은 기간 내 흐름(flow), Frac Spread는 가동 펌핑팀 지표입니다. 합산하지 않습니다. Frac 공개 뉴스는 집계 주말이 미확인이라 게시일 위치의 점만 표시합니다.',ids:['duc_stock','new_wells_drilled','new_wells_completed','us_frac_spread_public_news']}];
   function marketHTML(payload,state,sources,registry) {
     var market=payload.market||{},series=(market.series||[]).filter(function(s){return s.display_default!==false;}).map(normalizeSeries),whole=chartDomain(series),domain=whole;
     if(whole&&state.years)domain=[Math.max(whole[0],Date.UTC(new Date(whole[1]).getUTCFullYear()-state.years,new Date(whole[1]).getUTCMonth(),new Date(whole[1]).getUTCDate())),whole[1]];
@@ -248,6 +282,8 @@
     html+=capacityHTML(co);
     html+='<div class="ast-grid">'+ss.map(function(s,i){return '<article class="ast-card">'+chart(s,{domain:domain,width:state.chartWidth,color:COLORS[i%COLORS.length]},sources,registry)+'</article>';}).join('')+'</div>';
     if(!ss.length)html+='<div class="ast-empty">동일 범위의 분기 실적 또는 추정 기준값이 미확인입니다. 미확인 구간을 0으로 표시하지 않습니다.</div>';
+    html+=evidenceHTML(co,state,sources,registry);
+    html+=evaluationHTML(co.evaluation,state,sources,registry);
     if(co.wind_bridge&&Array.isArray(co.wind_bridge.points))html+='<article class="ast-card" style="margin-top:14px"><strong>Wind 추가 민감도 · 위 영업이익에 미포함</strong>'+chart(normalizeSeries(Object.assign({id:'wind_bridge',frequency:'quarterly'},co.wind_bridge)),{domain:domain,width:Math.min(800,state.chartWidth||560),color:COLORS[5]},sources,registry)+'<p class="ast-note">'+esc(co.wind_bridge.note||'별도 민감도이며 기존 영업이익에 합산하지 않습니다.')+'</p>'+list(co.wind_bridge.assumptions&&co.wind_bridge.assumptions.note)+'</article>';
     html+='<div class="ast-assumptions"><strong>가정과 범위</strong>'+list(co.assumptions)+(co.formula?'<p class="ast-note">'+esc(co.formula)+'</p>':'')+(notes.length?list(notes):'')+'</div><div class="ast-insights">'+insights(co.findings||co.interpretation)+'</div>';
     if(co.sources&&co.sources.length)html+='<details><summary>회사 공시·모델 근거 '+co.sources.length+'개</summary>'+sourceList(co.sources)+'</details>';
@@ -278,5 +314,5 @@
     return {setCompany:function(id){if((payload.companies||[]).some(function(c){return c.id===id;})){state.companyId=id;render();}},getState:function(){return Object.assign({},state);},destroy:host._astCleanup};
   }
   function mountLens(host,items,persona){if(!host||!host.ownerDocument)return;var doc=host.ownerDocument;if(!doc.getElementById('ast-style')){var st=doc.createElement('style');st.id='ast-style';st.textContent=CSS;(doc.head||doc.documentElement).appendChild(st);}host.innerHTML='<div class="ast-root">'+lensHTML(items,persona)+'</div>';}
-  return {mount:mount,mountLens:mountLens,normalizeSeries:normalizeSeries,periodInfo:periodInfo,lineSegments:lineSegments,continuous:continuous,chartDomain:chartDomain,ticks:ticks,safeURL:safeURL,escape:esc,format:fmt,displayScale:displayScale,chart:chart,marketHTML:marketHTML,companyHTML:companyHTML,sourceList:sourceList,lensHTML:lensHTML,capacityHTML:capacityHTML,methodologyHTML:methodologyHTML,bridgeGeometry:bridgeGeometry,bridgeHTML:bridgeHTML,sensitivityGeometry:sensitivityGeometry,sensitivityHTML:sensitivityHTML,validationHTML:validationHTML,CSS:CSS};
+  return {mount:mount,mountLens:mountLens,normalizeSeries:normalizeSeries,periodInfo:periodInfo,lineSegments:lineSegments,continuous:continuous,chartDomain:chartDomain,ticks:ticks,safeURL:safeURL,escape:esc,format:fmt,displayScale:displayScale,chart:chart,marketHTML:marketHTML,companyHTML:companyHTML,sourceList:sourceList,lensHTML:lensHTML,capacityHTML:capacityHTML,methodologyHTML:methodologyHTML,bridgeGeometry:bridgeGeometry,bridgeHTML:bridgeHTML,sensitivityGeometry:sensitivityGeometry,sensitivityHTML:sensitivityHTML,validationHTML:validationHTML,evidenceHTML:evidenceHTML,evaluationHTML:evaluationHTML,CSS:CSS};
 }));
