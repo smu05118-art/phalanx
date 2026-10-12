@@ -1341,3 +1341,27 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   try{ if(typeof ST!=='undefined'&&ST.tab==='nowcast'&&typeof M!=='undefined'&&M&&document.getElementById('main')) w(); }
   catch(e){ console.warn('[ui-patch] nowcast rerender',e); }
 })();
+
+/* ============================================================
+   리서치 페이지 링크 — research/<id>/ 의 자동 갱신 나우캐스트를 회사 상세 상단에 노출
+   (2026-10-12 · research/mjc 신설. 페이지는 data_jp.js 등 크론 산출물을 런타임에 직접 읽음)
+   ============================================================ */
+(function(){
+  var RESEARCH={ MJC:{href:'research/mjc/', label:'MJC 분기 나우캐스트 — 세관 OLS·잔차·시나리오·예측 채점 (자동 갱신)'} };
+  function addLink(){
+    try{
+      var cid=(typeof ST!=='undefined')?ST.company:null, R=cid&&RESEARCH[cid], main=document.getElementById('main');
+      if(!R||!main||main.querySelector('.phx-research-link')) return;
+      var a=document.createElement('a');
+      a.className='phx-research-link'; a.href=R.href; a.target='_blank'; a.rel='noopener';
+      a.textContent='📈 '+R.label+' ↗';
+      a.style.cssText='display:block;margin:0 0 12px;padding:10px 14px;border:1px solid rgba(42,120,214,.35);border-radius:10px;font-weight:700;text-decoration:none;color:#2a78d6;background:rgba(42,120,214,.06)';
+      main.insertBefore(a,main.firstChild);
+    }catch(e){ console.warn('[ui-patch] research-link',e); }
+  }
+  var _rd=window.renderDetail;
+  if(typeof _rd==='function'){
+    window.renderDetail=function(){ var out=_rd.apply(this,arguments); addLink(); return out; };
+  }
+  addLink();   /* 딥링크(#co=MJC)로 패치보다 먼저 상세가 그려진 경우 */
+})();

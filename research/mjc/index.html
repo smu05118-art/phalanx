@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MJC 나우캐스트 — Phalanx 리서치</title>
+<style>
+:root{--page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);
+--proxy:#2a78d6;--proxy-lt:#86b6ef;--mjc:#1baf7a;--jem:#eb6834;--s4:#eda100;--goodtx:#006300;--crit:#d03b3b;--serious:#ec835a;--chip:#f0efec;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--page:#0d0d0d;--surface:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);
+--proxy:#3987e5;--proxy-lt:#6da7ec;--mjc:#199e70;--jem:#d95926;--s4:#c98500;--goodtx:#0ca30c;--chip:#262624;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;font-size:15px;line-height:1.6}
+.wrap{max-width:1060px;margin:0 auto;padding:28px 18px 70px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px}
+.top a{color:var(--proxy);text-decoration:none}
+.eyebrow{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:clamp(22px,4vw,30px);margin:8px 0 4px;letter-spacing:-.02em;text-wrap:balance}
+h2{font-size:18px;margin:0}
+.sub{color:var(--ink2);margin:0;max-width:70ch;font-size:14px}
+section{margin-top:36px}
+.sechead{display:flex;align-items:baseline;gap:8px;border-bottom:1px solid var(--grid);padding-bottom:8px;margin-bottom:14px;flex-wrap:wrap}
+.sechead .k{font-size:12px;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.small,.footnote{font-size:12.5px;color:var(--muted)}
+.hero{margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;display:grid;grid-template-columns:1.2fr 1fr;gap:22px}
+@media(max-width:760px){.hero{grid-template-columns:1fr}}
+.big{display:flex;gap:30px;flex-wrap:wrap}
+.big .v{font-size:38px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.big .d{font-size:13px;color:var(--ink2)}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:3px 0}
+.kv .k{color:var(--muted)} .kv .v{font-weight:700;text-align:right}
+.up{color:var(--goodtx);font-weight:700} .dn{color:var(--crit);font-weight:700}
+.badge{display:inline-block;font-size:11px;font-weight:800;border-radius:5px;padding:1px 7px;background:var(--chip);color:var(--ink2)}
+.badge.live{background:var(--mjc);color:#fff} .badge.warn{background:var(--serious);color:#fff}
+.tblwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-top:12px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap}
+th{font-size:12px;color:var(--muted)} td:first-child,th:first-child{text-align:left}
+tr:last-child td{border-bottom:none}
+.hl td{background:color-mix(in srgb,var(--proxy) 8%,transparent)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 16px 8px;margin-top:12px;position:relative}
+.card .ct{font-weight:700;font-size:14.5px} .card .cs{font-size:12px;color:var(--muted);margin-bottom:6px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:4px 0}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+.chart svg{display:block;width:100%;height:auto}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--page);font-size:12px;padding:5px 8px;border-radius:6px;opacity:0;transform:translate(-50%,-110%);white-space:nowrap;z-index:5}
+.callout{border:1px solid var(--border);border-left:4px solid var(--serious);background:var(--surface);border-radius:10px;padding:12px 16px;margin-top:12px;font-size:13.5px}
+.err{color:var(--crit);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../../index.html">← Phalanx</a><span id="stamp" class="small">데이터 로딩 중…</span></div>
+  <div class="eyebrow">Phalanx Research · Customs Nowcast · 자동 갱신</div>
+  <h1>일본 마이크로닉스 <span style="color:var(--proxy)">6871 JP</span> — 분기 나우캐스트</h1>
+  <p class="sub">사카이(402)+주부공항(502) HS 9030.90 세관 수출을 크론이 갱신하는 팔랑크스 데이터에서 매번 직접 읽어, 레벨 OLS·분기 잔차·미공표월 보간·마진 규칙으로 다음 분기 매출·영업이익을 재계산합니다. 가이던스·컨센서스만 <code>inputs.json</code>에서 수동 갱신합니다.</p>
+  <div id="app"></div>
+</div>
+<script src="../../manifest.js"></script>
+<script src="../../data_jp.js"></script>
+<script src="../../data_jp_country.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id), css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const f1=x=>x==null||isNaN(x)?'—':(Math.round(x*10)/10).toLocaleString('ko-KR',{maximumFractionDigits:1});
+const pc=x=>x==null||isNaN(x)?'—':(x>0?'+':'')+(Math.round(x*1000)/10)+'%';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function fail(msg){ $('app').innerHTML='<p class="err">'+esc(msg)+'</p>'; $('stamp').textContent='로딩 실패'; }
+
+fetch('inputs.json',{cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('inputs.json '+r.status); return r.json(); })
+.then(run).catch(e=>fail('데이터를 불러오지 못했습니다: '+e.message));
+
+function run(IN){
+  const PMv=(typeof PM!=='undefined')?PM:null, JP=(window.PSH||{}).JP, JPC=(window.PSHC||{}).JP;
+  if(!PMv||!JP) return fail('manifest.js 또는 data_jp.js가 없습니다.');
+  const months=PMv.months, idx={}; months.forEach((m,i)=>idx[m]=i);
+  const co=JP.companies.find(c=>c.id===IN.company); if(!co) return fail('data_jp.js에 '+IN.company+' 카드가 없습니다.');
+  // 월별 프록시 (억엔): data_jp.js revenue는 천엔
+  const px={}; months.forEach((m,i)=>{ const v=co.revenue[i]; if(v) px[m]=v/1e5; });
+  const pxMonths=Object.keys(px).sort(), lastPx=pxMonths[pxMonths.length-1];
+  // 분기 실적 (억엔): fin.q = [결산월, 매출천엔, OP천엔]
+  const fin={}; (JP.fin[IN.company]||{q:[]}).q.forEach(([ym,r,o])=>{ fin[qOf(ym)]={rev:r/1e5,op:o/1e5}; });
+  const finQs=Object.keys(fin).sort(), lastQ=finQs[finQs.length-1];
+  function qOf(ym){ const y=+ym.slice(0,4), m=+ym.slice(5,7); return y+'Q'+Math.ceil(m/3); }
+  function qMonths(q){ const y=+q.slice(0,4), n=+q.slice(5); return [0,1,2].map(k=>y+'-'+String(3*n-2+k).padStart(2,'0')); }
+  function qAdd(q,d){ let y=+q.slice(0,4), n=+q.slice(5)+d; while(n>4){n-=4;y++;} while(n<1){n+=4;y--;} return y+'Q'+n; }
+  function qSum(q){ const ms=qMonths(q); if(ms.some(m=>px[m]==null)) return null; return ms.reduce((a,m)=>a+px[m],0); }
+  // ---- OLS: 실제 매출 ~ 프록시 분기합 (프록시 완전분기 & 실적 존재)
+  const pts=finQs.filter(q=>q>='2021Q2'&&qSum(q)!=null).map(q=>({q,x:qSum(q),y:fin[q].rev}));
+  const n=pts.length, mx=pts.reduce((a,p)=>a+p.x,0)/n, my=pts.reduce((a,p)=>a+p.y,0)/n;
+  const sxy=pts.reduce((a,p)=>a+(p.x-mx)*(p.y-my),0), sxx=pts.reduce((a,p)=>a+(p.x-mx)**2,0), syy=pts.reduce((a,p)=>a+(p.y-my)**2,0);
+  const b=sxy/sxx, a=my-b*mx, r=sxy/Math.sqrt(sxx*syy), fit=x=>a+b*x;
+  pts.forEach(p=>p.res=p.y/fit(p.x)-1);
+  // ---- 목표 분기 = 마지막 실적 다음 분기
+  const T=qAdd(lastQ,1), Tm=qMonths(T), seen=Tm.filter(m=>px[m]!=null), miss=Tm.filter(m=>px[m]==null);
+  const Tprev=qAdd(T,-4), prevSum=qSum(Tprev);
+  // 같은 분기 잔차 (최근 3개, 제외목록 반영)
+  const sameQ=pts.filter(p=>p.q.slice(5)===T.slice(5)), use=sameQ.filter(p=>!(IN.resid_exclude||[]).includes(p.q)).slice(-3);
+  const resMean=use.length?use.reduce((s,p)=>s+p.res,0)/use.length:0, resMin=use.length?Math.min(...use.map(p=>p.res)):0;
+  const resMax=sameQ.length?Math.max(...sameQ.map(p=>p.res)):0;
+  // 미공표월 보간: 최근 3년 해당월의 분기 내 비중
+  function shareOf(m){ const mm=m.slice(5), y=+m.slice(0,4), ss=[]; for(let k=1;k<=5;k++){ const q=qOf((y-k)+'-'+mm), s=qSum(q); if(s) ss.push(px[(y-k)+'-'+mm]/s); } return ss; }
+  const seenSum=seen.reduce((s,m)=>s+px[m],0);
+  function fillShare(pick){ if(!miss.length) return seenSum; const sh=miss.map(m=>pick(shareOf(m))); const tot=sh.reduce((x,y)=>x+y,0); return seenSum/(1-tot); }
+  const avg3=a=>{const s=a.slice(0,3);return s.reduce((x,y)=>x+y,0)/s.length;};
+  const scen={
+    bear:miss.reduce((s,m)=>s+(px[(+m.slice(0,4)-1)+m.slice(4)]||0),seenSum),
+    base:fillShare(avg3),
+    bull:fillShare(a=>Math.max(...a.slice(0,5)))
+  };
+  // ---- 가이던스 암시 (목표분기 누계 가이던스 − 회계연도 내 직전 실적 누계)
+  const fy=T.slice(0,4), G=(IN.guidance||[]).filter(g=>g.through===T).sort((x,y)=>x.date<y.date?-1:1).pop();
+  const priorQs=[1,2,3,4].map(k=>fy+'Q'+k).filter(q=>q<T);
+  const cumRev=priorQs.reduce((s,q)=>s+(fin[q]?fin[q].rev:NaN),0), cumOp=priorQs.reduce((s,q)=>s+(fin[q]?fin[q].op:NaN),0);
+  const impl=G?{rev:G.rev-cumRev,op:G.op-cumOp}:null; if(impl) impl.opm=impl.op/impl.rev;
+  // 마진 규칙: 회사 암시 OPM + 직전분기 비트폭
+  const L=(IN.forecast_log||[]).find(f=>f.q===lastQ);
+  const beat=(L&&L.implied_rev&&fin[lastQ])?(fin[lastQ].op/fin[lastQ].rev - L.implied_op/L.implied_rev):0;
+  const opmBase=impl?impl.opm+beat:fin[lastQ].op/fin[lastQ].rev;
+  const opm={bear:impl?(impl.opm+opmBase)/2:opmBase-0.03,base:opmBase,bull:opmBase+0.02};
+  const est={}; ['bear','base','bull'].forEach(k=>{ const rres=k==='bear'?resMin:k==='base'?resMean:resMax; const rev=fit(scen[k])*(1+rres); est[k]={px:scen[k],yoy:prevSum?scen[k]/prevSum-1:null,ols:fit(scen[k]),res:rres,rev,op:rev*opm[k],opm:opm[k]}; });
+  const lastYrRev=fin[Tprev]?fin[Tprev].rev:null;
+  // ---- 가이던스 갱신 필요 여부
+  const lastGdate=(IN.guidance||[]).map(g=>g.date).sort().pop()||'';
+  const lastQend=qMonths(lastQ)[2];
+  const gStale=lastGdate.slice(0,7)<=lastQend;
+  // ---- 스탬프
+  $('stamp').innerHTML='세관 '+esc(lastPx)+'까지 · 실적 '+esc(lastQ)+'까지 · 빌드 '+esc(PMv.built||PMv.updated||'')+' <span class="badge live">LIVE</span>';
+  // ---- 렌더
+  const B=est.base;
+  let h='';
+  h+='<div class="hero"><div><div class="eyebrow">'+esc(T)+' 추정 (Base) · 세관 '+seen.length+'/3개월 실측</div>';
+  h+='<div class="big"><div><div class="v num">'+f1(B.rev)+'<span style="font-size:17px;color:var(--ink2)"> 억엔</span></div><div class="d">매출 · <span class="up">'+pc(lastYrRev?B.rev/lastYrRev-1:null)+' YoY</span> · QoQ '+pc(B.rev/fin[lastQ].rev-1)+'</div></div>';
+  h+='<div><div class="v num">'+f1(B.op)+'<span style="font-size:17px;color:var(--ink2)"> 억엔</span></div><div class="d">영업이익 · OPM '+pc(B.opm).replace('+','')+(fin[Tprev]?' · <span class="up">'+pc(B.op/fin[Tprev].op-1)+' YoY</span>':'')+'</div></div></div>';
+  h+='<p class="sub" style="margin-top:10px">세관 '+esc(seen.map(m=>m.slice(5)+'월').join('·')||'없음')+' 합 '+f1(seenSum)+'억'+(miss.length?' + '+esc(miss.map(m=>m.slice(5)+'월').join('·'))+' 보간':'')+' → 분기 프록시 '+f1(B.px)+'억('+pc(B.yoy)+' YoY) → OLS '+f1(B.ols)+'억 × (1'+(B.res<0?'−':'+')+Math.abs(Math.round(B.res*1000)/10)+'% '+esc(T.slice(4))+' 잔차) = <b>'+f1(B.rev)+'억</b>.</p></div>';
+  h+='<div>';
+  if(impl) h+=kv('회사 가이던스 암시 '+T, f1(impl.rev)+' · OP '+f1(impl.op)+' ('+pc(impl.opm).replace('+','')+')');
+  h+=kv('Base vs 회사 암시', impl?pc(B.rev/impl.rev-1)+' / OP '+pc(B.op/impl.op-1):'—');
+  h+=kv('레인지 (Bear–Bull)', f1(est.bear.rev)+'~'+f1(est.bull.rev)+' · OP '+f1(est.bear.op)+'~'+f1(est.bull.op));
+  h+=kv('OLS (n='+n+')', 'a='+f1(a)+' · b='+(Math.round(b*1000)/1000)+' · r='+(Math.round(r*1000)/1000));
+  if(IN.consensus) h+=kv('컨센 FY'+esc(IN.consensus.fy)+' ('+esc(IN.consensus.date)+')', f1(IN.consensus.rev)+' / OP '+f1(IN.consensus.op));
+  h+=kv('다음 실적 발표', esc(IN.earn_next||'—'));
+  h+='</div></div>';
+  if(gStale) h+='<div class="callout"><b>가이던스 갱신 필요</b> — 실적이 '+esc(lastQ)+'까지 반영됐지만 inputs.json 가이던스의 최신 공시일은 '+esc(lastGdate)+'입니다. 새 누계·통기 가이던스를 입력하면 회사 암시치가 다시 계산됩니다.</div>';
+  // 시나리오 표
+  h+='<section><div class="sechead"><h2>'+esc(T)+' 시나리오</h2><span class="k">미공표월 보간 × 분기 잔차 × 마진 규칙 — 데이터 갱신 시 자동 재계산</span></div>';
+  h+='<div class="tblwrap"><table><thead><tr><th>시나리오</th><th>분기 프록시</th><th>프록시 YoY</th><th>OLS 매출</th><th>잔차</th><th>매출</th><th>매출 YoY</th><th>OPM</th><th>영업이익</th></tr></thead><tbody>';
+  if(impl) h+='<tr><td>회사 가이던스 암시</td><td>—</td><td>—</td><td>—</td><td>—</td><td class="num">'+f1(impl.rev)+'</td><td class="num">'+pc(lastYrRev?impl.rev/lastYrRev-1:null)+'</td><td class="num">'+pc(impl.opm).replace('+','')+'</td><td class="num">'+f1(impl.op)+'</td></tr>';
+  [['bear','Bear · 미공표월 전년동월 유지 · 최저 잔차'],['base','Base · 3년 평균 월비중 · 평균 잔차'],['bull','Bull · 최대 월비중 · 최대 잔차']].forEach(([k,lab])=>{ const e=est[k];
+    h+='<tr'+(k==='base'?' class="hl"':'')+'><td>'+lab+'</td><td class="num">'+f1(e.px)+'</td><td class="num">'+pc(e.yoy)+'</td><td class="num">'+f1(e.ols)+'</td><td class="num">'+pc(e.res)+'</td><td class="num"><b>'+f1(e.rev)+'</b></td><td class="num">'+pc(lastYrRev?e.rev/lastYrRev-1:null)+'</td><td class="num">'+pc(e.opm).replace('+','')+'</td><td class="num"><b>'+f1(e.op)+'</b></td></tr>'; });
+  h+='</tbody></table></div>';
+  h+='<p class="footnote">'+esc(T.slice(4))+' 잔차 = 같은 분기 실적/OLS적합−1, 최근 3개('+use.map(p=>p.q+' '+pc(p.res)).join(', ')+')'+((IN.resid_exclude||[]).length?' · 제외 '+esc(IN.resid_exclude.join(', '))+' ('+esc(IN.resid_exclude_note||'')+')':'')+'. 마진 규칙: '+esc(IN.margin_rule||'')+' — 직전 비트폭 '+pc(beat)+'.</p></section>';
+  // 채점
+  h+='<section><div class="sechead"><h2>예측 채점</h2><span class="k">forecast_log의 예측을 실적이 들어오는 즉시 자동 채점</span></div><div class="tblwrap"><table><thead><tr><th>분기</th><th>예측일</th><th>예측 매출 / OP</th><th>회사 암시 매출 / OP</th><th>실제 매출 / OP</th><th>매출 오차 (예측/실제−1)</th><th>OP 오차</th></tr></thead><tbody>';
+  (IN.forecast_log||[]).forEach(fq=>{ const A=fin[fq.q];
+    h+='<tr><td>'+esc(fq.q)+'</td><td>'+esc(fq.date)+'</td><td class="num">'+f1(fq.rev)+' / '+f1(fq.op)+'</td><td class="num">'+f1(fq.implied_rev)+' / '+f1(fq.implied_op)+'</td>'+(A?'<td class="num">'+f1(A.rev)+' / '+f1(A.op)+'</td><td class="num">'+pc(fq.rev/A.rev-1)+'</td><td class="num">'+pc(fq.op/A.op-1)+'</td>':'<td colspan="3" class="small">발표 대기</td>')+'</tr>'; });
+  h+='</tbody></table></div></section>';
+  // 차트 자리
+  h+='<section><div class="sechead"><h2>세관 프록시와 실적</h2><span class="k">팔랑크스 data_jp.js</span></div>';
+  h+='<div class="card"><div class="ct">월별 세관 프록시 수출액 <span class="small">(억엔)</span></div><div class="cs">사카이(402)+주부공항(502) · HS 9030.90 · 최근 44개월</div><div class="chart" id="chM"></div></div>';
+  h+='<div class="card"><div class="ct">분기 매출: 실적 vs OLS 적합 <span class="small">(억엔)</span></div><div class="legend"><span><i class="sw" style="background:var(--mjc)"></i>실적</span><span><i class="sw" style="background:var(--proxy-lt)"></i>OLS 적합</span><span><i class="sw" style="background:var(--proxy)"></i>'+esc(T)+' Base</span></div><div class="chart" id="chQ"></div></div></section>';
+  // lane
+  h+='<section><div class="sechead"><h2>국가 lane</h2><span class="k">모멘텀 판독용 — 고객 배분은 공시 앵커(삼성 49.9%·MMT 21.4%) 우선</span></div><div class="tblwrap"><table id="laneT"></table></div>';
+  h+='<p class="footnote">한국 lane은 MEK(부천) 현지생산 때문에 한국 매출(53%)을 과소반영하고, 중국 lane에는 MJC 상하이·쿤산 그룹내 물류가 섞입니다.</p></section>';
+  $('app').innerHTML=h;
+  // ---- 차트
+  const lastM=pxMonths.slice(-44);
+  lineChart($('chM'),lastM,lastM.map(m=>px[m]));
+  const qs=finQs.filter(q=>q>='2023Q1').concat([T]);
+  barChart($('chQ'),qs,[{name:'실적',color:css('--mjc'),v:qs.map(q=>fin[q]?fin[q].rev:(q===T?null:null))},{name:'OLS 적합',color:css('--proxy-lt'),v:qs.map(q=>qSum(q)!=null?fit(qSum(q)):null)},{name:T+' Base',color:css('--proxy'),v:qs.map(q=>q===T?B.rev:null)}]);
+  // ---- lane 표
+  if(JPC&&JPC.country&&JPC.country.probe_core){ const C=JPC.country.probe_core, loc=C.loc;
+    const lane=(ct,m)=>{ const j=idx[m]; return (((loc['402']||{})[ct]||[])[j]||0)+(((loc['502']||{})[ct]||[])[j]||0); };
+    const cmp=Tm.filter(m=>px[m]!=null).length?seen:qMonths(lastQ);
+    const cmpPrev=cmp.map(m=>(+m.slice(0,4)-1)+m.slice(4));
+    const tot=C.order.reduce((s,ct)=>s+cmp.reduce((x,m)=>x+lane(ct,m),0),0);
+    let t='<thead><tr><th>국가</th><th>'+esc(cmp[0].slice(2)+'~'+cmp[cmp.length-1].slice(5))+' (억엔)</th><th>전년 동기</th><th>YoY</th><th>믹스</th></tr></thead><tbody>';
+    C.order.forEach(ct=>{ const v=cmp.reduce((x,m)=>x+lane(ct,m),0)/1e5, p=cmpPrev.reduce((x,m)=>x+lane(ct,m),0)/1e5;
+      t+='<tr><td>'+esc(ct)+'</td><td class="num">'+f1(v)+'</td><td class="num">'+f1(p)+'</td><td class="num '+(p&&v/p>1?'up':'dn')+'">'+(p?pc(v/p-1):'—')+'</td><td class="num">'+(tot?Math.round(v*1e5/tot*100)+'%':'—')+'</td></tr>'; });
+    $('laneT').innerHTML=t+'</tbody>';
+  } else { $('laneT').innerHTML='<tr><td class="small">data_jp_country.js 없음</td></tr>'; }
+}
+function kv(k,v){ return '<div class="kv"><span class="k">'+k+'</span><span class="v num">'+v+'</span></div>'; }
+
+// ---------- SVG 헬퍼
+function S(t,at,p){const e=document.createElementNS('http://www.w3.org/2000/svg',t);for(const k in at)e.setAttribute(k,at[k]);if(p)p.appendChild(e);return e;}
+function ticks(min,max,n){const st0=(max-min)/n,mag=Math.pow(10,Math.floor(Math.log10(st0)));let st=mag;for(const m of[1,2,2.5,5,10]){if(st0<=m*mag){st=m*mag;break}}const t=[];for(let v=Math.floor(min/st)*st;v<=Math.ceil(max/st)*st+1e-9;v+=st)t.push(Math.round(v*100)/100);return t;}
+function tipOf(el){const t=document.createElement('div');t.className='tip';el.appendChild(t);return t;}
+function axes(svg,tk,Y,W,Lp,R){tk.forEach(t=>{S('line',{x1:Lp,x2:W-R,y1:Y(t),y2:Y(t),stroke:css('--grid')},svg);S('text',{x:Lp-6,y:Y(t)+4,'text-anchor':'end',fill:css('--muted'),'font-size':11},svg).textContent=t;});}
+function lineChart(el,lab,v){const W=1000,H=300,Lp=44,R=12,T=14,Bm=30,svg=S('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'월별 세관 프록시'});el.appendChild(svg);
+  const tk=ticks(0,Math.max(...v)*1.1,5),X=i=>Lp+(W-Lp-R)*i/(lab.length-1),Y=y=>T+(H-T-Bm)*(1-y/tk[tk.length-1]);axes(svg,tk,Y,W,Lp,R);
+  lab.forEach((m,i)=>{if(m.endsWith('-01'))S('text',{x:X(i),y:H-8,'text-anchor':'middle',fill:css('--muted'),'font-size':11},svg).textContent=m.slice(0,4);});
+  let d='';v.forEach((y,i)=>d+=(i?'L':'M')+X(i)+' '+Y(y));S('path',{d:d+`L${X(v.length-1)} ${Y(0)}L${X(0)} ${Y(0)}Z`,fill:css('--proxy'),'fill-opacity':.08},svg);S('path',{d,fill:'none',stroke:css('--proxy'),'stroke-width':2},svg);
+  const li=v.length-1;S('circle',{cx:X(li),cy:Y(v[li]),r:4.5,fill:css('--proxy'),stroke:css('--surface'),'stroke-width':2},svg);
+  S('text',{x:X(li)-8,y:Y(v[li])-10,'text-anchor':'end',fill:css('--ink'),'font-size':12,'font-weight':700},svg).textContent=lab[li]+' '+f1(v[li])+'억';
+  const tp=tipOf(el);svg.addEventListener('mousemove',ev=>{const r=svg.getBoundingClientRect();let i=Math.round(((ev.clientX-r.left)*W/r.width-Lp)/(W-Lp-R)*(lab.length-1));i=Math.max(0,Math.min(li,i));
+    const pv=lab.indexOf(lab[i])>=12?v[i-12]:null;tp.innerHTML='<b>'+lab[i]+'</b> '+f1(v[i])+'억'+(pv?' · YoY '+pc(v[i]/pv-1):'');tp.style.left=X(i)*r.width/W+'px';tp.style.top=Y(v[i])*r.height/H+'px';tp.style.opacity=1;});
+  svg.addEventListener('mouseleave',()=>tp.style.opacity=0);}
+function barChart(el,lab,ser){const W=1000,H=300,Lp=44,R=12,T=14,Bm=30,svg=S('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'분기 매출 실적과 적합'});el.appendChild(svg);
+  const all=ser.flatMap(s=>s.v).filter(x=>x!=null),tk=ticks(0,Math.max(...all)*1.1,5),Y=y=>T+(H-T-Bm)*(1-y/tk[tk.length-1]);axes(svg,tk,Y,W,Lp,R);
+  const slot=(W-Lp-R)/lab.length,bw=Math.min(18,(slot-6)/2),tp=tipOf(el);
+  lab.forEach((q,i)=>{const cx=Lp+slot*i+slot/2;S('text',{x:cx,y:H-8,'text-anchor':'middle',fill:css('--muted'),'font-size':10.5},svg).textContent=q.slice(2);
+    const vis=ser.filter(s=>s.v[i]!=null);vis.forEach((s,k)=>{const x=cx-(vis.length*bw+(vis.length-1)*2)/2+k*(bw+2),y0=Y(s.v[i]);
+      const rc=S('rect',{x,y:y0,width:bw,height:Math.max(1,Y(0)-y0),rx:3,fill:s.color},svg);
+      rc.addEventListener('mousemove',()=>{const r=svg.getBoundingClientRect();tp.innerHTML='<b>'+q+'</b> '+s.name+' '+f1(s.v[i])+'억';tp.style.left=(x+bw/2)*r.width/W+'px';tp.style.top=y0*r.height/H+'px';tp.style.opacity=1;});
+      rc.addEventListener('mouseleave',()=>tp.style.opacity=0);});});}
+})();
+</script>
+</body>
+</html>
