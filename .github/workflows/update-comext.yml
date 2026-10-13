@@ -1,0 +1,56 @@
+name: Update Eurostat Comext research series
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Eurostat Comext 월간 갱신(대개 매월 중순) 이후, 주 2회 확인
+    - cron: "23 6 * * 2,5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: comext-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test the Comext parser
+        run: python3 -m unittest discover -s tools/comext/tests -p 'test_*.py' -v
+
+      - name: Refresh Comext series
+        run: python3 tools/comext/fetch_comext.py --root .
+
+      - name: Detect data change
+        id: changed
+        shell: bash
+        run: |
+          if git diff --quiet -- data/comext; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit refreshed series
+        if: steps.changed.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "phalanx-comext-bot"
+          git config user.email "phalanx-comext-bot@users.noreply.github.com"
+          git add -- data/comext
+          git commit -m "data: refresh Eurostat Comext research series"
+          git pull --rebase origin main
+          git push origin "HEAD:${GITHUB_REF_NAME}"
