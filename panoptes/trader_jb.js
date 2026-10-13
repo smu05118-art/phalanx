@@ -24,7 +24,7 @@
   const FEATURES = [
     ['개요 카드', '총 거래대금, 상위 5 집중도, 동일종목 대금 변화, 관측 범위'],
     ['Flow 노트', '본문과 접이식 팩트 노트를 나란히 표시'],
-    ['차트 3종', '섹터별 거래대금 · 변화×규모 버블 · 절대 증감 막대 (각각 표 제공)'],
+    ['차트 5종', '집중도 · 구분별 구성 · 섹터별 거래대금 · 변화×규모 · 절대 증감 (각각 표 제공)'],
     ['종목 탐색', '섹터·구분·ETF·검색 필터와 결측 후순위 정렬'],
     ['근거 · 테마', '종목별 근거와 참조 팩트 ID, 잠정 테마 후보'],
     ['ENEX 내보내기', '파이프라인이 미리 생성한 Evernote 노트 다운로드']
@@ -559,12 +559,12 @@
     const ax = t => ({ title: { display: !!t, text: t, color: C.muted, font: { family: SANS, size: 11 } }, grid: { color: C.grid },
       border: { display: false }, ticks: { color: C.muted, font: { family: MONO, size: 10 } } });
     const o = { responsive: true, maintainAspectRatio: false, animation: false, indexAxis: x.indexAxis || 'x', onClick: x.onClick,
-      plugins: { legend: { display: false }, tooltip: { backgroundColor: C.navy, titleFont: { family: SANS }, bodyFont: { family: MONO }, callbacks: { label: x.tip } } },
+      plugins: { legend: { display: !!x.legend, position: 'bottom', labels: { color: C.muted, font: { family: SANS, size: 11 }, boxWidth: 10, padding: 12 } },
+        tooltip: { backgroundColor: C.navy, titleFont: { family: SANS }, bodyFont: { family: MONO }, callbacks: { label: x.tip } } },
       scales: { x: ax(xt), y: ax(yt) } };
     if (o.indexAxis === 'y') o.scales.y.ticks.font.family = SANS;
-    // Bar totals retain a zero baseline; scatter levels use their own live range.
-    if (o.indexAxis === 'y') o.scales.x.beginAtZero = x.zeroBaseline === true;
-    else o.scales.y.beginAtZero = x.zeroBaseline === true;
+    if (o.indexAxis === 'y') o.scales.x.beginAtZero = true;
+    else o.scales.y.beginAtZero = true;
     return o;
   }
 
@@ -612,9 +612,45 @@
     return [...m.values()].sort((a, b) => b.amount - a.amount);
   }
 
+  function roleRows(rows) {
+    const m = new Map();
+    rows.forEach(s => {
+      const k = roleOf(s), o = m.get(k) || { name: k, amount: 0, n: 0 };
+      o.amount += s.amount; o.n += 1; m.set(k, o);
+    });
+    return [...m.values()].sort((a, b) => b.amount - a.amount);
+  }
+
+  function concentration(rows) {
+    const sorted = rows.slice().sort((a, b) => b.amount - a.amount);
+    const n = Math.min(5, sorted.length), top = sorted.slice(0, n);
+    const total = sorted.reduce((sum, s) => sum + s.amount, 0);
+    const topAmount = top.reduce((sum, s) => sum + s.amount, 0);
+    return { n, top, total, topAmount, other: Math.max(0, total - topAmount) };
+  }
+
+  function visualReadout(rows, c) {
+    const comparable = rows.filter(s => isNum(s.amount_change_pct));
+    const up = comparable.filter(s => s.amount_change_pct > 0).length;
+    const down = comparable.filter(s => s.amount_change_pct < 0).length;
+    const flat = comparable.length - up - down;
+    const share = c.total ? c.topAmount / c.total * 100 : null;
+    const tile = (label, value, sub, pct, cls) => h('div', { class: 'tjb-readout' + (cls || '') }, [
+      h('span', { class: 'tjb-readout-k' }, label), h('strong', { class: 'tjb-readout-v' }, value), h('span', { class: 'tjb-readout-s' }, sub),
+      isNum(pct) ? h('span', { class: 'tjb-meter', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.max(0, Math.min(100, pct))}%` })) : null
+    ]);
+    return h('div', { class: 'tjb-readouts', 'aria-label': '필터 적용 시각 요약' }, [
+      tile(`상위 ${c.n}종목 집중`, fmtNum(share, 1, '%'), '필터 관측 거래대금 비중', share, ' is-navy'),
+      tile('전주 대비 증가', fmtNum(up, 0, '종목'), `비교 가능 ${comparable.length}종목 중`, comparable.length ? up / comparable.length * 100 : null, ' is-up'),
+      tile('전주 대비 감소', fmtNum(down, 0, '종목'), flat ? `보합 ${flat}종목 제외` : '보합 없음', comparable.length ? down / comparable.length * 100 : null, ' is-down'),
+      tile('비교 불가', fmtNum(rows.length - comparable.length, 0, '종목'), '0으로 대체하지 않음', null, ' is-muted')
+    ]);
+  }
+
   function chartsBlock(st, rows, jobs) {
     const active = filtersActive(st.filter), none = '해당 조건의 종목이 없습니다.';
     const sec = sectorRows(st, rows), secTop = sec.slice(0, 15);
+    const roles = roleRows(rows), conc = concentration(rows);
     const pts = rows.filter(s => isNum(s.amount_change_pct)), miss = rows.length - pts.length;
     const maxA = Math.max(1, ...pts.map(s => s.amount));
     const dRows = rows.filter(s => isNum(s.delta_amount)).sort((a, b) => Math.abs(b.delta_amount) - Math.abs(a.delta_amount));
@@ -622,6 +658,29 @@
     const pick = list => (evt, els) => { if (els && els.length && list[els[0].index]) select(st, list[els[0].index].symbol, true); };
     const kids = [];
     if (typeof window.Chart !== 'function') kids.push(h('p', { class: 'tjb-banner is-warn tjb-span' }, '차트 라이브러리(Chart.js)를 찾을 수 없어 동일한 내용을 표로 표시합니다.'));
+    if (rows.length) kids.push(visualReadout(rows, conc));
+    kids.push(panel(st, jobs, {
+      title: '거래대금 집중도',
+      sub: `필터 적용 관측집합 · 상위 ${conc.n}종목과 나머지 종목의 거래대금 비중 · 순매수·자금 유입 지표 아님`,
+      height: 250, empty: rows.length ? null : none,
+      table: simpleTable('거래대금 집중도 표', ['구성', '거래대금(억원)', '비중(%)'], [
+        [`상위 ${conc.n}종목`, fmtEok(conc.topAmount), fmtNum(conc.total ? conc.topAmount / conc.total * 100 : null, 1)],
+        ['기타 종목', fmtEok(conc.other), fmtNum(conc.total ? conc.other / conc.total * 100 : null, 1)]
+      ], [1, 2]),
+      cfg: () => ({ type: 'doughnut', data: { labels: [`상위 ${conc.n}종목`, '기타 종목'], datasets: [{
+        data: [conc.topAmount / EOK, conc.other / EOK], backgroundColor: [C.navy, C.blue], borderColor: ['#ffffff', '#ffffff'], borderWidth: 3, hoverOffset: 5
+      }] }, options: opts('', '', { legend: true, tip: c => ` ${fmtNum(c.parsed, 1)}억원` }) })
+    }));
+    kids.push(panel(st, jobs, {
+      title: '구분별 거래대금',
+      sub: `필터 적용 · 분류는 리포트가 부여한 Alpha·Omega·관찰 등의 구분이며 성과·매매 신호가 아닙니다`,
+      height: Math.max(160, roles.length * 32 + 48), empty: roles.length ? null : none,
+      table: simpleTable('구분별 거래대금 표', ['구분', '거래대금(억원)', '종목 수', '비중(%)'],
+        roles.map(x => [x.name, fmtEok(x.amount), fmtNum(x.n, 0), fmtNum(conc.total ? x.amount / conc.total * 100 : null, 1)]), [1, 2, 3]),
+      cfg: () => ({ type: 'bar', data: { labels: roles.map(x => x.name), datasets: [{
+        data: roles.map(x => x.amount / EOK), backgroundColor: roles.map((x, i) => i === 0 ? C.navy : C.blue), borderRadius: 2, maxBarThickness: 18
+      }] }, options: opts('거래대금 (억원)', '', { indexAxis: 'y', tip: c => ` ${fmtNum(c.parsed.x, 1)}억원` }) })
+    }));
     kids.push(panel(st, jobs, {
       title: '섹터별 거래대금',
       sub: (active ? '필터 반영 · ' : '') + '종목당 주 섹터 1개 귀속 합산(중복 없음) · 단위 억원' + (sec.length > 15 ? ` · 상위 15개 (표: ${sec.length}개)` : ''),
@@ -630,7 +689,7 @@
         sec.map(s => [s.name, fmtEok(s.amount), fmtNum(s.n, 0), fmtNum(s.share, 1), fmtSigned(s.chg, 1), s.leader]), [1, 2, 3, 4]),
       cfg: () => ({ type: 'bar', data: { labels: secTop.map(s => s.name),
         datasets: [{ data: secTop.map(s => s.amount / EOK), backgroundColor: C.blue, hoverBackgroundColor: C.navy, borderRadius: 2, maxBarThickness: 16 }] },
-        options: opts('거래대금 (억원)', '', { indexAxis: 'y', zeroBaseline: true, tip: c => ` ${fmtNum(c.parsed.x, 1)}억원` }) })
+        options: opts('거래대금 (억원)', '', { indexAxis: 'y', tip: c => ` ${fmtNum(c.parsed.x, 1)}억원` }) })
     }));
     kids.push(panel(st, jobs, {
       title: '거래대금 변화 × 규모',
@@ -655,7 +714,7 @@
         dRows.map(s => [s.name, fmtEokSigned(s.delta_amount), fmtEok(s.previous_amount), fmtEok(s.amount)]), [1, 2, 3]),
       cfg: () => ({ type: 'bar', data: { labels: dTop.map(s => s.name), datasets: [{
         data: dTop.map(s => s.delta_amount / EOK), backgroundColor: dTop.map(s => (s.delta_amount < 0 ? C.down : C.up)), borderRadius: 2, maxBarThickness: 14 }] },
-        options: opts('증감 (억원)', '', { indexAxis: 'y', zeroBaseline: true, onClick: pick(dTop), tip: c => ` ${fmtSigned(c.parsed.x, 1, '억원')}` }) })
+        options: opts('증감 (억원)', '', { indexAxis: 'y', onClick: pick(dTop), tip: c => ` ${fmtSigned(c.parsed.x, 1, '억원')}` }) })
     }));
     return h('div', { class: 'tjb-charts' }, kids);
   }
