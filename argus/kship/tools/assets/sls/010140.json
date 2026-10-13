@@ -4,7 +4,7 @@
  "origin": "2026Q2",
  "unit": "USD_million | KRW_million",
  "curve": "linear_progress",
- "built_at": "2026-10-12",
+ "built_at": "2026-10-13",
  "counts": {
   "contracts": 53,
   "counted": 50,
@@ -17,16 +17,16 @@
    "from": "2026Q3",
    "to": "2028Q4",
    "quarters": 10,
-   "usd_m": 15351.021,
-   "hedged_krw_m": 21753841.7,
-   "usd_m_raw": 15351.02,
-   "hedged_krw_m_raw": 21753841.7
+   "usd_m": 15351.496,
+   "hedged_krw_m": 21723295.7,
+   "usd_m_raw": 15351.495,
+   "hedged_krw_m_raw": 21723295.7
   }
  },
  "fx": {
   "source_counts": {
    "fx.json quarters": 52,
-   "fx.json quarters(partial 7d)": 1
+   "fx.json quarters(partial 8d)": 1
   },
   "fx_json": true,
   "const": 1350.0,
@@ -486,20 +486,20 @@
   "reported_marine_backlog_krw_m": 34706700,
   "remaining_marine_krw_m_at_origin_raw": 21613665.3,
   "remaining_marine_krw_m_at_origin_capped": 21613665.3,
-  "future_marine_hedged_krw_m_raw": 24736239.2,
-  "future_marine_hedged_krw_m": 24736239.2,
-  "future_sls_vs_backlog_raw": 0.7127,
-  "future_sls_vs_backlog": 0.7127,
-  "window_hedged_krw_m_raw": 21753841.7,
-  "window_hedged_krw_m": 21753841.7,
+  "future_marine_hedged_krw_m_raw": 24700126.1,
+  "future_marine_hedged_krw_m": 24700126.1,
+  "future_sls_vs_backlog_raw": 0.7117,
+  "future_sls_vs_backlog": 0.7117,
+  "window_hedged_krw_m_raw": 21723295.7,
+  "window_hedged_krw_m": 21723295.7,
   "basis": "MODEL_SPEC §5-2 — 원장 잔여 원화(수주시점 금액 × 미진행 비율) > 공시 해양 기말잔고이면 배율 1/coverage 로 줄인다(선형 진행 가정이 실제보다 느리거나 공시 잔고 범위·환율이 다른 경우). 원값은 by_quarter[q].backlog_cap.*_raw · by_year[y].*_raw · counts.forecast_window.*_raw 에 보존. future_sls_vs_backlog 는 SLS 원화(건조시점 환율) 기준이라 캡 뒤에도 1 을 넘을 수 있다"
  },
  "post_origin": {
   "n": 7,
   "amt_krw_m": 3658200.0,
-  "amt_usd_m": 2604.396,
-  "window_marine_hedged_krw_m": 2929628.6,
-  "future_marine_hedged_krw_m": 3610831.5,
+  "amt_usd_m": 2604.958,
+  "window_marine_hedged_krw_m": 2925149.7,
+  "future_marine_hedged_krw_m": 3605150.3,
   "rcps": [
    "20260702800158",
    "20260708800164",
@@ -3612,9 +3612,9 @@
    "type": "LNGC",
    "ships": 2,
    "amt_krw_m": 672200.0,
-   "fx_at_sign": 1345.14,
-   "fx_source": "fx.json quarters(partial 7d)",
-   "amt_usd_m": 499.725,
+   "fx_at_sign": 1343.63,
+   "fx_source": "fx.json quarters(partial 8d)",
+   "amt_usd_m": 500.287,
    "signed": "2026-10-02",
    "year": 2026,
    "start": "2026-10-02",
@@ -3627,17 +3627,17 @@
    "supersedes": null,
    "estimated_series": true,
    "schedule": {
-    "2026Q4": 46.737,
-    "2027Q1": 46.223,
-    "2027Q2": 46.737,
-    "2027Q3": 47.25,
-    "2027Q4": 47.25,
-    "2028Q1": 46.737,
-    "2028Q2": 46.737,
-    "2028Q3": 47.25,
-    "2028Q4": 47.25,
-    "2029Q1": 46.223,
-    "2029Q2": 31.331
+    "2026Q4": 46.789,
+    "2027Q1": 46.275,
+    "2027Q2": 46.789,
+    "2027Q3": 47.304,
+    "2027Q4": 47.304,
+    "2028Q1": 46.789,
+    "2028Q2": 46.789,
+    "2028Q3": 47.304,
+    "2028Q4": 47.304,
+    "2029Q1": 46.275,
+    "2029Q2": 31.365
    },
    "curve": "linear_progress",
    "cohort": "⑤초호황",
@@ -3653,15 +3653,15 @@
    "cohort_alt_mode": "ledger_relative",
    "cohort_alt_detail": {
     "cohort": "③중마진",
-    "per_ship_usd_m": 249.86,
+    "per_ship_usd_m": 250.14,
     "ref_usd_m": 251.0,
     "ref_kind": "type_year_median",
     "cell_n": 25,
-    "rel": 0.995,
+    "rel": 0.997,
     "year_index": 0.9281
    },
    "progress_at_origin": 0.0,
-   "remaining_usd_m_at_origin": 499.725,
+   "remaining_usd_m_at_origin": 500.287,
    "signed_by_origin": false,
    "backlog_cap_applied": false,
    "counted": true
@@ -4355,35 +4355,35 @@
    "graded_share_alt": 0.9464
   },
   "2026Q4": {
-   "usd_m": 1817.364,
-   "marine_usd_m": 1728.228,
+   "usd_m": 1817.417,
+   "marine_usd_m": 1728.281,
    "by_type": {
     "CONT": 253.134,
-    "LNGC": 833.033,
+    "LNGC": 833.086,
     "OFFSH": 226.186,
     "OTHER": 89.136,
     "VLCC": 268.481,
     "VLGC": 147.393
    },
    "by_cohort": {
-    "⑤초호황": 1728.228,
+    "⑤초호황": 1728.281,
     "등급없음": 89.136
    },
    "by_cohort_alt": {
     "②BEP": 43.397,
-    "③중마진": 1173.253,
+    "③중마진": 1173.305,
     "④호황": 511.579,
     "등급없음": 89.136
    },
-   "hedged_krw_m": 2564060.4,
-   "marine_hedged_krw_m": 2442792.9,
-   "marine_hedged_krw_m_signed_by_origin": 2127160.0,
-   "marine_hedged_krw_m_post_origin": 315632.9,
-   "applied_rate": 1410.87,
+   "hedged_krw_m": 2563258.4,
+   "marine_hedged_krw_m": 2442031.2,
+   "marine_hedged_krw_m_signed_by_origin": 2126480.3,
+   "marine_hedged_krw_m_post_origin": 315551.0,
+   "applied_rate": 1410.39,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1439.04,
-   "spot_assumed": 1345.14,
-   "spot_source": "fx.json quarters(partial 7d)",
+   "hedge_rate": 1439.0,
+   "spot_assumed": 1343.63,
+   "spot_source": "fx.json quarters(partial 8d)",
    "n_active": 44,
    "kind": "estimate",
    "past": false,
@@ -4394,34 +4394,34 @@
    "graded_share_alt": 0.951
   },
   "2027Q1": {
-   "usd_m": 1778.359,
-   "marine_usd_m": 1691.161,
+   "usd_m": 1778.411,
+   "marine_usd_m": 1691.213,
    "by_type": {
     "CONT": 247.631,
-    "LNGC": 815.426,
+    "LNGC": 815.478,
     "OFFSH": 221.269,
     "OTHER": 87.198,
     "VLCC": 262.645,
     "VLGC": 144.189
    },
    "by_cohort": {
-    "⑤초호황": 1691.161,
+    "⑤초호황": 1691.213,
     "등급없음": 87.198
    },
    "by_cohort_alt": {
     "②BEP": 42.453,
-    "③중마진": 1148.25,
+    "③중마진": 1148.302,
     "④호황": 500.458,
     "등급없음": 87.198
    },
-   "hedged_krw_m": 2507048.5,
-   "marine_hedged_krw_m": 2388512.7,
-   "marine_hedged_krw_m_signed_by_origin": 2079310.1,
-   "marine_hedged_krw_m_post_origin": 309202.7,
-   "applied_rate": 1409.75,
+   "hedged_krw_m": 2502587.9,
+   "marine_hedged_krw_m": 2384271.8,
+   "marine_hedged_krw_m_signed_by_origin": 2075611.0,
+   "marine_hedged_krw_m_post_origin": 308660.9,
+   "applied_rate": 1407.2,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1439.01,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1438.97,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json forward",
    "n_active": 44,
    "kind": "estimate",
@@ -4433,34 +4433,34 @@
    "graded_share_alt": 0.951
   },
   "2027Q2": {
-   "usd_m": 1724.767,
-   "marine_usd_m": 1677.599,
+   "usd_m": 1724.819,
+   "marine_usd_m": 1677.651,
    "by_type": {
     "CONT": 250.383,
-    "LNGC": 792.134,
+    "LNGC": 792.186,
     "OFFSH": 223.727,
     "OTHER": 47.168,
     "VLCC": 265.563,
     "VLGC": 145.791
    },
    "by_cohort": {
-    "⑤초호황": 1677.599,
+    "⑤초호황": 1677.651,
     "등급없음": 47.168
    },
    "by_cohort_alt": {
     "②BEP": 42.925,
-    "③중마진": 1128.655,
+    "③중마진": 1128.708,
     "④호황": 506.018,
     "등급없음": 47.168
    },
-   "hedged_krw_m": 2434866.0,
-   "marine_hedged_krw_m": 2371317.4,
-   "marine_hedged_krw_m_signed_by_origin": 2058679.2,
-   "marine_hedged_krw_m_post_origin": 312638.2,
-   "applied_rate": 1411.71,
+   "hedged_krw_m": 2430540.6,
+   "marine_hedged_krw_m": 2367110.9,
+   "marine_hedged_krw_m_signed_by_origin": 2055020.5,
+   "marine_hedged_krw_m_post_origin": 312090.4,
+   "applied_rate": 1409.16,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1441.8,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1441.76,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json forward",
    "n_active": 44,
    "kind": "estimate",
@@ -4472,34 +4472,34 @@
    "graded_share_alt": 0.9727
   },
   "2027Q3": {
-   "usd_m": 1656.15,
-   "marine_usd_m": 1628.848,
+   "usd_m": 1656.203,
+   "marine_usd_m": 1628.902,
    "by_type": {
     "CONT": 253.134,
-    "LNGC": 733.653,
+    "LNGC": 733.706,
     "OFFSH": 226.186,
     "OTHER": 27.301,
     "VLCC": 268.481,
     "VLGC": 147.393
    },
    "by_cohort": {
-    "⑤초호황": 1628.848,
+    "⑤초호황": 1628.902,
     "등급없음": 27.301
    },
    "by_cohort_alt": {
     "②BEP": 43.397,
-    "③중마진": 1073.873,
+    "③중마진": 1073.926,
     "④호황": 511.579,
     "등급없음": 27.301
    },
-   "hedged_krw_m": 2340319.8,
-   "marine_hedged_krw_m": 2304067.9,
-   "marine_hedged_krw_m_signed_by_origin": 1987994.1,
-   "marine_hedged_krw_m_post_origin": 316073.8,
-   "applied_rate": 1413.11,
+   "hedged_krw_m": 2336167.6,
+   "marine_hedged_krw_m": 2299984.5,
+   "marine_hedged_krw_m_signed_by_origin": 1984464.5,
+   "marine_hedged_krw_m_post_origin": 315520.0,
+   "applied_rate": 1410.56,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1443.8,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1443.76,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json forward",
    "n_active": 40,
    "kind": "estimate",
@@ -4511,34 +4511,34 @@
    "graded_share_alt": 0.9835
   },
   "2027Q4": {
-   "usd_m": 1656.15,
-   "marine_usd_m": 1628.848,
+   "usd_m": 1656.203,
+   "marine_usd_m": 1628.902,
    "by_type": {
     "CONT": 253.134,
-    "LNGC": 733.653,
+    "LNGC": 733.706,
     "OFFSH": 226.186,
     "OTHER": 27.301,
     "VLCC": 268.481,
     "VLGC": 147.393
    },
    "by_cohort": {
-    "⑤초호황": 1628.848,
+    "⑤초호황": 1628.902,
     "등급없음": 27.301
    },
    "by_cohort_alt": {
     "②BEP": 43.397,
-    "③중마진": 1073.873,
+    "③중마진": 1073.926,
     "④호황": 511.579,
     "등급없음": 27.301
    },
-   "hedged_krw_m": 2340319.8,
-   "marine_hedged_krw_m": 2304067.9,
-   "marine_hedged_krw_m_signed_by_origin": 1987994.1,
-   "marine_hedged_krw_m_post_origin": 316073.8,
-   "applied_rate": 1413.11,
+   "hedged_krw_m": 2336167.6,
+   "marine_hedged_krw_m": 2299984.5,
+   "marine_hedged_krw_m_signed_by_origin": 1984464.5,
+   "marine_hedged_krw_m_post_origin": 315520.0,
+   "applied_rate": 1410.56,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1443.8,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1443.76,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json forward",
    "n_active": 40,
    "kind": "estimate",
@@ -4550,31 +4550,31 @@
    "graded_share_alt": 0.9835
   },
   "2028Q1": {
-   "usd_m": 1406.893,
-   "marine_usd_m": 1406.893,
+   "usd_m": 1406.946,
+   "marine_usd_m": 1406.946,
    "by_type": {
     "CONT": 163.485,
-    "LNGC": 691.758,
+    "LNGC": 691.81,
     "OFFSH": 223.727,
     "VLCC": 235.197,
     "VLGC": 92.725
    },
    "by_cohort": {
-    "⑤초호황": 1406.893
+    "⑤초호황": 1406.946
    },
    "by_cohort_alt": {
     "②BEP": 17.053,
-    "③중마진": 990.752,
+    "③중마진": 990.804,
     "④호황": 399.088
    },
-   "hedged_krw_m": 1996679.4,
-   "marine_hedged_krw_m": 1996679.4,
-   "marine_hedged_krw_m_signed_by_origin": 1684041.2,
-   "marine_hedged_krw_m_post_origin": 312638.2,
-   "applied_rate": 1419.21,
+   "hedged_krw_m": 1993155.1,
+   "marine_hedged_krw_m": 1993155.1,
+   "marine_hedged_krw_m_signed_by_origin": 1681064.7,
+   "marine_hedged_krw_m_post_origin": 312090.4,
+   "applied_rate": 1416.65,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1452.52,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1452.47,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json forward",
    "n_active": 36,
    "kind": "estimate",
@@ -4586,31 +4586,31 @@
    "graded_share_alt": 1.0
   },
   "2028Q2": {
-   "usd_m": 1305.506,
-   "marine_usd_m": 1305.506,
+   "usd_m": 1305.559,
+   "marine_usd_m": 1305.559,
    "by_type": {
     "CONT": 127.561,
-    "LNGC": 665.192,
+    "LNGC": 665.245,
     "OFFSH": 223.727,
     "VLCC": 214.131,
     "VLGC": 74.895
    },
    "by_cohort": {
-    "⑤초호황": 1305.506
+    "⑤초호황": 1305.559
    },
    "by_cohort_alt": {
     "②BEP": 17.053,
-    "③중마진": 912.982,
+    "③중마진": 913.035,
     "④호황": 375.471
    },
-   "hedged_krw_m": 1853025.9,
-   "marine_hedged_krw_m": 1853025.9,
-   "marine_hedged_krw_m_signed_by_origin": 1540387.7,
-   "marine_hedged_krw_m_post_origin": 312638.2,
-   "applied_rate": 1419.39,
+   "hedged_krw_m": 1849757.1,
+   "marine_hedged_krw_m": 1849757.1,
+   "marine_hedged_krw_m_signed_by_origin": 1537666.7,
+   "marine_hedged_krw_m_post_origin": 312090.4,
+   "applied_rate": 1416.83,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1452.78,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1452.72,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json forward",
    "n_active": 32,
    "kind": "estimate",
@@ -4622,31 +4622,31 @@
    "graded_share_alt": 1.0
   },
   "2028Q3": {
-   "usd_m": 1260.75,
-   "marine_usd_m": 1260.75,
+   "usd_m": 1260.803,
+   "marine_usd_m": 1260.803,
    "by_type": {
     "CONT": 116.626,
-    "LNGC": 625.736,
+    "LNGC": 625.789,
     "OFFSH": 226.186,
     "VLCC": 216.484,
     "VLGC": 75.718
    },
    "by_cohort": {
-    "⑤초호황": 1260.75
+    "⑤초호황": 1260.803
    },
    "by_cohort_alt": {
     "②BEP": 17.241,
-    "③중마진": 876.249,
+    "③중마진": 876.302,
     "④호황": 367.261
    },
-   "hedged_krw_m": 1790407.1,
-   "marine_hedged_krw_m": 1790407.1,
-   "marine_hedged_krw_m_signed_by_origin": 1474333.3,
-   "marine_hedged_krw_m_post_origin": 316073.8,
-   "applied_rate": 1420.11,
+   "hedged_krw_m": 1787251.3,
+   "marine_hedged_krw_m": 1787251.3,
+   "marine_hedged_krw_m_signed_by_origin": 1471731.3,
+   "marine_hedged_krw_m_post_origin": 315520.0,
+   "applied_rate": 1417.55,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1453.81,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1453.75,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json forward",
    "n_active": 30,
    "kind": "estimate",
@@ -4658,31 +4658,31 @@
    "graded_share_alt": 1.0
   },
   "2028Q4": {
-   "usd_m": 1081.682,
-   "marine_usd_m": 1081.682,
+   "usd_m": 1081.735,
+   "marine_usd_m": 1081.735,
    "by_type": {
     "CONT": 115.157,
-    "LNGC": 448.137,
+    "LNGC": 448.19,
     "OFFSH": 226.186,
     "VLCC": 216.484,
     "VLGC": 75.718
    },
    "by_cohort": {
-    "⑤초호황": 1081.682
+    "⑤초호황": 1081.735
    },
    "by_cohort_alt": {
     "②BEP": 17.241,
-    "③중마진": 698.65,
+    "③중마진": 698.703,
     "④호황": 365.791
    },
-   "hedged_krw_m": 1538949.4,
-   "marine_hedged_krw_m": 1538949.4,
-   "marine_hedged_krw_m_signed_by_origin": 1224926.0,
-   "marine_hedged_krw_m_post_origin": 314023.5,
-   "applied_rate": 1422.74,
+   "hedged_krw_m": 1536244.9,
+   "marine_hedged_krw_m": 1536244.9,
+   "marine_hedged_krw_m_signed_by_origin": 1222771.5,
+   "marine_hedged_krw_m_post_origin": 313473.3,
+   "applied_rate": 1420.17,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1457.56,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1457.49,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json forward",
    "n_active": 27,
    "kind": "estimate",
@@ -4694,31 +4694,31 @@
    "graded_share_alt": 1.0
   },
   "2029Q1": {
-   "usd_m": 757.006,
-   "marine_usd_m": 757.006,
+   "usd_m": 757.058,
+   "marine_usd_m": 757.058,
    "by_type": {
     "CONT": 81.034,
-    "LNGC": 315.816,
+    "LNGC": 315.868,
     "OFFSH": 221.269,
     "VLCC": 85.131,
     "VLGC": 53.756
    },
    "by_cohort": {
-    "⑤초호황": 757.006
+    "⑤초호황": 757.058
    },
    "by_cohort_alt": {
     "②BEP": 16.866,
-    "③중마진": 544.459,
+    "③중마진": 544.511,
     "④호황": 195.681
    },
-   "hedged_krw_m": 1080011.4,
-   "marine_hedged_krw_m": 1080011.4,
-   "marine_hedged_krw_m_signed_by_origin": 816941.8,
-   "marine_hedged_krw_m_post_origin": 263069.7,
-   "applied_rate": 1426.69,
+   "hedged_krw_m": 1078124.6,
+   "marine_hedged_krw_m": 1078124.6,
+   "marine_hedged_krw_m_signed_by_origin": 815513.4,
+   "marine_hedged_krw_m_post_origin": 262611.2,
+   "applied_rate": 1424.1,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1463.2,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1463.1,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 22,
    "kind": "estimate",
@@ -4730,30 +4730,30 @@
    "graded_share_alt": 1.0
   },
   "2029Q2": {
-   "usd_m": 589.686,
-   "marine_usd_m": 589.686,
+   "usd_m": 589.721,
+   "marine_usd_m": 589.721,
    "by_type": {
     "CONT": 81.934,
-    "LNGC": 199.927,
+    "LNGC": 199.963,
     "OFFSH": 223.727,
     "VLCC": 39.895,
     "VLGC": 44.202
    },
    "by_cohort": {
-    "⑤초호황": 589.686
+    "⑤초호황": 589.721
    },
    "by_cohort_alt": {
-    "③중마진": 415.92,
+    "③중마진": 415.955,
     "④호황": 173.766
    },
-   "hedged_krw_m": 842340.3,
-   "marine_hedged_krw_m": 842340.3,
-   "marine_hedged_krw_m_signed_by_origin": 609404.4,
-   "marine_hedged_krw_m_post_origin": 232935.9,
-   "applied_rate": 1428.46,
+   "hedged_krw_m": 840868.4,
+   "marine_hedged_krw_m": 840868.4,
+   "marine_hedged_krw_m_signed_by_origin": 608341.9,
+   "marine_hedged_krw_m_post_origin": 232526.5,
+   "applied_rate": 1425.87,
    "hedge_ratio": 0.7,
-   "hedge_rate": 1465.73,
-   "spot_assumed": 1341.49,
+   "hedge_rate": 1465.64,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 14,
    "kind": "estimate",
@@ -4781,14 +4781,14 @@
     "③중마진": 256.159,
     "④호황": 175.675
    },
-   "hedged_krw_m": 618509.7,
-   "marine_hedged_krw_m": 618509.7,
-   "marine_hedged_krw_m_signed_by_origin": 469869.0,
-   "marine_hedged_krw_m_post_origin": 148640.7,
-   "applied_rate": 1432.28,
+   "hedged_krw_m": 617421.5,
+   "marine_hedged_krw_m": 617421.5,
+   "marine_hedged_krw_m_signed_by_origin": 469049.2,
+   "marine_hedged_krw_m_post_origin": 148372.3,
+   "applied_rate": 1429.76,
    "hedge_ratio": 0.7,
    "hedge_rate": 1471.2,
-   "spot_assumed": 1341.49,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 7,
    "kind": "estimate",
@@ -4814,14 +4814,14 @@
     "③중마진": 81.694,
     "④호황": 175.675
    },
-   "hedged_krw_m": 371182.1,
-   "marine_hedged_krw_m": 371182.1,
-   "marine_hedged_krw_m_signed_by_origin": 348909.2,
-   "marine_hedged_krw_m_post_origin": 22272.9,
-   "applied_rate": 1442.22,
+   "hedged_krw_m": 370533.5,
+   "marine_hedged_krw_m": 370533.5,
+   "marine_hedged_krw_m_signed_by_origin": 348300.8,
+   "marine_hedged_krw_m_post_origin": 22232.7,
+   "applied_rate": 1439.7,
    "hedge_ratio": 0.7,
    "hedge_rate": 1485.39,
-   "spot_assumed": 1341.49,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 4,
    "kind": "estimate",
@@ -4846,14 +4846,14 @@
     "③중마진": 10.235,
     "④호황": 171.856
    },
-   "hedged_krw_m": 264106.6,
-   "marine_hedged_krw_m": 264106.6,
-   "marine_hedged_krw_m_signed_by_origin": 249822.9,
-   "marine_hedged_krw_m_post_origin": 14283.7,
-   "applied_rate": 1450.41,
+   "hedged_krw_m": 263647.7,
+   "marine_hedged_krw_m": 263647.7,
+   "marine_hedged_krw_m_signed_by_origin": 249389.8,
+   "marine_hedged_krw_m_post_origin": 14257.9,
+   "applied_rate": 1447.89,
    "hedge_ratio": 0.7,
    "hedge_rate": 1497.08,
-   "spot_assumed": 1341.49,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 2,
    "kind": "estimate",
@@ -4876,14 +4876,14 @@
    "by_cohort_alt": {
     "④호황": 173.766
    },
-   "hedged_krw_m": 252598.7,
-   "marine_hedged_krw_m": 252598.7,
-   "marine_hedged_krw_m_signed_by_origin": 252598.7,
+   "hedged_krw_m": 252160.8,
+   "marine_hedged_krw_m": 252160.8,
+   "marine_hedged_krw_m_signed_by_origin": 252160.8,
    "marine_hedged_krw_m_post_origin": 0.0,
-   "applied_rate": 1453.67,
+   "applied_rate": 1451.15,
    "hedge_ratio": 0.7,
    "hedge_rate": 1501.75,
-   "spot_assumed": 1341.49,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 1,
    "kind": "estimate",
@@ -4906,14 +4906,14 @@
    "by_cohort_alt": {
     "④호황": 36.281
    },
-   "hedged_krw_m": 52740.4,
-   "marine_hedged_krw_m": 52740.4,
-   "marine_hedged_krw_m_signed_by_origin": 52740.4,
+   "hedged_krw_m": 52649.0,
+   "marine_hedged_krw_m": 52649.0,
+   "marine_hedged_krw_m_signed_by_origin": 52649.0,
    "marine_hedged_krw_m_post_origin": 0.0,
-   "applied_rate": 1453.67,
+   "applied_rate": 1451.15,
    "hedge_ratio": 0.7,
    "hedge_rate": 1501.75,
-   "spot_assumed": 1341.49,
+   "spot_assumed": 1333.09,
    "spot_source": "fx.json daily_last(flat)",
    "n_active": 1,
    "kind": "estimate",
@@ -5025,103 +5025,103 @@
    "quarters": 4
   },
   "2026": {
-   "usd_m": 6362.629,
-   "marine_usd_m": 6008.994,
-   "hedged_krw_m": 9101368.6,
-   "marine_hedged_krw_m": 8610977.4,
-   "hedged_krw_m_raw": 9101368.6,
-   "marine_hedged_krw_m_raw": 8610977.4,
+   "usd_m": 6362.682,
+   "marine_usd_m": 6009.047,
+   "hedged_krw_m": 9100566.6,
+   "marine_hedged_krw_m": 8610215.7,
+   "hedged_krw_m_raw": 9100566.6,
+   "marine_hedged_krw_m_raw": 8610215.7,
    "by_type": {
     "CONT": 900.754,
-    "LNGC": 2583.939,
+    "LNGC": 2583.992,
     "OFFSH": 1132.971,
     "OTHER": 353.637,
     "VLCC": 904.242,
     "VLGC": 487.087
    },
    "by_cohort": {
-    "⑤초호황": 5485.055,
+    "⑤초호황": 5485.108,
     "등급없음": 877.575
    },
    "by_cohort_alt": {
     "②BEP": 172.172,
-    "③중마진": 3719.71,
+    "③중마진": 3719.762,
     "④호황": 1593.173,
     "등급없음": 877.575
    },
    "quarters": 4
   },
   "2027": {
-   "usd_m": 6815.426,
-   "marine_usd_m": 6626.456,
-   "hedged_krw_m": 9622554.1,
-   "marine_hedged_krw_m": 9367965.9,
-   "hedged_krw_m_raw": 9622554.1,
-   "marine_hedged_krw_m_raw": 9367965.9,
+   "usd_m": 6815.636,
+   "marine_usd_m": 6626.668,
+   "hedged_krw_m": 9605463.7,
+   "marine_hedged_krw_m": 9351351.7,
+   "hedged_krw_m_raw": 9605463.7,
+   "marine_hedged_krw_m_raw": 9351351.7,
    "by_type": {
     "CONT": 1004.282,
-    "LNGC": 3074.866,
+    "LNGC": 3075.076,
     "OFFSH": 897.368,
     "OTHER": 188.968,
     "VLCC": 1065.17,
     "VLGC": 584.766
    },
    "by_cohort": {
-    "⑤초호황": 6626.456,
+    "⑤초호황": 6626.668,
     "등급없음": 188.968
    },
    "by_cohort_alt": {
     "②BEP": 172.172,
-    "③중마진": 4424.651,
+    "③중마진": 4424.862,
     "④호황": 2029.634,
     "등급없음": 188.968
    },
    "quarters": 4
   },
   "2028": {
-   "usd_m": 5054.831,
-   "marine_usd_m": 5054.831,
-   "hedged_krw_m": 7179061.8,
-   "marine_hedged_krw_m": 7179061.8,
-   "hedged_krw_m_raw": 7179061.8,
-   "marine_hedged_krw_m_raw": 7179061.8,
+   "usd_m": 5055.043,
+   "marine_usd_m": 5055.043,
+   "hedged_krw_m": 7166408.4,
+   "marine_hedged_krw_m": 7166408.4,
+   "hedged_krw_m_raw": 7166408.4,
+   "marine_hedged_krw_m_raw": 7166408.4,
    "by_type": {
     "CONT": 522.829,
-    "LNGC": 2430.823,
+    "LNGC": 2431.034,
     "OFFSH": 899.826,
     "VLCC": 882.296,
     "VLGC": 319.056
    },
    "by_cohort": {
-    "⑤초호황": 5054.831
+    "⑤초호황": 5055.043
    },
    "by_cohort_alt": {
     "②BEP": 68.588,
-    "③중마진": 3478.633,
+    "③중마진": 3478.844,
     "④호황": 1507.611
    },
    "quarters": 4
   },
   "2029": {
-   "usd_m": 2035.895,
-   "marine_usd_m": 2035.895,
-   "hedged_krw_m": 2912043.5,
-   "marine_hedged_krw_m": 2912043.5,
-   "hedged_krw_m_raw": 2912043.5,
-   "marine_hedged_krw_m_raw": 2912043.5,
+   "usd_m": 2035.982,
+   "marine_usd_m": 2035.982,
+   "hedged_krw_m": 2906948.0,
+   "marine_hedged_krw_m": 2906948.0,
+   "hedged_krw_m_raw": 2906948.0,
+   "marine_hedged_krw_m_raw": 2906948.0,
    "by_type": {
     "CONT": 300.726,
-    "LNGC": 595.909,
+    "LNGC": 595.997,
     "OFFSH": 846.857,
     "VLCC": 135.409,
     "VLGC": 156.992
    },
    "by_cohort": {
-    "⑤초호황": 2035.895
+    "⑤초호황": 2035.982
    },
    "by_cohort_alt": {
     "②BEP": 16.866,
-    "③중마진": 1298.232,
+    "③중마진": 1298.319,
     "④호황": 720.797
    },
    "quarters": 4
@@ -5129,10 +5129,10 @@
   "2030": {
    "usd_m": 392.138,
    "marine_usd_m": 392.138,
-   "hedged_krw_m": 569445.7,
-   "marine_hedged_krw_m": 569445.7,
-   "hedged_krw_m_raw": 569445.7,
-   "marine_hedged_krw_m_raw": 569445.7,
+   "hedged_krw_m": 568457.5,
+   "marine_hedged_krw_m": 568457.5,
+   "hedged_krw_m_raw": 568457.5,
+   "marine_hedged_krw_m_raw": 568457.5,
    "by_type": {
     "OFFSH": 381.903,
     "VLGC": 10.235
