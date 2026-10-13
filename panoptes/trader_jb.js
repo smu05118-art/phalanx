@@ -562,8 +562,9 @@
       plugins: { legend: { display: false }, tooltip: { backgroundColor: C.navy, titleFont: { family: SANS }, bodyFont: { family: MONO }, callbacks: { label: x.tip } } },
       scales: { x: ax(xt), y: ax(yt) } };
     if (o.indexAxis === 'y') o.scales.y.ticks.font.family = SANS;
-    if (o.indexAxis === 'y') o.scales.x.beginAtZero = true;
-    else o.scales.y.beginAtZero = true;
+    // Bar totals retain a zero baseline; scatter levels use their own live range.
+    if (o.indexAxis === 'y') o.scales.x.beginAtZero = x.zeroBaseline === true;
+    else o.scales.y.beginAtZero = x.zeroBaseline === true;
     return o;
   }
 
@@ -629,7 +630,7 @@
         sec.map(s => [s.name, fmtEok(s.amount), fmtNum(s.n, 0), fmtNum(s.share, 1), fmtSigned(s.chg, 1), s.leader]), [1, 2, 3, 4]),
       cfg: () => ({ type: 'bar', data: { labels: secTop.map(s => s.name),
         datasets: [{ data: secTop.map(s => s.amount / EOK), backgroundColor: C.blue, hoverBackgroundColor: C.navy, borderRadius: 2, maxBarThickness: 16 }] },
-        options: opts('거래대금 (억원)', '', { indexAxis: 'y', tip: c => ` ${fmtNum(c.parsed.x, 1)}억원` }) })
+        options: opts('거래대금 (억원)', '', { indexAxis: 'y', zeroBaseline: true, tip: c => ` ${fmtNum(c.parsed.x, 1)}억원` }) })
     }));
     kids.push(panel(st, jobs, {
       title: '거래대금 변화 × 규모',
@@ -654,7 +655,7 @@
         dRows.map(s => [s.name, fmtEokSigned(s.delta_amount), fmtEok(s.previous_amount), fmtEok(s.amount)]), [1, 2, 3]),
       cfg: () => ({ type: 'bar', data: { labels: dTop.map(s => s.name), datasets: [{
         data: dTop.map(s => s.delta_amount / EOK), backgroundColor: dTop.map(s => (s.delta_amount < 0 ? C.down : C.up)), borderRadius: 2, maxBarThickness: 14 }] },
-        options: opts('증감 (억원)', '', { indexAxis: 'y', onClick: pick(dTop), tip: c => ` ${fmtSigned(c.parsed.x, 1, '억원')}` }) })
+        options: opts('증감 (억원)', '', { indexAxis: 'y', zeroBaseline: true, onClick: pick(dTop), tip: c => ` ${fmtSigned(c.parsed.x, 1, '억원')}` }) })
     }));
     return h('div', { class: 'tjb-charts' }, kids);
   }

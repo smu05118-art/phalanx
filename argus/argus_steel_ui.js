@@ -134,8 +134,14 @@
     if(!domain||!good.length)return '<section class="ast-chart"><h4>'+esc(s.name)+'</h4><div class="ast-empty">선택 기간에 확인된 시계열이 없습니다. '+esc(s.note||s.limitation||'빈 기간은 보간하지 않습니다.')+'</div>'+valueTable(ss,sources)+'</section>';
     var W=finite(opts.width)?Math.max(260,Math.min(800,opts.width)):560,H=190,L=56,R=26,T=18,B=34,values=[],scale=displayScale(ss);
     good.forEach(function(p){values.push(p.value);if(p.status==='forecast'){if(finite(p.low))values.push(p.low);if(finite(p.high))values.push(p.high);}});
-    var zeroAxis=typeof opts.zeroAxis==='boolean'?opts.zeroAxis:s.zero_axis!==false;
-    var ymin=Math.min.apply(null,values),ymax=Math.max.apply(null,values);if(zeroAxis){ymin=Math.min(0,ymin);ymax=Math.max(0,ymax);}
+    // Levels should show their observed range by default.  A source can still
+    // request a zero reference explicitly, and mixed-sign series always retain it.
+    var zeroAxis=typeof opts.zeroAxis==='boolean'?opts.zeroAxis:s.zero_axis===true;
+    var ymin=Math.min.apply(null,values),ymax=Math.max.apply(null,values);
+    // A negative series needs a zero reference even when it is otherwise a
+    // range-focused chart: losing money versus breaking even is meaningful.
+    if(ymin<0)zeroAxis=true;
+    if(zeroAxis){ymin=Math.min(0,ymin);ymax=Math.max(0,ymax);}
     var pad=(ymax-ymin)*.09||(Math.abs(ymax)*.1)||1;ymin=!zeroAxis||ymin<0?ymin-pad:ymin;ymax+=pad;
     var x=function(t){return L+(t-domain[0])/(domain[1]-domain[0])*(W-L-R);},y=function(v){return T+(ymax-v)/(ymax-ymin)*(H-T-B);};
     var svg='<svg viewBox="0 0 '+W+' '+H+'" data-y-min="'+ymin+'" data-y-max="'+ymax+'" role="img" aria-label="'+esc(s.name+' · '+(s.unit||'')+' · '+ss.points[0].period+'부터 '+ss.points[ss.points.length-1].period)+'">';
