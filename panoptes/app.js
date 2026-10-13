@@ -699,6 +699,8 @@ function switchTab(tab,nav){
   document.getElementById('humanview').hidden=(tab!=='human');
   document.getElementById('llmview').hidden=(tab!=='llm');
   document.getElementById('fedview').hidden=(tab!=='fed');
+  const atlasPanel=document.getElementById('atlasview');
+  if(atlasPanel) atlasPanel.hidden=(tab!=='atlas');
   const jbPanel=document.getElementById('jbview');
   if(jbPanel) jbPanel.hidden=(tab!=='jb');
   document.getElementById('headStat').style.display=isMap?'':'none';
@@ -710,6 +712,7 @@ function switchTab(tab,nav){
   if(tab==='human'){ loadHuman(); }
   if(tab==='llm'){ loadLLM(); }
   if(tab==='fed'){ loadFed(); }
+  if(tab==='atlas' && atlasPanel && window.AtlasGeo){ AtlasGeo.mount(atlasPanel); }
   if(tab==='jb' && jbPanel && window.TraderJB){ TraderJB.mount(jbPanel); }
   routeWrite(tab,nav);
 }
