@@ -666,6 +666,21 @@ def company_html(s, data):
                  % "".join(roll)) if roll else \
         '<p class="mut">이 회사의 정기보고서에서 수주표를 찾지 못했습니다.</p>'
 
+    # 혼합 통화는 원문 단위별로만 표시한다. 환율 적용·서로 다른 통화 합계는 만들지 않는다.
+    currency_rows = []
+    for q in s["qs"]:
+        v = s["comp"]["quarters"][q]
+        for group in v.get("currency_breakdown") or []:
+            values = ["—" if group.get(field) is None else format(group[field], ",.3f").rstrip("0").rstrip(".")
+                      for field in ("gross", "delivered", "closing")]
+            currency_rows.append('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>'
+                                 % (E(q), E(group["cur"]), E(group["unit"]), *values))
+    if currency_rows:
+        roll_html += ('<h3>통화별 수주 현황</h3><p class="mut">공시 원문 단위 그대로 · 통화 간 합계·환산 없음</p>'
+                      '<div class="wrap"><table><thead><tr><th>분기</th><th>통화</th><th>단위</th>'
+                      '<th>수주총액</th><th>기납품액</th><th>수주잔고</th></tr></thead><tbody>%s</tbody></table></div>'
+                      % "".join(currency_rows))
+
     # 부문 매출
     seg_html = ""
     if latest and (latest.get("revenue_segments") or latest.get("sales_segments")):

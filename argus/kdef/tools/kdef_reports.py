@@ -380,6 +380,70 @@ def parse_orders_table(t):
     return out
 
 
+
+def _mixed_currency_orders(t):
+    """원문이 백만원·천$와 행별 통화 기호를 함께 명시한 표만 통화별로 읽는다."""
+    cap = _UNIT_CAP.findall(" ".join([t.get("lead") or ""] + list(t.get("cols") or [])))
+    if not cap or re.sub(r"^단위:?", "", _clean(cap[-1])).rstrip(")]") != "백만원,천$":
+        return None
+    # 이번 지원 범위는 두 통화의 기호가 모두 명시된 표다. 기존의 무기호 원화 표는
+    # 기존 파서에 맡겨 이미 검증된 과거 관측을 바꾸지 않는다.
+    m = _match_cols(t["cols"])
+    indexes = sorted({m[k] for k in ("open", "new", "done", "gross", "close") if m[k] is not None})
+    # 납기월 등 비금액 칸의 단독 역슬래시는 통화의 근거가 아니다.
+    cells = [str(row[i]).strip() for row in t.get("rows") or [] for i in indexes if i < len(row)]
+    symbols = {match.group(1) for cell in cells
+               if (match := re.fullmatch(r"([\\₩$])\s*([\d,]+(?:\.\d+)?)", cell))
+               and num_of(match.group(2)) is not None}
+    if not (symbols.intersection({"\\", "₩"}) and "$" in symbols):
+        return None
+    groups = {}
+    for row in t.get("rows") or []:
+        rr, currencies = list(row), set()
+        for i in indexes:
+            value = (row[i] if i < len(row) else "").strip()
+            if value in ("", "-", "—"):
+                continue
+            # 접두 기호 없는 값·행 내 통화 혼합·숫자 파싱 실패는 표 전체 유보.
+            match = re.fullmatch(r"([\\₩$])\s*([\d,]+(?:\.\d+)?)", value)
+            if not match or num_of(match.group(2)) is None:
+                return []
+            currencies.add("USD" if match.group(1) == "$" else "KRW")
+            rr[i] = match.group(2)
+        if len(currencies) != 1:
+            return []
+        groups.setdefault(next(iter(currencies)), []).append(rr)
+    if set(groups) != {"KRW", "USD"}:
+        return []
+    out = []
+    for cur in ("KRW", "USD"):
+        clean = dict(t, rows=groups[cur], lead="(단위: %s)" % ("백만원" if cur == "KRW" else "천USD"))
+        parsed = parse_orders_table(clean)
+        if not parsed:
+            return []
+        parsed["lead"] = (t.get("lead") or "")[-200:]
+        parsed["currency_split"] = True
+        parsed["source_unit"] = "백만원" if cur == "KRW" else "천$"
+        out.append(parsed)
+    return out
+
+
+def _orders_tables(t):
+    mixed = _mixed_currency_orders(t)
+    if mixed is not None:
+        return mixed
+    parsed = parse_orders_table(t)
+    return [parsed] if parsed else []
+
+
+def _award_not_applicable(t):
+    """원문이 비공개 수주현황 대신 공시된 계약 목록만 싣는 경우. 금액은 잔고가 아니다."""
+    m = _match_cols(t.get("cols") or [])
+    lead = _clean(t.get("lead") or "")
+    return (all(m[k] is not None for k in ("gross", "client", "name", "period"))
+            and all(m[k] is None for k in ("open", "new", "done", "close"))
+            and "공시된계약현황" in lead and "기재하지않" in lead)
+
 def orders_unknown(t):
     """수주표 어휘(총액·잔고)가 보이는데 parse_orders_table 이 못 읽은 표 → {cols, lead, reason}.
     수주표가 아니면 None. reason(지도 tag·큐 판단의 근거):
@@ -665,8 +729,8 @@ def parse_sales(tables, dropped=(), carry=()):
     반환 키 중 `_` 로 시작하는 것(후보 전부·채택 번호)은 지도 기록용이고 캐시에는 쓰지 않는다."""
     # 수주표로 읽힌 표는 매출표 후보에서 뺀다 — 현대로템 `진행률적용 수주 상황`(품목 45행)이
     # 매출실적으로 다시 읽히면 방산비중이 통째로 오염된다(실측).
-    parsed = [(t, parse_orders_table(t)) for t in tables]
-    orders = [o for _, o in parsed if o] + [dict(o) for o in carry]
+    parsed = [(t, _orders_tables(t)) for t in tables]
+    orders = [o for _, group in parsed for o in group] + [dict(o) for o in carry]
     rest = [t for t, o in parsed if not o]
     revenue = [(t, x) for t, x in ((t, parse_revenue_table(t)) for t in rest) if x]
     segsales = [(t, x) for t, x in ((t, parse_segment_sales(t)) for t in rest) if x]
@@ -676,12 +740,16 @@ def parse_sales(tables, dropped=(), carry=()):
     pick_rev = max(seg_rev or rev, key=lambda r: len(r["rows"])) if rev else None
     pick_ss = max((x for _, x in segsales), key=lambda r: len(r["rows"])) if segsales else None
     pick_cu = max((x for _, x in customers), key=lambda c: len(c["rows"])) if customers else None
-    unknown = [u for u in (orders_unknown(t) for t in rest) if u]
+    not_applicable = [{"cols": t["cols"], "lead": (t.get("lead") or "")[-200:],
+                       "n_rows": len(t.get("rows") or []), "reason": "contract_disclosure_only",
+                       "note": "수주잔고 미공시 — 공시된 계약금액만 공개(잔고 집계 적용불가)"}
+                      for t in rest if _award_not_applicable(t)]
+    unknown = [u for u in (orders_unknown(t) for t in rest if not _award_not_applicable(t)) if u]
     unknown += [u for u in (headerless_unknown(t) for t in dropped) if u]
     return {"orders": _pick_orders(orders), "orders_all": orders,
             "revenue": pick_rev, "revenue_all": rev,
             "segment_sales": pick_ss, "customers": pick_cu,
-            "unknown_headers": unknown,
+            "unknown_headers": unknown, "orders_not_applicable": not_applicable,
             "_pick": _pick_index(orders), "_revenue": revenue, "_segsales": segsales,
             "_customers": customers, "_orders_ids": {id(t) for t, o in parsed if o},
             "_picked": {"revenue": pick_rev, "segsales": pick_ss, "customers": pick_cu}}
@@ -711,9 +779,11 @@ def fail_kind(d):
 def _apply_parsed(d, res, tables):
     """parse_sales 결과를 캐시 dict 에 싣는다(collect_one·reparse_one 공용 — 키와 순서가 같아야 한다)."""
     for k in ("orders", "orders_all", "revenue", "revenue_all", "segment_sales", "customers",
-              "unknown_headers"):
+              "unknown_headers", "orders_not_applicable"):
         d[k] = res[k]
-    d["ok"] = bool(d["orders"] or d["revenue"] or d["segment_sales"])
+    d["ok"] = bool(d["orders"] or d["revenue"] or d["segment_sales"] or d["orders_not_applicable"])
+    if d["orders_not_applicable"]:
+        d["note"] = d["orders_not_applicable"][0]["note"]
     if not d["ok"]:
         d["note"] = "수주·매출표 인식 실패 — 머리행 %s" % [t["cols"] for t in tables][:3]
         d["fail_kind"] = fail_kind(d)
@@ -776,8 +846,13 @@ def hdr_records(d, res):
         if u["reason"] == "no_rows":
             it["checks"] = {"records": False}       # 열은 맞는데 숫자 행이 없다 — 큐 사유 records_none
         unknown.append(it)
-    out = [{"key": st, "q": q, "role": "orders", "tables": otabs,
-            "picks": () if res["_pick"] is None else (res["_pick"],), "unknown": unknown, "meta": meta}]
+    not_applicable = [{"cols": a["cols"], "fields": order_fields(a["cols"]), "n_rec": a["n_rows"],
+                       "lead": a["lead"], "tag": "적용불가:계약목록·잔고미공시", "reason": "no_core"}
+                      for a in res.get("orders_not_applicable") or []]
+    out = [{"key": st, "q": q, "role": "orders", "tables": otabs, "rejected": not_applicable,
+            "picks": (tuple(i for i, item in enumerate(res["orders_all"]) if item.get("currency_split"))
+                      if any(item.get("currency_split") for item in res["orders_all"])
+                      else () if res["_pick"] is None else (res["_pick"],)), "unknown": unknown, "meta": meta}]
     for role, pairs, tagk in (("revenue", res["_revenue"], "basis"), ("segsales", res["_segsales"], None),
                               ("customers", res["_customers"], None)):
         tabs, picks = [], ()
@@ -843,7 +918,7 @@ def hdr_stage(d, res, prev=None, root=None, queue=True):
     for r in recs:
         unk = r.get("unknown") or ()
         hdrmap.record(HDR_TAB, r["key"], r["q"], r["role"], r["tables"], r["picks"],
-                      unknown=unk if queue else (), rejected=() if queue else unk, meta=r["meta"], root=root)
+                      unknown=unk if queue else (), rejected=list(r.get("rejected") or ()) + ([] if queue else list(unk)), meta=r["meta"], root=root)
     if not queue:
         return recs
     st, q, meta = d["stock"], d["quarter"], recs[0]["meta"]
@@ -867,6 +942,23 @@ def hdr_stage(d, res, prev=None, root=None, queue=True):
     return recs
 
 
+
+def resolve_not_applicable(root=None):
+    """저장된 지도에서 원문 근거가 확인된 계약목록과 같은 미지표만 명시적으로 닫는다."""
+    M = hdrmap.load_map(HDR_TAB, root)
+    resolved = 0
+    for item in hdrmap.open_items(HDR_TAB, root, kind="unknown"):
+        q = item.get("quarter_last")
+        entries = (M.get("companies", {}).get(item["key"], {}).get("roles", {}).get("orders") or {}).get(q) or []
+        for entry in entries:
+            if (entry.get("tag") == "적용불가:계약목록·잔고미공시" and not entry.get("pick")
+                    and _award_not_applicable(entry)
+                    and hdrmap.mask_cols(entry["ncols"]) == hdrmap.mask_cols(item["ncols"])):
+                resolved += hdrmap.resolve_clean(HDR_TAB, item["key"], "orders", q,
+                                                ncols=entry["ncols"], root=root, strict=True)
+                break
+    return resolved
+
 def _hdr_collect(d, res, log=sys.stderr):
     """collect_one·reparse_one 의 훅 — 캐시 쓰기가 끝난 뒤 그 (회사, 분기)만 기록·커밋. 수집을 멈추지 않는다."""
     st = d.get("stock")
@@ -874,6 +966,7 @@ def _hdr_collect(d, res, log=sys.stderr):
         M = hdrmap.load_map(HDR_TAB, HDR_ROOT)
         hdr_stage(d, res, prev=prev_pick(M, st, d["quarter"]), root=HDR_ROOT)
         hdrmap.write(HDR_TAB, key=st, root=HDR_ROOT)
+        resolve_not_applicable(HDR_ROOT)
     except Exception as e:                       # 어댑터 오류 — 엔진과 같은 꼴로 흔적을 남긴다
         hdrmap.discard(HDR_TAB, st)
         log.write("hdrmap kdef %s %s: %s: %s\n" % (st, d.get("quarter"), type(e).__name__, e))
@@ -1093,7 +1186,13 @@ def build(rows, qs):
             orows = o.get("rows") or []
             tot = [r for r in orows if r["total"]]
             # 단위를 못 읽었거나(캡션 없음) 금액이 아닌 단위(풍산 M/T)면 **금액으로 싣지 않는다**.
-            money = bool(o.get("unit_seen")) and not o.get("qty_unit")
+            currency_groups = [item for item in d.get("orders_all") or [] if item.get("currency_split")]
+            currency_breakdown = [{"cur": item["cur"], "unit": "백만원" if item["cur"] == "KRW" else "천$",
+                                   **{field: (None if _sum_rows(item["rows"], field) is None else
+                                              round(_sum_rows(item["rows"], field) * (1000 if item["cur"] == "USD" else 1), 3))
+                                      for field in ("opening", "gross", "delivered", "closing")}}
+                                  for item in currency_groups]
+            money = bool(o.get("unit_seen")) and not o.get("qty_unit") and not currency_groups
             backlog = (tot[0]["closing"] if tot and tot[0].get("closing") is not None
                        else _sum_rows(orows, "closing")) if money else None
             backlog_def = _sum_rows(orows, "closing", kinds=("def",)) if money else None
@@ -1122,13 +1221,16 @@ def build(rows, qs):
             all_sales = sum(r["val"] for r in mix_rows if r.get("val") is not None) or None
             per_q[q] = {
                 "ok": True, "rcp": d.get("rcp"), "shape": o.get("shape"),
-                "cur": o.get("cur"), "unit_seen": o.get("unit_seen"),
+                "cur": "MIXED" if currency_groups else o.get("cur"), "unit_seen": o.get("unit_seen"),
+                "currency_breakdown": currency_breakdown,
                 "backlog": backlog, "backlog_def": backlog_def,
                 "opening": ((tot[0]["opening"] if tot and tot[0].get("opening") is not None
                              else _sum_rows(orows, "opening"))) if money else None,
                 "delivered": _sum_rows(orows, "delivered") if money else None,
                 "gross": _sum_rows(orows, "gross") if money else None,
-                "unit_note": ("" if money else
+                "unit_note": ("원화·달러 별도 공개 — 통화별 표 참조, 합계 미산출" if currency_groups else
+                              d["orders_not_applicable"][0]["note"] if d.get("orders_not_applicable") else
+                              "" if money else
                               ("수주표 단위가 금액이 아님(%s) — 금액으로 싣지 않음"
                                % (o.get("cur") or "미상") if o.get("qty_unit")
                                else "수주표 단위 캡션을 못 읽음 — 금액으로 싣지 않음") if o else ""),
@@ -1137,7 +1239,7 @@ def build(rows, qs):
                 "segments": [{"label": r["label"], "kind": r.get("kind"), "closing": r["closing"],
                               "gross": r.get("gross"), "delivered": r.get("delivered"),
                               "due": r.get("due"), "order_date": r.get("order_date")}
-                             for r in orows if not r["total"]],
+                             for r in orows if not r["total"] and not currency_groups],
                 "revenue_basis": rv.get("basis"),
                 "revenue_fy": (_fy_revenue(rv)[0] or _fy_segsales(ss)[0]),
                 "revenue_fy_col": (_fy_revenue(rv)[1] or _fy_segsales(ss)[1]),

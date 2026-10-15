@@ -4,7 +4,7 @@
 
 여기서 지키는 것(전부 DART 0 — 캐시 원문 표 assets/reports_cache 와 tests/fixtures 만 읽는다):
   · 재생 — 캐시 전 파일을 메모리에서 다시 읽어 지도·큐·페이지를 만든다. 캐시 파일은 쓰지 않는다. 증분 재실행은 같은 바이트.
-  · 실패 45건(2026-10-12 캐시)의 갈래 — no_tables 33 · no_orders_table(수주표 없음) 10 · award 2.
+  · 기존 실패 45건의 원문 분류 — 미해결 43건과 계약목록·잔고미공시 2건. 재파싱 전후 모두 검사.
   · 판별 근거(matched) — KAI 두 줄 머리행에서 기초·기말 **금액** 열을 집는다(수량 열이 아니라).
   · 채택 플래그 — orders_all 전부를 기록하고 화면 값의 표 한 장만 pick=True(KAI 5장 중 지배회사 표).
   · 어휘 — 대한항공 종속 표 36장(18분기 × 2)의 금액 열을 읽는다(잔고 단독·납품금액·매출금액).
@@ -158,7 +158,13 @@ class TestReplay(unittest.TestCase):
         for st, co in self.M["companies"].items():
             for role, by_q in co["roles"].items():
                 for q, entries in by_q.items():
-                    self.assertLessEqual(sum(1 for e in entries if e["pick"]), 1, (st, role, q))
+                    picked = [e for e in entries if e["pick"]]
+                    if len(picked) > 1:
+                        self.assertEqual((st, role, q), ("368770", "orders", "2026Q2"))
+                        self.assertEqual({e["cur"] for e in picked}, {"KRW", "USD"})
+                        self.assertEqual(len(picked), 2)
+                    else:
+                        self.assertLessEqual(len(picked), 1, (st, role, q))
 
     def test_fields_are_kdef_meanings(self):
         """수주 역할의 fields 는 이 탭이 읽은 뜻(open…due·qty·label) — 건설 사전 별칭이 섞이지 않는다."""
@@ -177,7 +183,7 @@ class TestReplay(unittest.TestCase):
 
 
 class TestFailures(unittest.TestCase):
-    """2026-10-12 캐시의 실패(ok=False) 45건 — 재파싱해도 실패이고 갈래가 셋으로 갈린다."""
+    """2026-10-12 실패 표본 45건 — 미해결 43건과 원문상 잔고 미공시 2건의 분류를 보존한다."""
 
     NO_TABLES = ([("003490", "2024Q4"), ("368770", "2021Q4")]
                  + [("024740", q) for q in ("2022Q1", "2022Q2", "2022Q3", "2022Q4", "2023Q1", "2023Q2", "2023Q3",
@@ -196,17 +202,47 @@ class TestFailures(unittest.TestCase):
                             ("award", self.AWARD)):
             for st, q in pairs:
                 d = cache(st, q)
-                self.assertFalse(d["ok"], (st, q))
                 nd, _ = KR.reparse_dict(d)
+                if want == "award":
+                    self.assert_contract_absence(nd)
+                    if d.get("ok"):  # 이미 재생성된 캐시도 같은 원문 근거와 null을 보존한다.
+                        self.assert_contract_absence(d)
+                    got[want] = got.get(want, 0) + 1
+                    continue
+                self.assertFalse(d["ok"], (st, q))
                 self.assertFalse(nd["ok"], (st, q))
                 got[want] = got.get(want, 0) + (nd["fail_kind"] == want)
         self.assertEqual(got, {"no_tables": 33, "no_orders_table": 10, "award": 2})
+
+    def assert_contract_absence(self, d):
+        self.assertTrue(d["ok"])
+        self.assertIsNone(d["orders"])
+        self.assertEqual(d.get("orders_all"), [])
+        self.assertEqual(d.get("unknown_headers"), [])
+        evidence = d["orders_not_applicable"]
+        self.assertEqual(len(evidence), 1)
+        self.assertEqual(evidence[0]["reason"], "contract_disclosure_only")
+        self.assertTrue(KR._award_not_applicable(evidence[0]))
+        self.assertIsNone(KR._match_cols(evidence[0]["cols"])["close"])
+        self.assertIn("수주잔고 미공시", d["note"])
+
+    def test_award_snapshot_before_and_after_reparse(self):
+        for st, q in self.AWARD:
+            raw = cache(st, q)
+            before = dict(raw, ok=False, orders=None, orders_all=[], note="")
+            before.pop("orders_not_applicable", None)
+            after, _ = KR.reparse_dict(before)
+            self.assert_contract_absence(after)
+            replayed, _ = KR.reparse_dict(after)
+            self.assert_contract_absence(replayed)
+            self.assertEqual(after, replayed)
 
     def test_award_is_classified_not_adopted(self):
         """비츠로넥스텍 `계약상대방|계약명|계약기간|계약금액(원)` — 잔고 열이 없는 공시 계약 목록. 잔고로 싣지 않는다."""
         nd, res = KR.reparse_dict(cache("488900", "2026Q2"))
         self.assertIsNone(nd["orders"])
-        u = [x for x in nd["unknown_headers"] if x["reason"] == "award"]
+        u = nd["orders_not_applicable"]
+        self.assertEqual(nd["unknown_headers"], [])
         self.assertEqual(len(u), 1)
         self.assertEqual(u[0]["cols"][:2], ["계약상대방", "계약명"])
 
@@ -320,20 +356,91 @@ class TestTwoRow(unittest.TestCase):
 
 class TestPrimeBacklog(unittest.TestCase):
 
+    HISTORICAL_QUARTERS = tuple(KR.quarters("2026Q2", 19))
+
+    def assert_historical_sources(self):
+        # 2026-10-15에 확인한 7사 × 19분기 원관측. 창 이동으로 이 고정 역사가 사라져서는 안 된다.
+        for st in PRIMES:
+            for q in self.HISTORICAL_QUARTERS:
+                path = os.path.join(CACHE, st, q + ".json")
+                self.assertTrue(os.path.exists(path), ("역사 원문 캐시 누락", st, q))
+                with open(path, encoding="utf-8") as f:
+                    raw = json.load(f)
+                self.assertTrue(raw.get("ok"), ("기존 공시 실패로 변경", st, q))
+                self.assertIsNotNone(backlog(raw.get("orders")), ("기존 잔고 소실", st, q))
+
+    def source_backlogs(self, quarters):
+        expected = {}
+        for st in PRIMES:
+            for q in quarters:
+                path = os.path.join(CACHE, st, q + ".json")
+                if not os.path.exists(path):
+                    continue  # 위 고정 역사 밖의 신규 미공시 분기는 관측을 만들지 않는다.
+                with open(path, encoding="utf-8") as f:
+                    raw = json.load(f)
+                nd, _ = KR.reparse_dict(raw)
+                if nd.get("ok"):
+                    expected[st, q] = backlog(nd.get("orders"))
+        return expected
+
+    def assert_source_coverage(self, rep, expected_window=8):
+        self.assert_historical_sources()
+        quarters = rep["quarters"]
+        self.assertEqual(len(quarters), expected_window, "설정된 표시 기간이 축소됨")
+        self.assertTrue(quarters)
+        self.assertEqual(quarters, KR.quarters(quarters[-1], len(quarters)))
+        expected = self.source_backlogs(quarters)
+        self.assertTrue(expected, "원문 관측이 없어 공시 커버리지를 검증할 수 없음")
+        self.assertEqual({st for st, _ in expected}, set(PRIMES))
+        # 화면의 유효 행부터 세면 삭제·ok=False 변경이 누락될 수 있다. 원문과 키·값을 모두 대조한다.
+        actual = {(st, q): v["backlog"]
+                  for st in PRIMES
+                  for q, v in rep["companies"].get(st, {}).get("quarters", {}).items()
+                  if v.get("ok")}
+        self.assertEqual(set(actual), set(expected), "실제 공시 누락 또는 원문 없는 관측")
+        self.assertEqual(actual, expected, "공시 잔고와 화면 잔고 불일치")
+
+    def test_latest_unpublished_quarter_and_negative_coverage(self):
+        qs = ["2026Q2", "2026Q3"]
+        actual_exists = os.path.exists
+        with mock.patch.object(os.path, "exists", side_effect=lambda path:
+                               False if str(path).endswith("/2026Q3.json") else actual_exists(path)):
+            values = self.source_backlogs(qs)
+            self.assertEqual(set(values), {(st, "2026Q2") for st in PRIMES})
+            rep = {"quarters": qs, "companies": {
+                st: {"quarters": {"2026Q2": {"ok": True, "backlog": values[st, "2026Q2"]}}}
+                for st in PRIMES}}
+            self.assert_source_coverage(rep, expected_window=2)
+            for kind in ("deleted", "failed", "null", "wrong", "invented", "truncated"):
+                with self.subTest(kind=kind):
+                    changed = json.loads(json.dumps(rep))
+                    rows = changed["companies"][PRIMES[0]]["quarters"]
+                    if kind == "deleted":
+                        del rows["2026Q2"]
+                    elif kind == "failed":
+                        rows["2026Q2"]["ok"] = False
+                    elif kind == "null":
+                        rows["2026Q2"]["backlog"] = None
+                    elif kind == "wrong":
+                        rows["2026Q2"]["backlog"] += 1
+                    elif kind == "invented":
+                        rows["2026Q3"] = {"ok": True, "backlog": 0}
+                    else:
+                        changed["quarters"] = ["2026Q2"]
+                    with self.assertRaises(AssertionError):
+                        self.assert_source_coverage(changed, expected_window=2)
+        missing = os.path.join(CACHE, PRIMES[0], "2026Q2.json")
+        with mock.patch.object(os.path, "exists", side_effect=lambda path:
+                               False if path == missing else actual_exists(path)):
+            with self.assertRaises(AssertionError):
+                self.assert_source_coverage(rep, expected_window=2)
+
     def test_prime7_backlog_unchanged(self):
         """체계업체 7사 — 화면 창(reports.json 분기)에서 새 파서로 다시 읽은 잔고가 지금 화면 잔고와 같다.
         창 밖까지 보면 다른 것은 풍산 2021Q4 하나(중량을 금액으로 읽던 것을 고친 값)뿐이어야 한다."""
         with open(os.path.join(KR.ASSETS, "reports.json"), encoding="utf-8") as f:
             rep = json.load(f)
-        n = 0
-        for st in PRIMES:
-            for q, v in rep["companies"][st]["quarters"].items():
-                if not v.get("ok"):
-                    continue
-                nd, _ = KR.reparse_dict(cache(st, q))
-                self.assertEqual(backlog(nd["orders"]), v["backlog"], (st, q))
-                n += 1
-        self.assertGreaterEqual(n, 50)
+        self.assert_source_coverage(rep)
         diff = set()
         for st in PRIMES:
             for p in sorted(glob.glob(os.path.join(CACHE, st, "*.json"))):

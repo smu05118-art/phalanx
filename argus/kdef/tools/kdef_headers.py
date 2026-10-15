@@ -120,6 +120,7 @@ def replay(all_=False, root=None, cache=None, log=sys.stderr):
             staged += 1
         if staged:
             hdrmap.write(TAB, root=root, strict=True)
+            KR.resolve_not_applicable(root)
             qs.append(q)
         n += staged
     log.write("kdef 머리행 재생: %d파일(건너뜀 %d) · %d분기 · 실패 %s\n" % (n, skipped, len(qs), dict(fk)))
