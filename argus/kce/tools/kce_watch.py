@@ -28,6 +28,7 @@ from kce_fetch import (api_key, api_reports, fetch_quarter, pick_report,
                        search_reports)
 import hdrmap
 import kce_build
+import report_refresh as RF
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KCE = os.path.dirname(HERE)
@@ -69,7 +70,7 @@ def list_reports(co, quarter):
 def is_published(co, quarter):
     """그 분기 정기보고서가 DART에 올라왔는가. (있음?, rcpNo, 제목, 조회경로)"""
     reports, via = list_reports(co, quarter)
-    ranked = pick_report(reports, quarter)
+    ranked = RF.candidates(reports, quarter)
     if not ranked:
         return False, None, None, via
     rcp, title = ranked[0]

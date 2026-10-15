@@ -469,7 +469,7 @@ class TestSeriesCache(_TmpRoot):
         super().setUp()
         self._old, KS.CACHE = KS.CACHE, os.path.join(self.root, "series_cache")
         html = _read("kre_ii4_2026Q2.html")
-        self.net = [mock.patch.object(KS, "search_reports", return_value=[("20260814000001", "반기보고서")]),
+        self.net = [mock.patch.object(KS, "search_reports", return_value=[("20260814000001", "반기보고서 (2026.06)")]),
                     mock.patch.object(KS, "pick_report", return_value=[("20260814000001", "반기보고서 (2026.06)")]),
                     mock.patch.object(KS, "toc", return_value=[{"text": "4. 매출 및 수주상황"}]),
                     mock.patch.object(KS, "find_sections", return_value={"ii4": {"text": "4. 매출 및 수주상황"}}),

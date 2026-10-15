@@ -30,8 +30,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Tests (before)
-        run: cd argus/kchem/tools && python3 -m unittest discover -s tests -p 'test_*.py'
+      # 산출물 fingerprint는 아래 빌드 후 검사한다. 최신 입력을 받기 전의
+      # registry와 먼저 비교하면 정상적인 새 입력도 수집 전에 막힌다.
+      - name: Tests (before — parser and input contracts)
+        run: cd argus/kchem/tools && python3 -m unittest discover -s tests -p 'test_kchem.py'
       - name: Build (입력 검증 → 레지스트리 → 페이지, 네트워크 없음)
         id: build
         shell: bash

@@ -886,29 +886,35 @@ def _hdr_collect(d, res, log=sys.stderr):
             pass
 
 
+import report_refresh as RF
+
 def collect_one(rec, quarter, force=False, log=sys.stderr):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
-    if os.path.exists(path) and not force:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
+    cached = RF.read(path)
+    if cached is not None and not force and not RF.due(cached, quarter):
+        return cached
     out = {"stock": st, "name": rec.get("name", ""), "quarter": quarter, "ok": False, "note": ""}
-    start, end = report_window(quarter)
+    start, end = RF.window(quarter)
     try:
-        reports = pick_report(search_reports(st, start, end, report_kind(quarter)), quarter)
+        reports = RF.candidates(search_reports(st, start, end, report_kind(quarter)), quarter)
     except Exception as e:
         out["note"] = "검색 실패: %s" % e
         return out
     if not reports:
         out["note"] = "정기보고서 없음"
         return out
-    rcp, title = reports[0]
-    out["rcp"], out["title"] = rcp, title
-    nodes = toc(rcp)
-    found = find_sections(nodes, SECTIONS)
-    if "sales" not in found:
+    for rcp, title in reports[:3]:
+        if cached and cached.get("ok") and not force and RF.receipt(cached) == rcp:
+            return RF.checked(path, cached)
+        nodes = toc(rcp)
+        found = find_sections(nodes, SECTIONS)
+        if "sales" in found:
+            break
+    else:
         out["note"] = "매출·수주 절 없음"
         return out
+    out["rcp"], out["title"] = rcp, title
     html = fetch_section(found["sales"])
     dropped = []
     tables = _headered(_carry_units(parse_tables(html)), dropped)
@@ -922,7 +928,7 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
     if not out["ok"]:
         out["fail_kind"] = fail_kind(out)        # raw_tables 를 채운 뒤 다시 가른다(no_tables 판정)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    atomic_write(path, json.dumps(out, ensure_ascii=False, indent=1) + "\n")
+    RF.save(path, out)
     log.write("%s %s %s %s\n" % (st, quarter, "ok" if out["ok"] else "FAIL",
                                  (out["orders"] or {}).get("shape", "-")))
     log.flush()
@@ -1181,7 +1187,7 @@ def main():
     if a.only:
         want = set(a.only.split(","))
         rows = [r for r in rows if r["stock"] in want]
-    qs = quarters(a.quarter or latest_quarter(), a.n)
+    qs = quarters(a.quarter or RF.latest_candidate(), a.n)
     if a.collect:
         collect(rows, qs, a.force)
     if a.reparse:

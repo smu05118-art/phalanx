@@ -67,15 +67,14 @@ def find_periodic(stock, quarter):
     종류로 받았든 `pick_report` 가 제목의 기준월(YYYY.MM)로 거른다 — 결산월이 달라도
     **분기말이 맞는 문서만** 앞에 온다. 검색을 더 내는 것은 못 찾았을 때뿐이다.
     """
-    start, end = report_window(quarter)
+    from report_refresh import window, candidates
+    start, end = window(quarter)
     want = report_kind(quarter)
-    first = []
     for kind in (want,) + tuple(k for k in _KINDS if k != want):
-        reps = pick_report(search_reports(stock, start, end, kind), quarter)
+        reps = candidates(search_reports(stock, start, end, kind), quarter)
         if reps and covers(reps[0][1], quarter):
             return reps                            # 기준월이 분기말과 맞는다 — 더 두드리지 않는다
-        first = first or reps
-    return first                                   # 기준월이 안 맞아도 있는 것은 돌려준다
+    return []                                      # 미공시 분기에 이전 분기 값을 넣지 않는다
 
 
 _TITLE_MONTH = re.compile(r"\((\d{4})[.\-/](\d{2})\)")

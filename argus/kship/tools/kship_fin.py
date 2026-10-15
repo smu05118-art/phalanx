@@ -66,6 +66,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import unicodedata
 from html import unescape as html_unescape
 try:
@@ -76,6 +77,8 @@ except ImportError:                              # pragma: no cover
 from kship_lib import (ASSETS, KSHIP, atomic_write, fetch_section, latest_quarter, load_asset, num_of,
                        parse_tables, pick_report, q_next, q_range, report_kind,
                        search_reports, toc)
+
+import report_refresh as RF
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIN_CACHE = os.path.join(ASSETS, "fin_cache")
@@ -94,10 +97,8 @@ def today():
 
 
 def default_quarters():
-    """기본 분기 범위 DEFAULT_Q0..latest_quarter() — kship_scan·kship_yards 와 같은 규칙(kship_lib.latest_quarter: 분기말 +50일, 사업보고서 +95일).
-    모델 REPORT_LAG_DAYS(45/90)는 제출기한 자체(그 전엔 '미수집'이 아니다)이고, 수집 기본값은 기한 뒤 공시가 DART 에 반영될 여유를 더 둔 50/95일이다.
-    운영(.github/workflows/update-kship.yml)은 --quarters 를 명시하므로 이 기본값은 수동 실행에만 쓰인다."""
-    return q_range(DEFAULT_Q0, latest_quarter())
+    """최근 종료 분기까지 공개 여부를 확인한다. 미공시는 관측값으로 만들지 않는다."""
+    return q_range(DEFAULT_Q0, RF.latest_candidate())
 
 
 def helper_quarters(quarters):
@@ -1947,6 +1948,8 @@ def cache_paths(stock, quarter):
 
 
 def _read_meta(stock, quarter):
+    if os.path.exists(_pending_path(stock, quarter)):
+        raise RuntimeError("재무 캐시 교체 미완료 — 복구 전 조회·빌드 중단: %s %s" % (stock, quarter))
     p = cache_paths(stock, quarter)["meta"]
     if not os.path.exists(p):
         return None
@@ -1959,29 +1962,95 @@ def _cache_complete(stock, quarter):
     if not meta:
         return False
     if meta.get("rcp") is None:
-        return True                                   # '보고서 없음' 도 확정 결과다(--force 로만 다시)
+        return True                                   # 완전성만 판단; 미공시 재조회 주기는 RF.due가 판단
     paths = cache_paths(stock, quarter)
     return all(os.path.exists(paths[k]) for k in meta.get("sections", {}))
 
 
+def _write_meta(path, meta):
+    previous = RF.read(path)
+    if previous and RF.receipt(previous) != RF.receipt(meta):
+        RF.archive(path)
+    meta["_refresh_checked_on"] = RF.today().isoformat()
+    atomic_write(path, json.dumps(meta, ensure_ascii=False, indent=1) + "\n")
+    return meta
+
+
+def _pending_path(stock, quarter):
+    return os.path.join(FIN_CACHE, stock, quarter + "_refresh_pending")
+
+
+def _quarter_files(folder, quarter):
+    return [os.path.join(folder, name) for name in os.listdir(folder)
+            if name.startswith(quarter + "_") and (name.endswith(".html") or name == quarter + "_meta.json")]
+
+
+def _restore_snapshot(folder, quarter, snapshot):
+    """원본 바이트를 복원한다. 실패하면 pending 표식을 유지해 다음 빌드도 막는다."""
+    for path in _quarter_files(folder, quarter):
+        if path not in snapshot:
+            os.unlink(path)
+    for path, raw in snapshot.items():
+        # 저장 함수의 동일 장애에 복원까지 묶이지 않도록 원본 바이트를 임시 파일로 교체한다.
+        fd, tmp = tempfile.mkstemp(prefix=".restore_", dir=folder)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(raw)
+            os.replace(tmp, path)
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+
+
+def _commit_quarter(stock, quarter, paths, pending, meta, same_receipt):
+    folder = os.path.dirname(paths["meta"])
+    snapshot = {}
+    for path in _quarter_files(folder, quarter):
+        with open(path, "rb") as f:
+            snapshot[path] = f.read()
+    marker = _pending_path(stock, quarter)
+    atomic_write(marker, "receipt replacement in progress\n")
+    try:
+        if not same_receipt:
+            for path in snapshot:
+                if path.endswith(".html"):
+                    RF.archive(path)
+                    os.unlink(path)
+        for key, html in pending.items():
+            atomic_write(paths[key], html)
+        _write_meta(paths["meta"], meta)
+        os.unlink(marker)
+    except BaseException:
+        # 본문·주석·접수번호는 한 묶음이다. 복원 실패 시 표식은 남으며 읽기/빌드가 차단된다.
+        _restore_snapshot(folder, quarter, snapshot)
+        os.unlink(marker)
+        raise
+
+
 def collect_quarter(stock, name, quarter, reports_by_kind, force=False):
-    """한 회사·한 분기: 후보 보고서(기준월 일치) 순회 → 목차 → 절 4종 캐시. 캐시가 완전하면 건너뛴다."""
+    """최근 두 분기 매일/과거 주간 접수번호 확인. 새 접수의 절만 다시 받는다."""
     paths = cache_paths(stock, quarter)
-    if not force and _cache_complete(stock, quarter):
-        meta = _read_meta(stock, quarter)
-        _log("%s %s %s rcp=%s skip(cached) %s" % (stock, name, quarter, meta.get("rcp"), ",".join(meta.get("sections", {}))))
-        return meta
+    cached = _read_meta(stock, quarter)
+    complete = _cache_complete(stock, quarter)
+    if not force and complete and not RF.due(cached, quarter):
+        return cached
     kind = report_kind(quarter)
-    cands = [(r, t) for r, t in pick_report(reports_by_kind.get(kind, []), quarter) if _title_ok(t, quarter)]
+    if reports_by_kind.get(kind) is None:
+        raise RuntimeError("보고서 검색 실패 — 기존 재무 캐시 보존")
+    cands = RF.candidates(reports_by_kind.get(kind, []), quarter)
     os.makedirs(os.path.dirname(paths["meta"]), exist_ok=True)
     if not cands:
+        if cached and cached.get("sections"):
+            raise RuntimeError("기존 보고서가 검색 결과에서 사라짐 — 재무 캐시 보존")
+        if cached and cached.get("rcp") is None and cached.get("note") == "no_report":
+            return _write_meta(paths["meta"], cached)
         meta = {"stock": stock, "quarter": quarter, "rcp": None, "title": None, "kind": kind,
                 "sections": {}, "note": "no_report", "collected_at": today()}
-        atomic_write(paths["meta"], json.dumps(meta, ensure_ascii=False, indent=1) + "\n")
-        _log("%s %s %s rcp=None no_report" % (stock, name, quarter))
-        return meta
-    tried = []
+        return _write_meta(paths["meta"], meta)
+    tried, found = [], None
     for rcp, title in cands[:3]:
+        if not force and complete and cached and cached.get("rcp") == rcp and cached.get("sections"):
+            return _write_meta(paths["meta"], cached)
         nodes = toc(rcp)
         found = find_fin_sections(nodes)
         if "cons" in found or "sep" in found:
@@ -1989,28 +2058,60 @@ def collect_quarter(stock, name, quarter, reports_by_kind, force=False):
         tried.append((rcp, "재무제표 절 없음"))
         found = None
     if not found:
+        if cached and cached.get("sections"):
+            raise RuntimeError("새 보고서 재무제표 절 없음 — 기존 캐시 보존")
         meta = {"stock": stock, "quarter": quarter, "rcp": cands[0][0], "title": cands[0][1], "kind": kind,
                 "sections": {}, "note": "no_fin_section %s" % tried, "collected_at": today()}
-        atomic_write(paths["meta"], json.dumps(meta, ensure_ascii=False, indent=1) + "\n")
-        _log("%s %s %s rcp=%s no_fin_section" % (stock, name, quarter, cands[0][0]))
-        return meta
+        return _write_meta(paths["meta"], meta)
     want = ["cons", "sep", "shares"] + (["div"] if kind == "A001" else [])
-    sections = {}
+    same_receipt = cached and cached.get("rcp") == rcp
+    sections, pending = {}, {}
     for key in want:
         n = found.get(key)
         if not n:
             continue
-        if os.path.exists(paths[key]) and not force:
+        if same_receipt and os.path.exists(paths[key]) and not force:
             sections[key] = {"text": n.get("text"), "path": os.path.relpath(paths[key], ASSETS)}
             continue
         html = fetch_section(n)
-        atomic_write(paths[key], html)
+        if not html or not html.strip():
+            raise RuntimeError("빈 재무제표 응답 — 기존 캐시 보존")
+        pending[key] = html
         sections[key] = {"text": n.get("text"), "path": os.path.relpath(paths[key], ASSETS), "bytes": len(html)}
     meta = {"stock": stock, "quarter": quarter, "rcp": rcp, "title": title, "kind": kind,
             "sections": sections, "note": "", "collected_at": today()}
-    atomic_write(paths["meta"], json.dumps(meta, ensure_ascii=False, indent=1) + "\n")
+    if same_receipt:
+        for key in ("notes", "notes_sep"):
+            if key in cached:
+                meta[key] = cached[key]
+    # 요청을 전부 성공한 뒤 교체한다. 정정 전 본문·주석을 보존하고 저장 실패는 전체 복원한다.
+    _commit_quarter(stock, quarter, paths, pending, meta, same_receipt)
     _log("%s %s %s rcp=%s ok %s" % (stock, name, quarter, rcp, ",".join(sections)))
     return meta
+
+
+def cache_fingerprint():
+    """내용 변경으로 재빌드를 판정한다. 재확인일·과거 이력만의 변경은 제외한다."""
+    import hashlib
+    digest = hashlib.sha256()
+    if not os.path.isdir(FIN_CACHE):
+        return digest.hexdigest()[:16]
+    for folder, dirs, files in os.walk(FIN_CACHE):
+        dirs[:] = sorted(d for d in dirs if d != "_revisions")
+        for name in sorted(files):
+            if name == ".collect.lock":
+                continue
+            if name.endswith("_refresh_pending"):
+                raise RuntimeError("재무 캐시 교체 미완료 — 복구 전 빌드 중단: %s" % os.path.join(folder, name))
+            path = os.path.join(folder, name)
+            with open(path, "rb") as f:
+                raw = f.read()
+            if name.endswith(".json"):
+                data = json.loads(raw)
+                data.pop("_refresh_checked_on", None)
+                raw = json.dumps(data, ensure_ascii=False, sort_keys=True).encode("utf-8")
+            digest.update(os.path.relpath(path, FIN_CACHE).encode("utf-8") + b"\0" + raw + b"\0")
+    return digest.hexdigest()[:16]
 
 
 def collect_company(stock, name, quarters, force=False):
@@ -2024,8 +2125,8 @@ def collect_company(stock, name, quarters, force=False):
             reports[kind] = search_reports(stock, start, end, kind)
         except Exception as e:                          # 네트워크 — 이 회사만 건너뛰고 로그에 남긴다
             _log("%s %s search %s FAIL %s" % (stock, name, kind, e))
-            reports[kind] = []
-    _log("%s %s search A001=%d A002=%d A003=%d" % (stock, name, len(reports["A001"]), len(reports["A002"]), len(reports["A003"])))
+            reports[kind] = None
+    _log("%s %s search A001=%d A002=%d A003=%d" % (stock, name, len(reports["A001"] or []), len(reports["A002"] or []), len(reports["A003"] or [])))
     out = []
     for q in quarters:
         try:

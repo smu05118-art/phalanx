@@ -60,7 +60,7 @@ jobs:
           # 머리행 지도 — 캐시 원문 표 재생(DART 0). 증분: 지도에 없는 (회사, 분기)만. 신규 편입 회사는
           # kdef_universe --write 가 큐(new_company)에 올렸고 위 REST 수집이 그 회사를 받았다.
           python3 kdef_headers.py --write
-          python3 kdef_products.py --collect      # 「주요 제품」 절 — 없는 회사만 받는다
+          python3 kdef_products.py --collect "${Q[@]}"  # 새 접수번호의 「주요 제품」 절 갱신
           python3 kdef_suppliers.py --build
           python3 kdef_page.py --all
           python3 kdef_parts.py

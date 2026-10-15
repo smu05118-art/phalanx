@@ -36,6 +36,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      # 원문/접수번호 캐시는 gitignore 대상이다. 재확인일을 다음 실행에 이어간다.
+      - name: Restore DART report cache
+        uses: actions/cache/restore@v4
+        with:
+          path: argus/ksemi/tools/assets/cache
+          key: ksemi-dart-cache-${{ github.run_id }}
+          restore-keys: |
+            ksemi-dart-cache-
       - name: Tests (before)
         run: cd argus/ksemi/tools && python3 -m unittest discover -s tests -p 'test_*.py'
       - name: Collect and build
@@ -63,6 +71,12 @@ jobs:
           python3 ksemi_exposure.py --write     # 무접속 — 같은 절 캐시에서 메모리/비메모리 낱말
           python3 ksemi_page.py --all
           python3 ksemi_parts.py --write
+      - name: Save DART report cache
+        if: always() && steps.build.outcome != 'skipped'
+        uses: actions/cache/save@v4
+        with:
+          path: argus/ksemi/tools/assets/cache
+          key: ksemi-dart-cache-${{ github.run_id }}
       - name: Tests (after)
         run: |
           cd argus/ksemi/tools && python3 -m unittest discover -s tests -p 'test_*.py'

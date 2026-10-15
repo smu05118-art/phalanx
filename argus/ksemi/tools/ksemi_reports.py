@@ -22,7 +22,8 @@
 한 회사·한 분기당 3요청(검색·목차·절)이고 캐시가 있으면 0이다. 절 HTML은
 `assets/cache/sec_<rcpNo>_<key>.html` 에 원문 그대로 남긴다(COMMON §0-4 — 파서가 자라면
 재수집 없이 다시 뽑는다). 조회 결과(어느 rcpNo의 어느 노드였나)는
-`assets/cache/reports_index.json` 에 남겨 재검색도 피한다. **실패는 캐시하지 않는다.**
+`assets/cache/reports_index.json` 에 남겨 재검색을 줄인다. 최근 두 분기는 매일, 과거는 7일마다 재검색하여 미공시·정정공시를 확인한다.
+같은 접수번호의 원문은 다시 받지 않는다. **실패는 캐시하지 않는다.**
 
 사용:
     python3 ksemi_reports.py --write                      # 편입 전 종목 8분기
@@ -37,6 +38,8 @@ import re
 import sys
 import time
 import traceback
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 import ksemi_parse as P
 from ksemi_lib import (atomic_write, find_periodic, latest_quarter, q_range,
@@ -278,19 +281,48 @@ def collect_one(rec, quarters, force=False, reparse=False, ix=None):
     return out
 
 
+def _today():
+    return datetime.now(ZoneInfo("Asia/Seoul")).date()
+
+
+def _index_fresh(cur, quarter, today):
+    """미공시도 재조회한다. 최근 두 분기는 매일, 과거는 정정공시 확인을 위해 주 1회."""
+    try:
+        checked = date.fromisoformat(cur.get("checked_on", ""))
+        from report_refresh import latest_candidate
+        latest = latest_candidate(today)
+        age_q = (int(latest[:4]) - int(quarter[:4])) * 4 + int(latest[-1]) - int(quarter[-1])
+        ttl_days = 1 if age_q <= 1 else 7
+        return 0 <= (today - checked).days < ttl_days
+    except (TypeError, ValueError):
+        return False                       # 날짜 없는 기존 캐시는 한 번 재확인
+
+
 def _resolve(stock, q, ix, force=False, reparse=False, keys=QUARTERLY):
     """(종목,분기) → `{rcpNo,title,nodes:{key:node}}`. 검색·목차도 캐시한다."""
     ck = "%s|%s" % (stock, q)
     cur = ix.get(ck)
-    if cur is not None and not force:
+    today = _today()
+    # 첨부 정정은 정기보고서 제목을 가지면서 본문 목차가 없을 수 있다.
+    # II-4 본문과 이번 조회에서 이미 관측하던 절이 있는 후보만 채택한다.
+    # 연간 선택 절이 처음부터 없는 정상 본문은 허용하되 기존 절의 소실은 오류로 남긴다.
+    required = set(QUARTERLY) | {k for k in SECTION_SPECS if (cur or {}).get("nodes", {}).get(k)}
+
+    def usable(nodes):
+        return all(nodes.get(k) for k in required)
+
+    if cur is not None and not force and _index_fresh(cur, q, today):
         if cur.get("none"):
             return None
-        if all(k in cur["nodes"] or k in cur.get("absent", []) for k in keys):
+        if (usable(cur.get("nodes", {}))
+                and all(k in cur.get("nodes", {}) or k in cur.get("absent", []) for k in keys)):
             return {"rcpNo": cur["rcpNo"], "title": cur["title"],
                     "nodes": cur["nodes"]}
     if reparse:
         # 재파싱 모드에서는 새 요청을 내지 않는다(캐시에 없으면 건너뛴다).
         if cur and not cur.get("none"):
+            if not usable(cur.get("nodes", {})):
+                raise RuntimeError("기존 조회 캐시에 필수 본문 절 없음 — 관측 보존")
             return {"rcpNo": cur["rcpNo"], "title": cur["title"],
                     "nodes": cur["nodes"]}
         return None
@@ -298,19 +330,32 @@ def _resolve(stock, q, ix, force=False, reparse=False, keys=QUARTERLY):
     # (3S 060310: 달력 2026Q2를 담는 문서가 분기보고서 (2026.06)다). ksemi_lib.find_periodic 참조.
     reps = find_periodic(stock, q)
     if not reps:
-        ix[ck] = {"none": True}
+        if cur and not cur.get("none"):
+            raise RuntimeError("기존 보고서가 검색 결과에서 사라짐 — 조회 캐시 보존")
+        ix[ck] = {"none": True, "checked_on": today.isoformat()}
         return None
-    rcp, title = reps[0]
-    nodes = toc(rcp)
-    picked, absent = {}, []
-    for key, spec in SECTION_SPECS.items():
-        cands = pick_nodes(nodes, spec)
-        if cands:
-            picked[key] = cands
-        else:
-            absent.append(key)
-    ix[ck] = {"rcpNo": rcp, "title": title, "nodes": picked, "absent": absent}
-    return {"rcpNo": rcp, "title": title, "nodes": picked}
+    rejected = []
+    for rcp, title in reps:
+        if (cur and not force and cur.get("rcpNo") == rcp
+                and usable(cur.get("nodes", {}))
+                and all(k in cur.get("nodes", {}) or k in cur.get("absent", []) for k in keys)):
+            cur["checked_on"] = today.isoformat()
+            return {"rcpNo": cur["rcpNo"], "title": cur["title"], "nodes": cur["nodes"]}
+        nodes = toc(rcp)
+        picked, absent = {}, []
+        for key, spec in SECTION_SPECS.items():
+            cands = pick_nodes(nodes, spec)
+            if cands:
+                picked[key] = cands
+            else:
+                absent.append(key)
+        if not usable(picked):
+            rejected.append("%s:%s" % (rcp, ",".join(sorted(required - set(picked)))))
+            continue
+        ix[ck] = {"rcpNo": rcp, "title": title, "nodes": picked, "absent": absent,
+                  "checked_on": today.isoformat()}
+        return {"rcpNo": rcp, "title": title, "nodes": picked}
+    raise RuntimeError("정기보고서 후보에 필수 본문 절 없음 — 조회 캐시·관측 보존 (%s)" % ";".join(rejected))
 
 
 def _cands(meta, key):
@@ -409,6 +454,18 @@ def _onboard(recs, prev_path=None, root=None):
         return []
 
 
+def preserve_failed_refresh(current, previous):
+    """조회 실패 때 직전 회사 관측을 보존한다. 실패 표시는 지우지 않는다."""
+    if not previous or not current.get("errors"):
+        return current
+    import copy
+    held = copy.deepcopy(previous)
+    held["errors"] = current["errors"]
+    held["refresh_status"] = "retained_after_error"
+    held["refresh_checked_on"] = _today().isoformat()
+    return held
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true")
@@ -419,7 +476,8 @@ def main():
     ap.add_argument("--reparse", action="store_true", help="요청 없이 캐시만 다시 파싱")
     a = ap.parse_args()
 
-    q1 = a.quarter or latest_quarter()
+    from report_refresh import latest_candidate
+    q1 = a.quarter or latest_candidate()
     y, qn = int(q1[:4]), int(q1[5])
     back = a.quarters - 1
     y0, q0n = y - (back + (4 - qn)) // 4, ((qn - 1 - back) % 4) + 1
@@ -432,16 +490,22 @@ def main():
         _onboard(recs)
 
     ix = _load_index()
+    previous_path = os.path.join(HERE, "assets", "reports.json")
+    previous = {}
+    if os.path.isfile(previous_path):
+        with open(previous_path, encoding="utf-8") as f:
+            previous = {r["stock"]: r for r in json.load(f).get("rows", [])}
     rows, t0 = [], time.time()
 
     def one(r):
         try:
-            return collect_one(r, quarters, force=a.force, reparse=a.reparse, ix=ix)
+            return preserve_failed_refresh(
+                collect_one(r, quarters, force=a.force, reparse=a.reparse, ix=ix), previous.get(r["stock"]))
         except Exception:                            # noqa: BLE001
             traceback.print_exc()
-            return {"stock": r["stock"], "name": r["name"],
+            return preserve_failed_refresh({"stock": r["stock"], "name": r["name"],
                     "errors": [{"quarter": "*", "error": "collect 실패"}],
-                    "quarters": {}, "kpi": {}}
+                    "quarters": {}, "kpi": {}}, previous.get(r["stock"]))
 
     def done(i, item, r):
         if isinstance(r, Exception):

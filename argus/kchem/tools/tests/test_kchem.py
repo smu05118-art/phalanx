@@ -390,14 +390,6 @@ class TestLive(unittest.TestCase):
                 self.assertIsNotNone(r["region"], r["name"])
                 self.assertIsNotNone(r["product"], r["name"])
 
-    def test_registry_file_matches_inputs(self):
-        path = os.path.join(TOOLS, "assets", "registry.json")
-        if not os.path.isfile(path):
-            self.skipTest("registry.json 미생성")
-        with open(path, encoding="utf-8") as f:
-            on_disk = json.load(f)
-        self.assertEqual(on_disk["fingerprint"], self.fp["fingerprint"], "registry.json 이 현재 입력과 다른 fingerprint — 다시 빌드할 것")
-        self.assertEqual(on_disk["summary"]["rows"], self.reg["summary"]["rows"])
 
 
 if __name__ == "__main__":

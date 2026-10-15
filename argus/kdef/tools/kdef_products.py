@@ -6,7 +6,8 @@
 (인공지능 회사가 인용문 속 '동체' 때문에 항공구조물이 된다). 회사가 **자기 제품을 적은 절**을
 읽으면 그 문제가 줄어든다 — 이 스크립트는 그 절의 글자만 뽑아 캐시한다.
 
-분기별로 바뀌는 값이 아니므로 **회사당 한 번**(가장 최근 보고서)만 받는다.
+정기보고서 수집기가 확인한 **접수번호가 바뀔 때마다** 새 제품 절을 받는다.
+같은 접수번호면 원문 요청을 반복하지 않는다.
 표도 셀을 이어 붙여 함께 남긴다(제품 표만 있고 문장이 없는 회사가 있다).
 
     python3 kdef_products.py --collect [--only 012450] [--force]
@@ -18,9 +19,11 @@ import re
 import sys
 
 from kdef_lib import (ASSETS, atomic_write, fetch_section, find_sections, latest_quarter,
-                      parse_tables, pick_report, report_window, search_reports, toc)
+                      parse_tables, pick_report, report_kind, report_window, search_reports, toc)
 from kdef_universe import load as load_universe
 import kdef_reports
+
+import report_refresh as RF
 
 CACHE = os.path.join(ASSETS, "products")
 SECTIONS = [("products", ["주요 제품 및 서비스", "주요 제품", "주요제품", "제품 및 서비스"])]
@@ -53,13 +56,15 @@ def _cached_rcp(st):
 def collect_one(rec, quarter, force=False, log=sys.stderr):
     st = rec["stock"]
     path = os.path.join(CACHE, st + ".json")
-    if os.path.exists(path) and not force:
-        return None
+    previous = None
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            previous = json.load(f)
     rcp = _cached_rcp(st)
     if not rcp:
-        start, end = report_window(quarter)
+        start, end = RF.window(quarter)
         try:
-            lst = pick_report(search_reports(st, start, end, "A003"), quarter) or []
+            lst = RF.candidates(search_reports(st, start, end, report_kind(quarter)), quarter)
         except Exception as e:
             log.write("[warn] %s 검색 실패 %s\n" % (st, e))
             return None
@@ -67,14 +72,17 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
     if not rcp:
         log.write("%s 정기보고서 없음\n" % st)
         return None
+    if previous and previous.get("rcp") == rcp and not force:
+        return None
     found = find_sections(toc(rcp), SECTIONS)
     if "products" not in found:
-        atomic_write(path, json.dumps({"stock": st, "name": rec.get("name", ""), "rcp": rcp,
-                                       "ok": False, "note": "주요 제품 절을 못 찾음", "text": ""},
-                                      ensure_ascii=False, indent=1) + "\n")
+        RF.save(path, {"stock": st, "name": rec.get("name", ""), "rcp": rcp,
+                       "ok": False, "note": "주요 제품 절을 못 찾음", "text": ""})
         log.write("%s 제품 절 없음 (rcp %s)\n" % (st, rcp))
         return None
     html = fetch_section(found["products"])
+    if not html or not _text(html).strip():
+        raise RuntimeError("%s 제품 절 응답이 비어 있음 — 기존 캐시 보존" % st)
     cells = []
     for t in parse_tables(html):
         cells.extend(t["cols"])
@@ -83,9 +91,8 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
     body = _text(html)
     text = (body + " " + " ".join(cells))[:LIMIT]
     os.makedirs(CACHE, exist_ok=True)
-    atomic_write(path, json.dumps({"stock": st, "name": rec.get("name", ""), "rcp": rcp,
-                                   "ok": bool(text.strip()), "note": "", "text": text},
-                                  ensure_ascii=False, indent=1) + "\n")
+    RF.save(path, {"stock": st, "name": rec.get("name", ""), "rcp": rcp,
+                   "ok": bool(text.strip()), "note": "", "text": text})
     log.write("%s %s 제품 절 %d자\n" % (st, rec.get("name", "")[:12], len(text)))
     return text
 
@@ -114,7 +121,7 @@ def main():
     if a.only:
         want = set(a.only.split(","))
         rows = [r for r in rows if r["stock"] in want]
-    q = a.quarter or latest_quarter()
+    q = a.quarter or RF.latest_candidate()
     if a.collect:
         for r in rows:
             collect_one(r, q, a.force)

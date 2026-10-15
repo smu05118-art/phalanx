@@ -732,12 +732,14 @@ def _hdr_record(out, orders, picked, rejected):
         sys.stderr.write("hdrmap kaero %s %s: %s: %s\n" % (out.get("stock"), out.get("quarter"), type(e).__name__, e))
 
 
+import report_refresh as RF
+
 def collect_one(rec, quarter, force=False, log=sys.stderr):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
-    if os.path.exists(path) and not force:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
+    cached = RF.read(path)
+    if cached is not None and not force and not RF.due(cached, quarter):
+        return cached
     out = {"stock": st, "name": rec.get("name", ""), "quarter": quarter, "ok": False, "note": ""}
     try:
         rcp, title, found, tried = open_sections(st, quarter, SECTIONS, "sales")
@@ -749,6 +751,8 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
         out["tried"] = [{"rcp": r, "title": t, "why": w} for r, t, w in tried]
         return out
     out["rcp"], out["title"] = rcp, title
+    if cached and cached.get("ok") and not force and RF.receipt(cached) == rcp:
+        return RF.checked(path, cached)
     out["tried"] = [{"rcp": r, "title": t, "why": w} for r, t, w in tried]
     section_html = fetch_section(found["sales"])
     tables = _headered(_carry_units(parse_tables(section_html)))
@@ -791,7 +795,7 @@ def collect_one(rec, quarter, force=False, log=sys.stderr):
     if not out["ok"]:
         out["note"] = "수주·매출·매출처 표 인식 실패 — 머리행 %s" % [t["cols"] for t in tables][:3]
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    atomic_write(path, json.dumps(out, ensure_ascii=False, indent=1) + "\n")
+    RF.save(path, out)
     log.write("%s %s %s cur=%s%s\n"
               % (st, quarter, "ok" if out["ok"] else "FAIL", ",".join(sorted(picked)) or "-",
                  (" detail=%s" % ",".join(sorted(dpicked))) if dpicked else ""))
@@ -1177,7 +1181,7 @@ def main():
     if a.only:
         want = set(a.only.split(","))
         rows = [r for r in rows if r["stock"] in want]
-    qs = quarters(a.quarter or latest_quarter(), a.n)
+    qs = quarters(a.quarter or RF.latest_candidate(), a.n)
     if a.collect:
         collect(rows, qs, a.force)
     if a.build:

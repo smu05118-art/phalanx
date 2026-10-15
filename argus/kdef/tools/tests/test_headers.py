@@ -377,7 +377,7 @@ class TestCollectAdvisory(unittest.TestCase):
         with open(os.path.join(FIX, "kai_2026Q2_orders.json"), encoding="utf-8") as f:
             self.tables = json.load(f)["tables"]
         self.patches = [
-            mock.patch.object(KR, "search_reports", lambda *a, **k: [("20260814000001", "반기보고서")]),
+            mock.patch.object(KR, "search_reports", lambda *a, **k: [("20260814000001", "반기보고서 (2026.06)")]),
             mock.patch.object(KR, "pick_report", lambda rs, q: rs),
             mock.patch.object(KR, "toc", lambda rcp: []),
             mock.patch.object(KR, "find_sections", lambda nodes, secs: {"sales": {"text": "4. 매출 및 수주상황"}}),

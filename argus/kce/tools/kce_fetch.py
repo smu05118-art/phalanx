@@ -370,19 +370,15 @@ def api_reports(co, bgn, end, detail_ty, key=None):
 def fetch_quarter(co, quarter, out_dir):
     """분기 정기보고서의 수주 관련 절 3종을 out_dir/<co>_<key>.html 로 저장."""
     name = CORP[co]["name"]
-    y, qn = int(quarter[:4]), int(quarter[5])
-    # 정기보고서 접수는 분기말 +45일(사업보고서 +90일) 안팎
-    start = "%d%02d01" % (y, qn * 3)
-    endm = qn * 3 + (4 if qn == 4 else 3)
-    ey = y + (1 if endm > 12 else 0)
-    end = "%d%02d28" % (ey, (endm - 1) % 12 + 1)
+    from report_refresh import window, candidates
+    start, end = window(quarter)
     reports = search_reports(name, start, end, report_kind(quarter))
     if not reports:
         raise RuntimeError("%s %s 정기보고서 검색 결과 없음" % (name, quarter))
     # 후보를 순회한다 — 첫 후보가 정정신고처럼 수주 절이 없는 문서일 수 있다.
     rcp_no = title = nodes = found = None
     tried = []
-    for cand_rcp, cand_title in pick_report(reports, quarter)[:5]:
+    for cand_rcp, cand_title in candidates(reports, quarter)[:5]:
         cand_nodes = toc(cand_rcp)
         if not cand_nodes:
             tried.append((cand_rcp, "목차 없음"))

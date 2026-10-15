@@ -372,26 +372,25 @@ class TestRobustness(unittest.TestCase):
         self.assertEqual(F.search_start_for(["2021Q3", "2021Q4"]), "20211001")
         self.assertEqual(F.search_start_for(["2021Q4"]), "20220101")
 
-    def test_default_quarters_follow_latest_quarter(self):
-        """기본 분기 범위는 상수(옛 DEFAULT_Q1="2026Q2")가 아니라 kship_lib.latest_quarter()(분기말 +50일·사업보고서 +95일, kship_scan 과 같은 규칙) —
-        첫 분기 DEFAULT_Q0 는 그대로, --quarters 명시가 이긴다(운영 워크플로는 항상 명시). build_company 기본값도 같은 범위다(2026-10-09 검증 수정)."""
+    def test_default_quarters_probe_latest_completed_quarter(self):
+        """종료 분기 공개 여부는 발표기한 전에도 조회한다. 미수집은 기존 issues로 남긴다."""
         import datetime
         import tempfile
-        saved = F.latest_quarter, F.FIN_CACHE
+        saved = F.RF.latest_candidate, F.FIN_CACHE
         try:
-            F.latest_quarter = lambda today=None: "2025Q4"
+            F.RF.latest_candidate = lambda day=None: "2025Q4"
             self.assertEqual(F.default_quarters(), F.q_range("2021Q4", "2025Q4"))
             self.assertEqual((F.default_quarters()[0], F.DEFAULT_Q0), ("2021Q4", "2021Q4"))
             self.assertEqual(F._parse_quarters(None), F.default_quarters())
-            F.latest_quarter = lambda today=None: "2026Q3"
+            F.RF.latest_candidate = lambda day=None: "2026Q3"
             self.assertEqual((F._parse_quarters("")[0], F._parse_quarters("")[-1], len(F._parse_quarters(""))), ("2021Q4", "2026Q3", 20))
             self.assertEqual(F._parse_quarters("2024Q1..2024Q3"), ["2024Q1", "2024Q2", "2024Q3"])      # 명시가 이긴다
-            F.latest_quarter = lambda today=None: "2022Q2"
+            F.RF.latest_candidate = lambda day=None: "2022Q2"
             F.FIN_CACHE = tempfile.mkdtemp()                                                         # 빈 캐시 — 기본 범위의 분기마다 not_collected
             fin = F.build_company("000000", None, "x", golden={})
             self.assertEqual(sorted({i["quarter"] for i in fin["issues"] if i["code"] == "not_collected"}), ["2021Q4", "2022Q1", "2022Q2"])
         finally:
-            F.latest_quarter, F.FIN_CACHE = saved
+            F.RF.latest_candidate, F.FIN_CACHE = saved
         # 실제 규칙(kce_lib.latest_quarter): Q3 말 +50일 = 11-19, 사업보고서 +95일 = 다음 해 04-05
         self.assertEqual(F.latest_quarter(datetime.date(2026, 10, 9)), "2026Q2")
         self.assertEqual(F.latest_quarter(datetime.date(2026, 11, 19)), "2026Q3")

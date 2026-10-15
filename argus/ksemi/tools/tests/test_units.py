@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C                                          # noqa: E402
 
 import ksemi_parse as P                                      # noqa: E402
+from kce_parse import _TableParser
 from ksemi_lib import parse_tables                           # noqa: E402
 
 # 한미반도체 원문의 단일 수주 계약 — 원(₩) 단위 그대로.
@@ -67,11 +68,17 @@ class TestUnitOfHanmiTrap(unittest.TestCase):
         self.assertIn(HANMI_CAPTION, self.html)             # 원문에 실재한다
         self.assertIsNone(P._scale_of(P._txt(t.get("lead"))),
                           "표 앞 문맥(lead)에 단위가 있으면 이 함정이 아니다")
-        # parse_tables 가 뽑은 첫 머리행(둘째 줄을 붙이기 전)에도 단위가 없다.
-        first_head = " ".join(P._txt(c) for c in (t.get("cols") or []))
-        self.assertIsNone(P._scale_of(first_head),
-                          "첫 머리행에 단위가 있으면 이 함정이 아니다")
-        # resolve_header 가 둘째 머리행을 이어 붙여야 비로소 캡션이 보인다.
+        # 공용 parse_tables 는 이제 두 머리행을 이미 병합한다. 원문 행을 직접
+        # 검사하여 첫 줄 무단위/둘째 줄 원 단위라는 fixture 근거를 계속 검증한다.
+        parser = _TableParser()
+        parser.feed(self.html)
+        raw = next(tb for tb in parser.tables
+                   if tb["grid"] and any("수주총액" in c[0] for c in tb["grid"][0]))
+        first_head = " ".join(c[0] for c in raw["grid"][0])
+        second_head = " ".join(c[0] for c in raw["grid"][1])
+        self.assertIsNone(P._scale_of(first_head), "원문 첫 머리행은 단위가 없어야 한다")
+        self.assertEqual(P._scale_of(second_head), 1e-06)
+        # 공용/반도체 파서가 이어 붙인 열에서 원 단위가 보존되어야 한다.
         self.assertTrue(any("단위: 원" in c for c in cols), cols)
 
     def test_column_unit_wins_and_table_unit_stays_unknown(self):

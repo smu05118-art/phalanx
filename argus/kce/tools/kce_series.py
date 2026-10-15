@@ -390,21 +390,25 @@ def cache_path(stock, quarter):
     return os.path.join(CACHE, stock, "%s.json" % quarter)
 
 
+import report_refresh as RF
+
 def collect_one(stock, quarter, force=False):
     """한 종목·한 분기의 II-4 사업장 행을 캐시에 담는다. 이미 있으면 건너뛴다."""
     path = cache_path(stock, quarter)
-    if os.path.exists(path) and not force:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
+    cached = RF.read(path)
+    if cached is not None and not force and not RF.due(cached, quarter):
+        return cached
     out = {"stock": stock, "quarter": quarter, "ok": False, "note": "",
            "rcpNo": None, "rows": [], "grain": None}
     try:
-        start, end = report_window(quarter)
+        start, end = RF.window(quarter)
         reports = search_reports(stock, start, end, report_kind(quarter))
         if not reports:
             out["note"] = "정기보고서 없음"
         else:
-            for rcp, _title in pick_report(reports, quarter)[:3]:
+            for rcp, _title in RF.candidates(reports, quarter)[:3]:
+                if cached and cached.get("ok") and not force and RF.receipt(cached) == rcp:
+                    return RF.checked(path, cached)
                 nodes = toc(rcp)
                 if not nodes:
                     continue
@@ -451,7 +455,7 @@ def collect_one(stock, quarter, force=False):
     # 그걸 캐시하면 재실행해도 영영 재시도되지 않아 회사가 2/8분기로 굳는다.
     if not out.get("transient"):
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        atomic_write(path, json.dumps(out, ensure_ascii=False) + "\n")
+        RF.save(path, out)
     return out
 
 
@@ -500,6 +504,9 @@ def _missing(recs, quarters):
             except Exception:
                 todo.append((rec, q))
                 continue
+            if RF.due(d, q):
+                todo.append((rec, q))
+                continue
             if not d.get("ok") and not d.get("note"):
                 todo.append((rec, q))
                 continue
@@ -538,8 +545,9 @@ def collect(recs, quarters, force=False, log=sys.stderr, sweeps=2):
 
     def one(item):
         rec, q = item
-        fresh = force or not os.path.exists(cache_path(rec["stock"], q))
+        previous = RF.read(cache_path(rec["stock"], q))
         res = collect_one(rec["stock"], q, force)
+        fresh = force or previous is None or RF.receipt(previous) != RF.receipt(res)
         if fresh:                               # 이번에 새로 받은 칸만 지도에(소급 없음) — 커밋은 수집 끝에
             try:
                 stage_headers(rec, q, res)
@@ -897,7 +905,7 @@ def main():
     if a.only:
         sel = {s.strip() for s in a.only.split(",")}
         recs = [r for r in recs if r["stock"] in sel]
-    quarters = q_range(a.q0, a.q1 or latest_quarter())
+    quarters = q_range(a.q0, a.q1 or RF.latest_candidate())
 
     if a.collect:
         if a.lanes:

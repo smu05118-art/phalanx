@@ -221,7 +221,8 @@ class TestWorkflowStatic(unittest.TestCase):
 
     def test_update_workflow_cache_save_condition_and_commit_scope(self):
         text = read(UPDATE_YML)
-        self.assertIn("steps.fin.outputs.fin_changed != 'false' || steps.notes.outputs.notes_changed != 'false'", text)
+        self.assertIn("if: always() && steps.fin.outcome != 'skipped'", text)
+        self.assertNotIn("steps.fin.outputs.fin_changed != 'false' || steps.notes.outputs.notes_changed != 'false'", text)
         self.assertIn("mkdir -p assets/fin_cache", text)                       # 89f95231 — 첫 실행(캐시 없음) 에서 listing 이 죽지 않게
         self.assertIn("git add -A -- argus/kship argus/index.html", text)       # ignore 대상 경로를 명시하지 않고 범위 내 삭제까지 stage
         ignore = read(os.path.join(REPO, ".gitignore"))
@@ -246,13 +247,23 @@ class TestWorkflowSimulated(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.bin = os.path.join(self.tmp, "bin"); os.makedirs(self.bin)
         self.work = os.path.join(self.tmp, "argus", "kship", "tools"); os.makedirs(os.path.join(self.work, "assets"))
+        # Workflow helpers run real Python; give the isolated runner their actual modules.
+        for script in ("kship_fin.py", "kship_lib.py"):
+            shutil.copy2(os.path.join(TOOLS, script), os.path.join(self.work, script))
+        shared = os.path.join(self.tmp, "argus", "kce", "tools")
+        os.makedirs(shared)
+        source = os.path.join(REPO, "argus", "kce", "tools")
+        for script in os.listdir(source):
+            if script.endswith(".py"):
+                shutil.copy2(os.path.join(source, script), os.path.join(shared, script))
         self.log = os.path.join(self.tmp, "stub.log"); self.gh_out = os.path.join(self.tmp, "gh_output")
         self._stub("python3", r'''#!/usr/bin/env bash
 if [ "${1:-}" = "-" ] || [ "${1:-}" = "-c" ]; then exec "$REAL_PY" "$@"; fi
 printf '%s\n' "$*" >> "$STUB_LOG"
 case " $* " in
   *" --collect "*|*" --collect-notes "*)
-    if [ "${STUB_CREATE:-0}" = "1" ]; then mkdir -p assets/fin_cache/stub; printf x > "assets/fin_cache/stub/$RANDOM$RANDOM.html"; fi ;;
+    if [ "${STUB_CREATE:-0}" = "1" ]; then mkdir -p assets/fin_cache/stub; printf x > "assets/fin_cache/stub/$RANDOM$RANDOM.html"; fi
+    if [ "${STUB_MUTATE:-0}" = "1" ]; then printf changed > assets/fin_cache/x/a.html; fi ;;
 esac
 exit 0
 ''')
@@ -298,7 +309,7 @@ exec /bin/date "$@"
     def _log(self):
         return read(self.log) if os.path.exists(self.log) else ""
 
-    def test_fin_step_first_run_rebuilds_and_requeries_latest_two_quarters(self):
+    def test_fin_step_probes_latest_completed_quarter_and_preserves_negative_cache(self):
         cache = os.path.join(self.work, "assets", "fin_cache", "000001"); os.makedirs(cache)
         for q in ("2026Q2", "2026Q1", "2025Q4"):
             with open(os.path.join(cache, "%s_meta.json" % q), "w", encoding="utf-8") as f:
@@ -308,16 +319,15 @@ exec /bin/date "$@"
         r = self._run("Financial statements", create=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         out = self._outputs()
-        self.assertEqual(out.get("q1"), "2026Q2", out)                  # TODAY=2026-10-05 → 분기말 +50일 규칙
+        self.assertEqual(out.get("q1"), "2026Q3", out)                  # 10월에는 종료한 Q3 공개 여부부터 탐지
         self.assertEqual(out.get("fin_changed"), "true", out)
         log = self._log()
-        self.assertIn("kship_fin.py --collect --all --quarters 2021Q4..2026Q2", log)
-        self.assertIn("kship_fin.py --build --all --quarters 2021Q4..2026Q2", log)
+        self.assertIn("kship_fin.py --collect --all --quarters 2021Q4..2026Q3", log)
+        self.assertIn("kship_fin.py --build --all --quarters 2021Q4..2026Q3", log)
         self.assertLess(log.index("--collect --all"), log.index("--build --all"))
-        # '보고서 없음' meta 는 최신 2분기만 지운다 — 2025Q4 의 rcp null 과 2025Q3 의 실제 접수는 그대로
+        # 음수 캐시를 삭제하지 않는다. collector의 재확인일 정책이 재조회를 맡는다.
         left = sorted(os.listdir(cache))
-        self.assertEqual(left, ["2025Q3_meta.json", "2025Q4_meta.json"], left)
-        self.assertIn("재탐색할 '보고서 없음' meta: 2", r.stdout)
+        self.assertEqual(left, ["2025Q3_meta.json", "2025Q4_meta.json", "2026Q1_meta.json", "2026Q2_meta.json"])
 
     def test_fin_step_unchanged_cache_keeps_fin_json(self):
         os.makedirs(os.path.join(self.work, "assets", "fin_cache", "x"))
@@ -331,6 +341,18 @@ exec /bin/date "$@"
         self.assertEqual(self._outputs().get("fin_changed"), "false")
         self.assertNotIn("--build --all", self._log())
         self.assertIn("캐시 변경 없음", r.stdout)
+
+    def test_changed_contents_at_same_path_rebuild_fin_json(self):
+        os.makedirs(os.path.join(self.work, "assets", "fin_cache", "x"))
+        with open(os.path.join(self.work, "assets", "fin_cache", "x", "a.html"), "w") as f:
+            f.write("old")
+        os.makedirs(os.path.join(self.work, "assets", "fin"))
+        with open(os.path.join(self.work, "assets", "fin", "010140.json"), "w") as f:
+            f.write("{}")
+        r = self._run("Financial statements", STUB_MUTATE="1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._outputs().get("fin_changed"), "true")
+        self.assertIn("--build --all", self._log())
 
     def test_fin_step_without_cache_dir_does_not_die(self):
         """89f95231 — 캐시 복원이 비어 assets/fin_cache 가 없어도 listing 에서 죽지 않는다."""

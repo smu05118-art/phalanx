@@ -79,12 +79,13 @@ _AMEND = re.compile(r"첨부정정|기재정정|정정신고|정 정 신 고")
 
 
 def report_candidates(stock, quarter, max_try=4):
-    """그 분기의 정기보고서 후보를 순서대로. 정정본은 뒤로 민다(원본이 있으면 원본 먼저)."""
-    start, end = report_window(quarter)
-    reps = pick_report(search_reports(stock, start, end, report_kind(quarter)), quarter)
-    plain = [r for r in reps if not _AMEND.search(r[1] or "")]
-    amend = [r for r in reps if _AMEND.search(r[1] or "")]
-    return (plain + amend)[:max_try]
+    """그 분기의 최신 접수부터 반환한다. 절이 없는 첨부정정은 open_sections에서 제외한다."""
+    from report_refresh import window, candidates
+    start, end = window(quarter)
+    reps = candidates(search_reports(stock, start, end, report_kind(quarter)), quarter)
+    # 최신 정정본부터 필요한 절을 확인한다. 첨부정정처럼 해당 절이 없으면
+    # open_sections가 다음 후보로 넘어간다(원본을 무조건 우선하면 정정을 놓친다).
+    return reps[:max_try]
 
 
 def open_sections(stock, quarter, sections, need, max_try=4):

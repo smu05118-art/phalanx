@@ -1,7 +1,7 @@
 # 한국조선(argus/kship) 일일 자동 갱신.
 #
-# 척당 계약 공시(수시)는 매일 새로 뜨고, 정기보고서는 분기마다 뜬다. 둘 다 캐시가 있으면
-# 건너뛰므로 평시 비용은 검색 몇 건이다. 수집기는 **하나씩** 돌린다 — DART는 병렬 프로세스가
+# 척당 계약 공시(수시)는 매일 새로 뜨고, 정기보고서는 분기마다 뜬다. 최근 분기는 매일,
+# 과거 기록은 7일마다 접수번호만 재확인하며 새 접수의 본문만 받는다. 수집기는 **하나씩** 돌린다 — DART는 병렬 프로세스가
 # 동시에 두드리면 IP 단위로 연결을 끊는다(RemoteDisconnected, 30~60분).
 # argus/index.html의 진입 링크는 로컬 크론이 매일 지우므로 여기서 재주입한다(kce와 같은 발상).
 #
@@ -10,7 +10,7 @@
 #   → 선표·모델·xlsx(월요일 · 재무 변경 · 수동 입력 때만) → 페이지·모델 허브.
 # 재무 원문 HTML 캐시(tools/assets/fin_cache/, 57사 128MB 실측)는 git 에 넣지 않고 actions/cache 로만
 # 이어간다 — 캐시가 비면(첫 실행·7일 미사용 만료) 57사 × 20분기를 다시 받느라 ≈ 60분이 든다(timeout 180).
-# fin json 은 캐시 파일 목록이 바뀐 날만 다시 만들어 `collected_at` 만 바뀌는 커밋을 막는다.
+# fin json 은 캐시 내용이 바뀐 날만 다시 만들어 `collected_at` 만 바뀌는 커밋을 막는다.
 #
 # 2026-10-02(MODEL.md §12): 재무제표 뒤에 주석 수집(`--collect-notes --all --notes-parent-fallback`)을 붙였다 —
 #   같은 job·같은 캐시(fin_cache/<stock>/<q>_note_*.html)·순차 한 프로세스. 캐시에 있으면 요청 0 으로 건너뛴다.
@@ -104,20 +104,12 @@ jobs:
         working-directory: argus/kship/tools
         run: |
           set -o pipefail
-          # 기대 최신 분기: 분기·반기보고서는 분기말 +45일, 사업보고서는 +90일 안팎에 접수 → 여유 50/95일.
-          # (kship_fin.py 의 기본 마지막 분기는 상수라 여기서 날짜로 정한다.)
+          # 종료한 최신 분기의 공개 여부를 매일 확인한다(미공시는 값으로 만들지 않음).
           Q1="$(python3 - <<'PY'
           import datetime, os
-          d = datetime.date.fromisoformat(os.environ["TODAY"]) if os.environ.get("TODAY") else datetime.date.today()
-          y, q = d.year, (d.month - 1) // 3 + 1
-          while True:
-              q -= 1
-              if q == 0:
-                  y, q = y - 1, 4
-              m = q * 3
-              end = datetime.date(y + (m == 12), m % 12 + 1, 1) - datetime.timedelta(days=1)
-              if end + datetime.timedelta(days=95 if q == 4 else 50) <= d:
-                  print("%dQ%d" % (y, q)); break
+          from kship_fin import RF
+          d = datetime.date.fromisoformat(os.environ["TODAY"]) if os.environ.get("TODAY") else None
+          print(RF.latest_candidate(d))
           PY
           )"
           if [ -n "${QUARTER_INPUT:-}" ]; then
@@ -126,25 +118,9 @@ jobs:
           fi
           echo "재무제표 대상 분기 2021Q4..$Q1"
           echo "q1=$Q1" >> "$GITHUB_OUTPUT"          # 주석 단계가 같은 분기 범위로 fin json 을 다시 만들 때 쓴다
-          # '보고서 없음' 으로 확정된 최신 2분기 meta 는 지워 다시 찾는다(늦은 접수 대비). 그 외 캐시는 체크포인트.
-          python3 - "$Q1" <<'PY'
-          import glob, json, os, sys
-          q1 = sys.argv[1]; y, q = int(q1[:4]), int(q1[5])
-          prev = "%dQ%d" % ((y, q - 1) if q > 1 else (y - 1, 4))
-          n = 0
-          for qq in (q1, prev):
-              for p in glob.glob("assets/fin_cache/*/%s_meta.json" % qq):
-                  try:
-                      m = json.load(open(p, encoding="utf-8"))
-                  except Exception:
-                      continue
-                  if m.get("rcp") is None:
-                      os.remove(p); n += 1
-          print("재탐색할 '보고서 없음' meta: %d" % n)
-          PY
           # Cache restore can miss on first run; mkdir errors must still fail the step.
           mkdir -p assets/fin_cache
-          listing() { find assets/fin_cache -type f -not -name '.collect.lock' 2>/dev/null | LC_ALL=C sort | sha256sum | cut -c1-16; }
+          listing() { python3 -c 'from kship_fin import cache_fingerprint; print(cache_fingerprint())'; }
           BEFORE="$(listing)"
           python3 kship_fin.py --collect --all --quarters "2021Q4..$Q1"
           AFTER="$(listing)"
@@ -161,7 +137,7 @@ jobs:
 
       # 주석 — 재무제표 단계가 끝난 뒤 같은 job 에서 순차로(DART 프로세스 하나, kship_fin 의 .collect.lock 공유).
       # 하위 노드가 없는 분기는 부모 주석 절 1개를 받아 블록으로 나눠 읽는다(--notes-parent-fallback, MODEL.md §12).
-      # 캐시에 이미 있는 주석·체크포인트된 분기는 요청 0 으로 건너뛴다. 캐시 목록이 바뀌었을 때만 fin json 을 다시 만든다.
+      # 캐시에 이미 있는 주석·체크포인트된 분기는 요청 0 으로 건너뛴다. 캐시 내용이 바뀌었을 때만 fin json 을 다시 만든다.
       - name: Financial statement notes (DART, 순차 한 프로세스)
         id: notes
         if: steps.fin.outcome != 'skipped'
@@ -175,7 +151,7 @@ jobs:
           set -o pipefail
           # Cache restore can miss on first run; mkdir errors must still fail the step.
           mkdir -p assets/fin_cache
-          listing() { find assets/fin_cache -type f -not -name '.collect.lock' 2>/dev/null | LC_ALL=C sort | sha256sum | cut -c1-16; }
+          listing() { python3 -c 'from kship_fin import cache_fingerprint; print(cache_fingerprint())'; }
           BEFORE="$(listing)"
           python3 kship_fin.py --collect-notes --all --notes-parent-fallback
           AFTER="$(listing)"
@@ -193,9 +169,9 @@ jobs:
           fi
           grep "notes parent" assets/fin_collect.log | tail -3 || true
 
-      # 캐시가 바뀌었거나(새 보고서·새 주석) 단계가 중간에 끊겼을 때(출력 없음) 저장한다 — 진행분을 다음 실행이 이어받는다.
+      # 값이 그대로여도 재확인일을 저장한다. 그래야 과거 분기의 7일 재조회 주기가 다음 실행에 이어진다.
       - name: Save DART financial statement cache
-        if: always() && steps.fin.outcome != 'skipped' && (steps.fin.outputs.fin_changed != 'false' || steps.notes.outputs.notes_changed != 'false')
+        if: always() && steps.fin.outcome != 'skipped'
         uses: actions/cache/save@v4
         with:
           path: argus/kship/tools/assets/fin_cache

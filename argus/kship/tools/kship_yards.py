@@ -284,23 +284,28 @@ def _hdr_record(rec, out, tables, orders):
         sys.stderr.write("hdrmap kship %s %s: %s: %s\n" % (rec.get("stock"), out.get("quarter"), type(e).__name__, e))
 
 
+import report_refresh as RF
+
 def collect_one(rec, quarter, force=False):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
-    if os.path.exists(path) and not force:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    start, end = report_window(quarter)
-    reports = pick_report(search_reports(st, start, end, report_kind(quarter)), quarter)
+    cached = RF.read(path)
+    if cached is not None and not force and not RF.due(cached, quarter):
+        return cached
+    start, end = RF.window(quarter)
+    reports = RF.candidates(search_reports(st, start, end, report_kind(quarter)), quarter)
     if not reports:
         return {"stock": st, "quarter": quarter, "ok": False, "note": "정기보고서 없음"}
-    rcp, title = reports[0]
-    nodes = toc(rcp)
-    found = find_sections(nodes, SECTIONS)
+    for rcp, title in reports[:3]:
+        if cached and cached.get("ok") and not force and RF.receipt(cached) == rcp:
+            return RF.checked(path, cached)
+        nodes = toc(rcp)
+        found = find_sections(nodes, SECTIONS)
+        if "orders" in found:
+            break
+    else:
+        return {"stock": st, "quarter": quarter, "ok": False, "note": "수주 절 없음"}
     out = {"stock": st, "quarter": quarter, "rcp": rcp, "title": title, "ok": False, "note": ""}
-    if "orders" not in found:
-        out["note"] = "수주 절 없음"
-        return out
     html = fetch_section(found["orders"])
     tables = parse_tables(html)
     orders = [x for x in (parse_orders_table(t) for t in tables if t["cols"]) if x and x["rows"]]
@@ -327,7 +332,7 @@ def collect_one(rec, quarter, force=False):
     out["hedge"] = max(hedges, key=lambda h: h["usd_sell_m"]) if hedges else None
     out["ok"] = True
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    atomic_write(path, json.dumps(out, ensure_ascii=False, indent=1) + "\n")
+    RF.save(path, out)
     _hdr_record(rec, out, tables, orders)
     return out
 
@@ -339,15 +344,17 @@ def main():
     ap.add_argument("--only")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
-    q = a.quarter or latest_quarter()
+    q = a.quarter or RF.latest_candidate()
     yards = [r for r in load_universe() if r["role"] == "yard"]
     if a.only:
         sel = set(a.only.split(","))
         yards = [r for r in yards if r["stock"] in sel]
     if a.collect:
-        for r in yards:
+        targets = [(r, qq) for r in yards
+                   for qq in ([q] if a.quarter else RF.tracked_quarters(CACHE, r["stock"], q))]
+        for r, qq in targets:
             try:
-                d = collect_one(r, q, a.force)
+                d = collect_one(r, qq, a.force)
             except Exception as e:
                 print("%s %s 실패: %s" % (r["stock"], r["name"], e), file=sys.stderr)
                 continue

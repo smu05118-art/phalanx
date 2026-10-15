@@ -287,24 +287,28 @@ _MARINE_TERM = re.compile(r"선박|조선소|조선사|조선업|조선 ?산업|
                           r"컨테이너선|유조선|벌크선|함정|잠수함|해상풍력|선박용|marine|vessel|shipyard|shipbuilding", re.I)
 
 
+import report_refresh as RF
+
 def collect_one(rec, quarter, force=False):
     st = rec["stock"]
     path = os.path.join(CACHE, st, quarter + ".json")
-    if os.path.exists(path) and not force:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    start, end = report_window(quarter)
-    reports = pick_report(search_reports(st, start, end, report_kind(quarter)), quarter)
+    cached = RF.read(path)
+    if cached is not None and not force and not RF.due(cached, quarter):
+        return cached
+    start, end = RF.window(quarter)
+    reports = RF.candidates(search_reports(st, start, end, report_kind(quarter)), quarter)
     if not reports and int(quarter[5]) != 4:                      # 코넥스 등 연 1회
         q2 = "%dQ4" % (int(quarter[:4]) - 1)
-        start, end = report_window(q2)
-        reports = pick_report(search_reports(st, start, end, report_kind(q2)), q2)
+        start, end = RF.window(q2)
+        reports = RF.candidates(search_reports(st, start, end, report_kind(q2)), q2)
         quarter = q2 if reports else quarter
     out = {"stock": st, "quarter": quarter, "ok": False, "note": ""}
     if not reports:
         out["note"] = "정기보고서 없음"
         return out
     rcp, title = reports[0]
+    if cached and cached.get("ok") and not force and RF.receipt(cached) == rcp:
+        return RF.checked(path, cached)
     nodes = toc(rcp)
     found = find_sections(nodes, SECTIONS)
     out.update({"rcp": rcp, "title": title})
@@ -332,7 +336,7 @@ def collect_one(rec, quarter, force=False):
         out["note"] = "II 절을 찾지 못함"
         return out
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    atomic_write(path, json.dumps(out, ensure_ascii=False, indent=1) + "\n")
+    RF.save(path, out)
     return out
 
 
@@ -651,15 +655,17 @@ def main():
     ap.add_argument("--only")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
-    q = a.quarter or latest_quarter()
+    q = a.quarter or RF.latest_candidate()
     recs = [r for r in load_universe() if r["role"] in ("equip", "engine", "steel")]
     if a.only:
         sel = set(a.only.split(","))
         recs = [r for r in recs if r["stock"] in sel]
     if a.collect:
-        for r in recs:
+        targets = [(r, qq) for r in recs
+                   for qq in ([q] if a.quarter else RF.tracked_quarters(CACHE, r["stock"], q))]
+        for r, qq in targets:
             try:
-                d = collect_one(r, q, a.force)
+                d = collect_one(r, qq, a.force)
             except Exception as e:
                 print("%s %s 실패: %s" % (r["stock"], r["name"], e), file=sys.stderr)
                 continue
