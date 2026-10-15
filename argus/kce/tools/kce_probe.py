@@ -24,13 +24,15 @@ import sys
 import time
 import traceback
 
-from kce_lib import atomic_write, latest_quarter, report_kind
+from kce_lib import CORP, atomic_write, latest_quarter, report_kind
 from kce_fetch import (fetch_section, find_sections, parallel, pick_report,
                        search_reports, toc)
-from kce_parse import lead_tail, parse_ii4, parse_p8, parse_tables
+from kce_parse import (lead_tail, parse_ii4, parse_p8, parse_tables,
+                       region_of, sector_of)
 from kce_universe import load as load_universe
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+_PRECISE_STOCKS = {v["stock"] for v in CORP.values() if v.get("stock")}
 
 
 # 공시 날짜 표기 방언. 4자리 연도+구분자만 보면 삼성E&A `201506`(YYYYMM)·
@@ -136,6 +138,11 @@ def probe_one(rec, quarter, keep_dir=None):
             out["unknown_headers"] = [u["cols"] for u in r["unknown_headers"]][:4]
             # 대기열 재료(원문 머리행·행) — 산출 JSON 에는 싣지 않는다(main 이 꺼내 대기열에 올리고 지운다).
             out["_unk"] = _unknown_items(r, "orders", rcp)
+            # probe 는 현재 보고서를 이미 파싱했다. 채택된 수주표 머리행도 같은 실행에서
+            # 지도에 남겨야, 보조 near-miss 표가 있더라도 `현 분기 pick 없음`으로 오판하지
+            # 않는다. 정밀 17사는 kce_build 가 회사 슬러그로 기록하므로 숫자 키를 만들지 않는다.
+            if n > 0 and rec["stock"] not in _PRECISE_STOCKS:
+                out["_hdr_tables"] = _accepted_header_tables(r, rcp)
             out["sec_title"] = found[key].get("text", "")
             out["raw_tables"] = len(parse_tables(html))
             if "p8" in found:
@@ -174,20 +181,43 @@ def _unknown_items(parsed, role, rcp):
             for x in parsed.get("rejected") or [] if x.get("reason") == "near_miss"]
 
 
+def _accepted_header_tables(parsed, rcp):
+    """probe 가 이미 채택한 수주표를 hdrmap.record 입력 계약으로 축약한다."""
+    return [{"cols": t.get("cols_up") or t["cols"],
+             "n": t.get("n_raw"), "n_rec": len(t.get("rows") or []),
+             "lead": lead_tail(t.get("lead")), "rcpNo": rcp,
+             "tag": sector_of(t.get("lead")) or
+                    region_of(t.get("lead"), None) or ""}
+            for t in parsed.get("tables") or []]
+
+
 def enqueue_unknown(rows, root=None):
-    """관측 행들의 근접 미지 표를 머리행 대기열(kind unknown)에 올리고 행에서 재료(_unk)를 걷어낸다.
+    """채택 머리행은 지도에, 근접 미지 표는 대기열에 기록하고 private 재료를 걷어낸다.
 
     프로브는 lite 경로(fail-closed 아님 — 'agg' 등급으로 남을 뿐)라 지금까지 미지 머리행이 probe_<분기>.json 의
     cols 앞 4개로만 남았다(2026Q2 실측 53사 중 1건 = 이화공영). 대기열에 올려야 사람이 고칠 거리로 보인다.
-    같은 (회사·역할·마스킹 머리행)은 엔진이 한 항목으로 합친다(멱등). 올린 항목 수를 돌려준다."""
+    같은 (회사·역할·마스킹 머리행)은 엔진이 한 항목으로 합친다(멱등). 채택 머리행은 probe 가 이미 받은
+    원문만 사용하므로 DART 추가 요청이 없다. 반환값은 기존 계약대로 대기열에 올린 미지 표 수다."""
     import hdrmap
     n = 0
+    staged = False
     for r in rows:
+        tables = r.pop("_hdr_tables", None) or []
+        stock = r.get("stock")
+        if tables and stock and stock not in _PRECISE_STOCKS:
+            entries = hdrmap.record(
+                "kce", r.get("slug") or stock, r.get("quarter"), "orders",
+                tables, range(len(tables)),
+                meta={"name": r.get("name"), "stock": stock},
+                root=root, strict=False)
+            staged = staged or entries is not None
         for it in r.pop("_unk", None) or []:
             item = dict(it, kind="unknown", key=r.get("slug") or r["stock"], stock=r["stock"],
                         name=r.get("name"), quarter=r.get("quarter"))
             if hdrmap.enqueue("kce", item, root=root, strict=False) is not None:
                 n += 1
+    if staged:
+        hdrmap.write("kce", root=root, strict=False)
     return n
 
 

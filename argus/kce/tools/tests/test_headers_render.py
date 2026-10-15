@@ -462,6 +462,42 @@ class TestUnknownQueue(_TmpRoot):
         it = hdrmap.load_queue("kce", self.root)[0]
         self.assertEqual((it["key"], it["stock"], it["rcpNo"], it["kind"]), ("001260", "001260", "20260814000001", "unknown"))
 
+    def test_probe_records_accepted_header_and_keeps_ancillary_unknown_open(self):
+        """채택 수주표 + 보조 near-miss가 함께 있어도 현 분기 pick은 살아 회귀가 아니다."""
+        parsed = P.parse_ii4(_read("kre_ii4_2026Q2.html"))
+        tables = kce_probe._accepted_header_tables(parsed, "20260814000001")
+        meta = {"name": "이화공영", "stock": "001840"}
+        hdrmap.record("kce", "001840", "2026Q1", "orders",
+                      tables, range(len(tables)), meta=meta, root=self.root,
+                      strict=True)
+        hdrmap.write("kce", root=self.root, strict=True)
+
+        near = P.parse_ii4(self.NEAR)
+        row = {"slug": "001840", "stock": "001840", "name": "이화공영",
+               "quarter": Q, "_hdr_tables": tables,
+               "_unk": kce_probe._unknown_items(near, "orders", "20260814000001")}
+        self.assertEqual(kce_probe.enqueue_unknown([row], root=self.root), 1)
+        self.assertNotIn("_hdr_tables", row)
+        self.assertNotIn("_unk", row)
+
+        cur = hdrmap.load_map("kce", self.root)["companies"]["001840"]["roles"]["orders"][Q]
+        self.assertTrue(any(e["pick"] for e in cur))
+        queue = hdrmap.load_queue("kce", self.root)
+        self.assertEqual([(i["kind"], i["status"]) for i in queue], [("unknown", "open")])
+        rep = hdrmap.check("kce", root=self.root)
+        self.assertEqual((rep["exit"], rep["regressions"]), (0, []))
+
+    def test_probe_does_not_duplicate_precise_stock_under_numeric_key(self):
+        parsed = P.parse_ii4(_read("kre_ii4_2026Q2.html"))
+        row = {"slug": "hec", "stock": "000720", "name": "현대건설",
+               "quarter": Q,
+               "_hdr_tables": kce_probe._accepted_header_tables(
+                   parsed, "20260814000001")}
+        self.assertEqual(kce_probe.enqueue_unknown([row], root=self.root), 0)
+        self.assertNotIn("_hdr_tables", row)
+        self.assertFalse(os.path.exists(hdrmap.map_path("kce", self.root)))
+        self.assertIsNone(hdrmap.staged("kce", "000720"))
+
 
 class TestSeriesCache(_TmpRoot):
 
