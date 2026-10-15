@@ -1800,12 +1800,12 @@ function migrateState(raw){
     const _hids=new Set(_hd?.kind==='character'? allChars().map(c=>c.id) : st.players.map(p=>p.id));
     st.handoffDraft=(_hd && typeof _hd==='object' && !Array.isArray(_hd)
         && typeof _hd.key==='string' && /^[A-Za-z0-9_]{1,32}$/.test(_hd.key)
-        && Array.isArray(_hd.ids) && _hd.ids.length && _hd.ids.every(id=>_hids.has(id)))
+        && Array.isArray(_hd.ids) && _hd.ids.every(id=>_hids.has(id)))
       ? {step:String(_hd.step||''), kind:_hd.kind==='character'?'character':'player',
          idx:(typeof _hd.idx==='number' && isFinite(_hd.idx) && _hd.idx>=0)? _hd.idx : 0,
          key:_hd.key,
          ids:_hd.ids.slice(0,20),
-         picks:Array.isArray(_hd.picks)?_hd.picks.slice(0,30).filter(p=>p && Number.isInteger(p.idx) && Array.isArray(p.ids)).map(p=>({idx:p.idx,ids:p.ids.filter(id=>typeof id==='string').slice(0,20)})):[],
+         picks:Array.isArray(_hd.picks)?_hd.picks.slice(0,30).filter(p=>p && Number.isInteger(p.idx) && Array.isArray(p.ids)).map(p=>({idx:p.idx,ids:p.ids.filter(id=>typeof id==='string').slice(0,20),skipped:p.skipped===true})):[],
          night:(typeof _hd.night==='number' && isFinite(_hd.night))? _hd.night : -1}
       : null;
   }
@@ -7751,6 +7751,8 @@ function startWiz(stepId){
   if(typeof clearHandoff==='function') clearHandoff();
   const srcScenes=flowFor(stepId); if(!srcScenes) return;
   const scenes=srcScenes.map(s=>{const o=Object.assign({},s); delete o._val; delete o._shown; return o;});
+  // 포는 미충전일 때만 0명 선택 가능하다. 충전된 밤의 지목은 건너뛸 수 없다.
+  if(stepId==='po') scenes.forEach(s=>{if(s.t==='pick-player' && s.who==='player') s.optional=!S.poCharged;});
   const c=charOf(stepId);
   /* 까마귀지기·현자·이발사·사랑꾼은 '죽어야' 깨는 단계다(DEATH_TRIGGER_STEPS) — 생존자만
      걸러 holder 를 비우면 오작동 경고바(wizWarnBar)·기기 전달 대상(startHandoff)·건달
@@ -7766,7 +7768,7 @@ function startWiz(stepId){
   try{
     const d=S.handoffDraft;
     const ds=d && wiz.scenes[d.idx];
-    if(d && S.phase.kind==='night' && d.step===String(stepId) && d.night===((S.phase&&S.phase.n)||0) && d.ids.length
+    if(d && S.phase.kind==='night' && d.step===String(stepId) && d.night===((S.phase&&S.phase.n)||0) && Array.isArray(d.ids)
         && handoffScene(ds) && ds.storeAs===d.key && (d.kind||'player')===(ds.t==='pick-character'?'character':'player')){
       /* 연속 선택(도박사·세레노버스·마귀할멈)의 앞선 플레이어 선택도 함께 복구한다.
          저장된 임의 키를 신뢰하지 않고 현재 씬 선언과 현재 후보에 다시 대조한다. */
@@ -7775,6 +7777,9 @@ function startWiz(stepId){
         if(p.idx<0 || p.idx>d.idx || !handoffScene(ps)) continue;
         const candidates=ps.t==='pick-character'?handoffCharacterPool(ps):wizPlayers(ps.filter||'alive');
         wiz.vars[ps.storeAs]=[...new Set(p.ids)].filter(id=>candidates.some(c=>c.id===id)).slice(0,ps.n||1);
+        if(p.skipped && !wiz.vars[ps.storeAs].length && (ps.optional || !candidates.length)){
+          wiz.skipped=wiz.skipped||{}; wiz.skipped[ps.storeAs]=true;
+        }
       }
       wiz.vars[d.key]=d.ids.slice();
       if(d.idx>=0 && d.idx<wiz.scenes.length) wiz.idx=d.idx;
@@ -8045,12 +8050,15 @@ function wizTogglePick(key,n,id){
   const arr=wiz.vars[key]=wiz.vars[key]||[];
   const i=arr.indexOf(id);
   if(i>=0) arr.splice(i,1); else { if(arr.length>=n) arr.shift(); arr.push(id); }
+  if(typeof saveHandoffDraft==='function') saveHandoffDraft();
   renderWiz();
 }
 function wizShowVal(v){ const sc=wiz.scenes[wiz.idx]; sc._val=v; sc._shown=true;
   log(`${wizTitle()} 위저드: "${v}" 표시${sc.caption?' — '+sc.caption:''}`); renderWiz(); }
 function wizEffect(){ const sc=wiz.scenes[wiz.idx]; const tgt=(wiz.vars[sc.from]||[])[0];
   if(!tgt){ toast('대상이 선택되지 않았습니다 — 이전 단계에서 선택하세요.','warn'); return; }
+  // 복구는 미적용 선택만 다룬다. 판정 뒤 다시 불러 같은 효과를 적용하지 않게 경계를 닫는다.
+  if(typeof clearHandoffDraft==='function') clearHandoffDraft();
   try{
     /* 다중 대상 판정은 씬이 all:true 로 '선언'한다 — 이름 열거는 새 다중대상 함수가 들어올 때마다
        빠뜨리기 쉬웠다(여관 주인 보호가 실제로 그렇게 빠져 2명 중 1명에게만 토큰이 붙었다).
@@ -10218,6 +10226,7 @@ function startHandoff(storeAs,n,filter,label){
   n=n||1;
   wiz.vars[storeAs]=[...new Set(wiz.vars[storeAs]||[])].filter(id=>ordered.some(p=>p.id===id)).slice(0,n);
   handoff={storeAs,n,ordered,holder,label,kind};
+  saveHandoffDraft();
   renderHandoff();
 }
 /* 플레이어에게는 공개 시트의 선택지만 보여준다. 실제 배역 배정·오작동·활성 징크스로
@@ -10230,6 +10239,8 @@ function handoffCharacterPool(sc){
   return []; // 사회자 전용/알 수 없는 풀은 공개하지 않는다
 }
 function renderHandoff(){
+  $('#wizard').hidden=false; // 복구는 첫 씬을 거치지 않고 이 렌더로 바로 들어온다.
+  $('#wizbody').classList.remove('tappable');
   const sel=(wiz.vars[handoff.storeAs]||[]);
   const sc=wiz.scenes[wiz.idx];
   const optional=!!(sc&&sc.optional);
@@ -10249,9 +10260,9 @@ function renderHandoff(){
     <div class="handoff-list">${handoff.ordered.map(p=>{
       if(chars) return `<button type="button" class="handoff-btn ${sel.includes(p.id)?'sel':''}" data-hopick="${esc(p.id)}" aria-pressed="${sel.includes(p.id)}"><span class="hname">${esc(p.ko)}</span></button>`;
       const me=p===handoff.holder;
-      return `<div class="handoff-btn ${me?'me':''} ${sel.includes(p.id)?'sel':''} ${p.alive?'':'dead'}" data-hopick="${esc(p.id)}">
+      return `<button type="button" class="handoff-btn ${me?'me':''} ${sel.includes(p.id)?'sel':''} ${p.alive?'':'dead'}" data-hopick="${esc(p.id)}" aria-pressed="${sel.includes(p.id)}">
         <span class="hnum num">${S.players.indexOf(p)+1}</span>
-        <span class="hname">${esc(p.name)}${me?' (나)':''}${p.alive?'':' 💀'}</span></div>`;}).join('')}</div>
+        <span class="hname">${esc(p.name)}${me?' (나)':''}${p.alive?'':' 💀'}</span></button>`;}).join('')}</div>
     ${optional?'<div class="wiz-note hint" style="margin-top:14px">이 능력은 사용하지 않아도 됩니다.</div>':''}`;
   $('#wizbody').onclick=null;
   /* 기기 전달 화면에는 중단 수단이 없어, 판단을 바꾼 사회자가 '사회자가 대신 입력'이라는
@@ -10272,7 +10283,7 @@ function handoffSkip(key){
   key=key||(handoff&&handoff.storeAs); if(!key) return;
   wiz.vars[key]=[]; wiz.skipped=wiz.skipped||{}; wiz.skipped[key]=true;
   log(`${wizTitle()}: 이번 턴 능력 미사용(선택 안 함)${proxy?' — 사회자 대리 접수':''}`);
-  handoff=null; clearHandoffDraft(); save();
+  saveHandoffDraft(); handoff=null; save();
   /* 대리 입력(기기가 사회자 손에 있다)이면 종전대로 곧바로 다음 씬으로 간다.
      기기 전달 화면에서 눌렀다면 다음 씬은 사회자 전용 정보(wizWarnBar 오작동 경고 ·
      사회자 전용 note · WIZ_SUGGEST 정답 제안)인데 기기는 아직 플레이어 손에 있다.
@@ -10299,13 +10310,22 @@ function handoffPick(pid){
   /* wiz 는 S 에 들어가지 않는 지역 변수다 — 여기서 남기지 않으면 기기를 돌리는 도중 폰이
      잠기거나 브라우저가 탭을 회수할 때 그 밤의 지목이 통째로, 화면에 흔적도 없이 사라진다.
      복구는 startWiz 가 같은 밤·같은 단계일 때만 하고, 반드시 사회자에게 알린다. */
-  try{
-    S.handoffDraft={step:String(wiz.stepId), idx:wiz.idx, key:handoff.storeAs, kind:handoff.kind,
-                    picks:wiz.scenes.slice(0,wiz.idx+1).flatMap((sc,idx)=>handoffScene(sc)?[{idx,ids:(wiz.vars[sc.storeAs]||[]).slice()}]:[]),
-                    ids:arr.slice(), night:(S.phase&&S.phase.n)||0};
-    save();
-  }catch(e){ console.warn('[thyrsus] 기기 전달 스냅샷 저장 실패', e); }
+  saveHandoffDraft();
   renderHandoff();
+}
+/* 빈 선택도 진행 위치다. 반환 확인·다음 선택 대기·대리 입력에서 같은 계약을 쓴다.
+   복구는 선택 화면으로 돌아가 재확인하며, 판정 실행/완료/중단 때만 초안을 버린다. */
+function saveHandoffDraft(){
+  if(!wiz || wiz.custom) return;
+  const sc=wiz.scenes[wiz.idx]; if(!handoffScene(sc)) return;
+  if((wiz.vars[sc.storeAs]||[]).length && wiz.skipped) delete wiz.skipped[sc.storeAs];
+  try{
+    S.handoffDraft={step:String(wiz.stepId),idx:wiz.idx,key:sc.storeAs,
+      kind:sc.t==='pick-character'?'character':'player',ids:(wiz.vars[sc.storeAs]||[]).slice(),
+      picks:wiz.scenes.slice(0,wiz.idx+1).flatMap((s,idx)=>handoffScene(s)?[{idx,ids:(wiz.vars[s.storeAs]||[]).slice(),skipped:!!wiz.skipped?.[s.storeAs]}]:[]),
+      night:(S.phase&&S.phase.n)||0};
+    save();
+  }catch(e){ console.warn('[thyrsus] 기기 전달 스냅샷 저장 실패',e); }
 }
 /* 플레이어가 이야기꾼에게 돌려주면 그 씬은 끝난 것 — 다음 씬으로 넘어간다.
    renderWiz() 를 그대로 부르면 같은 씬이라 다시 기기 전달 화면으로 되돌아간다. */
@@ -10318,14 +10338,14 @@ function endHandoff(){
   wiz.skipped=wiz.skipped||{};
   if((wiz.vars[handoff.storeAs]||[]).length) delete wiz.skipped[handoff.storeAs];
   else wiz.skipped[handoff.storeAs]=true;
-  handoff=null; clearHandoffDraft();
+  saveHandoffDraft(); handoff=null;
   /* 여기서 곧바로 다음 씬을 그리면 사회자 전용 화면(wizWarnBar 오작동 경고 · WIZ_SUGGEST
      정답 제안 · 판정 실행 버튼)이 아직 플레이어 손에 있는 기기에 그대로 뜬다.
-     반환 확인 한 장을 끼워 사회자가 기기를 돌려받은 뒤에만 다음 씬이 열리게 한다. */
+     반환 확인 화면에서 멈춘다. 이는 수령 확인 절차이며 사용자 인증/잠금은 아니다. */
   $('#wizhead').innerHTML=`<span class="wtitle">📱 기기를 이야기꾼에게 돌려주세요</span>`;
   $('#wizbody').innerHTML=`<div style="text-align:center"><div class="wiz-bigtoken">🤝</div>
     <div class="wiz-bigname">선택이 저장되었습니다</div>
-    <div class="wiz-caption" style="margin-top:6px">다음 화면부터는 사회자 전용 정보가 표시됩니다.</div></div>`;
+    <div class="wiz-caption" style="margin-top:6px">이야기꾼에게 돌려준 뒤 계속하세요. 다음 단계에 비공개 정보가 포함될 수 있습니다.</div></div>`;
   $('#wizbody').onclick=null;
   $('#wizfoot').innerHTML=`<button class="hofoot primary" onclick="wizNext()">🧑\u200d⚖️ 이야기꾼이 받았습니다 — 계속</button>`;
 }
@@ -10357,7 +10377,7 @@ function handoffAbort(){
   $('#wizhead').innerHTML=`<span class="wtitle">📱 기기를 이야기꾼에게 돌려주세요</span>`;
   $('#wizbody').innerHTML=`<div style="text-align:center"><div class="wiz-bigtoken">✋</div>
     <div class="wiz-bigname">단계를 중단합니다</div>
-    <div class="wiz-caption" style="margin-top:6px">이 단계의 선택은 저장되지 않았습니다.</div></div>`;
+    <div class="wiz-caption" style="margin-top:6px">이 단계의 선택은 저장되지 않았습니다. 연속 밤 진행 중이면 전체 진행도 중단됩니다.</div></div>`;
   $('#wizbody').onclick=null;
   $('#wizfoot').innerHTML=`<button class="hofoot primary" onclick="closeWiz(false)">🧑\u200d⚖️ 이야기꾼이 받았습니다 — 닫기</button>`;
 }
@@ -10365,7 +10385,7 @@ function useSTInput(){
   /* 이 버튼은 '플레이어가 들고 있는' 기기 전달 화면에 있다 — 곧바로 renderWiz() 하면
      wizWarnBar(오작동 경고 · 보르톡스 "주민 정보는 반드시 거짓")와 WIZ_SUGGEST 정답 제안,
      사회자 보조 버튼(무작위·비우기)이 플레이어 손에서 그대로 열린다.
-     endHandoff 와 똑같이 반환 확인 한 장을 끼워 기기를 돌려받은 뒤에만 다음 화면이 열리게 한다.
+     endHandoff 와 같은 수령 확인 절차에서 멈춘다(사용자 인증/잠금은 아님).
      전환 사실도 로그에 남긴다 — 남기지 않으면 리플레이·감사 로그에서 '본인이 고른 지목'과
      '사회자가 대신 넣은 지목'이 구분되지 않는다(handoffSkip 은 이미 남기고 있다). */
   if(!wiz) return;
