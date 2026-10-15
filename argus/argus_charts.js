@@ -1361,13 +1361,31 @@
     lazySection('solar', rSolar); lazySection('oil', rOil);
     lazySection('prince', function (done) {
       var h = body('prince'), steel = win.ARGUS_STEEL;
-      if (steel && win.PHXSteelUI) {
-        h.innerHTML = '<div data-steel-price-reference></div><div data-steel-lens></div><details class="ag-card"><summary>이전 공개 연구 지표와 출처</summary><div data-steel-archive></div></details>';
-        h.querySelector('[data-steel-price-reference]').innerHTML = win.PHXSteelUI.priceReferenceHTML(steel, Math.min(760, Math.max(320, h.clientWidth || 640)));
-        win.PHXSteelUI.mountLens(h.querySelector('[data-steel-lens]'), steel.interpretation, steel.persona);
-        mountResearch(h.querySelector('[data-steel-archive]'), data.research, 'prince', true);
-      } else mountResearch(h, data.research, 'prince');
-      done();
+      function renderMacro(error) {
+        if (error || !win.ARGUS_MACRO || !win.PHXMacroUI) {
+          h.innerHTML = '<div class="ag-card" role="status">매크로 자료를 불러오지 못했습니다. <button type="button" data-macro-retry>다시 불러오기</button></div>';
+          h.querySelector('[data-macro-retry]').onclick = retryMacro;
+          done(); return;
+        }
+        h.innerHTML = '<div data-macro-observatory></div><details class="ag-card"><summary>철강 가격 · 이전 연구 카드</summary><div data-macro-steel-archive></div></details>';
+        win.PHXMacroUI.mount(h.querySelector('[data-macro-observatory]'), win.ARGUS_MACRO);
+        var legacy = h.querySelector('[data-macro-steel-archive]');
+        if (steel && win.PHXSteelUI) legacy.innerHTML = win.PHXSteelUI.priceReferenceHTML(steel, Math.min(760, Math.max(320, h.clientWidth || 640)));
+        done();
+      }
+      function retryMacro() {
+        if (!win.PHXMacroUI) {
+          loadScript('argus_macro_ui.js', function (error) {
+            if (error || !win.PHXMacroUI) { renderMacro(error || new Error('macro UI missing')); return; }
+            retryMacro();
+          });
+          return;
+        }
+        if (win.ARGUS_MACRO) renderMacro(null);
+        else loadScript('data/macro.js', renderMacro);
+      }
+      if (win.ARGUS_MACRO) renderMacro(null);
+      else { h.innerHTML = '<div class="ag-card" role="status">전체 관측과 매크로 해석을 불러오는 중…</div>'; loadScript('data/macro.js', renderMacro); }
     });
     lazySection('steel', function (done) {
       var h = body('steel'), steel = win.ARGUS_STEEL;

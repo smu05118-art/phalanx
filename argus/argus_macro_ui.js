@@ -1,0 +1,140 @@
+/* ARGUS macro evidence explorer. Every reading is generated from dated evidence. */
+(function (win) {
+  'use strict';
+  var COLORS = ['#65d7ca', '#ffbc75', '#88afff', '#e9a1ca'];
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function finite(v) { return typeof v === 'number' && Number.isFinite(v); }
+  function fmt(v) { return finite(v) ? new Intl.NumberFormat('ko-KR', {maximumFractionDigits:Math.abs(v) < 1 ? 4 : 2}).format(v) : '—'; }
+  function arr(v) { return Array.isArray(v) ? v : []; }
+  function link(v, label) {
+    try { var u = new URL(v); if (u.protocol !== 'https:' || u.username || u.password) return ''; return '<a href="' + esc(u.href) + '" target="_blank" rel="noopener noreferrer">' + esc(label || '원문 ↗') + '</a>'; } catch (_) { return ''; }
+  }
+  function delta(row, key) {
+    var d = row && row[key];
+    if (finite(d)) return d;
+    if (!d || typeof d !== 'object') return null;
+    return finite(d.pct) ? d.pct : null;
+  }
+  function absolute(row,key) { var d=row && row[key]; return d && finite(d.delta) ? d.delta : null; }
+  function change(row,key) { var d=row && row[key], p=delta(row,key), a=absolute(row,key); return finite(p) ? pct(p) : finite(a) ? (a>0?'+':'')+fmt(a)+' '+esc(row.unit) : '비교 불가'; }
+  function direction(row,key) { var a=absolute(row,key);return sign(finite(a)?a:delta(row,key)); }
+  function period(d) { return d && (d.current_period || d.period || d.target_period) || ''; }
+  function sign(v) { return !finite(v) ? '' : v > 0 ? 'up' : v < 0 ? 'down' : 'flat'; }
+  function pct(v) { return finite(v) ? (v > 0 ? '+' : '') + fmt(v) + '%' : '비교 불가'; }
+  function domain(values, zero) {
+    var vs = values.filter(finite); if (!vs.length) return [0, 1];
+    var lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs), pad = hi === lo ? Math.max(Math.abs(lo) * .08, .01) : (hi - lo) * .12;
+    lo -= pad; hi += pad;
+    if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    return [lo, hi];
+  }
+  function monthIndex(d) { var m = /^(\d{4})-(\d{2})/.exec(d || ''); return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : NaN; }
+  function points(row, range) {
+    var xs = arr(row.points).filter(function (p) { return p && finite(p.value) && Number.isFinite(monthIndex(p.date)); }).sort(function (a,b) { return a.date.localeCompare(b.date); });
+    if (!xs.length || !range) return xs;
+    var cutoff = monthIndex(xs[xs.length - 1].date) - range + 1;
+    return xs.filter(function (p) { return monthIndex(p.date) >= cutoff; });
+  }
+  function chart(row, state, color) {
+    var ps = points(row, state.range), width = 600, height = 230, left = 60, right = 15, top = 18, bottom = 33;
+    if (!ps.length) return '<div class="am-chart-empty">완결월의 유효 관측이 없습니다.<br>불완전한 월은 선으로 연결하지 않습니다.</div>';
+    var dom = domain(ps.map(function(p) { return p.value; }), state.zero), first = monthIndex(ps[0].date), last = monthIndex(ps[ps.length - 1].date), span = Math.max(1, last - first);
+    var x = function(p) { return left + (monthIndex(p.date) - first) / span * (width-left-right); };
+    var y = function(v) { return top + (dom[1]-v)/(dom[1]-dom[0])*(height-top-bottom); };
+    var title = row.name + ' · 월간 관측 · ' + ps[0].date + ' ~ ' + ps[ps.length-1].date;
+    var svg = '<svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="'+esc(title)+'"><title>'+esc(title)+'</title>';
+    for (var i = 0; i < 4; i++) {
+      var val = dom[0]+(dom[1]-dom[0])*i/3, py = y(val);
+      svg += '<line x1="'+left+'" x2="'+(width-right)+'" y1="'+py+'" y2="'+py+'" stroke="#2b3a49" stroke-dasharray="3 4"/><text x="'+(left-7)+'" y="'+(py+4)+'" text-anchor="end">'+esc(fmt(val))+'</text>';
+    }
+    var seg = '', prev = null;
+    ps.forEach(function (p) { var continuous = prev && monthIndex(p.date)-monthIndex(prev.date) === 1; seg += (continuous ? ' L ' : ' M ')+x(p).toFixed(2)+' '+y(p.value).toFixed(2); prev = p; });
+    svg += '<path d="'+seg+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round"/>';
+    ps.forEach(function(p) { svg += '<circle cx="'+x(p)+'" cy="'+y(p.value)+'" r="3" fill="'+color+'"><title>'+esc(p.date+' · '+fmt(p.value)+' '+row.unit)+'</title></circle>'; });
+    [ps[0], ps[Math.floor((ps.length-1)/2)], ps[ps.length-1]].forEach(function(p,i) { svg += '<text x="'+x(p)+'" y="'+(height-8)+'" text-anchor="'+(i===0?'start':i===2?'end':'middle')+'">'+esc(p.date.slice(2,7))+'</text>'; });
+    return svg+'</svg><p class="am-chart-note">월간 평균 · '+esc(row.unit)+' · '+(state.zero?'0 포함':'관측 범위 자동 축')+' · 빈 월은 연결하지 않음</p>';
+  }
+  function chartCard(row, state, i, reasonLabels) {
+    var ps = points(row, state.range), last = ps[ps.length-1], v = delta(row,state.metric);
+    return '<article class="am-chart-card"><div class="am-card-head"><div><span class="am-kicker">'+esc(row.category)+' / '+esc(row.scope || 'ARGUS')+'</span><h4>'+esc(row.name)+'</h4></div><b class="am-change '+direction(row,state.metric)+'">'+change(row,state.metric)+'</b></div><div class="am-last">'+fmt(last && last.value)+' <small>'+esc(row.unit)+' · '+esc(last ? last.date.slice(0,7) : '완결월 없음')+'</small></div>'+(row.eligible?'':'<p class="am-notice">현재 판독 제외 · '+esc(arr(row.reasons).map(function(k){return (reasonLabels || {})[k] || k;}).join(' · '))+'</p>')+chart(row,state,COLORS[i%COLORS.length])+'<div class="am-chart-source">'+(link(row.source_url) || '<span>정확한 원문 링크 미확인</span>')+'<span>'+esc(row.basis || '')+'</span></div><details><summary>관측 표 · 산출 기준</summary><p>'+esc(row.note || '')+'</p><div class="am-scroll"><table><thead><tr><th>월</th><th>값</th></tr></thead><tbody>'+ps.slice().reverse().map(function(p){return '<tr><td>'+esc(p.date)+'</td><td>'+fmt(p.value)+'</td></tr>';}).join('')+'</tbody></table></div></details></article>';
+  }
+  function list(items) { return '<ul>'+arr(items).map(function(x) { return '<li>'+esc(typeof x==='object' ? x.text || x.summary || JSON.stringify(x) : x)+'</li>'; }).join('')+'</ul>'; }
+  function style() {
+    if (document.getElementById('argus-macro-style')) return;
+    var s = document.createElement('style'); s.id = 'argus-macro-style';
+    s.textContent = '.am-root{--am-ink:#e8eef3;--am-dim:#a0b1c2;color:var(--am-ink);font-size:14px;line-height:1.65}.am-root *{box-sizing:border-box}.am-root a{color:#82c8ff}.am-root h2{font-size:clamp(25px,3.5vw,42px);line-height:1.25;letter-spacing:-.045em;margin:9px 0 16px}.am-root h3{font-size:21px;letter-spacing:-.03em;margin:0 0 10px}.am-root h4{font-size:16px;line-height:1.5;margin:6px 0}.am-root p{margin:8px 0;color:var(--am-dim)}.am-kicker{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#74ccbf}.am-hero{padding:30px;border:1px solid #33504e;border-radius:20px;background:radial-gradient(ellipse at 100% 0,#1b3b39 0,transparent 55%),#101b24;display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:30px;margin:0 0 28px}.am-stats{display:grid;gap:11px;align-content:center}.am-stat{padding:12px 17px;border:1px solid #344b56;background:#0d1922a8;border-radius:10px;display:flex;justify-content:space-between;gap:10px;align-items:center}.am-stat b{font-family:var(--mono);font-size:23px}.am-stat span{font-size:11px;color:#b7c7d4}.am-quiet{font-size:12px!important;max-width:80ch}.am-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:22px 0 14px}.am-tabs{display:flex;flex-wrap:wrap;gap:7px}.am-root button,.am-root select,.am-root input{font:inherit}.am-root button{border:1px solid #344858;border-radius:8px;background:#111e2a;color:#ccd9e5;padding:9px 13px;cursor:pointer}.am-root button[aria-pressed=true]{border-color:#70d4c1;background:#173b38;color:#b7fff0}.am-root button:hover{border-color:#7b9bb4}.am-root button:focus-visible,.am-root input:focus-visible,.am-root select:focus-visible{outline:2px solid #ffcf83;outline-offset:3px}.am-root select,.am-root input[type=search]{border:1px solid #344858;border-radius:8px;background:#0c1721;color:#dbe7f2;padding:9px 12px;max-width:100%;min-width:0}.am-period{font-size:12px;color:#a1b8cb;margin-right:10px}.am-reading{border:1px solid #34485a;background:#111d28;border-radius:15px;overflow:hidden;margin-bottom:25px}.am-reading-top{padding:23px 25px;border-bottom:1px solid #2b3c4d}.am-state{display:inline-block;border:1px solid #4c6574;padding:2px 9px;border-radius:20px;color:#c1d9e2;font-size:11px;margin-bottom:9px}.am-reading-top p{font-size:16px;color:#d2dfe9;max-width:95ch}.am-reading-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.am-reading-grid>div{padding:18px 25px}.am-reading-grid>div+div{border-left:1px solid #2b3c4d}.am-reading-grid h4{font-size:12px;color:#81dbca}.am-reading-grid ul,.am-root details ul{padding-left:18px;color:#b3c3d1}.am-reading-grid li{margin:5px 0}.am-evidence-pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}.am-evidence-pills button{font-size:11px;padding:5px 9px}.am-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px;margin-bottom:22px}.am-chart-card{min-width:0;background:#0e1923;border:1px solid #2a3e50;border-radius:14px;padding:21px}.am-card-head{display:flex;justify-content:space-between;gap:15px}.am-change{font-family:var(--mono);white-space:nowrap;font-size:16px}.am-root .up{color:#6bdcc0}.am-root .down{color:#ff9d9b}.am-root .flat{color:#c4d0db}.am-last{font-size:27px;font-family:var(--mono);margin:10px 0 9px}.am-last small{font-size:11px;color:#a7bac9}.am-root svg{width:100%;display:block;overflow:visible}.am-root svg text{font:11px var(--mono);fill:#9fb2c3}.am-chart-note{font-size:10px!important}.am-chart-source{font-size:11px;display:flex;gap:15px;align-items:flex-start;color:#95aabd;word-break:break-word}.am-chart-source span{flex:1}.am-chart-empty{height:230px;display:flex;align-items:center;justify-content:center;text-align:center;color:#96aabb;background:#101c27;border-radius:9px}.am-section{margin-top:35px}.am-section-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:15px}.am-section-head p{font-size:12px;max-width:68ch}.am-heat{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px}.am-sector{padding:15px!important;text-align:left!important;min-height:110px;background:#101c26!important}.am-sector b{display:block;font-size:13px}.am-sector small{font-size:10px;color:#9eb4c5}.am-bar{height:5px;display:flex;background:#2a3440;margin:12px 0 8px;border-radius:4px;overflow:hidden}.am-bar i{display:block;height:5px}.am-bar .up{background:#65d7b9}.am-bar .down{background:#fa9696}.am-bar .flat{background:#a3b2c2}.am-root details{margin-top:14px;padding-top:13px;border-top:1px solid #2b3c4d;font-size:12px}.am-root summary{cursor:pointer;color:#becfdd}.am-scroll{overflow:auto;max-height:420px}.am-root table{border-collapse:collapse;min-width:550px;width:100%;font-size:12px}.am-root td,.am-root th{text-align:left;padding:11px 9px;border-bottom:1px solid #233545}.am-root th{position:sticky;top:0;background:#11212e;color:#a9c0d2;font-weight:500}.am-root td:not(:first-child){font-family:var(--mono)}.am-row-button{border:0!important;padding:0!important;text-align:left!important;background:none!important;line-height:1.5}.am-root td small{display:block;color:#8da5b8;font-family:var(--sans)}.am-search{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.am-search input{flex:1;min-width:180px!important}.am-pagination{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;color:#a1b8ca}.am-notice{border-left:3px solid #d8af69;padding:10px 16px;background:#1e211f;color:#d5c6a9!important;border-radius:0 8px 8px 0}.am-archive{padding:20px;background:#101b25;border:1px solid #2b4052;border-radius:13px}.am-zero{font-size:11px;color:#9fb4c6;white-space:nowrap}.am-footer{font-size:11px;color:#809bae;margin-top:18px}.am-scope{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:15px 0}.am-scope>div{padding:13px;background:#142330;border-radius:9px;font-size:12px}.am-scope p{font-size:11px}.am-mini-note{font-size:11px!important}.am-no-data{padding:25px;border:1px dashed #47586a;border-radius:12px;color:#b4c4d1}@media(max-width:760px){.am-hero{grid-template-columns:1fr;padding:23px;gap:15px}.am-stats{grid-template-columns:repeat(3,1fr);gap:7px}.am-stat{padding:10px;display:block}.am-stat b{display:block;font-size:23px}.am-stat span{font-size:10px}.am-grid{grid-template-columns:1fr}.am-reading-grid{grid-template-columns:1fr}.am-reading-grid>div+div{border-left:0;border-top:1px solid #2b3c4d}.am-card-head{gap:10px}.am-chart-card{padding:17px}.am-section-head{display:block}.am-heat{grid-template-columns:repeat(2,minmax(0,1fr))}.am-tools{align-items:flex-start}.am-hero h2{max-width:14ch}.am-state{font-size:10px}.am-last{font-size:24px}}';
+    document.head.appendChild(s);
+  }
+  function mount(host, data) {
+    if (!host) return;
+    style(); host.classList.add('am-root');
+    if (!data || !arr(data.inventory).length) { host.innerHTML = '<div class="am-no-data">매크로 근거 자료를 아직 불러오지 못했습니다. 마지막 검증 자료를 확인한 뒤 다시 표시합니다.</div>'; return; }
+    var inv = data.inventory, stages = arr(data.stages), byId = {};
+    inv.forEach(function(r) { byId[r.sid] = r; });
+    var state = {stage:stages.length ? stages[0].id : '',metric:'mom',range:36,zero:false,query:'',filter:'all',category:'all',page:0,focus:null};
+    function archiveRefs(st) {
+      var ids=arr(st.archive_rule_ids), rules=arr((data.archive_coverage || {}).rules).filter(function(r){return ids.indexOf(r.id)>=0;});
+      if(!rules.length)return '';
+      return '<details style="margin:0;padding:16px 25px"><summary>이 판독에 적용한 아카이브 근거 '+rules.length+'개</summary>'+rules.map(function(r){return '<p><strong>'+esc(r.title)+'</strong><br>'+esc(r.application)+'<br><small>근거 메시지 '+esc(arr(r.message_ids).map(function(id){return '#'+id;}).join(', '))+' · 반례/제약 '+esc(arr(r.counterevidence_ids).map(function(id){return '#'+id;}).join(', ')||'별도 제약 확인')+' · 귀속 '+esc(r.authority || '아카이브 문맥 확인')+'</small></p>';}).join('')+'</details>';
+    }
+    function reading() {
+      var st = stages.find(function(s) { return s.id === state.stage; }); if (!st) return '';
+      var names = {conditional:'조건부 판독',rising:'상승 관측',falling:'하락 관측',flat:'보합 관측',insufficient:'근거 부족',mixed:'엇갈린 신호',improving:'개선 신호',weakening:'둔화 신호',positive:'개선 신호',negative:'둔화 신호',watch:'확인 필요',confirmed:'동시 확인'};
+      return '<article class="am-reading"><div class="am-reading-top"><span class="am-state">'+esc(names[st.state] || st.state)+'</span><h3>'+esc(st.title)+'</h3><p>'+esc(st.summary)+'</p><div class="am-evidence-pills">'+evidenceIds(st).slice(0,12).map(function(id) { var r=byId[id];return r ? '<button data-evidence="'+esc(id)+'">'+esc(r.name)+' ↗</button>' : ''; }).join('')+'</div></div><div class="am-reading-grid"><div><h4>반대 신호와 확인이 필요한 자료</h4>'+list(arr(st.counterevidence).concat(arr(st.missing_inputs)))+'</div><div><h4>해석이 달라지는 조건</h4>'+list(arr(st.scenario && st.scenario.upside_if).map(function(t){return '개선: '+t;}).concat(arr(st.scenario && st.scenario.downside_if).map(function(t){return '경계: '+t;})))+'</div></div>'+archiveRefs(st)+'</article>';
+    }
+    function selectedRows() {
+      var st = stages.find(function(s) { return s.id===state.stage; }), ids = evidenceIds(st), rows=[];
+      if (state.focus && byId[state.focus]) rows.push(byId[state.focus]);
+      ids.forEach(function(id) { var r=byId[id]; if(r && rows.indexOf(r)<0 && arr(r.points).length) rows.push(r); });
+      return rows.slice(0,4);
+    }
+    function heat() {
+      var categories={}; inv.forEach(function(r) { var k=r.category || '기타', cat=categories[k] || (categories[k]={total:0,usable:0,up:0,down:0,flat:0});cat.total++;var v=absolute(r,state.metric);if(r.eligible && finite(v)){cat.usable++;cat[v>0?'up':v<0?'down':'flat']++;} });
+      return '<div class="am-heat">'+Object.keys(categories).sort().map(function(k){var c=categories[k];return '<button class="am-sector" data-category="'+esc(k)+'" aria-pressed="'+(state.category===k)+'"><b>'+esc(k)+'</b><div class="am-bar"><i class="up" style="width:'+(100*c.up/c.total)+'%"></i><i class="down" style="width:'+(100*c.down/c.total)+'%"></i><i class="flat" style="width:'+(100*c.flat/c.total)+'%"></i></div><small><span class="up">상승 '+c.up+'</span> · <span class="down">하락 '+c.down+'</span> · 보합 '+c.flat+'<br>비교 가능 '+c.usable+' / '+c.total+'계열</small></button>';}).join('')+'</div>';
+    }
+    function rows() {
+      var q=state.query.toLocaleLowerCase();return inv.filter(function(r){return (state.category==='all'||r.category===state.category) && (state.filter==='all'||state.filter==='eligible'&&r.eligible||state.filter==='excluded'&&!r.eligible) && (!q || [r.name,r.sid,r.category,r.basis,r.unit].join(' ').toLocaleLowerCase().indexOf(q)>=0);});
+    }
+    function table() {
+      var rs=rows(), size=20;state.page=Math.min(state.page,Math.max(0,Math.ceil(rs.length/size)-1));var part=rs.slice(state.page*size,(state.page+1)*size);
+      var labels={stale:'오래된 관측',fresh:'관측 기간 확인',missing:'관측 없음',current:'관측 기간 확인'};
+      return '<div class="am-scroll"><table><thead><tr><th>지표 · 누르면 그래프</th><th>관측일</th><th>MoM</th><th>QoQ</th><th>YoY</th><th>해석 사용 여부</th></tr></thead><tbody>'+part.map(function(r){return '<tr><td><button class="am-row-button" data-evidence="'+esc(r.sid)+'">'+esc(r.name)+'</button><small>'+esc(r.category)+' · '+esc(r.unit)+'</small></td><td>'+esc(r.latest_date || '—')+'</td>'+['mom','qoq','yoy'].map(function(k){var v=delta(r,k);return '<td class="'+direction(r,k)+'">'+change(r,k)+'</td>';}).join('')+'<td>'+esc(r.eligible?'사용':'제외')+'<small>'+esc(arr(r.reasons).map(function(k){return (data.reason_labels || {})[k] || k;}).join(' · '))+'</small></td></tr>';}).join('')+'</tbody></table></div><div class="am-pagination"><span>'+rs.length+'계열 · '+(state.page+1)+' / '+Math.max(1,Math.ceil(rs.length/size))+'</span><div><button data-page="-1" '+(state.page===0?'disabled':'')+'>이전</button> <button data-page="1" '+((state.page+1)*size>=rs.length?'disabled':'')+'>다음</button></div></div>';
+    }
+    function evidenceIds(st) {
+      if (!st) return [];
+      var spread=arr(st.subgroups).find(function(g){return g.id==='spread';});
+      return Array.from(new Set(arr(spread && spread.evidence_ids).concat(arr(st.evidence_ids))));
+    }
+    function pills(ids) { return '<div class="am-evidence-pills">'+arr(ids).slice(0,5).map(function(id){var r=byId[id];return r?'<button data-evidence="'+esc(id)+'">'+esc(r.name)+' · '+change(r,state.metric)+'</button>':'';}).join('')+'</div>'; }
+    function crossChecks() {
+      return '<section class="am-section"><span class="am-kicker">CROSS CHECK / 산업 · 금융 · 공시</span><h3>시장 밖에서 확인할 근거</h3><p>가격 계열은 같은 완결월로 비교합니다. 회사 공시는 원문과 기간을 연결하며, 수집 성공을 실적 개선으로 해석하지 않습니다.</p><div class="am-grid">'+arr(data.cross_checks).map(function(x){
+        var hub=x.scope==='hub', r=x.refresh || {}, periods=arr(x.periods), hid=x.id.replace('hub:','');
+        return '<article class="am-chart-card"><span class="am-kicker">'+(hub?'분기 공시 원문':'시장 보조 확인')+'</span><h4>'+esc(x.title)+'</h4><p>'+esc(x.summary)+'</p>'+(hub?'<p class="am-mini-note">원문 연결 '+fmt(x.filing_source_count)+'건 · '+esc(periods.length?periods[0]+' ~ '+periods[periods.length-1]:'비교 가능한 공시 기간 미확인')+'</p><p class="am-mini-note">자동 실행: '+esc({success:'성공',partial:'일부 실패',error:'실패'}[r.status] || '확인 필요')+' · '+esc(r.run_at || '—')+' '+link(r.run_url,'실행 결과 ↗')+'</p><a href="'+esc(hid)+'/">업종 공시 자세히 ↗</a><details><summary>최근 연결 공시</summary>'+arr(x.evidence).slice(0,5).map(function(e){return '<p>'+esc(e.company)+' · '+esc(e.period)+' '+link(e.source_url,'공시 ↗')+'</p>';}).join('')+'</details>':'<p class="am-mini-note">현재 비교 가능 '+fmt(x.eligible_count)+' / '+fmt(x.candidate_count)+'계열</p>'+pills(x.evidence_ids))+list(x.missing_inputs)+'</article>';
+      }).join('')+'</div></section>';
+    }
+    function methods(m,a,c) {
+      return '<details><summary>계산 방법 · 자료 범위 · 아카이브 출처</summary>'+list([m.monthly_mean,m.qoq,m.percent_policy,m.missing_policy,m.source_policy,m.calendar_limit].filter(Boolean))+'<h4>월간 표본 기준</h4>'+list(Object.keys(m.coverage_policy || {}).map(function(k){return ({D:'일간',W:'주간',T:'순보',M:'월간',B:'월 2회'}[k] || k)+': '+m.coverage_policy[k];}))+'<div class="am-scope">'+Object.keys(c.scopes || {}).map(function(k){var x=c.scopes[k];return '<div><b>'+esc({core:'주요 시장',steel:'철강·에너지',equity:'주가',hubfx:'환율',hubs:'업종 공시',octg_public:'OCTG 공개 가격'}[k]||k)+'</b><p>'+esc(x.mode==='metadata_and_filing_links_only'?'공시 기간·원문 연결만 사용':'관측 시계열 점검')+'</p><span>'+fmt(x.total)+(k==='hubs'?'개 허브':'계열')+'</span></div>';}).join('')+'</div><h4>아카이브에서 참고한 관점</h4>'+list(arr(a.rules).map(function(x){return x.title+' — '+x.application+' (귀속: '+(x.authority || '미확인')+')';}))+'<h4>검토 기록</h4>'+arr(a.source_records).map(function(x){return '<p>'+esc((x.date_local || '').slice(0,10))+' · '+esc(x.locator)+' '+link(x.source_url,'채널 ↗')+'</p>';}).join('')+'<p class="am-mini-note">채널 링크는 개별 글 접근을 보증하지 않습니다. 저장 추출문과 해시를 대조한 범위입니다.</p>'+list(a.unresolved)+'</details>';
+    }
+    function examples() { return '<section class="am-section"><span class="am-kicker">EXAMPLES / 실제 자료로 답한 질문</span><h3>이 도구는 이렇게 읽습니다</h3>'+arr(data.questions).map(function(q){return '<details class="am-archive"><summary>'+esc(q.question)+'</summary><p>'+esc(q.answer)+'</p>'+pills(q.evidence_ids)+'</details>';}).join('')+'</section>'; }
+    function render() {
+      var c=data.coverage || {}, m=data.methodology || {}, a=data.archive_coverage || {}, categoryOptions=Array.from(new Set(inv.map(function(r){return r.category||'기타';}))).sort();
+      host.innerHTML = '<section class="am-hero"><div><span class="am-kicker">ARGUS / MACRO OBSERVATORY</span><h2>가격의 다음 장면을<br>실물 지표로 확인합니다.</h2><p>유가 → 원가 → 화학 마진 → 산업 수요.<br>같은 기간의 관측과 반대 신호를 연결하는 매크로 해석 도구입니다.</p><p class="am-quiet">'+esc(data.analysis_label)+'<br>판독 기준 '+esc(data.as_of)+' · 최근 완결월 '+esc(m.target_month)+' · '+esc(m.quarter)+'</p></div><div class="am-stats"><div class="am-stat"><span>전체 관측 계열</span><b>'+fmt(c.total || inv.length)+'</b></div><div class="am-stat"><span>현재 판독 가능</span><b>'+fmt(c.eligible || 0)+'</b></div><div class="am-stat"><span>결측·시점 등 제외</span><b>'+fmt((c.total || inv.length)-(c.eligible || 0))+'</b></div></div></section><div class="am-section-head"><div><span class="am-kicker">01 / ASK THE EVIDENCE</span><h3>어떤 경로를 확인할까요?</h3></div><p>아래 질문은 규칙에 따라 근거를 대조합니다. 상승률은 수요 증가나 기업 이익을 자동으로 뜻하지 않습니다.</p></div><div class="am-tabs">'+stages.map(function(s){return '<button data-stage="'+esc(s.id)+'" aria-pressed="'+(state.stage===s.id)+'">'+esc(s.title)+'</button>';}).join('')+'</div><div class="am-tools"><span class="am-period">MoM · '+esc(m.target_month)+' / QoQ · '+esc(m.quarter)+' / YoY · 같은 월</span><div class="am-tabs">'+['mom','qoq','yoy'].map(function(k){return '<button data-metric="'+k+'" aria-pressed="'+(state.metric===k)+'">'+({mom:'MoM',qoq:'QoQ',yoy:'YoY'}[k])+'</button>';}).join('')+'</div></div>'+reading()+'<p class="am-mini-note">본문 해석은 '+esc(m.target_month)+' 전월 대비 기준입니다. MoM·QoQ·YoY 버튼은 차트 변화 수치와 업종별 비교를 바꿉니다.</p><div class="am-tools"><span class="am-period">선택한 지표와 해석 근거 차트</span><div class="am-tabs">'+[12,36].map(function(n){return '<button data-range="'+n+'" aria-pressed="'+(state.range===n)+'">'+(n/12)+'년</button>';}).join('')+'<label class="am-zero"><input type="checkbox" data-zero '+(state.zero?'checked':'')+'> 0 포함</label></div></div><div class="am-grid" data-charts>'+(selectedRows().map(function(r,i){return chartCard(r,state,i,data.reason_labels);}).join('') || '<p class="am-no-data">이 단계에 사용할 수 있는 같은 기간의 실측 근거가 없습니다. 위의 부족한 입력을 확인해 주세요.</p>')+'</div><section class="am-section"><div class="am-section-head"><div><span class="am-kicker">02 / BREADTH & COVERAGE</span><h3>다른 산업으로 확산하고 있나</h3></div><p>단순 계열 수입니다. 중복·파생 지표와 가격·원가가 함께 있으므로 경기 종합점수로 읽지 않습니다. 회색 영역은 비교 불가입니다.</p></div>'+heat()+'</section>'+crossChecks()+examples()+'<section class="am-section"><div class="am-section-head"><div><span class="am-kicker">03 / EVERY SERIES ACCOUNTED FOR</span><h3>모든 계열의 근거와 빈칸</h3></div><p>시점이 맞지 않거나 최근 완결월이 불충분한 자료는 현재 판독에서 제외합니다. 제외된 원자료도 여기에서 확인할 수 있습니다.</p></div><div class="am-search"><input type="search" data-query aria-label="계열 이름·코드 검색" placeholder="유가, 나프타, 에틸렌, 반도체…" value="'+esc(state.query)+'"><select data-filter aria-label="해석 사용 여부"><option value="all">전체 계열</option><option value="eligible" '+(state.filter==='eligible'?'selected':'')+'>판독 가능</option><option value="excluded" '+(state.filter==='excluded'?'selected':'')+'>제외 사유 확인</option></select><select data-cat aria-label="업종 선택"><option value="all">모든 업종</option>'+categoryOptions.map(function(k){return '<option '+(state.category===k?'selected':'')+'>'+esc(k)+'</option>';}).join('')+'</select></div><div data-inventory>'+table()+'</div></section><section class="am-section am-archive"><span class="am-kicker">04 / READING FRAMEWORK</span><h3>아카이브의 관점과 현재 데이터</h3><p>'+esc(a.scope || '')+'</p><p class="am-mini-note">전문 원본 '+fmt(a.original_message_count || a.candidate_count)+'건 · 전체 분류 '+fmt(a.scanned_count || 0)+'건 · 실제 원문 재검토 '+fmt(a.read_count || arr(a.read_message_ids).length)+'건 · 자료 기간 '+esc(a.date_min)+' ~ '+esc(a.date_max)+'</p><p class="am-notice">현재 해석은 Phalanx가 작성한 조건부 판독입니다. CL Prince의 현재 발언이나 검증된 예측 확률로 표시하지 않습니다.</p>'+methods(m,a,c)+'</section><p class="am-footer">자료가 갱신되면 동일 규칙으로 다시 계산합니다. 월간 평균·분기 평균의 비교이며 관측 공백은 보간하지 않습니다.</p>';
+      bind();
+    }
+    function bind() {
+      host.querySelectorAll('[data-stage]').forEach(function(b){b.onclick=function(){state.stage=b.dataset.stage;state.focus=null;render();};});
+      host.querySelectorAll('[data-metric]').forEach(function(b){b.onclick=function(){state.metric=b.dataset.metric;render();};});
+      host.querySelectorAll('[data-range]').forEach(function(b){b.onclick=function(){state.range=Number(b.dataset.range);render();};});
+      host.querySelector('[data-zero]').onchange=function(e){state.zero=e.target.checked;render();};
+      function bindTable(){host.querySelectorAll('[data-evidence]').forEach(function(b){b.onclick=function(){state.focus=b.dataset.evidence;render();host.querySelector('[data-charts]').scrollIntoView({block:'start'});};});host.querySelectorAll('[data-page]').forEach(function(b){b.onclick=function(){state.page+=Number(b.dataset.page);host.querySelector('[data-inventory]').innerHTML=table();bindTable();};});}
+      bindTable();
+      host.querySelectorAll('[data-category]').forEach(function(b){b.onclick=function(){state.category=state.category===b.dataset.category?'all':b.dataset.category;state.page=0;render();host.querySelector('[data-inventory]').scrollIntoView({block:'nearest'});};});
+      host.querySelector('[data-query]').oninput=function(e){state.query=e.target.value;state.page=0;host.querySelector('[data-inventory]').innerHTML=table();bindTable();};
+      host.querySelector('[data-filter]').onchange=function(e){state.filter=e.target.value;state.page=0;host.querySelector('[data-inventory]').innerHTML=table();bindTable();};
+      host.querySelector('[data-cat]').onchange=function(e){state.category=e.target.value;state.page=0;render();};
+    }
+    render();
+  }
+  win.PHXMacroUI = {mount:mount,domain:domain,points:points,delta:delta,absolute:absolute,change:change,chart:chart};
+  if (typeof module !== 'undefined' && module.exports) module.exports = win.PHXMacroUI;
+})(typeof window === 'undefined' ? globalThis : window);

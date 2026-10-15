@@ -484,24 +484,33 @@ def collect_stock(stock, name, start, end, force=False, log=sys.stderr):
     return len(hits), got, fail
 
 
-def collect(stocks, start, end, force=False, log=sys.stderr):
+def collect(stocks, start, end, force=False, log=sys.stderr, outcomes=None):
     """종목별로 수집. 한 종목이 터져도 나머지는 간다(예외를 종목별로 담는다).
 
     DART는 IP 단위로 막는다 — 레인은 `kce_fetch` 기본값을 그대로 쓰고(총 요청률은
     프로세스 사이 파일 락이 묶는다) 여기서 레인 수를 늘리지 않는다.
     """
     errors = []
+    if outcomes is None:
+        outcomes = {}
 
     def one(row):
         return collect_stock(row["stock"], row.get("name", ""), start, end, force, log)
 
     def done(i, row, res):
         if isinstance(res, Exception):
+            outcomes[row["stock"]] = {"status": "error", "contracts": None,
+                                      "cached": None, "failed": None}
             errors.append({"stock": row["stock"], "name": row.get("name", ""),
                            "error": "%s: %s" % (type(res).__name__, res)})
             log.write("[error] %s %s\n" % (row["stock"], res))
         else:
             n, got, fail = res
+            outcomes[row["stock"]] = {"status": "partial" if fail else "success",
+                                      "contracts": n, "cached": got, "failed": fail}
+            if fail:
+                errors.append({"stock": row["stock"], "name": row.get("name", ""),
+                               "error": "계약공시 %d건 중 %d건 수집 실패" % (n, fail)})
             log.write("%s %-14s 계약공시 %2d건 · 캐시 %2d · 실패 %d\n"
                       % (row["stock"], row.get("name", "")[:12], n, got, fail))
         log.flush()
@@ -639,13 +648,14 @@ def build(stocks, start, end, keep_kv=True):
     return rows, missing
 
 
-def write(rows, start, end, errors=()):
+def write(rows, start, end, errors=(), collection=None):
     write_asset("contracts.json", {
         "generated": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "window": [start, end],
         "n": len(rows),
         "rows": rows,
         "errors": list(errors),
+        "collection": dict(collection or {}),
     })
 
 
@@ -707,14 +717,21 @@ def main():
     ap.add_argument("--no-collect", action="store_true", help="캐시만으로 빌드(DART 미접속)")
     a = ap.parse_args()
     stocks = _stocks(a.only, a.all)
-    errors = []
+    errors, collection = [], {}
     if not a.no_collect:
-        errors = collect(stocks, a.since, a.until, a.force)
+        errors = collect(stocks, a.since, a.until, a.force, outcomes=collection)
     rows, missing = build(stocks, a.since, a.until)
+    failed_stocks = {e["stock"] for e in errors}
     for st in missing:
-        errors.append({"stock": st, "error": "캐시 없음(수집 실패 또는 계약공시 0건)"})
+        observed = collection.get(st) or {}
+        # 이번 실행에서 검색이 끝났고 실제로 0건일 때만 정상 부재로 분류한다.
+        # 오프라인 재생·검색 실패·본문 실패를 0건으로 간주하지 않는다.
+        if observed.get("status") == "success" and observed.get("contracts") == 0:
+            continue
+        if st not in failed_stocks:
+            errors.append({"stock": st, "error": "캐시 없음(이번 실행의 정상 0건 확인 없음)"})
     if a.write:
-        write(rows, a.since, a.until, errors)
+        write(rows, a.since, a.until, errors, collection)
     bs = by_stock(rows)
     flagged = [r for r in rows if r.get("parse_flags")]
     print("계약 %d건 / %d종목 · 정정반영 %d · 금액단위 미확인 %d · 중국 %d · 익명상대 %d"
@@ -736,7 +753,7 @@ def main():
             print("   %s %s %s" % (r["stock"], r["rcp"], r["parse_flags"]), file=sys.stderr)
     if errors:
         print("[error] %d건: %s" % (len(errors), errors[:5]), file=sys.stderr)
-    return 0
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":
