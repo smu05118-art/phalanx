@@ -188,7 +188,8 @@ def _accepted_header_tables(parsed, rcp):
              "lead": lead_tail(t.get("lead")), "rcpNo": rcp,
              "tag": sector_of(t.get("lead")) or
                     region_of(t.get("lead"), None) or ""}
-            for t in parsed.get("tables") or []]
+            # 헤더·합계만 인식된 표는 수주행이 살아 있다는 근거가 아니다.
+            for t in parsed.get("tables") or [] if t.get("rows")]
 
 
 def enqueue_unknown(rows, root=None):

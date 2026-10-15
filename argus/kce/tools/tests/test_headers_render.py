@@ -498,6 +498,58 @@ class TestUnknownQueue(_TmpRoot):
         self.assertFalse(os.path.exists(hdrmap.map_path("kce", self.root)))
         self.assertIsNone(hdrmap.staged("kce", "000720"))
 
+    def test_probe_total_only_table_does_not_clear_real_regression(self):
+        """헤더와 합계만 남은 실제 HTML은 개별 수주행의 소실을 숨기면 안 된다."""
+        total_only = (
+            '<p>수주상황 (단위 : 백만원)</p><table><tr>'
+            '<th>품목</th><th>수주총액</th><th>기납품액</th><th>수주잔고</th></tr>'
+            '<tr><td>합 계</td><td>100</td><td>20</td><td>80</td></tr></table>')
+        parsed = P.parse_ii4(total_only + self.NEAR)
+        self.assertEqual(len(parsed['tables']), 1)
+        self.assertEqual(parsed['tables'][0]['rows'], [])
+        self.assertTrue(parsed['unknown_headers'])
+        prior = P.parse_ii4(_read('kre_ii4_2026Q2.html'))
+        tables = kce_probe._accepted_header_tables(prior, '20260515000001')
+        hdrmap.record('kce', '001840', '2026Q1', 'orders', tables,
+                      range(len(tables)), root=self.root, strict=True)
+        hdrmap.write('kce', root=self.root, strict=True)
+        before_map = hdrmap.load_map('kce', self.root)
+        row = {'slug': '001840', 'stock': '001840', 'name': '이화공영',
+               'quarter': Q,
+               '_hdr_tables': kce_probe._accepted_header_tables(parsed, '20260814000001'),
+               '_unk': kce_probe._unknown_items(parsed, 'orders', '20260814000001')}
+        self.assertEqual(kce_probe.enqueue_unknown([row], root=self.root), 1)
+        self.assertNotIn('_hdr_tables', row)
+        self.assertNotIn('_unk', row)
+        self.assertEqual(hdrmap.load_map('kce', self.root), before_map)
+        rep = hdrmap.check('kce', root=self.root)
+        self.assertEqual((rep['exit'], len(rep['regressions']), rep['open']), (1, 1, 1))
+
+    def test_probe_mixed_empty_table_preserves_real_project_header(self):
+        """같은 절의 빈 표만 빼고 실제 수주행이 있는 표와 미지표 경고는 보존한다."""
+        total_only = (
+            '<p>수주상황 (단위 : 백만원)</p><table><tr>'
+            '<th>품목</th><th>수주총액</th><th>기납품액</th><th>수주잔고</th></tr>'
+            '<tr><td>합 계</td><td>100</td><td>20</td><td>80</td></tr></table>')
+        parsed = P.parse_ii4(total_only + _read('kre_ii4_2026Q2.html') + self.NEAR)
+        accepted = [t for t in parsed['tables'] if t['rows']]
+        self.assertTrue(accepted)
+        self.assertTrue(any(not t['rows'] for t in parsed['tables']))
+        tables = kce_probe._accepted_header_tables(parsed, '20260814000001')
+        row = {'slug': '001840', 'stock': '001840', 'name': '이화공영',
+               'quarter': Q, '_hdr_tables': tables,
+               '_unk': kce_probe._unknown_items(parsed, 'orders', '20260814000001')}
+        self.assertEqual(kce_probe.enqueue_unknown([row], root=self.root), 1)
+        cur = hdrmap.load_map('kce', self.root)['companies']['001840']['roles']['orders'][Q]
+        self.assertEqual(len(cur), len(accepted))
+        self.assertTrue(all(e['pick'] and e['n_rec'] > 0 for e in cur))
+        self.assertEqual(sum(e['n_rec'] for e in cur), sum(len(t['rows']) for t in accepted))
+        self.assertEqual([(e['cols'], e['n_rec']) for e in cur],
+                         [(t.get('cols_up') or t['cols'], len(t['rows']))
+                          for t in accepted])
+        self.assertEqual((hdrmap.check('kce', root=self.root)['exit'],
+                          len(hdrmap.open_items('kce', root=self.root, kind='unknown'))), (0, 1))
+
 
 class TestSeriesCache(_TmpRoot):
 
