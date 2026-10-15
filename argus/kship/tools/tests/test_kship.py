@@ -11,7 +11,9 @@ import json
 import os
 import re
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
@@ -24,6 +26,7 @@ from kship_contracts import parse_contract, ship_type_of  # noqa: E402
 from kship_yards import parse_orders_table, parse_revenue_table  # noqa: E402
 from kship_suppliers import classify_product              # noqa: E402
 import kship_universe as U                                # noqa: E402
+import kship_page as P                                    # noqa: E402
 
 
 def _fx(name):
@@ -202,6 +205,23 @@ class TestPageShell(unittest.TestCase):
         self.assertNotIn("</script>", s)
 
 
+class TestPageYardCache(unittest.TestCase):
+    def test_revision_directory_is_not_loaded_as_quarter_json(self):
+        with tempfile.TemporaryDirectory() as folder:
+            os.makedirs(os.path.join(folder, "_revisions"))
+            os.makedirs(os.path.join(folder, "2025Q4.json"))
+            with open(os.path.join(folder, "2026Q2.json"), "w", encoding="utf-8") as f:
+                json.dump({"quarter": "2026Q2", "ok": True}, f)
+            with open(os.path.join(folder, "README.json"), "w", encoding="utf-8") as f:
+                json.dump({"quarter": "README", "ok": True}, f)
+            with open(os.path.join(folder, "2026Q3.json"), "w", encoding="utf-8") as f:
+                json.dump({"quarter": "2025Q4", "ok": True}, f)
+
+            self.assertEqual(P.load_yard_quarters(folder), {
+                "2026Q2": {"quarter": "2026Q2", "ok": True},
+            })
+
+
 class TestUniverseExplored(unittest.TestCase):
     """모집단 ④ 탐색 행 — probe 에 판정이 없으면 유지, 강등은 probe 의 명시적 rejected(ok=True)만.
     2026-09-12 스캔이 promoted 를 {} 로 덮어 '탐색' 16행이 지워진 회귀(57→41)의 두 번째 방어선."""
@@ -250,8 +270,49 @@ class TestUniverseExplored(unittest.TestCase):
 
 
 
-import tempfile                                            # noqa: E402
 import kship_suppliers as SUP                              # noqa: E402
+
+
+class TestSupplierAnnualFallback(unittest.TestCase):
+    def test_fallback_is_saved_under_observed_annual_quarter(self):
+        rec = {"stock": "123456"}
+        with tempfile.TemporaryDirectory() as cache:
+            folder = os.path.join(cache, rec["stock"])
+            os.makedirs(folder)
+            with open(os.path.join(folder, "2026Q2.json"), "w", encoding="utf-8") as f:
+                json.dump({"quarter": "2026Q2", "ok": True}, f)
+
+            with patch.object(SUP, "CACHE", cache), \
+                 patch.object(SUP, "search_reports", side_effect=[[], [("20260319000001", "사업보고서 (2025.12)")]]), \
+                 patch.object(SUP.RF, "candidates", side_effect=lambda reports, quarter: reports), \
+                 patch.object(SUP, "toc", return_value=[]), \
+                 patch.object(SUP, "find_sections", return_value={"overview": {}}), \
+                 patch.object(SUP, "fetch_section", return_value="<p>선박용 기자재</p>"):
+                got = SUP.collect_one(rec, "2026Q3")
+
+            self.assertEqual(got["quarter"], "2025Q4")
+            self.assertTrue(os.path.isfile(os.path.join(folder, "2025Q4.json")))
+            self.assertFalse(os.path.exists(os.path.join(folder, "2026Q3.json")))
+            self.assertEqual(SUP._latest_cache(folder)["quarter"], "2026Q2")
+
+    def test_latest_cache_ignores_mismatched_payload_quarter(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with open(os.path.join(folder, "2026Q2.json"), "w", encoding="utf-8") as f:
+                json.dump({"quarter": "2026Q2", "value": "valid"}, f)
+            with open(os.path.join(folder, "2026Q3.json"), "w", encoding="utf-8") as f:
+                json.dump({"quarter": "2025Q4", "value": "polluted"}, f)
+            os.makedirs(os.path.join(folder, "2026Q4.json"))
+
+            self.assertEqual(SUP._latest_cache(folder), {
+                "quarter": "2026Q2", "value": "valid",
+            })
+
+    def test_latest_cache_keeps_annual_only_company(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with open(os.path.join(folder, "2025Q4.json"), "w", encoding="utf-8") as f:
+                json.dump({"quarter": "2025Q4", "ok": True}, f)
+
+            self.assertEqual(SUP._latest_cache(folder)["quarter"], "2025Q4")
 
 
 class TestYardNames(unittest.TestCase):
@@ -385,10 +446,12 @@ class TestSuppliersBuild(unittest.TestCase):
 
     def test_latest_cache_ignores_notes_json(self):
         with tempfile.TemporaryDirectory() as td:
-            for name, body in (("2026Q1.json", {"q": 1}), ("2026Q2.json", {"q": 2}), ("notes.json", {"q": "n"})):
+            for name, body in (("2026Q1.json", {"quarter": "2026Q1", "q": 1}),
+                               ("2026Q2.json", {"quarter": "2026Q2", "q": 2}),
+                               ("notes.json", {"q": "n"})):
                 with open(os.path.join(td, name), "w", encoding="utf-8") as f:
                     json.dump(body, f)
-            self.assertEqual(SUP._latest_cache(td), {"q": 2})                  # sorted()[-1] 이면 notes.json 이 잡혔다
+            self.assertEqual(SUP._latest_cache(td), {"quarter": "2026Q2", "q": 2})  # notes.json 은 입력이 아니다
             self.assertEqual(SUP._notes_cache(td), {"q": "n"})
         self.assertIsNone(SUP._latest_cache(os.path.join(tempfile.gettempdir(), "kship-no-such-dir")))
 

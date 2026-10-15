@@ -301,7 +301,12 @@ def collect_one(rec, quarter, force=False):
         q2 = "%dQ4" % (int(quarter[:4]) - 1)
         start, end = RF.window(q2)
         reports = RF.candidates(search_reports(st, start, end, report_kind(q2)), q2)
-        quarter = q2 if reports else quarter
+        if reports:
+            # 이전 연차보고서는 실제 관측분기 경로에 둔다. 요청한 미공시 분기 이름으로 저장하면
+            # _latest_cache가 더 최신인 반기보고서 대신 과거 연차보고서를 선택한다.
+            quarter = q2
+            path = os.path.join(CACHE, st, quarter + ".json")
+            cached = RF.read(path)
     out = {"stock": st, "quarter": quarter, "ok": False, "note": ""}
     if not reports:
         out["note"] = "정기보고서 없음"
@@ -499,14 +504,20 @@ def skip_reason(prod):
 
 def _latest_cache(dirpath):
     """suppliers_cache/<stock>/ 의 최신 분기 캐시(<q>.json). notes.json 같은 다른 파일은 보지 않는다 —
-    sorted()[-1] 로 집던 때는 'n' 이 '2' 뒤라 notes.json 이 분기 캐시로 읽혔을 것이다."""
+    sorted()[-1] 로 집던 때는 'n' 이 '2' 뒤라 notes.json 이 분기 캐시로 읽혔을 것이다.
+    파일명 분기와 payload 분기가 다른 오염 캐시는 건너뛴다."""
     if not os.path.isdir(dirpath):
         return None
     fs = sorted(f for f in os.listdir(dirpath) if _QFILE.match(f))
-    if not fs:
-        return None
-    with open(os.path.join(dirpath, fs[-1]), encoding="utf-8") as f:
-        return json.load(f)
+    for name in reversed(fs):
+        path = os.path.join(dirpath, name)
+        if not os.path.isfile(path):
+            continue
+        with open(path, encoding="utf-8") as f:
+            row = json.load(f)
+        if row.get("quarter") == name[:-5]:
+            return row
+    return None
 
 
 def _notes_cache(dirpath):

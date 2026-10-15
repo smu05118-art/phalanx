@@ -30,9 +30,29 @@ from kship_universe import load as load_universe
 
 YARDS_CACHE = os.path.join(ASSETS, "yards_cache")
 TYPE_ORDER = ["CONT", "LNGC", "VLCC", "PC", "VLGC", "OFFSH", "NAVAL", "BULK", "PCTC", "OTHER"]
+YARD_QUARTER_FILE = re.compile(r"^\d{4}Q[1-4]\.json$")
 
 
 # ── 데이터 로드 ─────────────────────────────────────────────
+
+def load_yard_quarters(folder):
+    """분기 정본만 읽는다. ``_revisions`` 등 보존 디렉터리는 입력이 아니다."""
+    qs = {}
+    if not os.path.isdir(folder):
+        return qs
+    for name in sorted(os.listdir(folder)):
+        if not YARD_QUARTER_FILE.fullmatch(name):
+            continue
+        path = os.path.join(folder, name)
+        if not os.path.isfile(path):
+            continue
+        with open(path, encoding="utf-8") as fh:
+            row = json.load(fh)
+        quarter = name[:-5]
+        if row.get("ok") and row.get("quarter") == quarter:
+            qs[quarter] = row
+    return qs
+
 
 def load_all():
     uni = load_universe()
@@ -47,13 +67,7 @@ def load_all():
         if r["role"] != "yard":
             continue
         d = os.path.join(YARDS_CACHE, r["stock"])
-        qs = {}
-        if os.path.isdir(d):
-            for f in sorted(os.listdir(d)):
-                with open(os.path.join(d, f), encoding="utf-8") as fh:
-                    x = json.load(fh)
-                if x.get("ok"):
-                    qs[x["quarter"]] = x
+        qs = load_yard_quarters(d)
         yards[r["stock"]] = {"rec": r, "q": qs}
     return {"uni": uni, "probe": probe, "types": types, "tax": tax, "svg": svg, "contracts": contracts,
             "suppliers": suppliers, "yards": yards}
