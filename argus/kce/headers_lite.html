@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>파서헤드 지도 — 국내 상장 건설사(lite)</title><style>
+:root{--bg:#0f1116;--pn:#171a21;--pn2:#1e222b;--ln:#2a2f3a;--tx:#e6e8ec;--tx2:#98a1b0;
+--tx3:#5d6675;--a:#60a5fa;--chg:#f59e0b;--new:#34d399;--off:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.6 -apple-system,"Segoe UI","Malgun Gothic",sans-serif;
+ padding:24px 26px 60px;margin:0 auto;width:max-content;min-width:1100px;max-width:none}
+/* 열 이름 칩은 줄바꿈 금지, 페이지 폭은 내용 맞춤(width:max-content) — 가장 긴 행에
+   딱 맞게 잡히고 그보다 넓게 퍼지지 않는다. 뷰포트보다 넓으면 가로 스크롤(사용자 확인). */
+td.cols{white-space:nowrap}
+h1{font-size:18px;font-weight:600}
+h2{font-size:14px;font-weight:600;margin:26px 0 6px;padding-top:13px;border-top:1px solid var(--ln)}
+h2 span{color:var(--tx2);font-weight:400;font-size:12px;margin-left:6px}
+.sub{color:var(--tx2);font-size:12px;margin-top:5px}
+.nav{margin:12px 0;display:flex;gap:8px;flex-wrap:wrap}
+.nav a{background:var(--pn2);border:1px solid var(--ln);border-radius:6px;height:26px;line-height:24px;padding:0 11px;box-sizing:border-box;
+ display:inline-block;font-size:12px;color:var(--a);text-decoration:none}
+.nav a:hover{border-color:var(--a)}
+.note{background:var(--pn);border:1px solid var(--ln);border-left:3px solid var(--a);
+ border-radius:0 6px 6px 0;padding:10px 13px;font-size:12px;color:var(--tx2);margin:10px 0}
+.ctl{display:flex;align-items:center;gap:8px;margin:14px 0 2px;flex-wrap:wrap}
+.ctl label{font-size:12px;color:var(--tx2)}
+/* 회사 버튼 — 크기는 프로젝트 공통 규격을 따른다(.nav a·검색창·중단 토글과 같다):
+   height 26 · line-height 24 · padding 0 11 · border-radius 6 · font-size 12.
+   종전에는 padding만 주어 글자에 따라 높이가 제각각이었다(사용자 지적 2026-09-05). */
+.cobtn{background:var(--pn2);color:var(--tx);border:1px solid var(--ln);border-radius:6px;
+ height:26px;line-height:24px;padding:0 11px;box-sizing:border-box;
+ font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap}
+/* 버튼 사이 간격 — span 안에 그냥 나열돼 붙어 있었다(사용자 지적). */
+#cobtns{display:inline-flex;flex-wrap:wrap;gap:6px}
+.cobtn:hover{border-color:var(--a)}
+.cobtn.on{border-color:var(--a);color:var(--a);background:rgba(96,165,250,.10)}
+.lgd{display:flex;gap:14px;font-size:12px;color:var(--tx3);margin:6px 0 2px;flex-wrap:wrap}
+.lgd b{font-weight:500}
+table{border-collapse:collapse;width:100%;font-size:12px;margin-top:6px}
+th,td{padding:3px 8px;border-bottom:1px solid var(--ln);text-align:left;
+ vertical-align:top;white-space:nowrap}
+th{color:var(--tx2);font-weight:500;font-size:12px;white-space:nowrap;
+ position:sticky;top:0;background:var(--bg)}
+td.fq{white-space:nowrap;color:var(--tx2);font-variant-numeric:tabular-nums;width:62px}
+/* 법인·구분·구간을 한 줄에 나란히. 폭은 내용에 맡긴다(페이지가 width:max-content라
+   고정 폭을 주면 긴 회사명만 잘리고 짧은 회사에서는 빈 자리가 남는다). */
+td.tag{color:var(--tx3)}
+td.tag b{color:var(--tx2);font-weight:500;margin-right:5px}
+td.n{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;color:var(--tx3);width:52px}
+/* 문맥은 **꼬리**가 표 제목이라 앞을 자른다 — 뒤를 자르면 정작 제목이 날아간다.
+   전문은 툴팁에 있다. */
+td.lead{color:var(--tx3);font-size:12px}
+tbody tr:hover{background:var(--pn)}
+tr.chg td.fq{color:var(--chg);font-weight:500}
+tr.none td{color:var(--off)}
+.col{display:inline-block;border:1px solid var(--ln);border-radius:4px;padding:0 5px;
+ margin:0 3px 0 0;line-height:19px;background:var(--pn2);color:var(--tx2)}
+.col.chg{border-color:var(--chg);color:var(--chg);background:rgba(245,158,11,.10)}
+.col.new{border-color:var(--new);color:var(--new);background:rgba(52,211,153,.10)}
+.pick{color:var(--a);font-size:12px;margin-left:4px}
+td.tag em{font-style:normal;font-size:11px;color:var(--tx3);margin-left:5px}
+</style></head><body>
+
+<h1>파서헤드 지도 — 국내 상장 건설사(lite)</h1>
+<div class="sub">DART 원문에서 <b>파서가 실제로 붙잡은 표</b>의 머리행을 분기마다 그대로
+뽑은 것입니다. 표를 새로 찾는 게 아니라 각 파서의 탐색 로직을 그대로 태웁니다.</div>
+<div class="nav"><a href="index.html">← 회사 선택</a></div>
+<div class="note">회사가 분기마다 열 이름을 바꾸거나 표를 쪼개는 일이 잦고, 그게 조용한
+데이터 손실의 원인이 됩니다. <b>직전 분기와 달라진 열만 강조</b>해 두었으니 색이 뜬 분기를
+확인하십시오. 채택되지 않은 후보 표(◀선택 없음)와 「표 없음」도 함께 남겨 두었습니다 —
+무엇을 읽지 않았는지도 보여야 합니다.</div>
+<div class="ctl"><label>회사</label><span id="cobtns"></span></div>
+<div class="lgd">
+ <span><b class="col chg" style="border-color:var(--chg);color:var(--chg)">바뀐 열</b> 직전 분기와 이름이 다름</span>
+ <span><b class="col new" style="border-color:var(--new);color:var(--new)">새 열</b> 직전 분기에 없던 열</span>
+ <span style="color:var(--a)">◀선택</span> 파서가 실제로 채택한 표
+ <span style="color:var(--off)">표 없음</span> 그 분기에 해당 절을 못 찾음
+</div>
+<div id="out"></div>
+
+<script>
+// 이 세 상수만 엔진(argus/kce/tools/hdrmap.py render_headers)이 갈아 끼운다. 나머지는 손으로 고친다.
+// D={회사키:{name,cfgsig,fq,sections{절:{분기:[{tag,ent?,cols,n,lead,pick}]}}}}, LAB={절:[짧은 이름, 설명, 'trim'?]}, ORDER=[회사키…]
+const D={"001260":{"name":"남광토건","cfgsig":"","fq":["2024Q4"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["공사명","발주처","계약일","완공예정일","수주총액","완성공사액","수주잔고"],"n":9,"lead":"나. 수주상황 (단위 : 천원 )","pick":true}]},"p8":{},"xinb":{}}},"001470":{"name":"삼부토건","cfgsig":"","fq":["2024Q4","2025Q1","2025Q4"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["순번","공사명","발주처","계약일","완공예정일","도급금액","완성공사액","차기이월","비고"],"n":48,"lead":"기동팀 운영) 고객부담 경감(장기저리대출 알선) 다. 수주상황 [삼부토건(주) : 건설사업]제71기 당기말 현재 중요 건설계약의 내용 및 계약금액의 변동 내역은 다음과 같습니다. (단위 : 백만원)","pick":true}],"2025Q1":[{"tag":"","ent":"","cols":["순번","공사명","발주처","계약일","완공예정일","도급금액","완성공사액","차기이월","비고"],"n":48,"lead":"S기동팀 운영) 고객부담 경감(장기저리대출 알선) 다. 수주상황 [삼부토건(주) : 건설사업]제72기 1분기말 현재 중요 건설계약의 내용 및 계약금액의 변동 내역은 다음과 같습니다. (단위 : 백만원)","pick":true}],"2025Q4":[{"tag":"","ent":"","cols":["순번","공사명","발주처","계약일","완공예정일","도급금액","완성공사액","차기이월","비고"],"n":51,"lead":"공(A/S기동팀 운영) 고객부담 경감(장기저리대출 알선) 다. 수주상황 [삼부토건(주) : 건설사업]제72기말 현재 중요 건설계약의 내용 및 계약금액의 변동 내역은 다음과 같습니다. (단위 : 백만원)","pick":true}]},"p8":{},"xinb":{}}},"001840":{"name":"이화공영","cfgsig":"","fq":["2024Q4","2025Q1","2025Q2"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["품목","수주일자","납기","수주총액 수량","수주총액 금액","기납품액 수량","기납품액 금액","수주잔고 수량","수주잔고 금액"],"n":33,"lead":"(주1) 주요 매출처는 당기매출금액 상위 3개로 대원제약(주), (주)그리너지, 충남테크노파크 입니다. (단위 : 백만원)","pick":true},{"tag":"","ent":"","cols":["구 분","매출처","계약명","도급금액","당기매출액","비율(%)","비고"],"n":33,"lead":"","pick":false}],"2025Q1":[{"tag":"","ent":"","cols":["품목","수주일자","납기","수주총액 수량","수주총액 금액","기납품액 수량","기납품액 금액","수주잔고 수량","수주잔고 금액"],"n":38,"lead":"(주1) 주요 매출처는 당기매출금액 상위 3개로 대웅바이오(주), 한미사이언스(주), 넥서스 원(Nexus One) 입니다. (단위 : 백만원)","pick":true},{"tag":"","ent":"","cols":["구 분","매출처","계약명","도급금액","당기매출액","비율(%)","비고"],"n":38,"lead":"","pick":false}],"2025Q2":[{"tag":"","ent":"","cols":["품목","수주일자","납기","수주총액 수량","수주총액 금액","기납품액 수량","기납품액 금액","수주잔고 수량","수주잔고 금액"],"n":20,"lead":"(주1) 주요 매출처는 당기매출금액 상위 3개로 대웅바이오(주), 주식회사 레인보우로보틱스, 넥서스 원(Nexus One) 입니다. (단위 : 백만원)","pick":true},{"tag":"","ent":"","cols":["구 분","매출처","계약명","도급금액","당기매출액","비율(%)","비고"],"n":20,"lead":"","pick":false}]},"p8":{},"xinb":{}}},"002410":{"name":"범양건영","cfgsig":"","fq":["2024Q4","2026Q2"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["구분","발주처","공사명","계약일","완공예정일","기본도급액","완성공사액","계약잔액","비고"],"n":19,"lead":"2. 수주에 관한 사항가. 수주현황 (단위 : 백만원)","pick":true}],"2026Q2":[{"tag":"","ent":"","cols":["구분","발주처","공사명","계약일","완공예정일(계약해지일)","기본도급액","완성공사액","계약잔액","비고"],"n":5,"lead":"2. 수주에 관한 사항가. 수주현황 (단위 : 백만원)","pick":true}]},"p8":{},"xinb":{}}},"004960":{"name":"한신공영","cfgsig":"","fq":["2024Q4","2026Q2"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["구 분","발주처","공사명","계약일","완공예정일","기본도급액","완성공사액","계약잔액(*)","비고"],"n":13,"lead":"rend 변화에 따른 융통성 확보 - Well-Being, Home Network, 친환경 컨셉 및 설계에 대한 지속적 연구 - Brand 마케팅 강화 다. 수주현황 1) 공공부문 (단위 :백만원 )","pick":true},{"tag":"","ent":"","cols":["구 분","발주처","공사명","계약일","완공예정일","기본도급액","완성공사액","계약잔액(*)","비고"],"n":13,"lead":"(*) 계약잔액에는 착공예정인 도급공사 계약금액이 포함되어 있습니다.2) 민간부문 (단위 :백만원 )","pick":true}],"2026Q2":[{"tag":"","ent":"","cols":["구분","발주처","공사명","계약일","완공예정일","기본도급액","완성공사액","계약잔액(*)","비고"],"n":12,"lead":"Trend 변화에 따른 융통성 확보 - Well-Being, Home Network, 친환경 컨셉 및 설계에 대한 지속적 연구 - Brand 마케팅 강화 다. 수주현황 1) 공공부문 (단위 :백만원)","pick":true},{"tag":"","ent":"","cols":["구분","발주처","공사명","계약일","완공예정일","기본도급액","완성공사액","계약잔액(*)","비고"],"n":11,"lead":"(*) 계약잔액에는 착공예정인 도급공사 계약금액이 포함되어 있습니다.2) 민간부문 (단위 :백만원)","pick":true}]},"p8":{},"xinb":{}}},"007680":{"name":"대원","cfgsig":"","fq":["2026Q2"],"sections":{"ii4":{"2026Q2":[{"tag":"","ent":"","cols":["발주처","현장명","계약일자","완공예정","기본도급금액","완성공사액","계약잔액"],"n":23,"lead":"*매출액 기준일 : 2026.1.1~2026.6.30 나. 수주상황 (1) 건설사업 (단위:천원)","pick":true}]},"p8":{},"xinb":{}}},"009410":{"name":"태영건설","cfgsig":"","fq":["2024Q4"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["구분","발주처","수 주 내 용","착공일","완공예정일","도급금액","완성공사액","계약잔액"],"n":155,"lead":"나. 수주상황(1) 건설부문 (단위 : 천원)","pick":true}]},"p8":{},"xinb":{}}},"011370":{"name":"서한","cfgsig":"","fq":["2025Q4"],"sections":{"ii4":{"2025Q4":[{"tag":"","ent":"","cols":["품목","수주일자","납기","수주총액 수량","수주총액 금액","기납품액 수량","기납품액 금액","수주잔고 수량","수주잔고 금액"],"n":7,"lead":"(2)수주상황 (단위 : 백만원 )","pick":true}]},"p8":{},"xinb":{}}},"013120":{"name":"동원개발","cfgsig":"","fq":["2024Q4"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["품목","수주일자","납기","수주총액 수량","수주총액 금액","기납품액 수량","기납품액 금액","수주잔고 수량","수주잔고 금액"],"n":45,"lead":"- 당사의 재무제표는 한국채택국제회계기준(K-IFRS)에 의해 작성되었습니다. 2. 수주상황 (단위 : 천원)","pick":true}]},"p8":{},"xinb":{}}},"013360":{"name":"일성건설","cfgsig":"","fq":["2024Q4"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["품목","발주처","공사명","계약일자","공사기한","수주총액","완성공사액","수주잔고"],"n":41,"lead":"매를 위하여 수요자의 요구를 적극 반영하여 편리하고 안락한 주거환경을 만드는데 우선을 두고 고품질, 완벽 시공에 의한 아파트 건설을 위해 노력하고 있습니다. 4-3. 수주상황(1) 수주상황 (단위 : 백만원)","pick":true},{"tag":"","ent":"","cols":["공사명","발주처","계약일자","공사기한","수주총액","진행률","미청구공사 총액","미청구공사 대손충당금","공사미수금 총액","공사미수금 대손충당금"],"n":35,"lead":"(2) 진행률적용 수주상황 (단위 : 백만원)","pick":true}]},"p8":{},"xinb":{}}},"025950":{"name":"동신건설","cfgsig":"","fq":["2024Q4","2025Q4","2026Q1"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["(단위 : 천원) 품목","(단위 : 천원) 발주처","(단위 : 천원) 계약일","(단위 : 천원) 준공예정일","(단위 : 천원) 계약금액 금액","(단위 : 천원) 매출액 금액","(단위 : 천원) 수주잔고 금액"],"n":34,"lead":"2. 수주현황 (단위 : 천원)","pick":true}],"2025Q4":[{"tag":"","ent":"","cols":["(단위 : 천원) 품목","(단위 : 천원) 발주처","(단위 : 천원) 계약일","(단위 : 천원) 준공예정일","(단위 : 천원) 계약금액 금액","(단위 : 천원) 매출액 금액","(단위 : 천원) 수주잔고 금액"],"n":32,"lead":"2. 수주현황 (단위 : 천원)","pick":true}],"2026Q1":[{"tag":"","ent":"","cols":["(단위 : 천원) 품목","(단위 : 천원) 발주처","(단위 : 천원) 계약일","(단위 : 천원) 준공예정일","(단위 : 천원) 계약금액 금액","(단위 : 천원) 매출액 금액","(단위 : 천원) 수주잔고 금액"],"n":24,"lead":"2. 수주현황 (단위 : 천원)","pick":true}]},"p8":{},"xinb":{}}},"026150":{"name":"특수건설","cfgsig":"","fq":["2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1"],"sections":{"ii4":{"2024Q3":[{"tag":"","ent":"","cols":["현장명","구분","계약금액","계약일","종료예정일","진행율(%)","미청구공사","초과청구공사","공사미수금"],"n":23,"lead":"나. 수주현황 (단위: 원)","pick":true}],"2024Q4":[{"tag":"","ent":"","cols":["현장명","구분","계약금액","계약일","종료예정일","진행율(%)","미청구공사","초과청구공사","공사미수금"],"n":18,"lead":"나. 수주현황 (단위: 원)","pick":true}],"2025Q1":[{"tag":"","ent":"","cols":["(단위: 원) 현장명","(단위: 원) 구분","(단위: 원) 계약금액","(단위: 원) 계약일","(단위: 원) 종료예정일","(단위: 원) 진행율(%)","(단위: 원) 미청구공사","(단위: 원) 초과청구공사","(단위: 원) 공사미수금"],"n":18,"lead":"나. 수주현황 (단위: 원)","pick":true}],"2025Q2":[{"tag":"","ent":"","cols":["(단위: 원) 현장명","(단위: 원) 구분","(단위: 원) 계약금액","(단위: 원) 계약일","(단위: 원) 종료예정일","(단위: 원) 진행율(%)","(단위: 원) 미청구공사","(단위: 원) 초과청구공사","(단위: 원) 공사미수금"],"n":20,"lead":"나. 수주현황 (단위: 원)","pick":true}],"2025Q3":[{"tag":"","ent":"","cols":["(단위: 원) 현장명","(단위: 원) 구분","(단위: 원) 계약금액","(단위: 원) 계약일","(단위: 원) 종료예정일","(단위: 원) 진행율(%)","(단위: 원) 미청구공사","(단위: 원) 초과청구공사","(단위: 원) 공사미수금"],"n":19,"lead":"나. 수주현황 (단위: 원)","pick":true}],"2025Q4":[{"tag":"","ent":"","cols":["(단위: 원) 현장명","(단위: 원) 구분","(단위: 원) 계약금액","(단위: 원) 계약일","(단위: 원) 종료예정일","(단위: 원) 진행율(%)","(단위: 원) 미청구공사","(단위: 원) 초과청구공사","(단위: 원) 공사미수금"],"n":23,"lead":"나. 수주현황 (단위: 원)","pick":true}],"2026Q1":[{"tag":"","ent":"","cols":["(단위: 원) 현장명","(단위: 원) 구분","(단위: 원) 계약금액","(단위: 원) 계약일","(단위: 원) 종료예정일","(단위: 원) 진행율(%)","(단위: 원) 미청구공사","(단위: 원) 초과청구공사","(단위: 원) 공사미수금"],"n":22,"lead":"나. 수주현황 (단위: 원)","pick":true}]},"p8":{},"xinb":{}}},"028100":{"name":"동아지질","cfgsig":"","fq":["2024Q4"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["발주처","공사명","계약일","완공예정일","기본도급액","완성공사액","계약잔액"],"n":24,"lead":"TA 18.47%, 현대건설(주) 14.09%, Dongah-Daewoo JV 8.79%, Wohhup-Dongah JV 6.53%, 에스케이에코플랜트 6.05%, 등입니다. (3) 수주상황 (단위 : 백만원)","pick":true}]},"p8":{},"xinb":{}}},"042940":{"name":"상지건설","cfgsig":"","fq":["2024Q4","2025Q1"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["구분","발주처","현장명","계약일(공사착공일)","완공예정일","기본도급액","완성공사액","계약잔액"],"n":9,"lead":"나. 수주상황 공시서류 작성기준일 현재 거래가 종료되지 아니한 주요 공사에 대한 수주현황은 다음과 같습니다. (단위 : 백만원)","pick":true}],"2025Q1":[{"tag":"","ent":"","cols":["구분","발주처","현장명","계약일(공사착공일)","완공예정일","기본도급액","완성공사액","계약잔액"],"n":9,"lead":"나. 수주상황 공시서류 작성기준일 현재 거래가 종료되지 아니한 주요 공사에 대한 수주현황은 다음과 같습니다. (단위 : 백만원)","pick":true}]},"p8":{},"xinb":{}}},"044180":{"name":"KD","cfgsig":"","fq":["2025Q4","2026Q2"],"sections":{"ii4":{"2025Q4":[{"tag":"","ent":"","cols":["품목","수주일자","납기","수주총액 수량","수주총액 금액","기납품액 수량","기납품액 금액","수주잔고 수량","수주잔고 금액"],"n":8,"lead":"4-2 수주상황 (단위 : 천원)","pick":true}],"2026Q2":[{"tag":"","ent":"","cols":["품목","수주일자","납기","수주총액 수량","수주총액 금액","기납품액 수량","기납품액 금액","수주잔고 수량","수주잔고 금액"],"n":9,"lead":"4-2 수주상황 (단위 : 천원)","pick":true}]},"p8":{},"xinb":{}}},"056730":{"name":"CNT85","cfgsig":"","fq":["2024Q4"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["품목","수주일자","납기","수주총액 수량","수주총액 금액","기납품액 수량","기납품액 금액","수주잔고 수량","수주잔고 금액"],"n":6,"lead":"다. 수주상황본 보고서의 XI. 그 밖에 투자자 보호를 위하여 필요한 사항 중 공시내용의 진행 및 변경사항을 참고하시기 바랍니다. (단위 : 백만원)","pick":true}]},"p8":{},"xinb":{}}},"097230":{"name":"HJ중공업","cfgsig":"","fq":["2024Q4"],"sections":{"ii4":{"2024Q4":[{"tag":"","ent":"","cols":["품목","수주일자","납기","수주총액 수량","수주총액 금액","기납품액 수량","기납품액 금액","수주잔고 수량","수주잔고 금액"],"n":6,"lead":"에 따라 주력시장인 필리핀 인프라 시장을 기반으로 시장 입지 강화 중이며, 축적된 기술/사업 역량을 바탕으로 안전성 높은 선진시장으로의 다변화를 모색하겠습니다 라. 수주현황[조선부문] (단위 : 억원)","pick":true},{"tag":"","ent":"","cols":["공사명","발주처","계약일","공사기한","기본도급액","완성공사액","계약잔액"],"n":74,"lead":"(단위: 백만원)","pick":true}]},"p8":{},"xinb":{}}},"112190":{"name":"KC산업","cfgsig":"","fq":["2025Q4"],"sections":{"ii4":{"2025Q4":[{"tag":"","ent":"","cols":["순번","공사명","거래처","공사착공일","완공예정일","기본도급액","완성공사액","계약잔액"],"n":30,"lead":"나. 수주현황표 (단위 :백만원)","pick":true}]},"p8":{},"xinb":{}}}}, LAB={"ii4": ["II-4", "수주상황(상세)"], "p8": ["III-8", "진행률적용 수주계약 현황"], "xinb": ["XI-1", "단일판매·공급계약 진행 현황"]}, ORDER=["001260", "001470", "001840", "002410", "004960", "007680", "009410", "011370", "013120", "013360", "025950", "026150", "028100", "042940", "044180", "056730", "097230", "112190"];
+// 아래 JS 는 argus/kce/headers.html(상류 산출) L80-173 의 복제다 — 구간 번호(gseq)·직전 분기 대조 키
+// (ent|tag#순번)의 규칙이 kce 지도와 **같아야** 두 지도를 같은 눈으로 읽을 수 있다. 상류와 다른 줄은 다섯 가지뿐이고
+// tests/test_hdrmap.py(test_template_js_diff_allowlist)가 그 목록을 고정한다 — 이 밖의 차이는 버그다:
+//   ① 절 목록: ['ii4','p8','xinb'] 고정 대신 LAB 의 키(KEYS)     ② XI-1 앞 구간 자르기: key==='xinb' 대신 LAB[key][2]==='trim'(2곳)
+//   ③ 빈 지도 가드 if(!d)(회사 0인 새 탭)                        ④ LAB 라벨에 esc()(라벨은 엔진이 넣는 데이터다)
+//   ⑤ 해시 가드 co &&(빈 지도에서 '#undefined' 를 주소에 쓰지 않게)
+const KEYS=Object.keys(LAB);
+let CO=ORDER[0];
+const bx=document.getElementById('cobtns');
+ORDER.forEach(c=>{const b=document.createElement('button');
+  b.className='cobtn';b.dataset.co=c;b.textContent=D[c].name;
+  b.onclick=()=>{CO=c;render(c);};bx.appendChild(b);});
+const esc=s=>String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+function render(co){
+  const d=D[co], out=[];
+  if(!d){document.getElementById('out').innerHTML='<div class="sub">지도에 기록된 회사가 없습니다.</div>';return;}
+  for(const key of KEYS){
+    const S=d.sections[key]||{};
+    out.push(`<h2>${esc(LAB[key][0])}<span>${esc(LAB[key][1])}</span></h2>`);
+    out.push('<table><thead><tr><th>분기</th><th>구분</th><th>행</th><th>열 이름</th>'
+      +'<th>표 앞 문맥</th></tr></thead><tbody>');
+    // 같은 구분(법인·별도/연결·가·나)끼리 직전 분기와 대조한다 — 구분이 섞이면 엉뚱한 것과 비교된다.
+    // 같은 구분의 표가 한 분기에 여럿이면 순번까지 키에 넣는다 — 순번 없이 tag만 쓰면 1번 표가
+    // 직전 분기 2번 표와 비교돼 매 분기 서로를 「바뀜」으로 칠하는 가짜 신호가 난다.
+    const prev={};
+    // 구간 번호 — (법인·구분·열 이름)이 같은 표가 이어지면 한 구간이다. kce 지도·표 대장과 같은 규칙.
+    const gseq={}, gid={};
+    for(const q of d.fq) for(const r of (S[q]||[])){
+      const gk=(r.ent||'')+'|'+(r.tag||'')+'|'
+        +r.cols.filter(c=>c&&c.trim()).map(c=>c.replace(/\s+/g,'')).join('/');
+      if(!(gk in gseq)) gseq[gk]=`${co}-${key}-${String(Object.keys(gseq).length+1).padStart(2,'0')}`;
+      gid[q+'#'+((S[q]||[]).indexOf(r)+1)]=gseq[gk];
+    }
+    // 특정 분기부터 공시되기 시작한 절(XI-1 은 2024Q4~)은 그 앞 「표 없음」 행을 만들지 않는다.
+    // 실제로 값이 있는 첫 분기를 찾아 그 앞을 자른다. 값이 하나도 없으면 전부 보여준다.
+    let fqs=d.fq;
+    const trim=LAB[key][2]==='trim';
+    if(trim){
+      const first=d.fq.find(q=>(S[q]||[]).length);
+      if(first) fqs=d.fq.slice(d.fq.indexOf(first));
+    }
+    for(const fq of fqs){
+      const rows=S[fq];
+      if(!rows||!rows.length){out.push(`<tr class="none"><td class="fq">${fq}</td>`
+        +'<td colspan="4">표 없음</td></tr>');continue;}
+      const nth={};
+      rows.forEach((r,i)=>{
+        // 표시법인(ent)을 구분에 함께 싣고 대조 키에도 넣는다 — 순번으로만 짝지으면 법인 표가 하나
+        // 늘고 준 분기에 서로 다른 법인끼리 대조돼 가짜 「바뀜」이 난다.
+        const t=r.tag||'', e=r.ent||'';
+        const kk=e+'|'+t;
+        nth[kk]=(nth[kk]||0)+1;
+        const k=kk+'#'+nth[kk];
+        const p=prev[k];
+        const cols=r.cols.map(c=>{
+          if(!p) return `<span class="col">${esc(c)}</span>`;
+          if(p.includes(c)) return `<span class="col">${esc(c)}</span>`;
+          // 같은 자리에 다른 이름이면 '바뀜', 아예 없던 이름이면 '새 열'
+          const idx=r.cols.indexOf(c);
+          const cls=(idx<p.length)?'chg':'new';
+          return `<span class="col ${cls}">${esc(c)}</span>`;});
+        const changed=p && (p.length!==r.cols.length || r.cols.some((c,j)=>p[j]!==c));
+        prev[k]=r.cols;
+        out.push(`<tr class="${changed?'chg':''}"><td class="fq">${i===0?fq:''}</td>`
+          +`<td class="tag">${e?`<b>${esc(e)}</b>`:''}`
+          +`${esc(t||('표 '+nth[kk]))}`
+          +`<em>#${esc((gid[fq+'#'+(i+1)]||'').split('-').pop())}</em></td>`
+          +`<td class="n">${r.n}</td>`
+          +`<td class="cols">${cols.join('')}${r.pick?'<span class="pick">◀선택</span>':''}</td>`
+          +`<td class="lead" title="${esc(r.lead)}">`
+          +`${r.lead.length>58?'…':''}${esc(r.lead.slice(-58))}</td></tr>`);});
+    }
+    out.push('</tbody></table>');
+    if(trim && fqs.length<d.fq.length)
+      out.push(`<div class="sub">※ ${d.fq[0]}~${d.fq[d.fq.indexOf(fqs[0])-1]} `
+        +`${d.fq.indexOf(fqs[0])}개 분기는 이 절의 공시가 시작되기 전이라 뺐습니다.</div>`);
+  }
+  document.getElementById('out').innerHTML=out.join('');
+}
+function mark(co){document.querySelectorAll('.cobtn').forEach(b=>
+  b.classList.toggle('on', b.dataset.co===co));}
+const _render=render;
+// 주소의 #<회사키>로 바로 그 회사를 연다. 회사를 바꾸면 주소도 따라간다.
+render=co=>{mark(co);_render(co);
+  if(co && location.hash.slice(1)!==co) history.replaceState(null,'','#'+co);};
+const _fromHash=()=>{const h=decodeURIComponent(location.hash.slice(1)); return D[h]?h:null;};
+CO=_fromHash()||CO;
+render(CO);
+addEventListener('hashchange',()=>{const c=_fromHash(); if(c&&c!==CO){CO=c;render(c);}});
+
+</script>
+</body></html>
