@@ -61,7 +61,9 @@ _XI_PARENT = {"계약내역", "판매공급금액", "대금수령금액", "계�
               "계약상대방", "계약명", "계약시작월", "계약종료월", "기타사항", "주요계약조건", "조건부계약금액",
               "계약금선급금유무", "대금지급조건등", "계약만기", "공시일자", "시작일", "종료일", "당기", "누적"}
 XI_VOCAB = set(KP._HDR_VOCAB) | set(XI_ALIAS) | _XI_PARENT
-NEED = {"xi_nm", "xi_amt", "xi_supCum", "xi_recvCum"}
+# 대금수령 열이 없는 회사가 있다(`판매.공급금액 당반기|누적금액` 만) — 계약·금액·판매공급 누적이 서면 읽는다.
+# 이름 칸 없이 계약상대방으로 계약을 가리키는 표도 있다(상대방을 이름으로 쓴다).
+NEED = {"xi_nm", "xi_amt", "xi_supCum"}
 MONEY = ("xi_amt", "xi_supCur", "xi_supCum", "xi_recvCur", "xi_recvCum")
 # 판매공급·대금수령 문구가 머리행에 있는데 NEED 가 안 서면 '읽어야 할 표를 못 읽은 것'(미지).
 # 가 표(신고일자|제목|신고내용|진행상황)·사유 부표는 이 문구가 없어 경보하지 않는다.
@@ -75,15 +77,97 @@ _LBL = (r"(?:체결\s*계약\s*명|계약\s*명|계약\s*상대방|계약\s*기�
 # 라벨은 앞 값에 붙어 올 수 있다(줄바꿈이 지워진 원문) — 경계를 요구하지 않고, 글머리 `1) `만 공백 뒤에서 본다.
 _SPLIT = re.compile(r"(?:^|\s|[-●•]|(?:^|\s)\d\)\s*|(?<=[가-힣A-Za-z0-9)\]]))(" + _LBL + r")\s*[:：]\s*")
 _TRAIL = re.compile(r"[\s\-●•]+$")
-_DATE = re.compile(r"((?:19|20)\d{2}|['`’]\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})")
+_DATE = re.compile(r"((?:19|20)\d{2}|['`’]?\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})")
+
+
+# ── 낱말 규칙 해석기(2026-10-16, 6개 수주 섹터 304사 실측) ─────────────────────────────
+# 정확 일치 사전(XI_ALIAS)만으로는 회사마다 다른 꼴을 못 따라간다 — 조선·방산·원전·전력·항공·반도체 304사 2026Q2
+# 반기보고서에서 머리행 변형이 20종 넘게 나왔다: `판매ㆍ공급금액(원) 당기(2026.01.01~06.30)`·`판매.공급금액 당반기`·
+# `대금수령액 누적`·`계약내용 체결계약명`·`계약금액총액 통화`·`계약금액 총액(V.A.T 제외)`·`판매공급금액(매출인식)` 등.
+# 괄호(날짜·단위·각주·부연)와 구분 기호를 걷어낸 뒤 **의미 낱말**로 판정한다. 순서가 중요하다 — 서술 열(향후 추진계획·
+# 사유)을 먼저 빼고, 금액·상대방·기간을 이름(계약내역)보다 먼저 본다(`계약내역 계약금액총액`은 이름이 아니라 금액).
+_PAREN_ANY = re.compile(r"\([^)]*\)?|（[^）]*）")
+_SEP = re.compile(r"[\s.,·ㆍ/\-_:*※]+")
+
+
+def _bare(ncol):
+    return _SEP.sub("", _PAREN_ANY.sub("", ncol or "")).lower()
+
+
+def _rule(ncol):
+    s = _bare(ncol)
+    if not s:
+        return None
+    if re.search(r"향후추진|추진계획|사유|변동가능|비고|진행상황|진행사항|이행$|^이행|판매공급이행", s):
+        return "xi_note"
+    if re.search(r"공급계약내용|계약내용$", s):
+        return "xi_nm"
+    if "판매공급" in s or "공급금액" in s:
+        if "누적" in s:
+            return "xi_supCum"
+        if re.search(r"당기|당반기|당분기", s):
+            return "xi_supCur"
+        return None
+    if "대금수령" in s or "수령금액" in s or "수령액" in s:
+        if "누적" in s:
+            return "xi_recvCum"
+        if re.search(r"당기|당반기|당분기", s):
+            return "xi_recvCur"
+        return None
+    if re.search(r"신고일|공시일", s):
+        return "xi_dt"
+    if re.search(r"조건부|주요계약조건|기타사항|선급금|지급조건", s):
+        return "xi_etc"
+    if re.search(r"계약금액|계약금총액|계약총액|수주금액", s):
+        return "xi_cur" if s.endswith("통화") else "xi_amt"
+    if s == "통화":
+        return "xi_cur"
+    if "계약명" in s:                 # `계약명계약상대방계약기간` 한 칸 — 이름이 먼저(셀 분리는 split_detail)
+        return "xi_nm"
+    if "계약상대" in s:
+        return "xi_cl"
+    if re.search(r"시작일|개시일|착공|계약일$", s):
+        return "xi_sd"
+    if re.search(r"종료일|납기|만기|완료일|종료월", s):
+        return "xi_ed"
+    if "계약기간" in s:
+        return "xi_period"
+    if re.search(r"계약내역|계약내용|신고내용|공시내용|공사명|사업명", s):
+        return "xi_nm"
+    if s == "단위":
+        return "xi_unit"
+    if s in ("번호", "no", "구분", "순번"):
+        return "xi_kind"
+    return None
 
 
 def field_of(ncol):
-    return XI_ALIAS.get(ncol) or KP._field_of(ncol)
+    return XI_ALIAS.get(ncol) or _rule(ncol)
 
 
-def col_unit(ncol):
-    m = _COL_UNIT.search(ncol or "")
+class _Vocab:
+    """머리행 감지 어휘 — 정확 집합 + 낱말 규칙(부모 줄 `판매공급금액`·`당기`·`누적` 포함). kce_parse 가 `in` 만 쓴다."""
+    _PARENT = re.compile(r"^(판매공급금액|판매공급|대금수령금액|대금수령액|대금수령|계약내역|계약내용|당기|당반기|누적|금액|통화|"
+                         r"계약금액|체결계약명|계약상대방|시작일|종료일)$")
+
+    def __contains__(self, ncol):
+        if ncol in XI_VOCAB:
+            return True
+        b = _bare(ncol)
+        # 머리행 낱말은 짧다. '가' 표 본문 칸(`신고내용 싱가폴 Tekong … 계약금액: 508,837…`)이 규칙 낱말을 품어
+        # 머리행으로 빨려 들어가지 않게 길이·숫자로 거른다(현대건설 2026Q2 회귀).
+        if len(b) > 28 or re.search(r"\d{3,}", b):
+            return False
+        return bool(_rule(ncol)) or bool(self._PARENT.match(b))
+
+
+_VOCAB = _Vocab()
+_COL_UNIT2 = re.compile(r"[(（][^)）]*?(백만원|천원|억원|원)")
+
+
+def col_unit(col):
+    """열 이름 안의 단위 — `(원)`·`(원, VAT 포함)`·`(억원, 외화 별도)`·`(단위: 백만원)`."""
+    m = _COL_UNIT2.search(col or "")
     return _UNIT_MUL[m.group(1)] if m else None
 
 
@@ -118,7 +202,7 @@ def norm_dt(s):
     if not m:
         return None
     y, mo, d = m.groups()
-    y = int("20" + y[1:]) if not y[0].isdigit() else int(y)
+    y = int("20" + y[-2:]) if len(y.lstrip("'`’")) == 2 else int(y)      # `26.06.25`·`25.1.13`(세명전기)
     mo, d = int(mo), int(d)
     if not (1 <= mo <= 12 and 1 <= d <= 31):
         return None
@@ -134,7 +218,7 @@ def _scaled(v, mul):
 
 def _records(t, idx):
     scale = KP.unit_scale(t.get("lead"), t.get("cols"))
-    units = {f: (col_unit(t["ncols"][i]) or scale) for f, i in idx.items() if f in MONEY}
+    units = {f: (col_unit(t["cols"][i]) or scale) for f, i in idx.items() if f in MONEY}
     rsp = t.get("rspan") or []
     out = []
     for ri, r in enumerate(t["rows"]):
@@ -151,9 +235,19 @@ def _records(t, idx):
                 out[-1].setdefault("nm_more", []).append(d["계약명"])
             continue
         amt_raw = g("xi_amt")
-        vals = {f: _scaled(num_of(g(f)), units[f]) for f in MONEY if f in idx}
+        ru = g("xi_unit")
+        row_units = units
+        mu = re.search(r"백만원|천원|억원|원", ru)
+        if mu:      # 행마다 `단위` 칸을 두는 표(제룡전기) — 그 행 금액 전부에 적용
+            row_units = {f: _UNIT_MUL[mu.group(0)] for f in units}
+        vals = {f: _scaled(num_of(g(f)), row_units[f]) for f in MONEY if f in idx}
+        if not mu and re.fullmatch(r"[A-Za-z]{3}", ru or ""):
+            vals = {f: None for f in vals}      # 행 단위가 외화(제룡전기 USD) — 그 행 금액은 원화로 셈하지 않는다
         cur = None
-        if vals.get("xi_amt") is None and amt_raw not in ("", "-"):
+        cc = (g("xi_cur") or (ru if re.fullmatch(r"[A-Za-z]{3}", ru or "") else "")).upper().replace("￦", "")
+        if cc and cc not in ("KRW", "원", "-") and re.fullmatch(r"[A-Z]{3}", cc):
+            cur, vals["xi_amt"] = cc, None          # 통화 열이 외화면 계약금액은 원화로 셈하지 않는다
+        if vals.get("xi_amt") is None and amt_raw not in ("", "-") and not cur:
             m = _CUR.search(amt_raw)
             if m:
                 cur = m.group(1) or m.group(2)
@@ -174,9 +268,74 @@ def _records(t, idx):
     return out
 
 
+def _rescale(rows, fields, k):
+    m = 10 ** k
+    for r in rows:
+        for f in fields:
+            if r.get(f) is not None:
+                x = r[f] * m
+                r[f] = int(x) if float(x).is_integer() else round(x, 6)
+
+
+def _median(xs):
+    xs = sorted(xs)
+    return xs[len(xs) // 2] if xs else None
+
+
+def _unit_sanity(tab):
+    """표 안 자릿수 점검. ① 계약금액과 판매공급 누적의 비가 1,000배 단위로 어긋나면 계약금액 열 단위가 틀린 것
+    (SK오션플랜트: 머리행 `계약금액총액(원)` 인데 값은 백만원) — 판매공급 열에 맞춰 계약금액을 고친다(unit_fix).
+    ② 그래도 계약금액 중앙값이 백만원 기준 5조를 넘으면 단위 캡션 없이 원·천원으로 적은 표일 가능성 — 고치지 않고
+    unit_suspect 로 표시한다(원장 금액이 있으면 calibrate 가 맞춘다)."""
+    import math
+    rows = tab["rows"]
+    lr = [math.log10(r["supCum"] / r["amt"]) for r in rows
+          if r.get("amt") and r.get("supCum") and r["amt"] > 0 and r["supCum"] > 0]
+    med = _median(lr)
+    if med is not None and len(lr) >= 2:
+        k = round(med / 3) * 3
+        tight = sum(1 for x in lr if abs(x - k) < 0.5) >= max(2, int(len(lr) * 0.8))
+        # 판매공급 누적이 계약금액의 1,000배를 넘는 것만 불가능 — 반대(누적이 훨씬 작다)는 갓 착공한 계약에서 실제로
+        # 나온다(대한조선·SFA넥셀 오교정). 그래서 k > 0 일 때만, 그리고 비가 한 자리에 몰릴 때만 고친다.
+        if k > 0 and tight:
+            _rescale(rows, ["amt"], k)
+            tab["unit_fix"] = "amt_vs_supply x1e%d" % k
+    amts = [r["amt"] for r in rows if r.get("amt")]
+    if amts and _median(amts) > 2e7:     # 백만원 기준 20조 — 한화 비스마야(14.7조)는 실제 금액이라 이 아래
+        tab["unit_suspect"] = True
+
+
+def calibrate(parsed, ref, sim=0.3):
+    """원장(I001 단일판매ㆍ공급계약 공시) 금액으로 표 단위를 맞춘다. ref = [(계약명, 금액 백만원)].
+    이름이 닮은 짝들의 금액 비 log10 중앙값이 3·6(또는 −3·−6)에 붙으면 표 금액 전체를 그만큼 옮긴다.
+    짝이 둘 이상이고 그 짝들이 같은 방향일 때만(한 짝은 다른 계약일 수 있다). 반환: 고친 표 수."""
+    import math
+    fixed = 0
+    for t in parsed["tables"]:
+        lr = []
+        for r in t["rows"]:
+            if not r.get("amt"):
+                continue
+            best = max(ref, key=lambda c: _sim(r["nm"], c[0]), default=None)
+            if best and best[1] and _sim(r["nm"], best[0]) >= sim:
+                lr.append(math.log10(r["amt"] / best[1]))
+        med = _median(lr)
+        if med is None:
+            continue
+        k = round(med / 3) * 3
+        agree = sum(1 for x in lr if abs(x - k) < 0.5)
+        exact = sum(1 for x in lr if abs(x - k) < 0.005)     # 비가 정확히 10^k(±1%) — 짝 하나로도 단위 증거
+        if k and (agree >= max(2, len(lr) // 2) or (exact >= 1 and agree == len(lr))):
+            _rescale(t["rows"], ["amt", "supCur", "supCum", "recvCur", "recvCum"], -k)
+            t["unit_fix"] = (t.get("unit_fix", "") + " ledger x1e%d" % -k).strip()
+            t.pop("unit_suspect", None)
+            fixed += 1
+    return fixed
+
+
 def parse_xi1(html):
     """절 HTML → {'tables':[{lead,cols,ncols,fields,n_raw,n_rec,unit,rows}], 'rejected', 'unknown_headers'}."""
-    tables = KP.parse_tables(html, max_header_rows=4, vocab=XI_VOCAB, keep_rowspan=True)
+    tables = KP.parse_tables(html, max_header_rows=4, vocab=_VOCAB, keep_rowspan=True)
     picked, rejected, unknown = [], [], []
     for i, t in enumerate(tables):
         fields = [field_of(c) for c in t["ncols"]]
@@ -184,17 +343,29 @@ def parse_xi1(html):
         for j, f in enumerate(fields):
             if f and f not in idx:
                 idx[f] = j
+            elif f == "xi_amt" and "총액" in _bare(t["cols"][j]) and "총액" not in _bare(t["cols"][idx[f]]):
+                idx[f] = j        # `확정계약금액 | 조건부 계약금액 | 계약금액총액` — 총액이 계약금액이다(비에이치아이)
         base = {"idx": i, "lead": t.get("lead") or "", "cols": list(t["cols"]), "ncols": list(t["ncols"]),
                 "fields": fields, "n": t.get("n_raw") or len(t["rows"])}
+        if "xi_nm" not in idx and "xi_cl" in idx:
+            idx["xi_nm"] = idx["xi_cl"]
         if NEED.issubset(idx):
             recs = _records(t, idx)
-            picked.append(dict(base, n_raw=base["n"], n_rec=len(recs), rows=recs,
-                               unit=KP.unit_scale(t.get("lead"), t.get("cols"))))
+            tab = dict(base, n_raw=base["n"], n_rec=len(recs), rows=recs,
+                       unit=KP.unit_scale(t.get("lead"), t.get("cols")))
+            _unit_sanity(tab)
+            picked.append(tab)
             continue
         # '향후 추진계획 판매ㆍ공급 이행' 같은 서술 열(xi_note)은 문구가 겹쳐도 금액 열이 아니다 — 3) 향후 추진계획
         # 부표(7사)가 미지로 올라오던 오탐. 서술 열을 뺀 나머지 머리행에서만 판매공급·대금수령을 찾는다.
         head = " ".join(c for c, f in zip(t["cols"], fields) if f != "xi_note")
-        if t["cols"] and _XI_HINT.search(head) and t["rows"]:
+        hint_cols = [j for j, (c, f) in enumerate(zip(t["cols"], fields)) if f != "xi_note" and _XI_HINT.search(c)]
+        cells = [r[j] for r in t["rows"] for j in hint_cols if j < len(r) and r[j].strip() not in ("", "-")]
+        narrative = bool(cells) and sum(1 for c in cells if num_of(c) is not None) < 0.3 * len(cells)
+        if narrative:
+            # 판매공급·대금수령 열에 숫자가 아니라 문장이 든 표('판매ㆍ공급 이행 | 대금수령' 계획 표) — 미지가 아니다.
+            rejected.append(dict(base, reason="no_core"))
+        elif t["cols"] and _XI_HINT.search(head) and t["rows"]:
             unknown.append({"cols": list(t["cols"]), "n": len(t["rows"])})
             rejected.append(dict(base, reason="near_miss", rows=t["rows"]))
         elif t["cols"] and any(fields):

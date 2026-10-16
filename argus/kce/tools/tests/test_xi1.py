@@ -263,3 +263,66 @@ class TestXi1Match(unittest.TestCase):
             n2 = X.write_review("dle", "2026Q2", rows, m, D2, path=p)       # 멱등: 같은 줄 교체
             with open(p, encoding="utf-8") as f:
                 self.assertEqual(len(f.read().strip().splitlines()) - 1, n2)
+
+
+class TestXi1Sectors(unittest.TestCase):
+    """조선·방산·원전·전력·항공·반도체 304사 2026Q2 반기보고서 실측에서 고른 머리행·단위 변형 11종.
+    (전수 결과: 표 122→ 못 읽은 표 1, 단위 대조 같은 자릿수 731건 — UPDATE.md §6-B)"""
+
+    def _p(self, st):
+        with open(os.path.join(FIX, "xi1sector_%s_2026Q2.html" % st), encoding="utf-8") as f:
+            return X.parse_xi1(f.read())
+
+    def _first(self, st):
+        p = self._p(st)
+        self.assertEqual(p["unknown_headers"], [], st)
+        self.assertEqual(len(p["tables"]), 1, st)
+        return p["tables"][0], p["tables"][0]["rows"][0]
+
+    def test_header_variants(self):
+        # (종목, 행 수, 첫 행 계약금액·판매공급 누적) — 백만원
+        want = {
+            "010140": (53, 870400, 712883),        # 삼성중공업 `계약내용 체결계약명 … 당반기`
+            "042660": (53, 585100, 637315),        # 한화오션 3단 머리행 `판매공급금액(매출인식)`
+            "013810": (6, 4100, 4035),             # 스페코 `통화` 열 + `당기(2026.01.01~…)`
+            "025560": (15, 13850.9, 13850.9),      # 미래산업 `계약금액 총액(V.A.T 제외)`
+            "141000": (6, 21144.6, 21567.034),     # 비아트론 — 계약명 열 없이 계약상대방이 이름
+            "083650": (30, 9063, 8860),            # 비에이치아이 `확정 | 조건부 | 총액` — 총액
+            "017510": (3, 16658, 16658),           # 세명전기 — 대금수령 열이 없다
+        }
+        for st, (n, amt, sc) in want.items():
+            t, r = self._first(st)
+            self.assertEqual(t["n_rec"], n, st)
+            self.assertAlmostEqual(r["amt"], amt, places=3, msg=st)
+            self.assertAlmostEqual(r["supCum"], sc, places=3, msg=st)
+        self.assertEqual(self._first("017510")[1]["dt"], "2025.01.13")     # `25.1.13` 2자리 연도
+
+    def test_column_unit_with_period_text(self):
+        t, r = self._first("000880")                   # 한화 `판매ㆍ공급금액(원) 당기(2026.01.01~06.30)`
+        self.assertAlmostEqual(r["amt"], 14712490.9995, places=3)       # 원 → 백만원(비스마야 14.7조)
+        self.assertFalse(t.get("unit_suspect"))
+
+    def test_row_unit_foreign_currency(self):
+        t, r = self._first("033100")                   # 제룡전기 — 행마다 `단위` 칸, USD
+        self.assertEqual(r["cur"], "USD")
+        self.assertTrue(all(r.get(f) is None for f in ("amt", "supCum", "recvCum")))
+
+    def test_header_unit_lies_fixed_by_supply_ratio(self):
+        t, r = self._first("100090")                   # SK오션플랜트 `계약금액총액(원)` 인데 값은 백만원
+        self.assertEqual(t["unit_fix"], "amt_vs_supply x1e6")
+        self.assertEqual(r["amt"], 335300)
+
+    def test_no_caption_won_needs_ledger(self):
+        p = self._p("105840")                          # 우진 — 단위 캡션 없이 원
+        t = p["tables"][0]
+        self.assertTrue(t.get("unit_suspect"))
+        ref = [("신한울#3 CVAP 계측기 및 데이터처리장치", 6488.9), ("신한울#3,4호기 MMIS RSPT", 6368.758165)]
+        self.assertEqual(X.calibrate(p, ref), 1)
+        self.assertAlmostEqual(t["rows"][0]["amt"], 6488.9, places=3)
+        self.assertFalse(t.get("unit_suspect"))
+
+    def test_calibrate_ignores_unrelated_contracts(self):
+        p = self._p("010140")                          # 척수만 다른 별개 계약(10배)은 단위 근거가 아니다
+        before = p["tables"][0]["rows"][0]["amt"]
+        X.calibrate(p, [("LNG운반선 1척", 358200.0), ("컨테이너선 5척", 803600.0)])
+        self.assertEqual(p["tables"][0]["rows"][0]["amt"], before)
