@@ -26,12 +26,27 @@ DATA_DIR = os.path.join(KCHEM, "data")                      # 페이지가 읽�
 KCE_TOOLS = os.path.join(ARGUS, "kce", "tools")
 KSHIP_TOOLS = os.path.join(ARGUS, "kship", "tools")
 
-for _p in (KCE_TOOLS, KSHIP_TOOLS):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+if KCE_TOOLS not in sys.path:
+    sys.path.insert(0, KCE_TOOLS)
 
-from kce_lib import atomic_write, json_for_html   # noqa: E402,F401
-from kship_lib import TABLE_JS                    # noqa: E402,F401
+from kce_lib import atomic_write, json_for_html   # noqa: E402,F401  (표준 라이브러리만 쓰는 유틸)
+
+
+def _kship_table_js():
+    """kship_lib.TABLE_JS 를 **import 없이** 소스에서 리터럴로 읽는다.
+
+    kship_lib 를 import 하면 kce_fetch(네트워크 수집 모듈)까지 전이 import 된다 — 이 탭의
+    '네트워크 없음' 계약을 코드 수준에서 지키려고 ast 로 문자열 상수만 꺼낸다(단일 소스 유지)."""
+    import ast
+    with open(os.path.join(KSHIP_TOOLS, "kship_lib.py"), encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(getattr(t, "id", None) == "TABLE_JS" for t in node.targets):
+            return ast.literal_eval(node.value)
+    raise RuntimeError("kship_lib.TABLE_JS 를 찾지 못함")
+
+
+TABLE_JS = _kship_table_js()
 
 E = html.escape
 

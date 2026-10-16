@@ -2,14 +2,27 @@
 #
 # 이 탭은 네트워크·DART·API 키를 쓰지 않는다. 입력은 맥미니 ARGUS 빌더가 커밋하는 산출물
 # (argus/data/argus_data.js · chunk_*.js · connections.js · argus/data_map.js) 뿐이고, 그것을 읽기 전용으로
-# 파싱해 화학 스프레드 레지스트리와 페이지를 다시 만든다. 빌드 시각을 기록하지 않으므로 입력이 같으면
-# 산출물 바이트가 같고 → 커밋이 생기지 않는다(fingerprint.json 으로 확인).
-# 스케줄은 맥미니 argus 크론(07:40 KST) 이 밀어 넣은 뒤, kce(10:00 KST) 앞 — 09:10 KST.
+# 파싱해 화학 스프레드 레지스트리와 페이지를 다시 만든다. 빌드 시각을 기록하지 않으므로 입력이 같으면 산출물 바이트가 같다.
+# 커밋 게이트: 허브는 asof/built 를 매일 다시 쓰므로 파일 지문은 매일 바뀐다 — 그래서 '화학 내용 지문'(이 탭이 실제로 읽는 내용만)
+# 이 바뀌었거나 평가 주차가 바뀐 경우에만 커밋한다(2026-10 리뷰 #11, `kchem_page.py --gate`).
+# 트리거: 허브 산출물이 푸시되면 즉시(argus/data/** · data_map.js) + 09:10 KST 백업 크론. 봇 자신의 커밋은 GITHUB_TOKEN 이라
+# 워크플로를 다시 띄우지 않는다(GitHub 규칙).
 # concurrency 그룹은 COMMON.md §3 대로 kship-dart 를 공유한다(DART 단계는 아직 없지만 R7·R28 이 예정).
 name: update-kchem
 on:
+  push:
+    branches: [main]
+    paths:
+      - "argus/data/argus_data.js"
+      - "argus/data/connections.js"
+      - "argus/data/chunk_*.js"
+      - "argus/data_map.js"
+      - "argus/kchem/tools/*.py"
+      - "argus/kchem/tools/tests/**"
+      - "argus/kchem/tools/assets/aliases.json"
+      - ".github/workflows/update-kchem.yml"
   schedule:
-    - cron: "10 0 * * *"          # 09:10 KST
+    - cron: "10 0 * * *"          # 09:10 KST 백업
   workflow_dispatch:
 permissions:
   contents: write
@@ -45,7 +58,19 @@ jobs:
         run: |
           cd argus/kchem/tools && python3 -m unittest discover -s tests -p 'test_*.py'
           git diff --check || true
+      - name: Idempotency (다시 만든 산출물 = 디스크, 바이트 동일)
+        working-directory: argus/kchem/tools
+        run: python3 kchem_page.py --check
+      - name: Commit gate (화학 내용 지문·평가 주차)
+        id: gate
+        shell: bash
+        run: |
+          git show HEAD:argus/kchem/tools/assets/fingerprint.json > "$RUNNER_TEMP/old_fp.json" 2>/dev/null || : > "$RUNNER_TEMP/old_fp.json"
+          decision="$(cd argus/kchem/tools && python3 kchem_page.py --gate "$RUNNER_TEMP/old_fp.json")"
+          echo "$decision"
+          case "$decision" in commit*) echo "commit=1" >> "$GITHUB_OUTPUT" ;; *) echo "commit=0" >> "$GITHUB_OUTPUT" ;; esac
       - name: Commit
+        if: steps.gate.outputs.commit == '1'
         shell: bash
         run: |
           git config user.name "kchem-bot"
@@ -71,8 +96,10 @@ jobs:
           try:
               r = json.load(open("argus/kchem/tools/assets/registry.json", encoding="utf-8"))
               s = r["summary"]
-              print("- asof %s · 시리즈 %d · 재현 %d/%d · 파생 %d · 원장 정지 %s주 · 입력 %s" % (
-                  r["argus_asof"], s["rows"], s["reproduced"], s["spreads"], s["derived_ok"], s["ledger_stale_weeks"], r["fingerprint"][:12]))
+              ed = s.get("editions") or {}
+              print("- asof %s · 시리즈 %d · 재현 %d/%d(정확 %s) · 고유 %s · 파생 %d · 원장 정지 %s주 · 편집 누락 %s · 프록시 방향 %s/%s · 입력 %s" % (
+                  r["argus_asof"], s["rows"], s["reproduced"], s["spreads"], (s.get("grades") or {}).get("exact"), s.get("unique_spreads"),
+                  s["derived_ok"], s["ledger_stale_weeks"], ed.get("missing"), s.get("proxies_gated"), s.get("proxies"), r["fingerprint"][:12]))
               print("- 플래그 %s" % s["flags"])
           except Exception as e:
               print("- registry.json 없음: %s" % e)
