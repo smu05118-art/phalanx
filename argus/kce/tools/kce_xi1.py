@@ -64,19 +64,26 @@ XI_VOCAB = set(KP._HDR_VOCAB) | set(XI_ALIAS) | _XI_PARENT
 # 대금수령 열이 없는 회사가 있다(`판매.공급금액 당반기|누적금액` 만) — 계약·금액·판매공급 누적이 서면 읽는다.
 # 이름 칸 없이 계약상대방으로 계약을 가리키는 표도 있다(상대방을 이름으로 쓴다).
 NEED = {"xi_nm", "xi_amt", "xi_supCum"}
+# 파서 판 — 해석 규칙이 바뀌면 올린다. 섹터 탭(xi1_sector)은 판이 다른 해석 결과를 로컬 원문으로 다시 만든다.
+PARSER_REV = "2026-10-16c"
 MONEY = ("xi_amt", "xi_supCur", "xi_supCum", "xi_recvCur", "xi_recvCum")
 # 판매공급·대금수령 문구가 머리행에 있는데 NEED 가 안 서면 '읽어야 할 표를 못 읽은 것'(미지).
 # 가 표(신고일자|제목|신고내용|진행상황)·사유 부표는 이 문구가 없어 경보하지 않는다.
 _XI_HINT = re.compile(r"판매.?공급|대금\s*수령")
 
 _COL_UNIT = re.compile(r"\((원|천원|백만원|억원)\)")
-_UNIT_MUL = {"원": 1e-6, "천원": 1e-3, "백만원": 1.0, "억원": 100.0}
+_UNIT_MUL = {"원": 1e-6, "천원": 1e-3, "백만원": 1.0, "억원": 100.0, "조원": 1e6}
 _CUR = re.compile(r"\(([A-Z]{3})\)|\b([A-Z]{3})\s*[\d,]")
-_LBL = (r"(?:체결\s*계약\s*명|계약\s*명|계약\s*상대방|계약\s*기간|계약\s*\(수주\)\s*일자|주요\s*계약\s*조건|"
+_LBL = (r"(?:체결\s*계약\s*명|계약\s*명|계약\s*상대(?:방|자)?|계약\s*기간|계약\s*\(수주\)\s*일자|주요\s*계약\s*조건|"
         r"계약금[ㆍ·,]\s*선급금\s*유무|대금\s*지급\s*조건\s*등?|조건부\s*계약금액|기타(?:\s*투자판단과\s*관련한\s*중요사항)?)")
 # 라벨은 앞 값에 붙어 올 수 있다(줄바꿈이 지워진 원문) — 경계를 요구하지 않고, 글머리 `1) `만 공백 뒤에서 본다.
-_SPLIT = re.compile(r"(?:^|\s|[-●•]|(?:^|\s)\d\)\s*|(?<=[가-힣A-Za-z0-9)\]]))(" + _LBL + r")\s*[:：]\s*")
-_TRAIL = re.compile(r"[\s\-●•]+$")
+# 글머리: `-`·`●`·`ㅇ계약명 :`(한전기술)·`1.계약명: … 2.계약상대:`(제룡전기) — 한글 자모 ㅇ·마침표는 가-힣 경계 밖이라
+# 따로 두고, 번호 `2.` 는 앞 값의 꼬리로 남지 않게 경계로 먹는다.
+_SPLIT = re.compile(r"(?:\s*\d{1,2}\.\s*|^|\s|[-●•ㅇ○◦▪■□▶.]|(?:^|\s)\d\)\s*|(?<=[가-힣A-Za-z0-9)\]]))(" + _LBL + r")\s*[:：]\s*")
+# 꼬리: 글머리 기호와, 줄바꿈이 지워져 다음 항목 번호가 붙은 `검사장비2.`(다음 줄 `2. 계약상대`)의 `2.`.
+_TRAIL = re.compile(r"(?:[\s\-●•ㅇ○]+|(?<=[가-힣A-Za-z)])\s*\d{1,2}\.)+$")
+# 머리: `1. 판매공급계약 내용 -ELECTRICAL …`·`1. 내용 : SMART WINDOW …` — 번호와 '내용' 라벨은 이름이 아니다.
+_HEAD = re.compile(r"^\s*(?:\d{1,2}[.)]\s*)?(?:(?:판매\s*[ㆍ·.]?\s*공급\s*계약\s*)?내용\s*[:：\-–]\s*)?")
 _DATE = re.compile(r"((?:19|20)\d{2}|['`’]?\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})")
 
 
@@ -176,14 +183,14 @@ def split_detail(cell):
     cell = (cell or "").strip()
     parts = _SPLIT.split(cell)
     if len(parts) < 3:
-        return {"계약명": _TRAIL.sub("", cell.lstrip("-").strip())}
+        return {"계약명": _clean_nm(cell)}
     out = {}
     for i in range(1, len(parts) - 1, 2):
         lab = re.sub(r"[\sㆍ·]", "", parts[i])
         val = _TRAIL.sub("", parts[i + 1].strip())
         if "계약명" in lab:
-            out.setdefault("계약명", val)
-        elif lab.startswith("계약상대방"):
+            out.setdefault("계약명", _clean_nm(val))
+        elif lab.startswith("계약상대"):
             out.setdefault("계약상대방", val)
         elif lab.startswith("계약기간"):
             out.setdefault("계약기간", val)
@@ -192,8 +199,13 @@ def split_detail(cell):
         else:
             out["기타"] = (out.get("기타", "") + " " + lab + ":" + val).strip()
     if "계약명" not in out:
-        out["계약명"] = _TRAIL.sub("", parts[0].strip().lstrip("-").strip())
+        out["계약명"] = _clean_nm(parts[0])
     return out
+
+
+def _clean_nm(v):
+    v = _HEAD.sub("", (v or "").strip().lstrip("-ㅇ○").strip())
+    return _TRAIL.sub("", v).strip()
 
 
 def norm_dt(s):
@@ -214,6 +226,64 @@ def _scaled(v, mul):
         return None
     x = v * mul
     return int(x) if float(x).is_integer() else round(x, 6)
+
+
+# ── 금액 칸 안의 단위·통화(2026-10-16, 섹터 304사 2026Q2 실측 150행) ─────────────────────
+# 숫자만 있는 칸은 열·표 단위를 따른다(num_of). 그 밖의 꼴:
+#   `676억원`·`20,472백만원`·`21,749,000,000원`       → 칸 안 단위가 열 단위보다 앞선다
+#   `$15,544,340.00(19,251,665,090원)`               → 외화 + 원화 괄호 — 원화가 계약금액, 외화는 참고
+#   `2,755,800(USD2,000,000)`·`3,787,412(USD 2,690,000.)` → 앞의 맨숫자 = 원화(열 단위), 괄호 외화
+#   `USD 9,036,204(KRW 11,980,199,051)`·`KRW 2,770,000,000` → KRW 표시 숫자 = 원화(열 단위)
+#   `USD56,784천`·`(천외화,백만원)` 열의 `USD 3,365,400`   → 외화 천 단위
+#   `3,117,058.50(총액)`                              → 숫자 없는 괄호 주석은 걷어낸다
+#   `유보`·`공시유보`                                  → 금액 없음 + withheld
+_INL = re.compile(r"(-?\d[\d,]*(?:\.\d+)?)\s*(조원|억원|백만원|천원|원)(?![가-힣])")
+_KRW = re.compile(r"(?:KRW|￦|₩)\s*(-?\d[\d,]*(?:\.\d+)?)")
+# 통화가 앞(`USD 9,036,204`)인 꼴을 먼저 찾는다 — 뒤 꼴(`187,674,868.5(USD)`)을 한 정규식에 섞으면
+# `3,787,412(USD 2,690,000.)` 의 원화 맨숫자를 외화로 잡는다.
+_FXA = re.compile(r"(?:\b(?!KRW)([A-Z]{3})|([$€¥£]))\s*(-?\d[\d,]*(?:\.\d+)?)\s*(천|백만)?")
+_FXB = re.compile(r"(-?\d[\d,]*(?:\.\d+)?)\s*(천|백만)?\s*[(（]?\s*(?!KRW)([A-Z]{3})\b")
+_SYM = {"$": "USD", "€": "EUR", "¥": "JPY", "£": "GBP"}
+_HOLD = re.compile(r"유보|비공개|영업\s*비밀")
+_NOTE_PAREN = re.compile(r"\([^)\d]*[가-힣][^)\d]*\)")       # `(총액)`·`(VAT 포함)` — `(USD)` 는 통화라 남긴다
+
+
+def _f(x):
+    return float(x.replace(",", "").rstrip("."))
+
+
+def money_cell(raw, mul, fx_mul=1):
+    """금액 칸 → (원화 백만원|None, 통화|None, 외화 금액|None, 유보 여부)."""
+    s = (raw or "").strip()
+    v = num_of(s)
+    if v is None and s:
+        v = num_of(_NOTE_PAREN.sub("", s))
+    if v is not None:
+        return _scaled(v, mul), None, None, False
+    if not s or s in ("-", "–", "—"):
+        return None, None, None, False
+    if not re.search(r"\d", s):
+        return None, None, None, bool(_HOLD.search(s))
+    krw = None
+    m = _INL.search(s)
+    if m:
+        krw = _scaled(_f(m.group(1)), _UNIT_MUL[m.group(2)])
+    elif _KRW.search(s):
+        krw = _scaled(_f(_KRW.search(s).group(1)), mul)
+    cur = fx = None
+    mf, mb = _FXA.search(s), None
+    if not mf:
+        mb = _FXB.search(s)
+    if mf or mb:
+        cur, num, k = ((mf.group(1) or _SYM[mf.group(2)], mf.group(3), mf.group(4)) if mf
+                       else (mb.group(3), mb.group(1), mb.group(2)))
+        fx = _f(num) * {"천": 1e3, "백만": 1e6}.get(k, fx_mul)
+        fx = int(fx) if float(fx).is_integer() else round(fx, 2)
+        if krw is None:
+            m0 = re.match(r"^\s*(-?\d[\d,]*(?:\.\d+)?)\s*[(（]", s)
+            if m0 and m0.group(1) != num:       # 맨숫자(원화) + 괄호 외화
+                krw = _scaled(_f(m0.group(1)), mul)
+    return krw, cur, fx, False
 
 
 def _records(t, idx):
@@ -240,13 +310,23 @@ def _records(t, idx):
         mu = re.search(r"백만원|천원|억원|원", ru)
         if mu:      # 행마다 `단위` 칸을 두는 표(제룡전기) — 그 행 금액 전부에 적용
             row_units = {f: _UNIT_MUL[mu.group(0)] for f in units}
-        vals = {f: _scaled(num_of(g(f)), row_units[f]) for f in MONEY if f in idx}
+        fxm = {f: (1e3 if re.search(r"천\s*외화", t["cols"][i]) else 1) for f, i in idx.items() if f in MONEY}
+        cells = {f: money_cell(g(f), row_units[f], fxm[f]) for f in MONEY if f in idx}
+        vals = {f: c[0] for f, c in cells.items()}
+        withheld = any(c[3] for c in cells.values())
+        cur, amt_fx = (cells["xi_amt"][1], cells["xi_amt"][2]) if "xi_amt" in cells else (None, None)
+        raw_amt = num_of(_NOTE_PAREN.sub("", amt_raw)) if amt_raw else None
         if not mu and re.fullmatch(r"[A-Za-z]{3}", ru or ""):
             vals = {f: None for f in vals}      # 행 단위가 외화(제룡전기 USD) — 그 행 금액은 원화로 셈하지 않는다
-        cur = None
+            if raw_amt is not None:
+                cur, amt_fx = ru.upper(), raw_amt * fxm.get("xi_amt", 1)
         cc = (g("xi_cur") or (ru if re.fullmatch(r"[A-Za-z]{3}", ru or "") else "")).upper().replace("￦", "")
         if cc and cc not in ("KRW", "원", "-") and re.fullmatch(r"[A-Z]{3}", cc):
             cur, vals["xi_amt"] = cc, None          # 통화 열이 외화면 계약금액은 원화로 셈하지 않는다
+            if raw_amt is not None:
+                amt_fx = raw_amt * fxm.get("xi_amt", 1)
+        if amt_fx is not None and float(amt_fx).is_integer():
+            amt_fx = int(amt_fx)
         if vals.get("xi_amt") is None and amt_raw not in ("", "-") and not cur:
             m = _CUR.search(amt_raw)
             if m:
@@ -264,6 +344,17 @@ def _records(t, idx):
                "period": d.get("계약기간") or ((g("xi_sd") + " ~ " + g("xi_ed")).strip(" ~") or g("xi_period") or None),
                "dt": norm_dt(dt), "dt_raw": dt or None, "amt_raw": amt_raw or None, "cur": cur}
         rec.update({k.replace("xi_", ""): v for k, v in vals.items()})
+        if amt_fx is not None:
+            rec["amt_fx"] = amt_fx          # 외화 계약금액(원화 환산은 원장·환율로 — kce_xi1 은 하지 않는다)
+        if cur:
+            # 외화 계약 행의 공급·수령 칸 맨숫자(표 단위 미적용). 그 외화로 적은 회사(진성이엔지 행 통화 USD)와 원화로 적은
+            # 회사(풍산)가 섞여 있어 여기서 판정하지 않는다 — xi1_sector.metrics 가 계약금액·원장 금액과 견줘 고른다.
+            fxv = {f.replace("xi_", ""): num_of(_NOTE_PAREN.sub("", g(f))) for f in MONEY if f in idx and f != "xi_amt"}
+            fxv = {k: v * fxm.get("xi_" + k, 1) for k, v in fxv.items() if v is not None}
+            if fxv:
+                rec["fx"] = {k: (int(v) if float(v).is_integer() else round(v, 2)) for k, v in fxv.items()}
+        if withheld:
+            rec["withheld"] = True          # `유보`·`공시유보` — 금액 비공개(경영상 비밀)
         out.append(rec)
     return out
 

@@ -156,7 +156,8 @@ KCE_LAB = {"ii4": ["II-4", "수주상황(상세)"], "p8": ["III-8", "진행률�
 
 # 역할별 필수 필드. kce_parse 의 _II4_NEED/_P8_NEED 와 같은 값을 **읽어** 쓴다(복제하면 두 곳이 갈라진다).
 # XI 는 설계서 C 의 NEED(kce_xi1 지역 사전 — 전역 COL_ALIAS 에 없는 필드라 여기 값만 둔다).
-_XI_NEED = {"xi_nm", "xi_amt", "xi_supCum", "xi_recvCum"}
+# kce_xi1.NEED 와 같아야 한다 — 대금수령 열이 없는 표도 읽는다(2026-10-16 섹터 304사 실측). 순환 import 를 피해 값으로 둔다.
+_XI_NEED = {"xi_nm", "xi_amt", "xi_supCum"}
 
 _ENTRY_META = ("ent", "tag", "basis", "cur", "unit_seen", "synth", "shape", "sec_title", "rcpNo")
 _Q_RE = re.compile(r"^\d{4}Q[1-4]$")

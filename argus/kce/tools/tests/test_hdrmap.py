@@ -668,7 +668,10 @@ class TestClassify(_Base):
         # 역할별 NEED 는 kce_parse 의 값을 읽는다
         self.assertEqual(hdrmap._need_of("orders"), II4_NEED)
         self.assertEqual(hdrmap._need_of("progress"), {"amt", "pr", "ub", "rc"})
-        self.assertEqual(hdrmap._need_of("xi"), {"xi_nm", "xi_amt", "xi_supCum", "xi_recvCum"})
+        # XI 는 kce_xi1.NEED 와 같아야 한다(대금수령 열 없는 표도 읽는다 — 2026-10-16 섹터 304사)
+        import kce_xi1
+        self.assertEqual(hdrmap._need_of("xi"), set(kce_xi1.NEED))
+        self.assertEqual(hdrmap._need_of("xi"), {"xi_nm", "xi_amt", "xi_supCum"})
         self.assertEqual(hdrmap._need_of("revenue"), set())
 
     def test_auto_alias_never_shadows_col_alias(self):
