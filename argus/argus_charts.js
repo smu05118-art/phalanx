@@ -748,7 +748,9 @@
     }
     function loadScript(url, done) {
       var script = doc.createElement('script');
-      script.src = url; script.async = true; script.dataset.argusChunk = url;
+      var version = (data.asset_versions || {})[url];
+      script.src = version ? url + (url.indexOf('?') < 0 ? '?' : '&') + 'v=' + encodeURIComponent(version) : url;
+      script.async = true; script.dataset.argusChunk = url;
       script.onload = function () { done(null); };
       script.onerror = function () { script.remove(); done(new Error('load failed: ' + url)); };
       (doc.head || doc.documentElement).appendChild(script);
