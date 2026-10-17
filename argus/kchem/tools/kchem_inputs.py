@@ -148,6 +148,25 @@ def load_data_map(path=DATA_MAP):
     return d, _sha(text)
 
 
+def content_fingerprint(argus, chunks, conn, dmap, cats):
+    """화학 내용 지문 — 허브가 매일 다시 쓰는 asof·built·다른 탭 시리즈를 뺀, 이 탭이 실제로 읽는 내용만의 sha256.
+
+    파일 단위 fingerprint 는 허브가 asof/built 를 쓰는 날마다 바뀌어 '입력 같으면 커밋 없음' 이 공허했다(2026-10 리뷰 #11).
+    커밋 게이트는 이 값(+ 평가 주차)으로 판단한다. 포함: 화학 패널 시리즈·화학 체인·화학 청크·원장(sp_/p_) 관측·
+    화학 패널·中선물 매핑·살아 있는 프록시 sid 의 connections 행·그 sid 의 맵 아이템·수기 사전(aliases.json)."""
+    al = load_asset("aliases.json")
+    panel = sorted((s for s in argus["spread"]["series"] if s["cat"] in cats), key=lambda s: s["sid"])
+    want = {s["sid"] for s in panel} | set(al.get("cnfut", {}).values()) | {p["sid"] for p in al.get("live_proxies", [])}
+    rows = sorted((r for r in conn["rows"] if r["sid"].split("_")[0] in ("sp", "p") or r["sid"] in want), key=lambda r: r["sid"])
+    rel = {r["sid"] for r in rows} | want
+    items = sorted(({"sid": it["sid"], "chain": it.get("chain"), "category": it.get("category")}
+                    for it in dmap["items"] if it.get("sid") in rel), key=lambda x: x["sid"])
+    chains = sorted((c for c in argus["chains"] if c["id"] in set(al.get("chem_chains", []))), key=lambda c: c["id"])
+    doc = {"panel": panel, "chains": chains, "chunks": {c: {"axis": chunks[c]["axis"], "series": chunks[c]["series"]} for c in sorted(chunks)},
+           "connections": rows, "map": items, "aliases": al}
+    return hashlib.sha256(json.dumps(doc, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
 def load_all(argus_dir=ARGUS, categories=None):
     """모든 입력을 읽어 검증하고 (inputs, fingerprint) 를 돌려준다.
 
@@ -173,7 +192,8 @@ def load_all(argus_dir=ARGUS, categories=None):
         raise InputError("패널(%d)과 청크(%d)의 화학 시리즈 집합이 다름: 패널만 %s / 청크만 %s"
                          % (len(panel), len(chunked), sorted(panel - chunked)[:5], sorted(chunked - panel)[:5]))
     digest = hashlib.sha256("\n".join("%s:%s" % kv for kv in sorted(shas.items())).encode("utf-8")).hexdigest()
-    fp = {"inputs": shas, "fingerprint": digest, "argus_asof": argus["asof"], "argus_built": argus.get("built")}
+    fp = {"inputs": shas, "fingerprint": digest, "argus_asof": argus["asof"], "argus_built": argus.get("built"),
+          "content": content_fingerprint(argus, chunks, conn, dmap, cats)}
     return {"argus": argus, "chunks": chunks, "connections": conn, "data_map": dmap, "chem_cats": cats}, fp
 
 

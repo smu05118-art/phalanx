@@ -19,7 +19,7 @@ import json
 import os
 import sys
 
-from kchem_lib import (ASSETS, DATA_DIR, E, KCHEM, KCHEM_JS, TABLE_JS, atomic_write, fmt, fmt_k,
+from kchem_lib import (ASSETS, DATA_DIR, E, KCHEM, KCHEM_JS, TABLE_JS, atomic_write, dump_json, fmt, fmt_k,
                        json_for_html, load_asset, page)
 import kchem_inputs
 import kchem_registry
@@ -41,7 +41,12 @@ FLAG_KO = {
     "constituent_missing": ("구성 시리즈 없음", "bad"),
     "name_unparsed": ("이름 미해석", ""),
     "product_alias_missing": ("제품 별칭 없음", ""),
+    "crack_usd_bbl": ("USD/bbl 크랙(나프타/9.26 − Dubai)", "est"),
+    "carry_forward": ("원장 이월 주 — 실제 정지가 더 이르다", "bad"),
+    "formula_episode": ("일시 이탈 후 복귀", "est"),
 }
+HUNT_NOTE = ("허브 사냥 신호(bt 바닥 반전·pw·ac) 개수. 2026-08-31 검증: bottom_turn 4주 적중 63.0% ≈ 바닥권 base rate 63.9% "
+             "— 부가가치 없음. 신호로 쓰지 말 것.")
 REGION_ORDER = ["한국", "대만", "일본", "동남아", "동북아", "중국", "중국 Huadong", "중국 Huanan", "인도", "싱가포르", "미국", "유럽",
                 "ARA", "Rdam", "MED", "Genoa", "USGC", "Arab Gulf"]
 NAV = (("← ARGUS", "../index.html"), ("표", "spreads.html"), ("매트릭스", "matrix.html"), ("밸류체인", "chains.html"), ("커버리지", "coverage.html"))
@@ -117,10 +122,13 @@ def build_data_js(reg, inputs):
                                  "dates": [o[0] for o in obs], "v": [o[1] for o in obs]}
     slim_rows = [{k: r.get(k) for k in ("sid", "name", "cat", "chain", "chain_est", "unit", "kind", "layer", "product", "region",
                                         "formula", "feeds", "reproduced", "flags", "freshness", "last_date", "last", "pos", "m4",
-                                        "weeks_since", "stocks", "cnfut", "product_sid")} for r in reg["rows"] + reg["derived"]]
+                                        "weeks_since", "stocks", "cnfut", "product_sid", "grade", "unit_hint", "dup_of",
+                                        "effective_last")} for r in reg["rows"] + reg["derived"]]
     data = {"fingerprint": reg["fingerprint"], "argus_asof": reg["argus_asof"],
             "axes": {"wk": axis_wk, "wk2y": reg["axis2y"]}, "series": series, "rows": slim_rows,
-            "chains": reg["chains"], "summary": reg["summary"], "rules": reg["rules"]}
+            "chains": reg["chains"], "chain_view": reg["chain_view"], "summary": reg["summary"], "rules": reg["rules"],
+            "proxies": [{k: p.get(k) for k in ("sid", "name", "unit", "freq", "product", "chain", "ledger_name", "check", "post_halt", "lag",
+                                               "last", "last_date", "freshness")} for p in reg["proxies"]]}
     return "window.KCHEM=" + json_for_html(data) + ";\n"
 
 
@@ -131,12 +139,15 @@ def notice_html(reg):
     wk = s.get("ledger_stale_weeks")
     if wk is None:
         return ""
+    ed = s.get("editions") or {}
     if wk > 2:
-        return ('<div class="notice"><div class="sym">⛔</div><div><p><b>원장 정지 %d주</b> — 화학 스프레드 원장(Weekly xlsm)의 마지막 관측은 %s, '
-                'ARGUS 평가일은 %s 입니다. 아래 주간 스프레드는 전부 이 날짜에 멈춰 있으며(살아 있는 스프레드 0), '
-                '값은 그대로 보이되 신선도 배지가 <span class="fr stale">오래됨</span>/<span class="fr dead">장기 미갱신</span> 으로 표시됩니다. '
-                '살아 있는 화학 입력은 中 선물(일간)·PPI(월)뿐입니다.</p></div></div>'
-                % (wk, E(s["ledger_last"]), E(reg["argus_asof"])))
+        return ('<div class="notice"><div class="sym">⛔</div><div><p><b>원장 정지 %d주 · 편집 누락 %d개</b> — 마지막 원장 편집은 <code>%s</code>'
+                '(관측 %s), 다음 기대 편집은 %s 였습니다. ARGUS 평가일 %s. 아래 주간 스프레드는 전부 %s 에 멈춰 있고(값은 그대로, 신선도 배지로 표시), '
+                '사이클 위치는 <b>그 날짜 기준</b>입니다.</p>'
+                '<p><b>복구 = 파일 1개</b>: %s. 코드 변경 없이 다음 ARGUS 빌드에 전부 반영됩니다.</p>'
+                '<p class="mut">정지 중에도 갱신되는 입력: 프록시 %d종(검증 게이트 통과·정지 후 방향 표시 %d) — 원장 값·산식과 섞지 않습니다.</p></div></div>'
+                % (wk, ed.get("missing", 0), E(ed.get("last_file", "—")), E(s["ledger_last"]), E(ed.get("next_expected", "—")),
+                   E(reg["argus_asof"]), E(s["ledger_last"]), E(ed.get("recover", "")), s.get("proxies", 0), s.get("proxies_gated", 0)))
     return ('<div class="notice info"><div class="sym">ℹ</div><div><p>원장 마지막 관측 %s · 평가일 %s.</p></div></div>'
             % (E(s["ledger_last"]), E(reg["argus_asof"])))
 
@@ -144,17 +155,20 @@ def notice_html(reg):
 def kpi_html(reg):
     s = reg["summary"]
     sf = s["spread_freshness"]
+    g = s.get("grades") or {}
     return ('<div class="kpi">'
-            '<div><b>%d</b><span>화학 시리즈(청크 13 카테고리) · 스프레드 %d</span></div>'
-            '<div><b>%d<small>/%d</small></b><span>산식 역산 재현(최소제곱, |잔차|≤%s)</span></div>'
-            '<div><b>%d</b><span>살아 있는 스프레드 — 오래됨 %d · 장기 미갱신 %d</span></div>'
-            '<div><b>%s주</b><span>원장 정지(마지막 %s)</span></div>'
-            '<div><b>%d</b><span>파생 스프레드(공개 관행 계수·추정)</span></div>'
-            '<div><b>%d</b><span>결함 의심·산식 변경·원료 불일치 플래그</span></div>'
-            '</div>' % (s["rows"], s["spreads"], s["reproduced"], s["spreads"], fmt_k(reg["rules"]["tol_abs"]),
+            '<div><b>%d</b><span>화학 시리즈(청크 %d 카테고리) · 스프레드 %d · 지역 간 복제 제외 고유 %d</span></div>'
+            '<div><b>%d<small>/%d</small></b><span>산식 역산 재현 — 정확 %d(안쪽 잔차 ≤ %s) · 근사 %d</span></div>'
+            '<div><b>%d</b><span>살아 있는 원장 스프레드 — 오래됨 %d · 장기 미갱신 %d</span></div>'
+            '<div><b>%s주</b><span>원장 정지(마지막 %s) · 편집 누락 %d</span></div>'
+            '<div><b>%d<small>/%d</small></b><span>살아 있는 프록시 — 정지 후 방향 표시(게이트 통과·시차 반영)</span></div>'
+            '<div><b>%d</b><span>결함 의심·산식 변경·원료 불일치·이월 플래그</span></div>'
+            '</div>' % (s["rows"], len(CHEM_CATS), s["spreads"], s.get("unique_spreads", s["spreads"]),
+                        s["reproduced"], s["spreads"], g.get("exact", 0), fmt_k(reg["rules"]["exact_tol"]), g.get("approx", 0),
                         sf.get("fresh", 0), sf.get("stale", 0), sf.get("dead", 0),
-                        s.get("ledger_stale_weeks", "—"), E(s.get("ledger_last") or "—"), s["derived_ok"],
-                        sum(s["flags"].get(f, 0) for f in ("missing_product_as_zero", "formula_changed", "feed_mismatch"))))
+                        s.get("ledger_stale_weeks", "—"), E(s.get("ledger_last") or "—"), (s.get("editions") or {}).get("missing", 0),
+                        s.get("proxies_gated", 0), s.get("proxies", 0),
+                        sum(s["flags"].get(f, 0) for f in ("missing_product_as_zero", "formula_changed", "feed_mismatch", "carry_forward"))))
 
 
 def cat_chips(reg, cur=None):
@@ -167,29 +181,73 @@ def cat_chips(reg, cur=None):
     return '<div class="catchips">%s</div>' % "".join(out)
 
 
+def _pct_html(v):
+    if v is None:
+        return '<span class="mut">—</span>'
+    cls = "up" if v > 0 else ("dn" if v < 0 else "")
+    return '<span class="%s">%s%s%%</span>' % (cls, "▲" if v > 0 else ("▼" if v < 0 else ""), fmt(abs(v)))
+
+
 def chain_cards(reg):
-    chem = ["refining", "ncc", "aromatics", "butadiene", "vinyls", "urethane", "solvents"]
+    """체인 카드 — 원장 as-of 위치를 앞에, 허브 pos 는 그 기준(프록시 구성)과 함께 뒤에 둔다.
+
+    허브 체인 pos 는 원장 스프레드가 아니라 中선물·PPI·NBS 등 프록시의 중앙값이다(2026-10 리뷰 #4).
+    같은 '천장권' 색으로 회사 사이클처럼 읽히지 않도록, 허브 기준에 원장이 0 이면 pos 숫자를 크게 쓰지 않는다."""
     cards = []
-    rows_by_chain = {}
-    for r in reg["rows"]:
-        if r["kind"] == "spread":
-            rows_by_chain.setdefault(r["chain"] or r["chain_est"], []).append(r)
-    for cid in chem:
-        c = reg["chains"].get(cid)
-        if not c:
-            continue
-        mom = c.get("mom") or {}
-        n_sp = len(rows_by_chain.get(cid, []))
-        pos = c.get("pos")
+    for cid, v in reg["chain_view"].items():
+        basis = " · ".join("%s %d" % (k, n) for k, n in v["hub_basis"].items()) or "구성 없음"
+        hub = ("허브 pos %s — 기준: %s%s" % (("%d" % round(v["hub_pos"])) if v["hub_pos"] is not None else "—", basis,
+               "" if v["hub_has_ledger"] else " (원장 0 — 프록시 중앙값, 회사 사이클 아님)"))
+        if v["post_halt_n"]:
+            post = '%s <small class="mut">게이트 통과 %d종 중앙(%s)</small>' % (
+                _pct_html(v["post_halt_median_pct"]), v["post_halt_n"], E(", ".join("%s %s%%" % (i["product"], fmt(i["pct"])) for i in v["post_halt_items"])))
+        else:
+            post = '<span class="mut">게이트 통과 프록시 없음 — 비표시</span>'
+        h = v.get("hunts") or {}
         cards.append(
             '<div class="cardlink" style="cursor:default"><div class="t"><b>%s</b><span class="code">%s</span></div>'
-            '<p class="mut">허브 체인 사이클 위치(자동 프록시 %s개 기준 — 원장 스프레드는 집계에 들어가지 않음) · 이 탭의 스프레드 %d개</p>'
-            '<div class="stat"><div><b>%s</b><span>체인 pos</span></div><div><b>%s</b><span>1W %%</span></div><div><b>%s</b><span>4W %%</span></div><div><b>%s</b><span>13W %%</span></div></div>'
+            '<div class="stat"><div><b>%s</b><span>원장 as-of 위치(%s · 중위, %d개)</span></div><div><b>%s</b><span>정지 후 방향(프록시)</span></div></div>'
+            '<p class="mut" style="margin:8px 0 0">%s</p>'
+            '<p class="mut" style="margin:4px 0 0" title="%s">사냥 신호 bt %s · pw %s · ac %s — 검증 결과 부가가치 없음(참고만)</p>'
             '<div style="margin-top:8px">%s</div></div>'
-            % (E(c["label"]), E(cid), c.get("n", 0), n_sp,
-               ("%d" % round(pos)) if pos is not None else "—", fmt(mom.get("w1")), fmt(mom.get("w4")), fmt(mom.get("w13")),
-               stocks_html([dict(s, est=False) for s in c.get("stocks", [])])))
+            % (E(v["label"]), E(cid), ("%d" % round(v["ledger_pos_median"])) if v["ledger_pos_median"] is not None else "—",
+               E(v["ledger_asof"] or "—"), v["ledger_n"], post, E(hub), E(HUNT_NOTE),
+               h.get("bt", "—"), h.get("pw", "—"), h.get("ac", "—"),
+               stocks_html([dict(s2, est=False) for s2 in v.get("stocks", [])])))
     return '<div class="cards">%s</div>' % "".join(cards)
+
+
+def proxies_html(reg):
+    """살아 있는 프록시 표 — 원장과 기준이 다른 값이라 원장 산식·pos·m4·채색에 넣지 않고 따로 보인다."""
+    trs = []
+    for p in reg["proxies"]:
+        c = p.get("check") or {}
+        if not p.get("ledger_sid"):
+            verdict = '<span class="mut">대조할 원장 가격 없음 — 방향 비표시</span>'
+        elif not c:
+            verdict = '<span class="mut">겹침 부족 — 검증 불가</span>'
+        elif c["gate"] and p.get("post_halt"):
+            ph = p["post_halt"]
+            verdict = '%s <small class="mut">%s → %s</small>' % (_pct_html(ph["pct"]), E(ph["from"]), E(ph["to"]))
+        elif c["gate"]:
+            verdict = '<span class="mut">게이트 통과 · 시차 %d개월 — 정지 이후 분 공표 전</span>' % p.get("lag", 0)
+        else:
+            verdict = '<span class="mut">게이트 미달 — 비표시</span>'
+        trs.append('<tr id="p-%s"><td class="l"><b>%s</b><div class="fm">%s · %s</div></td><td class="l">%s</td><td class="l">%s</td>'
+                   '<td>%s</td><td class="l">%s</td><td>%s</td><td>%s</td><td class="l">%s</td><td class="l">%s</td></tr>'
+                   % (E(p["sid"]), E(p["name"]), E(p["unit"] or ""), E({"W": "주간", "M": "월간", "D": "일간"}.get(p["freq"], p["freq"] or "")),
+                      E(p["product"]), E(p.get("ledger_name") or "—"), fmt(p.get("last"), 0), fr_chip(p.get("freshness")) + " " + E(p.get("last_date") or ""),
+                      ("—" if c.get("hit_hold") is None else "%d%%" % round(c["hit_hold"] * 100)),
+                      ("—" if c.get("r_hold") is None else fmt(c["r_hold"], 2)),
+                      ("—" if not c else "%d쌍 · 시차 %d" % (c["n_hold"], c.get("lag", 0))), verdict))
+    gate = reg["rules"]["live_gate"]
+    return ('<div class="wrap"><table data-sortable><thead><tr><th class="l">프록시</th><th class="l">제품</th><th class="l">대조 원장</th><th>최신</th>'
+            '<th class="l">신선도</th><th>홀드아웃 방향 적중</th><th>홀드아웃 r</th><th class="l">검증</th><th class="l">정지 후 방향</th></tr></thead>'
+            '<tbody>%s</tbody></table></div>'
+            '<p class="note">프록시 기간 Δ%%와 원장 제품 가격 Δ%%를 맞대어 최근 %d%%(최소 %d쌍)를 홀드아웃으로 두고, 방향 적중 ≥ %d%% · r ≥ %s 일 때만 '
+            '<b>정지 후 방향</b>을 보입니다. 월간 무역단가는 원장보다 늦게 움직여(시차) 정지 이후 달이 공표된 뒤에만 표시합니다. '
+            '이 값들은 원장 산식·사이클 위치·4W%%·채색에 들어가지 않습니다.</p>'
+            % ("".join(trs), round(gate["hold_frac"] * 100), gate["min_hold"], round(gate["hit"] * 100), fmt_k(gate["r"])))
 
 
 # ── 페이지들 ────────────────────────────────────────────────
@@ -204,11 +262,14 @@ def index_html(reg):
              '<a class="cardlink" href="chains.html"><div class="t"><b>🔗 밸류체인</b></div><p>레지스트리의 원료→제품 관계로 자동 생성한 다이어그램. 노드를 누르면 스프레드·종목.</p><div class="go">밸류체인 →</div></a>'
              '<a class="cardlink" href="coverage.html"><div class="t"><b>🧾 커버리지</b></div><p>모집단 전수 %d — 미재현 %d · 체인 미배정 %d · 결함 의심 · 축 잘림 자동 소스.</p><div class="go">커버리지 →</div></a>'
              '</div>' % (s["rows"] + s["derived_ok"], s["rows"], s["unreproduced"], s["chain_missing"]))
-    body += '<h2 class="sec">체인<span>허브(argus_data.chains) 값을 읽기 전용으로 표시 · 종목은 체인 단위 참고 라벨</span></h2>' + chain_cards(reg)
+    body += ('<h2 class="sec">체인<span>원장 as-of 위치(중위) · 정지 후 방향(게이트 통과 프록시만) · 허브 pos 는 기준 구성과 함께 · 종목은 체인 단위 참고 라벨</span></h2>'
+             + chain_cards(reg))
+    body += ('<h2 class="sec">살아 있는 프록시<span>원장 정지 중에도 갱신 · 검증 게이트 통과분만 방향 표시 · 원장 값과 섞지 않음</span></h2>'
+             + proxies_html(reg))
     body += ('<section class="card"><h2>이 탭이 하는 일과 하지 않는 일</h2><ul class="note">'
              '<li>원장 스프레드의 산식은 데이터에 없다. 이름(<code>제품-원료 스프레드(지역)</code>)과 주간 관측으로 <b>계수를 역산</b>해 병기한다 — 전부 추정이며 원장 수식을 본 것이 아니다.</li>'
              '<li>원장 값은 수정하지 않는다. 결함으로 보이는 것(BR−BD 결측 0 계산, 산식 변경, 이름과 다른 원료)은 배지로만 표시한다.</li>'
-             '<li>中 선물·PPI 는 기준(통화·세금·스팟/선물)이 달라 같은 산식에 넣지 않는다 — 방향 참고 열.</li>'
+             '<li>中 선물·PPI·무역단가 프록시는 기준(통화·세금·스팟/선물·월간)이 달라 같은 산식·사이클 위치·채색에 넣지 않는다 — 검증 게이트를 통과한 것만 방향 참고.</li>'
              '<li>파생 스프레드(PE/PP/PX−납사 통합, 카프로락탐−벤젠, PVC−0.5에틸렌)는 공개 관행 계수로 이 탭이 계산한 것이다(원장에 없음).</li>'
              '<li>wj-stock 등 회원 전용 화면의 값·산식은 쓰지 않는다. 입력 fingerprint <code>%s</code>.</li></ul></section>' % E(reg["fingerprint"][:16]))
     body += '<script src="data/kchem_data.js"></script><script>%s</script><script>%s</script>' % (TABLE_JS, KCHEM_JS)
@@ -223,29 +284,41 @@ def spreads_html(reg):
         feeds = r.get("feeds") or []
         feed_txt = ", ".join("%s×%s" % (fmt_k(f["k"]), f["name"]) for f in feeds if f.get("name")) if feeds else "—"
         cf = r.get("cnfut")
-        cf_txt = ('<span title="%s · %s %s">%s</span>' % (E(cf["name"]), E(cf["last_date"] or ""), E(cf["unit"] or ""), fmt(cf["last"], 0))) if cf else '<span class="mut">—</span>'
+        cf_txt = ('<span title="%s · %s">%s<small class="mut"> %s</small></span>' % (E(cf["name"]), E(cf["last_date"] or ""), fmt(cf["last"], 0), E(cf["unit"] or "CNY/t"))) if cf else '<span class="mut">—</span>'
         rep = r.get("reproduced")
-        rep_txt = ('<span class="flag ok">재현</span>' if rep else ('<span class="flag bad">미재현</span>' if rep is False else '<span class="flag est">추정</span>'))
+        grade = {"exact": "정확", "approx": "근사"}.get(r.get("grade") or "", "")
+        rep_txt = (('<span class="flag ok">재현%s</span>' % (("·" + grade) if grade else "")) if rep
+                   else ('<span class="flag bad">미재현</span>' if rep is False else '<span class="flag est">추정</span>'))
+        if r.get("dup_of"):
+            rep_txt += '<span class="flag est" title="원장이 같은 시리즈를 여러 지역 이름으로 복사">=%s 복제</span>' % E(r.get("dup_of_region") or "?")
+        halted = r.get("freshness") in ("stale", "dead")
+        m4_cell = ('<td data-v="">—<small class="mut">(정지)</small></td>' if halted
+                   else '<td data-v="%s">%s</td>' % (r.get("m4") if r.get("m4") is not None else "", fmt(r.get("m4"))))
+        pos_cell = ('<td data-v="" class="deadpos">%s</td>' % pos_html(r.get("pos")) if r.get("freshness") == "dead"
+                    else '<td data-v="%s">%s</td>' % (r.get("pos") if r.get("pos") is not None else "", pos_html(r.get("pos"))))
+        date_txt = E(r.get("last_date") or "—")
+        if r.get("carry_weeks") and r.get("effective_last") and r.get("effective_last") != r.get("last_date"):
+            date_txt += '<div class="fm">이월 %d주 · 실제 %s</div>' % (len(r["carry_weeks"]), E(r["effective_last"]))
+        unit_hint = (' <small class="mut">%s</small>' % E(r["unit_hint"])) if r.get("unit_hint") else ""
         trs.append(
-            '<tr data-cat="%s" data-layer="%s" data-region="%s" data-chain="%s">'
-            '<td class="l">%s</td><td class="l"><b>%s</b><div class="fm">%s</div></td><td class="l">%s</td>'
+            '<tr id="r-%s" data-cat="%s" data-layer="%s" data-region="%s" data-chain="%s">'
+            '<td class="l">%s</td><td class="l"><b>%s</b>%s<div class="fm">%s</div></td><td class="l">%s</td>'
             '<td class="l">%s</td><td class="l fm">%s</td><td class="l">%s</td>'
-            '<td data-v="%s">%s</td><td class="l">%s</td><td data-v="%s">%s</td><td data-v="%s">%s</td>'
+            '<td data-v="%s">%s</td><td class="l">%s</td>%s%s'
             '<td class="l">%s</td><td><svg class="spk" data-sid="%s" aria-label="%s 추이"></svg></td>'
             '<td data-v="%s">%s</td><td class="l">%s</td><td class="l">%s</td></tr>'
-            % (E(r["cat"]), E(r.get("layer") or ""), E(r.get("region") or ""), E(r.get("chain") or r.get("chain_est") or ""),
-               E(r["cat"]), E(r["name"]), E(r.get("formula") or ""), E(LAYER_KO.get(r.get("layer"), r.get("layer") or "")),
+            % (E(r["sid"]), E(r["cat"]), E(r.get("layer") or ""), E(r.get("region") or ""), E(r.get("chain") or r.get("chain_est") or ""),
+               E(r["cat"]), E(r["name"]), unit_hint, E(r.get("formula") or ""), E(LAYER_KO.get(r.get("layer"), r.get("layer") or "")),
                E(r.get("product") or "—"), E(feed_txt), E(r.get("region") or "—"),
-               r.get("last") if r.get("last") is not None else "", fmt(r.get("last")), E(r.get("last_date") or "—"),
-               r.get("m4") if r.get("m4") is not None else "", fmt(r.get("m4")),
-               r.get("pos") if r.get("pos") is not None else "", pos_html(r.get("pos")),
+               r.get("last") if r.get("last") is not None else "", fmt(r.get("last")), date_txt,
+               m4_cell, pos_cell,
                fr_chip(r.get("freshness")) + (' <small class="mut">%s주</small>' % r["weeks_since"] if r.get("weeks_since") not in (None, 0) else ""),
                E(r["sid"]), E(r["name"]),
                cf["last"] if cf and cf.get("last") is not None else "", cf_txt,
                rep_txt + flags_html([f for f in r.get("flags", []) if f != "unreproduced"]) + stocks_html(r.get("stocks") or []),
                link_html(r["sid"]) if not r["sid"].startswith("derived:") else '<span class="mut">파생</span>'))
     body = notice_html(reg) + cat_chips(reg)
-    body += ('<div class="ctl"><input id="q" data-filter="#sp" type="search" placeholder="제품·원료·지역·카테고리·종목 검색 (예: 에틸렌 한국)">'
+    body += ('<div class="ctl"><input id="q" type="search" placeholder="제품·원료·지역·카테고리·종목 검색 — 띄어 쓴 단어를 모두 포함 (예: 에틸렌 한국)">'
              '<label>레이어 <select id="layer"><option value="">전체</option>%s</select></label>'
              '<label>지역 <select id="region"><option value="">전체</option>%s</select></label>'
              '<label>카테고리 <select id="cat"><option value="">전체</option>%s</select></label></div>'
@@ -256,19 +329,24 @@ def spreads_html(reg):
              '<th class="l">제품</th><th class="l">원료(k·참조)</th><th class="l">지역</th><th>최신</th><th class="l">관측일</th><th>4W%%</th><th>사이클 위치</th>'
              '<th class="l">신선도</th><th>5년 추이</th><th>中선물</th><th class="l">판정·플래그·종목</th><th class="l">링크</th></tr></thead><tbody>%s</tbody></table></div>'
              % "".join(trs))
-    body += ('<p class="note">사이클 위치 = ARGUS 허브의 전 이력 백분위(pos). 4W% = 허브 m4(카드에서는 렌더되지 않는 값을 여기서 표시). '
+    body += ('<p class="note">사이클 위치 = ARGUS 허브의 전 이력 백분위(pos) — 원장 정지 시리즈는 정지 시점 기준. 4W% = 허브 m4이며, '
+             '오래됨·장기 미갱신 행은 클립된 값(±200)이 정렬을 왜곡하므로 <b>—(정지)</b> 로 비우고, 장기 미갱신 행의 pos 는 흐리게·정렬 제외. '
+             '행 주소는 <code>spreads.html#r-&lt;sid&gt;</code>. '
              '추이는 청크 255주(파생은 104주, 中선물은 자기 관측). 계수 k 는 최소제곱 역산 — <code>k_2pt</code>·잔차·이상치 주는 tools/assets/registry.json.</p>')
     body += '<script src="data/kchem_data.js"></script><script>%s</script><script>%s</script>' % (TABLE_JS, KCHEM_JS)
     body += r"""<script>
 (function(){
   var tb=document.getElementById('sp'), sel={layer:document.getElementById('layer'),region:document.getElementById('region'),cat:document.getElementById('cat')}, q=document.getElementById('q');
-  function apply(){var f={layer:sel.layer.value,region:sel.region.value,cat:sel.cat.value}; var s=q.value.trim().toLowerCase();
+  function apply(){var f={layer:sel.layer.value,region:sel.region.value,cat:sel.cat.value}; var toks=q.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     Array.prototype.forEach.call(tb.tBodies[0].rows,function(r){var ok=true; for(var k in f){ if(f[k]&&r.dataset[k]!==f[k]) ok=false; }
-      if(ok&&s&&r.textContent.toLowerCase().indexOf(s)<0) ok=false; r.hidden=!ok;});}
+      if(ok&&toks.length){var t=r.textContent.toLowerCase(); for(var i=0;i<toks.length;i++){ if(t.indexOf(toks[i])<0){ok=false;break;} }} r.hidden=!ok;});}
+  function jump(){var m=location.hash.match(/^#r-(.+)$/); if(!m)return; var el=document.getElementById('r-'+decodeURIComponent(m[1])); if(!el)return;
+    el.hidden=false; el.classList.add('hl'); el.scrollIntoView({block:'center'});}
   for(var k in sel){ sel[k].addEventListener('change',apply); }
   q.addEventListener('input',apply);
   var m=location.hash.match(/cat=([^&]+)/); if(m){ sel.cat.value=decodeURIComponent(m[1]); apply(); }
-  window.addEventListener('hashchange',function(){var m=location.hash.match(/cat=([^&]+)/); sel.cat.value=m?decodeURIComponent(m[1]):''; apply();});
+  window.addEventListener('hashchange',function(){var m=location.hash.match(/cat=([^&]+)/); sel.cat.value=m?decodeURIComponent(m[1]):''; apply(); jump();});
+  jump();
 })();
 </script>"""
     return page("한국화학 — 스프레드 표", body, depth=0, h1="📋 스프레드 표", nav=NAV, crumbs=(("한국화학", "index.html"), ("표", "")),
@@ -299,18 +377,23 @@ def matrix_html(reg):
                 tds.append('<td><span class="empty">·</span></td>')
                 continue
             pos = r.get("pos")
-            pcls = "" if pos is None else ("p0" if pos <= 10 else "p1" if pos <= 25 else "p4" if pos >= 90 else "p3" if pos >= 75 else "")
-            tds.append('<td><button type="button" class="cell %s %s" data-sid="%s" data-row="%s" title="%s · %s · pos %s">%s<small>%s</small></button></td>'
-                       % (pcls, "dead" if r.get("freshness") == "dead" else "", E(r["sid"]), E(g["label"]), E(r["name"]), E(r.get("last_date") or ""),
-                          "—" if pos is None else round(pos), fmt(r.get("last")), E((r.get("last_date") or "")[2:7])))
+            dead = r.get("freshness") == "dead"
+            pcls = "" if (pos is None or dead) else ("p0" if pos <= 10 else "p1" if pos <= 25 else "p4" if pos >= 90 else "p3" if pos >= 75 else "")
+            dup = r.get("dup_of_region")
+            tds.append('<td><button type="button" class="cell %s %s %s" data-sid="%s" data-row="%s" title="%s · %s · pos %s%s">%s<small>%s</small></button></td>'
+                       % (pcls, "dead" if dead else "", "dup" if dup else "", E(r["sid"]), E(g["label"]), E(r["name"]), E(r.get("last_date") or ""),
+                          "—" if pos is None else round(pos), (" · %s 시리즈와 바이트 동일(복제)" % dup) if dup else "",
+                          fmt(r.get("last")), ("=" + E(dup)) if dup else E((r.get("last_date") or "")[2:7])))
         trs.append('<tr><td class="rh">%s<small>%s%s</small></td>%s</tr>'
                    % (E(g["label"]), E(LAYER_KO.get(g["layer"], g["layer"] or "")), " · 파생" if g["derived"] else "", "".join(tds)))
     body = notice_html(reg)
     body += ('<div class="wrap tall"><table class="mx"><thead><tr><th style="text-align:left">제품 − 원료 <small class="mut">(레이어)</small></th>%s</tr></thead><tbody>%s</tbody></table></div>'
              % ("".join("<th>%s</th>" % E(x) for x in regions), "".join(trs)))
-    body += ('<p class="note">셀 = 최신 스프레드(USD/MT)와 관측 연월. 바탕색은 사이클 위치(≤10% 진한 초록 · ≤25% 초록 · ≥75% 붉음 · ≥90% 진한 붉음). '
-             '흐린 셀은 장기 미갱신. 셀을 누르면 그 제품의 지역별 스프레드를 겹쳐 그립니다. 지역은 시리즈 이름의 접미사에서 파생한 것이며 '
-             '원료 참조 지역(모든 −납사는 Naphtha 일본, 중국 제품은 한국 원료)은 표의 원료 열에 적혀 있습니다.</p>')
+    body += ('<p class="note">셀 = 최신 스프레드(USD/MT)와 관측 연월. 바탕색은 사이클 위치(≤10%% 진한 초록 · ≤25%% 초록 · ≥75%% 붉음 · ≥90%% 진한 붉음). '
+             '흐린 셀은 장기 미갱신(색 없음). <b>=지역</b> 셀은 원장이 다른 지역 시리즈를 바이트 그대로 복사한 것이라 지역 비교가 아닙니다 '
+             '(복제 %d그룹 · 고유 스프레드 %d/%d). 셀을 누르면 그 제품의 지역별 스프레드를 겹쳐 그립니다. 지역은 시리즈 이름 접미사에서 파생했고, '
+             '원료 참조 지역(−납사는 Naphtha 일본, 중국 제품은 한국 원료)은 역산으로 <b>추정</b>한 것입니다(원장 수식 미확인).</p>'
+             % (reg["summary"].get("dup_groups", 0), reg["summary"].get("unique_spreads", 0), reg["summary"]["spreads"]))
     body += '<div id="det" class="detail" hidden><h3 id="detTitle"></h3><div id="detFormula"></div><div class="kchart-box" id="detChart"></div></div>'
     body += '<script src="data/kchem_data.js"></script><script>%s</script><script>%s</script>' % (TABLE_JS, KCHEM_JS)
     body += r"""<script>
@@ -393,7 +476,7 @@ def chains_html(reg):
     W = PADX * 2 + CW * len(col_keys)
     H = PADY * 2 + RH * max(len(v) for v in cols.values()) + 10
     xy = {}
-    svg = ['<svg class="chaindiag" viewBox="0 0 %d %d" role="img" aria-label="석유화학 밸류체인(레지스트리 원료→제품 관계)"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#5d6675"/></marker></defs>' % (W, H)]
+    svg = ['<svg class="chaindiag" viewBox="0 0 %d %d" style="min-width:%dpx" role="img" aria-label="석유화학 밸류체인(레지스트리 원료→제품 관계)"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#5d6675"/></marker></defs>' % (W, H, W)]
     stage_label = {0: "0 · 원유", 1: "1 · 나프타·기초", 2: "2 · NCC/BTX", 3: "3 · 1차 다운스트림", 4: "4 · 2차 다운스트림", 5: "5 · 3차", 6: "6", 9: "단계 미상"}
     for ci, c in enumerate(col_keys):
         x = PADX + ci * CW
@@ -481,6 +564,23 @@ def coverage_html(reg):
              % (s["rows"], s["spreads"], s["unreproduced"], s["chain_missing"], s["chain_est_assigned"], s["freshness"].get("dead", 0)))
     body += '<h2 class="sec">판정 규칙<span>registry.json rules</span></h2><dl class="kv">%s</dl>' % "".join(
         "<dt>%s</dt><dd>%s</dd>" % (E(k), E(json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v)) for k, v in reg["rules"].items())
+    carry = [r for r in rows if r.get("carry_weeks")]
+    ctr = "".join('<tr><td class="l">%s</td><td class="l">%s</td><td class="l">%s</td><td>%d</td><td class="l">%s</td></tr>'
+                  % (E(r["name"]), E(r.get("last_date") or ""), E(r.get("effective_last") or ""), len(r["carry_weeks"]), E(", ".join(r["carry_weeks"][-6:])))
+                  for r in carry)
+    body += ('<h2 class="sec">원장 이월 주 %d행 · %d주<span>스프레드·제품이 전주와 같고 원료만 바뀐 주 = 갱신 없이 이어 쓴 값 → 산식 적합에서 제외, 실제 마지막 갱신 주를 따로 적는다</span></h2>'
+             '<div class="wrap"><table data-sortable><thead><tr><th class="l">시리즈</th><th class="l">원장 last</th><th class="l">실제 마지막 갱신</th><th>이월 주</th><th class="l">최근 이월 주</th></tr></thead><tbody>%s</tbody></table></div>'
+             % (len(carry), s.get("carry_weeks", 0), ctr))
+    groups = {}
+    for r in rows:
+        if r.get("dup_group"):
+            groups.setdefault(tuple(r["dup_group"]), []).append(r)
+    gtr = "".join('<tr><td class="l">%s</td><td>%d</td></tr>' % (E(" = ".join(x["name"] for x in rs)), len(rs)) for _, rs in sorted(groups.items()))
+    body += ('<h2 class="sec">지역 간 복제 %d그룹<span>관측 전부가 바이트 동일 — 고유 스프레드 %d/%d · 매트릭스는 =지역 으로 표시</span></h2>'
+             '<div class="wrap"><table data-sortable><thead><tr><th class="l">같은 시리즈</th><th>행</th></tr></thead><tbody>%s</tbody></table></div>'
+             % (len(groups), s.get("unique_spreads", 0), s["spreads"], gtr))
+    eps = [r for r in rows if "formula_episode" in (r.get("flags") or [])]
+    body += '<h2 class="sec">일시 이탈 후 복귀 %d<span>영구 산식 변경도, 상수 잔차도 아님 — 기준 k 가 한 구간 바뀌었다 돌아옴</span></h2>%s' % (len(eps), table(eps))
     bad = [r for r in rows if r["kind"] == "spread" and any(f in r.get("flags", []) for f in ("missing_product_as_zero", "feed_mismatch", "formula_changed"))]
     body += '<h2 class="sec">결함 의심·산식 변경·원료 불일치 %d<span>원장 값은 수정하지 않는다 — 운영자 보고용</span></h2>%s' % (len(bad), table(bad))
     unrep = [r for r in rows if r["kind"] == "spread" and not r.get("reproduced")]
@@ -497,9 +597,13 @@ def coverage_html(reg):
                 lead="이 탭의 모집단은 상장사가 아니라 스프레드 시리즈입니다. 빠진 것·못 푼 것도 이유와 함께 보입니다.")
 
 
-def stock_html(reg, t, name, chains_of):
-    rows = [r for r in reg["rows"] + [d for d in reg["derived"] if d["values"] is not None]
+def stock_rows(reg, chains_of):
+    return [r for r in reg["rows"] + [d for d in reg["derived"] if d["values"] is not None]
             if r.get("kind") in ("spread", "derived") and (r.get("chain") or r.get("chain_est")) in chains_of]
+
+
+def stock_html(reg, t, name, chains_of):
+    rows = stock_rows(reg, chains_of)
     rows.sort(key=lambda r: ((r.get("chain") or r.get("chain_est") or ""), r["cat"], r["name"]))
     trs = []
     for r in rows:
@@ -541,32 +645,110 @@ def build(write=True):
         os.path.join(KCHEM, "chains.html"): chains_html(reg),
         os.path.join(KCHEM, "coverage.html"): coverage_html(reg),
     }
+    # 종목 페이지는 화학 7체인 종목만, 화학 스프레드가 1행 이상일 때만(2026-10 리뷰 #3 — 반도체·철강·해운 등 0행 고아 10장 제거)
     stocks = {}
-    for cid, c in reg["chains"].items():
-        for st in c.get("stocks", []):
+    for cid in load_asset("aliases.json")["chem_chains"]:
+        for st in reg["chains"].get(cid, {}).get("stocks", []):
             stocks.setdefault(st["t"], {"name": st["n"], "chains": []})["chains"].append(cid)
     for t, info in sorted(stocks.items()):
-        outputs[os.path.join(KCHEM, t, "index.html")] = stock_html(reg, t, info["name"], info["chains"])
+        if stock_rows(reg, info["chains"]):
+            outputs[os.path.join(KCHEM, t, "index.html")] = stock_html(reg, t, info["name"], info["chains"])
     for path, text in outputs.items():
         if len(text.encode("utf-8")) > 5 * 1024 * 1024:
             raise kchem_inputs.InputError("산출물 5MB 초과: %s" % path)
+    assets = {"registry.json": dump_json(reg), "fingerprint.json": dump_json(fingerprint_doc(fp))}
     if write:
-        from kchem_lib import write_asset
-        write_asset("registry.json", reg)
-        write_asset("fingerprint.json", {"fingerprint": fp["fingerprint"], "inputs": fp["inputs"], "argus_asof": fp["argus_asof"]})
+        # 쓰기 순서: 페이지 → registry → fingerprint(마지막). 중간에 죽으면 fingerprint 가 옛 값이라 다음 실행이 다시 빌드한다.
         for path, text in outputs.items():
             os.makedirs(os.path.dirname(path), exist_ok=True)
             atomic_write(path, text)
-    return reg, outputs
+        for t in stale_stock_dirs(outputs):
+            os.remove(os.path.join(KCHEM, t, "index.html"))
+            if not os.listdir(os.path.join(KCHEM, t)):
+                os.rmdir(os.path.join(KCHEM, t))
+        atomic_write(os.path.join(ASSETS, "registry.json"), assets["registry.json"])
+        atomic_write(os.path.join(ASSETS, "fingerprint.json"), assets["fingerprint.json"])
+    return reg, outputs, assets
+
+
+STOCK_MARK = "— 화학 스프레드 역참조</title>"
+
+
+def stale_stock_dirs(outputs):
+    """이 생성기가 만든 종목 페이지(title 표식)인데 이번 빌드 목록에 없는 디렉터리 — 남의 파일은 건드리지 않는다."""
+    out = []
+    for t in sorted(os.listdir(KCHEM)):
+        path = os.path.join(KCHEM, t, "index.html")
+        if os.path.isfile(path) and path not in outputs and os.path.dirname(path) != KCHEM:
+            with open(path, encoding="utf-8") as f:
+                if STOCK_MARK in f.read(4096):
+                    out.append(t)
+    return out
+
+
+def fingerprint_doc(fp):
+    return {"fingerprint": fp["fingerprint"], "content": fp["content"], "inputs": fp["inputs"], "argus_asof": fp["argus_asof"]}
+
+
+def check(outputs, assets):
+    """멱등·결정성 검사 — 메모리에서 다시 만든 산출물이 디스크와 바이트 동일한가. 다르면 경로 목록."""
+    bad = []
+    files = dict(outputs)
+    files.update({os.path.join(ASSETS, k): v for k, v in assets.items()})
+    for path, text in sorted(files.items()):
+        try:
+            with open(path, encoding="utf-8") as f:
+                if f.read() != text:
+                    bad.append(path)
+        except OSError:
+            bad.append(path)
+    bad += [os.path.join(KCHEM, t) for t in stale_stock_dirs(outputs)]
+    return bad
+
+
+def commit_gate(new_fp, old_fp):
+    """커밋 여부 — 화학 내용 지문이 바뀌었거나, 평가 주차(ISO 주)가 바뀌었을 때만.
+
+    허브가 asof/built 만 다시 쓴 날은 커밋하지 않는다(2026-10 리뷰 #11). 주차가 바뀌면 '원장 정지 N주' 같은
+    평가일 기반 문구를 갱신하려고 주 1회 커밋한다."""
+    import datetime
+    if not old_fp or "content" not in old_fp:
+        return True, "이전 내용 지문 없음"
+    if new_fp["content"] != old_fp["content"]:
+        return True, "화학 내용 변경"
+    wk = lambda d: datetime.date.fromisoformat(d).isocalendar()[:2]
+    if wk(new_fp["argus_asof"]) != wk(old_fp["argus_asof"]):
+        return True, "평가 주차 변경"
+    return False, "화학 내용 동일·같은 주차(허브 asof/built 만 변경)"
 
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    reg, outputs = build(write="--dry-run" not in argv)
+    if "--gate" in argv:
+        # 사용: 빌드 후 `python3 kchem_page.py --gate <이전 fingerprint.json>` → 'commit …' 또는 'skip …'
+        new = json.load(open(os.path.join(ASSETS, "fingerprint.json"), encoding="utf-8"))
+        i = argv.index("--gate")
+        old = None
+        if i + 1 < len(argv) and os.path.isfile(argv[i + 1]) and os.path.getsize(argv[i + 1]):
+            old = json.load(open(argv[i + 1], encoding="utf-8"))
+        ok, why = commit_gate(new, old)
+        print(("commit " if ok else "skip ") + why)
+        return 0
+    write = "--dry-run" not in argv and "--check" not in argv
+    reg, outputs, assets = build(write=write)
     s = reg["summary"]
-    print("kchem: rows %d · reproduced %d/%d · derived %d · pages %d · fingerprint %s%s"
-          % (s["rows"], s["reproduced"], s["spreads"], s["derived_ok"], len(outputs), reg["fingerprint"][:12], " (dry-run)" if "--dry-run" in argv else ""))
+    print("kchem: rows %d · reproduced %d/%d (정확 %d) · unique %d · proxies %d(방향 %d) · pages %d · content %s%s"
+          % (s["rows"], s["reproduced"], s["spreads"], (s.get("grades") or {}).get("exact", 0), s.get("unique_spreads", 0),
+             s.get("proxies", 0), s.get("proxies_gated", 0), len(outputs), json.loads(assets["fingerprint.json"])["content"][:12],
+             " (dry-run)" if not write else ""))
+    if "--check" in argv:
+        bad = check(outputs, assets)
+        if bad:
+            print("CHECK FAIL — 디스크와 다른 산출물 %d개: %s" % (len(bad), ", ".join(os.path.relpath(b, KCHEM) for b in bad[:8])))
+            return 1
+        print("CHECK OK — 다시 만든 산출물이 디스크와 바이트 동일(%d개)" % (len(outputs) + len(assets)))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
