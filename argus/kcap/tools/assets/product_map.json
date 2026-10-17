@@ -1,0 +1,643 @@
+{
+ "version": 1,
+ "note": "회사 보고서의 품목 표기(product_raw) → kchem 제품 토큰(스프레드 레지스트리의 product)·구성비. 전부 수기·추정이다: 바스켓 구성비(share)는 공개 생산능력 구성에서 유추한 근사이며 화면에 '추정' 으로 표시한다. 매핑이 없으면 '미매핑' 으로 남긴다(숨기지 않는다). rule.match 는 공백·괄호를 지운 소문자 품목 문자열에 대한 정규식(전체 일치).",
+ "spread_region_order": [
+  "한국",
+  "동북아",
+  "일본",
+  "대만",
+  "동남아",
+  "중국",
+  "중국 Huadong",
+  "미국",
+  "유럽"
+ ],
+ "layer_order": [
+  "step",
+  "integrated",
+  "composite"
+ ],
+ "composites": {
+  "PE": {
+   "members": [
+    "HDPE(Injection)",
+    "LDPE",
+    "LLDPE"
+   ],
+   "note": "PE 통합 — HDPE 사출·LDPE·LLDPE 스프레드 단순평균(추정)"
+  },
+  "HDPE": {
+   "members": [
+    "HDPE(Injection)",
+    "HDPE(Film)"
+   ],
+   "note": "HDPE 사출·필름 단순평균(추정)"
+  },
+  "PP": {
+   "members": [
+    "PP(Homo)"
+   ],
+   "note": "PP 호모"
+  },
+  "PS": {
+   "members": [
+    "PS(GP)",
+    "PS(HI)"
+   ],
+   "note": "PS GP·HI 단순평균(추정)"
+  },
+  "EPS": {
+   "members": [
+    "EPS(GS)"
+   ],
+   "note": "EPS 일반"
+  },
+  "MDI": {
+   "members": [
+    "MDI(Polymeric)",
+    "MDI(Pure)"
+   ],
+   "note": "MDI 폴리메릭·퓨어 단순평균(추정)"
+  },
+  "자일렌": {
+   "members": [
+    "자일렌(솔벤트)"
+   ],
+   "note": "솔벤트 자일렌"
+  }
+ },
+ "rules": [
+  {
+   "match": "방향족\\(px\\)|방향족px|px계열|p-x계열",
+   "products": [
+    {
+     "token": "PX",
+     "share": 1.0
+    }
+   ],
+   "note": "GS칼텍스 '방향족(PX)' 공정 — PX 로"
+  },
+  {
+   "match": "nc|ncc|나프타분해|에틸렌·프로필렌|기초유분|basicchemical",
+   "products": [
+    {
+     "token": "에틸렌",
+     "share": 0.6
+    },
+    {
+     "token": "프로필렌",
+     "share": 0.4
+    }
+   ],
+   "note": "NCC 유분 — 에틸렌·프로필렌 6:4 바스켓(추정). 롯데 'NC' 는 에틸렌 환산 생산능력"
+  },
+  {
+   "match": "el|ethylene|에틸렌",
+   "products": [
+    {
+     "token": "에틸렌",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "propylene|프로필렌|pl",
+   "products": [
+    {
+     "token": "프로필렌",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "bd|butadiene|부타디엔",
+   "products": [
+    {
+     "token": "BD",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "btx",
+   "products": [
+    {
+     "token": "벤젠",
+     "share": 0.5
+    },
+    {
+     "token": "톨루엔",
+     "share": 0.2
+    },
+    {
+     "token": "자일렌",
+     "share": 0.3
+    }
+   ],
+   "note": "BTX 5:2:3 바스켓(추정)"
+  },
+  {
+   "match": "benzene|벤젠",
+   "products": [
+    {
+     "token": "벤젠",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "toluene|톨루엔",
+   "products": [
+    {
+     "token": "톨루엔",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "xylene|자일렌|mx",
+   "products": [
+    {
+     "token": "자일렌",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "px|p-x|paraxylene|파라자일렌",
+   "products": [
+    {
+     "token": "PX",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "sm|styrene|스티렌|스타이렌",
+   "products": [
+    {
+     "token": "SM",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "pe|polyethylene|폴리에틸렌",
+   "products": [
+    {
+     "token": "PE",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "hdpe|고밀도폴리에틸렌",
+   "products": [
+    {
+     "token": "HDPE",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "ldpe|저밀도폴리에틸렌",
+   "products": [
+    {
+     "token": "LDPE",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "lldpe|선형저밀도",
+   "products": [
+    {
+     "token": "LLDPE",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "pp|polypropylene|폴리프로필렌",
+   "products": [
+    {
+     "token": "PP",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "pvc|폴리염화비닐",
+   "products": [
+    {
+     "token": "PVC",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "edc",
+   "products": [
+    {
+     "token": "EDC",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "vcm",
+   "products": [
+    {
+     "token": "VCM",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "abs",
+   "products": [
+    {
+     "token": "ABS",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "ps|polystyrene|폴리스티렌",
+   "products": [
+    {
+     "token": "PS",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "eps|발포폴리스티렌",
+   "products": [
+    {
+     "token": "EPS",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "meg|eg|eo/eg|eo·eg|에틸렌글리콜|모노에틸렌글리콜",
+   "products": [
+    {
+     "token": "MEG",
+     "share": 1.0
+    }
+   ],
+   "note": "EO/EG 통합 설비는 MEG 스프레드로(추정)"
+  },
+  {
+   "match": "eo|에틸렌옥사이드",
+   "products": [
+    {
+     "token": "EO",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "pta|tpa|테레프탈산|고순도테레프탈산",
+   "products": [
+    {
+     "token": "TPA",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "pet|pet수지|petbottle|병용pet|pet\\(bottle\\)|pet칩",
+   "products": [
+    {
+     "token": "PET(Bottle)",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "phenol|페놀",
+   "products": [
+    {
+     "token": "페놀",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "acetone|아세톤",
+   "products": [
+    {
+     "token": "아세톤",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "bpa|비스페놀a|비스페놀",
+   "products": [
+    {
+     "token": "BPA",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "pc|polycarbonate|폴리카보네이트",
+   "products": [
+    {
+     "token": "PC",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "tdi",
+   "products": [
+    {
+     "token": "TDI",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "mdi",
+   "products": [
+    {
+     "token": "MDI",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "po|pod|propyleneoxide|프로필렌옥사이드|산화프로필렌",
+   "products": [
+    {
+     "token": "PO",
+     "share": 1.0
+    }
+   ],
+   "note": "SKC 'POD' = PO(+PG) 설비"
+  },
+  {
+   "match": "pg|프로필렌글리콜",
+   "products": [
+    {
+     "token": "PG",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "ppg|polyol|폴리올|폴리에테르폴리올",
+   "products": [
+    {
+     "token": "PPG",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "an|acrylonitrile|아크릴로니트릴",
+   "products": [
+    {
+     "token": "AN",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "vam|초산비닐",
+   "products": [
+    {
+     "token": "VAM",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "mma",
+   "products": [
+    {
+     "token": "MMA",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "aa|acrylicacid|아크릴산",
+   "products": [
+    {
+     "token": "아크릴산",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "ba|butylacrylate|부틸아크릴레이트",
+   "products": [
+    {
+     "token": "부틸아크릴레이트",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "caprolactam|카프로락탐|cpl",
+   "products": [
+    {
+     "token": "카프로락탐",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "pa|무수프탈산|phthalicanhydride",
+   "products": [
+    {
+     "token": "PA",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "sbr",
+   "products": [
+    {
+     "token": "SBR",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "br|폴리부타디엔|부타디엔고무",
+   "products": [
+    {
+     "token": "BR",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "nbr",
+   "products": [
+    {
+     "token": "NBR",
+     "share": 1.0
+    }
+   ]
+  },
+  {
+   "match": "latex|라텍스|nb라텍스|nblatex",
+   "products": [
+    {
+     "token": "NB라텍스",
+     "share": 0.6
+    },
+    {
+     "token": "SB라텍스",
+     "share": 0.4
+    }
+   ],
+   "note": "라텍스 — NB·SB 6:4 바스켓(추정)"
+  },
+  {
+   "match": "합성고무|syntheticrubber",
+   "products": [
+    {
+     "token": "SBR",
+     "share": 0.5
+    },
+    {
+     "token": "BR",
+     "share": 0.4
+    },
+    {
+     "token": "NBR",
+     "share": 0.1
+    }
+   ],
+   "note": "합성고무 — SBR·BR·NBR 5:4:1 바스켓(추정)"
+  },
+  {
+   "match": "합성수지",
+   "products": [
+    {
+     "token": "PS",
+     "share": 0.3
+    },
+    {
+     "token": "ABS",
+     "share": 0.5
+    },
+    {
+     "token": "EPS",
+     "share": 0.2
+    }
+   ],
+   "note": "금호석유 합성수지(PS·ABS·EPS) 3:5:2 바스켓(추정)"
+  },
+  {
+   "match": "polymer",
+   "products": [
+    {
+     "token": "PP",
+     "share": 0.6
+    },
+    {
+     "token": "PO",
+     "share": 0.4
+    }
+   ],
+   "note": "S-Oil Polymer(PP·PO) 6:4 바스켓(추정)"
+  },
+  {
+   "match": "nt계열|dnt",
+   "products": [
+    {
+     "token": "TDI",
+     "share": 1.0
+    }
+   ],
+   "note": "휴켐스 DNT 는 TDI 원료 — TDI−톨루엔 스프레드를 대용(추정, 방향만)"
+  },
+  {
+   "match": "알킬벤젠|lab|연성알킬벤젠",
+   "products": [
+    {
+     "token": "벤젠",
+     "share": 1.0
+    }
+   ],
+   "note": "알킬벤젠 — 벤젠 다운스트림(추정, 방향만)"
+  },
+  {
+   "match": "가성소다.*|caustic.*|가성소다\\(50%\\)",
+   "products": [
+    {
+     "token": "가성소다",
+     "share": 1.0
+    }
+   ],
+   "note": "가성소다 — 가격 시리즈만 있고 스프레드 없음"
+  },
+  {
+   "match": "메탄올|methanol",
+   "products": [
+    {
+     "token": "메탄올",
+     "share": 1.0
+    }
+   ],
+   "note": "가격 시리즈만"
+  },
+  {
+   "match": "mtbe",
+   "products": [
+    {
+     "token": "MTBE",
+     "share": 1.0
+    }
+   ],
+   "note": "가격 시리즈만"
+  }
+ ],
+ "unmapped_examples": [
+  "PIA",
+  "ECH",
+  "CUMENE",
+  "MIBK",
+  "EPOXY",
+  "EPDM",
+  "NA계열",
+  "인조대리석",
+  "메셀로스",
+  "전지박",
+  "Elecfoil",
+  "바이오디젤",
+  "가소제",
+  "정밀화학",
+  "건자재",
+  "스팀",
+  "전기"
+ ],
+ "company_overrides": {
+  "078930": {
+   "방향족(PX)": [
+    {
+     "token": "PX",
+     "share": 1.0,
+     "source": "GS칼텍스 PX — 정유 통합(납사 자체 조달)이라 PX-자일렌(단계) 에 자일렌(이성체)-납사(통합) 를 체인으로 합산(추정). 레지스트리에 PX-납사 통합 스프레드가 없어 두 단계를 더한다"
+    },
+    {
+     "token": "자일렌(이성체)",
+     "share": 1.0,
+     "source": "체인 하단 — 자일렌(이성체)-납사 스프레드(한국). 같은 물량이 두 단계 마진을 모두 번다는 가정(추정)"
+    }
+   ]
+  }
+ },
+ "company_overrides_note": "회사가 품목을 뭉뚱그려 공시한 경우(태광 '석유화학제품', SK이노베이션 '화학제품', 효성화학 금액 기준)의 분해는 원문에 없다. 운영자가 근거(IR 자료 등)를 적고 여기에 {종목: {품목표기: [{token, share, source}]}} 로 넣으면 '추정(운영자 입력)' 으로 반영된다. 기본은 비워 둔다. 체인 합산: 같은 품목에 share 1.0 토큰을 둘 이상 두면 그 물량이 각 단계 스프레드를 모두 버는 것으로 더한다(정유 통합 PX 등). 커버리지는 캐파 기준이라 영향 없음."
+}
