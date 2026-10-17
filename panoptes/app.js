@@ -745,7 +745,7 @@ function applyHashRoute(){
 }
 // ===== /해시 라우팅 =====
 // ===== 🏛 연준 =====
-const FED_FILES=['fed_roster.json','fed_positions.json','fed_statements.json','fed_calendar.json','fed_reaction.json','taco.json','portraits.json'];
+const FED_FILES=['fed_roster.json','fed_positions.json','fed_statements.json','fed_calendar.json','fed_reaction.json','taco.json','portraits.json','rates_regime.json'];
 let _fedHandle=null, _fedTs=0, _fedTimer=null, _fedBusy=false;
 function fedTabOn(){ const b=document.getElementById('fedview'); return !!(b && !b.hidden); }
 async function fedFetchAll(){
@@ -753,7 +753,7 @@ async function fedFetchAll(){
   const J=p=>fetch('data/fed/'+p+bust).then(r=>r.ok?r.json():null).catch(()=>null);
   const values=await Promise.all(FED_FILES.map(J));
   const data={};
-  ['roster','positions','statements','calendar','reaction','taco','photos'].forEach((key,i)=>{ if(values[i]) data[key]=values[i]; });
+  ['roster','positions','statements','calendar','reaction','taco','photos','rates'].forEach((key,i)=>{ if(values[i]) data[key]=values[i]; });
   return data; // 일시 실패한 파일은 기존 렌더 데이터로 유지
 }
 async function fedAutoRefresh(){
