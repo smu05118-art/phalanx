@@ -50,6 +50,21 @@ push를 감지해 `tools/inject_ui_patch.py`로 재주입한다(멱등 — 훅�
 - 전체 끄기: `ui-patch-inject.yml` 삭제 + patch.css/patch.js를 빈 파일로 (다음 크론이 훅 없는 index.html을 밀면 원상복구).
 - 일부 끄기: patch.js에서 해당 `safe('모듈명', ...)` 블록 삭제.
 
+## manifest 필드 현황 — 국가 큐브 샤딩 (2026-09-21)
+
+모듈 8(`safe('country-lazy', …)`)이 `region.cdir`·`region.csets` 두 필드를 새로 읽는다.
+빌더가 아직 안 넣었으면 기존 `cfile` 경로로 폴백하므로 **먼저 배포돼 있어도 안전하다.**
+
+| manifest | 모듈 8 동작 |
+|---|---|
+| 없음 | 폴백 — 동작 변화 없음 |
+| `topc`만 | 상위 수출국 칩을 사전계산값으로 |
+| `cfile` | 국가뷰 진입 시 리전 큐브 통째로 지연 로드 |
+| `cdir` + `csets` | 국가뷰 진입 시 **현재 core_set 하나만** 지연 로드 |
+
+`cdir`이 있으면 `cfile`보다 먼저 탄다. 샤드 생성·계약 상세는 `codex_tasks/T9_country_set_shard.md`,
+참조 구현은 `tools/split_country_sets.py`.
+
 ## manifest 필드 현황 (감사 P0-06 · P1-03 · P1-08)
 
 2026-08-28 빌더가 `source_short`·`n`·전역 `built` 주입 완료(커밋 c2b901b) — patch.js는 이 값을 우선 사용한다
