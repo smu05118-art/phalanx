@@ -1382,8 +1382,8 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
    ============================================================ */
 (function(){
   'use strict';
-  if(window.__PHX_MEM_WEEKLY_LOADER__) return; window.__PHX_MEM_WEEKLY_LOADER__='2026-09-21.1';
-  var SRC='ui/memory_weekly.js?v=20260921-1';
+  if(window.__PHX_MEM_WEEKLY_LOADER__) return; window.__PHX_MEM_WEEKLY_LOADER__='2026-09-21.2';
+  var SRC='ui/memory_weekly.js?v=20260921-2';
   var NOTICE_ID='phxmw-loader-notice';
   var ANCHOR_SEL='section[aria-label="메모리 소매가격 지수"]';
   var loading=false, observer=null, watchTimer=null;

@@ -3875,11 +3875,11 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   // ── 메모리 스팟 보드 (PS) ──
   const spot=M.spot||{}; const sit=spot.items||{};
   const spOrder=['DDR5 16Gb','DDR4 16Gb','DDR4 8Gb','DDR3 4Gb','NAND 512Gb TLC','NAND 256Gb TLC','NAND 128Gb TLC'];
-  const spCards=spOrder.filter(n=>sit[n]).map(n=>{const it=sit[n];const ks=Object.keys(it.series||{}).sort();const vals=ks.map(k=>it.series[k]);
+  const spCards=spOrder.filter(n=>sit[n]).map(n=>{const it=sit[n];const verified=it.quote_series||{};const ks=Object.keys(verified).sort();const vals=ks.map(k=>verified[k]);
     let sp='';if(vals.length>=2){sp=vizPhalanxSpark(vals,120,30,it.category==='NAND'?'#a78bfa':'#5b8def',{unit:'USD/chip'});}
     const c=it.category==='NAND'?'#a78bfa':'#5b8def';
-    return `<div class="bcard" style="min-width:150px;border-top:2px solid ${c}"><div class="bt">${it.category}</div><div class="bn" style="font-size:13px">${n}</div><div class="mono" style="font-size:19px;font-weight:750;margin-top:2px">$${it.last}</div><div style="margin-top:4px">${sp||'<span class="bt">시계열 축적중</span>'}</div></div>`;}).join('');
-  const spotBox=spCards?`<p style="font-size:13px;font-weight:700;margin:18px 0 4px">가격·공급 (PS) — 메모리 스팟 보드 <span style="color:#8a90a8;font-weight:500;font-size:11px">DRAMeXchange 일간 · USD/chip · ${spot.asof||''}</span></p>
+    return `<div class="bcard" style="min-width:150px;border-top:2px solid ${c}"><div class="bt">${it.category}</div><div class="bn" style="font-size:13px">${n}</div><div class="mono" style="font-size:19px;font-weight:750;margin-top:2px">$${it.last}</div><div class="bt">${it.published_at?'공표 '+it.published_at.replace('T',' '):'기존 수집값 · 공표시각 미확인'}</div><div style="margin-top:4px">${sp||'<span class="bt">원문 날짜가 확인된 시계열 축적중</span>'}</div>${ks.length?`<div class="bt">차트: 원문 관측 순서 · 날짜 간격 미반영<br>${ks[0]} ~ ${ks[ks.length-1]}</div>`:''}</div>`;}).join('');
+  const spotBox=spCards?`<p style="font-size:13px;font-weight:700;margin:18px 0 4px">가격·공급 (PS) — 메모리 스팟 보드 <span style="color:#8a90a8;font-weight:500;font-size:11px">DRAMeXchange 세션평균 · USD · 품목별 공표일</span></p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">${spCards}</div>`:'';
   // ── 전방 수요 (DI): 빅테크 CAPEX + 클라우드 RPO ──
   const capex=M.capex||{}; const rpo=M.rpo||{};

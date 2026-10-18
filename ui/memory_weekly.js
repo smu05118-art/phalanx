@@ -12,7 +12,7 @@
    ============================================================ */
 (function(){
 'use strict';
-var VERSION='2026-09-21.1';
+var VERSION='2026-09-21.2';
 if(window.PHXMemoryWeekly&&window.PHXMemoryWeekly.version===VERSION) return;
 
 var EXPECTED_DATE='2026-09-21';
@@ -166,8 +166,10 @@ function secHead(sec,labels,extraBadge){
 }
 function renderReconciliation(rec){
   if(!rec||!arr(rec.differences).length) return '';
-  var rows=rec.differences.map(function(r){return '<tr><td>'+esc(r.product)+'</td><td>'+esc(r.observed)+'</td><td class="num">'+fmtNum(r.attachment_price)+'</td><td class="num">'+fmtNum(r.existing_price)+'</td></tr>';}).join('');
-  return '<details class="phxmw-reconciliation"><summary>기존 데이터와 값 차이 '+arr(rec.differences).length+'건 · 원인 미확인</summary><p class="phxmw-note">'+esc(rec.note)+'</p><div class="phxmw-tw"><table><thead><tr><th>품목</th><th>관측일</th><th>첨부값 ($)</th><th>기존값 ($/chip)</th></tr></thead><tbody>'+rows+'</tbody></table></div><p class="phxmw-note">대조일 '+esc(rec.checked_date)+' · '+esc(rec.existing_source)+'</p></details>';
+  var labels={different_quote_session:'공표 시각 차이 · 유지',corrected_observation_date:'관측일 오류 · 정정'};
+  var rows=rec.differences.map(function(r){return '<tr><td>'+esc(r.product)+'</td><td>'+esc(r.observed)+'</td><td class="num">'+fmtNum(r.attachment_price)+'</td><td class="num">'+fmtNum(r.existing_price)+'</td><td>'+esc(labels[r.status]||'확인 중')+'<br><span class="num">'+fmtNum(r.current_price)+'</span></td></tr>';}).join('');
+  var notes=rec.differences.map(function(r){return '<p><b>'+esc(r.product)+'</b> · '+esc(r.reason)+'</p><p class="phxmw-note">'+arr(r.evidence).map(function(s){return link(s.url,s.label);}).join(' · ')+'</p>';}).join('');
+  return '<details class="phxmw-reconciliation"><summary>가격 차이 '+arr(rec.differences).length+'건 확인 · 시각 차이 1건 · 날짜 정정 1건</summary><p class="phxmw-note">'+esc(rec.note)+'</p><div class="phxmw-tw"><table><thead><tr><th>품목</th><th>대조 대상일</th><th>첨부값 ($)</th><th>대조 전 기존값 ($)</th><th>처리 · 해당일 값 ($)</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+notes+'<p class="phxmw-note">대조일 '+esc(rec.checked_date)+' · '+esc(rec.existing_source)+'</p></details>';
 }
 function renderSpot(sec,labels){
   var items=arr(sec.items); var vin=obj(sec.vintage);
@@ -390,7 +392,7 @@ function render(root,data){
   var head='<div class="phxmw-head"><p class="phxmw-title">📚 주간 리서치 기록 — '+esc(data.title||'메모리 주간 업데이트')+'</p>'
     +'<span class="phxmw-date" aria-label="발행일 '+esc(data.publication_date)+'">'+esc(data.publication_date)+' 발행</span>'
     +'<span class="phxmw-hist">과거 기록 · 발행 시점 값 그대로 · 현재 가격 아님</span></div>'
-    +'<p class="phxmw-sub">출처 표기 '+esc(data.publisher_as_labelled||'—')+' · 이용자 제공 스크린샷 전사 · 1차 출처가 확인된 항목만 링크</p>';
+    +'<p class="phxmw-sub">출처 표기 '+esc(data.publisher_as_labelled||'—')+' · 이용자 제공 스크린샷 전사 · 원문을 확인한 항목만 링크</p>';
   if(!tabs.length){ root.innerHTML=head+'<div class="phxmw-msg">표시할 섹션이 없습니다.</div>'; return; }
   if(!tabs.some(function(t){ return t.id===state.tab; })) state.tab=tabs[0].id;
   var tl='<div class="phxmw-tabs" role="tablist" aria-label="주간 리서치 기록 섹션">'+tabs.map(function(t){

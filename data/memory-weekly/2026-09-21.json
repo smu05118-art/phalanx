@@ -21,8 +21,8 @@
   },
   "generated_from": {
     "canonical_schema": "phx.memory_weekly.canonical/1",
-    "canonical_sha256": "ef928fff32e7362f542ca6aa43dbc41c1a1bf4fea4ae2d7b0d608c4ebb44cbf6",
-    "generator": "mem_weekly_build.py/1.0.0"
+    "canonical_sha256": "eb79658cd7edd187f0f3045e74c2d89fd20786068d10f7f4253632a7cfcd7f44",
+    "generator": "mem_weekly_build.py/1.0.1"
   },
   "omissions": [
     "첨부 1 인덱스 차트·주가선, 첨부 2 RDIMM 시계열, 첨부 3 산점도 좌표, 첨부 4 Micron 추정 좌표·환율 일별 시계열은 픽셀 판독이 필요하거나 추정값이라 전사하지 않음",
@@ -466,21 +466,41 @@
         "differences": [
           {
             "attachment_price": 56.417,
+            "current_price": 56.933,
+            "evidence": [
+              {
+                "label": "財訊 장중 보도 · 2026-09-21 11:21 (대만)",
+                "url": "https://ww2.money-link.com.tw/RealtimeNews/NewsContent.aspx?PU=0010&SN=2423434002",
+                "url_status": "verified_secondary"
+              }
+            ],
             "existing_price": 56.933,
             "existing_unit": "USD/chip",
             "observed": "2026-09-21",
-            "product": "DDR5 16Gb"
+            "product": "DDR5 16Gb",
+            "reason": "첨부 $56.417은 9월 21일 11:21 대만 장중 보도값입니다. 기존 $56.933은 당시 저장 기록에 18:10 GMT+8 공표 세션평균으로 남아 있습니다. 공표 시각이 달라 기존값을 유지합니다. 저녁 원문 HTML 보존본은 없어 당시 저장 기록으로 대조했습니다.",
+            "status": "different_quote_session"
           },
           {
             "attachment_price": 20.083,
+            "current_price": 20.083,
+            "evidence": [
+              {
+                "label": "TrendForce · NAND 9월 14일 관측값 $20.083",
+                "url": "https://www.trendforce.com/news/2026/09/16/insights-memory-spot-price-update-dram-spot-cools-as-ddr5-inquiries-slow-2gx8-ddr4-prices-retreat/",
+                "url_status": "verified_primary"
+              }
+            ],
             "existing_price": 20.146,
             "existing_unit": "USD/chip",
             "observed": "2026-09-14",
-            "product": "NAND 512Gb TLC"
+            "product": "NAND 512Gb TLC",
+            "reason": "기존 $20.146은 NAND 표의 9월 7일 가격입니다. 수집기가 DRAM 표 날짜 또는 수집일을 전체 품목에 붙여 9월 14일 값으로 저장했습니다. 공식 9월 14일 가격 $20.083으로 정정했습니다.",
+            "status": "corrected_observation_date"
           }
         ],
         "existing_source": "기존 메모리 일간 데이터",
-        "note": "같은 날짜·품목의 수치가 다릅니다. 집계 기준 차이 여부는 미확인이며 첨부값과 기존 이력을 각각 보존합니다."
+        "note": "원문 대조: DDR5는 같은 날 공표 시각 차이로 두 값을 보존합니다. NAND는 DRAM 날짜가 NAND 표에 잘못 적용된 오류를 바로잡았습니다. 첨부 당시 가격 기록은 유지합니다."
       },
       "source": {
         "attachment": "attachment-1",
