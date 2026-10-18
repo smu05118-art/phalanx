@@ -565,6 +565,7 @@ function ncLastIdx(reg){ // 지역 샤드 전체에서 마지막 공표월 인�
 function ncQMonths(qs){ const y=+qs.slice(0,4), q=+qs.slice(5);
   return [1,2,3].map(k=>monthIdx[y+'-'+String(3*(q-1)+k).padStart(2,'0')]).filter(i=>i!=null); }
 function ncFix(n){ // n: M.nowcast 엔트리 → {cyoy,predyoy,avail,partial,corrected,checked}
+  if((P.companies||[]).some(c=>c.id===n.id&&customsCompany(c)))return {cyoy:null,predyoy:null,avail:0,partial:false,corrected:false,checked:true,skip_reason:'신규 통관 결측 보간·나우캐스트 보류'};
   const key=n.id+':'+(window._ncForceLastIdx!=null?window._ncForceLastIdx:'');
   if(_NCFIX[key]) return _NCFIX[key];
   const out={cyoy:n.cyoy, predyoy:n.predyoy, avail:3, partial:false, corrected:false, checked:false};
@@ -614,7 +615,7 @@ function ncFix(n){ // n: M.nowcast 엔트리 → {cyoy,predyoy,avail,partial,cor
   } else { out.cyoy=null; out.predyoy=null; }
   return res(out);
 }
-function ncBadge(co){ const n=nowcastOf(co); if(!n||co.is_hub) return '';
+function ncBadge(co){ if(customsCompany(co))return ''; const n=nowcastOf(co); if(!n||co.is_hub) return '';
   if(n.actionable!==true||n.rank_eligible!==true){
     const why=(n.hold_reason||'검증 보류').replace(/[<>]/g,'');
     return `<div title="${why}"><span class="chg" style="color:#8a90a8">검증 보류</span><span class="clab" style="color:#8a90a8">🔮 ${n.tgtq||'전망'} · 비실행 전망</span></div>`;
@@ -889,11 +890,70 @@ document.addEventListener('click',e=>{
 },true);
 
 // ---------- hub extra metrics (weight / unit price / top countries) ----------
+// R03: opt-in customs helpers. Legacy arrays keep their existing zero-fill rules.
+function customsPort(pc){return ['UKN','FIN','FIC','KRK','KRM'].includes(pc)||pc.startsWith('UK-');}
+function customsCompany(co){return !!(co.customs_missingness||(co.ports||[]).some(customsPort));}
+function customsEmpty(n=MONTHS.length){return {v:Array(n).fill(null),w:Array(n).fill(null),observed:Array(n).fill(false),weight_complete:Array(n).fill(false)};}
+function customsSum(parts,n=MONTHS.length){
+  const out=customsEmpty(n);
+  for(let i=0;i<n;i++){
+    const active=parts.filter(s=>s&&s.v[i]!=null&&(!s.observed||s.observed[i]));
+    if(!active.length)continue;
+    out.v[i]=active.reduce((a,s)=>a+s.v[i],0); out.observed[i]=true;
+    out.weight_complete[i]=active.length===parts.length&&active.every(s=>s.w[i]!=null&&(!s.weight_complete||s.weight_complete[i]));
+    if(out.weight_complete[i])out.w[i]=active.reduce((a,s)=>a+s.w[i],0);
+  }
+  return out;
+}
+function customsLevel(s){
+  if(ST.gran==='M')return customsSum([s]);
+  const pi=gInfo(),out=customsEmpty(pi.n);
+  for(let p=0;p<pi.n;p++){
+    const parts=[];
+    MONTHS.forEach((_,i)=>{if(pi.m2p[i]===p)parts.push({v:[s.v[i]],w:[s.w[i]],observed:[s.observed[i]],weight_complete:[s.weight_complete[i]]});});
+    const one=customsSum(parts,1);
+    ['v','w','observed','weight_complete'].forEach(k=>out[k][p]=one[k][0]);
+    if(pi.cnt[p]<pi.full){out.w[p]=null;out.weight_complete[p]=false;}
+  }
+  return out;
+}
+function customsPrice(s,i,k=CUR[ST.cur].mult){return s.observed[i]&&s.weight_complete[i]&&s.v[i]!=null&&s.w[i]>0?s.v[i]*k/s.w[i]:null;}
+function customsLast(s){for(let i=s.v.length-1;i>=0;i--)if(s.observed[i])return i;return s.v.length-1;}
+function customsStatus(s,i){
+  if(!s.observed[i])return '관측 없음';
+  if(!s.weight_complete[i])return '중량/관측 결측 · 단가 보류';
+  return s.w[i]>0?'':'중량 0 · 단가 보류';
+}
+function customsNote(s){
+  if(!s||!s.observed)return '';
+  const missing=s.observed.filter(x=>!x).length,held=s.observed.filter((x,i)=>x&&!s.weight_complete[i]).length;
+  return missing||held?`<div class="split-note">미관측 ${missing}개월 · 중량/관측 결측 ${held}개월 · 해당 단가 보류</div>`:'';
+}
+function customsCountrySeries(cd,pc,c){return {v:((cd.loc||{})[pc]||{})[c]||[],w:((cd.locw||{})[pc]||{})[c]||[],observed:((cd.observed||{})[pc]||{})[c]||[],weight_complete:((cd.weight_complete||{})[pc]||{})[c]||[]};}
+function customsCountryLoc(cd,ports){
+  const out={order:cd.order||[],loc:{},locw:{},observed:{},weight_complete:{}};
+  out.order.forEach(c=>{const s=customsSum(ports.map(pc=>customsCountrySeries(cd,pc,c)));
+    out.loc[c]=s.v;out.locw[c]=s.w;out.observed[c]=s.observed;out.weight_complete[c]=s.weight_complete;});
+  return out;
+}
+function customsCountryLevel(cd,c){return customsLevel({v:cd.loc[c]||[],w:cd.locw[c]||[],observed:cd.observed[c]||[],weight_complete:cd.weight_complete[c]||[]});}
 function coFlowSum(co){ const flow=co.rev_flow||'exp';
+  if(customsCompany(co)&&co.filtered&&!(P.cdata||{})[co.id])return co.customs_series||customsEmpty();
   if(co.filtered) return fSum(co, co.main_ports, flow);
+  if(customsCompany(co)){
+    const det=P.detail[co.core_set];
+    return det?customsSum(co.main_ports.map(pc=>(det[pc]||{})[flow])):(co.customs_series||customsEmpty());
+  }
   const det=P.detail[co.core_set]||{}, n=MONTHS.length, V=new Array(n).fill(0), W=new Array(n).fill(0);
   co.main_ports.forEach(pc=>{const s=det[pc]; if(!s)return; const v=s[flow].v,w=s[flow].w; for(let i=0;i<n;i++){V[i]+=v[i];W[i]+=w[i];}}); return {v:V,w:W}; }
 function coTopC(co,topn){
+  if(customsCompany(co)){
+    const src=(co.rev_flow==='imp'?(P.country_i||{}):(P.country||{}))[co.core_set]||{};
+    const cd=co.filtered?fCountryLoc(co,'ALL'):customsCountryLoc(src,co.main_ports),ord=cd.order;
+    let li=-1;for(let i=MONTHS.length-1;i>=0;i--)if(ord.some(c=>cd.loc[c][i]!=null)){li=i;break;}
+    const available=ord.filter(c=>li>=0&&cd.loc[c][li]!=null),total=available.reduce((s,c)=>s+cd.loc[c][li],0);
+    return {idx:li,top:total>0?available.map(c=>({name:c,share:cd.loc[c][li]/total,col:CCOL[ord.indexOf(c)%CCOL.length]})).sort((a,b)=>b.share-a.share).slice(0,topn):[]};
+  }
   if(co.country_groups&&co.country_groups.length){ const fc=fCountryLoc(co,'ALL'), loc=fc.loc, n=MONTHS.length; let li=-1;
     for(let i=n-1;i>=0&&li<0;i--){let s=0;co.countries.forEach(c=>s+=loc[c]?loc[c][i]||0:0);if(s>0)li=i;}
     if(li<0)return {top:[],idx:-1,grouped:true};
@@ -915,21 +975,25 @@ function coTopC(co,topn){
   const tot=Object.values(agg).reduce((a,b)=>a+b,0)||1;
   return {idx:li, top:ord.map((c,i)=>({name:c,share:agg[c]/tot,col:CCOL[i%CCOL.length]})).sort((a,b)=>b.share-a.share).slice(0,topn)}; }
 function hubMetricsHtml(co){
-  let w,u,wyv,uyv; const hm=co.hubm;
-  if(hm){ w=hm.w; u=(hm.w>0?hm.v*CUR[ST.cur].mult/hm.w:null); wyv=hm.wy; uyv=hm.uy; } // 빌드타임 사전계산 — detail 분리 후에도 카드 유지
+  let w,u,wyv,uyv,status=''; const hm=co.hubm;
+  if(customsCompany(co)){
+    const fs=coFlowSum(co),li=customsLast(fs),ur=fs.v.map((_,i)=>customsPrice(fs,i,1));
+    w=fs.w[li];u=customsPrice(fs,li);wyv=yoyArr(fs.w)[li];uyv=yoyArr(ur)[li];status=customsStatus(fs,li);
+  }
+  else if(hm){ w=hm.w; u=(hm.w>0?hm.v*CUR[ST.cur].mult/hm.w:null); wyv=hm.wy; uyv=hm.uy; } // 빌드타임 사전계산 — detail 분리 후에도 카드 유지
   else{ const fs=coFlowSum(co), li=lastIdx(fs.v); w=fs.w[li]; u=(w>0?fs.v[li]*CUR[ST.cur].mult/w:null);
     const wy=yoyArr(fs.w), ur=fs.v.map((x,i)=>fs.w[i]>0?x/fs.w[i]:null), uy=yoyArr(ur); wyv=wy[li]; uyv=uy[li]; }
   const tc=coTopC(co,4), flowLab=co.rev_flow==='imp'?'수입국':'수출국';
   return `<div class="hub-metrics">
     <div class="hm"><span class="hmv">${fmtKg(w)}</span>${chip(wyv)}<span class="hml">중량</span></div>
-    <div class="hm"><span class="hmv">${u!=null?fmtUnit(u):'–'}</span>${chip(uyv)}<span class="hml">단가 ${CUR[ST.cur].sym}/kg</span></div>
+    <div class="hm"><span class="hmv">${u!=null?fmtUnit(u):(status||'–')}</span>${chip(uyv)}<span class="hml">단가 ${CUR[ST.cur].sym}/kg</span></div>
     <div class="hm-c"><span class="hml">${co.country_groups&&co.country_groups.length?"수요처 추정":flowLab+" TOP"}</span>${tc.top.map(t=>`<span class="cc"><i style="background:${t.col}"></i>${t.name} ${(t.share*100).toFixed(0)}%</span>`).join('')}</div>
   </div>`;
 }
 
 // big summary panel for hub detail view (value / weight / unit + country share bar)
 function hubPanel(co){
-  const fs=coFlowSum(co), li=lastIdx(fs.v), val=fs.v[li], w=fs.w[li], u=(w>0?fs.v[li]*CUR[ST.cur].mult/w:null);
+  const fs=coFlowSum(co), li=fs.observed?customsLast(fs):lastIdx(fs.v), val=fs.v[li], w=fs.w[li], u=fs.observed?customsPrice(fs,li):(w>0?fs.v[li]*CUR[ST.cur].mult/w:null);
   const vy=yoyArr(fs.v)[li], wy=yoyArr(fs.w)[li], ur=fs.v.map((x,i)=>fs.w[i]>0?x/fs.w[i]:null), uy=yoyArr(ur)[li];
   const tc=coTopC(co,6), flowLab=co.rev_flow==='imp'?'수입':'수출';
   const bar=tc.top.map(t=>`<div class="sb" style="width:${(t.share*100).toFixed(1)}%;background:${t.col}" title="${t.name} ${(t.share*100).toFixed(1)}%"></div>`).join('');
@@ -938,7 +1002,7 @@ function hubPanel(co){
     <div class="hp-row">
       <div class="hp-m"><div class="hp-v">${fmtV(val)}</div>${chip(vy)}<div class="hp-l">${flowLab}액 · ${mlabel(MONTHS[li])}</div></div>
       <div class="hp-m"><div class="hp-v">${fmtKg(w)}</div>${chip(wy)}<div class="hp-l">중량</div></div>
-      <div class="hp-m"><div class="hp-v">${u!=null?fmtUnit(u):'–'}</div>${chip(uy)}<div class="hp-l">단가 ${CUR[ST.cur].sym}/kg</div></div>
+      <div class="hp-m"><div class="hp-v">${u!=null?fmtUnit(u):(fs.observed?customsStatus(fs,li):'–')}</div>${chip(uy)}<div class="hp-l">단가 ${CUR[ST.cur].sym}/kg</div></div>
       <div class="hp-c"><div class="hp-l">${co.country_groups&&co.country_groups.length?"수요처(HDD 메이커) 추정 비중":flowLab+"국 비중"} (최신)</div><div class="sbar">${bar}</div><div class="hp-leg">${leg}</div></div>
     </div>
   </div>`;
@@ -953,7 +1017,7 @@ function freshBadge(m){
   return `<span class="badge ${stale?'b-stale':'b-lm'}" title="관측 ${m.n_points}pt · 최종 ${m.last_month}${stale?' · 3개월+ 중단':''}">${m.last_month}${stale?' ⚠️STALE':''}</span>`;
 }
 function companyCard(co){
-  const rev=co.revenue, yo=yoyArr(rev), mo=momArr(rev), L=lastIdx(rev);
+  const rev=co.revenue, yo=yoyArr(rev), mo=momArr(rev), L=co.customs_series?customsLast(co.customs_series):lastIdx(rev);
   const _kre=co.kre&&co.kre.hs?co.kre:null, _pi=_kre?MONTHS.indexOf(_kre.prov):-1;
   const _hl=_kre&&_pi>=0?(_kre.partial&&_pi>0?_pi-1:_pi):L;
   const _flowLabel=/^TW/.test(co.region||'')?'MOPS 월매출':(co.rev_flow==='imp'?'Import':'Export')+' proxy';
@@ -978,7 +1042,7 @@ function companyCard(co){
       ${(ci=>ci?`<div><span class="chg" style="color:${corrCol(ci.r)}">${ci.r>=0?'+':''}${ci.r.toFixed(2)}</span><span class="clab" style="color:#c98a8a">Correl ${ci.n}Q${ci.seg?'·세그':''}</span></div>`:'')(corrInfo(co))}
       ${ncBadge(co)}
     </div>
-    ${(co.is_hub||co.filtered)?hubMetricsHtml(co):''}
+    ${(co.is_hub||co.filtered)?hubMetricsHtml(co):''}${customsNote(co.customs_series)}
     ${co.note?`<div class="co-note">${co.note}</div>`:''}
     <div class="legend">
       <span><i style="border-color:var(--a4);border-top-style:dashed"></i>YoY%</span>
@@ -1075,8 +1139,8 @@ function renderCompanyCharts(div,co){
   charts[co.id+'_m']=new Chart(c1,vizPhalanxConfig({data:{labels:MONTHS,datasets:[
       {type:'bar',label:'Revenue',data:_barC,yAxisID:'y',backgroundColor:co.color+'66',borderColor:co.color,borderWidth:0,order:3,barPercentage:1,categoryPercentage:.92},
       ...(_prov?[{type:'line',label:'잠정',data:_prov,yAxisID:'y',borderColor:'#ffbe2e',borderWidth:1.5,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#ffbe2e',pointBorderColor:'#ffbe2e',tension:0,order:0,spanGaps:false}]:[]),
-      {type:'line',label:'YoY%',data:yo,yAxisID:'y1',borderColor:'#ffbe2e',borderWidth:1.3,borderDash:[5,4],pointRadius:0,tension:.25,order:1,spanGaps:true},
-      {type:'line',label:'MoM%',data:mo,yAxisID:'y1',borderColor:'#c45cff',borderWidth:1.2,borderDash:[2,3],pointRadius:0,tension:.25,order:2,spanGaps:true},
+      {type:'line',label:'YoY%',data:yo,yAxisID:'y1',borderColor:'#ffbe2e',borderWidth:1.3,borderDash:[5,4],pointRadius:0,tension:.25,order:1,spanGaps:!customsCompany(co)},
+      {type:'line',label:'MoM%',data:mo,yAxisID:'y1',borderColor:'#c45cff',borderWidth:1.2,borderDash:[2,3],pointRadius:0,tension:.25,order:2,spanGaps:!customsCompany(co)},
     ]},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const d=c.dataset; return d.yAxisID==='y1'? d.label+': '+fmtP(c.parsed.y) : d.label+': '+fmtV(c.parsed.y/CUR[ST.cur].mult);}}}},
       scales:{x:{ticks:{color:TK.tick,maxTicksLimit:8,font:{size:8}},grid:{display:false}},
@@ -1089,7 +1153,7 @@ function renderCompanyCharts(div,co){
   const ds=M.years.map(y=>{
     const arr=[]; for(let m=1;m<=12;m++){ const key=y+'-'+String(m).padStart(2,'0'); const i=monthIdx[key]; arr.push(i==null?null:yb[i]); }
     const col=YEAR_COLORS[y]||'#888';
-    return {type:'line',label:"'"+String(y).slice(2),data:arr,borderColor:col,backgroundColor:col,borderWidth:1.8,pointRadius:2.2,pointHoverRadius:4,tension:.35,spanGaps:true};
+    return {type:'line',label:"'"+String(y).slice(2),data:arr,borderColor:col,backgroundColor:col,borderWidth:1.8,pointRadius:2.2,pointHoverRadius:4,tension:.35,spanGaps:!customsCompany(co)};
   });
   charts[co.id+'_y']=new Chart(c2,vizPhalanxConfig({type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:true,labels:{color:TK.leg,boxWidth:10,font:{size:9},usePointStyle:true,pointStyle:'circle'}},
@@ -1123,15 +1187,23 @@ function compObj(){ return P.companies.find(c=>c.id===ST.company)||P.companies[0
 function compPorts(){ return compObj().ports; }
 function setKey(){ const co=compObj(); return ST.mode==='broad'? co.broad_set : co.core_set; }
 function sumDetail(sk, ports){ const n=MONTHS.length, z=()=>new Array(n).fill(0), det=P.detail[sk]||{};
+  if(ports.some(customsPort))return {exp:customsSum(ports.map(pc=>(det[pc]||{}).exp)),imp:customsSum(ports.map(pc=>(det[pc]||{}).imp))};
   const out={exp:{v:z(),w:z()},imp:{v:z(),w:z()}};
   ports.forEach(pc=>{ const s=det[pc]; if(!s)return; ['exp','imp'].forEach(f=>['v','w'].forEach(k=>{ const a=s[f][k]; for(let i=0;i<n;i++) out[f][k][i]+=a[i]; })); });
   return out; }
 // ---- country-filtered companies (HS × customs × country cube in P.cdata[id]) ----
 function isF(co){ co=co||compObj(); return !!co.filtered; }
 function fSum(co, ports, flow){ const bpc=(P.cdata[co.id]||{}).bpc||{}, n=MONTHS.length, V=new Array(n).fill(0), W=new Array(n).fill(0);
+  if(ports.some(customsPort))return customsSum(ports.flatMap(pc=>co.countries.map(c=>((bpc[pc]||{})[c]||{})[flow])));
   ports.forEach(pc=>{const pp=bpc[pc]; if(!pp)return; co.countries.forEach(c=>{const s=pp[c]; if(!s)return; const v=s[flow].v,w=s[flow].w; for(let i=0;i<n;i++){V[i]+=v[i];W[i]+=w[i];}});}); return {v:V,w:W}; }
 function fPortSeries(co, code){ const ports=code==='ALL'?co.ports:[code]; return {exp:fSum(co,ports,'exp'), imp:fSum(co,ports,'imp')}; }
 function fCountryLoc(co, code){ const bpc=(P.cdata[co.id]||{}).bpc||{}, n=MONTHS.length, flow=co.rev_flow||'exp', ports=code==='ALL'?co.ports:[code], loc={}, locw={};
+  if(ports.some(customsPort)){
+    const observed={},weight_complete={};
+    co.countries.forEach(c=>{const s=customsSum(ports.map(pc=>((bpc[pc]||{})[c]||{})[flow]));loc[c]=s.v;locw[c]=s.w;observed[c]=s.observed;weight_complete[c]=s.weight_complete;});
+    const order=co.countries.slice().sort((a,b)=>loc[b].reduce((x,y)=>x+(y||0),0)-loc[a].reduce((x,y)=>x+(y||0),0));
+    return {order,loc,locw,observed,weight_complete};
+  }
   co.countries.forEach(c=>{loc[c]=new Array(n).fill(0);locw[c]=new Array(n).fill(0);});
   ports.forEach(pc=>{const pp=bpc[pc]; if(!pp)return; co.countries.forEach(c=>{const s=pp[c]; if(!s)return; const v=s[flow].v,w=s[flow].w; for(let i=0;i<n;i++){loc[c][i]+=v[i];locw[c][i]+=w[i];}});});
   const order=co.countries.slice().sort((a,b)=>loc[b].reduce((x,y)=>x+y,0)-loc[a].reduce((x,y)=>x+y,0));
@@ -1139,17 +1211,23 @@ function fCountryLoc(co, code){ const bpc=(P.cdata[co.id]||{}).bpc||{}, n=MONTHS
 
 // ---------- detail (per-port): Value(¥) / Weight(kg) / Unit(¥/kg) x Level / YoY / 3p YoY ----------
 function dseries(code){ const co=compObj();
+  if(customsCompany(co)){
+    if(isF(co))return fPortSeries(co,code);
+    const ports=(co.total_ports&&co.total_ports.length)?co.total_ports:compPorts();
+    return code==='ALL'?sumDetail(setKey(),ports):((P.detail[setKey()]||{})[code]||{exp:customsEmpty(),imp:customsEmpty()});
+  }
   if(isF(co)){ const s=fPortSeries(co,code); return {exp:{v:s.exp.v,w:s.exp.w}, imp:{v:s.imp.v,w:s.imp.w}}; }
   const det=P.detail[setKey()]||{}; const allPorts=(co&&co.total_ports&&co.total_ports.length)?co.total_ports:compPorts(); const s = code==='ALL' ? sumDetail(setKey(), allPorts) : (det[code]||{exp:{v:[],w:[]},imp:{v:[],w:[]}}); return {exp:{v:s.exp.v,w:s.exp.w}, imp:{v:s.imp.v,w:s.imp.w}}; }
 const DCOL={exp:{value:'#3d8bfd',weight:'#ffbe2e',unit:'#c45cff'},imp:{value:'#00e6b8',weight:'#ff8a3d',unit:'#7da0ff'}};
-function unitDispG(v,w){ const av=aggLevel(v),aw=aggLevel(w),k=CUR[ST.cur].mult; return av.map((x,i)=>aw[i]>0?x*k/aw[i]:null); }
-function unitRatioG(v,w){ const av=aggLevel(v),aw=aggLevel(w); return av.map((x,i)=>aw[i]>0?x/aw[i]:null); }
+function unitDispG(v,w,meta){ if(meta&&meta.observed){const s=customsLevel(meta);return s.v.map((_,i)=>customsPrice(s,i));} const av=aggLevel(v),aw=aggLevel(w),k=CUR[ST.cur].mult; return av.map((x,i)=>aw[i]>0?x*k/aw[i]:null); }
+function unitRatioG(v,w,meta){ if(meta&&meta.observed){const s=customsLevel(meta);return s.v.map((_,i)=>customsPrice(s,i,1));} const av=aggLevel(v),aw=aggLevel(w); return av.map((x,i)=>aw[i]>0?x/aw[i]:null); }
 function cflow(){ return compObj().rev_flow || 'exp'; }
 function countrySrc(){ const sk=setKey(); return (cflow()==='imp' && (P.country_i||{})[sk]) ? P.country_i[sk] : (P.country||{})[sk]; }
 function flowKLabel(){ return cflow()==='imp'?'수입국별':'수출국별'; }
 function countryLoc(code){
   const co=compObj(); if(isF(co)) return fCountryLoc(co, code);
   const cd=countrySrc(); if(!cd||!cd.loc) return {order:null,loc:{},locw:{}};
+  if(cd.observed&&customsCompany(co))return customsCountryLoc(cd,code==='ALL'?compPorts():[code]);
   if(code!=='ALL') return {order:cd.order, loc:cd.loc[code]||{}, locw:(cd.locw||{})[code]||{}};
   const n=MONTHS.length, lv={}, lw={}; cd.order.forEach(c=>{lv[c]=new Array(n).fill(0);lw[c]=new Array(n).fill(0);});
   compPorts().forEach(pc=>{ const l=cd.loc[pc], w=(cd.locw||{})[pc];
@@ -1159,23 +1237,23 @@ function countryLoc(code){
 }
 // country value (¥) stacked-BAR datasets — used by the in-detail 수출국별 overlay (2026-08 영역→막대 전환)
 function countryDatasets(code){
-  const {order,loc}=countryLoc(code); if(!order) return [];
+  const cd=countryLoc(code),{order,loc}=cd; if(!order) return [];
   const k=CUR[ST.cur].mult;
-  return order.map((c,i)=>{const col=CCOL[i%CCOL.length], lv=aggLevel(loc[c]||[]);
+  return order.map((c,i)=>{const col=CCOL[i%CCOL.length], lv=cd.observed?customsCountryLevel(cd,c).v:aggLevel(loc[c]||[]);
     return {type:'bar',label:c,data:lv.map(x=>x==null?null:x*k),yAxisID:'yV',
       backgroundColor:col+'cc',borderColor:col,borderWidth:0,stack:'c',barPercentage:1,categoryPercentage:.92};});
 }
 // Level-3 country view: 값(value) / 비중(share%) / YoY / 단가(¥/kg)
 function countryView(code){
-  const {order,loc,locw}=countryLoc(code); if(!order) return {ds:[],kind:'value'};
-  const k=CUR[ST.cur].mult, lvl={}, wlv={}; order.forEach(c=>{lvl[c]=aggLevel(loc[c]||[]); wlv[c]=aggLevel(locw[c]||[]);});
+  const cd=countryLoc(code),{order,loc,locw}=cd; if(!order) return {ds:[],kind:'value'};
+  const k=CUR[ST.cur].mult, lvl={}, wlv={}; order.forEach(c=>{const s=cd.observed?customsCountryLevel(cd,c):null;lvl[c]=s?s.v:aggLevel(loc[c]||[]); wlv[c]=s?s.w:aggLevel(locw[c]||[]);});
   const n=(lvl[order[0]]||[]).length, cm=ST.cmetric||'value';
   const area=(c,i,d)=>({type:'line',label:c,data:d,yAxisID:'yV',backgroundColor:CCOL[i%CCOL.length]+'cc',borderColor:CCOL[i%CCOL.length],borderWidth:.7,pointRadius:0,fill:true,tension:.2,stack:'c'});
   const bar=(c,i,d)=>({type:'bar',label:c,data:d,yAxisID:'yV',backgroundColor:CCOL[i%CCOL.length]+'cc',borderColor:CCOL[i%CCOL.length],borderWidth:0,stack:'c',barPercentage:1,categoryPercentage:.92});
-  const line=(c,i,d)=>({type:'line',label:c,data:d,yAxisID:'yV',borderColor:CCOL[i%CCOL.length],borderWidth:1.4,pointRadius:0,tension:.25,spanGaps:true});
+  const line=(c,i,d)=>({type:'line',label:c,data:d,yAxisID:'yV',borderColor:CCOL[i%CCOL.length],borderWidth:1.4,pointRadius:0,tension:.25,spanGaps:!cd.observed});
   if(cm==='value') return {kind:'value', ds:order.map((c,i)=>bar(c,i,lvl[c].map(x=>x==null?null:x*k)))};
   if(cm==='share'){ const tot=new Array(n).fill(0); order.forEach(c=>lvl[c].forEach((x,j)=>tot[j]+=(x||0)));
-    return {kind:'share', ds:order.map((c,i)=>area(c,i,lvl[c].map((x,j)=>tot[j]>0?x/tot[j]:null)))}; }
+    return {kind:'share', ds:order.map((c,i)=>area(c,i,lvl[c].map((x,j)=>(!cd.observed||x!=null)&&tot[j]>0?x/tot[j]:null)))}; }
   if(cm==='yoy') return {kind:'yoy', ds:order.map((c,i)=>line(c,i,yoyG(lvl[c])))};
   return {kind:'unit', ds:order.map((c,i)=>line(c,i,lvl[c].map((x,j)=>wlv[c][j]>0?x*k/wlv[c][j]:null)))};
 }
@@ -1201,7 +1279,8 @@ function dDatasets(code){
   const s=dseries(code), M=ST.metric, R=ST.repr, k=CUR[ST.cur].mult, ds=[];
   const flows=[]; if(ST.flow!=='imp')flows.push(['exp','Export']); if(ST.flow!=='exp')flows.push(['imp','Import']);
   flows.forEach(([fk,fl])=>{
-    const av=aggLevel(s[fk].v), aw=aggLevel(s[fk].w), cvv=av.map(x=>x==null?null:x*k), ud=unitDispG(s[fk].v,s[fk].w), dash=fk==='imp'?[4,3]:[];
+    const cs=s[fk].observed?customsLevel(s[fk]):null;
+    const av=cs?cs.v:aggLevel(s[fk].v), aw=cs?cs.w:aggLevel(s[fk].w), cvv=av.map(x=>x==null?null:x*k), ud=unitDispG(s[fk].v,s[fk].w,s[fk]), dash=fk==='imp'?[4,3]:[];
     if(R.level){
       if(M.value){ if(fk==='exp') ds.push({type:'bar',label:fl+' Value',data:cvv,yAxisID:'yV',backgroundColor:DCOL.exp.value+'73',borderColor:DCOL.exp.value,borderWidth:0,order:9,barPercentage:1,categoryPercentage:.92});
                    else ds.push({type:'line',label:fl+' Value',data:cvv,yAxisID:'yV',borderColor:DCOL.imp.value,borderWidth:1.5,pointRadius:0,tension:.25,order:8}); }
@@ -1211,9 +1290,9 @@ function dDatasets(code){
     }
     [['yoy',yoyG,'YoY',[5,4]],['yoy3',yoy3G,'3p YoY',[2,3]]].forEach(([rk,fn,lab,d2])=>{
       if(!R[rk])return;
-      if(M.value)  ds.push({type:'line',label:`${fl} Value ${lab}`,data:fn(av), yAxisID:'yP',borderColor:DCOL[fk].value, borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:3,spanGaps:true});
-      if(M.weight) ds.push({type:'line',label:`${fl} kg ${lab}`,   data:fn(aw), yAxisID:'yP',borderColor:DCOL[fk].weight,borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:2,spanGaps:true});
-      if(M.unit)   ds.push({type:'line',label:`${fl} ${CUR[ST.cur].sym}/kg ${lab}`,data:fn(unitRatioG(s[fk].v,s[fk].w)),yAxisID:'yP',borderColor:DCOL[fk].unit,borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:1,spanGaps:true});
+      if(M.value)  ds.push({type:'line',label:`${fl} Value ${lab}`,data:fn(av), yAxisID:'yP',borderColor:DCOL[fk].value, borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:3,spanGaps:!cs});
+      if(M.weight) ds.push({type:'line',label:`${fl} kg ${lab}`,   data:fn(aw), yAxisID:'yP',borderColor:DCOL[fk].weight,borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:2,spanGaps:!cs});
+      if(M.unit)   ds.push({type:'line',label:`${fl} ${CUR[ST.cur].sym}/kg ${lab}`,data:fn(unitRatioG(s[fk].v,s[fk].w,s[fk])),yAxisID:'yP',borderColor:DCOL[fk].unit,borderWidth:1.2,borderDash:d2,pointRadius:0,tension:.2,order:1,spanGaps:!cs});
     });
   });
   // reported quarterly financials — company-total only (hero card), same yV axis/unit
@@ -1255,6 +1334,13 @@ function barOpts(){ return {responsive:true,maintainAspectRatio:false,animation:
   scales:{x:{min:xMin(),max:xMax(),ticks:{color:TK.tick,maxTicksLimit:7,font:{size:8}},grid:{display:false}},
     y:{beginAtZero:true,ticks:{color:TK.tick,font:{size:8},callback:v=>fmtV(v/CUR[ST.cur].mult)},grid:{color:TK.grid}}}}; }
 function dMetrics(code){
+  const customs=dseries(code);
+  if(customs.exp.observed){
+    return ['exp','imp'].filter(f=>ST.flow!== (f==='exp'?'imp':'exp')).map(f=>{
+      const s=customsLevel(customs[f]),i=customsLast(s),u=customsPrice(s,i),label=f==='exp'?'Export':'Import';
+      return `<div class="metric"><span class="val">${s.observed[i]?fmtV(s.v[i]):'관측 없음'}</span>${chip(yoyG(s.v)[i])}<div class="lbl">${label} · ${gLabels()[i]||''}</div></div><div class="metric"><span class="val">${u==null?customsStatus(s,i):fmtUnit(u)}</span><div class="lbl">${label} 단가</div></div>${customsNote(customs[f])}`;
+    }).join('');
+  }
   const s=dseries(code), av=aggLevel(s.exp.v), aiv=aggLevel(s.imp.v), lbl=gLabels();
   const ie=lastIdx(av), ii=lastIdx(aiv), ye=yoyG(av), yi=yoyG(aiv);
   const ue=unitDispG(s.exp.v,s.exp.w), ui=unitDispG(s.imp.v,s.imp.w); let h='';
@@ -6300,26 +6386,27 @@ function renderCountry(){
   wireDetailControls();
   const main=document.getElementById('main');
   main.innerHTML=((co.is_hub||co.filtered)?hubPanel(co):'')+'<div class="hero" id="hero"></div><div class="grid" id="grid"></div>';
-  const {order,loc,locw}=countryLoc(port);
+  const cd=countryLoc(port),{order,loc,locw}=cd;
+  if(cd.observed&&!order.length){main.innerHTML+='<div class="split-note">관측 없음 · 국가별 단가 보류</div>';return;}
   const view=countryView(port);
   const cpct=(ST.cmetric==='share'||ST.cmetric==='yoy')?'*':'';   // 비중%/YoY 뷰는 비율값 → CSV에서 % 환산
   const hero=document.createElement('div'); hero.className='card hero';
   hero.innerHTML=`<div class="card-hd"><div><h3>${pinfo.name} ${pinfo.jp||''} <small>${flowKLabel()} · ${ST.cmetric}</small></h3><div class="co-cat">${port==='ALL'?co.name+' total':'Customs '+port} · ${cflow()==='imp'?'Import':'Export'}</div></div><div class="card-tools">${csvBtn('cy_hero', pinfo.name+'_'+ST.cmetric, cpct)}</div></div><div class="ch-wrap"><canvas></canvas></div>`;
   document.getElementById('hero').appendChild(hero);
   charts['cy_hero']=new Chart(hero.querySelector('canvas'),vizPhalanxConfig({data:{labels:gLabels(),datasets:view.ds},options:countryViewOpts(view.kind)},'country_hero'));
-  const lvA={},wvA={}; order.forEach(c=>{lvA[c]=aggLevel(loc[c]||[]); wvA[c]=aggLevel(locw[c]||[]);});
+  const lvA={},wvA={},csA={}; order.forEach(c=>{const s=cd.observed?customsCountryLevel(cd,c):null;csA[c]=s;lvA[c]=s?s.v:aggLevel(loc[c]||[]); wvA[c]=s?s.w:aggLevel(locw[c]||[]);});
   const tot=new Array((lvA[order[0]]||[]).length).fill(0); order.forEach(c=>lvA[c].forEach((x,j)=>tot[j]+=(x||0)));
   const q=ST.q.toLowerCase(), grid=document.getElementById('grid'), k=CUR[ST.cur].mult, gl=gLabels(), cm=ST.cmetric;
   order.forEach((c,i)=>{ if(q&&!c.toLowerCase().includes(q))return;
-    const col=CCOL[i%CCOL.length], lv=lvA[c], wv=wvA[c], li=lastIdx(lv); let data, headline, ds;
-    if(cm==='value'){ data=lv.map(x=>x==null?null:x*k); headline=fmtV(lv[li]||0);
+    const col=CCOL[i%CCOL.length], lv=lvA[c], wv=wvA[c], cs=csA[c], li=cs?customsLast(cs):lastIdx(lv); let data, headline, ds;
+    if(cm==='value'){ data=lv.map(x=>x==null?null:x*k); headline=cs?(lv[li]==null?'관측 없음':fmtV(lv[li])):fmtV(lv[li]||0);
       ds={type:'bar',label:c,data,backgroundColor:col+'aa',borderColor:col,borderWidth:0,barPercentage:1,categoryPercentage:.9}; }
-    else if(cm==='share'){ data=lv.map((x,j)=>tot[j]>0?x/tot[j]:null); headline=(tot[li]>0?(lv[li]/tot[li]*100).toFixed(1):'0')+'%';
-      ds={type:'line',label:c,data,borderColor:col,backgroundColor:col+'33',borderWidth:1.4,pointRadius:0,fill:true,tension:.25,spanGaps:true}; }
+    else if(cm==='share'){ data=lv.map((x,j)=>(!cs||x!=null)&&tot[j]>0?x/tot[j]:null); headline=cs&&data[li]==null?'관측 없음 / 비중 보류':(tot[li]>0?(lv[li]/tot[li]*100).toFixed(1):'0')+'%';
+      ds={type:'line',label:c,data,borderColor:col,backgroundColor:col+'33',borderWidth:1.4,pointRadius:0,fill:true,tension:.25,spanGaps:!cs}; }
     else if(cm==='yoy'){ data=yoyG(lv); headline=fmtP(data[li]);
-      ds={type:'line',label:c,data,borderColor:col,borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true}; }
-    else { data=lv.map((x,j)=>wv[j]>0?x*k/wv[j]:null); headline=data[li]!=null?CUR[ST.cur].sym+fmtNum(data[li])+'/kg':'–';
-      ds={type:'line',label:c,data,borderColor:col,borderWidth:1.5,pointRadius:0,tension:.25,spanGaps:true}; }
+      ds={type:'line',label:c,data,borderColor:col,borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:!cs}; }
+    else { data=lv.map((x,j)=>cs?customsPrice(cs,j):(wv[j]>0?x*k/wv[j]:null)); headline=data[li]!=null?CUR[ST.cur].sym+fmtNum(data[li])+'/kg':(cs?customsStatus(cs,li):'–');
+      ds={type:'line',label:c,data,borderColor:col,borderWidth:1.5,pointRadius:0,tension:.25,spanGaps:!cs}; }
     const card=document.createElement('div'); card.className='card';
     card.innerHTML=`<div class="card-hd"><div><h3><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${col};margin-right:6px;vertical-align:-1px"></span>${c}</h3><div class="co-cat">${pinfo.name} · ${cflow()==='imp'?'Import':'Export'}</div></div><div class="card-tools">${csvBtn('cy_'+i, c+'_'+pinfo.name+'_'+ST.cmetric, cpct)}</div></div>
       <div class="metrics"><div class="metric"><span class="val">${headline}</span><div class="lbl">${gl[li]||''} · ${({value:'값',share:'비중',yoy:'YoY',unit:'단가'})[cm]}</div></div></div>
