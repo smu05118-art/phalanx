@@ -589,6 +589,35 @@ function preserveSpecial(c,helpers){
  return helpers.observedRendererVerified===true&&currentLineage(c)&&
   ['GBM','SANM','FPS','HPSA','POWL','DY','ETN','IBIDEN','LEVI'].includes(c.id);
 }
+// This is a schema-specific admission rule, not source/amount verification.
+// Keep the legacy direct_reported_quarter path unchanged.
+function reportedQuarter(c,fin,r){
+ if(!['POWL','DY','ETN'].includes(c.id)||r.amount_method!=='reported'||
+  fin.accounting_basis!=='US GAAP'||fin.currency!=='USD'||r.currency!=='USD'||
+  !currentLineage(fin)||!currentLineage(r))return false;
+ const key=/^FY([1-9]\d{3})Q([1-4])$/.exec(r.fiscal_key);
+ if(!key||r.fiscal_year!==Number(key[1])||r.fiscal_quarter!==Number(key[2])||
+  !validDate(r.period_start)||!validDate(r.period_end))return false;
+ // If an explicit revenue-specific method is supplied, contradictory/unknown
+ // methods fail closed. Operating-income methods do not classify revenue.
+ if(r.revenue_method!==undefined&&r.revenue_method!=='reported')return false;
+ const y=r.fiscal_year,q=r.fiscal_quarter;
+ const start=new Date(r.period_start+'T00:00:00Z'),end=new Date(r.period_end+'T00:00:00Z');
+ const days=(end-start)/86400000+1;
+ if(c.id==='DY'){
+  // Observed January fiscal year-end: Q1-Q3 end in the preceding FY
+  // calendar year. Accept 13 weeks, or 14 only in Q4; never proxy_months.
+  const ey=q===4?y:y-1,month=q===4?0:q*3;
+  const lo=Date.UTC(ey,month,24),hi=Date.UTC(ey,month+1,2);
+  return r.monthly_approximation===true&&start.getUTCDay()===0&&end.getUTCDay()===6&&
+   (days===91||(q===4&&days===98))&&end.getTime()>=lo&&end.getTime()<=hi;
+ }
+ // Exact calendar bounds: POWL October FY start; ETN January FY start.
+ const month=c.id==='POWL'?(q===1?9:(q-2)*3):(q-1)*3;
+ const year=c.id==='POWL'&&q===1?y-1:y;
+ return r.monthly_approximation===false&&
+  start.getTime()===Date.UTC(year,month,1)&&end.getTime()===Date.UTC(year,month+3,0);
+}
 function observationRows(c,asof){
  // Only this explicit grid financial schema is supported. Never infer USD from
  // another company's display divisor or use a model/estimated revenue field.
@@ -598,10 +627,10 @@ function observationRows(c,asof){
  for(const r of rows){counts.set(r.period_end,(counts.get(r.period_end)||0)+1);const key=r.fiscal_key||r.period_end;fiscals.set(key,(fiscals.get(key)||0)+1);}
  return rows.filter(r=>counts.get(r.period_end)===1&&fiscals.get(r.fiscal_key||r.period_end)===1&&validDate(r.period_start)&&validDate(r.period_end)&&r.period_start<=r.period_end&&r.period_end<=asof
   &&typeof r.revenue==='number'&&Number.isFinite(r.revenue)
-  &&r.amount_method==='direct_reported_quarter'&&r.unit==='million'&&fin.unit===r.unit
+  &&(r.amount_method==='direct_reported_quarter'||reportedQuarter(c,fin,r))&&r.unit==='million'&&fin.unit===r.unit
   &&/^[A-Z]{3}$/.test(r.currency||'')&&r.currency===fin.currency)
  .map(r=>{
-  const sources=(Array.isArray(r.sources)?r.sources:[]).filter(s=>s&&typeof s==='object'&&sourceURL(s.url)&&
+  const sources=(Array.isArray(r.sources)?r.sources:[]).filter(s=>s&&typeof s==='object'&&(r.amount_method==='direct_reported_quarter'||currentLineage(s))&&sourceURL(s.url)&&
    availableDate(s)&&r.period_end<=availableDate(s).date&&availableDate(s).date<=asof);
   return {period:r.fiscal_key||r.period_end,start:r.period_start,end:r.period_end,revenue:r.revenue,currency:r.currency,unit:r.unit,
    sources:sources.map(s=>({url:sourceURL(s.url),...availableDate(s)}))};
