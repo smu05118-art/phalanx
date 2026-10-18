@@ -5120,3 +5120,75 @@ once` 로 즉시 멈췄다. 앵커를 그 다음 줄(팡 구 토스트)까지 2�
 - G13 — `resolvePukkaPending` 의 사망 분기가 `prev.alive` 를 본다(죽은 척 좀버얼이 푸카 희생자인 경우).
   E04 와 같은 축의 문제라 다음 엔진 라운드에서 함께 볼 것.
 
+
+## 라운드 55 — 설명문이 가르치던 틀린 규칙 일곱 · PR #89
+
+외부 교차검증 4차의 설명문 High 7건(E10~E16)을 받았다. 전부 텍스트 전용이다. 각 문장은 공식 위키
+How to Run·Summary·Examples 원문을 다시 열어 대조했고, 라운드 52 의 교훈대로 **같은 캐릭터의 모든
+표면**(ability·warn·guide·remind·howto·examples·밤 노트·처형 질문)을 함께 훑어 어긋나는 것만 고쳤다.
+설명문 오류도 사회자가 그대로 따르므로 규칙이다 — 아래 일곱은 사회자가 따르면 판정이 실제로 달라지는 것들이다.
+
+| # | 캐릭터 | 틀린 문장이 가르치던 것 | 공식 원문 | 고친 표면 |
+|---|---|---|---|---|
+| E10 | 사이코패스 | 비기면 **다시 낸다** · 상대는 **사회자** | How to Run: "If the Psychopath draws or wins, they live. Either way, the day ends… If the Psychopath is executed due to a self-nomination, then the Psychopath plays Roshambo with you instead." | `warn[2]` · `howto[2]` · **처형 질문 두 자리**(`thyExecPrompts`·`DEATH_MODIFIERS` 의 "이겼습니까?" → "비기거나 이겼습니까?") |
+| E11 | 시장 | 3인 승리는 **선한 팀** | How to Run: "In other editions, an evil Mayor means 'evil wins' instead." (능력문·엔진은 라운드 47 이 좌석 진영으로 고쳤는데 `warn`·`howto` 만 남아 있었다 — A58 잔존) | `warn[2]` · `howto[1]` |
+| E12 | 성자 | 처형이 **확정되는 순간** 종료 | Examples: "The Saint is executed. However, the Scapegoat's ability is triggered, so the Scapegoat dies instead. The game continues, because the Saint did not die." | `howto[1]` |
+| E13 | 리치 | 숙주 사망 뒤 **하루 더** 진행, 처단자가 마무리 | Summary: "If the player that the Lleech chose dies, the Lleech dies as well." Examples: "The [host] is executed. The [host] and the Lleech die. Good wins." | `examples[0]` |
+| E14 | 열기구 조종사 | 네 유형이 다 있어야 · 넷 중 하나는 **반드시 악마** · 외지인이 죽으면 **유형이 사라진다** · 소진 처리 | Summary: "Each time the Balloonist learns a player, the player must have a different character type to the previously shown player." · "The shown player can be alive or dead." | `warn[1]` · `howto[0]` · `examples[0]`·`[1]` |
+| E15 | 토르 | 밤 능력을 **사회자가 대행** · 악마의 살해 지목도 대행 재량 | Summary: "Character abilities work as normal. Players are woken and prompted to use their ability if needed." (같은 모달의 `howto[1]` 은 이미 맞게 적혀 있었다 — 내부 모순) | `guideFirst[1]` · `warn[1]` |
+| E16 | 좀버얼 | 낮 처형·**밤 사망을 합쳐** 하루 사망 유무 | How to Run: "Each day, if a player dies, mark them with the DIED TODAY reminder. … Each night except the first, if any player is marked DIED TODAY, do not wake the Zombuul." | `howto[0]` |
+
+### 처형 질문이 비김을 담지 못했다 — A07 기각의 뿌리
+
+라운드 18 은 A07(사이코패스 무승부)을 "앱에 무승부를 표현하는 상태·입력 경로가 없다" 로 기각했다. 그 말은
+맞았고 지금도 맞다 — 그런데 바로 그 **없음**이 문제였다. 사회자에게 "가위바위보에서 이겼습니까?" 라고만
+물으면 비긴 사회자는 '아니오' 를 누르고, 앱은 사이코패스를 죽인다. 공식은 비김도 생존이다. 질문 한 문장과
+버튼 라벨("예 — 비김·이김")을 바꿨다 — 판정 표(`psychopath-roshambo`)의 `when()` 은 그대로이고 입력만
+바뀌었으므로 엔진 변경이 아니다. `execDiscretion` 케이스(사전 답 → 판정)는 그대로 통과한다.
+
+### 검증
+
+- 규칙 판정 **99 케이스**(+1 · 캐릭터별 단정 15). 수정 전 빌드(라운드 54)에서 **15개 단정이 모두 실패**,
+  수정 후 99/99. 처음 넣었던 "바꾼 문장에 `**` 없음" 단정은 **지웠다** — 성자 `warn[3]` 이 라운드 47 부터
+  강조를 쓰고 있어 수정 전·후 모두 울렸고, 강조는 `warn`/`howto`/`examples` 에서 허용된다(평문 계약은
+  `ability`·`rule`·`setupNote`·`guideFirst[0]`). 렌더 계약은 DOM 골든의 `noLiteralBoldMarkersAnywhere` 가 지킨다.
+- DOM 골든 **픽스처 34 · 프레임 114 · 대조군 51/51** PASS. 수정본을 기준으로 라운드 54 빌드를 후보로 걸면
+  달라진 픽스처는 **둘** — `setup_disguise_custom_name`(캐릭터 일람의 시장 `warn[2]`)·`info_step_skip`
+  (밤 패널의 토르 `guideFirst[1]`·`warn[1]`) — 그리고 그 둘의 html 차이가 **정확히 그 문장들**임을
+  프레임 단위로 대조했다.
+- 전 스위트: 규칙 99/0 · 종료 31/0 · 핸드오프 84 PASS · 시나리오 220 실패 0 · 퍼저 400 위반 0(avgLog 25.8) · 커스텀 90 위반 0 · DOM 골든 34/114/51 · 래퍼 48 불일치 0 · 돌연변이 46종 검출 42 미검출 0 masked 4 · 전 검사 종료코드 0
+- 멱등 패치: `patches/round55.py`(앱) · `round55_tests.py`(규칙) · `round55_backlog.py`.
+
+### 남은 것
+
+- 설명문 Medium 5건(E20~E24: 꼭두각시·사냥꾼·마을 바보·저글러·곡예사)은 다음 라운드.
+- E17(릴 몬스타 첫밤 정보 생략 — 판 단위 상태 설계) · E18(궁정대신 동명 중 한 명 — 사회자 선택 UI) 은
+  엔진 라운드로. E07·E08 은 설계 결정, E19 는 사용자 결정 대기.
+
+
+## 라운드 56 — 설명문 Medium 다섯 · 징크스를 부정하던 문장 · PR #90
+
+외부 교차검증 4차의 설명문 Medium 5건(E20~E24)을 받았다. 라운드 55 와 같은 절차 — 공식 원문 재대조,
+같은 캐릭터의 모든 표면 훑기, 수정 전 빌드에서 실패하는 단정.
+
+| # | 캐릭터 | 틀린 문장이 가르치던 것 | 공식 원문 | 고친 표면 |
+|---|---|---|---|---|
+| E20 | 꼭두각시 | 정보는 **전부 거짓** · 가짜 정보를 **줘야 한다** | How to Run: "Treat the Marionette as if they were drunk. They wake when their good character would wake, **may** get false information…" (라운드 36 A39 가 세운 '오작동 정보는 재량' 원칙의 잔존) | `howto[2]` · `warn[0]`·`warn[3]` |
+| E21 | 사냥꾼 | 사냥꾼이 있으면 **무조건** 주민 하나를 줄여 아가씨를 넣는다 | Summary: "If a Damsel is already in play, the Huntsman doesn't add a second Damsel." How to Run: "if the Damsel is not already in play, remove a Townsfolk character token and add the Damsel character token." | `howto[0]` · `setupNote` |
+| E22 | 마을 바보 | 취함 표식은 **게임 내내** 바뀌지 않는다 | 공식 징크스 Pit-Hag × Village Idiot: "If there is a spare token, the Pit-Hag can create an extra Village Idiot. If so, the drunk Village Idiot might change." — **앱의 징크스 카드가 같은 문장을 적고 있었다**(내부 모순) | `remind` · `howto[3]` |
+| E23 | 저글러 | 밤 노트가 **게임 둘째 밤**으로 제한 | Examples: "During the fourth night, the Savant gets turned into the Juggler. The next day, the new Juggler guesses… That night, the Juggler learns a '1.'" (A35 가 능력문·howto 를 고쳤고 `NIGHT_FLOW` 노트만 남았다) | `NIGHT_FLOW.juggler` note |
+| E24 | 곡예사 | 독살범·궁정대신이 곡예사보다 **뒤** 순번 | `nightsheet.json` otherNight: poisoner·courtier 는 acrobat 보다 앞, pukka 는 뒤. 공식 Examples 의 '나중에 중독' 사례는 푸카다 | `howto[0]` · `examples[0]` |
+
+### 검증
+
+- 규칙 판정 **100 케이스**(+1 · 단정 9). 수정 전 빌드(라운드 55)에서 **9개 전부 실패**, 수정 후 100/100.
+- DOM 골든 34/114/51 PASS. 수정본을 기준으로 라운드 55 빌드를 후보로 걸면 달라진 픽스처는 **없음(0)** — 기존 픽스처가 이 다섯의 표면(꼭두각시·사냥꾼·마을 바보 설명문, 저글러 밤 노트, 곡예사 설명문)을 그리지 않는다. 이 라운드의 회귀는 규칙 케이스 `proseRound56` 가 지킨다.
+- 전 스위트: 규칙 100/0 · 종료 31/0 · 핸드오프 84 PASS · 시나리오 220 실패 0 · 퍼저 400 위반 0(avgLog 25.8) · 커스텀 90 위반 0 · DOM 골든 34/114/51 · 래퍼 48 불일치 0 · 돌연변이 46종 검출 42 미검출 0 masked 4 · 전 검사 종료코드 0
+- 멱등 패치: `patches/round56.py` · `round56_tests.py` · `round56_backlog.py`.
+
+### 남은 것 — 외부 교차검증 4차 E 절의 잔여
+
+E07·E08(상태 토큰 신원 — 설계 결정 선행) · E09·E25·E26(클라우드 이어하기 — 아티팩트 런타임 한정, 수리 여부
+사용자 결정) · E17(릴 몬스타 첫밤 정보 생략 — 판 단위 상태 설계) · E18(궁정대신 동명 중 한 명 — 사회자 선택 UI) ·
+E19(A13 번복 — 사용자 결정). 26건 중 **19건 반영**(라운드 51~56), 7건은 결정·설계 대기.
+
