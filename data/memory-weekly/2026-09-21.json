@@ -1,0 +1,507 @@
+{
+  "evidence": {
+    "attachments_count": 5,
+    "independently_verified": false,
+    "kind": "user_provided_screenshots",
+    "note": "첨부 스크린샷 원본은 공개하지 않습니다. 수치는 첨부에 인쇄된 라벨·문장만 전사한 값입니다."
+  },
+  "evidence_status_labels": {
+    "derived_explicit": "명시 수치에서 산출",
+    "model_assumption": "예시 모델 가정 · 측정치 아님",
+    "primary_verified": "공개 1차 출처 확인",
+    "screenshot_transcribed": "이용자 제공 스크린샷 전사 · 1차 출처 미확인",
+    "secondary_reported": "2차 보도·재인용 · 1차 출처 미확인"
+  },
+  "evidence_status_vocabulary": {
+    "derived_explicit": "첨부에 명시된 수치에서 명시적 산식으로 산출",
+    "model_assumption": "예시 모델의 가정·입력값. 측정치 아님",
+    "primary_verified": "공개 1차 출처를 상위 작업자가 직접 확인",
+    "screenshot_transcribed": "이용자 제공 스크린샷의 인쇄 라벨·문장을 전사. 1차 출처 미확인",
+    "secondary_reported": "첨부 자체가 2차 보도·재인용을 출처로 표기. 1차 출처 미확인"
+  },
+  "generated_from": {
+    "canonical_schema": "phx.memory_weekly.canonical/1",
+    "canonical_sha256": "ef928fff32e7362f542ca6aa43dbc41c1a1bf4fea4ae2d7b0d608c4ebb44cbf6",
+    "generator": "mem_weekly_build.py/1.0.0"
+  },
+  "omissions": [
+    "첨부 1 인덱스 차트·주가선, 첨부 2 RDIMM 시계열, 첨부 3 산점도 좌표, 첨부 4 Micron 추정 좌표·환율 일별 시계열은 픽셀 판독이 필요하거나 추정값이라 전사하지 않음",
+    "첨부의 하이퍼링크 중 URL 이 제공된 것은 TrendForce 2025-11-13 한 건뿐이며 나머지(SAPIENS, Micron 실적, 한국은행 ECOS, Acer 발언)는 추측하지 않고 비워 둠",
+    "첨부 5의 Acer 노트북 사진은 복제하지 않음",
+    "공개 정책에 따라 증권사 추정치 1건과 리서치 산문 1건은 공개본에서 제외"
+  ],
+  "publication_date": "2026-09-21",
+  "publisher_as_labelled": "BadOnion Research (첨부 하단 표기)",
+  "record_note": "2026-09-21 발행 주간 자료의 과거 기록. 현재 가격·현재 전망이 아니며 값은 발행 시점 그대로 보존한다. 첨부 5장은 이용자가 제공한 스크린샷이며, 수치는 첨부에 인쇄된 라벨·문장만 전사했다. 라벨 없는 좌표(선·점·막대 높이)는 전사하지 않았다.",
+  "schema": "phx.memory_weekly.public/1",
+  "sections": {
+    "capex_bit_model": {
+      "capex_forecast_reference": {
+        "evidence_status": "primary_verified",
+        "published": "2025-11-13",
+        "publisher": "TrendForce",
+        "stated": "2026년 DRAM CapEx 61.3B 전망(+14%), 비트 공급 영향은 제한적",
+        "unit": "USD bn",
+        "url": "https://www.trendforce.com/presscenter/news/20251113-12780.html",
+        "url_status": "verified_primary",
+        "values": {
+          "2025": 53.7,
+          "2026": 61.3
+        },
+        "vintage_note": "2025-11-13 시점의 오래된 전망 빈티지. 최신 실적·최신 전망이 아님"
+      },
+      "evidence_status": "model_assumption",
+      "id": "capex_bit_model",
+      "model_inputs_labelled": {
+        "bit_growth_pct": {
+          "2015": 28,
+          "2026": 20
+        },
+        "capex_usd_bn": {
+          "2025": 53.7,
+          "2026": 61.3
+        },
+        "note": "첨부 문장·라벨에 명시된 모델 입력값만 기록. 산점도의 나머지 좌표는 재구성하지 않음"
+      },
+      "omitted": [
+        "'DRAM industry CapEx vs modeled bit growth' 산점도의 연도별 좌표는 라벨 없는 점이라 전사하지 않음 (2015 비트 28%, 2026 비트 20%, 2025·2026 CapEx 는 문장 라벨로 명시되어 기록)"
+      ],
+      "ratio": {
+        "caveat": "예시 모델의 가정값. 측정된 자본 생산성이 아님",
+        "definition": "같은 연도의 CapEx 가정 ÷ 모델에 입력된 비트 증가율(%p)",
+        "series": [
+          {
+            "value": 0.45,
+            "year": 2015
+          },
+          {
+            "value": 0.53,
+            "year": 2016
+          },
+          {
+            "value": 0.73,
+            "year": 2017
+          },
+          {
+            "value": 1.17,
+            "year": 2018
+          },
+          {
+            "value": 1.12,
+            "year": 2019
+          },
+          {
+            "value": 1.0,
+            "year": 2020
+          },
+          {
+            "value": 1.4,
+            "year": 2021
+          },
+          {
+            "value": 3.75,
+            "year": 2022
+          },
+          {
+            "value": 6.66,
+            "year": 2023
+          },
+          {
+            "value": 1.29,
+            "year": 2024
+          },
+          {
+            "value": 2.44,
+            "year": 2025
+          },
+          {
+            "value": 3.06,
+            "year": 2026
+          }
+        ],
+        "unit": "USD bn per percentage point"
+      },
+      "source": {
+        "attachment": "attachment-3",
+        "label": "Token 추정모델 (첨부 표기: Token model assumptions, Jun 28 2026 vintage)",
+        "url": null,
+        "url_status": "not_supplied"
+      },
+      "title_ko": "DRAM CapEx / 모델 비트 증가율 (예시 모델)",
+      "vintage": {
+        "model_vintage": "2026-06-28",
+        "publication": "2026-09-21"
+      }
+    },
+    "fx": {
+      "change": {
+        "basis": "첨부 인쇄값. 재계산하지 않음",
+        "from": "2026-09-11",
+        "label_as_printed": "7D +3.15%",
+        "pct": 3.15,
+        "to": "2026-09-18"
+      },
+      "evidence_status": "screenshot_transcribed",
+      "id": "fx",
+      "observations": [
+        {
+          "date": "2026-09-11",
+          "value": 1338.2
+        },
+        {
+          "date": "2026-09-18",
+          "value": 1380.3
+        }
+      ],
+      "omitted": [
+        "일별 시계열(차트 범위 2025-09-22–2026-09-18)은 전사하지 않음. 두 관측치만 기록하며 보간하지 않음"
+      ],
+      "series_kind": "two_observations_only",
+      "source": {
+        "attachment": "attachment-4",
+        "claimed_publisher": "Bank of Korea ECOS",
+        "label": "한국은행 ECOS (첨부 주장) · BadOnion Research",
+        "url": null,
+        "url_status": "not_supplied"
+      },
+      "title_ko": "USD/KRW 일별 기준환율",
+      "unit": "KRW per USD",
+      "vintage": {
+        "observation_from": "2026-09-11",
+        "observation_to": "2026-09-18",
+        "publication": "2026-09-21"
+      }
+    },
+    "micron": {
+      "evidence_status": "screenshot_transcribed",
+      "fiscal_note": "Micron 회계연도 분기(FY). FY26Q3 종료일 2026-05-28",
+      "id": "micron",
+      "label_basis": "경영진이 공개한 전분기 대비 증가폭 표현 원문(QoQ). 정확한 보고 수치가 아님",
+      "net_capex": {
+        "fq": "FY26Q3",
+        "note": "비트·ASP 라벨과 별도 항목. 인과관계·회귀 없음",
+        "quarter_end": "2026-05-28",
+        "scope": "전사 순설비투자(company-wide net capex). DRAM 전용 지출이 아님",
+        "unit": "USD bn",
+        "value": 7.084
+      },
+      "omitted": [
+        "차트의 속 빈 점 좌표(추정)는 공개하지 않음",
+        "'5월 28일 종료 분기 실적' 링크 URL 미제공"
+      ],
+      "quarters": [
+        {
+          "dram_asp_qoq_label": "low-double digits",
+          "dram_bit_qoq_label": "low-teens",
+          "fq": "FY25Q4"
+        },
+        {
+          "dram_asp_qoq_label": "approximately 20%",
+          "dram_bit_qoq_label": "up slightly",
+          "fq": "FY26Q1"
+        },
+        {
+          "dram_asp_qoq_label": "mid-60s",
+          "dram_bit_qoq_label": "mid-single digits",
+          "fq": "FY26Q2"
+        },
+        {
+          "dram_asp_qoq_label": "low-60s",
+          "dram_bit_qoq_label": "low-single digits",
+          "fq": "FY26Q3"
+        }
+      ],
+      "source": {
+        "attachment": "attachment-4",
+        "label": "Micron 분기 실적 발표·prepared remarks (첨부 인용)",
+        "url": null,
+        "url_status": "not_supplied",
+        "verification_note": "첨부 기준으로 전사했으며 원문 직접 대조는 완료되지 않았습니다."
+      },
+      "title_ko": "Micron DRAM 비트·ASP 정성 라벨과 순설비투자",
+      "vintage": {
+        "latest_quarter_end": "2026-05-28",
+        "publication": "2026-09-21"
+      }
+    },
+    "pc_memory": {
+      "divergence_note_ko": "같은 PC 메모리라도 범용 제품(DDR4·일반 DDR5)은 조달이 풀리고 고사양 제품(LPDDR5·DDR5-9600)은 공급이 빠듯하다는 발언. 실현된 PC 판매가가 아니라 경영진의 전망이며, 2차 보도로 전해진 내용으로 공식 확인되지 않음",
+      "evidence_status": "secondary_reported",
+      "id": "pc_memory",
+      "kind": "management_commentary",
+      "omitted": [
+        "기사에 재게재된 Acer 노트북 사진(라이선스 불명)은 복제하지 않음",
+        "'9월 19일 Acer 회장 발언' 링크 URL 미제공"
+      ],
+      "source": {
+        "attachment": "attachment-5",
+        "label": "Choice News 2026-09-20 보도 · Acer 경영진 발언 2026-09-19 (첨부 표기)",
+        "reported": "2026-09-20",
+        "reporter": "Choice News",
+        "speaker": "Acer management",
+        "spoken": "2026-09-19",
+        "url": null,
+        "url_status": "not_supplied"
+      },
+      "statements": [
+        {
+          "id": "mainstream",
+          "label": "availability improving",
+          "label_ko": "조달 개선",
+          "topic": "범용 DRAM (DDR4 / 일반 DDR5)"
+        },
+        {
+          "id": "highspec",
+          "label": "supply still tight",
+          "label_ko": "공급 여전히 부족",
+          "topic": "고사양 메모리 (LPDDR5 / DDR5-9600)"
+        },
+        {
+          "id": "pc_pricing",
+          "kind": "company_outlook_not_realized_price",
+          "label": "increases 5–20%, depending on model",
+          "label_ko": "모델별 5~20% 인상 전망",
+          "topic": "4Q26 PC 제품 가격",
+          "value_high_pct": 20,
+          "value_low_pct": 5
+        },
+        {
+          "id": "cy27_costs",
+          "kind": "company_outlook",
+          "label": "expected lower",
+          "label_ko": "하락 예상",
+          "topic": "CY27 회사 구매 SSD·메모리 원가"
+        }
+      ],
+      "title_ko": "PC 메모리 제품별 수급 차이 (Acer 경영진 발언)",
+      "vintage": {
+        "publication": "2026-09-21",
+        "report": "2026-09-20",
+        "statement": "2026-09-19"
+      }
+    },
+    "rdimm": {
+      "chart_range_as_labelled": {
+        "from": "2024-10-07",
+        "to": "2026-09-14"
+      },
+      "contract": {
+        "item": "DDR5 RDIMM 64GB",
+        "note": "2026년 8월 계약가(첨부 표기: Contract: Aug 2026)",
+        "period": "2026-08",
+        "period_kind": "month",
+        "price": 1500
+      },
+      "evidence_status": "screenshot_transcribed",
+      "id": "rdimm",
+      "omitted": [
+        "32GB·64GB 스팟선, 64GB 계약 점선, 스팟−계약 막대의 시계열은 픽셀 판독이 필요해 전사하지 않음"
+      ],
+      "rules": {
+        "do_not_derive_spread_from_mixed_dates": true,
+        "note": "2026-09-14 스팟 3190 과 2026-08 계약 1500 은 기록일이 다르므로 그 차이는 스프레드가 아니다. 스프레드는 첨부 인쇄값 1600(2026-08-31)만 사용"
+      },
+      "source": {
+        "attachment": "attachment-2",
+        "label": "BadOnion Research 과거 가격 관측(첨부 표기: Historical price observations)",
+        "url": null,
+        "url_status": "not_supplied"
+      },
+      "spot": {
+        "basis": "스팟 평균(첨부 범례: Spot Average)",
+        "items": [
+          {
+            "id": "rdimm_32gb",
+            "name": "DDR5 RDIMM 32GB",
+            "price": 2050,
+            "wow_pct": 7.89
+          },
+          {
+            "id": "rdimm_64gb",
+            "name": "DDR5 RDIMM 64GB",
+            "price": 3190,
+            "wow_pct": 1.59
+          }
+        ],
+        "observed": "2026-09-14"
+      },
+      "spread": {
+        "basis": "same_record_date",
+        "definition": "64GB 스팟 − 64GB 계약. 같은 기록일의 두 값으로 계산된 첨부 인쇄값",
+        "item": "DDR5 RDIMM 64GB",
+        "observed": "2026-08-31",
+        "value": 1600
+      },
+      "title_ko": "DDR5 RDIMM 스팟·계약가격",
+      "unit": "USD/module",
+      "vintage": {
+        "contract_period": "2026-08",
+        "observation_spot": "2026-09-14",
+        "observation_spread": "2026-08-31",
+        "publication": "2026-09-21"
+      }
+    },
+    "server_dram_supply_demand": {
+      "derived": [
+        {
+          "evidence_status": "derived_explicit",
+          "formula": "demand − supply: 70 − 50 = 20, 70 − 45 = 25",
+          "id": "cy27_gap_pp",
+          "period": "CY27E",
+          "unit": "percentage points",
+          "value_high": 25,
+          "value_low": 20
+        }
+      ],
+      "evidence_status": "secondary_reported",
+      "forecasts": [
+        {
+          "demand_pct": 65,
+          "period": "CY26E",
+          "supply_pct_high": 45,
+          "supply_pct_low": 45
+        },
+        {
+          "demand_pct": 70,
+          "period": "CY27E",
+          "supply_pct_high": 50,
+          "supply_pct_low": 45
+        }
+      ],
+      "id": "server_dram_supply_demand",
+      "kind": "forecast",
+      "note": "관측치가 아닌 전망치. 수요·공급의 정의(탑재량·출하 등)는 첨부에 명시되지 않음",
+      "source": {
+        "attachment": "attachment-2",
+        "label": "SAPIENS 2026-09-16, Edgewater 전망 재인용 (첨부 표기: Secondary-source estimates)",
+        "originator": "Edgewater",
+        "published": "2026-09-16",
+        "publisher": "SAPIENS",
+        "url": null,
+        "url_status": "not_supplied"
+      },
+      "title_ko": "서버 DRAM 수급 전망 (비트 증가율)",
+      "unit": "% YoY (server DRAM bit growth)",
+      "vintage": {
+        "forecast_issued": "2026-09-16",
+        "publication": "2026-09-21"
+      }
+    },
+    "spot_prices": {
+      "change_basis": "YoY·WoW는 첨부에 인쇄된 값 그대로이며 재계산하지 않음. WoW는 첨부 문장에 있는 두 품목만 존재",
+      "evidence_status": "screenshot_transcribed",
+      "id": "spot_prices",
+      "items": [
+        {
+          "category": "NAND",
+          "id": "nand_512gb_tlc",
+          "name": "512Gb TLC",
+          "observed": "2026-09-14",
+          "price": 20.083,
+          "wow_pct": null,
+          "yoy_pct": 607.15
+        },
+        {
+          "category": "NAND",
+          "id": "nand_256gb_tlc",
+          "name": "256Gb TLC",
+          "observed": "2026-09-14",
+          "price": 16.808,
+          "wow_pct": null,
+          "yoy_pct": 978.82
+        },
+        {
+          "category": "NAND",
+          "id": "nand_128gb_tlc",
+          "name": "128Gb TLC",
+          "observed": "2026-09-14",
+          "price": 9.967,
+          "wow_pct": null,
+          "yoy_pct": 728.51
+        },
+        {
+          "category": "DRAM",
+          "id": "dram_ddr3_4gb",
+          "name": "DDR3 4Gb",
+          "observed": "2026-09-21",
+          "price": 13.78,
+          "wow_pct": null,
+          "yoy_pct": 598.78
+        },
+        {
+          "category": "DRAM",
+          "id": "dram_ddr4_8gb",
+          "name": "DDR4 8Gb",
+          "observed": "2026-09-21",
+          "price": 46.036,
+          "wow_pct": null,
+          "yoy_pct": 763.07
+        },
+        {
+          "category": "DRAM",
+          "id": "dram_ddr4_16gb",
+          "name": "DDR4 16Gb",
+          "observed": "2026-09-21",
+          "price": 85,
+          "wow_pct": -4.76,
+          "yoy_pct": 725.8
+        },
+        {
+          "category": "DRAM",
+          "id": "dram_ddr5_16gb",
+          "label_as_printed": "DDR5 16G",
+          "name": "DDR5 16Gb",
+          "observed": "2026-09-21",
+          "price": 56.417,
+          "wow_pct": 3.84,
+          "yoy_pct": 807.61
+        }
+      ],
+      "omitted": [
+        "'Spot Price & Memory Stocks' 인덱스 차트(각 시리즈 기간 고점=100, 2025-10-06–2026-09-21)와 주가선은 픽셀 판독이 필요해 전사하지 않음",
+        "가격 옆 방향 글리프(▲▼⏸)는 첨부에 정의가 없어 전사하지 않음"
+      ],
+      "reconciliation": {
+        "checked_date": "2026-10-18",
+        "differences": [
+          {
+            "attachment_price": 56.417,
+            "existing_price": 56.933,
+            "existing_unit": "USD/chip",
+            "observed": "2026-09-21",
+            "product": "DDR5 16Gb"
+          },
+          {
+            "attachment_price": 20.083,
+            "existing_price": 20.146,
+            "existing_unit": "USD/chip",
+            "observed": "2026-09-14",
+            "product": "NAND 512Gb TLC"
+          }
+        ],
+        "existing_source": "기존 메모리 일간 데이터",
+        "note": "같은 날짜·품목의 수치가 다릅니다. 집계 기준 차이 여부는 미확인이며 첨부값과 기존 이력을 각각 보존합니다."
+      },
+      "source": {
+        "attachment": "attachment-1",
+        "label": "DRAMeXchange / BadOnion (첨부 표기: DRAM Exchange aggregates | BadOnion Research)",
+        "url": null,
+        "url_status": "not_supplied"
+      },
+      "title_ko": "메모리 스팟 가격",
+      "unit": "USD",
+      "unit_note": "첨부 표기 그대로(USD, 품목별 가격). 칩·모듈 등 단위 명시 없음",
+      "vintage": {
+        "observation_dram": "2026-09-21",
+        "observation_nand": "2026-09-14",
+        "publication": "2026-09-21"
+      }
+    }
+  },
+  "title": "Memory Price Weekly Update 26년9월21일",
+  "visibility": "public",
+  "withheld": {
+    "count": 2,
+    "notice": "공개 정책에 따라 일부 증권사 추정치와 리서치 산문은 공개본에서 제외했습니다."
+  }
+}
