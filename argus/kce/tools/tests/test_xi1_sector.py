@@ -223,6 +223,24 @@ class TestBlankAndCells(unittest.TestCase):
         self.assertEqual(S.cell_sanity({"amt": 100, "supCum": 150}), {"amt": 100, "supCum": 150})   # 초과 공급은 over 로만
 
 
+class TestDups(unittest.TestCase):
+    @staticmethod
+    def c(st, i, dt, amt, nm):
+        return {"id": "%s-%d" % (st, i), "stock": st, "dt": dt, "nm": nm, "flags": [], "m": {"q": "2026Q2"},
+                "hist": {"2026Q2": [amt, 0, 0, 0, 0]}}
+
+    def test_holding_relisting_needs_three_pairs(self):
+        cs = [self.c("H", i, "2025.0%d.01" % (i + 1), 100 + i, "변압기 공급 %d" % i) for i in range(3)]
+        cs += [self.c("S", i, "2025.0%d.01" % (i + 1), 100 + i, "변압기 공급 %d" % i) for i in range(3)]
+        cs.append(self.c("H", 9, "2025.09.09", 7, "모회사 자체 계약"))
+        S.mark_dups(cs, set())
+        self.assertEqual([c["id"] for c in cs if "dup" in c["flags"]], ["H-0", "H-1", "H-2"])   # 계약 많은 쪽 = 모회사
+        # 한 쌍은 우연(한화오션·삼성중공업 같은 날 같은 값 LNG운반선 4척) — 표시하지 않는다
+        two = [self.c("A", 0, "2024.07.01", 1438100, "LNG운반선 4척"), self.c("B", 0, "2024.07.01", 1438100, "LNG운반선 4척")]
+        S.mark_dups(two, set())
+        self.assertFalse(any("dup" in c["flags"] for c in two))
+
+
 class TestCurve(unittest.TestCase):
     def test_curve_monotone_and_lag(self):
         cs = []

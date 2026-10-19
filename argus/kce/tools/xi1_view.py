@@ -28,6 +28,7 @@ FLAG_LABEL = {"lag": ("지연 의심", "dn", "같은 탭 표준 곡선보다 20%
               "unit_suspect": ("단위 의심", "wn", "표 금액 단위를 확인 못함 — 합계에서 뺐다"),
               "fx": ("외화", "", "외화 계약금액 — 우리는 환산하지 않는다"),
               "withheld": ("유보", "", "계약금액 공시유보"),
+              "dup": ("자회사 계약", "", "자회사가 같은 계약을 자기 표에도 싣는다 — 탭 합계·곡선에서는 자회사 쪽 1번만 센다"),
               "cell_fix": ("칸 단위 보정", "", "공급·수령 한 칸이 계약금액의 2배를 넘어 천·백만 단위로 옮기거나 비웠다(원문 대조)")}
 STATUS_LABEL = {"active": "진행", "new": "신규", "done": "완료(표에서 빠짐·직전 95%↑)",
                 "dropped": "이탈(표에서 빠짐·직전 95%↓)"}
@@ -517,7 +518,7 @@ def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보�
              ("%s · %s년" % (money(s.get("pace_y")), ("%.1f" % s["burn_y"]) if s.get("burn_y") else "—"),
               "연 공급 속도 · 잔여 소진(최근 속도 기준)"),
              ("%d · %d · %d" % (s["lag"], s.get("overdue", 0), s["slip6"]), "지연 의심 · 납기 경과 · 지연 전망")]
-    cur = [c for c in prog["contracts"] if c["status"] in ("active", "new")]
+    cur = [c for c in prog["contracts"] if c["status"] in ("active", "new") and "dup" not in c["flags"]]
     rows = sorted(((st, co) for st, co in cos.items() if co["agg"]["rem"] > 0), key=lambda x: -x[1]["agg"]["rem"])[:limit]
     figs = []
     ser = _series_svg(s.get("series") or {}, prog["periods"], "탭 반기별 계약금액 분해")

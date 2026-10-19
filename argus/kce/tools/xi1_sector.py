@@ -328,6 +328,7 @@ def ledger_rows(tab, rows):
                     "amt": amt if isinstance(amt, (int, float)) and amt > 0 else None,
                     "party": r.get("party") or "", "start": r.get("start") or "", "end": r.get("end") or "",
                     "dates": dates, "rcps": [rcp] + sups, "term": term,
+                    "sub": bool(r.get("subsidiary")) or "자회사" in (r.get("title") or ""),
                     "signed": [d for d in (sd, to_date(r.get("start") or "")) if d]})
     return out
 
@@ -707,6 +708,7 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
             items.append(item)
         contracts.extend(items)
         companies[st] = {"name": name, "periods": cps, "latest": latest, "_items": items, "_L": Ls}
+    mark_dups(contracts, {r for c in L if c["sub"] for r in c["rcps"]})
     curve = sector_curve(contracts)
     for c in contracts:
         apply_curve(c, curve)
@@ -724,11 +726,52 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
     return prog
 
 
+def mark_dups(contracts, sub_rcps, min_pairs=3):
+    """지주·모회사 XI-1 표가 자회사 계약을 다시 싣는다(효성 ↔ 효성중공업, LS ↔ LS일렉트릭). 같은 탭 안 다른 두 종목 사이에
+    신고일이 같고 계약금액이 1% 안·이름이 닮은(0.5) 계약이 **3쌍 이상**이면 모자 관계로 보고, 모회사 쪽 행에 'dup' 을 달아
+    탭 합계·곡선에서 뺀다(회사 화면엔 남긴다). 한두 쌍은 우연일 수 있다 — 한화오션·삼성중공업이 같은 날 같은 값의
+    `LNG운반선 4척`을 따로 수주했다(2024.07.01, 1조 4,381억). 모회사 판정: 원장 연결이 자회사 재공시(제목 '자회사'·subsidiary)인
+    쪽, 아니면 계약이 더 많은 쪽."""
+    by_dt = {}
+    for c in contracts:
+        if c.get("dt") and c["hist"][c["m"]["q"]][0]:
+            by_dt.setdefault(c["dt"], []).append(c)
+    pairs = {}
+    for g in by_dt.values():
+        for i, x in enumerate(g):
+            for y in g[i + 1:]:
+                if x["stock"] == y["stock"]:
+                    continue
+                if not _near(x["hist"][x["m"]["q"]][0], y["hist"][y["m"]["q"]][0], 0.01):
+                    continue
+                if X._sim(x["nm"], y["nm"]) < 0.5 and X.nkey(x["nm"]) != X.nkey(y["nm"]):
+                    continue
+                a, b = sorted((x, y), key=lambda c: c["stock"])
+                pairs.setdefault((a["stock"], b["stock"]), []).append((a, b))
+    n_co = {}
+    for c in contracts:
+        n_co[c["stock"]] = n_co.get(c["stock"], 0) + 1
+    for (sa, sb), ps in sorted(pairs.items()):
+        if len(ps) < min_pairs:
+            continue
+        sub_a = sum(1 for a, b in ps if a.get("link") and a["link"]["rcp"] in sub_rcps)
+        sub_b = sum(1 for a, b in ps if b.get("link") and b["link"]["rcp"] in sub_rcps)
+        if sub_a != sub_b:
+            parent_is_a = sub_a > sub_b
+        else:
+            parent_is_a = (n_co[sa], sa) > (n_co[sb], sb)
+        for a, b in ps:
+            parent, child = (a, b) if parent_is_a else (b, a)
+            if "dup" not in parent["flags"]:
+                parent["flags"].append("dup")
+                parent["dup_of"] = child["id"]
+
+
 def sector_curve(contracts):
     """경과율 구간별 진행률 중앙값 → [{x, y, n}] (단조 비감소). 표본 5 미만 구간은 이웃 구간 사이 보간."""
     pts = [(c["m"]["elapsed"], c["m"]["prog"]) for c in contracts
            if c["status"] in ("active", "new") and c["m"].get("elapsed") is not None
-           and c["m"].get("prog") is not None and not ({"unit_suspect", "over"} & set(c["flags"]))]
+           and c["m"].get("prog") is not None and not ({"unit_suspect", "over", "dup"} & set(c["flags"]))]
     raw = []
     for lo, hi in CURVE_BINS:
         ys = sorted(y for x, y in pts if lo <= x < hi or (hi == 1.5 and x >= hi))
@@ -911,14 +954,26 @@ def company_series(items, qs):
 
 
 def sector_agg(prog):
+    """탭 합계 — 회사별로 다시 집계하되 'dup'(자회사 계약을 다시 실은 모회사 행)은 뺀다. 회사 화면 수치는 그대로."""
+    qs = prog["periods"]
+    byco = {}
+    for c in prog["contracts"]:
+        if "dup" not in c["flags"]:
+            byco.setdefault(c["stock"], []).append(c)
+    views = {}
+    for st_, co in prog["companies"].items():
+        items = byco.get(st_, [])
+        views[st_] = {"agg": company_agg(items, co.get("latest"), []), "series": company_series(items, qs),
+                      "flows": company_flows(items, qs, {q for q, p in co["periods"].items() if p["status"] == "ok"}),
+                      "periods": co["periods"]}
     series = {}
     for q in prog["periods"]:
-        cos = [co for co in prog["companies"].values() if q in co["series"]]
+        cos = [co for co in views.values() if q in co["series"]]
         if not cos:
             continue
         series[q] = {"cos": len(cos), **{k: round(sum(co["series"][q][k] for co in cos), 3)
                                          for k in ("n", "amt", "sup", "rem", "recv", "sup_cur", "sup_both")}}
-    cos = prog["companies"].values()
+    cos = views.values()
     tot = lambda k: round(sum(co["agg"][k] or 0 for co in cos), 3)        # noqa: E731
     st = {}
     for co in cos:
@@ -949,7 +1004,8 @@ def sector_agg(prog):
             "cos_with_rows": sum(1 for co in cos if co["agg"]["n"]),
             "n": tot("n"), "amt": amt, "sup": sup, "rem": tot("rem"), "ar": tot("ar"), "adv": tot("adv"),
             "prog_w": _r(sup / amt) if amt else None, "lag": tot("lag"), "overdue": tot("overdue"), "slip6": tot("slip6"),
-            "stalled": tot("stalled"), "reversal": tot("reversal"), "cum_drop": tot("cum_drop"), "linkA": tot("linkA"), "linkB": tot("linkB"), "xi_only": tot("xi_only")}
+            "stalled": tot("stalled"), "reversal": tot("reversal"), "cum_drop": tot("cum_drop"), "linkA": tot("linkA"),
+            "linkB": tot("linkB"), "xi_only": tot("xi_only"), "dup": sum(1 for c in prog["contracts"] if "dup" in c["flags"])}
 
 
 def subset(prog, stocks):
