@@ -368,6 +368,8 @@ def load_all():
         "probe": load_asset("universe_probe.json") if os.path.exists(
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets",
                          "universe_probe.json")) else {},
+        # 계약 진행(XI-1) — 없으면 None(열·섹션 없음). 읽는 쪽은 늘 data.get("xi1").
+        "xi1": load_xi1([r["stock"] for r in uni]),
     }
 
 
@@ -467,9 +469,141 @@ def _grade_pill(p):
     return '<span class="pill %s" title="%s">%s</span>' % (cls, E(p.get("detail", "")), E(p["basis_ko"]))
 
 
+# ── 계약 진행(XI-1) ─────────────────────────────────────────
+# 반기·사업보고서 XI-1 「나. 단일판매ㆍ공급계약 진행 현황」 — 6개 수주 섹터 탭 공용 층(kce/tools):
+#   xi1_sector(수집·해석·분기 잇기·원장 연결·지표 → assets/xi1/progress.json) · xi1_view(서버 렌더 조각, JS 없음).
+# fail-soft: import·읽기 실패나 progress.json 없음 → data["xi1"] = None → 열·섹션을 만들지 않는다(지금 화면 그대로).
+# 공용 정의(진행·수령 진척·매출채권/선수금·표준 곡선·연결 등급·외화)는 argus/kce/UPDATE.md §6-C.
+XI1_FOOT = "·반기·사업보고서 「XI-1 공시내용 진행 및 변경사항」"
+_XV = {"mod": None, "tried": False}
+
+
+def _xi1_view():
+    if not _XV["tried"]:
+        _XV["tried"] = True
+        try:
+            import xi1_view
+            _XV["mod"] = xi1_view
+        except Exception as e:
+            sys.stderr.write("[warn] 계약 진행(XI-1) 화면 비활성: %s\n" % e)
+    return _XV["mod"]
+
+
+def load_xi1(stocks=None):
+    """progress.json → dict 또는 None. 화면 모집단(universe)에 없는 종목이 섞여 있으면 subset 으로 맞춘다
+    (kdef 는 모집단 전부를 보이므로 평소엔 그대로 — 모집단이 바뀌고 XI-1 build 가 아직 안 돈 날의 방어)."""
+    try:
+        import xi1_sector
+        prog = xi1_sector.load_progress("kdef")
+        if prog and stocks is not None and set(prog.get("companies") or {}) - set(stocks):
+            prog = xi1_sector.subset(prog, stocks)
+    except Exception as e:
+        sys.stderr.write("[warn] 계약 진행(XI-1) 비활성: %s\n" % e)
+        return None
+    if not prog or not _xi1_view():
+        return None
+    return prog
+
+
+def _xi1(data):
+    """(prog, xi1_view) — 하나라도 없으면 (None, None)."""
+    prog = (data or {}).get("xi1")
+    if not prog:
+        return None, None
+    v = _xi1_view()
+    return (prog, v) if v else (None, None)
+
+
+def _rcps(c):
+    """원장 행의 접수번호 사슬 — [rcp] + supersedes(문자열이든 리스트든)."""
+    out = [c.get("rcp")]
+    sup = c.get("supersedes")
+    out += [sup] if isinstance(sup, str) else list(sup or [])
+    return [r for r in out if r]
+
+
+def _xi1_head(data):
+    """XI-1 조각을 쓰는 페이지의 <style> — 없으면 ''."""
+    prog, v = _xi1(data)
+    return "<style>%s</style>" % v.CSS if prog else ""
+
+
+def _xi1_civil_note(data, items, scope):
+    """XI-1 절은 회사의 XI-1 계약 전부다 — 방산 집계처럼 민수(CIVIL)를 빼지 않는다는 한 줄.
+    민수 판정은 원장(계통 CIVIL)에만 있으므로 원장에 연결된 계약만 세고, XI 전용은 '미판정'으로 둔다."""
+    civ = {r for c in data.get("contracts") or [] if c.get("civil") for r in _rcps(c)}
+    n_civ = sum(1 for c in items if c.get("link") and set(c["link"].get("rcps") or [c["link"].get("rcp")]) & civ)
+    n_xi = sum(1 for c in items if not c.get("link"))
+    return ('<p class="note">%s XI-1 표의 계약 %d건 전부입니다(완료·이탈 포함) — 방산 집계(%s)와 달리 '
+            '<b>민수(계통 CIVIL)를 빼지 않습니다</b>: 원장 연결로 민수 확인 %d건 · 원장 짝이 없는 XI 전용 %d건은 방산/민수 미판정.</p>'
+            % (scope, len(items), "위 KPI·계약 공시 방산 건수" if scope == "이 회사" else "위 KPI·최근 대형 계약",
+               n_civ, n_xi))
+
+
+def _xi1_inject(sec, note):
+    """조각의 첫 </h2> 뒤에 탭 각주를 넣는다(조각 자체는 공용 — 고치지 않는다)."""
+    i = sec.find("</h2>")
+    return sec if i < 0 else sec[:i + 5] + note + sec[i + 5:]
+
+
+def xi1_company(data, stock):
+    prog, v = _xi1(data)
+    if not prog:
+        return ""
+    try:
+        sec = v.company_section(prog, stock)
+        if not sec:
+            return ""
+        items = [c for c in prog.get("contracts") or [] if c.get("stock") == stock]
+        return _xi1_inject(sec, _xi1_civil_note(data, items, "이 회사"))
+    except Exception as e:
+        sys.stderr.write("[warn] %s 계약 진행(XI-1) 렌더 실패: %s\n" % (stock, e))
+        return ""
+
+
+def xi1_hub(data, paged):
+    """허브 섹션 — 회사 페이지가 있는 종목만 링크."""
+    prog, v = _xi1(data)
+    if not prog:
+        return ""
+    try:
+        sec = v.hub_section(prog, co_href=lambda st: ("%s/index.html" % st) if st in paged else None)
+        if not sec:
+            return ""
+        return _xi1_inject(sec, _xi1_civil_note(data, prog.get("contracts") or [], "탭 전체"))
+    except Exception as e:
+        sys.stderr.write("[warn] 허브 계약 진행(XI-1) 렌더 실패: %s\n" % e)
+        return ""
+
+
+def xi1_coverage(data):
+    prog, v = _xi1(data)
+    if not prog:
+        return ""
+    try:
+        return v.coverage_rows(prog) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] 커버리지 계약 진행(XI-1) 렌더 실패: %s\n" % e)
+        return ""
+
+
+def _xi1_cells(rows, data):
+    """원장 표의 진행(XI-1) 칸 — [td…] (rows 순서) 또는 None(열 없음). 한 칸이라도 실패하면 열 전체를 뺀다."""
+    prog, v = _xi1(data)
+    if not prog:
+        return None
+    try:
+        return [v.progress_cell(prog, _rcps(c)) for c in rows]
+    except Exception as e:
+        sys.stderr.write("[warn] 진행(XI-1) 열 비활성: %s\n" % e)
+        return None
+
+
 def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel="../"):
     tr = []
-    for c in sorted(rows, key=lambda c: (c["signed"] or c["start"] or ""), reverse=True):
+    rows = sorted(rows, key=lambda c: (c["signed"] or c["start"] or ""), reverse=True)
+    xi = _xi1_cells(rows, data)            # 진행(XI-1) 열 — 금액 바로 뒤. 없으면 열 자체가 없다(지금 표 그대로).
+    for i, c in enumerate(rows):
         dm = dom_meta(data, dom_key(c))
         cm = ctype_meta(data, c["ctype"])
         amt = c["amt_krw_m"]
@@ -501,12 +635,13 @@ def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel
             party = '<a href="%s%s/index.html">%s</a>' % (rel, E(c["party_prime"]), party)
         tr.append(
             '<tr><td class="l">%s</td>%s<td class="l">%s%s</td><td class="l">%s</td>'
-            '<td class="l">%s</td><td data-v="%.0f">%s</td><td data-v="%s">%s</td>'
+            '<td class="l">%s</td><td data-v="%.0f">%s</td>%s<td data-v="%s">%s</td>'
             '<td class="l">%s<br><span class="mut">%s</span></td><td class="l mut">%s</td>'
             '<td class="l"><a href="%s" target="_blank" rel="noopener noreferrer">원문</a>%s</td></tr>'
             % (E(c["signed"] or c["start"] or "—"), who, _sw(dm["color"]), E(dm["ko"]),
                E(cm["ko"]), nm + term,
-               (amt or 0), fmt_eok(amt), (c["years"] if c["years"] is not None else -1),
+               (amt or 0), fmt_eok(amt), xi[i] if xi else "",
+               (c["years"] if c["years"] is not None else -1),
                fmt_x(c["years"]) if c["years"] is not None else "—",
                party + exp, E(PARTY_KO.get(c["party_kind"], c["party_kind"]))
                + ((" · " + E(c["region"])) if (c.get("region") or "").strip("- ") else ""),
@@ -514,9 +649,10 @@ def contracts_table(rows, data, tid="ct", show_company=False, by_stock=None, rel
                E(DART % c["rcp"]),
                ' <span class="pill">정정</span>' if c.get("corrected") else ""))
     head = ('<tr><th class="l">수주일</th>%s<th class="l">계통</th><th class="l">유형</th>'
-            '<th class="l">사업명(체결계약명)</th><th>금액(억)</th><th>기간(년)</th>'
+            '<th class="l">사업명(체결계약명)</th><th>금액(억)</th>%s<th>기간(년)</th>'
             '<th class="l">계약상대 · 공급지역</th><th class="l">계약기간</th><th class="l">출처</th></tr>'
-            % ('<th class="l">회사</th>' if show_company else ""))
+            % ('<th class="l">회사</th>' if show_company else "",
+               _xi1(data)[1].progress_th() if xi is not None else ""))
     return ('<div class="ctl"><input data-filter="#%s" type="search" placeholder="사업명·계통·유형·상대 검색"></div>'
             '<div class="wrap tall"><table id="%s" data-sortable><thead>%s</thead><tbody>%s</tbody></table></div>'
             % (tid, tid, head, "".join(tr)))
@@ -795,6 +931,9 @@ def company_html(s, data):
                      "아래 수주 상세는 해지된 원본 계약까지 (계약명, 시작일)로 찾아 함께 빼므로 합계가 다를 수 있습니다."
                      % len(s["terminations"]))
 
+    # 계약 진행(XI-1) — 계약 공시 표 바로 아래. 진행 표가 없는 회사는 섹션을 만들지 않는다.
+    xi_sec = xi1_company(data, s["stock"])
+
     chart = {
         "roll": [{"q": q, "backlog": s["comp"]["quarters"][q].get("backlog"),
                   "def": s["comp"]["quarters"][q].get("backlog_def")} for q in s["qs"]],
@@ -821,6 +960,7 @@ def company_html(s, data):
  <section class="card"><h2>계약 상대 <em>방산은 상대가 공개입니다</em></h2>%s</section>
 </div>
 <section class="card"><h2>계약 공시 <em>단일판매ㆍ공급계약체결 · 방산 %d건 · 민수 %d건(계통 CIVIL 로 갈라 집계에서 뺐습니다)</em></h2>%s</section>
+%s
 %s
 %s
 %s
@@ -858,14 +998,15 @@ def company_html(s, data):
 <script>%s</script>
 """ % ("".join(kpi), roll_html, seg_html, party_html(s), len(s["def_contracts"]), s["civil_n"],
        contracts_table(s["contracts"], data, tid="ct%s" % s["stock"]),
-       due_sec, qty_sec, parts_html, rel_html,
+       xi_sec, due_sec, qty_sec, parts_html, rel_html,
        " ".join("<p>%s</p>" % n for n in notes),
        json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(s["stock"]) + _orders_section(s["stock"])
     tags = (rec["stock"], rec["market"], ROLE_KO.get(rec["role"], rec["role"]), rec["industry"])
     dart = DART % (latest.get("rcp") if latest and latest.get("rcp") else "")
     return page("%s — 방산 수주" % rec["name"], body, depth=1, h1=rec["name"], tags=tags,
-                nav=(("허브", "../index.html"), ("인포그래픽", "../parts.html"),
-                     ("커버리지", "../coverage.html"),
+                head_extra=_xi1_head(data), foot=XI1_FOOT if _xi1(data)[0] else "",
+                nav=(("허브", "../index.html"),) + ((("계약 진행", "#xi1"),) if xi_sec else ()) +
+                    (("인포그래픽", "../parts.html"), ("커버리지", "../coverage.html"),
                      ("DART 원문 ↗", dart if latest else "https://dart.fss.or.kr")),
                 crumbs=(("ARGUS", "../../index.html"), ("한국방산", "../index.html"),
                         (rec["name"], None)),
@@ -954,6 +1095,8 @@ def hub_html(data, sums):
     names = {r["stock"]: r for r in data["uni"]}
     ncat = sum(1 for c in data["sup"].values() if c["cats"])
     nlink = sum(1 for c in data["sup"].values() if c["primes"])
+    # 계약 진행(XI-1) — 회사 페이지가 있는 종목만 링크(main 이 has_page 로 거른 것과 같은 기준).
+    xi_sec = xi1_hub(data, {s["stock"] for s in sums if has_page(s)})
     body = """
 <div class="kpi">
  <div class="hero"><b>%s<small>억</small></b><span>체계업체 %d사 수주잔고 합(최근 분기)</span>
@@ -977,6 +1120,7 @@ def hub_html(data, sums):
   수출사업 이행계약입니다. 유형 낱말이 없는 G2G 계약(`잠수함 3척`)은 상대로 되짚어 '수출사업 이행'에 둡니다.
   공시유보로 금액이 없는 건은 건수에만 들어갑니다. 해지 공시 %d건은 뺐습니다.</p></section>
 <section class="card"><h2>최근 대형 계약 <em>금액 상위 25건 · 계약상대가 공개인 것이 방산의 특징입니다</em></h2>%s</section>
+%s
 <h2 class="sec">더 보기<span>부품 인포그래픽과 모집단 근거</span></h2>
 <div class="cards">
  <a class="cardlink" href="parts.html"><div class="t"><b>🛠 무기체계 인포그래픽</b></div>
@@ -1014,7 +1158,7 @@ def hub_html(data, sums):
        "".join(cards), dchips,
        len(defc), matrix_html(mx, data), terms,
        contracts_table(big, data, tid="cbig", show_company=True, by_stock=names, rel=""),
-       len(data["uni"]),
+       xi_sec, len(data["uni"]),
        json_for_html({
            "doms": [{"ko": dom_meta(data, d)["ko"], "color": dom_meta(data, d)["color"],
                      "amt": dom_amt[d], "n": dom_n[d]}
@@ -1026,8 +1170,9 @@ def hub_html(data, sums):
        CHART_DEFAULTS_JS, TABLE_JS)
     return page("한국방산 — 수주·계약·부품", body, depth=0, h1="🛡 한국방산",
                 scripts=("vendor/chart.umd.min.js",),
+                head_extra=_xi1_head(data), foot=XI1_FOOT if _xi1(data)[0] else "",
                 nav=(("← ARGUS", "../index.html"), ("🏗 한국건설", "../kce/index.html"),
-                     ("⚓ 한국조선", "../kship/index.html")),
+                     ("⚓ 한국조선", "../kship/index.html")) + ((("계약 진행", "#xi1"),) if xi_sec else ()),
                 lead="국내 상장 방산기업의 수주를 이 산업의 축으로 읽습니다 — 사업 단위 계약(계약상대가 공개입니다), "
                      "무기체계 계통, 계약 유형(체계개발·양산·성능개량·PBL), 방산/민수·내수/수출 부문 매출, "
                      "그리고 <b>잔고 커버리지(몇 년치 일감)</b>. 체계업체뿐 아니라 부품사까지 전수로 담습니다.")
@@ -1062,6 +1207,7 @@ def coverage_html(data, sums):
                        E((r["industry"] or "")[:22]), cls, E(status), E(r["source"]),
                        E((r.get("reason") or r.get("product") or "")[:70])))
     probe = data.get("probe") or {}
+    xi_cov = xi1_coverage(data)            # 계약 진행(XI-1) 수집 상태 — 회사 × 반기 · 원장 연결 등급
     rej = probe.get("rejected") or []
     scan = ""
     if probe:
@@ -1102,13 +1248,16 @@ def coverage_html(data, sums):
 <th class="l">수록 상태</th><th class="l">편입 근거</th><th class="l">사유·주요제품</th></tr></thead>
 <tbody>%s</tbody></table></div></section>
 %s
+%s
 <div class="note info">방산은 <b>보안 관계상</b> 수주 상세를 생략하는 회사가 있습니다(잔액 한 줄·기초/기말만).
 그런 회사는 잔고 추이 대신 공시된 값만 싣고, 못 읽은 것은 못 읽었다고 적습니다.
 부품사→체계업체 연결은 근거 등급(주요고객 주석 &gt; 계약공시 상대 &gt; 본문 언급)을 화면에 함께 띄웁니다.</div>
 <script>%s</script>
-""" % (len(data["uni"]), "".join(rows), scan, TABLE_JS)
+""" % (len(data["uni"]), "".join(rows), scan, xi_cov, TABLE_JS)
     return page("한국방산 커버리지", body, depth=0, h1="커버리지",
-                nav=(("허브", "index.html"), ("← ARGUS", "../index.html")),
+                head_extra=_xi1_head(data), foot=XI1_FOOT if _xi1(data)[0] else "",
+                nav=(("허브", "index.html"),) + ((("계약 진행 수집", "#xi1cov"),) if xi_cov else ()) +
+                    (("← ARGUS", "../index.html"),),
                 crumbs=(("ARGUS", "../index.html"), ("한국방산", "index.html"), ("커버리지", None)))
 
 
