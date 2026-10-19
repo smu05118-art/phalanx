@@ -1,5 +1,5 @@
 {
- "as_of": "2026-10-15",
+ "as_of": "2026-10-18",
  "source": "aikstockdata.com(상장주식수·PER/PBR·주요계정, 출처표기·비영리) + 네이버 금융 일봉(정규장 종가·분기 시세)",
  "citation": "자료: 한국주식데이터(aikstockdata.com) — 원천: 금융감독원 DART · 금융위원회 공공데이터포털",
  "license": {
@@ -19,7 +19,7 @@
   "decided": "2026-09-30 오너(정본=네이버 정규장 종가) · 2026-10-05 V2 검증(as_of 전진 · 토스 제거 · 무거래일 제외)"
  },
  "run": {
-  "today": "2026-10-15",
+  "today": "2026-10-18",
   "include_today_closes": true,
   "note": "오늘 날짜 일봉 행은 KST 15:40 이후(또는 --today 가 과거)일 때만 종가·이력에 넣는다 — 장중 러너(10:40 KST)는 전 거래일까지"
  },
@@ -48,20 +48,20 @@
  "naver_check": {
   "source": "fchart.stock.naver.com siseJson 일봉 종가(정규장) — aik 기준일 같은 날 대조",
   "checked_n": 57,
-  "equal_n": 9,
-  "abs_gt_1pct_n": 13,
+  "equal_n": 5,
+  "abs_gt_1pct_n": 32,
   "max_abs": {
-   "stock": "187790",
-   "diff_pct": -3.521,
-   "aik": 2740,
-   "naver_close": 2840
+   "stock": "217590",
+   "diff_pct": 5.739,
+   "aik": 13450,
+   "naver_close": 12720
   },
   "close_source_n": {
    "naver_regular_close": 57
   },
   "as_of_advanced_n": 57,
   "as_of_n": {
-   "20261015": 57
+   "20261016": 57
   },
   "note": "close 는 네이버 정규장 종가(close_source), aik 원값은 aik_close — 차이는 행마다 naver_check. aik `close` 는 금융위 T+1 확정 종가로 표기되지만 같은 기준일에 시가·저가·거래량은 같고 고가·종가가 다른 종목이 있다(2026-10-01 현대리바트 5,560 vs 5,750). 어느 쪽이 '확정'인지 이 파일은 판정하지 않고 네이버를 정본으로 쓴다(close_rule)."
  },
@@ -81,22 +81,22 @@
    "name": "한일철강",
    "market": "KOSPI",
    "role": "steel",
-   "close": 2895,
-   "as_of": "20261015",
-   "open": 2950,
-   "high": 2965,
-   "low": 2860,
-   "volume": 162007,
+   "close": 2985,
+   "as_of": "20261016",
+   "open": 2915,
+   "high": 3080,
+   "low": 2910,
+   "volume": 38914,
    "shares_outstanding": 26697460,
-   "market_cap_krw": 77289146700,
+   "market_cap_krw": 79691918100,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 0.46,
+   "pb": 0.47,
    "ttm_net_income_krw": -2014436360,
    "equity_krw": 166048224164,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -119,8 +119,8 @@
     "net_income_prior_year": 1700025264,
     "net_income_yoy_pct": -92.9
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/002220",
    "history_quarterly": {
     "2021Q4": {
@@ -304,64 +304,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 2895,
+     "close_end": 2985,
      "high": 3150,
      "low": 2725,
-     "avg": 2890.0,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 2900.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 2870,
-    "naver_close": 2870,
-    "diff_pct": 0.0
+    "date": "20261015",
+    "aik": 2920,
+    "naver_close": 2900,
+    "diff_pct": 0.69
    },
-   "aik_as_of": "20261013",
-   "aik_close": 2870,
+   "aik_as_of": "20261015",
+   "aik_close": 2920,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 76621710200,
+   "market_cap_krw_aik": 77956583200,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 2870,
-    "open": 2800,
-    "high": 2890,
-    "low": 2765,
-    "volume": 113347,
+    "as_of": "20261015",
+    "close": 2920,
+    "open": 2950,
+    "high": 2965,
+    "low": 2860,
+    "volume": 170915,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "002380": {
    "name": "KCC",
    "market": "KOSPI",
    "role": "equip",
-   "close": 415000,
-   "as_of": "20261015",
-   "open": 434500,
-   "high": 436000,
-   "low": 410000,
-   "volume": 24176,
+   "close": 430000,
+   "as_of": "20261016",
+   "open": 420500,
+   "high": 436500,
+   "low": 420500,
+   "volume": 17485,
    "shares_outstanding": 8592896,
-   "market_cap_krw": 3566051840000,
+   "market_cap_krw": 3694945280000,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": 1.0,
-   "pb": 0.34,
+   "pb": 0.33,
    "ttm_net_income_krw": 3657289530718,
    "equity_krw": 11016744015279,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -384,8 +384,8 @@
     "net_income_prior_year": 937320802442,
     "net_income_yoy_pct": 226.0
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/002380",
    "history_quarterly": {
     "2021Q4": {
@@ -569,64 +569,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 415000,
+     "close_end": 430000,
      "high": 479000,
      "low": 410000,
-     "avg": 453333.3,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 451050.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 435500,
-    "naver_close": 432500,
-    "diff_pct": 0.694
+    "date": "20261015",
+    "aik": 417500,
+    "naver_close": 415500,
+    "diff_pct": 0.481
    },
-   "aik_as_of": "20261013",
-   "aik_close": 435500,
+   "aik_as_of": "20261015",
+   "aik_close": 417500,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 3742206208000,
+   "market_cap_krw_aik": 3587534080000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 435500,
-    "open": 451000,
-    "high": 451000,
-    "low": 419500,
-    "volume": 16617,
+    "as_of": "20261015",
+    "close": 417500,
+    "open": 434500,
+    "high": 436000,
+    "low": 410000,
+    "volume": 24422,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "009540": {
    "name": "HD한국조선해양",
    "market": "KOSPI",
    "role": "holding",
-   "close": 258500,
-   "as_of": "20261015",
-   "open": 269000,
-   "high": 271000,
-   "low": 257000,
-   "volume": 230607,
+   "close": 264500,
+   "as_of": "20261016",
+   "open": 263000,
+   "high": 273000,
+   "low": 262500,
+   "volume": 174308,
    "shares_outstanding": 70773116,
-   "market_cap_krw": 18294850486000,
+   "market_cap_krw": 18719489182000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 4.3,
-   "pb": 1.04,
+   "pe_ttm": 4.0,
+   "pb": 0.98,
    "ttm_net_income_krw": 4605262763000,
    "equity_krw": 18923919607000,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -649,8 +649,8 @@
     "net_income_prior_year": 1058698326000,
     "net_income_yoy_pct": 158.4
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/009540",
    "history_quarterly": {
     "2021Q4": {
@@ -834,64 +834,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 258500,
+     "close_end": 264500,
      "high": 328500,
      "low": 257000,
-     "avg": 294722.2,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 291850.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 278000,
-    "naver_close": 276000,
-    "diff_pct": 0.725
+    "date": "20261015",
+    "aik": 263000,
+    "naver_close": 260000,
+    "diff_pct": 1.154
    },
-   "aik_as_of": "20261013",
-   "aik_close": 278000,
+   "aik_as_of": "20261015",
+   "aik_close": 263000,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 19674926248000,
+   "market_cap_krw_aik": 18613329508000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 278000,
-    "open": 275000,
-    "high": 278000,
-    "low": 262000,
-    "volume": 282816,
+    "as_of": "20261015",
+    "close": 263000,
+    "open": 269000,
+    "high": 271000,
+    "low": 257000,
+    "volume": 239763,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "010140": {
    "name": "삼성중공업",
    "market": "KOSPI",
    "role": "yard",
-   "close": 17980,
-   "as_of": "20261015",
-   "open": 18270,
-   "high": 18570,
-   "low": 17910,
-   "volume": 3734684,
+   "close": 18430,
+   "as_of": "20261016",
+   "open": 18340,
+   "high": 18990,
+   "low": 18110,
+   "volume": 3534249,
    "shares_outstanding": 880000000,
-   "market_cap_krw": 15822400000000,
+   "market_cap_krw": 16218400000000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 29.0,
-   "pb": 3.43,
+   "pe_ttm": 28.7,
+   "pb": 3.39,
    "ttm_net_income_krw": 556181770039,
    "equity_krw": 4710353403757,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -914,8 +914,8 @@
     "net_income_prior_year": 302452091895,
     "net_income_yoy_pct": 6.8
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/010140",
    "history_quarterly": {
     "2021Q4": {
@@ -1099,64 +1099,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 17980,
+     "close_end": 18430,
      "high": 20150,
      "low": 17210,
-     "avg": 19014.4,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 18952.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 18360,
-    "naver_close": 18370,
-    "diff_pct": -0.054
+    "date": "20261015",
+    "aik": 18170,
+    "naver_close": 17940,
+    "diff_pct": 1.282
    },
-   "aik_as_of": "20261013",
-   "aik_close": 18360,
+   "aik_as_of": "20261015",
+   "aik_close": 18170,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 16156800000000,
+   "market_cap_krw_aik": 15989600000000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 18360,
-    "open": 17430,
-    "high": 18430,
-    "low": 17210,
-    "volume": 5041513,
+    "as_of": "20261015",
+    "close": 18170,
+    "open": 18270,
+    "high": 18570,
+    "low": 17910,
+    "volume": 3865083,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "011700": {
    "name": "한신기계",
    "market": "KOSPI",
    "role": "equip",
-   "close": 2130,
-   "as_of": "20261015",
-   "open": 2255,
-   "high": 2285,
-   "low": 2095,
-   "volume": 171429,
+   "close": 2225,
+   "as_of": "20261016",
+   "open": 2190,
+   "high": 2275,
+   "low": 2185,
+   "volume": 107295,
    "shares_outstanding": 32446151,
-   "market_cap_krw": 69110301630,
+   "market_cap_krw": 72192685975,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 0.85,
+   "pb": 0.81,
    "ttm_net_income_krw": -266308220,
    "equity_krw": 87469341076,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -1179,8 +1179,8 @@
     "net_income_prior_year": 462083793,
     "net_income_yoy_pct": 39.5
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/011700",
    "history_quarterly": {
     "2021Q4": {
@@ -1364,56 +1364,56 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 2130,
+     "close_end": 2225,
      "high": 2850,
      "low": 2095,
-     "avg": 2420.6,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 2403.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 2300,
-    "naver_close": 2305,
-    "diff_pct": -0.217
+    "date": "20261015",
+    "aik": 2185,
+    "naver_close": 2150,
+    "diff_pct": 1.628
    },
-   "aik_as_of": "20261013",
-   "aik_close": 2300,
+   "aik_as_of": "20261015",
+   "aik_close": 2185,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 74626147300,
+   "market_cap_krw_aik": 70894839935,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 2300,
-    "open": 2330,
-    "high": 2355,
-    "low": 2235,
-    "volume": 127828,
+    "as_of": "20261015",
+    "close": 2185,
+    "open": 2255,
+    "high": 2285,
+    "low": 2140,
+    "volume": 175938,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "012160": {
    "name": "영흥",
    "market": "KOSPI",
    "role": "steel",
-   "close": 2235,
-   "as_of": "20261015",
-   "open": 2200,
-   "high": 2275,
+   "close": 2205,
+   "as_of": "20261016",
+   "open": 2185,
+   "high": 2325,
    "low": 2105,
-   "volume": 77871,
+   "volume": 6767,
    "shares_outstanding": 15620703,
-   "market_cap_krw": 34912271205,
+   "market_cap_krw": 34443650115,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
@@ -1421,7 +1421,7 @@
    "ttm_net_income_krw": -31427980920,
    "equity_krw": 165104812375,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -1444,8 +1444,8 @@
     "net_income_prior_year": -24376660370,
     "net_income_yoy_pct": 94.5
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/012160",
    "history_quarterly": {
     "2021Q4": {
@@ -1629,64 +1629,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 2235,
+     "close_end": 2205,
      "high": 2430,
      "low": 2020,
-     "avg": 2187.8,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 2189.5,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 11,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
+    "date": "20261015",
     "aik": 2205,
-    "naver_close": 2205,
-    "diff_pct": 0.0
+    "naver_close": 2235,
+    "diff_pct": -1.342
    },
-   "aik_as_of": "20261013",
+   "aik_as_of": "20261015",
    "aik_close": 2205,
    "close_source": "naver_regular_close",
    "market_cap_krw_aik": 34443650115,
    "aik_quote": {
-    "as_of": "20261013",
+    "as_of": "20261015",
     "close": 2205,
-    "open": 2240,
-    "high": 2240,
-    "low": 2100,
-    "volume": 19652,
+    "open": 2200,
+    "high": 2275,
+    "low": 2105,
+    "volume": 77871,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "012210": {
    "name": "삼미금속",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 9440,
-   "as_of": "20261015",
+   "close": 9890,
+   "as_of": "20261016",
    "open": 9900,
-   "high": 10290,
-   "low": 9440,
-   "volume": 596686,
+   "high": 10140,
+   "low": 9680,
+   "volume": 483642,
    "shares_outstanding": 23051579,
-   "market_cap_krw": 217606905760,
+   "market_cap_krw": 227980116310,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 100.0,
-   "pb": 2.2,
+   "pe_ttm": 96.2,
+   "pb": 2.12,
    "ttm_net_income_krw": 2313650379,
    "equity_krw": 105048623624,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "별도",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -1709,8 +1709,8 @@
     "net_income_prior_year": 1909317077,
     "net_income_yoy_pct": 32.7
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/012210",
    "history_quarterly": {
     "2023Q2": {
@@ -1844,21 +1844,21 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 9440,
+     "close_end": 9890,
      "high": 14260,
-     "low": 9440,
-     "avg": 11375.6,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 9200,
+     "avg": 11221.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 831,
+    "rows": 832,
     "no_trade_dropped": 138,
     "from": "20230516",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01",
     "listed": "2025-12-29",
     "pre_listed_quarters": [
@@ -1876,46 +1876,46 @@
     "pre_listed_note": "universe `listed`(현 시장 상장·이전일) 전 구간 — 이전 시장(코넥스·코스닥 등) 시세, 자르지 않고 표기만"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 10040,
-    "naver_close": 10010,
-    "diff_pct": 0.3
+    "date": "20261015",
+    "aik": 9660,
+    "naver_close": 9380,
+    "diff_pct": 2.985
    },
-   "aik_as_of": "20261013",
-   "aik_close": 10040,
+   "aik_as_of": "20261015",
+   "aik_close": 9660,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 231437853160,
+   "market_cap_krw_aik": 222678253140,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 10040,
-    "open": 9950,
-    "high": 10660,
-    "low": 9480,
-    "volume": 904987,
+    "as_of": "20261015",
+    "close": 9660,
+    "open": 9900,
+    "high": 10290,
+    "low": 9500,
+    "volume": 648925,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "013030": {
    "name": "하이록코리아",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 31650,
-   "as_of": "20261015",
-   "open": 32450,
-   "high": 32750,
-   "low": 31300,
-   "volume": 30232,
+   "close": 32450,
+   "as_of": "20261016",
+   "open": 31800,
+   "high": 32850,
+   "low": 31800,
+   "volume": 11759,
    "shares_outstanding": 11768144,
-   "market_cap_krw": 372461757600,
+   "market_cap_krw": 381876272800,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 6.6,
-   "pb": 0.81,
+   "pe_ttm": 6.4,
+   "pb": 0.78,
    "ttm_net_income_krw": 58186741887,
    "equity_krw": 476335318806,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -1938,8 +1938,8 @@
     "net_income_prior_year": 22697322489,
     "net_income_yoy_pct": 32.7
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/013030",
    "history_quarterly": {
     "2021Q4": {
@@ -2123,64 +2123,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 31650,
+     "close_end": 32450,
      "high": 37200,
      "low": 31300,
-     "avg": 34388.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 34210.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 32750,
-    "naver_close": 33000,
-    "diff_pct": -0.758
+    "date": "20261015",
+    "aik": 31700,
+    "naver_close": 31800,
+    "diff_pct": -0.314
    },
-   "aik_as_of": "20261013",
-   "aik_close": 32750,
+   "aik_as_of": "20261015",
+   "aik_close": 31700,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 385406716000,
+   "market_cap_krw_aik": 373050164800,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 32750,
-    "open": 33200,
-    "high": 33200,
-    "low": 31700,
-    "volume": 41990,
+    "as_of": "20261015",
+    "close": 31700,
+    "open": 32450,
+    "high": 32700,
+    "low": 31300,
+    "volume": 30346,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "014280": {
    "name": "금강공업",
    "market": "KOSPI",
    "role": "steel",
-   "close": 4200,
-   "as_of": "20261015",
-   "open": 4385,
-   "high": 4385,
-   "low": 4160,
-   "volume": 149751,
+   "close": 4285,
+   "as_of": "20261016",
+   "open": 4265,
+   "high": 4400,
+   "low": 4205,
+   "volume": 82251,
    "shares_outstanding": 29329357,
-   "market_cap_krw": 123183299400,
+   "market_cap_krw": 125676294745,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 0.24,
+   "pb": 0.23,
    "ttm_net_income_krw": -8317516597,
    "equity_krw": 532548284876,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -2203,8 +2203,8 @@
     "net_income_prior_year": -916122600,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/014280",
    "history_quarterly": {
     "2021Q4": {
@@ -2388,64 +2388,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 4200,
+     "close_end": 4285,
      "high": 5040,
-     "low": 4160,
-     "avg": 4488.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 4140,
+     "avg": 4463.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 4400,
-    "naver_close": 4390,
-    "diff_pct": 0.228
+    "date": "20261015",
+    "aik": 4255,
+    "naver_close": 4145,
+    "diff_pct": 2.654
    },
-   "aik_as_of": "20261013",
-   "aik_close": 4400,
+   "aik_as_of": "20261015",
+   "aik_close": 4255,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 129049170800,
+   "market_cap_krw_aik": 124796414035,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 4400,
-    "open": 4390,
-    "high": 4440,
-    "low": 4250,
-    "volume": 154273,
+    "as_of": "20261015",
+    "close": 4255,
+    "open": 4385,
+    "high": 4385,
+    "low": 4165,
+    "volume": 165031,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "014620": {
    "name": "성광벤드",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 26250,
-   "as_of": "20261015",
-   "open": 27900,
-   "high": 28350,
-   "low": 26100,
-   "volume": 124749,
+   "close": 27100,
+   "as_of": "20261016",
+   "open": 26450,
+   "high": 28150,
+   "low": 26400,
+   "volume": 107653,
    "shares_outstanding": 26557364,
-   "market_cap_krw": 697130805000,
+   "market_cap_krw": 719704564400,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 19.8,
-   "pb": 1.29,
+   "pe_ttm": 19.3,
+   "pb": 1.26,
    "ttm_net_income_krw": 36799211987,
    "equity_krw": 562034574565,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -2468,8 +2468,8 @@
     "net_income_prior_year": 15637406167,
     "net_income_yoy_pct": 15.1
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/014620",
    "history_quarterly": {
     "2021Q4": {
@@ -2653,64 +2653,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 26250,
+     "close_end": 27100,
      "high": 32250,
      "low": 26050,
-     "avg": 28877.8,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 28700.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 27400,
-    "naver_close": 27250,
-    "diff_pct": 0.55
+    "date": "20261015",
+    "aik": 26700,
+    "naver_close": 26250,
+    "diff_pct": 1.714
    },
-   "aik_as_of": "20261013",
-   "aik_close": 27400,
+   "aik_as_of": "20261015",
+   "aik_close": 26700,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 727671773600,
+   "market_cap_krw_aik": 709081618800,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 27400,
-    "open": 26950,
-    "high": 27600,
-    "low": 26050,
-    "volume": 173300,
+    "as_of": "20261015",
+    "close": 26700,
+    "open": 27900,
+    "high": 28350,
+    "low": 26100,
+    "volume": 128117,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "014940": {
    "name": "오리엔탈정공",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 3920,
-   "as_of": "20261015",
-   "open": 4110,
-   "high": 4110,
-   "low": 3850,
-   "volume": 118212,
+   "close": 3995,
+   "as_of": "20261016",
+   "open": 3930,
+   "high": 4120,
+   "low": 3800,
+   "volume": 132953,
    "shares_outstanding": 45573661,
-   "market_cap_krw": 178648751120,
+   "market_cap_krw": 182066775695,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 8.9,
-   "pb": 1.35,
+   "pe_ttm": 8.5,
+   "pb": 1.29,
    "ttm_net_income_krw": 21067117194,
    "equity_krw": 138502850251,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -2733,8 +2733,8 @@
     "net_income_prior_year": 11015331729,
     "net_income_yoy_pct": 17.5
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/014940",
    "history_quarterly": {
     "2021Q4": {
@@ -2918,64 +2918,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 3920,
+     "close_end": 3995,
      "high": 4650,
-     "low": 3850,
-     "avg": 4311.7,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 3800,
+     "avg": 4279.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 4115,
-    "naver_close": 4060,
-    "diff_pct": 1.355
+    "date": "20261015",
+    "aik": 3920,
+    "naver_close": 3910,
+    "diff_pct": 0.256
    },
-   "aik_as_of": "20261013",
-   "aik_close": 4115,
+   "aik_as_of": "20261015",
+   "aik_close": 3920,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 187535615015,
+   "market_cap_krw_aik": 178648751120,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 4115,
-    "open": 4005,
-    "high": 4125,
-    "low": 3900,
-    "volume": 187516,
+    "as_of": "20261015",
+    "close": 3920,
+    "open": 4110,
+    "high": 4110,
+    "low": 3850,
+    "volume": 125585,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "017960": {
    "name": "한국카본",
    "market": "KOSPI",
    "role": "equip",
-   "close": 17380,
-   "as_of": "20261015",
-   "open": 18230,
-   "high": 18250,
-   "low": 17300,
-   "volume": 173297,
+   "close": 17850,
+   "as_of": "20261016",
+   "open": 17710,
+   "high": 18290,
+   "low": 17710,
+   "volume": 132270,
    "shares_outstanding": 51676486,
-   "market_cap_krw": 898137326680,
+   "market_cap_krw": 922425275100,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 9.3,
-   "pb": 1.42,
+   "pe_ttm": 8.8,
+   "pb": 1.35,
    "ttm_net_income_krw": 102614753929,
    "equity_krw": 673458625152,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -2998,8 +2998,8 @@
     "net_income_prior_year": 51213520596,
     "net_income_yoy_pct": 1.7
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/017960",
    "history_quarterly": {
     "2021Q4": {
@@ -3183,64 +3183,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 17380,
+     "close_end": 17850,
      "high": 21100,
      "low": 17300,
-     "avg": 19368.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 19210.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 18540,
-    "naver_close": 18460,
-    "diff_pct": 0.433
+    "date": "20261015",
+    "aik": 17550,
+    "naver_close": 17310,
+    "diff_pct": 1.386
    },
-   "aik_as_of": "20261013",
-   "aik_close": 18540,
+   "aik_as_of": "20261015",
+   "aik_close": 17550,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 958082050440,
+   "market_cap_krw_aik": 906922329300,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 18540,
-    "open": 18300,
-    "high": 18600,
-    "low": 17670,
-    "volume": 197062,
+    "as_of": "20261015",
+    "close": 17550,
+    "open": 18230,
+    "high": 18250,
+    "low": 17300,
+    "volume": 195477,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "023160": {
    "name": "태광",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 25500,
-   "as_of": "20261015",
-   "open": 26100,
-   "high": 26850,
-   "low": 24800,
-   "volume": 248816,
+   "close": 26500,
+   "as_of": "20261016",
+   "open": 26300,
+   "high": 27450,
+   "low": 25800,
+   "volume": 187516,
    "shares_outstanding": 25460640,
-   "market_cap_krw": 649246320000,
+   "market_cap_krw": 674706960000,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": 4.7,
-   "pb": 0.87,
+   "pb": 0.86,
    "ttm_net_income_krw": 139658944081,
    "equity_krw": 761748637652,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -3263,8 +3263,8 @@
     "net_income_prior_year": 23620573729,
     "net_income_yoy_pct": 313.9
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/023160",
    "history_quarterly": {
     "2021Q4": {
@@ -3448,56 +3448,56 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 25500,
+     "close_end": 26500,
      "high": 29250,
      "low": 24400,
-     "avg": 26738.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 26695.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 25900,
-    "naver_close": 25950,
-    "diff_pct": -0.193
+    "date": "20261015",
+    "aik": 25850,
+    "naver_close": 25300,
+    "diff_pct": 2.174
    },
-   "aik_as_of": "20261013",
-   "aik_close": 25900,
+   "aik_as_of": "20261015",
+   "aik_close": 25850,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 659430576000,
+   "market_cap_krw_aik": 658157544000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 25900,
-    "open": 24550,
-    "high": 26150,
-    "low": 24400,
-    "volume": 150721,
+    "as_of": "20261015",
+    "close": 25850,
+    "open": 26100,
+    "high": 26850,
+    "low": 24800,
+    "volume": 252721,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "025550": {
    "name": "한국선재",
    "market": "KOSDAQ",
    "role": "steel",
-   "close": 2230,
-   "as_of": "20261015",
-   "open": 2315,
-   "high": 2330,
-   "low": 2210,
-   "volume": 84632,
+   "close": 2355,
+   "as_of": "20261016",
+   "open": 2250,
+   "high": 2390,
+   "low": 2250,
+   "volume": 144591,
    "shares_outstanding": 25514004,
-   "market_cap_krw": 56896228920,
+   "market_cap_krw": 60085479420,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
@@ -3505,7 +3505,7 @@
    "ttm_net_income_krw": -1224629127,
    "equity_krw": 179493778440,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -3528,8 +3528,8 @@
     "net_income_prior_year": 4863749048,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/025550",
    "history_quarterly": {
     "2021Q4": {
@@ -3713,64 +3713,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 2230,
+     "close_end": 2355,
      "high": 2450,
      "low": 2150,
-     "avg": 2315.0,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 2317.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 2230,
-    "naver_close": 2240,
-    "diff_pct": -0.446
+    "date": "20261015",
+    "aik": 2225,
+    "naver_close": 2210,
+    "diff_pct": 0.679
    },
-   "aik_as_of": "20261013",
-   "aik_close": 2230,
+   "aik_as_of": "20261015",
+   "aik_close": 2225,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 56896228920,
+   "market_cap_krw_aik": 56768658900,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 2230,
-    "open": 2215,
-    "high": 2255,
-    "low": 2170,
-    "volume": 76916,
+    "as_of": "20261015",
+    "close": 2225,
+    "open": 2315,
+    "high": 2330,
+    "low": 2210,
+    "volume": 89984,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "025890": {
    "name": "한국주강",
    "market": "KOSPI",
    "role": "equip",
-   "close": 2505,
-   "as_of": "20261015",
-   "open": 2495,
-   "high": 2900,
-   "low": 2465,
-   "volume": 3696,
+   "close": 2490,
+   "as_of": "20261016",
+   "open": 2475,
+   "high": 2525,
+   "low": 2475,
+   "volume": 11288,
    "shares_outstanding": 11144616,
-   "market_cap_krw": 27917263080,
+   "market_cap_krw": 27750093840,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 0.84,
+   "pb": 0.83,
    "ttm_net_income_krw": -491901217,
    "equity_krw": 33443639052,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "별도",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -3793,8 +3793,8 @@
     "net_income_prior_year": 345572236,
     "net_income_yoy_pct": -58.0
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/025890",
    "history_quarterly": {
     "2021Q4": {
@@ -3978,64 +3978,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 2505,
+     "close_end": 2490,
      "high": 2900,
      "low": 2450,
-     "avg": 2597.8,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 2586.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 2530,
-    "naver_close": 2530,
-    "diff_pct": 0.0
+    "date": "20261015",
+    "aik": 2480,
+    "naver_close": 2495,
+    "diff_pct": -0.601
    },
-   "aik_as_of": "20261013",
-   "aik_close": 2530,
+   "aik_as_of": "20261015",
+   "aik_close": 2480,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 28195878480,
+   "market_cap_krw_aik": 27638647680,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 2530,
-    "open": 2545,
-    "high": 2545,
-    "low": 2505,
-    "volume": 8374,
+    "as_of": "20261015",
+    "close": 2480,
+    "open": 2495,
+    "high": 2505,
+    "low": 2465,
+    "volume": 3875,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "033500": {
    "name": "동성화인텍",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 13970,
-   "as_of": "20261015",
-   "open": 14340,
-   "high": 14650,
-   "low": 13910,
-   "volume": 130995,
+   "close": 14410,
+   "as_of": "20261016",
+   "open": 14230,
+   "high": 14950,
+   "low": 14210,
+   "volume": 187097,
    "shares_outstanding": 29989494,
-   "market_cap_krw": 418953231180,
+   "market_cap_krw": 432148608540,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 5.4,
-   "pb": 1.47,
+   "pe_ttm": 5.3,
+   "pb": 1.46,
    "ttm_net_income_krw": 79525107159,
    "equity_krw": 290584370522,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -4058,8 +4058,8 @@
     "net_income_prior_year": 20052642656,
     "net_income_yoy_pct": 117.9
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/033500",
    "history_quarterly": {
     "2021Q4": {
@@ -4243,64 +4243,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 13970,
+     "close_end": 14410,
      "high": 16670,
      "low": 13540,
-     "avg": 15240.0,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 15164.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 13,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 14200,
-    "naver_close": 14240,
-    "diff_pct": -0.281
+    "date": "20261015",
+    "aik": 14100,
+    "naver_close": 14040,
+    "diff_pct": 0.427
    },
-   "aik_as_of": "20261013",
-   "aik_close": 14200,
+   "aik_as_of": "20261015",
+   "aik_close": 14100,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 425850814800,
+   "market_cap_krw_aik": 422851865400,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 14200,
-    "open": 14220,
-    "high": 14260,
-    "low": 13540,
-    "volume": 171015,
+    "as_of": "20261015",
+    "close": 14100,
+    "open": 14340,
+    "high": 14650,
+    "low": 13910,
+    "volume": 133318,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "034020": {
    "name": "두산에너빌리티",
    "market": "KOSPI",
    "role": "engine",
-   "close": 62100,
-   "as_of": "20261015",
-   "open": 64800,
-   "high": 66300,
-   "low": 61500,
-   "volume": 3227112,
+   "close": 64400,
+   "as_of": "20261016",
+   "open": 63900,
+   "high": 66400,
+   "low": 63500,
+   "volume": 2272461,
    "shares_outstanding": 640561146,
-   "market_cap_krw": 39778847166600,
+   "market_cap_krw": 41252137802400,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 142.7,
-   "pb": 3.55,
+   "pe_ttm": 128.7,
+   "pb": 3.2,
    "ttm_net_income_krw": 315105000000,
    "equity_krw": 12666483000000,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -4323,8 +4323,8 @@
     "net_income_prior_year": 176652000000,
     "net_income_yoy_pct": 62.2
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/034020",
    "history_quarterly": {
     "2021Q4": {
@@ -4508,64 +4508,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 62100,
+     "close_end": 64400,
      "high": 84300,
-     "low": 61500,
-     "avg": 74866.7,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 61300,
+     "avg": 73750.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 70200,
-    "naver_close": 69800,
-    "diff_pct": 0.573
+    "date": "20261015",
+    "aik": 63300,
+    "naver_close": 61400,
+    "diff_pct": 3.094
    },
-   "aik_as_of": "20261013",
-   "aik_close": 70200,
+   "aik_as_of": "20261015",
+   "aik_close": 63300,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 44967392449200,
+   "market_cap_krw_aik": 40547520541800,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 70200,
-    "open": 68400,
-    "high": 70700,
-    "low": 67300,
-    "volume": 3071309,
+    "as_of": "20261015",
+    "close": 63300,
+    "open": 64800,
+    "high": 66300,
+    "low": 61500,
+    "volume": 3413241,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "042660": {
    "name": "한화오션",
    "market": "KOSPI",
    "role": "yard",
-   "close": 61600,
-   "as_of": "20261015",
-   "open": 63600,
-   "high": 64800,
-   "low": 61300,
-   "volume": 1021236,
+   "close": 64600,
+   "as_of": "20261016",
+   "open": 62900,
+   "high": 67000,
+   "low": 62400,
+   "volume": 1006773,
    "shares_outstanding": 306413394,
-   "market_cap_krw": 18875065070400,
+   "market_cap_krw": 19794305252400,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 9.9,
-   "pb": 2.73,
+   "pe_ttm": 9.2,
+   "pb": 2.54,
    "ttm_net_income_krw": 2074345322801,
    "equity_krw": 7528212288382,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -4588,8 +4588,8 @@
     "net_income_prior_year": 364202035432,
     "net_income_yoy_pct": 227.5
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/042660",
    "history_quarterly": {
     "2021Q4": {
@@ -4773,50 +4773,50 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 61600,
+     "close_end": 64600,
      "high": 79200,
-     "low": 61300,
-     "avg": 71533.3,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 61100,
+     "avg": 70800.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 67100,
-    "naver_close": 67200,
-    "diff_pct": -0.149
+    "date": "20261015",
+    "aik": 62400,
+    "naver_close": 61200,
+    "diff_pct": 1.961
    },
-   "aik_as_of": "20261013",
-   "aik_close": 67100,
+   "aik_as_of": "20261015",
+   "aik_close": 62400,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 20560338737400,
+   "market_cap_krw_aik": 19120195785600,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 67100,
-    "open": 65000,
-    "high": 67500,
-    "low": 62700,
-    "volume": 1295428,
+    "as_of": "20261015",
+    "close": 62400,
+    "open": 63600,
+    "high": 64800,
+    "low": 61300,
+    "volume": 1067510,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "054180": {
    "name": "메디콕스",
    "market": "KOSDAQ",
    "role": "equip",
    "close": 2295,
-   "as_of": "20261015",
+   "as_of": "20261016",
    "open": null,
    "high": null,
    "low": null,
@@ -4830,7 +4830,7 @@
    "ttm_net_income_krw": -7929498206,
    "equity_krw": 44501642590,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -4853,8 +4853,8 @@
     "net_income_prior_year": -6606702935,
     "net_income_yoy_pct": 60.0
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/054180",
    "history_quarterly": {
     "2021Q4": {
@@ -5006,24 +5006,24 @@
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
-    "no_trade_dropped": 330,
+    "rows": 1232,
+    "no_trade_dropped": 331,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
+    "date": "20261015",
     "aik": 2295,
     "naver_close": 2295,
     "diff_pct": 0.0
    },
-   "aik_as_of": "20261013",
+   "aik_as_of": "20261015",
    "aik_close": 2295,
    "close_source": "naver_regular_close",
    "market_cap_krw_aik": 12686716395,
    "aik_quote": {
-    "as_of": "20261013",
+    "as_of": "20261015",
     "close": 2295,
     "open": null,
     "high": null,
@@ -5031,28 +5031,28 @@
     "volume": 0,
     "trading_status": "no_trade"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "054540": {
    "name": "삼영엠텍",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 5580,
-   "as_of": "20261015",
-   "open": 5920,
-   "high": 6020,
-   "low": 5410,
-   "volume": 96479,
+   "close": 5880,
+   "as_of": "20261016",
+   "open": 5640,
+   "high": 6050,
+   "low": 5630,
+   "volume": 60360,
    "shares_outstanding": 13000000,
-   "market_cap_krw": 72540000000,
+   "market_cap_krw": 76440000000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 5.7,
-   "pb": 0.32,
+   "pe_ttm": 5.2,
+   "pb": 0.29,
    "ttm_net_income_krw": 13912624168,
    "equity_krw": 252328735736,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -5075,8 +5075,8 @@
     "net_income_prior_year": 4894710837,
     "net_income_yoy_pct": 16.1
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/054540",
    "history_quarterly": {
     "2021Q4": {
@@ -5260,64 +5260,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 5580,
+     "close_end": 5880,
      "high": 7470,
      "low": 5410,
-     "avg": 6600.0,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 6533.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 6140,
-    "naver_close": 6190,
-    "diff_pct": -0.808
+    "date": "20261015",
+    "aik": 5590,
+    "naver_close": 5630,
+    "diff_pct": -0.71
    },
-   "aik_as_of": "20261013",
-   "aik_close": 6140,
+   "aik_as_of": "20261015",
+   "aik_close": 5590,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 79820000000,
+   "market_cap_krw_aik": 72670000000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 6140,
-    "open": 6260,
-    "high": 6260,
-    "low": 5840,
-    "volume": 87016,
+    "as_of": "20261015",
+    "close": 5590,
+    "open": 5920,
+    "high": 6020,
+    "low": 5410,
+    "volume": 98774,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "059270": {
    "name": "해성에어로보틱스",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 4510,
-   "as_of": "20261015",
-   "open": 4740,
-   "high": 4740,
-   "low": 4410,
-   "volume": 49147,
+   "close": 4890,
+   "as_of": "20261016",
+   "open": 4500,
+   "high": 5260,
+   "low": 4500,
+   "volume": 19451,
    "shares_outstanding": 11165299,
-   "market_cap_krw": 50355498490,
+   "market_cap_krw": 54598312110,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 75.7,
-   "pb": 1.3,
+   "pe_ttm": 72.3,
+   "pb": 1.24,
    "ttm_net_income_krw": 699350393,
    "equity_krw": 40659342989,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "별도",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -5340,8 +5340,8 @@
     "net_income_prior_year": 447993196,
     "net_income_yoy_pct": 123.1
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/059270",
    "history_quarterly": {
     "2021Q4": {
@@ -5525,64 +5525,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 4510,
+     "close_end": 4890,
      "high": 5640,
      "low": 4410,
-     "avg": 5109.4,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 5086.5,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 4740,
-    "naver_close": 4835,
-    "diff_pct": -1.965
+    "date": "20261015",
+    "aik": 4530,
+    "naver_close": 4500,
+    "diff_pct": 0.667
    },
-   "aik_as_of": "20261013",
-   "aik_close": 4740,
+   "aik_as_of": "20261015",
+   "aik_close": 4530,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 52923517260,
+   "market_cap_krw_aik": 50578804470,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 4740,
-    "open": 4840,
-    "high": 4840,
-    "low": 4550,
-    "volume": 32671,
+    "as_of": "20261015",
+    "close": 4530,
+    "open": 4740,
+    "high": 4740,
+    "low": 4410,
+    "volume": 49733,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "064820": {
    "name": "케이프",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 6690,
-   "as_of": "20261015",
-   "open": 7010,
-   "high": 7070,
-   "low": 6610,
-   "volume": 87680,
+   "close": 6920,
+   "as_of": "20261016",
+   "open": 6840,
+   "high": 7050,
+   "low": 6770,
+   "volume": 35907,
    "shares_outstanding": 30860215,
-   "market_cap_krw": 206454838350,
+   "market_cap_krw": 213552687800,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 3.4,
-   "pb": 0.7,
+   "pe_ttm": 3.2,
+   "pb": 0.66,
    "ttm_net_income_krw": 64171484713,
    "equity_krw": 316260817319,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -5605,8 +5605,8 @@
     "net_income_prior_year": 19844386313,
     "net_income_yoy_pct": -0.3
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/064820",
    "history_quarterly": {
     "2021Q4": {
@@ -5790,50 +5790,50 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 6690,
+     "close_end": 6920,
      "high": 8020,
      "low": 6610,
-     "avg": 7501.1,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 7444.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 7130,
-    "naver_close": 7110,
-    "diff_pct": 0.281
+    "date": "20261015",
+    "aik": 6750,
+    "naver_close": 6700,
+    "diff_pct": 0.746
    },
-   "aik_as_of": "20261013",
-   "aik_close": 7130,
+   "aik_as_of": "20261015",
+   "aik_close": 6750,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 220033332950,
+   "market_cap_krw_aik": 208306451250,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 7130,
-    "open": 7050,
-    "high": 7190,
-    "low": 6800,
-    "volume": 55084,
+    "as_of": "20261015",
+    "close": 6750,
+    "open": 7010,
+    "high": 7070,
+    "low": 6610,
+    "volume": 88888,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "065570": {
    "name": "삼영이엔씨",
    "market": "KOSDAQ",
    "role": "equip",
    "close": 764,
-   "as_of": "20261015",
+   "as_of": "20261016",
    "open": null,
    "high": null,
    "low": null,
@@ -5847,7 +5847,7 @@
    "ttm_net_income_krw": -4632393321,
    "equity_krw": 14458904129,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "별도",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -5870,8 +5870,8 @@
     "net_income_prior_year": 1823400634,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/065570",
    "history_quarterly": {
     "2021Q4": {
@@ -6003,24 +6003,24 @@
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
-    "no_trade_dropped": 408,
+    "rows": 1232,
+    "no_trade_dropped": 409,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
+    "date": "20261015",
     "aik": 764,
     "naver_close": 764,
     "diff_pct": 0.0
    },
-   "aik_as_of": "20261013",
+   "aik_as_of": "20261015",
    "aik_close": 764,
    "close_source": "naver_regular_close",
    "market_cap_krw_aik": 12295692232,
    "aik_quote": {
-    "as_of": "20261013",
+    "as_of": "20261015",
     "close": 764,
     "open": null,
     "high": null,
@@ -6028,28 +6028,28 @@
     "volume": 0,
     "trading_status": "no_trade"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "065710": {
    "name": "서호전기",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 41700,
-   "as_of": "20261015",
-   "open": 41000,
-   "high": 42450,
-   "low": 41000,
-   "volume": 12824,
+   "close": 44000,
+   "as_of": "20261016",
+   "open": 42000,
+   "high": 44450,
+   "low": 41700,
+   "volume": 23208,
    "shares_outstanding": 5150000,
-   "market_cap_krw": 214755000000,
+   "market_cap_krw": 226600000000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 9.8,
-   "pb": 2.05,
+   "pe_ttm": 9.5,
+   "pb": 2.0,
    "ttm_net_income_krw": 22425506164,
    "equity_krw": 106797439935,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -6072,8 +6072,8 @@
     "net_income_prior_year": 8453507893,
     "net_income_yoy_pct": 20.3
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/065710",
    "history_quarterly": {
     "2021Q4": {
@@ -6257,56 +6257,56 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 41700,
-     "high": 44350,
+     "close_end": 44000,
+     "high": 44450,
      "low": 40900,
-     "avg": 42911.1,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 43050.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 42600,
-    "naver_close": 43100,
-    "diff_pct": -1.16
+    "date": "20261015",
+    "aik": 41550,
+    "naver_close": 42000,
+    "diff_pct": -1.071
    },
-   "aik_as_of": "20261013",
-   "aik_close": 42600,
+   "aik_as_of": "20261015",
+   "aik_close": 41550,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 219390000000,
+   "market_cap_krw_aik": 213982500000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 42600,
-    "open": 42600,
-    "high": 42600,
-    "low": 41550,
-    "volume": 7593,
+    "as_of": "20261015",
+    "close": 41550,
+    "open": 41000,
+    "high": 42450,
+    "low": 41000,
+    "volume": 13063,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "071970": {
    "name": "HD현대마린엔진",
    "market": "KOSPI",
    "role": "engine",
-   "close": 39700,
-   "as_of": "20261015",
-   "open": 40950,
-   "high": 41850,
-   "low": 39200,
-   "volume": 262179,
+   "close": 41150,
+   "as_of": "20261016",
+   "open": 40800,
+   "high": 42450,
+   "low": 40450,
+   "volume": 148032,
    "shares_outstanding": 33921495,
-   "market_cap_krw": 1346683351500,
+   "market_cap_krw": 1395869519250,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": 7.0,
@@ -6314,7 +6314,7 @@
    "ttm_net_income_krw": 194700629052,
    "equity_krw": 522042537583,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -6337,8 +6337,8 @@
     "net_income_prior_year": 30422261234,
     "net_income_yoy_pct": 97.3
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/071970",
    "history_quarterly": {
     "2021Q4": {
@@ -6522,64 +6522,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 39700,
+     "close_end": 41150,
      "high": 49400,
      "low": 37400,
-     "avg": 44000.0,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 43730.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 40350,
-    "naver_close": 40150,
-    "diff_pct": 0.498
+    "date": "20261015",
+    "aik": 40250,
+    "naver_close": 39850,
+    "diff_pct": 1.004
    },
-   "aik_as_of": "20261013",
-   "aik_close": 40350,
+   "aik_as_of": "20261015",
+   "aik_close": 40250,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 1368732323250,
+   "market_cap_krw_aik": 1365340173750,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 40350,
-    "open": 39300,
-    "high": 40650,
-    "low": 37400,
-    "volume": 265570,
+    "as_of": "20261015",
+    "close": 40250,
+    "open": 40950,
+    "high": 41850,
+    "low": 39200,
+    "volume": 273251,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "073010": {
    "name": "케이에스피",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 2510,
-   "as_of": "20261015",
-   "open": 2800,
-   "high": 2800,
-   "low": 2500,
-   "volume": 395555,
+   "close": 2740,
+   "as_of": "20261016",
+   "open": 2600,
+   "high": 2795,
+   "low": 2570,
+   "volume": 160419,
    "shares_outstanding": 40191250,
-   "market_cap_krw": 100880037500,
+   "market_cap_krw": 110124025000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 14.3,
-   "pb": 1.28,
+   "pe_ttm": 13.0,
+   "pb": 1.17,
    "ttm_net_income_krw": 7909697033,
    "equity_krw": 87745604998,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -6602,8 +6602,8 @@
     "net_income_prior_year": 4090921496,
     "net_income_yoy_pct": 33.0
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/073010",
    "history_quarterly": {
     "2021Q4": {
@@ -6787,64 +6787,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 2510,
+     "close_end": 2740,
      "high": 3370,
      "low": 2500,
-     "avg": 3005.0,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 2986.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 2805,
-    "naver_close": 2845,
-    "diff_pct": -1.406
+    "date": "20261015",
+    "aik": 2560,
+    "naver_close": 2585,
+    "diff_pct": -0.967
    },
-   "aik_as_of": "20261013",
-   "aik_close": 2805,
+   "aik_as_of": "20261015",
+   "aik_close": 2560,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 112736456250,
+   "market_cap_krw_aik": 102889600000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 2805,
-    "open": 2830,
-    "high": 2835,
-    "low": 2615,
-    "volume": 188310,
+    "as_of": "20261015",
+    "close": 2560,
+    "open": 2800,
+    "high": 2800,
+    "low": 2500,
+    "volume": 430870,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "075580": {
    "name": "세진중공업",
    "market": "KOSPI",
    "role": "equip",
-   "close": 7900,
-   "as_of": "20261015",
-   "open": 8390,
-   "high": 8390,
-   "low": 7830,
-   "volume": 149941,
+   "close": 8370,
+   "as_of": "20261016",
+   "open": 8090,
+   "high": 8570,
+   "low": 8090,
+   "volume": 119847,
    "shares_outstanding": 56849456,
-   "market_cap_krw": 449110702400,
+   "market_cap_krw": 475829946720,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 6.2,
-   "pb": 1.51,
+   "pe_ttm": 5.8,
+   "pb": 1.4,
    "ttm_net_income_krw": 78241086066,
    "equity_krw": 322422050768,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -6867,8 +6867,8 @@
     "net_income_prior_year": 18011412152,
     "net_income_yoy_pct": 102.1
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/075580",
    "history_quarterly": {
     "2021Q4": {
@@ -7052,64 +7052,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 7900,
+     "close_end": 8370,
      "high": 10080,
      "low": 7830,
-     "avg": 9213.3,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 9130.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 8560,
-    "naver_close": 8570,
-    "diff_pct": -0.117
+    "date": "20261015",
+    "aik": 7960,
+    "naver_close": 7910,
+    "diff_pct": 0.632
    },
-   "aik_as_of": "20261013",
-   "aik_close": 8560,
+   "aik_as_of": "20261015",
+   "aik_close": 7960,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 486631343360,
+   "market_cap_krw_aik": 452521669760,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 8560,
-    "open": 8350,
-    "high": 8630,
-    "low": 8120,
-    "volume": 217586,
+    "as_of": "20261015",
+    "close": 7960,
+    "open": 8390,
+    "high": 8390,
+    "low": 7830,
+    "volume": 155346,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "077970": {
    "name": "STX엔진",
    "market": "KOSPI",
    "role": "engine",
-   "close": 18140,
-   "as_of": "20261015",
-   "open": 19070,
-   "high": 19570,
-   "low": 17940,
-   "volume": 182326,
+   "close": 18480,
+   "as_of": "20261016",
+   "open": 18380,
+   "high": 19030,
+   "low": 18100,
+   "volume": 220767,
    "shares_outstanding": 40148063,
-   "market_cap_krw": 728285862820,
+   "market_cap_krw": 741936204240,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 11.5,
-   "pb": 2.04,
+   "pe_ttm": 10.9,
+   "pb": 1.92,
    "ttm_net_income_krw": 67511311888,
    "equity_krw": 382935306913,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -7132,8 +7132,8 @@
     "net_income_prior_year": 40260817884,
     "net_income_yoy_pct": -3.6
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/077970",
    "history_quarterly": {
     "2021Q4": {
@@ -7317,56 +7317,56 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 18140,
+     "close_end": 18480,
      "high": 23800,
      "low": 17940,
-     "avg": 21003.3,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 20736.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 19410,
-    "naver_close": 19530,
-    "diff_pct": -0.614
+    "date": "20261015",
+    "aik": 18270,
+    "naver_close": 17990,
+    "diff_pct": 1.556
    },
-   "aik_as_of": "20261013",
-   "aik_close": 19410,
+   "aik_as_of": "20261015",
+   "aik_close": 18270,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 779273902830,
+   "market_cap_krw_aik": 733505111010,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 19410,
-    "open": 18680,
-    "high": 19410,
-    "low": 18270,
-    "volume": 168679,
+    "as_of": "20261015",
+    "close": 18270,
+    "open": 19070,
+    "high": 19570,
+    "low": 17940,
+    "volume": 187497,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "079430": {
    "name": "현대리바트",
    "market": "KOSPI",
    "role": "equip",
-   "close": 5380,
-   "as_of": "20261015",
-   "open": 5320,
-   "high": 5420,
-   "low": 5230,
-   "volume": 22438,
+   "close": 5460,
+   "as_of": "20261016",
+   "open": 5340,
+   "high": 5580,
+   "low": 5340,
+   "volume": 20700,
    "shares_outstanding": 20114202,
-   "market_cap_krw": 108214406760,
+   "market_cap_krw": 109823542920,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": 19.4,
@@ -7374,7 +7374,7 @@
    "ttm_net_income_krw": 5601541040,
    "equity_krw": 420662434654,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -7397,8 +7397,8 @@
     "net_income_prior_year": 7174502260,
     "net_income_yoy_pct": -25.2
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/079430",
    "history_quarterly": {
     "2021Q4": {
@@ -7582,64 +7582,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 5380,
+     "close_end": 5460,
      "high": 5800,
-     "low": 5230,
-     "avg": 5588.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 5160,
+     "avg": 5573.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
+    "date": "20261015",
     "aik": 5390,
-    "naver_close": 5390,
-    "diff_pct": 0.0
+    "naver_close": 5350,
+    "diff_pct": 0.748
    },
-   "aik_as_of": "20261013",
+   "aik_as_of": "20261015",
    "aik_close": 5390,
    "close_source": "naver_regular_close",
    "market_cap_krw_aik": 108415548780,
    "aik_quote": {
-    "as_of": "20261013",
+    "as_of": "20261015",
     "close": 5390,
-    "open": 5500,
-    "high": 5500,
-    "low": 5310,
-    "volume": 21806,
+    "open": 5320,
+    "high": 5420,
+    "low": 5230,
+    "volume": 22518,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "082740": {
    "name": "한화엔진",
    "market": "KOSPI",
    "role": "engine",
-   "close": 36200,
-   "as_of": "20261015",
-   "open": 37900,
-   "high": 39000,
-   "low": 35900,
-   "volume": 660587,
+   "close": 37700,
+   "as_of": "20261016",
+   "open": 37200,
+   "high": 38450,
+   "low": 36750,
+   "volume": 366003,
    "shares_outstanding": 83447142,
-   "market_cap_krw": 3020786540400,
+   "market_cap_krw": 3145957253400,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 4.8,
+   "pb": 4.69,
    "ttm_net_income_krw": null,
    "equity_krw": 649747881284,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": null
@@ -7662,8 +7662,8 @@
     "net_income_prior_year": 40965169993,
     "net_income_yoy_pct": 110.1
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/082740",
    "history_quarterly": {
     "2021Q4": {
@@ -7847,64 +7847,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 36200,
+     "close_end": 37700,
      "high": 49500,
      "low": 34500,
-     "avg": 42722.2,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 42200.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 37400,
-    "naver_close": 37600,
-    "diff_pct": -0.532
+    "date": "20261015",
+    "aik": 36550,
+    "naver_close": 36000,
+    "diff_pct": 1.528
    },
-   "aik_as_of": "20261013",
-   "aik_close": 37400,
+   "aik_as_of": "20261015",
+   "aik_close": 36550,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 3120923110800,
+   "market_cap_krw_aik": 3049993040100,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 37400,
-    "open": 37600,
-    "high": 37700,
-    "low": 34500,
-    "volume": 1613987,
+    "as_of": "20261015",
+    "close": 36550,
+    "open": 37900,
+    "high": 39000,
+    "low": 35900,
+    "volume": 699582,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "085310": {
    "name": "엔케이",
    "market": "KOSPI",
    "role": "equip",
    "close": 8680,
-   "as_of": "20261015",
-   "open": 8820,
-   "high": 8820,
-   "low": 8170,
-   "volume": 8717,
+   "as_of": "20261016",
+   "open": 8780,
+   "high": 8780,
+   "low": 8210,
+   "volume": 9167,
    "shares_outstanding": 7418074,
    "market_cap_krw": 64388882320,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 13.8,
-   "pb": 0.38,
+   "pe_ttm": 13.4,
+   "pb": 0.37,
    "ttm_net_income_krw": 4809272165,
    "equity_krw": 172493653427,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -7927,8 +7927,8 @@
     "net_income_prior_year": -2033438709,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/085310",
    "history_quarterly": {
     "2021Q4": {
@@ -8115,61 +8115,61 @@
      "close_end": 8680,
      "high": 9990,
      "low": 8170,
-     "avg": 8844.4,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 8828.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 21,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 8950,
-    "naver_close": 8930,
-    "diff_pct": 0.224
+    "date": "20261015",
+    "aik": 8680,
+    "naver_close": 8680,
+    "diff_pct": 0.0
    },
-   "aik_as_of": "20261013",
-   "aik_close": 8950,
+   "aik_as_of": "20261015",
+   "aik_close": 8680,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 66391762300,
+   "market_cap_krw_aik": 64388882320,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 8950,
-    "open": 8600,
-    "high": 8950,
-    "low": 8220,
-    "volume": 7434,
+    "as_of": "20261015",
+    "close": 8680,
+    "open": 8820,
+    "high": 8820,
+    "low": 8170,
+    "volume": 8717,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "086670": {
    "name": "비엠티",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 16000,
-   "as_of": "20261015",
-   "open": 17200,
-   "high": 17200,
-   "low": 15910,
-   "volume": 85912,
+   "close": 16780,
+   "as_of": "20261016",
+   "open": 16300,
+   "high": 16870,
+   "low": 16070,
+   "volume": 26582,
    "shares_outstanding": 9925885,
-   "market_cap_krw": 158814160000,
+   "market_cap_krw": 166556350300,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 7.8,
-   "pb": 1.16,
+   "pe_ttm": 7.1,
+   "pb": 1.06,
    "ttm_net_income_krw": 22780409212,
    "equity_krw": 152044844412,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -8192,8 +8192,8 @@
     "net_income_prior_year": 4682998170,
     "net_income_yoy_pct": 82.1
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/086670",
    "history_quarterly": {
     "2021Q4": {
@@ -8377,64 +8377,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 16000,
+     "close_end": 16780,
      "high": 19820,
      "low": 15910,
-     "avg": 18383.3,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 18217.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 17820,
-    "naver_close": 18000,
-    "diff_pct": -1.0
+    "date": "20261015",
+    "aik": 16300,
+    "naver_close": 15940,
+    "diff_pct": 2.258
    },
-   "aik_as_of": "20261013",
-   "aik_close": 17820,
+   "aik_as_of": "20261015",
+   "aik_close": 16300,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 176879270700,
+   "market_cap_krw_aik": 161791925500,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 17820,
-    "open": 18210,
-    "high": 18440,
-    "low": 17210,
-    "volume": 66841,
+    "as_of": "20261015",
+    "close": 16300,
+    "open": 17200,
+    "high": 17200,
+    "low": 15910,
+    "volume": 87279,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "092460": {
    "name": "한라IMS",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 16170,
-   "as_of": "20261015",
-   "open": 16390,
-   "high": 16390,
-   "low": 15740,
-   "volume": 29513,
+   "close": 16110,
+   "as_of": "20261016",
+   "open": 16210,
+   "high": 16320,
+   "low": 15910,
+   "volume": 14101,
    "shares_outstanding": 17109680,
-   "market_cap_krw": 276663525600,
+   "market_cap_krw": 275636944800,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 9.8,
-   "pb": 1.36,
+   "pe_ttm": 9.5,
+   "pb": 1.32,
    "ttm_net_income_krw": 28341854301,
    "equity_krw": 203915839986,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -8457,8 +8457,8 @@
     "net_income_prior_year": 12191210373,
     "net_income_yoy_pct": 23.4
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/092460",
    "history_quarterly": {
     "2021Q4": {
@@ -8642,64 +8642,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 16170,
+     "close_end": 16110,
      "high": 17200,
      "low": 15720,
-     "avg": 16687.8,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 16610.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 16260,
-    "naver_close": 16360,
-    "diff_pct": -0.611
+    "date": "20261015",
+    "aik": 15780,
+    "naver_close": 15970,
+    "diff_pct": -1.19
    },
-   "aik_as_of": "20261013",
-   "aik_close": 16260,
+   "aik_as_of": "20261015",
+   "aik_close": 15780,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 278203396800,
+   "market_cap_krw_aik": 269990750400,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 16260,
-    "open": 16500,
-    "high": 16810,
-    "low": 15720,
-    "volume": 36197,
+    "as_of": "20261015",
+    "close": 15780,
+    "open": 16390,
+    "high": 16390,
+    "low": 15740,
+    "volume": 31939,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "096350": {
    "name": "대창솔루션",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 1642,
-   "as_of": "20261015",
-   "open": 1727,
-   "high": 1727,
-   "low": 1616,
-   "volume": 136686,
+   "close": 1753,
+   "as_of": "20261016",
+   "open": 1675,
+   "high": 1754,
+   "low": 1660,
+   "volume": 61681,
    "shares_outstanding": 36854762,
-   "market_cap_krw": 60515519204,
+   "market_cap_krw": 64606397786,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 1.81,
+   "pb": 1.71,
    "ttm_net_income_krw": -218421802,
    "equity_krw": 35543332200,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -8722,8 +8722,8 @@
     "net_income_prior_year": -7660028832,
     "net_income_yoy_pct": 98.7
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/096350",
    "history_quarterly": {
     "2021Q4": {
@@ -8909,64 +8909,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 1642,
+     "close_end": 1753,
      "high": 1932,
-     "low": 1616,
-     "avg": 1825.4,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 1562,
+     "avg": 1811.8,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 15,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 1750,
-    "naver_close": 1756,
-    "diff_pct": -0.342
+    "date": "20261015",
+    "aik": 1648,
+    "naver_close": 1578,
+    "diff_pct": 4.436
    },
-   "aik_as_of": "20261013",
-   "aik_close": 1750,
+   "aik_as_of": "20261015",
+   "aik_close": 1648,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 64495833500,
+   "market_cap_krw_aik": 60736647776,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 1750,
-    "open": 1782,
-    "high": 1783,
-    "low": 1683,
-    "volume": 130166,
+    "as_of": "20261015",
+    "close": 1648,
+    "open": 1727,
+    "high": 1727,
+    "low": 1616,
+    "volume": 142975,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "097230": {
    "name": "HJ중공업",
    "market": "KOSPI",
    "role": "yard",
-   "close": 12270,
-   "as_of": "20261015",
-   "open": 13020,
-   "high": 13020,
-   "low": 12240,
-   "volume": 301467,
+   "close": 12880,
+   "as_of": "20261016",
+   "open": 12600,
+   "high": 13240,
+   "low": 12600,
+   "volume": 185006,
    "shares_outstanding": 90295344,
-   "market_cap_krw": 1107923870880,
+   "market_cap_krw": 1163004030720,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 8.6,
-   "pb": 1.61,
+   "pe_ttm": 8.0,
+   "pb": 1.5,
    "ttm_net_income_krw": 140559000000,
    "equity_krw": 752928000000,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -8989,8 +8989,8 @@
     "net_income_prior_year": -1059000000,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/097230",
    "history_quarterly": {
     "2021Q4": {
@@ -9174,64 +9174,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 12270,
+     "close_end": 12880,
      "high": 15630,
      "low": 12240,
-     "avg": 14188.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 14057.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 13440,
-    "naver_close": 13490,
-    "diff_pct": -0.371
+    "date": "20261015",
+    "aik": 12530,
+    "naver_close": 12260,
+    "diff_pct": 2.202
    },
-   "aik_as_of": "20261013",
-   "aik_close": 13440,
+   "aik_as_of": "20261015",
+   "aik_close": 12530,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 1213569423360,
+   "market_cap_krw_aik": 1131400660320,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 13440,
-    "open": 13300,
-    "high": 13450,
-    "low": 12630,
-    "volume": 327975,
+    "as_of": "20261015",
+    "close": 12530,
+    "open": 13020,
+    "high": 13020,
+    "low": 12310,
+    "volume": 316430,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "099410": {
    "name": "동방선기",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 2625,
-   "as_of": "20261015",
-   "open": 2660,
-   "high": 2890,
-   "low": 2585,
-   "volume": 74910,
+   "close": 2735,
+   "as_of": "20261016",
+   "open": 2645,
+   "high": 2750,
+   "low": 2615,
+   "volume": 27876,
    "shares_outstanding": 14000000,
-   "market_cap_krw": 36750000000,
+   "market_cap_krw": 38290000000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 3.4,
-   "pb": 0.72,
+   "pe_ttm": 3.2,
+   "pb": 0.67,
    "ttm_net_income_krw": 11452509984,
    "equity_krw": 54159294851,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "별도",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -9254,8 +9254,8 @@
     "net_income_prior_year": 760772287,
     "net_income_yoy_pct": 460.5
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/099410",
    "history_quarterly": {
     "2021Q4": {
@@ -9441,64 +9441,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 2625,
+     "close_end": 2735,
      "high": 3125,
      "low": 2585,
-     "avg": 2910.0,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 2891.5,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 12,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 2770,
-    "naver_close": 2790,
-    "diff_pct": -0.717
+    "date": "20261015",
+    "aik": 2605,
+    "naver_close": 2615,
+    "diff_pct": -0.382
    },
-   "aik_as_of": "20261013",
-   "aik_close": 2770,
+   "aik_as_of": "20261015",
+   "aik_close": 2605,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 38780000000,
+   "market_cap_krw_aik": 36470000000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 2770,
-    "open": 2800,
-    "high": 2800,
-    "low": 2595,
-    "volume": 92448,
+    "as_of": "20261015",
+    "close": 2605,
+    "open": 2660,
+    "high": 2780,
+    "low": 2585,
+    "volume": 76155,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "100090": {
    "name": "SK오션플랜트",
    "market": "KOSPI",
    "role": "equip",
-   "close": 10050,
-   "as_of": "20261015",
-   "open": 10550,
-   "high": 10720,
-   "low": 9960,
-   "volume": 546106,
+   "close": 10610,
+   "as_of": "20261016",
+   "open": 10250,
+   "high": 10800,
+   "low": 10120,
+   "volume": 383255,
    "shares_outstanding": 62478129,
-   "market_cap_krw": 627905196450,
+   "market_cap_krw": 662892948690,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 14.2,
-   "pb": 0.82,
+   "pe_ttm": 13.2,
+   "pb": 0.76,
    "ttm_net_income_krw": 48369785077,
    "equity_krw": 838202331783,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -9521,8 +9521,8 @@
     "net_income_prior_year": 12786173825,
     "net_income_yoy_pct": 84.9
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/100090",
    "history_quarterly": {
     "2021Q4": {
@@ -9706,21 +9706,21 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 10050,
+     "close_end": 10610,
      "high": 12970,
      "low": 9960,
-     "avg": 11668.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 11556.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01",
     "listed": "2023-04-19",
     "pre_listed_quarters": [
@@ -9734,46 +9734,46 @@
     "pre_listed_note": "universe `listed`(현 시장 상장·이전일) 전 구간 — 이전 시장(코넥스·코스닥 등) 시세, 자르지 않고 표기만"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 10990,
-    "naver_close": 11120,
-    "diff_pct": -1.169
+    "date": "20261015",
+    "aik": 10200,
+    "naver_close": 9980,
+    "diff_pct": 2.204
    },
-   "aik_as_of": "20261013",
-   "aik_close": 10990,
+   "aik_as_of": "20261015",
+   "aik_close": 10200,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 686634637710,
+   "market_cap_krw_aik": 637276915800,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 10990,
-    "open": 11000,
-    "high": 11330,
-    "low": 10720,
-    "volume": 461201,
+    "as_of": "20261015",
+    "close": 10200,
+    "open": 10550,
+    "high": 10720,
+    "low": 9960,
+    "volume": 575433,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "100660": {
    "name": "서암기계공업",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 2900,
-   "as_of": "20261015",
-   "open": 3000,
-   "high": 3000,
-   "low": 2850,
-   "volume": 21141,
+   "close": 3025,
+   "as_of": "20261016",
+   "open": 2970,
+   "high": 3160,
+   "low": 2900,
+   "volume": 14192,
    "shares_outstanding": 12600000,
-   "market_cap_krw": 36540000000,
+   "market_cap_krw": 38115000000,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 0.56,
+   "pb": 0.54,
    "ttm_net_income_krw": null,
    "equity_krw": 68364950104,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": null
@@ -9796,8 +9796,8 @@
     "net_income_prior_year": -104541694,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/100660",
    "history_quarterly": {
     "2021Q4": {
@@ -9981,64 +9981,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 2900,
+     "close_end": 3025,
      "high": 3400,
      "low": 2850,
-     "avg": 3190.0,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 3173.5,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 3045,
-    "naver_close": 3095,
-    "diff_pct": -1.616
+    "date": "20261015",
+    "aik": 2925,
+    "naver_close": 2900,
+    "diff_pct": 0.862
    },
-   "aik_as_of": "20261013",
-   "aik_close": 3045,
+   "aik_as_of": "20261015",
+   "aik_close": 2925,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 38367000000,
+   "market_cap_krw_aik": 36855000000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 3045,
-    "open": 3150,
-    "high": 3150,
-    "low": 3020,
-    "volume": 18678,
+    "as_of": "20261015",
+    "close": 2925,
+    "open": 3000,
+    "high": 3000,
+    "low": 2850,
+    "volume": 21858,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "101000": {
    "name": "KS인더스트리",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 1206,
-   "as_of": "20261015",
-   "open": 1333,
-   "high": 1333,
-   "low": 1181,
-   "volume": 39267,
+   "close": 1192,
+   "as_of": "20261016",
+   "open": 1205,
+   "high": 1286,
+   "low": 1162,
+   "volume": 29364,
    "shares_outstanding": 9910487,
-   "market_cap_krw": 11952047322,
+   "market_cap_krw": 11813300504,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 0.29,
+   "pb": 0.27,
    "ttm_net_income_krw": -1980268859,
    "equity_krw": 44575115611,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -10061,8 +10061,8 @@
     "net_income_prior_year": -3783922290,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/101000",
    "history_quarterly": {
     "2021Q4": {
@@ -10248,64 +10248,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 1206,
+     "close_end": 1192,
      "high": 1646,
-     "low": 1181,
-     "avg": 1421.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 1162,
+     "avg": 1398.9,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 36,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 1314,
-    "naver_close": 1314,
+    "date": "20261015",
+    "aik": 1206,
+    "naver_close": 1206,
     "diff_pct": 0.0
    },
-   "aik_as_of": "20261013",
-   "aik_close": 1314,
+   "aik_as_of": "20261015",
+   "aik_close": 1206,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 13022379918,
+   "market_cap_krw_aik": 11952047322,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 1314,
-    "open": 1418,
-    "high": 1500,
-    "low": 1314,
-    "volume": 61871,
+    "as_of": "20261015",
+    "close": 1206,
+    "open": 1333,
+    "high": 1333,
+    "low": 1181,
+    "volume": 39267,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "101930": {
    "name": "인화정공",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 5400,
-   "as_of": "20261015",
-   "open": 5420,
-   "high": 5810,
-   "low": 5350,
-   "volume": 16860,
+   "close": 5680,
+   "as_of": "20261016",
+   "open": 5520,
+   "high": 5840,
+   "low": 5500,
+   "volume": 36384,
    "shares_outstanding": 45694671,
-   "market_cap_krw": 246751223400,
+   "market_cap_krw": 259545731280,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 10.3,
-   "pb": 0.72,
+   "pe_ttm": 10.0,
+   "pb": 0.7,
    "ttm_net_income_krw": 24836439789,
    "equity_krw": 355341373642,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -10328,8 +10328,8 @@
     "net_income_prior_year": 16898741160,
     "net_income_yoy_pct": -4.3
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/101930",
    "history_quarterly": {
     "2021Q4": {
@@ -10513,64 +10513,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 5400,
+     "close_end": 5680,
      "high": 7000,
      "low": 5290,
-     "avg": 5960.0,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 5923.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 14,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 5580,
-    "naver_close": 5630,
-    "diff_pct": -0.888
+    "date": "20261015",
+    "aik": 5460,
+    "naver_close": 5310,
+    "diff_pct": 2.825
    },
-   "aik_as_of": "20261013",
-   "aik_close": 5580,
+   "aik_as_of": "20261015",
+   "aik_close": 5460,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 254976264180,
+   "market_cap_krw_aik": 249492903660,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 5580,
-    "open": 5400,
-    "high": 5660,
-    "low": 5290,
-    "volume": 75401,
+    "as_of": "20261015",
+    "close": 5460,
+    "open": 5420,
+    "high": 5580,
+    "low": 5350,
+    "volume": 18053,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "103230": {
    "name": "에스앤더블류",
    "market": "KOSDAQ",
    "role": "engine",
-   "close": 1531,
-   "as_of": "20261015",
-   "open": 1639,
-   "high": 1650,
-   "low": 1494,
-   "volume": 25477,
+   "close": 1566,
+   "as_of": "20261016",
+   "open": 1462,
+   "high": 1568,
+   "low": 1462,
+   "volume": 17507,
    "shares_outstanding": 7200000,
-   "market_cap_krw": 11023200000,
+   "market_cap_krw": 11275200000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 6.8,
+   "pe_ttm": 6.9,
    "pb": 0.2,
    "ttm_net_income_krw": 1604313457,
    "equity_krw": 54550544773,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "별도",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -10593,8 +10593,8 @@
     "net_income_prior_year": 2928007472,
     "net_income_yoy_pct": -69.2
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/103230",
    "history_quarterly": {
     "2023Q1": {
@@ -10735,64 +10735,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 1531,
+     "close_end": 1566,
      "high": 1689,
      "low": 1287,
-     "avg": 1515.4,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 1520.5,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 367,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 1507,
-    "naver_close": 1507,
+    "date": "20261015",
+    "aik": 1531,
+    "naver_close": 1531,
     "diff_pct": 0.0
    },
-   "aik_as_of": "20261013",
-   "aik_close": 1507,
+   "aik_as_of": "20261015",
+   "aik_close": 1531,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 10850400000,
+   "market_cap_krw_aik": 11023200000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 1507,
-    "open": 1540,
-    "high": 1540,
-    "low": 1468,
-    "volume": 33300,
+    "as_of": "20261015",
+    "close": 1531,
+    "open": 1639,
+    "high": 1650,
+    "low": 1494,
+    "volume": 25477,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "108380": {
    "name": "대양전기공업",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 16090,
-   "as_of": "20261015",
-   "open": 16990,
-   "high": 16990,
-   "low": 15600,
-   "volume": 18498,
+   "close": 16390,
+   "as_of": "20261016",
+   "open": 16230,
+   "high": 16690,
+   "low": 16230,
+   "volume": 13122,
    "shares_outstanding": 9567333,
-   "market_cap_krw": 153938387970,
+   "market_cap_krw": 156808587870,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 5.4,
-   "pb": 0.58,
+   "pe_ttm": 5.2,
+   "pb": 0.56,
    "ttm_net_income_krw": 29545842873,
    "equity_krw": 277841215161,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -10815,8 +10815,8 @@
     "net_income_prior_year": 10176286448,
     "net_income_yoy_pct": 46.7
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/108380",
    "history_quarterly": {
     "2021Q4": {
@@ -11000,64 +11000,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 16090,
+     "close_end": 16390,
      "high": 18970,
      "low": 15600,
-     "avg": 17621.1,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 17479.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 16800,
-    "naver_close": 16740,
-    "diff_pct": 0.358
+    "date": "20261015",
+    "aik": 16150,
+    "naver_close": 15900,
+    "diff_pct": 1.572
    },
-   "aik_as_of": "20261013",
-   "aik_close": 16800,
+   "aik_as_of": "20261015",
+   "aik_close": 16150,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 160731194400,
+   "market_cap_krw_aik": 154512427950,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 16800,
-    "open": 16690,
-    "high": 16800,
-    "low": 16190,
-    "volume": 27350,
+    "as_of": "20261015",
+    "close": 16150,
+    "open": 16990,
+    "high": 16990,
+    "low": 15600,
+    "volume": 18733,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "133820": {
    "name": "화인베스틸",
    "market": "KOSPI",
    "role": "steel",
-   "close": 1024,
-   "as_of": "20261015",
-   "open": 990,
-   "high": 1029,
-   "low": 927,
-   "volume": 145892,
+   "close": 1023,
+   "as_of": "20261016",
+   "open": 1026,
+   "high": 1032,
+   "low": 1005,
+   "volume": 65113,
    "shares_outstanding": 37114502,
-   "market_cap_krw": 38005250048,
+   "market_cap_krw": 37968135546,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 0.69,
+   "pb": 0.74,
    "ttm_net_income_krw": -5065279419,
    "equity_krw": 51427628719,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -11080,8 +11080,8 @@
     "net_income_prior_year": -982622326,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/133820",
    "history_quarterly": {
     "2021Q4": {
@@ -11265,64 +11265,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 1024,
+     "close_end": 1023,
      "high": 1149,
      "low": 927,
-     "avg": 994.1,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 997.2,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 957,
-    "naver_close": 977,
-    "diff_pct": -2.047
+    "date": "20261015",
+    "aik": 1024,
+    "naver_close": 1026,
+    "diff_pct": -0.195
    },
-   "aik_as_of": "20261013",
-   "aik_close": 957,
+   "aik_as_of": "20261015",
+   "aik_close": 1024,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 35518578414,
+   "market_cap_krw_aik": 38005250048,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 957,
-    "open": 973,
-    "high": 974,
-    "low": 940,
-    "volume": 73162,
+    "as_of": "20261015",
+    "close": 1024,
+    "open": 990,
+    "high": 1029,
+    "low": 927,
+    "volume": 155902,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "136150": {
    "name": "원일티엔아이",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 9060,
-   "as_of": "20261015",
-   "open": 9420,
-   "high": 9630,
-   "low": 8460,
-   "volume": 53590,
+   "close": 9350,
+   "as_of": "20261016",
+   "open": 9120,
+   "high": 9560,
+   "low": 8950,
+   "volume": 41963,
    "shares_outstanding": 8381030,
-   "market_cap_krw": 75932131800,
+   "market_cap_krw": 78362630500,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 121.7,
-   "pb": 1.77,
+   "pe_ttm": 109.1,
+   "pb": 1.59,
    "ttm_net_income_krw": 698968214,
    "equity_krw": 47940458783,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "별도",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -11345,8 +11345,8 @@
     "net_income_prior_year": -3124363630,
     "net_income_yoy_pct": 88.4
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/136150",
    "history_quarterly": {
     "2025Q2": {
@@ -11406,64 +11406,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 9060,
+     "close_end": 9350,
      "high": 15020,
      "low": 8350,
-     "avg": 11367.8,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 11153.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 350,
+    "rows": 351,
     "no_trade_dropped": 0,
     "from": "20250509",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 10150,
-    "naver_close": 10260,
-    "diff_pct": -1.072
+    "date": "20261015",
+    "aik": 9100,
+    "naver_close": 8930,
+    "diff_pct": 1.904
    },
-   "aik_as_of": "20261013",
-   "aik_close": 10150,
+   "aik_as_of": "20261015",
+   "aik_close": 9100,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 85067454500,
+   "market_cap_krw_aik": 76267373000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 10150,
-    "open": 10320,
-    "high": 11310,
-    "low": 9600,
-    "volume": 186459,
+    "as_of": "20261015",
+    "close": 9100,
+    "open": 9420,
+    "high": 9580,
+    "low": 8460,
+    "volume": 57635,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "155660": {
    "name": "DSR",
    "market": "KOSPI",
    "role": "equip",
-   "close": 4070,
-   "as_of": "20261015",
-   "open": 4200,
-   "high": 4200,
-   "low": 4040,
-   "volume": 29781,
+   "close": 4210,
+   "as_of": "20261016",
+   "open": 4075,
+   "high": 4225,
+   "low": 4075,
+   "volume": 8381,
    "shares_outstanding": 16000000,
-   "market_cap_krw": 65120000000,
+   "market_cap_krw": 67360000000,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": 2.1,
-   "pb": 0.25,
+   "pb": 0.24,
    "ttm_net_income_krw": 31608735191,
    "equity_krw": 267592813240,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -11486,8 +11486,8 @@
     "net_income_prior_year": 4077325866,
     "net_income_yoy_pct": 410.6
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/155660",
    "history_quarterly": {
     "2021Q4": {
@@ -11671,64 +11671,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 4070,
+     "close_end": 4210,
      "high": 4530,
      "low": 4000,
-     "avg": 4242.8,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 4240.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 4200,
-    "naver_close": 4245,
-    "diff_pct": -1.06
+    "date": "20261015",
+    "aik": 4070,
+    "naver_close": 4075,
+    "diff_pct": -0.123
    },
-   "aik_as_of": "20261013",
-   "aik_close": 4200,
+   "aik_as_of": "20261015",
+   "aik_close": 4070,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 67200000000,
+   "market_cap_krw_aik": 65120000000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 4200,
-    "open": 4210,
-    "high": 4220,
-    "low": 4000,
-    "volume": 51426,
+    "as_of": "20261015",
+    "close": 4070,
+    "open": 4200,
+    "high": 4200,
+    "low": 4040,
+    "volume": 30614,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "187790": {
    "name": "나노",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 2495,
-   "as_of": "20261015",
-   "open": 2625,
+   "close": 2580,
+   "as_of": "20261016",
+   "open": 2490,
    "high": 2700,
-   "low": 2440,
-   "volume": 116488,
+   "low": 2490,
+   "volume": 144268,
    "shares_outstanding": 30840830,
-   "market_cap_krw": 76947870850,
+   "market_cap_krw": 79569341400,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 2.19,
+   "pb": 1.99,
    "ttm_net_income_krw": -509957448,
    "equity_krw": 38523526419,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -11751,8 +11751,8 @@
     "net_income_prior_year": 4626091498,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/187790",
    "history_quarterly": {
     "2021Q4": {
@@ -11911,64 +11911,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 2495,
+     "close_end": 2580,
      "high": 3300,
-     "low": 2440,
-     "avg": 2994.4,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 2420,
+     "avg": 2951.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 267,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 2740,
-    "naver_close": 2840,
-    "diff_pct": -3.521
+    "date": "20261015",
+    "aik": 2490,
+    "naver_close": 2475,
+    "diff_pct": 0.606
    },
-   "aik_as_of": "20261013",
-   "aik_close": 2740,
+   "aik_as_of": "20261015",
+   "aik_close": 2490,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 84503874200,
+   "market_cap_krw_aik": 76793666700,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 2740,
-    "open": 2800,
-    "high": 2990,
-    "low": 2670,
-    "volume": 199855,
+    "as_of": "20261015",
+    "close": 2490,
+    "open": 2625,
+    "high": 2700,
+    "low": 2440,
+    "volume": 119284,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "189300": {
    "name": "인텔리안테크",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 54000,
-   "as_of": "20261015",
-   "open": 56900,
-   "high": 57900,
-   "low": 53100,
-   "volume": 90640,
+   "close": 57000,
+   "as_of": "20261016",
+   "open": 54600,
+   "high": 58200,
+   "low": 54300,
+   "volume": 35449,
    "shares_outstanding": 10737497,
-   "market_cap_krw": 579824838000,
+   "market_cap_krw": 612037329000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 14.8,
-   "pb": 2.27,
+   "pe_ttm": 13.3,
+   "pb": 2.05,
    "ttm_net_income_krw": 43881240812,
    "equity_krw": 286005050152,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -11991,8 +11991,8 @@
     "net_income_prior_year": -18199909496,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/189300",
    "history_quarterly": {
     "2021Q4": {
@@ -12176,64 +12176,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 54000,
+     "close_end": 57000,
      "high": 77300,
      "low": 53100,
-     "avg": 65211.1,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 64390.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 60400,
-    "naver_close": 60600,
-    "diff_pct": -0.33
+    "date": "20261015",
+    "aik": 54500,
+    "naver_close": 54000,
+    "diff_pct": 0.926
    },
-   "aik_as_of": "20261013",
-   "aik_close": 60400,
+   "aik_as_of": "20261015",
+   "aik_close": 54500,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 648544818800,
+   "market_cap_krw_aik": 585193586500,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 60400,
-    "open": 61900,
-    "high": 62700,
-    "low": 57400,
-    "volume": 111760,
+    "as_of": "20261015",
+    "close": 54500,
+    "open": 56900,
+    "high": 57900,
+    "low": 53100,
+    "volume": 92466,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "217590": {
    "name": "티엠씨",
    "market": "KOSPI",
    "role": "equip",
-   "close": 13280,
-   "as_of": "20261015",
-   "open": 14300,
-   "high": 14930,
-   "low": 13020,
-   "volume": 714971,
+   "close": 13800,
+   "as_of": "20261016",
+   "open": 13510,
+   "high": 14000,
+   "low": 13150,
+   "volume": 615802,
    "shares_outstanding": 24094225,
-   "market_cap_krw": 319971308000,
+   "market_cap_krw": 332500305000,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 3.28,
+   "pb": 2.85,
    "ttm_net_income_krw": null,
    "equity_krw": 113514205210,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": null
@@ -12256,8 +12256,8 @@
     "net_income_prior_year": null,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/217590",
    "history_quarterly": {
     "2025Q4": {
@@ -12299,64 +12299,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 13280,
+     "close_end": 13800,
      "high": 20300,
-     "low": 13020,
-     "avg": 16606.7,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 12700,
+     "avg": 16270.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 202,
+    "rows": 203,
     "no_trade_dropped": 0,
     "from": "20251215",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 15450,
-    "naver_close": 15680,
-    "diff_pct": -1.467
+    "date": "20261015",
+    "aik": 13450,
+    "naver_close": 12720,
+    "diff_pct": 5.739
    },
-   "aik_as_of": "20261013",
-   "aik_close": 15450,
+   "aik_as_of": "20261015",
+   "aik_close": 13450,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 372255776250,
+   "market_cap_krw_aik": 324067326250,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 15450,
-    "open": 15950,
-    "high": 16310,
-    "low": 14930,
-    "volume": 1065696,
+    "as_of": "20261015",
+    "close": 13450,
+    "open": 14300,
+    "high": 14930,
+    "low": 13020,
+    "volume": 780102,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "272210": {
    "name": "한화시스템",
    "market": "KOSPI",
    "role": "equip",
-   "close": 73800,
-   "as_of": "20261015",
-   "open": 78400,
-   "high": 79500,
-   "low": 73600,
-   "volume": 942068,
+   "close": 80500,
+   "as_of": "20261016",
+   "open": 75500,
+   "high": 83200,
+   "low": 74800,
+   "volume": 1332244,
    "shares_outstanding": 188919389,
-   "market_cap_krw": 13942250908200,
+   "market_cap_krw": 15208010814500,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 188.5,
-   "pb": 3.22,
+   "pe_ttm": 181.5,
+   "pb": 3.1,
    "ttm_net_income_krw": 78156977472,
    "equity_krw": 4571658691900,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -12379,8 +12379,8 @@
     "net_income_prior_year": 87979271261,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/272210",
    "history_quarterly": {
     "2021Q4": {
@@ -12564,64 +12564,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 73800,
+     "close_end": 80500,
      "high": 89600,
      "low": 71100,
-     "avg": 78155.6,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 78390.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 78000,
-    "naver_close": 77500,
-    "diff_pct": 0.645
+    "date": "20261015",
+    "aik": 75100,
+    "naver_close": 73800,
+    "diff_pct": 1.762
    },
-   "aik_as_of": "20261013",
-   "aik_close": 78000,
+   "aik_as_of": "20261015",
+   "aik_close": 75100,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 14735712342000,
+   "market_cap_krw_aik": 14187846113900,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 78000,
-    "open": 72200,
-    "high": 78900,
-    "low": 71100,
-    "volume": 928711,
+    "as_of": "20261015",
+    "close": 75100,
+    "open": 78400,
+    "high": 79500,
+    "low": 73600,
+    "volume": 962255,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "329180": {
    "name": "HD현대중공업",
    "market": "KOSPI",
    "role": "yard",
-   "close": 346500,
-   "as_of": "20261015",
-   "open": 355500,
-   "high": 359500,
-   "low": 343500,
-   "volume": 343939,
+   "close": 351500,
+   "as_of": "20261016",
+   "open": 356500,
+   "high": 364000,
+   "low": 349000,
+   "volume": 222662,
    "shares_outstanding": 104961225,
-   "market_cap_krw": 36369064462500,
+   "market_cap_krw": 36893870587500,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 15.3,
-   "pb": 3.65,
+   "pe_ttm": 14.7,
+   "pb": 3.51,
    "ttm_net_income_krw": 2516298385000,
    "equity_krw": 10542876488000,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -12644,8 +12644,8 @@
     "net_income_prior_year": 495141653000,
     "net_income_yoy_pct": 222.3
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/329180",
    "history_quarterly": {
     "2021Q4": {
@@ -12829,64 +12829,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 346500,
+     "close_end": 351500,
      "high": 435500,
      "low": 343500,
-     "avg": 389888.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 386200.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 366500,
-    "naver_close": 368000,
-    "diff_pct": -0.408
+    "date": "20261015",
+    "aik": 352500,
+    "naver_close": 348000,
+    "diff_pct": 1.293
    },
-   "aik_as_of": "20261013",
-   "aik_close": 366500,
+   "aik_as_of": "20261015",
+   "aik_close": 352500,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 38468288962500,
+   "market_cap_krw_aik": 36998831812500,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 366500,
-    "open": 357500,
-    "high": 367000,
-    "low": 347000,
-    "volume": 555937,
+    "as_of": "20261015",
+    "close": 352500,
+    "open": 355500,
+    "high": 359500,
+    "low": 343500,
+    "volume": 351974,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "333430": {
    "name": "일승",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 3215,
-   "as_of": "20261015",
-   "open": 3355,
-   "high": 3420,
-   "low": 3200,
-   "volume": 103429,
+   "close": 3385,
+   "as_of": "20261016",
+   "open": 3310,
+   "high": 3500,
+   "low": 3305,
+   "volume": 63916,
    "shares_outstanding": 30726747,
-   "market_cap_krw": 98786491605,
+   "market_cap_krw": 104010038595,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 4.7,
-   "pb": 1.04,
+   "pe_ttm": 4.6,
+   "pb": 1.0,
    "ttm_net_income_krw": 22186005729,
    "equity_krw": 101175275546,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -12909,8 +12909,8 @@
     "net_income_prior_year": 1926896187,
     "net_income_yoy_pct": 441.1
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/333430",
    "history_quarterly": {
     "2021Q4": {
@@ -13094,64 +13094,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 3215,
+     "close_end": 3385,
      "high": 4190,
      "low": 3200,
-     "avg": 3636.7,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 3614.5,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1231,
+    "rows": 1232,
     "no_trade_dropped": 0,
     "from": "20211001",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 3420,
-    "naver_close": 3415,
-    "diff_pct": 0.146
+    "date": "20261015",
+    "aik": 3295,
+    "naver_close": 3245,
+    "diff_pct": 1.541
    },
-   "aik_as_of": "20261013",
-   "aik_close": 3420,
+   "aik_as_of": "20261015",
+   "aik_close": 3295,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 105085474740,
+   "market_cap_krw_aik": 101244631365,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 3420,
-    "open": 3330,
-    "high": 3425,
-    "low": 3220,
-    "volume": 142233,
+    "as_of": "20261015",
+    "close": 3295,
+    "open": 3355,
+    "high": 3420,
+    "low": 3200,
+    "volume": 109748,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "382900": {
    "name": "범한퓨얼셀",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 19330,
-   "as_of": "20261015",
-   "open": 20050,
-   "high": 20450,
-   "low": 19310,
-   "volume": 59677,
+   "close": 20400,
+   "as_of": "20261016",
+   "open": 19800,
+   "high": 20850,
+   "low": 19700,
+   "volume": 61410,
    "shares_outstanding": 8761000,
-   "market_cap_krw": 169350130000,
+   "market_cap_krw": 178724400000,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 1.16,
+   "pb": 1.09,
    "ttm_net_income_krw": -3935627857,
    "equity_krw": 157060188836,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -13174,8 +13174,8 @@
     "net_income_prior_year": -539552083,
     "net_income_yoy_pct": -948.5
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/382900",
    "history_quarterly": {
     "2022Q2": {
@@ -13343,64 +13343,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 19330,
+     "close_end": 20400,
      "high": 26450,
-     "low": 19310,
-     "avg": 23236.7,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 18800,
+     "avg": 22920.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 1057,
+    "rows": 1058,
     "no_trade_dropped": 0,
     "from": "20220617",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 20850,
-    "naver_close": 21050,
-    "diff_pct": -0.95
+    "date": "20261015",
+    "aik": 19620,
+    "naver_close": 19000,
+    "diff_pct": 3.263
    },
-   "aik_as_of": "20261013",
-   "aik_close": 20850,
+   "aik_as_of": "20261015",
+   "aik_close": 19620,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 182666850000,
+   "market_cap_krw_aik": 171890820000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 20850,
-    "open": 20150,
-    "high": 21000,
-    "low": 19810,
-    "volume": 95665,
+    "as_of": "20261015",
+    "close": 19620,
+    "open": 20050,
+    "high": 20450,
+    "low": 19350,
+    "volume": 64951,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "439260": {
    "name": "대한조선",
    "market": "KOSPI",
    "role": "yard",
-   "close": 39050,
-   "as_of": "20261015",
-   "open": 40300,
-   "high": 41250,
-   "low": 36000,
-   "volume": 76701,
+   "close": 40900,
+   "as_of": "20261016",
+   "open": 39450,
+   "high": 41800,
+   "low": 39450,
+   "volume": 41765,
    "shares_outstanding": 38088730,
-   "market_cap_krw": 1487364906500,
+   "market_cap_krw": 1557829057000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 5.2,
-   "pb": 1.31,
+   "pe_ttm": 5.0,
+   "pb": 1.24,
    "ttm_net_income_krw": 300648622917,
    "equity_krw": 1198862157673,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -13423,8 +13423,8 @@
     "net_income_prior_year": 104244458056,
     "net_income_yoy_pct": 49.8
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/439260",
    "history_quarterly": {
     "2025Q3": {
@@ -13475,64 +13475,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 39050,
+     "close_end": 40900,
      "high": 48350,
      "low": 36000,
-     "avg": 44011.1,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 43665.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 292,
+    "rows": 293,
     "no_trade_dropped": 0,
     "from": "20250801",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 41350,
-    "naver_close": 41350,
-    "diff_pct": 0.0
+    "date": "20261015",
+    "aik": 39100,
+    "naver_close": 38700,
+    "diff_pct": 1.034
    },
-   "aik_as_of": "20261013",
-   "aik_close": 41350,
+   "aik_as_of": "20261015",
+   "aik_close": 39100,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 1574968985500,
+   "market_cap_krw_aik": 1489269343000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 41350,
-    "open": 41000,
-    "high": 41650,
-    "low": 39950,
-    "volume": 62503,
+    "as_of": "20261015",
+    "close": 39100,
+    "open": 40300,
+    "high": 41250,
+    "low": 36000,
+    "volume": 77784,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "443060": {
    "name": "HD현대마린솔루션",
    "market": "KOSPI",
    "role": "equip",
-   "close": 212000,
-   "as_of": "20261015",
-   "open": 220000,
-   "high": 220500,
-   "low": 212000,
-   "volume": 70074,
+   "close": 211000,
+   "as_of": "20261016",
+   "open": 215000,
+   "high": 221000,
+   "low": 210500,
+   "volume": 62962,
    "shares_outstanding": 44833460,
-   "market_cap_krw": 9504693520000,
+   "market_cap_krw": 9459860060000,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 30.6,
-   "pb": 11.48,
+   "pe_ttm": 29.0,
+   "pb": 10.86,
    "ttm_net_income_krw": 334401770565,
    "equity_krw": 892116635085,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -13555,8 +13555,8 @@
     "net_income_prior_year": 116315239822,
     "net_income_yoy_pct": 55.7
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/443060",
    "history_quarterly": {
     "2024Q2": {
@@ -13652,64 +13652,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 212000,
+     "close_end": 211000,
      "high": 240500,
-     "low": 212000,
-     "avg": 223333.3,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 210500,
+     "avg": 222350.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 592,
+    "rows": 593,
     "no_trade_dropped": 0,
     "from": "20240508",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 228500,
-    "naver_close": 226000,
-    "diff_pct": 1.106
+    "date": "20261015",
+    "aik": 216000,
+    "naver_close": 214500,
+    "diff_pct": 0.699
    },
-   "aik_as_of": "20261013",
-   "aik_close": 228500,
+   "aik_as_of": "20261015",
+   "aik_close": 216000,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 10244445610000,
+   "market_cap_krw_aik": 9684027360000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 228500,
-    "open": 218500,
-    "high": 228500,
-    "low": 212500,
-    "volume": 84458,
+    "as_of": "20261015",
+    "close": 216000,
+    "open": 220000,
+    "high": 220500,
+    "low": 213000,
+    "volume": 70968,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "452280": {
    "name": "한선엔지니어링",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 14550,
-   "as_of": "20261015",
-   "open": 15290,
-   "high": 15890,
-   "low": 14340,
-   "volume": 1804683,
+   "close": 16630,
+   "as_of": "20261016",
+   "open": 15000,
+   "high": 17890,
+   "low": 14900,
+   "volume": 8258412,
    "shares_outstanding": 19247670,
-   "market_cap_krw": 280053598500,
+   "market_cap_krw": 320088752100,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 2.57,
+   "pb": 3.01,
    "ttm_net_income_krw": -270205886,
    "equity_krw": 93892240612,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "별도",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -13732,8 +13732,8 @@
     "net_income_prior_year": 6111075353,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/452280",
    "history_quarterly": {
     "2023Q4": {
@@ -13847,64 +13847,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 14550,
-     "high": 16310,
+     "close_end": 16630,
+     "high": 17890,
      "low": 12160,
-     "avg": 14206.7,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 14478.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 701,
+    "rows": 702,
     "no_trade_dropped": 0,
     "from": "20231124",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 12550,
-    "naver_close": 12510,
-    "diff_pct": 0.32
+    "date": "20261015",
+    "aik": 14670,
+    "naver_close": 14840,
+    "diff_pct": -1.146
    },
-   "aik_as_of": "20261013",
-   "aik_close": 12550,
+   "aik_as_of": "20261015",
+   "aik_close": 14670,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 241558258500,
+   "market_cap_krw_aik": 282363318900,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 12550,
-    "open": 12610,
-    "high": 13030,
-    "low": 12160,
-    "volume": 318122,
+    "as_of": "20261015",
+    "close": 14670,
+    "open": 15290,
+    "high": 15890,
+    "low": 14340,
+    "volume": 1924862,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "460930": {
    "name": "현대힘스",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 10860,
-   "as_of": "20261015",
-   "open": 11230,
+   "close": 11300,
+   "as_of": "20261016",
+   "open": 11100,
    "high": 11640,
-   "low": 10850,
-   "volume": 111149,
+   "low": 11100,
+   "volume": 88163,
    "shares_outstanding": 35510671,
-   "market_cap_krw": 385645887060,
+   "market_cap_krw": 401270582300,
    "trading_status": "traded",
    "quote_absent": null,
-   "pe_ttm": 16.8,
-   "pb": 1.59,
+   "pe_ttm": 15.7,
+   "pb": 1.48,
    "ttm_net_income_krw": 24910210880,
    "equity_krw": 263511041314,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "연결",
     "pe_periods": "2025FY + 2026H1 − 2025H1"
@@ -13927,8 +13927,8 @@
     "net_income_prior_year": 11754447401,
     "net_income_yoy_pct": 29.9
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/460930",
    "history_quarterly": {
     "2024Q1": {
@@ -14033,64 +14033,64 @@
      "partial": false
     },
     "2026Q4": {
-     "close_end": 10860,
+     "close_end": 11300,
      "high": 13220,
-     "low": 10850,
-     "avg": 12278.9,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "low": 10830,
+     "avg": 12178.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 659,
+    "rows": 660,
     "no_trade_dropped": 0,
     "from": "20240126",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 11770,
-    "naver_close": 11720,
-    "diff_pct": 0.427
+    "date": "20261015",
+    "aik": 11000,
+    "naver_close": 10830,
+    "diff_pct": 1.57
    },
-   "aik_as_of": "20261013",
-   "aik_close": 11770,
+   "aik_as_of": "20261015",
+   "aik_close": 11000,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 417960597670,
+   "market_cap_krw_aik": 390617381000,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 11770,
-    "open": 11430,
-    "high": 11820,
-    "low": 11260,
-    "volume": 117294,
+    "as_of": "20261015",
+    "close": 11000,
+    "open": 11230,
+    "high": 11640,
+    "low": 10850,
+    "volume": 118758,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   },
   "487400": {
    "name": "케이앤에스아이앤씨",
    "market": "KOSDAQ",
    "role": "equip",
-   "close": 4390,
-   "as_of": "20261015",
-   "open": 5020,
+   "close": 4910,
+   "as_of": "20261016",
+   "open": 4525,
    "high": 5060,
-   "low": 4300,
-   "volume": 133824,
+   "low": 4500,
+   "volume": 124039,
    "shares_outstanding": 10260882,
-   "market_cap_krw": 45045271980,
+   "market_cap_krw": 50380930620,
    "trading_status": "traded",
    "quote_absent": null,
    "pe_ttm": null,
-   "pb": 5.16,
+   "pb": 4.52,
    "ttm_net_income_krw": null,
    "equity_krw": 10228480588,
    "valuation_basis": {
-    "market_cap_asof": "20261013",
+    "market_cap_asof": "20261015",
     "financial_period": "2026H1",
     "fs": "별도",
     "pe_periods": null
@@ -14113,8 +14113,8 @@
     "net_income_prior_year": null,
     "net_income_yoy_pct": null
    },
-   "snapshot_id": "20261014-181139",
-   "generated_kst": "2026-10-14 18:11",
+   "snapshot_id": "20261016-181138",
+   "generated_kst": "2026-10-16 18:11",
    "page_url": "https://aikstockdata.com/s/487400",
    "history_quarterly": {
     "2026Q3": {
@@ -14129,43 +14129,43 @@
      "start_date": "2026-08-13"
     },
     "2026Q4": {
-     "close_end": 4390,
+     "close_end": 4910,
      "high": 6840,
      "low": 4300,
-     "avg": 5717.8,
-     "days": 9,
-     "end_date": "2026-10-15",
+     "avg": 5639.0,
+     "days": 10,
+     "end_date": "2026-10-16",
      "partial": true
     }
    },
    "history_meta": {
     "source": "네이버 금융 일봉(fchart siseJson, KRX 정규장·수정주가)",
-    "rows": 41,
+    "rows": 42,
     "no_trade_dropped": 0,
     "from": "20260813",
-    "to": "20261015",
+    "to": "20261016",
     "window_from": "2021-10-01"
    },
    "naver_check": {
-    "date": "20261013",
-    "aik": 5140,
-    "naver_close": 5290,
-    "diff_pct": -2.836
+    "date": "20261015",
+    "aik": 4505,
+    "naver_close": 4410,
+    "diff_pct": 2.154
    },
-   "aik_as_of": "20261013",
-   "aik_close": 5140,
+   "aik_as_of": "20261015",
+   "aik_close": 4505,
    "close_source": "naver_regular_close",
-   "market_cap_krw_aik": 52740933480,
+   "market_cap_krw_aik": 46225273410,
    "aik_quote": {
-    "as_of": "20261013",
-    "close": 5140,
-    "open": 5380,
-    "high": 5500,
-    "low": 4875,
-    "volume": 96664,
+    "as_of": "20261015",
+    "close": 4505,
+    "open": 5020,
+    "high": 5060,
+    "low": 4300,
+    "volume": 137106,
     "trading_status": "traded"
    },
-   "as_of_source": "naver_latest(aik 기준일 20261013 보다 2거래일 최신)"
+   "as_of_source": "naver_latest(aik 기준일 20261015 보다 1거래일 최신)"
   }
  }
 }

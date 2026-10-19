@@ -1366,3 +1366,88 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   }
   addLink();   /* 딥링크(#co=MJC)로 패치보다 먼저 상세가 그려진 경우 */
 })();
+
+/* ============================================================
+   Memory 탭 · 주간 리서치 기록 모듈 로더 (2026-09-21 발행분)
+   -------------------------------------------------------------
+   ui/patch.js 맨 끝(리서치 페이지 링크 IIFE 뒤)에 그대로 붙인다.
+   · 현재 window.renderMem 을 감싼다. 이 시점의 renderMem 은 market_evidence 래퍼
+     (_marketEvidence=true)이므로 그 체인을 그대로 보존하고 플래그도 승계한다
+     (evidence IIFE 가 다시 돌아도 이중 래핑되지 않는다).
+   · renderMem 이 그린 뒤 ui/memory_weekly.js 를 지연 로드하고 PHXMemoryWeekly.mount(main) 을 부른다.
+   · 직접 #mem 진입(패치보다 먼저 그려졌거나 data_mem.js 가 아직 로딩 중)도 처리한다:
+     이미 그려져 있으면 즉시 마운트, 아직이면 #main 이 그려질 때까지 MutationObserver 로 기다린다.
+   · 다른 탭에서는 아무것도 그리지 않는다(ST.tab==='mem' 일 때만).
+   · 스크립트 로드 실패 시 안내와 '다시 시도' 버튼을 띄운다. 탭을 떠났다가 돌아와도 자동 재시도한다.
+   ============================================================ */
+(function(){
+  'use strict';
+  if(window.__PHX_MEM_WEEKLY_LOADER__) return; window.__PHX_MEM_WEEKLY_LOADER__='2026-09-21.2';
+  var SRC='ui/memory_weekly.js?v=20260921-2';
+  var NOTICE_ID='phxmw-loader-notice';
+  var ANCHOR_SEL='section[aria-label="메모리 소매가격 지수"]';
+  var loading=false, observer=null, watchTimer=null;
+
+  function onMem(){ return typeof ST!=='undefined'&&!!ST&&ST.tab==='mem'; }
+  function mainEl(){ return document.getElementById('main'); }
+  function memPainted(m){ return !!(m&&(m.querySelector(ANCHOR_SEL)||m.querySelector('.bcard'))); }
+  function warn(where,e){ try{ console.warn('[mem-weekly]',where,e); }catch(_){} }
+
+  function mountNow(){
+    if(!onMem()) return;
+    var m=mainEl(); if(!m) return;
+    if(!memPainted(m)){ watch(m); return; }           /* renderMem 이 아직 안 그렸다 — 그려지면 다시 온다 */
+    stopWatch();
+    var api=window.PHXMemoryWeekly;
+    if(api&&typeof api.mount==='function'){ try{ api.mount(m); }catch(e){ warn('mount',e); } return; }
+    loadScript();
+  }
+  function watch(m){
+    if(observer||typeof MutationObserver!=='function') return;
+    observer=new MutationObserver(function(){
+      if(!onMem()){ stopWatch(); return; }
+      if(memPainted(m)){ stopWatch(); mountNow(); }
+    });
+    observer.observe(m,{childList:true});
+    watchTimer=setTimeout(stopWatch,30000);          /* 영영 안 그려지면 조용히 포기 — 다음 renderMem 호출이 다시 깨운다 */
+  }
+  function stopWatch(){
+    if(observer){ try{ observer.disconnect(); }catch(_){} observer=null; }
+    if(watchTimer){ clearTimeout(watchTimer); watchTimer=null; }
+  }
+  function loadScript(){
+    if(loading) return;
+    if(window.PHXMemoryWeekly&&typeof window.PHXMemoryWeekly.mount==='function'){ mountNow(); return; }
+    loading=true; removeNotice();
+    var s=document.createElement('script'); s.src=SRC; s.async=true;
+    s.onload=function(){ loading=false; mountNow(); };
+    s.onerror=function(){ loading=false; if(s.parentNode) s.parentNode.removeChild(s); showNotice(); };
+    (document.body||document.head).appendChild(s);
+  }
+  function removeNotice(){ var n=document.getElementById(NOTICE_ID); if(n&&n.parentNode) n.parentNode.removeChild(n); }
+  function showNotice(){
+    if(!onMem()) return; var m=mainEl(); if(!m) return; removeNotice();
+    var d=document.createElement('div'); d.id=NOTICE_ID; d.setAttribute('role','alert');
+    d.style.cssText='margin:12px 0;padding:10px 14px;border:1px solid #e06666;border-radius:10px;font-size:12px';
+    d.appendChild(document.createTextNode('주간 리서치 기록을 불러오지 못했습니다.'));
+    var b=document.createElement('button'); b.type='button'; b.textContent='다시 시도';
+    b.style.cssText='font:inherit;font-size:11.5px;padding:3px 10px;border-radius:999px;border:1px solid #2bc0d4;color:#2bc0d4;background:transparent;cursor:pointer;margin-left:8px';
+    b.onclick=function(){ removeNotice(); loadScript(); };
+    d.appendChild(b);
+    var anchor=m.querySelector(ANCHOR_SEL);
+    if(anchor&&anchor.parentNode===m) m.insertBefore(d,anchor.nextSibling); else m.appendChild(d);
+  }
+
+  var cur=window.renderMem;
+  if(typeof cur==='function'&&!cur._memWeekly){
+    var wrapped=function(){
+      var r=cur.apply(this,arguments);                /* 원본 → market_evidence attach 순서 그대로 */
+      try{ mountNow(); }catch(e){ warn('after-render',e); }
+      return r;
+    };
+    wrapped._memWeekly=true;
+    if(cur._marketEvidence) wrapped._marketEvidence=true;   /* evidence IIFE 재실행 시 이중 래핑 방지 */
+    window.renderMem=wrapped;
+  }
+  try{ mountNow(); }catch(e){ warn('init',e); }      /* 직접 #mem 진입: 이미 그려져 있으면 즉시, 아니면 대기 */
+})();

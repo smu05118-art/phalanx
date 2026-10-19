@@ -341,7 +341,7 @@ class TestPages(SyntheticBase):
         orig_all = kchem_inputs.load_all
         kchem_inputs.load_all = lambda argus_dir=None, categories=None: orig_all(self.argus, categories)
         try:
-            reg, outputs = kchem_page.build(write=False)
+            reg, outputs, _assets = kchem_page.build(write=False)
         finally:
             kchem_inputs.load_all = orig_all
         return reg, outputs
@@ -366,6 +366,135 @@ class TestPages(SyntheticBase):
         for text in out1.values():
             self.assertLess(len(text.encode("utf-8")), 5 * 1024 * 1024)
             self.assertNotIn("<script>undefined", text)
+        # 행 앵커·토큰 검색·정확/근사 배지
+        self.assertIn('id="r-%s"' % self.sid_of["에틸렌-납사 스프레드(한국)"], sp)
+        self.assertIn("split(/\\s+/)", sp)
+        self.assertIn("재현·정확", sp)
+
+
+# ── 방법론(순수 함수) ───────────────────────────────────────
+
+def _series(dates, vals):
+    return {d: v for d, v in zip(dates, vals)}
+
+
+class TestMethod(unittest.TestCase):
+    def setUp(self):
+        self.d = _dates(50)
+        self.F = _series(self.d, _walk(21, 700, 30, 50))
+        self.P = _series(self.d, _walk(22, 1000, 40, 50))
+
+    def test_carry_weeks_excluded_from_fit(self):
+        # 마지막 3주: 스프레드·제품은 전주 값 그대로, 원료만 바뀜 → 이월. 빼면 재현, 안 빼면 마지막 주 이탈로 실패
+        S = {d: self.P[d] - self.F[d] for d in self.d}
+        P = dict(self.P)
+        for d in self.d[-3:]:
+            S[d], P[d] = S[self.d[-4]], P[self.d[-4]]
+        self.assertEqual(kchem_registry.carry_weeks(S, P, [self.F]), self.d[-3:])
+        naive = kchem_registry.robust_fit(S, P, [self.F])
+        self.assertFalse(naive["reproduced"])
+        r = kchem_registry.robust_fit(S, P, [self.F], kchem_registry.fit_dates(S, P, [self.F]))
+        self.assertTrue(r["reproduced"])
+        self.assertAlmostEqual(r["k"][0], 1.0, places=6)
+
+    def test_median_start_rescues_outlier_dragged_fit(self):
+        # 소수의 거대한 이상치가 최소제곱을 끌어 안쪽이 0 이 되는 경우 — 중앙값 시작이 k=1 을 찾는다
+        S = {d: self.P[d] - self.F[d] for d in self.d}
+        for d in self.d[5:9]:
+            S[d] -= 5000.0
+        r = kchem_registry.robust_fit(S, self.P, [self.F])
+        self.assertTrue(r["reproduced"])
+        self.assertAlmostEqual(r["k"][0], 1.0, places=6)
+        self.assertEqual(sorted(r["outliers"]), self.d[5:9])
+
+    def test_episode_diag(self):
+        # 기준 k 0.9 → 20~35주 0.6 → 0.9 복귀: 재현은 아니지만 '일시 이탈 후 복귀' 로 진단
+        S = {}
+        for i, d in enumerate(self.d):
+            k = 0.6 if 20 <= i <= 35 else 0.9
+            S[d] = self.P[d] - k * self.F[d]
+        r = kchem_registry.robust_fit(S, self.P, [self.F])
+        self.assertFalse(r["reproduced"])
+        ep = kchem_registry.episode_diag(S, self.P, self.F)
+        self.assertEqual((ep["start"], ep["end"], ep["n"]), (self.d[20], self.d[35], 16))
+        self.assertAlmostEqual(ep["base_k"], 0.9, places=3)
+        self.assertTrue(ep["outside_reproduced"])
+
+    def test_leading_regime(self):
+        # 창 초반 4주(8% — 허용 10% 안)는 k 0.7, 이후 0.75 — 재현되더라도 초반 산식 변경을 regime_start 로 남긴다(MEG−EO 대만 꼴)
+        S = {d: self.P[d] - (0.7 if i < 4 else 0.75) * self.F[d] for i, d in enumerate(self.d)}
+        r = kchem_registry.robust_fit(S, self.P, [self.F])
+        self.assertTrue(r["reproduced"])
+        self.assertEqual(kchem_registry.leading_regime(S, self.P, [self.F], r), self.d[4])
+        # 산식 변경이 없으면 None
+        S2 = {d: self.P[d] - 0.75 * self.F[d] for d in self.d}
+        self.assertIsNone(kchem_registry.leading_regime(S2, self.P, [self.F], kchem_registry.robust_fit(S2, self.P, [self.F])))
+
+    def test_proxy_check_gate(self):
+        lg = _series(self.d, _walk(31, 1000, 40, 50))
+        same = {d: v * 7.2 + 3 for d, v in lg.items()}                   # 원장과 같은 방향(통화·수준만 다름)
+        noise = _series(self.d, _walk(77, 7000, 300, 50))                # 무관한 보행
+        self.assertTrue(kchem_registry.proxy_check(same, lg, "W")["gate"])
+        self.assertFalse(kchem_registry.proxy_check(noise, lg, "W")["gate"])
+        self.assertIsNone(kchem_registry.proxy_check(dict(list(same.items())[:10]), lg, "W"))   # 겹침 부족 → 검증 불가
+
+
+class TestRegistryExtras(SyntheticBase):
+    def test_grades_and_editions(self):
+        reg, _ = self.registry()
+        rows = {r["name"]: r for r in reg["rows"]}
+        self.assertEqual(rows["에틸렌-납사 스프레드(한국)"]["grade"], "exact")      # 0.5 단위 가격의 1:1 차감 → 잔차 0
+        self.assertEqual(rows["ABS-BD&SM 스프레드(한국)"]["grade"], "approx")      # 0.1 반올림한 복합 → 잔차 ≤ 0.05
+        ed = reg["summary"]["editions"]
+        # fixture 마지막 관측 2026-08-10(월) → 편집 08-13(목), 평가일 08-31 → 08-20·08-27 누락 2
+        self.assertEqual((ed["last_file"], ed["missing"], ed["next_expected"]), ("Weekly_260813.xlsm", 2, "2026-08-20"))
+
+    def test_duplicates_marked(self):
+        inputs, fp = kchem_inputs.load_all(self.argus)
+        rg = kchem_registry.Registry(inputs, fp)
+        a = {"sid": "a", "name": "X(대만)", "region": "대만"}
+        b = {"sid": "b", "name": "X(한국)", "region": "한국"}
+        c = {"sid": "c", "name": "Y(한국)", "region": "한국"}
+        vals = {"a": [1, 2], "b": [1, 2], "c": [3]}
+        n, unique = rg.mark_duplicates([a, b, c], lambda r: vals[r["sid"]])
+        self.assertEqual((n, unique), (1, 2))
+        self.assertIsNone(b["dup_of"])                 # 참조 지역 순서상 한국이 대표
+        self.assertEqual((a["dup_of"], a["dup_of_region"]), ("b", "한국"))
+
+    def test_content_fingerprint_ignores_hub_dates(self):
+        other = tempfile.mkdtemp(prefix="kchem_fx2_")
+        try:
+            argus2, _ = write_world(other, self.P, self.spreads, self.dates, asof="2026-09-07")
+            _, fp1 = kchem_inputs.load_all(self.argus)
+            _, fp2 = kchem_inputs.load_all(argus2)
+            self.assertNotEqual(fp1["fingerprint"], fp2["fingerprint"])     # 파일은 asof/built 때문에 다르다
+            self.assertEqual(fp1["content"], fp2["content"])               # 화학 내용은 같다
+            P3 = dict(self.P)
+            P3["Naphtha 일본"] = P3["Naphtha 일본"][:-1] + [P3["Naphtha 일본"][-1] + 1.0]
+            third = tempfile.mkdtemp(prefix="kchem_fx3_")
+            try:
+                argus3, _ = write_world(third, P3, self.spreads, self.dates)
+                self.assertNotEqual(kchem_inputs.load_all(argus3)[1]["content"], fp1["content"])
+            finally:
+                shutil.rmtree(third, ignore_errors=True)
+        finally:
+            shutil.rmtree(other, ignore_errors=True)
+
+    def test_commit_gate(self):
+        old = {"content": "x", "argus_asof": "2026-10-13"}           # 월요일
+        self.assertFalse(kchem_page.commit_gate({"content": "x", "argus_asof": "2026-10-16"}, old)[0])   # 같은 주·같은 내용
+        self.assertTrue(kchem_page.commit_gate({"content": "x", "argus_asof": "2026-10-19"}, old)[0])    # 주차 변경
+        self.assertTrue(kchem_page.commit_gate({"content": "y", "argus_asof": "2026-10-14"}, old)[0])    # 내용 변경
+        self.assertTrue(kchem_page.commit_gate({"content": "x", "argus_asof": "2026-10-14"}, None)[0])   # 이전 없음
+
+
+class TestNoNetworkImport(unittest.TestCase):
+    def test_kchem_does_not_import_network_modules(self):
+        import subprocess
+        code = ("import sys; sys.path.insert(0, %r); import kchem_page, kchem_registry, kchem_inputs; "
+                "print(','.join(m for m in ('kce_fetch','kship_lib','kce_parse') if m in sys.modules))" % TOOLS)
+        out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True).stdout.strip()
+        self.assertEqual(out, "", "네트워크 수집 모듈이 전이 import 됨: %s" % out)
 
 
 # ── 실제 입력(있을 때만) ────────────────────────────────────
@@ -389,6 +518,45 @@ class TestLive(unittest.TestCase):
             if r["kind"] == "spread":
                 self.assertIsNotNone(r["region"], r["name"])
                 self.assertIsNotNone(r["product"], r["name"])
+
+    def test_review_fixes_hold_on_live_inputs(self):
+        rows = {r["name"]: r for r in self.reg["rows"]}
+        # #7 납사−Dubai(일본)는 USD/bbl 크랙으로 재현
+        crack = rows.get("납사-Dubai 크랙 스프레드(일본)")
+        if crack and crack.get("fit") and crack["fit"]["n"] >= 60:
+            self.assertTrue(crack["reproduced"])
+            self.assertEqual(crack["unit_hint"], "USD/bbl")
+        # #6 중앙값 시작으로 회복되는 3행
+        for nm in ("페놀-벤젠 스프레드(미국)", "페놀-벤젠 스프레드(인도)", "LDPE-에틸렌 스프레드(유럽)"):
+            if nm in rows and rows[nm].get("fit") and rows[nm]["fit"]["n"] >= 40:
+                self.assertTrue(rows[nm]["reproduced"], nm)
+        # #12 재현은 등급을 갖는다
+        for r in self.reg["rows"]:
+            if r["kind"] == "spread" and r["reproduced"]:
+                self.assertIn(r["grade"], ("exact", "approx"), r["name"])
+
+    def test_proxies_never_feed_ledger_math(self):
+        proxy_sids = {p["sid"] for p in self.reg["proxies"]}
+        for r in self.reg["rows"] + self.reg["derived"]:
+            self.assertNotIn(r.get("product_sid"), proxy_sids, r["name"])
+            for f in r.get("feeds") or []:
+                self.assertNotIn(f.get("sid"), proxy_sids, r["name"])
+        for p in self.reg["proxies"]:
+            if p["post_halt"]:
+                self.assertTrue(p["check"]["gate"], p["sid"])
+                led = self.reg["summary"]["ledger_last"]
+                if p.get("lag"):
+                    self.assertGreater(p["post_halt"]["from"][:7], led[:7], p["sid"])   # 시차 프록시는 정지 이후 달부터
+
+    def test_stock_pages_are_chemical_only(self):
+        _, outputs, _ = kchem_page.build(write=False)
+        chem = set()
+        for cid in load_asset("aliases.json")["chem_chains"]:
+            chem |= {st["t"] for st in self.reg["chains"].get(cid, {}).get("stocks", [])}
+        pages = {os.path.relpath(p, kchem_page.KCHEM).split(os.sep)[0] for p in outputs if p.endswith(os.sep + "index.html")}
+        pages.discard("index.html")
+        self.assertTrue(pages)
+        self.assertLessEqual(pages, chem)
 
 
 

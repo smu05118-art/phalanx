@@ -1,0 +1,114 @@
+# 한국화학 캐파(argus/kcap) 일일 갱신.
+#
+# DART 무키 경로(kce_fetch)를 **순차 한 프로세스**로 쓴다 — concurrency 그룹 kship-dart 로 다른 산업 탭과 직렬화한다.
+# 단계: 모집단(KIND 1요청) → 생산설비 절(최신 분기, 캐시 있으면 요청 0) → 이벤트 공시(편입 회사) → 재무제표(편입 회사, 최신 분기)
+#       → 원장 조립 → 매핑·모델 → 페이지. 원문 HTML 캐시(tools/assets/cache/, 수십 MB)는 git 에 넣지 않고 actions/cache 로 이어간다.
+# 스케줄 09:40 KST — kchem(09:10) 뒤, kce(10:00) 앞.
+name: update-kcap
+on:
+  schedule:
+    - cron: "40 0 * * *"          # 09:40 KST
+  workflow_dispatch:
+    inputs:
+      history:
+        description: "편입 회사의 과거 5개 분기 생산설비 절도 수집(첫 실행·캐시 만료 때)"
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: kship-dart
+  queue: max  # Preserve every waiting industry refresh (up to 100).
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Tests (before — parsers, model, fixtures)
+        run: cd argus/kcap/tools && python3 -m unittest discover -s tests -p 'test_kcap_*.py'
+      - name: Restore DART section cache
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: argus/kcap/tools/assets/cache
+          key: kcap-dart-cache-${{ github.run_id }}
+          restore-keys: |
+            kcap-dart-cache-
+      - name: Collect (KIND · DART 생산설비 절 · 이벤트 공시 · 재무제표 — 순차, 캐시 우선)
+        id: collect
+        continue-on-error: true
+        shell: bash
+        working-directory: argus/kcap/tools
+        env:
+          KCAP_HISTORY: ${{ github.event.inputs.history }}
+        run: |
+          set -o pipefail
+          mkdir -p assets/cache
+          python3 kcap_run.py --daily ${KCAP_HISTORY:+--history}
+      - name: Build (원장 → 모델 → 페이지, 네트워크 없음)
+        id: build
+        shell: bash
+        working-directory: argus/kcap/tools
+        run: |
+          set -o pipefail
+          python3 kcap_build.py
+          python3 kcap_model.py
+          python3 kcap_page.py
+      - name: Save DART section cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: argus/kcap/tools/assets/cache
+          key: kcap-dart-cache-${{ github.run_id }}
+      - name: Tests (after)
+        run: |
+          cd argus/kcap/tools && python3 -m unittest discover -s tests -p 'test_kcap_*.py'
+          git diff --check || true
+      - name: Commit
+        shell: bash
+        env:
+          O_COLLECT: ${{ steps.collect.outcome }}
+        run: |
+          git config user.name "kcap-bot"
+          git config user.email "kcap-bot@users.noreply.github.com"
+          git add -A -- argus/kcap
+          if git diff --cached --quiet; then
+            echo "변경 없음"; exit 0
+          fi
+          git diff --cached --stat | tail -3
+          TAG="$( [ "$O_COLLECT" = "success" ] && echo 수집 || echo 수집✗ )"
+          git commit -m "kcap: 갱신 $(date -u +%Y-%m-%d) (${TAG}·원장·모델·페이지)"
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Report
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### 한국화학 캐파 갱신 $(date -u +%Y-%m-%d)"
+            echo "- 수집: ${{ steps.collect.outcome }} · 빌드: ${{ steps.build.outcome }}"
+            python3 - <<'PY'
+          import json
+          try:
+              m = json.load(open("argus/kcap/tools/assets/model.json", encoding="utf-8"))["summary"]
+              l = json.load(open("argus/kcap/tools/assets/ledger.json", encoding="utf-8"))
+              print("- 회사 %d · 편입 %d · 보정 %d(표시 가능 %d) · 추정 %d · 매핑 캐파 %.0f kt · 변동 %d" % (m["companies"], m["promoted"], m["with_fit"], m.get("with_fit_ok", 0), m["with_estimate"], m["mapped_capacity_ton"] / 1000, l["n_changes"]))
+          except Exception as e:
+              print("- model.json 없음: %s" % e)
+          PY
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail if collect errored
+        if: always() && steps.collect.outcome == 'failure'
+        run: |
+          echo "::error::수집 단계 실패 — 캐시된 원문으로 빌드·커밋은 진행됨. 로그를 확인하라"
+          exit 1

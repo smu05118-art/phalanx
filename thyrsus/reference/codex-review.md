@@ -5049,3 +5049,146 @@ DOM 골든 대조군 5개가 **첫 시도에 전부 울렸다** — 라운드 52
 - `resolvePukkaPending` 의 사망 분기는 종전대로 `prev.alive` 를 본다. 라운드 52 가 만든
   `reallyAlive` 창구(죽은 척 좀버얼)를 쓰는 것이 일관되지만, 그것은 동작 변경이라 별도 근거·테스트가
   필요하다 — G 절에 남겼다.
+
+## 라운드 54 — 죽은 척 좀버얼을 밤 살해 입력 게이트가 거부했다 · 위장 선택지의 커스텀 표시명 · PR #87
+
+외부 교차검증 4차(PR #77)의 잔여 가운데 **설계 결정이 필요 없는 엔진·안전성 2건**(E04·E06)을 받았다.
+둘 다 현재 빌드(`51306843`, 라운드 53+#84+#85 이후)에서 자체 재현했고, 수정 전 빌드에서 실패하는 회귀를
+먼저 만들었다. 설계 결정이 선행하는 E07·E08(상태 토큰 신원)과 사용자 결정 대기 E19(A13 번복)는 손대지 않았다.
+
+### E04 — 입력 게이트가 겉보기 `alive` 를 봤다 (외부 4차 #4 · Codex High → Claude Medium 권고)
+
+공식 Zombuul: "The 1st time you die, you live but register as dead." 위키: "The second time the Zombuul
+dies, they die for real and good wins." 공식 Assassin: "they die, even if for some reason they could not."
+
+`doStepKill`·`doImpKill` 의 첫 줄이 `if(!t.alive){ toast('이미 죽은 대상…'); return; }` 였다. 죽은 척 좀버얼은
+`alive===false` 이면서 살아 있으므로, 암살자의 관통("even if … could not")이 `DEATH_MODIFIERS` 표에 닿기도
+전에 돌아갔다. **같은 파일의 공격자 쪽 래퍼(13050행 근방)는 이미 `zombuul && fakedead` 를 생존으로 셌다** —
+한 파일 안에서 같은 질문에 두 답이 있던, 이 프로젝트에서 열세 번째쯤 되는 내부 모순의 모양이다.
+
+라운드 52 가 세운 `reallyAlive` 창구를 같은 자리에 썼다. 그 뒤 경로는 손대지 않았다 — `killPlayer` 의
+좀버얼 분기가 이미 둘째 사망을 "🪦 두 번째 사망 — 죽은 척 해제, 실제 사망" 으로 처리하고, 악마 생존 판정이
+`reallyAlive` 축이라 선 승리 제안까지 그대로 이어진다. 재현 측정(수정 전 → 후):
+
+```
+밤 2 암살자 → 죽은 척 좀버얼 : fakedead 유지 · 로그 없음 · pendingWin null
+                            → fakedead 해제 · "두 번째 사망" 로그 · pendingWin.team='good'
+대조군 ① 진짜 죽은 요리사 지목 : 전후 모두 거부(사망 로그 없음)
+대조군 ② 중독된 암살자        : 전후 모두 불발(죽은 척 유지)
+```
+
+Medium 으로 둔 사유는 그대로다 — 아군(암살자·대부)이 자기 악마를 죽이는 경로라 실전 도달성이 낮다. 다만
+`doImpKill` 도 같은 게이트였으므로 함께 고쳤다(대상이 악마인 임프 살해는 실전에서 성립하지 않지만, 한 파일
+안에 같은 질문의 두 답을 남기지 않기 위해서다). **메모리의 미결 "암살자가 좀버얼 첫 사망을 관통하는가" 는
+이 건이 아니다** — 이건 둘째 사망이고, 첫 사망의 관통 의미론은 여전히 열려 있다(`death_probe_bypass_stuck_true@pending`).
+
+### E06 — 위장 선택지 셋만 esc() 가 빠져 있었다 (외부 4차 #6 · High)
+
+셋업 2단계 "시작 전 사회자 결정" 의 주정뱅이 위장·미치광이가 믿을 악마·꼭두각시가 믿을 캐릭터 `<select>` 가
+`${c.id}`·`${c.ko}` 를 그대로 그렸다. 같은 화면의 캐릭터 선택(바로 위)은 `esc(c.id)`/`esc(c.ko)` 를 쓴다.
+`editionChars()` 는 `c.custom` 을 포함하고 `importScript()` 는 `id` 만 안전 재발급하므로, 가져온 스크립트의
+표시명이 HTML 로 해석되는 자리는 이 셋뿐이었다(2026-09-01 2차 #4/F 가 커스텀 `id` 경로를 막은 뒤 위장
+선택지가 추가되며 빠졌다). 세 템플릿을 `esc()` 로 감쌌다 — 동작 변경이 아니라 같은 파일의 규칙("사용자
+문자열은 전부 esc() 를 지난다")을 같은 자리에 적용한 것이다.
+
+재현·게이트는 **특수문자가 든 이름이 그대로 보이는가** 로 잡았다(`&`·따옴표가 든 커스텀 이름 둘). 한 번
+더 해석되면 다른 글자가 되므로, 대조군(esc 제거)은 글자 차이로 울린다. 외부 보고서 때 Codex 가 쓴 재현
+방식은 쓰지 않았다 — 그 방식은 OpenAI 필터가 세션을 끊었고, 이 게이트에는 글자 차이로 충분하다.
+
+### 창구화가 또 기존 대조군의 앵커를 끊었다 — 세 번째
+
+라운드 52·53 과 같은 자리의 교훈이 그대로 되풀이됐다. `fanggu_alive_guard_removed` 대조군의 앵커가
+`  if(!reallyAlive(t)){` **한 줄**이었고, E04 로 같은 줄이 세 곳이 되자 게이트가 `Control anchor must match
+once` 로 즉시 멈췄다. 앵커를 그 다음 줄(팡 구 토스트)까지 2행으로 좁혔다. **창구를 쓰는 자리를 늘리면
+그 창구를 겨눈 대조군 앵커를 먼저 보라** — 라운드 52 가 적은 규율인데 내가 미리 보지 않았다.
+게이트가 멈춘 덕에 알았으니 '통과보다 나쁜' 상태는 아니었다.
+
+### 검증
+
+- 규칙 판정 **98 케이스**(+1 · 하위 단정 6). 수정 전 빌드에서 **6개 단정이 모두 실패**하고 대조군 둘은
+  통과한다(지켜야 할 기존 동작의 증거). 수정 후 98/98.
+- DOM 골든 **픽스처 34 · 프레임 114 · 대조군 51/51** 전부 PASS/검출. 새 대조군 셋(`stepkill_fakedead_refused` ·
+  `disguise_lunatic_escape_removed` · `disguise_marionette_escape_removed`)은 첫 시도에 울렸다.
+  수정본을 기준으로 수정 전 빌드를 후보로 걸면 달라진 픽스처는 **새 둘뿐**(`zombuul_second_death_assassin` · `setup_disguise_custom_name`) — 기존 32개 픽스처는 전 영역 무변화.
+- 전 스위트: 규칙 98/0 · 종료 31/0 · 핸드오프 84 PASS · 시나리오 220 실패 0 · 퍼저 400 위반 0(avgLog 25.8) · 커스텀 90 위반 0 · DOM 골든 34/114/51 · 래퍼 48 불일치 0 · 돌연변이 46종 검출 42 미검출 0 masked 4 · 전 검사 종료코드 0
+- 멱등 패치: `patches/round54.py`(앱) · `round54_tests.py`(규칙) · `round54_golden.py`(게이트 + 앵커 보강).
+
+### 남은 것
+
+- E07·E08 — 상태 토큰 신원 `(key, 출처)` 설계 결정 선행. E19 — 사용자 결정(A13 번복) 대기.
+- E10~E16·E20~E24 설명문 12건은 다음 라운드(텍스트 전용 · 캐릭터별 전 표면 훑기 포함).
+- G13 — `resolvePukkaPending` 의 사망 분기가 `prev.alive` 를 본다(죽은 척 좀버얼이 푸카 희생자인 경우).
+  E04 와 같은 축의 문제라 다음 엔진 라운드에서 함께 볼 것.
+
+
+## 라운드 55 — 설명문이 가르치던 틀린 규칙 일곱 · PR #89
+
+외부 교차검증 4차의 설명문 High 7건(E10~E16)을 받았다. 전부 텍스트 전용이다. 각 문장은 공식 위키
+How to Run·Summary·Examples 원문을 다시 열어 대조했고, 라운드 52 의 교훈대로 **같은 캐릭터의 모든
+표면**(ability·warn·guide·remind·howto·examples·밤 노트·처형 질문)을 함께 훑어 어긋나는 것만 고쳤다.
+설명문 오류도 사회자가 그대로 따르므로 규칙이다 — 아래 일곱은 사회자가 따르면 판정이 실제로 달라지는 것들이다.
+
+| # | 캐릭터 | 틀린 문장이 가르치던 것 | 공식 원문 | 고친 표면 |
+|---|---|---|---|---|
+| E10 | 사이코패스 | 비기면 **다시 낸다** · 상대는 **사회자** | How to Run: "If the Psychopath draws or wins, they live. Either way, the day ends… If the Psychopath is executed due to a self-nomination, then the Psychopath plays Roshambo with you instead." | `warn[2]` · `howto[2]` · **처형 질문 두 자리**(`thyExecPrompts`·`DEATH_MODIFIERS` 의 "이겼습니까?" → "비기거나 이겼습니까?") |
+| E11 | 시장 | 3인 승리는 **선한 팀** | How to Run: "In other editions, an evil Mayor means 'evil wins' instead." (능력문·엔진은 라운드 47 이 좌석 진영으로 고쳤는데 `warn`·`howto` 만 남아 있었다 — A58 잔존) | `warn[2]` · `howto[1]` |
+| E12 | 성자 | 처형이 **확정되는 순간** 종료 | Examples: "The Saint is executed. However, the Scapegoat's ability is triggered, so the Scapegoat dies instead. The game continues, because the Saint did not die." | `howto[1]` |
+| E13 | 리치 | 숙주 사망 뒤 **하루 더** 진행, 처단자가 마무리 | Summary: "If the player that the Lleech chose dies, the Lleech dies as well." Examples: "The [host] is executed. The [host] and the Lleech die. Good wins." | `examples[0]` |
+| E14 | 열기구 조종사 | 네 유형이 다 있어야 · 넷 중 하나는 **반드시 악마** · 외지인이 죽으면 **유형이 사라진다** · 소진 처리 | Summary: "Each time the Balloonist learns a player, the player must have a different character type to the previously shown player." · "The shown player can be alive or dead." | `warn[1]` · `howto[0]` · `examples[0]`·`[1]` |
+| E15 | 토르 | 밤 능력을 **사회자가 대행** · 악마의 살해 지목도 대행 재량 | Summary: "Character abilities work as normal. Players are woken and prompted to use their ability if needed." (같은 모달의 `howto[1]` 은 이미 맞게 적혀 있었다 — 내부 모순) | `guideFirst[1]` · `warn[1]` |
+| E16 | 좀버얼 | 낮 처형·**밤 사망을 합쳐** 하루 사망 유무 | How to Run: "Each day, if a player dies, mark them with the DIED TODAY reminder. … Each night except the first, if any player is marked DIED TODAY, do not wake the Zombuul." | `howto[0]` |
+
+### 처형 질문이 비김을 담지 못했다 — A07 기각의 뿌리
+
+라운드 18 은 A07(사이코패스 무승부)을 "앱에 무승부를 표현하는 상태·입력 경로가 없다" 로 기각했다. 그 말은
+맞았고 지금도 맞다 — 그런데 바로 그 **없음**이 문제였다. 사회자에게 "가위바위보에서 이겼습니까?" 라고만
+물으면 비긴 사회자는 '아니오' 를 누르고, 앱은 사이코패스를 죽인다. 공식은 비김도 생존이다. 질문 한 문장과
+버튼 라벨("예 — 비김·이김")을 바꿨다 — 판정 표(`psychopath-roshambo`)의 `when()` 은 그대로이고 입력만
+바뀌었으므로 엔진 변경이 아니다. `execDiscretion` 케이스(사전 답 → 판정)는 그대로 통과한다.
+
+### 검증
+
+- 규칙 판정 **99 케이스**(+1 · 캐릭터별 단정 15). 수정 전 빌드(라운드 54)에서 **15개 단정이 모두 실패**,
+  수정 후 99/99. 처음 넣었던 "바꾼 문장에 `**` 없음" 단정은 **지웠다** — 성자 `warn[3]` 이 라운드 47 부터
+  강조를 쓰고 있어 수정 전·후 모두 울렸고, 강조는 `warn`/`howto`/`examples` 에서 허용된다(평문 계약은
+  `ability`·`rule`·`setupNote`·`guideFirst[0]`). 렌더 계약은 DOM 골든의 `noLiteralBoldMarkersAnywhere` 가 지킨다.
+- DOM 골든 **픽스처 34 · 프레임 114 · 대조군 51/51** PASS. 수정본을 기준으로 라운드 54 빌드를 후보로 걸면
+  달라진 픽스처는 **둘** — `setup_disguise_custom_name`(캐릭터 일람의 시장 `warn[2]`)·`info_step_skip`
+  (밤 패널의 토르 `guideFirst[1]`·`warn[1]`) — 그리고 그 둘의 html 차이가 **정확히 그 문장들**임을
+  프레임 단위로 대조했다.
+- 전 스위트: 규칙 99/0 · 종료 31/0 · 핸드오프 84 PASS · 시나리오 220 실패 0 · 퍼저 400 위반 0(avgLog 25.8) · 커스텀 90 위반 0 · DOM 골든 34/114/51 · 래퍼 48 불일치 0 · 돌연변이 46종 검출 42 미검출 0 masked 4 · 전 검사 종료코드 0
+- 멱등 패치: `patches/round55.py`(앱) · `round55_tests.py`(규칙) · `round55_backlog.py`.
+
+### 남은 것
+
+- 설명문 Medium 5건(E20~E24: 꼭두각시·사냥꾼·마을 바보·저글러·곡예사)은 다음 라운드.
+- E17(릴 몬스타 첫밤 정보 생략 — 판 단위 상태 설계) · E18(궁정대신 동명 중 한 명 — 사회자 선택 UI) 은
+  엔진 라운드로. E07·E08 은 설계 결정, E19 는 사용자 결정 대기.
+
+
+## 라운드 56 — 설명문 Medium 다섯 · 징크스를 부정하던 문장 · PR #90
+
+외부 교차검증 4차의 설명문 Medium 5건(E20~E24)을 받았다. 라운드 55 와 같은 절차 — 공식 원문 재대조,
+같은 캐릭터의 모든 표면 훑기, 수정 전 빌드에서 실패하는 단정.
+
+| # | 캐릭터 | 틀린 문장이 가르치던 것 | 공식 원문 | 고친 표면 |
+|---|---|---|---|---|
+| E20 | 꼭두각시 | 정보는 **전부 거짓** · 가짜 정보를 **줘야 한다** | How to Run: "Treat the Marionette as if they were drunk. They wake when their good character would wake, **may** get false information…" (라운드 36 A39 가 세운 '오작동 정보는 재량' 원칙의 잔존) | `howto[2]` · `warn[0]`·`warn[3]` |
+| E21 | 사냥꾼 | 사냥꾼이 있으면 **무조건** 주민 하나를 줄여 아가씨를 넣는다 | Summary: "If a Damsel is already in play, the Huntsman doesn't add a second Damsel." How to Run: "if the Damsel is not already in play, remove a Townsfolk character token and add the Damsel character token." | `howto[0]` · `setupNote` |
+| E22 | 마을 바보 | 취함 표식은 **게임 내내** 바뀌지 않는다 | 공식 징크스 Pit-Hag × Village Idiot: "If there is a spare token, the Pit-Hag can create an extra Village Idiot. If so, the drunk Village Idiot might change." — **앱의 징크스 카드가 같은 문장을 적고 있었다**(내부 모순) | `remind` · `howto[3]` |
+| E23 | 저글러 | 밤 노트가 **게임 둘째 밤**으로 제한 | Examples: "During the fourth night, the Savant gets turned into the Juggler. The next day, the new Juggler guesses… That night, the Juggler learns a '1.'" (A35 가 능력문·howto 를 고쳤고 `NIGHT_FLOW` 노트만 남았다) | `NIGHT_FLOW.juggler` note |
+| E24 | 곡예사 | 독살범·궁정대신이 곡예사보다 **뒤** 순번 | `nightsheet.json` otherNight: poisoner·courtier 는 acrobat 보다 앞, pukka 는 뒤. 공식 Examples 의 '나중에 중독' 사례는 푸카다 | `howto[0]` · `examples[0]` |
+
+### 검증
+
+- 규칙 판정 **100 케이스**(+1 · 단정 9). 수정 전 빌드(라운드 55)에서 **9개 전부 실패**, 수정 후 100/100.
+- DOM 골든 34/114/51 PASS. 수정본을 기준으로 라운드 55 빌드를 후보로 걸면 달라진 픽스처는 **없음(0)** — 기존 픽스처가 이 다섯의 표면(꼭두각시·사냥꾼·마을 바보 설명문, 저글러 밤 노트, 곡예사 설명문)을 그리지 않는다. 이 라운드의 회귀는 규칙 케이스 `proseRound56` 가 지킨다.
+- 전 스위트: 규칙 100/0 · 종료 31/0 · 핸드오프 84 PASS · 시나리오 220 실패 0 · 퍼저 400 위반 0(avgLog 25.8) · 커스텀 90 위반 0 · DOM 골든 34/114/51 · 래퍼 48 불일치 0 · 돌연변이 46종 검출 42 미검출 0 masked 4 · 전 검사 종료코드 0
+- 멱등 패치: `patches/round56.py` · `round56_tests.py` · `round56_backlog.py`.
+
+### 남은 것 — 외부 교차검증 4차 E 절의 잔여
+
+E07·E08(상태 토큰 신원 — 설계 결정 선행) · E09·E25·E26(클라우드 이어하기 — 아티팩트 런타임 한정, 수리 여부
+사용자 결정) · E17(릴 몬스타 첫밤 정보 생략 — 판 단위 상태 설계) · E18(궁정대신 동명 중 한 명 — 사회자 선택 UI) ·
+E19(A13 번복 — 사용자 결정). 26건 중 **19건 반영**(라운드 51~56), 7건은 결정·설계 대기.
+

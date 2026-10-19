@@ -1,6 +1,6 @@
 // fed.js — Panoptes 「🏛 연준」 탭 렌더러 (의존성 0 · 순수 SVG · ES2018 이하)
 // window.renderFed(el, data[, opts]) → {refresh, openProfile(pid[,tab]), closeProfile, setState}
-// data 키 = {roster, positions, statements, calendar, reaction, taco} (contracts/*.json 그대로)
+// data 키 = {roster, positions, statements, calendar, reaction, taco, rates} (contracts/*.json 그대로 · rates = rates_regime.json)
 // 로드 시 DOM 부작용 0. 전역은 renderFed + __fedLayout(테스트 훅) 둘뿐.
 (function () {
   'use strict';
@@ -103,6 +103,16 @@
     '.fd-kpi div{background:var(--panel2,#0d131c);border:1px solid var(--line,#1f2937);border-radius:8px;padding:7px 9px}',
     '.fd-kpi span{display:block;font-size:9.5px;color:var(--dim,#8a93a3)}',
     '.fd-kpi b{font-family:var(--mono,monospace);font-size:14px}',
+    /* rates (금리 레짐) */
+    '.fd-rates .fd-rg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:4px}',
+    '@media(max-width:1100px){.fd-rates .fd-rg{grid-template-columns:minmax(0,1fr)}}',
+    '.fd-rates .fd-rlabel{font-family:var(--mono,monospace);font-weight:800;font-size:12.5px;padding:3px 10px;border-radius:999px;border:1px solid;background:rgba(255,255,255,.03)}',
+    '.fd-rates .fd-gate{display:grid;grid-template-columns:20px 118px minmax(0,1fr);gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid rgba(31,41,55,.6);font-size:11.5px}',
+    '.fd-rates .fd-gate .rule{color:var(--dim,#8a93a3);font-size:10px}',
+    '.fd-rates .fd-sc{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}',
+    '.fd-rates .fd-sc span{font-size:10.5px;padding:3px 8px;border-radius:6px;border:1px solid var(--line,#1f2937);background:var(--panel2,#0d131c);color:var(--dim,#8a93a3)}',
+    '.fd-rates .fd-sc span.chg{border-color:rgba(245,166,35,.55);color:#f5a623}',
+    '.fd-rates .fd-kpi small.fd-legend{display:block;margin-top:3px;font-size:9.5px;line-height:1.3}',
     /* TACO */
     '.fd-taco .tsum{font-size:14.5px;font-weight:700;line-height:1.5;color:#e6edf3;margin:2px 0 12px}',
     '.fd-taco svg.fd-arc{width:100%;height:auto;display:block}',
@@ -620,7 +630,7 @@
     return null;
   }
   function anyMock(D) {
-    var ks = ['roster', 'positions', 'statements', 'calendar', 'reaction', 'taco'], i;
+    var ks = ['roster', 'positions', 'statements', 'calendar', 'reaction', 'taco', 'rates'], i;
     for (i = 0; i < ks.length; i++) if (D[ks[i]] && D[ks[i]].mock === true) return true;
     return false;
   }
@@ -634,6 +644,8 @@
     if (ts) out.push(ts);
     var sp = spyAsset(D.reaction);
     if (sp) out.push('기대 시장반응 ' + str(sp.name || sp.sym) + ' ' + unitStr(sp.exp, sp.unit, 2));
+    var rg = obj(D.rates), rgo = obj(rg.overall), rgm = obj(rg.move), rgg = obj(obj(rg.gates).G3_level);
+    if (str(rgo.label)) out.push('금리 레짐 ' + rgo.label + (isN(rgm.level) ? ' (MOVE ' + nf(rgm.level, 0) : '') + (isN(rgg.y10) ? ' · 10Y ' + nf(rgg.y10, 2) + '%' : '') + (isN(rgm.level) ? ')' : ''));
     return out.join('. ') + (out.length ? '.' : '연준 데이터 준비 중.');
   }
   function spyAsset(reaction) {
@@ -652,7 +664,7 @@
     if (typeof window !== 'undefined' && window.PV && typeof window.PV.speak === 'function') {
       h += '<button type="button" class="fd-btn" data-act="speak" title="요약 읽기">🔊 브리핑</button>';
     }
-    h += '<div class="fd-ts">발언 ' + kstHM(obj(D.statements).updated_ts) + ' · 시장 ' + kstHM(obj(D.reaction).updated_ts) + ' · TACO ' + kstHM(obj(D.taco).updated_ts) + ' KST</div>';
+    h += '<div class="fd-ts">발언 ' + kstHM(obj(D.statements).updated_ts) + ' · 시장 ' + kstHM(obj(D.reaction).updated_ts) + ' · TACO ' + kstHM(obj(D.taco).updated_ts) + (str(obj(D.rates).asof) ? ' · 금리 ' + esc(obj(D.rates).asof.slice(5)) : '') + ' KST</div>';
     h += '</div>';
     h += '<p class="fd-hint" style="padding:0 2px" data-brief="1">' + esc(briefText(D)) + '</p>';
     return h;
@@ -663,6 +675,7 @@
       '<button type="button" class="fd-chip" data-go="fdPeople">연준 인사</button>' +
       '<button type="button" class="fd-chip" data-go="fdFeed">발언</button>' +
       '<button type="button" class="fd-chip" data-go="fdReact">시장반응</button>' +
+      '<button type="button" class="fd-chip" data-go="fdRates">금리 레짐</button>' +
       '<button type="button" class="fd-chip" data-go="fdCal">캘린더</button>' +
       '<button type="button" class="fd-chip" data-go="fdTaco">TACO</button>' +
       '</div>';
@@ -987,6 +1000,227 @@
     }
     foot += '</div>';
     return '<div class="fd-card fd-react" id="fdReact">' + head + body + foot + '</div>';
+  }
+
+  /* ══════════════════ 11b. fd-rates (금리 레짐 — MOVE × 10Y 분해 × 워시 반응함수) ══════════════════ */
+  /* 데이터 = data/fed/rates_regime.json (fed/rates_regime.py). 순수 SVG, 의존성 0. */
+  var RG_LABEL_C = { 'CALM': '#59d0a8', 'ORDERLY': '#c9d1d9', 'WATCH': '#f5a623', 'WATCH→DISORDERLY 초입': '#ff8a3d', 'DISORDERLY': '#ff4d5e' };
+  var RG_BAND_C = { calm: '#59d0a8', orderly: '#8a93a3', watch: '#f5a623', disorderly: '#ff4d5e', crisis: '#ff4d5e' };
+  var RG_BAND_KO = { calm: '고요', orderly: '질서', watch: '경계', disorderly: '무질서', crisis: '위기' };
+  function rgLabelColor(l) { return RG_LABEL_C[l] || NEUT; }
+  function rgDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(str(s)) ? Date.parse(s + 'T00:00:00Z') : NaN; }
+  function rgMD(s) { return /^\d{4}-\d{2}-\d{2}$/.test(str(s)) ? s.slice(5, 7) + '/' + s.slice(8, 10) : '—'; }
+  function bpStr(v, d) { return isN(v) ? sf(v, d == null ? 0 : d) + 'bp' : '—'; }
+  function pct0(v) { return isN(v) ? Math.round(v * 100) + '%' : '—'; }
+
+  /* 팬차트: hist=[[date,v]…] 실적, fan=[[date,p10,p25,p50,p75,p90]…] 예측, bands=[{lo,hi,color,label}], hlines=[{y,label,color,dash}], marks=[{date,label}] */
+  function fanSVG(o) {
+    var hist = arr(o.hist).filter(function (r) { return r && isFinite(rgDate(r[0])) && isN(r[1]); });
+    var fan = arr(o.fan).filter(function (r) { return r && isFinite(rgDate(r[0])) && isN(r[3]); });
+    if (!hist.length) return '<p class="fd-hint">' + esc(str(o.empty) || '시계열 데이터 준비 중…') + '</p>';
+    var W = 960, H = 300, L = 50, R = 16, T = 16, B = 34, i, r;
+    var x0 = rgDate(hist[0][0]), x1 = fan.length ? rgDate(fan[fan.length - 1][0]) : rgDate(hist[hist.length - 1][0]);
+    if (!(x1 > x0)) x1 = x0 + 86400000;
+    var lo = Infinity, hi = -Infinity;
+    function seen(v) { if (isN(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }
+    for (i = 0; i < hist.length; i++) seen(hist[i][1]);
+    for (i = 0; i < fan.length; i++) { seen(fan[i][1]); seen(fan[i][5]); }
+    arr(o.hlines).forEach(function (h) { if (h && isN(h.y) && h.fit !== false) seen(h.y); });
+    if (!(hi > lo)) { lo -= 1; hi += 1; }
+    var pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+    if (isN(o.ymin) && lo < o.ymin) lo = o.ymin;
+    function X(t) { return L + (t - x0) / (x1 - x0) * (W - L - R); }
+    function Y(v) { return T + (hi - v) / (hi - lo) * (H - T - B); }
+    var xa = X(rgDate(hist[hist.length - 1][0]));
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="display:block;width:100%;min-width:560px;height:auto" role="img" aria-label="' + attr(o.aria || o.title || '') + '"><title>' + esc(o.title || '') + '</title>';
+    /* 레짐 밴드(수평 음영) */
+    arr(o.bands).forEach(function (b) {
+      if (!b || !isN(b.lo) || !isN(b.hi)) return;
+      var yl = clamp(b.lo, lo, hi), yh = clamp(b.hi, lo, hi); if (!(yh > yl)) return;
+      s += '<rect x="' + L + '" y="' + nf(Y(yh), 1) + '" width="' + (W - L - R) + '" height="' + nf(Y(yl) - Y(yh), 1) + '" fill="' + b.color + '" fill-opacity=".07"/>';
+      if (str(b.label)) s += '<text x="' + (L + 6) + '" y="' + nf(Y(yl) - 4, 1) + '" fill="' + b.color + '" fill-opacity=".85" font-size="9.5" font-family="monospace">' + esc(b.label) + '</text>';
+    });
+    /* y 격자 */
+    for (i = 0; i <= 4; i++) {
+      var v = lo + (hi - lo) * i / 4, yy = nf(Y(v), 1);
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="#1f2937"/><text x="' + (L - 6) + '" y="' + nf(Y(v) + 3.5, 1) + '" text-anchor="end" fill="#8a93a3" font-size="10">' + esc(o.yfmt ? o.yfmt(v) : nf(v, 1)) + '</text>';
+    }
+    /* 기준선 */
+    arr(o.hlines).forEach(function (h) {
+      if (!h || !isN(h.y) || h.y < lo || h.y > hi) return;
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + nf(Y(h.y), 1) + '" y2="' + nf(Y(h.y), 1) + '" stroke="' + (h.color || '#8a93a3') + '" stroke-width="1"' + (h.dash ? ' stroke-dasharray="' + h.dash + '"' : '') + '/>';
+      if (str(h.label)) s += '<text x="' + (W - R - 4) + '" y="' + nf(Y(h.y) - 4, 1) + '" text-anchor="end" fill="' + (h.color || '#8a93a3') + '" font-size="9.5">' + esc(h.label) + '</text>';
+    });
+    /* 예측 팬 */
+    if (fan.length) {
+      var up = '', dn = '', mid = '';
+      for (i = 0; i < fan.length; i++) {
+        r = fan[i]; var xx = nf(X(rgDate(r[0])), 1);
+        up += (i ? ' L' : 'M') + xx + ',' + nf(Y(r[5]), 1);
+        dn = ' L' + xx + ',' + nf(Y(r[1]), 1) + dn;
+        mid += (i ? ' L' : 'M') + xx + ',' + nf(Y(r[3]), 1);
+      }
+      s += '<path d="' + up + dn + ' Z" fill="' + (o.fanColor || ACC) + '" fill-opacity=".13"/>';
+      up = ''; dn = '';
+      for (i = 0; i < fan.length; i++) {
+        r = fan[i]; var x2 = nf(X(rgDate(r[0])), 1);
+        up += (i ? ' L' : 'M') + x2 + ',' + nf(Y(r[4]), 1);
+        dn = ' L' + x2 + ',' + nf(Y(r[2]), 1) + dn;
+      }
+      s += '<path d="' + up + dn + ' Z" fill="' + (o.fanColor || ACC) + '" fill-opacity=".26"/>';
+      s += '<path d="' + mid + '" fill="none" stroke="' + (o.fanColor || ACC) + '" stroke-width="2" stroke-dasharray="6 4"/>';
+      var last = fan[fan.length - 1];
+      s += '<text x="' + nf(X(rgDate(last[0])) - 2, 1) + '" y="' + nf(Y(last[3]) - 6, 1) + '" text-anchor="end" fill="' + (o.fanColor || ACC) + '" font-size="10" font-family="monospace">' + esc((str(o.horizon) || ('M+' + fan.length)) + ' p50 ' + (o.yfmt ? o.yfmt(last[3]) : nf(last[3], 1))) + '</text>';
+    }
+    /* 실적선 */
+    var pl = '';
+    for (i = 0; i < hist.length; i++) pl += (i ? ' L' : 'M') + nf(X(rgDate(hist[i][0])), 1) + ',' + nf(Y(hist[i][1]), 1);
+    s += '<path d="' + pl + '" fill="none" stroke="' + (o.lineColor || '#f5c542') + '" stroke-width="1.8"/>';
+    s += '<line x1="' + nf(xa, 1) + '" x2="' + nf(xa, 1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="#e6edf3" stroke-opacity=".35" stroke-dasharray="2 4"/>';
+    var lv = hist[hist.length - 1][1];
+    s += '<circle cx="' + nf(xa, 1) + '" cy="' + nf(Y(lv), 1) + '" r="3.2" fill="' + (o.lineColor || '#f5c542') + '"/>';
+    s += '<text x="' + nf(xa + 5, 1) + '" y="' + nf(Y(lv) + 4, 1) + '" fill="' + (o.lineColor || '#f5c542') + '" font-size="10.5" font-weight="700" font-family="monospace">' + esc(o.yfmt ? o.yfmt(lv) : nf(lv, 1)) + '</text>';
+    /* 이벤트 마커 */
+    arr(o.marks).forEach(function (m) {
+      var t = rgDate(m && m.date); if (!isFinite(t) || t < x0 || t > x1) return;
+      var mx = nf(X(t), 1);
+      s += '<line x1="' + mx + '" x2="' + mx + '" y1="' + T + '" y2="' + (H - B) + '" stroke="#9b7bff" stroke-opacity=".7" stroke-dasharray="2 3"/>';
+      s += '<text transform="rotate(-90 ' + mx + ' ' + (T + 4) + ')" x="' + mx + '" y="' + (T + 4) + '" text-anchor="end" fill="#9b7bff" font-size="9" dx="0" dy="-3">' + esc(str(m.label)) + '</text>';
+    });
+    /* x 축 */
+    for (i = 0; i <= 4; i++) {
+      var tx = x0 + (x1 - x0) * i / 4, dd = new Date(tx);
+      s += '<text x="' + nf(X(tx), 1) + '" y="' + (H - 12) + '" text-anchor="' + (i === 0 ? 'start' : (i === 4 ? 'end' : 'middle')) + '" fill="#8a93a3" font-size="10">' + esc(String(dd.getUTCFullYear()).slice(2) + '-' + p2(dd.getUTCMonth() + 1) + '-' + p2(dd.getUTCDate())) + '</text>';
+    }
+    return '<div class="fd-table-scroll" tabindex="0" role="region" aria-label="' + attr((o.title || '') + ' 차트, 좁은 화면에서 가로 스크롤') + '" style="overflow-x:auto;max-width:100%">' + s + '</svg></div>';
+  }
+
+  function rgGateRow(g) {
+    if (!g) return '';
+    var on = g.triggered === true, vals = [];
+    if (isN(g.bei10)) vals.push('BEI10 ' + nf(g.bei10, 2) + '%' + (isN(g.bei10_20d_bp) ? ' (20d ' + bpStr(g.bei10_20d_bp) + ')' : '') + (isN(g.cleveland_gap_bp) ? ' · Cleveland 괴리 ' + bpStr(g.cleveland_gap_bp) + (g.divergence_flag ? ' ⚠' : '') : ''));
+    if (isN(g.y10_20d_bp)) vals.push('10Y 20d ' + bpStr(g.y10_20d_bp, 1) + ' · 1d ' + bpStr(g.y10_1d_bp, 1));
+    if (isN(g.y10) && g.ko === '수준') vals.push('10Y ' + nf(g.y10, 2) + '% · 30Y ' + nf(g.y30, 2) + '%' + (isN(g.distance_to_5_5_bp) ? ' · 5.5%까지 ' + nf(g.distance_to_5_5_bp, 0) + 'bp' : ''));
+    if (isN(g.vix) && g.ko) vals.push('VIX ' + nf(g.vix, 1) + ' · MOVE ' + esc(str(g.move_band)) + (g.bond_only_vol ? ' · 채권 단독 vol' : ''));
+    if (isN(g.tp)) vals.push('TP ' + nf(g.tp, 2) + '% (' + esc(rgMD(g.tp_date)) + ')');
+    return '<div class="fd-gate"><span>' + (on ? '🔴' : '⚪') + '</span><b>' + esc(str(g.ko) || '') + '</b><span>' + vals.join(' · ') + ' <span class="rule">' + esc(str(g.rule)) + '</span></span></div>';
+  }
+
+  function rgDecompRow(label, c, k, cf, bold) {
+    var a = c ? c[k] : null, b = cf ? cf[k] : null;
+    var cls = bold ? ' style="font-weight:800"' : '';
+    return '<tr' + cls + '><td>' + label + '</td><td class="n" style="color:' + (isN(a) ? (a > 0 ? UP : DOWN) : FLAT) + '">' + bpStr(a) + '</td><td class="n" style="color:' + (isN(b) ? (b > 0 ? UP : DOWN) : FLAT) + '">' + bpStr(b) + '</td></tr>';
+  }
+
+  function rRates(ST, D) {
+    var rr = D.rates, ov = obj(rr && rr.overall), mv = obj(rr && rr.move), gt = obj(rr && rr.gates), dc = obj(rr && rr.decomposition);
+    var head = '<div class="fd-h"><b>📉 금리 레짐 — MOVE × 10Y 분해 × 워시 반응함수</b>' +
+      (rr ? '<span class="fd-rlabel" style="color:' + rgLabelColor(ov.label) + ';border-color:' + rgLabelColor(ov.label) + '">' + esc(str(ov.label) || '—') + '</span>' +
+        '<span class="fd-bd" title="MOVE 백분위·게이트·급등·신뢰훼손·전이 합산 0~100">무질서 ' + (isN(ov.disorder_score) ? ov.disorder_score : '—') + '/100</span>' +
+        '<span class="fd-bd">' + esc(str(ov.driver) || '') + '</span>' +
+        '<span class="fd-ts">기준일 ' + esc(str(rr.asof) || '—') + (str(rr.prev_asof) ? ' · 직전 ' + esc(rr.prev_asof) : '') + '</span>' : '') + '</div>';
+    if (!rr) return '<div class="fd-card fd-rates" id="fdRates">' + head + '<p class="fd-hint">금리 레짐 데이터 준비 중… (fed/rates_regime.py --daily)</p></div>';
+
+    var c = obj(dc.components), lv = obj(dc.levels), fo = obj(rr.forecast), fm = obj(obj(fo.move).months), fy = obj(obj(fo.y10).months);
+    var g1 = obj(gt.G1_trust), g3 = obj(gt.G3_level), g4 = obj(gt.G4_contagion), g5 = obj(gt.G5_term_premium);
+    var y2 = obj(lv.DGS2).asof, y10 = g3.y10, cur2s10s = (isN(y2) && isN(y10)) ? (y10 - y2) * 100 : null;
+    var body = '';
+    /* 상태 변화 */
+    var sc = arr(rr.state_changes).filter(function (s) { return str(s); });
+    if (sc.length) {
+      body += '<div class="fd-sc">';
+      sc.forEach(function (s) { var real = !/없음|최초/.test(s); body += '<span class="' + (real ? 'chg' : '') + '">' + (real ? '⚡ ' : '') + esc(s) + '</span>'; });
+      body += '</div>';
+    }
+    /* KPI */
+    body += '<div class="fd-kpi">' +
+      '<div><span>MOVE</span><b style="color:' + (RG_BAND_C[mv.band] || NEUT) + '">' + nf(mv.level, 1) + '</b><small class="fd-legend">' + esc(RG_BAND_KO[mv.band] || str(mv.band)) + ' · 상위 ' + (isN(mv.percentile_since_2005) ? nf(100 - mv.percentile_since_2005, 0) : '—') + '%</small></div>' +
+      '<div><span>MOVE 5d / 20d</span><b>' + (isN(mv.chg_5d_pct) ? sf(mv.chg_5d_pct, 0) + '%' : '—') + ' / ' + (isN(mv.chg_20d_pct) ? sf(mv.chg_20d_pct, 0) + '%' : '—') + '</b>' + (mv.spike_flag ? '<small class="fd-legend" style="color:#ff8a3d">급등 플래그</small>' : (obj(mv.episode_since_sep).peak ? '<small class="fd-legend">고점 ' + nf(mv.episode_since_sep.peak, 0) + '(' + esc(rgMD(mv.episode_since_sep.peak_date)) + ') 대비 ' + sf(mv.episode_since_sep.from_peak_pct, 0) + '%</small>' : '')) + '</div>' +
+      '<div><span>10Y</span><b>' + nf(y10, 2) + '%</b><small class="fd-legend">' + esc(rgMD(g3.y10_date)) + ' · 30Y ' + nf(g3.y30, 2) + '</small></div>' +
+      '<div><span>10Y BEI</span><b>' + nf(g1.bei10, 2) + '%</b><small class="fd-legend">Cleveland ' + nf(obj(gt._cleveland).exp_inf_10y, 2) + ' (' + bpStr(g1.cleveland_gap_bp) + ')</small></div>' +
+      '<div><span>텀프리미엄</span><b style="color:' + (g5.triggered ? UP : 'inherit') + '">' + nf(g5.tp, 2) + '%</b><small class="fd-legend">Kim-Wright ' + esc(rgMD(g5.tp_date)) + '</small></div>' +
+      '<div><span>VIX</span><b>' + nf(g4.vix, 1) + '</b><small class="fd-legend">' + (g4.triggered ? '<span style="color:' + UP + '">주식 전이</span>' : (g4.bond_only_vol ? '채권 단독 vol' : '정상')) + '</small></div>' +
+      '<div><span>2s10s</span><b>' + (isN(cur2s10s) ? sf(cur2s10s, 0) + 'bp' : '—') + '</b><small class="fd-legend">2Y ' + nf(y2, 2) + '%</small></div>' +
+      '<div><span>게이트</span><b>' + (isN(gt.n_triggered) ? gt.n_triggered : '—') + '/5</b><small class="fd-legend">' + (ov.trust_broken ? '신뢰 훼손' : 'BEI 신뢰 유지') + '</small></div>' +
+      '</div>';
+
+    /* 차트 2개 */
+    var bands = obj(rr.config_bands), bl = [];
+    ['calm', 'orderly', 'watch', 'disorderly'].forEach(function (k) { var b = arr(bands[k]); if (b.length === 2) bl.push({ lo: b[0], hi: Math.min(b[1], 170), color: RG_BAND_C[k], label: k.toUpperCase() }); });
+    var marks = arr(rr.events).filter(function (e) { return e && isN(e.vol_mult) && e.vol_mult >= 1.6; }).map(function (e) { return { date: e.date, label: /FOMC/.test(str(e.name)) ? 'FOMC' : (/QRA|리펀딩/.test(str(e.name)) ? 'QRA' : str(e.name).slice(0, 8)) }; });
+    var m3 = obj(fm['M+3']), y3 = obj(fy['M+3']);
+    var hist = obj(rr.history);
+    var fanM = arr(obj(fo.move).fan_daily);
+    var fanY = [], mon = arr(obj(fo.y10).fan_monthly), ks = ['M+1', 'M+2', 'M+3'], i;
+    if (isN(y10) && mon.length) {
+      fanY.push([str(rr.asof), y10, y10, y10, y10, y10]);
+      for (i = 0; i < mon.length && i < ks.length; i++) { var dte = str(obj(fm[ks[i]]).date); if (dte && arr(mon[i]).length === 5) fanY.push([dte].concat(mon[i])); }
+    }
+    body += '<div class="fd-rg"><div><div class="fd-sec">MOVE — 실적 9개월 + M+3 예측 팬 (p10–p90 연함 · p25–p75 진함 · 점선 p50)</div>' +
+      fanSVG({ hist: hist.move, fan: fanM, bands: bl, marks: marks, ymin: 35, horizon: 'M+' + ks.length, title: 'MOVE 팬차트', aria: 'MOVE 실적과 3개월 예측 팬차트', yfmt: function (v) { return nf(v, 0); } }) +
+      '<div class="fd-legend">M+3 중앙값 <b>' + nf(obj(m3.move_pctl).p50, 0) + '</b> (p10 ' + nf(obj(m3.move_pctl).p10, 0) + ' · p90 ' + nf(obj(m3.move_pctl).p90, 0) + ') · 3개월 내 120 터치 <b>' + pct0(m3.P_max_ge_120_by_then) + '</b> · 150 터치 ' + pct0(m3.P_max_ge_150_by_then) + ' · 80 이하 복귀 ' + pct0(m3.P_le_80) + '</div></div>' +
+      '<div><div class="fd-sec">10Y — 실적 + M+3 시나리오 혼합 팬 (G3 5.5% 기준선)</div>' +
+      fanSVG({ hist: hist.y10, fan: fanY, horizon: 'M+' + ks.length, hlines: [{ y: 5.5, label: 'G3 5.5%', color: '#ff4d5e', dash: '5 4' }, { y: 5.0, label: '9/22 영상 ≈5.0%', color: '#6b7280', dash: '2 4', fit: false }], marks: marks, title: '10Y 팬차트', aria: '10년물 실적과 3개월 예측 팬차트', yfmt: function (v) { return nf(v, 2); } }) +
+      '<div class="fd-legend">M+3 중앙값 <b>' + nf(obj(y3.y10_pctl).p50, 2) + '%</b> (p10 ' + nf(obj(y3.y10_pctl).p10, 2) + ' · p90 ' + nf(obj(y3.y10_pctl).p90, 2) + ') · P(≥5.5%) <b>' + pct0(y3.P_y10_ge_5_5) + '</b> · P(≤5.0%) ' + pct0(y3.P_y10_le_5_0) + ' · P(BEI≥2.5%) ' + pct0(y3.P_bei_ge_2_5) + '</div></div></div>';
+
+    /* 분해 + 게이트 */
+    var cf = obj(obj(rr.decomposition_since_fomc).components), fa = str(obj(rr.decomposition_since_fomc).anchor);
+    body += '<div class="fd-rg"><div><div class="fd-sec">10Y 분해 — ' + esc(rgMD(dc.anchor)) + ' → ' + esc(rgMD(dc.asof)) + (fa ? ' · 직전 FOMC(' + esc(rgMD(fa)) + ') 이후' : '') + '</div>' +
+      '<div class="fd-table-scroll" tabindex="0" role="region" aria-label="10Y 분해 표"><table class="fd-htb"><thead><tr><th>요인</th><th class="n">' + esc(rgMD(dc.anchor)) + '→</th><th class="n">FOMC→</th></tr></thead><tbody>' +
+      rgDecompRow('향후 단기금리 경로 상향', c, 'short_rate_path_bp', cf, false) +
+      rgDecompRow('&nbsp;&nbsp;ㄴ 장기 물가보상(BEI 10Y) ' + (isN(obj(lv.T10YIE).anchor) ? '<span class="fd-legend">' + nf(lv.T10YIE.anchor, 2) + '→' + nf(lv.T10YIE.asof, 2) + '</span>' : ''), c, 'bei_bp', cf, false) +
+      rgDecompRow('&nbsp;&nbsp;ㄴ 실질금리 경로 재가격(잔차) ' + (isN(c.check_real_yield_bp) ? '<span class="fd-legend">TIPS 실질 Δ' + bpStr(c.check_real_yield_bp) + '</span>' : ''), c, 'real_path_bp', cf, false) +
+      rgDecompRow('명목 텀프리미엄(Kim-Wright) ' + (isN(obj(lv.THREEFYTP10).anchor) ? '<span class="fd-legend">' + nf(lv.THREEFYTP10.anchor, 2) + '→' + nf(lv.THREEFYTP10.asof, 2) + '</span>' : ''), c, 'term_premium_bp', cf, false) +
+      rgDecompRow('10Y 명목 ' + (isN(obj(lv.DGS10).anchor) ? '<span class="fd-legend">' + nf(lv.DGS10.anchor, 2) + '→' + nf(lv.DGS10.asof, 2) + ' · 2Y ' + bpStr(c.d2y_bp) + ' · 30Y ' + bpStr(c.d30y_bp) + '</span>' : ''), c, 'd10y_bp', cf, true) +
+      '</tbody></table></div>' +
+      (obj(dc.shares_pct).term_premium != null ? '<div class="fd-legend">기여도 BEI ' + nf(dc.shares_pct.bei, 0) + '% · 실질경로 ' + nf(dc.shares_pct.real_path, 0) + '% · 텀프리미엄 ' + nf(dc.shares_pct.term_premium, 0) + '%</div>' : '') +
+      '</div><div><div class="fd-sec">판별 게이트 — "어디까지 · 얼마나 빨리 · 얼마나 불확실하게" + 워시 반응함수</div>';
+    arr(gt.order).forEach(function (k) { body += rgGateRow(gt[k]); });
+    var cl = obj(gt._cleveland);
+    if (isN(cl.exp_inf_10y)) body += '<div class="fd-legend" style="margin-top:6px">Cleveland Fed(' + esc(str(cl.month).slice(0, 7)) + ') 10Y 기대인플레 ' + nf(cl.exp_inf_10y, 2) + '% (22년 고점 ' + nf(cl.exp_inf_10y_2022_peak, 2) + ') · 1Y ' + nf(cl.exp_inf_1y, 2) + '% — 시장 BEI와의 괴리가 커질수록 G1(신뢰) 위험</div>';
+    body += '</div></div>';
+
+    /* M+3 표 + 시나리오 */
+    if (fo && fm['M+1']) {
+      body += '<div class="fd-sec">M+3 예측 — MOVE: 일간 log-AR(1) 부트스트랩 + 이벤트 가중 + 10Y 연동 · 10Y: 실질경로/BEI/텀프리미엄 시나리오 혼합 MC</div>';
+      body += '<div class="fd-table-scroll" tabindex="0" role="region" aria-label="M+3 예측 표"><table class="fd-htb"><thead><tr><th>시점</th><th class="n">MOVE p10</th><th class="n">p50</th><th class="n">p90</th><th class="n">120 터치</th><th class="n">≤80</th><th class="n">10Y p10</th><th class="n">p50</th><th class="n">p90</th><th class="n">≥5.5%</th><th class="n">≤5.0%</th><th class="n">BEI p50</th><th class="n">BEI≥2.5</th></tr></thead><tbody>';
+      ks.forEach(function (k) {
+        var a = obj(fm[k]), b = obj(fy[k]), ap = obj(a.move_pctl), bp = obj(b.y10_pctl);
+        if (!a.date) return;
+        body += '<tr><td style="white-space:nowrap">' + esc(k) + ' <span class="fd-legend">' + esc(rgMD(a.date)) + '</span></td><td class="n">' + nf(ap.p10, 0) + '</td><td class="n"><b>' + nf(ap.p50, 0) + '</b></td><td class="n">' + nf(ap.p90, 0) + '</td><td class="n">' + pct0(a.P_max_ge_120_by_then) + '</td><td class="n">' + pct0(a.P_le_80) + '</td>' +
+          '<td class="n">' + nf(bp.p10, 2) + '</td><td class="n"><b>' + nf(bp.p50, 2) + '</b></td><td class="n">' + nf(bp.p90, 2) + '</td><td class="n">' + pct0(b.P_y10_ge_5_5) + '</td><td class="n">' + pct0(b.P_y10_le_5_0) + '</td><td class="n">' + nf(obj(b.bei_pctl).p50, 2) + '</td><td class="n">' + pct0(b.P_bei_ge_2_5) + '</td></tr>';
+      });
+      body += '</tbody></table></div>';
+      var fp = obj(fo.fed_path_probs), ys = obj(fo.y10);
+      var scLine = function (title, list, extra) {
+        var xs = arr(list).map(function (s) { return esc(str(s.name)) + ' <b>' + pct0(s.p) + '</b>→' + nf(s.y10_median, 2) + (isN(s.bei_median) ? '/BEI ' + nf(s.bei_median, 2) : ''); });
+        return xs.length ? '<div class="fd-legend"><b>' + title + '</b> ' + xs.join(' · ') + (extra ? ' <span style="opacity:.8">(' + esc(extra) + ')</span>' : '') + '</div>' : '';
+      };
+      body += scLine('연준경로 시나리오별 M+3 10Y 중앙값:', ys.by_fed_scenario, str(fp.src));
+      body += scLine('유가→BEI:', ys.by_oil_scenario, '');
+      body += scLine('텀프리미엄:', ys.by_tp_scenario, '');
+      var an = obj(fo.analogs), da = obj(an.daily_band_and_spike), db = obj(an.daily_band_only), as = obj(an.after_spike), bt = obj(fo.backtest), w95 = obj(bt.when_move_ge_95);
+      if (isN(db.P_max63_ge_120)) body += '<div class="fd-legend">비모수 대조군(2005~): 같은 밴드 출발 ' + db.n_days + '일 → 63거래일 내 120 터치 ' + pct0(db.P_max63_ge_120) + ', 63일 뒤 ≤80 ' + pct0(db.P_end63_le_80) + (isN(da.P_max63_ge_120) ? ' · 밴드+20일 급등 ' + da.n_days + '일 → 120 터치 ' + pct0(da.P_max63_ge_120) + ', 63일 뒤 비율 p50 ' + nf(da.end63_ratio_p50, 2) : '') + (isN(as.fwd3_lower_pct) ? ' · 월간 ' + esc(str(as.spike_rule)) + ' 급등 ' + as.n + '회 중 3개월 뒤 하락 ' + nf(as.fwd3_lower_pct, 0) + '%' : '') + '</div>';
+      if (isN(bt.mae_model)) body += '<div class="fd-legend">백테스트(2010~ 월말 3M-ahead): AR(1) MAE ' + nf(bt.mae_model, 1) + ' vs 무변화 ' + nf(bt.mae_naive, 1) + ' (개선 ' + nf(bt.improvement_pct, 1) + '%) · 방향 적중 ' + pct0(bt.direction_hit_rate) + (isN(w95.pct_actual_lower) ? ' · MOVE≥95 출발 ' + w95.n + '회 중 3개월 뒤 실제 하락 ' + nf(w95.pct_actual_lower, 0) + '%' : '') + ' — 점추정보다 게이트 확률·상태변화 검출에 쓸 것</div>';
+    } else {
+      body += '<p class="fd-hint">예측 생략(--no-forecast) — 분해·게이트만 표시</p>';
+    }
+    /* 이벤트 */
+    var evs = arr(rr.events).filter(function (e) { return e && isN(e.vol_mult) && e.vol_mult >= 1.2; });
+    if (evs.length) {
+      body += '<div class="fd-sec">M+3 이벤트 (변동성 가중 ≥1.2×)</div><div class="fd-sc">';
+      evs.forEach(function (e) { body += '<span title="' + attr('vol×' + e.vol_mult + ' · ' + str(e.src)) + '"' + (e.vol_mult >= 1.6 ? ' style="border-color:rgba(155,123,255,.6);color:#c4b5ff"' : '') + '>' + esc(rgMD(e.date)) + ' ' + esc(str(e.name)) + '</span>'; });
+      body += '</div>';
+    }
+    var q = obj(rr.quality), lagw = obj(q.lag_warnings), lags = [], k2;
+    for (k2 in lagw) if (Object.prototype.hasOwnProperty.call(lagw, k2)) lags.push(k2 + ' ' + lagw[k2]);
+    var foot = '<div class="fd-foot">' + esc(str(rr.note) || '') + ' · 기준일 ' + esc(str(rr.asof)) + ' · 갱신 ' + kstFull(rr.updated_ts) + ' KST' +
+      (lags.length ? ' · ⚠ 지연: ' + esc(lags.join(', ')) : '') +
+      (arr(q.stale).length ? ' · ⚠ 캐시 사용: ' + esc(arr(q.stale).join(', ')) : '') +
+      (arr(q.missing).length ? ' · ⚠ 결측: ' + esc(arr(q.missing).join(', ')) : '') +
+      ' · 출처 FRED(DGS·T10YIE·THREEFYTP10·DFII10·EXPINF) / Yahoo(^MOVE) / fed_calendar·fed_reaction' +
+      (fo && str(fo.method) ? '<br>' + esc(fo.method) : '') + '</div>';
+    return '<div class="fd-card fd-rates" id="fdRates">' + head + body + foot + '</div>';
   }
 
   /* ══════════════════ 12. fd-taco ══════════════════ */
@@ -1553,6 +1787,7 @@
       h += '<div class="fd-grid">' + rCal(ST, D) + rDist(ST, D) + '</div>';
       h += rPeople(ST, D);
       h += '<div class="fd-grid2">' + rFeed(ST, D) + rReact(ST, D) + '</div>';
+      h += rRates(ST, D);
       h += rTaco(ST, D);
       h += '<div class="fd-tip" id="fdTip"></div>';
       h += '</div>';

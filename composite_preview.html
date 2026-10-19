@@ -540,6 +540,186 @@ global.CommonPreview=CommonPreview;
 global.renderCommonPreview=renderCommonPreview;
 })(typeof window!=='undefined'?window:globalThis);
 
+/* Minimum Dell frame for specialized company panels. Load after CommonPreview.
+ * Integration call: ensureCompositeMinimum(c, panel, helpers).
+ * Never releases a model gate, changes existing observations, or copies Dell data.
+ */
+(function(global){
+'use strict';
+const H=s=>String(s==null?'':s).replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+const reasons={
+ axis_fit:'기업 BM에 맞는 금액·중량·단가 축의 동일 표본 검증이 필요합니다. Dell의 축별 적합값을 복사하지 않습니다.',
+ monthly:'기업에 연결된 원천의 관측월·품목·지역·방향을 확인해 보충합니다. 결측월을 0이나 보간값으로 채우지 않습니다.',
+ levels:'회사 회계기간과 원관측 기간을 일치시킨 비교가 필요합니다. 산업 규모를 회사 매출로 취급하지 않습니다.',
+ scatter:'검증된 동일 기간 입력·실적 쌍이 필요합니다. 표본 부족 상태에서 회귀선이나 예측점을 생성하지 않습니다.',
+ scale:'산업 전체와 회사 귀속을 분리합니다. 회사 몫은 원문으로 검증된 귀속 근거가 있어야 표시합니다.',
+ inventory:'공식 보고서 재고 주석의 원재료·재공품·완제품을 확인합니다. 총재고만 공시한 경우 임의 분해하지 않습니다.',
+ range:'회사 가이던스·발표 전 컨센서스·당사 추정을 구분합니다. 예측 보류를 해제하지 않고 검증된 관측만 표시합니다.',
+ next_q:'다음 분기 회계기간·기저·실측 커버리지·모델 게이트 충족 후 계산합니다. 보류 상태는 유지합니다.',
+ track:'공식 실적과 당시 가이던스, 발표 이전 컨센서스를 각각의 출처·공표시각으로 연결해야 합니다.',
+ walk:'공표 당시 사용 가능했던 입력으로만 순차 검증합니다. 최신 수정본 회고 검증은 실시간 사전예측과 구분합니다.',
+ solo:'기존 등록 루트·고정 시차를 유지해 독립 검증합니다. 가장 잘 맞는 경로로 자동 교체하지 않습니다.',
+ notes:'기업 BM, 사실·가정·모델, 반증 조건과 근거 일자를 함께 표시합니다.'
+};
+const guarded=new WeakSet();
+function validDate(s){
+ if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
+ const d=new Date(s+'T00:00:00Z');
+ return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===s;
+}
+function sourceURL(s){
+ try{const u=new URL(s);return u.protocol==='https:'&&!u.username&&!u.password?u.href:null;}catch{return null;}
+}
+function currentLineage(c){
+ return (c.stale===undefined||c.stale===false)&&
+  (c.lineage_status===undefined||c.lineage_status===null||c.lineage_status==='current'||c.lineage_status==='verified');
+}
+function availableDate(s){
+ if(validDate(s.publication_date))return {date:s.publication_date,basis:'등록 공표일 · 일말 기준'};
+ // A printed document date alone never establishes availability. Retrieval is
+ // an upper bound on first availability, NOT the actual publication timestamp.
+ const t=s.retrieved_at;
+ if(typeof t==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(t)&&validDate(t.slice(0,10))&&Number.isFinite(Date.parse(t)))
+  return {date:new Date(t).toISOString().slice(0,10),basis:'등록 수집일(UTC) · 공표시각 미확인 · 일말 기준'};
+ return null;
+}
+function preserveSpecial(c,helpers){
+ // Only the builder's hash-pinned, reviewed renderer path may retain visible
+ // specialty DOM. Arbitrary pre-existing DOM is NOT a trusted observation.
+ return helpers.observedRendererVerified===true&&currentLineage(c)&&
+  ['GBM','SANM','FPS','HPSA','POWL','DY','ETN','IBIDEN','LEVI'].includes(c.id);
+}
+// This is a schema-specific admission rule, not source/amount verification.
+// Keep the legacy direct_reported_quarter path unchanged.
+function reportedQuarter(c,fin,r){
+ if(!['POWL','DY','ETN'].includes(c.id)||r.amount_method!=='reported'||
+  fin.accounting_basis!=='US GAAP'||fin.currency!=='USD'||r.currency!=='USD'||
+  !currentLineage(fin)||!currentLineage(r))return false;
+ const key=/^FY([1-9]\d{3})Q([1-4])$/.exec(r.fiscal_key);
+ if(!key||r.fiscal_year!==Number(key[1])||r.fiscal_quarter!==Number(key[2])||
+  !validDate(r.period_start)||!validDate(r.period_end))return false;
+ // If an explicit revenue-specific method is supplied, contradictory/unknown
+ // methods fail closed. Operating-income methods do not classify revenue.
+ if(r.revenue_method!==undefined&&r.revenue_method!=='reported')return false;
+ const y=r.fiscal_year,q=r.fiscal_quarter;
+ const start=new Date(r.period_start+'T00:00:00Z'),end=new Date(r.period_end+'T00:00:00Z');
+ const days=(end-start)/86400000+1;
+ if(c.id==='DY'){
+  // Observed January fiscal year-end: Q1-Q3 end in the preceding FY
+  // calendar year. Accept 13 weeks, or 14 only in Q4; never proxy_months.
+  const ey=q===4?y:y-1,month=q===4?0:q*3;
+  const lo=Date.UTC(ey,month,24),hi=Date.UTC(ey,month+1,2);
+  return r.monthly_approximation===true&&start.getUTCDay()===0&&end.getUTCDay()===6&&
+   (days===91||(q===4&&days===98))&&end.getTime()>=lo&&end.getTime()<=hi;
+ }
+ // Exact calendar bounds: POWL October FY start; ETN January FY start.
+ const month=c.id==='POWL'?(q===1?9:(q-2)*3):(q-1)*3;
+ const year=c.id==='POWL'&&q===1?y-1:y;
+ return r.monthly_approximation===false&&
+  start.getTime()===Date.UTC(year,month,1)&&end.getTime()===Date.UTC(year,month+3,0);
+}
+function observationRows(c,asof){
+ // Only this explicit grid financial schema is supported. Never infer USD from
+ // another company's display divisor or use a model/estimated revenue field.
+ if(c.preview_kind!=='grid_observed_v1'||!currentLineage(c)||!validDate(asof))return [];
+ const fin=c.official_financials||{},rows=(Array.isArray(fin.history)?fin.history:[]).filter(r=>r&&typeof r==='object');
+ const counts=new Map(),fiscals=new Map();
+ for(const r of rows){counts.set(r.period_end,(counts.get(r.period_end)||0)+1);const key=r.fiscal_key||r.period_end;fiscals.set(key,(fiscals.get(key)||0)+1);}
+ return rows.filter(r=>counts.get(r.period_end)===1&&fiscals.get(r.fiscal_key||r.period_end)===1&&validDate(r.period_start)&&validDate(r.period_end)&&r.period_start<=r.period_end&&r.period_end<=asof
+  &&typeof r.revenue==='number'&&Number.isFinite(r.revenue)
+  &&(r.amount_method==='direct_reported_quarter'||reportedQuarter(c,fin,r))&&r.unit==='million'&&fin.unit===r.unit
+  &&/^[A-Z]{3}$/.test(r.currency||'')&&r.currency===fin.currency)
+ .map(r=>{
+  const sources=(Array.isArray(r.sources)?r.sources:[]).filter(s=>s&&typeof s==='object'&&(r.amount_method==='direct_reported_quarter'||currentLineage(s))&&sourceURL(s.url)&&
+   availableDate(s)&&r.period_end<=availableDate(s).date&&availableDate(s).date<=asof);
+  return {period:r.fiscal_key||r.period_end,start:r.period_start,end:r.period_end,revenue:r.revenue,currency:r.currency,unit:r.unit,
+   sources:sources.map(s=>({url:sourceURL(s.url),...availableDate(s)}))};
+ }).filter(r=>r.sources.length).sort((a,b)=>a.end.localeCompare(b.end));
+}
+function appendObservations(c,root,helpers){
+ const rows=observationRows(c,helpers.asof),target=root.querySelector('[data-section="track"]');
+ if(!target||!rows.length||target.querySelector('.minimum-official-observations'))return;
+ const block=root.ownerDocument.createElement('div');block.className='minimum-official-observations';
+ const reason=target.querySelector('[data-reason]');
+ if(reason&&!target.querySelector('canvas'))reason.textContent='실제 매출 등록값은 아래 표에 연결했습니다. 가이던스·컨센서스 대조와 예측 적중 이력은 미완성입니다.';
+ block.innerHTML='<h4>기존 등록자료의 분기 매출 — 원문 재검증 전</h4><p class="notes">직접 보고 분기로 분류된 기존 기록이며, 출처 도메인·원문 수치를 이번 실행에서 재검증하지 않았습니다. 공식 확인 완료나 사전예측 적중 이력이 아닙니다. 가이던스·컨센서스는 보충하지 않았습니다. UTC 일말 공표/수집일 기준이며 문서일만 있는 자료는 제외합니다.</p>'
+  +'<div style="overflow:auto"><table><thead><tr><th>회계분기</th><th>실제 기간</th><th>매출</th><th>단위</th><th>원천·날짜 기준</th></tr></thead><tbody>'
+  +rows.map(r=>'<tr><td>'+H(r.period)+'</td><td>'+H(r.start)+' ~ '+H(r.end)+'</td><td>'+H(r.revenue)+'</td><td>'+H(r.currency)+' million</td><td>'
+   +r.sources.map(s=>'<a href="'+H(s.url)+'" target="_blank" rel="noopener noreferrer">등록 출처(재검증 전)</a> '+H(s.date)+' ('+H(s.basis)+')').join('<br>')+'</td></tr>').join('')+'</tbody></table></div>';
+ target.appendChild(block);
+}
+function preserveOnRedraw(c,p,helpers){
+ if(guarded.has(p))return;
+ guarded.add(p);
+ // LEVI's existing controller deliberately replaces its panel during route,
+ // product and country changes. Restore the minimum frame after that synchronous
+ // redraw; preserve the original handlers and their closures rather than cloning.
+ for(const key of ['syncRoute','onclick','onchange']){
+  const previous=p[key];
+  if(typeof previous==='function')p[key]=function(...args){
+   try{return previous.apply(this,args);}
+   finally{ensureCompositeMinimum(c,p,helpers);}
+  };
+ }
+}
+function safeHeldRow(c){
+ // The JBL audit schema and thousand-USD conversion cannot be reused for other
+ // diagnostics. Their specialized renderer remains intact below the common frame.
+ return {id:c.id,name:c.name,ticker:c.ticker,disp:c.disp,market:c.market,
+  status:'forecast_held',forecast_gate:{...(c.forecast_gate||{}),enabled:false},
+  notes:c.notes,proxy_diagnostics:{},track:[],inventory:[],est:{},chart:{},next_q:{}};
+}
+function check(ids){
+ const order=global.CommonPreview.SECTION_ORDER;
+ const selected=ids.filter(id=>order.includes(id));
+ return selected.length===order.length&&selected.every((id,i)=>id===order[i]);
+}
+function ensureCompositeMinimum(c,p,helpers){
+ if(!global.CommonPreview)throw new Error('CommonPreview required');
+ preserveOnRedraw(c,p,helpers);
+ let root=p.querySelector(':scope > .cp-mount');
+ if(!root){
+  if(!global.CommonPreview.isHeld(c))throw new Error('Released company missing its common renderer');
+  // Keep the live specialized DOM nodes/listeners/charts; do not clone innerHTML.
+  const extra=p.ownerDocument.createElement('section');
+  extra.className='company-specific-observations';
+  extra.setAttribute('aria-label','기업별 특화 관측');
+  extra.hidden=!preserveSpecial(c,helpers);
+  if(extra.hidden)extra.style.setProperty('display','none','important');
+  while(p.firstChild)extra.appendChild(p.firstChild);
+  global.CommonPreview.render(safeHeldRow(c),p,helpers);
+  root=p.querySelector(':scope > .cp-mount');
+  p.appendChild(extra);
+  if(extra.hidden){
+   const warning=p.ownerDocument.createElement('p');warning.className='notes';
+   warning.textContent='기업별 특화 화면은 관측 전용 렌더러 검증이 끝날 때까지 숨겼습니다. 보류 예측이 기존 화면에 남지 않도록 별도 확인합니다.';
+   root.appendChild(warning);
+  }
+  root.querySelectorAll('[data-section]').forEach(el=>{
+   const id=el.getAttribute('data-section');
+   if(reasons[id]){
+    const note=p.ownerDocument.createElement('p');note.className='notes minimum-fill-rule';
+    note.textContent=reasons[id];el.appendChild(note);
+   }
+  });
+ }
+ const ids=Array.from(root.querySelectorAll('[data-section]')).map(el=>el.getAttribute('data-section'));
+ if(!check(ids))throw new Error('Dell minimum section order mismatch: '+c.id);
+ appendObservations(c,root,helpers);
+ if(global.CommonPreview.isHeld(c)&&!root.querySelector('.minimum-release-conditions')){
+  const gate=c.forecast_gate||{},block=p.ownerDocument.createElement('div');
+  block.className='card notes minimum-release-conditions';
+  const criteria=Object.entries(gate.criteria||{}).map(([k,v])=>`${H(k)}: ${H(v)}`).join('<br>');
+  block.innerHTML='<b>보류 및 보충 조건</b><p>'+H(gate.reason||'검증된 기업별 관측·모델 근거 미충족')+'</p>'
+   +(criteria||'원자료 기간·단위·연결범위 및 사전 검증 확인 후 별도 승인. 화면 통일로 예측 게이트를 해제하지 않습니다.');
+  root.appendChild(block);
+ }
+ return {company:c.id,required_sections:ids,dom_contract_pass:true,data_complete:false};
+}
+global.CompositeMinimum={check,safeHeldRow,reasons,observationRows,preserveSpecial};
+global.ensureCompositeMinimum=ensureCompositeMinimum;
+})(typeof window!=='undefined'?window:globalThis);
+
 /* Observed-only composite card. Monetary charts contain official actuals only. */
 function renderHeldPreview(c,p,helpers){
  const H=v=>String(v??'–').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
@@ -228943,7 +229123,7 @@ DATA.companies.forEach((c,i)=>{
  if(c.status==='forecast_held'){
   // Specialized held panels keep their own renderers. Jabil uses the shared common
   // frame (same section catalog/order as released rows) plus its specific diagnostics.
-  if(c.id==='LEVI'){renderLeviPreview(p,c);}else if(c.id==='IBIDEN'){ConditionalUI.observed(c,p);}else if(c.preview_kind==='grid_observed_v1'){renderGridPreview(c,p,{CH});}else if(c.id==='JBL'){if(c.proxy_diagnostics?.jabil_evidence){renderJabilPreview(c,p,{CH,F,P,sigBadge});}else{renderCommonPreview(c,p,{CH,F,P,sigBadge});}}else{renderHeldPreview(c,p,{CH});}return;
+  if(c.id==='LEVI'){renderLeviPreview(p,c);}else if(c.id==='IBIDEN'){ConditionalUI.observed(c,p);}else if(c.preview_kind==='grid_observed_v1'){renderGridPreview(c,p,{CH});}else if(c.id==='JBL'){if(c.proxy_diagnostics?.jabil_evidence){renderJabilPreview(c,p,{CH,F,P,sigBadge});}else{renderCommonPreview(c,p,{CH,F,P,sigBadge});}}else{renderHeldPreview(c,p,{CH});}ensureCompositeMinimum(c,p,{CH,F,P,sigBadge,asof:DATA.asof,observedRendererVerified:true});return;
  }
  // Released rows: the shared catalog (composite_common_ui.js) renders header, five
  // chips, charts and tables in the fixed common section order. The chart code is the
