@@ -840,9 +840,16 @@ def _krw_ok(c):
 _PARTY_NOISE = re.compile(r"^대한민국|\(주\)|주식회사|㈜|\s+|[.,·ㆍ]|\(.*?\)$")
 
 
+_PARTY_ALIAS = (("에스케이", "sk"), ("엘지", "lg"), ("엘에스", "ls"), ("에이치디", "hd"), ("씨제이", "cj"), ("케이티", "kt"))
+
+
 def party_key(s):
-    """계약상대 묶음 키 — `대한민국 방위사업청`=`방위사업청`, `(주)`·공백·끝 괄호 부연 무시. 익명(`… 지역 선주`)은 그대로."""
-    return _PARTY_NOISE.sub("", s or "").lower()
+    """계약상대 묶음 키 — `대한민국 방위사업청`=`방위사업청`, `(주)`·공백·끝 괄호 부연 무시, `에스케이하이닉스`=`SK하이닉스`.
+    익명(`… 지역 선주`)은 그대로 묶는다(같은 선주인지는 모른다 — 화면은 '익명 묶음'으로 읽는다)."""
+    k = _PARTY_NOISE.sub("", s or "").lower()
+    for a, b in _PARTY_ALIAS:
+        k = k.replace(a, b)
+    return k
 
 
 def company_agg(items, latest, Ls):
