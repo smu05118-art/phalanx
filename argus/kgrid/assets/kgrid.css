@@ -207,3 +207,9 @@ footer{max-width:1320px;margin:28px auto 0;padding:0 clamp(14px,3vw,32px);color:
 .grain{display:inline-block;font-size:9.5px;line-height:15px;border-radius:4px;padding:0 5px;margin-left:5px;
   border:1px solid var(--ln2);color:var(--tx3)}
 .grain.segment{border-style:dashed}
+
+/* 계약 진행(XI-1) — 조각과 그 CSS 는 공용 `argus/kce/tools/xi1_view.py`(쪽마다 <style> 로 한 번). 여기는 이 탭 표면에 맞춘 것만:
+   조각의 설명 문단(.note)은 이 탭에서 경고(노랑) 상자라 안내(파랑) 상자로, 소제목(h3)은 카드 h2 결에 맞춘다. */
+.xi1 h3{font-size:12px;font-weight:600;color:var(--tx2);margin:16px 0 6px}
+.xi1 h3 .mut{font-weight:400;font-size:10.5px}
+.xi1 .note{background:rgba(96,165,250,.06);border-color:rgba(96,165,250,.2);margin:10px 0 0}

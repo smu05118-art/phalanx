@@ -64,6 +64,11 @@ jobs:
           # 파서가 바뀌었을 수 있으니 캐시의 원문 표로 값을 다시 뽑는다(DART 요청 0건).
           python3 kgrid_reports.py --reparse --n 6 "${Q[@]}"
           python3 kgrid_reports.py --build --n 6 "${Q[@]}"
+          # 계약 진행(XI-1) — 반기·사업보고서 「공시내용 진행 및 변경사항」(공용 층 kce/tools/xi1_sector.py).
+          # 원장(contracts.json) build 뒤·페이지 앞. 받은 칸은 건너뛰므로 평시 요청은 최신 반기·연간 분기의 빈칸뿐이다.
+          # 실패해도 페이지 생성은 막지 않는다 — 수집이 깨지면 받아 둔 parsed/ 로 build, build 가 깨지면 지난 progress.json 그대로.
+          python3 ../../kce/tools/xi1_sector.py kgrid --collect || echo "::warning::XI-1 진행 수집 일부 실패"
+          python3 ../../kce/tools/xi1_sector.py kgrid --build || echo "::warning::XI-1 진행 build 실패 — 지난 progress.json 으로 페이지 생성"
           python3 kgrid_page.py --all
       - name: Tests (after)
         run: |
@@ -85,7 +90,9 @@ jobs:
             echo "변경 없음"; exit 0
           fi
           git add -- argus/kgrid
-          git commit -m "kgrid: 자동 갱신 $(date -u +%Y-%m-%d) (정기보고서 수주·매출처·계약공시)"
+          # XI-1 건수(progress.json sector) — 읽지 못하면 비운다.
+          XI=$(python3 -c 'import json;s=json.load(open("argus/kgrid/tools/assets/xi1/progress.json"))["sector"];print(" · XI-1 진행 %d건(원장 확정 %d·추정 %d, 지연 의심 %d)"%(s["n"],s["linkA"],s["linkB"],s["lag"]))' 2>/dev/null || true)
+          git commit -m "kgrid: 자동 갱신 $(date -u +%Y-%m-%d) (정기보고서 수주·매출처·계약공시${XI})"
           git pull --rebase origin main
           git push origin HEAD:main
       - name: Fail if build errored
