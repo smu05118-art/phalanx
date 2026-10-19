@@ -8,6 +8,8 @@
                           반복건조(시리즈) · 이 조선사에 납품하는 기자재사(역방향)
   parts.html              선박 단면 인포그래픽 — 부품 영역 클릭 → 담당 기자재사 → 회사 페이지
   <기자재사>/index.html    부품 분류 · 납품 조선사(근거 등급) · 제품·매출 · 같은 부품 다른 회사
+  (공통) 계약 진행(XI-1)  반기·사업보고서 XI-1 진행 현황 — 회사 섹션 #xi1 · 척당 계약 표 '진행(XI-1)' 열 · 허브 #xi1 ·
+                          커버리지 #xi1cov. 공용 층 kce/tools/xi1_sector·xi1_view, 입력 assets/xi1/progress.json(fail-soft)
 
 원칙(건설 탭과 같다): 원문이 지지하는 것만 싣고, 추정은 `est`·근거 등급으로 화면에 표시한다.
 척당 계약 공시의 계약상대는 대부분 익명이며, 기자재사→조선사 연결은 '본문 언급' 수준이 많다 —
@@ -70,7 +72,62 @@ def load_all():
         qs = load_yard_quarters(d)
         yards[r["stock"]] = {"rec": r, "q": qs}
     return {"uni": uni, "probe": probe, "types": types, "tax": tax, "svg": svg, "contracts": contracts,
-            "suppliers": suppliers, "yards": yards}
+            "suppliers": suppliers, "yards": yards, "xi1": load_xi1([r["stock"] for r in uni])}
+
+
+# ── 계약 진행(XI-1) ─────────────────────────────────────────
+# 반기·사업보고서 「XI-1 공시내용 진행 및 변경사항 › 나. 단일판매ㆍ공급계약 진행 현황」(2024Q4~, Q2·Q4).
+# 적재는 공용 층 `argus/kce/tools/xi1_sector.py`(→ assets/xi1/progress.json, 워크플로 XI-1 단계), 화면 조각은
+# `xi1_view.py`(JS 없음 · 인라인 SVG). 여기서는 읽어서 붙이기만 한다. **fail-soft** — import 실패는 [warn] 후,
+# progress.json 이 없으면 조용히 (None, None): 열·섹션을 만들지 않고 화면은 예전 그대로(빈 칸으로 흉내 내지 않는다).
+XI1_PROGRESS = os.path.join(ASSETS, "xi1", "progress.json")
+XI1_SRC = "XI-1 「공시내용 진행 및 변경사항」 포함"
+XI1_LEAD = " 계약별 진행(판매ㆍ공급·대금수령 누적)은 반기·사업보고서 XI-1 「공시내용 진행 및 변경사항」에서 읽었습니다."
+
+
+def load_xi1(stocks=None, path=None):
+    """(xi1_view 모듈, progress dict) 또는 (None, None). stocks 가 있으면 화면 모집단 밖 회사를 뺀다(xi1_sector.subset)."""
+    try:
+        import xi1_sector as _xs
+        import xi1_view as _xv
+        prog = _xs.load_progress(path=path or XI1_PROGRESS)
+        if prog and stocks is not None and set(prog.get("companies") or {}) - set(stocks):
+            prog = _xs.subset(prog, stocks)
+    except Exception as e:
+        sys.stderr.write("[warn] 계약 진행(XI-1) 비활성: %s\n" % e)
+        return None, None
+    if not prog or not isinstance(prog.get("companies"), dict):
+        return None, None
+    return _xv, prog
+
+
+def xi1_of(data):
+    """data['xi1'] → (view, prog). 키가 없거나(옛 data) 비었으면 (None, None)."""
+    v = data.get("xi1") if isinstance(data, dict) else None
+    return (v[0], v[1]) if v and v[0] and v[1] else (None, None)
+
+
+def xi1_rcps(c):
+    """원장 행의 접수번호 사슬 — [rcp] + supersedes(정정 전 원접수; 문자열·리스트 모두)."""
+    sup = c.get("supersedes")
+    return [c.get("rcp")] + ([sup] if isinstance(sup, str) else list(sup or []))
+
+
+def xi1_company(data, stock):
+    """회사 페이지 섹션(id="xi1") — 진행 계약이 없거나 렌더가 던지면 ''."""
+    xv, prog = xi1_of(data)
+    if not xv:
+        return ""
+    try:
+        return xv.company_section(prog, stock) or ""
+    except Exception as e:
+        sys.stderr.write("[warn] %s 계약 진행(XI-1) 렌더 실패: %s\n" % (stock, e))
+        return ""
+
+
+def xi1_css(data):
+    xv, _ = xi1_of(data)
+    return "<style>%s</style>\n" % xv.CSS if xv else ""
 
 
 def type_meta(types):
@@ -401,16 +458,29 @@ def yard_html(s, data):
         ser_html = ('<section class="card"><h2>반복건조(시리즈) 추정 <em>같은 선종·같은 상대 표기·같은 지역, 수주일 180일 이내 — 공시에 시리즈 표시가 없어 <b>추정</b>입니다</em></h2>'
                     '<div class="wrap"><table data-sortable><thead><tr><th class="l">선종</th><th class="l">상대(공시 표기)</th><th class="l">지역</th><th>계약</th><th>척</th><th>금액(억)</th><th class="l">단서</th></tr></thead><tbody>%s</tbody></table></div></section>' % rows)
 
-    # 척당 계약 표
+    # 척당 계약 표 — XI-1 진행이 적재돼 있고 이 회사가 그 모집단에 있으면 금액 뒤에 '진행(XI-1)' 열(rcp·정정 사슬로 연결, 없으면 '—')
+    xv, xprog = xi1_of(data)
+    xsec = xi1_company(data, rec["stock"])
+    rows_ct = sorted(s["contracts"], key=lambda c: c["signed"] or "", reverse=True)
+    xcells = None
+    if xv and rec["stock"] in xprog["companies"]:
+        try:
+            xcells = [xv.progress_cell(xprog, xi1_rcps(c)) for c in rows_ct]
+            xth = xv.progress_th()
+        except Exception as e:
+            sys.stderr.write("[warn] %s 척당 계약 표 진행(XI-1) 열 렌더 실패: %s\n" % (rec["stock"], e))
+            xcells = None
+    xcol = xcells is not None
     cr = []
-    for c in sorted(s["contracts"], key=lambda c: c["signed"] or "", reverse=True):
+    for i, c in enumerate(rows_ct):
         m = tm.get(c["type"], tm["OTHER"])
-        cr.append("<tr><td class=\"l\">%s</td><td class=\"l\"><i class=\"sw\" style=\"display:inline-block;width:9px;height:9px;border-radius:3px;background:%s;margin-right:6px\"></i>%s</td><td class=\"l\">%s</td><td data-v=\"%s\">%s</td><td data-v=\"%.0f\">%s</td><td class=\"l\">%s%s</td><td class=\"l\">%s</td><td class=\"l\">%s</td><td class=\"l\">%s</td><td class=\"l\"><a href=\"https://dart.fss.or.kr/dsaf001/main.do?rcpNo=%s\" target=\"_blank\" rel=\"noopener noreferrer\">원문</a></td></tr>"
+        cr.append("<tr><td class=\"l\">%s</td><td class=\"l\"><i class=\"sw\" style=\"display:inline-block;width:9px;height:9px;border-radius:3px;background:%s;margin-right:6px\"></i>%s</td><td class=\"l\">%s</td><td data-v=\"%s\">%s</td><td data-v=\"%.0f\">%s</td>%s<td class=\"l\">%s%s</td><td class=\"l\">%s</td><td class=\"l\">%s</td><td class=\"l\">%s</td><td class=\"l\"><a href=\"https://dart.fss.or.kr/dsaf001/main.do?rcpNo=%s\" target=\"_blank\" rel=\"noopener noreferrer\">원문</a></td></tr>"
                   % (E(c["signed"]), m["color"], E(m["ko"]), E(c["name"]), c["ships"] or 0, c["ships"] or "—", c["amt_krw_m"] or 0, fmt_eok(c["amt_krw_m"]),
+                     xcells[i] if xcol else "",
                      E(c["party"] or "—"), ' <span class="pill">익명</span>' if c["party_anon"] else "", E(c["region"] or "—"), E(c["end"] or "—"),
                      E(c["payterm"] or "") + (" · 선급금 " + E(c["advance"]) if c["advance"] else ""), E(c["rcp"])))
-    con_table = ('<div class="ctl"><input data-filter="#ct" type="search" placeholder="선종·상대·지역 검색"></div><div class="wrap tall"><table id="ct" data-sortable><thead><tr><th class="l">수주일</th><th class="l">선종</th><th class="l">계약명</th><th>척</th><th>금액(억)</th><th class="l">상대</th><th class="l">지역</th><th class="l">인도(종료일)</th><th class="l">대금조건</th><th class="l">출처</th></tr></thead><tbody>%s</tbody></table></div>'
-                 % "".join(cr))
+    con_table = ('<div class="ctl"><input data-filter="#ct" type="search" placeholder="선종·상대·지역 검색"></div><div class="wrap tall"><table id="ct" data-sortable><thead><tr><th class="l">수주일</th><th class="l">선종</th><th class="l">계약명</th><th>척</th><th>금액(억)</th>%s<th class="l">상대</th><th class="l">지역</th><th class="l">인도(종료일)</th><th class="l">대금조건</th><th class="l">출처</th></tr></thead><tbody>%s</tbody></table></div>'
+                 % (xth if xcol else "", "".join(cr)))
     other_note = ""
     if s["other"] or s["unresolved"]:
         other_note = ('<div class="note info">비조선 계약 %d건(공사·엔진·블록 납품)과 선종 미판정 %d건은 척수·선종 집계에서 제외했습니다. 미판정은 계약명이 비었거나(정정공시 표 형식) 선종 별칭 사전에 없는 표기입니다.</div>'
@@ -447,7 +517,7 @@ def yard_html(s, data):
 %s
 %s
 %s
-<section class="card"><h2>척당 계약 공시 <em>단일판매ㆍ공급계약체결 · %d건</em></h2>%s</section>
+<section class="card"><h2>척당 계약 공시 <em>단일판매ㆍ공급계약체결 · %d건</em></h2>%s</section>%s
 %s
 <script>const DATA=%s;const SEGC=%s;</script>
 <script>%s</script>
@@ -460,14 +530,17 @@ def yard_html(s, data):
 })();
 </script>
 <script>%s</script>
-""" % ("".join(kpi), other_note, type_table, tl, roll_table, rev_html, fx_html, ser_html, len(s["contracts"]), con_table, sup_html,
+""" % ("".join(kpi), other_note, type_table, tl, roll_table, rev_html, fx_html, ser_html, len(s["contracts"]), con_table, xsec, sup_html,
        json_for_html(chart), json.dumps(seg_colors), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"]) + _orders_section(rec["stock"]) + _model_section(rec["stock"])
     return page("%s 조선 수주" % rec["name"], body, depth=1, h1="%s" % rec["name"],
                 tags=(rec["stock"], rec["market"], rec["industry"]),
-                nav=(("허브", "../index.html"), ("인포그래픽", "../parts.html"), ("커버리지", "../coverage.html"), ("DART 원문 ↗", dart)),
+                nav=(("허브", "../index.html"), ("인포그래픽", "../parts.html"), ("커버리지", "../coverage.html"))
+                    + ((("계약 진행", "#xi1"),) if xsec else ()) + (("DART 원문 ↗", dart),),
                 crumbs=(("ARGUS", "../../index.html"), ("한국조선", "../index.html"), (rec["name"], None)),
-                scripts=("../vendor/chart.umd.min.js",),
-                lead="정기보고서 수주표는 사업부문 롤포워드(원화)라 선종·척수·인도시점이 없습니다. 그 셋은 척당 계약 공시(단일판매ㆍ공급계약체결)에서, 환헤지는 위험관리·파생금융상품 주석에서 읽었습니다. 추정 항목은 표시합니다.")
+                scripts=("../vendor/chart.umd.min.js",), head_extra=xi1_css(data) if (xsec or xcol) else "",
+                src=XI1_SRC if (xsec or xcol) else "",
+                lead="정기보고서 수주표는 사업부문 롤포워드(원화)라 선종·척수·인도시점이 없습니다. 그 셋은 척당 계약 공시(단일판매ㆍ공급계약체결)에서, 환헤지는 위험관리·파생금융상품 주석에서 읽었습니다. 추정 항목은 표시합니다."
+                     + (XI1_LEAD if xsec else ""))
 
 
 # ── 허브·커버리지 ───────────────────────────────────────────
@@ -494,6 +567,20 @@ def hub_html(data, summaries):
     groups = {g["id"]: g for g in data["tax"]["groups"]}
     gchips = "".join(_chip(groups[g]["ko"], None, n, href="parts.html#" + g) for g, n in cats.most_common(13) if g in groups)
     mchip = '<div class="chips" style="margin-top:12px"><a class="chip" href="models.html">📈 실적 모델 <span class="n">FY2026E~28E 섹터 표 · 회사 페이지 하단 모델 섹션</span></a></div>' if os.path.isfile(os.path.join(KSHIP, "models.html")) else ""
+    # 계약 진행(XI-1) — 회사 페이지가 있는 종목(조선사 + 기자재·엔진·강재)만 링크. 지주 009540 은 페이지가 없어 이름만.
+    xv, xprog = xi1_of(data)
+    xhub = ""
+    if xv:
+        pages = {s["stock"] for s in summaries} | {c["stock"] for c in data["suppliers"].get("cos", [])}
+        try:
+            xhub = xv.hub_section(xprog, co_href=lambda st: ("%s/index.html#xi1" % st) if st in pages else None) or ""
+        except Exception as e:
+            sys.stderr.write("[warn] 허브 계약 진행(XI-1) 렌더 실패: %s\n" % e)
+    if xhub:
+        xs = xprog["sector"]
+        mchip += ('<div class="chips" style="margin-top:8px"><a class="chip" href="#xi1">계약 진행(XI-1) <span class="n">%s · 진행 계약 %s건 · 가중 진행 %s · 지연 의심 %s</span></a></div>'
+                  % (E(xprog.get("asof") or "—"), fmt_n(xs.get("n") or 0),
+                     ("%.0f%%" % (100 * xs["prog_w"])) if xs.get("prog_w") is not None else "—", fmt_n(xs.get("lag") or 0)))
     body = """
 <div class="kpi">
  <div><b>%d</b><span>조선사(정기보고서 롤포워드 수록)</span></div>
@@ -510,9 +597,13 @@ def hub_html(data, summaries):
 </div>
 """ % (len(summaries), len(data["contracts"]), fmt_n(sum(c["ships"] or 0 for c in data["contracts"] if c["type"] not in (None, "OTHER"))),
        len(sup), n_conf, len(data["tax"]["cats"]), len(data["svg"]["regions"]), mchip, "".join(cards), gchips, len(data["uni"]))
+    if xhub:
+        body += "%s\n<script>%s</script>\n" % (xhub, TABLE_JS)          # 허브엔 원래 표가 없어 정렬 JS 는 섹션이 있을 때만
     return page("한국조선 — 수주·선표·환헤지·기자재", body, depth=0, h1="⚓ 한국조선",
-                nav=(("← ARGUS", "../index.html"), ("🏗 한국건설", "../kce/index.html")),
-                lead="국내 상장 조선사의 수주를 산업 특성대로 읽습니다 — 선종·척수·인도시점(척당 계약 공시), 부문 롤포워드와 매출인식(정기보고서), 환노출·통화선도 헤지(파생금융상품 주석), 반복건조 추정. 기자재사는 부품 분류로 조선사와 연결합니다.")
+                nav=(("← ARGUS", "../index.html"), ("🏗 한국건설", "../kce/index.html")), head_extra=xi1_css(data) if xhub else "",
+                src=XI1_SRC if xhub else "",
+                lead="국내 상장 조선사의 수주를 산업 특성대로 읽습니다 — 선종·척수·인도시점(척당 계약 공시), 부문 롤포워드와 매출인식(정기보고서), 환노출·통화선도 헤지(파생금융상품 주석), 반복건조 추정. 기자재사는 부품 분류로 조선사와 연결합니다."
+                     + (XI1_LEAD.replace("읽었습니다", "읽습니다") if xhub else ""))
 
 
 def coverage_html(data, summaries):
@@ -557,17 +648,26 @@ def coverage_html(data, summaries):
                      '<tbody>%s</tbody></table></div></details></section>'
                      % (E(probe.get("quarter", "")), probe.get("pool", 0), len(probe.get("promoted") or {}), len(rej),
                         len(probe.get("failed") or []), E(probe.get("rule", "")), min(80, len(rej)), rj))
+    # 계약 진행(XI-1) 수집 상태 — 회사 × 반기·연간 보고서(표·표 없음·절 없음·보고서 없음·못 읽은 표) · 원장 연결 품질
+    xv, xprog = xi1_of(data)
+    xcov = ""
+    if xv:
+        try:
+            xcov = xv.coverage_rows(xprog) or ""
+        except Exception as e:
+            sys.stderr.write("[warn] 커버리지 계약 진행(XI-1) 렌더 실패: %s\n" % e)
     body = """
 <section class="card" style="margin-top:0"><h2>모집단 규칙 <em>재현 가능한 네 겹</em></h2>
 <p style="font-size:12px;color:var(--tx2);line-height:1.8">① KIND 업종 <b>선박 및 보트 건조업</b> 전 종목 · ② KIND 주요제품 문구에 선박·조선·해양·선용·marine 등 해상 어휘가 있는 종목(해운사·도매업 제외) · ③ 업종·문구 모두에 안 걸리지만 실질이 조선 공급망인 종목을 <b>사유와 함께 지정</b>(엔진·보냉재·피팅·케이블·항해장비) · ④ 그래도 빠지는 회사(KIND 문구가 'SCR촉매'·'자유형단조품'처럼 짧은 경우)는 <b>정기보고서 본문 탐색</b>으로 찾는다 — 기자재 어휘에 걸리는 상장사 전부의 사업의 내용에서 조선 낱말 횟수와 조선사 언급을 세어 기준을 넘는 회사만 승격(%s). 여기까지는 후보이고, 납품 관계는 정기보고서 원문(사업의 내용)에서 조선사 언급을 확인해 근거 등급을 붙입니다. 이름으로 배제하지 않습니다.</p></section>
 <section class="card"><h2>종목별 상태 <em>%d종목</em></h2><div class="wrap"><table data-sortable><thead><tr><th class="l">회사</th><th>종목코드</th><th class="l">역할</th><th class="l">업종</th><th class="l">상태</th><th class="l">편입 근거</th><th class="l">제품·사유</th></tr></thead><tbody>%s</tbody></table></div></section>
-%s
+%s%s
 <div class="note info">HD현대미포·HD현대삼호는 상장법인목록에 없어(합병·비상장) HD한국조선해양 연결로만 보입니다. 척당 계약 공시의 계약상대는 대부분 '○○ 소재 선사'로 익명이며, 기자재사→조선사 연결은 본문 언급 수준이 많습니다 — 화면의 근거 등급이 그 한계입니다.</div>
 <script>%s</script>
-""" % (E(probe.get("rule", "기준 미정")), len(data["uni"]), "".join(rows), scan_html, TABLE_JS)
+""" % (E(probe.get("rule", "기준 미정")), len(data["uni"]), "".join(rows), scan_html, xcov, TABLE_JS)
     return page("한국조선 커버리지", body, depth=0, h1="커버리지",
-                nav=(("허브", "index.html"), ("← ARGUS", "../index.html")),
-                crumbs=(("ARGUS", "../index.html"), ("한국조선", "index.html"), ("커버리지", None)))
+                nav=(("허브", "index.html"),) + ((("계약 진행(XI-1)", "#xi1cov"),) if xcov else ()) + (("← ARGUS", "../index.html"),),
+                crumbs=(("ARGUS", "../index.html"), ("한국조선", "index.html"), ("커버리지", None)),
+                head_extra=xi1_css(data) if xcov else "", src=XI1_SRC if xcov else "")
 
 
 def main():

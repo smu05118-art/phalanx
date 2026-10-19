@@ -101,3 +101,11 @@
 - **통합 재생성(10:35~10:38)**: fin `--build --all`(27.4s) → `--golden` → sls(0.13s) → model+xlsx `--today 2026-10-05`(11.4s) → 패치 3파일 ALL OK(19.6s, 교체 0/11/9 · 환율 112/112/24 · 종가 10/2) → 페이지 56장·허브 58행 → selfcheck 17.0s. **summary full 48 · partial 10 · no_fin 0 그대로**, 드라이버 추세 36 → 34 · 연동 16 → 18(한라IMS·한화시스템 → 한화오션, V8 링크), 경고 191 → 183, 백테스트 중위 15.8 / 59.25 불변. **한화오션 FY2026E EPS 6,295.5 → 6,083.1원**(총차입금이 채워져 debt 연율 3.57% → 이자손익 추정 +271 → −267억). 삼성重 FY2026E 127,233 / 13,190 / 1,031.5 · FY2028E 192,004(base). KCC 423,780원은 3.6조 일회성 그대로.
 - **selfcheck 가 잡은 결함 1종(미수정, 모델 레인)**: 지배주주순이익 face 누락 분기를 당기순이익 − 비지배로 파생하면서 셀 `src` 를 face 로 표기(19셀, 값은 일치). 그 외 남은 결함: `_fin_detail` 부호 반전 휴리스틱이 환입 3사에서 오반전 · `_suppliers_weights` 가 share 0.0 을 mentions 로 떨어뜨리고 %와 건수를 섞음 · 신규 연동 2사의 표본(창 8 이동평균) · 유통주식수 기준일 차이 2사 · 원문 한계(한신기계 순금융수익 모순 등). 전부 MODEL.md §14-6.
 - **10-05 14시 마감(오너)**: selfcheck 가 잡은 모델 결함 1종(파생 지배NI src 표기 19셀) 수정 + 사문 부호 반전 휴리스틱 제거 + 공급사 가중치 비중/건수 혼합 수정 → `selfcheck_models.py` consistency 0 · freshness 0, 테스트 489 OK(skipped 2), summary full 48 · partial 10.
+
+## 2026-10-19 계약 진행(XI-1) — 자체 갱신에 붙인 자리
+
+- 워크플로 `update-kship.yml` 에 단계 `XI-1 계약 진행 (DART, 순차 한 프로세스)`(id xi1, continue-on-error, 20분)를 원장 build(`Collect and build`) 바로 뒤 · 재무제표 앞에 넣었다:
+  `python3 ../../kce/tools/xi1_sector.py kship --collect --build`. 끝난 (종목, 분기)는 다시 받지 않고 보고서·절 없음·오류만 재시도하므로 평일 요청은 거의 없다. 새 반기·사업보고서(Q2·Q4)는 기간 규칙대로 자동으로 대상에 든다.
+- 산출 `tools/assets/xi1/*` · `assets/hdrmap.json`(role xi)·`hdr_queue.json` 은 기존 커밋 범위(`git add -A -- argus/kship …`)에 든다. 원문 HTML(`_raw/`)은 커밋하지 않는다(.gitignore).
+- 커밋 메시지·요약에 `XI-1(진행 n건·확정 linkA·추정 linkB·지연 의심 lag)` — `progress.json.sector` 에서. 실패면 `XI-1✗` 이고 페이지는 직전 progress.json 으로 만든다. 마지막 실패 판정 단계에 xi1 을 더했다.
+- 로컬 재현: `tools/run_all.sh --collect` 의 collect 단계 끝(실패해도 계속). 지표 정의는 LOGIC §7 · `argus/kce/UPDATE.md` §6-C.

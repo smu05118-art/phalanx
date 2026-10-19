@@ -21,6 +21,8 @@
 #   10-01·10-03·10-04 kship-bot 커밋에 fin 변경이 없던 원인. 두 단계 앞에 mkdir -p 를 넣었다.
 # 2026-10-05 V9(MODEL.md §13): 재무제표 단계에 단계 제한 90분(없으면 job 취소 → 캐시 저장이 안 된다), job 제한 180 → 240(90 + 75 + 나머지),
 #   커밋 메시지는 단계 outcome(✗·생략·변경)으로. 로컬 재현은 tools/run_all.sh(같은 분기 규칙·같은 순서, 네트워크 단계는 플래그).
+# 2026-10-19 XI-1 계약 진행: 원장(contracts) build 뒤 · 재무 앞에 반기·사업보고서 XI-1 절 수집·해석(공용 층 kce/tools/xi1_sector.py,
+#   같은 job·순차 한 프로세스). 실패해도 페이지는 커밋된 직전 progress.json 으로 만든다(continue-on-error · 페이지 훅 fail-soft).
 name: update-kship
 on:
   schedule:
@@ -92,6 +94,28 @@ jobs:
           python3 kship_suppliers.py --collect "${Q[@]}"
           python3 kship_suppliers.py --build
           python3 build_dicts.py
+
+      # 계약 진행(XI-1) — 반기·사업보고서 「XI-1 공시내용 진행 및 변경사항 › 나. 단일판매ㆍ공급계약 진행 현황」(2024Q4~ Q2·Q4).
+      # 공용 층 argus/kce/tools/xi1_sector.py: 모집단 × 반기·연간 보고서 → assets/xi1/{status.json, parsed/, progress.json}
+      # + 머리행 지도 role 'xi'(assets/hdrmap.json·hdr_queue.json). 원장(contracts.json)이 위에서 build 된 뒤에 돌아야 연결이 최신이다.
+      # 끝난 (종목, 분기)는 다시 받지 않는다(재시도는 보고서·절 없음·오류만) — 평일엔 요청이 거의 없다. 실패해도 아래 단계는 계속.
+      - name: XI-1 계약 진행 (DART, 순차 한 프로세스)
+        id: xi1
+        continue-on-error: true
+        timeout-minutes: 20
+        shell: bash
+        working-directory: argus/kship/tools
+        run: |
+          set -o pipefail
+          python3 ../../kce/tools/xi1_sector.py kship --collect --build
+          python3 - >> "$GITHUB_OUTPUT" <<'PY'
+          import json
+          try:
+              s = json.load(open("assets/xi1/progress.json", encoding="utf-8"))["sector"]
+              print("summary=진행 %d건·확정 %d·추정 %d·지연 의심 %d" % (s["n"], s["linkA"], s["linkB"], s["lag"]))
+          except Exception:
+              print("summary=")                   # 요약을 못 읽어도 단계 결과는 위 수집·적재가 정한다
+          PY
 
       # 재무제표 — 위 수집기가 끝난 뒤 같은 job 에서 순차로. kship_fin 자체가 단일 프로세스 락(.collect.lock)을 건다.
       - name: Financial statements (DART, 순차 한 프로세스)
@@ -277,6 +301,8 @@ jobs:
         env:
           MODELS: ${{ steps.gate.outputs.models }}
           O_BUILD: ${{ steps.build.outcome }}
+          O_XI1: ${{ steps.xi1.outcome }}
+          XI1_SUM: ${{ steps.xi1.outputs.summary }}
           O_FIN: ${{ steps.fin.outcome }}
           O_NOTES: ${{ steps.notes.outcome }}
           O_MARKET: ${{ steps.market.outcome }}
@@ -297,7 +323,8 @@ jobs:
           part() { case "$2" in success) printf '%s' "$1" ;; skipped) printf '%s(생략)' "$1" ;; *) printf '%s✗' "$1" ;; esac; }
           FINTAG=""; [ "${FIN_CHANGED:-}" = "true" ] && FINTAG="(변경)"
           NOTESTAG=""; [ "${NOTES_CHANGED:-}" = "true" ] && NOTESTAG="(변경)"
-          PARTS="$(part 계약·정기보고서·기자재 "$O_BUILD")·$(part 재무 "$O_FIN")${FINTAG}·$(part 주석 "$O_NOTES")${NOTESTAG}·$(part 환율·시세 "$O_MARKET")"
+          XI1TAG=""; [ -n "${XI1_SUM:-}" ] && XI1TAG="(${XI1_SUM})"
+          PARTS="$(part 계약·정기보고서·기자재 "$O_BUILD")·$(part XI-1 "$O_XI1")${XI1TAG}·$(part 재무 "$O_FIN")${FINTAG}·$(part 주석 "$O_NOTES")${NOTESTAG}·$(part 환율·시세 "$O_MARKET")"
           [ "${MODELS:-}" = "true" ] && PARTS="${PARTS}·$(part 모델 "$O_MODELS")"
           PARTS="${PARTS}·$(part 페이지 "$O_PAGES")"
           git commit -m "kship: 자동 갱신 $(date -u +%Y-%m-%d) (${PARTS}·진입 링크)"
@@ -320,6 +347,7 @@ jobs:
           {
             echo "### 한국조선 갱신 결과 $(date -u +%Y-%m-%d)"
             echo "- 계약·정기보고서·기자재: ${{ steps.build.outcome }}"
+            echo "- 계약 진행(XI-1): ${{ steps.xi1.outcome }} · ${{ steps.xi1.outputs.summary || '-' }}"
             echo "- 재무제표(DART): ${{ steps.fin.outcome }} · fin 변경 ${{ steps.fin.outputs.fin_changed || '-' }} · fin json $(ls argus/kship/tools/assets/fin 2>/dev/null | wc -l)개"
             echo "- 주석(부모 절 폴백): ${{ steps.notes.outcome }} · 주석 변경 ${{ steps.notes.outputs.notes_changed || '-' }}"
             echo "- 환율·시세: ${{ steps.market.outcome }}"
@@ -329,7 +357,7 @@ jobs:
 
       # 일부 단계가 실패해도 성공한 산출물은 위에서 이미 커밋된다. 실패가 하나라도 있으면 job 을 실패로 표시해 알림이 가게 한다.
       - name: Fail if any step errored
-        if: always() && (steps.build.outcome == 'failure' || steps.fin.outcome == 'failure' || steps.notes.outcome == 'failure' || steps.market.outcome == 'failure' || steps.models.outcome == 'failure' || steps.pages.outcome == 'failure')
+        if: always() && (steps.build.outcome == 'failure' || steps.xi1.outcome == 'failure' || steps.fin.outcome == 'failure' || steps.notes.outcome == 'failure' || steps.market.outcome == 'failure' || steps.models.outcome == 'failure' || steps.pages.outcome == 'failure')
         run: |
-          echo "::error::수집·생성 단계 실패 — build=${{ steps.build.outcome }} fin=${{ steps.fin.outcome }} notes=${{ steps.notes.outcome }} market=${{ steps.market.outcome }} models=${{ steps.models.outcome }} pages=${{ steps.pages.outcome }} (성공한 산출물은 커밋됐다. 로그를 확인하라)"
+          echo "::error::수집·생성 단계 실패 — build=${{ steps.build.outcome }} xi1=${{ steps.xi1.outcome }} fin=${{ steps.fin.outcome }} notes=${{ steps.notes.outcome }} market=${{ steps.market.outcome }} models=${{ steps.models.outcome }} pages=${{ steps.pages.outcome }} (성공한 산출물은 커밋됐다. 로그를 확인하라)"
           exit 1

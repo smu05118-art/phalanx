@@ -114,8 +114,10 @@ def _rel(depth):
 
 
 def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), tags=(),
-         nav=(), lead=""):
+         nav=(), lead="", src=""):
     """공용 셸. depth=0 은 kship 루트, 1 은 회사 디렉터리.
+
+    src: 꼬리말 출처의 정기보고서 뒤에 덧붙일 원천(예: XI-1 절) — 비우면 꼬리말은 예전 그대로다.
 
     머리줄: 제목 · 태그(종목코드·시장·업종) · 우측 내비. 아래 빵부스러기.
     CSS는 assets/kship.css 하나를 링크한다(페이지마다 인라인 복제 금지).
@@ -138,10 +140,10 @@ def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), ta
             "<title>%s</title>\n<link rel=\"stylesheet\" href=\"%sassets/kship.css\">\n%s</head>\n"
             "<body>\n<header class=\"top\"><div class=\"hd\"><h1>%s</h1>%s<span class=\"sp\">%s</span></div>%s</header>\n%s"
             "<main>%s%s</main>\n"
-            "<footer>출처 DART 정기보고서·수시공시, KRX KIND 상장법인목록. 단위 백만원(원화)·백만달러(외화). "
+            "<footer>출처 DART 정기보고서%s·수시공시, KRX KIND 상장법인목록. 단위 백만원(원화)·백만달러(외화). "
             "참고용 · 투자조언 아님.</footer>\n</body></html>\n"
             % (E(title), r, head_extra, E(h1 or title), tagh, navh, crumbh, sh,
-               ('<p class="lead">%s</p>' % lead) if lead else "", body))
+               ('<p class="lead">%s</p>' % lead) if lead else "", body, ("(%s)" % E(src)) if src else ""))
 
 
 # Chart.js 공용 기본값 — dataviz 규격: 얇은 마크(≤24px), 데이터 끝 4px 라운드,
