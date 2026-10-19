@@ -8,6 +8,7 @@
 
 원칙: 분류는 원문 제품 문구의 키워드 규칙이고(est 표시), 납품 관계는 정기보고서 본문 언급
 수준이 많다 — 근거 등급을 항상 같이 보여 준다. 임베드 JSON은 json_for_html 로만 넣는다.
+기자재·엔진·강재 회사 페이지에도 계약 진행(XI-1) 섹션(#xi1)을 붙인다 — kship_page.xi1_company(진행 계약이 없으면 '').
 
     python3 kship_parts.py --all
 """
@@ -218,6 +219,8 @@ def _yard_row(y):
 
 
 def supplier_html(co, data):
+    from kship_page import XI1_SRC, xi1_company, xi1_css          # 계약 진행(XI-1) — kship_page 와 같은 fail-soft 훅
+    xsec = xi1_company(data, co["stock"])
     tax = {c["id"]: c for c in data["tax"]["cats"]}
     groups = {g["id"]: g["ko"] for g in data["tax"]["groups"]}
     idx = idx_cat2co(data)
@@ -246,18 +249,21 @@ def supplier_html(co, data):
 <div class="wrap"><table data-sortable><thead><tr><th class="l">소분류</th><th class="l">원문 제품 표기</th><th>매출비중</th><th class="l">근거</th></tr></thead><tbody>%s</tbody></table></div>
 %s</section>
 <section class="card"><h2>납품 조선사 <em>근거 등급: 주요고객 주석 › 계약 공시 › 특수관계자 매출 › 본문 언급 · 비중은 원문에 적힌 경우만(≈ 는 특수관계자 매출 ÷ 누적매출 추정) · 행에 마우스를 올리면 근거 문장</em></h2>
-%s</section>
+%s</section>%s
 <section class="card"><h2>같은 부품을 만드는 다른 상장사</h2>%s</section>
 <div class="note info">KIND 주요제품: %s%s</div>
 <script>%s</script>
 """ % ("".join(kpi), rows,
        ('<p class="mut" style="font-size:11.5px;margin-top:8px">분류하지 못한 제품 표기 %d건 — 키워드 사전을 넓히거나 assets/parts_override.csv 로 지정하면 반영됩니다.</p><div class="wrap"><table><tbody>%s</tbody></table></div>' % (len(uncl), urows)) if uncl else "",
        ('<div class="wrap"><table data-sortable><thead><tr><th class="l">조선사</th><th class="l">근거</th><th>언급</th><th>비중</th></tr></thead><tbody>%s</tbody></table></div>' % yrows) if yards else '<p class="mut">원문에서 조선사 이름을 찾지 못했습니다 — 납품 관계를 주장하지 않습니다.</p>',
+       xsec,
        ('<div class="wrap"><table><thead><tr><th class="l">소분류</th><th class="l">회사</th></tr></thead><tbody>%s</tbody></table></div>' % prow) if prow else '<p class="mut">없음</p>',
        E(co["prod_raw"]), (" · 지정 사유: " + E(co["reason"])) if co.get("reason") else "", TABLE_JS) + _model_section(co["stock"])
     return page("%s — 조선기자재" % co["nm"], body, depth=1, h1=co["nm"], tags=(co["stock"], co["mkt"], co["ind"]),
-                nav=(("인포그래픽", "../parts.html"), ("허브", "../index.html"), ("DART 원문 ↗", dart)),
-                crumbs=(("ARGUS", "../../index.html"), ("한국조선", "../index.html"), (co["nm"], None)))
+                nav=(("인포그래픽", "../parts.html"), ("허브", "../index.html")) + ((("계약 진행", "#xi1"),) if xsec else ())
+                    + (("DART 원문 ↗", dart),),
+                crumbs=(("ARGUS", "../../index.html"), ("한국조선", "../index.html"), (co["nm"], None)),
+                head_extra=xi1_css(data) if xsec else "", src=XI1_SRC if xsec else "")
 
 
 def main():

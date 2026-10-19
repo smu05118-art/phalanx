@@ -4,7 +4,7 @@
 #
 #   tools/run_all.sh                                   # 오프라인: sls → model(+xlsx) → pages(페이지·허브) → link → tests → check
 #   tools/run_all.sh --market                          # + ② 환율·시세 (ECB·aik, 키 없음)
-#   tools/run_all.sh --collect --fin --notes           # + 계약·정기보고서·기자재(KIND·DART) + ① 재무제표 + ①′ 주석 — DART 는 프로세스 하나, 순차
+#   tools/run_all.sh --collect --fin --notes           # + 계약·정기보고서·기자재·XI-1 진행(KIND·DART) + ① 재무제표 + ①′ 주석 — DART 는 프로세스 하나, 순차
 #   tools/run_all.sh --net                             # = --collect --fin --notes --market
 #   tools/run_all.sh --patch                           # + ⑤ 레퍼런스 원본 패치 (맥미니 로컬 전용 — 레퍼런스 폴더가 있을 때만, *_orig.xlsx 는 건드리지 않는다)
 #   tools/run_all.sh --today 2026-10-05 --quarter 2026Q3    # built_at 고정 · 정기보고서 분기 강제(기본: 분기말 +50일 · 사업보고서 +95일 규칙)
@@ -119,6 +119,8 @@ if enabled collect; then
   run "$PY" kship_suppliers.py --collect $QUARTER_ARGS
   run "$PY" kship_suppliers.py --build
   run "$PY" build_dicts.py
+  # 계약 진행(XI-1) — 공용 층(kce/tools/xi1_sector.py) · 원장 build 뒤. 실패해도 커밋된 progress.json 으로 페이지는 계속(워크플로와 같은 fail-soft)
+  run "$PY" ../../kce/tools/xi1_sector.py kship --collect --build || note "XI-1 실패 — 직전 assets/xi1/progress.json 유지"
   end_stage
 fi
 

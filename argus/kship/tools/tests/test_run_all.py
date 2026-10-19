@@ -27,7 +27,7 @@ RUN_ALL = os.path.join(TOOLS, "run_all.sh")
 BASH = shutil.which("bash")
 
 NETWORK_SCRIPTS = ("kship_fin.py", "kship_fx.py", "kship_price.py", "kship_contracts.py", "kship_yards.py",
-                   "kship_suppliers.py", "kship_universe.py", "kship_xlsx_patch.py")
+                   "kship_suppliers.py", "kship_universe.py", "kship_xlsx_patch.py", "xi1_sector.py")
 
 # 기대 최신 분기 — 손으로 계산한 진릿값(스크립트와 같은 코드를 베껴 쓰지 않는다): 분기말 +50일(사업보고서 +95일) 이 지난 가장 최근 분기.
 QUARTER_TRUTH = (("2026-10-05", "2026Q2"), ("2026-11-18", "2026Q2"), ("2026-11-19", "2026Q3"),

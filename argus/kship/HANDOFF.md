@@ -209,4 +209,15 @@ $PY selfcheck_models.py --max-detail 3                    # 실패 19 = fin_mode
 - 결정 ▶ 2026-10-09 라운드 7 에서 전부 실행(MODEL.md §16): HJ 원장 체결 속도 `ledger_signing_rate` · D1 `net_panel` 기본 · D2 `carryforward_ramp`(5사) · D3·D5(c) 유지 · 이자율 이상 판정·클립 · 외환 기타영업외 잔차 · 주식수 사건 환산(KS인더·케이앤에스) · related 자격 규칙(한화시스템 추세 폴백, 연동 17) · 골든 93.15% · KCC 조정EPS 병기 · 별도 주석 `--notes-scope sep`(세진·일승) · scan/fin 기본 분기 `latest_quarter()`. 남은 오너 선택지(기본값으로 둠, §16-6): `LINK_SIG_USE_NEFF` off · `RELATED_SHARE_MIN` 5 · 한라IMS 유지 · `LEDGER_RATE_FALLBACK_ONLY` True · 009540 kept_warn · `사채(caption)` 비노출 · OFFSH 매핑 보류 · 487400 IPO 납입자본 미반영 · 전수 sep 주석 비추천 · 이자율 CF 창 1분기 지연 허용 여부. blocked: Excel 실개봉(미니에 Excel 없음).
 - 결함(모델 레인): `_actual_series` 지배NI 파생 셀 src 표기 · `_fin_detail` 부호 반전 휴리스틱 제거(환입 3사 오반전) · `_suppliers_weights` share 0.0/건수 혼합. 유통주식수 기준일 차이 2사(KS인더스트리·케이앤에스) 확인(V2·V4). 러너 10-05 10:40 첫 실행 결과는 보지 않았다(§13-3).
 
+## 2026-10-19 계약 진행(XI-1) 화면 통합
+
+- 무엇: 반기·사업보고서 XI-1 「단일판매ㆍ공급계약 진행 현황」(2024Q4~2026Q2)을 조선사 척당 계약 표('진행(XI-1)' 열)·회사 섹션 #xi1(조선사 5 + 기자재·엔진 19)·허브 #xi1·커버리지 #xi1cov 에 붙였다.
+  지표·연결 등급·외화 규칙은 LOGIC §7, 공용 정의는 `argus/kce/UPDATE.md` §6-C.
+- 파일: 데이터 `tools/assets/xi1/{status.json, parsed/, progress.json}`(공용 층이 쓴다 — 이 탭에서 손으로 고치지 않는다) · 훅 `kship_page.py`(`load_xi1`·`xi1_of`·`xi1_rcps`·`xi1_company`·`xi1_css`, `load_all()['xi1']`)
+  · `kship_parts.py:supplier_html` · 꼬리말 `kship_lib.page(src=…)` · 테스트 `tests/test_kship_xi1.py`.
+- 명령(tools 에서): `python3 ../../kce/tools/xi1_sector.py kship --collect --build` — **DART 접속, 워크플로(`XI-1 계약 진행` 단계)·`run_all.sh --collect` 에서만**. 로컬 확인은 `--build --no-hdr`(네트워크 없음, 커밋본과 바이트 동일 확인 10-19).
+  그 뒤 `python3 kship_page.py --all && python3 kship_parts.py --all`.
+- fail-soft: progress.json 이 없거나 공용 모듈을 못 읽으면 열·섹션 없이 예전 화면 그대로. XI-1 단계 실패는 페이지 생성을 막지 않는다(continue-on-error, 커밋 메시지 `XI-1✗`).
+- `contracts.json` 은 건드리지 않는다(selfcheck contracts↔sls 가 rcp 집합을 대조한다). 진행 섹션은 실적 모델 섹션보다 앞에 둔다(selfcheck `_section_html` 은 모델 섹션부터 끝까지 읽는다).
+
 참고용 · 투자조언 아님.
