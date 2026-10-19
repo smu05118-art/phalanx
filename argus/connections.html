@@ -5,7 +5,7 @@
 <p>가격의 기준·관측일·갱신 경로를 함께 확인합니다. 자동 연결 여부와 데이터 신선도는 별개입니다.</p>
 <div class="stats" id="stats"></div><section id="audit-summary" aria-label="원장 출처 조사 요약"></section><div class="controls"><input id="search" type="search" aria-label="품목 검색" placeholder="품목·산업·단위 검색"><select id="category" aria-label="산업"><option value="">모든 산업</option></select><select id="status" aria-label="연결 상태"><option value="all">전체 연결 상태</option><option value="auto">자동 연결</option><option value="manual">원장 갱신 필요</option><option value="suspended">발행 중단</option><option value="unavailable">현재 공개 미노출</option><option value="stale">지연·오래된 관측</option><option value="audited">원장 출처 조사</option><option value="unresolved">동일 원천 미연결</option></select></div>
 <div class="layout"><div><p id="count" aria-live="polite"></p><div class="list" id="list"></div></div><section class="detail" id="detail" aria-live="polite"></section></div></main>
-<script src="data/connections.js?v=e95c8ad5e0be28da"></script><script>
+<script src="data/connections.js?v=0891485108bb1e65"></script><script>
 'use strict';const D=window.ARGUS_CONNECTIONS, $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=v=>v==null?'—':v.toLocaleString('ko-KR',{maximumFractionDigits:5}), fresh={fresh:'정상',late:'발표 대기·지연',stale:'오래된 관측',dead:'장기 미갱신'};
 if(!D){$('detail').textContent='연결 현황을 불러오지 못했습니다. 새로고침해 주세요.';}else{
