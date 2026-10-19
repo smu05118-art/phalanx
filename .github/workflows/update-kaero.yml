@@ -64,8 +64,15 @@ jobs:
           python3 kaero_reports.py --collect --n 6 "${Q[@]}"
           python3 kaero_reports.py --build --n 6 "${Q[@]}"
           python3 kaero_suppliers.py --build
+          # XI-1 계약 진행(반기·사업보고서 「나. 단일판매ㆍ공급계약 진행 현황」 2024Q4~최신 Q2·Q4) — 공용 xi1_sector.
+          # 원장(contracts.json) build 뒤·페이지 앞. 실패해도 페이지는 직전 커밋의 progress.json 으로 만들고
+          # (없으면 섹션 없이 — fail-soft), 이 블록 끝에서 실패를 돌려준다(→ continue-on-error · 'Fail if build errored').
+          XI_RC=0
+          python3 ../../kce/tools/xi1_sector.py kaero --collect --build || XI_RC=$?
+          if [ "$XI_RC" -ne 0 ]; then echo "::warning::XI-1 수집·빌드 실패(rc=$XI_RC) — 직전 progress.json 으로 페이지를 만든다"; fi
           python3 kaero_page.py --all
           python3 kaero_parts.py
+          if [ "$XI_RC" -ne 0 ]; then exit "$XI_RC"; fi
       - name: Tests (after)
         run: |
           cd argus/kaero/tools && python3 -m unittest discover -s tests -p 'test_*.py'
@@ -80,7 +87,13 @@ jobs:
             echo "변경 없음"; exit 0
           fi
           git add -- argus/kaero
-          git commit -m "kaero: 자동 갱신 $(date -u +%Y-%m-%d) (정기보고서 수주표·계약공시·고객 연결)"
+          XI=$(python3 -c 'import json,sys
+          try:
+              s = json.load(open(sys.argv[1], encoding="utf-8"))["sector"]
+              print(" · XI-1 진행 %d건(원장 확정 %d·추정 %d · 지연 의심 %d)" % (s["n"], s["linkA"], s["linkB"], s["lag"]))
+          except Exception:
+              pass' argus/kaero/tools/assets/xi1/progress.json 2>/dev/null || true)
+          git commit -m "kaero: 자동 갱신 $(date -u +%Y-%m-%d) (정기보고서 수주표·계약공시·고객 연결${XI})"
           git pull --rebase origin main
           git push origin HEAD:main
       - name: Fail if build errored

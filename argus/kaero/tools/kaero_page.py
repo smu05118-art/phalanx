@@ -6,7 +6,8 @@
                         USD 잔고와 원/달러 민감도 각주
   coverage.html         모집단 전수(네 겹)와 편입 근거 · ④ 본문 탐색 · **못 읽은 것 목록**
   <종목코드>/index.html  회사 — 잔고 롤포워드 · 부문 매출 · 커버리지(년) · 고객 구성 ·
-                        통화 구성 · 계약 원장 · **kdef·kship 중복 표시**
+                        통화 구성 · 계약 원장 · **kdef·kship 중복 표시** ·
+                        계약 진행(XI-1 — 공용 xi1_view, progress.json 이 없으면 만들지 않는다)
 
 축이 조선·방산과 다른 이유는 원문에 있다(FINDINGS):
   · **통화가 표마다 다르다.** 합산 KPI를 만들지 않는다 — 통화별로 나란히 싣고 환산하지 않는다.
@@ -56,6 +57,7 @@ def load_all():
         "quarters": reports.get("quarters", []),
         "sup": {c["stock"]: c for c in kaero_suppliers.load().get("cos", [])},
         "probe": load_asset("universe_probe.json") if os.path.exists(probe_p) else {},
+        **dict(zip(("xi1", "xi1_view"), load_xi1([r["stock"] for r in uni]))),
     }
 
 
@@ -274,6 +276,124 @@ def _forecast_section(stock):
         sys.stderr.write("[warn] %s 추정 섹션 렌더 실패: %s\n" % (stock, e))
         return ""
 
+# ── 계약 진행(XI-1) ─────────────────────────────────────────
+# 반기·사업보고서 XI-1 「나. 단일판매ㆍ공급계약 진행 현황」 — 수집·해석·원장 연결·지표는 공용
+# `argus/kce/tools/xi1_sector.py`(→ tools/assets/xi1/progress.json), 화면 조각은 공용 `xi1_view.py` 다(import 만).
+# fail-soft: 모듈·자산이 없거나 못 읽으면 (None, None) → 섹션·열·꼬리말 출처를 만들지 않는다(예전 화면 그대로).
+# 통화: 외화 계약금액은 환산하지 않는다 — 공용 층이 외화 계약을 원화 합계에서 뺀다(LOGIC §1·§9).
+XI1_SRC = "반기·사업보고서 「XI-1 공시내용 진행 및 변경사항」·"
+# 겸업사 — XI-1 표에는 부문 열이 없어 방산·해양 계약이 함께 실린다. 거르지 않고 메모를 단다(LOGIC §2·§9).
+XI1_DUAL = {"012450": ("kdef", "kship"), "047810": ("kdef",)}
+XI1_TAB_KO = {"kdef": "방산(한국방산 탭)", "kship": "해양(한국조선 탭)"}
+
+
+def load_xi1(stocks):
+    """(progress, xi1_view) — 없거나 못 읽으면 (None, None). 모집단 밖 종목이 있으면 subset 으로 화면 모집단에 맞춘다."""
+    try:
+        import xi1_sector
+        import xi1_view
+        prog = xi1_sector.load_progress("kaero")
+        if not prog or not prog.get("companies"):
+            return None, None
+        if set(prog["companies"]) - set(stocks):
+            prog = xi1_sector.subset(prog, stocks)
+        return prog, xi1_view
+    except Exception as e:                      # noqa: BLE001 — 부속 섹션은 페이지 생성을 막지 않는다
+        sys.stderr.write("[warn] XI-1 계약 진행 비활성: %s\n" % e)
+        return None, None
+
+
+def _xi1(data):
+    prog, view = data.get("xi1"), data.get("xi1_view")
+    return (prog, view) if prog and view else (None, None)
+
+
+def _xi1_rcps(c):
+    """원장 행의 rcp 사슬 — 최신 rcp + 정정 전 원접수(supersedes, 문자열이든 리스트든)."""
+    sup = c.get("supersedes")
+    return [c.get("rcp")] + [r for r in (sup if isinstance(sup, list) else [sup]) if r]
+
+
+def _xi1_cell(data, c):
+    prog, view = _xi1(data)
+    try:
+        return view.progress_cell(prog, _xi1_rcps(c))
+    except Exception as e:                      # noqa: BLE001 — 칸 하나가 터져도 열 수는 맞춘다
+        sys.stderr.write("[warn] XI-1 진행 칸 %s: %s\n" % (c.get("rcp"), e))
+        return '<td class="n xi1c mut" data-v="-1">—</td>'
+
+
+def _xi1_any(prog, view, rows):
+    try:
+        return any(view.contract_of(prog, _xi1_rcps(c)) for c in rows)
+    except Exception as e:                      # noqa: BLE001
+        sys.stderr.write("[warn] XI-1 원장 대조 실패: %s\n" % e)
+        return False
+
+
+def _xi1_dual_note(s):
+    """겸업사 메모 — 부문 필터(dup_segments)나 겸업사 목록에 kdef·kship 몫이 있으면."""
+    tabs = {d.get("tab") for d in s.get("dup") or []} | set(XI1_DUAL.get(s["stock"], ()))
+    tabs = [t for t in ("kdef", "kship") if t in tabs]
+    if not tabs:
+        return ""
+    return ('<p class="note"><b>겸업사</b> — XI-1 진행 표에는 부문 열이 없어 %s 계약도 함께 실립니다. '
+            '거르지 않고 그대로 보입니다(수주잔고·커버리지의 부문 필터와 별개 · 다른 탭과 겹칠 수 있음).</p>'
+            % "·".join(XI1_TAB_KO[t] for t in tabs))
+
+
+def _after_h2(sec, extra):
+    i = sec.find("</h2>")
+    return sec[:i + 5] + extra + sec[i + 5:] if extra and i >= 0 else sec
+
+
+def _xi1_company(s, data):
+    prog, view = _xi1(data)
+    if not prog:
+        return ""
+    try:
+        return _after_h2(view.company_section(prog, s["stock"]) or "", _xi1_dual_note(s))
+    except Exception as e:                      # noqa: BLE001
+        sys.stderr.write("[warn] %s XI-1 섹션 렌더 실패: %s\n" % (s["stock"], e))
+        return ""
+
+
+def _xi1_hub(data, sums):
+    prog, view = _xi1(data)
+    if not prog:
+        return ""
+    pages = {x["stock"] for x in sums if has_page(x)}
+    have = {c["stock"] for c in prog.get("contracts") or []}
+    dual = [x["rec"]["name"] for x in sums if x["stock"] in have and _xi1_dual_note(x)]
+    note = ('<p class="note"><b>겸업사</b>(%s)의 XI-1 계약에는 방산·해양 부문 계약도 섞여 있습니다 — 표에 부문 열이 없어 '
+            '거르지 않았고, 한국방산·한국조선 탭 화면과 겹칠 수 있습니다.</p>' % E("·".join(dual))) if dual else ""
+    try:
+        return _after_h2(view.hub_section(prog, co_href=lambda st: ("%s/index.html" % st) if st in pages else None) or "",
+                         note)
+    except Exception as e:                      # noqa: BLE001
+        sys.stderr.write("[warn] XI-1 허브 섹션 렌더 실패: %s\n" % e)
+        return ""
+
+
+def _xi1_coverage(data):
+    prog, view = _xi1(data)
+    if not prog:
+        return ""
+    try:
+        return view.coverage_rows(prog) or ""
+    except Exception as e:                      # noqa: BLE001
+        sys.stderr.write("[warn] XI-1 커버리지 표 렌더 실패: %s\n" % e)
+        return ""
+
+
+def _xi1_page_kw(data, *parts):
+    """조각을 실은 쪽에만 CSS 한 번(스코프 .xi1·.xi1c)과 꼬리말 출처 — 아무것도 안 실렸으면 {}(예전 그대로)."""
+    prog, view = _xi1(data)
+    if not prog or not any(parts):
+        return {}
+    return {"head_extra": "<style>%s</style>\n" % view.CSS, "src_extra": XI1_SRC}
+
+
 def company_html(s, data):
     rec, latest = s["rec"], s["latest"]
     kpi = []
@@ -422,16 +542,20 @@ def company_html(s, data):
                       'KIND 주요제품 문구에서 읽은 낱말 — 칩에 근거가 붙어 있습니다</em></h2>'
                       '<div class="chips">%s</div></section>' % chips)
 
-    # 수시공시 계약(얇은 원장)
+    # 수시공시 계약(얇은 원장) — XI-1 진행 계약에 이어진 행이 하나라도 있으면 금액 뒤에 '진행(XI-1)' 열
+    # (rcp·정정 사슬로 잇는다. 이어지지 않은 행은 '—', 0 이 아니다)
     con_html = ""
+    xprog, xview = _xi1(data)
+    xprog = xprog if xprog and _xi1_any(xprog, xview, s["contracts"]) else None
     if s["contracts"]:
         rows = "".join(
             '<tr><td class="l">%s</td><td class="l">%s</td><td class="l">%s</td>'
-            '<td class="l">%s</td><td>%s</td><td class="l">%s</td>'
+            '<td class="l">%s</td><td>%s</td>%s<td class="l">%s</td>'
             '<td class="l"><a href="%s" target="_blank" rel="noopener noreferrer">원문</a></td></tr>'
             % (E(c["signed"] or c["start"] or "—"), E((c["name"] or "—")[:60]),
                E(domain_label(c["domain"])), E(_nature_ko(c["nature"])),
-               fmt_money_u(c["amount"], c["cur"] or "KRW"), E((c["party"] or "—")[:36]),
+               fmt_money_u(c["amount"], c["cur"] or "KRW"),
+               _xi1_cell(data, c) if xprog else "", E((c["party"] or "—")[:36]),
                E(DART % c["rcp"]))
             for c in sorted(s["contracts"], key=lambda c: (c["signed"] or c["start"] or ""),
                             reverse=True))
@@ -439,8 +563,10 @@ def company_html(s, data):
                     '이 산업은 LTA가 자동 연장돼 새 공시가 드뭅니다(표본 중앙값 연 0.75건)</em></h2>'
                     '<div class="wrap"><table data-sortable><thead><tr><th class="l">수주일</th>'
                     '<th class="l">계약명</th><th class="l">영역</th><th class="l">성격</th>'
-                    '<th>금액</th><th class="l">상대</th><th class="l">출처</th></tr></thead>'
-                    '<tbody>%s</tbody></table></div></section>' % (len(s["contracts"]), rows))
+                    '<th>금액</th>%s<th class="l">상대</th><th class="l">출처</th></tr></thead>'
+                    '<tbody>%s</tbody></table></div></section>'
+                    % (len(s["contracts"]), xview.progress_th() if xprog else "", rows))
+    xi_html = _xi1_company(s, data)
 
     notes = []
     if len(s["curs"]) > 1:
@@ -537,15 +663,18 @@ def company_html(s, data):
        E(cur_unit(main_cur)),
        roll_html, dup_html, len(s["ledger"]),
        ledger_table(s["ledger"], tid="lg%s" % s["stock"]),
-       cur_html(s), seg_html, cust_html, parts_html, con_html,
+       cur_html(s), seg_html, cust_html, parts_html, con_html + xi_html,
        " ".join("<p>%s</p>" % n for n in notes),
        json_for_html(chart), CHART_DEFAULTS_JS, TABLE_JS) + _forecast_section(rec["stock"]) + _orders_section(rec["stock"])
     tags = (rec["stock"], rec["market"], ROLE_KO.get(rec["role"], rec["role"]), rec["industry"])
     dart = DART % ((latest or {}).get("rcp") or "")
+    xkw = _xi1_page_kw(data, xi_html, xprog and s["contracts"])
     return page("%s — 우주항공 수주" % rec["name"], body, depth=1, h1=rec["name"], tags=tags,
                 nav=(("허브", "../index.html"), ("인포그래픽", "../parts.html"),
-                     ("커버리지", "../coverage.html"),
-                     ("DART 원문 ↗", dart if latest else "https://dart.fss.or.kr")),
+                     ("커버리지", "../coverage.html"))
+                + ((("계약 진행", "#xi1"),) if xi_html else ())
+                + (("DART 원문 ↗", dart if latest else "https://dart.fss.or.kr"),),
+                **xkw,
                 crumbs=(("ARGUS", "../../index.html"), ("한국우주항공", "../index.html"),
                         (rec["name"], None)),
                 scripts=("../vendor/chart.umd.min.js",),
@@ -655,6 +784,7 @@ def hub_html(data, sums):
     ncat = sum(1 for c in data["sup"].values() if c.get("cats"))
     nlink = sum(1 for c in data["sup"].values() if c.get("customers"))
     usd = tot.get("USD") or 0
+    xi_hub = _xi1_hub(data, sums)
     body = """
 <div class="kpi">
  <div class="hero"><b>%s<small>억</small></b><span>원화 수주잔고 합 · %d사</span>
@@ -674,7 +804,7 @@ def hub_html(data, sums):
 </div>
 <section class="card"><h2>고객 <em>OEM·Tier-1·국내 체계업체 — 이 산업은 고객이 세계에 몇 곳뿐이라 실명으로 공시됩니다</em></h2>%s</section>
 <section class="card"><h2>큰 계약 줄 <em>잔고 상위 30건 · 통화를 섞지 않고 각자 통화로 적습니다</em></h2>%s</section>
-<h2 class="sec">더 보기<span>부품 인포그래픽과 모집단 근거</span></h2>
+%s<h2 class="sec">더 보기<span>부품 인포그래픽과 모집단 근거</span></h2>
 <div class="cards">
  <a class="cardlink" href="parts.html"><div class="t"><b>🛠 부품 인포그래픽</b></div>
   <p>여객기·터보팬 엔진·위성·발사체 그림에서 영역을 누르면 그 부품을 만드는 상장사로 갑니다.</p>
@@ -713,6 +843,7 @@ def hub_html(data, sums):
        "".join(cards),
        customers_table(cust_amt, data),
        ledger_table(big, tid="cbig", show_company=True, by_stock=names, rel=""),
+       (xi_hub + "\n") if xi_hub else "",
        len(data["uni"]),
        json_for_html({
            "doms": [{"ko": domain_label(d["id"]), "color": domain_color(d["id"]),
@@ -723,7 +854,7 @@ def hub_html(data, sums):
                     if nat_amt.get(n["id"])]}),
        CHART_DEFAULTS_JS, TABLE_JS)
     return page("한국우주항공 — 수주·고객·부품", body, depth=0, h1="🚀 한국우주항공",
-                scripts=("vendor/chart.umd.min.js",),
+                scripts=("vendor/chart.umd.min.js",), **_xi1_page_kw(data, xi_hub),
                 nav=(("← ARGUS", "../index.html"), ("🏗 한국건설", "../kce/index.html"),
                      ("⚓ 한국조선", "../kship/index.html"), ("🛡 한국방산", "../kdef/index.html")),
                 lead="국내 상장 우주항공 기업의 수주를 이 산업의 축으로 읽습니다 — "
@@ -827,6 +958,7 @@ def coverage_html(data, sums):
                     '<th>계약 줄</th><th>뺀 잔고</th><th>이 탭에 남긴 잔고</th></tr></thead>'
                     '<tbody>%s</tbody></table></div></section>' % tr)
 
+    xi_cov = _xi1_coverage(data)
     probe = data.get("probe") or {}
     rej = probe.get("rejected") or []
     scan = ""
@@ -877,7 +1009,7 @@ kdef·kship과 겹치는 회사는 빼지 않고 <b>부문 단위로 갈라</b> 
 <tbody>%s</tbody></table></div></section>
 %s
 %s
-%s
+%s%s
 <div class="note info">
 <p><b>통화.</b> 수주표는 표마다 통화가 다릅니다(아스트 국외수주 USD · 국내수주 원). 환산하지 않고
  통화별로 싣습니다 — 공시에 환율이 적혀 있지 않아 환산하면 추정이 됩니다. 캡션에 통화가 둘 이상이거나
@@ -889,8 +1021,8 @@ kdef·kship과 겹치는 회사는 빼지 않고 <b>부문 단위로 갈라</b> 
 <p><b>배수의 뜻.</b> 장기공급계약(LTA)은 기종이 단종될 때까지 자동 연장되는 관행이 있어
  프로그램 <b>누적 총액</b>이 잔고로 잡히는 회사가 있습니다. 커버리지가 10년을 넘으면 그렇게 읽으십시오.</p></div>
 <script>%s</script>
-""" % (len(data["uni"]), "".join(rows), dup_html, miss_html, scan, TABLE_JS)
-    return page("한국우주항공 커버리지", body, depth=0, h1="커버리지",
+""" % (len(data["uni"]), "".join(rows), dup_html, miss_html, (xi_cov + "\n") if xi_cov else "", scan, TABLE_JS)
+    return page("한국우주항공 커버리지", body, depth=0, h1="커버리지", **_xi1_page_kw(data, xi_cov),
                 nav=(("허브", "index.html"), ("← ARGUS", "../index.html")),
                 crumbs=(("ARGUS", "../index.html"), ("한국우주항공", "index.html"),
                         ("커버리지", None)))

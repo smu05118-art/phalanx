@@ -6,8 +6,9 @@
 
 - 허브 `index.html` · 커버리지 `coverage.html` · 부품 인포그래픽 `parts.html` ·
   회사 `<종목코드>/index.html`
-- 원천은 DART **정기보고서 「II-4 매출 및 수주상황」**(과 XII 상세표)과
-  수시공시 「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. API 키를 쓰지 않는다.
+- 원천은 DART **정기보고서 「II-4 매출 및 수주상황」**(과 XII 상세표), 반기·사업보고서
+  **「XI-1 공시내용 진행 및 변경사항」**(계약 진행), 수시공시 「단일판매ㆍ공급계약체결」,
+  KRX KIND 상장법인목록. API 키를 쓰지 않는다.
 
 ## 왜 축이 조선·방산과 다른가 (원문 실측 — `tools/FINDINGS.md`)
 
@@ -36,6 +37,7 @@
 | 영역(기체구조물·엔진/RSP·MRO·방산항공·우주) | 품목·부문 이름 문구 | C — 문구 분류 |
 | 계약 성격(RSP·PBL·LTA·개발·양산) | 계약명 문구, 없으면 수주~납기 10년 이상 | C |
 | 통화 | 표의 단위 캡션 | A |
+| 계약 진행(판매ㆍ공급·대금수령 누적) | 반기·사업보고서 XI-1 「나. 단일판매ㆍ공급계약 진행 현황」 | A — 표 값 · 수시공시 원장 연결은 확정/추정 |
 
 **싣지 않는 것**: 환산 금액(공시에 환율이 없다) · 환헤지 여부(II-4 본문에 문구가 없다) ·
 수량/shipset(수주표 수량 열이 `-` 다).
@@ -47,7 +49,11 @@
 - **회사** — 잔고 롤포워드(통화마다 한 줄) · **다른 탭과 겹치는 부문** · 계약 원장 ·
   계약 성격 구성 · 통화 구성 · 부문 매출 · 고객(근거 등급) · 부품 칩 · 수시공시 계약.
 - **커버리지** — 모집단 네 겹의 편입 근거, ④ 본문 탐색의 승격/제외/실패, 그리고
-  **못 읽은 것**(단위·통화를 확인 못 해 금액으로 싣지 않은 표) 목록.
+  **못 읽은 것**(단위·통화를 확인 못 해 금액으로 싣지 않은 표) 목록, XI-1 수집 상태(`#xi1cov`).
+- **계약 진행(XI-1)** — 회사 페이지 `#xi1` 섹션(진행 막대·반기별 분해·잔여 다리·경과×진행 산점도·계약별 표)과
+  수시공시 계약 표의 `진행(XI-1)` 열, 허브 `#xi1` 섹션(섹터 추이·회사별 잔여·주의 계약). 진행 = 판매ㆍ공급
+  누적 ÷ 계약금액. 외화 계약금액은 환산하지 않는다. 겸업사(한화에어로·KAI 등)는 방산·해양 계약이 섞여
+  있어 메모를 단다. 규칙은 `LOGIC.md §9`, 공용 정의는 `../kce/UPDATE.md §6-C`.
 - **인포그래픽** — 여객기·터보팬 엔진·위성·발사체 모식도 → 영역 → 부품 → 회사 → 고객.
 
 ## 만들기
@@ -60,6 +66,7 @@ python3 kaero_universe.py --write              # 모집단
 python3 kaero_contracts.py --collect && python3 kaero_contracts.py --build
 python3 kaero_reports.py --collect --n 6 && python3 kaero_reports.py --build --n 6
 python3 kaero_suppliers.py --build
+python3 ../../kce/tools/xi1_sector.py kaero --collect --build   # XI-1 계약 진행(DART — CI 에서만, 로컬은 --build --no-hdr)
 python3 kaero_page.py --all && python3 kaero_parts.py
 python3 -m unittest discover -s tests
 ```
