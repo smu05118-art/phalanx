@@ -212,7 +212,7 @@ def _bars_svg(rows, title):
         for k, col in (("recv", C_RECV), ("ar", C_AR), ("adv", C_ADV), ("rem", C_REM)):
             w = BW * sg[k]
             if w > 0.2:
-                out.append('<rect x="%.1f" y="%d" width="%.1f" height="%d" fill="%s"/>' % (x, y, w - (1 if k != "rem" else 0), H, col))
+                out.append('<rect x="%.1f" y="%d" width="%.1f" height="%d" fill="%s"/>' % (x, y, max(w - (1 if k != "rem" else 0), 0.5), H, col))
             x += w
         if m.get("exp") is not None:
             ex = LW + BW * min(m["exp"], 1)
@@ -556,7 +556,7 @@ def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보�
             for val, col in ((recv, C_RECV), (a["ar"], C_AR), (a["adv"], C_ADV), (max(a["rem"] - a["adv"], 0), C_REM)):
                 w = tot * (val / a["amt"]) if a["amt"] else 0
                 if w > 0.2:
-                    sv.append('<rect x="%.1f" y="%d" width="%.1f" height="%d" fill="%s"/>' % (x, y, w - 1, H, col))
+                    sv.append('<rect x="%.1f" y="%d" width="%.1f" height="%d" fill="%s"/>' % (x, y, max(w - 1, 0.5), H, col))
                 x += max(w, 0)
             sv.append('<text x="%.1f" y="%d">잔여 %s · %s</text></g>' % (LW + tot + 8, y + 11, money(a["rem"]), pct(a.get("prog_w"))))
         sv.append("</svg>")
