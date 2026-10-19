@@ -424,9 +424,19 @@ def calibrate(parsed, ref, sim=0.3):
     return fixed
 
 
+def raw_tables(html):
+    """절 HTML → 머리행만 평탄화한 원문 표(라벨·값 문자열 그대로). 섹터 탭은 이것을 커밋해 두고 파서가 자라면 HTML 없이
+    interpret() 만 다시 돈다(COMMON §0-4 원문 라벨·값 보존)."""
+    return KP.parse_tables(html, max_header_rows=4, vocab=_VOCAB, keep_rowspan=True)
+
+
 def parse_xi1(html):
     """절 HTML → {'tables':[{lead,cols,ncols,fields,n_raw,n_rec,unit,rows}], 'rejected', 'unknown_headers'}."""
-    tables = KP.parse_tables(html, max_header_rows=4, vocab=_VOCAB, keep_rowspan=True)
+    return interpret(raw_tables(html))
+
+
+def interpret(tables):
+    """raw_tables() 결과 → parse_xi1 과 같은 꼴. 표 순서(idx)는 원문 순서."""
     picked, rejected, unknown = [], [], []
     for i, t in enumerate(tables):
         fields = [field_of(c) for c in t["ncols"]]

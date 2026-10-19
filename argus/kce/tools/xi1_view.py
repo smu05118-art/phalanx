@@ -27,7 +27,8 @@ FLAG_LABEL = {"lag": ("지연 의심", "dn", "같은 탭 표준 곡선보다 20%
               "over": ("초과", "wn", "공급 누적이 계약금액의 105% 초과 — 금액 변경 미반영 또는 단위"),
               "unit_suspect": ("단위 의심", "wn", "표 금액 단위를 확인 못함 — 합계에서 뺐다"),
               "fx": ("외화", "", "외화 계약금액 — 우리는 환산하지 않는다"),
-              "withheld": ("유보", "", "계약금액 공시유보")}
+              "withheld": ("유보", "", "계약금액 공시유보"),
+              "cell_fix": ("칸 단위 보정", "", "공급·수령 한 칸이 계약금액의 2배를 넘어 천·백만 단위로 옮기거나 비웠다(원문 대조)")}
 STATUS_LABEL = {"active": "진행", "new": "신규", "done": "완료(표에서 빠짐·직전 95%↑)",
                 "dropped": "이탈(표에서 빠짐·직전 95%↓)"}
 TIER_LABEL = {"A": ("확정", "신고일 = 원장 접수일 + 금액·이름·상대방 근거"),
@@ -248,10 +249,12 @@ def _series_svg(series, periods, title):
     out.append('<text x="%d" y="10">%s</text>' % (4, "조원" if jo else "억원"))
     for i, q in enumerate(qs):
         s = series[q]
-        recv = min(s["recv"], s["sup"])
-        ar = max(s["sup"] - s["recv"], 0)
-        adv = max(s["recv"] - s["sup"], 0)
-        bal = max(s["amt"] - max(s["sup"], s["recv"]), 0)
+        sb = s.get("sup_both", s["sup"])          # 수령이 함께 적힌 계약의 공급 — 수령 없는 계약까지 넣으면 매출채권이 부푼다
+        recv = min(s["recv"], sb)
+        ar = max(sb - s["recv"], 0)
+        adv = max(s["recv"] - sb, 0)
+        recv += max(s["sup"] - sb, 0)             # 수령 칸 없는 계약의 공급은 공급(보라)으로만 — 분해 불가
+        bal = max(s["amt"] - max(s["sup"], s["sup"] - sb + s["recv"]), 0)
         x = L + gap * i + (gap - bw) / 2
         y0 = sy(0)
         for val, col, lab in ((recv, C_RECV, "수령"), (ar, C_AR, "매출채권(순)"), (adv, C_ADV, "선수금(순)"), (bal, C_REM, "잔여")):
@@ -309,6 +312,54 @@ def _scatter_svg(points, curve, title, labels=0):
         out.append('<text x="%.1f" y="%.1f" class="t1">%s</text>' % (x0, y0, e(_short(p["label"], 14))))
     out.append("</svg>")
     return "".join(out)
+
+
+def _bridge_svg(f, title):
+    """잔여 다리(폭포): 시작 잔여 → +신규 → ±금액 변동 → −공급 → −이탈 → 끝 잔여. 원화 계약, 두 기간 모두 표가 있는 회사만."""
+    steps = [("%s 잔여" % f["from"], f["start"], "base"), ("+신규 %d건" % f["new_n"], f["new"], "up"),
+             ("금액 변동", f["chg"], "up" if f["chg"] >= 0 else "dn"), ("−공급", -f["supplied"], "dn"),
+             ("−이탈·완료 %d건" % f["exit_n"], -f["exit"], "dn"), ("끝 잔여", f["end"], "base")]
+    W, H, L, B, T = 560, 230, 64, 34, 14
+    run, tops = 0.0, []
+    for lab, v, kind in steps:
+        if kind == "base":
+            tops.append((0, v))
+            run = v
+        else:
+            tops.append((run, run + v))
+            run += v
+    ymax = max(max(a, b) for a, b in tops) * 1.08 or 1
+    sy = lambda v: T + (H - T - B) * (1 - v / ymax)        # noqa: E731
+    gw = (W - L - 10) / len(steps)
+    bw = gw * 0.62
+    out = ['<svg viewBox="0 0 %d %d" role="img" aria-label="%s" xmlns="http://www.w3.org/2000/svg">' % (W, H, e(title))]
+    out.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="currentColor" stroke-opacity=".25"/>' % (L, sy(0), W - 6, sy(0)))
+    for i, ((lab, v, kind), (a, b)) in enumerate(zip(steps, tops)):
+        x = L + gw * i + (gw - bw) / 2
+        lo, hi = min(a, b), max(a, b)
+        col = C_REM if kind == "base" else (C_ADV if kind == "up" else C_AR)
+        out.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s"><title>%s %s</title></rect>'
+                   % (x, sy(hi), bw, max(sy(lo) - sy(hi), 0.8), col, e(lab), money(v)))
+        out.append('<text x="%.1f" y="%.1f" text-anchor="middle" class="t1">%s</text>' % (x + bw / 2, sy(hi) - 4, money(v)))
+        out.append('<text x="%.1f" y="%d" text-anchor="middle">%s</text>' % (x + bw / 2, H - 18, e(lab)))
+        if i < len(steps) - 1:
+            nx = L + gw * (i + 1) + (gw - bw) / 2
+            out.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="currentColor" stroke-opacity=".3" stroke-dasharray="2 2"/>'
+                       % (x + bw, sy(b), nx, sy(b)))
+    out.append('<text x="%d" y="%d">끝수 %s(초과 공급·반올림)</text>' % (L, H - 2, money(f.get("resid"))))
+    out.append("</svg>")
+    return "".join(out)
+
+
+def _parties_table(parties, tid):
+    if not parties:
+        return ""
+    tr = "".join('<tr><td>%s</td><td class="n" data-v="%s">%s</td>%s</tr>'
+                 % (e(_short(p[0], 40)), p[1], money(p[1]), ('<td class="n">%d</td>' % p[2]) if len(p) > 2 else "")
+                 for p in parties)
+    extra = '<th class="n">회사</th>' if len(parties[0]) > 2 else ""
+    return ('<div class="tbw"><table id="%s" data-sortable><thead><tr><th>계약상대</th><th class="n">잔여</th>%s</tr></thead>'
+            '<tbody>%s</tbody></table></div>' % (e(tid), extra, tr))
 
 
 def _legend():
@@ -410,6 +461,8 @@ def company_section(prog, stock, title="계약 진행 — 반기·사업보고�
              ("%s · %s" % (money(a["sup"]), pct(a.get("prog_w"))), "판매ㆍ공급 누적 · 가중 진행"),
              (money(a["rem"]), "잔여(계약 − 공급)"),
              ("%s / %s" % (money(a["ar"]), money(a["adv"])), "매출채권(순) / 선수금(순)"),
+             ("%s · %s년" % (money(a.get("pace_y")), ("%.1f" % a["burn_y"]) if a.get("burn_y") else "—"),
+              "연 공급 속도 · 잔여 소진"),
              ("%d · %d · %d" % (a["lag"], a.get("overdue", 0), a["slip6"]), "지연 의심 · 납기 경과 · 지연 전망")]
     bars = sorted([c for c in cur if _segs(c)], key=lambda c: -(c["m"].get("rem") or 0))[:limit]
     pts = [{"x": c["m"]["elapsed"], "y": c["m"]["prog"], "amt": c["m"].get("amt"), "label": c["nm"], "tip": "%s · %s" % (c["nm"], tip(c)),
@@ -423,6 +476,11 @@ def company_section(prog, stock, title="계약 진행 — 반기·사업보고�
     ser = _series_svg(co.get("series") or {}, prog["periods"], "반기별 계약금액 분해")
     if ser:
         side.append('<figure>%s<figcaption>보고 기간별 표에 실린 원화 계약의 분해 — 막대 높이 = 계약금액 합(건수는 아래)</figcaption></figure>' % ser)
+    fl = co.get("flows") or {}
+    if fl:
+        lq = max(fl)
+        side.append('<figure>%s<figcaption>%s → %s 잔여 다리(원화 계약)</figcaption></figure>'
+                    % (_bridge_svg(fl[lq], "잔여 다리"), e(fl[lq]["from"]), e(lq)))
     if len(pts) >= 3:
         side.append('<figure>%s<figcaption>경과율 × 진행률(점 크기 = 계약금액, 빨강 = 지연 의심·납기 경과) — 흰 선은 탭 표준 곡선</figcaption></figure>'
                     % _scatter_svg(pts, prog.get("curve"), "경과율 대비 진행률 산점도", labels=3))
@@ -456,6 +514,8 @@ def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보�
              (money(s["rem"]), "잔여 합(원화)"),
              (pct(s.get("prog_w")), "가중 진행(공급 ÷ 계약)"),
              ("%s / %s" % (money(s["ar"]), money(s["adv"])), "매출채권(순) / 선수금(순)"),
+             ("%s · %s년" % (money(s.get("pace_y")), ("%.1f" % s["burn_y"]) if s.get("burn_y") else "—"),
+              "연 공급 속도 · 잔여 소진(최근 속도 기준)"),
              ("%d · %d · %d" % (s["lag"], s.get("overdue", 0), s["slip6"]), "지연 의심 · 납기 경과 · 지연 전망")]
     cur = [c for c in prog["contracts"] if c["status"] in ("active", "new")]
     rows = sorted(((st, co) for st, co in cos.items() if co["agg"]["rem"] > 0), key=lambda x: -x[1]["agg"]["rem"])[:limit]
@@ -471,6 +531,11 @@ def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보�
     if len(pts) >= 3:
         figs.append('<figure>%s<figcaption>진행 계약 %d건의 경과율 × 진행률 — 흰 선 = 탭 표준 곡선, 빨강 = 지연 의심·납기 경과</figcaption></figure>'
                     % (_scatter_svg(pts, prog.get("curve"), "탭 경과율 대비 진행률", labels=5), len(pts)))
+    fl = s.get("flows") or {}
+    if fl:
+        lq = max(fl)
+        figs.append('<figure>%s<figcaption>%s → %s 잔여 다리 — 두 기간 모두 표가 있는 %d사 원화 계약</figcaption></figure>'
+                    % (_bridge_svg(fl[lq], "잔여 다리"), e(fl[lq]["from"]), e(lq), fl[lq]["cos"]))
     cobar = ""
     if rows:
         top = rows[0][1]["agg"]["amt"] or 1
@@ -512,6 +577,9 @@ def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보�
         chg_html = ('<h3>계약금액 변동 <span class="mut">(XI-1 계약금액이 이전 보고·체결 공시와 1%% 넘게 다른 진행 계약)</span></h3>'
                     '<div class="tbw"><table id="xi1chg" data-sortable><thead><tr><th>회사</th><th>계약</th><th class="n">현재 계약금액</th>'
                     '<th class="n">변동</th><th>기준</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(tr))
+    ptab = _parties_table(s.get("parties") or [], "xi1p")
+    if ptab:
+        cobar += '<h3>계약상대별 잔여 <span class="mut">(이름 묶음 — 익명 `… 지역 선주`는 따로)</span></h3>' + ptab
     return ('<section class="card xi1" id="%s"><h2>%s <span class="mut">%s</span></h2>%s%s<div class="xg">%s</div>%s'
             '<h3>주의 계약 <span class="mut">(지연 의심·납기 경과·지연 전망·정체·매출 역진, 잔여 큰 순 %d건)</span></h3>%s%s%s</section>'
             % (e(anchor), e(title), e(q), _kpis(tiles), _legend(), "".join(figs), cobar, len(watch),

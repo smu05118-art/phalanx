@@ -5,10 +5,10 @@
 원천: 반기·사업보고서 XI-1 「공시내용 진행 및 변경사항 › 나. 단일판매ㆍ공급계약 진행 현황」. 2024Q4 부터 Q2·Q4 에만
 실린다(분기보고서엔 없다). 표 해석은 kce_xi1(6개 섹터 304사 2026Q2 실측 보강)을 그대로 쓰고, 이 모듈은 탭 공통 규칙만 둔다.
 
-  1) collect — 탭 모집단 × 반기·연간 분기 → 절 원문 해석 결과를 tools/assets/xi1/parsed/<stock>/<q>.json(커밋),
-     상태를 tools/assets/xi1/status.json 에 둔다. 원문 HTML 은 레포 규칙대로 커밋하지 않고(.gitignore
-     argus/*/tools/assets/xi1/_raw/) 로컬 gzip 으로만 둔다 — 파서 판(kce_xi1.PARSER_REV)이 바뀌면 build 가 그 원문으로
-     다시 해석하고, 원문이 없는 곳(CI)은 `--collect --force` 로 다시 받는다.
+  1) collect — 탭 모집단 × 반기·연간 분기 → tools/assets/xi1/parsed/<stock>/<q>.json(커밋): 원문 표의 라벨·값
+     문자열(raw — COMMON §0-4) + 해석 결과. 상태는 tools/assets/xi1/status.json. 원문 HTML 은 레포 규칙대로 커밋하지
+     않고(.gitignore argus/*/tools/assets/xi1/_raw/) 로컬 gzip 으로만 둔다. 파서 판(kce_xi1.PARSER_REV)이 바뀌면 build 가
+     로컬 HTML(있으면) 또는 보존 원문 표로 다시 해석한다 — 재수집이 필요 없다. 머리행 감지 규칙이 바뀐 경우만 HTML 이 필요하다.
   2) build — 해석 결과 → 원장 금액으로 단위 보정(kce_xi1.calibrate) → 분기 사이 같은 계약 잇기(thread)
      → 탭 원장(contracts.json, 단일판매ㆍ공급계약체결 공시) 연결(근거 등급) → 계약 지표 → 회사·섹터 집계
      → tools/assets/xi1/progress.json. 표마다 머리행 지도(hdrmap role 'xi')에 기록하고, 못 읽은 표는 탭 대기열로.
@@ -156,11 +156,27 @@ def read_raw(tab, st, q, root=None):
         return gzip.decompress(f.read()).decode("utf-8")
 
 
-def parse_doc(html, rcp=None):
-    """절 HTML → 커밋할 해석 결과(채택 표 + 머리행 지도용 비채택·미지 표 머리). 결정적."""
-    p = X.parse_xi1(html)
+_RAW_KEEP = ("lead", "cols", "ncols", "rows", "rspan", "n_raw")
+
+
+def _raw_of(tables):
+    """원문 표 보존본 — 판매공급·대금수령 문구가 있는 표만 본문 행까지, 나머지('가' 진행 표·사유 부표)는 머리만."""
+    out = []
+    for t in tables:
+        d = {k: t[k] for k in _RAW_KEEP if k in t}
+        d["lead"] = X.KP.lead_tail(t.get("lead"), 400)
+        if not X._XI_HINT.search(" ".join(t.get("cols") or [])):
+            d["rows"], d["rspan"] = [], []
+        out.append(d)
+    return out
+
+
+def parse_doc(html, rcp=None, raw=None):
+    """절 HTML(또는 보존된 원문 표 raw) → 커밋할 해석 결과. 결정적."""
+    raw = raw if raw is not None else _raw_of(X.raw_tables(html))
+    p = X.interpret([dict(t) for t in raw])
     keep = ("cols", "ncols", "fields", "n", "n_rec", "unit", "unit_fix", "unit_suspect", "rows")
-    return {"rev": X.PARSER_REV, "rcp": rcp,
+    return {"rev": X.PARSER_REV, "rcp": rcp, "raw": raw,
             "tables": [dict({k: t[k] for k in keep if k in t}, lead=X.KP.lead_tail(t.get("lead"))) for t in p["tables"]],
             "rejected": [{"cols": r["cols"], "ncols": r["ncols"], "fields": r["fields"], "n": r["n"], "reason": r["reason"],
                           "lead": X.KP.lead_tail(r.get("lead")),
@@ -187,6 +203,9 @@ def read_parsed(tab, st, q, root=None):
         html = read_raw(tab, st, q, root)
         if html is not None:
             doc = parse_doc(html, (doc or {}).get("rcp"))
+            write_parsed(tab, st, q, doc, root)
+        elif doc and doc.get("raw"):
+            doc = parse_doc(None, doc.get("rcp"), raw=doc["raw"])       # CI: HTML 없이 보존 원문 표로 재해석
             write_parsed(tab, st, q, doc, root)
     return doc
 
@@ -310,6 +329,28 @@ def ledger_rows(tab, rows):
                     "dates": dates, "rcps": [rcp] + sups, "term": term,
                     "signed": [d for d in (sd, to_date(r.get("start") or "")) if d]})
     return out
+
+
+def cell_sanity(r):
+    """한 칸만 단위가 다른 행(한화에어로 2026Q2 IM3 발사대: 계약 388,180 · 수령 누적 121,938,492 — 천원).
+    공급·수령 칸이 계약금액의 2배를 넘고 1,000·1,000,000 으로 나누면 1.2배 안에 들면 그 칸만 옮기고(cell_fix),
+    그래도 안 맞으면 그 칸을 비운다(cell_drop). 계약 2배 넘게 공급·수령하는 계약은 없다."""
+    amt = r.get("amt")
+    if not amt or amt <= 0:
+        return r
+    for f in ("supCur", "supCum", "recvCur", "recvCum"):
+        v = r.get(f)
+        if v is None or abs(v) <= amt * 2:
+            continue
+        for k in (3, 6):
+            if abs(v) / 10 ** k <= amt * 1.2:
+                r[f] = round(v / 10 ** k, 6)
+                r.setdefault("cell_fix", []).append(f)
+                break
+        else:
+            r[f] = None
+            r.setdefault("cell_drop", []).append(f)
+    return r
 
 
 # ── 분기 사이 잇기 · 원장 연결 ─────────────────────────────────
@@ -485,6 +526,8 @@ def metrics(th, latest_q, first_q):
         flags.append("fx")
     if r.get("withheld"):
         flags.append("withheld")
+    if r.get("cell_fix") or r.get("cell_drop"):
+        flags.append("cell_fix")
     if amt and sup is not None:
         m["prog"] = _r(sup / amt)
         m["rem"] = max(amt - sup, 0)
@@ -602,6 +645,7 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
                         r = dict(r)
                         if t.get("unit_suspect"):
                             r["_suspect"] = True
+                        cell_sanity(r)
                         rows.append(r)
                 fixes = sorted({t["unit_fix"] for t in parsed["tables"] if t.get("unit_fix")})
                 ent.update(n=len(rows), tables=len(parsed["tables"]))
@@ -648,6 +692,7 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
         items, Ls = co.pop("_items"), co.pop("_L")
         co["agg"] = company_agg(items, co["latest"], Ls)
         co["series"] = company_series(items, qs)
+        co["flows"] = company_flows(items, qs, {q for q, p in co["periods"].items() if p["status"] == "ok"})
     prog = {"schema": SCHEMA, "tab": tab, "periods": qs, "asof": qs[-1] if qs else None, "curve": curve,
             "source": "반기·사업보고서 XI-1 「나. 단일판매ㆍ공급계약 진행 현황」(DART)",
             "rules": {"lag": LAG, "done": DONE, "over": OVER},
@@ -727,6 +772,14 @@ def _krw_ok(c):
     return c["m"].get("amt") and c["m"].get("basis") == "xi" and "unit_suspect" not in c["flags"]
 
 
+_PARTY_NOISE = re.compile(r"^대한민국|\(주\)|주식회사|㈜|\s+|[.,·ㆍ]|\(.*?\)$")
+
+
+def party_key(s):
+    """계약상대 묶음 키 — `대한민국 방위사업청`=`방위사업청`, `(주)`·공백·끝 괄호 부연 무시. 익명(`… 지역 선주`)은 그대로."""
+    return _PARTY_NOISE.sub("", s or "").lower()
+
+
 def company_agg(items, latest, Ls):
     cur = [c for c in items if c["m"]["q"] == latest] if latest else []
     k = [c for c in cur if _krw_ok(c)]
@@ -741,6 +794,15 @@ def company_agg(items, latest, Ls):
         if c.get("cur") and not _krw_ok(c):
             fx[c["cur"]] = fx.get(c["cur"], 0) + 1
     big = sorted((c["m"]["amt"] for c in k), reverse=True)
+    pace_y = sum(max(c["m"].get("pace") or 0, 0) for c in k) * 12
+    parties = {}
+    for c in k:
+        raw = (c.get("cl") or "").strip()
+        key = party_key(raw) or "(미기재)"
+        cur_ = parties.setdefault(key, [raw or "(미기재)", 0.0])
+        if raw and len(raw) < len(cur_[0]):
+            cur_[0] = raw
+        cur_[1] += c["m"].get("rem") or 0
     linked = [c for c in items if c.get("link")]
     # 원장 대응률: 원장 계약 중 진행 현황 기간(첫 보고 기간 시작 이후 종료) 안에 있는데 해지가 아닌 것 → 그중 XI 에 실린 비율
     w0 = datetime.date(2024, 1, 1)
@@ -750,6 +812,9 @@ def company_agg(items, latest, Ls):
             "rem": round(rem, 3), "ar": round(ar, 3), "adv": round(adv, 3), "sup_cur": round(half, 3),
             "prog_w": _r(sup / amt) if amt else None,
             "top3": _r(sum(big[:3]) / amt) if amt else None,
+            # 연간 공급 속도(최근 월 속도 × 12)와 잔여 소진 기간 — 공시 계약만의 매출 가시성(II-4·매출 전체가 아니다)
+            "pace_y": round(pace_y, 3), "burn_y": _r(rem / pace_y, 2) if pace_y > 0 else None,
+            "parties": [[k_, d_, round(v, 3)] for k_, (d_, v) in sorted(parties.items(), key=lambda x: (-x[1][1], x[0]))[:5]],
             "lag": sum(1 for c in cur if "lag" in c["flags"]),
             "overdue": sum(1 for c in cur if "overdue" in c["flags"]),
             "stalled": sum(1 for c in cur if "stalled" in c["flags"]),
@@ -766,6 +831,39 @@ def company_agg(items, latest, Ls):
             "ledger_live": len(live), "ledger_found": len(got & {c["rcp"] for c in live})}
 
 
+def company_flows(items, qs, periods_ok):
+    """보고 기간 사이 잔여 다리(원화 계약만): 시작 잔여 + 신규 + 금액 변동 − 공급 − 이탈 = 끝 잔여(+ 끝수 resid).
+    두 기간 모두 표가 있는 경우만(한쪽이 비면 다리를 만들지 않는다 — 수집 공백을 '이탈'로 읽지 않게)."""
+    out = {}
+    ok = [q for q in qs if q in periods_ok]
+    for p, q in zip(ok, ok[1:]):
+        f = {"from": p, "start": 0.0, "new": 0.0, "new_n": 0, "chg": 0.0, "supplied": 0.0, "exit": 0.0, "exit_n": 0,
+             "end": 0.0}
+        for c in items:
+            if c["m"].get("basis") != "xi" or "unit_suspect" in c["flags"]:
+                continue
+            a, b = c["hist"].get(p), c["hist"].get(q)
+            ra = max((a[0] or 0) - (a[2] or 0), 0) if a and a[0] else None
+            rb = max((b[0] or 0) - (b[2] or 0), 0) if b and b[0] else None
+            if ra is not None:
+                f["start"] += ra
+            if rb is not None:
+                f["end"] += rb
+            if a and a[0] and b and b[0]:
+                f["chg"] += b[0] - a[0]
+                f["supplied"] += (b[2] or 0) - (a[2] or 0)
+            elif b and b[0] and not a:
+                f["new"] += b[0]
+                f["new_n"] += 1
+                f["supplied"] += b[2] or 0
+            elif a and a[0] and not b:
+                f["exit"] += ra
+                f["exit_n"] += 1
+        f["resid"] = f["end"] - (f["start"] + f["new"] + f["chg"] - f["supplied"] - f["exit"])
+        out[q] = {k: (round(v, 3) if isinstance(v, float) else v) for k, v in f.items()}
+    return out
+
+
 def company_series(items, qs):
     out = {}
     for q in qs:
@@ -775,9 +873,11 @@ def company_series(items, qs):
             continue
         amt = sum(c["hist"][q][0] for c in rows)
         sup = sum(c["hist"][q][2] or 0 for c in rows)
+        both = [c for c in rows if c["hist"][q][2] is not None and c["hist"][q][4] is not None]
         out[q] = {"n": len(rows), "amt": round(amt, 3), "sup": round(sup, 3),
                   "rem": round(sum(max(c["hist"][q][0] - (c["hist"][q][2] or 0), 0) for c in rows), 3),
-                  "recv": round(sum(c["hist"][q][4] or 0 for c in rows), 3),
+                  "recv": round(sum(c["hist"][q][4] for c in both), 3),
+                  "sup_both": round(sum(c["hist"][q][2] for c in both), 3),
                   "sup_cur": round(sum(c["hist"][q][1] or 0 for c in rows), 3)}
     return out
 
@@ -789,7 +889,7 @@ def sector_agg(prog):
         if not cos:
             continue
         series[q] = {"cos": len(cos), **{k: round(sum(co["series"][q][k] for co in cos), 3)
-                                         for k in ("n", "amt", "sup", "rem", "recv", "sup_cur")}}
+                                         for k in ("n", "amt", "sup", "rem", "recv", "sup_cur", "sup_both")}}
     cos = prog["companies"].values()
     tot = lambda k: round(sum(co["agg"][k] or 0 for co in cos), 3)        # noqa: E731
     st = {}
@@ -797,11 +897,45 @@ def sector_agg(prog):
         for p in co["periods"].values():
             st[p["status"]] = st.get(p["status"], 0) + 1
     amt, sup = tot("amt"), tot("sup")
-    return {"series": series, "status": st,
+    flows = {}
+    for co in cos:
+        for q, f in (co.get("flows") or {}).items():
+            g = flows.setdefault(q, {"from": f["from"], "cos": 0})
+            g["cos"] += 1
+            for k_, v in f.items():
+                if k_ not in ("from",):
+                    g[k_] = round(g.get(k_, 0) + v, 3)
+    parties = {}
+    for co in cos:
+        for k_, d_, v in co["agg"].get("parties") or []:
+            if k_ != "(미기재)":
+                cur_ = parties.setdefault(k_, [d_, 0.0, 0])
+                if len(d_) < len(cur_[0]):
+                    cur_[0] = d_
+                cur_[1] += v
+                cur_[2] += 1
+    pace_y = tot("pace_y")
+    return {"series": series, "status": st, "flows": flows,
+            "parties": [[d_, round(v, 3), n_] for k_, (d_, v, n_) in sorted(parties.items(), key=lambda x: (-x[1][1], x[0]))[:15]],
+            "pace_y": pace_y, "burn_y": _r(tot("rem") / pace_y, 2) if pace_y > 0 else None,
             "cos_with_rows": sum(1 for co in cos if co["agg"]["n"]),
             "n": tot("n"), "amt": amt, "sup": sup, "rem": tot("rem"), "ar": tot("ar"), "adv": tot("adv"),
             "prog_w": _r(sup / amt) if amt else None, "lag": tot("lag"), "overdue": tot("overdue"), "slip6": tot("slip6"),
             "stalled": tot("stalled"), "reversal": tot("reversal"), "cum_drop": tot("cum_drop"), "linkA": tot("linkA"), "linkB": tot("linkB"), "xi_only": tot("xi_only")}
+
+
+def subset(prog, stocks):
+    """탭 화면이 모집단 일부만 보여 줄 때(ksemi 편입 83사) — 그 종목만 남기고 섹터 집계를 다시 낸다. 곡선은 그대로(탭 표준)."""
+    if not prog:
+        return prog
+    keep = set(stocks)
+    out = dict(prog)
+    out["companies"] = {st: co for st, co in prog["companies"].items() if st in keep}
+    out["contracts"] = [c for c in prog["contracts"] if c["stock"] in keep]
+    out["review"] = [r for r in prog.get("review") or [] if r["stock"] in keep]
+    out["by_rcp"] = {r: i for r, i in (prog.get("by_rcp") or {}).items() if i.split("-")[0] in keep}
+    out["sector"] = sector_agg(out)
+    return out
 
 
 def write_progress(tab, prog, root=None):

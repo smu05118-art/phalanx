@@ -291,6 +291,12 @@ class TestCollect(unittest.TestCase):
         self.assertEqual(again["rev"], X.PARSER_REV)
         self.assertTrue(again["tables"])
         self.assertEqual(again["rcp"], doc["rcp"])
+        # CI 처럼 로컬 HTML 이 없어도 보존 원문 표(raw)로 같은 결과를 다시 낸다(COMMON §0-4)
+        os.remove(S.raw_path("knuke", "013810", "2026Q2", self.root))
+        stale = dict(again, rev="old", tables=[])
+        S.write_parsed("knuke", "013810", "2026Q2", stale, self.root)
+        third = S.read_parsed("knuke", "013810", "2026Q2", self.root)
+        self.assertEqual(third, again)
 
 
 class TestView(_Root):
