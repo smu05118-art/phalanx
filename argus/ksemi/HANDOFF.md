@@ -9,6 +9,7 @@
 | 매출인식 기준(원문 인용) | III 주석 「수익」 — **사업보고서만** | 〃 (`basis`) |
 | 주요 고객·집중도 | III 주석 「주요 고객에 대한 정보」 — **당기만** | 〃 (`customers`, `segment_total`) |
 | 대형 수주(상대·금액·기간·지역) | 수시공시 I001 「단일판매ㆍ공급계약체결」 | `ksemi_contracts.py` → `assets/contracts.json` |
+| 계약 진행(공급·수령 누적, 지연) | 반기·사업보고서 XI-1 「나. 단일판매ㆍ공급계약 진행 현황」 | 공용 `kce/tools/xi1_sector.py ksemi` → `assets/xi1/progress.json` |
 | 모집단 후보 154종목 | KRX KIND 상장법인목록 | `ksemi_universe.py` → `assets/universe.json` |
 | 편입/보류/배제 판정 | 후보의 정기보고서 II절 본문 | `ksemi_scan.py` → `assets/scan.json` |
 | 공정 13단계·부품 사전, 종목 태그 | 위 둘 + 지정 사유 | `build_dicts.py` → `assets/stages.json`, `stage_tags.json` |
@@ -111,3 +112,21 @@ python3 ksemi_parts.py --write                 # 공정 흐름
   산출이 없거나 회사가 빠지면 **섹션을 만들지 않는다**. 렌더러 파일명에 탭 접두가 붙은 이유는 그 파일 머리에 적었다.
 - 추정에는 시나리오 3종·잔고분/신규분 분해·민감도 구간이 붙고 `calibrated=false` 로 표기된다 —
   통계적 신뢰구간이 아니며, 회계 매출이 아니라 수주원장 기준 대용치다.
+
+## 2026-10-19 계약 진행(XI-1) 화면 통합
+
+- 원천·지표 정의는 LOGIC §5-1, 공용 정의 전문은 `argus/kce/UPDATE.md §6-C`. 이 탭은 **붙이기만** 한다 —
+  공용 층(`kce/tools/xi1_sector.py`·`xi1_view.py`)은 고치지 않는다.
+- 붙인 자리(`tools/ksemi_page.py`): `load_xi1`(load_all 끝 — members 로 subset) · 회사 계약 공시 표 `#ct` 와 허브
+  「최근 대형 수주」 표의 **진행(XI-1)** 열(금액 바로 뒤, `xi1_column`) · 회사 페이지 계약 공시 바로 뒤 `company_section`
+  · 허브 「최근 대형 수주」 뒤 `hub_section` · coverage.html 끝 `coverage_rows`(id `xi1cov`) · 내비 `#xi1`/`#xi1cov`
+  · 꼬리말 원천(`ksemi_lib.page(src_note=…)`). 조각 CSS 는 XI-1 출력이 있는 페이지에만 `<style>` 한 번.
+- 파일: `tools/assets/xi1/status.json`(종목|분기 수집 상태) · `parsed/<종목>/<분기>.json`(원문 표 보존 + 해석, 커밋)
+  · `progress.json`(화면 입력, 커밋). 원문 HTML `xi1/_raw/` 는 커밋하지 않는다(.gitignore).
+- 명령: CI 는 `ksemi_reports` 뒤에 `python3 ../../kce/tools/xi1_sector.py ksemi --collect --build` — 실패해도
+  페이지는 직전 progress.json 으로 만들고 단계 끝에서 실패로 알린다. **로컬에서 `--collect` 금지**(DART IP 차단) —
+  `--build --no-hdr` 만.
+- 테스트: `tools/tests/test_xi1_pages.py` — progress 있으면 섹션·열·꼬리말, None·import 실패·렌더 예외면 지금 화면 그대로,
+  supersedes 사슬, 표 칸 수, subset 숫자.
+- 허브 「최근 대형 수주」는 최신 20건이라 대개 최신 XI-1 기간(반기 말) **뒤에** 체결된 계약이다 — 진행 열이 '—' 인 것이
+  정상이다(다음 반기·사업보고서에 실린다).

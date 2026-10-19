@@ -159,8 +159,10 @@ def _rel(depth):
 
 
 def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), tags=(),
-         nav=(), lead=""):
+         nav=(), lead="", src_note=""):
     """공용 셸. depth=0 은 ksemi 루트, 1 은 회사 디렉터리.
+
+    src_note 는 꼬리말 출처에 덧붙는 원천(예: XI-1 계약 진행 섹션이 있는 페이지만) — 비우면 지금 꼬리말 그대로.
 
     CSS는 assets/ksemi.css 하나를 링크한다(페이지마다 인라인 복제 금지).
     외부 스크립트(Chart.js)는 **본문보다 먼저** 둔다 — 본문의 인라인 차트 코드가 그 전역을
@@ -182,10 +184,10 @@ def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), ta
             "<title>%s</title>\n<link rel=\"stylesheet\" href=\"%sassets/ksemi.css\">\n%s</head>\n"
             "<body>\n<header class=\"top\"><div class=\"hd\"><h1>%s</h1>%s<span class=\"sp\">%s</span></div>%s</header>\n%s"
             "<main>%s%s</main>\n"
-            "<footer>출처 DART 정기보고서·수시공시, KRX KIND 상장법인목록. 금액 단위는 표마다 원문 캡션에서 읽어 "
+            "<footer>출처 DART 정기보고서%s·수시공시, KRX KIND 상장법인목록. 금액 단위는 표마다 원문 캡션에서 읽어 "
             "백만원으로 정규화. 참고용 · 투자조언 아님.</footer>\n</body></html>\n"
             % (E(title), r, head_extra, E(h1 or title), tagh, navh, crumbh, sh,
-               ('<p class="lead">%s</p>' % lead) if lead else "", body))
+               ('<p class="lead">%s</p>' % lead) if lead else "", body, E(src_note)))
 
 
 # Chart.js 공용 기본값 — dataviz 규격(kship과 같다).

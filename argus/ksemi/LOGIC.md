@@ -104,6 +104,26 @@ Semiconductor (China) Ltd.). 그래서 이 지표는 **공시된 단일계약 �
 COMMON §0-2). 지역 문구 판정은 `중국·中國·China·PRC·시안·우시·청두·다롄`(`ksemi_contracts._CN`),
 대만·말레이시아·태국은 중국이 아니다. 계약 테스트 `tests/test_china.py`.
 
+## 5-1. 계약 진행 — 반기·사업보고서 XI-1 (공용 층)
+
+원천은 반기·사업보고서 XI-1 「공시내용 진행 및 변경사항 › 나. 단일판매ㆍ공급계약 진행 현황」(2024Q4 부터 Q2·Q4 에만
+실린다). 수집·해석·분기 잇기·원장 연결·지표는 **6개 수주 섹터 공용 층** `argus/kce/tools/xi1_sector.py` 가,
+화면 조각은 `xi1_view.py` 가 만든다 — 이 탭은 붙이기만 한다. 정의 전문은 `argus/kce/UPDATE.md §6-C`.
+
+- **진행** = 판매ㆍ공급 누적 ÷ 계약금액, **수령 진척** = 대금수령 누적 ÷ 계약금액,
+  **매출채권(순)** = 공급 − 수령(음수면 선수금). 100% 를 넘거나 음수여도 자르지 않고 칩(초과·매출 역진)으로 단다.
+- **지연**은 직선 경과가 아니라 **탭 표준 곡선**(이 탭 진행 계약들의 경과 구간별 진행률 중앙값) 대비로 본다.
+- **원장 연결 등급**: 확정(신고일 = 원장 접수일 + 금액·이름·상대방 근거) · 추정(근사 근거) · XI 전용(짝 없음 — 억지로 붙이지 않는다).
+  원장 병합 행은 정정 접수번호를 들고 있으므로 `[rcp] + supersedes`(리스트)로 찾는다(`ksemi_page.xi_rcps`).
+- **외화**: 환산하지 않는다. 원장 공시에 회사가 적은 원화 금액이 연결된 경우에만 그 값을 분모로 쓰고 '원장'으로 표시.
+- 판매공급 누적은 매출·II-4 수주잔고와 **다른 축**이라 더하지 않는다.
+- **화면 모집단**: `progress.json` 은 universe 154종목 전수다. 페이지는 구성원 83사(`members`)만 보이므로
+  `xi1_sector.subset` 으로 잘라 허브 타일·커버리지 표를 화면과 맞춘다(표준 곡선은 탭 전체 그대로).
+- **fail-soft**: import·load 실패나 `progress.json` 없음 → 섹션·열·꼬리말 문구 없이 지금 화면 그대로.
+  조각 렌더가 던지면 그 열(표 전체)·섹션만 뺀다 — 칸 수가 어긋난 표는 정렬이 깨지기 때문이다.
+- `contracts.json` 에는 필드를 더하지 않는다(5MB 한도 근처) — 진행은 `tools/assets/xi1/` 에만 있다.
+  `ksemi_reports.SECTION_SPECS` 에도 넣지 않는다(필수 절이 되면 첨부정정 한 건이 II-4 갱신을 멈춘다).
+
 ## 6. 모집단 — 네 겹
 
 **스펙이 적은 KIND 업종 `반도체 제조용 기계 제조업`은 KIND에 없다**(2026-09-11 실측,
@@ -232,7 +252,9 @@ ksemi_scan.py      후보의 II절 본문 → 편입/보류/배제        → as
 build_dicts.py     13단계·부품 사전 + 종목별 태그          → assets/stages.json, stage_tags.json
 ksemi_contracts.py I001 단일판매ㆍ공급계약체결             → assets/contracts.json
 ksemi_reports.py   II-4 수주상황·매출실적, III 주석        → assets/reports.json
-ksemi_page.py      허브 · 회사 · 커버리지                  → index.html, <종목>/index.html, coverage.html
+../../kce/tools/xi1_sector.py ksemi --collect --build
+                   XI-1 계약 진행(공용 층, 154종목 전수)   → assets/xi1/{status,progress}.json, parsed/<종목>/<분기>.json
+ksemi_page.py      허브 · 회사 · 커버리지(+ XI-1 subset)   → index.html, <종목>/index.html, coverage.html
 ksemi_peers.py     II절 본문의 상장사 이름 언급 → 관계 분류   → assets/peers.json
 ksemi_exposure.py  II-2·II-4 절의 메모리/비메모리 낱말        → assets/exposure.json
 ksemi_parts.py     팹 공정 흐름 인포그래픽                  → parts.html
