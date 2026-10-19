@@ -207,6 +207,22 @@ class TestThreadLinkMetrics(_Root):
         self.assertNotIn(datetime.date.today().isoformat(), a)
 
 
+class TestBlankAndCells(unittest.TestCase):
+    def test_blank_zero_rules(self):
+        r = {"amt": 100, "supCum": None, "recvCum": None}
+        self.assertEqual(S.blank_zero(dict(r)), {"amt": 100, "supCum": 0, "recvCum": 0})        # `-` = 아직 0
+        self.assertEqual(S.blank_zero(dict(r), sup_any=False, recv_any=False), r)              # 표가 대부분 비움 = 미기재
+        self.assertNotIn("recvCum", S.blank_zero({"amt": 100, "supCum": None}))               # 열이 없던 표
+        self.assertEqual(S.blank_zero({"amt": None, "supCum": None}), {"amt": None, "supCum": None})
+
+    def test_cell_sanity(self):
+        r = S.cell_sanity({"amt": 388180, "supCum": None, "recvCum": 121938492})               # 한화에어로 IM3 — 천원 칸
+        self.assertEqual((r["recvCum"], r["cell_fix"]), (121938.492, ["recvCum"]))
+        r = S.cell_sanity({"amt": 100, "supCum": 5e9})
+        self.assertEqual((r["supCum"], r["cell_drop"]), (None, ["supCum"]))
+        self.assertEqual(S.cell_sanity({"amt": 100, "supCum": 150}), {"amt": 100, "supCum": 150})   # 초과 공급은 over 로만
+
+
 class TestCurve(unittest.TestCase):
     def test_curve_monotone_and_lag(self):
         cs = []

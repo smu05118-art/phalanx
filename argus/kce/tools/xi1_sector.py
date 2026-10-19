@@ -323,7 +323,8 @@ def ledger_rows(tab, rows):
         if sd:
             dates.add(sd.strftime("%Y%m%d"))
         term = bool(r.get("canceled")) or r.get("event") in ("해지", "철회") or "해지" in (r.get("title") or "")
-        out.append({"rcp": rcp, "stock": r.get("stock"), "name": r.get(spec["name"]) or r.get("name") or "",
+        # ksemi 의 name 은 회사명이다(계약명은 content) — 다른 열로 메우지 않는다
+        out.append({"rcp": rcp, "stock": r.get("stock"), "name": r.get(spec["name"]) or "",
                     "amt": amt if isinstance(amt, (int, float)) and amt > 0 else None,
                     "party": r.get("party") or "", "start": r.get("start") or "", "end": r.get("end") or "",
                     "dates": dates, "rcps": [rcp] + sups, "term": term,
@@ -350,6 +351,19 @@ def cell_sanity(r):
         else:
             r[f] = None
             r.setdefault("cell_drop", []).append(f)
+    return r
+
+
+def blank_zero(r, sup_any=True, recv_any=True):
+    """열은 있는데 칸이 빈(`-`) 누적은 0 — kce 사업장 상세(xipDecomp)와 같은 규칙: 아직 공급·수령 전인 계약이다.
+    열 자체가 없는 표(대금수령 열 없는 회사)는 None 으로 둔다 — 행 dict 에 키가 없으면 열이 없던 것.
+    표의 행 절반 넘게 그 열을 비웠으면(sup_any/recv_any False) 회사가 진행을 적지 않은 것이라 0 으로 채우지 않는다."""
+    if r.get("amt") is None:
+        return r
+    if sup_any and "supCum" in r and r["supCum"] is None:
+        r["supCum"] = 0
+    if recv_any and "recvCum" in r and r["recvCum"] is None and r.get("supCum") is not None:
+        r["recvCum"] = 0
     return r
 
 
@@ -641,11 +655,19 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
                     _hdr(tab, st, name, q, parsed, rec.get("rcp"), root)
                 rows = []
                 for t in parsed["tables"]:
+                    # 공급·수령 칸을 대부분 비운 표(LIG 전부, 한화시스템 방산 계약 — 보안상 진행 미기재, 민수 1건만 기재)는
+                    # 빈칸이 0 이 아니라 '미기재'다. 행의 절반 이상이 그 열을 채운 표에서만 빈칸을 0 으로 본다.
+                    nrow = len(t["rows"]) or 1
+                    sup_any = sum(1 for r in t["rows"] if r.get("supCum") is not None) * 2 >= nrow
+                    recv_any = sum(1 for r in t["rows"] if r.get("recvCum") is not None) * 2 >= nrow
+                    if t["rows"] and not sup_any:
+                        ent["sup_blank"] = True
                     for r in t["rows"]:
                         r = dict(r)
                         if t.get("unit_suspect"):
                             r["_suspect"] = True
                         cell_sanity(r)
+                        blank_zero(r, sup_any, recv_any)
                         rows.append(r)
                 fixes = sorted({t["unit_fix"] for t in parsed["tables"] if t.get("unit_fix")})
                 ent.update(n=len(rows), tables=len(parsed["tables"]))
@@ -843,22 +865,28 @@ def company_flows(items, qs, periods_ok):
             if c["m"].get("basis") != "xi" or "unit_suspect" in c["flags"]:
                 continue
             a, b = c["hist"].get(p), c["hist"].get(q)
-            ra = max((a[0] or 0) - (a[2] or 0), 0) if a and a[0] else None
-            rb = max((b[0] or 0) - (b[2] or 0), 0) if b and b[0] else None
+            a = a if a and a[0] and a[2] is not None else None        # 공급 미기재 행은 다리에서 뺀다(잔여를 모른다)
+            b = b if b and b[0] and b[2] is not None else None
+            ra = max(a[0] - a[2], 0) if a else None
+            rb = max(b[0] - b[2], 0) if b else None
             if ra is not None:
                 f["start"] += ra
             if rb is not None:
                 f["end"] += rb
-            if a and a[0] and b and b[0]:
+            if a and b:
                 f["chg"] += b[0] - a[0]
-                f["supplied"] += (b[2] or 0) - (a[2] or 0)
-            elif b and b[0] and not a:
+                f["supplied"] += b[2] - a[2]
+            elif b and q in c["hist"] and p not in c["hist"]:
                 f["new"] += b[0]
                 f["new_n"] += 1
-                f["supplied"] += b[2] or 0
-            elif a and a[0] and not b:
+                f["supplied"] += b[2]
+            elif a and p in c["hist"] and q not in c["hist"]:
                 f["exit"] += ra
                 f["exit_n"] += 1
+            elif a and not b:                                       # q 에서 공급 칸이 비었다 — 다리 밖으로
+                f["start"] -= ra
+            elif b and not a:                                       # p 에서 공급 칸이 비었다
+                f["end"] -= rb
         f["resid"] = f["end"] - (f["start"] + f["new"] + f["chg"] - f["supplied"] - f["exit"])
         out[q] = {k: (round(v, 3) if isinstance(v, float) else v) for k, v in f.items()}
     return out

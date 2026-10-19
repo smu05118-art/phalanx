@@ -610,6 +610,8 @@ def coverage_rows(prog):
                 t += " ·단위보정"
             if p.get("unit_suspect"):
                 t += " ·단위의심"
+            if p.get("sup_blank"):
+                t += " ·공급 미기재"
             cls = "" if p["status"] == "ok" else ' class="mut"'
             cells.append('<td%s>%s</td>' % (cls, e(t)))
         cov = ("%d/%d" % (a["ledger_found"], a["ledger_live"])) if a.get("ledger_live") else "—"
@@ -620,6 +622,7 @@ def coverage_rows(prog):
             '<th class="n">원장 확정</th><th class="n">원장 추정</th><th class="n">XI 전용</th>'
             '<th class="n" title="탭 원장의 진행 기간 계약(2024년 이후 종료·해지 아님) 중 XI-1 에서 찾은 비율">원장 대응</th></tr></thead>'
             '<tbody>%s</tbody></table></div><p class="note">표 = 진행 현황 표를 읽음(숫자 = 계약 행), 표 없음 = 절은 있으나 '
-            '판매ㆍ공급계약 진행 표가 없음(증자·해명 공시만 있는 회사), 절 없음·보고서 없음 = 그 기간 보고서에 XI-1 절이 없거나 보고서 미접수. '
+            '판매ㆍ공급계약 진행 표가 없음(증자·해명 공시만 있는 회사), 절 없음·보고서 없음 = 그 기간 보고서에 XI-1 절이 없거나 보고서 미접수, '
+            '공급 미기재 = 표는 있으나 판매ㆍ공급·대금수령 칸을 전부 비움(진행률 없음 — 0 으로 보지 않는다). '
             '못 읽은 표는 머리행 대기열(hdr_queue.json, role xi)로 간다.</p></section>'
             % ("".join("<th>%s</th>" % q for q in qs), "".join(tr)))
