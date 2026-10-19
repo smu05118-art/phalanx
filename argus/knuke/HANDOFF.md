@@ -12,6 +12,7 @@
 | 사업 단위 계약(발주처·발전원·계층·금액·기간) | 수시공시 「단일판매ㆍ공급계약체결」 I001 | `knuke_contracts.py` → `contracts.json` |
 | 모집단 편입 근거 | KIND 업종·제품 · 지정 · II절 본문 탐색 | `knuke_universe.py`·`knuke_scan.py` |
 | 부품·대형사 연결 | 계약명·본문·KIND 문구 낱말(근거 등급) | `knuke_suppliers.py` → `suppliers.json` |
+| 계약 진행(공급·수령 누적·지연·원장 연결) | 반기·사업보고서 XI-1 「단일판매ㆍ공급계약 진행 현황」 | 공용 `kce/tools/xi1_sector.py` → `xi1/progress.json` · 화면 `kce/tools/xi1_view.py` |
 
 ## ② 지금 상태
 
@@ -52,6 +53,7 @@ python3 knuke_scan.py --scan
 python3 knuke_universe.py --write
 python3 knuke_contracts.py --collect && python3 knuke_contracts.py --build
 python3 knuke_reports.py --collect --n 8 && python3 knuke_reports.py --build
+python3 ../../kce/tools/xi1_sector.py knuke --collect --build    # DART — 로컬 확인은 --build --no-hdr 만
 python3 knuke_suppliers.py --build && python3 knuke_page.py --all && python3 knuke_parts.py
 python3 -m unittest discover -s tests
 ```
@@ -67,3 +69,20 @@ python3 -m unittest discover -s tests
   산출이 없거나 회사가 빠지면 **섹션을 만들지 않는다**. 렌더러 파일명에 탭 접두가 붙은 이유는 그 파일 머리에 적었다.
 - 추정에는 시나리오 3종·잔고분/신규분 분해·민감도 구간이 붙고 `calibrated=false` 로 표기된다 —
   통계적 신뢰구간이 아니며, 회계 매출이 아니라 수주원장 기준 대용치다.
+
+## 2026-10-20 계약 진행(XI-1) 화면
+
+- 반기·사업보고서 XI-1 「나. 단일판매ㆍ공급계약 진행 현황」(2024Q4·2025Q2·2025Q4·2026Q2)을 붙였다. 수집·해석·원장 연결·지표는
+  공용 층 `argus/kce/tools/xi1_sector.py`(이 탭 산출 `tools/assets/xi1/`), 화면 조각은 `argus/kce/tools/xi1_view.py` — 이 탭에서 고치지 않는다.
+  정의는 `argus/kce/UPDATE.md §6-C`.
+- 붙인 자리(`knuke_page.py`): `load_all` → `load_xi1`(fail-soft) · `contracts_table` 금액 뒤 '진행(XI-1)' 열(회사 계약 공시 표·허브
+  최근 대형 계약 표) · 회사 페이지 계약 공시 카드 바로 뒤 `company_section`(id `xi1`) · 허브 대형 계약 뒤 `hub_section`(회사 페이지가
+  있는 종목만 링크) · 커버리지 `coverage_rows`(id `xi1cov`) · 내비 `#xi1`·`#xi1cov` · 꼬리말 출처(`knuke_lib.page(src_extra=)`).
+  조각 CSS 는 그 페이지 `<style>` 한 번(+ 탭 `.note` 노란 상자를 XI-1 조각 안에서만 끈다).
+- 지금: 15사 중 진행 표 8사 · 계약 229건(최신 보고 141) · 원장 연결 확정 134 · 추정 10 · XI 전용 85 · 지연 의심 9.
+  원장 표 진행 칸 247(회사 222 + 허브 25), 그중 값 있는 칸 132(회사 115 + 허브 17).
+- **fail-soft**: `progress.json` 이 없거나 import·적재가 실패하면 열·섹션·꼬리말 출처가 하나도 생기지 않는다 —
+  None 으로 만든 페이지가 통합 전 페이지와 바이트까지 같다(통합 때 확인). 테스트 `tests/test_xi1_page.py`
+  (픽스처 `tests/fixtures/xi1_progress_083650_052690.json` = 커밋된 progress 를 두 회사로 줄인 것).
+- 워크플로: `knuke_reports.py --build` 뒤·`knuke_suppliers.py`/`knuke_page.py` 앞에 `xi1_sector.py knuke --collect --build`.
+  실패해도 페이지는 직전 progress 로 만들고 커밋한 뒤 build step 을 실패로 표시한다. 커밋 메시지·step 요약에 XI-1 건수.

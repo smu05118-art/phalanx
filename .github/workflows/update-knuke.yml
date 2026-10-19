@@ -3,6 +3,9 @@
 # 계약 공시(수시)는 매일 새로 뜨고 정기보고서는 분기마다 뜬다 — 둘 다 캐시가 있으면 건너뛰므로
 # 평시 비용은 검색 몇 건이다. 수집기는 하나씩 돌린다(DART 는 IP 단위로 끊는다).
 # concurrency 그룹은 kce·kship·kdef 와 같은 `kship-dart` — 여러 탭이 동시에 DART 를 두드리면 안 된다.
+# 계약 진행(XI-1, 반기·사업보고서 「공시내용 진행 및 변경사항」)은 공용 층 argus/kce/tools/xi1_sector.py 가
+# 원장(contracts --build) 뒤·페이지 앞에 받는다. 이 단계가 실패해도 페이지는 직전 progress.json 으로(없으면 열·섹션 없이)
+# 만들고 커밋한 뒤 step 을 실패로 표시한다 — 다른 수집기와 같은 '성공한 산출물은 커밋, 실패는 빨간 불' 의미.
 name: update-knuke
 on:
   schedule:
@@ -54,9 +57,19 @@ jobs:
           python3 knuke_contracts.py --build
           python3 knuke_reports.py --collect --n 8 "${Q[@]}"
           python3 knuke_reports.py --build --n 8 "${Q[@]}"
+          XI_RC=0
+          python3 ../../kce/tools/xi1_sector.py knuke --collect --build || XI_RC=$?
+          if [ "$XI_RC" != 0 ]; then echo "::warning::XI-1 계약 진행 단계 실패(rc=$XI_RC) — 페이지는 직전 progress.json 으로 만든다"; fi
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY" || true
+          import json
+          s = json.load(open("assets/xi1/progress.json", encoding="utf-8"))["sector"]
+          print("XI-1 계약 진행(knuke): 진행 계약 %d건 · 원장 확정 %d · 추정 %d · XI 전용 %d · 지연 의심 %d"
+                % (s["n"], s["linkA"], s["linkB"], s["xi_only"], s["lag"]))
+          PY
           python3 knuke_suppliers.py --build
           python3 knuke_page.py --all
           python3 knuke_parts.py
+          if [ "$XI_RC" != 0 ]; then echo "::error::XI-1 계약 진행 단계 실패 — 나머지 산출물은 만들었다"; exit 1; fi
       - name: Tests (after)
         run: |
           cd argus/knuke/tools && python3 -m unittest discover -s tests -p 'test_*.py'
@@ -71,7 +84,8 @@ jobs:
             echo "변경 없음"; exit 0
           fi
           git add -- argus/knuke
-          git commit -m "knuke: 자동 갱신 $(date -u +%Y-%m-%d) (계약공시·정기보고서·부품 연결)"
+          XI=$(python3 -c "import json;s=json.load(open('argus/knuke/tools/assets/xi1/progress.json',encoding='utf-8'))['sector'];print('XI-1 %d건·확정 %d·추정 %d·지연 %d'%(s['n'],s['linkA'],s['linkB'],s['lag']))" 2>/dev/null || true)
+          git commit -m "knuke: 자동 갱신 $(date -u +%Y-%m-%d) (계약공시·정기보고서·부품 연결${XI:+·$XI})"
           git pull --rebase origin main
           git push origin HEAD:main
       - name: Fail if build errored
