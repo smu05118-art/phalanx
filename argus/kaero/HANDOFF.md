@@ -10,6 +10,7 @@
 | `tools/assets/contracts.json` | `kaero_contracts.py --collect/--build` | 수시공시 「단일판매ㆍ공급계약체결」(I001) | `assets/contracts/<종목>/<rcpNo>.json` |
 | `tools/assets/suppliers.json` | `kaero_suppliers.py --build` | 위 셋 + `parts_taxonomy.json` (수집 없음) | — |
 | `tools/assets/{domains,natures,tiers,parts_taxonomy,svg_regions}.json` | `build_dicts.py --write` | 코드 안의 표(교차참조 검증) | — |
+| `tools/assets/xi1/{status.json, parsed/<종목>/<분기>.json, progress.json}` | `../../kce/tools/xi1_sector.py kaero --collect --build` | 반기·사업보고서 「XI-1 공시내용 진행 및 변경사항」 + `contracts.json` | 원문 HTML `xi1/_raw/` (비커밋) |
 | `index.html` `coverage.html` `<종목>/index.html` | `kaero_page.py --all` | 위 전부 | — |
 | `parts.html` | `kaero_parts.py` | `parts_taxonomy` + `svg_regions` + `suppliers` | — |
 
@@ -95,3 +96,25 @@ python3 ../../_specs/scout_tools/scout_peek.py 067390 --quarter 2025Q4 --sec "�
   산출이 없거나 회사가 빠지면 **섹션을 만들지 않는다**. 렌더러 파일명에 탭 접두가 붙은 이유는 그 파일 머리에 적었다.
 - 추정에는 시나리오 3종·잔고분/신규분 분해·민감도 구간이 붙고 `calibrated=false` 로 표기된다 —
   통계적 신뢰구간이 아니며, 회계 매출이 아니라 수주원장 기준 대용치다.
+
+## 2026-10-19 계약 진행(XI-1) 화면 연결
+
+- 원천: 반기·사업보고서 XI-1 「나. 단일판매ㆍ공급계약 진행 현황」 2024Q4·2025Q2·2025Q4·2026Q2.
+  수집·해석·원장 연결·지표는 공용 `argus/kce/tools/xi1_sector.py`, 화면 조각은 공용 `xi1_view.py`(import 만 — 고치지 않는다).
+  자산 `tools/assets/xi1/`(status.json · parsed/ · progress.json, 커밋). 정의는 `LOGIC.md §9`, 공용 전문은 `../kce/UPDATE.md §6-C`.
+- 붙인 자리(`tools/kaero_page.py`): `load_xi1()`(load_all 의 `xi1`·`xi1_view` 키, 모집단 밖 종목이 있으면 `subset`) ·
+  회사 페이지 수시공시 계약 표의 `진행(XI-1)` 열(금액 뒤) + `#xi1` 섹션(그 표 바로 뒤) + 머리 내비 `계약 진행` ·
+  허브 `#xi1` 섹션(큰 계약 줄 뒤·더 보기 앞, 회사 페이지가 있는 종목만 링크) · 커버리지 `#xi1cov`(못 읽은 것 뒤) ·
+  꼬리말 출처(`kaero_lib.page(src_extra=…)` — 조각을 실은 쪽에만).
+- 2026Q2 기준: 21사 중 진행 표가 있는 회사 10 · 최신 진행 계약 158건 · 원장 연결 확정 108/추정 11 · XI 전용 66 · 지연 의심 14.
+  회사 섹션 10쪽, 진행 열 148칸(막대 98).
+- 자동 갱신: `update-kaero.yml` 이 `kaero_suppliers.py --build` 뒤·`kaero_page.py --all` 앞에서
+  `python3 ../../kce/tools/xi1_sector.py kaero --collect --build` 를 돌린다. 실패해도 페이지는 직전 progress.json 으로
+  만들고, 블록 끝에서 실패 코드를 돌려줘 `Fail if build errored` 가 잡는다. 커밋 메시지에 XI-1 건수(n·확정·추정·지연 의심).
+- 로컬 확인은 `python3 ../../kce/tools/xi1_sector.py kaero --build --no-hdr` 만(DART 는 IP 단위로 끊는다 — `--collect` 금지).
+- 테스트 `tools/tests/test_xi1_page.py`(8건, 네트워크 없음): 픽스처 `fixtures/xi1_progress_221840.json`(하이즈항공으로 줄인 progress)로
+  섹션·열·허브·커버리지·겸업사 메모, None·로더 예외·렌더 예외 때 예전 화면 그대로인지.
+- 남은 것: ① 한화에어로(012450)는 원장에 이어진 19건 중 12건의 XI-1 판매ㆍ공급 칸이 `-`(선급금만 받은 엔진 계약 등)라
+  진행 열이 `—`(툴팁에 계약금액·수령·경과)다 — 공용 층이 `-` 를 값 없음으로 읽어 막대·선수금 집계에서 빠진다.
+  `-` 를 0 으로 읽을지는 공용 층(kce UPDATE §6-C) 판단으로 넘겼다. ② 수주 상세(`kaero_orders_views.py`)의 간트 표에는 진행 열을
+  달지 않았다(별도 산출 모듈). ③ 겸업사 방산·해양 계약은 부문 열이 없어 거르지 못한다 — kdef·kship 화면과 겹친다.
