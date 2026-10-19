@@ -193,8 +193,10 @@ def _rel(depth):
 
 
 def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), tags=(),
-         nav=(), lead="", body_end=""):
+         nav=(), lead="", body_end="", xi1=False):
     """공용 셸. depth=0 은 kgrid 루트, 1 은 회사 디렉터리.
+
+    `xi1=True` 면 꼬리말 출처에 반기·사업보고서 XI-1(계약 진행)을 더한다 — 그 섹션·열을 실은 쪽만.
 
     외부 스크립트(Chart.js)는 **본문보다 먼저** 둔다 — 본문의 인라인 차트 코드가 그 전역을
     즉시 쓰기 때문이다(꼬리에 두면 `Chart is not defined`).
@@ -220,10 +222,12 @@ def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), ta
             "<body>\n<header class=\"top\"><div class=\"hd\"><h1>%s</h1>%s"
             "<span class=\"sp\">%s</span></div>%s</header>\n%s"
             "<main>%s%s</main>\n"
-            "<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·"
+            "<footer>출처 DART 정기보고서「II. 사업의 내용」(매출실적·주요매출처·수주상황)·%s"
             "수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. "
             "단위 백만원 · 표기는 억원. 외화로 공시한 표는 <b>환산하지 않고</b> 통화를 함께 적습니다. "
             "수주잔고 표는 회사에 따라 한 행이 계약이 아니라 <b>사업부문 합계</b>입니다 — 입도를 함께 봅니다. "
             "참고용 · 투자조언 아님.</footer>\n%s</body></html>\n"
             % (E(title), r, head_extra, E(h1 or title), tagh, navh, crumbh, sh,
-               ('<p class="lead">%s</p>' % lead) if lead else "", body, body_end))
+               ('<p class="lead">%s</p>' % lead) if lead else "", body,
+               ("반기·사업보고서「XI-1 공시내용 진행 및 변경사항」(단일판매ㆍ공급계약 진행 현황)·"
+                if xi1 else ""), body_end))

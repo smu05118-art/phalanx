@@ -805,7 +805,7 @@ def build_clients(rows, uid, today=None, top_n=8):
     if unknown_count:
         conc.append(f'금액 미표시 {unknown_count}건은 건수에만 포함')
     chunks.append('<p data-concentration="1">' + esc(' · '.join(conc) if conc else '집중도: 계산할 활성 계약 금액 없음') +
-                  '. 비중의 분모는 <strong>공시 계약금액 합계</strong>이며 정기보고서 수주잔고가 아닙니다(기납품·진행률을 알 수 없음).</p>')
+                  '. 비중의 분모는 <strong>공시 계약금액 합계</strong>이며 정기보고서 수주잔고가 아닙니다(계약체결 공시만으로는 기납품·진행률을 알 수 없음).</p>')
     return {'html': ''.join(chunks), 'top': top, 'rest': rest, 'rest_list': rest_list, 'anon': anon_list,
             'total_count': total_count, 'total_amount': total_amount, 'unknown_count': unknown_count,
             'basis': basis, 'ended_count': n_ended, 'canceled_count': n_canceled, 'top1_share': top1, 'top3_share': top3,
@@ -849,7 +849,8 @@ def render_orders_section(panel_entry, contracts, forecast_entry=None, today=Non
               f'<p>원장: 단일판매·공급계약 공시 {len(recs)}행(정정은 최신본만 · 정정 {n_corr}건 · 해지 공시 {n_cancel}건, 그중 원 계약 행과 짝지은 {n_matched}건) · '
               f'활성 {n_active}건 · 종료 {n_ended}건 · 오늘 기준 {today.isoformat()}. '
               f'금액은 공시 원문 금액×공시 환율을 백만원으로 다시 계산해 환산값과 1% 안에서 맞는 것만 씁니다(미검증 {n_unamt}건은 비움). '
-              '공시 계약금액은 정기보고서 수주잔고에 더하지 않으며, 기납품·진행률은 공시에 없어 잔여액을 만들지 않았습니다.</p>',
+              '공시 계약금액은 정기보고서 수주잔고에 더하지 않으며, 기납품·진행률은 계약체결 공시에 없어 이 뷰에서는 잔여액을 만들지 않았습니다'
+              '(반기·사업보고서 XI-1 의 계약별 공급 누적은 그 표가 있는 회사만 이 페이지 「계약 진행」에 따로 싣고, 이 간트·스케줄에는 섞지 않습니다).</p>',
               '<p>장납기/회전(색): 계약명의 전압 계급(154kV 이상)·초고압·HVDC → 장납기; 품목 태그 ehv → 장납기, 수배전반·차단기·배전변압기·금구 → 회전; '
               f'전력선·변환은 계약기간 1.0년 문턱; 근거 없으면 미상. 이 회사: 장납기 {branch_counts.get("long_lead", 0)}건 · 회전 {branch_counts.get("turnover", 0)}건 · 미상 {branch_counts.get("unknown", 0)}건.</p>']
     if n_sub:
@@ -874,7 +875,7 @@ def render_orders_section(panel_entry, contracts, forecast_entry=None, today=Non
                   '<p>상대: 법인 접미사·구두점·대소문자·공백 차이만 접어 같은 상대로 묶고 표기 변형을 함께 적습니다. 괄호 안 별칭이 다른 이름은 합치지 않습니다. '
                   '“-”·“개인” 같은 익명 표기는 익명 줄에 그대로 두고 실명과 섞지 않습니다. 관계회사(계열·자회사) 표시는 공시의 관계 열을 그대로 옮긴 것입니다.</p>'
                   '<p>금액: 통화가 다른 계약은 공시가 밝힌 환율로만 환산된 값을 쓰며, 환율이 없거나 원문 금액이 없으면 금액을 비웁니다. 비율·집중도의 분모는 활성 계약의 검증 금액 합계입니다.</p>'
-                  '<p>못 싣는 것: 기납품·잔여액(공시에 없음), 정기보고서 수주잔고와의 대사(단위·범위가 다름), 5% 미만 매출처, 비밀유지로 가린 상대.</p>'
+                  '<p>못 싣는 것: 기납품·잔여액(계약체결 공시에 없음 — XI-1 진행 현황은 이 뷰에 섞지 않음), 정기보고서 수주잔고와의 대사(단위·범위가 다름), 5% 미만 매출처, 비밀유지로 가린 상대.</p>'
                   '</details></section>')
     return ''.join(chunks)
 

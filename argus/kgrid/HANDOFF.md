@@ -16,6 +16,7 @@
 | 계약명·상대·금액·기간 | 수시공시「단일판매ㆍ공급계약체결」(I001) | `kgrid_contracts` | 공시유보는 유보로, 해지는 해지로 표시 |
 | 계약금액 원화 환산 | **공시가 적은 환율**(`fx_src` 에 문구 보존) | `kgrid_contracts` | 근거 없으면 원문 통화로 둔다 |
 | 수요 축(데이터센터·북미·HVDC…) | II절 본문 | `demand_quotes` | 표 덤프는 인용하지 않는다 |
+| 계약별 진행·수령·매출채권(XI-1) | 반기·사업보고서 XI-1「단일판매ㆍ공급계약 진행 현황」(Q2·Q4) | 공용 `kce/tools/xi1_sector.py`(→ `assets/xi1/progress.json`) · 화면 `xi1_view.py` | 원장 근거 없으면 `XI 전용` · 외화 환산 안 함 · 파일 없으면 섹션·열 없음 |
 | 모집단·편입 근거 | KRX KIND 업종·주요제품 + II절 본문 | `kgrid_universe` · `kgrid_scan` | 승격은 본문 인용이 있을 때만 |
 
 원문 캐시: `tools/assets/reports_cache/<종목>/<분기>.json` 의 `raw_tables` 에 표의
@@ -29,7 +30,7 @@
 - 배수 중앙값 **1.11년**, **장납기 9사 : 회전 8사** — 스펙의 이분 가설이 전수로 확인됐다.
 - 외화로 잔고를 공시하는 회사 1사(일진전기 `천USD`) — 환산하지 않고 배수를 비웠다.
 - 계약 공시 **자사 176건**(지주·모회사의 자회사 재공시 76건은 갈라 놓았다) · 발주처·지역 집계.
-- 페이지 37장(허브·단선도·커버리지 + 회사 34). 테스트 **105건 통과**.
+- 페이지 37장(허브·단선도·커버리지 + 회사 34). 테스트 **124건 통과**(2026-10-19, XI-1 화면 12건 포함).
   모집단에서 빠진 회사의 쪽은 `kgrid_page.py --all` 이 지운다.
 - 탭 공개: `site.json` `{"label": "⚡ 한국전력기기", "order": 60}`.
 - 자동 갱신: `.github/workflows/update-kgrid.yml` (11:40 KST, `concurrency: kship-dart`).
@@ -63,8 +64,9 @@ python3 kgrid_scan.py --probe && python3 kgrid_scan.py --build
 python3 kgrid_contracts.py --collect && python3 kgrid_contracts.py --build
 python3 kgrid_reports.py --collect --n 6
 python3 kgrid_reports.py --reparse --build --n 6     # 파서를 고쳤을 때: DART 요청 0건
+python3 ../../kce/tools/xi1_sector.py kgrid --collect --build   # 계약 진행(XI-1). 로컬은 --build --no-hdr 만(DART 0)
 python3 kgrid_page.py --all
-python3 -m unittest discover -s tests                # 97건
+python3 -m unittest discover -s tests                # 124건
 ```
 
 한 회사만 보려면 `--only 267260`. 원문을 눈으로 보려면
@@ -83,3 +85,18 @@ python3 -m unittest discover -s tests                # 97건
   산출이 없거나 회사가 빠지면 **섹션을 만들지 않는다**. 렌더러 파일명에 탭 접두가 붙은 이유는 그 파일 머리에 적었다.
 - 추정에는 시나리오 3종·잔고분/신규분 분해·민감도 구간이 붙고 `calibrated=false` 로 표기된다 —
   통계적 신뢰구간이 아니며, 회계 매출이 아니라 수주원장 기준 대용치다.
+
+## 2026-10-19 계약 진행(XI-1) 화면
+
+- 반기·사업보고서 XI-1 진행 현황(2024Q4·2025Q2·2025Q4·2026Q2)을 붙였다. 수집·해석·원장 연결·지표는 **공용 층**
+  `argus/kce/tools/xi1_sector.py`(고치지 않는다 — 6개 수주 섹터가 같이 쓴다), 화면 조각은 `xi1_view.py`. 정의는
+  `LOGIC.md §9` · `argus/kce/UPDATE.md §6-C`.
+- 파일: `tools/assets/xi1/{status.json, parsed/<종목>/<분기>.json, progress.json}`(커밋) · 원문 HTML `xi1/_raw/`(로컬 gzip, gitignore).
+  머리행 지도 role `xi` 는 `tools/assets/hdrmap.json` 에 같이 기록된다.
+- 붙인 자리(`kgrid_page.py`): 허브 `#xi1`(발주처 카드 뒤, 지주 뺀 `subset`) · 회사 계약 공시 표·자회사 재공시 표의 **진행(XI-1)** 열 ·
+  회사 `#xi1`(원장 표 뒤) · 커버리지 `#xi1cov` + 「못 싣는 것」 두 줄 · 내비 링크 · 꼬리말 출처(`kgrid_lib.page(xi1=True)`).
+  수주 상세 뷰(`kgrid_orders_views.py`)의 "진행률은 공시에 없다" 문구는 "계약체결 공시에 없다 — XI-1 은 섞지 않는다"로 고쳤다.
+- 2026Q2 기준: 34사 중 표가 있는 회사 18(지주 2 포함) · 계약 270행 · 최신 보고 진행 189건 · 원장 확정 148 / 추정 23 / XI 전용 99.
+- 워크플로: `kgrid_reports.py --build` 뒤·`kgrid_page.py --all` 앞에 `xi1_sector.py kgrid --collect` / `--build` 두 줄(각각 `|| ::warning::`).
+  커밋 메시지에 XI-1 건수를 붙인다.
+- 남은 일: XI-1 진행 열은 회사 페이지에만 있다(허브에는 계약 단위 원장 표가 없다).
