@@ -57,7 +57,8 @@ CSS = """
 .xi1 th,.xi1 td{padding:5px 6px;border-bottom:1px solid var(--ln,#2a2f3a);text-align:left;vertical-align:top}
 .xi1 td.n,.xi1 th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .xi1 .mut{color:var(--tx3,#6b7280)}
-.xi1 .note{font-size:12px;color:var(--tx2,#9aa3b2);line-height:1.6}
+.xi1 .note{font-size:12px;color:var(--tx2,#9aa3b2);line-height:1.6;background:none;border:0;padding:0;margin:8px 0;
+ border-radius:0;box-shadow:none}
 .xi1c{white-space:nowrap}
 .xi1c .xb{display:inline-block;width:56px;height:7px;border-radius:2px;background:%s;position:relative;overflow:hidden;
  vertical-align:middle;margin-right:5px}
