@@ -65,7 +65,7 @@ XI_VOCAB = set(KP._HDR_VOCAB) | set(XI_ALIAS) | _XI_PARENT
 # 이름 칸 없이 계약상대방으로 계약을 가리키는 표도 있다(상대방을 이름으로 쓴다).
 NEED = {"xi_nm", "xi_amt", "xi_supCum"}
 # 파서 판 — 해석 규칙이 바뀌면 올린다. 섹터 탭(xi1_sector)은 판이 다른 해석 결과를 로컬 원문으로 다시 만든다.
-PARSER_REV = "2026-10-16c"
+PARSER_REV = "2026-10-19a"
 MONEY = ("xi_amt", "xi_supCur", "xi_supCum", "xi_recvCur", "xi_recvCum")
 # 판매공급·대금수령 문구가 머리행에 있는데 NEED 가 안 서면 '읽어야 할 표를 못 읽은 것'(미지).
 # 가 표(신고일자|제목|신고내용|진행상황)·사유 부표는 이 문구가 없어 경보하지 않는다.
@@ -125,7 +125,7 @@ def _rule(ncol):
         return "xi_dt"
     if re.search(r"조건부|주요계약조건|기타사항|선급금|지급조건", s):
         return "xi_etc"
-    if re.search(r"계약금액|계약금총액|계약총액|수주금액", s):
+    if re.search(r"계[약액]금액|계약금총액|계약총액|수주금액", s):       # `계액금액 총액`(한화엔진 2025Q4 오기)
         return "xi_cur" if s.endswith("통화") else "xi_amt"
     if s == "통화":
         return "xi_cur"
