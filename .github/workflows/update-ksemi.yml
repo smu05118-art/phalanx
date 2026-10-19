@@ -67,10 +67,19 @@ jobs:
           python3 build_dicts.py --write
           python3 ksemi_contracts.py --all --write
           python3 ksemi_reports.py --write "${Q[@]}"
+          # 계약 진행(XI-1, 반기·사업보고서 「공시내용 진행 및 변경사항」) — 공용 층 kce/tools/xi1_sector.py.
+          # 모자란 (종목, 반기) 칸만 받고(캐시 우선) 원장(contracts.json) 위에서 progress.json 을 다시 만든다.
+          # 실패해도 페이지는 직전 progress.json(없으면 섹션 없이)으로 만들고, 실패는 이 단계 끝에서 알린다.
+          XI1_RC=0
+          python3 ../../kce/tools/xi1_sector.py ksemi --collect --build || XI1_RC=$?
+          if [ "$XI1_RC" -ne 0 ]; then
+            echo "::warning::XI-1 진행 현황 실패(rc=$XI1_RC) — 직전 progress.json 으로 페이지를 만든다"
+          fi
           python3 ksemi_peers.py --write        # 무접속 — 위 스캔이 받아 둔 절 캐시만 읽는다
           python3 ksemi_exposure.py --write     # 무접속 — 같은 절 캐시에서 메모리/비메모리 낱말
           python3 ksemi_page.py --all
           python3 ksemi_parts.py --write
+          exit "$XI1_RC"
       - name: Save DART report cache
         if: always() && steps.build.outcome != 'skipped'
         uses: actions/cache/save@v4
@@ -91,7 +100,9 @@ jobs:
             echo "변경 없음"; exit 0
           fi
           git add -- argus/ksemi
-          git commit -m "ksemi: 자동 갱신 $(date -u +%Y-%m-%d) (계약공시·정기보고서 수주상황·페이지)"
+          # XI-1 건수(progress.json sector — universe 전수, 화면은 구성원 subset) — 파일이 없거나 못 읽으면 빈 문자열
+          XI1=$(python3 -c 'import json; s = json.load(open("argus/ksemi/tools/assets/xi1/progress.json", encoding="utf-8"))["sector"]; print(" · XI-1 진행 %d건 · 원장 확정 %d·추정 %d · 지연 의심 %d" % (s["n"], s["linkA"], s["linkB"], s["lag"]))' 2>/dev/null || true)
+          git commit -m "ksemi: 자동 갱신 $(date -u +%Y-%m-%d) (계약공시·정기보고서 수주상황·계약 진행·페이지)${XI1}"
           git pull --rebase origin main
           git push origin HEAD:main
       - name: Fail if build errored
