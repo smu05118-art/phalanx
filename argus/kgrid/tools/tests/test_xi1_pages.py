@@ -4,7 +4,7 @@
 
 (1) progress.json 이 있으면 허브·커버리지·회사 페이지에 섹션(id="xi1"/"xi1cov")과 원장 표의 진행 열(xi1c)이 나온다.
 (2) 없거나(None) 공용 층 import·렌더가 실패하면 **예외 없이 XI-1 이전 화면 그대로**(섹션·열·CSS·꼬리말 없음).
-(3) 허브 집계는 지주 3사를 뺀 모집단(xi1_sector.subset) — 효성 XI-1 표는 효성중공업 계약을 다시 싣는다.
+(3) 허브 집계는 전체 모집단 — 지주 표가 다시 실은 자회사 계약은 공용 층 dup 표시로 한 번만 센다(효성·LS).
 (4) 원장 행의 정정 사슬(rcp + supersedes 리스트)로 XI-1 계약을 찾는다.
 네트워크 없음 — 커밋된 tools/assets(xi1/progress.json 포함)만 읽는다."""
 import io
@@ -64,7 +64,7 @@ class TestXi1Pages(unittest.TestCase):
         self.assertIsInstance(prog, dict, "tools/assets/xi1/progress.json 이 커밋돼 있어야 한다")
         self.assertEqual(prog.get("tab"), "kgrid")
 
-    def test_hub_section_subset_without_holdings(self):
+    def test_hub_section_counts_holdings_once(self):
         h = P.hub(self.data)
         self.assertIn('id="xi1"', h)
         self.assertIn('href="#xi1"', h)
@@ -72,12 +72,13 @@ class TestXi1Pages(unittest.TestCase):
         self.assertIn("<style>", h.split("</head>")[0])
         sec = h[h.index('id="xi1"'):]
         sec = sec[:sec.index("</section>")]
-        non_holding = [r for r in self.data["uni"] if r.get("role") != "holding"]
         m = re.search(r"<b>(\d+) / (\d+)</b><span>진행 표가 있는 회사 / 모집단", sec)
         self.assertIsNotNone(m)
-        self.assertEqual(int(m.group(2)), len(non_holding))
-        for st in HOLDINGS:
-            self.assertNotIn('href="%s/index.html"' % st, sec)
+        self.assertEqual(int(m.group(2)), len(self.data["uni"]))
+        prog = self.data["progress"]
+        dups = [c for c in prog["contracts"] if "dup" in c["flags"]]
+        self.assertTrue(dups, "효성·LS 지주 표의 자회사 재수록 행에 dup 이 달려야 한다")
+        self.assertTrue(all(c["stock"] in HOLDINGS for c in dups))
         # 회사 링크는 이 탭에 회사 페이지가 있는 종목만
         for st in re.findall(r'href="(\d{6})/index.html"', sec):
             self.assertIn(st, self.data["by_stock"])

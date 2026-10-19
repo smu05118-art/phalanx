@@ -494,16 +494,12 @@ def hub(data):
                # `알제리 우마쉐`)를 섞으면 한 건짜리 칸이 줄줄이 생겨 집계가 아니게 된다.
                agg(lambda r: REGION_LABEL.get(r.get("region") or "", ""))))
 
-    # 계약 진행(XI-1) — 허브 집계는 **지주 3사를 뺀 모집단**으로 맞춘다(xi1_sector.subset). 효성(004800)의 XI-1 표는
-    # 효성중공업(298040) 계약을 같은 금액으로 다시 싣고, LS(006260)는 LS전선·LS일렉트릭 계약을 싣는다 — 더하면 두 번 센다.
-    # 지주의 XI-1 표는 그 회사 페이지에 그대로 둔다(원장의 '자회사 대신 낸 공시'와 같은 규칙).
+    # 계약 진행(XI-1) — 허브 집계는 전체 모집단. 지주 XI-1 표가 자회사 계약을 다시 싣는 경우(효성 ↔ 효성중공업,
+    # LS ↔ LS일렉트릭)는 공용 층(xi1_sector.mark_dups)이 지주 쪽 행에 'dup' 을 달아 탭 합계·곡선에서 한 번만 센다.
+    # 지주를 통째로 빼면 상장 안 된 자회사(LS전선)의 계약까지 사라진다 — 그래서 subset 으로 빼지 않는다.
     xi_hub = ""
     if _xi_on(data):
-        try:
-            prog_hub = XS.subset(data["progress"], [x["stock"] for x in ss])
-        except Exception as e:                                # noqa: BLE001 — fail-soft
-            sys.stderr.write("[warn] XI-1 subset 실패: %s\n" % e)
-            prog_hub = None
+        prog_hub = data["progress"]
         xi_hub = xi_frag("hub_section", prog_hub,
                          co_href=lambda st: ("%s/index.html" % st) if st in data["by_stock"] else None)
         if xi_hub:
@@ -1090,11 +1086,12 @@ def company(data, stock):
                ("(이 회사는 <b>자사 계약 공시가 0건</b>입니다)" if not cs else ""),
                xi_frag("progress_th") if xi_sub else "", trs))
 
-    # 계약 진행(XI-1) — 원장 표 바로 뒤. 지주의 XI-1 표는 자회사 계약을 다시 싣는다(허브 집계에서는 뺐다).
+    # 계약 진행(XI-1) — 원장 표 바로 뒤. 지주의 XI-1 표는 자회사 계약을 다시 싣는다(겹치는 행은 허브 집계에서 한 번만).
     if xi_sec:
         if s["role"] == "holding":
             body.append('<p class="note" style="margin-top:14px">· 아래 <b>계약 진행</b>은 지주회사 보고서의 XI-1 표입니다 — '
-                        '자회사 계약을 다시 실은 것이라 자회사 페이지와 겹치며, 허브의 계약 진행 집계에서는 뺐습니다.</p>')
+                        '상장 자회사 표와 겹치는 계약(같은 신고일·금액, \'자회사 계약\' 칩)은 허브 집계에서 자회사 쪽 한 번만 세고, '
+                        '상장하지 않은 자회사(예: LS전선)의 계약은 여기서만 보입니다.</p>')
         body.append(xi_sec)
 
     # 수요 낱말 인용

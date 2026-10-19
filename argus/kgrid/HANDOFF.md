@@ -93,7 +93,7 @@ python3 -m unittest discover -s tests                # 124건
   `LOGIC.md §9` · `argus/kce/UPDATE.md §6-C`.
 - 파일: `tools/assets/xi1/{status.json, parsed/<종목>/<분기>.json, progress.json}`(커밋) · 원문 HTML `xi1/_raw/`(로컬 gzip, gitignore).
   머리행 지도 role `xi` 는 `tools/assets/hdrmap.json` 에 같이 기록된다.
-- 붙인 자리(`kgrid_page.py`): 허브 `#xi1`(발주처 카드 뒤, 지주 뺀 `subset`) · 회사 계약 공시 표·자회사 재공시 표의 **진행(XI-1)** 열 ·
+- 붙인 자리(`kgrid_page.py`): 허브 `#xi1`(발주처 카드 뒤, 전체 모집단 — 지주 재수록 행은 공용 층 `dup` 으로 한 번만) · 회사 계약 공시 표·자회사 재공시 표의 **진행(XI-1)** 열 ·
   회사 `#xi1`(원장 표 뒤) · 커버리지 `#xi1cov` + 「못 싣는 것」 두 줄 · 내비 링크 · 꼬리말 출처(`kgrid_lib.page(xi1=True)`).
   수주 상세 뷰(`kgrid_orders_views.py`)의 "진행률은 공시에 없다" 문구는 "계약체결 공시에 없다 — XI-1 은 섞지 않는다"로 고쳤다.
 - 2026Q2 기준: 34사 중 표가 있는 회사 18(지주 2 포함) · 계약 270행 · 최신 보고 진행 189건 · 원장 확정 148 / 추정 23 / XI 전용 99.
