@@ -119,11 +119,13 @@ def _rel(depth):
 
 
 def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), tags=(),
-         nav=(), lead=""):
+         nav=(), lead="", src_extra=""):
     """공용 셸. depth=0 은 knuke 루트, 1 은 회사 디렉터리.
 
     kship_lib.page 와 같은 구조지만 CSS 는 assets/knuke.css, 꼬리말은 원전 출처다.
     외부 스크립트(Chart.js)는 **본문보다 먼저** 둔다 — 본문 인라인 차트가 그 전역을 즉시 쓴다.
+    src_extra 는 꼬리말 출처 목록 끝(정기보고서·수시공시 다음)에 붙는 원천 — 그 원천을 실제로 쓴 쪽만 넘긴다
+    (예: 계약 진행 XI-1). 비우면 꼬리말은 예전 그대로.
     """
     r = _rel(depth)
     tagh = "".join('<span class="tag">%s</span>' % E(t) for t in tags if t)
@@ -142,8 +144,8 @@ def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), ta
             "<title>%s</title>\n<link rel=\"stylesheet\" href=\"%sassets/knuke.css\">\n%s</head>\n"
             "<body>\n<header class=\"top\"><div class=\"hd\"><h1>%s</h1>%s<span class=\"sp\">%s</span></div>%s</header>\n%s"
             "<main>%s%s</main>\n"
-            "<footer>출처 DART 정기보고서(사업의 내용 II-4 매출·수주상황·부문 매출)·수시공시「단일판매ㆍ공급계약체결」, "
+            "<footer>출처 DART 정기보고서(사업의 내용 II-4 매출·수주상황·부문 매출)·수시공시「단일판매ㆍ공급계약체결」%s, "
             "KRX KIND 상장법인목록. 단위 백만원 · 표기는 억원. 원전·발전 주기기는 진행기준 수익인식이 많아 "
             "수주·완성·매출 시점이 다릅니다. 참고용 · 투자조언 아님.</footer>\n</body></html>\n"
             % (E(title), r, head_extra, E(h1 or title), tagh, navh, crumbh, sh,
-               ('<p class="lead">%s</p>' % lead) if lead else "", body))
+               ('<p class="lead">%s</p>' % lead) if lead else "", body, src_extra))
