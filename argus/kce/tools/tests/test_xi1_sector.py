@@ -215,6 +215,25 @@ class TestBlankAndCells(unittest.TestCase):
         self.assertNotIn("recvCum", S.blank_zero({"amt": 100, "supCum": None}))               # 열이 없던 표
         self.assertEqual(S.blank_zero({"amt": None, "supCum": None}), {"amt": None, "supCum": None})
 
+    def test_percent_cells_and_amount_jump(self):
+        self.assertEqual(X.money_cell("60%", 1.0), (None, None, None, False))          # 넥스틴 대금수령 칸의 비율
+        th = {"hist": {"2025Q4": {"amt": 1280, "supCum": 0}, "2026Q2": {"amt": 1280000, "recvCum": 1024000}}}
+        S.thread_sanity(th)                                                           # 아이엠티 — 그 행만 1,000배
+        self.assertEqual((th["hist"]["2026Q2"]["amt"], th["hist"]["2026Q2"]["recvCum"]), (1280, 1024))
+        self.assertEqual(th["hist"]["2026Q2"]["cell_fix"], ["amt_thread"])
+        ok = {"hist": {"a": {"amt": 100}, "b": {"amt": 140}}}
+        S.thread_sanity(ok)                                                           # 증액(1.4배)은 건드리지 않는다
+        self.assertEqual(ok["hist"]["b"]["amt"], 140)
+
+    def test_tiny_table_rescaled(self):
+        tab = {"rows": [{"amt": 0.010606, "supCum": 0.006364}, {"amt": 0.005957, "supCum": 0.005361}]}
+        X._unit_sanity(tab)                                                           # 머리행 (원), 값은 백만원
+        self.assertEqual((tab["rows"][0]["amt"], tab["unit_fix"]), (10606, "amt_tiny x1e6"))
+
+    def test_party_notes(self):
+        self.assertEqual(S._PARTY_NOTE.sub("", "SK하이닉스3)"), "SK하이닉스")
+        self.assertEqual(S.party_key("에스케이하이닉스 주식회사"), S.party_key("SK하이닉스(주)"))
+
     def test_cell_sanity(self):
         r = S.cell_sanity({"amt": 388180, "supCum": None, "recvCum": 121938492})               # 한화에어로 IM3 — 천원 칸
         self.assertEqual((r["recvCum"], r["cell_fix"]), (121938.492, ["recvCum"]))

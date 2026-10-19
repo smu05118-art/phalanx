@@ -400,6 +400,29 @@ def _same(r, prev):
     return 0
 
 
+def thread_sanity(th):
+    """같은 계약의 계약금액이 보고 사이에 정확히 1,000·1,000,000 배로 뛰면 그 행만 단위가 다른 것(아이엠티 2026Q2
+    1,280 → 1,280,000). 첫 금액 기준으로 그 행의 원화 금액 칸을 되돌리고 cell_fix 에 남긴다. 계약은 1,000배로 바뀌지 않는다."""
+    qs = sorted(th["hist"])
+    base = next((th["hist"][q]["amt"] for q in qs if th["hist"][q].get("amt")), None)
+    if not base:
+        return th
+    for q in qs:
+        r = th["hist"][q]
+        a = r.get("amt")
+        if not a or a <= 0:
+            continue
+        lr = math.log10(a / base)
+        for k in (3, 6, -3, -6):
+            if abs(lr - k) < 0.1:
+                for f in ("amt", "supCur", "supCum", "recvCur", "recvCum"):
+                    if r.get(f) is not None:
+                        r[f] = round(r[f] / 10 ** k, 6)
+                r.setdefault("cell_fix", []).append("amt_thread")
+                break
+    return th
+
+
 def thread(per_q):
     """[(q, rows)] 오름차순 → [{'hist': {q: row}, 'tab': {q: 표 메타}}]. 같은 분기 두 행이 한 실을 차지하지 않는다."""
     threads = []
@@ -684,7 +707,7 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
             cps[q] = ent
         if not cps:
             continue
-        threads = link_all(thread(per_q), Ls)
+        threads = link_all([thread_sanity(t) for t in thread(per_q)], Ls)
         ok_qs = [q for q in qs if cps.get(q, {}).get("status") in ("ok", "unknown_headers")]
         latest = ok_qs[-1] if ok_qs else None
         first = ok_qs[0] if ok_qs else None
@@ -837,7 +860,8 @@ def _krw_ok(c):
     return c["m"].get("amt") and c["m"].get("basis") == "xi" and "unit_suspect" not in c["flags"]
 
 
-_PARTY_NOISE = re.compile(r"^대한민국|\(주\)|주식회사|㈜|\s+|[.,·ㆍ]|\(.*?\)$")
+_PARTY_NOISE = re.compile(r"^대한민국|\(주\d*\)|주식회사|㈜|\s+|[.,·ㆍ]|\(.*?\)$|\d+\)$|\*\d*$")
+_PARTY_NOTE = re.compile(r"\s*(?:\(주\d+\)|(?<=[^\s(])\d\)|\*\d*)$")       # 각주 표식 `SK하이닉스3)`·`(주1)`·`*1`
 
 
 _PARTY_ALIAS = (("에스케이", "sk"), ("엘지", "lg"), ("엘에스", "ls"), ("에이치디", "hd"), ("씨제이", "cj"), ("케이티", "kt"))
@@ -869,7 +893,7 @@ def company_agg(items, latest, Ls):
     pace_y = sum(max(c["m"].get("pace") or 0, 0) for c in k) * 12
     parties = {}
     for c in k:
-        raw = (c.get("cl") or "").strip()
+        raw = _PARTY_NOTE.sub("", (c.get("cl") or "").strip())
         key = party_key(raw) or "(미기재)"
         cur_ = parties.setdefault(key, [raw or "(미기재)", 0.0])
         if raw and len(raw) < len(cur_[0]):
@@ -945,8 +969,9 @@ def company_flows(items, qs, periods_ok):
 def company_series(items, qs):
     out = {}
     for q in qs:
-        rows = [c for c in items if q in c["hist"] and c["hist"][q][0] and "unit_suspect" not in c["flags"]
-                and c["m"].get("basis") != "fx_native"]
+        # 공급 칸이 비었으면(미기재) 잔여를 모른다 — 회사 KPI·잔여 다리와 같은 기준으로 뺀다
+        rows = [c for c in items if q in c["hist"] and c["hist"][q][0] and c["hist"][q][2] is not None
+                and "unit_suspect" not in c["flags"] and c["m"].get("basis") != "fx_native"]
         if not rows:
             continue
         amt = sum(c["hist"][q][0] for c in rows)

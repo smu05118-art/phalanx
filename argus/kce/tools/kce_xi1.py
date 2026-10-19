@@ -65,7 +65,7 @@ XI_VOCAB = set(KP._HDR_VOCAB) | set(XI_ALIAS) | _XI_PARENT
 # 이름 칸 없이 계약상대방으로 계약을 가리키는 표도 있다(상대방을 이름으로 쓴다).
 NEED = {"xi_nm", "xi_amt", "xi_supCum"}
 # 파서 판 — 해석 규칙이 바뀌면 올린다. 섹터 탭(xi1_sector)은 판이 다른 해석 결과를 로컬 원문으로 다시 만든다.
-PARSER_REV = "2026-10-19b"
+PARSER_REV = "2026-10-19c"
 MONEY = ("xi_amt", "xi_supCur", "xi_supCum", "xi_recvCur", "xi_recvCum")
 # 판매공급·대금수령 문구가 머리행에 있는데 NEED 가 안 서면 '읽어야 할 표를 못 읽은 것'(미지).
 # 가 표(신고일자|제목|신고내용|진행상황)·사유 부표는 이 문구가 없어 경보하지 않는다.
@@ -255,6 +255,8 @@ def _f(x):
 def money_cell(raw, mul, fx_mul=1):
     """금액 칸 → (원화 백만원|None, 통화|None, 외화 금액|None, 유보 여부)."""
     s = (raw or "").strip()
+    if "%" in s:
+        return None, None, None, False      # `60%`·`100%` — 금액 칸에 비율을 적은 회사(넥스틴 대금수령). 금액으로 읽지 않는다
     v = num_of(s)
     if v is None and s:
         v = num_of(_NOTE_PAREN.sub("", s))
@@ -394,6 +396,12 @@ def _unit_sanity(tab):
     amts = [r["amt"] for r in rows if r.get("amt")]
     if amts and _median(amts) > 2e7:     # 백만원 기준 20조 — 한화 비스마야(14.7조)는 실제 금액이라 이 아래
         tab["unit_suspect"] = True
+    # ③ 계약금액 중앙값이 백만원 기준 1 미만(100만원 미만)이면 머리행 `(원)` 인데 값은 백만원인 표(넥스틴 2026Q2 `10,606`).
+    #    공시 대상 계약이 100만원 미만일 수는 없다 — 중앙값이 1억(100) 이상이 되는 가장 작은 10^3k 로 표 금액 전부를 옮긴다.
+    elif amts and _median(amts) < 1:
+        k = next(k for k in (3, 6, 9) if _median(amts) * 10 ** k >= 100 or k == 9)
+        _rescale(rows, ["amt", "supCur", "supCum", "recvCur", "recvCum"], k)
+        tab["unit_fix"] = (tab.get("unit_fix", "") + " amt_tiny x1e%d" % k).strip()
 
 
 def calibrate(parsed, ref, sim=0.3):
