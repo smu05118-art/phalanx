@@ -489,10 +489,10 @@ def company_section(prog, stock, title="계약 진행 — 반기·사업보고�
     per = co.get("periods") or {}
     src = " · ".join('<a href="%s" target="_blank" rel="noopener">%s</a>' % (DART % p["rcp"], q2) if p.get("rcp") else q2
                      for q2, p in sorted(per.items()) if p.get("status") in ("ok", "unknown_headers"))
-    return ('<section class="card xi1" id="%s"><h2>%s</h2>%s%s%s<div class="xg">%s</div>%s'
+    return ('<section class="card xi1" id="%s"><h2>%s</h2>%s%s%s<div class="xg">%s</div>'
             '<h3>계약별 진행 표 <span class="mut">(%d건 · 완료·이탈 포함)</span></h3>%s%s'
             '<p class="note">보고서 원문: %s</p></section>'
-            % (e(anchor), e(title), _kpis(tiles), _legend(), "".join(figs), "".join(side), "",
+            % (e(anchor), e(title), _kpis(tiles), _legend(), "".join(figs), "".join(side),
                len(items), _contract_table(order, "xi1t" + stock), _notes(prog), src or "—"))
 
 
@@ -580,7 +580,8 @@ def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보�
                     '<th class="n">변동</th><th>기준</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(tr))
     ptab = _parties_table(s.get("parties") or [], "xi1p")
     if ptab:
-        cobar += '<h3>계약상대별 잔여 <span class="mut">(이름 묶음 — 익명 `… 지역 선주`는 따로)</span></h3>' + ptab
+        cobar += ('<h3>계약상대별 잔여 <span class="mut">(표기 묶음 — `(주)`·띄어쓰기·영문/한글 표기 차이를 합친다. '
+                  '익명 상대는 같은 문구끼리만 묶여 실제 같은 상대인지는 모른다)</span></h3>' + ptab)
     return ('<section class="card xi1" id="%s"><h2>%s <span class="mut">%s</span></h2>%s%s<div class="xg">%s</div>%s'
             '<h3>주의 계약 <span class="mut">(지연 의심·납기 경과·지연 전망·정체·매출 역진, 잔여 큰 순 %d건)</span></h3>%s%s%s</section>'
             % (e(anchor), e(title), e(q), _kpis(tiles), _legend(), "".join(figs), cobar, len(watch),
