@@ -13,6 +13,7 @@
 | 제품 서술(부품 분류 근거) | 정기보고서 II-2 「주요 제품 및 서비스」 | `kdef_products.py` → `assets/products/<종목>.json` |
 | 부품 분류·납품 관계(근거 등급) | 위 사전 + 계약명 + 제품 절 + II절 인용문 + KIND 문구 | `kdef_suppliers.py` → `assets/suppliers.json` |
 | 모집단 네 겹 | KIND 상장법인목록 + ④ 본문 탐색 | `kdef_universe.py` · `kdef_scan.py` → `universe.json` · `universe_probe.json` |
+| 계약별 진행(공급·수령 누적) | 반기·사업보고서 XI-1 「나. 단일판매ㆍ공급계약 진행 현황」 | 공용 `kce/tools/xi1_sector.py kdef` → `assets/xi1/progress.json` · 화면 `kce/tools/xi1_view.py` |
 | 페이지 | 위 JSON만 읽는다(수집 없음) | `kdef_page.py`(허브·회사·커버리지) · `kdef_parts.py`(인포그래픽) |
 
 ## ② 지금 상태 (2026-09-11)
@@ -98,3 +99,23 @@ python3 -m unittest discover -s tests
   산출이 없거나 회사가 빠지면 **섹션을 만들지 않는다**. 렌더러 파일명에 탭 접두가 붙은 이유는 그 파일 머리에 적었다.
 - 추정에는 시나리오 3종·잔고분/신규분 분해·민감도 구간이 붙고 `calibrated=false` 로 표기된다 —
   통계적 신뢰구간이 아니며, 회계 매출이 아니라 수주원장 기준 대용치다.
+
+## 2026-10-19 계약 진행(XI-1)
+
+- 공용 층(`argus/kce/tools/xi1_sector.py` 수집·해석·원장 연결·지표, `xi1_view.py` 화면 조각 — **여기서 고치지 않는다**)을 붙였다.
+  데이터 `tools/assets/xi1/{status.json, parsed/<종목>/<분기>.json, progress.json}`(원문 HTML `_raw/` 는 커밋하지 않음).
+  정의·임계는 `argus/kce/UPDATE.md` §6-C, 이 탭의 규칙은 LOGIC §7.
+- 붙인 자리(`kdef_page.py`): `load_all()["xi1"] = load_xi1(모집단)` · `contracts_table` 의 '진행(XI-1)' 열(금액 바로 뒤, 회사 표와
+  허브 '최근 대형 계약' 둘 다, rcp + `supersedes` 사슬로 찾음) · 회사 페이지 계약 공시 표 바로 아래 `xi1_company`(id `xi1`) ·
+  허브 '최근 대형 계약' 아래 `xi1_hub`(회사 페이지가 있는 종목만 링크) · 커버리지 `xi1_coverage`(id `xi1cov`) · 내비 `#xi1` ·
+  꼬리말 원천(`kdef_lib.page(foot=)`). 조각 CSS 는 그 페이지 `<style>` 로 한 번.
+- **fail-soft**: import·읽기 실패, `progress.json` 없음 → `data["xi1"]=None` → 열·섹션·꼬리말 없이 **지금과 같은 바이트**
+  (`tests/test_xi1_pages.py` 가 지킨다). 렌더 중 예외도 그 조각만 뺀다. 모집단 밖 종목이 섞이면 `xi1_sector.subset` 으로 맞춘다.
+- 민수: XI-1 절은 회사의 XI-1 계약 전부라 CIVIL 을 빼지 않는다 — 섹션 첫 줄에 원장으로 확인한 민수 건수와 XI 전용(미판정) 건수.
+- 워크플로: `kdef_reports.py --build` 뒤·`kdef_headers.py --write` 앞에 `python3 ../../kce/tools/xi1_sector.py kdef --collect --build`
+  (실패해도 경고만 — 직전 progress.json 으로 페이지를 만든다). 커밋 메시지·Step Summary 에 `XI-1 n건(확정·추정·지연)`.
+  build 가 머리행 지도에 role `xi` 를 남기므로 `kdef_headers --check` 의 회귀 게이트가 xi 표에도 걸린다(직전 반기에 읽히던
+  XI 표가 미지로 바뀌면 빨강).
+- 로컬 재현(DART 0): `cd tools && python3 ../../kce/tools/xi1_sector.py kdef --build --no-hdr && python3 kdef_page.py --all`.
+  `--collect` 는 로컬에서 돌리지 않는다(DART IP 차단). 실측 2026Q2: 회사 72 중 표 있음 35 · 계약 625(최신 501) ·
+  연결 확정 357/추정 31 · XI 전용 237 · 지연 의심 33. 회사 섹션 35쪽, 원장 표 진행 칸 714(값 있음 244).

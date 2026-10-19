@@ -155,10 +155,11 @@ def _rel(depth):
 
 
 def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), tags=(),
-         nav=(), lead=""):
+         nav=(), lead="", foot=""):
     """공용 셸. depth=0 은 kdef 루트, 1 은 회사 디렉터리.
 
     kship_lib.page 와 같은 구조지만 CSS 는 assets/kdef.css, 꼬리말은 방산 출처다.
+    foot = 꼬리말 출처 목록에 덧붙일 원천(그 원천을 실은 페이지만 — 예: 계약 진행 XI-1).
     외부 스크립트(Chart.js)는 **본문보다 먼저** 둔다 — 본문의 인라인 차트 코드가 그
     전역을 즉시 쓰기 때문이다(꼬리에 두면 `Chart is not defined`).
     """
@@ -179,8 +180,8 @@ def page(title, body, depth=0, head_extra="", scripts=(), h1=None, crumbs=(), ta
             "<title>%s</title>\n<link rel=\"stylesheet\" href=\"%sassets/kdef.css\">\n%s</head>\n"
             "<body>\n<header class=\"top\"><div class=\"hd\"><h1>%s</h1>%s<span class=\"sp\">%s</span></div>%s</header>\n%s"
             "<main>%s%s</main>\n"
-            "<footer>출처 DART 정기보고서(사업의 내용·주석)·수시공시「단일판매ㆍ공급계약체결」, KRX KIND 상장법인목록. "
+            "<footer>출처 DART 정기보고서(사업의 내용·주석)·수시공시「단일판매ㆍ공급계약체결」%s, KRX KIND 상장법인목록. "
             "단위 백만원 · 표기는 억원. 방산 계약은 진행기준 수익인식이 많아 수주·인도·매출 시점이 다릅니다. "
             "참고용 · 투자조언 아님.</footer>\n</body></html>\n"
             % (E(title), r, head_extra, E(h1 or title), tagh, navh, crumbh, sh,
-               ('<p class="lead">%s</p>' % lead) if lead else "", body))
+               ('<p class="lead">%s</p>' % lead) if lead else "", body, foot))
