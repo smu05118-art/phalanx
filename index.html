@@ -5176,11 +5176,413 @@ function renderPpi(){
   _ppiBindRows(main); if(primary)_ppiMountChart(primary,cat,SER);
 }
 
+/* ============================================================================
+ * GGROW:begin — 게임 차트용 "완료 달력분기" YoY/QoQ 증감률 점선 오버레이
+ * 게임 블록 전용(game-scoped). 공유 viz_helpers.js / viz_scale.js / viz_series.js
+ * 전역 플러그인 파일은 수정하지 않는다.
+ * ========================================================================== */
+const GGROW_VER = '1.0.0';
+const GGROW_MODE_DEFAULT = 'both';          // 'both' | 'yoy' | 'qoq' | 'off' (요청: 기본 표시)
+const GGROW_FALLBACK = '#9baef5';
+const GGROW_RE_M = /^(\d{4})-(\d{2})$/;
+const GGROW_RE_D = /^(\d{4})-(\d{2})-(\d{2})$/;
+const GGROW_DASH = { yoy: [4, 3], qoq: [2, 3] };
+const GGROW_NOTES = [];
+let GGROW_SEQ = 0;
+// 계열별 분기 집계 규약. cad=라벨 주기, agg=sum(플로우) | mean(스톡/비율)
+// from=증감률 계산에 쓸 원계열(월평균 보기처럼 표시 계열과 계산 계열이 다른 경우)
+const GGROW_SPEC = {
+  steam_reviews_m: { cad: 'month', agg: 'sum',
+    basis: '분기값 = 완전관측 3개월 리뷰증분 합(플로우)' },
+  dmm_rev_m: { cad: 'month', agg: 'sum', est: true,
+    basis: '분기값 = 완전관측 3개월 예상매출 합(플로우 · 사이트 추정치)' },
+  pcbang_share_w: { cad: 'week', agg: 'mean',
+    basis: '분기값 = 분기 내 기대 주차 전체의 산술평균(주 관측일 기준으로 분기 귀속)' },
+  maple_pop_w: { cad: 'week', agg: 'mean',
+    basis: '분기값 = 분기 내 기대 주차 전체의 산술평균(주 관측일 기준으로 분기 귀속)' },
+  mobile_rankpt_d: { cad: 'day', agg: 'mean',
+    basis: '분기값 = 분기 내 전(全) 일자의 산술평균' },
+  // 월평균 보기: 계산은 주간 원계열, 끝점만 보이는 월 라벨로 재배치
+  pcbang_share_m: { cad: 'week', agg: 'mean', from: 'pcbang_share_w',
+    basis: '분기값 = 주간 원계열의 기대 주차 전체 산술평균(월평균 보기는 끝점만 월 라벨에 재배치)' }
+};
+const GGROW_SRCN = { steam_reviews_m: 'Steam 리뷰증분', pcbang_share_w: 'PC방 점유율', pcbang_share_m: 'PC방 점유율',
+  maple_pop_w: '메이플 인구', mobile_rankpt_d: '모바일 랭크포인트', dmm_rev_m: 'DMM 예상매출' };
+
+function gg2(n) { return (n < 10 ? '0' : '') + n; }
+function gGrowthQKey(qi) { return Math.floor(qi / 4) + '-Q' + ((qi % 4) + 1); }
+function gGrowthQY(qi) { return Math.floor(qi / 4); }
+function gGrowthQQ(qi) { return (qi % 4) + 1; }
+function gGrowthQI(y, q) { return y * 4 + (q - 1); }
+function gGrowthFinite(v) { return typeof v === 'number' && isFinite(v); }   // null/문자/NaN을 0으로 강제하지 않음
+
+// 현재 "진행 중" 달력분기(Asia/Seoul). 테스트는 nowISO를 명시적으로 넘길 수 있다.
+// epoch에 +9h를 더해 UTC 필드를 읽는 방식 → KST 벽시계. 'YYYY-MM-DD'는 UTC 자정으로 해석된 뒤 KST로 환산.
+function gGrowthNowQ(nowISO) {
+  let ms = NaN;
+  if (nowISO != null && nowISO !== '') { ms = (nowISO instanceof Date ? nowISO : new Date(nowISO)).getTime(); }
+  if (!isFinite(ms)) ms = (new Date()).getTime();
+  const k = new Date(ms + 9 * 3600 * 1000);
+  const y = k.getUTCFullYear(), m = k.getUTCMonth() + 1, q = Math.floor((m - 1) / 3) + 1;
+  return { y: y, q: q, qi: gGrowthQI(y, q), key: y + '-Q' + q,
+    kst: y + '-' + gg2(m) + '-' + gg2(k.getUTCDate()) + ' KST' };
+}
+function gGrowthNow() {
+  const W = (typeof window !== 'undefined' ? window : {});
+  const G = W.GAMES_DATA || {};
+  return W.__GAME_NOW_ISO || G.now_iso || (G.sources_meta || {}).now_iso || null;
+}
+
+// 라벨 파싱: 월='YYYY-MM', 일/주='YYYY-MM-DD'(존재하지 않는 날짜는 거부). 카테고리 라벨은 null.
+function gGrowthParseLabel(L, cad) {
+  const s = String(L == null ? '' : L);
+  if (cad === 'month') {
+    const m = GGROW_RE_M.exec(s); if (!m) return null;
+    const y = +m[1], mo = +m[2]; if (!(mo >= 1 && mo <= 12)) return null;
+    return { y: y, m: mo, d: null, wd: null };
+  }
+  const m = GGROW_RE_D.exec(s); if (!m) return null;
+  const y = +m[1], mo = +m[2], dd = +m[3], dt = new Date(Date.UTC(y, mo - 1, dd));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== dd) return null;
+  return { y: y, m: mo, d: dd, wd: dt.getUTCDay() };
+}
+// 소스 케이던스 요일(PC방 월요일·메이플 목요일 등)을 라벨에서 최빈값으로 추정. 동률이면 작은 요일.
+function gGrowthWd(labels) {
+  const c = {}; let best = -1, bn = -1;
+  const L = labels || [];
+  for (let i = 0; i < L.length; i++) {
+    const p = gGrowthParseLabel(L[i], 'day'); if (!p) continue;
+    c[p.wd] = (c[p.wd] || 0) + 1;
+  }
+  Object.keys(c).forEach(function (k) { const n = c[k]; if (n > bn || (n === bn && +k < best)) { bn = n; best = +k; } });
+  return best < 0 ? null : best;
+}
+// 분기 내 "기대 관측 라벨" 전체. month=3개월, day=윤일 포함 전 일자, week=분기 내 해당 요일 전부.
+function gGrowthExpected(y, q, cad, wd) {
+  const m0 = (q - 1) * 3 + 1, out = [];
+  if (cad === 'month') { for (let m = m0; m < m0 + 3; m++) out.push(y + '-' + gg2(m)); return out; }
+  if (cad === 'week' && !(typeof wd === 'number' && wd >= 0 && wd <= 6)) return out;   // null>=0 코어션 방지
+  const start = Date.UTC(y, m0 - 1, 1), end = Date.UTC(y, m0 + 2, 1);   // UTC 산술 → DST 영향 없음
+  for (let t = start; t < end; t += 86400000) {
+    const d = new Date(t);
+    if (cad === 'week' && d.getUTCDay() !== wd) continue;
+    out.push(d.getUTCFullYear() + '-' + gg2(d.getUTCMonth() + 1) + '-' + gg2(d.getUTCDate()));
+  }
+  return out;
+}
+/* 분기 집계. 완전관측만 값으로 인정:
+ *  - 기대 라벨이 전부 존재(결측 1개라도 → null)
+ *  - 분기 내 라벨 중복 → null
+ *  - 값이 number & 유한 & >=0 이어야 함(null/문자/NaN/음수 → null, 0은 허용)
+ *  - 보간·전월이월 없음. last = 분기 내 실제 마지막 가시 관측 인덱스. */
+function gGrowthAgg(labels, values, cad, aggMode, wd) {
+  const L = labels || [], V = values || [], buckets = {}, out = {};
+  for (let i = 0; i < L.length; i++) {
+    const p = gGrowthParseLabel(L[i], cad); if (!p) continue;
+    const q = Math.floor((p.m - 1) / 3) + 1, qi = gGrowthQI(p.y, q), key = String(L[i]);
+    const b = buckets[qi] || (buckets[qi] = { y: p.y, q: q, idx: {}, last: -1, dup: false, cnt: 0 });
+    if (b.idx[key] !== undefined) b.dup = true; else b.idx[key] = i;
+    b.cnt++; if (i > b.last) b.last = i;
+  }
+  Object.keys(buckets).forEach(function (qk) {
+    const b = buckets[qk], exp = gGrowthExpected(b.y, b.q, cad, wd);
+    let ok = !b.dup && exp.length > 0, sum = 0, n = 0, why = b.dup ? 'dup' : null;
+    if (ok) {
+      for (let j = 0; j < exp.length; j++) {
+        const i = b.idx[exp[j]];
+        if (i === undefined) { ok = false; why = 'missing:' + exp[j]; break; }
+        const v = V[i];
+        if (!gGrowthFinite(v)) { ok = false; why = 'nonfinite:' + exp[j]; break; }
+        if (v < 0) { ok = false; why = 'negative:' + exp[j]; break; }
+        sum += v; n++;
+      }
+    }
+    out[qk] = { qi: +qk, y: b.y, q: b.q, key: b.y + '-Q' + b.q, N: exp.length, n: ok ? n : 0,
+      obs: b.cnt, last: b.last, v: ok && n === exp.length && n > 0 ? (aggMode === 'sum' ? sum : sum / n) : null,
+      reason: ok ? null : (why || 'incomplete') };
+  });
+  return out;
+}
+// 100*(Q/기준Q-1). 분모<=0 또는 어느 한쪽 미완전 → null(0으로 대체하지 않음). 분자 0은 허용.
+function gGrowthRatio(cur, base) {
+  if (!cur || cur.v == null || !base || base.v == null) return null;
+  if (!(base.v > 0)) return null;
+  const g = 100 * (cur.v / base.v - 1);
+  return isFinite(g) ? g : null;
+}
+/* 완료분기만(qi < 현재분기). 관측된 분기 범위 전체를 연속 슬롯으로 만들어
+ * 통째로 결측인 분기는 null 슬롯 → 선이 끊김(브리징 금지). */
+function gGrowthRows(agg, curQI) {
+  const ks = Object.keys(agg || {}).map(Number).filter(function (q) { return q < curQI; });
+  if (!ks.length) return [];
+  ks.sort(function (a, b) { return a - b; });
+  const lo = ks[0], hi = ks[ks.length - 1], rows = [];
+  for (let qi = lo; qi <= hi; qi++) {
+    const a = agg[qi] || null, yb = agg[qi - 4] || null, qb = agg[qi - 1] || null;
+    rows.push({ qi: qi, y: gGrowthQY(qi), q: gGrowthQQ(qi), key: gGrowthQKey(qi), a: a,
+      yoy: gGrowthRatio(a, yb), qoq: gGrowthRatio(a, qb),
+      yoyBaseKey: gGrowthQKey(qi - 4), qoqBaseKey: gGrowthQKey(qi - 1),
+      ybN: yb && yb.v != null ? yb.n : null, qbN: qb && qb.v != null ? qb.n : null,
+      ybN_exp: yb ? yb.N : null, qbN_exp: qb ? qb.N : null });
+  }
+  return rows;
+}
+// 월평균 보기 끝점 재배치: 분기의 "보이는 월 라벨 중 가장 늦은 월" 인덱스
+function gGrowthRemapMonth(xLabels) {
+  const pos = {};
+  (xLabels || []).forEach(function (L, i) {
+    const s = String(L); if (GGROW_RE_M.test(s) && pos[s] === undefined) pos[s] = i;
+  });
+  return function (row) {
+    let best = null;
+    for (let k = 0; k < 3; k++) { const mo = row.y + '-' + gg2((row.q - 1) * 3 + 1 + k); if (pos[mo] !== undefined) best = pos[mo]; }
+    return best;
+  };
+}
+/* Chart.js parsing:false 용 희소 포인트. {x:카테고리 인덱스, y:증감률%} + 분기 메타.
+ * 주의 1) 포인트 객체에 role/status/est 키를 쓰면 VizSeries.splitSeries가 계열을 쪼갠다 → 쓰지 않음.
+ * 주의 2) parsing:false 에서는 _parsed 가 곧 data 이므로 **맨 null 원소를 넣으면 안 된다**
+ *         (Chart.js v3/v4 의 getMinMax/updateElements 가 parsed[axis] 로 역참조 → TypeError).
+ *         결측 분기는 {x, y:null} 슬롯으로 넣는다 → 값이 null 이라 그려지지 않고 선이 끊긴다.
+ *         결측 슬롯의 x 는 양옆 실관측 끝점 사이로만 배치(불가시·순서 유지 목적이며 값이 아님). */
+function gGrowthGap(key) { return { x: null, y: null, q: key, gap: true }; }
+function gGrowthPts(rows, kind, xmap, sp, item) {
+  const out = (rows || []).map(function (r) {
+    const v = r[kind];
+    const x = xmap ? xmap(r) : (r.a ? r.a.last : null);
+    if (!gGrowthFinite(v) || !gGrowthFinite(x) || x < 0) return gGrowthGap(r.key);
+    return { x: x, y: v, q: r.key, bq: kind === 'yoy' ? r.yoyBaseKey : r.qoqBaseKey,
+      kind: kind === 'yoy' ? 'YoY' : 'QoQ', n: r.a ? r.a.n : 0, N: r.a ? r.a.N : 0,
+      bn: kind === 'yoy' ? r.ybN : r.qbN, bN: kind === 'yoy' ? r.ybN_exp : r.qbN_exp,
+      agg: (sp && sp.agg) === 'sum' ? '합' : '평균', ser: (item && item.name) || '' };
+  });
+  let prev = -1;                                  // x 단조증가 보장(끝점 중복은 결측 슬롯으로 강등)
+  for (let i = 0; i < out.length; i++) {
+    if (out[i].y == null) continue;
+    if (out[i].x <= prev) { out[i] = gGrowthGap(out[i].q); continue; }
+    prev = out[i].x;
+  }
+  let s = 0, e = out.length - 1;                  // 앞·뒤 결측 슬롯은 선 끊기와 무관 → 제거
+  while (s <= e && out[s].y == null) s++;
+  while (e >= s && out[e].y == null) e--;
+  if (s > e) return [];
+  const arr = out.slice(s, e + 1);
+  let i = 0;                                      // 내부 결측 슬롯 x 보간(양옆 실관측 사이, 단조 유지)
+  while (i < arr.length) {
+    if (arr[i].y != null) { i++; continue; }
+    let j = i; while (j < arr.length && arr[j].y == null) j++;
+    const a = arr[i - 1].x, b = arr[j].x, k = j - i;
+    for (let m = 0; m < k; m++) arr[i + m].x = a + (b - a) * (m + 1) / (k + 1);
+    i = j;
+  }
+  return arr;
+}
+function gGrowthLabel(name, kind) { return (name || '계열') + ' ' + (kind === 'yoy' ? 'YoY' : 'QoQ') + ' (오른쪽 %)'; }
+/* 기본 pointRadius 는 0(선으로 읽는 지표). 단, 양옆이 모두 결측이라 선이 그려지지 않는
+ * **고립 분기**는 반경 0이면 아무것도 안 보여 실제 데이터가 숨는다 → 그 인덱스만 작은 점. */
+function gGrowthRadii(pts) {
+  return (pts || []).map(function (p, i) {
+    if (!p || p.y == null) return 0;
+    const L = pts[i - 1], R = pts[i + 1];
+    const iso = (!L || L.y == null) && (!R || R.y == null);
+    return iso ? 1.8 : 0;
+  });
+}
+function gGrowthDs(item, kind, pts, sp) {
+  const lab = gGrowthLabel(item.name, kind);
+  const meta = { kind: kind === 'yoy' ? 'YoY' : 'QoQ', color: item.color || GGROW_FALLBACK,
+    dash: GGROW_DASH[kind].slice(), label: lab, est: !!(sp && sp.est), basis: (sp && sp.basis) || '',
+    order: -1, series: item.name || '', src: (sp && sp.src) || '', radii: gGrowthRadii(pts) };
+  return { type: 'line', label: lab, _vizOriginalLabel: lab, vizMetric: lab,
+    vizRole: 'derived', vizUnit: '%', vizGrowth: meta,
+    data: pts, yAxisID: 'yGrowth', parsing: false, order: -1,
+    borderColor: meta.color, backgroundColor: 'transparent', borderWidth: 1, borderDash: meta.dash.slice(),
+    borderDashOffset: 0, pointRadius: meta.radii.slice(), pointHoverRadius: 2.5, pointHitRadius: 6, pointBorderWidth: 0,
+    pointBackgroundColor: meta.color, pointBorderColor: meta.color, pointStyle: 'circle',
+    fill: false, tension: 0, spanGaps: false, showLine: true, stepped: false };
+}
+/* 메인 빌더.
+ * o = {src, items:[{name,color,labels,values}], xLabels, remapMonth, nowISO, mode, spec} */
+function gGrowthBuild(o) {
+  o = o || {};
+  const sp0 = o.spec || GGROW_SPEC[o.src] || null;
+  const sp = sp0 ? Object.assign({ src: o.src || '' }, sp0) : null;
+  const nq = gGrowthNowQ(o.nowISO);
+  const res = { ds: [], rows: [], nPts: 0, ok: false, reason: null, src: o.src || null,
+    curQ: nq.key, curQI: nq.qi, basis: sp ? sp.basis : '', est: !!(sp && sp.est),
+    cad: sp ? sp.cad : null, agg: sp ? sp.agg : null, wd: null, mode: o.mode || GGROW_MODE_DEFAULT };
+  if (!sp) { res.reason = 'nospec'; return res; }
+  if (res.mode === 'off') { res.reason = 'off'; return res; }
+  const items = (o.items || []).filter(function (it) {
+    return it && it.labels && it.labels.length && it.values && it.values.length;
+  });
+  if (!items.length) { res.reason = 'nodata'; return res; }
+  const kinds = res.mode === 'yoy' ? ['yoy'] : res.mode === 'qoq' ? ['qoq'] : ['yoy', 'qoq'];
+  const xmap = o.remapMonth ? gGrowthRemapMonth(o.xLabels) : null;
+  items.forEach(function (it) {
+    const wd = sp.cad === 'week' ? gGrowthWd(it.labels) : null;
+    if (sp.cad === 'week' && wd == null) return;
+    if (res.wd == null) res.wd = wd;
+    const agg = gGrowthAgg(it.labels, it.values, sp.cad, sp.agg, wd);
+    const rows = gGrowthRows(agg, nq.qi);
+    rows.forEach(function (r) { res.rows.push({ series: it.name || '', key: r.key, qi: r.qi,
+      v: r.a ? r.a.v : null, n: r.a ? r.a.n : 0, N: r.a ? r.a.N : 0,
+      reason: r.a ? r.a.reason : 'absent', yoy: r.yoy, qoq: r.qoq }); });
+    kinds.forEach(function (kind) {
+      const pts = gGrowthPts(rows, kind, xmap, sp, it);
+      let live = 0; pts.forEach(function (p) { if (p && p.y != null) live++; });
+      if (!live) return;
+      res.nPts += live;
+      res.ds.push(gGrowthDs(it, kind, pts, sp));
+    });
+  });
+  res.ok = res.ds.length > 0 && res.nPts > 0;
+  if (!res.ok && !res.reason) res.reason = 'insufficient';
+  return res;
+}
+/* ---- 스타일 복원(게임 전용 로컬 플러그인) ----
+ * 전역 vizScale.beforeUpdate → VizSeries.styleDatasets 가 모든 role 보유 데이터셋의
+ * 폭/대시/색/반경/라벨을 덮어쓴다. 그 뒤(beforeDatasetsUpdate)에 증감률 계열만 복원한다.
+ * 비(非)증감률 계열은 손대지 않아 전역 스타일·status 가 그대로 유지된다. */
+function gGrowthRestyle(chart) {
+  const dss = (chart && chart.data && chart.data.datasets) || [];
+  let n = 0;
+  for (let i = 0; i < dss.length; i++) {
+    const ds = dss[i], m = ds && ds.vizGrowth;
+    if (!m) continue;
+    ds.borderColor = m.color; ds.borderWidth = 1; ds.borderDash = m.dash.slice(); ds.borderDashOffset = 0;
+    ds.backgroundColor = 'transparent'; ds.fill = false; ds.tension = 0; ds.cubicInterpolationMode = 'default';
+    ds.pointRadius = m.radii ? m.radii.slice() : 0; ds.pointHoverRadius = 2.5; ds.pointHitRadius = 6; ds.pointBorderWidth = 0;
+    ds.pointBackgroundColor = m.color; ds.pointBorderColor = m.color; ds.pointStyle = 'circle';
+    ds.spanGaps = false; ds.showLine = true; ds.stepped = false;
+    ds.label = m.label; ds._vizOriginalLabel = m.label;
+    ds.vizRole = 'derived'; ds.vizUnit = '%'; ds.yAxisID = 'yGrowth'; ds.parsing = false; ds.order = m.order;
+    n++;
+  }
+  return n;
+}
+const gGrowthPlugin = { id: 'gameGrowthStyle',
+  beforeDatasetsUpdate: function (chart) { gGrowthRestyle(chart); },
+  beforeDatasetsDraw: function (chart) { gGrowthRestyle(chart); } };
+
+/* ---- 표시 포맷 / 툴팁 ---- */
+function gGrowthFmt(v) {
+  if (!gGrowthFinite(v)) return '—';
+  const a = Math.abs(v), d = a >= 100 ? 0 : a >= 10 ? 1 : 2;
+  return (v > 0 ? '+' : '') + v.toFixed(d) + '%';
+}
+function gGrowthTick(v) {
+  if (!gGrowthFinite(v)) return '';
+  return (Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1)) + '%';
+}
+function gGrowthTipTitle(items, labels) {
+  if (!items || !items.length) return '';
+  const it = items[0] || {}, ds = it.dataset || {}, raw = it.raw, L = labels || [];
+  if (ds.vizGrowth && raw && typeof raw === 'object') {
+    const xl = L[raw.x];
+    return (xl == null ? '' : String(xl)) + ' · ' + String(raw.q || '') + ' 완료분기';
+  }
+  const v = L[it.dataIndex];
+  return v == null ? (it.label == null ? '' : String(it.label)) : String(v);
+}
+function gGrowthTipLabel(c, m) {
+  const r = (c && c.raw) || {};
+  return (m.series ? m.series + ' ' : '') + m.kind + ': ' + gGrowthFmt(r.y) +
+    ' — ' + String(r.q || '') + ' vs ' + String(r.bq || '') + (m.est ? ' (추정 기반)' : '');
+}
+function gGrowthTipFooter(items) {
+  if (!items || !items.length) return '';
+  const it = items[0] || {}, m = (it.dataset || {}).vizGrowth, r = it.raw;
+  if (!m || !r || typeof r !== 'object') return '';
+  const out = [m.basis,
+    '완전관측 ' + r.n + '/' + r.N + ' · 기준분기 ' + (r.bn == null ? '—' : r.bn + '/' + (r.bN == null ? r.N : r.bN)) +
+    ' · 집계=' + r.agg];
+  if (m.est) out.push('원계열 = game-i 사이트 추정치 → 증감률도 추정 기반(확정 실적 아님)');
+  return out;
+}
+/* ---- 차트 아래 한국어 설명/불충분 안내(렌더·destroy 시 정리, DOM 누적 없음) ---- */
+function gGrowthNoteHtml(g, extra) {
+  const F = 'YoY = 100×(해당 완료분기 ÷ 전년 동분기 − 1) · QoQ = 100×(해당 완료분기 ÷ 직전 분기 − 1)';
+  const cq = g && g.curQ ? g.curQ : '';
+  if (!g || !g.ok) {
+    const why = !g ? '증감률 미적용'
+      : g.reason === 'off' ? '사용자가 증감률 표시를 끔(위 컨트롤에서 다시 켤 수 있음)'
+      : g.reason === 'nospec' ? '이 계열은 분기 증감률 정의 대상이 아님'
+      : g.reason === 'noweekly' ? '월평균 보기의 증감률은 주간 원계열에서만 계산 — 주간 계열 없음'
+      : g.reason === 'nodata' ? '연결된 시계열 없음'
+      : '비교 가능한 <b>완료 달력분기</b>가 부족(완전관측 분기 또는 기준 분기 없음)';
+    return '<div>📐 증감률 점선 없음 — ' + why + '.</div>' +
+      '<div>' + F + ' 기준. 부족한 구간을 <b>0선·보간으로 대체 표시하지 않습니다</b>.' +
+      (cq ? ' 진행 중 분기(<b>' + cq + '</b>)는 항상 제외.' : '') + '</div>' +
+      (extra ? '<div>' + extra + '</div>' : '');
+  }
+  return '<div>📐 <b>점선 = 완료 달력분기 증감률</b> · 오른쪽 축 <b>증감률 %</b> · YoY 대시(4,3) / QoQ 대시(2,3)</div>' +
+    '<div>' + F + ' — <b>상대 증감률(%)</b>이며 점유율의 %p(퍼센트포인트) 변화가 아님.</div>' +
+    '<div>' + g.basis + '</div>' +
+    '<div>결측·중복·음수·비유한값이 있는 분기는 <b>제외</b>(보간·전월이월 없음) · 분자 0은 허용, 분모 ≤0이면 미산출 · ' +
+    '통째로 결측인 분기는 선을 끊어 표시 · 진행 중 분기(<b>' + cq + '</b>) 제외</div>' +
+    (g.est ? '<div style="color:#ffbe2e">원계열이 사이트 <b>추정치</b>(game-i)이므로 증감률도 추정 기반 — 확정 실적·절대값으로 읽지 말 것</div>' : '') +
+    (extra ? '<div>' + extra + '</div>' : '');
+}
+function gGrowthMountNote(cv, g, extra) {
+  if (!cv || !cv.ownerDocument) return null;
+  const doc = cv.ownerDocument;
+  let host = null;
+  try { host = cv.closest ? cv.closest('.ch-wrap') : null; } catch (e) { host = null; }
+  host = (host && host.parentNode) || (cv.parentNode && cv.parentNode.parentNode) || cv.parentNode;
+  if (!host) return null;
+  try {
+    const old = host.querySelector && host.querySelector(':scope > [data-ggrowth-note]');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+  } catch (e) { /* :scope 미지원 브라우저는 아래 전역 정리에 의존 */ }
+  const d = doc.createElement('div');
+  d.setAttribute('data-ggrowth-note', '');
+  d.style.cssText = 'margin:6px 2px 0;font-size:10.5px;line-height:1.55;color:var(--dim)';
+  d.innerHTML = gGrowthNoteHtml(g, extra);
+  host.appendChild(d);
+  GGROW_NOTES.push(d);
+  return d;
+}
+function gGrowthClearNotes() {
+  while (GGROW_NOTES.length) {
+    const n = GGROW_NOTES.pop();
+    try { if (n && n.parentNode) n.parentNode.removeChild(n); } catch (e) {}
+  }
+  try {
+    if (typeof document !== 'undefined' && document.querySelectorAll) {
+      const all = document.querySelectorAll('[data-ggrowth-note]');
+      for (let i = 0; i < all.length; i++) { const n = all[i]; if (n.parentNode) n.parentNode.removeChild(n); }
+    }
+  } catch (e) {}
+}
+/* ---- 사용자 컨트롤(기본 both = 요청 데이터 기본 표시, 키보드 접근 가능) ---- */
+function gGrowthMode() { ST.ggrow = ST.ggrow || GGROW_MODE_DEFAULT; return ST.ggrow; }
+function gGrowthCtl() {
+  const m = gGrowthMode();
+  const b = function (k, l, t) {
+    return '<span class="ltab ' + (m === k ? 'on' : '') + '" data-ggrow="' + k + '" role="button" tabindex="0"' +
+      ' aria-pressed="' + (m === k ? 'true' : 'false') + '" title="' + t + '">' + l + '</span>';
+  };
+  return '<span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">' +
+    '<span style="font-size:10px;color:var(--dim)">증감률 점선</span>' +
+    b('both', 'YoY+QoQ', '완료 분기 YoY·QoQ 모두 표시') + b('yoy', 'YoY', '전년 동분기 대비만') +
+    b('qoq', 'QoQ', '직전 분기 대비만') + b('off', '끄기', '증감률 오버레이 숨김') + '</span>';
+}
+function gGrowthBar() {
+  return '<div class="panel" style="padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--dim)">' +
+    '<span>📐 <b>완료 달력분기</b> YoY·QoQ 증감률을 얇은 점선으로 겹쳐 표시(오른쪽 % 축)</span>' + gGrowthCtl() + '</div>';
+}
+function gCoName(G, k) {
+  const cs = ((G || (typeof window !== 'undefined' ? window.GAMES_DATA : null) || {}).companies) || [];
+  for (let i = 0; i < cs.length; i++) { if (cs[i] && cs[i].co_key === k) return cs[i].name; }
+  return null;
+}
+/* GGROW:end */
 function loadGame(cb){ if(_gameLoaded||window.GAMES_DATA){_gameLoaded=true;return cb();}
   const sc=document.createElement('script'); sc.src='data_games.js';
   sc.onload=()=>{_gameLoaded=true;cb();}; sc.onerror=()=>{document.getElementById('main').innerHTML='<div class="panel" style="padding:24px">🎮 게임 데이터 준비 중입니다…</div>';};
   document.head.appendChild(sc); }
-function gDestroy(){ for(const k in GCH){ try{GCH[k].destroy();}catch(e){} delete GCH[k]; } }
+function gDestroy(){ gGrowthClearNotes(); for(const k in GCH){ try{GCH[k].destroy();}catch(e){} delete GCH[k]; } }
 function gYm(s){ return (s&&(s.y||s.co))||{}; }   // 시계열 값맵: 파이프라인이 y(평탄) 또는 co(희소 [i,v]쌍) 키로 저장
 function gArr(x,v){ if(!v||!v.length) return v||[];   // 값 정규화: 희소 [[i,val],…]쌍 → x정렬 평탄배열, 이미 평탄이면 그대로
   if(Array.isArray(v[0])){ const out=new Array((x||[]).length).fill(null); for(const p of v){ if(Array.isArray(p)&&p[0]<out.length) out[p[0]]=p[1]; } return out; }
@@ -5188,24 +5590,60 @@ function gArr(x,v){ if(!v||!v.length) return v||[];   // 값 정규화: 희소 [
 function gSer(src,k){ const s=((window.GAMES_DATA||{}).series||{})[src]; if(!s) return null; const ym=gYm(s); if(!ym[k]) return null; return {x:s.x, y:gArr(s.x,ym[k])}; }
 function gValid(k){ const out={}; const V=(((window.GAMES_DATA||{}).validation||{}).axes)||{};
   for(const ax in V){ const r=(V[ax].companies||{})[k]; if(r) out[ax]=r; } return out; }
-function gChart(cv,labels,datasets,yfmt,extra){
+/* gChart: 6번째 인자 growth(gGrowthBuild 결과)를 받으면
+ *  (1) 증감률 데이터셋을 뒤에 덧붙이고 (2) 오른쪽 yGrowth(symmetric) 축을 추가하고
+ *  (3) vizPhalanxConfig 반환 후 axes.yGrowth / vizRole / vizUnit 을 명시적으로 확정하고
+ *  (4) 게임 전용 로컬 플러그인을 config.plugins 로 등록하고 (5) 아래 설명 노트를 심는다.
+ * growth 를 넘기지 않으면 기존 동작과 동일(카테고리형 PCQ 묶음막대 등). */
+function gChart(cv,labels,datasets,yfmt,extra,growth){
+  const G=(growth&&growth.ds&&growth.ds.length)?growth:null;
+  const all=G?datasets.concat(G.ds):datasets;
   const opts=Object.assign({responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
-    plugins:{legend:{display:datasets.length>1,onClick:(e,item,lg)=>{const ch=lg.chart,i=item.datasetIndex,n=ch.data.datasets.length;
+    plugins:{legend:{display:all.length>1,onClick:(e,item,lg)=>{const ch=lg.chart,i=item.datasetIndex,n=ch.data.datasets.length;
       const ev=e&&(e.native||e);
       if(ev&&(ev.shiftKey||ev.metaKey||ev.ctrlKey)){ ch.setDatasetVisibility(i,!ch.isDatasetVisible(i)); }
       else { const vis=[...Array(n).keys()].filter(j=>ch.isDatasetVisible(j));
         if(vis.length===1&&vis[0]===i){ for(let j=0;j<n;j++)ch.setDatasetVisibility(j,true); } else { for(let j=0;j<n;j++)ch.setDatasetVisibility(j,j===i); } }
       ch.update();},labels:{color:TK.leg,boxWidth:10,font:{size:9}}},
-      tooltip:{callbacks:{label:c=>c.dataset.label+': '+(yfmt?yfmt(c.parsed.y):c.parsed.y)}}},
+      tooltip:{callbacks:{
+        title:it=>gGrowthTipTitle(it,labels),
+        label:c=>{ const m=c.dataset&&c.dataset.vizGrowth; if(m) return gGrowthTipLabel(c,m);
+          const rl=dmmRrTipLabel(c,yfmt); if(rl) return rl;        // 당월 월환산 끝점
+          return c.dataset.label+': '+(yfmt?yfmt(c.parsed.y):c.parsed.y); },
+        footer:it=>{ const rf=dmmRrTipFooter(it), gf=gGrowthTipFooter(it);
+          if(!rf.length) return gf;
+          return (gf&&gf.length)?rf.concat(gf):rf; }}}},
     scales:{x:{ticks:{color:TK.tick,maxTicksLimit:9,font:{size:8}},grid:{display:false}},
       y:{ticks:{color:TK.tick,font:{size:8},callback:v=>yfmt?yfmt(v):v},grid:{color:TK.grid}}}},extra||{});
-  GCH[cv.id||Math.random()]=new Chart(cv,vizPhalanxConfig({data:{labels,datasets},options:opts},'game_generic', {canvas:cv.id,source:(cv.dataset||{}).gch}));
+  if(G){   // 이종 길이 데이터셋에서 index 모드 툴팁은 잘못된 짝을 집으므로 nearest 사용
+    opts.interaction={mode:'nearest',axis:'x',intersect:false};
+    opts.scales=opts.scales||{};
+    opts.scales.yGrowth={position:'right',stacked:false,
+      ticks:{color:TK.tick,font:{size:8},callback:gGrowthTick},
+      grid:{drawOnChartArea:false,color:TK.grid},
+      title:{display:true,text:'증감률 %',color:TK.tick,font:{size:9}}};
+  }
+  const cfg=vizPhalanxConfig({data:{labels,datasets:all},options:opts},'game_generic', {canvas:cv.id,source:(cv.dataset||{}).gch});
+  if(G){   // 공유 헬퍼가 반환한 뒤에 확정(헬퍼의 generic()/추정·est 라벨 override 를 덮는다)
+    const op=cfg.options||(cfg.options={}); op.plugins=op.plugins||{};
+    const vs=op.plugins.vizScale=Object.assign({},op.plugins.vizScale||{});
+    vs.axes=Object.assign({},vs.axes||{}); vs.axes.yGrowth={'class':'symmetric',unit:'증감률 %'};
+    (cfg.data.datasets||[]).forEach(d=>{ if(d&&d.vizGrowth){ d.vizRole='derived'; d.vizUnit='%';
+      d.yAxisID='yGrowth'; d.parsing=false; d.spanGaps=false; delete d.vizProvenance; delete d.stack; } });
+    cfg.plugins=[gGrowthPlugin];
+    gGrowthRestyle(cfg);
+  }
+  if(dmmRrRestyle(cfg)) cfg.plugins=(cfg.plugins||[]).concat([dmmRrPlugin]);   // 당월 월환산 액센트 복원
+  const ch=new Chart(cv,cfg);
+  GCH[cv.id||('gch'+(++GGROW_SEQ))]=ch;
+  if(growth&&growth.src&&growth.reason!=='nospec'&&growth.reason!=='nodata') gGrowthMountNote(cv,growth);
+  return ch;
 }
 const GAXN={steam_mom:'Steam리뷰',pcbang_mom:'PC방',mobile_rank:'모바일',dmm_mom:'DMM',maple_pop:'메이플',ccu_trend:'CCU'};
 function gNcBadge(k){ const v=gValid(k); const on=Object.keys(v).filter(ax=>v[ax].nowcast);
   return on.length?`<span style="font-size:9.5px;font-weight:800;color:#59d0a8;border:1px solid #59d0a844;border-radius:99px;padding:1px 7px">nowcast:${on.map(a=>GAXN[a]||a).join('·')}</span>`:''; }
 function renderGame(){
-  gDestroy(); const G=window.GAMES_DATA||{}; ST.gview=ST.gview||'attract';
+  gDestroy(); const G=window.GAMES_DATA||{}; ST.gview=ST.gview||'attract'; ST.ggrow=ST.ggrow||GGROW_MODE_DEFAULT;
   document.getElementById('catRow').style.display='none';
   document.getElementById('cnt').innerHTML='';
   document.getElementById('crumb').innerHTML='<b>🎮 Game — 상장사 게임 나우캐스트</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">'+((G.sources_meta&&G.sources_meta.steam)?'Steam '+G.sources_meta.steam.latest:'')+' · PC방 2007~ · 일간 자동갱신</span>';
@@ -5227,6 +5665,8 @@ function renderGame(){
   main.querySelectorAll('[data-gco]').forEach(t=>t.onclick=()=>{ST.gview='co_'+t.dataset.gco;renderGame();window.scrollTo(0,0);});
   main.querySelectorAll('[data-gpc]').forEach(t=>t.onclick=()=>{ST.gpcw=t.dataset.gpc;renderGame();});
   main.querySelectorAll('[data-gpcq]').forEach(t=>t.onclick=()=>{ST.gpcqAll=t.dataset.gpcq==='all';renderGame();});
+  main.querySelectorAll('[data-ggrow]').forEach(t=>{ const go=()=>{ST.ggrow=t.dataset.ggrow;renderGame();};
+    t.onclick=go; t.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){ e.preventDefault(); go(); } }; });
   gMountCharts(G);
 }
 function gvAttract(G){
@@ -5272,14 +5712,14 @@ function gvCoDetail(G,k){
   const cards=srcs.map(([src,label,col],i)=>{ const s=gSer(src,k); if(!s) return '';
     const vax={steam_reviews_m:'steam',pcbang_share_w:'pcbang',dmm_rev_m:'dmm'}[src];
     return `<div class="card"><div class="card-hd"><div><h3>${label}</h3><div class="co-cat">${vax&&V[vax]?chip(vax):''}</div></div></div>
-      <div class="ch-wrap"><canvas data-gch="${src}|${k}|${col}"></canvas></div></div>`;}).join('');
+      <div class="ch-wrap"><canvas data-gch="${src}|${k}|${col}"></canvas></div>${src==='dmm_rev_m'?dmmRrNote(G,k):''}</div>`;}).join('');
   const and_=c.android&&c.android.items&&c.android.items.length?`<div class="panel" style="padding:11px 15px;margin-bottom:12px;font-size:11px"><b style="font-size:11.5px">🤖 구글플레이 배지</b> <span style="color:var(--dim);font-size:10px">(${c.android.latest} · 카테고리별 매출순위)</span><br>${c.android.items.map(it=>it.rank?`<span style="margin-right:10px">${it.title.slice(0,16)} <b style="font-family:var(--mono)">#${it.rank}</b> <span style="color:var(--dim);font-size:9.5px">${(it.chart||'').replace('최고 매출 ','')}</span></span>`:'').join('')||'<span style="color:var(--dim)">순위권 밖</span>'}</div>`:'';
   const up_=c.upcoming&&c.upcoming.length?`<div class="panel" style="padding:11px 15px;margin-bottom:12px;font-size:11px;border-color:#59d0a844"><b>🗓 신작 예정</b> ${c.upcoming.map(u=>`<span style="margin-left:8px">${u.title.slice(0,26)} <span style="color:#59d0a8;font-family:var(--mono);font-size:10px">${u.release_date||u.release_str||''}</span></span>`).join('')}</div>`:'';
   return `<div class="row" style="margin-bottom:10px"><span class="ltab" data-gv="co">← 상장사 목록</span>
     <b style="font-size:15px;margin-left:6px"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${c.color};margin-right:6px"></span>${c.name}</b>
     <span style="color:var(--dim);font-size:11px">${c.ticker||''} · ${c.listing||''}</span>${gNcBadge(k)}</div>
-    ${and_}${up_}
-    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:14px">${cards||'<div class="panel">이 회사에 연결된 시계열이 아직 없습니다.</div>'}</div>`;
+    ${and_}${up_}${cards?gGrowthBar():''}
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:14px">${cards||'<div class="panel">이 회사에 연결된 시계열이 아직 없습니다.</div>'}</div>`;
 }
 function gvSteam(G){
   const S=(G.series||{}).steam_reviews_m||{x:[],y:{}}; const SY=gYm(S);
@@ -5290,18 +5730,19 @@ function gvSteam(G){
     <td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${r.c.color};margin-right:6px"></span>${r.c.name}</td>
     <td style="font-family:var(--mono)">${r.l3.toLocaleString()}</td>
     <td style="font-family:var(--mono);color:${r.yoy==null?'var(--dim)':r.yoy>=0?'#59d0a8':'#ff6b7d'}">${r.yoy==null?'—':(r.yoy>=0?'+':'')+r.yoy.toFixed(0)+'%'}</td></tr>`).join('');
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">Steam 월 리뷰증분 = 판매량 프록시(공식 히스토그램 API). 검증: 캡콤 ρ0.72·테이크투 ρ0.76 nowcast — 한국사는 PC방·모바일 축이 본체(리뷰는 스팀 매출만 반영).</div>
+  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">Steam 월 리뷰증분 = 판매량 프록시(공식 히스토그램 API). 검증: 캡콤 ρ0.72·테이크투 ρ0.76 nowcast — 한국사는 PC방·모바일 축이 본체(리뷰는 스팀 매출만 반영).<br>아래 표의 YoY는 <b>최근 3개월 합 ÷ 13~15개월 전 3개월 합</b>(달력분기 정렬 아님)인 기존 순위용 지표입니다 — 달력분기 기준 YoY·QoQ 점선은 각 회사 상세의 시계열 차트에서 확인하세요.</div>
   <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>회사</th><th>최근 3개월 리뷰</th><th>YoY</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function gvPcbang(G){
   const hasM=!!((G.series||{}).pcbang_share_m);
   ST.gpcw=ST.gpcw||(hasM?'m':'w');
   const tg=hasM?`<span style="margin-left:auto"><span class="ltab ${ST.gpcw==='m'?'on':''}" data-gpc="m">월평균</span><span class="ltab ${ST.gpcw==='w'?'on':''}" data-gpc="w">주간(1,024주)</span></span>`:'';
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>gametrics TOP10 점유율(2007-01~), 회사 단위 합산 — <b>동일 회사=동일 색</b>. 범례 클릭=격리 · Shift클릭=개별 토글. <b>TOP10 밖은 0이 아니라 미관측(결측)</b> — 공개 TOP10만 수집(무로그인 한계), 해당 주는 빈 구간으로 남김.</span>${tg}</div>
+  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>gametrics TOP10 점유율(2007-01~), 회사 단위 합산 — <b>동일 회사=동일 색</b>. 범례 클릭=격리 · Shift클릭=개별 토글. <b>TOP10 밖은 0이 아니라 미관측(결측)</b> — 공개 TOP10만 수집(무로그인 한계), 해당 주는 빈 구간으로 남김.</span>${tg}${gGrowthCtl()}</div>
   <div class="card"><div class="ch-wrap" style="height:420px"><canvas id="gPcbangAll"></canvas></div></div>
   ${gvPcbangQtr(G)}`;
 }
 // PCQ:begin — PC방 최근 완료 분기 비교(series.pcbang_quarterly). TOP10 밖=결측(null) → '—', 0 막대·0 보간 금지.
+// ※ 이 블록의 x축은 "게임명" 카테고리(시간축 아님) → 증감률 오버레이를 붙이지 않는다(원본 그대로 유지).
 const GPCQ_TOP=12, GPCQ_NEU='#8a90a8', GPCQ_A=['55','88','bb','ff'];
 function gPcqEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function gPcqFmt(v){ if(v==null||!isFinite(v)) return '—'; v=+v; if(v>0&&v<0.005) return '<0.01%'; return (Math.abs(v)<0.1?v.toFixed(2):v.toFixed(1))+'%'; }
@@ -5376,6 +5817,7 @@ function gPcqMount(cv,G){
 function gvMaple(G){
   const s=(G.series||{}).maple_pop_w||{x:[],y:{}}; const k=Object.keys(gYm(s))[0];
   return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">메이플스토리 주간 접속인구(meaegi, 2023-12~) — 넥슨 국내 본체 프록시. 주화시세는 소스 갱신중단(2026-03)으로 미표시.</div>
+  ${gGrowthBar()}
   <div class="card"><div class="ch-wrap" style="height:340px"><canvas data-gch="maple_pop_w|${k||''}|#ffbe2e"></canvas></div></div>`;
 }
 function gvMobile(G){
@@ -5383,12 +5825,232 @@ function gvMobile(G){
   const n=(s.x||[]).length;
   const cos=(G.companies||[]).filter(c=>sy[c.co_key]&&gArr(s.x,sy[c.co_key]).some(v=>v>0));
   return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">iTunes 매출랭킹(KR·JP·US 게임 top50, 랭크포인트=Σ(51-순위)) — <b>${(s.x||[])[0]||'오늘'}부터 일간 누적 시작</b>(모바일인덱스는 인증벽 — 공식 RSS 대체). ⚠️ <b>iOS(App Store)만 — 구글플레이 미포함</b>(무료 접근 정찰 중, 한국 모바일 매출 다수가 안드로이드임을 감안해 읽을 것). 데이터가 쌓이면 추세축(28일)이 자동 활성화됩니다.</div>
+  ${n<3?'':gGrowthBar()}
   ${n<3?`<div class="panel" style="padding:16px">축적 ${n}일차 — 현재 랭크인 상장사: ${cos.map(c=>`<span style="color:${c.color};font-weight:700">${c.name}</span>`).join(' · ')||'집계 중'}</div>`:`<div class="card"><div class="ch-wrap" style="height:380px"><canvas id="gMobileAll"></canvas></div></div>`}`;
 }
 function gvDmm(G){
   return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:#ffbe2e;border-color:#ffbe2e44">⚠️ game-i 자체 추정치 — DMM 월상은 사이트 스스로 試作(조정중) 선언. 절대값이 아닌 <b>추세·상대비교</b>용입니다.</div>
+  ${dmmRrNote(G,null)}
+  ${gGrowthBar()}
   <div class="card"><div class="ch-wrap" style="height:420px"><canvas id="gDmmAll"></canvas></div></div>`;
 }
+/* DMMRR:begin — DMM/game-i '진행 중 당월' 일→월 환산(런레이트) **표시 전용** 헬퍼
+ * 입력: window.GAMES_DATA.dmm_runrate (dmm_runrate.py 산출, 스키마 dmm_runrate/1).
+ * 규칙
+ *  1) 교체는 메타데이터가 알려준 '진행 중 소스월' 1점만. 마지막 점을 무조건 바꾸지 않는다.
+ *  2) 원계열(series.dmm_rev_m)은 복사만 한다 — 어떤 경우에도 변형하지 않는다.
+ *  3) 증감률(YoY/QoQ)·스코어 입력에 런레이트를 넣지 않는다. 알려진 부분월은 null 로 '제외'만 한다
+ *     → 벽시계가 다음 분기로 넘어가도 그 분기는 완전관측이 못 되어 영구 제외된다.
+ *  4) 소스월이 당월이 아니면(미갱신) 환산하지 않고 '월환산 보류' 사유를 노출한다(조용한 완성 금지).
+ *  5) 소스를 기업 실매출로 표기하지 않는다. 범위는 '집계 대상 앱 바스켓'.
+ */
+const DMMRR_VER = '1.0.0';
+const DMMRR_SCHEMA = 'dmm_runrate/1';
+const DMMRR_SRC = 'dmm_rev_m';
+const DMMRR_ACCENT = '#ffd166';
+const DMMRR_UNIT = '億G';
+const DMMRR_L_EST = '당월 월환산 추정';
+const DMMRR_L_HOLD = '월환산 보류';
+const DMMRR_RE_M = /^\d{4}-\d{2}$/;
+const DMMRR_TOL_ABS = 5e-4;          // 발행 시리즈는 소수 4자리로 반올림되어 들어온다
+const DMMRR_HOLD_KO = {
+  no_metadata: '월환산 메타데이터 없음(빌더가 산출하지 못함)',
+  schema_mismatch: '월환산 메타데이터 스키마 불일치',
+  stale_source: '소스 미갱신 — 메타데이터의 소스월이 당월이 아님(부분월을 완료월로 쓰지 않음)',
+  future_source: '소스월이 당월보다 미래 — 스탬프 불일치',
+  month_absent: '표시 축에 소스월 라벨이 없음',
+  not_latest: '소스월이 시리즈의 마지막 지점이 아님 — 마지막 점을 무조건 교체하지 않음',
+  no_company_entry: '이 회사는 월환산 대상이 아님(메타데이터에 항목 없음)',
+  co_held: '이 회사는 월환산 보류 대상',
+  no_current_value: '이 회사에 소스월 관측값이 없음 — 0 으로 보지 않음',
+  value_mismatch: '표시 축의 원시 누적값이 메타데이터와 불일치',
+  bad_company_entry: '메타데이터 회사 항목이 유효하지 않음(null/비유한/음수/분모 0)'
+};
+function dmmRrKo(reason, rr) {
+  if (DMMRR_HOLD_KO[reason]) return DMMRR_HOLD_KO[reason];
+  if (rr && rr.ko && rr.reason === reason) return String(rr.ko);
+  return String(reason == null || reason === '' ? '사유 미상' : reason);
+}
+function dmmRrNum(v) { return typeof v === 'number' && isFinite(v) ? v : null; }
+function dmmRrInt(v) { const n = dmmRrNum(v); return n !== null && Math.floor(n) === n ? n : null; }
+// 당월 판정용 JST 'YYYY-MM'. epoch+9h 의 UTC 필드를 읽는 방식(gGrowthNowQ 와 동일 규약).
+function dmmRrNowYm(nowISO) {
+  let ms = NaN;
+  if (nowISO != null && nowISO !== '') { ms = (nowISO instanceof Date ? nowISO : new Date(nowISO)).getTime(); }
+  if (!isFinite(ms)) ms = (new Date()).getTime();
+  const k = new Date(ms + 9 * 3600 * 1000);
+  return k.getUTCFullYear() + '-' + gg2(k.getUTCMonth() + 1);
+}
+function dmmRrMeta(G) {
+  const g = G || (typeof window !== 'undefined' ? window.GAMES_DATA : null) || {};
+  const rr = g.dmm_runrate;
+  if (!rr || typeof rr !== 'object') return { err: 'no_metadata', rr: null };
+  if (rr.schema !== DMMRR_SCHEMA) return { err: 'schema_mismatch', rr: rr };
+  if (rr.status !== 'ok') return { err: rr.reason || 'no_metadata', rr: rr };
+  if (!DMMRR_RE_M.test(String(rr.source_month == null ? '' : rr.source_month))) return { err: 'no_metadata', rr: rr };
+  return { err: null, rr: rr };
+}
+/* 소스월 vs 당월(JST). 벽시계가 굴러가도 메타데이터가 소스월을 기억하므로
+ * 묵은 부분월이 '완료월'로 승격되지 않는다. */
+function dmmRrState(G, nowISO) {
+  const m = dmmRrMeta(G), now = dmmRrNowYm(nowISO);
+  const st = { ok: false, reason: m.err, rr: m.rr, now: now, ym: m.rr ? m.rr.source_month : null };
+  if (m.err) return st;
+  if (st.ym > now) { st.reason = 'future_source'; return st; }
+  if (st.ym < now) { st.reason = 'stale_source'; return st; }
+  st.ok = true; st.reason = null; return st;
+}
+function dmmRrPartial(rr) {
+  if (!rr) return [];
+  const p = rr.partial_months;
+  if (Array.isArray(p)) return p.map(String);
+  return DMMRR_RE_M.test(String(rr.source_month == null ? '' : rr.source_month)) ? [String(rr.source_month)] : [];
+}
+/* 핵심 진입점. 원본 배열을 건드리지 않고 두 벌을 돌려준다.
+ *  display = 표시용(진행 중 당월 1점만 월환산으로 교체, 그 외 전부 원본 그대로)
+ *  growth  = 증감률/파생 계산 입력(알려진 부분월만 null 로 '제외'. 런레이트 주입 없음) */
+function dmmRrApply(G, src, labels, values, key, nowISO) {
+  const L = labels || [], V = (values || []).slice();
+  const out = { src: src || null, co: key || null, display: V.slice(), growth: V.slice(),
+    meta: null, hold: null, heldCo: null, state: null };
+  if (src !== DMMRR_SRC) return out;
+  const st = dmmRrState(G, nowISO); out.state = st;
+  const rr = st.rr;
+  // 스키마가 맞을 때만 partial_months 를 신뢰한다(모르는 스키마의 필드로 관측을 지우지 않는다)
+  const pm = (rr && rr.schema === DMMRR_SCHEMA) ? dmmRrPartial(rr) : [];
+  for (let i = 0; i < L.length; i++) { if (pm.indexOf(String(L[i])) >= 0) out.growth[i] = null; }
+  if (!rr) { out.hold = 'no_metadata'; return out; }
+  if (!st.ok) { out.hold = st.reason; return out; }
+  const idx = L.indexOf(String(rr.source_month));
+  if (idx < 0) { out.hold = 'month_absent'; return out; }
+  if (idx !== L.length - 1) { out.hold = 'not_latest'; return out; }
+  const co = (rr.co || {})[key];
+  if (!co) { out.heldCo = (rr.held || {})[key] || null; out.hold = out.heldCo ? 'co_held' : 'no_company_entry'; return out; }
+  const raw = dmmRrNum(co.raw), val = dmmRrNum(co.runrate);
+  const cd = dmmRrInt(co.covered_days), td = dmmRrInt(co.total_days);
+  if (raw === null || val === null || raw < 0 || val < 0 || cd === null || td === null || cd < 1 || td < cd) {
+    out.hold = 'bad_company_entry'; return out;
+  }
+  const cur = dmmRrNum(V[idx]);
+  if (cur === null) { out.hold = 'no_current_value'; return out; }
+  if (Math.abs(cur - raw) > Math.max(DMMRR_TOL_ABS, 1e-6 * Math.abs(raw))) { out.hold = 'value_mismatch'; return out; }
+  out.display[idx] = val;
+  const s = rr.source || {};
+  out.meta = { idx: idx, ym: String(rr.source_month), raw: raw, value: val, covered: cd, total: td,
+    coverage_start: co.coverage_start || s.coverage_start || null,
+    coverage_end: co.coverage_end || s.coverage_end || null,
+    stamp: co.stamp || s.stamp || null, apps: dmmRrInt(co.apps),
+    scope: rr.scope || 'tracked_basket', unit: DMMRR_UNIT, co: key || null,
+    name: gCoName(G, key) || key || '' };
+  return out;
+}
+/* 파생 끝점 액센트(마름모 + 마지막 구간 점선). vizRunrate 가 없는 데이터셋은 전혀 건드리지 않는다. */
+function dmmRrStyle(ds, rr) {
+  if (!ds || !rr || !rr.meta) return ds;
+  const m = rr.meta, i = m.idx, n = (ds.data || []).length;
+  const base = typeof ds.pointRadius === 'number' ? ds.pointRadius : 0;
+  const col = typeof ds.borderColor === 'string' ? ds.borderColor : DMMRR_ACCENT;
+  const radii = [], bg = [], bc = [];
+  for (let j = 0; j < n; j++) { radii.push(j === i ? 3.2 : base); bg.push(j === i ? DMMRR_ACCENT : col); bc.push(j === i ? DMMRR_ACCENT : col); }
+  ds.pointRadius = radii; ds.pointHoverRadius = 4.5; ds.pointBorderWidth = 0; ds.pointStyle = 'rectRot';
+  ds.pointBackgroundColor = bg; ds.pointBorderColor = bc;
+  ds.segment = Object.assign({}, ds.segment || {},
+    { borderDash: function (c) { return c && c.p1DataIndex === i ? [4, 2] : undefined; } });
+  ds.vizRunrate = Object.assign({}, m, { accent: DMMRR_ACCENT, radii: radii.slice(), pbg: bg.slice(), pbc: bc.slice() });
+  return ds;
+}
+function dmmRrRestyle(h) {
+  const dss = (h && h.data && h.data.datasets) || [];
+  let n = 0;
+  for (let i = 0; i < dss.length; i++) {
+    const ds = dss[i], m = ds && ds.vizRunrate;
+    if (!m || !m.radii) continue;
+    ds.pointRadius = m.radii.slice(); ds.pointBackgroundColor = m.pbg.slice(); ds.pointBorderColor = m.pbc.slice();
+    ds.pointStyle = 'rectRot'; ds.pointBorderWidth = 0; ds.pointHoverRadius = 4.5;
+    n++;
+  }
+  return n;
+}
+const dmmRrPlugin = { id: 'dmmRunrateAccent',
+  beforeDatasetsUpdate: function (chart) { dmmRrRestyle(chart); },
+  beforeDatasetsDraw: function (chart) { dmmRrRestyle(chart); } };
+function dmmRrFmt(v, u) {
+  const n = dmmRrNum(v);
+  if (n === null) return '—';
+  const a = Math.abs(n), d = a >= 100 ? 0 : a >= 10 ? 1 : 2;
+  return n.toFixed(d) + (u || '');
+}
+function dmmRrTipLabel(c, yfmt) {
+  const m = c && c.dataset && c.dataset.vizRunrate;
+  if (!m || c.dataIndex !== m.idx) return null;
+  return (m.name ? m.name + ' ' : '') + DMMRR_L_EST + ': ' + dmmRrFmt(m.value, m.unit || DMMRR_UNIT) +
+    ' — 파생 추정치(확정 실적 아님)';
+}
+function dmmRrTipFooter(items) {
+  const L = items || [];
+  for (let i = 0; i < L.length; i++) {
+    const it = L[i] || {}, m = (it.dataset || {}).vizRunrate;
+    if (!m || it.dataIndex !== m.idx) continue;
+    const u = m.unit || DMMRR_UNIT;
+    return ['원시 누적(소스 그대로): ' + dmmRrFmt(m.raw, u) + ' · 소스 커버리지 ' +
+        (m.coverage_start || '?') + ' ~ ' + (m.coverage_end || '?') + ' (' + m.covered + '/' + m.total + '일)',
+      '식: 월환산 = 누적 ÷ 관측 완료일수 × 월 일수 = ' + m.raw + ' ÷ ' + m.covered + ' × ' + m.total +
+        ' = ' + dmmRrFmt(m.value, u),
+      '소스 기준: 월간 매출 랭킹 갱신 ' + (m.stamp || '?') + ' (JST) → 커버리지 종료 ' + (m.coverage_end || '?'),
+      'game-i 제3자 추정치 · 집계 대상 앱 바스켓' + (m.apps ? ' ' + m.apps + '개' : '') +
+        ' 범위 — 회사 실매출·총매출이 아님'];
+  }
+  return [];
+}
+function dmmRrPanel(style, body) {
+  return '<div class="panel" style="padding:11px 15px;margin-bottom:12px;font-size:11px;line-height:1.6;' +
+    style + '">' + body + '</div>';
+}
+/* 차트 옆 고정 설명. k 를 주면 그 회사의 적용/보류 상태까지 보여준다. */
+function dmmRrNote(G, k) {
+  const st = dmmRrState(G, gGrowthNow()), rr = st.rr;
+  if (!st.ok) {
+    return dmmRrPanel('color:var(--dim)',
+      '<div>📐 <b>' + DMMRR_L_HOLD + '</b> — ' + gPcqEsc(dmmRrKo(st.reason, rr)) + '.</div>' +
+      '<div>진행 중 당월(부분월)은 <b>원시 누적 그대로</b> 두고 분모를 만들어내지 않습니다. ' +
+      '부분월은 증감률·스코어에서 <b>제외</b>됩니다.</div>');
+  }
+  const s = rr.source || {};
+  const cov = (s.covered_days != null && s.total_days != null)
+    ? '소스 커버리지 <b>' + gPcqEsc(s.coverage_start || '?') + ' ~ ' + gPcqEsc(s.coverage_end || '?') +
+      '</b> · 관측 완료 <b>' + s.covered_days + '</b>일 / 월 <b>' + s.total_days + '</b>일 · 기준 스탬프 ' +
+      gPcqEsc(s.stamp || '?') + ' (JST 월간 랭킹 갱신시각)'
+    : '회사별 커버리지가 달라 전역 표기 생략 — 각 회사 상세 참조';
+  let body = '<div>📐 <b>' + DMMRR_L_EST + '</b> — ' + gPcqEsc(rr.source_month) + ' 진행 중 · ' + cov + '</div>' +
+    '<div>식 <b>월환산 = 누적 ÷ 관측 완료일수 × 월 일수</b> — 진행 중 <b>당월 1점만</b> 교체하고 ' +
+    '완료월·히스토리는 원본 그대로입니다. 증감률(YoY/QoQ)·매력도 스코어·나우캐스트에는 ' +
+    '<b>들어가지 않습니다</b>(부분월은 제외만).</div>' +
+    '<div style="color:#ffbe2e">game-i <b>제3자 추정치</b>(단위 ' + DMMRR_UNIT + ') · <b>집계 대상 앱 바스켓</b> ' +
+    '범위 — <b>회사 실매출·총매출이 아닙니다</b>.</div>';
+  if (k) {
+    const co = (rr.co || {})[k], hd = (rr.held || {})[k];
+    body += co
+      ? '<div>이 회사: 원시 누적 <b>' + dmmRrFmt(co.raw, DMMRR_UNIT) + '</b> → 월환산 <b>' +
+        dmmRrFmt(co.runrate, DMMRR_UNIT) + '</b> (앱 ' + (co.apps == null ? '?' : co.apps) + '개 · ' +
+        co.covered_days + '/' + co.total_days + '일)</div>'
+      : '<div><b>' + DMMRR_L_HOLD + '</b> — ' + gPcqEsc(hd
+          ? ((hd.ko || hd.reason || '사유 미상') + (hd.detail ? ' [' + hd.detail + ']' : ''))
+          : DMMRR_HOLD_KO.no_company_entry) + '</div>';
+  } else {
+    body += '<div>월환산 적용 <b>' + Object.keys(rr.co || {}).length + '</b>곳 · <b>' + DMMRR_L_HOLD +
+      ' ' + Object.keys(rr.held || {}).length + '</b>곳(사유는 각 회사 상세에 표시).</div>';
+  }
+  return dmmRrPanel('border-color:' + DMMRR_ACCENT + '44', body);
+}
+/* DMMRR:exports — vm 전역에서 const 바인딩이 보이지 않으므로 명시 노출(테스트/부모 통합용) */
+(function (r) { if (!r) return;
+  r.DmmRunrate = { version: DMMRR_VER, SCHEMA: DMMRR_SCHEMA, SRC: DMMRR_SRC, UNIT: DMMRR_UNIT,
+    ACCENT: DMMRR_ACCENT, L_EST: DMMRR_L_EST, L_HOLD: DMMRR_L_HOLD, HOLD_KO: DMMRR_HOLD_KO,
+    ko: dmmRrKo, nowYm: dmmRrNowYm, meta: dmmRrMeta, state: dmmRrState, partial: dmmRrPartial,
+    apply: dmmRrApply, style: dmmRrStyle, restyle: dmmRrRestyle, plugin: dmmRrPlugin,
+    fmt: dmmRrFmt, tipLabel: dmmRrTipLabel, tipFooter: dmmRrTipFooter, note: dmmRrNote };
+}(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null)));
+/* DMMRR:end */
 function userMetricColor(name){
   const s=String(name||'').toLowerCase(); if(!s) return null;
   if(/신규\s*설치|new[\s_-]?install/.test(s)) return '#c39bff';
@@ -5399,28 +6061,56 @@ function userMetricColor(name){
   return null;
 }
 function gMountCharts(G){
-  const S=G.series||{};
+  const S=G.series||{}; const NOW=gGrowthNow(); const MODE=gGrowthMode();
   document.querySelectorAll('[data-gch]').forEach(cv=>{
     const [src,k,col]=cv.dataset.gch.split('|'); const s=gSer(src,k); if(!s) return;
     const ucol=userMetricColor(src)||col;
-    gChart(cv,s.x,[{type:'line',label:(gValid(k),src),data:s.y,borderColor:ucol,backgroundColor:ucol+'22',borderWidth:1.5,pointRadius:0,fill:true,tension:.2,spanGaps:true}],
-      v=>src==='pcbang_share_w'?v.toFixed(1)+'%':src==='dmm_rev_m'?v.toFixed(1)+'億':v.toLocaleString());
+    const rr=dmmRrApply(G,src,s.x,s.y,k,NOW);   // display=당월 월환산(1점), growth=부분월 제외(원값 불변)
+    const gr=gGrowthBuild({src:src,mode:MODE,nowISO:NOW,xLabels:s.x,
+      items:[{name:gCoName(G,k)||GGROW_SRCN[src]||src,color:ucol,labels:s.x,values:rr.growth}]});
+    gChart(cv,s.x,[dmmRrStyle({type:'line',label:(gValid(k),src),data:rr.display.slice(),borderColor:ucol,backgroundColor:ucol+'22',borderWidth:1.5,pointRadius:0,fill:true,tension:.2,spanGaps:true},rr)],
+      v=>src==='pcbang_share_w'?v.toFixed(1)+'%':src==='dmm_rev_m'?v.toFixed(1)+'億':v.toLocaleString(),null,gr);
   });
   const pc=document.getElementById('gPcbangAll');
-  if(pc&&(S.pcbang_share_w||S.pcbang_share_m)){ const P=(ST.gpcw==='m'&&S.pcbang_share_m)?S.pcbang_share_m:S.pcbang_share_w; const PY=gYm(P);
-    const ds=(G.companies||[]).filter(c=>PY[c.co_key]).map(c=>({type:'line',label:c.name,data:gArr(P.x,PY[c.co_key]),borderColor:c.color,backgroundColor:c.color+'bb',borderWidth:.6,pointRadius:0,fill:true,tension:.15,stack:'p',spanGaps:false}));
-    gChart(pc,P.x,ds,v=>v.toFixed(1)+'%',{scales:{x:{ticks:{color:TK.tick,maxTicksLimit:12,font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{color:TK.tick,font:{size:8},callback:v=>v+'%'},grid:{color:TK.grid}}}}); }
+  if(pc&&(S.pcbang_share_w||S.pcbang_share_m)){ const monthly=ST.gpcw==='m'&&!!S.pcbang_share_m;
+    const P=monthly?S.pcbang_share_m:S.pcbang_share_w; const PY=gYm(P);
+    const W=S.pcbang_share_w||null, WY=W?gYm(W):{};
+    const ds=(G.companies||[]).filter(c=>PY[c.co_key]).map(c=>({type:'line',label:c.name,data:gArr(P.x,PY[c.co_key]).slice(),borderColor:c.color,backgroundColor:c.color+'bb',borderWidth:.6,pointRadius:0,fill:true,tension:.15,stack:'p',spanGaps:false}));
+    // 월평균 보기도 증감률은 "주간 원계열"에서 계산하고 끝점만 월 라벨로 재배치
+    // (월평균 3개를 완전관측 분기로 둔갑시키지 않음). 주간 원계열이 없으면 증감률 생략.
+    const gr=W?gGrowthBuild({src:monthly?'pcbang_share_m':'pcbang_share_w',mode:MODE,nowISO:NOW,xLabels:P.x,remapMonth:monthly,
+        items:(G.companies||[]).filter(c=>PY[c.co_key]&&WY[c.co_key]).map(c=>({name:c.name,color:c.color,labels:W.x,values:gArr(W.x,WY[c.co_key])}))})
+      :{ds:[],rows:[],nPts:0,ok:false,reason:'noweekly',src:'pcbang_share_m',curQ:gGrowthNowQ(NOW).key,basis:GGROW_SPEC.pcbang_share_m.basis,est:false};
+    gChart(pc,P.x,ds,v=>v.toFixed(1)+'%',{scales:{x:{ticks:{color:TK.tick,maxTicksLimit:12,font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{color:TK.tick,font:{size:8},callback:v=>v+'%'},grid:{color:TK.grid}}}},gr); }
   const pq=document.getElementById('gPcbangQtrGames'); if(pq) gPcqMount(pq,G);
   const mb=document.getElementById('gMobileAll');
   if(mb&&S.mobile_rankpt_d){ const M=S.mobile_rankpt_d; const MY=gYm(M);
-    const ds=(G.companies||[]).filter(c=>MY[c.co_key]&&gArr(M.x,MY[c.co_key]).some(v=>v>0)).map(c=>({type:'line',label:c.name,data:gArr(M.x,MY[c.co_key]),borderColor:c.color,borderWidth:1.5,pointRadius:2,tension:.2}));
-    gChart(mb,M.x,ds,v=>v); }
+    const cos=(G.companies||[]).filter(c=>MY[c.co_key]&&gArr(M.x,MY[c.co_key]).some(v=>v>0));
+    const ds=cos.map(c=>({type:'line',label:c.name,data:gArr(M.x,MY[c.co_key]).slice(),borderColor:c.color,borderWidth:1.5,pointRadius:2,tension:.2}));
+    const gr=gGrowthBuild({src:'mobile_rankpt_d',mode:MODE,nowISO:NOW,xLabels:M.x,
+      items:cos.map(c=>({name:c.name,color:c.color,labels:M.x,values:gArr(M.x,MY[c.co_key])}))});
+    gChart(mb,M.x,ds,v=>v,null,gr); }
   const dm=document.getElementById('gDmmAll');
   if(dm&&S.dmm_rev_m){ const D=S.dmm_rev_m; const DY=gYm(D);
     const tops=(G.companies||[]).filter(c=>DY[c.co_key]).map(c=>({c,last:gArr(D.x,DY[c.co_key]).slice(-2).reduce((s,v)=>s+(v||0),0)})).sort((a,b)=>b.last-a.last).slice(0,10);
-    const ds=tops.map(t=>({type:'line',label:t.c.name,data:gArr(D.x,DY[t.c.co_key]),borderColor:t.c.color,borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true}));
-    gChart(dm,D.x,ds,v=>v.toFixed(1)+'億'); }
+    const rrs=tops.map(t=>dmmRrApply(G,'dmm_rev_m',D.x,gArr(D.x,DY[t.c.co_key]),t.c.co_key,NOW));
+    const ds=tops.map((t,i)=>dmmRrStyle({type:'line',label:t.c.name,data:rrs[i].display.slice(),borderColor:t.c.color,borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true},rrs[i]));
+    const gr=gGrowthBuild({src:'dmm_rev_m',mode:MODE,nowISO:NOW,xLabels:D.x,
+      items:tops.map((t,i)=>({name:t.c.name,color:t.c.color,labels:D.x,values:rrs[i].growth}))});
+    gChart(dm,D.x,ds,v=>v.toFixed(1)+'億',null,gr); }
 }
+/* GGROW:exports — 테스트/부모 통합용 명시 노출(const 바인딩은 vm 전역이 아니므로 반드시 필요) */
+(function(r){ if(!r) return;
+  r.GameGrowth={version:GGROW_VER,SPEC:GGROW_SPEC,DASH:GGROW_DASH,MODE_DEFAULT:GGROW_MODE_DEFAULT,
+    nowQuarter:gGrowthNowQ,nowISO:gGrowthNow,quarterKey:gGrowthQKey,quarterIndex:gGrowthQI,
+    parseLabel:gGrowthParseLabel,weekday:gGrowthWd,expected:gGrowthExpected,aggregate:gGrowthAgg,
+    ratio:gGrowthRatio,rows:gGrowthRows,points:gGrowthPts,remapMonth:gGrowthRemapMonth,radii:gGrowthRadii,
+    dataset:gGrowthDs,build:gGrowthBuild,restyle:gGrowthRestyle,plugin:gGrowthPlugin,
+    fmt:gGrowthFmt,tick:gGrowthTick,label:gGrowthLabel,
+    noteHtml:gGrowthNoteHtml,clearNotes:gGrowthClearNotes,
+    tipTitle:gGrowthTipTitle,tipLabel:gGrowthTipLabel,tipFooter:gGrowthTipFooter};
+}(typeof window!=='undefined'?window:(typeof globalThis!=='undefined'?globalThis:null)));
+
 /* Shared dependency-free Grailed report explorer, payload schema_version 1.
  * LuxGrailed.render(Element, payload, options) => cleanup()
  * options: title (default 'Grailed 리포트 관측'), initialPanel (panel id or
