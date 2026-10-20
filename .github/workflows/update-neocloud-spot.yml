@@ -27,33 +27,38 @@ jobs:
         run: |
           python -m unittest discover -s tools/tests -p 'test_*neocloud_spot.py'
           python tools/collect_neocloud_spot.py --check
+          python tools/build_neocloud_gpu_index.py --check
           node --check ui/patch.js
           node tools/tests/test_neocloud_spot_dom.cjs
       - name: Append completed official hourly LAST observations
         run: python tools/collect_neocloud_spot.py --mode refresh
+      - name: Chain-link the equal-family GPU price index
+        run: python tools/build_neocloud_gpu_index.py
       - name: Validate after collection
         run: |
           python tools/collect_neocloud_spot.py --check
+          python tools/build_neocloud_gpu_index.py --check
           python -m unittest discover -s tools/tests -p 'test_*neocloud_spot.py'
           node tools/tests/test_neocloud_spot_dom.cjs
           git diff --check
       - name: Commit only normalized NeoCloud data when changed
         run: |
-          if test -z "$(git status --porcelain -- data/neocloud_spot/index.json data/neocloud_spot/history data/neocloud_spot/imported-average)"; then
+          if test -z "$(git status --porcelain -- data/neocloud_spot/index.json data/neocloud_spot/gpu-index.json data/neocloud_spot/history data/neocloud_spot/imported-average)"; then
             exit 0
           fi
           test -z "$(git diff --cached --name-only)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- data/neocloud_spot/index.json data/neocloud_spot/history data/neocloud_spot/imported-average
+          git add -- data/neocloud_spot/index.json data/neocloud_spot/gpu-index.json data/neocloud_spot/history data/neocloud_spot/imported-average
           python - <<'PY'
           import subprocess
           paths = subprocess.check_output(['git', 'diff', '--cached', '--name-only'], text=True).splitlines()
-          assert paths and all(p == 'data/neocloud_spot/index.json' or p.startswith(('data/neocloud_spot/history/', 'data/neocloud_spot/imported-average/')) for p in paths), paths
+          assert paths and all(p in ('data/neocloud_spot/index.json', 'data/neocloud_spot/gpu-index.json') or p.startswith(('data/neocloud_spot/history/', 'data/neocloud_spot/imported-average/')) for p in paths), paths
           PY
           git commit -m 'data: official Nebius Spot Prices'
           git pull --rebase origin main
           python tools/collect_neocloud_spot.py --check
+          python tools/build_neocloud_gpu_index.py --check
           python -m unittest discover -s tools/tests -p 'test_*neocloud_spot.py'
           node tools/tests/test_neocloud_spot_dom.cjs
           git diff --check

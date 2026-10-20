@@ -28,24 +28,12 @@
           "minLength": 1
         },
         "platform": {
-          "enum": [
-            "gpu-b300-sxm",
-            "gpu-b200-sxm",
-            "gpu-b200-sxm-a",
-            "gpu-h200-sxm",
-            "gpu-h100-sxm",
-            "gpu-rtx6000",
-            "gpu-rtx6000-a"
-          ]
+          "type": "string",
+          "pattern": "^gpu-[a-z0-9]+(?:-[a-z0-9]+)*$"
         },
         "family": {
-          "enum": [
-            "B300",
-            "B200",
-            "H200",
-            "H100",
-            "RTX PRO 6000"
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}$"
         },
         "currency": {
           "const": "USD"
@@ -114,24 +102,12 @@
           "minLength": 1
         },
         "platform": {
-          "enum": [
-            "gpu-b300-sxm",
-            "gpu-b200-sxm",
-            "gpu-b200-sxm-a",
-            "gpu-h200-sxm",
-            "gpu-h100-sxm",
-            "gpu-rtx6000",
-            "gpu-rtx6000-a"
-          ]
+          "type": "string",
+          "pattern": "^gpu-[a-z0-9]+(?:-[a-z0-9]+)*$"
         },
         "family": {
-          "enum": [
-            "B300",
-            "B200",
-            "H200",
-            "H100",
-            "RTX PRO 6000"
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}$"
         },
         "currency": {
           "const": "USD"
@@ -218,16 +194,10 @@
         "supported_families": {
           "type": "array",
           "uniqueItems": true,
-          "minItems": 5,
-          "maxItems": 5,
+          "minItems": 1,
           "items": {
-            "enum": [
-              "B300",
-              "B200",
-              "H200",
-              "H100",
-              "RTX PRO 6000"
-            ]
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}$"
           }
         },
         "current": {

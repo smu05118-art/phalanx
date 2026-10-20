@@ -62,7 +62,22 @@ class ParserTests(unittest.TestCase):
         for platform, family in c.FAMILIES.items():
             pages = fixture('current')
             pages[0][0]['items'][0]['computeInstance']['platform'] = platform
+            pages[0][0]['items'][0]['productTitle'] = 'Preemptible NVIDIA® ' + family + (' NVLink' if family != 'RTX PRO 6000' else '')
             self.assertEqual(c.parse_current(pages, NOW)[0]['family'], family)
+
+    def test_future_gpu_family_is_derived_from_official_identity(self):
+        for mode in ('current', 'series'):
+            pages = fixture(mode)
+            pages[0][0]['items'][0]['computeInstance']['platform'] = 'gpu-b400-sxm'
+            pages[0][0]['items'][0]['productTitle'] = 'Preemptible NVIDIA® B400 NVLink'
+            rows = c.parse_current(pages, NOW) if mode == 'current' else c.parse_history(pages, c.LAST, NOW)
+            self.assertTrue(rows)
+            self.assertTrue(all(row['family'] == 'B400' for row in rows if row['sku_id'] == pages[0][0]['items'][0]['skuId']))
+
+    def test_future_platform_alias_stays_in_existing_family(self):
+        pages = fixture('current')
+        pages[0][0]['items'][0]['computeInstance']['platform'] = 'gpu-h200-sxm-v2'
+        self.assertEqual(c.parse_current(pages, NOW)[0]['family'], 'H200')
 
     def test_bad_currency_unit_platform(self):
         for field, value in [('currency', 'USD'), ('unitTitle', 'CPU hour'), ('value', 1.1)]:
@@ -70,11 +85,14 @@ class ParserTests(unittest.TestCase):
             pages[0][0]['items'][0]['price'][field] = value
             with self.assertRaises(ValueError):
                 c.parse_current(pages, NOW)
-        for mode in ('current', 'series'):
-            pages = fixture(mode)
-            pages[0][0]['items'][0]['computeInstance']['platform'] = 'gpu-unknown'
+        for platform, title in [('cpu-unknown', 'Preemptible NVIDIA® B400 NVLink'),
+                                ('gpu-b400-sxm', 'Unclassified accelerator'),
+                                ('gpu-b300-sxm', 'Preemptible NVIDIA® H200 NVLink')]:
+            pages = fixture('current')
+            pages[0][0]['items'][0]['computeInstance']['platform'] = platform
+            pages[0][0]['items'][0]['productTitle'] = title
             with self.assertRaises(ValueError):
-                c.parse_current(pages, NOW) if mode == 'current' else c.parse_history(pages, c.LAST, NOW)
+                c.parse_current(pages, NOW)
         for k in ('currency', 'unitTitle'):
             pages = fixture('series')
             pages[0][0]['items'][0][k] = 'invalid'

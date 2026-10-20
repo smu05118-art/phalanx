@@ -4,6 +4,7 @@ const ROOT = path.resolve(__dirname, '../..');
 const source = fs.readFileSync(path.join(ROOT, 'ui/patch.js'), 'utf8');
 const code = source.slice(source.indexOf('/* Nebius GPU spot tracker'));
 const seed = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/tests/fixtures/neocloud_spot/archive/index.json'), 'utf8'));
+const gpuSeed = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/neocloud_spot/gpu-index.json'), 'utf8'));
 class Element {
   constructor(tag) { this.tagName = tag; this.children = []; this.parentNode = null; this.attributes = {}; this._text = ''; this.className = ''; this.style = {setProperty() {}}; this.classList = {contains: s => this.className.split(' ').includes(s)}; }
   get textContent() { return this._text + this.children.map(n => n.textContent).join(' '); }
@@ -20,7 +21,7 @@ class Element {
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 200));
 const raw = () => ({snapshotTime:seed.snapshot_time,items:seed.current.map(r=>({skuId:r.sku_id,productTitle:r.product_title,region:r.region,computeInstance:{platform:r.platform},price:{value:r.price,currency:'usd',unitTitle:'GPU hour'},effectiveTime:r.effective_time}))});
-function setup({data = seed, failArchive = false, failLive = true, chart = false, badShard = false, liveData = raw()} = {}) {
+function setup({data = seed, gpuIndex = gpuSeed, failArchive = false, failLive = true, chart = false, badShard = false, liveData = raw()} = {}) {
   const body = new Element('body'), main = new Element('main'), root = new Element('div'), overview = new Element('div');
   root.className='nc';overview.className='nc-panel';body.appendChild(main);main.appendChild(root);
   function render(){const head=new Element('div');head.className='nc-head';root.replaceChildren(head,overview);return 'normal';} render();
@@ -30,7 +31,7 @@ function setup({data = seed, failArchive = false, failLive = true, chart = false
     stats.requests.push(url);assert.equal(options.credentials,'omit');assert.equal(options.referrerPolicy,'no-referrer');assert.equal(options.redirect,'error');assert(options.signal);
     let payload;
     if(url.startsWith('https://api.nebius.cloud/')){if(stats.failLive)throw Error('CORS/offline');payload=JSON.stringify(liveData);}
-    else {if(stats.failArchive)throw Error('archive offline');payload=url.endsWith('index.json')?JSON.stringify(data):fs.readFileSync(path.join(ROOT,'tools/tests/fixtures/neocloud_spot/archive',url.replace('data/neocloud_spot/','')),'utf8');if(badShard&&!url.endsWith('index.json'))payload+=' ';}
+    else {if(stats.failArchive)throw Error('archive offline');payload=url.endsWith('gpu-index.json')?JSON.stringify(gpuIndex):url.endsWith('index.json')?JSON.stringify(data):fs.readFileSync(path.join(ROOT,'tools/tests/fixtures/neocloud_spot/archive',url.replace('data/neocloud_spot/','')),'utf8');if(badShard&&!url.endsWith('index.json'))payload+=' ';}
     const bytes=new TextEncoder().encode(payload);let done=false;return {ok:true,url:new URL(url,context.location.href).href,body:{getReader:()=>({read:async()=>done?{done:true}:(done=true,{done:false,value:bytes}),cancel:async()=>{}})}};
   },renderAI2:render,renderNeocloud:render};context.window=context;
   if(chart)context.Chart=function(_,config){stats.created++;stats.config=config;this.destroy=()=>stats.destroyed++;};
@@ -41,10 +42,10 @@ function selector(e,name){return e.panel().querySelectorAll('select').find(s=>s.
 (async()=>{
   let count=0;async function test(name,fn){await fn();count++;console.log('PASS '+name);}
   await test('static contract and scoped workflow',()=>{
-    for(const token of ['renderAI2','renderNeocloud','data/neocloud_spot/','index.json','api.nebius.cloud','/list-series','GPU spot 데이터 미로드','B300','B200','H200','H100','RTX PRO 6000','https://nebius.com/spot-prices','https://docs.nebius.com/signup-billing/spot-prices','METHOD_LAST_PRICE','METHOD_AVG_PRICE','지역 / SKU','1d','7d','30d','전체 보관'])assert(code.includes(token),token);
+    for(const token of ['renderAI2','renderNeocloud','data/neocloud_spot/','index.json','gpu-index.json','api.nebius.cloud','/list-series','GPU spot 데이터 미로드','B300','B200','H200','H100','RTX PRO 6000','https://nebius.com/spot-prices','https://docs.nebius.com/signup-billing/spot-prices','METHOD_LAST_PRICE','METHOD_AVG_PRICE','지역 / SKU','1d','7d','30d','전체 보관'])assert(code.includes(token),token);
     for(const token of ['history.json','legacy-user-chart','8.16','3.92','1.87','1.18'])assert(!code.includes(token),token);
     const wf=fs.readFileSync(path.join(ROOT,'.github/workflows/update-neocloud-spot.yml'),'utf8');
-    for(const token of ['schedule:','workflow_dispatch:','contents: write','cancel-in-progress: false','git add -- data/neocloud_spot/index.json','git pull --rebase origin main'])assert(wf.includes(token));
+    for(const token of ['schedule:','workflow_dispatch:','contents: write','cancel-in-progress: false','build_neocloud_gpu_index.py --check','data/neocloud_spot/gpu-index.json','git add -- data/neocloud_spot/index.json','git pull --rebase origin main'])assert(wf.includes(token));
     assert(!/git add (?:\.|-A|--all)/.test(wf));
   });
   await test('archive first five accessible cards with exact lowest price region',async()=>{
@@ -53,6 +54,19 @@ function selector(e,name){return e.panel().querySelectorAll('select').find(s=>s.
     assert(e.panel().textContent.includes('보관 폴백'));assert(e.panel().textContent.includes('공식 Nebius Spot Prices'));assert.equal(e.panel().querySelectorAll('select').length,4);
     assert.equal(e.root.children[1],e.panel());assert(e.panel().querySelector('svg'));
   });
+  await test('equal-family chained index renders exact latest state and weights',async()=>{
+    const e=setup();await tick();assert.doesNotThrow(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(gpuSeed));assert(e.panel().textContent.includes('전 제품 통합지수'));assert(e.panel().textContent.includes(Number(gpuSeed.levels.at(-1).value).toFixed(2)));assert(e.panel().textContent.includes('B200 20.00%'));assert(e.panel().textContent.includes('과거 지수 불변'));assert(e.panel().querySelectorAll('svg').length>=2);
+    const broken=structuredClone(gpuSeed);broken.composition_epochs[0].families[0].effective_weight.denominator=4;assert.throws(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(broken));
+    const zero=structuredClone(gpuSeed);zero.composition_epochs[0].families[0].effective_weight.numerator=0;assert.throws(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(zero));
+    const version=structuredClone(gpuSeed);version.methodology_version='future-v2';assert.throws(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(version));
+    const epochVersion=structuredClone(gpuSeed);epochVersion.composition_epochs[0].methodology_version='future-v2';assert.throws(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(epochVersion));
+    const large=structuredClone(gpuSeed);large.levels.at(-1).value='123456789012345678901234567890';assert.doesNotThrow(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(large));
+  });
+  await test('index lookbacks require the exact target hour across gaps',async()=>{
+    const d=structuredClone(gpuSeed),latest=Date.parse(d.levels.at(-1).timestamp),target=latest-86400000;
+    const removed=d.levels.find(p=>Date.parse(p.timestamp)===target);assert(removed);d.levels=d.levels.filter(p=>Date.parse(p.timestamp)!==target);d.gaps.push({timestamp:new Date(target).toISOString().replace('.000Z','Z'),reason:'missing_active_observation'});d.gaps.sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp));
+    const e=setup({gpuIndex:d});await tick();const metrics=e.panel().querySelectorAll('.ncs-index-stat');assert(metrics[0].textContent.includes('24시간'));assert(metrics[0].textContent.includes('—'));assert(!metrics[1].textContent.includes('—'));
+  });
   await test('rerender and duplicate mount preserve one panel and cached requests',async()=>{
     const e=setup();await tick();const n=e.stats.requests.length;e.context.PHXNeoCloudSpot.mount();e.context.PHXNeoCloudSpot.mount();await tick();assert.equal(e.root.querySelectorAll('.ncs-tracker').length,1);
     assert.equal(e.context.renderAI2(),'normal');await tick();assert.equal(e.root.querySelectorAll('.ncs-tracker').length,1);assert.equal(e.stats.requests.length,n);
@@ -60,6 +74,11 @@ function selector(e,name){return e.panel().querySelectorAll('select').find(s=>s.
   });
   await test('live enhancement retains archive and exact effective time',async()=>{
     const d=raw();d.items[0].price.value='0.1234567890123456789';const e=setup({failLive:false,liveData:d});await tick();assert(e.panel().textContent.includes('실시간'));assert(e.panel().textContent.includes('$0.1234567890123456789'));assert(e.stats.requests.some(s=>s.startsWith('https://api.nebius.cloud/')));
+  });
+  await test('new official GPU family appears without a UI code release',async()=>{
+    const d=structuredClone(seed), row=structuredClone(d.current[0]);row.sku_id='sku-future-b400';row.platform='gpu-b400-sxm';row.product_title='Preemptible NVIDIA® B400 NVLink';row.family='B400';row.region='future-region1';
+    d.current.push(row);d.current.sort((a,b)=>a.sku_id.localeCompare(b.sku_id));d.supported_families=[...new Set(d.supported_families.concat('B400'))].sort();
+    const e=setup({data:d});await tick();assert.equal(e.panel().querySelectorAll('.ncs-card').length,6);assert(e.panel().textContent.includes('B400'));assert.equal(e.context.PHXNeoCloudSpot.productFamily('gpu-b400-sxm','Preemptible NVIDIA® B400 NVLink'),'B400');
   });
   await test('both sources fail then retry succeeds',async()=>{
     const e=setup({failArchive:true});await tick();assert(e.panel().textContent.includes('GPU spot 데이터 미로드'));e.stats.failArchive=false;e.panel().querySelector('button').onclick();await tick();assert.equal(e.panel().querySelectorAll('.ncs-card').length,5);
@@ -88,7 +107,7 @@ function selector(e,name){return e.panel().querySelectorAll('select').find(s=>s.
     const e=setup();await tick();const api=e.context.PHXNeoCloudSpot;
     for(const s of ['{"a":1,"a":2}','{"a":{"b":1,"b":2}}','[NaN]'])assert.throws(()=>api.strictJSON(s));
     assert.equal(api.strictJSON('{"a":[1,true,null,"é"]}').a[3],'é');assert(api.compare('1.000000000000000001','1.000000000000000002')<0);
-    for(const mutate of [d=>d.current[0].unit='CPU hour',d=>d.current[0].platform='unknown',d=>d.current[0].effective_time='2026-02-30T00:00:00Z',d=>d.current.push(d.current[0]),d=>d.schema_version=1,d=>d.shards[0].path='../secret']){const d=structuredClone(seed);mutate(d);assert.throws(()=>api.validate(d));}
+    for(const mutate of [d=>d.current[0].unit='CPU hour',d=>d.current[0].platform='cpu-unknown',d=>d.current[0].effective_time='2026-02-30T00:00:00Z',d=>d.current.push(d.current[0]),d=>d.schema_version=1,d=>d.shards[0].path='../secret']){const d=structuredClone(seed);mutate(d);assert.throws(()=>api.validate(d));}
   });
   await test('exact host allowlist rejects before fetch',async()=>{
     const e=setup();await tick();const n=e.stats.requests.length;

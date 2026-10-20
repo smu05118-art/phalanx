@@ -33,6 +33,9 @@ SHARD_LIMIT = 4 * 1024 * 1024
 FAMILIES = {'gpu-b300-sxm': 'B300', 'gpu-b200-sxm': 'B200', 'gpu-b200-sxm-a': 'B200',
             'gpu-h200-sxm': 'H200', 'gpu-h100-sxm': 'H100', 'gpu-rtx6000': 'RTX PRO 6000',
             'gpu-rtx6000-a': 'RTX PRO 6000'}
+PLATFORM_RE = re.compile(r'gpu-[a-z0-9]+(?:-[a-z0-9]+)*')
+TITLE_RE = re.compile(r'Preemptible NVIDIA(?:®)?\s+(.+?)(?:\s+NVLink)?')
+FAMILY_RE = re.compile(r'[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}')
 VERIFIED_FIXTURE_SHA256 = {
     AVG: '1594b1e56042e2762a9cc9656ebbc6ca8f24bd1cf2a7c1ff7df5e58f4e6df909',
     LAST: '614ef24e7449a27c016d3bedd2284c210858e4404e8ed94ad3568433dcf40c67',
@@ -173,17 +176,31 @@ def validate_pages(all_pages):
         envelope(obj)
 
 
+def units(currency, unit):
+    require(currency == 'usd' and unit == 'GPU hour', 'invalid currency/unit')
+
+
+def product_family(platform, product_title):
+    """Derive a stable family from Nebius' official product identity."""
+    string(platform)
+    title = string(product_title)
+    require(PLATFORM_RE.fullmatch(platform) is not None, 'unsupported GPU platform: ' + platform)
+    match = TITLE_RE.fullmatch(title)
+    require(match is not None, 'unsupported GPU product title: ' + title)
+    label = match.group(1).strip()
+    require(FAMILY_RE.fullmatch(label) is not None, 'invalid GPU family label: ' + label)
+    known = FAMILIES.get(platform)
+    require(known is None or known == label, 'platform/title family mismatch: ' + platform)
+    return known or label
+
+
 def metadata(row):
     fields(row['computeInstance'], ('platform',))
     platform = string(row['computeInstance']['platform'])
-    require(platform in FAMILIES, 'unsupported platform: ' + platform)
-    return dict(sku_id=string(row['skuId']), product_title=string(row['productTitle']),
-                region=string(row['region']), platform=platform, family=FAMILIES[platform],
+    title = string(row['productTitle'])
+    return dict(sku_id=string(row['skuId']), product_title=title,
+                region=string(row['region']), platform=platform, family=product_family(platform, title),
                 currency='USD', unit='USD/GPU-hour')
-
-
-def units(currency, unit):
-    require(currency == 'usd' and unit == 'GPU hour', 'invalid currency/unit')
 
 
 def parse_current(all_pages, collected):
@@ -263,7 +280,7 @@ META = {'sku_id', 'product_title', 'region', 'platform', 'family', 'currency', '
 
 def validate_row(row, history):
     fields(row, META | ({'interval_start', 'interval_end', 'method', 'granularity'} if history else {'effective_time'}))
-    require(row['platform'] in FAMILIES and row['family'] == FAMILIES[row['platform']], 'family mismatch')
+    require(row['family'] == product_family(row['platform'], row['product_title']), 'family mismatch')
     require(row['currency'] == 'USD' and row['unit'] == 'USD/GPU-hour', 'archive unit mismatch')
     for k in ('sku_id', 'product_title', 'region'):
         string(row[k])
@@ -330,7 +347,11 @@ def read_index(root):
     fields(index, ('schema_version', 'source_urls', 'supported_families', 'current', 'snapshot_time', 'collected_time',
                    'method', 'granularity', 'shards', 'latest_complete_timestamp', 'imported_average_latest_timestamp'))
     require(type(index['schema_version']) is int and index['schema_version'] == 2, 'schema version')
-    require(index['source_urls'] == [PAGE, DOCS, CURRENT, SERIES] and index['supported_families'] == sorted(set(FAMILIES.values())), 'source/family contract')
+    require(index['source_urls'] == [PAGE, DOCS, CURRENT, SERIES], 'source contract')
+    require(type(index['supported_families']) is list and index['supported_families'] and
+            index['supported_families'] == sorted(set(index['supported_families'])) and
+            all(type(value) is str and FAMILY_RE.fullmatch(value) is not None
+                for value in index['supported_families']), 'family catalogue contract')
     require(index['method'] == LAST and index['granularity'] == HOUR, 'index aggregation')
     require(type(index['current']) is list and index['current'], 'current missing')
     for r in index['current']:
@@ -395,6 +416,8 @@ def read_archive(root):
     rows = read_entries(root, index['shards'])
     for method, field in [(LAST, 'latest_complete_timestamp'), (AVG, 'imported_average_latest_timestamp')]:
         require(index[field] == max((r['interval_end'] for r in rows if r['method'] == method), default=None), 'latest timestamp mismatch')
+    observed_families = sorted({r['family'] for r in index['current']} | {r['family'] for r in rows})
+    require(index['supported_families'] == observed_families, 'family catalogue/archive mismatch')
     return index, rows
 
 
@@ -475,7 +498,10 @@ def build(root, current, incoming, old_index=_UNSET):
         new_entries.extend(group_entries)
     shards = sorted(carried_entries + new_entries,
                     key=lambda entry: (entry_group(entry)[2], entry_group(entry)[1]))
-    index = dict(schema_version=2, source_urls=[PAGE, DOCS, CURRENT, SERIES], supported_families=sorted(set(FAMILIES.values())),
+    supported = set(old_index['supported_families'] if old_index else ())
+    supported.update(r['family'] for r in current)
+    supported.update(r['family'] for r in incoming)
+    index = dict(schema_version=2, source_urls=[PAGE, DOCS, CURRENT, SERIES], supported_families=sorted(supported),
                  current=current, snapshot_time=min((r['source_snapshot_time'] for r in current), key=stamp),
                  collected_time=max((r['collected_time'] for r in current), key=stamp), method=LAST, granularity=HOUR, shards=shards,
                  latest_complete_timestamp=max((e['end'] for e in shards if e['method'] == LAST), default=None),

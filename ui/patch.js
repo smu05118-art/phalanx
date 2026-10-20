@@ -1459,8 +1459,8 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   var ARCHIVE = 'data/neocloud_spot/', HOST = 'api.nebius.cloud';
   var API = 'https://' + HOST + '/billing/v1alpha1/spot-price';
   var SOURCE = 'https://nebius.com/spot-prices', DOCS = 'https://docs.nebius.com/signup-billing/spot-prices';
-  var FAMILIES = ['B300', 'B200', 'H200', 'H100', 'RTX PRO 6000'];
-  var PLATFORMS = {'gpu-b300-sxm':'B300','gpu-b200-sxm':'B200','gpu-b200-sxm-a':'B200','gpu-h200-sxm':'H200','gpu-h100-sxm':'H100','gpu-rtx6000':'RTX PRO 6000','gpu-rtx6000-a':'RTX PRO 6000'};
+  var DEFAULT_FAMILIES = ['B300', 'B200', 'H200', 'H100', 'RTX PRO 6000'];
+  var KNOWN_PLATFORMS = {'gpu-b300-sxm':'B300','gpu-b200-sxm':'B200','gpu-b200-sxm-a':'B200','gpu-h200-sxm':'H200','gpu-h100-sxm':'H100','gpu-rtx6000':'RTX PRO 6000','gpu-rtx6000-a':'RTX PRO 6000'};
   var LAST = 'METHOD_LAST_PRICE', AVG = 'METHOD_AVG_PRICE', HOUR = 'GRANULARITY_HOUR_1';
   var mounted = new Map(), scheduled = false, cached = null, pending = null, activeModel = null;
   function assert(ok) { if (!ok) throw Error('GPU spot 데이터 계약 불일치'); }
@@ -1470,8 +1470,20 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
     assert(Object.keys(x).every(function (k) { return required.concat(optional || []).includes(k); }));
   }
   function text(x) { assert(typeof x === 'string' && x.length > 0 && x.length <= 512 && !/[\x00-\x1f]/.test(x)); return x; }
+  function productFamily(platform,title) {
+    assert(typeof platform==='string' && /^gpu-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(platform));text(title);
+    var match=/^Preemptible NVIDIA(?:®)?\s+(.+?)(?:\s+NVLink)?$/.exec(title);assert(match);
+    var family=match[1].trim();assert(/^[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}$/.test(family));
+    assert(!KNOWN_PLATFORMS[platform] || KNOWN_PLATFORMS[platform]===family);return KNOWN_PLATFORMS[platform]||family;
+  }
+  function orderedFamilies(model) {
+    var seen=new Set(), available=[];
+    (model.index?model.index.supported_families:[]).concat(model.current.map(function(r){return r.family;})).forEach(function(f){if(!seen.has(f)){seen.add(f);available.push(f);}});
+    return DEFAULT_FAMILIES.filter(function(f){return seen.has(f);}).concat(available.filter(function(f){return !DEFAULT_FAMILIES.includes(f);}).sort());
+  }
   function time(x) { assert(typeof x === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?Z$/.test(x) && Number.isFinite(Date.parse(x))); assert(new Date(x).toISOString().slice(0,19) === x.slice(0,19)); return Date.parse(x); }
   function decimal(x) { assert(typeof x === 'string' && /^(0|[1-9]\d{0,10})(\.\d{1,30})?$/.test(x)); return x.includes('.') ? x.replace(/0+$/,'').replace(/\.$/,'') : x; }
+  function indexDecimal(x) {assert(typeof x==='string'&&/^(0|[1-9]\d{0,30})(\.\d{1,120})?$/.test(x));return x.includes('.')?x.replace(/0+$/,'').replace(/\.$/,''):x;}
   // Exact decimal ordering for winning SKU identity; floats are chart coordinates only.
   function compare(a, b) {
     var aa = decimal(a).split('.'), bb = decimal(b).split('.');
@@ -1515,7 +1527,7 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
     var keys = ['sku_id','product_title','region','platform','family','currency','unit','price','source_snapshot_time','collected_time','source_endpoint','source_sha256'];
     obj(row, keys.concat(history ? ['interval_start','interval_end','method','granularity'] : ['effective_time']));
     ['sku_id','product_title','region'].forEach(function(k){text(row[k]);});
-    assert(PLATFORMS[row.platform] === row.family && FAMILIES.includes(row.family));
+    assert(productFamily(row.platform,row.product_title) === row.family);
     assert(row.currency === 'USD' && row.unit === 'USD/GPU-hour'); assert(decimal(row.price) === row.price);
     assert(time(row.source_snapshot_time) <= time(row.collected_time)); assert(/^[0-9a-f]{64}$/.test(row.source_sha256));
     assert(row.source_endpoint === API + (history ? '/list-series' : ''));
@@ -1527,9 +1539,11 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
     obj(data,['schema_version','source_urls','supported_families','current','snapshot_time','collected_time','method','granularity','shards','latest_complete_timestamp','imported_average_latest_timestamp']);
     assert(data.schema_version===2 && data.method===LAST && data.granularity===HOUR);
     assert(JSON.stringify(data.source_urls)===JSON.stringify([SOURCE,DOCS,API,API+'/list-series']));
-    assert(Array.isArray(data.supported_families) && [...data.supported_families].sort().join() === [...FAMILIES].sort().join());
+    assert(Array.isArray(data.supported_families) && data.supported_families.length>0);
+    assert(data.supported_families.every(function(f){return typeof f==='string'&&/^[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}$/.test(f);}) && new Set(data.supported_families).size===data.supported_families.length);
+    assert(JSON.stringify(data.supported_families)===JSON.stringify(data.supported_families.slice().sort()));
     assert(Array.isArray(data.current) && data.current.length>0 && Array.isArray(data.shards));
-    var ids = new Set(); data.current.forEach(function(r){normalized(r,false);assert(!ids.has(r.sku_id));ids.add(r.sku_id);});
+    var ids = new Set(); data.current.forEach(function(r){normalized(r,false);assert(data.supported_families.includes(r.family));assert(!ids.has(r.sku_id));ids.add(r.sku_id);});
     assert(time(data.snapshot_time) === Math.min.apply(null,data.current.map(function(r){return time(r.source_snapshot_time);}))); time(data.collected_time);
     var paths = new Set(); data.shards.forEach(function(s){obj(s,['path','sha256','count','method','start','end']);assert(/^(history|imported-average)\/\d{4}-\d\d(?:-[0-9]{2,})?\.json$/.test(s.path) && !paths.has(s.path));paths.add(s.path);assert(/^[0-9a-f]{64}$/.test(s.sha256)&&Number.isInteger(s.count)&&s.count>0);assert(s.method===(s.path.startsWith('history/')?LAST:AVG));assert(time(s.start)<time(s.end));});
     [data.latest_complete_timestamp,data.imported_average_latest_timestamp].forEach(function(t){if(t!==null)time(t);});
@@ -1540,8 +1554,8 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
     assert(!data.nextPageToken || typeof data.nextPageToken==='string');
     return data.items.map(function(r){
       obj(r,['skuId','productTitle','region','computeInstance','price','effectiveTime']);obj(r.computeInstance,['platform']);obj(r.price,['value','currency','unitTitle']);
-      assert(PLATFORMS[r.computeInstance.platform] && r.price.currency==='usd' && r.price.unitTitle==='GPU hour');assert(time(r.effectiveTime)<=Date.now()+60000);
-      return {sku_id:text(r.skuId),product_title:text(r.productTitle),region:text(r.region),platform:r.computeInstance.platform,family:PLATFORMS[r.computeInstance.platform],price:decimal(r.price.value),effective_time:r.effectiveTime,source_snapshot_time:data.snapshotTime};
+      var family=productFamily(r.computeInstance.platform,r.productTitle);assert(r.price.currency==='usd' && r.price.unitTitle==='GPU hour');assert(time(r.effectiveTime)<=Date.now()+60000);
+      return {sku_id:text(r.skuId),product_title:text(r.productTitle),region:text(r.region),platform:r.computeInstance.platform,family:family,price:decimal(r.price.value),effective_time:r.effectiveTime,source_snapshot_time:data.snapshotTime};
     });
   }
   async function live() {
@@ -1561,6 +1575,40 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   function gaps(rows) {
     var points=[];rows.forEach(function(r,i){var x=time(r.interval_end);if(i && x-time(rows[i-1].interval_end)>3600000)points.push({x:x-3600000,y:null});points.push({x:x,y:Number(r.price)});});return points;
   }
+  function rational(value) {obj(value,['numerator','denominator']);assert(Number.isInteger(value.numerator)&&value.numerator>0&&Number.isInteger(value.denominator)&&value.denominator>0);return value.numerator/value.denominator;}
+  function validateGPUIndex(data) {
+    obj(data,['schema_version','index_id','name','currency','unit','granularity','source_method','base','latest_timestamp','processed_through','methodology_version','methodology','source','catalog','composition_epochs','levels','gaps']);
+    assert(data.schema_version===1&&data.index_id==='nebius-gpu-spot-equal-family-price-index'&&data.currency==='USD'&&data.unit==='index_points'&&data.granularity===HOUR&&data.source_method===LAST&&data.methodology_version==='equal-family-chain-v1');text(data.name);
+    obj(data.base,['timestamp','value']);time(data.base.timestamp);assert(indexDecimal(data.base.value)===data.base.value&&data.base.value==='100');
+    obj(data.methodology,['activation_observations','activation_schedule','bootstrap_policy','calculation','family_weighting','gap_linking_policy','late_discovery_policy','missing_policy','nonpositive_policy','region_weighting','sku_weighting']);assert(data.methodology.activation_observations===24&&data.methodology.activation_schedule==='next_utc_00:00_after_qualification'&&data.methodology.bootstrap_policy==='initial reviewed basket is retrospectively backcast before first publication'&&data.methodology.calculation==='chain-linked hierarchical geometric price relatives'&&data.methodology.family_weighting==='equal'&&data.methodology.gap_linking_policy==='resume from last complete basket over the full elapsed interval'&&data.methodology.late_discovery_policy==='after bootstrap, season from first unpublished endpoint; never backdate'&&data.methodology.missing_policy==='record missing endpoints; no interpolation or forward fill'&&data.methodology.nonpositive_policy==='reject'&&data.methodology.region_weighting==='equal within family'&&data.methodology.sku_weighting==='equal within region');
+    obj(data.source,['archive','latest_complete_timestamp','source_index_sha256']);assert(data.source.archive==='index.json'&&/^[0-9a-f]{64}$/.test(data.source.source_index_sha256));time(data.source.latest_complete_timestamp);time(data.processed_through);
+    assert(Array.isArray(data.catalog)&&Array.isArray(data.composition_epochs)&&data.composition_epochs.length&&Array.isArray(data.levels)&&data.levels.length&&Array.isArray(data.gaps));
+    var catalogIds=new Set();data.catalog.forEach(function(c){obj(c,['activation_time','bootstrap','discovered_at','family','first_observation_end','platforms','product_titles','qualified_at','region','seasoning_start','sku_id','status']);text(c.sku_id);text(c.region);assert(/^[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}$/.test(c.family)&&!catalogIds.has(c.sku_id));catalogIds.add(c.sku_id);assert(typeof c.bootstrap==='boolean'&&['active','pending'].includes(c.status));var discovered=time(c.discovered_at);assert(time(c.seasoning_start)>=discovered);time(c.first_observation_end);if(c.activation_time!==null)time(c.activation_time);if(c.qualified_at!==null)time(c.qualified_at);assert(Array.isArray(c.platforms)&&c.platforms.length&&new Set(c.platforms).size===c.platforms.length&&Array.isArray(c.product_titles)&&c.product_titles.length&&new Set(c.product_titles).size===c.product_titles.length);c.platforms.forEach(function(p){assert(c.product_titles.some(function(t){try{return productFamily(p,t)===c.family;}catch(e){return false;}}));});});
+    var lastEpoch=-Infinity;data.composition_epochs.forEach(function(epoch){obj(epoch,['effective_time','families','methodology_version','reason']);var et=time(epoch.effective_time);assert(et>lastEpoch&&epoch.methodology_version===data.methodology_version);lastEpoch=et;text(epoch.reason);assert(Array.isArray(epoch.families)&&epoch.families.length);var familyNames=new Set(),total=0;epoch.families.forEach(function(f){obj(f,['effective_weight','family','regions']);assert(!familyNames.has(f.family));familyNames.add(f.family);var fw=rational(f.effective_weight);total+=fw;assert(Math.abs(fw-1/epoch.families.length)<1e-12&&Array.isArray(f.regions)&&f.regions.length);var regionNames=new Set(),regionTotal=0,skuEffective=0;f.regions.forEach(function(r){obj(r,['effective_weight','region','skus','weight_within_family']);assert(!regionNames.has(r.region));regionNames.add(r.region);regionTotal+=rational(r.weight_within_family);assert(Array.isArray(r.skus)&&r.skus.length);var skuIds=new Set(),skuTotal=0;r.skus.forEach(function(s){obj(s,['effective_weight','sku_id','weight_within_region']);assert(catalogIds.has(s.sku_id)&&!skuIds.has(s.sku_id));skuIds.add(s.sku_id);skuTotal+=rational(s.weight_within_region);skuEffective+=rational(s.effective_weight);});assert(Math.abs(skuTotal-1)<1e-12);});assert(Math.abs(regionTotal-1)<1e-12&&Math.abs(skuEffective-fw)<1e-12);});assert(Math.abs(total-1)<1e-12);});
+    var previous=-Infinity;data.levels.forEach(function(level){obj(level,['timestamp','value']);var t=time(level.timestamp);assert(t>previous);previous=t;assert(indexDecimal(level.value)===level.value&&Number(level.value)>0);});assert(data.levels[0].timestamp===data.base.timestamp&&data.levels[0].value===data.base.value&&data.latest_timestamp===data.levels[data.levels.length-1].timestamp);time(data.latest_timestamp);
+    data.gaps.forEach(function(g){obj(g,['reason','timestamp']);time(g.timestamp);text(g.reason);});return data;
+  }
+  function exactLevel(levels,target) {for(var i=levels.length-1;i>=0;i--){var value=time(levels[i].timestamp);if(value===target)return levels[i];if(value<target)return null;}return null;}
+  function indexSvg(box,levels) {
+    function shape(tag,attrs){var e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.keys(attrs).forEach(function(k){e.setAttribute(k,attrs[k]);});return e;}
+    var latest=time(levels[levels.length-1].timestamp),shown=levels.filter(function(p){return time(p.timestamp)>=latest-30*86400000;});if(shown.length<2)shown=levels;
+    var svg=shape('svg',{viewBox:'0 0 880 230',role:'img','aria-label':'Nebius 전 제품 동일 GPU군 가중 가격지수. 기준값 100.'});var xs=shown.map(function(p){return time(p.timestamp);}),ys=shown.map(function(p){return Number(p.value);});var minX=Math.min.apply(null,xs),maxX=Math.max.apply(null,xs),minY=Math.min.apply(null,ys),maxY=Math.max.apply(null,ys),pad=Math.max((maxY-minY)*.12,.5);minY-=pad;maxY+=pad;
+    function x(v){return 65+(v-minX)/Math.max(3600000,maxX-minX)*790;}function y(v){return 190-(v-minY)/Math.max(.000001,maxY-minY)*155;}
+    var segment=[];function flush(){if(segment.length){svg.appendChild(shape('polyline',{points:segment.join(' '),fill:'none',stroke:'currentColor','stroke-width':2.5}));segment=[];}}
+    shown.forEach(function(p,i){var pt=time(p.timestamp);if(i&&pt-time(shown[i-1].timestamp)>3600000)flush();segment.push(x(pt)+','+y(Number(p.value)));});flush();
+    [[8,28,maxY.toFixed(2)],[8,194,minY.toFixed(2)],[65,222,human(new Date(minX).toISOString())],[620,222,human(new Date(maxX).toISOString())]].forEach(function(v){var t=shape('text',{x:v[0],y:v[1],fill:'currentColor','font-size':12});t.textContent=v[2];svg.appendChild(t);});box.appendChild(svg);
+  }
+  function renderGPUIndex(panel,index) {
+    var latest=index.levels[index.levels.length-1],latestTime=time(latest.timestamp),day=exactLevel(index.levels,latestTime-86400000),week=exactLevel(index.levels,latestTime-7*86400000);
+    function change(point){if(!point)return '—';var value=(Number(latest.value)/Number(point.value)-1)*100;return (value>0?'+':'')+value.toFixed(2)+'%';}
+    var section=el('section','ncs-index');section.appendChild(el('h4','','전 제품 통합지수 · 동일 GPU군 가중'));
+    var metrics=el('div','ncs-index-metrics'),level=el('div','ncs-index-level');level.appendChild(el('strong','',Number(latest.value).toFixed(2)));level.appendChild(el('span','','기준 100 · '+human(latest.timestamp)));metrics.appendChild(level);[['24시간',change(day)],['7일',change(week)],['구성 GPU군',String(index.composition_epochs[index.composition_epochs.length-1].families.length)]].forEach(function(v){var item=el('div','ncs-index-stat');item.appendChild(el('span','',v[0]));item.appendChild(el('strong','',v[1]));metrics.appendChild(item);});section.appendChild(metrics);
+    var chart=el('div','ncs-index-chart');indexSvg(chart,index.levels);section.appendChild(chart);
+    var epoch=index.composition_epochs.filter(function(e){return time(e.effective_time)<=latestTime;}).slice(-1)[0],details=el('details','ncs-index-weights');details.appendChild(el('summary','','현재 가중치 · '+epoch.families.length+'개 GPU군'));
+    var list=el('div','ncs-weight-list');epoch.families.forEach(function(f){var item=el('span','ncs-weight',f.family+' '+(rational(f.effective_weight)*100).toFixed(2)+'%');list.appendChild(item);});details.appendChild(list);section.appendChild(details);
+    var pending=index.catalog.filter(function(c){return c.status==='pending';}).length;section.appendChild(el('p','ncs-note','LAST 완료값만 · GPU군→지역→SKU 동일가중 · 신제품 24시간 관측 후 다음 UTC 00시 편입 · 과거 지수 불변'+(pending?' · 편입 대기 '+pending+'개':'')));
+    section.appendChild(el('p','ncs-note','시장점유율·성능·용량 지수가 아닌 Nebius 가격지수입니다. 누락은 보간하지 않습니다.'));panel.appendChild(section);
+  }
   function svgChart(box, points, current) {
     function shape(tag,attrs){var e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.keys(attrs).forEach(function(k){e.setAttribute(k,attrs[k]);});return e;}
     var svg=shape('svg',{viewBox:'0 0 880 320',role:'img','aria-label':'지역별 시간 가격. 선은 완료된 관측, 원은 현재 가격. 정확한 값은 아래 표 참조.'});
@@ -1576,15 +1624,17 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   }
   function draw(panel,state,model) {
     if(state.chart){state.chart.destroy();state.chart=null;}
+    var families=orderedFamilies(model);assert(families.length>0);if(!families.includes(state.family)){state.family=families[0];state.sku='';}
     panel.replaceChildren(el('h3','','공식 Nebius Spot Prices'));
     var source=el('p','ncs-source');source.appendChild(link('공식 가격',SOURCE));source.appendChild(el('span','',' · '));source.appendChild(link('API 문서',DOCS));panel.appendChild(source);
     var status=el('p','ncs-badge',model.live?'공식 API 실시간 조회':'동일 출처 보관 폴백 · 실시간 조회 실패/대기');status.setAttribute('role','status');panel.appendChild(status);
     if(model.historyError)panel.appendChild(el('p','','보관 이력 미로드 · 현재 카드만 표시'));
+    if(model.gpuIndex)renderGPUIndex(panel,model.gpuIndex);else if(model.indexError)panel.appendChild(el('p','ncs-note','전 제품 통합지수 미로드 · 개별 가격은 계속 표시'));
     var cards=el('div','ncs-cards');
-    FAMILIES.forEach(function(f){var candidates=model.current.filter(function(r){return r.family===f;}).sort(function(a,b){return compare(a.price,b.price)||a.region.localeCompare(b.region)||a.sku_id.localeCompare(b.sku_id);}),r=candidates[0],card=el('article','ncs-card');card.style.setProperty('--ncs-series','currentColor');card.appendChild(el('span','ncs-product',f));card.appendChild(el('strong','',r?'$'+r.price:'관측 없음'));card.appendChild(el('span','','USD/GPU-hour · 지역/SKU 중 최저'));if(r){card.appendChild(el('span','',r.region+' · '+r.sku_id));card.appendChild(el('span','','적용 '+human(r.effective_time)));card.appendChild(el('span','','관측 '+human(r.source_snapshot_time)));card.appendChild(el('span','',(Date.now()-time(r.source_snapshot_time)>3600000?'지연 · ':'')+(model.live?'실시간':'보관 폴백')));}cards.appendChild(card);});panel.appendChild(cards);
+    families.forEach(function(f){var candidates=model.current.filter(function(r){return r.family===f;}).sort(function(a,b){return compare(a.price,b.price)||a.region.localeCompare(b.region)||a.sku_id.localeCompare(b.sku_id);}),r=candidates[0],card=el('article','ncs-card');card.style.setProperty('--ncs-series','currentColor');card.appendChild(el('span','ncs-product',f));card.appendChild(el('strong','',r?'$'+r.price:'관측 없음'));card.appendChild(el('span','','USD/GPU-hour · 지역/SKU 중 최저'));if(r){card.appendChild(el('span','',r.region+' · '+r.sku_id));card.appendChild(el('span','','적용 '+human(r.effective_time)));card.appendChild(el('span','','관측 '+human(r.source_snapshot_time)));card.appendChild(el('span','',(Date.now()-time(r.source_snapshot_time)>3600000?'지연 · ':'')+(model.live?'실시간':'보관 폴백')));}cards.appendChild(card);});panel.appendChild(cards);
     var controls=el('div','ncs-controls');
     function redraw(){draw(panel,state,model);}
-    controls.appendChild(select('GPU 제품',FAMILIES.map(function(f){return[f,f];}),state.family,function(v){state.family=v;state.sku='';redraw();}));
+    controls.appendChild(select('GPU 제품',families.map(function(f){return[f,f];}),state.family,function(v){state.family=v;state.sku='';redraw();}));
     var all=model.current.concat(model.history), choices=new Map();all.filter(function(r){return r.family===state.family;}).forEach(function(r){choices.set(r.sku_id,r.region+' / '+r.sku_id);});
     if(!choices.has(state.sku))state.sku=Array.from(choices.keys()).sort()[0]||'';
     controls.appendChild(select('지역 / SKU',Array.from(choices.entries()).sort(),state.sku,function(v){state.sku=v;redraw();}));
@@ -1632,8 +1682,9 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   async function load() {
     if(cached)return cached;if(pending)return pending;
     pending=(async function(){
-      var model={current:[],history:[],live:false,historyError:false,index:null,attempted:new Set(),loading:0};activeModel=model;
+      var model={current:[],history:[],live:false,historyError:false,index:null,gpuIndex:null,indexError:false,attempted:new Set(),loading:0};activeModel=model;
       try {var index=validate(await request(ARCHIVE+'index.json',false));model.index=index;model.current=index.current;notifyModel(model);}catch(e){model.historyError=true;}
+      try {model.gpuIndex=validateGPUIndex(await request(ARCHIVE+'gpu-index.json',false));notifyModel(model);}catch(e){model.indexError=true;}
       try {model.current=await live();model.live=true;}catch(e){/* Keep archive visible on API failure. */}
       assert(model.current.length);cached=model;notifyModel(model);return model;
     })().finally(function(){pending=null;});return pending;
@@ -1644,9 +1695,9 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
     load().then(function(m){if(panel.isConnected)draw(panel,state,m);}).catch(function(){if(!panel.isConnected)return;panel.replaceChildren(el('h3','','공식 Nebius Spot Prices'),el('p','','GPU spot 데이터 미로드'));var status=el('p','','API 및 보관 데이터 조회 실패');status.setAttribute('role','status');panel.appendChild(status);var b=el('button','','다시 시도');b.onclick=function(){cached=null;refresh(panel,state);};panel.appendChild(b);}).finally(function(){state.busy=false;panel.removeAttribute('aria-busy');});
   }
   function wrap(name){var original=window[name];if(typeof original!=='function'||original._neoCloudSpot)return;var wrapped=function(){var result=original.apply(this,arguments);schedule();return result;};Object.keys(original).forEach(function(k){wrapped[k]=original[k];});wrapped._neoCloudSpot=true;window[name]=wrapped;}
-  function scan(){wrap('renderAI2');wrap('renderNeocloud');mounted.forEach(function(s,p){if(!p.isConnected){if(s.chart)s.chart.destroy();mounted.delete(p);}});document.querySelectorAll('#main .nc').forEach(function(root){if(root.querySelector('.ncs-tracker'))return;var panel=el('section','ncs-tracker');panel.setAttribute('aria-label','공식 Nebius Spot Prices');var head=root.querySelector('.nc-head');if(head)root.insertBefore(panel,head.nextSibling);else root.appendChild(panel);var state={chart:null,busy:false,family:'B300',sku:'',range:'7',method:LAST};mounted.set(panel,state);refresh(panel,state);});}
+  function scan(){wrap('renderAI2');wrap('renderNeocloud');mounted.forEach(function(s,p){if(!p.isConnected){if(s.chart)s.chart.destroy();mounted.delete(p);}});document.querySelectorAll('#main .nc').forEach(function(root){if(root.querySelector('.ncs-tracker'))return;var panel=el('section','ncs-tracker');panel.setAttribute('aria-label','공식 Nebius Spot Prices');var head=root.querySelector('.nc-head');if(head)root.insertBefore(panel,head.nextSibling);else root.appendChild(panel);var state={chart:null,busy:false,family:'',sku:'',range:'7',method:LAST};mounted.set(panel,state);refresh(panel,state);});}
   function schedule(){if(scheduled)return;scheduled=true;setTimeout(function(){scheduled=false;try{scan();}catch(e){console.warn('[neocloud-spot]',e);}},0);}
-  window.PHXNeoCloudSpot={mount:schedule,validate:validate,parseLive:parseLive,strictJSON:strictJSON,compare:compare,gaps:gaps,request:request};
+  window.PHXNeoCloudSpot={mount:schedule,validate:validate,validateGPUIndex:validateGPUIndex,parseLive:parseLive,productFamily:productFamily,orderedFamilies:orderedFamilies,strictJSON:strictJSON,compare:compare,gaps:gaps,request:request};
   function start(){schedule();if(typeof MutationObserver==='function'){new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});new MutationObserver(function(){if(cached)notifyModel(cached);}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

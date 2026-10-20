@@ -359,7 +359,14 @@ header{border-bottom:1px solid var(--bd);margin-bottom:10px;padding-bottom:10px;
 .ncs-tracker p{margin:8px 0;overflow-wrap:anywhere}
 .ncs-tracker .ncs-source,.ncs-tracker .ncs-note{font-size:13px;color:inherit;opacity:.86}
 .ncs-tracker .ncs-badge{display:inline-block;padding:4px 10px;border:1px solid var(--bd,#444968);border-radius:8px;font-size:13px}
-.ncs-tracker .ncs-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:14px 0}
+.ncs-tracker .ncs-index{margin:16px 0;padding:16px;border:1px solid var(--bd,#444968);border-radius:10px;background:color-mix(in srgb,currentColor 4%,transparent)}
+.ncs-tracker .ncs-index h4{margin:0 0 10px;font-size:16px}
+.ncs-tracker .ncs-index-metrics{display:grid;grid-template-columns:minmax(180px,2fr) repeat(3,minmax(90px,1fr));gap:10px;align-items:stretch}
+.ncs-tracker .ncs-index-level,.ncs-tracker .ncs-index-stat{display:flex;flex-direction:column;justify-content:center;padding:10px;border:1px solid var(--bd,#444968);border-radius:8px;min-width:0}
+.ncs-tracker .ncs-index-level strong{font-size:32px;font-variant-numeric:tabular-nums}.ncs-tracker .ncs-index-level span,.ncs-tracker .ncs-index-stat span{font-size:12px;opacity:.8}.ncs-tracker .ncs-index-stat strong{font-size:18px;font-variant-numeric:tabular-nums}
+.ncs-tracker .ncs-index-chart{height:230px;width:100%;margin:10px 0;color:inherit}.ncs-tracker .ncs-index-chart svg{display:block;width:100%;height:100%}
+.ncs-tracker .ncs-index-weights summary{cursor:pointer;font-weight:600}.ncs-tracker .ncs-weight-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.ncs-tracker .ncs-weight{padding:3px 8px;border:1px solid var(--bd,#444968);border-radius:999px;font-size:12px}
+.ncs-tracker .ncs-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
 .ncs-tracker .ncs-card{display:flex;flex-direction:column;gap:4px;border:1px solid var(--bd,#444968);border-top:4px solid var(--ncs-series);border-radius:8px;padding:12px;min-width:0}
 .ncs-tracker .ncs-card strong{font-size:25px;font-variant-numeric:tabular-nums}
 .ncs-tracker .ncs-card span{font-size:12px;overflow-wrap:anywhere}
@@ -375,8 +382,8 @@ header{border-bottom:1px solid var(--bd);margin-bottom:10px;padding-bottom:10px;
 .ncs-tracker :focus-visible{outline:3px solid var(--blue,#5aa9ff);outline-offset:3px}
 :root[data-theme="light"] .ncs-tracker{background:var(--s1,#fff);color:var(--tx,#202334)}
 :root[data-theme="light"] .ncs-tracker button{background:var(--s2,#eef1f7)}
-@media(max-width:850px){.ncs-tracker .ncs-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:520px){.ncs-tracker{padding:12px}.ncs-tracker .ncs-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.ncs-tracker .ncs-chart{height:260px}.ncs-tracker .ncs-card strong{font-size:23px}}
+@media(max-width:700px){.ncs-tracker .ncs-index-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.ncs-tracker{padding:12px}.ncs-tracker .ncs-index{padding:10px}.ncs-tracker .ncs-index-metrics{grid-template-columns:1fr 1fr}.ncs-tracker .ncs-index-level strong{font-size:27px}.ncs-tracker .ncs-cards{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}.ncs-tracker .ncs-chart{height:260px}.ncs-tracker .ncs-card strong{font-size:23px}}
 /* 공식 Nebius 지역 선택 · 261021 */
 .ncs-tracker .ncs-controls{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}
 .ncs-tracker .ncs-select{display:flex;flex-direction:column;max-width:100%;gap:4px;font-size:13px}

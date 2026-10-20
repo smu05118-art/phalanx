@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smu05118-art.github.io/phalanx/tools/neocloud_gpu_index.schema.json",
+  "title": "Nebius GPU Spot Equal-Family Price Index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "index_id",
+    "name",
+    "currency",
+    "unit",
+    "granularity",
+    "source_method",
+    "base",
+    "latest_timestamp",
+    "processed_through",
+    "methodology_version",
+    "methodology",
+    "source",
+    "catalog",
+    "composition_epochs",
+    "levels",
+    "gaps"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "index_id": {"const": "nebius-gpu-spot-equal-family-price-index"},
+    "name": {"const": "Nebius GPU Spot Equal-Family Price Index"},
+    "currency": {"const": "USD"},
+    "unit": {"const": "index_points"},
+    "granularity": {"const": "GRANULARITY_HOUR_1"},
+    "source_method": {"const": "METHOD_LAST_PRICE"},
+    "base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "value"],
+      "properties": {
+        "timestamp": {"$ref": "#/$defs/hour"},
+        "value": {"const": "100"}
+      }
+    },
+    "latest_timestamp": {"$ref": "#/$defs/hour"},
+    "processed_through": {"$ref": "#/$defs/hour"},
+    "methodology_version": {"const": "equal-family-chain-v1"},
+    "methodology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activation_observations",
+        "activation_schedule",
+        "bootstrap_policy",
+        "calculation",
+        "family_weighting",
+        "gap_linking_policy",
+        "late_discovery_policy",
+        "missing_policy",
+        "nonpositive_policy",
+        "region_weighting",
+        "sku_weighting"
+      ],
+      "properties": {
+        "activation_observations": {"const": 24},
+        "activation_schedule": {"const": "next_utc_00:00_after_qualification"},
+        "bootstrap_policy": {"const": "initial reviewed basket is retrospectively backcast before first publication"},
+        "calculation": {"const": "chain-linked hierarchical geometric price relatives"},
+        "family_weighting": {"const": "equal"},
+        "gap_linking_policy": {"const": "resume from last complete basket over the full elapsed interval"},
+        "late_discovery_policy": {"const": "after bootstrap, season from first unpublished endpoint; never backdate"},
+        "missing_policy": {"const": "record missing endpoints; no interpolation or forward fill"},
+        "nonpositive_policy": {"const": "reject"},
+        "region_weighting": {"const": "equal within family"},
+        "sku_weighting": {"const": "equal within region"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["archive", "source_index_sha256", "latest_complete_timestamp"],
+      "properties": {
+        "archive": {"const": "index.json"},
+        "source_index_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "latest_complete_timestamp": {"$ref": "#/$defs/hour"}
+      }
+    },
+    "catalog": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/catalog_entry"}
+    },
+    "composition_epochs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/epoch"}
+    },
+    "levels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/level"}
+    },
+    "gaps": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/gap"}
+    }
+  },
+  "$defs": {
+    "hour": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:00:00Z$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+    },
+    "decimal": {
+      "type": "string",
+      "pattern": "^(?!0(?:\\.0+)?$)(?:0|[1-9][0-9]{0,30})(?:\\.[0-9]{1,100})?$"
+    },
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": {"type": "integer", "minimum": 1},
+        "denominator": {"type": "integer", "minimum": 1}
+      }
+    },
+    "catalog_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sku_id",
+        "family",
+        "region",
+        "platforms",
+        "product_titles",
+        "discovered_at",
+        "seasoning_start",
+        "first_observation_end",
+        "bootstrap",
+        "status",
+        "qualified_at",
+        "activation_time"
+      ],
+      "properties": {
+        "sku_id": {"type": "string", "minLength": 1, "maxLength": 512},
+        "family": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}$"},
+        "region": {"type": "string", "minLength": 1, "maxLength": 512},
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^gpu-[a-z0-9]+(?:-[a-z0-9]+)*$"}
+        },
+        "product_titles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
+        },
+        "discovered_at": {"$ref": "#/$defs/timestamp"},
+        "seasoning_start": {"$ref": "#/$defs/timestamp"},
+        "first_observation_end": {"$ref": "#/$defs/hour"},
+        "bootstrap": {"type": "boolean"},
+        "status": {"enum": ["active", "pending"]},
+        "qualified_at": {
+          "oneOf": [{"$ref": "#/$defs/hour"}, {"type": "null"}]
+        },
+        "activation_time": {
+          "oneOf": [{"$ref": "#/$defs/hour"}, {"type": "null"}]
+        }
+      }
+    },
+    "epoch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effective_time", "methodology_version", "reason", "families"],
+      "properties": {
+        "effective_time": {"$ref": "#/$defs/hour"},
+        "methodology_version": {"const": "equal-family-chain-v1"},
+        "reason": {"enum": ["bootstrap", "qualified_addition"]},
+        "families": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/family_weight"}
+        }
+      }
+    },
+    "family_weight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "effective_weight", "regions"],
+      "properties": {
+        "family": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}$"},
+        "effective_weight": {"$ref": "#/$defs/rational"},
+        "regions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/region_weight"}
+        }
+      }
+    },
+    "region_weight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["region", "weight_within_family", "effective_weight", "skus"],
+      "properties": {
+        "region": {"type": "string", "minLength": 1, "maxLength": 512},
+        "weight_within_family": {"$ref": "#/$defs/rational"},
+        "effective_weight": {"$ref": "#/$defs/rational"},
+        "skus": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/sku_weight"}
+        }
+      }
+    },
+    "sku_weight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sku_id", "weight_within_region", "effective_weight"],
+      "properties": {
+        "sku_id": {"type": "string", "minLength": 1, "maxLength": 512},
+        "weight_within_region": {"$ref": "#/$defs/rational"},
+        "effective_weight": {"$ref": "#/$defs/rational"}
+      }
+    },
+    "level": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "value"],
+      "properties": {
+        "timestamp": {"$ref": "#/$defs/hour"},
+        "value": {"$ref": "#/$defs/decimal"}
+      }
+    },
+    "gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "reason"],
+      "properties": {
+        "timestamp": {"$ref": "#/$defs/hour"},
+        "reason": {"const": "missing_active_observation"}
+      }
+    }
+  }
+}
