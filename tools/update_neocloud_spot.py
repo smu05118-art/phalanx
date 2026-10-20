@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and atomically append chart observations; no network or credentials."""
+"""Legacy chart-only updater; never use for official observations."""
 import argparse
 from contextlib import contextmanager
 import datetime as dt
@@ -172,7 +172,7 @@ def transaction(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data', type=Path, default=Path('data/neocloud_spot/history.json'))
+    parser.add_argument('--data', type=Path, required=True)
     parser.add_argument('--snapshot', type=Path)
     parser.add_argument('--check', action='store_true', help='validate merged result without any writes')
     args = parser.parse_args(argv)

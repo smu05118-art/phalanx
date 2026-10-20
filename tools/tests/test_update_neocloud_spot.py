@@ -18,7 +18,7 @@ spec.loader.exec_module(spot)
 
 
 def dataset():
-    return json.loads((ROOT / 'data/neocloud_spot/history.json').read_text())
+    return json.loads((ROOT / 'tools/tests/fixtures/neocloud_spot/legacy.json').read_text())
 
 
 class MergeTests(unittest.TestCase):
