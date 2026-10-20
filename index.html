@@ -3915,19 +3915,23 @@ function renderRackCmp(){
 function loadMem(cb){ if(window.MEMD) return cb();
   const sc=document.createElement('script'); sc.src='data_mem.js'; sc.onload=cb; sc.onerror=()=>{const el=document.getElementById('main');if(el)el.innerHTML='<p>메모리 자료 로드 실패 · <button onclick="loadMem(renderMem)">다시 시도</button></p>';sc.remove();}; document.head.appendChild(sc); }
 function memSpotStatusLabel(s){return ({fresh:'새 공표 확인',unchanged_source:'원문 공표값 동일',parse_failed:'원문 해석 실패 · 마지막 정상값',fetch_failed:'조회 실패 · 마지막 정상값',revision_review:'원문 정정 검토 중 · 마지막 정상값',rejected:'채택 보류 · 마지막 정상값'})[s]||'수집 상태 기록 전';}
-function qbar(q,key){ const ks=Object.keys(q).sort(); if(!ks.length) return '';
-  const cells=ks.slice(-9).map(k=>{const v=q[k]&&q[k][key]; if(v==null||isNaN(+v)) return `<td class="mono" style="color:#8a90a8">—</td>`;
-    return `<td class="mono" style="color:${+v>=0?'#2fae66':'#e06666'}">${+v>=0?'+':''}${v}%</td>`;}).join('');
+function qbar(q,key,unit){ const ks=Object.keys(q).sort(); if(!ks.length) return '';
+  const cells=ks.slice(-9).map(k=>{const v=q[k]&&q[k][key]; if(typeof v!=='number'||!Number.isFinite(v)) return `<td class="mono" style="color:#8a90a8">—</td>`;
+    const pct=/(?:^|_)pct(?:_|$)/i.test(String(key));
+    const label=pct?`${v>=0?'+':''}${v}%`:unit==='USD/TB'?`$${v}/TB`:unit==='EB'?`${v} EB`:/(?:^|_)usd$/i.test(String(key))?`$${v}`:String(v);
+    const color=pct?(v>=0?'#2fae66':'#e06666'):'var(--tx)';
+    return `<td class="mono" style="color:${color}">${label}</td>`;}).join('');
   return {head:ks.slice(-9).map(k=>`<th>${String(k).replace('20','')}</th>`).join(''),cells};}
 function renderMem(){ const M=window.MEMD||{}; const main=document.getElementById('main');
   const NM={'005930':'삼성전자','000660':'SK하이닉스','MU':'Micron','SNDK':'SanDisk','285A':'Kioxia','WDC':'Western Digital','STX':'Seagate'};
   const order=['005930','000660','MU','SNDK','285A','WDC','STX'];
   const secs=order.map(tk=>{const d=(M.pq||{})[tk]; if(!d) return '';
+    const pqUnits=tk==='STX'?{asp_per_tb:'USD/TB',eb_ship:'EB'}:{}; // STX unit_note / HDD metric_note
     const segs=Object.entries(d.segments||{}).map(([sg,so])=>{
       const q=(so&&so.q)||{}; if(!Object.keys(q).length) return '';
       const sample=Object.values(q)[0]||{};
       const keys=Object.keys(sample).filter(k=>/pct|ship|asp/i.test(k)).slice(0,2);
-      const rows=keys.map(k=>{const r=qbar(q,k); return r?`<tr><td class="mono" style="font-size:10px">${k.includes('bit')||k.includes('ship')?'Q '+k:'P '+k}</td>${r.cells}</tr>`:'';}).join('');
+      const rows=keys.map(k=>{const r=qbar(q,k,pqUnits[k]); return r?`<tr><td class="mono" style="font-size:10px">${k.includes('bit')||k.includes('ship')?'Q '+k:'P '+k}</td>${r.cells}</tr>`:'';}).join('');
       const hd=qbar(q,keys[0]);
       return `<div style="margin-top:8px"><b style="font-size:12px;color:#2bc0d4">${sg}</b>
         <div class="lxt" style="margin-top:4px"><table><thead><tr><th></th>${hd.head||''}</tr></thead><tbody>${rows}</tbody></table></div></div>`;}).join('');
