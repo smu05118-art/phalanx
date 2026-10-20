@@ -3940,7 +3940,7 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   const dd=M.ddr5||{}; const ds=dd.quote_series||{}; const dk=Object.keys(ds).sort();
   const dvals=dk.map(k=>ds[k]); const dlast=dd.last||{};
   let ddChart='';
-  if(dvals.length){ddChart=vizPhalanxSpark(dvals,520,90,'#26c6da',{unit:'USD/chip'});}
+  if(dvals.length){ddChart=vizPhalanxSpark(dvals,520,90,'#26c6da',{unit:'USD/chip'}).replace('<svg ','<svg style="max-width:100%;height:auto" ');}
   const legacyKeys=Object.keys(dd.series||{}).sort();
   const legacyRows=legacyKeys.map(k=>`<tr><td>${k}</td><td class="mono">${dd.series[k]}</td></tr>`).join('');
   const ddStatus=((M.spot_status||{}).items||{})['DDR5 16Gb']||{};
