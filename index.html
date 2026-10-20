@@ -1093,6 +1093,7 @@ function vizPhalanxConfig(config,id,context){
   if(id==='platform_multi'){role='forecast';axis('y','range_focus','億G · 제3자 추정');}
   if(id==='platform_single'&&context.kind==='gi'){role='forecast';axis('y','range_focus','億G · 제3자 추정');}
   if(id==='game_generic'&&(context.canvas==='gPcbangAll'||/^pcbang_share_/.test(context.source||''))){role='derived';axis('y',scales.y.stacked?'zero_anchored':'ratio','%',{ratioMax:100});}
+  if(id==='game_generic'&&context.canvas==='gPcbangQtrGames'){role='derived';axis('y','zero_anchored','%');}
   if(id==='game_generic'&&(context.canvas==='gDmmAll'||/^dmm_rev_/.test(context.source||''))){role='forecast';axis('y','range_focus','億 · 제3자 추정');}
   ds.forEach(function(d,i){
     var label=d.label||'',key=d.yAxisID||'y';if(role!=='unknown')d.vizRole=d.vizRole||role;else d.vizProvenance='NOT FOUND: 상태 메타 미제공';d.vizUnit=d.vizUnit||((axes[key]||{}).unit)||unit;
@@ -5214,6 +5215,7 @@ function renderGame(){
   main.querySelectorAll('[data-gv]').forEach(t=>t.onclick=()=>{ST.gview=t.dataset.gv;renderGame();window.scrollTo(0,0);});
   main.querySelectorAll('[data-gco]').forEach(t=>t.onclick=()=>{ST.gview='co_'+t.dataset.gco;renderGame();window.scrollTo(0,0);});
   main.querySelectorAll('[data-gpc]').forEach(t=>t.onclick=()=>{ST.gpcw=t.dataset.gpc;renderGame();});
+  main.querySelectorAll('[data-gpcq]').forEach(t=>t.onclick=()=>{ST.gpcqAll=t.dataset.gpcq==='all';renderGame();});
   gMountCharts(G);
 }
 function gvAttract(G){
@@ -5284,9 +5286,82 @@ function gvPcbang(G){
   const hasM=!!((G.series||{}).pcbang_share_m);
   ST.gpcw=ST.gpcw||(hasM?'m':'w');
   const tg=hasM?`<span style="margin-left:auto"><span class="ltab ${ST.gpcw==='m'?'on':''}" data-gpc="m">월평균</span><span class="ltab ${ST.gpcw==='w'?'on':''}" data-gpc="w">주간(1,024주)</span></span>`:'';
-  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>gametrics TOP10 점유율(2007-01~), 회사 단위 합산 — <b>동일 회사=동일 색</b>. 범례 클릭=격리 · Shift클릭=개별 토글. TOP10 밖은 0 처리(무로그인 한계).</span>${tg}</div>
-  <div class="card"><div class="ch-wrap" style="height:420px"><canvas id="gPcbangAll"></canvas></div></div>`;
+  return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>gametrics TOP10 점유율(2007-01~), 회사 단위 합산 — <b>동일 회사=동일 색</b>. 범례 클릭=격리 · Shift클릭=개별 토글. <b>TOP10 밖은 0이 아니라 미관측(결측)</b> — 공개 TOP10만 수집(무로그인 한계), 해당 주는 빈 구간으로 남김.</span>${tg}</div>
+  <div class="card"><div class="ch-wrap" style="height:420px"><canvas id="gPcbangAll"></canvas></div></div>
+  ${gvPcbangQtr(G)}`;
 }
+// PCQ:begin — PC방 최근 완료 분기 비교(series.pcbang_quarterly). TOP10 밖=결측(null) → '—', 0 막대·0 보간 금지.
+const GPCQ_TOP=12, GPCQ_NEU='#8a90a8', GPCQ_A=['55','88','bb','ff'];
+function gPcqEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function gPcqFmt(v){ if(v==null||!isFinite(v)) return '—'; v=+v; if(v>0&&v<0.005) return '<0.01%'; return (Math.abs(v)<0.1?v.toFixed(2):v.toFixed(1))+'%'; }
+function gPcqQ(G){ const Q=((G||{}).series||{}).pcbang_quarterly; return Q&&Array.isArray(Q.x)&&Q.x.length?Q:null; }
+function gPcqCol(c){ return /^#[0-9a-f]{6}$/i.test(c||'')?c:GPCQ_NEU; }
+function gPcqCo(G,Q,k){ if(k==null) return null;
+  const q=(Q.co||[]).find(x=>x&&x.k===k)||{}, c=((G||{}).companies||[]).find(x=>x&&x.co_key===k)||{};
+  return {name:q.n||c.name||k, ticker:c.ticker||k, color:gPcqCol(q.c||c.color)}; }
+function gPcqRow(r,nq){   // w[i]==0 이거나 숫자가 아니면 결측(null) — 0 대입 금지
+  const v=[],w=[];
+  for(let i=0;i<nq;i++){ const n=+(((r||{}).w||[])[i])||0, x=((r||{}).v||[])[i]; w.push(n); v.push(x==null||!n||!isFinite(x)?null:+x); }
+  return {v,w}; }
+function gPcqGames(G,Q){ const nq=Q.x.length;   // 빌더 정렬(최신분기 내림차순·결측 뒤) 유지, 전 분기 결측 제목 제외
+  return (Q.games||[]).map(r=>Object.assign({t:String(r.t==null?'':r.t),k:r.k==null?null:r.k,cn:r.cn||null},gPcqRow(r,nq))).filter(g=>g.v.some(x=>x!=null)); }
+function gvPcbangQtr(G){
+  const Q=gPcqQ(G);
+  const note=`<div id="gPcqNote" class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim);line-height:1.6">📊 분기 비교 — <b>Gametrics PC방 TOP10</b> 주간 점유율(%)의 <b>관측 주 평균</b>. 완료된 최근 4개 달력분기만(진행 중 분기 제외 · 기준 관측 주 ${gPcqEsc(Q&&Q.asof_week||'—')} · 주 시작일 기준 분기 귀속).<br>회사 값 = 주별로 TOP10에 잡힌 매핑 게임 점유율 합 → 관측된 주만 평균. 게임 값도 관측 주만 평균.<br><b>TOP10 밖 = 미관측(결측, —)</b> — 0으로 채우거나 보간하지 않음. n/N주 = 관측 주 / 분기 주. 점유율이며 매출·이익·밸류에이션 지표가 아님.</div>`;
+  if(!Q) return `<section id="gPcqSec" style="margin-top:12px">${note}<div class="panel" style="padding:12px 16px;font-size:11px;color:var(--dim)">분기 비교 데이터 없음 — series.pcbang_quarterly 미생성(완료 분기 없음 포함).</div></section>`;
+  const qs=Q.x, nq=qs.length, last=nq-1, wk=qs.map((q,i)=>+((Q.wk||[])[i])||0);
+  // (A) 회사별 표 — 빌더 순서(최신분기 내림차순, 결측 뒤) 그대로
+  const cos=(Q.co||[]).map(r=>Object.assign({k:r&&r.k},gPcqRow(r,nq))).filter(r=>r.k!=null&&r.v.some(x=>x!=null));
+  const stk='position:sticky;left:0;background:var(--s1);z-index:1;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+  const cell=(v,n,i)=>v==null
+    ?`<td data-missing="1" style="text-align:right;color:var(--dim)" title="TOP10 미관측 — 0이 아닌 결측"><span>—</span><div style="font-size:9px">0/${wk[i]}주</div></td>`
+    :`<td style="text-align:right;font-family:var(--mono)" title="관측 ${n}/${wk[i]}주"><b>${gPcqEsc(gPcqFmt(v))}</b><div style="font-size:9px;color:${n<wk[i]?'#ffbe2e':'var(--dim)'}">${n}/${wk[i]}주</div></td>`;
+  const head=`<tr><th>#</th><th style="${stk}">회사</th><th>티커</th>${qs.map((q,i)=>`<th data-q="${gPcqEsc(q)}" style="text-align:right${i===last?';color:var(--tx);font-weight:800':''}">${gPcqEsc(q)}<div style="font-size:9px;color:var(--dim);font-weight:400">${wk[i]}주</div></th>`).join('')}</tr>`;
+  let rk=0;
+  const body=cos.map(r=>{ const m=gPcqCo(G,Q,r.k), no=r.v[last]!=null?++rk:'—';
+    return `<tr class="lr" data-gco="${gPcqEsc(r.k)}" data-pcq-co="${gPcqEsc(r.k)}" style="cursor:pointer"><td style="font-family:var(--mono)">${no}</td><td style="${stk}"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${m.color};margin-right:7px;vertical-align:-1px"></span><b>${gPcqEsc(m.name)}</b></td><td style="color:var(--dim);font-size:10px">${gPcqEsc(m.ticker)}</td>${r.v.map((v,i)=>cell(v,r.w[i],i)).join('')}</tr>`; }).join('');
+  const tbl=cos.length
+    ?`<div id="gPcqCoPanel" class="panel" style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding:12px 0 6px;margin-bottom:12px"><div style="padding:0 16px 8px;font-size:12px;font-weight:800">🏢 회사별 최근 ${nq}분기 평균 PC방 점유율 <span style="font-size:10px;color:var(--dim);font-weight:400">최신분기(${gPcqEsc(qs[last])}) 내림차순 · 단위 % · — = TOP10 미관측(결측, 0 아님)</span></div><table id="gPcqCoTbl" class="tbl" style="min-width:560px"><thead>${head}</thead><tbody>${body}</tbody></table></div>`
+    :`<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">회사별 관측 없음</div>`;
+  // (B) 게임별 묶음 막대 — 회사색 + 분기 알파 램프(진할수록 최근)
+  const all=gPcqGames(G,Q), games=ST.gpcqAll?all:all.slice(0,GPCQ_TOP);
+  const tg=all.length>GPCQ_TOP?`<span style="margin-left:auto"><span class="ltab ${ST.gpcqAll?'':'on'}" data-gpcq="top">상위 ${GPCQ_TOP}</span><span class="ltab ${ST.gpcqAll?'on':''}" data-gpcq="all">전체 ${all.length}</span></span>`:'';
+  const ks=[]; cos.forEach(r=>{ if(games.some(g=>g.k===r.k)) ks.push(r.k); }); games.forEach(g=>{ if(g.k!=null&&ks.indexOf(g.k)<0) ks.push(g.k); });
+  const chip=(c,n)=>`<span style="margin-right:10px;white-space:nowrap"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${c};margin-right:5px;vertical-align:-1px"></span>${gPcqEsc(n)}</span>`;
+  const chips=ks.map(k=>{ const m=gPcqCo(G,Q,k); return chip(m.color,m.name); }).join('')+(games.some(g=>g.k==null)?chip(GPCQ_NEU,'비상장·미매핑'):'')+'<span>· 진할수록 최근 분기 · 막대 없음 = TOP10 미관측(결측, 0 아님)</span>';
+  const W=Math.max(480,16*nq*games.length);
+  const card=games.length
+    ?`<div id="gPcqGameCard" class="card" style="margin-bottom:12px"><div class="card-hd" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><h3 style="font-size:12px">🎮 게임별 최근 ${nq}분기 평균 점유율 비교</h3>${tg}<div id="gPcqCoLegend" style="flex-basis:100%;font-size:10px;color:var(--dim)">${chips}</div></div><div id="gPcqGameScroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div id="gPcqGameWrap" class="ch-wrap" style="height:340px;min-width:${W}px"><canvas id="gPcbangQtrGames"></canvas></div></div></div>`
+    :`<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">게임별 관측 없음</div>`;
+  return `<section id="gPcqSec" style="margin-top:12px">${note}${tbl}${card}</section>`;
+}
+function gPcqMount(cv,G){
+  const Q=gPcqQ(G); if(!cv||!Q) return;
+  const qs=Q.x, nq=qs.length, wk=qs.map((q,i)=>+((Q.wk||[])[i])||0);
+  const all=gPcqGames(G,Q), games=ST.gpcqAll?all:all.slice(0,GPCQ_TOP); if(!games.length) return;
+  const A=GPCQ_A.slice(Math.max(0,GPCQ_A.length-nq)); while(A.length<nq) A.unshift(GPCQ_A[0]);
+  const col=g=>{ const m=gPcqCo(G,Q,g.k); return m?m.color:GPCQ_NEU; };
+  const sk=q=>String(q).replace(/^\d\d(\d\d)-?/,'$1');   // '2026-Q3' → '26Q3'
+  const miss=g=>qs.filter((q,i)=>g.v[i]==null);
+  const ds=qs.map((q,i)=>({type:'bar',label:q,data:games.map(g=>g.v[i]),
+    backgroundColor:games.map(g=>col(g)+A[i]),borderColor:games.map(col),
+    borderWidth:1,borderSkipped:false,categoryPercentage:.82,barPercentage:.92}));
+  gChart(cv,games.map(g=>g.t),ds,gPcqFmt,{scales:{
+    x:{ticks:{color:TK.tick,autoSkip:false,maxRotation:40,font:{size:9},callback:(v,i)=>{ const g=games[i]; if(!g) return '';
+      const t=g.t.length>14?g.t.slice(0,13)+'…':g.t, m=miss(g).map(sk); return m.length?[t,'— '+m.join(',')]:t; }},grid:{display:false}},
+    y:{beginAtZero:true,ticks:{color:TK.tick,font:{size:8},callback:v=>v+'%'},grid:{color:TK.grid}}}});
+  const ch=GCH[cv.id], P=ch&&ch.options&&ch.options.plugins; if(!P) return;
+  if(P.tooltip&&P.tooltip.callbacks) Object.assign(P.tooltip.callbacks,{
+    title:it=>{ const g=it.length?games[it[0].dataIndex]:null; return g?g.t+(g.cn?' · '+g.cn:''):''; },
+    label:c=>{ const g=games[c.dataIndex], i=c.datasetIndex; if(!g) return '';
+      return g.v[i]==null?qs[i]+': — (TOP10 미관측 · 0 아님)':qs[i]+': '+gPcqFmt(g.v[i])+' · 관측 '+g.w[i]+'/'+wk[i]+'주'; },
+    footer:it=>{ const g=it.length?games[it[0].dataIndex]:null; const m=g?miss(g):[]; return m.length?'— 결측(TOP10 미관측): '+m.join(', '):''; }});
+  if(P.legend){ P.legend.display=true;
+    const lc=/^#[0-9a-f]{6}$/i.test(TK.lbl||'')?TK.lbl:GPCQ_NEU;
+    if(P.legend.labels) P.legend.labels.generateLabels=c=>c.data.datasets.map((d,i)=>({text:d.label+' ('+wk[i]+'주)',fillStyle:lc+A[i],strokeStyle:lc,lineWidth:1,hidden:!c.isDatasetVisible(i),datasetIndex:i,fontColor:TK.leg})); }
+  if(typeof ch.update==='function') ch.update('none');
+}
+// PCQ:end
 function gvMaple(G){
   const s=(G.series||{}).maple_pop_w||{x:[],y:{}}; const k=Object.keys(gYm(s))[0];
   return `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:11px;color:var(--dim)">메이플스토리 주간 접속인구(meaegi, 2023-12~) — 넥슨 국내 본체 프록시. 주화시세는 소스 갱신중단(2026-03)으로 미표시.</div>
@@ -5324,6 +5399,7 @@ function gMountCharts(G){
   if(pc&&(S.pcbang_share_w||S.pcbang_share_m)){ const P=(ST.gpcw==='m'&&S.pcbang_share_m)?S.pcbang_share_m:S.pcbang_share_w; const PY=gYm(P);
     const ds=(G.companies||[]).filter(c=>PY[c.co_key]).map(c=>({type:'line',label:c.name,data:gArr(P.x,PY[c.co_key]),borderColor:c.color,backgroundColor:c.color+'bb',borderWidth:.6,pointRadius:0,fill:true,tension:.15,stack:'p',spanGaps:false}));
     gChart(pc,P.x,ds,v=>v.toFixed(1)+'%',{scales:{x:{ticks:{color:TK.tick,maxTicksLimit:12,font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{color:TK.tick,font:{size:8},callback:v=>v+'%'},grid:{color:TK.grid}}}}); }
+  const pq=document.getElementById('gPcbangQtrGames'); if(pq) gPcqMount(pq,G);
   const mb=document.getElementById('gMobileAll');
   if(mb&&S.mobile_rankpt_d){ const M=S.mobile_rankpt_d; const MY=gYm(M);
     const ds=(G.companies||[]).filter(c=>MY[c.co_key]&&gArr(M.x,MY[c.co_key]).some(v=>v>0)).map(c=>({type:'line',label:c.name,data:gArr(M.x,MY[c.co_key]),borderColor:c.color,borderWidth:1.5,pointRadius:2,tension:.2}));
