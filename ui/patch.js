@@ -1451,3 +1451,255 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   }
   try{ mountNow(); }catch(e){ warn('init',e); }      /* 직접 #mem 진입: 이미 그려져 있으면 즉시, 아니면 대기 */
 })();
+
+/* Nebius GPU spot tracker · 261020 · 사용자 제공 차트 관측만 사용 */
+(function () {
+  'use strict';
+  if (window.PHXNeoCloudSpot) return;
+  var URL = 'data/neocloud_spot/history.json';
+  var PRODUCTS = ['B300', 'B200', 'H200', 'H100', 'RTX PRO 6000'];
+  var COLORS = ['#e05b68', '#d78a16', '#268fc4', '#26946b', '#a76cce'];
+  var DAY = 86400000, cache = null, inflight = null, mounted = new Map(), scheduled = false;
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+  function assert(ok) { if (!ok) throw new Error('GPU spot 데이터 계약 불일치'); }
+  function keys(o, expected) { return o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).sort().join('|') === expected.slice().sort().join('|'); }
+  function iso(s) {
+    assert(typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s));
+    var ms = Date.parse(s + 'T00:00:00Z');
+    assert(Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 10) === s);
+    return ms;
+  }
+  function short(s) { return s.slice(2).replace(/-/g, ''); }
+  function capture(s) { assert(typeof s === 'string' && /^\d{6}$/.test(s)); return iso('20' + s.slice(0, 2) + '-' + s.slice(2, 4) + '-' + s.slice(4, 6)); }
+  function numeric(v) { return typeof v === 'number' && Number.isFinite(v) && v >= 0; }
+  function validate(data) {
+    assert(keys(data, ['schema_version', 'currency', 'unit', 'cadence', 'observations']));
+    assert(data.schema_version === 1 && data.currency === 'USD' && data.unit === 'USD/GPU-hour' && data.cadence === 'daily_avg' && Array.isArray(data.observations));
+    var seen = new Map();
+    data.observations.forEach(function (input) {
+      assert(input && typeof input === 'object');
+      var r = Object.assign({ price: null }, input);
+      assert(keys(r, ['product', 'effective_date', 'price', 'quality', 'uncertainty', 'provenance']));
+      assert(PRODUCTS.indexOf(r.product) !== -1);
+      var time = iso(r.effective_date), p = r.provenance;
+      assert(keys(p, ['source_type', 'source_file', 'source_start', 'source_end', 'captured_date', 'atlas_date']));
+      assert(p.source_type === 'user_supplied_chart_image' && typeof p.source_file === 'string' && Array.from(p.source_file).length <= 255 && /^[^/\\\x00-\x1f]+\.(jpg|jpeg|png|webp)$/i.test(p.source_file));
+      assert(iso(p.source_start) <= time && time <= iso(p.source_end) && iso(p.source_end) <= capture(p.captured_date) && capture(p.captured_date) <= capture(p.atlas_date));
+      if (r.price === null) assert(r.quality === 'missing' && r.uncertainty === null);
+      else {
+        assert(numeric(r.price));
+        assert((r.quality === 'exact_printed_label' && r.uncertainty === null) || (r.quality === 'approximate_from_chart' && numeric(r.uncertainty) && r.uncertainty > 0));
+      }
+      var key = r.product + '/' + r.effective_date;
+      // 키 순서가 달라도 값과 모든 출처 필드가 같아야 중복을 허용한다.
+      var signature = JSON.stringify([r.price, r.quality, r.uncertainty, p.source_type, p.source_file, p.source_start, p.source_end, p.captured_date, p.atlas_date]);
+      if (seen.has(key)) assert(seen.get(key).signature === signature);
+      else seen.set(key, { row: r, signature: signature });
+    });
+    return Array.from(seen.values()).map(function (x) { return x.row; }).sort(function (a, b) { return a.effective_date.localeCompare(b.effective_date) || a.product.localeCompare(b.product); });
+  }
+  function load() {
+    if (cache) return Promise.resolve(cache);
+    if (inflight) return inflight;
+    inflight = (async function () {
+      var controller = typeof AbortController === 'function' ? new AbortController() : null;
+      var timer;
+      try {
+        var timeout = new Promise(function (_, reject) { timer = setTimeout(function () { if (controller) controller.abort(); reject(new Error('timeout')); }, 15000); });
+        var request = (async function () {
+          var response = await fetch(URL, { credentials: 'same-origin', cache: 'no-cache', signal: controller ? controller.signal : undefined });
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          var text = await response.text();
+          assert(text.length <= 5 * 1024 * 1024);
+          return validate(JSON.parse(text));
+        })();
+        cache = await Promise.race([request, timeout]);
+        return cache;
+      } finally { clearTimeout(timer); inflight = null; }
+    })();
+    return inflight;
+  }
+  function quality(r) { return r.quality === 'exact_printed_label' ? '정확한 인쇄값' : r.quality === 'missing' ? '미관측' : '차트 추정 ±$' + r.uncertainty.toFixed(2); }
+  function value(r) { return r && r.price !== null ? (r.quality === 'approximate_from_chart' ? '≈' : '') + '$' + r.price.toFixed(2) : '미관측'; }
+  function svgChart(host, rows) {
+    var NS = 'http://www.w3.org/2000/svg';
+    function shape(tag, attrs, text) {
+      var n = document.createElementNS(NS, tag);
+      Object.keys(attrs).forEach(function (key) { n.setAttribute(key, attrs[key]); });
+      if (text !== undefined) n.textContent = text;
+      return n;
+    }
+    var valid = rows.filter(function (r) { return r.price !== null; });
+    var times = rows.map(function (r) { return iso(r.effective_date); });
+    var min = Math.min.apply(null, times), max = Math.max.apply(null, times);
+    var ceiling = Math.max.apply(null, valid.map(function (r) { return r.price + (r.uncertainty || 0); }).concat([1])) * 1.15;
+    var svg = shape('svg', { viewBox: '0 0 880 320', role: 'img', 'aria-label': 'Nebius GPU spot 다섯 제품 관측 차트. 모든 수치는 아래 관측 표에서 확인할 수 있습니다.' });
+    function x(t) { return min === max ? 440 : 66 + (t - min) / (max - min) * 718; }
+    function y(v) { return 264 - v / ceiling * 226; }
+    for (var i = 0; i <= 4; i++) {
+      var v = ceiling * i / 4;
+      svg.appendChild(shape('line', { x1: 66, x2: 784, y1: y(v), y2: y(v), stroke: 'currentColor', opacity: '.16' }));
+      svg.appendChild(shape('text', { x: 58, y: y(v) + 4, 'text-anchor': 'end', fill: 'currentColor', 'font-size': 12 }, '$' + v.toFixed(2)));
+    }
+    [min, max].filter(function (t, i, a) { return a.indexOf(t) === i; }).forEach(function (t) {
+      svg.appendChild(shape('text', { x: x(t), y: 294, 'text-anchor': 'middle', fill: 'currentColor', 'font-size': 13 }, short(new Date(t).toISOString().slice(0, 10))));
+    });
+    PRODUCTS.forEach(function (product, index) {
+      var series = rows.filter(function (r) { return r.product === product; }), previous = null;
+      series.forEach(function (r) {
+        if (r.price === null) { previous = null; return; }
+        var cx = x(iso(r.effective_date)), cy = y(r.price);
+        // 하루 간격·동일 증거 등급일 때만 연결. 누락과 추정/정확 경계를 잇지 않는다.
+        if (previous && iso(r.effective_date) - iso(previous.effective_date) === DAY && previous.quality === r.quality) {
+          svg.appendChild(shape('line', { x1: x(iso(previous.effective_date)), y1: y(previous.price), x2: cx, y2: cy, stroke: COLORS[index], 'stroke-width': 2, 'stroke-dasharray': r.quality === 'approximate_from_chart' ? '5 4' : 'none' }));
+        }
+        if (r.uncertainty) svg.appendChild(shape('line', { x1: cx, x2: cx, y1: y(Math.max(0, r.price - r.uncertainty)), y2: y(r.price + r.uncertainty), stroke: COLORS[index], 'stroke-width': 2 }));
+        var point = shape('circle', { cx: cx, cy: cy, r: 5, fill: r.quality === 'approximate_from_chart' ? 'none' : COLORS[index], stroke: COLORS[index], 'stroke-width': 2 });
+        point.appendChild(shape('title', {}, product + ' ' + short(r.effective_date) + ' ' + value(r) + ' · ' + quality(r)));
+        svg.appendChild(point);
+        previous = r;
+      });
+    });
+    host.appendChild(svg);
+  }
+  function chart(host, rows, state) {
+    // 추정값에는 SVG 오차막대를 사용한다. Chart.js가 없거나 실패해도 관측 표와 SVG는 유지한다.
+    if (typeof window.Chart !== 'function' || rows.some(function (r) { return r.quality === 'approximate_from_chart'; })) { svgChart(host, rows); return; }
+    var canvas = el('canvas');
+    canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', 'GPU spot 관측 차트. 아래 표에 날짜별 제품·값·출처 제공.');
+    host.appendChild(canvas);
+    try {
+      var textColor = getComputedStyle(host).color;
+      var observedTimes = rows.map(function (r) { return iso(r.effective_date); });
+      var observedMin = Math.min.apply(null, observedTimes), observedMax = Math.max.apply(null, observedTimes);
+      // Chart.js의 linear scale은 단일 x값만 있으면 epoch 전체 크기의 여백을 잡아
+      // 수년짜리 축을 만들 수 있다. 하루씩만 여백을 줘 실제 관측일 주변으로 제한한다.
+      var singleDay = observedMin === observedMax;
+      var xMin = singleDay ? observedMin - DAY : observedMin;
+      var xMax = singleDay ? observedMax + DAY : observedMax;
+      var datasets = PRODUCTS.map(function (p, index) {
+        var series = rows.filter(function (r) { return r.product === p; }), points = [], prev = null;
+        series.forEach(function (r) {
+          var t = iso(r.effective_date);
+          if (prev !== null && t - prev > DAY) points.push({ x: prev + DAY, y: null });
+          points.push({ x: t, y: r.price }); prev = t;
+        });
+        return { label: p, data: points, borderColor: COLORS[index], backgroundColor: COLORS[index], pointRadius: 5, borderWidth: 2, spanGaps: false, tension: 0 };
+      });
+      state.chart = new window.Chart(canvas, { type: 'line', data: { datasets: datasets }, options: {
+        responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+        plugins: { vizScale: { axes: { y: { 'class': 'zero_anchored', unit: 'USD/GPU-hour' } }, forecastDivider: false }, legend: { display: false }, tooltip: { callbacks: {
+          title: function (items) { return items.length ? short(new Date(items[0].parsed.x).toISOString().slice(0, 10)) : ''; },
+          label: function (item) { return item.dataset.label + ' $' + item.parsed.y.toFixed(2) + ' · 정확한 인쇄값'; }
+        } } },
+        scales: { x: { type: 'linear', min: xMin, max: xMax, ticks: { color: textColor, maxTicksLimit: singleDay ? 3 : 6, stepSize: singleDay ? DAY : undefined, callback: function (v) { return short(new Date(v).toISOString().slice(0, 10)); } } }, y: { beginAtZero: true, min: 0, ticks: { color: textColor }, title: { display: true, text: 'USD/GPU-hour', color: textColor } } }
+      } });
+    } catch (_) {
+      if (state.chart) state.chart.destroy();
+      else if (window.Chart.getChart) { var partial = window.Chart.getChart(canvas); if (partial) partial.destroy(); }
+      state.chart = null; host.replaceChildren(); svgChart(host, rows);
+    }
+  }
+  function paint(panel, rows, state) {
+    panel.replaceChildren();
+    var title = el('h3', '', 'Nebius GPU spot 임대료'); panel.appendChild(title);
+    panel.appendChild(el('p', 'ncs-source', '사용자 제공 차트 추적 · user_supplied_chart_image · 공식 Nebius API 피드 아님'));
+    var valid = rows.filter(function (r) { return r.price !== null; });
+    if (!valid.length) { panel.appendChild(el('p', '', '관측값 없음 · 누락값은 미관측으로 유지합니다.')); return; }
+    var asof = valid[valid.length - 1].effective_date;
+    panel.appendChild(el('p', 'ncs-badge', '관측 기준 ' + short(asof) + ' · USD/GPU-hour · daily_avg · 전체 관측 기간'));
+    var cards = el('div', 'ncs-cards');
+    PRODUCTS.forEach(function (product, i) {
+      var series = valid.filter(function (r) { return r.product === product; }), latest = series[series.length - 1];
+      var card = el('div', 'ncs-card'); card.style.setProperty('--ncs-series', COLORS[i]);
+      card.appendChild(el('span', 'ncs-product', product));
+      card.appendChild(el('strong', '', value(latest)));
+      card.appendChild(el('span', '', latest ? short(latest.effective_date) + ' · ' + quality(latest) : '관측값 없음'));
+      cards.appendChild(card);
+    });
+    panel.appendChild(cards);
+    panel.appendChild(el('p', 'ncs-note', '전체 관측 표시 · 초기 자료는 261020의 정확한 인쇄값 5개뿐입니다. 과거 일별 값은 미수록입니다. 누락 날짜는 연결하지 않으며, 추정값은 ≈·오차막대로 구분합니다.'));
+    var graph = el('div', 'ncs-chart'); panel.appendChild(graph); chart(graph, rows, state);
+    var details = el('details', 'ncs-details'); details.appendChild(el('summary', '', '관측값 및 출처 표 보기 (전체)'));
+    var scroll = el('div', 'ncs-table-scroll'); scroll.tabIndex = 0; scroll.setAttribute('role', 'region'); scroll.setAttribute('aria-label', 'GPU spot 관측 표');
+    var table = el('table'), caption = el('caption', '', '전체 관측 · 불확실성은 USD/GPU-hour의 절대 ±값'); table.appendChild(caption);
+    var thead = el('thead'), tr = el('tr');
+    ['날짜', '제품', '가격', '증거', '출처 파일 · 기간 · 캡처/Atlas'].forEach(function (s) { var th = el('th', '', s); th.scope = 'col'; tr.appendChild(th); });
+    thead.appendChild(tr); table.appendChild(thead);
+    var tbody = el('tbody');
+    rows.forEach(function (r) {
+      var p = r.provenance, line = el('tr');
+      [short(r.effective_date), r.product, value(r), quality(r), p.source_file + ' · ' + short(p.source_start) + '–' + short(p.source_end) + ' · ' + p.captured_date + '/' + p.atlas_date].forEach(function (s) { line.appendChild(el('td', '', s)); });
+      tbody.appendChild(line);
+    });
+    table.appendChild(tbody); scroll.appendChild(table); details.appendChild(scroll); panel.appendChild(details);
+    var sources = Array.from(new Set(rows.map(function (r) { var p = r.provenance; return p.source_file + ' · 원본 기간 ' + short(p.source_start) + '–' + short(p.source_end) + ' · 캡처 ' + p.captured_date + ' · Atlas ' + p.atlas_date; })));
+    panel.appendChild(el('p', 'ncs-source', sources.join(' / ')));
+  }
+  function refresh(panel, state) {
+    if (state.busy) return;
+    state.busy = true;
+    panel.replaceChildren(el('p', '', 'GPU spot 데이터 로드 중…'));
+    panel.setAttribute('aria-busy', 'true');
+    load().then(function (rows) {
+      if (panel.isConnected) paint(panel, rows, state);
+    }).catch(function () {
+      if (!panel.isConnected) return;
+      panel.replaceChildren(el('h3', '', 'Nebius GPU spot 임대료'));
+      var msg = el('p', '', 'GPU spot 데이터 미로드'); msg.setAttribute('role', 'status'); panel.appendChild(msg);
+      panel.appendChild(el('p', 'ncs-source', '사용자 제공 차트 추적 · 공식 Nebius API 피드 아님'));
+      var button = el('button', '', '다시 시도'); button.type = 'button';
+      button.onclick = function () { refresh(panel, state); }; panel.appendChild(button);
+    }).finally(function () { state.busy = false; panel.removeAttribute('aria-busy'); });
+  }
+  function wrap(name) {
+    var original = window[name];
+    if (typeof original !== 'function' || original._neoCloudSpot) return;
+    var wrapped = function () {
+      var result = original.apply(this, arguments);
+      schedule();
+      return result;
+    };
+    Object.keys(original).forEach(function (k) { wrapped[k] = original[k]; });
+    wrapped._neoCloudSpot = true; window[name] = wrapped;
+  }
+  function scan() {
+    wrap('renderAI2'); wrap('renderNeocloud');
+    mounted.forEach(function (state, panel) {
+      if (!panel.isConnected) { if (state.chart) state.chart.destroy(); mounted.delete(panel); }
+    });
+    document.querySelectorAll('#main .nc').forEach(function (root) {
+      if (root.querySelector('.ncs-tracker')) return;
+      var panel = el('section', 'ncs-tracker'); panel.setAttribute('aria-label', 'Nebius GPU spot 임대료 추적');
+      // 현재 렌더러: nc-head 다음의 첫 nc-panel이 회사 개요다.
+      var overview = Array.from(root.children).find(function (n) { return n.classList.contains('nc-panel'); });
+      var head = root.querySelector('.nc-head');
+      var anchor = overview || head;
+      if (anchor && anchor.parentNode === root) root.insertBefore(panel, anchor.nextSibling); else root.appendChild(panel);
+      var state = { chart: null, busy: false }; mounted.set(panel, state); refresh(panel, state);
+    });
+  }
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    setTimeout(function () { scheduled = false; try { scan(); } catch (e) { console.warn('[neocloud-spot]', e); } }, 0);
+  }
+  window.PHXNeoCloudSpot = { mount: schedule, validate: validate };
+  function start() {
+    schedule();
+    if (typeof MutationObserver === 'function') {
+      new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+      new MutationObserver(function () {
+        mounted.forEach(function (state, panel) {
+          if (state.chart && panel.isConnected) { state.chart.destroy(); state.chart = null; if (cache) paint(panel, cache, state); }
+        });
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
+})();

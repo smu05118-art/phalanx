@@ -352,3 +352,28 @@ header{border-bottom:1px solid var(--bd);margin-bottom:10px;padding-bottom:10px;
 .phx-ncp-obs{padding-left:18px;margin:6px 0 24px;font-size:12.5px}.phx-ncp-obs li{margin:6px 0}
 .phx-ncp-fails{font-size:11.5px;color:var(--dim);margin-top:2px}
 .phx-ncp-fail{display:inline-block;font-size:10.5px;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin:1px 2px;cursor:help}
+
+/* NeoCloud GPU spot · 261020 — 패널 안에서만 적용 */
+.ncs-tracker{margin:16px 0;padding:20px;border:1px solid var(--bd,#444968);border-radius:14px;background:var(--s1,#151826);color:var(--tx,#e7e9f5);font-size:14px;line-height:1.6;min-width:0}
+.ncs-tracker h3{font-size:19px;margin:0 0 6px}
+.ncs-tracker p{margin:8px 0;overflow-wrap:anywhere}
+.ncs-tracker .ncs-source,.ncs-tracker .ncs-note{font-size:13px;color:inherit;opacity:.86}
+.ncs-tracker .ncs-badge{display:inline-block;padding:4px 10px;border:1px solid var(--bd,#444968);border-radius:8px;font-size:13px}
+.ncs-tracker .ncs-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:14px 0}
+.ncs-tracker .ncs-card{display:flex;flex-direction:column;gap:4px;border:1px solid var(--bd,#444968);border-top:4px solid var(--ncs-series);border-radius:8px;padding:12px;min-width:0}
+.ncs-tracker .ncs-card strong{font-size:25px;font-variant-numeric:tabular-nums}
+.ncs-tracker .ncs-card span{font-size:12px;overflow-wrap:anywhere}
+.ncs-tracker .ncs-card .ncs-product{font-size:14px;font-weight:700}
+.ncs-tracker .ncs-chart{position:relative;height:320px;width:100%;margin:16px 0;color:inherit}
+.ncs-tracker .ncs-chart svg{display:block;width:100%;height:100%}
+.ncs-tracker .ncs-details summary{cursor:pointer;padding:8px 0;font-weight:600}
+.ncs-tracker .ncs-table-scroll{overflow-x:auto;max-height:420px}
+.ncs-tracker table{border-collapse:collapse;width:100%;font-size:13px;text-align:left}
+.ncs-tracker caption{text-align:left;padding:8px 0}
+.ncs-tracker th,.ncs-tracker td{padding:8px 10px;border-bottom:1px solid var(--bd,#444968);white-space:nowrap}
+.ncs-tracker button{font:inherit;color:inherit;background:var(--s2,#23283b);border:1px solid currentColor;border-radius:7px;padding:6px 12px;cursor:pointer}
+.ncs-tracker :focus-visible{outline:3px solid var(--blue,#5aa9ff);outline-offset:3px}
+:root[data-theme="light"] .ncs-tracker{background:var(--s1,#fff);color:var(--tx,#202334)}
+:root[data-theme="light"] .ncs-tracker button{background:var(--s2,#eef1f7)}
+@media(max-width:850px){.ncs-tracker .ncs-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:520px){.ncs-tracker{padding:12px}.ncs-tracker .ncs-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.ncs-tracker .ncs-chart{height:260px}.ncs-tracker .ncs-card strong{font-size:23px}}
