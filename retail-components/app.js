@@ -140,7 +140,7 @@
     $('index-cards').innerHTML = state.data.indices.map((index, ordinal) => {
       const dod = indexDod(index);
       const started = arr(index.series).filter((point) => finite(point.value)).length === 1;
-      return `<button type="button" class="index-card" style="--card-accent:${colors[index.id] || 'var(--accent)'}" data-index="${ordinal}" aria-pressed="false" aria-controls="index-detail"><span class="card-top"><span class="card-label">${escape(labels[index.id] || index.id)}</span><span class="card-arrow" aria-hidden="true">↗</span></span><span class="card-title">${escape(index.name)}</span><span class="card-value">${fmt(index.value)}<span class="unit">pt</span></span><span class="card-change ${movement(dod)}">${finite(dod) ? `${signed(dod)} · 전일 대비` : !complete(index, index.basket_count) ? '당일 가격 미확보' : started ? '누적 시작 · 전일 실측 대기' : '전일 실측 대기'}</span><span class="mini-chart" id="spark-${ordinal}" aria-hidden="true"></span><span class="card-footer"><span>${escape(index.as_of || '관측 대기')}</span><span>${escape(index.coverage_count ?? 0)} / ${escape(index.basket_count ?? 0)}개 · ${pct(index.coverage_weight, 1)}</span></span></button>`;
+      return `<button type="button" class="index-card" style="--card-accent:${colors[index.id] || 'var(--accent)'}" data-index="${ordinal}" aria-pressed="false" aria-controls="index-detail"><span class="card-top"><span class="card-label">${escape(labels[index.id] || index.id)}</span><span class="card-arrow" aria-hidden="true">↗</span></span><span class="card-title">${escape(index.name)}</span><span class="card-value">${fmt(index.value)}<span class="unit">pt</span></span><span class="card-change ${movement(dod)}">${finite(dod) ? `${signed(dod)} · 전일 대비` : !complete(index, index.basket_count) ? '해당 관측일 가격 미확보' : started ? '누적 시작 · 전일 실측 대기' : '전일 실측 대기'}</span><span class="card-last-complete">${index.latest_complete ? `최근 완전 관측 ${escape(index.latest_complete.date)} · ${fmt(index.latest_complete.value)} pt` : '완전 관측 대기'}</span><span class="mini-chart" id="spark-${ordinal}" aria-hidden="true"></span><span class="card-footer"><span>${escape(index.as_of || '관측 대기')}</span><span>${escape(index.coverage_count ?? 0)} / ${escape(index.basket_count ?? 0)}개 · ${pct(index.coverage_weight, 1)}</span></span></button>`;
     }).join('');
     state.data.indices.forEach((index, ordinal) => chart($(`spark-${ordinal}`), index.series, { miniature: true, color: colors[index.id] || 'var(--accent)' }));
     $('index-cards').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
@@ -182,7 +182,7 @@
     const count = arr(index.series).filter((point) => finite(point.value)).length;
     setText('detail-status', ready ? count === 1 ? '누적 시작' : '관측 완료' : '부분 관측');
     $('detail-status').className = `pill${ready ? '' : ' warning'}`;
-    const meta = [['기준일', index.base_date || '미확보'], ['최근 관측일', index.as_of || '미확보'], ['제품 커버리지', `${index.coverage_count ?? 0} / ${index.basket_count ?? 0}개`], ['비중 커버리지', pct(index.coverage_weight, 1)]];
+    const meta = [['기준일', index.base_date || '미확보'], ['최근 수집 대상일', index.as_of || '미확보'], ['최근 완전 관측', index.latest_complete ? `${index.latest_complete.date} · ${fmt(index.latest_complete.value)} pt` : '미확보'], ['제품 커버리지', `${index.coverage_count ?? 0} / ${index.basket_count ?? 0}개`], ['비중 커버리지', pct(index.coverage_weight, 1)]];
     $('detail-meta').innerHTML = meta.map(([key, value]) => `<span>${escape(key)}<strong>${escape(value)}</strong></span>`).join('');
     const warnings = [];
     if (!ready) warnings.push('필수 구성 가격을 모두 확보하지 못해 지수 산출 조건을 충족하지 않았습니다. 확보된 개별 관측은 아래에서 확인할 수 있습니다.');
@@ -196,8 +196,8 @@
     renderIndexChart(); renderDistribution(index);
     $('index-observations').innerHTML = arr(index.series).slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map((point) => `<tr><td>${escape(point.date)}</td><td class="numeric">${fmt(point.value)}</td><td class="numeric ${movement(indexDod(index, point))}">${finite(indexDod(index, point)) ? signed(indexDod(index, point)) : '—'}</td><td class="numeric">${escape(point.coverage_count ?? '—')} / ${escape(index.basket_count ?? '—')}</td><td class="numeric">${pct(point.coverage_weight, 1)}</td></tr>`).join('') || '<tr><td class="empty-row" colspan="5">관측 대기</td></tr>';
     const rebalance = index.rebalance || {};
-    const statuses = { initial: '최초 바스켓 · 관측 축적 중', deferred: '요건 확인 중 · 기존 바스켓 유지', completed: '검토 완료', pending: '검토 대기', applied: '새 바스켓 적용', not_due: '현재 바스켓 유지' };
-    $('rebalance').innerHTML = `<p class="rebalance-date">${escape(rebalance.next_review || '일정 미확보')}</p><p>${escape(statuses[rebalance.status] || rebalance.status || '상태 미확보')}</p>${strings(rebalance.notes).map((note) => `<p>${escape(note)}</p>`).join('')}`;
+    const statuses = { rebalanced: '새 바스켓 연결 완료', unchanged: '검토 완료 · 구성 유지', initial: '최초 바스켓 · 관측 축적 중', deferred: '요건 확인 중 · 기존 바스켓 유지', completed: '검토 완료', pending: '검토 대기', applied: '새 바스켓 적용', not_due: '현재 바스켓 유지' };
+    $('rebalance').innerHTML = `<p class="rebalance-date">${escape(rebalance.review_due ? '현재 분기 검토 대기' : rebalance.next_review || '일정 미확보')}</p><p>${escape(rebalance.next_review_rule || '')}</p>${rebalance.last_review_date ? `<p class="small muted">최근 검토 ${escape(rebalance.last_review_date)}</p>` : ''}<p>${escape(statuses[rebalance.status] || rebalance.status || '상태 미확보')}</p>${strings(rebalance.notes).map((note) => `<p>${escape(note)}</p>`).join('')}`;
     $('product-search').value = ''; renderConstituents();
     if (scroll) { $('index-detail').focus({ preventScroll: true }); $('index-detail').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); }
   }
@@ -210,7 +210,7 @@
     setText('search-summary', `${all.length}개 제품 중 ${items.length}개 표시`);
     $('constituents').innerHTML = items.map(({ item, ordinal }) => {
       const dod = productDod(item);
-      return `<tr><td><button class="product-button" type="button" data-product="${ordinal}" aria-haspopup="dialog">${escape(item.name)}<span class="product-subline">${escape(item.brand || '브랜드 미확보')} · ${escape(item.id)}</span></button></td><td class="stratum-cell">${escape(item.stratum_label || item.stratum || '미확보')}</td><td class="numeric weight-cell"><strong>${pct(item.weight)}</strong><div class="weight-track" aria-hidden="true"><span style="width:${finite(item.weight) ? Math.max(0, Math.min(100, item.weight * 100 / .1)) : 0}%"></span></div></td><td class="numeric">${money(item.current_price)}</td><td class="numeric ${movement(dod)}">${finite(dod) ? signed(dod) : '—'}</td><td class="numeric">${escape(readable(item.moq))} / ${escape(readable(item.mpq))}</td><td>${sourceLink(item.source_url)}</td></tr>`;
+      return `<tr><td><button class="product-button" type="button" data-product="${ordinal}" aria-haspopup="dialog">${escape(item.name)}<span class="product-subline">${escape(item.brand || '브랜드 미확보')} · ${escape(item.id)}</span></button></td><td class="stratum-cell">${escape(item.stratum_label || item.stratum || '미확보')}</td><td class="numeric weight-cell"><strong>${pct(item.weight)}</strong><div class="weight-track" aria-hidden="true"><span style="width:${finite(item.weight) ? Math.max(0, Math.min(100, item.weight * 100 / .1)) : 0}%"></span></div></td><td class="numeric">${money(item.current_price)}${!finite(item.current_price) ? `<span class="price-missing-reason">${escape(item.missing_reason || '실측 없음')}</span>` : ''}</td><td class="numeric ${movement(dod)}">${finite(dod) ? signed(dod) : '—'}</td><td class="numeric">${escape(readable(item.moq))} / ${escape(readable(item.mpq))}</td><td>${sourceLink(item.source_url)}</td></tr>`;
     }).join('') || '<tr><td colspan="7" class="empty-row">검색 조건에 맞는 제품이 없습니다.</td></tr>';
     $('constituents').querySelectorAll('[data-product]').forEach((button) => button.addEventListener('click', () => { const item = all[Number(button.dataset.product)]; if (item) openProduct(item, button); }));
   }
@@ -226,15 +226,17 @@
     setText('product-title', item.name);
     setText('product-meta', `${item.brand || '브랜드 미확보'} · ${item.stratum_label || item.stratum || '용도 미확보'} · 상품 ID ${item.id}`);
     const dod = productDod(item);
-    $('product-stats').innerHTML = [['바스켓 비중', pct(item.weight, 4), ''], ['관측 단가', money(item.current_price), ''], ['전일 대비', finite(dod) ? signed(dod) : '실측 대기', movement(dod)]].map(([key, value, cls]) => `<div class="product-stat"><span>${escape(key)}</span><strong class="${cls}">${escape(value)}</strong></div>`).join('');
-    const conditions = [['최소 주문 수량 (MOQ)', readable(item.moq)], ['주문 배수 (MPQ)', readable(item.mpq)], ['원문 재고', readable(item.stock)], ['원문 납기', readable(item.lead_time)], ['판매처 내 순위', finite(item.rank) ? `${fmt(item.rank, 0)}위` : '미확보'], ['가격 기준', '원화 단가 · 부가세 / 배송비 제외']];
+    $('product-stats').innerHTML = [['바스켓 비중', pct(item.weight, 4), ''], [`${item.observation_date || state.selected.as_of} 단가`, money(item.current_price), ''], ['전일 대비', finite(dod) ? signed(dod) : '실측 대기', movement(dod)]].map(([key, value, cls]) => `<div class="product-stat"><span>${escape(key)}</span><strong class="${cls}">${escape(value)}</strong></div>`).join('');
+    const conditions = [['최소 주문 수량 (MOQ)', readable(item.moq)], ['주문 배수 (MPQ)', readable(item.mpq)], ['원문 재고', readable(item.stock)], ['원문 납기', readable(item.lead_time)], [item.selection_rank_basis || '선정 시 판매처 정렬 순위', finite(item.rank) ? `${fmt(item.rank, 0)}위 · 선정 자료 조회 ${dateTime(item.selection_rank_observed_at)}` : '미확보'], ['가격 기준', '원화 단가 · 부가세 / 배송비 제외']];
     if (item.unit_contract?.description) conditions.push(['고정 판매단위·규격 설명', item.unit_contract.description]);
     $('product-conditions').innerHTML = conditions.map(([key, value]) => `<div class="condition">${escape(key)}<strong>${escape(value)}</strong></div>`).join('');
     setText('product-reason', `선정 근거: ${strings(item.selection_reason).join(' · ') || '미확보'}`);
     setText('product-observed', `실제 가격 조회: ${dateTime(item.source_observed_at)}`);
+    $('product-missing').hidden = finite(item.current_price);
+    setText('product-missing', `해당 관측일 실측 미확보: ${item.missing_reason || '원문 확인 대기'}. ${item.latest_observed_date ? `최근 확보 가격은 ${item.latest_observed_date}의 ${money(item.latest_observed_price)}입니다.` : '이전 실측도 없습니다.'} 최근 확보 가격을 현재 단가로 이월하지 않습니다.`);
     $('product-source').innerHTML = sourceLink(item.source_url, '판매처 제품 원문에서 보기 ↗');
-    $('product-evidence').innerHTML = `<dt>원문 조회 시각</dt><dd>${escape(item.source_observed_at || '미확보')}</dd><dt>원문 SHA-256</dt><dd>${escape(item.source_sha256 || '미확보')}</dd>`;
-    $('product-observations').innerHTML = arr(item.price_history).slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map((point) => `<tr><td>${escape(point.date)}</td><td class="numeric">${money(point.price)}</td><td>${escape(readable(point.stock))}</td></tr>`).join('') || '<tr><td colspan="3" class="empty-row">관측 대기</td></tr>';
+    $('product-evidence').innerHTML = `<dt>관측 대상일</dt><dd>${escape(item.observation_date || state.selected.as_of)}</dd><dt>관측 상태</dt><dd>${escape(item.observation_status === 'observed' ? '가격 확보' : '가격 미확보')}</dd><dt>원문 조회 시각</dt><dd>${escape(item.source_observed_at || '미확보')}</dd><dt>원문 SHA-256</dt><dd>${escape(item.source_sha256 || '미확보')}</dd>`;
+    $('product-observations').innerHTML = arr(item.price_history).slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map((point) => `<tr><td>${escape(point.date)}</td><td class="numeric">${money(point.price)}</td><td>${escape(readable(point.stock))}</td><td class="history-evidence">${point.price == null ? `<span>${escape(point.error || '실측 없음')}</span>` : `<span>${escape(dateTime(point.observed_at))}</span>`}${point.source_sha256 ? `<details><summary>원문 근거</summary><code>${escape(point.source_sha256)}</code>${sourceLink(point.source_url || item.source_url)}</details>` : ''}</td></tr>`).join('') || '<tr><td colspan="4" class="empty-row">관측 대기</td></tr>';
     $('product-dialog').querySelectorAll('details').forEach((detail) => { detail.open = false; });
     state.bodyOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
     $('product-dialog').showModal(); $('product-dialog').scrollTop = 0; renderProductChart(); $('dialog-close').focus();
@@ -285,6 +287,17 @@
       if (data.schema_version !== 1 || !Array.isArray(data.indices) || !data.indices.length || data.indices.some((index) => !index || typeof index.id !== 'string')) throw new Error('지원하지 않는 데이터 형식');
       state.data = data;
       setText('updated-at', dateTime(data.updated_at));
+      setText('accepted-day', `관측 대상일 ${data.target_observation_date || '미확보'}`);
+      const attempt = data.latest_attempt;
+      const attemptStatuses = { ok: '완료', success: '완료', partial: '부분 수집', failed: '실패', noop: '기존 당일 관측 유지', no_op: '기존 당일 관측 유지', running: '진행 중' };
+      const issueText = (issue) => typeof issue === 'string' ? issue : [issue.stage, issue.group, issue.id || issue.code, issue.reason || issue.error].filter(Boolean).join(' · ');
+      const issues = [...arr(attempt?.errors).map((issue) => `실패: ${issueText(issue)}`), ...arr(attempt?.warnings).map((issue) => `경고: ${issueText(issue)}`)];
+      $('attempt-notice').hidden = !attempt;
+      if (attempt) {
+        $('attempt-notice').className = `notice${['failed','partial'].includes(attempt.status) ? ' warning' : ''}`;
+        $('attempt-notice').innerHTML = `<strong>최근 수집 시도: ${escape(attempt.target_observation_date || '날짜 미확보')} · ${escape(attemptStatuses[attempt.status] || attempt.status || '상태 미확보')}</strong><span class="attempt-time">${escape(dateTime(attempt.finished_at || attempt.started_at))}</span>${issues.length ? `<details><summary>수집 사유 ${issues.length}건</summary><ul>${issues.map((reason) => `<li>${escape(reason)}</li>`).join('')}</ul></details>` : ''}${attempt.target_observation_date && attempt.target_observation_date !== data.target_observation_date ? `<p>아래는 ${escape(data.target_observation_date)}의 보존된 관측입니다. 최근 시도 날짜의 가격으로 표시하지 않습니다.</p>` : ''}`;
+      }
+      $('publication-identity').innerHTML = `<dt>보존 관측 실행</dt><dd>${escape(data.run_id || '미확보')}</dd><dt>게시 후보</dt><dd>${escape(data.candidate_id || '미확보')}</dd><dt>원본 상태 SHA-256</dt><dd>${escape(data.canonical_sha256 || '미확보')}</dd>`;
       const statuses = { ok: '수집 완료', complete: '수집 완료', success: '수집 완료', partial: '부분 수집 · 커버리지 확인', failed: '수집 실패 · 이전 관측 확인' };
       setText('run-status', statuses[data.run_status] || readable(data.run_status));
       $('load-status').hidden = true; $('dashboard').hidden = false;
