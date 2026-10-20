@@ -30,9 +30,34 @@
     const result = Date.parse(value.length === 7 ? `${value}-01T00:00:00Z` : `${value}T00:00:00Z`);
     return Number.isFinite(result) ? result : null;
   }
-  function staleDays(value) {
-    const timestamp = dayTime(value);
-    return timestamp === null ? null : Math.floor((Date.now() - timestamp) / 86400000);
+  const missingLabels = {
+    TEMPORARILY_SOLD_OUT: '일시 품절', SOURCE_DISCONTINUED: '판매 종료', ZERO_PRICE_NO_OFFER: '유효 판매가 없음', SOURCE_FETCH_FAILED: '원문 조회 실패', SOURCE_PARSE_FAILED: '원문 해석 실패', PRICE_JUMP_SOURCE_DISAGREEMENT: '급변 가격 확인 대기', LEGACY_MISSING_REASON_UNKNOWN: '과거 결측 사유 미보존', TEMPORARILY_UNAVAILABLE: '일시 품절', SOLD_OUT: '품절', FETCH_FAILED: '원문 조회 실패',
+    PARSE_FAILED: '원문 해석 실패', INVALID_PRICE: '유효 가격 미확보', NON_POSITIVE_PRICE: '유효 가격 미확보',
+    PRICE_ANOMALY_UNRESOLVED: '급변 가격 확인 대기', ANOMALY_UNRESOLVED: '급변 가격 확인 대기',
+    UNOBSERVED: '가격 미확보', NO_VALID_PRICE: '유효 가격 미확보', SOURCE_REVISION_REVIEW: '원문 변경 검토 중'
+  };
+  const dodLabels = { TODAY_INCOMPLETE: '오늘 불완전 관측', PREVIOUS_DAY_MISSING: '전 달력일 관측 없음', PREVIOUS_DAY_INCOMPLETE: '전 달력일 불완전 관측', CHAIN_UNAVAILABLE: '바스켓 연결 확인 불가' };
+  function missingLabel(item) {
+    const reason = String(item.missing_reason || '').toUpperCase();
+    if (missingLabels[reason]) return missingLabels[reason];
+    if (item.availability_status === 'temporarily_unavailable') return '일시 품절';
+    return '가격 미확보';
+  }
+  function dodLabel(index) {
+    return Number.isFinite(index.dod_pct) ? signed(index.dod_pct) : `— · ${dodLabels[index.dod_reason] || '비교 조건 미확보'}`;
+  }
+  function collectionDueDate(now = new Date()) {
+    // A daily 09:20 KST run is due only after that start time; weekends are included.
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const today = `${values.year}-${values.month}-${values.day}`;
+    if (`${values.hour}:${values.minute}` >= '09:20') return today;
+    return new Date(Date.parse(`${today}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
+  }
+  function missingSummary(index) {
+    const counts = new Map();
+    array(index.missing_instruments).forEach((item) => { const label = missingLabel(item); counts.set(label, (counts.get(label) || 0) + 1); });
+    return [...counts].map(([label, count]) => `${label} ${count}개`).join(' · ');
   }
   function isGap(before, after, frequency) {
     if (frequency === 'mixed') {
@@ -122,7 +147,7 @@
       valid.forEach((p) => {
         const kind = pointKind(p);
         const label = mixed ? kind === 'historical' ? '월간 과거 재구성' : '일간 직접 관측' : '';
-        const tooltip = `${p.date}${label ? ` · ${label}` : ''}\n${formatter(p.plotted)}${unit === '지수' ? ' pt' : ''}${Number.isFinite(p.coverage_count) ? `\n포함 제품 ${p.coverage_count}개` : ''}${Number.isFinite(p.coverage_weight) ? `\n${mixed && kind === 'historical' ? '최초 비중 확보율' : '비중 커버리지'} ${percent(p.coverage_weight)}` : ''}${mixed && p.bridge_from ? `\n${p.bridge_from} 월간 값에서 일간으로 연결` : ''}`;
+        const tooltip = `${p.date}${label ? ` · ${label}` : ''}\n${formatter(p.plotted)}${unit === '지수' ? ' pt' : ''}${Number.isFinite(p.coverage_count) ? `\n포함 제품 ${p.coverage_count}개` : ''}${Number.isFinite(p.coverage_weight) ? `\n${mixed && kind === 'historical' ? '최초 비중 확보율' : '비중 커버리지'} ${percent(p.coverage_weight)}` : ''}${mixed && p.bridge_from ? `\n${p.bridge_from} 월간 값에서 일간으로 연결` : ''}${p.source_observed_at ? `\n조회 ${dateTime(p.source_observed_at)}` : ''}${p.evidence_quality === 'legacy_saved_record' ? '\n보존 관측 · 당시 개별 원문 증거는 별도 확인' : ''}${p.raw_sha256 ? `\n원문 SHA256 ${p.raw_sha256.slice(0, 12)}…` : ''}`;
         svg += `<circle class="data-point" data-basis="${escape(p.basis || '')}" data-date="${escape(p.date)}" cx="${x(p)}" cy="${y(p.plotted)}" r="${miniature ? 2.8 : 3.7}" fill="${kind === 'historical' ? 'var(--surface)' : color}"${kind === 'historical' ? ` style="stroke:${color}"` : ''}${miniature ? '' : ` tabindex="0" role="img" aria-label="${escape(tooltip)}" data-tip="${escape(tooltip)}"`}><title>${escape(tooltip)}</title></circle>`;
       });
     }
@@ -148,9 +173,11 @@
   }
   function renderCards() {
     $('index-cards').innerHTML = state.data.indices.map((index, ordinal) => {
-      const level = Number.isFinite(index.value) ? number(index.value) : '—';
-      const change = Number.isFinite(index.value) ? `<span class="change">${signed(index.value - 100)}</span> ${String(index.base_date).length === 7 ? '기준월' : '기준일'} 대비` : '산출 조건 확인 중';
-      return `<button type="button" class="index-card" data-id="${escape(index.id)}" data-index="${ordinal}" aria-pressed="false" aria-controls="index-detail"><span class="card-top"><span class="card-label">${escape(String(index.id).toUpperCase())}</span><span class="card-arrow" aria-hidden="true">↗</span></span><span class="card-subtitle">${escape(index.name)}</span><span class="card-number">${level}</span><span class="card-change">${change}</span><span class="mini-chart" id="spark-${ordinal}" aria-hidden="true"></span><span class="card-footer"><span>${escape(index.as_of || '관측일 미확보')}</span><span>${escape(index.coverage_count ?? 0)} / ${escape(index.basket_count ?? 0)}개 · ${percent(index.coverage_weight)}</span></span></button>`;
+      const complete = Number.isFinite(index.value);
+      const level = complete ? number(index.value) : '—';
+      const change = complete ? `<span class="change">${signed(index.value - 100)}</span> ${String(index.base_date).length === 7 ? '기준월' : '기준일'} 대비` : '공식 지수 산출 보류';
+      const condition = missingSummary(index);
+      return `<button type="button" class="index-card" data-id="${escape(index.id)}" data-index="${ordinal}" aria-pressed="false" aria-controls="index-detail"><span class="card-top"><span class="card-label">${escape(String(index.id).toUpperCase())}</span><span class="card-arrow" aria-hidden="true">↗</span></span><span class="card-subtitle">${escape(index.name)}</span><span class="card-number">${level}</span><span class="card-change">${change}</span><span class="card-dod">전일비 <strong>${escape(dodLabel(index))}</strong></span><span class="card-condition ${condition ? 'missing' : ''}">${escape(condition || '고정 바스켓 전체 관측')}${!complete && index.latest_complete_date ? `<br>마지막 완전지수 ${escape(index.latest_complete_date)}` : ''}</span><span class="mini-chart" id="spark-${ordinal}" aria-hidden="true"></span><span class="card-footer"><span>관측 ${escape(index.as_of || '미확보')}</span><span>${escape(index.coverage_count ?? 0)} / ${escape(index.basket_count ?? 0)}개 · ${percent(index.coverage_weight)}</span></span></button>`;
     }).join('');
     state.data.indices.forEach((index, i) => chart($(`spark-${i}`), index.series, { miniature: true, frequency: 'mixed', color: colors[index.id] || 'var(--accent)' }));
     $('index-cards').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
@@ -189,22 +216,25 @@
     const complete = index.status === 'ok' && Number.isFinite(index.value);
     text('detail-status', complete ? '관측 완료' : '산출 조건 미충족');
     $('detail-status').className = `pill ${complete ? 'ok' : 'warning'}`;
-    const meta = [['바스켓', index.basket_id || '미확보'], [String(index.base_date).length === 7 ? '기준월' : '기준일', index.base_date || '미확보'], ['최근 관측', index.as_of || '미확보'], ['현재 비중 커버리지', percent(index.coverage_weight)], ['현재 제품 커버리지', `${index.coverage_count ?? 0} / ${index.basket_count ?? 0}개`]];
+    const meta = [['바스켓', index.basket_id || '미확보'], [String(index.base_date).length === 7 ? '기준월' : '기준일', index.base_date || '미확보'], ['최근 관측', index.as_of || '미확보'], ['현재 비중 커버리지', percent(index.coverage_weight)], ['현재 제품 커버리지', `${index.coverage_count ?? 0} / ${index.basket_count ?? 0}개`], ['마지막 완전지수일', index.latest_complete_date || '없음'], ['전일비', dodLabel(index)]];
     $('detail-meta').innerHTML = meta.map(([key, value]) => `<span>${escape(key)}<strong>${escape(value)}</strong></span>`).join('');
     const warnings = [];
     if (!complete) warnings.push('현재 지수는 산출 조건을 충족하지 않아 공표되지 않았습니다. 확보한 제품 관측은 아래에서 확인할 수 있습니다.');
     if (Number.isFinite(index.coverage_weight) && index.coverage_weight < 1 - 1e-9) warnings.push(`미확보 비중 ${percent(1 - index.coverage_weight)}. 결측 가격을 0원으로 대체하지 않습니다.`);
-    const age = staleDays(index.as_of);
-    if (age !== null && age >= 2) warnings.push(`최근 관측일로부터 ${age}일 경과했습니다. 현재 시점의 가격으로 해석하지 마세요.`);
-    if (age === null) warnings.push('최근 관측일을 확인할 수 없습니다.');
+    if (index.as_of < collectionDueDate()) warnings.push(`최근 예정 수집일 ${collectionDueDate()}의 자료가 아직 반영되지 않았습니다. 현재 표시 관측일은 ${index.as_of}입니다.`);
+    if (missingSummary(index)) warnings.push(missingSummary(index) + '.');
+    if (!complete && index.latest_complete_date) warnings.push(`마지막 완전지수는 ${index.latest_complete_date}, ${number(index.latest_complete_value)}입니다.`);
     $('index-notice').hidden = !warnings.length; $('index-notice').className = 'notice warning'; text('index-notice', warnings.join(' '));
+    const missingItems = array(index.missing_instruments);
+    $('missing-products').hidden = !missingItems.length;
+    $('missing-products').innerHTML = missingItems.length ? `<h3>결측 상품 · 사유</h3><ul>${missingItems.map((item) => `<li><strong>${escape(item.name)}</strong><span>${escape(missingLabel(item))} · 비중 ${percent(item.weight)} · ${sourceLink(item.source_url)}</span></li>`).join('')}</ul>` : '';
     text('index-base', index.base_date ? `${index.base_date} = 100` : '기준일 미확보');
     renderIndexChart(index);
     renderHistoricalCoverage(index);
     renderBrandWeights(index);
     const rebalance = index.rebalance || {};
-    const rebalanceStatus = { initial: '최초 바스켓 · 관측 축적 중', deferred: '검토 보류', completed: '검토 완료', pending: '검토 대기', applied: '새 바스켓 적용' };
-    $('rebalance').innerHTML = `<p class="rebalance-date">${escape(rebalance.next_review || '일정 미확보')}</p><p>${escape(rebalanceStatus[rebalance.status] || rebalance.status || '')}</p>${notes(rebalance.notes).map((note) => `<p>${escape(note)}</p>`).join('')}`;
+    const rebalanceStatus = { initial: '최초 바스켓 · 관측 축적 중', deferred: '검토 보류', completed: '검토 완료', pending: '검토 대기', due: '검토 예정', evaluating: '적격성 확인', linked: '공통일 연결 완료', applied: '새 바스켓 적용' };
+    $('rebalance').innerHTML = `<p class="rebalance-date">${escape(rebalance.status === 'deferred' ? '근거 변경 시 같은 분기 재검토' : rebalance.next_review || '일정 미확보')}</p><p>${escape(rebalanceStatus[rebalance.status] || rebalance.status || '')}${rebalance.last_review_date ? ` · ${escape(rebalance.last_review_date)}` : ''}</p>${notes(rebalance.notes).map((note) => `<p>${escape(note)}</p>`).join('')}<p>${escape(rebalance.next_review_condition || '')}</p>`;
     $('product-search').value = '';
     renderConstituents();
   }
@@ -253,7 +283,7 @@
     const visible = all.map((item, i) => ({ item, i })).filter(({ item }) => `${item.name || ''} ${item.brand || ''} ${item.family || ''} ${item.generation || ''} ${item.stratum || ''}`.toLocaleLowerCase('ko-KR').includes(query)).sort((a, b) => (b.item.weight || 0) - (a.item.weight || 0));
     text('constituent-count', query ? `${visible.length} / ${all.length}개` : `${all.length}개`);
     const maxWeight = Math.max(...all.map((item) => Number.isFinite(item.weight) ? item.weight : 0), 0.01);
-    $('constituents').innerHTML = visible.length ? visible.map(({ item, i }) => `<tr><td><button class="product-button" type="button" data-product="${i}" aria-haspopup="dialog">${escape(item.name)}<span class="product-subline">${escape([item.brand, item.family].filter(Boolean).join(' · '))}</span></button></td><td>${escape(item.generation || '미확보')}<span class="product-subline">${Number.isFinite(item.capacity_gb) ? `${escape(item.capacity_gb)} GB` : '용량 미확보'}${item.stratum ? ` · ${escape(item.stratum)}` : ''}</span></td><td class="numeric weight-cell"><strong>${percent(item.weight)}</strong><div class="weight-track" aria-hidden="true"><span style="width:${Math.max(0, Math.min(100, (item.weight || 0) / maxWeight * 100))}%"></span></div></td><td class="numeric ${Number.isFinite(item.current_price) ? '' : 'missing'}">${won(item.current_price)}</td><td class="numeric">${Number.isFinite(item.rank) ? `${escape(item.rank)}위` : '<span class="missing">미확보</span>'}</td><td class="numeric">${Number.isFinite(item.seller_count) ? `${escape(item.seller_count)}개` : '<span class="missing">미확보</span>'}</td><td>${sourceLink(item.source_url)}</td></tr>`).join('') : '<tr><td colspan="7" class="missing">검색 결과가 없습니다.</td></tr>';
+    $('constituents').innerHTML = visible.length ? visible.map(({ item, i }) => `<tr><td><button class="product-button" type="button" data-product="${i}" aria-haspopup="dialog">${escape(item.name)}<span class="product-subline">${escape([item.brand, item.family].filter(Boolean).join(' · '))}</span></button></td><td>${escape(item.generation || '미확보')}<span class="product-subline">${Number.isFinite(item.capacity_gb) ? `${escape(item.capacity_gb)} GB` : '용량 미확보'}${item.stratum ? ` · ${escape(item.stratum)}` : ''}</span></td><td class="numeric weight-cell"><strong>${percent(item.weight)}</strong><div class="weight-track" aria-hidden="true"><span style="width:${Math.max(0, Math.min(100, (item.weight || 0) / maxWeight * 100))}%"></span></div></td><td class="numeric ${Number.isFinite(item.current_price) ? '' : 'missing'}">${won(item.current_price)}${!Number.isFinite(item.current_price) ? `<span class="product-subline">${escape(missingLabel(item))}</span>` : ''}</td><td class="numeric">${Number.isFinite(item.rank) ? `${escape(item.rank)}위` : '<span class="missing">미확보</span>'}<span class="product-subline">선정 ${escape(item.rank_basis_date || '일자 미확보')}</span></td><td class="numeric">${Number.isFinite(item.seller_count) ? `${escape(item.seller_count)}개` : '<span class="missing">미확보</span>'}<span class="product-subline">선정 ${escape(item.seller_count_basis_date || item.rank_basis_date || '일자 미확보')}</span></td><td>${sourceLink(item.source_url)}</td></tr>`).join('') : '<tr><td colspan="7" class="missing">검색 결과가 없습니다.</td></tr>';
     $('constituents').querySelectorAll('[data-product]').forEach((button) => button.addEventListener('click', () => openProduct(all[Number(button.dataset.product)])));
   }
   function historyLabel(frequency, basis, windowMonths) {
@@ -266,10 +296,10 @@
     text('product-eyebrow', `${String(state.selected.id).toUpperCase()} / PRODUCT DETAIL`);
     text('product-title', item.name);
     text('product-meta', [item.brand, item.family, item.generation, Number.isFinite(item.capacity_gb) ? `${item.capacity_gb} GB` : null, item.stratum, item.id ? `상품 ID ${item.id}` : null].filter(Boolean).join(' · '));
-    $('product-stats').innerHTML = [['바스켓 비중', percent(item.weight)], ['최근 관측 최저가', won(item.current_price)], ['인기순위', Number.isFinite(item.rank) ? `${item.rank}위` : '미확보']].map(([key, value]) => `<div class="product-stat"><span>${escape(key)}</span><strong>${escape(value)}</strong></div>`).join('');
+    $('product-stats').innerHTML = [['바스켓 비중', percent(item.weight)], ['최근 관측 최저가', won(item.current_price)], ['선정 당시 인기순위', Number.isFinite(item.rank) ? `${item.rank}위` : '미확보']].map(([key, value]) => `<div class="product-stat"><span>${escape(key)}</span><strong>${escape(value)}</strong></div>`).join('');
     text('product-reason', item.selection_reason ? `선정 근거: ${item.selection_reason}` : '제품 선정 근거 미확보');
     const anomalyNotes = array(item.price_anomalies).map((a) => `${a.date}: ${a.status === 'source_cross_checked' ? '급변 가격 교차 확인' : '급변 가격 미확인'} (${won(a.previous_price)} → ${won(a.quoted_price)})`);
-    text('product-quality-note', [item.source_observed_at ? `실제 가격 조회: ${dateTime(item.source_observed_at)}` : '', ...anomalyNotes].filter(Boolean).join(' · '));
+    text('product-quality-note', [`선정 순위·판매처 기준: ${item.rank_basis_date || '일자 미확보'}`, !Number.isFinite(item.current_price) ? `현재 가격: ${missingLabel(item)}` : '', item.source_observed_at ? `실제 가격 조회: ${dateTime(item.source_observed_at)}` : '', ...anomalyNotes].filter(Boolean).join(' · '));
     const groups = new Map();
     for (const point of array(item.price_history)) {
       const key = `${point.basis || ''}|${point.frequency || ''}|${point.window_months || ''}`;
@@ -299,6 +329,14 @@
     text('germany-change', latest ? `${signed(latest.value - 100)} · 기준 대비` : '관측 미확보');
     text('germany-base', data.base_label || '기준 미확보');
     $('germany-source').innerHTML = sourceLink(data.source_url, '원문 보고서 ↗');
+    const failed = ['parse_failed', 'fetch_failed', 'unavailable'].includes(data.source_status);
+    $('germany-status').className = `notice ${failed ? 'warning' : ''}`;
+    text('germany-status', `${failed ? (data.source_status === 'parse_failed' ? '원문 해석 실패' : data.source_status === 'fetch_failed' ? '원문 조회 실패' : '검증 자료 없음') : '월간 원문 검증'} · ${data.status_message || ''}${data.checked_at ? ` 최근 조회 ${dateTime(data.checked_at)}` : ''}`);
+    const audit = array(data.arithmetic_audit).find((point) => point.date === latest?.date);
+    const reportedMom = latest?.reported_mom_pct;
+    const computedMom = latest?.computed_mom_pct;
+    text('germany-comparison', `최근 월 전월비: 원문 보고 ${signed(reportedMom)} · 반올림 지수로 계산 ${signed(computedMom)}. 산출 기준이 다릅니다.${audit && Number.isFinite(audit.reproduced_unrounded) ? ` 원가격 재계산 지수 ${number(audit.reproduced_unrounded, 6)} → 원문 보고 ${number(audit.reported, 0)}.` : ''} 제품 원가격이 없는 월은 원문 보고값만 표시합니다.`);
+
     $('germany-meta').innerHTML = `<div>최근 기간<strong>${escape(latest?.date || '미확보')}</strong></div><div>발행일<strong>${escape(data.published_at || '미확보')}</strong></div><div>가격 관측일<strong>${escape(data.observed_at || '미확보')}</strong></div>${data.retrieved_at ? `<div>자료 확인<strong>${escape(dateTime(data.retrieved_at))}</strong></div>` : ''}`;
     chart($('germany-chart'), data.series, { color: 'var(--germany)', frequency: 'monthly', baseline: 100, title: `${data.title || '독일 DDR5 소매가격'} — ${data.base_label || '지수'}` });
     chart($('germany-mom-chart'), data.series, { field: 'reported_mom_pct', color: 'var(--germany)', frequency: 'monthly', unit: '%', formatter: (v) => signed(v), bars: true, title: '독일 DDR5 원문 보고 전월 변동률' });
@@ -356,10 +394,12 @@
       const response = await fetch('data.json', { cache: 'no-cache' });
       if (!response.ok) throw new Error(`데이터 응답 ${response.status}`);
       const data = await response.json();
-      if (data.schema_version !== 1 || !Array.isArray(data.indices)) throw new Error('지원되지 않는 데이터 형식');
+      if (![1, 2].includes(data.schema_version) || !Array.isArray(data.indices)) throw new Error('지원되지 않는 데이터 형식');
       state.data = data;
       $('dashboard').hidden = false;
-      text('updated-at', dateTime(data.updated_at));
+      text('updated-at', data.target_observation_date || data.indices?.[0]?.as_of || '미확보');
+      text('built-at', `산출물 생성 ${dateTime(data.built_at || data.updated_at)}`);
+      text('run-detail', `현재 표시 실행 ${data.run_id || '구형 자료: ID 없음'} · 후보 ${data.candidate_id || '미확보'} · 가격 수집 갱신 ${dateTime(data.observation_updated_at || data.updated_at)}`);
       text('dataset-version', `${data.methodology?.name || '소매가격 지수'} · ${data.methodology?.version || '버전 미확보'}`);
       renderCards();
       selectIndex(0);
@@ -377,15 +417,16 @@
           if ($('product-dialog').open) renderProductHistory();
         }, 120);
       });
-      const updated = Date.parse(data.updated_at);
-      const age = Number.isFinite(updated) ? Math.floor((Date.now() - updated) / 86400000) : null;
-      if (age !== null && age >= 2) {
-        $('load-status').className = 'notice warning';
-        text('load-status', `데이터가 마지막으로 갱신된 지 ${age}일 경과했습니다. 아래 최근 관측일과 가격 커버리지를 확인하세요.`);
-      } else if (!Number.isFinite(updated)) {
-        $('load-status').className = 'notice warning';
-        text('load-status', '데이터 갱신 시각을 확인할 수 없습니다. 각 지수의 최근 관측일을 확인하세요.');
-      } else $('load-status').hidden = true;
+      const dueDate = collectionDueDate();
+      const shownDate = data.target_observation_date || data.indices?.[0]?.as_of;
+      const warnings = [];
+      if (!shownDate || shownDate < dueDate) warnings.push(`최근 예정 수집일은 ${dueDate}입니다. 현재 표시된 관측일 ${shownDate || '미확보'} 이후 자료의 공개 반영은 아직 확인되지 않았습니다.`);
+      const incomplete = data.indices.filter((index) => index.status !== 'ok');
+      if (incomplete.length) warnings.push(`${incomplete.map((index) => String(index.id).toUpperCase()).join(' · ')} 일부 가격 미확보. 구성과 사유를 각 카드에서 확인할 수 있습니다.`);
+      if (['parse_failed', 'fetch_failed'].includes(data.germany?.source_status)) warnings.push('독일 원문 갱신 실패: 마지막 검증 판을 표시합니다.');
+      $('load-status').className = warnings.length ? 'notice warning' : 'notice';
+      $('load-status').hidden = !warnings.length;
+      text('load-status', warnings.join(' '));
     } catch (error) {
       text('updated-at', '불러오기 실패');
       $('load-status').className = 'notice warning';
