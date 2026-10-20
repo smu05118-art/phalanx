@@ -3913,7 +3913,8 @@ function renderRackCmp(){
 }
 // ================= 🧠 Memory 탭 =================
 function loadMem(cb){ if(window.MEMD) return cb();
-  const sc=document.createElement('script'); sc.src='data_mem.js'; sc.onload=cb; document.head.appendChild(sc); }
+  const sc=document.createElement('script'); sc.src='data_mem.js'; sc.onload=cb; sc.onerror=()=>{const el=document.getElementById('main');if(el)el.innerHTML='<p>메모리 자료 로드 실패 · <button onclick="loadMem(renderMem)">다시 시도</button></p>';sc.remove();}; document.head.appendChild(sc); }
+function memSpotStatusLabel(s){return ({fresh:'새 공표 확인',unchanged_source:'원문 공표값 동일',parse_failed:'원문 해석 실패 · 마지막 정상값',fetch_failed:'조회 실패 · 마지막 정상값',revision_review:'원문 정정 검토 중 · 마지막 정상값',rejected:'채택 보류 · 마지막 정상값'})[s]||'수집 상태 기록 전';}
 function qbar(q,key){ const ks=Object.keys(q).sort(); if(!ks.length) return '';
   const cells=ks.slice(-9).map(k=>{const v=q[k]&&q[k][key]; if(v==null||isNaN(+v)) return `<td class="mono" style="color:#8a90a8">—</td>`;
     return `<td class="mono" style="color:${+v>=0?'#2fae66':'#e06666'}">${+v>=0?'+':''}${v}%</td>`;}).join('');
@@ -3935,17 +3936,23 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
       ${segs}
       ${g.period?`<div class="est">가이던스 <b>${g.period}</b>: ${g.rev_yoy_pct!=null?('매출YoY '+(g.rev_yoy_pct>=0?'+':'')+g.rev_yoy_pct+'%'):''} ${richText(g.bit_qoq)} <span style="color:#8a90a8">${richText(g.note).slice(0,90)}</span></div>`:''}
     </div>`;}).join('');
-  // DDR5 스팟 (일간)
-  const dd=M.ddr5||{}; const ds=dd.series||{}; const dk=Object.keys(ds).sort();
+  // Source-publication dates only; legacy records remain separately accessible.
+  const dd=M.ddr5||{}; const ds=dd.quote_series||{}; const dk=Object.keys(ds).sort();
   const dvals=dk.map(k=>ds[k]); const dlast=dd.last||{};
   let ddChart='';
   if(dvals.length){ddChart=vizPhalanxSpark(dvals,520,90,'#26c6da',{unit:'USD/chip'});}
-  const ddBox=`<p style="font-size:13px;font-weight:700;margin:18px 0 4px">DDR5 16Gb Spot <span style="color:#8a90a8;font-weight:500;font-size:11px">DRAMeXchange 일간 · USD/chip</span></p>
+  const legacyKeys=Object.keys(dd.series||{}).sort();
+  const legacyRows=legacyKeys.map(k=>`<tr><td>${k}</td><td class="mono">${dd.series[k]}</td></tr>`).join('');
+  const ddStatus=((M.spot_status||{}).items||{})['DDR5 16Gb']||{};
+  const ddBox=`<p style="font-size:13px;font-weight:700;margin:18px 0 4px">DDR5 16Gb Spot <span style="color:#8a90a8;font-weight:500;font-size:11px">DRAMeXchange 공표일 검증 계열 · USD/chip</span></p>
     <div class="bcard"><div class="brow" style="justify-content:flex-start;gap:16px">
       <span>현재 <b class="mono" style="color:#26c6da;font-size:18px">$${dlast.avg!=null?dlast.avg:(dvals[dvals.length-1]||'—')}</b></span>
       ${dlast.high!=null?`<span class="mono" style="font-size:11px;color:#8a90a8">H $${dlast.high} / L $${dlast.low}</span>`:''}
-      ${dlast.asof?`<span class="mono" style="font-size:11px;color:#8a90a8">${dlast.asof}</span>`:''}</div>
-      ${ddChart||'<p class="mono" style="color:#8a90a8;font-size:11px">시계열 축적 중(1일)</p>'}</div>`;
+      ${dlast.published_at?`<span class="mono" style="font-size:11px;color:#8a90a8">공표 ${dlast.published_at}</span>`:''}</div>
+      ${ddChart||'<p class="mono" style="color:#8a90a8;font-size:11px">검증 계열 축적 중</p>'}
+      <p class="bt">차트: 원문 관측 순서 · 날짜 간격 미반영 · ${dk[0]||'—'} ~ ${dk[dk.length-1]||'—'}</p>
+      <p class="bt">조회 ${(M.spot_status||{}).retrieved_at||'기존 기록'} · ${memSpotStatusLabel(ddStatus.status)} · <a href="https://www.dramexchange.com/Price/Dram_Spot" target="_blank" rel="noopener">원문</a></p>
+      <details><summary>기존 수집 기록 ${legacyKeys.length}개 (날짜 기준 혼재)</summary><p class="bt">원문 공표일이 검증되지 않은 과거 자료가 포함되어 있습니다. 기본 검증 차트와 구분해 보존합니다.</p><div class="lxt"><table><thead><tr><th>기록일</th><th>USD/chip</th></tr></thead><tbody>${legacyRows}</tbody></table></div></details></div>`;
   // 캐파 표 (K wpm)
   const cap=M.capacity||{}; const capco=cap.companies||{};
   const capQ=[...new Set(Object.values(capco).flatMap(c=>Object.keys(c.q||{})))].sort();
@@ -3965,7 +3972,7 @@ function renderMem(){ const M=window.MEMD||{}; const main=document.getElementByI
   const spCards=spOrder.filter(n=>sit[n]).map(n=>{const it=sit[n];const verified=it.quote_series||{};const ks=Object.keys(verified).sort();const vals=ks.map(k=>verified[k]);
     let sp='';if(vals.length>=2){sp=vizPhalanxSpark(vals,120,30,it.category==='NAND'?'#a78bfa':'#5b8def',{unit:'USD/chip'});}
     const c=it.category==='NAND'?'#a78bfa':'#5b8def';
-    return `<div class="bcard" style="min-width:150px;border-top:2px solid ${c}"><div class="bt">${it.category}</div><div class="bn" style="font-size:13px">${n}</div><div class="mono" style="font-size:19px;font-weight:750;margin-top:2px">$${it.last}</div><div class="bt">${it.published_at?'공표 '+it.published_at.replace('T',' '):'기존 수집값 · 공표시각 미확인'}</div><div style="margin-top:4px">${sp||'<span class="bt">원문 날짜가 확인된 시계열 축적중</span>'}</div>${ks.length?`<div class="bt">차트: 원문 관측 순서 · 날짜 간격 미반영<br>${ks[0]} ~ ${ks[ks.length-1]}</div>`:''}</div>`;}).join('');
+    return `<div class="bcard" style="min-width:150px;border-top:2px solid ${c}"><div class="bt">${it.category}</div><div class="bn" style="font-size:13px">${n}</div><div class="mono" style="font-size:19px;font-weight:750;margin-top:2px">$${it.last}</div><div class="bt">${it.published_at?'공표 '+it.published_at.replace('T',' '):'기존 수집값 · 공표시각 미확인'}</div><div style="margin-top:4px">${sp||'<span class="bt">원문 날짜가 확인된 시계열 축적중</span>'}</div>${ks.length?`<div class="bt">차트: 원문 관측 순서 · 날짜 간격 미반영<br>${ks[0]} ~ ${ks[ks.length-1]}</div>`:''}<div class="bt">${memSpotStatusLabel((((M.spot_status||{}).items||{})[n]||{}).status)} · <a href="https://www.dramexchange.com${it.category==='NAND'?'/Price/Wafer_Spot':'/Price/Dram_Spot'}" target="_blank" rel="noopener">원문</a></div></div>`;}).join('');
   const spotBox=spCards?`<p style="font-size:13px;font-weight:700;margin:18px 0 4px">가격·공급 (PS) — 메모리 스팟 보드 <span style="color:#8a90a8;font-weight:500;font-size:11px">DRAMeXchange 세션평균 · USD · 품목별 공표일</span></p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">${spCards}</div>`:'';
   // ── 전방 수요 (DI): 빅테크 CAPEX + 클라우드 RPO ──
