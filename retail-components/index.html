@@ -6,8 +6,8 @@
   <meta name="color-scheme" content="dark light">
   <meta name="description" content="전자부품 소매가격의 일간 관측. 전력·아날로그, 연산·논리, 수동부품 지수의 구성 비중과 개별 단가, 최소 주문 수량, 원문을 확인합니다.">
   <title>전자부품 소매가격 | PHALANX</title>
-  <link rel="stylesheet" href="style.css?v=2.0.0">
-  <script src="app.js?v=2.0.0" defer></script>
+  <link rel="stylesheet" href="style.css?v=3.0.0">
+  <script src="app.js?v=3.0.0" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
@@ -32,6 +32,9 @@
         </section>
         <section id="index-detail" class="panel detail-section" aria-labelledby="detail-heading" tabindex="-1">
           <div class="panel-heading"><div><p class="eyebrow" id="detail-eyebrow">BASKET DETAIL</p><h2 id="detail-heading">지수 구성</h2></div><span class="pill" id="detail-status"></span></div>
+          <div id="vintage-selector" class="vintage-selector" role="group" aria-label="서로 다른 기준의 바스켓 계열 선택" hidden></div>
+          <p id="series-break-notice" class="notice warning" hidden></p>
+          <section id="restart-panel" class="restart-panel" aria-label="새 바스켓 활성화 요건" hidden></section>
           <div id="detail-meta" class="metadata"></div>
           <div id="index-notice" class="notice" hidden></div>
           <div class="chart-heading"><div><h3>일간 지수 흐름</h3><p class="small muted" id="index-base"></p></div><div class="range-buttons" id="index-range" role="group" aria-label="지수 표시 기간"><button type="button" data-days="30" aria-pressed="false">1개월</button><button type="button" data-days="90" aria-pressed="false">3개월</button><button type="button" data-days="all" aria-pressed="true">전체</button></div></div>
@@ -53,6 +56,7 @@
           <div class="panel-heading"><div><p class="eyebrow">03 / METHODOLOGY</p><h2 id="method-heading">지수의 기준과 유지 규칙</h2></div></div>
           <p id="method-summary" class="muted"></p><div class="formula-box"><span class="mini-label">INDEX FORMULA</span><p id="method-formula"></p></div>
           <div class="method-grid"><details open><summary>제품 선정 · 비중</summary><ul id="selection-rules"></ul></details><details open><summary>분기 리밸런싱</summary><ul id="rebalance-rules"></ul></details></div>
+          <details open><summary>새 바스켓으로 재개 · 이전 이력 보존</summary><ul id="restart-rules"></ul></details>
           <details open><summary>가격 기준 · 해석의 한계</summary><p id="price-basis"></p><ul id="method-limitations"></ul></details>
         </section>
       </div>

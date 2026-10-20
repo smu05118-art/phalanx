@@ -15,7 +15,7 @@
   const labels = { power_analog: 'POWER / ANALOG', compute_logic: 'COMPUTE / LOGIC', passives: 'PASSIVES' };
   const brandColors = ['var(--accent)', 'var(--blue)', 'var(--violet)', '#c29b7b', '#85998e', '#b09eb5', '#879cac', '#bdb388', '#bc9196'];
   const DAY = 86400000;
-  const state = { data: null, selected: null, product: null, range: 'all', lastFocus: null, bodyOverflow: '' };
+  const state = { data: null, category: null, selected: null, product: null, range: 'all', lastFocus: null, bodyOverflow: '' };
 
   function readable(value) {
     if (value == null || value === '') return '미확보';
@@ -52,6 +52,8 @@
   function indexDod(index, point = index) {
     const date = point.date || point.as_of;
     const previous = arr(index.series).find((entry) => entry.date === priorDay(date));
+    const id = index.series_id || index.active_series_id;
+    if ((index.base_date && date <= index.base_date) || (id && ((point.series_id && point.series_id !== id) || (previous?.series_id && previous.series_id !== id)))) return null;
     // Never turn a server-side null or a skipped calendar date into a zero change.
     return complete(point, index.basket_count) && complete(previous, index.basket_count) && finite(point.dod_pct) ? point.dod_pct : null;
   }
@@ -108,7 +110,7 @@
     const flush = () => { if (segment.length) segments.push(segment); segment = []; };
     for (const point of points) {
       if (!finite(point.plotted) || point.plotted <= 0) { flush(); previous = null; continue; }
-      if (previous && point.time - previous.time !== DAY) flush();
+      if (previous && (point.time - previous.time !== DAY || ['series_id', 'vintage_id', 'continuity_segment_id'].some((key) => point[key] !== previous[key]))) flush();
       segment.push(point); previous = point;
     }
     flush();
@@ -140,7 +142,9 @@
     $('index-cards').innerHTML = state.data.indices.map((index, ordinal) => {
       const dod = indexDod(index);
       const started = arr(index.series).filter((point) => finite(point.value)).length === 1;
-      return `<button type="button" class="index-card" style="--card-accent:${colors[index.id] || 'var(--accent)'}" data-index="${ordinal}" aria-pressed="false" aria-controls="index-detail"><span class="card-top"><span class="card-label">${escape(labels[index.id] || index.id)}</span><span class="card-arrow" aria-hidden="true">↗</span></span><span class="card-title">${escape(index.name)}</span><span class="card-value">${fmt(index.value)}<span class="unit">pt</span></span><span class="card-change ${movement(dod)}">${finite(dod) ? `${signed(dod)} · 전일 대비` : !complete(index, index.basket_count) ? '해당 관측일 가격 미확보' : started ? '누적 시작 · 전일 실측 대기' : '전일 실측 대기'}</span><span class="card-last-complete">${index.latest_complete ? `최근 완전 관측 ${escape(index.latest_complete.date)} · ${fmt(index.latest_complete.value)} pt` : '완전 관측 대기'}</span><span class="mini-chart" id="spark-${ordinal}" aria-hidden="true"></span><span class="card-footer"><span>${escape(index.as_of || '관측 대기')}</span><span>${escape(index.coverage_count ?? 0)} / ${escape(index.basket_count ?? 0)}개 · ${pct(index.coverage_weight, 1)}</span></span></button>`;
+      const active = arr(index.vintages).find((item) => item.series_id === index.active_series_id);
+      const subtitle = `${active?.predecessor_series_id ? '새 바스켓 · ' : ''}${index.base_date || '기준일 대기'}${index.base_date ? ' = 100' : ''}`;
+      return `<button type="button" class="index-card" style="--card-accent:${colors[index.id] || 'var(--accent)'}" data-index="${ordinal}" aria-pressed="false" aria-controls="index-detail"><span class="card-top"><span class="card-label">${escape(labels[index.id] || index.id)}</span><span class="card-arrow" aria-hidden="true">↗</span></span><span class="card-title">${escape(index.name)}<small class="card-series-label">${escape(subtitle)}</small></span><span class="card-value">${fmt(index.value)}<span class="unit">pt</span></span><span class="card-change ${movement(dod)}">${finite(dod) ? `${signed(dod)} · 전일 대비` : !complete(index, index.basket_count) ? '해당 관측일 가격 미확보' : started ? '누적 시작 · 전일 실측 대기' : '전일 실측 대기'}</span><span class="card-last-complete">${index.latest_complete ? `최근 완전 관측 ${escape(index.latest_complete.date)} · ${fmt(index.latest_complete.value)} pt` : '완전 관측 대기'}${index.restart_pending ? '<span class="card-pending">새 바스켓 준비 중 · 아직 활성화되지 않음</span>' : ''}</span><span class="mini-chart" id="spark-${ordinal}" aria-hidden="true"></span><span class="card-footer"><span>${escape(index.as_of || '관측 대기')}</span><span>${escape(index.coverage_count ?? 0)} / ${escape(index.basket_count ?? 0)}개 · ${pct(index.coverage_weight, 1)}</span></span></button>`;
     }).join('');
     state.data.indices.forEach((index, ordinal) => chart($(`spark-${ordinal}`), index.series, { miniature: true, color: colors[index.id] || 'var(--accent)' }));
     $('index-cards').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
@@ -171,16 +175,42 @@
     }
     chart($('index-chart'), series, { color: colors[index.id] || 'var(--accent)', baseline: 100, title: `${index.name} 일간 지수` });
     const count = series.filter((point) => finite(point.value)).length;
-    setText('index-chart-note', count === 1 ? '누적 시작: 첫 관측값 1개를 표시합니다. 전일 실측이 확보되면 일간 변화율을 표시합니다. 과거 가격은 생성하지 않습니다.' : `${count}개 실제 지수 관측. 직전 달력 날짜의 관측이 없거나 구성 가격이 빠진 날은 전일 대비를 표시하지 않으며, 결측 구간의 선은 연결하지 않습니다.`);
+    const boundary = index.predecessor_series_id || arr(state.category?.breaks).length ? ' 다른 바스켓 계열과 지수 수준·누적변동률을 직접 비교하지 않습니다.' : '';
+    setText('index-chart-note', (count === 1 ? '누적 시작: 첫 관측값 1개를 표시합니다. 전일 실측이 확보되면 일간 변화율을 표시합니다. 과거 가격은 생성하지 않습니다.' : `${count}개 실제 지수 관측. 직전 달력 날짜의 관측이 없거나 구성 가격이 빠진 날은 전일 대비를 표시하지 않으며, 결측 구간의 선은 연결하지 않습니다.`) + boundary);
   }
-  function selectIndex(index, scroll = false) {
+  function renderVintageControls(category, selectedId) {
+    const vintages = arr(category.vintages);
+    $('vintage-selector').hidden = vintages.length < 2;
+    $('vintage-selector').innerHTML = vintages.map((vintage) => `<button type="button" data-vintage="${escape(vintage.series_id)}" aria-pressed="${vintage.series_id === selectedId}">${escape(vintage.label || (vintage.status === 'archived' ? '이전 바스켓' : '현재 바스켓'))}<span>${escape(vintage.base_date || '기준일 미확보')} = 100</span></button>`).join('');
+    $('vintage-selector').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => selectIndex(category, false, button.dataset.vintage)));
+    const broken = arr(category.breaks).length > 0 || vintages.some((vintage) => vintage.predecessor_series_id);
+    $('series-break-notice').hidden = !broken;
+    setText('series-break-notice', '구성 변경으로 직접 비교 불가. 이전 바스켓과 새 바스켓은 각각 다른 기준일의 100에서 시작합니다. 두 계열 사이의 연결선·전일비·누적변동률은 산출하지 않습니다.');
+    const pending = category.restart_pending;
+    $('restart-panel').hidden = !pending;
+    if (!pending) { $('restart-panel').innerHTML = ''; return; }
+    const gates = pending.gates || {}, rankRequired = gates.rank_required ?? 30, priceRequired = gates.price_required ?? 23, priceWindow = gates.price_denominator ?? 28;
+    const coverage = gates.detail_coverage_count ?? gates.coverage_count;
+    const candidates = arr(pending.candidates);
+    const reasons = strings(pending.held_reasons);
+    const detailErrors = arr(pending.detail_errors);
+    const rankDays = candidates.map((item) => item.prior90_rank_days).filter(finite);
+    const maxRankDays = rankDays.length ? Math.max(...rankDays) : null;
+    const eligibleCount = candidates.filter((item) => item.eligible === true).length;
+    $('restart-panel').innerHTML = `<div class="restart-heading"><div><p class="eyebrow">BASKET RESTART / PREPARATION</p><h3>새 바스켓 준비 · 활성화 대기</h3></div><span class="pill warning">현재 지수는 기존 바스켓</span></div><p>후보별 직전 90일 순위 ${escape(rankRequired)}일, 직전 ${escape(priceWindow)}일 목록가격 ${escape(priceRequired)}일과 활성화일 24개 상세 실가격이 모두 필요합니다. 당일은 과거 적격성 일수에서 제외합니다.</p><div class="restart-summary"><span>평가 대상일<strong>${escape(pending.last_attempt_date || pending.observation_date || '미확보')}</strong></span><span>정보 기준<strong>${escape(pending.information_cutoff || '미확보')}</strong></span><span>활성화일 상세가격<strong>${finite(coverage) ? `${escape(coverage)} / 24개 · 활성화 판정용` : '재확인 대기'}</strong></span></div><p>현재 후보 중 최다 순위 관측 <strong>${maxRankDays === null ? '미확보' : `${escape(maxRankDays)} / ${escape(rankRequired)}일`}</strong> · 과거 조건 충족 ${eligibleCount} / ${candidates.length}개</p><p class="small muted">이 준비 자료는 새 지수의 실적이 아닙니다. 연구용 기준값 100이나 이전 날짜의 상세가격을 운영 기준값으로 사용하지 않습니다.</p>${reasons.length ? `<ul class="restart-reasons">${reasons.map((reason) => `<li>${escape(reason)}</li>`).join('')}</ul>` : ''}${detailErrors.length ? `<details><summary>활성화 상세가격 확인 실패 (${detailErrors.length}개)</summary><ul class="restart-reasons">${detailErrors.map((issue) => `<li>${escape(issue.id || '제품 미확보')} · ${escape(issue.reason || issue.error || issue.code || '상세 오류 미기록')}</li>`).join('')}</ul></details>` : ''}<details><summary>후보별 실제 관측 일수 · 원문 (${candidates.length}개)</summary><div class="table-wrap" tabindex="0" role="region" aria-label="새 바스켓 후보별 적격성 관측"><table><thead><tr><th scope="col">후보 / 제조사</th><th scope="col">순위 관측</th><th scope="col">목록가격 관측</th><th scope="col">현재 판정</th><th scope="col">원문</th></tr></thead><tbody>${candidates.map((item) => `<tr><td>${escape(item.name || item.id)}<span class="product-subline">${escape(item.brand || '제조사 미확보')} · ${escape(item.id)}</span></td><td>${escape(item.prior90_rank_days ?? '미확보')} / ${escape(item.rank_required ?? rankRequired)}일</td><td>${escape(item.prior28_price_days ?? '미확보')} / ${escape(item.price_denominator ?? priceWindow)}일<span class="product-subline">최소 ${escape(item.price_required ?? priceRequired)}일 필요</span></td><td>${item.eligible === true ? '과거 조건 충족' : '관측 요건 대기'}</td><td>${sourceLink(item.source_url)}</td></tr>`).join('') || '<tr><td colspan="5">후보 관측 대기</td></tr>'}</tbody></table></div><p class="small muted">목록가격 관측은 과거 상세 주문 가능일수가 아닙니다. 원문에 없는 판매량이나 주문옵션은 추정하지 않습니다.</p></details>`;
+  }
+  function selectIndex(category, scroll = false, selectedId = null) {
+    state.category = category;
+    const chosen = arr(category.vintages).find((vintage) => vintage.series_id === (selectedId || category.active_series_id));
+    const index = chosen ? { ...category, ...chosen, id: category.id, name: category.name, series_status: chosen.status, status: arr(chosen.series).at(-1)?.status, constituents: chosen.constituents || chosen.holdings || [] } : category;
     state.selected = index;
+    renderVintageControls(category, chosen?.series_id || category.active_series_id);
     $('index-cards').querySelectorAll('button').forEach((button) => button.setAttribute('aria-pressed', String(state.data.indices[Number(button.dataset.index)]?.id === index.id)));
     setText('detail-eyebrow', `${labels[index.id] || index.id} / BASKET DETAIL`);
-    setText('detail-heading', index.name);
+    setText('detail-heading', `${index.name}${chosen?.predecessor_series_id ? ' · 새 바스켓' : chosen?.status === 'archived' ? ' · 이전 바스켓' : ''}`);
     const ready = complete(index, index.basket_count);
     const count = arr(index.series).filter((point) => finite(point.value)).length;
-    setText('detail-status', ready ? count === 1 ? '누적 시작' : '관측 완료' : '부분 관측');
+    setText('detail-status', index.series_status === 'archived' ? '보존 계열' : ready ? count === 1 ? '누적 시작' : '관측 완료' : '부분 관측');
     $('detail-status').className = `pill${ready ? '' : ' warning'}`;
     const meta = [['기준일', index.base_date || '미확보'], ['최근 수집 대상일', index.as_of || '미확보'], ['최근 완전 관측', index.latest_complete ? `${index.latest_complete.date} · ${fmt(index.latest_complete.value)} pt` : '미확보'], ['제품 커버리지', `${index.coverage_count ?? 0} / ${index.basket_count ?? 0}개`], ['비중 커버리지', pct(index.coverage_weight, 1)]];
     $('detail-meta').innerHTML = meta.map(([key, value]) => `<span>${escape(key)}<strong>${escape(value)}</strong></span>`).join('');
@@ -197,7 +227,7 @@
     $('index-observations').innerHTML = arr(index.series).slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map((point) => `<tr><td>${escape(point.date)}</td><td class="numeric">${fmt(point.value)}</td><td class="numeric ${movement(indexDod(index, point))}">${finite(indexDod(index, point)) ? signed(indexDod(index, point)) : '—'}</td><td class="numeric">${escape(point.coverage_count ?? '—')} / ${escape(index.basket_count ?? '—')}</td><td class="numeric">${pct(point.coverage_weight, 1)}</td></tr>`).join('') || '<tr><td class="empty-row" colspan="5">관측 대기</td></tr>';
     const rebalance = index.rebalance || {};
     const statuses = { rebalanced: '새 바스켓 연결 완료', unchanged: '검토 완료 · 구성 유지', initial: '최초 바스켓 · 관측 축적 중', deferred: '요건 확인 중 · 기존 바스켓 유지', completed: '검토 완료', pending: '검토 대기', applied: '새 바스켓 적용', not_due: '현재 바스켓 유지' };
-    $('rebalance').innerHTML = `<p class="rebalance-date">${escape(rebalance.review_due ? '현재 분기 검토 대기' : rebalance.next_review || '일정 미확보')}</p><p>${escape(rebalance.next_review_rule || '')}</p>${rebalance.last_review_date ? `<p class="small muted">최근 검토 ${escape(rebalance.last_review_date)}</p>` : ''}<p>${escape(statuses[rebalance.status] || rebalance.status || '상태 미확보')}</p>${strings(rebalance.notes).map((note) => `<p>${escape(note)}</p>`).join('')}`;
+    $('rebalance').innerHTML = index.series_status === 'archived' ? '<p class="rebalance-date">보존 계열</p><p>이전 바스켓의 원가격·구성과 결측을 그대로 보존합니다. 새 바스켓의 시작 기준과 직접 연결하지 않습니다.</p>' : `<p class="rebalance-date">${escape(rebalance.review_due ? '현재 분기 검토 대기' : rebalance.next_review || '일정 미확보')}</p><p>${escape(rebalance.next_review_rule || '')}</p>${rebalance.last_review_date ? `<p class="small muted">최근 검토 ${escape(rebalance.last_review_date)}</p>` : ''}<p>${escape(statuses[rebalance.status] || rebalance.status || '상태 미확보')}</p>${strings(rebalance.notes).map((note) => `<p>${escape(note)}</p>`).join('')}`;
     $('product-search').value = ''; renderConstituents();
     if (scroll) { $('index-detail').focus({ preventScroll: true }); $('index-detail').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); }
   }
@@ -248,7 +278,7 @@
   function renderMethodology() {
     const method = state.data.methodology || {};
     setText('method-summary', readable(method.summary)); setText('method-formula', readable(method.formula)); setText('price-basis', readable(method.price_basis));
-    list('selection-rules', method.selection_rules); list('rebalance-rules', method.rebalance_rules); list('method-limitations', method.limitations);
+    list('selection-rules', method.selection_rules); list('rebalance-rules', method.rebalance_rules); list('restart-rules', method.restart_rules); list('method-limitations', method.limitations);
   }
   function navigate(scroll = true) {
     if (!state.data) return;
@@ -291,15 +321,18 @@
       const attempt = data.latest_attempt;
       const attemptStatuses = { ok: '완료', success: '완료', partial: '부분 수집', failed: '실패', noop: '기존 당일 관측 유지', no_op: '기존 당일 관측 유지', running: '진행 중' };
       const issueText = (issue) => typeof issue === 'string' ? issue : [issue.stage, issue.group, issue.id || issue.code, issue.reason || issue.error].filter(Boolean).join(' · ');
-      const issues = [...arr(attempt?.errors).map((issue) => `실패: ${issueText(issue)}`), ...arr(attempt?.warnings).map((issue) => `경고: ${issueText(issue)}`)];
+      const archiveIssues = arr(attempt?.archive_errors).map(issueText);
+      const archived = arr(data.archived_observations);
+      const activeStatus = (data.accepted_observation_status || data.run_status) === 'ok' ? '전체 완전 관측' : '커버리지 확인 필요';
+      const issues = [...arr(attempt?.operational_errors ?? attempt?.errors).map((issue) => `실패: ${issueText(issue)}`), ...arr(attempt?.warnings).map((issue) => `경고: ${issueText(issue)}`)];
       $('attempt-notice').hidden = !attempt;
       if (attempt) {
         $('attempt-notice').className = `notice${['failed','partial'].includes(attempt.status) ? ' warning' : ''}`;
-        $('attempt-notice').innerHTML = `<strong>최근 수집 시도: ${escape(attempt.target_observation_date || '날짜 미확보')} · ${escape(attemptStatuses[attempt.status] || attempt.status || '상태 미확보')}</strong><span class="attempt-time">${escape(dateTime(attempt.finished_at || attempt.started_at))}</span>${issues.length ? `<details><summary>수집 사유 ${issues.length}건</summary><ul>${issues.map((reason) => `<li>${escape(reason)}</li>`).join('')}</ul></details>` : ''}${attempt.target_observation_date && attempt.target_observation_date !== data.target_observation_date ? `<p>아래는 ${escape(data.target_observation_date)}의 보존된 관측입니다. 최근 시도 날짜의 가격으로 표시하지 않습니다.</p>` : ''}`;
+        $('attempt-notice').innerHTML = `<strong>최근 전체 수집 시도: ${escape(attempt.target_observation_date || '날짜 미확보')} · ${escape(attemptStatuses[attempt.status] || attempt.status || '상태 미확보')}</strong><span class="attempt-time">${escape(dateTime(attempt.finished_at || attempt.started_at))}</span>${archived.length ? `<p><strong>현재 운영 지수: ${escape(activeStatus)}</strong> · ${escape(data.target_observation_date)} 기준</p><p>이전 계열 관측: ${archived.map((item) => `${escape(item.category_name)} ${escape(item.coverage_count)} / ${escape(item.basket_count)}개 (${escape(item.as_of)})`).join('; ')}. 구성과 과거 이력을 보존하며 관측을 계속합니다. 현재 운영 지수와 별도로 집계합니다.</p>` : ''}${issues.length ? `<details><summary>운영·공통 수집 사유 ${issues.length}건</summary><ul>${issues.map((reason) => `<li>${escape(reason)}</li>`).join('')}</ul></details>` : ''}${archiveIssues.length ? `<details><summary>이전 계열 관측 사유 ${archiveIssues.length}건</summary><ul>${archiveIssues.map((reason) => `<li>${escape(reason)}</li>`).join('')}</ul></details>` : ''}${attempt.target_observation_date && attempt.target_observation_date !== data.target_observation_date ? `<p>아래는 ${escape(data.target_observation_date)}의 보존된 관측입니다. 최근 시도 날짜의 가격으로 표시하지 않습니다.</p>` : ''}`;
       }
-      $('publication-identity').innerHTML = `<dt>보존 관측 실행</dt><dd>${escape(data.run_id || '미확보')}</dd><dt>게시 후보</dt><dd>${escape(data.candidate_id || '미확보')}</dd><dt>원본 상태 SHA-256</dt><dd>${escape(data.canonical_sha256 || '미확보')}</dd>`;
+      $('publication-identity').innerHTML = `<dt>보존 관측 실행</dt><dd>${escape(data.run_id || '미확보')}</dd><dt>게시 후보</dt><dd>${escape(data.candidate_id || '미확보')}</dd><dt>원본 상태 SHA-256</dt><dd>${escape(data.canonical_sha256 || '미확보')}</dd><dt>계열 전환 상태 SHA-256</dt><dd>${escape(data.restart_sha256 || '계열 전환 기록 없음')}</dd>`;
       const statuses = { ok: '수집 완료', complete: '수집 완료', success: '수집 완료', partial: '부분 수집 · 커버리지 확인', failed: '수집 실패 · 이전 관측 확인' };
-      setText('run-status', statuses[data.run_status] || readable(data.run_status));
+      setText('run-status', `현재 운영 지수 · ${statuses[data.accepted_observation_status || data.run_status] || readable(data.run_status)}`);
       $('load-status').hidden = true; $('dashboard').hidden = false;
       renderCards(); renderSources(); renderMethodology(); navigate(false);
     } catch (error) {
