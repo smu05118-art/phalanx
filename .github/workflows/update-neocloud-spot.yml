@@ -23,37 +23,77 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Capture committed GPU index trust anchor
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain --untracked-files=all)"
+          BASE_SHA="$(git rev-parse HEAD)"
+          TRUSTED_GPU_INDEX="$RUNNER_TEMP/neocloud-gpu-index-prior.json"
+          TRUSTED_SOURCE_INDEX="$RUNNER_TEMP/neocloud-source-index-prior.json"
+          git cat-file blob "$BASE_SHA:data/neocloud_spot/gpu-index.json" > "$TRUSTED_GPU_INDEX"
+          git cat-file blob "$BASE_SHA:data/neocloud_spot/index.json" > "$TRUSTED_SOURCE_INDEX"
+          test -s "$TRUSTED_GPU_INDEX"
+          test -s "$TRUSTED_SOURCE_INDEX"
+          printf 'BASE_SHA=%s\n' "$BASE_SHA" >> "$GITHUB_ENV"
+          printf 'TRUSTED_GPU_INDEX=%s\n' "$TRUSTED_GPU_INDEX" >> "$GITHUB_ENV"
+          printf 'TRUSTED_SOURCE_INDEX=%s\n' "$TRUSTED_SOURCE_INDEX" >> "$GITHUB_ENV"
       - name: Validate before collection
         run: |
           python -m unittest discover -s tools/tests -p 'test_*neocloud_spot.py'
           python tools/collect_neocloud_spot.py --check
+          test "$(git hash-object "$TRUSTED_GPU_INDEX")" = "$(git rev-parse "$BASE_SHA:data/neocloud_spot/gpu-index.json")"
+          test "$(git hash-object "$TRUSTED_SOURCE_INDEX")" = "$(git rev-parse "$BASE_SHA:data/neocloud_spot/index.json")"
+          python tools/build_neocloud_gpu_index.py --check --trusted-existing "$TRUSTED_GPU_INDEX" --trusted-source-index "$TRUSTED_SOURCE_INDEX"
           node --check ui/patch.js
           node tools/tests/test_neocloud_spot_dom.cjs
       - name: Append completed official hourly LAST observations
-        run: python tools/collect_neocloud_spot.py --mode refresh
+        run: |
+          git diff --quiet "$BASE_SHA" -- data/neocloud_spot
+          test -z "$(git status --porcelain --untracked-files=all -- data/neocloud_spot)"
+          test "$(git hash-object "$TRUSTED_SOURCE_INDEX")" = "$(git rev-parse "$BASE_SHA:data/neocloud_spot/index.json")"
+          python tools/collect_neocloud_spot.py --mode refresh
+      - name: Chain-link the equal-family GPU price index
+        run: |
+          test "$(git hash-object "$TRUSTED_GPU_INDEX")" = "$(git rev-parse "$BASE_SHA:data/neocloud_spot/gpu-index.json")"
+          test "$(git hash-object "$TRUSTED_SOURCE_INDEX")" = "$(git rev-parse "$BASE_SHA:data/neocloud_spot/index.json")"
+          python tools/build_neocloud_gpu_index.py --trusted-existing "$TRUSTED_GPU_INDEX" --trusted-source-index "$TRUSTED_SOURCE_INDEX"
       - name: Validate after collection
         run: |
           python tools/collect_neocloud_spot.py --check
+          test "$(git hash-object "$TRUSTED_GPU_INDEX")" = "$(git rev-parse "$BASE_SHA:data/neocloud_spot/gpu-index.json")"
+          test "$(git hash-object "$TRUSTED_SOURCE_INDEX")" = "$(git rev-parse "$BASE_SHA:data/neocloud_spot/index.json")"
+          python tools/build_neocloud_gpu_index.py --check --trusted-existing "$TRUSTED_GPU_INDEX" --trusted-source-index "$TRUSTED_SOURCE_INDEX"
           python -m unittest discover -s tools/tests -p 'test_*neocloud_spot.py'
           node tools/tests/test_neocloud_spot_dom.cjs
           git diff --check
       - name: Commit only normalized NeoCloud data when changed
         run: |
-          if test -z "$(git status --porcelain -- data/neocloud_spot/index.json data/neocloud_spot/history data/neocloud_spot/imported-average)"; then
+          if test -z "$(git status --porcelain -- data/neocloud_spot/index.json data/neocloud_spot/gpu-index.json data/neocloud_spot/history data/neocloud_spot/imported-average)"; then
             exit 0
           fi
           test -z "$(git diff --cached --name-only)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- data/neocloud_spot/index.json data/neocloud_spot/history data/neocloud_spot/imported-average
+          git add -- data/neocloud_spot/index.json data/neocloud_spot/gpu-index.json data/neocloud_spot/history data/neocloud_spot/imported-average
           python - <<'PY'
           import subprocess
           paths = subprocess.check_output(['git', 'diff', '--cached', '--name-only'], text=True).splitlines()
-          assert paths and all(p == 'data/neocloud_spot/index.json' or p.startswith(('data/neocloud_spot/history/', 'data/neocloud_spot/imported-average/')) for p in paths), paths
+          assert paths and all(p in ('data/neocloud_spot/index.json', 'data/neocloud_spot/gpu-index.json') or p.startswith(('data/neocloud_spot/history/', 'data/neocloud_spot/imported-average/')) for p in paths), paths
           PY
           git commit -m 'data: official Nebius Spot Prices'
           git pull --rebase origin main
+          rebased_base="$(git rev-parse HEAD^)"
+          git diff --quiet "$BASE_SHA" "$rebased_base" -- data/neocloud_spot || {
+            echo 'NeoCloud data changed upstream; abort and restart from the new main' >&2
+            exit 1
+          }
+          test "$(git hash-object "$TRUSTED_GPU_INDEX")" = "$(git rev-parse "$BASE_SHA:data/neocloud_spot/gpu-index.json")"
+          test "$(git hash-object "$TRUSTED_SOURCE_INDEX")" = "$(git rev-parse "$BASE_SHA:data/neocloud_spot/index.json")"
+          test "$(git rev-parse "$BASE_SHA:data/neocloud_spot/gpu-index.json")" = "$(git rev-parse "$rebased_base:data/neocloud_spot/gpu-index.json")"
+          test "$(git rev-parse "$BASE_SHA:data/neocloud_spot/index.json")" = "$(git rev-parse "$rebased_base:data/neocloud_spot/index.json")"
           python tools/collect_neocloud_spot.py --check
+          python tools/build_neocloud_gpu_index.py --check --trusted-existing "$TRUSTED_GPU_INDEX" --trusted-source-index "$TRUSTED_SOURCE_INDEX"
           python -m unittest discover -s tools/tests -p 'test_*neocloud_spot.py'
           node tools/tests/test_neocloud_spot_dom.cjs
           git diff --check

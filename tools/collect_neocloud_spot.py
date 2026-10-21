@@ -30,9 +30,14 @@ AVG = 'METHOD_AVG_PRICE'
 LIMIT = 5 * 1024 * 1024 - 1
 RESPONSE_LIMIT = 16 * 1024 * 1024
 SHARD_LIMIT = 4 * 1024 * 1024
+ARCHIVE_ROW_LIMIT = 5_000_000
+ARCHIVE_BYTE_LIMIT = 1024 * 1024 * 1024
 FAMILIES = {'gpu-b300-sxm': 'B300', 'gpu-b200-sxm': 'B200', 'gpu-b200-sxm-a': 'B200',
             'gpu-h200-sxm': 'H200', 'gpu-h100-sxm': 'H100', 'gpu-rtx6000': 'RTX PRO 6000',
             'gpu-rtx6000-a': 'RTX PRO 6000'}
+PLATFORM_RE = re.compile(r'gpu-[a-z0-9]+(?:-[a-z0-9]+)*')
+TITLE_RE = re.compile(r'Preemptible NVIDIA(?:®)?\s+(.+?)(?:\s+NVLink)?')
+FAMILY_RE = re.compile(r'[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}')
 VERIFIED_FIXTURE_SHA256 = {
     AVG: '1594b1e56042e2762a9cc9656ebbc6ca8f24bd1cf2a7c1ff7df5e58f4e6df909',
     LAST: '614ef24e7449a27c016d3bedd2284c210858e4404e8ed94ad3568433dcf40c67',
@@ -173,17 +178,31 @@ def validate_pages(all_pages):
         envelope(obj)
 
 
+def units(currency, unit):
+    require(currency == 'usd' and unit == 'GPU hour', 'invalid currency/unit')
+
+
+def product_family(platform, product_title):
+    """Derive a stable family from Nebius' official product identity."""
+    string(platform)
+    title = string(product_title)
+    require(PLATFORM_RE.fullmatch(platform) is not None, 'unsupported GPU platform: ' + platform)
+    match = TITLE_RE.fullmatch(title)
+    require(match is not None, 'unsupported GPU product title: ' + title)
+    label = match.group(1).strip()
+    require(FAMILY_RE.fullmatch(label) is not None, 'invalid GPU family label: ' + label)
+    known = FAMILIES.get(platform)
+    require(known is None or known == label, 'platform/title family mismatch: ' + platform)
+    return known or label
+
+
 def metadata(row):
     fields(row['computeInstance'], ('platform',))
     platform = string(row['computeInstance']['platform'])
-    require(platform in FAMILIES, 'unsupported platform: ' + platform)
-    return dict(sku_id=string(row['skuId']), product_title=string(row['productTitle']),
-                region=string(row['region']), platform=platform, family=FAMILIES[platform],
+    title = string(row['productTitle'])
+    return dict(sku_id=string(row['skuId']), product_title=title,
+                region=string(row['region']), platform=platform, family=product_family(platform, title),
                 currency='USD', unit='USD/GPU-hour')
-
-
-def units(currency, unit):
-    require(currency == 'usd' and unit == 'GPU hour', 'invalid currency/unit')
 
 
 def parse_current(all_pages, collected):
@@ -263,7 +282,7 @@ META = {'sku_id', 'product_title', 'region', 'platform', 'family', 'currency', '
 
 def validate_row(row, history):
     fields(row, META | ({'interval_start', 'interval_end', 'method', 'granularity'} if history else {'effective_time'}))
-    require(row['platform'] in FAMILIES and row['family'] == FAMILIES[row['platform']], 'family mismatch')
+    require(row['family'] == product_family(row['platform'], row['product_title']), 'family mismatch')
     require(row['currency'] == 'USD' and row['unit'] == 'USD/GPU-hour', 'archive unit mismatch')
     for k in ('sku_id', 'product_title', 'region'):
         string(row[k])
@@ -330,7 +349,11 @@ def read_index(root):
     fields(index, ('schema_version', 'source_urls', 'supported_families', 'current', 'snapshot_time', 'collected_time',
                    'method', 'granularity', 'shards', 'latest_complete_timestamp', 'imported_average_latest_timestamp'))
     require(type(index['schema_version']) is int and index['schema_version'] == 2, 'schema version')
-    require(index['source_urls'] == [PAGE, DOCS, CURRENT, SERIES] and index['supported_families'] == sorted(set(FAMILIES.values())), 'source/family contract')
+    require(index['source_urls'] == [PAGE, DOCS, CURRENT, SERIES], 'source contract')
+    require(type(index['supported_families']) is list and index['supported_families'] and
+            index['supported_families'] == sorted(set(index['supported_families'])) and
+            all(type(value) is str and FAMILY_RE.fullmatch(value) is not None
+                for value in index['supported_families']), 'family catalogue contract')
     require(index['method'] == LAST and index['granularity'] == HOUR, 'index aggregation')
     require(type(index['current']) is list and index['current'], 'current missing')
     for r in index['current']:
@@ -340,6 +363,8 @@ def read_index(root):
             index['collected_time'] == max((r['collected_time'] for r in index['current']), key=stamp), 'index timestamps')
     require(type(index['shards']) is list, 'shards must be array')
     seen, groups = set(), {}
+    aggregate_rows = 0
+    aggregate_bytes = 0
     for entry in index['shards']:
         fields(entry, ('path', 'sha256', 'count', 'method', 'start', 'end'))
         p = entry['path']
@@ -351,7 +376,14 @@ def read_index(root):
         seen.add(p)
         target = root / p
         require(not target.is_symlink() and target.is_file(), 'missing or unsafe shard: ' + p)
-        require(target.stat().st_size <= LIMIT, 'stored shard exceeds size limit: ' + p)
+        shard_size = target.stat().st_size
+        require(shard_size <= LIMIT, 'stored shard exceeds size limit: ' + p)
+        aggregate_rows += entry['count']
+        aggregate_bytes += shard_size
+        require(aggregate_rows <= ARCHIVE_ROW_LIMIT,
+                'aggregate archive row limit exceeded')
+        require(aggregate_bytes <= ARCHIVE_BYTE_LIMIT,
+                'aggregate archive byte limit exceeded')
         groups.setdefault(group, []).append((part, entry))
     for parts in groups.values():
         parts.sort(key=lambda item: item[0])
@@ -395,6 +427,10 @@ def read_archive(root):
     rows = read_entries(root, index['shards'])
     for method, field in [(LAST, 'latest_complete_timestamp'), (AVG, 'imported_average_latest_timestamp')]:
         require(index[field] == max((r['interval_end'] for r in rows if r['method'] == method), default=None), 'latest timestamp mismatch')
+    observed_families = sorted(
+        {r['family'] for r in index['current']} | {r['family'] for r in rows})
+    require(index['supported_families'] == observed_families,
+            'family catalogue/archive mismatch')
     return index, rows
 
 
@@ -455,9 +491,12 @@ def encode_group(group, observations):
 _UNSET = object()
 
 
-def build(root, current, incoming, old_index=_UNSET):
+def build(root, current, incoming, old_index=_UNSET, old_rows=_UNSET):
     if old_index is _UNSET:
-        old_index = read_index(root)
+        old_index, old_rows = read_archive(root)
+    else:
+        require(old_rows is not _UNSET,
+                'old archive rows must accompany old index')
     current = reconcile_current(old_index, current)
     require(incoming, 'no incoming observations')
     for row in incoming:
@@ -466,7 +505,13 @@ def build(root, current, incoming, old_index=_UNSET):
     old_entries = old_index['shards'] if old_index else []
     replaced_entries = [entry for entry in old_entries if entry_group(entry)[0] in touched]
     carried_entries = [entry for entry in old_entries if entry_group(entry)[0] not in touched]
-    rows = merge(read_entries(root, replaced_entries), incoming)
+    replaced_groups = {entry_group(entry)[0] for entry in replaced_entries}
+    carried_groups = {entry_group(entry)[0] for entry in carried_entries}
+    replaced_rows = [row for row in old_rows if row_group(row) in replaced_groups]
+    carried_rows = [row for row in old_rows if row_group(row) in carried_groups]
+    require(len(replaced_rows) + len(carried_rows) == len(old_rows),
+            'old archive rows do not match manifest groups')
+    rows = merge(replaced_rows, incoming)
     require(all(row_group(row) in touched for row in rows), 'unexpected touched shard group')
     files, new_entries = {}, []
     for group in sorted(touched):
@@ -475,7 +520,17 @@ def build(root, current, incoming, old_index=_UNSET):
         new_entries.extend(group_entries)
     shards = sorted(carried_entries + new_entries,
                     key=lambda entry: (entry_group(entry)[2], entry_group(entry)[1]))
-    index = dict(schema_version=2, source_urls=[PAGE, DOCS, CURRENT, SERIES], supported_families=sorted(set(FAMILIES.values())),
+    require(sum(entry['count'] for entry in shards) <= ARCHIVE_ROW_LIMIT,
+            'aggregate archive row limit exceeded')
+    aggregate_bytes = sum(len(payload) for payload in files.values())
+    aggregate_bytes += sum((root / entry['path']).stat().st_size
+                           for entry in carried_entries)
+    require(aggregate_bytes <= ARCHIVE_BYTE_LIMIT,
+            'aggregate archive byte limit exceeded')
+    supported = {r['family'] for r in current}
+    supported.update(r['family'] for r in rows)
+    supported.update(r['family'] for r in carried_rows)
+    index = dict(schema_version=2, source_urls=[PAGE, DOCS, CURRENT, SERIES], supported_families=sorted(supported),
                  current=current, snapshot_time=min((r['source_snapshot_time'] for r in current), key=stamp),
                  collected_time=max((r['collected_time'] for r in current), key=stamp), method=LAST, granularity=HOUR, shards=shards,
                  latest_complete_timestamp=max((e['end'] for e in shards if e['method'] == LAST), default=None),
@@ -569,7 +624,7 @@ def fixture(path):
 def collect(args):
     now = args.collected_at or iso(dt.datetime.now(dt.timezone.utc))
     stamp(now)
-    old_index = read_index(args.data)
+    old_index, old_rows = read_archive(args.data)
     if args.mode in ('import-avg', 'fixture-last'):
         require(args.current_fixture and args.series_fixture, 'both fixture paths required')
         cp, hp = fixture(args.current_fixture), fixture(args.series_fixture)
@@ -592,7 +647,7 @@ def collect(args):
     current = parse_current(cp, now)
     rows = parse_history(hp, method, now)
     require(rows, 'no completed history observations')
-    return build(args.data, current, rows, old_index)
+    return build(args.data, current, rows, old_index, old_rows)
 
 
 def main(argv=None):
