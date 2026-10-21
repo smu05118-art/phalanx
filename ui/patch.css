@@ -390,3 +390,24 @@ header{border-bottom:1px solid var(--bd);margin-bottom:10px;padding-bottom:10px;
 .ncs-tracker select{font:inherit;color:inherit;background:var(--s2,#23283b);border:1px solid currentColor;border-radius:6px;padding:8px;max-width:100%}
 .ncs-tracker a{color:inherit;text-decoration:underline;text-underline-offset:3px}
 :root[data-theme="light"] .ncs-tracker select{background:var(--s2,#eef1f7)}
+
+/* NEBIUS CUSTOMER RELATIONSHIP MAP */
+.ncm-panel{box-sizing:border-box;min-width:0;max-width:100%;margin:20px 0;padding:20px;border:1px solid var(--bd,#667085);border-radius:12px;background:var(--s1,#182032);color:var(--tx,#edf2fa);overflow-wrap:anywhere}
+.ncm-title{margin:0 0 10px;font-size:20px}
+.ncm-scope,.ncm-meta{font-size:13px;line-height:1.6}
+.ncm-controls{display:grid;grid-template-columns:minmax(0,2fr) repeat(4,minmax(0,1fr)) auto;gap:12px;align-items:end;margin:18px 0}
+.ncm-label{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:13px}
+.ncm-input,.ncm-select,.ncm-button{box-sizing:border-box;min-width:0;max-width:100%;min-height:44px;font:inherit;color:inherit;background:var(--s2,#23283b);border:1px solid currentColor;border-radius:6px;padding:8px}
+.ncm-button{cursor:pointer;white-space:normal}
+.ncm-input:focus-visible,.ncm-select:focus-visible,.ncm-button:focus-visible,.ncm-source:focus-visible{outline:3px solid var(--a2,#3d8bfd);outline-offset:3px}
+.ncm-count,.ncm-state{line-height:1.6}
+.ncm-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.ncm-card{min-width:0;padding:16px;border:1px solid var(--bd,#667085);border-radius:8px}
+.ncm-company{margin:0 0 8px;font-size:18px}
+.ncm-summary,.ncm-evidence,.ncm-status{line-height:1.6;font-size:14px}
+.ncm-source{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.ncm-subtitle{margin:20px 0 10px}
+.ncm-timeline{padding-inline-start:22px;margin:0}
+.ncm-change{padding:6px 0;line-height:1.6}
+@media(max-width:720px){.ncm-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.ncm-cards{grid-template-columns:minmax(0,1fr)}.ncm-panel{padding:14px}}
+@media(max-width:420px){.ncm-controls{grid-template-columns:minmax(0,1fr)}.ncm-panel{padding:10px}.ncm-card{padding:12px}.ncm-title{font-size:18px}.ncm-button{width:100%}}

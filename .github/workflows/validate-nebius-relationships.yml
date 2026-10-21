@@ -1,0 +1,70 @@
+name: Validate Nebius Relationships
+
+on:
+  pull_request:
+    paths:
+      - 'data/nebius_relationships/**'
+      - 'tools/nebius_relationships.schema.json'
+      - 'tools/nebius_relationships_contract.py'
+      - 'tools/build_nebius_relationships.py'
+      - 'tools/validate_nebius_relationships.py'
+      - 'tools/tests/test_nebius_relationships.py'
+      - 'tools/tests/test_nebius_relationships_dom.cjs'
+      - 'tools/tests/test_neocloud_spot_dom.cjs'
+      - 'ui/patch.js'
+      - 'ui/patch.css'
+      - '.github/workflows/validate-nebius-relationships.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-nebius-relationships-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate deterministic dataset
+        run: |
+          python3 -m json.tool tools/nebius_relationships.schema.json >/dev/null
+          python3 tools/build_nebius_relationships.py \
+            --input data/nebius_relationships/reviewed.json \
+            --output data/nebius_relationships \
+            --check
+          python3 tools/validate_nebius_relationships.py \
+            --input data/nebius_relationships/reviewed.json \
+            --output data/nebius_relationships
+      - name: Run relationship tests
+        run: |
+          python3 -m unittest discover \
+            -s tools/tests \
+            -p 'test_nebius_relationships.py' \
+            -v
+          node --check ui/patch.js
+          node tools/tests/test_neocloud_spot_dom.cjs
+          node tools/tests/test_nebius_relationships_dom.cjs
+      - name: Check committed patch whitespace
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git diff --check "$BASE_SHA...$HEAD_SHA"
+          else
+            git diff --check HEAD^ HEAD
+          fi
