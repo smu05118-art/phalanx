@@ -1709,3 +1709,269 @@ safe('repaint',function(){ if(P.companies&&P.companies.length){ buildCurRow(); r
   function start(){schedule();if(typeof MutationObserver==='function'){new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});new MutationObserver(function(){if(cached)notifyModel(cached);}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
+
+/* NEBIUS CUSTOMER RELATIONSHIP MAP · 독립 데이터 계약 v1 */
+(function () {
+  'use strict';
+  if (window.PHXNebiusCustomers) return;
+  var PREFIX = 'data/nebius_relationships/', DATASET = 'nebius-relationships', MAX_BYTES = 5 * 1024 * 1024;
+  var MAX_TOTAL = 8 * 1024 * 1024;
+  var pending = null, cached = null, scheduled = false;
+  var RECORD_KEYS = ['category','change_kind','delivery_mode','disclosure_class','display_date','event_date','event_role','evidence_class','id','name','relationship_status','service','service_live_status','source','summary_ko','workload'];
+  var SOURCE_KEYS = ['collected','effective','expires','locator','provider_terms_apply','published','publisher','redistribution_scope','response_bytes','response_sha256','source_license','title','type','updated','url'];
+  var ENUMS = {
+    category:['HYPERSCALER','MODEL_DEVELOPER'], service:['AI_INFRASTRUCTURE'], workload:['AI_COMPUTE_UNSPECIFIED'],
+    delivery_mode:['DEDICATED'], disclosure_class:['NEBIUS_ANNOUNCED'],
+    evidence_class:['PRIMARY_FIRST_PARTY_PROVIDER'], relationship_status:['ANNOUNCED_CONTRACT','ANNOUNCED_EXPANSION'],
+    service_live_status:['UNKNOWN'], event_role:['RELATIONSHIP_ANNOUNCEMENT','RELATIONSHIP_EXPANSION_ANNOUNCEMENT'],
+    change_kind:['INITIAL_PUBLICATION']
+  };
+  var LABELS = {HYPERSCALER:'하이퍼스케일러',MODEL_DEVELOPER:'모델 개발사',AI_INFRASTRUCTURE:'AI 인프라',AI_COMPUTE_UNSPECIFIED:'AI 컴퓨트',DEDICATED:'전용',NEBIUS_ANNOUNCED:'Nebius 공개',PRIMARY_FIRST_PARTY_PROVIDER:'공급자 1차 출처',ANNOUNCED_CONTRACT:'계약 발표',ANNOUNCED_EXPANSION:'확대 계약 발표',RELATIONSHIP_ANNOUNCEMENT:'관계 발표',RELATIONSHIP_EXPANSION_ANNOUNCEMENT:'관계 확대 발표',INITIAL_PUBLICATION:'데이터 최초 등재'};
+  function fail(kind) { var e = Error(kind); e.ncmKind = kind; throw e; }
+  function check(ok) { if (!ok) fail('integrity'); }
+  function object(x) { check(x && typeof x === 'object' && !Array.isArray(x)); }
+  function string(x) { var length = typeof x === 'string' ? Array.from(x).length : 0; check(length > 0 && length <= 4096 && !/[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(x)); return x; }
+  function exact(x, names) { object(x); check(Object.keys(x).sort().join('\n') === names.slice().sort().join('\n')); }
+  function integer(x, minimum, maximum) { check(Number.isSafeInteger(x) && x >= minimum && x <= maximum); return x; }
+  function sha(x) { check(/^[0-9a-f]{64}$/.test(string(x))); return x; }
+  function enumValue(x, choices) { string(x); check(choices.indexOf(x) >= 0); return x; }
+  function version(x) { object(x); if (x.schema_version !== 1) fail('schema'); }
+  function localURL(path) {
+    // 정규식 검증을 URL 정규화 전에 수행: 인코딩·점 경로도 허용하지 않는다.
+    check(typeof path === 'string' && (path === PREFIX + 'index.json' ||
+      /^shards\/[a-f0-9]{64}\.json$/.test(path)));
+    var url = new URL(path === PREFIX + 'index.json' ? path : PREFIX + path, location.href);
+    check(url.origin === location.origin && !url.search && !url.hash && !url.username && !url.password);
+    return url;
+  }
+  function evidenceURL(value) {
+    string(value);
+    check(/^https:\/\/(?:www\.)?nebius\.com(?:\/[^\s\\]*)?$/.test(value));
+    var url;
+    try { url = new URL(value); } catch (_) { fail('integrity'); }
+    check(url.protocol === 'https:' && ['nebius.com', 'www.nebius.com'].indexOf(url.hostname) >= 0 &&
+      !url.username && !url.password && !url.port && !/[\u0000-\u0020\\]/.test(value));
+    return url.href;
+  }
+  async function request(path, budget) {
+    var url = localURL(path), controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 12000), reader;
+    try {
+      var response = await fetch(url.href, {credentials:'omit', referrerPolicy:'no-referrer', redirect:'error', signal:controller.signal});
+      if (!response.ok) fail('unavailable');
+      check(!response.url || response.url === url.href);
+      // 스트림에서 바이트 상한을 강제하며, 미지원 환경에서는 무제한 버퍼 읽기를 하지 않는다.
+      if (!response.body || typeof response.body.getReader !== 'function') fail('unavailable');
+      var declared = response.headers && response.headers.get('content-length');
+      check(!declared || (/^\d+$/.test(declared) && Number(declared) <= MAX_BYTES));
+      reader = response.body.getReader();
+      var chunks = [], length = 0;
+      for (;;) {
+        var part = await reader.read(); if (part.done) break;
+        length += part.value.byteLength; budget.bytes += part.value.byteLength;
+        check(length <= MAX_BYTES && budget.bytes <= MAX_TOTAL);
+        chunks.push(part.value);
+      }
+      var bytes = new Uint8Array(length), offset = 0;
+      chunks.forEach(function (chunk) { bytes.set(chunk, offset); offset += chunk.byteLength; });
+      return bytes;
+    } catch (e) {
+      if (reader) { try { await reader.cancel(); } catch (_) {} }
+      controller.abort(); throw e;
+    } finally { clearTimeout(timer); }
+  }
+  function canonical(value) {
+    function ordered(item) {
+      if (Array.isArray(item)) return item.map(ordered);
+      if (item && typeof item === 'object') {
+        var copy = {}; Object.keys(item).sort().forEach(function (key) { copy[key] = ordered(item[key]); }); return copy;
+      }
+      return item;
+    }
+    return JSON.stringify(ordered(value), null, 2) + '\n';
+  }
+  function parse(bytes) {
+    try {
+      var text = new TextDecoder('utf-8', {fatal:true,ignoreBOM:true}).decode(bytes), value = JSON.parse(text);
+      check(text === canonical(value)); return value;
+    } catch (_) { fail('integrity'); }
+  }
+  async function digest(bytes) {
+    if (!window.crypto || !window.crypto.subtle) fail('integrity');
+    try {
+      return Array.from(new Uint8Array(await window.crypto.subtle.digest('SHA-256', bytes)))
+        .map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    } catch (_) { fail('integrity'); }
+  }
+  function timestamp(value) {
+    string(value); var match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?Z$/.exec(value);
+    check(match && value.slice(0,4) !== '0000');
+    var time = Date.parse(value); check(Number.isFinite(time) && new Date(time).toISOString().slice(0,19) === value.slice(0,19));
+    return match[1] + '.' + (match[2] || '').padEnd(6, '0') + 'Z';
+  }
+  function record(row, ids) {
+    exact(row, RECORD_KEYS); check(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(string(row.id)) && !ids.has(row.id)); ids.add(row.id);
+    ['name','summary_ko'].forEach(function (key) { string(row[key]); });
+    Object.keys(ENUMS).forEach(function (key) { enumValue(row[key], ENUMS[key]); });
+    check(/^\d{4}-\d{2}-\d{2}$/.test(row.event_date));
+    var date = new Date(row.event_date + 'T00:00:00Z');
+    check(Number.isFinite(date.getTime()) && date.toISOString().slice(0,10) === row.event_date &&
+      row.display_date === row.event_date.slice(2).replace(/-/g, ''));
+    exact(row.source, SOURCE_KEYS);
+    ['url','publisher','title','type','published','updated','collected','response_sha256','locator','effective','expires','source_license','redistribution_scope']
+      .forEach(function (key) { string(row.source[key]); });
+    evidenceURL(row.source.url);
+    var published = timestamp(row.source.published), updated = timestamp(row.source.updated), collected = timestamp(row.source.collected);
+    check(published <= updated && updated <= collected && row.event_date === row.source.published.slice(0,10));
+    check(row.source.publisher === 'Nebius Group' && row.source.type === 'COMPANY_NEWSROOM_PRIMARY');
+    sha(row.source.response_sha256); integer(row.source.response_bytes, 1, MAX_BYTES);
+    check(row.source.locator === 'UNKNOWN' && row.source.effective === 'UNKNOWN' && row.source.expires === 'UNKNOWN' && row.source.source_license === 'UNKNOWN');
+    check(row.source.provider_terms_apply === true && row.source.redistribution_scope === 'FACTUAL_PARAPHRASE_AND_LINK_ONLY');
+    return row;
+  }
+  function load() {
+    if (cached) return Promise.resolve(cached);
+    if (pending) return pending;
+    pending = (async function () {
+      var budget = {bytes:0}, manifest = parse(await request(PREFIX + 'index.json', budget));
+      version(manifest);
+      exact(manifest, ['schema_version','dataset','record_count','source','shards']);
+      check(manifest.dataset === DATASET && manifest.record_count === 2);
+      exact(manifest.source, ['path','sha256','bytes','record_count']);
+      check(manifest.source.path === 'reviewed.json'); sha(manifest.source.sha256);
+      integer(manifest.source.bytes, 1, MAX_BYTES); check(manifest.source.record_count === manifest.record_count);
+      check(Array.isArray(manifest.shards) && manifest.shards.length === 1);
+      var paths = new Set(), count = 0;
+      // 전체 선언을 먼저 검사하여 잘못된 다음 shard를 만나기 전에도 부분 렌더하지 않는다.
+      manifest.shards.forEach(function (entry) {
+        exact(entry, ['path','sha256','bytes','record_count']); localURL(entry.path);
+        check(!paths.has(entry.path)); paths.add(entry.path); sha(entry.sha256);
+        check(entry.path === 'shards/' + entry.sha256 + '.json'); integer(entry.bytes, 1, MAX_BYTES);
+        check(entry.record_count === 2); count += entry.record_count;
+      });
+      check(count === manifest.record_count);
+      check(manifest.source.sha256 === manifest.shards[0].sha256 &&
+        manifest.source.bytes === manifest.shards[0].bytes &&
+        manifest.source.record_count === manifest.shards[0].record_count);
+      var rows = [], ids = new Set();
+      for (var entry of manifest.shards) {
+        var bytes = await request(entry.path, budget);
+        check(bytes.byteLength === entry.bytes && await digest(bytes) === entry.sha256);
+        var shard = parse(bytes); version(shard);
+        exact(shard, ['schema_version','dataset','record_count','records']);
+        check(shard.dataset === DATASET && shard.record_count === entry.record_count && Array.isArray(shard.records) && shard.records.length === entry.record_count);
+        shard.records.forEach(function (row) { rows.push(record(row, ids)); });
+      }
+      check(rows.length === manifest.record_count && rows.every(function (row, index) { return !index || rows[index - 1].id < row.id; }));
+      check(rows.length === 2 && rows[0].id === 'meta' && rows[1].id === 'microsoft');
+      cached = rows; return rows;
+    })().finally(function () { pending = null; });
+    return pending;
+  }
+  function el(tag, cls, text) {
+    var node = document.createElement(tag); if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text; return node;
+  }
+  function label(value) { return value === 'UNKNOWN' ? '미확인 (UNKNOWN)' : (LABELS[value] || value); }
+  function humanStamp(value) { return value.slice(2,10).replace(/-/g, ''); }
+  function message(panel, kind, text) {
+    var status = el('p', 'ncm-state', text); status.setAttribute('role', 'status');
+    panel.setAttribute('data-state', kind); panel.appendChild(status);
+  }
+  function draw(panel, rows) {
+    panel.setAttribute('data-state', rows.length ? 'ready' : 'empty');
+    var controls = el('div', 'ncm-controls'), query = el('input', 'ncm-input');
+    query.type = 'search'; query.placeholder = '회사명 검색'; query.value = '';
+    var searchLabel = el('label', 'ncm-label', '회사 검색'); searchLabel.appendChild(query); controls.appendChild(searchLabel);
+    var filters = {};
+    [['category','분류'],['service','서비스'],['workload','워크로드'],['disclosure_class','공개 분류']].forEach(function (pair) {
+      var field = pair[0], holder = el('label', 'ncm-label', pair[1]), select = el('select', 'ncm-select');
+      var all = el('option', '', '전체'); all.value = ''; select.appendChild(all);
+      Array.from(new Set(rows.map(function (r) { return r[field]; }))).sort().forEach(function (value) {
+        var option = el('option', '', label(value)); option.value = value; select.appendChild(option);
+      });
+      select.value = ''; select.onchange = update; filters[field] = select; holder.appendChild(select); controls.appendChild(holder);
+    });
+    var reset = el('button', 'ncm-button', '초기화'); reset.type = 'button';
+    reset.onclick = function () { query.value = ''; Object.keys(filters).forEach(function (key) { filters[key].value = ''; }); update(); };
+    controls.appendChild(reset); panel.appendChild(controls); query.oninput = update;
+    var count = el('p', 'ncm-count'); count.setAttribute('role', 'status'); count.setAttribute('aria-live', 'polite'); panel.appendChild(count);
+    var cards = el('div', 'ncm-cards'); panel.appendChild(cards);
+    panel.appendChild(el('h4', 'ncm-subtitle', '최신 변경 · 관계 사건일순 (검색 조건 적용)'));
+    var timeline = el('ol', 'ncm-timeline'); panel.appendChild(timeline);
+    function update() {
+      var term = query.value.trim().toLocaleLowerCase();
+      var shown = rows.filter(function (r) {
+        return r.name.toLocaleLowerCase().includes(term) && Object.keys(filters).every(function (k) { return !filters[k].value || filters[k].value === r[k]; });
+      });
+      count.textContent = shown.length + '개 결과 / 검토된 ' + rows.length + '개'; cards.replaceChildren(); timeline.replaceChildren();
+      if (!shown.length) cards.appendChild(el('p', 'ncm-state', rows.length ? '조건에 맞는 관계가 없습니다.' : '공개된 검토 기록이 없습니다.'));
+      shown.forEach(function (r) {
+        var card = el('article', 'ncm-card'); card.appendChild(el('h4', 'ncm-company', r.name));
+        card.appendChild(el('p', 'ncm-meta', '분류: ' + label(r.category) + ' · 서비스: ' + label(r.service) + ' · 워크로드: ' + label(r.workload)));
+        card.appendChild(el('p', 'ncm-summary', r.summary_ko));
+        card.appendChild(el('p', 'ncm-meta', '전달 방식: ' + label(r.delivery_mode)));
+        card.appendChild(el('p', 'ncm-evidence', '근거 분류: ' + label(r.evidence_class) + ' · 공개 분류: ' + label(r.disclosure_class)));
+        card.appendChild(el('p', 'ncm-status', '관계 상태: ' + label(r.relationship_status) + ' · 서비스 가동 상태: ' + label(r.service_live_status)));
+        card.appendChild(el('p', 'ncm-meta', '관계 사건일: ' + r.display_date + ' · 역할: ' + label(r.event_role)));
+        var link = el('a', 'ncm-source', r.source.publisher + ' · 원문 보기');
+        link.setAttribute('href', evidenceURL(r.source.url)); link.setAttribute('target', '_blank'); link.setAttribute('rel', 'noopener noreferrer');
+        link.setAttribute('aria-label', r.source.publisher + ' 원문 보기 (새 창)'); card.appendChild(link);
+        card.appendChild(el('p', 'ncm-meta', '출처 발행: ' + humanStamp(r.source.published) + ' · 수정: ' + humanStamp(r.source.updated) + ' · 수집: ' + humanStamp(r.source.collected)));
+        cards.appendChild(card);
+      });
+      shown.slice().sort(function (a, b) { return b.event_date.localeCompare(a.event_date) || a.id.localeCompare(b.id); }).forEach(function (r) {
+        timeline.appendChild(el('li', 'ncm-change', r.display_date + ' · ' + r.name + ' · ' + label(r.change_kind) + ' · ' + label(r.event_role)));
+      });
+    }
+    update();
+  }
+  function refresh(panel) {
+    panel.replaceChildren(el('h3', 'ncm-title', 'Nebius 고객 관계 맵'));
+    panel.appendChild(el('p', 'ncm-scope', '공개 1차 출처로 검토한 관계만 표시하며 전체 고객 목록이 아닙니다. 공개·근거 분류와 실제 서비스 가동 여부는 별개이며, UNKNOWN은 미확인입니다.'));
+    panel.setAttribute('aria-busy', 'true'); message(panel, 'loading', '관계 데이터 불러오는 중…');
+    load().then(function (rows) {
+      if (!panel.isConnected) return;
+      panel.querySelector('.ncm-state').remove(); draw(panel, rows);
+    }).catch(function (error) {
+      if (!panel.isConnected) return;
+      var old = panel.querySelector('.ncm-state'); if (old) old.remove();
+      var kind = error.ncmKind || 'unavailable';
+      message(panel, kind, kind === 'schema' ? '지원하지 않는 데이터 스키마입니다.' : kind === 'integrity' ? '데이터 무결성 확인 실패 · 표시를 중단했습니다.' : '관계 데이터를 불러올 수 없습니다.');
+      var retry = el('button', 'ncm-button', '다시 시도'); retry.type = 'button'; retry.onclick = function () { refresh(panel); }; panel.appendChild(retry);
+    }).finally(function () { panel.removeAttribute('aria-busy'); });
+  }
+  function wrap(name) {
+    var original = window[name]; if (typeof original !== 'function' || original._nebiusCustomers) return;
+    var wrapped = function () { var result = original.apply(this, arguments); schedule(); return result; };
+    Reflect.ownKeys(original).forEach(function (key) {
+      if (['length','name','prototype','arguments','caller'].indexOf(key) < 0) {
+        Object.defineProperty(wrapped, key, Object.getOwnPropertyDescriptor(original, key));
+      }
+    });
+    Object.defineProperty(wrapped, '_nebiusCustomers', {value:true}); window[name] = wrapped;
+  }
+  function scan() {
+    wrap('renderAI2'); wrap('renderNeocloud');
+    document.querySelectorAll('#main .nc').forEach(function (root) {
+      var panel = root.querySelector('.ncm-panel'), anchor = root.querySelector('.ncs-tracker') || root.querySelector('.nc-head');
+      if (panel) {
+        if (anchor && anchor.parentNode === root && anchor.nextSibling !== panel) root.insertBefore(panel, anchor.nextSibling);
+        return;
+      }
+      panel = el('section', 'ncm-panel'); panel.setAttribute('aria-label', 'Nebius 고객 관계 맵');
+      if (anchor && anchor.parentNode === root) root.insertBefore(panel, anchor.nextSibling); else root.appendChild(panel);
+      refresh(panel);
+    });
+  }
+  function schedule() {
+    if (scheduled) return; scheduled = true;
+    setTimeout(function () { scheduled = false; try { scan(); } catch (e) { console.warn('[nebius-customers]', e); } }, 0);
+  }
+  window.PHXNebiusCustomers = {mount:schedule};
+  function start() {
+    schedule();
+    if (typeof MutationObserver === 'function') new MutationObserver(schedule).observe(document.body, {childList:true, subtree:true});
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true}); else start();
+})();

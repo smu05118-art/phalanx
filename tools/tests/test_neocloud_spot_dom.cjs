@@ -2,7 +2,8 @@
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path'), nodeCrypto = require('node:crypto');
 const ROOT = path.resolve(__dirname, '../..');
 const source = fs.readFileSync(path.join(ROOT, 'ui/patch.js'), 'utf8');
-const code = source.slice(source.indexOf('/* Nebius GPU spot tracker'));
+const customerMarker = source.indexOf('/* NEBIUS CUSTOMER RELATIONSHIP MAP');
+const code = source.slice(source.indexOf('/* Nebius GPU spot tracker'), customerMarker < 0 ? undefined : customerMarker);
 const publicIndexPayload = fs.readFileSync(path.join(ROOT, 'data/neocloud_spot/index.json'), 'utf8');
 const indexSeedPayload = fs.readFileSync(path.join(ROOT, 'tools/tests/fixtures/neocloud_spot/archive/index.json'), 'utf8');
 const seed = JSON.parse(indexSeedPayload);

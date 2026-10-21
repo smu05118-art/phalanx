@@ -1,0 +1,316 @@
+{
+  "$defs": {
+    "manifest": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "const": "nebius-relationships"
+        },
+        "record_count": {
+          "const": 2
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "shards": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "maximum": 5242880,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "path": {
+                "pattern": "^shards/[0-9a-f]{64}\\.json$",
+                "type": "string"
+              },
+              "record_count": {
+                "const": 2
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "bytes",
+              "path",
+              "record_count",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "type": "array"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "bytes": {
+              "maximum": 5242880,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "const": "reviewed.json"
+            },
+            "record_count": {
+              "const": 2
+            },
+            "sha256": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "bytes",
+            "path",
+            "record_count",
+            "sha256"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "dataset",
+        "record_count",
+        "schema_version",
+        "shards",
+        "source"
+      ],
+      "type": "object"
+    },
+    "record": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "HYPERSCALER",
+            "MODEL_DEVELOPER"
+          ],
+          "type": "string"
+        },
+        "change_kind": {
+          "enum": [
+            "INITIAL_PUBLICATION"
+          ],
+          "type": "string"
+        },
+        "delivery_mode": {
+          "enum": [
+            "DEDICATED"
+          ],
+          "type": "string"
+        },
+        "disclosure_class": {
+          "enum": [
+            "NEBIUS_ANNOUNCED"
+          ],
+          "type": "string"
+        },
+        "display_date": {
+          "pattern": "^[0-9]{6}$",
+          "type": "string"
+        },
+        "event_date": {
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "type": "string"
+        },
+        "event_role": {
+          "enum": [
+            "RELATIONSHIP_ANNOUNCEMENT",
+            "RELATIONSHIP_EXPANSION_ANNOUNCEMENT"
+          ],
+          "type": "string"
+        },
+        "evidence_class": {
+          "enum": [
+            "PRIMARY_FIRST_PARTY_PROVIDER"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "relationship_status": {
+          "enum": [
+            "ANNOUNCED_CONTRACT",
+            "ANNOUNCED_EXPANSION"
+          ],
+          "type": "string"
+        },
+        "service": {
+          "enum": [
+            "AI_INFRASTRUCTURE"
+          ],
+          "type": "string"
+        },
+        "service_live_status": {
+          "enum": [
+            "UNKNOWN"
+          ],
+          "type": "string"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "collected": {
+              "format": "date-time",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+              "type": "string"
+            },
+            "effective": {
+              "const": "UNKNOWN"
+            },
+            "expires": {
+              "const": "UNKNOWN"
+            },
+            "locator": {
+              "const": "UNKNOWN"
+            },
+            "provider_terms_apply": {
+              "const": true
+            },
+            "published": {
+              "format": "date-time",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+              "type": "string"
+            },
+            "publisher": {
+              "const": "Nebius Group"
+            },
+            "redistribution_scope": {
+              "const": "FACTUAL_PARAPHRASE_AND_LINK_ONLY"
+            },
+            "response_bytes": {
+              "maximum": 5242880,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "response_sha256": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "source_license": {
+              "const": "UNKNOWN"
+            },
+            "title": {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": {
+              "const": "COMPANY_NEWSROOM_PRIMARY"
+            },
+            "updated": {
+              "format": "date-time",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+              "type": "string"
+            },
+            "url": {
+              "pattern": "^https://(www\\.)?nebius\\.com(?:/[^\\s\\\\]*)?$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "collected",
+            "effective",
+            "expires",
+            "locator",
+            "provider_terms_apply",
+            "published",
+            "publisher",
+            "redistribution_scope",
+            "response_bytes",
+            "response_sha256",
+            "source_license",
+            "title",
+            "type",
+            "updated",
+            "url"
+          ],
+          "type": "object"
+        },
+        "summary_ko": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "workload": {
+          "enum": [
+            "AI_COMPUTE_UNSPECIFIED"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "change_kind",
+        "delivery_mode",
+        "disclosure_class",
+        "display_date",
+        "event_date",
+        "event_role",
+        "evidence_class",
+        "id",
+        "name",
+        "relationship_status",
+        "service",
+        "service_live_status",
+        "source",
+        "summary_ko",
+        "workload"
+      ],
+      "type": "object"
+    },
+    "records": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "const": "nebius-relationships"
+        },
+        "record_count": {
+          "const": 2
+        },
+        "records": {
+          "items": {
+            "$ref": "#/$defs/record"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1
+        }
+      },
+      "required": [
+        "dataset",
+        "record_count",
+        "records",
+        "schema_version"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Documentation only. Python additionally enforces safe text, exact dates, sorted unique IDs, canonical bytes and cross-file hashes/counts. reviewed.json and shard share the records document shape.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/records"
+    },
+    {
+      "$ref": "#/$defs/manifest"
+    }
+  ],
+  "title": "Nebius relationships v1"
+}
