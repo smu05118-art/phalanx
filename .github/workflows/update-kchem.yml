@@ -20,6 +20,8 @@ on:
       - "argus/kchem/tools/*.py"
       - "argus/kchem/tools/tests/**"
       - "argus/kchem/tools/assets/aliases.json"
+      - "argus/kchem/tools/assets/supplement_map.json"
+      - "argus/kchem/tools/assets/supplement/**"          # 사용자 가격표(kchem_supplement --import) 갱신 → 즉시 재조립
       - ".github/workflows/update-kchem.yml"
   schedule:
     - cron: "10 0 * * *"          # 09:10 KST 백업

@@ -167,11 +167,13 @@ def content_fingerprint(argus, chunks, conn, dmap, cats):
     return hashlib.sha256(json.dumps(doc, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
-def load_all(argus_dir=ARGUS, categories=None):
+def load_all(argus_dir=ARGUS, categories=None, supplement=True):
     """모든 입력을 읽어 검증하고 (inputs, fingerprint) 를 돌려준다.
 
-    inputs = {argus, chunks{cat: chunk}, connections, data_map, chem_cats}
+    inputs = {argus, chunks{cat: chunk}, connections, data_map, chem_cats[, supplement]}
     fingerprint = {"inputs": {상대경로: sha256}, "fingerprint": sha256(정렬된 경로:해시 목록)}
+    supplement=True 이고 assets/supplement/prices.json 이 있으면 원장 뒤를 사용자 가격표로 잇는다(kchem_supplement —
+    원장 날짜는 그대로, 뒤만). 기본 경로(argus_dir=ARGUS)에서만 — 시험용 합성 입력에는 붙이지 않는다.
     """
     cats = list(categories or load_asset("aliases.json")["chem_categories"])
     shas = {}
@@ -194,7 +196,15 @@ def load_all(argus_dir=ARGUS, categories=None):
     digest = hashlib.sha256("\n".join("%s:%s" % kv for kv in sorted(shas.items())).encode("utf-8")).hexdigest()
     fp = {"inputs": shas, "fingerprint": digest, "argus_asof": argus["asof"], "argus_built": argus.get("built"),
           "content": content_fingerprint(argus, chunks, conn, dmap, cats)}
-    return {"argus": argus, "chunks": chunks, "connections": conn, "data_map": dmap, "chem_cats": cats}, fp
+    inputs = {"argus": argus, "chunks": chunks, "connections": conn, "data_map": dmap, "chem_cats": cats}
+    if supplement and os.path.abspath(argus_dir) == os.path.abspath(ARGUS):
+        import kchem_supplement
+        supp = kchem_supplement.load()
+        if supp:
+            import kchem_registry
+            inputs, fp, summ = kchem_supplement.augment(inputs, fp, supp, kchem_registry.Registry)
+            inputs["supplement"] = {"summary": summ, "series": supp["series"], "source": supp["source"]}
+    return inputs, fp
 
 
 if __name__ == "__main__":
