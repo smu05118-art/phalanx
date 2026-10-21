@@ -221,6 +221,14 @@ class TestBlankAndCells(unittest.TestCase):
         S.thread_sanity(th)                                                           # 아이엠티 — 그 행만 1,000배
         self.assertEqual((th["hist"]["2026Q2"]["amt"], th["hist"]["2026Q2"]["recvCum"]), (1280, 1024))
         self.assertEqual(th["hist"]["2026Q2"]["cell_fix"], ["amt_thread"])
+        hj = {"hist": {"2025Q4": {"amt": 275700.315, "supCum": 262322.045545},
+                       "2026Q2": {"amt": 27570.0315, "supCum": 262.322046}}}               # HJ중공업 2026Q2 — 한 행 오기
+        S.thread_sanity(hj)
+        self.assertAlmostEqual(hj["hist"]["2026Q2"]["amt"], 275700.315, 3)
+        self.assertAlmostEqual(hj["hist"]["2026Q2"]["supCum"], 262322.046, 3)
+        grow = {"hist": {"a": {"amt": 100, "supCum": 10}, "b": {"amt": 100, "supCum": 35}}}
+        S.thread_sanity(grow)                                                         # 보통의 누적 증가는 그대로
+        self.assertEqual(grow["hist"]["b"]["supCum"], 35)
         ok = {"hist": {"a": {"amt": 100}, "b": {"amt": 140}}}
         S.thread_sanity(ok)                                                           # 증액(1.4배)은 건드리지 않는다
         self.assertEqual(ok["hist"]["b"]["amt"], 140)
@@ -330,9 +338,36 @@ class TestCollect(unittest.TestCase):
         self.assertEqual(blob, _rb(S.raw_path("knuke", "013810", "2026Q2", self.root)))   # gzip mtime 0
         calls.clear()
         S.collect("knuke", qs=["2025Q4", "2026Q2"], root=self.root, fetch=self.fake(calls), log=lambda m: None)
-        # 받은 칸은 다시 안 받고, 없음(no_report)은 최신 분기만 다시 본다
-        self.assertEqual([c[0] for c in calls], ["999999"])
-        self.assertEqual(calls[0][2], "A002")
+        # 받은 칸은 다시 안 받고, 없음(no_report)은 최신 분기만 다시 본다. 전 기간이 없음인 종목은 결산월을 한 번 찾는다(A001)
+        self.assertEqual([(c[0], c[2]) for c in calls], [("999999", "A001"), ("999999", "A002")])
+        self.assertEqual(S.load_status("knuke", self.root)["999999|fy"], {"status": "fy", "month": 12})
+        calls.clear()
+        S.collect("knuke", qs=["2025Q4", "2026Q2"], root=self.root, fetch=self.fake(calls), log=lambda m: None)
+        self.assertEqual([(c[0], c[2]) for c in calls], [("999999", "A002")])     # 결산월은 다시 찾지 않는다
+
+    def test_march_fiscal_year(self):
+        """3S(3월 결산): 사업보고서 (2026.03) → 결산월 3 → 반기 9월(Q3)·사업 3월(Q1) 기간을 따로 받는다."""
+        calls = []
+        html = fixture("013810", "2026Q2")
+
+        class F(self.fake([])):
+            @staticmethod
+            def search_reports(st, s, e, kind):
+                calls.append((st, s, kind))
+                if st != "013810":
+                    return []
+                if kind == "A001" and s.startswith("2025"):
+                    return [("RFY", "사업보고서 (2026.03)")]
+                if kind == "A001":
+                    y = int(s[:4]) - 1 if s[4:6] == "04" else int(s[:4])
+                    return [("RA%s" % s, "사업보고서 (%s.03)" % (int(s[:4])))]
+                return [("RH%s" % s, "반기보고서 (%s.09)" % s[:4])]
+            fetch_section = staticmethod(lambda node: html)
+        S.save_status("knuke", {"013810|2025Q4": {"status": "no_report"}, "013810|2026Q2": {"status": "no_report"}}, self.root)
+        stat = S.collect("knuke", stocks=["013810"], qs=["2025Q4", "2026Q2"], root=self.root, fetch=F, log=lambda m: None)
+        self.assertEqual(stat["013810|fy"]["month"], 3)
+        got = sorted(k for k, v in stat.items() if v.get("status") == "ok")
+        self.assertTrue(got and all(k.split("|")[1][5] in "13" for k in got), got)
 
     def test_reparse_on_rev_change(self):
         S.collect("knuke", qs=["2026Q2"], root=self.root, fetch=self.fake([]), log=lambda m: None)
@@ -379,3 +414,72 @@ class TestView(_Root):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestShapes(unittest.TestCase):
+    """2026-10-21 — ksemi 대기열 8칸의 세 가지 꼴(원문 표 raw 를 그대로 옮긴 최소 표)."""
+
+    @staticmethod
+    def raw(cols, rows, lead="(단위 : 백만원)"):
+        from kce_lib import norm_col
+        return [{"lead": lead, "cols": cols, "ncols": [norm_col(c) for c in cols], "rows": rows, "rspan": [], "n_raw": len(rows)}]
+
+    def test_supply_labelled_as_contract_amount(self):
+        cols = ["최초신고일자", "정정신고일자", "제목", "신고내용", "신고사항의 진행상황", "계약금액(백만원) 당기",
+                "계약금액(백만원) 누적", "대금수령액(백만원) 당기", "대금수령액(백만원) 누적"]
+        rows = [["2025년1월21일", "2025년 4월 24일", "단일판매.공급계약체결", "1. 계약기간 : 2025.01.20~2025.07.31"
+                 "2. 계약내용 : 반도체 테스트소켓 공급계약3. 계약상대방 : 삼성전자주식회사", "완료(2025년5월31일)",
+                 "6,651", "6,651", "6,651", "6,651"]]
+        p = X.interpret(self.raw(cols, rows))
+        t = p["tables"][0]
+        self.assertEqual(t["shape"], "amt_from_ledger")
+        r = t["rows"][0]
+        self.assertEqual((r["nm"], r["supCum"], r["recvCum"], r["note"]), ("반도체 테스트소켓 공급계약", 6651, 6651, "완료(2025년5월31일)"))
+        self.assertNotIn("amt", r)                       # 열이 없다 — xi1_sector 가 원장 금액으로 채운다
+        th = {"hist": {"2025Q4": dict(r)}, "link": {"_c": {"amt": 6651.0}}}
+        S.amt_from_ledger(th)
+        self.assertEqual((th["hist"]["2025Q4"]["amt"], th["hist"]["2025Q4"]["amt_src"]), (6651.0, "ledger"))
+
+    def test_amount_only_and_schedule(self):
+        cols = ["신고일자", "계약내역", "판매ㆍ공급금액", "진행사항"]
+        rows = [["2025-05-28", "- 계약명: 반도체 제조용 'FLIP CHIP BONDER' 장비 수주- 계약상대: ASE", "8,046", "생산 & 계약이행 중"]]
+        t = X.interpret(self.raw(cols, rows))["tables"][0]
+        self.assertEqual((t["shape"], t["rows"][0]["amt"], t["rows"][0].get("supCum")), ("amount_only", 8046, None))
+        cols = ["신고일자", "계약금액총액", "대금수령금액 (26년2분기말기준)", "대금미수령금액 (26년2분기말기준)",
+                "2026년 3분기 대금수령 예상금액", "2026년 4분기 이후 대금수령 예상금액"]
+        rows = [["2026.03.10", "19,902", "13,883", "6,019", "5,089", "930"]]
+        p = X.interpret(self.raw(cols, rows))
+        self.assertEqual((p["tables"], p["unknown_headers"]), ([], []))           # 미지가 아니다
+        self.assertEqual(p["schedules"], [{"dt": "2026.03.10", "amt": 19902, "recv": 13883, "unrecv": 6019,
+                                            "buckets": [["2026년 3분기", 5089], ["2026년 4분기 이후", 930]]}])
+
+
+class TestSignalsRevenue(_Root):
+    def test_prev_signals_and_left(self):
+        p = self.build("kdef")
+        fx = [c for c in p["contracts"] if c["dt"] == "2024.11.01"][0]
+        # left 는 '직전 보고(2025Q4)에 있었고 이번(2026Q2)에 빠진' 계약만 — 이 계약은 2025Q2 가 마지막이라 아니다
+        self.assertEqual(fx["m"]["q"], "2025Q2")
+        self.assertFalse(fx.get("left"))
+        # 신규 신호: 직전 보고에도 있던 신호는 new_sig 에 오르지 않는다
+        for c in p["contracts"]:
+            self.assertTrue(set(c.get("new_sig") or []) <= set(c["flags"]))
+
+    def test_revenue_from_ledger(self):
+        L = S.ledger_rows("kship", [{"rcp": "20260101800001", "stock": "x", "name": "A", "amt_krw_m": 1000.0, "rev_ratio": 10.0}])
+        self.assertEqual(L[0]["rev"], 10000.0)
+        L = S.ledger_rows("ksemi", [{"rcp": "20260101800001", "stock": "x", "content": "A", "amt_mkrw": 10.0,
+                                     "rev_recent_krw": 5e9}])
+        self.assertEqual(L[0]["rev"], 5000.0)
+
+
+class TestViewExtras(_Root):
+    def test_timeline_feed_compare(self):
+        p = self.build("kdef")
+        sec = V.company_section(p, "013810")
+        self.assertIn("계약 기간 타임라인", sec)
+        hub = V.hub_section(p, peers={"kdef": {"sector": p["sector"], "curve": p["curve"], "asof": "2026Q2"},
+                                      "kship": {"sector": p["sector"], "curve": p["curve"], "asof": "2026Q2"}})
+        self.assertIn("xi1cmp", hub)
+        self.assertIn('href="../kship/index.html#xi1"', hub)
+        self.assertNotIn("%", V.compare_section(p, peers={"kdef": {"sector": p["sector"], "curve": [], "asof": ""}}) or "")

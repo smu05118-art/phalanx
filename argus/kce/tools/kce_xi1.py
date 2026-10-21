@@ -65,7 +65,7 @@ XI_VOCAB = set(KP._HDR_VOCAB) | set(XI_ALIAS) | _XI_PARENT
 # 이름 칸 없이 계약상대방으로 계약을 가리키는 표도 있다(상대방을 이름으로 쓴다).
 NEED = {"xi_nm", "xi_amt", "xi_supCum"}
 # 파서 판 — 해석 규칙이 바뀌면 올린다. 섹터 탭(xi1_sector)은 판이 다른 해석 결과를 로컬 원문으로 다시 만든다.
-PARSER_REV = "2026-10-19c"
+PARSER_REV = "2026-10-21b"
 MONEY = ("xi_amt", "xi_supCur", "xi_supCum", "xi_recvCur", "xi_recvCum")
 # 판매공급·대금수령 문구가 머리행에 있는데 NEED 가 안 서면 '읽어야 할 표를 못 읽은 것'(미지).
 # 가 표(신고일자|제목|신고내용|진행상황)·사유 부표는 이 문구가 없어 경보하지 않는다.
@@ -74,7 +74,7 @@ _XI_HINT = re.compile(r"판매.?공급|대금\s*수령")
 _COL_UNIT = re.compile(r"\((원|천원|백만원|억원)\)")
 _UNIT_MUL = {"원": 1e-6, "천원": 1e-3, "백만원": 1.0, "억원": 100.0, "조원": 1e6}
 _CUR = re.compile(r"\(([A-Z]{3})\)|\b([A-Z]{3})\s*[\d,]")
-_LBL = (r"(?:체결\s*계\s*약\s*명|계\s*약\s*명|계\s*약\s*상\s*대(?:\s*방|\s*자)?|계\s*약\s*기\s*간|계약\s*\(수주\)\s*일자|주요\s*계약\s*조건|"
+_LBL = (r"(?:체결\s*계\s*약\s*명|계\s*약\s*명|계\s*약\s*내\s*용|계\s*약\s*상\s*대(?:\s*방|\s*자)?|계\s*약\s*기\s*간|계약\s*\(수주\)\s*일자|주요\s*계약\s*조건|"
         r"계약금[ㆍ·,]\s*선급금\s*유무|대금\s*지급\s*조건\s*등?|조건부\s*계약금액|기타(?:\s*투자판단과\s*관련한\s*중요사항)?)")
 # 라벨은 앞 값에 붙어 올 수 있다(줄바꿈이 지워진 원문) — 경계를 요구하지 않고, 글머리 `1) `만 공백 뒤에서 본다.
 # 글머리: `-`·`●`·`ㅇ계약명 :`(한전기술)·`1.계약명: … 2.계약상대:`(제룡전기) — 한글 자모 ㅇ·마침표는 가-힣 경계 밖이라
@@ -188,7 +188,7 @@ def split_detail(cell):
     for i in range(1, len(parts) - 1, 2):
         lab = re.sub(r"[\sㆍ·]", "", parts[i])
         val = _TRAIL.sub("", parts[i + 1].strip())
-        if "계약명" in lab:
+        if "계약명" in lab or lab.startswith("계약내용"):
             out.setdefault("계약명", _clean_nm(val))
         elif lab.startswith("계약상대"):
             out.setdefault("계약상대방", val)
@@ -298,7 +298,8 @@ def _records(t, idx):
             i = idx.get(f)
             return (r[i] if i is not None and i < len(r) else "").strip()
         flags = rsp[ri] if ri < len(rsp) else []
-        carried = (out and idx["xi_amt"] < len(flags) and flags[idx["xi_amt"]]
+        carried = (out and "xi_amt" in idx and "xi_supCum" in idx
+                   and idx["xi_amt"] < len(flags) and flags[idx["xi_amt"]]
                    and idx["xi_supCum"] < len(flags) and flags[idx["xi_supCum"]])
         d = split_detail(g("xi_nm"))
         if carried:
@@ -357,6 +358,9 @@ def _records(t, idx):
                 rec["fx"] = {k: (int(v) if float(v).is_integer() else round(v, 2)) for k, v in fxv.items()}
         if withheld:
             rec["withheld"] = True          # `유보`·`공시유보` — 금액 비공개(경영상 비밀)
+        note = re.sub(r"\s+", " ", g("xi_note")) if "xi_note" in idx else ""
+        if note and note not in ("-", "–"):
+            rec["note"] = note[:160]        # 진행상황 문장(`완료(2025년5월31일)`·`생산 & 계약이행 중`·납기 변경 사유)
         out.append(rec)
     return out
 
@@ -445,7 +449,7 @@ def parse_xi1(html):
 
 def interpret(tables):
     """raw_tables() 결과 → parse_xi1 과 같은 꼴. 표 순서(idx)는 원문 순서."""
-    picked, rejected, unknown = [], [], []
+    picked, rejected, unknown, schedules = [], [], [], []
     for i, t in enumerate(tables):
         fields = [field_of(c) for c in t["ncols"]]
         idx = {}
@@ -458,12 +462,27 @@ def interpret(tables):
                 "fields": fields, "n": t.get("n_raw") or len(t["rows"])}
         if "xi_nm" not in idx and "xi_cl" in idx:
             idx["xi_nm"] = idx["xi_cl"]
-        if NEED.issubset(idx):
+        shape = None if NEED.issubset(idx) else _alt_shape(t, fields)
+        if shape:
+            fields = shape[1]
+            idx = _idx_of(fields)
+            if "xi_nm" not in idx and "xi_cl" in idx:
+                idx["xi_nm"] = idx["xi_cl"]
+            base["fields"] = fields
+            shape = shape[0]
+        if NEED.issubset(idx) or (shape and _ALT_NEED[shape].issubset(idx)):
             recs = _records(t, idx)
             tab = dict(base, n_raw=base["n"], n_rec=len(recs), rows=recs,
                        unit=KP.unit_scale(t.get("lead"), t.get("cols")))
+            if shape:
+                tab["shape"] = shape
             _unit_sanity(tab)
             picked.append(tab)
+            continue
+        sched = _schedule(t, fields)
+        if sched is not None:
+            schedules.extend(sched)
+            rejected.append(dict(base, reason="no_core", kind="schedule"))
             continue
         # '향후 추진계획 판매ㆍ공급 이행' 같은 서술 열(xi_note)은 문구가 겹쳐도 금액 열이 아니다 — 3) 향후 추진계획
         # 부표(7사)가 미지로 올라오던 오탐. 서술 열을 뺀 나머지 머리행에서만 판매공급·대금수령을 찾는다.
@@ -479,7 +498,68 @@ def interpret(tables):
             rejected.append(dict(base, reason="near_miss", rows=t["rows"]))
         elif t["cols"] and any(fields):
             rejected.append(dict(base, reason="no_core"))
-    return {"tables": picked, "rejected": rejected, "unknown_headers": unknown}
+    out = {"tables": picked, "rejected": rejected, "unknown_headers": unknown}
+    if schedules:
+        out["schedules"] = schedules
+    return out
+
+
+# ── 다른 꼴의 진행 표(2026-10-21, ksemi 대기열 8칸) ─────────────────────────────
+# ① 공급 열 이름을 '계약금액 당기·누적'으로 적은 표(오킨스전자 — 값이 판매공급·대금수령과 짝을 이룬다). 계약금액 열이 따로
+#    없어 금액은 섹터 원장(체결 공시)에서 채운다(xi1_sector, flags amt_ledger). 대금수령 문구가 있는 표에서만 바꾼다.
+# ② 계약금액 한 열(`판매ㆍ공급금액`, 당기·누적 없음)과 진행 문장만 적는 표(한미반도체 — '생산 & 계약이행 중'·'계약 종료').
+#    금액·문장만 읽고 진행률은 비운다(0 이 아니다).
+# ③ 대금수령 예정표(테스 — `2026년 3분기 대금수령 예상금액` …)는 진행 표가 아니라 부표다. 미지로 올리지 않고
+#    신고일·계약금액·수령·미수령·예정 구간을 schedules 로 뽑는다(xi1_sector 가 같은 계약에 붙인다).
+_ALT_NEED = {"amt_from_ledger": {"xi_nm", "xi_supCum"}, "amount_only": {"xi_nm", "xi_amt", "xi_note"}}
+
+
+def _idx_of(fields):
+    idx = {}
+    for j, f in enumerate(fields):
+        if f and f not in idx:
+            idx[f] = j
+    return idx
+
+
+def _alt_shape(t, fields):
+    bares = [_bare(c) for c in t["cols"]]
+    amt_cols = [j for j, f in enumerate(fields) if f == "xi_amt"]
+    cum = [j for j in amt_cols if "누적" in bares[j]]
+    if cum and "xi_supCum" not in fields and re.search(r"대금\s*수령", " ".join(t["cols"])):
+        fs = list(fields)
+        for j in amt_cols:
+            fs[j] = "xi_supCum" if "누적" in bares[j] else ("xi_supCur" if re.search(r"당기|당반기|당분기", bares[j]) else None)
+        return "amt_from_ledger", fs
+    if "xi_amt" not in fields and "xi_supCum" not in fields:
+        lone = [j for j, b in enumerate(bares) if b in ("판매공급금액", "판매공급가액", "공급금액")]
+        if len(lone) == 1:
+            fs = list(fields)
+            fs[lone[0]] = "xi_amt"
+            return "amount_only", fs
+    return None
+
+
+def _schedule(t, fields):
+    bares = [_bare(c) for c in t["cols"]]
+    buck = [j for j, b in enumerate(bares) if re.search(r"수령", b) and re.search(r"예상|예정", b)]
+    idx = _idx_of(fields)
+    if not buck or "xi_dt" not in idx or "xi_amt" not in idx:
+        return None
+    recv = next((j for j, b in enumerate(bares) if "수령" in b and "미수령" not in b and j not in buck), None)
+    unrecv = next((j for j, b in enumerate(bares) if "미수령" in b and j not in buck), None)
+    mul = KP.unit_scale(t.get("lead"), t.get("cols"))
+    out = []
+    for r in t["rows"]:
+        cell = lambda j: r[j].strip() if j is not None and j < len(r) else ""     # noqa: E731
+        dt = norm_dt(cell(idx["xi_dt"]))
+        amt = _scaled(num_of(cell(idx["xi_amt"])), mul)
+        if not dt or amt is None:
+            continue
+        lab = lambda j: re.sub(r"\s+", " ", re.sub(r"대금\s*수령\s*(?:예상|예정)\s*금액|\(.*?\)", "", t["cols"][j])).strip()  # noqa: E731
+        out.append({"dt": dt, "amt": amt, "recv": _scaled(num_of(cell(recv)), mul), "unrecv": _scaled(num_of(cell(unrecv)), mul),
+                    "buckets": [[lab(j), _scaled(num_of(cell(j)), mul)] for j in buck]})
+    return out
 
 
 def headers_of(parsed):

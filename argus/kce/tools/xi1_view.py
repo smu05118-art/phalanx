@@ -28,6 +28,7 @@ FLAG_LABEL = {"lag": ("지연 의심", "dn", "같은 탭 표준 곡선보다 20%
               "unit_suspect": ("단위 의심", "wn", "표 금액 단위를 확인 못함 — 합계에서 뺐다"),
               "fx": ("외화", "", "외화 계약금액 — 우리는 환산하지 않는다"),
               "withheld": ("유보", "", "계약금액 공시유보"),
+              "amt_ledger": ("원장 금액", "", "표에 계약금액 열이 없어(공급 열을 '계약금액'으로 적은 표) 체결 공시의 금액을 썼다"),
               "dup": ("자회사 계약", "", "자회사가 같은 계약을 자기 표에도 싣는다 — 탭 합계·곡선에서는 자회사 쪽 1번만 센다"),
               "cell_fix": ("칸 단위 보정", "", "공급·수령 한 칸이 계약금액의 2배를 넘어 천·백만 단위로 옮기거나 비웠다(원문 대조)")}
 STATUS_LABEL = {"active": "진행", "new": "신규", "done": "완료(표에서 빠짐·직전 95%↑)",
@@ -57,6 +58,10 @@ CSS = """
 .xi1 th,.xi1 td{padding:5px 6px;border-bottom:1px solid var(--ln,#2a2f3a);text-align:left;vertical-align:top}
 .xi1 td.n,.xi1 th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .xi1 .mut{color:var(--tx3,#6b7280)}
+.xi1 .minis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:6px 0 10px}
+.xi1 .minis svg{border:1px solid var(--ln,#2a2f3a);border-radius:6px}
+.xi1 .feed ul{margin:6px 0 12px;padding-left:18px;font-size:13px;line-height:1.7}
+.xi1 .feed li b{font-weight:600}
 .xi1 .note{font-size:12px;color:var(--tx2,#9aa3b2);line-height:1.6;background:none;border:0;padding:0;margin:8px 0;
  border-radius:0;box-shadow:none}
 .xi1c{white-space:nowrap}
@@ -100,9 +105,14 @@ def _short(s, n):
 
 def chips(c):
     out = []
+    new = set(c.get("new_sig") or [])
     for f in c.get("flags") or []:
         lab, cls, tip = FLAG_LABEL.get(f, (f, "", ""))
+        if f in new:
+            lab, tip = lab + " · 신규", tip + " — 직전 보고에는 없던 신호"
         out.append('<span class="chipx %s" title="%s">%s</span>' % (cls, e(tip), e(lab)))
+    if c.get("note"):
+        out.append('<span class="chipx" title="회사가 적은 진행상황">%s</span>' % e(_short(c["note"], 24)))
     return "".join(out)
 
 
@@ -364,6 +374,159 @@ def _parties_table(parties, tid):
             '<tbody>%s</tbody></table></div>' % (e(tid), extra, tr))
 
 
+def _timeline_svg(rows, asof, title):
+    """계약 기간 막대(시작~종료) 안에 공급 진행만큼 채움 + 기간 말 세로선 + 표준 곡선 눈금. 종료일이 지났는데 95% 미만이면
+    빨간 테두리(납기 경과). 연도 눈금은 같은 축 — 언제 무엇이 끝나야 하는지(납기 달력)를 한 그림에서 본다."""
+    import datetime as _d
+    rows = [c for c in rows if c["m"].get("start") and c["m"].get("end")]
+    if not rows:
+        return ""
+    ds = lambda s: _d.date(int(s[:4]), int(s[5:7]), int(s[8:10]))       # noqa: E731
+    lo = min(ds(c["m"]["start"]) for c in rows)
+    hi = max(ds(c["m"]["end"]) for c in rows)
+    lo = max(lo, _d.date(asof.year - 6, 1, 1))
+    hi = max(min(hi, _d.date(asof.year + 6, 12, 31)), asof)
+    W, LW, RW, H, G, T = 760, 200, 86, 12, 7, 22
+    BW = W - LW - RW
+    span = (hi - lo).days or 1
+    sx = lambda d: LW + BW * min(max((d - lo).days / span, 0), 1)        # noqa: E731
+    h = T + len(rows) * (H + G) + 20
+    out = ['<svg viewBox="0 0 %d %d" role="img" aria-label="%s" xmlns="http://www.w3.org/2000/svg">' % (W, h, e(title))]
+    for y in range(lo.year + 1, hi.year + 1):
+        x = sx(_d.date(y, 1, 1))
+        out.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="currentColor" stroke-opacity=".12"/>' % (x, T - 6, x, h - 4))
+        out.append('<text x="%.1f" y="%d" text-anchor="middle">%d</text>' % (x, T - 9, y))
+    ax = sx(asof)
+    for i, c in enumerate(rows):
+        m = c["m"]
+        y = T + i * (H + G)
+        s0, e0 = ds(m["start"]), ds(m["end"])
+        x0, x1 = sx(s0), sx(e0)
+        w = max(x1 - x0, 2)
+        hot = "overdue" in c["flags"]
+        out.append('<g><title>%s · %s ~ %s · %s</title>' % (e(c["nm"]), m["start"], m["end"], e(tip(c))))
+        out.append('<text class="t1" x="%d" y="%d" text-anchor="end">%s</text>' % (LW - 8, y + 10, e(_short(c["nm"], 18))))
+        out.append('<rect x="%.1f" y="%d" width="%.1f" height="%d" fill="%s"%s/>'
+                   % (x0, y, w, H, C_REM, (' stroke="%s" stroke-width="1.5"' % C_LAG) if hot else ""))
+        if m.get("prog") is not None:
+            out.append('<rect x="%.1f" y="%d" width="%.1f" height="%d" fill="%s"/>' % (x0, y, max(w * min(m["prog"], 1), 0.5), H, C_RECV))
+        if m.get("exp") is not None:
+            ex = x0 + w * min(m["exp"], 1)
+            out.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="2"/>' % (ex, y - 2, ex, y + H + 2, C_EXP))
+        out.append('<text x="%.1f" y="%d">%s</text></g>' % (W - RW + 6, y + 10, e(m["end"][:7].replace("-", "."))))
+    out.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1.5" stroke-dasharray="4 3"/>'
+               % (ax, T - 6, ax, h - 16, C_EXP))
+    out.append('<text x="%.1f" y="%d" text-anchor="middle" class="t1">%s 말 기준</text>' % (ax, h - 3, asof.strftime("%Y.%m")))
+    out.append("</svg>")
+    return "".join(out)
+
+
+def _sched_table(items):
+    rows = [c for c in items if c.get("sched")]
+    if not rows:
+        return ""
+    labs = []
+    for c in rows:
+        for b, _v in c["sched"]["buckets"]:
+            if b not in labs:
+                labs.append(b)
+    head = "".join('<th class="n">%s</th>' % e(b) for b in labs)
+    tr = []
+    for c in rows:
+        sc = c["sched"]
+        vals = dict((b, v) for b, v in sc["buckets"])
+        tr.append('<tr><td>%s</td><td title="%s">%s</td><td class="n">%s</td><td class="n">%s</td><td class="n">%s</td>%s</tr>'
+                  % (e(c.get("dt") or "—"), e(c["nm"]), e(_short(c["nm"], 30)), money(sc["amt"]), money(sc.get("recv")),
+                     money(sc.get("unrecv")), "".join('<td class="n">%s</td>' % money(vals.get(b)) for b in labs)))
+    return ('<h3>대금수령 예정 <span class="mut">(회사가 XI-1 부표에 적은 앞으로의 수령 일정 — %s 말 기준)</span></h3>'
+            '<div class="tbw"><table data-sortable><thead><tr><th>신고일</th><th>계약</th><th class="n">계약금액</th><th class="n">수령</th>'
+            '<th class="n">미수령</th>%s</tr></thead><tbody>%s</tbody></table></div>' % (e(rows[0]["sched"]["q"]), head, "".join(tr)))
+
+
+def _feed(prog, cur, co_cell, limit=12):
+    """신호 피드 — 직전 보고 이후 새로 생긴 신호·새로 실린 큰 계약·표에서 빠진 계약."""
+    new_sig = sorted([c for c in cur if c.get("new_sig")], key=lambda c: -(c["m"].get("rem") or 0))[:limit]
+    new_ct = sorted([c for c in cur if c["status"] == "new" and c["m"].get("amt") and c["m"].get("basis") == "xi"],
+                    key=lambda c: -c["m"]["amt"])[:6]
+    left = [c for c in prog["contracts"] if c.get("left") and "dup" not in c["flags"]]
+    if not (new_sig or new_ct or left):
+        return ""
+    li = []
+    for c in new_sig:
+        labs = " · ".join(FLAG_LABEL.get(f, (f,))[0] for f in c["new_sig"])
+        li.append('<li><b>%s</b> %s — %s <span class="mut">(진행 %s · 표준 %s · 잔여 %s)</span></li>'
+                  % (co_cell(c), e(_short(c["nm"], 30)), e(labs), pct(c["m"].get("prog")), pct(c["m"].get("exp")), money(c["m"].get("rem"))))
+    for c in new_ct:
+        li.append('<li><b>%s</b> %s — 새로 실린 계약 <span class="mut">(%s · 진행 %s)</span></li>'
+                  % (co_cell(c), e(_short(c["nm"], 30)), money(c["m"]["amt"]), pct(c["m"].get("prog"))))
+    done = sum(1 for c in left if c["status"] == "done")
+    if left:
+        li.append('<li class="mut">표에서 빠진 계약 %d건 — 완료(직전 95%%↑) %d · 이탈 %d</li>' % (len(left), done, len(left) - done))
+    return ('<div class="feed"><h3>이번 보고에서 달라진 것 <span class="mut">(직전 보고와 같은 규칙으로 다시 계산해 비교)</span></h3>'
+            '<ul>%s</ul></div>' % "".join(li))
+
+
+TAB_LABEL = {"kship": "조선", "kdef": "방산", "knuke": "원전", "kgrid": "전력기기", "kaero": "항공우주", "ksemi": "반도체장비"}
+
+
+def _mini_curve(curve, label, hot, W=150, H=110):
+    L, B, T, R = 22, 16, 18, 6
+    pw, ph = W - L - R, H - T - B
+    sx = lambda x: L + pw * min(x, 1.25) / 1.25          # noqa: E731
+    sy = lambda y: T + ph * (1 - y)                      # noqa: E731
+    pts = [(0.0, 0.0)] + [(p["x"], p["y"]) for p in curve or []]
+    col = C_EXP if hot else C_RECV
+    return ('<svg viewBox="0 0 %d %d" role="img" aria-label="%s 표준 곡선" xmlns="http://www.w3.org/2000/svg">'
+            '<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="currentColor" stroke-opacity=".25" stroke-dasharray="2 2"/>'
+            '<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="currentColor" stroke-opacity=".2"/>'
+            '<polyline fill="none" stroke="%s" stroke-width="%s" points="%s"/>'
+            '<text x="%d" y="12" class="%s">%s</text><text x="%.1f" y="%d" text-anchor="middle">100%%</text></svg>'
+            % (W, H, e(label), sx(0), sy(0), sx(1), sy(1), sx(1), T, sx(1), H - B, col, "2.5" if hot else "1.6",
+               " ".join("%.1f,%.1f" % (sx(x), sy(y)) for x, y in pts), L, "t1" if hot else "", e(label), sx(1), H - 3))
+
+
+def compare_section(prog, peers=None, href=None):
+    """다른 수주 탭과 비교 — 6개 탭의 progress.json 섹터 요약(이 탭 줄은 굵게)·표준 곡선 작은 다중.
+    peers 가 없으면 같은 레포의 다른 탭 progress.json 을 읽는다(그 탭이 마지막으로 커밋한 값 — 하루 정도 늦을 수 있다)."""
+    if not prog:
+        return ""
+    if peers is None:
+        try:
+            import xi1_sector as _S
+            peers = {}
+            for t in _S.TABS:
+                pp = prog if t == prog.get("tab") else _S.load_progress(t)
+                if pp:
+                    peers[t] = {"sector": pp["sector"], "curve": pp.get("curve"), "asof": pp.get("asof")}
+        except Exception:                       # noqa: BLE001 — 비교는 부가 조각
+            return ""
+    if len(peers) < 2:
+        return ""
+    href = href or (lambda t: "../%s/index.html#xi1" % t)
+    me = prog.get("tab")
+    tr = []
+    for t, pv in peers.items():
+        s = pv["sector"]
+        c55 = next((p["y"] for p in pv.get("curve") or [] if abs(p["x"] - 0.55) < 1e-6), None)
+        nm = TAB_LABEL.get(t, t)
+        cell = ('<b>%s</b>' % e(nm)) if t == me else '<a href="%s">%s</a>' % (e(href(t)), e(nm))
+        tr.append('<tr%s><td>%s</td><td class="n" data-v="%s">%d</td><td class="n" data-v="%s">%s</td><td class="n" data-v="%s">%s</td>'
+                  '<td class="n" data-v="%s">%s</td><td class="n" data-v="%s">%s</td><td class="n" data-v="%s">%s</td>'
+                  '<td class="n" data-v="%s">%d</td><td class="mut">%s</td></tr>'
+                  % (' style="font-weight:600"' if t == me else "", cell, s["n"], s["n"], s["rem"], money(s["rem"]),
+                     s.get("prog_w") or -1, pct(s.get("prog_w")), s.get("pace_y") or -1, money(s.get("pace_y")),
+                     s.get("burn_y") or -1, ("%.1f년" % s["burn_y"]) if s.get("burn_y") else "—",
+                     c55 if c55 is not None else -1, pct(c55), s["lag"] + s.get("overdue", 0), s["lag"] + s.get("overdue", 0),
+                     e(pv.get("asof") or "")))
+    minis = "".join('<div class="mini">%s</div>' % _mini_curve(pv.get("curve"), TAB_LABEL.get(t, t), t == me)
+                    for t, pv in peers.items())
+    return ('<h3>다른 수주 탭과 비교 <span class="mut">(같은 공용 규칙 — 업종마다 계약이 매출이 되는 모양이 다르다)</span></h3>'
+            '<div class="minis">%s</div><div class="tbw"><table id="xi1cmp" data-sortable><thead><tr><th>탭</th><th class="n">진행 계약</th>'
+            '<th class="n">잔여</th><th class="n">가중 진행</th><th class="n">연 공급</th><th class="n">잔여 소진</th>'
+            '<th class="n" title="계약기간 55%%가 지났을 때 진행률 중앙값(표준 곡선)">경과 55%% 진행</th><th class="n">지연·납기 경과</th>'
+            '<th>기준</th></tr></thead><tbody>%s</tbody></table></div>' % (minis, "".join(tr)))
+
+
 def _legend():
     return ('<div class="lg"><span><i style="background:%s"></i>대금수령</span><span><i style="background:%s"></i>매출채권(순)</span>'
             '<span><i style="background:%s"></i>선수금(순)</span><span><i style="background:%s"></i>잔여</span>'
@@ -466,6 +629,9 @@ def company_section(prog, stock, title="계약 진행 — 반기·사업보고�
              ("%s · %s년" % (money(a.get("pace_y")), ("%.1f" % a["burn_y"]) if a.get("burn_y") else "—"),
               "연 공급 속도 · 잔여 소진"),
              ("%d · %d · %d" % (a["lag"], a.get("overdue", 0), a["slip6"]), "지연 의심 · 납기 경과 · 지연 전망")]
+    if a.get("rev_y"):
+        tiles.append(("%s · %s배" % (pct(a.get("pace_rev")), ("%.1f" % a["rem_rev"]) if a.get("rem_rev") is not None else "—"),
+                      "연 공급 ÷ 매출 · 잔여 ÷ 매출(매출 %s, 체결 공시 기재 · 추정)" % money(a["rev_y"])))
     bars = sorted([c for c in cur if _segs(c)], key=lambda c: -(c["m"].get("rem") or 0))[:limit]
     pts = [{"x": c["m"]["elapsed"], "y": c["m"]["prog"], "amt": c["m"].get("amt"), "label": c["nm"], "tip": "%s · %s" % (c["nm"], tip(c)),
             "hot": bool({"lag", "overdue"} & set(c["flags"]))}
@@ -474,8 +640,17 @@ def company_section(prog, stock, title="계약 진행 — 반기·사업보고�
     if bars:
         figs.append('<figure>%s<figcaption>계약별 진행(막대 = 계약금액 100%%, 잔여 큰 순 %d건) — 흰 눈금은 같은 경과의 탭 표준 진행</figcaption></figure>'
                     % (_bars_svg(bars, "계약별 진행 막대"), len(bars)))
+    tl_rows = sorted([c for c in cur if c["m"].get("start") and c["m"].get("end") and c["m"].get("rem")],
+                     key=lambda c: -(c["m"].get("rem") or 0))[:limit]
+    tl_rows.sort(key=lambda c: c["m"]["end"])
+    if tl_rows:
+        import datetime as _d
+        asof = _d.date(int(q[:4]), {"1": 3, "2": 6, "3": 9, "4": 12}[q[5]], 30 if q[5] in "23" else 31)
+        figs.append('<figure>%s<figcaption>계약 기간과 공급 진행(채움) — 점선 = 보고 기간 말, 흰 눈금 = 같은 경과의 탭 표준 진행, '
+                    '빨간 테두리 = 종료일이 지났는데 공급 95%% 미만. 잔여 큰 %d건을 종료일 순으로</figcaption></figure>'
+                    % (_timeline_svg(tl_rows, asof, "계약 기간 타임라인"), len(tl_rows)))
     side = []
-    ser = _series_svg(co.get("series") or {}, prog["periods"], "반기별 계약금액 분해")
+    ser = _series_svg(co.get("series") or {}, sorted(co.get("periods") or prog["periods"]), "반기별 계약금액 분해")
     if ser:
         side.append('<figure>%s<figcaption>보고 기간별 표에 실린 원화 계약의 분해 — 막대 높이 = 계약금액 합(건수는 아래)</figcaption></figure>' % ser)
     fl = co.get("flows") or {}
@@ -491,13 +666,15 @@ def company_section(prog, stock, title="계약 진행 — 반기·사업보고�
     src = " · ".join('<a href="%s" target="_blank" rel="noopener">%s</a>' % (DART % p["rcp"], q2) if p.get("rcp") else q2
                      for q2, p in sorted(per.items()) if p.get("status") in ("ok", "unknown_headers"))
     return ('<section class="card xi1" id="%s"><h2>%s</h2>%s%s%s<div class="xg">%s</div>'
-            '<h3>계약별 진행 표 <span class="mut">(%d건 · 완료·이탈 포함)</span></h3>%s%s'
-            '<p class="note">보고서 원문: %s</p></section>'
+            '<h3>계약별 진행 표 <span class="mut">(%d건 · 완료·이탈 포함)</span></h3>%s%s%s'
+            '<p class="note">보고서 원문: %s%s</p></section>'
             % (e(anchor), e(title), _kpis(tiles), _legend(), "".join(figs), "".join(side),
-               len(items), _contract_table(order, "xi1t" + stock), _notes(prog), src or "—"))
+               len(items), _contract_table(order, "xi1t" + stock), _sched_table(cur), _notes(prog), src or "—",
+               (" · %d월 결산 — 반기·사업보고서 기간이 달력 반기와 다르다" % co["fy"]) if co.get("fy") else ""))
 
 
-def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보고서 XI-1", anchor="xi1", limit=15):
+def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보고서 XI-1", anchor="xi1", limit=15, peers=None,
+                compare=True):
     """탭 첫 화면 섹션: 섹터 추이·회사별 잔여·산점도·주의 계약·금액 변동."""
     if not prog or not prog.get("contracts"):
         return ""
@@ -520,6 +697,7 @@ def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보�
               "연 공급 속도 · 잔여 소진(최근 속도 기준)"),
              ("%d · %d · %d" % (s["lag"], s.get("overdue", 0), s["slip6"]), "지연 의심 · 납기 경과 · 지연 전망")]
     cur = [c for c in prog["contracts"] if c["status"] in ("active", "new") and "dup" not in c["flags"]]
+    feed = _feed(prog, cur, co_cell)
     rows = sorted(((st, co) for st, co in cos.items() if co["agg"]["rem"] > 0), key=lambda x: -x[1]["agg"]["rem"])[:limit]
     figs = []
     ser = _series_svg(s.get("series") or {}, prog["periods"], "탭 반기별 계약금액 분해")
@@ -583,11 +761,11 @@ def hub_section(prog, co_href=None, title="계약 진행 — 반기·사업보�
     if ptab:
         cobar += ('<h3>계약상대별 잔여 <span class="mut">(표기 묶음 — `(주)`·띄어쓰기·영문/한글 표기 차이를 합친다. '
                   '익명 상대는 같은 문구끼리만 묶여 실제 같은 상대인지는 모른다)</span></h3>' + ptab)
-    return ('<section class="card xi1" id="%s"><h2>%s <span class="mut">%s</span></h2>%s%s<div class="xg">%s</div>%s'
+    return ('<section class="card xi1" id="%s"><h2>%s <span class="mut">%s</span></h2>%s%s%s<div class="xg">%s</div>%s'
             '<h3>주의 계약 <span class="mut">(지연 의심·납기 경과·지연 전망·정체·매출 역진, 잔여 큰 순 %d건)</span></h3>%s%s%s</section>'
-            % (e(anchor), e(title), e(q), _kpis(tiles), _legend(), "".join(figs), cobar, len(watch),
+            % (e(anchor), e(title), e(q), _kpis(tiles), feed, _legend(), "".join(figs), cobar, len(watch),
                _contract_table(watch, "xi1w", show_co=co_cell) if watch else '<p class="note">해당 계약 없음</p>',
-               chg_html, _notes(prog)))
+               chg_html + (compare_section(prog, peers) if compare else ""), _notes(prog)))
 
 
 def coverage_rows(prog):
@@ -607,6 +785,8 @@ def coverage_rows(prog):
                 cells.append('<td class="mut">—</td>')
                 continue
             t = lab.get(p["status"], p["status"])
+            if co.get("fy") and p["status"] == "no_report":
+                t = "결산월 다름"
             if p.get("n"):
                 t += " %d" % p["n"]
             if p.get("unit_fix"):
@@ -618,14 +798,21 @@ def coverage_rows(prog):
             cls = "" if p["status"] == "ok" else ' class="mut"'
             cells.append('<td%s>%s</td>' % (cls, e(t)))
         cov = ("%d/%d" % (a["ledger_found"], a["ledger_live"])) if a.get("ledger_live") else "—"
-        tr.append('<tr><td>%s</td><td>%s</td>%s<td class="n">%d</td><td class="n">%d</td><td class="n">%d</td><td class="n">%s</td></tr>'
-                  % (e(st), e(co["name"]), "".join(cells), a["linkA"], a["linkB"], a["xi_only"], cov))
+        note = ""
+        if co.get("fy"):
+            own = [(q2, p2) for q2, p2 in sorted(co["periods"].items()) if q2 not in qs]
+            note = "%d월 결산 — " % co["fy"] + ", ".join("%s %s" % (q2, lab.get(p2["status"], p2["status"])) for q2, p2 in own)
+        tr.append('<tr><td>%s</td><td>%s</td>%s<td class="n">%d</td><td class="n">%d</td><td class="n">%d</td><td class="n">%s</td>'
+                  '<td class="mut">%s</td></tr>'
+                  % (e(st), e(co["name"]), "".join(cells), a["linkA"], a["linkB"], a["xi_only"], cov, e(note)))
     return ('<section class="card xi1" id="xi1cov"><h2>계약 진행(XI-1) 수집 상태</h2>'
             '<div class="tbw"><table id="xi1cv" data-sortable><thead><tr><th>종목</th><th>회사</th>%s'
             '<th class="n">원장 확정</th><th class="n">원장 추정</th><th class="n">XI 전용</th>'
-            '<th class="n" title="탭 원장의 진행 기간 계약(2024년 이후 종료·해지 아님) 중 XI-1 에서 찾은 비율">원장 대응</th></tr></thead>'
+            '<th class="n" title="탭 원장의 진행 기간 계약(2024년 이후 종료·해지 아님) 중 XI-1 에서 찾은 비율">원장 대응</th>'
+            '<th>비고</th></tr></thead>'
             '<tbody>%s</tbody></table></div><p class="note">표 = 진행 현황 표를 읽음(숫자 = 계약 행), 표 없음 = 절은 있으나 '
             '판매ㆍ공급계약 진행 표가 없음(증자·해명 공시만 있는 회사), 절 없음·보고서 없음 = 그 기간 보고서에 XI-1 절이 없거나 보고서 미접수, '
-            '공급 미기재 = 표는 있으나 판매ㆍ공급·대금수령 칸을 전부 비움(진행률 없음 — 0 으로 보지 않는다). '
+            '공급 미기재 = 표는 있으나 판매ㆍ공급·대금수령 칸을 대부분 비움(진행률 없음 — 0 으로 보지 않는다). '
+            '12월이 아닌 결산 회사는 그 회사의 반기·사업보고서 기간을 따로 받아 비고에 적는다(3S 3월 결산 → 9월·3월). '
             '못 읽은 표는 머리행 대기열(hdr_queue.json, role xi)로 간다.</p></section>'
             % ("".join("<th>%s</th>" % q for q in qs), "".join(tr)))

@@ -92,16 +92,40 @@ def latest_xi(today=None):
 
 
 def period_end(q):
-    y = int(q[:4])
-    return datetime.date(y, 6, 30) if q[5] == "2" else datetime.date(y, 12, 31)
+    y, n = int(q[:4]), int(q[5])
+    return {1: datetime.date(y, 3, 31), 2: datetime.date(y, 6, 30), 3: datetime.date(y, 9, 30),
+            4: datetime.date(y, 12, 31)}[n]
 
 
-def _window(q):
-    """보고서 검색 기간·종류. 반기(A002)는 8월, 사업(A001)은 이듬해 3월 접수 — 정정까지 1년을 본다."""
-    y = int(q[:4])
-    if q[5] == "2":
-        return "%d0701" % y, "%d0630" % (y + 1), "A002"
-    return "%d0101" % (y + 1), "%d1231" % (y + 1), "A001"
+def is_q(s):
+    return bool(re.match(r"^\d{4}Q[1-4]$", s or ""))
+
+
+def annual(q, fy=12):
+    """q 가 그 회사의 사업보고서 기간 말인가(12월 결산 → Q4, 3월 결산 → Q1)."""
+    return int(q[5]) * 3 == fy
+
+
+def _window(q, fy=12):
+    """보고서 검색 기간·종류. 반기(A002)는 기간 말 +45일, 사업(A001)은 +90일 무렵 접수 — 정정까지 1년을 본다."""
+    e = period_end(q)
+    s = e + datetime.timedelta(days=1)
+    t = datetime.date(e.year + 1, e.month, e.day) if not (e.month == 2 and e.day == 29) else datetime.date(e.year + 1, 2, 28)
+    return s.strftime("%Y%m%d"), t.strftime("%Y%m%d"), ("A001" if annual(q, fy) else "A002")
+
+
+def fy_periods(fy, today=None, first=datetime.date(2024, 9, 30)):
+    """12월이 아닌 결산(3S 3월)의 반기·사업 기간 라벨 — 기간 말이 first 이후이고 접수 기한(+45·+90일)이 지난 것만."""
+    today = today or datetime.date.today()
+    hm = (fy + 6 - 1) % 12 + 1
+    out = []
+    for y in range(first.year, today.year + 1):
+        for mth in sorted({fy, hm}):
+            q = "%dQ%d" % (y, mth // 3)
+            e = period_end(q)
+            if e >= first and today >= e + datetime.timedelta(days=90 if mth == fy else 45):
+                out.append(q)
+    return out
 
 
 _TITLE = re.compile(r"(사업|반기)보고서\s*\((\d{4})\.(\d{2})\)")
@@ -175,14 +199,17 @@ def parse_doc(html, rcp=None, raw=None):
     """절 HTML(또는 보존된 원문 표 raw) → 커밋할 해석 결과. 결정적."""
     raw = raw if raw is not None else _raw_of(X.raw_tables(html))
     p = X.interpret([dict(t) for t in raw])
-    keep = ("cols", "ncols", "fields", "n", "n_rec", "unit", "unit_fix", "unit_suspect", "rows")
-    return {"rev": X.PARSER_REV, "rcp": rcp, "raw": raw,
+    keep = ("cols", "ncols", "fields", "n", "n_rec", "unit", "unit_fix", "unit_suspect", "rows", "shape")
+    out = {"rev": X.PARSER_REV, "rcp": rcp, "raw": raw,
             "tables": [dict({k: t[k] for k in keep if k in t}, lead=X.KP.lead_tail(t.get("lead"))) for t in p["tables"]],
             "rejected": [{"cols": r["cols"], "ncols": r["ncols"], "fields": r["fields"], "n": r["n"], "reason": r["reason"],
                           "lead": X.KP.lead_tail(r.get("lead")),
                           **({"rows": (r.get("rows") or [])[:3]} if r["reason"] == "near_miss" else {})}
                          for r in p.get("rejected") or []],
             "unknown": len(p["unknown_headers"])}
+    if p.get("schedules"):
+        out["schedules"] = p["schedules"]
+    return out
 
 
 def write_parsed(tab, st, q, doc, root=None):
@@ -228,9 +255,9 @@ def universe(tab, root=None):
 
 # ── 수집 ────────────────────────────────────────────────────────
 
-def fetch_one(st, q, F):
+def fetch_one(st, q, F, fy=12):
     """(st, q) 의 XI-1 절 → (상태 dict, html|None). 제목 기준월이 맞는 보고서만, 첨부정정은 뒤로(kce_fetch.pick_report)."""
-    s, e, kind = _window(q)
+    s, e, kind = _window(q, fy)
     want = "%s.%02d" % (q[:4], int(q[5]) * 3)
     cands = [c for c in F.pick_report(F.search_reports(st, s, e, kind), q)
              if (lambda m: bool(m) and "%s.%s" % (m.group(2), m.group(3)) == want)(_TITLE.search(c[1] or ""))]
@@ -243,6 +270,17 @@ def fetch_one(st, q, F):
     return {"status": "no_section", "rcp": cands[0][0]}, None
 
 
+def detect_fy(st, F, today=None):
+    """사업보고서 제목 `사업보고서 (2026.03)` 의 기준월 = 결산월. 18개월 안에 없으면 12."""
+    today = today or datetime.date.today()
+    s = (today - datetime.timedelta(days=550)).strftime("%Y%m%d")
+    for _rcp, title in F.search_reports(st, s, today.strftime("%Y%m%d"), "A001"):
+        m = _TITLE.search(title or "")
+        if m and m.group(1) == "사업":
+            return {"status": "fy", "month": int(m.group(3))}
+    return {"status": "fy", "month": 12}
+
+
 def collect(tab, stocks=None, qs=None, root=None, force=False, recheck_all=False, lanes=1, fetch=None, log=None):
     """모자란 (종목, 분기)만 받는다. 상태가 RETRY 인 칸은 **최신 분기만** 매번 다시 본다(과거 분기는 --recheck-all).
     오류는 상태에 'error' 로 남지만 다음 실행이 다시 받는다. DART 는 IP 당 한 프로세스 — kce_fetch 전역 게이트가 묶는다."""
@@ -252,18 +290,31 @@ def collect(tab, stocks=None, qs=None, root=None, force=False, recheck_all=False
     stocks = stocks or [s for s, _ in universe(tab, root)]
     qs = qs or periods(latest_xi())
     stat = load_status(tab, root)
+    # 결산월이 12월이 아닌 회사(3S 3월): 12월 기준 기간이 전부 '보고서 없음'이면 사업보고서 제목으로 결산월을 한 번 찾아
+    # status 에 남기고('<종목>|fy'), 그 회사 기간(3월 결산 → 반기 9월=Q3·사업 3월=Q1)을 따로 받는다.
+    fys = {}
+    for st in stocks:
+        ent = stat.get("%s|fy" % st)
+        if ent is None and all((stat.get("%s|%s" % (st, q)) or {}).get("status") == "no_report" for q in qs):
+            ent = detect_fy(st, fetch)
+            stat["%s|fy" % st] = ent
+            save_status(tab, stat, root)
+            log("  %s 결산월 %s" % (st, ent.get("month")))
+        if ent and ent.get("month") and ent["month"] != 12:
+            fys[st] = ent["month"]
     todo = []
     for st in stocks:
-        for q in qs:
+        own = fy_periods(fys[st]) if st in fys else qs
+        for q in own:
             cur = stat.get("%s|%s" % (st, q))
             if force or cur is None:
                 todo.append((st, q))
-            elif cur.get("status") in RETRY and (q == qs[-1] or recheck_all or cur.get("status") == "error"):
+            elif cur.get("status") in RETRY and (q == own[-1] or recheck_all or cur.get("status") == "error"):
                 todo.append((st, q))
     log("xi1 %s: 수집 %d칸 (종목 %d × 분기 %s)" % (tab, len(todo), len(stocks), ",".join(qs)))
 
     def one(it):
-        return fetch_one(it[0], it[1], fetch)
+        return fetch_one(it[0], it[1], fetch, fys.get(it[0], 12))
 
     def done(i, it, res):
         key = "%s|%s" % it
@@ -297,6 +348,20 @@ def to_date(s):
         return None
 
 
+def _rev_of(r, amt):
+    """체결 공시의 '최근 매출액'(직전 사업연도, 백만원). kgrid rev_krw_m · ksemi rev_recent_krw(원) · 나머지는 금액 ÷ 매출액대비%."""
+    v = r.get("rev_krw_m")
+    if isinstance(v, (int, float)) and v > 0:
+        return round(v, 3)
+    v = r.get("rev_recent_krw")
+    if isinstance(v, (int, float)) and v > 0:
+        return round(v / 1e6, 3)
+    ratio = r.get("rev_ratio") if r.get("rev_ratio") is not None else r.get("rev_ratio_pct")
+    if isinstance(amt, (int, float)) and amt > 0 and isinstance(ratio, (int, float)) and ratio > 0:
+        return round(amt / (ratio / 100), 3)
+    return None
+
+
 def load_ledger(tab, root=None):
     p = os.path.join(root or ARGUS, tab, "tools", "assets", "contracts.json")
     if not os.path.exists(p):
@@ -324,7 +389,7 @@ def ledger_rows(tab, rows):
             dates.add(sd.strftime("%Y%m%d"))
         term = bool(r.get("canceled")) or r.get("event") in ("해지", "철회") or "해지" in (r.get("title") or "")
         # ksemi 의 name 은 회사명이다(계약명은 content) — 다른 열로 메우지 않는다
-        out.append({"rcp": rcp, "stock": r.get("stock"), "name": r.get(spec["name"]) or "",
+        out.append({"rcp": rcp, "stock": r.get("stock"), "name": r.get(spec["name"]) or "", "rev": _rev_of(r, amt),
                     "amt": amt if isinstance(amt, (int, float)) and amt > 0 else None,
                     "party": r.get("party") or "", "start": r.get("start") or "", "end": r.get("end") or "",
                     "dates": dates, "rcps": [rcp] + sups, "term": term,
@@ -401,25 +466,38 @@ def _same(r, prev):
 
 
 def thread_sanity(th):
-    """같은 계약의 계약금액이 보고 사이에 정확히 1,000·1,000,000 배로 뛰면 그 행만 단위가 다른 것(아이엠티 2026Q2
-    1,280 → 1,280,000). 첫 금액 기준으로 그 행의 원화 금액 칸을 되돌리고 cell_fix 에 남긴다. 계약은 1,000배로 바뀌지 않는다."""
+    """같은 계약의 값이 보고 사이에 정확히 10의 거듭제곱만큼 어긋난 칸을 되돌린다 — 회사 오기·칸 단위:
+      · 계약금액: 첫 금액 대비 1,000·1,000,000 배(±10%) — 아이엠티 2026Q2 1,280 → 1,280,000
+      · 계약금액·공급 누적·수령 누적: 직전 보고 같은 칸 대비 10^k(k = ±1~±6) 와 0.5% 안 — HJ중공업 2026Q2 한 행이
+        계약 1/10·공급 1/1,000 으로 적혔다. 누적은 바뀔 수 있지만 직전 값의 정확히 10^k 배가 되는 일은 우연으로 보기 어렵다.
+    고친 칸은 cell_fix 에 남긴다(화면 칩 '칸 단위 보정')."""
     qs = sorted(th["hist"])
     base = next((th["hist"][q]["amt"] for q in qs if th["hist"][q].get("amt")), None)
-    if not base:
-        return th
-    for q in qs:
-        r = th["hist"][q]
-        a = r.get("amt")
-        if not a or a <= 0:
-            continue
-        lr = math.log10(a / base)
-        for k in (3, 6, -3, -6):
-            if abs(lr - k) < 0.1:
-                for f in ("amt", "supCur", "supCum", "recvCur", "recvCum"):
-                    if r.get(f) is not None:
-                        r[f] = round(r[f] / 10 ** k, 6)
-                r.setdefault("cell_fix", []).append("amt_thread")
-                break
+    if base:
+        for q in qs:
+            r = th["hist"][q]
+            a = r.get("amt")
+            if not a or a <= 0:
+                continue
+            lr = math.log10(a / base)
+            for k in (3, 6, -3, -6):
+                if abs(lr - k) < 0.1:
+                    for f in ("amt", "supCur", "supCum", "recvCur", "recvCum"):
+                        if r.get(f) is not None:
+                            r[f] = round(r[f] / 10 ** k, 6)
+                    r.setdefault("cell_fix", []).append("amt_thread")
+                    break
+    for p_, q in zip(qs, qs[1:]):
+        a, b = th["hist"][p_], th["hist"][q]
+        for f in ("amt", "supCum", "recvCum"):
+            v, pv = b.get(f), a.get(f)
+            if not v or not pv or v <= 0 or pv <= 0:
+                continue
+            for k in (1, 2, 3, 6, -1, -2, -3, -6):
+                if abs((pv / v) / 10 ** k - 1) < 0.005:
+                    b[f] = round(v * 10 ** k, 6)
+                    b.setdefault("cell_fix", []).append(f + "_prev")
+                    break
     return th
 
 
@@ -534,7 +612,7 @@ def _r(x, n=4):
     return None if x is None else round(x, n)
 
 
-def metrics(th, latest_q, first_q):
+def metrics(th, latest_q, first_q, fy=12):
     """실의 마지막 분기 값 기준 지표. 금액 백만원, 비율 0~1, 기간 개월."""
     qs = sorted(th["hist"])
     q = qs[-1]
@@ -566,6 +644,8 @@ def metrics(th, latest_q, first_q):
         flags.append("withheld")
     if r.get("cell_fix") or r.get("cell_drop"):
         flags.append("cell_fix")
+    if r.get("amt_src") == "ledger":
+        flags.append("amt_ledger")
     if amt and sup is not None:
         m["prog"] = _r(sup / amt)
         m["rem"] = max(amt - sup, 0)
@@ -594,7 +674,7 @@ def metrics(th, latest_q, first_q):
         pace = (sup - prev) / _months(period_end(qs[-2]), end_q)
         pb = "Δ누적"
     elif cur_sup is not None:
-        pace, pb = cur_sup / (6 if q[5] == "2" else 12), "당기"
+        pace, pb = cur_sup / (12 if annual(q, fy) else 6), "당기"
     if pace is not None:
         m["pace"], m["pace_src"] = _r(pace, 3), pb
         if m.get("rem") and pace > 0:
@@ -611,9 +691,11 @@ def metrics(th, latest_q, first_q):
     if cur_sup is not None and cur_sup < 0:
         flags.append("reversal")                # 당기 판매ㆍ공급이 음수 — 매출 취소·계약 감액 신호
     # 계약금액 변동 — 분기 사이(XI)와 원장 공시 대비
+    # 직전 보고 대비(첫 보고 대비가 아니다) — 두산에너빌리티 2024Q4 표처럼 회사가 한 기간 금액 열을 한 줄 밀려 적은 경우
+    # 첫 보고와 비교하면 ±50% '변동'이 줄줄이 생긴다. 그런 오기는 누적 감소(cum_drop) 신호로 따로 잡힌다.
     amts = [hv(th["hist"][x], "amt") for x in qs if hv(th["hist"][x], "amt")]
-    if len(amts) >= 2 and not _near(amts[-1], amts[0], 0.01):
-        m["chg_xi"] = _r(amts[-1] / amts[0] - 1)
+    if len(amts) >= 2 and not _near(amts[-1], amts[-2], 0.01):
+        m["chg_xi"] = _r(amts[-1] / amts[-2] - 1)
     if link and basis == "xi" and amt and link["_c"]["amt"] and not _near(amt, link["_c"]["amt"], 0.01):
         m["chg_led"] = _r(amt / link["_c"]["amt"] - 1)
     if m.get("elapsed") is not None and m["elapsed"] >= 1 and m.get("prog") is not None and m["prog"] < DONE \
@@ -652,17 +734,20 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
     names = dict(universe(tab, root))
     stat = load_status(tab, root)
     if qs is None:
-        qs = sorted({k.split("|")[1] for k in stat}) or periods(latest_xi())
+        qs = sorted({k.split("|")[1] for k in stat if is_q(k.split("|")[1]) and k.split("|")[1][5] in "24"}) \
+            or periods(latest_xi())
     L = load_ledger(tab, root) if ledger is None else ledger
     by_st = {}
     for c in L:
         by_st.setdefault(c["stock"], []).append(c)
     companies, contracts, review = {}, [], []
     for st, name in sorted(names.items()):
-        cps, per_q = {}, []
+        cps, per_q, scheds = {}, [], {}
         Ls = by_st.get(st, [])
         ref = [(c["name"], c["amt"]) for c in Ls if c["amt"]]
-        for q in qs:
+        fy = (stat.get("%s|fy" % st) or {}).get("month") or 12
+        own = sorted(set(qs) | {k.split("|")[1] for k in stat if k.startswith(st + "|") and is_q(k.split("|")[1])})
+        for q in own:
             rec = stat.get("%s|%s" % (st, q))
             if not rec:
                 continue
@@ -704,17 +789,21 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
                 elif not parsed["tables"]:
                     ent["status"] = "no_table"
                 per_q.append((q, rows))
+                for sc in doc.get("schedules") or []:
+                    scheds.setdefault(q, []).append(sc)
             cps[q] = ent
         if not cps:
             continue
         threads = link_all([thread_sanity(t) for t in thread(per_q)], Ls)
-        ok_qs = [q for q in qs if cps.get(q, {}).get("status") in ("ok", "unknown_headers")]
+        for th in threads:
+            amt_from_ledger(th)
+        ok_qs = [q for q in own if cps.get(q, {}).get("status") in ("ok", "unknown_headers")]
         latest = ok_qs[-1] if ok_qs else None
         first = ok_qs[0] if ok_qs else None
         items = []
         for k, th in enumerate(threads):
             th["suspect"] = any(r.get("_suspect") for r in th["hist"].values())
-            m, flags, status = metrics(th, latest, first)
+            m, flags, status = metrics(th, latest, first, fy)
             last = th["hist"][max(th["hist"])]
             first_row = th["hist"][min(th["hist"])]
             item = {"id": "%s-%s-%02d" % (st, _dt8(first_row.get("dt")) or "nodate", k),
@@ -722,6 +811,12 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
                     "cur": last.get("cur"), "amt_fx": last.get("amt_fx"),
                     "hist": {q: _hist_row(r, m.get("basis")) for q, r in sorted(th["hist"].items())},
                     "m": m, "flags": flags, "status": status}
+            if last.get("note"):
+                item["note"] = last["note"]
+            sc = next((x for x in scheds.get(m["q"], []) if x["dt"] == first_row.get("dt") and _near(x["amt"], last.get("amt"), 0.01)),
+                      None)
+            if sc:
+                item["sched"] = dict(sc, q=m["q"])
             if th.get("link"):
                 lk = th["link"]
                 item["link"] = {"rcp": lk["rcp"], "rcps": lk["rcps"], "tier": lk["tier"], "basis": lk["basis"]}
@@ -730,16 +825,23 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
                                "amt": m.get("amt"), "cands": th["cands"], "ambiguous": bool(th.get("ambiguous"))})
             items.append(item)
         contracts.extend(items)
-        companies[st] = {"name": name, "periods": cps, "latest": latest, "_items": items, "_L": Ls}
+        companies[st] = {"name": name, "periods": cps, "latest": latest, "_items": items, "_L": Ls,
+                         "_threads": threads, "_fy": fy, "_ok": ok_qs}
+        if fy != 12:
+            companies[st]["fy"] = fy
     mark_dups(contracts, {r for c in L if c["sub"] for r in c["rcps"]})
     curve = sector_curve(contracts)
     for c in contracts:
         apply_curve(c, curve)
+    prev_signals(companies, contracts)
     for st, co in companies.items():
+        for k_ in ("_threads", "_fy", "_ok"):
+            co.pop(k_, None)
         items, Ls = co.pop("_items"), co.pop("_L")
         co["agg"] = company_agg(items, co["latest"], Ls)
-        co["series"] = company_series(items, qs)
-        co["flows"] = company_flows(items, qs, {q for q, p in co["periods"].items() if p["status"] == "ok"})
+        cq = sorted(co["periods"])
+        co["series"] = company_series(items, cq)
+        co["flows"] = company_flows(items, cq, {q for q, p in co["periods"].items() if p["status"] == "ok"})
     prog = {"schema": SCHEMA, "tab": tab, "periods": qs, "asof": qs[-1] if qs else None, "curve": curve,
             "source": "반기·사업보고서 XI-1 「나. 단일판매ㆍ공급계약 진행 현황」(DART)",
             "rules": {"lag": LAG, "done": DONE, "over": OVER},
@@ -747,6 +849,56 @@ def build(tab, root=None, qs=None, ledger=None, hdr=True):
     prog["sector"] = sector_agg(prog)
     prog["by_rcp"] = {r: c["id"] for c in contracts if c.get("link") for r in c["link"]["rcps"]}
     return prog
+
+
+def amt_from_ledger(th):
+    """계약금액 열이 없는 표(오킨스전자 — 공급 열을 '계약금액 당기·누적'으로 적었다)는 연결된 원장(체결 공시)의 원화 금액으로
+    채운다. 행에 'amt' 키 자체가 없을 때만(열이 없던 것) — 칸이 빈 것·외화는 건드리지 않는다. flags 'amt_ledger'."""
+    lk = th.get("link")
+    if not lk or not lk["_c"]["amt"]:
+        return th
+    for r in th["hist"].values():
+        if "amt" not in r and not r.get("cur"):
+            r["amt"] = lk["_c"]["amt"]
+            r["amt_src"] = "ledger"
+    return th
+
+
+SIGNALS = ("lag", "overdue", "slip", "stalled", "reversal", "cum_drop")
+
+
+def prev_signals(companies, contracts):
+    """직전 보고 기준으로 같은 지표·신호를 다시 계산해(직전 보고까지의 이력만, 그때의 탭 표준 곡선) 이번 보고에서 **새로 생긴**
+    신호를 계약에 단다(new_sig). 이번 보고에서 표에서 빠진 계약은 left=True. 신호 피드(허브 첫머리)가 이것만 모아 보인다."""
+    prev = []
+    for st, co in companies.items():
+        ok = co["_ok"]
+        if len(ok) < 2:
+            continue
+        pq = ok[-2]
+        for it, th in zip(co["_items"], co["_threads"]):
+            h = {q: r for q, r in th["hist"].items() if q <= pq}
+            if not h:
+                continue
+            m, fl, stt = metrics({"hist": h, "link": th.get("link"), "suspect": th.get("suspect")}, pq, ok[0], co["_fy"])
+            p = {"m": m, "flags": fl, "status": stt}
+            prev.append((it, p))
+            if it["m"]["q"] == pq and it["status"] in ("done", "dropped"):
+                it["left"] = True
+    curve = sector_curve([p for _it, p in prev])
+    pmap = {}
+    for it, p in prev:
+        apply_curve(p, curve)
+        pmap[id(it)] = p
+    for c in contracts:
+        if c["status"] not in ("active", "new") or "dup" in c["flags"]:
+            continue
+        p = pmap.get(id(c))
+        now = [f for f in c["flags"] if f in SIGNALS]
+        was = set(p["flags"]) if p else set()
+        new = sorted(set(now) - was) if (p or c["status"] == "new") else []
+        if new:
+            c["new_sig"] = new
 
 
 def mark_dups(contracts, sub_rcps, min_pairs=3):
@@ -891,6 +1043,13 @@ def company_agg(items, latest, Ls):
             fx[c["cur"]] = fx.get(c["cur"], 0) + 1
     big = sorted((c["m"]["amt"] for c in k), reverse=True)
     pace_y = sum(max(c["m"].get("pace") or 0, 0) for c in k) * 12
+    # 최근 체결 공시 5건의 '최근 매출액' 중앙값 — 한 건만 쓰면 지주가 자회사 대신 낸 공시(효성: 자회사 매출 4.6억)에 휘둘린다.
+    # 공시 계약 연 공급이 매출의 3배를 넘으면 매출 값이 틀린 것으로 보고 비율을 내지 않는다.
+    revs = sorted((c for c in Ls if c.get("rev")), key=lambda c: c["rcp"])[-5:]
+    rev_y = _median(sorted(c["rev"] for c in revs)) if revs else None
+    rev_rcp = revs[-1]["rcp"] if revs else None
+    if rev_y and pace_y and pace_y / rev_y > 3:
+        rev_y = None
     parties = {}
     for c in k:
         raw = _PARTY_NOTE.sub("", (c.get("cl") or "").strip())
@@ -910,6 +1069,12 @@ def company_agg(items, latest, Ls):
             "top3": _r(sum(big[:3]) / amt) if amt else None,
             # 연간 공급 속도(최근 월 속도 × 12)와 잔여 소진 기간 — 공시 계약만의 매출 가시성(II-4·매출 전체가 아니다)
             "pace_y": round(pace_y, 3), "burn_y": _r(rem / pace_y, 2) if pace_y > 0 else None,
+            # 매출 대비(추정): 체결 공시의 '최근 매출액'(직전 사업연도) — 공시 계약 연 공급이 매출의 몇 %, 잔여가 매출의 몇 배
+            "rev_y": rev_y, "rev_rcp": rev_rcp,
+            "pace_rev": _r(pace_y / rev_y) if rev_y and pace_y else None,
+            "rem_rev": _r(rem / rev_y, 2) if rev_y and rem else None,
+            "new_sig": sum(1 for c in cur if c.get("new_sig")),
+            "left": sum(1 for c in items if c.get("left")),
             "parties": [[k_, d_, round(v, 3)] for k_, (d_, v) in sorted(parties.items(), key=lambda x: (-x[1][1], x[0]))[:5]],
             "lag": sum(1 for c in cur if "lag" in c["flags"]),
             "overdue": sum(1 for c in cur if "overdue" in c["flags"]),
