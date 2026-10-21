@@ -146,8 +146,8 @@ Browser requests omit credentials and referrers, reject redirects entirely, enfo
 - Python: **128 passed** across collector, index-builder and retained updater contracts.
 - DOM/static: **19 passed** in a dependency-free Node DOM harness.
 - `node --check ui/patch.js`: passed.
-- Offline collector `--check`: **17,004 observations**, passed.
-- Derived-index `--check`: **697 levels, 12 constituents, one composition epoch**, passed.
+- Offline collector `--check`: **17,052 observations**, passed.
+- Derived-index `--check`: **701 levels, 12 constituents, one composition epoch**, passed.
 - Deterministic AVG + LAST imports: byte-identical; second publish changed **0 files**.
 - `git diff --no-index --check` against the supplied snapshot: passed.
 - `git apply --check`, patch application to an independent baseline and full-file comparison: passed.
