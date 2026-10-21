@@ -349,6 +349,70 @@ class ArchiveTests(unittest.TestCase):
         index, _ = c.read_archive(self.root)
         self.assertEqual(index['snapshot_time'], '2026-10-20T15:25:00Z')
 
+    def test_family_catalogue_drops_disappeared_current_only_family(self):
+        appeared = current()
+        transient = copy.deepcopy(appeared[0])
+        transient.update(
+            sku_id='transient-b400', platform='gpu-b400-sxm', family='B400',
+            product_title='Preemptible NVIDIA® B400 NVLink')
+        appeared.append(transient)
+        for row in appeared:
+            row['source_snapshot_time'] = '2026-10-20T15:25:00Z'
+            row['collected_time'] = '2026-10-20T15:26:00Z'
+        c.publish(self.root, c.build(self.root, appeared, history()))
+        first, _ = c.read_archive(self.root)
+        self.assertIn('B400', first['supported_families'])
+
+        disappeared = current()
+        for row in disappeared:
+            row['source_snapshot_time'] = '2026-10-20T15:30:00Z'
+            row['collected_time'] = '2026-10-20T15:31:00Z'
+        c.publish(self.root, c.build(self.root, disappeared, history()))
+        second, rows = c.read_archive(self.root)
+        self.assertNotIn('B400', second['supported_families'])
+        self.assertNotIn('B400', {row['family'] for row in second['current']})
+        self.assertNotIn('B400', {row['family'] for row in rows})
+
+    def test_family_catalogue_must_exactly_match_observed_families(self):
+        index = json.loads((self.root / 'index.json').read_text())
+        observed = index['current'][0]['family']
+        index['supported_families'].remove(observed)
+        (self.root / 'index.json').write_bytes(c.encode(index))
+        with self.assertRaisesRegex(ValueError, 'family catalogue/archive mismatch'):
+            c.read_archive(self.root)
+        index['supported_families'].extend([observed, 'FAKE OFFICIAL'])
+        index['supported_families'].sort()
+        (self.root / 'index.json').write_bytes(c.encode(index))
+        with self.assertRaisesRegex(ValueError, 'family catalogue/archive mismatch'):
+            c.read_archive(self.root)
+
+    def test_archived_only_families_survive_touched_and_carried_shards(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / 'archive'
+            template = history(c.LAST)[0]
+            retired = []
+            for family, month in [('B400', 1), ('B500', 2)]:
+                item = copy.deepcopy(template)
+                start = dt.datetime(2024, month, 1, tzinfo=dt.timezone.utc)
+                item.update(
+                    sku_id='retired-' + family.lower(),
+                    platform='gpu-' + family.lower() + '-sxm',
+                    family=family,
+                    product_title='Preemptible NVIDIA® ' + family + ' NVLink',
+                    interval_start=c.iso(start),
+                    interval_end=c.iso(start + dt.timedelta(hours=1)),
+                )
+                retired.append(item)
+            c.publish(root, c.build(root, current(), retired))
+
+            incoming = copy.deepcopy(retired[0])
+            incoming['interval_start'] = '2024-01-01T01:00:00Z'
+            incoming['interval_end'] = '2024-01-01T02:00:00Z'
+            c.publish(root, c.build(root, current(), [incoming]))
+            index, rows = c.read_archive(root)
+            self.assertTrue({'B400', 'B500'} <= set(index['supported_families']))
+            self.assertTrue({'B400', 'B500'} <= {row['family'] for row in rows})
+
     def test_duplicate_current_is_rejected_before_reconciliation(self):
         duplicate = current() + [copy.deepcopy(current()[0])]
         with self.assertRaisesRegex(ValueError, 'duplicate current'):
@@ -375,6 +439,16 @@ class ArchiveTests(unittest.TestCase):
         before=self.snapshot()
         with patch.object(c,'LIMIT',10),self.assertRaises(ValueError):c.publish(self.root,c.build(self.root,current(),history()))
         self.assertEqual(self.snapshot(),before)
+
+    def test_aggregate_archive_caps_fail_closed(self):
+        with patch.object(c, 'ARCHIVE_ROW_LIMIT', 19), \
+                self.assertRaisesRegex(ValueError, 'aggregate archive row limit'):
+            c.read_archive(self.root)
+        shard_bytes = sum(path.stat().st_size for layer in ('history', 'imported-average')
+                          for path in (self.root / layer).glob('*.json'))
+        with patch.object(c, 'ARCHIVE_BYTE_LIMIT', shard_bytes - 1), \
+                self.assertRaisesRegex(ValueError, 'aggregate archive byte limit'):
+            c.read_archive(self.root)
 
     def test_io_failure_rolls_back(self):
         before={k:v[0] for k,v in self.snapshot().items()};files=c.build(self.root,current(),history(c.LAST));real=c.atomic;count=0
@@ -445,7 +519,10 @@ class ArchiveTests(unittest.TestCase):
         args=c.argparse.Namespace(data=self.root,mode='refresh',collected_at='2026-09-22T15:32:42Z',current_fixture=None,series_fixture=None)
         queries=[]
         def fake(endpoint,params):queries.append(params);return fixture('current' if endpoint==c.CURRENT else 'series')
-        with patch.object(c,'pages',fake):c.collect(args)
+        with patch.object(c,'pages',fake), \
+                patch.object(c, 'read_entries', wraps=c.read_entries) as reader:
+            c.collect(args)
+        self.assertEqual(reader.call_count, 1)
         self.assertEqual(queries[1]['filters.startTime'],'2026-09-19T01:00:00Z')
 
     def test_network_failure_does_not_touch_archive(self):
@@ -477,7 +554,7 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(len(rows), 20)
         self.assertFalse(any('-02.json' in s['path'] for s in index['shards']))
 
-    def test_incremental_build_reads_only_touched_month_of_twenty_four(self):
+    def test_incremental_build_reuses_prevalidated_rows_without_second_read(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / 'archive'
             template = history(c.LAST)[0]
@@ -495,10 +572,11 @@ class ArchiveTests(unittest.TestCase):
             incoming = copy.deepcopy(initial[0])
             incoming['interval_start'] = '2024-01-01T01:00:00Z'
             incoming['interval_end'] = '2024-01-01T02:00:00Z'
+            old_index, old_rows = c.read_archive(root)
             with patch.object(c, 'read_entries', wraps=c.read_entries) as reader:
-                files = c.build(root, current(), [incoming])
-            loaded = reader.call_args.args[1]
-            self.assertEqual([e['path'] for e in loaded], ['history/2024-01.json'])
+                files = c.build(
+                    root, current(), [incoming], old_index, old_rows)
+            reader.assert_not_called()
             self.assertEqual(set(files), {'history/2024-01.json', 'index.json'})
             index = c.decode(files['index.json'])
             self.assertEqual(index['latest_complete_timestamp'], '2025-12-01T01:00:00Z')

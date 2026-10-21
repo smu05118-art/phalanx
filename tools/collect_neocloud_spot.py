@@ -30,6 +30,8 @@ AVG = 'METHOD_AVG_PRICE'
 LIMIT = 5 * 1024 * 1024 - 1
 RESPONSE_LIMIT = 16 * 1024 * 1024
 SHARD_LIMIT = 4 * 1024 * 1024
+ARCHIVE_ROW_LIMIT = 5_000_000
+ARCHIVE_BYTE_LIMIT = 1024 * 1024 * 1024
 FAMILIES = {'gpu-b300-sxm': 'B300', 'gpu-b200-sxm': 'B200', 'gpu-b200-sxm-a': 'B200',
             'gpu-h200-sxm': 'H200', 'gpu-h100-sxm': 'H100', 'gpu-rtx6000': 'RTX PRO 6000',
             'gpu-rtx6000-a': 'RTX PRO 6000'}
@@ -361,6 +363,8 @@ def read_index(root):
             index['collected_time'] == max((r['collected_time'] for r in index['current']), key=stamp), 'index timestamps')
     require(type(index['shards']) is list, 'shards must be array')
     seen, groups = set(), {}
+    aggregate_rows = 0
+    aggregate_bytes = 0
     for entry in index['shards']:
         fields(entry, ('path', 'sha256', 'count', 'method', 'start', 'end'))
         p = entry['path']
@@ -372,7 +376,14 @@ def read_index(root):
         seen.add(p)
         target = root / p
         require(not target.is_symlink() and target.is_file(), 'missing or unsafe shard: ' + p)
-        require(target.stat().st_size <= LIMIT, 'stored shard exceeds size limit: ' + p)
+        shard_size = target.stat().st_size
+        require(shard_size <= LIMIT, 'stored shard exceeds size limit: ' + p)
+        aggregate_rows += entry['count']
+        aggregate_bytes += shard_size
+        require(aggregate_rows <= ARCHIVE_ROW_LIMIT,
+                'aggregate archive row limit exceeded')
+        require(aggregate_bytes <= ARCHIVE_BYTE_LIMIT,
+                'aggregate archive byte limit exceeded')
         groups.setdefault(group, []).append((part, entry))
     for parts in groups.values():
         parts.sort(key=lambda item: item[0])
@@ -416,8 +427,10 @@ def read_archive(root):
     rows = read_entries(root, index['shards'])
     for method, field in [(LAST, 'latest_complete_timestamp'), (AVG, 'imported_average_latest_timestamp')]:
         require(index[field] == max((r['interval_end'] for r in rows if r['method'] == method), default=None), 'latest timestamp mismatch')
-    observed_families = sorted({r['family'] for r in index['current']} | {r['family'] for r in rows})
-    require(index['supported_families'] == observed_families, 'family catalogue/archive mismatch')
+    observed_families = sorted(
+        {r['family'] for r in index['current']} | {r['family'] for r in rows})
+    require(index['supported_families'] == observed_families,
+            'family catalogue/archive mismatch')
     return index, rows
 
 
@@ -478,9 +491,12 @@ def encode_group(group, observations):
 _UNSET = object()
 
 
-def build(root, current, incoming, old_index=_UNSET):
+def build(root, current, incoming, old_index=_UNSET, old_rows=_UNSET):
     if old_index is _UNSET:
-        old_index = read_index(root)
+        old_index, old_rows = read_archive(root)
+    else:
+        require(old_rows is not _UNSET,
+                'old archive rows must accompany old index')
     current = reconcile_current(old_index, current)
     require(incoming, 'no incoming observations')
     for row in incoming:
@@ -489,7 +505,13 @@ def build(root, current, incoming, old_index=_UNSET):
     old_entries = old_index['shards'] if old_index else []
     replaced_entries = [entry for entry in old_entries if entry_group(entry)[0] in touched]
     carried_entries = [entry for entry in old_entries if entry_group(entry)[0] not in touched]
-    rows = merge(read_entries(root, replaced_entries), incoming)
+    replaced_groups = {entry_group(entry)[0] for entry in replaced_entries}
+    carried_groups = {entry_group(entry)[0] for entry in carried_entries}
+    replaced_rows = [row for row in old_rows if row_group(row) in replaced_groups]
+    carried_rows = [row for row in old_rows if row_group(row) in carried_groups]
+    require(len(replaced_rows) + len(carried_rows) == len(old_rows),
+            'old archive rows do not match manifest groups')
+    rows = merge(replaced_rows, incoming)
     require(all(row_group(row) in touched for row in rows), 'unexpected touched shard group')
     files, new_entries = {}, []
     for group in sorted(touched):
@@ -498,9 +520,16 @@ def build(root, current, incoming, old_index=_UNSET):
         new_entries.extend(group_entries)
     shards = sorted(carried_entries + new_entries,
                     key=lambda entry: (entry_group(entry)[2], entry_group(entry)[1]))
-    supported = set(old_index['supported_families'] if old_index else ())
-    supported.update(r['family'] for r in current)
-    supported.update(r['family'] for r in incoming)
+    require(sum(entry['count'] for entry in shards) <= ARCHIVE_ROW_LIMIT,
+            'aggregate archive row limit exceeded')
+    aggregate_bytes = sum(len(payload) for payload in files.values())
+    aggregate_bytes += sum((root / entry['path']).stat().st_size
+                           for entry in carried_entries)
+    require(aggregate_bytes <= ARCHIVE_BYTE_LIMIT,
+            'aggregate archive byte limit exceeded')
+    supported = {r['family'] for r in current}
+    supported.update(r['family'] for r in rows)
+    supported.update(r['family'] for r in carried_rows)
     index = dict(schema_version=2, source_urls=[PAGE, DOCS, CURRENT, SERIES], supported_families=sorted(supported),
                  current=current, snapshot_time=min((r['source_snapshot_time'] for r in current), key=stamp),
                  collected_time=max((r['collected_time'] for r in current), key=stamp), method=LAST, granularity=HOUR, shards=shards,
@@ -595,7 +624,7 @@ def fixture(path):
 def collect(args):
     now = args.collected_at or iso(dt.datetime.now(dt.timezone.utc))
     stamp(now)
-    old_index = read_index(args.data)
+    old_index, old_rows = read_archive(args.data)
     if args.mode in ('import-avg', 'fixture-last'):
         require(args.current_fixture and args.series_fixture, 'both fixture paths required')
         cp, hp = fixture(args.current_fixture), fixture(args.series_fixture)
@@ -618,7 +647,7 @@ def collect(args):
     current = parse_current(cp, now)
     rows = parse_history(hp, method, now)
     require(rows, 'no completed history observations')
-    return build(args.data, current, rows, old_index)
+    return build(args.data, current, rows, old_index, old_rows)
 
 
 def main(argv=None):

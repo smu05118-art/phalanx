@@ -2,8 +2,35 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://smu05118-art.github.io/phalanx/tools/neocloud_gpu_index.schema.json",
   "title": "Nebius GPU Spot Equal-Family Price Index",
+  "$comment": "Schema validity is not a trust anchor. Lifecycle replay requires the exact committed prior gpu-index.json and its same-commit index.json bytes.",
   "type": "object",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {"schema_version": {"const": 1}},
+        "required": ["schema_version"]
+      },
+      "then": {
+        "properties": {
+          "catalog": {"items": {"$ref": "#/$defs/catalog_entry_v1"}},
+          "composition_epochs": {"items": {"$ref": "#/$defs/epoch_v1"}}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"schema_version": {"const": 2}},
+        "required": ["schema_version"]
+      },
+      "then": {
+        "properties": {
+          "catalog": {"items": {"$ref": "#/$defs/catalog_entry_v2"}},
+          "composition_epochs": {"items": {"$ref": "#/$defs/epoch_v2"}}
+        }
+      }
+    }
+  ],
   "required": [
     "schema_version",
     "index_id",
@@ -24,7 +51,7 @@
     "gaps"
   ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"enum": [1, 2]},
     "index_id": {"const": "nebius-gpu-spot-equal-family-price-index"},
     "name": {"const": "Nebius GPU Spot Equal-Family Price Index"},
     "currency": {"const": "USD"},
@@ -86,12 +113,12 @@
     "catalog": {
       "type": "array",
       "minItems": 1,
-      "items": {"$ref": "#/$defs/catalog_entry"}
+      "items": {}
     },
     "composition_epochs": {
       "type": "array",
       "minItems": 1,
-      "items": {"$ref": "#/$defs/epoch"}
+      "items": {}
     },
     "levels": {
       "type": "array",
@@ -125,7 +152,7 @@
         "denominator": {"type": "integer", "minimum": 1}
       }
     },
-    "catalog_entry": {
+    "catalog_entry_v1": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -171,7 +198,73 @@
         }
       }
     },
-    "epoch": {
+    "catalog_entry_v2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sku_id",
+        "family",
+        "region",
+        "platforms",
+        "product_titles",
+        "discovered_at",
+        "seasoning_start",
+        "first_observation_end",
+        "bootstrap",
+        "status",
+        "qualified_at",
+        "activation_time",
+        "retirement_evidence",
+        "deactivation_time"
+      ],
+      "properties": {
+        "sku_id": {"type": "string", "minLength": 1, "maxLength": 512},
+        "family": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 .+_-]{0,63}$"},
+        "region": {"type": "string", "minLength": 1, "maxLength": 512},
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^gpu-[a-z0-9]+(?:-[a-z0-9]+)*$"}
+        },
+        "product_titles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
+        },
+        "discovered_at": {"$ref": "#/$defs/timestamp"},
+        "seasoning_start": {"$ref": "#/$defs/timestamp"},
+        "first_observation_end": {"$ref": "#/$defs/hour"},
+        "bootstrap": {"type": "boolean"},
+        "status": {"enum": ["active", "pending", "retired"]},
+        "qualified_at": {
+          "oneOf": [{"$ref": "#/$defs/hour"}, {"type": "null"}]
+        },
+        "activation_time": {
+          "oneOf": [{"$ref": "#/$defs/hour"}, {"type": "null"}]
+        },
+        "retirement_evidence": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/retirement_evidence"}
+        },
+        "deactivation_time": {
+          "oneOf": [{"$ref": "#/$defs/hour"}, {"type": "null"}]
+        }
+      }
+    },
+    "retirement_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshot_time", "source_index_sha256"],
+      "properties": {
+        "snapshot_time": {"$ref": "#/$defs/timestamp"},
+        "source_index_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "epoch_v1": {
       "type": "object",
       "additionalProperties": false,
       "required": ["effective_time", "methodology_version", "reason", "families"],
@@ -183,6 +276,42 @@
           "type": "array",
           "minItems": 1,
           "items": {"$ref": "#/$defs/family_weight"}
+        }
+      }
+    },
+    "epoch_v2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effective_time", "methodology_version", "reason", "families", "link"
+      ],
+      "properties": {
+        "effective_time": {"$ref": "#/$defs/hour"},
+        "methodology_version": {"const": "equal-family-chain-v1"},
+        "reason": {
+          "enum": [
+            "bootstrap", "qualified_addition", "confirmed_retirement",
+            "membership_change"
+          ]
+        },
+        "families": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/family_weight"}
+        },
+        "link": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["from_timestamp", "basket"],
+              "properties": {
+                "from_timestamp": {"$ref": "#/$defs/hour"},
+                "basket": {"enum": ["previous", "survivors"]}
+              }
+            }
+          ]
         }
       }
     },

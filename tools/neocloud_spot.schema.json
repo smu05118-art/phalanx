@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Nebius normalized archive v2",
-  "description": "Structural schema. Collector additionally enforces hashes, UTC hourly boundaries, platform-family mapping, uniqueness, Decimal canonicalization and immutable identity.",
+  "description": "Structural schema. Collector additionally enforces hashes, UTC hourly boundaries, platform-family mapping, uniqueness, Decimal canonicalization, immutable identity, and aggregate limits of 5,000,000 shard rows and 1 GiB of shard bytes.",
   "oneOf": [
     {
       "$ref": "#/$defs/index"
@@ -192,6 +192,7 @@
           ]
         },
         "supported_families": {
+          "description": "Exact sorted catalogue of families observed in the complete current snapshot or retained historical official rows.",
           "type": "array",
           "uniqueItems": true,
           "minItems": 1,

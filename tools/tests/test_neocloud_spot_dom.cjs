@@ -1,10 +1,14 @@
 /* Dependency-free minimal DOM harness; no real browser/layout coverage claimed. */
-const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
+const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path'), nodeCrypto = require('node:crypto');
 const ROOT = path.resolve(__dirname, '../..');
 const source = fs.readFileSync(path.join(ROOT, 'ui/patch.js'), 'utf8');
 const code = source.slice(source.indexOf('/* Nebius GPU spot tracker'));
-const seed = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/tests/fixtures/neocloud_spot/archive/index.json'), 'utf8'));
+const publicIndexPayload = fs.readFileSync(path.join(ROOT, 'data/neocloud_spot/index.json'), 'utf8');
+const indexSeedPayload = fs.readFileSync(path.join(ROOT, 'tools/tests/fixtures/neocloud_spot/archive/index.json'), 'utf8');
+const seed = JSON.parse(indexSeedPayload);
 const gpuSeed = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/neocloud_spot/gpu-index.json'), 'utf8'));
+assert.equal(nodeCrypto.createHash('sha256').update(publicIndexPayload).digest('hex'),gpuSeed.source.source_index_sha256);
+gpuSeed.source.source_index_sha256=nodeCrypto.createHash('sha256').update(indexSeedPayload).digest('hex');
 class Element {
   constructor(tag) { this.tagName = tag; this.children = []; this.parentNode = null; this.attributes = {}; this._text = ''; this.className = ''; this.style = {setProperty() {}}; this.classList = {contains: s => this.className.split(' ').includes(s)}; }
   get textContent() { return this._text + this.children.map(n => n.textContent).join(' '); }
@@ -21,17 +25,17 @@ class Element {
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 200));
 const raw = () => ({snapshotTime:seed.snapshot_time,items:seed.current.map(r=>({skuId:r.sku_id,productTitle:r.product_title,region:r.region,computeInstance:{platform:r.platform},price:{value:r.price,currency:'usd',unitTitle:'GPU hour'},effectiveTime:r.effective_time}))});
-function setup({data = seed, gpuIndex = gpuSeed, failArchive = false, failLive = true, chart = false, badShard = false, liveData = raw()} = {}) {
+function setup({data = seed, gpuIndex = gpuSeed, indexPayload = data === seed ? indexSeedPayload : JSON.stringify(data), failArchive = false, failLive = true, chart = false, badShard = false, liveData = raw(), cryptoImpl = nodeCrypto.webcrypto} = {}) {
   const body = new Element('body'), main = new Element('main'), root = new Element('div'), overview = new Element('div');
   root.className='nc';overview.className='nc-panel';body.appendChild(main);main.appendChild(root);
   function render(){const head=new Element('div');head.className='nc-head';root.replaceChildren(head,overview);return 'normal';} render();
   const stats={requests:[],created:0,destroyed:0,failArchive,failLive};
   const document={body,documentElement:new Element('html'),readyState:'complete',createElement:t=>new Element(t),createElementNS:(_,t)=>new Element(t),querySelectorAll:s=>s==='#main .nc'?main.querySelectorAll('.nc'):body.querySelectorAll(s)};
-  const context={document,console,setTimeout,clearTimeout,URL,AbortController,TextDecoder,TextEncoder,Uint8Array,crypto:require('node:crypto').webcrypto,location:{href:'https://phalanx.test/index.html',origin:'https://phalanx.test'},getComputedStyle:()=>({color:'#ccc'}),fetch:async(url,options)=>{
+  const context={document,console,setTimeout,clearTimeout,URL,AbortController,TextDecoder,TextEncoder,Uint8Array,crypto:cryptoImpl,location:{href:'https://phalanx.test/index.html',origin:'https://phalanx.test'},getComputedStyle:()=>({color:'#ccc'}),fetch:async(url,options)=>{
     stats.requests.push(url);assert.equal(options.credentials,'omit');assert.equal(options.referrerPolicy,'no-referrer');assert.equal(options.redirect,'error');assert(options.signal);
     let payload;
     if(url.startsWith('https://api.nebius.cloud/')){if(stats.failLive)throw Error('CORS/offline');payload=JSON.stringify(liveData);}
-    else {if(stats.failArchive)throw Error('archive offline');payload=url.endsWith('gpu-index.json')?JSON.stringify(gpuIndex):url.endsWith('index.json')?JSON.stringify(data):fs.readFileSync(path.join(ROOT,'tools/tests/fixtures/neocloud_spot/archive',url.replace('data/neocloud_spot/','')),'utf8');if(badShard&&!url.endsWith('index.json'))payload+=' ';}
+    else {if(stats.failArchive)throw Error('archive offline');payload=url.endsWith('gpu-index.json')?JSON.stringify(gpuIndex):url.endsWith('index.json')?indexPayload:fs.readFileSync(path.join(ROOT,'tools/tests/fixtures/neocloud_spot/archive',url.replace('data/neocloud_spot/','')),'utf8');if(badShard&&!url.endsWith('index.json'))payload+=' ';}
     const bytes=new TextEncoder().encode(payload);let done=false;return {ok:true,url:new URL(url,context.location.href).href,body:{getReader:()=>({read:async()=>done?{done:true}:(done=true,{done:false,value:bytes}),cancel:async()=>{}})}};
   },renderAI2:render,renderNeocloud:render};context.window=context;
   if(chart)context.Chart=function(_,config){stats.created++;stats.config=config;this.destroy=()=>stats.destroyed++;};
@@ -45,7 +49,8 @@ function selector(e,name){return e.panel().querySelectorAll('select').find(s=>s.
     for(const token of ['renderAI2','renderNeocloud','data/neocloud_spot/','index.json','gpu-index.json','api.nebius.cloud','/list-series','GPU spot 데이터 미로드','B300','B200','H200','H100','RTX PRO 6000','https://nebius.com/spot-prices','https://docs.nebius.com/signup-billing/spot-prices','METHOD_LAST_PRICE','METHOD_AVG_PRICE','지역 / SKU','1d','7d','30d','전체 보관'])assert(code.includes(token),token);
     for(const token of ['history.json','legacy-user-chart','8.16','3.92','1.87','1.18'])assert(!code.includes(token),token);
     const wf=fs.readFileSync(path.join(ROOT,'.github/workflows/update-neocloud-spot.yml'),'utf8');
-    for(const token of ['schedule:','workflow_dispatch:','contents: write','cancel-in-progress: false','build_neocloud_gpu_index.py --check','data/neocloud_spot/gpu-index.json','git add -- data/neocloud_spot/index.json','git pull --rebase origin main'])assert(wf.includes(token));
+    for(const token of ['schedule:','workflow_dispatch:','contents: write','cancel-in-progress: false','build_neocloud_gpu_index.py --check','--trusted-existing','--trusted-source-index','BASE_SHA','git cat-file blob','git diff --quiet "$BASE_SHA" "$rebased_base" -- data/neocloud_spot','data/neocloud_spot/gpu-index.json','git add -- data/neocloud_spot/index.json','git pull --rebase origin main'])assert(wf.includes(token));
+    assert((wf.match(/git hash-object "\$TRUSTED_GPU_INDEX"/g)||[]).length>=4);assert((wf.match(/git hash-object "\$TRUSTED_SOURCE_INDEX"/g)||[]).length>=4);
     assert(!/git add (?:\.|-A|--all)/.test(wf));
   });
   await test('archive first five accessible cards with exact lowest price region',async()=>{
@@ -61,6 +66,18 @@ function selector(e,name){return e.panel().querySelectorAll('select').find(s=>s.
     const version=structuredClone(gpuSeed);version.methodology_version='future-v2';assert.throws(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(version));
     const epochVersion=structuredClone(gpuSeed);epochVersion.composition_epochs[0].methodology_version='future-v2';assert.throws(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(epochVersion));
     const large=structuredClone(gpuSeed);large.levels.at(-1).value='123456789012345678901234567890';assert.doesNotThrow(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(large));
+  });
+  await test('GPU index requires the exact fetched source index bytes',async()=>{
+    const skew=setup({indexPayload:indexSeedPayload+' '});await tick();assert.equal(skew.panel().querySelectorAll('.ncs-card').length,5);assert(skew.panel().textContent.includes('전 제품 통합지수 미로드'));assert.equal(skew.panel().querySelectorAll('.ncs-index').length,0);
+    const noCrypto=setup({cryptoImpl:null});await tick();assert.equal(noCrypto.panel().querySelectorAll('.ncs-card').length,5);assert(noCrypto.panel().textContent.includes('전 제품 통합지수 미로드'));assert.equal(noCrypto.panel().querySelectorAll('.ncs-index').length,0);
+    const hashFailure=setup({cryptoImpl:{subtle:{digest:async()=>{throw Error('digest failed');}}}});await tick();assert.equal(hashFailure.panel().querySelectorAll('.ncs-card').length,5);assert(hashFailure.panel().textContent.includes('전 제품 통합지수 미로드'));assert.equal(hashFailure.panel().querySelectorAll('.ncs-index').length,0);
+  });
+  await test('lifecycle schema v2 validates and renders retirement state',async()=>{
+    const d=structuredClone(gpuSeed);d.schema_version=2;d.catalog.forEach(c=>{c.retirement_evidence=[];c.deactivation_time=null;});d.composition_epochs.forEach((epoch,i)=>{epoch.link=i?{from_timestamp:d.levels.filter(level=>Date.parse(level.timestamp)<Date.parse(epoch.effective_time)).at(-1).timestamp,basket:'previous'}:null;});
+    const candidate=d.catalog.find(c=>c.status==='active');candidate.retirement_evidence=[{snapshot_time:d.processed_through,source_index_sha256:'f'.repeat(64)}];
+    const e=setup({gpuIndex:d});await tick();assert.doesNotThrow(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(d));assert(e.panel().textContent.includes('지수 편출 후보 1개'));
+    const duplicate=structuredClone(d),c=duplicate.catalog.find(item=>item.retirement_evidence.length);c.retirement_evidence.push({snapshot_time:new Date(Date.parse(d.processed_through)+3600000).toISOString().replace('.000Z','Z'),source_index_sha256:'f'.repeat(64)});assert.throws(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(duplicate));
+    const badLink=structuredClone(d);badLink.composition_epochs[0].link={from_timestamp:d.base.timestamp,basket:'previous'};assert.throws(()=>e.context.PHXNeoCloudSpot.validateGPUIndex(badLink));
   });
   await test('index lookbacks require the exact target hour across gaps',async()=>{
     const d=structuredClone(gpuSeed),latest=Date.parse(d.levels.at(-1).timestamp),target=latest-86400000;
