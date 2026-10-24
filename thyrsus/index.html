@@ -4746,12 +4746,20 @@ function selPlayers(fnName, filter, label, extraArg){
   </div>`;
 }
 function stepWidget(st,c){
-  if(st.id==='poisoner') return `<h3>☠ 중독 대상 기록</h3>`+selPlayers('doPoison', p=>p.alive, '독살범이 지목한 대상');
-  if(st.id==='monk') return `<h3>🛡 보호 대상 기록</h3>`+selPlayers('doProtect', p=>p.alive&&p.charId!=='monk', '수도사가 지목한 대상');
-  if(st.id==='butler') return `<h3>🤵 주인 기록</h3>`+selPlayers('doMaster', p=>p.alive&&p.charId!=='butler', '집사가 지목한 주인');
+  /* 공식 Poisoner How to Run: "They point at **any player**." 사망자 중독은 무의미하지 않다 —
+     공식 Vigormortis Summary 는 그가 죽인 하수인이 중독되면 능력을 잃는다고 적는다. */
+  if(st.id==='poisoner') return `<h3>☠ 중독 대상 기록</h3><p class="hint">공식 능력문에 생존 한정이 없습니다 — <b>사망자도 지목할 수 있습니다</b>(죽은 척 좀버얼은 실제로는 살아 있고, 비고르모르티스가 죽인 하수인은 능력을 유지합니다). 위저드 단계도 같은 범위입니다.</p>`+selPlayers('doPoison', p=>true, '독살범이 지목한 대상(사망자 가능)');
+  /* 공식 Monk: "choose a player (**not yourself**)" — 생존 한정은 없다. 자기 제외만 공식이다.
+     사망자 보호는 대개 무효지만 '겉보기 사망'은 안전한 대리조건이 아니다(죽은 척 좀버얼). */
+  if(st.id==='monk') return `<h3>🛡 보호 대상 기록</h3><p class="hint">공식 능력문에 생존 한정이 없습니다 — <b>사망자도 지목할 수 있습니다</b>(죽은 척 좀버얼은 실제로는 살아 있고, 비고르모르티스가 죽인 하수인은 능력을 유지합니다). 위저드 단계도 같은 범위입니다.</p>`+selPlayers('doProtect', p=>p.charId!=='monk', '수도사가 지목한 대상(자신 제외 · 사망자 가능)');
+  /* 공식 Butler: "choose a player (**not yourself**)" — 생존 한정은 없다. 죽은 주인도 결과가
+     있다: 사망자에게는 유령 투표 1회가 남아 있으므로 '주인이 투표할 때만' 조건이 실제로 작동한다. */
+  if(st.id==='butler') return `<h3>🤵 주인 기록</h3><p class="hint">공식 능력문에 생존 한정이 없습니다 — <b>사망자도 지목할 수 있습니다</b>(죽은 척 좀버얼은 실제로는 살아 있고, 비고르모르티스가 죽인 하수인은 능력을 유지합니다). 위저드 단계도 같은 범위입니다.</p>`+selPlayers('doMaster', p=>p.charId!=='butler', '집사가 지목한 주인(자신 제외 · 사망자 가능)');
   if(st.id==='imp') return `<h3>🗡 살해 판정</h3><p class="hint">임프가 지목한 대상을 선택하면 보호·군인·시장·중독을 자동 판정합니다.</p>`+selPlayers('doImpKill', p=>true, '임프가 지목한 대상');
   if(st.id==='ravenkeeper') return `<h3>🔮 캐릭터 확인</h3><p class="hint">까마귀지기가 오늘 밤 죽어 지목한 대상 — 실제 캐릭터를 확인하세요(등록 재량 적용 가능).</p>`+selPlayers('doRavenPeek', p=>true, '까마귀지기가 지목한 대상');
-  if(st.id==='witch') return `<h3>🧹 저주 대상 기록</h3>`+selPlayers('doCurse', p=>p.alive, '마녀가 지목한 대상');
+  /* 공식 Witch Tips & Tricks: 죽은 플레이어도 저주할 수 있다 — 사망자도 지명할 수 있으므로
+     의미가 있고, 능력을 감추는 수단으로 공식이 권한다. */
+  if(st.id==='witch') return `<h3>🧹 저주 대상 기록</h3><p class="hint">공식 능력문에 생존 한정이 없습니다 — <b>사망자도 지목할 수 있습니다</b>(죽은 척 좀버얼은 실제로는 살아 있고, 비고르모르티스가 죽인 하수인은 능력을 유지합니다). 위저드 단계도 같은 범위입니다.</p>`+selPlayers('doCurse', p=>true, '마녀가 지목한 대상(사망자 가능)');
   /* 공식 능력문에 생존 한정이 없고, 위키 Tips & Tricks 가 "Your ability can also affect
      dead players!" 라고 못 박는다. 위저드 가지는 filter:'any' 인데 이 수동 위젯만
      p.alive 로 좁아져 있어 두 화면이 다른 계약을 쓰고 있었다. selPlayers 는 사망자에
@@ -4765,7 +4773,8 @@ function stepWidget(st,c){
       +(prev?`<div class="alertbox">📿 어제 대상: <b>${esc(prev.name)}</b> — 오늘은 다른 사람을 지목해야 합니다.</div>`:'')
       +(cur?`<div class="alertbox blue">오늘 대상 기록됨: <b>${esc(cur.name)}</b></div>`:'')
       +`<p class="hint">악마를 지목했으면 악마를 깨워 구마사제를 보여주고, 이번 밤 <b>새 공격 대상 지목만</b> 건너뛰세요 — 그 밖의 악마 능력은 그대로입니다(푸카라면 전날 희생자는 그대로 죽습니다).</p>`
-      +selPlayers('doExorcist', p=>p.alive, '구마사제가 지목한 대상');
+      +`<p class="hint">공식 Tips &amp; Tricks 는 <b>사망자 지목을 권합니다</b> — 좀버얼이 의심되면 사망자를 구마해 보세요. 낮에 사망이 없었는데 그 밤에도 사망이 없으면 좀버얼을 찾은 것입니다.</p>`
+      +selPlayers('doExorcist', p=>true, '구마사제가 지목한 대상(사망자 가능)');
   }
   if(SPENT_ONCE.includes(st.id) && !(c&&c.killer)) return `<h3>✔ 1회성 능력 추적</h3>`+spentWidget(st.id);
   if(c && c.killer && S.edition!=='tb'){ window.__stepKiller=c.id;  // 하위호환(위저드 미사용 경로)
@@ -4776,7 +4785,8 @@ function stepWidget(st,c){
         : `<div class="row" style="margin-top:8px"><button class="small" onclick="doPoCharge()">🦏 이번 밤 지목 안 함(충전)</button></div>`;
     }
     if(SPENT_ONCE.includes(c.id)) extra+=spentWidget(c.id);
-    return `<h3>🗡 살해 기록 (${esc(c.ko)})</h3>${extra}<p class="hint">보호·면역(여관 주인·찻집 여인·어릿광대·선원 등)은 위 가이드를 따라 수동 판정 후, 사망만 여기 기록하세요. 시전자 오작동·찻집 여인 이웃은 자동 판정됩니다.</p>`+selPlayers('doStepKill', p=>p.alive, c.ko+'가 지목한 대상', `'${c.id}'`);
+    return `<h3>🗡 살해 기록 (${esc(c.ko)})</h3>${extra}<p class="hint">보호·면역(여관 주인·찻집 여인·어릿광대·선원 등)은 위 가이드를 따라 수동 판정 후, 사망만 여기 기록하세요. 시전자 오작동·찻집 여인 이웃은 자동 판정됩니다.</p>`+`<p class="hint">사망자도 목록에 있습니다 — 공식대로 지목 자체가 허용되고(아무 일도 일어나지 않습니다), <b>죽은 척 좀버얼</b>은 겉보기만 사망이라 그 좌석의 <b>둘째 사망</b>을 여기서 기록해야 합니다.</p>`
++selPlayers('doStepKill', p=>true, c.ko+'가 지목한 대상(사망자 가능)', `'${c.id}'`);
   }
   return '';
 }
@@ -5039,14 +5049,42 @@ function doCourtierDrunk(cid){
     toast('궁정대신이 오작동 상태 — 취함이 걸리지 않습니다(능력은 소진).','warn');
     log(`궁정대신 오작동: ${charOf(cid)?.ko||cid} 취함 불발`); save(); renderAll(); return;
   }
-  const holders=playersByChar(cid).filter(p=>p.alive);
+  /* [1] 좌석은 생사로 거르지 않는다. 공식 용어집 In play: "A character that exists in the
+     current game, **either alive or dead**." 생존으로 거르면 모든 사본이 죽은 판에서 앱이
+     "게임에 없습니다"라고 **거짓**을 말한다. 그리고 죽은 좌석도 공식적으로 의미가 있다 —
+     비고르모르티스가 죽인 하수인은 능력을 유지하고(공식 Summary: 그 하수인이 취하거나
+     중독되면 능력을 잃는다), 죽은 척 좀버얼은 실제로는 살아 있다. */
+  const holders=playersByChar(cid);
   if(!holders.length){
-    toast(`${charOf(cid)?.ko||cid}은(는) 게임에 없습니다 — 아무 일 없이 능력만 소진됩니다.`,'warn');
-    log(`궁정대신 지목: ${charOf(cid)?.ko||cid} — 게임에 없음(불발)`); save(); renderAll(); return;
+    toast(`${charOf(cid)?.ko||cid}은(는) 이 게임에 없습니다 — 아무 일 없이 능력만 소진됩니다.`,'warn');
+    log(`궁정대신 지목: ${charOf(cid)?.ko||cid} — 이 게임에 없음(불발)`); save(); renderAll(); return;
   }
-  holders.forEach(p=>{ if(!hasStatus(p,'drunkS')) addStatus(p,'drunkS','궁정대신',drunkExpiry('court')); });
-  save(); renderAll();
-  toast(`🍷 ${holders.map(p=>p.name).join(', ')} 🍺취함 — 3밤+3낮(밤 ${drunkExpiry('court').n} 시작 시 자동 해제)`,'ok');
+  /* [2] 공식: "In other editions, there can be multiple copies of the same character in play.
+     The Courtier only makes **one** of them drunk."(위키 Courtier · How to Run) 같은 절의
+     본문도 단수다 — "the player of the chosen character becomes drunk".
+     [무엇이 문제였나] holders.forEach 로 **동명 전원**을 취하게 했다. 마을 바보는 공식이
+     최대 3좌석을 규정하고("[+0 to +2 Village Idiots]"), 이 앱의 setChar 에는 중복 가드가
+     없어 평범한 셋업으로도 같은 캐릭터를 두 좌석에 앉힐 수 있다.
+     누가 고르는가는 공식이 말하지 않지만 구조가 정한다 — 궁정대신은 **캐릭터**를 고르므로
+     (공식 Tips: "you choose a character, not a player") 좌석 선택은 사회자에게 남는다.
+     조용한 자동 선택(첫 좌석·최소 id)은 그 자체가 없는 규칙을 발명하는 것이고 결정을
+     사회자에게서 숨긴다 — 마을 바보의 '취한 사본은 사회자가 고른다'와 같은 모양으로,
+     **보이는 자리에서 명시적으로** 묻는다. */
+  const apply=(p)=>{
+    if(!hasStatus(p,'drunkS')) addStatus(p,'drunkS','궁정대신',drunkExpiry('court'));
+    save(); renderAll();
+    toast(`🍷 ${p.name}${p.alive?'':'(사망)'} 🍺취함 — 3밤+3낮(밤 ${drunkExpiry('court').n} 시작 시 자동 해제)`,'ok');
+  };
+  if(holders.length===1){ apply(holders[0]); return; }
+  thyAsk({kind:'choice', title:'🍷 궁정대신 — 어느 좌석을 취하게 할까요',
+      choices:thyPlayerChoices(holders), syncFallback:holders[0].id,
+      message:`${charOf(cid)?.ko||cid}을(를) 든 좌석이 ${holders.length}개입니다. 공식은 그중 **한 명만** 취하게 합니다 — 사회자가 고르세요.`},
+    id=>{
+      const t=holders.find(q=>q.id===id) || null;
+      if(!t){ toast('좌석을 고르지 않았습니다 — 능력은 소진됐고 아무도 취하지 않았습니다.','warn');
+        log(`궁정대신: ${charOf(cid)?.ko||cid} 좌석 미선택 — 취함 없음(능력 소진)`); save(); renderAll(); return; }
+      apply(t);
+    });
 }
 function doProtect(pid){ if(!pid)return; const p=playerOf(pid); const _mo=abilityActor('monk');
   if(!_mo.ok){
