@@ -5192,3 +5192,107 @@ E07·E08(상태 토큰 신원 — 설계 결정 선행) · E09·E25·E26(클라�
 사용자 결정) · E17(릴 몬스타 첫밤 정보 생략 — 판 단위 상태 설계) · E18(궁정대신 동명 중 한 명 — 사회자 선택 UI) ·
 E19(A13 번복 — 사용자 결정). 26건 중 **19건 반영**(라운드 51~56), 7건은 결정·설계 대기.
 
+## 라운드 57 — 앱이 공식에 없는 제약을 발명하고 있었다 · PR #91
+
+두 건 다 **앱이 공식보다 좁게** 동작하던 결함이다. 적대적 3렌즈가 각각 한 건도 반박하지 못했다(0/3 · 0/3).
+
+### E18 — 궁정대신이 동명 좌석 전원을 취하게 했다
+
+공식 위키 Courtier · How to Run, 그 절을 닫는 예시 박스:
+"In other editions, there can be multiple copies of the same character in play. **The Courtier only
+makes one of them drunk.**" 같은 절 본문도 단수다 — "the player of the chosen character becomes drunk".
+
+측정(마을 바보 3좌석): `doCourtierDrunk('villageidiot')` → **밥·캐럴·댄 셋 다 취함**.
+
+도달성은 가설이 아니다. 공식 마을 바보 능력문 자체가 복수 좌석을 규정하고
+("[+0 to +2 Village Idiots. 1 of the extras is drunk]", 첫밤 지시 "Wake the Village Idiots **one at a
+time**"), 이 앱의 `setChar` 에는 중복 가드가 없어 평범한 셋업으로 같은 캐릭터를 두 좌석에 앉힌다.
+반박 렌즈가 **평범한 공식 bmr 판에서 궁정대신 두 좌석**을 앉혀 보여, 커스텀 시트 게이트가 아님을
+확인했다.
+
+**`setChar` 의 중복 가드 부재는 고치지 않았다** — 마을 바보는 공식이 복수 좌석을 규정하므로 중복을
+막으면 공식 캐릭터가 깨진다. 고칠 자리는 궁정대신이다.
+
+**누가 고르는가**는 공식이 침묵한다. 다만 구조가 정한다 — 궁정대신은 **캐릭터**를 고르므로(공식
+Tips & Tricks: "The Courtier is unique in that you choose a character, not a player") 플레이어의 입력은
+좌석을 지목하지 않고, 좌석 선택은 사회자에게 남는다. 그리고 공식 선례가 있다: 마을 바보의 취한 사본은
+"chosen by the Storyteller during the game setup" — **여러 사본 중 하나만 영향받을 때 사회자가
+보이는 자리에서 고른다**는 모양이다. 그래서 `holders.length>1` 일 때만 `thyAsk({kind:'choice'})` 로
+명시적으로 묻는다. 조용한 자동 선택(첫 좌석·최소 id)은 **그 자체가 없는 규칙을 발명하는 것**이고
+결정을 사회자에게서 숨긴다.
+
+### E18b — 같은 함수가 "게임에 없습니다" 라고 거짓을 말했다
+
+접지 과정에서 나온 **두 번째 결함**이다. `const holders=playersByChar(cid).filter(p=>p.alive)` 때문에
+사본이 전부 죽은 판에서 `holders` 가 비고, 앱이 사회자에게 「게임에 없습니다」라고 알린다.
+
+공식 용어집 **In play**: "A character that exists in the current game, **either alive or dead**."
+그 캐릭터는 판에 있다. 앱의 문장은 사실이 아니다.
+
+그리고 그 상황은 학술적이지 않다 — 공식 Vigormortis Summary 는 그가 죽인 하수인이 취하거나 중독되면
+능력을 잃는다고 적고, 그 하수인은 죽어서도 능력을 유지한다. **죽은 사본을 취하게 하는 것은 결과가
+있는 공식적인 수다.** 죽은 척 좀버얼도 같다(실제로는 살아 있다). 필터를 걷고, 메시지도 '이 게임에
+없음' 으로 좁혔다.
+
+### 수동 밤 화면이 공식에 없는 생존 제약을 걸고 있었다 (G05·G06 의 뿌리)
+
+수동 화면(`stepWidget` → `selPlayers`)과 인터랙티브 위저드(`NIGHT_FLOW` pick-player `.filter`)는
+**같은 단계의 두 표면**인데 범위가 달랐다. 측정(좌석1 진짜 사망 · 좌석2 죽은 척 좀버얼):
+
+| 단계 | 수동 목록 | 위저드 filter |
+|---|---|---|
+| poisoner · monk · butler · witch · exorcist · doStepKill | 사망자 **제외** | `any` 계열 |
+| imp · ravenkeeper · cerenovus | 사망자 포함 | `any` |
+
+공식 능력문은 여섯 중 **어느 것에도 생존 한정이 없다** — 전부 "choose a player"(수도사·집사만
+"not yourself"). 그리고 위키 Tips & Tricks 는 침묵이 아니었다:
+
+- **구마사제**: "If you suspect that a Zombuul is in-play, **feel free to pick dead players**. If there
+  was no death during the day, and you exorcise a dead player that night, no death almost certainly
+  means that you have found a Zombuul." — 허용이 아니라 **공식 권장 전략**이다.
+- **마녀**: 사망자 저주 명시(사망자도 지명할 수 있으므로 의미가 있고, 능력을 감추는 수단이다).
+- **독살범**: How to Run "They point at **any player**" + 위 비고르모르티스 조항 → 사망자 중독은 결과가 있다.
+- **집사**: 사망자에게 유령 투표 1회가 남아 '주인이 투표할 때만' 조건이 실제로 작동한다.
+- **세레노버스**: "Your ability can also affect dead players!" — 앱이 **이미 맞게** 구현해 둔 선례
+  (`p=>true` + 설명 힌트)가 공식에 뒷받침돼 있었다.
+
+가장 무거운 것은 `doStepKill` 이었다. 라운드 54 가 엔진 가드를 `if(!reallyAlive(t))` 로 열어 죽은 척
+좀버얼의 **둘째 사망**을 받게 했는데, 그 가드가 먹는 목록은 여전히 `p=>p.alive` 였다 — 측정:
+`reallyAlive(좀버얼)===true` · 목록에 없음. **엔진이 받도록 고친 좌석을 사회자가 고를 수 없었다.**
+라운드 54 가 남긴 내부 모순이다.
+
+여섯 자리를 세레노버스 선례대로 `p=>true` + 설명 힌트로 열었고, 공식이 정한 유일한 제약
+(수도사·집사의 '자기 제외')은 유지했다.
+
+**가장 약한 것은 수도사다.** 생존 한정이 없는 것은 확실하지만, 사망자 보호에 기계적 결과가 있는 공식
+문장은 찾지 못했다 — '침묵 위에서' 열었다. 침묵은 승인이 아니지만 **앱이 없는 제약을 발명할 근거도
+아니다**. 그 판단 지점을 여기 적어 둔다.
+
+### 이번 라운드가 잡힌 자리 셋
+
+1. **패치 가드가 또 거짓 일치했다.** 가드 `const holders=playersByChar(cid);` 가 다른 함수
+   (`spentWidget`)의 같은 문장에 걸려 E18 블록이 **조용히 건너뛰어졌다** — 6개 필터만 반영되고
+   본체가 빠진 채로 "반영" 이 출력됐다. 라운드 53 과 같은 실수다. **가드는 새 코드에만 있는
+   문자열이어야 한다.**
+2. **`rules_check.js` 의 `fresh(chars)` 가 에디션 인자를 무시하고 있었다.** 라운드 52·53 의 케이스가
+   `fresh(ROSTER,'sv')` 처럼 넘긴 값이 전부 버려지고 `S.edition` 은 `'tb'` 로 남았다. 당장 공허해진
+   단정은 없었지만(측정한 동작이 에디션에 의존하지 않았다), 라운드 57 에서 `stepWidget` 의 살해 기록
+   분기가 `S.edition!=='tb'` 게이트 뒤에 있어 케이스가 **그 코드를 아예 밟지 못했다**. 인자를 반영하게
+   고쳤고 기존 102 케이스는 그대로 통과한다.
+3. **대조군 하나가 울리지 않았다.** 사본이 전부 **살아 있는** 프레임에서는 `p.alive` 필터가 아무 차이도
+   만들지 않는다 — 사본이 전부 죽은 프레임을 추가해야 그 필터를 겨눌 수 있었다. 라운드 52 가 배운
+   "픽스처가 그 코드 경로를 밟는가" 의 또 다른 모양이다.
+
+### 검증
+
+규칙 **102 케이스**(+2, 수정 전 빌드에서 16개 단정 실패) · 종료 31 · 핸드오프 PASS · 더미 2000 ·
+퍼저 6000 · 커스텀 1200 · DOM 골든 **픽스처 36 · 프레임 120 · 대조군 55/55** · 래퍼 48 ·
+돌연변이 46종 검출 42 · 미검출 0 · 체크리스트 고아 0 · 스위트 전 검사 종료코드 0.
+
+### 남은 한계
+
+- 수동 화면 생존 필터를 **전수**로 봤지만(8자리), 같은 모양이 다른 표면(그리모어 수동 버튼·상태
+  대시보드)에도 있을 수 있다. 이번 라운드는 `selPlayers` 호출부만 덮었다.
+- 궁정대신 좌석 선택은 **수동 화면에는 없다** — 궁정대신의 수동 위젯은 `spentWidget`(1회성 추적)뿐이고
+  캐릭터 선택은 위저드(`NIGHT_FLOW.courtier`, `pick-character pool:'any'`)에 있다. 좌석 선택 질문은
+  판정 함수 안에 두었으므로 두 경로가 모두 받는다.
