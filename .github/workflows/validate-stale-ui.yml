@@ -1,0 +1,48 @@
+name: Validate Stale UI Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'insight_charts.js'
+      - 'tools/tests/test_stale_ui_contract.py'
+      - '.github/workflows/validate-stale-ui.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-stale-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run stale UI contracts
+        run: |
+          python3 -m unittest -v tools/tests/test_stale_ui_contract.py
+          node --check insight_charts.js
+      - name: Check committed whitespace
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git diff --check "$BASE_SHA...$HEAD_SHA"
+          else
+            git diff --check HEAD^ HEAD
+          fi

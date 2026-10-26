@@ -8,7 +8,7 @@ name: scan-kship (모집단 확장 탐색, 주 1회)
 #      실패해 커밋까지 못 간다(10-04 일요일 스캔 커밋이 없다 — 러너 로그는 보지 않았고 git 이력으로 추정).
 #   ② 정기보고서 분기를 update-kship 과 같은 규칙(분기말 +50일 · 사업보고서 +95일)으로 계산해 --quarter 로 넘긴다(kship_scan.py 기본값은 2026Q2 상수).
 #      보고서가 아직 없는 회사는 fetch 실패 = failed 보존 → 직전 승격 그대로(carry_forward).
-#   ③ python 3.11 · PYTHONDONTWRITEBYTECODE · 명시 pathspec add(fin_cache·로그·pyc 제외) 로 update-kship 과 맞췄다.
+#   ③ python 3.11 · PYTHONDONTWRITEBYTECODE · .gitignore 기반 캐시 제외 후 argus/kship 제한 staging 으로 update-kship 과 맞췄다.
 on:
   schedule:
     - cron: "0 17 * * 6"        # 매주 일요일 02:00 KST
@@ -85,11 +85,10 @@ jobs:
         run: |
           git config user.name "kship-bot"
           git config user.email "kship-bot@users.noreply.github.com"
-          # 원문 캐시·수집 로그·바이트코드는 커밋하지 않는다(update-kship 과 같은 pathspec).
-          git add -- argus/kship \
-            ':(exclude)argus/kship/tools/assets/fin_cache' \
-            ':(exclude)argus/kship/tools/assets/fin_collect.log' \
-            ':(exclude,glob)**/__pycache__/**' ':(exclude,glob)**/*.pyc'
+          # 원문 캐시·수집 로그·바이트코드는 .gitignore가 제외한다. ignored 경로를
+          # exclude pathspec으로 다시 명시하면 Git이 그 경로를 'explicitly added'
+          # 한 것으로 판정해 exit 1을 낼 수 있으므로 상위 디렉터리만 stage한다.
+          git add -A -- argus/kship
           if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
           git diff --cached --stat | tail -3
           # 메시지에 탐색 결과 수치(universe_probe.json 실측)를 적는다 — 모집단 행 수가 줄면 바로 의심할 수 있게.
