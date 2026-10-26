@@ -533,14 +533,23 @@ const ST = {view:'overview', region:'JP', tab:'dash', cat:'all', cur:'JPY', q:''
 // ---------- quarterly financials (fiscal_fetch.py -> P.fin) ----------
 function finOf(co){ return (P.fin||{})[(co||compObj()).id]; }
 // 다음 실적발표 칩 (earnings_weekly.sh 주간 갱신, IR 원문 기준)
+function earnState(d,now){
+  if(!d) return null;
+  if(d==='TBD') return {tbd:true,days:null,date:d};
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d); if(!m) return null;
+  const y=+m[1],mo=+m[2],da=+m[3], day=Date.UTC(y,mo-1,da), chk=new Date(day);
+  if(chk.getUTCFullYear()!==y||chk.getUTCMonth()!==mo-1||chk.getUTCDate()!==da) return null;
+  const n=now==null?new Date():(now instanceof Date?now:new Date(now)); if(isNaN(n.getTime())) return null;
+  const k=new Date(n.getTime()+9*3600*1000);
+  const today=Date.UTC(k.getUTCFullYear(),k.getUTCMonth(),k.getUTCDate());
+  const days=(day-today)/86400000; return days<0?null:{tbd:false,days:days,date:d};
+}
 function earnChip(co){ if(co.is_hub) return '';
-  const d=co.earn||'';
-  if(!d) return '';
-  if(d==='TBD') return '<span class="earnchip tbd" title="다음 실적발표일 미공표 (IR 조사, 주간 갱신)">📅 TBD</span>';
-  const dt=new Date(d+'T00:00:00'); if(isNaN(dt)) return '';
-  const days=Math.round((dt-new Date())/86400000);
-  const cls=days<=7?'soon':'';
-  return `<span class="earnchip ${cls}" title="다음 실적발표 ${d} (IR 원문, 주간 갱신)${days>=0?' · D-'+days:''}">📅 ${d.slice(5).replace('-','/')}</span>`; }
+  const e=earnState(co.earn||''); if(!e) return '';
+  if(e.tbd) return '<span class="earnchip tbd" title="다음 실적발표일 미공표 (IR 조사, 주간 갱신)">📅 TBD</span>';
+  const cls=e.days<=7?'soon':'';
+  return `<span class="earnchip ${cls}" title="다음 실적발표 ${e.date} (IR 원문, 주간 갱신) · D-${e.days}">📅 ${e.date.slice(5).replace('-','/')}</span>`; }
+function earnCell(d){ const e=earnState(d||''); return !e?'—':(e.tbd?'<span style="color:#8a90a8">TBD</span>':e.date.slice(5).replace('-','/')); }
 // 나우캐스트 선행 배지: 세관 선행 → 다음분기 매출 예측
 function nowcastOf(co){ return (P.nowcast||{})[(co||compObj()).id]; }
 function ncGrade(n){ return (n.r2>=0.6&&n.hit>=70)?'hi':((n.r2>=0.35&&n.hit>=55)?'mid':'lo'); }
@@ -1013,8 +1022,9 @@ function hubPanel(co){
 // 카드 신선도 badge (제안#5) — 전 리전 공통 헬퍼. 각 탭 렌더러가 아니라 카드
 // 공통 렌더 경로(companyCard)에서만 호출. m = 빌드 주입 co.meta.
 function freshBadge(m){
-  if(!m||!m.last_month) return '';
+  if(!m) return '';
   const stale=!!m.missing_last3;
+  if(!m.last_month) return '<span class="badge b-stale" title="관측 '+(Number(m.n_points)||0)+'pt · 최종 관측월 없음">미관측 ⚠️STALE</span>';
   return `<span class="badge ${stale?'b-stale':'b-lm'}" title="관측 ${m.n_points}pt · 최종 ${m.last_month}${stale?' · 3개월+ 중단':''}">${m.last_month}${stale?' ⚠️STALE':''}</span>`;
 }
 function companyCard(co){
@@ -1939,12 +1949,18 @@ function rkCompare(cs){const rows=cs.filter(c=>RK_VIEW.compare.includes(c.id)),m
 function rkSignals(R){const X=R.idx||{};return `<p class="sc-note">아래는 회사 전용 통계가 아닌 공통 수요·무역 대조입니다. 미국 수출 $/kg는 중량·품목 믹스의 영향을 받으므로 AI 랙 ASP나 물량으로 단정하지 않습니다.</p><div class="sc-grid">${[['unit_price','미국발 HS8471 수출 단가','$/kg'],['srv_share','서버형 HS847150 / HS8471','%'],['lead_index','조립국 부품유입 지표','기존 지수']].map(([k,label,unit])=>{const s=X[k]||{},keys=Object.keys(s).sort(),last=keys.at(-1);return `<div class="sc-card"><h4>${label}</h4><div class="sc-value">${scNum(s[last])}<small> ${unit}</small></div><p class="sc-muted">입력 기간 ${scEsc(last||'미확보')}</p><small>개별 업체 귀속·확정 선행성 검증과 별개</small></div>`;}).join('')}</div>
  <h2>최종 수요 · 하이퍼스케일러 CAPEX</h2>${typeof capexStrip==='function'?capexStrip(R.capex_common,'rack'):''}<p class="sc-muted">CAPEX에는 건물·네트워크·전력 등도 포함. 랙 업체 주문·매출과 합산하거나 고정 비율로 환산하지 않습니다.</p>`;
 }
+function rkWorkerBanner(R){const W=R.worker_status||{},D=R.source_dates||{};
+ const dates=`원천 표기: guidance ${scEsc(D.guidance||'UNKNOWN')} · 미국 출하 ${scEsc(D.ship_us||'UNKNOWN')} · ODM 출하 ${scEsc(D.ship_odm||'UNKNOWN')}`;
+ if(!W.valid)return `<div class="sc-note" style="border-color:#e06666;color:#e89b9b">⚠ STALE/UNKNOWN — 외부 워커 영수증이 없거나 무효입니다. ${dates}. 현재 표시값을 최신 검증본으로 간주하지 마세요.</div>`;
+ if(W.held)return `<div class="sc-note" style="border-color:#e8912d;color:#ffbe2e">⏸ HELD — ${scEsc(W.reason_code||'external_worker_hold')} · 기존 정본 해시 보존 확인 · 영수증 ${scEsc(W.observed_at||'UNKNOWN')}. ${dates}.</div>`;
+ if(W.status!=='ok')return `<div class="sc-note" style="border-color:#e06666;color:#e89b9b">⚠ STALE — 외부 워커 상태 ${scEsc(W.status||'unknown')} · ${dates}.</div>`;
+ return `<div class="sc-note">외부 워커 영수증 ${scEsc(W.observed_at||'UNKNOWN')} · ${dates}. 원천 날짜와 영수증 시각은 데이터 최신성과 동일하지 않습니다.</div>`;}
 function renderRackV2(){
  const R=window.RACKD||{},H=R.hub;if(!H)return renderRackLegacy();
  const main=document.getElementById('main'),cs=rkCompanies(),B=H.breadth||{};
  const current=cs.find(c=>c.id===RK_VIEW.selected)||cs[0];if(current)RK_VIEW.selected=current.id;
  const modelN=cs.filter(c=>c.monthly_model?.forecast!=null).length,issuesN=cs.reduce((s,c)=>s+(c.issues||[]).length,0);
- main.innerHTML=scStyles()+`<div class="sc-root" id="rackObservatory"><div class="sc-eyebrow">PHALANX / RACK OBSERVATORY</div><div class="sc-bigtitle">서버·랙 공급망 관측실</div><p class="sc-muted">${H.asof} · 요청 8개사 포함 ${H.companies.length}사 · 공식 월차·손익과 사업모델 연결</p><div class="sc-note">${scEsc(H.policy)}</div>
+ main.innerHTML=scStyles()+`<div class="sc-root" id="rackObservatory"><div class="sc-eyebrow">PHALANX / RACK OBSERVATORY</div><div class="sc-bigtitle">서버·랙 공급망 관측실</div><p class="sc-muted">${H.asof} · 요청 8개사 포함 ${H.companies.length}사 · 공식 월차·손익과 사업모델 연결</p>${rkWorkerBanner(R)}<div class="sc-note">${scEsc(H.policy)}</div>
  <div class="sc-grid"><div class="sc-card"><h4>필터 기업</h4><div class="sc-value">${cs.length}<small> / ${H.companies.length}사</small></div><small>월차 모형 ${modelN}사 · 대사 확인 ${issuesN}건</small></div><div class="sc-card"><h4>대만 관련기업 상승가속 확산도 · 전체</h4><div class="sc-value">${scNum(B.pct)}<small>% · ${B.up_groups}/${B.covered_groups}그룹</small></div><small>${scEsc(B.period)} · 계열 중복 제거 / 필터 무관</small></div><div class="sc-card"><h4>공식 월차·YTD 스냅샷</h4><div class="sc-value">${scEsc(H.snapshot_verified_on||'대기')}</div><small>무역 대조 입력 ${scEsc(H.trade_period||'미확보')}</small></div></div>
  <div class="sc-controls"><button data-rkv="radar" aria-pressed="${RK_VIEW.view==='radar'}">기업 레이더</button><button data-rkv="compare" aria-pressed="${RK_VIEW.view==='compare'}">6사 비교</button><button data-rkv="signals" aria-pressed="${RK_VIEW.view==='signals'}">공통 수요·프록시</button><button id="rkLegacy">기존 출하 추정표</button>${scLink('composite_preview.html#c='+RK_VIEW.selected,'앙상블 열기')}</div>
  <div class="sc-controls"><label>검색 <input id="rkQuery" type="search" value="${scEsc(RK_VIEW.query)}" placeholder="회사·티커" aria-label="랙 회사 검색"></label><label>역할 <select id="rkRole"><option value="all">전체</option>${Object.entries(RK_ROLES).map(([k,v])=>`<option value="${k}" ${RK_VIEW.role===k?'selected':''}>${v}</option>`).join('')}</select></label><label>지역 <select id="rkRegion">${['all','TW','US','HK'].map(k=>`<option value="${k}" ${RK_VIEW.region===k?'selected':''}>${k==='all'?'전체':k}</option>`).join('')}</select></label><label>정렬 <select id="rkSort">${[['requested','요청기업 우선'],['growth','3M 성장률'],['issues','대사 확인'],['name','이름']].map(([k,v])=>`<option value="${k}" ${RK_VIEW.sort===k?'selected':''}>${v}</option>`).join('')}</select></label><button id="rkCsv">현재 목록 CSV</button></div>
@@ -3449,15 +3465,15 @@ function renderOps(){
   document.getElementById('catRow').style.display='none';
   document.getElementById('cnt').innerHTML='';
   document.getElementById('crumb').innerHTML='<b>🩺 파이프라인 상태</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">기준 '+(O.generated||'—')+' · 워치독 09:30/21:30 자동갱신</span>';
-  const SC={OK:'#59d0a8',STALE:'#ffbe2e',FAIL:'#ff4d5e',EXIT:'#ff4d5e'};
-  const ord={FAIL:0,EXIT:0,STALE:1,OK:2};
+  const SC={OK:'#59d0a8',HELD:'#e8912d',STALE:'#ffbe2e',FAIL:'#ff4d5e',EXIT:'#ff4d5e'};
+  const ord={FAIL:0,EXIT:0,HELD:1,STALE:2,OK:3};
   const rows=Object.entries(J).sort((a,b)=>(ord[a[1].status]??3)-(ord[b[1].status]??3)||a[0].localeCompare(b[0])).map(([n,v])=>
     `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${SC[v.status]||'#8a93a3'};margin-right:7px"></span><b>${n}</b></td>
      <td style="font-family:var(--mono);font-size:11px;color:${SC[v.status]||'var(--dim)'}">${v.status}</td>
      <td style="font-family:var(--mono);font-size:11px">${v.last_run||'—'}</td>
      <td style="font-size:10.5px;color:var(--dim)">${(v.note||'').slice(0,90)}</td></tr>`).join('');
   document.getElementById('main').innerHTML=
-    `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:12px">정상 <b style="color:#59d0a8">${C.ok||0}</b> · 지연 <b style="color:#ffbe2e">${C.stale||0}</b> · 실패 <b style="color:#ff4d5e">${C.fail||0}</b> — 지연·실패는 텔레그램 경보 발송됨(중복 억제). 주간·월간 잡의 '로그 없음'은 주기 미도래일 수 있음.</div>
+    `<div class="panel" style="padding:12px 16px;margin-bottom:12px;font-size:12px">정상 <b style="color:#59d0a8">${C.ok||0}</b> · 보류 <b style="color:#e8912d">${C.held||0}</b> · 지연 <b style="color:#ffbe2e">${C.stale||0}</b> · 실패 <b style="color:#ff4d5e">${C.fail||0}</b> — 보류는 검증된 외부 작업자 한도·인증 HOLD이며 실패와 별도 집계합니다. 보류·지연·실패는 텔레그램 경보 대상(중복 억제).</div>
      <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>파이프라인</th><th>상태</th><th>마지막 실행</th><th>비고</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
@@ -3668,6 +3684,13 @@ ST.bioFilter=ST.bioFilter||{};
 function renderBio(){
   const B=window.BIOD||{}; const main=document.getElementById('main');
   const NT=B.node_types||{}, ET=B.edge_types||{};
+  const BF=B.freshness||{}, BW=B.worker_status||{}, BD=BF.details||{}, BM=BF.map||{};
+  const bioDates=`맵 ${BM.as_of||'UNKNOWN'} · 상세 ${BD.oldest_updated||'UNKNOWN'}–${BD.latest_updated||'UNKNOWN'} · stale ${BD.detail_stale??'?'} / ${BD.detail_total??'?'}`;
+  const bioState=BF.held
+    ? `<div style="border:1px solid rgba(232,145,45,.55);background:rgba(232,145,45,.09);color:#ffbe2e;border-radius:9px;padding:8px 11px;margin:8px 0 12px;font-size:11px">⏸ HELD — ${BW.reason_code||'external_worker_hold'} · 기존 Bio 상세 정본 보존 · ${bioDates}</div>`
+    : (BF.stale
+      ? `<div style="border:1px solid rgba(224,102,102,.55);background:rgba(224,102,102,.09);color:#e89b9b;border-radius:9px;padding:8px 11px;margin:8px 0 12px;font-size:11px">⚠ STALE — ${BW.valid?'소스/상세 갱신 지연':'워커 영수증 없음·무효'} · ${bioDates}</div>`
+      : `<div style="border:1px solid rgba(47,174,102,.4);background:rgba(47,174,102,.07);color:#59d0a8;border-radius:9px;padding:8px 11px;margin:8px 0 12px;font-size:11px">검증 영수증 ${BW.observed_at||'UNKNOWN'} · ${bioDates}</div>`);
   const counts={}; (B.nodes||[]).forEach(n=>counts[n.type]=(counts[n.type]||0)+1);
   const legend=Object.entries(NT).map(([k,t])=>`<label class="biolg ${ST.bioFilter[k]?'off':''}" data-nt="${k}"><span class="biodot" style="background:${t.color}"></span>${t.label}<em>${counts[k]||0}</em></label>`).join('');
   const elg=Object.entries(ET).map(([k,t])=>{
@@ -3703,6 +3726,7 @@ function renderBio(){
     .bioempty .icon{font-size:30px;margin-bottom:10px}
   </style>
   <p style="font-size:17px;font-weight:800;margin:0 0 3px">🧬 Bio Map <span style="color:#8a90a8;font-size:12px;font-weight:500">${B.phase||''} · 노드 ${(B.nodes||[]).length} · 엣지 ${(B.edges||[]).length} · ${B.generated||''} · 상세 ${bdHave}/${bdTotal} <b style="color:#2bc0d4">${bdPct}%</b></span></p>
+  ${bioState}
   <p style="color:#8a90a8;font-size:12px;margin:0 0 12px">모달리티(□)·기업(○)·약물(◇)·타깃(⬡)·적응증(⯃) 관계망 — 클릭=상세·하이라이트, 더블클릭=이웃 포커스, 배경 클릭=해제.</p>
   <div id="biowrap">
     <div class="biopanel">
@@ -4949,9 +4973,15 @@ function loadTmap(cb){ if(_tmapLoaded||window.TMAP){_tmapLoaded=true;return cb()
   document.head.appendChild(sc); }
 function renderTmap(){
   const T=window.TMAP||{}; const N=T.nodes||[]; const E=T.edges||[];
+  const TS=T.status||{}, TW=TS.worker||{}, TD=TS.source||{};
+  const tmState=TS.held
+    ? '<div class="panel" style="padding:9px 13px;margin-bottom:11px;border-color:rgba(232,145,45,.55);color:#ffbe2e">⏸ HELD — '+_tmEsc(TW.reason_code||'external_worker_hold')+' · 기존 그래프 정본 보존 · 원천 '+_tmEsc(TD.as_of||'UNKNOWN')+'</div>'
+    : (TS.stale
+      ? '<div class="panel" style="padding:9px 13px;margin-bottom:11px;border-color:rgba(224,102,102,.55);color:#e89b9b">⚠ STALE — '+(TW.valid?'원천 기준일 지연':'워커 영수증 없음·무효')+' · 원천 '+_tmEsc(TD.as_of||'UNKNOWN')+(TD.age_days==null?'':' · '+TD.age_days+'일 경과')+'</div>'
+      : '<div class="panel" style="padding:9px 13px;margin-bottom:11px;color:#59d0a8">검증 영수증 '+_tmEsc(TW.observed_at||'UNKNOWN')+' · 원천 '+_tmEsc(TD.as_of||'UNKNOWN')+'</div>');
   document.getElementById('catRow').style.display='none';
   document.getElementById('cnt').innerHTML='';
-  document.getElementById('crumb').innerHTML='<b>🕸 SupplyMap — 테크 공급망 웹</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">노드 '+N.length+' · 관계 '+E.length+' · Studio 리서치 빌드</span>';
+  document.getElementById('crumb').innerHTML='<b>🕸 SupplyMap — 테크 공급망 웹</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">노드 '+N.length+' · 관계 '+E.length+' · 기준 '+_tmEsc((T.meta||{}).as_of||'UNKNOWN')+'</span>';
   const main=document.getElementById('main');
   if(!N.length){ main.innerHTML='<div class="panel" style="padding:24px;color:var(--dim)">🕸 공급망 데이터가 비어 있습니다.</div>'; return; }
   ST.tmGrp=ST.tmGrp||'all'; if(ST.tmQ==null)ST.tmQ='';
@@ -5009,7 +5039,7 @@ function renderTmap(){
     body+='<div style="margin:16px 0 8px;font-size:13px;font-weight:700">'+g[1]+' <span style="color:var(--dim);font-weight:400;font-size:11px">'+list.length+'</span></div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:8px">'+list.map(card).join('')+'</div>'; });
   if(!shown) body='<div class="panel" style="padding:18px;color:var(--dim)">검색 결과가 없습니다.</div>';
-  main.innerHTML='<style>.tmn:hover{border-color:var(--a1)} .tmr:hover{background:rgba(127,150,170,.08)}</style>'+nav+lg+det+body;
+  main.innerHTML='<style>.tmn:hover{border-color:var(--a1)} .tmr:hover{background:rgba(127,150,170,.08)}</style>'+tmState+nav+lg+det+body;
   // --- 바인딩 ---
   main.querySelectorAll('[data-tmg]').forEach(p=>p.onclick=()=>{ST.tmGrp=p.dataset.tmg;renderTmap();window.scrollTo(0,0);});
   main.querySelectorAll('[data-tmn]').forEach(el=>el.onclick=()=>{const id=el.dataset.tmn;ST.tmSel=(ST.tmSel===id?null:id);renderTmap();window.scrollTo(0,0);});
@@ -5858,6 +5888,7 @@ const DMMRR_HOLD_KO = {
   no_metadata: '월환산 메타데이터 없음(빌더가 산출하지 못함)',
   schema_mismatch: '월환산 메타데이터 스키마 불일치',
   stale_source: '소스 미갱신 — 메타데이터의 소스월이 당월이 아님(부분월을 완료월로 쓰지 않음)',
+  stale_snapshot: '소스 미갱신 — 커버리지가 JST 전일까지 도달하지 않아 선형 월환산 보류',
   future_source: '소스월이 당월보다 미래 — 스탬프 불일치',
   month_absent: '표시 축에 소스월 라벨이 없음',
   not_latest: '소스월이 시리즈의 마지막 지점이 아님 — 마지막 점을 무조건 교체하지 않음',
@@ -5882,6 +5913,13 @@ function dmmRrNowYm(nowISO) {
   const k = new Date(ms + 9 * 3600 * 1000);
   return k.getUTCFullYear() + '-' + gg2(k.getUTCMonth() + 1);
 }
+function dmmRrJstYmd(nowISO,dayOffset) {
+  let ms = NaN;
+  if (nowISO != null && nowISO !== '') { ms = (nowISO instanceof Date ? nowISO : new Date(nowISO)).getTime(); }
+  if (!isFinite(ms)) ms = (new Date()).getTime();
+  const k = new Date(ms + 9 * 3600 * 1000 + (dayOffset || 0) * 86400000);
+  return k.getUTCFullYear() + '-' + gg2(k.getUTCMonth() + 1) + '-' + gg2(k.getUTCDate());
+}
 function dmmRrMeta(G) {
   const g = G || (typeof window !== 'undefined' ? window.GAMES_DATA : null) || {};
   const rr = g.dmm_runrate;
@@ -5895,10 +5933,16 @@ function dmmRrMeta(G) {
  * 묵은 부분월이 '완료월'로 승격되지 않는다. */
 function dmmRrState(G, nowISO) {
   const m = dmmRrMeta(G), now = dmmRrNowYm(nowISO);
-  const st = { ok: false, reason: m.err, rr: m.rr, now: now, ym: m.rr ? m.rr.source_month : null };
+  const expected = dmmRrJstYmd(nowISO,-1);
+  const st = { ok: false, reason: m.err, rr: m.rr, now: now, ym: m.rr ? m.rr.source_month : null,
+    expected_coverage_end: expected };
   if (m.err) return st;
   if (st.ym > now) { st.reason = 'future_source'; return st; }
   if (st.ym < now) { st.reason = 'stale_source'; return st; }
+  const src = m.rr.source;
+  if (!src || typeof src !== 'object' || Array.isArray(src) || src.coverage_end !== expected) {
+    st.reason = 'stale_snapshot'; return st;
+  }
   st.ok = true; st.reason = null; return st;
 }
 function dmmRrPartial(rr) {
@@ -5932,6 +5976,7 @@ function dmmRrApply(G, src, labels, values, key, nowISO) {
   if (raw === null || val === null || raw < 0 || val < 0 || cd === null || td === null || cd < 1 || td < cd) {
     out.hold = 'bad_company_entry'; return out;
   }
+  if (co.coverage_end !== st.expected_coverage_end) { out.hold = 'stale_snapshot'; return out; }
   const cur = dmmRrNum(V[idx]);
   if (cur === null) { out.hold = 'no_current_value'; return out; }
   if (Math.abs(cur - raw) > Math.max(DMMRR_TOL_ABS, 1e-6 * Math.abs(raw))) { out.hold = 'value_mismatch'; return out; }
@@ -6047,7 +6092,7 @@ function dmmRrNote(G, k) {
 (function (r) { if (!r) return;
   r.DmmRunrate = { version: DMMRR_VER, SCHEMA: DMMRR_SCHEMA, SRC: DMMRR_SRC, UNIT: DMMRR_UNIT,
     ACCENT: DMMRR_ACCENT, L_EST: DMMRR_L_EST, L_HOLD: DMMRR_L_HOLD, HOLD_KO: DMMRR_HOLD_KO,
-    ko: dmmRrKo, nowYm: dmmRrNowYm, meta: dmmRrMeta, state: dmmRrState, partial: dmmRrPartial,
+    ko: dmmRrKo, nowYm: dmmRrNowYm, jstYmd: dmmRrJstYmd, meta: dmmRrMeta, state: dmmRrState, partial: dmmRrPartial,
     apply: dmmRrApply, style: dmmRrStyle, restyle: dmmRrRestyle, plugin: dmmRrPlugin,
     fmt: dmmRrFmt, tipLabel: dmmRrTipLabel, tipFooter: dmmRrTipFooter, note: dmmRrNote };
 }(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null)));
@@ -6991,7 +7036,7 @@ function renderNowcastRank(){
       <td class="mono">${n.hit}%</td>
       <td class="mono"><b style="color:${gcol[g]}">${gl[g]}</b></td>
       <td class="mono call">${n.lastC||''} ${cy} <span style="color:#8a90a8">→</span> ${n.tgtq||''} <b style="color:${pc}">${py}</b>${n.fwd?' <span class="fwdb">미보고</span>':''}${chips}</td>
-      <td class="mono">${n.earn?(n.earn==='TBD'?'<span style="color:#8a90a8">TBD</span>':n.earn.slice(5).replace('-','/')):'—'}</td>
+      <td class="mono">${earnCell(n.earn)}</td>
     </tr>`;
   }).join('');
   // ---- 신뢰도 사분면 산점도: x=R² · y=예측YoY · 점크기=방향적중 · 색=선행 L ----
