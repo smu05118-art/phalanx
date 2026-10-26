@@ -1,6 +1,7 @@
 """Offline contract, integrity and publication failure regression tests."""
 import copy
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -276,7 +277,7 @@ class RelationshipsTests(unittest.TestCase):
     def test_hardlink_input_output_alias_is_rejected_without_overwrite(self):
         self.output.mkdir()
         index = self.output / 'index.json'
-        index.hardlink_to(self.source)
+        os.link(self.source, index)
         before = self.source.read_bytes()
         with self.assertRaises(ValueError):
             self.build()

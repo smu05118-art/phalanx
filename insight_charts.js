@@ -143,8 +143,10 @@
       '.jemi-card .vd{font-size:12.5px;color:var(--jemi-sub,#9aa8b6)}',
       '.jemi-chips{display:flex;flex-wrap:wrap;gap:6px}',
       '.jemi-chip{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--jemi-chip,#16212c);border:1px solid var(--jemi-chipbd,#243342);color:var(--jemi-text,#c9d4df);white-space:nowrap}',
+      '.jemi-chip.stale{border-color:var(--jemi-bad,#e0574e);background:rgba(224,87,78,.10)}',
       '.jemi-chip b{color:var(--jemi-strong,#eef3f8)}',
       '.jemi-chip .g{color:var(--jemi-muted,#7b8a99);font-size:10.5px;margin-left:3px}',
+      '.jemi-chip .stale{color:var(--jemi-bad,#e0574e);font-size:10.5px;font-weight:700;margin-left:4px}',
       '.jemi-link{font-size:11.5px;color:var(--jemi-muted,#7b8a99);border-top:1px dashed var(--jemi-line,#26333f);padding-top:8px;line-height:1.5}',
       '.jemi-conf{font-size:11px;color:var(--jemi-dim,#55636f)}',
       '.jemi-conf b{color:var(--jemi-sub,#9aa8b6)}',
@@ -239,11 +241,17 @@
       kids.push(h('span', { class: 'g' }, ['임계까지 ' + fnum(Math.abs(e.gap_pct)) + '%']));
     } else if (e.vs_baseline_pct != null) {
       kids.push(h('span', { class: 'g' }, ['기준比 ' + (e.vs_baseline_pct >= 0 ? '+' : '') + fnum(e.vs_baseline_pct) + '%']));
-    } else if (e.asof) {
-      kids.push(h('span', { class: 'g' }, [e.asof]));
     }
-    var attrs = { class: 'jemi-chip' };
-    if (e.note) { attrs.title = e.note; }
+    if (e.asof) { kids.push(h('span', { class: 'g' }, [e.asof])); }
+    if (e.stale) {
+      kids.push(h('span', { class: 'stale' }, ['⚠ STALE' +
+        (e.age_months != null ? ' ' + e.age_months + '개월' : '')]));
+    }
+    var attrs = { class: 'jemi-chip' + (e.stale ? ' stale' : '') };
+    var tip = [];
+    if (e.note) { tip.push(e.note); }
+    if (e.stale) { tip.push('최신 근거가 신선도 기준을 넘어 해석 주의'); }
+    if (tip.length) { attrs.title = tip.join(' · '); }
     var node = h('span', attrs, kids);
     if (e.src && /^https?:/.test(e.src)) {
       return h('a', { href: e.src, target: '_blank', rel: 'noopener' }, [node]);
