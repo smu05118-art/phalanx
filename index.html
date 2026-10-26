@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,user-scalable=yes">
+<link rel="icon" href="data:,">
 <title>Phalanx · Japan Trade Dashboard</title>
 <style>
 :root{--bg:#06060e;--s1:#0d0d1a;--s2:#141428;--bd:#28284a;--tx:#e8e8f4;--dim:#6a6a9a;--a1:#00e6b8;--a2:#3d8bfd;--a3:#ff5c5c;--a4:#ffbe2e;--a5:#c45cff;}
@@ -3448,8 +3449,8 @@ function renderOps(){
   document.getElementById('catRow').style.display='none';
   document.getElementById('cnt').innerHTML='';
   document.getElementById('crumb').innerHTML='<b>🩺 파이프라인 상태</b><span style="flex:1"></span><span style="font-size:10px;color:var(--dim)">기준 '+(O.generated||'—')+' · 워치독 09:30/21:30 자동갱신</span>';
-  const SC={OK:'#59d0a8',STALE:'#ffbe2e',FAIL:'#ff4d5e'};
-  const ord={FAIL:0,STALE:1,OK:2};
+  const SC={OK:'#59d0a8',STALE:'#ffbe2e',FAIL:'#ff4d5e',EXIT:'#ff4d5e'};
+  const ord={FAIL:0,EXIT:0,STALE:1,OK:2};
   const rows=Object.entries(J).sort((a,b)=>(ord[a[1].status]??3)-(ord[b[1].status]??3)||a[0].localeCompare(b[0])).map(([n,v])=>
     `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${SC[v.status]||'#8a93a3'};margin-right:7px"></span><b>${n}</b></td>
      <td style="font-family:var(--mono);font-size:11px;color:${SC[v.status]||'var(--dim)'}">${v.status}</td>
