@@ -11,6 +11,7 @@ bash 가 없으면 전부 건너뛴다.
 """
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -45,11 +46,17 @@ def read(path):
 
 
 def run_blocks(path):
-    """워크플로의 (step name, run 본문, env 사전) 목록 — PyYAML 없이 들여쓰기로 읽는다(두 파일의 run: 은 전부 `|` 블록 또는 한 줄)."""
+    """Read named/unnamed run steps: plain single lines or literal | / |- blocks.
+
+    This is a bounded reader for these two workflows, not a YAML parser. Reject
+    other run scalar/key forms instead of silently omitting executable steps.
+    """
     lines = read(path).split("\n")
     out, i, name, env = [], 0, None, {}
     while i < len(lines):
         ln = lines[i]
+        if re.match(r"^\s*-\s+\w+:", ln):
+            name, env = None, {}
         m = re.match(r"^\s*-\s*name:\s*(.*)$", ln)
         if m:
             name, env = m.group(1).strip(), {}
@@ -60,16 +67,28 @@ def run_blocks(path):
                 k, _, v = lines[j].strip().partition(":")
                 env[k.strip()] = v.strip()
                 j += 1
-        m = re.match(r"^(\s*)run:\s*(\|-?|>-?)?\s*(.*)$", ln)
+        m = re.match(r"^( *)(- +)?run: *(.*)$", ln)
         if m:
-            ind, style, rest = len(m.group(1)), m.group(2), m.group(3)
-            if style:
+            # The key in `- run:` begins after the sequence marker. Sibling
+            # keys (e.g. shell:) are not part of its literal shell body.
+            ind = len(m.group(1)) + len(m.group(2) or "")
+            rest = m.group(3).strip()
+            if re.fullmatch(r"\|-?(?:\s+#.*)?", rest):
                 body = []; i += 1
                 while i < len(lines) and (not lines[i].strip() or len(lines[i]) - len(lines[i].lstrip()) > ind):
                     body.append(lines[i]); i += 1
                 out.append((name, textwrap.dedent("\n".join(body)), env))
                 continue
+            if not rest or rest[0] in "|>'\"&*!{[" or rest.startswith("#"):
+                raise AssertionError("unsupported workflow run scalar: " + ln.strip())
+            j = i + 1
+            while j < len(lines) and (not lines[j].strip() or lines[j].lstrip().startswith("#")):
+                j += 1
+            if j < len(lines) and len(lines[j]) - len(lines[j].lstrip()) > ind:
+                raise AssertionError("unsupported multiline plain run scalar: " + ln.strip())
             out.append((name, rest, env))
+        elif not ln.lstrip().startswith("#") and re.search(r"(?:^|[\s{,])['\"]?run['\"]?\s*:", ln):
+            raise AssertionError("unsupported workflow run key: " + ln.strip())
         i += 1
     return out
 
@@ -81,6 +100,74 @@ def dry_stages(text):
         if st not in seen:
             seen.append(st)
     return seen
+
+
+def git_add_commands(path):
+    """Read literal Git staging commands from run blocks, ignoring shell comments.
+
+    These workflows use direct commands, not aliases/eval/generated shell. Keep
+    every argument (including wrappers/options) so the contract fails closed on
+    unexpected forms. Split command lists and join shell line continuations.
+    Redirections are NOT command separators: keep them with the command and
+    reject redirected staging explicitly, even when the expected add is present.
+    This is deliberately not a general Bash or YAML interpreter.
+    """
+    # Match a whole shell word BEFORE removing quotes: "a"dd, a"d"d and
+    # ad"d" all mean add. Keep raw spelling so quoted operators/comments are
+    # still arguments. Only literal quoting/escaping and list operators are
+    # tokenized here; no expansions, substitutions or shell evaluation.
+    token_pattern = re.compile(
+        r'''[;&|()<>]+|(?:[^\s;&|()<>'"\\$]+|\$(?!['"])|\\.|'[^']*'|"(?:[^"\\]|\\.)*")+''')
+    commands = []
+    for _name, body, _env in run_blocks(path):
+        for line in body.replace("\\\n", "").splitlines():
+            # A raw word-boundary filter misses the command name in g"it".
+            # This conservative prefilter is not tokenization or validation.
+            # Dollar quotes can encode the entire executable (even "git" is
+            # absent in raw hex/octal spellings), so always inspect those lines.
+            if ("git" not in line.translate(str.maketrans("", "", "'\"\\"))
+                    and "$'" not in line and '$"' not in line):
+                continue
+            # Retain quotes until after splitting: ';' is a path argument,
+            # whereas an unquoted semicolon separates commands. A shell #
+            # starts a comment only at the beginning of an unquoted word.
+            tokens = []
+            offset = 0
+            while offset < len(line):
+                if line[offset].isspace():
+                    offset += 1
+                    continue
+                if line[offset] == "#":
+                    break
+                # shlex does not implement Bash ANSI-C or locale quoting. Stop
+                # at an active opener, including mid-word, before misdecoding
+                # a potential executable/subcommand. Ordinary quoted/escaped
+                # dollar signs are consumed as literals by token_pattern.
+                if line.startswith(("$'", '$"'), offset):
+                    raise AssertionError("unsupported shell dollar quoting: " + line)
+                match = token_pattern.match(line, offset)
+                if match is None:
+                    raise AssertionError("unsupported shell quoting near git: " + line)
+                tokens.append(match.group())
+                offset = match.end()
+            words = []
+            redirected = False
+            for word in tokens + [";"]:
+                # Operators containing < or > (including 2>&1 / &>) must
+                # never split git from add, nor discard trailing pathspecs.
+                if re.fullmatch(r"[;&|()]+", word):
+                    if any(os.path.basename(w) == "git" and "add" in words[i + 1:]
+                           for i, w in enumerate(words)):
+                        if redirected:
+                            raise AssertionError("unsupported redirected git staging: " + line)
+                        commands.append(words)
+                    words = []
+                    redirected = False
+                else:
+                    if re.fullmatch(r"[;&|()<>]+", word) and ("<" in word or ">" in word):
+                        redirected = True
+                    words.extend(shlex.split(word))
+    return commands
 
 
 def cli_calls(text):
@@ -224,18 +311,32 @@ class TestWorkflowStatic(unittest.TestCase):
         self.assertIn("if: always() && steps.fin.outcome != 'skipped'", text)
         self.assertNotIn("steps.fin.outputs.fin_changed != 'false' || steps.notes.outputs.notes_changed != 'false'", text)
         self.assertIn("mkdir -p assets/fin_cache", text)                       # 89f95231 — 첫 실행(캐시 없음) 에서 listing 이 죽지 않게
-        self.assertIn("git add -A -- argus/kship argus/index.html", text)       # ignore 대상 경로를 명시하지 않고 범위 내 삭제까지 stage
+        self.assertEqual(git_add_commands(UPDATE_YML),
+                         [["git", "add", "-A", "--", "argus/kship", "argus/index.html"]])
         ignore = read(os.path.join(REPO, ".gitignore"))
         self.assertIn("argus/*/tools/assets/fin_cache/", ignore)
         self.assertIn("argus/*/tools/assets/fin_collect.log", ignore)
 
     def test_scan_workflow_installs_openpyxl_and_passes_quarter(self):
         text = read(SCAN_YML)
-        self.assertIn("openpyxl==3.1.5", text)                                # tests 가 모듈 수준에서 openpyxl 을 import 한다
-        self.assertRegex(text, r'kship_scan\.py --scan --quarter "\$Q1"')
-        self.assertIn('python-version: "3.11"', text)
-        self.assertNotIn("git add -A", text)
-        self.assertIn("-p 'test_*.py'", text)
+        # Comments cannot satisfy the executable dependency/quarter contract.
+        commands = [shlex.split(line, comments=True)
+                    for _name, body, _env in run_blocks(SCAN_YML)
+                    for line in body.splitlines() if line.lstrip().startswith("python3 ")]
+        installs = [i for i, cmd in enumerate(commands)
+                    if cmd[:4] == ["python3", "-m", "pip", "install"] and "openpyxl==3.1.5" in cmd[4:]]
+        self.assertTrue(installs, "install pinned openpyxl before scan/tests")
+        scan = ["python3", "kship_scan.py", "--scan", "--quarter", "$Q1"]
+        tests = ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"]
+        self.assertIn(scan, commands)
+        self.assertIn(tests, commands)
+        self.assertLess(installs[0], commands.index(scan))
+        self.assertLess(installs[0], commands.index(tests))
+        self.assertRegex(text, r'(?m)^\s*python-version: "3\.11"\s*$')
+        # -A includes intended deletions; the exact path scope and .gitignore
+        # exclude unrelated work and raw caches without explicit ignored paths.
+        self.assertEqual(git_add_commands(SCAN_YML),
+                         [["git", "add", "-A", "--", "argus/kship"]])
 
 
 @unittest.skipUnless(BASH, "bash 없음")
