@@ -1,6 +1,7 @@
 /* Phalanx 리서치 — 세관 프록시 분기 나우캐스트 공용 엔진
-   각 research/<id>/index.html이 manifest.js·data_jp.js·data_jp_country.js(크론 산출물)와 이 파일을 로드하고,
-   같은 폴더의 inputs.json(가이던스·컨센·예측 로그·시차·결산월)만 수동으로 관리한다. 단위: 억엔. */
+   각 research/<id>/index.html이 manifest.js·data_jp.js·data_jp_country.js 또는 data_twx.js(크론 산출물)와 이 파일을 로드하고,
+   같은 폴더의 inputs.json(가이던스·컨센·예측 로그·시차·결산월)만 수동으로 관리한다. 단위: 억엔(기본).
+   source: 기본(JP 세관) · "comext"(Eurostat) · "twx"(대만 MOPS 피어 월매출 바스켓). */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id), css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -12,7 +13,7 @@ function fail(msg){ $('app').innerHTML='<p class="err">'+esc(msg)+'</p>'; $('sta
 fetch('inputs.json',{cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('inputs.json '+r.status); return r.json(); })
 .then(IN=>{ if(IN.source==='comext') return fetch(IN.proxy_file,{cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error(IN.proxy_file+' '+r.status); return r.json(); }).then(CX=>run(IN,CX)); return run(IN,null); })
 .catch(e=>fail('데이터를 불러오지 못했습니다: '+e.message));
-let U='억엔', u='억';
+let U='억엔', u='억', PU='억엔', pu='억'; // U/u: 실적 단위, PU/pu: 프록시 단위(미지정 시 실적 단위와 동일)
 
 function qOf(ym){ return +ym.slice(0,4)+'Q'+Math.ceil(+ym.slice(5,7)/3); }
 function qMonths(q){ const y=+q.slice(0,4), n=+q.slice(5); return [0,1,2].map(k=>y+'-'+String(3*n-2+k).padStart(2,'0')); }
@@ -21,7 +22,8 @@ function kv(k,v){ return '<div class="kv"><span class="k">'+k+'</span><span clas
 
 function run(IN,CX){
   const lag=IN.lag||0, fyStart=((IN.fy_end_month||12)%12)+1;
-  U=IN.unit||'억엔'; u=IN.unit_short||'억';
+  U=IN.unit||'억엔'; u=IN.unit_short||'억'; PU=IN.proxy_unit||U; pu=IN.proxy_unit_short||u;
+  const SL=IN.source==='twx'?'피어 월매출':'세관'; // 프록시 이름(twx는 세관이 아니라 피어 공시 매출)
   const px={}, fin={}; let ports=[], laneData=null, stampSrc='';
   if(IN.source==='comext'){
     if(!CX||!CX.partners) return fail(IN.proxy_file+' 형식 오류');
@@ -33,6 +35,24 @@ function run(IN,CX){
     const lanes=(IN.lane_partners||Object.keys(CX.partners)).filter(p=>CX.partners[p]);
     laneData={order:lanes, val:(ct,m)=>((CX.partners[ct]||{})[m]||0)/div};
     stampSrc='Eurostat '+(CX.source_updated||'').slice(0,10);
+  } else if(IN.source==='twx'){
+    // 대만 MOPS 월매출 피어 바스켓: data_twx.js PSH.TWX.companies[].revenue(千NT$, manifest PM.months 정렬)
+    const PMv=(typeof PM!=='undefined')?PM:null, TWX=(window.PSH||{}).TWX;
+    if(!PMv||!PMv.months) return fail('manifest.js가 없습니다.');
+    if(!TWX||!TWX.companies) return fail('data_twx.js가 없습니다.');
+    const months=PMv.months, div=IN.unit_div||1e6, use=IN.proxy_tickers||[];
+    if(!use.length) return fail('inputs.json에 proxy_tickers가 없습니다.');
+    const byTk={}; TWX.companies.forEach(c=>{ byTk[c.ticker]=c; });
+    for(const tk of use){ if(!byTk[tk]||!byTk[tk].revenue) return fail('data_twx.js에 '+tk+' 카드가 없습니다.'); }
+    const idx={}; months.forEach((m,i)=>idx[m]=i);
+    // 바스켓 전 종목이 공시된 달만 합산(한 종목이라도 null이면 그 달은 비움)
+    months.forEach((m,i)=>{ if(use.every(tk=>byTk[tk].revenue[i]!=null)) px[m]=use.reduce((s,tk)=>s+byTk[tk].revenue[i],0)/div; });
+    (IN.fin||[]).forEach(f=>{ if(f.rev!=null) fin[f.q]={rev:f.rev,op:f.op==null?NaN:f.op}; });
+    ports=use;
+    const lanes=(IN.lane_tickers||use).filter(tk=>byTk[tk]&&byTk[tk].revenue);
+    laneData={order:lanes, val:(tk,m)=>{ const v=idx[m]==null?null:byTk[tk].revenue[idx[m]]; return (v==null?0:v)/div; },
+      miss:(tk,m)=>idx[m]==null||byTk[tk].revenue[idx[m]]==null}; // 피어마다 공시일이 달라 늦게 내는 곳은 0이 아니라 미공시
+    stampSrc='빌드 '+(PMv.built||PMv.updated||'');
   } else {
     const PMv=(typeof PM!=='undefined')?PM:null, JP=(window.PSH||{}).JP, JPC=(window.PSHC||{}).JP;
     if(!PMv||!JP) return fail('manifest.js 또는 data_jp.js가 없습니다.');
@@ -91,15 +111,15 @@ function run(IN,CX){
       const rev=fit(scen[kk])*(1+rres); est[kk]={px:scen[kk],pyoy:qSum(qAdd(P,-4))?scen[kk]/qSum(qAdd(P,-4))-1:null,ols:fit(scen[kk]),res:rres,rev,op:rev*opm[kk],opm:opm[kk]}; });
     targets.push({T,P,seen,miss,seenSum,est,impl,use,ly:fin[qAdd(T,-4)],extrap:scen.base>xMax*1.05});
   }
-  const lastGdate=(IN.guidance||[]).map(g=>g.date).sort().pop()||'', gStale=lastGdate.slice(0,7)<=qMonths(lastQ)[2];
+  const lastGdate=(IN.guidance||[]).map(g=>g.date).sort().pop()||'', gStale=!!lastGdate&&lastGdate.slice(0,7)<=qMonths(lastQ)[2]; // 가이던스 미기재(정성 가이던스만 내는 회사)면 갱신 경고 생략
   $('stamp').innerHTML=esc(IN.proxy_name||'세관')+' '+esc(lastPx)+'까지 · 실적 '+esc(lastQ)+'까지 · '+esc(stampSrc)+' <span class="badge live">LIVE</span>';
-  if(!targets.length) return fail('목표 분기의 세관 데이터가 아직 없습니다.');
+  if(!targets.length) return fail('목표 분기의 '+SL+' 데이터가 아직 없습니다.');
   let h='';
   const T0=targets[0], B=T0.est.base;
-  h+='<div class="hero"><div><div class="eyebrow">'+esc(T0.T)+' 매출분기 추정 (Base) · 프록시 '+esc(T0.P)+(lag?' (시차 '+lag+'분기)':'')+' · 세관 '+T0.seen.length+'/3개월 실측</div>';
+  h+='<div class="hero"><div><div class="eyebrow">'+esc(T0.T)+' 매출분기 추정 (Base) · 프록시 '+esc(T0.P)+(lag?' (시차 '+lag+'분기)':'')+' · '+SL+' '+T0.seen.length+'/3개월 실측</div>';
   h+='<div class="big"><div><div class="v num">'+f1(B.rev)+'<span style="font-size:17px;color:var(--ink2)"> '+U+'</span></div><div class="d">매출 · <span class="up">'+pc(T0.ly?B.rev/T0.ly.rev-1:null)+' YoY</span> · QoQ '+pc(B.rev/fin[lastQ].rev-1)+'</div></div>';
   h+='<div><div class="v num">'+f1(B.op)+'<span style="font-size:17px;color:var(--ink2)"> '+U+'</span></div><div class="d">'+(IN.op_label||'영업이익')+' · '+(IN.margin_label||'OPM')+' '+pm(B.opm)+(T0.ly?' · <span class="up">'+pc(B.op/T0.ly.op-1)+' YoY</span>':'')+'</div></div></div>';
-  h+='<p class="sub" style="margin-top:10px">세관 '+esc(T0.seen.map(m=>m.slice(2)).join('·'))+' 합 '+f1(T0.seenSum)+u+(T0.miss.length?' + '+esc(T0.miss.map(m=>m.slice(2)).join('·'))+' 보간':'')+' → 분기 프록시 '+f1(B.px)+u+'('+pc(B.pyoy)+' YoY) → OLS '+f1(B.ols)+u+' × (1'+(B.res<0?'−':'+')+Math.abs(Math.round(B.res*1000)/10)+'% '+(IN.resid_mode==='none'?'잔차 보정 없음':'같은분기 잔차')+') = <b>'+f1(B.rev)+u+'</b>.</p></div><div>';
+  h+='<p class="sub" style="margin-top:10px">'+SL+' '+esc(T0.seen.map(m=>m.slice(2)).join('·'))+' 합 '+f1(T0.seenSum)+pu+(T0.miss.length?' + '+esc(T0.miss.map(m=>m.slice(2)).join('·'))+' 보간':'')+' → 분기 프록시 '+f1(B.px)+pu+'('+pc(B.pyoy)+' YoY) → OLS '+f1(B.ols)+u+' × (1'+(B.res<0?'−':'+')+Math.abs(Math.round(B.res*1000)/10)+'% '+(IN.resid_mode==='none'?'잔차 보정 없음':'같은분기 잔차')+') = <b>'+f1(B.rev)+u+'</b>.</p></div><div>';
   if(T0.impl) h+=kv('회사 가이던스 암시 '+T0.T, f1(T0.impl.rev)+' · OP '+f1(T0.impl.op)+' ('+pm(T0.impl.opm)+')');
   h+=kv('Base vs 회사 암시', T0.impl?pc(B.rev/T0.impl.rev-1)+' / OP '+pc(B.op/T0.impl.op-1):'—');
   h+=kv('레인지 (Bear–Bull)', f1(T0.est.bear.rev)+'~'+f1(T0.est.bull.rev)+' · OP '+f1(T0.est.bear.op)+'~'+f1(T0.est.bull.op));
@@ -113,8 +133,8 @@ function run(IN,CX){
   if(IN.quality_note) h+='<div class="callout"><b>프록시 품질 주의</b> — '+esc(IN.quality_note)+' (현재 OLS r='+(Math.round(r*100)/100)+')</div>';
   if(gStale) h+='<div class="callout"><b>가이던스 갱신 필요</b> — 실적은 '+esc(lastQ)+'까지인데 inputs.json 가이던스 최신 공시일은 '+esc(lastGdate)+'입니다.</div>';
   targets.forEach(t=>{
-    h+='<section class="tgt"><div class="sechead"><h2>'+esc(t.T)+' 매출분기 시나리오</h2><span class="k">프록시 '+esc(t.P)+' · 세관 '+t.seen.length+'/3개월 실측'+(t.miss.length?' · '+esc(t.miss.map(m=>m.slice(2)).join('·'))+' 보간':' · 보간 없음')+'</span></div>';
-    if(t.extrap) h+='<div class="callout"><b>외삽 경고</b> — 분기 프록시 '+f1(t.est.base.px)+u+'이 학습 구간 최대('+f1(xMax)+u+')를 넘어 OLS 바깥을 외삽합니다. 회사 암시와 함께 보세요.</div>';
+    h+='<section class="tgt"><div class="sechead"><h2>'+esc(t.T)+' 매출분기 시나리오</h2><span class="k">프록시 '+esc(t.P)+' · '+SL+' '+t.seen.length+'/3개월 실측'+(t.miss.length?' · '+esc(t.miss.map(m=>m.slice(2)).join('·'))+' 보간':' · 보간 없음')+'</span></div>';
+    if(t.extrap) h+='<div class="callout"><b>외삽 경고</b> — 분기 프록시 '+f1(t.est.base.px)+pu+'이 학습 구간 최대('+f1(xMax)+pu+')를 넘어 OLS 바깥을 외삽합니다. 회사 암시와 함께 보세요.</div>';
     h+='<div class="tblwrap"><table><thead><tr><th>시나리오</th><th>분기 프록시</th><th>프록시 YoY</th><th>OLS 매출</th><th>잔차</th><th>매출</th><th>매출 YoY</th><th>'+(IN.margin_label||'OPM')+'</th><th>'+(IN.op_label||'영업이익')+'</th></tr></thead><tbody>';
     if(t.impl) h+='<tr><td>회사 가이던스 암시</td><td>—</td><td>—</td><td>—</td><td>—</td><td class="num">'+f1(t.impl.rev)+'</td><td class="num">'+pc(t.ly?t.impl.rev/t.ly.rev-1:null)+'</td><td class="num">'+pm(t.impl.opm)+'</td><td class="num">'+f1(t.impl.op)+'</td></tr>';
     [['bear','Bear'+(t.miss.length?' · 미공표월 전년동월':'')+(IN.resid_mode==='none'?' · −1σ':' · 최저 잔차')],['base','Base'+(t.miss.length?' · 3년 평균 월비중':'')+(IN.resid_mode==='none'?' · 보정 없음':' · 평균 잔차')],['bull','Bull'+(t.miss.length?' · 최대 월비중':'')+(IN.resid_mode==='none'?' · +1σ':' · 최대 잔차')]].forEach(([k,lab])=>{ const e=t.est[k];
@@ -127,36 +147,37 @@ function run(IN,CX){
     h+='<tr><td>'+esc(fq.q)+'</td><td>'+esc(fq.date)+'</td><td class="num">'+f1(fq.rev)+' / '+f1(fq.op)+'</td><td class="num">'+f1(fq.implied_rev)+' / '+f1(fq.implied_op)+'</td>'+(A?'<td class="num">'+f1(A.rev)+' / '+f1(A.op)+'</td><td class="num">'+pc(fq.rev/A.rev-1)+'</td><td class="num">'+pc(fq.op/A.op-1)+'</td>':'<td colspan="3" class="small">발표 대기</td>')+'</tr>'; });
   if(!(IN.forecast_log||[]).length) h+='<tr><td colspan="7" class="small">기록된 예측 없음</td></tr>';
   h+='</tbody></table></div></section>';
-  h+='<section><div class="sechead"><h2>세관 프록시와 실적</h2><span class="k">'+esc(IN.source==='comext'?'Eurostat Comext':'팔랑크스 data_jp.js')+' · '+esc(IN.source==='comext'?'partner ':'항만 ')+esc(ports.join('·'))+'</span></div>';
-  h+='<div class="card"><div class="ct">월별 '+esc(IN.proxy_name||'세관')+' 프록시 수출액 <span class="small">('+U+')</span></div><div class="cs">'+esc(IN.proxy_label||'')+' · 최근 44개월</div><div class="chart" id="chM"></div></div>';
+  h+='<section><div class="sechead"><h2>'+(IN.source==='twx'?'피어 프록시와 실적':'세관 프록시와 실적')+'</h2><span class="k">'+esc(IN.source==='comext'?'Eurostat Comext':IN.source==='twx'?'팔랑크스 data_twx.js (MOPS 월매출)':'팔랑크스 data_jp.js')+' · '+esc(IN.source==='comext'?'partner ':IN.source==='twx'?'피어 ':'항만 ')+esc(ports.join('·'))+'</span></div>';
+  h+='<div class="card"><div class="ct">월별 '+esc(IN.proxy_name||'세관')+' 프록시 '+(IN.source==='twx'?'매출액':'수출액')+' <span class="small">('+PU+')</span></div><div class="cs">'+esc(IN.proxy_label||'')+' · 최근 44개월</div><div class="chart" id="chM"></div></div>';
   h+='<div class="card"><div class="ct">분기 매출: 실적 vs OLS 적합 <span class="small">('+U+(lag?', 프록시 '+lag+'분기 선행':'')+')</span></div><div class="legend"><span><i class="sw" style="background:var(--mjc)"></i>실적</span><span><i class="sw" style="background:var(--proxy-lt)"></i>OLS 적합</span><span><i class="sw" style="background:var(--proxy)"></i>추정 Base</span></div><div class="chart" id="chQ"></div></div></section>';
-  h+='<section><div class="sechead"><h2>국가 lane</h2><span class="k">모멘텀 판독용</span></div><div class="tblwrap"><table id="laneT"></table></div>'+(IN.lane_note?'<p class="footnote">'+esc(IN.lane_note)+'</p>':'')+'</section>';
+  h+='<section><div class="sechead"><h2>'+(IN.source==='twx'?'피어 lane':'국가 lane')+'</h2><span class="k">모멘텀 판독용</span></div><div class="tblwrap"><table id="laneT"></table></div>'+(IN.lane_note?'<p class="footnote">'+esc(IN.lane_note)+'</p>':'')+'</section>';
   $('app').innerHTML=h;
-  const lastM=pxMonths.slice(-44); lineChart($('chM'),lastM,lastM.map(m=>px[m]));
+  const lastM=pxMonths.slice(-44); lineChart($('chM'),lastM,lastM.map(m=>px[m]),'월별 '+SL+' 프록시');
   const tq={}; targets.forEach(t=>tq[t.T]=t.est.base.rev);
   const qs=finQs.filter(q=>q>='2023Q1').concat(targets.map(t=>t.T));
   barChart($('chQ'),qs,[{name:'실적',color:css('--mjc'),v:qs.map(q=>fin[q]?fin[q].rev:null)},{name:'OLS 적합',color:css('--proxy-lt'),v:qs.map(q=>fin[q]&&qSum(qAdd(q,-lag))!=null?fit(qSum(qAdd(q,-lag))):null)},{name:'추정 Base',color:css('--proxy'),v:qs.map(q=>tq[q]==null?null:tq[q])}]);
   if(laneData){ const lane=laneData.val;
     const cmp=pxMonths.slice(-3).filter(m=>qOf(m)===qOf(lastPx)); const cm=cmp.length?cmp:pxMonths.slice(-1);
-    const prev=cm.map(m=>(+m.slice(0,4)-1)+m.slice(4)), tot=laneData.order.reduce((s,ct)=>s+cm.reduce((x,m)=>x+lane(ct,m),0),0);
-    let t='<thead><tr><th>국가</th><th>'+esc(cm[0].slice(2)+(cm.length>1?'~'+cm[cm.length-1].slice(5):''))+' ('+U+')</th><th>전년 동기</th><th>YoY</th><th>믹스</th></tr></thead><tbody>';
-    laneData.order.forEach(ct=>{ const v=cm.reduce((x,m)=>x+lane(ct,m),0), p=prev.reduce((x,m)=>x+lane(ct,m),0);
+    const prev=cm.map(m=>(+m.slice(0,4)-1)+m.slice(4)), missOf=ct=>!!laneData.miss&&cm.some(m=>laneData.miss(ct,m)), tot=laneData.order.filter(ct=>!missOf(ct)).reduce((s,ct)=>s+cm.reduce((x,m)=>x+lane(ct,m),0),0);
+    let t='<thead><tr><th>'+(IN.source==='twx'?'피어':'국가')+'</th><th>'+esc(cm[0].slice(2)+(cm.length>1?'~'+cm[cm.length-1].slice(5):''))+' ('+PU+')</th><th>전년 동기</th><th>YoY</th><th>믹스</th></tr></thead><tbody>';
+    laneData.order.forEach(ct=>{ if(missOf(ct)){ t+='<tr><td>'+esc((IN.lane_labels||{})[ct]||ct)+'</td><td class="num small" colspan="4">미공시(최근 월 미반영)</td></tr>'; return; }
+      const v=cm.reduce((x,m)=>x+lane(ct,m),0), p=prev.reduce((x,m)=>x+lane(ct,m),0);
       t+='<tr><td>'+esc((IN.lane_labels||{})[ct]||ct)+'</td><td class="num">'+f1(v)+'</td><td class="num">'+f1(p)+'</td><td class="num '+(p&&v>p?'up':'dn')+'">'+(p?pc(v/p-1):'—')+'</td><td class="num">'+(tot?Math.round(v/tot*100)+'%':'—')+'</td></tr>'; });
     $('laneT').innerHTML=t+'</tbody>';
-  } else $('laneT').innerHTML='<tr><td class="small">국가 데이터 없음</td></tr>';
+  } else $('laneT').innerHTML='<tr><td class="small">'+(IN.source==='twx'?'피어':'국가')+' 데이터 없음</td></tr>';
 }
 function S(t,at,p){const e=document.createElementNS('http://www.w3.org/2000/svg',t);for(const k in at)e.setAttribute(k,at[k]);if(p)p.appendChild(e);return e;}
 function ticks(min,max,n){const st0=(max-min)/n,mag=Math.pow(10,Math.floor(Math.log10(st0)));let st=mag;for(const m of[1,2,2.5,5,10]){if(st0<=m*mag){st=m*mag;break}}const t=[];for(let v=Math.floor(min/st)*st;v<=Math.ceil(max/st)*st+1e-9;v+=st)t.push(Math.round(v*100)/100);return t;}
 function tipOf(el){const t=document.createElement('div');t.className='tip';el.appendChild(t);return t;}
 function axes(svg,tk,Y,W,Lp,R){tk.forEach(t=>{S('line',{x1:Lp,x2:W-R,y1:Y(t),y2:Y(t),stroke:css('--grid')},svg);S('text',{x:Lp-6,y:Y(t)+4,'text-anchor':'end',fill:css('--muted'),'font-size':11},svg).textContent=t;});}
-function lineChart(el,lab,v){const W=1000,H=300,Lp=44,R=12,T=14,Bm=30,svg=S('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'월별 세관 프록시'});el.appendChild(svg);
+function lineChart(el,lab,v,aria){const W=1000,H=300,Lp=44,R=12,T=14,Bm=30,svg=S('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':aria||'월별 세관 프록시'});el.appendChild(svg);
   const tk=ticks(0,Math.max(...v)*1.1,5),X=i=>Lp+(W-Lp-R)*i/(lab.length-1),Y=y=>T+(H-T-Bm)*(1-y/tk[tk.length-1]);axes(svg,tk,Y,W,Lp,R);
   lab.forEach((m,i)=>{if(m.endsWith('-01'))S('text',{x:X(i),y:H-8,'text-anchor':'middle',fill:css('--muted'),'font-size':11},svg).textContent=m.slice(0,4);});
   let d='';v.forEach((y,i)=>d+=(i?'L':'M')+X(i)+' '+Y(y));S('path',{d:d+`L${X(v.length-1)} ${Y(0)}L${X(0)} ${Y(0)}Z`,fill:css('--proxy'),'fill-opacity':.08},svg);S('path',{d,fill:'none',stroke:css('--proxy'),'stroke-width':2},svg);
   const li=v.length-1;S('circle',{cx:X(li),cy:Y(v[li]),r:4.5,fill:css('--proxy'),stroke:css('--surface'),'stroke-width':2},svg);
-  S('text',{x:X(li)-8,y:Y(v[li])-10,'text-anchor':'end',fill:css('--ink'),'font-size':12,'font-weight':700},svg).textContent=lab[li]+' '+f1(v[li])+u;
+  S('text',{x:X(li)-8,y:Y(v[li])-10,'text-anchor':'end',fill:css('--ink'),'font-size':12,'font-weight':700},svg).textContent=lab[li]+' '+f1(v[li])+pu;
   const tp=tipOf(el);svg.addEventListener('mousemove',ev=>{const r=svg.getBoundingClientRect();let i=Math.round(((ev.clientX-r.left)*W/r.width-Lp)/(W-Lp-R)*(lab.length-1));i=Math.max(0,Math.min(li,i));
-    const pv=i>=12?v[i-12]:null;tp.innerHTML='<b>'+lab[i]+'</b> '+f1(v[i])+u+(pv?' · YoY '+pc(v[i]/pv-1):'');tp.style.left=X(i)*r.width/W+'px';tp.style.top=Y(v[i])*r.height/H+'px';tp.style.opacity=1;});
+    const pv=i>=12?v[i-12]:null;tp.innerHTML='<b>'+lab[i]+'</b> '+f1(v[i])+pu+(pv?' · YoY '+pc(v[i]/pv-1):'');tp.style.left=X(i)*r.width/W+'px';tp.style.top=Y(v[i])*r.height/H+'px';tp.style.opacity=1;});
   svg.addEventListener('mouseleave',()=>tp.style.opacity=0);}
 function barChart(el,lab,ser){const W=1000,H=300,Lp=44,R=12,T=14,Bm=30,svg=S('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'분기 매출 실적과 적합'});el.appendChild(svg);
   const all=ser.flatMap(s=>s.v).filter(x=>x!=null),tk=ticks(0,Math.max(...all)*1.1,5),Y=y=>T+(H-T-Bm)*(1-y/tk[tk.length-1]);axes(svg,tk,Y,W,Lp,R);
