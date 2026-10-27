@@ -1,0 +1,62 @@
+# 솔더볼 묶음 원천(덕산하이메탈 077360 정기보고서 II-2·3·4절) 주간 갱신.
+#
+# 정기보고서는 분기마다 한 번 뜨므로 주 1회면 충분하다. 이미 수록된 보고서는 다시 받지 않아
+# 평시 비용은 DART 검색 몇 건이다. DART 는 공인 IP 단위로 막으므로 kship·ksemi·kdef 등 DART 탭과 같은
+# concurrency 그룹에서 하나씩 돈다.
+name: update-solder-ball
+on:
+  schedule:
+    - cron: "40 4 * * 1"          # 월 13:40 KST — ksemi(11:20) 뒤
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: kship-dart               # kship·ksemi·kdef 등과 같은 그룹 — DART 는 IP 당 프로세스 하나
+  queue: max
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Restore DART section cache
+        uses: actions/cache/restore@v4
+        with:
+          path: tools/solder_ball/cache
+          key: solder-ball-dart-cache-${{ github.run_id }}
+          restore-keys: |
+            solder-ball-dart-cache-
+      - name: Tests (before)
+        run: |
+          (cd tools/solder_ball && python3 -m unittest discover -s tests -p 'test_*.py')
+          python3 -m unittest discover -s tools/tests -p 'test_private_leak.py'
+      - name: Collect and build
+        id: build
+        run: python3 tools/solder_ball/duksan_dart.py --root .
+      - name: Save DART section cache
+        if: always() && steps.build.outcome != 'skipped'
+        uses: actions/cache/save@v4
+        with:
+          path: tools/solder_ball/cache
+          key: solder-ball-dart-cache-${{ github.run_id }}
+      - name: Commit
+        shell: bash
+        run: |
+          if [ -z "$(git status --porcelain -- data/solder_ball)" ]; then
+            echo "변경 없음"; exit 0
+          fi
+          git config user.name "solder-ball-bot"
+          git config user.email "solder-ball-bot@users.noreply.github.com"
+          git add -- data/solder_ball
+          git commit -m "data: 솔더볼 묶음 원천 갱신 $(date -u +%Y-%m-%d) (덕산하이메탈 정기보고서)"
+          git pull --rebase origin main
+          git push origin HEAD:main
