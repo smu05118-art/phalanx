@@ -47,10 +47,14 @@ jobs:
       - name: Collect (KIND · DART 생산설비 절 · 이벤트 공시 · 재무제표 — 순차, 캐시 우선)
         id: collect
         continue-on-error: true
+        timeout-minutes: 60        # 잡 90 안에서 수집만 제한 — 초과 시 outcome=failure 로 이어가
+                                   # 부분 수집분으로 빌드·커밋·캐시 저장(다음 실행이 체크포인트에서 이어받음)
         shell: bash
         working-directory: argus/kcap/tools
         env:
-          KCAP_HISTORY: ${{ github.event.inputs.history }}
+          # dispatch boolean 입력은 문자열 "false"로 도착 — ==''true'' 비교로만 참 판정
+          # (${KCAP_HISTORY:+--history} 는 "false"도 비어있지 않아 켜지는 결함이 있었다)
+          KCAP_HISTORY: ${{ github.event.inputs.history == 'true' && '1' || '' }}
         run: |
           set -o pipefail
           mkdir -p assets/cache
