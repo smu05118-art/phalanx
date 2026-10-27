@@ -636,6 +636,62 @@ function observationRows(c,asof){
    sources:sources.map(s=>({url:sourceURL(s.url),...availableDate(s)}))};
  }).filter(r=>r.sources.length).sort((a,b)=>a.end.localeCompare(b.end));
 }
+// Bounded allowlist transcribed from parent source_review.md (2026-10-21).
+// Only these revenue claims were admitted; no company-wide verification flag.
+// Starts in the snapshot were not independently reviewed and are never displayed.
+const reviewedGuidance=[
+ {company:'DY',period:'FY2027Q3',scope:'분기',end:'2026-10-31',measure:'contract_revenue',label:'계약 매출',unit:'USD million',low:1900,high:1980,date:'2026-08-26',sourceId:'DY_2027Q2_release',url:'https://www.ir.dycomind.com/news-releases/news-release-details/dycom-industries-inc-reports-record-fiscal-2027-second-quarter'},
+ {company:'FPS',period:'FY2027',scope:'연간',end:'2027-06-30',measure:'revenue',label:'매출',unit:'USD million',low:2400,high:2600,date:'2026-09-15',sourceId:'fy2026_release',url:'https://ir.forgentpower.com/news-events/press-releases/detail/107/forgent-reports-record-fourth-quarter-and-full-year-2026-results-exceeds-high-end-of-guidance-and-enters-fiscal-2027-with-all-time-high-backlog'}
+];
+function guidanceRows(c,asof){
+ if(!c||c.preview_kind!=='grid_observed_v1'||c.currency!=='USD'||!currentLineage(c)||
+  !validDate(asof)||asof>new Date().toISOString().slice(0,10)||
+  !Array.isArray(c.official_guidance)||!currentLineage(c.official_guidance))return [];
+ const rows=c.official_guidance.filter(r=>r&&typeof r==='object');
+ return reviewedGuidance.filter(a=>a.company===c.id).flatMap(a=>{
+  // Count conflicts before validation: an invalid duplicate must not revive a row.
+  const candidates=rows.filter(r=>r.fiscal_key===a.period||r.period_end===a.end);
+  if(candidates.length!==1)return [];
+  const r=candidates[0];
+  if(!currentLineage(r)||r.kind!=='official_issuer_guidance'||r.fiscal_key!==a.period||
+   r.period_end!==a.end||r.source_date!==a.date||a.date>asof||
+   (r.period_start!=null&&(!validDate(r.period_start)||r.period_start>r.period_end))||
+   !Array.isArray(r.measures)||!currentLineage(r.measures)||
+   !Array.isArray(r.sources)||r.sources.length!==1||!currentLineage(r.sources))return [];
+  const source=r.sources[0];
+  if(!source||!currentLineage(source)||source.source_id!==a.sourceId||source.url!==a.url||
+   !sourceURL(source.url)||source.publication_date!==a.date)return [];
+  // If retrieval metadata is present, it must not contradict this as-of view.
+  if(source.retrieved_at!=null){
+   const retrieval=availableDate({retrieved_at:source.retrieved_at});
+   if(!retrieval||retrieval.date<a.date||retrieval.date>asof)return [];
+  }
+  const measures=r.measures.filter(m=>m&&m.measure===a.measure);
+  if(measures.length!==1)return [];
+  const m=measures[0];
+  const basis=a.company==='DY'?'consolidated reported revenue outlook':'reported revenue outlook; not labeled adjusted';
+  if(m.basis!==basis)return [];
+  if(!currentLineage(m)||m.unit!==a.unit||typeof m.low!=='number'||typeof m.high!=='number'||
+   !Number.isFinite(m.low)||!Number.isFinite(m.high)||m.low>m.high||m.low!==a.low||m.high!==a.high)return [];
+  // Return a copy of reviewed fields only; never propagate unreviewed text/start.
+  return [{...a}];
+ });
+}
+function appendGuidance(c,root,helpers){
+ const target=root.querySelector('[data-section="range"]');
+ if(!target)return;
+ // Revalidate on every redraw, including when a previously accepted input changes.
+ const old=target.querySelector('.minimum-issuer-guidance');
+ if(old)old.remove();
+ const rows=guidanceRows(c,helpers.asof);
+ if(!rows.length)return;
+ const block=root.ownerDocument.createElement('div');block.className='minimum-issuer-guidance';
+ block.innerHTML='<h4>회사 가이던스 — 원문 대조된 항목</h4><p class="notes">회사 전망이며 당사 예측·컨센서스가 아닙니다. 예측 보류 유지. 시작일은 원문 검증 범위 밖이므로 표시하지 않습니다. 검증 메모: 2026-10-21.</p>'
+  +'<div style="overflow:auto"><table><thead><tr><th>회사</th><th>기간 구분</th><th>회계기간</th><th>종료일</th><th>지표</th><th>하한–상한</th><th>단위</th><th>출처·공표일</th></tr></thead><tbody>'
+  +rows.map(r=>'<tr><td>'+H(r.company)+'</td><td>'+H(r.scope)+'</td><td>'+H(r.period)+'</td><td>'+H(r.end)+'</td><td>'+H(r.label)+'</td><td>'+H(r.low)+'–'+H(r.high)+'</td><td>'+H(r.unit)+'</td><td><a href="'+H(r.url)+'" target="_blank" rel="noopener noreferrer">회사 원문</a> '+H(r.date)+'</td></tr>').join('')
+  +'</tbody></table></div>';
+ target.appendChild(block);
+}
 function appendObservations(c,root,helpers){
  const rows=observationRows(c,helpers.asof),target=root.querySelector('[data-section="track"]');
  if(!target||!rows.length||target.querySelector('.minimum-official-observations'))return;
@@ -706,6 +762,7 @@ function ensureCompositeMinimum(c,p,helpers){
  const ids=Array.from(root.querySelectorAll('[data-section]')).map(el=>el.getAttribute('data-section'));
  if(!check(ids))throw new Error('Dell minimum section order mismatch: '+c.id);
  appendObservations(c,root,helpers);
+ appendGuidance(c,root,helpers);
  if(global.CommonPreview.isHeld(c)&&!root.querySelector('.minimum-release-conditions')){
   const gate=c.forecast_gate||{},block=p.ownerDocument.createElement('div');
   block.className='card notes minimum-release-conditions';
@@ -716,7 +773,7 @@ function ensureCompositeMinimum(c,p,helpers){
  }
  return {company:c.id,required_sections:ids,dom_contract_pass:true,data_complete:false};
 }
-global.CompositeMinimum={check,safeHeldRow,reasons,observationRows,preserveSpecial};
+global.CompositeMinimum={check,safeHeldRow,reasons,observationRows,guidanceRows,preserveSpecial};
 global.ensureCompositeMinimum=ensureCompositeMinimum;
 })(typeof window!=='undefined'?window:globalThis);
 
