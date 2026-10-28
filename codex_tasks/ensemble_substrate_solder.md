@@ -7,6 +7,10 @@
 - 기판 섹터를 셋째로 넣고, 섹터와 회사 사이에 묶음(bundle)·제품선(line) 층을 둔다. 첫 묶음은 솔더볼.
 - 솔더볼 제품선 셋은 수요처가 다르다: SB(151–760µm)는 메모리·로직 BGA 패키지, MSB(≤150µm)는 FC-BGA 기판 범프·HDD, CSB(Cu 코어)는 모바일 AP PoP·2.5D. HBM 적층 마이크로범프는 도금(Sn-Ag)이라 볼 수요에서 제외.
 
+## 데이터 파일(2026-10-28 추가)
+- `data/ensemble/substrate.json` 에 이 요청서와 `ensemble_substrate_bundles.md` 의 계약을 그대로 담았다(공개층만, 키 정렬 정규화, 계약 테스트 `tools/tests/test_substrate_contract.py`). 생성기는 이 파일을 읽어 `observatory.sectors[]` 의 기판 섹터와 회사 행·엣지·증설·일정을 만들면 된다.
+- 축 값: `axes.<축>.status` 가 `measured`(값·단위·기간·출처) · `qualitative`(정성 근거) · `none`(미관측, 0으로 그리지 않음).
+
 ## 요청 (계약)
 1. **섹터 등록부** `observatory.sectors[]` = `{id, label, bundles:[{id, label, lines:[{id, label}]}]}`.
    - `#scSector` 옵션과 머리 숫자를 등록부에서 생성한다(하드코딩 제거). `counts`는 섹터 id별.

@@ -31,6 +31,7 @@ BANNED_EXT = {".enex"}
 SELF = os.path.abspath(__file__)
 NON_NARRATIVE = {"public_check", "from", "to", "line", "kind", "grade", "id", "model", "sector", "bundle",
                  "visibility", "updated", "memo_date"}
+GENERATED = re.compile(r"^(data_[^/]*\.js|argus/[^/]+/tools/assets/|data/(comext|memory-weekly|neocloud_spot)/)")
 MIN_PHRASE = 12            # 이보다 짧은 문장 조각은 흔한 표현과 겹칠 수 있어 비교하지 않는다
 
 
@@ -58,6 +59,8 @@ def private_phrases():
                 continue
             with open(os.path.join(dirpath, name), encoding="utf-8") as f:
                 data = json.load(f)
+            if not (isinstance(data, dict) and data.get("_marker") == MARKERS[0]):
+                continue                     # 표시가 있는 가정층 파일만 — 같은 폴더의 공개 사본은 제외
             stack = [data]
             while stack:
                 v = stack.pop()
@@ -98,16 +101,22 @@ class PrivateLeakTests(unittest.TestCase):
         phrases = private_phrases()
         if not phrases:
             self.skipTest("로컬 가정층 없음(CI)")
+        # 한 번에 찾는 패턴 하나(문장마다 파일을 다시 훑지 않는다). 크론이 공개 원천에서 만드는
+        # 생성물(data_*.js, argus/*/tools/assets/**)은 메모 문장이 들어올 경로가 아니라 건너뛴다 —
+        # 표시 문자열·.enex 검사(위 테스트)는 그 파일들도 모두 본다.
+        heads = {}                           # 앞 4글자 → 문장들(문장마다 파일 전체를 다시 훑지 않는다)
+        for q in phrases:
+            heads.setdefault(q[:4], []).append(q)
         hits = []
         for rel in candidate_files():
-            if os.path.splitext(rel)[1].lower() not in TEXT_EXT:
+            if os.path.splitext(rel)[1].lower() not in TEXT_EXT or GENERATED.match(rel):
                 continue
             path = os.path.join(ROOT, rel)
             if os.path.abspath(path) == SELF or not os.path.isfile(path) or os.path.getsize(path) > 3_000_000:
                 continue
             with open(path, encoding="utf-8", errors="replace") as f:
                 text = norm(f.read())
-            if any(q in text for q in phrases):
+            if any(h in text and any(q in text for q in qs) for h, qs in heads.items()):
                 hits.append(rel)
         self.assertEqual(hits, [], "로컬 가정 파일의 문장이 레포 파일에서 발견됨(값은 출력하지 않음):\n" + "\n".join(hits))
 
