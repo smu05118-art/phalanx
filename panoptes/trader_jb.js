@@ -278,6 +278,32 @@
           }
         }
         items(arr(t.research_queue,'research_queue'),'research_queue',(q,p)=>{str(q.name,p+'.name',true);strArr(q.signals,p+'.signals');if(!syms.has(q.symbol))err('조사 대상 참조 오류');});
+        if(t.research_coverage!==undefined) {
+          const values=v=>Array.isArray(v)?v:[];
+          const coverage=arr(t.research_coverage,'research_coverage'), seen=new Set(), ev=new Map(list(r.evidence).map(e=>[e.id,e]));
+          const signals=new Set(list(universe).filter(s=>values(s.signals).length).map(s=>s.symbol));
+          const named=new Set(list(groups).filter(g=>g.source_kind==='evidence' && values(g.members).length>=2).flatMap(g=>g.members));
+          const pending=new Set();
+          items(coverage,'research_coverage',(c,p)=>{
+            if(!signals.has(c.symbol)||seen.has(c.symbol))err('조사 범위 중복/종목 오류');seen.add(c.symbol);
+            str(c.name,p+'.name',true);
+            const expected=k=>list(r.evidence).filter(e=>e.relation==='direct' && values(e.symbols).includes(c.symbol) && (k==='business_evidence_ids'?['business','theme'].includes(e.kind):e.kind==='catalyst')).map(e=>e.id);
+            for(const k of ['business_evidence_ids','catalyst_evidence_ids']) {
+              const ids=arr(c[k],p+'.'+k), want=expected(k);
+              if(ids.length!==new Set(ids).size || ids.length!==want.length || ids.some(id=>!want.includes(id)))err('사업/촉매 조사 근거 불일치');
+            }
+            const business=expected('business_evidence_ids'),cat=expected('catalyst_evidence_ids');
+            const status=named.has(c.symbol)?'group_confirmed':business.length?'business_singleton':cat.length?'catalyst_only':'unresolved';
+            if(c.status!==status)err('조사 상태와 근거 불일치');
+            if(!business.length)pending.add(c.symbol);
+            const common=arr(c.common_catalyst_ids,p+'.common_catalyst_ids');
+            const wantCommon=new Set(list(groups).filter(g=>values(g.members).includes(c.symbol)).flatMap(g=>values(g.common_catalyst_ids)));
+            if(common.length!==wantCommon.size || new Set(common).size!==common.length || common.some(id=>!wantCommon.has(id) || !ev.has(id)))err('공통 촉매 근거 불일치');
+          });
+          if(seen.size!==signals.size)err('조사 범위 누락');
+          const queued=list(t.research_queue).map(q=>q.symbol);
+          if(queued.length!==pending.size || new Set(queued).size!==queued.length || queued.some(s=>!pending.has(s)))err('사업 근거 대기 목록 불일치');
+        }
       }
     }
     list(r.article).forEach(a=>(Array.isArray(a.fact_ids)?a.fact_ids:[]).forEach(id=>{if(!facts.has(id))err('본문 근거 참조 오류: '+id);}));
@@ -616,6 +642,10 @@
 
   function themeFlowSec(r) {
     const t=r.theme_flow;if(!t)return null;
+    const table=(headers,rows)=>h('div',{class:'tjb-tscroll',tabindex:0},h('table',{class:'tjb-table'},[
+      h('thead',null,h('tr',null,headers.map(x=>h('th',null,x)))),
+      h('tbody',null,rows.map(row=>h('tr',null,row.map(x=>h('td',null,x)))))
+    ]));
     const by=new Map(t.universe.map(s=>[s.symbol,s])), groups=new Map(t.groups.map(g=>[g.id,g]));
     const cards=gs=>h('div',{class:'tjb-cards',style:'grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))'},gs.map(g=>h('article',{class:'tjb-card'},[
       h('h4',null,g.name),h('p',{class:'tjb-muted'},g.status+' · '+g.lifecycle),
@@ -639,8 +669,13 @@
       cards(focused),
       secHead('1차선 / 2차선 / 3차선','한 차선에 여러 테마 · 제품·기술별 종목 묶음'),selector,ranked,
       h('p',{class:'tjb-muted'},t.note),
-      h('details',null,[h('summary',null,'아직 이름을 붙이지 못한 움직임 · '+t.research_queue.length+'종목'),
-        h('ul',null,t.research_queue.map(s=>h('li',null,s.name+' — '+s.signals.join(' / ')+' · 공통 재료 미확인')))]),
+      t.research_coverage ? h('details',null,[h('summary',null,'조사 범위 · 사업과 촉매 ('+t.research_coverage.length+'종목)'),
+        h('p',{class:'tjb-muted'},'사업 분류와 상승 원인은 별개입니다. 개별 공시가 있어도 공통 촉매나 가격 인과가 확인된 것은 아닙니다.'),
+        table(['종목','사업 확인','개별 촉매','공통 촉매'],t.research_coverage.map(s=>[
+          s.name,({group_confirmed:'복수 종목 사업군',business_singleton:'단독 사업 확인',catalyst_only:'사업 근거 대기',unresolved:'사업 근거 대기'})[s.status],
+          s.catalyst_evidence_ids.length?'발표 '+s.catalyst_evidence_ids.length+'건 · 인과 모름':'미확인',s.common_catalyst_ids.length?'근거 '+s.common_catalyst_ids.length+'건':'미확인']))]) : null,
+      h('details',null,[h('summary',null,'사업 근거 추가 확인 대기 · '+t.research_queue.length+'종목'),
+        h('ul',null,t.research_queue.map(s=>h('li',null,s.name+' — '+s.signals.join(' / ')+' · '+(s.reason||'직접 사업 근거 추가 확인 필요'))))]),
       h('details',null,[h('summary',null,'전체 탐색 원장 · '+t.universe.length+'종목'),h('div',{class:'tjb-tscroll',tabindex:0},h('table',{class:'tjb-table'},[
         h('thead',null,h('tr',null,['종목','일간 가격','주간 대금','일간 대금','신호'].map(x=>h('th',null,x)))),
         h('tbody',null,t.universe.map(s=>h('tr',null,[s.name,fmtSigned(s.daily_price_change_pct,2,'%'),fmtBig(s.amount),fmtBig(s.daily_amount),s.signals.join(' / ')].map(x=>h('td',null,x)))))
