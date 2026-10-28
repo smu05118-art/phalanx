@@ -171,12 +171,12 @@
   for(const e of D.enhancements||[]) {
     const inferred=e.id==='cloud-rpo'?'big4':/capex|cash/.test(e.id)?'capex':/gpu|rental/.test(e.id)?'recovery':/hardware|memory/.test(e.id)?'hardware':'verdict';
     const chapter=$(e.chapter||inferred);if(!chapter) {errors.push('Unknown enhancement chapter: '+e.id);continue;}
-    const article=node('article',undefined,'panel enhancement');article.append(node('h3',e.title));const plot=node('div',undefined,'plot');plot.id=e.id;plot.setAttribute('role','img');plot.setAttribute('aria-label',e.title+' · '+e.status);article.append(plot);chapter.append(article);panels[e.id]=e;
+    const article=node('article',undefined,'panel enhancement');article.append(node('h3',e.title));const plot=node('div',undefined,'plot');plot.id=e.id;plot.setAttribute('role','img');plot.setAttribute('aria-label',e.title+' · '+statusLabel(e.status));article.append(plot);chapter.append(article);panels[e.id]=e;
   }
   for(const [id,p] of Object.entries(panels))setup(id,p);
   for(const el of document.querySelectorAll('[data-reading-for]')) {const p=panels[el.dataset.readingFor];if(p) { // Preserve nested visual structure and inventory IDs.
     const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);const texts=[];while(walker.nextNode())texts.push(walker.currentNode);
-    const text=el.classList.contains('reading')?summary(p):`${D.asof} 기준 · ${p.status} · ${p.series.length}개 계열 · 관측·출처·미확인 범위는 아래에서 확인`;
+    const text=el.classList.contains('reading')?summary(p):`${D.asof} 기준 · ${statusLabel(p.status)} · ${p.series.length}개 계열 · 관측·출처·미확인 범위는 아래에서 확인`;
     texts.forEach((n,i)=>{n.textContent=i===0?text:'';});
   }}
   // Existing controls retain IDs and position. Known semantics are wired; everything else explains its disabled state.
