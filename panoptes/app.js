@@ -703,6 +703,8 @@ function switchTab(tab,nav){
   if(atlasPanel) atlasPanel.hidden=(tab!=='atlas');
   const jbPanel=document.getElementById('jbview');
   if(jbPanel) jbPanel.hidden=(tab!=='jb');
+  const aiCyclePanel=document.getElementById('ai-cycle-view');
+  if(aiCyclePanel) aiCyclePanel.hidden=(tab!=='ai-cycle');
   document.getElementById('headStat').style.display=isMap?'':'none';
   if(isMap && MAP){setTimeout(()=>MAP.resize(),50);}
   if(tab==='sig' && window.PV){ PV.loadSignals(); }
@@ -714,6 +716,7 @@ function switchTab(tab,nav){
   if(tab==='fed'){ loadFed(); }
   if(tab==='atlas' && atlasPanel && window.AtlasGeo){ AtlasGeo.mount(atlasPanel); }
   if(tab==='jb' && jbPanel && window.TraderJB){ TraderJB.mount(jbPanel); }
+  if(tab==='ai-cycle' && aiCyclePanel && window.PHXAiCycle){ PHXAiCycle.mount(aiCyclePanel); }
   routeWrite(tab,nav);
 }
 

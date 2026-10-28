@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const MAX_BYTES = 5 * 1024 * 1024, MAX_ROWS = 200, MAX_REPORTS = 12, EOK = 1e8;
+  const MAX_BYTES = 5 * 1024 * 1024, MAX_ROWS = 400, MAX_REPORTS = 12, EOK = 1e8;
   const SANS = "'Pretendard','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif";
   const MONO = "'SF Mono','JetBrains Mono',ui-monospace,Menlo,Consolas,monospace";
   // Korean market convention: up = red, down = blue.
@@ -182,6 +182,27 @@
     items(arr(r.article, 'article'), 'article', (a, p) => {
       str(a.heading, p + '.heading'); strArr(a.paragraphs, p + '.paragraphs'); strArr(a.fact_ids, p + '.fact_ids');
     });
+    if (r.banbbabba != null || r.subsectors != null || r.lanes != null) {
+      if (!isObj(r.banbbabba) || !isObj(r.lanes) || !Array.isArray(r.subsectors)) err('반빳바·차선 계약이 불완전합니다.');
+      else {
+        items(arr(r.banbbabba.groups, 'banbbabba.groups'), 'banbbabba.groups', (g,p) => {
+          str(g.name,p+'.name',true);
+          ['amount','amount_change_pct','relative_change_pct','matched_count','member_count'].forEach(k=>num(g[k],p+'.'+k));
+        });
+        if (!Array.isArray(r.banbbabba.groups) || r.banbbabba.groups.length !== 3) err('반빳바는 세 그룹이어야 합니다.');
+        items(arr(r.banbbabba.pairwise,'banbbabba.pairwise'),'banbbabba.pairwise',(p,k)=>{
+          str(p.left,k+'.left',true);str(p.right,k+'.right',true);num(p.growth_gap_pp,k+'.growth_gap_pp');
+        });
+        items(arr(r.subsectors,'subsectors'),'subsectors',(s,p)=>{
+          str(s.id,p+'.id',true);str(s.name,p+'.name',true);amt(s.amount,p+'.amount');
+          ['dominance_pct','amount_change_pct','matched_coverage_pct','matched_count','member_count','dominance_rank'].forEach(k=>num(s[k],p+'.'+k));
+          str(s.classification_status,p+'.classification_status');
+        });
+        ['dominance','growth'].forEach(k=>items(arr(r.lanes[k],'lanes.'+k),'lanes.'+k,(s,p)=>{
+          str(s.name,p+'.name',true);str(s.lane,p+'.lane',true);num(s.value,p+'.value');
+        }));
+      }
+    }
     if (!Array.isArray(r.caveats)) err('caveats: 배열이어야 합니다.'); else strArr(r.caveats, 'caveats');
     if (r.methodology != null) {
       if (!isObj(r.methodology)) err('methodology: 객체여야 합니다.');
@@ -198,6 +219,68 @@
         }
       }
     }
+    const list = v => Array.isArray(v) ? v.filter(isObj) : [];
+    const unique = (xs,key,label) => {const keys=xs.map(x=>x[key]); if(new Set(keys).size!==keys.length) err(label+': 중복 ID');};
+    const facts = new Set();
+    list(r.stocks).forEach(s=>facts.add('stock:'+s.symbol));
+    for(const [key,prefix] of [['sectors','sector:'],['subsectors','subsector:'],['themes','theme:']]) {
+      unique(list(r[key]),'id',key); list(r[key]).forEach(s=>{facts.add(prefix+s.id);if(s.fact_id)facts.add(s.fact_id);});
+    }
+    unique(list(r.evidence),'id','evidence');
+    list(r.evidence).forEach(e=>{if(!/^[A-Za-z0-9_-]{1,100}$/.test(e.id||''))err('근거 ID 이름공간 충돌');facts.add(e.id);});
+    const macro=list(r.banbbabba && r.banbbabba.groups);
+    if(r.banbbabba && new Set(macro.map(g=>g.name)).size!==3)err('반빳바 이름 중복');
+    if(r.banbbabba && ['반도체','배터리','바이오'].some(n=>!macro.some(g=>g.name===n)))err('반빳바 그룹 불일치');
+    macro.forEach(g=>{
+      facts.add('macro:'+g.name);
+      if(g.relative_change_pct!=null && (g.amount_change_pct==null || macro.some(x=>x.amount_change_pct==null)))err('반빳바 상대변화 기초 이력 누락');
+    });
+    list(r.subsectors).forEach(s=>{
+      if(isNum(s.dominance_pct) && (s.dominance_pct<0 || s.dominance_pct>100))err('세부섹터 지배력 범위');
+      if(s.amount>0 && !list(r.stocks).some(x=>x.security_type==='STOCK'))err('주식 없는 세부섹터');
+    });
+    if(r.theme_flow!=null) {
+      const t=r.theme_flow;
+      if(!isObj(t))err('theme_flow 객체 필요');
+      else {
+        const universe=arr(t.universe,'theme_flow.universe'), groups=arr(t.groups,'theme_flow.groups');
+        unique(list(universe),'symbol','탐색 종목'); unique(list(groups),'id','테마 군집');
+        const syms=new Set(list(universe).map(s=>s.symbol)), gids=new Set(list(groups).map(g=>g.id));
+        items(universe,'탐색',(s,p)=>{
+          str(s.name,p+'.name',true);str(s.symbol,p+'.symbol',true);strArr(s.signals,p+'.signals');
+          ['amount','daily_amount'].forEach(k=>num(s[k],p+'.'+k,false,true));
+          ['daily_price_change_pct','amount_change_pct'].forEach(k=>num(s[k],p+'.'+k));
+          if(typeof s.weekly_observed!=='boolean')err('주간 관측 여부 필요');
+          if(!s.weekly_observed && (s.amount!=null || s.previous_amount!=null))err('탐색 전용 종목 주간 대금 혼합');
+          facts.add('discovery:'+s.symbol);
+        });
+        items(groups,'군집',(g,p)=>{
+          str(g.name,p+'.name',true);str(g.id,p+'.id',true);strArr(g.members,p+'.members');
+          if(!isObj(g.member_details))err('군집별 세부 분야 객체 필요');
+          else Object.entries(g.member_details).forEach(([s,v])=>{
+            if(!Array.isArray(g.members)||!g.members.includes(s)||!Array.isArray(v))err('군집별 세부 분야 참조 오류');
+            strArr(v,p+'.member_details');
+          });
+          num(g.amount,p+'.amount',false,true);
+          ['dominance_pct','amount_change_pct','median_daily_price_pct'].forEach(k=>num(g[k],p+'.'+k));
+          if(!Array.isArray(g.members) || g.members.some(s=>!syms.has(s)) || new Set(g.members).size!==g.members.length)err('군집 종목 참조 오류');
+          if(isNum(g.dominance_pct) && (g.dominance_pct<0 || g.dominance_pct>100))err('군집 지배력 범위');
+          if(!Array.isArray(g.evidence_ids) || g.evidence_ids.some(e=>!facts.has(e)))err('군집 근거 참조 오류');
+          facts.add('flow:'+g.id);
+        });
+        for(const key of ['amount','amount_change_pct','median_daily_price_pct']) {
+          const lanes=t.rankings && t.rankings[key];
+          if(!Array.isArray(lanes) || lanes.length!==3)err('세 차선 배열 필요');
+          else {
+            const ids=[];
+            lanes.forEach(l=>{if(!isObj(l)||!Array.isArray(l.group_ids))err('차선 참조 오류');else ids.push(...l.group_ids);});
+            if(new Set(ids).size!==ids.length || ids.some(id=>!gids.has(id)))err('차선 중복/미존재 군집');
+          }
+        }
+        items(arr(t.research_queue,'research_queue'),'research_queue',(q,p)=>{str(q.name,p+'.name',true);strArr(q.signals,p+'.signals');if(!syms.has(q.symbol))err('조사 대상 참조 오류');});
+      }
+    }
+    list(r.article).forEach(a=>(Array.isArray(a.fact_ids)?a.fact_ids:[]).forEach(id=>{if(!facts.has(id))err('본문 근거 참조 오류: '+id);}));
     return { ok: errs.length === 0, errors: errs };
   }
 
@@ -321,6 +404,14 @@
     });
     r.sectors.forEach(x => put('sector:' + x.id, { kind: '섹터', label: x.name,
       detail: `거래대금 ${fmtEok(x.amount)}억원 · ${fmtNum(x.member_count, 0)}종목 · 비중 ${fmtNum(x.share_pct, 1, '%')}` }));
+    (r.subsectors || []).forEach(x => put(x.fact_id, {kind:'세부섹터', label:x.name,
+      detail:`대금 ${fmtBig(x.amount)} · 지배력 ${fmtNum(x.dominance_pct,2,'%')} · 변화 ${fmtSigned(x.amount_change_pct,2,'%')} · 공통 ${x.matched_count}/${x.member_count}종목`}));
+    if (r.banbbabba) r.banbbabba.groups.forEach(g=>put(g.fact_id,{kind:'반빳바',label:g.name,
+      detail:`대금 변화 ${fmtSigned(g.amount_change_pct,2,'%')} · 상대변화 ${fmtSigned(g.relative_change_pct,2,'%')} · 공통 ${g.matched_count}/${g.member_count}종목`}));
+    if(r.theme_flow){
+      r.theme_flow.groups.forEach(g=>put(g.fact_id,{kind:'세부 테마',label:g.name,detail:`${g.status} · 주간 ${fmtBig(g.amount)} · 가격 중앙값 ${fmtSigned(g.median_daily_price_pct,2,'%')} · ${g.action}`}));
+      r.theme_flow.universe.forEach(s=>put(s.fact_id,{kind:'일간 탐색',label:s.name,detail:`일간 가격 ${fmtSigned(s.daily_price_change_pct,2,'%')} · 주간 ${fmtBig(s.amount)} · ${s.signals.join(' / ')}`}));
+    }
     r.themes.forEach(t => {
       const v = { kind: '테마', label: t.name, detail: `${STATUS[t.status]} · ${t.lifecycle || '—'} · ${fmtNum(t.member_count, 0)}종목` };
       put('theme:' + t.id, v); put(t.id, v);
@@ -469,7 +560,7 @@
     renderMeta(st);
     st.el.exportBtn.disabled = !(isObj(r.export) && typeof r.export.enex_base64 === 'string' && r.export.enex_base64.length > 0);
     const banners = [];
-    if (firstWeek(r)) banners.push(h('p', { class: 'tjb-banner' }, [h('strong', null, '첫 주 리포트 '),
+    if (firstWeek(r)) banners.push(h('p', { class: 'tjb-banner' }, [h('strong', null, '전주 비교 불가 '),
       '— 비교할 전주 스냅샷이 없습니다. 증감·변화율·가속 지표는 0이 아닌 —(결측)으로 표시되며, 버블·증감 차트는 비어 있을 수 있습니다.']));
     if (r.status === 'partial') banners.push(h('p', { class: 'tjb-banner is-warn' }, [h('strong', null, '부분 리포트 '), '— 일부 데이터가 수집 중이거나 누락되었습니다. 결론 전에 유의사항을 확인하세요.']));
     st.el.scoped = h('div', { class: 'tjb-scoped' });
@@ -477,6 +568,8 @@
     st.el.body.replaceChildren(...[
       banners.length ? h('div', { class: 'tjb-banners' }, banners) : null,
       overview(r),
+      themeFlowSec(r),
+      flowRankSec(r),
       h('section', { class: 'tjb-sec' }, [secHead('종목 탐색', '필터는 아래 차트·표·건수에만 적용됩니다'), st.el.filters, st.el.scoped]),
       articleSec(st),
       themesSec(st), notesSec(r)].filter(Boolean));
@@ -494,8 +587,65 @@
       card('테마 후보', fmtNum(m.theme_count, 0, '개'), '휴리스틱 분류 · 확정 아님'),
       card('관측 범위', `${fmtNum(c.count, 0)} / ${fmtNum(c.limit, 0)}`, c.scope || '—'),
       card('비교 기준', c.previous_as_of ? fmtDate(c.previous_as_of) : '없음',
-        (fw ? '첫 관측' : `${fmtNum(c.comparison_days, 0)}일 간격`) + ` · 계산에 사용한 관측 ${fmtNum(c.history_weeks, 0)}회`)
+        (fw ? '비교 가능한 5~10일 전 관측 없음' : `${fmtNum(c.comparison_days, 0)}일 간격`) + ` · 계산에 사용한 관측 ${fmtNum(c.history_weeks, 0)}회`)
     ])]);
+  }
+
+  function flowRankSec(r) {
+    if (!r.banbbabba || !r.lanes) return null; // Older immutable reports remain readable.
+    const table = (headers, rows) => h('div',{class:'tjb-tscroll',tabindex:0},h('table',{class:'tjb-table'},[
+      h('thead',null,h('tr',null,headers.map(x=>h('th',{scope:'col'},x)))),
+      h('tbody',null,rows.map(row=>h('tr',null,row.map(x=>h('td',null,x)))))
+    ]));
+    const laneCard = s => h('div',{class:'tjb-card'},[
+      h('div',{class:'tjb-card-k'},s.lane+' · 대금 지배력'),h('div',{class:'tjb-card-v'},s.name),
+      h('div',{class:'tjb-card-s'},fmtNum(s.value,2,'%')+(s.classification_status==='broad_fallback'?' · 세부 소속 미확인 / 대분류 대체':''))]);
+    return h('section',{class:'tjb-sec'},[
+      secHead('반 · 빳 · 바', '반도체 · 배터리 · 바이오 — 거래대금 크기가 아닌 상대변화 비교'),
+      table(['그룹','현재 대금','대금 변화','상대변화','공통/관측 종목'],r.banbbabba.groups.map(g=>[
+        g.name,fmtBig(g.amount),fmtSigned(g.amount_change_pct,2,'%'),fmtSigned(g.relative_change_pct,2,'%'),`${g.matched_count}/${g.member_count}`])),
+      h('p',{class:'tjb-muted'},r.banbbabba.formula),
+      h('p',{class:'tjb-muted'},r.banbbabba.pairwise.map(p=>`${p.left}−${p.right} ${fmtSigned(p.growth_gap_pp,2,'pp')}`).join(' / ')),
+      !r.theme_flow ? h('div',null,[secHead('이전 방식 차선', '과거 보고서에 저장된 세부섹터 상위 3개'),h('div',{class:'tjb-cards'},r.lanes.dominance.map(laneCard))]) : null,
+      h('p',{class:'tjb-muted'},'시장관심도: 별도 실측 자료 없음. 대금으로 대체한 점수를 만들지 않음.'),
+      h('details',null,[h('summary',null,`전체 세부섹터 원장 (${r.subsectors.length})`),
+        table(['순위','세부섹터','거래대금','지배력','대금 변화','비교 대금 커버리지','공통/관측'],r.subsectors.map(s=>[
+          s.dominance_rank,s.name+(s.classification_status==='broad_fallback'?' (대분류 대체)':''),fmtBig(s.amount),fmtNum(s.dominance_pct,2,'%'),fmtSigned(s.amount_change_pct,2,'%'),fmtNum(s.matched_coverage_pct,1,'%'),`${s.matched_count}/${s.member_count}`]))])
+    ]);
+  }
+
+  function themeFlowSec(r) {
+    const t=r.theme_flow;if(!t)return null;
+    const by=new Map(t.universe.map(s=>[s.symbol,s])), groups=new Map(t.groups.map(g=>[g.id,g]));
+    const cards=gs=>h('div',{class:'tjb-cards',style:'grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))'},gs.map(g=>h('article',{class:'tjb-card'},[
+      h('h4',null,g.name),h('p',{class:'tjb-muted'},g.status+' · '+g.lifecycle),
+      h('ul',null,g.members.map(id=>{const s=by.get(id);return h('li',null,[s.name+' ',h('strong',{class:tone(s.daily_price_change_pct)},fmtSigned(s.daily_price_change_pct,2,'%')),
+        h('div',{class:'tjb-muted'},(g.member_details[id]||[]).join(' · ') || '세부 재료 미확인')]);})),
+      dl([['주간 대금',fmtBig(g.amount)],['대금 지배력',fmtNum(g.dominance_pct,2,'%')],['대금 변화',fmtSigned(g.amount_change_pct,2,'%')+' · 공통 '+g.matched_count+'/'+g.weekly_member_count],['일간 가격 중앙값',fmtSigned(g.median_daily_price_pct,2,'%')]]),
+      h('p',null,g.action),h('details',null,[h('summary',null,'종목 연결 근거'),...g.evidence_ids.map(id=>{
+        const e=r.evidence.find(x=>x.id===id);return h('p',null,[e.date+' · '+(e.kind==='business'?'사업 분류 · 당일 촉매 아님':'촉매 근거')+' ',h('a',{href:safeUrl(e.url),target:'_blank',rel:'noopener noreferrer'},e.title)]);
+      })])
+    ])));
+    const ranked=h('div');
+    const selector=h('select',{'aria-label':'차선 정렬 기준'},[
+      h('option',{value:'amount'},'주간 대금 지배력'),h('option',{value:'amount_change_pct'},'공통종목 대금 증가율'),h('option',{value:'median_daily_price_pct'},'일간 가격 상승률 중앙값')]);
+    const renderLanes=()=>ranked.replaceChildren(...t.rankings[selector.value].map(l=>h('details',{open:true},[
+      h('summary',null,l.name+' · '+l.group_ids.length+'개 세부테마'),cards(l.group_ids.map(id=>groups.get(id)))])));
+    selector.addEventListener('change',renderLanes);selector.value='amount';renderLanes();
+    const focused=t.groups.filter(g=>g.source_kind==='evidence' && g.member_count>=2 && g.price_up_count>=2).sort((a,b)=>b.median_daily_price_pct-a.median_daily_price_pct);
+    return h('section',{class:'tjb-sec'},[
+      secHead('새 움직임 · 세부테마 탐색','주간 대금100 · 일간 상승률100 · 일간 대금100에 관측된 주식을 함께 탐색'),
+      h('p',{class:'tjb-muted'},t.daily_source ? Object.entries(t.daily_source.as_of).map(([k,v])=>k+' '+fmtDate(v,true)).join(' / ') : '일간 탐색 자료 없음'),
+      cards(focused),
+      secHead('1차선 / 2차선 / 3차선','한 차선에 여러 테마 · 제품·기술별 종목 묶음'),selector,ranked,
+      h('p',{class:'tjb-muted'},t.note),
+      h('details',null,[h('summary',null,'아직 이름을 붙이지 못한 움직임 · '+t.research_queue.length+'종목'),
+        h('ul',null,t.research_queue.map(s=>h('li',null,s.name+' — '+s.signals.join(' / ')+' · 공통 재료 미확인')))]),
+      h('details',null,[h('summary',null,'전체 탐색 원장 · '+t.universe.length+'종목'),h('div',{class:'tjb-tscroll',tabindex:0},h('table',{class:'tjb-table'},[
+        h('thead',null,h('tr',null,['종목','일간 가격','주간 대금','일간 대금','신호'].map(x=>h('th',null,x)))),
+        h('tbody',null,t.universe.map(s=>h('tr',null,[s.name,fmtSigned(s.daily_price_change_pct,2,'%'),fmtBig(s.amount),fmtBig(s.daily_amount),s.signals.join(' / ')].map(x=>h('td',null,x)))))
+      ]))])
+    ]);
   }
 
   function factLi(st, id) {
