@@ -234,7 +234,30 @@ if(_t==='light')document.documentElement.dataset.theme='light';}catch(e){}</scri
 .ent-role,.ent-estimate,.ent-warning{display:block;font:10px system-ui;margin-top:4px}.ent-role{color:var(--ent-muted)}.ent-estimate{color:#c7a5f8}.ent-warning{color:#ffb66e}.ent-conflict td{background:rgba(245,155,55,.045)}.ent-root td>small{font-size:10px;color:var(--ent-muted)}
 .ent-detail{border:1px solid var(--ent-border);border-radius:10px;background:var(--ent-bg);padding:14px 18px;margin:-7px 0 20px}.ent-detail h3{margin:0;font-size:15px}.ent-detail p{font-size:12px;color:var(--ent-muted);margin:6px 0}.ent-detail small{font:12px ui-monospace,monospace;color:var(--ent-muted)}.ent-entity-links{font-size:11px;margin-top:8px}
 </style><style>.ct-view{color:var(--ink,#e6edf3);background:var(--panel,#111721);border:1px solid var(--line,#314154);border-radius:12px;padding:clamp(12px,2vw,24px);margin:16px 0;font:14px/1.6 system-ui,sans-serif;overflow-wrap:anywhere}.ct-view *{box-sizing:border-box}.ct-view h2,.ct-view h3{margin:0 0 10px}.ct-view a{color:var(--accent,#79b6ff)}.ct-view button,.ct-view input,.ct-view select{font:inherit;color:inherit;background:var(--bg,#0a0e14);border:1px solid var(--line,#53657a);border-radius:6px;padding:8px;min-height:42px}.ct-view button{cursor:pointer}.ct-view :focus-visible{outline:3px solid #57cbe5;outline-offset:2px}.ct-filters,.ct-summary,.ct-links{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.ct-filters label{display:flex;flex-direction:column;gap:4px;flex:1 1 140px;min-width:0}.ct-filters input,.ct-filters select{width:100%}.ct-summary>div{border:1px solid var(--line,#314154);padding:10px;flex:1 1 145px;border-radius:8px}.ct-summary strong{display:block;font-size:20px}.ct-note{color:var(--dim,#afbac8)}.ct-warning{border-left:3px solid #dcab61;padding-left:12px}.ct-grid{display:grid;grid-template-columns:minmax(230px,1fr) minmax(0,2fr);gap:18px}.ct-scroll{overflow:auto;max-height:470px}.ct-view table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}.ct-view th,.ct-view td{border-bottom:1px solid var(--line,#314154);text-align:left;padding:8px;vertical-align:top}.ct-view th{position:sticky;top:0;background:var(--panel,#111721)}.ct-series{display:block;width:100%;text-align:left;margin-bottom:7px}.ct-series[aria-pressed=true]{border-color:#57cbe5}.ct-chart{width:100%;height:auto;min-height:160px}.ct-chart text{fill:currentColor;font-size:12px}.ct-chart line{stroke:var(--line,#53657a)}.ct-chart circle{fill:#57cbe5}.ct-view details{border-top:1px solid var(--line,#314154);padding:12px 0}.ct-view summary{cursor:pointer;min-height:40px}.ct-context{margin:12px 24px;max-width:100%;overflow:auto}.ct-context>summary{padding:12px;cursor:pointer}.ct-pane{max-height:65vh;overflow:auto}.ct-count{white-space:nowrap}.ct-view [role=alert]{color:#f6bc91}@media(max-width:720px){.ct-grid{grid-template-columns:1fr}.ct-filters label{flex-basis:44%}.ct-context{margin:8px}.ct-scroll{max-height:350px}.ct-view td,.ct-view th{padding:6px}.ct-pane{max-height:70vh}}
-</style><style>/* Scoped report explorer. Auto theme inherits either Phalanx or chain tokens. */
+</style><style>/* Scope every rule to the report view so the generic LUX platforms stay intact. */
+.trr-report{
+  --trr-paper:#f4efe7;--trr-paper-strong:#ede4d7;--trr-ink:#211b18;--trr-muted:#766d65;
+  --trr-rule:rgba(61,45,34,.22);--trr-accent:#a45945;--trr-forest:#5c6a55;--trr-cream:#fffaf2;
+  background:var(--trr-paper);border:1px solid var(--trr-rule);box-shadow:0 16px 38px rgba(24,18,13,.13);
+  color:var(--trr-ink);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  letter-spacing:-.01em;margin:-4px -2px 16px;overflow:hidden;
+}
+.trr-report *{box-sizing:border-box}.trr-report h2,.trr-report h3,.trr-report .trr-issue b{font-family:Georgia,"Times New Roman",serif}
+.trr-hero{align-items:flex-end;background:linear-gradient(135deg,#e9dfd1 0%,#f8f4ed 58%,#e3d3c3 100%);border-bottom:1px solid var(--trr-rule);display:flex;justify-content:space-between;min-height:280px;padding:42px 48px 34px;position:relative}
+.trr-hero:after{border:1px solid rgba(164,89,69,.28);border-radius:50%;content:"";height:235px;position:absolute;right:-44px;top:-72px;width:235px}.trr-kicker,.trr-eyebrow{color:var(--trr-accent);font-size:10px;font-weight:800;letter-spacing:.16em;margin:0 0 14px}.trr-kicker span{color:var(--trr-muted);padding:0 7px}
+.trr-hero h2{font-size:clamp(43px,6.8vw,82px);font-weight:400;letter-spacing:-.075em;line-height:.81;margin:0;text-transform:uppercase}.trr-hero h2 i{font-style:italic}.trr-deck{color:#514943;font-family:Georgia,"Times New Roman",serif;font-size:15px;line-height:1.42;margin:23px 0 0;max-width:425px}
+.trr-issue{align-items:flex-end;border-left:1px solid var(--trr-rule);display:flex;flex-direction:column;gap:4px;margin:0 6px 3px 24px;padding:12px 0 12px 24px;position:relative;text-align:right;z-index:1}.trr-issue b{font-size:55px;font-weight:400;letter-spacing:-.06em;line-height:.8}.trr-issue span{font-size:10px;font-weight:800;letter-spacing:.15em;line-height:1.2}.trr-issue small{color:var(--trr-muted);font-size:10px;letter-spacing:.1em;margin-top:5px}
+.trr-disclosure{background:var(--trr-ink);color:#f6efe5;display:flex;gap:18px;justify-content:space-between;padding:10px 48px}.trr-disclosure span{font-size:9px;font-weight:700;letter-spacing:.11em;line-height:1.35}
+.trr-overview{border-bottom:1px solid var(--trr-rule);display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.78fr);gap:30px;padding:34px 48px}.trr-overview-copy h3,.trr-section-head h3{font-size:31px;font-weight:400;letter-spacing:-.045em;line-height:1;margin:0}.trr-overview-copy>p:last-child{color:var(--trr-muted);font-family:Georgia,"Times New Roman",serif;font-size:14px;line-height:1.45;max-width:510px}.trr-current{border-left:1px solid var(--trr-rule);padding-left:30px}.trr-current>p{font-size:10px;font-weight:700;letter-spacing:.12em;margin:2px 0 14px}.trr-current>p b{color:var(--trr-accent);font-size:14px;margin-right:6px}.trr-current-list{columns:2;gap:20px;list-style:none;margin:0;padding:0}.trr-current-list li{break-inside:avoid;border-top:1px solid var(--trr-rule);display:flex;font-size:12px;gap:8px;line-height:1.2;padding:7px 0}.trr-rank{color:var(--trr-accent);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:800;min-width:22px}
+.trr-flow,.trr-signals{border-bottom:1px solid var(--trr-rule);padding:35px 48px}.trr-section-head{align-items:flex-end;display:flex;gap:25px;justify-content:space-between;margin-bottom:23px}.trr-section-head .trr-eyebrow{margin-bottom:8px}.trr-section-head>p{color:var(--trr-muted);font-size:11px;line-height:1.35;margin:0;max-width:245px;text-align:right}.trr-chart-wrap{background:var(--trr-cream);border:1px solid var(--trr-rule);overflow:auto;padding:12px 8px 6px}.trr-rank-chart{display:block;min-width:580px;width:100%}.trr-rank-grid line{stroke:rgba(51,38,30,.13);stroke-width:1}.trr-rank-grid text,.trr-year{fill:#7e746b;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px}.trr-flow-line line{stroke:var(--trr-line);stroke-width:2.3}.trr-flow-line circle{fill:var(--trr-line);stroke:#fffaf2;stroke-width:2}.trr-flow-line>text:not(.trr-svg-brand){fill:#fffaf2;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8.5px;font-weight:800}.trr-svg-brand{fill:var(--trr-line);font-family:ui-sans-serif,-apple-system,sans-serif;font-size:10px;font-weight:700}
+.trr-table-wrap{overflow-x:auto}.trr-rank-table{border-collapse:collapse;font-size:12px;margin-top:16px;min-width:540px;width:100%}.trr-rank-table caption{caption-side:bottom;color:var(--trr-muted);font-size:10px;padding-top:8px;text-align:left}.trr-rank-table td,.trr-rank-table th{border-bottom:1px solid var(--trr-rule);padding:7px 9px;text-align:right}.trr-rank-table thead th{color:var(--trr-muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:.05em}.trr-rank-table th:first-child{text-align:left}.trr-rank-table tbody th{font-size:12px;font-weight:650}.trr-rank-table tbody tr:nth-child(-n+3) th{color:var(--trr-accent)}
+.trr-signals{background:linear-gradient(135deg,#ede5da,#f7f1e8)}.trr-metric-grid{display:grid;gap:18px;grid-template-columns:repeat(2,minmax(0,1fr))}.trr-metric{background:var(--trr-cream);border:1px solid var(--trr-rule);padding:20px}.trr-metric-top{align-items:flex-start;border-bottom:1px solid var(--trr-rule);display:flex;gap:12px;justify-content:space-between;padding-bottom:12px}.trr-metric-top p{font-family:Georgia,"Times New Roman",serif;font-size:19px;line-height:1.05;margin:0;max-width:190px}.trr-metric-top span{color:var(--trr-muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;letter-spacing:.06em;text-align:right}.trr-bars{list-style:none;margin:16px 0 12px;padding:0}.trr-bars li{align-items:center;display:grid;gap:8px;grid-template-columns:minmax(92px,.85fr) minmax(70px,1.25fr) 43px;margin:9px 0}.trr-bar-name{font-size:12px;font-weight:650}.trr-bar-track{background:rgba(33,27,24,.1);display:block;height:6px;overflow:hidden}.trr-bar-track i{background:var(--trr-accent);display:block;height:100%}.trr-supply .trr-bar-track i{background:var(--trr-forest)}.trr-bars b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;text-align:right}.trr-signal-note{color:var(--trr-muted);font-size:10px;line-height:1.35;margin:0}
+.trr-history,.trr-sources{border-bottom:1px solid var(--trr-rule);padding:0 48px}.trr-history summary,.trr-sources summary{cursor:pointer;font-family:Georgia,"Times New Roman",serif;font-size:18px;list-style:none;padding:22px 0}.trr-history summary::-webkit-details-marker,.trr-sources summary::-webkit-details-marker{display:none}.trr-history summary span{color:var(--trr-accent);font-family:ui-sans-serif,-apple-system,sans-serif;font-size:9px;font-weight:800;letter-spacing:.14em;margin-right:12px}.trr-history summary em{color:var(--trr-muted);font-family:ui-sans-serif,-apple-system,sans-serif;font-size:10px;font-style:normal;letter-spacing:.04em;margin-left:7px}.trr-history>p{color:var(--trr-muted);font-size:12px;line-height:1.5;margin:0 0 16px;max-width:780px}.trr-history .trr-rank-table{margin:0 0 24px}.trr-sources{background:#e8dfd3}.trr-sources>ol{display:grid;gap:1px;grid-template-columns:repeat(2,minmax(0,1fr));list-style:none;margin:0 -48px;padding:0}.trr-sources li{background:rgba(255,250,242,.56);border-top:1px solid var(--trr-rule);display:grid;gap:4px;min-height:82px;padding:15px 48px}.trr-sources li span{color:var(--trr-accent);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:800}.trr-sources li b{font-size:12px;font-weight:650;line-height:1.3}.trr-sources li small{font-size:10px}.trr-sources a{color:#614232;text-decoration-color:rgba(97,66,50,.45);text-underline-offset:2px}
+.trr-footer{background:var(--trr-ink);color:#ece3d6;display:grid;gap:20px;grid-template-columns:1fr 1fr;padding:24px 48px}.trr-footer p{color:#d3c6b6;font-size:10px;line-height:1.5;margin:0}.trr-footer p:first-child{color:#f6eee3}
+html[data-theme="dark"] .trr-report,body[data-theme="dark"] .trr-report,.dark .trr-report{--trr-paper:#29231f;--trr-paper-strong:#342b25;--trr-ink:#f5ece1;--trr-muted:#c8b9aa;--trr-rule:rgba(245,236,225,.2);--trr-cream:#211b18}.dark .trr-hero,html[data-theme="dark"] .trr-hero,body[data-theme="dark"] .trr-hero{background:linear-gradient(135deg,#3b2e27,#251f1c 62%,#49352d)}.dark .trr-deck,html[data-theme="dark"] .trr-deck,body[data-theme="dark"] .trr-deck{color:#e4d6c7}.dark .trr-rank-grid line,html[data-theme="dark"] .trr-rank-grid line,body[data-theme="dark"] .trr-rank-grid line{stroke:rgba(245,236,225,.18)}.dark .trr-rank-grid text,.dark .trr-year,html[data-theme="dark"] .trr-rank-grid text,html[data-theme="dark"] .trr-year,body[data-theme="dark"] .trr-rank-grid text,body[data-theme="dark"] .trr-year{fill:#c8b9aa}.dark .trr-signals,html[data-theme="dark"] .trr-signals,body[data-theme="dark"] .trr-signals{background:linear-gradient(135deg,#332923,#26201d)}.dark .trr-sources,html[data-theme="dark"] .trr-sources,body[data-theme="dark"] .trr-sources{background:#332923}.dark .trr-sources li,html[data-theme="dark"] .trr-sources li,body[data-theme="dark"] .trr-sources li{background:rgba(0,0,0,.12)}.dark .trr-sources a,html[data-theme="dark"] .trr-sources a,body[data-theme="dark"] .trr-sources a{color:#edc7ae}
+@media(max-width:760px){.trr-report{margin:0 -2px 14px}.trr-hero{align-items:flex-start;flex-direction:column;min-height:0;padding:30px 24px 24px}.trr-hero:after{height:155px;right:-62px;top:-52px;width:155px}.trr-hero h2{font-size:55px}.trr-issue{align-items:flex-start;border-left:0;border-top:1px solid var(--trr-rule);flex-direction:row;margin:22px 0 0;padding:13px 0 0;text-align:left;width:100%}.trr-issue b{font-size:40px}.trr-issue small{margin:0 0 0 auto}.trr-disclosure{flex-direction:column;gap:4px;padding:10px 24px}.trr-overview{display:block;padding:29px 24px}.trr-current{border-left:0;border-top:1px solid var(--trr-rule);margin-top:24px;padding:20px 0 0}.trr-flow,.trr-signals{padding:29px 24px}.trr-section-head{align-items:flex-start;flex-direction:column;gap:8px}.trr-section-head>p{text-align:left}.trr-overview-copy h3,.trr-section-head h3{font-size:27px}.trr-metric-grid{grid-template-columns:1fr}.trr-history,.trr-sources{padding:0 24px}.trr-sources>ol{grid-template-columns:1fr;margin:0 -24px}.trr-sources li{padding:15px 24px}.trr-footer{grid-template-columns:1fr;padding:22px 24px}.trr-current-list{columns:1}.trr-rank-chart{margin-left:-2px}.trr-metric{padding:17px}.trr-bars li{grid-template-columns:minmax(85px,.8fr) minmax(55px,1.2fr) 40px}}
+
+/* Scoped report explorer. Auto theme inherits either Phalanx or chain tokens. */
 .lux-grailed{--lg-bg:var(--s1,var(--panel,#101820));--lg-raised:var(--s2,var(--panel2,#18232a));--lg-ink:var(--tx,var(--ink,#e6edf3));--lg-dim:var(--dim,#9caab6);--lg-border:var(--bd,#35434a);--lg-accent:#7bd3b5;--lg-warn:#f5bb82;color:var(--lg-ink);background:var(--lg-bg);border:1px solid var(--lg-border);border-radius:14px;padding:26px;margin:16px 0;font:13px/1.65 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;min-width:0;max-width:100%;isolation:isolate}
 .lux-grailed[data-theme=light],:root[data-theme=light] .lux-grailed[data-theme=auto]{--lg-bg:#fff;--lg-raised:#f3f6f2;--lg-ink:#23362f;--lg-dim:#536a60;--lg-border:#d3dfd7;--lg-accent:#216348;--lg-warn:#975528;color-scheme:light}
 .lux-grailed[data-theme=dark]{--lg-bg:#101820;--lg-raised:#18232a;--lg-ink:#e6edf3;--lg-dim:#9caab6;--lg-border:#35434a;--lg-accent:#7bd3b5;--lg-warn:#f5bb82;color-scheme:dark}
@@ -6157,6 +6180,125 @@ function gMountCharts(G){
     tipTitle:gGrowthTipTitle,tipLabel:gGrowthTipLabel,tipFooter:gGrowthTipFooter};
 }(typeof window!=='undefined'?window:(typeof globalThis!=='undefined'?globalThis:null)));
 
+/* The RealReal report-style view.  It consumes only the bounded `editorial`
+ * projection from data_lux.js and deliberately has no scoring side effects. */
+(function (root) {
+  'use strict';
+  if (!root) return;
+
+  const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
+  const safeUrl = value => typeof value === 'string' && /^https:\/\/[^\s"'<>]+$/i.test(value) ? value : '';
+  const rank = value => Number.isFinite(Number(value)) ? Number(value) : null;
+  const brandName = value => String(value || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const periodsFor = (series, preferred) => {
+    const found = new Set(Object.values(series || {}).flatMap(row => Object.keys(row || {})));
+    return (preferred || []).filter(period => found.has(period));
+  };
+
+  function rankRows(series, periods) {
+    return Object.entries(series || {}).map(([name, values]) => ({
+      name: brandName(name), values: periods.map(period => rank(values && values[period])), latest: rank(values && values[periods[periods.length - 1]])
+    })).filter(row => row.values.some(value => value != null))
+      .sort((a, b) => (a.latest == null) - (b.latest == null) || (a.latest || 99) - (b.latest || 99) || a.name.localeCompare(b.name));
+  }
+
+  function rankSvg(rows, periods) {
+    const shown = rows.filter(row => row.latest != null).slice(0, 10);
+    const width = 760, height = 312, top = 30, bottom = 35, left = 38, right = 18;
+    const plotW = width - left - right, plotH = height - top - bottom;
+    const x = index => left + (periods.length < 2 ? plotW / 2 : plotW * index / (periods.length - 1));
+    const y = value => top + (value - 1) * plotH / 9;
+    const color = index => ['#2c2320', '#9c5a47', '#c99152', '#667759', '#6c5c68', '#4a6376', '#9a6e35', '#884e52', '#6d715a', '#4b4c56'][index % 10];
+    const grid = Array.from({ length: 10 }, (_, index) => {
+      const value = index + 1;
+      return `<g class="trr-rank-grid"><line x1="${left}" x2="${width - right}" y1="${y(value)}" y2="${y(value)}"/><text x="${left - 11}" y="${y(value) + 4}" text-anchor="end">${value}</text></g>`;
+    }).join('');
+    const years = periods.map((period, index) => `<text class="trr-year" x="${x(index)}" y="${height - 7}" text-anchor="middle">${esc(period)}</text>`).join('');
+    const lines = shown.map((row, rowIndex) => {
+      let segment = '';
+      let previous = null;
+      row.values.forEach((value, index) => {
+        if (value == null) { previous = null; return; }
+        if (previous) segment += `<line x1="${x(previous.index)}" y1="${y(previous.value)}" x2="${x(index)}" y2="${y(value)}"/>`;
+        previous = { value, index };
+      });
+      const dots = row.values.map((value, index) => value == null ? '' : `<circle cx="${x(index)}" cy="${y(value)}" r="7"/><text x="${x(index)}" y="${y(value) + 3}" text-anchor="middle">${value}</text>`).join('');
+      const lastIndex = row.values.reduce((best, value, index) => value != null ? index : best, -1);
+      const label = lastIndex >= 0 ? `<text class="trr-svg-brand" x="${x(lastIndex) + 12}" y="${y(row.values[lastIndex]) + 4}">${esc(row.name)}</text>` : '';
+      return `<g class="trr-flow-line" style="--trr-line:${color(rowIndex)}">${segment}${dots}${label}</g>`;
+    }).join('');
+    return `<div class="trr-chart-wrap"><svg class="trr-rank-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Most-Searched Brands rank movement from ${esc(periods[0] || '')} to ${esc(periods[periods.length - 1] || '')}; rank 1 is highest.">${grid}${years}${lines}</svg></div>`;
+  }
+
+  function currentTiles(rows) {
+    const current = rows.filter(row => row.latest != null).slice(0, 10);
+    return `<ol class="trr-current-list">${current.map(row => `<li><span class="trr-rank">#${row.latest}</span><span>${esc(row.name)}</span></li>`).join('')}</ol>`;
+  }
+
+  function fullRankTable(rows, periods) {
+    const head = periods.map(period => `<th scope="col">${esc(period)}</th>`).join('');
+    const body = rows.map(row => `<tr><th scope="row">${esc(row.name)}</th>${row.values.map(value => `<td>${value == null ? '—' : value}</td>`).join('')}</tr>`).join('');
+    return `<div class="trr-table-wrap"><table class="trr-rank-table"><caption>Published Most-Searched Brands rank detail</caption><thead><tr><th scope="col">Brand</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  function metricPanel(metric, tone) {
+    const items = Array.isArray(metric && metric.items) ? metric.items.filter(item => item && Number.isFinite(Number(item.value))) : [];
+    const max = Math.max(1, ...items.map(item => Number(item.value)));
+    const bars = items.map(item => {
+      const value = Number(item.value);
+      const width = Math.max(3, Math.round(value / max * 100));
+      return `<li><span class="trr-bar-name">${esc(item.brand)}</span><span class="trr-bar-track"><i style="width:${width}%"></i></span><b>+${value}%</b></li>`;
+    }).join('');
+    if (!bars) return '';
+    return `<section class="trr-metric trr-${tone}"><div class="trr-metric-top"><p>${esc(metric.label)}</p><span>${esc(metric.year || '2026')} / p.${esc(metric.source_page || '')}</span></div><ol class="trr-bars">${bars}</ol><p class="trr-signal-note">${esc(metric.scope || '')} ${esc(metric.comparison || '')}.</p></section>`;
+  }
+
+  function historicalPanel(historical) {
+    const values = historical && historical.values && typeof historical.values === 'object' ? historical.values : {};
+    const rows = Object.entries(values).map(([name, ranks]) => ({ name, before: rank(ranks && ranks['2017']), after: rank(ranks && ranks['2018']) }))
+      .filter(row => row.before != null || row.after != null)
+      .sort((a, b) => (a.after == null) - (b.after == null) || (a.after || 99) - (b.after || 99) || a.name.localeCompare(b.name));
+    if (!rows.length) return '';
+    return `<details class="trr-history"><summary><span>ARCHIVE PANEL</span>${esc(historical.period || '2018-H1')} search ranking <em>kept separate</em></summary><p>${esc(historical.note || '')}</p><div class="trr-table-wrap"><table class="trr-rank-table"><thead><tr><th>Brand</th><th>2017</th><th>2018</th></tr></thead><tbody>${rows.map(row => `<tr><th>${esc(row.name)}</th><td>${row.before == null ? '—' : row.before}</td><td>${row.after == null ? '—' : row.after}</td></tr>`).join('')}</tbody></table></div></details>`;
+  }
+
+  function sources(sources) {
+    const cards = (Array.isArray(sources) ? sources : []).map(source => {
+      const url = safeUrl(source && source.url);
+      const pdf = safeUrl(source && source.source_pdf_url);
+      const links = [url && `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">report</a>`, pdf && `<a href="${esc(pdf)}" target="_blank" rel="noopener noreferrer">PDF</a>`].filter(Boolean).join(' · ');
+      return `<li><span>${esc(source && source.period)}</span><b>${esc(source && source.edition)}</b>${links ? `<small>${links}</small>` : ''}</li>`;
+    }).join('');
+    return cards ? `<details class="trr-sources"><summary>Source archive · ${Array.isArray(sources) ? sources.length : 0} official editions</summary><ol>${cards}</ol></details>` : '';
+  }
+
+  function render(platform) {
+    const editorial = platform && platform.editorial || {};
+    const ranking = editorial.ranking || {};
+    const periods = periodsFor(platform && platform.series, ranking.periods || ['2023', '2024', '2025', '2026']);
+    const rows = rankRows(platform && platform.series, periods);
+    if (!periods.length || !rows.length) return '<div class="empty-msg">The RealReal 리포트 데이터 준비중</div>';
+    const latest = periods[periods.length - 1];
+    return `<article class="trr-report">
+      <header class="trr-hero">
+        <div><p class="trr-kicker">THE REALREAL <span>/</span> RESALE SIGNALS</p><h2>THE <i>RE</i>SALE<br>REPORT</h2><p class="trr-deck">${esc(ranking.label || 'Most-Searched Brands')}의 공개 순위 흐름과 2026 보조 신호를 리포트형으로 정리했습니다.</p></div>
+        <div class="trr-issue"><b>2026</b><span>RESEARCH<br>EDITION</span><small>p.15–16</small></div>
+      </header>
+      <section class="trr-disclosure"><span>THE REALREAL INTERNAL MARKETPLACE DATA</span><span>RANK #1 = HIGHEST SHOWN</span><span>SCORING / FORECAST EXCLUDED</span></section>
+      <section class="trr-overview"><div class="trr-overview-copy"><p class="trr-eyebrow">MOST-SEARCHED BRANDS</p><h3>${esc(latest)} ranking movement</h3><p>${esc(editorial.scope || '')}</p></div><div class="trr-current"><p><b>${esc(latest)}</b> CURRENT TOP 10</p>${currentTiles(rows)}</div></section>
+      <section class="trr-flow"><div class="trr-section-head"><div><p class="trr-eyebrow">RANK MATRIX / P.${esc(ranking.source_page || '')}</p><h3>How the top ranks moved</h3></div><p>${esc(ranking.unit || '')}</p></div>${rankSvg(rows, periods)}${fullRankTable(rows, periods)}</section>
+      <section class="trr-signals"><div class="trr-section-head"><div><p class="trr-eyebrow">ACCELERATION SIGNALS / P.16</p><h3>Interest and supply, kept distinct</h3></div><p>2026 vs. same period in 2025</p></div><div class="trr-metric-grid">${metricPanel(editorial.aux && editorial.aux.saved_search, 'interest')}${metricPanel(editorial.aux && editorial.aux.supply, 'supply')}</div></section>
+      ${historicalPanel(editorial.historical)}
+      ${sources(editorial.report_sources)}
+      <footer class="trr-footer"><p>Source basis: The RealReal 2026 Resale Report p.15 historical rank matrix and p.16 acceleration panels. Missing ranks remain unfilled; displayed rank ties are preserved.</p><p>These are marketplace-specific observations. Saved searches and consigned supply are not sales, transaction volume, or a market-wide luxury forecast.</p></footer>
+    </article>`;
+  }
+
+  root.LuxTheRealReal = Object.freeze({ render });
+}(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null)));
+
 /* Shared dependency-free Grailed report explorer, payload schema_version 1.
  * LuxGrailed.render(Element, payload, options) => cleanup()
  * options: title (default 'Grailed 리포트 관측'), initialPanel (panel id or
@@ -6897,6 +7039,9 @@ function luxPlat(L,pid){
   const p=(L.platforms||{})[pid]; if(!p) return '<div class="empty-msg">데이터 준비중</div>';
   if(!window.LUXH&&!window._luxhL){window._luxhL=1;const sc=document.createElement('script');sc.src='data_lux_hist.js';sc.onload=()=>renderLux();document.head.appendChild(sc);}
   if(window.LUXH&&window.LUXH[pid]) p.series=window.LUXH[pid];
+  if(pid==='therealreal'&&window.LuxTheRealReal&&typeof window.LuxTheRealReal.render==='function'){
+    return window.LuxTheRealReal.render(p);
+  }
   const lower=p.direction==='lower_better';
   const ser=p.series||{}; const periods=[...new Set(Object.values(ser).flatMap(v=>Object.keys(v)))].sort();
   const brands=Object.keys(ser);
